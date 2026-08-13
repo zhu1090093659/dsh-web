@@ -105,7 +105,12 @@ function main() {
   let changed = 0
   for (const { name, dir } of packages) {
     const linkPath = join(LINK_DIR, name)
-    const target = relative(LINK_DIR, dir) // keep links relative, like the official ones
+    // Windows without Developer Mode cannot create symlinks (EPERM), so this
+    // machine uses directory junctions instead. Junctions require absolute
+    // targets and readlink reports the absolute target, so the keep-check
+    // compares against that same absolute value on win32.
+    const WIN32 = process.platform === 'win32'
+    const target = WIN32 ? dir : relative(LINK_DIR, dir) // keep links relative, like the official ones
     let existing = 'missing'
     try {
       const st = lstatSync(linkPath)
@@ -127,12 +132,12 @@ function main() {
     }
     if (action === 'create') {
       if (DRY) { report(`would link ${name} -> ${target}`); changed++; continue }
-      symlinkSync(target, linkPath)
+      symlinkSync(target, linkPath, WIN32 ? 'junction' : undefined)
       report(`linked ${name} -> ${target}`)
     } else {
       if (DRY) { report(`would replace ${name} -> ${current ?? '(broken)'}`); changed++; continue }
       unlinkSync(linkPath)
-      symlinkSync(target, linkPath)
+      symlinkSync(target, linkPath, WIN32 ? 'junction' : undefined)
       report(`replaced ${name} -> ${target} (was ${current ?? '(broken)'})`)
     }
     changed++

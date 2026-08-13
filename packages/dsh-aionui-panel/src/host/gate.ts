@@ -18,12 +18,26 @@ export type GateVerdict = { ok: true; canonical: string } | { ok: false; error: 
 /** The workspace-membership check the services run on every request. */
 export type WorkspaceGate = (root: string) => Promise<GateVerdict>
 
-/** The canonical prefix check: child must live inside (or equal) the root. */
+/**
+ * The canonical prefix check: child must live inside (or equal) the root.
+ * Separator- and case-robust on Windows: `path.join` yields backslashes while
+ * git (`rev-parse --show-toplevel`) and the browser (`./x`) yield forward
+ * slashes, so both sides are normalized to forward slashes before comparing,
+ * and the comparison is case-insensitive on win32 (the FS is case-insensitive).
+ */
 export function isPathInside(root: string, child: string): boolean {
   if (root === '' || child === '') return false
-  if (child === root) return true
-  const prefix = root.endsWith('/') ? root : `${root}/`
-  return child.startsWith(prefix)
+  const norm = (value: string): string => value.replaceAll('\\', '/').replace(/\/+$/, '')
+  const normRoot = norm(root)
+  const normChild = norm(child)
+  if (process.platform === 'win32') {
+    const a = normRoot.toLowerCase()
+    const b = normChild.toLowerCase()
+    if (b === a) return true
+    return b.startsWith(`${a}/`)
+  }
+  if (normChild === normRoot) return true
+  return normChild.startsWith(`${normRoot}/`)
 }
 
 /**

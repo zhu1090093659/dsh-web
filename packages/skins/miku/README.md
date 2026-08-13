@@ -46,7 +46,7 @@ dsh plugin --profile web add "link:<本仓库绝对路径>"
   pnpm add "link:<本仓库绝对路径>"
   ```
 
-  然后把 `@deepseek-ai/dsh-client-ui-skin-miku` 追加到
+  然后把 `@linxin666/dsh-client-ui-skin-miku` 追加到
   `~/.dsh/profiles/web/package.json` 的 `dsh.profile.bundles` 数组。
 
 - 安装后重启 `dsh web`，强制刷新页面（Ctrl+Shift+R）。

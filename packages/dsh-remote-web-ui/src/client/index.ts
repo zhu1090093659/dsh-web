@@ -17,6 +17,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
+import { FooterRemoteEntry } from './FooterRemoteEntry.tsx'
 import { RemoteEntry } from './RemoteEntry.tsx'
 import { PairFailedNotice } from './PairFailedNotice.tsx'
 import { RemoteSettingsCard, RemoteSettingsCardController, type RemoteSettings } from './RemoteSettingsCard.tsx'
@@ -103,6 +104,28 @@ export function apply(ctx: ClientContext): void {
     const syncEntry = (): void => {
       if (enabled() && disposeEntry === undefined) {
         disposeEntry = ctx.slots.register({ name: 'sidebar.remote', locale: NS }, RemoteEntry)
+      } else if (!enabled() && disposeEntry !== undefined) {
+        disposeEntry()
+        disposeEntry = undefined
+      }
+    }
+    const unsubscribe = settingsScope.subscribe(syncEntry)
+    syncEntry()
+    return () => {
+      unsubscribe()
+      disposeEntry?.()
+    }
+  })
+
+  // Current shells declare `sidebar.footer.action` instead of the legacy
+  // `sidebar.remote` seat; this fallback registers the same entry there when
+  // the legacy seat never arrives (declaration-aware: only one of the two
+  // injects ever fires, so the trigger can never render twice).
+  ctx.slots.inject('sidebar.footer.action', () => {
+    let disposeEntry: (() => void) | undefined
+    const syncEntry = (): void => {
+      if (enabled() && disposeEntry === undefined) {
+        disposeEntry = ctx.slots.register({ name: 'sidebar.footer.action', id: 'remote-web-ui', locale: NS }, FooterRemoteEntry)
       } else if (!enabled() && disposeEntry !== undefined) {
         disposeEntry()
         disposeEntry = undefined

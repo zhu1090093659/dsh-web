@@ -1,4 +1,4 @@
-﻿# 聚合包清单：patchFrom 的包其 cordis.patch.yml insert 行会被汇总进本包 patch
+# 聚合包清单：patchFrom 的包其 cordis.patch.yml insert 行会被汇总进本包 patch
 # deps 的包进 package.json dependencies（workspace:*）
 # dsh-skins 的 patch 行只有 ui-skin-center，汇总后自然展开
 patchFrom:

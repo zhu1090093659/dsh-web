@@ -616,6 +616,18 @@ importers:
       '@linxin666/dsh-ssh':
         specifier: workspace:*
         version: link:../dsh-ssh
+      '@linxin666/dsh-web-ui-compat':
+        specifier: workspace:*
+        version: link:../dsh-web-ui-compat
+
+  packages/dsh-web-ui-compat:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: ^4.0.1
+        version: 4.0.1
+      tsdown:
+        specifier: ^0.22.2
+        version: 0.22.2(typescript@6.0.3)
 
   packages/dsh-web-ui-settings:
     devDependencies:

@@ -9,7 +9,7 @@
 
 ## 一、范围
 
-`packages/` 与 `packages/skins/` 下共 18 个插件包（截至快照日）：
+`packages/` 与 `packages/skins/` 下共 19 个插件包（截至快照日）：
 
 | 目录 | 包名 | 当前版本 | private |
 | --- | --- | --- | --- |
@@ -21,6 +21,7 @@
 | packages/dsh-ssh | @deepseek-ai/dsh-ssh | 0.1.1 | true |
 | packages/dsh-aionui-panel | @deepseek-ai/dsh-client-ui-aionui-panel | 0.1.1 | true |
 | packages/dsh-web-ui-settings | @deepseek-ai/dsh-client-ui-web-ui-settings | 0.1.1 | true |
+| packages/dsh-beyond-workscope | @deepseek-ai/dsh-beyond-workscope | 0.1.1 | true |
 | packages/dsh-skins | @deepseek-ai/dsh-skins（聚合） | 0.1.1 | true |
 | packages/dsh-web-ui-all | @deepseek-ai/dsh-web-ui-all（聚合） | 0.1.1 | true |
 | packages/skins/qq98 | @deepseek-ai/dsh-client-ui-skin-qq98 | 0.1.1 | true |
@@ -86,7 +87,7 @@ npm 侧已发布 @deepseek-ai 核心 SDK 包至 `0.1.0-rc.6`，插件包仍按�
 ## 四、建议的发布流程（批准后执行）
 
 1. 同步官方版本号节奏（当前为 `0.1.0-rc.6`，与 @deepseek-ai/dsh 对齐）；
-2. 发布前仍需处理：移除 `private: true`（18 包）；
+2. 发布前仍需处理：移除 `private: true`（19 包）；
 3. 按依赖顺序发布（用 **`pnpm publish`**，自动改写 workspace:*）：
    各功能包 > 皮肤包 > dsh-skins > web-ui-all；
 4. 逐包 `pnpm pack --dry-run` 复核 tarball 内容（注意：dry-run 仍会执行

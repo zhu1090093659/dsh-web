@@ -10,6 +10,7 @@
   },
   "license": "BSD-3-Clause",
   "dependencies": {
+    "@linxin666/dsh-web-ui-compat": "workspace:*",
     "@linxin666/dsh-client-ui-aionui-panel": "workspace:*",
     "@linxin666/dsh-client-ui-task-board": "workspace:*",
     "@linxin666/dsh-client-ui-git-graph": "workspace:*",

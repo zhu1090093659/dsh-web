@@ -2,6 +2,11 @@
 # This file is derived from the aggregate.yml manifest in this package;
 # edit aggregate.yml and rerun `node scripts/aggregate.mjs`.
 
+# from ../dsh-web-ui-compat
+- insert:
+    - id: ui-web-ui-compat
+      name: '@linxin666/dsh-web-ui-compat'
+
 # from ../dsh-aionui-panel
 - insert:
     - id: ui-dsh-aionui-panel

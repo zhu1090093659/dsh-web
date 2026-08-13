@@ -26,14 +26,18 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const os = require('node:os')
 const { execFileSync } = require('node:child_process')
 
-const HOME = process.env.HOME
-const PATCH = `${HOME}/.dsh/cordis.patch.yml`
-const PROFILE_MODULES = `${HOME}/.dsh/profiles/node_modules`
+/** Harness home: `$DSH_HOME` (set by the dsh launcher), else `~/.dsh`. */
+const DSH_HOME = process.env.DSH_HOME || path.join(os.homedir(), '.dsh')
+const PATCH = path.join(DSH_HOME, 'cordis.patch.yml')
+const PROFILE_MODULES = path.join(DSH_HOME, 'profiles', 'node_modules')
 /** The GUI profile this machine runs (dsh web); overridable via DSH_SKIN_PROFILE. */
 const DEFAULT_PROFILE = process.env.DSH_SKIN_PROFILE || 'web'
-const REPO = `${HOME}/code/dsh-web-ui`
+/** The dsh-web-ui checkout. Derived from this script's own location so any
+ * clone path works; overridable via DSH_SKIN_REPO. */
+const REPO = process.env.DSH_SKIN_REPO || path.resolve(__dirname, '..')
 
 /** Skin registry: name -> package, cordis row id, symlink resolve target (all repo dirs). */
 const SKINS = {
@@ -48,9 +52,9 @@ const SKINS = {
 /** Skin wired at the bundle layer already (no insert row needed here). */
 const BUNDLE_WIRED = new Set(['xp'])
 
-/** The profile manifest path (`~/.dsh/profiles/<profile>/package.json`). */
+/** The profile manifest path (`$DSH_HOME/profiles/<profile>/package.json`). */
 function profileManifestPath() {
-  return `${HOME}/.dsh/profiles/${DEFAULT_PROFILE}/package.json`
+  return path.join(DSH_HOME, 'profiles', DEFAULT_PROFILE, 'package.json')
 }
 
 /**

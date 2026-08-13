@@ -111,7 +111,10 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
  */
 function runDshSkin(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile('dsh-skin', args, { timeout: DSH_SKIN_TIMEOUT_MS }, (error, stdout, stderr) => {
+    // On Windows, `execFile` cannot spawn a bare-name .cmd shim (ENOENT/EINVAL);
+    // route through the shell so cmd.exe resolves `dsh-skin.cmd` on PATH.
+    const win = process.platform === 'win32'
+    execFile('dsh-skin', args, { timeout: DSH_SKIN_TIMEOUT_MS, shell: win }, (error, stdout, stderr) => {
       if (error === null) {
         resolve(stdout)
         return

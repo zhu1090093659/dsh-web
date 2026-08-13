@@ -21,6 +21,10 @@
   写入 `~/.dsh/cordis.patch.yml` 后由 DSH 配置 watcher 秒级热载入，页面自动刷新生效——
   **无需重启 dsh web，无需复制命令**。应用失败时错误提示里附带终端兜底命令。
   host 依赖 `dsh-skin` CLI 在 PATH（`~/.local/bin/dsh-skin`，仓库 `scripts/dsh-skin`）。
+  Windows 兼容性：`dsh-skin` 的 harness home 取 `$DSH_HOME`（缺省 `~/.dsh`），仓库根目录从
+  脚本自身位置推导（可用 `DSH_SKIN_REPO` 覆盖），不依赖 `$HOME` 与固定路径；Windows 用户
+  自建 `dsh-skin.cmd` 包装（内容 `node scripts/dsh-skin %*`）放入 PATH 目录即可。host 端在
+  Windows 上经 shell 调用该命令——`execFile` 无法直接启动裸名 `.cmd`。
 
 ## 安装（官方 plugin bundle 方式）
 

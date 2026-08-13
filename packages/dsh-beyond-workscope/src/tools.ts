@@ -192,9 +192,13 @@ export function grantTool(runtime: WorkscopeRuntime, confirmTimeoutMs: () => num
         const outcome = await runtime.registry.requestGrant(sessionId, args.path ?? '', args.scope ?? 'read', args.reason ?? '', {
           toolName: 'workscope_grant',
         })
+        // Conditionally expand optional fields: a literal `error: undefined`
+        // key breaks the tool pipeline's lossless-JSON check (same trap as
+        // dsh-ssh's ssh_list fix).
+        const active = outcome.status === 'active'
         return {
-          ok: outcome.status === 'active',
-          error: outcome.status === 'active' ? undefined : outcome.message,
+          ok: active,
+          ...(active ? {} : { error: outcome.message }),
           grantId: outcome.grantId,
           path: outcome.path,
           scope: outcome.scope,

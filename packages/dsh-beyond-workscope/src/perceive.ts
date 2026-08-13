@@ -79,7 +79,8 @@ async function walkRoot(
           path: full,
           name: entry.name,
           kind: isProject ? 'project' : 'dir',
-          mtime: info.mtimeMs,
+          // stat.mtimeMs is a float; the tool output schema declares integer.
+          mtime: Math.trunc(info.mtimeMs),
         })
       } catch {
         continue
@@ -89,7 +90,7 @@ async function walkRoot(
       const full = join(root, entry.name)
       try {
         const info = await stat(full)
-        out.push({ path: full, name: entry.name, kind: 'file', mtime: info.mtimeMs, size: info.size })
+        out.push({ path: full, name: entry.name, kind: 'file', mtime: Math.trunc(info.mtimeMs), size: info.size })
       } catch {
         continue
       }

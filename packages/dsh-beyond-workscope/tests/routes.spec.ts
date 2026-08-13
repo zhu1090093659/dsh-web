@@ -4,7 +4,7 @@
  * full confirm/deny/revoke flow plus the loopback fence.
  */
 
-import { createServer, type Server } from 'node:http'
+import { createServer, request, type Server } from 'node:http'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -142,7 +142,7 @@ describe('routes', () => {
   it('fences foreign hosts and non-GET on GET routes', async () => {
     // undici forbids setting Host on fetch — use raw http.request to spoof it.
     const foreign = await new Promise<number>((resolve, reject) => {
-      const request = require('node:http').request({
+      const req = request({
         host: '127.0.0.1',
         port,
         path: `${API_PREFIX}/pending`,
@@ -151,8 +151,8 @@ describe('routes', () => {
         response.resume()
         resolve(response.statusCode ?? 0)
       })
-      request.on('error', reject)
-      request.end()
+      req.on('error', reject)
+      req.end()
     })
     expect(foreign).toBe(403)
 

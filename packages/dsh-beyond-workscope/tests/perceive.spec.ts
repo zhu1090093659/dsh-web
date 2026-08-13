@@ -38,6 +38,8 @@ describe('listRecentFiles', () => {
     expect(scannedRoots).toEqual([dir])
     expect(warnings).toHaveLength(0)
     expect(entries).toHaveLength(2)
+    // Tool output schema declares mtime as integer — stat.mtimeMs is a float.
+    for (const entry of entries) expect(Number.isInteger(entry.mtime)).toBe(true)
     expect(entries[0].name).toBe('deep.txt') // newest mtime wins
     expect(entries[0].kind).toBe('file')
     expect(entries[1].name).toBe('new.txt')

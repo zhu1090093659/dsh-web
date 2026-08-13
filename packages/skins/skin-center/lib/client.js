@@ -425,7 +425,7 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:/Users/zcl/code/dsh-web-ui/packages/skins/skin-center/src/client/skin-center.module.css.mjs
-		const css = "body[data-dsh-skin-center] .K3rRTW_pluginCard{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:8px;list-style:none;overflow:hidden}body[data-dsh-skin-center] .K3rRTW_cardHeader{width:100%;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;align-items:center;padding:11px 14px;transition:background .12s;display:flex}body[data-dsh-skin-center] .K3rRTW_cardHeader:hover{background:var(--dsw-alias-bg-layer-1,#f1f5f9)}body[data-dsh-skin-center] .K3rRTW_cardHeader:active{background:var(--dsw-alias-bg-layer-3,#e6ecf4)}body[data-dsh-skin-center] .K3rRTW_cardHeader:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .K3rRTW_headText{flex-direction:column;flex:1;gap:3px;min-width:0;display:flex}body[data-dsh-skin-center] .K3rRTW_pluginName{color:var(--dsw-alias-label-primary,#172a45);align-items:baseline;gap:8px;font-size:13.5px;font-weight:600;display:flex}body[data-dsh-skin-center] .K3rRTW_cardDescription{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.4}body[data-dsh-skin-center] .K3rRTW_chevron,body[data-dsh-skin-center] .K3rRTW_chevronOpen{color:var(--dsw-alias-label-secondary,#6b7280);flex:none;margin-left:10px;font-size:12px;transition:transform .12s}body[data-dsh-skin-center] .K3rRTW_chevronOpen{transform:rotate(180deg)}body[data-dsh-skin-center] .K3rRTW_cardBody{border-top:1px solid var(--dsw-alias-border-l1,#e2e8f0);flex-direction:column;gap:12px;padding:12px 14px 14px;display:flex}body[data-dsh-skin-center] .K3rRTW_head{flex-direction:column;gap:6px;display:flex}body[data-dsh-skin-center] .K3rRTW_titleBadge{color:var(--dsw-alias-label-secondary,#6b7280);font-size:11px;font-weight:500}body[data-dsh-skin-center] .K3rRTW_intro{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12.5px;line-height:1.55}body[data-dsh-skin-center] .K3rRTW_themeRow{align-items:center;gap:8px;margin-top:2px;display:flex}body[data-dsh-skin-center] .K3rRTW_themeLabel{color:var(--dsw-alias-label-secondary,#6b7280);margin-right:2px;font-size:12px}body[data-dsh-skin-center] .K3rRTW_themeButton{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .K3rRTW_themeButton:hover{border-color:var(--dsw-alias-border-l4,#94a3b8)}body[data-dsh-skin-center] .K3rRTW_themeButton:active{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .K3rRTW_themeButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .K3rRTW_themeButtonActive{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .K3rRTW_list{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .K3rRTW_card{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:8px;padding:12px 14px;display:flex}body[data-dsh-skin-center] .K3rRTW_cardHead{align-items:center;gap:10px;min-width:0;display:flex}body[data-dsh-skin-center] .K3rRTW_swatch{width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;flex:none}body[data-dsh-skin-center] .K3rRTW_cardName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden}body[data-dsh-skin-center] .K3rRTW_cardTagline{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.45}body[data-dsh-skin-center] .K3rRTW_badge{letter-spacing:.02em;border-radius:999px;flex:none;min-width:0;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:600}body[data-dsh-skin-center] .K3rRTW_badgeActive{color:var(--dsw-alias-state-success-primary,#0f6b3a);background:var(--dsw-alias-state-success-tertiary,#dcf3e5)}body[data-dsh-skin-center] .K3rRTW_badgeTrying{color:var(--dsw-alias-brand-primary,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e2edfc)}body[data-dsh-skin-center] .K3rRTW_actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .K3rRTW_button{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:7px;padding:6px 12px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .K3rRTW_button:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary,#2b7cd9);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .K3rRTW_button:active:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .K3rRTW_button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .K3rRTW_buttonPrimary{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-fill,#2b7cd9);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .K3rRTW_buttonPrimary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .K3rRTW_buttonPrimary:active:not(:disabled),body[data-dsh-skin-center] .K3rRTW_buttonPrimary:focus-visible:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8)}body[data-dsh-skin-center] .K3rRTW_buttonGhost{background:0 0;border-color:#0000}body[data-dsh-skin-center] .K3rRTW_button:disabled{opacity:.55;cursor:default}body[data-dsh-skin-center] .K3rRTW_error{color:var(--dsw-alias-state-error-primary,#b42318);font-size:12px}@media (prefers-reduced-motion:reduce){body[data-dsh-skin-center] .K3rRTW_cardHeader,body[data-dsh-skin-center] .K3rRTW_themeButton,body[data-dsh-skin-center] .K3rRTW_button,body[data-dsh-skin-center] .K3rRTW_chevron,body[data-dsh-skin-center] .K3rRTW_chevronOpen{transition:none}}";
+		const css = "body[data-dsh-skin-center] .K3rRTW_pluginCard{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:8px;list-style:none;overflow:hidden}body[data-dsh-skin-center] .K3rRTW_cardHeader{width:100%;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;align-items:center;padding:11px 14px;transition:background .12s;display:flex}body[data-dsh-skin-center] .K3rRTW_cardHeader:hover{background:var(--dsw-alias-bg-layer-1,#f1f5f9)}body[data-dsh-skin-center] .K3rRTW_cardHeader:active{background:var(--dsw-alias-bg-layer-3,#e6ecf4)}body[data-dsh-skin-center] .K3rRTW_cardHeader:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .K3rRTW_headText{flex-direction:column;flex:1;gap:3px;min-width:0;display:flex}body[data-dsh-skin-center] .K3rRTW_pluginName{color:var(--dsw-alias-label-primary,#172a45);align-items:baseline;gap:8px;font-size:13.5px;font-weight:600;display:flex}body[data-dsh-skin-center] .K3rRTW_cardDescription{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.4}body[data-dsh-skin-center] .K3rRTW_chevron,body[data-dsh-skin-center] .K3rRTW_chevronOpen{color:var(--dsw-alias-label-secondary,#6b7280);flex:none;margin-left:10px;font-size:12px;transition:transform .12s}body[data-dsh-skin-center] .K3rRTW_chevronOpen{transform:rotate(180deg)}body[data-dsh-skin-center] .K3rRTW_cardBody{border-top:1px solid var(--dsw-alias-border-l1,#e2e8f0);flex-direction:column;gap:12px;padding:12px 14px 14px;display:flex}body[data-dsh-skin-center] .K3rRTW_head{flex-direction:column;gap:6px;display:flex}body[data-dsh-skin-center] .K3rRTW_titleBadge{color:var(--dsw-alias-label-secondary,#6b7280);font-size:11px;font-weight:500}body[data-dsh-skin-center] .K3rRTW_intro{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12.5px;line-height:1.55}body[data-dsh-skin-center] .K3rRTW_themeRow{align-items:center;gap:8px;margin-top:2px;display:flex}body[data-dsh-skin-center] .K3rRTW_themeLabel{color:var(--dsw-alias-label-secondary,#6b7280);margin-right:2px;font-size:12px}body[data-dsh-skin-center] .K3rRTW_themeButton{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .K3rRTW_themeButton:hover{border-color:var(--dsw-alias-border-l4,#94a3b8)}body[data-dsh-skin-center] .K3rRTW_themeButton:active{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .K3rRTW_themeButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .K3rRTW_themeButtonActive{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .K3rRTW_list{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .K3rRTW_card{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:8px;padding:12px 14px;display:flex}body[data-dsh-skin-center] .K3rRTW_cardHead{align-items:center;gap:10px;min-width:0;display:flex}body[data-dsh-skin-center] .K3rRTW_swatch{width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;flex:none}body[data-dsh-skin-center] .K3rRTW_cardName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden}body[data-dsh-skin-center] .K3rRTW_cardTagline{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.45}body[data-dsh-skin-center] .K3rRTW_badge{letter-spacing:.02em;border-radius:999px;flex:none;min-width:0;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:600}body[data-dsh-skin-center] .K3rRTW_badgeActive{color:var(--dsw-alias-state-success-primary,#0f6b3a);background:var(--dsw-alias-state-success-tertiary,#dcf3e5)}body[data-dsh-skin-center] .K3rRTW_badgeTrying{color:var(--dsw-alias-brand-primary,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e2edfc)}body[data-dsh-skin-center] .K3rRTW_actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .K3rRTW_button{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:7px;padding:6px 12px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .K3rRTW_button:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary,#2b7cd9);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .K3rRTW_button:active:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .K3rRTW_button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .K3rRTW_buttonPrimary{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-fill,#2b7cd9);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .K3rRTW_buttonPrimary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .K3rRTW_buttonPrimary:active:not(:disabled),body[data-dsh-skin-center] .K3rRTW_buttonPrimary:focus-visible:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8)}body[data-dsh-skin-center] .K3rRTW_buttonGhost{background:0 0;border-color:#0000}body[data-dsh-skin-center] .K3rRTW_button:disabled{opacity:.55;cursor:default}body[data-dsh-skin-center] .K3rRTW_error{color:var(--dsw-alias-state-error-primary,#b42318);font-size:12px}body[data-dsh-skin-center] .K3rRTW_backgroundRow{flex-direction:column;gap:6px;padding:8px 0;display:flex}body[data-dsh-skin-center] .K3rRTW_backgroundHead{align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .K3rRTW_backgroundLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .K3rRTW_backgroundValue{font-variant-numeric:tabular-nums;color:var(--dsw-alias-brand-primary,#2b7cd9);flex:none;margin-left:auto;font-size:12px}body[data-dsh-skin-center] .K3rRTW_backgroundRange{background:var(--dsw-alias-bg-layer-3,#e2e8f0);-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:999px;width:100%;height:4px;margin:0}body[data-dsh-skin-center] .K3rRTW_backgroundRange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:14px;height:14px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .K3rRTW_backgroundRange::-moz-range-thumb{border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:12px;height:12px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .K3rRTW_backgroundRange:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .K3rRTW_backgroundHint{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.5}body[data-dsh-skin-center] .K3rRTW_backgroundHintMuted{color:var(--dsw-alias-label-tertiary,#9aa4b5);font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){body[data-dsh-skin-center] .K3rRTW_cardHeader,body[data-dsh-skin-center] .K3rRTW_themeButton,body[data-dsh-skin-center] .K3rRTW_button,body[data-dsh-skin-center] .K3rRTW_chevron,body[data-dsh-skin-center] .K3rRTW_chevronOpen{transition:none}}";
 		const tagId = "@linxin666/dsh-client-ui-skin-center/skin-center.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -436,6 +436,13 @@ window.__ModuleLoader__.load({
 		}
 		var skin_center_module_css_default = {
 			"actions": "K3rRTW_actions",
+			"backgroundHead": "K3rRTW_backgroundHead",
+			"backgroundHint": "K3rRTW_backgroundHint",
+			"backgroundHintMuted": "K3rRTW_backgroundHintMuted",
+			"backgroundLabel": "K3rRTW_backgroundLabel",
+			"backgroundRange": "K3rRTW_backgroundRange",
+			"backgroundRow": "K3rRTW_backgroundRow",
+			"backgroundValue": "K3rRTW_backgroundValue",
 			"badge": "K3rRTW_badge",
 			"badgeActive": "K3rRTW_badgeActive",
 			"badgeTrying": "K3rRTW_badgeTrying",
@@ -479,6 +486,8 @@ window.__ModuleLoader__.load({
 		*/
 		/** The apply target of the official stock-look card. */
 		const OFFICIAL = "official";
+		/** Skin ids that read the background-scrim variable and paint a backdrop. */
+		const BACKDROP_SKIN_IDS = /* @__PURE__ */ new Set(["blue-fantasy", "whale-song"]);
 		/**
 		* Render the skin-center card: a disclosure header naming the plugin, with
 		* the skin list (official default + every installed skin; try-on / theme
@@ -486,9 +495,12 @@ window.__ModuleLoader__.load({
 		* @param props - card props.
 		* @returns the plugin card.
 		*/
-		function SkinCenter({ t, controller, theme }) {
+		function SkinCenter({ t, controller, theme, background }) {
 			const snapshot = (0, react.useSyncExternalStore)(theme.subscribe, theme.getTheme);
+			const opacity = (0, react.useSyncExternalStore)(background.subscribe, background.opacity);
 			const activePackage = activeSkinEntry()?.package;
+			const activeId = activeSkinEntry()?.id;
+			const backdropActive = activeId !== void 0 && BACKDROP_SKIN_IDS.has(activeId);
 			const [open, setOpen] = (0, react.useState)(false);
 			const [tryingId, setTryingId] = (0, react.useState)(null);
 			const [tryingOfficial, setTryingOfficial] = (0, react.useState)(false);
@@ -670,6 +682,40 @@ window.__ModuleLoader__.load({
 								]
 							})]
 						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: skin_center_module_css_default.backgroundRow,
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: skin_center_module_css_default.backgroundHead,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.backgroundLabel,
+										children: t("backgroundOpacity")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: skin_center_module_css_default.backgroundValue,
+										"aria-hidden": "true",
+										children: [opacity, "%"]
+									})]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									id: "skin-center-background-opacity",
+									className: skin_center_module_css_default.backgroundRange,
+									type: "range",
+									min: "0",
+									max: "100",
+									step: "5",
+									value: opacity,
+									"aria-valuetext": `${opacity}%`,
+									"aria-label": t("backgroundOpacity"),
+									onChange: (event) => {
+										background.set(Number(event.target.value));
+									}
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+									className: backdropActive ? skin_center_module_css_default.backgroundHint : skin_center_module_css_default.backgroundHintMuted,
+									children: backdropActive ? t("backgroundHint") : t("backgroundHintInert")
+								})
+							]
+						}),
 						error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 							className: skin_center_module_css_default.error,
 							children: error
@@ -765,6 +811,65 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/client/background.ts
+		/** The namespace string the Host registers (mirrors src/index.ts). */
+		const SKIN_BACKGROUND_NS = "skin-background";
+		/** Field of the background value inside the namespace section. */
+		const OPACITY_FIELD = "backgroundOpacity";
+		/** CSS custom property written to document.body and read by backdrop skins. */
+		const SCRIM_VAR = "--dsw-skin-scrim";
+		/**
+		* Own the skin-background scope: read the latest occlusion, apply it to the
+		* body CSS variable instantly, and persist changes through the settings scope.
+		*/
+		var BackgroundController = class {
+			value = 0;
+			listeners = /* @__PURE__ */ new Set();
+			scope;
+			/**
+			* @param scope - the bound skin-background settings scope.
+			*/
+			constructor(scope) {
+				this.scope = scope;
+				this.value = this.read();
+				this.apply();
+				scope.subscribe(() => {
+					this.value = this.read();
+					this.apply();
+					this.publish();
+				});
+			}
+			opacity() {
+				return this.value;
+			}
+			subscribe(listener) {
+				this.listeners.add(listener);
+				return () => {
+					this.listeners.delete(listener);
+				};
+			}
+			set(opacity) {
+				const clamped = Math.max(0, Math.min(100, Math.round(opacity)));
+				this.value = clamped;
+				this.apply();
+				this.publish();
+				this.scope.set(OPACITY_FIELD, clamped);
+			}
+			/** The effective section value, clamped 0-100, defaulting to 0. */
+			read() {
+				const raw = this.scope.getSnapshot().value?.backgroundOpacity;
+				if (typeof raw !== "number" || !Number.isFinite(raw)) return 0;
+				return Math.max(0, Math.min(100, raw));
+			}
+			/** Write the current occlusion onto the body CSS variable (0..1 alpha). */
+			apply() {
+				document.body.style.setProperty(SCRIM_VAR, String(this.value / 100));
+			}
+			publish() {
+				for (const listener of this.listeners) listener();
+			}
+		};
+		//#endregion
 		//#region src/client/locales.ts
 		const en = {
 			title: "Skin Center",
@@ -786,7 +891,10 @@ window.__ModuleLoader__.load({
 			theme: "Theme preview",
 			themeLight: "Light",
 			themeDark: "Dark",
-			tryOnError: "Try-on failed — see console"
+			tryOnError: "Try-on failed — see console",
+			backgroundOpacity: "Background occlusion",
+			backgroundHint: "Instantly veils the backdrop behind the panels — higher values obscure the art to help you focus.",
+			backgroundHintInert: "Only applies to skins that paint a backdrop (Blue Fantasy / Whale Song). Applies to the official default automatically once such a skin is active."
 		};
 		const zh = {
 			title: "皮肤中心",
@@ -808,17 +916,23 @@ window.__ModuleLoader__.load({
 			theme: "主题预览",
 			themeLight: "亮色",
 			themeDark: "暗色",
-			tryOnError: "试穿失败，详见控制台"
+			tryOnError: "试穿失败，详见控制台",
+			backgroundOpacity: "背景遮挡",
+			backgroundHint: "即时为面板背后的背景加遮罩——数值越高越能弱化插画，帮你集中注意力。",
+			backgroundHintInert: "仅对带背景图插画的皮肤（蓝色幻想 / 鲸吟）生效；官方默认无背景图，该滑块对这些皮肤自动生效。"
 		};
 		//#endregion
 		//#region src/client/index.ts
 		/** Locale namespace owned by this plugin. */
 		const NS = "skinCenter";
-		/** Required services: slots + locale (plugin card) and theme (preview toggle). */
+		/** Required services: slots + locale (plugin card), theme (preview toggle), and settingsScope + its transport (background scrim). */
 		const inject = [
 			"slots",
 			"locale",
-			"theme"
+			"theme",
+			"settingsScope",
+			"connection",
+			"remote"
 		];
 		/**
 		* Register the skin-center dictionaries, the body scope attribute, and the
@@ -838,12 +952,18 @@ window.__ModuleLoader__.load({
 			}, "ui-skin-center: body scope");
 			const theme = ctx.get("theme");
 			const controller = new TryOnController();
+			const background = new BackgroundController(ctx.settingsScope.bind({ namespace: SKIN_BACKGROUND_NS }));
 			const injected = () => ({
 				controller,
 				theme: {
 					getTheme: () => theme.getTheme(),
 					subscribe: (listener) => ctx.on("theme/change", listener),
 					setTheme: (id) => theme.setTheme(id)
+				},
+				background: {
+					opacity: () => background.opacity(),
+					subscribe: (listener) => background.subscribe(listener),
+					set: (opacity) => background.set(opacity)
 				}
 			});
 			ctx.slots.inject("web-ui.plugin.item", () => ctx.slots.register({

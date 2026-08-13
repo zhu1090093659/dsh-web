@@ -58,6 +58,15 @@ window.__ModuleLoader__.load({
 			"background-repeat"
 		];
 		/**
+		* The occlusion the skin-center background control requests: the value of
+		* --dsw-skin-scrim (0..1) written to document.body by the skin center. An
+		* ancestor backdrop-filter is deliberately not used (it would trap
+		* fixed-position overlays); instead the veil is a plain gradient layered
+		* over the art in the same background-image stack. The alpha rides a CSS
+		* variable inside the gradient, so the browser re-rasterizes the backdrop
+		* live as the control moves — no JS wiring needed.
+		*/
+		/**
 		* Apply the blue-fantasy skin: body attribute, whale-art backdrop (with a
 		* live-swapping theme scrim), favicon. All writes are retracted by the
 		* effect disposer on dispose. Backdrop writes go through the canonical
@@ -71,8 +80,8 @@ window.__ModuleLoader__.load({
 			for (const prop of BACKDROP_PROPERTIES) previous.set(prop, body.style.getPropertyValue(prop));
 			body.dataset.dshBlueFantasy = "";
 			const setBackdrop = () => {
-				const dark = body.dataset.dsDarkTheme !== void 0;
-				body.style.setProperty("background-image", `${dark ? SCRIM_DARK : SCRIM_LIGHT}, url(${WHALE_ART})`);
+				const backdrop = `linear-gradient(rgba(16, 22, 42, var(--dsw-skin-scrim, 0)) 0%, rgba(16, 22, 42, var(--dsw-skin-scrim, 0)) 100%), ${body.dataset.dsDarkTheme !== void 0 ? SCRIM_DARK : SCRIM_LIGHT}, url(${WHALE_ART})`;
+				body.style.setProperty("background-image", backdrop);
 				body.style.setProperty("background-position", "center");
 				body.style.setProperty("background-size", "cover");
 				body.style.setProperty("background-attachment", "fixed");

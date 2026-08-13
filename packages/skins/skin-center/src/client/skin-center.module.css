@@ -286,6 +286,83 @@ body[data-dsh-skin-center] .error {
   color: var(--dsw-alias-state-error-primary, #b42318);
 }
 
+body[data-dsh-skin-center] .backgroundRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+body[data-dsh-skin-center] .backgroundHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+body[data-dsh-skin-center] .backgroundLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary, #172a45);
+}
+
+body[data-dsh-skin-center] .backgroundValue {
+  flex: none;
+  margin-left: auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-brand-primary, #2b7cd9);
+}
+
+body[data-dsh-skin-center] .backgroundRange {
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-3, #e2e8f0);
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+body[data-dsh-skin-center] .backgroundRange::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--dsw-alias-label-primary-foreground, #ffffff);
+  background: var(--dsw-alias-brand-primary, #2b7cd9);
+  box-shadow: 0 0 0 1px var(--dsw-alias-border-l4, rgb(15 23 42 / 0.12));
+  cursor: pointer;
+}
+
+body[data-dsh-skin-center] .backgroundRange::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--dsw-alias-label-primary-foreground, #ffffff);
+  border-radius: 50%;
+  background: var(--dsw-alias-brand-primary, #2b7cd9);
+  box-shadow: 0 0 0 1px var(--dsw-alias-border-l4, rgb(15 23 42 / 0.12));
+  cursor: pointer;
+}
+
+body[data-dsh-skin-center] .backgroundRange:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #2b7cd9);
+  outline-offset: 2px;
+}
+
+body[data-dsh-skin-center] .backgroundHint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+}
+
+body[data-dsh-skin-center] .backgroundHintMuted {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-tertiary, #9aa4b5);
+}
+
 /* Respect users who disable motion: no transitioned state changes. */
 @media (prefers-reduced-motion: reduce) {
   body[data-dsh-skin-center] .cardHeader,

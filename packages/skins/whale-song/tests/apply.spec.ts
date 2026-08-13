@@ -54,7 +54,7 @@ describe('whale-song skin apply', () => {
     // Dark scrim: the first background layer is the deep navy veil.
     const darkImage = document.body.style.getPropertyValue('background-image')
     expect(darkImage).toContain('rgba(6, 14, 36')
-    expect(darkImage).toContain('url("data:image/webp;base64')
+    expect(darkImage).toContain('url(data:image/webp;base64')
 
     // Flip to light: the scrim swaps without remounting (MutationObserver).
     delete document.body.dataset.dsDarkTheme

@@ -3,12 +3,13 @@
  * same-origin endpoints: JSON for state/apply, plus the bundle route serving
  * each skin's prebuilt `lib/client.js` as a same-origin script for live
  * try-on (the GUI never embeds the ~700KB of art base64 in its own bundle).
- * The host half delegates skin switching to the `dsh-skin` CLI
- * (the single authority over the `dsh-skin managed` section of
- * `~/.dsh/cordis.patch.yml` and the profile symlink), so switching skins from
- * the GUI is exactly `dsh-skin use <name>` — the config watcher hot-reloads
- * the patch within seconds and the frontend reloads the page to pick up the
- * new boot graph. Same pattern as dsh-pet's `/api/pet` family.
+ * The host half switches skins in-process (src/skin-switch.ts) — an ESM port
+ * of the `dsh-skin` CLI that owns the `dsh-skin managed` section of
+ * `~/.dsh/cordis.patch.yml` and the profile symlink, exactly like
+ * `dsh-skin use <name>` — so no `dsh-skin` binary is required on PATH
+ * (the bug zhu1090093659/dsh-web-ui#5). The config watcher hot-reloads the
+ * patch within seconds and the frontend reloads the page to pick up the new
+ * boot graph. Same pattern as dsh-pet's `/api/pet` family.
  *
  * Unlike pet's behavioral endpoints, `/apply` writes the user's boot config,
  * so every route also rejects cross-site requests (Sec-Fetch-Site / Origin
@@ -17,18 +18,15 @@
  * @module @linxin666/dsh-client-ui-skin-center/routes
  */
 
-import { execFile } from 'node:child_process'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join as joinPath } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
+import { currentSkin, useSkin } from './skin-switch.ts'
 
 /** Browser-facing base path of the skin-center API. */
 export const SKIN_CENTER_API_PREFIX = '/api/skin-center'
-
-/** Cap a dsh-skin invocation; a hung CLI must never block the server. */
-const DSH_SKIN_TIMEOUT_MS = 15000
 
 /** One JSON response. */
 function json(res: ServerResponse, status: number, body: unknown): void {
@@ -104,35 +102,23 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
 }
 
 /**
- * Run `dsh-skin <args>` and resolve with its stdout.
- * @param args - CLI arguments (e.g. `['use', 'qq98']`).
- * @returns stdout on exit code 0.
- * @throws the CLI's stderr (or the spawn error) on any failure.
+ * In-process runner fulfilling the `dsh-skin <args>` contract used by the
+ * routes (`['use', <name>]` and `['current']`). It never spawns a PATH
+ * binary — it calls the embedded port of the CLI (src/skin-switch.ts), which
+ * writes the boot patch and the profile symlink directly. Returns the same
+ * stdout text the CLI would print, and rejects with the same error messages.
+ * @param args - command arguments (e.g. `['use', 'qq98']`).
  */
 function runDshSkin(args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    // On Windows, `execFile` cannot spawn a bare-name .cmd shim (ENOENT/EINVAL);
-    // route through the shell so cmd.exe resolves `dsh-skin.cmd` on PATH.
-    const win = process.platform === 'win32'
-    execFile('dsh-skin', args, { timeout: DSH_SKIN_TIMEOUT_MS, shell: win }, (error, stdout, stderr) => {
-      if (error === null) {
-        resolve(stdout)
-        return
-      }
-      const spawnError = error as NodeJS.ErrnoException
-      if (spawnError.code === 'ENOENT') {
-        reject(new Error('dsh-skin CLI not found on PATH — install it from dsh-web-ui/scripts/dsh-skin'))
-        return
-      }
-      const detail = (stderr ?? '').trim() || spawnError.message
-      reject(new Error(detail || `dsh-skin ${args.join(' ')} failed`))
-    })
-  })
-}
-
-/** The active skin as the CLI sees it ('none' = official stock look). */
-function activeName(): Promise<string> {
-  return runDshSkin(['current']).then(out => out.trim() || 'none')
+  const [command, argument] = args
+  switch (command) {
+    case 'use':
+      return Promise.resolve(useSkin(argument))
+    case 'current':
+      return Promise.resolve(currentSkin(undefined))
+    default:
+      return Promise.reject(new Error(`unexpected dsh-skin command: ${args.join(' ')}`))
+  }
 }
 
 /** A GET route wrapping one async call, fenced to same-origin requests. */
@@ -173,9 +159,9 @@ function postRoute(path: string, run: (body: Record<string, unknown>) => Promise
   }
 }
 
-/** Injectable dsh-skin runner (tests substitute a stub). */
+/** Injectable runner (tests substitute a stub); defaults to the in-process CLI port. */
 export interface SkinCenterRoutesDeps {
-  /** Run `dsh-skin <args>`, resolving stdout; defaults to the real CLI. */
+  /** Run `['use', <name>]` / `['current']`, resolving the CLI-equivalent stdout. */
   run?: (args: string[]) => Promise<string>
 }
 
@@ -264,14 +250,15 @@ export function makeSkinCenterRoutes(deps: SkinCenterRoutesDeps = {}): WebRoute[
     })),
     bundleRoute(),
     postRoute(`${SKIN_CENTER_API_PREFIX}/apply`, async (body) => {
-      const skin = body.skin
       const official = body.official === true
-      if (typeof skin !== 'string' || skin === '') {
-        if (!official) throw new Error('invalid-skin: pass a skin name or official: true')
-      } else if (official) {
-        throw new Error('invalid-skin: skin and official are mutually exclusive')
+      const skin = body.skin
+      if (official) {
+        // official = stock look; a skin name alongside it is a contradiction.
+        if (skin !== undefined) throw new Error('invalid-skin: skin and official are mutually exclusive')
+      } else if (typeof skin !== 'string' || skin === '') {
+        throw new Error('invalid-skin: pass a skin name or official: true')
       }
-      const target = official ? 'official' : skin
+      const target = official ? 'official' : skin as string
       const out = await run(['use', target])
       return {
         ok: true,

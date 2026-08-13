@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-center",
   "description": "In-GUI skin center for the dsh web GUI: lists the official default plus every installed skin (qq98 / ths / xp / blue-fantasy / dragon-heir / minecraft), tries it on live inside the real GUI (executes the actual client bundle, light/dark preview), exits with a full restore, and applies in one click through the host /api/skin-center API (dsh-skin use, hot-reloaded, no restart)",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -42,13 +42,20 @@
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-theme": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-settings": "^0.1.0-rc.6",
+    "schemastery": "^3.18.0"
   },
   "files": [
     "lib",
     "cordis.patch.yml",
     "README.md"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
 }

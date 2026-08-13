@@ -1,0 +1,3 @@
+- insert:
+    - id: ui-web-ui-compat
+      name: '@linxin666/dsh-web-ui-compat'

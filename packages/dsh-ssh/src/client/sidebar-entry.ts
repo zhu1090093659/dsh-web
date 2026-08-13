@@ -65,7 +65,20 @@ function placeEntry(root: HTMLElement, entry: HTMLButtonElement): boolean {
     // row. Legacy shells keep the button as a direct child: insert after it.
     const row = button.closest('[class*="logoRow"]')
     if (row !== null && row.parentElement === root) {
-      root.insertBefore(entry, row.nextElementSibling)
+      // Insert after the whole family block (entries injected by sibling
+      // plugins, e.g. the task board), never before it: every family plugin
+      // that self-heals during a re-render then lands in the same relative
+      // order, so the entries cannot swap positions regardless of observer
+      // callback order.
+      let anchor: ChildNode | null = row.nextElementSibling
+      while (
+        anchor !== null &&
+        anchor instanceof HTMLElement &&
+        anchor.matches('[data-dsh-taskboard-entry], [data-dsh-ssh-entry]')
+      ) {
+        anchor = anchor.nextElementSibling
+      }
+      root.insertBefore(entry, anchor)
     } else if (button.parentElement === root) {
       root.insertBefore(entry, button.nextElementSibling)
     } else {
@@ -96,7 +109,13 @@ export function mountSidebarEntry(controller: PanelController): () => void {
     root ??= sidebarRoot()
     if (root === undefined) return
     placed = placeEntry(root, entry)
-    if (placed) rootObserver.observe(root, { childList: true, subtree: true })
+    if (placed) {
+      rootObserver.observe(root, { childList: true, subtree: true })
+      // Placement done; the root observer alone keeps the entry healed.
+      // Disconnect the body-wide watcher so unrelated app mutations (e.g.
+      // chat streaming) no longer churn every plugin's self-heal loop.
+      waitObserver.disconnect()
+    }
   }
 
   // The shell renders after boot settlement; watch for its arrival.

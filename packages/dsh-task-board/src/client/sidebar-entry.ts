@@ -88,10 +88,22 @@ export function mountSidebarEntry(controller: BoardController): () => void {
 
   const tryPlace = (): void => {
     if (placed) return
+    if (root !== undefined && !root.isConnected) {
+      // The shell re-created the sidebar pane; re-query from scratch so the
+      // entry is not re-inserted into a detached subtree (which would leave
+      // it permanently invisible).
+      root = undefined
+    }
     root ??= sidebarRoot()
     if (root === undefined) return
     placed = placeEntry(root, entry)
-    if (placed) rootObserver.observe(root, { childList: true, subtree: true })
+    if (placed) {
+      rootObserver.observe(root, { childList: true, subtree: true })
+      // Placement done; the root observer alone keeps the entry healed.
+      // Disconnect the body-wide watcher so unrelated app mutations (e.g.
+      // chat streaming) no longer churn every plugin's self-heal loop.
+      waitObserver.disconnect()
+    }
   }
 
   // The shell renders after boot settlement; watch for its arrival.

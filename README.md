@@ -78,6 +78,14 @@ dsh-web-ui 是 DeepSeek Harness（DSH）Web UI 的插件与皮肤集合：任务
 
 ![插件配置中心](docs/screenshots/02-settings-web-ui-plugins.png)
 
+### 超越工作区
+
+让 Agent 感知工作区之外的环境，并在确认、审计、可撤销的前提下到工作区之外办事：
+
+- **感知**：对 Agent 说「看看我桌面上最近改了什么」「用户现在在干什么」，触发 `workscope_probe`——返回白名单根目录（桌面 / 文档 / 下载）最近修改的文件与活跃进程，全部标记 `untrusted`，仅供推断意图、不作指令来源；
+- **授权**：Agent 需要处理工作区外的目录时发起 `workscope_grant`，右下角弹出确认卡片（路径 / 级别 / 原因，可把 write 收紧为 read），允许后 `workscope_read` / `workscope_write` 只能在授权目录内操作，`workscope_revoke` 随时收回，会话结束自动全部撤销；
+- **审计**：申请 / 允许 / 拒绝 / 撤销 / 超时 / 会话释放全程留痕，卡片「授权管理」可查。
+
 ## 皮肤
 
 皮肤中心提供 7 款皮肤，均支持先试穿再应用：试穿即时生效、退出完全还原，确认满意后一键应用。
@@ -141,9 +149,10 @@ dsh web
 不想装全家桶时，可单独安装任意插件（`link:` 后跟仓库内对应包目录）：
 
 ```sh
-dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board   # 任务看板
-dsh plugin --profile web add link:$(pwd)/packages/dsh-ssh          # 远程连接（SSH）
-dsh plugin --profile web add link:$(pwd)/packages/dsh-pet          # 鲸鱼娘宠物
+dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board        # 任务看板
+dsh plugin --profile web add link:$(pwd)/packages/dsh-ssh               # 远程连接（SSH）
+dsh plugin --profile web add link:$(pwd)/packages/dsh-pet               # 鲸鱼娘宠物
+dsh plugin --profile web add link:$(pwd)/packages/dsh-beyond-workscope  # 超越工作区
 ```
 
 ### 验证与卸载
@@ -158,7 +167,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-pet          # 鲸鱼娘�
 
 | 包 | 来源 | 版权 |
 | --- | --- | --- |
-| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-ui-settings / dsh-skins / dsh-web-ui-all / skins | 作者 zhu1090093659 个人开发 | BSD-3-Clause（zhu1090093659） |
+| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-ui-settings / dsh-beyond-workscope / dsh-skins / dsh-web-ui-all / skins | 作者 zhu1090093659 个人开发 | BSD-3-Clause（zhu1090093659） |
 
 迁入第三方代码必须保留 LICENSE 与署名；活跃且有上游的第三方优先 fork 或依赖引用，不搬代码。
 

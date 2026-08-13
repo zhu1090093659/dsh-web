@@ -117,10 +117,23 @@ export interface PerceptionReport {
   readonly warnings: string[]
 }
 
-/** Route payloads (client ⇄ host). */
+/** Route payloads (client ⇄ host). The webServer matches exact paths only,
+ * so action targets travel in the JSON body (the dsh-ssh convention). */
 export interface ApprovePendingPayload {
+  /** The pending grant id to approve. */
+  readonly id: string
   /** Optional scope override (the user may tighten a write grant to read). */
   readonly scope?: GrantScope
+}
+
+/** Deny one pending grant. */
+export interface DenyPendingPayload {
+  readonly id: string
+}
+
+/** Revoke one active grant. */
+export interface RevokeGrantPayload {
+  readonly id: string
 }
 
 export interface PendingListResponse {

@@ -19,6 +19,7 @@
     "@deepseek-ai/dsh-live-stats": "workspace:*",
     "@deepseek-ai/dsh-ssh": "workspace:*",
     "@deepseek-ai/dsh-client-ui-web-ui-settings": "workspace:*",
+    "@deepseek-ai/dsh-beyond-workscope": "workspace:*",
     "@deepseek-ai/dsh-skins": "workspace:*"
   }
 }

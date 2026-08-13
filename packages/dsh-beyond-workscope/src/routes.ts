@@ -2,16 +2,23 @@
  * The /api/dsh-beyond-workscope route family: pending-grant confirmation,
  * active-grant management, and audit history for the browser half.
  *
- * Every route carries the same loopback-only trust fence as the sibling
- * plugins (dsh-ssh / remote-web-ui): these endpoints hand out and revoke
- * filesystem permissions, so LAN-exposed dsh web deployments must not serve
- * them.
+ * The webServer matches registered paths EXACTLY (no path parameters), so
+ * action targets travel in the JSON body — the same convention dsh-ssh uses.
+ * Every route carries the loopback-only trust fence (plus browser same-origin
+ * markers): these endpoints hand out and revoke filesystem permissions, so
+ * LAN-exposed dsh web deployments must not serve them.
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { GrantRegistry } from './grants.ts'
-import { API_PREFIX, type ApprovePendingPayload, type SimpleActionResponse } from './protocol.ts'
+import {
+  API_PREFIX,
+  type ApprovePendingPayload,
+  type DenyPendingPayload,
+  type RevokeGrantPayload,
+  type SimpleActionResponse,
+} from './protocol.ts'
 
 /** Cap on JSON request bodies (approve/deny payloads are tiny). */
 const MAX_JSON_BODY_BYTES = 64 * 1024
@@ -46,11 +53,7 @@ async function readJsonBody(request: IncomingMessage): Promise<unknown> {
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
     total += buffer.length
-    if (total > MAX_JSON_BODY_BYTES) {
-      const error = new Error('body too large')
-      ;(error as Error & { tooLarge?: boolean }).tooLarge = true
-      throw error
-    }
+    if (total > MAX_JSON_BODY_BYTES) throw new Error('body too large')
     chunks.push(buffer)
   }
   const raw = Buffer.concat(chunks).toString('utf8')
@@ -75,112 +78,134 @@ function fence(request: IncomingMessage, res: ServerResponse): boolean {
   return false
 }
 
+/** A handler that received a parsed body. */
+type BodyHandler = (body: unknown, req: IncomingMessage, res: ServerResponse) => void | Promise<void>
+
+/** Wrap a body-consuming route: fence + method + JSON parse + body handler. */
+function bodyRoute(handler: BodyHandler): WebRoute['handler'] {
+  return async (req, res) => {
+    if (!fence(req, res)) return
+    if ((req.method ?? 'GET') !== 'POST') {
+      json(res, 405, { ok: false, error: 'method not allowed' } satisfies SimpleActionResponse)
+      return
+    }
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      json(res, 400, { ok: false, error: '请求体不是合法 JSON 或过大' } satisfies SimpleActionResponse)
+      return
+    }
+    try {
+      await handler(body, req, res)
+    } catch (error) {
+      json(res, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      } satisfies SimpleActionResponse)
+    }
+  }
+}
+
 /**
  * Build the route family.
  * @param registry - the grant registry the routes drive.
  * @returns named web routes (register with ctx.webServer.register).
  */
 export function makeRoutes(registry: GrantRegistry): WebRoute[] {
-  const routeFor = (pattern: string): WebRoute[] => {
-    const parts = pattern.split('/').filter(Boolean)
-    const apiIndex = parts.findIndex(part => part === API_PREFIX.slice(1))
-    const suffix = parts.slice(apiIndex + 1)
-    return [{
+  return [
+    {
       kind: 'exact',
-      path: pattern,
+      path: `${API_PREFIX}/pending`,
       handler: (req, res) => {
         if (!fence(req, res)) return
-        const segments = req.url?.split('?')[0]?.split('/').filter(Boolean) ?? []
-        // :id sits at a fixed offset inside the suffix (…/:id/… is always the
-        // last two segments of the concrete paths we register).
-        const id = suffix.includes(':id') ? segments[segments.length - 2] ?? '' : ''
-        handle(segments, id, req, res).catch(error => {
-          // A handler must never reject: unknown ids and bad inputs surface as
-          // JSON errors, not as unhandled promise rejections.
-          json(res, 400, {
-            ok: false,
-            error: error instanceof Error ? error.message : String(error),
-          } satisfies SimpleActionResponse)
-        })
-      },
-    }]
-  }
-
-  const handle = async (
-    segments: string[],
-    id: string,
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<void> => {
-    // segments: ['api','dsh-beyond-workscope', ...suffix]
-    const suffix = segments.slice(API_PREFIX.split('/').filter(Boolean).length)
-    const method = req.method ?? 'GET'
-
-    // GET  /pending
-    if (method === 'GET' && suffix.length === 1 && suffix[0] === 'pending') {
-      json(res, 200, { pending: registry.pendingViews() })
-      return
-    }
-    // POST /pending/:id/approve  |  /pending/:id/deny
-    if (method === 'POST' && suffix.length === 3 && suffix[0] === 'pending' && suffix[1] === id) {
-      const action = suffix[2]
-      if (action === 'approve' || action === 'deny') {
-        let payload: ApprovePendingPayload = {}
-        try {
-          const body = await readJsonBody(req)
-          if (body !== null && typeof body === 'object') {
-            const maybe = body as ApprovePendingPayload
-            if (maybe.scope === 'read' || maybe.scope === 'write') payload = { scope: maybe.scope }
-          }
-        } catch {
-          json(res, 400, { ok: false, error: '请求体不是合法 JSON 或过大' } satisfies SimpleActionResponse)
+        if ((req.method ?? 'GET') !== 'GET') {
+          json(res, 405, { ok: false, error: 'method not allowed' } satisfies SimpleActionResponse)
           return
         }
-        const error = action === 'approve' ? registry.approve(id, payload.scope) : registry.deny(id)
+        json(res, 200, { pending: registry.pendingViews() })
+      },
+    },
+    {
+      kind: 'exact',
+      path: `${API_PREFIX}/pending/approve`,
+      handler: bodyRoute((body, _req, res) => {
+        const payload = body as Partial<ApprovePendingPayload>
+        if (typeof payload.id !== 'string' || payload.id.trim() === '') {
+          json(res, 400, { ok: false, error: '缺少 id' } satisfies SimpleActionResponse)
+          return
+        }
+        const scope = payload.scope === 'read' || payload.scope === 'write' ? payload.scope : undefined
+        const error = registry.approve(payload.id, scope)
         if (error !== undefined) {
           json(res, 404, { ok: false, error } satisfies SimpleActionResponse)
           return
         }
         json(res, 200, { ok: true } satisfies SimpleActionResponse)
-        return
-      }
-    }
-    // GET  /grants
-    if (method === 'GET' && suffix.length === 1 && suffix[0] === 'grants') {
-      json(res, 200, {
-        grants: registry.activeGrants().map(g => ({
-          id: g.id,
-          path: g.path,
-          scope: g.scope,
-          reason: g.reason,
-          sessionId: g.sessionId,
-          requestedAt: g.requestedAt,
-        })),
-      })
-      return
-    }
-    // POST /grants/:id/revoke
-    if (method === 'POST' && suffix.length === 3 && suffix[0] === 'grants' && suffix[1] === id && suffix[2] === 'revoke') {
-      const revoked = await registry.revoke(id)
-      json(res, 200, { ok: true, revoked: revoked.length } satisfies SimpleActionResponse & { revoked?: number })
-      return
-    }
-    // GET  /audit
-    if (method === 'GET' && suffix.length === 1 && suffix[0] === 'audit') {
-      json(res, 200, { entries: registry.auditEntries(100) })
-      return
-    }
-    json(res, 404, { ok: false, error: 'not found' } satisfies SimpleActionResponse)
-  }
-
-  // Register the five concrete paths (segments resolve the :id at dispatch).
-  const paths = [
-    `${API_PREFIX}/pending`,
-    `${API_PREFIX}/pending/:id/approve`,
-    `${API_PREFIX}/pending/:id/deny`,
-    `${API_PREFIX}/grants`,
-    `${API_PREFIX}/grants/:id/revoke`,
-    `${API_PREFIX}/audit`,
+      }),
+    },
+    {
+      kind: 'exact',
+      path: `${API_PREFIX}/pending/deny`,
+      handler: bodyRoute((body, _req, res) => {
+        const payload = body as Partial<DenyPendingPayload>
+        if (typeof payload.id !== 'string' || payload.id.trim() === '') {
+          json(res, 400, { ok: false, error: '缺少 id' } satisfies SimpleActionResponse)
+          return
+        }
+        const error = registry.deny(payload.id)
+        if (error !== undefined) {
+          json(res, 404, { ok: false, error } satisfies SimpleActionResponse)
+          return
+        }
+        json(res, 200, { ok: true } satisfies SimpleActionResponse)
+      }),
+    },
+    {
+      kind: 'exact',
+      path: `${API_PREFIX}/grants`,
+      handler: (req, res) => {
+        if (!fence(req, res)) return
+        if ((req.method ?? 'GET') !== 'GET') {
+          json(res, 405, { ok: false, error: 'method not allowed' } satisfies SimpleActionResponse)
+          return
+        }
+        json(res, 200, {
+          grants: registry.activeGrants().map(g => ({
+            id: g.id,
+            path: g.path,
+            scope: g.scope,
+            reason: g.reason,
+            sessionId: g.sessionId,
+            requestedAt: g.requestedAt,
+          })),
+        })
+      },
+    },
+    {
+      kind: 'exact',
+      path: `${API_PREFIX}/grants/revoke`,
+      handler: bodyRoute(async (body, _req, res) => {
+        const payload = body as Partial<RevokeGrantPayload>
+        if (typeof payload.id !== 'string' || payload.id.trim() === '') {
+          json(res, 400, { ok: false, error: '缺少 id' } satisfies SimpleActionResponse)
+          return
+        }
+        const revoked = await registry.revoke(payload.id)
+        json(res, 200, { ok: true, revoked: revoked.length })
+      }),
+    },
+    {
+      kind: 'exact',
+      path: `${API_PREFIX}/audit`,
+      handler: (req, res) => {
+        if (!fence(req, res)) return
+        if ((req.method ?? 'GET') !== 'GET') {
+          json(res, 405, { ok: false, error: 'method not allowed' } satisfies SimpleActionResponse)
+          return
+        }
+        json(res, 200, { entries: registry.auditEntries(100) })
+      },
+    },
   ]
-  return paths.flatMap(routeFor)
 }

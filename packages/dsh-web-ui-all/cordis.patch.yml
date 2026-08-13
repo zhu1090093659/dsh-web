@@ -42,6 +42,11 @@
     - id: ui-web-ui-settings
       name: '@deepseek-ai/dsh-client-ui-web-ui-settings'
 
+# from ../dsh-beyond-workscope
+- insert:
+    - id: beyond-workscope
+      name: '@deepseek-ai/dsh-beyond-workscope'
+
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:
     - id: ui-skin-center

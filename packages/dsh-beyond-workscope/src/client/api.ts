@@ -51,13 +51,13 @@ export class WorkscopeApi {
 
   /** Approve one pending grant (optionally tightened to read). */
   approve(id: string, scope?: 'read' | 'write'): Promise<void> {
-    const payload: ApprovePendingPayload = scope === undefined ? {} : { scope }
-    return postJson<SimpleActionResponse>(`${API_PREFIX}/pending/${id}/approve`, payload).then(() => undefined)
+    const payload: ApprovePendingPayload = scope === undefined ? { id } : { id, scope }
+    return postJson<SimpleActionResponse>(`${API_PREFIX}/pending/approve`, payload).then(() => undefined)
   }
 
   /** Deny one pending grant. */
   deny(id: string): Promise<void> {
-    return postJson<SimpleActionResponse>(`${API_PREFIX}/pending/${id}/deny`, {}).then(() => undefined)
+    return postJson<SimpleActionResponse>(`${API_PREFIX}/pending/deny`, { id }).then(() => undefined)
   }
 
   /** All active grants (management view). */
@@ -69,7 +69,7 @@ export class WorkscopeApi {
 
   /** Revoke one active grant. */
   revoke(id: string): Promise<void> {
-    return postJson<SimpleActionResponse>(`${API_PREFIX}/grants/${id}/revoke`, {}).then(() => undefined)
+    return postJson<SimpleActionResponse>(`${API_PREFIX}/grants/revoke`, { id }).then(() => undefined)
   }
 
   /** Recent audit entries. */

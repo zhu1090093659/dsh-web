@@ -661,6 +661,9 @@ importers:
 
   packages/dsh-web-ui-all:
     dependencies:
+      '@deepseek-ai/dsh-beyond-workscope':
+        specifier: workspace:*
+        version: link:../dsh-beyond-workscope
       '@deepseek-ai/dsh-client-ui-aionui-panel':
         specifier: workspace:*
         version: link:../dsh-aionui-panel

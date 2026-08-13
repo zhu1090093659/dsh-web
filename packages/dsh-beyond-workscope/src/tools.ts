@@ -229,7 +229,7 @@ export function revokeTool(runtime: WorkscopeRuntime) {
           error: { type: 'string' },
           revoked: {
             type: 'array',
-            items: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', required: true }, path: { type: 'string', required: true }, scope: { type: 'string', required: true } }, required: true },
+            items: { type: 'object', additionalProperties: false, properties: { id: { type: 'string', required: true }, path: { type: 'string', required: true }, scope: { type: 'string', required: true } } },
             required: true,
           },
         },

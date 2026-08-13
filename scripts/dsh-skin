@@ -44,6 +44,7 @@ const SKINS = {
   'dragon-heir': { pkg: '@linxin666/dsh-client-ui-skin-dragon-heir', id: 'ui-skin-dragon-heir', dir: `${REPO}/packages/skins/dragon-heir` },
   minecraft: { pkg: '@linxin666/dsh-client-ui-skin-minecraft', id: 'ui-skin-minecraft', dir: `${REPO}/packages/skins/minecraft` },
   'whale-song': { pkg: '@linxin666/dsh-client-ui-skin-whale-song', id: 'ui-skin-whale-song', dir: `${REPO}/packages/skins/whale-song` },
+  trading: { pkg: '@linxin666/dsh-client-ui-skin-trading', id: 'ui-skin-trading', dir: `${REPO}/packages/skins/trading` },
 }
 /** Skin wired at the bundle layer already (no insert row needed here). */
 const BUNDLE_WIRED = new Set(['xp'])

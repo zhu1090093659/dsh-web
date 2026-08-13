@@ -9,7 +9,7 @@
 
 ## 一、范围
 
-`packages/` 与 `packages/skins/` 下共 18 个插件包（截至快照日）：
+`packages/` 与 `packages/skins/` 下共 19 个插件包（截至快照日）：
 
 | 目录 | 包名 | 当前版本 | private |
 | --- | --- | --- | --- |
@@ -30,6 +30,7 @@
 | packages/skins/dragon-heir | @linxin666/dsh-client-ui-skin-dragon-heir | 0.1.1 | true |
 | packages/skins/minecraft | @linxin666/dsh-client-ui-skin-minecraft | 0.1.1 | true |
 | packages/skins/whale-song | @linxin666/dsh-client-ui-skin-whale-song | 0.1.0 | true |
+| packages/skins/trading | @linxin666/dsh-client-ui-skin-trading | 0.1.1 | false |
 | packages/skins/skin-center | @linxin666/dsh-client-ui-skin-center | 0.1.1 | true |
 
 ## 二、发布前检查结论（2026-08-11，已修复项标注 [已确认]）

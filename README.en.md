@@ -34,7 +34,7 @@ When a project session is open, two panels appear to the right of the chat area 
 - **Preview**: multi-tab preview for markdown, HTML, code, diff, CSV, PDF, Office, images and plain text, with source/preview switching, split-screen editing and saving;
 - **Changes (SCM)**: a real git changes panel with stage / unstage / discard;
 - Panel widths are draggable (double-click a handle to reset), and the collapsed state plus widths persist per project;
-- All seven skins adapt the right panel — switching skins restyles the panels to match the theme.
+- All eight skins adapt the right panel — switching skins restyles the panels to match the theme.
 
 ![Right panel](docs/screenshots/19-right-panel.png)
 
@@ -80,7 +80,7 @@ All family plugins' toggles and parameters live under "Settings > Plugin config"
 
 ## Skins
 
-The skin center ships seven skins, each supporting try-on before applying: preview applies instantly and reverts fully on exit; once you are satisfied, apply it with one click.
+The skin center ships eight skins, each supporting try-on before applying: preview applies instantly and reverts fully on exit; once you are satisfied, apply it with one click.
 
 ![Skin center](docs/screenshots/03-settings-skin-center.png)
 
@@ -107,6 +107,12 @@ Whale artwork lies beneath translucent panes, wrapped in a periwinkle-indigo pal
 The deep-sea whale-goddess theme: a text-free ambience painting (a blue-haired goddess with a whale pod on the left, an ice-blue constellation grid with gold-thread accents, and generous open water on the right) sits beneath translucent panes, wrapped in an ice-blue / cyan / navy / cobalt palette — with a night-cruise dark variant.
 
 ![Whale Song light](docs/screenshots/24-skin-whale-song-light.png) · ![Whale Song dark](docs/screenshots/25-skin-whale-song-dark.png)
+
+### Trading Terminal
+
+A live-data stock-trading skin: a scrolling ticker tape (A-shares / HK / US / indices / crypto / FX, 红涨绿跌), live quote chips in the title bar, and a status bar with A-share / HK / US trading sessions plus HK/US index cells. With `dsh-fun-ticker` installed the tape follows your watchlist (served through its same-origin proxy); with `dsh-longbridge` installed the index cells render the broker snapshot. With neither plugin installed the skin still works standalone on public feeds (Tencent / Binance / Frankfurter) — and every fetch path fails safe to `--` cells.
+
+![Trading Terminal light](docs/screenshots/26-skin-trading-light.png) · ![Trading Terminal dark](docs/screenshots/27-skin-trading-dark.png)
 
 Three more: QQ2008 Retro (crystal blue with penguin motifs), Tonghuashun Trading (market elements woven into the interface), and Dragon Heir (cinnabar dragon seal theme).
 

@@ -20,21 +20,24 @@ import css from './board.module.css'
 /** Stable data attribute identifying the injected entry row. */
 export const ENTRY_SELECTOR = '[data-dsh-taskboard-entry]'
 
-/** The sidebar column is the grid item AppFrame renders with this pane marker. */
-const SIDEBAR_COLUMN_SELECTOR = '[data-pane="sidebar"]'
-
 /** Inline icon (matches the shell's 16px nav-icon look). */
 const ICON = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M6.5 6.5v7"/></svg>`
 
 /** Find the sidebar shell root element, or undefined while not yet mounted. */
 function sidebarRoot(): HTMLElement | undefined {
-  const column = document.querySelector<HTMLElement>(SIDEBAR_COLUMN_SELECTOR)
-  const root = column?.firstElementChild as HTMLElement | undefined
-  return root ?? undefined
+  const column = document.querySelector<HTMLElement>('[data-pane="sidebar"], [class*="sidebarCol"]')
+  if (column === null) return undefined
+  // Current shells wrap the sidebar UI: column > wrapper > root(logoRow owner).
+  // Prefer the element that owns the logo row — the real sidebar UI root —
+  // and fall back to the column's first child for legacy shells.
+  const logoOwner = column.querySelector<HTMLElement>('[class*="logoRow"]')?.parentElement
+  return logoOwner ?? (column.firstElementChild as HTMLElement | undefined)
 }
 
-/** The New Session button: the shell's only direct-child button of the root. */
+/** The New Session button: nested in the logo row on current shells, a direct child on legacy shells. */
 function newSessionButton(root: HTMLElement): HTMLButtonElement | undefined {
+  const nested = root.querySelector<HTMLButtonElement>('button[class*="newSession"]')
+  if (nested !== null) return nested
   for (const child of root.children) {
     if (child.tagName === 'BUTTON') return child as HTMLButtonElement
   }
@@ -53,14 +56,21 @@ function createEntry(controller: BoardController): HTMLButtonElement {
   return entry
 }
 
-/** Re-insert the entry after the New Session button (before the browser region). */
+/** Re-insert the entry after the New Session row (before the browser region). */
 function placeEntry(root: HTMLElement, entry: HTMLButtonElement): boolean {
   const button = newSessionButton(root)
   if (button === undefined) return false
   if (entry.parentElement !== root) {
-    // Insert after the button: React never manages this node, and the shell
-    // keeps its own child order intact around it.
-    root.insertBefore(entry, button.nextElementSibling)
+    // Current shells nest the button inside the logo row: insert after that
+    // row. Legacy shells keep the button as a direct child: insert after it.
+    const row = button.closest('[class*="logoRow"]')
+    if (row !== null && row.parentElement === root) {
+      root.insertBefore(entry, row.nextElementSibling)
+    } else if (button.parentElement === root) {
+      root.insertBefore(entry, button.nextElementSibling)
+    } else {
+      root.appendChild(entry)
+    }
   }
   return true
 }

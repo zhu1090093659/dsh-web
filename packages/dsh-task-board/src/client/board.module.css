@@ -19,13 +19,16 @@
   z-index: 5;
 }
 
-html[data-dsh-taskboard-active] [data-dsh-taskboard-view] {
+/* The center column is single-occupant; the :not() guards keep the two
+   sibling panels (task board / ssh) from fighting over visibility if both
+   activation attributes ever coexist. */
+html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [data-dsh-taskboard-view] {
   display: block;
 }
 
 /* While the board is active, the conversation content underneath is hidden
    (it stays mounted and stateful). */
-html[data-dsh-taskboard-active] [data-pane='conversation'] > :not([data-dsh-taskboard-view]) {
+html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [data-pane='conversation'] > :not([data-dsh-taskboard-view]) {
   display: none;
 }
 

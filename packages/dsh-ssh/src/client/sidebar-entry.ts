@@ -61,16 +61,21 @@ function placeEntry(root: HTMLElement, entry: HTMLButtonElement): boolean {
   const button = newSessionButton(root)
   if (button === undefined) return false
   if (entry.parentElement !== root) {
-    // Current shells nest the button inside the logo row: insert after that
-    // row. Legacy shells keep the button as a direct child: insert after it.
+    // Position relative to the family block (entries injected by sibling
+    // plugins), never relative to transient logoRow geometry: every family
+    // plugin that self-heals during a re-render then lands in the same
+    // relative order, so the entries cannot swap positions regardless of
+    // observer callback order or of shell wrapper changes. There is no
+    // append-to-end fallback: appending at the end would randomly reorder
+    // the block after a shell re-render.
     const row = button.closest('[class*="logoRow"]')
-    if (row !== null && row.parentElement === root) {
-      root.insertBefore(entry, row.nextElementSibling)
-    } else if (button.parentElement === root) {
-      root.insertBefore(entry, button.nextElementSibling)
-    } else {
-      root.appendChild(entry)
-    }
+    const base = (row !== null && row.parentElement === root) ? row : button
+    const family = Array.from(root.children).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement && el.matches('[data-dsh-taskboard-entry], [data-dsh-ssh-entry]'),
+    )
+    // ssh sits after the whole family block.
+    const anchor = family.length > 0 ? family[family.length - 1].nextElementSibling : base.nextElementSibling
+    root.insertBefore(entry, anchor)
   }
   return true
 }
@@ -96,7 +101,13 @@ export function mountSidebarEntry(controller: PanelController): () => void {
     root ??= sidebarRoot()
     if (root === undefined) return
     placed = placeEntry(root, entry)
-    if (placed) rootObserver.observe(root, { childList: true, subtree: true })
+    if (placed) {
+      rootObserver.observe(root, { childList: true, subtree: true })
+      // Placement done; the root observer alone keeps the entry healed.
+      // Disconnect the body-wide watcher so unrelated app mutations (e.g.
+      // chat streaming) no longer churn every plugin's self-heal loop.
+      waitObserver.disconnect()
+    }
   }
 
   // The shell renders after boot settlement; watch for its arrival.

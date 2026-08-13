@@ -59,6 +59,15 @@ export const OPERATION_MARKERS = [
   'rebase-merge', 'rebase-apply', 'sequencer',
 ] as const
 
+/**
+ * Locale pins for git invocations. The switch-failure classifier matches
+ * English stderr phrases, so every spawn forces the C locale regardless of
+ * the ambient locale — a Chinese-locale git would otherwise emit localized
+ * messages ("工作区中下列未跟踪的文件...") that no pattern matches and
+ * every failure would classify as `internal`.
+ */
+export const GIT_LOCALE_ENV: Readonly<Record<string, string>> = { LC_ALL: 'C', LANG: 'C' }
+
 /** stderr pattern → overwrite guard code, with the blocked-file extraction. */
 interface OverwritePattern {
   code: Extract<GitErrorCode, 'tracked-changes-would-be-overwritten' | 'untracked-changes-would-be-overwritten'>

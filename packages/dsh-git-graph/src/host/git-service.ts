@@ -14,9 +14,9 @@ import type {} from '@deepseek-ai/dsh-subprocess'
 import type { SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import {
   checkRefFormatArgv, classifySwitchFailure, createBranchArgv, forEachRefArgv,
-  gitPathArgv, graphLogArgv, headBranchArgv, headShortArgv, OPERATION_MARKERS,
-  statusPorcelainArgv, switchArgv, topLevelArgv, unmergedArgv, validateBranchName,
-  verifyRefArgv, worktreeListArgv,
+  GIT_LOCALE_ENV, gitPathArgv, graphLogArgv, headBranchArgv, headShortArgv,
+  OPERATION_MARKERS, statusPorcelainArgv, switchArgv, topLevelArgv,
+  unmergedArgv, validateBranchName, verifyRefArgv, worktreeListArgv,
 } from '../core/git-command.ts'
 import {
   parseBranches, parseGraph, parsePorcelain, parseWorktreeBranches,
@@ -61,6 +61,7 @@ export function subprocessRunner(ctx: Context): GitRunner {
       const spec: SubprocessSpawnSpec = {
         argv: ['git', ...argv],
         cwd,
+        env: { ...GIT_LOCALE_ENV },
         stdio: {
           stdin: 'ignore',
           stdout: { maxBytes: OUTPUT_CAP_BYTES },

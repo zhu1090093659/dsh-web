@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { GIT_LOCALE_ENV } from '../src/core/git-command.ts'
 import { GitService, type GitRunResult, type WorkspaceGate } from '../src/host/git-service.ts'
 
 const execFileAsync = promisify(execFile)
@@ -19,7 +20,9 @@ const runner = {
   async run(argv: readonly string[], cwd: string): Promise<GitRunResult> {
     try {
       const { stdout, stderr } = await execFileAsync('git', [...argv], {
-        cwd, encoding: 'utf8', maxBuffer: 1 << 20,
+        // Pin the locale like the production runner: the failure classifier
+        // matches English stderr regardless of the ambient locale.
+        cwd, encoding: 'utf8', maxBuffer: 1 << 20, env: { ...process.env, ...GIT_LOCALE_ENV },
       })
       return { exitCode: 0, stdout, stderr }
     } catch (error) {

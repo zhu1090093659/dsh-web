@@ -35,6 +35,7 @@
     "lib/index.js",
     "lib/invariant.js",
     "lib/client.js",
+    "lib/*.js",
     "lib/types/**/*.d.ts",
     "lib/types/**/*.d.ts.map",
     "src",

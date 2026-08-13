@@ -34,7 +34,7 @@ When a project session is open, two panels appear to the right of the chat area 
 - **Preview**: multi-tab preview for markdown, HTML, code, diff, CSV, PDF, Office, images and plain text, with source/preview switching, split-screen editing and saving;
 - **Changes (SCM)**: a real git changes panel with stage / unstage / discard;
 - Panel widths are draggable (double-click a handle to reset), and the collapsed state plus widths persist per project;
-- All nine skins adapt the right panel — switching skins restyles the panels to match the theme.
+- All ten skins adapt the right panel — switching skins restyles the panels to match the theme.
 
 ![Right panel](docs/screenshots/19-right-panel.png)
 
@@ -84,7 +84,7 @@ All family plugins' toggles and parameters live under "Settings > Plugin config"
 
 ## Skins
 
-The skin center ships nine skins, each supporting try-on before applying: preview applies instantly and reverts fully on exit; once you are satisfied, apply it with one click.
+The skin center ships ten skins, each supporting try-on before applying: preview applies instantly and reverts fully on exit; once you are satisfied, apply it with one click.
 
 ![Skin center](docs/screenshots/03-settings-skin-center.png)
 
@@ -117,6 +117,12 @@ The deep-sea whale-goddess theme: a text-free ambience painting (a blue-haired g
 A live-data stock-trading skin: a scrolling ticker tape (A-shares / HK / US / indices / crypto / FX, 红涨绿跌), live quote chips in the title bar, and a status bar with A-share / HK / US trading sessions plus HK/US index cells. With `dsh-fun-ticker` installed the tape follows your watchlist (served through its same-origin proxy); with `dsh-longbridge` installed the index cells render the broker snapshot. With neither plugin installed the skin still works standalone on public feeds (Tencent / Binance / Frankfurter) — and every fetch path fails safe to `--` cells.
 
 ![Trading Terminal light](docs/screenshots/26-skin-trading-light.png) · ![Trading Terminal dark](docs/screenshots/27-skin-trading-dark.png)
+
+### QQ2006 Classic
+
+A compact recreation of the classic desktop client: crystal-blue gradient window chrome, a penguin status mark, a pale-blue taskbar, and square controls. Every graphic is code-drawn, with no third-party binary assets, and both light and dark themes are supported.
+
+![QQ2006 light](docs/screenshots/28-skin-qq2006-light.png) · ![QQ2006 dark](docs/screenshots/29-skin-qq2006-dark.png)
 
 Four more: QQ2008 Retro (crystal blue with penguin motifs), Tonghuashun Trading (market elements woven into the interface), Dragon Heir (cinnabar dragon seal theme), and Miku (blue-violet-magenta gradients with frosted glass panels, light and dark themes).
 

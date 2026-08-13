@@ -55,4 +55,6 @@ export const SKIN_CENTER_ENTRIES: readonly SkinCenterEntry[] = [
 
   {"id":"miku","name":"初音未来 · 电子歌姬","nameEn":"Hatsune Miku","author":"涂山苏苏","tagline":"蓝紫双马尾 · 01 编号 · 音符波形 · 电子歌姬主题","description":"以世界第一的虚拟歌姬初音未来为灵感的主题皮肤：蓝紫洋红渐变贯穿全局，音符与声波曲线点缀在半透明面板之间，标题栏与状态栏带有 01 编号徽标与音乐波形，半透明毛玻璃面板透出背景图——沉浸式电子歌姬氛围。","tags":["miku","vocaloid","blue","music","idol","waveform"],"accent":"#2e9bff","bodyAttr":"data-dsh-miku","package":"@linxin666/dsh-client-ui-skin-miku","order":9},
 
+  {"id":"qq2006","name":"QQ2006 经典版","nameEn":"QQ2006 Classic","author":"CCMKCCMK","tagline":"经典蓝色窗口 · 紧凑桌面控件 · 怀旧状态栏","description":"受 QQ2006 桌面客户端启发的轻量皮肤：蓝色渐变标题栏、浅蓝状态栏、紧凑按钮和水晶蓝界面。全部图形由代码绘制，不携带第三方二进制素材。","tags":["retro","qq","2006","classic-blue","nostalgia"],"accent":"#1677c8","bodyAttr":"data-dsh-qq2006","package":"@linxin666/dsh-client-ui-skin-qq2006","order":10},
+
 ]

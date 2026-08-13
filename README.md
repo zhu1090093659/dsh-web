@@ -34,7 +34,7 @@ dsh-web-ui 是 DeepSeek Harness（DSH）Web UI 的插件与皮肤集合：任务
 - **预览**：多标签预览 markdown、HTML、代码、diff、CSV、PDF、Office、图片与文本等格式，支持源码 / 预览切换、分屏编辑与保存；
 - **变更（SCM）**：真实 git 变更面板，支持 stage / unstage / discard；
 - 面板宽度可拖拽调整，双击把手复位默认宽度，折叠状态与宽度按项目持久化；
-- 9 款皮肤全部适配右侧面板，换肤后面板随之融入主题。
+- 10 款皮肤全部适配右侧面板，换肤后面板随之融入主题。
 
 ![右侧面板](docs/screenshots/19-right-panel.png)
 
@@ -86,7 +86,7 @@ dsh-web-ui 是 DeepSeek Harness（DSH）Web UI 的插件与皮肤集合：任务
 
 ## 皮肤
 
-皮肤中心提供 9 款皮肤，均支持先试穿再应用：试穿即时生效、退出完全还原，确认满意后一键应用。
+皮肤中心提供 10 款皮肤，均支持先试穿再应用：试穿即时生效、退出完全还原，确认满意后一键应用。
 
 ![皮肤中心](docs/screenshots/03-settings-skin-center.png)
 
@@ -119,6 +119,12 @@ dsh-web-ui 是 DeepSeek Harness（DSH）Web UI 的插件与皮肤集合：任务
 带实时行情的炒股皮肤：顶栏滚动跑马灯（A股 / 港股 / 美股 / 指数 / 加密 / 外汇，红涨绿跌），标题栏行情快签，状态栏展示 A股 / 港股 / 美股交易时段与港美股指数。已安装 `dsh-fun-ticker` 时跑马灯跟随你的自选列表（同源代理取数），已安装 `dsh-longbridge` 时指数格渲染长桥券商快照；两个插件都没装也能直接走公共行情源（腾讯 / 币安 / Frankfurter）独立工作，所有路径失败都安全降级为 `--`。
 
 ![交易终端 亮色](docs/screenshots/26-skin-trading-light.png) · ![交易终端 暗色](docs/screenshots/27-skin-trading-dark.png)
+
+### QQ2006 经典版
+
+复刻经典桌面客户端的紧凑布局：水晶蓝渐变窗口栏、企鹅状态标识、浅蓝任务栏和直角控件。全部图形由代码绘制，不携带第三方二进制素材，并提供亮色与暗色两套适配。
+
+![QQ2006 亮色](docs/screenshots/28-skin-qq2006-light.png) · ![QQ2006 暗色](docs/screenshots/29-skin-qq2006-dark.png)
 
 其余四款：QQ2008 怀旧版（水晶蓝配色与企鹅元素）、同花顺风格（行情元素融入界面）、龙的传人（朱砂龙印主题）、初音未来（蓝紫品红渐变与磨砂玻璃面板，亮暗双主题）。
 

@@ -1,0 +1,4 @@
+# qq2006 skin bundle patch: inserts its dshClient row into the web plugin roster.
+- insert:
+    - id: ui-skin-qq2006
+      name: '@linxin666/dsh-client-ui-skin-qq2006'

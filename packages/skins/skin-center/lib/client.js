@@ -183,6 +183,25 @@ window.__ModuleLoader__.load({
 				"bodyAttr": "data-dsh-miku",
 				"package": "@linxin666/dsh-client-ui-skin-miku",
 				"order": 9
+			},
+			{
+				"id": "qq2006",
+				"name": "QQ2006 经典版",
+				"nameEn": "QQ2006 Classic",
+				"author": "CCMKCCMK",
+				"tagline": "经典蓝色窗口 · 紧凑桌面控件 · 怀旧状态栏",
+				"description": "受 QQ2006 桌面客户端启发的轻量皮肤：蓝色渐变标题栏、浅蓝状态栏、紧凑按钮和水晶蓝界面。全部图形由代码绘制，不携带第三方二进制素材。",
+				"tags": [
+					"retro",
+					"qq",
+					"2006",
+					"classic-blue",
+					"nostalgia"
+				],
+				"accent": "#1677c8",
+				"bodyAttr": "data-dsh-qq2006",
+				"package": "@linxin666/dsh-client-ui-skin-qq2006",
+				"order": 10
 			}
 		];
 		//#endregion

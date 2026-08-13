@@ -1,0 +1,287 @@
+/* QQ2006-inspired visual adapter. Every global selector is scoped to the
+   body attribute owned by the client plugin, so disposal restores stock UI. */
+
+body[data-dsh-qq2006] {
+  --dsw-font-family: Tahoma, 'Microsoft YaHei', 'SimSun', sans-serif;
+  --ds-font-family-code: Consolas, 'Courier New', monospace;
+  --dsw-static-blue-50: #edf7ff;
+  --dsw-static-blue-75: #dceeff;
+  --dsw-static-blue-100: #c7e4fb;
+  --dsw-static-blue-300: #7dbde8;
+  --dsw-static-blue-400: #489cda;
+  --dsw-static-blue-450: #3189cc;
+  --dsw-static-blue-500: #1677c8;
+  --dsw-static-blue-600: #0d64ae;
+  --dsw-static-blue-800: #08467f;
+  --dsw-static-blue-950: #05305c;
+  --dsw-static-deepseek-50: #eef8ff;
+  --dsw-static-deepseek-100: #cce8fc;
+  --dsw-static-deepseek-200: #a8d6f5;
+  --dsw-static-deepseek-300: #7dbde8;
+  --dsw-static-deepseek-400: #489cda;
+  --dsw-static-deepseek-450: #3189cc;
+  --dsw-static-deepseek-500: #1677c8;
+  --dsw-static-deepseek-600: #0d64ae;
+  --dsw-static-deepseek-800: #08467f;
+  --dsw-static-deepseek-900: #053968;
+  --dsw-static-neutral-bluish-00: #fff;
+  --dsw-static-neutral-bluish-50: #f6fbff;
+  --dsw-static-neutral-bluish-60: #f0f7fc;
+  --dsw-static-neutral-bluish-75: #e9f3fa;
+  --dsw-static-neutral-bluish-100: #deebf4;
+  --dsw-static-neutral-bluish-150: #d2e2ed;
+  --dsw-static-neutral-bluish-200: #c4d7e5;
+  --dsw-static-neutral-bluish-300: #abc3d3;
+  --dsw-static-neutral-bluish-400: #829fb4;
+  --dsw-static-neutral-bluish-500: #647f94;
+  --dsw-static-neutral-bluish-600: #4c667b;
+  --dsw-static-neutral-bluish-700: #354e63;
+  --dsw-static-neutral-bluish-800: #233a4d;
+  --dsw-static-neutral-bluish-900: #142a3c;
+  --dsw-static-neutral-bluish-950: #0c1c29;
+  --dsw-alias-bg-base: #fff;
+  --dsw-alias-bg-layer-1: #f4faff;
+  --dsw-alias-bg-layer-2: #e9f5fd;
+  --dsw-alias-bg-layer-3: #d8ecf9;
+  --dsw-alias-bg-overlay: #f4faff;
+  --dsw-alias-bg-module-platform: #e9f5fd;
+  --dsw-alias-bg-multi-select: #d8ecf9;
+  --dsw-alias-border-l1: rgba(19, 91, 142, 0.14);
+  --dsw-alias-border-l2: rgba(19, 91, 142, 0.28);
+  --dsw-alias-border-l3: rgba(19, 91, 142, 0.42);
+  --dsw-alias-brand-primary: #1677c8;
+  --dsw-alias-brand-text: #07538e;
+  --dsw-alias-button-primary-fill: #1677c8;
+  --dsw-alias-button-primary-hover: #2d8bd0;
+  --dsw-alias-button-primary-dimmed: #b9dcf5;
+  --dsw-alias-button-info-fill: #1677c8;
+  --dsw-alias-button-info-hover: #2d8bd0;
+  --dsw-alias-button-elevated-fill: #fff;
+  --dsw-alias-button-floating-fill: #f7fbff;
+  --dsw-alias-button-floating-hover: #e2f2fd;
+  --dsw-alias-interactive-bg-hover: rgba(22, 119, 200, 0.09);
+  --dsw-alias-interactive-bg-active: rgba(22, 119, 200, 0.16);
+  --dsw-alias-interactive-bg-hover-solid: #e2f2fd;
+  --dsw-alias-label-primary: #183247;
+  --dsw-alias-label-secondary: #48677e;
+  --dsw-alias-label-tertiary: #6f8798;
+  --dsw-alias-label-caption: #8da1b0;
+  --dsw-alias-markdown-code-block: #edf6fc;
+  --dsw-alias-markdown-code-block-banner: #e3f1fa;
+  --dsw-alias-markdown-inline-code: #e4f2fb;
+  --dsw-alias-scrollbar-bg-l1: #c9ddea;
+  --dsw-alias-scrollbar-hover-l1: #91b8d1;
+  --dsw-specific-bubble: #dff1fd;
+  --dsw-specific-bubble-highlight: #c5e5fa;
+  --dsw-specific-input-major: #fff;
+  --dsw-specific-menu: #f7fbff;
+  --dsw-specific-selector: #e5f3fc;
+  --dsw-specific-sidebar-fill: #1677c8;
+  --dsw-specific-sidebar-nav-item-active: #cae8fb;
+  --dsw-specific-sidebar-nav-item-hover: #e4f3fc;
+  min-height: 100vh;
+  padding: 30px 6px 24px;
+  box-sizing: border-box;
+  color: #183247;
+  background:
+    radial-gradient(circle at 22% 10%, rgba(255, 255, 255, 0.82), transparent 34%),
+    radial-gradient(circle at 82% 80%, rgba(79, 170, 229, 0.28), transparent 36%),
+    linear-gradient(155deg, #9fd9f6 0%, #dff3fd 45%, #81c5ef 100%);
+}
+
+body[data-dsh-qq2006][data-ds-dark-theme] {
+  --dsw-alias-bg-base: #102638;
+  --dsw-alias-bg-layer-1: #173047;
+  --dsw-alias-bg-layer-2: #1c3a54;
+  --dsw-alias-bg-layer-3: #234762;
+  --dsw-alias-bg-overlay: #173047;
+  --dsw-alias-label-primary: #edf7ff;
+  --dsw-alias-label-secondary: #b8d2e5;
+  --dsw-alias-label-tertiary: #8eabbf;
+  --dsw-specific-input-major: #173047;
+  --dsw-specific-menu: #173047;
+  color: #edf7ff;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(82, 164, 218, 0.24), transparent 36%),
+    linear-gradient(155deg, #071b2c 0%, #123b5d 50%, #0c2942 100%);
+}
+
+body[data-dsh-qq2006] [id='root'] {
+  min-height: calc(100vh - 54px);
+  overflow: hidden;
+  border: 1px solid #4c9fd5;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #e5f5ff 0, #f8fcff 76px, #fff 100%);
+  box-shadow: 0 7px 24px rgba(13, 71, 113, 0.35), inset 0 1px #fff;
+}
+
+body[data-dsh-qq2006][data-ds-dark-theme] [id='root'] {
+  border-color: #296b98;
+  background: linear-gradient(180deg, #173c58, #102638 90px, #0e2131 100%);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+
+.qqTitlebar {
+  position: fixed;
+  z-index: 2147483000;
+  inset: 0 0 auto;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  padding: 2px 3px 2px 7px;
+  color: #fff;
+  font: 12px Tahoma, 'Microsoft YaHei', sans-serif;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 34%),
+    linear-gradient(180deg, #5cb7eb 0%, #1781ca 50%, #0863ad 51%, #0a73bc 100%);
+  border-bottom: 1px solid #064f8e;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.65), 0 1px 3px rgba(0, 48, 91, 0.35);
+  user-select: none;
+}
+
+.qqIcon {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 20px;
+}
+
+.qqTitle {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 1px #075087;
+}
+
+.qqWindowButton {
+  width: 23px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(0, 67, 121, 0.76);
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.08));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.55);
+  line-height: 1;
+}
+
+.qqWindowButton:last-child {
+  background: linear-gradient(180deg, #f77965, #c93725);
+  border-color: #962314;
+}
+
+.qqStatusbar {
+  position: fixed;
+  z-index: 2147483000;
+  inset: auto 0 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  color: #325a73;
+  font: 11px Tahoma, 'Microsoft YaHei', sans-serif;
+  background: linear-gradient(180deg, #f4fbff, #cce8f8);
+  border-top: 1px solid #74aed1;
+  box-shadow: inset 0 1px #fff;
+  user-select: none;
+}
+
+.qqOnline::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: #39b54a;
+  box-shadow: 0 0 0 1px #1f7b2e;
+}
+
+body[data-dsh-qq2006] button,
+body[data-dsh-qq2006] [role='button'] {
+  border-radius: 3px;
+}
+
+body[data-dsh-qq2006] button:not(:disabled) {
+  border-color: #75add1;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(214, 238, 252, 0.5));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.85);
+}
+
+body[data-dsh-qq2006] button:not(:disabled):hover {
+  border-color: #278bc9;
+  background-image: linear-gradient(180deg, #fff, #c8eafa);
+}
+
+body[data-dsh-qq2006] input:not([type='checkbox']):not([type='radio']),
+body[data-dsh-qq2006] textarea,
+body[data-dsh-qq2006] select {
+  border-color: #87afc9;
+  border-radius: 2px;
+  box-shadow: inset 1px 1px 2px rgba(34, 80, 110, 0.12);
+}
+
+body[data-dsh-qq2006] input:focus,
+body[data-dsh-qq2006] textarea:focus,
+body[data-dsh-qq2006] select:focus {
+  border-color: #e4ad35;
+  outline: 1px solid rgba(255, 210, 83, 0.38);
+}
+
+body[data-dsh-qq2006] [role='dialog'] {
+  border: 1px solid #4b9bd0;
+  border-radius: 4px;
+  box-shadow: 0 10px 30px rgba(11, 63, 101, 0.35);
+}
+
+body[data-dsh-qq2006] pre,
+body[data-dsh-qq2006] code {
+  border-radius: 2px;
+}
+
+body[data-dsh-qq2006] ::-webkit-scrollbar {
+  width: 13px;
+  height: 13px;
+}
+
+body[data-dsh-qq2006] ::-webkit-scrollbar-track {
+  background: #e9f4fb;
+  border: 1px solid #b1cede;
+}
+
+body[data-dsh-qq2006] ::-webkit-scrollbar-thumb {
+  min-height: 24px;
+  border: 1px solid #5c9bc2;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #cceafa, #7fc0e6 48%, #bde3f7);
+}
+
+body[data-dsh-qq2006] ::selection {
+  color: #fff;
+  background: #1677c8;
+}
+
+@media (max-width: 720px) {
+  body[data-dsh-qq2006] {
+    padding-inline: 0;
+  }
+
+  body[data-dsh-qq2006] [id='root'] {
+    border-inline: 0;
+    border-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-dsh-qq2006] * {
+    transition: none !important;
+    animation-duration: 0.001ms !important;
+  }
+}

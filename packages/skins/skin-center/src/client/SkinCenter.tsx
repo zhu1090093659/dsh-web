@@ -12,6 +12,7 @@ import { useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { SKIN_CENTER_ENTRIES, type SkinCenterEntry } from './generated/skins.ts'
+import type { SkinBackgroundHandle } from './background.ts'
 import { activeSkinEntry, TryOnController } from './try-on.ts'
 import css from './skin-center.module.css'
 
@@ -23,6 +24,8 @@ export interface SkinCenterInjected {
     subscribe(listener: () => void): () => void
     setTheme(id: 'light' | 'dark'): void
   }
+  /** Background occluder over the shared skin-background namespace. */
+  background: SkinBackgroundHandle
 }
 
 /** Plugin-card component props: group-item runtime share + locale seat + injected face. */
@@ -32,6 +35,9 @@ export type SkinCenterComponentProps =
 /** The apply target of the official stock-look card. */
 const OFFICIAL = 'official'
 
+/** Skin ids that read the background-scrim variable and paint a backdrop. */
+const BACKDROP_SKIN_IDS = new Set(['blue-fantasy', 'whale-song'])
+
 /**
  * Render the skin-center card: a disclosure header naming the plugin, with
  * the skin list (official default + every installed skin; try-on / theme
@@ -39,9 +45,12 @@ const OFFICIAL = 'official'
  * @param props - card props.
  * @returns the plugin card.
  */
-export function SkinCenter({ t, controller, theme }: SkinCenterComponentProps) {
+export function SkinCenter({ t, controller, theme, background }: SkinCenterComponentProps) {
   const snapshot = useSyncExternalStore(theme.subscribe, theme.getTheme)
+  const opacity = useSyncExternalStore(background.subscribe, background.opacity)
   const activePackage = activeSkinEntry()?.package
+  const activeId = activeSkinEntry()?.id
+  const backdropActive = activeId !== undefined && BACKDROP_SKIN_IDS.has(activeId)
   const [open, setOpen] = useState(false)
   const [tryingId, setTryingId] = useState<string | null>(null)
   const [tryingOfficial, setTryingOfficial] = useState(false)
@@ -229,6 +238,28 @@ export function SkinCenter({ t, controller, theme }: SkinCenterComponentProps) {
                   {t('themeDark')}
                 </button>
               </div>
+            </div>
+
+            <div className={css.backgroundRow}>
+              <div className={css.backgroundHead}>
+                <span className={css.backgroundLabel}>{t('backgroundOpacity')}</span>
+                <span className={css.backgroundValue} aria-hidden="true">{opacity}%</span>
+              </div>
+              <input
+                id="skin-center-background-opacity"
+                className={css.backgroundRange}
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={opacity}
+                aria-valuetext={`${opacity}%`}
+                aria-label={t('backgroundOpacity')}
+                onChange={(event) => { background.set(Number(event.target.value)) }}
+              />
+              <p className={backdropActive ? css.backgroundHint : css.backgroundHintMuted}>
+                {backdropActive ? t('backgroundHint') : t('backgroundHintInert')}
+              </p>
             </div>
 
             {error !== null && <div className={css.error}>{error}</div>}

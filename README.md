@@ -145,14 +145,19 @@ cd dsh-web-ui
 pnpm install
 pnpm -r build
 
-# 3. 把聚合包装进 web profile（link: 指向仓库内的聚合包目录）
+# 3. 把全家桶链接进 web profile（推荐，先链接全部子包再注册聚合包）
+node scripts/link-profile.mjs
 dsh plugin --profile web add link:$(pwd)/packages/dsh-web-ui-all
 
 # 4. 重启 dsh web，侧边栏即可看到全部插件入口
 dsh web
 ```
 
-> 只想用皮肤：把第 3 步的 `packages/dsh-web-ui-all` 换成 `packages/dsh-skins`。
+> 只想用皮肤：第 3 步只执行 link-profile 后安装 `packages/dsh-skins` 即可。
+>
+> 注意：profile 目录不是 pnpm workspace，聚合包里的 `workspace:*` 依赖会回退拉取 npm 已发布版本；
+> 若 npm 版本滞后或损坏会出现「宿主已挂载但 UI 不显示」，此时先用 `node scripts/link-profile.mjs`
+> 让全部子包走仓库构建产物。
 
 ### 单独安装某个插件
 

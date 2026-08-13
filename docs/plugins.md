@@ -66,11 +66,23 @@ pnpm -r build  # 全仓构建
 
 ### 6. 本地验证
 
+两种方式任选：
+
 ```sh
+# 方式 A：用 link-profile 脚本把全家桶全部包链接进 profile（推荐；脚本自动处理 @linxin666 命名空间）
+node scripts/link-profile.mjs            # 链接/刷新全家桶；--dry-run 预览
+
+# 方式 B：只把聚合包本身注册进 profile（聚合包的 workspace:* 依赖会回退解析到 npm 已发布版本，
+# 因此请先确认 npm 上的 @linxin666/dsh-* 为最新且可用，或先用方式 A 链接全部子包）
 dsh plugin --profile web add link:<dsh-web-ui>/packages/dsh-web-ui-all
 ```
 
 重启 `dsh web`，确认聚合包插件行挂载生效。调试阶段也可先单独安装单包（`link:<dsh-web-ui>/packages/<name>`）验证。
+
+> 注意：profile 目录不是 pnpm workspace，聚合包 package.json 里的 `workspace:*` 依赖无法就地解析，
+> 会回退拉取 npm 已发布的版本——若 npm 版本滞后或损坏（如历史上的 dsh-pet 0.1.1 缺 chunk），
+> 会出现「宿主已挂载但 UI 不显示」的现象。此时用 `node scripts/link-profile.mjs` 把仓库构建产物
+> 链接进 `~/.dsh/profiles/node_modules/@linxin666/`，即可让全部子包走本地代码。
 
 ## 第三方插件准入原则
 
@@ -87,12 +99,12 @@ dsh plugin --profile web add link:<dsh-web-ui>/packages/dsh-web-ui-all
 ## 插件规范要点
 
 - **package.json 的 `dsh.bundle.patch` 声明**：指向包内 `cordis.patch.yml`，这是官方 bundle 清单，`dsh plugin` 依赖它识别与挂载插件。
-- **cordis.patch.yml insert 行格式**：
+- **cordis.patch.yml insert 行格式**（包名用家族 scope `@linxin666`，与 npm 发布名一致）：
 
 ```yaml
 - insert:
     - id: ui-<name>
-      name: '@deepseek-ai/dsh-client-ui-<name>'
+      name: '@linxin666/dsh-client-ui-<name>'
 ```
 
 - **类型来源（只能基于官方 NPM SDK）**：各包把用到的 `@deepseek-ai/*` 包声明为 `devDependencies`

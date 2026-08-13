@@ -26,6 +26,9 @@ export type SkinCenterKey =
   | 'themeLight'
   | 'themeDark'
   | 'tryOnError'
+  | 'backgroundOpacity'
+  | 'backgroundHint'
+  | 'backgroundHintInert'
 
 export const en: Record<SkinCenterKey, string> = {
   title: 'Skin Center',
@@ -48,6 +51,9 @@ export const en: Record<SkinCenterKey, string> = {
   themeLight: 'Light',
   themeDark: 'Dark',
   tryOnError: 'Try-on failed — see console',
+  backgroundOpacity: 'Background occlusion',
+  backgroundHint: 'Instantly veils the backdrop behind the panels — higher values obscure the art to help you focus.',
+  backgroundHintInert: 'Only applies to skins that paint a backdrop (Blue Fantasy / Whale Song). Applies to the official default automatically once such a skin is active.',
 }
 
 export const zh: Record<SkinCenterKey, string> = {
@@ -71,4 +77,7 @@ export const zh: Record<SkinCenterKey, string> = {
   themeLight: '亮色',
   themeDark: '暗色',
   tryOnError: '试穿失败，详见控制台',
+  backgroundOpacity: '背景遮挡',
+  backgroundHint: '即时为面板背后的背景加遮罩——数值越高越能弱化插画，帮你集中注意力。',
+  backgroundHintInert: '仅对带背景图插画的皮肤（蓝色幻想 / 鲸吟）生效；官方默认无背景图，该滑块对这些皮肤自动生效。',
 }

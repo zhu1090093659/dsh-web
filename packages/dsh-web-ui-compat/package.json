@@ -1,0 +1,41 @@
+{
+  "name": "@linxin666/dsh-web-ui-compat",
+  "description": "Compatibility shim for the dsh-web-ui plugin family on current dsh web shells: stamps the legacy data-pane / data-dsh-frame hooks that the family plugins' DOM mounts and skins expect onto the shell's current grid columns",
+  "version": "0.1.2",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js",
+    "cordis.patch.yml"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git",
+    "directory": "packages/dsh-web-ui-compat"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepare": "tsdown",
+    "watch": "tsdown --watch"
+  },
+  "license": "BSD-3-Clause",
+  "devDependencies": {
+    "tsdown": "^0.22.2",
+    "@deepseek-ai/cordis": "^4.0.1"
+  }
+}

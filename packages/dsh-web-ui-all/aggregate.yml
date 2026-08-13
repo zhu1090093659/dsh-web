@@ -2,6 +2,7 @@
 # deps 的包进 package.json dependencies（workspace:*）
 # dsh-skins 的 patch 行只有 ui-skin-center，汇总后自然展开
 patchFrom:
+  - ../dsh-web-ui-compat
   - ../dsh-aionui-panel
   - ../dsh-task-board
   - ../dsh-git-graph
@@ -12,6 +13,7 @@ patchFrom:
   - ../dsh-web-ui-settings
   - ../dsh-skins
 deps:
+  - ../dsh-web-ui-compat
   - ../dsh-aionui-panel
   - ../dsh-task-board
   - ../dsh-git-graph

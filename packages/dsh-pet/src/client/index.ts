@@ -22,6 +22,7 @@ import type { PetInteractResult, PetStateView } from '../service.ts'
 import type { PetInteraction } from '../affinity.ts'
 import { createPetStore, type PetStoreInstance } from './pet-store.ts'
 import { PetDockEntry, type PetInjected } from './PetDockEntry.tsx'
+import { DockPetDockEntry } from './DockPetDockEntry.tsx'
 import { PetSettingsCard, PetSettingsCardController, type PetSettings } from './PetSettingsCard.tsx'
 import { NS, en, zh } from './locales.ts'
 
@@ -246,8 +247,22 @@ export function apply(ctx: ClientContext): void {
           locale: NS,
         }, PetDockEntry))
 
+      // Current shells declare the composer dock band instead of the legacy
+      // selector context hole; register the same entry there too. Both
+      // injects are declaration-aware, so only the one the shell declares
+      // ever fires — the dock never renders twice.
+      const disposeDockFallback = ctx.slots.inject('conversation.input.dock', () =>
+        ctx.slots.register({
+          name: 'conversation.input.dock',
+          id: 'pet',
+          order: 110,
+          inject: injected,
+          locale: NS,
+        }, DockPetDockEntry))
+
       disposeUi = () => {
         disposeDock()
+        disposeDockFallback()
         disposePoll()
         disposeUi = undefined
       }

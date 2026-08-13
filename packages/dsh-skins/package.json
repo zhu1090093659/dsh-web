@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-skins",
   "description": "皮肤全家桶聚合插件：装它 = 全部皮肤包（qq98 / ths / xp / blue-fantasy / dragon-heir）+ 皮肤中心（skin-center）一次到位；皮肤启用互斥由 dsh-skin use 管理（~/.dsh/cordis.patch.yml managed 区段），因此皮肤包只进 dependencies、不进 patchFrom。",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "dsh": {
     "bundle": {
@@ -17,6 +17,12 @@
     "@linxin666/dsh-client-ui-skin-blue-fantasy": "workspace:*",
     "@linxin666/dsh-client-ui-skin-dragon-heir": "workspace:*",
     "@linxin666/dsh-client-ui-skin-minecraft": "workspace:*",
-    "@linxin666/dsh-client-ui-skin-miku": "workspace:*"
+    "@linxin666/dsh-client-ui-skin-miku": "workspace:*",
+    "@linxin666/dsh-client-ui-skin-trading": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git",
+    "directory": "packages/dsh-skins"
   }
 }

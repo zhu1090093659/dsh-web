@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-web-ui-all",
   "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / remote-web-ui / live-stats / web-ui-settings）+ 皮肤全家桶（dsh-skins）。",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "dsh": {
     "bundle": {
@@ -10,6 +10,7 @@
   },
   "license": "BSD-3-Clause",
   "dependencies": {
+    "@linxin666/dsh-web-ui-compat": "workspace:*",
     "@linxin666/dsh-client-ui-aionui-panel": "workspace:*",
     "@linxin666/dsh-client-ui-task-board": "workspace:*",
     "@linxin666/dsh-client-ui-git-graph": "workspace:*",
@@ -19,5 +20,9 @@
     "@linxin666/dsh-ssh": "workspace:*",
     "@linxin666/dsh-client-ui-web-ui-settings": "workspace:*",
     "@linxin666/dsh-skins": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
   }
 }

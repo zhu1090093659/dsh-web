@@ -9,13 +9,16 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import dshSkin from './dsh-skin'
 
 const { SKINS, MANAGED_START, MANAGED_END, renderManaged, stripManaged, stripLegacySkinRows, currentActive } = dshSkin
 
-const SCRIPT = new URL('./dsh-skin', import.meta.url).pathname
+// fileURLToPath, not URL.pathname: the latter keeps a leading slash on
+// Windows (/D:/...), which node then mis-resolves as D:\D:\...
+const SCRIPT = fileURLToPath(new URL('./dsh-skin', import.meta.url))
 
-/** A throwaway HOME with a patch fixture; returns the patch path. */
+/** A throwaway DSH_HOME with a patch fixture; returns the patch path. */
 function fakeHome() {
   const home = mkdtempSync(join(tmpdir(), 'dsh-skin-test-'))
   mkdirSync(join(home, '.dsh'), { recursive: true })
@@ -62,14 +65,14 @@ test('currentActive returns null when every skin is disabled', () => {
   assert.equal(currentActive(renderManaged(null)), null)
 })
 
-test('use official restores the stock look on a throwaway HOME', () => {
+test('use official restores the stock look on a throwaway DSH_HOME', () => {
   const home = fakeHome()
   try {
     const patch = patchPath(home)
     const fixture = `# custom row survives\n- id: ui-subagent-tree\n  name: '@deepseek-ai/dsh-client-ui-subagent-tree'\n`
     writeFileSync(patch, fixture)
     execFileSync(process.execPath, [SCRIPT, 'use', 'official'], {
-      env: { ...process.env, HOME: home },
+      env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: join(home, 'code', 'dsh-web-ui') },
     })
     const after = readFileSync(patch, 'utf8')
     assert.ok(after.includes('# custom row survives'), 'non-managed rows must be preserved')
@@ -81,7 +84,7 @@ test('use official restores the stock look on a throwaway HOME', () => {
 
     // The CLI's own reading agrees: current prints none.
     const current = execFileSync(process.execPath, [SCRIPT, 'current'], {
-      env: { ...process.env, HOME: home },
+      env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: join(home, 'code', 'dsh-web-ui') },
       encoding: 'utf8',
     })
     assert.equal(current.trim(), 'none')
@@ -93,18 +96,19 @@ test('use official restores the stock look on a throwaway HOME', () => {
 test('use <name> still writes an insert row for a non-wired skin', () => {
   const home = fakeHome()
   try {
-    // ensureSymlink requires the skin source dir under $HOME/code/dsh-web-ui.
-    mkdirSync(join(home, 'code', 'dsh-web-ui', 'packages', 'skins', 'qq98'), { recursive: true })
+    // ensureSymlink requires the skin source dir under DSH_SKIN_REPO.
+    const repo = join(home, 'code', 'dsh-web-ui')
+    mkdirSync(join(repo, 'packages', 'skins', 'qq98'), { recursive: true })
     const patch = patchPath(home)
     writeFileSync(patch, '')
     execFileSync(process.execPath, [SCRIPT, 'use', 'qq98'], {
-      env: { ...process.env, HOME: home },
+      env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: repo },
     })
     const after = readFileSync(patch, 'utf8')
     assert.ok(after.includes('- insert:'))
     assert.ok(after.includes(`- id: ${SKINS.qq98.id}`))
     const current = execFileSync(process.execPath, [SCRIPT, 'current'], {
-      env: { ...process.env, HOME: home },
+      env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: repo },
       encoding: 'utf8',
     })
     assert.equal(current.trim(), 'qq98')

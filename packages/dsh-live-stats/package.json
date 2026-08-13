@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-live-stats",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Live token estimates and generation throughput for DSH Web",
   "type": "module",
   "main": "lib/index.js",
@@ -91,12 +91,15 @@
     "vitest": "^4.1.1"
   },
   "files": [
-    "lib/index.js",
-    "lib/invariant.js",
-    "lib/client.js",
-    "lib/types/**/*.d.ts",
-    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js",
+    "lib/**/*.js.map",
+    "lib/**/*.d.ts",
+    "lib/**/*.d.ts.map",
     "src",
     "cordis.patch.yml"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
 }

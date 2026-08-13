@@ -34,7 +34,7 @@ dsh-web-ui 是 DeepSeek Harness（DSH）Web UI 的插件与皮肤集合：任务
 - **预览**：多标签预览 markdown、HTML、代码、diff、CSV、PDF、Office、图片与文本等格式，支持源码 / 预览切换、分屏编辑与保存；
 - **变更（SCM）**：真实 git 变更面板，支持 stage / unstage / discard；
 - 面板宽度可拖拽调整，双击把手复位默认宽度，折叠状态与宽度按项目持久化；
-- 7 款皮肤全部适配右侧面板，换肤后面板随之融入主题。
+- 8 款皮肤全部适配右侧面板，换肤后面板随之融入主题。
 
 ![右侧面板](docs/screenshots/19-right-panel.png)
 
@@ -80,7 +80,7 @@ dsh-web-ui 是 DeepSeek Harness（DSH）Web UI 的插件与皮肤集合：任务
 
 ## 皮肤
 
-皮肤中心提供 7 款皮肤，均支持先试穿再应用：试穿即时生效、退出完全还原，确认满意后一键应用。
+皮肤中心提供 8 款皮肤，均支持先试穿再应用：试穿即时生效、退出完全还原，确认满意后一键应用。
 
 ![皮肤中心](docs/screenshots/03-settings-skin-center.png)
 
@@ -107,6 +107,12 @@ dsh-web-ui 是 DeepSeek Harness（DSH）Web UI 的插件与皮肤集合：任务
 深海鲸语女神主题：无文字纯氛围背景画（蓝发女神与鲸群居左、冰蓝星座网格与金色细线点缀、右侧大量留白）垫在半透明面板之下，冰蓝 / 浅青 / 深海军蓝 / 钴蓝冷色体系贯穿全局，暗色变体为深海夜航调。
 
 ![鲸吟 亮色](docs/screenshots/24-skin-whale-song-light.png) · ![鲸吟 暗色](docs/screenshots/25-skin-whale-song-dark.png)
+
+### 交易终端（Trading Terminal）
+
+带实时行情的炒股皮肤：顶栏滚动跑马灯（A股 / 港股 / 美股 / 指数 / 加密 / 外汇，红涨绿跌），标题栏行情快签，状态栏展示 A股 / 港股 / 美股交易时段与港美股指数。已安装 `dsh-fun-ticker` 时跑马灯跟随你的自选列表（同源代理取数），已安装 `dsh-longbridge` 时指数格渲染长桥券商快照；两个插件都没装也能直接走公共行情源（腾讯 / 币安 / Frankfurter）独立工作，所有路径失败都安全降级为 `--`。
+
+![交易终端 亮色](docs/screenshots/26-skin-trading-light.png) · ![交易终端 暗色](docs/screenshots/27-skin-trading-dark.png)
 
 其余三款：QQ2008 怀旧版（水晶蓝配色与企鹅元素）、同花顺风格（行情元素融入界面）、龙的传人（朱砂龙印主题）。
 
@@ -139,14 +145,19 @@ cd dsh-web-ui
 pnpm install
 pnpm -r build
 
-# 3. 把聚合包装进 web profile（link: 指向仓库内的聚合包目录）
+# 3. 把全家桶链接进 web profile（推荐，先链接全部子包再注册聚合包）
+node scripts/link-profile.mjs
 dsh plugin --profile web add link:$(pwd)/packages/dsh-web-ui-all
 
 # 4. 重启 dsh web，侧边栏即可看到全部插件入口
 dsh web
 ```
 
-> 只想用皮肤：把第 3 步的 `packages/dsh-web-ui-all` 换成 `packages/dsh-skins`。
+> 只想用皮肤：第 3 步只执行 link-profile 后安装 `packages/dsh-skins` 即可。
+>
+> 注意：profile 目录不是 pnpm workspace，聚合包里的 `workspace:*` 依赖会回退拉取 npm 已发布版本；
+> 若 npm 版本滞后或损坏会出现「宿主已挂载但 UI 不显示」，此时先用 `node scripts/link-profile.mjs`
+> 让全部子包走仓库构建产物。
 
 ### 单独安装某个插件
 

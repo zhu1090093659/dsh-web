@@ -210,7 +210,7 @@ describe('apply registration', () => {
       },
     }
     apply(ctx as never)
-    expect(injected).toEqual(['sidebar.remote', 'web-ui.plugin.item'])
+    expect(injected).toEqual(['sidebar.remote', 'sidebar.footer.action', 'web-ui.plugin.item'])
   })
 
   it('waits for the settings snapshot before mounting the sidebar entry and runtime', async () => {
@@ -256,6 +256,6 @@ describe('apply registration', () => {
 
     snapshot = { status: 'ready' as const, writable: true, value: { enabled: true } }
     notify()
-    expect(registered).toEqual(['web-ui.plugin.item', 'sidebar.remote'])
+    expect(registered).toEqual(['web-ui.plugin.item', 'sidebar.remote', 'sidebar.footer.action'])
   })
 })

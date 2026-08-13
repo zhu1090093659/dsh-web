@@ -13,3 +13,7 @@ gui-test-screenshots/
 
 # 本地性能调试脚本
 .dsh/perf/
+
+# 本地调试探针脚本（不入库）
+.dsh/*.js
+.dsh/*.py

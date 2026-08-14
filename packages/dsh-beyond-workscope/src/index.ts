@@ -183,7 +183,9 @@ export function apply(ctx: Context, config?: Config): void {
   // Defensive: a metadata lookup failure degrades the panel, never the route.
   const sessionInfo = async (sessionId: string) => {
     try {
-      const session = ctx.sessions.get(sessionId as SessionId)
+      // Optional access: direct ctx.sessions property access would require an
+      // inject declaration, so go through ctx.get (no hard dependency).
+      const session = ctx.get('sessions')?.get(sessionId as SessionId)
       if (session === undefined) return undefined
       const header = session.header
       const titleService = ctx.get('sessionTitle')

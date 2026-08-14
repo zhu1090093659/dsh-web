@@ -719,7 +719,7 @@
     '  float fastFlare = 0.0;',
     '  if (occupancy > 0.5 && speedRank >= 0.90) {',
     '    vec2 a = abs(d);',
-    '    float horizontal = exp(-a.y * 76.0) * exp(-a.x * 6.0);',
+    '    float horizontal = exp(-a.y * 76.0) * exp(-a.x * 3.0);',
     '    float vertical = exp(-a.x * 104.0) * exp(-a.y * 1.75);',
     '    float core = 1.0 - smoothstep(0.012, 0.050, length(d));',
     '    float flashCycle = fract(',

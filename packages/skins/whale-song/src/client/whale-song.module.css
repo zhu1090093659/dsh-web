@@ -275,7 +275,7 @@ body[data-dsh-whale-song] {
   --dsw-alias-state-warn-secondary: #e3c070;
   --dsw-alias-state-warn-tertiary: #f7efdc;
   --dsw-alias-toast-bg: #1a3a7a;
-  --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-bg: #1a3a7a;
   --dsw-specific-bubble-highlight: #c4dbf1;
   --dsw-specific-bubble: #d9e9f5;
   --dsw-specific-input-major: rgba(255, 255, 255, 0.6);

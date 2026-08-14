@@ -290,8 +290,10 @@ body[data-dsh-retro] {
   --dsw-alias-state-warn-secondary: #d69a3a;
   --dsw-alias-state-warn-tertiary: #f8ecd9;
   --dsw-alias-toast-bg: #1e63b8;
-  /* QQ-era tooltips were the classic yellow note. */
-  --dsw-alias-tooltip-bg: #ffffe1;
+  /* QQ-era tooltips were the classic yellow note; the light palette must
+     keep it readable under the white tooltip text DSH forces, so use the
+     deep QQ gold here (the pale yellow note survives in dark mode). */
+  --dsw-alias-tooltip-bg: #966300;
   --dsw-specific-bubble-highlight: #b6d6f4;
   --dsw-specific-bubble: #dcecfb;
   --dsw-specific-input-major: #fff;

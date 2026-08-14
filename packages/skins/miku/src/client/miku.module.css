@@ -299,7 +299,7 @@ body[data-dsh-miku] {
   --dsw-alias-state-warn-secondary: #e5b94f;
   --dsw-alias-state-warn-tertiary: #fdf3dd;
   --dsw-alias-toast-bg: #1e6fd9;
-  --dsw-alias-tooltip-bg: #ffffff;
+  --dsw-alias-tooltip-bg: #1e6fd9;
   --dsw-specific-bubble-highlight: #cfe3ff;
   --dsw-specific-bubble: #e4f0ff;
   --dsw-specific-input-major: #fff;
@@ -391,7 +391,7 @@ body[data-dsh-miku][data-ds-dark-theme] {
   --dsw-alias-state-warn-secondary: #e5b94f;
   --dsw-alias-state-warn-tertiary: #3a3015;
   --dsw-alias-toast-bg: #1c3468;
-  --dsw-alias-tooltip-bg: #213856;
+  --dsw-alias-tooltip-bg: #eef7f5;
   --dsw-specific-bubble-highlight: #22407a;
   --dsw-specific-bubble: #162a52;
   --dsw-specific-input-major: #12244a;

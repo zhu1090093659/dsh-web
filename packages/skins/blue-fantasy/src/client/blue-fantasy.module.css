@@ -274,7 +274,7 @@ body[data-dsh-blue-fantasy] {
   --dsw-alias-state-warn-secondary: #d9a94f;
   --dsw-alias-state-warn-tertiary: #f7ecd8;
   --dsw-alias-toast-bg: #3c4e92;
-  --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-bg: #3c4e92;
   --dsw-specific-bubble-highlight: #c3cfee;
   --dsw-specific-bubble: #dce3f7;
   --dsw-specific-input-major: rgba(255, 255, 255, 0.6);

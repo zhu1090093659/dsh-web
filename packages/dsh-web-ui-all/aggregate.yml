@@ -16,6 +16,7 @@ patchFrom:
   - ../dsh-live-stats
   - ../dsh-ssh
   - ../dsh-tool-describe-image
+  - ../dsh-taskboard-agent
   - ../dsh-skins
 self:
   - ui-web-ui-compat
@@ -28,5 +29,6 @@ deps:
   - ../dsh-live-stats
   - ../dsh-ssh
   - ../dsh-tool-describe-image
+  - ../dsh-taskboard-agent
   - ../dsh-web-ui-settings
   - ../dsh-skins

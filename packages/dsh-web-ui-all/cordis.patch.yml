@@ -52,6 +52,11 @@
     - id: describe-image
       name: '@linxin666/dsh-tool-describe-image'
 
+# from ../dsh-taskboard-agent
+- insert:
+    - id: taskboard-agent
+      name: '@linxin666/dsh-taskboard-agent'
+
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:
     - id: ui-skin-center

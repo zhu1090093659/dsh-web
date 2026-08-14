@@ -1,0 +1,15 @@
+{
+  // Declaration-only build (tsc -p tsconfig.build.json): emits lib/types/*.d.ts
+  // for the published package, mirroring the repo's dsh-ssh build step.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "outDir": "lib/types",
+    "rootDir": "src"
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
+}

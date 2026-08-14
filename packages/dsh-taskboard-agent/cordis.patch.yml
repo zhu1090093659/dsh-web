@@ -1,0 +1,12 @@
+# dsh-taskboard-agent bundle patch: inserts the dual-face plugin row into the
+# web profile roster. Applied as a profile bundle layer (the `dsh.bundle.patch`
+# manifest field) over dsh-base, aggregated through
+# packages/dsh-web-ui-all/aggregate.yml.
+#
+# The row is a bare plugin by package name: the node half (exports ".") runs in
+# the host process (four agent tools + /api/dsh-taskboard-agent/* routes), and
+# the `dsh.client` declaration in package.json makes the browser half
+# (exports "./client") load in the web GUI so it can sync the board ledger.
+- insert:
+    - id: taskboard-agent
+      name: '@linxin666/dsh-taskboard-agent'

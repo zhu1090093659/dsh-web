@@ -161,6 +161,43 @@ describe('GitService.diff', () => {
   })
 })
 
+describe('GitService.status git availability', () => {
+  it('reports git-missing when the binary is absent (spawn degradation markers)', async () => {
+    const runner: GitRunner = {
+      async run() {
+        return { exitCode: 127, stdout: '', stderr: 'git: spawn failed: spawn git ENOENT' }
+      },
+    }
+    const service = new GitService(runner, gate, vi.fn(async () => ({ ok: true as const })))
+    const result = await service.status(ROOT)
+    expect(result).toEqual({ code: 'git-missing', message: 'git is not installed' })
+  })
+
+  it('reports git-missing on run-degradation markers too', async () => {
+    const runner: GitRunner = {
+      async run() {
+        return { exitCode: 127, stdout: '', stderr: 'git: run failed: killed' }
+      },
+    }
+    const service = new GitService(runner, gate, vi.fn(async () => ({ ok: true as const })))
+    const result = await service.status(ROOT)
+    expect(result).toEqual({ code: 'git-missing', message: 'git is not installed' })
+  })
+
+  it('stays null (not a repository) when git runs but rev-parse fails', async () => {
+    const runner: GitRunner = {
+      async run() {
+        // A present git binary answers a non-repo with exit 128 and its own
+        // stderr — not the spawn seam's 127 degradation markers.
+        return { exitCode: 128, stdout: '', stderr: 'fatal: not a git repository' }
+      },
+    }
+    const service = new GitService(runner, gate, vi.fn(async () => ({ ok: true as const })))
+    const result = await service.status(ROOT)
+    expect(result).toBeNull()
+  })
+})
+
 describe('subprocessRunner spawn degradation', () => {
   const collected = {
     stdout: { readFrom: (offset: number) => ({ text: 'ok' }) },

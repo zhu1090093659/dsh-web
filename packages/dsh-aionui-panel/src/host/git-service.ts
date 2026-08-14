@@ -149,6 +149,15 @@ export function parseStatusView(root: string, branch: string, output: string): G
 /** The not-a-repository verdict for status reads. */
 const NO_REPO: PanelError = { code: 'git-unavailable', message: 'not a git repository' }
 
+/** The git binary is missing (the spawn seam degraded) — the SCM surface is unavailable. */
+const GIT_MISSING: PanelError = { code: 'git-missing', message: 'git is not installed' }
+
+/** True when a run outcome is the spawn seam's own degradation markers. */
+function isSpawnFailure(result: GitRunResult): boolean {
+  return result.exitCode === 127
+    && (result.stderr.startsWith('git: spawn failed') || result.stderr.startsWith('git: run failed'))
+}
+
 /**
  * Workspace-scoped git operations. Every method passes the gate, resolves the
  * repository root, and rejects non-repositories with a stable error.
@@ -168,7 +177,12 @@ export class GitService {
     const gated = await this.gate(root)
     if (!gated.ok) return { ok: false, error: gated.error }
     const result = await this.run(['rev-parse', '--show-toplevel'], gated.canonical)
-    if (result.exitCode !== 0) return { ok: false, error: NO_REPO }
+    if (result.exitCode !== 0) {
+      // A missing git binary must be distinguishable from "not a repository":
+      // the former makes the whole SCM surface unavailable (routes stop
+      // polling on it), the latter is an ordinary quiet state.
+      return { ok: false, error: isSpawnFailure(result) ? GIT_MISSING : NO_REPO }
+    }
     const repo = result.stdout.trim()
     if (repo === '' || !isPathInside(repo, gated.canonical)) return { ok: false, error: NO_REPO }
     return { ok: true, root: gated.canonical, repo }

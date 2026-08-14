@@ -26,6 +26,7 @@ export type PanelErrorCode =
   | 'write-failed'
   | 'search-failed'
   | 'git-unavailable'
+  | 'git-missing'
   | 'git-failed'
   | 'internal'
 

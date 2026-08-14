@@ -98,16 +98,26 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
   }
 
   let polling = false
+  // git 缺失时置位：pollGit 直接跳过，避免每 2 秒一次 spawn ENOENT 刷屏。
+  // 判定来自 git.status 的 git-missing（git-service 对 spawn 失败的标记），
+  // 首次命中记一条日志后不再轮询，直到插件重载。
+  let gitUnavailable = false
   const pollGit = async (): Promise<void> => {
     // Guard against overlapping polls: a slow git status on a large repo must
     // not stack another run on the next 2s tick.
-    if (polling) return
+    if (gitUnavailable || polling) return
     polling = true
     try {
       await Promise.all([...subscribers].map(async (subscriber) => {
         try {
           const status = await git.status(subscriber.root)
-          if (status === null || typeof status === 'object' && 'code' in status) return
+          if (status === null || typeof status === 'object' && 'code' in status) {
+            if (status !== null && status.code === 'git-missing') {
+              gitUnavailable = true
+              ctx.logger.warn(`dsh-aionui-panel: git is not installed; SCM polling stopped (${subscriber.root})`)
+            }
+            return
+          }
           const key = `${status.branch}|${JSON.stringify(status.staged)}|${JSON.stringify(status.unstaged)}|${JSON.stringify(status.untracked)}`
           if (key === subscriber.lastGit) return
           subscriber.lastGit = key

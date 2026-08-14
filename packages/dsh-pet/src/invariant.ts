@@ -1,7 +1,7 @@
 /**
  * Package invariants — cheap structural checks run at import time on the
  * host side. Mirrors the pattern used by other dsh plugin packages.
- * @module @deepseek-ai/dsh-pet/invariant
+ * @module @linxin666/dsh-pet/invariant
  */
 
 import { AFFINITY_MAX, AFFINITY_RANKS, defaultAffinityConfig } from './affinity.ts'

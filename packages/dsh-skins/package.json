@@ -1,22 +1,29 @@
 {
-  "name": "@deepseek-ai/dsh-skins",
-  "description": "皮肤全家桶聚合插件：装它 = 全部皮肤包（qq98 / ths / xp / blue-fantasy / dragon-heir）+ 皮肤中心（skin-center）一次到位；皮肤启用互斥由 dsh-skin use 管理（~/.dsh/cordis.patch.yml managed 区段），因此皮肤包只进 dependencies、不进 patchFrom。",
-  "version": "0.1.1",
-  "private": true,
+  "name": "@linxin666/dsh-skins",
+  "description": "皮肤全家桶聚合插件：装它 = 皮肤中心（skin-center）+ 全部皮肤资产（qq98 / ths / xp / blue-fantasy / dragon-heir / minecraft / miku / trading 等，内置在包的 skins/ 目录，无需每皮肤独立 npm 包）。皮肤启用互斥由 dsh-skin use 管理（~/.dsh/cordis.patch.yml managed 区段），因此皮肤只进 skins/ 资产、不进 patchFrom。",
+  "version": "0.1.10",
   "type": "module",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
   },
+  "scripts": {
+    "build": "node build.mjs",
+    "prepare": "node build.mjs"
+  },
   "license": "BSD-3-Clause",
   "dependencies": {
-    "@deepseek-ai/dsh-client-ui-skin-center": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-skin-qq98": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-skin-ths": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-skin-xp": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-skin-blue-fantasy": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-skin-dragon-heir": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-skin-minecraft": "workspace:*"
+    "@linxin666/dsh-client-ui-skin-center": "workspace:*"
+  },
+  "files": [
+    "lib",
+    "skins",
+    "cordis.patch.yml"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git",
+    "directory": "packages/dsh-skins"
   }
 }

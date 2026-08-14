@@ -28,7 +28,7 @@ import { execSync } from 'node:child_process'
 const HOME = process.env.HOME
 const PROFILE_DIR = path.join(HOME, '.dsh', 'profiles', 'web')
 const PROFILE_MANIFEST = path.join(PROFILE_DIR, 'package.json')
-const PKG = '@deepseek-ai/dsh-client-ui-task-board'
+const PKG = '@linxin666/dsh-client-ui-task-board'
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 
 function readManifest() {

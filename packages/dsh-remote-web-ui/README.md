@@ -72,10 +72,13 @@ sun/moon toggle in every header flips to the dark palette at any time.
 
 ## Install
 
-Install the family aggregate package `@deepseek-ai/dsh-web-ui-all` (all plugins and skins in one) or this plugin alone:
+Install the family aggregate package `@linxin666/dsh-web-ui-all` (all plugins and skins in one) or this plugin alone:
 
 ```sh
-# Now (not yet published to npm): install from the dsh-web-ui monorepo
+# Recommended: install directly from npm
+dsh plugin --profile web add @linxin666/dsh-remote-web-ui
+
+# Or from the repository (development loop)
 git clone https://github.com/zhu1090093659/dsh-web-ui.git
 cd dsh-web-ui
 pnpm install && pnpm -r build
@@ -227,10 +230,19 @@ Notes:
 - Quick tunnels are free and need no login, but the hostname is random per
   run: every `cloudflared` restart changes it, so update `--trusted-host`
   and `publicBaseUrl` together. Cloudflare documents no uptime guarantees;
-  in-flight-request concurrency is capped (HTTP 429 past it), and Quick
-  Tunnels do not support Server-Sent Events — harmless here, because the
-  only SSE surface (the desktop panel status stream) is loopback-only and
-  the phone side uses plain requests plus heartbeats.
+  in-flight-request concurrency is capped (HTTP 429 past it), and **Quick
+  Tunnels do not forward Server-Sent Events**. `Tailscale Serve` (and
+  `tailscale serve` on a single port) behaves the same way. SSE is how the
+  phone receives **live messages** in real time, so over a quick tunnel or
+  Tailscale Serve the mobile chat falls back to polling: the phone still
+  sends and receives messages (everything else rides plain HTTP, which does
+  forward), only a new message may arrive a few seconds late instead of
+  instantly. The plugin polls `session.history` on a short interval once the
+  SSE channel goes silent, and resumes streaming as soon as SSE works again.
+  For true real-time push, point the QR at a tunnel that forwards SSE — a
+  Cloudflare **named tunnel** (domain hosted on Cloudflare, see below), or a
+  plain TCP port forward (LAN address, the `tailscale up` virtual-interface
+  address, or a manual `ssh -L` / cloudflared TCP tunnel to the port).
 - A quick tunnel is public: anyone with the URL can load the static page.
   The pairing gate is the real fence — unpaired devices get 403 on every
   `/api` call — so keep `requirePairingForLan` on.
@@ -251,9 +263,9 @@ Work from this repository (no sibling checkout needed):
 cd ~/code/dsh-web-ui
 export NPM_TOKEN='<token>'   # only if private @deepseek-ai auth is still required
 pnpm install
-pnpm --filter @deepseek-ai/dsh-remote-web-ui run build
-pnpm --filter @deepseek-ai/dsh-remote-web-ui test
-pnpm --filter @deepseek-ai/dsh-remote-web-ui run typecheck
+pnpm --filter @linxin666/dsh-remote-web-ui run build
+pnpm --filter @linxin666/dsh-remote-web-ui test
+pnpm --filter @linxin666/dsh-remote-web-ui run typecheck
 ```
 
 The peer APIs come from the official NPM SDK: every `@deepseek-ai/*` package

@@ -5,8 +5,8 @@
  * the ABSOLUTE path (regression: comparing repo-relative paths against the
  * resolved absolute list silently failed every discard).
  */
-import { describe, expect, it, vi } from 'vitest'
-import { GitService, type GitRunner } from '../src/host/git-service.ts'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { GitService, subprocessRunner, type GitRunner } from '../src/host/git-service.ts'
 import type { WorkspaceGate } from '../src/host/gate.ts'
 
 const ROOT = '/w'
@@ -158,5 +158,73 @@ describe('GitService.diff', () => {
     const service = new GitService(runner, gate, vi.fn(async () => ({ ok: true as const })))
     const result = await service.diff(ROOT, '../outside.txt', false)
     expect('content' in result).toBe(false)
+  })
+})
+
+describe('subprocessRunner spawn degradation', () => {
+  const collected = {
+    stdout: { readFrom: (offset: number) => ({ text: 'ok' }) },
+    stderr: { readFrom: (offset: number) => ({ text: '' }) },
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('degrades to a failed run when spawn throws synchronously', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ctx = {
+      subprocess: {
+        spawn: vi.fn(() => {
+          throw new Error('spawn ENOENT')
+        }),
+      },
+    }
+    const runner = subprocessRunner(ctx as never)
+
+    const result = await runner.run(['status'], '/w')
+
+    expect(result.exitCode).toBe(127)
+    expect(result.stdout).toBe('')
+    expect(result.stderr).toContain('spawn failed')
+    expect(errorSpy).toHaveBeenCalled()
+  })
+
+  it('returns the spawned outcome with collected output', async () => {
+    const ctx = {
+      subprocess: {
+        spawn: vi.fn(() => ({
+          done: Promise.resolve({ exitCode: 0 }),
+          collected,
+        })),
+      },
+    }
+    const runner = subprocessRunner(ctx as never)
+
+    const result = await runner.run(['status'], '/w')
+
+    expect(result).toEqual({ exitCode: 0, stdout: 'ok', stderr: '' })
+    expect(ctx.subprocess.spawn).toHaveBeenCalledWith(
+      expect.objectContaining({ argv: ['git', 'status'], cwd: '/w' }),
+    )
+  })
+
+  it('degrades to a failed run when the done promise rejects', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ctx = {
+      subprocess: {
+        spawn: vi.fn(() => ({
+          done: Promise.reject(new Error('killed')),
+          collected,
+        })),
+      },
+    }
+    const runner = subprocessRunner(ctx as never)
+
+    const result = await runner.run(['status'], '/w')
+
+    expect(result.exitCode).toBe(127)
+    expect(result.stderr).toContain('run failed')
+    expect(errorSpy).toHaveBeenCalled()
   })
 })

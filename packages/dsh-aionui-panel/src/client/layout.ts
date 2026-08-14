@@ -38,6 +38,20 @@ export function getFrameElement(): HTMLElement | null {
 }
 
 /**
+ * Locate the frame grid element the two panel columns append into. The web-ui
+ * aggregate's compat shim stamps `data-dsh-frame` onto the grid, but a
+ * STANDALONE install of this package has no shim (the attribute never
+ * appears), so the panel would wait forever and never mount (issue #56). Fall
+ * back to the rc.6-native structure: the frame grid is the parent of the
+ * sidebar column, exactly the element the shim would stamp.
+ */
+function findFrame(): HTMLElement | null {
+  const stamped = document.querySelector<HTMLElement>('[data-dsh-frame]')
+  if (stamped !== null) return stamped
+  return document.querySelector<HTMLElement>('[class*="sidebarCol"]')?.parentElement ?? null
+}
+
+/**
  * Parse an inline grid-template-columns string into its tracks. Handles
  * "minmax(0, 1fr)" (spaces inside parens must not split). Empty on failure.
  */
@@ -94,7 +108,7 @@ export class PanelLayoutController {
   mount(): void {
     const tryAttach = (): void => {
       if (this.frame !== null) return
-      const frame = document.querySelector<HTMLElement>('[data-dsh-frame]')
+      const frame = findFrame()
       if (frame === null) return
       this.attach(frame)
     }

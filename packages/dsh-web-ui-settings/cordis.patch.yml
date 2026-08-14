@@ -4,4 +4,4 @@
 # dsh-web-ui family plugins contribute their cards to.
 - insert:
     - id: ui-web-ui-settings
-      name: '@deepseek-ai/dsh-client-ui-web-ui-settings'
+      name: '@linxin666/dsh-client-ui-web-ui-settings'

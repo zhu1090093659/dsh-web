@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint GitHub Actions workflows
+        uses: docker://rhysd/actionlint:latest
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --ignore-scripts: the consistency checks below (gallery) compare the
+      # COMMITTED bundle artifacts against the committed gallery assets; a
+      # fresh build embeds the checkout's absolute path into every bundle
+      # (CSS-module hashes and \0dsh-css region markers), so rebuilt bytes
+      # would differ per machine and make the check non-deterministic. The
+      # explicit Build step below still verifies that everything builds.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Gallery consistency
+        run: pnpm gallery:check
+
+      - name: Skin center consistency
+        run: pnpm skin-center:check
+
+      - name: Build
+        run: pnpm build
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Script tests
+        run: pnpm test:scripts
+
+      - name: Aggregate package consistency
+        run: pnpm aggregate:check
+
+      - name: No emoji rule
+        run: |
+          python3 - <<'PY'
+          import pathlib, sys
+          ranges = [
+              (0x1F000, 0x1FAFF),   # extended-B emoji
+              (0x2600, 0x27BF),     # misc symbols + dingbats
+              (0x2B00, 0x2BFF),     # supplemental arrows and misc symbols
+              (0x1F1E6, 0x1F1FF),   # regional indicators
+          ]
+          singles = {0xFE0F, 0x200D}
+          skip_dirs = {'.git', 'node_modules', 'lib'}
+          skip_names = {'pnpm-lock.yaml'}
+          skip_suffixes = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.woff', '.woff2', '.ttf', '.otf', '.eot', '.pdf', '.zip', '.gz'}
+          bad = []
+          for p in pathlib.Path('.').rglob('*'):
+              if not p.is_file():
+                  continue
+              if any(part in skip_dirs for part in p.parts):
+                  continue
+              if p.name in skip_names or p.suffix.lower() in skip_suffixes:
+                  continue
+              try:
+                  text = p.read_text(encoding='utf-8')
+              except Exception:
+                  continue
+              for i, ch in enumerate(text):
+                  o = ord(ch)
+                  if o in singles or any(lo <= o <= hi for lo, hi in ranges):
+                      bad.append(f'{p}:{i + 1} U+{o:04X} {ch}')
+          if bad:
+              print('emoji rule violation:')
+              for line in bad:
+                  print('  ' + line)
+              sys.exit(1)
+          print('emoji rule passed')
+          PY

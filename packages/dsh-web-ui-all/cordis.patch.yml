@@ -2,52 +2,57 @@
 # This file is derived from the aggregate.yml manifest in this package;
 # edit aggregate.yml and rerun `node scripts/aggregate.mjs`.
 
-# from ../dsh-aionui-panel
+# from self
 - insert:
-    - id: ui-dsh-aionui-panel
-      name: '@deepseek-ai/dsh-client-ui-aionui-panel'
-
-# from ../dsh-task-board
-- insert:
-    - id: ui-task-board
-      name: '@deepseek-ai/dsh-client-ui-task-board'
-
-# from ../dsh-git-graph
-- insert:
-    - id: ui-git-graph
-      name: '@deepseek-ai/dsh-client-ui-git-graph'
-
-# from ../dsh-pet
-- insert:
-    - id: pet
-      name: '@deepseek-ai/dsh-pet'
-
-# from ../dsh-remote-web-ui
-- insert:
-    - id: remote-web-ui
-      name: '@deepseek-ai/dsh-remote-web-ui'
-
-# from ../dsh-live-stats
-- insert:
-    - id: live-stats
-      name: '@deepseek-ai/dsh-live-stats'
-
-# from ../dsh-ssh
-- insert:
-    - id: ssh
-      name: '@deepseek-ai/dsh-ssh'
+    - id: ui-web-ui-compat
+      name: '@linxin666/dsh-web-ui-all'
 
 # from ../dsh-web-ui-settings
 - insert:
     - id: ui-web-ui-settings
-      name: '@deepseek-ai/dsh-client-ui-web-ui-settings'
+      name: '@linxin666/dsh-client-ui-web-ui-settings'
+
+# from ../dsh-aionui-panel
+- insert:
+    - id: ui-dsh-aionui-panel
+      name: '@linxin666/dsh-client-ui-aionui-panel'
+
+# from ../dsh-task-board
+- insert:
+    - id: ui-task-board
+      name: '@linxin666/dsh-client-ui-task-board'
+
+# from ../dsh-git-graph
+- insert:
+    - id: ui-git-graph
+      name: '@linxin666/dsh-client-ui-git-graph'
+
+# from ../dsh-pet
+- insert:
+    - id: pet
+      name: '@linxin666/dsh-pet'
+
+# from ../dsh-remote-web-ui
+- insert:
+    - id: remote-web-ui
+      name: '@linxin666/dsh-remote-web-ui'
+
+# from ../dsh-live-stats
+- insert:
+    - id: live-stats
+      name: '@linxin666/dsh-live-stats'
+
+# from ../dsh-ssh
+- insert:
+    - id: ssh
+      name: '@linxin666/dsh-ssh'
 
 # from ../dsh-beyond-workscope
 - insert:
     - id: beyond-workscope
-      name: '@deepseek-ai/dsh-beyond-workscope'
+      name: '@linxin666/dsh-beyond-workscope'
 
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:
     - id: ui-skin-center
-      name: '@deepseek-ai/dsh-client-ui-skin-center'
+      name: '@linxin666/dsh-client-ui-skin-center'

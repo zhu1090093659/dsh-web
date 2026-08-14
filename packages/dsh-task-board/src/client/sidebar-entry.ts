@@ -20,21 +20,24 @@ import css from './board.module.css'
 /** Stable data attribute identifying the injected entry row. */
 export const ENTRY_SELECTOR = '[data-dsh-taskboard-entry]'
 
-/** The sidebar column is the grid item AppFrame renders with this pane marker. */
-const SIDEBAR_COLUMN_SELECTOR = '[data-pane="sidebar"]'
-
 /** Inline icon (matches the shell's 16px nav-icon look). */
 const ICON = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M6.5 6.5v7"/></svg>`
 
 /** Find the sidebar shell root element, or undefined while not yet mounted. */
 function sidebarRoot(): HTMLElement | undefined {
-  const column = document.querySelector<HTMLElement>(SIDEBAR_COLUMN_SELECTOR)
-  const root = column?.firstElementChild as HTMLElement | undefined
-  return root ?? undefined
+  const column = document.querySelector<HTMLElement>('[data-pane="sidebar"], [class*="sidebarCol"]')
+  if (column === null) return undefined
+  // Current shells wrap the sidebar UI: column > wrapper > root(logoRow owner).
+  // Prefer the element that owns the logo row — the real sidebar UI root —
+  // and fall back to the column's first child for legacy shells.
+  const logoOwner = column.querySelector<HTMLElement>('[class*="logoRow"]')?.parentElement
+  return logoOwner ?? (column.firstElementChild as HTMLElement | undefined)
 }
 
-/** The New Session button: the shell's only direct-child button of the root. */
+/** The New Session button: nested in the logo row on current shells, a direct child on legacy shells. */
 function newSessionButton(root: HTMLElement): HTMLButtonElement | undefined {
+  const nested = root.querySelector<HTMLButtonElement>('button[class*="newSession"]')
+  if (nested !== null) return nested
   for (const child of root.children) {
     if (child.tagName === 'BUTTON') return child as HTMLButtonElement
   }
@@ -53,14 +56,26 @@ function createEntry(controller: BoardController): HTMLButtonElement {
   return entry
 }
 
-/** Re-insert the entry after the New Session button (before the browser region). */
+/** Re-insert the entry after the New Session row (before the browser region). */
 function placeEntry(root: HTMLElement, entry: HTMLButtonElement): boolean {
   const button = newSessionButton(root)
   if (button === undefined) return false
   if (entry.parentElement !== root) {
-    // Insert after the button: React never manages this node, and the shell
-    // keeps its own child order intact around it.
-    root.insertBefore(entry, button.nextElementSibling)
+    // Position relative to the family block (entries injected by sibling
+    // plugins), never relative to transient logoRow geometry: every family
+    // plugin that self-heals during a re-render then lands in the same
+    // relative order, so the entries cannot swap positions regardless of
+    // observer callback order or of shell wrapper changes. There is no
+    // append-to-end fallback: appending at the end would randomly reorder
+    // the block after a shell re-render.
+    const row = button.closest('[class*="logoRow"]')
+    const base = (row !== null && row.parentElement === root) ? row : button
+    const family = Array.from(root.children).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement && el.matches('[data-dsh-taskboard-entry], [data-dsh-ssh-entry]'),
+    )
+    // task board sits before the whole family block.
+    const anchor = family.length > 0 ? family[0] : base.nextElementSibling
+    root.insertBefore(entry, anchor)
   }
   return true
 }
@@ -77,14 +92,37 @@ export function mountSidebarEntry(controller: BoardController): () => void {
   let placed = false
 
   const tryPlace = (): void => {
-    if (placed) return
+    if (root !== undefined && !root.isConnected) {
+      // The shell rebuilt the sidebar pane (whole-tree teardown); the root
+      // observer is gone with the old tree, so detach it and re-query from
+      // scratch. The new pane is later noticed by the body-level watcher.
+      rootObserver.disconnect()
+      root = undefined
+      placed = false
+    }
+    if (placed) {
+      // Cheap short-circuit: entry still lives in a mountable subtree.
+      if (document.body.contains(entry)) return
+      // Entry was torn down together with the old tree; reset and re-place.
+      rootObserver.disconnect()
+      root = undefined
+      placed = false
+    }
     root ??= sidebarRoot()
     if (root === undefined) return
     placed = placeEntry(root, entry)
-    if (placed) rootObserver.observe(root, { childList: true, subtree: true })
+    if (placed) {
+      rootObserver.observe(root, { childList: true, subtree: true })
+    }
   }
 
-  // The shell renders after boot settlement; watch for its arrival.
+  // Body-level watcher retained as the "whole rebuild" fallback: when the shell
+  // tears down the whole sidebar pane, the root observer is gone with it and
+  // only this body observation can notice the new pane mounting. It is no
+  // longer disconnected after placement; the placed-and-still-mounted case
+  // short-circuits through the cheap document.body.contains(entry) check, so
+  // unrelated app mutations (e.g. chat streaming) cost one contains check
+  // instead of churning the full re-query.
   const waitObserver = new MutationObserver(() => { tryPlace() })
   waitObserver.observe(document.body, { childList: true, subtree: true })
 

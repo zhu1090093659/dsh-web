@@ -7,4 +7,4 @@
 
 - insert:
     - id: remote-web-ui
-      name: '@deepseek-ai/dsh-remote-web-ui'
+      name: '@linxin666/dsh-remote-web-ui'

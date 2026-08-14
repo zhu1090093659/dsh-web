@@ -31,10 +31,3 @@
 - 需要装饰性符号时，改用非 emoji 的普通字符（如 `×`、`-`、`*`），或直接去掉。
 - 新提交前先检查：`git diff` 或全局搜索 Unicode Emoji 范围字符。
 
-## git push 与 NPM 发布已放开（内测结束）
-
-**git push 已放开**：可正常执行 `git push` 到远程仓库 `dsh-external/dsh-web-ui`，
-推送前仍须核验目标仓库为 PRIVATE。
-
-**内测已结束，NPM 包可按正常流程发布**：本仓库任何包（`@deepseek-ai/dsh-*`）发布前
-仍需由维护者确认发布动作、版本号与 registry 规范，避免误发或破坏线上包。

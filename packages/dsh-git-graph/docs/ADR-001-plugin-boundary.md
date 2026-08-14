@@ -2,6 +2,8 @@
 
 状态：已实现。日期：2026-08-09。
 
+> 修正（2026-08）：分支 chip 挂载槽位为官方声明的 `conversation.input.selector.context`（list、session-maybe 作用域），与官方工作区选择胶囊并排。此前 acbcf80 曾把 chip 迁到 `conversation.input.dock`，理由是「selector-context 洞在 rc.6 从未声明」——该前提不成立：随发行 shell 的 apply.ts 同时声明了 selector-context（session-maybe）与 dock（session），selector-context 才是分支 chip 的正确席位，现已回迁。hero（空白会话）与 active 会话相位都挂载；见 README 挂载 seam。
+
 ## 背景
 
 需求：在 dsh Web 常驻会话 header 行提供「git 分支选择器 + Git 图谱」，紧跟官方工作区选择器旁。git 能力必须在 host 进程执行（磁盘工作树真实 `git switch`），UI 在浏览器 React（`packages/client/*`）。需要先回答两个问题：外部插件能否向 Web 客户端注入模块、host 侧 RPC 是否可扩展。

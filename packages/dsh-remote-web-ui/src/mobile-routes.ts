@@ -60,7 +60,7 @@ export function makeMobileRoutes(): WebRoute[] {
   const handleBundle = async (_req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const path = mobileBundlePath()
     if (!existsSync(path)) {
-      writeStatic(res, 503, 'text/plain', 'mobile bundle not built: run pnpm --filter @deepseek-ai/dsh-remote-web-ui build')
+      writeStatic(res, 503, 'text/plain', 'mobile bundle not built: run pnpm --filter @linxin666/dsh-remote-web-ui build')
       return
     }
     try {

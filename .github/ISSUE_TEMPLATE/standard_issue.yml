@@ -1,0 +1,84 @@
+name: 功能请求或问题 (Request or question)
+description: 请求新功能、更新文档或提出项目问题。
+title: "[Issue]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请保持本模板完整并填写所有必填部分。删除必填部分的 Issue 将被自动关闭。Bug 请使用「Bug 报告」表单。
+  - type: dropdown
+    id: plugin
+    attributes:
+      label: 涉及插件
+      description: 选择问题涉及的插件或区域；不确定可选「其他」。
+      options:
+        - 任务看板 (dsh-task-board)
+        - Git 图谱 (dsh-git-graph)
+        - 右侧面板 (dsh-aionui-panel)
+        - 远程 Web UI (dsh-remote-web-ui)
+        - SSH 远程运维 (dsh-ssh)
+        - 实时令牌统计 (dsh-live-stats)
+        - 宠物 (dsh-pet)
+        - 皮肤 / 皮肤中心 (dsh-skins)
+        - 聚合包 / 安装 (dsh-web-ui-all / dsh-web-ui-settings)
+        - 其他 / 不确定
+    validations:
+      required: true
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue 类型
+      description: 选择最接近的分类。
+      options:
+        - 功能请求
+        - 文档
+        - 问题
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: 摘要
+      description: 用一两句话描述问题或请求。
+      placeholder: 问题或请求的变更是什么？
+    validations:
+      required: true
+  - type: textarea
+    id: expected-outcome
+    attributes:
+      label: 预期结果
+      description: 描述问题解决后应达成的效果。
+      placeholder: 你期望的结果是什么？
+    validations:
+      required: true
+  - type: textarea
+    id: details-reproduction
+    attributes:
+      label: 详情 / 复现步骤
+      description: 若是 Bug，请给出复现步骤；若是请求，请说明使用场景与约束。
+      placeholder: |
+        1. 打开 ...
+        2. 点击 ...
+        3. 出现 ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息
+      description: DSH 版本、浏览器、插件名称与版本、操作系统及关键配置。与具体环境无关时填 N/A。
+      placeholder: |
+        - DSH 版本:
+        - 浏览器:
+        - 插件名称 / 版本:
+        - 操作系统:
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 补充信息
+      description: 如有截图、日志、链接或其他上下文，请补充。
+    validations:
+      required: false

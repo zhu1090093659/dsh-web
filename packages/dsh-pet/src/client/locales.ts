@@ -1,6 +1,6 @@
 /**
  * dsh-pet locale dictionaries (zh/en).
- * @module @deepseek-ai/dsh-pet/client/locales
+ * @module @linxin666/dsh-pet/client/locales
  */
 
 /** Dictionary namespace this package registers. */
@@ -39,6 +39,7 @@ export const zh = {
   'settings.off': '关',
   'settings.overridden': '已覆盖',
   'settings.reset': '恢复默认',
+  'settings.notExposed': '当前 DSH 版本未向设置页暴露本插件的配置命名空间，表单不可用。可编辑 ~/.dsh/settings.yaml 直接配置，或为 dsh-host-apiproxy 的 WEB_SETTINGS_NAMESPACES 白名单补充本命名空间后重启。',
   'settings.readOnly': '当前部署的设置只读。',
   'settings.expand': '展开设置',
   'settings.collapse': '收起设置',
@@ -83,6 +84,7 @@ export const en = {
   'settings.off': 'Off',
   'settings.overridden': 'Overridden',
   'settings.reset': 'Reset to default',
+  'settings.notExposed': 'This DSH version does not expose this plugin\'s settings namespace to the configuration page, so the form is unavailable. Edit ~/.dsh/settings.yaml directly, or add the namespace to dsh-host-apiproxy\'s WEB_SETTINGS_NAMESPACES allowlist and restart.',
   'settings.readOnly': 'This deployment stores settings read-only.',
   'settings.expand': 'Show settings',
   'settings.collapse': 'Hide settings',
@@ -99,6 +101,35 @@ export type PetKey = keyof typeof zh
 
 /** The settings-card slice of the pet dictionary. */
 export type SettingsCardKey = PetKey
+
+/**
+ * Active dictionary, picked by the document language at call time. The pet
+ * mounts as a global floating surface (not a session-scoped slot), so it has
+ * no framework locale seat and resolves its copy the same tiny way the
+ * task-board's DOM-injected surface does.
+ */
+export function dictionary(): Record<PetKey, string> {
+  const lang = typeof document !== 'undefined' ? document.documentElement.lang : 'zh'
+  return lang.toLowerCase().startsWith('en') ? en : zh
+}
+
+/**
+ * Translate a key with optional `{name}` template params. Mirrors the slot
+ * `Translate` contract `(key, params?) => string` so it can be handed to the
+ * same components that used to receive the framework-injected `t` seat. The
+ * key is typed loosely (`string`) so the function is assignable to the slot's
+ * `TranslateNS<'pet'>` (whose key domain also spans the shared common
+ * vocabulary); a missing key degrades to the key itself rather than throwing.
+ */
+export function t(key: string, params?: Record<string, unknown>): string {
+  let text: string = (dictionary() as Record<string, string>)[key] ?? key
+  if (params !== undefined) {
+    for (const [name, value] of Object.entries(params)) {
+      text = text.replaceAll(`{${name}}`, String(value))
+    }
+  }
+  return text
+}
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {

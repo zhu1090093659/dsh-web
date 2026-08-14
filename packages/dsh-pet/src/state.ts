@@ -8,7 +8,7 @@
  * animation decision, and a one-shot "celebration" window after `done` so the
  * pet visibly jumps before settling back to idle. Everything here is a pure
  * function of (input, nowMs); persistence and RPC live in the service.
- * @module @deepseek-ai/dsh-pet/state
+ * @module @linxin666/dsh-pet/state
  */
 
 /** The DSH `activity/status` phase vocabulary (wire contract of session events). */

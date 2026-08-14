@@ -42,8 +42,8 @@ export function validateHostPayload(payload: unknown): string | undefined {
     if (auth.kind === 'key' && (typeof auth.keyPath !== 'string' || auth.keyPath.trim() === '')) {
       return 'auth.keyPath is required for key auth'
     }
-    if (auth.kind === 'password' && (typeof auth.password !== 'string' || auth.password === '')) {
-      return 'auth.password is required for password auth'
+    if (auth.kind === 'password' && auth.password !== undefined && typeof auth.password !== 'string') {
+      return 'auth.password must be a string when provided'
     }
   }
   if (p.port !== undefined && (typeof p.port !== 'number' || !Number.isInteger(p.port) || p.port < 1 || p.port > 65535)) {
@@ -58,12 +58,12 @@ export function validateHostPayload(payload: unknown): string | undefined {
   return undefined
 }
 
-/** The alias grammar (same as the scaffold rule: lowercase, digits, single hyphens). */
-const ALIAS_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
+/** Alias grammar: letters/digits plus dots, hyphens, underscores (IP/domain aliases included). */
+const ALIAS_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/
 
 /** Validate an alias for creation. */
 export function validateAlias(alias: string): string | undefined {
-  if (!ALIAS_RE.test(alias)) return 'alias must be lowercase letters, digits and single hyphens'
+  if (!ALIAS_RE.test(alias)) return 'alias must be letters, digits, dots, hyphens or underscores'
   return undefined
 }
 
@@ -188,8 +188,8 @@ export class HostStore {
       if (auth.kind === 'key' && (typeof auth.keyPath !== 'string' || auth.keyPath.trim() === '')) {
         throw new Error('auth.keyPath is required for key auth')
       }
-      if (auth.kind === 'password' && (typeof auth.password !== 'string' || auth.password === '')) {
-        throw new Error('auth.password is required for password auth')
+      if (auth.kind === 'password' && auth.password !== undefined && typeof auth.password !== 'string') {
+        throw new Error('auth.password must be a string when provided')
       }
       // A changed key path with no passphrase means the new key has none;
       // only keep the old passphrase when the key path is unchanged.

@@ -1,25 +1,47 @@
 {
-  "name": "@deepseek-ai/dsh-web-ui-all",
-  "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / remote-web-ui / live-stats / web-ui-settings）+ 皮肤全家桶（dsh-skins）。",
-  "version": "0.1.1",
-  "private": true,
+  "name": "@linxin666/dsh-web-ui-all",
+  "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / remote-web-ui / live-stats / web-ui-settings / compat shim）+ 皮肤全家桶（dsh-skins，皮肤资产内置）。compat 桥接层已并入本包（src/client），无需独立 compat npm 包。",
+  "version": "0.1.10",
   "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
     }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepare": "tsdown",
+    "watch": "tsdown --watch"
   },
   "license": "BSD-3-Clause",
   "dependencies": {
-    "@deepseek-ai/dsh-client-ui-aionui-panel": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-task-board": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-git-graph": "workspace:*",
-    "@deepseek-ai/dsh-pet": "workspace:*",
-    "@deepseek-ai/dsh-remote-web-ui": "workspace:*",
-    "@deepseek-ai/dsh-live-stats": "workspace:*",
-    "@deepseek-ai/dsh-ssh": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-web-ui-settings": "workspace:*",
-    "@deepseek-ai/dsh-beyond-workscope": "workspace:*",
-    "@deepseek-ai/dsh-skins": "workspace:*"
+    "@linxin666/dsh-client-ui-aionui-panel": "workspace:*",
+    "@linxin666/dsh-client-ui-task-board": "workspace:*",
+    "@linxin666/dsh-client-ui-git-graph": "workspace:*",
+    "@linxin666/dsh-pet": "workspace:*",
+    "@linxin666/dsh-remote-web-ui": "workspace:*",
+    "@linxin666/dsh-live-stats": "workspace:*",
+    "@linxin666/dsh-ssh": "workspace:*",
+    "@linxin666/dsh-client-ui-web-ui-settings": "workspace:*",
+    "@linxin666/dsh-beyond-workscope": "workspace:*",
+    "@linxin666/dsh-skins": "workspace:*"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
   }
 }

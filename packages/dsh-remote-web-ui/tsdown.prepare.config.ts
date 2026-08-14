@@ -8,7 +8,7 @@ import { clientBundle, mobileBundle } from '../../shared/tsdown.client.ts'
  * emitted too: the modules node half serves lib/client.js to browsers, so a
  * git-installed package must ship it.
  */
-export default clientBundle('@deepseek-ai/dsh-remote-web-ui', ['src/index.ts', 'src/invariant.ts'], {
+export default clientBundle('@linxin666/dsh-remote-web-ui', ['src/index.ts', 'src/invariant.ts'], {
   libExternal: [/^@deepseek-ai\/dsh-host-apiproxy/],
-  companions: [mobileBundle('@deepseek-ai/dsh-remote-web-ui', 'src/mobile/index.tsx')],
+  companions: [mobileBundle('@linxin666/dsh-remote-web-ui', 'src/mobile/index.tsx')],
 })

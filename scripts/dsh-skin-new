@@ -384,7 +384,7 @@ pnpm test    # vitest: apply/dispose contract spec
 
 \`\`\`sh
 node scripts/skin-center-bundles    # re-embed this skin into skin-center's registry
-pnpm --filter @deepseek-ai/dsh-client-ui-skin-center build
+pnpm --filter @linxin666/dsh-client-ui-skin-center build
 node scripts/gallery-build          # refresh the gallery manifest/bundles
 node scripts/capture-previews       # re-shoot preview/light.png + preview/dark.png
 \`\`\`
@@ -448,7 +448,7 @@ function main() {
   console.log(`  4. pnpm build && pnpm test           — 构建 + 契约测试`)
   console.log(`  5. open gallery/preview.html?skin=${name}&theme=light  — 试穿`)
   console.log(`  6. node scripts/capture-previews     — 重拍 preview/{light,dark}.png`)
-  console.log(`  7. node scripts/skin-center-bundles && pnpm --filter @deepseek-ai/dsh-client-ui-skin-center build`)
+  console.log(`  7. node scripts/skin-center-bundles && pnpm --filter @linxin666/dsh-client-ui-skin-center build`)
   console.log(`  8. node scripts/gallery-build        — 刷新 gallery`)
   console.log('  9. 提交（含 lib/、preview/、重新生成的注册表与 gallery 产物）并发 PR')
   console.log('')

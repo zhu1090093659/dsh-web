@@ -10,7 +10,7 @@
  * whale-girl atlas is produced by the hatch-pet pipeline, so calibrate
  * `TRACKS` against the actual run (`pet_request.json` frame counts) when the
  * asset lands. Tracks that do not loop hand off to `fallback`.
- * @module @deepseek-ai/dsh-pet/client/spritesheet
+ * @module @linxin666/dsh-pet/client/spritesheet
  */
 
 import type { PetAnimation } from '../state.ts'

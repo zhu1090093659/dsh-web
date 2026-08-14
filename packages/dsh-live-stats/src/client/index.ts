@@ -7,6 +7,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-token-meter/client'
 import { LiveStatsSettingsCard, LiveStatsSettingsCardController, type LiveStatsSettings } from './LiveStatsSettingsCard.tsx'
+import { TpsLineDockEntry } from './TpsLine.tsx'
 import { en, zh, type SettingsCardKey } from './locales.ts'
 
 export { TpsLine, formatTokensPerSecond } from './TpsLine.tsx'
@@ -66,4 +67,15 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
     inject: () => liveStatsSettings.inject(),
   }, LiveStatsSettingsCard))
+
+  // The live TPS row mounts on the composer dock (the shipped stats-line
+  // seat). Its session standard kit supplies `useProjection`, which reads the
+  // host's `liveTokenUsage` projection. Previously TpsLine was only exported
+  // for shell integration and never actually mounted on rc.6 (issue #56).
+  ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
+    name: 'conversation.composer.dock',
+    id: 'live-stats',
+    order: 100,
+    inject: () => ({}),
+  }, TpsLineDockEntry))
 }

@@ -1,0 +1,133 @@
+#!/usr/bin/env node
+'use strict'
+
+/**
+ * deploy-gallery — 将 dsh-web-ui 皮肤画廊（gallery/）组装成独立静态站点，
+ * 并部署到 Cloudflare Pages。
+ *
+ * 组装：把 gallery/ 的入口文件放到站点根（index.html 放根，使其
+ * `../packages/skins/<id>/preview/<mode>.png` 与 `../README.md` 相对引用解析到
+ * 站点根下），并把每个皮肤的 preview PNG 按 `packages/skins/<id>/preview/`
+ * 平铺到站点根。
+ *
+ * 部署：调用 wrangler pages deploy 上传到 Pages 项目（默认
+ * dsh-market-gallery，自定义域名 gallery.dsh-market.com 已挂在该项目上，
+ * 无需重复配置）。
+ *
+ * 前置：gallery 产物须已生成并提交 —— `pnpm gallery:build` 生成
+ * manifest.js / bundles.js；official-facade.js 由 scripts/export-official-facade
+ * 生成；preview PNG 由 scripts/capture-previews 生成。本脚本只做组装与部署，
+ * 不重建产物（重建会嵌入构建机绝对路径，破坏 gallery 产物的确定性）。
+ *
+ * 认证：本机用 `wrangler login`（OAuth）；CI 用 CLOUDFLARE_API_TOKEN /
+ * CLOUDFLARE_ACCOUNT_ID 环境变量（wrangler 自动读取）。
+ *
+ * 用法：
+ *   node scripts/deploy-gallery                       # 部署到默认项目
+ *   node scripts/deploy-gallery --project-name xxx    # 指定 Pages 项目名
+ *   node scripts/deploy-gallery --dry-run             # 只组装不部署
+ *   node scripts/deploy-gallery --out <dir>           # 指定组装输出目录
+ *   node scripts/deploy-gallery --wrangler "pnpm dlx wrangler@4"  # 指定 wrangler 命令
+ */
+
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
+const { spawnSync } = require('node:child_process')
+
+const ROOT = path.resolve(__dirname, '..')
+const GALLERY_DIR = path.join(ROOT, 'gallery')
+const ROOT_FILES = ['index.html', 'preview.html', 'manifest.js', 'bundles.js', 'official-facade.js']
+
+function opt(name, fallback) {
+  const i = process.argv.indexOf(name)
+  return i >= 0 && process.argv[i + 1] !== undefined ? process.argv[i + 1] : fallback
+}
+const has = (name) => process.argv.includes(name)
+
+const projectName = opt('--project-name', 'dsh-market-gallery')
+const wranglerCmd = opt('--wrangler', 'wrangler')
+const outOverride = opt('--out', null)
+const dryRun = has('--dry-run')
+
+function fail(msg) {
+  console.error('deploy-gallery: ' + msg)
+  process.exit(1)
+}
+
+function copy(src, dst) {
+  fs.mkdirSync(path.dirname(dst), { recursive: true })
+  fs.copyFileSync(src, dst)
+}
+
+/** 从 manifest.js 解析出每个皮肤的 preview.light/dark 相对路径。 */
+function previewPaths(manifestText) {
+  const json = manifestText
+    .replace(/^\/\*[\s\S]*?\*\/\s*/, '')
+    .replace(/^window\.SKIN_MANIFEST = /, '')
+    .replace(/;\s*$/, '')
+  const manifest = JSON.parse(json)
+  const paths = []
+  for (const skin of manifest.skins || []) {
+    const preview = skin.preview || {}
+    for (const mode of ['light', 'dark']) {
+      if (typeof preview[mode] === 'string' && preview[mode]) paths.push(preview[mode])
+    }
+  }
+  return paths
+}
+
+function stage(outDir) {
+  fs.rmSync(outDir, { recursive: true, force: true })
+  fs.mkdirSync(outDir, { recursive: true })
+
+  // 1) 画廊入口文件 -> 站点根
+  for (const f of ROOT_FILES) {
+    const src = path.join(GALLERY_DIR, f)
+    if (!fs.existsSync(src)) {
+      fail(`缺少 ${f}（先运行 pnpm gallery:build 与 scripts/export-official-facade 生成 gallery 产物）`)
+    }
+    copy(src, path.join(outDir, f))
+  }
+  // index.html 里的 ../README.md -> /README.md
+  const readme = path.join(ROOT, 'README.md')
+  if (fs.existsSync(readme)) copy(readme, path.join(outDir, 'README.md'))
+
+  // Cloudflare Pages _headers（可选）：自定义响应头（缓存策略等）
+  const headers = path.join(GALLERY_DIR, '_headers')
+  if (fs.existsSync(headers)) copy(headers, path.join(outDir, '_headers'))
+
+  // 2) preview PNG -> packages/skins/<id>/preview/（与 ../ 引用对齐）
+  const rels = previewPaths(fs.readFileSync(path.join(outDir, 'manifest.js'), 'utf8'))
+  const missing = []
+  for (const rel of rels) {
+    const src = path.resolve(ROOT, rel)
+    if (!fs.existsSync(src)) { missing.push(rel); continue }
+    copy(src, path.join(outDir, rel))
+  }
+  if (missing.length) fail('以下 preview 文件不存在：\n  ' + missing.join('\n  '))
+  return rels.length
+}
+
+function shellQuote(s) {
+  return "'" + String(s).replace(/'/g, "'\\''") + "'"
+}
+
+function deploy(outDir) {
+  const args = ['pages', 'deploy', shellQuote(outDir), '--project-name', shellQuote(projectName), '--commit-dirty=true']
+  const cmd = [wranglerCmd, ...args].join(' ')
+  console.log('$ ' + [wranglerCmd, 'pages', 'deploy', outDir, '--project-name', projectName].join(' '))
+  const res = spawnSync(cmd, { stdio: 'inherit', shell: true })
+  if (res.error) fail('无法执行 wrangler：' + res.error.message + '（可用 --wrangler 指定命令，或先运行 wrangler login）')
+  if (res.status !== 0) process.exit(res.status === null ? 1 : res.status)
+}
+
+function main() {
+  const outDir = outOverride || fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-market-gallery-'))
+  const previewCount = stage(outDir)
+  console.log(`deploy-gallery: 组装完成 -> ${outDir}（${ROOT_FILES.length + 1} 个根文件 + ${previewCount} 个 preview PNG）`)
+  if (dryRun) { console.log('dry-run：跳过部署。'); return }
+  deploy(outDir)
+}
+
+main()

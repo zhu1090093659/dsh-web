@@ -1,7 +1,13 @@
 # 聚合包清单：patchFrom 的包其 cordis.patch.yml insert 行会被汇总进本包 patch
 # deps 的包进 package.json dependencies（workspace:*）
 # dsh-skins 的 patch 行只有 ui-skin-center，汇总后自然展开
+# self: 聚合包自身也作为插件加载（compat shim 的 host/client 已并入本包，
+# 不再需要独立的 dsh-web-ui-compat npm 包 —— npm 对新包名收费）
+# 顺序注意：ui-web-ui-settings 排在最前（self 之后），先声明
+# web-ui.plugin.item 子槽位，其余插件的设置卡再注入（slots.inject 声明感知，
+# 但更早的声明让设置组在任何卡片之前就位，避免观感上的注册顺序歧义）。
 patchFrom:
+  - ../dsh-web-ui-settings
   - ../dsh-aionui-panel
   - ../dsh-task-board
   - ../dsh-git-graph
@@ -9,9 +15,10 @@ patchFrom:
   - ../dsh-remote-web-ui
   - ../dsh-live-stats
   - ../dsh-ssh
-  - ../dsh-web-ui-settings
   - ../dsh-beyond-workscope
   - ../dsh-skins
+self:
+  - ui-web-ui-compat
 deps:
   - ../dsh-aionui-panel
   - ../dsh-task-board

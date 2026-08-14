@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-live-stats`.
- * @module @deepseek-ai/dsh-live-stats/invariant
+ * Package-owned invariant companion for `@linxin666/dsh-live-stats`.
+ * @module @linxin666/dsh-live-stats/invariant
  */
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-live-stats'
+const PACKAGE_NAME = '@linxin666/dsh-live-stats'
 
 /** Cordis companion plugin name. */
 export const name = 'live-stats-invariant'

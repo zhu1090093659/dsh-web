@@ -250,7 +250,7 @@ describe('skin-center routes', () => {
     // The body is the prebuilt bundle text, executable as a script (it
     // registers the factory via window.__ModuleLoader__.load).
     expect(response.raw).toContain('window.__ModuleLoader__.load')
-    expect(response.raw).toContain('@deepseek-ai/dsh-client-ui-skin-qq98')
+    expect(response.raw).toContain('@linxin666/dsh-client-ui-skin-qq98')
   })
 
   it('GET /bundle/<id> 404s unknown skins and missing bundles', async () => {

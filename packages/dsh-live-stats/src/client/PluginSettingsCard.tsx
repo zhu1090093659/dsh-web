@@ -33,7 +33,7 @@ export interface PluginSettingsCardProps {
 /**
  * Render one plugin settings card.
  * @param props - the plugin's copy keys, its form state, and its controls.
- * @returns the card, or nothing when the namespace is unavailable.
+ * @returns the card, or nothing while the namespace is still loading.
  */
 export function PluginSettingsCard(props: PluginSettingsCardProps) {
   const [open, setOpen] = useState(false)
@@ -43,6 +43,37 @@ export function PluginSettingsCard(props: PluginSettingsCardProps) {
   const blocked = !state.dirty || state.invalid || state.saving
   const cardClass = open ? `${css.cardOpen} ${css.card}` : css.card
   const description = props.t(props.descriptionKey)
+  // The namespace exists but the Host does not serve it to this client (the
+  // official settings allowlist omits third-party namespaces): show a card
+  // that explains the gap instead of vanishing, so a missing card never
+  // reads as a missing plugin.
+  if (!state.exposed) {
+    return (
+      <li className={cardClass}>
+        <button
+          type="button"
+          className={css.header}
+          aria-expanded={open}
+          aria-label={`${props.t(open ? 'settings.collapse' : 'settings.expand')}: ${title}`}
+          title={description}
+          onClick={() => { setOpen(!open) }}
+        >
+          <span className={css.headText}>
+            <span className={css.name} title={title}>{title}</span>
+            <span className={css.description}>{description}</span>
+          </span>
+          <span className={open ? css.chevronOpen : css.chevron}>▾</span>
+        </button>
+        {open
+          ? (
+            <div className={css.body}>
+              <p className={css.notExposed} role="status">{props.t('settings.notExposed')}</p>
+            </div>
+          )
+          : null}
+      </li>
+    )
+  }
   return (
     <li className={cardClass}>
       <button

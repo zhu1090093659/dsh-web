@@ -40,8 +40,16 @@ export interface FieldState {
 
 /** Form state every plugin settings card shares. */
 export interface CardShell {
-  /** False while the namespace is not served to this client; the card renders nothing. */
+  /** False while the namespace is still loading; the card renders nothing. */
   available: boolean
+  /**
+   * Whether the namespace is actually served to this client. False when the
+   * Host deployment does not expose it (e.g. the official apiproxy settings
+   * allowlist omits third-party namespaces): the card renders an explanation
+   * instead of its form, so a missing namespace never looks like a missing
+   * plugin.
+   */
+  exposed: boolean
   /** Whether the Host document accepts writes. */
   writable: boolean
   /** Whether the form holds edits that a save would write. */
@@ -157,7 +165,8 @@ export class CardForm<T> {
     const snapshot = this.scope.getSnapshot()
     const plan = this.plan()
     return {
-      available: snapshot.status === 'ready',
+      available: snapshot.status !== 'loading',
+      exposed: snapshot.status === 'ready',
       writable: snapshot.writable,
       dirty: plan.length > 0,
       invalid: plan.some(item => item.run === undefined),

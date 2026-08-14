@@ -20,37 +20,42 @@
  * Switch = rewrite the managed patch section → HMR re-scans → refresh the
  * page. Only ONE skin row is ever enabled: every non-active skin gets an
  * id-target `disabled: true` row (which also neutralizes skins wired at
- * the bundle layer, e.g. ui-skin-xp), and the active skin gets its insert
- * row (xp needs none — the bundle layer already carries it).
+ * the bundle layer), and the active skin gets its insert row.
  */
 
 const fs = require('node:fs')
 const path = require('node:path')
+const os = require('node:os')
 const { execFileSync } = require('node:child_process')
 
-const HOME = process.env.HOME
-const PATCH = `${HOME}/.dsh/cordis.patch.yml`
-const PROFILE_MODULES = `${HOME}/.dsh/profiles/node_modules`
+/** Harness home: `$DSH_HOME` (set by the dsh launcher), else `~/.dsh`. */
+const DSH_HOME = process.env.DSH_HOME || path.join(os.homedir(), '.dsh')
+const PATCH = path.join(DSH_HOME, 'cordis.patch.yml')
+const PROFILE_MODULES = path.join(DSH_HOME, 'profiles', 'node_modules')
 /** The GUI profile this machine runs (dsh web); overridable via DSH_SKIN_PROFILE. */
 const DEFAULT_PROFILE = process.env.DSH_SKIN_PROFILE || 'web'
-const REPO = `${HOME}/code/dsh-web-ui`
+/** The dsh-web-ui checkout. Derived from this script's own location so any
+ * clone path works; overridable via DSH_SKIN_REPO. */
+const REPO = process.env.DSH_SKIN_REPO || path.resolve(__dirname, '..')
 
 /** Skin registry: name -> package, cordis row id, symlink resolve target (all repo dirs). */
 const SKINS = {
-  qq98: { pkg: '@deepseek-ai/dsh-client-ui-skin-qq98', id: 'ui-skin-qq98', dir: `${REPO}/packages/skins/qq98` },
-  ths: { pkg: '@deepseek-ai/dsh-client-ui-skin-ths', id: 'ui-skin-ths', dir: `${REPO}/packages/skins/ths` },
-  xp: { pkg: '@deepseek-ai/dsh-client-ui-skin-xp', id: 'ui-skin-xp', dir: `${REPO}/packages/skins/xp` },
-  'blue-fantasy': { pkg: '@deepseek-ai/dsh-client-ui-skin-blue-fantasy', id: 'ui-skin-blue-fantasy', dir: `${REPO}/packages/skins/blue-fantasy` },
-  'dragon-heir': { pkg: '@deepseek-ai/dsh-client-ui-skin-dragon-heir', id: 'ui-skin-dragon-heir', dir: `${REPO}/packages/skins/dragon-heir` },
-  minecraft: { pkg: '@deepseek-ai/dsh-client-ui-skin-minecraft', id: 'ui-skin-minecraft', dir: `${REPO}/packages/skins/minecraft` },
-  'whale-song': { pkg: '@deepseek-ai/dsh-client-ui-skin-whale-song', id: 'ui-skin-whale-song', dir: `${REPO}/packages/skins/whale-song` },
+  qq98: { pkg: '@linxin666/dsh-client-ui-skin-qq98', id: 'ui-skin-qq98', dir: `${REPO}/packages/skins/qq98` },
+  ths: { pkg: '@linxin666/dsh-client-ui-skin-ths', id: 'ui-skin-ths', dir: `${REPO}/packages/skins/ths` },
+  xp: { pkg: '@linxin666/dsh-client-ui-skin-xp', id: 'ui-skin-xp', dir: `${REPO}/packages/skins/xp` },
+  'blue-fantasy': { pkg: '@linxin666/dsh-client-ui-skin-blue-fantasy', id: 'ui-skin-blue-fantasy', dir: `${REPO}/packages/skins/blue-fantasy` },
+  'dragon-heir': { pkg: '@linxin666/dsh-client-ui-skin-dragon-heir', id: 'ui-skin-dragon-heir', dir: `${REPO}/packages/skins/dragon-heir` },
+  minecraft: { pkg: '@linxin666/dsh-client-ui-skin-minecraft', id: 'ui-skin-minecraft', dir: `${REPO}/packages/skins/minecraft` },
+  'whale-song': { pkg: '@linxin666/dsh-client-ui-skin-whale-song', id: 'ui-skin-whale-song', dir: `${REPO}/packages/skins/whale-song` },
+  trading: { pkg: '@linxin666/dsh-client-ui-skin-trading', id: 'ui-skin-trading', dir: `${REPO}/packages/skins/trading` },
+  miku: { pkg: '@linxin666/dsh-client-ui-skin-miku', id: 'ui-skin-miku', dir: `${REPO}/packages/skins/miku` },
 }
-/** Skin wired at the bundle layer already (no insert row needed here). */
-const BUNDLE_WIRED = new Set(['xp'])
+/** Skins wired at the bundle layer already (no insert row needed here). Empty in the npm aggregate layout — no skin ships pre-wired; profile-installed skins are detected dynamically via bundleWiredFromProfile(). */
+const BUNDLE_WIRED = new Set()
 
-/** The profile manifest path (`~/.dsh/profiles/<profile>/package.json`). */
+/** The profile manifest path (`$DSH_HOME/profiles/<profile>/package.json`). */
 function profileManifestPath() {
-  return `${HOME}/.dsh/profiles/${DEFAULT_PROFILE}/package.json`
+  return path.join(DSH_HOME, 'profiles', DEFAULT_PROFILE, 'package.json')
 }
 
 /**

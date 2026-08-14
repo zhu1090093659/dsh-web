@@ -54,7 +54,7 @@ describe('blue-fantasy skin apply', () => {
     // Dark scrim: the first background layer is the dark indigo veil.
     const darkImage = document.body.style.getPropertyValue('background-image')
     expect(darkImage).toContain('rgba(10, 14, 28')
-    expect(darkImage).toContain('url("data:image/jpeg;base64')
+    expect(darkImage).toContain('url(data:image/jpeg;base64')
 
     // Flip to light: the scrim swaps without remounting (MutationObserver).
     delete document.body.dataset.dsDarkTheme
@@ -76,5 +76,43 @@ describe('blue-fantasy skin apply', () => {
     expect(document.body.style.getPropertyValue('background-image')).toContain('prior.png')
     expect(document.body.style.getPropertyValue('background-attachment')).toBe('scroll')
     expect(document.head.querySelector('link[rel="icon"]')).toBeNull()
+  })
+
+  it('adds a veil layer when the skin-center scrim variable is set, and drops it on dispose', async () => {
+    // The skin-center control writes --dsw-skin-scrim (0..1) on body; the
+    // veil gradient's alpha rides the CSS variable so the backdrop
+    // re-rasters live as the control moves.
+    document.body.style.setProperty('--dsw-skin-scrim', '0.65')
+    fiber = await mount()
+
+    // The occlusion layer is the FIRST background layer, before the scrim.
+    const veiled = document.body.style.getPropertyValue('background-image')
+    expect(veiled).toContain('var(--dsw-skin-scrim, 0)')
+    expect(veiled.indexOf('var(--dsw-skin-scrim, 0)')).toBeLessThan(veiled.indexOf('rgba(246, 248, 253'))
+
+    // Flip to dark: the theme scrim swaps but the occlusion stays and is
+    // always first (living MutationObserver re-reads the variable).
+    document.body.dataset.dsDarkTheme = ''
+    await tick()
+    const veiledDark = document.body.style.getPropertyValue('background-image')
+    expect(veiledDark).toContain('var(--dsw-skin-scrim, 0)')
+    expect(veiledDark).toContain('rgba(10, 14, 28')
+
+    await fiber.dispose()
+    fiber = undefined
+    // The veil lives in the background-image the skin owns; on dispose the
+    // backdrop restores to nothing (no prior backdrop in this test).
+    expect(document.body.style.getPropertyValue('background-image')).toBe('')
+  })
+
+  it('keeps the stock scrim when the scrim variable is 0 or unset', async () => {
+    document.body.style.setProperty('--dsw-skin-scrim', '0')
+    fiber = await mount()
+    const image = document.body.style.getPropertyValue('background-image')
+    // The veil layer is present but its alpha is variable-driven (0 renders
+    // invisible), so no literal 0-alpha color is baked into the string.
+    expect(image).toContain('var(--dsw-skin-scrim, 0)')
+    expect(image).not.toContain('rgba(16, 22, 42, 0)')
+    expect(image).toContain('rgba(246, 248, 253')
   })
 })

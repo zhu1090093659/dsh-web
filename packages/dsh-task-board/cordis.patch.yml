@@ -9,4 +9,4 @@
 # (exports "./client", served at /plugins/<id>/client.js) load in the web GUI.
 - insert:
     - id: ui-task-board
-      name: '@deepseek-ai/dsh-client-ui-task-board'
+      name: '@linxin666/dsh-client-ui-task-board'

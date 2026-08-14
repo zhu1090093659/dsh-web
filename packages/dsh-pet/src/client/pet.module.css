@@ -60,7 +60,7 @@
 
 .panel {
   position: absolute;
-  bottom: calc(100% + 4px);
+  bottom: 100%;
   background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 10px;
@@ -73,6 +73,20 @@
   flex-direction: column;
   gap: 6px;
   min-width: 132px;
+}
+
+/* 面板底边与图标顶边之间的 hover 桥接（issue #49）：
+   面板绝对定位在图标上方（bottom: 100%），若两者之间存在哪怕几个
+   像素的间隙，指针滑过间隙时会触发容器的 pointerleave，面板在指针
+   抵达按钮前就收起。这段透明伪元素把命中区向下延伸、覆盖图标顶部，
+   使指针在图标与按钮之间始终停留在 hover 区域内。 */
+.panel::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 14px;
 }
 
 .rankRow {

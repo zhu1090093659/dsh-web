@@ -83,7 +83,7 @@ function findAggregates() {
  * belong to the current section.
  */
 function parseManifest(ymlPath) {
-  const manifest = { patchFrom: [], deps: [] }
+  const manifest = { patchFrom: [], deps: [], self: null }
   let section = null
   for (const raw of readFileSync(ymlPath, 'utf8').split(/\r?\n/)) {
     const line = raw.trim()
@@ -98,6 +98,12 @@ function parseManifest(ymlPath) {
     const entry = entryMatch[1].trim().replace(/\s+#.*$/, '')
     if (section === 'patchFrom') manifest.patchFrom.push(entry)
     else if (section === 'deps') manifest.deps.push(entry)
+    else if (section === 'self') {
+      if (manifest.self !== null && manifest.self !== entry) {
+        console.warn(`aggregate.yml defines several self entries (${manifest.self}, ${entry}); keeping the last one`)
+      }
+      manifest.self = entry
+    }
   }
   return manifest
 }
@@ -244,7 +250,24 @@ for (const { pkgDir, ymlPath } of aggregates) {
     }
     collectRows(target, entry, [], visited, errors, blocks)
   }
-  if (manifest.patchFrom.length === 0) {
+  if (manifest.self) {
+    // self: the aggregate package loads ITS OWN plugin (host + client half)
+    // through one patch row, e.g. the compat shim living inside web-ui-all.
+    // unshift keeps the self block FIRST in the rendered patch so its ordering
+    // does not drift when the patchFrom entries change.
+    if (!/^[a-z0-9-]+$/.test(manifest.self)) {
+      errors.push(`invalid self entry '${manifest.self}' (must match ^[a-z0-9-]+$); skipping self block`)
+    } else {
+      let selfName
+      try {
+        selfName = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8')).name
+      } catch (e) {
+        errors.push(`cannot read self package name: ${e.message}`)
+      }
+      if (selfName) blocks.unshift({ entry: 'self', via: [], rows: [{ id: manifest.self, name: selfName }] })
+    }
+  }
+  if (manifest.patchFrom.length === 0 && !manifest.self) {
     console.log(`[aggregate] WARN ${rel}: aggregate.yml has no patchFrom entries (patch would be empty)`)
   }
   const patch = renderPatch(blocks)

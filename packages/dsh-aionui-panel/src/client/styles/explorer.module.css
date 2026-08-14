@@ -184,6 +184,11 @@
   background-color: var(--aion-bg-active);
 }
 
+.treeRowDragging {
+  cursor: grabbing;
+  opacity: 0.55;
+}
+
 .treeRow:focus-visible {
   box-shadow: inset 0 0 0 2px var(--aion-primary);
 }

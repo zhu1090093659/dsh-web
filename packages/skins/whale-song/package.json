@@ -1,8 +1,7 @@
 {
-  "name": "@deepseek-ai/dsh-client-ui-skin-whale-song",
+  "name": "@linxin666/dsh-client-ui-skin-whale-song",
   "description": "Hot-pluggable 鲸吟 (whale-song) skin for the dsh web GUI: deep-sea whale-goddess ambience — text-free ocean art backdrop with live theme scrim, ice-blue/cyan/navy palette with gold-thread accents, translucent panes",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.10",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -44,5 +43,9 @@
     "README.md",
     "README.zh.md",
     "README.i18n.yaml"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
 }

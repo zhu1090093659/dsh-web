@@ -1,0 +1,57 @@
+name: Star History
+
+# 每日把仓库 star 数快照进 star-history 分支并重绘 star-history.svg（README 引用该图）。
+# 背景：GitHub 自 2026-06-30 起限制 stargazers API，star-history.com 的公共图表
+# 已不可用；改为仓库自托管。日常快照只读公开的 stargazers_count 字段，
+# 历史数据由 bootstrap 一次性初始化（见 .github/scripts/star-history.mjs 头注释）。
+
+on:
+  schedule:
+    - cron: '0 1 * * *'   # 每天 UTC 01:00（北京时间 09:00）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: star-history
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    name: Snapshot stars and redraw chart
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Checkout star-history branch
+        uses: actions/checkout@v4
+        with:
+          ref: star-history
+          path: star-history-data
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Snapshot stars and redraw SVG
+        run: node .github/scripts/star-history.mjs snapshot --out star-history-data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit updated chart
+        run: |
+          cd star-history-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add history.json star-history.svg
+          if git diff --cached --quiet; then
+            echo "chart unchanged, skip commit"
+          else
+            git commit -m "chore(star-history): 更新 star 快照"
+            git push origin HEAD:star-history
+          fi

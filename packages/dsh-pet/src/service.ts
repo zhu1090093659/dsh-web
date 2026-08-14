@@ -4,7 +4,7 @@
  * affinity ledger, and the persisted display config. The API gateway maps
  * this service's methods onto `pet.state` / `pet.interact` /
  * `pet.setVisible` / `pet.setConfig` for browser consumers.
- * @module @deepseek-ai/dsh-pet/service
+ * @module @linxin666/dsh-pet/service
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'

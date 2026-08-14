@@ -1,7 +1,7 @@
 /**
  * Workspace gate for the /aionui-panel routes: canonicalize the requested
  * project root and require it to be a registered workspace (or a directory
- * inside one). This is the security boundary of the panel's fs/git routes —
+ * inside one). This is the security boundary of the panel's fs/git routes -
  * the browser may only read and mutate files under registered workspace
  * roots, never arbitrary host directories.
  * @module dsh-aionui-panel/host/gate
@@ -18,12 +18,31 @@ export type GateVerdict = { ok: true; canonical: string } | { ok: false; error: 
 /** The workspace-membership check the services run on every request. */
 export type WorkspaceGate = (root: string) => Promise<GateVerdict>
 
-/** The canonical prefix check: child must live inside (or equal) the root. */
+/**
+ * Normalize a path for prefix comparison: collapse Windows separators to `/`
+ * and drop any trailing slash. On win32 the whole path is also lower-cased so
+ * a case-insensitive FS cannot trip the membership check (the drive letter and
+ * every segment are compared case-insensitively). On any other platform the
+ * path separator and case are left untouched.
+ */
+export function normalizeForPrefix(value: string): string {
+  const normalized = value.replaceAll('\\', '/').replace(/\/+$/, '')
+  return process.platform === 'win32' ? normalized.toLowerCase() : normalized
+}
+
+/**
+ * The canonical prefix check: child must live inside (or equal) the root.
+ * Separator- and case-robust on Windows: `path.join` yields backslashes while
+ * git (`rev-parse --show-toplevel`) and the browser (`./x`) yield forward
+ * slashes, so both sides are normalized to forward slashes before comparing,
+ * and the comparison is case-insensitive on win32 (the FS is case-insensitive).
+ */
 export function isPathInside(root: string, child: string): boolean {
   if (root === '' || child === '') return false
-  if (child === root) return true
-  const prefix = root.endsWith('/') ? root : `${root}/`
-  return child.startsWith(prefix)
+  const normRoot = normalizeForPrefix(root)
+  const normChild = normalizeForPrefix(child)
+  if (normChild === normRoot) return true
+  return normChild.startsWith(`${normRoot}/`)
 }
 
 /**

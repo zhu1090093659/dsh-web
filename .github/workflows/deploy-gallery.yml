@@ -1,0 +1,68 @@
+name: Deploy Gallery
+
+# Push 到 main 且画廊相关文件变化时，把已提交的 gallery 静态产物部署到
+# Cloudflare Pages（项目 dsh-market-gallery，自定义域名 gallery.dsh-market.com）。
+#
+# 只部署「已提交」的产物，不在 CI 里重建：重新构建会把构建机绝对路径嵌入
+# bundle（CSS-module hash 与 \0dsh-css region 标记），使产物随机器抖动。
+# 因此皮肤的 build + gallery:build + capture-previews 在开发者本地完成并提交，
+# 本 workflow 仅用 gallery:check 校验产物一致，再原样上传。
+#
+# 需要的仓库 secrets：
+#   CLOUDFLARE_API_TOKEN   — 作用域：Account > Cloudflare Pages > Edit
+#   CLOUDFLARE_ACCOUNT_ID  — Cloudflare 账号 ID
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'gallery/**'
+      - 'packages/skins/**'
+      - 'scripts/deploy-gallery'
+      - 'package.json'
+      - '.github/workflows/deploy-gallery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-gallery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy gallery to Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Gallery consistency
+        run: pnpm gallery:check
+
+      - name: Install wrangler
+        run: npm install -g wrangler@4
+
+      - name: Deploy gallery
+        run: node scripts/deploy-gallery --project-name dsh-market-gallery
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

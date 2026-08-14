@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-beyond-workscope",
+  "name": "@linxin666/dsh-beyond-workscope",
   "description": "Beyond-workscope for the dsh web GUI: the agent perceives the environment beyond its fixed workspace (recent files on whitelisted roots, active processes — all marked untrusted), and works outside the workspace only through user-confirmed, audited, revocable grants (workscope_grant / workscope_revoke / workscope_list / workscope_read / workscope_write). Hot-pluggable — mounted via ~/.dsh/cordis.patch.yml + a profile node_modules symlink, no dsh source changes.",
   "version": "0.1.1",
   "private": true,

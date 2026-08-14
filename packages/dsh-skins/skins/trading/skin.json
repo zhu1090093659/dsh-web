@@ -1,0 +1,28 @@
+{
+  "id": "trading",
+  "name": "交易终端",
+  "nameEn": "Trading Terminal",
+  "author": "dsh-web-ui",
+  "tagline": "实时行情跑马灯 · 长桥港美股行情 · 红涨绿跌交易终端",
+  "description": "结合 dsh-fun-ticker 行情跑马灯与 dsh-longbridge 港美股行情的炒股皮肤：顶栏滚动 A股/港股/美股/指数/加密/外汇报价（装 fun-ticker 后跟随你的自选列表），状态栏展示长桥行情快照与 A股/港股/美股交易时段，写代码也像盯盘。",
+  "tags": [
+    "stock",
+    "trading",
+    "ticker",
+    "live",
+    "terminal",
+    "longbridge"
+  ],
+  "accent": "#f23645",
+  "bodyAttr": "data-dsh-trading",
+  "package": "@linxin666/dsh-client-ui-skin-trading",
+  "wiring": {
+    "id": "ui-skin-trading",
+    "bundleWired": false
+  },
+  "preview": {
+    "light": "packages/skins/trading/preview/light.png",
+    "dark": "packages/skins/trading/preview/dark.png"
+  },
+  "order": 8
+}

@@ -1,7 +1,7 @@
 import { clientBundle } from '../../shared/tsdown.client.ts'
 
 export default clientBundle(
-  '@deepseek-ai/dsh-live-stats',
+  '@linxin666/dsh-live-stats',
   ['src/index.ts', 'src/invariant.ts'],
   {
     lib: {

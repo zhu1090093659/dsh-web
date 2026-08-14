@@ -1,0 +1,655 @@
+/* Trading-terminal skin for the dsh web GUI — the 「炒股皮肤」: a live-data
+   terminal (TradingView-like dark graphite + 红涨绿跌) with a scrolling
+   quote tape, a brand title bar, and a market-session status bar.
+   Everything is scoped under body[data-dsh-trading], which apply() sets
+   (and retracts on dispose). The base block is the light trading day view;
+   body[data-dsh-trading][data-ds-dark-theme] is the night-terminal variant.
+   The DSW static/alias layers are remapped to the terminal palette so the
+   whole GUI — panels, buttons, inputs, markdown — reads as one instrument.
+   Classes are consumed by the plugin's chrome through the module class map;
+   global selectors pass through the CSS-modules transform untouched. */
+
+/* --- Desktop, fonts, layout ------------------------------------------------ */
+
+body[data-dsh-trading] {
+  --dsw-font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Segoe UI', sans-serif;
+  --ds-font-family-code: 'SFMono-Regular', 'Menlo', 'Consolas', 'Liberation Mono', monospace;
+  /* Terminal palette — light trading day. */
+  --dsh-trd-desktop: #eef1f5;
+  --dsh-trd-panel: #ffffff;
+  --dsh-trd-titlebar-bg: linear-gradient(180deg, #ffffff, #f2f5f8);
+  --dsh-trd-tape-bg: #ffffff;
+  --dsh-trd-statusbar-bg: #f2f5f8;
+  --dsh-trd-text: #1b2431;
+  --dsh-trd-dim: #6b7788;
+  --dsh-trd-border: #d4dce5;
+  --dsh-trd-up: #e02e3d;
+  --dsh-trd-down: #089981;
+  --dsh-trd-flat: #8b96a5;
+  --dsh-trd-warn: #c08a35;
+  --dsh-trd-brand: #e02e3d;
+  color: #1b2431;
+  background-color: #eef1f5;
+  /* The fixed title bar (34) + tape (30) + gap reserve the top; the status
+     bar reserves the bottom; #root becomes the terminal window. */
+  padding: 66px 10px 26px;
+  box-sizing: border-box;
+}
+
+body[data-dsh-trading][data-ds-dark-theme] {
+  --dsh-trd-desktop: #0a0e15;
+  --dsh-trd-panel: #10151d;
+  --dsh-trd-titlebar-bg: linear-gradient(180deg, #161d27, #10151d);
+  --dsh-trd-tape-bg: #0e131b;
+  --dsh-trd-statusbar-bg: #0e131b;
+  --dsh-trd-text: #dbe2ec;
+  --dsh-trd-dim: #7c8897;
+  --dsh-trd-border: #222b39;
+  --dsh-trd-up: #f23645;
+  --dsh-trd-down: #089981;
+  --dsh-trd-flat: #5f6b7a;
+  --dsh-trd-warn: #d69a3a;
+  --dsh-trd-brand: #f23645;
+  color: #dbe2ec;
+  background-color: #0a0e15;
+}
+
+/* #root is the terminal window: a crisp instrument frame over the desktop. */
+body[data-dsh-trading] [id='root'] {
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #ccd5df;
+  box-shadow: 0 1px 0 #fff, 0 3px 12px rgba(23, 32, 45, 0.12);
+}
+
+body[data-dsh-trading][data-ds-dark-theme] [id='root'] {
+  background: #10151d;
+  border-color: #232c3a;
+  box-shadow: 0 1px 0 #0a0e15, 0 3px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* The terminal is crisp: a small corner on everything reads as a data tool. */
+body[data-dsh-trading] * {
+  border-radius: 3px !important;
+}
+
+/* --- Static palette: light --------------------------------------------------- */
+
+body[data-dsh-trading] {
+  --dsw-static-amber-100: #f8ecd9;
+  --dsw-static-amber-400: #d69a3a;
+  --dsw-static-amber-500: #b07600;
+  --dsw-static-amber-600: #966300;
+  --dsw-static-amber-900: #3f2f10;
+  --dsw-static-blue-100: #e2e9f1;
+  --dsw-static-blue-300: #aec3d6;
+  --dsw-static-blue-400: #8aa7c0;
+  --dsw-static-blue-450: #6f92b0;
+  --dsw-static-blue-500: #56799a;
+  --dsw-static-blue-50: #f4f7fa;
+  --dsw-static-blue-50p: #eef3f8;
+  --dsw-static-blue-600: #46627f;
+  --dsw-static-blue-75: #edf2f7;
+  --dsw-static-blue-800: #2b4158;
+  --dsw-static-blue-950: #182635;
+  --dsw-static-deepseek-100: #e2e9f1;
+  --dsw-static-deepseek-200: #ccd9e6;
+  --dsw-static-deepseek-300: #aec3d6;
+  --dsw-static-deepseek-400: #8aa7c0;
+  --dsw-static-deepseek-450: #6f92b0;
+  --dsw-static-deepseek-50: #f4f7fa;
+  --dsw-static-deepseek-500: #56799a;
+  --dsw-static-deepseek-600: #46627f;
+  --dsw-static-deepseek-700-delete: #35506a;
+  --dsw-static-deepseek-800: #2b4158;
+  --dsw-static-deepseek-900: #223446;
+  --dsw-static-green-100: #d8f2ec;
+  --dsw-static-green-400: #0fb091;
+  --dsw-static-green-500: #089981;
+  --dsw-static-green-900: #0a4a3c;
+  --dsw-static-neutral-00: #fff;
+  --dsw-static-neutral-1000: #161d29;
+  --dsw-static-neutral-100: #f1f4f7;
+  --dsw-static-neutral-150: #eaeef3;
+  --dsw-static-neutral-200: #e3e8ee;
+  --dsw-static-neutral-250: #dce2ea;
+  --dsw-static-neutral-300: #d2dae4;
+  --dsw-static-neutral-400: #b9c3d0;
+  --dsw-static-neutral-50: #f6f8fa;
+  --dsw-static-neutral-500: #9aa7b6;
+  --dsw-static-neutral-550: #8b99aa;
+  --dsw-static-neutral-600: #748394;
+  --dsw-static-neutral-700: #5b6a7c;
+  --dsw-static-neutral-800: #435264;
+  --dsw-static-neutral-850: #394858;
+  --dsw-static-neutral-900: #2b3948;
+  --dsw-static-neutral-bluish-00: #fff;
+  --dsw-static-neutral-bluish-1000: #161d29;
+  --dsw-static-neutral-bluish-100: #f1f4f7;
+  --dsw-static-neutral-bluish-150: #eaeef3;
+  --dsw-static-neutral-bluish-200: #e3e8ee;
+  --dsw-static-neutral-bluish-300: #d2dae4;
+  --dsw-static-neutral-bluish-400: #b9c3d0;
+  --dsw-static-neutral-bluish-500: #9aa7b6;
+  --dsw-static-neutral-bluish-50: #f6f8fa;
+  --dsw-static-neutral-bluish-60: #f3f5f8;
+  --dsw-static-neutral-bluish-600: #748394;
+  --dsw-static-neutral-bluish-700: #5b6a7c;
+  --dsw-static-neutral-bluish-750: #506070;
+  --dsw-static-neutral-bluish-75: #eef1f5;
+  --dsw-static-neutral-bluish-800: #435264;
+  --dsw-static-neutral-bluish-850: #394858;
+  --dsw-static-neutral-bluish-875: #2f3e4e;
+  --dsw-static-neutral-bluish-900: #2b3948;
+  --dsw-static-neutral-bluish-950: #223040;
+  --dsw-static-red-100: #fbd9d9;
+  --dsw-static-red-400: #f25c5c;
+  --dsw-static-red-50: #fdecec;
+  --dsw-static-red-500: #e02e3d;
+  --dsw-static-red-600: #c42533;
+  --dsw-static-red-900: #7a1620;
+}
+
+/* --- Static palette: dark ----------------------------------------------------- */
+
+body[data-dsh-trading][data-ds-dark-theme] {
+  --dsw-static-amber-100: #3a2d14;
+  --dsw-static-amber-400: #d69a3a;
+  --dsw-static-amber-500: #b07600;
+  --dsw-static-amber-600: #966300;
+  --dsw-static-amber-900: #3f2f10;
+  --dsw-static-blue-100: #1f2d3d;
+  --dsw-static-blue-300: #2f445c;
+  --dsw-static-blue-400: #3d5875;
+  --dsw-static-blue-450: #4b6a8b;
+  --dsw-static-blue-500: #5f81a4;
+  --dsw-static-blue-50: #17222f;
+  --dsw-static-blue-50p: #192531;
+  --dsw-static-blue-600: #7398bb;
+  --dsw-static-blue-75: #1b2735;
+  --dsw-static-blue-800: #97b3cf;
+  --dsw-static-blue-950: #b9cddf;
+  --dsw-static-deepseek-100: #1f2d3d;
+  --dsw-static-deepseek-200: #26374b;
+  --dsw-static-deepseek-300: #2f445c;
+  --dsw-static-deepseek-400: #3d5875;
+  --dsw-static-deepseek-450: #4b6a8b;
+  --dsw-static-deepseek-50: #17222f;
+  --dsw-static-deepseek-500: #5f81a4;
+  --dsw-static-deepseek-600: #7398bb;
+  --dsw-static-deepseek-700-delete: #86a6c6;
+  --dsw-static-deepseek-800: #97b3cf;
+  --dsw-static-deepseek-900: #a8c0d8;
+  --dsw-static-green-100: #0e2c25;
+  --dsw-static-green-400: #10b595;
+  --dsw-static-green-500: #089981;
+  --dsw-static-green-900: #0a3a30;
+  --dsw-static-neutral-00: #10151d;
+  --dsw-static-neutral-1000: #dbe2ec;
+  --dsw-static-neutral-100: #171e28;
+  --dsw-static-neutral-150: #1b2330;
+  --dsw-static-neutral-200: #1f2836;
+  --dsw-static-neutral-250: #242e3d;
+  --dsw-static-neutral-300: #2b3748;
+  --dsw-static-neutral-400: #38465a;
+  --dsw-static-neutral-50: #131922;
+  --dsw-static-neutral-500: #48566c;
+  --dsw-static-neutral-550: #536179;
+  --dsw-static-neutral-600: #64738a;
+  --dsw-static-neutral-700: #7e8da2;
+  --dsw-static-neutral-800: #9eabc0;
+  --dsw-static-neutral-850: #adb9cc;
+  --dsw-static-neutral-900: #c2ccda;
+  --dsw-static-neutral-bluish-00: #10151d;
+  --dsw-static-neutral-bluish-1000: #dbe2ec;
+  --dsw-static-neutral-bluish-100: #171e28;
+  --dsw-static-neutral-bluish-150: #1b2330;
+  --dsw-static-neutral-bluish-200: #1f2836;
+  --dsw-static-neutral-bluish-300: #2b3748;
+  --dsw-static-neutral-bluish-400: #38465a;
+  --dsw-static-neutral-bluish-500: #48566c;
+  --dsw-static-neutral-bluish-50: #131922;
+  --dsw-static-neutral-bluish-600: #64738a;
+  --dsw-static-neutral-bluish-60: #151b25;
+  --dsw-static-neutral-bluish-700: #7e8da2;
+  --dsw-static-neutral-bluish-750: #8b99aa;
+  --dsw-static-neutral-bluish-75: #141a24;
+  --dsw-static-neutral-bluish-800: #9eabc0;
+  --dsw-static-neutral-bluish-850: #adb9cc;
+  --dsw-static-neutral-bluish-875: #b9c5d3;
+  --dsw-static-neutral-bluish-900: #c2ccda;
+  --dsw-static-neutral-bluish-950: #cfd8e2;
+  --dsw-static-red-100: #3c1a20;
+  --dsw-static-red-400: #ff5a5a;
+  --dsw-static-red-50: #2a1418;
+  --dsw-static-red-500: #f23645;
+  --dsw-static-red-600: #d62b3a;
+  --dsw-static-red-900: #57151d;
+}
+
+/* --- Alias layer: light -------------------------------------------------------- */
+
+body[data-dsh-trading] {
+  --dsw-alias-bg-base: #fff;
+  --dsw-alias-bg-layer-1: #f5f7fa;
+  --dsw-alias-bg-layer-2: #eef1f5;
+  --dsw-alias-bg-layer-3: #e7ebf0;
+  --dsw-alias-bg-mask-1: rgba(16, 24, 36, 0.42);
+  --dsw-alias-bg-mask-2: rgba(16, 24, 36, 0.25);
+  --dsw-alias-bg-mask-3: rgba(16, 24, 36, 0.55);
+  --dsw-alias-bg-mask-photo: rgba(0, 0, 0, 0.6);
+  --dsw-alias-bg-module-platform: #eef1f5;
+  --dsw-alias-bg-multi-select: #e3e8ee;
+  --dsw-alias-bg-overlay: #ffffff;
+  --dsw-alias-bg-skeleton: rgba(16, 24, 36, 0.06);
+  --dsw-alias-border-inverted2: rgba(16, 24, 36, 0.5);
+  --dsw-alias-border-inverted: rgba(16, 24, 36, 0.35);
+  --dsw-alias-border-l1: rgba(16, 24, 36, 0.08);
+  --dsw-alias-border-l2-darkmode-thin: rgba(16, 24, 36, 0.12);
+  --dsw-alias-border-l2: rgba(16, 24, 36, 0.14);
+  --dsw-alias-border-l3: rgba(16, 24, 36, 0.22);
+  --dsw-alias-border-l4: rgba(16, 24, 36, 0.32);
+  --dsw-alias-brand-primary-invert: #fff;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #e02e3d;
+  --dsw-alias-brand-primary: #e02e3d;
+  --dsw-alias-brand-text: #e02e3d;
+  --dsw-alias-button-contrast-fill: #2b3948;
+  --dsw-alias-button-elevated-fill: #fff;
+  --dsw-alias-button-floating-fill: #fff;
+  --dsw-alias-button-floating-hover: #f1f4f7;
+  --dsw-alias-button-ghost-active-border: #9aa7b6;
+  --dsw-alias-button-ghost-active-fill: #eef1f5;
+  --dsw-alias-button-ghost-active-hover: #e7ebf0;
+  --dsw-alias-button-info-fill: #e02e3d;
+  --dsw-alias-button-info-hover: #c42533;
+  --dsw-alias-button-primary-dimmed: #f6d7da;
+  --dsw-alias-button-primary-fill: #e02e3d;
+  --dsw-alias-button-primary-hover: #c42533;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(16, 24, 36, 0.08);
+  --dsw-alias-button-tool-bar-fill: rgba(16, 24, 36, 0.12);
+  --dsw-alias-button-tool-bar-hover: rgba(16, 24, 36, 0.16);
+  --dsw-alias-interactive-bg-active: #e7ebf0;
+  --dsw-alias-interactive-bg-hover: #eef1f5;
+  --dsw-alias-interactive-bg-hover-accent: #fdecec;
+  --dsw-alias-interactive-bg-hover-danger: #fdecec;
+  --dsw-alias-interactive-bg-hover-solid: #e02e3d;
+  --dsw-alias-label-caption: #8a97a6;
+  --dsw-alias-label-dimmed: #8b96a5;
+  --dsw-alias-label-primary-dimmed: #4a5768;
+  --dsw-alias-label-primary-foreground: #fff;
+  --dsw-alias-label-primary-inverted: #fff;
+  --dsw-alias-label-primary: #1b2431;
+  --dsw-alias-label-secondary: #445160;
+  --dsw-alias-label-tertiary: #66707f;
+  --dsw-alias-markdown-citation: #eaeef3;
+  --dsw-alias-markdown-code-block-banner: #f5f7fa;
+  --dsw-alias-markdown-code-block: #f5f7fa;
+  --dsw-alias-markdown-code-segment-selected: #fff;
+  --dsw-alias-markdown-code-segment-unselected: #eceff3;
+  --dsw-alias-markdown-inline-code: #eaeef3;
+  --dsw-alias-markdown-placeholder: #f1f4f7;
+  --dsw-alias-markdown-tag: #eceff3;
+  --dsw-alias-state-business-primary: #e02e3d;
+  --dsw-alias-state-business-tertiary: #fbd9d9;
+  --dsw-alias-state-error-primary: #e02e3d;
+  --dsw-alias-state-error-secondary: #f25c5c;
+  --dsw-alias-state-success-primary: #089981;
+  --dsw-alias-state-success-secondary: #0fb091;
+  --dsw-alias-state-success-tertiary: #d8f2ec;
+  --dsw-alias-state-warn-primary: #b07600;
+  --dsw-alias-toast-bg: #2b3948;
+  --dsw-alias-tooltip-bg: #2b3948;
+  --dsw-specific-bubble-highlight: #e7ebf0;
+  --dsw-specific-bubble: #f1f4f7;
+  --dsw-specific-input-major: #fff;
+  --dsw-specific-login-input: #fff;
+  --dsw-specific-menu: #f5f7fa;
+  --dsw-specific-selector: #e7ebf0;
+  --dsw-specific-sidebar-fill: #f6f8fa;
+  --dsw-specific-sidebar-nav-item-active-accent: #e02e3d;
+  --dsw-specific-sidebar-nav-item-active: #fdecec;
+  --dsw-specific-sidebar-nav-item-hover: #eef1f5;
+  --dsw-specific-tip: #f5f7fa;
+}
+
+/* --- Alias layer: dark ---------------------------------------------------------- */
+
+body[data-dsh-trading][data-ds-dark-theme] {
+  --dsw-alias-bg-base: #10151d;
+  --dsw-alias-bg-layer-1: #151b25;
+  --dsw-alias-bg-layer-2: #1a222e;
+  --dsw-alias-bg-layer-3: #1f2836;
+  --dsw-alias-bg-mask-1: rgba(0, 0, 0, 0.5);
+  --dsw-alias-bg-mask-2: rgba(0, 0, 0, 0.25);
+  --dsw-alias-bg-mask-3: rgba(0, 0, 0, 0.55);
+  --dsw-alias-bg-mask-photo: rgba(0, 0, 0, 0.88);
+  --dsw-alias-bg-module-platform: #1a222e;
+  --dsw-alias-bg-multi-select: #1b2431;
+  --dsw-alias-bg-overlay: #161d27;
+  --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.06);
+  --dsw-alias-border-inverted2: rgba(255, 255, 255, 0.6);
+  --dsw-alias-border-inverted: rgba(255, 255, 255, 0.4);
+  --dsw-alias-border-l1: rgba(255, 255, 255, 0.07);
+  --dsw-alias-border-l2-darkmode-thin: rgba(255, 255, 255, 0.12);
+  --dsw-alias-border-l2: rgba(255, 255, 255, 0.14);
+  --dsw-alias-border-l3: rgba(255, 255, 255, 0.22);
+  --dsw-alias-border-l4: rgba(255, 255, 255, 0.32);
+  --dsw-alias-brand-primary-invert: #0e131a;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #ff5a5a;
+  --dsw-alias-brand-primary: #f23645;
+  --dsw-alias-brand-text: #f23645;
+  --dsw-alias-button-contrast-fill: #c2ccda;
+  --dsw-alias-button-elevated-fill: #151b25;
+  --dsw-alias-button-floating-fill: #161d27;
+  --dsw-alias-button-floating-hover: #1a222e;
+  --dsw-alias-button-ghost-active-border: #7e8da2;
+  --dsw-alias-button-ghost-active-fill: #1f2836;
+  --dsw-alias-button-ghost-active-hover: #242e3d;
+  --dsw-alias-button-info-fill: #f23645;
+  --dsw-alias-button-info-hover: #ff5a5a;
+  --dsw-alias-button-primary-dimmed: #4a262b;
+  --dsw-alias-button-primary-fill: #f23645;
+  --dsw-alias-button-primary-hover: #d62b3a;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(180, 200, 225, 0.3);
+  --dsw-alias-button-tool-bar-fill: rgba(180, 200, 225, 0.42);
+  --dsw-alias-button-tool-bar-hover: rgba(180, 200, 225, 0.52);
+  --dsw-alias-interactive-bg-active: #1f2836;
+  --dsw-alias-interactive-bg-hover: #1a222e;
+  --dsw-alias-interactive-bg-hover-accent: #3a1c20;
+  --dsw-alias-interactive-bg-hover-danger: #3a1c20;
+  --dsw-alias-interactive-bg-hover-solid: #f23645;
+  --dsw-alias-label-caption: #8a97a6;
+  --dsw-alias-label-dimmed: #5f6b7a;
+  --dsw-alias-label-primary-dimmed: #a7b1bf;
+  --dsw-alias-label-primary-foreground: #fff;
+  --dsw-alias-label-primary-inverted: #fff;
+  --dsw-alias-label-primary: #dbe2ec;
+  --dsw-alias-label-secondary: #a7b1bf;
+  --dsw-alias-label-tertiary: #7c8897;
+  --dsw-alias-markdown-citation: #1b2330;
+  --dsw-alias-markdown-code-block-banner: #151b25;
+  --dsw-alias-markdown-code-block: #151b25;
+  --dsw-alias-markdown-code-segment-selected: #1f2836;
+  --dsw-alias-markdown-code-segment-unselected: #171e28;
+  --dsw-alias-markdown-inline-code: #1b2330;
+  --dsw-alias-markdown-placeholder: #171e28;
+  --dsw-alias-markdown-tag: #1f2836;
+  --dsw-alias-state-business-primary: #f23645;
+  --dsw-alias-state-business-tertiary: #3c1a20;
+  --dsw-alias-state-error-primary: #f23645;
+  --dsw-alias-state-error-secondary: #ff5a5a;
+  --dsw-alias-state-success-primary: #089981;
+  --dsw-alias-state-success-secondary: #10b595;
+  --dsw-alias-state-success-tertiary: #0e2c25;
+  --dsw-alias-state-warn-primary: #d69a3a;
+  --dsw-alias-toast-bg: #1b2431;
+  --dsw-alias-tooltip-bg: #232e3f;
+  --dsw-specific-bubble-highlight: #1f2836;
+  --dsw-specific-bubble: #151b25;
+  --dsw-specific-input-major: #151b25;
+  --dsw-specific-login-input: #151b25;
+  --dsw-specific-menu: #151b25;
+  --dsw-specific-selector: #1f2836;
+  --dsw-specific-sidebar-fill: #10151d;
+  --dsw-specific-sidebar-nav-item-active-accent: #f23645;
+  --dsw-specific-sidebar-nav-item-active: #1f2836;
+  --dsw-specific-sidebar-nav-item-hover: #1a222e;
+  --dsw-specific-tip: #151b25;
+}
+
+/* --- Scrollbars: the thin terminal rail ---------------------------------------- */
+
+body[data-dsh-trading] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body[data-dsh-trading] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body[data-dsh-trading] ::-webkit-scrollbar-thumb {
+  background: var(--dsw-alias-border-l3);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+body[data-dsh-trading] ::-webkit-scrollbar-thumb:hover {
+  background: var(--dsw-alias-border-l4);
+  background-clip: content-box;
+}
+
+/* --- Title bar ------------------------------------------------------------------ */
+
+.tradingTitlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 8px;
+  background: var(--dsh-trd-titlebar-bg);
+  border-bottom: 1px solid var(--dsh-trd-border);
+  color: var(--dsh-trd-text);
+  font: 600 13px/34px var(--dsw-font-family);
+  user-select: none;
+}
+
+.tradingTitlebarIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--dsh-trd-brand);
+  border-radius: 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.tradingTitlebarIcon svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.tradingTitlebarTitle {
+  color: var(--dsh-trd-text);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.tradingTitlebarChips {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.tradingTitlebarChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font: 500 12px/1 var(--ds-font-family-code);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tradingTitlebarChipName {
+  color: var(--dsh-trd-dim);
+}
+
+.tradingTitlebarChipVal {
+  color: var(--dsh-trd-text);
+  font-weight: 600;
+}
+
+.tradingTitlebarChipChg[data-trend='up'] {
+  color: var(--dsh-trd-up);
+}
+
+.tradingTitlebarChipChg[data-trend='down'] {
+  color: var(--dsh-trd-down);
+}
+
+.tradingTitlebarChipChg:not([data-trend]) {
+  color: var(--dsh-trd-flat);
+}
+
+.tradingTitlebarBtn {
+  display: inline-block;
+  width: 26px;
+  text-align: center;
+  color: var(--dsh-trd-dim);
+  border-radius: 4px;
+}
+
+.tradingTitlebarBtn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsh-trd-text);
+}
+
+/* --- Ticker tape ----------------------------------------------------------------- */
+
+.tradingTape {
+  position: fixed;
+  top: 34px;
+  left: 0;
+  right: 0;
+  z-index: 999999;
+  height: 30px;
+  overflow: hidden;
+  background: var(--dsh-trd-tape-bg);
+  border-bottom: 1px solid var(--dsh-trd-border);
+  user-select: none;
+}
+
+.tradingTapeTrack {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  white-space: nowrap;
+  will-change: transform;
+  animation: tradingTapeMove 60s linear infinite;
+}
+
+.tradingTape:hover .tradingTapeTrack {
+  animation-play-state: paused;
+}
+
+.tradingTapeItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  height: 100%;
+  padding: 0 16px;
+  border-right: 1px solid var(--dsw-alias-border-l2);
+  font: 500 12px/30px var(--ds-font-family-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.tradingTapeName {
+  color: var(--dsh-trd-dim);
+  white-space: nowrap;
+}
+
+.tradingTapePrice {
+  color: var(--dsh-trd-text);
+  font-weight: 600;
+}
+
+.tradingTapeChg[data-trend='up'] {
+  color: var(--dsh-trd-up);
+  font-weight: 600;
+}
+
+.tradingTapeChg[data-trend='down'] {
+  color: var(--dsh-trd-down);
+  font-weight: 600;
+}
+
+.tradingTapeChg:not([data-trend]) {
+  color: var(--dsh-trd-flat);
+}
+
+@keyframes tradingTapeMove {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tradingTapeTrack {
+    animation: none;
+  }
+}
+
+/* --- Status bar ------------------------------------------------------------------ */
+
+.tradingStatusbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000000;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 26px;
+  padding: 0 10px;
+  background: var(--dsh-trd-statusbar-bg);
+  border-top: 1px solid var(--dsh-trd-border);
+  color: var(--dsh-trd-dim);
+  font: 500 12px/26px var(--ds-font-family-code);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.tradingStatusbarGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tradingStatusbarSpacer {
+  flex: 1;
+}
+
+.tradingStatusbarCell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--dsh-trd-dim);
+}
+
+.tradingStatusbarCell[data-phase='trading'] {
+  color: var(--dsh-trd-up);
+}
+
+.tradingStatusbarCell[data-phase='lunch'],
+.tradingStatusbarCell[data-phase='pre'] {
+  color: var(--dsh-trd-warn);
+}
+
+.tradingStatusbarCell[data-trend='up'] {
+  color: var(--dsh-trd-up);
+}
+
+.tradingStatusbarCell[data-trend='down'] {
+  color: var(--dsh-trd-down);
+}
+
+.tradingStatusbarLbLabel {
+  color: var(--dsh-trd-brand);
+  font-weight: 600;
+}

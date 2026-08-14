@@ -1,0 +1,97 @@
+name: Enforce Issue Template
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  enforce:
+    name: Close issues that skip the template
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate issue template
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            if (issue.pull_request) {
+              return;
+            }
+
+            const baseRequiredSections = [
+              '涉及插件',
+              'Issue 类型',
+              '摘要',
+              '预期结果',
+              '详情 / 复现步骤',
+              '环境信息',
+            ];
+
+            const body = issue.body || '';
+            const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const readSection = (label) => {
+              const heading = escapeRegExp(label);
+              const pattern = new RegExp(`(?:^|\\n)###\\s+${heading}\\s*\\n+([\\s\\S]*?)(?=\\n###\\s+|$)`, 'i');
+              const match = body.match(pattern);
+              return match ? match[1].replace(/<!--[\s\S]*?-->/g, '').trim() : '';
+            };
+
+            const isBlank = (value) => {
+              const normalized = value.replace(/\s+/g, ' ').trim().toLowerCase();
+              return normalized === '' || normalized === 'no response' || normalized === '_no response_';
+            };
+
+            const hasScreenshotEvidence = (value) => {
+              return /!\[[^\]]*]\([^)]+\)/i.test(value)
+                || /https?:\/\/\S*(?:github\.com\/user-attachments\/assets\/|github\.com\/[^)\s]+\/assets\/|githubusercontent\.com\/|[./][^)\s]+\.(?:png|jpe?g|gif|webp))(?:[?#]\S*)?/i.test(value);
+            };
+
+            const issueType = readSection('Issue 类型').trim().toLowerCase();
+            const bugScreenshot = readSection('Bug 截图');
+            const requiredSections = issueType === 'bug 报告'
+              ? [...baseRequiredSections, 'Bug 截图']
+              : baseRequiredSections;
+
+            const missingSections = requiredSections.filter((label) => isBlank(readSection(label)));
+            const invalidSections = [];
+            if (issueType === 'bug 报告' && !isBlank(bugScreenshot) && !hasScreenshotEvidence(bugScreenshot)) {
+              invalidSections.push('Bug 截图必须包含上传的图片、Markdown 图片或图片链接。');
+            }
+            const missingSectionMessages = missingSections.length > 0
+              ? [`缺少或为空的必填部分：${missingSections.join(', ')}`]
+              : [];
+
+            if (missingSections.length === 0 && invalidSections.length === 0) {
+              return;
+            }
+
+            const comment = [
+              '该 Issue 因未使用仓库要求的 Issue 模板而被自动关闭。',
+              '',
+              '请从仓库的 Issue 表单重新发起，并填写所有必填部分：',
+              '',
+              ...requiredSections.map((label) => `- ${label}`),
+              '',
+              ...missingSectionMessages,
+              ...invalidSections,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: comment,
+            });
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              state: 'closed',
+              state_reason: 'not_planned',
+            });

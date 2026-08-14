@@ -7,4 +7,4 @@
 # lib/client.js plus the whale assets under assets/whale).
 - insert:
     - id: pet
-      name: '@deepseek-ai/dsh-pet'
+      name: '@linxin666/dsh-pet'

@@ -42,17 +42,28 @@ async function collect() {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
     await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 })
     await page.waitForTimeout(2500)
-    // 展开 aionui 预览列（若处于折叠态）：试穿模拟器需要展示右侧面板的完整
-    // 区域（预览 tabs/toolbar/内容）。宽度取 aionui 默认预览宽 480px；
-    // 折叠态 preview track=0px 且列带 visibility:hidden，一并恢复。
+    // 折叠 aionui 右侧面板：试穿模拟器聚焦 conversation 主体，把 explorer 与
+    // preview 两列都折叠（track=0px、visibility:hidden），不展示右侧面板。
+    // 绝不强制展开：否则无内容的面板列会占掉大块宽度并压缩 conversation。
+    // grid 为「sidebar center details preview explorer」五轨，把末尾两轨
+    // （preview、explorer）归零、隐藏列，其余轨（sidebar/center/details）原样保留。
     await page.evaluate(() => {
       const frame = document.querySelector('[data-dsh-frame]')
       const previewCol = document.querySelector('[data-aionui-preview-col]')
-      if (frame && previewCol && previewCol.getBoundingClientRect().width < 10) {
+      const explorerCol = document.querySelector('[data-aionui-explorer-col]')
+      if (frame && previewCol && explorerCol) {
         const inline = frame.style.gridTemplateColumns
-        if (inline) frame.style.gridTemplateColumns = inline.replace(/(^|\s)0px(\s+\d+(?:\.\d+)?px)$/, '$1480px$2')
-        previewCol.style.visibility = 'visible'
+        if (inline) frame.style.gridTemplateColumns = inline.replace(/(\s)\d+(?:\.\d+)?px(\s+\d+(?:\.\d+)?px)$/, '$10px 0px')
+        previewCol.style.visibility = 'hidden'
+        explorerCol.style.visibility = 'hidden'
       }
+      // 折叠后隐藏 drag handle：真实 GUI 折叠时 aionui 的 applyGrid 会把 handle
+      // 设为 display:none；这里直接改 grid 不触发 applyGrid，必须显式隐藏，
+      // 否则骨架里会残留一条 12px 竖线。
+      const explorerHandle = document.querySelector('.aionui-explorer-handle')
+      const previewHandle = document.querySelector('.aionui-preview-handle')
+      if (explorerHandle) explorerHandle.style.display = 'none'
+      if (previewHandle) previewHandle.style.display = 'none'
     })
     await page.waitForTimeout(500)
     return await page.evaluate(() => {

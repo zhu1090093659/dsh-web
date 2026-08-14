@@ -1,8 +1,7 @@
 {
-  "name": "@deepseek-ai/dsh-pet",
+  "name": "@linxin666/dsh-pet",
   "description": "鲸鱼娘宠物插件 for the dsh web GUI: a soft healing whale-girl companion that reacts to model activity (idle/waiting/thinking/tool/done), with petting/feeding interactions and an affinity score",
-  "version": "0.1.1",
-  "private": true,
+  "version": "0.1.10",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {
@@ -33,14 +32,13 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "lib/index.js",
-    "lib/invariant.js",
-    "lib/client.js",
-    "lib/types/**/*.d.ts",
-    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js",
+    "lib/**/*.js.map",
+    "lib/**/*.d.ts",
+    "lib/**/*.d.ts.map",
     "src",
-    "assets",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "assets"
   ],
   "license": "BSD-3-Clause",
   "dsh": {
@@ -52,7 +50,6 @@
         "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-connection",
         "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-client-ui-slots",
         "@deepseek-ai/dsh-client-ui-conversation"
       ],
       "platform": "web"
@@ -99,5 +96,9 @@
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
   }
 }

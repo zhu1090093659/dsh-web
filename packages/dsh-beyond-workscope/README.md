@@ -17,7 +17,7 @@ DSH Web UI 插件：**感知**工作区之外的环境，并**授权** agent 在
 ```sh
 # 在 dsh-web-ui 仓库内构建（本包已含在 workspace）
 pnpm install
-pnpm --filter @deepseek-ai/dsh-beyond-workscope build
+pnpm --filter @linxin666/dsh-beyond-workscope build
 
 # 装进 web profile（link 指向仓库内的包目录）
 dsh plugin --profile web add link:$(pwd)/packages/dsh-beyond-workscope
@@ -77,9 +77,9 @@ dsh web
 ## 开发
 
 ```sh
-pnpm --filter @deepseek-ai/dsh-beyond-workscope typecheck   # 类型检查
-pnpm --filter @deepseek-ai/dsh-beyond-workscope test        # 单测（grants/perceive）
-pnpm --filter @deepseek-ai/dsh-beyond-workscope build       # lib + client bundle
+pnpm --filter @linxin666/dsh-beyond-workscope typecheck   # 类型检查
+pnpm --filter @linxin666/dsh-beyond-workscope test        # 单测（grants/perceive）
+pnpm --filter @linxin666/dsh-beyond-workscope build       # lib + client bundle
 ```
 
 结构：`src/index.ts`（host 入口）、`src/grants.ts`（授权注册表）、`src/perceive.ts`（感知）、

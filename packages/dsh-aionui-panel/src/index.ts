@@ -1,5 +1,5 @@
 /**
- * @deepseek-ai/dsh-client-ui-aionui-panel — host half: the workspace-gated
+ * @linxin666/dsh-client-ui-aionui-panel — host half: the workspace-gated
  * filesystem + git services and the /aionui-panel/* HTTP routes (JSON
  * operations + SSE change stream) on the shared webserver. The browser half
  * (exports "./client") is served by client-modules from the same package's
@@ -11,7 +11,7 @@
  *
  * AionUi right-panel design (Apache-2.0, iOfficeAI/AionUi) — re-implemented
  * from measured behavior and architecture, not copied code.
- * @module @deepseek-ai/dsh-client-ui-aionui-panel
+ * @module @linxin666/dsh-client-ui-aionui-panel
  */
 
 import type { Context } from '@deepseek-ai/cordis'

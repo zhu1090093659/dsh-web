@@ -1,0 +1,1847 @@
+/* Miku skin —Hatsune Miku electronic-idol theme for the dsh web GUI.
+   The iconic teal (#2e9bff) runs through every surface: the mint-teal
+   desktop gradient with note/waveform light blooms, glassy teal window
+   chrome (title bar with the 01 badge, status bar with a live waveform),
+   and a full remap of the static + alias token families to the Miku
+   palette. Everything is scoped under body[data-dsh-miku], which the
+   plugin's apply() sets (and retracts on dispose), so the skin stays fully
+   hot-pluggable. The dark palette
+   (`body[data-dsh-miku][data-ds-dark-theme]`) is the neon night-cruise
+   take: deep sea-teal surfaces with glowing teal accents, so the base
+   theme system keeps working. Classes are consumed by the plugin's chrome
+   through the module class map; global selectors pass through the
+   CSS-modules transform untouched. */
+
+/* --- Desktop, fonts ---------------------------------------------------------- */
+
+body[data-dsh-miku] {
+  --dsw-font-family: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Helvetica Neue', 'Segoe UI', sans-serif;
+  --ds-font-family-code: 'JetBrains Mono', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  color: #1d2f52;
+  background-color: #eef5ff;
+  /* The idol art is applied by apply() as an inline background-image
+     (base64 data URL from ./art.ts, with a readability scrim chosen by the
+     current theme). The gradient below is only the no-art fallback. */
+  background-image:
+    radial-gradient(circle at 16% 10%, rgba(46, 155, 255, 0.14), transparent 40%),
+    radial-gradient(circle at 84% 22%, rgba(160, 190, 255, 0.2), transparent 36%),
+    radial-gradient(circle at 58% 94%, rgba(46, 155, 255, 0.16), transparent 44%),
+    linear-gradient(168deg, #f2f8ff 0%, #e4f0ff 46%, #d4e8ff 100%);
+  /* The fixed title/status bars reserve room; #root becomes the window. */
+  padding: 34px 8px 32px;
+  box-sizing: border-box;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] {
+  color: #c2d4f0;
+  background-color: #0a1430;
+  background-image:
+    radial-gradient(circle at 16% 10%, rgba(46, 155, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 84% 22%, rgba(88, 170, 255, 0.1), transparent 38%),
+    radial-gradient(circle at 58% 94%, rgba(46, 155, 255, 0.14), transparent 45%),
+    linear-gradient(168deg, #041110 0%, #0a1430 48%, #101f42 100%);
+}
+
+/* #root is the window body: a frosted mint-teal glass pane that lets the
+   idol art glow through behind it, framed by a Miku-teal border and a soft
+   drop shadow over the desktop. */
+body[data-dsh-miku] [id='root'] {
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(250, 255, 254, 0.6) 0%, rgba(253, 255, 255, 0.45) 110px, rgba(255, 255, 255, 0.38) 100%);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid #9cc6ff;
+  box-shadow: 0 8px 28px rgba(16, 42, 90, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [id='root'] {
+  background: linear-gradient(180deg, rgba(10, 20, 48, 0.55) 0%, rgba(12, 26, 58, 0.42) 110px, rgba(13, 26, 56, 0.36) 100%);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border-color: #24447c;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* --- Static palette: light -----------------------------------------------------
+   Remap the deepseek/blue families to the Miku teals and the neutral-bluish
+   family to a sea-teal gray scale, so components that read
+   --dsw-static-* directly still land in the idol era. */
+
+body[data-dsh-miku] {
+  --dsw-static-amber-100: #fdf3dd;
+  --dsw-static-amber-400: #e5b94f;
+  --dsw-static-amber-500: #c99a2e;
+  --dsw-static-amber-600: #a87c1e;
+  --dsw-static-amber-900: #4a3a12;
+  --dsw-static-blue-100: #dcebff;
+  --dsw-static-blue-300: #b3d6ff;
+  --dsw-static-blue-400: #7ab8ff;
+  --dsw-static-blue-450: #4da3ff;
+  --dsw-static-blue-500: #2e9bff;
+  --dsw-static-blue-50: #f0f7ff;
+  --dsw-static-blue-50p: #eaf4ff;
+  --dsw-static-blue-600: #1e6fd9;
+  --dsw-static-blue-75: #e4f0ff;
+  --dsw-static-blue-800: #1a56a8;
+  --dsw-static-blue-950: #0d2f5e;
+  --dsw-static-deepseek-100: #dcebff;
+  --dsw-static-deepseek-200: #cfe3ff;
+  --dsw-static-deepseek-300: #b3d6ff;
+  --dsw-static-deepseek-400: #7ab8ff;
+  --dsw-static-deepseek-450: #4da3ff;
+  --dsw-static-deepseek-500: #2e9bff;
+  --dsw-static-deepseek-50: #f0f7ff;
+  --dsw-static-deepseek-600: #1e6fd9;
+  --dsw-static-deepseek-700-delete: #1a56a8;
+  --dsw-static-deepseek-800: #1a56a8;
+  --dsw-static-deepseek-900: #124a8f;
+  --dsw-static-green-100: #ddf3e3;
+  --dsw-static-green-400: #4fb86f;
+  --dsw-static-green-500: #24924a;
+  --dsw-static-green-900: #1b4027;
+  --dsw-static-neutral-00: #fff;
+  --dsw-static-neutral-1000: #000;
+  --dsw-static-neutral-100: #f0f4fb;
+  --dsw-static-neutral-150: #e8eef8;
+  --dsw-static-neutral-200: #e0e9f5;
+  --dsw-static-neutral-250: #d8e3f2;
+  --dsw-static-neutral-300: #ccd9ee;
+  --dsw-static-neutral-400: #aabdd8;
+  --dsw-static-neutral-500: #8fa3c0;
+  --dsw-static-neutral-50: #f4f8fd;
+  --dsw-static-neutral-550: #7e94b8;
+  --dsw-static-neutral-600: #6c82a8;
+  --dsw-static-neutral-700: #566c92;
+  --dsw-static-neutral-800: #3e5578;
+  --dsw-static-neutral-850: #364c70;
+  --dsw-static-neutral-900: #273d5e;
+  --dsw-static-neutral-bluish-00: #fff;
+  --dsw-static-neutral-bluish-1000: #000;
+  --dsw-static-neutral-bluish-100: #e8f0f9;
+  --dsw-static-neutral-bluish-150: #dee9f6;
+  --dsw-static-neutral-bluish-200: #d4e1f2;
+  --dsw-static-neutral-bluish-250: #c9d8ee;
+  --dsw-static-neutral-bluish-300: #bccfeb;
+  --dsw-static-neutral-bluish-400: #a3b8d8;
+  --dsw-static-neutral-bluish-500: #7e96c2;
+  --dsw-static-neutral-bluish-50: #f1f6fc;
+  --dsw-static-neutral-bluish-600: #6479ac;
+  --dsw-static-neutral-bluish-60: #eaf6f4;
+  --dsw-static-neutral-bluish-700: #4f6398;
+  --dsw-static-neutral-bluish-750: #425486;
+  --dsw-static-neutral-bluish-75: #e3f2ef;
+  --dsw-static-neutral-bluish-800: #364877;
+  --dsw-static-neutral-bluish-850: #2d3e6b;
+  --dsw-static-neutral-bluish-875: #26375f;
+  --dsw-static-neutral-bluish-900: #1b3733;
+  --dsw-static-neutral-bluish-950: #17203c;
+  --dsw-static-red-100: #f8dcdc;
+  --dsw-static-red-400: #e06060;
+  --dsw-static-red-500: #c22626;
+  --dsw-static-red-50: #fceeee;
+  --dsw-static-red-600: #a02020;
+  --dsw-static-red-900: #5c1414;
+}
+
+/* --- Static palette: dark ------------------------------------------------------ */
+
+body[data-dsh-miku][data-ds-dark-theme] {
+  --dsw-static-amber-100: #3a3015;
+  --dsw-static-amber-400: #e5b94f;
+  --dsw-static-amber-500: #c99a2e;
+  --dsw-static-amber-600: #a87c1e;
+  --dsw-static-amber-900: #4a3a12;
+  --dsw-static-blue-100: #162a52;
+  --dsw-static-blue-300: #22407a;
+  --dsw-static-blue-400: #2a4e94;
+  --dsw-static-blue-450: #3560ac;
+  --dsw-static-blue-500: #2e9bff;
+  --dsw-static-blue-50: #102244;
+  --dsw-static-blue-50p: #13264a;
+  --dsw-static-blue-600: #58a9ff;
+  --dsw-static-blue-75: #152a52;
+  --dsw-static-blue-800: #8cc6ff;
+  --dsw-static-blue-950: #c6e0ff;
+  --dsw-static-deepseek-100: #162a52;
+  --dsw-static-deepseek-200: #1c3468;
+  --dsw-static-deepseek-300: #22407a;
+  --dsw-static-deepseek-400: #2a4e94;
+  --dsw-static-deepseek-450: #3560ac;
+  --dsw-static-deepseek-500: #2e9bff;
+  --dsw-static-deepseek-50: #102244;
+  --dsw-static-deepseek-600: #58a9ff;
+  --dsw-static-deepseek-700-delete: #6faeff;
+  --dsw-static-deepseek-800: #8cc6ff;
+  --dsw-static-deepseek-900: #a2c8f5;
+  --dsw-static-green-100: #1c3d26;
+  --dsw-static-green-400: #4fb86f;
+  --dsw-static-green-500: #24924a;
+  --dsw-static-green-900: #1b4027;
+  --dsw-static-neutral-00: #0d1a3a;
+  --dsw-static-neutral-1000: #eef7f5;
+  --dsw-static-neutral-100: #182744;
+  --dsw-static-neutral-150: #1c2c48;
+  --dsw-static-neutral-200: #20344e;
+  --dsw-static-neutral-250: #263950;
+  --dsw-static-neutral-300: #2e4358;
+  --dsw-static-neutral-400: #3e5360;
+  --dsw-static-neutral-500: #4b716c;
+  --dsw-static-neutral-50: #142242;
+  --dsw-static-neutral-550: #557c77;
+  --dsw-static-neutral-600: #608983;
+  --dsw-static-neutral-700: #739a94;
+  --dsw-static-neutral-800: #88aba5;
+  --dsw-static-neutral-850: #90b2ac;
+  --dsw-static-neutral-900: #9fbeb9;
+  --dsw-static-neutral-bluish-00: #0d1a3a;
+  --dsw-static-neutral-bluish-1000: #eef7f5;
+  --dsw-static-neutral-bluish-100: #1a2c4a;
+  --dsw-static-neutral-bluish-150: #1d3252;
+  --dsw-static-neutral-bluish-200: #213856;
+  --dsw-static-neutral-bluish-250: #254058;
+  --dsw-static-neutral-bluish-300: #31455f;
+  --dsw-static-neutral-bluish-400: #395368;
+  --dsw-static-neutral-bluish-500: #4c6390;
+  --dsw-static-neutral-bluish-50: #152746;
+  --dsw-static-neutral-bluish-600: #5d90c4;
+  --dsw-static-neutral-bluish-60: #172c50;
+  --dsw-static-neutral-bluish-700: #6ea2ce;
+  --dsw-static-neutral-bluish-750: #78a8d4;
+  --dsw-static-neutral-bluish-75: #193055;
+  --dsw-static-neutral-bluish-800: #85acd9;
+  --dsw-static-neutral-bluish-850: #8db2dd;
+  --dsw-static-neutral-bluish-875: #95b8e2;
+  --dsw-static-neutral-bluish-900: #a0bfe6;
+  --dsw-static-neutral-bluish-950: #b2c8ea;
+  --dsw-static-red-100: #4a2222;
+  --dsw-static-red-400: #e07070;
+  --dsw-static-red-500: #d05050;
+  --dsw-static-red-50: #3a1c1c;
+  --dsw-static-red-600: #b84040;
+  --dsw-static-red-900: #5c1414;
+}
+
+/* --- Alias layer: light --------------------------------------------------------- */
+
+body[data-dsh-miku] {
+  --dsw-alias-bg-base: #fff;
+  --dsw-alias-bg-layer-1: #f3f8ff;
+  --dsw-alias-bg-layer-2: #e4f0ff;
+  --dsw-alias-bg-layer-3: #dfeaff;
+  --dsw-alias-bg-mask-1: rgba(10, 30, 66, 0.4);
+  --dsw-alias-bg-mask-2: rgba(10, 30, 66, 0.2);
+  --dsw-alias-bg-mask-3: rgba(10, 30, 66, 0.5);
+  --dsw-alias-bg-mask-photo: rgba(6, 22, 46, 0.88);
+  --dsw-alias-bg-module-platform: #e4f7f2;
+  --dsw-alias-bg-multi-select: #e4f0ff;
+  --dsw-alias-bg-overlay: #eefaf7;
+  --dsw-alias-bg-skeleton: rgba(10, 30, 66, 0.06);
+  --dsw-alias-border-inverted2: rgba(255, 255, 255, 0.6);
+  --dsw-alias-border-inverted: rgba(255, 255, 255, 0.4);
+  --dsw-alias-border-l1: rgba(20, 55, 110, 0.15);
+  --dsw-alias-border-l2-darkmode-thin: rgba(20, 55, 110, 0.2);
+  --dsw-alias-border-l2: rgba(20, 55, 110, 0.22);
+  --dsw-alias-border-l3: rgba(20, 55, 110, 0.32);
+  --dsw-alias-border-l4: rgba(20, 55, 110, 0.42);
+  --dsw-alias-brand-primary-invert: #fff;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #2e9bff;
+  --dsw-alias-brand-primary: #2e9bff;
+  --dsw-alias-brand-text: #124a8f;
+  --dsw-alias-button-contrast-fill: #1e6fd9;
+  --dsw-alias-button-elevated-fill: #fff;
+  --dsw-alias-button-floating-fill: #fff;
+  --dsw-alias-button-floating-hover: #e4f7f2;
+  --dsw-alias-button-ghost-active-border: #8ce4da;
+  --dsw-alias-button-ghost-active-fill: #e4f0ff;
+  --dsw-alias-button-ghost-active-hover: #dcebff;
+  --dsw-alias-button-info-fill: #2e9bff;
+  --dsw-alias-button-info-hover: #4da3ff;
+  --dsw-alias-button-primary-dimmed: #dcebff;
+  --dsw-alias-button-primary-fill: #2e9bff;
+  --dsw-alias-button-primary-hover: #4da3ff;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(46, 155, 255, 0.36);
+  --dsw-alias-button-tool-bar-fill: rgba(46, 155, 255, 0.5);
+  --dsw-alias-button-tool-bar-hover: rgba(46, 155, 255, 0.6);
+  --dsw-alias-interactive-bg-active: rgba(46, 155, 255, 0.14);
+  --dsw-alias-interactive-bg-hover-accent: rgba(46, 155, 255, 0.18);
+  --dsw-alias-interactive-bg-hover-danger: rgba(194, 38, 38, 0.06);
+  --dsw-alias-interactive-bg-hover-solid: #eaf4ff;
+  --dsw-alias-interactive-bg-hover: rgba(46, 155, 255, 0.08);
+  --dsw-alias-label-caption: #8fa3c0;
+  --dsw-alias-label-dimmed: #a3b8d8;
+  --dsw-alias-label-primary-dimmed: #465a84;
+  --dsw-alias-label-primary-foreground: #fff;
+  --dsw-alias-label-primary-inverted: #fff;
+  --dsw-alias-label-primary: #17302c;
+  --dsw-alias-label-secondary: #465a84;
+  --dsw-alias-label-tertiary: #6c82a8;
+  --dsw-alias-markdown-citation: #e4f7f2;
+  --dsw-alias-markdown-code-block-banner: #f3f8ff;
+  --dsw-alias-markdown-code-block: #f3f8ff;
+  --dsw-alias-markdown-code-segment-selected: #fff;
+  --dsw-alias-markdown-code-segment-unselected: #eefaf7;
+  --dsw-alias-markdown-inline-code: #e4f7f2;
+  --dsw-alias-markdown-placeholder: #f3f8ff;
+  --dsw-alias-markdown-tag: #e4f7f2;
+  --dsw-alias-scrollbar-bg-l1: #d9e8fa;
+  --dsw-alias-scrollbar-bg-l2: #d9e8fa;
+  --dsw-alias-scrollbar-hover-l1: #b4d4ff;
+  --dsw-alias-scrollbar-hover-l2: #b4d4ff;
+  --dsw-alias-state-business-primary: #2e9bff;
+  --dsw-alias-state-business-tertiary: #dcebff;
+  --dsw-alias-state-error-primary: #c22626;
+  --dsw-alias-state-error-secondary: #e06060;
+  --dsw-alias-state-success-primary: #24924a;
+  --dsw-alias-state-success-secondary: #4fb86f;
+  --dsw-alias-state-success-tertiary: #ddf3e3;
+  --dsw-alias-state-warn-label: #a87c1e;
+  --dsw-alias-state-warn-primary: #c99a2e;
+  --dsw-alias-state-warn-secondary: #e5b94f;
+  --dsw-alias-state-warn-tertiary: #fdf3dd;
+  --dsw-alias-toast-bg: #1e6fd9;
+  --dsw-alias-tooltip-bg: #ffffff;
+  --dsw-specific-bubble-highlight: #cfe3ff;
+  --dsw-specific-bubble: #e4f0ff;
+  --dsw-specific-input-major: #fff;
+  --dsw-specific-login-input: #fff;
+  --dsw-specific-menu: #f3f8ff;
+  --dsw-specific-selector: #eaf4ff;
+  --dsw-specific-sidebar-fill: #2e9bff;
+  --dsw-specific-sidebar-nav-item-active-accent: #b3d6ff;
+  --dsw-specific-sidebar-nav-item-active: #dcebff;
+  --dsw-specific-sidebar-nav-item-hover: #eaf4ff;
+  --dsw-specific-tip: #f3f8ff;
+}
+
+/* --- Alias layer: dark ---------------------------------------------------------- */
+
+body[data-dsh-miku][data-ds-dark-theme] {
+  --dsw-alias-bg-base: #0d1a3a;
+  --dsw-alias-bg-layer-1: #12244a;
+  --dsw-alias-bg-layer-2: #182e5c;
+  --dsw-alias-bg-layer-3: #1d3668;
+  --dsw-alias-bg-mask-1: rgba(0, 0, 0, 0.55);
+  --dsw-alias-bg-mask-2: rgba(0, 0, 0, 0.3);
+  --dsw-alias-bg-mask-3: rgba(0, 0, 0, 0.6);
+  --dsw-alias-bg-mask-photo: rgba(0, 0, 0, 0.88);
+  --dsw-alias-bg-module-platform: #182e5c;
+  --dsw-alias-bg-multi-select: #162a52;
+  --dsw-alias-bg-overlay: #12244a;
+  --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.06);
+  --dsw-alias-border-inverted2: rgba(255, 255, 255, 0.6);
+  --dsw-alias-border-inverted: rgba(255, 255, 255, 0.4);
+  --dsw-alias-border-l1: rgba(150, 190, 255, 0.12);
+  --dsw-alias-border-l2-darkmode-thin: rgba(150, 190, 255, 0.15);
+  --dsw-alias-border-l2: rgba(150, 190, 255, 0.18);
+  --dsw-alias-border-l3: rgba(150, 190, 255, 0.26);
+  --dsw-alias-border-l4: rgba(150, 190, 255, 0.34);
+  --dsw-alias-brand-primary-invert: #0a0a0a;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #58a9ff;
+  --dsw-alias-brand-primary: #58a9ff;
+  --dsw-alias-brand-text: #a2c8f5;
+  --dsw-alias-button-contrast-fill: #1e6fd9;
+  --dsw-alias-button-elevated-fill: #182e5c;
+  --dsw-alias-button-floating-fill: #12244a;
+  --dsw-alias-button-floating-hover: #1c3468;
+  --dsw-alias-button-ghost-active-border: #3560ac;
+  --dsw-alias-button-ghost-active-fill: #162a52;
+  --dsw-alias-button-ghost-active-hover: #1c3468;
+  --dsw-alias-button-info-fill: #1e6fd9;
+  --dsw-alias-button-info-hover: #2e9bff;
+  --dsw-alias-button-primary-dimmed: #22407a;
+  --dsw-alias-button-primary-fill: #1e6fd9;
+  --dsw-alias-button-primary-hover: #2e9bff;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(150, 190, 255, 0.36);
+  --dsw-alias-button-tool-bar-fill: rgba(150, 190, 255, 0.5);
+  --dsw-alias-button-tool-bar-hover: rgba(150, 190, 255, 0.6);
+  --dsw-alias-interactive-bg-active: rgba(150, 190, 255, 0.14);
+  --dsw-alias-interactive-bg-hover-accent: rgba(150, 190, 255, 0.2);
+  --dsw-alias-interactive-bg-hover-danger: rgba(208, 80, 80, 0.12);
+  --dsw-alias-interactive-bg-hover-solid: #1c3468;
+  --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.07);
+  --dsw-alias-label-caption: #61779f;
+  --dsw-alias-label-dimmed: #4c6390;
+  --dsw-alias-label-primary-dimmed: #b0c4e2;
+  --dsw-alias-label-primary-foreground: #fff;
+  --dsw-alias-label-primary-inverted: #0a1a17;
+  --dsw-alias-label-primary: #d6f1ec;
+  --dsw-alias-label-secondary: #b8cae8;
+  --dsw-alias-label-tertiary: #8ba0c4;
+  --dsw-alias-markdown-citation: #182e5c;
+  --dsw-alias-markdown-code-block-banner: #0e1c3c;
+  --dsw-alias-markdown-code-block: #0e1c3c;
+  --dsw-alias-markdown-code-segment-selected: #1d3668;
+  --dsw-alias-markdown-code-segment-unselected: #12244a;
+  --dsw-alias-markdown-inline-code: #152a52;
+  --dsw-alias-markdown-placeholder: #12244a;
+  --dsw-alias-markdown-tag: #152a52;
+  --dsw-alias-scrollbar-bg-l1: #274568;
+  --dsw-alias-scrollbar-bg-l2: #274568;
+  --dsw-alias-scrollbar-hover-l1: #35537c;
+  --dsw-alias-scrollbar-hover-l2: #35537c;
+  --dsw-alias-state-business-primary: #2e9bff;
+  --dsw-alias-state-business-tertiary: #162a52;
+  --dsw-alias-state-error-primary: #e06060;
+  --dsw-alias-state-error-secondary: #e07070;
+  --dsw-alias-state-success-primary: #4fb86f;
+  --dsw-alias-state-success-secondary: #4fb86f;
+  --dsw-alias-state-success-tertiary: #1c3d26;
+  --dsw-alias-state-warn-label: #e5b94f;
+  --dsw-alias-state-warn-primary: #e5b94f;
+  --dsw-alias-state-warn-secondary: #e5b94f;
+  --dsw-alias-state-warn-tertiary: #3a3015;
+  --dsw-alias-toast-bg: #1c3468;
+  --dsw-alias-tooltip-bg: #213856;
+  --dsw-specific-bubble-highlight: #22407a;
+  --dsw-specific-bubble: #162a52;
+  --dsw-specific-input-major: #12244a;
+  --dsw-specific-login-input: #12244a;
+  --dsw-specific-menu: #182e5c;
+  --dsw-specific-selector: #152a52;
+  --dsw-specific-sidebar-fill: #1e4f9e;
+  --dsw-specific-sidebar-nav-item-active-accent: #22407a;
+  --dsw-specific-sidebar-nav-item-active: #162a52;
+  --dsw-specific-sidebar-nav-item-hover: #1c3468;
+  --dsw-specific-tip: #12244a;
+}
+
+/* --- Geometry -------------------------------------------------------------------
+   The modern UI is rounded; the Miku look is softly rounded too. A 6px
+   corner gives the idol-era gloss without fighting the component shapes. */
+
+body[data-dsh-miku] * {
+  border-radius: 6px !important;
+}
+
+/* Controls: a glassy teal sheen over whatever fill the component carries;
+   pressing sinks it inward. */
+body[data-dsh-miku] button {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.14) 45%, rgba(255, 255, 255, 0));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(10, 30, 66, 0.12);
+}
+
+body[data-dsh-miku] button:hover:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.18) 45%, rgba(255, 255, 255, 0));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 3px rgba(10, 30, 66, 0.18);
+}
+
+body[data-dsh-miku] button:active:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(10, 30, 66, 0.08), rgba(10, 30, 66, 0) 60%);
+  box-shadow: inset 0 2px 4px rgba(10, 30, 66, 0.22);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] button {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] button:hover:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] button:active:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0) 60%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+body[data-dsh-miku] input:not([type='checkbox']):not([type='radio']),
+body[data-dsh-miku] textarea,
+body[data-dsh-miku] select {
+  box-shadow: inset 0 1px 2px rgba(10, 30, 66, 0.08);
+  background: #fff;
+  color: #17302c;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] input:not([type='checkbox']):not([type='radio']),
+body[data-dsh-miku][data-ds-dark-theme] textarea,
+body[data-dsh-miku][data-ds-dark-theme] select {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  background: #12244a;
+  color: #d6f1ec;
+}
+
+body[data-dsh-miku] :focus-visible {
+  outline: 2px solid #2e9bff;
+  outline-offset: 2px;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :focus-visible {
+  outline-color: #58a9ff;
+}
+
+/* --- Scrollbars: slim Miku-teal bars -----------------------------------------
+   The indirection rebinds to the l2 elevation pair (already remapped to the
+   teal scale above), so the surface contract in scrollbar.css holds. */
+
+body[data-dsh-miku] {
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+body[data-dsh-miku] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body[data-dsh-miku] ::-webkit-scrollbar-track {
+  background: #e9f2ff;
+}
+
+body[data-dsh-miku] ::-webkit-scrollbar-thumb {
+  background: #b4d4ff;
+  border: 2px solid #e9f2ff;
+  border-radius: 5px;
+}
+
+body[data-dsh-miku] ::-webkit-scrollbar-thumb:hover {
+  background: #7ab8ff;
+}
+
+body[data-dsh-miku] ::-webkit-scrollbar-corner {
+  background: #e9f2ff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] ::-webkit-scrollbar-track,
+body[data-dsh-miku][data-ds-dark-theme] ::-webkit-scrollbar-corner {
+  background: #0e1c3c;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] ::-webkit-scrollbar-thumb {
+  background: #274568;
+  border-color: #0e1c3c;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] ::-webkit-scrollbar-thumb:hover {
+  background: #35537c;
+}
+
+/* --- Selection, links ------------------------------------------------------- */
+
+body[data-dsh-miku] ::selection {
+  background: #2e9bff;
+  color: #fff;
+}
+
+body[data-dsh-miku] a {
+  color: #1e6fd9;
+}
+
+body[data-dsh-miku] a:visited {
+  color: #8f5bd8;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] a {
+  color: #58a9ff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] a:visited {
+  color: #ab8ce0;
+}
+
+/* --- Window chrome: title bar and status bar -----------------------------------
+   Fixed strips above/below #root (the plugin renders them; #root itself is
+   the window body via the rules above). The title bar is the Miku teal
+   glassy band with the 01 badge; the status bar reads as a music-studio
+   console strip with a live waveform. */
+
+.mikuTitlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 60%), linear-gradient(90deg, rgba(30, 111, 217, 0.55) 0%, rgba(46, 155, 255, 0.45) 40%, rgba(155, 93, 255, 0.42) 68%, rgba(255, 77, 166, 0.42) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font: bold 12px/30px 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  text-shadow: 0 1px 1px rgba(6, 22, 48, 0.4);
+  user-select: none;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] .mikuTitlebar {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 60%), linear-gradient(90deg, rgba(13, 43, 86, 0.6) 0%, rgba(30, 79, 158, 0.5) 45%, rgba(122, 63, 208, 0.46) 72%, rgba(208, 41, 138, 0.46) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.mikuTitlebarTitle {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mikuTitlebarIcon,
+.mikuTitlebarBadge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  filter: drop-shadow(0 1px 1px rgba(6, 22, 48, 0.4));
+}
+
+.mikuTitlebarBadge svg text {
+  fill: currentColor;
+}
+
+.mikuTitlebarBtn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 18px;
+  margin-left: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.mikuTitlebarBtn:hover {
+  background: rgba(255, 255, 255, 0.32);
+  border-color: rgba(255, 255, 255, 0.48);
+}
+
+/* The last glyph is the close button —a warm pink hover echoes Miku's
+   accessory accent. */
+.mikuTitlebarBtn:last-child:hover {
+  background: linear-gradient(180deg, #ffb3d9, #ff4da6);
+  border-color: #e0298a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.mikuStatusbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 2px 8px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(232, 242, 255, 0.55), rgba(212, 232, 255, 0.4));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: #0d2b56;
+  font: 11px/1 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  user-select: none;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] .mikuStatusbar {
+  background: linear-gradient(180deg, rgba(22, 41, 78, 0.55), rgba(29, 49, 96, 0.4));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: #c2d4f0;
+}
+
+.mikuStatusbarWave {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  color: #1e6fd9;
+  filter: drop-shadow(0 1px 1px rgba(6, 22, 48, 0.2));
+}
+
+body[data-dsh-miku][data-ds-dark-theme] .mikuStatusbarWave {
+  color: #58a9ff;
+}
+
+.mikuStatusbarCell {
+  flex: none;
+  height: 17px;
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #9cc6ff;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  color: #0d2b56;
+  line-height: 17px;
+  white-space: nowrap;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] .mikuStatusbarCell {
+  background: rgba(10, 22, 46, 0.5);
+  border-color: #24447c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: #c2d4f0;
+}
+
+/* The gradient accent line was removed with the statusbar border
+   (user preference: clean translucent bars). */
+
+.mikuStatusbarSpacer {
+  flex: 1;
+}
+
+/* --- Pane chrome --------------------------------------------------------------
+   The AppFrame columns carry data-pane hooks (ui-layout); give each the
+   era-appropriate surface. The sidebar becomes the Miku console panel: a
+   teal header band (the user strip) over a pale mint-to-white gradient
+   body. The conversation header reads as the chat window's title band.
+   Without the hooks these rules simply do not match. */
+
+body[data-dsh-miku] [data-pane='sidebar'] > div {
+  background: linear-gradient(180deg, rgba(234, 250, 247, 0.72) 0%, rgba(243, 252, 250, 0.6) 40%, rgba(255, 255, 255, 0.55) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [data-pane='sidebar'] > div {
+  background: linear-gradient(180deg, rgba(15, 44, 40, 0.72) 0%, rgba(14, 43, 39, 0.64) 45%, rgba(11, 33, 30, 0.6) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Sidebar header band: the first child (logo row) becomes the Miku teal
+   user strip with a glass sheen; everything inside renders white. */
+body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child,
+body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child * {
+  color: #fff;
+}
+
+body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 60%), linear-gradient(90deg, #1e6fd9 0%, #2e9bff 45%, #9b5dff 72%, #ff4da6 100%);
+  border-bottom: 1px solid #0d2e66;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [data-pane='sidebar'] > div > :first-child {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 60%), linear-gradient(180deg, #0d2b56, #14564f);
+  border-bottom-color: #062e2a;
+}
+
+/* Header-band buttons stay flat and transparent (no silver squares on the
+   teal strip). */
+body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child button {
+  background: transparent;
+  color: #fff;
+  background-image: none;
+  box-shadow: none;
+}
+
+body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* The brand lockup is vector text: "DeepSeek" + a "HARNESS" badge pill.
+   The pill follows currentColor (white here) while the badge letters use
+   the inverted-primary token —white on white in light mode, invisible.
+   Pin the pill to the deep teal and force the letters white in both
+   themes, so the badge reads on the teal strip. */
+body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child svg rect[fill='currentColor'] {
+  fill: #0d2b56;
+}
+
+body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child svg [fill='var(--dsw-alias-label-primary-inverted)'] {
+  fill: #fff;
+}
+
+/* Conversation: frosted white chat surface with a pale mint title band on
+   the session header —translucent so the idol art breathes through. */
+body[data-dsh-miku] [data-pane='conversation'] {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [data-pane='conversation'] {
+  background: rgba(11, 33, 30, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+body[data-dsh-miku] [data-pane='conversation'] > div > header {
+  background: linear-gradient(180deg, rgba(246, 250, 255, 0.8), rgba(217, 246, 240, 0.72));
+  border-bottom: 1px solid #a9d0ff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [data-pane='conversation'] > div > header {
+  background: linear-gradient(180deg, rgba(18, 56, 50, 0.78), rgba(15, 42, 38, 0.7));
+  border-bottom-color: #22407a;
+}
+
+body[data-dsh-miku] [data-pane='details'] {
+  background: rgba(240, 250, 247, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [data-pane='details'] {
+  background: rgba(13, 39, 35, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* --- aionui 右侧面板适配（dsh-aionui-panel） ---
+   The aionui-panel host plugin paints its Explorer / SCM / Preview panes
+   from an independent --aion-* token system (defined on :root in light and
+   body[data-ds-dark-theme] in dark). This skin remaps every one of those
+   tokens inside the miku body scope to the teal palette, so the right-hand
+   panels read as part of the chat window rather than as a stock modern
+   widget. Two full token sets (light: pale mint, dark: deep sea-teal) plus
+   a few structural overlays for the column chrome, drag handles, floating
+   expand button and the shared overlay/menu/toast affordances. Pure
+   presentation —no JS, no events, no external assets. */
+
+/* --- aionui tokens: light -------------------------------------------------- */
+
+body[data-dsh-miku] {
+  --aion-bg-base: #ffffff;
+  --aion-bg-1: #f3f8ff;
+  --aion-bg-2: #e4f7f2;
+  --aion-bg-3: #dfeaff;
+  --aion-bg-4: #b4d4ff;
+  --aion-bg-hover: #eefaf7;
+  --aion-bg-active: #e4f0ff;
+  --aion-text-primary: #17302c;
+  --aion-text-secondary: #465a84;
+  --aion-text-tertiary: #6c82a8;
+  --aion-text-disabled: #a3b8d8;
+  --aion-primary: #2e9bff;
+  --aion-primary-hover: #4da3ff;
+  --aion-success: #24924a;
+  --aion-success-soft: #ddf3e3;
+  --aion-warning: #c99a2e;
+  --aion-warning-soft: #fdf3dd;
+  --aion-danger: #c22626;
+  --aion-danger-soft: #fceeee;
+  --aion-brand: #2e9bff;
+  --aion-aou-1: #f5faff;
+  --aion-aou-2: #e4f0ff;
+  --aion-aou-3: #b4d4ff;
+  --aion-aou-4: #7ab8ff;
+  --aion-aou-5: #2e9bff;
+  --aion-aou-6: #0d2b56;
+  --aion-fill-2: #eaf4ff;
+  --aion-fill-3: #e4f0ff;
+  --aion-border-base: #d4e1f2;
+  --aion-overlay-shadow: 0 8px 28px rgba(10, 30, 66, 0.3), 0 2px 8px rgba(10, 30, 66, 0.16);
+  --aion-font-sans: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Helvetica Neue', 'Segoe UI', sans-serif;
+  --aion-font-mono: 'JetBrains Mono', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+}
+
+/* --- aionui tokens: dark ---------------------------------------------------- */
+
+body[data-dsh-miku][data-ds-dark-theme] {
+  --aion-bg-base: #0d1a3a;
+  --aion-bg-1: #12244a;
+  --aion-bg-2: #182e5c;
+  --aion-bg-3: #1d3668;
+  --aion-bg-4: #22407a;
+  --aion-bg-hover: #152a52;
+  --aion-bg-active: #1c3468;
+  --aion-text-primary: #d6f1ec;
+  --aion-text-secondary: #b8cae8;
+  --aion-text-tertiary: #8ba0c4;
+  --aion-text-disabled: #4c6390;
+  --aion-primary: #2e9bff;
+  --aion-primary-hover: #58a9ff;
+  --aion-success: #4fb86f;
+  --aion-success-soft: #1c3d26;
+  --aion-warning: #e5b94f;
+  --aion-warning-soft: #3a3015;
+  --aion-danger: #e06060;
+  --aion-danger-soft: #3a1c1c;
+  --aion-brand: #58a9ff;
+  --aion-aou-1: #102244;
+  --aion-aou-2: #1c3468;
+  --aion-aou-3: #22407a;
+  --aion-aou-4: #2a4e94;
+  --aion-aou-5: #2e9bff;
+  --aion-aou-6: #0d2b56;
+  --aion-fill-2: #1c3468;
+  --aion-fill-3: #162a52;
+  --aion-border-base: #22407a;
+  --aion-overlay-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --aion-font-sans: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Helvetica Neue', 'Segoe UI', sans-serif;
+  --aion-font-mono: 'JetBrains Mono', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+}
+
+/* --- aionui columns and roots -----------------------------------------------
+   The two pane columns sit at the tail of the frame grid, each with a 1px
+   left border (default --aion-bg-3). Rebind the border to the teal and
+   give the pane roots the pale-mint / night-teal gradient surfaces that
+   match the conversation window. */
+
+body[data-dsh-miku] [data-aionui-explorer-col],
+body[data-dsh-miku] [data-aionui-preview-col] {
+  border-left-color: #9cc6ff;
+  background: rgba(240, 250, 247, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [data-aionui-explorer-col],
+body[data-dsh-miku][data-ds-dark-theme] [data-aionui-preview-col] {
+  border-left-color: #22407a;
+  background: rgba(15, 44, 40, 0.58);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+body[data-dsh-miku] :global(.aionui-root) {
+  background: linear-gradient(180deg, rgba(246, 250, 255, 0.66) 0%, rgba(246, 253, 251, 0.55) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--aion-text-primary);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-root) {
+  background: linear-gradient(180deg, rgba(15, 44, 40, 0.66) 0%, rgba(13, 39, 35, 0.6) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--aion-text-primary);
+}
+
+/* Explorer header band: read as the Miku panel title strip (glassy teal).
+   Reposition only the top strip so the tree below stays on the pale body. */
+body[data-dsh-miku] [data-aionui-explorer-col] > div > :first-child {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 60%), linear-gradient(90deg, #1e6fd9 0%, #2e9bff 45%, #9b5dff 72%, #ff4da6 100%);
+  border-bottom: 1px solid #0d2e66;
+  color: #fff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [data-aionui-explorer-col] > div > :first-child {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 60%), linear-gradient(180deg, #0d2b56, #14564f);
+  border-bottom-color: #062e2a;
+  color: #d6f1ec;
+}
+
+/* --- aionui drag handles, chevrons, floating expand --------------------------
+   The 2px splitter lines and the collapsed-expand affordance stay slim and
+   glow with the skin's teal on hover. */
+
+body[data-dsh-miku] :global(.aionui-explorer-handle),
+body[data-dsh-miku] :global(.aionui-preview-handle) {
+  background: #d4e8ff;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body[data-dsh-miku] :global(.aionui-explorer-handle):hover,
+body[data-dsh-miku] :global(.aionui-preview-handle):hover {
+  background: #2e9bff;
+  box-shadow: 0 0 6px rgba(46, 155, 255, 0.5);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-explorer-handle),
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-preview-handle) {
+  background: #22407a;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-explorer-handle):hover,
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-preview-handle):hover {
+  background: #58a9ff;
+  box-shadow: 0 0 6px rgba(88, 170, 255, 0.5);
+}
+
+body[data-dsh-miku] :global(.aionui-floating-expand) {
+  background: linear-gradient(180deg, #f5faff, #e4f0ff);
+  border: 1px solid #9cc6ff;
+  color: #1e6fd9;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 2px 6px rgba(10, 30, 66, 0.22);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-floating-expand) {
+  background: linear-gradient(180deg, #162a54, #12244a);
+  border-color: #22407a;
+  color: #58a9ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+body[data-dsh-miku] :global(.aionui-collapse-chevron) {
+  color: #465a84;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-collapse-chevron) {
+  color: #8ba0c4;
+}
+
+/* --- aionui overlays, dialogs, buttons ---------------------------------------
+   Confirmation dialogs and the shared chrome re-read the window's mint
+   surface and teal buttons. */
+
+body[data-dsh-miku] :global(.aionui-overlay) {
+  background: rgba(6, 22, 48, 0.45);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-overlay) {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+body[data-dsh-miku] :global(.aionui-dialog) {
+  background: linear-gradient(180deg, rgba(244, 253, 251, 0.9), rgba(255, 255, 255, 0.82));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #9cc6ff;
+  box-shadow: var(--aion-overlay-shadow);
+  color: var(--aion-text-primary);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-dialog) {
+  background: linear-gradient(180deg, rgba(18, 56, 50, 0.88), rgba(15, 44, 40, 0.8));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: #22407a;
+  box-shadow: var(--aion-overlay-shadow);
+  color: var(--aion-text-primary);
+}
+
+body[data-dsh-miku] :global(.aionui-btn) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.14) 45%, rgba(255, 255, 255, 0));
+  border: 1px solid #9cc6ff;
+  color: #17302c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(10, 30, 66, 0.12);
+}
+
+body[data-dsh-miku] :global(.aionui-btn)::selection {
+  background: #2e9bff;
+  color: #fff;
+}
+
+body[data-dsh-miku] :global(.aionui-btn-primary) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #2e9bff, #1e6fd9);
+  border-color: #1a56a8;
+  color: #fff;
+}
+
+body[data-dsh-miku] :global(.aionui-btn-danger) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #e06060, #c22626);
+  border-color: #931d1d;
+  color: #fff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 45%);
+  border-color: #22407a;
+  color: #d6f1ec;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-primary) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #1e6fd9, #14564f);
+  border-color: #0d2b56;
+  color: #fff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-danger) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #e07070, #b84040);
+  border-color: #5c1414;
+  color: #fff;
+}
+
+/* --- aionui menu and toast --------------------------------------------------- */
+
+body[data-dsh-miku] :global(.aionui-menu) {
+  background: #f3f8ff;
+  border: 1px solid #9cc6ff;
+  box-shadow: var(--aion-overlay-shadow);
+  color: var(--aion-text-primary);
+}
+
+body[data-dsh-miku] :global(.aionui-menu-item:hover) {
+  background: #e4f0ff;
+}
+
+body[data-dsh-miku] :global(.aionui-menu-item-disabled) {
+  color: var(--aion-text-disabled);
+}
+
+body[data-dsh-miku] :global(.aionui-menu-sep) {
+  background: #d4e8ff;
+}
+
+body[data-dsh-miku] :global(.aionui-toast) {
+  background: #1e6fd9;
+  border: 1px solid #1a56a8;
+  box-shadow: 0 4px 12px rgba(10, 30, 66, 0.32);
+  color: #fff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-menu) {
+  background: #182e5c;
+  border-color: #22407a;
+  box-shadow: var(--aion-overlay-shadow);
+  color: var(--aion-text-primary);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-menu-item:hover) {
+  background: #1c3468;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-menu-item-disabled) {
+  color: var(--aion-text-disabled);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-menu-sep) {
+  background: #22407a;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-toast) {
+  background: #1c3468;
+  border-color: #22407a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  color: #eefaf7;
+}
+
+/* --- aionui preview enter (settle to the themed state, no conflicting
+   animation) ---------------------------------------------------------------- */
+
+body[data-dsh-miku] :global(.aionui-preview-enter),
+body[data-dsh-miku] :global(.aionui-preview-enter-active),
+body[data-dsh-miku] :global(.aionui-preview-enter-done) {
+  opacity: 1;
+  transform: none;
+}
+
+/* --- Polish: unified interaction states ---------------------------------------
+   Presentation-layer only: hover / active / focus-visible feedback, a single
+   120ms ease motion across the interactive chrome family, disabled visuals,
+   and a prefers-reduced-motion fallback. No static color, spacing or shape
+   of the base Miku palette changes here —these rules only shape how the
+   controls behave. Everything is scoped under body[data-dsh-miku] (each rule
+   has its [data-ds-dark-theme] "night" variant) so other skins and the
+   official UI are never touched. */
+
+/* Unified motion: 120ms ease across every self-drawn interactive chrome. */
+body[data-dsh-miku] button,
+body[data-dsh-miku] [role='button'],
+body[data-dsh-miku] input:not([type='checkbox']):not([type='radio']),
+body[data-dsh-miku] textarea,
+body[data-dsh-miku] select,
+body[data-dsh-miku] a,
+body[data-dsh-miku] .mikuTitlebarBtn,
+body[data-dsh-miku] :global(.aionui-btn),
+body[data-dsh-miku] :global(.aionui-btn-primary),
+body[data-dsh-miku] :global(.aionui-btn-danger),
+body[data-dsh-miku] :global(.aionui-menu-item),
+body[data-dsh-miku] :global(.aionui-menu-item-disabled),
+body[data-dsh-miku] :global(.aionui-floating-expand),
+body[data-dsh-miku] :global(.aionui-collapse-chevron),
+body[data-dsh-miku] :global(.aionui-explorer-handle),
+body[data-dsh-miku] :global(.aionui-preview-handle) {
+  transition: background-color 120ms ease, background-image 120ms ease, color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+/* Disabled visuals stay legible and drop the hover lift (all :hover rules below
+   guard with :not(:disabled); the base button :hover is already guarded). The
+   opacity/cursor apply identically in both themes, so no dark override needed. */
+body[data-dsh-miku] button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-image: none;
+  box-shadow: none;
+}
+
+body[data-dsh-miku] :global(.aionui-btn):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Inputs (non-checkbox/radio), textareas, selects: hover border lift, legible
+   disabled state. Base fill tokens are untouched. */
+body[data-dsh-miku] input:not([type='checkbox']):not([type='radio']):hover,
+body[data-dsh-miku] textarea:hover,
+body[data-dsh-miku] select:hover {
+  border-color: #7ab8ff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] input:not([type='checkbox']):not([type='radio']):hover,
+body[data-dsh-miku][data-ds-dark-theme] textarea:hover,
+body[data-dsh-miku][data-ds-dark-theme] select:hover {
+  border-color: #3560ac;
+}
+
+body[data-dsh-miku] input:not([type='checkbox']):not([type='radio']):disabled,
+body[data-dsh-miku] textarea:disabled,
+body[data-dsh-miku] select:disabled {
+  opacity: 0.55;
+  background-color: #eefaf7;
+  color: #a3b8d8;
+  cursor: not-allowed;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] input:not([type='checkbox']):not([type='radio']):disabled,
+body[data-dsh-miku][data-ds-dark-theme] textarea:disabled,
+body[data-dsh-miku][data-ds-dark-theme] select:disabled {
+  background-color: #152a52;
+  color: #4c6390;
+}
+
+/* Title-bar window buttons: pressed feedback. (Decorative aria-hidden spans, so
+   no focus-visible is expected; the close button gets a deeper pink press.) */
+body[data-dsh-miku] .mikuTitlebarBtn:active {
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 1px 2px rgba(10, 30, 66, 0.3);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] .mikuTitlebarBtn:active {
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+body[data-dsh-miku] .mikuTitlebarBtn:last-child:active {
+  background: linear-gradient(180deg, #ff4da6, #e0298a);
+}
+
+/* Links: hover/active color lift under the Miku-teal scale. */
+body[data-dsh-miku] a:hover {
+  color: #2e9bff;
+  text-decoration: underline;
+}
+
+body[data-dsh-miku] a:active {
+  color: #1a56a8;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] a:hover {
+  color: #a2c8f5;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] a:active {
+  color: #2e9bff;
+}
+
+/* Scrollbar thumb: pressed state. */
+body[data-dsh-miku] ::-webkit-scrollbar-thumb:active {
+  background: #2e9bff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] ::-webkit-scrollbar-thumb:active {
+  background: #58a9ff;
+}
+
+/* aionui buttons: hover/active lift. The flat .aionui-btn gains a soft teal
+   halo; primary/danger brighten their gradient and deepen the border. */
+body[data-dsh-miku] :global(.aionui-btn):hover:not(:disabled) {
+  background-color: rgba(46, 155, 255, 0.08);
+  border-color: #7ab8ff;
+}
+
+body[data-dsh-miku] :global(.aionui-btn):active:not(:disabled) {
+  background-color: rgba(46, 155, 255, 0.16);
+  box-shadow: inset 0 2px 4px rgba(10, 30, 66, 0.2);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn):hover:not(:disabled) {
+  background-color: rgba(150, 190, 255, 0.14);
+  border-color: #3560ac;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn):active:not(:disabled) {
+  background-color: rgba(150, 190, 255, 0.2);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+body[data-dsh-miku] :global(.aionui-btn-primary):hover:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #4da3ff, #2e9bff);
+  border-color: #1e6fd9;
+}
+
+body[data-dsh-miku] :global(.aionui-btn-primary):active:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #1e6fd9, #1a56a8);
+  box-shadow: inset 0 2px 4px rgba(10, 30, 66, 0.25);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-primary):hover:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #2e9bff, #1e6fd9);
+  border-color: #22407a;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-primary):active:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #14564f, #0d2b56);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+body[data-dsh-miku] :global(.aionui-btn-danger):hover:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #e07070, #d04040);
+  border-color: #b03030;
+}
+
+body[data-dsh-miku] :global(.aionui-btn-danger):active:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #b84040, #931d1d);
+  box-shadow: inset 0 2px 4px rgba(10, 30, 66, 0.25);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-danger):hover:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #c05050, #a03030);
+  border-color: #5c1414;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-danger):active:not(:disabled) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #a03030, #7a1010);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* aionui menu items: pressed state complements the existing hover fill. */
+body[data-dsh-miku] :global(.aionui-menu-item):active {
+  background: #d4e8ff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-menu-item):active {
+  background: #1c3468;
+}
+
+/* aionui splitter drag handles: pressed (dragging) state. */
+body[data-dsh-miku] :global(.aionui-explorer-handle):active,
+body[data-dsh-miku] :global(.aionui-preview-handle):active {
+  background: #1e6fd9;
+  box-shadow: 0 0 6px rgba(46, 155, 255, 0.6);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-explorer-handle):active,
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-preview-handle):active {
+  background: #58a9ff;
+  box-shadow: 0 0 6px rgba(88, 170, 255, 0.6);
+}
+
+/* aionui floating expand button: hover/active lift on the mint surface. */
+body[data-dsh-miku] :global(.aionui-floating-expand):hover {
+  background: linear-gradient(180deg, #f5faff, #d4e8ff);
+  border-color: #2e9bff;
+  color: #1a56a8;
+}
+
+body[data-dsh-miku] :global(.aionui-floating-expand):active {
+  background: linear-gradient(180deg, #dbeaff, #b4d4ff);
+  box-shadow: inset 0 2px 4px rgba(10, 30, 66, 0.18);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-floating-expand):hover {
+  background: linear-gradient(180deg, #1c3468, #162a54);
+  border-color: #2e9bff;
+  color: #a2c8f5;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-floating-expand):active {
+  background: linear-gradient(180deg, #162a52, #12244a);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* aionui collapse chevron: hover lift. */
+body[data-dsh-miku] :global(.aionui-collapse-chevron):hover {
+  color: #2e9bff;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-collapse-chevron):hover {
+  color: #a2c8f5;
+}
+
+/* Reduced-motion fallback: settle instantly for anyone who opts out. Scoped
+   under body[data-dsh-miku] so official UI animation is left untouched. */
+@media (prefers-reduced-motion: reduce) {
+  body[data-dsh-miku] * {
+    transition: none !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* --- git-graph 提交图适配（dsh-git-graph） ---
+   The git graph dialog / branch popover / selector chip read the shell's
+   --dsw-alias-* remap, so their surfaces already wear the Miku teals.
+   These rules add the skin's own color voice to the commit topology: each
+   lane column gets a hue from the idol palette (pass lines stay muted; the
+   current-branch badge keeps the brand fill), and the dialog frame re-reads
+   the glassy Miku window chrome. Hooks are the presentation-neutral
+   data-gitgraph-* attributes emitted by the dsh-git-graph bundle —no
+   hashed class names are involved. */
+
+/* Lane hue ramp: Miku teal / vocaloid green / amber / pink, repeating every
+   six columns. Node and merge glyphs share the column hue; pass and gap
+   cells keep the muted lane color from the plugin's own tokens. */
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+1),
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+1) { color: #2e9bff; }
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+2),
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+2) { color: #24924a; }
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+3),
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+3) { color: #c99a2e; }
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+4),
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+4) { color: #ff4da6; }
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+5),
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+5) { color: #7ab8ff; }
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n),
+body[data-dsh-miku] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n) { color: #4fb86f; }
+
+/* Night variant: the same hue family, lifted for the deep sea-teal night. */
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+1),
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+1) { color: #58a9ff; }
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+2),
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+2) { color: #4fb86f; }
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+3),
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+3) { color: #e5b94f; }
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+4),
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+4) { color: #ff7ec2; }
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+5),
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+5) { color: #8cc6ff; }
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n),
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n) { color: #58c07a; }
+
+/* The current-branch chip keeps the brand teal; pass cells stay muted. */
+body[data-dsh-miku] [data-gitgraph-current-branch] {
+  background: rgba(46, 155, 255, 0.12);
+  color: #124a8f;
+  border: 1px solid rgba(46, 155, 255, 0.4);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-current-branch] {
+  background: rgba(46, 155, 255, 0.16);
+  color: #a2c8f5;
+  border-color: rgba(46, 155, 255, 0.5);
+}
+
+/* The git graph dialog frame wears the glassy Miku window chrome. */
+body[data-dsh-miku] [data-gitgraph-dialog] {
+  background: linear-gradient(180deg, #f6fbff, #ffffff);
+  border: 1px solid #9cc6ff;
+  box-shadow: 0 8px 28px rgba(10, 30, 66, 0.3);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-dialog] {
+  background: linear-gradient(180deg, #162a54, #12244a);
+  border-color: #22407a;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* --- AppFrame 结构透明（真实 GUI 适配） -----------------------------------------
+   The current dsh web GUI renders the AppFrame columns without the
+   `data-pane` hooks older skins target —the columns carry only
+   CSS-modules hashed class names. These rules use the stable structure of
+   the frame (the #root window body, its column wrappers, and the sidebar
+   / center / details roots) plus stable class suffixes, so the idol art
+   shows through every surface. Everything stays scoped under
+   body[data-dsh-miku] and the rules simply do not match when the hooks
+   exist (older layouts) or the classes change (they degrade to the token
+   fallbacks below). */
+
+/* The AppFrame outer frame: frosted glass over the art. */
+:global(body[data-dsh-miku]) :global(#root) > div > div {
+  background: rgba(255, 255, 255, 0.28) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+:global(body[data-dsh-miku][data-ds-dark-theme]) :global(#root) > div > div {
+  background: rgba(8, 18, 42, 0.12) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Sidebar column and its content root: translucent so the idol glows
+   through behind the nav. */
+
+body[data-dsh-miku] [class*='sidebarCol'] {
+  background: rgba(246, 251, 255, 0.28) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='sidebarCol'] {
+  background: rgba(10, 20, 44, 0.24) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+body[data-dsh-miku] [class*='sidebarCol'] > div > div {
+  background: linear-gradient(180deg, rgba(246, 251, 255, 0.66) 0%, rgba(240, 248, 255, 0.5) 45%, rgba(235, 244, 255, 0.42) 100%) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='sidebarCol'] > div > div {
+  background: linear-gradient(180deg, rgba(13, 26, 58, 0.22) 0%, rgba(11, 22, 50, 0.16) 45%, rgba(10, 20, 44, 0.12) 100%) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Center column (conversation area): translucent so the art breathes
+   through; messages still sit on readable frosted surfaces. */
+body[data-dsh-miku] [class*='centerCol'] {
+  background: rgba(255, 255, 255, 0.32) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='centerCol'] {
+  background: rgba(8, 18, 42, 0.1) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Details column. */
+body[data-dsh-miku] [class*='detailsCol'] {
+  background: rgba(243, 248, 255, 0.5) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='detailsCol'] {
+  background: rgba(10, 20, 44, 0.18) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+
+/* Conversation-area content root (the inner scroll/composer wrapper inside
+   the center column): translucent so the idol art breathes through behind
+   the messages. */
+body[data-dsh-miku] [class*='centerCol'] > div > div {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.16) 100%) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='centerCol'] > div > div {
+  background: linear-gradient(180deg, rgba(13, 26, 58, 0.08) 0%, rgba(10, 20, 44, 0.06) 100%) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Scroll bodies and composer seat stay transparent (readable surfaces ride
+   on the frosted column above). */
+body[data-dsh-miku] [class*='composerSeat'],
+body[data-dsh-miku] [class*='scrollBody'] {
+  background: transparent !important;
+}
+/* Scroll bodies inside the columns: keep readable, very light tint. */
+body[data-dsh-miku] [class*='scrollBody'] {
+  background: transparent !important;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='scrollBody'] {
+  background: transparent !important;
+}
+
+/* --- 菜单 / 弹出层美化（dropdown / popover / menu / sheet） ---------------------
+   Menus and popovers re-read the Miku glass: frosted blue-violet surface,
+   teal-free accent text, soft shadow. Class-suffix match covers the
+   CSS-modules names across components. */
+
+body[data-dsh-miku] [class*='menu'],
+body[data-dsh-miku] [class*='popover'],
+body[data-dsh-miku] [class*='dropdown'],
+body[data-dsh-miku] [class*='sheet'],
+body[data-dsh-miku] [class*='dialog'],
+body[data-dsh-miku] [role='menu'],
+body[data-dsh-miku] [role='listbox'] {
+  background: linear-gradient(180deg, rgba(250, 253, 255, 0.92), rgba(240, 248, 255, 0.88)) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(156, 198, 255, 0.6) !important;
+  box-shadow: 0 12px 32px rgba(10, 30, 66, 0.25), 0 2px 8px rgba(10, 30, 66, 0.12) !important;
+  color: #1d2f52;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='menu'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='popover'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='dropdown'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='sheet'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='dialog'],
+body[data-dsh-miku][data-ds-dark-theme] [role='menu'],
+body[data-dsh-miku][data-ds-dark-theme] [role='listbox'] {
+  background: linear-gradient(180deg, rgba(20, 34, 72, 0.92), rgba(13, 26, 56, 0.88)) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: rgba(53, 96, 172, 0.6) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  color: #c2d4f0;
+}
+
+/* Menu items: hover / active with the Miku blue-violet. */
+body[data-dsh-miku] [class*='menu'] [class*='item'],
+body[data-dsh-miku] [role='menuitem'] {
+  border-radius: 6px;
+}
+
+body[data-dsh-miku] [class*='menu'] [class*='item']:hover,
+body[data-dsh-miku] [class*='menu'] [class*='item']:focus,
+body[data-dsh-miku] [role='menuitem']:hover,
+body[data-dsh-miku] [role='menuitem']:focus {
+  background: rgba(46, 155, 255, 0.12) !important;
+  color: #1e6fd9;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='menu'] [class*='item']:hover,
+body[data-dsh-miku][data-ds-dark-theme] [class*='menu'] [class*='item']:focus,
+body[data-dsh-miku][data-ds-dark-theme] [role='menuitem']:hover,
+body[data-dsh-miku][data-ds-dark-theme] [role='menuitem']:focus {
+  background: rgba(88, 169, 255, 0.16) !important;
+  color: #a2c8f5;
+}
+
+/* Menu separators. */
+body[data-dsh-miku] [class*='menu'] [class*='sep'],
+body[data-dsh-miku] [class*='menu'] [class*='divider'] {
+  background: rgba(156, 198, 255, 0.5) !important;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='menu'] [class*='sep'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='menu'] [class*='divider'] {
+  background: rgba(53, 96, 172, 0.5) !important;
+}
+
+/* Menu section titles: dimmed blue-violet. */
+body[data-dsh-miku] [class*='menu'] [class*='label'],
+body[data-dsh-miku] [class*='menu'] [class*='title'],
+body[data-dsh-miku] [class*='menu'] [class*='heading'] {
+  color: #6c82a8;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='menu'] [class*='label'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='menu'] [class*='title'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='menu'] [class*='heading'] {
+  color: #8ba0c4;
+}
+
+/* Menu disabled items. */
+body[data-dsh-miku] [class*='menu'] [class*='disabled'],
+body[data-dsh-miku] [role='menuitem'][aria-disabled='true'] {
+  color: #a3b8d8 !important;
+  opacity: 0.6;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='menu'] [class*='disabled'],
+body[data-dsh-miku][data-ds-dark-theme] [role='menuitem'][aria-disabled='true'] {
+  color: #4c6390 !important;
+}
+
+/* --- 发送 / 输入栏毛玻璃（composer / input） ----------------------------------
+   The composer seat, its stack, and the textarea / search inputs become
+   frosted translucent glass so the idol art glows through the typing area.
+   Class-suffix matches cover the CSS-modules names. */
+
+body[data-dsh-miku] [class*='composerSeat'],
+body[data-dsh-miku] [class*='composerStack'],
+body[data-dsh-miku] [class*='composerHero'] {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* The typing surface itself: translucent glass with a teal-free blue tint,
+   keeping the caret and text readable over the art. */
+body[data-dsh-miku] textarea,
+body[data-dsh-miku] [contenteditable='true'],
+body[data-dsh-miku] input:not([type='checkbox']):not([type='radio']) {
+  background: rgba(255, 255, 255, 0.55) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(156, 198, 255, 0.5) !important;
+  color: #1d2f52 !important;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] textarea,
+body[data-dsh-miku][data-ds-dark-theme] [contenteditable='true'],
+body[data-dsh-miku][data-ds-dark-theme] input:not([type='checkbox']):not([type='radio']) {
+  background: rgba(14, 28, 60, 0.42) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(88, 169, 255, 0.28) !important;
+  color: #d6f1ec !important;
+}
+
+/* Composer toolbar / action row keeps a translucent tint. */
+body[data-dsh-miku] [class*='composer'] [class*='toolbar'],
+body[data-dsh-miku] [class*='composer'] [class*='actions'] {
+  background: transparent !important;
+}
+
+/* --- 设置面板 / 抽屉（settings panel / drawer） ------------------------------
+   The settings dialog (800x800) becomes frosted translucent glass so the
+   art glows through; the dim mask stays behind it. */
+
+body[data-dsh-miku] [class*='panel'],
+body[data-dsh-miku] [class*='drawer'],
+body[data-dsh-miku] [class*='settingsRoot'] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(240, 248, 255, 0.82)) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(156, 198, 255, 0.5) !important;
+  color: #1d2f52;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='panel'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='drawer'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='settingsRoot'] {
+  background: linear-gradient(180deg, rgba(14, 28, 60, 0.82), rgba(10, 20, 44, 0.76)) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: rgba(88, 169, 255, 0.3) !important;
+  color: #c2d4f0;
+}
+
+/* Settings sections / cards inside the panel: light tint so content stays
+   readable while the art breathes through. */
+body[data-dsh-miku] [class*='panel'] [class*='section'],
+body[data-dsh-miku] [class*='panel'] [class*='card'],
+body[data-dsh-miku] [class*='settingsRoot'] [class*='section'],
+body[data-dsh-miku] [class*='settingsRoot'] [class*='card'] {
+  background: rgba(255, 255, 255, 0.45) !important;
+  border-color: rgba(156, 198, 255, 0.4) !important;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='panel'] [class*='section'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='panel'] [class*='card'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='settingsRoot'] [class*='section'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='settingsRoot'] [class*='card'] {
+  background: rgba(16, 34, 72, 0.5) !important;
+  border-color: rgba(88, 169, 255, 0.25) !important;
+}
+
+/* The dim mask behind the settings dialog — targeted to the settings
+   dialog's own mask (its hashed class ends in _mask), NOT the AppFrame's
+   always-present overlay layer (overlayLayer), which must stay transparent
+   or it would dim the whole UI. */
+body[data-dsh-miku] [class$='_mask'],
+body[data-dsh-miku] [class*='Mask'] {
+  background: rgba(4, 10, 28, 0.45) !important;
+}
+
+/* --- 按钮重新配色（blue-violet-magenta gradient + frosted） -------------------
+   Primary actions wear the Miku gradient (blue → violet → magenta) with a
+   glassy sheen; secondary/ghost buttons are translucent frosted with a blue
+   border. */
+
+body[data-dsh-miku] button,
+body[data-dsh-miku] [role='button'] {
+  border-radius: 8px !important;
+}
+
+/* New-session style primary button: blue-violet-magenta gradient. */
+body[data-dsh-miku] [class*='newSession'] {
+  background: rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: none !important;
+  box-shadow: none !important;
+  color: #1d2f52 !important;
+}
+
+body[data-dsh-miku] [class*='primary'] {
+  background: rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(156, 198, 255, 0.4) !important;
+  color: #1d2f52 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='newSession'] {
+  background: rgba(16, 34, 72, 0.4) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: none !important;
+  box-shadow: none !important;
+  color: #d6f1ec !important;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='primary'] {
+  background: rgba(16, 34, 72, 0.4) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(88, 169, 255, 0.3) !important;
+  color: #d6f1ec !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+body[data-dsh-miku] [class*='newSession']:hover,
+body[data-dsh-miku] [class*='primary']:hover {
+  background: rgba(46, 155, 255, 0.2) !important;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='newSession']:hover,
+body[data-dsh-miku][data-ds-dark-theme] [class*='primary']:hover {
+  background: rgba(88, 169, 255, 0.24) !important;
+}
+
+/* Ghost / quiet buttons (settings trigger, workspace chip, model select):
+   translucent frosted with a blue border. */
+body[data-dsh-miku] [class*='trigger'],
+body[data-dsh-miku] [class*='seat'],
+body[data-dsh-miku] [class*='ghost'],
+body[data-dsh-miku] [class*='quiet'] {
+  background: rgba(255, 255, 255, 0.18) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-color: rgba(156, 198, 255, 0.35) !important;
+  color: #1d2f52 !important;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='trigger'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='seat'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='ghost'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='quiet'] {
+  background: rgba(16, 34, 72, 0.32) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-color: rgba(88, 169, 255, 0.25) !important;
+  color: #c2d4f0 !important;
+}
+
+body[data-dsh-miku] [class*='trigger']:hover,
+body[data-dsh-miku] [class*='seat']:hover,
+body[data-dsh-miku] [class*='ghost']:hover,
+body[data-dsh-miku] [class*='quiet']:hover {
+  background: rgba(46, 155, 255, 0.18) !important;
+  border-color: rgba(46, 155, 255, 0.5) !important;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='trigger']:hover,
+body[data-dsh-miku][data-ds-dark-theme] [class*='seat']:hover,
+body[data-dsh-miku][data-ds-dark-theme] [class*='ghost']:hover,
+body[data-dsh-miku][data-ds-dark-theme] [class*='quiet']:hover {
+  background: rgba(88, 169, 255, 0.2) !important;
+  border-color: rgba(88, 169, 255, 0.45) !important;
+}
+
+/* --- 侧边栏淡出渐变条（scroll fade）---------------------------------------
+   The sidebar's search-list fade (`B_YgXG_fade`-style element) paints a
+   blue gradient band above the settings button — make it transparent so no
+   stray bar shows. */
+body[data-dsh-miku] [class$='_fade'],
+body[data-dsh-miku] [class*='Fade'] {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+/* --- 输入框底层卡片（composer card）----------------------------------------
+   The hero composer's card container is painted an opaque deep blue — make
+   it frosted translucent so the art glows through the input area, matching
+   the other inputs. */
+body[data-dsh-miku] [class*='composer'] [class$='_card'],
+body[data-dsh-miku] [class*='composer'] [class*='card'] {
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: none !important;
+  box-shadow: none !important;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] [class*='composer'] [class$='_card'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='composer'] [class*='card'] {
+  background: rgba(13, 26, 58, 0.4) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: none !important;
+  box-shadow: none !important;
+}

@@ -126,7 +126,6 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
         // plugin (augmentation), so the base SDK map is indexed loosely.
         const projections = page.projections?.values as Record<string, unknown> | undefined
         setPermissions(parsePermissionSelect(projections?.['permissions']))
-        scrollToBottom()
       },
       (reason: unknown) => {
         if (cancelled) return
@@ -163,16 +162,31 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
     })
   }, [mux, session.sessionId])
 
-  // Keep the newest content visible while streaming.
-  useEffect(() => {
-    if (messages.some(message => message.pending === true)) scrollToBottom()
-  }, [messages])
-
   const scrollToBottom = useCallback(() => {
     const el = scrollRef.current
     if (el === undefined) return
     el.scrollTop = el.scrollHeight
   }, [])
+
+  // Track the last message's fold key so scrolling only fires when the
+  // newest message actually changes (seq bump and/or pending flip). Runs
+  // after React has committed the render, so scrollHeight reflects the
+  // freshly appended content.
+  const lastMessageKeyRef = useRef<string | undefined>(undefined)
+
+  // Keep the newest content visible. This covers the initial tail page (the
+  // effect runs after commit, fixing the stale scrollHeight from the old
+  // open-time scrollToBottom), live streaming chunks on the pending message,
+  // and finalized/appended messages. Prepending older pages via loadOlder
+  // leaves the last message untouched, so it never disturbs the scroll position.
+  useEffect(() => {
+    const last = messages[messages.length - 1]
+    if (last === undefined) return
+    const key = last.seq + ':' + (last.pending === true ? 'p' : 'f')
+    if (key === lastMessageKeyRef.current) return
+    lastMessageKeyRef.current = key
+    scrollToBottom()
+  }, [messages, scrollToBottom])
 
   /** Load one older page and prepend it. The fold is directional (incremental
    *  tails only), so the older page folds standalone and concatenates ahead —

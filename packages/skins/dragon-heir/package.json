@@ -1,8 +1,7 @@
 {
-  "name": "@deepseek-ai/dsh-client-ui-skin-dragon-heir",
+  "name": "@linxin666/dsh-client-ui-skin-dragon-heir",
   "description": "Hot-pluggable Dragon Heir skin for the dsh web GUI: <edit me — one line pitch>",
-  "version": "0.1.1",
-  "private": true,
+  "version": "0.1.10",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -42,5 +41,9 @@
     "skin.json",
     "preview",
     "README.md"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
 }

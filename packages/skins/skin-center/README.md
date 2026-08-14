@@ -1,6 +1,6 @@
 # Skin Center（GUI 内嵌皮肤中心）
 
-`@deepseek-ai/dsh-client-ui-skin-center`（cordis 插件 id `ui-skin-center`）把皮肤列表/试穿/应用
+`@linxin666/dsh-client-ui-skin-center`（cordis 插件 id `ui-skin-center`）把皮肤列表/试穿/应用
 内嵌进真实 dsh Web GUI 的插件配置页，作为「Web UI 插件」组里的一张卡片
 （设置 → 插件配置 → Web UI 插件 → 皮肤中心），与 task-board / pet / live-stats 等
 全家桶插件同一套槽位（`web-ui.plugin.item`），不占设置页一级导航。
@@ -21,17 +21,22 @@
   写入 `~/.dsh/cordis.patch.yml` 后由 DSH 配置 watcher 秒级热载入，页面自动刷新生效——
   **无需重启 dsh web，无需复制命令**。应用失败时错误提示里附带终端兜底命令。
   host 依赖 `dsh-skin` CLI 在 PATH（`~/.local/bin/dsh-skin`，仓库 `scripts/dsh-skin`）。
+  Windows 兼容性：`dsh-skin` 的 harness home 取 `$DSH_HOME`（缺省 `~/.dsh`），仓库根目录从
+  脚本自身位置推导（可用 `DSH_SKIN_REPO` 覆盖），不依赖 `$HOME` 与固定路径；Windows 用户
+  自建 `dsh-skin.cmd` 包装（内容 `node scripts/dsh-skin %*`）放入 PATH 目录即可。host 端在
+  Windows 上经 shell 调用该命令——`execFile` 无法直接启动裸名 `.cmd`。
 
 ## 安装（官方 plugin bundle 方式）
 
-推荐先装皮肤全家桶聚合包 `@deepseek-ai/dsh-skins` 一次到位（含全部皮肤与皮肤中心）；
+推荐先装皮肤全家桶聚合包 `@linxin666/dsh-skins` 一次到位（含全部皮肤与皮肤中心）；
 只装本包时用下列 link 命令。
 
 ```sh
 # 装全部皮肤（推荐）
-dsh plugin --profile web add link:$(pwd)/packages/dsh-skins
+dsh plugin --profile web add @linxin666/dsh-skins
 # 或单独装皮肤中心
-dsh plugin --profile web add link:$(pwd)/packages/skins/skin-center
+dsh plugin --profile web add @linxin666/dsh-client-ui-skin-center
+# 从仓库安装（开发调试）：dsh plugin --profile web add link:$(pwd)/packages/skins/skin-center
 ```
 
 `$(pwd)` 指克隆全家桶仓库后的目录。
@@ -101,7 +106,7 @@ node scripts/skin-center-bundles
 
 # 2. 在仓库内构建
 cd ~/code/dsh-web-ui && export NPM_TOKEN='<token>'   # 若仍使用私有 scope 认证
-pnpm --filter @deepseek-ai/dsh-client-ui-skin-center run bundle
+pnpm --filter @linxin666/dsh-client-ui-skin-center run bundle
 ```
 
 ## 安装（个人环境接线，不在 checkout 提交）
@@ -109,12 +114,12 @@ pnpm --filter @deepseek-ai/dsh-client-ui-skin-center run bundle
 ```sh
 # 1. profile symlink（与 qq98/blue-fantasy 同款）
 ln -sfn ~/code/dsh-web-ui/packages/skins/skin-center \
-  ~/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-skin-center
+  ~/.dsh/profiles/node_modules/@linxin666/dsh-client-ui-skin-center
 
 # 2. ~/.dsh/cordis.patch.yml 增加（放在 dsh-skin managed 段之外，勿动该段）：
 #   - insert:
 #       - id: ui-skin-center
-#         name: '@deepseek-ai/dsh-client-ui-skin-center'
+#         name: '@linxin666/dsh-client-ui-skin-center'
 
 # 3. 配置 watcher 秒级热载入；刷新页面即在 插件配置 → Web UI 插件 组里看到皮肤中心卡片
 ```

@@ -1,12 +1,12 @@
 /**
- * @deepseek-ai/dsh-client-ui-git-graph — host half: the workspace-gated git
+ * @linxin666/dsh-client-ui-git-graph — host half: the workspace-gated git
  * service and its /git/* HTTP routes (JSON operations + SSE change stream)
  * on the shared webserver. The browser half (exports "./client") is served
  * by client-modules from the same package's dsh.client declaration.
  *
  * The host half owns no model-visible surface: git switch/create are UI-
  * triggered host operations on the workspace disk tree, never tool calls.
- * @module @deepseek-ai/dsh-client-ui-git-graph
+ * @module @linxin666/dsh-client-ui-git-graph
  */
 
 import { realpath } from 'node:fs/promises'

@@ -8,7 +8,7 @@ import { clientBundle } from '../../shared/tsdown.client.ts'
  * emitted too: the modules node half serves lib/client.js to browsers, so a
  * git-installed package must ship it.
  */
-export default clientBundle('@deepseek-ai/dsh-pet', [
+export default clientBundle('@linxin666/dsh-pet', [
   'src/index.ts',
   'src/invariant.ts',
 ], {

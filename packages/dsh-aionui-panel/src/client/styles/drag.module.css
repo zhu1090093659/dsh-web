@@ -1,0 +1,30 @@
+/**
+ * Composer dock drag inlay: a zero-height strip above the composer card
+ * that appears while an explorer file row is dragged over the page. Uses
+ * the panel's own token palette so the hint follows the active theme.
+ * @module dsh-aionui-panel/client/styles/drag
+ */
+
+.strip {
+  display: none;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--dsh-composer-card-max-width, 720px);
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  border: 1px dashed var(--aion-primary);
+  border-radius: 8px;
+  color: var(--aion-text-primary);
+  background-color: color-mix(in srgb, var(--aion-primary) 10%, transparent);
+}
+
+.stripActive {
+  display: flex;
+  height: 26px;
+}
+
+.stripText {
+  font-size: 12px;
+  line-height: 18px;
+}

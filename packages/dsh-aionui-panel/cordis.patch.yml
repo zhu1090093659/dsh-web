@@ -10,4 +10,4 @@
 # in the web GUI.
 - insert:
     - id: ui-dsh-aionui-panel
-      name: '@deepseek-ai/dsh-client-ui-aionui-panel'
+      name: '@linxin666/dsh-client-ui-aionui-panel'

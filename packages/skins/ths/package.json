@@ -1,8 +1,7 @@
 {
-  "name": "@deepseek-ai/dsh-client-ui-skin-ths",
+  "name": "@linxin666/dsh-client-ui-skin-ths",
   "description": "Hot-pluggable Tonghuashun-style stock-trading skin for the dsh web GUI: red brand chrome, quote status bar, data-terminal surfaces",
-  "version": "0.1.1",
-  "private": true,
+  "version": "0.1.10",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -47,5 +46,9 @@
     "README.md",
     "README.zh.md",
     "README.i18n.yaml"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
 }

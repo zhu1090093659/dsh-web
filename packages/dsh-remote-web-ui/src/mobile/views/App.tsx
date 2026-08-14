@@ -94,6 +94,13 @@ export function App() {
     return () => { mux.stop() }
   }, [])
 
+  // Keep the live-event client pointed at the session currently on screen so
+  // its polling fallback can keep that chat fresh over SSE-impairing tunnels
+  // (quick tunnel / Tailscale Serve do not forward Server-Sent Events).
+  useEffect(() => {
+    muxRef.current?.observe(route.kind === 'chat' ? route.session.sessionId : undefined)
+  }, [route])
+
   const back = useCallback(() => {
     setRoute(previous => {
       if (previous.kind === 'chat') return { kind: 'sessions', workspace: previous.workspace }

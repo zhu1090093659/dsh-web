@@ -12,7 +12,7 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
 import { apply } from '../src/client/index.ts'
 
 describe('live-stats client apply', () => {
-  it('registers the plugin settings card and nothing into any conversation seat', async () => {
+  it('registers the plugin settings card and the TPS line into the composer dock', async () => {
     const injected: string[] = []
     const ctx = {
       effect: (fn: () => unknown) => fn(),
@@ -31,8 +31,9 @@ describe('live-stats client apply', () => {
       },
     }
     apply(ctx as never)
-    // The card mounts into the Web UI plugin group; the TPS group lives in the
-    // ui-conversation stats line, so nothing targets a conversation seat.
-    expect(injected).toEqual(['web-ui.plugin.item'])
+    // The card mounts into the Web UI plugin group; the TPS line mounts into
+    // the composer dock (the shipped stats-line seat, whose standard kit
+    // supplies useProjection) so the live throughput row actually renders.
+    expect(injected).toEqual(['web-ui.plugin.item', 'conversation.composer.dock'])
   })
 })

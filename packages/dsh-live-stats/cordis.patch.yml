@@ -7,4 +7,4 @@
 # composer stats, via the dsh.client declaration in package.json).
 - insert:
     - id: live-stats
-      name: '@deepseek-ai/dsh-live-stats'
+      name: '@linxin666/dsh-live-stats'

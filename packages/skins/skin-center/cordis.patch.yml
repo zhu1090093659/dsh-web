@@ -3,4 +3,4 @@
 # `dsh plugin --profile <name> add <path-or-git-url>`.
 - insert:
     - id: ui-skin-center
-      name: '@deepseek-ai/dsh-client-ui-skin-center'
+      name: '@linxin666/dsh-client-ui-skin-center'

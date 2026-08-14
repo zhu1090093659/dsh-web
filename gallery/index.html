@@ -90,6 +90,7 @@
   .shot {
     position: relative; aspect-ratio: 16 / 10; overflow: hidden;
     background: #eef3fa; border-bottom: 1px solid var(--g-line);
+    cursor: pointer;
   }
   .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .shot .light, .shot .dark { position: absolute; inset: 0; transition: opacity .2s ease; }
@@ -140,6 +141,7 @@
     background: rgba(226, 238, 252, .78); backdrop-filter: blur(8px);
   }
   .modal.open { display: flex; }
+  .modal:fullscreen { background: var(--g-bg); }
   .mbar {
     display: flex; align-items: center; gap: 10px;
     padding: 10px 16px; background: rgba(255, 255, 255, .92); border-bottom: 1px solid var(--g-line);
@@ -226,6 +228,7 @@
     <select id="mSkin" aria-label="选择皮肤"></select>
     <button type="button" id="mTheme">暗色</button>
     <button type="button" id="mOpen" title="在新窗口打开模拟器">↗</button>
+    <button type="button" id="mFullscreen" title="全屏预览">全屏</button>
     <button type="button" class="close-x" id="mClose">×</button>
   </div>
   <div class="frame-box">
@@ -295,6 +298,7 @@
     tag.className = 'mode-tag'
     tag.innerHTML = '<span class="l">悬停看暗色</span><span class="d">暗色</span>'
     shot.append(light, dark, tag)
+    shot.addEventListener('click', function () { openModal(s) })
     card.appendChild(shot)
 
     var body = document.createElement('div')
@@ -378,6 +382,7 @@
   frame.addEventListener('load', function () { mLoading.classList.add('hide') })
 
   function closeModal() {
+    if (document.fullscreenElement) document.exitFullscreen()
     modal.classList.remove('open')
     document.body.style.overflow = ''
     frame.src = 'about:blank'
@@ -414,6 +419,18 @@
   document.getElementById('mOpen').addEventListener('click', function () {
     window.open(frameSrc(), '_blank', 'noopener')
   })
+  var mFullscreen = document.getElementById('mFullscreen')
+  mFullscreen.addEventListener('click', function () {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      var p = modal.requestFullscreen()
+      if (p && p.catch) p.catch(function () {})
+    }
+  })
+  document.addEventListener('fullscreenchange', function () {
+    mFullscreen.textContent = document.fullscreenElement ? '退出全屏' : '全屏'
+  })
   document.getElementById('mCopy').addEventListener('click', function () {
     copy(mCmd.textContent)
     var b = document.getElementById('mCopy')
@@ -424,7 +441,7 @@
     if (e.target === modal) closeModal()
   })
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && modal.classList.contains('open')) closeModal()
+    if (e.key === 'Escape' && modal.classList.contains('open') && !document.fullscreenElement) closeModal()
   })
 })();
 </script>

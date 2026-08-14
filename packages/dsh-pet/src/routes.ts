@@ -4,7 +4,7 @@
  * from `/pet/whale/*`. The `/plugins/` endpoint only serves client bundles
  * and RPC domains are platform-registered, so the pet serves its own API
  * and media — the same pattern as dsh-remote-web-ui's `/api/pair` family.
- * @module @deepseek-ai/dsh-pet/routes
+ * @module @linxin666/dsh-pet/routes
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'

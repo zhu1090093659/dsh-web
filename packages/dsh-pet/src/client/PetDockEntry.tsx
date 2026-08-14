@@ -1,15 +1,16 @@
 /**
- * Dock anchor inside `conversation.input.selector.context`: the input
- * selector row mounts in EVERY conversation phase (no-session cold start,
- * the blank-session hero, and the active seat), so the floating pet stays on
- * screen on the new-conversation screen too. While visible it mounts the
- * floating WhalePet (portal); while hidden it renders the summon button.
- * @module @deepseek-ai/dsh-pet/client/PetDockEntry
+ * Global floating pet entry. The pet is host-global (its state, display and
+ * interactions live on `/api/pet/*` endpoints with no session dimension), so
+ * it must not ride a session-scoped slot — on the new-conversation screen no
+ * session exists to scope a slot by, and the pet would vanish (issue #48).
+ * The client half therefore mounts this entry straight onto `document.body`
+ * (see index.ts): while visible it renders the floating WhalePet (a portal),
+ * while hidden it renders a fixed-position summon button.
+ * @module @linxin666/dsh-pet/client/PetDockEntry
  */
 
 import { useEffect, useSyncExternalStore, type ReactElement } from 'react'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { PetDisplayConfig } from '../persist.ts'
 import type { PetStoreInstance } from './pet-store.ts'
 import { WhalePet } from './WhalePet.tsx'
@@ -38,10 +39,9 @@ export interface PetInjected {
   feedbackDone: () => void
 }
 
-/** Composed props of the dock entry (runtime + locale + injected). */
+/** Composed props of the global pet entry (locale + injected; no slot runtime share). */
 export type PetDockEntryProps =
-  PropsRuntime<'conversation.input.selector.context'>
-  & PetInjected
+  PetInjected
   & PropsLocale<typeof NS>
 
 const DEFAULT_DISPLAY: PetDisplayConfig = { visible: true, size: 160, right: 24, bottom: 20 }
@@ -82,10 +82,17 @@ export function PetDockEntry(props: PetDockEntryProps): ReactElement {
       </span>
     )
   }
+  const display = snapshot?.display ?? DEFAULT_DISPLAY
   return (
     <button
       type="button"
       className={styles.summon}
+      style={{
+        position: 'fixed',
+        right: display.right,
+        bottom: display.bottom,
+        zIndex: 2147483000,
+      }}
       onClick={props.summon}
       data-testid="pet-summon"
     >

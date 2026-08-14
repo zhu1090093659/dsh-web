@@ -10,4 +10,4 @@
 # (grant confirmation card + active-grant management).
 - insert:
     - id: beyond-workscope
-      name: '@deepseek-ai/dsh-beyond-workscope'
+      name: '@linxin666/dsh-beyond-workscope'

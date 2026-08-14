@@ -89,7 +89,7 @@ node scripts/capture-previews    # 重写 packages/skins/<name>/preview/{light,d
 ```sh
 node scripts/skin-center-bundles   # 扫描 packages/skins/*/skin.json + lib/client.js，重新生成
                                    # packages/skins/skin-center/src/client/generated/skins.ts（内嵌注册表）
-pnpm --filter @deepseek-ai/dsh-client-ui-skin-center build   # skin-center 重新构建以嵌入新注册表
+pnpm --filter @linxin666/dsh-client-ui-skin-center build   # skin-center 重新构建以嵌入新注册表
 node scripts/gallery-build         # 重新生成 gallery/manifest.js + gallery/bundles.js
 ```
 

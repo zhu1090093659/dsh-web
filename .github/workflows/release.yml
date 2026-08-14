@@ -1,0 +1,96 @@
+name: Release
+
+# Tag-triggered publish pipeline: pushing a vX.Y.Z tag is the single release
+# switch. The workflow verifies every package version equals the tag version
+# (the tag is the version source of truth), runs the full gate, publishes all
+# packages to npm in dependency order, and creates the GitHub Release.
+#
+# Requires the repository secret NPM_TOKEN (npm automation token for the
+# @linxin666 scope) to publish.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build, test, publish, release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint GitHub Actions workflows
+        uses: docker://rhysd/actionlint:latest
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --ignore-scripts: the gallery consistency check compares COMMITTED
+      # bundle artifacts against committed gallery assets; a fresh build
+      # embeds the checkout's absolute path into every bundle (CSS-module
+      # hashes and \0dsh-css region markers), so rebuilt bytes differ per
+      # machine. The explicit Build step still verifies everything builds.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Gallery consistency
+        run: pnpm gallery:check
+
+      - name: Skin center consistency
+        run: pnpm skin-center:check
+
+      - name: Build
+        run: pnpm build
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Script tests
+        run: pnpm test:scripts
+
+      - name: Aggregate package consistency
+        run: pnpm aggregate:check
+
+      - name: Extract tag version
+        id: tag
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package versions match the tag
+        run: node scripts/verify-version.mjs "${{ steps.tag.outputs.version }}"
+
+      - name: Publish packages to npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
+          pnpm -r publish --no-git-checks --access public --registry=https://registry.npmjs.org/
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --title "dsh-web-ui $GITHUB_REF_NAME"

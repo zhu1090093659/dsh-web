@@ -90,6 +90,13 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
+.notExposed {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-state-warn-primary);
+}
+
 .footer {
   display: flex;
   align-items: center;

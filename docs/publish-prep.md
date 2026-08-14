@@ -9,35 +9,36 @@
 
 ## 一、范围
 
-`packages/` 与 `packages/skins/` 下共 19 个插件包（截至快照日）：
+`packages/` 与 `packages/skins/` 下共 20 个插件包（截至快照日）：
 
 | 目录 | 包名 | 当前版本 | private |
 | --- | --- | --- | --- |
-| packages/dsh-task-board | @deepseek-ai/dsh-client-ui-task-board | 0.1.1 | true |
-| packages/dsh-git-graph | @deepseek-ai/dsh-client-ui-git-graph | 0.1.1 | true |
-| packages/dsh-pet | @deepseek-ai/dsh-pet | 0.1.1 | true |
-| packages/dsh-remote-web-ui | @deepseek-ai/dsh-remote-web-ui | 0.1.1 | true |
-| packages/dsh-live-stats | @deepseek-ai/dsh-live-stats | 0.1.1 | true |
-| packages/dsh-ssh | @deepseek-ai/dsh-ssh | 0.1.1 | true |
-| packages/dsh-aionui-panel | @deepseek-ai/dsh-client-ui-aionui-panel | 0.1.1 | true |
-| packages/dsh-web-ui-settings | @deepseek-ai/dsh-client-ui-web-ui-settings | 0.1.1 | true |
-| packages/dsh-beyond-workscope | @deepseek-ai/dsh-beyond-workscope | 0.1.1 | true |
-| packages/dsh-skins | @deepseek-ai/dsh-skins（聚合） | 0.1.1 | true |
-| packages/dsh-web-ui-all | @deepseek-ai/dsh-web-ui-all（聚合） | 0.1.1 | true |
-| packages/skins/qq98 | @deepseek-ai/dsh-client-ui-skin-qq98 | 0.1.1 | true |
-| packages/skins/ths | @deepseek-ai/dsh-client-ui-skin-ths | 0.1.1 | true |
-| packages/skins/xp | @deepseek-ai/dsh-client-ui-skin-xp | 0.1.1 | true |
-| packages/skins/blue-fantasy | @deepseek-ai/dsh-client-ui-skin-blue-fantasy | 0.1.1 | true |
-| packages/skins/dragon-heir | @deepseek-ai/dsh-client-ui-skin-dragon-heir | 0.1.1 | true |
-| packages/skins/minecraft | @deepseek-ai/dsh-client-ui-skin-minecraft | 0.1.1 | true |
-| packages/skins/whale-song | @deepseek-ai/dsh-client-ui-skin-whale-song | 0.1.0 | true |
-| packages/skins/skin-center | @deepseek-ai/dsh-client-ui-skin-center | 0.1.1 | true |
+| packages/dsh-task-board | @linxin666/dsh-client-ui-task-board | 0.1.1 | true |
+| packages/dsh-git-graph | @linxin666/dsh-client-ui-git-graph | 0.1.1 | true |
+| packages/dsh-pet | @linxin666/dsh-pet | 0.1.1 | true |
+| packages/dsh-remote-web-ui | @linxin666/dsh-remote-web-ui | 0.1.1 | true |
+| packages/dsh-live-stats | @linxin666/dsh-live-stats | 0.1.1 | true |
+| packages/dsh-ssh | @linxin666/dsh-ssh | 0.1.1 | true |
+| packages/dsh-aionui-panel | @linxin666/dsh-client-ui-aionui-panel | 0.1.1 | true |
+| packages/dsh-web-ui-settings | @linxin666/dsh-client-ui-web-ui-settings | 0.1.1 | true |
+| packages/dsh-beyond-workscope | @linxin666/dsh-beyond-workscope | 0.1.1 | true |
+| packages/dsh-skins | @linxin666/dsh-skins（聚合） | 0.1.1 | true |
+| packages/dsh-web-ui-all | @linxin666/dsh-web-ui-all（聚合） | 0.1.1 | true |
+| packages/skins/qq98 | @linxin666/dsh-client-ui-skin-qq98 | 0.1.1 | true |
+| packages/skins/ths | @linxin666/dsh-client-ui-skin-ths | 0.1.1 | true |
+| packages/skins/xp | @linxin666/dsh-client-ui-skin-xp | 0.1.1 | true |
+| packages/skins/blue-fantasy | @linxin666/dsh-client-ui-skin-blue-fantasy | 0.1.1 | true |
+| packages/skins/dragon-heir | @linxin666/dsh-client-ui-skin-dragon-heir | 0.1.1 | true |
+| packages/skins/minecraft | @linxin666/dsh-client-ui-skin-minecraft | 0.1.1 | true |
+| packages/skins/whale-song | @linxin666/dsh-client-ui-skin-whale-song | 0.1.0 | true |
+| packages/skins/trading | @linxin666/dsh-client-ui-skin-trading | 0.1.2 | true |
+| packages/skins/skin-center | @linxin666/dsh-client-ui-skin-center | 0.1.1 | true |
 
 ## 二、发布前检查结论（2026-08-11，已修复项标注 [已确认]）
 
 ### [阻断] 阻断项（不修复无法发布/无法被消费）
 
-1. **全部 18 包 `private: true`** — npm 直接拒绝发布 private 包
+1. **全部 19 包 `private: true`** — npm 直接拒绝发布 private 包
    （`This package has been marked as private`）。发布前需逐个移除。
    **（发布前需按流程移除，当前仍保留）**
 2. **聚合包 `workspace:*` 依赖原样进 tarball**（dsh-skins 7 处、dsh-web-ui-all 9 处）—

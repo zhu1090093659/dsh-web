@@ -1,0 +1,110 @@
+name: Enforce PR Contribution Rules
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  enforce:
+    name: Validate PR contribution evidence
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+
+    steps:
+      - name: Validate pull request body
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+
+            const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const readSection = (label) => {
+              const heading = escapeRegExp(label);
+              const pattern = new RegExp(`(?:^|\\n)##\\s+${heading}\\s*\\n+([\\s\\S]*?)(?=\\n##\\s+|$)`, 'i');
+              const match = body.match(pattern);
+              return match ? match[1].replace(/<!--[\s\S]*?-->/g, '').trim() : '';
+            };
+
+            const isBlank = (value) => {
+              const normalized = value.replace(/\s+/g, ' ').trim().toLowerCase();
+              return normalized === '' || normalized === 'no response' || normalized === '_no response_';
+            };
+
+            const hasCheckedLine = (value, label) => {
+              const pattern = new RegExp(`^-\\s*\\[[xX]\\]\\s*${escapeRegExp(label)}\\s*$`, 'm');
+              return pattern.test(value);
+            };
+
+            const hasAnyCheckedBox = (value) => /^-\s*\[[xX]\]\s+\S+/m.test(value);
+            const cleanValidationText = (value) => value
+              .replace(/```[a-zA-Z0-9_-]*\s*/g, '')
+              .replace(/```/g, '')
+              .trim();
+            const readValidationPart = (value, label, nextLabel = null) => {
+              const start = escapeRegExp(label);
+              const end = nextLabel ? `\\n\\s*${escapeRegExp(nextLabel)}\\s*[：:]` : '$';
+              const pattern = new RegExp(`${start}\\s*[：:]\\s*([\\s\\S]*?)(?=${end})`, 'i');
+              const match = value.match(pattern);
+              return match ? cleanValidationText(match[1]) : '';
+            };
+            const hasEvidence = (value) => {
+              return /!\[[^\]]*]\([^)]+\)/i.test(value)
+                || /https?:\/\/\S*(?:github\.com\/user-attachments\/assets\/|github\.com\/[^)\s]+\/assets\/|githubusercontent\.com\/|[./][^)\s]+\.(?:png|jpe?g|gif|webp|mp4|mov|webm))(?:[?#]\S*)?/i.test(value);
+            };
+
+            const prType = readSection('PR 类型（PR Type）');
+            const latest = readSection('最新代码确认（Latest Codebase Confirmation）');
+            const validation = readSection('本地验证（Local Validation）');
+            const evidence = readSection('用户可见变更证据（Local Feature Evidence）');
+
+            const errors = [];
+            if (!hasAnyCheckedBox(prType)) {
+              errors.push('请在 `PR 类型（PR Type）` 中至少勾选一项。');
+            }
+            if (!hasCheckedLine(latest, '我已基于最新 `main` 分支开发，或在提交前已 rebase / 合并最新 `main`。')) {
+              errors.push('请在 `最新代码确认（Latest Codebase Confirmation）` 中确认本 PR 基于最新 `main`。');
+            }
+            const validationCommands = readValidationPart(validation, '执行的命令', '结果摘要');
+            const validationSummary = readValidationPart(validation, '结果摘要');
+            if (isBlank(validationCommands) || isBlank(validationSummary)) {
+              errors.push('请填写 `本地验证（Local Validation）` 中的执行的命令与结果摘要。');
+            }
+
+            const userFacing = hasCheckedLine(prType, '面向用户的功能或行为变更');
+            // 仓库所有者自审的 PR 由发布构建与自动化套件把关，
+            // 截图/录屏证据门槛面向外部贡献者。
+            const isRepoOwner = pr.user.login === context.repo.owner;
+            if (userFacing && !isRepoOwner && !hasEvidence(evidence)) {
+              errors.push('面向用户的功能 PR 必须附带本地功能证据：截图、短视频、Markdown 图片或图片/视频链接。');
+            }
+
+            if (errors.length === 0) {
+              return;
+            }
+
+            const comment = [
+              '本 PR 缺少必要的贡献信息。',
+              '',
+              '请更新 PR 描述并保持 PR 模板完整：',
+              '',
+              ...errors.map((error) => `- ${error}`),
+              '',
+              '新增或变更的用户可见功能必须附带本地截图或短视频，展示插件从最新代码 / 本 PR head 加载，以及功能正常工作。',
+            ].join('\n');
+
+            if (context.payload.action !== 'synchronize') {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: comment,
+              });
+            }
+
+            core.setFailed(errors.join('\n'));

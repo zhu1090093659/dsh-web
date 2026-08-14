@@ -6,10 +6,13 @@
 
 ## 安装
 
-推荐直接安装全家桶聚合包 `@deepseek-ai/dsh-web-ui-all`（一个包装齐全部功能插件与皮肤），或单独安装本插件：
+推荐直接安装全家桶聚合包 `@linxin666/dsh-web-ui-all`（一个包装齐全部功能插件与皮肤），或单独安装本插件：
 
 ```sh
-# 当前（插件尚未发布到 npm）：克隆全家桶仓库后安装
+# 推荐：直接从 npm 安装
+dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel
+
+# 或从仓库安装（开发调试）
 git clone https://github.com/zhu1090093659/dsh-web-ui.git
 cd dsh-web-ui
 pnpm install && pnpm -r build
@@ -28,6 +31,10 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-aionui-panel
   （150ms 防抖，点击结果 = 定位到树中，不打断思路）；`变更` tab 读取真实
   git 状态，支持 stage / unstage / discard（untracked 走删除，tracked 走
   restore，批量放弃有确认）。
+- **拖拽文件到输入框**：文件树中的文件行可拖拽（目录行除外），拖到聊天
+  输入框区域松手即把相对路径（如 `deploy/base/deployment.yaml`）插入当前
+  会话草稿的光标处，agent 收到消息后会自行读取该文件，无需手动输入路径；
+  拖拽过程中输入框上方显示高亮提示条。
 - **Preview（右二栏，默认 480px，范围 340~1200px）**：多 tab 预览，支持
   markdown / html / code / diff / csv / pdf / word / excel / ppt / 图片 / 文本 /
   url；源码/预览切换、分屏编辑（比例持久化）、保存（mtime 冲突检测）、下载、

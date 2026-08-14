@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-skin-xp
+# @linxin666/dsh-client-ui-skin-xp
 
 [English](README.md) | 中文
 
@@ -8,14 +8,15 @@
 
 ## 安装（官方 bundle 方式）
 
-推荐先装皮肤全家桶聚合包 `@deepseek-ai/dsh-skins` 一次到位；只装本皮肤时用下列 link 命令。
+推荐先装皮肤全家桶聚合包 `@linxin666/dsh-skins` 一次到位；只装本皮肤时用下列 link 命令。
 
 ```sh
 # 装全部皮肤（推荐）
-dsh plugin --profile web add link:$(pwd)/packages/dsh-skins
+dsh plugin --profile web add @linxin666/dsh-skins
 # 或单独装本皮肤
-dsh plugin --profile web add link:$(pwd)/packages/skins/xp
+dsh plugin --profile web add @linxin666/dsh-client-ui-skin-xp
 # 皮肤启用：dsh-skin use xp
+# 从仓库安装（开发调试）：dsh plugin --profile web add link:$(pwd)/packages/skins/xp
 ```
 
 `$(pwd)` 指克隆全家桶仓库后的目录。

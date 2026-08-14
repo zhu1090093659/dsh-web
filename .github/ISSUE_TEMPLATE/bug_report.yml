@@ -1,0 +1,90 @@
+name: Bug 报告 (Bug report)
+description: 提交可复现的 Bug。必须附截图证据，无截图将被关闭。
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请保持本模板完整并填写所有必填部分。缺少截图证据的 Bug 报告将被自动关闭。提交前请先搜索是否已有相同问题。
+  - type: dropdown
+    id: plugin
+    attributes:
+      label: 涉及插件
+      description: 选择问题涉及的插件或区域。
+      options:
+        - 任务看板 (dsh-task-board)
+        - Git 图谱 (dsh-git-graph)
+        - 右侧面板 (dsh-aionui-panel)
+        - 远程 Web UI (dsh-remote-web-ui)
+        - SSH 远程运维 (dsh-ssh)
+        - 实时令牌统计 (dsh-live-stats)
+        - 宠物 (dsh-pet)
+        - 皮肤 / 皮肤中心 (dsh-skins)
+        - 聚合包 / 安装 (dsh-web-ui-all / dsh-web-ui-settings)
+        - 其他 / 不确定
+    validations:
+      required: true
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue 类型
+      description: 本表单仅用于可复现的 Bug；功能请求请使用另一个表单。
+      options:
+        - Bug 报告
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: 摘要
+      description: 用一两句话描述 Bug。
+      placeholder: 出了什么问题？
+    validations:
+      required: true
+  - type: textarea
+    id: expected-outcome
+    attributes:
+      label: 预期结果
+      description: 描述应该发生什么。
+      placeholder: 你期望的结果是什么？
+    validations:
+      required: true
+  - type: textarea
+    id: details-reproduction
+    attributes:
+      label: 详情 / 复现步骤
+      description: 给出清晰的复现步骤。
+      placeholder: |
+        1. 打开 ...
+        2. 点击 ...
+        3. 出现 ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息
+      description: DSH 版本、浏览器、插件名称与版本、操作系统及关键配置。
+      placeholder: |
+        - DSH 版本:
+        - 浏览器:
+        - 插件名称 / 版本:
+        - 操作系统:
+    validations:
+      required: true
+  - type: textarea
+    id: bug-screenshot
+    attributes:
+      label: Bug 截图
+      description: 粘贴或上传展示 Bug 的截图。无截图证据的 Bug 报告将被自动关闭。
+      placeholder: 将图片拖到此处，或粘贴 GitHub 图片 / 文件链接。
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 补充信息
+      description: 如有日志、链接或其他上下文，请补充。
+    validations:
+      required: false

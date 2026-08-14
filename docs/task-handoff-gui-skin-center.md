@@ -96,7 +96,7 @@ hot-pluggable client 插件，风格与现有皮肤一致。
 
 ## 5. 推荐实现方案（供参考，以调研结果为准）
 
-- 新包：`@deepseek-ai/dsh-client-ui-skin-center`（id：`ui-skin-center`），源码放
+- 新包：`@linxin666/dsh-client-ui-skin-center`（id：`ui-skin-center`），源码放
   `/Users/zcl/code/dsh-web-ui/packages/skins/skin-center/`（含 package.json/dsh.client 声明/tsdown.config.ts/
   src/client/，预构建 `lib/client.js`），checkout 内通过 profile symlink 解析（仿 qq98 的 dsh-skin 模式）。
 - 入口：设置页新增「皮肤」分区/行（settings.general.item slot 或 ui-settings 更合适的 hole），
@@ -154,7 +154,7 @@ hot-pluggable client 插件，风格与现有皮肤一致。
    固定、无配置写端点；按约定降级为「Apply」复制 `dsh-skin use <name>` 命令（en/zh 文案）。
 3. **皮肤枚举**：内嵌注册表（skin.json 契约）+ 激活检测读 `window.__DSH_BOOT__.entries`（仅启用条目）。
 
-**实现**：`packages/skins/skin-center/`（`@deepseek-ai/dsh-client-ui-skin-center`，id `ui-skin-center`）——
+**实现**：`packages/skins/skin-center/`（`@linxin666/dsh-client-ui-skin-center`，id `ui-skin-center`）——
 插件配置页 Web UI 插件组（`web-ui.plugin.item` 槽，由 `packages/dsh-web-ui-settings` 的组卡声明）
 注册皮肤中心卡片；试穿引擎 `try-on.ts` 按配方收回激活皮肤视觉写面
 （body 属性 / 背景内联样式 / body 直接子 chrome / xp footer taskbar 中性化 CSS），退出后快照

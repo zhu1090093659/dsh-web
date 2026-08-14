@@ -3,7 +3,7 @@
  * work together and care for it: every completed turn earns a small reward,
  * petting earns a tiny one (cooldown-gated), feeding earns the most.
  * Persistence lives in the service; this module only computes transitions.
- * @module @deepseek-ai/dsh-pet/affinity
+ * @module @linxin666/dsh-pet/affinity
  */
 
 /** One interaction the user can perform on the pet. */

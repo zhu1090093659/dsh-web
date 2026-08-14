@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-skin-ths
+# @linxin666/dsh-client-ui-skin-ths
 
 English | [中文](README.zh.md)
 
@@ -8,14 +8,15 @@ The skin is presentation-only: no services are injected, no cordis events are em
 
 ## Installing (official bundle)
 
-Prefer the family aggregate package `@deepseek-ai/dsh-skins` — every skin at once; for this skin alone, install with `link:`:
+Prefer the family aggregate package `@linxin666/dsh-skins` — every skin at once; for this skin alone, install with `link:`:
 
 ```sh
 # All skins (recommended)
-dsh plugin --profile web add link:$(pwd)/packages/dsh-skins
+dsh plugin --profile web add @linxin666/dsh-skins
 # Or just this skin
-dsh plugin --profile web add link:$(pwd)/packages/skins/ths
+dsh plugin --profile web add @linxin666/dsh-client-ui-skin-ths
 # Activate: dsh-skin use ths
+# From the repo (dev): dsh plugin --profile web add link:$(pwd)/packages/skins/ths
 ```
 
 `$(pwd)` is your clone of the dsh-web-ui monorepo.

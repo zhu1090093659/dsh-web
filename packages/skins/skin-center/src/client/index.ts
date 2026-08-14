@@ -11,7 +11,10 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { SkinCenter, type SkinCenterInjected } from './SkinCenter.tsx'
+import { BackgroundController, SKIN_BACKGROUND_NS } from './background.ts'
 import { en, zh, type SkinCenterKey } from './locales.ts'
 import { TryOnController } from './try-on.ts'
 
@@ -44,8 +47,8 @@ export interface SettingsPluginItemOwnerProps {
   children?: never
 }
 
-/** Required services: slots + locale (plugin card) and theme (preview toggle). */
-export const inject = ['slots', 'locale', 'theme']
+/** Required services: slots + locale (plugin card), theme (preview toggle), and settingsScope + its transport (background scrim). */
+export const inject = ['slots', 'locale', 'theme', 'settingsScope', 'connection', 'remote']
 
 /**
  * Register the skin-center dictionaries, the body scope attribute, and the
@@ -64,12 +67,21 @@ export function apply(ctx: ClientContext): void {
 
   const theme = ctx.get('theme') as ThemeRuntime
   const controller = new TryOnController()
+  // Background occluder over the shared skin-background namespace. The scope
+  // is bound to this plugin's fiber, so it is torn down with the card.
+  const backgroundScope = ctx.settingsScope.bind<{ backgroundOpacity?: number }>({ namespace: SKIN_BACKGROUND_NS })
+  const background = new BackgroundController(backgroundScope)
   const injected = (): SkinCenterInjected => ({
     controller,
     theme: {
       getTheme: () => theme.getTheme(),
       subscribe: listener => ctx.on('theme/change', listener),
       setTheme: id => theme.setTheme(id),
+    },
+    background: {
+      opacity: () => background.opacity(),
+      subscribe: listener => background.subscribe(listener),
+      set: opacity => background.set(opacity),
     },
   })
 

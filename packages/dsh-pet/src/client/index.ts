@@ -1,13 +1,13 @@
 /**
- * dsh-pet browser half — registers the whale-girl into the conversation
- * input selector row (the same every-phase row the git branch chip uses) and
- * drives it from the host's same-origin `/api/pet/*` JSON endpoints: poll the
- * host snapshot (~800 ms), forward interactions, persist drag positions. The
- * row anchor mounts the floating pet via portal; when the pet is hidden the
- * anchor becomes the summon button. Anchoring in the selector row (rather
- * than the session-only composer dock band) keeps the pet floating on the
- * new-conversation screen too, where no session exists to scope a slot by.
- * @module @deepseek-ai/dsh-pet/client
+ * dsh-pet browser half — mounts the whale-girl as a global floating surface
+ * and drives it from the host's same-origin `/api/pet/*` JSON endpoints: poll
+ * the host snapshot (~800 ms), forward interactions, persist drag positions.
+ * The pet is host-global (no session dimension), so it mounts directly onto
+ * `document.body` via a single React root rather than a session-scoped slot —
+ * on the new-conversation screen no session exists, and a dock-mounted pet
+ * would vanish there (issue #48). When the pet is hidden the entry becomes a
+ * fixed-position summon button.
+ * @module @linxin666/dsh-pet/client
  */
 
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
@@ -20,10 +20,12 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PetDisplayConfig } from '../persist.ts'
 import type { PetInteractResult, PetStateView } from '../service.ts'
 import type { PetInteraction } from '../affinity.ts'
+import { createElement } from 'react'
+import { createRoot } from 'react-dom/client'
 import { createPetStore, type PetStoreInstance } from './pet-store.ts'
 import { PetDockEntry, type PetInjected } from './PetDockEntry.tsx'
 import { PetSettingsCard, PetSettingsCardController, type PetSettings } from './PetSettingsCard.tsx'
-import { NS, en, zh } from './locales.ts'
+import { NS, en, zh, t } from './locales.ts'
 
 /** The host pet API as the browser sees it (same-origin JSON endpoints). */
 interface PetHttpApi {
@@ -91,9 +93,9 @@ export interface SettingsPluginItemOwnerProps {
 }
 
 /**
- * Client plugin body: register dictionaries, mount the dock entry and poll
- * loop while the plugin is enabled, and seat the settings card in the Web UI
- * plugin group.
+ * Client plugin body: register dictionaries, mount the global pet entry and
+ * poll loop while the plugin is enabled, and seat the settings card in the
+ * Web UI plugin group.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
@@ -118,8 +120,8 @@ export function apply(ctx: ClientContext): void {
     inject: () => petSettings.inject(),
   }, PetSettingsCard))
 
-  // The dock entry, its store, and the poll loop live while the plugin is
-  // enabled; toggling the setting off hides the pet and stops polling.
+  // The global pet entry, its store, and the poll loop live while the plugin
+  // is enabled; toggling the setting off hides the pet and stops polling.
   let disposeUi: (() => void) | undefined
   const syncUi = (): void => {
     if (enabled() && disposeUi === undefined) {
@@ -233,21 +235,22 @@ export function apply(ctx: ClientContext): void {
         },
       })
 
-      // The input selector row mounts in EVERY conversation phase (cold
-      // start, blank-session hero, active seat) — the composer dock band
-      // only renders for an active session, which is why the pet used to
-      // vanish on the new-conversation screen.
-      const disposeDock = ctx.slots.inject('conversation.input.selector.context', () =>
-        ctx.slots.register({
-          name: 'conversation.input.selector.context',
-          id: 'pet',
-          order: 110,
-          inject: injected,
-          locale: NS,
-        }, PetDockEntry))
+      // The pet is host-global (its state/display/interactions have no session
+      // dimension), and the official rc.6 shell declares no root-scoped slot
+      // for a global floating surface — the dock is session-scoped, so a pet
+      // mounted there would vanish on the new-conversation screen (issue #48).
+      // The entry therefore mounts straight onto document.body via a single
+      // React root for the page lifetime: WhalePet portals itself to body when
+      // visible, and the hidden-state summon button is fixed-positioned.
+      const container = document.createElement('div')
+      container.dataset.dshPetRoot = ''
+      document.body.appendChild(container)
+      const petRoot = createRoot(container)
+      petRoot.render(createElement(PetDockEntry, { ...injected(), t }))
 
       disposeUi = () => {
-        disposeDock()
+        petRoot.unmount()
+        container.remove()
         disposePoll()
         disposeUi = undefined
       }

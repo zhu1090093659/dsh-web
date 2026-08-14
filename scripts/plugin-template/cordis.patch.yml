@@ -4,4 +4,4 @@
 # `dsh plugin --profile web add link:<repo>/packages/__NAME__`.
 - insert:
     - id: ui-__NAME__
-      name: '@deepseek-ai/dsh-client-ui-__NAME__'
+      name: '@linxin666/dsh-client-ui-__NAME__'

@@ -6,7 +6,7 @@
  * the unit under test, and apply() early-returns on a losing claim.
  */
 import { beforeEach, describe, expect, it } from 'vitest'
-import { claimTaskboardApply } from '../src/client/apply-guard.ts'
+import { claimTaskboardApply, releaseTaskboardApply } from '../src/client/apply-guard.ts'
 
 describe('claimTaskboardApply', () => {
   beforeEach(() => {
@@ -31,7 +31,13 @@ describe('claimTaskboardApply', () => {
     expect(globalThis.__dshTaskboardApplied).toBe(true)
   })
 
-  it('grants again after the flag is cleared (page reload semantics)', () => {
+  it('grants again after the claim is released (fiber unload / hot-reload)', () => {
+    expect(claimTaskboardApply()).toBe(true)
+    releaseTaskboardApply()
+    expect(claimTaskboardApply()).toBe(true)
+  })
+
+  it('grants again after a full page reload (flag cleared)', () => {
     expect(claimTaskboardApply()).toBe(true)
     globalThis.__dshTaskboardApplied = undefined
     expect(claimTaskboardApply()).toBe(true)

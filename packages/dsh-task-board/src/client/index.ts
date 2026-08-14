@@ -20,7 +20,7 @@ import { BoardController } from '../core/controller.ts'
 import { ExecutionService } from '../core/execution.ts'
 import { SchedulerService } from '../core/scheduler.ts'
 import { LocalStorageTaskStore } from '../core/store.ts'
-import { claimTaskboardApply } from './apply-guard.ts'
+import { claimTaskboardApply, releaseTaskboardApply } from './apply-guard.ts'
 import { mountBoard } from './board-mount.tsx'
 import { mountSidebarEntry } from './sidebar-entry.ts'
 import { TaskBoardSettingsCard, TaskBoardSettingsCardController, type TaskBoardSettings } from './TaskBoardSettingsCard.tsx'
@@ -79,6 +79,11 @@ export function apply(ctx: ClientContext): void {
   // lifetime) would otherwise mount a second sidebar entry and board view.
   // First application wins; later calls become no-ops (see apply-guard.ts).
   if (!claimTaskboardApply()) return
+
+  // Release the claim when this fiber unloads (the loader supports plugin
+  // unloads / hot-reloads), so a rebuilt bundle can claim again in the same
+  // page instead of being silently dropped.
+  ctx.effect(() => releaseTaskboardApply, 'task-board: apply claim')
 
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'task-board: dictionaries')
 

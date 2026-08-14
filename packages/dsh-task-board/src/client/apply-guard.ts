@@ -8,7 +8,8 @@
  *
  * The flag lives on globalThis so separate module instances (independent
  * factory runs) still share one guard. First claim wins; later claims become
- * no-ops until the page reloads.
+ * no-ops until the claim is released (fiber unload / hot-reload) or the page
+ * reloads.
  */
 
 declare global {
@@ -21,4 +22,14 @@ export function claimTaskboardApply(): boolean {
   if (globalThis.__dshTaskboardApplied === true) return false
   globalThis.__dshTaskboardApplied = true
   return true
+}
+
+/**
+ * Releases the claim. Called from the client fiber cleanup so that a
+ * hot-reloaded bundle (the loader unloads the old plugin fiber and invokes
+ * the rebuilt one in the same page) can claim again instead of being
+ * silently dropped.
+ */
+export function releaseTaskboardApply(): void {
+  globalThis.__dshTaskboardApplied = undefined
 }

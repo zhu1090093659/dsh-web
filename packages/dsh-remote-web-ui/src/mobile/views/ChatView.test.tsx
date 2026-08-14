@@ -187,6 +187,40 @@ describe('ChatView message folds', () => {
   })
 })
 
+describe('ChatView initial-load race', () => {
+  /** Minimal mux stand-in: captures the ChatView's frame listener for hand-off. */
+  class FakeMux {
+    listeners = new Set<(frame: unknown) => void>()
+    onFrame(listener: (frame: unknown) => void): () => void {
+      this.listeners.add(listener)
+      return () => { this.listeners.delete(listener) }
+    }
+    emit(frame: unknown): void {
+      for (const listener of this.listeners) listener(frame)
+    }
+  }
+
+  it('keeps live events that arrive while the tail page is still loading', async () => {
+    let resolveHistory: (page: HistoryPage) => void = () => {}
+    loadHistoryMock.mockReturnValue(new Promise<HistoryPage>((resolve) => { resolveHistory = resolve }))
+    const mux = new FakeMux()
+    render(<ChatView session={session} mux={mux as never} onBack={() => {}} />)
+
+    // A live turn starts before the snapshot resolves: chunk, tool call, final.
+    await act(async () => {
+      mux.emit({ type: 'session/event', sessionId: 's-1', event: makeEntry('assistant/chunk', { turn: 1, step: 0, chunk: { type: 'text-delta', text: '正在' } }, 6).event })
+      mux.emit({ type: 'session/event', sessionId: 's-1', event: makeEntry('tool/call', { turn: 1, step: 0, callId: 'c9', name: 'bash', arguments: '{"cmd":"ls"}' }, 7).event })
+      mux.emit({ type: 'session/event', sessionId: 's-1', event: makeEntry('assistant/message', { turn: 1, step: 0, message: { id: 'a-9', role: 'assistant', content: [{ type: 'text', text: '实时新消息' }] } }, 8).event })
+    })
+    // The snapshot predates those events; resolving it must not drop them.
+    await act(async () => { resolveHistory(historyPage(turnEvents())) })
+
+    expect(await screen.findByText('实时新消息')).toBeTruthy()
+    // The history turn's tool disclosure plus the live one both render.
+    expect((await screen.findAllByRole('button', { name: /工具/ })).length).toBe(2)
+  })
+})
+
 describe('ChatView model sheet', () => {
   it('labels the toolbar chip with the current model and selects a new one', async () => {
     loadHistoryMock.mockResolvedValue(historyPage(turnEvents()))

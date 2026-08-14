@@ -101,6 +101,16 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement | undefined>(undefined)
   const pendingRef = useRef(false)
+  /**
+   * True while the initial tail page is in flight. Live events arriving in
+   * that window go to {@link liveBufferRef} instead of the message list: the
+   * tail load replaces the list wholesale, so a directly folded event would
+   * flash once, be discarded by the snapshot, and then be skipped forever by
+   * the seq watermark.
+   */
+  const tailLoadingRef = useRef(true)
+  /** Live session events buffered while the initial tail page loads. */
+  const liveBufferRef = useRef<WireEvent[]>([])
 
   /** The session's permission select (absent = capability not composed). */
   const [permissions, setPermissions] = useState<PermissionSelectValue | undefined>(undefined)
@@ -112,13 +122,20 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
   // Tail page on open (content loads only when the session is opened).
   useEffect(() => {
     let cancelled = false
+    tailLoadingRef.current = true
+    liveBufferRef.current = []
     setLoading(true)
     setError(undefined)
     setMessages([])
     void loadHistory(session.sessionId).then(
       (page) => {
         if (cancelled) return
-        setMessages(foldEvents(page.events.map(eventOf)))
+        // Buffered live events re-fold on top of the snapshot; the watermark
+        // drops any the snapshot already includes, so nothing is lost or doubled.
+        const buffered = liveBufferRef.current
+        liveBufferRef.current = []
+        tailLoadingRef.current = false
+        setMessages(foldEvents(buffered, foldEvents(page.events.map(eventOf))))
         setHasOlder(page.hasMore)
         setLoading(false)
         // The history-tail projection baseline seeds the permission picker.
@@ -129,6 +146,11 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
       },
       (reason: unknown) => {
         if (cancelled) return
+        // Load failed: flush the buffer so the live stream still renders.
+        const buffered = liveBufferRef.current
+        liveBufferRef.current = []
+        tailLoadingRef.current = false
+        if (buffered.length > 0) setMessages(foldEvents(buffered))
         setError(errorText(reason))
         setLoading(false)
       },
@@ -150,7 +172,12 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
     return mux.onFrame((frame: MuxFrame) => {
       if (frame.type === 'session/event') {
         if (frame.sessionId !== session.sessionId) return
-        setMessages(previous => foldEvents([frame.event as WireEvent], previous))
+        const event = frame.event as WireEvent
+        if (tailLoadingRef.current) {
+          liveBufferRef.current.push(event)
+          return
+        }
+        setMessages(previous => foldEvents([event], previous))
         return
       }
       // Live projection pushes keep the permission picker current.

@@ -1,61 +1,69 @@
-# dsh-tool-describe-image — 图像理解工具插件
+# dsh-tool-describe-image — Image Understanding Tool Plugin
 
-模型侧 `describe_image` 工具：为**纯文本模型**（DeepSeek V4 等）提供图像理解能力。
-每次调用加载一张图片——本地文件路径、http(s) URL，或会话附件引用——交给
-OpenAI 兼容的视觉模型端点（Qwen-VL、GLM-4V、GPT-4o、本地 Ollama 等）描述；
-**只有返回的文本进入对话，图片本身绝不进入会话记录**。
+English | [中文](README.zh.md)
 
-本包由 deepseek-harness `packages/vision/tool-describe-image` 移植（镜像仓库
-[whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)），
-按 dsh-web-ui 全家桶规范适配：仅官方 NPM SDK、host 侧插件、设置区实时配置，不修改 DSH 源码。
+Model-facing `describe_image` tool: gives **text-only models** (DeepSeek V4 etc.) image understanding.
+Each call loads one image — a local file path, an http(s) URL, or a session attachment reference —
+and asks an OpenAI-compatible vision endpoint (Qwen-VL, GLM-4V, GPT-4o, a local Ollama endpoint…) to
+answer; **only the returned text enters the conversation, the image itself never enters the session log**.
 
-## 能力
+Ported from deepseek-harness `packages/vision/tool-describe-image` (mirrored at
+[whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)),
+adapted to the dsh-web-ui family conventions: official NPM SDK only, host-side plugin with a
+browser half, live settings, no dsh source changes.
 
-| 能力 | 说明 |
+## Capabilities
+
+| Capability | Description |
 | --- | --- |
-| 三种输入 | 本地绝对路径、http(s) URL（拒绝重定向）、`[image attachment …]` 附件引用（原样复制 JSON 即可，经附件服务读取） |
-| 实时配置卡 | 设置 → 插件配置 → 「Image understanding」卡修改 `baseURL` / `model` / API key（走凭证服务），即时生效，无需重启 |
-| 每次调用解析密钥 | 内联 `apiKey` → 凭证服务（`apiKeyEnv`，默认 `VISION_API_KEY`）→ 启动环境，逐级回退 |
-| 安全与边界 | 所有请求拒绝重定向；`maxBytes` / `maxOutputTokens` / `timeoutMs` 上限；magic-byte 类型门；错误摘要有界（200 字符）；密钥不进日志 |
-| 返回规范值 | `{ text, model, image, mimeType, bytes }`——模型只看到 `text` |
+| Three inputs | Local absolute path, http(s) URL (redirects refused), or `[image attachment …]` reference (copy the exact JSON; read through the attachment service) |
+| Composer image button | The browser half adds an image button to the input box: picking a file stores it in the attachment store and splices a `[image attachment …]` note into the draft — the way a text-only model gets an image without the shell's vision pipeline |
+| Custom instructions | The `prompt` argument carries your precise instruction (OCR, chart reading, UI diagnosis, translation…); the `defaultPrompt` config sets the fallback when the model passes none |
+| Live config card | Settings → Plugin config → "Image understanding" card edits `baseURL` / `model` / API key (through the credential service); effective immediately, no restart |
+| Per-call key resolution | Inline `apiKey` → credential seam (`apiKeyEnv`, default `VISION_API_KEY`) → launch environment, tiered fallback |
+| Safety and bounds | All requests refuse redirects; `maxBytes` / `maxOutputTokens` / `timeoutMs` caps; magic-byte type gate; bounded error excerpts (200 chars); keys never logged |
+| Canonical return | `{ text, model, image, mimeType, bytes }` — the model only sees `text` |
 
-## 安全模型
+## Security model
 
-- 视觉请求与图片下载均拒绝 HTTP 重定向（`redirect: 'error'`），bearer 凭证与图片字节
-  不会转发到部署配置之外的源。
-- 请求体携带 base64 图片但不携带密钥；不记录请求头与已解析凭证。
-- 仅接受 `http(s)` URL 与本地路径，其余 URL 协议一律拒绝。
-- 响应体先按上限（`maxOutputTokens * 8 + 64 KiB`）截断再解析。
+- Vision requests and image downloads both refuse HTTP redirects (`redirect: 'error'`); bearer credentials
+  and image bytes never reach a source other than the configured deployment.
+- The request body carries the base64 image but no key; request headers and resolved credentials are not logged.
+- Only `http(s)` URLs and local paths are accepted; every other URL scheme is rejected.
+- The attach route validates base64, magic bytes, and the byte bound before the attachment store
+  persists anything; only the reference JSON (text) crosses into the conversation.
+- Response bodies are truncated at the cap (`maxOutputTokens * 8 + 64 KiB`) before parsing.
 
-## 安装
+## Installation
 
-推荐直接安装全家桶聚合包 `@linxin666/dsh-web-ui-all`（一个包装齐全部功能插件与皮肤），或单独安装本插件：
+Install the family aggregate `@linxin666/dsh-web-ui-all` (all plugins and skins in one package), or this plugin alone:
 
 ```sh
-# 推荐：直接从 npm 安装
+# Recommended: install directly from npm
 dsh plugin --profile web add @linxin666/dsh-tool-describe-image
 ```
 
-聚合包默认**无配置挂载**本插件：加载不受影响，首次调用会以清晰的错误提示
-（`describe-image: baseURL must be an absolute http(s) URL`）告知尚未配置。
-在「设置 → 插件配置 → Image understanding」卡填写端点与模型即可立即使用，无需重启。
-（与上游差异：上游在加载时强校验；全家桶聚合挂载没有配置入口，故改为
-「有配置则加载时校验、无配置则调用时校验」。）
+The aggregate mounts this plugin **without configuration**: loading is unaffected, and the first call
+fails with a clear error (`describe-image: baseURL must be an absolute http(s) URL`) until configured.
+Fill in the endpoint and model on the "Image understanding" card under Settings → Plugin config to
+start immediately, no restart needed. (Difference from upstream: upstream validates eagerly at load;
+the family aggregate has no config entry, so validation is eager only when a composition entry
+actually configures it and per-call otherwise.)
 
-## 配置
+## Configuration
 
-| 键 | 默认 | 含义 |
+| Key | Default | Meaning |
 | --- | --- | --- |
-| `baseURL` | —（必填） | OpenAI 兼容端点根（如 `https://dashscope.aliyuncs.com/compatible-mode/v1`），末尾斜杠自动去除 |
-| `model` | —（必填） | 视觉模型 id |
-| `apiKey` | — | 内联密钥；本地调试用。建议用 `!!js process.env.VISION_API_KEY` 从环境注入，勿写死明文 |
-| `apiKeyEnv` | `VISION_API_KEY` | 凭证引用（环境变量名）；空字符串禁用引用解析 |
-| `defaultPrompt` | 见源码 | 调用未带 `prompt` 时的指令 |
-| `maxBytes` | `10485760` | 图片字节上限（本地文件与下载一致） |
-| `maxOutputTokens` | `1024` | 发给端点的 `max_tokens` |
-| `timeoutMs` | `60000` | 单次视觉请求超时 |
+| `baseURL` | — (required) | OpenAI-compatible endpoint root (e.g. `https://dashscope.aliyuncs.com/compatible-mode/v1`); trailing slashes stripped |
+| `model` | — (required) | Vision model id |
+| `apiKey` | — | Inline key for local debugging; prefer `!!js process.env.VISION_API_KEY` over a hardcoded secret |
+| `apiKeyEnv` | `VISION_API_KEY` | Credential reference (environment-variable name); empty string disables reference resolution |
+| `defaultPrompt` | see source | The instruction used when a call omits its `prompt` — tune it to your workload (OCR, UI review, translation…) |
+| `maxBytes` | `10485760` | Image byte bound (local files and downloads alike) |
+| `maxOutputTokens` | `1024` | `max_tokens` sent to the endpoint |
+| `timeoutMs` | `60000` | Per-call vision request timeout |
 
-带配置的挂载示例（profile 的 `cordis.patch.yml` / 组合文件）：
+Configured mount example (profile `cordis.patch.yml` / composition file):
 
 ```yaml
 - id: describe-image
@@ -66,18 +74,43 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
     apiKey: !!js process.env.VISION_API_KEY
 ```
 
-## 已知限制
+## Usage
 
-- 仅 magic-byte 门校验类型、不解码图片：头合法但内容损坏的文件会在视觉端点才报错。
-- 单图单答：不支持多图输入、追问上一张图、结构化输出（坐标 / 框）。
-- 抽取文本仍消耗一次 VLM 调用：仅需 OCR 的部署可把 `baseURL` 指向更便宜的 OCR 模型。
-- 仅 OpenAI 兼容协议：请求 / 响应形态不同的厂商需要单独适配。
+### Custom instructions
 
-## 来源与版权
+The tool takes a `prompt` argument: tell the vision model exactly what you need — "transcribe all
+text", "extract the table as CSV", "diagnose the UI layout problems", "translate the text into
+Chinese". A targeted instruction beats a generic description; the tool description steers the
+text model toward passing one. Calls without a `prompt` fall back to `defaultPrompt`.
 
-- **来源**：本包移植自 [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)
-  （deepseek-harness `packages/vision/tool-describe-image`），2026-08 迁入，测试随源码一并移植
-  （`pnpm --filter @linxin666/dsh-tool-describe-image test`）。
-- **版权**：原代码版权归原作者（deepseek-ai / whitelonng）所有，本仓库仅托管与维护，不主张版权；
-  贡献移植部分由贡献者授权以全家桶许可证发布。
-- **许可证**：全家桶以 [Apache-2.0](../../LICENSE) 授权（见仓库根 LICENSE），本包 license 字段为 `Apache-2.0`。
+### Sending images from the input box
+
+Text-only models have no image entry in the DSH input box, so the browser half adds an image
+button to the composer dock. Click it, pick a PNG / JPEG / GIF / WebP file, and the plugin:
+
+1. Uploads the bytes to the host `/describe-image/attach` route;
+2. Validates size and magic bytes and persists the image in the attachment store;
+3. Splices the returned `[image attachment …]` note into your draft.
+
+Send the message and the text model sees the note and calls `describe_image` with its exact JSON —
+the image bytes stay in the attachment store, never in the session log.
+
+## Known limitations
+
+- Only the magic-byte gate checks the type; the image is not decoded, so a header-valid but corrupt
+  file fails only at the vision endpoint.
+- One image per answer: no multi-image input, no follow-up on the previous image, no structured
+  output (coordinates / boxes).
+- Extracting text still costs one VLM call: OCR-only deployments can point `baseURL` at a cheaper OCR model.
+- OpenAI-compatible protocol only: vendors with different request/response shapes need separate adapters.
+
+## Source and copyright
+
+- **Source**: ported from [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)
+  (deepseek-harness `packages/vision/tool-describe-image`), moved in 2026-08; tests ported with the source
+  (`pnpm --filter @linxin666/dsh-tool-describe-image test`).
+- **Copyright**: the original code belongs to its authors (deepseek-ai / whitelonng); this repository
+  only hosts and maintains it and claims no copyright; the ported contribution is licensed by its
+  contributor under the family license.
+- **License**: the family is licensed under [Apache-2.0](../../LICENSE) (repository root LICENSE); this
+  package's `license` field is `Apache-2.0`.

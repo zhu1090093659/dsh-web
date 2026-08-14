@@ -1,0 +1,32 @@
+{
+  // Vitest program: type-checks src + tests together without emitting.
+  // SDK types resolve from the @deepseek-ai/* npm devDependencies. The
+  // browser UI entry and its component carry the client-runtime session
+  // merge, which must not meet the host Context merges in one program;
+  // they are type-checked by the client project instead (tests never
+  // import them).
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "src/client/index.ts",
+    "src/client/AttachImageButton.tsx"
+  ]
+}

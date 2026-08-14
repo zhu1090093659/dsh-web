@@ -37,6 +37,7 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-host-directory-picker@0.1.0-rc.6'
   - '@deepseek-ai/dsh-host-webserver@0.1.0-rc.6'
   - '@deepseek-ai/dsh-invariants@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-launch-environment@0.1.0-rc.6'
   - '@deepseek-ai/dsh-llm-retry@0.1.0-rc.6'
   - '@deepseek-ai/dsh-llm@0.1.0-rc.6'
   - '@deepseek-ai/dsh-native-command@0.1.0-rc.6'

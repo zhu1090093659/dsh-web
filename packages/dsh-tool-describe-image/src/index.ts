@@ -24,21 +24,24 @@ import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView } from '@deepseek-ai/dsh-tools'
+import { registerAttachRoute } from './attach-routes.ts'
+import { DEFAULT_MAX_BYTES, sniffMimeType, type ImageMimeType } from './media.ts'
 
 export const name = 'describe-image'
 export const inject = ['tools']
 
 /** Environment-variable name the API key resolves through when no inline key is configured. */
 export const DEFAULT_API_KEY_ENV = 'VISION_API_KEY'
-/** Upper bound on image bytes (local files and downloaded URLs alike). */
-export const DEFAULT_MAX_BYTES = 10 * 1024 * 1024
 /** Per-call output-token cap sent to the vision model. */
 export const DEFAULT_MAX_OUTPUT_TOKENS = 1024
 /** Per-call vision request timeout in milliseconds. */
 export const DEFAULT_TIMEOUT_MS = 60_000
 /** Instruction sent when the model does not pass its own prompt. */
 export const DEFAULT_PROMPT =
-  'Describe this image concisely and factually: list what is visible, transcribe legible text verbatim, and note layout and notable details.'
+  'Analyze this image: describe what is visible factually, transcribe legible text verbatim, and call out layout, notable details, or anything anomalous.'
+
+export { DEFAULT_MAX_BYTES, sniffMimeType } from './media.ts'
+export type { ImageMimeType } from './media.ts'
 
 /**
  * Deployment configuration for the describe-image tool. The interface keeps every field optional so
@@ -90,9 +93,6 @@ export interface ResolvedConfig {
   maxOutputTokens: number
   timeoutMs: number
 }
-
-/** Image media types the magic-byte gate accepts. */
-export type ImageMimeType = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
 
 /** One loaded image: its bytes and the sniffed media type. */
 export interface LoadedImage {
@@ -163,20 +163,6 @@ export async function resolveApiKey(ctx: Context, spec: ResolvedConfig): Promise
     `describe-image: no API key; set apiKey, store ${spec.apiKeyEnv ?? DEFAULT_API_KEY_ENV} through the credentials service,`
     + ' or export it in the launching environment',
   )
-}
-
-/**
- * Detect the image media type from magic bytes.
- * @param bytes - the leading bytes of the input.
- * @returns the accepted media type, or `undefined` for unknown or truncated inputs.
- */
-export function sniffMimeType(bytes: Buffer): ImageMimeType | undefined {
-  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png'
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg'
-  if (bytes.length >= 6 && bytes.subarray(0, 6).toString('ascii') === 'GIF87a') return 'image/gif'
-  if (bytes.length >= 6 && bytes.subarray(0, 6).toString('ascii') === 'GIF89a') return 'image/gif'
-  if (bytes.length >= 12 && bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp'
-  return undefined
 }
 
 /**
@@ -389,10 +375,14 @@ async function callVision(spec: ResolvedConfig, apiKey: string, prompt: string, 
 }
 
 const DESCRIPTION_HEAD =
-  'Inspect one image — a local absolute path or an http(s) URL — and return a text description, '
-  + 'transcription, or the answer to a specific question about it. Use when the user references an '
-  + 'image file or URL, or when a task needs OCR, chart or diagram reading, screenshot analysis, or '
-  + 'photo understanding. '
+  'Inspect one image — a local absolute path, an http(s) URL, or the JSON of an image attachment '
+  + 'note — and return the text the user needs. Use when the user references an image file or URL, '
+  + 'or when a task needs OCR, chart or diagram reading, screenshot or UI analysis, translation of '
+  + 'image text, or photo understanding. '
+  + 'Always pass an explicit `prompt` with a precise instruction — e.g. "transcribe all text", '
+  + '"extract the table as CSV", "diagnose the UI layout problems", "translate the text into '
+  + 'Chinese" — instead of leaving it to the default description: a targeted instruction produces '
+  + 'a much more useful answer. '
 
 /** The describe_image call's validated arguments. */
 export interface DescribeImageArgs {
@@ -446,12 +436,16 @@ export function apply(ctx: Context, config: Config = {}): void {
     },
   })
   const spec = (): ResolvedConfig => resolveConfig(current())
+  // The webserver is optional (the loader-composition tests boot without one):
+  // the attach route registers only when the service is actually mounted.
+  registerAttachRoute(ctx, () => current().maxBytes ?? DEFAULT_MAX_BYTES)
   ctx.tools.register(defineTool({
     name: 'describe_image',
     description: DESCRIPTION_HEAD
-      + 'The image may be a local path, an http(s) URL, or the JSON of an `[image attachment …]` note '
-      + 'from the conversation (copy it verbatim). The image must be one of PNG, JPEG, GIF, or WebP. '
-      + 'The image itself is not shown to you — only the returned text is.',
+      + 'The image may be a local path, an http(s) URL, or the exact JSON from an `[image attachment …]` '
+      + 'note the user pasted into the input box (copy it verbatim; the browser image button of this '
+      + 'plugin inserts such notes). The image must be one of PNG, JPEG, GIF, or WebP. The image '
+      + 'itself is not shown to you — only the returned text is.',
     parameters: {
       image: {
         type: 'string',
@@ -460,7 +454,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       },
       prompt: {
         type: 'string',
-        description: 'Optional specific question or instruction about the image; defaults to a concise factual description.',
+        description: 'Your precise instruction for the vision model about this image (e.g. "transcribe all text", "extract the table as CSV", "diagnose the UI problems", "translate the text"). Prefer a targeted prompt over the generic default description.',
       },
     },
     output: {

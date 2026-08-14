@@ -317,6 +317,7 @@ export function listTool(runtime: WorkscopeRuntime) {
                 workspaceId: { type: 'string', required: true },
                 path: { type: 'string', required: true },
                 title: { type: 'string', required: true },
+                sessionId: { type: 'string', required: true },
                 createdAt: { type: 'string', required: true },
                 status: { type: 'string', enum: ['active', 'removed'], required: true },
               },
@@ -328,7 +329,7 @@ export function listTool(runtime: WorkscopeRuntime) {
       render: (_args, value: {
         active?: Array<{ id: string; path: string; scope: string; reason: string }>
         pending?: Array<{ id: string; kind: string; path: string; scope: string; reason: string }>
-        workspaces?: Array<{ id: string; workspaceId: string; path: string; title: string; createdAt: string }>
+        workspaces?: Array<{ id: string; workspaceId: string; path: string; title: string; sessionId: string; createdAt: string }>
       }) => {
         const lines: string[] = []
         const active = value.active ?? []

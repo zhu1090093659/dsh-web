@@ -25,9 +25,11 @@ import type {} from '@deepseek-ai/dsh-tools'
 import { GrantRegistry } from './grants.ts'
 import { makeRoutes } from './routes.ts'
 import {
-  grantTool, listTool, probeTool, readTool, revokeTool, unworkspaceTool,
-  workspaceTool, writeTool, type WorkscopeRuntime,
+  copyTool, deleteTool, grantTool, listTool, moveTool, opsTool, probeTool,
+  readTool, revokeTool, rollbackTool, unworkspaceTool, workspaceTool,
+  writeTool, type WorkscopeRuntime,
 } from './tools.ts'
+import { OperationLedger } from './ops.ts'
 import { WorkspaceLedger } from './workspaces.ts'
 
 /** Stable cordis plugin name. */
@@ -122,7 +124,8 @@ export const BEYOND_GUIDANCE = [
   'workscope_grant 向用户申请指定目录的授权（read/write），用户会在界面确认卡片上看到路径、级别与你的理由，等待确认期间工具处于 pending 状态属正常；',
   '授权生效后，仅可用 workscope_read / workscope_write 在该目录内操作（插件强制边界，越界直接拒绝并提示先授权）；workscope_list 查看本会话的授权与工作区；',
   'workscope_workspace 把目录注册为本会话的「子工作区」（同样走确认卡片）：注册后可在会话的「会话信息」选项卡中管理（不在侧边栏、不创建新会话）；子工作区存续期间，workscope_read / workscope_write 在其目录内自动放行；随会话结束自动移除，也可用 workscope_unworkspace 显式移除（目录保留）；',
-  '工作完成或用户要求时立即 workscope_revoke；会话结束授权自动撤销（子工作区同样随会话结束移除）。',
+  '子工作区/授权内可执行可逆操作：workscope_move / workscope_copy / workscope_delete（均带边界强制与数量/大小上限，delete 移入回滚区而非销毁）；workscope_ops 查看本会话操作历史，workscope_rollback 撤销指定操作（恢复原内容/移回文件/反向移动/移除复制产物）；回滚区随会话结束清理；',
+  '工作完成或用户要求时立即 workscope_revoke；会话结束授权自动撤销（子工作区与回滚区同样随会话结束清理）。',
   '纪律：先 probe 感知、再 grant 申请、确认后再读写、用完即 revoke；不要用普通文件工具直接访问工作区之外的路径（会被 DSH 沙箱或本插件拒绝）。',
   '用户提到「桌面/文档/下载/某个目录/最近的文件/整理/处理一下这个文件夹/把这个目录变成工作区」等涉及工作区之外的需求时，即指本插件，请据此协作。',
 ].join('')
@@ -159,10 +162,12 @@ export function apply(ctx: Context, config?: Config): void {
   // Sub-workspace surface: a session-scoped ledger (no host workspace
   // registry involvement — sub-workspaces never appear in the sidebar).
   const ledger = new WorkspaceLedger()
+  const ops = new OperationLedger()
 
   const runtime: WorkscopeRuntime = {
     registry,
     ledger,
+    ops,
     scanRoots: () => resolve().scanRoots ?? [],
     maxRecentFiles: () => resolve().maxRecentFiles ?? DEFAULTS.maxRecentFiles,
     maxProcesses: () => resolve().maxProcesses ?? DEFAULTS.maxProcesses,
@@ -172,6 +177,7 @@ export function apply(ctx: Context, config?: Config): void {
   const disposeSessionHook = ctx.on('session/disposed', (session: Session) => {
     registry.releaseSession(session.id)
     ledger.releaseSession(session.id)
+    void ops.releaseSession(session.id)
   })
 
   ctx.effect(() => () => {
@@ -217,6 +223,11 @@ export function apply(ctx: Context, config?: Config): void {
     writeTool(runtime),
     workspaceTool(runtime),
     unworkspaceTool(runtime),
+    moveTool(runtime),
+    copyTool(runtime),
+    deleteTool(runtime),
+    opsTool(runtime),
+    rollbackTool(runtime),
   ]
   let disposeRoutes: (() => void) | undefined
   let disposeTools: (() => void) | undefined

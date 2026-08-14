@@ -92,8 +92,23 @@ export interface AuditEntry {
   readonly kind:
     | 'grant_requested' | 'grant_approved' | 'grant_denied' | 'grant_revoked' | 'grant_expired'
     | 'workspace_requested' | 'workspace_registered' | 'workspace_denied' | 'workspace_expired' | 'workspace_removed'
+    | 'op_write' | 'op_move' | 'op_copy' | 'op_delete' | 'op_rollback'
     | 'session_released'
   readonly detail: string
+}
+
+/** One reversible operation (workscope_ops view). */
+export interface OpView {
+  readonly id: string
+  readonly kind: 'write' | 'move' | 'copy' | 'delete'
+  /** Primary path (write/delete target; move/copy source). */
+  readonly path: string
+  /** move/copy destination. */
+  readonly dest?: string
+  /** Bytes involved. */
+  readonly size: number
+  readonly createdAt: string
+  readonly status: 'done' | 'rolled-back'
 }
 
 /** One session-scoped sub-workspace registration (ledger view). */

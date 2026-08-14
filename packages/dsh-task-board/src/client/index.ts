@@ -20,6 +20,7 @@ import { BoardController } from '../core/controller.ts'
 import { ExecutionService } from '../core/execution.ts'
 import { SchedulerService } from '../core/scheduler.ts'
 import { LocalStorageTaskStore } from '../core/store.ts'
+import { claimTaskboardApply } from './apply-guard.ts'
 import { mountBoard } from './board-mount.tsx'
 import { mountSidebarEntry } from './sidebar-entry.ts'
 import { TaskBoardSettingsCard, TaskBoardSettingsCardController, type TaskBoardSettings } from './TaskBoardSettingsCard.tsx'
@@ -74,6 +75,11 @@ export const inject = ['slots', 'sessions', 'workspaces', 'connection', 'setting
  * @param ctx - client root context (services: sessions, workspaces).
  */
 export function apply(ctx: ClientContext): void {
+  // A duplicated client injection (module factory executed twice in one page
+  // lifetime) would otherwise mount a second sidebar entry and board view.
+  // First application wins; later calls become no-ops (see apply-guard.ts).
+  if (!claimTaskboardApply()) return
+
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'task-board: dictionaries')
 
   // Plugin configuration card: one staged form over the `task-board` settings

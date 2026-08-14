@@ -87,6 +87,13 @@ function placeEntry(root: HTMLElement, entry: HTMLButtonElement): boolean {
  * @returns disposer removing the entry and its observers.
  */
 export function mountSidebarEntry(controller: BoardController): () => void {
+  // DOM-level idempotency: whatever path mounted an entry row before this
+  // call (a duplicated apply, an HMR re-injection, a stale module still
+  // alive), never mount a second one. The existing row keeps working; a full
+  // page reload is the ultimate reset.
+  if (typeof document !== 'undefined' && document.querySelector('[data-dsh-taskboard-entry]') !== null) {
+    return () => {}
+  }
   const entry = createEntry(controller)
   let root: HTMLElement | undefined
   let placed = false

@@ -20,8 +20,7 @@
  * Switch = rewrite the managed patch section → HMR re-scans → refresh the
  * page. Only ONE skin row is ever enabled: every non-active skin gets an
  * id-target `disabled: true` row (which also neutralizes skins wired at
- * the bundle layer, e.g. ui-skin-xp), and the active skin gets its insert
- * row (xp needs none — the bundle layer already carries it).
+ * the bundle layer), and the active skin gets its insert row.
  */
 
 const fs = require('node:fs')
@@ -51,8 +50,8 @@ const SKINS = {
   trading: { pkg: '@linxin666/dsh-client-ui-skin-trading', id: 'ui-skin-trading', dir: `${REPO}/packages/skins/trading` },
   miku: { pkg: '@linxin666/dsh-client-ui-skin-miku', id: 'ui-skin-miku', dir: `${REPO}/packages/skins/miku` },
 }
-/** Skin wired at the bundle layer already (no insert row needed here). */
-const BUNDLE_WIRED = new Set(['xp'])
+/** Skins wired at the bundle layer already (no insert row needed here). Empty in the npm aggregate layout — no skin ships pre-wired; profile-installed skins are detected dynamically via bundleWiredFromProfile(). */
+const BUNDLE_WIRED = new Set()
 
 /** The profile manifest path (`$DSH_HOME/profiles/<profile>/package.json`). */
 function profileManifestPath() {

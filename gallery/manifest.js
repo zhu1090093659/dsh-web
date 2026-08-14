@@ -74,7 +74,7 @@ window.SKIN_MANIFEST = {
       "package": "@linxin666/dsh-client-ui-skin-xp",
       "wiring": {
         "id": "ui-skin-xp",
-        "bundleWired": true
+        "bundleWired": false
       },
       "preview": {
         "light": "packages/skins/xp/preview/light.png",

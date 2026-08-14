@@ -241,7 +241,7 @@ export function loadRegistry(skinsDir: string = SKINS_DIR): Record<string, SkinS
 
 /**
  * The skins the bundle layer already wires (no insert row needed) — derived
- * from each skin.json wiring.bundleWired (the repo's static truth, e.g. xp).
+ * from each skin.json wiring.bundleWired (the repo's static truth).
  *
  * TODO: the CLI also detects skins wired via the active profile's
  * dsh.profile.bundles (bundleWiredFromProfile). A skin installed from the

@@ -97,9 +97,10 @@ describe('skin registry derivation (from skin.json wiring)', () => {
       pkg: '@linxin666/dsh-client-ui-skin-blue-fantasy',
       id: 'ui-skin-blue-fantasy',
     }))
-    // xp is bundle-wired (carries no insert row) — the repo's skin.json truth.
-    expect(registry.xp.bundleWired).toBe(true)
-    expect(wiredNames(registry).has('xp')).toBe(true)
+    // No skin is bundle-wired in the npm aggregate layout — xp ships like the
+    // others and must carry its own insert row when applied.
+    expect(registry.xp.bundleWired).toBe(false)
+    expect(wiredNames(registry).has('xp')).toBe(false)
   })
 })
 

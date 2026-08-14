@@ -431,6 +431,9 @@ importers:
       '@xterm/xterm':
         specifier: ^6.0.0
         version: 6.0.0
+      schemastery:
+        specifier: ^3.18.0
+        version: 3.18.0
       ssh2:
         specifier: ^1.17.0
         version: 1.17.0
@@ -501,9 +504,6 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
-      schemastery:
-        specifier: ^3.18.0
-        version: 3.18.0
       tsdown:
         specifier: 0.22.2
         version: 0.22.2(typescript@5.7.3)
@@ -744,6 +744,10 @@ importers:
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
 
   packages/skins/skin-center:
+    dependencies:
+      schemastery:
+        specifier: ^3.18.0
+        version: 3.18.0
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.1
@@ -778,9 +782,6 @@ importers:
       react:
         specifier: ^18.2.0
         version: 18.3.1
-      schemastery:
-        specifier: ^3.18.0
-        version: 3.18.0
       tsdown:
         specifier: ^0.22.2
         version: 0.22.2(typescript@6.0.3)

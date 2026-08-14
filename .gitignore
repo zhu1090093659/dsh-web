@@ -20,3 +20,6 @@ gui-test-screenshots/
 
 # 评审提示草稿：本地资料，不上传
 REVIEW-PROMPT.md
+
+# Browser demo recording frames (record-browser-gif skill)
+.playwright-mcp/

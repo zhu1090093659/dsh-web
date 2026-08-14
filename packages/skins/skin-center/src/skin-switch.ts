@@ -4,10 +4,11 @@
  * `dsh-skin` binary on PATH (the bug zhu1090093659/dsh-web-ui#5: "dsh-skin
  * CLI not found on PATH").
  *
- * `use` owns the `dsh-skin managed` section of `~/.dsh/cordis.patch.yml`
- * (atomic rewrite, hot-reloaded by the DSH config watcher within seconds,
- * no restart) and the profile node_modules symlink that makes the selected
- * skin resolvable from the web profile. `current` reads the active back.
+ * `use` owns the `dsh-skin managed` section of the harness home's
+ * cordis.patch.yml (`$DSH_HOME` when set, else `~/.dsh` — atomic rewrite,
+ * hot-reloaded by the DSH config watcher within seconds, no restart) and the
+ * profile node_modules symlink that makes the selected skin resolvable from
+ * the web profile. `current` reads the active back.
  *
  * The behaviour/text is a 1:1 port of scripts/dsh-skin (`use`/`current`;
  * workspace assets live in packages/skins/<id>). The skin registry is
@@ -334,23 +335,39 @@ export function currentActive(patch: string, registry: Record<string, SkinSwitch
 
 /** Layout of the DSH home + profile the CLI switches against. */
 export interface SkinSwitchPaths {
-  /** ~/.dsh/cordis.patch.yml */
+  /** <harness home>/cordis.patch.yml ($DSH_HOME, else <home>/.dsh) */
   patchPath: string
-  /** ~/.dsh/profiles/<profile>/node_modules */
+  /** <harness home>/profiles/<profile>/node_modules */
   profileModulesDir: string
 }
 
 /**
- * Resolve the DSH paths under a HOME. home/profile are injectable so tests
- * can point at a throwaway HOME (mirrors scripts/dsh-skin.test.mjs).
+ * Resolve the DSH paths the switch operates on. The harness home is $DSH_HOME
+ * when set (the dsh launcher may point it anywhere, e.g. D:\AppDataMigration\dsh),
+ * else the historical <home>/.dsh layout — mirroring scripts/dsh-skin and the
+ * harness's own resolveDshHome precedence. home/profile stay injectable so
+ * tests can point at a throwaway HOME (mirrors scripts/dsh-skin.test.mjs).
  * @param home - home dir (defaults to the process HOME).
  * @param profile - profile name (defaults to DSH_SKIN_PROFILE or 'web').
  */
 export function resolvePaths(home: string = homedir(), profile: string = DEFAULT_PROFILE): SkinSwitchPaths {
+  const harnessHome = dshHomeFromEnv() ?? joinPath(home, '.dsh')
   return {
-    patchPath: joinPath(home, '.dsh', 'cordis.patch.yml'),
-    profileModulesDir: joinPath(home, '.dsh', 'profiles', profile, 'node_modules'),
+    patchPath: joinPath(harnessHome, 'cordis.patch.yml'),
+    profileModulesDir: joinPath(harnessHome, 'profiles', profile, 'node_modules'),
   }
+}
+
+/**
+ * $DSH_HOME when set and non-empty, else undefined. A harness running under a
+ * custom DSH_HOME keeps its boot patch at $DSH_HOME/cordis.patch.yml and its
+ * profiles under $DSH_HOME/profiles; writing those to ~/.dsh instead makes the
+ * config watcher (which watches the real harness home) never see the switch —
+ * the skin applies "successfully" but the running server never mounts it.
+ */
+function dshHomeFromEnv(): string | undefined {
+  const fromEnv = process.env.DSH_HOME
+  return typeof fromEnv === 'string' && fromEnv.trim() !== '' ? fromEnv : undefined
 }
 
 // --- fs side effects ---

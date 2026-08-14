@@ -11,7 +11,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readlinkSync, rmSy
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Spy on symlinkSync only (everything else stays real) so the win32 junction
 // fallback branch of ensureSymlink can be exercised on non-Windows machines.
@@ -39,7 +39,15 @@ import {
 /** A throwaway HOME with an empty .dsh dir; removed after all tests. */
 let home: string
 afterAll(() => {
+  delete process.env.DSH_HOME
   if (home !== undefined) rmSync(home, { recursive: true, force: true })
+})
+
+// Keep every test hermetic: a DSH_HOME set on the dev machine must not
+// redirect the throwaway-HOME assertions. The dedicated $DSH_HOME tests
+// below set the variable explicitly and restore it in their own finally.
+beforeEach(() => {
+  delete process.env.DSH_HOME
 })
 
 function fakeHome(): string {
@@ -124,10 +132,12 @@ describe('pure patch helpers', () => {
     expect(rendered).not.toContain(`- id: ${registry.qq98.id}\n  disabled: true`)
   })
 
-  it('renderManaged(wired skin) needs no insert row', () => {
+  it('renderManaged keeps an insert row for every skin (none is bundle-wired in the npm aggregate layout)', () => {
     const registry = miniRegistry()
     const rendered = renderManaged('xp', registry)
-    expect(rendered).not.toContain('- insert:')
+    expect(rendered).toContain('- insert:')
+    expect(rendered).toContain(`- id: ${registry.xp.id}`)
+    expect(rendered).not.toContain(`- id: ${registry.xp.id}\n  disabled: true`)
   })
 
   it('stripManaged removes only the managed section', () => {
@@ -289,6 +299,44 @@ describe('useSkin / currentSkin against a throwaway HOME', () => {
     } finally {
       Object.defineProperty(process, 'platform', platformDesc)
       mock.mockReset()
+    }
+  })
+})
+
+describe('custom $DSH_HOME (harness home env, mirrors scripts/dsh-skin)', () => {
+  it('resolvePaths targets $DSH_HOME instead of <home>/.dsh', () => {
+    const h = fakeHome()
+    const custom = join(h, 'custom-dsh-home')
+    process.env.DSH_HOME = custom
+    try {
+      const paths = resolvePaths(h)
+      expect(paths.patchPath).toBe(join(custom, 'cordis.patch.yml'))
+      expect(paths.profileModulesDir).toBe(join(custom, 'profiles', 'web', 'node_modules'))
+    } finally {
+      delete process.env.DSH_HOME
+    }
+  })
+
+  it('useSkin/currentSkin write and read the patch under $DSH_HOME, leaving <home>/.dsh untouched', () => {
+    const h = fakeHome()
+    const custom = join(h, 'custom-dsh-home')
+    const registry = loadRegistry()
+    const qq98 = registry.qq98
+    const fakeDir = join(h, 'code', 'dsh-web-ui', 'packages', 'skins', 'qq98')
+    makeSkinPackage(fakeDir, qq98)
+    const fakeRegistry: Record<string, SkinSwitchEntry> = {
+      ...registry,
+      qq98: { ...qq98, dir: fakeDir },
+    }
+    process.env.DSH_HOME = custom
+    try {
+      useSkin('qq98', { registry: fakeRegistry })
+      expect(readFileSync(join(custom, 'cordis.patch.yml'), 'utf8')).toContain('- insert:')
+      expect(currentSkin(undefined, { registry: fakeRegistry })).toBe('qq98')
+      // The historical <home>/.dsh layout must stay untouched.
+      expect(existsSync(join(h, '.dsh', 'cordis.patch.yml'))).toBe(false)
+    } finally {
+      delete process.env.DSH_HOME
     }
   })
 })

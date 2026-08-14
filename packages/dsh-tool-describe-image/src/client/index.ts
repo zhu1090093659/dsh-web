@@ -20,6 +20,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { AttachImageButton, type AttachImageInjected } from './AttachImageButton.tsx'
 import { insertNoteIntoDraft } from './attach.ts'
+import { installSendHook } from './send-hook.ts'
 import { DescribeImageSettingsCard, DescribeImageSettingsCardController, type DescribeImageSettings } from './DescribeImageSettingsCard.tsx'
 import { dictionaries, setLanguage, type DescribeImageClientKey } from './locales.ts'
 
@@ -81,6 +82,10 @@ export function apply(ctx: ClientContext): void {
     const sessions = scope.sessions
     const conversation = scope.conversation
     const slots = scope.slots
+
+    // Text-only models reject image blocks at submit: rewrite image-bearing
+    // sends into describe-image references before they reach the model.
+    installSendHook(conversation)
 
     // The settings card: bound to the describe-image namespace through the
     // family bridge when the official scope does not expose it.

@@ -52,7 +52,7 @@ class FakeAttachments extends AttachmentStore {
   readImage(ref: ImageAttachmentRef, _signal?: AbortSignal): Promise<StoredImageAttachment> {
     const data = this.stored.get(String(ref.attachmentId))
     if (data === undefined) return Promise.reject(new Error('no such attachment'))
-    return Promise.resolve({ data, mediaType: ref.mediaType })
+    return Promise.resolve({ data, mediaType: ref.mediaType, ref })
   }
 }
 

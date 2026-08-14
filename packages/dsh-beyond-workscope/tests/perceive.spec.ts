@@ -7,6 +7,7 @@ import { mkdir, mkdtemp, rm, writeFile, utimes } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { defaultScanRoots } from '../src/index.ts'
 import { listProcesses, listRecentFiles, perceive } from '../src/perceive.ts'
 
 describe('listRecentFiles', () => {
@@ -114,6 +115,29 @@ describe('listRecentFiles', () => {
     expect(report.recentFiles.length).toBeGreaterThan(0)
     expect(report.processes.length).toBeGreaterThan(0)
     expect(report.scannedAt).toBeTruthy()
+  })
+})
+
+describe('defaultScanRoots', () => {
+  it('prefers the existing English XDG dirs over Chinese ones', async () => {
+    const home = join(await mkdtemp(join(tmpdir(), 'workscope-root-')), 'home')
+    await mkdir(join(home, 'Desktop'), { recursive: true })
+    await mkdir(join(home, '桌面'), { recursive: true })
+    const roots = defaultScanRoots(home)
+    expect(roots).toContain(join(home, 'Desktop'))
+    expect(roots).not.toContain(join(home, '桌面'))
+  })
+
+  it('falls back to the Chinese dirs when the English ones are missing', async () => {
+    const home = join(await mkdtemp(join(tmpdir(), 'workscope-root-')), 'home')
+    await mkdir(join(home, '文档'), { recursive: true })
+    await mkdir(join(home, '下载'), { recursive: true })
+    const roots = defaultScanRoots(home)
+    expect(roots).toContain(join(home, '文档'))
+    expect(roots).toContain(join(home, '下载'))
+    // Desktop has neither variant — the English default remains so the
+    // perception pass reports a visible missing-root warning.
+    expect(roots).toContain(join(home, 'Desktop'))
   })
 })
 

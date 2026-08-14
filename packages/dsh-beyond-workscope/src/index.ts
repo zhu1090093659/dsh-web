@@ -14,6 +14,8 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import type { Session } from '@deepseek-ai/dsh-session'
 import z from 'schemastery'
@@ -37,11 +39,30 @@ export const inject = ['webServer', 'tools', 'systemPrompt']
  */
 export const BEYOND_NS = settingsNamespace('dsh-beyond-workscope')
 
-/** Default whitelisted perception roots (resolved against the home dir). */
-function defaultScanRoots(): string[] {
-  const home = process.env.HOME ?? process.env.USERPROFILE
+/**
+ * Default whitelisted perception roots, locale-aware: for each of the three
+ * user folders, prefer the English XDG name when it exists, else the Chinese
+ * name (桌面/文档/下载 — the GNOME zh-CN layout this deployment runs), else
+ * keep the English default so the perception pass reports a clear missing
+ * root warning instead of silently scanning nothing.
+ * @param home - the user home directory.
+ */
+export function defaultScanRoots(home = process.env.HOME ?? process.env.USERPROFILE): string[] {
   if (home === undefined) return []
-  return [`${home}/Desktop`, `${home}/Documents`, `${home}/Downloads`]
+  const candidates: Array<[string, string]> = [
+    ['Desktop', '桌面'],
+    ['Documents', '文档'],
+    ['Downloads', '下载'],
+  ]
+  const roots: string[] = []
+  for (const [en, zh] of candidates) {
+    const enPath = join(home, en)
+    const zhPath = join(home, zh)
+    if (existsSync(enPath)) roots.push(enPath)
+    else if (existsSync(zhPath)) roots.push(zhPath)
+    else roots.push(enPath)
+  }
+  return roots
 }
 
 /** Plugin config, validated by the same-named schemastery schema. */

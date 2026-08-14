@@ -115,3 +115,18 @@ export function parentRel(path: string): string {
   const idx = path.lastIndexOf('/')
   return idx > 0 ? path.slice(0, idx) : ''
 }
+
+/**
+ * Join a workspace-relative tree path onto the session's absolute cwd for
+ * clipboard copy. The separator follows the root's own style (a Windows
+ * root yields backslashes); a trailing separator on the root is not doubled.
+ * @param root - the absolute workspace root (the session cwd).
+ * @param rel - the workspace-relative path ('/'-separated, as the fs service lists it); '' names the root itself.
+ * @returns the absolute path in the root's separator style.
+ */
+export function joinAbsolute(root: string, rel: string): string {
+  const trimmed = root.replace(/[\\/]+$/, '')
+  if (rel === '') return trimmed
+  const sep = root.includes('\\') ? '\\' : '/'
+  return trimmed + sep + rel.split('/').join(sep)
+}

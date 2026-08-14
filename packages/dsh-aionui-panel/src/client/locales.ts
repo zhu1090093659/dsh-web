@@ -68,6 +68,9 @@ const zh = {
   'common.close': '关闭',
   'common.delete': '删除',
   'common.copyPath': '复制路径',
+  'common.copyRelPath': '复制相对路径',
+  'common.copyAbsPath': '复制绝对路径',
+  'common.copyFailed': '复制失败',
   'common.copied': '已复制',
 } as const
 
@@ -134,6 +137,9 @@ const en: Record<keyof typeof zh, string> = {
   'common.close': 'Close',
   'common.delete': 'Delete',
   'common.copyPath': 'Copy path',
+  'common.copyRelPath': 'Copy relative path',
+  'common.copyAbsPath': 'Copy absolute path',
+  'common.copyFailed': 'Copy failed',
   'common.copied': 'Copied',
 }
 

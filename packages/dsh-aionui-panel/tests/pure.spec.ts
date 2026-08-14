@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { renderInline, renderMarkdown, resolveMarkdownImage } from '../src/client/preview/markdown.ts'
 import { parseCsv, normalizeUrl } from '../src/client/preview/content.tsx'
 import { parseGridTracks, trackPx } from '../src/client/layout.ts'
-import { detectContentType } from '../src/client/fileType.ts'
+import { detectContentType, joinAbsolute } from '../src/client/fileType.ts'
 
 describe('renderMarkdown', () => {
   it('renders headings, paragraphs and hr', () => {
@@ -173,5 +173,18 @@ describe('dotfile content detection (M5 regression)', () => {
     expect(detectContentType('.npmrc')).toBe('text')
     expect(detectContentType('.env.local')).toBe('text')
     expect(detectContentType('.editorconfig')).toBe('text')
+  })
+})
+
+describe('joinAbsolute', () => {
+  it('joins with the root separator style', () => {
+    expect(joinAbsolute('/home/u/proj', 'docs/a.md')).toBe('/home/u/proj/docs/a.md')
+    expect(joinAbsolute('F:\\codeF\\proj', 'docs/a.md')).toBe('F:\\codeF\\proj\\docs\\a.md')
+  })
+
+  it('does not double a trailing root separator and handles the root itself', () => {
+    expect(joinAbsolute('/home/u/proj/', 'a.md')).toBe('/home/u/proj/a.md')
+    expect(joinAbsolute('C:\\proj\\', 'a.md')).toBe('C:\\proj\\a.md')
+    expect(joinAbsolute('/home/u/proj', '')).toBe('/home/u/proj')
   })
 })

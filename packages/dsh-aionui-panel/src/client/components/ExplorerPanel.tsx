@@ -12,14 +12,17 @@
  */
 
 import { memo, useRef, useState } from 'react'
-import type { DragEvent, JSX } from 'react'
+import type { DragEvent, JSX, MouseEvent } from 'react'
 import type { FsEntry } from '../../core/types.ts'
-import { parentRel } from '../fileType.ts'
+import { joinAbsolute, parentRel } from '../fileType.ts'
 import { t } from '../locales.ts'
 import { useStore } from '../hooks/useStore.ts'
 import type { PanelStores } from '../store.ts'
 import { FileTypeIcon } from './FileIcon.tsx'
 import { ChevronRightIcon, CloseIcon, ExpandRightIcon, SearchIcon } from './icons.tsx'
+import { ContextMenu } from './overlay.tsx'
+import type { MenuState } from './overlay.tsx'
+import { copyText } from './overlay.tsx'
 import { ScmPanel } from './ScmPanel.tsx'
 import { activateOnKey } from './a11y.ts'
 import { FILE_DRAG_MIME } from '../drag/file-drag.ts'
@@ -241,6 +244,22 @@ function TreeRowBase({
   const isSelected = selected === entry.path
   const children = entry.isDir ? dirs[entry.path] : undefined
   const [draggingRow, setDraggingRow] = useState(false)
+  const [menu, setMenu] = useState<MenuState | null>(null)
+
+  // Right-click: copy the workspace-relative or absolute path (dirs too —
+  // VSCode offers both on every row).
+  const onContextMenu = (event: MouseEvent): void => {
+    event.preventDefault()
+    event.stopPropagation()
+    setMenu({
+      x: event.clientX,
+      y: event.clientY,
+      entries: [
+        { key: 'copy-rel', label: t('common.copyRelPath'), onSelect: () => copyText(entry.path) },
+        { key: 'copy-abs', label: t('common.copyAbsPath'), onSelect: () => copyText(joinAbsolute(root, entry.path)) },
+      ],
+    })
+  }
 
   const handleClick = (): void => {
     if (entry.isDir) {
@@ -273,6 +292,7 @@ function TreeRowBase({
         style={{ paddingLeft: 12 + 8 + depth * INDENT_STEP }}
         onClick={handleClick}
         onKeyDown={activateOnKey(handleClick)}
+        onContextMenu={onContextMenu}
         onDoubleClick={(event) => {
           // Double-click on a file: same as click (open). Folders: keep toggle.
           event.stopPropagation()
@@ -295,6 +315,7 @@ function TreeRowBase({
         <FileTypeIcon name={entry.name} isDir={entry.isDir} expanded={isExpanded} />
         <span className={explorerCss.treeName}>{entry.name}</span>
       </div>
+      {menu !== null && <ContextMenu state={menu} onClose={() => setMenu(null)} />}
       {entry.isDir && isExpanded && children !== undefined && (
         <div>
           {children.map((child) => (

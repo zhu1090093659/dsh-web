@@ -28,9 +28,14 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-aionui-panel
 
 - **Explorer（最右栏，默认 260px，范围 220~500px）**：`文件 / 变更` 双 tab；
   文件树整行点击展开/收起文件夹，点击文件在预览面板打开，顶部按文件名搜索
-  （150ms 防抖，点击结果 = 定位到树中，不打断思路）；`变更` tab 读取真实
+  （150ms 防抖，点击结果 = 定位到树中，不打断思路）；右键任意文件/目录行
+  可复制相对路径或绝对路径（成功/失败有 toast 提示，非安全上下文自动降级
+  execCommand）；`变更` tab 读取真实
   git 状态，支持 stage / unstage / discard（untracked 走删除，tracked 走
   restore，批量放弃有确认）。
+- **文件图标**：文件行按语言显示彩色徽章图标（品牌色 + 缩写，覆盖约 40 种
+  扩展名及 package.json / Dockerfile / .gitignore 等精确文件名），未识别类型
+  回落到按内容类别的轮廓图标；目录保持轮廓图标。
 - **拖拽文件到输入框**：文件树中的文件行可拖拽（目录行除外），拖到聊天
   输入框区域松手即把相对路径（如 `deploy/base/deployment.yaml`）插入当前
   会话草稿的光标处，agent 收到消息后会自行读取该文件，无需手动输入路径；

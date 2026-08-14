@@ -27,6 +27,35 @@ export function toast(message: string): void {
   toastTimer = undefined
 }
 
+/**
+ * Copy text to the clipboard with a toast verdict. The async Clipboard API
+ * needs a secure context; over plain LAN http it is absent, so a hidden
+ * textarea + execCommand('copy') covers that case.
+ * @param text - the text to copy.
+ */
+export function copyText(text: string): void {
+  const done = (): void => toast(t('common.copied'))
+  const failed = (): void => toast(t('common.copyFailed'))
+  if (navigator.clipboard?.writeText !== undefined) {
+    void navigator.clipboard.writeText(text).then(done, failed)
+    return
+  }
+  const el = document.createElement('textarea')
+  el.value = text
+  el.style.position = 'fixed'
+  el.style.opacity = '0'
+  document.body.appendChild(el)
+  el.select()
+  try {
+    if (document.execCommand('copy')) done()
+    else failed()
+  } catch {
+    failed()
+  } finally {
+    el.remove()
+  }
+}
+
 /** One context-menu entry. */
 export interface MenuEntry {
   key: string

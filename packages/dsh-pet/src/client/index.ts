@@ -233,13 +233,14 @@ export function apply(ctx: ClientContext): void {
         },
       })
 
-      // The input selector row mounts in EVERY conversation phase (cold
-      // start, blank-session hero, active seat) — the composer dock band
-      // only renders for an active session, which is why the pet used to
-      // vanish on the new-conversation screen.
-      const disposeDock = ctx.slots.inject('conversation.input.selector.context', () =>
+      // The legacy selector-context hole (conversation.input.selector.context)
+      // is no longer declared by newer shells (rc.6 dropped it), so the pet
+      // mounts on the composer dock band instead. The dock is session-scoped,
+      // so the pet appears once a session is active (accepted downgrade, see
+      // PR #17).
+      const disposeDock = ctx.slots.inject('conversation.input.dock', () =>
         ctx.slots.register({
-          name: 'conversation.input.selector.context',
+          name: 'conversation.input.dock',
           id: 'pet',
           order: 110,
           inject: injected,

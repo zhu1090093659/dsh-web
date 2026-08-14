@@ -60,7 +60,7 @@
 
 .panel {
   position: absolute;
-  bottom: calc(100% + 4px);
+  bottom: 100%;
   background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 10px;

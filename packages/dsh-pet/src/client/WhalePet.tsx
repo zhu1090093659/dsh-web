@@ -71,6 +71,7 @@ export function WhalePet(props: WhalePetProps): ReactPortal {
   const [nameDraft, setNameDraft] = useState('')
   const [dragPos, setDragPos] = useState<{ right: number; bottom: number } | null>(null)
   const dragRef = useRef<{ startX: number; startY: number; right: number; bottom: number } | null>(null)
+  const hideTimerRef = useRef<number | null>(null)
   const frameRef = useRef<{ track: PetAnimation | null; index: number; elapsed: number }>({
     track: null,
     index: 0,
@@ -193,6 +194,13 @@ export function WhalePet(props: WhalePetProps): ReactPortal {
   // `draggedRef` records whether the pointer actually moved, so the browser's
   // trailing click (fired after pointerup) does not pet the whale.
   const draggedRef = useRef(false)
+  const clearHideTimer = (): void => {
+    if (hideTimerRef.current !== null) {
+      window.clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = null
+    }
+  }
+
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
     e.preventDefault()
     ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
@@ -226,15 +234,20 @@ export function WhalePet(props: WhalePetProps): ReactPortal {
       ref={floatRef}
       className={styles.float}
       style={{ right: pos.right, bottom: pos.bottom, zIndex: 2147483000 }}
-      onPointerEnter={() => setHovered(true)}
+      onPointerEnter={() => {
+        clearHideTimer()
+        setHovered(true)
+      }}
       onPointerLeave={(e) => {
         // The panel and bubble render OUTSIDE the container's box (absolute,
         // above the sprite), so moving onto them fires pointerleave on the
         // container. Treat a target still inside the container's DOM (the
-        // overflowed panel) as "still hovering".
+        // overflowed panel) as "still hovering"; otherwise give the pointer a
+        // short grace period to reach the panel across the gap above it.
         const next = e.relatedTarget
         if (next instanceof Node && floatRef.current?.contains(next)) return
-        setHovered(false)
+        clearHideTimer()
+        hideTimerRef.current = window.setTimeout(() => setHovered(false), 200)
       }}
     >
       <div

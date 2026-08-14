@@ -42,18 +42,24 @@ describe('validation', () => {
   it('accepts a valid alias', () => {
     expect(validateAlias('web-01')).toBeUndefined()
     expect(validateAlias('a')).toBeUndefined()
+    // IP / domain / uppercase aliases are accepted (imported from ~/.ssh/config)
+    expect(validateAlias('192.168.40.90')).toBeUndefined()
+    expect(validateAlias('Web_01')).toBeUndefined()
+    expect(validateAlias('c2.hpcmaster.com')).toBeUndefined()
   })
 
   it('rejects invalid aliases', () => {
-    expect(validateAlias('Web_01')).toBeDefined()
     expect(validateAlias('a b')).toBeDefined()
-    expect(validateAlias('a--b')).toBeDefined()
+    expect(validateAlias('-abc')).toBeDefined()
+    expect(validateAlias('abc!')).toBeDefined()
   })
 
   it('rejects malformed payloads', () => {
     expect(validateHostPayload({})).toBeDefined()
     expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'key' } })).toContain('keyPath')
-    expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'password' } })).toContain('password')
+    // A missing/empty password is accepted (filled later in the GUI after import)
+    expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'password' } })).toBeUndefined()
+    expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'password', password: 123 } })).toContain('password')
     expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'bogus' } })).toContain('kind')
   })
 })

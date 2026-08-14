@@ -1,29 +1,27 @@
 /**
  * Git-graph surface plugin, browser half: the git branch selector chip in
- * the input selector row's context hole (`conversation.input.selector
- * .context`, a session-maybe list slot declared and rendered by the shipped
- * ui-conversation shell), docked right beside the official workspace
- * selector above the input card. All git facts arrive through the host
- * /git routes (this package's own host half); the inject face carries the
- * business verbs, the components stay pure props.
+ * the composer's floating overlay anchor (`conversation.input.overlay`, a
+ * session-scoped list slot the shipped ui-conversation shell renders inside
+ * the card's overlay anchor). The chip floats above the composer card's top
+ * edge, left-aligned with the input text — the same anchor the slash-command
+ * MenuView uses. All git facts arrive through the host /git routes (this
+ * package's own host half); the inject face carries the business verbs, the
+ * components stay pure props.
  *
- * The context hole is session-maybe: the chip stays mounted from cold start
- * through the active phase and hides itself when its data source is absent
- * (no session cwd, or not a git repository) — no workspace selector lives
- * here, the official selector chip docked above the input card owns that
- * surface. An earlier revision (acbcf80) moved the chip to
- * `conversation.input.dock` on the wrong premise that the selector-context
- * hole was undeclared; the running shell declares it, so the chip registers
- * here to sit in the same row as the workspace chip. The published npm SDK
- * (rc.6) dropped the hole's type, so it is spelled locally below.
+ * The seat is session-scoped: the chip mounts once a session is active and
+ * hides itself when its data source is absent (no session cwd, or not a git
+ * repository). Earlier revisions tried `conversation.input.dock` (a full-width
+ * line in the flow above the card), `conversation.input.selector.context`
+ * (a hole no published shell declares, so the chip never mounted) and
+ * `conversation.input.left` (the tool row beside access mode / model);
+ * `input.overlay` is the declared seat that floats the chip above the box.
  * @module dsh-git-graph/client
  */
 
 import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-// Type-only: pulls the ui-conversation SlotMap merge (the conversation
-// slots); the selector-context hole is spelled locally below because the
-// published npm SDK (rc.6) dropped it while the running shell still renders it.
+// Type-only: pulls the ui-conversation SlotMap merge (the input overlay
+// entry) and, transitively, ui-input-trigger's overlay slot declaration.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {
@@ -44,31 +42,24 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
   interface SlotMap {
     /**
-     * The input selector context-chip hole: feature chips rendered right
-     * after the workspace selector (the git branch selector's seat).
-     * Session-maybe: entries stay mounted without a session and hide
-     * themselves when their data source is absent.
-     *
-     * Declared and rendered by the running dsh web shell
-     * (ui-conversation's InputSelectorRow); the published npm SDK (rc.6)
-     * dropped this hole, so it is spelled locally to keep the chip's
-     * registration type-checked without depending on the sibling SDK surface.
+     * The composer's floating overlay anchor (the InputBar's overlayAnchor):
+     * list entries render inside the card's overlay anchor and float above
+     * the composer top edge (bottom: 100% + gap). The runtime declaration
+     * (children table) ships in ui-conversation's apply.ts; the type is
+     * spelled here because it merges from ui-input-trigger, which this
+     * package does not depend on — the same pattern the shell itself uses.
      */
-    'conversation.input.selector.context': {
+    'conversation.input.overlay': {
       kind: 'list'
-      scope: 'session-maybe'
-      owner: InputSelectorContextOwnerProps
+      scope: 'session'
     }
   }
 }
 
-/** Owner share of the input selector context-chip hole (empty by contract). */
-export interface InputSelectorContextOwnerProps {}
-
 /** Dictionary namespace owned by this plugin. */
 const NS = 'git-graph'
 
-/** Required services: slots for the selector-context entry, sessions for the cwd lookup, locale for the copy. */
+/** Required services: slots for the input overlay entry, sessions for the cwd lookup, locale for the copy. */
 export const inject = ['slots', 'sessions', 'connection', 'locale']
 
 /** Injected business face of the branch chip: git verbs, keyed by the current session id. */
@@ -91,7 +82,7 @@ export interface GitGraphInjected {
 const NO_WORKSPACE: GitError = { code: 'workspace-unknown', message: 'session has no workspace' }
 
 /**
- * Client plugin body: the selector-context entry with its git verbs.
+ * Client plugin body: the composer tool-row entry with its git verbs.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
@@ -99,10 +90,9 @@ export function apply(ctx: ClientContext): void {
 
   const git = new GitApi()
 
-  // Conditional mount: 'conversation.input.selector.context' is declared by
-  // the shipped ui-conversation entry (the InputSelectorRow context hole);
-  // the conversation service being up is the registration-safe signal (the
-  // GoalDock/QueueDock seam).
+  // Conditional mount: 'conversation.input.left' is declared by the shipped
+  // ui-conversation shell (the composer card's tool row). The conversation
+  // service being up is the registration-safe signal.
   ctx.inject(['slots', 'conversation', 'sessions'], (scope: ClientContext) => {
     const sessions = scope.sessions
 
@@ -158,12 +148,12 @@ export function apply(ctx: ClientContext): void {
     }
 
     // Declaration-aware: the chip registers only when the shell declares the
-    // selector-context hole. A bare register() would throw on shells that
-    // dropped the hole (SDK SlotCore.register rejects undeclared slots), so
-    // route through inject like the pet / remote-web-ui entries.
-    scope.slots.inject('conversation.input.selector.context', () =>
+    // overlay slot. A bare register() would throw on shells that dropped the
+    // slot (SDK SlotCore.register rejects undeclared slots), so route through
+    // inject like the pet / remote-web-ui entries.
+    scope.slots.inject('conversation.input.overlay', () =>
       scope.slots.register({
-        name: 'conversation.input.selector.context',
+        name: 'conversation.input.overlay',
         id: 'git-graph',
         order: 100,
         locale: NS,

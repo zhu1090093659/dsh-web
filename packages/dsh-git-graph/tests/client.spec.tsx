@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
 /**
- * Branch-chip behavior tests: the input selector context entry renders the
- * branch chip from the session baseline, non-repository workspaces (and
- * sessions without a cwd) hide it, blank (hero) sessions keep it mounted,
- * the popover searches/filters and marks the current branch, the footer
- * flows fire the right verbs, switch rejections surface readable copy, and
- * the create/graph dialogs behave (validation, duplicate copy, lane
- * rendering).
+ * Branch-chip behavior tests: the floating overlay entry renders the branch
+ * chip from the session baseline, non-repository workspaces (and sessions
+ * without a cwd) hide it, blank (hero) sessions keep it mounted, the popover
+ * searches/filters and marks the current branch, the footer flows fire the
+ * right verbs, switch rejections surface readable copy, and the create/graph
+ * dialogs behave (validation, duplicate copy, lane rendering).
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -94,9 +93,9 @@ function bench(options: BenchOptions = {}) {
 
   const props: BranchChipProps = {
     sessionId,
-    // The selector-context hole has an empty owner share: the chip derives
-    // its state from the standard session-maybe kit + the inject face, never
-    // from the conversation snapshot or live input state.
+    // The overlay anchor has an empty owner share: the chip derives its state
+    // from the standard session kit + the inject face, never from the
+    // conversation snapshot or live input state.
     useSession: (() => undefined) as never,
     useSessions: ((selector: (state: { byId: Record<string, { cwd?: string; blank?: boolean }> }) => unknown) =>
       selector({ byId: { [sessionId]: { cwd, blank: options.blank === true } } })) as never,
@@ -117,7 +116,7 @@ describe('BranchChip', () => {
     expect(branchChip.textContent).toContain('main')
   })
 
-  it('keeps the branch chip in a blank (hero) session — the selector row stays docked', async () => {
+  it('keeps the branch chip in a blank (hero) session — the overlay seat stays mounted', async () => {
     bench({ blank: true })
     const branchChip = await screen.findByRole('button', { name: '分支' })
     expect(branchChip.textContent).toContain('main')

@@ -2,7 +2,7 @@
 
 状态：已实现。日期：2026-08-09。
 
-> 修正（2026-08）：分支 chip 挂载槽位为官方声明的 `conversation.input.selector.context`（list、session-maybe 作用域），与官方工作区选择胶囊并排。此前 acbcf80 曾把 chip 迁到 `conversation.input.dock`，理由是「selector-context 洞在 rc.6 从未声明」——该前提不成立：随发行 shell 的 apply.ts 同时声明了 selector-context（session-maybe）与 dock（session），selector-context 才是分支 chip 的正确席位，现已回迁。hero（空白会话）与 active 会话相位都挂载；见 README 挂载 seam。
+> 修正（2026-08）：分支 chip 最终挂载槽位为 `conversation.input.overlay`（list、session 作用域）——composer 浮动 overlay 锚点，chip 悬浮在输入卡顶部上方、与输入文本左对齐（与斜杠命令菜单同一锚点）。历史：最初设计在 `conversation.input.selector.context`（任意已发布 shell 都未声明的洞，chip 从不挂载）；acbcf80 迁到 `conversation.input.dock`（输入卡上方的整行堆叠）；0be6546 又误以为 rc.2 声明了 selector-context 而回迁（实测仍不挂载）；PR 曾尝试 `input.left`（工具行，与 access mode / model 并排，不符合「悬浮在输入框上方」的预期）。`input.overlay` 是已声明、且把 chip 悬浮在输入框上方的正确席位。见 README 挂载 seam。
 
 ## 背景
 

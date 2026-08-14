@@ -1,9 +1,9 @@
 /**
- * The input selector context entry: the git branch selector chip, mounted
- * in the selector row's context hole (`conversation.input.selector.context`)
- * right beside the official workspace selector, docked above the input card.
- * The session-maybe seat keeps the chip mounted in every phase — hero (blank
- * session) included — and the chip hides itself only when its data source
+ * The floating overlay entry: the git branch selector chip, mounted in the
+ * composer's floating overlay anchor (`conversation.input.overlay`, a
+ * session-scoped list slot) and floating above the composer card's top edge,
+ * left-aligned with the input text. The seat is session-scoped, so the chip
+ * mounts once a session is active and hides itself only when its data source
  * is absent (no session cwd, or not a git repository).
  * @module dsh-git-graph/client/chips/BranchChip
  */
@@ -19,15 +19,15 @@ import { CreateBranchDialog } from './CreateBranchDialog.tsx'
 import { GraphDialog } from '../graph/GraphDialog.tsx'
 import css from './context.module.css'
 
-/** Full props of the branch chip: the context hole's runtime share + the git-graph inject face + the locale seat. */
+/** Full props of the branch chip: the overlay anchor's runtime share (empty owner) + the git-graph inject face + the locale seat. */
 export type BranchChipProps =
-  PropsRuntime<'conversation.input.selector.context'>
+  PropsRuntime<'conversation.input.overlay'>
   & GitGraphInjected
   & PropsLocale<'git-graph'>
 
 /**
  * The git branch selector chip.
- * @param props - the composed context-hole entry props.
+ * @param props - the composed overlay entry props.
  */
 export function BranchChip(props: BranchChipProps) {
   /** Repository state: undefined = loading, null = not a repository, else the snapshot. */

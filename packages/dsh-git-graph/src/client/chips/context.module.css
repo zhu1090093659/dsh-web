@@ -1,8 +1,13 @@
-/* Branch selector chip in the conversation header context hole.
+/* Branch selector chip floating above the composer card's top edge.
    Tokens only — no literal colors. */
 
 .anchor {
-  position: relative;
+  position: absolute;
+  /* Float 4px above the composer card's top edge, left-aligned with the
+     input text — the same anchor the slash-command menu rides. */
+  bottom: calc(100% + 4px);
+  left: 0;
+  z-index: 60;
 }
 
 .chip {
@@ -67,8 +72,8 @@
 
 .popover {
   position: absolute;
-  /* The selector row sits above the input card: the popover opens UPWARD,
-     capped at the same 360px as the workspace picker menu beside it. */
+  /* The chip floats above the input card, so the popover opens UPWARD from
+     the chip, capped at the same 360px as the composer menus. */
   bottom: calc(100% + 4px);
   left: 0;
   z-index: 40;

@@ -32,8 +32,8 @@ const WRITE_CAP_BYTES = 8 * 1024 * 1024
 export interface WorkscopeRuntime {
   readonly registry: GrantRegistry
   readonly ledger: WorkspaceLedger
-  /** Host workspace registry; absent when the deployment lacks the service. */
-  readonly workspaceRegistry?: WorkspaceRegistryLike
+  /** Host workspace registry provider; undefined when the deployment lacks the service. */
+  readonly workspaceRegistry?: () => WorkspaceRegistryLike | undefined
   readonly scanRoots: () => readonly string[]
   readonly maxRecentFiles: () => number
   readonly maxProcesses: () => number
@@ -515,7 +515,7 @@ export function workspaceTool(runtime: WorkscopeRuntime) {
     async execute(args: { path?: string; title?: string; reason?: string }, exec) {
       const sessionId = sessionIdOf(exec)
       if (sessionId === undefined) return { ok: false, error: '当前调用没有会话上下文，无法注册工作区' }
-      if (runtime.workspaceRegistry === undefined) {
+      if (runtime.workspaceRegistry?.() === undefined) {
         return { ok: false, error: '宿主未提供工作区注册服务（workspaceRegistry 不可用）' }
       }
       if (typeof args.path !== 'string' || args.path.trim() === '') return { ok: false, error: 'path 不能为空' }
@@ -588,11 +588,12 @@ export function unworkspaceTool(runtime: WorkscopeRuntime) {
     async execute(args: { id?: string; path?: string }) {
       const target = args.id ?? args.path ?? ''
       if (target.trim() === '') return { ok: false, error: '需要提供 id 或 path', removed: [] }
-      if (runtime.workspaceRegistry === undefined) {
+      const registry = runtime.workspaceRegistry?.()
+      if (registry === undefined) {
         return { ok: false, error: '宿主未提供工作区注册服务（workspaceRegistry 不可用）', removed: [] }
       }
       try {
-        const removed = await removeWorkspaces(runtime.ledger, runtime.workspaceRegistry, target)
+        const removed = await removeWorkspaces(runtime.ledger, registry, target)
         for (const record of removed) {
           runtime.registry.appendAudit(record.sessionId, 'workspace_removed', `${record.title}（${record.path}）`)
         }

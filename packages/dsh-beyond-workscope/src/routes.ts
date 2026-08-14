@@ -112,9 +112,10 @@ function bodyRoute(handler: BodyHandler): WebRoute['handler'] {
 /** Audit-kind subset the workspace surface writes. */
 export type WorkspaceAuditKind = 'workspace_registered' | 'workspace_removed'
 
-/** Optional workspace surface injected by the assembler. */
+/** Optional workspace surface injected by the assembler (providers are
+ * called per request — the host registry may register after plugin apply). */
 export interface RouteHooks {
-  readonly workspaceRegistry?: WorkspaceRegistryLike
+  readonly workspaceRegistry?: () => WorkspaceRegistryLike | undefined
   readonly ledger?: WorkspaceLedger
   readonly audit?: (sessionId: string, kind: WorkspaceAuditKind, detail: string) => void
 }
@@ -160,11 +161,12 @@ export function makeRoutes(registry: GrantRegistry, hooks: RouteHooks = {}): Web
         // the pending entry: a failed registration leaves the request pending
         // so the user can retry.
         if (info.kind === 'workspace') {
-          if (hooks.workspaceRegistry === undefined || hooks.ledger === undefined) {
+          const registry = hooks.workspaceRegistry?.()
+          if (registry === undefined || hooks.ledger === undefined) {
             json(res, 503, { ok: false, error: '宿主未提供工作区注册服务' } satisfies SimpleActionResponse)
             return
           }
-          const result = await registerWorkspace(hooks.ledger, hooks.workspaceRegistry, info.sessionId, info.path, info.title)
+          const result = await registerWorkspace(hooks.ledger, registry, info.sessionId, info.path, info.title)
           if (!result.ok) {
             json(res, 409, { ok: false, error: result.error } satisfies SimpleActionResponse)
             return
@@ -259,7 +261,12 @@ export function makeRoutes(registry: GrantRegistry, hooks: RouteHooks = {}): Web
           json(res, 503, { ok: false, error: '宿主未提供工作区注册服务' } satisfies SimpleActionResponse)
           return
         }
-        const removed = await removeWorkspaces(hooks.ledger, hooks.workspaceRegistry, payload.id)
+        const registry = hooks.workspaceRegistry()
+        if (registry === undefined) {
+          json(res, 503, { ok: false, error: '宿主未提供工作区注册服务' } satisfies SimpleActionResponse)
+          return
+        }
+        const removed = await removeWorkspaces(hooks.ledger, registry, payload.id)
         for (const record of removed) {
           hooks.audit?.(record.sessionId, 'workspace_removed', `${record.title}（${record.path}）`)
         }

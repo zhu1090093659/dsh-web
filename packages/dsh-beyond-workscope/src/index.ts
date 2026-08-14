@@ -28,7 +28,7 @@ import {
   grantTool, listTool, probeTool, readTool, revokeTool, unworkspaceTool,
   workspaceTool, writeTool, type WorkscopeRuntime,
 } from './tools.ts'
-import { WorkspaceLedger } from './workspaces.ts'
+import { WorkspaceLedger, type WorkspaceRegistryLike } from './workspaces.ts'
 
 /** Stable cordis plugin name. */
 export const name = 'beyond-workscope'
@@ -158,14 +158,16 @@ export function apply(ctx: Context, config?: Config): void {
 
   // Workspace surface: the host workspace registry is optional (some
   // deployments may not mount it) — the workspace tools and routes then fail
-  // closed with a clear message while grants keep working.
-  const workspaceRegistry = ctx.get('workspaceRegistry')
+  // closed with a clear message while grants keep working. Resolved LAZILY:
+  // the service registers after this plugin's apply (the host API proxy
+  // hard-injects it), so a one-shot ctx.get at apply time would always miss.
+  const workspaceRegistry = (): WorkspaceRegistryLike | undefined => ctx.get('workspaceRegistry')
   const ledger = new WorkspaceLedger()
 
   const runtime: WorkscopeRuntime = {
     registry,
     ledger,
-    ...(workspaceRegistry === undefined ? {} : { workspaceRegistry }),
+    workspaceRegistry,
     scanRoots: () => resolve().scanRoots ?? [],
     maxRecentFiles: () => resolve().maxRecentFiles ?? DEFAULTS.maxRecentFiles,
     maxProcesses: () => resolve().maxProcesses ?? DEFAULTS.maxProcesses,
@@ -182,7 +184,8 @@ export function apply(ctx: Context, config?: Config): void {
   }, 'dsh-beyond-workscope: teardown')
 
   const routes = makeRoutes(registry, {
-    ...(workspaceRegistry === undefined ? {} : { workspaceRegistry, ledger }),
+    workspaceRegistry,
+    ledger,
     audit: (sessionId, kind, detail) => registry.appendAudit(sessionId, kind, detail),
   })
   const tools = [

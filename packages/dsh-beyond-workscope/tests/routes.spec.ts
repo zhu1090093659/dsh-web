@@ -192,7 +192,7 @@ describe('workspace routes', () => {
     }
     server = createServer((req, res) => {
       const route = makeRoutes(registry, {
-        workspaceRegistry: fakeRegistry,
+        workspaceRegistry: () => fakeRegistry,
         ledger,
         audit: (sessionId, kind, detail) => registry.appendAudit(sessionId, kind, detail),
       }).find(route => route.path === req.url?.split('?')[0])

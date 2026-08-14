@@ -817,7 +817,6 @@ body[data-dsh-whale-song][data-ds-dark-theme] [data-gitgraph-chip][aria-expanded
   background-color: rgba(138, 180, 222, 0.18);
 }
 
-
 /* --- 输入框停靠区遮罩修复（composerSeat） ----------------------------------
    The official composer seat fades the scrolled transcript out under a
    36px band that ends in var(--dsw-alias-bg-base) solid below. This skin
@@ -843,3 +842,9 @@ body[data-dsh-whale-song][data-ds-dark-theme] [data-phase='active'] [class*='com
     #081a40 36px
   ) !important;
 }
+/* Tooltip 亮色主题文字色修复：bubble 默认 color 取 var(--dsw-static-neutral-bluish-00)（亮色为白），配淡黄背景（--dsw-alias-tooltip-bg:#ffffe1）不可读。属性选择器仅覆盖 tooltip，不影响全局静态色板。 */
+body[data-dsh-whale-song]:not([data-ds-dark-theme]) [role='tooltip'] {
+  color: #0d234e;
+}
+
+

@@ -1845,3 +1845,8 @@ body[data-dsh-miku][data-ds-dark-theme] [class*='composer'] [class*='card'] {
   border: none !important;
   box-shadow: none !important;
 }
+
+/* Tooltip 亮色主题文字色修复：同前三款，miku 亮色主题为纯白 tooltip 背景（--dsw-alias-tooltip-bg:#ffffff），配默认白色文字完全不可读。属性选择器仅覆盖 tooltip。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [role='tooltip'] {
+  color: #17203c;
+}

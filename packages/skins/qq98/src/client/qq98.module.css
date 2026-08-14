@@ -1419,3 +1419,9 @@ body[data-dsh-retro][data-ds-dark-theme] [data-gitgraph-ref]:not([data-gitgraph-
   color: #9cc9ef;
 }
 
+
+/* Tooltip 亮色主题文字色修复：同上，qq98 亮色主题亦为淡黄 tooltip 背景。 */
+body[data-dsh-retro]:not([data-ds-dark-theme]) [role='tooltip'] {
+  color: #15233a;
+}
+

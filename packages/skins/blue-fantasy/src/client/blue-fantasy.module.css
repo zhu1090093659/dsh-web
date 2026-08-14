@@ -843,3 +843,8 @@ body[data-dsh-blue-fantasy][data-ds-dark-theme] [data-phase='active'] [class*='c
   ) !important;
 }
 
+/* Tooltip 亮色主题文字色修复：bubble 默认 color 取 var(--dsw-static-neutral-bluish-00)（亮色为白），配淡黄背景不可读。属性选择器仅覆盖 tooltip。 */
+body[data-dsh-blue-fantasy]:not([data-ds-dark-theme]) [role='tooltip'] {
+  color: #1a2238;
+}
+

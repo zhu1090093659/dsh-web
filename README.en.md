@@ -125,12 +125,12 @@ DSH plugins are installed per **profile** with the `dsh plugin` command (`dsh we
 The plugins are published to npm (the `@linxin666` scope) — one command installs everything:
 
 ```sh
-dsh plugin --profile web add @linxin666/dsh-web-ui-all@0.1.10
+dsh plugin --profile web add @linxin666/dsh-web-ui-all@0.1.12
 ```
 
 Restart `dsh web` and all plugin entries appear in the sidebar. Skins only? Install `@linxin666/dsh-skins` instead.
 
-> Pinned to the current latest release `0.1.10`. The `0.1.1` build of `dsh-pet` shipped without runtime files (`lib/types/*.js`), and some environments may resolve npm's `latest` from a stale registry cache — pinning the version is the safest install; bump `@0.1.10` to the new version when upgrading.
+> Pinned to the current latest release `0.1.12`. The `0.1.1` build of `dsh-pet` shipped without runtime files (`lib/types/*.js`), and some environments may resolve npm's `latest` from a stale registry cache — pinning the version is the safest install; bump `@0.1.12` to the new version when upgrading.
 
 > First install may stop on `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency build scripts): copy the printed keys (`cloudflared` / `cpu-features` / `ssh2`) into the profile's `pnpm-workspace.yaml` `allowBuilds` list and re-run.
 

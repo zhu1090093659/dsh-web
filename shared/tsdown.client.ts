@@ -15,7 +15,7 @@
 import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { basename, dirname, relative, resolve as resolvePath, sep } from 'node:path'
+import { basename, dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { UserConfig } from 'tsdown'
 import { transform } from 'lightningcss'
@@ -62,6 +62,13 @@ const RUNTIME_STORE_EXEMPTION = '@deepseek-ai/dsh-client-runtime/client'
 export const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES, RUNTIME_STORE_EXEMPTION]
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('..', import.meta.url))
+
+/** Rebase a physical path onto a repository-relative id when it lives under the repo. */
+function repositoryRelativePath(physical: string): string {
+  if (!isAbsolute(physical)) return physical
+  const repositoryPath = relative(REPOSITORY_ROOT, physical).split(sep).join('/')
+  return repositoryPath.startsWith('../') ? physical : repositoryPath
+}
 
 /** Rebase a physical lib-relative source onto a browser URL that mirrors the repository directories. */
 function browserSourcePath(source: string, sourcemapPath: string): string {
@@ -260,15 +267,23 @@ function clientConfig(id: string, entry: string): UserConfig {
       resolveId(source: string, importer: string | undefined) {
         if (!source.endsWith('.module.css')) return null
         const abs = importer !== undefined ? sourceAssetPath(source, importer) : source
-        return CSS_VIRTUAL_PREFIX + abs + CSS_VIRTUAL_SUFFIX
+        // Repo-relative virtual id: the emitted `//#region` comments would
+        // otherwise embed each builder's machine path, churning every
+        // committed lib/client.js when another machine rebuilds.
+        return CSS_VIRTUAL_PREFIX + repositoryRelativePath(abs) + CSS_VIRTUAL_SUFFIX
       },
       async load(virtualId: string) {
         if (!virtualId.startsWith(CSS_VIRTUAL_PREFIX)) return null
         const fileId = virtualId.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
-        // The virtual id otherwise hides the physical stylesheet from Rolldown's watch graph.
-        this.addWatchFile(fileId)
-        const source = await readFile(fileId)
+        // Rebase the repo-relative id back onto the physical stylesheet; the
+        // virtual id otherwise hides it from Rolldown's watch graph.
+        const physical = isAbsolute(fileId) ? fileId : resolvePath(REPOSITORY_ROOT, fileId)
+        this.addWatchFile(physical)
+        const source = await readFile(physical)
         const { code, exports: cssExports } = transform({
+          // Repo-relative filename: lightningcss's [hash] placeholder mixes
+          // the filename in, so an absolute path would yield machine-dependent
+          // class names on top of the region-comment noise.
           filename: fileId,
           code: source,
           cssModules: { pattern: '[hash]_[local]' },

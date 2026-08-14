@@ -55,7 +55,7 @@ afterEach(() => {
 })
 
 /** Render the pet with mocked callbacks; returns the rename spy. */
-function renderPet(): { onRename: ReturnType<typeof vi.fn> } {
+function renderPet(overrides: Partial<WhalePetProps> = {}): { onRename: ReturnType<typeof vi.fn> } {
   const onRename = vi.fn()
   const props: WhalePetProps = {
     snapshot,
@@ -68,6 +68,7 @@ function renderPet(): { onRename: ReturnType<typeof vi.fn> } {
     onRename,
     onFeedbackDone: vi.fn(),
     t,
+    ...overrides,
   }
   render(<WhalePet {...props} />)
   return { onRename }
@@ -134,5 +135,28 @@ describe('WhalePet rename input', () => {
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(onRename).not.toHaveBeenCalled()
     expect(screen.queryByPlaceholderText('输入新名字')).toBeNull()
+  })
+})
+
+describe('WhalePet status bubble', () => {
+  const workingSnapshot: PetStateView = {
+    ...snapshot,
+    animation: 'running',
+    phase: 'thinking',
+    bubble: '正在思考',
+  }
+
+  it('renders host activity when no interaction feedback is active', () => {
+    renderPet({ snapshot: workingSnapshot })
+    expect(screen.queryByText('正在思考')).not.toBeNull()
+  })
+
+  it('lets transient interaction feedback replace host activity', () => {
+    renderPet({
+      snapshot: workingSnapshot,
+      feedback: { text: '摸摸成功', kind: 'pet', at: 1 },
+    })
+    expect(screen.queryByText('摸摸成功')).not.toBeNull()
+    expect(screen.queryByText('正在思考')).toBeNull()
   })
 })

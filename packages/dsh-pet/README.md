@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 > A soft, healing whale-girl who works alongside you in DeepSeek Harness.
 
-While the model thinks, you wait — she swims. She follows the model's working state and switches animations — working, waiting, thinking, celebrating completion; you can also pat her head, feed her dried fish, and watch her grow from a baby whale into your deep-sea bond.
+While the model thinks, you wait — she swims. She follows official session activity and switches animations while waiting, thinking, using tools, composing a reply, celebrating completion, or reporting failure; you can also pat her head, feed her dried fish, and watch her grow from a baby whale into your deep-sea bond.
 
 Re-implemented from the pet feature of the Codex desktop app, as an official DSH plugin shape (cordis bundle: host half + client half in one package).
 
@@ -12,7 +12,7 @@ Re-implemented from the pet feature of the Codex desktop app, as an official DSH
 
 | Feature | Description |
 |---|---|
-| State animation | Model state → whale-girl animation: `thinking/tool → working`, `waiting → waiting`, `done → jumping celebration`, idle breathes standby |
+| State animation | Official session activity → whale-girl animation: `thinking → running`, `tool → running-right`, `review → review`, `waiting → waiting`, `done → jumping`, `failed → failed` |
 | Head-pat interaction | Click the whale-girl → bubble feedback + affinity +1 (10s cooldown) |
 | Feeding | Hover panel "喂食" (Feed) → consumes 1 dried fish + affinity +5 (30s cooldown) |
 | Treat economy | Dried-fish stock (cap 20): +1 every 3 rounds of work, +1 every 30 minutes; when low it prompts "多陪鲸鱼娘工作一会儿" (Work with the whale-girl a bit more) |
@@ -20,7 +20,8 @@ Re-implemented from the pet feature of the Codex desktop app, as an official DSH
 | Custom naming | Hover panel "改名" (Rename) → 1–20 characters, persisted, echoed in the summon button/panel |
 | Dragging | Hold and drag the whale-girl to reposition; position persisted |
 | Hide/Summon | Hover panel "隐藏" (Hide); after hiding, a "召唤{name}" (Summon {name}) button appears in the input selector row |
-| Status bubble | While working, shows the model's current status phrase |
+| Status bubble | Shows the current session stage or tool name; transient interaction feedback temporarily takes priority |
+| Multi-session activity | The pet is host-global: the most recent meaningful event controls its display, while completed turns from every session contribute affinity and treats |
 
 ## Animation preview
 
@@ -41,7 +42,7 @@ dsh-pet/
 |-- src/
 |   |-- index.ts        # host half: plugin entry (cordis apply, route registration)
 |   |-- service.ts      # PetService: pet state machine + affinity + config (HTTP API service face)
-|   |-- state.ts        # pet state machine: activity/status phase → 9 state animations
+|   |-- state.ts        # pet state machine: projected session activity → 9 state animations
 |   |-- affinity.ts     # affinity ledger (pure functions + cooldowns)
 |   |-- treats.ts       # dried-fish stock ledger
 |   |-- persist.ts      # persistence ($DSH_HOME/pet.json, atomic write)
@@ -59,14 +60,17 @@ dsh-pet/
 ### Data flow
 
 ```
-activity/status session events (published by the former working-activity plugin) --> PetService (host)
+official session events (turn/step/chunk/tool) ----\
+                                                    > PetService (host)
+optional legacy activity/status ------------------/
                                                               | /api/pet/* JSON
 global React root (createRoot → document.body) <-- polling 800ms -- pet-client (browser)
                                                               |
                                                    WhalePet floating layer (portal + rAF)
 ```
 
-- **Status source**: listens to the `activity/status` session events (phase: idle/waiting/thinking/tool/done + status phrase), consumed by the host half; the event used to be published by the working-activity plugin, which has been removed from this repo, so without it the pet only changes with the session lifecycle.
+- **Status source**: the host projects official `turn/start`, `step/start`, `assistant/chunk`, `assistant/message`, `tool/call`, `tool/result`, and `turn/end` events into waiting/thinking/tool/review/done/failed states. Optional legacy `activity/status` events remain a compatibility input.
+- **Multi-session semantics**: the API and browser mount are host-global and expose no foreground-session identity, so the most recent meaningful event wins the display. Every session's completed turns are still rewarded independently, and disposing a non-current session does not reset the visible state.
 - **Mount point**: `document.body` (global React root, always shown: no session / new session / mid-session — the old mount point `conversation.composer.dock` only rendered in an active session, hiding the pet in new sessions); the component uses `createPortal` internally to render the global floating layer.
 - **Rendering**: CSS sprite (background-position) per-frame animation, frame durations from the track definitions in `spritesheet.ts`.
 - **Communication**: browser ↔ host over the same-origin `/api/pet/*` JSON endpoints (state/interact/set-visible/set-config); the atlas loads from `/pet/whale/spritesheet.webp` — both the RPC domain and the `/plugins/` static service are platform-registered, and the plugin self-sufficiently provides its own API and assets (the same pattern as dsh-remote-web-ui's `/api/pair`).
@@ -93,7 +97,7 @@ After installing, **restart `dsh web`** — the whale-girl appears at the bottom
 
 ```sh
 pnpm build        # tsc -b (types+declarations) && tsdown (node half + browser bundle)
-pnpm test         # vitest unit tests (affinity / treats / persist / state)
+pnpm test         # vitest unit/component tests (event projection / state / UI / ledgers)
 pnpm prepare      # transpile-only build (no type checking, for consumer installs)
 pnpm typecheck    # type check only
 ```

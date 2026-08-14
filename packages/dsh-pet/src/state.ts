@@ -1,8 +1,7 @@
 /**
- * Pet state machine — pure, clock-injected. Maps the pet's working-phase
- * vocabulary (the service derives it from core session events) onto the
- * 9-state Codex pet animation contract, plus the session lifecycle
- * transitions the web UI exposes (turn end celebration, no-session idle).
+ * Pet state machine — pure, clock-injected. Maps official DSH session activity
+ * and the legacy `activity/status` vocabulary onto the 9-state Codex pet
+ * animation contract, plus turn-end celebration and no-session idle.
  *
  * The machine is deliberately dumb: it holds the last input phase, the
  * animation decision, and a one-shot "celebration" window after `done` so the
@@ -11,8 +10,8 @@
  * @module @linxin666/dsh-pet/state
  */
 
-/** The pet's working-phase vocabulary (derived from core session events by the service). */
-export type ActivityPhase = 'idle' | 'waiting' | 'thinking' | 'tool' | 'done'
+/** Activity phases understood by the pet host. */
+export type ActivityPhase = 'idle' | 'waiting' | 'thinking' | 'tool' | 'review' | 'done' | 'failed'
 
 /** The Codex-compatible 9-state animation contract (spritesheet rows). */
 export type PetAnimation =
@@ -28,7 +27,7 @@ export type PetAnimation =
 
 /** One input snapshot consumed by the machine. */
 export interface PetStateInput {
-  /** Current working phase of the active session. */
+  /** Current activity phase of the active session. */
   phase: ActivityPhase
   /** Human-readable status line (plain text). */
   line?: string
@@ -60,20 +59,21 @@ export const defaultPetStateConfig: PetStateConfig = { celebrateMs: 2400 }
 
 /**
  * Map one activity phase onto the animation contract.
- * - thinking / tool → `running` (focused work), with `running-right` as the
- *   side-alternating variant the client may use for tool activity.
+ * - thinking → `running` and tool → `running-right` (focused work).
+ * - review → `review` while answer text is streaming.
  * - waiting → `waiting` (expectant pose, needs user input).
  * - done → `jumping` (celebration), then back to `idle` after the window.
+ * - failed → `failed` until another activity event arrives.
  * - idle → `idle` (calm breathing loop).
- * `failed` has no DSH phase source yet; the machine keeps the mapping table
- * so a future error event can light it up.
  */
 export function animationForPhase(phase: ActivityPhase): PetAnimation {
   switch (phase) {
     case 'thinking': return 'running'
     case 'tool': return 'running-right'
+    case 'review': return 'review'
     case 'waiting': return 'waiting'
     case 'done': return 'jumping'
+    case 'failed': return 'failed'
     case 'idle': return 'idle'
   }
 }
@@ -110,7 +110,7 @@ export class PetStateMachine {
     private readonly now: () => number = Date.now,
   ) {}
 
-  /** Consume one phase snapshot (fed by the service from session events). */
+  /** Consume one projected activity update. */
   onActivityStatus(input: PetStateInput): void {
     this.phase = input.phase
     this.line = input.line
@@ -144,7 +144,11 @@ export class PetStateMachine {
         animation = 'idle'
       }
     }
-    const bubble = this.phrase ?? this.line
+    const bubble = this.phase === 'done'
+      && this.doneAt !== undefined
+      && nowMs - this.doneAt >= this.config.celebrateMs
+      ? undefined
+      : this.phrase ?? this.line
     return {
       animation,
       ...(bubble === undefined ? {} : { bubble }),

@@ -1,10 +1,9 @@
 /**
  * Pet host service — the `pet.*` RPC domain. Owns the state machine wiring
- * (maps core rc.6 session events — turn/step/tool boundaries — and the
- * session lifecycle onto the pet phases), the affinity ledger, and the
- * persisted display config. The API gateway maps this service's methods onto
- * `pet.state` / `pet.interact` / `pet.setVisible` / `pet.setConfig`
- * for browser consumers.
+ * (projects official session events and accepts legacy `activity/status`), the
+ * affinity ledger, and the persisted display config. The API gateway maps
+ * this service's methods onto `pet.state` / `pet.interact` /
+ * `pet.setVisible` / `pet.setConfig` for browser consumers.
  * @module @linxin666/dsh-pet/service
  */
 
@@ -40,6 +39,7 @@ import {
   defaultPetStateConfig,
   PetStateMachine,
   type PetStateConfig,
+  type PetStateInput,
   type PetStateSnapshot,
 } from './state.ts'
 
@@ -128,6 +128,119 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
+/** Runtime shape of the optional legacy activity event. */
+interface ActivityStatusEventLike {
+  phase?: string
+  line?: string
+  phrase?: string
+}
+
+/** Per-session facts needed to project the official event stream. */
+interface SessionActivityRuntime {
+  activeTools: Set<string>
+  officialEventsSeen: boolean
+  stepHadFailure: boolean
+}
+
+/** One official event projection, optionally carrying a completed turn reward. */
+interface PetActivityTransition {
+  input: PetStateInput
+  completedTurn?: number
+}
+
+/** Keep tool names readable inside the compact status bubble. */
+function displayToolName(name: string): string {
+  const compact = name.replace(/\s+/g, ' ').trim() || '工具'
+  return compact.length <= 24 ? compact : `${compact.slice(0, 21)}...`
+}
+
+/** Whether a legacy phase is part of the pet's supported vocabulary. */
+function isActivityPhase(phase: string): phase is PetStateInput['phase'] {
+  return ['idle', 'waiting', 'thinking', 'tool', 'review', 'done', 'failed'].includes(phase)
+}
+
+/**
+ * Project the durable DSH session vocabulary into the pet's visual phases.
+ * Unknown and log-only events do not disturb the last meaningful activity.
+ */
+function projectOfficialEvent(
+  event: SessionEvent,
+  runtime: SessionActivityRuntime,
+): PetActivityTransition | undefined {
+  switch (event.type) {
+    case 'turn/start':
+      runtime.activeTools.clear()
+      runtime.stepHadFailure = false
+      return { input: { phase: 'waiting', line: '准备开始' } }
+    case 'step/start':
+      runtime.activeTools.clear()
+      runtime.stepHadFailure = false
+      return { input: { phase: 'waiting', line: '等待模型响应' } }
+    case 'assistant/chunk': {
+      const { chunk } = event.data
+      if (chunk.type === 'reasoning-delta' && chunk.text.length > 0) {
+        return { input: { phase: 'thinking', line: '正在思考' } }
+      }
+      if (chunk.type === 'text-delta' && chunk.text.length > 0) {
+        return { input: { phase: 'review', line: '整理回复中' } }
+      }
+      return undefined
+    }
+    case 'assistant/message':
+      return { input: { phase: 'review', line: '整理回复中' } }
+    case 'tool/call':
+      runtime.activeTools.add(String(event.data.callId))
+      return {
+        input: {
+          phase: 'tool',
+          line: `正在使用 ${displayToolName(event.data.name)}`,
+        },
+      }
+    case 'tool/result': {
+      const block = event.data.message.content[0]
+      runtime.activeTools.delete(String(event.data.message.source.callId))
+      runtime.stepHadFailure ||= event.data.error !== undefined || block.isError === true
+      if (runtime.activeTools.size > 0) {
+        return {
+          input: {
+            phase: 'tool',
+            line: `还有 ${runtime.activeTools.size} 个工具运行中`,
+          },
+        }
+      }
+      return runtime.stepHadFailure
+        ? { input: { phase: 'failed', line: '工具执行失败' } }
+        : { input: { phase: 'thinking', line: '处理工具结果' } }
+    }
+    case 'turn/end': {
+      runtime.activeTools.clear()
+      switch (event.data.reason.kind) {
+        case 'completed':
+          return {
+            input: { phase: 'done', line: '完成啦' },
+            completedTurn: event.data.turn,
+          }
+        case 'error':
+          return { input: { phase: 'failed', line: '执行失败' } }
+        case 'max-tokens':
+          return { input: { phase: 'failed', line: '达到输出上限' } }
+        case 'interrupted':
+          return { input: { phase: 'failed', line: '执行意外中断' } }
+        case 'blocked':
+          return { input: { phase: 'waiting', line: '等待继续' } }
+        case 'aborted':
+          return { input: { phase: 'idle', line: '已停止' } }
+        default:
+          // TurnEndReasonMap is merge-extensible; a newer ending must not
+          // leave the pet showing stale in-progress work.
+          return { input: { phase: 'idle' } }
+      }
+    }
+    default:
+      return undefined
+  }
+}
+
 /**
  * Cordis service exposing the pet RPC domain. Lazy: nothing is scanned or
  * written until a query or interaction arrives; event listeners update only
@@ -146,6 +259,10 @@ export class PetService extends Service {
   private rewardedTurns = new Map<string, number>()
   private enabled: boolean
   private disposeActivity: (() => void) | undefined
+  /** Session whose most recent meaningful event currently drives the global pet. */
+  private displaySession: Session | undefined
+  private readonly sessionActivity = new WeakMap<Session, SessionActivityRuntime>()
+  private lastLegacyTurnRewardAt = 0
 
   constructor(ctx: Context, config: PetConfig = {}) {
     super(ctx, 'pet')
@@ -197,42 +314,64 @@ export class PetService extends Service {
     this.disposeActivity = (() => {
       const disposers = [
         this.ctx.on('session/event', (session: Session, event: SessionEvent) => {
-          // rc.6 publishes no 'activity/status' event (the working-activity
-          // tracker is gone), so the pet derives its phases from the core
-          // session vocabulary instead.
-          switch (event.type) {
-            case 'turn/start':
-              this.machine.onSessionActive()
-              break
-            case 'step/start':
-              this.machine.onSessionActive()
-              this.machine.onActivityStatus({ phase: 'thinking' })
-              break
-            case 'tool/call':
-              this.machine.onSessionActive()
-              this.machine.onActivityStatus({ phase: 'tool', line: 'tool: ' + event.data.name })
-              break
-            case 'turn/end':
-              this.machine.onSessionActive()
-              if (event.data.reason.kind === 'completed') {
-                this.machine.onActivityStatus({ phase: 'done' })
-                this.rewardTurn(String(session.id), event.data.turn)
-              } else {
-                // Aborted / failed turns clear the working pose instead of
-                // freezing the pet on its last phase.
-                this.machine.onActivityStatus({ phase: 'idle' })
-              }
-              break
-            default:
-              break
+          const runtime = this.activityRuntime(session)
+          // `activity/status` is an optional compatibility input. It is not
+          // declared as a durable event type by this package because current
+          // Harness installations publish the official session vocabulary.
+          if ((event.type as string) === 'activity/status') {
+            const payload = ((event as unknown as { data?: unknown }).data ?? {}) as ActivityStatusEventLike
+            if (typeof payload.phase !== 'string' || !isActivityPhase(payload.phase)) return
+            this.applyActivity(session, {
+              phase: payload.phase,
+              ...(typeof payload.line === 'string' ? { line: payload.line } : {}),
+              ...(typeof payload.phrase === 'string' ? { phrase: payload.phrase } : {}),
+            })
+            // On a legacy-only stream the compatibility event owns turn
+            // rewards. Once any official activity is observed, turn/end owns
+            // them and a derived legacy `done` cannot double-count.
+            if (payload.phase === 'done' && !runtime.officialEventsSeen) {
+              this.rewardLegacyTurn()
+            }
+            return
+          }
+
+          const transition = projectOfficialEvent(event, runtime)
+          if (transition === undefined) return
+          runtime.officialEventsSeen = true
+          this.applyActivity(session, transition.input)
+          if (transition.completedTurn !== undefined) {
+            this.rewardTurn(String(session.id), transition.completedTurn)
           }
         }),
-        this.ctx.on('session/disposed', () => {
+        this.ctx.on('session/disposed', (session: Session) => {
+          if (session !== this.displaySession) return
+          this.displaySession = undefined
           this.machine.onSessionDisposed()
         }),
       ]
       return () => { for (const dispose of disposers) dispose() }
     })()
+  }
+
+  /** Return the projection state associated with one live session. */
+  private activityRuntime(session: Session): SessionActivityRuntime {
+    let runtime = this.sessionActivity.get(session)
+    if (runtime === undefined) {
+      runtime = {
+        activeTools: new Set(),
+        officialEventsSeen: false,
+        stepHadFailure: false,
+      }
+      this.sessionActivity.set(session, runtime)
+    }
+    return runtime
+  }
+
+  /** Commit one activity as the host-global pet's most recent display state. */
+  private applyActivity(session: Session, input: PetStateInput): void {
+    this.displaySession = session
+    this.machine.onActivityStatus(input)
+    this.machine.onSessionActive()
   }
 
   /** RPC: pet or feed the pet. */
@@ -334,6 +473,20 @@ export class PetService extends Service {
     const last = this.rewardedTurns.get(sessionId) ?? 0
     if (turn <= last) return
     this.rewardedTurns.set(sessionId, turn)
+    this.applyTurnReward()
+  }
+
+  /** Preserve turn rewards for installations that only emit legacy activity. */
+  private rewardLegacyTurn(): void {
+    const nowMs = Date.now()
+    // A legacy `done` snapshot may repeat during the celebration window.
+    if (nowMs - this.lastLegacyTurnRewardAt < 5_000) return
+    this.lastLegacyTurnRewardAt = nowMs
+    this.applyTurnReward()
+  }
+
+  /** Persist one accepted completed-turn reward. */
+  private applyTurnReward(): void {
     this.persist = { ...this.persist, affinity: applyTurnReward(this.persist.affinity, this.affinityConfig) }
     this.flush()
   }

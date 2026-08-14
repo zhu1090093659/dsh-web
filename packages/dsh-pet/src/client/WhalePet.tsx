@@ -228,6 +228,7 @@ export function WhalePet(props: WhalePetProps): ReactPortal {
   const pos = dragPos ?? { right: display.right, bottom: display.bottom }
   const spriteWidth = Math.round(FRAME_WIDTH * spriteScale)
   const spriteHeight = Math.round(FRAME_HEIGHT * spriteScale)
+  const statusBubble = feedback === null && !hovered ? snapshot?.bubble : undefined
 
   const float = (
     <div
@@ -279,6 +280,11 @@ export function WhalePet(props: WhalePetProps): ReactPortal {
       {feedback !== null && (
         <div key={feedback.at} className={`${styles.bubble} ${feedback.kind === 'feed' ? styles.bubbleFeed : styles.bubblePet}`}>
           {feedback.text}
+        </div>
+      )}
+      {statusBubble !== undefined && (
+        <div className={`${styles.bubble} ${styles.bubbleStatus}`} role="status" aria-live="polite">
+          {statusBubble}
         </div>
       )}
       {hovered && dragRef.current === null && (

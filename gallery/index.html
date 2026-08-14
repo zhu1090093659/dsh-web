@@ -203,6 +203,55 @@
     padding: 2px 8px !important; color: var(--g-faint);
   }
 
+  /* --- temporary background tuner ------------------------------------------ */
+  .fx-tuner-toggle {
+    position: fixed; right: 18px; bottom: 18px; z-index: 80;
+    min-width: 96px; height: 34px; padding: 0 12px;
+    border: 1px solid rgba(150, 202, 255, .34); border-radius: 7px;
+    background: rgba(7, 17, 33, .88); color: #c9def5;
+    box-shadow: 0 8px 24px rgba(0, 5, 16, .42);
+    backdrop-filter: blur(12px); font: 12px var(--g-font); cursor: pointer;
+  }
+  .fx-tuner-toggle:hover { background: rgba(18, 39, 68, .94); }
+  .fx-tuner {
+    position: fixed; right: 18px; bottom: 60px; z-index: 80;
+    width: min(300px, calc(100vw - 24px)); overflow: hidden;
+    border: 1px solid rgba(150, 202, 255, .24); border-radius: 8px;
+    background: rgba(7, 17, 33, .94); color: #d8e7f7;
+    box-shadow: 0 18px 48px rgba(0, 4, 14, .58);
+    backdrop-filter: blur(18px);
+  }
+  .fx-tuner[hidden] { display: none; }
+  .fx-tuner-head, .fx-tuner-actions {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  }
+  .fx-tuner-head { border-bottom: 1px solid rgba(150, 202, 255, .14); }
+  .fx-tuner-head strong { font-size: 13px; font-weight: 600; }
+  .fx-dark-ratio {
+    margin-left: auto; color: #8eb9e7; font: 11px var(--g-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .fx-tuner-close {
+    width: 26px; height: 26px; padding: 0; border: 0; border-radius: 5px;
+    background: transparent; color: #8ea7c2; font-size: 18px; cursor: pointer;
+  }
+  .fx-tuner-close:hover { background: rgba(145, 190, 235, .12); color: #e6eef8; }
+  .fx-tuner-controls { display: grid; gap: 12px; padding: 12px; }
+  .fx-control { display: grid; gap: 5px; }
+  .fx-control > span { display: flex; justify-content: space-between; gap: 12px; color: #aac0d8; font-size: 11.5px; }
+  .fx-control output { color: #e6f1fc; font: 11px var(--g-mono); font-variant-numeric: tabular-nums; }
+  .fx-control input[type="range"] { width: 100%; margin: 0; accent-color: #57a6ff; cursor: pointer; }
+  .fx-tuner-actions { border-top: 1px solid rgba(150, 202, 255, .14); }
+  .fx-tuner-actions button {
+    flex: 1; height: 30px; border: 1px solid rgba(150, 202, 255, .20); border-radius: 6px;
+    background: rgba(130, 178, 230, .08); color: #c9def5; font: 11.5px var(--g-font); cursor: pointer;
+  }
+  .fx-tuner-actions button:hover { background: rgba(130, 178, 230, .16); }
+  @media (max-width: 520px) {
+    .fx-tuner-toggle { right: 12px; bottom: 12px; }
+    .fx-tuner { right: 12px; bottom: 54px; }
+  }
+
 </style>
 </head>
 <body>
@@ -231,6 +280,29 @@
   <div class="grid" id="grid"></div>
 
 </div>
+
+<!-- 临时背景参数面板：参数已定稿，保留代码供后续解除注释继续调试。
+<button type="button" class="fx-tuner-toggle" id="fxTunerToggle" aria-expanded="false" aria-controls="fxTuner">背景参数</button>
+<aside class="fx-tuner" id="fxTuner" aria-label="临时背景参数面板" hidden>
+  <div class="fx-tuner-head">
+    <strong>背景参数</strong>
+    <span class="fx-dark-ratio" id="fxDarkRatio">暗部 --</span>
+    <button type="button" class="fx-tuner-close" id="fxTunerClose" aria-label="关闭参数面板">×</button>
+  </div>
+  <div class="fx-tuner-controls">
+    <label class="fx-control"><span>亮区阈值 <output data-fx-output="brightThreshold"></output></span><input type="range" data-fx="brightThreshold" min="0.40" max="0.78" step="0.01"></label>
+    <label class="fx-control"><span>流向拉伸 <output data-fx-output="stretch"></output></span><input type="range" data-fx="stretch" min="1.00" max="3.80" step="0.05"></label>
+    <label class="fx-control"><span>图案尺度 <output data-fx-output="scale"></output></span><input type="range" data-fx="scale" min="1.40" max="3.20" step="0.05"></label>
+    <label class="fx-control"><span>明暗对比 <output data-fx-output="contrast"></output></span><input type="range" data-fx="contrast" min="0.70" max="1.60" step="0.05"></label>
+    <label class="fx-control"><span>整体亮度 <output data-fx-output="brightness"></output></span><input type="range" data-fx="brightness" min="0.55" max="1.15" step="0.01"></label>
+    <label class="fx-control"><span>流动速度 <output data-fx-output="speed"></output></span><input type="range" data-fx="speed" min="0.35" max="1.50" step="0.05"></label>
+  </div>
+  <div class="fx-tuner-actions">
+    <button type="button" id="fxTunerReset">重置</button>
+    <button type="button" id="fxTunerCopy">复制参数</button>
+  </div>
+</aside>
+-->
 
 <!-- 试穿模态框 -->
 <div class="modal" id="modal">
@@ -481,7 +553,16 @@
   var contextLost = false
   var scroll = { target: window.scrollY || 0, smooth: window.scrollY || 0 }
   var click = { x: -10, y: -10, t: 1e4 }
-  var prog, uRes, uTime, uClick, uClickT, uScroll
+  var fxDefaults = {
+    brightThreshold: 0.55,
+    stretch: 3.20,
+    scale: 3.20,
+    contrast: 1.15,
+    brightness: 0.72,
+    speed: 0.95,
+  }
+  var fx = Object.assign({}, fxDefaults)
+  var prog, uRes, uTime, uClick, uClickT, uScroll, uFxA, uFxB
 
   var VERT = [
     'attribute vec2 aPos;',
@@ -499,6 +580,8 @@
     'uniform vec2 uClick;',
     'uniform float uClickT;',
     'uniform float uScroll;',
+    'uniform vec4 uFxA;',
+    'uniform vec2 uFxB;',
     '',
     'float hash(vec2 p) {',
     '  p = fract(p * vec2(123.34, 456.21));',
@@ -615,7 +698,7 @@
     '  vec2 uv = gl_FragCoord.xy / uRes;',
     '  vec2 aspect = vec2(uRes.x / uRes.y, 1.0);',
     '  vec2 p = (uv - 0.5) * aspect;',
-    '  float t = uTime;',
+    '  float t = uTime * uFxB.y;',
     '  float scrollOffset = uScroll * 0.000018;',
     '  vec2 flowDir = normalize(vec2(1.0, 0.28));',
     '  vec2 flowNormal = vec2(-flowDir.y, flowDir.x);',
@@ -631,7 +714,8 @@
     '  float ring = exp(-pow((cdist - rippleR) * 13.0, 2.0)) * rippleLife;',
     '  float innerRing = exp(-pow((cdist - rippleR * 0.72) * 9.0, 2.0)) * rippleLife * exp(-uClickT * 0.14);',
     '',
-    '  vec2 advected = p * 2.45 - flowDir * transport;',
+    '  vec2 flowSpace = vec2(dot(p, flowDir) / uFxA.y, dot(p, flowNormal));',
+    '  vec2 advected = (flowDir * flowSpace.x + flowNormal * flowSpace.y) * uFxA.z - flowDir * transport;',
     '  vec2 localCurl = curlish(advected, morphTime * 0.040);',
     '  vec2 fluidUv = advected + localCurl * 12.0;',
     '  fluidUv += cdir * ring * 0.30;',
@@ -640,10 +724,11 @@
     '  float f = fluidNoise(fluidUv, morphTime);',
     '  float swirl = snoise(vec3(fluidUv * 0.80 + f * 1.50, morphTime * 0.035)) * 0.50 + 0.50;',
     '  float n = f * 0.50 + 0.50;',
-    '  float tone1 = smoothstep(0.20, 0.50, n);',
-    '  float tone2 = smoothstep(0.35, 0.65, n + swirl * 0.25);',
-    '  float tone3 = smoothstep(0.60, 0.85, swirl) * 0.55;',
-    '  float tone4 = smoothstep(0.50, 0.80, n * swirl) * 0.35;',
+    '  float brightStart = uFxA.x;',
+    '  float tone1 = smoothstep(brightStart - 0.24, brightStart + 0.05, n);',
+    '  float tone2 = smoothstep(brightStart - 0.08, brightStart + 0.20, n + (swirl - 0.5) * 0.18);',
+    '  float tone3 = smoothstep(brightStart + 0.10, brightStart + 0.28, n * 0.72 + swirl * 0.28) * 0.48;',
+    '  float tone4 = smoothstep(0.56, 0.84, n * swirl) * 0.28;',
     '',
     '  vec3 c1 = vec3(0.039, 0.102, 0.227);',
     '  vec3 c2 = vec3(0.102, 0.220, 0.439);',
@@ -654,6 +739,8 @@
     '  col = mix(col, c3, tone2);',
     '  col = mix(col, c4, tone3);',
     '  col = mix(col, c5, tone4);',
+    '  col = (col - vec3(0.18)) * uFxA.w + vec3(0.18);',
+    '  col *= uFxB.x;',
     '  col += vec3(0.20, 0.42, 0.82) * ring * (0.28 + tone2 * 0.48);',
     '  col += vec3(0.10, 0.24, 0.54) * innerRing * 0.28;',
     '',
@@ -724,6 +811,8 @@
     uClick = gl.getUniformLocation(prog, 'uClick')
     uClickT = gl.getUniformLocation(prog, 'uClickT')
     uScroll = gl.getUniformLocation(prog, 'uScroll')
+    uFxA = gl.getUniformLocation(prog, 'uFxA')
+    uFxB = gl.getUniformLocation(prog, 'uFxB')
   }
 
   try {
@@ -757,6 +846,107 @@
     click.t = 0
   }, { passive: true })
 
+  var tuner = document.getElementById('fxTuner')
+  var tunerToggle = document.getElementById('fxTunerToggle')
+  var tunerClose = document.getElementById('fxTunerClose')
+  var tunerReset = document.getElementById('fxTunerReset')
+  var tunerCopy = document.getElementById('fxTunerCopy')
+  var darkRatio = document.getElementById('fxDarkRatio')
+  var tunerInputs = tuner ? tuner.querySelectorAll('[data-fx]') : []
+  var measureTimer = 0
+
+  function syncTuner() {
+    Array.prototype.forEach.call(tunerInputs, function (input) {
+      var key = input.getAttribute('data-fx')
+      input.value = fx[key]
+      var output = tuner.querySelector('[data-fx-output="' + key + '"]')
+      if (output) output.textContent = Number(fx[key]).toFixed(2)
+    })
+  }
+
+  function measureDarkPixels() {
+    if (!darkRatio || !W || !H || contextLost) return
+    draw()
+    gl.finish()
+    var pixels = new Uint8Array(canvas.width * canvas.height * 4)
+    gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+    var dark = 0
+    var total = 0
+    for (var y = 0; y < canvas.height; y += 8) {
+      for (var x = 0; x < canvas.width; x += 8) {
+        var i = (y * canvas.width + x) * 4
+        var luminance = pixels[i] * 0.2126 + pixels[i + 1] * 0.7152 + pixels[i + 2] * 0.0722
+        if (luminance < 40) dark++
+        total++
+      }
+    }
+    darkRatio.textContent = '暗部 ' + Math.round(dark / Math.max(1, total) * 100) + '%'
+  }
+
+  function scheduleDarkMeasure() {
+    clearTimeout(measureTimer)
+    measureTimer = setTimeout(measureDarkPixels, 180)
+  }
+
+  function setTunerOpen(open) {
+    if (!tuner || !tunerToggle) return
+    tuner.hidden = !open
+    tunerToggle.setAttribute('aria-expanded', String(open))
+    tunerToggle.textContent = open ? '收起参数' : '背景参数'
+    if (open) scheduleDarkMeasure()
+  }
+
+  function fallbackCopyFx(text) {
+    var ta = document.createElement('textarea')
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    try { document.execCommand('copy') } catch (err) { /* ignore */ }
+    ta.remove()
+  }
+
+  function copyFxValues() {
+    var text = Object.keys(fxDefaults).map(function (key) {
+      return key + '=' + Number(fx[key]).toFixed(2)
+    }).join('\n')
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(function () { fallbackCopyFx(text) })
+    } else {
+      fallbackCopyFx(text)
+    }
+    tunerCopy.textContent = '已复制'
+    setTimeout(function () { tunerCopy.textContent = '复制参数' }, 1200)
+  }
+
+  if (tuner && tunerToggle) {
+    syncTuner()
+    tuner.addEventListener('pointerdown', function (e) { e.stopPropagation() })
+    tunerToggle.addEventListener('pointerdown', function (e) { e.stopPropagation() })
+    tunerToggle.addEventListener('click', function () {
+      setTunerOpen(tuner.hidden)
+    })
+    tunerClose.addEventListener('click', function () { setTunerOpen(false) })
+    tunerReset.addEventListener('click', function () {
+      fx = Object.assign({}, fxDefaults)
+      syncTuner()
+      draw()
+      scheduleDarkMeasure()
+    })
+    tunerCopy.addEventListener('click', copyFxValues)
+    Array.prototype.forEach.call(tunerInputs, function (input) {
+      input.addEventListener('input', function () {
+        var key = input.getAttribute('data-fx')
+        fx[key] = Number(input.value)
+        syncTuner()
+        draw()
+        scheduleDarkMeasure()
+      })
+    })
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !tuner.hidden) setTunerOpen(false)
+    })
+  }
+
   function draw() {
     if (contextLost || !prog || !W || !H) return
     gl.useProgram(prog)
@@ -764,6 +954,8 @@
     gl.uniform2f(uClick, click.x / W, 1 - click.y / H)
     gl.uniform1f(uClickT, click.t)
     gl.uniform1f(uScroll, reduceMotion ? 0 : scroll.smooth)
+    gl.uniform4f(uFxA, fx.brightThreshold, fx.stretch, fx.scale, fx.contrast)
+    gl.uniform2f(uFxB, fx.brightness, fx.speed)
     gl.drawArrays(gl.TRIANGLES, 0, 3)
   }
 

@@ -1,0 +1,1 @@
+{"version":3,"file":"unwrap-negation-wrappers.d.ts","sourceRoot":"","sources":["../../../src/optimizer/transforms/unwrap-negation-wrappers.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAC,OAAO,EAAC,MAAM,6BAA6B,CAAC;AAGzD;;;;EAIE;AACF,QAAA,MAAM,sBAAsB,EAAE,OA0B7B,CAAC;AAEF,OAAO,EACL,sBAAsB,GACvB,CAAC"}

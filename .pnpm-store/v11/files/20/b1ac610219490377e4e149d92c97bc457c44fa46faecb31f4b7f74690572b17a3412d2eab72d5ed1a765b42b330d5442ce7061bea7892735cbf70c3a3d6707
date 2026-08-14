@@ -1,0 +1,60 @@
+{
+  "name": "cloudflared",
+  "version": "0.7.3",
+  "description": "Cloudflared in Node. Which allows you to easily create HTTPS tunnels using Cloudflare's cloudflared. It provides a typed API for creating tunnels and managing the cloudflared binary installation.",
+  "main": "./lib/lib.js",
+  "types": "./lib/lib.d.ts",
+  "keywords": [
+    "cloudflared",
+    "tunnel",
+    "macos",
+    "windows",
+    "linux",
+    "cli",
+    "lib"
+  ],
+  "author": "JacobLinCool <jacoblincool@gmail.com> (https://github.com/JacobLinCool)",
+  "license": "MIT",
+  "files": [
+    "lib",
+    "scripts"
+  ],
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.1",
+    "@eslint/eslintrc": "^3.3.6",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.2.0",
+    "@typescript-eslint/eslint-plugin": "~8.66.0",
+    "@typescript-eslint/parser": "~8.66.0",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.6",
+    "tsup": "^8.5.1",
+    "typedoc": "^0.28.20",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10",
+    "cloudflared": "0.7.3"
+  },
+  "homepage": "https://github.com/JacobLinCool/node-cloudflared#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JacobLinCool/node-cloudflared.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JacobLinCool/node-cloudflared/issues"
+  },
+  "scripts": {
+    "test": "vitest",
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "docs": "typedoc",
+    "format": "prettier --write '**/*.{js,ts,jsx,tsx,json,yml,yaml,md,html}' --ignore-path .gitignore --ignore-path .prettierignore",
+    "lint": "eslint .",
+    "postinstall": "node scripts/postinstall.mjs && node lib/cloudflared.js bin install",
+    "changeset": "changeset"
+  },
+  "bin": {
+    "cloudflared": "./lib/cloudflared.js"
+  }
+}

@@ -139,11 +139,15 @@ export function mountSidebarEntry(controller: PanelController): () => void {
     }
   })
 
-  // Reflect the panel's open state on the row (active highlight).
-  const unsubscribe = controller.subscribe(() => {
-    entry.dataset.active = controller.getSnapshot().panelOpen ? 'true' : undefined
-  })
-  entry.dataset.active = controller.getSnapshot().panelOpen ? 'true' : undefined
+  // Reflect the panel's open state on the row (active highlight). Note: assigning
+  // undefined to dataset.active materializes data-active="undefined" and keeps the
+  // row permanently highlighted — delete the attribute instead.
+  const syncActive = () => {
+    if (controller.getSnapshot().panelOpen) entry.dataset.active = 'true'
+    else delete entry.dataset.active
+  }
+  const unsubscribe = controller.subscribe(syncActive)
+  syncActive()
 
   tryPlace()
 

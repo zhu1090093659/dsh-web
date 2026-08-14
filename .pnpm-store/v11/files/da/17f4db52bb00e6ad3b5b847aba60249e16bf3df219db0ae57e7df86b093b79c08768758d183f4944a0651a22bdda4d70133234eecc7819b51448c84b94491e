@@ -1,0 +1,39 @@
+{
+  "name": "@napi-rs/lzma-linux-x64-gnu",
+  "version": "1.5.1",
+  "cpu": [
+    "x64"
+  ],
+  "main": "lzma.linux-x64-gnu.node",
+  "files": [
+    "lzma.linux-x64-gnu.node"
+  ],
+  "description": "lzma / lzma2 / xz compression for Node.js and the browser, backed by pure-Rust lzma-rust2 via https://napi.rs",
+  "keywords": [
+    "Node-API",
+    "napi",
+    "lzma",
+    "compress",
+    "decompress",
+    "xz",
+    "napi-rs"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": "^22.20 || ^24.12 || >=25"
+  },
+  "repository": {
+    "url": "git+https://github.com/Brooooooklyn/lzma.git",
+    "type": "git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "os": [
+    "linux"
+  ],
+  "libc": [
+    "glibc"
+  ]
+}

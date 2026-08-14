@@ -1,0 +1,1 @@
+{"version":3,"file":"remove-empty-groups.d.ts","sourceRoot":"","sources":["../../../src/optimizer/transforms/remove-empty-groups.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAC,OAAO,EAAC,MAAM,6BAA6B,CAAC;AAEzD;;EAEE;AACF,QAAA,MAAM,iBAAiB,EAAE,OA4BxB,CAAC;AAmBF,OAAO,EACL,iBAAiB,GAClB,CAAC"}

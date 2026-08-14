@@ -1,0 +1,2 @@
+"use strict";import{hasOnlyChild as i}from"../../parser/node-utils.js";const f={CharacterClass({node:s,parent:r,replaceWith:n,replaceWithMultiple:t}){const{body:e,kind:o,negate:a}=s;if(r.type!=="CharacterClass"||o!=="union"||!e.length)return;const C=e[0];if(i(r,{type:"CharacterClass",kind:"union"})){r.negate=r.negate!==a,t(e,{traverse:!0});return}a||(r.kind==="union"?t(e,{traverse:!0}):i(s)&&n(C,{traverse:!0}))}};export{f as unnestUselessClasses};
+//# sourceMappingURL=unnest-useless-classes.js.map

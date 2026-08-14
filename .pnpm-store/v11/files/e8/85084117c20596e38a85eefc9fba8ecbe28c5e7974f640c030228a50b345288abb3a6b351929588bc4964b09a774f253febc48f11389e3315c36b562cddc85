@@ -1,0 +1,1 @@
+{"version":3,"file":"unwrap-useless-groups.d.ts","sourceRoot":"","sources":["../../../src/optimizer/transforms/unwrap-useless-groups.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAC,OAAO,EAAC,MAAM,6BAA6B,CAAC;AAGzD;;EAEE;AACF,QAAA,MAAM,mBAAmB,EAAE,OA4D1B,CAAC;AAwBF,OAAO,EACL,mBAAmB,GACpB,CAAC"}

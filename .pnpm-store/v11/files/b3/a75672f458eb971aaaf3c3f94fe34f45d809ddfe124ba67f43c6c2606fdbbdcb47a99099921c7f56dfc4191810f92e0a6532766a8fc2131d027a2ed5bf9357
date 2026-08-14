@@ -1,0 +1,2 @@
+"use strict";import{createUnicodeProperty as o}from"../../parser/parse.js";import{isRange as p}from"./use-shorthands.js";const c={CharacterSet({node:e,root:r,replaceWith:s}){const{kind:a,negate:i,value:n}=e;let t=null;a==="posix"&&n==="cntrl"&&!r.flags.posixIsAscii&&(t=o("Cc",{negate:i})),t&&s(t)},CharacterClassRange({node:e,replaceWith:r}){p(e,0,1114111)&&r(o("Any"))}};export{c as useUnicodeProps};
+//# sourceMappingURL=use-unicode-props.js.map

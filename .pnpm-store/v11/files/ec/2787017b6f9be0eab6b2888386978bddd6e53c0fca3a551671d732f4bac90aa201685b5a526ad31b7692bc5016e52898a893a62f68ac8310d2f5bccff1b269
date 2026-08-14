@@ -1,0 +1,1 @@
+{"version":3,"file":"use-unicode-props.d.ts","sourceRoot":"","sources":["../../../src/optimizer/transforms/use-unicode-props.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAC,OAAO,EAAC,MAAM,6BAA6B,CAAC;AAIzD;;;;;EAKE;AACF,QAAA,MAAM,eAAe,EAAE,OAsBtB,CAAC;AAEF,OAAO,EACL,eAAe,GAChB,CAAC"}

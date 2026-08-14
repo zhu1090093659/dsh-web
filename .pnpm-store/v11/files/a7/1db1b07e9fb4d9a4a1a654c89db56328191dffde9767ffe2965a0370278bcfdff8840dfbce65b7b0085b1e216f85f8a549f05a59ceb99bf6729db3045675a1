@@ -1,0 +1,1 @@
+cmd_Release/cpufeatures.node := ln -f "Release/obj.target/cpufeatures.node" "Release/cpufeatures.node" 2>/dev/null || (rm -rf "Release/cpufeatures.node" && cp -af "Release/obj.target/cpufeatures.node" "Release/cpufeatures.node")

@@ -1,0 +1,2 @@
+"use strict";const d={CapturingGroup({node:s,parent:a,replaceWithMultiple:c}){if(a.type==="Quantifier"||s.body.length>1||s.isSubroutined)return;const p=s.body[0],t=p.body,e=t[0],i=t.length>1?t.at(-1):null,o=e&&e.type==="Assertion",n=i&&i.type==="Assertion",l=o?1:0,u=t.length-(n?1:0);if(o||n){p.body=t.slice(l,u);const r=[];o&&r.push(e),r.push(s),n&&r.push(i),c(r,{traverse:!0})}}};export{d as exposeAnchors};
+//# sourceMappingURL=expose-anchors.js.map

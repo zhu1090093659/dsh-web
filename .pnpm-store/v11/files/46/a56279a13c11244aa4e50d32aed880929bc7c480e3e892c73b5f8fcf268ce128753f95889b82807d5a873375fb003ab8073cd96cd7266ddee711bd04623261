@@ -1,0 +1,111 @@
+{
+  "name": "rolldown-plugin-dts",
+  "type": "module",
+  "version": "0.25.2",
+  "description": "A Rolldown plugin to generate and bundle dts files.",
+  "author": "Kevin Deng <sxzz@sxzz.moe>",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/sxzz",
+  "homepage": "https://github.com/sxzz/rolldown-plugin-dts#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sxzz/rolldown-plugin-dts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sxzz/rolldown-plugin-dts/issues"
+  },
+  "keywords": [
+    "rolldown",
+    "plugin",
+    "dts",
+    "typescript",
+    "vue",
+    "jsdoc"
+  ],
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./internal": "./dist/internal.mjs",
+    "./tsc": "./dist/tsc.mjs",
+    "./tsc-context": "./dist/tsc-context.mjs",
+    "./tsc-worker": "./dist/tsc-worker.mjs",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.0.0"
+  },
+  "peerDependencies": {
+    "@ts-macro/tsc": "^0.3.6",
+    "@typescript/native-preview": ">=7.0.0-dev.20260325.1",
+    "rolldown": "^1.0.0",
+    "typescript": "^5.0.0 || ^6.0.0",
+    "vue-tsc": "~3.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@ts-macro/tsc": {
+      "optional": true
+    },
+    "@typescript/native-preview": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    },
+    "vue-tsc": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@babel/generator": "8.0.0-rc.6",
+    "@babel/helper-validator-identifier": "8.0.0-rc.6",
+    "@babel/parser": "8.0.0-rc.6",
+    "ast-kit": "^3.0.0-beta.1",
+    "birpc": "^4.0.0",
+    "dts-resolver": "^3.0.0",
+    "get-tsconfig": "5.0.0-beta.5",
+    "obug": "^2.1.1"
+  },
+  "devDependencies": {
+    "@babel/types": "^8.0.0-rc.6",
+    "@jridgewell/source-map": "^0.3.11",
+    "@sxzz/eslint-config": "^8.1.0",
+    "@sxzz/prettier-config": "^2.3.1",
+    "@sxzz/test-utils": "^0.5.18",
+    "@types/node": "^25.9.1",
+    "@typescript/native-preview": "7.0.0-dev.20260527.2",
+    "@volar/typescript": "^2.4.28",
+    "@vue/language-core": "^3.3.2",
+    "arktype": "^2.2.0",
+    "bumpp": "^11.1.0",
+    "diff": "^9.0.0",
+    "eslint": "^10.4.0",
+    "prettier": "^3.8.3",
+    "rolldown": "^1.0.3",
+    "rolldown-plugin-require-cjs": "^0.4.0",
+    "rollup-plugin-dts": "^6.4.1",
+    "tsdown": "^0.22.1",
+    "tsnapi": "^0.3.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7",
+    "vue": "^3.5.35",
+    "vue-tsc": "^3.3.2",
+    "zod": "^4.4.3"
+  },
+  "prettier": "@sxzz/prettier-config",
+  "scripts": {
+    "lint": "eslint --cache .",
+    "lint:fix": "pnpm run lint --fix",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest",
+    "typecheck": "tsgo --noEmit",
+    "format": "prettier --cache --write .",
+    "release": "bumpp"
+  }
+}

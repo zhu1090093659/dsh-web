@@ -1,0 +1,170 @@
+{
+  "name": "tsdown",
+  "type": "module",
+  "version": "0.22.2",
+  "description": "The Elegant Bundler for Libraries",
+  "author": "Kevin Deng <sxzz@sxzz.moe>",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/sxzz",
+  "homepage": "http://tsdown.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rolldown/tsdown.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rolldown/tsdown/issues"
+  },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./config": "./dist/config.mjs",
+    "./internal": "./dist/internal.mjs",
+    "./plugins": "./dist/plugins.mjs",
+    "./run": "./dist/run.mjs",
+    "./package.json": "./package.json",
+    "./client": "./client.d.ts"
+  },
+  "types": "./dist/index.d.mts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*.d.mts",
+        "./*"
+      ]
+    }
+  },
+  "bin": {
+    "tsdown": "./dist/run.mjs"
+  },
+  "files": [
+    "client.d.ts",
+    "dist",
+    "esm-shims.js"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.0.0"
+  },
+  "peerDependencies": {
+    "@arethetypeswrong/core": "^0.18.1",
+    "@vitejs/devtools": "*",
+    "publint": "^0.3.8",
+    "tsx": "*",
+    "typescript": "^5.0.0 || ^6.0.0",
+    "unplugin-unused": "^0.5.0",
+    "unrun": "*",
+    "@tsdown/exe": "0.22.2",
+    "@tsdown/css": "0.22.2"
+  },
+  "peerDependenciesMeta": {
+    "@arethetypeswrong/core": {
+      "optional": true
+    },
+    "@tsdown/css": {
+      "optional": true
+    },
+    "@tsdown/exe": {
+      "optional": true
+    },
+    "@vitejs/devtools": {
+      "optional": true
+    },
+    "publint": {
+      "optional": true
+    },
+    "tsx": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    },
+    "unplugin-unused": {
+      "optional": true
+    },
+    "unrun": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "ansis": "^4.3.1",
+    "cac": "^7.0.0",
+    "defu": "^6.1.7",
+    "empathic": "^2.0.1",
+    "hookable": "^6.1.1",
+    "import-without-cache": "^0.4.0",
+    "obug": "^2.1.1",
+    "picomatch": "^4.0.4",
+    "rolldown": "~1.1.0",
+    "rolldown-plugin-dts": "^0.25.2",
+    "semver": "^7.8.1",
+    "tinyexec": "^1.2.4",
+    "tinyglobby": "^0.2.17",
+    "tree-kill": "^1.2.2",
+    "unconfig-core": "^7.5.0"
+  },
+  "inlinedDependencies": {
+    "is-in-ci": "2.0.0",
+    "package-manager-detector": "1.6.0",
+    "pkg-types": "2.3.1"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/core": "^0.18.3",
+    "@sxzz/eslint-config": "^8.1.0",
+    "@sxzz/prettier-config": "^2.3.1",
+    "@sxzz/test-utils": "^0.5.18",
+    "@types/node": "^25.9.1",
+    "@types/picomatch": "^4.0.3",
+    "@types/semver": "^7.7.1",
+    "@typescript/native-preview": "7.0.0-dev.20260603.1",
+    "@unocss/eslint-plugin": "^66.7.0",
+    "@vitejs/devtools": "^0.3.1",
+    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/ui": "^4.1.8",
+    "@vueuse/core": "^14.3.0",
+    "actionspack": "^0.1.5",
+    "baseline-browser-mapping": "^2.10.33",
+    "bumpp": "^11.1.0",
+    "dedent": "^1.7.2",
+    "eslint": "^10.4.1",
+    "is-in-ci": "^2.0.0",
+    "memfs": "^4.57.5",
+    "package-manager-detector": "^1.6.0",
+    "pkg-types": "^2.3.1",
+    "postcss": "^8.5.15",
+    "postcss-import": "^16.1.1",
+    "prettier": "^3.8.3",
+    "publint": "^0.3.21",
+    "rolldown-plugin-require-cjs": "^0.4.0",
+    "sass": "^1.100.0",
+    "tsnapi": "^0.3.3",
+    "tsx": "^4.22.4",
+    "typescript": "~6.0.3",
+    "unocss": "^66.7.0",
+    "unplugin-ast": "^0.17.0",
+    "unplugin-raw": "^0.7.0",
+    "unplugin-unused": "^0.5.7",
+    "unplugin-vue": "^7.2.0",
+    "unrun": "^0.3.0",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8",
+    "vue": "^3.5.35",
+    "@tsdown/css": "0.22.2",
+    "@tsdown/exe": "0.22.2"
+  },
+  "prettier": "@sxzz/prettier-config",
+  "scripts": {
+    "lint": "eslint --cache --max-warnings 0 .",
+    "lint:fix": "pnpm run lint --fix",
+    "build": "node -C dev ./src/run.ts",
+    "dev": "pnpm run build",
+    "test": "vitest",
+    "typecheck": "tsgo --noEmit",
+    "format": "prettier --cache --write .",
+    "release": "node ./scripts/release.ts",
+    "docs:dev": "pnpm -C docs run dev",
+    "docs:build": "pnpm -C docs run build",
+    "docs:preview": "pnpm -C docs run preview",
+    "docs:generate": "pnpm -C docs run generate"
+  }
+}

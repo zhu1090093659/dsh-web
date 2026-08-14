@@ -1,0 +1,64 @@
+{
+  "name": "oniguruma-parser",
+  "version": "0.12.2",
+  "description": "Parse, validate, traverse, transform, and optimize Oniguruma regular expressions",
+  "author": "Steven Levithan",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./generator": {
+      "types": "./dist/generator/generate.d.ts",
+      "import": "./dist/generator/generate.js"
+    },
+    "./optimizer": {
+      "types": "./dist/optimizer/optimize.d.ts",
+      "import": "./dist/optimizer/optimize.js"
+    },
+    "./parser": {
+      "types": "./dist/parser/parse.d.ts",
+      "import": "./dist/parser/parse.js"
+    },
+    "./traverser": {
+      "types": "./dist/traverser/traverse.d.ts",
+      "import": "./dist/traverser/traverse.js"
+    },
+    "./unicode": {
+      "types": "./dist/unicode.d.ts",
+      "import": "./dist/unicode.js"
+    }
+  },
+  "browser": "./dist/oniguruma-parser.min.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slevithan/oniguruma-parser.git"
+  },
+  "keywords": [
+    "regex",
+    "regexp",
+    "oniguruma",
+    "parser"
+  ],
+  "devDependencies": {
+    "esbuild": "^0.28.0",
+    "rimraf": "^6.1.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.4"
+  },
+  "scripts": {
+    "bundle:global": "esbuild src/bundle.ts --outfile=dist/oniguruma-parser.min.js --global-name=OnigurumaParser --bundle --minify --sourcemap",
+    "build:esm": "esbuild \"src/**/*.ts\" --outdir=dist --minify --sourcemap",
+    "prebuild": "rimraf --glob dist/*",
+    "build": "pnpm run bundle:global && pnpm run build:esm && tsc",
+    "pretest": "pnpm build",
+    "test": "vitest run"
+  }
+}

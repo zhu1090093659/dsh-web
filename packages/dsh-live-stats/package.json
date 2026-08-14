@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-live-stats",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Live token estimates and generation throughput for DSH Web",
   "type": "module",
   "main": "lib/index.js",

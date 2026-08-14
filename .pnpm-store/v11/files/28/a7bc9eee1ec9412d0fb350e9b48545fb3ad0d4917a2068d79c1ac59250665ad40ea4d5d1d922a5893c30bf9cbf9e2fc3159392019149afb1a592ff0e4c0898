@@ -1,0 +1,73 @@
+{
+  "name": "obug",
+  "type": "module",
+  "version": "2.1.4",
+  "description": "A lightweight JavaScript debugging utility, forked from debug, featuring TypeScript and ESM support.",
+  "author": "Kevin Deng <sxzz@sxzz.moe>",
+  "license": "MIT",
+  "funding": [
+    "https://github.com/sponsors/sxzz",
+    "https://opencollective.com/debug"
+  ],
+  "homepage": "https://github.com/sxzz/obug#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sxzz/obug.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sxzz/obug/issues"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "browser": "./dist/browser.js",
+      "default": "./dist/node.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/node.js",
+  "module": "./dist/node.js",
+  "unpkg": "./dist/browser.min.js",
+  "jsdelivr": "./dist/browser.min.js",
+  "types": "./dist/browser.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=12.20.0"
+  },
+  "devDependencies": {
+    "@sxzz/eslint-config": "^8.2.1",
+    "@sxzz/prettier-config": "^2.3.1",
+    "@types/debug": "^4.1.13",
+    "@types/node": "^26.1.1",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
+    "@vitest/browser-playwright": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.10",
+    "bumpp": "^11.1.0",
+    "debug": "^4.4.3",
+    "eslint": "^10.7.0",
+    "playwright": "^1.61.1",
+    "prettier": "^3.9.5",
+    "tsdown": "^0.22.9",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  },
+  "prettier": "@sxzz/prettier-config",
+  "scripts": {
+    "lint": "eslint --cache .",
+    "lint:fix": "pnpm run lint --fix",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --project node --coverage",
+    "play": "vite playground",
+    "typecheck": "tsgo --noEmit",
+    "format": "prettier --cache --write .",
+    "release": "bumpp"
+  }
+}

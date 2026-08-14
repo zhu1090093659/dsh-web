@@ -1,0 +1,60 @@
+{
+  "name": "regex",
+  "version": "6.1.0",
+  "description": "Regex template tag with extended syntax, context-aware interpolation, and always-on best practices",
+  "author": "Steven Levithan",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/regex.d.ts",
+        "default": "./dist/esm/regex.js"
+      },
+      "require": {
+        "types": "./dist/cjs/regex.d.ts",
+        "default": "./dist/cjs/regex.js"
+      }
+    },
+    "./internals": {
+      "types": "./dist/esm/internals.d.ts",
+      "import": "./src/internals.js"
+    }
+  },
+  "browser": "./dist/regex.min.js",
+  "main": "./dist/cjs/regex.js",
+  "types": "./dist/cjs/regex.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slevithan/regex.git"
+  },
+  "keywords": [
+    "regex",
+    "regexp"
+  ],
+  "dependencies": {
+    "regex-utilities": "^2.3.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "esbuild": "^0.27.1",
+    "expect-type": "^1.3.0",
+    "jasmine": "^5.13.0",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "bundle:global": "esbuild src/regex.js --global-name=Regex --bundle --minify --sourcemap --outfile=dist/regex.min.js",
+    "bundle:esm": "esbuild src/regex.js --format=esm --bundle --sourcemap --outfile=dist/esm/regex.js",
+    "bundle:cjs": "esbuild src/regex.js --format=cjs --bundle --sourcemap --outfile=dist/cjs/regex.js",
+    "types": "tsc src/regex.js src/internals.js --rootDir src --declaration --allowJs --emitDeclarationOnly --outDir types",
+    "prebuild": "rm -rf dist/* types/*",
+    "build": "pnpm run bundle:global && pnpm run bundle:esm && pnpm run bundle:cjs && pnpm run types",
+    "postbuild": "node scripts/postbuild.js",
+    "pretest": "pnpm run build",
+    "test": "jasmine && tsc --project spec/types/tsconfig.test.json && attw --pack . --entrypoints ."
+  }
+}

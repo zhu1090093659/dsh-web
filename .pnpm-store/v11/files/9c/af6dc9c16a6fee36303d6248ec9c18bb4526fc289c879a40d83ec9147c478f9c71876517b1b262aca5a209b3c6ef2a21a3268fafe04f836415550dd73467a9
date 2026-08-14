@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/bundle.ts"],
+  "sourcesContent": ["export {generate} from './generator/generate.js';\nexport {toOnigurumaAst} from './index.js';\nexport {getOptionalOptimizations, optimize} from './optimizer/optimize.js';\nexport {parse} from './parser/parse.js';\nexport {traverse} from './traverser/traverse.js';\nexport {OnigUnicodePropertyMap} from './unicode.js';\n"],
+  "mappings": "aAAA,OAAQ,aAAe,0BACvB,OAAQ,mBAAqB,aAC7B,OAAQ,yBAA0B,aAAe,0BACjD,OAAQ,UAAY,oBACpB,OAAQ,aAAe,0BACvB,OAAQ,2BAA6B",
+  "names": []
+}

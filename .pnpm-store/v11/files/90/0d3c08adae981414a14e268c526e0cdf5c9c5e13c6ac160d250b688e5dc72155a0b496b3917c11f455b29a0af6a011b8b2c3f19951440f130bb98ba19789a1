@@ -1,0 +1,1 @@
+{"version":3,"file":"prevent-redos.d.ts","sourceRoot":"","sources":["../../../src/optimizer/transforms/prevent-redos.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAC,OAAO,EAAC,MAAM,6BAA6B,CAAC;AAGzD;;EAEE;AACF,QAAA,MAAM,YAAY,EAAE,OAuCnB,CAAC;AAEF,OAAO,EACL,YAAY,GACb,CAAC"}

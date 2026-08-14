@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-trading",
   "description": "Hot-pluggable stock-trading skin for the dsh web GUI: live ticker tape, longbridge/fun-ticker quote feeds, market-session status bar",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

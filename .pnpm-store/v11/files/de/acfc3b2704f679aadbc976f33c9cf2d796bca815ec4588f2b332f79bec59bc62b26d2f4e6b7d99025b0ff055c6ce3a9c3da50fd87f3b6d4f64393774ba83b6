@@ -1,0 +1,2 @@
+"use strict";const n={AbsenceFunction({node:e,remove:r}){o(e)&&r()},Group({node:e,remove:r}){o(e)&&r()},LookaroundAssertion({node:e,remove:r}){o(e)&&r()},Quantifier({node:e,remove:r}){let t=e.body;for(;t.type==="Quantifier";)t=t.body;o(t)&&r()}};function i(e){return e.body.every(r=>!r.body.length)}function o(e){switch(e.type){case"AbsenceFunction":return e.kind==="repeater"&&i(e);case"Group":return i(e);case"LookaroundAssertion":return!e.negate&&i(e);default:return!1}}export{n as removeEmptyGroups};
+//# sourceMappingURL=remove-empty-groups.js.map

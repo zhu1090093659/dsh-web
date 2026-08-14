@@ -1,0 +1,42 @@
+{
+  "name": "std-env",
+  "version": "4.2.0",
+  "description": "Runtime agnostic JS utils",
+  "license": "MIT",
+  "repository": "unjs/std-env",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": "./dist/index.mjs"
+  },
+  "scripts": {
+    "build": "obuild",
+    "dev": "vitest",
+    "lint": "oxlint . && oxfmt",
+    "lint:fix": "oxlint --fix . && oxfmt",
+    "prepack": "obuild",
+    "release": "pnpm test && pnpm build && changelogen --release && npm publish && git push --follow-tags",
+    "test": "pnpm lint && pnpm typecheck && vitest run --coverage",
+    "typecheck": "tsgo --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "@typescript/native-preview": "latest",
+    "@vitest/coverage-v8": "^4.1.10",
+    "changelogen": "^0.6.2",
+    "esbuild": "^0.28.1",
+    "mitata": "^1.0.34",
+    "obuild": "^0.4.37",
+    "oxfmt": "^0.57.0",
+    "oxlint": "^1.72.0",
+    "rollup": "^4.62.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  },
+  "packageManager": "pnpm@11.10.0"
+}

@@ -8,6 +8,7 @@
  * phone-side pair/accept + deep-link flow.
  */
 
+import { createRequire } from 'node:module'
 import { setInterval as nodeSetInterval } from 'node:timers'
 import type { IncomingMessage } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
@@ -16,11 +17,20 @@ import z from 'schemastery'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import { PairingService } from './pairing.ts'
 import { makeGateListener } from './gate.ts'
-import { makeRoutes } from './routes.ts'
+import { isTrustedApiRequest, makeRoutes } from './routes.ts'
 import { makeMobileRoutes } from './mobile-routes.ts'
 import { makeMobileApiRoutes } from './mobile-api.ts'
 import { lanIPv4Addresses } from './lan.ts'
 import { TunnelManager, type TunnelInfo } from './tunnel.ts'
+import {
+  checkUpdates,
+  fetchLatestVersion,
+  resolveAnchorManifest,
+  resolveUpdateTarget,
+  runUpdate,
+  type UpdateRunResult,
+} from './update.ts'
+import { makeUpdateRoutes } from './update-routes.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
@@ -215,10 +225,50 @@ export function apply(ctx: Context, config?: Config): void {
   if (apiProxy === undefined) {
     console.warn('remote-web-ui: apiProxy service unavailable — the mobile data channel is disabled')
   }
+  // ── remote update ────────────────────────────────────────────────────────
+  // The dsh-web-ui self-update surface: probe the npm registry for family
+  // releases and run `pnpm update` in the owning profile. Resolutions anchor
+  // on the host process's own module graph, so the update always targets the
+  // profile the running web GUI was booted from. The probe path resolves once
+  // (the anchor stays the same package across updates); versions are re-read
+  // from disk per check.
+  const requireFromHost = createRequire(import.meta.url)
+  const anchorManifestPath = resolveAnchorManifest(specifier => requireFromHost.resolve(specifier))
+  const updateRoutes = makeUpdateRoutes({
+    // Control endpoints are host-surface only: a LAN/phone origin must never
+    // trigger a real install on this machine.
+    fence: request => isTrustedApiRequest(request, []),
+    check: () => checkUpdates({
+      anchorManifestPath,
+      resolve: specifier => {
+        try {
+          return requireFromHost.resolve(specifier)
+        } catch {
+          return undefined
+        }
+      },
+      fetchLatest: name => fetchLatestVersion(name, fetch),
+    }),
+    run: async (): Promise<UpdateRunResult> => {
+      const target = resolveUpdateTarget({ anchorManifestPath })
+      if ('error' in target) {
+        const code = target.error
+        return {
+          ok: false,
+          exitCode: null,
+          output: '',
+          error: code === 'not-found' ? 'dsh-web-ui aggregate not installed' : 'local link install — update unavailable',
+          errorCode: code,
+        }
+      }
+      return runUpdate({ profileDir: target.profileDir, packages: target.packages })
+    },
+  })
   const routes = [
     ...makeRoutes({ service, lanAddresses }),
     ...makeMobileRoutes(),
     ...(apiProxy !== undefined ? makeMobileApiRoutes({ service, apiProxy }) : []),
+    ...updateRoutes,
   ]
   const gate = makeGateListener(service, () => resolve().requirePairingForLan, () => resolve().enabled)
   ctx.effect(() => ctx.on('api/gate', gate), 'remote-web-ui: api gate')

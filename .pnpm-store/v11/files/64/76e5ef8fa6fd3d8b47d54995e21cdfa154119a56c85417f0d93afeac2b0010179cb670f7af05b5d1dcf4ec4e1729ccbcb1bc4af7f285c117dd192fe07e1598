@@ -1,0 +1,46 @@
+{
+	"version": 3,
+	"file": "index.d.ts",
+	"names": [
+		"TSConfckFindOptions",
+		"TSConfckParseOptions",
+		"TSConfckFindAllOptions",
+		"TSConfckParseResult",
+		"TSConfckParseNativeOptions",
+		"TSConfckParseNativeResult",
+		"TSConfckCache",
+		"find",
+		"findAll",
+		"toJson",
+		"findNative",
+		"parse",
+		"TSConfckParseError",
+		"parseNative",
+		"TSConfckParseNativeError",
+		"TSDiagnosticError"
+	],
+	"sources": [
+		"../src/public.d.ts",
+		"../src/cache.js",
+		"../src/find.js",
+		"../src/find-all.js",
+		"../src/to-json.js",
+		"../src/find-native.js",
+		"../src/parse.js",
+		"../src/parse-native.js",
+		"../src/parse-native.d.ts"
+	],
+	"sourcesContent": [
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+		null
+	],
+	"mappings": ";kBAEiBA,mBAAmBA;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;kBAkCnBC,oBAAoBA;;;;kBAIpBC,sBAAsBA;;;;;;;;;;;;;;;kBAetBC,mBAAmBA;;;;;;;;;;;;;;;;;;;;;;;;;;;;;kBA6BnBC,0BAA0BA;;;;;;;;;;;;kBAY1BC,yBAAyBA;;;;;;;;;;;;;;;;;;;;;;;;;;cC/F7BC,aAAaA;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;iBCSJC,IAAIA;;;;;;;;iBCYJC,OAAOA;;;;;;;iBCTbC,MAAMA;;;;;;;;;;iBCDAC,UAAUA;;;;;;;iBCgBVC,KAAKA;cA8VdC,kBAAkBA;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;iBC9VTC,WAAWA;cAoOpBC,wBAAwBA;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MChNzBC,iBAAiBA",
+	"ignoreList": []
+}

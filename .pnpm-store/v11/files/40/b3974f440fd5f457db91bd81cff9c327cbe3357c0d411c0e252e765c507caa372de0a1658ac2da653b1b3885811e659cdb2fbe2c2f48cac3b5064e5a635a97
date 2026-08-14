@@ -1,0 +1,55 @@
+{
+  "name": "vite-tsconfig-paths",
+  "version": "6.1.1",
+  "description": "Vite resolver for TypeScript compilerOptions.paths",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    "types": "./dist/index.d.ts",
+    "default": "./dist/index.js"
+  },
+  "author": "aleclarson",
+  "repository": "aleclarson/vite-tsconfig-paths",
+  "license": "MIT",
+  "dependencies": {
+    "debug": "^4.1.1",
+    "globrex": "^0.1.2",
+    "tsconfck": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.5",
+    "@types/globrex": "^0.1.0",
+    "@types/node": "^22.2.0",
+    "esbuild": "^0.11.12",
+    "execa": "^9.5.1",
+    "klona": "^2.0.4",
+    "prettier": "^2.8.7",
+    "rimraf": "^6.1.2",
+    "rollup": "^2.45.2",
+    "tsup": "^6.5.0",
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "link:.",
+    "vitest": "^4.0.18"
+  },
+  "peerDependencies": {
+    "vite": "*"
+  },
+  "keywords": [
+    "vite",
+    "resolver",
+    "tsconfig",
+    "paths"
+  ],
+  "files": [
+    "src",
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist && git checkout HEAD dist",
+    "dev": "pnpm bundle --watch",
+    "build": "pnpm clean && pnpm bundle",
+    "bundle": "tsup src/index.ts --sourcemap --dts --format esm",
+    "test": "vitest"
+  }
+}

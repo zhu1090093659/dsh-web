@@ -1,0 +1,1 @@
+{"version":3,"file":"unnest-useless-classes.d.ts","sourceRoot":"","sources":["../../../src/optimizer/transforms/unnest-useless-classes.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAC,OAAO,EAAC,MAAM,6BAA6B,CAAC;AAGzD;;;EAGE;AACF,QAAA,MAAM,oBAAoB,EAAE,OAsC3B,CAAC;AAEF,OAAO,EACL,oBAAoB,GACrB,CAAC"}

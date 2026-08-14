@@ -1,0 +1,19 @@
+# packages/playwright/lib/worker/workerProcessEntry.js
+# total: 73.9 KB
+
+## Inlined (8)
+   3.7 KB  packages/playwright/src/util.ts
+   8.7 KB  packages/playwright/src/worker/fixtureRunner.ts
+  21.1 KB  packages/playwright/src/worker/testInfo.ts
+  11.7 KB  packages/playwright/src/worker/testTracing.ts
+   5.4 KB  packages/playwright/src/worker/timeoutManager.ts
+   0.3 KB  packages/playwright/src/worker/util.ts
+  21.3 KB  packages/playwright/src/worker/workerMain.ts
+   0.1 KB  packages/playwright/src/worker/workerProcessEntry.ts
+
+## External (5)
+  ../common
+  ../globals
+  ../matchers/expect
+  playwright-core/lib/coreBundle
+  playwright-core/lib/utilsBundle

@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-miku",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Bundled skin inside @linxin666/dsh-skins (@linxin666/dsh-client-ui-skin-miku).",
   "type": "module",
   "main": "lib/index.js",

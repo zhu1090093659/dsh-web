@@ -1,0 +1,57 @@
+{
+  "name": "cosmokit",
+  "description": "A collection of common utilities",
+  "version": "1.8.1",
+  "packageManager": "yarn@4.12.0",
+  "sideEffects": false,
+  "type": "module",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "require": "./lib/index.cjs",
+      "import": "./lib/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shigma/cosmokit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shigma/cosmokit/issues"
+  },
+  "homepage": "https://github.com/shigma/cosmokit",
+  "author": "Shigma <shigma10826@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "compile:cjs": "esbuild src/index.ts --outfile=lib/index.cjs --bundle --sourcemap --sources-content=false --platform=node --target=es2022",
+    "compile:esm": "esbuild src/index.ts --outfile=lib/index.mjs --bundle --sourcemap --sources-content=false --platform=neutral --target=es2022",
+    "build": "yarn compile:cjs && yarn compile:esm && yarn dtsc",
+    "test": "mocha -r esbuild-register tests/*.spec.ts",
+    "test:text": "shx rm -rf coverage && c8 -r text yarn test",
+    "test:json": "shx rm -rf coverage && c8 -r json yarn test",
+    "test:html": "shx rm -rf coverage && c8 -r html yarn test"
+  },
+  "devDependencies": {
+    "@sinonjs/fake-timers": "^6.0.1",
+    "@types/chai": "^5.2.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.0.3",
+    "@types/sinonjs__fake-timers": "^6.0.4",
+    "c8": "^10.1.3",
+    "chai": "^5.2.0",
+    "dtsc": "^3.1.0",
+    "esbuild": "^0.27.2",
+    "esbuild-register": "^3.6.0",
+    "mocha": "^11.1.0",
+    "shx": "^0.4.0",
+    "typescript": "^5.8.2"
+  }
+}

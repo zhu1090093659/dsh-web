@@ -1,0 +1,2 @@
+import { a as globalContext, i as createContext, n as SourceFileToProjectMap, o as invalidateContextFile, r as TscContext, t as ParsedProject } from "./context-_3g_7Eca.mjs";
+export { ParsedProject, SourceFileToProjectMap, TscContext, createContext, globalContext, invalidateContextFile };

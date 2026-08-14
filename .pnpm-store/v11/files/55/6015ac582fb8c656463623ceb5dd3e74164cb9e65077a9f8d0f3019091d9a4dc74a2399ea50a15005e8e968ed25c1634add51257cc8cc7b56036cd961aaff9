@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/optimizer/transforms/unwrap-useless-classes.ts"],
+  "sourcesContent": ["import type {Visitor} from '../../traverser/traverse.js';\n\n/**\nUnwrap outermost non-negated character classes containing a single character or character set.\nSee also `unwrapNegationWrappers`.\n*/\nconst unwrapUselessClasses: Visitor = {\n  CharacterClass({node, parent, replaceWith}) {\n    const {body, kind, negate} = node;\n    const kid = body[0];\n    if (\n      parent.type === 'CharacterClass' ||\n      negate ||\n      kind !== 'union' ||\n      body.length !== 1 ||\n      (kid.type !== 'Character' && kid.type !== 'CharacterSet')\n    ) {\n      return;\n    }\n    replaceWith(kid, {traverse: true});\n  },\n};\n\nexport {\n  unwrapUselessClasses,\n};\n"],
+  "mappings": "aAMA,MAAMA,EAAgC,CACpC,eAAe,CAAC,KAAAC,EAAM,OAAAC,EAAQ,YAAAC,CAAW,EAAG,CAC1C,KAAM,CAAC,KAAAC,EAAM,KAAAC,EAAM,OAAAC,CAAM,EAAIL,EACvBM,EAAMH,EAAK,CAAC,EAEhBF,EAAO,OAAS,kBAChBI,GACAD,IAAS,SACTD,EAAK,SAAW,GACfG,EAAI,OAAS,aAAeA,EAAI,OAAS,gBAI5CJ,EAAYI,EAAK,CAAC,SAAU,EAAI,CAAC,CACnC,CACF,EAEA,OACEP,KAAA",
+  "names": ["unwrapUselessClasses", "node", "parent", "replaceWith", "body", "kind", "negate", "kid"]
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/index.ts"],
+  "sourcesContent": ["import type {OnigurumaAst} from './parser/parse.js';\nimport {parse} from './parser/parse.js';\nimport {OnigUnicodePropertyMap} from './unicode.js';\n\ntype ToOnigurumaAstOptions = {\n  flags?: string;\n  rules?: {\n    captureGroup?: boolean;\n    singleline?: boolean;\n  };\n};\n\n/**\nReturns an Oniguruma AST generated from an Oniguruma pattern.\n*/\nfunction toOnigurumaAst(pattern: string, options: ToOnigurumaAstOptions = {}): OnigurumaAst {\n  // If `options` provided, it must be a plain object (excluding `null`, arrays, etc.)\n  if ({}.toString.call(options) !== '[object Object]') {\n    throw new Error('Unexpected options');\n  }\n  return parse(pattern, {\n    // The parser includes additional options; limit the options that can be passed\n    flags: options.flags ?? '',\n    rules: {\n      captureGroup: options.rules?.captureGroup ?? false,\n      singleline: options.rules?.singleline ?? false,\n    },\n    unicodePropertyMap: OnigUnicodePropertyMap,\n  });\n}\n\nexport {\n  type ToOnigurumaAstOptions,\n  toOnigurumaAst,\n};\n"],
+  "mappings": "aACA,OAAQ,SAAAA,MAAY,oBACpB,OAAQ,0BAAAC,MAA6B,eAarC,SAASC,EAAeC,EAAiBC,EAAiC,CAAC,EAAiB,CAE1F,GAAI,CAAC,EAAE,SAAS,KAAKA,CAAO,IAAM,kBAChC,MAAM,IAAI,MAAM,oBAAoB,EAEtC,OAAOJ,EAAMG,EAAS,CAEpB,MAAOC,EAAQ,OAAS,GACxB,MAAO,CACL,aAAcA,EAAQ,OAAO,cAAgB,GAC7C,WAAYA,EAAQ,OAAO,YAAc,EAC3C,EACA,mBAAoBH,CACtB,CAAC,CACH,CAEA,OAEEC,KAAA",
+  "names": ["parse", "OnigUnicodePropertyMap", "toOnigurumaAst", "pattern", "options"]
+}

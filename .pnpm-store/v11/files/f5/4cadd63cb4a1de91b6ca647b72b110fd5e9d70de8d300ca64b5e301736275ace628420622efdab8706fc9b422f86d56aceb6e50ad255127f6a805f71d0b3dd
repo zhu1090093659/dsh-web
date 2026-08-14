@@ -1,0 +1,61 @@
+{
+  "name": "oniguruma-to-es",
+  "version": "4.3.6",
+  "description": "Convert Oniguruma patterns to native JavaScript RegExp",
+  "author": "Steven Levithan",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
+  "browser": "./dist/index.min.js",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slevithan/oniguruma-to-es.git"
+  },
+  "keywords": [
+    "regex",
+    "regexp",
+    "oniguruma",
+    "textmate-grammar",
+    "transpiler"
+  ],
+  "dependencies": {
+    "oniguruma-parser": "^0.12.2",
+    "regex": "^6.1.0",
+    "regex-recursion": "^6.0.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0",
+    "jasmine": "^6.2.0",
+    "typescript": "^6.0.3",
+    "vscode-oniguruma": "^2.0.1"
+  },
+  "scripts": {
+    "bundle:global": "esbuild src/index.js --global-name=OnigurumaToEs --bundle --minify --sourcemap --outfile=dist/index.min.js",
+    "bundle:esm": "esbuild src/index.js --format=esm --bundle --sourcemap --external:oniguruma-parser --external:regex --external:regex-recursion --outfile=dist/esm/index.js",
+    "bundle:cjs": "esbuild src/index.js --format=cjs --bundle --sourcemap --outfile=dist/cjs/index.js",
+    "types": "tsc src/index.js --rootDir src --declaration --allowJs --emitDeclarationOnly --outDir types --lib ESNext",
+    "prebuild": "rm -rf dist/* types/*",
+    "build": "pnpm bundle:global && pnpm bundle:esm && pnpm bundle:cjs && pnpm types",
+    "postbuild": "node scripts/postbuild.js",
+    "pretest": "pnpm build",
+    "test": "jasmine",
+    "onig:match": "node scripts/onig-match.js"
+  }
+}

@@ -1,0 +1,1 @@
+cmd_Release/obj.target/cpufeatures.node := g++ -o Release/obj.target/cpufeatures.node -shared -pthread -rdynamic -m64  -Wl,-soname=cpufeatures.node -Wl,--start-group Release/obj.target/cpufeatures/src/binding.o Release/obj.target/deps/cpu_features/cpu_features.a -Wl,--end-group 

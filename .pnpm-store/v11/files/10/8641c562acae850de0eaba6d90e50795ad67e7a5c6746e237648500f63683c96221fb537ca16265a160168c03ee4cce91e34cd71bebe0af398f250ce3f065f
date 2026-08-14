@@ -1,0 +1,2 @@
+"use strict";import{parse as t}from"./parser/parse.js";import{OnigUnicodePropertyMap as n}from"./unicode.js";function o(e,r={}){if({}.toString.call(r)!=="[object Object]")throw new Error("Unexpected options");return t(e,{flags:r.flags??"",rules:{captureGroup:r.rules?.captureGroup??!1,singleline:r.rules?.singleline??!1},unicodePropertyMap:n})}export{o as toOnigurumaAst};
+//# sourceMappingURL=index.js.map

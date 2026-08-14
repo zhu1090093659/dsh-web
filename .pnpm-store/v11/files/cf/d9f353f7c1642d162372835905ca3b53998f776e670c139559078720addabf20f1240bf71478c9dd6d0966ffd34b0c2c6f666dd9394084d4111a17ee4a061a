@@ -1,0 +1,1 @@
+{"version":3,"file":"remove-useless-flags.d.ts","sourceRoot":"","sources":["../../../src/optimizer/transforms/remove-useless-flags.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAC,OAAO,EAAC,MAAM,6BAA6B,CAAC;AAEzD;;EAEE;AACF,QAAA,MAAM,kBAAkB,EAAE,OA6BzB,CAAC;AAyBF,OAAO,EACL,kBAAkB,GACnB,CAAC"}

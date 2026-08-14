@@ -1,0 +1,2 @@
+"use strict";import{createCharacterSet as o}from"../../parser/parse.js";const c={CharacterClass({node:i,parent:t,replaceWith:r}){const{body:a,kind:n,negate:s}=i;if(!s||n!=="union"||a.length!==1)return;const e=a[0];if(e.type==="CharacterSet")e.negate=!e.negate,r(e);else if(t.type!=="CharacterClass"&&e.type==="Character"&&e.value===10){if(t.type==="Quantifier"&&t.kind!=="lazy")return;r(o("newline",{negate:!0}))}}};export{c as unwrapNegationWrappers};
+//# sourceMappingURL=unwrap-negation-wrappers.js.map

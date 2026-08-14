@@ -1,0 +1,44 @@
+{
+	"name": "empathic",
+	"version": "2.0.1",
+	"repository": "lukeed/empathic",
+	"description": "A set of small and fast Node.js utilities to understand your pathing needs.",
+	"license": "MIT",
+	"author": {
+		"name": "Luke Edwards",
+		"email": "luke.edwards05@gmail.com",
+		"url": "https://lukeed.com"
+	},
+	"exports": {
+		"./access": {
+			"import": "./access.mjs",
+			"require": "./access.js"
+		},
+		"./find": {
+			"import": "./find.mjs",
+			"require": "./find.js"
+		},
+		"./package": {
+			"import": "./package.mjs",
+			"require": "./package.js"
+		},
+		"./resolve": {
+			"import": "./resolve.mjs",
+			"require": "./resolve.js"
+		},
+		"./walk": {
+			"import": "./walk.mjs",
+			"require": "./walk.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"scripts": {
+		"test": "uvu"
+	},
+	"engines": {
+		"node": ">=14"
+	},
+	"devDependencies": {
+		"uvu": "0.5"
+	}
+}

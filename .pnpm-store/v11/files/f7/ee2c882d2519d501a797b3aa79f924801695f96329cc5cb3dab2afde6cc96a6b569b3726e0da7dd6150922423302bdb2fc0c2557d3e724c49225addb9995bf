@@ -1,0 +1,2 @@
+"use strict";function r(e){if([...e].length!==1)throw new Error(`Expected "${e}" to be a single code point`);return e.codePointAt(0)}function l(e,t,n){return e.has(t)||e.set(t,n),e.get(t)}const i=new Set(["alnum","alpha","ascii","blank","cntrl","digit","graph","lower","print","punct","space","upper","word","xdigit"]),o=String.raw;function u(e,t){if(e==null)throw new Error(t??"Value expected");return e}export{r as cpOf,l as getOrInsert,i as PosixClassNames,o as r,u as throwIfNullish};
+//# sourceMappingURL=utils.js.map

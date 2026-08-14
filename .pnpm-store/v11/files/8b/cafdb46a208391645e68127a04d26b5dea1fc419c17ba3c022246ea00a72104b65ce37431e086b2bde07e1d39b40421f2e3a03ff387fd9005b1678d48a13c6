@@ -1,0 +1,56 @@
+{
+  "name": "@shikijs/primitive",
+  "type": "module",
+  "version": "4.4.3",
+  "description": "Tokenizer primitives of Shiki",
+  "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/shikijs/shiki#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shikijs/shiki.git",
+    "directory": "packages/primitive"
+  },
+  "bugs": "https://github.com/shikijs/shiki/issues",
+  "keywords": [
+    "shiki"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./textmate": {
+      "types": "./dist/textmate.d.mts",
+      "default": "./dist/textmate.mjs"
+    },
+    "./types": {
+      "types": "./dist/types.d.mts"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "typesVersions": {
+    "*": {
+      "types": [
+        "./dist/types.d.mts"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@shikijs/vscode-textmate": "^10.0.2",
+    "@types/hast": "^3.0.5",
+    "@shikijs/types": "4.4.3"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest"
+  }
+}

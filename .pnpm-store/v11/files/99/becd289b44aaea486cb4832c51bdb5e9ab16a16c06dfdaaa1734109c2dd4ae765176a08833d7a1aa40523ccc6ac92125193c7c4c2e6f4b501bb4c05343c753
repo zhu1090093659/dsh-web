@@ -1,0 +1,32 @@
+{
+  "name": "schemastery",
+  "description": "Type driven schema validator",
+  "version": "3.18.0",
+  "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shigma/schemastery.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/shigma/schemastery/issues"
+  },
+  "homepage": "https://github.com/shigma/schemastery",
+  "author": "Shigma <shigma10826@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/chai": "^4.3.16",
+    "@types/node": "^25.3.5",
+    "chai": "^5.1.1"
+  },
+  "dependencies": {
+    "@standard-schema/spec": "^1.1.0",
+    "cosmokit": "^1.8.1"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "name": "shiki",
+  "type": "module",
+  "version": "4.4.3",
+  "description": "A beautiful Syntax Highlighter.",
+  "author": "Pine Wu <octref@gmail.com>; Anthony Fu <anthonyfu117@hotmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/shikijs/shiki#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shikijs/shiki.git",
+    "directory": "packages/shiki"
+  },
+  "bugs": "https://github.com/shikijs/shiki/issues",
+  "keywords": [
+    "shiki"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./core": {
+      "unwasm": "./dist/core-unwasm.mjs",
+      "default": "./dist/core.mjs"
+    },
+    "./wasm": {
+      "unwasm": "./dist/onig.wasm",
+      "default": "./dist/wasm.mjs"
+    },
+    "./langs": "./dist/langs.mjs",
+    "./themes": "./dist/themes.mjs",
+    "./types": "./dist/types.mjs",
+    "./engine/javascript": "./dist/engine-javascript.mjs",
+    "./engine/oniguruma": "./dist/engine-oniguruma.mjs",
+    "./textmate": "./dist/textmate.mjs",
+    "./bundle/full": "./dist/bundle-full.mjs",
+    "./bundle/web": "./dist/bundle-web.mjs",
+    "./onig.wasm": "./dist/onig.wasm",
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json",
+    "./*": "./dist/*"
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@shikijs/vscode-textmate": "^10.0.2",
+    "@types/hast": "^3.0.5",
+    "@shikijs/core": "4.4.3",
+    "@shikijs/engine-javascript": "4.4.3",
+    "@shikijs/engine-oniguruma": "4.4.3",
+    "@shikijs/langs": "4.4.3",
+    "@shikijs/themes": "4.4.3",
+    "@shikijs/types": "4.4.3"
+  },
+  "devDependencies": {
+    "rollup-plugin-copy": "^3.5.0",
+    "tm-grammars": "^1.32.3",
+    "tm-themes": "^1.12.3",
+    "vscode-oniguruma": "1.7.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest",
+    "test:cf": "wrangler dev test/cf.ts --port 60001"
+  }
+}

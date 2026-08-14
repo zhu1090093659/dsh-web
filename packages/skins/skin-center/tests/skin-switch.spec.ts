@@ -124,10 +124,13 @@ describe('pure patch helpers', () => {
     expect(rendered).not.toContain(`- id: ${registry.qq98.id}\n  disabled: true`)
   })
 
-  // No skin is bundle-wired in the npm aggregate layout (see the registry
-  // derivation tests above): every skin, xp included, carries its own insert
-  // row when applied — the former "wired skin" case was removed upstream with
-  // the xp bundleWired flag (fix(skins): drop stale bundleWired flag on xp).
+  it('renderManaged(wired skin) needs no insert row', () => {
+    // The npm aggregate ships no bundle-wired skin, so synthesize one to
+    // exercise the wired branch (92acdc9 dropped xp's stale flag).
+    const registry = { ...miniRegistry(), xp: { ...miniRegistry().xp, bundleWired: true } }
+    const rendered = renderManaged('xp', registry)
+    expect(rendered).not.toContain('- insert:')
+  })
 
   it('stripManaged removes only the managed section', () => {
     const patch = `# header\n- id: other\n\n${MANAGED_START}\n- id: ui-skin-xp\n  disabled: true\n${MANAGED_END}\n# footer\n`

@@ -1,0 +1,1 @@
+cmd_Release/sshcrypto.node := ln -f "Release/obj.target/sshcrypto.node" "Release/sshcrypto.node" 2>/dev/null || (rm -rf "Release/sshcrypto.node" && cp -af "Release/obj.target/sshcrypto.node" "Release/sshcrypto.node")

@@ -114,7 +114,7 @@ function main() {
   const bytes = Buffer.byteLength(out)
   const CHECK = process.argv.includes('--check')
   if (CHECK) {
-    const current = fs.readFileSync(OUT_FILE, 'utf8')
+    const current = fs.readFileSync(OUT_FILE, 'utf8').replace(/\r\n/g, '\n')
     if (current === out) {
       console.log(`skin-center-bundles: check OK (${skins.length} skins, generated file in sync)`)
       return

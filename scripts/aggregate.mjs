@@ -292,8 +292,9 @@ for (const r of results) {
   const pkgPath = join(REPO_ROOT, r.rel, 'package.json')
   if (CHECK) {
     const diffs = []
-    if (!existsSync(patchPath) || readFileSync(patchPath, 'utf8') !== r.patch) diffs.push(relative(REPO_ROOT, patchPath))
-    if (!existsSync(pkgPath) || readFileSync(pkgPath, 'utf8') !== r.pkgJson) diffs.push(relative(REPO_ROOT, pkgPath))
+    const readNormalized = (p) => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
+    if (!existsSync(patchPath) || readNormalized(patchPath) !== r.patch) diffs.push(relative(REPO_ROOT, patchPath))
+    if (!existsSync(pkgPath) || readNormalized(pkgPath) !== r.pkgJson) diffs.push(relative(REPO_ROOT, pkgPath))
     if (diffs.length) {
       for (const d of diffs) console.log(`[aggregate] check: ${d} differs from generated content`)
       failed = true

@@ -159,11 +159,12 @@ const bundles = renderBundlesJs(skins)
 
 if (check) {
   const stale = []
+  const readNorm = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
   const manifestPath = path.join(GALLERY_DIR, 'manifest.js')
   if (fs.existsSync(manifestPath) &&
-      !manifestMatches(fs.readFileSync(manifestPath, 'utf8'), manifest)) stale.push('manifest.js')
+      !manifestMatches(readNorm(manifestPath), manifest)) stale.push('manifest.js')
   if (fs.existsSync(path.join(GALLERY_DIR, 'bundles.js')) &&
-      fs.readFileSync(path.join(GALLERY_DIR, 'bundles.js'), 'utf8') !== bundles) stale.push('bundles.js')
+      readNorm(path.join(GALLERY_DIR, 'bundles.js')) !== bundles) stale.push('bundles.js')
   if (stale.length) {
     console.error(`gallery assets stale (run scripts/gallery-build): ${stale.join(', ')}`)
     process.exit(1)

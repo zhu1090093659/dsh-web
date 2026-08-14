@@ -291,7 +291,7 @@ body[data-dsh-retro] {
   --dsw-alias-state-warn-tertiary: #f8ecd9;
   --dsw-alias-toast-bg: #1e63b8;
   /* QQ-era tooltips were the classic yellow note. */
-  --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-bg: #2b3648;
   --dsw-specific-bubble-highlight: #b6d6f4;
   --dsw-specific-bubble: #dcecfb;
   --dsw-specific-input-major: #fff;
@@ -384,7 +384,7 @@ body[data-dsh-retro][data-ds-dark-theme] {
   --dsw-alias-state-warn-tertiary: #3a2d14;
   --dsw-alias-toast-bg: #224064;
   /* QQ-era tooltips were the classic yellow note. */
-  --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-bg: #2b3648;
   --dsw-specific-bubble-highlight: #2b4f7d;
   --dsw-specific-bubble: #1e3a5e;
   --dsw-specific-input-major: #15233a;

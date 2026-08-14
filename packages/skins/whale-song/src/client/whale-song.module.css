@@ -275,7 +275,7 @@ body[data-dsh-whale-song] {
   --dsw-alias-state-warn-secondary: #e3c070;
   --dsw-alias-state-warn-tertiary: #f7efdc;
   --dsw-alias-toast-bg: #1a3a7a;
-  --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-bg: #0a1e4a;
   --dsw-specific-bubble-highlight: #c4dbf1;
   --dsw-specific-bubble: #d9e9f5;
   --dsw-specific-input-major: rgba(255, 255, 255, 0.6);
@@ -367,7 +367,7 @@ body[data-dsh-whale-song][data-ds-dark-theme] {
   --dsw-alias-state-warn-secondary: #d9b45b;
   --dsw-alias-state-warn-tertiary: #6b5420;
   --dsw-alias-toast-bg: #1c3460;
-  --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-bg: #0a1e4a;
   --dsw-specific-bubble-highlight: #213a68;
   --dsw-specific-bubble: #1c3460;
   --dsw-specific-input-major: rgba(18, 36, 76, 0.65);

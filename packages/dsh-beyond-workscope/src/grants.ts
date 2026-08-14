@@ -269,10 +269,10 @@ export class GrantRegistry {
           scope: grant.scope,
           status: grant.status,
           message: status === 'active'
-            ? `已注册为工作区：${grant.title}（${grant.path}）。在 GUI 工作区列表中切换后，新建会话即以该目录为工作区。`
+            ? `已登记为本会话的子工作区：${grant.title}（${grant.path}）。在「会话信息」选项卡中管理；存续期间该目录内 read/write 自动放行。`
             : status === 'denied'
-              ? '用户拒绝了该工作区注册请求'
-              : '工作区注册请求超时未确认，已自动取消',
+              ? '用户拒绝了该子工作区登记请求'
+              : '子工作区登记请求超时未确认，已自动取消',
         })
       }
       const timer = setTimeout(() => settle('expired'), this.options.confirmTimeoutMs)

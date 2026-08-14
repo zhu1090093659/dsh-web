@@ -27,7 +27,7 @@ function stubFileReader(payload: string): void {
 
 /** One fake conversation surface recording what the hook did with it. */
 function makeConversation() {
-  const original = vi.fn(async () => { log.push('original') })
+  const original = vi.fn(async (_session: unknown, _text: string, _ids: readonly string[], _mode: string) => { log.push('original') })
   const log: string[] = []
   const face = {
     send: vi.fn(async () => { log.push('send') }),

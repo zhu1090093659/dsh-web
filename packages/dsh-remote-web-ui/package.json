@@ -37,6 +37,7 @@
     "lib/**/*.d.ts",
     "lib/**/*.d.ts.map",
     "src",
+    "assets",
     "cordis.patch.yml"
   ],
   "license": "BSD-3-Clause",

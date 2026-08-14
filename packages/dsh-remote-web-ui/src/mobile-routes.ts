@@ -19,7 +19,12 @@ function mobileBundlePath(): string {
   return fileURLToPath(new URL('../lib/mobile.js', import.meta.url))
 }
 
-/** The mobile page shell: minimal, offline-safe, no external assets. */
+/** The home-screen icon (iOS `apple-touch-icon`; shipped in the package's assets/). */
+function touchIconPath(): string {
+  return fileURLToPath(new URL('../assets/apple-touch-icon.png', import.meta.url))
+}
+
+/** The mobile page shell: minimal, offline-safe, one local icon asset. */
 function pageHtml(bundleUrl: string): string {
   return [
     '<!doctype html>',
@@ -29,6 +34,8 @@ function pageHtml(bundleUrl: string): string {
     '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">',
     '<meta name="theme-color" content="#f3f5f9">',
     '<meta name="referrer" content="no-referrer">',
+    // iOS "Add to Home Screen" icon (the dsh whale on the light theme color).
+    '<link rel="apple-touch-icon" href="/m/apple-touch-icon.png">',
     '<title>移动端远程控制</title>',
     '</head>',
     '<body>',
@@ -43,6 +50,16 @@ function pageHtml(bundleUrl: string): string {
 function writeStatic(res: ServerResponse, status: number, type: string, body: string): void {
   res.writeHead(status, {
     'content-type': `${type}; charset=utf-8`,
+    'cache-control': 'no-cache',
+    'referrer-policy': 'no-referrer',
+  })
+  res.end(body)
+}
+
+/** Send a small binary body (the touch icon); no charset, longer cache is safe. */
+function writeBinary(res: ServerResponse, status: number, type: string, body: Buffer): void {
+  res.writeHead(status, {
+    'content-type': type,
     'cache-control': 'no-cache',
     'referrer-policy': 'no-referrer',
   })
@@ -70,8 +87,17 @@ export function makeMobileRoutes(): WebRoute[] {
       writeStatic(res, 500, 'text/plain', 'failed to read the mobile bundle')
     }
   }
+  const handleTouchIcon = async (_req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    try {
+      const body = await readFile(touchIconPath())
+      writeBinary(res, 200, 'image/png', body)
+    } catch {
+      writeStatic(res, 404, 'text/plain', 'apple-touch-icon not found')
+    }
+  }
   return [
     { kind: 'exact', path: '/m', handler: handlePage },
     { kind: 'exact', path: '/m/mobile.js', handler: handleBundle },
+    { kind: 'exact', path: '/m/apple-touch-icon.png', handler: handleTouchIcon },
   ]
 }

@@ -647,6 +647,9 @@ importers:
       '@linxin666/dsh-ssh':
         specifier: workspace:*
         version: link:../dsh-ssh
+      '@linxin666/dsh-web-auth-gateway':
+        specifier: workspace:*
+        version: link:../dsh-web-auth-gateway
 
   packages/dsh-web-ui-settings:
     devDependencies:

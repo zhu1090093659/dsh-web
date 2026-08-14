@@ -5,8 +5,8 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { connect } from 'node:net'
 import type { Context } from '@deepseek-ai/cordis'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import type {} from '@deepseek-ai/dsh-host-webserver'
+import { settingsNamespace, type SettingsScope } from '@deepseek-ai/dsh-settings'
+import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import z from 'schemastery'
 
 export const name = 'web-auth-gateway'
@@ -61,6 +61,26 @@ function readBody(req: IncomingMessage): Promise<URLSearchParams> {
     req.on('error', reject)
   })
 }
+function readJson(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    let size = 0
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length
+      if (size > 16_384) reject(new Error('body-too-large'))
+      else chunks.push(chunk)
+    })
+    req.on('end', () => {
+      try { resolve(chunks.length === 0 ? {} : JSON.parse(Buffer.concat(chunks).toString('utf8'))) }
+      catch { reject(new Error('invalid-json')) }
+    })
+    req.on('error', reject)
+  })
+}
+function json(res: ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+  res.end(JSON.stringify(body))
+}
 function loginPage(firstRun: boolean, error = ''): string {
   const title = firstRun ? '创建管理员账号' : '登录 DSH Web'
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${title}</title><style>body{margin:0;background:#f4f6f8;color:#182230;font:14px system-ui;display:grid;place-items:center;min-height:100vh}.card{width:min(360px,calc(100vw - 48px));background:#fff;padding:32px;border:1px solid #dce2e8;border-radius:12px;box-shadow:0 12px 36px #18223018}h1{font-size:22px;margin:0 0 8px}p{color:#667085;margin:0 0 24px}label{display:block;margin:14px 0 6px}input{box-sizing:border-box;width:100%;padding:11px;border:1px solid #cbd3dc;border-radius:7px}button{width:100%;margin-top:22px;padding:11px;border:0;border-radius:7px;background:#2457d6;color:#fff;font-weight:600}.error{color:#b42318}</style></head><body><form class="card" method="post" action="/_dsh_auth/login"><h1>${title}</h1><p>${firstRun ? '首次使用，请设置至少 8 位密码。' : '验证身份后继续访问。'}</p>${error ? `<p class="error">${error}</p>` : ''}<label>用户名</label><input name="username" autocomplete="username" required value="admin"><label>密码</label><input type="password" name="password" autocomplete="current-password" minlength="8" required><button>${firstRun ? '创建并进入' : '登录'}</button></form></body></html>`
@@ -68,6 +88,7 @@ function loginPage(firstRun: boolean, error = ''): string {
 
 export function apply(ctx: Context, config: Config = {}): void {
   let source: () => Config = () => config
+  let settingsScope: SettingsScope<Config> | undefined
   let dispose: (() => void) | undefined
   const sessions = new Map<string, number>()
   const valid = (req: IncomingMessage): boolean => {
@@ -151,9 +172,50 @@ export function apply(ctx: Context, config: Config = {}): void {
     server.listen(port, '127.0.0.1', () => ctx.logger('web-auth-gateway').info(`login gateway: http://127.0.0.1:${String(port)}`))
     dispose = () => server.close()
   }
-  installSettingsSection(ctx, WEB_AUTH_GATEWAY_SETTINGS_NAMESPACE, Config, config, {
-    setSource: next => { source = next },
-    onChange: restart,
+  const configRoute: WebRoute = {
+    kind: 'exact',
+    path: '/api/web-auth-gateway/config',
+    handler: async (req, res) => {
+      if (req.method === 'GET') { json(res, 200, { ok: true, value: source(), writable: settingsScope !== undefined }); return }
+      if (req.method !== 'POST') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (settingsScope === undefined) { json(res, 503, { ok: false, error: 'settings-unavailable' }); return }
+      try {
+        const body = await readJson(req)
+        if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new Error('invalid-body')
+        const input = body as Record<string, unknown>
+        const patch: Config = {}
+        if ('enabled' in input) {
+          if (typeof input.enabled !== 'boolean') throw new Error('invalid-enabled')
+          patch.enabled = input.enabled
+        }
+        if ('port' in input) {
+          if (!Number.isInteger(input.port) || (input.port as number) < 1 || (input.port as number) > 65535) throw new Error('invalid-port')
+          patch.port = input.port as number
+        }
+        if ('sessionTtlHours' in input) {
+          if (!Number.isInteger(input.sessionTtlHours) || (input.sessionTtlHours as number) < 1 || (input.sessionTtlHours as number) > 720) throw new Error('invalid-session-ttl')
+          patch.sessionTtlHours = input.sessionTtlHours as number
+        }
+        await settingsScope.update(patch)
+        json(res, 200, { ok: true, value: source() })
+      } catch (error) {
+        json(res, 400, { ok: false, error: error instanceof Error ? error.message : 'invalid-request' })
+      }
+    },
+  }
+  ctx.effect(() => ctx.webServer.register(configRoute), 'web-auth-gateway: config route')
+  ctx.inject(['settings'], (sctx) => {
+    const scope = sctx.settings.register(WEB_AUTH_GATEWAY_SETTINGS_NAMESPACE, Config, { base: config })
+    settingsScope = scope
+    source = () => scope.get()
+    restart()
+    const unwatch = scope.watch(restart)
+    sctx.effect(() => () => {
+      unwatch()
+      settingsScope = undefined
+      source = () => config
+      restart()
+    }, 'web-auth-gateway: settings')
   })
   restart()
   ctx.effect(() => () => dispose?.(), 'web-auth-gateway: server')

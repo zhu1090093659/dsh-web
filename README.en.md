@@ -82,6 +82,8 @@ All family plugins' toggles and parameters live under "Settings > Plugin config"
 
 Serves a DSH Web login page on a separate port and proxies pages, APIs, and WebSocket connections after authentication. Create the administrator account on first access, then configure the gateway port and session lifetime under "Settings > Plugin config". Keep the original DSH port bound to `127.0.0.1` or another trusted interface so clients cannot bypass the gateway.
 
+![Login gateway settings](docs/screenshots/29-web-auth-gateway-settings.png)
+
 ## Skins
 
 The skin center ships eight skins, each supporting try-on before applying: preview applies instantly and reverts fully on exit; once you are satisfied, apply it with one click.

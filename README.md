@@ -84,6 +84,8 @@ dsh-web-ui 是 DeepSeek Harness（DSH）Web UI 的插件与皮肤集合：任务
 
 在独立端口提供 DSH Web 登录页，认证成功后统一代理页面、API 与 WebSocket 请求。首次访问创建管理员账号；网关端口和会话有效期在「设置 > 插件配置」中修改。DSH 原始端口应只绑定 `127.0.0.1` 或其他可信接口，避免绕过网关。
 
+![登录网关设置](docs/screenshots/29-web-auth-gateway-settings.png)
+
 ## 皮肤
 
 皮肤中心提供 8 款皮肤，均支持先试穿再应用：试穿即时生效、退出完全还原，确认满意后一键应用。

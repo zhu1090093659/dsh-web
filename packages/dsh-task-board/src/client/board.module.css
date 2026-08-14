@@ -16,7 +16,7 @@
   position: absolute;
   inset: 0;
   display: none;
-  z-index: 5;
+  z-index: 60;
 }
 
 /* The center column is single-occupant; the :not() guards keep the two
@@ -426,7 +426,7 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [data-pane='conversat
 .modalBackdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 1300;
   display: flex;
   align-items: center;
   justify-content: center;

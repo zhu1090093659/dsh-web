@@ -25,5 +25,14 @@
     "description": "基于官方 DeepSeek Harness 的交互式终端 UI 插件，在官方基础上增加 TDD 与证据门等工作流。",
     "descriptionEn": "An interactive terminal UI plugin for DeepSeek Harness that adds TDD and evidence-gate workflows on top of the official base.",
     "repo": "https://github.com/huiliyi37/dsh-tianshu-tui"
+  },
+  {
+    "id": "dsh-memoir",
+    "name": "项目记忆 Memoir",
+    "nameEn": "dsh-memoir",
+    "author": "Qinling-Melon-Farmers",
+    "description": "项目持久化记忆与会话经验沉淀插件：memoir_record/memoir_read 工具、每轮工作自动蒸馏、Web GUI 记忆面板与全局检索。",
+    "descriptionEn": "Project persistent memory and session-lessons distillation for DSH: memoir_record/memoir_read tools, per-turn auto-distill, a web-GUI memory panel and a global index.",
+    "repo": "https://github.com/Qinling-Melon-Farmers/dsh-memoir"
   }
 ]

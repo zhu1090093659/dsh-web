@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
 import { Context } from '@deepseek-ai/cordis'
-import { attachmentNote, attachmentRefById, handleAttach, registerAttachRoute, registerAttachmentRef, validateAttachPayload, type AttachError } from '../src/attach-routes.ts'
+import { attachmentMarkdown, attachmentNote, attachmentRefById, handleAttach, registerAttachRoute, registerAttachmentRef, validateAttachPayload, type AttachError } from '../src/attach-routes.ts'
 import type { AttachPayload } from '../src/attach-routes.ts'
 import { PNG_BYTES } from './mock-server.ts'
 
@@ -46,8 +46,13 @@ class FakeAttachments extends AttachmentStore {
     return Promise.resolve(ref)
   }
 
-  readImage(_ref: ImageAttachmentRef, _signal?: AbortSignal): Promise<StoredImageAttachment> {
-    return Promise.reject(new Error('not used in these tests'))
+  /** Bytes by attachment id, for the raw-image GET tests. */
+  readonly stored = new Map<string, Buffer>()
+
+  readImage(ref: ImageAttachmentRef, _signal?: AbortSignal): Promise<StoredImageAttachment> {
+    const data = this.stored.get(String(ref.attachmentId))
+    if (data === undefined) return Promise.reject(new Error('no such attachment'))
+    return Promise.resolve({ data, mediaType: ref.mediaType })
   }
 }
 
@@ -181,6 +186,7 @@ describe('handleAttach', () => {
     expect(outcome.ok).toBe(true)
     if (outcome.ok) {
       expect(outcome.note.startsWith('[image attachment {')).toBe(true)
+      expect(outcome.markdown).toMatch(/^!\[图片\]\(\/describe-image\/raw\/sha256:/)
       expect(outcome.ref.mediaType).toBe('image/png')
       expect(store?.saved).toHaveLength(1)
       expect(store?.saved[0].input.data).toEqual(PNG_BYTES)
@@ -219,9 +225,9 @@ describe('handleAttach', () => {
 
 describe('registerAttachRoute', () => {
   /** One async-iterable fake request carrying an optional body. */
-  const makeReq = (method: string, body?: string): IncomingMessage => ({
+  const makeReq = (method: string, body?: string, url = '/describe-image/attach'): IncomingMessage => ({
     method,
-    url: '/describe-image/attach',
+    url,
     [Symbol.asyncIterator]: async function* () {
       if (body !== undefined) yield Buffer.from(body)
     },
@@ -268,10 +274,10 @@ describe('registerAttachRoute', () => {
     expect(capture(undefined, false)).toHaveLength(0)
   })
 
-  it('answers non-POST requests with 405', async () => {
+  it('answers non-GET/non-POST requests with 405', async () => {
     const registrations = capture(undefined, true)
     const { res, status } = makeRes()
-    await registrations[0].handler(makeReq('GET'), res)
+    await registrations[0].handler(makeReq('DELETE'), res)
     expect(status()).toBe(405)
   })
 

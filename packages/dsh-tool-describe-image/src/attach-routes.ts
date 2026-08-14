@@ -40,7 +40,7 @@ export interface AttachPayload {
 
 /** Outcome of one attach attempt. */
 export type AttachOutcome =
-  | { ok: true; ref: ImageAttachmentRef; note: string }
+  | { ok: true; ref: ImageAttachmentRef; note: string; markdown: string }
   | { ok: false; error: AttachError }
 
 /** The failure envelope used when a non-POST request hits the route. */
@@ -73,6 +73,20 @@ export function registerAttachmentRef(ref: ImageAttachmentRef): void {
 /** Look up a persisted reference by its bare attachment id, if still in the registry. */
 export function attachmentRefById(id: string): ImageAttachmentRef | undefined {
   return ATTACHMENT_REF_REGISTRY.get(id)
+}
+
+/**
+ * The markdown image reference inserted into the composer draft: short,
+ * renders as an image/link in the conversation, and carries the attachment
+ * id in the URL so a text model can extract it and hand it to
+ * describe_image (the tool resolves bare ids through the registry).
+ * @param id - the attachment id (e.g. `sha256:…`).
+ * @returns the markdown text to splice into the draft.
+ */
+export function attachmentMarkdown(id: string): string {
+  // The `:` of `sha256:…` stays readable and extractable for the model;
+  // everything else is escaped for the path segment.
+  return `![图片](/describe-image/raw/${encodeURIComponent(id).replace(/%3A/gi, ':')})`
 }
 
 /** Build the `[image attachment …]` note text for one reference. */
@@ -141,7 +155,7 @@ export async function handleAttach(ctx: Context, maxBytes: number, payload: unkn
       ...validated.payload.name === undefined ? {} : { name: validated.payload.name },
     })
     registerAttachmentRef(ref)
-    return { ok: true, ref, note: attachmentNote(ref) }
+    return { ok: true, ref, note: attachmentNote(ref), markdown: attachmentMarkdown(ref.attachmentId) }
   } catch (error) {
     return { ok: false, error: { code: 'internal', message: `attachment store rejected the image: ${(error as Error).message ?? String(error)}` } }
   }
@@ -173,6 +187,44 @@ function json(res: ServerResponse, envelope: unknown, status = 200): void {
 }
 
 /**
+ * Serve one stored image by its bare attachment id (the GET half of the
+ * prefix route). Unknown ids and store failures answer 404; the media type
+ * comes from the registered reference, never from the URL.
+ * @param ctx - registrant context carrying the optional attachment service.
+ * @param req - the incoming GET request.
+ * @param res - the outgoing response.
+ */
+async function serveRawImage(ctx: Context, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const match = /^\/describe-image\/raw\/([^/]+)$/.exec(new URL(req.url ?? '/', 'http://x').pathname)
+  if (match === null) {
+    res.writeHead(404)
+    res.end()
+    return
+  }
+  const id = decodeURIComponent(match[1])
+  const ref = attachmentRefById(id)
+  if (ref === undefined) {
+    res.writeHead(404)
+    res.end()
+    return
+  }
+  const attachments = ctx.get('attachments')
+  if (attachments === undefined) {
+    res.writeHead(404)
+    res.end()
+    return
+  }
+  try {
+    const stored = await attachments.readImage(ref)
+    res.writeHead(200, { 'content-type': ref.mediaType, 'content-length': String(stored.data.byteLength), 'cache-control': 'private, max-age=3600' })
+    res.end(Buffer.from(stored.data))
+  } catch {
+    res.writeHead(404)
+    res.end()
+  }
+}
+
+/**
  * Register the /describe-image/attach POST route on the shared webserver. The
  * byte bound is read per request so the Settings card's maxBytes change lands
  * immediately; the attachment service is resolved per call.
@@ -186,6 +238,14 @@ export function registerAttachRoute(ctx: Context, readMaxBytes: () => number = (
     kind: 'prefix',
     path: '/describe-image',
     handler: async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+      // GET /describe-image/raw/<id>: serve the stored bytes so the
+      // markdown image reference inserted into the draft renders. The id is
+      // content-addressed and loopback-only, so a bare read carries no
+      // secrets; the store's digest verification still runs.
+      if (req.method === 'GET') {
+        await serveRawImage(ctx, req, res)
+        return
+      }
       if (req.method !== 'POST') {
         json(res, { ok: false, error: METHOD_NOT_ALLOWED }, 405)
         return
@@ -197,7 +257,7 @@ export function registerAttachRoute(ctx: Context, readMaxBytes: () => number = (
       }
       const outcome = await handleAttach(ctx, readMaxBytes(), body)
       if (outcome.ok) {
-        json(res, { ok: true, value: { note: outcome.note, ref: outcome.ref } })
+        json(res, { ok: true, value: { note: outcome.note, markdown: outcome.markdown, ref: outcome.ref } })
         return
       }
       json(res, { ok: false, error: outcome.error }, outcome.error.code === 'rejected' ? 422 : 500)

@@ -16,10 +16,11 @@ browser half, live settings, no dsh source changes.
 
 | Capability | Description |
 | --- | --- |
-| Three inputs | Local absolute path, http(s) URL (redirects refused), or `[image attachment …]` reference — the complete JSON or, as a fallback, the bare `sha256:…` id the model copied (resolved through the in-process attach registry; the store's digest verification still runs) |
+| Three inputs | Local absolute path, http(s) URL (redirects refused), an `[image attachment …]` JSON note, or the short markdown reference the input-box button pastes (`![图片](/describe-image/raw/sha256:…)` — the model passes the id from the URL; the in-process attach registry resolves it and the store's digest verification still runs) |
 | Composer image button | The browser half adds an image button to the input box: picking a file stores it in the attachment store and splices a `[image attachment …]` note into the draft — the way a text-only model gets an image without the shell's vision pipeline |
 | Custom instructions | The `prompt` argument carries your precise instruction (OCR, chart reading, UI diagnosis, translation…); the `defaultPrompt` config sets the fallback when the model passes none |
 | Live config card | Settings → Plugin config → Web UI Plugins → "Image understanding" card edits `baseURL` / `model` / API key / default instruction / bounds (through the settings seam); effective immediately, no restart |
+| Raw image route | `GET /describe-image/raw/<id>` serves the stored bytes (loopback-only, content-addressed id) so the pasted reference renders in the conversation |
 | Per-call key resolution | Inline `apiKey` → credential seam (`apiKeyEnv`, default `VISION_API_KEY`) → launch environment, tiered fallback |
 | Safety and bounds | All requests refuse redirects; `maxBytes` / `maxOutputTokens` / `timeoutMs` caps; magic-byte type gate; bounded error excerpts (200 chars); keys never logged |
 | Canonical return | `{ text, model, image, mimeType, bytes }` — the model only sees `text` |

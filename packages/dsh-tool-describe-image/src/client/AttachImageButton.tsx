@@ -14,7 +14,7 @@
 import { useRef, useState, type ReactElement } from 'react'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { admitPickedImage, NOTE_GUIDANCE, readFileAsBase64, uploadImageForDescribe } from './attach.ts'
+import { admitPickedImage, readFileAsBase64, uploadImageForDescribe } from './attach.ts'
 import { t } from './locales.ts'
 
 /** Injected business face of the attach button (session-routed). */
@@ -59,7 +59,7 @@ export function AttachImageButton(props: AttachImageButtonProps): ReactElement {
         props.notify('error', t('attach.error.upload', { error: upload.message }))
         return
       }
-      if (!props.insertNote(upload.note + NOTE_GUIDANCE)) {
+      if (!props.insertNote(upload.markdown)) {
         props.notify('error', t('attach.error.noSession'))
         return
       }

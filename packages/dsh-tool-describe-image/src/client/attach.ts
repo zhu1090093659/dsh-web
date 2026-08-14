@@ -18,11 +18,10 @@ export const ACCEPTED_IMAGE_MIME: readonly string[] = ['image/png', 'image/jpeg'
 export const CLIENT_MAX_BYTES = 10 * 1024 * 1024
 
 /**
- * Spliced right after the note so the text model hands the whole attachment
- * JSON to describe_image: models that see only an id tend to pass the id as
- * a file path, which the tool must not guess around.
+ * Placeholder alt text of the markdown image reference; the model reads the
+ * URL and extracts the attachment id. Kept deliberately short.
  */
-export const NOTE_GUIDANCE = '（图片附件：如需分析，请调用 describe_image 工具并把上方 [image attachment …] 括号内的完整 JSON（attachmentId、mediaType、bytes、width、height 全部字段）作为 image 参数传入，不要只传 attachmentId。）'
+export const IMAGE_ALT = '图片'
 
 /**
  * Splice a note into a composer draft at the caret, following the same
@@ -78,7 +77,7 @@ export async function uploadImageForDescribe(
   base64: string,
   mediaType: string,
   name?: string,
-): Promise<{ ok: true; note: string } | { ok: false; message: string }> {
+): Promise<{ ok: true; note: string; markdown: string } | { ok: false; message: string }> {
   let response: Response
   try {
     response = await fetch(ATTACH_ENDPOINT, {
@@ -98,8 +97,10 @@ export async function uploadImageForDescribe(
   const record = envelope as { ok?: unknown; value?: unknown; error?: unknown } | null
   if (typeof record !== 'object' || record === null) return { ok: false, message: 'bad-response' }
   if (record.ok === true && typeof record.value === 'object' && record.value !== null) {
-    const note = (record.value as { note?: unknown }).note
-    if (typeof note === 'string' && note !== '') return { ok: true, note }
+    const value = record.value as { note?: unknown; markdown?: unknown }
+    if (typeof value.note === 'string' && value.note !== '') {
+      return { ok: true, note: value.note, markdown: typeof value.markdown === 'string' ? value.markdown : value.note }
+    }
     return { ok: false, message: 'bad-response' }
   }
   const message = (record.error as { message?: unknown } | null)?.message

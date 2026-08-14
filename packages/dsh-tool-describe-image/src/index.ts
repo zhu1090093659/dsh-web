@@ -453,15 +453,18 @@ export function apply(ctx: Context, config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'describe_image',
     description: DESCRIPTION_HEAD
-      + 'The image may be a local path, an http(s) URL, or the COMPLETE JSON object from an `[image attachment …]` '
-      + 'note the user pasted into the input box — copy the whole JSON including attachmentId, mediaType, '
-      + 'bytes, width, and height, never only the attachmentId (the browser image button of this plugin '
-      + 'shown to you — only the returned text is.',
+      + 'The image may be a local path, an http(s) URL, the JSON object from an `[image attachment …]` '
+      + "note, or — the common case when the user used this plugin's input-box image button — a "
+      + 'short markdown image reference like `![图片](/describe-image/raw/sha256:abc…)` pasted into '
+      + 'the conversation. In the markdown form, take the attachment id from the URL and pass that id '
+      + 'as the `image` value (never the whole markdown, and never a made-up path); the tool resolves '
+      + 'the id to the stored image. The image itself never enters the conversation — only the '
+      + 'returned text is shown to you.',
     parameters: {
       image: {
         type: 'string',
         required: true,
-        description: 'Absolute path to a local image file, an http(s) URL of the image, or the COMPLETE JSON object from an [image attachment …] note — all fields (attachmentId, mediaType, bytes, width, height) as they appear inside the note brackets; never pass only the attachmentId value, which is not a file path.',
+        description: 'Absolute path to a local image file, an http(s) URL of the image, the JSON object from an [image attachment …] note, or the bare attachment id (e.g. sha256:abc…) taken from the markdown image reference ![图片](/describe-image/raw/<id>) that the plugin\'s input-box image button pasted into the conversation.',
       },
       prompt: {
         type: 'string',

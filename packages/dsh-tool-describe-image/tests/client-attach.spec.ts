@@ -66,11 +66,11 @@ describe('uploadImageForDescribe', () => {
       expect(body.data).toBe('QUJD')
       expect(body.mediaType).toBe('image/png')
       expect(body.name).toBe('pic.png')
-      return new Response(JSON.stringify({ ok: true, value: { note: '[image attachment {}]' } }), { status: 200 })
+      return new Response(JSON.stringify({ ok: true, value: { note: '[image attachment {}]', markdown: '![图片](/describe-image/raw/sha256:x)' } }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
     const outcome = await uploadImageForDescribe('QUJD', 'image/png', 'pic.png')
-    expect(outcome).toEqual({ ok: true, note: '[image attachment {}]' })
+    expect(outcome).toEqual({ ok: true, note: '[image attachment {}]', markdown: '![图片](/describe-image/raw/sha256:x)' })
     expect(fetchMock).toHaveBeenCalledWith('/describe-image/attach', expect.objectContaining({ method: 'POST' }))
   })
 

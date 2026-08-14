@@ -781,6 +781,7 @@ export function moveTool(runtime: WorkscopeRuntime) {
         const srcInfo = await stat(src)
         const destExists = await stat(dest).then(() => true).catch(() => false)
         if (destExists) return { ok: false, error: `目标已存在，拒绝覆盖：${dest}` }
+        await mkdir(dirname(dest), { recursive: true })
         await rename(src, dest)
         const record = runtime.ops.record(sessionId, 'move', src, dest, srcInfo.isDirectory() ? 0 : srcInfo.size)
         runtime.registry.appendAudit(sessionId, 'op_move', `${src} -> ${dest}`)
@@ -842,6 +843,7 @@ export function copyTool(runtime: WorkscopeRuntime) {
         const { bytes } = await walkStats(src, WALK_ENTRY_CAP, COPY_TOTAL_CAP_BYTES)
         const destExists = await stat(dest).then(() => true).catch(() => false)
         if (destExists) return { ok: false, error: `目标已存在，拒绝覆盖：${dest}` }
+        await mkdir(dirname(dest), { recursive: true })
         await cp(src, dest, { recursive: true })
         const record = runtime.ops.record(sessionId, 'copy', src, dest, bytes)
         runtime.registry.appendAudit(sessionId, 'op_copy', `${src} -> ${dest}`)

@@ -34,7 +34,7 @@ export function WebUIPluginsCard(props: WebUIPluginsCardProps): ReactNode {
   const { t, renderSlot } = props
   const [open, setOpen] = useState(false)
   return (
-    <li className={css.groupCard}>
+    <li className={open ? `${css.groupCard} ${css.groupCardOpen}` : css.groupCard}>
       <button
         type="button"
         className={css.header}

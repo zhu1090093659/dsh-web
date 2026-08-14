@@ -10,43 +10,46 @@
 /* The plugin card itself: one disclosure card in the Web UI plugin group. */
 body[data-dsh-skin-center] .pluginCard {
   list-style: none;
-  border: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
-  border-radius: 8px;
-  background: var(--dsw-alias-bg-layer-2, #ffffff);
-  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-3);
+  transition: border-color 0.16s, background 0.16s;
+}
+
+body[data-dsh-skin-center] .pluginCard:hover {
+  border-color: var(--dsw-alias-label-dimmed);
+}
+
+body[data-dsh-skin-center] .pluginCardOpen {
+  background: var(--dsw-alias-bg-layer-2);
+  border-color: var(--dsw-alias-label-dimmed);
 }
 
 body[data-dsh-skin-center] .cardHeader {
+  appearance: none;
   display: flex;
   align-items: center;
+  gap: 12px;
   width: 100%;
-  padding: 11px 14px;
+  padding: 14px 16px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background 120ms ease;
-}
-
-body[data-dsh-skin-center] .cardHeader:hover {
-  background: var(--dsw-alias-bg-layer-1, #f1f5f9);
-}
-
-body[data-dsh-skin-center] .cardHeader:active {
-  background: var(--dsw-alias-bg-layer-3, #e6ecf4);
 }
 
 body[data-dsh-skin-center] .cardHeader:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary, #2b7cd9);
-  outline-offset: 2px;
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
 }
 
 body[data-dsh-skin-center] .headText {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
@@ -55,24 +58,23 @@ body[data-dsh-skin-center] .pluginName {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 13.5px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--dsw-alias-label-primary, #172a45);
+  line-height: 1.4;
+  color: var(--dsw-alias-label-primary);
 }
 
 body[data-dsh-skin-center] .cardDescription {
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--dsw-alias-label-secondary, #6b7280);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-tertiary);
 }
 
 body[data-dsh-skin-center] .chevron,
 body[data-dsh-skin-center] .chevronOpen {
   flex: none;
-  margin-left: 10px;
-  font-size: 12px;
-  color: var(--dsw-alias-label-secondary, #6b7280);
-  transition: transform 120ms ease;
+  color: var(--dsw-alias-label-tertiary);
+  transition: transform 0.16s;
 }
 
 body[data-dsh-skin-center] .chevronOpen {
@@ -83,8 +85,9 @@ body[data-dsh-skin-center] .cardBody {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px 14px 14px;
-  border-top: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+  padding: 12px 0 8px;
+  margin: 0 16px;
+  border-top: 1px solid var(--dsw-alias-border-l2);
 }
 
 body[data-dsh-skin-center] .head {
@@ -365,6 +368,7 @@ body[data-dsh-skin-center] .backgroundHintMuted {
 
 /* Respect users who disable motion: no transitioned state changes. */
 @media (prefers-reduced-motion: reduce) {
+  body[data-dsh-skin-center] .pluginCard,
   body[data-dsh-skin-center] .cardHeader,
   body[data-dsh-skin-center] .themeButton,
   body[data-dsh-skin-center] .button,

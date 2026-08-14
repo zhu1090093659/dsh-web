@@ -41,13 +41,14 @@ export function PluginSettingsCard(props: PluginSettingsCardProps) {
   if (!state.available) return null
   const title = props.t(props.titleKey)
   const blocked = !state.dirty || state.invalid || state.saving
+  const cardClass = open ? `${css.cardOpen} ${css.card}` : css.card
   // The namespace exists but the Host does not serve it to this client (the
   // official settings allowlist omits third-party namespaces): show a card
   // that explains the gap instead of vanishing, so a missing card never
   // reads as a missing plugin.
   if (!state.exposed) {
     return (
-      <li className={css.card}>
+      <li className={cardClass}>
         <button
           type="button"
           className={css.header}
@@ -84,7 +85,7 @@ export function PluginSettingsCard(props: PluginSettingsCardProps) {
     )
   }
   return (
-    <li className={css.card}>
+    <li className={cardClass}>
       <button
         type="button"
         className={css.header}

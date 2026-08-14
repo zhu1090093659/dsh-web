@@ -198,7 +198,7 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
   )
 
   return (
-    <li className={css.pluginCard}>
+    <li className={open ? `${css.pluginCard} ${css.pluginCardOpen}` : css.pluginCard}>
       <button
         type="button"
         className={css.cardHeader}

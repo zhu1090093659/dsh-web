@@ -11,6 +11,9 @@ export const API_PREFIX = '/api/dsh-beyond-workscope'
 /** What a grant permits inside the granted directory. */
 export type GrantScope = 'read' | 'write'
 
+/** What a pending confirmation is asking for. */
+export type PendingKind = 'grant' | 'workspace'
+
 /** Lifecycle of one grant. */
 export type GrantStatus = 'pending' | 'active' | 'denied' | 'revoked' | 'expired'
 
@@ -43,14 +46,22 @@ export interface WorkscopeGrant {
   readonly toolName?: string
   /** Agent display name, when known. */
   readonly agentName?: string
+  /** What this confirmation asks for (workspace registrations are not grants). */
+  readonly kind?: PendingKind
+  /** Display title (workspace registrations). */
+  readonly title?: string
 }
 
 /** The pending-grant view the confirmation UI needs. */
 export interface PendingGrantView {
   readonly id: string
+  /** What this confirmation is for: a temporary grant or a workspace registration. */
+  readonly kind: PendingKind
   readonly path: string
   readonly scope: GrantScope
   readonly reason: string
+  /** Display title (workspace registrations; defaults to the directory basename). */
+  readonly title?: string
   /** Tool that requested the grant (presentation). */
   readonly toolName: string
   /** Agent display name, when known. */
@@ -78,8 +89,26 @@ export interface AuditEntry {
   readonly id: string
   readonly at: string
   readonly sessionId: string
-  readonly kind: 'grant_requested' | 'grant_approved' | 'grant_denied' | 'grant_revoked' | 'grant_expired' | 'session_released'
+  readonly kind:
+    | 'grant_requested' | 'grant_approved' | 'grant_denied' | 'grant_revoked' | 'grant_expired'
+    | 'workspace_requested' | 'workspace_registered' | 'workspace_denied' | 'workspace_expired' | 'workspace_removed'
+    | 'session_released'
   readonly detail: string
+}
+
+/** One workspace registration managed by this plugin (ledger view). */
+export interface WorkspaceView {
+  readonly id: string
+  /** Durable workspace id in the host workspace registry. */
+  readonly workspaceId: string
+  /** Canonical directory path. */
+  readonly path: string
+  readonly title: string
+  /** Session that registered it (workspaces persist beyond the session). */
+  readonly sessionId: string
+  /** ISO-8601 registration instant. */
+  readonly createdAt: string
+  readonly status: 'active' | 'removed'
 }
 
 /** One recent-file entry from the perception report. */
@@ -136,12 +165,21 @@ export interface RevokeGrantPayload {
   readonly id: string
 }
 
+/** Remove one plugin-managed workspace registration. */
+export interface RemoveWorkspacePayload {
+  readonly id: string
+}
+
 export interface PendingListResponse {
   readonly pending: PendingGrantView[]
 }
 
 export interface GrantsListResponse {
   readonly grants: ActiveGrantView[]
+}
+
+export interface WorkspaceListResponse {
+  readonly workspaces: WorkspaceView[]
 }
 
 export interface AuditResponse {

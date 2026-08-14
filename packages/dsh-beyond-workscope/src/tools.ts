@@ -12,7 +12,11 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { GrantError, GrantRegistry, canonicalTargetPath } from './grants.ts'
 import { perceive } from './perceive.ts'
-import type { GrantScope, PerceptionReport } from './protocol.ts'
+import type { GrantScope, PerceptionReport, WorkspaceView } from './protocol.ts'
+import {
+  removeWorkspaces, toWorkspaceViews,
+  type WorkspaceLedger, type WorkspaceRegistryLike,
+} from './workspaces.ts'
 
 /** One text content block (the only render shape these tools emit). */
 function text(value: string): ContentBlock[] {
@@ -27,6 +31,9 @@ const WRITE_CAP_BYTES = 8 * 1024 * 1024
 /** Plugin runtime the tools close over. */
 export interface WorkscopeRuntime {
   readonly registry: GrantRegistry
+  readonly ledger: WorkspaceLedger
+  /** Host workspace registry; absent when the deployment lacks the service. */
+  readonly workspaceRegistry?: WorkspaceRegistryLike
   readonly scanRoots: () => readonly string[]
   readonly maxRecentFiles: () => number
   readonly maxProcesses: () => number
@@ -263,8 +270,8 @@ export function revokeTool(runtime: WorkscopeRuntime) {
 export function listTool(runtime: WorkscopeRuntime) {
   return defineTool({
     name: 'workscope_list',
-    description: 'List this session\'s active grants and pending grant requests (id, path, scope, reason). ' +
-      'Use it before grant (avoid duplicates), after grant (confirm status), and before revoke (find the id).',
+    description: 'List this session\'s active grants, pending grant requests, and registered workspaces (id, path, scope, reason). ' +
+      'Use it before grant (avoid duplicates), after grant (confirm status), before revoke (find the id), and to see the workspaces this session registered.',
     parameters: {},
     output: {
       schema: {
@@ -292,6 +299,7 @@ export function listTool(runtime: WorkscopeRuntime) {
               additionalProperties: false,
               properties: {
                 id: { type: 'string', required: true },
+                kind: { type: 'string', enum: ['grant', 'workspace'], required: true },
                 path: { type: 'string', required: true },
                 scope: { type: 'string', enum: ['read', 'write'], required: true },
                 reason: { type: 'string', required: true },
@@ -299,32 +307,61 @@ export function listTool(runtime: WorkscopeRuntime) {
             },
             required: true,
           },
+          workspaces: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                id: { type: 'string', required: true },
+                workspaceId: { type: 'string', required: true },
+                path: { type: 'string', required: true },
+                title: { type: 'string', required: true },
+                createdAt: { type: 'string', required: true },
+              },
+            },
+            required: true,
+          },
         },
       },
-      render: (_args, value: { active?: Array<{ id: string; path: string; scope: string; reason: string }>; pending?: Array<{ id: string; path: string; scope: string; reason: string }> }) => {
+      render: (_args, value: {
+        active?: Array<{ id: string; path: string; scope: string; reason: string }>
+        pending?: Array<{ id: string; kind: string; path: string; scope: string; reason: string }>
+        workspaces?: Array<{ id: string; workspaceId: string; path: string; title: string; createdAt: string }>
+      }) => {
         const lines: string[] = []
         const active = value.active ?? []
         const pending = value.pending ?? []
+        const workspaces = value.workspaces ?? []
         if (active.length === 0) lines.push('活跃授权：无')
         else {
           lines.push(`活跃授权（${active.length}）：`)
           for (const g of active) lines.push(`  ${g.id}  ${g.path}（${g.scope}）— ${g.reason}`)
         }
-        if (pending.length === 0) lines.push('待确认授权：无')
+        if (pending.length === 0) lines.push('待确认请求：无')
         else {
-          lines.push(`待确认授权（${pending.length}，等待用户在界面确认）：`)
-          for (const g of pending) lines.push(`  ${g.id}  ${g.path}（${g.scope}）— ${g.reason}`)
+          lines.push(`待确认请求（${pending.length}，等待用户在界面确认）：`)
+          for (const g of pending) lines.push(`  ${g.id}  [${g.kind}] ${g.path}（${g.scope}）— ${g.reason}`)
+        }
+        if (workspaces.length === 0) lines.push('本会话注册的工作区：无')
+        else {
+          lines.push(`本会话注册的工作区（${workspaces.length}）：`)
+          for (const w of workspaces) lines.push(`  ${w.title}  ${w.path}  (workspaceId ${w.workspaceId})`)
         }
         return text(lines.join('\n'))
       },
     },
     async execute(_args, exec) {
       const sessionId = sessionIdOf(exec)
-      if (sessionId === undefined) return { active: [], pending: [] }
+      if (sessionId === undefined) return { active: [], pending: [], workspaces: [] }
       const toView = (g: { id: string; path: string; scope: GrantScope; reason: string }) => ({ id: g.id, path: g.path, scope: g.scope, reason: g.reason })
+      const toPendingView = (g: { id: string; kind?: 'grant' | 'workspace'; path: string; scope: GrantScope; reason: string }) => ({
+        id: g.id, kind: g.kind ?? 'grant', path: g.path, scope: g.scope, reason: g.reason,
+      })
       return {
         active: runtime.registry.activeGrants(sessionId).map(toView),
-        pending: runtime.registry.pendingGrants(sessionId).map(toView),
+        pending: runtime.registry.pendingGrants(sessionId).map(toPendingView),
+        workspaces: toWorkspaceViews(runtime.ledger.list(sessionId)),
       }
     },
   })
@@ -430,6 +467,142 @@ export function writeTool(runtime: WorkscopeRuntime) {
         return { ok: true, path: canonical, bytes: Buffer.byteLength(args.content, 'utf8'), mode }
       } catch (error) {
         return { ok: false, error: `写入失败：${error instanceof Error ? error.message : String(error)}` }
+      }
+    },
+  })
+}
+
+/**
+ * The workspace-registration tool — the plugin's core purpose. Confirming
+ * registers the directory as a durable host workspace: it appears in the GUI
+ * workspace switcher, and new conversations created there run with that
+ * directory as their sandbox workspace root (full tool coverage, no
+ * full-access grant).
+ */
+export function workspaceTool(runtime: WorkscopeRuntime) {
+  return defineTool({
+    name: 'workscope_workspace',
+    description: 'Turn a directory OUTSIDE the session workspace into a second, durable workspace WITHOUT granting full access. ' +
+      'A confirmation card appears in the GUI (same as workscope_grant); on approval the directory is registered as a host workspace. ' +
+      'It then shows up in the GUI workspace switcher — switch to it and create a new conversation there: that session runs with the ' +
+      'directory as its sandbox workspace, with all normal tools (bash/fs/git), while this session stays at its own sandbox level. ' +
+      'Workspaces persist beyond this session; remove one explicitly with workscope_unworkspace. ' +
+      'Triggers: 把这个目录变成工作区、想在别的目录开个新项目、需要持续在 X 目录干活、给某个目录一个独立工作区。',
+    parameters: {
+      path: { type: 'string', required: true, description: '要注册为工作区的目录（绝对路径，必须已存在）。' },
+      title: { type: 'string', description: '工作区显示名称（默认取目录名）。' },
+      reason: { type: 'string', description: '向用户说明为什么需要这个工作区（显示在确认卡片上）。' },
+    },
+    timeoutMs: 150_000,
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          ok: { type: 'boolean', required: true },
+          error: { type: 'string' },
+          path: { type: 'string' },
+          title: { type: 'string' },
+          status: { type: 'string', enum: ['active', 'denied', 'expired'] },
+          message: { type: 'string' },
+        },
+      },
+      render: (_args, value: { ok?: boolean; error?: string; path?: string; title?: string; status?: string; message?: string }) => {
+        if (value.ok === false) return text(`注册失败：${value.error ?? '未知错误'}`)
+        return text(`工作区注册请求（${value.title ?? value.path ?? '?'}，${value.path ?? '?'}）：${value.status ?? '?'} — ${value.message ?? ''}`)
+      },
+    },
+    async execute(args: { path?: string; title?: string; reason?: string }, exec) {
+      const sessionId = sessionIdOf(exec)
+      if (sessionId === undefined) return { ok: false, error: '当前调用没有会话上下文，无法注册工作区' }
+      if (runtime.workspaceRegistry === undefined) {
+        return { ok: false, error: '宿主未提供工作区注册服务（workspaceRegistry 不可用）' }
+      }
+      if (typeof args.path !== 'string' || args.path.trim() === '') return { ok: false, error: 'path 不能为空' }
+      try {
+        const outcome = await runtime.registry.requestWorkspace(
+          sessionId,
+          args.path,
+          args.title ?? '',
+          args.reason ?? '',
+          { toolName: 'workscope_workspace' },
+        )
+        const active = outcome.status === 'active'
+        return {
+          ok: active,
+          ...(active ? {} : { error: outcome.message }),
+          path: outcome.path,
+          ...(args.title !== undefined && args.title.trim() !== '' ? { title: args.title } : {}),
+          status: outcome.status,
+          message: outcome.message,
+        }
+      } catch (error) {
+        const message = error instanceof GrantError ? error.message : error instanceof Error ? error.message : String(error)
+        return { ok: false, error: message }
+      }
+    },
+  })
+}
+
+/** The workspace-removal tool (non-destructive: keeps the directory and its sessions). */
+export function unworkspaceTool(runtime: WorkscopeRuntime) {
+  return defineTool({
+    name: 'workscope_unworkspace',
+    description: 'Remove a workspace this plugin registered (by workscope_list id, workspaceId, or path — removes every matching registration). ' +
+      'Non-destructive: the directory itself and every conversation created there stay untouched; only the workspace registration is removed ' +
+      '(it disappears from the GUI workspace switcher, so no new session can start there). ' +
+      'Triggers: 取消工作区、不再需要这个工作区了、把 X 从工作区列表移除。',
+    parameters: {
+      id: { type: 'string', description: 'workscope_list 返回的 id 或 workspaceId。' },
+      path: { type: 'string', description: '或按目录路径移除（匹配该路径的工作区注册）。' },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          ok: { type: 'boolean', required: true },
+          error: { type: 'string' },
+          removed: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                id: { type: 'string', required: true },
+                path: { type: 'string', required: true },
+                title: { type: 'string', required: true },
+              },
+            },
+            required: true,
+          },
+        },
+      },
+      render: (_args, value: { ok?: boolean; error?: string; removed?: Array<{ id: string; path: string; title: string }> }) => {
+        if (value.ok === false) return text(`移除失败：${value.error ?? '未知错误'}`)
+        const removed = value.removed ?? []
+        if (removed.length === 0) return text('没有匹配的工作区注册可移除')
+        return text(`已移除 ${removed.length} 个工作区注册（目录与会话均保留）：\n` + removed.map(w => `  ${w.title}（${w.path}）`).join('\n'))
+      },
+    },
+    async execute(args: { id?: string; path?: string }) {
+      const target = args.id ?? args.path ?? ''
+      if (target.trim() === '') return { ok: false, error: '需要提供 id 或 path', removed: [] }
+      if (runtime.workspaceRegistry === undefined) {
+        return { ok: false, error: '宿主未提供工作区注册服务（workspaceRegistry 不可用）', removed: [] }
+      }
+      try {
+        const removed = await removeWorkspaces(runtime.ledger, runtime.workspaceRegistry, target)
+        for (const record of removed) {
+          runtime.registry.appendAudit(record.sessionId, 'workspace_removed', `${record.title}（${record.path}）`)
+        }
+        return {
+          ok: true,
+          removed: removed.map(r => ({ id: r.id, path: r.path, title: r.title })),
+        }
+      } catch (error) {
+        const message = error instanceof GrantError ? error.message : error instanceof Error ? error.message : String(error)
+        return { ok: false, error: message, removed: [] }
       }
     },
   })

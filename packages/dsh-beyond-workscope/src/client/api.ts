@@ -3,7 +3,7 @@
  * Plain same-origin fetch; the only data access path the card uses.
  */
 
-import { API_PREFIX, type ActiveGrantView, type ApprovePendingPayload, type AuditEntry, type PendingGrantView, type SimpleActionResponse } from '../protocol.ts'
+import { API_PREFIX, type ActiveGrantView, type ApprovePendingPayload, type AuditEntry, type PendingGrantView, type SimpleActionResponse, type WorkspaceView } from '../protocol.ts'
 
 /** Error carrying the route's JSON error message. */
 export class WorkscopeApiError extends Error {
@@ -77,5 +77,17 @@ export class WorkscopeApi {
     return fetch(`${API_PREFIX}/audit`)
       .then(response => readJson<{ entries: AuditEntry[] }>(response))
       .then(body => body.entries)
+  }
+
+  /** Plugin-managed workspace registrations (management view). */
+  getWorkspaces(): Promise<WorkspaceView[]> {
+    return fetch(`${API_PREFIX}/workspaces`)
+      .then(response => readJson<{ workspaces: WorkspaceView[] }>(response))
+      .then(body => body.workspaces)
+  }
+
+  /** Remove one plugin-managed workspace registration (non-destructive). */
+  removeWorkspace(id: string): Promise<void> {
+    return postJson<SimpleActionResponse>(`${API_PREFIX}/workspaces/remove`, { id }).then(() => undefined)
   }
 }

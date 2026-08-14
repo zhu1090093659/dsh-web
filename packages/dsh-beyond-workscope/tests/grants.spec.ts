@@ -251,4 +251,38 @@ describe('GrantRegistry', () => {
     await writeFile(file, 'hello')
     await expect(registry.isAllowed('s1', file, 'write')).resolves.toBe(true)
   })
+
+  it('registers workspace requests as their own pending kind, not grants', async () => {
+    const dir = join(base, 'ws')
+    await mkdir(dir)
+    const promise = registry.requestWorkspace('s1', dir, '我的工作区', '持续干活')
+    await waitPending(1)
+    const pending = registry.pendingGrants('s1')[0]
+    expect(pending.kind).toBe('workspace')
+    expect(pending.title).toBe('我的工作区')
+    expect(registry.pendingInfo(pending.id)).toMatchObject({ kind: 'workspace', path: dir, sessionId: 's1' })
+
+    registry.approve(pending.id)
+    const outcome = await promise
+    expect(outcome.status).toBe('active')
+    // A workspace confirmation is not a grant: no read/write boundary opens.
+    expect(registry.activeGrants('s1')).toHaveLength(0)
+    await expect(registry.isAllowed('s1', dir, 'read')).resolves.toBe(false)
+    const kinds = registry.auditEntries().map(entry => entry.kind)
+    expect(kinds).toContain('workspace_requested')
+    expect(kinds).toContain('workspace_registered')
+  })
+
+  it('defaults the workspace title to the directory basename and settles deny', async () => {
+    const dir = join(base, 'unnamed-dir')
+    await mkdir(dir)
+    const promise = registry.requestWorkspace('s1', dir, '', '无标题')
+    await waitPending(1)
+    const pending = registry.pendingGrants('s1')[0]
+    expect(pending.title).toBe('unnamed-dir')
+    registry.deny(pending.id)
+    await expect(promise).resolves.toMatchObject({ status: 'denied' })
+    const kinds = registry.auditEntries().map(entry => entry.kind)
+    expect(kinds).toContain('workspace_denied')
+  })
 })

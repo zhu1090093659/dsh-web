@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { ActiveGrantView, AuditEntry, GrantScope, PendingGrantView } from '../protocol.ts'
+import type { ActiveGrantView, AuditEntry, GrantScope, PendingGrantView, WorkspaceView } from '../protocol.ts'
 import type { WorkscopeApi } from './api.ts'
 import type { BeyondKey } from './locales.ts'
 import css from './GrantCard.module.css'
@@ -42,6 +42,7 @@ export function GrantCard(props: { api: WorkscopeApi; t: (key: keyof BeyondKey) 
   const { api, t } = props
   const [pending, setPending] = useState<PendingGrantView[]>([])
   const [grants, setGrants] = useState<ActiveGrantView[]>([])
+  const [workspaces, setWorkspaces] = useState<WorkspaceView[]>([])
   const [audit, setAudit] = useState<AuditEntry[]>([])
   const [managing, setManaging] = useState(false)
   const [busy, setBusy] = useState<string | undefined>(undefined)
@@ -74,11 +75,12 @@ export function GrantCard(props: { api: WorkscopeApi; t: (key: keyof BeyondKey) 
     }
   }, [api])
 
-  // Poll pending + grants; refresh audit while managing.
+  // Poll pending + grants; refresh workspaces + audit while managing.
   useEffect(() => {
     const timer = setInterval(() => {
       void refresh()
       if (managing) {
+        api.getWorkspaces().then(items => { if (mounted.current) setWorkspaces(items) }).catch(() => undefined)
         api.getAudit().then(entries => { if (mounted.current) setAudit(entries) }).catch(() => undefined)
       }
     }, POLL_MS)
@@ -112,6 +114,9 @@ export function GrantCard(props: { api: WorkscopeApi; t: (key: keyof BeyondKey) 
   const revoke = (id: string): void => {
     void act(() => api.revoke(id), `revoke:${id}`)
   }
+  const removeWorkspace = (id: string): void => {
+    void act(() => api.removeWorkspace(id), `workspace:${id}`)
+  }
 
   const remaining = (item: PendingGrantView): number => {
     return Math.max(0, Math.ceil((new Date(item.expiresAt).getTime() - now) / 1000))
@@ -139,24 +144,32 @@ export function GrantCard(props: { api: WorkscopeApi; t: (key: keyof BeyondKey) 
         {error && <div className={css.empty}>{t('card.offline')}</div>}
         {pending.map(item => (
           <div className={css.pending} key={item.id}>
-            <div className={css.path} title={item.path}>{shorten(item.path)}</div>
+            <div className={css.path} title={item.path}>
+              <span className={css.kindBadge} data-kind={item.kind}>
+                {item.kind === 'workspace' ? t('card.kind.workspace') : t('card.kind.grant')}
+              </span>
+              {item.kind === 'workspace' && item.title ? `${item.title} — ` : ''}{shorten(item.path)}
+            </div>
             <div className={css.reason}>{item.reason}</div>
+            {item.kind === 'workspace' && <div className={css.hint}>{t('card.workspace.hint')}</div>}
             <div className={css.meta}>
               {t('card.by')} {item.toolName}{item.agentName ? ` · ${item.agentName}` : ''} · {clock(item.requestedAt)} · {countdown(item)}
             </div>
-            <div className={css.scopes}>
-              {(['read', 'write'] as const).map(scope => (
-                <button
-                  type="button"
-                  key={scope}
-                  className={css.scope}
-                  data-selected={(scopes[item.id] ?? item.scope) === scope}
-                  onClick={() => setScopes(previous => ({ ...previous, [item.id]: scope }))}
-                >
-                  {scope === 'read' ? t('card.scope.read') : t('card.scope.write')}
-                </button>
-              ))}
-            </div>
+            {item.kind !== 'workspace' && (
+              <div className={css.scopes}>
+                {(['read', 'write'] as const).map(scope => (
+                  <button
+                    type="button"
+                    key={scope}
+                    className={css.scope}
+                    data-selected={(scopes[item.id] ?? item.scope) === scope}
+                    onClick={() => setScopes(previous => ({ ...previous, [item.id]: scope }))}
+                  >
+                    {scope === 'read' ? t('card.scope.read') : t('card.scope.write')}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className={css.actions}>
               <button
                 type="button"
@@ -192,6 +205,23 @@ export function GrantCard(props: { api: WorkscopeApi; t: (key: keyof BeyondKey) 
                   onClick={() => revoke(grant.id)}
                 >
                   {t('card.manage.revoke')}
+                </button>
+              </div>
+            ))}
+            <div className={css.manageTitle}>{t('card.manage.workspaces')}</div>
+            {workspaces.length === 0 && <div className={css.empty}>{t('card.manage.workspaces.empty')}</div>}
+            {workspaces.map(workspace => (
+              <div className={css.grantRow} key={workspace.id}>
+                <span className={css.grantPath} title={workspace.path}>
+                  {workspace.title} · {shorten(workspace.path, 40)}
+                </span>
+                <button
+                  type="button"
+                  className={css.revokeButton}
+                  data-busy={busy === `workspace:${workspace.id}`}
+                  onClick={() => removeWorkspace(workspace.id)}
+                >
+                  {t('card.manage.removeWorkspace')}
                 </button>
               </div>
             ))}

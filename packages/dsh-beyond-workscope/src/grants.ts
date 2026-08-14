@@ -20,7 +20,6 @@ import { realpath } from 'node:fs/promises'
 import { basename, dirname, join, sep } from 'node:path'
 import { invariant } from './invariant.ts'
 import type { AuditEntry, GrantScope, GrantStatus, PendingGrantView, WorkscopeGrant } from './protocol.ts'
-
 /** Human-readable grant failure (message is safe to show to the model/user). */
 export class GrantError extends Error {
   constructor(message: string) {
@@ -215,6 +214,88 @@ export class GrantRegistry {
     return outcome
   }
 
+  /**
+   * Request a workspace registration confirmation. Same pending/confirm
+   * pipeline as grants, but the confirmed action is the route layer's
+   * workspace-registration hook (the registry itself stays side-effect free).
+   * @throws GrantError for invalid input or per-session limits.
+   */
+  async requestWorkspace(
+    sessionId: string,
+    path: string,
+    title: string,
+    reason: string,
+    context: { toolName?: string; agentName?: string; sessionCwd?: string } = {},
+  ): Promise<GrantOutcome> {
+    const canonical = await canonicalPath(path)
+    if (this.pendingCount(sessionId) >= this.options.maxPendingPerSession) {
+      throw new GrantError('该会话待确认的请求过多，请先处理已有请求')
+    }
+
+    const id = randomUUID()
+    const now = new Date()
+    const grant: GrantRecord = {
+      id,
+      sessionId,
+      path: canonical,
+      scope: 'write',
+      reason: reason.trim() === '' ? '（未说明原因）' : reason.trim(),
+      status: 'pending',
+      requestedAt: now.toISOString(),
+      sessionCwd: context.sessionCwd,
+      toolName: context.toolName,
+      agentName: context.agentName,
+      kind: 'workspace',
+      title: title.trim() === '' ? basename(canonical) : title.trim(),
+    }
+
+    const outcome = new Promise<GrantOutcome>((resolveSettle) => {
+      const settle = (status: 'active' | 'denied' | 'expired'): void => {
+        const entry = this.pending.get(id)
+        if (entry === undefined) return // already settled
+        clearTimeout(entry.timer)
+        this.pending.delete(id)
+        grant.status = status
+        grant.decidedAt = new Date().toISOString()
+        grant.decidedBy = status === 'denied' ? 'user' : status === 'expired' ? 'timeout' : 'user'
+        this.appendAudit(
+          sessionId,
+          status === 'active' ? 'workspace_registered' : status === 'denied' ? 'workspace_denied' : 'workspace_expired',
+          `${grant.title}（${grant.path}）`,
+        )
+        resolveSettle({
+          grantId: id,
+          path: grant.path,
+          scope: grant.scope,
+          status: grant.status,
+          message: status === 'active'
+            ? `已注册为工作区：${grant.title}（${grant.path}）。在 GUI 工作区列表中切换后，新建会话即以该目录为工作区。`
+            : status === 'denied'
+              ? '用户拒绝了该工作区注册请求'
+              : '工作区注册请求超时未确认，已自动取消',
+        })
+      }
+      const timer = setTimeout(() => settle('expired'), this.options.confirmTimeoutMs)
+      timer.unref?.()
+      this.pending.set(id, { grant, settle, timer })
+    })
+
+    this.appendAudit(sessionId, 'workspace_requested', `${grant.title}（${canonical}）：${grant.reason}`)
+    return outcome
+  }
+
+  /** Read-only info about one pending entry (route-layer orchestration). */
+  pendingInfo(id: string): { kind: 'grant' | 'workspace'; path: string; title?: string; sessionId: string } | undefined {
+    const entry = this.pending.get(id)
+    if (entry === undefined) return undefined
+    return {
+      kind: entry.grant.kind ?? 'grant',
+      path: entry.grant.path,
+      title: entry.grant.title,
+      sessionId: entry.grant.sessionId,
+    }
+  }
+
   /* ---- decisions ------------------------------------------------------ */
 
   /**
@@ -338,9 +419,11 @@ export class GrantRegistry {
       const expiresAt = new Date(new Date(grant.requestedAt).getTime() + this.options.confirmTimeoutMs)
       return {
         id: grant.id,
+        kind: grant.kind ?? 'grant',
         path: grant.path,
         scope: grant.scope,
         reason: grant.reason,
+        ...(grant.kind === 'workspace' ? { title: grant.title } : {}),
         toolName: grant.toolName ?? 'workscope_grant',
         agentName: grant.agentName,
         requestedAt: grant.requestedAt,
@@ -370,7 +453,8 @@ export class GrantRegistry {
     return count
   }
 
-  private appendAudit(sessionId: string, kind: AuditEntry['kind'], detail: string): void {
+  /** Append one audit entry (public so the workspace layer audits through the same list). */
+  appendAudit(sessionId: string, kind: AuditEntry['kind'], detail: string): void {
     this.audit.push({
       id: randomUUID(),
       at: new Date().toISOString(),

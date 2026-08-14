@@ -16,9 +16,11 @@ import {
   API_PREFIX,
   type ApprovePendingPayload,
   type DenyPendingPayload,
+  type RemoveWorkspacePayload,
   type RevokeGrantPayload,
   type SimpleActionResponse,
 } from './protocol.ts'
+import { registerWorkspace, removeWorkspaces, toWorkspaceViews, type WorkspaceLedger, type WorkspaceRegistryLike } from './workspaces.ts'
 
 /** Cap on JSON request bodies (approve/deny payloads are tiny). */
 const MAX_JSON_BODY_BYTES = 64 * 1024
@@ -107,12 +109,26 @@ function bodyRoute(handler: BodyHandler): WebRoute['handler'] {
   }
 }
 
+/** Audit-kind subset the workspace surface writes. */
+export type WorkspaceAuditKind = 'workspace_registered' | 'workspace_removed'
+
+/** Optional workspace surface injected by the assembler. */
+export interface RouteHooks {
+  readonly workspaceRegistry?: WorkspaceRegistryLike
+  readonly ledger?: WorkspaceLedger
+  readonly audit?: (sessionId: string, kind: WorkspaceAuditKind, detail: string) => void
+}
+
 /**
  * Build the route family.
  * @param registry - the grant registry the routes drive.
- * @returns named web routes (register with ctx.webServer.register).
+ * @param hooks - optional workspace surface: the host workspace registry and
+ *   the plugin ledger power the /workspaces routes and the workspace-confirm
+ *   side effect; the audit writer appends workspace lifecycle entries to the
+ *   registry's audit list. Without the hooks, workspace routes answer 503 and
+ *   workspace confirmations fail closed (grants keep working).
  */
-export function makeRoutes(registry: GrantRegistry): WebRoute[] {
+export function makeRoutes(registry: GrantRegistry, hooks: RouteHooks = {}): WebRoute[] {
   return [
     {
       kind: 'exact',
@@ -129,11 +145,30 @@ export function makeRoutes(registry: GrantRegistry): WebRoute[] {
     {
       kind: 'exact',
       path: `${API_PREFIX}/pending/approve`,
-      handler: bodyRoute((body, _req, res) => {
+      handler: bodyRoute(async (body, _req, res) => {
         const payload = body as Partial<ApprovePendingPayload>
         if (typeof payload.id !== 'string' || payload.id.trim() === '') {
           json(res, 400, { ok: false, error: '缺少 id' } satisfies SimpleActionResponse)
           return
+        }
+        const info = registry.pendingInfo(payload.id)
+        if (info === undefined) {
+          json(res, 404, { ok: false, error: '该授权请求不存在或已处理' } satisfies SimpleActionResponse)
+          return
+        }
+        // Workspace confirmations register the host workspace BEFORE settling
+        // the pending entry: a failed registration leaves the request pending
+        // so the user can retry.
+        if (info.kind === 'workspace') {
+          if (hooks.workspaceRegistry === undefined || hooks.ledger === undefined) {
+            json(res, 503, { ok: false, error: '宿主未提供工作区注册服务' } satisfies SimpleActionResponse)
+            return
+          }
+          const result = await registerWorkspace(hooks.ledger, hooks.workspaceRegistry, info.sessionId, info.path, info.title)
+          if (!result.ok) {
+            json(res, 409, { ok: false, error: result.error } satisfies SimpleActionResponse)
+            return
+          }
         }
         const scope = payload.scope === 'read' || payload.scope === 'write' ? payload.scope : undefined
         const error = registry.approve(payload.id, scope)
@@ -193,6 +228,42 @@ export function makeRoutes(registry: GrantRegistry): WebRoute[] {
         }
         const revoked = await registry.revoke(payload.id)
         json(res, 200, { ok: true, revoked: revoked.length })
+      }),
+    },
+    {
+      kind: 'exact',
+      path: `${API_PREFIX}/workspaces`,
+      handler: (req, res) => {
+        if (!fence(req, res)) return
+        if ((req.method ?? 'GET') !== 'GET') {
+          json(res, 405, { ok: false, error: 'method not allowed' } satisfies SimpleActionResponse)
+          return
+        }
+        if (hooks.ledger === undefined) {
+          json(res, 503, { ok: false, error: '宿主未提供工作区注册服务' } satisfies SimpleActionResponse)
+          return
+        }
+        json(res, 200, { workspaces: toWorkspaceViews(hooks.ledger.list()) })
+      },
+    },
+    {
+      kind: 'exact',
+      path: `${API_PREFIX}/workspaces/remove`,
+      handler: bodyRoute(async (body, _req, res) => {
+        const payload = body as Partial<RemoveWorkspacePayload>
+        if (typeof payload.id !== 'string' || payload.id.trim() === '') {
+          json(res, 400, { ok: false, error: '缺少 id' } satisfies SimpleActionResponse)
+          return
+        }
+        if (hooks.workspaceRegistry === undefined || hooks.ledger === undefined) {
+          json(res, 503, { ok: false, error: '宿主未提供工作区注册服务' } satisfies SimpleActionResponse)
+          return
+        }
+        const removed = await removeWorkspaces(hooks.ledger, hooks.workspaceRegistry, payload.id)
+        for (const record of removed) {
+          hooks.audit?.(record.sessionId, 'workspace_removed', `${record.title}（${record.path}）`)
+        }
+        json(res, 200, { ok: true, removed: removed.length })
       }),
     },
     {

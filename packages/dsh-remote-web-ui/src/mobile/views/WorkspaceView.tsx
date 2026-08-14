@@ -13,6 +13,8 @@ import { ThemeToggle } from '../theme-toggle.tsx'
 
 /** Props for the workspace roster. */
 export interface WorkspaceViewProps {
+  /** Workspace carried by the pairing link; opened after the roster loads. */
+  initialWorkspaceId?: string
   /** Open one workspace's session list. */
   onPick(workspace: WorkspaceRow): void
 }
@@ -22,7 +24,7 @@ export interface WorkspaceViewProps {
  * @param props - the pick action.
  * @returns the roster.
  */
-export function WorkspaceView({ onPick }: WorkspaceViewProps) {
+export function WorkspaceView({ initialWorkspaceId, onPick }: WorkspaceViewProps) {
   const [items, setItems] = useState<WorkspaceRow[] | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
 
@@ -31,6 +33,13 @@ export function WorkspaceView({ onPick }: WorkspaceViewProps) {
     void listWorkspaces().then(
       (rows) => {
         if (cancelled) return
+        const target = initialWorkspaceId === undefined
+          ? undefined
+          : rows.find(workspace => workspace.workspaceId === initialWorkspaceId)
+        if (target !== undefined) {
+          onPick(target)
+          return
+        }
         setItems(rows)
       },
       (reason: unknown) => {
@@ -39,7 +48,7 @@ export function WorkspaceView({ onPick }: WorkspaceViewProps) {
       },
     )
     return () => { cancelled = true }
-  }, [])
+  }, [initialWorkspaceId, onPick])
 
   if (error !== undefined) {
     return (

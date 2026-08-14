@@ -42,6 +42,12 @@ export interface RenderMessage {
   toolSummary?: string
 }
 
+/** Read the optional workspace target carried from the pairing QR flow. */
+export function mobileWorkspaceTarget(search: string): string | undefined {
+  const value = new URLSearchParams(search).get('workspace')
+  return value === null || value === '' ? undefined : value
+}
+
 /** Map a list row to the surface model; the title comes from projections when present. */
 export function toSessionView(item: {
   sessionId: string
@@ -83,6 +89,9 @@ export function formatTime(epochMs: number): string {
  */
 export function App() {
   const [route, setRoute] = useState<Route>({ kind: 'workspaces' })
+  const [initialWorkspaceId, setInitialWorkspaceId] = useState<string | undefined>(
+    () => mobileWorkspaceTarget(window.location.search),
+  )
   const muxRef = useRef<MuxClient | undefined>(undefined)
 
   // The mux stream lives for the page lifetime: session events keep the
@@ -113,10 +122,20 @@ export function App() {
     setRoute({ kind: 'chat', session, workspace })
   }, [])
 
+  const openWorkspace = useCallback((workspace: WorkspaceRow) => {
+    if (initialWorkspaceId !== undefined) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('workspace')
+      window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+      setInitialWorkspaceId(undefined)
+    }
+    setRoute({ kind: 'sessions', workspace })
+  }, [initialWorkspaceId])
+
   return (
     <div className="mobile">
       {route.kind === 'workspaces'
-        ? <WorkspaceRoster onPick={(workspace) => { setRoute({ kind: 'sessions', workspace }) }} />
+        ? <WorkspaceRoster initialWorkspaceId={initialWorkspaceId} onPick={openWorkspace} />
         : route.kind === 'sessions'
           ? (
             <SessionListView

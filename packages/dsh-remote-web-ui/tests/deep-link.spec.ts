@@ -75,6 +75,19 @@ describe('runPairBootFlow', () => {
     expect(replaceState).toHaveBeenCalledWith('/')
   })
 
+  it('preserves the workspace target when routing an accepted phone to /m', async () => {
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (Android 16; Mobile)' })
+    const { page, navigate, replaceState } = fakePage('?pair=tok-1&workspace=ws-7')
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }))
+    vi.stubGlobal('fetch', fetch)
+    const ctx = { get: () => undefined }
+
+    runPairBootFlow(ctx as never, '?pair=tok-1&workspace=ws-7', page)
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/m?workspace=ws-7'))
+    expect(replaceState).toHaveBeenCalledWith('/?workspace=ws-7')
+  })
+
   it('marks the failure instead of reloading when the token is refused', async () => {
     const { page, reload } = fakePage('?pair=tok-1')
     const fetch = vi.fn(async () => new Response(JSON.stringify({ ok: false, code: 'used' }), { status: 409 }))

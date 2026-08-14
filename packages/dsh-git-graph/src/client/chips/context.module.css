@@ -3,6 +3,15 @@
 
 .anchor {
   position: relative;
+  /* Align the chip with the composer card's left edge. On wide viewports the
+     input card is centered at `--dsh-composer-card-max-width`; mirror that
+     centering so the chip sits exactly over the card's left edge in every
+     phase (hero included). Keep at least 16px on narrow viewports where the
+     card fills the stack width. */
+  margin-left: max(
+    16px,
+    calc((100% - var(--dsh-composer-card-max-width)) / 2)
+  );
 }
 
 .chip {

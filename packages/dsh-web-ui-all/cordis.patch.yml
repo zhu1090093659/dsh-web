@@ -42,6 +42,11 @@
     - id: live-stats
       name: '@linxin666/dsh-live-stats'
 
+# from ../dsh-round-jump
+- insert:
+    - id: round-jump
+      name: '@linxin666/dsh-round-jump'
+
 # from ../dsh-ssh
 - insert:
     - id: ssh

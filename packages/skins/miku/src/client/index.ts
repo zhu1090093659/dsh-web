@@ -10,10 +10,20 @@
  * title. The CSS rides the bundle's CSS-modules auto-inject (style tag owned
  * by the loader, removed on entry dispose). No services are injected: the
  * skin needs only the DOM.
+ *
+ * Backdrop strategy: the art + scrim are written straight onto the body's
+ * inline background (via the canonical hyphenated CSSOM API), so any prior
+ * value round-trips verbatim on restore.
+ *
+ * Small config surface (pure presentation, no services): the pinned title
+ * and the status cells can be overridden through localStorage keys
+ * `dsh.miku.title` / `dsh.miku.cells` (JSON array of strings). Reads are
+ * wrapped so a blocked/absent storage degrades to the defaults.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import css from './miku.module.css'
 import { MIKU_ART } from './art.ts'
+import { applyCursor, restoreCursor } from './cursor.ts'
 
 /** The product title the skin pins (captured by the shell's DocumentTitle after settle). */
 const SKIN_TITLE = '初音未来 · DeepSeek 在线'
@@ -24,6 +34,10 @@ const STATUS_CELLS = ['MIKU 01', '声库就绪', '已连接', '在线', 'VOCALOI
 /** Title bar window buttons (decorative glyphs, aria-hidden). */
 const TITLEBAR_GLYPHS = ['–', '□', '×'] as const
 
+/** localStorage keys for the optional title / status-cell overrides. */
+const LS_TITLE = 'dsh.miku.title'
+const LS_CELLS = 'dsh.miku.cells'
+
 /**
  * Resolve one module class name. The css-modules record types as
  * `string | undefined` under noUncheckedIndexedAccess; every key used here
@@ -32,19 +46,23 @@ const TITLEBAR_GLYPHS = ['–', '□', '×'] as const
  */
 const cls = (name: keyof typeof css): string => css[name] ?? ''
 
-/** Miku note mark (a single eighth note), inline so the skin carries no static assets. */
+/** Miku note mark (a single eighth note), inline so the skin carries no static assets.
+ *  White fill: the title bar wears the blue-violet-magenta gradient, so the icon
+ *  must be light to read against it (matches the white title text). */
 const NOTE_SVG = [
   '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">',
-  '<path d="M32 8v20.6a8 8 0 1 1-4-6.9V13.4L20 16.8v17.8a8 8 0 1 1-4-6.9V12.2c0-.9.6-1.7 1.5-1.9l16-4.4c1-.3 2 .3 2.5 1.1.3.5.5 1 .5 1.5z" fill="#2e9bff"/>',
-  '<ellipse cx="24" cy="44" rx="7.5" ry="2.4" fill="rgba(0,0,0,0.18)"/>',
+  '<path d="M32 8v20.6a8 8 0 1 1-4-6.9V13.4L20 16.8v17.8a8 8 0 1 1-4-6.9V12.2c0-.9.6-1.7 1.5-1.9l16-4.4c1-.3 2 .3 2.5 1.1.3.5.5 1 .5 1.5z" fill="#fff"/>',
+  '<ellipse cx="24" cy="44" rx="7.5" ry="2.4" fill="rgba(255,255,255,0.45)"/>',
   '</svg>',
 ].join('')
 
-/** Miku "01" badge: the iconic unit number on a rounded teal chip. */
+/** Miku "01" badge: the iconic unit number on a rounded teal chip. The
+ *  outline and number are white so the badge reads on the gradient band;
+ *  the chip tint is a translucent teal over the bar. */
 const BADGE_SVG = [
   '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="18" viewBox="0 0 68 36" aria-hidden="true">',
-  '<rect x="1" y="1" width="66" height="34" rx="8" fill="rgba(57,197,187,0.16)" stroke="#2e9bff" stroke-width="2"/>',
-  '<text x="34" y="25" text-anchor="middle" font-family="Consolas, monospace" font-size="19" font-weight="700" fill="#1e6fd9">01</text>',
+  '<rect x="1" y="1" width="66" height="34" rx="8" fill="rgba(57,197,187,0.16)" stroke="#fff" stroke-width="2"/>',
+  '<text x="34" y="25" text-anchor="middle" font-family="Consolas, monospace" font-size="19" font-weight="700" fill="#fff">01</text>',
   '</svg>',
 ].join('')
 
@@ -78,6 +96,39 @@ const BACKDROP_PROPERTIES = [
   'background-repeat',
 ] as const
 
+/** Read one optional localStorage override; returns undefined when storage
+ *  is unavailable (private mode, file://, sandboxed iframe) or the key is
+ *  absent. Never throws. */
+function readOverride(key: string): string | undefined {
+  try {
+    return window.localStorage.getItem(key) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Resolve the pinned title: localStorage `dsh.miku.title` wins, else the default. */
+function resolveTitle(): string {
+  return readOverride(LS_TITLE)?.trim() || SKIN_TITLE
+}
+
+/** Resolve the status cells: localStorage `dsh.miku.cells` (JSON string
+ *  array) wins when it parses to a non-empty array of strings. */
+function resolveCells(): readonly string[] {
+  const raw = readOverride(LS_CELLS)
+  if (raw !== undefined) {
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((c) => typeof c === 'string' && c.length > 0)) {
+        return parsed as string[]
+      }
+    } catch {
+      // Fall through to the defaults on malformed JSON.
+    }
+  }
+  return STATUS_CELLS
+}
+
 /**
  * Apply the Miku skin: body attribute, idol backdrop (with a live-swapping
  * theme scrim), title bar, status bar, favicon, title. All writes are
@@ -89,10 +140,15 @@ const BACKDROP_PROPERTIES = [
 export function apply(ctx: Context): void {
   const body = document.body
   const originalTitle = document.title
+  // Resolve the pinned title once up front so the title-bar text and the
+  // document title always agree, and the dispose check compares against the
+  // exact value the skin wrote.
+  const pinnedTitle = resolveTitle()
   const previous = new Map<string, string>()
   for (const prop of BACKDROP_PROPERTIES) {
     previous.set(prop, body.style.getPropertyValue(prop))
   }
+  const previousCursor = applyCursor(body)
   body.dataset.dshMiku = ''
 
   const setBackdrop = (): void => {
@@ -120,7 +176,7 @@ export function apply(ctx: Context): void {
   badge.innerHTML = BADGE_SVG
   const title = document.createElement('span')
   title.className = cls('mikuTitlebarTitle')
-  title.textContent = SKIN_TITLE
+  title.textContent = pinnedTitle
   titlebar.append(icon, badge, title)
   for (const glyph of TITLEBAR_GLYPHS) {
     const btn = document.createElement('span')
@@ -137,13 +193,13 @@ export function apply(ctx: Context): void {
   wave.className = cls('mikuStatusbarWave')
   wave.innerHTML = [
     '<svg xmlns="http://www.w3.org/2000/svg" width="72" height="12" viewBox="0 0 72 12" aria-hidden="true">',
-    '<path d="M1 6h3l2-4 2 8 2-9 2 6 2-3 2 5 2-7 2 4 2-2 2 3 2-6 2 7 2-5 2 4 2-3 2 2 2-4 2 3 2-2 2 1 2-3 2 2 2-1 2 2 2-4 2 2 2-1 2 1 2-2 2 2 2-1 1 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+    '<path d="M1 6h3l2-4 2 8 2-9 2 6 2-3 2 5 2-7 2 4 2-2 2 3 2-6 2 7 2-5 2 4 2-3 2 2 2-4 2 3 2-2 2 1 2-3 2 2 2-1 2 2 2-4 2 2 2-1 1 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
     '</svg>',
   ].join('')
   const spacer = document.createElement('span')
   spacer.className = cls('mikuStatusbarSpacer')
   statusbar.append(wave, spacer)
-  for (const cell of STATUS_CELLS) {
+  for (const cell of resolveCells()) {
     const el = document.createElement('span')
     el.className = cls('mikuStatusbarCell')
     el.textContent = cell
@@ -155,7 +211,7 @@ export function apply(ctx: Context): void {
   favicon.href = `data:image/svg+xml;utf8,${encodeURIComponent(FAVICON_SVG)}`
   document.head.append(favicon)
 
-  document.title = SKIN_TITLE
+  document.title = pinnedTitle
   body.append(titlebar, statusbar)
 
   ctx.effect(() => () => {
@@ -164,11 +220,12 @@ export function apply(ctx: Context): void {
     for (const [prop, value] of previous) {
       body.style.setProperty(prop, value)
     }
+    restoreCursor(body, previousCursor)
     titlebar.remove()
     statusbar.remove()
     favicon.remove()
     // Only restore when the skin's own title still stands — a session title
     // projected by the shell must not be clobbered by skin teardown.
-    if (document.title === SKIN_TITLE) document.title = originalTitle
+    if (document.title === pinnedTitle) document.title = originalTitle
   }, 'ui-skin-miku: Miku chrome')
 }

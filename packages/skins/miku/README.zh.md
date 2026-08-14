@@ -9,15 +9,17 @@
 - **自定义背景图**：内置示例背景，可替换为你自己的初音图片
 - **亮/暗双主题**：亮色为蓝粉晴空，暗色为霓虹蓝紫夜
 - **电子歌姬元素**：顶部 01 编号徽标、音符图标、状态栏音乐波形
+- **初音光标**：整个窗口的鼠标指针变成初音未来图标（32x32 内嵌）；设置 `dsh.miku.cursor=off` 可关闭
 
 ![亮色](preview/light.png) · ![暗色](preview/dark.png)
 
 ## 特性
 
 - 纯呈现层：不注入服务、不发事件、不触模型请求
-- `apply()` 只写自己会收回的东西，disposer 完整回收（body 属性、注入元素、favicon、标题）
+- `apply()` 只写自己会收回的东西，disposer 完整回收（body 属性、注入元素、favicon、标题、光标）
 - 样式全部挂在 `body[data-dsh-miku]` 下（暗色变体 `[data-ds-dark-theme]`）
 - 无静态资源文件：背景图以 data URI 内嵌
+- 支持 `prefers-reduced-transparency`：开启系统「降低透明度」（macOS / iOS Safari）的用户会得到同样的半透明表面，但省去 GPU 模糊开销
 
 ## 环境要求
 
@@ -81,6 +83,25 @@ export const MIKU_ART = 'data:image/webp;base64,<...>'
 ```
 
 重新构建后刷新页面即可。
+
+## 配置
+
+可选覆盖项，从 `localStorage` 读取（均可选；缺失或非法值回退默认）。纯呈现层——不注入服务、不发事件：
+
+| Key | 值 | 效果 |
+| --- | --- | --- |
+| `dsh.miku.title` | 任意字符串 | 替换标题栏与文档标题中固定的标题（「初音未来 · DeepSeek 在线」） |
+| `dsh.miku.cells` | JSON 字符串数组 | 替换状态栏单元格，例如 `["LIVE 01", "TURBO"]` |
+| `dsh.miku.cursor` | `off` | 关闭初音光标（其他值或缺省则保持开启） |
+
+示例：
+
+```js
+localStorage.setItem('dsh.miku.title', 'Miku Works')
+localStorage.setItem('dsh.miku.cells', JSON.stringify(['LIVE 01', 'TURBO']))
+localStorage.setItem('dsh.miku.cursor', 'off')
+location.reload()
+```
 
 ## License
 

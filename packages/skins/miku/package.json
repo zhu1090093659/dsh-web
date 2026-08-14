@@ -41,6 +41,7 @@
     "skin.json",
     "preview",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ]
 }

@@ -9,15 +9,17 @@ A Hatsune Miku (初音未来) theme skin for the DeepSeek Harness (DSH) Web GUI.
 - **Custom backdrop**: a built-in sample background that you can replace with your own Miku image
 - **Light/dark dual themes**: light is a blue-pink clear sky, dark is a neon blue-violet night
 - **Electronic idol elements**: the 01 number badge at the top, a music-note icon, and a music waveform in the status bar
+- **Miku cursor**: the whole window pointer becomes a Hatsune Miku icon (32x32, inlined); disable with `dsh.miku.cursor=off`
 
 ![Light](preview/light.png) · ![Dark](preview/dark.png)
 
 ## Features
 
 - Pure presentation layer: no services injected, no events emitted, no model requests touched
-- `apply()` only writes what it withdraws; the disposer fully recovers (body attribute, injected elements, favicon, title)
+- `apply()` only writes what it withdraws; the disposer fully recovers (body attribute, injected elements, favicon, title, cursor)
 - All styles hang under `body[data-dsh-miku]` (dark variant `[data-ds-dark-theme]`)
 - No static asset files: the background is embedded as a data URI
+- `prefers-reduced-transparency` support: users who enable "Reduce Transparency" (macOS / iOS Safari) get the same translucent fills without the GPU blur cost
 
 ## Requirements
 
@@ -81,6 +83,25 @@ export const MIKU_ART = 'data:image/webp;base64,<...>'
 ```
 
 Rebuild and refresh the page.
+
+## Configuration
+
+Optional overrides, read from `localStorage` (all are optional; absent or invalid values fall back to the defaults). They are pure presentation — no services, no events:
+
+| Key | Value | Effect |
+| --- | --- | --- |
+| `dsh.miku.title` | any string | Replaces the pinned title ("初音未来 · DeepSeek 在线") in the title bar and document title |
+| `dsh.miku.cells` | JSON array of strings | Replaces the status-bar cells, e.g. `["LIVE 01", "TURBO"]` |
+| `dsh.miku.cursor` | `off` | Disables the Miku cursor (any other value or absence keeps it on) |
+
+Example:
+
+```js
+localStorage.setItem('dsh.miku.title', 'Miku Works')
+localStorage.setItem('dsh.miku.cells', JSON.stringify(['LIVE 01', 'TURBO']))
+localStorage.setItem('dsh.miku.cursor', 'off')
+location.reload()
+```
 
 ## License
 

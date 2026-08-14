@@ -17,7 +17,10 @@
 body[data-dsh-miku] {
   --dsw-font-family: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Helvetica Neue', 'Segoe UI', sans-serif;
   --ds-font-family-code: 'JetBrains Mono', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
-  color: #1d2f52;
+  /* Bright cyan-blue text: the backdrop art is a deep scene, so light-mode
+     text wears the idol's bright blue (matches the art's highlight) to stay
+     legible over the dark picture. */
+  color: #38b6e8;
   background-color: #eef5ff;
   /* The idol art is applied by apply() as an inline background-image
      (base64 data URL from ./art.ts, with a readability scrim chosen by the
@@ -47,19 +50,17 @@ body[data-dsh-miku][data-ds-dark-theme] {
    drop shadow over the desktop. */
 body[data-dsh-miku] [id='root'] {
   box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(250, 255, 254, 0.6) 0%, rgba(253, 255, 255, 0.45) 110px, rgba(255, 255, 255, 0.38) 100%);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  /* Transparent: the idol art (body background) shows straight through the
+     window frame. */
+  background: transparent;
   border: 1px solid #9cc6ff;
-  box-shadow: 0 8px 28px rgba(16, 42, 90, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 28px rgba(16, 42, 90, 0.28);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [id='root'] {
-  background: linear-gradient(180deg, rgba(10, 20, 48, 0.55) 0%, rgba(12, 26, 58, 0.42) 110px, rgba(13, 26, 56, 0.36) 100%);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background: transparent;
   border-color: #24447c;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
 
 /* --- Static palette: light -----------------------------------------------------
@@ -224,17 +225,19 @@ body[data-dsh-miku][data-ds-dark-theme] {
 /* --- Alias layer: light --------------------------------------------------------- */
 
 body[data-dsh-miku] {
-  --dsw-alias-bg-base: #fff;
-  --dsw-alias-bg-layer-1: #f3f8ff;
-  --dsw-alias-bg-layer-2: #e4f0ff;
-  --dsw-alias-bg-layer-3: #dfeaff;
+  /* Translucent base fills: the idol art shows through component surfaces
+     while text keeps a readable veil. */
+  --dsw-alias-bg-base: rgba(255, 255, 255, 0.16);
+  --dsw-alias-bg-layer-1: rgba(243, 248, 255, 0.18);
+  --dsw-alias-bg-layer-2: rgba(228, 240, 255, 0.2);
+  --dsw-alias-bg-layer-3: rgba(223, 234, 255, 0.22);
   --dsw-alias-bg-mask-1: rgba(10, 30, 66, 0.4);
   --dsw-alias-bg-mask-2: rgba(10, 30, 66, 0.2);
   --dsw-alias-bg-mask-3: rgba(10, 30, 66, 0.5);
   --dsw-alias-bg-mask-photo: rgba(6, 22, 46, 0.88);
-  --dsw-alias-bg-module-platform: #e4f7f2;
-  --dsw-alias-bg-multi-select: #e4f0ff;
-  --dsw-alias-bg-overlay: #eefaf7;
+  --dsw-alias-bg-module-platform: rgba(228, 247, 242, 0.35);
+  --dsw-alias-bg-multi-select: rgba(228, 240, 255, 0.35);
+  --dsw-alias-bg-overlay: rgba(238, 250, 247, 0.4);
   --dsw-alias-bg-skeleton: rgba(10, 30, 66, 0.06);
   --dsw-alias-border-inverted2: rgba(255, 255, 255, 0.6);
   --dsw-alias-border-inverted: rgba(255, 255, 255, 0.4);
@@ -267,14 +270,14 @@ body[data-dsh-miku] {
   --dsw-alias-interactive-bg-hover-danger: rgba(194, 38, 38, 0.06);
   --dsw-alias-interactive-bg-hover-solid: #eaf4ff;
   --dsw-alias-interactive-bg-hover: rgba(46, 155, 255, 0.08);
-  --dsw-alias-label-caption: #5d74a0;
-  --dsw-alias-label-dimmed: #6880a5;
-  --dsw-alias-label-primary-dimmed: #465a84;
+  --dsw-alias-label-caption: #2e9bff;
+  --dsw-alias-label-dimmed: #3aa8d8;
+  --dsw-alias-label-primary-dimmed: #4db3e0;
   --dsw-alias-label-primary-foreground: #fff;
   --dsw-alias-label-primary-inverted: #fff;
-  --dsw-alias-label-primary: #17302c;
-  --dsw-alias-label-secondary: #465a84;
-  --dsw-alias-label-tertiary: #5d74a0;
+  --dsw-alias-label-primary: #38b6e8;
+  --dsw-alias-label-secondary: #29a8d8;
+  --dsw-alias-label-tertiary: #2e9bff;
   --dsw-alias-markdown-citation: #e4f7f2;
   --dsw-alias-markdown-code-block-banner: #f3f8ff;
   --dsw-alias-markdown-code-block: #f3f8ff;
@@ -299,7 +302,7 @@ body[data-dsh-miku] {
   --dsw-alias-state-warn-secondary: #e5b94f;
   --dsw-alias-state-warn-tertiary: #fdf3dd;
   --dsw-alias-toast-bg: #1e6fd9;
-  --dsw-alias-tooltip-bg: #ffffff;
+  --dsw-alias-tooltip-bg: rgba(10, 24, 52, 0.85);
   --dsw-specific-bubble-highlight: #cfe3ff;
   --dsw-specific-bubble: #e4f0ff;
   --dsw-specific-input-major: #fff;
@@ -414,43 +417,44 @@ body[data-dsh-miku] * {
 }
 
 /* Controls: a glassy teal sheen over whatever fill the component carries;
-   pressing sinks it inward. */
+   pressing sinks it inward. No white background gradient or white inset
+   highlight — the idol art shows through every button. */
 body[data-dsh-miku] button {
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.14) 45%, rgba(255, 255, 255, 0));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(10, 30, 66, 0.12);
+  background-image: none;
+  box-shadow: 0 1px 2px rgba(10, 30, 66, 0.12);
 }
 
 body[data-dsh-miku] button:hover:not(:disabled) {
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.18) 45%, rgba(255, 255, 255, 0));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 3px rgba(10, 30, 66, 0.18);
+  background-image: none;
+  box-shadow: inset 0 0 0 1px rgba(90, 180, 240, 0.25), 0 1px 3px rgba(10, 30, 66, 0.18);
 }
 
 body[data-dsh-miku] button:active:not(:disabled) {
-  background-image: linear-gradient(180deg, rgba(10, 30, 66, 0.08), rgba(10, 30, 66, 0) 60%);
+  background-image: none;
   box-shadow: inset 0 2px 4px rgba(10, 30, 66, 0.22);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] button {
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(0, 0, 0, 0.3);
+  background-image: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] button:hover:not(:disabled) {
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 1px 3px rgba(0, 0, 0, 0.4);
+  background-image: none;
+  box-shadow: inset 0 0 0 1px rgba(88, 169, 255, 0.25), 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] button:active:not(:disabled) {
-  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0) 60%);
+  background-image: none;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
 }
 
 body[data-dsh-miku] input:not([type='checkbox']):not([type='radio']),
 body[data-dsh-miku] textarea,
 body[data-dsh-miku] select {
-  box-shadow: inset 0 1px 2px rgba(10, 30, 66, 0.08);
-  background: #fff;
-  color: #17302c;
+  box-shadow: inset 0 1px 2px rgba(10, 30, 66, 0.12);
+  background: rgba(56, 155, 230, 0.24);
+  color: #0b1a2e;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] input:not([type='checkbox']):not([type='radio']),
@@ -545,6 +549,17 @@ body[data-dsh-miku][data-ds-dark-theme] a:visited {
    glassy band with the 01 badge; the status bar reads as a music-studio
    console strip with a live waveform. */
 
+/* Safari "Reduce Transparency" (prefers-reduced-transparency): drop the
+   backdrop-filter everywhere so frosted glass degrades to the plain
+   translucent fills above — the UI stays readable without the GPU blur
+   Safari would otherwise pay for on every surface. */
+@media (prefers-reduced-transparency: reduce) {
+  body[data-dsh-miku] * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
 .mikuTitlebar {
   position: fixed;
   top: 0;
@@ -590,6 +605,7 @@ body[data-dsh-miku][data-ds-dark-theme] .mikuTitlebar {
   filter: drop-shadow(0 1px 1px rgba(6, 22, 48, 0.4));
 }
 
+/* The badge number rides currentColor (white on the gradient bar). */
 .mikuTitlebarBadge svg text {
   fill: currentColor;
 }
@@ -604,7 +620,9 @@ body[data-dsh-miku][data-ds-dark-theme] .mikuTitlebar {
   margin-left: 2px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+  /* !important beats the global `* { border-radius: 6px }` geometry rule,
+     which would otherwise square these 3px window glyphs. */
+  border-radius: 3px !important;
   color: #fff;
   font-size: 10px;
   line-height: 1;
@@ -636,55 +654,60 @@ body[data-dsh-miku][data-ds-dark-theme] .mikuTitlebar {
   height: 26px;
   padding: 2px 8px;
   box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(232, 242, 255, 0.55), rgba(212, 232, 255, 0.4));
+  /* Same blue-violet-magenta gradient as the title bar. */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 60%), linear-gradient(90deg, rgba(30, 111, 217, 0.55) 0%, rgba(46, 155, 255, 0.45) 40%, rgba(155, 93, 255, 0.42) 68%, rgba(255, 77, 166, 0.42) 100%);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-top: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  color: #0d2b56;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: #fff;
   font: 11px/1 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  text-shadow: 0 1px 1px rgba(6, 22, 48, 0.4);
   user-select: none;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] .mikuStatusbar {
-  background: linear-gradient(180deg, rgba(22, 41, 78, 0.55), rgba(29, 49, 96, 0.4));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 60%), linear-gradient(90deg, rgba(13, 43, 86, 0.6) 0%, rgba(30, 79, 158, 0.5) 45%, rgba(122, 63, 208, 0.46) 72%, rgba(208, 41, 138, 0.46) 100%);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-top: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  color: #c2d4f0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
 }
 
 .mikuStatusbarWave {
   flex: none;
   display: inline-flex;
   align-items: center;
-  color: #1e6fd9;
-  filter: drop-shadow(0 1px 1px rgba(6, 22, 48, 0.2));
+  color: #fff;
+  filter: drop-shadow(0 1px 1px rgba(6, 22, 48, 0.35));
 }
 
 body[data-dsh-miku][data-ds-dark-theme] .mikuStatusbarWave {
-  color: #58a9ff;
+  color: #fff;
 }
 
 .mikuStatusbarCell {
   flex: none;
   height: 17px;
   padding: 0 8px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid #9cc6ff;
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  /* !important beats the global `* { border-radius: 6px }` geometry rule,
+     which would otherwise square these 3px status cells. */
+  border-radius: 3px !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  color: #0d2b56;
+  color: #0b3d66;
   line-height: 17px;
   white-space: nowrap;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] .mikuStatusbarCell {
-  background: rgba(10, 22, 46, 0.5);
-  border-color: #24447c;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  color: #c2d4f0;
+  background: rgba(10, 22, 46, 0.55);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #d6f1ec;
 }
 
 /* The gradient accent line was removed with the statusbar border
@@ -702,53 +725,56 @@ body[data-dsh-miku][data-ds-dark-theme] .mikuStatusbarCell {
    Without the hooks these rules simply do not match. */
 
 body[data-dsh-miku] [data-pane='sidebar'] > div {
-  background: linear-gradient(180deg, rgba(234, 250, 247, 0.72) 0%, rgba(243, 252, 250, 0.6) 40%, rgba(255, 255, 255, 0.55) 100%);
+  /* Nearly transparent frosted glass so the idol art shows through
+     directly (was a thick white pane). */
+  background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [data-pane='sidebar'] > div {
-  background: linear-gradient(180deg, rgba(15, 44, 40, 0.72) 0%, rgba(14, 43, 39, 0.64) 45%, rgba(11, 33, 30, 0.6) 100%);
+  background: rgba(10, 20, 44, 0.22);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* Sidebar header band: the first child (logo row) becomes the Miku teal
-   user strip with a glass sheen; everything inside renders white. */
+/* Sidebar header band: the first child (logo row). Transparent in light
+   mode so the idol art shows through; dark text stays readable. */
 body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child,
 body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child * {
-  color: #fff;
+  color: #38b6e8;
 }
 
 body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 60%), linear-gradient(90deg, #1e6fd9 0%, #2e9bff 45%, #9b5dff 72%, #ff4da6 100%);
-  border-bottom: 1px solid #0d2e66;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(156, 198, 255, 0.4);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [data-pane='sidebar'] > div > :first-child {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 60%), linear-gradient(180deg, #0d2b56, #14564f);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 60%), linear-gradient(180deg, #0d2b56, #1a3a6e);
   border-bottom-color: #062e2a;
+  color: #fff;
 }
 
 /* Header-band buttons stay flat and transparent (no silver squares on the
-   teal strip). */
+   strip). Light mode: dark glyphs on the translucent band; dark mode: white. */
 body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child button {
   background: transparent;
-  color: #fff;
+  color: #38b6e8;
   background-image: none;
   box-shadow: none;
 }
 
+body[data-dsh-miku][data-ds-dark-theme] [data-pane='sidebar'] > div > :first-child button {
+  color: #fff;
+}
+
 body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child button:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(46, 155, 255, 0.14);
 }
 
 /* The brand lockup is vector text: "DeepSeek" + a "HARNESS" badge pill.
-   The pill follows currentColor (white here) while the badge letters use
-   the inverted-primary token —white on white in light mode, invisible.
-   Pin the pill to the deep teal and force the letters white in both
-   themes, so the badge reads on the teal strip. */
+   The pill follows currentColor; pin it to a readable tone per theme. */
 body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child svg rect[fill='currentColor'] {
   fill: #0d2b56;
 }
@@ -760,9 +786,11 @@ body[data-dsh-miku] [data-pane='sidebar'] > div > :first-child svg [fill='var(--
 /* Conversation: frosted white chat surface with a pale mint title band on
    the session header —translucent so the idol art breathes through. */
 body[data-dsh-miku] [data-pane='conversation'] {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* Nearly transparent so the idol art shows through directly; the blurred
+     backdrop keeps chat text readable. */
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [data-pane='conversation'] {
@@ -777,18 +805,18 @@ body[data-dsh-miku] [data-pane='conversation'] > div > header {
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [data-pane='conversation'] > div > header {
-  background: linear-gradient(180deg, rgba(18, 56, 50, 0.78), rgba(15, 42, 38, 0.7));
+  background: linear-gradient(180deg, rgba(13, 26, 58, 0.78), rgba(16, 34, 72, 0.7));
   border-bottom-color: #22407a;
 }
 
 body[data-dsh-miku] [data-pane='details'] {
-  background: rgba(240, 250, 247, 0.62);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [data-pane='details'] {
-  background: rgba(13, 39, 35, 0.6);
+  background: rgba(12, 26, 58, 0.58);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -807,35 +835,38 @@ body[data-dsh-miku][data-ds-dark-theme] [data-pane='details'] {
 /* --- aionui tokens: light -------------------------------------------------- */
 
 body[data-dsh-miku] {
-  --aion-bg-base: #ffffff;
-  --aion-bg-1: #f3f8ff;
-  --aion-bg-2: #e4f7f2;
-  --aion-bg-3: #dfeaff;
-  --aion-bg-4: #b4d4ff;
-  --aion-bg-hover: #eefaf7;
-  --aion-bg-active: #e4f0ff;
-  --aion-text-primary: #17302c;
-  --aion-text-secondary: #465a84;
-  --aion-text-tertiary: #5d74a0;
-  --aion-text-disabled: #6880a5;
+  /* Translucent fills so the idol art shows through the aionui panes
+     directly in light mode (was opaque near-white). Text stays dark and
+     readable. */
+  --aion-bg-base: rgba(255, 255, 255, 0.05);
+  --aion-bg-1: rgba(255, 255, 255, 0.04);
+  --aion-bg-2: rgba(255, 255, 255, 0.06);
+  --aion-bg-3: rgba(180, 212, 255, 0.28);
+  --aion-bg-4: rgba(122, 184, 255, 0.4);
+  --aion-bg-hover: rgba(255, 255, 255, 0.14);
+  --aion-bg-active: rgba(46, 155, 255, 0.16);
+  --aion-text-primary: #38b6e8;
+  --aion-text-secondary: #29a8d8;
+  --aion-text-tertiary: #2e9bff;
+  --aion-text-disabled: #3aa8d8;
   --aion-primary: #2e9bff;
   --aion-primary-hover: #4da3ff;
   --aion-success: #24924a;
-  --aion-success-soft: #ddf3e3;
+  --aion-success-soft: rgba(221, 243, 227, 0.5);
   --aion-warning: #c99a2e;
-  --aion-warning-soft: #fdf3dd;
+  --aion-warning-soft: rgba(253, 243, 221, 0.5);
   --aion-danger: #c22626;
-  --aion-danger-soft: #fceeee;
+  --aion-danger-soft: rgba(252, 238, 238, 0.5);
   --aion-brand: #2e9bff;
-  --aion-aou-1: #f5faff;
-  --aion-aou-2: #e4f0ff;
-  --aion-aou-3: #b4d4ff;
-  --aion-aou-4: #7ab8ff;
+  --aion-aou-1: rgba(245, 250, 255, 0.4);
+  --aion-aou-2: rgba(228, 240, 255, 0.5);
+  --aion-aou-3: rgba(180, 212, 255, 0.5);
+  --aion-aou-4: rgba(122, 184, 255, 0.55);
   --aion-aou-5: #2e9bff;
   --aion-aou-6: #0d2b56;
-  --aion-fill-2: #eaf4ff;
-  --aion-fill-3: #e4f0ff;
-  --aion-border-base: #d4e1f2;
+  --aion-fill-2: rgba(46, 155, 255, 0.1);
+  --aion-fill-3: rgba(46, 155, 255, 0.16);
+  --aion-border-base: rgba(180, 212, 255, 0.4);
   --aion-overlay-shadow: 0 8px 28px rgba(10, 30, 66, 0.3), 0 2px 8px rgba(10, 30, 66, 0.16);
   --aion-font-sans: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Helvetica Neue', 'Segoe UI', sans-serif;
   --aion-font-mono: 'JetBrains Mono', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
@@ -846,10 +877,10 @@ body[data-dsh-miku] {
 body[data-dsh-miku][data-ds-dark-theme] {
   --aion-bg-base: #0d1a3a;
   --aion-bg-1: #12244a;
-  --aion-bg-2: #182e5c;
+  --aion-bg-2: #162a54;
   --aion-bg-3: #1d3668;
   --aion-bg-4: #22407a;
-  --aion-bg-hover: #152a52;
+  --aion-bg-hover: #1c3468;
   --aion-bg-active: #1c3468;
   --aion-text-primary: #d6f1ec;
   --aion-text-secondary: #b8cae8;
@@ -886,73 +917,85 @@ body[data-dsh-miku][data-ds-dark-theme] {
 
 body[data-dsh-miku] [data-aionui-explorer-col],
 body[data-dsh-miku] [data-aionui-preview-col] {
-  border-left-color: #9cc6ff;
-  background: rgba(240, 250, 247, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* No left border — the drag handle's teal line is the only divider.
+     !important beats the inline `borderLeft` the layout controller stamps
+     and the aionui class rule's background-color. */
+  border-left: none !important;
+  background: transparent !important;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [data-aionui-explorer-col],
 body[data-dsh-miku][data-ds-dark-theme] [data-aionui-preview-col] {
-  border-left-color: #22407a;
-  background: rgba(15, 44, 40, 0.58);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  border-left: none !important;
+  background: transparent !important;
 }
 
 body[data-dsh-miku] :global(.aionui-root) {
-  background: linear-gradient(180deg, rgba(246, 250, 255, 0.66) 0%, rgba(246, 253, 251, 0.55) 100%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* Transparent background (no light band), with a subtle backdrop blur to
+     keep text readable over the art. */
+  background: transparent;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   color: var(--aion-text-primary);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-root) {
-  background: linear-gradient(180deg, rgba(15, 44, 40, 0.66) 0%, rgba(13, 39, 35, 0.6) 100%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: transparent;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   color: var(--aion-text-primary);
 }
 
-/* Explorer header band: read as the Miku panel title strip (glassy teal).
-   Reposition only the top strip so the tree below stays on the pale body. */
+/* Explorer header band: read as the Miku panel title strip. Transparent in
+   light mode so the art shows through; text stays bright and readable. */
 body[data-dsh-miku] [data-aionui-explorer-col] > div > :first-child {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 60%), linear-gradient(90deg, #1e6fd9 0%, #2e9bff 45%, #9b5dff 72%, #ff4da6 100%);
-  border-bottom: 1px solid #0d2e66;
-  color: #fff;
+  background: transparent;
+  border-bottom: 1px solid rgba(156, 198, 255, 0.3);
+  color: #38b6e8;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [data-aionui-explorer-col] > div > :first-child {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 60%), linear-gradient(180deg, #0d2b56, #14564f);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 60%), linear-gradient(180deg, #0d2b56, #1a3a6e);
   border-bottom-color: #062e2a;
   color: #d6f1ec;
 }
 
 /* --- aionui drag handles, chevrons, floating expand --------------------------
-   The 2px splitter lines and the collapsed-expand affordance stay slim and
-   glow with the skin's teal on hover. */
+   The 12px hit zone stays transparent (no white band); only the 2px visual
+   line carries the Miku teal, brightening on hover. */
 
 body[data-dsh-miku] :global(.aionui-explorer-handle),
 body[data-dsh-miku] :global(.aionui-preview-handle) {
-  background: #d4e8ff;
+  background: transparent;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-body[data-dsh-miku] :global(.aionui-explorer-handle):hover,
-body[data-dsh-miku] :global(.aionui-preview-handle):hover {
-  background: #2e9bff;
-  box-shadow: 0 0 6px rgba(46, 155, 255, 0.5);
+body[data-dsh-miku] :global(.aionui-explorer-handle::after),
+body[data-dsh-miku] :global(.aionui-preview-handle::after) {
+  background-color: #2e9bff;
+  opacity: 0.55;
 }
 
-body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-explorer-handle),
-body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-preview-handle) {
-  background: #22407a;
+body[data-dsh-miku] :global(.aionui-explorer-handle:hover::after),
+body[data-dsh-miku] :global(.aionui-explorer-handle:active::after),
+body[data-dsh-miku] :global(.aionui-preview-handle:hover::after),
+body[data-dsh-miku] :global(.aionui-preview-handle:active::after) {
+  background-color: #58a9ff;
+  opacity: 1;
 }
 
-body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-explorer-handle):hover,
-body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-preview-handle):hover {
-  background: #58a9ff;
-  box-shadow: 0 0 6px rgba(88, 170, 255, 0.5);
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-explorer-handle::after),
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-preview-handle::after) {
+  background-color: #58a9ff;
+  opacity: 0.6;
+}
+
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-explorer-handle:hover::after),
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-explorer-handle:active::after),
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-preview-handle:hover::after),
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-preview-handle:active::after) {
+  background-color: #7ab8ff;
+  opacity: 1;
 }
 
 body[data-dsh-miku] :global(.aionui-floating-expand) {
@@ -970,7 +1013,7 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-floating-expand) {
 }
 
 body[data-dsh-miku] :global(.aionui-collapse-chevron) {
-  color: #465a84;
+  color: #29a8d8;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-collapse-chevron) {
@@ -990,7 +1033,7 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-overlay) {
 }
 
 body[data-dsh-miku] :global(.aionui-dialog) {
-  background: linear-gradient(180deg, rgba(244, 253, 251, 0.9), rgba(255, 255, 255, 0.82));
+  background: linear-gradient(180deg, rgba(250, 253, 255, 0.9), rgba(255, 255, 255, 0.82));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid #9cc6ff;
@@ -999,7 +1042,7 @@ body[data-dsh-miku] :global(.aionui-dialog) {
 }
 
 body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-dialog) {
-  background: linear-gradient(180deg, rgba(18, 56, 50, 0.88), rgba(15, 44, 40, 0.8));
+  background: linear-gradient(180deg, rgba(14, 28, 60, 0.88), rgba(13, 26, 56, 0.8));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-color: #22407a;
@@ -1008,10 +1051,12 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-dialog) {
 }
 
 body[data-dsh-miku] :global(.aionui-btn) {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.14) 45%, rgba(255, 255, 255, 0));
-  border: 1px solid #9cc6ff;
-  color: #17302c;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(10, 30, 66, 0.12);
+  background: rgba(56, 155, 230, 0.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(90, 180, 240, 0.45);
+  color: #38b6e8;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 2px rgba(10, 30, 66, 0.12);
 }
 
 body[data-dsh-miku] :global(.aionui-btn)::selection {
@@ -1039,7 +1084,7 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn) {
 }
 
 body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-primary) {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #1e6fd9, #14564f);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #1e6fd9, #1a3a6e);
   border-color: #0d2b56;
   color: #fff;
 }
@@ -1053,14 +1098,16 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-danger) {
 /* --- aionui menu and toast --------------------------------------------------- */
 
 body[data-dsh-miku] :global(.aionui-menu) {
-  background: #f3f8ff;
-  border: 1px solid #9cc6ff;
+  background: rgba(248, 251, 255, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(156, 198, 255, 0.6);
   box-shadow: var(--aion-overlay-shadow);
   color: var(--aion-text-primary);
 }
 
 body[data-dsh-miku] :global(.aionui-menu-item:hover) {
-  background: #e4f0ff;
+  background: rgba(46, 155, 255, 0.12);
 }
 
 body[data-dsh-miku] :global(.aionui-menu-item-disabled) {
@@ -1068,7 +1115,7 @@ body[data-dsh-miku] :global(.aionui-menu-item-disabled) {
 }
 
 body[data-dsh-miku] :global(.aionui-menu-sep) {
-  background: #d4e8ff;
+  background: rgba(180, 212, 255, 0.5);
 }
 
 body[data-dsh-miku] :global(.aionui-toast) {
@@ -1270,7 +1317,7 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-primary):hover:not(:
 }
 
 body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-primary):active:not(:disabled) {
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #14564f, #0d2b56);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #1a3a6e, #0d2b56);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
 }
 
@@ -1303,16 +1350,17 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-menu-item):active {
   background: #1c3468;
 }
 
-/* aionui splitter drag handles: pressed (dragging) state. */
+/* aionui splitter drag handles: pressed (dragging) state — the hit zone
+   stays transparent, the visual line glows. */
 body[data-dsh-miku] :global(.aionui-explorer-handle):active,
 body[data-dsh-miku] :global(.aionui-preview-handle):active {
-  background: #1e6fd9;
+  background: transparent;
   box-shadow: 0 0 6px rgba(46, 155, 255, 0.6);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-explorer-handle):active,
 body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-preview-handle):active {
-  background: #58a9ff;
+  background: transparent;
   box-shadow: 0 0 6px rgba(88, 170, 255, 0.6);
 }
 
@@ -1401,7 +1449,7 @@ body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-g
 /* The current-branch chip keeps the brand teal; pass cells stay muted. */
 body[data-dsh-miku] [data-gitgraph-current-branch] {
   background: rgba(46, 155, 255, 0.12);
-  color: #124a8f;
+  color: #38b6e8;
   border: 1px solid rgba(46, 155, 255, 0.4);
 }
 
@@ -1435,54 +1483,50 @@ body[data-dsh-miku][data-ds-dark-theme] [data-gitgraph-dialog] {
    exist (older layouts) or the classes change (they degrade to the token
    fallbacks below). */
 
-/* The AppFrame outer frame: frosted glass over the art. */
+/* The AppFrame outer frame: transparent so the art shows through. */
 :global(body[data-dsh-miku]) :global(#root) > div > div {
-  background: rgba(255, 255, 255, 0.28) !important;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: transparent !important;
 }
 
 :global(body[data-dsh-miku][data-ds-dark-theme]) :global(#root) > div > div {
-  background: rgba(8, 18, 42, 0.12) !important;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: transparent !important;
 }
 
-/* Sidebar column and its content root: translucent so the idol glows
-   through behind the nav. */
+/* Sidebar column and its content root: transparent so the idol art shows
+   through directly (was a thick white pane). */
 
 body[data-dsh-miku] [class*='sidebarCol'] {
-  background: rgba(246, 251, 255, 0.28) !important;
+  border-left: none !important;
+  background: rgba(255, 255, 255, 0.08) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='sidebarCol'] {
-  background: rgba(10, 20, 44, 0.24) !important;
+  border-left: none !important;
+  background: rgba(10, 20, 44, 0.22) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 body[data-dsh-miku] [class*='sidebarCol'] > div > div {
-  background: linear-gradient(180deg, rgba(246, 251, 255, 0.66) 0%, rgba(240, 248, 255, 0.5) 45%, rgba(235, 244, 255, 0.42) 100%) !important;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: transparent !important;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='sidebarCol'] > div > div {
-  background: linear-gradient(180deg, rgba(13, 26, 58, 0.22) 0%, rgba(11, 22, 50, 0.16) 45%, rgba(10, 20, 44, 0.12) 100%) !important;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: transparent !important;
 }
 
 /* Center column (conversation area): translucent so the art breathes
    through; messages still sit on readable frosted surfaces. */
 body[data-dsh-miku] [class*='centerCol'] {
-  background: rgba(255, 255, 255, 0.32) !important;
+  border-left: none !important;
+  background: rgba(255, 255, 255, 0.08) !important;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='centerCol'] {
+  border-left: none !important;
   background: rgba(8, 18, 42, 0.1) !important;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -1490,12 +1534,14 @@ body[data-dsh-miku][data-ds-dark-theme] [class*='centerCol'] {
 
 /* Details column. */
 body[data-dsh-miku] [class*='detailsCol'] {
-  background: rgba(243, 248, 255, 0.5) !important;
+  border-left: none !important;
+  background: rgba(255, 255, 255, 0.08) !important;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='detailsCol'] {
+  border-left: none !important;
   background: rgba(10, 20, 44, 0.18) !important;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -1503,32 +1549,20 @@ body[data-dsh-miku][data-ds-dark-theme] [class*='detailsCol'] {
 
 
 /* Conversation-area content root (the inner scroll/composer wrapper inside
-   the center column): translucent so the idol art breathes through behind
-   the messages. */
+   the center column): transparent so the idol art shows through behind the
+   messages. */
 body[data-dsh-miku] [class*='centerCol'] > div > div {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.16) 100%) !important;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: transparent !important;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='centerCol'] > div > div {
-  background: linear-gradient(180deg, rgba(13, 26, 58, 0.08) 0%, rgba(10, 20, 44, 0.06) 100%) !important;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: transparent !important;
 }
 
 /* Scroll bodies and composer seat stay transparent (readable surfaces ride
-   on the frosted column above). */
+   on the frosted column above). Transparent applies in both themes. */
 body[data-dsh-miku] [class*='composerSeat'],
 body[data-dsh-miku] [class*='scrollBody'] {
-  background: transparent !important;
-}
-/* Scroll bodies inside the columns: keep readable, very light tint. */
-body[data-dsh-miku] [class*='scrollBody'] {
-  background: transparent !important;
-}
-
-body[data-dsh-miku][data-ds-dark-theme] [class*='scrollBody'] {
   background: transparent !important;
 }
 
@@ -1549,7 +1583,7 @@ body[data-dsh-miku] [role='listbox'] {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(156, 198, 255, 0.6) !important;
   box-shadow: 0 12px 32px rgba(10, 30, 66, 0.25), 0 2px 8px rgba(10, 30, 66, 0.12) !important;
-  color: #1d2f52;
+  color: #38b6e8;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='menu'],
@@ -1616,7 +1650,7 @@ body[data-dsh-miku][data-ds-dark-theme] [class*='menu'] [class*='heading'] {
 /* Menu disabled items. */
 body[data-dsh-miku] [class*='menu'] [class*='disabled'],
 body[data-dsh-miku] [role='menuitem'][aria-disabled='true'] {
-  color: #5d74a0 !important;
+  color: #29a8d8 !important;
   opacity: 0.6;
 }
 
@@ -1638,16 +1672,19 @@ body[data-dsh-miku] [class*='composerHero'] {
   -webkit-backdrop-filter: none !important;
 }
 
-/* The typing surface itself: translucent glass with a teal-free blue tint,
-   keeping the caret and text readable over the art. */
+/* The typing surface itself: translucent glass with a blue tint, keeping the
+   caret and text readable over the art. */
 body[data-dsh-miku] textarea,
 body[data-dsh-miku] [contenteditable='true'],
 body[data-dsh-miku] input:not([type='checkbox']):not([type='radio']) {
-  background: rgba(255, 255, 255, 0.55) !important;
+  /* Blue-tinted frosted glass: the idol art glows through a cyan veil.
+     Text is a deep blue-black for maximum clarity while typing (sent
+     messages keep the bright cyan, via the alias label tokens). */
+  background: rgba(56, 155, 230, 0.28) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-color: rgba(156, 198, 255, 0.5) !important;
-  color: #1d2f52 !important;
+  border-color: rgba(90, 180, 240, 0.55) !important;
+  color: #0b1a2e !important;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] textarea,
@@ -1668,16 +1705,17 @@ body[data-dsh-miku] [class*='composer'] [class*='actions'] {
 
 /* --- 设置面板 / 抽屉（settings panel / drawer） ------------------------------
    The settings dialog (800x800) becomes frosted translucent glass so the
-   art glows through; the dim mask stays behind it. */
+   art glows through; the dim mask stays behind it. Both themes share the
+   same deep sea-glass look (user preference). */
 
 body[data-dsh-miku] [class*='panel'],
 body[data-dsh-miku] [class*='drawer'],
 body[data-dsh-miku] [class*='settingsRoot'] {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(240, 248, 255, 0.82)) !important;
+  background: linear-gradient(180deg, rgba(14, 28, 60, 0.82), rgba(10, 20, 44, 0.76)) !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(156, 198, 255, 0.5) !important;
-  color: #1d2f52;
+  border: 1px solid rgba(88, 169, 255, 0.3) !important;
+  color: #d6f1ec;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='panel'],
@@ -1687,17 +1725,17 @@ body[data-dsh-miku][data-ds-dark-theme] [class*='settingsRoot'] {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-color: rgba(88, 169, 255, 0.3) !important;
-  color: #c2d4f0;
+  color: #d6f1ec;
 }
 
-/* Settings sections / cards inside the panel: light tint so content stays
+/* Settings sections / cards inside the panel: deep tint so content stays
    readable while the art breathes through. */
 body[data-dsh-miku] [class*='panel'] [class*='section'],
 body[data-dsh-miku] [class*='panel'] [class*='card'],
 body[data-dsh-miku] [class*='settingsRoot'] [class*='section'],
 body[data-dsh-miku] [class*='settingsRoot'] [class*='card'] {
-  background: rgba(255, 255, 255, 0.45) !important;
-  border-color: rgba(156, 198, 255, 0.4) !important;
+  background: rgba(16, 34, 72, 0.5) !important;
+  border-color: rgba(88, 169, 255, 0.25) !important;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='panel'] [class*='section'],
@@ -1727,27 +1765,29 @@ body[data-dsh-miku] [role='button'] {
   border-radius: 8px !important;
 }
 
-/* New-session style primary button: blue-violet-magenta gradient. */
+/* New-session style primary button: nearly transparent frosted glass, no
+   white background and no border — the art shows straight through; only a
+   whisper of blue tint separates the button from the desktop. */
 body[data-dsh-miku] [class*='newSession'] {
-  background: rgba(255, 255, 255, 0.16) !important;
+  background: rgba(56, 155, 230, 0.08) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: none !important;
   box-shadow: none !important;
-  color: #1d2f52 !important;
+  color: #fff !important;
 }
 
 body[data-dsh-miku] [class*='primary'] {
-  background: rgba(255, 255, 255, 0.16) !important;
+  background: rgba(56, 155, 230, 0.08) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(156, 198, 255, 0.4) !important;
-  color: #1d2f52 !important;
+  border: none !important;
+  color: #fff !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='newSession'] {
-  background: rgba(16, 34, 72, 0.4) !important;
+  background: rgba(16, 34, 72, 0.2) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: none !important;
@@ -1756,45 +1796,45 @@ body[data-dsh-miku][data-ds-dark-theme] [class*='newSession'] {
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='primary'] {
-  background: rgba(16, 34, 72, 0.4) !important;
+  background: rgba(16, 34, 72, 0.2) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-color: rgba(88, 169, 255, 0.3) !important;
+  border: none !important;
   color: #d6f1ec !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
 body[data-dsh-miku] [class*='newSession']:hover,
 body[data-dsh-miku] [class*='primary']:hover {
-  background: rgba(46, 155, 255, 0.2) !important;
+  background: rgba(46, 155, 255, 0.16) !important;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='newSession']:hover,
 body[data-dsh-miku][data-ds-dark-theme] [class*='primary']:hover {
-  background: rgba(88, 169, 255, 0.24) !important;
+  background: rgba(88, 169, 255, 0.16) !important;
 }
 
 /* Ghost / quiet buttons (settings trigger, workspace chip, model select):
-   translucent frosted with a blue border. */
+   nearly transparent frosted, no border and no white background. */
 body[data-dsh-miku] [class*='trigger'],
 body[data-dsh-miku] [class*='seat'],
 body[data-dsh-miku] [class*='ghost'],
 body[data-dsh-miku] [class*='quiet'] {
-  background: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(56, 155, 230, 0.08) !important;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  border-color: rgba(156, 198, 255, 0.35) !important;
-  color: #1d2f52 !important;
+  border: none !important;
+  color: #38b6e8 !important;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='trigger'],
 body[data-dsh-miku][data-ds-dark-theme] [class*='seat'],
 body[data-dsh-miku][data-ds-dark-theme] [class*='ghost'],
 body[data-dsh-miku][data-ds-dark-theme] [class*='quiet'] {
-  background: rgba(16, 34, 72, 0.32) !important;
+  background: rgba(16, 34, 72, 0.18) !important;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  border-color: rgba(88, 169, 255, 0.25) !important;
+  border: none !important;
   color: #c2d4f0 !important;
 }
 
@@ -1802,16 +1842,14 @@ body[data-dsh-miku] [class*='trigger']:hover,
 body[data-dsh-miku] [class*='seat']:hover,
 body[data-dsh-miku] [class*='ghost']:hover,
 body[data-dsh-miku] [class*='quiet']:hover {
-  background: rgba(46, 155, 255, 0.18) !important;
-  border-color: rgba(46, 155, 255, 0.5) !important;
+  background: rgba(46, 155, 255, 0.14) !important;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='trigger']:hover,
 body[data-dsh-miku][data-ds-dark-theme] [class*='seat']:hover,
 body[data-dsh-miku][data-ds-dark-theme] [class*='ghost']:hover,
 body[data-dsh-miku][data-ds-dark-theme] [class*='quiet']:hover {
-  background: rgba(88, 169, 255, 0.2) !important;
-  border-color: rgba(88, 169, 255, 0.45) !important;
+  background: rgba(88, 169, 255, 0.14) !important;
 }
 
 /* --- 侧边栏淡出渐变条（scroll fade）---------------------------------------
@@ -1830,7 +1868,7 @@ body[data-dsh-miku] [class*='Fade'] {
    the other inputs. */
 body[data-dsh-miku] [class*='composer'] [class$='_card'],
 body[data-dsh-miku] [class*='composer'] [class*='card'] {
-  background: rgba(255, 255, 255, 0.45) !important;
+  background: rgba(56, 155, 230, 0.2) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: none !important;

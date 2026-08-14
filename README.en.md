@@ -74,7 +74,7 @@ The "SSH" sidebar entry opens the remote-ops panel. Hosts support key / password
 
 ### Image Understanding
 
-Gives text-only models vision: when a conversation mentions an image (local path, http(s) URL, or session attachment), the `describe_image` tool sends it to a configured OpenAI-compatible vision endpoint (Qwen-VL, GLM-4V, GPT-4o, a local Ollama endpoint…) and returns the description. **Only the returned text enters the conversation — the image itself never enters the session log.** Endpoint, model, and key are configured live under Settings > Plugin config > "Image understanding".
+Gives text-only models vision: when a conversation mentions an image (local path, http(s) URL, or session attachment), the `describe_image` tool sends it to a configured OpenAI-compatible vision endpoint (Qwen-VL, GLM-4V, GPT-4o, a local Ollama endpoint…) and returns the answer. **Only the returned text enters the conversation — the image itself never enters the session log.** Since text-only models have no image entry in the input box, the plugin adds an image button there: picking a file inserts an attachment reference into your draft, and the model can analyze it via `describe_image`; the tool also accepts a `prompt` argument for precise custom instructions (OCR, UI diagnosis, translation) that beat a generic description. Endpoint, model, key, and the default instruction are configured live under Settings > Plugin config > "Image understanding".
 
 ### Settings Hub
 

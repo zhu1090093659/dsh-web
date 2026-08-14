@@ -76,7 +76,7 @@ dsh-web-ui 是 DeepSeek Harness（DSH）Web UI 的插件与皮肤集合：任务
 
 ### 图像理解
 
-为纯文本模型提供视觉能力：对话中提到图片（本地路径、http(s) URL 或会话附件）时，`describe_image` 工具把图片交给配置的 OpenAI 兼容视觉端点（Qwen-VL、GLM-4V、GPT-4o、本地 Ollama 等）描述，**只有返回的文本进入会话，图片本身不进会话记录**。端点、模型与密钥在「设置 > 插件配置 > Image understanding」卡配置，即时生效。
+为纯文本模型提供视觉能力：对话中提到图片（本地路径、http(s) URL 或会话附件）时，`describe_image` 工具把图片交给配置的 OpenAI 兼容视觉端点（Qwen-VL、GLM-4V、GPT-4o、本地 Ollama 等）回答，**只有返回的文本进入会话，图片本身不进会话记录**。纯文本模型的输入框没有图片入口，插件在输入框加了一个图片按钮：选图后自动生成附件引用插入草稿，模型即可用 `describe_image` 分析；工具还支持 `prompt` 参数传入自定义指令（如 OCR、UI 诊断、翻译），比默认描述更精准。端点、模型、密钥与默认指令在「设置 > 插件配置 > Image understanding」卡配置，即时生效。
 
 ### 设置中心
 

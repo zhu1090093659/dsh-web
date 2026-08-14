@@ -75,6 +75,9 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
 
 ## 来源与版权
 
-移植自 [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)
-（deepseek-harness `packages/vision/tool-describe-image`），2026-08 迁入，全家桶许可 Apache-2.0。
-测试随源码一并移植（`pnpm --filter @linxin666/dsh-tool-describe-image test`）。
+- **来源**：本包移植自 [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)
+  （deepseek-harness `packages/vision/tool-describe-image`），2026-08 迁入，测试随源码一并移植
+  （`pnpm --filter @linxin666/dsh-tool-describe-image test`）。
+- **版权**：原代码版权归原作者（deepseek-ai / whitelonng）所有，本仓库仅托管与维护，不主张版权；
+  贡献移植部分由贡献者授权以全家桶许可证发布。
+- **许可证**：全家桶以 [Apache-2.0](../../LICENSE) 授权（见仓库根 LICENSE），本包 license 字段为 `Apache-2.0`。

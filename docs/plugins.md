@@ -109,6 +109,12 @@ dsh plugin --profile web add link:<dsh-web-ui>/packages/dsh-web-ui-all
 
 索引只收录链接、不搬代码，条目版权归原作者，由维护者审核合并。
 
+## 多桌宠兼容包（dsh-multi-pet）
+
+`packages/dsh-multi-pet` 是纯 patch bundle，让内置桌宠与 whale-girl 等第三方桌宠
+同时启用；详见其 README。本包**不进 `dsh-web-ui-all` 聚合**（聚合默认只装内置
+桌宠），需要时单独安装。
+
 ## 插件规范要点
 
 - **package.json 的 `dsh.bundle.patch` 声明**：指向包内 `cordis.patch.yml`，这是官方 bundle 清单，`dsh plugin` 依赖它识别与挂载插件。

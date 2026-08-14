@@ -1,0 +1,18 @@
+# dsh-multi-pet: let the built-in pet and third-party pets run together.
+#
+# dsh-pet (shipped inside @linxin666/dsh-web-ui-all) and third-party pet
+# providers (e.g. whale-girl) both register a Cordis service named `pet` on
+# the root realm, so enabling both fails DSH boot with
+# `service "pet" has been registered`.
+#
+# This patch gives the built-in `pet` entry an entry-local isolate realm:
+# its `pet` service registers under a symbol owned by that entry only, while
+# third-party providers keep the root `pet`. Both coexist, each resolving its
+# own implementation, and neither plugin is modified.
+#
+# `isolate.pet: true` means entry-local. Do NOT use a shared label string:
+# entries sharing a label share one realm, which re-triggers the conflict.
+- id: pet
+  name: '@linxin666/dsh-pet'
+  isolate:
+    pet: true

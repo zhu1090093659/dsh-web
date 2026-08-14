@@ -9,10 +9,11 @@
 
 ## 一、范围
 
-`packages/` 与 `packages/skins/` 下共 20 个插件包（截至快照日）：
+`packages/` 与 `packages/skins/` 下共 21 个插件包（截至快照日）：
 
 | 目录 | 包名 | 当前版本 | private |
 | --- | --- | --- | --- |
+| packages/dsh-multi-pet | @linxin666/dsh-multi-pet | 0.1.0 | true |
 | packages/dsh-task-board | @linxin666/dsh-client-ui-task-board | 0.1.1 | true |
 | packages/dsh-git-graph | @linxin666/dsh-client-ui-git-graph | 0.1.1 | true |
 | packages/dsh-pet | @linxin666/dsh-pet | 0.1.1 | true |
@@ -38,7 +39,7 @@
 
 ### [阻断] 阻断项（不修复无法发布/无法被消费）
 
-1. **全部 20 包 `private: true`** — npm 直接拒绝发布 private 包
+1. **全部 21 包 `private: true`** — npm 直接拒绝发布 private 包
    （`This package has been marked as private`）。发布前需逐个移除。
    **（发布前需按流程移除，当前仍保留）**
 2. **聚合包 `workspace:*` 依赖原样进 tarball**（dsh-skins 7 处、dsh-web-ui-all 9 处）—

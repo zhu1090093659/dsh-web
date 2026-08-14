@@ -1,0 +1,66 @@
+{
+  "name": "@linxin666/dsh-multi-pet",
+  "description": "多桌宠兼容插件 for the dsh web GUI: isolates the built-in pet service so it coexists with third-party pets (whale-girl)",
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  },
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "README.i18n.yaml"
+  ],
+  "license": "Apache-2.0",
+  "private": true,
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "plugin": {
+      "displayName": {
+        "zh": "多宠物兼容",
+        "en": "Multi-Pet Compat"
+      },
+      "description": {
+        "zh": "隔离内置桌宠服务，使其与 whale-girl 等第三方桌宠在同一 DSH 中同时运行",
+        "en": "Isolates the built-in pet service so it can run alongside third-party pets such as whale-girl"
+      },
+      "categories": [
+        "pet",
+        "compat"
+      ],
+      "aliases": [
+        "pet",
+        "multi-pet",
+        "宠物",
+        "桌宠",
+        "兼容",
+        "whale-girl"
+      ]
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/cordis-plugin-include": "^1.0.6",
+    "@deepseek-ai/cordis-plugin-loader": "^1.0.2",
+    "js-yaml": "^4.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
+}

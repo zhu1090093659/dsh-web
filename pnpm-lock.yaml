@@ -247,6 +247,21 @@ importers:
         specifier: ^4.1.1
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@26.1.0)
 
+  packages/dsh-multi-pet:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: ^4.0.1
+        version: 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
+      '@deepseek-ai/cordis-plugin-include':
+        specifier: ^1.0.6
+        version: 1.0.6(@deepseek-ai/cordis-plugin-loader@1.0.2)(@deepseek-ai/cordis@4.0.1)
+      '@deepseek-ai/cordis-plugin-loader':
+        specifier: ^1.0.2
+        version: 1.0.2(@deepseek-ai/cordis@4.0.1)
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.3.1
+
   packages/dsh-pet:
     dependencies:
       clsx:

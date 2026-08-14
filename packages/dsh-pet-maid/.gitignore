@@ -1,0 +1,7 @@
+node_modules/
+lib/
+*.tsbuildinfo
+.DS_Store
+
+# hatch-pet 素材生成流水线的中间产物（prompts / QA / 原始帧），不入库
+assets/run-whale-girl*/

@@ -16,7 +16,7 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as DescribeImage from '../src/index.ts'
 
-import { chatReply, jsonReply, PNG_BYTES, startMockServer } from './mock-server.ts'
+import { chatReply, FakeWebServer, jsonReply, PNG_BYTES, startMockServer } from './mock-server.ts'
 import type { MockServer } from './mock-server.ts'
 
 let root: string | undefined
@@ -51,6 +51,7 @@ async function boot(configLines: readonly string[]): Promise<Context> {
   const ctx = new Context()
   context = ctx
   ctx.baseUrl = pathToFileURL(root).href + '/'
+  await ctx.plugin(FakeWebServer)
   await ctx.plugin(Loader)
   ctx.loader.builtins.include = Include
   const modules = new Map<string, unknown>([

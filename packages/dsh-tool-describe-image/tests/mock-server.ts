@@ -1,6 +1,30 @@
 /** Keyless local HTTP fixture: one address the tests point the vision endpoint (and image URLs) at. */
 
 import { createServer } from 'node:http'
+import { Context, Service } from '@deepseek-ai/cordis'
+
+/**
+ * A no-op webServer service for tests: the plugin declares `webServer` in
+ * its inject list (cordis activates the plugin only once the service is
+ * available, which is how the attach route registers in production), so
+ * every boot that applies the plugin must mount one.
+ */
+export class FakeWebServer extends Service {
+  readonly routes: Array<{ kind: string; path: string }> = []
+  constructor(ctx: Context) {
+    super(ctx, 'webServer')
+  }
+  register(route: { kind: string; path: string }): () => void {
+    this.routes.push(route)
+    return () => {
+      const at = this.routes.indexOf(route)
+      if (at !== -1) this.routes.splice(at, 1)
+    }
+  }
+  registerUpgrade(): () => void { return () => {} }
+  registerFallback(): () => void { return () => {} }
+  tapIndex(): () => void { return () => {} }
+}
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 

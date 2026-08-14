@@ -12,7 +12,7 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 import * as tool from '../src/index.ts'
-import { chatReply, jsonReply, PNG_BYTES, startMockServer } from './mock-server.ts'
+import { chatReply, FakeWebServer, jsonReply, PNG_BYTES, startMockServer } from './mock-server.ts'
 import type { MockServer } from './mock-server.ts'
 
 /** A provider implementing only the three primitives, backed by an in-memory document. */
@@ -45,6 +45,7 @@ async function boot(doc: Record<string, unknown> = {}): Promise<{ ctx: Context; 
   cleanup.push(server.close)
   const ctx = new Context()
   await ctx.plugin(MemorySettings, { doc })
+  await ctx.plugin(FakeWebServer)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(tool, { baseURL: server.url, model: 'entry-model', apiKey: 'sk-entry' })
@@ -116,6 +117,7 @@ describe('describe-image settings section', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
     const ctx = new Context()
+    await ctx.plugin(FakeWebServer)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(tool, { baseURL: server.url, model: 'entry-only', apiKey: 'sk-entry' })

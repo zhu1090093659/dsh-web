@@ -18,6 +18,13 @@ export const ACCEPTED_IMAGE_MIME: readonly string[] = ['image/png', 'image/jpeg'
 export const CLIENT_MAX_BYTES = 10 * 1024 * 1024
 
 /**
+ * Spliced right after the note so the text model hands the whole attachment
+ * JSON to describe_image: models that see only an id tend to pass the id as
+ * a file path, which the tool must not guess around.
+ */
+export const NOTE_GUIDANCE = '（图片附件：如需分析，请调用 describe_image 工具并把上方 [image attachment …] 括号内的完整 JSON（attachmentId、mediaType、bytes、width、height 全部字段）作为 image 参数传入，不要只传 attachmentId。）'
+
+/**
  * Splice a note into a composer draft at the caret, following the same
  * separator rule the file-drag inlay uses: one space before the note unless
  * the caret sits at the start of the draft or right after whitespace; one

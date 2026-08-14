@@ -15,10 +15,10 @@ OpenAI 兼容的视觉模型端点（Qwen-VL、GLM-4V、GPT-4o、本地 Ollama �
 
 | 能力 | 说明 |
 | --- | --- |
-| 三种输入 | 本地绝对路径、http(s) URL（拒绝重定向）、`[image attachment …]` 附件引用（原样复制 JSON 即可，经附件服务读取） |
+| 三种输入 | 本地绝对路径、http(s) URL（拒绝重定向）、`[image attachment …]` 附件引用——完整 JSON 或（模型只抄了 id 时的兜底）裸 `sha256:…` id，经进程内附件注册表解析，存储侧摘要校验照常执行 |
 | 输入框图片按钮 | 浏览器半部在输入框加入图片按钮：选择文件后存入附件存储，并把 `[image attachment …]` 引用拼接进草稿——纯文本模型借此获得图片，无需走内置视觉管道 |
 | 自定义指令 | `prompt` 参数携带你的精确指令（OCR、图表解读、UI 诊断、翻译…）；`defaultPrompt` 配置设置模型未传指令时的兜底文案 |
-| 实时配置卡 | 设置 → 插件配置 → 「Image understanding」卡修改 `baseURL` / `model` / API key（走凭证服务），即时生效，无需重启 |
+| 实时配置卡 | 设置 → 插件配置 → Web UI 插件组 → 「图像理解」卡修改 `baseURL` / `model` / API key / 默认指令 / 各项上限（走设置服务），即时生效，无需重启 |
 | 每次调用解析密钥 | 内联 `apiKey` → 凭证服务（`apiKeyEnv`，默认 `VISION_API_KEY`）→ 启动环境，逐级回退 |
 | 安全与边界 | 所有请求拒绝重定向；`maxBytes` / `maxOutputTokens` / `timeoutMs` 上限；magic-byte 类型门；错误摘要有界（200 字符）；密钥不进日志 |
 | 返回规范值 | `{ text, model, image, mimeType, bytes }`——模型只看到 `text` |

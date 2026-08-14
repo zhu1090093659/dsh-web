@@ -27,6 +27,7 @@
   ],
   "exclude": [
     "src/client/index.ts",
-    "src/client/AttachImageButton.tsx"
+    "src/client/AttachImageButton.tsx",
+    "src/client/DescribeImageSettingsCard.tsx"
   ]
 }

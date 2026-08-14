@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
 import { Context } from '@deepseek-ai/cordis'
-import { attachmentNote, handleAttach, registerAttachRoute, validateAttachPayload, type AttachError } from '../src/attach-routes.ts'
+import { attachmentNote, attachmentRefById, handleAttach, registerAttachRoute, registerAttachmentRef, validateAttachPayload, type AttachError } from '../src/attach-routes.ts'
 import type { AttachPayload } from '../src/attach-routes.ts'
 import { PNG_BYTES } from './mock-server.ts'
 
@@ -139,6 +139,38 @@ describe('attachmentNote', () => {
       height: 2,
     }
     expect(attachmentNote(ref)).toBe(`[image attachment ${JSON.stringify(ref)}]`)
+  })
+})
+
+describe('attachment reference registry', () => {
+  it('remembers references persisted by the route and resolves them by bare id', async () => {
+    const { ctx, store } = await makeCtx(true)
+    const outcome = await handleAttach(ctx, 10_000_000, { data: PNG_BASE64, mediaType: 'image/png' })
+    expect(outcome.ok).toBe(true)
+    if (outcome.ok) {
+      const resolved = attachmentRefById(String(outcome.ref.attachmentId))
+      expect(resolved).toBeDefined()
+      expect(resolved?.bytes).toBe(PNG_BYTES.length)
+      expect(store?.saved).toHaveLength(1)
+    }
+  })
+
+  it('returns undefined for an unknown id', () => {
+    expect(attachmentRefById('sha256:missing')).toBeUndefined()
+  })
+
+  it('evicts the oldest entry beyond the cap', () => {
+    for (let i = 0; i < 140; i += 1) {
+      registerAttachmentRef({
+        attachmentId: `sha256:${String(i).padStart(64, '0')}` as ImageAttachmentRef['attachmentId'],
+        mediaType: 'image/png',
+        bytes: i,
+        width: 1,
+        height: 1,
+      })
+    }
+    expect(attachmentRefById('sha256:' + String(0).padStart(64, '0'))).toBeUndefined()
+    expect(attachmentRefById('sha256:' + String(139).padStart(64, '0'))).toBeDefined()
   })
 })
 

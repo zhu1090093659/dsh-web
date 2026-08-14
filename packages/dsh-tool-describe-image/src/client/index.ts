@@ -13,12 +13,14 @@
  * @module @linxin666/dsh-tool-describe-image/client
  */
 
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext, SessionId, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { AttachImageButton, type AttachImageInjected } from './AttachImageButton.tsx'
 import { insertNoteIntoDraft } from './attach.ts'
+import { DescribeImageSettingsCard, DescribeImageSettingsCardController, type DescribeImageSettings } from './DescribeImageSettingsCard.tsx'
 import { dictionaries, setLanguage, type DescribeImageClientKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -26,13 +28,39 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** The describe-image attach button copy. */
     'describe-image': DescribeImageClientKey
   }
+
+  interface SlotMap {
+    /**
+     * One family plugin card inside the Web UI Plugins group. Spelled here
+     * with the same shape so this package can register without depending on
+     * the sibling web-ui-settings package.
+     */
+    'web-ui.plugin.item': { kind: 'list'; scope: 'root'; owner: SettingsPluginItemOwnerProps }
+  }
+}
+
+/** Owner share of a plugin card (the section supplies nothing). */
+export interface SettingsPluginItemOwnerProps {
+  /** Marker field: card owner props are intentionally empty. */
+  children?: never
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /**
+     * Optional rc.6 compatibility binder provided by dsh-web-ui-settings;
+     * absent when that group plugin is not installed, so callers fall back to
+     * the official settings scope.
+     */
+    webUiSettings?: { bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S> }
+  }
 }
 
 /** Locale namespace of the browser half. */
 export const NS = 'describe-image' as const
 
-/** Required services: slots for the dock seat, sessions for session routing, conversation for the input facade. */
-export const inject = ['slots', 'conversation', 'sessions']
+/** Required services: slots for the dock seat, sessions for session routing, conversation for the input facade, locale for the copy dictionaries. */
+export const inject = ['slots', 'conversation', 'sessions', 'settingsScope', 'locale']
 
 /** Apply the browser half. */
 export function apply(ctx: ClientContext): void {
@@ -52,6 +80,23 @@ export function apply(ctx: ClientContext): void {
   ctx.inject(['slots', 'conversation', 'sessions'], (scope: ClientContext) => {
     const sessions = scope.sessions
     const conversation = scope.conversation
+    const slots = scope.slots
+
+    // The settings card: bound to the describe-image namespace through the
+    // family bridge when the official scope does not expose it.
+    ctx.inject(['settingsScope'], (settingsCtx: ClientContext) => {
+      const binder = settingsCtx.get('webUiSettings') ?? settingsCtx.settingsScope
+      const settingsScope = binder.bind<DescribeImageSettings>({ namespace: NS })
+      const settingsCard = new DescribeImageSettingsCardController(settingsScope)
+      slots.inject('web-ui.plugin.item', () =>
+        slots.register({
+          name: 'web-ui.plugin.item',
+          id: 'describe-image',
+          order: 115,
+          locale: NS,
+          inject: () => settingsCard.inject(),
+        }, DescribeImageSettingsCard))
+    })
     scope.slots.inject('conversation.input.dock', () =>
       scope.slots.register({
         name: 'conversation.input.dock',

@@ -46,6 +46,35 @@ export type AttachOutcome =
 /** The failure envelope used when a non-POST request hits the route. */
 export const METHOD_NOT_ALLOWED: AttachError = { code: 'internal', message: 'only POST is allowed' }
 
+/**
+ * In-memory registry of references this process's attach route persisted,
+ * keyed by attachment id. Text models that copy only the id out of an
+ * `[image attachment …]` note (instead of the whole JSON) still resolve
+ * through here, and the attachment store's digest verification runs on the
+ * read regardless. Bounded FIFO; ids are content-addressed so a stale entry
+ * cannot be confused with another image.
+ */
+const ATTACHMENT_REF_REGISTRY = new Map<string, ImageAttachmentRef>()
+
+/** Registry capacity; beyond it the oldest entry is dropped. */
+const ATTACHMENT_REF_REGISTRY_CAP = 128
+
+/** Remember one persisted reference by its attachment id. */
+export function registerAttachmentRef(ref: ImageAttachmentRef): void {
+  ATTACHMENT_REF_REGISTRY.delete(ref.attachmentId)
+  ATTACHMENT_REF_REGISTRY.set(ref.attachmentId, ref)
+  while (ATTACHMENT_REF_REGISTRY.size > ATTACHMENT_REF_REGISTRY_CAP) {
+    const oldest = ATTACHMENT_REF_REGISTRY.keys().next().value
+    if (oldest === undefined) break
+    ATTACHMENT_REF_REGISTRY.delete(oldest)
+  }
+}
+
+/** Look up a persisted reference by its bare attachment id, if still in the registry. */
+export function attachmentRefById(id: string): ImageAttachmentRef | undefined {
+  return ATTACHMENT_REF_REGISTRY.get(id)
+}
+
 /** Build the `[image attachment …]` note text for one reference. */
 export function attachmentNote(ref: ImageAttachmentRef): string {
   return `[image attachment ${JSON.stringify(ref)}]`
@@ -111,6 +140,7 @@ export async function handleAttach(ctx: Context, maxBytes: number, payload: unkn
       mediaType: validated.payload.mediaType,
       ...validated.payload.name === undefined ? {} : { name: validated.payload.name },
     })
+    registerAttachmentRef(ref)
     return { ok: true, ref, note: attachmentNote(ref) }
   } catch (error) {
     return { ok: false, error: { code: 'internal', message: `attachment store rejected the image: ${(error as Error).message ?? String(error)}` } }

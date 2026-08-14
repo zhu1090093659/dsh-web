@@ -12,7 +12,8 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 import * as tool from '../src/index.ts'
-import { chatReply, jsonReply, PNG_BYTES, rawReply, sentContent, startMockServer } from './mock-server.ts'
+import { registerAttachmentRef } from '../src/attach-routes.ts'
+import { chatReply, FakeWebServer, jsonReply, PNG_BYTES, rawReply, sentContent, startMockServer } from './mock-server.ts'
 
 /** In-memory attachment store so the attachment-reference input path is observable. */
 class FakeAttachments extends AttachmentStore {
@@ -97,6 +98,7 @@ async function setup(
   const ctx = new Context()
   if (options.seed !== undefined) await ctx.plugin(FakeCredentials, options.seed)
   if (options.attachments === true) await ctx.plugin(FakeAttachments)
+  await ctx.plugin(FakeWebServer)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(tool, {
@@ -395,6 +397,31 @@ describe('attachment references', () => {
     attachments.stored.set(`sha256:${'c'.repeat(64)}`, bytes)
     return ctx
   }
+
+  it('describes a stored attachment addressed by its bare id through the registry', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
+    cleanup.push(server.close)
+    const ctx = await setup({ baseURL: server.url }, { attachments: true })
+    registerAttachmentRef({
+      attachmentId: `sha256:${'a'.repeat(64)}` as ImageAttachmentRef['attachmentId'],
+      mediaType: 'image/png',
+      bytes: PNG_BYTES.length,
+      width: 1,
+      height: 1,
+    })
+    const attachments = ctx.get('attachments') as FakeAttachments
+    attachments.stored.set(`sha256:${'a'.repeat(64)}`, PNG_BYTES)
+
+    const result = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: CallId('bare-id-attachment'),
+      name: 'describe_image',
+      arguments: { image: `sha256:${'a'.repeat(64)}` },
+    })
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected success for bare attachment id')
+    expect(result.value).toMatchObject({ text: 'ok', image: `sha256:${'a'.repeat(64)}` })
+  })
 
   it('describes a stored attachment addressed by its note JSON', async () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('From attachment.')) })

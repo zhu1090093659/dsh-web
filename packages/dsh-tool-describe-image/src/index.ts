@@ -24,11 +24,11 @@ import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView } from '@deepseek-ai/dsh-tools'
-import { registerAttachRoute } from './attach-routes.ts'
+import { attachmentRefById, registerAttachRoute } from './attach-routes.ts'
 import { DEFAULT_MAX_BYTES, sniffMimeType, type ImageMimeType } from './media.ts'
 
 export const name = 'describe-image'
-export const inject = ['tools']
+export const inject = ['tools', 'webServer']
 
 /** Environment-variable name the API key resolves through when no inline key is configured. */
 export const DEFAULT_API_KEY_ENV = 'VISION_API_KEY'
@@ -251,6 +251,17 @@ export async function loadImage(ctx: Context, input: string, signal: AbortSignal
     const bytes = await readBoundedBody(response, maxBytes)
     return toImage(bytes, trimmed)
   }
+  // A bare attachment id — the `sha256:…` string text models tend to copy out of
+  // an `[image attachment …]` note instead of the whole JSON. Resolve it through
+  // the attach-route registry (the store's digest verification still runs).
+  const registered = attachmentRefById(trimmed)
+  if (registered !== undefined) {
+    const bytes = await readAttachment(ctx, JSON.stringify(registered), signal)
+    if (bytes.length > maxBytes) {
+      throw new Error(`describe-image: image is ${bytes.length} bytes, above the ${maxBytes}-byte bound`)
+    }
+    return toImage(bytes, trimmed)
+  }
   const info = await stat(trimmed, { bigint: false })
   if (!info.isFile()) throw new Error(`describe-image: image path is not a file: ${trimmed}`)
   if (info.size > maxBytes) {
@@ -442,15 +453,15 @@ export function apply(ctx: Context, config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'describe_image',
     description: DESCRIPTION_HEAD
-      + 'The image may be a local path, an http(s) URL, or the exact JSON from an `[image attachment …]` '
-      + 'note the user pasted into the input box (copy it verbatim; the browser image button of this '
-      + 'plugin inserts such notes). The image must be one of PNG, JPEG, GIF, or WebP. The image '
-      + 'itself is not shown to you — only the returned text is.',
+      + 'The image may be a local path, an http(s) URL, or the COMPLETE JSON object from an `[image attachment …]` '
+      + 'note the user pasted into the input box — copy the whole JSON including attachmentId, mediaType, '
+      + 'bytes, width, and height, never only the attachmentId (the browser image button of this plugin '
+      + 'shown to you — only the returned text is.',
     parameters: {
       image: {
         type: 'string',
         required: true,
-        description: 'Absolute path to a local image file, an http(s) URL of the image, or the exact JSON from an [image attachment …] note.',
+        description: 'Absolute path to a local image file, an http(s) URL of the image, or the COMPLETE JSON object from an [image attachment …] note — all fields (attachmentId, mediaType, bytes, width, height) as they appear inside the note brackets; never pass only the attachmentId value, which is not a file path.',
       },
       prompt: {
         type: 'string',

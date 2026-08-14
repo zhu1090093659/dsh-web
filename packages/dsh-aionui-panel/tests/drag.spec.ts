@@ -62,4 +62,10 @@ describe('insertPathIntoDraft', () => {
     expect(insertPathIntoDraft('ab', 'x', -5)).toBe('x ab')
     expect(insertPathIntoDraft('ab', 'x', 99)).toBe('ab x')
   })
+
+  it('inserts directory paths (relative dirs work like files)', () => {
+    expect(insertPathIntoDraft('', 'deploy')).toBe('deploy')
+    expect(insertPathIntoDraft('看下 ', 'deploy/base')).toBe('看下 deploy/base')
+    expect(insertPathIntoDraft('a', 'deploy', 1)).toBe('a deploy')
+  })
 })

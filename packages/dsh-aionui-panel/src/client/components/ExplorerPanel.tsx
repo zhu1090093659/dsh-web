@@ -253,10 +253,10 @@ function TreeRowBase({
     preview.openFile(root, entry.path)
   }
 
-  // Files are draggable into the composer (the drag MIME carries the
-  // workspace-relative path); directory rows stay click-only.
+  // Every row (file or directory) is draggable into the composer: the drag
+  // MIME carries the workspace-relative path. Click behavior is untouched —
+  // directories still expand/collapse, files still open in preview.
   const onDragStart = (event: DragEvent): void => {
-    if (entry.isDir) return
     event.dataTransfer.setData(FILE_DRAG_MIME, entry.path)
     event.dataTransfer.setData('text/plain', entry.path)
     event.dataTransfer.effectAllowed = 'copy'
@@ -277,7 +277,7 @@ function TreeRowBase({
           // Double-click on a file: same as click (open). Folders: keep toggle.
           event.stopPropagation()
         }}
-        draggable={!entry.isDir}
+        draggable
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         role="button"

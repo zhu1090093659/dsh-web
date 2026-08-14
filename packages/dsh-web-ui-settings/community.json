@@ -25,5 +25,15 @@
     "description": "基于官方 DeepSeek Harness 的交互式终端 UI 插件，在官方基础上增加 TDD 与证据门等工作流。",
     "descriptionEn": "An interactive terminal UI plugin for DeepSeek Harness that adds TDD and evidence-gate workflows on top of the official base.",
     "repo": "https://github.com/huiliyi37/dsh-tianshu-tui"
+  },
+  {
+    "id": "dsh-mnemon",
+    "name": "记忆系统",
+    "nameEn": "Memory System",
+    "author": "omdsh-dev",
+    "description": "将 Mnemon 接入 DSH，提供可跨 Agent 共享的本地三层记忆系统：运行时记忆、可检索档案与长期记忆体。",
+    "descriptionEn": "Integrates Mnemon with DSH for cross-agent, local-first three-tier memory: Runtime Memory, searchable Documents, and long-term Memory Spaces.",
+    "repo": "https://github.com/omdsh-dev/dsh-mnemon",
+    "npm": "dsh-mnemon"
   }
 ]

@@ -318,6 +318,7 @@ export function listTool(runtime: WorkscopeRuntime) {
                 path: { type: 'string', required: true },
                 title: { type: 'string', required: true },
                 createdAt: { type: 'string', required: true },
+                status: { type: 'string', enum: ['active', 'removed'], required: true },
               },
             },
             required: true,

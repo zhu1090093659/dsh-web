@@ -180,18 +180,24 @@ export function apply(ctx: Context, config?: Config): void {
   }, 'dsh-beyond-workscope: teardown')
 
   // 会话信息 tab metadata: live session header + optional title service.
+  // Defensive: a metadata lookup failure degrades the panel, never the route.
   const sessionInfo = async (sessionId: string) => {
-    const session = ctx.sessions.get(sessionId as SessionId)
-    if (session === undefined) return undefined
-    const header = session.header
-    const titleService = ctx.get('sessionTitle')
-    const title = titleService?.get(session)
-    return {
-      id: sessionId,
-      ...(header.cwd === undefined ? {} : { cwd: header.cwd }),
-      ...(header.createdAt === undefined ? {} : { createdAt: new Date(header.createdAt).toISOString() }),
-      ...(title === undefined || title.title === undefined ? {} : { title: title.title }),
-      ...(header.agentPreset === undefined ? {} : { agentPreset: header.agentPreset }),
+    try {
+      const session = ctx.sessions.get(sessionId as SessionId)
+      if (session === undefined) return undefined
+      const header = session.header
+      const titleService = ctx.get('sessionTitle')
+      const title = titleService?.get(session)
+      return {
+        id: sessionId,
+        ...(header.cwd === undefined ? {} : { cwd: header.cwd }),
+        ...(header.createdAt === undefined ? {} : { createdAt: new Date(header.createdAt).toISOString() }),
+        ...(title === undefined || title.title === undefined ? {} : { title: title.title }),
+        ...(header.agentPreset === undefined ? {} : { agentPreset: header.agentPreset }),
+      }
+    } catch (error) {
+      console.warn('[dsh-beyond-workscope] session-info lookup failed:', error)
+      return undefined
     }
   }
 

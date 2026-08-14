@@ -276,6 +276,7 @@ body[data-dsh-whale-song] {
   --dsw-alias-state-warn-tertiary: #f7efdc;
   --dsw-alias-toast-bg: #1a3a7a;
   --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-fg: #0d234e;
   --dsw-specific-bubble-highlight: #c4dbf1;
   --dsw-specific-bubble: #d9e9f5;
   --dsw-specific-input-major: rgba(255, 255, 255, 0.6);
@@ -368,6 +369,7 @@ body[data-dsh-whale-song][data-ds-dark-theme] {
   --dsw-alias-state-warn-tertiary: #6b5420;
   --dsw-alias-toast-bg: #1c3460;
   --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-fg: #0d234e;
   --dsw-specific-bubble-highlight: #213a68;
   --dsw-specific-bubble: #1c3460;
   --dsw-specific-input-major: rgba(18, 36, 76, 0.65);
@@ -473,6 +475,41 @@ body[data-dsh-whale-song] :focus-visible {
 
 body[data-dsh-whale-song][data-ds-dark-theme] :focus-visible {
   outline-color: var(--dsw-alias-state-business-primary);
+}
+
+body[data-dsh-whale-song] [data-pane='sidebar'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-whale-song] [role='tooltip'] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
+}
+
+body[data-dsh-whale-song] [role='dialog'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-whale-song] [role='dialog'] [class*='navCell']:not([aria-current='true']) {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Text tabs are labels, not chrome plates. */
+body[data-dsh-whale-song] button[role='tab'],
+body[data-dsh-whale-song] button[role='tab']:hover,
+body[data-dsh-whale-song] button[role='tab']:active,
+body[data-dsh-whale-song] button[role='tab']:disabled,
+body[data-dsh-whale-song] button[role='tab']:hover:not(:disabled),
+body[data-dsh-whale-song] button[role='tab']:active:not(:disabled) {
+  background-image: none;
+  background-color: transparent;
+  box-shadow: none;
+  text-shadow: none;
+  border: 0;
+  color: var(--dsw-alias-label-primary);
+  transform: none;
+  filter: none;
+  opacity: 1;
 }
 
 /* --- aionui 右侧面板适配（dsh-aionui-panel）-------------------------------

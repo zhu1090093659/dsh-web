@@ -276,6 +276,7 @@ body[data-dsh-dragon-heir] {
   --dsw-alias-state-warn-tertiary: #f7ecd8;
   --dsw-alias-toast-bg: #a81f22;
   --dsw-alias-tooltip-bg: #262319;
+  --dsw-alias-tooltip-fg: #f4efe4;
   --dsw-specific-bubble-highlight: #e9b3b1;
   --dsw-specific-bubble: #f2cdcc;
   --dsw-specific-input-major: rgba(255, 255, 255, 0.6);
@@ -369,6 +370,7 @@ body[data-dsh-dragon-heir][data-ds-dark-theme] {
   --dsw-alias-state-warn-tertiary: #4a3515;
   --dsw-alias-toast-bg: #96702a;
   --dsw-alias-tooltip-bg: #eef1f6;
+  --dsw-alias-tooltip-fg: #262319;
   --dsw-specific-bubble-highlight: #35415e;
   --dsw-specific-bubble: #2a344c;
   --dsw-specific-input-major: rgba(21, 27, 41, 0.65);
@@ -490,6 +492,41 @@ body[data-dsh-dragon-heir] :focus-visible {
 body[data-dsh-dragon-heir][data-ds-dark-theme] :focus-visible {
   outline: 2px solid rgba(200, 162, 74, 0.6);
   outline-offset: 2px;
+}
+
+body[data-dsh-dragon-heir] [data-pane='sidebar'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-dragon-heir] [role='tooltip'] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
+}
+
+body[data-dsh-dragon-heir] [role='dialog'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-dragon-heir] [role='dialog'] [class*='navCell']:not([aria-current='true']) {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Text tabs are labels, not chrome plates. */
+body[data-dsh-dragon-heir] button[role='tab'],
+body[data-dsh-dragon-heir] button[role='tab']:hover,
+body[data-dsh-dragon-heir] button[role='tab']:active,
+body[data-dsh-dragon-heir] button[role='tab']:disabled,
+body[data-dsh-dragon-heir] button[role='tab']:hover:not(:disabled),
+body[data-dsh-dragon-heir] button[role='tab']:active:not(:disabled) {
+  background-image: none;
+  background-color: transparent;
+  box-shadow: none;
+  text-shadow: none;
+  border: 0;
+  color: var(--dsw-alias-label-primary);
+  transform: none;
+  filter: none;
+  opacity: 1;
 }
 
 /* --- aionui 右侧面板适配（dsh-aionui-panel） -----------------------------

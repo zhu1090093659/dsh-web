@@ -278,6 +278,8 @@ body[data-dsh-xp] {
   --dsw-alias-state-success-tertiary: #dff0e0;
   --dsw-alias-state-warn-primary: #b07600;
   --dsw-alias-toast-bg: #0f2d5c;
+  --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-fg: #000000;
   --dsw-specific-bubble-highlight: #dbe9fc;
   --dsw-specific-bubble: #eef3fb;
   --dsw-specific-input-major: #fff;
@@ -362,6 +364,8 @@ body[data-dsh-xp][data-ds-dark-theme] {
   --dsw-alias-state-success-tertiary: #1c3a2a;
   --dsw-alias-state-warn-primary: #d69a3a;
   --dsw-alias-toast-bg: #2b2e33;
+  --dsw-alias-tooltip-bg: #1b1d21;
+  --dsw-alias-tooltip-fg: #e8eaed;
   --dsw-specific-bubble-highlight: #223042;
   --dsw-specific-bubble: #1b2027;
   --dsw-specific-input-major: #0d0f12;
@@ -531,32 +535,63 @@ body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] > div {
   background: #17191d;
 }
 
-/* Sidebar header band: the first child (logo row) becomes the Luna caption
-   bar; everything inside renders white. */
+/* Live GUI wraps the sidebar; :first-child is the whole column, not the
+   logo. Neutralize that match with the same selectors so an already-installed
+   white-ink sheet cannot win. White stays on the logo row only. */
+body[data-dsh-xp] [data-pane='sidebar'] {
+  color: var(--dsw-alias-label-primary);
+}
+
 body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child,
 body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child * {
-  color: #fff;
+  color: var(--dsw-alias-label-primary);
 }
 
 body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child {
+  background: none;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] > div > :first-child {
+  background: none;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+body[data-dsh-xp] [data-pane='sidebar'] [class*='sessionRow'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child [role='dialog'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Sidebar header band: only the logo row is the Luna caption. */
+body[data-dsh-xp] [data-pane='sidebar'] [class*='logoRow'],
+body[data-dsh-xp] [data-pane='sidebar'] [class*='logoRow'] * {
+  color: #fff;
+}
+
+body[data-dsh-xp] [data-pane='sidebar'] [class*='logoRow'] {
   background: linear-gradient(180deg, #0a5bc4 0%, #1a6fd0 45%, #3a8fe0 100%);
   border-bottom: 1px solid #0a3a8f;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
-body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] > div > :first-child {
+body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] [class*='logoRow'] {
   background: linear-gradient(180deg, #3a3f45 0%, #22262b 55%, #101216 100%);
   border-bottom-color: #000;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 /* Header-band buttons stay flat and transparent on the blue strip. */
-body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child button {
+body[data-dsh-xp] [data-pane='sidebar'] [class*='logoRow'] button {
   background: transparent;
   color: #fff;
 }
 
-body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child button:hover {
+body[data-dsh-xp] [data-pane='sidebar'] [class*='logoRow'] button:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
@@ -565,11 +600,11 @@ body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child button:hover {
    inverted-primary token — white on white. Pin the pill to the light
    highlight plate and force the letters navy, so the badge reads like a
    beveled window label on the caption bar. */
-body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child svg rect[fill='currentColor'] {
+body[data-dsh-xp] [data-pane='sidebar'] [class*='logoRow'] svg rect[fill='currentColor'] {
   fill: #eaf3fe;
 }
 
-body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child svg [fill='var(--dsw-alias-label-primary-inverted)'] {
+body[data-dsh-xp] [data-pane='sidebar'] [class*='logoRow'] svg [fill='var(--dsw-alias-label-primary-inverted)'] {
   fill: #0a246a;
 }
 
@@ -773,6 +808,34 @@ body[data-dsh-xp][data-ds-dark-theme] [data-pane='details'] {
 body[data-dsh-xp] [role='dialog'] {
   border: 1px solid #0831d9;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-xp] [role='dialog'] [class*='navCell']:not([aria-current='true']) {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Text tabs are labels, not chrome plates. */
+body[data-dsh-xp] button[role='tab'],
+body[data-dsh-xp] button[role='tab']:hover,
+body[data-dsh-xp] button[role='tab']:active,
+body[data-dsh-xp] button[role='tab']:disabled,
+body[data-dsh-xp] button[role='tab']:hover:not(:disabled),
+body[data-dsh-xp] button[role='tab']:active:not(:disabled) {
+  background-image: none;
+  background-color: transparent;
+  box-shadow: none;
+  text-shadow: none;
+  border: 0;
+  color: var(--dsw-alias-label-primary);
+  transform: none;
+  filter: none;
+  opacity: 1;
+}
+
+body[data-dsh-xp] [role='tooltip'] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
 }
 
 body[data-dsh-xp][data-ds-dark-theme] [role='dialog'] {
@@ -1094,7 +1157,7 @@ body[data-dsh-xp] .xpTitlebarBtn,
 body[data-dsh-xp] .xpTitlebarBtnClose,
 body[data-dsh-xp] .xpStart,
 body[data-dsh-xp] .xpTaskbar > button,
-body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child button,
+body[data-dsh-xp] [data-pane='sidebar'] [class*='logoRow'] button,
 body[data-dsh-xp] [data-pane='sidebar'] > div > button,
 body[data-dsh-xp] [role='dialog'] > nav button,
 body[data-dsh-xp] :global(.aionui-btn),
@@ -1118,7 +1181,7 @@ body[data-dsh-xp] .xpTitlebarBtn:focus-visible,
 body[data-dsh-xp] .xpTitlebarBtnClose:focus-visible,
 body[data-dsh-xp] .xpStart:focus-visible,
 body[data-dsh-xp] .xpTaskbar > button:focus-visible,
-body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child button:focus-visible,
+body[data-dsh-xp] [data-pane='sidebar'] [class*='logoRow'] button:focus-visible,
 body[data-dsh-xp] [data-pane='sidebar'] > div > button:focus-visible,
 body[data-dsh-xp] :global(.aionui-btn:focus-visible),
 body[data-dsh-xp] :global(.aionui-floating-expand:focus-visible) {
@@ -1130,7 +1193,7 @@ body[data-dsh-xp][data-ds-dark-theme] .xpTitlebarBtn:focus-visible,
 body[data-dsh-xp][data-ds-dark-theme] .xpTitlebarBtnClose:focus-visible,
 body[data-dsh-xp][data-ds-dark-theme] .xpStart:focus-visible,
 body[data-dsh-xp][data-ds-dark-theme] .xpTaskbar > button:focus-visible,
-body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] > div > :first-child button:focus-visible,
+body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] [class*='logoRow'] button:focus-visible,
 body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] > div > button:focus-visible,
 body[data-dsh-xp][data-ds-dark-theme] :global(.aionui-btn:focus-visible),
 body[data-dsh-xp][data-ds-dark-theme] :global(.aionui-floating-expand:focus-visible) {
@@ -1203,15 +1266,15 @@ body[data-dsh-xp][data-ds-dark-theme] .xpTaskbar > button:not(.xpStart):hover {
 }
 
 /* Sidebar caption-band buttons: active on both, dark hover twin. */
-body[data-dsh-xp] [data-pane='sidebar'] > div > :first-child button:active {
+body[data-dsh-xp] [data-pane='sidebar'] [class*='logoRow'] button:active {
   background: rgba(255, 255, 255, 0.28);
 }
 
-body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] > div > :first-child button:hover {
+body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] [class*='logoRow'] button:hover {
   background: rgba(255, 255, 255, 0.16);
 }
 
-body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] > div > :first-child button:active {
+body[data-dsh-xp][data-ds-dark-theme] [data-pane='sidebar'] [class*='logoRow'] button:active {
   background: rgba(255, 255, 255, 0.24);
 }
 

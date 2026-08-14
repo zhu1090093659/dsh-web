@@ -272,8 +272,9 @@ body[data-dsh-ths] {
   --dsw-alias-state-success-tertiary: #d6f0e1;
   --dsw-alias-state-warn-primary: #b07600;
   --dsw-alias-toast-bg: #2b3648;
-  /* Tooltips: the dark navy plate of the trading app (white text both themes). */
+  /* Tooltips: the dark navy plate of the trading app (pale ink both themes). */
   --dsw-alias-tooltip-bg: #2b3648;
+  --dsw-alias-tooltip-fg: #e2e9f2;
   --dsw-specific-bubble-highlight: #e2e9f1;
   --dsw-specific-bubble: #eef1f5;
   --dsw-specific-input-major: #fff;
@@ -359,6 +360,7 @@ body[data-dsh-ths][data-ds-dark-theme] {
   --dsw-alias-state-warn-primary: #d69a3a;
   --dsw-alias-toast-bg: #3a4657;
   --dsw-alias-tooltip-bg: #2c3a4e;
+  --dsw-alias-tooltip-fg: #e2e9f2;
   --dsw-specific-bubble-highlight: #26344a;
   --dsw-specific-bubble: #1f2834;
   --dsw-specific-input-major: #141a22;
@@ -543,32 +545,63 @@ body[data-dsh-ths][data-ds-dark-theme] [data-pane='sidebar'] > div {
   background: linear-gradient(180deg, #182029 0%, #141b24 100%);
 }
 
-/* Sidebar header band: the first child (logo row) becomes the deep navy
-   market header; everything inside renders white. */
+/* Live GUI wraps the sidebar; :first-child is the whole column, not the
+   logo. Neutralize that match with the same selectors so an already-installed
+   white-ink sheet cannot win. White stays on the logo row only. */
+body[data-dsh-ths] [data-pane='sidebar'] {
+  color: var(--dsw-alias-label-primary);
+}
+
 body[data-dsh-ths] [data-pane='sidebar'] > div > :first-child,
 body[data-dsh-ths] [data-pane='sidebar'] > div > :first-child * {
-  color: #fff;
+  color: var(--dsw-alias-label-primary);
 }
 
 body[data-dsh-ths] [data-pane='sidebar'] > div > :first-child {
+  background: none;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+body[data-dsh-ths][data-ds-dark-theme] [data-pane='sidebar'] > div > :first-child {
+  background: none;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+body[data-dsh-ths] [data-pane='sidebar'] [class*='sessionRow'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-ths] [data-pane='sidebar'] > div > :first-child [role='dialog'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Sidebar header band: only the logo row is the market header. */
+body[data-dsh-ths] [data-pane='sidebar'] [class*='logoRow'],
+body[data-dsh-ths] [data-pane='sidebar'] [class*='logoRow'] * {
+  color: #fff;
+}
+
+body[data-dsh-ths] [data-pane='sidebar'] [class*='logoRow'] {
   background: linear-gradient(180deg, #1b2636, #253348);
   /* The red market rule under the navy band: the watchlist header. */
   border-bottom: 2px solid #e60012;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-body[data-dsh-ths][data-ds-dark-theme] [data-pane='sidebar'] > div > :first-child {
+body[data-dsh-ths][data-ds-dark-theme] [data-pane='sidebar'] [class*='logoRow'] {
   background: linear-gradient(180deg, #101a2a, #16233a);
   border-bottom-color: #e60012;
 }
 
 /* Header-band buttons stay flat and transparent on the navy strip. */
-body[data-dsh-ths] [data-pane='sidebar'] > div > :first-child button {
+body[data-dsh-ths] [data-pane='sidebar'] [class*='logoRow'] button {
   background: transparent;
   color: #fff;
 }
 
-body[data-dsh-ths] [data-pane='sidebar'] > div > :first-child button:hover {
+body[data-dsh-ths] [data-pane='sidebar'] [class*='logoRow'] button:hover {
   background: rgba(255, 255, 255, 0.14);
 }
 
@@ -576,11 +609,11 @@ body[data-dsh-ths] [data-pane='sidebar'] > div > :first-child button:hover {
    pill follows currentColor (white here) while the badge letters use the
    inverted-primary token — white on white. Pin the pill to the brand red and
    force the letters white, so the badge reads like a market tag on the band. */
-body[data-dsh-ths] [data-pane='sidebar'] > div > :first-child svg rect[fill='currentColor'] {
+body[data-dsh-ths] [data-pane='sidebar'] [class*='logoRow'] svg rect[fill='currentColor'] {
   fill: #e60012;
 }
 
-body[data-dsh-ths] [data-pane='sidebar'] > div > :first-child svg [fill='var(--dsw-alias-label-primary-inverted)'] {
+body[data-dsh-ths] [data-pane='sidebar'] [class*='logoRow'] svg [fill='var(--dsw-alias-label-primary-inverted)'] {
   fill: #fff;
 }
 
@@ -688,6 +721,34 @@ body[data-dsh-ths][data-ds-dark-theme] [data-pane='details'] {
 
 body[data-dsh-ths] [role='dialog'] {
   border: 1px solid #b7bfc9;
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-ths] [role='dialog'] [class*='navCell']:not([aria-current='true']) {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Text tabs are labels, not chrome plates. */
+body[data-dsh-ths] button[role='tab'],
+body[data-dsh-ths] button[role='tab']:hover,
+body[data-dsh-ths] button[role='tab']:active,
+body[data-dsh-ths] button[role='tab']:disabled,
+body[data-dsh-ths] button[role='tab']:hover:not(:disabled),
+body[data-dsh-ths] button[role='tab']:active:not(:disabled) {
+  background-image: none;
+  background-color: transparent;
+  box-shadow: none;
+  text-shadow: none;
+  border: 0;
+  color: var(--dsw-alias-label-primary);
+  transform: none;
+  filter: none;
+  opacity: 1;
+}
+
+body[data-dsh-ths] [role='tooltip'] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
 }
 
 body[data-dsh-ths][data-ds-dark-theme] [role='dialog'] {
@@ -1142,7 +1203,7 @@ body[data-dsh-ths] [data-pane='sidebar'] [role='treeitem']:not([aria-selected='t
    crimson "buy" action: white-alpha press on the band, deeper crimson on the
    buy button. Both read identically across themes because those surfaces are
    theme-independent chrome. */
-body[data-dsh-ths] [data-pane='sidebar'] > div > :first-child button:active {
+body[data-dsh-ths] [data-pane='sidebar'] [class*='logoRow'] button:active {
   background: rgba(255, 255, 255, 0.26);
 }
 

@@ -501,6 +501,7 @@ body[data-dsh-minecraft] {
   --dsw-alias-bg-skeleton: #273128;
   --dsw-alias-toast-bg: #212d26;
   --dsw-alias-tooltip-bg: #212d26;
+  --dsw-alias-tooltip-fg: #e7ead7;
   --dsw-alias-markdown-code-block: #1e2620;
   --dsw-alias-markdown-code-block-banner: #273128;
   --dsw-alias-markdown-inline-code: #2a352c;
@@ -552,6 +553,41 @@ body[data-dsh-minecraft] {
   --dsw-specific-tip: #212d26;
   --dsw-specific-input-major: rgba(15, 24, 17, 0.9);
   --dsw-specific-login-input: rgba(15, 24, 17, 0.9);
+}
+
+body[data-dsh-minecraft] [data-pane='sidebar'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-minecraft] [role='tooltip'] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
+}
+
+body[data-dsh-minecraft] [role='dialog'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-minecraft] [role='dialog'] [class*='navCell']:not([aria-current='true']) {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Text tabs are labels, not MC slab buttons (those paint color:#fff). */
+body[data-dsh-minecraft] button[role='tab'],
+body[data-dsh-minecraft] button[role='tab']:hover,
+body[data-dsh-minecraft] button[role='tab']:active,
+body[data-dsh-minecraft] button[role='tab']:disabled,
+body[data-dsh-minecraft] button[role='tab']:hover:not(:disabled),
+body[data-dsh-minecraft] button[role='tab']:active:not(:disabled) {
+  background-image: none;
+  background-color: transparent;
+  box-shadow: none;
+  text-shadow: none;
+  border: 0;
+  color: var(--dsw-alias-label-primary);
+  transform: none;
+  filter: none;
+  opacity: 1;
 }
 
 /* ---------------------------------------------------------------------------

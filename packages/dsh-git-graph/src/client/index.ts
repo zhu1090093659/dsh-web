@@ -1,21 +1,26 @@
 /**
- * Git-graph surface plugin, browser half: the git branch selector chip in
- * the input selector row's context hole (`conversation.input.selector
- * .context`, a session-maybe list slot declared and rendered by the shipped
- * ui-conversation shell), docked right beside the official workspace
- * selector above the input card. All git facts arrive through the host
- * /git routes (this package's own host half); the inject face carries the
+ * Git-graph surface plugin, browser half: the git branch selector chip,
+ * mounted with declaration awareness — the preferred seat is the input
+ * selector row's context hole (`conversation.input.selector.context`, a
+ * session-maybe list slot declared and rendered by ui-conversation shells
+ * after rc.6, right beside the official workspace selector above the input
+ * card); when the running shell never declares that hole (the shipped rc.6
+ * shell, whose published npm SDK also dropped its type), the chip falls
+ * back to the composer dock band (`conversation.input.dock`, the 0.1.9
+ * seat). A late preferred-seat declaration migrates the chip onto it and
+ * unmounts the fallback entry. All git facts arrive through the host /git
+ * routes (this package's own host half); the inject face carries the
  * business verbs, the components stay pure props.
  *
- * The context hole is session-maybe: the chip stays mounted from cold start
- * through the active phase and hides itself when its data source is absent
- * (no session cwd, or not a git repository) — no workspace selector lives
- * here, the official selector chip docked above the input card owns that
- * surface. An earlier revision (acbcf80) moved the chip to
- * `conversation.input.dock` on the wrong premise that the selector-context
- * hole was undeclared; the running shell declares it, so the chip registers
- * here to sit in the same row as the workspace chip. The published npm SDK
- * (rc.6) dropped the hole's type, so it is spelled locally below.
+ * Both seats hide the chip when its data source is absent (no session cwd,
+ * or not a git repository); the selector-context seat additionally keeps
+ * the chip mounted in the hero phase. An earlier revision (acbcf80) moved
+ * the chip to `conversation.input.dock`; 0be6546 moved it back to the
+ * selector-context hole on the premise that the running shell declares it —
+ * false for rc.6, so the chip vanished there. The fallback below restores
+ * the chip on every shell while keeping the preferred seat for shells that
+ * declare it. The published npm SDK (rc.6) dropped the hole's type, so it
+ * is spelled locally below.
  * @module dsh-git-graph/client
  */
 
@@ -157,17 +162,54 @@ export function apply(ctx: ClientContext): void {
       }
     }
 
-    // Declaration-aware: the chip registers only when the shell declares the
-    // selector-context hole. A bare register() would throw on shells that
-    // dropped the hole (SDK SlotCore.register rejects undeclared slots), so
-    // route through inject like the pet / remote-web-ui entries.
-    scope.slots.inject('conversation.input.selector.context', () =>
-      scope.slots.register({
-        name: 'conversation.input.selector.context',
+    // Declaration-aware mount with a dock fallback: the preferred seat is the
+    // selector-row context hole (declared by shells after rc.6; session-maybe,
+    // beside the workspace chip). The shipped rc.6 shell never declares it —
+    // slots.inject would wait forever — so when `spec()` reports it absent,
+    // register the chip on the composer dock band instead (the 0.1.9 seat).
+    // If the preferred seat is declared later (shell boots after this plugin),
+    // the pending inject fires, unmounts the fallback entry, and migrates the
+    // chip onto the preferred seat. register() throws on undeclared slots, so
+    // the fallback register is additionally guarded by its own spec probe.
+    const PREFERRED = 'conversation.input.selector.context'
+    const FALLBACK = 'conversation.input.dock'
+    let mountedAt: 'preferred' | 'fallback' | null = null
+    let unmountFallback: (() => void) | null = null
+
+    scope.slots.inject(PREFERRED, () => {
+      unmountFallback?.()
+      unmountFallback = null
+      const dispose = scope.slots.register({
+        name: PREFERRED,
         id: 'git-graph',
         order: 100,
         locale: NS,
         inject: injected,
-      }, BranchChip))
+      }, BranchChip)
+      mountedAt = 'preferred'
+      return () => {
+        if (mountedAt === 'preferred') {
+          mountedAt = null
+          dispose()
+        }
+      }
+    })
+
+    if (mountedAt === null && scope.slots.spec(PREFERRED) === undefined && scope.slots.spec(FALLBACK) !== undefined) {
+      const dispose = scope.slots.register({
+        name: FALLBACK,
+        id: 'git-graph',
+        order: 100,
+        locale: NS,
+        inject: injected,
+      }, BranchChip)
+      unmountFallback = () => {
+        if (mountedAt === 'fallback') {
+          mountedAt = null
+          dispose()
+        }
+      }
+      mountedAt = 'fallback'
+    }
   })
 }

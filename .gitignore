@@ -1,6 +1,10 @@
 # 依赖与构建产物
 node_modules/
 
+# 本地构建产物与部署备份（fork 自留，不入库）
+lib/
+deploy/
+
 # npm 认证配置（含令牌引用，禁止提交）
 .npmrc
 

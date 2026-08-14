@@ -117,10 +117,11 @@ export function ContextMenu({ state, onClose }: { state: MenuState | null; onClo
   )
 }
 
-/** A confirmation dialog (dirty-close confirm, discard confirm). */
+/** A confirmation dialog (dirty-close confirm, discard confirm, format preview). */
 export function ConfirmDialog({
   title,
   body,
+  bodyPre,
   confirmLabel,
   danger,
   onConfirm,
@@ -128,6 +129,8 @@ export function ConfirmDialog({
 }: {
   title: string
   body: string
+  /** Optional preformatted monospace body (rendered instead of `body`). */
+  bodyPre?: string
   confirmLabel?: string
   danger?: boolean
   onConfirm: () => void
@@ -142,9 +145,10 @@ export function ConfirmDialog({
   }, [onCancel])
   return createPortal(
     <div className="aionui-overlay" onPointerDown={onCancel}>
-      <div className="aionui-dialog" onPointerDown={(event) => event.stopPropagation()}>
+      <div className="aionui-dialog aionui-dialog-wide" onPointerDown={(event) => event.stopPropagation()}>
         <div className="aionui-dialog-title">{title}</div>
-        <div className="aionui-dialog-body">{body}</div>
+        {body !== '' && <div className="aionui-dialog-body">{body}</div>}
+        {bodyPre !== undefined && <pre className="aionui-dialog-pre">{bodyPre}</pre>}
         <div className="aionui-dialog-actions">
           <button type="button" className="aionui-btn" onClick={onCancel}>{t('common.cancel')}</button>
           <button

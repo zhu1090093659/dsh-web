@@ -780,3 +780,370 @@
   background: color-mix(in srgb, var(--aion-warning) 10%, transparent);
   flex-shrink: 0;
 }
+
+/* ── code reader (CodeMirror) ──────────────────────────────────────────── */
+
+.codeRoot {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--aion-bg-base);
+}
+
+.codeEditor {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.codeEditor :global(.cm-editor) {
+  height: 100%;
+  background: var(--aion-bg-base);
+  color: var(--aion-text-primary);
+}
+
+.codeEditor :global(.cm-scroller) {
+  overflow: auto;
+  line-height: 1.4;
+  /* VS Code Windows defaults. Must live here: CodeMirror's base theme sets
+     `font-family: monospace` directly on .cm-scroller, which overrides any
+     font merely inherited from .cm-editor. */
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: normal;
+  letter-spacing: normal;
+  font-variant-ligatures: none;
+}
+
+/* Indent guides are drawn per-line by the indentGuides ViewPlugin (see
+   src/client/preview/indentGuides.ts) — only on lines that reach each depth.
+   These global classes style the widget the plugin injects. */
+:global(.cm-indent-guides) {
+  display: inline-block;
+  position: relative;
+  width: 0;
+  height: 1em;
+  vertical-align: top;
+}
+:global(.cm-indent-guide) {
+  position: absolute;
+  top: -0.3em;
+  bottom: -0.3em;
+  width: 1px;
+  background: color-mix(in srgb, var(--aion-text-tertiary) 32%, transparent);
+  pointer-events: none;
+}
+
+/* Rainbow bracket colorization (editor.bracketPairColorization). The
+   rainbowBrackets ViewPlugin assigns cm-bracket-0..2 by nesting depth. */
+:global(.cm-bracket-0) { color: var(--aion-bracket-0) !important; }
+:global(.cm-bracket-1) { color: var(--aion-bracket-1) !important; }
+:global(.cm-bracket-2) { color: var(--aion-bracket-2) !important; }
+
+.codeEditor :global(.cm-gutters) {
+  background: var(--aion-bg-base);
+  color: var(--aion-text-tertiary);
+  border-right: 1px solid var(--aion-bg-3);
+}
+
+.codeEditor :global(.cm-activeLine),
+.codeEditor :global(.cm-activeLineGutter) {
+  background: var(--aion-bg-hover);
+}
+
+.codeEditor :global(.cm-selectionBackground) {
+  background: color-mix(in srgb, var(--aion-primary) 22%, transparent);
+}
+
+/* ── VS Code Dark+ editor chrome (dark mode only) ─────────────────────── */
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-editor) {
+  background: #1e1e1e;
+  color: #d4d4d4;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-content) {
+  caret-color: #aeafad;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-gutters) {
+  background: #1e1e1e;
+  color: #858585;
+  border-right: 1px solid #1e1e1e;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-activeLineGutter) {
+  background: #1e1e1e;
+  color: #c6c6c6;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-activeLine) {
+  background: rgba(255, 255, 255, 0.035);
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-editor.cm-focused) :global(.cm-selectionBackground) {
+  background: #264f78;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-editor:not(.cm-focused)) :global(.cm-selectionBackground) {
+  background: #3a3d41;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-specialChar) {
+  color: rgba(227, 228, 226, 0.16);
+}
+:global(body[data-ds-dark-theme]) :global(.cm-indent-guide) {
+  background: #404040;
+}
+/* lint squiggles (editorError/Warning/Info/Hint.foreground) */
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-lintRange) {
+  background-image: none !important;
+  padding-bottom: 0 !important;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-lintRange-error) {
+  text-decoration: underline wavy #f14c4c;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-lintRange-warning) {
+  text-decoration: underline wavy #cca700;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-lintRange-info) {
+  text-decoration: underline wavy #59a4f9;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-lintRange-hint) {
+  text-decoration: underline wavy rgba(238, 238, 238, 0.7);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+/* search match highlight */
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-searchMatch) {
+  background: #ea5c0055;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-searchMatch.cm-searchMatch-selected) {
+  background: #515c6a;
+}
+/* codelens + hover widget */
+:global(body[data-ds-dark-theme]) .codeLens {
+  color: #999999;
+}
+:global(body[data-ds-dark-theme]) .codeHover {
+  background: #252526;
+  border-color: #3c3c3c;
+}
+:global(body[data-ds-dark-theme]) .codeEditor :global(.cm-scroller)::-webkit-scrollbar-thumb {
+  background: rgba(121, 121, 121, 0.4);
+}
+
+/* Floating toolbar inside the reader (python files only). */
+.codeTools {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.codeBadge {
+  font-size: 12px;
+  color: var(--aion-text-secondary);
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--aion-bg-2);
+  border: 1px solid var(--aion-bg-3);
+}
+
+.codeToolBtn {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--aion-bg-3);
+  border-radius: 4px;
+  background: var(--aion-bg-2);
+  color: var(--aion-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.codeToolBtn:hover {
+  background: var(--aion-bg-hover);
+  color: var(--aion-text-primary);
+}
+
+.codeToolBtnActive {
+  color: var(--aion-primary);
+  border-color: var(--aion-primary);
+}
+
+/* Reference-count lens at the end of definition lines. */
+.codeLens {
+  color: var(--aion-text-tertiary);
+  font-size: 11px;
+  font-style: italic;
+  margin-left: 10px;
+  white-space: nowrap;
+}
+
+/* Outline drawer. */
+.codeOutline {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 240px;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--aion-bg-1);
+  border-left: 1px solid var(--aion-bg-3);
+  box-shadow: var(--aion-overlay-shadow);
+  padding: 8px 0;
+}
+
+.codeSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.codeSectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--aion-text-tertiary);
+  padding: 10px 12px 4px;
+}
+
+.codeRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 12px;
+  border: none;
+  background: transparent;
+  color: var(--aion-text-primary);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.codeRow:hover {
+  background: var(--aion-bg-hover);
+}
+
+.codeKind {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 3px;
+  background: var(--aion-bg-3);
+  color: var(--aion-text-secondary);
+  font-family: var(--aion-font-mono);
+  font-size: 10px;
+}
+
+.codeRowName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--aion-font-mono);
+}
+
+.codeRowRefs {
+  flex: none;
+  color: var(--aion-text-tertiary);
+  font-size: 11px;
+}
+
+.codeRowCode {
+  flex: none;
+  color: var(--aion-text-tertiary);
+  font-family: var(--aion-font-mono);
+  font-size: 11px;
+  min-width: 34px;
+}
+
+.codeRowMsg {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codeDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.codeDotError {
+  background: var(--aion-danger);
+}
+
+.codeDotWarn {
+  background: var(--aion-warning);
+}
+
+.codeDotInfo {
+  background: var(--aion-primary);
+}
+
+.codeNote {
+  font-size: 12px;
+  color: var(--aion-text-secondary);
+  padding: 6px 12px;
+}
+
+.codeEmpty {
+  font-size: 12px;
+  color: var(--aion-text-tertiary);
+  padding: 4px 12px 10px;
+}
+
+/* Hover tooltip (AST docstrings / references). */
+.codeHover {
+  max-width: 360px;
+  padding: 8px 10px;
+  border: 1px solid var(--aion-bg-3);
+  border-radius: 6px;
+  background: var(--aion-bg-base);
+  color: var(--aion-text-primary);
+  box-shadow: var(--aion-overlay-shadow);
+  font-size: 12px;
+}
+
+.codeHoverTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.codeHoverName {
+  font-family: var(--aion-font-mono);
+  font-weight: 600;
+}
+
+.codeHoverParams {
+  font-family: var(--aion-font-mono);
+  color: var(--aion-text-secondary);
+}
+
+.codeHoverMeta {
+  margin-top: 2px;
+  color: var(--aion-text-tertiary);
+  font-size: 11px;
+}
+
+.codeHoverDoc {
+  margin-top: 6px;
+  color: var(--aion-text-secondary);
+  white-space: pre-wrap;
+  line-height: 1.5;
+}

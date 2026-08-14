@@ -296,6 +296,28 @@
   padding: 0 20px;
   line-height: 1.6;
 }
+:global(.aionui-dialog-wide) {
+  width: 620px;
+  max-width: calc(100vw - 48px);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+:global(.aionui-dialog-pre) {
+  margin: 0 20px 12px;
+  padding: 12px 14px;
+  overflow: auto;
+  flex: 1;
+  min-height: 120px;
+  border: 1px solid var(--aion-bg-3);
+  border-radius: 6px;
+  background: var(--aion-bg-2);
+  color: var(--aion-text-primary);
+  font-family: var(--aion-font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+}
 :global(.aionui-dialog-actions) {
   display: flex;
   justify-content: flex-end;
@@ -418,4 +440,18 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+}
+
+/* Rainbow bracket palette (light theme defaults). */
+:global(:root) {
+  --aion-bracket-0: #0550ae;
+  --aion-bracket-1: #1a7f37;
+  --aion-bracket-2: #b33a3a;
+}
+
+/* Rainbow bracket palette (VS Code Dark+ values). */
+:global(body[data-ds-dark-theme]) {
+  --aion-bracket-0: #ffd700;
+  --aion-bracket-1: #da70d6;
+  --aion-bracket-2: #179fff;
 }

@@ -27,6 +27,8 @@ export type PanelErrorCode =
   | 'search-failed'
   | 'git-unavailable'
   | 'git-failed'
+  | 'tool-unavailable'
+  | 'tool-failed'
   | 'internal'
 
 /** One rejection with a human-readable host message. */
@@ -141,6 +143,74 @@ export interface PreviewTabMeta {
   mtime?: number
   /** When the tab was last touched (LRU ordering within a scope). */
   savedAt: number
+}
+
+/** Severity ladder the lint gutter renders (error > warning > info). */
+export type PyLintSeverity = 'error' | 'warning' | 'info'
+
+/** One lint diagnostic with 0-based line/column spans (editor gutter ready). */
+export interface PyDiagnostic {
+  fromLine: number
+  fromCol: number
+  toLine: number
+  toCol: number
+  severity: PyLintSeverity
+  message: string
+  /** Linter rule code such as E501 / F401. */
+  code: string
+}
+
+/** The lint view of one python file. */
+export interface PyLintView {
+  diagnostics: PyDiagnostic[]
+  /** Tool identity line, e.g. "ruff". */
+  tool: string
+  /** Tool version line, e.g. "0.12.0". */
+  version: string
+}
+
+/** Symbol kinds the outline renders. */
+export type PySymbolKind = 'function' | 'class' | 'method' | 'modulevar' | 'import'
+
+/** One function/class/method definition (1-based line numbers). */
+export interface PySymbol {
+  name: string
+  kind: PySymbolKind
+  /** 1-based definition line. */
+  line: number
+  /** 1-based inclusive end line. */
+  endLine: number
+  /** Docstring ('' when none). */
+  doc: string
+  /** Parameter names (functions/methods). */
+  params: string[]
+  /** Enclosing class name (methods); null otherwise. */
+  className: string | null
+}
+
+/** One resolved name reference (1-based line numbers). */
+export interface PyRef {
+  name: string
+  /** 1-based line of the use site. */
+  line: number
+  /** 1-based line of the referenced definition. */
+  targetLine: number
+}
+
+/** The symbol view of one python file. */
+export interface PySymbolView {
+  defs: PySymbol[]
+  refs: PyRef[]
+  /** Tool identity line, e.g. "python". */
+  tool: string
+}
+
+/** The format preview of one python file (read-only). */
+export interface PyFormatResult {
+  /** Unified diff of the formatting change ('' when already formatted). */
+  diff: string
+  /** True when ruff would change the file. */
+  changed: boolean
 }
 
 /** Preview content kinds the panel can render. */

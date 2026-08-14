@@ -13,6 +13,7 @@ import type { PreviewTabState } from '../store.ts'
 import { useResizableSplit } from '../hooks/useResizableSplit.ts'
 import { t } from '../locales.ts'
 import { renderMarkdown, resolveMarkdownImage } from './markdown.ts'
+import { CodeViewer } from './codeViewer.tsx'
 import previewCss from '../styles/preview.module.css'
 
 /** Split-ratio persistence key (AionUi contract). */
@@ -75,14 +76,14 @@ export function TabContent({
         />
       )}
       {(tab.contentType === 'code' || tab.contentType === 'text') && tab.content !== null && (
-        <CodeViewer content={tab.content} language={tab.title.split('.').pop() ?? ''} />
+        <CodeViewer key={tab.path} content={tab.content} language={tab.title.split('.').pop() ?? ''} root={tab.root} path={tab.path} />
       )}
       {tab.contentType === 'csv' && tab.content !== null && <CsvViewer content={tab.content} />}
       {tab.contentType === 'diff' && tab.content !== null && <DiffViewer content={tab.content} />}
       {tab.contentType === 'image' && tab.content !== null && (
         <ImageViewer src={tab.content} meta={`${tab.image?.width ?? ''}${tab.image ? ' x ' : ''}${tab.image?.height ?? ''}`} />
       )}
-      {tab.contentType === 'pdf' && tab.content !== null && <PdfViewer dataUrl={tab.content} title={tab.title} />}
+      {tab.contentType === 'pdf' && <PdfViewer root={tab.root} path={tab.path} title={tab.title} />}
       {tab.contentType === 'url' && <UrlViewer tab={tab} />}
       {(tab.contentType === 'word' || tab.contentType === 'excel' || tab.contentType === 'ppt' || tab.contentType === 'unsupported') && (
         <UnsupportedViewer tab={tab} />
@@ -148,7 +149,7 @@ function SplitPane({
           {tab.contentType === 'markdown' && <MarkdownViewer content={content} root={tab.root} path={tab.path} />}
           {tab.contentType === 'html' && <HtmlViewer content={content} />}
           {tab.contentType === 'csv' && <CsvViewer content={content} />}
-          {tab.contentType === 'code' && <CodeViewer content={content} language={tab.title.split('.').pop() ?? ''} />}
+          {tab.contentType === 'code' && <CodeViewer key={tab.path} content={content} language={tab.title.split('.').pop() ?? ''} root={tab.root} path={tab.path} />}
         </div>
       </div>
     </div>
@@ -226,12 +227,6 @@ function HtmlViewer({
     )
   }
   return <iframe className={previewCss.pdfViewer} srcDoc={srcDoc} sandbox="" title="html preview" />
-}
-
-/** Plain code/text viewer. */
-function CodeViewer({ content, language }: { content: string; language: string }): JSX.Element {
-  void language
-  return <pre className={previewCss.codeViewer}><code>{content}</code></pre>
 }
 
 /** CSV table. */
@@ -336,42 +331,10 @@ function ImageViewer({ src, meta }: { src: string; meta: string }): JSX.Element 
   )
 }
 
-/** PDF viewer (blob iframe). */
-function PdfViewer({ dataUrl, title }: { dataUrl: string; title: string }): JSX.Element {
-  const [url, setUrl] = useState<string | null>(null)
-  useEffect(() => {
-    if (!dataUrl.startsWith('data:')) {
-      setUrl(null)
-      return
-    }
-    const blob = dataUrlToBlob(dataUrl)
-    if (blob === null) {
-      setUrl(null)
-      return
-    }
-    const objectUrl = URL.createObjectURL(blob)
-    setUrl(objectUrl)
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [dataUrl])
-  return url === null
-    ? <div className={previewCss.placeholder}>{t('preview.unsupported')}</div>
-    : <iframe className={previewCss.pdfViewer} src={url} title={title} />
-}
-
-/** Convert a data URL to a Blob (null on failure). */
-export function dataUrlToBlob(dataUrl: string): Blob | null {
-  const comma = dataUrl.indexOf(',')
-  if (comma === -1) return null
-  const meta = dataUrl.slice(0, comma)
-  const mime = /data:([^;]+)/.exec(meta)?.[1] ?? 'application/octet-stream'
-  try {
-    const binary = atob(dataUrl.slice(comma + 1))
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
-    return new Blob([bytes], { type: mime })
-  } catch {
-    return null
-  }
+/** PDF viewer (browser-native via the raw route — no PDF.js payload). */
+function PdfViewer({ root, path, title }: { root: string; path: string; title: string }): JSX.Element {
+  const src = `/aionui-panel/raw?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`
+  return <iframe className={previewCss.pdfViewer} src={src} title={title} />
 }
 
 /** URL tab: address bar + iframe. */

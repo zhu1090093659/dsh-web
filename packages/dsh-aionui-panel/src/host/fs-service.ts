@@ -11,7 +11,7 @@
 
 import { readdir, readFile, realpath, stat, writeFile, rm, mkdir } from 'node:fs/promises'
 import { watch as watchDir, type Dirent, type FSWatcher } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { join, dirname, extname } from 'node:path'
 import type { DirListing, FileRead, FsEntry, PanelError, SearchHit, SearchView } from '../core/types.ts'
 import { isPathInside, type GateVerdict, type WorkspaceGate } from './gate.ts'
 
@@ -36,7 +36,7 @@ const POLL_FALLBACK_MS = 3_000
  * nearest existing ancestor — a nonexistent tail cannot itself be a symlink.
  * A path whose real path escapes the root is rejected with path-outside-root.
  */
-async function resolveInsideRoot(root: string, rel: string): Promise<{ ok: true; abs: string } | { ok: false; error: PanelError }> {
+export async function resolveInsideRoot(root: string, rel: string): Promise<{ ok: true; abs: string } | { ok: false; error: PanelError }> {
   if (rel.includes('\0')) return { ok: false, error: { code: 'path-outside-root', message: 'invalid path' } }
   const abs = join(root, rel)
   if (!isPathInside(root, abs)) {
@@ -144,6 +144,7 @@ function imageMime(rel: string, data: Buffer): string {
   const byExt: Record<string, string> = {
     png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
     webp: 'image/webp', svg: 'image/svg+xml', ico: 'image/x-icon', avif: 'image/avif', bmp: 'image/bmp',
+    pdf: 'application/pdf',
   }
   if (byExt[ext]) return byExt[ext]
   if (data.length >= 3 && data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e) return 'image/png'
@@ -206,15 +207,24 @@ export class FsService {
     if (!gated.ok) return gated.error
     const resolved = await resolveInsideRoot(gated.canonical, rel)
     if (!resolved.ok) return resolved.error
-    let data: Buffer
     let info: Awaited<ReturnType<typeof stat>>
     try {
-      data = await readFile(resolved.abs)
       info = await stat(resolved.abs)
     } catch {
       return { code: 'not-found', message: `cannot read ${rel}` }
     }
     if (info.isDirectory()) return { code: 'is-directory', message: `${rel} is a directory` }
+    // PDFs are rendered by the browser's native viewer through the raw route,
+    // so decoding their bytes into a JSON string here would only waste memory.
+    if (extname(rel).toLowerCase() === '.pdf') {
+      return { content: '', truncated: false, size: info.size, mtime: info.mtimeMs }
+    }
+    let data: Buffer
+    try {
+      data = await readFile(resolved.abs)
+    } catch {
+      return { code: 'not-found', message: `cannot read ${rel}` }
+    }
     if (asImage) {
       if (data.length > IMAGE_CAP_BYTES) {
         return { code: 'read-failed', message: 'image exceeds preview cap' }

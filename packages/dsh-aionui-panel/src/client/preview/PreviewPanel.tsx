@@ -13,7 +13,7 @@ import { isEditableType } from '../fileType.ts'
 import { t, format } from '../locales.ts'
 import { useStore } from '../hooks/useStore.ts'
 import type { PanelStores, PreviewTabState } from '../store.ts'
-import { ConfirmDialog, ContextMenu, type MenuState } from '../components/overlay.tsx'
+import { ConfirmDialog, ContextMenu, toast, type MenuState } from '../components/overlay.tsx'
 import { PreviewTabs } from './PreviewTabs.tsx'
 import { PreviewToolbar, downloadTab } from './PreviewToolbar.tsx'
 import { TabContent } from './content.tsx'
@@ -27,9 +27,17 @@ export function PreviewPanel({ stores }: { stores: PanelStores }): JSX.Element {
   const [closingIds, setClosingIds] = useState<string[] | null>(null)
   const [viewMode, setViewMode] = useState<'source' | 'preview'>('preview')
   const [split, setSplit] = useState(false)
+  const [formatDiff, setFormatDiff] = useState<string | null>(null)
   const lastDirtyCheck = useRef<Set<string>>(new Set())
 
   const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null
+  const isPython = activeTab !== null && activeTab.contentType === 'code'
+    && activeTab.path.toLowerCase().endsWith('.py')
+
+  // Reset the transient format overlay when the displayed file changes.
+  useEffect(() => {
+    setFormatDiff(null)
+  }, [activeTab?.id])
 
   // View mode resets to preview when the displayed FILE changes (path+type).
   const identity = activeTab === null ? '' : `${activeTab.path}\u0000${activeTab.contentType}`
@@ -105,6 +113,36 @@ export function PreviewPanel({ stores }: { stores: PanelStores }): JSX.Element {
     preview.update((prev) => ({ ...prev, open: true, tabs: [...prev.tabs, tab], activeTabId: tab.id }))
   }
 
+  /** Preview ruff formatting (read-only diff) and ask before applying. */
+  const requestFormat = (): void => {
+    if (activeTab === null) return
+    void stores.api.pyFormat(activeTab.root, activeTab.path, false).then((result) => {
+      if (!result.ok) {
+        toast(`${t('preview.code.formatFailed')}: ${result.error.message}`)
+        return
+      }
+      if (!result.value.changed) {
+        toast(t('preview.code.alreadyFormatted'))
+        return
+      }
+      setFormatDiff(result.value.diff)
+    })
+  }
+
+  /** Apply the reviewed formatting in place, then re-read the tab. */
+  const applyFormat = (): void => {
+    if (activeTab === null) return
+    setFormatDiff(null)
+    void stores.api.pyFormat(activeTab.root, activeTab.path, true).then((result) => {
+      if (!result.ok) {
+        toast(`${t('preview.code.formatFailed')}: ${result.error.message}`)
+        return
+      }
+      toast(t('preview.code.formatDone'))
+      void preview.reloadTab(activeTab.id)
+    })
+  }
+
   return (
     <div className={`aionui-root ${previewCss.panel}`}>
       <PreviewTabs
@@ -128,11 +166,13 @@ export function PreviewPanel({ stores }: { stores: PanelStores }): JSX.Element {
             canToggleView={activeTab.contentType === 'markdown' || activeTab.contentType === 'html'}
             split={split}
             canSplit={isEditableType(activeTab.contentType) && activeTab.content !== null}
+            canFormat={isPython && !activeTab.dirty}
             onViewModeChange={setViewMode}
             onSplitChange={setSplit}
             onRefresh={() => void preview.reloadTab(activeTab.id)}
             onSave={() => void preview.saveTab(activeTab.id)}
             onDownload={() => downloadTab(activeTab)}
+            onFormat={requestFormat}
           />
           <TabContent
             tab={activeTab}
@@ -155,6 +195,16 @@ export function PreviewPanel({ stores }: { stores: PanelStores }): JSX.Element {
             setClosingIds(null)
           }}
           onCancel={() => setClosingIds(null)}
+        />
+      )}
+      {formatDiff !== null && (
+        <ConfirmDialog
+          title={t('preview.code.formatTitle')}
+          body={t('preview.code.formatConfirm')}
+          bodyPre={formatDiff}
+          confirmLabel={t('preview.code.apply')}
+          onConfirm={applyFormat}
+          onCancel={() => setFormatDiff(null)}
         />
       )}
     </div>

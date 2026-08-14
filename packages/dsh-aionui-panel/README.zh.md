@@ -29,6 +29,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-aionui-panel
 - **Explorer（最右栏，默认 260px，范围 220~500px）**：`文件 / 变更` 双 tab；文件树整行点击展开/收起文件夹，点击文件在预览面板打开，顶部按文件名搜索（150ms 防抖，点击结果 = 定位到树中，不打断思路）；`变更` tab 读取真实 git 状态，支持 stage / unstage / discard（untracked 走删除，tracked 走 restore，批量放弃有确认）。
 - **拖拽文件到输入框**：文件树中的文件行可拖拽（目录行除外），拖到聊天输入框区域松手即把相对路径（如 `deploy/base/deployment.yaml`）插入当前会话草稿的光标处，agent 收到消息后会自行读取该文件，无需手动输入路径；拖拽过程中输入框上方显示高亮提示条。
 - **Preview（右二栏，默认 480px，范围 340~1200px）**：多 tab 预览，支持 markdown / html / code / diff / csv / pdf / word / excel / ppt / 图片 / 文本 / url；源码/预览切换、分屏编辑（比例持久化）、保存（mtime 冲突检测）、下载、刷新（4 态：不渲染死按钮）、dirty 点、中键关闭、右键菜单批量关闭（dirty 确认）、tab 溢出渐变指示器。
+- **Python 代码阅读器（Preview，code 标签）**：打开 `.py` 文件即呈现只读的 VS Code 级阅读器——CodeMirror 语法高亮（折叠、面板内查找、行号、括号匹配）、ruff 代码检查波浪线（错误/警告/信息，附可点击问题清单）、AST 大纲与引用标注（悬停 docstring、Ctrl/Cmd+点击跳定义、按定义引用计数）、逐行缩进参考线、彩虹括号，以及「格式化」按钮（ruff 差异预览后应用）。PDF 使用浏览器原生查看器。仅静态分析（不执行代码）；lint/大纲/格式化需宿主安装 `ruff` 与 `python`，缺失时降级为提示。
 
 交互细节：
 

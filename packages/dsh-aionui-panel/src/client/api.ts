@@ -6,7 +6,7 @@
  */
 
 import type {
-  DirListing, FileRead, GitBatchResult, GitStatusView, PanelEnvelope, PanelError, SearchView,
+  DirListing, FileRead, GitBatchResult, GitStatusView, PanelEnvelope, PanelError, PyFormatResult, PyLintView, PySymbolView, SearchView,
 } from '../core/types.ts'
 
 /** Transport failure (fetch threw or the response was not JSON). */
@@ -85,6 +85,21 @@ export class PanelApi {
   /** Discard paths (worktree side; untracked paths are deleted). */
   gitDiscard(root: string, paths: string[]): Promise<PanelEnvelope<GitBatchResult>> {
     return post('/aionui-panel/git-discard', { root, paths })
+  }
+
+  /** Lint one python file with the host toolchain (ruff). */
+  pyLint(root: string, path: string): Promise<PanelEnvelope<PyLintView>> {
+    return post('/aionui-panel/py-lint', { root, path })
+  }
+
+  /** Extract symbols and references for one python file (host AST). */
+  pySymbols(root: string, path: string): Promise<PanelEnvelope<PySymbolView>> {
+    return post('/aionui-panel/py-symbols', { root, path })
+  }
+
+  /** Preview or apply ruff formatting for one python file. */
+  pyFormat(root: string, path: string, apply: boolean): Promise<PanelEnvelope<PyFormatResult>> {
+    return post('/aionui-panel/py-format', { root, path, apply })
   }
 }
 

@@ -1093,6 +1093,8 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
 
 /** Convenience bundle: the four stores wired to one api. */
 export interface PanelStores {
+  /** Shared wire client (lint/format/run actions read it directly). */
+  api: PanelApi
   layout: LayoutStore
   explorer: ExplorerStore
   scm: ScmStore
@@ -1117,6 +1119,6 @@ export function createPanelStores(api: PanelApi): PanelStoresWithFlush {
       if (typeof flush === 'function') (flush as () => void)()
     }
   }
-  const stores: PanelStoresWithFlush = { layout, explorer, scm, preview, flushNow }
+  const stores: PanelStoresWithFlush = { api, layout, explorer, scm, preview, flushNow }
   return stores
 }

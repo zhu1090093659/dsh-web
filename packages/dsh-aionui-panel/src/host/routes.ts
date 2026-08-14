@@ -12,6 +12,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { PanelEnvelope, PanelError } from '../core/types.ts'
 import type { FsService } from './fs-service.ts'
 import type { GitService } from './git-service.ts'
+import type { PyService } from './py-service.ts'
 
 const OK = (value: unknown): PanelEnvelope<unknown> => ({ ok: true, value })
 const FAIL = (error: PanelError): PanelEnvelope<never> => ({ ok: false, error })
@@ -86,9 +87,10 @@ function json(res: ServerResponse, envelope: PanelEnvelope<unknown>, status = 20
  * @param ctx - context carrying the webServer service.
  * @param fs - the gated filesystem service.
  * @param git - the gated git service.
+ * @param py - the gated python analysis service.
  * @returns the route disposers.
  */
-export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService): () => void {
+export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService, py: PyService): () => void {
   const subscribers = new Set<Subscriber>()
   let gitTimer: NodeJS.Timeout | undefined
   let heartbeatTimer: NodeJS.Timeout | undefined
@@ -296,6 +298,39 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
         }
         const result = await git.discard(root, paths)
         json(res, 'applied' in result ? OK(result) : FAIL(result))
+        return
+      }
+      case '/aionui-panel/py-lint': {
+        const path = strField(payload, 'path')
+        if (path === null) {
+          json(res, FAIL(BAD_REQUEST))
+          return
+        }
+        const result = await py.lint(root, path)
+        json(res, 'diagnostics' in result ? OK(result) : FAIL(result))
+        return
+      }
+      case '/aionui-panel/py-symbols': {
+        const path = strField(payload, 'path')
+        if (path === null) {
+          json(res, FAIL(BAD_REQUEST))
+          return
+        }
+        const result = await py.symbols(root, path)
+        json(res, 'defs' in result ? OK(result) : FAIL(result))
+        return
+      }
+      case '/aionui-panel/py-format': {
+        const path = strField(payload, 'path')
+        if (path === null) {
+          json(res, FAIL(BAD_REQUEST))
+          return
+        }
+        const apply = typeof payload === 'object' && payload !== null
+          ? (payload as Record<string, unknown>).apply === true
+          : false
+        const result = await py.format(root, path, apply)
+        json(res, 'diff' in result ? OK(result) : FAIL(result))
         return
       }
       default:

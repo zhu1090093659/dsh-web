@@ -19,8 +19,9 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-subprocess'
 import type {} from '@deepseek-ai/dsh-workspace'
 import type {} from '@deepseek-ai/dsh-system-prompt'
-import { FsService } from './host/fs-service.ts'
+import { FsService, resolveInsideRoot } from './host/fs-service.ts'
 import { GitService, subprocessRunner } from './host/git-service.ts'
+import { PyService, toolRunner } from './host/py-service.ts'
 import { createWorkspaceGate } from './host/gate.ts'
 import { registerPanelRoutes } from './host/routes.ts'
 
@@ -41,7 +42,8 @@ export function apply(ctx: Context): void {
   const gate = createWorkspaceGate(ctx)
   const fs = new FsService(gate)
   const git = new GitService(subprocessRunner(ctx), gate, (root, rel) => fs.delete(root, rel))
-  ctx.effect(() => registerPanelRoutes(ctx, fs, git), 'dsh-aionui-panel: /aionui-panel routes')
+  const py = new PyService((tool) => toolRunner(ctx, tool), gate, resolveInsideRoot)
+  ctx.effect(() => registerPanelRoutes(ctx, fs, git, py), 'dsh-aionui-panel: /aionui-panel routes')
   ctx.effect(() => ctx.systemPrompt.section({
     name: 'plugin:aionui-panel',
     order: SECTION_ORDER,

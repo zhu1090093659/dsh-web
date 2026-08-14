@@ -62,11 +62,13 @@ export function PreviewToolbar({
   canToggleView,
   split,
   canSplit,
+  canFormat,
   onViewModeChange,
   onSplitChange,
   onRefresh,
   onSave,
   onDownload,
+  onFormat,
 }: {
   contentType: PreviewContentType
   hasContent: boolean
@@ -77,11 +79,13 @@ export function PreviewToolbar({
   canToggleView: boolean
   split: boolean
   canSplit: boolean
+  canFormat: boolean
   onViewModeChange: (mode: 'source' | 'preview') => void
   onSplitChange: (split: boolean) => void
   onRefresh: () => void
   onSave: () => void
   onDownload: () => void
+  onFormat: () => void
 }): JSX.Element {
   const refreshState = refreshStateFor(contentType, hasContent, loading, updated)
   const editable = isEditableType(contentType)
@@ -117,6 +121,17 @@ export function PreviewToolbar({
         >
           <SplitIcon size={13} />
           {t('preview.split')}
+        </button>
+      )}
+      {canFormat && (
+        <button
+          type="button"
+          className={previewCss.toolbarBtn}
+          title={t('preview.code.format')}
+          onClick={onFormat}
+        >
+          <CodeIcon size={13} />
+          {t('preview.code.format')}
         </button>
       )}
       <button

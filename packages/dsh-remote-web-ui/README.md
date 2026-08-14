@@ -1,13 +1,16 @@
 # DSH Remote Web UI
 
-> 移动端远程控制：扫码配对后，用手机远程使用当前 dsh web 工作区。
+> 移动端远程控制 + 一键远程更新：扫码配对后用手机远程使用当前 dsh web 工作区；
+> 点击侧边栏更新按钮自动检查并更新 dsh-web-ui 全家桶。
 
 This repository is an external plugin package for DeepSeek Harness (DSH):
-scan-to-pair mobile remote control for the dsh web GUI. It is a single
-dual-face package — the host half owns pairing tokens, device sessions, and
-the `/api/pair` route family; the browser half renders the sidebar-foot
-entry (phone icon beside the settings button) and the pairing panel with a
-QR code, live device status, and stop/refresh/copy actions.
+scan-to-pair mobile remote control for the dsh web GUI, plus a one-click
+self-update for the dsh-web-ui family. It is a single dual-face package — the
+host half owns pairing tokens, device sessions, the `/api/pair` route family,
+and the `/api/update` surface; the browser half renders the sidebar-foot
+entries (the download trigger and the phone icon beside the settings button),
+the pairing panel with a QR code, live device status, and stop/refresh/copy
+actions, and the update panel that probes and runs the update.
 
 ## What it does
 
@@ -30,6 +33,14 @@ QR code, live device status, and stop/refresh/copy actions.
   device cookie, so the QR is the only way into a LAN-exposed dsh web.
 - **Live status**: the desktop panel mirrors the pairing state in real time
   (waiting → connected → disconnected) over an SSE stream.
+- **Remote update**: the download trigger in the sidebar foot (left of the
+  phone icon) opens the update panel, which probes the npm registry for the
+  installed `@linxin666/dsh-*` family releases. When a newer release exists
+  the panel runs the update automatically (`pnpm update` inside the owning
+  dsh profile; the loopback-only `/api/update/status` + `/api/update/run`
+  endpoints drive it) and asks for a dsh web restart to pick it up. Local
+  link installs (development mode) are detected and report the npm state
+  without updating.
 
 ## Screenshots
 

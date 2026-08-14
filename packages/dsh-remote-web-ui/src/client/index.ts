@@ -30,6 +30,8 @@ export type { PanelState, RemotePanelProps } from './RemotePanel.tsx'
 export type { PairFailedNoticeProps } from './PairFailedNotice.tsx'
 export type { RemoteKey } from './locales.ts'
 export type { RemoteSettingsCardFace, RemoteSettingsCardState } from './RemoteSettingsCard.tsx'
+export type { UpdateEntryProps } from './UpdateEntry.tsx'
+export type { UpdatePanelProps, UpdateView } from './UpdatePanel.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {

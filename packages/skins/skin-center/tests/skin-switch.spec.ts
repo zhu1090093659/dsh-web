@@ -125,7 +125,9 @@ describe('pure patch helpers', () => {
   })
 
   it('renderManaged(wired skin) needs no insert row', () => {
-    const registry = miniRegistry()
+    // The npm aggregate ships no bundle-wired skin, so synthesize one to
+    // exercise the wired branch (92acdc9 dropped xp's stale flag).
+    const registry = { ...miniRegistry(), xp: { ...miniRegistry().xp, bundleWired: true } }
     const rendered = renderManaged('xp', registry)
     expect(rendered).not.toContain('- insert:')
   })

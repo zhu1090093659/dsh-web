@@ -1,10 +1,11 @@
 /**
- * The sidebar remote-control seat: the phone-icon trigger beside the
- * settings button plus the pairing panel modal. Owns the panel behavior —
- * token minting on open, the status SSE subscription, stop/refresh/copy —
- * and renders the pure {@link RemotePanel} body. Component-local state per
- * the client stack rules: nothing here survives remounts or crosses
- * entries.
+ * The sidebar remote-control seat: the update trigger plus the phone-icon
+ * trigger beside the settings button, and the pairing panel modal. Owns the
+ * panel behavior — token minting on open, the status SSE subscription,
+ * stop/refresh/copy — and renders the pure {@link RemotePanel} body. The
+ * update seat (the dsh-web-ui self-update flow) rides the same footer row,
+ * rendered by {@link UpdateEntry}. Component-local state per the client
+ * stack rules: nothing here survives remounts or crosses entries.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -13,6 +14,7 @@ import type { PairingPhase } from '../pairing.ts'
 import { RemotePanel, type PanelState } from './RemotePanel.tsx'
 import { copyText, issuePair, stopPair, type IssueResponse, type PairStateFrame, type TunnelStatusFrame } from './pair-api.ts'
 import { PhoneIcon } from './PhoneIcon.tsx'
+import { UpdateEntry } from './UpdateEntry.tsx'
 import css from './remote.module.css'
 
 /** Entry props: the sidebar column state + the standard locale seat. */
@@ -164,7 +166,10 @@ export function RemoteEntry({ wide, useWorkspaces, t }: RemoteEntryProps) {
 
   return (
     <>
-      <TooltipAnchor wide={wide} label={t('entry.label')} onClick={openPanel} />
+      <div className={css.entryRow} data-rail={wide ? undefined : 'rail'}>
+        <UpdateEntry wide={wide} t={t} />
+        <TooltipAnchor wide={wide} label={t('entry.label')} onClick={openPanel} />
+      </div>
       {open && createPortal((
         <div className={css.overlay} role="presentation">
           <div className={css.mask} aria-hidden="true" onClick={closePanel} />

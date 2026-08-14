@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-task-board",
   "description": "Task board for the dsh web GUI: a sidebar entry plus a multi-column kanban view with local persistence, task details, and real execution through dsh sessions (session.prompt). Hot-pluggable — mounted via ~/.dsh/cordis.patch.yml + a profile node_modules symlink, no dsh source changes.",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

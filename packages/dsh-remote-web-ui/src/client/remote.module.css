@@ -420,3 +420,112 @@
     transition: none;
   }
 }
+
+/* Footer seat row: the update trigger sits LEFT of the remote trigger in wide
+   mode; the rail stacks them with the update circle below the remote circle
+   (mirroring the settings circle keeping its bottom anchor). */
+.entryRow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.entryRow[data-rail='rail'] {
+  flex-direction: column-reverse;
+  gap: 4px;
+}
+
+/* ── update panel extras ─────────────────────────────────────────────── */
+
+.updateStatus {
+  margin: 0;
+  font-weight: 600;
+}
+
+.updateDetail {
+  margin: 6px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+}
+
+.updateError {
+  margin: 0;
+  color: var(--dsw-alias-text-danger, var(--dsw-alias-label-primary));
+  font-weight: 600;
+}
+
+.updateOutput {
+  max-height: 180px;
+  margin: 10px 0 0;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.updateList {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.updateListItem {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.updateListName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-primary);
+}
+
+.updateListVersions {
+  flex: none;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.updateActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.updateRetry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.updateRetry:hover {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .updateRetry {
+    transition: none;
+  }
+}

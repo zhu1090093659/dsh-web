@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-minecraft",
   "description": "Hot-pluggable Minecraft skin for the dsh web GUI: <edit me — one line pitch>",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

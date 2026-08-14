@@ -27,7 +27,7 @@ import { isLoopbackClient, readCookie } from './gate.ts'
  * @returns true when the Host is ours (loopback or trusted) and any attached
  * browser markers are same-origin.
  */
-function isTrustedApiRequest(request: IncomingMessage, trustedHosts: readonly string[]): boolean {
+export function isTrustedApiRequest(request: IncomingMessage, trustedHosts: readonly string[]): boolean {
   const host = request.headers.host
   if (typeof host !== 'string') return false
   let hostUrl: URL

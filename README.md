@@ -135,10 +135,12 @@ DSH 插件通过 `dsh plugin` 命令安装进 **profile**（`dsh web` 对应 `we
 插件已发布到 npm（`@linxin666` scope），一条命令装齐：
 
 ```sh
-dsh plugin --profile web add @linxin666/dsh-web-ui-all
+dsh plugin --profile web add @linxin666/dsh-web-ui-all@0.1.10
 ```
 
 装完重启 `dsh web`，侧边栏即可看到全部插件入口。只想用皮肤则装 `@linxin666/dsh-skins`。
+
+> 版本固定为当前最新发布版 `0.1.10`。`0.1.1` 的 `dsh-pet` 缺少运行时文件（`lib/types/*.js`），且个别环境对 npm `latest` 的解析可能受 registry 缓存影响，带版本号安装最稳妥；升级时把 `@0.1.10` 换成新版本号。
 
 > 首次安装若提示 `ERR_PNPM_IGNORED_BUILDS`（pnpm 拒绝依赖的构建脚本），按提示把 `cloudflared` / `cpu-features` / `ssh2` 加入 profile 的 `pnpm-workspace.yaml` `allowBuilds` 后重新执行即可。
 

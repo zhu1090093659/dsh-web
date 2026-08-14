@@ -80,12 +80,15 @@ jobs:
       - name: Verify package versions match the tag
         run: node scripts/verify-version.mjs "${{ steps.tag.outputs.version }}"
 
+      # Publish with the explicit "latest" dist-tag so that installing the
+      # package without a version (or with @latest) always resolves to the
+      # newest release, never a stale earlier one.
       - name: Publish packages to npm
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
-          pnpm -r publish --no-git-checks --access public --registry=https://registry.npmjs.org/
+          pnpm -r publish --no-git-checks --access public --registry=https://registry.npmjs.org/ --tag latest
 
       - name: Create GitHub Release
         env:

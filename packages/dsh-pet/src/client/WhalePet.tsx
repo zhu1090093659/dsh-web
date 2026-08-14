@@ -229,6 +229,8 @@ export function WhalePet(props: WhalePetProps): ReactPortal {
   const spriteWidth = Math.round(FRAME_WIDTH * spriteScale)
   const spriteHeight = Math.round(FRAME_HEIGHT * spriteScale)
 
+  const isComposingRef = useRef(false)
+
   const float = (
     <div
       ref={floatRef}
@@ -239,13 +241,7 @@ export function WhalePet(props: WhalePetProps): ReactPortal {
         setHovered(true)
       }}
       onPointerLeave={(e) => {
-        // The panel and bubble render OUTSIDE the container's box (absolute,
-        // above the sprite), so moving onto them fires pointerleave on the
-        // container. Treat a target still inside the container's DOM (the
-        // overflowed panel) as "still hovering"; otherwise give the pointer a
-        // short grace period to reach the panel across the gap above it. The
-        // bridge (`.panel::after`) keeps the pointer inside the hit area, and
-        // the grace period covers a slow mouse crossing the remaining sliver.
+        if (renaming) return
         const next = e.relatedTarget
         if (next instanceof Node && floatRef.current?.contains(next)) return
         clearHideTimer()
@@ -276,12 +272,12 @@ export function WhalePet(props: WhalePetProps): ReactPortal {
         role="button"
         aria-label="whale girl"
       />
-      {feedback !== null && (
+      {feedback != null && (
         <div key={feedback.at} className={`${styles.bubble} ${feedback.kind === 'feed' ? styles.bubbleFeed : styles.bubblePet}`}>
           {feedback.text}
         </div>
       )}
-      {hovered && dragRef.current === null && (
+      {(hovered || renaming) && dragRef.current === null && (
         <div
           className={styles.panel}
           onPointerEnter={() => {
@@ -300,7 +296,10 @@ export function WhalePet(props: WhalePetProps): ReactPortal {
                 placeholder={props.t('pet.namePlaceholder')}
                 autoFocus
                 onChange={(e) => setNameDraft(e.target.value)}
+                onCompositionStart={() => { isComposingRef.current = true }}
+                onCompositionEnd={() => { isComposingRef.current = false }}
                 onKeyDown={(e) => {
+                  if (isComposingRef.current || e.nativeEvent.isComposing) return
                   if (e.key === 'Enter') {
                     const trimmed = nameDraft.trim()
                     if (trimmed !== '') {

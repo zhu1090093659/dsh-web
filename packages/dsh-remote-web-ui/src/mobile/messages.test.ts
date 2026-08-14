@@ -219,4 +219,20 @@ describe('foldEvents', () => {
     foldEvents([makeEvent('assistant/message', assistantMessageData('a-1', 0, 0, 'world'), 1)], first)
     expect(JSON.stringify(first)).toBe(snapshot)
   })
+
+  it('marks host-injected user-role messages with their source kind', () => {
+    const events: WireEvent[] = [
+      makeEvent('user/message', userMessageData('u-1', 'hello'), 0),
+      makeEvent('user/message', {
+        id: 'sys-1',
+        role: 'user',
+        content: [{ type: 'text', text: 'workspace instructions' }],
+        source: { kind: 'agent-instructions' },
+      }, 1),
+    ]
+    const result = foldEvents(events)
+    expect(result).toHaveLength(2)
+    expect(result[0]?.sourceKind).toBeUndefined()
+    expect(result[1]).toMatchObject({ id: 'sys-1', kind: 'user', sourceKind: 'agent-instructions' })
+  })
 })

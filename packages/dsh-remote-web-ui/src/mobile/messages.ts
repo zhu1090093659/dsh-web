@@ -68,6 +68,12 @@ export interface RenderMessage {
   readonly toolSummary?: string
   /** Set when the owning turn ended in an error. */
   readonly failed?: boolean
+  /**
+   * `source.kind` of a user-role message injected by the host rather than
+   * typed by the user (e.g. `agent-instructions`, `plugin`, `skill-catalog`).
+   * Absent for genuine user prompts; the surface hides these by default.
+   */
+  readonly sourceKind?: string
 }
 
 /** One tool call attached to an assistant message (callId dedupes repeats). */
@@ -304,13 +310,16 @@ function applyUserMessage(state: FoldState, event: WireEvent): void {
   const data = isRecord(event.data) ? event.data : {}
   const id = pickString(data['id']) ?? syntheticId('user', event.seq)
   const text = textFromContent(data['content'])
+  const source = isRecord(data['source']) ? data['source'] : undefined
+  const sourceKind = source !== undefined ? pickString(source['kind']) : undefined
+  const injected = sourceKind !== undefined && sourceKind !== 'user' ? { sourceKind } : {}
   const existing = state.byId.get(id)
   if (existing !== undefined) {
     // Idempotent replace (replayed events update in place, never duplicate).
-    replaceMessage(state, existing, { ...existing, text, seq: event.seq, time: event.time })
+    replaceMessage(state, existing, { ...existing, text, ...injected, seq: event.seq, time: event.time })
     return
   }
-  const message: RenderMessage = { id, kind: 'user', text, seq: event.seq, time: event.time }
+  const message: RenderMessage = { id, kind: 'user', text, ...injected, seq: event.seq, time: event.time }
   state.messages.push(message)
   state.byId.set(id, message)
 }

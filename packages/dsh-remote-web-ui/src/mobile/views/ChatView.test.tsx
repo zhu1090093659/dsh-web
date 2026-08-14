@@ -24,6 +24,7 @@ vi.mock('./App.tsx', async importOriginal => {
   }
 })
 import { models, selectModel, sendCommand } from '../api.ts'
+import { setDisplayOptions } from '../display-options.ts'
 import { loadHistory } from './App.tsx'
 
 const session: SessionView = {
@@ -184,6 +185,52 @@ describe('ChatView message folds', () => {
     await waitFor(() => {
       expect(sendCommandMock).toHaveBeenCalledWith('s-1', '/permission danger-full-access')
     })
+  })
+})
+
+describe('ChatView display options', () => {
+  beforeEach(() => {
+    // The store is module-level; reset both toggles so tests stay independent.
+    setDisplayOptions({ showTools: true, showSystemMessages: false })
+  })
+
+  it('hides host-injected messages by default and reveals them from the display sheet', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage([
+      makeEntry('user/message', {
+        id: 'sys-1',
+        role: 'user',
+        source: { kind: 'agent-instructions' },
+        content: [{ type: 'text', text: '注入的工作区指令' }],
+      }, 0),
+      ...turnEvents().map((entry, index) => makeEntry(entry.event.type, entry.event.data, index + 1)),
+    ]))
+    render(<ChatView session={session} onBack={() => {}} />)
+
+    expect(await screen.findByText('改一下代码')).toBeTruthy()
+    expect(screen.queryByText('注入的工作区指令')).toBeNull()
+
+    fireEvent.click(await screen.findByRole('button', { name: /显示/ }))
+    const toggle = await screen.findByRole('button', { name: /系统提示词/ })
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    expect(await screen.findByText('注入的工作区指令')).toBeTruthy()
+  })
+
+  it('hides tool disclosures when the tools option is switched off', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage(turnEvents()))
+    render(<ChatView session={session} onBack={() => {}} />)
+    expect(await screen.findByRole('button', { name: /工具/ })).toBeTruthy()
+
+    fireEvent.click(await screen.findByRole('button', { name: /显示/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /工具调用/ }))
+    // Close the sheet (backdrop click) so its rows do not match the query.
+    const backdrop = document.querySelector('.sheet-backdrop')
+    expect(backdrop).not.toBeNull()
+    fireEvent.click(backdrop as Element)
+    await waitFor(() => { expect(screen.queryByRole('button', { name: /工具/ })).toBeNull() })
+    // The final assistant text still renders without the tool card.
+    expect(screen.getByText('已完成修改')).toBeTruthy()
   })
 })
 

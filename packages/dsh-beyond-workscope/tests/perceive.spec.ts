@@ -8,7 +8,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { defaultScanRoots } from '../src/index.ts'
-import { listProcesses, listRecentFiles, perceive } from '../src/perceive.ts'
+import {
+  isNoise, listProcesses, listRecentFiles, parsePsOutput, parseTasklistOutput,
+  perceive, rankProcesses,
+} from '../src/perceive.ts'
 
 describe('listRecentFiles', () => {
   let base: string
@@ -151,11 +154,56 @@ describe('listProcesses', () => {
       expect(entry.pid).toBeGreaterThan(0)
       expect(entry.name.length).toBeGreaterThan(0)
       expect(entry.pid).not.toBe(process.pid)
+      // Kernel threads (bracket names) must never reach the report.
+      expect(isNoise({ pid: entry.pid, name: entry.name, args: entry.args, rss: 0 })).toBe(false)
     }
   })
 
   it('honors the max bound', async () => {
     const { entries } = await listProcesses(3)
     expect(entries.length).toBeLessThanOrEqual(3)
+  })
+})
+
+describe('process parsing and ranking', () => {
+  it('parses ps rows with a trailing rss column and handles args ending in digits', () => {
+    const sample = [
+      '  2   0 kthreadd         [kthreadd] 0',
+      '  1   0 systemd          /sbin/init splash 7 123',
+      ' 42   1 chrome           /usr/bin/chrome --pid 99 4096',
+    ].join('\n')
+    const parsed = parsePsOutput(sample)
+    expect(parsed).toEqual([
+      { pid: 2, name: 'kthreadd', args: '[kthreadd]', rss: 0 },
+      { pid: 1, name: 'systemd', args: '/sbin/init splash 7', rss: 123 },
+      { pid: 42, name: 'chrome', args: '/usr/bin/chrome --pid 99', rss: 4096 },
+    ])
+  })
+
+  it('parses tasklist CSV with thousand-separated Mem Usage', () => {
+    const sample = [
+      '"System Idle Process","0","Services","0","8 K"',
+      '"chrome.exe","1234","Console","1","1,234,567 K"',
+      '"foo","4321","Console","2","9,999 K"',
+    ].join('\n')
+    const parsed = parseTasklistOutput(sample)
+    expect(parsed).toEqual([
+      { pid: 0, name: 'System Idle Process', args: 'System Idle Process', rss: 8 },
+      { pid: 1234, name: 'chrome.exe', args: 'chrome.exe', rss: 1234567 },
+      { pid: 4321, name: 'foo', args: 'foo', rss: 9999 },
+    ])
+  })
+
+  it('drops kernel threads and Windows pseudo-processes, then ranks by memory', () => {
+    const sample = [
+      { pid: 2, name: 'kthreadd', args: '[kthreadd]', rss: 0 },
+      { pid: 3, name: 'pool_workqueue', args: '[pool_workqueue_release]', rss: 0 },
+      { pid: 4, name: 'System Idle Process', args: 'System Idle Process', rss: 8 },
+      { pid: 42, name: 'small', args: 'small', rss: 100 },
+      { pid: 43, name: 'big', args: 'big', rss: 9_000 },
+      { pid: 44, name: 'mid', args: 'mid', rss: 500 },
+    ]
+    const ranked = rankProcesses(sample)
+    expect(ranked.map(p => p.name)).toEqual(['big', 'mid', 'small'])
   })
 })

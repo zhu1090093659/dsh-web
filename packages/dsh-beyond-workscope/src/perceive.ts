@@ -134,28 +134,77 @@ export async function listRecentFiles(
   return { entries: collected.slice(0, max), warnings, scannedRoots }
 }
 
-/** Parse `ps -eo pid=,ppid=,comm=,args=` output (POSIX). */
-function parsePsOutput(stdout: string): ProcessEntry[] {
-  const out: ProcessEntry[] = []
+/** One parsed process row with its resident memory (KiB, for ranking). */
+export interface ParsedProcess {
+  pid: number
+  name: string
+  args: string
+  /** Resident set size in KiB on POSIX; tasklist Mem Usage in KiB on Windows. */
+  rss: number
+}
+
+/**
+ * Parse `ps -eo pid=,ppid=,comm=,args=,rss=` output (POSIX).
+ *
+ * `rss` exists on both procps (Linux) and BSD ps (macOS/FreeBSD), so the
+ * memory ranking is portable. Kernel threads are the bracket entries: Linux
+ * prints `[kworker/0:0H]` as the args column (comm is truncated to 15 chars),
+ * macOS prints `[kernel_task]` in both — the bracket check covers both.
+ */
+export function parsePsOutput(stdout: string): ParsedProcess[] {
+  const out: ParsedProcess[] = []
   for (const line of stdout.split('\n')) {
     const trimmed = line.trim()
     if (trimmed === '') continue
-    const match = /^(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/.exec(trimmed)
+    // rss is the trailing whitespace-separated number; args may contain
+    // spaces and even end in digits, so the reluctant match grows until the
+    // anchored final number (the rss column) matches.
+    const match = /^(\d+)\s+(\d+)\s+(\S+)\s+(.*?)\s+(\d+)$/.exec(trimmed)
     if (match === null) continue
-    out.push({ pid: Number(match[1]), name: match[3], args: match[4] })
+    out.push({ pid: Number(match[1]), name: match[3], args: match[4], rss: Number(match[5]) })
   }
   return out
 }
 
-/** Parse `tasklist /FO CSV /NH` output (Windows fallback). */
-function parseTasklistOutput(stdout: string): ProcessEntry[] {
-  const out: ProcessEntry[] = []
+/**
+ * Parse `tasklist /FO CSV /NH` output (Windows fallback). The CSV shape is
+ * `"Image Name","PID","Session Name","Session#","Mem Usage"`; Mem Usage is a
+ * KiB number with thousand separators and a ` K` suffix. It maps onto
+ * `rss` so the shared ranker sees one shape on every platform.
+ */
+export function parseTasklistOutput(stdout: string): ParsedProcess[] {
+  const out: ParsedProcess[] = []
   for (const line of stdout.split('\n')) {
-    const match = /^"([^"]+)","(\d+)".*$/.exec(line.trim())
+    const match = /^"([^"]+)","(\d+)","[^"]*","[^"]*","([^"]+)"$/.exec(line.trim())
     if (match === null) continue
-    out.push({ pid: Number(match[2]), name: match[1], args: match[1] })
+    const memText = match[3]?.replace(/[^\d]/g, '')
+    if (memText === undefined || memText === '') continue
+    const name = match[1] ?? ''
+    out.push({ pid: Number(match[2]), name, args: name, rss: Number(memText) })
   }
   return out
+}
+
+/** Kernel-thread / pseudo-process marker: bracket names on POSIX ps output. */
+export function isKernelThread(entry: Pick<ParsedProcess, 'name' | 'args'>): boolean {
+  return entry.name.startsWith('[') || entry.args.startsWith('[')
+}
+
+/** Windows tasklist pseudo-processes that are not real user processes. */
+export const TASKLIST_NOISE = new Set(['System Idle Process', 'System', 'Registry'])
+
+/** Platform noise predicate: bracket threads on POSIX, pseudo-processes on Windows. */
+export function isNoise(entry: ParsedProcess): boolean {
+  return isKernelThread(entry) || TASKLIST_NOISE.has(entry.name)
+}
+
+/**
+ * Filter noise and rank by resident memory (descending) — the "top active
+ * processes" the design intends, portable across ps variants. The caller
+ * dedupes and applies the cap so dedup cannot shrink the result below max.
+ */
+export function rankProcesses(entries: ParsedProcess[]): ParsedProcess[] {
+  return entries.filter(entry => !isNoise(entry)).sort((a, b) => b.rss - a.rss)
 }
 
 /**
@@ -166,16 +215,16 @@ export async function listProcesses(max: number): Promise<{ entries: ProcessEntr
   const warnings: string[] = []
   const ownPid = String(process.pid)
   try {
-    const { stdout } = await runCommand('ps', ['-eo', 'pid=,ppid=,comm=,args='], 5000)
+    const { stdout } = await runCommand('ps', ['-eo', 'pid=,ppid=,comm=,args=,rss='], 5000)
     const seen = new Set<string>()
     const entries: ProcessEntry[] = []
-    for (const entry of parsePsOutput(stdout)) {
+    for (const entry of rankProcesses(parsePsOutput(stdout))) {
       if (String(entry.pid) === ownPid) continue
       // Dedupe identical command lines (threads / repeated invocations).
       const key = `${entry.name}\u0000${entry.args}`
       if (seen.has(key)) continue
       seen.add(key)
-      entries.push(entry)
+      entries.push({ pid: entry.pid, name: entry.name, args: entry.args })
       if (entries.length >= max) break
     }
     return { entries, warnings }
@@ -183,7 +232,11 @@ export async function listProcesses(max: number): Promise<{ entries: ProcessEntr
     // POSIX ps unavailable — try the Windows fallback, then degrade.
     try {
       const { stdout } = await runCommand('tasklist', ['/FO', 'CSV', '/NH'], 5000)
-      return { entries: parseTasklistOutput(stdout).slice(0, max), warnings }
+      const entries = rankProcesses(parseTasklistOutput(stdout))
+        .filter(entry => String(entry.pid) !== ownPid)
+        .slice(0, max)
+        .map(entry => ({ pid: entry.pid, name: entry.name, args: entry.args }))
+      return { entries, warnings }
     } catch {
       warnings.push('进程快照不可用（ps/tasklist 均失败），进程列表为空')
       return { entries: [], warnings }

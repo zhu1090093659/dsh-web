@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { ActiveGrantView, AuditEntry, GrantScope, PendingGrantView, WorkspaceView } from '../protocol.ts'
+import type { ActiveGrantView, AuditEntry, GrantScope, PendingGrantView } from '../protocol.ts'
 import type { WorkscopeApi } from './api.ts'
 import type { BeyondKey } from './locales.ts'
 import css from './GrantCard.module.css'
@@ -38,11 +38,10 @@ function clock(iso: string): string {
 }
 
 /** The panel. */
-export function GrantCard(props: { api: WorkscopeApi; t: (key: keyof BeyondKey) => string }) {
+export function GrantCard(props: { api: WorkscopeApi; t: (key: BeyondKey) => string }) {
   const { api, t } = props
   const [pending, setPending] = useState<PendingGrantView[]>([])
   const [grants, setGrants] = useState<ActiveGrantView[]>([])
-  const [workspaces, setWorkspaces] = useState<WorkspaceView[]>([])
   const [audit, setAudit] = useState<AuditEntry[]>([])
   const [managing, setManaging] = useState(false)
   const [busy, setBusy] = useState<string | undefined>(undefined)
@@ -75,12 +74,11 @@ export function GrantCard(props: { api: WorkscopeApi; t: (key: keyof BeyondKey) 
     }
   }, [api])
 
-  // Poll pending + grants; refresh workspaces + audit while managing.
+  // Poll pending + grants; refresh audit while managing.
   useEffect(() => {
     const timer = setInterval(() => {
       void refresh()
       if (managing) {
-        api.getWorkspaces().then(items => { if (mounted.current) setWorkspaces(items) }).catch(() => undefined)
         api.getAudit().then(entries => { if (mounted.current) setAudit(entries) }).catch(() => undefined)
       }
     }, POLL_MS)
@@ -113,9 +111,6 @@ export function GrantCard(props: { api: WorkscopeApi; t: (key: keyof BeyondKey) 
   }
   const revoke = (id: string): void => {
     void act(() => api.revoke(id), `revoke:${id}`)
-  }
-  const removeWorkspace = (id: string): void => {
-    void act(() => api.removeWorkspace(id), `workspace:${id}`)
   }
 
   const remaining = (item: PendingGrantView): number => {
@@ -205,23 +200,6 @@ export function GrantCard(props: { api: WorkscopeApi; t: (key: keyof BeyondKey) 
                   onClick={() => revoke(grant.id)}
                 >
                   {t('card.manage.revoke')}
-                </button>
-              </div>
-            ))}
-            <div className={css.manageTitle}>{t('card.manage.workspaces')}</div>
-            {workspaces.length === 0 && <div className={css.empty}>{t('card.manage.workspaces.empty')}</div>}
-            {workspaces.map(workspace => (
-              <div className={css.grantRow} key={workspace.id}>
-                <span className={css.grantPath} title={workspace.path}>
-                  {workspace.title} · {shorten(workspace.path, 40)}
-                </span>
-                <button
-                  type="button"
-                  className={css.revokeButton}
-                  data-busy={busy === `workspace:${workspace.id}`}
-                  onClick={() => removeWorkspace(workspace.id)}
-                >
-                  {t('card.manage.removeWorkspace')}
                 </button>
               </div>
             ))}

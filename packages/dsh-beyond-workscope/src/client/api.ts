@@ -3,7 +3,7 @@
  * Plain same-origin fetch; the only data access path the card uses.
  */
 
-import { API_PREFIX, type ActiveGrantView, type ApprovePendingPayload, type AuditEntry, type PendingGrantView, type SimpleActionResponse, type WorkspaceView } from '../protocol.ts'
+import { API_PREFIX, type ActiveGrantView, type ApprovePendingPayload, type AuditEntry, type PendingGrantView, type SessionInfoResponse, type SessionInfoView, type SimpleActionResponse, type WorkspaceView } from '../protocol.ts'
 
 /** Error carrying the route's JSON error message. */
 export class WorkscopeApiError extends Error {
@@ -79,7 +79,14 @@ export class WorkscopeApi {
       .then(body => body.entries)
   }
 
-  /** Plugin-managed workspace registrations (management view). */
+  /** Session metadata for the 会话信息 tab (host-side lookup). */
+  getSessionInfo(sessionId: string): Promise<SessionInfoView | undefined> {
+    return fetch(`${API_PREFIX}/session-info?session=${encodeURIComponent(sessionId)}`)
+      .then(response => readJson<SessionInfoResponse>(response))
+      .then(body => body.session)
+  }
+
+  /** Plugin-managed sub-workspace registrations (management view). */
   getWorkspaces(): Promise<WorkspaceView[]> {
     return fetch(`${API_PREFIX}/workspaces`)
       .then(response => readJson<{ workspaces: WorkspaceView[] }>(response))

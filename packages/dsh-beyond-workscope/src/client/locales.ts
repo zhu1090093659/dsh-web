@@ -7,8 +7,8 @@ export const zh = {
   'card.title': '越界授权请求',
   'card.badge': '工作区之外',
   'card.kind.grant': '授权',
-  'card.kind.workspace': '工作区',
-  'card.workspace.hint': '注册为工作区后，可在 GUI 工作区列表切换，新建会话即以该目录为工作区',
+  'card.kind.workspace': '子工作区',
+  'card.workspace.hint': '确认后登记为本会话的子工作区：read/write 自动放行，可在「会话信息」选项卡管理，会话结束自动移除',
   'card.scope.read': '只读',
   'card.scope.write': '读写',
   'card.reason.label': '原因',
@@ -23,26 +23,31 @@ export const zh = {
   'card.manage.active': '活跃授权',
   'card.manage.empty': '当前没有活跃授权',
   'card.manage.revoke': '撤销',
-  'card.manage.workspaces': '已注册工作区',
-  'card.manage.workspaces.empty': '暂无注册的工作区',
-  'card.manage.removeWorkspace': '移除',
   'card.manage.audit': '最近审计',
   'card.manage.audit.empty': '暂无审计记录',
   'card.error.load': '加载失败',
   'card.offline': '连接中…',
   'card.unknown': '未知',
+  'view.sessionInfo': '会话信息',
+  'panel.session': '会话',
+  'panel.workspaces': '子工作区',
+  'panel.workspaces.empty': '本会话暂无子工作区',
+  'panel.workspaces.hint': '让 agent 用 workscope_workspace 登记目录，你在确认卡片批准后即出现在这里；存续期间该目录内 read/write 自动放行，会话结束自动移除。',
+  'panel.remove': '移除',
+  'panel.audit': '最近审计',
+  'panel.audit.empty': '暂无审计记录',
 }
 
-/** The dictionary shape (zh is the source of truth). */
-export type BeyondKey = typeof zh
+/** The dictionary key set (the source of truth for both locales). */
+export type BeyondKey = keyof typeof zh
 
 /** English mirror — every key enforced at compile time. */
-export const en: Record<keyof BeyondKey, string> = {
+export const en: Record<BeyondKey, string> = {
   'card.title': 'Beyond-workscope grant',
   'card.badge': 'outside workspace',
   'card.kind.grant': 'grant',
-  'card.kind.workspace': 'workspace',
-  'card.workspace.hint': 'After registration, switch to it in the GUI workspace list — new conversations there run with this directory as their workspace',
+  'card.kind.workspace': 'sub-workspace',
+  'card.workspace.hint': 'Confirmation registers it as a sub-workspace of this session: read/write are auto-allowed, managed in the Session info tab, removed when the session ends',
   'card.scope.read': 'read',
   'card.scope.write': 'read+write',
   'card.reason.label': 'Reason',
@@ -57,12 +62,17 @@ export const en: Record<keyof BeyondKey, string> = {
   'card.manage.active': 'Active grants',
   'card.manage.empty': 'No active grants',
   'card.manage.revoke': 'Revoke',
-  'card.manage.workspaces': 'Registered workspaces',
-  'card.manage.workspaces.empty': 'No registered workspaces',
-  'card.manage.removeWorkspace': 'Remove',
   'card.manage.audit': 'Recent audit',
   'card.manage.audit.empty': 'No audit entries',
   'card.error.load': 'Load failed',
   'card.offline': 'connecting…',
   'card.unknown': 'unknown',
+  'view.sessionInfo': 'Session info',
+  'panel.session': 'Session',
+  'panel.workspaces': 'Sub-workspaces',
+  'panel.workspaces.empty': 'No sub-workspaces in this session',
+  'panel.workspaces.hint': 'Ask the agent to register a directory with workscope_workspace; approve it on the confirmation card and it appears here — read/write are auto-allowed inside while it lives, removed when the session ends.',
+  'panel.remove': 'Remove',
+  'panel.audit': 'Recent audit',
+  'panel.audit.empty': 'No audit entries',
 }

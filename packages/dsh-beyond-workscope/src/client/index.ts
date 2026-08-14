@@ -14,7 +14,13 @@
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: pulls ui-conversation's SlotMap augmentation (conversation.view).
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+// Type-only: pulls the slots service's Context merge (ctx.slots).
+import type {} from '@deepseek-ai/dsh-client-ui-slots'
+import { WorkscopeApi } from './api.ts'
 import { mountPanel } from './mount.tsx'
+import { SessionInfoPanel } from './SessionInfoPanel.tsx'
 import { en, zh, type BeyondKey } from './locales.ts'
 
 /** Locale namespace this plugin owns. */
@@ -43,6 +49,23 @@ export function apply(ctx: ClientContext): void {
     ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-beyond-workscope: dictionaries')
   } catch (error) {
     console.warn('[dsh-beyond-workscope] locale registration failed:', error)
+  }
+
+  // The 会话信息 view tab: right of 对话/轨迹 in the conversation view ring.
+  // Registration rides the slot service's effect wrapper, so plugin unload
+  // removes the tab. A failure here degrades the tab, never the GUI.
+  try {
+    const t = ctx.locale.bind(NS)
+    ctx.slots.inject('conversation.view', () => ctx.slots.register({
+      name: 'conversation.view',
+      id: 'session-info',
+      order: 20,
+      locale: NS,
+      label: () => t('view.sessionInfo'),
+      inject: (sessionId) => ({ sessionId, api: new WorkscopeApi() }),
+    }, SessionInfoPanel))
+  } catch (error) {
+    console.warn('[dsh-beyond-workscope] session-info tab registration failed:', error)
   }
 
   let disposer: (() => void) | undefined

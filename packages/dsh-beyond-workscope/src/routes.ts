@@ -18,9 +18,10 @@ import {
   type DenyPendingPayload,
   type RemoveWorkspacePayload,
   type RevokeGrantPayload,
+  type SessionInfoView,
   type SimpleActionResponse,
 } from './protocol.ts'
-import { registerWorkspace, removeWorkspaces, toWorkspaceViews, type WorkspaceLedger, type WorkspaceRegistryLike } from './workspaces.ts'
+import { removeWorkspaces, toWorkspaceViews, type WorkspaceLedger } from './workspaces.ts'
 
 /** Cap on JSON request bodies (approve/deny payloads are tiny). */
 const MAX_JSON_BODY_BYTES = 64 * 1024
@@ -112,22 +113,24 @@ function bodyRoute(handler: BodyHandler): WebRoute['handler'] {
 /** Audit-kind subset the workspace surface writes. */
 export type WorkspaceAuditKind = 'workspace_registered' | 'workspace_removed'
 
-/** Optional workspace surface injected by the assembler (providers are
- * called per request — the host registry may register after plugin apply). */
+/** Optional session-info provider (host-side session metadata lookup). */
+export type SessionInfoProvider = (sessionId: string) => Promise<SessionInfoView | undefined>
+
+/** Optional workspace surface injected by the assembler. */
 export interface RouteHooks {
-  readonly workspaceRegistry?: () => WorkspaceRegistryLike | undefined
   readonly ledger?: WorkspaceLedger
   readonly audit?: (sessionId: string, kind: WorkspaceAuditKind, detail: string) => void
+  readonly sessionInfo?: SessionInfoProvider
 }
 
 /**
  * Build the route family.
  * @param registry - the grant registry the routes drive.
- * @param hooks - optional workspace surface: the host workspace registry and
- *   the plugin ledger power the /workspaces routes and the workspace-confirm
- *   side effect; the audit writer appends workspace lifecycle entries to the
- *   registry's audit list. Without the hooks, workspace routes answer 503 and
- *   workspace confirmations fail closed (grants keep working).
+ * @param hooks - optional surfaces: the sub-workspace ledger powers the
+ *   /workspaces routes and the workspace-confirm effect; the audit writer
+ *   appends workspace lifecycle entries; the session-info provider feeds the
+ *   会话信息 view tab. Without the hooks the matching routes fail closed
+ *   while grants keep working.
  */
 export function makeRoutes(registry: GrantRegistry, hooks: RouteHooks = {}): WebRoute[] {
   return [
@@ -157,18 +160,21 @@ export function makeRoutes(registry: GrantRegistry, hooks: RouteHooks = {}): Web
           json(res, 404, { ok: false, error: '该授权请求不存在或已处理' } satisfies SimpleActionResponse)
           return
         }
-        // Workspace confirmations register the host workspace BEFORE settling
-        // the pending entry: a failed registration leaves the request pending
-        // so the user can retry.
+        // Workspace confirmations record the sub-workspace in the ledger
+        // BEFORE settling the pending entry: the record exists only when the
+        // user actually approved it.
         if (info.kind === 'workspace') {
-          const registry = hooks.workspaceRegistry?.()
-          if (registry === undefined || hooks.ledger === undefined) {
-            json(res, 503, { ok: false, error: '宿主未提供工作区注册服务' } satisfies SimpleActionResponse)
+          if (hooks.ledger === undefined) {
+            json(res, 503, { ok: false, error: '子工作区服务不可用' } satisfies SimpleActionResponse)
             return
           }
-          const result = await registerWorkspace(hooks.ledger, registry, info.sessionId, info.path, info.title)
-          if (!result.ok) {
-            json(res, 409, { ok: false, error: result.error } satisfies SimpleActionResponse)
+          try {
+            hooks.ledger.register(info.sessionId, info.path, info.title)
+          } catch (error) {
+            json(res, 409, {
+              ok: false,
+              error: error instanceof Error ? error.message : String(error),
+            } satisfies SimpleActionResponse)
             return
           }
         }
@@ -242,7 +248,7 @@ export function makeRoutes(registry: GrantRegistry, hooks: RouteHooks = {}): Web
           return
         }
         if (hooks.ledger === undefined) {
-          json(res, 503, { ok: false, error: '宿主未提供工作区注册服务' } satisfies SimpleActionResponse)
+          json(res, 503, { ok: false, error: '子工作区服务不可用' } satisfies SimpleActionResponse)
           return
         }
         json(res, 200, { workspaces: toWorkspaceViews(hooks.ledger.list()) })
@@ -257,23 +263,39 @@ export function makeRoutes(registry: GrantRegistry, hooks: RouteHooks = {}): Web
           json(res, 400, { ok: false, error: '缺少 id' } satisfies SimpleActionResponse)
           return
         }
-        if (hooks.workspaceRegistry === undefined || hooks.ledger === undefined) {
-          json(res, 503, { ok: false, error: '宿主未提供工作区注册服务' } satisfies SimpleActionResponse)
+        if (hooks.ledger === undefined) {
+          json(res, 503, { ok: false, error: '子工作区服务不可用' } satisfies SimpleActionResponse)
           return
         }
-        const registry = hooks.workspaceRegistry()
-        if (registry === undefined) {
-          json(res, 503, { ok: false, error: '宿主未提供工作区注册服务' } satisfies SimpleActionResponse)
-          return
-        }
-        const removed = await removeWorkspaces(hooks.ledger, registry, payload.id)
+        const removed = removeWorkspaces(hooks.ledger, payload.id)
         for (const record of removed) {
-          // Fallback records (ledger miss after restart) carry no session.
-          if (record.sessionId === '') continue
           hooks.audit?.(record.sessionId, 'workspace_removed', `${record.title}（${record.path}）`)
         }
         json(res, 200, { ok: true, removed: removed.length })
       }),
+    },
+    {
+      kind: 'exact',
+      path: `${API_PREFIX}/session-info`,
+      handler: async (req, res) => {
+        if (!fence(req, res)) return
+        if ((req.method ?? 'GET') !== 'GET') {
+          json(res, 405, { ok: false, error: 'method not allowed' } satisfies SimpleActionResponse)
+          return
+        }
+        if (hooks.sessionInfo === undefined) {
+          json(res, 200, {})
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://127.0.0.1')
+        const sessionId = url.searchParams.get('session')
+        if (sessionId === null || sessionId.trim() === '') {
+          json(res, 400, { ok: false, error: '缺少 session 参数' } satisfies SimpleActionResponse)
+          return
+        }
+        const session = await hooks.sessionInfo(sessionId)
+        json(res, 200, session === undefined ? {} : { session })
+      },
     },
     {
       kind: 'exact',

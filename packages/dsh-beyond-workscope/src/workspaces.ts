@@ -1,40 +1,36 @@
 /**
- * Workspace ledger — the "second workspace" surface of the plugin.
+ * Sub-workspace ledger — the "second workspace" surface of the plugin.
  *
- * A workspace registration turns a user-confirmed directory into a durable
- * host workspace (`ctx.workspaceRegistry`): it appears in the GUI workspace
- * switcher, and any new conversation created there runs with that directory
- * as its sandbox workspace root — full tool coverage with NO full-access
- * grant. This is the plugin's core purpose: an extra workspace beyond the
- * session's own, without widening the global sandbox mode.
+ * A sub-workspace is a SESSION-SCOPED directory registration: the user
+ * confirms it (same card pipeline as grants), and while it lives, the
+ * session's workscope_read / workscope_write are automatically allowed
+ * inside it — a second workspace beyond the session's own, WITHOUT widening
+ * the global sandbox mode and WITHOUT any host workspace registration (it
+ * never appears in the GUI sidebar's workspace list, and no new session is
+ * created for it).
  *
- * Semantics (deliberately different from grants):
- *  - grants  = temporary borrowing: per-session, auto-revoked on session end.
- *  - workspaces = persistent: they survive the registering session and are
- *    removed only by an explicit `workscope_unworkspace` (or the UI remove
- *    button). The ledger keeps an audit-facing per-session record of which
- *    session registered each workspace.
- *
- * The ledger itself is pure (no service calls) for unit testing; the
- * side-effectful helpers (`registerWorkspace` / `removeWorkspaces`) take the
- * host `WorkspaceRegistry` as a parameter.
+ * Semantics:
+ *  - lifetime = the registering session: released automatically on session
+ *    end (same as grants) — a sub-workspace belongs to its session;
+ *  - management lives in the GUI's per-session "会话信息" view tab
+ *    (conversation.view id `session-info`), not in the sidebar;
+ *  - the ledger is pure (no service calls) for unit testing; routes and
+ *    tools drive it directly.
  */
 
 import { randomUUID } from 'node:crypto'
 import { basename } from 'node:path'
-import { GrantError, canonicalPath } from './grants.ts'
+import { GrantError, canonicalPath, isPathInside } from './grants.ts'
 import type { WorkspaceView } from './protocol.ts'
 
-/** One plugin-managed workspace registration. */
+/** One session-scoped sub-workspace registration. */
 export interface WorkspaceRecord {
   /** Ledger record id (uuid). */
   readonly id: string
-  /** Durable workspace id in the host workspace registry. */
-  readonly workspaceId: string
   /** Canonical directory path. */
   readonly path: string
   readonly title: string
-  /** Session that registered it. */
+  /** Owning session (sub-workspaces never cross sessions). */
   readonly sessionId: string
   /** ISO-8601 registration instant. */
   readonly createdAt: string
@@ -49,7 +45,7 @@ export interface WorkspaceLedgerOptions {
 
 const DEFAULT_OPTIONS: WorkspaceLedgerOptions = { maxPerSession: 8 }
 
-/** Per-session workspace records with validation. */
+/** Per-session sub-workspace records with validation. */
 export class WorkspaceLedger {
   private readonly records = new Map<string, WorkspaceRecord>()
   private readonly options: WorkspaceLedgerOptions
@@ -68,19 +64,23 @@ export class WorkspaceLedger {
   async prepareRegistration(sessionId: string, raw: string): Promise<string> {
     const canonical = await canonicalPath(raw)
     if (this.list(sessionId).some(r => r.path === canonical)) {
-      throw new GrantError(`该目录已经是本会话注册的工作区：${canonical}`)
+      throw new GrantError(`该目录已经是本会话的子工作区：${canonical}`)
     }
     if (this.list(sessionId).length >= this.options.maxPerSession) {
-      throw new GrantError(`本会话注册的工作区已达上限（${this.options.maxPerSession}），请先移除部分工作区`)
+      throw new GrantError(`本会话的子工作区已达上限（${this.options.maxPerSession}），请先移除部分子工作区`)
     }
     return canonical
   }
 
-  /** Record a successful registration (after the host registry accepted it). */
-  register(sessionId: string, path: string, workspaceId: string, title?: string): WorkspaceRecord {
+  /**
+   * Record a confirmed registration. Idempotent for the same session+path:
+   * a repeated approval returns the existing record instead of duplicating.
+   */
+  register(sessionId: string, path: string, title?: string): WorkspaceRecord {
+    const existing = this.list(sessionId).find(r => r.path === path)
+    if (existing !== undefined) return existing
     const record: WorkspaceRecord = {
       id: randomUUID(),
-      workspaceId,
       path,
       title: title === undefined || title.trim() === '' ? basename(path) : title.trim(),
       sessionId,
@@ -91,10 +91,10 @@ export class WorkspaceLedger {
     return record
   }
 
-  /** Find active records by ledger id, workspace id, or canonical path. */
+  /** Find active records by ledger id or canonical path. */
   find(target: string): WorkspaceRecord[] {
     const normalized = target.trim()
-    return this.list().filter(r => r.id === normalized || r.workspaceId === normalized || r.path === normalized)
+    return this.list().filter(r => r.id === normalized || r.path === normalized)
   }
 
   /** Mark records removed (idempotent). */
@@ -107,104 +107,36 @@ export class WorkspaceLedger {
     }
     return removed
   }
-}
 
-/** Result of a side-effectful workspace operation. */
-export type WorkspaceActionResult =
-  | { ok: true; record: WorkspaceRecord; alreadyExisted?: boolean }
-  | { ok: false; error: string }
+  /** Remove registrations by ledger id or path. */
+  removeByTarget(target: string): WorkspaceRecord[] {
+    return this.remove(this.find(target))
+  }
 
-/** Host workspace-registry seam (keeps helpers testable without the service). */
-export interface WorkspaceRegistryLike {
-  create(path: string, title?: string): Promise<{ id: string }>
-  delete(id: string): Promise<boolean>
-  /** Look up a workspace by canonical path (used by the removal fallback). */
-  resolveByPath?(path: string): Promise<{ id: string; path: string; title: string } | undefined>
-}
+  /**
+   * Whether `path` is inside an active sub-workspace of `sessionId` — the
+   * automatic read/write allowance that makes a sub-workspace a real second
+   * workspace (no per-file grants needed).
+   */
+  covers(sessionId: string, path: string): boolean {
+    return this.list(sessionId).some(record => isPathInside(record.path, path))
+  }
 
-/**
- * Register a directory as a durable host workspace. Idempotent: when the
- * host registry already owns the path, the existing workspace id is reused
- * (the create() contract returns the existing record for a known path).
- */
-export async function registerWorkspace(
-  ledger: WorkspaceLedger,
-  registry: WorkspaceRegistryLike,
-  sessionId: string,
-  rawPath: string,
-  title?: string,
-): Promise<WorkspaceActionResult> {
-  try {
-    const canonical = await ledger.prepareRegistration(sessionId, rawPath)
-    const workspace = await registry.create(canonical, title)
-    const record = ledger.register(sessionId, canonical, workspace.id, title)
-    return { ok: true, record }
-  } catch (error) {
-    const message = error instanceof GrantError ? error.message : error instanceof Error ? error.message : String(error)
-    return { ok: false, error: message }
+  /** Release everything a session owns (auto-cleanup on session end). */
+  releaseSession(sessionId: string): void {
+    this.remove(this.list(sessionId))
   }
 }
 
-/**
- * Remove plugin-managed workspace registrations by ledger id, host workspace
- * id, or path. Non-destructive: the directory and every session log created
- * there stay untouched (the host delete() contract).
- *
- * Ledger misses fall back to the durable host registry: after a plugin
- * restart the in-memory ledger is empty, but the registrations it created
- * survive — a path resolves through `resolveByPath`, a bare id deletes
- * directly (idempotent no-op when unknown). Fallback records carry an empty
- * sessionId (ownership unknown after restart); callers skip auditing them.
- */
-export async function removeWorkspaces(
-  ledger: WorkspaceLedger,
-  registry: WorkspaceRegistryLike,
-  target: string,
-): Promise<WorkspaceRecord[]> {
-  const records = ledger.find(target)
-  if (records.length > 0) {
-    for (const record of records) {
-      try {
-        await registry.delete(record.workspaceId)
-      } catch {
-        // Host record already gone — still drop the ledger row below.
-      }
-    }
-    return ledger.remove(records)
-  }
-
-  // Ledger miss: reconcile against the durable host registry.
-  const trimmed = target.trim()
-  const isPath = trimmed.startsWith('/') || /^[A-Za-z]:[\\/]/.test(trimmed)
-  if (isPath) {
-    const existing = await registry.resolveByPath?.(trimmed)
-    if (existing !== undefined) {
-      await registry.delete(existing.id)
-      return [{
-        id: existing.id,
-        workspaceId: existing.id,
-        path: existing.path,
-        title: existing.title,
-        sessionId: '',
-        createdAt: '',
-        status: 'removed',
-      }]
-    }
-    return []
-  }
-  // Bare id: direct host delete (idempotent no-op when unknown).
-  const deleted = await registry.delete(trimmed)
-  if (deleted) {
-    return [{ id: trimmed, workspaceId: trimmed, path: '', title: trimmed, sessionId: '', createdAt: '', status: 'removed' }]
-  }
-  return []
+/** Remove a registration (non-destructive: the directory stays untouched). */
+export function removeWorkspaces(ledger: WorkspaceLedger, target: string): WorkspaceRecord[] {
+  return ledger.removeByTarget(target)
 }
 
 /** Workspace records shaped for the wire. */
 export function toWorkspaceViews(records: readonly WorkspaceRecord[]): WorkspaceView[] {
   return records.map(r => ({
     id: r.id,
-    workspaceId: r.workspaceId,
     path: r.path,
     title: r.title,
     sessionId: r.sessionId,

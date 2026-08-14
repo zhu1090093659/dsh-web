@@ -1,17 +1,17 @@
 /**
- * Workspace ledger unit tests: validation, per-session records, idempotent
- * registration, non-destructive removal, and the side-effect helpers with a
- * fake host workspace registry.
+ * Sub-workspace ledger unit tests: validation, per-session records,
+ * idempotent registration, coverage (auto read/write allowance), and
+ * session-end release.
  */
 
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { GrantError } from '../src/grants.ts'
 import {
-  registerWorkspace, removeWorkspaces, toWorkspaceViews,
-  WorkspaceLedger, type WorkspaceRegistryLike,
+  removeWorkspaces, toWorkspaceViews,
+  WorkspaceLedger,
 } from '../src/workspaces.ts'
 
 describe('WorkspaceLedger', () => {
@@ -31,8 +31,8 @@ describe('WorkspaceLedger', () => {
     const dir = join(base, 'ws')
     await mkdir(dir)
     const canonical = await ledger.prepareRegistration('s1', dir)
-    const record = ledger.register('s1', canonical, 'ws-1', '项目')
-    expect(record).toMatchObject({ path: dir, title: '项目', workspaceId: 'ws-1', sessionId: 's1', status: 'active' })
+    const record = ledger.register('s1', canonical, '项目')
+    expect(record).toMatchObject({ path: dir, title: '项目', sessionId: 's1', status: 'active' })
     expect(ledger.list('s1')).toHaveLength(1)
     expect(ledger.list('s2')).toHaveLength(0)
     expect(ledger.list()).toHaveLength(1)
@@ -42,15 +42,24 @@ describe('WorkspaceLedger', () => {
     const dir = join(base, 'dup')
     await mkdir(dir)
     const canonical = await ledger.prepareRegistration('s1', dir)
-    ledger.register('s1', canonical, 'ws-dup', '重复')
+    ledger.register('s1', canonical, '重复')
     await expect(ledger.prepareRegistration('s1', dir)).rejects.toBeInstanceOf(GrantError)
 
     const capped = new WorkspaceLedger({ maxPerSession: 1 })
     const first = await capped.prepareRegistration('s1', dir)
-    capped.register('s1', first, 'ws-cap', '占位')
+    capped.register('s1', first, '占位')
     const other = join(base, 'other')
     await mkdir(other)
     await expect(capped.prepareRegistration('s1', other)).rejects.toBeInstanceOf(GrantError)
+  })
+
+  it('register is idempotent for the same session and path', async () => {
+    const dir = join(base, 'idem')
+    await mkdir(dir)
+    const first = ledger.register('s1', dir, 'x')
+    const second = ledger.register('s1', dir, 'x')
+    expect(second.id).toBe(first.id)
+    expect(ledger.list('s1')).toHaveLength(1)
   })
 
   it('rejects missing paths and the filesystem root', async () => {
@@ -58,12 +67,30 @@ describe('WorkspaceLedger', () => {
     await expect(ledger.prepareRegistration('s1', '/')).rejects.toBeInstanceOf(GrantError)
   })
 
-  it('finds records by ledger id, workspace id, or path and removes them', async () => {
+  it('covers paths inside an active record — the auto read/write allowance', async () => {
+    const dir = join(base, 'cover')
+    const sub = join(dir, 'sub')
+    await mkdir(sub, { recursive: true })
+    ledger.register('s1', dir, '覆盖')
+
+    expect(ledger.covers('s1', dir)).toBe(true)
+    expect(ledger.covers('s1', join(sub, 'file.txt'))).toBe(true)
+    // Sibling or outside paths are NOT covered.
+    const outside = join(base, 'outside')
+    await mkdir(outside)
+    expect(ledger.covers('s1', outside)).toBe(false)
+    expect(ledger.covers('s2', dir)).toBe(false)
+    // Prefix-safe: a directory sharing the path prefix is not covered.
+    const prefixTwin = join(base, 'cover-extra')
+    await mkdir(prefixTwin)
+    expect(ledger.covers('s1', prefixTwin)).toBe(false)
+  })
+
+  it('finds records by ledger id or path and removes them', async () => {
     const dir = join(base, 'find')
     await mkdir(dir)
-    const record = ledger.register('s1', dir, 'ws-9', '查找')
+    const record = ledger.register('s1', dir, '查找')
     expect(ledger.find(record.id)).toHaveLength(1)
-    expect(ledger.find('ws-9')).toHaveLength(1)
     expect(ledger.find(dir)).toHaveLength(1)
     expect(ledger.find('unknown')).toHaveLength(0)
 
@@ -71,12 +98,22 @@ describe('WorkspaceLedger', () => {
     expect(removed).toHaveLength(1)
     expect(removed[0].status).toBe('removed')
     expect(ledger.list('s1')).toHaveLength(0)
+    expect(ledger.covers('s1', dir)).toBe(false)
     // Idempotent: removing again yields nothing.
     expect(ledger.remove(ledger.find(record.id))).toHaveLength(0)
   })
+
+  it('releases everything on session end', async () => {
+    const dir = join(base, 'release')
+    await mkdir(dir)
+    ledger.register('s1', dir, '释放')
+    ledger.releaseSession('s1')
+    expect(ledger.list('s1')).toHaveLength(0)
+    expect(ledger.list('s2')).toHaveLength(0)
+  })
 })
 
-describe('workspace side-effect helpers', () => {
+describe('workspace helpers', () => {
   let base: string
 
   beforeEach(async () => {
@@ -87,89 +124,36 @@ describe('workspace side-effect helpers', () => {
     await rm(base, { recursive: true, force: true })
   })
 
-  function fakeRegistry(): WorkspaceRegistryLike & { create: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn>; resolveByPath: ReturnType<typeof vi.fn> } {
-    let n = 0
-    return {
-      create: vi.fn(async () => ({ id: `ws-${n++}` })),
-      delete: vi.fn(async () => true),
-      resolveByPath: vi.fn(async () => undefined),
-    }
-  }
-
-  it('registerWorkspace canonicalizes, registers in the host, and records it', async () => {
+  it('removeWorkspaces removes by path and keeps the directory', async () => {
     const ledger = new WorkspaceLedger()
-    const registry = fakeRegistry()
     const dir = join(base, 'target')
     await mkdir(dir)
 
-    const result = await registerWorkspace(ledger, registry, 's1', dir, '我的工作区')
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.record).toMatchObject({ path: dir, title: '我的工作区', workspaceId: 'ws-0' })
-    expect(registry.create).toHaveBeenCalledWith(dir, '我的工作区')
-    expect(ledger.list('s1')).toHaveLength(1)
-  })
-
-  it('registerWorkspace returns a readable error on failure and registers nothing', async () => {
-    const ledger = new WorkspaceLedger()
-    const registry = fakeRegistry()
-    registry.create.mockRejectedValueOnce(new Error('boom'))
-    const dir = join(base, 'target')
-    await mkdir(dir)
-
-    const result = await registerWorkspace(ledger, registry, 's1', dir, 'x')
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.error).toContain('boom')
-    expect(ledger.list('s1')).toHaveLength(0)
-  })
-
-  it('removeWorkspaces is non-destructive and tolerates a missing host record', async () => {
-    const ledger = new WorkspaceLedger()
-    const registry = fakeRegistry()
-    const dir = join(base, 'target')
-    await mkdir(dir)
-    await registerWorkspace(ledger, registry, 's1', dir, 'x')
-    registry.delete.mockRejectedValueOnce(new Error('already gone'))
-
-    const removed = await removeWorkspaces(ledger, registry, dir)
-    expect(removed).toHaveLength(1)
+    const removed = removeWorkspaces(ledger, dir)
+    expect(removed).toHaveLength(0) // not registered yet
+    ledger.register('s1', dir, 'x')
+    const removed2 = removeWorkspaces(ledger, dir)
+    expect(removed2).toHaveLength(1)
     expect(ledger.list('s1')).toHaveLength(0)
     expect(ledger.find(dir)).toHaveLength(0)
+    // Non-destructive: the directory itself stays.
+    const { stat } = await import('node:fs/promises')
+    await expect(stat(dir)).resolves.toBeTruthy()
   })
 
-  it('falls back to the durable registry when the ledger misses (post-restart)', async () => {
-    const ledger = new WorkspaceLedger() // empty: plugin restarted
-    const registry = fakeRegistry()
-    const dir = join(base, 'target')
-    await mkdir(dir)
-    registry.resolveByPath.mockResolvedValue({ id: 'ws-durable', path: dir, title: '已注册' })
-
-    const removed = await removeWorkspaces(ledger, registry, dir)
-    expect(removed).toHaveLength(1)
-    expect(removed[0]).toMatchObject({ workspaceId: 'ws-durable', path: dir, title: '已注册', sessionId: '' })
-    expect(registry.delete).toHaveBeenCalledWith('ws-durable')
-  })
-
-  it('deletes a bare host workspace id when the ledger misses', async () => {
+  it('removeWorkspaces is a no-op for unknown targets', () => {
     const ledger = new WorkspaceLedger()
-    const registry = fakeRegistry()
-    registry.delete.mockResolvedValue(true)
-
-    const removed = await removeWorkspaces(ledger, registry, 'ws-orphan')
-    expect(removed).toHaveLength(1)
-    expect(registry.delete).toHaveBeenCalledWith('ws-orphan')
+    expect(removeWorkspaces(ledger, 'unknown')).toHaveLength(0)
   })
 
   it('toWorkspaceViews shapes records for the wire', async () => {
     const ledger = new WorkspaceLedger()
     const dir = join(base, 'target')
     await mkdir(dir)
-    const record = ledger.register('s1', dir, 'ws-3', '视图')
+    const record = ledger.register('s1', dir, '视图')
     const views = toWorkspaceViews([record])
     expect(views[0]).toEqual({
       id: record.id,
-      workspaceId: 'ws-3',
       path: dir,
       title: '视图',
       sessionId: 's1',

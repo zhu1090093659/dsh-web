@@ -173,28 +173,16 @@ describe('workspace routes', () => {
   let ledger: WorkspaceLedger
   let server: Server
   let port: number
-  /** Fake host workspace registry: ids are assigned in creation order. */
-  let fakeRegistry: { create: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }
-  let createdIds: string[]
 
   beforeEach(async () => {
     base = await mkdtemp(join(tmpdir(), 'workscope-ws-routes-'))
     registry = new GrantRegistry({ confirmTimeoutMs: 30_000, maxActivePerSession: 4, maxPendingPerSession: 2, auditCap: 100 })
     ledger = new WorkspaceLedger()
-    createdIds = []
-    fakeRegistry = {
-      create: vi.fn(async () => {
-        const id = `ws-${createdIds.length}`
-        createdIds.push(id)
-        return { id }
-      }),
-      delete: vi.fn(async () => true),
-    }
     server = createServer((req, res) => {
       const route = makeRoutes(registry, {
-        workspaceRegistry: () => fakeRegistry,
         ledger,
         audit: (sessionId, kind, detail) => registry.appendAudit(sessionId, kind, detail),
+        sessionInfo: async (sessionId) => sessionId === 's1' ? { id: 's1', cwd: base, title: '测试会话' } : undefined,
       }).find(route => route.path === req.url?.split('?')[0])
       if (route === undefined) {
         res.writeHead(404, { 'content-type': 'text/plain' })
@@ -216,7 +204,7 @@ describe('workspace routes', () => {
   const url = (path: string): string => `http://127.0.0.1:${port}${path}`
   const jsonFetch = (path: string, init?: RequestInit): Promise<Response> => fetch(url(path), init)
 
-  it('registers a host workspace when the user approves a workspace request', async () => {
+  it('records a sub-workspace in the ledger when the user approves', async () => {
     const dir = join(base, 'ws-target')
     await mkdir(dir)
     const outcome = registry.requestWorkspace('s1', dir, '项目工作区', '持续开发')
@@ -233,45 +221,28 @@ describe('workspace routes', () => {
     expect(approve.status).toBe(200)
     await expect(outcome).resolves.toMatchObject({ status: 'active' })
 
-    // The fake host registry was asked for the canonical path.
-    expect(fakeRegistry.create).toHaveBeenCalledWith(dir, '项目工作区')
+    // Session-scoped ledger record; the confirmation is NOT a grant.
     expect(ledger.list('s1')).toHaveLength(1)
-    expect(ledger.list('s1')[0]).toMatchObject({ path: dir, title: '项目工作区', workspaceId: 'ws-0' })
+    expect(ledger.list('s1')[0]).toMatchObject({ path: dir, title: '项目工作区', sessionId: 's1' })
+    expect(registry.activeGrants('s1')).toHaveLength(0)
+    expect(ledger.covers('s1', join(dir, 'x.txt'))).toBe(true)
 
     const workspaces = await jsonFetch(`${API_PREFIX}/workspaces`).then(r => r.json())
     expect(workspaces.workspaces).toHaveLength(1)
     expect(workspaces.workspaces[0].title).toBe('项目工作区')
+    expect(workspaces.workspaces[0].workspaceId).toBeUndefined()
   })
 
-  it('fails closed when the host registry rejects the registration', async () => {
-    const dir = join(base, 'ws-bad')
-    await mkdir(dir)
-    fakeRegistry.create.mockRejectedValueOnce(new Error('durable write failed'))
-    const outcome = registry.requestWorkspace('s1', dir, '失败', '测试')
-    await new Promise(resolve => setTimeout(resolve, 50))
-
-    const pending = await jsonFetch(`${API_PREFIX}/pending`).then(r => r.json())
-    const approve = await jsonFetch(`${API_PREFIX}/pending/approve`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: pending.pending[0].id }),
-    })
-    expect(approve.status).toBe(409)
-    // The pending entry survives so the user can retry.
-    const after = await jsonFetch(`${API_PREFIX}/pending`).then(r => r.json())
-    expect(after.pending).toHaveLength(1)
-
-    // Retry now succeeds (the mock only failed once) and settles the tool.
-    const retry = await jsonFetch(`${API_PREFIX}/pending/approve`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: pending.pending[0].id }),
-    })
-    expect(retry.status).toBe(200)
-    await expect(outcome).resolves.toMatchObject({ status: 'active' })
+  it('serves session metadata for the 会话信息 tab', async () => {
+    const info = await jsonFetch(`${API_PREFIX}/session-info?session=s1`).then(r => r.json())
+    expect(info.session).toMatchObject({ id: 's1', cwd: base, title: '测试会话' })
+    const missing = await jsonFetch(`${API_PREFIX}/session-info?session=nope`).then(r => r.json())
+    expect(missing.session).toBeUndefined()
+    const bare = await jsonFetch(`${API_PREFIX}/session-info`)
+    expect(bare.status).toBe(400)
   })
 
-  it('removes a workspace registration through the route (non-destructive)', async () => {
+  it('removes a sub-workspace registration through the route (non-destructive)', async () => {
     const dir = join(base, 'ws-remove')
     await mkdir(dir)
     const outcome = registry.requestWorkspace('s1', dir, '待移除', '测试')
@@ -292,8 +263,8 @@ describe('workspace routes', () => {
     })
     expect(remove.status).toBe(200)
     expect(await remove.json()).toMatchObject({ ok: true, removed: 1 })
-    expect(fakeRegistry.delete).toHaveBeenCalledWith('ws-0')
     expect(ledger.list('s1')).toHaveLength(0)
+    expect(ledger.covers('s1', dir)).toBe(false)
     const audit = await jsonFetch(`${API_PREFIX}/audit`).then(r => r.json())
     const kinds = audit.entries.map((entry: { kind: string }) => entry.kind)
     expect(kinds).toContain('workspace_removed')

@@ -9,13 +9,13 @@
 import { createRoot, type Root } from 'react-dom/client'
 import { WorkscopeApi } from './api.ts'
 import { GrantCard } from './GrantCard.tsx'
-import { en, zh, type BeyondKey } from './locales.ts'
+import { en, zh } from './locales.ts'
 
 /** Marker attribute of the injected panel container. */
 export const PANEL_SELECTOR = '[data-dsh-beyond-workscope-panel]'
 
 /** Pick the dictionary by the browser language (zh default). */
-function pickDictionary(): BeyondKey {
+function pickDictionary(): typeof zh {
   const language = typeof navigator !== 'undefined' ? navigator.language : ''
   return language.toLowerCase().startsWith('en') ? en : zh
 }/**

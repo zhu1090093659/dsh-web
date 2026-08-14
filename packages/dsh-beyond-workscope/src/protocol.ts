@@ -96,19 +96,30 @@ export interface AuditEntry {
   readonly detail: string
 }
 
-/** One workspace registration managed by this plugin (ledger view). */
+/** One session-scoped sub-workspace registration (ledger view). */
 export interface WorkspaceView {
   readonly id: string
-  /** Durable workspace id in the host workspace registry. */
-  readonly workspaceId: string
   /** Canonical directory path. */
   readonly path: string
   readonly title: string
-  /** Session that registered it (workspaces persist beyond the session). */
+  /** Owning session (sub-workspaces never cross sessions). */
   readonly sessionId: string
   /** ISO-8601 registration instant. */
   readonly createdAt: string
   readonly status: 'active' | 'removed'
+}
+
+/** Session metadata for the 会话信息 view tab (host-side lookup). */
+export interface SessionInfoView {
+  readonly id: string
+  /** Absolute working directory the session was created in. */
+  readonly cwd?: string
+  /** ISO-8601 creation instant. */
+  readonly createdAt?: string
+  /** Display title, when the host title service knows one. */
+  readonly title?: string
+  /** Agent preset id the session was composed from. */
+  readonly agentPreset?: string
 }
 
 /** One recent-file entry from the perception report. */
@@ -180,6 +191,10 @@ export interface GrantsListResponse {
 
 export interface WorkspaceListResponse {
   readonly workspaces: WorkspaceView[]
+}
+
+export interface SessionInfoResponse {
+  readonly session?: SessionInfoView
 }
 
 export interface AuditResponse {

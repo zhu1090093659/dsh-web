@@ -13,10 +13,7 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { GrantError, GrantRegistry, canonicalTargetPath } from './grants.ts'
 import { perceive } from './perceive.ts'
 import type { GrantScope, PerceptionReport, WorkspaceView } from './protocol.ts'
-import {
-  removeWorkspaces, toWorkspaceViews,
-  type WorkspaceLedger, type WorkspaceRegistryLike,
-} from './workspaces.ts'
+import { removeWorkspaces, toWorkspaceViews, type WorkspaceLedger } from './workspaces.ts'
 
 /** One text content block (the only render shape these tools emit). */
 function text(value: string): ContentBlock[] {
@@ -32,11 +29,19 @@ const WRITE_CAP_BYTES = 8 * 1024 * 1024
 export interface WorkscopeRuntime {
   readonly registry: GrantRegistry
   readonly ledger: WorkspaceLedger
-  /** Host workspace registry provider; undefined when the deployment lacks the service. */
-  readonly workspaceRegistry?: () => WorkspaceRegistryLike | undefined
   readonly scanRoots: () => readonly string[]
   readonly maxRecentFiles: () => number
   readonly maxProcesses: () => number
+}
+
+/**
+ * Whether the session may touch `path` with `scope`: an active grant wins,
+ * otherwise a confirmed sub-workspace of the session covers it (sub-workspaces
+ * are write-level — the automatic second-workspace allowance).
+ */
+async function mayAccess(runtime: WorkscopeRuntime, sessionId: string, path: string, scope: GrantScope): Promise<boolean> {
+  if (await runtime.registry.isAllowed(sessionId, path, scope)) return true
+  return runtime.ledger.covers(sessionId, path)
 }
 
 /** Resolve the requesting session id, or undefined outside an agent turn. */
@@ -314,7 +319,6 @@ export function listTool(runtime: WorkscopeRuntime) {
               additionalProperties: false,
               properties: {
                 id: { type: 'string', required: true },
-                workspaceId: { type: 'string', required: true },
                 path: { type: 'string', required: true },
                 title: { type: 'string', required: true },
                 sessionId: { type: 'string', required: true },
@@ -329,7 +333,7 @@ export function listTool(runtime: WorkscopeRuntime) {
       render: (_args, value: {
         active?: Array<{ id: string; path: string; scope: string; reason: string }>
         pending?: Array<{ id: string; kind: string; path: string; scope: string; reason: string }>
-        workspaces?: Array<{ id: string; workspaceId: string; path: string; title: string; sessionId: string; createdAt: string }>
+        workspaces?: Array<{ id: string; path: string; title: string; sessionId: string; createdAt: string }>
       }) => {
         const lines: string[] = []
         const active = value.active ?? []
@@ -345,10 +349,10 @@ export function listTool(runtime: WorkscopeRuntime) {
           lines.push(`待确认请求（${pending.length}，等待用户在界面确认）：`)
           for (const g of pending) lines.push(`  ${g.id}  [${g.kind}] ${g.path}（${g.scope}）— ${g.reason}`)
         }
-        if (workspaces.length === 0) lines.push('本会话注册的工作区：无')
+        if (workspaces.length === 0) lines.push('本会话的子工作区：无')
         else {
-          lines.push(`本会话注册的工作区（${workspaces.length}）：`)
-          for (const w of workspaces) lines.push(`  ${w.title}  ${w.path}  (workspaceId ${w.workspaceId})`)
+          lines.push(`本会话的子工作区（${workspaces.length}，会话内 read/write 自动放行）：`)
+          for (const w of workspaces) lines.push(`  ${w.title}  ${w.path}`)
         }
         return text(lines.join('\n'))
       },
@@ -401,8 +405,8 @@ export function readTool(runtime: WorkscopeRuntime) {
       const sessionId = sessionIdOf(exec)
       if (sessionId === undefined) return { ok: false, error: '当前调用没有会话上下文' }
       if (typeof args.path !== 'string' || args.path.trim() === '') return { ok: false, error: 'path 不能为空' }
-      if (!(await runtime.registry.isAllowed(sessionId, args.path, 'read'))) {
-        return { ok: false, error: `不在授权范围内：${args.path}。请先 workscope_grant 该目录并等待用户确认。` }
+      if (!(await mayAccess(runtime, sessionId, args.path, 'read'))) {
+        return { ok: false, error: `不在授权范围或子工作区内：${args.path}。请先 workscope_grant 该目录，或确认它属于本会话的子工作区。` }
       }
       try {
         const info = await stat(args.path)
@@ -457,8 +461,8 @@ export function writeTool(runtime: WorkscopeRuntime) {
         // Canonicalize the write target (parent realpath + basename) so a
         // symlinked parent cannot bypass the grant boundary.
         const canonical = await canonicalTargetPath(args.path)
-        if (!(await runtime.registry.isAllowed(sessionId, canonical, 'write'))) {
-          return { ok: false, error: `不在授权范围内：${args.path}。请先 workscope_grant（write）该目录并等待用户确认。` }
+        if (!(await mayAccess(runtime, sessionId, canonical, 'write'))) {
+          return { ok: false, error: `不在授权范围或子工作区内：${args.path}。请先 workscope_grant（write）该目录，或确认它属于本会话的子工作区。` }
         }
         await mkdir(dirname(canonical), { recursive: true })
         if (mode === 'append') {
@@ -481,19 +485,26 @@ export function writeTool(runtime: WorkscopeRuntime) {
  * directory as their sandbox workspace root (full tool coverage, no
  * full-access grant).
  */
+/**
+ * The sub-workspace registration tool. Confirming registers the directory as
+ * a SESSION-SCOPED sub-workspace: it appears in the session's 会话信息 view
+ * tab (never in the sidebar workspace list, no new session is created), and
+ * workscope_read / workscope_write become automatically allowed inside it —
+ * a second workspace for THIS session without widening the sandbox mode.
+ */
 export function workspaceTool(runtime: WorkscopeRuntime) {
   return defineTool({
     name: 'workscope_workspace',
-    description: 'Turn a directory OUTSIDE the session workspace into a second, durable workspace WITHOUT granting full access. ' +
-      'A confirmation card appears in the GUI (same as workscope_grant); on approval the directory is registered as a host workspace. ' +
-      'It then shows up in the GUI workspace switcher — switch to it and create a new conversation there: that session runs with the ' +
-      'directory as its sandbox workspace, with all normal tools (bash/fs/git), while this session stays at its own sandbox level. ' +
-      'Workspaces persist beyond this session; remove one explicitly with workscope_unworkspace. ' +
-      'Triggers: 把这个目录变成工作区、想在别的目录开个新项目、需要持续在 X 目录干活、给某个目录一个独立工作区。',
+    description: 'Register a directory OUTSIDE the session workspace as a session-scoped SUB-workspace — a second workspace for this session WITHOUT granting full access. ' +
+      'A confirmation card appears in the GUI (same as workscope_grant); on approval the directory is managed in the session\'s 会话信息 view tab ' +
+      '(it never appears in the sidebar workspace list, and no new session is created). ' +
+      'While the sub-workspace lives, workscope_read / workscope_write work inside it automatically (write-level), no per-file grants needed. ' +
+      'It belongs to this session: removed on session end or explicitly with workscope_unworkspace. ' +
+      'Triggers: 把这个目录变成（子）工作区、想在别的目录干活、需要持续在 X 目录读写、给某个目录一个独立工作区。',
     parameters: {
-      path: { type: 'string', required: true, description: '要注册为工作区的目录（绝对路径，必须已存在）。' },
-      title: { type: 'string', description: '工作区显示名称（默认取目录名）。' },
-      reason: { type: 'string', description: '向用户说明为什么需要这个工作区（显示在确认卡片上）。' },
+      path: { type: 'string', required: true, description: '要注册为子工作区的目录（绝对路径，必须已存在）。' },
+      title: { type: 'string', description: '子工作区显示名称（默认取目录名）。' },
+      reason: { type: 'string', description: '向用户说明为什么需要这个子工作区（显示在确认卡片上）。' },
     },
     timeoutMs: 150_000,
     output: {
@@ -511,15 +522,12 @@ export function workspaceTool(runtime: WorkscopeRuntime) {
       },
       render: (_args, value: { ok?: boolean; error?: string; path?: string; title?: string; status?: string; message?: string }) => {
         if (value.ok === false) return text(`注册失败：${value.error ?? '未知错误'}`)
-        return text(`工作区注册请求（${value.title ?? value.path ?? '?'}，${value.path ?? '?'}）：${value.status ?? '?'} — ${value.message ?? ''}`)
+        return text(`子工作区注册请求（${value.title ?? value.path ?? '?'}，${value.path ?? '?'}）：${value.status ?? '?'} — ${value.message ?? ''}`)
       },
     },
     async execute(args: { path?: string; title?: string; reason?: string }, exec) {
       const sessionId = sessionIdOf(exec)
-      if (sessionId === undefined) return { ok: false, error: '当前调用没有会话上下文，无法注册工作区' }
-      if (runtime.workspaceRegistry?.() === undefined) {
-        return { ok: false, error: '宿主未提供工作区注册服务（workspaceRegistry 不可用）' }
-      }
+      if (sessionId === undefined) return { ok: false, error: '当前调用没有会话上下文，无法注册子工作区' }
       if (typeof args.path !== 'string' || args.path.trim() === '') return { ok: false, error: 'path 不能为空' }
       try {
         const outcome = await runtime.registry.requestWorkspace(
@@ -546,17 +554,17 @@ export function workspaceTool(runtime: WorkscopeRuntime) {
   })
 }
 
-/** The workspace-removal tool (non-destructive: keeps the directory and its sessions). */
+/** The sub-workspace removal tool (non-destructive: keeps the directory). */
 export function unworkspaceTool(runtime: WorkscopeRuntime) {
   return defineTool({
     name: 'workscope_unworkspace',
-    description: 'Remove a workspace this plugin registered (by workscope_list id, workspaceId, or path — removes every matching registration). ' +
-      'Non-destructive: the directory itself and every conversation created there stay untouched; only the workspace registration is removed ' +
-      '(it disappears from the GUI workspace switcher, so no new session can start there). ' +
-      'Triggers: 取消工作区、不再需要这个工作区了、把 X 从工作区列表移除。',
+    description: 'Remove sub-workspace registrations of this session (by workscope_list id, or path — removes every matching registration). ' +
+      'Non-destructive: the directory itself stays untouched; only the sub-workspace registration is removed, so read/write inside it needs ' +
+      'a fresh grant again. Also removed automatically when the session ends. ' +
+      'Triggers: 取消子工作区、不再需要这个子工作区了、把 X 从子工作区列表移除。',
     parameters: {
-      id: { type: 'string', description: 'workscope_list 返回的 id 或 workspaceId。' },
-      path: { type: 'string', description: '或按目录路径移除（匹配该路径的工作区注册）。' },
+      id: { type: 'string', description: 'workscope_list 返回的 id。' },
+      path: { type: 'string', description: '或按目录路径移除（匹配该路径的子工作区注册）。' },
     },
     output: {
       schema: {
@@ -583,22 +591,16 @@ export function unworkspaceTool(runtime: WorkscopeRuntime) {
       render: (_args, value: { ok?: boolean; error?: string; removed?: Array<{ id: string; path: string; title: string }> }) => {
         if (value.ok === false) return text(`移除失败：${value.error ?? '未知错误'}`)
         const removed = value.removed ?? []
-        if (removed.length === 0) return text('没有匹配的工作区注册可移除')
-        return text(`已移除 ${removed.length} 个工作区注册（目录与会话均保留）：\n` + removed.map(w => `  ${w.title}（${w.path}）`).join('\n'))
+        if (removed.length === 0) return text('没有匹配的子工作区注册可移除')
+        return text(`已移除 ${removed.length} 个子工作区注册（目录保留）：\n` + removed.map(w => `  ${w.title}（${w.path}）`).join('\n'))
       },
     },
     async execute(args: { id?: string; path?: string }) {
       const target = args.id ?? args.path ?? ''
       if (target.trim() === '') return { ok: false, error: '需要提供 id 或 path', removed: [] }
-      const registry = runtime.workspaceRegistry?.()
-      if (registry === undefined) {
-        return { ok: false, error: '宿主未提供工作区注册服务（workspaceRegistry 不可用）', removed: [] }
-      }
       try {
-        const removed = await removeWorkspaces(runtime.ledger, registry, target)
+        const removed = removeWorkspaces(runtime.ledger, target)
         for (const record of removed) {
-          // Fallback records (ledger miss after restart) carry no session.
-          if (record.sessionId === '') continue
           runtime.registry.appendAudit(record.sessionId, 'workspace_removed', `${record.title}（${record.path}）`)
         }
         return {

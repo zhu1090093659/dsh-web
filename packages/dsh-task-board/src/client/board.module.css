@@ -6,7 +6,7 @@
 
 /* --- center-column takeover (global rules, attribute-scoped) ----------------- */
 
-[data-pane='conversation'] {
+[class*='centerCol'] {
   position: relative;
 }
 
@@ -32,7 +32,7 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [data-dsh-taskboard-v
    `display: contents`, and inline styles beat a plain stylesheet rule. Without
    it the composer (input card) stays visible at the bottom and paints over the
    board modals' footer, hiding the run/delete buttons (issue #76). */
-html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [data-pane='conversation'] > :not([data-dsh-taskboard-view]) {
+html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] > :not([data-dsh-taskboard-view]) {
   display: none !important;
 }
 

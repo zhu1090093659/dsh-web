@@ -11,7 +11,8 @@
 
 ## 功能
 
-- **侧边栏入口**：`[data-pane="sidebar"]` 列内、新会话按钮下方注入「任务看板」入口行
+- **侧边栏入口**：侧边栏列（`[class*="sidebarCol"]`，DSH 0.1.0-rc.6 AppFrame 布局）内、
+  新会话按钮下方注入「任务看板」入口行
   （宽栏显示图标+文字，折叠 rail 显示纯图标，随 DSH 皮肤 token 自适应）。
 - **多列看板**：待规划 / 待办 / 进行中 / 已完成 / 已失败 五列；卡片显示标题、描述、
   状态、更新时间、执行次数；顶部支持搜索过滤、新建任务、返回对话。
@@ -63,7 +64,8 @@ scripts/dsh-task-board.js                          # 一键挂载/卸载/状态 
   skin 先例的 **DOM 注入**，并用 MutationObserver 自愈（React 重渲染波及该节点时
   同帧内重新插入，无闪烁）。
 - **中间列无法通过槽位替换**：`conversation` 槽位是 single 且已被 ui-conversation
-  占用。看板视图以 DOM 方式挂在 `[data-pane="conversation"]` 列内（React 不管的
+  占用。看板视图以 DOM 方式挂在中间列（`[class*="centerCol"]`，rc.6 起为 AppFrame
+  布局；旧版为 `[data-pane="conversation"]`）内（React 不管的
   尾部子节点），通过 `<html data-dsh-taskboard-active>` 属性切换显隐，底下的对话
   子树保持挂载有状态。
 - **持久化用浏览器 localStorage**：客户端插件跑在浏览器里，DSH 没有浏览器可写的

@@ -3,8 +3,10 @@
  *
  * The `conversation` slot is single-occupant (ui-conversation) and external
  * plugins cannot declare slots, so the board takes over the center column at
- * the DOM level: a container is appended inside the `[data-pane="conversation"]`
- * grid item (an extra trailing child React never manages), and a stylesheet
+ * the DOM level: a container is appended inside the center column
+ * (`[class*="centerCol"]`, the dsh 0.1.0-rc.6 AppFrame layout; previously
+ * `[data-pane="conversation"]` on older shells) as an extra trailing child
+ * React never manages, and a stylesheet
  * rule hides the conversation content while the board is active. Toggling is
  * a data attribute on <html> — no React involvement, so the conversation
  * subtree underneath stays mounted and stateful.
@@ -17,7 +19,7 @@ import css from './board.module.css'
 /** The injected board container (kept in the DOM, hidden when inactive). */
 export const BOARD_VIEW_SELECTOR = '[data-dsh-taskboard-view]'
 
-const CONVERSATION_COLUMN_SELECTOR = '[data-pane="conversation"]'
+const CONVERSATION_COLUMN_SELECTOR = '[class*="centerCol"]'
 const ACTIVE_ATTR = 'data-dsh-taskboard-active'
 /** The sibling panel's activation attribute (ssh), removed when this panel opens. */
 const OTHER_ACTIVE_ATTR = 'data-dsh-ssh-active'

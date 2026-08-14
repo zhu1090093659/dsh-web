@@ -25,5 +25,14 @@
     "description": "基于官方 DeepSeek Harness 的交互式终端 UI 插件，在官方基础上增加 TDD 与证据门等工作流。",
     "descriptionEn": "An interactive terminal UI plugin for DeepSeek Harness that adds TDD and evidence-gate workflows on top of the official base.",
     "repo": "https://github.com/huiliyi37/dsh-tianshu-tui"
+  },
+  {
+    "id": "dsh-slamdunk-skin",
+    "name": "灌篮高手皮肤",
+    "nameEn": "Slam Dunk Skin",
+    "author": "jeffliu95800-source",
+    "description": "《灌篮高手》主题界面 + 樱木花道桌面宠物：壁纸轮播、三栏透明磨砂、可拖拽/聊天/每小时换造型的矢量角色。",
+    "descriptionEn": "Slam Dunk themed UI + Sakuragi Hanamichi desktop pet: rotating wallpaper, frosted translucent columns, and a draggable/chatty vector character that swaps poses hourly.",
+    "repo": "https://github.com/jeffliu95800-source/dsh-slamdunk-skin"
   }
 ]

@@ -1,0 +1,3 @@
+- insert:
+    - id: web-auth-gateway
+      name: '@linxin666/dsh-web-auth-gateway'

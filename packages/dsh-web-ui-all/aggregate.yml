@@ -8,6 +8,7 @@
 # 但更早的声明让设置组在任何卡片之前就位，避免观感上的注册顺序歧义）。
 patchFrom:
   - ../dsh-web-ui-settings
+  - ../dsh-web-auth-gateway
   - ../dsh-aionui-panel
   - ../dsh-task-board
   - ../dsh-git-graph
@@ -19,6 +20,7 @@ patchFrom:
 self:
   - ui-web-ui-compat
 deps:
+  - ../dsh-web-auth-gateway
   - ../dsh-aionui-panel
   - ../dsh-task-board
   - ../dsh-git-graph

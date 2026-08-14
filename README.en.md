@@ -4,7 +4,7 @@
 
 ![dsh-web-ui](docs/dsh-web-ui-banner.png)
 
-dsh-web-ui is a collection of plugins and skins for the DeepSeek Harness (DSH) Web UI: a task board, a Git graph, the right panel, mobile remote control, remote connection, a whale-girl pet, live token statistics, and the Skin Center. Every plugin can be installed individually, or all at once through the aggregate packages.
+dsh-web-ui is a collection of plugins and skins for the DeepSeek Harness (DSH) Web UI: a task board, a Git graph, the right panel, a login gateway, mobile remote control, remote connection, a whale-girl pet, live token statistics, and the Skin Center. Every plugin can be installed individually, or all at once through the aggregate packages.
 
 ![DSH Web UI main screen](docs/screenshots/13-hero-main.png)
 
@@ -77,6 +77,10 @@ The "SSH" sidebar entry opens the remote-ops panel. Hosts support key / password
 All family plugins' toggles and parameters live under "Settings > Plugin config", and changes apply immediately.
 
 ![Plugin config hub](docs/screenshots/02-settings-web-ui-plugins.png)
+
+### Login Gateway
+
+Serves a DSH Web login page on a separate port and proxies pages, APIs, and WebSocket connections after authentication. Create the administrator account on first access, then configure the gateway port and session lifetime under "Settings > Plugin config". Keep the original DSH port bound to `127.0.0.1` or another trusted interface so clients cannot bypass the gateway.
 
 ## Skins
 
@@ -178,6 +182,6 @@ Technical details live in [docs/plugins.md](docs/plugins.md).
 
 | Package | Origin | License |
 | --- | --- | --- |
-| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-ui-settings / dsh-skins / dsh-web-ui-all / skins | Authored by zhu1090093659 | BSD-3-Clause (zhu1090093659) |
+| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-auth-gateway / dsh-web-ui-settings / dsh-skins / dsh-web-ui-all / skins | Authored by zhu1090093659 | BSD-3-Clause (zhu1090093659) |
 
 Third-party code merged in must keep its LICENSE and attribution; active third parties with an upstream are forked or referenced as dependencies instead of vendored.

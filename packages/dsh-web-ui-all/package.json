@@ -25,6 +25,7 @@
   },
   "license": "BSD-3-Clause",
   "dependencies": {
+    "@linxin666/dsh-web-auth-gateway": "workspace:*",
     "@linxin666/dsh-client-ui-aionui-panel": "workspace:*",
     "@linxin666/dsh-client-ui-task-board": "workspace:*",
     "@linxin666/dsh-client-ui-git-graph": "workspace:*",

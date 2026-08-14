@@ -12,6 +12,11 @@
     - id: ui-web-ui-settings
       name: '@linxin666/dsh-client-ui-web-ui-settings'
 
+# from ../dsh-web-auth-gateway
+- insert:
+    - id: web-auth-gateway
+      name: '@linxin666/dsh-web-auth-gateway'
+
 # from ../dsh-aionui-panel
 - insert:
     - id: ui-dsh-aionui-panel

@@ -11,6 +11,7 @@
     "gallery:check": "node scripts/gallery-build --check",
     "skin-center:check": "node scripts/skin-center-bundles --check",
     "community:check": "node scripts/community-index --check",
+    "runtime-deps:check": "node scripts/runtime-deps-check.mjs",
     "test:scripts": "node --test scripts/*.test.mjs",
     "skin:new": "node scripts/dsh-skin-new",
     "pr:review": "node scripts/pr-review.mjs",

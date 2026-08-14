@@ -68,6 +68,9 @@ jobs:
       - name: Script tests
         run: pnpm test:scripts
 
+      - name: Runtime dependency check
+        run: pnpm runtime-deps:check
+
       - name: Aggregate package consistency
         run: pnpm aggregate:check
 

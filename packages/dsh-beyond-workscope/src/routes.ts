@@ -268,6 +268,8 @@ export function makeRoutes(registry: GrantRegistry, hooks: RouteHooks = {}): Web
         }
         const removed = await removeWorkspaces(hooks.ledger, registry, payload.id)
         for (const record of removed) {
+          // Fallback records (ledger miss after restart) carry no session.
+          if (record.sessionId === '') continue
           hooks.audit?.(record.sessionId, 'workspace_removed', `${record.title}（${record.path}）`)
         }
         json(res, 200, { ok: true, removed: removed.length })

@@ -118,6 +118,8 @@ export type WorkspaceActionResult =
 export interface WorkspaceRegistryLike {
   create(path: string, title?: string): Promise<{ id: string }>
   delete(id: string): Promise<boolean>
+  /** Look up a workspace by canonical path (used by the removal fallback). */
+  resolveByPath?(path: string): Promise<{ id: string; path: string; title: string } | undefined>
 }
 
 /**
@@ -147,6 +149,12 @@ export async function registerWorkspace(
  * Remove plugin-managed workspace registrations by ledger id, host workspace
  * id, or path. Non-destructive: the directory and every session log created
  * there stay untouched (the host delete() contract).
+ *
+ * Ledger misses fall back to the durable host registry: after a plugin
+ * restart the in-memory ledger is empty, but the registrations it created
+ * survive — a path resolves through `resolveByPath`, a bare id deletes
+ * directly (idempotent no-op when unknown). Fallback records carry an empty
+ * sessionId (ownership unknown after restart); callers skip auditing them.
  */
 export async function removeWorkspaces(
   ledger: WorkspaceLedger,
@@ -154,15 +162,42 @@ export async function removeWorkspaces(
   target: string,
 ): Promise<WorkspaceRecord[]> {
   const records = ledger.find(target)
-  if (records.length === 0) return []
-  for (const record of records) {
-    try {
-      await registry.delete(record.workspaceId)
-    } catch {
-      // Host record already gone — still drop the ledger row below.
+  if (records.length > 0) {
+    for (const record of records) {
+      try {
+        await registry.delete(record.workspaceId)
+      } catch {
+        // Host record already gone — still drop the ledger row below.
+      }
     }
+    return ledger.remove(records)
   }
-  return ledger.remove(records)
+
+  // Ledger miss: reconcile against the durable host registry.
+  const trimmed = target.trim()
+  const isPath = trimmed.startsWith('/') || /^[A-Za-z]:[\\/]/.test(trimmed)
+  if (isPath) {
+    const existing = await registry.resolveByPath?.(trimmed)
+    if (existing !== undefined) {
+      await registry.delete(existing.id)
+      return [{
+        id: existing.id,
+        workspaceId: existing.id,
+        path: existing.path,
+        title: existing.title,
+        sessionId: '',
+        createdAt: '',
+        status: 'removed',
+      }]
+    }
+    return []
+  }
+  // Bare id: direct host delete (idempotent no-op when unknown).
+  const deleted = await registry.delete(trimmed)
+  if (deleted) {
+    return [{ id: trimmed, workspaceId: trimmed, path: '', title: trimmed, sessionId: '', createdAt: '', status: 'removed' }]
+  }
+  return []
 }
 
 /** Workspace records shaped for the wire. */

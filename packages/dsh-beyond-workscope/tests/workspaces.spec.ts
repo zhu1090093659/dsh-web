@@ -87,11 +87,12 @@ describe('workspace side-effect helpers', () => {
     await rm(base, { recursive: true, force: true })
   })
 
-  function fakeRegistry(): WorkspaceRegistryLike & { create: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> } {
+  function fakeRegistry(): WorkspaceRegistryLike & { create: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn>; resolveByPath: ReturnType<typeof vi.fn> } {
     let n = 0
     return {
       create: vi.fn(async () => ({ id: `ws-${n++}` })),
       delete: vi.fn(async () => true),
+      resolveByPath: vi.fn(async () => undefined),
     }
   }
 
@@ -135,6 +136,29 @@ describe('workspace side-effect helpers', () => {
     expect(removed).toHaveLength(1)
     expect(ledger.list('s1')).toHaveLength(0)
     expect(ledger.find(dir)).toHaveLength(0)
+  })
+
+  it('falls back to the durable registry when the ledger misses (post-restart)', async () => {
+    const ledger = new WorkspaceLedger() // empty: plugin restarted
+    const registry = fakeRegistry()
+    const dir = join(base, 'target')
+    await mkdir(dir)
+    registry.resolveByPath.mockResolvedValue({ id: 'ws-durable', path: dir, title: '已注册' })
+
+    const removed = await removeWorkspaces(ledger, registry, dir)
+    expect(removed).toHaveLength(1)
+    expect(removed[0]).toMatchObject({ workspaceId: 'ws-durable', path: dir, title: '已注册', sessionId: '' })
+    expect(registry.delete).toHaveBeenCalledWith('ws-durable')
+  })
+
+  it('deletes a bare host workspace id when the ledger misses', async () => {
+    const ledger = new WorkspaceLedger()
+    const registry = fakeRegistry()
+    registry.delete.mockResolvedValue(true)
+
+    const removed = await removeWorkspaces(ledger, registry, 'ws-orphan')
+    expect(removed).toHaveLength(1)
+    expect(registry.delete).toHaveBeenCalledWith('ws-orphan')
   })
 
   it('toWorkspaceViews shapes records for the wire', async () => {

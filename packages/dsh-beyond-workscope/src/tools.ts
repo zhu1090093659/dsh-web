@@ -596,6 +596,8 @@ export function unworkspaceTool(runtime: WorkscopeRuntime) {
       try {
         const removed = await removeWorkspaces(runtime.ledger, registry, target)
         for (const record of removed) {
+          // Fallback records (ledger miss after restart) carry no session.
+          if (record.sessionId === '') continue
           runtime.registry.appendAudit(record.sessionId, 'workspace_removed', `${record.title}（${record.path}）`)
         }
         return {

@@ -72,6 +72,10 @@ The "SSH" sidebar entry opens the remote-ops panel. Hosts support key / password
 - **Cluster runs**: one command across many hosts concurrently, filtered by alias / environment / tags;
 - **Agent direct control**: agents share the same host config — just say "check xxx" in chat and the agent runs remote commands for you.
 
+### Image Understanding
+
+Gives text-only models vision: when a conversation mentions an image (local path, http(s) URL, or session attachment), the `describe_image` tool sends it to a configured OpenAI-compatible vision endpoint (Qwen-VL, GLM-4V, GPT-4o, a local Ollama endpoint…) and returns the description. **Only the returned text enters the conversation — the image itself never enters the session log.** Endpoint, model, and key are configured live under Settings > Plugin config > "Image understanding".
+
 ### Settings Hub
 
 All family plugins' toggles and parameters live under "Settings > Plugin config", and changes apply immediately; a "Community plugins" card inside the group indexes plugins registered by community contributors and links to their repositories.
@@ -163,6 +167,7 @@ Prefer individual plugins? Install them one by one (published on npm, so use the
 ```sh
 dsh plugin --profile web add @linxin666/dsh-client-ui-task-board   # Task board
 dsh plugin --profile web add @linxin666/dsh-ssh                    # Remote connection (SSH)
+dsh plugin --profile web add @linxin666/dsh-tool-describe-image    # Image understanding tool
 dsh plugin --profile web add @linxin666/dsh-pet                    # Whale-girl pet
 ```
 
@@ -184,7 +189,8 @@ Join our Discord server to connect with developers and other users:
 
 | Package | Origin | License |
 | --- | --- | --- |
-| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-ui-settings / dsh-skins / dsh-web-ui-all / skins | Authored by zhu1090093659 | BSD-3-Clause (zhu1090093659) |
+| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-ui-settings / dsh-skins / dsh-web-ui-all / skins | Authored by zhu1090093659 | Apache-2.0 (zhu1090093659) |
+| dsh-tool-describe-image | Ported from [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image) (deepseek-harness `packages/vision/tool-describe-image`) | Apache-2.0 (zhu1090093659) |
 
 Third-party code merged in must keep its LICENSE and attribution; active third parties with an upstream are forked or referenced as dependencies instead of vendored.
 

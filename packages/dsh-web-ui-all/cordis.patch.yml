@@ -47,6 +47,11 @@
     - id: ssh
       name: '@linxin666/dsh-ssh'
 
+# from ../dsh-tool-describe-image
+- insert:
+    - id: describe-image
+      name: '@linxin666/dsh-tool-describe-image'
+
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:
     - id: ui-skin-center

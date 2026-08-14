@@ -31,6 +31,10 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-aionui-panel
   （150ms 防抖，点击结果 = 定位到树中，不打断思路）；`变更` tab 读取真实
   git 状态，支持 stage / unstage / discard（untracked 走删除，tracked 走
   restore，批量放弃有确认）。
+- **拖拽文件到输入框**：文件树中的文件行可拖拽（目录行除外），拖到聊天
+  输入框区域松手即把相对路径（如 `deploy/base/deployment.yaml`）插入当前
+  会话草稿的光标处，agent 收到消息后会自行读取该文件，无需手动输入路径；
+  拖拽过程中输入框上方显示高亮提示条。
 - **Preview（右二栏，默认 480px，范围 340~1200px）**：多 tab 预览，支持
   markdown / html / code / diff / csv / pdf / word / excel / ppt / 图片 / 文本 /
   url；源码/预览切换、分屏编辑（比例持久化）、保存（mtime 冲突检测）、下载、

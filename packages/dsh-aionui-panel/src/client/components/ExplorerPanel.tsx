@@ -12,7 +12,7 @@
  */
 
 import { memo, useRef, useState } from 'react'
-import type { JSX } from 'react'
+import type { DragEvent, JSX } from 'react'
 import type { FsEntry } from '../../core/types.ts'
 import { parentRel } from '../fileType.ts'
 import { t } from '../locales.ts'
@@ -22,6 +22,7 @@ import { FileTypeIcon } from './FileIcon.tsx'
 import { ChevronRightIcon, CloseIcon, ExpandRightIcon, SearchIcon } from './icons.tsx'
 import { ScmPanel } from './ScmPanel.tsx'
 import { activateOnKey } from './a11y.ts'
+import { FILE_DRAG_MIME } from '../drag/file-drag.ts'
 import explorerCss from '../styles/explorer.module.css'
 import '../styles/tokens.module.css'
 
@@ -239,6 +240,7 @@ function TreeRowBase({
   const isExpanded = expanded.includes(entry.path)
   const isSelected = selected === entry.path
   const children = entry.isDir ? dirs[entry.path] : undefined
+  const [draggingRow, setDraggingRow] = useState(false)
 
   const handleClick = (): void => {
     if (entry.isDir) {
@@ -251,10 +253,23 @@ function TreeRowBase({
     preview.openFile(root, entry.path)
   }
 
+  // Files are draggable into the composer (the drag MIME carries the
+  // workspace-relative path); directory rows stay click-only.
+  const onDragStart = (event: DragEvent): void => {
+    if (entry.isDir) return
+    event.dataTransfer.setData(FILE_DRAG_MIME, entry.path)
+    event.dataTransfer.setData('text/plain', entry.path)
+    event.dataTransfer.effectAllowed = 'copy'
+    setDraggingRow(true)
+  }
+  const onDragEnd = (): void => {
+    setDraggingRow(false)
+  }
+
   return (
     <>
       <div
-        className={`${explorerCss.treeRow}${isSelected ? ` ${explorerCss.treeRowSelected}` : ''}`}
+        className={`${explorerCss.treeRow}${isSelected ? ` ${explorerCss.treeRowSelected}` : ''}${draggingRow ? ` ${explorerCss.treeRowDragging}` : ''}`}
         style={{ paddingLeft: 12 + 8 + depth * INDENT_STEP }}
         onClick={handleClick}
         onKeyDown={activateOnKey(handleClick)}
@@ -262,6 +277,9 @@ function TreeRowBase({
           // Double-click on a file: same as click (open). Folders: keep toggle.
           event.stopPropagation()
         }}
+        draggable={!entry.isDir}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
         role="button"
         tabIndex={0}
         aria-expanded={entry.isDir ? isExpanded : undefined}

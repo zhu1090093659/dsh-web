@@ -237,7 +237,12 @@ export class PanelLayoutController {
     el.style.position = 'absolute'
     el.style.top = '0'
     el.style.bottom = '0'
-    el.style.zIndex = '30'
+    // The handle must float above the panel content (static flow) but stay
+    // BELOW the host shell's full-screen overlay layers (usage stats, settings,
+    // …), which use z-index 20. A value above 20 would let the handle's 2px
+    // line poke through a modal overlay. 10 clears both: above auto content,
+    // below any host overlay.
+    el.style.zIndex = '10'
     el.style.cursor = 'col-resize'
     el.style.width = `${hitWidth}px`
     if (reverse) {

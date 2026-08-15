@@ -1,0 +1,243 @@
+/**
+ * Skill center panel (browser half): an overlay modal with two tabs — the
+ * grouped skill list (enable/disable switch, delete) and a create form.
+ * Talks to the host route family through SkillApi.
+ */
+
+import { useEffect, useState, type FormEvent } from 'react'
+import { SkillApi, type ListPayload, type SkillEntry } from './api.ts'
+import { tt } from './panel-helpers.ts'
+import css from './skill-panel.module.css'
+
+/** Panel props: the API client and the close callback. */
+export interface SkillPanelProps {
+  api: SkillApi
+  onClose: () => void
+}
+
+type Tab = 'list' | 'create'
+
+/** Marks shown next to a skill (model/user invocable). */
+function invokableMarks(skill: SkillEntry): string {
+  const marks: string[] = []
+  if (skill.modelInvocable) marks.push(tt('list.mark.model'))
+  if (skill.userInvocable) marks.push(tt('list.mark.user'))
+  return marks.join(' / ')
+}
+
+/** One skill card: name, badges, toggle switch, delete button. */
+function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi; onChanged: () => void }): React.JSX.Element {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | undefined>(undefined)
+
+  const toggle = async (): Promise<void> => {
+    setBusy(true)
+    setError(undefined)
+    try {
+      await api.setEnabled(skill.name, !skill.modelInvocable)
+      onChanged()
+    } catch (err) {
+      setError(tt('list.toggleFailed', { error: err instanceof Error ? err.message : String(err) }))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async (): Promise<void> => {
+    if (!window.confirm(tt('list.deleteConfirm', { name: skill.name }))) return
+    setBusy(true)
+    setError(undefined)
+    try {
+      await api.remove(skill.name)
+      onChanged()
+    } catch (err) {
+      setError(tt('list.deleteFailed', { error: err instanceof Error ? err.message : String(err) }))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <article className={css.skill}>
+      <header className={css.skillHeader}>
+        <span className={css.skillName}>{skill.name}</span>
+        {skill.provider !== undefined && <span className={css.badge}>{skill.provider}</span>}
+        {(skill.modelInvocable || skill.userInvocable) && (
+          <span className={`${css.badge} ${css.badgeInvokable}`}>{tt('list.invokable', { marks: invokableMarks(skill) })}</span>
+        )}
+        {skill.path !== undefined && (
+          <button
+            type="button"
+            className={css.switch}
+            role="switch"
+            aria-checked={skill.modelInvocable}
+            title={skill.modelInvocable ? tt('list.enabled') : tt('list.disabled')}
+            disabled={busy}
+            onClick={() => { void toggle() }}
+          >
+            <span className={css.switchTrack}><span className={css.switchThumb} /></span>
+          </button>
+        )}
+        {skill.path !== undefined && (
+          <button type="button" className={css.deleteButton} disabled={busy} onClick={() => { void remove() }}>
+            {tt('list.delete')}
+          </button>
+        )}
+      </header>
+      <p className={css.skillDesc}>{skill.description}</p>
+      {skill.whenToUse !== undefined && skill.whenToUse !== '' && (
+        <p className={css.skillWhen}>{tt('list.when', { when: skill.whenToUse })}</p>
+      )}
+      {skill.path !== undefined && <div className={css.skillPath}>{skill.path}</div>}
+      {error !== undefined && <p className={css.feedback}>{error}</p>}
+    </article>
+  )
+}
+
+/** The grouped skill list tab. */
+function ListTab({ api, onChanged }: { api: SkillApi; onChanged: () => void }): React.JSX.Element {
+  const [payload, setPayload] = useState<ListPayload | undefined>(undefined)
+  const [error, setError] = useState<string | undefined>(undefined)
+
+  const load = async (): Promise<void> => {
+    try {
+      setPayload(await api.list())
+      setError(undefined)
+    } catch (err) {
+      setError(tt('list.loadFailed', { error: err instanceof Error ? err.message : String(err) }))
+    }
+  }
+
+  useEffect(() => { void load() }, [api])
+
+  if (error !== undefined) return <div className={css.status}>{error}</div>
+  if (payload === undefined) return <div className={css.status}>{tt('list.loading')}</div>
+  if (payload.groups.length === 0) return <div className={css.status}>{tt('list.empty')}</div>
+
+  return (
+    <div>
+      {payload.groups.map((group) => (
+        <section key={group.key} className={css.group}>
+          <h3 className={css.groupTitle}>
+            {group.title}
+            <span className={css.count}>{tt('list.count', { count: String(group.skills.length) })}</span>
+          </h3>
+          {group.hint !== '' && <p className={css.groupHint}>{group.hint}</p>}
+          {group.skills.map((skill) => (
+            <SkillCard key={skill.name} skill={skill} api={api} onChanged={() => { void load() }} />
+          ))}
+        </section>
+      ))}
+    </div>
+  )
+}
+
+/** The create form tab. */
+function CreateTab({ api }: { api: SkillApi }): React.JSX.Element {
+  const [root, setRoot] = useState<'user' | 'project'>('user')
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [whenToUse, setWhenToUse] = useState('')
+  const [content, setContent] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [feedback, setFeedback] = useState<{ text: string; ok: boolean } | undefined>(undefined)
+
+  const submit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault()
+    if (name.trim() === '' || description.trim() === '' || content.trim() === '') {
+      setFeedback({ text: tt('create.empty'), ok: false })
+      return
+    }
+    setBusy(true)
+    try {
+      const result = await api.create({ root, name: name.trim(), description: description.trim(), whenToUse: whenToUse.trim() || undefined, content })
+      setFeedback({ text: tt('create.created', { path: result.path }), ok: true })
+      setName('')
+      setDescription('')
+      setWhenToUse('')
+      setContent('')
+    } catch (err) {
+      setFeedback({ text: tt('create.failed', { error: err instanceof Error ? err.message : String(err) }), ok: false })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className={css.form} onSubmit={(event) => { void submit(event) }}>
+      <label className={css.formLabel}>
+        {tt('create.root')}
+        <select className={css.formInput} value={root} onChange={(event) => { setRoot(event.target.value as 'user' | 'project') }}>
+          <option value="user">{tt('create.root.user')}</option>
+          <option value="project">{tt('create.root.project')}</option>
+        </select>
+      </label>
+      <label className={css.formLabel}>
+        {tt('create.name')}
+        <input className={css.formInput} value={name} placeholder={tt('create.namePlaceholder')} onChange={(event) => { setName(event.target.value) }} />
+      </label>
+      <label className={css.formLabel}>
+        {tt('create.description')}
+        <input className={css.formInput} value={description} onChange={(event) => { setDescription(event.target.value) }} />
+      </label>
+      <label className={css.formLabel}>
+        {tt('create.whenToUse')}
+        <input className={css.formInput} value={whenToUse} onChange={(event) => { setWhenToUse(event.target.value) }} />
+      </label>
+      <label className={css.formLabel}>
+        {tt('create.content')}
+        <textarea className={`${css.formInput} ${css.formTextarea}`} value={content} onChange={(event) => { setContent(event.target.value) }} />
+      </label>
+      <button type="submit" className={css.formButton} disabled={busy}>{tt('create.submit')}</button>
+      {feedback !== undefined && (
+        <p className={feedback.ok ? `${css.feedback} ${css.feedbackOk}` : css.feedback}>{feedback.text}</p>
+      )}
+      <p className={css.note}>{tt('create.note')}</p>
+    </form>
+  )
+}
+
+/** The skill center overlay modal. */
+export function SkillPanel({ api, onClose }: SkillPanelProps): React.JSX.Element {
+  const [tab, setTab] = useState<Tab>('list')
+  const [cwd, setCwd] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className={css.overlay}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div className={css.card}>
+        <header className={css.head}>
+          <h2 className={css.headTitle}>{tt('panel.title')}</h2>
+          {cwd !== undefined && <span className={css.headCwd}>{tt('cwd', { cwd })}</span>}
+          <button type="button" className={css.headButton} onClick={() => { void api.list().then((payload) => { setCwd(payload.cwd) }) }}>
+            {tt('refresh')}
+          </button>
+          <button type="button" className={css.headButton} onClick={onClose}>{tt('close')}</button>
+        </header>
+        <div className={css.tabs}>
+          <button type="button" className={`${css.tab} ${tab === 'list' ? css.tabActive : ''}`} onClick={() => { setTab('list') }}>
+            {tt('tab.list')}
+          </button>
+          <button type="button" className={`${css.tab} ${tab === 'create' ? css.tabActive : ''}`} onClick={() => { setTab('create') }}>
+            {tt('tab.create')}
+          </button>
+        </div>
+        <div className={css.body}>
+          {tab === 'list' ? <ListTab api={api} onChanged={() => {}} /> : <CreateTab api={api} />}
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -22,6 +22,7 @@
 | packages/dsh-liangshen | @linxin666/dsh-liangshen | 0.1.12 | false |
 | packages/dsh-aionui-panel | @linxin666/dsh-client-ui-aionui-panel | 0.1.1 | true |
 | packages/dsh-web-ui-settings | @linxin666/dsh-client-ui-web-ui-settings | 0.1.1 | true |
+| packages/dsh-skill-explorer | @linxin666/dsh-client-ui-skill-explorer | 0.1.14 | true |
 | packages/dsh-skins | @linxin666/dsh-skins（聚合） | 0.1.1 | true |
 | packages/dsh-web-ui-all | @linxin666/dsh-web-ui-all（聚合） | 0.1.1 | true |
 | packages/skins/qq98 | @linxin666/dsh-client-ui-skin-qq98 | 0.1.1 | true |

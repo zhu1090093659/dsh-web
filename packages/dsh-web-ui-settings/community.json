@@ -35,5 +35,14 @@
     "descriptionEn": "Summarize the current conversation and export it as Markdown / DOCX / PDF, with optional LLM summarization using your own API key.",
     "repo": "https://github.com/v833/dsh-chat-summary",
     "npm": "@linxin666/dsh-client-ui-chat-summary"
+  },
+  {
+    "id": "dsh-skill-explorer",
+    "name": "Skill Explorer",
+    "nameEn": "Skill Explorer",
+    "author": "wingsky-1",
+    "description": "DSH 技能中心：按来源分级浏览已加载 skill，支持启用/禁用、创建与删除（移入 .trash）。",
+    "descriptionEn": "DSH skill center: browse loaded skills grouped by source, with enable/disable, create and delete (move to .trash).",
+    "repo": "https://github.com/zhu1090093659/dsh-web-ui"
   }
 ]

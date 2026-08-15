@@ -314,7 +314,7 @@ describe("runUpdate", () => {
     child.emitOutput("Progress 1/2")
     child.run(0)
     const result = await promise
-    expect(spawned).toEqual({ command: "pnpm", args: ["update", "--latest", "a", "b"], cwd: "/p" })
+    expect(spawned).toEqual({ command: "pnpm", args: ["update", "--latest", "--config.minimumReleaseAge=0", "a", "b"], cwd: "/p" })
     expect(result).toEqual({ ok: true, exitCode: 0, output: "Progress 1/2" })
   })
   it("reports pnpm-failed on a non-zero exit", async () => {
@@ -339,11 +339,12 @@ describe("runUpdate", () => {
     const result = await promise
     expect(order).toEqual(["pnpm", "corepack"])
     // Every fallback candidate must keep --latest (exact specs in the profile
-    // are otherwise treated as pinned and never move); corepack prefixes the
-    // pnpm subcommand.
+    // are otherwise treated as pinned and never move) and the release-age
+    // override (pnpm 11's minimumReleaseAge gate would silently skip
+    // same-day releases); corepack prefixes the pnpm subcommand.
     expect(argo.map(entry => entry.args)).toEqual([
-      ["update", "--latest", "a"],
-      ["pnpm", "update", "--latest", "a"],
+      ["update", "--latest", "--config.minimumReleaseAge=0", "a"],
+      ["pnpm", "update", "--latest", "--config.minimumReleaseAge=0", "a"],
     ])
     expect(result).toEqual({ ok: true, exitCode: 0, output: "corepack pnpm 1/2" })
   })
@@ -360,11 +361,12 @@ describe("runUpdate", () => {
     npx.run(0)
     const result = await promise
     expect(order).toEqual(["pnpm", "corepack", "npx"])
-    // Every fallback candidate keeps --latest (npx prefixes --yes before pnpm).
+    // Every fallback candidate keeps --latest and the release-age override
+    // (npx prefixes --yes before pnpm).
     expect(argo.map(entry => entry.args)).toEqual([
-      ["update", "--latest", "a"],
-      ["pnpm", "update", "--latest", "a"],
-      ["--yes", "pnpm", "update", "--latest", "a"],
+      ["update", "--latest", "--config.minimumReleaseAge=0", "a"],
+      ["pnpm", "update", "--latest", "--config.minimumReleaseAge=0", "a"],
+      ["--yes", "pnpm", "update", "--latest", "--config.minimumReleaseAge=0", "a"],
     ])
     expect(result.ok).toBe(true)
     expect(result.output).toBe("npx pnpm ok")

@@ -413,6 +413,17 @@ const OUTPUT_CAP = 16 * 1024
 const WIN_CMD_MISSING_RE = /not recognized as an internal or external command/i
 
 /**
+ * Bypass for pnpm 11's supply-chain gate: `minimumReleaseAge` (default 24 h)
+ * silently skips same-day releases — `pnpm update --latest` then exits 0
+ * without moving anything and the post-run verification would misreport a
+ * stale no-op. The update here is explicitly user-initiated and the panel
+ * shows exactly which versions are being installed, so the gate only adds a
+ * confusing silent no-op; override it per-invocation instead of asking every
+ * user to edit the profile's pnpm-workspace.yaml.
+ */
+const MIN_RELEASE_AGE_OVERRIDE = '--config.minimumReleaseAge=0'
+
+/**
  * Run the update inside the profile directory. Tries pnpm first, falls back
  * to corepack and then npx when the previous command is missing (ENOENT);
  * all candidates share one hard timeout and keep accumulating output.
@@ -438,10 +449,14 @@ export function runUpdate(deps: UpdateRunDeps): Promise<UpdateRunResult> {
     // "0.1.12" without a range), and plain `pnpm update` treats an exact spec
     // as pinned — it prints "Already up to date" and exits 0 without moving
     // the installed version, so the panel would report a false success.
+    // `MIN_RELEASE_AGE_OVERRIDE` rides along every candidate: without it the
+    // pnpm 11 minimumReleaseAge gate (default 24 h) silently keeps same-day
+    // releases in place, which the post-run verification would then have to
+    // surface as `stale` even though the update is legitimate.
     const candidates: ReadonlyArray<{ command: string; args: string[] }> = [
-      { command: 'pnpm', args: ['update', '--latest', ...packages] },
-      { command: 'corepack', args: ['pnpm', 'update', '--latest', ...packages] },
-      { command: 'npx', args: ['--yes', 'pnpm', 'update', '--latest', ...packages] },
+      { command: 'pnpm', args: ['update', '--latest', MIN_RELEASE_AGE_OVERRIDE, ...packages] },
+      { command: 'corepack', args: ['pnpm', 'update', '--latest', MIN_RELEASE_AGE_OVERRIDE, ...packages] },
+      { command: 'npx', args: ['--yes', 'pnpm', 'update', '--latest', MIN_RELEASE_AGE_OVERRIDE, ...packages] },
     ]
     // `output` accumulates across candidates for UI display; `currentOutput`
     // is reset per candidate and carries only that candidate's own diagnostics
@@ -553,9 +568,11 @@ export interface UpdateRunVerifiedDeps {
 
 /**
  * Run the update, then verify the installed versions actually moved. pnpm
- * exits 0 even when it silently kept the installed versions — the pnpm 11
- * `minimumReleaseAge` gate refuses same-day releases by default — so a green
- * exit alone would report a misleading "update complete". Re-read the
+ * exits 0 even when it silently kept the installed versions — runUpdate
+ * overrides pnpm 11's `minimumReleaseAge` gate (default 24 h) with
+ * `--config.minimumReleaseAge=0`, but an older pnpm without the override or
+ * another silent no-op can still keep versions in place — so a green exit
+ * alone must not report a misleading "update complete". Re-read the
  * installed versions afterwards and surface a `stale` failure (with the
  * captured pnpm output) when nothing moved, so the panel can tell the user
  * how to unblock the gate instead of claiming success.

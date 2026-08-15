@@ -5,7 +5,7 @@
  * a dead "加载中…" mobile surface.
  */
 import { createServer, request as httpRequest } from 'node:http'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { AddressInfo } from 'node:net'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { ApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
@@ -22,6 +22,7 @@ const cookieName = 'dsh_pair'
 const service = {
   config: { cookieName },
   hasDevice: () => true,
+  touchDevice: () => true,
 } as never
 
 /** The resolved mobile composer preference (tests flip it per case). */
@@ -76,6 +77,24 @@ async function call(port: number, method: string): Promise<{ status: number; bod
     const req = httpRequest({
       host: '127.0.0.1', port, path: `/m/api/${method}`, method: 'POST',
       headers: { 'content-type': 'application/json', cookie: `${cookieName}=device-1`, 'content-length': Buffer.byteLength(body) },
+    }, (response) => {
+      const chunks: Buffer[] = []
+      response.on('data', (chunk) => { chunks.push(chunk as Buffer) })
+      response.on('end', () => {
+        resolve({ status: response.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8') })
+      })
+    })
+    req.on('error', reject)
+    req.end(body)
+  })
+}
+
+async function callNoCookie(port: number, method: string): Promise<{ status: number; body: string }> {
+  return await new Promise((resolve, reject) => {
+    const body = JSON.stringify({ type: 'client-request', rpcId: 'probe-1', method, payload: {} })
+    const req = httpRequest({
+      host: '127.0.0.1', port, path: `/m/api/${method}`, method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) },
     }, (response) => {
       const chunks: Buffer[] = []
       response.on('data', (chunk) => { chunks.push(chunk as Buffer) })
@@ -190,5 +209,104 @@ describe('mobile api envelope', () => {
 
     req.destroy()
     await new Promise<void>(resolve => server.close(() => resolve()))
+  })
+
+  it('refreshes device presence on every gated unary request', async () => {
+    // The mobile surface has no /api/pair/heartbeat sender, so any gated RPC
+    // must count as presence (touchDevice) — otherwise an idle phone ages past
+    // offlineAfterMs and the desktop panel reports it as disconnected while it
+    // is still actively connected.
+    const touchDevice = vi.fn(() => true)
+    const spyService = { config: { cookieName }, hasDevice: () => true, touchDevice } as never
+    const server = await serve(makeMobileApiRoutes({ service: spyService, apiProxy, mobileEnterToSend }))
+    try {
+      const { status } = await call(server.port, 'session.list')
+      expect(status).toBe(200)
+      expect(touchDevice).toHaveBeenCalledWith('device-1')
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('refreshes device presence on every SSE keep-alive while the stream stays open', async () => {
+    // The core scenario: an idle phone keeps its SSE stream open but sends no
+    // RPC traffic. The keep-alive interval must keep calling touchDevice so the
+    // device never ages past offlineAfterMs — without this the desktop panel
+    // reports "disconnected" while the phone is still connected.
+    const touchDevice = vi.fn(() => true)
+    const spyService = { config: { cookieName }, hasDevice: () => true, touchDevice } as never
+    const blockingProxy = {
+      ...apiProxy,
+      events: { mux: () => (async function* () { while (true) { await new Promise(() => {}) } })() },
+    } as unknown as ApiProxy
+    const routes = makeMobileApiRoutes({ service: spyService, apiProxy: blockingProxy, mobileEnterToSend, eventsHeartbeatMs: 20 })
+    const server = createServer((request, response) => {
+      const pathname = new URL(request.url ?? '/', 'http://x').pathname
+      const exact = routes.find(r => r.kind === 'exact' && r.path === pathname)
+      const route = exact ?? routes.find(r => r.kind === 'prefix' && pathname.startsWith(r.path))
+      if (route === undefined) {
+        response.writeHead(404)
+        response.end()
+        return
+      }
+      void route.handler(request, response)
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address() as AddressInfo
+
+    let resolveDone: (() => void) | undefined
+    const done = new Promise<void>(resolve => { resolveDone = resolve })
+    const req = httpRequest({
+      host: '127.0.0.1', port: address.port, path: '/m/api/events.mux', method: 'GET',
+      headers: { cookie: 'dsh_pair=device-1' },
+    }, () => {})
+    req.on('error', () => { resolveDone?.() })
+    req.end()
+
+    // Wait until the keep-alive interval has fired enough times (>= 2 touches).
+    const deadline = Date.now() + 2000
+    while (touchDevice.mock.calls.length < 2 && Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 10))
+    }
+    resolveDone?.()
+
+    expect(touchDevice.mock.calls.length).toBeGreaterThanOrEqual(2)
+    // Each keep-alive refreshes presence for the paired device cookie.
+    for (const callArgs of touchDevice.mock.calls) {
+      expect(callArgs[0]).toBe('device-1')
+    }
+
+    req.destroy()
+    await new Promise<void>(resolve => server.close(() => resolve()))
+  })
+
+  it('vetoes when touchDevice returns false despite a present cookie', async () => {
+    // hasDevice may be true while touchDevice is false (e.g. the service was
+    // stopped). The gate must still refuse and must not leak the request.
+    const touchDevice = vi.fn(() => false)
+    const spyService = { config: { cookieName }, hasDevice: () => true, touchDevice } as never
+    const server = await serve(makeMobileApiRoutes({ service: spyService, apiProxy, mobileEnterToSend }))
+    try {
+      const { status } = await call(server.port, 'session.list')
+      expect(status).toBe(403)
+      expect(touchDevice).toHaveBeenCalledWith('device-1')
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('does not refresh presence when the device cookie is absent', async () => {
+    const touchDevice = vi.fn(() => true)
+    const spyService = { config: { cookieName }, hasDevice: () => false, touchDevice } as never
+    const server = await serve(makeMobileApiRoutes({ service: spyService, apiProxy, mobileEnterToSend }))
+    try {
+      // A request without the pairing cookie must be vetoed and must not
+      // touchDevice (there is no device id to refresh).
+      const { status } = await callNoCookie(server.port, 'session.list')
+      expect(status).toBe(403)
+      expect(touchDevice).not.toHaveBeenCalled()
+    } finally {
+      await server.close()
+    }
   })
 })

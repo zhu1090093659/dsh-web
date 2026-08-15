@@ -103,10 +103,23 @@ export function makeMobileApiRoutes(deps: MobileApiDeps): WebRoute[] {
   const { service, apiProxy, mobileEnterToSend } = deps
   const eventsHeartbeatMs = deps.eventsHeartbeatMs ?? DEFAULT_EVENTS_HEARTBEAT_MS
 
+  /**
+   * Refresh the paired device's presence and report whether it is live.
+   * The mobile surface (unlike the desktop Web UI) has no `/api/pair/heartbeat`
+   * sender, so any activity on the mobile channel — a gated RPC, or the live
+   * SSE stream staying open — must count as presence. Without this, an
+   * idle-but-connected phone ages past `offlineAfterMs` and the desktop panel
+   * wrongly reports it as disconnected.
+   */
+  const touchDeviceFor = (req: IncomingMessage): boolean => {
+    const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
+    if (deviceId === undefined) return false
+    return service.touchDevice(deviceId)
+  }
+
   /** The phone gate: a live paired-device cookie, or nothing else proceeds. */
   const gateOk = (req: IncomingMessage): boolean => {
-    const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
-    return deviceId !== undefined && service.hasDevice(deviceId)
+    return touchDeviceFor(req)
   }
 
   const writeJson = (res: ServerResponse, status: number, body: unknown): void => {
@@ -190,6 +203,10 @@ export function makeMobileApiRoutes(deps: MobileApiDeps): WebRoute[] {
     let closed = false
     const heartbeat = setInterval(() => {
       if (closed) return
+      // An open SSE stream proves the phone is still live even while the agent
+      // idles (no RPC traffic), so refresh presence alongside the transport
+      // keepalive — otherwise an idle phone drifts to "disconnected".
+      touchDeviceFor(req)
       try {
         res.write(': ping\n\n')
       } catch {

@@ -1,5 +1,6 @@
 /* Branch selector chip in the conversation header context hole.
-   Tokens only — no literal colors. */
+   Tokens by default; the stock-light fallback defines a small literal
+   palette because the unskinned shell tokens are too low-contrast. */
 
 .anchor {
   position: relative;
@@ -17,7 +18,11 @@
    component measures the real card edge and applies it inline so the chip
    starts exactly where the input card starts in every phase. */
 .anchorDock {
+  --gitgraph-dock-gap-tighten: -8px;
   padding-left: var(--dsh-composer-side-clearance, 16px);
+  /* The fallback dock row sits above the input card; this keeps its visual
+     gap compact without moving the hero row. */
+  margin-bottom: var(--gitgraph-dock-gap-tighten);
 }
 
 /* Hero phase: leave the dock row and join the official hero chip row. The
@@ -631,6 +636,31 @@
 .graphRefCurrent {
   background: var(--dsw-alias-brand-primary);
   color: var(--dsw-alias-button-contrast-fill);
+}
+
+/* Stock light fallback: BranchChip marks the unskinned light page at
+   runtime. */
+[data-gitgraph-chip-anchor][data-gitgraph-stock-light] {
+  --gitgraph-stock-ink-rgb: 15, 17, 21;
+  --gitgraph-stock-ink: #0f1115;
+  --gitgraph-stock-on-success: #ffffff;
+  --gitgraph-stock-success-fill: #137333;
+  --gitgraph-stock-success-border: #0f5f2b;
+  --dsw-alias-button-tool-bar-fill: rgba(var(--gitgraph-stock-ink-rgb), 0.04);
+  --dsw-alias-button-tool-bar-hover: rgba(var(--gitgraph-stock-ink-rgb), 0.08);
+  --dsw-alias-border-l2: rgba(var(--gitgraph-stock-ink-rgb), 0.16);
+  --dsw-alias-interactive-bg-hover: rgba(var(--gitgraph-stock-ink-rgb), 0.06);
+  --dsw-alias-interactive-bg-active: rgba(var(--gitgraph-stock-ink-rgb), 0.1);
+  --dsw-alias-label-primary: var(--gitgraph-stock-ink);
+  --dsw-alias-label-secondary: var(--gitgraph-stock-ink);
+  --dsw-alias-label-tertiary: rgba(var(--gitgraph-stock-ink-rgb), 0.56);
+  --dsw-alias-button-contrast-fill: var(--gitgraph-stock-on-success);
+}
+
+[data-gitgraph-chip-anchor][data-gitgraph-stock-light] .noticeOk {
+  background: var(--gitgraph-stock-success-fill);
+  color: var(--gitgraph-stock-on-success);
+  box-shadow: inset 0 0 0 1px var(--gitgraph-stock-success-border);
 }
 
 .graphEmpty {

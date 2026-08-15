@@ -8,7 +8,7 @@
  * the create/graph dialogs behave (validation, duplicate copy, lane
  * rendering).
  */
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { BranchesView, GraphView, RepoStatus, SwitchResult } from '../src/core/types.ts'
@@ -17,7 +17,12 @@ import type { BranchChipProps } from '../src/client/chips/BranchChip.tsx'
 import { BranchChip } from '../src/client/chips/BranchChip.tsx'
 import { zh, type GitGraphKey } from '../src/client/locales.ts'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  for (const name of document.body.getAttributeNames()) {
+    if (name.startsWith('data-dsh-') || name === 'data-ds-dark-theme') document.body.removeAttribute(name)
+  }
+})
 
 const sid = (value: string): SessionId => value as SessionId
 
@@ -156,6 +161,23 @@ describe('BranchChip', () => {
     bench()
     const branchChip = await screen.findByRole('button', { name: '分支' })
     expect(branchChip.textContent).toContain('main')
+  })
+
+  it('marks only the unskinned light skin-center page for stock-light fallback styles', async () => {
+    document.body.setAttribute('data-dsh-skin-center', '')
+    bench()
+    const branchChip = await screen.findByRole('button', { name: '分支' })
+    const anchor = anchorOf(branchChip)
+    expect(anchor.getAttribute('data-gitgraph-stock-light')).toBe('true')
+
+    act(() => { document.body.setAttribute('data-dsh-xp', '') })
+    await waitFor(() => { expect(anchor.hasAttribute('data-gitgraph-stock-light')).toBe(false) })
+
+    act(() => { document.body.removeAttribute('data-dsh-xp') })
+    await waitFor(() => { expect(anchor.getAttribute('data-gitgraph-stock-light')).toBe('true') })
+
+    act(() => { document.body.setAttribute('data-ds-dark-theme', '') })
+    await waitFor(() => { expect(anchor.hasAttribute('data-gitgraph-stock-light')).toBe(false) })
   })
 
   it('keeps the branch chip in a blank (hero) session — the selector row stays docked', async () => {

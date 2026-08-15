@@ -36,6 +36,39 @@ const HERO_CHIP_GAP = 2
 /** Minimum gap between window-focus git refetches (ms). */
 export const FOCUS_REFRESH_MIN_MS = 5_000
 
+const SKIN_CENTER_BODY_ATTR = 'data-dsh-skin-center'
+const DARK_THEME_BODY_ATTR = 'data-ds-dark-theme'
+const DSH_BODY_ATTR_PREFIX = 'data-dsh-'
+
+/** Whether a body attribute belongs to an applied skin rather than the skin center shell. */
+function hasAppliedSkinBodyAttr(name: string): boolean {
+  return name.startsWith(DSH_BODY_ATTR_PREFIX) && name !== SKIN_CENTER_BODY_ATTR
+}
+
+/** Whether the page is using the unskinned stock light theme. */
+function readStockLightTheme(): boolean {
+  if (typeof document === 'undefined') return false
+  const body = document.body
+  if (!body.hasAttribute(SKIN_CENTER_BODY_ATTR) || body.hasAttribute(DARK_THEME_BODY_ATTR)) return false
+  return !body.getAttributeNames().some(hasAppliedSkinBodyAttr)
+}
+
+/** Track stock-light theme changes from body attributes. */
+function useStockLightTheme(): boolean {
+  const [stockLightTheme, setStockLightTheme] = useState(readStockLightTheme)
+
+  useEffect(() => {
+    const update = (): void => { setStockLightTheme(readStockLightTheme()) }
+    update()
+    if (typeof document === 'undefined' || typeof MutationObserver !== 'function') return undefined
+    const observer = new MutationObserver(update)
+    observer.observe(document.body, { attributes: true })
+    return () => { observer.disconnect() }
+  }, [])
+
+  return stockLightTheme
+}
+
 /**
  * The right edge of the rightmost painted descendant of `root`, excluding
  * `root` itself. The hero row's direct children can be display:contents
@@ -113,6 +146,7 @@ export function BranchChip(props: BranchChipProps) {
   // lists as blank in the session store, so it may enter the hero row before
   // the composer snapshot settles to `open`.
   const heroSeat = sessionSnapshot?.composerPhase === 'blank' && (sessionSnapshot.openState === 'open' || blankSession === true)
+  const stockLightTheme = useStockLightTheme()
 
   /** Repository state: undefined = loading, null = not a repository, else the snapshot. */
   const [repo, setRepo] = useState<RepoStatus | null | undefined>(undefined)
@@ -260,6 +294,7 @@ export function BranchChip(props: BranchChipProps) {
     <div
       ref={anchorRef}
       data-gitgraph-chip-anchor
+      data-gitgraph-stock-light={stockLightTheme || undefined}
       className={cx(css.anchor, dockSeat && css.anchorDock, heroSeat && css.anchorHero)}
       style={
         heroSeat && heroPlacement !== null

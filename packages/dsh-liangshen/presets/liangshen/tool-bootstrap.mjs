@@ -22,6 +22,20 @@
  * `deferredGraceSteps` delay selected injected message kinds (workspace
  * instructions, skill catalog) for a few steps after promotion.
  *
+ * COMPACTION (local addition, ported from the upstream compaction-epoch
+ * semantics): a compaction rewrites the whole model-visible surface, so the
+ * first post-compaction request is a "second first request". A
+ * `compaction/end` event releases Code Mode (the presentation disposer) and
+ * resets the promotion state to the CONTROLLED phase — bootstrap pair plus
+ * `compactionTools` (a core work set, default none) — until a NEW durable
+ * promotion signal exists past that boundary. The reset lives both in the
+ * live `session/event` path and inside the durable-log scan, so resume and
+ * reload reconstruct the same phase.
+ *
+ * ROBUSTNESS: composition drift (a missing bootstrap shell or common tool)
+ * degrades to the full catalog with a one-time warning instead of throwing,
+ * so a broken composition can never lock a session out of every request.
+ *
  * Source: https://github.com/xiaobright/dsh-anchored-standard (MIT), extended
  * with the phase-1 quarantine and the stabilization controls above.
  */
@@ -151,10 +165,43 @@ function stateFor(session) {
       steps: 0,
       deferredSteps: 0,
       presentationApplied: false,
+      hasCompacted: false,
+      presentationDisposer: undefined,
     }
     promotionBySession.set(session, state)
   }
   return state
+}
+
+/**
+ * Reset one session back to the CONTROLLED phase after a compaction. A
+ * compaction rewrites the whole model-visible surface — the first
+ * post-compaction request is a "second first request" with the same
+ * first-token conditions the bootstrap exists to control — so the session
+ * re-anchors: promotion state is cleared (the durable `next` scan pointer is
+ * kept, so events recorded BEFORE the boundary never re-promote), and the
+ * Code Mode presentation is disposed so the next assembly sees the native
+ * catalog and the phase-1 filter can narrow it again.
+ */
+function resetToControlled(state) {
+  if (typeof state.presentationDisposer === 'function') {
+    try {
+      state.presentationDisposer()
+    } catch {
+      // A failed presentation reset must never break the session; the
+      // next promotion re-declares Code Mode anyway.
+    }
+    state.presentationDisposer = undefined
+  }
+  state.promoted = false
+  state.toolCalled = false
+  state.responded = false
+  state.anchored = false
+  state.turnEnded = false
+  state.steps = 0
+  state.deferredSteps = 0
+  state.presentationApplied = false
+  state.hasCompacted = true
 }
 
 /**
@@ -167,7 +214,10 @@ function applyPresentation(agent, state, policy) {
   state.presentationApplied = true
   const tools = agent.ctx.tools
   if (tools === undefined) return
-  tools.presentAs('code')
+  // The disposer restores the deployment-default (native) presentation; it is
+  // kept on the state so a post-compaction reset can release Code Mode and
+  // let the phase-1 catalog filter see the native tool list again.
+  state.presentationDisposer = tools.presentAs('code')
 }
 
 /**
@@ -193,7 +243,14 @@ function scanEvents(state, session) {
   for (; state.next < events.length; state.next += 1) {
     const event = events[state.next]
     if (event === undefined) continue
-    if (event.type === 'tool/call') {
+    if (event.type === 'compaction/end') {
+      // A compaction rewrites the model-visible surface: the session falls
+      // back to the controlled phase until a NEW promotion signal exists
+      // past this boundary (the `next` pointer stays, so events before the
+      // boundary never re-promote). Handled inside the scan so cold starts
+      // reconstruct the same phase from the durable log.
+      resetToControlled(state)
+    } else if (event.type === 'tool/call') {
       state.toolCalled = true
     } else if (event.type === 'step/start') {
       state.steps += 1
@@ -253,9 +310,25 @@ export function apply(ctx, config) {
   if (presentation !== 'native' && presentation !== 'code') {
     throw new TypeError(`${name}: promotedPresentation must be "native" or "code"`)
   }
+
+  let warned = false
+  const warnOnce = (message) => {
+    if (warned) return
+    warned = true
+    try {
+      ctx.logger.warn(message)
+    } catch {
+      // Logger unavailable — the guard exists only to avoid spamming.
+    }
+  }
   const bootstrapMaxTokens = config.bootstrapMaxTokens === undefined
     ? undefined
     : integerAtLeast(config.bootstrapMaxTokens, 'bootstrapMaxTokens', 1)
+  // Core work set exposed during the post-compaction controlled phase, so a
+  // mid-task model keeps working with a small catalog instead of the full
+  // Standard set. Defaults to none: the session stays on the bootstrap pair
+  // until a new promotion signal (the composition may widen it via config).
+  const compactionTools = stringListOrEmpty(config.compactionTools, 'compactionTools')
   const policy = {
     anchorGate: config.anchorGate === true,
     promoteAfterFirstResponse: config.promoteAfterFirstResponse === true,
@@ -263,14 +336,22 @@ export function apply(ctx, config) {
     deferredGraceSteps: integerAtLeast(config.deferredGraceSteps ?? 0, 'deferredGraceSteps', 0),
     promotedPresentation: presentation,
     bootstrapMaxTokens,
+    compactionTools,
   }
 
   // Promotion is applied at step/turn boundaries, never while a step is still
   // executing tools: switching the presentation mid-step would collapse the
   // native calls that step already planned. By `step/end` the tool-call and
   // reasoning events are durable, so the NEXT prompt assembly already sees
-  // Code Mode with its generated SDK section.
+  // Code Mode with its generated SDK section. A `compaction/end` event
+  // releases Code Mode and resets the promotion state (see
+  // resetToControlled); the reset also runs inside scanEvents, so a cold
+  // start reconstructs the same controlled phase from the durable log.
   ctx.on('session/event', (session, event) => {
+    if (event.type === 'compaction/end') {
+      resetToControlled(stateFor(session))
+      return
+    }
     if (event.type !== 'step/end' && event.type !== 'turn/end') return
     const state = stateFor(session)
     if (!state.promoted) {
@@ -288,6 +369,8 @@ export function apply(ctx, config) {
   // result (including messages appended by listener order, not row order)
   // before the quarantine strips it.
   ctx.on('system-prompt/assemble', async (_assembly, context, next) => {
+    // Downstream errors propagate untouched; only this filter's own logic is
+    // guarded (a filter bug must never brick every request of a session).
     const assembled = await next()
     const agent = context.agent
     if (agent === undefined) return assembled
@@ -298,13 +381,21 @@ export function apply(ctx, config) {
     const selectedShells = shellTools.filter(toolName => available.has(toolName))
     const missingCommon = commonTools.filter(toolName => !available.has(toolName))
     if (selectedShells.length !== 1 || missingCommon.length > 0) {
-      throw new Error(
+      // Composition drift must not lock a session out: degrade to the full
+      // catalog with a one-time warning instead of throwing (the bootstrap
+      // phase surfaces will simply not apply).
+      warnOnce(
         `${name}: expected exactly one bootstrap shell and every common tool; `
-        + `shells=${JSON.stringify(selectedShells)}, missing=${JSON.stringify(missingCommon)}`,
+        + `shells=${JSON.stringify(selectedShells)}, missing=${JSON.stringify(missingCommon)} — `
+        + 'bootstrap disabled, full catalog exposed',
       )
+      return assembled
     }
 
     const bootstrap = new Set([...selectedShells, ...commonTools])
+    // After a compaction the controlled phase widens with the core work set
+    // so mid-task work can continue before re-promotion.
+    if (state.hasCompacted) for (const toolName of compactionTools) bootstrap.add(toolName)
     return {
       ...assembled,
       tools: assembled.tools.filter(tool => bootstrap.has(tool.name)),

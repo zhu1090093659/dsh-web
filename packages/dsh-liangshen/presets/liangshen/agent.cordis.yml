@@ -55,6 +55,10 @@
 # step after promotion. `bootstrapMaxTokens` caps the phase-1 request output
 # budget (community-observed "We need" trigger window, 1024) and is stripped
 # again after promotion so the cap never solders into later requests.
+# After a compaction the session falls back to the controlled phase — the
+# bootstrap pair plus `compactionTools` (a core work set) — until a NEW
+# promotion signal exists past the boundary, and Code Mode is released until
+# the session re-promotes.
 - id: tool-bootstrap
   name: ./tool-bootstrap.mjs
   config:
@@ -65,6 +69,7 @@
     maxBootstrapSteps: 4
     promoteAfterFirstResponse: true
     bootstrapMaxTokens: 1024
+    compactionTools: [read, write, edit, glob, grep, todo_write, ask_user_question]
     deferredSources: [agent-instructions, skill-catalog]
     deferredGraceSteps: 1
     promotedPresentation: code

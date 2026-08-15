@@ -1,0 +1,12 @@
+{
+  // Solution file: one program per side (host half vs browser half), the
+  // main-repo rule for packages that span both — the host settings merges
+  // (dsh-settings root) and the browser runtime merges (client runtime)
+  // cannot share one ts.Program. Tests are type-checked by
+  // tsconfig.vitest.json (no emit).
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.host.json" },
+    { "path": "./tsconfig.client.json" }
+  ]
+}

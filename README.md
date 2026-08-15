@@ -216,6 +216,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-task-board   # 任务看�
 dsh plugin --profile web add @linxin666/dsh-ssh                    # 远程连接（SSH）
 dsh plugin --profile web add @linxin666/dsh-tool-describe-image    # 图像理解工具
 dsh plugin --profile web add @linxin666/dsh-pet                    # 鲸鱼娘宠物
+dsh plugin --profile web add @linxin666/dsh-client-ui-mermaid      # Mermaid 图表渲染
 ```
 
 ### 验证与卸载
@@ -326,8 +327,9 @@ A: 只要皮肤就装 `@linxin666/dsh-skins`；只装某一个插件就用「单
 
 | 包 | 来源 | 版权 |
 | --- | --- | --- |
-| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-ui-settings / dsh-liangshen / dsh-skins / dsh-web-ui-all / skins | 作者 zhu1090093659 个人开发 | Apache-2.0（zhu1090093659） |
+| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-ui-settings / dsh-liangshen / dsh-mermaid / dsh-skins / dsh-web-ui-all / skins | 作者 zhu1090093659 个人开发 | Apache-2.0（zhu1090093659） |
 | dsh-tool-describe-image | 移植自 [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)（deepseek-harness `packages/vision/tool-describe-image`） | Apache-2.0（zhu1090093659） |
+| dsh-mermaid 图表引擎 | npm 依赖 [mermaid](https://github.com/mermaid-js/mermaid)，打包进客户端产物（不迁入源码） | MIT（mermaid-js） |
 
 ## 贡献者
 

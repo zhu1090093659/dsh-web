@@ -19,6 +19,7 @@ patchFrom:
   - ../dsh-ssh
   - ../dsh-tool-describe-image
   - ../dsh-liangshen
+  - ../dsh-mermaid
   - ../dsh-skins
 self:
   - ui-web-ui-compat
@@ -33,6 +34,7 @@ deps:
   - ../dsh-tool-describe-image
   - ../dsh-liangshen
   - ../dsh-web-ui-settings
+  - ../dsh-mermaid
   - ../dsh-skins
   # skin-center 是 dsh-skins patch 行（ui-skin-center）的宿主，必须与
   # dsh-skins 一样落在 profile 顶层，loader 才能从顶层解析到该行

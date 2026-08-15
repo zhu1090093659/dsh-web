@@ -106,7 +106,7 @@ export function clientBundle(
     const hasClient = existsSync(resolvePath(process.cwd(), 'src/client/index.ts'))
     const client = hasClient ? clientConfig(id, face === undefined
       ? 'src/client/index.ts'
-      : 'lib/types/client/index.js') : undefined
+      : 'lib/types/client/index.js', options.client) : undefined
     const node = [lib, ...(options.companions ?? [])]
     if (face === 'host') return options.hostPhase === true ? node : [SKIP_WORKSPACE_BUILD]
     if (face === 'client') return options.hostPhase === true ? (client ? [client] : []) : (client ? [...node, client] : node)
@@ -173,6 +173,14 @@ interface ClientBundleOptions {
   readonly lib?: UserConfig
   /** Extra Node-side externals (in addition to the default cordis entry). */
   readonly libExternal?: readonly (string | RegExp)[]
+  /**
+   * Overrides for the browser client bundle. Top-level keys replace the
+   * preset's; `outputOptions` merges shallowly OVER the preset's closure
+   * factory wiring (banner/footer/entryFileNames), so a package can add e.g.
+   * `inlineDynamicImports` (single-file client artifact) without unpicking
+   * the loader handoff.
+   */
+  readonly client?: UserConfig
 }
 
 type BuildFace = 'host' | 'client' | undefined
@@ -209,7 +217,10 @@ function clientLibraryConfig(
   }
 }
 
-function clientConfig(id: string, entry: string): UserConfig {
+function clientConfig(id: string, entry: string, overrides: UserConfig = {}): UserConfig {
+  // Top-level override keys replace the preset's; outputOptions merges
+  // shallowly over the closure-factory wiring (see ClientBundleOptions.client).
+  const { outputOptions: overrideOutput, ...overrideRest } = overrides
   return {
     name: `${id}/client`,
     entry: { client: entry },
@@ -323,6 +334,7 @@ function clientConfig(id: string, entry: string): UserConfig {
       banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(id)}, factory: (require) => {`,
       footer: 'return module.exports; } });',
       intro: 'var module = { exports: {} }; var exports = module.exports;',
+      ...overrideOutput,
     },
   }
 }

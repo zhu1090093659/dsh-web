@@ -43,6 +43,7 @@
     "@linxin666/dsh-tool-describe-image": "workspace:*",
     "@linxin666/dsh-liangshen": "workspace:*",
     "@linxin666/dsh-client-ui-web-ui-settings": "workspace:*",
+    "@linxin666/dsh-client-ui-mermaid": "workspace:*",
     "@linxin666/dsh-skins": "workspace:*",
     "@linxin666/dsh-client-ui-skin-center": "workspace:*"
   }

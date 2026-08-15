@@ -1,0 +1,34 @@
+{
+  // Vitest program: type-checks src + tests together without emitting.
+  // SDK types resolve from the @deepseek-ai/* npm devDependencies. The
+  // browser entry and the settings card carry the client-runtime session
+  // merges, which must not meet the host Context merges in one program;
+  // they are type-checked by the client project instead (tests never
+  // import them — the enhancer is exercised through its injected render
+  // seam, so the heavy mermaid dependency stays out of the test runtime).
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "src/client/index.ts",
+    "src/client/MermaidSettingsCard.tsx",
+    "src/client/mermaid-runtime.ts"
+  ]
+}

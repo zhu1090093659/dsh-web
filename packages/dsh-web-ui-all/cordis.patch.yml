@@ -57,6 +57,11 @@
     - id: liangshen
       name: '@linxin666/dsh-liangshen'
 
+# from ../dsh-mermaid
+- insert:
+    - id: ui-mermaid
+      name: '@linxin666/dsh-client-ui-mermaid'
+
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:
     - id: ui-skin-center

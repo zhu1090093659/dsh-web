@@ -25,5 +25,15 @@
     "description": "基于官方 DeepSeek Harness 的交互式终端 UI 插件，在官方基础上增加 TDD 与证据门等工作流。",
     "descriptionEn": "An interactive terminal UI plugin for DeepSeek Harness that adds TDD and evidence-gate workflows on top of the official base.",
     "repo": "https://github.com/huiliyi37/dsh-tianshu-tui"
+  },
+  {
+    "id": "dsh-chat-summary",
+    "name": "Chat Summary",
+    "nameEn": "Chat Summary",
+    "author": "v833",
+    "description": "总结当前对话并导出为 Markdown / DOCX / PDF，可选 LLM 智能总结（用户自配 API Key）。",
+    "descriptionEn": "Summarize the current conversation and export it as Markdown / DOCX / PDF, with optional LLM summarization using your own API key.",
+    "repo": "https://github.com/v833/dsh-chat-summary",
+    "npm": "@linxin666/dsh-client-ui-chat-summary"
   }
 ]

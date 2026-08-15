@@ -284,7 +284,7 @@ export function makeRoutes(deps: SkillRoutesDeps): WebRoute[] {
         if (!guard(req, res, 'GET')) return
         try {
           const { skills } = await collectSkills(collectOptions(DEFAULT_CWD()))
-          writeJson(res, 200, { ok: true, plugin: 'dsh-skill-explorer', skills: skills.length })
+          writeJson(res, 200, { ok: true, plugin: 'skill-explorer', skills: skills.length })
         } catch (error) {
           logger.warn(error)
           writeJson(res, 500, { error: error instanceof Error ? error.message : String(error) })

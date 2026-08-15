@@ -94,7 +94,7 @@ describe('/api/dsh-skill-explorer loopback fence', () => {
     const { res, status, body } = response()
     await find(ROUTES.health)!.handler(request(ROUTES.health, 'GET'), res)
     expect(status()).toBe(200)
-    expect(JSON.parse(body()).plugin).toBe('dsh-skill-explorer')
+    expect(JSON.parse(body()).plugin).toBe('skill-explorer')
     expect(JSON.parse(body()).skills).toBeGreaterThan(0)
   })
 })

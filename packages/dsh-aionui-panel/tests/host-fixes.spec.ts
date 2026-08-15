@@ -106,7 +106,7 @@ describe('FsService.readRaw (markdown image route)', () => {
 
     const image = await service.readRaw(root, 'assets/pic.png')
     expect(image).toMatchObject({ mime: 'image/png', size: png.length })
-    if ('data' in image) expect(image.data.equals(png)).toBe(true)
+    if ('abs' in image) expect(image.abs.endsWith(join('assets', 'pic.png'))).toBe(true)
     expect(await service.readRaw(root, 'a.md')).toMatchObject({ mime: 'application/octet-stream' })
 
     await rm(dir, { recursive: true, force: true })
@@ -124,7 +124,7 @@ describe('FsService.readRaw (markdown image route)', () => {
 
     const byExt = await service.readRaw(root, 'docs/doc.pdf')
     expect(byExt).toMatchObject({ mime: 'application/pdf', size: pdf.length })
-    if ('data' in byExt) expect(byExt.data.equals(pdf)).toBe(true)
+    if ('abs' in byExt) expect(byExt.abs.endsWith(join('docs', 'doc.pdf'))).toBe(true)
     expect(await service.readRaw(root, 'docs/noext')).toMatchObject({ mime: 'application/pdf' })
 
     await rm(dir, { recursive: true, force: true })

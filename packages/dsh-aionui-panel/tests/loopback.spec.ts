@@ -128,7 +128,7 @@ describe('/aionui-panel loopback fence', () => {
   })
 
   it('rejects non-loopback GET /aionui-panel/raw with 403', async () => {
-    const readRaw = vi.fn(async () => ({ data: Buffer.from('x'), mime: 'text/plain', size: 1 }))
+    const readRaw = vi.fn(async () => ({ abs: '/w/a.txt', mime: 'text/plain', size: 1 }))
     const { ctx, registrations } = fakeCtx()
     registerPanelRoutes(ctx as never, { readRaw } as never, { status: async () => null } as never)
     const prefix = registrations.find((row) => row.kind === 'prefix')!

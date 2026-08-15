@@ -7,6 +7,8 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { createReadStream } from 'node:fs'
+import { pipeline } from 'node:stream/promises'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { PanelEnvelope, PanelError } from '../core/types.ts'
@@ -37,6 +39,32 @@ interface Subscriber {
 const GIT_POLL_MS = 30_000
 /** SSE keep-alive comment interval (proxies drop idle connections). */
 const HEARTBEAT_MS = 15_000
+
+/**
+ * Parse a single-range `bytes=start-end` header against the file size.
+ * Returns null when no range was requested, 'invalid' for malformed or
+ * unsatisfiable ranges (the caller answers 416), or the clamped start/end
+ * (inclusive). Multi-range requests are treated as invalid — the panel only
+ * ever serves single ranges. Suffix ranges (`bytes=-N`) select the last N
+ * bytes. Range support added after human review on #242 (pdf seeking).
+ */
+export function parseRangeHeader(
+  header: string | undefined,
+  size: number,
+): { start: number; end: number } | 'invalid' | null {
+  if (header === undefined) return null
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim())
+  if (match === null || (match[1] === '' && match[2] === '')) return 'invalid'
+  if (match[1] === '') {
+    const suffix = Number(match[2])
+    if (suffix <= 0 || size === 0) return 'invalid'
+    return { start: Math.max(0, size - suffix), end: size - 1 }
+  }
+  const start = Number(match[1])
+  const end = match[2] === '' ? size - 1 : Math.min(Number(match[2]), size - 1)
+  if (size === 0 || start > end || start >= size) return 'invalid'
+  return { start, end }
+}
 
 /**
  * Deadline for one git-status subprocess inside pollGit. Not an execution
@@ -227,12 +255,15 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
   }
 
   /**
-   * GET /aionui-panel/raw: stream one workspace file (markdown image srcs).
-   * Gated like every other operation; the bytes go out with the derived mime
-   * so an `<img>` can load them. No validators are negotiated, so the browser
-   * revalidates every time — a re-edited image never shows stale bytes.
+   * GET /aionui-panel/raw: stream one workspace file (markdown image srcs,
+   * pdf preview). Gated like every other operation; FsService.readRaw only
+   * resolves and stats the path, the bytes are piped straight from disk with
+   * the derived mime — the whole file never sits in host memory. Single byte
+   * ranges are honored (206/416) so the browser pdf viewer can seek large
+   * files. No validators are negotiated, so the browser revalidates every
+   * time — a re-edited file never shows stale bytes.
    */
-  const serveRaw = async (url: URL, res: ServerResponse): Promise<void> => {
+  const serveRaw = async (req: IncomingMessage, url: URL, res: ServerResponse): Promise<void> => {
     const root = url.searchParams.get('root')
     const path = url.searchParams.get('path')
     if (root === null || root === '' || path === null || path === '') {
@@ -240,18 +271,38 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
       return
     }
     const result = await fs.readRaw(root, path)
-    if (!('data' in result)) {
+    if (!('abs' in result)) {
       const status = result.code === 'path-outside-root' || result.code === 'is-directory' ? 403 : 404
       json(res, FAIL(result), status)
       return
     }
-    res.writeHead(200, {
+    const range = parseRangeHeader(req.headers.range, result.size)
+    if (range === 'invalid') {
+      res.writeHead(416, { 'content-range': `bytes */${result.size}` })
+      res.end()
+      return
+    }
+    const headers: Record<string, string | number> = {
       'content-type': result.mime,
-      'content-length': result.size,
       'cache-control': 'no-cache',
       'x-content-type-options': 'nosniff',
-    })
-    res.end(result.data)
+      'accept-ranges': 'bytes',
+    }
+    if (range === null) {
+      headers['content-length'] = result.size
+      res.writeHead(200, headers)
+    } else {
+      headers['content-range'] = `bytes ${range.start}-${range.end}/${result.size}`
+      headers['content-length'] = range.end - range.start + 1
+      res.writeHead(206, headers)
+    }
+    try {
+      await pipeline(createReadStream(result.abs, range === null ? undefined : { start: range.start, end: range.end }), res)
+    } catch {
+      // Client aborted mid-stream or the file vanished after stat: the
+      // response is already committed, so just tear it down.
+      res.destroy()
+    }
   }
 
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -264,7 +315,7 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
     if (req.method === 'GET') {
       const url = new URL(req.url ?? '/', 'http://x')
       if (url.pathname === '/aionui-panel/raw') {
-        await serveRaw(url, res)
+        await serveRaw(req, url, res)
         return
       }
       res.writeHead(405)

@@ -9,7 +9,7 @@
  * @module dsh-aionui-panel/host/fs-service
  */
 
-import { readdir, readFile, realpath, stat, writeFile, rm, mkdir } from 'node:fs/promises'
+import { open, readdir, readFile, realpath, stat, writeFile, rm, mkdir } from 'node:fs/promises'
 import { watch as watchPath, type Dirent, type FSWatcher } from 'node:fs'
 import { join, dirname } from 'node:path'
 import type { DirListing, FileRead, FsEntry, PanelError, SearchHit, SearchView } from '../core/types.ts'
@@ -179,6 +179,21 @@ function imageMime(rel: string, data: Buffer): string {
   return 'application/octet-stream'
 }
 
+/** Read the first 4 magic bytes of a file (empty buffer when unreadable). */
+async function readMagicBytes(abs: string): Promise<Buffer> {
+  let handle: Awaited<ReturnType<typeof open>> | undefined
+  try {
+    handle = await open(abs, 'r')
+    const buf = Buffer.alloc(4)
+    const { bytesRead } = await handle.read(buf, 0, 4, 0)
+    return buf.subarray(0, bytesRead)
+  } catch {
+    return Buffer.alloc(0)
+  } finally {
+    if (handle !== undefined) await handle.close().catch(() => {})
+  }
+}
+
 /**
  * Filesystem service: gated listing/read/write/search/delete plus a change
  * watcher. All relative paths are resolved against the gated root.
@@ -270,17 +285,18 @@ export class FsService {
   }
 
   /**
-   * Read one file's raw bytes (the markdown image route): gated, traversal-
-   * guarded, and .git-refusing. The bytes are streamed by the HTTP layer with
-   * the derived mime so `<img>` tags can load workspace files directly.
+   * Resolve one file for raw streaming (the markdown image / pdf preview
+   * route): gated, traversal-guarded, and .git-refusing. Returns the absolute
+   * path with the derived mime and size — the HTTP layer streams the bytes
+   * itself (createReadStream + Range), so even large files never sit in host
+   * memory. Mime magic detection reads only the first few bytes.
    */
-  async readRaw(root: string, rel: string): Promise<{ data: Buffer; mime: string; size: number } | PanelError> {
+  async readRaw(root: string, rel: string): Promise<{ abs: string; mime: string; size: number } | PanelError> {
     const gated = await this.gate(root)
     if (!gated.ok) return gated.error
     if (isGitPath(rel)) return { code: 'path-outside-root', message: 'refusing to read .git' }
     const resolved = await resolveInsideRoot(gated.canonical, rel)
     if (!resolved.ok) return resolved.error
-    let data: Buffer
     let info: Awaited<ReturnType<typeof stat>>
     try {
       info = await stat(resolved.abs)
@@ -288,12 +304,7 @@ export class FsService {
       return { code: 'not-found', message: `cannot read ${rel}` }
     }
     if (info.isDirectory()) return { code: 'is-directory', message: `${rel} is a directory` }
-    try {
-      data = await readFile(resolved.abs)
-    } catch {
-      return { code: 'not-found', message: `cannot read ${rel}` }
-    }
-    return { data, mime: imageMime(rel, data), size: data.length }
+    return { abs: resolved.abs, mime: imageMime(rel, await readMagicBytes(resolved.abs)), size: info.size }
   }
 
   /** Write text content back, refusing when the file moved on disk (mtime conflict). */

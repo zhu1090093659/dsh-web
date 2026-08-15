@@ -611,8 +611,7 @@ describe('liveTokenUsage projection', () => {
     if (final === null) throw new Error('active step is absent')
     const rescan = (): number => {
       const tokens: number[] = []
-      for (const block of final.blocks) {
-        if (block === undefined) continue
+      for (const block of Object.values(final.blocks)) {
         tokens.push(block.kind === 'text' || block.kind === 'reasoning'
           ? estimateTextBlockTokens(block.characters, spec)
           : block.kind === 'tool-call'
@@ -639,9 +638,9 @@ describe('liveTokenUsage projection', () => {
     state = definition.apply(state, surfaceEvent(1, 'one', 'append'))
     state = definition.apply(state, surfaceEvent(2, 'two', 'append'))
     state = definition.apply(state, surfaceEvent(3, 'three', { op: 'replace', start: 1, end: 2 }))
-    expect(state.surface.has(1)).toBe(false)
-    expect(state.surface.has(2)).toBe(false)
-    expect(state.surface.has(3)).toBe(true)
+    expect(Object.prototype.hasOwnProperty.call(state.surface, 1)).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(state.surface, 2)).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(state.surface, 3)).toBe(true)
     expect(state.surfaceTokens).toBe(estimateMessageTokens(
       createUserMessage({ content: [{ type: 'text', text: 'three' }], source: { kind: 'user' } }),
       spec,
@@ -651,4 +650,87 @@ describe('liveTokenUsage projection', () => {
     expect(() => definition.apply(state, surfaceEvent(4, 'bad', { op: 'replace', start: 3, end: 99 })))
       .toThrow('invalid current range')
   })
+
+  it('keeps the projection state losslessly JSON-serializable across a stress stream', () => {
+    const spec = resolveEstimatorConfig({})
+    const definition = createLiveTokenUsageProjectionDefinition(spec)
+    let state = definition.init()
+    const apply = (event: SessionEvent): void => { state = definition.apply(state, event) }
+    expect(() => assertLosslessJson(state)).not.toThrow()
+
+    // Header before any step, then a step whose deltas land at a far-apart
+    // index (a sparse blocks layout under the old array representation).
+    apply({
+      type: 'request/header',
+      time: 1,
+      data: { header: { config: { provider: 'mock', model: 'mock' }, system: 'abcd' }, reason: 'initial' },
+    } as unknown as SessionEvent)
+    apply({ type: 'step/start', time: 2, data: { turn: 1, step: 1 } } as unknown as SessionEvent)
+    apply({
+      type: 'assistant/chunk',
+      time: 3,
+      data: { turn: 1, step: 1, chunk: { type: 'text-delta', index: 7, text: 'sparse' } },
+    } as unknown as SessionEvent)
+    // Mid-stream: the active step holds priced blocks.
+    expect(() => assertLosslessJson(state)).not.toThrow()
+
+    // A rate-less step settles with no measured throughput: the carried
+    // tokensPerSecond must be null, never undefined.
+    apply({ type: 'step/end', time: 4, data: { turn: 1, step: 1 } } as unknown as SessionEvent)
+    expect(state.last?.tokensPerSecond).toBeNull()
+    expect(() => assertLosslessJson(state)).not.toThrow()
+
+    // Surface appends plus a range replace exercise the plain-object map.
+    const surfaceEvent = (seq: number, text: string, surfaceOp: unknown): SessionEvent => ({
+      type: 'user/message',
+      seq,
+      time: 5,
+      data: createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }),
+      surfaceOp,
+    } as unknown as SessionEvent)
+    apply(surfaceEvent(1, 'one', 'append'))
+    apply(surfaceEvent(2, 'two', 'append'))
+    apply(surfaceEvent(3, 'three', { op: 'replace', start: 1, end: 2 }))
+    expect(() => assertLosslessJson(state)).not.toThrow()
+
+    // The persisted-checkpoint contract: a lossless JSON round trip.
+    expect(JSON.parse(JSON.stringify(state))).toEqual(state)
+  })
 })
+
+/**
+ * Assert the DSH session-projection checkpoint contract: every value must
+ * survive a lossless JSON round trip (no undefined, no non-finite or -0
+ * numbers, no sparse arrays, no exotic objects such as Map/Set/Date, and no
+ * class instances). A violation here would poison the persisted projection
+ * cache checkpoint for the whole session.
+ */
+function assertLosslessJson(value: unknown, path = '$'): void {
+  if (value === null) return
+  if (value === undefined) throw new Error(`lossless JSON violation: undefined at ${path}`)
+  const type = typeof value
+  if (type === 'number') {
+    if (!Number.isFinite(value)) throw new Error(`lossless JSON violation: non-finite number at ${path}`)
+    if (Object.is(value, -0)) throw new Error(`lossless JSON violation: negative zero at ${path}`)
+    return
+  }
+  if (type === 'string' || type === 'boolean') return
+  if (type === 'bigint' || type === 'function' || type === 'symbol') {
+    throw new Error(`lossless JSON violation: ${type} at ${path}`)
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      if (!(i in value)) throw new Error(`lossless JSON violation: sparse array at ${path}[${i}]`)
+      assertLosslessJson(value[i], `${path}[${i}]`)
+    }
+    return
+  }
+  if (value instanceof Map || value instanceof Set || value instanceof Date) {
+    throw new Error(`lossless JSON violation: ${value.constructor.name} at ${path}`)
+  }
+  const proto = Object.getPrototypeOf(value)
+  if (proto !== Object.prototype && proto !== null) {
+    throw new Error(`lossless JSON violation: non-plain object (${(value as object).constructor?.name}) at ${path}`)
+  }
+  for (const [key, child] of Object.entries(value)) assertLosslessJson(child, `${path}.${key}`)
+}

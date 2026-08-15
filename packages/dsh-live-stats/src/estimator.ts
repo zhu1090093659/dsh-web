@@ -150,12 +150,12 @@ export function estimateMessageTokens(message: Message, spec: EstimatorSpec): nu
 }
 
 /** Estimate the system prompt and tool schemas carried outside the surface.
- * @param header - the epoch header, or undefined when none was recorded.
+ * @param header - the epoch header, or null when none was recorded.
  * @param spec - resolved estimator settings.
  * @returns the estimated token count (zero for an absent header).
  */
-export function estimateHeaderTokens(header: EpochHeader | undefined, spec: EstimatorSpec): number {
-  if (header === undefined) return 0
+export function estimateHeaderTokens(header: EpochHeader | null, spec: EstimatorSpec): number {
+  if (header === undefined || header === null) return 0
   let tokens = 0
   if (header.system !== undefined) {
     tokens += Math.ceil(header.system.length / spec.charsPerToken) + spec.roleOverhead

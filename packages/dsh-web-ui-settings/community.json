@@ -45,5 +45,14 @@
     "descriptionEn": "Evidence-backed built-in capability Inspector: surfaces provenance, compatibility and structural drift of DSH Web built-ins, with fail-closed toggles for only the nine reviewed UI leaves.",
     "repo": "https://github.com/Starfie1d1272/dsh-builtin-toggles",
     "npm": "dsh-builtin-toggles"
+  },
+  {
+    "id": "dsh-pilot",
+    "name": "Pilot 浏览器驾驶舱",
+    "nameEn": "Pilot Browser Cockpit",
+    "author": "guo6x",
+    "description": "给 agent 一双会开车的手：零依赖 CDP 浏览器操控（8 个 pilot_* 工具：导航/点击/输入/按键/JS/截图）+ Web GUI 可拖拽驾驶舱面板，无需 Playwright、无需 API key。",
+    "descriptionEn": "Give your agent hands: zero-dependency CDP browser control (8 pilot_* tools: navigate/click/type/keys/eval/screenshot) plus a draggable cockpit panel in the Web GUI - no Playwright, no API key.",
+    "repo": "https://github.com/guo6x/dsh-pilot"
   }
 ]

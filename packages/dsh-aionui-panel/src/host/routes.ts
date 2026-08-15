@@ -9,6 +9,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createReadStream } from 'node:fs'
 import { pipeline } from 'node:stream/promises'
+import { readFile, stat } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { PanelEnvelope, PanelError } from '../core/types.ts'
@@ -345,6 +347,53 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
     }
   }
 
+  /**
+   * GET /aionui-panel/vendor/mermaid.js: the mermaid IIFE bundle shipped in
+   * the package (lib/assets/mermaid.min.js, copied from the mermaid npm
+   * dependency at build time). Same-origin for the browser half (no CDN),
+   * loopback-fenced like every other route. One read is cached per plugin
+   * instance; the size+mtime pair doubles as the ETag so the browser
+   * revalidation is a cheap 304. A missing asset (build without the copy
+   * step) 404s and the client keeps plain code blocks.
+   */
+  let mermaidAsset: { data: Buffer; etag: string } | undefined
+  const serveVendorMermaid = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    if (mermaidAsset === undefined) {
+      // Candidate layouts: the built lib half (lib/index.js -> lib/assets/)
+      // and the source tree (src/host/routes.ts -> lib/assets), so tests
+      // running against src serve the same build-copied asset.
+      const candidates = ['./assets/mermaid.min.js', '../../lib/assets/mermaid.min.js']
+      for (const relative of candidates) {
+        try {
+          const assetPath = fileURLToPath(new URL(relative, import.meta.url))
+          const [data, info] = await Promise.all([readFile(assetPath), stat(assetPath)])
+          mermaidAsset = { data, etag: `"${data.length}-${info.mtimeMs.toString(16)}"` }
+          break
+        } catch {
+          // try the next layout
+        }
+      }
+      if (mermaidAsset === undefined) {
+        res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify({ error: 'mermaid vendor asset missing' }))
+        return
+      }
+    }
+    if (req.headers['if-none-match'] === mermaidAsset.etag) {
+      res.writeHead(304, { etag: mermaidAsset.etag })
+      res.end()
+      return
+    }
+    res.writeHead(200, {
+      'content-type': 'application/javascript; charset=utf-8',
+      'content-length': mermaidAsset.data.length,
+      'cache-control': 'no-cache',
+      etag: mermaidAsset.etag,
+      'x-content-type-options': 'nosniff',
+    })
+    res.end(mermaidAsset.data)
+  }
+
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     // Loopback fence first: never let a LAN client reach any /aionui-panel
     // operation, regardless of method or content-type.
@@ -356,6 +405,10 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
       const url = new URL(req.url ?? '/', 'http://x')
       if (url.pathname === '/aionui-panel/raw') {
         await serveRaw(req, url, res)
+        return
+      }
+      if (url.pathname === '/aionui-panel/vendor/mermaid.js') {
+        await serveVendorMermaid(req, res)
         return
       }
       res.writeHead(405)

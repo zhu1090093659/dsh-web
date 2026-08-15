@@ -14,6 +14,14 @@ import type { PreviewTabState } from '../store.ts'
 import { useResizableSplit } from '../hooks/useResizableSplit.ts'
 import { t } from '../locales.ts'
 import { renderMarkdown, resolveMarkdownImage } from './markdown.ts'
+import {
+  DATA_MD_SCOPE,
+  enhanceMermaidBlocks,
+  mermaidTheme,
+  rethemeMermaidBlocks,
+  shellIsDark,
+  watchShellTheme,
+} from './mermaid.ts'
 import previewCss from '../styles/preview.module.css'
 
 /** Split-ratio persistence key (AionUi contract). */
@@ -197,7 +205,33 @@ function MarkdownViewer({
       </div>
     )
   }
-  return <div className={previewCss.mdViewer} dangerouslySetInnerHTML={{ __html: html }} />
+  return <MermaidAwareMarkdown html={html} />
+}
+
+/**
+ * Rendered markdown body plus the mermaid enhancement lifecycle: fresh
+ * blocks render once per html, completed diagrams re-render on shell theme
+ * flips. The scope marker lets the chat-transcript enhancer skip this
+ * subtree (each surface owns its blocks).
+ */
+function MermaidAwareMarkdown({ html }: { html: string }): JSX.Element {
+  const ref = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (el === null) return undefined
+    void enhanceMermaidBlocks(el, { className: previewCss.mermaidBlock, theme: mermaidTheme(shellIsDark()) })
+    return watchShellTheme((isDark) => {
+      void rethemeMermaidBlocks(el, { theme: mermaidTheme(isDark) })
+    })
+  }, [html])
+  return (
+    <div
+      ref={ref}
+      className={previewCss.mdViewer}
+      {...{ [DATA_MD_SCOPE]: '1' }}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
 }
 
 /** HTML viewer: sandboxed iframe (scripts off) or source textarea. */

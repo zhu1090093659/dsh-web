@@ -31,11 +31,14 @@
     }
   },
   "scripts": {
-    "build": "tsc -b && tsdown",
-    "prepare": "tsdown",
+    "build": "tsc -b && node scripts/copy-mermaid.mjs && tsdown",
+    "prepare": "node scripts/copy-mermaid.mjs && tsdown",
     "watch": "tsdown --watch",
     "test": "vitest run",
     "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "mermaid": "11.16.1"
   },
   "peerDependencies": {
     "react": "^18.2.0"

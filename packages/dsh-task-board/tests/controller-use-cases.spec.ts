@@ -53,6 +53,28 @@ describe('use-case: update', () => {
     const updated = applyUpdateTask(seed(2), 'missing', { title: 'x' }, NOW)
     expect(updated.map(t => t.id)).toEqual(['id-0', 'id-1'])
   })
+
+  it('applies execution-target patches and clears pins with undefined', () => {
+    const pinned = applyUpdateTask(seed(2), 'id-0', { workspaceId: 'ws-1', mode: 'anchored', permission: 'read-only' }, NOW + 6)
+    expect(pinned[0].workspaceId).toBe('ws-1')
+    expect(pinned[0].mode).toBe('anchored')
+    expect(pinned[0].permission).toBe('read-only')
+
+    const cleared = applyUpdateTask(pinned, 'id-0', { workspaceId: undefined, mode: undefined, permission: undefined }, NOW + 7)
+    expect(cleared[0].workspaceId).toBeUndefined()
+    expect(cleared[0].mode).toBeUndefined()
+    expect(cleared[0].permission).toBeUndefined()
+  })
+
+  it('collapses blank target strings and keeps an unknown permission out', () => {
+    const blank = applyUpdateTask(seed(2), 'id-0', { workspaceId: '   ', mode: '' }, NOW + 6)
+    expect(blank[0].workspaceId).toBeUndefined()
+    expect(blank[0].mode).toBeUndefined()
+
+    const pinned = applyUpdateTask(seed(2), 'id-0', { permission: 'workspace-write' }, NOW + 6)
+    const invalid = applyUpdateTask(pinned, 'id-0', { permission: 'root' as never }, NOW + 7)
+    expect(invalid[0].permission).toBe('workspace-write')
+  })
 })
 
 describe('use-case: delete', () => {

@@ -15,17 +15,35 @@
  */
 import type { ExecutionRecord, TaskRecord } from './tasks.ts'
 
+/** One list-row summary the execution service reads (the narrow slice of a SessionSummary). */
+export interface ExecutionSessionSummary {
+  running: boolean
+  completed?: boolean
+  /** Empty-log bit: the preset can only be recomposed while the session is blank. */
+  blank?: boolean
+  /** The preset the session currently runs (absent on deployments without presets). */
+  agentPreset?: string
+}
+
 /** The narrow sessions face the service needs. */
 export interface SessionsExecutionFace {
   list: {
     getSnapshot(): {
       /** Baseline arrival lifecycle — 'pending' until the host list has loaded. */
       phase: 'pending' | 'ready'
-      byId: Record<string, { running: boolean; completed?: boolean }>
+      byId: Record<string, ExecutionSessionSummary>
     }
     subscribe(fn: () => void): () => void
   }
   binding(id: string): { session: SessionDriver } | undefined
+  /** Record a host-confirmed preset switch so the list label moves immediately. */
+  noteAgentPreset?(sessionId: string, agentPreset: string): void
+}
+
+/** The narrow agent-preset wire face the service needs (`agentPreset.select`). */
+export interface PresetsExecutionFace {
+  /** Recompose a blank session's agent from a preset. */
+  select(sessionId: string, agentPreset: string): Promise<{ ok: true } | { ok: false; error: unknown }>
 }
 
 /** The narrow workspaces face the service needs. */
@@ -57,6 +75,12 @@ export interface SessionDriver {
     content: readonly unknown[],
     mode: 'queue',
   ): Promise<{ ok: true } | { ok: false; error: unknown }>
+  /**
+   * Admit one slash-command line against the session's agent (the
+   * `/permission <id>` mechanism). `matched` reports whether a command
+   * claimed the line.
+   */
+  command(line: string): Promise<{ ok: true; matched: boolean } | { ok: false; error: unknown }>
   getSnapshot(): { running: boolean; lastAgentError: string | null; turnEnds: ReadonlyMap<number, number> }
   subscribe(fn: () => void): () => void
 }
@@ -65,6 +89,8 @@ export interface SessionDriver {
 export interface ExecutionEnvironment {
   sessions: SessionsExecutionFace
   workspaces: WorkspacesExecutionFace
+  /** Agent-preset wire face; absent on deployments without preset support. */
+  presets?: PresetsExecutionFace
   /** Raw-history reader for failure detection of never-opened sessions. */
   history?: HistoryExecutionFace
 }
@@ -78,6 +104,19 @@ export type ExecutionEvent =
 function messageOf(error: unknown): string {
   if (error instanceof Error) return error.message
   return String(error)
+}
+
+/**
+ * Whether a rejected preset switch actually means "the session already runs
+ * this preset" (the host's agent-preset-conflict with a matching
+ * existingPreset). A blank-session reuse race can produce this even though
+ * the requested composition is in place.
+ */
+function presetAlreadyRuns(error: unknown, mode: string): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  const details = (error as { details?: unknown }).details
+  if (typeof details !== 'object' || details === null) return false
+  return (details as { existingPreset?: unknown }).existingPreset === mode
 }
 
 /** Whether a `turn/end` payload closed the turn with an error reason. */
@@ -106,14 +145,24 @@ export class ExecutionService {
     execution: ExecutionRecord,
     onEvent: (event: ExecutionEvent) => void,
   ): Promise<void> {
+    const settleFailed = (error: string): void => {
+      onEvent({ kind: 'settled', taskId: task.id, executionId: execution.id, outcome: 'failed', error })
+    }
     try {
-      const sessionId = await this.connectSession()
+      const sessionId = await this.connectSession(task.workspaceId)
       onEvent({ kind: 'started', taskId: task.id, executionId: execution.id, sessionId })
       const driver = this.driverOf(sessionId)
       if (driver === undefined) {
-        onEvent({ kind: 'settled', taskId: task.id, executionId: execution.id, outcome: 'failed', error: 'execution session is not ready' })
+        settleFailed('execution session is not ready')
         return
       }
+      // Task-pinned execution targets are applied BEFORE any prompt: a preset
+      // can only be recomposed while the session is blank, and the permission
+      // command must run before the task's turn starts. A rejected target
+      // fails the run without sending the prompt — running the task under
+      // different settings than it declared would be worse than not running.
+      if (!await this.applyMode(driver, task, sessionId, settleFailed)) return
+      if (!await this.applyPermission(driver, task, settleFailed)) return
       // Best-effort rename so the execution is recognizable in the session list.
       await driver.rename(task.title).catch(() => { /* rename is cosmetic */ })
       // Baseline the turn counter BEFORE the prompt round-trip: a turn that
@@ -122,19 +171,90 @@ export class ExecutionService {
       const baseline = driver.getSnapshot().turnEnds.size
       const accepted = await this.sendPrompt(driver, task)
       if (!accepted.ok) {
-        onEvent({
-          kind: 'settled', taskId: task.id, executionId: execution.id, outcome: 'failed',
-          error: messageOf(accepted.error),
-        })
+        settleFailed(messageOf(accepted.error))
         return
       }
       this.watchForSettlement(driver, task.id, execution.id, onEvent, baseline)
     } catch (error) {
-      onEvent({
-        kind: 'settled', taskId: task.id, executionId: execution.id, outcome: 'failed',
-        error: messageOf(error),
-      })
+      settleFailed(messageOf(error))
     }
+  }
+
+  /**
+   * Recompose the execution session's agent from the task-pinned preset.
+   * No-op when the task pins none or the session already runs it; fails the
+   * run when the session is no longer blank, the preset face is missing, or
+   * the wire refuses.
+   */
+  private async applyMode(
+    driver: SessionDriver,
+    task: TaskRecord,
+    sessionId: string,
+    settleFailed: (error: string) => void,
+  ): Promise<boolean> {
+    const mode = task.mode
+    if (mode === undefined || mode === '') return true
+    const summary = this.env.sessions.list.getSnapshot().byId[sessionId]
+    if (summary?.blank === false) {
+      settleFailed(`cannot switch agent preset to ${mode}: the execution session is not blank`)
+      return false
+    }
+    if (summary?.agentPreset === mode) return true
+    if (this.env.presets === undefined) {
+      settleFailed(`this deployment does not support agent presets (task asks for ${mode})`)
+      return false
+    }
+    try {
+      const result = await this.env.presets.select(sessionId, mode)
+      if (!result.ok) {
+        // A list race can leave the summary without the preset label even
+        // though the blank session already runs it; the wire answers that
+        // case with agent-preset-conflict (existingPreset === requested).
+        // The requested composition is already in place, so count it as
+        // applied instead of failing the run.
+        if (presetAlreadyRuns(result.error, mode)) {
+          this.env.sessions.noteAgentPreset?.(sessionId, mode)
+          return true
+        }
+        settleFailed(`agent preset switch to ${mode} rejected: ${messageOf(result.error)}`)
+        return false
+      }
+    } catch (error) {
+      settleFailed(`agent preset switch to ${mode} failed: ${messageOf(error)}`)
+      return false
+    }
+    this.env.sessions.noteAgentPreset?.(sessionId, mode)
+    return true
+  }
+
+  /**
+   * Apply the task-pinned permission preset through the `/permission <id>`
+   * slash command. No-op when the task pins none; fails the run when the
+   * admission is rejected or no command claimed the line.
+   */
+  private async applyPermission(
+    driver: SessionDriver,
+    task: TaskRecord,
+    settleFailed: (error: string) => void,
+  ): Promise<boolean> {
+    const permission = task.permission
+    if (permission === undefined) return true
+    const line = `/permission ${permission}`
+    try {
+      const result = await driver.command(line)
+      if (!result.ok) {
+        settleFailed(`permission command rejected: ${messageOf(result.error)}`)
+        return false
+      }
+      if (!result.matched) {
+        settleFailed(`permission command not recognized: ${line}`)
+        return false
+      }
+    } catch (error) {
+      settleFailed(`permission command failed: ${messageOf(error)}`)
+      return false
+    }
+    return true
   }
 
   /**
@@ -198,8 +318,16 @@ export class ExecutionService {
     }
   }
 
-  private async connectSession(): Promise<string> {
+  private async connectSession(taskWorkspaceId: string | undefined): Promise<string> {
     const workspace = this.env.workspaces.list.getSnapshot()
+    if (taskWorkspaceId !== undefined && taskWorkspaceId !== '') {
+      // A task-pinned workspace must exist in the list: connecting an
+      // unknown id would only defer the failure into the wire.
+      if (!workspace.items.some(item => item.workspaceId === taskWorkspaceId)) {
+        throw new Error(`task workspace is not available: ${taskWorkspaceId}`)
+      }
+      return this.env.workspaces.connectWorkspace(taskWorkspaceId)
+    }
     const workspaceId = workspace.recentWorkspaceId ?? workspace.items[0]?.workspaceId
     if (workspaceId === undefined) {
       throw new Error('no workspace available to run the task in')

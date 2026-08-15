@@ -33,6 +33,37 @@ describe('createTask', () => {
     expect(task.id).toBe('task-2')
     expect(task.description).toBe('')
     expect(task.prompt).toBe('')
+    expect(task.workspaceId).toBeUndefined()
+    expect(task.mode).toBeUndefined()
+    expect(task.permission).toBeUndefined()
+  })
+
+  it('carries the execution targets and collapses blank ones', () => {
+    const task = createTask(
+      { title: 'x', description: '', prompt: '', workspaceId: '  ws-1  ', mode: 'anchored', permission: 'danger-full-access' },
+      NOW,
+      'task-3',
+    )
+    expect(task.workspaceId).toBe('ws-1')
+    expect(task.mode).toBe('anchored')
+    expect(task.permission).toBe('danger-full-access')
+    const blank = createTask(
+      { title: 'x', description: '', prompt: '', workspaceId: '   ', mode: '', permission: undefined },
+      NOW,
+      'task-4',
+    )
+    expect(blank.workspaceId).toBeUndefined()
+    expect(blank.mode).toBeUndefined()
+    expect(blank.permission).toBeUndefined()
+  })
+
+  it('drops unknown permission strings', () => {
+    const task = createTask(
+      { title: 'x', description: '', prompt: '', permission: 'root' as never },
+      NOW,
+      'task-5',
+    )
+    expect(task.permission).toBeUndefined()
   })
 })
 

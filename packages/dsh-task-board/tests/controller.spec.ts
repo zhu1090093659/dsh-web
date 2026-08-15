@@ -74,6 +74,34 @@ function seedTask(store: InMemoryTaskStore, overrides: Partial<Parameters<typeof
   return task
 }
 
+describe('BoardController execution options', () => {
+  it('starts with empty picker option sets and merges partial updates', () => {
+    const { controller } = makeController()
+    expect(controller.getSnapshot().executionOptions).toEqual({ workspaces: [], presets: [] })
+    controller.setExecutionOptions({ workspaces: [{ workspaceId: 'ws-1', title: 'One' }] })
+    expect(controller.getSnapshot().executionOptions.workspaces).toEqual([{ workspaceId: 'ws-1', title: 'One' }])
+    expect(controller.getSnapshot().executionOptions.presets).toEqual([])
+    controller.setExecutionOptions({ presets: [{ id: 'anchored', isDefault: true }] })
+    expect(controller.getSnapshot().executionOptions).toEqual({
+      workspaces: [{ workspaceId: 'ws-1', title: 'One' }],
+      presets: [{ id: 'anchored', isDefault: true }],
+    })
+  })
+
+  it('creates tasks carrying execution targets and updates them back', () => {
+    const { controller } = makeController()
+    const task = controller.createTask({ title: 'x', description: '', prompt: '', workspaceId: 'ws-1', mode: 'anchored', permission: 'read-only' })
+    expect(task?.workspaceId).toBe('ws-1')
+    expect(task?.mode).toBe('anchored')
+    expect(task?.permission).toBe('read-only')
+    controller.updateTask(task!.id, { workspaceId: undefined, mode: undefined, permission: undefined })
+    const after = controller.getSnapshot().tasks[0]
+    expect(after.workspaceId).toBeUndefined()
+    expect(after.mode).toBeUndefined()
+    expect(after.permission).toBeUndefined()
+  })
+})
+
 describe('BoardController lifecycle', () => {
   it('loads the persisted ledger on start', () => {
     const { controller, store } = makeController()

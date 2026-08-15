@@ -9,7 +9,7 @@
  * plugin must not take the GUI down.
  */
 import type { ClientContext, SessionId, SettingsScope, SettingsScopeSpec, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
+import type { ConnectionHandle, PromptContentPart } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale) and its
 // LocaleNamespaceMap merge table.
@@ -116,11 +116,39 @@ export function apply(ctx: ClientContext): void {
     const exec = new ExecutionService({
       sessions: {
         list: sessions.list,
-        binding: id => sessions.binding(id as SessionId),
+        binding: id => {
+          const binding = sessions.binding(id as SessionId)
+          if (binding === undefined) return undefined
+          const { session } = binding
+          return {
+            session: {
+              rename: title => session.rename(title),
+              prompt: (content, mode) =>
+                session.prompt(content as PromptContentPart[], mode).then(result =>
+                  result.ok ? { ok: true as const } : { ok: false as const, error: result.error }),
+              command: line =>
+                session.command(line).then(result =>
+                  result.ok ? { ok: true as const, matched: result.value.matched } : { ok: false as const, error: result.error }),
+              getSnapshot: () => session.getSnapshot(),
+              subscribe: fn => session.subscribe(fn),
+            },
+          }
+        },
+        noteAgentPreset: (sessionId, agentPreset) => sessions.noteAgentPreset(sessionId as SessionId, agentPreset),
       },
       workspaces: {
         list: workspaces.list,
         connectWorkspace: id => workspaces.connectWorkspace(id as WorkspaceId),
+      },
+      presets: {
+        select: async (sessionId, agentPreset) => {
+          try {
+            const response = await connection.api.agentPresets.select({ sessionId: sessionId as SessionId, agentPreset })
+            return response.result.ok ? { ok: true as const } : { ok: false as const, error: response.result.error }
+          } catch (error) {
+            return { ok: false as const, error }
+          }
+        },
       },
       history: {
         loadTail: async sessionId => {
@@ -163,6 +191,44 @@ export function apply(ctx: ClientContext): void {
     scheduler.start()
 
     const disposers: Array<() => void> = []
+
+    // Execution-target option feeds: the workspace list drives the workspace
+    // picker, and the agent-preset roster drives the mode picker. Both are
+    // runtime facts (not ledger state), so the wiring pushes them into the
+    // controller on change; the preset roster is re-read after reconnects
+    // because a reconnect may serve a different deployment.
+    const pushWorkspaceOptions = (): void => {
+      const snapshot = workspaces.list.getSnapshot()
+      controller.setExecutionOptions({
+        workspaces: snapshot.items.map(item => ({
+          workspaceId: item.workspaceId,
+          title: item.title !== '' ? item.title : item.path,
+        })),
+      })
+    }
+    pushWorkspaceOptions()
+    disposers.push(workspaces.list.subscribe(pushWorkspaceOptions))
+    const pushPresetOptions = async (): Promise<void> => {
+      try {
+        const response = await connection.api.agentPresets.list({})
+        if (!response.result.ok) return
+        controller.setExecutionOptions({
+          presets: response.result.value.presets.map(preset => ({
+            id: preset.id,
+            name: preset.name,
+            description: preset.description,
+            broken: preset.broken,
+            isDefault: preset.isDefault,
+          })),
+        })
+      } catch (error) {
+        // A failed roster read leaves the previous options in place; the
+        // picker stays usable and the next reconnect retries the read.
+        console.error('[dsh-task-board] agent preset roster read failed', error)
+      }
+    }
+    void pushPresetOptions()
+    disposers.push(ctx.on('connection/reset', () => { void pushPresetOptions() }))
     try {
       disposers.push(mountSidebarEntry(controller))
       disposers.push(mountBoard(controller))

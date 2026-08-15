@@ -512,6 +512,18 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   border-color: var(--dsw-alias-state-business-primary);
 }
 
+.select {
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-specific-input-major);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+  max-width: 100%;
+}
+
 .input::placeholder {
   color: var(--dsw-alias-label-tertiary);
 }
@@ -775,6 +787,7 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
 .linkButton:focus-visible,
 .search:focus-visible,
 .input:focus-visible,
+.select:focus-visible,
 .schedulePreset:focus-visible,
 .scheduleToggle input:focus-visible {
   outline: 2px solid var(--dsw-alias-state-business-primary);
@@ -790,6 +803,7 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
 .linkButton,
 .search,
 .input,
+.select,
 .schedulePreset,
 .scheduleToggle input {
   transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease, outline-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
@@ -834,6 +848,7 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
 
 /* --- search box focus (border tint + themed ring above) --- */
 .search:focus,
+.select:focus,
 .schedulePreset:focus {
   border-color: var(--dsw-alias-state-business-primary);
 }
@@ -855,6 +870,7 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   .linkButton,
   .search,
   .input,
+  .select,
   .schedulePreset,
   .scheduleToggle input {
     transition: none;

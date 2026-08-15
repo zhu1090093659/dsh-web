@@ -22,7 +22,7 @@ import {
 import { applyCreateTask } from './use-cases/task-create.ts'
 import { applyDeleteTask } from './use-cases/task-delete.ts'
 import { applyScheduleNextRun as applyScheduleRollForward, applySetSchedule } from './use-cases/task-schedule.ts'
-import { applyUpdateTask } from './use-cases/task-update.ts'
+import { applyUpdateTask, type TaskUpdatePatch } from './use-cases/task-update.ts'
 
 /** The sessions face the controller needs for navigation awareness. */
 export interface SessionsControllerFace {
@@ -47,11 +47,36 @@ export interface ControllerDeps {
   reconcileDebounceMs?: number
 }
 
+/** One workspace option the execution-target pickers offer. */
+export interface ExecutionWorkspaceOption {
+  workspaceId: string
+  /** Display label (workspace title; the wiring falls back to the path). */
+  title: string
+}
+
+/** One agent-preset option the execution-target pickers offer. */
+export interface ExecutionPresetOption {
+  id: string
+  name?: string
+  description?: string
+  /** Why this preset cannot compose a session; the pickers disable it. */
+  broken?: string
+  isDefault: boolean
+}
+
+/** The execution-target option sets the UI feeds into the controller. */
+export interface ExecutionOptionsSnapshot {
+  workspaces: readonly ExecutionWorkspaceOption[]
+  presets: readonly ExecutionPresetOption[]
+}
+
 /** Immutable controller snapshot for UI subscriptions. */
 export interface ControllerSnapshot {
   tasks: readonly TaskRecord[]
   boardOpen: boolean
   selectedTaskId: string | undefined
+  /** Picker option sets (workspace list + agent-preset roster). */
+  executionOptions: ExecutionOptionsSnapshot
 }
 
 /** The selected task (resolved from the ledger), or undefined. */
@@ -85,6 +110,7 @@ export class BoardController {
   private tasks: TaskRecord[] = []
   private boardOpen = false
   private selectedTaskId: string | undefined
+  private executionOptions: ExecutionOptionsSnapshot = { workspaces: [], presets: [] }
   private listeners = new Set<() => void>()
   private disposers: Array<() => void> = []
   private readonly now: () => number
@@ -132,6 +158,7 @@ export class BoardController {
       tasks: this.tasks,
       boardOpen: this.boardOpen,
       selectedTaskId: this.selectedTaskId,
+      executionOptions: this.executionOptions,
     }
   }
 
@@ -186,9 +213,18 @@ export class BoardController {
     return task
   }
 
-  updateTask(id: string, patch: Partial<Pick<TaskRecord, 'title' | 'description' | 'prompt'>>): void {
+  updateTask(id: string, patch: TaskUpdatePatch): void {
     this.tasks = [...applyUpdateTask(this.tasks, id, patch, this.now())]
     this.persistAndNotify()
+  }
+
+  /**
+   * Replace (a part of) the picker option sets the UI feeds (workspace list
+   * and agent-preset roster come from the runtime, not the ledger).
+   */
+  setExecutionOptions(patch: Partial<ExecutionOptionsSnapshot>): void {
+    this.executionOptions = { ...this.executionOptions, ...patch }
+    this.notify()
   }
 
   moveTask(id: string, status: TaskStatus): void {

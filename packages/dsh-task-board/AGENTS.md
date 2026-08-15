@@ -19,6 +19,9 @@ dsh Web GUI 的多列任务看板（UI 类插件）。任务可**真实执行**�
 - 任务账本存浏览器 `localStorage`，键 `dsh.taskBoard.v1`（版本化）；跨刷新与
   dsh 重启存活（同源）。改键或字段必须在 `core/store.ts` 的解析/修复逻辑同步
   处理旧数据。
+- 任务可钉住执行目标（`workspaceId` / `mode` / `permission`，均可选，缺省即
+  运行时默认）：旧数据无这些字段，靠 store 规范化兜底；执行侧应用不了的目标在
+  prompt 前失败（见 `core/execution.ts` 的 applyMode/applyPermission）。
 - 新增源码文件落区：host 面不适合此包（看板为纯 client + core），执行/调度逻辑进
   `core/`，UI 进 `client/board/`。
 

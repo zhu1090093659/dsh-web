@@ -4,7 +4,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { ExecutionService, type ExecutionEnvironment, type SessionDriver } from '../src/core/execution.ts'
-import { createTask, startExecution } from '../src/core/tasks.ts'
+import { createTask, startExecution, type NewTaskInput } from '../src/core/tasks.ts'
 
 const NOW = 1_700_000_000_000
 
@@ -13,6 +13,8 @@ class FakeDriver implements SessionDriver {
   renameCalls: string[] = []
   promptCalls: unknown[] = []
   promptResult: { ok: true } | { ok: false; error: unknown } = { ok: true }
+  commandCalls: string[] = []
+  commandResult: { ok: true; matched: boolean } | { ok: false; error: unknown } = { ok: true, matched: true }
   private snapshot: { running: boolean; lastAgentError: string | null; turnEnds: ReadonlyMap<number, number> } = {
     running: false,
     lastAgentError: null,
@@ -28,6 +30,11 @@ class FakeDriver implements SessionDriver {
   async prompt(content: unknown[], _mode: 'queue'): Promise<{ ok: true } | { ok: false; error: unknown }> {
     this.promptCalls.push(content)
     return this.promptResult
+  }
+
+  async command(line: string): Promise<{ ok: true; matched: boolean } | { ok: false; error: unknown }> {
+    this.commandCalls.push(line)
+    return this.commandResult
   }
 
   getSnapshot(): { running: boolean; lastAgentError: string | null; turnEnds: ReadonlyMap<number, number> } {
@@ -52,10 +59,17 @@ function makeEnv(overrides: {
   recentWorkspaceId?: string | undefined
   items?: Array<{ workspaceId: string }>
   promptResult?: { ok: true } | { ok: false; error: unknown }
+  connectedSummary?: { blank?: boolean; agentPreset?: string }
+  presets?: {
+    select(sessionId: string, agentPreset: string): Promise<{ ok: true } | { ok: false; error: unknown }>
+  } | 'absent'
+  commandResult?: { ok: true; matched: boolean } | { ok: false; error: unknown }
 } = {}) {
   const drivers = new Map<string, FakeDriver>()
-  const summaries = new Map<string, { running: boolean }>()
+  const summaries = new Map<string, { running: boolean; blank?: boolean; agentPreset?: string }>()
   const connectCalls: string[] = []
+  const presetSelectCalls: Array<[string, string]> = []
+  const noteAgentPresetCalls: Array<[string, string]> = []
   const env: ExecutionEnvironment = {
     sessions: {
       list: {
@@ -66,6 +80,7 @@ function makeEnv(overrides: {
         const driver = drivers.get(id)
         return driver === undefined ? undefined : { session: driver }
       },
+      noteAgentPreset: (sessionId, agentPreset) => { noteAgentPresetCalls.push([sessionId, agentPreset]) },
     },
     workspaces: {
       list: {
@@ -78,17 +93,26 @@ function makeEnv(overrides: {
         connectCalls.push(id)
         const driver = new FakeDriver()
         if (overrides.promptResult !== undefined) driver.promptResult = overrides.promptResult
+        if (overrides.commandResult !== undefined) driver.commandResult = overrides.commandResult
         drivers.set('s-1', driver)
-        summaries.set('s-1', { running: false })
+        summaries.set('s-1', { running: false, ...overrides.connectedSummary })
         return 's-1'
       },
     },
+    ...(overrides.presets === 'absent' ? {} : {
+      presets: overrides.presets ?? {
+        select: async (sessionId, agentPreset) => {
+          presetSelectCalls.push([sessionId, agentPreset])
+          return { ok: true }
+        },
+      },
+    }),
   }
-  return { env, drivers, summaries, connectCalls }
+  return { env, drivers, summaries, connectCalls, presetSelectCalls, noteAgentPresetCalls }
 }
 
-function sampleTask() {
-  return createTask({ title: '写个脚本', description: '', prompt: '写一个 bash 脚本，打印 hello' }, NOW, 'task-1')
+function sampleTask(overrides: Partial<NewTaskInput> = {}) {
+  return createTask({ title: '写个脚本', description: '', prompt: '写一个 bash 脚本，打印 hello', ...overrides }, NOW, 'task-1')
 }
 
 describe('ExecutionService.run', () => {
@@ -220,6 +244,158 @@ describe('ExecutionService.run', () => {
     const events: string[] = []
     await expect(service.run(task, execution, event => { events.push(event.kind) })).resolves.toBeUndefined()
     expect(events).toEqual(['settled'])
+  })
+})
+
+describe('ExecutionService.run execution targets', () => {
+  it('connects the task-pinned workspace instead of the recent one', async () => {
+    const { env, connectCalls, drivers } = makeEnv({ recentWorkspaceId: 'ws-recent', items: [{ workspaceId: 'ws-1' }, { workspaceId: 'ws-2' }] })
+    const service = new ExecutionService(env)
+    const task = sampleTask({ workspaceId: 'ws-2' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    await service.run(task, execution, () => {})
+    expect(connectCalls).toEqual(['ws-2'])
+    expect(drivers.get('s-1')?.promptCalls).toHaveLength(1)
+  })
+
+  it('settles failed when the task-pinned workspace is missing from the list', async () => {
+    const { env } = makeEnv({ items: [{ workspaceId: 'ws-1' }] })
+    const service = new ExecutionService(env)
+    const task = sampleTask({ workspaceId: 'ws-gone' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    const events: Array<{ kind: string; outcome?: string; error?: string }> = []
+    await service.run(task, execution, event => { events.push(event) })
+    expect(events.at(-1)).toMatchObject({ kind: 'settled', outcome: 'failed' })
+    expect(events.at(-1)?.error).toContain('workspace')
+  })
+
+  it('recomposes the preset before the first prompt and records the switch', async () => {
+    const { env, drivers, presetSelectCalls, noteAgentPresetCalls } = makeEnv()
+    const service = new ExecutionService(env)
+    const task = sampleTask({ mode: 'anchored' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    const events: Array<{ kind: string }> = []
+    await service.run(task, execution, event => { events.push(event) })
+    expect(presetSelectCalls).toEqual([['s-1', 'anchored']])
+    expect(noteAgentPresetCalls).toEqual([['s-1', 'anchored']])
+    expect(drivers.get('s-1')?.promptCalls).toHaveLength(1)
+    drivers.get('s-1')?.setSnapshot({ running: false, turns: 1 })
+    expect(events.map(e => e.kind)).toEqual(['started', 'settled'])
+  })
+
+  it('skips the preset switch when the session already runs it', async () => {
+    const { env, presetSelectCalls, drivers } = makeEnv({ connectedSummary: { blank: true, agentPreset: 'anchored' } })
+    const service = new ExecutionService(env)
+    const task = sampleTask({ mode: 'anchored' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    await service.run(task, execution, () => {})
+    expect(presetSelectCalls).toEqual([])
+    expect(drivers.get('s-1')?.promptCalls).toHaveLength(1)
+  })
+
+  it('settles failed without prompting when the session is not blank', async () => {
+    const { env, drivers } = makeEnv({ connectedSummary: { blank: false } })
+    const service = new ExecutionService(env)
+    const task = sampleTask({ mode: 'anchored' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    const events: Array<{ kind: string; outcome?: string; error?: string }> = []
+    await service.run(task, execution, event => { events.push(event) })
+    expect(events.at(-1)).toMatchObject({ kind: 'settled', outcome: 'failed' })
+    expect(events.at(-1)?.error).toContain('not blank')
+    expect(drivers.get('s-1')?.promptCalls).toEqual([])
+  })
+
+  it('settles failed when no preset face is wired and the task pins a mode', async () => {
+    const { env } = makeEnv({ presets: 'absent' })
+    const service = new ExecutionService(env)
+    const task = sampleTask({ mode: 'anchored' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    const events: Array<{ kind: string; outcome?: string; error?: string }> = []
+    await service.run(task, execution, event => { events.push(event) })
+    expect(events.at(-1)).toMatchObject({ kind: 'settled', outcome: 'failed' })
+    expect(events.at(-1)?.error).toContain('preset')
+  })
+
+  it('settles failed when the preset switch is rejected, without prompting', async () => {
+    const { env, drivers } = makeEnv({ presets: { select: async () => ({ ok: false, error: { message: 'agent-preset-locked' } }) } })
+    const service = new ExecutionService(env)
+    const task = sampleTask({ mode: 'anchored' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    const events: Array<{ kind: string; outcome?: string; error?: string }> = []
+    await service.run(task, execution, event => { events.push(event) })
+    expect(events.at(-1)).toMatchObject({ kind: 'settled', outcome: 'failed' })
+    expect(events.at(-1)?.error).toContain('rejected')
+    expect(drivers.get('s-1')?.promptCalls).toEqual([])
+  })
+
+  it('counts an already-running preset conflict as applied', async () => {
+    const { env, drivers, noteAgentPresetCalls } = makeEnv({
+      presets: { select: async () => ({ ok: false, error: { code: 'agent-preset-conflict', message: 'x', details: { existingPreset: 'anchored' } } }) },
+    })
+    const service = new ExecutionService(env)
+    const task = sampleTask({ mode: 'anchored' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    const events: Array<{ kind: string; outcome?: string }> = []
+    await service.run(task, execution, event => { events.push(event) })
+    expect(drivers.get('s-1')?.promptCalls).toHaveLength(1)
+    expect(noteAgentPresetCalls).toEqual([['s-1', 'anchored']])
+    drivers.get('s-1')?.setSnapshot({ running: false, turns: 1 })
+    expect(events.at(-1)).toMatchObject({ kind: 'settled', outcome: 'succeeded' })
+  })
+
+  it('still fails on a preset conflict for a different preset', async () => {
+    const { env, drivers } = makeEnv({
+      presets: { select: async () => ({ ok: false, error: { code: 'agent-preset-conflict', message: 'x', details: { existingPreset: 'other' } } }) },
+    })
+    const service = new ExecutionService(env)
+    const task = sampleTask({ mode: 'anchored' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    const events: Array<{ kind: string; outcome?: string }> = []
+    await service.run(task, execution, event => { events.push(event) })
+    expect(events.at(-1)).toMatchObject({ kind: 'settled', outcome: 'failed' })
+    expect(drivers.get('s-1')?.promptCalls).toEqual([])
+  })
+
+  it('applies the permission command before the first prompt', async () => {
+    const { env, drivers } = makeEnv()
+    const service = new ExecutionService(env)
+    const task = sampleTask({ permission: 'danger-full-access' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    await service.run(task, execution, () => {})
+    expect(drivers.get('s-1')?.commandCalls).toEqual(['/permission danger-full-access'])
+    expect(drivers.get('s-1')?.promptCalls).toHaveLength(1)
+  })
+
+  it('settles failed when no command claims the permission line', async () => {
+    const { env, drivers } = makeEnv({ commandResult: { ok: true, matched: false } })
+    const service = new ExecutionService(env)
+    const task = sampleTask({ permission: 'read-only' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    const events: Array<{ kind: string; outcome?: string; error?: string }> = []
+    await service.run(task, execution, event => { events.push(event) })
+    expect(events.at(-1)).toMatchObject({ kind: 'settled', outcome: 'failed' })
+    expect(events.at(-1)?.error).toContain('not recognized')
+    expect(drivers.get('s-1')?.promptCalls).toEqual([])
+  })
+
+  it('settles failed when the permission command is rejected', async () => {
+    const { env, drivers } = makeEnv({ commandResult: { ok: false, error: { message: 'nope' } } })
+    const service = new ExecutionService(env)
+    const task = sampleTask({ permission: 'workspace-write' })
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    const events: Array<{ kind: string; outcome?: string; error?: string }> = []
+    await service.run(task, execution, event => { events.push(event) })
+    expect(events.at(-1)).toMatchObject({ kind: 'settled', outcome: 'failed' })
+    expect(drivers.get('s-1')?.promptCalls).toEqual([])
+  })
+
+  it('falls back to the recent workspace when the task pins none', async () => {
+    const { env, connectCalls } = makeEnv({ recentWorkspaceId: 'ws-recent' })
+    const service = new ExecutionService(env)
+    const task = sampleTask()
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    await service.run(task, execution, () => {})
+    expect(connectCalls).toEqual(['ws-recent'])
   })
 })
 

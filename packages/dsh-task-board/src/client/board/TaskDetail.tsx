@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import type { BoardController } from '../../core/controller.ts'
 import { isValidCron } from '../../core/schedule.ts'
-import { MANUAL_STATUSES, type ExecutionRecord, type TaskRecord, type TaskStatus } from '../../core/tasks.ts'
+import { MANUAL_STATUSES, TASK_PERMISSIONS, type ExecutionRecord, type TaskPermission, type TaskRecord, type TaskStatus } from '../../core/tasks.ts'
 import { t, type TaskBoardKey } from '../locales.ts'
 import css from '../board.module.css'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
@@ -65,6 +65,74 @@ const SCHEDULE_PRESETS: ReadonlyArray<{ cron: string; label: TaskBoardKey }> = [
   { cron: '*/10 * * * *', label: 'detail.schedule.preset.tenMin' },
   { cron: '0 9 * * 1', label: 'detail.schedule.preset.weeklyMon9' },
 ]
+
+/** The execution-target editor: workspace / mode / permission pickers. */
+function ExecutionSettingsSection({ controller, task }: { controller: BoardController; task: TaskRecord }) {
+  const [options, setOptions] = useState(controller.getSnapshot().executionOptions)
+  useEffect(
+    () => controller.subscribe(() => setOptions(controller.getSnapshot().executionOptions)),
+    [controller],
+  )
+  const workspaceId = task.workspaceId ?? ''
+  const mode = task.mode ?? ''
+  const permission = task.permission ?? ''
+  // A pinned target may disappear from the runtime (workspace deleted,
+  // preset removed); keep it selectable as a stale row instead of silently
+  // dropping it, so the user sees exactly what the task will ask for.
+  const workspaceKnown = workspaceId === '' || options.workspaces.some(item => item.workspaceId === workspaceId)
+  const modeKnown = mode === '' || options.presets.some(item => item.id === mode)
+  return (
+    <section className={css.detailSection}>
+      <h4>{t('detail.executionSettings')}</h4>
+      <p className={css.detailText}>{t('exec.hint')}</p>
+      <label className={css.field}>
+        <span className={css.fieldLabel}>{t('new.workspace')}</span>
+        <select
+          className={css.select}
+          value={workspaceId}
+          onChange={event => { controller.updateTask(task.id, { workspaceId: event.target.value }) }}
+        >
+          <option value="">{t('exec.workspace.recent')}</option>
+          {!workspaceKnown && <option value={workspaceId}>{workspaceId}{t('exec.mode.removed')}</option>}
+          {options.workspaces.map(workspace => (
+            <option key={workspace.workspaceId} value={workspace.workspaceId}>{workspace.title}</option>
+          ))}
+        </select>
+      </label>
+      <label className={css.field}>
+        <span className={css.fieldLabel}>{t('new.mode')}</span>
+        <select
+          className={css.select}
+          value={mode}
+          onChange={event => { controller.updateTask(task.id, { mode: event.target.value }) }}
+        >
+          <option value="">{t('exec.mode.default')}</option>
+          {!modeKnown && <option value={mode}>{mode}{t('exec.mode.removed')}</option>}
+          {options.presets.map(preset => (
+            <option key={preset.id} value={preset.id} disabled={preset.broken !== undefined}>
+              {preset.name ?? preset.id}
+              {preset.isDefault ? t('exec.mode.defaultSuffix') : ''}
+              {preset.broken !== undefined ? t('exec.mode.brokenSuffix') : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={css.field}>
+        <span className={css.fieldLabel}>{t('new.permission')}</span>
+        <select
+          className={css.select}
+          value={permission}
+          onChange={event => { controller.updateTask(task.id, { permission: event.target.value === '' ? undefined : event.target.value as TaskPermission }) }}
+        >
+          <option value="">{t('exec.permission.default')}</option>
+          {TASK_PERMISSIONS.map(id => (
+            <option key={id} value={id}>{t(`exec.permission.${id}` as TaskBoardKey)}</option>
+          ))}
+        </select>
+      </label>
+    </section>
+  )
+}
 
 /** The scheduled-runs editor: enable toggle, cron input + presets, next-run info. */
 function ScheduleSection({ controller, task }: { controller: BoardController; task: TaskRecord }) {
@@ -202,6 +270,8 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
             <h4>{t('detail.prompt')}</h4>
             <pre className={css.promptBlock}>{current.prompt !== '' ? current.prompt : current.title}</pre>
           </section>
+
+          <ExecutionSettingsSection controller={controller} task={current} />
 
           <ScheduleSection controller={controller} task={current} />
 

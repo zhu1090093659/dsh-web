@@ -14,8 +14,7 @@
  * localStorage backend.
  */
 import { isValidCron } from './schedule.ts'
-import type { ScheduleRule, TaskRecord, TaskStatus } from './tasks.ts'
-import { isTaskStatus } from './tasks.ts'
+import { isTaskPermission, isTaskStatus, type ScheduleRule, type TaskRecord, type TaskPermission, type TaskStatus } from './tasks.ts'
 
 /** Persistence seam for the task ledger. */
 export interface TaskStore {
@@ -64,6 +63,9 @@ function isTaskRecordShape(value: unknown): value is Omit<TaskRecord, 'status'> 
   if (typeof record.prompt !== 'string') return false
   if (typeof record.createdAt !== 'number') return false
   if (typeof record.updatedAt !== 'number') return false
+  if (record.workspaceId !== undefined && typeof record.workspaceId !== 'string') return false
+  if (record.mode !== undefined && typeof record.mode !== 'string') return false
+  if (record.permission !== undefined && typeof record.permission !== 'string') return false
   if (!Array.isArray(record.executions)) return false
   for (const execution of record.executions) {
     if (typeof execution !== 'object' || execution === null) return false
@@ -76,6 +78,11 @@ function isTaskRecordShape(value: unknown): value is Omit<TaskRecord, 'status'> 
     if (entry.error !== undefined && typeof entry.error !== 'string') return false
   }
   return true
+}
+
+/** Collapse a blank persisted target string to undefined (clears the pin). */
+function normalizeTargetId(value: string | undefined): string | undefined {
+  return value !== undefined && value.trim() === '' ? undefined : value
 }
 
 /** A task record is structurally valid if it round-trips through the UI. */
@@ -136,6 +143,12 @@ export function parseLedger(raw: string | null): TaskRecord[] {
     // clear a malformed persisted rule rather than leave it in the row.
     const task: TaskRecord = { ...row, status: normalizeStatus(row.status) }
     task.schedule = normalizeSchedule(row.schedule)
+    // Execution targets are normalized like the schedule: blank strings
+    // clear the pin and unknown permission strings from a future version
+    // fall back to the session default instead of dropping the row.
+    task.workspaceId = normalizeTargetId(row.workspaceId)
+    task.mode = normalizeTargetId(row.mode)
+    task.permission = isTaskPermission(row.permission) ? row.permission as TaskPermission : undefined
     tasks.push(task)
   }
   return tasks

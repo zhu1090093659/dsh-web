@@ -150,6 +150,39 @@ describe('parseLedger', () => {
     expect(parsed[1].id).toBe('t-3')
     expect(parsed[1].status).toBe('todo')
   })
+
+  it('loads legacy rows without execution targets and keeps their pins absent', () => {
+    const legacy = createTask({ title: 'legacy', description: '', prompt: '' }, 1, 't-1')
+    const parsed = parseLedger(JSON.stringify([legacy]))
+    expect(parsed[0].workspaceId).toBeUndefined()
+    expect(parsed[0].mode).toBeUndefined()
+    expect(parsed[0].permission).toBeUndefined()
+  })
+
+  it('round-trips execution targets and repairs broken ones', () => {
+    const pinned = createTask(
+      { title: 'pinned', description: '', prompt: '', workspaceId: 'ws-1', mode: 'anchored', permission: 'read-only' },
+      1,
+      't-1',
+    )
+    const parsed = parseLedger(JSON.stringify([pinned]))
+    expect(parsed[0].workspaceId).toBe('ws-1')
+    expect(parsed[0].mode).toBe('anchored')
+    expect(parsed[0].permission).toBe('read-only')
+
+    // Blank strings clear the pin; unknown permission strings (a future
+    // version's value) fall back to the session default, not a dropped row.
+    const repaired = parseLedger(JSON.stringify([{
+      ...pinned,
+      workspaceId: '   ',
+      mode: '',
+      permission: 'sudo-everything',
+    }]))
+    expect(repaired).toHaveLength(1)
+    expect(repaired[0].workspaceId).toBeUndefined()
+    expect(repaired[0].mode).toBeUndefined()
+    expect(repaired[0].permission).toBeUndefined()
+  })
 })
 
 describe('isTaskRecord', () => {

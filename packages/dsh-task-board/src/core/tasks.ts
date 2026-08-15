@@ -64,6 +64,32 @@ export interface TaskRecord {
   executions: ExecutionRecord[]
   /** Optional scheduled-run rule (absent on tasks without a schedule). */
   schedule?: ScheduleRule
+  /**
+   * Workspace the execution must run in (a workspace-list id); absent means
+   * the recent-workspace fallback at execution time.
+   */
+  workspaceId?: string
+  /**
+   * Agent preset the execution session must be composed from (an
+   * `agentPreset.list` id); absent means the deployment default.
+   */
+  mode?: string
+  /**
+   * Permission preset applied to the execution session through the
+   * `/permission <id>` slash command; absent leaves the session default.
+   */
+  permission?: TaskPermission
+}
+
+/** Permission presets a task may pin on its execution session (the `/permission <id>` ids). */
+export const TASK_PERMISSIONS = ['read-only', 'workspace-write', 'danger-full-access'] as const
+
+/** One permission preset id. */
+export type TaskPermission = typeof TASK_PERMISSIONS[number]
+
+/** Whether an unknown value is a known permission preset id. */
+export function isTaskPermission(value: unknown): value is TaskPermission {
+  return typeof value === 'string' && (TASK_PERMISSIONS as readonly string[]).includes(value)
 }
 
 /** Input for creating a task. */
@@ -71,6 +97,12 @@ export interface NewTaskInput {
   title: string
   description: string
   prompt: string
+  /** Workspace the execution must run in; empty/absent = the recent workspace. */
+  workspaceId?: string
+  /** Agent preset the execution session must be composed from; empty/absent = deployment default. */
+  mode?: string
+  /** Permission preset applied to the execution session; absent = session default. */
+  permission?: TaskPermission
 }
 
 /** The five kanban columns, in display order. */
@@ -103,6 +135,12 @@ export function canMoveManually(_from: TaskStatus, to: TaskStatus): boolean {
   return (MANUAL_STATUSES as readonly TaskStatus[]).includes(to)
 }
 
+/** Normalize one optional execution-target string: trim; blank collapses to undefined. */
+function normalizeTargetId(value: string | undefined): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed === undefined || trimmed === '' ? undefined : trimmed
+}
+
 /** Create a task from user input. */
 export function createTask(input: NewTaskInput, now: number, id: string): TaskRecord {
   return {
@@ -114,6 +152,9 @@ export function createTask(input: NewTaskInput, now: number, id: string): TaskRe
     createdAt: now,
     updatedAt: now,
     executions: [],
+    workspaceId: normalizeTargetId(input.workspaceId),
+    mode: normalizeTargetId(input.mode),
+    permission: isTaskPermission(input.permission) ? input.permission : undefined,
   }
 }
 

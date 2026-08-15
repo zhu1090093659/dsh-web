@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 /**
  * Conversation image preview enhancer: reference matching, in-place
- * thumbnail upgrade, live-toggle restore, unreachable-route fallback, and
- * the full-size overlay. jsdom never loads images, so load failure is
- * simulated by dispatching the `error` event.
+ * thumbnail upgrade, live-toggle restore, unreachable-route fallback,
+ * transcript scoping, and overlay focus management. jsdom never loads
+ * images, so load failure is simulated by dispatching the `error` event.
+ * Keyboard activation needs no synthetic test: the trigger is a native
+ * <button type="button">, so Enter/Space activation is browser behavior.
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { findImageReferences, installConversationImagePreview, type ConversationImagePreview } from '../src/client/preview.ts'
@@ -12,8 +14,10 @@ import { findImageReferences, installConversationImagePreview, type Conversation
 const REF = '![图片](/describe-image/raw/sha256:abc)'
 /** The raw-route path inside {@link REF}. */
 const PATH = '/describe-image/raw/sha256:abc'
+/** The official slot wrapper the enhancer scopes itself to. */
+const SLOT = 'data-slot="conversation.session"'
 
-/** Flush the observer's microtask-batched scan. */
+/** Flush the observer's microtask-batched work. */
 const flush = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0))
 
 describe('findImageReferences', () => {
@@ -33,7 +37,7 @@ describe('findImageReferences', () => {
   })
 })
 
-describe('installConversationImagePreview', () => {
+describe('installConversationImagePreview (fixed root)', () => {
   let handle: ConversationImagePreview | undefined
 
   afterEach(() => {
@@ -50,13 +54,15 @@ describe('installConversationImagePreview', () => {
     return root
   }
 
-  it('upgrades a reference in place into a thumbnail, keeping the surrounding text', () => {
+  it('upgrades a reference in place into a thumbnail button, keeping the surrounding text', () => {
     const root = makeRoot(`<div class="bubble">看 ${REF} 一下</div>`)
     handle = installConversationImagePreview(() => true, root)
+    const button = root.querySelector('button')
+    expect(button?.type).toBe('button')
+    expect(button?.getAttribute('aria-label')).toBe('点击查看大图')
     const image = root.querySelector('img')
     expect(image?.src).toBe(`${window.location.origin}${PATH}`)
     expect(image?.alt).toBe('图片')
-    expect(image?.title).toBe('点击查看大图')
     expect(root.querySelector('[data-dsh-di-preview]')?.getAttribute('data-dsh-di-preview')).toBe(REF)
     expect(root.textContent).toBe('看  一下')
   })
@@ -68,6 +74,14 @@ describe('installConversationImagePreview', () => {
     root.firstElementChild!.textContent = REF
     await flush()
     expect(root.querySelector('img')?.src).toBe(`${window.location.origin}${PATH}`)
+  })
+
+  it('upgrades a reference edited into an existing text node (characterData)', async () => {
+    const root = makeRoot('<div class="bubble">占位</div>')
+    handle = installConversationImagePreview(() => true, root)
+    root.firstElementChild!.firstChild!.nodeValue = REF
+    await flush()
+    expect(root.querySelector('img')).not.toBeNull()
   })
 
   it('restores the original text when the toggle turns off', () => {
@@ -116,11 +130,25 @@ describe('installConversationImagePreview', () => {
   it('opens the full-size overlay on click and closes it on overlay click', () => {
     const root = makeRoot(`<div class="bubble">${REF}</div>`)
     handle = installConversationImagePreview(() => true, root)
-    root.querySelector('img')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    root.querySelector('button')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     const overlay = document.body.querySelector('[data-dsh-di-lightbox]')
     expect(overlay?.querySelector('img')?.src).toBe(`${window.location.origin}${PATH}`)
     overlay!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(document.body.querySelector('[data-dsh-di-lightbox]')).toBeNull()
+  })
+
+  it('moves focus into the overlay and returns it to the trigger on close', () => {
+    const root = makeRoot(`<div class="bubble">${REF}</div>`)
+    handle = installConversationImagePreview(() => true, root)
+    const button = root.querySelector('button')!
+    button.focus()
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    const overlay = document.body.querySelector('[data-dsh-di-lightbox]') as HTMLElement
+    expect(overlay).not.toBeNull()
+    expect(document.activeElement).toBe(overlay)
+    overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect(document.body.querySelector('[data-dsh-di-lightbox]')).toBeNull()
+    expect(document.activeElement).toBe(button)
   })
 
   it('dispose restores every preview and stops observing', async () => {
@@ -133,5 +161,51 @@ describe('installConversationImagePreview', () => {
     root.innerHTML = `<div class="bubble">${REF}</div>`
     await flush()
     expect(root.querySelector('img')).toBeNull()
+  })
+})
+
+describe('installConversationImagePreview (default transcript scoping)', () => {
+  let handle: ConversationImagePreview | undefined
+
+  afterEach(() => {
+    handle?.dispose()
+    handle = undefined
+    document.body.innerHTML = ''
+  })
+
+  it('enhances only inside the conversation.session slot wrapper', () => {
+    document.body.innerHTML = `<div ${SLOT}><div class="bubble">${REF}</div></div><aside class="sidebar">${REF}</aside>`
+    handle = installConversationImagePreview(() => true)
+    const transcript = document.querySelector(`[${SLOT}]`)!
+    expect(transcript.querySelector('img')).not.toBeNull()
+    const sidebar = document.querySelector('.sidebar')!
+    expect(sidebar.querySelector('img')).toBeNull()
+    expect(sidebar.textContent).toBe(REF)
+  })
+
+  it('processes later arrivals inside the transcript, ignoring outside churn', async () => {
+    document.body.innerHTML = `<div ${SLOT}></div><aside class="sidebar"></aside>`
+    handle = installConversationImagePreview(() => true)
+    const bubble = document.createElement('div')
+    bubble.textContent = REF
+    document.querySelector(`[${SLOT}]`)!.append(bubble)
+    const outside = document.createElement('div')
+    outside.textContent = REF
+    document.querySelector('.sidebar')!.append(outside)
+    await flush()
+    expect(bubble.querySelector('img')).not.toBeNull()
+    expect(outside.querySelector('img')).toBeNull()
+  })
+
+  it('reattaches when the shell remounts the transcript container', async () => {
+    document.body.innerHTML = `<div ${SLOT}><div>${REF}</div></div>`
+    handle = installConversationImagePreview(() => true)
+    expect(document.querySelector(`[${SLOT}] img`)).not.toBeNull()
+    // Session switch: the container is torn down and rebuilt.
+    document.body.innerHTML = ''
+    await flush()
+    document.body.innerHTML = `<div ${SLOT}><div>${REF}</div></div>`
+    await flush()
+    expect(document.querySelector(`[${SLOT}] img`)).not.toBeNull()
   })
 })

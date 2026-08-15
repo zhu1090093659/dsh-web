@@ -1,8 +1,23 @@
-/* Conversation image preview: in-place thumbnail plus the full-size overlay. */
+/* Conversation image preview: in-place thumbnail button plus the full-size overlay. */
 
 .preview {
   display: block;
   margin: 4px 0;
+}
+
+.thumbButton {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.thumbButton:focus-visible {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .thumb {
@@ -13,7 +28,6 @@
   border-radius: 8px;
   background: transparent;
   object-fit: contain;
-  cursor: zoom-in;
 }
 
 .lightbox {
@@ -25,6 +39,7 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.72);
   cursor: zoom-out;
+  outline: none;
 }
 
 .lightbox img {

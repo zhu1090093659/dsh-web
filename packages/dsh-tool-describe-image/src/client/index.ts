@@ -86,6 +86,9 @@ export function apply(ctx: ClientContext): void {
     // Bound once the settings scope inject fires; the preview enhancer reads
     // it per scan, so an unbound scope (or a missing service) keeps the default.
     let settingsScopeRef: SettingsScope<DescribeImageSettings> | undefined
+    // The settings subscription installed by the scope inject below; kept so
+    // dispose (or a re-inject) never leaves a stale listener behind.
+    let unsubscribeSettings: (() => void) | undefined
 
     // Text-only models reject image blocks at submit: rewrite image-bearing
     // sends into describe-image references before they reach the model.
@@ -100,6 +103,9 @@ export function apply(ctx: ClientContext): void {
       previewRef = handle
       return () => {
         previewRef = undefined
+        unsubscribeSettings?.()
+        unsubscribeSettings = undefined
+        settingsScopeRef = undefined
         handle.dispose()
       }
     }, 'dsh-tool-describe-image: conversation image preview')
@@ -109,9 +115,10 @@ export function apply(ctx: ClientContext): void {
     ctx.inject(['settingsScope'], (settingsCtx: ClientContext) => {
       const binder = settingsCtx.get('webUiSettings') ?? settingsCtx.settingsScope
       const settingsScope = binder.bind<DescribeImageSettings>({ namespace: NS })
+      unsubscribeSettings?.()
       settingsScopeRef = settingsScope
       // Live toggle: re-scan (or restore) the moment a settings save settles.
-      settingsScope.subscribe(() => previewRef?.refresh())
+      unsubscribeSettings = settingsScope.subscribe(() => previewRef?.refresh())
       const settingsCard = new DescribeImageSettingsCardController(settingsScope)
       slots.inject('web-ui.plugin.item', () =>
         slots.register({

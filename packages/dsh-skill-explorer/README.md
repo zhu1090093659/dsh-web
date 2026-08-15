@@ -39,7 +39,7 @@ git clone https://github.com/zhu1090093659/dsh-web-ui.git
 cd dsh-web-ui
 pnpm install
 pnpm -r build
-dsh plugin --profile web add link:$(pwd)/packages/skill-explorer
+dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 ```
 
 Restart `dsh web` after installing; the "Skill Center" entry appears in the

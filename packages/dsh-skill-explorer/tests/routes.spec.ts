@@ -200,3 +200,19 @@ describe('sessions degradation', () => {
     expect(JSON.parse(body()).complete).toBe(true)
   })
 })
+
+describe('registry degradation', () => {
+  it('still serves list with complete=false when the registry snapshot throws', async () => {
+    const brokenRegistry = { snapshot: async () => { throw new Error('registry boom') } }
+    const brokenDeps = { ...deps, registry: brokenRegistry }
+    const brokenRoutes = makeRoutes(brokenDeps)
+    const { res, status, body } = response()
+    await brokenRoutes.find((route) => route.path === ROUTES.list)!.handler(request(ROUTES.list, 'GET'), res)
+    expect(status()).toBe(200)
+    const payload = JSON.parse(body())
+    expect(payload.complete).toBe(false)
+    // Filesystem entries still present.
+    const names = payload.groups.flatMap((g: { skills: Array<{ name: string }> }) => g.skills.map((s) => s.name))
+    expect(names).toContain('poc-first')
+  })
+})

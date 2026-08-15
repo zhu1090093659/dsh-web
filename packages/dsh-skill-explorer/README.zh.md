@@ -34,7 +34,7 @@ git clone https://github.com/zhu1090093659/dsh-web-ui.git
 cd dsh-web-ui
 pnpm install
 pnpm -r build
-dsh plugin --profile web add link:$(pwd)/packages/skill-explorer
+dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 ```
 
 安装后重启 `dsh web`，侧边栏出现「技能中心」入口。

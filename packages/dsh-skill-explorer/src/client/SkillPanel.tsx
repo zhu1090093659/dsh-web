@@ -4,7 +4,7 @@
  * Talks to the host route family through SkillApi.
  */
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { SkillApi, type ListPayload, type SkillEntry } from './api.ts'
 import { zh } from './locales.ts'
 import { tt } from './panel-helpers.ts'
@@ -30,8 +30,13 @@ function invokableMarks(skill: SkillEntry): string {
 function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi; onChanged: () => void }): React.JSX.Element {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | undefined>(undefined)
+  // Sync ref guard: React state updates are async, so a double click before
+  // the re-render would fire the same request twice with the stale target.
+  const busyRef = useRef(false)
 
   const toggle = async (): Promise<void> => {
+    if (busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     setError(undefined)
     try {
@@ -40,12 +45,15 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
     } catch (err) {
       setError(tt('list.toggleFailed', { error: err instanceof Error ? err.message : String(err) }))
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
 
   const remove = async (): Promise<void> => {
     if (!window.confirm(tt('list.deleteConfirm', { name: skill.name }))) return
+    if (busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     setError(undefined)
     try {
@@ -54,6 +62,7 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
     } catch (err) {
       setError(tt('list.deleteFailed', { error: err instanceof Error ? err.message : String(err) }))
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
@@ -99,14 +108,19 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
 function ListTab({ api, refreshTick, onCwd }: { api: SkillApi; refreshTick: number; onCwd: (cwd: string) => void }): React.JSX.Element {
   const [payload, setPayload] = useState<ListPayload | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
+  // Sequence guard: a slow earlier load must not overwrite a newer one.
+  const loadSeq = useRef(0)
 
   const load = async (): Promise<void> => {
+    const seq = ++loadSeq.current
     try {
       const next = await api.list()
+      if (seq !== loadSeq.current) return
       setPayload(next)
       onCwd(next.cwd)
       setError(undefined)
     } catch (err) {
+      if (seq !== loadSeq.current) return
       setError(tt('list.loadFailed', { error: err instanceof Error ? err.message : String(err) }))
     }
   }

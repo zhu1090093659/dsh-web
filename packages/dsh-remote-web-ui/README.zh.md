@@ -13,7 +13,7 @@
 - **手机侧**：扫码将手机与一次性、限时令牌绑定，并落地到 **`/m` 独立移动端界面**——一款专为小屏设计的轻客户端（见[截图](#截图)），而不是把桌面 UI 塞进手机。链接携带 `workspace` 参数，手机落地到桌面正在查看的同一工作区。
 - **安全**：一个有效的一次性令牌（刷新会使旧链接失效；已接受的令牌不可复用；令牌会过期）。停止会撤销每一台已配对设备与当前令牌——已配对设备在下一次请求时被切断。当插件 `requirePairingForLan` 门开启（默认）时，每个非 loopback 的 `/api` 请求必须携带有效的已配对设备 cookie，因此二维码是进入暴露在局域网上的 dsh web 的唯一途径。
 - **实时状态**：桌面面板经 SSE 流实时镜像配对状态（等待 → 已连接 → 已断开）。
-- **远程更新**：侧边栏底部的下载触发按钮（手机图标左侧）打开更新面板，它探测 npm registry 上已安装的 `@linxin666/dsh-*` 全家桶版本。当存在较新版本时，面板自动执行更新（在所属 dsh profile 内 `pnpm update`；pnpm 缺失时依次回退 `corepack pnpm`、`npx --yes pnpm`，Windows 上经 `cmd.exe` 执行以解析 npm 安装的 `.cmd` shim；由仅 loopback 的 `/api/update/status` + `/api/update/run` 端点驱动）并请求重启 dsh web 以生效。本地 link 安装（开发模式）会被探测到，只报告 npm 状态而不更新。
+- **远程更新**：侧边栏底部的下载触发按钮（手机图标左侧）打开更新面板，它探测 npm registry 上已安装的 `@linxin666/dsh-*` 全家桶版本。当存在较新版本时，面板自动执行更新（在所属 dsh profile 内 `pnpm update --latest`；pnpm 缺失时依次回退 `corepack pnpm`、`npx --yes pnpm`，Windows 上经 `cmd.exe` 执行以解析 npm 安装的 `.cmd` shim；由仅 loopback 的 `/api/update/status` + `/api/update/run` 端点驱动）并请求重启 dsh web 以生效。pnpm 绿色退出后还会对照 registry 复核已装版本：绿色退出但版本纹丝不动（例如 pnpm 的 `minimumReleaseAge` 门禁静默跳过同日发布的新版本）会报告为「未更新成功」并附配置指引，而不是误报成功。本地 link 安装（开发模式）会被探测到，只报告 npm 状态而不更新。
 
 ## 截图
 

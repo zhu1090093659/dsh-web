@@ -184,16 +184,19 @@ export interface UpdateCheckDeps {
 
 /**
  * Resolve the anchor package's manifest path. The aggregate package is the
- * canonical entry point; this plugin's own package is the fallback.
+ * canonical entry point; this plugin's own package is the fallback. Both a
+ * throwing resolve and an undefined return mean "not installed" and move on
+ * to the next candidate.
  * @param resolve - a Node resolve implementation scoped to the host process.
  * @returns the absolute manifest path, or undefined when neither is installed.
  */
 export function resolveAnchorManifest(
-  resolve: (specifier: string) => string,
+  resolve: (specifier: string) => string | undefined,
 ): string | undefined {
   for (const name of [AGGREGATE_PACKAGE, SELF_PACKAGE]) {
     try {
-      return resolve(name + '/package.json')
+      const path = resolve(name + '/package.json')
+      if (path !== undefined) return path
     } catch {
       // Not installed — try the next candidate.
     }
@@ -361,6 +364,8 @@ export type UpdateErrorCode =
   | 'pnpm-failed'
   /** pnpm exited 0 but the installed versions did not move. */
   | 'stale'
+  /** pnpm exited 0 but the post-run version check could not verify the install. */
+  | 'verify-failed'
 
 /** Result of one update run. */
 export interface UpdateRunResult {
@@ -542,18 +547,60 @@ export interface UpdateRunVerifiedDeps {
  * Run the update, then verify the installed versions actually moved. pnpm
  * exits 0 even when it silently kept the installed versions — the pnpm 11
  * `minimumReleaseAge` gate refuses same-day releases by default — so a green
- * exit alone would report a misleading "update complete". Re-check the
- * registry comparison afterwards and surface a `stale` failure (with the
- * captured pnpm output) when nothing changed, so the panel can tell the user
+ * exit alone would report a misleading "update complete". Re-read the
+ * installed versions afterwards and surface a `stale` failure (with the
+ * captured pnpm output) when nothing moved, so the panel can tell the user
  * how to unblock the gate instead of claiming success.
+ *
+ * The stale decision anchors on the pre-run installed versions, not on the
+ * registry latest: under a lenient gate pnpm may move 0.1.12 -> 0.1.13 while
+ * latest stays 0.1.15 — that is a real update, not stale. The post-run anchor
+ * path is re-resolved rather than reused from boot time: pnpm removes the old
+ * version's .pnpm directory on update, so a boot-time captured path would
+ * fail to read and collapse a successful update into a bogus 'missing'.
+ *
+ * A green exit whose verification has nothing to compare (registry probe
+ * outage, missing anchor, non-npm mode) is reported as `verify-failed` — it
+ * must never read as success.
  * @param deps - the run and check seams.
- * @returns the run result; a `stale` failure when exit 0 left versions behind.
+ * @returns the run result; `stale` when exit 0 left every version in place,
+ * `verify-failed` when the post-run check could not verify anything.
  */
 export async function runUpdateVerified(deps: UpdateRunVerifiedDeps): Promise<UpdateRunResult> {
+  // Pre-run snapshot: the installed versions the update starts from. The
+  // stale decision compares against these, not against the registry latest.
+  const before = new Map<string, string>()
+  for (const name of deps.run.packages) {
+    before.set(name, readInstalledVersion(deps.check.resolve, name))
+  }
   const result = await runUpdate(deps.run)
   if (!result.ok) return result
-  const status = await checkUpdates(deps.check)
-  if (status.outdated) {
+  // Re-resolve the anchor after the run: pnpm removes the old version's
+  // .pnpm directory, so a boot-time captured path no longer reads. Fall back
+  // to the provided path only when nothing resolves now.
+  const anchorManifestPath = resolveAnchorManifest(deps.check.resolve) ?? deps.check.anchorManifestPath
+  const status = await checkUpdates({ ...deps.check, anchorManifestPath })
+  // A green exit with no comparable result is not a success: registry probe
+  // outage, missing anchor, or a non-npm install mode all mean the post-run
+  // check could not verify anything.
+  if (status.error !== undefined || status.mode !== 'npm') {
+    return {
+      ...result,
+      ok: false,
+      errorCode: 'verify-failed',
+      error: 'pnpm exited 0 but the post-run version check could not verify the install',
+    }
+  }
+  // stale: registry comparison completed, but no package moved from its
+  // pre-run version (e.g. the minimumReleaseAge gate kept everything in
+  // place). A partial move (lenient gate) is a real update, not stale. A
+  // package without a pre-run baseline (not part of the update list) is
+  // ignored — only the packages pnpm was told to update count as evidence.
+  const moved = status.packages.some(packageStatus => {
+    const beforeVersion = before.get(packageStatus.name)
+    return beforeVersion !== undefined && packageStatus.current !== beforeVersion
+  })
+  if (status.outdated && !moved) {
     return {
       ...result,
       ok: false,

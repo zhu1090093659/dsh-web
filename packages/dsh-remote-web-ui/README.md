@@ -38,12 +38,16 @@ actions, and the update panel that probes and runs the update.
 - **Remote update**: the download trigger in the sidebar foot (left of the
   phone icon) opens the update panel, which probes the npm registry for the
   installed `@linxin666/dsh-*` family releases. When a newer release exists
-  the panel runs the update automatically (`pnpm update` inside the owning
-  dsh profile; when pnpm is missing it falls back to `corepack pnpm` and
-  then `npx --yes pnpm`, and on Windows the command runs through `cmd.exe`
-  so npm-installed `.cmd` shims resolve; the loopback-only
+  the panel runs the update automatically (`pnpm update --latest` inside the
+  owning dsh profile; when pnpm is missing it falls back to `corepack pnpm`
+  and then `npx --yes pnpm`, and on Windows the command runs through
+  `cmd.exe` so npm-installed `.cmd` shims resolve; the loopback-only
   `/api/update/status` + `/api/update/run` endpoints drive it) and asks for
-  a dsh web restart to pick it up. Local
+  a dsh web restart to pick it up. After a green pnpm exit the installed
+  versions are re-checked against the registry: a green exit that left every
+  version in place (e.g. the pnpm `minimumReleaseAge` gate silently skipping
+  same-day releases) is reported as a stale update with configuration
+  guidance instead of a false success. Local
   link installs (development mode) are detected and report the npm state
   without updating.
 

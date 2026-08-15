@@ -240,17 +240,24 @@ export function apply(ctx: Context, config?: Config): void {
   // The dsh-web-ui self-update surface: probe the npm registry for family
   // releases and run `pnpm update --latest` in the owning profile. Resolutions
   // anchor on the host process's own module graph, so the update always
-  // targets the profile the running web GUI was booted from. The probe path
-  // resolves once (the anchor stays the same package across updates); versions
-  // are re-read from disk per check.
+  // targets the profile the running web GUI was booted from. The anchor path
+  // is re-resolved per operation: pnpm removes the old version's .pnpm
+  // directory on update, so a boot-time captured path would fail to read
+  // after a successful update; versions are re-read from disk per check.
   const requireFromHost = createRequire(import.meta.url)
-  const anchorManifestPath = resolveAnchorManifest(specifier => requireFromHost.resolve(specifier))
+  const resolveAnchorPath = (): string | undefined => resolveAnchorManifest(specifier => {
+    try {
+      return requireFromHost.resolve(specifier)
+    } catch {
+      return undefined
+    }
+  })
   const updateRoutes = makeUpdateRoutes({
     // Control endpoints are host-surface only: a LAN/phone origin must never
     // trigger a real install on this machine.
     fence: request => isTrustedApiRequest(request, []),
     check: () => checkUpdates({
-      anchorManifestPath,
+      anchorManifestPath: resolveAnchorPath(),
       resolve: specifier => {
         try {
           return requireFromHost.resolve(specifier)
@@ -261,7 +268,7 @@ export function apply(ctx: Context, config?: Config): void {
       fetchLatest: name => fetchLatestVersion(name, fetch),
     }),
     run: async (): Promise<UpdateRunResult> => {
-      const target = resolveUpdateTarget({ anchorManifestPath })
+      const target = resolveUpdateTarget({ anchorManifestPath: resolveAnchorPath() })
       if ('error' in target) {
         const code = target.error
         return {
@@ -279,7 +286,7 @@ export function apply(ctx: Context, config?: Config): void {
       return runUpdateVerified({
         run: { profileDir: target.profileDir, packages: target.packages },
         check: {
-          anchorManifestPath,
+          anchorManifestPath: resolveAnchorPath(),
           resolve: specifier => {
             try {
               return requireFromHost.resolve(specifier)

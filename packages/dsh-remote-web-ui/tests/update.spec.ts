@@ -156,6 +156,16 @@ describe("resolveAnchorManifest", () => {
   it("returns undefined when nothing resolves", () => {
     expect(resolveAnchorManifest(() => { throw new Error("missing") })).toBeUndefined()
   })
+  it("falls back to the self package when resolve returns undefined", () => {
+    // A resolve seam may signal "not installed" with undefined instead of
+    // throwing; both must move on to the next candidate.
+    const resolve = (specifier: string) => {
+      if (specifier.startsWith(AGGREGATE_PACKAGE)) return undefined
+      if (specifier.includes("dsh-remote-web-ui")) return "/pkg/self/package.json"
+      return undefined
+    }
+    expect(resolveAnchorManifest(resolve)).toBe("/pkg/self/package.json")
+  })
 })
 
 describe("checkUpdates", () => {
@@ -342,7 +352,7 @@ describe("runUpdate", () => {
     const pnpm = new FakeChild(null)
     const corepack = new FakeChild(null)
     const npx = new FakeChild(0)
-    const { spawnImpl, order } = dispatchFake({ pnpm, corepack, npx })
+    const { spawnImpl, order, argo } = dispatchFake({ pnpm, corepack, npx })
     const promise = runUpdate({ profileDir: "/p", packages: ["a"], spawnImpl })
     pnpm.fail(error)
     corepack.fail(error)
@@ -350,6 +360,12 @@ describe("runUpdate", () => {
     npx.run(0)
     const result = await promise
     expect(order).toEqual(["pnpm", "corepack", "npx"])
+    // Every fallback candidate keeps --latest (npx prefixes --yes before pnpm).
+    expect(argo.map(entry => entry.args)).toEqual([
+      ["update", "--latest", "a"],
+      ["pnpm", "update", "--latest", "a"],
+      ["--yes", "pnpm", "update", "--latest", "a"],
+    ])
     expect(result.ok).toBe(true)
     expect(result.output).toBe("npx pnpm ok")
   })
@@ -373,7 +389,10 @@ describe("runUpdate", () => {
     vi.useFakeTimers()
     const child = new FakeChild(null)
     const spawnImpl = (() => child) as never
-    const promise = runUpdate({ profileDir: "/p", packages: ["a"], spawnImpl, timeoutMs: 1000 })
+    // Pin the POSIX SIGTERM kill path (darwin): on win32 the timeout routes
+    // through taskkill and never touches child.kill(), which would fail the
+    // assertion on Windows hosts.
+    const promise = runUpdate({ profileDir: "/p", packages: ["a"], spawnImpl, timeoutMs: 1000, platform: "darwin" })
     vi.advanceTimersByTime(1000)
     const result = await promise
     expect(child.killed).toBe(true)
@@ -548,5 +567,94 @@ describe("runUpdateVerified", () => {
     const result = await promise
     expect(result.ok).toBe(false)
     expect(result.errorCode).toBe("pnpm-failed")
+  })
+
+  it("reports verify-failed when every post-run registry probe fails", async () => {
+    // pnpm exits 0 but the verification has nothing to compare — every
+    // registry probe failed. This must not collapse into a false success.
+    const child = new FakeChild(0)
+    const spawnImpl = (() => child) as never
+    const promise = runUpdateVerified({
+      run: { profileDir: "/p", packages: [AGGREGATE_PACKAGE], spawnImpl },
+      check: fixtureCheck(async () => undefined),
+    })
+    child.run(0)
+    const result = await promise
+    expect(result.ok).toBe(false)
+    expect(result.errorCode).toBe("verify-failed")
+    expect(result.exitCode).toBe(0)
+  })
+
+  it("reports verify-failed when the post-run anchor cannot be resolved", async () => {
+    // pnpm exits 0, then the post-run check loses the anchor entirely
+    // (mode 'missing') — the boot-time captured path pointed at the old
+    // version's .pnpm directory and nothing re-resolves. Not a success.
+    const child = new FakeChild(0)
+    const spawnImpl = (() => child) as never
+    const promise = runUpdateVerified({
+      run: { profileDir: "/p", packages: [AGGREGATE_PACKAGE], spawnImpl },
+      check: { anchorManifestPath: undefined, resolve: () => undefined, fetchLatest: async () => "0.1.11" },
+    })
+    child.run(0)
+    const result = await promise
+    expect(result.ok).toBe(false)
+    expect(result.errorCode).toBe("verify-failed")
+  })
+
+  it("accepts a partial update as success when versions moved", async () => {
+    // Lenient minimumReleaseAge gate: pnpm moves 0.1.10 -> 0.1.13 while the
+    // registry latest is 0.1.15 — versions moved, so this is a real update,
+    // not a stale failure (the stale decision anchors on the pre-run
+    // versions, not on the registry latest).
+    const anchor = npmFixture("0.1.10", "0.1.10")
+    const child = new FakeChild(0)
+    const spawnImpl = (() => child) as never
+    const promise = runUpdateVerified({
+      run: { profileDir: "/p", packages: [AGGREGATE_PACKAGE], spawnImpl },
+      check: {
+        anchorManifestPath: anchor,
+        resolve: (specifier: string) => {
+          if (specifier === "@linxin666/dsh-ssh/package.json") {
+            return join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-ssh", "package.json")
+          }
+          return anchor
+        },
+        fetchLatest: async () => "0.1.15",
+      },
+    })
+    // pnpm actually updates the installed anchor on disk (the gate allowed a
+    // partial move to 0.1.13) before it exits 0.
+    writeManifest(join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-ui-all"), {
+      name: AGGREGATE_PACKAGE,
+      version: "0.1.13",
+      dependencies: { "@linxin666/dsh-ssh": "^0.1.10" },
+    })
+    child.run(0)
+    const result = await promise
+    expect(result.ok).toBe(true)
+    expect(result.exitCode).toBe(0)
+  })
+
+  it("reports verify-failed when a non-npm mode follows a green exit", async () => {
+    // The post-run check resolves into a link install (no profile walk) —
+    // there is no registry comparison to trust, so the run must not claim
+    // success.
+    const root = makeFixture()
+    const anchorDir = join(root, 'checkout', 'node_modules', '@linxin666', 'dsh-web-ui-all')
+    writeManifest(anchorDir, { name: AGGREGATE_PACKAGE, version: "0.1.10", dependencies: {} })
+    const child = new FakeChild(0)
+    const spawnImpl = (() => child) as never
+    const promise = runUpdateVerified({
+      run: { profileDir: "/p", packages: [AGGREGATE_PACKAGE], spawnImpl },
+      check: {
+        anchorManifestPath: join(anchorDir, "package.json"),
+        resolve: () => join(anchorDir, "package.json"),
+        fetchLatest: async () => "0.1.11",
+      },
+    })
+    child.run(0)
+    const result = await promise
+    expect(result.ok).toBe(false)
+    expect(result.errorCode).toBe("verify-failed")
   })
 })

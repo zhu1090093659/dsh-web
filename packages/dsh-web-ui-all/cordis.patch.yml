@@ -32,6 +32,16 @@
     - id: pet
       name: '@linxin666/dsh-pet'
 
+# from ../dsh-pet-maid
+- insert:
+    - id: pet-maid
+      name: '@linxin666/dsh-pet-maid'
+
+# from ../dsh-pet-center
+- insert:
+    - id: ui-pet-center
+      name: '@linxin666/dsh-client-ui-pet-center'
+
 # from ../dsh-remote-web-ui
 - insert:
     - id: remote-web-ui
@@ -46,16 +56,6 @@
 - insert:
     - id: ssh
       name: '@linxin666/dsh-ssh'
-
-# from ../dsh-tool-describe-image
-- insert:
-    - id: describe-image
-      name: '@linxin666/dsh-tool-describe-image'
-
-# from ../dsh-liangshen
-- insert:
-    - id: liangshen
-      name: '@linxin666/dsh-liangshen'
 
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:

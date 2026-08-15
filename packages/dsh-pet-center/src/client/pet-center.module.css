@@ -1,0 +1,146 @@
+.card {
+  list-style: none;
+}
+
+.header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.headText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.description {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.chevron {
+  transition: transform 120ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+  transition: transform 120ms ease;
+}
+
+.pending {
+  font-size: 11px;
+  color: #d97706;
+}
+
+.body {
+  padding: 4px 12px 12px;
+}
+
+.intro {
+  font-size: 12px;
+  opacity: 0.75;
+  margin: 0 0 10px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+}
+
+.itemActive {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.itemTrying {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemName {
+  font-weight: 600;
+}
+
+.itemTagline {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badgeActive {
+  color: #fff;
+  background: #38bdf8;
+}
+
+.badgeTrying {
+  color: #fff;
+  background: #f59e0b;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.action {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #0f172a;
+  background: linear-gradient(180deg, #7dd3fc, #38bdf8);
+  transition: filter 120ms ease;
+}
+
+.action:hover {
+  filter: brightness(1.08);
+}
+
+.action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action {
+    transition: none;
+  }
+}

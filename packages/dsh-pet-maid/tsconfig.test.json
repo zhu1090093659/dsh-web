@@ -1,0 +1,27 @@
+{
+  "// purpose": "Type-checks the test files without emitting them into lib/. The main tsconfig excludes *.test.ts / *.test.tsx so the build stays clean; this project is standalone (no composite/references) because tests only touch the pure modules (affinity/treats/persist/state) and the client WhalePet rename UI, plus vitest.",
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "strict": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.test.tsbuildinfo"
+  },
+  "include": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/affinity.ts",
+    "src/treats.ts",
+    "src/persist.ts",
+    "src/state.ts",
+    "src/client/css-modules.d.ts",
+    "tests/**/*.spec.ts"
+  ]
+}

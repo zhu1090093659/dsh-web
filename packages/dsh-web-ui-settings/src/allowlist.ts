@@ -20,7 +20,7 @@ export const FAMILY_NAMESPACES = [
   'remote-web-ui',
   'live-stats',
   'pet',
-  'describe-image',
+  'pet-maid',
   'skin-background',
 ] as const
 
@@ -41,12 +41,12 @@ const NAMESPACE_ALIASES: Readonly<Record<string, string | null>> = {
   'remote-web-ui': 'remote-web-ui',
   'dsh-pet': 'pet',
   pet: 'pet',
+  'dsh-pet-maid': 'pet-maid',
+  'pet-maid': 'pet-maid',
   'dsh-skins': 'skin-background',
   'dsh-client-ui-skin-center': 'skin-background',
   'skin-center': 'skin-background',
   'skin-background': 'skin-background',
-  'describe-image': 'describe-image',
-  'dsh-tool-describe-image': 'describe-image',
   'dsh-aionui-panel': null,
   'dsh-client-ui-aionui-panel': null,
   'dsh-git-graph': null,

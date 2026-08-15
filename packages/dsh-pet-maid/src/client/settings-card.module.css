@@ -1,0 +1,284 @@
+.card {
+  list-style: none;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-3);
+  overflow: hidden;
+  transition: border-color 0.16s, background 0.16s;
+}
+
+.cardOpen {
+  background: var(--dsw-alias-bg-layer-2);
+  border-color: var(--dsw-alias-label-dimmed);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: background 120ms ease;
+}
+
+.header:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.header:active {
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}
+
+.header:focus-visible {
+  outline: none;
+  /* Inset ring so it is not clipped by the card's overflow:hidden. */
+  box-shadow: inset 0 0 0 2px var(--dsw-alias-button-info-fill);
+}
+
+.headText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.description {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.pending {
+  font-size: 12px;
+  color: var(--dsw-alias-state-warn-primary);
+}
+
+.chevron {
+  transition: transform 120ms ease;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.body {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.readOnly {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.notExposed {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-state-warn-primary);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.failed {
+  margin: 0 auto 0 0;
+  font-size: 12px;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.discard,
+.save {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease,
+    background 120ms ease, box-shadow 120ms ease;
+}
+
+.discard {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.discard:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-label-dimmed);
+}
+
+.discard:active:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.save {
+  border: 1px solid var(--dsw-alias-button-info-fill);
+  background: var(--dsw-alias-button-info-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+}
+
+.save:hover:not(:disabled) {
+  border-color: var(--dsw-alias-button-info-hover);
+  background: var(--dsw-alias-button-info-hover);
+}
+
+.save:active:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.discard:focus-visible:not(:disabled),
+.save:focus-visible:not(:disabled) {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-alias-button-info-fill);
+}
+
+.discard:disabled,
+.save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--dsw-alias-interactive-bg-hover-accent);
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.reset {
+  font-size: 11px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-state-business-primary);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 3px;
+  transition: color 120ms ease, box-shadow 120ms ease;
+}
+
+.reset:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary-bluish);
+  text-decoration: underline;
+}
+
+.reset:active:not(:disabled) {
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.reset:focus-visible:not(:disabled) {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-alias-button-info-fill);
+}
+
+.reset:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.input,
+.select {
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-specific-input-major);
+}
+
+.inputInvalid {
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.input:disabled,
+.select:disabled {
+  opacity: 0.6;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--dsw-alias-button-info-fill);
+  box-shadow: 0 0 0 2px var(--dsw-alias-button-info-fill);
+}
+
+.inputInvalid:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-alias-state-error-primary);
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.invalid {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+/* Reduced motion: drop the card/button transitions. Token colors and the
+   focus rings stay, so interactive states remain visible without motion. */
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .header,
+  .chevron,
+  .chevronOpen,
+  .reset,
+  .discard,
+  .save {
+    transition: none;
+  }
+}

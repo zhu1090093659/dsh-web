@@ -1,0 +1,27 @@
+# 统一换行符为 LF：文本文件在仓库与工作区均使用 LF，
+# 优先级高于 core.autocrlf，Windows 检出时不再转 CRLF。
+* text=auto eol=lf
+
+# 二进制文件（git 自动检测之外的显式声明，防止被 text=auto 误判）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.bmp binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tgz binary
+*.tar binary
+*.7z binary
+*.exe binary
+*.dll binary
+*.node binary

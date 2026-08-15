@@ -292,6 +292,11 @@ describe('harness home resolution (issue #120: DSH_HOME)', () => {
     const dshHome = mkdtempSync(join(tmpdir(), 'skin-switch-use-dsh-home-'))
     try {
       withEnv({ DSH_HOME: dshHome }, () => {
+        // patchPath guard before useSkin: a resolvePaths regression must fail
+        // here instead of letting useSkin write into the real ~/.dsh.
+        const paths = resolvePaths()
+        expect(paths.patchPath).toBe(join(dshHome, 'cordis.patch.yml'))
+        expect(paths.patchPath).not.toBe(join(homedir(), '.dsh', 'cordis.patch.yml'))
         useSkin('official', {})
         expect(existsSync(join(dshHome, 'cordis.patch.yml'))).toBe(true)
         expect(currentSkin(undefined, {})).toBe('none')
@@ -424,6 +429,11 @@ describe('useSkin / currentSkin against a throwaway HOME', () => {
       qq98: { ...qq98, dir: fakeDir },
     }
     writeFileSync(patchPath(h), '')
+    // patchPath guard before useSkin: the throwaway home owns the write
+    // target, never the real ~/.dsh.
+    const paths = resolvePaths(h)
+    expect(paths.patchPath).toBe(patchPath(h))
+    expect(paths.patchPath).not.toBe(join(homedir(), '.dsh', 'cordis.patch.yml'))
     const message = useSkin('qq98', { home: h, registry: fakeRegistry })
     const after = readFileSync(patchPath(h), 'utf8')
     expect(after).toContain('- insert:')

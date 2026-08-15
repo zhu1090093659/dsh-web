@@ -12,7 +12,7 @@
 
 import type { FileRead, FsEntry, GitStatusView, PreviewContentType, SearchHit } from '../core/types.ts'
 import type { PanelApi } from './api.ts'
-import { detectContentType, isTextType, tabIdOf } from './fileType.ts'
+import { detectContentType, isTextType, pdfPreviewUrl, tabIdOf } from './fileType.ts'
 import {
   createDebounced, evictPreviewScopes, readJson, readStoredNumber, writeJson, writeStoredNumber,
 } from './persist.ts'
@@ -763,6 +763,20 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
       ...prev,
       tabs: prev.tabs.map((item) => (item.id === id ? { ...item, loading: true, error: null } : item)),
     }))
+    // Pdf tabs never fetch through /read: the raw route streams the bytes
+    // straight into the preview iframe, so the tab content is the route URL.
+    if (tab.contentType === 'pdf') {
+      handle.update((prev) => {
+        if (prev.root !== root) return prev
+        return {
+          ...prev,
+          tabs: prev.tabs.map((item) => (item.id === id
+            ? { ...item, loading: false, content: pdfPreviewUrl(root, item.path, Date.now()), updated: false }
+            : item)),
+        }
+      })
+      return
+    }
     const asImage = tab.contentType === 'image'
     const result = tab.diff !== undefined
       ? await api.gitDiff(root, tab.path, tab.diff.staged)
@@ -1014,6 +1028,17 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
           tabs: prev.tabs.map((item) =>
             item.id === id ? { ...item, reloadNonce: (item.reloadNonce ?? 0) + 1 } : item,
           ),
+        }))
+        return
+      }
+      if (tab.contentType === 'pdf') {
+        // Streamed tab: re-point the iframe at the raw route with a fresh
+        // nonce so the browser re-fetches the bytes (no /read round-trip).
+        handle.update((prev) => ({
+          ...prev,
+          tabs: prev.tabs.map((item) => (item.id === id
+            ? { ...item, content: pdfPreviewUrl(state.root, item.path, Date.now()), updated: false, error: null }
+            : item)),
         }))
         return
       }

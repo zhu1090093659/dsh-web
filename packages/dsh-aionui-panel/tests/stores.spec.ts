@@ -170,6 +170,45 @@ describe('scm store', () => {
   })
 })
 
+describe('preview pdf tabs (issue #236)', () => {
+  it('openFile on a pdf streams via the raw route without api.read', async () => {
+    const { api } = fakeApi()
+    const s = createPanelStores(api)
+    s.preview.setRoot('/w')
+    s.preview.openFile('/w', 'docs/manual v2.pdf')
+    await vi.waitFor(() => expect(s.preview.getSnapshot().tabs[0].content).not.toBeNull())
+    const tab = s.preview.getSnapshot().tabs[0]
+    expect(tab.contentType).toBe('pdf')
+    expect(tab.content?.startsWith('/aionui-panel/raw?root=')).toBe(true)
+    expect(tab.content).toContain(`path=${encodeURIComponent('docs/manual v2.pdf')}`)
+    expect(tab.content).toContain('&v=')
+    // Pdf tabs never go through the /read endpoint.
+    expect((api.read as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0)
+  })
+
+  it('reloadTab rebuilds the raw URL with a fresh nonce', async () => {
+    const { api } = fakeApi()
+    const s = createPanelStores(api)
+    let tick = 1000
+    const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => tick++)
+    try {
+      s.preview.setRoot('/w')
+      s.preview.openFile('/w', 'doc.pdf')
+      await vi.waitFor(() => expect(s.preview.getSnapshot().tabs[0].content).not.toBeNull())
+      const id = s.preview.getSnapshot().tabs[0].id
+      const first = s.preview.getSnapshot().tabs[0].content
+      await s.preview.reloadTab(id)
+      const second = s.preview.getSnapshot().tabs[0].content
+      expect(second).not.toBe(first)
+      expect(second?.startsWith('/aionui-panel/raw?root=')).toBe(true)
+      expect(second).toContain('&v=')
+      expect((api.read as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+})
+
 describe('preview diff tabs', () => {
   it('openDiff creates a diff tab loaded through gitDiff (staged side)', async () => {
     stores.preview.setRoot('/w')

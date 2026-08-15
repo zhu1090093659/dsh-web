@@ -365,12 +365,14 @@ function ImageViewer({ src, meta }: { src: string; meta: string }): JSX.Element 
   )
 }
 
-/** PDF viewer (blob iframe). */
+/** PDF viewer: streamed route URL (iframe src) or a legacy data URL (blob). */
 function PdfViewer({ dataUrl, title }: { dataUrl: string; title: string }): JSX.Element {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
     if (!dataUrl.startsWith('data:')) {
-      setUrl(null)
+      // Same-origin /aionui-panel/raw URL: the iframe loads the stream
+      // directly (mime application/pdf, no size cap, no base64 copy).
+      setUrl(dataUrl === '' ? null : dataUrl)
       return
     }
     const blob = dataUrlToBlob(dataUrl)

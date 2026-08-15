@@ -112,6 +112,24 @@ describe('FsService.readRaw (markdown image route)', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
+  it('serves pdf bytes as application/pdf (extension and magic bytes)', async () => {
+    const dir = await realpath(await mkdtemp(join(tmpdir(), 'aionui-raw-')))
+    const root = join(dir, 'proj')
+    await mkdir(join(root, 'docs'), { recursive: true })
+    const pdf = Buffer.from('%PDF-1.7 fake body', 'latin1')
+    await writeFile(join(root, 'docs', 'doc.pdf'), pdf)
+    // No extension: the %PDF magic must still win over octet-stream.
+    await writeFile(join(root, 'docs', 'noext'), pdf)
+    const service = new FsService(gate)
+
+    const byExt = await service.readRaw(root, 'docs/doc.pdf')
+    expect(byExt).toMatchObject({ mime: 'application/pdf', size: pdf.length })
+    if ('data' in byExt) expect(byExt.data.equals(pdf)).toBe(true)
+    expect(await service.readRaw(root, 'docs/noext')).toMatchObject({ mime: 'application/pdf' })
+
+    await rm(dir, { recursive: true, force: true })
+  })
+
   it('refuses .git paths, missing files, and directories', async () => {
     const dir = await realpath(await mkdtemp(join(tmpdir(), 'aionui-raw-')))
     const root = join(dir, 'proj')

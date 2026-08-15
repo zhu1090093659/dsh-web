@@ -163,16 +163,19 @@ export function probeImageSize(data: Buffer): { width: number; height: number } 
   return undefined
 }
 
-/** Derive the mime type for an image read from the extension, then the content. */
+/** Derive the mime type for a raw read from the extension, then the content. */
+// pdf mappings (extension + %PDF magic) contributed by EricWang1358 (#239).
 function imageMime(rel: string, data: Buffer): string {
   const ext = rel.split('.').pop()?.toLowerCase() ?? ''
   const byExt: Record<string, string> = {
     png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
     webp: 'image/webp', svg: 'image/svg+xml', ico: 'image/x-icon', avif: 'image/avif', bmp: 'image/bmp',
+    pdf: 'application/pdf',
   }
   if (byExt[ext]) return byExt[ext]
   if (data.length >= 3 && data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e) return 'image/png'
   if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8) return 'image/jpeg'
+  if (data.length >= 4 && data[0] === 0x25 && data[1] === 0x50 && data[2] === 0x44 && data[3] === 0x46) return 'application/pdf'
   return 'application/octet-stream'
 }
 

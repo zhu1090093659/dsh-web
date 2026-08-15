@@ -38,7 +38,10 @@ export function refreshStateFor(
 export function downloadTab(tab: { title: string; content: string | null; contentType: PreviewContentType }): void {
   if (tab.content === null) return
   const isDataUrl = tab.content.startsWith('data:')
-  const href = isDataUrl
+  // Pdf tabs hold a same-origin raw-route URL: anchor it directly (the
+  // download attribute forces a save), no blob copy needed.
+  const isRouteUrl = tab.content.startsWith('/aionui-panel/raw')
+  const href = isDataUrl || isRouteUrl
     ? tab.content
     : URL.createObjectURL(new Blob([tab.content], { type: 'text/plain;charset=utf-8' }))
   const anchor = document.createElement('a')
@@ -48,7 +51,7 @@ export function downloadTab(tab: { title: string; content: string | null; conten
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
-  if (!isDataUrl) setTimeout(() => URL.revokeObjectURL(href), 10_000)
+  if (!isDataUrl && !isRouteUrl) setTimeout(() => URL.revokeObjectURL(href), 10_000)
 }
 
 /** The toolbar. */

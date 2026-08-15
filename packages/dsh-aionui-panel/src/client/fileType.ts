@@ -115,3 +115,15 @@ export function parentRel(path: string): string {
   const idx = path.lastIndexOf('/')
   return idx > 0 ? path.slice(0, idx) : ''
 }
+
+/**
+ * The streaming URL a pdf tab renders: the host raw route serves the bytes
+ * with mime application/pdf, so the preview iframe loads them directly — no
+ * base64 round-trip and no read-size cap. The nonce defeats browser caching
+ * when the tab is refreshed after the file changed on disk.
+ *
+ * Contributed by EricWang1358 (#239).
+ */
+export function pdfPreviewUrl(root: string, path: string, nonce: number): string {
+  return `/aionui-panel/raw?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}&v=${nonce}`
+}

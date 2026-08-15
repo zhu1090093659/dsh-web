@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { renderInline, renderMarkdown, resolveMarkdownImage } from '../src/client/preview/markdown.ts'
 import { parseCsv, normalizeUrl } from '../src/client/preview/content.tsx'
 import { parseGridTracks, trackPx } from '../src/client/layout.ts'
-import { detectContentType } from '../src/client/fileType.ts'
+import { detectContentType, pdfPreviewUrl } from '../src/client/fileType.ts'
 
 describe('renderMarkdown', () => {
   it('renders headings, paragraphs and hr', () => {
@@ -92,6 +92,20 @@ describe('detectContentType', () => {
     expect(detectContentType('pic.png')).toBe('image')
     expect(detectContentType('LICENSE')).toBe('text')
     expect(detectContentType('weird.bin')).toBe('unsupported')
+  })
+})
+
+describe('pdfPreviewUrl (issue #236)', () => {
+  it('encodes root and path and appends the nonce as &v=', () => {
+    const url = pdfPreviewUrl('C:\\work dir', 'docs/a b#1.pdf', 42)
+    expect(url).toBe(
+      `/aionui-panel/raw?root=${encodeURIComponent('C:\\work dir')}&path=${encodeURIComponent('docs/a b#1.pdf')}&v=42`,
+    )
+    // Space and # must never survive raw into the URL.
+    expect(url).not.toContain(' ')
+    expect(url).not.toContain('#')
+    expect(url).toContain('a%20b%231.pdf')
+    expect(url.endsWith('&v=42')).toBe(true)
   })
 })
 

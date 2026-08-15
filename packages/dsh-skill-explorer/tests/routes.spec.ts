@@ -119,6 +119,15 @@ describe('set-enabled', () => {
     expect(status()).toBe(400)
   })
 
+  it('rejects GET with 405 and never rewrites files', async () => {
+    const file = join(PROJ, '.dsh', 'skills', 'poc-first', 'SKILL.md')
+    const before = readFileSync(file, 'utf8')
+    const { res, status } = response()
+    await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'GET'), res)
+    expect(status()).toBe(405)
+    expect(readFileSync(file, 'utf8')).toBe(before)
+  })
+
   it('returns 404 for skills without an editable file', async () => {
     const { res, status } = response()
     await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', { body: { name: 'not-exist', enabled: true } }), res)
@@ -148,6 +157,12 @@ describe('create', () => {
     await find(ROUTES.create)!.handler(request(ROUTES.create, 'POST', { body: { root: 'user', name: 'Bad_Name', description: 'x', content: 'y' } }), res)
     expect(status()).toBe(400)
   })
+
+  it('rejects oversized content with 400', async () => {
+    const { res, status } = response()
+    await find(ROUTES.create)!.handler(request(ROUTES.create, 'POST', { body: { root: 'user', name: 'big-skill', description: 'x', content: 'x'.repeat(64 * 1024 + 1) } }), res)
+    expect(status()).toBe(400)
+  })
 })
 
 describe('delete', () => {
@@ -162,5 +177,26 @@ describe('delete', () => {
     const { res, status } = response()
     await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'not-exist' } }), res)
     expect(status()).toBe(404)
+  })
+
+  it('rejects invalid names with 400', async () => {
+    const { res, status } = response()
+    await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'Bad Name' } }), res)
+    expect(status()).toBe(400)
+  })
+})
+
+describe('sessions degradation', () => {
+  it('still serves list when sessions throw (empty project roots)', async () => {
+    const brokenDeps = {
+      ...deps,
+      activeSessionCwds: () => { throw new Error('sessions boom') },
+    }
+    const brokenRoutes = makeRoutes(brokenDeps)
+    const { res, status, body } = response()
+    await brokenRoutes.find((route) => route.path === ROUTES.list)!.handler(request(ROUTES.list, 'GET'), res)
+    expect(status()).toBe(200)
+    // The filesystem scan still works; project skills fall back to the process cwd.
+    expect(JSON.parse(body()).complete).toBe(true)
   })
 })

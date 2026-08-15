@@ -120,10 +120,19 @@ export function makeRoutes(deps: SkillRoutesDeps): WebRoute[] {
     return true
   }
 
+  /** Active session project roots (degraded to [] when sessions throw). */
+  const sessionProjectRoots = (): string[] => {
+    try {
+      return activeSessionCwds().map((sessionCwd) => findProjectRoot(sessionCwd))
+    } catch {
+      return []
+    }
+  }
+
   /** Collect options shared by list/set-enabled/delete/health handlers. */
   const collectOptions = (cwd: string): CollectOptions => ({
     cwd,
-    projectRoots: activeSessionCwds().map((sessionCwd) => findProjectRoot(sessionCwd)),
+    projectRoots: sessionProjectRoots(),
     customSkillDirs,
     dshHome,
     agentsHome,
@@ -147,7 +156,7 @@ export function makeRoutes(deps: SkillRoutesDeps): WebRoute[] {
           // Project root base: explicit ?cwd= first, then active session
           // workspaces, process.cwd() last.
           const cwd = queryParam(url, 'cwd') ?? DEFAULT_CWD()
-          const projectRoots = activeSessionCwds().map((sessionCwd) => findProjectRoot(sessionCwd))
+          const projectRoots = sessionProjectRoots()
           const { skills, complete } = await collectSkills(collectOptions(cwd))
           writeJson(res, 200, buildPayload(skills, complete, cwd, [...new Set(projectRoots)]))
         } catch (error) {

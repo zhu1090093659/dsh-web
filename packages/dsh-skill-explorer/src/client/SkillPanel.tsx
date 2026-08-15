@@ -6,6 +6,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
 import { SkillApi, type ListPayload, type SkillEntry } from './api.ts'
+import { zh } from './locales.ts'
 import { tt } from './panel-helpers.ts'
 import css from './skill-panel.module.css'
 
@@ -95,20 +96,22 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
 }
 
 /** The grouped skill list tab. */
-function ListTab({ api, onChanged }: { api: SkillApi; onChanged: () => void }): React.JSX.Element {
+function ListTab({ api, refreshTick, onCwd }: { api: SkillApi; refreshTick: number; onCwd: (cwd: string) => void }): React.JSX.Element {
   const [payload, setPayload] = useState<ListPayload | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
 
   const load = async (): Promise<void> => {
     try {
-      setPayload(await api.list())
+      const next = await api.list()
+      setPayload(next)
+      onCwd(next.cwd)
       setError(undefined)
     } catch (err) {
       setError(tt('list.loadFailed', { error: err instanceof Error ? err.message : String(err) }))
     }
   }
 
-  useEffect(() => { void load() }, [api])
+  useEffect(() => { void load() }, [api, refreshTick])
 
   if (error !== undefined) return <div className={css.status}>{error}</div>
   if (payload === undefined) return <div className={css.status}>{tt('list.loading')}</div>
@@ -116,18 +119,24 @@ function ListTab({ api, onChanged }: { api: SkillApi; onChanged: () => void }): 
 
   return (
     <div>
-      {payload.groups.map((group) => (
-        <section key={group.key} className={css.group}>
-          <h3 className={css.groupTitle}>
-            {group.title}
-            <span className={css.count}>{tt('list.count', { count: String(group.skills.length) })}</span>
-          </h3>
-          {group.hint !== '' && <p className={css.groupHint}>{group.hint}</p>}
-          {group.skills.map((skill) => (
-            <SkillCard key={skill.name} skill={skill} api={api} onChanged={() => { void load() }} />
-          ))}
-        </section>
-      ))}
+      {payload.groups.map((group) => {
+        const groupKey = `group.${group.key}` as keyof typeof zh
+        const hintKey = `groupHint.${group.key}` as keyof typeof zh
+        const title = groupKey in zh ? tt(groupKey) : group.title
+        const hint = hintKey in zh ? tt(hintKey) : group.hint
+        return (
+          <section key={group.key} className={css.group}>
+            <h3 className={css.groupTitle}>
+              {title}
+              <span className={css.count}>{tt('list.count', { count: String(group.skills.length) })}</span>
+            </h3>
+            {hint !== '' && <p className={css.groupHint}>{hint}</p>}
+            {group.skills.map((skill) => (
+              <SkillCard key={skill.name} skill={skill} api={api} onChanged={() => { void load() }} />
+            ))}
+          </section>
+        )
+      })}
     </div>
   )
 }
@@ -201,6 +210,7 @@ function CreateTab({ api }: { api: SkillApi }): React.JSX.Element {
 export function SkillPanel({ api, onClose }: SkillPanelProps): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('list')
   const [cwd, setCwd] = useState<string | undefined>(undefined)
+  const [refreshTick, setRefreshTick] = useState(0)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -221,7 +231,7 @@ export function SkillPanel({ api, onClose }: SkillPanelProps): React.JSX.Element
         <header className={css.head}>
           <h2 className={css.headTitle}>{tt('panel.title')}</h2>
           {cwd !== undefined && <span className={css.headCwd}>{tt('cwd', { cwd })}</span>}
-          <button type="button" className={css.headButton} onClick={() => { void api.list().then((payload) => { setCwd(payload.cwd) }) }}>
+          <button type="button" className={css.headButton} onClick={() => { setRefreshTick((tick) => tick + 1) }}>
             {tt('refresh')}
           </button>
           <button type="button" className={css.headButton} onClick={onClose}>{tt('close')}</button>
@@ -235,7 +245,7 @@ export function SkillPanel({ api, onClose }: SkillPanelProps): React.JSX.Element
           </button>
         </div>
         <div className={css.body}>
-          {tab === 'list' ? <ListTab api={api} onChanged={() => {}} /> : <CreateTab api={api} />}
+          {tab === 'list' ? <ListTab api={api} refreshTick={refreshTick} onCwd={setCwd} /> : <CreateTab api={api} />}
         </div>
       </div>
     </div>

@@ -1,0 +1,35 @@
+/* Conversation image preview: in-place thumbnail plus the full-size overlay. */
+
+.preview {
+  display: block;
+  margin: 4px 0;
+}
+
+.thumb {
+  display: block;
+  max-width: 320px;
+  max-height: 200px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  object-fit: contain;
+  cursor: zoom-in;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  cursor: zoom-out;
+}
+
+.lightbox img {
+  max-width: 92vw;
+  max-height: 92vh;
+  border-radius: 8px;
+  object-fit: contain;
+}

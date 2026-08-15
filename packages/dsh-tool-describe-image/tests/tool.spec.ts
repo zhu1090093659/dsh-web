@@ -704,7 +704,12 @@ describe('resolveConfig, sniffing, and bounded reads', () => {
       maxOutputTokens: tool.DEFAULT_MAX_OUTPUT_TOKENS,
       timeoutMs: tool.DEFAULT_TIMEOUT_MS,
       apiStyle: tool.DEFAULT_API_STYLE,
+      renderImagePreview: tool.DEFAULT_RENDER_IMAGE_PREVIEW,
     })
+  })
+
+  it('honors an explicit renderImagePreview override', () => {
+    expect(tool.resolveConfig({ ...minimal, renderImagePreview: false }).renderImagePreview).toBe(false)
   })
 
   it('accepts the responses style and rejects anything else', () => {

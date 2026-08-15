@@ -10,8 +10,8 @@
 
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import { PluginSettingsCard, ChoiceField, ValueField } from './PluginSettingsCard.tsx'
-import { CardForm, choiceField, numberField, secretField, textField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
+import { PluginSettingsCard, BooleanField, ChoiceField, ValueField } from './PluginSettingsCard.tsx'
+import { CardForm, booleanField, choiceField, numberField, secretField, textField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
 import { t } from './locales.ts'
 
 /** The describe-image fields this card edits (the namespace's full schema). */
@@ -25,6 +25,7 @@ export interface DescribeImageSettings {
   maxOutputTokens?: number
   timeoutMs?: number
   apiStyle?: 'chat-completions' | 'responses'
+  renderImagePreview?: boolean
 }
 
 /** What the describe-image card renders. */
@@ -38,6 +39,7 @@ export interface DescribeImageSettingsCardState extends CardShell {
   maxOutputTokens: CardFieldState
   timeoutMs: CardFieldState
   apiStyle: CardFieldState
+  renderImagePreview: CardFieldState
 }
 
 /** The registration-side face the card's slot entry injects. */
@@ -65,6 +67,7 @@ export class DescribeImageSettingsCardController {
       numberField('maxBytes'),
       numberField('maxOutputTokens'),
       numberField('timeoutMs'),
+      booleanField('renderImagePreview'),
     ])
     this.store = this.form.bind(() => this.projection())
   }
@@ -81,6 +84,7 @@ export class DescribeImageSettingsCardController {
       maxBytes: this.form.field('maxBytes'),
       maxOutputTokens: this.form.field('maxOutputTokens'),
       timeoutMs: this.form.field('timeoutMs'),
+      renderImagePreview: this.form.field('renderImagePreview'),
     }
   }
 
@@ -210,6 +214,18 @@ export function DescribeImageSettingsCard(props: DescribeImageSettingsCardProps)
         {...state.timeoutMs}
         onEdit={(text) => { props.edit('timeoutMs', text) }}
         onReset={() => { props.resetField('timeoutMs') }}
+      />
+      <BooleanField
+        id="settings-describe-image-render-preview"
+        label={t('field.renderImagePreview')}
+        hint={t('field.renderImagePreview.hint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...state.renderImagePreview}
+        onEdit={(text) => { props.edit('renderImagePreview', text) }}
+        onReset={() => { props.resetField('renderImagePreview') }}
       />
     </PluginSettingsCard>
   )

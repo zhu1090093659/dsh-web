@@ -26,6 +26,8 @@ export const API_STYLES = ['chat-completions', 'responses'] as const
 export type ApiStyle = typeof API_STYLES[number]
 /** Protocol style used unless the configuration overrides it. */
 export const DEFAULT_API_STYLE: ApiStyle = 'chat-completions'
+/** Whether conversation image references upgrade into inline thumbnails unless configured otherwise. */
+export const DEFAULT_RENDER_IMAGE_PREVIEW = true
 /** Instruction sent when the model does not pass its own prompt. */
 export const DEFAULT_PROMPT =
   'Analyze this image: describe what is visible factually, transcribe legible text verbatim, and call out layout, notable details, or anything anomalous.'
@@ -54,6 +56,15 @@ export interface Config {
   timeoutMs?: number
   /** Protocol style of the endpoint; defaults to {@link DEFAULT_API_STYLE} (`chat-completions`). */
   apiStyle?: ApiStyle
+  /**
+   * Whether describe-image references in the conversation upgrade in place into inline
+   * thumbnails; defaults to {@link DEFAULT_RENDER_IMAGE_PREVIEW}. The web shell renders
+   * user messages as plain text, so a sent reference would otherwise sit in the
+   * transcript as raw markdown. Display-only: the message text, the session log, and
+   * the model side are untouched. If the raw route is unreachable through the current
+   * origin, the thumbnail load fails and the reference text stays as-is.
+   */
+  renderImagePreview?: boolean
 }
 
 /** Schemastery configuration for the describe-image tool; doubles as the `describe-image` settings-section schema. */
@@ -67,6 +78,7 @@ export const Config: z<Config> = z.object({
   maxOutputTokens: z.number().step(1).min(1).default(DEFAULT_MAX_OUTPUT_TOKENS),
   timeoutMs: z.number().min(1).default(DEFAULT_TIMEOUT_MS),
   apiStyle: z.union(API_STYLES).default(DEFAULT_API_STYLE),
+  renderImagePreview: z.boolean().default(DEFAULT_RENDER_IMAGE_PREVIEW),
 })
 
 /** Settings namespace carrying the endpoint, model, and key reference the Plugins card edits. */
@@ -83,6 +95,7 @@ export interface ResolvedConfig {
   maxOutputTokens: number
   timeoutMs: number
   apiStyle: ApiStyle
+  renderImagePreview: boolean
 }
 
 /**
@@ -125,7 +138,7 @@ export function resolveConfig(config: Config): ResolvedConfig {
   if (!API_STYLES.includes(apiStyle)) {
     throw new Error(`describe-image: apiStyle must be one of ${API_STYLES.map(style => JSON.stringify(style)).join(', ')}`)
   }
-  return { baseURL, model, apiKey, apiKeyEnv, defaultPrompt: config.defaultPrompt ?? DEFAULT_PROMPT, maxBytes, maxOutputTokens, timeoutMs, apiStyle }
+  return { baseURL, model, apiKey, apiKeyEnv, defaultPrompt: config.defaultPrompt ?? DEFAULT_PROMPT, maxBytes, maxOutputTokens, timeoutMs, apiStyle, renderImagePreview: config.renderImagePreview ?? DEFAULT_RENDER_IMAGE_PREVIEW }
 }
 
 /**

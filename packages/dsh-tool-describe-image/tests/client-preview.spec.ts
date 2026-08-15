@@ -1,0 +1,137 @@
+// @vitest-environment jsdom
+/**
+ * Conversation image preview enhancer: reference matching, in-place
+ * thumbnail upgrade, live-toggle restore, unreachable-route fallback, and
+ * the full-size overlay. jsdom never loads images, so load failure is
+ * simulated by dispatching the `error` event.
+ */
+import { afterEach, describe, expect, it } from 'vitest'
+import { findImageReferences, installConversationImagePreview, type ConversationImagePreview } from '../src/client/preview.ts'
+
+/** The reference the send hook splices into a plain-text prompt. */
+const REF = '![图片](/describe-image/raw/sha256:abc)'
+/** The raw-route path inside {@link REF}. */
+const PATH = '/describe-image/raw/sha256:abc'
+
+/** Flush the observer's microtask-batched scan. */
+const flush = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0))
+
+describe('findImageReferences', () => {
+  it('locates a single reference with its alt text and span', () => {
+    expect(findImageReferences(`看 ${REF} 一下`)).toEqual([{ alt: '图片', path: PATH, start: 2, end: 2 + REF.length }])
+  })
+
+  it('locates repeated references in one chunk', () => {
+    const matches = findImageReferences(`${REF} 和 ${REF}`)
+    expect(matches).toHaveLength(2)
+    expect(matches[1]?.start).toBe(REF.length + 3)
+  })
+
+  it('ignores plain links and absolute-URL forms', () => {
+    expect(findImageReferences('[图片](/describe-image/raw/sha256:abc)')).toEqual([])
+    expect(findImageReferences('![图片](http://127.0.0.1:3080/describe-image/raw/sha256:abc)')).toEqual([])
+  })
+})
+
+describe('installConversationImagePreview', () => {
+  let handle: ConversationImagePreview | undefined
+
+  afterEach(() => {
+    handle?.dispose()
+    handle = undefined
+    document.body.innerHTML = ''
+  })
+
+  /** Mount one container under the shell body and return it. */
+  const makeRoot = (html: string): HTMLElement => {
+    const root = document.createElement('div')
+    root.innerHTML = html
+    document.body.append(root)
+    return root
+  }
+
+  it('upgrades a reference in place into a thumbnail, keeping the surrounding text', () => {
+    const root = makeRoot(`<div class="bubble">看 ${REF} 一下</div>`)
+    handle = installConversationImagePreview(() => true, root)
+    const image = root.querySelector('img')
+    expect(image?.src).toBe(`${window.location.origin}${PATH}`)
+    expect(image?.alt).toBe('图片')
+    expect(image?.title).toBe('点击查看大图')
+    expect(root.querySelector('[data-dsh-di-preview]')?.getAttribute('data-dsh-di-preview')).toBe(REF)
+    expect(root.textContent).toBe('看  一下')
+  })
+
+  it('upgrades references that arrive after install (observer pass)', async () => {
+    const root = makeRoot('<div class="bubble"></div>')
+    handle = installConversationImagePreview(() => true, root)
+    expect(root.querySelector('img')).toBeNull()
+    root.firstElementChild!.textContent = REF
+    await flush()
+    expect(root.querySelector('img')?.src).toBe(`${window.location.origin}${PATH}`)
+  })
+
+  it('restores the original text when the toggle turns off', () => {
+    let enabled = true
+    const root = makeRoot(`<div class="bubble">看 ${REF} 一下</div>`)
+    handle = installConversationImagePreview(() => enabled, root)
+    expect(root.querySelector('img')).not.toBeNull()
+    enabled = false
+    handle.refresh()
+    expect(root.querySelector('img')).toBeNull()
+    expect(root.textContent).toBe(`看 ${REF} 一下`)
+    enabled = true
+    handle.refresh()
+    expect(root.querySelector('img')).not.toBeNull()
+  })
+
+  it('never enhances while the toggle is off', async () => {
+    const root = makeRoot(`<div class="bubble">${REF}</div>`)
+    handle = installConversationImagePreview(() => false, root)
+    await flush()
+    expect(root.querySelector('img')).toBeNull()
+    expect(root.textContent).toBe(REF)
+  })
+
+  it('restores the text and remembers the path when the thumbnail fails to load', async () => {
+    const root = makeRoot(`<div class="bubble">${REF}</div>`)
+    handle = installConversationImagePreview(() => true, root)
+    const image = root.querySelector('img')
+    expect(image).not.toBeNull()
+    image!.dispatchEvent(new Event('error'))
+    expect(root.querySelector('img')).toBeNull()
+    expect(root.textContent).toBe(REF)
+    // The failed path is remembered for the session: re-arriving text stays plain.
+    root.innerHTML = `<div class="bubble">${REF}</div>`
+    await flush()
+    expect(root.querySelector('img')).toBeNull()
+    expect(root.textContent).toBe(REF)
+  })
+
+  it('leaves editable surfaces and raw-text islands alone', () => {
+    const root = makeRoot(`<div contenteditable="true">${REF}</div><textarea>${REF}</textarea>`)
+    handle = installConversationImagePreview(() => true, root)
+    expect(root.querySelector('img')).toBeNull()
+  })
+
+  it('opens the full-size overlay on click and closes it on overlay click', () => {
+    const root = makeRoot(`<div class="bubble">${REF}</div>`)
+    handle = installConversationImagePreview(() => true, root)
+    root.querySelector('img')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    const overlay = document.body.querySelector('[data-dsh-di-lightbox]')
+    expect(overlay?.querySelector('img')?.src).toBe(`${window.location.origin}${PATH}`)
+    overlay!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(document.body.querySelector('[data-dsh-di-lightbox]')).toBeNull()
+  })
+
+  it('dispose restores every preview and stops observing', async () => {
+    const root = makeRoot(`<div class="bubble">${REF}</div>`)
+    handle = installConversationImagePreview(() => true, root)
+    expect(root.querySelector('img')).not.toBeNull()
+    handle.dispose()
+    handle = undefined
+    expect(root.textContent).toBe(REF)
+    root.innerHTML = `<div class="bubble">${REF}</div>`
+    await flush()
+    expect(root.querySelector('img')).toBeNull()
+  })
+})

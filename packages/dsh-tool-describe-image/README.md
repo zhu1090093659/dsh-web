@@ -66,6 +66,7 @@ actually configures it and per-call otherwise.)
 | `maxBytes` | `10485760` | Image byte bound (local files and downloads alike) |
 | `maxOutputTokens` | `1024` | Output-token cap: `max_tokens` under `chat-completions`, `max_output_tokens` under `responses` |
 | `timeoutMs` | `60000` | Per-call vision request timeout |
+| `renderImagePreview` | `true` | Upgrade image references in the conversation into inline thumbnails (click for full size); `false` keeps the raw reference text. Display-only — message text and model-side analysis are unchanged |
 
 Configured mount example (profile `cordis.patch.yml` / composition file):
 
@@ -103,10 +104,15 @@ text model toward passing one. Calls without a `prompt` fall back to `defaultPro
 
 Text-only models have no image entry in the DSH input box, so drag or paste an image into the
 composer: at send time the plugin rewrites the image-bearing send into a describe-image reference
-(`![图片](/describe-image/raw/sha256:…)`) instead of an image block the model cannot read — the
-image renders in the conversation and the model analyzes it through the tool. The bytes travel to
-the host `/describe-image/attach` route (validated for size and magic bytes, persisted in the
-attachment store); only the reference text enters the session log.
+(`![图片](/describe-image/raw/sha256:…)`) instead of an image block the model cannot read. The
+bytes travel to the host `/describe-image/attach` route (validated for size and magic bytes,
+persisted in the attachment store); only the reference text enters the session log.
+The web shell renders user messages as plain text, so the sent reference would sit in the
+transcript as raw markdown; with `renderImagePreview` on (the card's "Render image preview in
+chat" toggle, on by default) the client upgrades each reference in place into an inline thumbnail
+— click it for a full-size overlay. If the raw route is unreachable through the current origin
+(for example behind a proxy that does not forward it), the thumbnail load fails and the reference
+text stays as-is.
 
 ## Known limitations
 

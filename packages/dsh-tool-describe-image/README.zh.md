@@ -63,6 +63,7 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
 | `maxBytes` | `10485760` | 图片字节上限（本地文件与下载一致） |
 | `maxOutputTokens` | `1024` | 输出 token 上限：`chat-completions` 发 `max_tokens`，`responses` 发 `max_output_tokens` |
 | `timeoutMs` | `60000` | 单次视觉请求超时 |
+| `renderImagePreview` | `true` | 会话里的图片引用原地升级为缩略图（点击查看大图）；`false` 保持原始引用文本。仅影响本地显示，消息文本与模型识别不变 |
 
 带配置的挂载示例（profile 的 `cordis.patch.yml` / 组合文件）：
 
@@ -99,8 +100,11 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
 
 DSH 输入框对纯文本模型没有图片入口，因此在输入框里拖拽或粘贴图片：发送时插件会把携带图片的
 发送改写为 describe-image 引用（`![图片](/describe-image/raw/sha256:…)`），而不是模型读不了的
-图片块——图片在会话里正常渲染，模型经工具分析它。图片字节经 host 端 `/describe-image/attach`
-路由上传（校验大小与 magic bytes，持久化到附件存储）；只有引用文本进入会话记录。
+图片块。图片字节经 host 端 `/describe-image/attach` 路由上传（校验大小与 magic bytes，持久化
+到附件存储）；只有引用文本进入会话记录。Web shell 把用户消息渲染为纯文本，发送的引用本会
+以原始 markdown 文本留在会话里；开启 `renderImagePreview`（设置卡的「会话内渲染图片预览」
+开关，默认开）后客户端把每条引用原地升级为缩略图——点击查看大图。若 raw 路由经当前访问源
+不可达（如反向代理未转发该路由），缩略图加载失败，引用文本保持原样。
 
 ## 已知限制
 

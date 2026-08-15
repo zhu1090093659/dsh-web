@@ -3,9 +3,12 @@
  * The shell's input box has no image entry for text-only models, so image
  * sends are rewritten at submit time (installSendHook) into describe-image
  * references before they reach the model — the way a text-only model gets an
- * image to analyze without the shell's vision pipeline. The settings card is
- * rendered by the web GUI's built-in plugin config page from the host-side
- * `describe-image` section.
+ * image to analyze without the shell's vision pipeline. The shell renders
+ * user messages as plain text, so a sent reference is then upgraded in place
+ * into an inline thumbnail (installConversationImagePreview) unless the
+ * deployment turns previews off. The settings card is rendered by the web
+ * GUI's built-in plugin config page from the host-side `describe-image`
+ * section.
  *
  * Failure policy: every DOM/runtime wiring failure is logged, never thrown —
  * the web shell fails the whole boot when a plugin apply throws.
@@ -18,6 +21,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { installSendHook } from './send-hook.ts'
+import { installConversationImagePreview, type ConversationImagePreview } from './preview.ts'
 import { DescribeImageSettingsCard, DescribeImageSettingsCardController, type DescribeImageSettings } from './DescribeImageSettingsCard.tsx'
 import { dictionaries, setLanguage, type DescribeImageClientKey } from './locales.ts'
 
@@ -79,15 +83,35 @@ export function apply(ctx: ClientContext): void {
     const conversation = scope.conversation
     const slots = scope.slots
 
+    // Bound once the settings scope inject fires; the preview enhancer reads
+    // it per scan, so an unbound scope (or a missing service) keeps the default.
+    let settingsScopeRef: SettingsScope<DescribeImageSettings> | undefined
+
     // Text-only models reject image blocks at submit: rewrite image-bearing
     // sends into describe-image references before they reach the model.
     installSendHook(conversation)
+
+    // The shell renders user messages as plain text, so a sent reference sits
+    // in the transcript as raw markdown; upgrade it in place into an inline
+    // thumbnail unless the deployment turns previews off.
+    let previewRef: ConversationImagePreview | undefined
+    ctx.effect(() => {
+      const handle = installConversationImagePreview(() => settingsScopeRef?.getSnapshot().value?.renderImagePreview !== false)
+      previewRef = handle
+      return () => {
+        previewRef = undefined
+        handle.dispose()
+      }
+    }, 'dsh-tool-describe-image: conversation image preview')
 
     // The settings card: bound to the describe-image namespace through the
     // family bridge when the official scope does not expose it.
     ctx.inject(['settingsScope'], (settingsCtx: ClientContext) => {
       const binder = settingsCtx.get('webUiSettings') ?? settingsCtx.settingsScope
       const settingsScope = binder.bind<DescribeImageSettings>({ namespace: NS })
+      settingsScopeRef = settingsScope
+      // Live toggle: re-scan (or restore) the moment a settings save settles.
+      settingsScope.subscribe(() => previewRef?.refresh())
       const settingsCard = new DescribeImageSettingsCardController(settingsScope)
       slots.inject('web-ui.plugin.item', () =>
         slots.register({

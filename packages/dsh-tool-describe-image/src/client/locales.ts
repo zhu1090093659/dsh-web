@@ -25,6 +25,8 @@ export const zh = {
   'settings.overridden': '已覆盖',
   'settings.reset': '重置',
   'settings.inherit': '继承',
+  'settings.on': '开',
+  'settings.off': '关',
   'settings.invalidNumber': '需要有效的数字',
   'field.baseURL': '接口地址',
   'field.baseURL.hint': 'OpenAI 兼容根地址；按协议追加 /chat/completions 或 /responses。',
@@ -46,6 +48,10 @@ export const zh = {
   'field.maxOutputTokens.hint': '发给端点的 max_tokens（responses 协议为 max_output_tokens）。',
   'field.timeoutMs': '超时（毫秒）',
   'field.timeoutMs.hint': '单次视觉请求超时。',
+  'field.renderImagePreview': '会话内渲染图片预览',
+  'field.renderImagePreview.hint': '开：会话里的图片引用原地显示为缩略图，点击查看大图；关：保持原始引用文本。仅影响本地显示，消息文本与模型识别不变。',
+  'preview.expand': '点击查看大图',
+  'preview.close': '关闭大图',
 } satisfies Record<string, string>
 
 /** The describe-image client namespace key union. */
@@ -76,6 +82,8 @@ export const en = {
   'settings.overridden': 'Overridden',
   'settings.reset': 'Reset',
   'settings.inherit': 'Inherit',
+  'settings.on': 'On',
+  'settings.off': 'Off',
   'settings.invalidNumber': 'A valid number is required',
   'field.baseURL': 'Base URL',
   'field.baseURL.hint': 'OpenAI-compatible root URL; /chat/completions or /responses is appended per the API style.',
@@ -97,6 +105,10 @@ export const en = {
   'field.maxOutputTokens.hint': 'The max_tokens sent to the endpoint (max_output_tokens under the responses style).',
   'field.timeoutMs': 'Timeout (ms)',
   'field.timeoutMs.hint': 'Per-call vision request timeout.',
+  'field.renderImagePreview': 'Render image preview in chat',
+  'field.renderImagePreview.hint': 'On: image references in the conversation upgrade into inline thumbnails (click for full size). Off: the raw reference text stays. Display-only — the message text and model-side analysis are unchanged.',
+  'preview.expand': 'Click to view full size',
+  'preview.close': 'Close full image',
 } satisfies Record<string, string>
 
 /** The two dictionaries, keyed by language. */

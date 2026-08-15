@@ -33,6 +33,7 @@ const SPEC: tool.ResolvedConfig = {
   maxOutputTokens: tool.DEFAULT_MAX_OUTPUT_TOKENS,
   timeoutMs: 60_000,
   apiStyle: 'chat-completions',
+  renderImagePreview: tool.DEFAULT_RENDER_IMAGE_PREVIEW,
 }
 
 async function tempPng(): Promise<string> {

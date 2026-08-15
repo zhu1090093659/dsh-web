@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-The skin-family aggregate plugin: installing it gives you the skin center (`skin-center`) plus every skin asset (qq98 / ths / xp / blue-fantasy / dragon-heir / minecraft / miku / trading / whale-song ...) bundled inside the package's `skins/` directory, so no per-skin npm package is needed.
+The skin-family aggregate plugin: installing it gives you the skin center (`skin-center`) plus every skin asset (qq98 / ths / xp / blue-fantasy / dragon-heir / minecraft / miku / trading / whale-song / harbor ...) bundled inside the package's `skins/` directory, so no per-skin npm package is needed.
 
 ## What it is
 

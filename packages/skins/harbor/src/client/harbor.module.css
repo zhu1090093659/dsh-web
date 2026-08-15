@@ -1,0 +1,196 @@
+/* harbor (夕港) skin — the dusk-harbor theme for the dsh web GUI:
+   twilight-blue night sky melting into sunset orange, deep navy surfaces
+   (#141a2e family) with amber-orange accents (#ff9d5c / #ffb46b), all
+   riding the original 夕港 artwork behind translucent panes. Everything is
+   scoped under body[data-dsh-harbor], which the plugin's apply() sets (and
+   retracts on dispose), so the skin stays fully hot-pluggable. The art
+   itself is applied by apply() as an inline background-image (base64 data
+   URL from ./art.ts, with a readability scrim chosen by the current theme);
+   this stylesheet carries the token remap and the pane transparency. */
+
+/* --- Base ---------------------------------------------------------------- */
+
+body[data-dsh-harbor] {
+  color: #fff5ec;
+  background-color: #141a2e;
+  color-scheme: dark;
+}
+
+/* The app frame itself is transparent — the translucent tokens below let
+   the dusk painting show through the panes. */
+body[data-dsh-harbor] [id='root'] {
+  background: transparent;
+}
+
+/* --- Alias token remap (from the original dsh-skins 夕港 palette) -------- */
+
+body[data-dsh-harbor] {
+  --dsw-alias-bg-base: rgba(20, 26, 46, 0.7);
+  --dsw-alias-bg-layer-1: rgba(24, 31, 54, 0.7);
+  --dsw-alias-bg-layer-2: rgba(29, 37, 64, 0.72);
+  --dsw-alias-bg-layer-3: rgba(34, 43, 74, 0.78);
+  --dsw-alias-bg-overlay: rgba(42, 51, 87, 0.82);
+  --dsw-alias-bg-module-platform: rgba(34, 43, 74, 0.78);
+  --dsw-alias-bg-multi-select: rgba(34, 43, 74, 0.78);
+  --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.06);
+  --dsw-alias-border-l1: rgba(255, 255, 255, 0.07);
+  --dsw-alias-border-l2: rgba(255, 255, 255, 0.12);
+  --dsw-alias-border-l3: rgba(255, 255, 255, 0.16);
+  --dsw-alias-border-l4: rgba(255, 255, 255, 0.2);
+  --dsw-alias-brand-primary: #ff9d5c;
+  --dsw-alias-brand-primary-invert: #141a2e;
+  --dsw-alias-brand-text: #fff3e6;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #ffb46b;
+  --dsw-alias-button-contrast-fill: #141a2e;
+  --dsw-alias-button-elevated-fill: #222b4a;
+  --dsw-alias-button-floating-fill: #181f36;
+  --dsw-alias-button-floating-hover: #222b4a;
+  --dsw-alias-button-ghost-active-border: #4a5678;
+  --dsw-alias-button-ghost-active-fill: #2a3357;
+  --dsw-alias-button-ghost-active-hover: #333c63;
+  --dsw-alias-button-info-fill: #ffb46b;
+  --dsw-alias-button-info-hover: #ff9d5c;
+  --dsw-alias-button-primary-dimmed: #2a3357;
+  --dsw-alias-button-primary-fill: #ff9d5c;
+  --dsw-alias-button-primary-hover: #ffb46b;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(42, 51, 87, 0.36);
+  --dsw-alias-button-tool-bar-fill: rgba(74, 86, 120, 0.5);
+  --dsw-alias-button-tool-bar-hover: rgba(74, 86, 120, 0.6);
+  --dsw-alias-interactive-bg-active: rgba(255, 243, 230, 0.14);
+  --dsw-alias-interactive-bg-hover-accent: rgba(255, 157, 92, 0.18);
+  --dsw-alias-interactive-bg-hover-danger: rgba(255, 92, 122, 0.15);
+  --dsw-alias-interactive-bg-hover-solid: #222b4a;
+  --dsw-alias-interactive-bg-hover: rgba(255, 243, 230, 0.07);
+  --dsw-alias-label-caption: #8a8291;
+  --dsw-alias-label-dimmed: #6b6574;
+  --dsw-alias-label-primary-dimmed: #ffd9bd;
+  --dsw-alias-label-primary-foreground: #141a2e;
+  --dsw-alias-label-primary-inverted: #141a2e;
+  --dsw-alias-label-primary: #fff5ec;
+  --dsw-alias-label-secondary: #d6c7b8;
+  --dsw-alias-label-tertiary: #ffb46b;
+  --dsw-alias-markdown-citation: #222b4a;
+  --dsw-alias-markdown-code-block-banner: #161d36;
+  --dsw-alias-markdown-code-block: #12182e;
+  --dsw-alias-markdown-code-segment-selected: #2a3357;
+  --dsw-alias-markdown-code-segment-unselected: #12182e;
+  --dsw-alias-markdown-inline-code: #222b4a;
+  --dsw-alias-markdown-placeholder: #8a8291;
+  --dsw-alias-markdown-tag: #2a3357;
+  --dsw-alias-scrollbar-bg-l1: #3a4468;
+  --dsw-alias-scrollbar-bg-l2: #3a4468;
+  --dsw-alias-scrollbar-hover-l1: #ff9d5c;
+  --dsw-alias-scrollbar-hover-l2: #ffb46b;
+  --dsw-alias-state-business-primary: #ff9d5c;
+  --dsw-alias-state-business-tertiary: rgba(255, 157, 92, 0.18);
+  --dsw-alias-state-error-primary: #ff7a8a;
+  --dsw-alias-state-error-secondary: #ff94a3;
+  --dsw-alias-state-success-primary: #7fd6a4;
+  --dsw-alias-state-success-secondary: #63c48e;
+  --dsw-alias-state-success-tertiary: rgba(127, 214, 164, 0.16);
+  --dsw-alias-state-warn-label: #f6c177;
+  --dsw-alias-state-warn-primary: #f6c177;
+  --dsw-alias-state-warn-secondary: #e5a95e;
+  --dsw-alias-state-warn-tertiary: rgba(246, 193, 119, 0.16);
+  --dsw-alias-toast-bg: #333c63;
+  --dsw-alias-tooltip-bg: #333c63;
+  --dsw-specific-bubble-highlight: rgba(42, 51, 87, 0.9);
+  --dsw-specific-bubble: rgba(29, 37, 64, 0.85);
+  --dsw-specific-input-major: rgba(24, 31, 54, 0.85);
+  --dsw-specific-login-input: rgba(24, 31, 54, 0.85);
+  --dsw-specific-menu: rgba(34, 43, 74, 0.9);
+  --dsw-specific-selector: rgba(34, 43, 74, 0.9);
+  --dsw-specific-sidebar-fill: rgba(12, 15, 28, 0.9);
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(255, 157, 92, 0.22);
+  --dsw-specific-sidebar-nav-item-active: #2a3357;
+  --dsw-specific-sidebar-nav-item-hover: rgba(255, 255, 255, 0.05);
+  --dsw-specific-tip: rgba(24, 31, 54, 0.85);
+}
+
+/* Higher-specificity repeat for the dark theme mode so the dusk palette is
+   never overridden by the stock dark token sheet. */
+body[data-dsh-harbor][data-ds-dark-theme] {
+  --dsw-alias-bg-base: rgba(20, 26, 46, 0.7);
+  --dsw-alias-bg-layer-1: rgba(24, 31, 54, 0.7);
+  --dsw-alias-bg-layer-2: rgba(29, 37, 64, 0.72);
+  --dsw-alias-bg-layer-3: rgba(34, 43, 74, 0.78);
+  --dsw-alias-bg-overlay: rgba(42, 51, 87, 0.82);
+  --dsw-alias-bg-module-platform: rgba(34, 43, 74, 0.78);
+  --dsw-alias-bg-multi-select: rgba(34, 43, 74, 0.78);
+  --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.06);
+  --dsw-alias-border-l1: rgba(255, 255, 255, 0.07);
+  --dsw-alias-border-l2: rgba(255, 255, 255, 0.12);
+  --dsw-alias-border-l3: rgba(255, 255, 255, 0.16);
+  --dsw-alias-border-l4: rgba(255, 255, 255, 0.2);
+  --dsw-alias-brand-primary: #ff9d5c;
+  --dsw-alias-brand-primary-invert: #141a2e;
+  --dsw-alias-brand-text: #fff3e6;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #ffb46b;
+  --dsw-alias-button-contrast-fill: #141a2e;
+  --dsw-alias-button-elevated-fill: #222b4a;
+  --dsw-alias-button-floating-fill: #181f36;
+  --dsw-alias-button-floating-hover: #222b4a;
+  --dsw-alias-button-ghost-active-border: #4a5678;
+  --dsw-alias-button-ghost-active-fill: #2a3357;
+  --dsw-alias-button-ghost-active-hover: #333c63;
+  --dsw-alias-button-info-fill: #ffb46b;
+  --dsw-alias-button-info-hover: #ff9d5c;
+  --dsw-alias-button-primary-dimmed: #2a3357;
+  --dsw-alias-button-primary-fill: #ff9d5c;
+  --dsw-alias-button-primary-hover: #ffb46b;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(42, 51, 87, 0.36);
+  --dsw-alias-button-tool-bar-fill: rgba(74, 86, 120, 0.5);
+  --dsw-alias-button-tool-bar-hover: rgba(74, 86, 120, 0.6);
+  --dsw-alias-interactive-bg-active: rgba(255, 243, 230, 0.14);
+  --dsw-alias-interactive-bg-hover-accent: rgba(255, 157, 92, 0.18);
+  --dsw-alias-interactive-bg-hover-danger: rgba(255, 92, 122, 0.15);
+  --dsw-alias-interactive-bg-hover-solid: #222b4a;
+  --dsw-alias-interactive-bg-hover: rgba(255, 243, 230, 0.07);
+  --dsw-alias-label-caption: #8a8291;
+  --dsw-alias-label-dimmed: #6b6574;
+  --dsw-alias-label-primary-dimmed: #ffd9bd;
+  --dsw-alias-label-primary-foreground: #141a2e;
+  --dsw-alias-label-primary-inverted: #141a2e;
+  --dsw-alias-label-primary: #fff5ec;
+  --dsw-alias-label-secondary: #d6c7b8;
+  --dsw-alias-label-tertiary: #ffb46b;
+  --dsw-alias-markdown-citation: #222b4a;
+  --dsw-alias-markdown-code-block-banner: #161d36;
+  --dsw-alias-markdown-code-block: #12182e;
+  --dsw-alias-markdown-code-segment-selected: #2a3357;
+  --dsw-alias-markdown-code-segment-unselected: #12182e;
+  --dsw-alias-markdown-inline-code: #222b4a;
+  --dsw-alias-markdown-placeholder: #8a8291;
+  --dsw-alias-markdown-tag: #2a3357;
+  --dsw-alias-scrollbar-bg-l1: #3a4468;
+  --dsw-alias-scrollbar-bg-l2: #3a4468;
+  --dsw-alias-scrollbar-hover-l1: #ff9d5c;
+  --dsw-alias-scrollbar-hover-l2: #ffb46b;
+  --dsw-alias-state-business-primary: #ff9d5c;
+  --dsw-alias-state-business-tertiary: rgba(255, 157, 92, 0.18);
+  --dsw-alias-state-error-primary: #ff7a8a;
+  --dsw-alias-state-error-secondary: #ff94a3;
+  --dsw-alias-state-success-primary: #7fd6a4;
+  --dsw-alias-state-success-secondary: #63c48e;
+  --dsw-alias-state-success-tertiary: rgba(127, 214, 164, 0.16);
+  --dsw-alias-state-warn-label: #f6c177;
+  --dsw-alias-state-warn-primary: #f6c177;
+  --dsw-alias-state-warn-secondary: #e5a95e;
+  --dsw-alias-state-warn-tertiary: rgba(246, 193, 119, 0.16);
+  --dsw-alias-toast-bg: #333c63;
+  --dsw-alias-tooltip-bg: #333c63;
+  --dsw-specific-bubble-highlight: rgba(42, 51, 87, 0.9);
+  --dsw-specific-bubble: rgba(29, 37, 64, 0.85);
+  --dsw-specific-input-major: rgba(24, 31, 54, 0.85);
+  --dsw-specific-login-input: rgba(24, 31, 54, 0.85);
+  --dsw-specific-menu: rgba(34, 43, 74, 0.9);
+  --dsw-specific-selector: rgba(34, 43, 74, 0.9);
+  --dsw-specific-sidebar-fill: rgba(12, 15, 28, 0.9);
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(255, 157, 92, 0.22);
+  --dsw-specific-sidebar-nav-item-active: #2a3357;
+  --dsw-specific-sidebar-nav-item-hover: rgba(255, 255, 255, 0.05);
+  --dsw-specific-tip: rgba(24, 31, 54, 0.85);
+}
+
+/* The dusk palette is the skin's identity and stays the same in both theme
+   modes; only the readability scrim over the art swaps (set by apply()). */

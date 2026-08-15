@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-皮肤全家桶聚合插件：装它 = 皮肤中心（`skin-center`）+ 全部皮肤资产（qq98 / ths / xp / blue-fantasy / dragon-heir / minecraft / miku / trading / whale-song 等，内置在包的 `skins/` 目录），无需每皮肤独立 npm 包。
+皮肤全家桶聚合插件：装它 = 皮肤中心（`skin-center`）+ 全部皮肤资产（qq98 / ths / xp / blue-fantasy / dragon-heir / minecraft / miku / trading / whale-song / harbor 等，内置在包的 `skins/` 目录），无需每皮肤独立 npm 包。
 
 ## 是什么
 

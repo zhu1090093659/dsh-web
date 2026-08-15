@@ -1,0 +1,51 @@
+{
+  "name": "@linxin666/dsh-client-ui-skin-harbor",
+  "description": "Hot-pluggable 夕港 (harbor) skin for the dsh web GUI: dusk-harbor art backdrop with live theme scrim, deep navy surfaces with amber-orange accents, translucent panes",
+  "version": "0.1.14",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepare": "tsdown",
+    "watch": "tsdown --watch",
+    "test": "vitest run"
+  },
+  "license": "Apache-2.0",
+  "peerDependencies": {},
+  "devDependencies": {
+    "jsdom": "29.1.1",
+    "lightningcss": "^1.32.0",
+    "tsdown": "^0.22.2",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.8",
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "skin.json",
+    "preview",
+    "README.md",
+    "README.zh.md",
+    "README.i18n.yaml"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
+}

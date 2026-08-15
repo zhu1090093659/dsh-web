@@ -57,4 +57,6 @@ export const SKIN_CENTER_ENTRIES: readonly SkinCenterEntry[] = [
 
   {"id":"qq2006","name":"QQ2006 经典版","nameEn":"QQ2006 Classic","author":"CCMKCCMK","tagline":"经典蓝色窗口 · 紧凑桌面控件 · 怀旧状态栏","description":"受 QQ2006 桌面客户端启发的轻量皮肤：蓝色渐变标题栏、浅蓝状态栏、紧凑按钮和水晶蓝界面。全部图形由代码绘制，不携带第三方二进制素材。","tags":["retro","qq","2006","classic-blue","nostalgia"],"accent":"#1677c8","bodyAttr":"data-dsh-qq2006","package":"@linxin666/dsh-client-ui-skin-qq2006","order":10},
 
+  {"id":"harbor","name":"夕港","nameEn":"Harbor","author":"moeblack","tagline":"暮光蓝港 · 日落橙辉 · 半透明夜色面板","description":"《夕港》黄昏港口主题：动漫少女黄昏港口背景（暮光蓝天空渐入日落橙）垫在半透明面板之下，遮罩随亮/暗主题实时切换，深暮蓝 #141a2e 底与日落橙 #ff9d5c 主色重映射到 dsh token，亮色是薄暮纱、暗色是深海夜航纱，同一幅画两种读法。","tags":["harbor","dusk","twilight","sunset","amber","art","translucent"],"accent":"#ff9d5c","bodyAttr":"data-dsh-harbor","package":"@linxin666/dsh-client-ui-skin-harbor","order":11},
+
 ]

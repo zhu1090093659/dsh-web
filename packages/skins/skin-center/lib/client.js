@@ -202,6 +202,27 @@ window.__ModuleLoader__.load({
 				"bodyAttr": "data-dsh-qq2006",
 				"package": "@linxin666/dsh-client-ui-skin-qq2006",
 				"order": 10
+			},
+			{
+				"id": "harbor",
+				"name": "夕港",
+				"nameEn": "Harbor",
+				"author": "moeblack",
+				"tagline": "暮光蓝港 · 日落橙辉 · 半透明夜色面板",
+				"description": "《夕港》黄昏港口主题：动漫少女黄昏港口背景（暮光蓝天空渐入日落橙）垫在半透明面板之下，遮罩随亮/暗主题实时切换，深暮蓝 #141a2e 底与日落橙 #ff9d5c 主色重映射到 dsh token，亮色是薄暮纱、暗色是深海夜航纱，同一幅画两种读法。",
+				"tags": [
+					"harbor",
+					"dusk",
+					"twilight",
+					"sunset",
+					"amber",
+					"art",
+					"translucent"
+				],
+				"accent": "#ff9d5c",
+				"bodyAttr": "data-dsh-harbor",
+				"package": "@linxin666/dsh-client-ui-skin-harbor",
+				"order": 11
 			}
 		];
 		//#endregion

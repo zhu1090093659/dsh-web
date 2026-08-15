@@ -63,6 +63,13 @@ describe('parseTencentRow', () => {
     expect(parseTencentRow('1~名称~代码~abc~0~0~0')).toBeNull()
     expect(parseTencentRow('short')).toBeNull()
   })
+
+  it('rejects the truncated US short payload (real sample shape)', () => {
+    // qt.gtimg.cn also serves a short `name|price|...` shape; it is not the
+    // full ~-split payload the parser needs (8 fields < the 35-field floor),
+    // so it must be rejected — never half-parsed into a phantom quote.
+    expect(parseTencentRow(US_STOCK)).toBeNull()
+  })
 })
 
 describe('trendOf (红涨绿跌)', () => {

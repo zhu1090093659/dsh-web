@@ -102,6 +102,7 @@ export const zh = {
   'update.error.notFound': '未找到 dsh-web-ui 聚合包安装，无法更新。',
   'update.error.link': '当前为本地开发模式（链接安装），无法自动更新。',
   'update.error.pnpmFailed': '更新执行失败（pnpm 退出码 {code}），详见下方输出。',
+  'update.error.stale': '更新命令已执行，但安装版本未变化。常见原因：pnpm 11 的 minimumReleaseAge 门禁会静默跳过发布不足 24 小时的新版本。请在 profile 目录（~/.dsh/profiles/<profile>）的 pnpm-workspace.yaml 中配置 minimumReleaseAgeExclude（例如 "@linxin666/*"）或 minimumReleaseAge: 0 后重新点击更新。',
   'update.error.unknown': '更新失败，请重试。',
 } satisfies Record<string, string>
 
@@ -213,5 +214,6 @@ export const en = {
   'update.error.notFound': 'The dsh-web-ui aggregate package is not installed; nothing to update.',
   'update.error.link': 'Local development mode (link install) — automatic update is unavailable.',
   'update.error.pnpmFailed': 'The update failed (pnpm exited with code {code}); see the output below.',
+  'update.error.stale': 'The update command ran but the installed versions did not change. Likely cause: the pnpm 11 minimumReleaseAge gate silently skips releases published less than 24 hours ago. Add minimumReleaseAgeExclude (e.g. "@linxin666/*") or set minimumReleaseAge: 0 in pnpm-workspace.yaml under the profile directory (~/.dsh/profiles/<profile>), then run the update again.',
   'update.error.unknown': 'Update failed; try again.',
 } satisfies Record<RemoteKey, string>

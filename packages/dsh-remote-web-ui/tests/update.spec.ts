@@ -17,6 +17,7 @@ import {
   resolveAnchorManifest,
   resolveUpdateTarget,
   runUpdate,
+  runUpdateVerified,
 } from "../src/update.ts"
 
 /** One temp fixture root per suite; removed after each test. */
@@ -292,7 +293,7 @@ describe("runUpdate", () => {
     }) as never
     return { spawnImpl, order, argo }
   }
-  it("spawns pnpm update with the packages and resolves on success", async () => {
+  it("spawns pnpm update --latest with the packages and resolves on success", async () => {
     let spawned: { command: string; args: string[]; cwd: string } | undefined
     const child = new FakeChild(0)
     const spawnImpl = ((command: string, args: string[], options: { cwd: string }) => {
@@ -303,7 +304,7 @@ describe("runUpdate", () => {
     child.emitOutput("Progress 1/2")
     child.run(0)
     const result = await promise
-    expect(spawned).toEqual({ command: "pnpm", args: ["update", "a", "b"], cwd: "/p" })
+    expect(spawned).toEqual({ command: "pnpm", args: ["update", "--latest", "a", "b"], cwd: "/p" })
     expect(result).toEqual({ ok: true, exitCode: 0, output: "Progress 1/2" })
   })
   it("reports pnpm-failed on a non-zero exit", async () => {
@@ -320,13 +321,20 @@ describe("runUpdate", () => {
     const pnpmError = Object.assign(new Error("spawn pnpm ENOENT"), { code: "ENOENT" })
     const pnpm = new FakeChild(null)
     const corepack = new FakeChild(0)
-    const { spawnImpl, order } = dispatchFake({ pnpm, corepack })
+    const { spawnImpl, order, argo } = dispatchFake({ pnpm, corepack })
     const promise = runUpdate({ profileDir: "/p", packages: ["a"], spawnImpl })
     pnpm.fail(pnpmError)
     corepack.emitOutput("corepack pnpm 1/2")
     corepack.run(0)
     const result = await promise
     expect(order).toEqual(["pnpm", "corepack"])
+    // Every fallback candidate must keep --latest (exact specs in the profile
+    // are otherwise treated as pinned and never move); corepack prefixes the
+    // pnpm subcommand.
+    expect(argo.map(entry => entry.args)).toEqual([
+      ["update", "--latest", "a"],
+      ["pnpm", "update", "--latest", "a"],
+    ])
     expect(result).toEqual({ ok: true, exitCode: 0, output: "corepack pnpm 1/2" })
   })
   it("falls back to npx when pnpm and corepack are missing and succeeds", async () => {
@@ -479,5 +487,66 @@ describe("runUpdate", () => {
     expect(result.ok).toBe(false)
     expect(result.errorCode).toBe("timeout")
     vi.useRealTimers()
+  })
+})
+
+describe("runUpdateVerified", () => {
+  /** The standard check seam for the npm fixture. */
+  function fixtureCheck(fetchLatest: (name: string) => Promise<string | undefined>) {
+    return {
+      anchorManifestPath: npmFixture("0.1.10", "0.1.10"),
+      resolve: (specifier: string) => {
+        if (specifier === "@linxin666/dsh-ssh/package.json") {
+          return join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-ssh", "package.json")
+        }
+        return join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-ui-all", "package.json")
+      },
+      fetchLatest,
+    }
+  }
+
+  it("reports stale when pnpm exits 0 but the installed versions did not move", async () => {
+    // Registry carries 0.1.11 while the installed anchor stays 0.1.10 — the
+    // pnpm 11 minimumReleaseAge gate can produce exactly this "green exit,
+    // nothing changed" outcome, and the panel must not claim success.
+    const child = new FakeChild(0)
+    const spawnImpl = (() => child) as never
+    const promise = runUpdateVerified({
+      run: { profileDir: "/p", packages: [AGGREGATE_PACKAGE], spawnImpl },
+      check: fixtureCheck(async name => name === AGGREGATE_PACKAGE ? "0.1.11" : "0.1.10"),
+    })
+    child.emitOutput("Already up to date")
+    child.run(0)
+    const result = await promise
+    expect(result.ok).toBe(false)
+    expect(result.errorCode).toBe("stale")
+    expect(result.exitCode).toBe(0)
+    expect(result.output).toBe("Already up to date")
+    expect(result.error).toContain("did not change")
+  })
+
+  it("resolves ok when the post-run check sees every package current", async () => {
+    const child = new FakeChild(0)
+    const spawnImpl = (() => child) as never
+    const promise = runUpdateVerified({
+      run: { profileDir: "/p", packages: [AGGREGATE_PACKAGE], spawnImpl },
+      check: fixtureCheck(async () => "0.1.10"),
+    })
+    child.run(0)
+    const result = await promise
+    expect(result).toEqual({ ok: true, exitCode: 0, output: "" })
+  })
+
+  it("returns the run result unchanged when pnpm fails", async () => {
+    const child = new FakeChild(1)
+    const spawnImpl = (() => child) as never
+    const promise = runUpdateVerified({
+      run: { profileDir: "/p", packages: ["a"], spawnImpl },
+      check: { anchorManifestPath: undefined, resolve: () => undefined, fetchLatest: async () => "0.1.11" },
+    })
+    child.run(1)
+    const result = await promise
+    expect(result.ok).toBe(false)
+    expect(result.errorCode).toBe("pnpm-failed")
   })
 })

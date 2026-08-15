@@ -2,7 +2,7 @@
  * Remote update support for the dsh-web-ui family — host half. Detects the
  * installed aggregate package (@linxin666/dsh-web-ui-all) and its family
  * children, probes the npm registry for newer releases, and runs the actual
- * update as `pnpm update` inside the owning dsh profile directory.
+ * update as `pnpm update --latest` inside the owning dsh profile directory.
  *
  * Pure logic with injected seams (manifest reading, registry fetches, process
  * spawning) so the whole surface is unit-testable without touching disk,
@@ -359,6 +359,8 @@ export type UpdateErrorCode =
   | 'link'
   /** pnpm exited non-zero. */
   | 'pnpm-failed'
+  /** pnpm exited 0 but the installed versions did not move. */
+  | 'stale'
 
 /** Result of one update run. */
 export interface UpdateRunResult {
@@ -419,10 +421,14 @@ export function runUpdate(deps: UpdateRunDeps): Promise<UpdateRunResult> {
     }
     // Ordered fallback chain: each is tried only when the previous one is
     // missing on PATH (ENOENT on the spawn error event, never on close).
+    // `--latest` is required: dsh plugin writes exact-version specs (e.g.
+    // "0.1.12" without a range), and plain `pnpm update` treats an exact spec
+    // as pinned — it prints "Already up to date" and exits 0 without moving
+    // the installed version, so the panel would report a false success.
     const candidates: ReadonlyArray<{ command: string; args: string[] }> = [
-      { command: 'pnpm', args: ['update', ...packages] },
-      { command: 'corepack', args: ['pnpm', 'update', ...packages] },
-      { command: 'npx', args: ['--yes', 'pnpm', 'update', ...packages] },
+      { command: 'pnpm', args: ['update', '--latest', ...packages] },
+      { command: 'corepack', args: ['pnpm', 'update', '--latest', ...packages] },
+      { command: 'npx', args: ['--yes', 'pnpm', 'update', '--latest', ...packages] },
     ]
     // `output` accumulates across candidates for UI display; `currentOutput`
     // is reset per candidate and carries only that candidate's own diagnostics
@@ -522,4 +528,38 @@ export function runUpdate(deps: UpdateRunDeps): Promise<UpdateRunResult> {
     }
     runCandidate(0)
   })
+}
+
+/** Seam set for the verified update run (run + post-run status check). */
+export interface UpdateRunVerifiedDeps {
+  /** The pnpm run (profile dir + package list). */
+  run: UpdateRunDeps
+  /** The post-run status check (same seams as checkUpdates). */
+  check: UpdateCheckDeps
+}
+
+/**
+ * Run the update, then verify the installed versions actually moved. pnpm
+ * exits 0 even when it silently kept the installed versions — the pnpm 11
+ * `minimumReleaseAge` gate refuses same-day releases by default — so a green
+ * exit alone would report a misleading "update complete". Re-check the
+ * registry comparison afterwards and surface a `stale` failure (with the
+ * captured pnpm output) when nothing changed, so the panel can tell the user
+ * how to unblock the gate instead of claiming success.
+ * @param deps - the run and check seams.
+ * @returns the run result; a `stale` failure when exit 0 left versions behind.
+ */
+export async function runUpdateVerified(deps: UpdateRunVerifiedDeps): Promise<UpdateRunResult> {
+  const result = await runUpdate(deps.run)
+  if (!result.ok) return result
+  const status = await checkUpdates(deps.check)
+  if (status.outdated) {
+    return {
+      ...result,
+      ok: false,
+      errorCode: 'stale',
+      error: 'pnpm exited 0 but the installed versions did not change',
+    }
+  }
+  return result
 }

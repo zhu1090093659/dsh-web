@@ -198,6 +198,7 @@ function errorMessageOf(t: TranslateNS<"remote">, result: UpdateRunResult): stri
     case "not-found": return t("update.error.notFound")
     case "link": return t("update.error.link")
     case "pnpm-failed": return t("update.error.pnpmFailed", { code: String(result.exitCode ?? "?") })
+    case "stale": return t("update.error.stale")
     default: return result.error ?? t("update.error.unknown")
   }
 }

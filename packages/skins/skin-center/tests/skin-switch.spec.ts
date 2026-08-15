@@ -287,6 +287,19 @@ describe('harness home resolution (issue #120: DSH_HOME)', () => {
       rmSync(harness, { recursive: true, force: true })
     }
   })
+
+  it('useSkin/currentSkin write and read the $DSH_HOME patch when no home is injected', () => {
+    const dshHome = mkdtempSync(join(tmpdir(), 'skin-switch-use-dsh-home-'))
+    try {
+      withEnv({ DSH_HOME: dshHome }, () => {
+        useSkin('official', {})
+        expect(existsSync(join(dshHome, 'cordis.patch.yml'))).toBe(true)
+        expect(currentSkin(undefined, {})).toBe('none')
+      })
+    } finally {
+      rmSync(dshHome, { recursive: true, force: true })
+    }
+  })
 })
 
 describe('running profile resolution (issue #155: non-default profile)', () => {

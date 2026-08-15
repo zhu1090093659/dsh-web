@@ -657,4 +657,67 @@ describe("runUpdateVerified", () => {
     expect(result.ok).toBe(false)
     expect(result.errorCode).toBe("verify-failed")
   })
+
+  it("reports stale rather than success when a package becomes unreadable and nothing moved", async () => {
+    // A green exit that re-lays node_modules can leave a family child's
+    // manifest unreadable at the post-run check. An unreadable version reads
+    // as the unknown sentinel, which is NOT evidence of movement — a no-op
+    // update must not collapse into "update complete". The anchor still being
+    // outdated is what drives the stale verdict.
+    const anchor = npmFixture("0.1.10", "0.1.10")
+    const childDir = join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-ssh")
+    const child = new FakeChild(0)
+    const spawnImpl = (() => child) as never
+    const promise = runUpdateVerified({
+      run: { profileDir: "/p", packages: [AGGREGATE_PACKAGE], spawnImpl },
+      check: {
+        anchorManifestPath: anchor,
+        resolve: (specifier: string) => {
+          if (specifier === "@linxin666/dsh-ssh/package.json") {
+            return join(childDir, "package.json")
+          }
+          return anchor
+        },
+        fetchLatest: async name => name === AGGREGATE_PACKAGE ? "0.1.11" : "0.1.10",
+      },
+    })
+    // pre-run snapshot reads the child fine; pnpm then (green) removes it.
+    rmSync(childDir, { recursive: true, force: true })
+    child.run(0)
+    const result = await promise
+    expect(result.ok).toBe(false)
+    expect(result.errorCode).toBe("stale")
+  })
+
+  it("reports verify-failed when nothing moved and a post-run probe failed", async () => {
+    // The panel launches the update because a package was outdated; pnpm
+    // exits 0 without moving anything, and the post-run probe for that very
+    // package now fails. status.outdated is false only because the probe has
+    // no latest to compare against, so "update complete" would be a false
+    // success — verify-failed is the honest verdict.
+    const anchor = npmFixture("0.1.10", "0.1.10")
+    const child = new FakeChild(0)
+    const spawnImpl = (() => child) as never
+    const promise = runUpdateVerified({
+      run: { profileDir: "/p", packages: [AGGREGATE_PACKAGE], spawnImpl },
+      check: {
+        anchorManifestPath: anchor,
+        resolve: (specifier: string) => {
+          if (specifier === "@linxin666/dsh-ssh/package.json") {
+            return join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-ssh", "package.json")
+          }
+          return anchor
+        },
+        // The anchor probe fails while the child succeeds — a partial probe
+        // failure (probeFailures < names.length), so status.error stays unset
+        // and this must route through the verify-failed branch, not success.
+        fetchLatest: async name => name === AGGREGATE_PACKAGE ? undefined : "0.1.10",
+      },
+    })
+    child.run(0)
+    const result = await promise
+    expect(result.ok).toBe(false)
+    expect(result.errorCode).toBe("verify-failed")
+    expect(result.exitCode).toBe(0)
+  })
 })

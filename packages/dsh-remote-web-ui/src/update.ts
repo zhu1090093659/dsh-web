@@ -283,14 +283,22 @@ export async function fetchLatestVersion(
   }
 }
 
+/**
+ * Sentinel for an installed version that could not be read (missing manifest
+ * or resolve failure). It is a real-looking version so `checkUpdates` can
+ * render the affected row, but the verified-update comparison must never
+ * treat it as evidence — a read failure is not a version that "moved".
+ */
+const VERSION_UNKNOWN = '0.0.0'
+
 /** The resolved current version of one family package (probe failure tolerated). */
 function readInstalledVersion(resolve: (specifier: string) => string | undefined, name: string): string {
   try {
     const path = resolve(name + '/package.json')
     const version = path === undefined ? undefined : readManifest(path)?.version
-    return typeof version === 'string' ? version : '0.0.0'
+    return typeof version === 'string' ? version : VERSION_UNKNOWN
   } catch {
-    return '0.0.0'
+    return VERSION_UNKNOWN
   }
 }
 
@@ -561,17 +569,23 @@ export interface UpdateRunVerifiedDeps {
  *
  * A green exit whose verification has nothing to compare (registry probe
  * outage, missing anchor, non-npm mode) is reported as `verify-failed` — it
- * must never read as success.
+ * must never read as success. A green exit where no package moved but the
+ * post-run check could not prove the install is fully current (a partial
+ * probe failure hides whether a gate kept something back) is also
+ * `verify-failed`: it must not collapse into a success either.
  * @param deps - the run and check seams.
  * @returns the run result; `stale` when exit 0 left every version in place,
  * `verify-failed` when the post-run check could not verify anything.
  */
 export async function runUpdateVerified(deps: UpdateRunVerifiedDeps): Promise<UpdateRunResult> {
-  // Pre-run snapshot: the installed versions the update starts from. The
-  // stale decision compares against these, not against the registry latest.
+  // Pre-run snapshot: the installed versions the update starts from. Only
+  // successfully-read versions are recorded — a read failure (VERSION_UNKNOWN)
+  // is not a baseline and must not look like a version that "moved", or a
+  // green exit that left everything in place could be mistaken for success.
   const before = new Map<string, string>()
   for (const name of deps.run.packages) {
-    before.set(name, readInstalledVersion(deps.check.resolve, name))
+    const version = readInstalledVersion(deps.check.resolve, name)
+    if (version !== VERSION_UNKNOWN) before.set(name, version)
   }
   const result = await runUpdate(deps.run)
   if (!result.ok) return result
@@ -591,21 +605,39 @@ export async function runUpdateVerified(deps: UpdateRunVerifiedDeps): Promise<Up
       error: 'pnpm exited 0 but the post-run version check could not verify the install',
     }
   }
-  // stale: registry comparison completed, but no package moved from its
-  // pre-run version (e.g. the minimumReleaseAge gate kept everything in
-  // place). A partial move (lenient gate) is a real update, not stale. A
-  // package without a pre-run baseline (not part of the update list) is
-  // ignored — only the packages pnpm was told to update count as evidence.
+  // A package "moved" only when a known pre-run version differs from a known
+  // post-run version. A read failure on either side (VERSION_UNKNOWN) is not
+  // evidence of movement and must not turn a no-op update into a success; a
+  // package without a pre-run baseline is ignored — only the packages pnpm
+  // was told to update count as evidence.
   const moved = status.packages.some(packageStatus => {
     const beforeVersion = before.get(packageStatus.name)
-    return beforeVersion !== undefined && packageStatus.current !== beforeVersion
+    if (beforeVersion === undefined || packageStatus.current === VERSION_UNKNOWN) return false
+    return packageStatus.current !== beforeVersion
   })
-  if (status.outdated && !moved) {
+  if (moved) return result
+  // Nothing moved. A green exit is only a true no-op when the post-run check
+  // proves the install is already current: every probe succeeded and nothing
+  // is outdated. If a probe failed we cannot tell "already up to date" from
+  // "a gate silently kept it back", so report verify-failed rather than a
+  // false success.
+  if (status.outdated) {
+    // stale: the check ran, a newer release exists, and no package moved
+    // (e.g. the minimumReleaseAge gate kept everything in place).
     return {
       ...result,
       ok: false,
       errorCode: 'stale',
       error: 'pnpm exited 0 but the installed versions did not change',
+    }
+  }
+  const unverifiable = status.packages.some(packageStatus => packageStatus.latest === undefined)
+  if (unverifiable) {
+    return {
+      ...result,
+      ok: false,
+      errorCode: 'verify-failed',
+      error: 'pnpm exited 0 but the post-run version check could not verify the install',
     }
   }
   return result

@@ -37,6 +37,16 @@
     - id: pet
       name: '@linxin666/dsh-pet'
 
+# from ../dsh-pet-maid
+- insert:
+    - id: pet-maid
+      name: '@linxin666/dsh-pet-maid'
+
+# from ../dsh-pet-center
+- insert:
+    - id: ui-pet-center
+      name: '@linxin666/dsh-client-ui-pet-center'
+
 # from ../dsh-remote-web-ui
 - insert:
     - id: remote-web-ui

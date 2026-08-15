@@ -38,6 +38,8 @@
     "@linxin666/dsh-client-ui-task-board": "workspace:*",
     "@linxin666/dsh-client-ui-git-graph": "workspace:*",
     "@linxin666/dsh-pet": "workspace:*",
+    "@linxin666/dsh-pet-maid": "workspace:*",
+    "@linxin666/dsh-client-ui-pet-center": "workspace:*",
     "@linxin666/dsh-remote-web-ui": "workspace:*",
     "@linxin666/dsh-live-stats": "workspace:*",
     "@linxin666/dsh-ssh": "workspace:*",

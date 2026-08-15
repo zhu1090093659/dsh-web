@@ -1,0 +1,17 @@
+{
+  // Standalone compiler shape for the pet-center bundle (self-contained port
+  // of the checkout's tsconfig.base.client.json — no monorepo extends).
+  "compilerOptions": {
+    "target": "es2024",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}

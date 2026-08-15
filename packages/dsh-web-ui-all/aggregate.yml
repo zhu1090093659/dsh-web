@@ -15,6 +15,8 @@ patchFrom:
   - ../dsh-task-board
   - ../dsh-git-graph
   - ../dsh-pet
+  - ../dsh-pet-maid
+  - ../dsh-pet-center
   - ../dsh-remote-web-ui
   - ../dsh-live-stats
   - ../dsh-ssh
@@ -29,6 +31,8 @@ deps:
   - ../dsh-task-board
   - ../dsh-git-graph
   - ../dsh-pet
+  - ../dsh-pet-maid
+  - ../dsh-pet-center
   - ../dsh-remote-web-ui
   - ../dsh-live-stats
   - ../dsh-ssh

@@ -1,0 +1,7 @@
+{
+  "id": "maid-fallback",
+  "displayName": "女仆鲸鱼娘（内置兜底）",
+  "description": "内置兜底图集：未检测到本地 Codex Pet 女仆鲸鱼主题时使用。安装 Maid-DeepSeek-Whale 主题到 ~/.codex/pets/maid-deepseek-whale 后自动切换。",
+  "spritesheetPath": "spritesheet.webp",
+  "frames": [6, 8, 8, 4, 5, 8, 6, 6, 6]
+}

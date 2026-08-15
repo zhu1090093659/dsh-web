@@ -111,18 +111,16 @@ export function PreviewTabs({
             </span>
           </div>
         ))}
-        {tabs.length > 0 && (
-          <div
-            className={previewCss.tabPlus}
-            role="button"
-            tabIndex={0}
-            onClick={onNewUrlTab}
-            onKeyDown={activateOnKey(onNewUrlTab)}
-            title={t('preview.newUrlTab')}
-          >
-            <PlusIcon size={14} />
-          </div>
-        )}
+        <div
+          className={previewCss.tabPlus}
+          role="button"
+          tabIndex={0}
+          onClick={onNewUrlTab}
+          onKeyDown={activateOnKey(onNewUrlTab)}
+          title={t('preview.newUrlTab')}
+        >
+          <PlusIcon size={14} />
+        </div>
       </div>
       <div className={previewCss.tabBarRight}>
         <div

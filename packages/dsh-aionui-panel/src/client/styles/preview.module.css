@@ -241,6 +241,7 @@
 .noTabs {
   display: flex;
   align-items: center;
+  flex: 1;
   padding: 0 10px;
   font-size: 12px;
   color: var(--aion-text-tertiary);

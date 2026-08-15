@@ -55,34 +55,49 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
   const [open, setOpen] = useState(false)
   const [tryingId, setTryingId] = useState<string | null>(null)
   const [tryingOfficial, setTryingOfficial] = useState(false)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
   const [applying, setApplying] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Unmount guard for the confirmation poll: once the card is gone, the
   // pending timers must stop and no reload / setState may fire.
   const mounted = useRef(false)
+  // Latest-click-wins token for async bundle loads. A chained try-on or exit
+  // invalidates older completions so a slow bundle can never overwrite the
+  // UI state chosen by a newer click.
+  const tryOnRequest = useRef(0)
   useEffect(() => {
     mounted.current = true
     return () => { mounted.current = false }
   }, [])
 
   const tryOn = (entry: SkinCenterEntry): void => {
+    if (loadingId === entry.id) return
+    const request = ++tryOnRequest.current
     setError(null)
+    setLoadingId(entry.id)
     void controller.tryOn(entry)
-      .then(() => {
+      .then(mountedTarget => {
+        if (!mounted.current || request !== tryOnRequest.current || !mountedTarget) return
+        setLoadingId(null)
         setTryingId(entry.id)
         setTryingOfficial(false)
       })
       .catch(() => {
-        // The controller may have torn down a previous session before the
-        // load failed; reset both flags so no stale "trying on" lingers.
+        if (!mounted.current || request !== tryOnRequest.current) return
+        // A load failure keeps the previous preview mounted; a mount failure
+        // restores the original active skin. Mirror the controller's actual
+        // session instead of blindly clearing a preview that may still exist.
+        setLoadingId(null)
         setError(t('tryOnError'))
-        setTryingId(null)
-        setTryingOfficial(false)
+        setTryingId(controller.trying?.id ?? null)
+        setTryingOfficial(controller.tryingOfficial)
       })
   }
 
   const tryOnOfficial = (): void => {
+    ++tryOnRequest.current
     setError(null)
+    setLoadingId(null)
     try {
       controller.tryOnOfficial()
     } catch {
@@ -95,7 +110,9 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
   }
 
   const exitTryOn = (): void => {
+    ++tryOnRequest.current
     controller.exit()
+    setLoadingId(null)
     setTryingId(null)
     setTryingOfficial(false)
   }
@@ -242,14 +259,19 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
           {t('exitTryOn')}
         </button>
       ) : (
-        <button type="button" className={`${css.button} ${css.buttonPrimary}`} onClick={opts.onTryOn}>
-          {t('tryOn')}
+        <button
+          type="button"
+          className={`${css.button} ${css.buttonPrimary}`}
+          disabled={loadingId === opts.key}
+          onClick={opts.onTryOn}
+        >
+          {loadingId === opts.key ? t('loading') : t('tryOn')}
         </button>
       )}
       <button
         type="button"
         className={css.button}
-        disabled={applying !== null}
+        disabled={applying !== null || loadingId !== null}
         onClick={() => { applySkin(opts.key) }}
       >
         {applying === opts.key ? t('applying') : opts.applyLabel}

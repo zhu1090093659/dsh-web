@@ -186,6 +186,20 @@ export class TryOnController {
   private epoch = 0
 
   /**
+   * One package can be requested again before its first script load finishes
+   * (for example A -> B -> A). Share that materialization so two script tags
+   * never race to register the same module factory.
+   */
+  private readonly pendingModules = new Map<string, Promise<(ctx: unknown) => unknown>>()
+
+  /**
+   * Package selected by the newest async request. A superseded request for the
+   * same package must not invalidate the module/style now owned by that newer
+   * request when their shared load settles.
+   */
+  private requestedPackage: string | null = null
+
+  /**
    * Loads one skin's client bundle so its factory registers on the page's
    * `__ModuleLoader__`. Defaults to a same-origin script tag from the host
    * route `/api/skin-center/bundle/<id>`; tests inject a stub.
@@ -205,29 +219,58 @@ export class TryOnController {
     return this.session !== null && this.session.entry === null
   }
 
-  /** Start trying on `entry` (replaces any live session). */
-  async tryOn(entry: SkinCenterEntry): Promise<void> {
-    if (entry.package === activeSkinEntry()?.package) return
-    this.exit()
+  /**
+   * Start trying on `entry` (replaces any live session).
+   *
+   * When another skin is already being tried on, keep it mounted while the
+   * next bundle loads. Once the target is ready, tear down the old preview and
+   * mount the new one against the SAME captured active-skin snapshot. This
+   * avoids the expensive preview -> active -> preview round trip and prevents
+   * a flash of the active skin between consecutive try-ons.
+   * @returns whether this request mounted the target (false when superseded).
+   */
+  async tryOn(entry: SkinCenterEntry): Promise<boolean> {
+    if (entry.package === activeSkinEntry()?.package) return false
     const epoch = ++this.epoch
+    this.requestedPackage = entry.package
 
-    const active: ActiveVisuals = this.captureAndRetractActive()
-    let dispose: (() => void) | undefined
+    let apply: (ctx: unknown) => unknown
     try {
-      dispose = await this.loadAndApply(entry)
+      // Keep either the active skin or the current preview visible while the
+      // target script downloads, parses and materializes its module.
+      apply = await this.loadModuleOnce(entry)
+    } catch (error) {
+      if (this.shouldCleanupRequest(entry, epoch)) this.cleanupModule(entry)
+      throw error
+    }
+    if (epoch !== this.epoch) {
+      if (this.shouldCleanupRequest(entry, epoch)) this.cleanupModule(entry)
+      return false
+    }
+
+    const previous = this.session
+    let active: ActiveVisuals
+    if (previous === null) {
+      active = this.captureAndRetractActive()
+    } else {
+      // Transfer ownership of the original active-skin snapshot directly to
+      // the next preview; restoring and immediately retracting it is wasted
+      // DOM work and is the visible pause reported during chained try-ons.
+      this.session = null
+      previous.dispose()
+      if (previous.entry !== null) this.cleanupModule(previous.entry)
+      active = previous.active
+    }
+
+    let dispose: () => void
+    try {
+      dispose = this.applyLoaded(entry, apply)
     } catch (error) {
       if (epoch === this.epoch) this.restoreActive(active)
       throw error
     }
-    if (epoch !== this.epoch) {
-      // Superseded while loading (a newer try-on or exit started): drop only
-      // what this attempt mounted — the newer operation owns the surface and
-      // captured the active-skin visuals it needs on exit.
-      this.cleanupModule(entry)
-      dispose()
-      return
-    }
     this.session = { entry, dispose, active }
+    return true
   }
 
   /**
@@ -237,25 +280,63 @@ export class TryOnController {
    */
   tryOnOfficial(): void {
     if (activeSkinEntry() === null) return
-    this.exit()
     this.epoch += 1
+    this.requestedPackage = null
+    const previous = this.session
+    if (previous !== null) {
+      // A live preview already owns the captured active visuals. Dispose only
+      // that preview and reuse the snapshot instead of restoring and retracting
+      // the active skin in two consecutive layout-heavy operations.
+      this.session = null
+      previous.dispose()
+      if (previous.entry !== null) this.cleanupModule(previous.entry)
+      this.session = { entry: null, dispose: () => {}, active: previous.active }
+      return
+    }
     const active: ActiveVisuals = this.captureAndRetractActive()
     this.session = { entry: null, dispose: () => {}, active }
   }
 
   /** Exit the live session: dispose the tried-on skin, then restore the active skin. */
   exit(): void {
+    // Also invalidate an in-flight initial/chained load. The visible session
+    // may already be null by the time a user exits, but its late completion
+    // must never remount a skin after cancellation.
+    this.epoch += 1
+    this.requestedPackage = null
     const session = this.session
     if (session === null) return
-    this.epoch += 1
     this.session = null
     session.dispose()
     if (session.entry !== null) this.cleanupModule(session.entry)
     this.restoreActive(session.active)
   }
 
-  /** Execute + materialize + mount the target skin through the real loader. */
-  private async loadAndApply(entry: SkinCenterEntry): Promise<() => void> {
+  /** Share one materialization while repeated requests for a package overlap. */
+  private loadModuleOnce(entry: SkinCenterEntry): Promise<(ctx: unknown) => unknown> {
+    const existing = this.pendingModules.get(entry.package)
+    if (existing !== undefined) return existing
+
+    const pending = this.loadModule(entry)
+    this.pendingModules.set(entry.package, pending)
+    void pending.then(
+      () => {
+        if (this.pendingModules.get(entry.package) === pending) this.pendingModules.delete(entry.package)
+      },
+      () => {
+        if (this.pendingModules.get(entry.package) === pending) this.pendingModules.delete(entry.package)
+      },
+    )
+    return pending
+  }
+
+  /** Whether this request still owns cleanup of the package module/style. */
+  private shouldCleanupRequest(entry: SkinCenterEntry, epoch: number): boolean {
+    return epoch === this.epoch || this.requestedPackage !== entry.package
+  }
+
+  /** Execute + materialize the target skin through the real loader. */
+  private async loadModule(entry: SkinCenterEntry): Promise<(ctx: unknown) => unknown> {
     const modules = (window as SkinCenterWindow).__DSH_MODULES__
     if (modules === undefined) throw new Error('skin-center: window.__DSH_MODULES__ missing')
     // This try-on session owns the module record for the package for its
@@ -271,6 +352,11 @@ export class TryOnController {
     if (typeof apply !== 'function') {
       throw new Error(`skin-center: "${entry.package}" client bundle exports no apply`)
     }
+    return apply
+  }
+
+  /** Apply a module that has already been loaded while the active skin was visible. */
+  private applyLoaded(entry: SkinCenterEntry, apply: (ctx: unknown) => unknown): () => void {
     const ctx = miniCtx()
     try {
       apply(ctx)

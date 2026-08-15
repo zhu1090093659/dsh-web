@@ -105,14 +105,219 @@ const controller = (): TryOnController => new TryOnController({
 })
 
 describe('TryOnController skin switching', () => {
+  it('keeps the active skin visible until the target bundle is ready', async () => {
+    const active = entry('whale-song')
+    const target = entry('qq98')
+    window.__DSH_BOOT__ = { entries: [{ id: active.package }] }
+    document.body.setAttribute(active.bodyAttr, '')
+
+    let releaseBundle!: () => void
+    const bundleReady = new Promise<void>(resolve => { releaseBundle = resolve })
+    const c = new TryOnController({
+      loadBundle: async next => {
+        await bundleReady
+        ;(0, eval)(bundleTextFor(next.id))
+      },
+    })
+
+    const pending = c.tryOn(target)
+    expect(document.body.getAttribute(active.bodyAttr)).toBe('')
+    expect(document.body.hasAttribute(target.bodyAttr)).toBe(false)
+
+    releaseBundle()
+    await expect(pending).resolves.toBe(true)
+    expect(document.body.hasAttribute(active.bodyAttr)).toBe(false)
+    expect(document.body.getAttribute(target.bodyAttr)).toBe('')
+
+    c.exit()
+    expect(document.body.getAttribute(active.bodyAttr)).toBe('')
+    expect(document.body.hasAttribute(target.bodyAttr)).toBe(false)
+  })
+
+  it('keeps the current preview mounted until the next preview bundle is ready', async () => {
+    const first = entry('qq98')
+    const second = entry('xp')
+    const c = controller()
+
+    await expect(c.tryOn(first)).resolves.toBe(true)
+    expect(document.body.getAttribute(first.bodyAttr)).toBe('')
+
+    let releaseBundle!: () => void
+    const bundleReady = new Promise<void>(resolve => { releaseBundle = resolve })
+    const delayed = new TryOnController({
+      loadBundle: async target => {
+        if (target.id === second.id) await bundleReady
+        ;(0, eval)(bundleTextFor(target.id))
+      },
+    })
+
+    // The delayed controller needs to own the first preview's active snapshot,
+    // so reproduce the chain entirely on it.
+    c.exit()
+    await expect(delayed.tryOn(first)).resolves.toBe(true)
+    const pending = delayed.tryOn(second)
+    expect(document.body.getAttribute(first.bodyAttr)).toBe('')
+    expect(document.body.hasAttribute(second.bodyAttr)).toBe(false)
+
+    releaseBundle()
+    await expect(pending).resolves.toBe(true)
+    expect(document.body.hasAttribute(first.bodyAttr)).toBe(false)
+    expect(document.body.getAttribute(second.bodyAttr)).toBe('')
+
+    delayed.exit()
+  })
+
+  it('restores the original active skin after chained try-ons', async () => {
+    const active = entry('whale-song')
+    window.__DSH_BOOT__ = { entries: [{ id: active.package }] }
+    document.body.setAttribute(active.bodyAttr, '')
+    const c = controller()
+
+    await expect(c.tryOn(entry('qq98'))).resolves.toBe(true)
+    await expect(c.tryOn(entry('xp'))).resolves.toBe(true)
+    c.exit()
+
+    expect(document.body.getAttribute(active.bodyAttr)).toBe('')
+    expect(document.body.hasAttribute(entry('qq98').bodyAttr)).toBe(false)
+    expect(document.body.hasAttribute(entry('xp').bodyAttr)).toBe(false)
+  })
+
+  it('cancels a pending chained try-on without a late remount', async () => {
+    const active = entry('whale-song')
+    const first = entry('qq98')
+    const second = entry('xp')
+    window.__DSH_BOOT__ = { entries: [{ id: active.package }] }
+    document.body.setAttribute(active.bodyAttr, '')
+
+    let releaseBundle!: () => void
+    const bundleReady = new Promise<void>(resolve => { releaseBundle = resolve })
+    const c = new TryOnController({
+      loadBundle: async target => {
+        if (target.id === second.id) await bundleReady
+        ;(0, eval)(bundleTextFor(target.id))
+      },
+    })
+
+    await expect(c.tryOn(first)).resolves.toBe(true)
+    const pending = c.tryOn(second)
+    c.exit()
+    releaseBundle()
+
+    await expect(pending).resolves.toBe(false)
+    expect(document.body.getAttribute(active.bodyAttr)).toBe('')
+    expect(document.body.hasAttribute(first.bodyAttr)).toBe(false)
+    expect(document.body.hasAttribute(second.bodyAttr)).toBe(false)
+  })
+
+  it('deduplicates an overlapping A -> B -> A load and keeps the newest A mounted', async () => {
+    const active = entry('whale-song')
+    const first = entry('qq98')
+    const second = entry('xp')
+    window.__DSH_BOOT__ = { entries: [{ id: active.package }] }
+    document.body.setAttribute(active.bodyAttr, '')
+
+    let releaseFirst!: () => void
+    let releaseSecond!: () => void
+    const firstReady = new Promise<void>(resolve => { releaseFirst = resolve })
+    const secondReady = new Promise<void>(resolve => { releaseSecond = resolve })
+    const loadCounts = new Map<string, number>()
+    const c = new TryOnController({
+      loadBundle: async target => {
+        loadCounts.set(target.id, (loadCounts.get(target.id) ?? 0) + 1)
+        await (target.id === first.id ? firstReady : secondReady)
+        ;(0, eval)(bundleTextFor(target.id))
+      },
+    })
+
+    const staleFirst = c.tryOn(first)
+    const staleSecond = c.tryOn(second)
+    const newestFirst = c.tryOn(first)
+    expect(loadCounts.get(first.id)).toBe(1)
+    expect(loadCounts.get(second.id)).toBe(1)
+
+    releaseFirst()
+    await expect(staleFirst).resolves.toBe(false)
+    await expect(newestFirst).resolves.toBe(true)
+    expect(document.body.getAttribute(first.bodyAttr)).toBe('')
+    expect(document.querySelector('style[data-plugin-css*="qq98.module.css"]')).not.toBeNull()
+
+    releaseSecond()
+    await expect(staleSecond).resolves.toBe(false)
+    expect(document.body.getAttribute(first.bodyAttr)).toBe('')
+    expect(document.querySelector('style[data-plugin-css*="qq98.module.css"]')).not.toBeNull()
+    expect(document.body.hasAttribute(second.bodyAttr)).toBe(false)
+
+    c.exit()
+    expect(document.body.getAttribute(active.bodyAttr)).toBe('')
+  })
+
+  it('cancels an initial load before a session exists', async () => {
+    const active = entry('whale-song')
+    const target = entry('qq98')
+    window.__DSH_BOOT__ = { entries: [{ id: active.package }] }
+    document.body.setAttribute(active.bodyAttr, '')
+
+    let releaseBundle!: () => void
+    const bundleReady = new Promise<void>(resolve => { releaseBundle = resolve })
+    const c = new TryOnController({
+      loadBundle: async next => {
+        await bundleReady
+        ;(0, eval)(bundleTextFor(next.id))
+      },
+    })
+
+    const pending = c.tryOn(target)
+    c.exit()
+    expect(document.body.getAttribute(active.bodyAttr)).toBe('')
+
+    releaseBundle()
+    await expect(pending).resolves.toBe(false)
+    expect(document.body.getAttribute(active.bodyAttr)).toBe('')
+    expect(document.body.hasAttribute(target.bodyAttr)).toBe(false)
+    expect(document.querySelector('style[data-plugin-css*="qq98.module.css"]')).toBeNull()
+  })
+
+  it('switches to the official preview while another preview is loading', async () => {
+    const active = entry('whale-song')
+    const first = entry('qq98')
+    const pendingTarget = entry('xp')
+    window.__DSH_BOOT__ = { entries: [{ id: active.package }] }
+    document.body.setAttribute(active.bodyAttr, '')
+
+    let releaseBundle!: () => void
+    const bundleReady = new Promise<void>(resolve => { releaseBundle = resolve })
+    const c = new TryOnController({
+      loadBundle: async target => {
+        if (target.id === pendingTarget.id) await bundleReady
+        ;(0, eval)(bundleTextFor(target.id))
+      },
+    })
+
+    await expect(c.tryOn(first)).resolves.toBe(true)
+    const pending = c.tryOn(pendingTarget)
+    c.tryOnOfficial()
+
+    expect(c.tryingOfficial).toBe(true)
+    expect(document.body.hasAttribute(active.bodyAttr)).toBe(false)
+    expect(document.body.hasAttribute(first.bodyAttr)).toBe(false)
+
+    releaseBundle()
+    await expect(pending).resolves.toBe(false)
+    expect(c.tryingOfficial).toBe(true)
+    expect(document.body.hasAttribute(pendingTarget.bodyAttr)).toBe(false)
+
+    c.exit()
+    expect(document.body.getAttribute(active.bodyAttr)).toBe('')
+  })
+
   it('switching from ths try-on to another skin leaves no ths residue', async () => {
     const c = controller()
 
-    await expect(c.tryOn(entry('ths'))).resolves.toBeUndefined()
+    await expect(c.tryOn(entry('ths'))).resolves.toBe(true)
     expect(document.body.getAttribute('data-dsh-ths')).toBe('')
     expect(document.querySelector('style[data-plugin-css*="ths.module.css"]')).not.toBeNull()
 
-    await expect(c.tryOn(entry('qq98'))).resolves.toBeUndefined()
+    await expect(c.tryOn(entry('qq98'))).resolves.toBe(true)
     expect(document.body.hasAttribute('data-dsh-ths')).toBe(false)
     expect(document.querySelector('style[data-plugin-css*="ths.module.css"]')).toBeNull()
     expect(document.body.querySelector('[class*="thsTitlebar"]')).toBeNull()
@@ -138,21 +343,21 @@ describe('TryOnController skin switching', () => {
     expect(document.body.querySelector('.bombChrome')).toBeNull()
 
     // The surface stays usable for the next try-on.
-    await expect(c.tryOn(entry('qq98'))).resolves.toBeUndefined()
+    await expect(c.tryOn(entry('qq98'))).resolves.toBe(true)
     expect(document.body.hasAttribute('data-dsh-bomb')).toBe(false)
     expect(document.querySelector('style[data-plugin-css*="qq98.module.css"]')).not.toBeNull()
   })
 
   it('re-try-on after exit re-registers the same skin cleanly', async () => {
     const c = controller()
-    await expect(c.tryOn(entry('qq98'))).resolves.toBeUndefined()
+    await expect(c.tryOn(entry('qq98'))).resolves.toBe(true)
     c.exit()
     expect(document.body.hasAttribute('data-dsh-retro')).toBe(false)
     expect(document.querySelector('style[data-plugin-css*="qq98.module.css"]')).toBeNull()
     // A second try-on of the same skin must work: the exit invalidated the
     // module record, so the next load registers a fresh factory (no
     // duplicate-registration throw).
-    await expect(c.tryOn(entry('qq98'))).resolves.toBeUndefined()
+    await expect(c.tryOn(entry('qq98'))).resolves.toBe(true)
     expect(document.body.getAttribute('data-dsh-retro')).toBe('')
   })
 })

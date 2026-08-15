@@ -16,6 +16,7 @@ export type SkinCenterKey =
   | 'active'
   | 'tryingOn'
   | 'tryOn'
+  | 'loading'
   | 'exitTryOn'
   | 'apply'
   | 'applying'
@@ -41,6 +42,7 @@ export const en: Record<SkinCenterKey, string> = {
   active: 'Active',
   tryingOn: 'Trying on',
   tryOn: 'Try on',
+  loading: 'Loading…',
   exitTryOn: 'Exit try-on',
   apply: 'Apply',
   applying: 'Applying…',
@@ -67,6 +69,7 @@ export const zh: Record<SkinCenterKey, string> = {
   active: '当前激活',
   tryingOn: '试穿中',
   tryOn: '试穿',
+  loading: '加载中…',
   exitTryOn: '退出试穿',
   apply: '应用',
   applying: '应用中…',

@@ -357,6 +357,18 @@ window.__ModuleLoader__.load({
 			*/
 			epoch = 0;
 			/**
+			* One package can be requested again before its first script load finishes
+			* (for example A -> B -> A). Share that materialization so two script tags
+			* never race to register the same module factory.
+			*/
+			pendingModules = /* @__PURE__ */ new Map();
+			/**
+			* Package selected by the newest async request. A superseded request for the
+			* same package must not invalidate the module/style now owned by that newer
+			* request when their shared load settles.
+			*/
+			requestedPackage = null;
+			/**
 			* Loads one skin's client bundle so its factory registers on the page's
 			* `__ModuleLoader__`. Defaults to a same-origin script tag from the host
 			* route `/api/skin-center/bundle/<id>`; tests inject a stub.
@@ -373,29 +385,53 @@ window.__ModuleLoader__.load({
 			get tryingOfficial() {
 				return this.session !== null && this.session.entry === null;
 			}
-			/** Start trying on `entry` (replaces any live session). */
+			/**
+			* Start trying on `entry` (replaces any live session).
+			*
+			* When another skin is already being tried on, keep it mounted while the
+			* next bundle loads. Once the target is ready, tear down the old preview and
+			* mount the new one against the SAME captured active-skin snapshot. This
+			* avoids the expensive preview -> active -> preview round trip and prevents
+			* a flash of the active skin between consecutive try-ons.
+			* @returns whether this request mounted the target (false when superseded).
+			*/
 			async tryOn(entry) {
-				if (entry.package === activeSkinEntry()?.package) return;
-				this.exit();
+				if (entry.package === activeSkinEntry()?.package) return false;
 				const epoch = ++this.epoch;
-				const active = this.captureAndRetractActive();
-				let dispose;
+				this.requestedPackage = entry.package;
+				let apply;
 				try {
-					dispose = await this.loadAndApply(entry);
+					apply = await this.loadModuleOnce(entry);
 				} catch (error) {
-					if (epoch === this.epoch) this.restoreActive(active);
+					if (this.shouldCleanupRequest(entry, epoch)) this.cleanupModule(entry);
 					throw error;
 				}
 				if (epoch !== this.epoch) {
-					this.cleanupModule(entry);
-					dispose();
-					return;
+					if (this.shouldCleanupRequest(entry, epoch)) this.cleanupModule(entry);
+					return false;
+				}
+				const previous = this.session;
+				let active;
+				if (previous === null) active = this.captureAndRetractActive();
+				else {
+					this.session = null;
+					previous.dispose();
+					if (previous.entry !== null) this.cleanupModule(previous.entry);
+					active = previous.active;
+				}
+				let dispose;
+				try {
+					dispose = this.applyLoaded(entry, apply);
+				} catch (error) {
+					if (epoch === this.epoch) this.restoreActive(active);
+					throw error;
 				}
 				this.session = {
 					entry,
 					dispose,
 					active
 				};
+				return true;
 			}
 			/**
 			* Try on the official stock look: retract the active skin's visual writes
@@ -404,8 +440,20 @@ window.__ModuleLoader__.load({
 			*/
 			tryOnOfficial() {
 				if (activeSkinEntry() === null) return;
-				this.exit();
 				this.epoch += 1;
+				this.requestedPackage = null;
+				const previous = this.session;
+				if (previous !== null) {
+					this.session = null;
+					previous.dispose();
+					if (previous.entry !== null) this.cleanupModule(previous.entry);
+					this.session = {
+						entry: null,
+						dispose: () => {},
+						active: previous.active
+					};
+					return;
+				}
 				const active = this.captureAndRetractActive();
 				this.session = {
 					entry: null,
@@ -415,22 +463,44 @@ window.__ModuleLoader__.load({
 			}
 			/** Exit the live session: dispose the tried-on skin, then restore the active skin. */
 			exit() {
+				this.epoch += 1;
+				this.requestedPackage = null;
 				const session = this.session;
 				if (session === null) return;
-				this.epoch += 1;
 				this.session = null;
 				session.dispose();
 				if (session.entry !== null) this.cleanupModule(session.entry);
 				this.restoreActive(session.active);
 			}
-			/** Execute + materialize + mount the target skin through the real loader. */
-			async loadAndApply(entry) {
+			/** Share one materialization while repeated requests for a package overlap. */
+			loadModuleOnce(entry) {
+				const existing = this.pendingModules.get(entry.package);
+				if (existing !== void 0) return existing;
+				const pending = this.loadModule(entry);
+				this.pendingModules.set(entry.package, pending);
+				pending.then(() => {
+					if (this.pendingModules.get(entry.package) === pending) this.pendingModules.delete(entry.package);
+				}, () => {
+					if (this.pendingModules.get(entry.package) === pending) this.pendingModules.delete(entry.package);
+				});
+				return pending;
+			}
+			/** Whether this request still owns cleanup of the package module/style. */
+			shouldCleanupRequest(entry, epoch) {
+				return epoch === this.epoch || this.requestedPackage !== entry.package;
+			}
+			/** Execute + materialize the target skin through the real loader. */
+			async loadModule(entry) {
 				const modules = window.__DSH_MODULES__;
 				if (modules === void 0) throw new Error("skin-center: window.__DSH_MODULES__ missing");
 				modules.invalidate(entry.package);
 				await this.loadBundle(entry);
 				const apply = (await modules.import(entry.package)).apply;
 				if (typeof apply !== "function") throw new Error(`skin-center: "${entry.package}" client bundle exports no apply`);
+				return apply;
+			}
+			/** Apply a module that has already been loaded while the active skin was visible. */
+			applyLoaded(entry, apply) {
 				const ctx = miniCtx();
 				try {
 					apply(ctx);
@@ -593,9 +663,11 @@ window.__ModuleLoader__.load({
 			const [open, setOpen] = (0, react.useState)(false);
 			const [tryingId, setTryingId] = (0, react.useState)(null);
 			const [tryingOfficial, setTryingOfficial] = (0, react.useState)(false);
+			const [loadingId, setLoadingId] = (0, react.useState)(null);
 			const [applying, setApplying] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
 			const mounted = (0, react.useRef)(false);
+			const tryOnRequest = (0, react.useRef)(0);
 			(0, react.useEffect)(() => {
 				mounted.current = true;
 				return () => {
@@ -603,18 +675,27 @@ window.__ModuleLoader__.load({
 				};
 			}, []);
 			const tryOn = (entry) => {
+				if (loadingId === entry.id) return;
+				const request = ++tryOnRequest.current;
 				setError(null);
-				controller.tryOn(entry).then(() => {
+				setLoadingId(entry.id);
+				controller.tryOn(entry).then((mountedTarget) => {
+					if (!mounted.current || request !== tryOnRequest.current || !mountedTarget) return;
+					setLoadingId(null);
 					setTryingId(entry.id);
 					setTryingOfficial(false);
 				}).catch(() => {
+					if (!mounted.current || request !== tryOnRequest.current) return;
+					setLoadingId(null);
 					setError(t("tryOnError"));
-					setTryingId(null);
-					setTryingOfficial(false);
+					setTryingId(controller.trying?.id ?? null);
+					setTryingOfficial(controller.tryingOfficial);
 				});
 			};
 			const tryOnOfficial = () => {
+				++tryOnRequest.current;
 				setError(null);
+				setLoadingId(null);
 				try {
 					controller.tryOnOfficial();
 				} catch {
@@ -626,7 +707,9 @@ window.__ModuleLoader__.load({
 				setTryingOfficial(true);
 			};
 			const exitTryOn = () => {
+				++tryOnRequest.current;
 				controller.exit();
+				setLoadingId(null);
 				setTryingId(null);
 				setTryingOfficial(false);
 			};
@@ -751,12 +834,13 @@ window.__ModuleLoader__.load({
 				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 					type: "button",
 					className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonPrimary}`,
+					disabled: loadingId === opts.key,
 					onClick: opts.onTryOn,
-					children: t("tryOn")
+					children: loadingId === opts.key ? t("loading") : t("tryOn")
 				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 					type: "button",
 					className: skin_center_module_css_default.button,
-					disabled: applying !== null,
+					disabled: applying !== null || loadingId !== null,
 					onClick: () => {
 						applySkin(opts.key);
 					},
@@ -1033,6 +1117,7 @@ window.__ModuleLoader__.load({
 			active: "Active",
 			tryingOn: "Trying on",
 			tryOn: "Try on",
+			loading: "Loading…",
 			exitTryOn: "Exit try-on",
 			apply: "Apply",
 			applying: "Applying…",
@@ -1058,6 +1143,7 @@ window.__ModuleLoader__.load({
 			active: "当前激活",
 			tryingOn: "试穿中",
 			tryOn: "试穿",
+			loading: "加载中…",
 			exitTryOn: "退出试穿",
 			apply: "应用",
 			applying: "应用中…",

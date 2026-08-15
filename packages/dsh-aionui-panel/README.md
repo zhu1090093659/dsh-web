@@ -29,6 +29,7 @@ When a project session (the current session has a working directory) is open, tw
 - **Explorer (rightmost column, default 260px, range 220–500px)**: `File / Changes` two tabs; clicking a row in the file tree expands/collapses a folder, clicking a file opens it in the preview panel, and the top filename search (150ms debounce, clicking a result locates it in the tree without interrupting flow); the `Changes` tab reads the real git status and supports stage / unstage / discard (untracked via delete, tracked via restore, bulk discard asks for confirmation).
 - **Drag a file to the input box**: file rows in the tree can be dragged (except directory rows); dropping onto the chat input area inserts the relative path (e.g. `deploy/base/deployment.yaml`) at the cursor of the current draft, and the agent reads the file itself once the message arrives — no need to type the path by hand; a highlighted hint bar shows above the input while dragging.
 - **Preview (second column from right, default 480px, range 340–1200px)**: multi-tab preview supporting markdown / html / code / diff / csv / pdf / word / excel / ppt / image / text / url; source/preview toggle, split-screen editing (ratio persisted), save (mtime conflict detection), download, refresh (4-state: dead buttons are not rendered), dirty dot, middle-click close, right-click menu batch close (dirty confirm), and tab-overflow gradient indicator.
+- **Mermaid diagrams**: fenced ```mermaid blocks render as diagrams in the markdown preview and in chat messages. The mermaid runtime is bundled in the package and served same-origin via `/aionui-panel/vendor/mermaid.js` (no CDN, offline-friendly, loopback-fenced); diagrams follow the shell's light/dark theme and re-render on theme flips; a diagram with syntax errors falls back to the plain code block.
 
 Interaction details:
 
@@ -42,7 +43,7 @@ Interaction details:
 
 The real filesystem and the real git repository, no mocks:
 
-- The host half (`src/index.ts` + `src/host/`) serves directory listing, file reads (text capped at 80k chars / image data URLs), writes (mtime conflict detection), filename search (skipping .git / node_modules), git status (porcelain v1 -z) / stage / unstage / discard, and an SSE change stream (fs watching + git polling) over the `/aionui-panel/*` HTTP routes.
+- The host half (`src/index.ts` + `src/host/`) serves directory listing, file reads (text capped at 80k chars / image data URLs), writes (mtime conflict detection), filename search (skipping .git / node_modules), git status (porcelain v1 -z) / stage / unstage / discard, and an SSE change stream (fs watching + git polling) over the `/aionui-panel/*` HTTP routes. It also serves the vendored mermaid IIFE bundle (`lib/assets/mermaid.min.js`, copied from the pinned npm dependency at build time) at `/aionui-panel/vendor/mermaid.js` with etag revalidation.
 - All operations pass through a workspace guard: paths must fall inside a registered workspace (realpath normalization + prefix check); the browser can only read/write relative paths under the project root.
 - Every `/aionui-panel/*` route (JSON operations, raw reads, and the SSE events stream) is loopback-only: non-loopback clients get `403 forbidden: loopback-only` before any workspace access, matching the dsh-ssh fence.
 - The recursive watcher ignores changes under `node_modules` / `.git`; the SCM poll runs every 30s per workspace (each probe bounded by a 15s deadline), and roots that are not git repositories stop being re-probed thanks to a TTL cache. File edits surface via the watcher immediately; `.git`-only changes (commits/checkouts from other tools) appear within one poll interval or on window focus (throttled to once per 5s).
@@ -53,7 +54,7 @@ The real filesystem and the real git repository, no mocks:
 - `src/index.ts` — host half entry (cordis plugin: route registration + systemPrompt announcement).
 - `src/host/` — fs/git data services and the route layer (workspace gate).
 - `src/core/types.ts` — shared wire types across both halves.
-- `src/client/` — browser half: framework-agnostic state core (`store.ts`), drag engine (`drag.ts` + `hooks/useResizableSplit.ts`), DOM layout controller (`layout.ts`, appending panel tracks to the shell's three-column grid), React components (explorer / scm / preview).
+- `src/client/` — browser half: framework-agnostic state core (`store.ts`), drag engine (`drag.ts` + `hooks/useResizableSplit.ts`), DOM layout controller (`layout.ts`, appending panel tracks to the shell's three-column grid), React components (explorer / scm / preview), and the mermaid enhancement (`preview/mermaid.ts` + `chat/mermaid-chat.tsx`).
 - `tests/` — pure-logic tests for the clamp formula, porcelain parsing, persistence validation, markdown/csv rendering, store behavior, etc. (vitest, 37 tests).
 
 ## Build

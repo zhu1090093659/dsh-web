@@ -29,6 +29,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-aionui-panel
 - **Explorer（最右栏，默认 260px，范围 220~500px）**：`文件 / 变更` 双 tab；文件树整行点击展开/收起文件夹，点击文件在预览面板打开，顶部按文件名搜索（150ms 防抖，点击结果 = 定位到树中，不打断思路）；`变更` tab 读取真实 git 状态，支持 stage / unstage / discard（untracked 走删除，tracked 走 restore，批量放弃有确认）。
 - **拖拽文件到输入框**：文件树中的文件行可拖拽（目录行除外），拖到聊天输入框区域松手即把相对路径（如 `deploy/base/deployment.yaml`）插入当前会话草稿的光标处，agent 收到消息后会自行读取该文件，无需手动输入路径；拖拽过程中输入框上方显示高亮提示条。
 - **Preview（右二栏，默认 480px，范围 340~1200px）**：多 tab 预览，支持 markdown / html / code / diff / csv / pdf / word / excel / ppt / 图片 / 文本 / url；源码/预览切换、分屏编辑（比例持久化）、保存（mtime 冲突检测）、下载、刷新（4 态：不渲染死按钮）、dirty 点、中键关闭、右键菜单批量关闭（dirty 确认）、tab 溢出渐变指示器。
+- **Mermaid 图表**：markdown 预览与聊天消息中的 ```mermaid 代码块会渲染成图表。mermaid 运行时打包在包内，经 `/aionui-panel/vendor/mermaid.js` 同源提供（不走 CDN、离线可用、loopback 围栏）；图表跟随 shell 明暗主题并在切换时重渲染；图源语法错误时回退为原代码块。
 
 交互细节：
 
@@ -42,7 +43,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-aionui-panel
 
 真实文件系统与真实 git 仓库，无任何 mock：
 
-- host 半区（`src/index.ts` + `src/host/`）经 `/aionui-panel/*` HTTP 路由提供目录列举、文件读取（文本 80k 字符上限 / 图片 data URL）、写入（mtime 冲突检测）、文件名搜索（跳过 .git / node_modules）、git status（porcelain v1 -z）/ stage / unstage / discard，以及 SSE 变更流（fs 监听 + git 轮询）。
+- host 半区（`src/index.ts` + `src/host/`）经 `/aionui-panel/*` HTTP 路由提供目录列举、文件读取（文本 80k 字符上限 / 图片 data URL）、写入（mtime 冲突检测）、文件名搜索（跳过 .git / node_modules）、git status（porcelain v1 -z）/ stage / unstage / discard，以及 SSE 变更流（fs 监听 + git 轮询）；并经 `/aionui-panel/vendor/mermaid.js` 提供构建期从固定版本 npm 依赖拷贝的 mermaid IIFE 产物（`lib/assets/mermaid.min.js`），带 etag 再校验。
 - 所有操作经过工作区门卫：路径必须落在已注册 workspace 内（realpath 规范化 + 前缀校验），浏览器只能读写项目根下的相对路径。
 - 所有 `/aionui-panel/*` 路由（JSON 操作、raw 读取与 SSE 事件流）仅限 loopback：非 loopback 客户端在任何工作区访问前即收到 `403 forbidden: loopback-only`，与 dsh-ssh 的 fence 一致。
 - 递归 watcher 忽略 `node_modules` / `.git` 下的变更；SCM 轮询每 30s 对每个 workspace 探测一次（单次探测有 15s 超时兜底），非 git 仓库的根经 TTL 缓存不再反复探测。文件编辑经 watcher 即时呈现；仅 `.git` 元数据变更（其他工具的 commit/checkout）在一个轮询周期内或窗口重新聚焦（5s 节流）时呈现。
@@ -53,7 +54,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-aionui-panel
 - `src/index.ts` — host 半区入口（cordis 插件：路由注册 + systemPrompt 公告）。
 - `src/host/` — fs/git 数据服务与路由层（workspace gate）。
 - `src/core/types.ts` — 前后半区共享的线上类型。
-- `src/client/` — browser 半区：框架无关状态核心（`store.ts`）、拖拽引擎（`drag.ts` + `hooks/useResizableSplit.ts`）、DOM 布局控制器（`layout.ts`，向 shell 的三栏 grid 追加面板轨道）、React 组件（explorer / scm / preview）。
+- `src/client/` — browser 半区：框架无关状态核心（`store.ts`）、拖拽引擎（`drag.ts` + `hooks/useResizableSplit.ts`）、DOM 布局控制器（`layout.ts`，向 shell 的三栏 grid 追加面板轨道）、React 组件（explorer / scm / preview），以及 mermaid 增强（`preview/mermaid.ts` + `chat/mermaid-chat.tsx`）。
 - `tests/` — clamp 公式、porcelain 解析、持久化校验、markdown/csv 渲染、store 行为等纯逻辑测试（vitest，37 个）。
 
 ## 构建

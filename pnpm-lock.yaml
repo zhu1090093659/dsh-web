@@ -19,6 +19,10 @@ importers:
         version: 0.22.2(typescript@6.0.3)
 
   packages/dsh-aionui-panel:
+    dependencies:
+      mermaid:
+        specifier: 11.16.1
+        version: 11.16.1
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.1

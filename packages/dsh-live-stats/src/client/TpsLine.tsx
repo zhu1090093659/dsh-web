@@ -21,21 +21,22 @@ const STYLE = {
   fontSize: '12px',
   fontVariantNumeric: 'tabular-nums',
   lineHeight: '20px',
-  margin: '0 auto',
-  maxWidth: 'var(--dsh-chat-content-width)',
-  overflow: 'hidden',
-  padding: '0 var(--dsh-composer-side-clearance)',
-  textAlign: 'center',
-  textOverflow: 'ellipsis',
+  // 注意：不要在这里设置 overflow，合并样式表需要 overflow: visible
+  // 让零高度的 TPS 行内容上浮到官方统计行。
+  padding: '4px 0 0',
   whiteSpace: 'nowrap',
-  width: '100%',
 } as const
 
-/** Second composer-status line for active or latest response throughput. */
+/**
+ * Second composer-status line for active or latest response throughput.
+ * The root carries `data-dsh-live-tps`: the merge stylesheet (merge-css.ts)
+ * anchors on it to pull this row onto the same line as the official
+ * StatsLine, which renders right before it in the composer dock.
+ */
 export const TpsLine = memo(function TpsLine({ useProjection }: TpsLineProps) {
   const rate = useProjection('liveTokenUsage')?.tokensPerSecond
   if (rate === undefined) return null
-  return <div style={STYLE}>TPS {formatTokensPerSecond(rate)} tok/s</div>
+  return <div data-dsh-live-tps style={STYLE}>TPS {formatTokensPerSecond(rate)} tok/s</div>
 })
 
 /**

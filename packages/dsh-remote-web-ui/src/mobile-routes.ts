@@ -19,6 +19,11 @@ function mobileBundlePath(): string {
   return fileURLToPath(new URL('../lib/mobile.js', import.meta.url))
 }
 
+/** The apple-touch-icon shipped with the package (iOS home-screen icon, 180x180 PNG). */
+function appleTouchIconPath(): string {
+  return fileURLToPath(new URL('../assets/apple-touch-icon.png', import.meta.url))
+}
+
 /** The mobile page shell: minimal, offline-safe, no external assets. */
 function pageHtml(bundleUrl: string): string {
   return [
@@ -29,6 +34,10 @@ function pageHtml(bundleUrl: string): string {
     '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">',
     '<meta name="theme-color" content="#f3f5f9">',
     '<meta name="referrer" content="no-referrer">',
+    // iOS "Add to Home Screen" uses apple-touch-icon for the tile icon;
+    // the PNG ships with the package (opaque background — iOS composites
+    // transparency onto black, so the icon avoids transparent regions).
+    '<link rel="apple-touch-icon" href="/m/apple-touch-icon.png">',
     '<title>移动端远程控制</title>',
     '</head>',
     '<body>',
@@ -44,6 +53,16 @@ function writeStatic(res: ServerResponse, status: number, type: string, body: st
   res.writeHead(status, {
     'content-type': `${type}; charset=utf-8`,
     'cache-control': 'no-cache',
+    'referrer-policy': 'no-referrer',
+  })
+  res.end(body)
+}
+
+/** Send the PNG icon as a binary body (unlike text assets, the PNG must not be decoded to utf-8). */
+function writePng(res: ServerResponse, status: number, body: Buffer): void {
+  res.writeHead(status, {
+    'content-type': 'image/png',
+    'cache-control': 'public, max-age=31536000, immutable',
     'referrer-policy': 'no-referrer',
   })
   res.end(body)
@@ -70,8 +89,22 @@ export function makeMobileRoutes(): WebRoute[] {
       writeStatic(res, 500, 'text/plain', 'failed to read the mobile bundle')
     }
   }
+  const handleIcon = async (_req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    const path = appleTouchIconPath()
+    if (!existsSync(path)) {
+      writeStatic(res, 404, 'text/plain', 'apple-touch-icon not found')
+      return
+    }
+    try {
+      const body = await readFile(path)
+      writePng(res, 200, body)
+    } catch {
+      writeStatic(res, 500, 'text/plain', 'failed to read the apple-touch-icon')
+    }
+  }
   return [
     { kind: 'exact', path: '/m', handler: handlePage },
     { kind: 'exact', path: '/m/mobile.js', handler: handleBundle },
+    { kind: 'exact', path: '/m/apple-touch-icon.png', handler: handleIcon },
   ]
 }

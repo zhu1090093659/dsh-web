@@ -54,5 +54,14 @@
     "description": "给 agent 一双会开车的手：零依赖 CDP 浏览器操控（8 个 pilot_* 工具：导航/点击/输入/按键/JS/截图）+ Web GUI 可拖拽驾驶舱面板，无需 Playwright、无需 API key。",
     "descriptionEn": "Give your agent hands: zero-dependency CDP browser control (8 pilot_* tools: navigate/click/type/keys/eval/screenshot) plus a draggable cockpit panel in the Web GUI - no Playwright, no API key.",
     "repo": "https://github.com/guo6x/dsh-pilot"
+  },
+  {
+    "id": "dsh-housekeeper",
+    "name": "环境管家",
+    "nameEn": "Environment Housekeeper",
+    "author": "guo6x",
+    "description": "管住 agent 的脏手：工具链台账（node/pnpm/git/gh/ffmpeg 等自动探测）、缓存与临时目录扫描 + 白名单安全一键清理、机器规则 AGENTS.md 查看编辑，全在设置面板完成。",
+    "descriptionEn": "Keep your agent's hands clean: toolchain inventory, scratch/cache scan with whitelist-guarded one-click cleanup, and the machine rules file (AGENTS.md) view/edit - all in the settings panel.",
+    "repo": "https://github.com/guo6x/dsh-housekeeper"
   }
 ]

@@ -29,6 +29,10 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-web-ui-all
 
 Restart `dsh web` for the plugins to take effect.
 
+### Manual upgrade
+
+When you upgrade by bumping the version in the profile `package.json` and running `pnpm install`, the top-level `node_modules/@linxin666/*` entries are not always refreshed: they can stay linked to the previous version's store directory until recreated. After upgrading, verify the links resolve to the new version (on Windows: `cmd /c rmdir <link>` then `cmd /c mklink /J <link> <target>`), then restart `dsh web`.
+
 ## Known limitations
 
 - Every sub-plugin activates together. For only a subset, install that sub-plugin package directly.

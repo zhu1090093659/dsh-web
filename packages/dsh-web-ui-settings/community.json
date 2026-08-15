@@ -35,5 +35,15 @@
     "descriptionEn": "Summarize the current conversation and export it as Markdown / DOCX / PDF, with optional LLM summarization using your own API key.",
     "repo": "https://github.com/v833/dsh-chat-summary",
     "npm": "@linxin666/dsh-client-ui-chat-summary"
+  },
+  {
+    "id": "dsh-builtin-toggles",
+    "name": "内置能力检查器",
+    "nameEn": "Built-in Capability Inspector",
+    "author": "Starfie1d1272",
+    "description": "Evidence-backed 内置 capability Inspector：展示 DSH Web built-in capability 的 provenance、compatibility 与 structural drift；仅对 9 个经过审阅的 UI leaves 提供 fail-closed 开关。",
+    "descriptionEn": "Evidence-backed built-in capability Inspector: surfaces provenance, compatibility and structural drift of DSH Web built-ins, with fail-closed toggles for only the nine reviewed UI leaves.",
+    "repo": "https://github.com/Starfie1d1272/dsh-builtin-toggles",
+    "npm": "dsh-builtin-toggles"
   }
 ]

@@ -107,6 +107,20 @@ describe('desktop inline conversation edit', () => {
     ] }), 1)).toBeUndefined()
   })
 
+  it('accepts the latest human text message after a failed model request', () => {
+    const failed = snapshot({
+      nodes: [
+        ...snapshot().nodes,
+        { kind: 'user', seq: 4, time: 4, content: [{ type: 'text', text: '失败的问题' }], source: { kind: 'user' } },
+      ],
+      promptError: { message: 'request failed' } as never,
+      lastAgentError: { message: 'request failed' } as never,
+    })
+
+    expect(findEditableConversationMessage(failed, 1)).toBeUndefined()
+    expect(findEditableConversationMessage(failed, 4)).toEqual({ seq: 4, text: '失败的问题' })
+  })
+
   it('renders the pencil in the user bubble and opens an inline editor', () => {
     const sessions = { binding: vi.fn(), open: vi.fn() } as unknown as ISessions
     const connection = {} as ConnectionHandle

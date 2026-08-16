@@ -4,7 +4,6 @@ import type { ConnectionHandle, ContentBlock, PromptContentPart } from '@deepsee
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
-  AssistantMessageNode,
   ConversationSnapshot,
   ISessions,
   SessionId,
@@ -46,34 +45,23 @@ function textOnly(content: readonly ContentBlock[]): string | undefined {
   return block?.type === 'text' && typeof block.text === 'string' ? block.text : undefined
 }
 
-function latestAssistant(snapshot: ConversationSnapshot): AssistantMessageNode | undefined {
-  return snapshot.nodes
-    .filter((node): node is AssistantMessageNode => node.kind === 'assistant' && node.messageId !== undefined)
-    .reduce<AssistantMessageNode | undefined>((latest, node) => latest === undefined || node.seq > latest.seq ? node : latest, undefined)
-}
-
 /**
- * Return a user prompt only when its assistant response is the latest settled
- * turn. The exact user sequence is checked so every older user bubble remains
- * read-only even when it is still visible in the same conversation.
+ * Return the latest settled human text prompt. A failed model request may not
+ * produce an assistant message or turn-end marker, but its user prompt must
+ * remain editable once the session is idle. The exact user sequence is checked
+ * so every older user bubble remains read-only.
  */
 export function findEditableConversationMessage(
   snapshot: ConversationSnapshot,
   userSeq: number,
 ): EditableConversationMessage | undefined {
   if (snapshot.running || snapshot.removed || snapshot.openState !== 'open') return undefined
-  const assistant = latestAssistant(snapshot)
-  if (assistant === undefined || assistant.interrupted === true) return undefined
-  const turnEnd = snapshot.turnEnds.get(assistant.turn)
-  if (turnEnd === undefined || turnEnd < assistant.seq) return undefined
-  if (snapshot.nodes.some(node => node.kind === 'user' && node.seq > assistant.seq)) return undefined
-
   const user = snapshot.nodes.find((node): node is UserMessageNode => node.kind === 'user' && node.seq === userSeq)
-  if (user === undefined || user.seq >= assistant.seq || !isHumanSource(user.source)) return undefined
+  if (user === undefined || !isHumanSource(user.source)) return undefined
   const text = textOnly(user.content)
   if (text === undefined) return undefined
   const latestUser = [...snapshot.nodes]
-    .filter((node): node is UserMessageNode => node.kind === 'user' && node.seq < assistant.seq)
+    .filter((node): node is UserMessageNode => node.kind === 'user')
     .reduce<UserMessageNode | undefined>((latest, node) => latest === undefined || node.seq > latest.seq ? node : latest, undefined)
   return latestUser?.seq === user.seq ? { seq: user.seq, text } : undefined
 }

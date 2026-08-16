@@ -5,6 +5,10 @@
  * does not expose to this client must explain the gap instead of vanishing —
  * a missing namespace (the official settings allowlist omits third-party
  * namespaces) must never read as a missing plugin.
+ *
+ * The card chrome defaults to expanded (first-level settings sections show
+ * their controls immediately) and stays collapsible via the disclosure
+ * header.
  */
 
 import { afterEach, describe, expect, it } from 'vitest'
@@ -48,7 +52,9 @@ describe('PluginSettingsCard availability', () => {
         <p data-testid="field">field</p>
       </PluginSettingsCard>,
     )
-    // The body is collapsed until the header is expanded.
+    // The body is expanded on arrival and collapses on the header toggle.
+    expect(screen.getByTestId('field')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /hide settings: live token estimation/i }))
     expect(screen.queryByTestId('field')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /show settings: live token estimation/i }))
     expect(screen.getByTestId('field')).toBeTruthy()
@@ -70,9 +76,8 @@ describe('PluginSettingsCard availability', () => {
     // The form controls are suppressed…
     expect(screen.queryByTestId('field')).toBeNull()
     // …but the card still appears, explaining the gap.
-    const header = screen.getByRole('button', { name: /show settings: live token estimation/i })
+    const header = screen.getByRole('button', { name: /hide settings: live token estimation/i })
     expect(header).toBeTruthy()
-    fireEvent.click(header)
     expect(screen.getByText(/settings.yaml/i)).toBeTruthy()
   })
 

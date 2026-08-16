@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-trading",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Bundled skin inside @linxin666/dsh-skins (@linxin666/dsh-client-ui-skin-trading).",
   "type": "module",
   "main": "lib/index.js",

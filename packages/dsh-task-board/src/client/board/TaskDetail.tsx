@@ -9,6 +9,7 @@ import type { BoardController } from '../../core/controller.ts'
 import { isValidCron } from '../../core/schedule.ts'
 import { MANUAL_STATUSES, TASK_PERMISSIONS, type ExecutionRecord, type TaskPermission, type TaskRecord, type TaskStatus } from '../../core/tasks.ts'
 import { t, type TaskBoardKey } from '../locales.ts'
+import { SCHEDULE_PRESETS } from '../schedule-presets.ts'
 import css from '../board.module.css'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
 import { formatTime } from './TaskCard.tsx'
@@ -57,14 +58,6 @@ function ExecutionRow({ execution, onOpen }: { execution: ExecutionRecord; onOpe
     </li>
   )
 }
-
-/** Common scheduled-run presets (cron → locale label). */
-const SCHEDULE_PRESETS: ReadonlyArray<{ cron: string; label: TaskBoardKey }> = [
-  { cron: '0 9 * * *', label: 'detail.schedule.preset.daily9' },
-  { cron: '0 * * * *', label: 'detail.schedule.preset.hourly' },
-  { cron: '*/10 * * * *', label: 'detail.schedule.preset.tenMin' },
-  { cron: '0 9 * * 1', label: 'detail.schedule.preset.weeklyMon9' },
-]
 
 /** The execution-target editor: workspace / mode / permission pickers. */
 function ExecutionSettingsSection({ controller, task }: { controller: BoardController; task: TaskRecord }) {
@@ -324,6 +317,31 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
           >
             {current.executions.length === 0 ? t('detail.run') : t('detail.rerun')}
           </button>
+          {current.archivedAt !== undefined ? (
+            <button
+              type="button"
+              className={css.primaryButton}
+              onClick={() => {
+                controller.restoreTask(current.id)
+                controller.closeTask()
+              }}
+            >
+              {t('detail.restore')}
+            </button>
+          ) : (
+            (current.status === 'done' || current.status === 'failed') && (
+              <button
+                type="button"
+                className={css.ghostButton}
+                onClick={() => {
+                  controller.archiveTask(current.id)
+                  controller.closeTask()
+                }}
+              >
+                {t('detail.archive')}
+              </button>
+            )
+          )}
           <button
             type="button"
             className={css.dangerButton}
@@ -333,6 +351,7 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
           </button>
           <span className={css.detailMeta}>
             {t('board.created')} {formatTime(current.createdAt)}
+            {current.archivedAt !== undefined && ` · ${t('detail.archivedAt', { time: formatTime(current.archivedAt) })}`}
           </span>
         </footer>
       </div>

@@ -114,6 +114,20 @@ describe('BoardController lifecycle', () => {
     expect(reloaded.getSnapshot().tasks.map(task => task.id)).toEqual(['task-a'])
   })
 
+  it('reloadFromStore replaces the in-memory ledger from the persisted store, silently', () => {
+    const { controller, store } = makeController()
+    controller.createTask({ title: 'a', description: '', prompt: '' })
+    // A sibling tab deletes the task behind this controller's back (the
+    // persisted store is rewritten); the scheduler-facing reload must pick
+    // the freshest truth up without re-rendering UI subscribers.
+    store.save([])
+    let notified = 0
+    controller.subscribe(() => { notified += 1 })
+    controller.reloadFromStore()
+    expect(controller.getSnapshot().tasks).toEqual([])
+    expect(notified).toBe(0)
+  })
+
   it('dispose unsubscribes (no more notifications)', () => {
     const { controller, sessions } = makeController()
     let count = 0

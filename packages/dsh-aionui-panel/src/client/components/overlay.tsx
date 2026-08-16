@@ -5,7 +5,7 @@
  * @module dsh-aionui-panel/client/components/overlay
  */
 
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { JSX } from 'react'
 import { t } from '../locales.ts'
@@ -27,13 +27,13 @@ export function toast(message: string): void {
   toastTimer = undefined
 }
 
-/** One context-menu entry. */
+/** One context-menu entry (separators carry no handler). */
 export interface MenuEntry {
   key: string
   label: string
   disabled?: boolean
   danger?: boolean
-  onSelect: () => void
+  onSelect?: () => void
 }
 
 export interface MenuState {
@@ -103,7 +103,7 @@ export function ContextMenu({ state, onClose }: { state: MenuState | null; onClo
               onClick={() => {
                 if (entry.disabled === true) return
                 onClose()
-                entry.onSelect()
+                entry.onSelect?.()
               }}
               role="menuitem"
             >
@@ -112,6 +112,72 @@ export function ContextMenu({ state, onClose }: { state: MenuState | null; onClo
           )}
         </div>
       ))}
+    </div>,
+    document.body,
+  )
+}
+
+/** A single-text-input dialog (rename, new file / new folder). */
+export function PromptDialog({
+  title,
+  initialValue,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: {
+  title: string
+  initialValue?: string
+  confirmLabel?: string
+  onConfirm: (value: string) => void
+  onCancel: () => void
+}): JSX.Element {
+  const [value, setValue] = useState(initialValue ?? '')
+  const inputRef = useRef<HTMLInputElement>(null)
+  useLayoutEffect(() => {
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [])
+  const commit = (): void => {
+    const trimmed = value.trim()
+    if (trimmed === '') return
+    onConfirm(trimmed)
+  }
+  useEffect(() => {
+    const key = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') onCancel()
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [onCancel])
+  return createPortal(
+    <div className="aionui-overlay" onPointerDown={onCancel}>
+      <div className="aionui-dialog" onPointerDown={(event) => event.stopPropagation()}>
+        <div className="aionui-dialog-title">{title}</div>
+        <div className="aionui-dialog-body">
+          <input
+            ref={inputRef}
+            className="aionui-input"
+            value={value}
+            placeholder={initialValue ?? ''}
+            aria-label={title}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') commit()
+            }}
+          />
+        </div>
+        <div className="aionui-dialog-actions">
+          <button type="button" className="aionui-btn" onClick={onCancel}>{t('common.cancel')}</button>
+          <button
+            type="button"
+            className="aionui-btn aionui-btn-primary"
+            disabled={value.trim() === ''}
+            onClick={commit}
+          >
+            {confirmLabel ?? t('common.confirm')}
+          </button>
+        </div>
+      </div>
     </div>,
     document.body,
   )

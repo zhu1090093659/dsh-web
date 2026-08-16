@@ -178,6 +178,9 @@ export function apply(ctx: ClientContext): void {
     // not-yet-ready runtime; tab visibility recovery ticks immediately.
     const scheduler = new SchedulerService({
       tasks: () => controller.getSnapshot().tasks,
+      // Re-read the persisted ledger before every fire decision: a task
+      // deleted in another tab must never fire from a stale in-memory copy.
+      refresh: () => controller.reloadFromStore(),
       now: () => Date.now(),
       runTask: id => controller.runTask(id),
       applySchedule: (id, nextRunAt, lastTriggeredAt) =>

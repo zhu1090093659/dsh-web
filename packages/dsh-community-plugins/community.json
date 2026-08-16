@@ -63,5 +63,25 @@
     "description": "管住 agent 的脏手：工具链台账（node/pnpm/git/gh/ffmpeg 等自动探测）、缓存与临时目录扫描 + 白名单安全一键清理、机器规则 AGENTS.md 查看编辑，全在设置面板完成。",
     "descriptionEn": "Keep your agent's hands clean: toolchain inventory, scratch/cache scan with whitelist-guarded one-click cleanup, and the machine rules file (AGENTS.md) view/edit - all in the settings panel.",
     "repo": "https://github.com/guo6x/dsh-housekeeper"
+  },
+  {
+    "id": "dsh-deepread",
+    "name": "DeepRead 精读助手",
+    "nameEn": "DeepRead Assistant",
+    "author": "xiehuan123",
+    "description": "五种模式精读插件（quick / deep / map / feynman / book），支持公众号链接与文件输入，导出 md / mm / html，Web UI 提供工具结果卡片与精读面板。",
+    "descriptionEn": "A five-mode deep reading plugin (quick / deep / map / feynman / book) for links and files, with md / mm / html exports and Web UI tool-result cards plus a reading panel.",
+    "repo": "https://github.com/xiehuan123/dsh-deepread",
+    "npm": "dsh-deepread"
+  },
+  {
+    "id": "dsh-mnemon",
+    "name": "Mnemon 记忆系统",
+    "nameEn": "Mnemon Memory",
+    "author": "omdsh-dev",
+    "description": "与 Mnemon CLI 集成的跨 Agent、本地优先持久记忆插件：用户画像 / 工作记忆 / 项目档案与长期 Memory Spaces，支持导入导出。",
+    "descriptionEn": "A cross-agent, local-first persistent memory plugin integrating the Mnemon CLI: profiles, working memory, project documents and long-term Memory Spaces, with import and export.",
+    "repo": "https://github.com/omdsh-dev/dsh-mnemon",
+    "npm": "dsh-mnemon"
   }
 ]

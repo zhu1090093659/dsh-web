@@ -2,12 +2,14 @@
 
 [English](README.md) | 中文
 
-`@linxin666/dsh-client-ui-skin-center`（cordis 插件 id `ui-skin-center`）把皮肤列表/试穿/应用内嵌进真实 dsh Web GUI 的插件配置页，作为「Web UI 插件」组里的一张卡片（设置 → 插件配置 → Web UI 插件 → 皮肤中心），与 task-board / pet / live-stats 等全家桶插件同一套槽位（`web-ui.plugin.item`），不占设置页一级导航。
+`@linxin666/dsh-client-ui-skin-center`（cordis 插件 id `ui-skin-center`）把皮肤列表/试穿/应用放进真实 dsh Web GUI 的设置页，作为一级菜单项（设置 → 皮肤中心），与通用设置 / 模式 / 插件 / Agent 预设以及 Web UI 插件组、宠物同级。卡片自带启用开关（关闭后停用试穿、应用与背景控件）。
 
 - 列表：展示「官方默认」+ 仓库里全部皮肤（qq98 / ths / xp / blue-fantasy / dragon-heir / minecraft）的名称、tagline、强调色；当前激活的目标带 Active 标记。
 - 试穿：点击「Try on」后按需加载该皮肤的 client bundle——host 路由 `/api/skin-center/bundle/<id>` 以同源 script 提供 `lib/client.js`（内核加载插件的同一机制），factory 注册到页面自己的 `window.__ModuleLoader__`，`window.__DSH_MODULES__.import` 物化（不是模拟器、不用 eval），chrome 立即生效；亮/暗切换走官方 theme 服务；「Exit try-on」完全还原——当前皮肤的样式、DOM、favicon、标题、body 内联样式全部恢复。「官方默认」也可试穿：点一下皮肤立即收回、回到官方外观预览。
 - 互斥：试穿期间会按配方暂时收回当前激活皮肤的视觉写面（body 属性、背景内联样式、chrome 子节点、xp 的 footer taskbar），退出后原样恢复；同一时刻页面上只有一套皮肤。
 - 应用：host 半区（`src/index.ts` + `src/routes.ts`）暴露 `/api/skin-center/apply` 与 `/api/skin-center/bundle/<id>`（按需提供皮肤 bundle），点击「Apply / 恢复默认」即在服务端执行内嵌的 `dsh-skin use` 进程内移植版（`src/skin-switch.ts`），写入 `<harness-home>/cordis.patch.yml` 后由 DSH 配置 watcher 秒级热载入，页面自动刷新生效——**无需重启 dsh web，无需复制命令，也不要求 PATH 上有 `dsh-skin` 二进制**。应用失败时错误提示里附带终端兜底命令。harness home 与 dsh 启动器一致：注入的 HOME 映射为 `<home>/.dsh`，否则优先使用去除首尾空白后非空的 `$DSH_HOME`（直接使用，不再追加后缀），最后回退到 `~/.dsh`。目标 profile 依次取：显式选项、`$DSH_SKIN_PROFILE`、`$DSH_PROFILE`、`process.cwd()` 直接位于 `<harness-home>/profiles/<name>` 下时的 `<name>`，最后 `web`。Windows 兼容性：同一套解析规则不依赖 `$HOME` 与固定路径，符号链接权限不足时 profile 链接回退为目录 junction。
+
+- 背景控制：背景遮挡滑块（0–100%）为带背景插画的皮肤（blue-fantasy / whale-song）背后的背景加遮罩；另有两条按对话状态区分的背景高斯模糊滑块（0–20 px）——「空对话」在对话为空时生效、「有对话」在出现内容后生效。生效的模糊通过 shell 背后的一个固定 `backdrop-filter` 元素施加；设为 0 即完全关闭（无元素、无 GPU 开销）。这些控件仅对带背景插画的皮肤可见有效；官方默认无背景图。
 
 ## 安装（官方 plugin bundle 方式）
 
@@ -39,7 +41,7 @@ skins/skin-center/
   src/index.ts                                       # host 侧：注册 /api/skin-center/* 路由
   src/routes.ts                                      # host 路由（代理 dsh-skin CLI）
   src/invariant.ts                                   # invariant 伴随插件（无断言）
-  src/client/index.ts                                # apply：注册 Web UI 插件组卡片 + body 作用域
+  src/client/index.ts                                # apply：注册一级设置菜单项 + body 作用域
   src/client/SkinCenter.tsx                          # 卡片组件（官方默认 + 列表/试穿/亮暗/一键应用）
   src/client/try-on.ts                               # 试穿引擎（真实 loader + 互斥还原，含官方试穿）
   src/client/locales.ts                              # en/zh 文案
@@ -82,7 +84,7 @@ ln -sfn ~/code/dsh-web-ui/packages/skins/skin-center \
 #       - id: ui-skin-center
 #         name: '@linxin666/dsh-client-ui-skin-center'
 
-# 3. 配置 watcher 秒级热载入；刷新页面即在 插件配置 → Web UI 插件 组里看到皮肤中心卡片
+# 3. 配置 watcher 秒级热载入；刷新页面即在 设置 → 皮肤中心 看到皮肤中心菜单项
 ```
 
 ## 试穿互斥的还原配方（try-on.ts）
@@ -96,7 +98,7 @@ ln -sfn ~/code/dsh-web-ui/packages/skins/skin-center \
 
 ## 验收对照（README 顶层契约）
 
-- [x] 插件配置 → Web UI 插件 组里出现皮肤中心卡片，无 console 报错
+- [x] 设置 → 皮肤中心 出现皮肤中心菜单项，无 console 报错
 - [x] 列表含官方默认 + 全部皮肤，当前激活有标记
 - [x] 试穿真实生效（chrome/背景/标题/favicon），亮/暗正确；官方默认可试穿
 - [x] 退出完全还原；互斥（不出现两套标题栏）

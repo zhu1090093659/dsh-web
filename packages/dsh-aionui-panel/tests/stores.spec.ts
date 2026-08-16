@@ -36,6 +36,11 @@ function fakeApi(overrides: Partial<PanelApi> = {}): { api: PanelApi; calls: str
       ok: true, value: { query: '', hits: [], truncated: false },
     })),
     delete: vi.fn(async () => ({ ok: true, value: { ok: true as const } })),
+    reveal: vi.fn(async () => ({ ok: true, value: { ok: true as const } })),
+    openWithDefault: vi.fn(async () => ({ ok: true, value: { ok: true as const } })),
+    rename: vi.fn(async () => ({ ok: true, value: { ok: true as const } })),
+    mkdir: vi.fn(async () => ({ ok: true, value: { ok: true as const } })),
+    newFile: vi.fn(async () => ({ ok: true, value: { ok: true as const } })),
     gitStatus: vi.fn(async (): Promise<PanelEnvelope<GitStatusView | null>> => ({
       ok: true,
       value: {
@@ -63,6 +68,51 @@ beforeEach(() => {
   const setup = fakeApi()
   stores = createPanelStores(setup.api)
   calls = setup.calls
+})
+
+describe('explorer store menu actions', () => {
+  it('routes reveal / open-with-default to the api and reports failure', async () => {
+    stores.explorer.setRoot('/w')
+    expect(await stores.explorer.revealInFileManager('README.md')).toBe(true)
+    expect(await stores.explorer.openWithDefaultApp('README.md')).toBe(true)
+    // A failing api call must surface as false, not throw.
+    const failing = fakeApi({ reveal: vi.fn(async () => ({ ok: false, error: { code: 'internal', message: 'x' } })) })
+    const failingStores = createPanelStores(failing.api)
+    failingStores.explorer.setRoot('/w')
+    expect(await failingStores.explorer.revealInFileManager('README.md')).toBe(false)
+  })
+
+  it('createDir expands the parent and createFile leaves state intact on failure', async () => {
+    stores.explorer.setRoot('/w')
+    await vi.waitFor(() => expect(stores.explorer.getSnapshot().dirs['']).toBeDefined())
+    expect(await stores.explorer.createDir('src/deep')).toBe(true)
+    // The parent ('src') must be expanded so the new dir is visible.
+    expect(stores.explorer.getSnapshot().expanded).toContain('src')
+    const failing = fakeApi({ newFile: vi.fn(async () => ({ ok: false, error: { code: 'write-failed', message: 'x' } })) })
+    const failingStores = createPanelStores(failing.api)
+    failingStores.explorer.setRoot('/w')
+    expect(await failingStores.explorer.createFile('src/nope.txt')).toBe(false)
+  })
+
+  it('renameEntry rewrites the selection to the new path', async () => {
+    stores.explorer.setRoot('/w')
+    await vi.waitFor(() => expect(stores.explorer.getSnapshot().dirs['']).toBeDefined())
+    stores.explorer.select('README.md')
+    expect(await stores.explorer.renameEntry('README.md', 'NOTES.md')).toBe(true)
+    expect(stores.explorer.getSnapshot().selected).toBe('NOTES.md')
+  })
+
+  it('deleteEntry clears the selection and drops the subtree', async () => {
+    stores.explorer.setRoot('/w')
+    await vi.waitFor(() => expect(stores.explorer.getSnapshot().dirs['']).toBeDefined())
+    stores.explorer.toggleDir('src')
+    await vi.waitFor(() => expect(stores.explorer.getSnapshot().dirs['src']).toBeDefined())
+    stores.explorer.select('src')
+    expect(await stores.explorer.deleteEntry('src')).toBe(true)
+    const state = stores.explorer.getSnapshot()
+    expect(state.selected).toBeNull()
+    expect(state.dirs['src']).toBeUndefined()
+  })
 })
 
 describe('explorer store', () => {
@@ -173,7 +223,7 @@ describe('scm store', () => {
   })
 })
 
-describe('preview pdf tabs (issue #236)', () => {
+describe('preview pdf tabs (issue #239)', () => {
   it('openFile on a pdf streams via the raw route without api.read', async () => {
     const { api } = fakeApi()
     const s = createPanelStores(api)

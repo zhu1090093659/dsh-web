@@ -108,7 +108,7 @@ describe('absolutePathOf', () => {
   })
 })
 
-describe('pdfPreviewUrl (issue #236)', () => {
+describe('pdfPreviewUrl (issue #239)', () => {
   it('encodes root and path and appends the nonce as &v=', () => {
     const url = pdfPreviewUrl('C:\\work dir', 'docs/a b#1.pdf', 42)
     expect(url).toBe(

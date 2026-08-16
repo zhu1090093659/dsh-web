@@ -25,6 +25,7 @@
     "src/event-projection.ts",
     "src/ledger.ts",
     "src/client/css-modules.d.ts",
-    "tests/**/*.spec.ts"
+    "tests/**/*.spec.ts",
+    "tests/**/*.spec.tsx"
   ]
 }

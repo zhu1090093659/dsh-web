@@ -60,6 +60,7 @@ describe('resolveNamespaceEntry', () => {
     expect(resolveNamespaceEntry('live-stats')).toBe('live-stats')
     expect(resolveNamespaceEntry('remote-web-ui')).toBe('remote-web-ui')
     expect(resolveNamespaceEntry('desktop-launcher')).toBe('desktop-launcher')
+    expect(resolveNamespaceEntry('community-plugins')).toBe('community-plugins')
   })
 
   it('ignores packages without a settings namespace and unknown names', () => {
@@ -79,11 +80,13 @@ describe('composeAllowlist', () => {
     'live-stats',
     'pet',
     'skin-background',
+    'community-plugins',
     'web-search-deepseek',
   ]
 
   it('falls back to the family list when the user configured none', () => {
     expect(composeAllowlist([], registered)).toEqual([
+      'community-plugins',
       'desktop-launcher',
       'dsh-ssh',
       'live-stats',

@@ -67,6 +67,31 @@ export class PanelApi {
     return post('/aionui-panel/delete', { root, path })
   }
 
+  /** Reveal a path in the OS file manager (selecting the entry). */
+  reveal(root: string, path: string): Promise<PanelEnvelope<{ ok: true }>> {
+    return post('/aionui-panel/reveal', { root, path })
+  }
+
+  /** Open a path with the OS default app. */
+  openWithDefault(root: string, path: string): Promise<PanelEnvelope<{ ok: true }>> {
+    return post('/aionui-panel/open-with-default', { root, path })
+  }
+
+  /** Rename a path (newName is a bare name, no separators). */
+  rename(root: string, path: string, newName: string): Promise<PanelEnvelope<{ ok: true }>> {
+    return post('/aionui-panel/rename', { root, path, newName })
+  }
+
+  /** Create a directory at a relative path (parent must exist). */
+  mkdir(root: string, path: string): Promise<PanelEnvelope<{ ok: true }>> {
+    return post('/aionui-panel/mkdir', { root, path })
+  }
+
+  /** Create an empty file at a relative path (refuses to overwrite). */
+  newFile(root: string, path: string): Promise<PanelEnvelope<{ ok: true }>> {
+    return post('/aionui-panel/new-file', { root, path })
+  }
+
   /** The repo status view; null when the root is not a repository. */
   gitStatus(root: string): Promise<PanelEnvelope<GitStatusView | null>> {
     return post('/aionui-panel/git-status', { root })

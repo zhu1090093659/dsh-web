@@ -30,19 +30,19 @@ const MANIFEST = [
   {
     file: 'settings-form.ts',
     source: 'shared/client/settings/settings-form.ts',
-    targets: ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-live-stats', 'dsh-tool-describe-image', 'dsh-pinboard', 'dsh-desktop-launcher']
+    targets: ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-live-stats', 'dsh-tool-describe-image', 'dsh-desktop-launcher', 'dsh-community-plugins']
       .map(pkg => `packages/${pkg}/src/client/settings-form.ts`),
   },
   {
     file: 'PluginSettingsCard.tsx',
     source: 'shared/client/settings/PluginSettingsCard.tsx',
-    targets: ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-live-stats', 'dsh-tool-describe-image', 'dsh-pinboard', 'dsh-desktop-launcher']
+    targets: ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-live-stats', 'dsh-tool-describe-image', 'dsh-desktop-launcher', 'dsh-community-plugins']
       .map(pkg => `packages/${pkg}/src/client/PluginSettingsCard.tsx`),
   },
   {
     file: 'settings-card.module.css',
     source: 'shared/client/settings/settings-card.module.css',
-    targets: ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-live-stats', 'dsh-tool-describe-image', 'dsh-pinboard', 'dsh-desktop-launcher']
+    targets: ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-live-stats', 'dsh-tool-describe-image', 'dsh-desktop-launcher', 'dsh-community-plugins']
       .map(pkg => `packages/${pkg}/src/client/settings-card.module.css`),
   },
   {

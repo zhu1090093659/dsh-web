@@ -1149,8 +1149,16 @@ const inject = ["webServer"];
 * scope without depending on this Host package.
 */
 const SKIN_BACKGROUND_NAMESPACE = settingsNamespace("skin-background");
-/** Runtime schema for SkinBackgroundConfig. */
-const SkinBackgroundConfigSchema = z.object({ backgroundOpacity: z.number().min(0).max(100).step(5).default(0) });
+/**
+* Runtime schema for SkinBackgroundConfig. Persists the master switch
+* (`enabled`) alongside the background strength fields.
+*/
+const SkinBackgroundConfigSchema = z.object({
+	enabled: z.boolean().default(true),
+	backgroundOpacity: z.number().min(0).max(100).step(5).default(0),
+	backgroundBlurEmpty: z.number().min(0).max(20).step(1).default(0),
+	backgroundBlurContent: z.number().min(0).max(20).step(1).default(0)
+});
 /**
 * Register the skin-center API routes.
 *

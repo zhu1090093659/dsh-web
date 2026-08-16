@@ -393,6 +393,85 @@ body {
   cursor: pointer;
 }
 
+/* Assistant markdown content (GFM subset; renderer in markdown.ts). */
+.chat-md {
+  white-space: normal;
+}
+.chat-md-collapsed {
+  max-height: 45vh;
+  overflow: hidden;
+  position: relative;
+}
+.chat-md-collapsed::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  background: linear-gradient(transparent, var(--m-bg-raised));
+  pointer-events: none;
+}
+.chat-md-body p { margin: 0 0 8px; }
+.chat-md-body p:last-child { margin-bottom: 0; }
+.chat-md-body h1, .chat-md-body h2, .chat-md-body h3,
+.chat-md-body h4, .chat-md-body h5, .chat-md-body h6 {
+  margin: 12px 0 6px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.chat-md-body h1 { font-size: 1.35em; }
+.chat-md-body h2 { font-size: 1.25em; }
+.chat-md-body h3 { font-size: 1.15em; }
+.chat-md-body h4, .chat-md-body h5, .chat-md-body h6 { font-size: 1.05em; }
+.chat-md-body code {
+  font-family: var(--m-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 0.9em;
+  background: var(--m-accent-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.chat-md-body pre {
+  margin: 8px 0;
+  padding: 10px;
+  background: #101726;
+  color: #dbe4f5;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.chat-md-body pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.chat-md-body ul, .chat-md-body ol { margin: 4px 0 8px; padding-left: 22px; }
+.chat-md-body li { margin: 2px 0; }
+.chat-md-body blockquote {
+  margin: 8px 0;
+  padding: 4px 10px;
+  border-left: 3px solid var(--m-accent);
+  background: var(--m-accent-soft);
+  border-radius: 0 6px 6px 0;
+  color: var(--m-text-secondary);
+}
+.chat-md-body table {
+  margin: 8px 0;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  font-size: 13px;
+}
+.chat-md-body th, .chat-md-body td {
+  border: 1px solid var(--m-border);
+  padding: 4px 8px;
+}
+.chat-md-body th { background: var(--m-accent-soft); }
+.chat-md-body a { color: var(--m-accent); }
+.chat-md-body hr { border: none; border-top: 1px solid var(--m-border); margin: 10px 0; }
+.chat-md-body img { max-width: 100%; border-radius: 8px; }
+
 /* ── message disclosures (reasoning / tools) ─────────────────────────── */
 
 .chat-disclosure {
@@ -824,9 +903,95 @@ body {
 .chat-disclosure-head:focus-visible,
 .sheet-option:focus-visible,
 .sheet-confirm-danger:focus-visible,
+.sheet-toggle-switch:focus-visible,
 .chat-input:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--m-bg), 0 0 0 4px var(--m-accent);
+}
+
+/* ── chat context usage chip (chat-tools row) ───────────────────────── */
+
+.chat-context {
+  flex: none;
+  align-self: center;
+  padding: 2px 10px;
+  border: 1px solid var(--m-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--m-text-tertiary) 10%, transparent);
+  color: var(--m-text-tertiary);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.chat-context-warn {
+  border-color: var(--m-danger);
+  background: color-mix(in srgb, var(--m-danger) 14%, transparent);
+  color: var(--m-danger);
+}
+
+/* ── display sheet toggle rows ──────────────────────────────────────── */
+
+.sheet-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--m-border);
+}
+
+.sheet-toggle-row:last-child {
+  border-bottom: none;
+}
+
+.sheet-toggle-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sheet-toggle-title {
+  font-size: 14px;
+}
+
+.sheet-toggle-desc {
+  color: var(--m-text-tertiary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sheet-toggle-switch {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  border: none;
+  border-radius: 999px;
+  background: var(--m-border);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.sheet-toggle-switch-on {
+  background: var(--m-accent);
+}
+
+.sheet-toggle-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.sheet-toggle-switch-on .sheet-toggle-switch-knob {
+  transform: translateX(18px);
 }
 
 /* Accessibility: collapse every interaction/enter animation for
@@ -848,6 +1013,8 @@ body {
   .sheet,
   .sheet-option,
   .sheet-confirm-danger,
+  .sheet-toggle-switch,
+  .sheet-toggle-switch-knob,
   .chat-input {
     animation: none;
     transition: none;

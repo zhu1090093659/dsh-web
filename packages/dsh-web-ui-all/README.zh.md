@@ -2,11 +2,11 @@
 
 [English](README.md) | 中文
 
-DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / remote-web-ui / live-stats / web-ui-settings），外加皮肤全家桶（`dsh-skins`，皮肤资产内置）。compat 桥接层已并入本包（`src/client`），因此无需独立的 compat npm 包。
+DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / remote-web-ui / live-stats / web-ui-settings / skin-center / community-plugins），外加皮肤全家桶（`dsh-skins`，皮肤资产内置）。compat 桥接层已并入本包（`src/client`），因此无需独立的 compat npm 包。
 
 ## 是什么
 
-- **一次安装、全部到位**：其 dependencies 引入全部子插件包（dsh-client-ui-aionui-panel / dsh-client-ui-task-board / dsh-client-ui-git-graph / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-ssh / dsh-client-ui-web-ui-settings / dsh-desktop-launcher / dsh-skins）。
+- **一次安装、全部到位**：其 dependencies 引入全部子插件包（dsh-client-ui-community-plugins / dsh-client-ui-aionui-panel / dsh-client-ui-task-board / dsh-client-ui-git-graph / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-ssh / dsh-skill-manager / dsh-tool-describe-image / dsh-liangshen / dsh-desktop-launcher / dsh-plugin-manager / dsh-client-ui-shutdown / dsh-client-ui-web-ui-settings / dsh-skins / dsh-client-ui-skin-center）。
 - **聚合载具**：`cordis.patch.yml` 汇总各子插件的 `insert` 行，经 dsh 插件 profile 机制挂载。
 
 ## 安装

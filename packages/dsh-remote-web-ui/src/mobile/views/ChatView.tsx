@@ -11,13 +11,14 @@
  *   permission pickers, both as bottom sheets.
  */
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { MuxFrame } from '@deepseek-ai/dsh-host-apiproxy/api/events'
 import type { SessionModels } from '@deepseek-ai/dsh-host-apiproxy/api/sessions'
 import { loadHistory, prompt, type SessionView } from './App.tsx'
 import { errorText, formatTime, staleHostHint } from './App.tsx'
 import { fetchMobilePreferences, models, selectModel, sendCommand } from '../api.ts'
 import { foldEvents, type RenderMessage, type ToolCallInfo, type WireEvent } from '../messages.ts'
+import { renderMarkdown } from '../markdown.ts'
 import { MuxClient } from '../mux.ts'
 import { ThemeToggle } from '../theme-toggle.tsx'
 
@@ -35,6 +36,31 @@ export interface ChatViewProps {
  * history tail re-pull closes the seam.
  */
 export const MAX_TAIL_BUFFER_EVENTS = 500
+
+/** localStorage key for the tool-call display toggle (persisted on the /m origin). */
+const SHOW_TOOL_CALLS_KEY = 'dsh.mobile.showToolCalls'
+/** localStorage key for the injected-system-message display toggle. */
+const SHOW_SYSTEM_MESSAGES_KEY = 'dsh.mobile.showSystemMessages'
+
+/** Read a boolean from localStorage defensively; falls back to the default. */
+function readStoredBoolean(key: string, fallback: boolean): boolean {
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw === null) return fallback
+    return raw === '1' || raw.toLowerCase() === 'true'
+  } catch {
+    return fallback
+  }
+}
+
+/** Persist a boolean toggle; storage failures are ignored (feature stays non-persistent). */
+function writeStoredBoolean(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, value ? '1' : '0')
+  } catch {
+    /* quota / privacy mode: non-persistent is acceptable */
+  }
+}
 
 /** Extract the raw event from one history entry (the fold consumes events only). */
 function eventOf(entry: { event: WireEvent }): WireEvent {
@@ -126,7 +152,11 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
   /** The current model selection for the toolbar chip (best-effort label). */
   const [currentModel, setCurrentModel] = useState<{ provider: string; model: string; reasoningEffort?: string } | undefined>(undefined)
   /** Which bottom sheet is open. */
-  const [sheet, setSheet] = useState<'model' | 'permission' | null>(null)
+  const [sheet, setSheet] = useState<'model' | 'permission' | 'display' | null>(null)
+  /** Show tool-call disclosures (default on, persisted on the /m origin). */
+  const [showToolCalls, setShowToolCalls] = useState<boolean>(() => readStoredBoolean(SHOW_TOOL_CALLS_KEY, true))
+  /** Show injected system messages (default off, persisted on the /m origin). */
+  const [showSystemMessages, setShowSystemMessages] = useState<boolean>(() => readStoredBoolean(SHOW_SYSTEM_MESSAGES_KEY, false))
   /**
    * Composer preference from the plugin's host settings (default true keeps
    * the legacy Enter-to-send behavior until the preference loads).
@@ -334,6 +364,23 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
     : permissions.options.find(option => option.value === permissions.currentValue)?.name
       ?? displayName(permissions.currentValue)
 
+  // Context usage chip: the most recent assistant message carrying both usage and
+  // a positive context window drives the percentage. Scanned from the end so a
+  // newer answer (whose usage may be the last one reported) takes precedence.
+  const contextUsage = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index--) {
+      const message = messages[index]
+      const usage = message.usage
+      if (message.kind !== 'assistant' || usage === undefined) continue
+      const window = message.contextWindow
+      if (window === undefined || window <= 0) continue
+      const tokens = usage.inputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0)
+      const pct = Math.round(tokens / window * 100)
+      return { pct }
+    }
+    return undefined
+  }, [messages])
+
   return (
     <div className="chat">
       <header className="mobile-header">
@@ -348,7 +395,14 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
             {loading ? '加载中…' : '加载更早的消息'}
           </button>
         )}
-        {messages.map(message => <MessageRow key={message.id} message={message} />)}
+        {messages.map(message => (
+          <MessageRow
+            key={message.id}
+            message={message}
+            showToolCalls={showToolCalls}
+            showSystemMessages={showSystemMessages}
+          />
+        ))}
         {loading && messages.length === 0 && <p className="chat-typing">加载中…</p>}
         {!loading && messages.length === 0 && <p className="chat-typing">还没有消息，发一句话开始吧</p>}
       </div>
@@ -358,12 +412,21 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
           <span className="chat-chip-value">{modelLabel}</span>
           <span className="chat-chip-chevron" aria-hidden>›</span>
         </button>
+        <button type="button" className="chat-chip" onClick={() => { setSheet('display') }} aria-haspopup="dialog">
+          <span className="chat-chip-label">显示</span>
+          <span className="chat-chip-chevron" aria-hidden>›</span>
+        </button>
         {permissionLabel !== undefined && (
           <button type="button" className="chat-chip" onClick={() => { setSheet('permission') }} aria-haspopup="dialog">
             <span className="chat-chip-label">权限</span>
             <span className="chat-chip-value">{permissionLabel}</span>
             <span className="chat-chip-chevron" aria-hidden>›</span>
           </button>
+        )}
+        {contextUsage !== undefined && (
+          <div className={"chat-context" + (contextUsage.pct >= 80 ? " chat-context-warn" : "")}>
+            上下文 {contextUsage.pct}%
+          </div>
         )}
       </div>
       <div className="chat-inputbar">
@@ -403,6 +466,15 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
           onClose={() => { setSheet(null) }}
         />
       )}
+      {sheet === 'display' && (
+        <DisplaySheet
+          showToolCalls={showToolCalls}
+          showSystemMessages={showSystemMessages}
+          onToolCalls={(value) => { setShowToolCalls(value); writeStoredBoolean(SHOW_TOOL_CALLS_KEY, value) }}
+          onSystemMessages={(value) => { setShowSystemMessages(value); writeStoredBoolean(SHOW_SYSTEM_MESSAGES_KEY, value) }}
+          onClose={() => { setSheet(null) }}
+        />
+      )}
     </div>
   )
 }
@@ -410,16 +482,30 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
 /* ── message rows ─────────────────────────────────────────────────────── */
 
 /** One rendered message row (user bubble or assistant bubble with folds). */
-function MessageRow({ message }: { message: RenderMessage }) {
+function MessageRow({ message, showToolCalls, showSystemMessages }: {
+  message: RenderMessage
+  showToolCalls: boolean
+  showSystemMessages: boolean
+}) {
+  // Injected user messages (sourceKind defined and not 'user') hide behind
+  // the system-message toggle. Assistant messages are never hidden.
+  if (message.kind === 'user'
+    && message.sourceKind !== undefined
+    && message.sourceKind !== 'user'
+    && !showSystemMessages) {
+    return null
+  }
   return (
     <div className={`chat-msg chat-msg-${message.kind}${message.pending === true ? ' chat-msg-pending' : ''}${message.failed === true ? ' chat-msg-failed' : ''}`}>
       {message.kind === 'assistant' && message.reasoning !== undefined && message.reasoning !== '' && (
         <ReasoningDisclosure text={message.reasoning} pending={message.pending === true} />
       )}
-      {message.kind === 'assistant' && message.tools !== undefined && message.tools.length > 0 && (
+      {showToolCalls && message.kind === 'assistant' && message.tools !== undefined && message.tools.length > 0 && (
         <ToolDisclosure tools={message.tools} />
       )}
-      <CollapsibleText text={message.text} />
+      {message.kind === 'assistant'
+        ? <MarkdownText text={message.text} />
+        : <CollapsibleText text={message.text} />}
       {message.failed === true && <span className="chat-msg-failtag">本次回复失败</span>}
       <span className="chat-msg-time">{formatTime(message.time)}</span>
     </div>
@@ -473,6 +559,30 @@ function ToolDisclosure({ tools }: { tools: ToolCallInfo[] }) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Assistant text rendered as GFM markdown (escape-first, protocol
+ * allow-list — see markdown.ts). Long replies collapse by clamping the
+ * rendered block height instead of slicing the source, so half-cut code
+ * fences or tables never leak malformed markup into the DOM. User
+ * messages stay plain text (CollapsibleText).
+ */
+function MarkdownText({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  const html = useMemo(() => renderMarkdown(text), [text])
+  const long = text.length > LONG_TEXT_LIMIT
+  const collapsed = long && !open
+  return (
+    <div className={'chat-msg-text chat-md' + (collapsed ? ' chat-md-collapsed' : '')}>
+      <div className="chat-md-body" dangerouslySetInnerHTML={{ __html: html }} />
+      {long && (
+        <button type="button" className="chat-msg-toggle" onClick={() => { setOpen(value => !value) }}>
+          {open ? '收起' : '展开全文（' + text.length + ' 字）'}
+        </button>
       )}
     </div>
   )
@@ -753,6 +863,54 @@ function PermissionSheet({ sessionId, value, onChanged, onClose }: {
           </button>
         )
       })}
+    </Sheet>
+  )
+}
+
+/** The display-options sheet: tool calls and injected system messages toggles. */
+function DisplaySheet({ showToolCalls, showSystemMessages, onToolCalls, onSystemMessages, onClose }: {
+  showToolCalls: boolean
+  showSystemMessages: boolean
+  onToolCalls(value: boolean): void
+  onSystemMessages(value: boolean): void
+  onClose(): void
+}) {
+  return (
+    <Sheet title="显示" onClose={onClose}>
+      <div role="group" aria-label="显示选项">
+        <div className="sheet-toggle-row">
+          <div className="sheet-toggle-copy">
+            <span className="sheet-toggle-title">工具调用</span>
+            <span className="sheet-toggle-desc">显示助手使用的工具调用</span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="工具调用"
+            aria-checked={showToolCalls}
+            className={`sheet-toggle-switch${showToolCalls ? ' sheet-toggle-switch-on' : ''}`}
+            onClick={() => { onToolCalls(!showToolCalls) }}
+          >
+            <span className="sheet-toggle-switch-knob" aria-hidden />
+          </button>
+        </div>
+        <div className="sheet-toggle-row">
+          <div className="sheet-toggle-copy">
+            <span className="sheet-toggle-title">系统提示词</span>
+            <span className="sheet-toggle-desc">显示注入到对话中的系统消息</span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="系统提示词"
+            aria-checked={showSystemMessages}
+            className={`sheet-toggle-switch${showSystemMessages ? ' sheet-toggle-switch-on' : ''}`}
+            onClick={() => { onSystemMessages(!showSystemMessages) }}
+          >
+            <span className="sheet-toggle-switch-knob" aria-hidden />
+          </button>
+        </div>
+      </div>
     </Sheet>
   )
 }

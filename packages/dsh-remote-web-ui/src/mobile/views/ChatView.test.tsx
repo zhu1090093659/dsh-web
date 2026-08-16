@@ -518,3 +518,124 @@ describe('ChatView scrolling', () => {
     await waitFor(() => { expect(scrollWrites.length).toBe(writesBefore) })
   })
 })
+
+describe('ChatView display toggles and context usage', () => {
+  /** jsdom in this setup ships a bare localStorage object; install a real fake. */
+  const makeStorage = (): Storage => {
+    const map = new Map<string, string>()
+    return {
+      getItem: (key: string) => map.get(key) ?? null,
+      setItem: (key: string, value: string) => { map.set(key, value) },
+      removeItem: (key: string) => { map.delete(key) },
+      clear: () => { map.clear() },
+      key: (index: number) => [...map.keys()][index] ?? null,
+      get length() { return map.size },
+    } as Storage
+  }
+
+  /** A user/message whose source.kind is 'plugin' (injected system message). */
+  const systemEvents = (): Array<{ event: WireEvent }> => [
+    makeEntry('user/message', {
+      id: 'u-plugin',
+      role: 'user',
+      content: [{ type: 'text', text: '系统注入消息' }],
+      source: { kind: 'plugin', name: 'react-extension' },
+    }, 0),
+    makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: '普通消息' }] }, 1),
+  ]
+
+  const toolEvents = (): Array<{ event: WireEvent }> => [
+    makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: '改文件' }] }, 0),
+    makeEntry('assistant/message', {
+      turn: 0,
+      step: 0,
+      message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: '完成' }] },
+    }, 1),
+    makeEntry('tool/call', { turn: 0, step: 0, callId: 'c1', name: 'bash', arguments: '{}' }, 2),
+  ]
+
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', makeStorage())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('hides injected user messages by default and reveals them via the display sheet', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage(systemEvents()))
+    render(<ChatView session={session} onBack={() => {}} />)
+
+    // The plugin-injected message is hidden by default; the real user message shows.
+    expect(await screen.findByText('普通消息')).toBeTruthy()
+    expect(screen.queryByText('系统注入消息')).toBeNull()
+
+    // Open the display sheet and flip the system-message switch on.
+    fireEvent.click(screen.getByRole('button', { name: /显示/ }))
+    const systemSwitch = await screen.findByRole('switch', { name: '系统提示词' })
+    expect(systemSwitch.getAttribute('aria-checked')).toBe('false')
+    fireEvent.click(systemSwitch)
+    expect(await screen.findByText('系统注入消息')).toBeTruthy()
+
+    // Flip it back off: the injected row disappears again.
+    const systemSwitchAfter = screen.getByRole('switch', { name: '系统提示词' })
+    expect(systemSwitchAfter.getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(systemSwitchAfter)
+    expect(screen.queryByText('系统注入消息')).toBeNull()
+  })
+
+  it('hides the tool disclosure when the tool-call toggle is off', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage(toolEvents()))
+    render(<ChatView session={session} onBack={() => {}} />)
+
+    // Tool disclosure visible by default.
+    expect(await screen.findByRole('button', { name: /工具/ })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /显示/ }))
+    const toolSwitch = await screen.findByRole('switch', { name: '工具调用' })
+    expect(toolSwitch.getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(toolSwitch)
+
+    // The disclosure is gone while reasoning/text remain.
+    expect(screen.queryByRole('button', { name: /工具/ })).toBeNull()
+    expect(screen.getByText('完成')).toBeTruthy()
+  })
+
+  it('renders the context usage chip from request/context plus assistant usage', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage([
+      makeEntry('request/context', { provider: 'fx', model: 'fx-1', contextWindow: 100_000 }, 0),
+      makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: 'hi' }] }, 1),
+      makeEntry('assistant/message', {
+        turn: 0,
+        step: 0,
+        message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+        usage: { inputTokens: 30_000, outputTokens: 1_000 },
+      }, 2),
+    ]))
+    render(<ChatView session={session} onBack={() => {}} />)
+    expect(await screen.findByText('上下文 30%')).toBeTruthy()
+  })
+
+  it('adds the warn class when context usage is at or above 80%', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage([
+      makeEntry('request/context', { provider: 'fx', model: 'fx-1', contextWindow: 100_000 }, 0),
+      makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: 'hi' }] }, 1),
+      makeEntry('assistant/message', {
+        turn: 0,
+        step: 0,
+        message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+        usage: { inputTokens: 80_000, outputTokens: 0 },
+      }, 2),
+    ]))
+    render(<ChatView session={session} onBack={() => {}} />)
+    const chip = await screen.findByText('上下文 80%')
+    expect(chip.className).toContain('chat-context-warn')
+  })
+
+  it('renders no context chip when there is no usage/context data', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage(turnEvents()))
+    render(<ChatView session={session} onBack={() => {}} />)
+    await screen.findByText('已完成修改')
+    expect(screen.queryByText(/上下文/)).toBeNull()
+  })
+})

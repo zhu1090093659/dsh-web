@@ -148,6 +148,7 @@ export function parseLedger(raw: string | null): TaskRecord[] {
     // fall back to the session default instead of dropping the row.
     task.workspaceId = normalizeTargetId(row.workspaceId)
     task.mode = normalizeTargetId(row.mode)
+    task.archivedAt = typeof row.archivedAt === 'number' && Number.isFinite(row.archivedAt) ? row.archivedAt : undefined
     task.permission = isTaskPermission(row.permission) ? row.permission as TaskPermission : undefined
     tasks.push(task)
   }

@@ -8,9 +8,13 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createReadStream } from 'node:fs'
+import { dirname } from 'node:path'
 import { pipeline } from 'node:stream/promises'
+import { readFile, stat } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import type { SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import type { PanelEnvelope, PanelError } from '../core/types.ts'
 import type { FsService } from './fs-service.ts'
 import type { GitService } from './git-service.ts'
@@ -21,6 +25,50 @@ const FAIL = (error: PanelError): PanelEnvelope<never> => ({ ok: false, error })
 
 /** Structural request failure (never a workspace fault). */
 const BAD_REQUEST: PanelError = { code: 'internal', message: 'malformed request' }
+
+/**
+ * Platform argv for "reveal in file manager" (select the entry). Windows
+ * Explorer selects via /select,; macOS Finder via open -R; Linux desktops
+ * have no select mode, so xdg-open opens the parent directory.
+ */
+export function revealArgv(platform: NodeJS.Platform, abs: string): string[] {
+  if (platform === 'win32') return ['explorer.exe', `/select,${abs}`]
+  if (platform === 'darwin') return ['open', '-R', abs]
+  return ['xdg-open', dirname(abs)]
+}
+
+/** Platform argv for "open with the default app". */
+export function openArgv(platform: NodeJS.Platform, abs: string): string[] {
+  if (platform === 'win32') return ['cmd.exe', '/c', 'start', '', abs]
+  if (platform === 'darwin') return ['open', abs]
+  return ['xdg-open', abs]
+}
+
+/**
+ * Spawn one OS GUI command fire-and-forget: Explorer / Finder / xdg-open
+ * detach immediately and their exit codes are not meaningful, so nothing is
+ * awaited beyond the spawn itself (failures still surface as an error).
+ */
+function spawnOsCommand(ctx: Context, argv: string[]): PanelError | null {
+  const spec: SubprocessSpawnSpec = {
+    argv,
+    cwd: dirname(argv[argv.length - 1] ?? process.cwd()),
+    stdio: {
+      stdin: 'ignore',
+      stdout: { maxBytes: 1 << 16 },
+      stderr: { maxBytes: 1 << 16 },
+    },
+    graceMs: 5_000,
+  }
+  try {
+    const handle = ctx.subprocess.spawn(spec)
+    void handle.done.catch(() => {})
+    return null
+  } catch (error) {
+    ctx.logger.warn(`dsh-aionui-panel: OS command failed ([${argv.join(', ')}]): ${String(error)}`)
+    return { code: 'internal', message: 'cannot run OS command' }
+  }
+}
 
 /** One SSE subscriber: a root and its last pushed git signature. */
 interface Subscriber {
@@ -41,12 +89,14 @@ const GIT_POLL_MS = 30_000
 const HEARTBEAT_MS = 15_000
 
 /**
- * Parse a single-range `bytes=start-end` header against the file size.
- * Returns null when no range was requested, 'invalid' for malformed or
- * unsatisfiable ranges (the caller answers 416), or the clamped start/end
- * (inclusive). Multi-range requests are treated as invalid — the panel only
- * ever serves single ranges. Suffix ranges (`bytes=-N`) select the last N
- * bytes. Range support added after human review on #242 (pdf seeking).
+ * Parse a `Range: bytes=start-end` header against the file size. RFC 7233
+ * lets a server ignore any Range it does not support, so unknown units,
+ * malformed headers and multi-range requests all return null (the caller
+ * answers 200 with the full body); only a syntactically valid single range
+ * that cannot be satisfied returns 'invalid' (the caller answers 416).
+ * Suffix ranges (`bytes=-N`) select the last N bytes. Range support added
+ * after human review on #242 (pdf seeking); ignore-instead-of-416 for
+ * unsupported shapes per maintainer feedback.
  */
 export function parseRangeHeader(
   header: string | undefined,
@@ -54,7 +104,7 @@ export function parseRangeHeader(
 ): { start: number; end: number } | 'invalid' | null {
   if (header === undefined) return null
   const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim())
-  if (match === null || (match[1] === '' && match[2] === '')) return 'invalid'
+  if (match === null || (match[1] === '' && match[2] === '')) return null
   if (match[1] === '') {
     const suffix = Number(match[2])
     if (suffix <= 0 || size === 0) return 'invalid'
@@ -64,6 +114,25 @@ export function parseRangeHeader(
   const end = match[2] === '' ? size - 1 : Math.min(Number(match[2]), size - 1)
   if (size === 0 || start > end || start >= size) return 'invalid'
   return { start, end }
+}
+
+/** Strip the weak prefix and quotes so entity-tags compare by opaque value. */
+function normalizeEtag(value: string): string {
+  return value.trim().replace(/^W\//, '').replace(/^"|"$/g, '')
+}
+
+/**
+ * Whether an If-None-Match header matches the current etag. Handles `*` and
+ * comma-separated entity-tag lists; GET revalidation uses weak comparison
+ * (RFC 9110), so the weak prefix is ignored on both sides.
+ */
+export function ifNoneMatchSaidFresh(header: string | undefined, etag: string): boolean {
+  if (header === undefined) return false
+  const current = normalizeEtag(etag)
+  return header.split(',').some((candidate) => {
+    const tag = candidate.trim()
+    return tag === '*' || normalizeEtag(tag) === current
+  })
 }
 
 /**
@@ -260,8 +329,9 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
    * resolves and stats the path, the bytes are piped straight from disk with
    * the derived mime — the whole file never sits in host memory. Single byte
    * ranges are honored (206/416) so the browser pdf viewer can seek large
-   * files. No validators are negotiated, so the browser revalidates every
-   * time — a re-edited file never shows stale bytes.
+   * files; unsupported range shapes are ignored per RFC 7233 (200 full
+   * body). ETag/Last-Modified (size+mtime) keep no-cache revalidation cheap:
+   * unchanged files answer 304, If-Range mismatches fall back to 200.
    */
   const serveRaw = async (req: IncomingMessage, url: URL, res: ServerResponse): Promise<void> => {
     const root = url.searchParams.get('root')
@@ -276,18 +346,36 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
       json(res, FAIL(result), status)
       return
     }
-    const range = parseRangeHeader(req.headers.range, result.size)
-    if (range === 'invalid') {
-      res.writeHead(416, { 'content-range': `bytes */${result.size}` })
-      res.end()
-      return
-    }
-    const headers: Record<string, string | number> = {
+    // Validators from size+mtime: no-cache forces revalidation, and a match
+    // answers 304 instead of re-streaming — scrolling a large pdf issues many
+    // range requests, so they must be cheap (maintainer feedback on #242).
+    const etag = `W/"${result.size}-${Math.floor(result.mtime)}"`
+    const lastModified = new Date(result.mtime).toUTCString()
+    const baseHeaders: Record<string, string | number> = {
       'content-type': result.mime,
       'cache-control': 'no-cache',
       'x-content-type-options': 'nosniff',
       'accept-ranges': 'bytes',
+      etag,
+      'last-modified': lastModified,
     }
+    if (ifNoneMatchSaidFresh(req.headers['if-none-match'], etag) && req.headers.range === undefined) {
+      res.writeHead(304, baseHeaders)
+      res.end()
+      return
+    }
+    // If-Range guards a range against a changed file: a mismatch falls back
+    // to the full 200 body rather than serving a stale slice.
+    const ifRange = req.headers['if-range']
+    const range = ifRange !== undefined && ifRange !== etag && ifRange !== lastModified
+      ? null
+      : parseRangeHeader(req.headers.range, result.size)
+    if (range === 'invalid') {
+      res.writeHead(416, { ...baseHeaders, 'content-range': `bytes */${result.size}` })
+      res.end()
+      return
+    }
+    const headers: Record<string, string | number> = { ...baseHeaders }
     if (range === null) {
       headers['content-length'] = result.size
       res.writeHead(200, headers)
@@ -305,6 +393,53 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
     }
   }
 
+  /**
+   * GET /aionui-panel/vendor/mermaid.js: the mermaid IIFE bundle shipped in
+   * the package (lib/assets/mermaid.min.js, copied from the mermaid npm
+   * dependency at build time). Same-origin for the browser half (no CDN),
+   * loopback-fenced like every other route. One read is cached per plugin
+   * instance; the size+mtime pair doubles as the ETag so the browser
+   * revalidation is a cheap 304. A missing asset (build without the copy
+   * step) 404s and the client keeps plain code blocks.
+   */
+  let mermaidAsset: { data: Buffer; etag: string } | undefined
+  const serveVendorMermaid = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    if (mermaidAsset === undefined) {
+      // Candidate layouts: the built lib half (lib/index.js -> lib/assets/)
+      // and the source tree (src/host/routes.ts -> lib/assets), so tests
+      // running against src serve the same build-copied asset.
+      const candidates = ['./assets/mermaid.min.js', '../../lib/assets/mermaid.min.js']
+      for (const relative of candidates) {
+        try {
+          const assetPath = fileURLToPath(new URL(relative, import.meta.url))
+          const [data, info] = await Promise.all([readFile(assetPath), stat(assetPath)])
+          mermaidAsset = { data, etag: `"${data.length}-${info.mtimeMs.toString(16)}"` }
+          break
+        } catch {
+          // try the next layout
+        }
+      }
+      if (mermaidAsset === undefined) {
+        res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify({ error: 'mermaid vendor asset missing' }))
+        return
+      }
+    }
+    if (req.headers['if-none-match'] === mermaidAsset.etag) {
+      res.writeHead(304, { etag: mermaidAsset.etag })
+      res.end()
+      return
+    }
+    res.writeHead(200, {
+      'content-type': 'application/javascript; charset=utf-8',
+      'content-length': mermaidAsset.data.length,
+      'cache-control': 'no-cache',
+      etag: mermaidAsset.etag,
+      'x-content-type-options': 'nosniff',
+    })
+    res.end(mermaidAsset.data)
+  }
+
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     // Loopback fence first: never let a LAN client reach any /aionui-panel
     // operation, regardless of method or content-type.
@@ -316,6 +451,10 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
       const url = new URL(req.url ?? '/', 'http://x')
       if (url.pathname === '/aionui-panel/raw') {
         await serveRaw(req, url, res)
+        return
+      }
+      if (url.pathname === '/aionui-panel/vendor/mermaid.js') {
+        await serveVendorMermaid(req, res)
         return
       }
       res.writeHead(405)
@@ -400,6 +539,67 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
           return
         }
         const result = await fs.delete(root, path)
+        json(res, 'ok' in result ? OK(result) : FAIL(result))
+        return
+      }
+      case '/aionui-panel/reveal': {
+        const path = strField(payload, 'path')
+        if (path === null) {
+          json(res, FAIL(BAD_REQUEST))
+          return
+        }
+        const resolved = await fs.resolveAbsolute(root, path)
+        if (!('ok' in resolved)) {
+          json(res, FAIL(resolved))
+          return
+        }
+        const error = spawnOsCommand(ctx, revealArgv(process.platform, resolved.abs))
+        json(res, error === null ? OK({ ok: true as const }) : FAIL(error))
+        return
+      }
+      case '/aionui-panel/open-with-default': {
+        const path = strField(payload, 'path')
+        if (path === null) {
+          json(res, FAIL(BAD_REQUEST))
+          return
+        }
+        const resolved = await fs.resolveAbsolute(root, path)
+        if (!('ok' in resolved)) {
+          json(res, FAIL(resolved))
+          return
+        }
+        const error = spawnOsCommand(ctx, openArgv(process.platform, resolved.abs))
+        json(res, error === null ? OK({ ok: true as const }) : FAIL(error))
+        return
+      }
+      case '/aionui-panel/rename': {
+        const path = strField(payload, 'path')
+        const newName = strField(payload, 'newName')
+        if (path === null || newName === null) {
+          json(res, FAIL(BAD_REQUEST))
+          return
+        }
+        const result = await fs.rename(root, path, newName)
+        json(res, 'ok' in result ? OK(result) : FAIL(result))
+        return
+      }
+      case '/aionui-panel/mkdir': {
+        const path = strField(payload, 'path')
+        if (path === null) {
+          json(res, FAIL(BAD_REQUEST))
+          return
+        }
+        const result = await fs.mkdir(root, path)
+        json(res, 'ok' in result ? OK(result) : FAIL(result))
+        return
+      }
+      case '/aionui-panel/new-file': {
+        const path = strField(payload, 'path')
+        if (path === null) {
+          json(res, FAIL(BAD_REQUEST))
+          return
+        }
+        const result = await fs.newFile(root, path)
         json(res, 'ok' in result ? OK(result) : FAIL(result))
         return
       }

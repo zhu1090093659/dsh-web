@@ -55,6 +55,16 @@
 # step after promotion. `bootstrapMaxTokens` caps the phase-1 request output
 # budget (community-observed "We need" trigger window, 1024) and is stripped
 # again after promotion so the cap never solders into later requests.
+# After a compaction the session falls back to the controlled phase — the
+# bootstrap pair plus `compactionTools` (a core work set) — until a NEW
+# promotion signal exists past the boundary, and Code Mode is released until
+# the session re-promotes.
+# `phase1FirstCallInstruction` is an opt-in extra line appended to the
+# phase-1 persona for test builds (issue #274): the model is asked to ground
+# its first answer with one Minimal-native tool call before responding, so
+# first-turn capability questions are answered from the promoted registry
+# instead of the cropped two-tool view. It deviates from the byte-exact
+# Minimal surface and is therefore left unset (off) by default.
 - id: tool-bootstrap
   name: ./tool-bootstrap.mjs
   config:
@@ -65,9 +75,11 @@
     maxBootstrapSteps: 4
     promoteAfterFirstResponse: true
     bootstrapMaxTokens: 1024
+    compactionTools: [read, write, edit, glob, grep, todo_write, ask_user_question]
     deferredSources: [agent-instructions, skill-catalog]
     deferredGraceSteps: 1
     promotedPresentation: code
+    # phase1FirstCallInstruction: After your first reasoning block, before answering, make one tool call (for example run `pwd` through the shell or view a workspace file) and base your answer on its result.
 
 # Workspace instructions are quarantined by `tool-bootstrap` during phase 1
 # and deferred one step after promotion, then stay current.

@@ -11,8 +11,8 @@
  * @module dsh-aionui-panel/client/components/ExplorerPanel
  */
 
-import { memo, useEffect, useRef, useState } from 'react'
-import type { DragEvent, JSX, MouseEvent } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import type { DragEvent, JSX, MouseEvent as ReactMouseEvent } from 'react'
 import { IconCheckOutline16, IconCopyOutline16, IconLinkOutline16, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { FsEntry } from '../../core/types.ts'
 import { absolutePathOf, parentRel } from '../fileType.ts'
@@ -21,6 +21,7 @@ import { useStore } from '../hooks/useStore.ts'
 import type { PanelStores } from '../store.ts'
 import { FileTypeIcon } from './FileIcon.tsx'
 import { ChevronRightIcon, CloseIcon, ExpandRightIcon, SearchIcon } from './icons.tsx'
+import { ConfirmDialog, ContextMenu, PromptDialog, toast, type MenuEntry, type MenuState } from './overlay.tsx'
 import { ScmPanel } from './ScmPanel.tsx'
 import { activateOnKey } from './a11y.ts'
 import { FILE_DRAG_MIME } from '../drag/file-drag.ts'
@@ -44,6 +45,118 @@ export function ExplorerPanel({
 }): JSX.Element {
   const state = useStore(stores.explorer)
   const [searchFocus, setSearchFocus] = useState(false)
+  const [menu, setMenu] = useState<MenuState | null>(null)
+  const [prompt, setPrompt] = useState<{
+    kind: 'rename' | 'newFile' | 'newFolder'
+    targetRel: string
+    initialValue: string
+  } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<FsEntry | null>(null)
+
+  /** Absolute path of one entry (root + rel), for copy/reveal. */
+  const absolutePath = (entry: FsEntry): string => {
+    const basePath = state.root.replace(/[\\/]+$/, '')
+    const sep = state.root.includes('\\') ? '\\' : '/'
+    return entry.path === '' ? basePath : `${basePath}${sep}${entry.path.split('/').join(sep)}`
+  }
+
+  const copyText = async (text: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast(t('common.copied'))
+    } catch {
+      toast(t('explorer.opFailed'))
+    }
+  }
+
+  /**
+   * Open the file-tree context menu. Stable across re-renders (useCallback
+   * on root + stores) so the memoized tree rows do not re-render when the
+   * panel state changes.
+   */
+  const openMenu = useCallback((event: ReactMouseEvent, entry: FsEntry): void => {
+    event.preventDefault()
+    event.stopPropagation()
+    const explorerStore = stores.explorer
+    explorerStore.select(entry.path)
+    const parent = parentRel(entry.path)
+    const createTarget = entry.isDir ? entry.path : parent
+    const entries: MenuEntry[] = [
+      {
+        key: 'copy-path',
+        label: t('explorer.menu.copyPath'),
+        onSelect: () => void copyText(absolutePath(entry)),
+      },
+      {
+        key: 'copy-name',
+        label: t('explorer.menu.copyName'),
+        onSelect: () => void copyText(entry.name),
+      },
+      { key: 'sep-1', label: '---' },
+      {
+        key: 'reveal',
+        label: t('explorer.menu.reveal'),
+        onSelect: () => {
+          void explorerStore.revealInFileManager(entry.path).then((ok) => {
+            if (!ok) toast(t('explorer.opFailed'))
+          })
+        },
+      },
+    ]
+    if (!entry.isDir) {
+      entries.push({
+        key: 'open-with-default',
+        label: t('explorer.menu.openWithDefault'),
+        onSelect: () => {
+          void explorerStore.openWithDefaultApp(entry.path).then((ok) => {
+            if (!ok) toast(t('explorer.opFailed'))
+          })
+        },
+      })
+    }
+    entries.push(
+      { key: 'sep-2', label: '---' },
+      {
+        key: 'rename',
+        label: t('explorer.menu.rename'),
+        onSelect: () => setPrompt({ kind: 'rename', targetRel: entry.path, initialValue: entry.name }),
+      },
+      {
+        key: 'new-file',
+        label: t('explorer.menu.newFile'),
+        onSelect: () => setPrompt({ kind: 'newFile', targetRel: createTarget, initialValue: '' }),
+      },
+      {
+        key: 'new-folder',
+        label: t('explorer.menu.newFolder'),
+        onSelect: () => setPrompt({ kind: 'newFolder', targetRel: createTarget, initialValue: '' }),
+      },
+      { key: 'sep-3', label: '---' },
+      {
+        key: 'delete',
+        label: t('explorer.menu.delete'),
+        danger: true,
+        onSelect: () => setDeleteTarget(entry),
+      },
+    )
+    setMenu({ x: event.clientX, y: event.clientY, entries })
+  }, [state.root, stores])
+
+  const submitPrompt = (value: string): void => {
+    if (prompt === null) return
+    const { kind, targetRel } = prompt
+    const name = value.trim()
+    if (name === '') return
+    const op = kind === 'rename'
+      ? stores.explorer.renameEntry(prompt.targetRel, name)
+      : kind === 'newFolder'
+        ? stores.explorer.createDir(targetRel === '' ? name : `${targetRel}/${name}`)
+        : stores.explorer.createFile(targetRel === '' ? name : `${targetRel}/${name}`)
+    void op.then((ok) => {
+      if (!ok) toast(t('explorer.opFailed'))
+    })
+    setPrompt(null)
+  }
 
   return (
     <div className="aionui-root" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -82,11 +195,37 @@ export function ExplorerPanel({
           searchFocus={searchFocus}
           onFocusChange={setSearchFocus}
         />
-        <FileTree stores={stores} />
+        <FileTree stores={stores} onContextMenu={openMenu} />
       </div>
 
       {/* Changes tab: SCM (mounted on demand; its store outlives the tab). */}
       {state.activeTab === 'changes' && <ScmPanel stores={stores} />}
+
+      {/* Right-click menu + dialogs (portaled). */}
+      <ContextMenu state={menu} onClose={() => setMenu(null)} />
+      {prompt !== null && (
+        <PromptDialog
+          title={t(prompt.kind === 'rename' ? 'explorer.rename.title' : prompt.kind === 'newFolder' ? 'explorer.newFolder.title' : 'explorer.newFile.title')}
+          initialValue={prompt.initialValue}
+          onConfirm={submitPrompt}
+          onCancel={() => setPrompt(null)}
+        />
+      )}
+      {deleteTarget !== null && (
+        <ConfirmDialog
+          title={t('explorer.deleteConfirmTitle')}
+          body={t('explorer.deleteConfirmBody', { name: deleteTarget.name })}
+          danger
+          onConfirm={() => {
+            const target = deleteTarget
+            setDeleteTarget(null)
+            void stores.explorer.deleteEntry(target.path).then((ok) => {
+              if (!ok) toast(t('explorer.opFailed'))
+            })
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   )
 }
@@ -258,7 +397,13 @@ function SearchResults({ stores }: { stores: PanelStores }): JSX.Element {
 }
 
 /** The lazy file tree. */
-function FileTree({ stores }: { stores: PanelStores }): JSX.Element {
+function FileTree({
+  stores,
+  onContextMenu,
+}: {
+  stores: PanelStores
+  onContextMenu: (event: ReactMouseEvent, entry: FsEntry) => void
+}): JSX.Element {
   const explorer = stores.explorer
   const preview = stores.preview
   const state = useStore(explorer)
@@ -283,6 +428,7 @@ function FileTree({ stores }: { stores: PanelStores }): JSX.Element {
           dirs={state.dirs}
           root={state.root}
           stores={stores}
+          onContextMenu={onContextMenu}
         />
       ))}
     </div>
@@ -298,6 +444,7 @@ function TreeRowBase({
   dirs,
   root,
   stores,
+  onContextMenu,
 }: {
   entry: FsEntry
   depth: number
@@ -306,6 +453,7 @@ function TreeRowBase({
   dirs: Record<string, FsEntry[]>
   root: string
   stores: PanelStores
+  onContextMenu: (event: ReactMouseEvent, entry: FsEntry) => void
 }): JSX.Element {
   const explorer = stores.explorer
   const preview = stores.preview
@@ -341,7 +489,7 @@ function TreeRowBase({
     if (copyTimer.current !== null) window.clearTimeout(copyTimer.current)
     copyTimer.current = window.setTimeout(() => setCopied(null), 1200)
   }
-  const onCopyClick = (kind: 'rel' | 'abs') => (event: MouseEvent<HTMLButtonElement>): void => {
+  const onCopyClick = (kind: 'rel' | 'abs') => (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation()
     void handleCopyPath(kind)
   }
@@ -364,6 +512,7 @@ function TreeRowBase({
       <div
         className={`${explorerCss.treeRow}${isSelected ? ` ${explorerCss.treeRowSelected}` : ''}${draggingRow ? ` ${explorerCss.treeRowDragging}` : ''}`}
         style={{ paddingLeft: 12 + 8 + depth * INDENT_STEP }}
+        onContextMenu={(event) => onContextMenu(event, entry)}
         draggable={!entry.isDir}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
@@ -426,6 +575,7 @@ function TreeRowBase({
               dirs={dirs}
               root={root}
               stores={stores}
+              onContextMenu={onContextMenu}
             />
           ))}
         </div>

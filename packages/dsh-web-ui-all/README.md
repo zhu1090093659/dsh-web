@@ -2,11 +2,11 @@
 
 English | [中文](README.zh.md)
 
-The one-click aggregate package for the whole dsh web UI family: installing it brings every functional plugin (task-board / git-graph / pet / remote-web-ui / live-stats / web-ui-settings) plus the skin family (`dsh-skins`, skin assets bundled inside). The compat bridge layer is folded into this package (`src/client`), so no separate compat npm package is needed.
+The one-click aggregate package for the whole dsh web UI family: installing it brings every functional plugin (task-board / git-graph / pet / remote-web-ui / live-stats / web-ui-settings / skin-center / community-plugins) plus the skin family (`dsh-skins`, skin assets bundled inside). The compat bridge layer is folded into this package (`src/client`), so no separate compat npm package is needed.
 
 ## What it is
 
-- **One install, everything on**: its dependencies pull in all sub-plugin packages (dsh-client-ui-aionui-panel / dsh-client-ui-task-board / dsh-client-ui-git-graph / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-ssh / dsh-client-ui-web-ui-settings / dsh-desktop-launcher / dsh-skins).
+- **One install, everything on**: its dependencies pull in all sub-plugin packages (dsh-client-ui-community-plugins / dsh-client-ui-aionui-panel / dsh-client-ui-task-board / dsh-client-ui-git-graph / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-ssh / dsh-skill-manager / dsh-tool-describe-image / dsh-liangshen / dsh-desktop-launcher / dsh-plugin-manager / dsh-client-ui-shutdown / dsh-client-ui-web-ui-settings / dsh-skins / dsh-client-ui-skin-center).
 - **Aggregation carrier**: `cordis.patch.yml` aggregates the `insert` lines of each sub-plugin, mounted through the dsh plugin profile mechanism.
 
 ## Install

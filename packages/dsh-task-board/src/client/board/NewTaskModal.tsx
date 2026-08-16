@@ -4,8 +4,10 @@
  */
 import { useEffect, useState } from 'react'
 import type { BoardController } from '../../core/controller.ts'
+import { isValidCron, nextRunAtMs } from '../../core/schedule.ts'
 import { TASK_PERMISSIONS, type TaskPermission } from '../../core/tasks.ts'
 import { t, type TaskBoardKey } from '../locales.ts'
+import { SCHEDULE_PRESETS } from '../schedule-presets.ts'
 import css from '../board.module.css'
 
 /** New-task form overlay. */
@@ -16,6 +18,9 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
   const [workspaceId, setWorkspaceId] = useState('')
   const [mode, setMode] = useState('')
   const [permission, setPermission] = useState('')
+  const [scheduleEnabled, setScheduleEnabled] = useState(false)
+  const [scheduleCron, setScheduleCron] = useState('')
+  const [scheduleError, setScheduleError] = useState<string | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
   const [options, setOptions] = useState(controller.getSnapshot().executionOptions)
 
@@ -27,6 +32,13 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
   )
 
   const submit = (): void => {
+    if (scheduleEnabled) {
+      const cron = scheduleCron.trim()
+      if (cron === '' || !isValidCron(cron)) {
+        setScheduleError(t('detail.schedule.invalid'))
+        return
+      }
+    }
     const task = controller.createTask({
       title,
       description,
@@ -34,6 +46,7 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
       workspaceId: workspaceId === '' ? undefined : workspaceId,
       mode: mode === '' ? undefined : mode,
       permission: permission === '' ? undefined : permission as TaskPermission,
+      schedule: scheduleEnabled ? { enabled: true, cron: scheduleCron.trim() } : undefined,
     })
     if (task === undefined) {
       setError(t('new.required'))
@@ -41,6 +54,11 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
     }
     onClose()
   }
+
+  /** Next-run preview for a valid armed cron (creation-time only). */
+  const scheduleNextRun = scheduleEnabled && scheduleCron.trim() !== '' && isValidCron(scheduleCron)
+    ? nextRunAtMs(scheduleCron, Date.now())
+    : undefined
 
   return (
     <div className={css.modalBackdrop} onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
@@ -130,6 +148,56 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
             ))}
           </select>
         </label>
+
+        <section className={css.detailSection}>
+          <h4>{t('detail.schedule')}</h4>
+          <label className={css.scheduleToggle}>
+            <input
+              type="checkbox"
+              checked={scheduleEnabled}
+              onChange={event => {
+                setScheduleEnabled(event.target.checked)
+                if (!event.target.checked) setScheduleError(undefined)
+              }}
+            />
+            <span>{t('detail.schedule.enable')}</span>
+          </label>
+          {scheduleEnabled && (
+            <>
+              <div className={css.scheduleRow}>
+                <input
+                  className={`${css.input} ${css.scheduleInput}${scheduleError !== undefined ? ` ${css.scheduleInputInvalid}` : ''}`}
+                  value={scheduleCron}
+                  placeholder="0 9 * * *"
+                  spellCheck={false}
+                  aria-label={t('detail.schedule.cron')}
+                  onChange={event => { setScheduleCron(event.target.value); setScheduleError(undefined) }}
+                />
+                <select
+                  className={css.schedulePreset}
+                  value=""
+                  aria-label={t('detail.schedule.presets')}
+                  onChange={event => {
+                    if (event.target.value === '') return
+                    setScheduleCron(event.target.value)
+                    setScheduleError(undefined)
+                  }}
+                >
+                  <option value="">{t('detail.schedule.presets')}…</option>
+                  {SCHEDULE_PRESETS.map(preset => (
+                    <option key={preset.cron} value={preset.cron}>{t(preset.label)}</option>
+                  ))}
+                </select>
+              </div>
+              {scheduleError !== undefined && <p className={css.formError}>{scheduleError}</p>}
+              {scheduleError === undefined && scheduleNextRun !== undefined && (
+                <p className={css.scheduleMeta}>
+                  {t('detail.schedule.nextRun')} {new Date(scheduleNextRun).toLocaleString()}
+                </p>
+              )}
+            </>
+          )}
+        </section>
 
         {error !== undefined && <p className={css.formError}>{error}</p>}
 

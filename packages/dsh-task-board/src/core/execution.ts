@@ -46,6 +46,9 @@ export interface PresetsExecutionFace {
   select(sessionId: string, agentPreset: string): Promise<{ ok: true } | { ok: false; error: unknown }>
 }
 
+/** Settled result of one agent-preset switch, shared by concurrent waiters. */
+type PresetSelectResult = { ok: true } | { ok: false; error: unknown }
+
 /** The narrow workspaces face the service needs. */
 export interface WorkspacesExecutionFace {
   list: {
@@ -137,6 +140,16 @@ function isErrorTurnEnd(data: unknown): boolean {
  *   every failure path is reported as a settled event.
  */
 export class ExecutionService {
+  /**
+   * In-flight preset switches keyed by `sessionId\u0000mode`. The session
+   * list mirror can lag behind a just-applied switch, so concurrent runs
+   * against one blank session would otherwise each issue the same select
+   * RPC (an amplified storm); sharing one in-flight call keeps the wire to
+   * a single request. The settled entry is forgotten so a later run can
+   * switch again.
+   */
+  private readonly presetSwitches = new Map<string, Promise<PresetSelectResult>>()
+
   /** @param env - the runtime faces (real or fake). */
   constructor(private readonly env: ExecutionEnvironment) {}
 
@@ -199,13 +212,18 @@ export class ExecutionService {
       settleFailed(`cannot switch agent preset to ${mode}: the execution session is not blank`)
       return false
     }
+    // Fast path: the list mirror already reports the pinned preset. The
+    // mirror can lag a just-applied switch, though, so this guard alone is
+    // not enough under concurrent runs — `switchPreset` below dedupes the
+    // wire call for the lag window.
     if (summary?.agentPreset === mode) return true
-    if (this.env.presets === undefined) {
+    const presets = this.env.presets
+    if (presets === undefined) {
       settleFailed(`this deployment does not support agent presets (task asks for ${mode})`)
       return false
     }
     try {
-      const result = await this.env.presets.select(sessionId, mode)
+      const result = await this.switchPreset(presets, sessionId, mode)
       if (!result.ok) {
         // A list race can leave the summary without the preset label even
         // though the blank session already runs it; the wire answers that
@@ -225,6 +243,27 @@ export class ExecutionService {
     }
     this.env.sessions.noteAgentPreset?.(sessionId, mode)
     return true
+  }
+
+  /**
+   * One in-flight `select` per (session, preset): concurrent runs against
+   * the same blank session share the same wire call instead of each issuing
+   * a duplicate RPC. The entry is removed once the call settles, so a later
+   * run (after a shared failure, say) issues a fresh switch.
+   */
+  private switchPreset(
+    presets: PresetsExecutionFace,
+    sessionId: string,
+    mode: string,
+  ): Promise<PresetSelectResult> {
+    const key = `${sessionId}\u0000${mode}`
+    const inflight = this.presetSwitches.get(key)
+    if (inflight !== undefined) return inflight
+    const attempt = presets.select(sessionId, mode).finally(() => {
+      if (this.presetSwitches.get(key) === attempt) this.presetSwitches.delete(key)
+    })
+    this.presetSwitches.set(key, attempt)
+    return attempt
   }
 
   /**

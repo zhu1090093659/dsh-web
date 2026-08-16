@@ -9,6 +9,11 @@
  * a task still running at its due instant is skipped by the controller's
  * runTask guard and simply waits for the next cron match.
  *
+ * A deleted task can never fire again from a stale in-memory copy: every
+ * tick first re-reads the persisted ledger through the optional `refresh`
+ * hook (the controller reloads its store), so the fire decision and the
+ * subsequent roll-forward both run on the freshest persisted truth.
+ *
  * The ticker is controlled: `start` arms a single interval guarded by an
  * idempotence check (a second start while running is a no-op, so wiring can
  * never leak a duplicate timer), and `stop`/`dispose` clear the timer and
@@ -25,6 +30,13 @@ import type { TaskRecord } from './tasks.ts'
 export interface SchedulerDeps {
   /** Read the current task ledger (the controller snapshot). */
   tasks(): readonly TaskRecord[]
+  /**
+   * Re-sync the task ledger from its persisted source before the tick decides
+   * what is due. The wiring passes the controller's store reload so a task
+   * deleted elsewhere can never be fired from a stale in-memory copy.
+   * Optional: absent in pure in-memory harnesses.
+   */
+  refresh?: () => void
   /** Clock; defaults to Date.now in the controller wiring. */
   now(): number
   /** Trigger one task's real execution (the controller's runTask); resolves
@@ -112,6 +124,9 @@ export class SchedulerService {
   async tick(): Promise<void> {
     if (this.disposed) return
     if (this.deps.ready !== undefined && !this.deps.ready()) return
+    // Freshest persisted truth before any fire decision: a task deleted in
+    // another tab (or a stale in-memory copy) must never be triggered.
+    this.deps.refresh?.()
     const now = this.deps.now()
     for (const task of this.deps.tasks()) {
       const schedule = task.schedule

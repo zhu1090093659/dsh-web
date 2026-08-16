@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { BoardController, selectedTaskOf, type ControllerDeps } from '../src/core/controller.ts'
 import { ExecutionService } from '../src/core/execution.ts'
+import { nextRunAtMs } from '../src/core/schedule.ts'
 import { InMemoryTaskStore } from '../src/core/store.ts'
 import { createTask, type TaskRecord } from '../src/core/tasks.ts'
 import { applyCreateTask } from '../src/core/use-cases/task-create.ts'
@@ -37,6 +38,25 @@ describe('use-case: create', () => {
     expect(result.task).toBeUndefined()
     expect(result.tasks).toHaveLength(before.length)
     expect(result.tasks).toBe(before) // identical reference: no transition
+  })
+
+  it('arms the requested schedule when enabled with a valid cron', () => {
+    const result = applyCreateTask(seed(), { title: 's', description: '', prompt: '', schedule: { enabled: true, cron: ' 0 23 * * * ' } }, NOW, 'id-s')
+    expect(result.task?.schedule?.enabled).toBe(true)
+    expect(result.task?.schedule?.cron).toBe('0 23 * * *')
+    expect(result.task?.schedule?.nextRunAt).toBe(nextRunAtMs('0 23 * * *', NOW))
+  })
+
+  it('leaves the task unscheduled for blank, invalid, or disabled schedule requests', () => {
+    const requests = [
+      { enabled: true, cron: '   ' },
+      { enabled: true, cron: 'not a cron' },
+      { enabled: false, cron: '0 9 * * *' },
+    ]
+    for (const schedule of requests) {
+      const result = applyCreateTask(seed(), { title: 's', description: '', prompt: '', schedule }, NOW, 'id-s')
+      expect(result.task?.schedule).toBeUndefined()
+    }
   })
 })
 

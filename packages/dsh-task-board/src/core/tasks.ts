@@ -79,7 +79,16 @@ export interface TaskRecord {
    * `/permission <id>` slash command; absent leaves the session default.
    */
   permission?: TaskPermission
+  /**
+   * When the task was archived (ms epoch). Archived tasks keep their status
+   * and execution history but leave the main board; absent means on-board.
+   */
+  archivedAt?: number
 }
+
+/** Statuses a settled task may be archived from. */
+export const ARCHIVABLE_STATUSES: readonly TaskStatus[] = ['done', 'failed']
+
 
 /** Permission presets a task may pin on its execution session (the `/permission <id>` ids). */
 export const TASK_PERMISSIONS = ['read-only', 'workspace-write', 'danger-full-access'] as const
@@ -103,6 +112,12 @@ export interface NewTaskInput {
   mode?: string
   /** Permission preset applied to the execution session; absent = session default. */
   permission?: TaskPermission
+  /**
+   * Optional scheduled-run rule requested at creation time (the new-task
+   * dialog): an enable flag plus a 5-field cron expression. The create use
+   * case arms it only when enabled and the expression is valid.
+   */
+  schedule?: { enabled: boolean; cron: string }
 }
 
 /** The five kanban columns, in display order. */

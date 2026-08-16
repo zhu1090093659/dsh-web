@@ -3,6 +3,8 @@
  * handling, invalid-row dropping, and the in-memory backend.
  */
 import { describe, expect, it, vi } from 'vitest'
+
+const NOW = 1_700_000_000_000
 import {
   InMemoryTaskStore, LocalStorageTaskStore, isTaskRecord, parseLedger,
   type StorageChangeEvent, type StorageEvents,
@@ -159,6 +161,16 @@ describe('parseLedger', () => {
     expect(parsed[0].permission).toBeUndefined()
   })
 
+  it('keeps a numeric archivedAt and drops malformed values', () => {
+    const base = {
+      id: 't1', title: 'a', description: '', prompt: 'a',
+      createdAt: NOW, updatedAt: NOW, executions: [],
+    }
+    const parsed = parseLedger(JSON.stringify([{ ...base, status: 'done', archivedAt: 1234 }]))
+    expect(parsed[0].archivedAt).toBe(1234)
+    const repaired = parseLedger(JSON.stringify([{ ...base, status: 'done', archivedAt: 'yesterday' }]))
+    expect(repaired[0].archivedAt).toBeUndefined()
+  })
   it('round-trips execution targets and repairs broken ones', () => {
     const pinned = createTask(
       { title: 'pinned', description: '', prompt: '', workspaceId: 'ws-1', mode: 'anchored', permission: 'read-only' },

@@ -583,7 +583,7 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:packages/skins/skin-center/src/client/skin-center.module.css.mjs
-		const css = "body[data-dsh-skin-center] .eDzMgW_pluginCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}body[data-dsh-skin-center] .eDzMgW_pluginCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_pluginCardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_cardHeader{appearance:none;width:100%;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}body[data-dsh-skin-center] .eDzMgW_cardHeader:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}body[data-dsh-skin-center] .eDzMgW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_pluginName{color:var(--dsw-alias-label-primary);align-items:baseline;gap:8px;font-size:15px;font-weight:600;line-height:1.4;display:flex}body[data-dsh-skin-center] .eDzMgW_cardDescription{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_chevron,body[data-dsh-skin-center] .eDzMgW_chevronOpen{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}body[data-dsh-skin-center] .eDzMgW_chevronOpen{transform:rotate(180deg)}body[data-dsh-skin-center] .eDzMgW_cardBody{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:12px;margin:0 16px;padding:12px 0 8px;display:flex}body[data-dsh-skin-center] .eDzMgW_head{flex-direction:column;gap:6px;display:flex}body[data-dsh-skin-center] .eDzMgW_titleBadge{color:var(--dsw-alias-label-secondary,#6b7280);font-size:11px;font-weight:500}body[data-dsh-skin-center] .eDzMgW_intro{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12.5px;line-height:1.55}body[data-dsh-skin-center] .eDzMgW_themeRow{align-items:center;gap:8px;margin-top:2px;display:flex}body[data-dsh-skin-center] .eDzMgW_themeLabel{color:var(--dsw-alias-label-secondary,#6b7280);margin-right:2px;font-size:12px}body[data-dsh-skin-center] .eDzMgW_themeButton{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_themeButton:hover{border-color:var(--dsw-alias-border-l4,#94a3b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:active{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_themeButtonActive{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_list{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_card{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:8px;padding:12px 14px;display:flex}body[data-dsh-skin-center] .eDzMgW_cardHead{align-items:center;gap:10px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_swatch{width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;flex:none}body[data-dsh-skin-center] .eDzMgW_cardName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_cardTagline{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.45}body[data-dsh-skin-center] .eDzMgW_badge{letter-spacing:.02em;border-radius:999px;flex:none;min-width:0;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_badgeActive{color:var(--dsw-alias-state-success-primary,#0f6b3a);background:var(--dsw-alias-state-success-tertiary,#dcf3e5)}body[data-dsh-skin-center] .eDzMgW_badgeTrying{color:var(--dsw-alias-brand-primary,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e2edfc)}body[data-dsh-skin-center] .eDzMgW_actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_button{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:7px;padding:6px 12px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_button:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary,#2b7cd9);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:active:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_buttonPrimary{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-fill,#2b7cd9);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:active:not(:disabled),body[data-dsh-skin-center] .eDzMgW_buttonPrimary:focus-visible:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_buttonGhost{background:0 0;border-color:#0000}body[data-dsh-skin-center] .eDzMgW_button:disabled{opacity:.55;cursor:default}body[data-dsh-skin-center] .eDzMgW_error{color:var(--dsw-alias-state-error-primary,#b42318);font-size:12px}body[data-dsh-skin-center] .eDzMgW_backgroundRow{flex-direction:column;gap:6px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundHead{align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_backgroundValue{font-variant-numeric:tabular-nums;color:var(--dsw-alias-brand-primary,#2b7cd9);flex:none;margin-left:auto;font-size:12px}body[data-dsh-skin-center] .eDzMgW_backgroundRange{background:var(--dsw-alias-bg-layer-3,#e2e8f0);-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:999px;width:100%;height:4px;margin:0}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:14px;height:14px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-thumb{border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:12px;height:12px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_backgroundHint{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundHintMuted{color:var(--dsw-alias-label-tertiary,#9aa4b5);font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){body[data-dsh-skin-center] .eDzMgW_pluginCard,body[data-dsh-skin-center] .eDzMgW_cardHeader,body[data-dsh-skin-center] .eDzMgW_themeButton,body[data-dsh-skin-center] .eDzMgW_button,body[data-dsh-skin-center] .eDzMgW_chevron,body[data-dsh-skin-center] .eDzMgW_chevronOpen{transition:none}}";
+		const css = "body[data-dsh-skin-center] .eDzMgW_sectionList{margin:0;padding:0;list-style:none}body[data-dsh-skin-center] .eDzMgW_pluginCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}body[data-dsh-skin-center] .eDzMgW_pluginCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_cardHeaderStatic{align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}body[data-dsh-skin-center] .eDzMgW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_pluginName{color:var(--dsw-alias-label-primary);align-items:baseline;gap:8px;font-size:15px;font-weight:600;line-height:1.4;display:flex}body[data-dsh-skin-center] .eDzMgW_cardDescription{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_cardBody{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:12px;margin:0 16px;padding:12px 0 8px;display:flex}body[data-dsh-skin-center] .eDzMgW_head{flex-direction:column;gap:6px;display:flex}body[data-dsh-skin-center] .eDzMgW_titleBadge{color:var(--dsw-alias-label-secondary,#6b7280);font-size:11px;font-weight:500}body[data-dsh-skin-center] .eDzMgW_intro{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12.5px;line-height:1.55}body[data-dsh-skin-center] .eDzMgW_themeRow{align-items:center;gap:8px;margin-top:2px;display:flex}body[data-dsh-skin-center] .eDzMgW_themeLabel{color:var(--dsw-alias-label-secondary,#6b7280);margin-right:2px;font-size:12px}body[data-dsh-skin-center] .eDzMgW_themeButton{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_themeButton:hover{border-color:var(--dsw-alias-border-l4,#94a3b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:active{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_themeButtonActive{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_list{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_card{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:8px;padding:12px 14px;display:flex}body[data-dsh-skin-center] .eDzMgW_cardHead{align-items:center;gap:10px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_swatch{width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;flex:none}body[data-dsh-skin-center] .eDzMgW_cardName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_cardTagline{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.45}body[data-dsh-skin-center] .eDzMgW_badge{letter-spacing:.02em;border-radius:999px;flex:none;min-width:0;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_badgeActive{color:var(--dsw-alias-state-success-primary,#0f6b3a);background:var(--dsw-alias-state-success-tertiary,#dcf3e5)}body[data-dsh-skin-center] .eDzMgW_badgeTrying{color:var(--dsw-alias-brand-primary,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e2edfc)}body[data-dsh-skin-center] .eDzMgW_actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_button{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:7px;padding:6px 12px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_button:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary,#2b7cd9);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:active:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_buttonPrimary{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-fill,#2b7cd9);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:active:not(:disabled),body[data-dsh-skin-center] .eDzMgW_buttonPrimary:focus-visible:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_buttonGhost{background:0 0;border-color:#0000}body[data-dsh-skin-center] .eDzMgW_button:disabled{opacity:.55;cursor:default}body[data-dsh-skin-center] .eDzMgW_error{color:var(--dsw-alias-state-error-primary,#b42318);font-size:12px}body[data-dsh-skin-center] .eDzMgW_enableRow{flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_enableLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_enableHint{min-width:100%;color:var(--dsw-alias-label-secondary,#6b7280);flex:1;margin:0;font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_switch{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-3,#e2e8f0);cursor:pointer;border-radius:999px;flex:none;align-items:center;width:40px;height:22px;padding:2px;transition:background .12s,border-color .12s;display:inline-flex;position:relative}body[data-dsh-skin-center] .eDzMgW_switchOn{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-brand-primary,#2b7cd9)}body[data-dsh-skin-center] .eDzMgW_switch:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_switchThumb{background:var(--dsw-alias-label-primary-foreground,#fff);width:18px;height:18px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;transition:transform .12s;display:block;transform:translate(0)}body[data-dsh-skin-center] .eDzMgW_switchOn .eDzMgW_switchThumb{transform:translate(18px)}body[data-dsh-skin-center] .eDzMgW_offNote{color:var(--dsw-alias-label-secondary,#6b7280);margin:0;font-size:12.5px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundRow{flex-direction:column;gap:6px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundHead{align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_backgroundValue{font-variant-numeric:tabular-nums;color:var(--dsw-alias-brand-primary,#2b7cd9);flex:none;margin-left:auto;font-size:12px}body[data-dsh-skin-center] .eDzMgW_backgroundRange{background:var(--dsw-alias-bg-layer-3,#e2e8f0);-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:999px;width:100%;height:4px;margin:0}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:14px;height:14px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-thumb{border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:12px;height:12px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_backgroundHint{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundHintMuted{color:var(--dsw-alias-label-tertiary,#9aa4b5);font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){body[data-dsh-skin-center] .eDzMgW_pluginCard,body[data-dsh-skin-center] .eDzMgW_themeButton,body[data-dsh-skin-center] .eDzMgW_button,body[data-dsh-skin-center] .eDzMgW_switch,body[data-dsh-skin-center] .eDzMgW_switchThumb{transition:none}}";
 		const tagId = "@linxin666/dsh-client-ui-skin-center/skin-center.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -611,20 +611,25 @@ window.__ModuleLoader__.load({
 			"cardBody": "eDzMgW_cardBody",
 			"cardDescription": "eDzMgW_cardDescription",
 			"cardHead": "eDzMgW_cardHead",
-			"cardHeader": "eDzMgW_cardHeader",
+			"cardHeaderStatic": "eDzMgW_cardHeaderStatic",
 			"cardName": "eDzMgW_cardName",
 			"cardTagline": "eDzMgW_cardTagline",
-			"chevron": "eDzMgW_chevron",
-			"chevronOpen": "eDzMgW_chevronOpen",
+			"enableHint": "eDzMgW_enableHint",
+			"enableLabel": "eDzMgW_enableLabel",
+			"enableRow": "eDzMgW_enableRow",
 			"error": "eDzMgW_error",
 			"head": "eDzMgW_head",
 			"headText": "eDzMgW_headText",
 			"intro": "eDzMgW_intro",
 			"list": "eDzMgW_list",
+			"offNote": "eDzMgW_offNote",
 			"pluginCard": "eDzMgW_pluginCard",
-			"pluginCardOpen": "eDzMgW_pluginCardOpen",
 			"pluginName": "eDzMgW_pluginName",
+			"sectionList": "eDzMgW_sectionList",
 			"swatch": "eDzMgW_swatch",
+			"switch": "eDzMgW_switch",
+			"switchOn": "eDzMgW_switchOn",
+			"switchThumb": "eDzMgW_switchThumb",
 			"themeButton": "eDzMgW_themeButton",
 			"themeButtonActive": "eDzMgW_themeButtonActive",
 			"themeLabel": "eDzMgW_themeLabel",
@@ -634,33 +639,35 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region src/client/SkinCenter.tsx
 		/**
-		* The skin-center plugin card: one disclosure card inside the Web UI plugin
-		* group (插件配置 → Web UI 插件), listing every installed skin plus the
-		* official stock look. Live try-on executes the real bundle inside the GUI
-		* (light/dark preview, full restore on exit); Apply is one click — the host
-		* half runs `dsh-skin use` through /api/skin-center/apply, the config
-		* watcher hot-reloads the patch, and the page reloads into the new skin.
-		* Copy rides the standard `t` seat; the theme preview control drives the
-		* official theme service (persisted, same as the Appearance row).
+		* The skin-center card: rendered as the content of a first-level settings
+		* section, listing every installed skin plus the official stock look. Live
+		* try-on executes the real bundle inside the GUI (light/dark preview, full
+		* restore on exit); Apply is one click — the host half runs `dsh-skin use`
+		* through /api/skin-center/apply, the config watcher hot-reloads the patch,
+		* and the page reloads into the new skin. Copy rides the standard `t` seat;
+		* the theme preview control drives the official theme service (persisted,
+		* same as the Appearance row).
 		*/
 		/** The apply target of the official stock-look card. */
 		const OFFICIAL = "official";
 		/** Skin ids that read the background-scrim variable and paint a backdrop. */
 		const BACKDROP_SKIN_IDS = /* @__PURE__ */ new Set(["blue-fantasy", "whale-song"]);
 		/**
-		* Render the skin-center card: a disclosure header naming the plugin, with
-		* the skin list (official default + every installed skin; try-on / theme
-		* preview / one-click apply) inside its body.
+		* Render the skin-center card: a static header naming the plugin, with the
+		* always-visible skin list (official default + every installed skin; try-on /
+		* theme preview / one-click apply) rendered below it.
 		* @param props - card props.
 		* @returns the plugin card.
 		*/
 		function SkinCenter({ t, controller, theme, background }) {
 			const snapshot = (0, react.useSyncExternalStore)(theme.subscribe, theme.getTheme);
+			const enabled = (0, react.useSyncExternalStore)(background.subscribe, background.enabled);
 			const opacity = (0, react.useSyncExternalStore)(background.subscribe, background.opacity);
+			const blurEmpty = (0, react.useSyncExternalStore)(background.subscribe, background.blurEmpty);
+			const blurContent = (0, react.useSyncExternalStore)(background.subscribe, background.blurContent);
 			const activePackage = activeSkinEntry()?.package;
 			const activeId = activeSkinEntry()?.id;
 			const backdropActive = activeId !== void 0 && BACKDROP_SKIN_IDS.has(activeId);
-			const [open, setOpen] = (0, react.useState)(false);
 			const [tryingId, setTryingId] = (0, react.useState)(null);
 			const [tryingOfficial, setTryingOfficial] = (0, react.useState)(false);
 			const [loadingId, setLoadingId] = (0, react.useState)(null);
@@ -848,16 +855,10 @@ window.__ModuleLoader__.load({
 				})]
 			});
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
-				className: open ? `${skin_center_module_css_default.pluginCard} ${skin_center_module_css_default.pluginCardOpen}` : skin_center_module_css_default.pluginCard,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-					type: "button",
-					className: skin_center_module_css_default.cardHeader,
-					"aria-expanded": open,
-					"aria-label": `${t(open ? "collapse" : "expand")}: ${t("title")}`,
-					onClick: () => {
-						setOpen((current) => !current);
-					},
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+				className: skin_center_module_css_default.pluginCard,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: skin_center_module_css_default.cardHeaderStatic,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 						className: skin_center_module_css_default.headText,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 							className: skin_center_module_css_default.pluginName,
@@ -870,21 +871,34 @@ window.__ModuleLoader__.load({
 							title: t("cardDescription"),
 							children: t("cardDescription")
 						})]
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
-						width: "14",
-						height: "14",
-						viewBox: "0 0 14 14",
-						fill: "none",
-						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${skin_center_module_css_default.chevron} ${skin_center_module_css_default.chevronOpen}` : skin_center_module_css_default.chevron,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
-							fill: "currentColor"
-						})
-					})]
-				}), open ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					})
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					className: skin_center_module_css_default.cardBody,
-					children: [
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: skin_center_module_css_default.enableRow,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: skin_center_module_css_default.enableLabel,
+								title: t("enabled"),
+								children: t("enabled")
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								role: "switch",
+								"aria-checked": enabled,
+								"aria-label": t("enabled"),
+								className: enabled ? skin_center_module_css_default.switch + " " + skin_center_module_css_default.switchOn : skin_center_module_css_default.switch,
+								onClick: () => {
+									background.setEnabled(!enabled);
+								},
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: skin_center_module_css_default.switchThumb })
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+								className: skin_center_module_css_default.enableHint,
+								children: t("enabledHint")
+							})
+						]
+					}), enabled ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: skin_center_module_css_default.head,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -948,6 +962,65 @@ window.__ModuleLoader__.load({
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 									className: backdropActive ? skin_center_module_css_default.backgroundHint : skin_center_module_css_default.backgroundHintMuted,
 									children: backdropActive ? t("backgroundHint") : t("backgroundHintInert")
+								})
+							]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: skin_center_module_css_default.backgroundRow,
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: skin_center_module_css_default.backgroundHead,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.backgroundLabel,
+										children: t("backgroundBlurEmpty")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: skin_center_module_css_default.backgroundValue,
+										"aria-hidden": "true",
+										children: [blurEmpty, "px"]
+									})]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									id: "skin-center-background-blur-empty",
+									className: skin_center_module_css_default.backgroundRange,
+									type: "range",
+									min: "0",
+									max: "20",
+									step: "1",
+									value: blurEmpty,
+									"aria-valuetext": `${blurEmpty}px`,
+									"aria-label": t("backgroundBlurEmpty"),
+									onChange: (event) => {
+										background.setBlurEmpty(Number(event.target.value));
+									}
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: skin_center_module_css_default.backgroundHead,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.backgroundLabel,
+										children: t("backgroundBlurContent")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: skin_center_module_css_default.backgroundValue,
+										"aria-hidden": "true",
+										children: [blurContent, "px"]
+									})]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									id: "skin-center-background-blur-content",
+									className: skin_center_module_css_default.backgroundRange,
+									type: "range",
+									min: "0",
+									max: "20",
+									step: "1",
+									value: blurContent,
+									"aria-valuetext": `${blurContent}px`,
+									"aria-label": t("backgroundBlurContent"),
+									onChange: (event) => {
+										background.setBlurContent(Number(event.target.value));
+									}
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+									className: backdropActive ? skin_center_module_css_default.backgroundHint : skin_center_module_css_default.backgroundHintMuted,
+									children: backdropActive ? t("backgroundBlurHint") : t("backgroundBlurInert")
 								})
 							]
 						}),
@@ -1041,8 +1114,25 @@ window.__ModuleLoader__.load({
 								}, entry.id);
 							})]
 						})
-					]
-				}) : null]
+					] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: skin_center_module_css_default.offNote,
+						role: "status",
+						children: t("offNote")
+					})]
+				})]
+			});
+		}
+		/** Render the skin-center card as a first-level settings page. */
+		function SkinCenterSection(props) {
+			const { t, controller, theme, background } = props;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+				className: skin_center_module_css_default.sectionList,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SkinCenter, {
+					t,
+					controller,
+					theme,
+					background
+				})
 			});
 		}
 		//#endregion
@@ -1051,31 +1141,85 @@ window.__ModuleLoader__.load({
 		const SKIN_BACKGROUND_NS = "skin-background";
 		/** Field of the background value inside the namespace section. */
 		const OPACITY_FIELD = "backgroundOpacity";
+		/** Field of the empty-conversation backdrop blur inside the namespace section. */
+		const BLUR_EMPTY_FIELD = "backgroundBlurEmpty";
+		/** Field of the with-content backdrop blur inside the namespace section. */
+		const BLUR_CONTENT_FIELD = "backgroundBlurContent";
 		/** CSS custom property written to document.body and read by backdrop skins. */
 		const SCRIM_VAR = "--dsw-skin-scrim";
 		/**
-		* Own the skin-background scope: read the latest occlusion, apply it to the
-		* body CSS variable instantly, and persist changes through the settings scope.
+		* Selector for a conversation message row inside the shell's center column.
+		* The `data-pane="conversation"` attribute is stamped by the dsh-web-ui-all
+		* compat shim on the center column; the _userRow / _compactionRow /
+		* _contextRow / _turnErrorRow suffixes are the official shell's CSS-module
+		* hashed message-row classes (hash prefix varies, suffix is stable). Stable
+		* like the repo's compat shim, not hash-dependent.
+		*/
+		const CONVERSATION_CONTENT_SELECTOR = [
+			"[data-pane=\"conversation\"] [class*=\"_userRow\"]",
+			"[data-pane=\"conversation\"] [class*=\"_compactionRow\"]",
+			"[data-pane=\"conversation\"] [class*=\"_contextRow\"]",
+			"[data-pane=\"conversation\"] [class*=\"_turnErrorRow\"]"
+		].join(", ");
+		/**
+		* Own the skin-background scope: read the latest occlusion + blur strengths,
+		* apply them to the body instantly, and persist changes through the settings
+		* scope.
 		*/
 		var BackgroundController = class {
-			value = 0;
+			enabledValue = true;
+			opacityValue = 0;
+			blurEmptyValue = 0;
+			blurContentValue = 0;
 			listeners = /* @__PURE__ */ new Set();
 			scope;
+			/** The fixed backdrop-filter element, present only while active blur > 0. */
+			blurElement = null;
+			/** The body MutationObserver, installed lazily once a blur is active. */
+			observer = null;
+			/** Pending requestAnimationFrame id for a coalesced recheck. */
+			rafId = null;
+			/** Guard: after dispose no scheduled work may reinstall anything. */
+			disposed = false;
 			/**
 			* @param scope - the bound skin-background settings scope.
 			*/
 			constructor(scope) {
 				this.scope = scope;
-				this.value = this.read();
-				this.apply();
+				this.enabledValue = this.readEnabled();
+				this.opacityValue = this.readOpacity();
+				this.blurEmptyValue = this.readBlur(BLUR_EMPTY_FIELD);
+				this.blurContentValue = this.readBlur(BLUR_CONTENT_FIELD);
+				this.applyOcclusion();
+				this.syncBlur();
 				scope.subscribe(() => {
-					this.value = this.read();
-					this.apply();
+					this.enabledValue = this.readEnabled();
+					this.opacityValue = this.readOpacity();
+					this.blurEmptyValue = this.readBlur(BLUR_EMPTY_FIELD);
+					this.blurContentValue = this.readBlur(BLUR_CONTENT_FIELD);
+					this.applyOcclusion();
+					this.syncBlur();
 					this.publish();
 				});
 			}
+			enabled() {
+				return this.enabledValue;
+			}
+			setEnabled(value) {
+				this.enabledValue = value;
+				this.applyOcclusion();
+				this.syncBlur();
+				this.publish();
+				this.scope.set("enabled", value);
+			}
 			opacity() {
-				return this.value;
+				return this.opacityValue;
+			}
+			blurEmpty() {
+				return this.blurEmptyValue;
+			}
+			blurContent() {
+				return this.blurContentValue;
 			}
 			subscribe(listener) {
 				this.listeners.add(listener);
@@ -1085,20 +1229,133 @@ window.__ModuleLoader__.load({
 			}
 			set(opacity) {
 				const clamped = Math.max(0, Math.min(100, Math.round(opacity)));
-				this.value = clamped;
-				this.apply();
+				this.opacityValue = clamped;
+				this.applyOcclusion();
 				this.publish();
 				this.scope.set(OPACITY_FIELD, clamped);
 			}
-			/** The effective section value, clamped 0-100, defaulting to 0. */
-			read() {
+			setBlurEmpty(value) {
+				const clamped = this.clampBlur(value);
+				this.blurEmptyValue = clamped;
+				this.ensureObserver();
+				this.syncBlur();
+				this.publish();
+				this.scope.set(BLUR_EMPTY_FIELD, clamped);
+			}
+			setBlurContent(value) {
+				const clamped = this.clampBlur(value);
+				this.blurContentValue = clamped;
+				this.ensureObserver();
+				this.syncBlur();
+				this.publish();
+				this.scope.set(BLUR_CONTENT_FIELD, clamped);
+			}
+			dispose() {
+				this.disposed = true;
+				if (this.rafId !== null) {
+					cancelAnimationFrame(this.rafId);
+					this.rafId = null;
+				}
+				this.removeBlurElement();
+				if (this.observer !== null) {
+					this.observer.disconnect();
+					this.observer = null;
+				}
+			}
+			/** The effective master-switch section value, defaulting to true when absent. */
+			readEnabled() {
+				const raw = this.scope.getSnapshot().value?.enabled;
+				return typeof raw !== "boolean" ? true : raw;
+			}
+			/** The effective occlusion section value, clamped 0-100, defaulting to 0. */
+			readOpacity() {
 				const raw = this.scope.getSnapshot().value?.backgroundOpacity;
 				if (typeof raw !== "number" || !Number.isFinite(raw)) return 0;
 				return Math.max(0, Math.min(100, raw));
 			}
+			/** The effective blur section value for one field, clamped 0-20, defaulting to 0. */
+			readBlur(field) {
+				const raw = this.scope.getSnapshot().value?.[field];
+				if (typeof raw !== "number" || !Number.isFinite(raw)) return 0;
+				return this.clampBlur(raw);
+			}
+			clampBlur(value) {
+				return Math.max(0, Math.min(20, Math.round(value)));
+			}
 			/** Write the current occlusion onto the body CSS variable (0..1 alpha). */
-			apply() {
-				document.body.style.setProperty(SCRIM_VAR, String(this.value / 100));
+			applyOcclusion() {
+				if (!this.enabledValue) {
+					document.body.style.removeProperty(SCRIM_VAR);
+					return;
+				}
+				document.body.style.setProperty(SCRIM_VAR, String(this.opacityValue / 100));
+			}
+			/**
+			* Apply the active blur: empty or with-content strength depending on the
+			* conversation state. A value > 0 ensures the fixed blur element exists
+			* with the matching backdrop-filter; 0 removes it.
+			*/
+			syncBlur() {
+				if (this.disposed) return;
+				if (!this.enabledValue) {
+					this.removeBlurElement();
+					return;
+				}
+				this.ensureObserver();
+				const active = this.hasConversationContent() ? this.blurContentValue : this.blurEmptyValue;
+				if (active > 0) this.ensureBlurElement(active);
+				else this.removeBlurElement();
+			}
+			/** True when the conversation pane hosts at least one message row. */
+			hasConversationContent() {
+				return document.querySelector(CONVERSATION_CONTENT_SELECTOR) !== null;
+			}
+			/** Create (if needed) and size the fixed backdrop-filter element. */
+			ensureBlurElement(active) {
+				if (this.blurElement === null) {
+					const element = document.createElement("div");
+					element.style.position = "fixed";
+					element.style.inset = "0";
+					element.style.zIndex = "-1";
+					element.style.pointerEvents = "none";
+					element.setAttribute("aria-hidden", "true");
+					this.blurElement = element;
+					document.body.appendChild(element);
+				}
+				const blur = "blur(" + active + "px)";
+				this.blurElement.style.backdropFilter = blur;
+				this.blurElement.style.setProperty("-webkit-backdrop-filter", blur);
+			}
+			/** Remove the fixed blur element, if present. */
+			removeBlurElement() {
+				if (this.blurElement === null) return;
+				this.blurElement.remove();
+				this.blurElement = null;
+			}
+			/**
+			* Install the MutationObserver on document.body only when either blur
+			* field is active, so a fully-disabled blur never pays the observation
+			* cost. Runs lazily on the first non-zero set.
+			*/
+			ensureObserver() {
+				if (this.disposed || this.observer !== null) return;
+				if (this.blurEmptyValue <= 0 && this.blurContentValue <= 0) return;
+				this.observer = new MutationObserver(() => this.scheduleRecheck());
+				this.observer.observe(document.body, {
+					childList: true,
+					subtree: true,
+					attributes: true,
+					attributeFilter: ["class"]
+				});
+			}
+			/** Coalesce burst mutations into one rAF-delayed recheck. */
+			scheduleRecheck() {
+				if (this.disposed || this.rafId !== null) return;
+				this.rafId = requestAnimationFrame(() => {
+					this.rafId = null;
+					if (this.disposed) return;
+					this.syncBlur();
+				});
 			}
 			publish() {
 				for (const listener of this.listeners) listener();
@@ -1109,8 +1366,9 @@ window.__ModuleLoader__.load({
 		const en = {
 			title: "Skin Center",
 			cardDescription: "Try on any installed skin live in the GUI — exit restores instantly, applying persists in one click.",
-			expand: "Expand",
-			collapse: "Collapse",
+			enabled: "Enable skin center",
+			enabledHint: "When off, try-on, apply and background controls are disabled; turn it back on to resume.",
+			offNote: "The skin center is turned off.",
 			intro: "Try on any skin live — it takes effect instantly, exit restores the current look. Apply persists it across restarts.",
 			official: "Official default",
 			officialTagline: "The stock DSH look with no skin applied.",
@@ -1129,14 +1387,19 @@ window.__ModuleLoader__.load({
 			themeDark: "Dark",
 			tryOnError: "Try-on failed — see console",
 			backgroundOpacity: "Background occlusion",
+			backgroundBlurEmpty: "Blur when empty",
+			backgroundBlurContent: "Blur with content",
+			backgroundBlurHint: "Applies a separate Gaussian blur to the backdrop for the empty conversation and the conversation with content; 0 disables.",
+			backgroundBlurInert: "Visible only with skins that paint a backdrop; the official default has none.",
 			backgroundHint: "Instantly veils the backdrop behind the panels — higher values obscure the art to help you focus.",
 			backgroundHintInert: "Only applies to skins that paint a backdrop (Blue Fantasy / Whale Song). Applies to the official default automatically once such a skin is active."
 		};
 		const zh = {
 			title: "皮肤中心",
 			cardDescription: "在 GUI 内即时试穿任意皮肤，退出即完全还原；应用一键完成并自动刷新。",
-			expand: "展开",
-			collapse: "收起",
+			enabled: "启用皮肤中心",
+			enabledHint: "关闭后停用试穿、应用与背景控件，重新打开即恢复。",
+			offNote: "皮肤中心已关闭。",
 			intro: "任意皮肤可即时试穿，退出即完全还原；「应用」一键持久化，页面自动刷新生效。",
 			official: "官方默认",
 			officialTagline: "还原 DSH 官方默认外观，不应用任何皮肤。",
@@ -1155,6 +1418,10 @@ window.__ModuleLoader__.load({
 			themeDark: "暗色",
 			tryOnError: "试穿失败，详见控制台",
 			backgroundOpacity: "背景遮挡",
+			backgroundBlurEmpty: "空对话背景模糊",
+			backgroundBlurContent: "有对话背景模糊",
+			backgroundBlurHint: "对话为空与有内容时分别应用不同的背景高斯模糊强度，0 为关闭。",
+			backgroundBlurInert: "仅对带背景图插画的皮肤可见；官方默认无背景图。",
 			backgroundHint: "即时为面板背后的背景加遮罩——数值越高越能弱化插画，帮你集中注意力。",
 			backgroundHintInert: "仅对带背景图插画的皮肤（蓝色幻想 / 鲸吟）生效；官方默认无背景图，该滑块对这些皮肤自动生效。"
 		};
@@ -1173,7 +1440,7 @@ window.__ModuleLoader__.load({
 		];
 		/**
 		* Register the skin-center dictionaries, the body scope attribute, and the
-		* Skins plugin card inside the Web UI plugin group.
+		* Skin Center as a first-level settings section.
 		* @param ctx - client root context.
 		*/
 		function apply(ctx) {
@@ -1190,6 +1457,7 @@ window.__ModuleLoader__.load({
 			const theme = ctx.get("theme");
 			const controller = new TryOnController();
 			const background = new BackgroundController((ctx.get("webUiSettings") ?? ctx.settingsScope).bind({ namespace: SKIN_BACKGROUND_NS }));
+			ctx.effect(() => () => background.dispose(), "ui-skin-center: background dispose");
 			const injected = () => ({
 				controller,
 				theme: {
@@ -1198,18 +1466,26 @@ window.__ModuleLoader__.load({
 					setTheme: (id) => theme.setTheme(id)
 				},
 				background: {
+					enabled: () => background.enabled(),
+					setEnabled: (value) => background.setEnabled(value),
 					opacity: () => background.opacity(),
+					blurEmpty: () => background.blurEmpty(),
+					blurContent: () => background.blurContent(),
 					subscribe: (listener) => background.subscribe(listener),
-					set: (opacity) => background.set(opacity)
+					set: (opacity) => background.set(opacity),
+					setBlurEmpty: (value) => background.setBlurEmpty(value),
+					setBlurContent: (value) => background.setBlurContent(value),
+					dispose: () => background.dispose()
 				}
 			});
-			ctx.slots.inject("web-ui.plugin.item", () => ctx.slots.register({
-				name: "web-ui.plugin.item",
-				id: "skins",
-				order: 110,
-				locale: NS,
+			ctx.slots.inject("settings.section", () => ctx.slots.register({
+				name: "settings.section",
+				id: "skin-center",
+				order: 120,
+				label: () => ctx.locale.bind("skinCenter")("title"),
+				locale: "skinCenter",
 				inject: injected
-			}, SkinCenter));
+			}, SkinCenterSection));
 		}
 		//#endregion
 		exports.NS = NS;

@@ -7,6 +7,13 @@
    is themed by the active (or tried-on) skin automatically. Never use bare
    hex here: a token-less rule is a light-theme-only bug. */
 
+/* The section wrapper: one list that stacks the skin-center card rows. */
+body[data-dsh-skin-center] .sectionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 /* The plugin card itself: one disclosure card in the Web UI plugin group. */
 body[data-dsh-skin-center] .pluginCard {
   list-style: none;
@@ -20,30 +27,12 @@ body[data-dsh-skin-center] .pluginCard:hover {
   border-color: var(--dsw-alias-label-dimmed);
 }
 
-body[data-dsh-skin-center] .pluginCardOpen {
-  background: var(--dsw-alias-bg-layer-2);
-  border-color: var(--dsw-alias-label-dimmed);
-}
-
-body[data-dsh-skin-center] .cardHeader {
-  appearance: none;
+body[data-dsh-skin-center] .cardHeaderStatic {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
   padding: 14px 16px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-body[data-dsh-skin-center] .cardHeader:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
-  outline-offset: -2px;
 }
 
 body[data-dsh-skin-center] .headText {
@@ -68,17 +57,6 @@ body[data-dsh-skin-center] .cardDescription {
   font-size: 13px;
   line-height: 1.5;
   color: var(--dsw-alias-label-tertiary);
-}
-
-body[data-dsh-skin-center] .chevron,
-body[data-dsh-skin-center] .chevronOpen {
-  flex: none;
-  color: var(--dsw-alias-label-tertiary);
-  transition: transform 0.16s;
-}
-
-body[data-dsh-skin-center] .chevronOpen {
-  transform: rotate(180deg);
 }
 
 body[data-dsh-skin-center] .cardBody {
@@ -289,6 +267,76 @@ body[data-dsh-skin-center] .error {
   color: var(--dsw-alias-state-error-primary, #b42318);
 }
 
+body[data-dsh-skin-center] .enableRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+body[data-dsh-skin-center] .enableLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary, #172a45);
+}
+
+body[data-dsh-skin-center] .enableHint {
+  flex: 1;
+  min-width: 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+}
+
+body[data-dsh-skin-center] .switch {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  width: 40px;
+  height: 22px;
+  padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l3, #cbd5e1);
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-3, #e2e8f0);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+body[data-dsh-skin-center] .switchOn {
+  border-color: var(--dsw-alias-brand-primary, #2b7cd9);
+  background: var(--dsw-alias-brand-primary, #2b7cd9);
+}
+
+body[data-dsh-skin-center] .switch:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #2b7cd9);
+  outline-offset: 2px;
+}
+
+body[data-dsh-skin-center] .switchThumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-primary-foreground, #ffffff);
+  box-shadow: 0 0 0 1px var(--dsw-alias-border-l4, rgb(15 23 42 / 0.12));
+  transform: translateX(0);
+  transition: transform 120ms ease;
+}
+
+body[data-dsh-skin-center] .switchOn .switchThumb {
+  transform: translateX(18px);
+}
+
+body[data-dsh-skin-center] .offNote {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+}
+
 body[data-dsh-skin-center] .backgroundRow {
   display: flex;
   flex-direction: column;
@@ -369,11 +417,10 @@ body[data-dsh-skin-center] .backgroundHintMuted {
 /* Respect users who disable motion: no transitioned state changes. */
 @media (prefers-reduced-motion: reduce) {
   body[data-dsh-skin-center] .pluginCard,
-  body[data-dsh-skin-center] .cardHeader,
   body[data-dsh-skin-center] .themeButton,
   body[data-dsh-skin-center] .button,
-  body[data-dsh-skin-center] .chevron,
-  body[data-dsh-skin-center] .chevronOpen {
+  body[data-dsh-skin-center] .switch,
+  body[data-dsh-skin-center] .switchThumb {
     transition: none;
   }
 }

@@ -106,7 +106,12 @@ describe('FsService.readRaw (markdown image route)', () => {
 
     const image = await service.readRaw(root, 'assets/pic.png')
     expect(image).toMatchObject({ mime: 'image/png', size: png.length })
-    if ('abs' in image) expect(image.abs.endsWith(join('assets', 'pic.png'))).toBe(true)
+    if ('abs' in image) {
+      expect(image.abs.endsWith(join('assets', 'pic.png'))).toBe(true)
+      // mtime feeds the route's ETag/Last-Modified validators.
+      expect(typeof image.mtime).toBe('number')
+      expect(image.mtime).toBeGreaterThan(0)
+    }
     expect(await service.readRaw(root, 'a.md')).toMatchObject({ mime: 'application/octet-stream' })
 
     await rm(dir, { recursive: true, force: true })
@@ -124,7 +129,11 @@ describe('FsService.readRaw (markdown image route)', () => {
 
     const byExt = await service.readRaw(root, 'docs/doc.pdf')
     expect(byExt).toMatchObject({ mime: 'application/pdf', size: pdf.length })
-    if ('abs' in byExt) expect(byExt.abs.endsWith(join('docs', 'doc.pdf'))).toBe(true)
+    if ('abs' in byExt) {
+      expect(byExt.abs.endsWith(join('docs', 'doc.pdf'))).toBe(true)
+      expect(typeof byExt.mtime).toBe('number')
+      expect(byExt.mtime).toBeGreaterThan(0)
+    }
     expect(await service.readRaw(root, 'docs/noext')).toMatchObject({ mime: 'application/pdf' })
 
     await rm(dir, { recursive: true, force: true })

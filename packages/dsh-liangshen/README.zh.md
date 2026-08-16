@@ -23,7 +23,8 @@ preset 在参考机制之上内置了额外保护，全部在 `agent.cordis.yml`
 - `promoteAfterFirstResponse`：首轮无工具调用的回答在响应后自动晋升；锚定门控中的会话也会在首轮结束时（`turn/end`）释放，因此新用户轮次一开始就拿到晋升后的目录；
 - `promotedPresentation: code`：晋升后 wire 为 Code Mode（PTC）——一个 `run_code` 工具、完整注册表通过生成 SDK 调用；切换发生在 step 边界，不会打断当前步的原生工具调用；
 - `deferredSources` + `deferredGraceSteps`：workspace 指令与 skill 目录在晋升后再等一步注入，工具目录切换和注入冲击不同时落地；
-- `bootstrapMaxTokens`：phase 1 请求的输出预算封顶（社区实测 `max_tokens=1024` 是 "We need" 轨迹的高命中窗口，DSH 默认 256k 命中率为 0），晋升后自动剥离该封顶，避免 `requestProposal` 把 1024 焊进后续每个请求。
+- `bootstrapMaxTokens`：phase 1 请求的输出预算封顶（社区实测 `max_tokens=1024` 是 "We need" 轨迹的高命中窗口，DSH 默认 256k 命中率为 0），晋升后自动剥离该封顶，避免 `requestProposal` 把 1024 焊进后续每个请求；
+- `phase1FirstCallInstruction`：追加到 phase-1 persona 的可选一行指令，默认关闭：测试版本用它要求模型在正式作答前先做一次 Minimal 原生工具调用，让首轮能力类提问在晋升后的完整目录下作答，而不是基于被裁剪的双工具视图回答。因为它偏离了逐字节一致的 Minimal 表面，所以默认不开启。
 
 已支持 plan mode：phase 1 会把 prompt sections 过滤为仅剩一行 `deployment:persona`，晋升后恢复全部 sections 并在 persona 末尾追加所选工作区路径，因此 Agent 明确自己的工作目录，plan-mode 的 `plan:policy` 也在晋升后的每一步都生效。
 
@@ -68,6 +69,7 @@ node tools/analyze-session.mjs <导出的 session.jsonl>
 - workspace 指令、skill 目录与运行时快照在首轮不注入；快照随 PTC 目录出现，前两者再晚一步出现；
 - phase 1 文件工具继承宿主文件沙箱（不挂载裸 `dsh-fs-local`）；
 - phase 1 的持久 `bash` 会替代 Standard 的一次性 shell 直到会话结束（两个工具都注册 `bash` 名字）；
+- phase 1 有意只显示 Minimal 双工具，因此首轮能力类提问（如「你能联网吗」）可能基于被裁剪的视图作答、晋升后再被纠正；可开启 `phase1FirstCallInstruction`（见稳定化控制）要求先做一次 grounding 工具调用，或首轮直接问任务类问题避免该错位；
 - 工具目录只变化一次，因此第一、二次请求之间会发生一次前缀缓存变化；
 - preset 与 shell 访问具有相同信任等级，安装前可自行审阅 `presets/`；
 - 插件不发起网络请求，也不增加遥测；

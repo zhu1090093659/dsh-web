@@ -223,6 +223,18 @@ export interface ExplorerStore extends StateHandle<ExplorerState> {
   cancelSearch: () => void
   /** Refetch every expanded dir + active search after a host change event. */
   handleFsChange: () => void
+  /** Reveal a path in the OS file manager (right-click menu). */
+  revealInFileManager: (rel: string) => Promise<boolean>
+  /** Open a path with the OS default app (files only, right-click menu). */
+  openWithDefaultApp: (rel: string) => Promise<boolean>
+  /** Rename a path (newName is a bare name). */
+  renameEntry: (rel: string, newName: string) => Promise<boolean>
+  /** Create a directory at rel (parent dirs untouched). */
+  createDir: (rel: string) => Promise<boolean>
+  /** Create an empty file at rel. */
+  createFile: (rel: string) => Promise<boolean>
+  /** Delete a path (recursive for directories). */
+  deleteEntry: (rel: string) => Promise<boolean>
 }
 
 /** Read the persisted explorer UI state for a root (range-guarded). */
@@ -433,6 +445,80 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
       handle.update((prev) => (
         prev.search.query === '' ? prev : { ...prev, search: { ...EMPTY_SEARCH, mode: prev.search.mode } }
       ))
+    },
+    async revealInFileManager(rel: string) {
+      const root = handle.getSnapshot().root
+      if (root === '') return false
+      const result = await api.reveal(root, rel)
+      return result.ok
+    },
+    async openWithDefaultApp(rel: string) {
+      const root = handle.getSnapshot().root
+      if (root === '') return false
+      const result = await api.openWithDefault(root, rel)
+      return result.ok
+    },
+    async renameEntry(rel: string, newName: string) {
+      const root = handle.getSnapshot().root
+      if (root === '' || rel === '') return false
+      const result = await api.rename(root, rel, newName)
+      if (result.ok) {
+        // Drop the old subtree, move the selection to the new path, and
+        // forget the expansion of the renamed dir (its cache is gone).
+        handle.update((prev) => {
+          const parent = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : ''
+          const newRel = parent === '' ? newName : `${parent}/${newName}`
+          const next: ExplorerState = {
+            ...prev,
+            dirs: dropSubtree(prev.dirs, rel),
+            expanded: prev.expanded.filter((item) => item !== rel),
+          }
+          if (prev.selected === rel) next.selected = newRel
+          return next
+        })
+        void this.handleFsChange()
+      }
+      return result.ok
+    },
+    async createDir(rel: string) {
+      const root = handle.getSnapshot().root
+      if (root === '') return false
+      const result = await api.mkdir(root, rel)
+      if (result.ok) {
+        // Expand the parent so the new directory shows up immediately.
+        const parent = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : ''
+        const state = handle.getSnapshot()
+        if (parent !== '' && !state.expanded.includes(parent)) this.toggleDir(parent)
+        void this.handleFsChange()
+      }
+      return result.ok
+    },
+    async createFile(rel: string) {
+      const root = handle.getSnapshot().root
+      if (root === '') return false
+      const result = await api.newFile(root, rel)
+      if (result.ok) {
+        // Expand the parent so the new file shows up immediately.
+        const parent = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : ''
+        const state = handle.getSnapshot()
+        if (parent !== '' && !state.expanded.includes(parent)) this.toggleDir(parent)
+        void this.handleFsChange()
+      }
+      return result.ok
+    },
+    async deleteEntry(rel: string) {
+      const root = handle.getSnapshot().root
+      if (root === '' || rel === '') return false
+      const result = await api.delete(root, rel)
+      if (result.ok) {
+        handle.update((prev) => ({
+          ...prev,
+          selected: prev.selected === rel || prev.selected?.startsWith(rel + '/') ? null : prev.selected,
+          dirs: dropSubtree(prev.dirs, rel),
+        }))
+        void this.handleFsChange()
+      }
+      return result.ok
     },
     async handleFsChange() {
       const state = handle.getSnapshot()

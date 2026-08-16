@@ -101,4 +101,9 @@ pnpm docs:write-pair <包目录名>   # 如 dsh-ssh 或 qq98
 ## Issue 与讨论
 
 - Bug / 功能请求用 [Issue 模板](.github/ISSUE_TEMPLATE/standard_issue.yml) 提交；
-- 社区交流见根 README 的「社区」小节。
+- 社区交流见根 README 的「社区」小节；
+- 提 Issue 前先按标签检索（`bug` / `enhancement` / `question` /
+  `good first issue` / `duplicate`）并搜索关键词，确认没有重复再提交；
+- 标签体系、分类标准与关闭流程见 [ISSUE_TRIAGE.md](ISSUE_TRIAGE.md)；
+- 已解决、重复或已回答的 Issue 会被维护者关闭并附说明，如需继续跟进请
+  在评论区说明或重开。

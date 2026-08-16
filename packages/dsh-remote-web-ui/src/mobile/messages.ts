@@ -68,6 +68,20 @@ export interface RenderMessage {
   readonly toolSummary?: string
   /** Set when the owning turn ended in an error. */
   readonly failed?: boolean
+  /**
+   * Token usage reported by the final assistant event. cacheReadTokens and
+   * cacheWriteTokens are only attached when the wire carried finite values.
+   */
+  readonly usage?: {
+    inputTokens: number
+    outputTokens: number
+    cacheReadTokens?: number
+    cacheWriteTokens?: number
+  }
+  /** Context window for the model that produced this message (from request/context). */
+  readonly contextWindow?: number
+  /** Wire source.kind of a user message (e.g. plugin or user). */
+  readonly sourceKind?: string
 }
 
 /** One tool call attached to an assistant message (callId dedupes repeats). */
@@ -199,6 +213,8 @@ interface FoldState {
   messageTurn: Map<string, number>
   /** Deduped tool names per assistant message id. */
   toolNames: Map<string, Set<string>>
+  /** Context window for the current model (from request/context). */
+  contextWindow?: number
 }
 
 function createState(existing: readonly RenderMessage[] | undefined): FoldState {
@@ -294,6 +310,14 @@ function applyEvent(state: FoldState, event: WireEvent): void {
     case 'tool/call':
       applyToolCall(state, event)
       break
+    case 'request/context': {
+      // Wire shape: { provider, model, contextWindow? }. A present finite
+      // contextWindow seeds every later assistant message that reports usage.
+      const data = isRecord(event.data) ? event.data : {}
+      const window = pickNumber(data['contextWindow'])
+      if (window !== undefined) state.contextWindow = window
+      break
+    }
     // turn/start, session/end-seed, and every other/unknown type render nothing.
     default:
       break
@@ -304,13 +328,28 @@ function applyUserMessage(state: FoldState, event: WireEvent): void {
   const data = isRecord(event.data) ? event.data : {}
   const id = pickString(data['id']) ?? syntheticId('user', event.seq)
   const text = textFromContent(data['content'])
+  const source = isRecord(data['source']) ? data['source'] : {}
+  const sourceKind = pickString(source['kind'])
   const existing = state.byId.get(id)
   if (existing !== undefined) {
     // Idempotent replace (replayed events update in place, never duplicate).
-    replaceMessage(state, existing, { ...existing, text, seq: event.seq, time: event.time })
+    replaceMessage(state, existing, {
+      ...existing,
+      ...(sourceKind !== undefined ? { sourceKind } : {}),
+      text,
+      seq: event.seq,
+      time: event.time,
+    })
     return
   }
-  const message: RenderMessage = { id, kind: 'user', text, seq: event.seq, time: event.time }
+  const message: RenderMessage = {
+    id,
+    kind: 'user',
+    text,
+    ...(sourceKind !== undefined ? { sourceKind } : {}),
+    seq: event.seq,
+    time: event.time,
+  }
   state.messages.push(message)
   state.byId.set(id, message)
 }
@@ -324,6 +363,8 @@ function applyAssistantMessage(state: FoldState, event: WireEvent): void {
   const finalText = textFromContent(messageData['content'])
   const finalReasoning = reasoningFromContent(messageData['content'])
   const key = tsKey(turn, step)
+  const usage = usageFromData(data)
+  const contextWindow = state.contextWindow
 
   // Finalize the matching assistant message (by id, or by turn/step for the
   // streaming partial that chunks built before the final event arrived).
@@ -338,6 +379,8 @@ function applyAssistantMessage(state: FoldState, event: WireEvent): void {
       // The final content block list is authoritative; an adapter that omits
       // reasoning from the final message keeps the streamed reasoning text.
       ...(finalReasoning !== '' ? { reasoning: finalReasoning } : {}),
+      ...(usage !== undefined ? { usage } : {}),
+      ...(usage !== undefined && contextWindow !== undefined ? { contextWindow } : {}),
       seq: event.seq,
       time: event.time,
       pending: false,
@@ -353,6 +396,8 @@ function applyAssistantMessage(state: FoldState, event: WireEvent): void {
     kind: 'assistant',
     text: finalText,
     ...(finalReasoning !== '' ? { reasoning: finalReasoning } : {}),
+    ...(usage !== undefined ? { usage } : {}),
+    ...(usage !== undefined && contextWindow !== undefined ? { contextWindow } : {}),
     seq: event.seq,
     time: event.time,
   }
@@ -363,6 +408,25 @@ function applyAssistantMessage(state: FoldState, event: WireEvent): void {
     state.turnStepMessage.set(key, message)
   }
   if (turn !== undefined) state.messageTurn.set(id, turn)
+}
+
+/**
+ * Extract token usage from an assistant event payload. Only attaches when the
+ * wire carries finite `inputTokens` AND `outputTokens`; the cache fields are
+ * included only for finite numbers.
+ */
+function usageFromData(data: Record<string, unknown>): { inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number } | undefined {
+  const usageData = data['usage']
+  if (!isRecord(usageData)) return undefined
+  const inputTokens = pickNumber(usageData['inputTokens'])
+  const outputTokens = pickNumber(usageData['outputTokens'])
+  if (inputTokens === undefined || outputTokens === undefined) return undefined
+  const usage: { inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number } = { inputTokens, outputTokens }
+  const cacheReadTokens = pickNumber(usageData['cacheReadTokens'])
+  const cacheWriteTokens = pickNumber(usageData['cacheWriteTokens'])
+  if (cacheReadTokens !== undefined) usage.cacheReadTokens = cacheReadTokens
+  if (cacheWriteTokens !== undefined) usage.cacheWriteTokens = cacheWriteTokens
+  return usage
 }
 
 function applyChunk(state: FoldState, event: WireEvent): void {

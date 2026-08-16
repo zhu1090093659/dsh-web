@@ -2,12 +2,14 @@
 
 English | [中文](README.zh.md)
 
-`@linxin666/dsh-client-ui-skin-center` (cordis plugin id `ui-skin-center`) embeds the skin list / try-on / apply into the plugin configuration page of the real dsh Web GUI, as a card in the "Web UI plugins" group (settings → plugin config → Web UI plugins → 皮肤中心 / Skin Center), sharing the same slot (`web-ui.plugin.item`) as the family plugins such as task-board / pet / live-stats, without taking a top-level settings nav item.
+`@linxin666/dsh-client-ui-skin-center` (cordis plugin id `ui-skin-center`) puts the skin list / try-on / apply into the real dsh Web GUI as a first-level settings section (settings → 皮肤中心 / Skin Center), a sibling nav item of General / Models / Plugins / Agent presets and of the Web UI Plugins group and Pet sections. The card carries its own enable switch (off disables try-on, apply and the background controls).
 
 - List: shows "官方默认" (official default) plus every skin in the repo (qq98 / ths / xp / blue-fantasy / dragon-heir / minecraft) with its name, tagline, and accent color; the currently active target carries the Active marker.
 - Try-on: clicking "Try on" loads that skin's client bundle on demand — the host route `/api/skin-center/bundle/<id>` serves `lib/client.js` as a same-origin script (the same mechanism the core uses to load plugins), the factory registers with the page's own `window.__ModuleLoader__`, and `window.__DSH_MODULES__.import` materializes it (a real loader, not a simulator and no eval); the chrome takes effect immediately; light/dark switching rides the official theme service; "Exit try-on" restores everything — the current skin's styles, DOM, favicon, title, and body inline styles are all restored. "官方默认" (official default) can also be tried on: one click immediately withdraws the skin and returns to the official look preview.
 - Mutual exclusion: during try-on, the active skin's visual writes (body attribute, background inline styles, chrome child nodes, xp's footer taskbar) are temporarily withdrawn per the prescription, and restored verbatim on exit; only one skin is on the page at a time.
 - Apply: the host half (`src/index.ts` + `src/routes.ts`) exposes `/api/skin-center/apply` and `/api/skin-center/bundle/<id>` (serves skin bundles on demand); clicking "Apply / 恢复默认" (Apply / Restore default) runs the embedded in-process `dsh-skin use` port (`src/skin-switch.ts`) server-side, writes `<harness-home>/cordis.patch.yml`, and the DSH config watcher hot-loads it within seconds and the page auto-refreshes — **no dsh web restart, no copying a command, no `dsh-skin` binary on PATH**. On failure the error message includes a terminal fallback command. Harness home follows the dsh launcher: an injected HOME maps to `<home>/.dsh`, else a trimmed non-empty `$DSH_HOME` is used directly, else `~/.dsh`. The target profile resolves as: explicit option, then `$DSH_SKIN_PROFILE`, then `$DSH_PROFILE`, then `process.cwd()` when it is a directory directly under `<harness-home>/profiles/<name>`, then `web`. Windows compatibility: the same resolution rules apply with no `$HOME` or fixed paths, and profile links fall back to directory junctions when symlink privileges are missing.
+
+- Background controls: a background-occlusion slider (0–100%) veils the backdrop behind the panels for skins that paint one (blue-fantasy / whale-song), plus two per-state Gaussian-blur sliders (0–20 px) — 空对话 (blur when the conversation is empty) and 有对话 (blur once it has content). The active blur is applied through a fixed `backdrop-filter` element behind the shell; 0 disables it entirely (no element, no GPU cost). These apply only to skins that paint a backdrop; the official default has none.
 
 ## Install (official plugin bundle)
 
@@ -39,7 +41,7 @@ skins/skin-center/
   src/index.ts                                       # host side: registers /api/skin-center/* routes
   src/routes.ts                                      # host routes (proxy to the dsh-skin CLI)
   src/invariant.ts                                   # invariant companion plugin (no assertions)
-  src/client/index.ts                                # apply: registers the Web UI plugin-group card + body scope
+  src/client/index.ts                                # apply: registers the first-level settings section + body scope
   src/client/SkinCenter.tsx                          # card component (official default + list/try-on/light-dark/one-click apply)
   src/client/try-on.ts                               # try-on engine (real loader + mutual-exclusion restore, incl. official try-on)
   src/client/locales.ts                              # en/zh copy
@@ -82,7 +84,7 @@ ln -sfn ~/code/dsh-web-ui/packages/skins/skin-center \
 #       - id: ui-skin-center
 #         name: '@linxin666/dsh-client-ui-skin-center'
 
-# 3. the config watcher hot-loads in seconds; refresh the page to see the skin-center card in 插件配置 → Web UI 插件
+# 3. the config watcher hot-loads in seconds; refresh the page to see the skin-center section in 设置 → 皮肤中心
 ```
 
 ## Try-on mutual-exclusion restore prescription (try-on.ts)
@@ -96,7 +98,7 @@ Exit try-on = try-on skin disposer (real code path) → module invalidate + styl
 
 ## Acceptance checklist (top-level README contract)
 
-- [x] The skin-center card appears in 插件配置 → Web UI 插件 without console errors
+- [x] The skin-center section appears in 设置 → 皮肤中心 without console errors
 - [x] The list contains the official default plus all skins; the currently active one is marked
 - [x] Try-on really takes effect (chrome/background/title/favicon); light/dark correct; the official default can be tried on
 - [x] Exit fully restores; mutual exclusion (no two title bars)

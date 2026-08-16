@@ -26,7 +26,7 @@ import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createPetStore, type PetStoreInstance } from './pet-store.ts'
 import { PetDockEntry, type PetInjected } from './PetDockEntry.tsx'
-import { PetSettingsCard, PetSettingsCardController, type PetSettings } from './PetSettingsCard.tsx'
+import { PetSettingsSection, PetSettingsCardController, type PetSettings } from './PetSettingsCard.tsx'
 import { NS, en, zh, t } from './locales.ts'
 
 /** The host pet API as the browser sees it (same-origin JSON endpoints). */
@@ -80,25 +80,8 @@ export type { PetInjected, PetDockEntryProps } from './PetDockEntry.tsx'
 export type { PetSpriteProps } from './PetSprite.tsx'
 export type { PetUiState, PetFeedback } from './pet-store.ts'
 export type { PetSettingsCardFace, PetSettingsCardState } from './PetSettingsCard.tsx'
+export type { PetSettingsSectionProps } from './PetSettingsCard.tsx'
 export type { PetDefinition } from '../registry.ts'
-
-declare module '@deepseek-ai/dsh-client-ui-slots' {
-  interface SlotMap {
-    /**
-     * The child slot the Web UI plugin group declares; this card registers
-     * into the group instead of the top-level 'settings.plugin.item' list.
-     * Spelled here with the same shape so this package can register without
-     * depending on the sibling UI package.
-     */
-    'web-ui.plugin.item': { kind: 'list'; scope: 'root'; owner: SettingsPluginItemOwnerProps }
-  }
-}
-
-/** Owner share of a plugin card (the group card supplies nothing). */
-export interface SettingsPluginItemOwnerProps {
-  /** Marker field: card owner props are intentionally empty. */
-  children?: never
-}
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -113,8 +96,8 @@ declare module '@deepseek-ai/cordis' {
 
 /**
  * Client plugin body: register dictionaries, mount the global pet entry and
- * poll loop while the plugin is enabled, and seat the settings card in the
- * Web UI plugin group.
+ * poll loop while the plugin is enabled, and seat the settings card as a
+ * first-level settings section.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
@@ -129,17 +112,18 @@ export function apply(ctx: ClientContext): void {
       : snapshot.status === 'unavailable'
   }
 
-  // Plugin configuration card: one staged form over the 'pet' settings
-  // namespace, contributed to the Web UI plugin group. The controller loads
+  // First-level settings section: one staged form over the 'pet' settings
+  // namespace, registered as a top-level settings page. The controller loads
   // the petId choices from the registry endpoint itself.
   const petSettings = new PetSettingsCardController(settingsScope)
-  ctx.slots.inject('web-ui.plugin.item', () => ctx.slots.register({
-    name: 'web-ui.plugin.item',
-    id: 'pet-settings',
-    order: 140,
-    locale: NS,
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section',
+    id: 'pet',
+    order: 130,
+    label: () => ctx.locale.bind('pet')('settings.title'),
+    locale: 'pet',
     inject: () => petSettings.inject(),
-  }, PetSettingsCard))
+  }, PetSettingsSection))
 
   // The global pet entry, its store, and the poll loop live while the plugin
   // is enabled; toggling the setting off hides the pet and stops polling.

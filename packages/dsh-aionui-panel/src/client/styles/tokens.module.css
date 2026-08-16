@@ -430,6 +430,24 @@
   background: var(--aion-bg-3);
 }
 
+/* Prompt dialog text input. */
+:global(.aionui-input) {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--aion-bg-3);
+  border-radius: 6px;
+  background: var(--aion-bg-base);
+  color: var(--aion-text-primary);
+  font-size: 13px;
+  font-family: var(--aion-font-sans);
+  outline: none;
+  box-sizing: border-box;
+}
+:global(.aionui-input:focus) {
+  border-color: var(--aion-primary);
+}
+
 /* Toast. */
 :global(.aionui-toast) {
   position: fixed;

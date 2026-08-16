@@ -1,12 +1,12 @@
 /**
- * The skin-center plugin card: one disclosure card inside the Web UI plugin
- * group (插件配置 → Web UI 插件), listing every installed skin plus the
- * official stock look. Live try-on executes the real bundle inside the GUI
- * (light/dark preview, full restore on exit); Apply is one click — the host
- * half runs `dsh-skin use` through /api/skin-center/apply, the config
- * watcher hot-reloads the patch, and the page reloads into the new skin.
- * Copy rides the standard `t` seat; the theme preview control drives the
- * official theme service (persisted, same as the Appearance row).
+ * The skin-center card: rendered as the content of a first-level settings
+ * section, listing every installed skin plus the official stock look. Live
+ * try-on executes the real bundle inside the GUI (light/dark preview, full
+ * restore on exit); Apply is one click — the host half runs `dsh-skin use`
+ * through /api/skin-center/apply, the config watcher hot-reloads the patch,
+ * and the page reloads into the new skin. Copy rides the standard `t` seat;
+ * the theme preview control drives the official theme service (persisted,
+ * same as the Appearance row).
  */
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -29,9 +29,9 @@ export interface SkinCenterInjected {
   background: SkinBackgroundHandle
 }
 
-/** Plugin-card component props: group-item runtime share + locale seat + injected face. */
+/** Plugin-card component props: locale seat + injected face. */
 export type SkinCenterComponentProps =
-  PropsRuntime<'web-ui.plugin.item'> & PropsLocale<'skinCenter'> & SkinCenterInjected
+  PropsLocale<'skinCenter'> & SkinCenterInjected
 
 /** The apply target of the official stock-look card. */
 const OFFICIAL = 'official'
@@ -40,19 +40,21 @@ const OFFICIAL = 'official'
 const BACKDROP_SKIN_IDS = new Set(['blue-fantasy', 'whale-song'])
 
 /**
- * Render the skin-center card: a disclosure header naming the plugin, with
- * the skin list (official default + every installed skin; try-on / theme
- * preview / one-click apply) inside its body.
+ * Render the skin-center card: a static header naming the plugin, with the
+ * always-visible skin list (official default + every installed skin; try-on /
+ * theme preview / one-click apply) rendered below it.
  * @param props - card props.
  * @returns the plugin card.
  */
 export function SkinCenter({ t, controller, theme, background }: SkinCenterComponentProps) {
   const snapshot = useSyncExternalStore(theme.subscribe, theme.getTheme)
+  const enabled = useSyncExternalStore(background.subscribe, background.enabled)
   const opacity = useSyncExternalStore(background.subscribe, background.opacity)
+  const blurEmpty = useSyncExternalStore(background.subscribe, background.blurEmpty)
+  const blurContent = useSyncExternalStore(background.subscribe, background.blurContent)
   const activePackage = activeSkinEntry()?.package
   const activeId = activeSkinEntry()?.id
   const backdropActive = activeId !== undefined && BACKDROP_SKIN_IDS.has(activeId)
-  const [open, setOpen] = useState(false)
   const [tryingId, setTryingId] = useState<string | null>(null)
   const [tryingOfficial, setTryingOfficial] = useState(false)
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -280,14 +282,8 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
   )
 
   return (
-    <li className={open ? `${css.pluginCard} ${css.pluginCardOpen}` : css.pluginCard}>
-      <button
-        type="button"
-        className={css.cardHeader}
-        aria-expanded={open}
-        aria-label={`${t(open ? 'collapse' : 'expand')}: ${t('title')}`}
-        onClick={() => { setOpen(current => !current) }}
-      >
+    <li className={css.pluginCard}>
+      <div className={css.cardHeaderStatic}>
         <span className={css.headText}>
           <span className={css.pluginName}>
             {t('title')}
@@ -295,127 +291,186 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
           </span>
           <span className={css.cardDescription} title={t('cardDescription')}>{t('cardDescription')}</span>
         </span>
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 14 14"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className={open ? `${css.chevron} ${css.chevronOpen}` : css.chevron}
-        >
-          <path
-            d="M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z"
-            fill="currentColor"
-          />
-        </svg>
-      </button>
+      </div>
 
-      {open
-        ? (
-          <div className={css.cardBody}>
-            <div className={css.head}>
-              <div className={css.intro} title={t('intro')}>{t('intro')}</div>
-              <div className={css.themeRow}>
-                <span className={css.themeLabel}>{t('theme')}</span>
-                <button
-                  type="button"
-                  className={`${css.themeButton} ${dark ? '' : css.themeButtonActive}`}
-                  onClick={() => { theme.setTheme('light') }}
-                >
-                  {t('themeLight')}
-                </button>
-                <button
-                  type="button"
-                  className={`${css.themeButton} ${dark ? css.themeButtonActive : ''}`}
-                  onClick={() => { theme.setTheme('dark') }}
-                >
-                  {t('themeDark')}
-                </button>
-              </div>
+      <div className={css.cardBody}>
+            <div className={css.enableRow}>
+              <span className={css.enableLabel} title={t('enabled')}>{t('enabled')}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={enabled}
+                aria-label={t('enabled')}
+                className={enabled ? css.switch + ' ' + css.switchOn : css.switch}
+                onClick={() => { background.setEnabled(!enabled) }}
+              >
+                <span className={css.switchThumb} />
+              </button>
+              <p className={css.enableHint}>{t('enabledHint')}</p>
             </div>
-
-            <div className={css.backgroundRow}>
-              <div className={css.backgroundHead}>
-                <span className={css.backgroundLabel}>{t('backgroundOpacity')}</span>
-                <span className={css.backgroundValue} aria-hidden="true">{opacity}%</span>
-              </div>
-              <input
-                id="skin-center-background-opacity"
-                className={css.backgroundRange}
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={opacity}
-                aria-valuetext={`${opacity}%`}
-                aria-label={t('backgroundOpacity')}
-                onChange={(event) => { background.set(Number(event.target.value)) }}
-              />
-              <p className={backdropActive ? css.backgroundHint : css.backgroundHintMuted}>
-                {backdropActive ? t('backgroundHint') : t('backgroundHintInert')}
-              </p>
-            </div>
-
-            {error !== null && <div className={css.error}>{error}</div>}
-
-            <div className={css.list}>
-              {(() => {
-                const isActive = activePackage === undefined
-                const isTrying = tryingOfficial
-                const badge = isActive ? t('active') : isTrying ? t('tryingOn') : null
-                return (
-                  <div className={css.card} key={OFFICIAL}>
-                    <div className={css.cardHead}>
-                      <span className={css.swatch} style={{ background: '#98a1ab' }} aria-hidden="true" />
-                      <span className={css.cardName} title={t('official')}>{t('official')}</span>
-                      {badge !== null && (
-                        <span className={`${css.badge} ${isActive ? css.badgeActive : css.badgeTrying}`}>
-                          {badge}
-                        </span>
-                      )}
+            {enabled
+              ? (
+                <>
+                  <div className={css.head}>
+                    <div className={css.intro} title={t('intro')}>{t('intro')}</div>
+                    <div className={css.themeRow}>
+                      <span className={css.themeLabel}>{t('theme')}</span>
+                      <button
+                        type="button"
+                        className={`${css.themeButton} ${dark ? '' : css.themeButtonActive}`}
+                        onClick={() => { theme.setTheme('light') }}
+                      >
+                        {t('themeLight')}
+                      </button>
+                      <button
+                        type="button"
+                        className={`${css.themeButton} ${dark ? css.themeButtonActive : ''}`}
+                        onClick={() => { theme.setTheme('dark') }}
+                      >
+                        {t('themeDark')}
+                      </button>
                     </div>
-                    <div className={css.cardTagline} title={t('officialTagline')}>{t('officialTagline')}</div>
-                    {actionButtons({
-                      key: OFFICIAL,
-                      isActive,
-                      isTrying,
-                      onTryOn: tryOnOfficial,
-                      applyLabel: t('restore'),
+                  </div>
+
+                  <div className={css.backgroundRow}>
+                    <div className={css.backgroundHead}>
+                      <span className={css.backgroundLabel}>{t('backgroundOpacity')}</span>
+                      <span className={css.backgroundValue} aria-hidden="true">{opacity}%</span>
+                    </div>
+                    <input
+                      id="skin-center-background-opacity"
+                      className={css.backgroundRange}
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={opacity}
+                      aria-valuetext={`${opacity}%`}
+                      aria-label={t('backgroundOpacity')}
+                      onChange={(event) => { background.set(Number(event.target.value)) }}
+                    />
+                    <p className={backdropActive ? css.backgroundHint : css.backgroundHintMuted}>
+                      {backdropActive ? t('backgroundHint') : t('backgroundHintInert')}
+                    </p>
+                  </div>
+                  <div className={css.backgroundRow}>
+                    <div className={css.backgroundHead}>
+                      <span className={css.backgroundLabel}>{t('backgroundBlurEmpty')}</span>
+                      <span className={css.backgroundValue} aria-hidden="true">{blurEmpty}px</span>
+                    </div>
+                    <input
+                      id="skin-center-background-blur-empty"
+                      className={css.backgroundRange}
+                      type="range"
+                      min="0"
+                      max="20"
+                      step="1"
+                      value={blurEmpty}
+                      aria-valuetext={`${blurEmpty}px`}
+                      aria-label={t('backgroundBlurEmpty')}
+                      onChange={(event) => { background.setBlurEmpty(Number(event.target.value)) }}
+                    />
+                    <div className={css.backgroundHead}>
+                      <span className={css.backgroundLabel}>{t('backgroundBlurContent')}</span>
+                      <span className={css.backgroundValue} aria-hidden="true">{blurContent}px</span>
+                    </div>
+                    <input
+                      id="skin-center-background-blur-content"
+                      className={css.backgroundRange}
+                      type="range"
+                      min="0"
+                      max="20"
+                      step="1"
+                      value={blurContent}
+                      aria-valuetext={`${blurContent}px`}
+                      aria-label={t('backgroundBlurContent')}
+                      onChange={(event) => { background.setBlurContent(Number(event.target.value)) }}
+                    />
+                    <p className={backdropActive ? css.backgroundHint : css.backgroundHintMuted}>
+                      {backdropActive ? t('backgroundBlurHint') : t('backgroundBlurInert')}
+                    </p>
+                  </div>
+
+
+                  {error !== null && <div className={css.error}>{error}</div>}
+
+                  <div className={css.list}>
+                    {(() => {
+                      const isActive = activePackage === undefined
+                      const isTrying = tryingOfficial
+                      const badge = isActive ? t('active') : isTrying ? t('tryingOn') : null
+                      return (
+                        <div className={css.card} key={OFFICIAL}>
+                          <div className={css.cardHead}>
+                            <span className={css.swatch} style={{ background: '#98a1ab' }} aria-hidden="true" />
+                            <span className={css.cardName} title={t('official')}>{t('official')}</span>
+                            {badge !== null && (
+                              <span className={`${css.badge} ${isActive ? css.badgeActive : css.badgeTrying}`}>
+                                {badge}
+                              </span>
+                            )}
+                          </div>
+                          <div className={css.cardTagline} title={t('officialTagline')}>{t('officialTagline')}</div>
+                          {actionButtons({
+                            key: OFFICIAL,
+                            isActive,
+                            isTrying,
+                            onTryOn: tryOnOfficial,
+                            applyLabel: t('restore'),
+                          })}
+                        </div>
+                      )
+                    })()}
+
+                    {SKIN_CENTER_ENTRIES.map(entry => {
+                      const isActive = entry.package === activePackage
+                      const isTrying = entry.id === tryingId
+                      const badge = isActive ? t('active') : isTrying ? t('tryingOn') : null
+                      return (
+                        <div className={css.card} key={entry.id}>
+                          <div className={css.cardHead}>
+                            <span className={css.swatch} style={{ background: entry.accent }} aria-hidden="true" />
+                            <span className={css.cardName} title={entry.nameEn}>{entry.nameEn}</span>
+                            {badge !== null && (
+                              <span className={`${css.badge} ${isActive ? css.badgeActive : css.badgeTrying}`}>
+                                {badge}
+                              </span>
+                            )}
+                          </div>
+                          <div className={css.cardTagline} title={entry.tagline}>{entry.tagline}</div>
+                          {actionButtons({
+                            key: entry.id,
+                            isActive,
+                            isTrying,
+                            onTryOn: () => { tryOn(entry) },
+                            applyLabel: t('apply'),
+                          })}
+                        </div>
+                      )
                     })}
                   </div>
-                )
-              })()}
-
-              {SKIN_CENTER_ENTRIES.map(entry => {
-                const isActive = entry.package === activePackage
-                const isTrying = entry.id === tryingId
-                const badge = isActive ? t('active') : isTrying ? t('tryingOn') : null
-                return (
-                  <div className={css.card} key={entry.id}>
-                    <div className={css.cardHead}>
-                      <span className={css.swatch} style={{ background: entry.accent }} aria-hidden="true" />
-                      <span className={css.cardName} title={entry.nameEn}>{entry.nameEn}</span>
-                      {badge !== null && (
-                        <span className={`${css.badge} ${isActive ? css.badgeActive : css.badgeTrying}`}>
-                          {badge}
-                        </span>
-                      )}
-                    </div>
-                    <div className={css.cardTagline} title={entry.tagline}>{entry.tagline}</div>
-                    {actionButtons({
-                      key: entry.id,
-                      isActive,
-                      isTrying,
-                      onTryOn: () => { tryOn(entry) },
-                      applyLabel: t('apply'),
-                    })}
-                  </div>
-                )
-              })}
-            </div>
+                </>
+              )
+              : (
+                <p className={css.offNote} role="status">{t('offNote')}</p>
+              )}
           </div>
-        )
-        : null}
     </li>
+  )
+}
+
+/** Props the settings section binds for the skin-center card page. */
+export type SkinCenterSectionProps =
+  PropsRuntime<'settings.section'>
+  & PropsLocale<'skinCenter'>
+  & SkinCenterInjected
+
+/** Render the skin-center card as a first-level settings page. */
+export function SkinCenterSection(props: SkinCenterSectionProps): ReactNode {
+  const { t, controller, theme, background } = props
+  return (
+    <ul className={css.sectionList}>
+      <SkinCenter t={t} controller={controller} theme={theme} background={background} />
+    </ul>
   )
 }

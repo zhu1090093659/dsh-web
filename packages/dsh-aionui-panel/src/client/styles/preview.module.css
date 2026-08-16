@@ -421,6 +421,32 @@
   color: var(--aion-text-primary);
 }
 
+/* ── mermaid diagrams ──────────────────────────────────────────────────── */
+
+/* Container that replaces a claimed ```mermaid code block; the hidden <pre>
+   stays as the fallback source. Wide diagrams scroll inside the panel. */
+.mermaidBlock {
+  margin: 10px 0;
+  padding: 12px 14px;
+  background: var(--aion-bg-2);
+  border: 1px solid var(--aion-bg-3);
+  border-radius: 6px;
+  overflow-x: auto;
+  text-align: center;
+}
+
+.mermaidBlock svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Render-in-progress placeholder pulse before the SVG lands. */
+.mermaidBlock[data-mermaid-state='pending'],
+.mermaidBlock[data-mermaid-state='rendering'] {
+  min-height: 40px;
+  opacity: 0.6;
+}
+
 .mdViewer blockquote {
   margin: 10px 0;
   padding: 4px 14px;
@@ -471,41 +497,12 @@
   border-radius: 4px;
 }
 
-/* Code viewer: a full-bleed highlighted source view. The harness CodeBlock
-   supplies the shiki tokens; its language/copy banner and card chrome are
-   stripped below so the panel reads like a plain editor, not an embedded
-   markdown code block. */
+/* Code viewer (CodeBlock draws its own frame/padding). */
 .codeViewer {
   flex: 1;
   min-height: 0;
   overflow: auto;
-}
-
-.codeViewer :global(.md-code-block) {
-  margin: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-/* The banner (language label + copy button) is the block's first child div. */
-.codeViewer :global(.md-code-block > div:first-child) {
-  display: none;
-}
-
-.codeViewer :global(.md-code-block pre) {
-  margin: 0;
-  padding: 12px 14px;
-  background: transparent;
-  border-radius: 0;
-  color: var(--aion-text-primary);
-  white-space: pre;
-  word-break: normal;
-  overflow: visible;
-}
-
-/* Shiki inlines its theme background; route it to the panel surface. */
-.codeViewer :global(.md-code-block pre.shiki) {
-  background: transparent !important;
+  padding: 0;
 }
 
 /* Diff viewer. */

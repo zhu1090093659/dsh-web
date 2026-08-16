@@ -11,10 +11,18 @@
   &nbsp;
   <img src="https://img.shields.io/github/stars/zhu1090093659/dsh-web-ui?style=flat-square" alt="Stars">
   &nbsp;
+  <img src="https://img.shields.io/github/forks/zhu1090093659/dsh-web-ui?style=flat-square" alt="Forks">
+  &nbsp;
   <img src="https://img.shields.io/npm/v/@linxin666%2Fdsh-web-ui-all?style=flat-square&label=npm" alt="npm">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
+  <br>
+  <img src="https://github.com/zhu1090093659/dsh-web-ui/actions/workflows/ci.yml/badge.svg?style=flat-square&branch=main" alt="CI">
+  &nbsp;
+  <img src="https://img.shields.io/badge/coverage-pending-lightgrey?style=flat-square" alt="Coverage">
 </p>
+
+CI 门禁：typecheck / test / scripts / docs / 聚合与画廊一致性；覆盖率与代码风格（Prettier / ESLint）门禁待接入 CI。
 
 <p align="center">
   <strong>DeepSeek Harness（DSH）Web GUI 的插件与皮肤全家桶</strong><br>
@@ -50,6 +58,8 @@ dsh-web-ui 是给 DeepSeek Harness（DSH）Web GUI 用的插件和皮肤集合�
 ### 梁神模式
 
 DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standard / PTC 预设只有 91 / 92 分，Minimal 能到 99 / 96，但 Minimal 只有两个工具。梁神模式把这两步拼起来：新建会话时在预设选择器里选「梁神模式」，首轮按 Minimal 开局（只暴露持久 `bash` 与 `str_replace_editor`，只放行你自己的消息），轨迹锚定后自动切到 Code Mode（PTC），完整工具注册表、workspace 指令和 skill 目录随后恢复。Windows 原生环境实测（DeepSeek V4 Pro）98 / 99，均值 98.5，不是抽卡，也不需要牺牲完整工具能力。
+
+![梁神模式两阶段锚定效果对比（示意图，模拟渲染）](docs/images/liangshen-mode.png)
 
 原理、稳定化控制与限制详见 [dsh-liangshen README](packages/dsh-liangshen/README.zh.md)。
 
@@ -123,15 +133,19 @@ DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standa
 
 ### 设置中心
 
-全部插件的开关和参数都在「设置 > 插件配置」，改了即时生效；组里还有「社区插件」卡片，列出社区贡献者登记的插件并链到他们的仓库。
+全部插件的开关和参数都在「设置」里，改了即时生效。设置侧边栏的一级菜单：通用设置、模式、插件、Agent 预设，加上 Web UI 插件组（归组 task-board / live-stats / remote-web-ui / describe-image）、皮肤中心、社区插件与宠物，打开即直接展开内容、无需再点折叠；插件配置页保留三个内置插件（Shell / Agent loop / Web search），各自独立开关与配置。
 
-![插件配置中心](docs/screenshots/02-settings-web-ui-plugins.png)
+![设置中心](docs/screenshots/02-settings-web-ui-plugins.png)
 
 ## 皮肤
 
 皮肤中心有 10 款皮肤，都支持先试穿再应用：试穿即时生效、退出完全还原，满意再一键应用。
 
 ![皮肤中心](docs/screenshots/03-settings-skin-center.png)
+
+10 款皮肤一览（龙的传人 / 初音未来 · 电子歌姬 / 同花顺风格三款截图待补充）：
+
+![10 款皮肤一览](docs/images/skins-montage.png)
 
 ### Windows XP（Luna）
 

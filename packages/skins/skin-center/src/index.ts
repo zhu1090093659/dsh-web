@@ -30,8 +30,13 @@ export const inject = ['webServer']
  */
 export const SKIN_BACKGROUND_NAMESPACE = settingsNamespace('skin-background')
 
-/** Plugin-configuration fields for the main-interface background. */
+/**
+ * Plugin-configuration fields for the main-interface background, plus the
+ * master switch that turns the whole skin center on or off.
+ */
 export interface SkinBackgroundConfig {
+  /** Master switch for the skin center. */
+  enabled?: boolean
   /**
    * Background occlusion 0-100 (0 = no extra veil, 100 = fully obscured).
    * Skins that paint a backdrop image (blue-fantasy / whale-song) read the
@@ -39,11 +44,29 @@ export interface SkinBackgroundConfig {
    * look has no backdrop and is unaffected.
    */
   backgroundOpacity?: number
+  /**
+   * Gaussian blur (px, 0-20) applied to the backdrop while the conversation
+   * pane has no content (empty state). Painted only by skins that draw a
+   * backdrop; 0 disables the empty-state blur.
+   */
+  backgroundBlurEmpty?: number
+  /**
+   * Gaussian blur (px, 0-20) applied to the backdrop once the conversation
+   * pane has content. Painted only by skins that draw a backdrop; 0 disables
+   * the with-content blur.
+   */
+  backgroundBlurContent?: number
 }
 
-/** Runtime schema for SkinBackgroundConfig. */
+/**
+ * Runtime schema for SkinBackgroundConfig. Persists the master switch
+ * (`enabled`) alongside the background strength fields.
+ */
 export const SkinBackgroundConfigSchema: z<SkinBackgroundConfig> = z.object({
+  enabled: z.boolean().default(true),
   backgroundOpacity: z.number().min(0).max(100).step(5).default(0),
+  backgroundBlurEmpty: z.number().min(0).max(20).step(1).default(0),
+  backgroundBlurContent: z.number().min(0).max(20).step(1).default(0),
 })
 
 /**

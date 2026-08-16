@@ -219,4 +219,110 @@ describe('foldEvents', () => {
     foldEvents([makeEvent('assistant/message', assistantMessageData('a-1', 0, 0, 'world'), 1)], first)
     expect(JSON.stringify(first)).toBe(snapshot)
   })
+
+  it('request/context sets the context window used by a later assistant/message with usage', () => {
+    const events: WireEvent[] = [
+      makeEvent('request/context', { provider: 'fx', model: 'fx-1', contextWindow: 100_000 }, 0),
+      makeEvent('user/message', userMessageData('u-1', 'hi'), 1),
+      makeEvent('assistant/message', {
+        turn: 0,
+        step: 0,
+        message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+        usage: { inputTokens: 10, outputTokens: 5 },
+      }, 2),
+    ]
+    const result = foldEvents(events)
+    const assistant = result.find(message => message.kind === 'assistant')
+    expect(assistant).toMatchObject({
+      usage: { inputTokens: 10, outputTokens: 5 },
+      contextWindow: 100_000,
+    })
+  })
+
+  it('usage without a context window carries no contextWindow', () => {
+    const events: WireEvent[] = [
+      makeEvent('user/message', userMessageData('u-1', 'hi'), 0),
+      makeEvent('assistant/message', {
+        turn: 0,
+        step: 0,
+        message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+        usage: { inputTokens: 10, outputTokens: 5 },
+      }, 1),
+    ]
+    const result = foldEvents(events)
+    const assistant = result.find(message => message.kind === 'assistant')
+    expect(assistant).toMatchObject({ usage: { inputTokens: 10, outputTokens: 5 } })
+    expect(assistant?.contextWindow).toBeUndefined()
+  })
+
+  it('usage and contextWindow are both attached when request/context precedes the message', () => {
+    const events: WireEvent[] = [
+      makeEvent('request/context', { provider: 'fx', model: 'fx-1', contextWindow: 200_000 }, 0),
+      makeEvent('user/message', userMessageData('u-1', 'hi'), 1),
+      makeEvent('assistant/message', {
+        turn: 0,
+        step: 0,
+        message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+        usage: { inputTokens: 30, outputTokens: 2, cacheReadTokens: 8, cacheWriteTokens: 1 },
+      }, 2),
+    ]
+    const result = foldEvents(events)
+    const assistant = result.find(message => message.kind === 'assistant')
+    expect(assistant).toMatchObject({
+      usage: { inputTokens: 30, outputTokens: 2, cacheReadTokens: 8, cacheWriteTokens: 1 },
+      contextWindow: 200_000,
+    })
+  })
+
+  it('assistant/message without usage has no usage field', () => {
+    const events: WireEvent[] = [
+      makeEvent('user/message', userMessageData('u-1', 'hi'), 0),
+      makeEvent('assistant/message', { turn: 0, step: 0, message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: 'ok' }] } }, 1),
+    ]
+    const result = foldEvents(events)
+    const assistant = result.find(message => message.kind === 'assistant')
+    expect(assistant?.usage).toBeUndefined()
+    expect(assistant?.contextWindow).toBeUndefined()
+  })
+
+  it('attaches sourceKind from source.kind for a user message', () => {
+    const events: WireEvent[] = [
+      makeEvent('user/message', {
+        id: 'u-plugin',
+        role: 'user',
+        content: [{ type: 'text', text: '系统注入' }],
+        source: { kind: 'plugin', name: 'react-extension' },
+      }, 0),
+    ]
+    const result = foldEvents(events)
+    expect(result[0]).toMatchObject({ id: 'u-plugin', kind: 'user', sourceKind: 'plugin' })
+  })
+
+  it('keeps sourceKind on a replayed/replaced user/message', () => {
+    const first = foldEvents([makeEvent('user/message', {
+      id: 'u-1',
+      role: 'user',
+      content: [{ type: 'text', text: '第一版' }],
+      source: { kind: 'plugin' },
+    }, 0)])
+    const second = foldEvents([makeEvent('user/message', {
+      id: 'u-1',
+      role: 'user',
+      content: [{ type: 'text', text: '第二版' }],
+      source: { kind: 'plugin' },
+    }, 1)], first)
+    expect(second[0]).toMatchObject({ id: 'u-1', text: '第二版', sourceKind: 'plugin' })
+  })
+
+  it('request/context and unknown events are still ignored by the fold', () => {
+    const events: WireEvent[] = [
+      makeEvent('some/future-event', { nope: true }, 0),
+      makeEvent('request/context', { provider: 'fx', model: 'fx-1' }, 1),
+      makeEvent('user/message', userMessageData('u-1', '真实消息'), 2),
+    ]
+    const result = foldEvents(events)
+    // request/context with no window and the unknown event render nothing.
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ id: 'u-1', kind: 'user' })
+  })
 })

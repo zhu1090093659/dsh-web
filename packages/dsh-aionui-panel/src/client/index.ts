@@ -25,6 +25,7 @@ import { mountPanels } from './mount.tsx'
 import { NS, dictionaries, setLanguage, type AionUiPanelKey } from './locales.ts'
 import { DragFileInlay, type DragFileInjected } from './drag/DragFileInlay.tsx'
 import { insertPathIntoDraft } from './drag/file-drag.ts'
+import { MermaidChatEnhancer } from './chat/mermaid-chat.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -68,6 +69,18 @@ export function apply(ctx: ClientContext): void {
           },
         }),
       }, DragFileInlay))
+  })
+
+  // Transcript mermaid enhancement rides the same dock as a zero-render
+  // sentinel: the shell has no message-body slot, so the sentinel observes
+  // the document for the chat renderer's `code.language-mermaid` blocks.
+  ctx.inject(['slots'], (scope: ClientContext) => {
+    scope.slots.inject('conversation.input.dock', () =>
+      scope.slots.register({
+        name: 'conversation.input.dock',
+        id: 'aionui-mermaid-chat',
+        order: 91,
+      }, MermaidChatEnhancer))
   })
 
   ctx.effect(() => {

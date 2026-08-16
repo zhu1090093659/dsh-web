@@ -12,6 +12,11 @@
     - id: ui-web-ui-settings
       name: '@linxin666/dsh-client-ui-web-ui-settings'
 
+# from ../dsh-community-plugins
+- insert:
+    - id: ui-community-plugins
+      name: '@linxin666/dsh-client-ui-community-plugins'
+
 # from ../dsh-aionui-panel
 - insert:
     - id: ui-dsh-aionui-panel

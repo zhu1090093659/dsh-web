@@ -163,6 +163,28 @@ describe('SchedulerService.tick', () => {
   })
 })
 
+describe('SchedulerService persisted refresh', () => {
+  it('re-reads the ledger before every fire decision', async () => {
+    let refreshCalls = 0
+    const h = makeHarness({ refresh: () => { refreshCalls += 1 } })
+    h.setTasks([scheduledTask('a', '* * * * *', at(2026, 1, 1, 10, 0, 0))])
+    await h.scheduler.tick()
+    await h.scheduler.tick()
+    expect(refreshCalls).toBe(2)
+  })
+
+  it('never fires a task the refreshed ledger no longer contains (deleted elsewhere)', async () => {
+    let tasks = [scheduledTask('a', '* * * * *', at(2026, 1, 1, 10, 0, 0))]
+    const h = makeHarness({
+      tasks: () => tasks,
+      refresh: () => { tasks = [] },
+    })
+    await h.scheduler.tick()
+    expect(h.runs).toEqual([])
+    expect(h.applied).toEqual([])
+  })
+})
+
 describe('SchedulerService lifecycle', () => {
   it('start performs an immediate catch-up tick', () => {
     const h = makeHarness()

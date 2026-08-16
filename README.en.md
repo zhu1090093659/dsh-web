@@ -11,10 +11,18 @@
   &nbsp;
   <img src="https://img.shields.io/github/stars/zhu1090093659/dsh-web-ui?style=flat-square" alt="Stars">
   &nbsp;
+  <img src="https://img.shields.io/github/forks/zhu1090093659/dsh-web-ui?style=flat-square" alt="Forks">
+  &nbsp;
   <img src="https://img.shields.io/npm/v/@linxin666%2Fdsh-web-ui-all?style=flat-square&label=npm" alt="npm">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
+  <br>
+  <img src="https://github.com/zhu1090093659/dsh-web-ui/actions/workflows/ci.yml/badge.svg?style=flat-square&branch=main" alt="CI">
+  &nbsp;
+  <img src="https://img.shields.io/badge/coverage-pending-lightgrey?style=flat-square" alt="Coverage">
 </p>
+
+CI gates: typecheck / test / scripts / docs / aggregate and gallery consistency. Coverage and code-style (Prettier / ESLint) gates are planned for CI.
 
 <p align="center">
   <strong>The plugin and skin family for the DeepSeek Harness (DSH) Web GUI</strong><br>
@@ -49,6 +57,8 @@ dsh-web-ui is a set of plugins and skins for the DeepSeek Harness (DSH) Web GUI:
 ### Liang Shen Mode
 
 DeepSeek V4 Pro cares a lot about the tool catalog it sees on the first turn. In community benchmarks the official Standard / PTC presets score 91 / 92 and Minimal scores 99 / 96, but Minimal only has two tools. Liang Shen Mode puts the two halves together: pick it in the preset selector when you start a new session. The first turn runs Minimal-style (only a persistent `bash` and `str_replace_editor`, only your own messages), and once the trajectory is anchored it switches to Code Mode (PTC), with the full tool registry, workspace instructions and skill directory restored afterwards. Windows-native testing on DeepSeek V4 Pro: 98 / 99, average 98.5. Not luck of the draw, and no need to give up the full tool set.
+
+![Liang Shen Mode two-phase anchoring comparison (schematic, simulated render)](docs/images/liangshen-mode.png)
 
 The mechanics, stabilization controls and limits live in [dsh-liangshen README](packages/dsh-liangshen/README.md).
 
@@ -122,15 +132,19 @@ Gives text-only models vision. When a conversation mentions an image (local path
 
 ### Settings Hub
 
-All family plugins' toggles and parameters live under "Settings > Plugin config" and apply immediately. A "Community plugins" card inside the group lists plugins registered by community contributors and links to their repositories.
+All family plugins' toggles and parameters live under "Settings" and apply immediately. The settings sidebar lists General, Models, Plugins and Agent presets plus the Web UI Plugins group (hosting task-board / live-stats / remote-web-ui / describe-image), Skin Center, Community Plugins and Pet as first-level entries that open directly expanded; the plugin configuration page keeps the three built-in cards (Shell / Agent loop / Web search), each with its own toggle and configuration.
 
-![Plugin config hub](docs/screenshots/02-settings-web-ui-plugins.png)
+![Settings hub](docs/screenshots/02-settings-web-ui-plugins.png)
 
 ## Skins
 
 The skin center has ten skins, each with try-on before apply: the preview applies instantly and reverts fully on exit; apply with one click once you are happy.
 
 ![Skin center](docs/screenshots/03-settings-skin-center.png)
+
+All ten skins at a glance (screenshots for Dragon Heir / Miku / THS are pending):
+
+![All 10 skins](docs/images/skins-montage.png)
 
 ### Windows XP (Luna)
 

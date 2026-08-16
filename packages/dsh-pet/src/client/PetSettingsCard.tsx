@@ -1,15 +1,20 @@
 /**
  * The pet settings card: pet selection plus display layout, bound to the
- * 'pet' settings namespace the host plugin registers. Registered into the
- * 'web-ui.plugin.item' slot the plugin-configuration section renders. The
- * petId choices come from the registry endpoint ('/api/pet/pets') — the same
- * list the sprite renders from — so the card carries no per-pet knowledge.
+ * 'pet' settings namespace the host plugin registers. Rendered as an
+ * always-open first-level settings page; the section wrapper below mounts it
+ * as the content of the top-level 'settings.section' nav entry. The petId
+ * choices come from the registry endpoint ('/api/pet/pets') — the same list
+ * the sprite renders from — so the card carries no per-pet knowledge.
  */
 
+import type { ReactNode } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+// Type-only: pulls the settings-surface SlotMap merge (the 'settings.section' entry).
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PluginSettingsCard, ValueField, BooleanField, ChoiceField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, choiceField, numberField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
+import sectionCss from './settings-section.module.css'
 
 /** The pet's settings fields this card edits (the namespace's full schema). */
 export interface PetSettings {
@@ -133,8 +138,7 @@ export class PetSettingsCardController {
 
 /** Props the renderer binds for the pet settings card. */
 export type PetSettingsCardProps =
-  PropsRuntime<'web-ui.plugin.item'>
-  & PropsLocale<'pet'>
+  PropsLocale<'pet'>
   & InjectFace<PetSettingsCardFace>
 
 /**
@@ -160,6 +164,7 @@ export function PetSettingsCard(props: PetSettingsCardProps) {
       state={state}
       onSave={props.save}
       onDiscard={props.discard}
+      alwaysOpen
     >
       <BooleanField
         id="settings-pet-enabled"
@@ -227,5 +232,21 @@ export function PetSettingsCard(props: PetSettingsCardProps) {
         onReset={() => { props.resetField('bottom') }}
       />
     </PluginSettingsCard>
+  )
+}
+
+/** Props the settings section binds for the pet card page. */
+export type PetSettingsSectionProps =
+  PropsRuntime<'settings.section'>
+  & PropsLocale<'pet'>
+  & InjectFace<PetSettingsCardFace>
+
+/** Render the pet settings card as a first-level settings page. */
+export function PetSettingsSection(props: PetSettingsSectionProps): ReactNode {
+  const { t, usePetSettingsCard, save, discard, edit, resetField } = props
+  return (
+    <ul className={sectionCss.sectionList}>
+      <PetSettingsCard t={t} usePetSettingsCard={usePetSettingsCard} save={save} discard={discard} edit={edit} resetField={resetField} />
+    </ul>
   )
 }

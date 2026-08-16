@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Regenerate the community plugin index:
- *   packages/dsh-web-ui-settings/src/client/generated/community.ts
- * (entries from packages/dsh-web-ui-settings/community.json). The settings
+ *   packages/dsh-community-plugins/src/client/generated/community.ts
+ * (entries from packages/dsh-community-plugins/community.json). The settings
  * page renders the index as the "Community plugins" card: each entry links to
  * the contributor's own repository — this repository only points at them, it
  * never vendors their code.
@@ -17,8 +17,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const ROOT = path.resolve(__dirname, '..')
-const JSON_FILE = path.join(ROOT, 'packages', 'dsh-web-ui-settings', 'community.json')
-const OUT_DIR = path.join(ROOT, 'packages', 'dsh-web-ui-settings', 'src', 'client', 'generated')
+const JSON_FILE = path.join(ROOT, 'packages', 'dsh-community-plugins', 'community.json')
+const OUT_DIR = path.join(ROOT, 'packages', 'dsh-community-plugins', 'src', 'client', 'generated')
 const OUT_FILE = path.join(OUT_DIR, 'community.ts')
 
 /** https://-only repository URLs (no other schemes, no bare strings). */

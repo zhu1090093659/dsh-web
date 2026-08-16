@@ -293,6 +293,82 @@ describe('ExecutionService.run execution targets', () => {
     expect(drivers.get('s-1')?.promptCalls).toHaveLength(1)
   })
 
+  it('coalesces concurrent preset switches for one session into a single RPC', async () => {
+    // The list mirror lags a just-applied switch, so two runs reaching the
+    // gate together would both fire select without the in-flight guard.
+    let release: () => void = () => {}
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const { env, presetSelectCalls, noteAgentPresetCalls, drivers } = makeEnv({
+      presets: {
+        select: async (sessionId, agentPreset) => {
+          presetSelectCalls.push([sessionId, agentPreset])
+          await gate
+          return { ok: true }
+        },
+      },
+    })
+    const service = new ExecutionService(env)
+    const events: Array<{ kind: string; outcome?: string }> = []
+    const run = (execId: string) => {
+      const task = sampleTask({ mode: 'anchored' })
+      const { execution } = startExecution(task, NOW, execId)
+      return service.run(task, execution, event => { events.push(event) })
+    }
+    const first = run('exec-1')
+    const second = run('exec-2')
+    // Both runs reach the preset gate before we release it, so the second
+    // one must ride the first one's in-flight call.
+    await vi.waitFor(() => {
+      expect(presetSelectCalls).toHaveLength(1)
+    })
+    release()
+    await Promise.all([first, second])
+    expect(presetSelectCalls).toEqual([['s-1', 'anchored']])
+    expect(noteAgentPresetCalls).toEqual([['s-1', 'anchored'], ['s-1', 'anchored']])
+    const totalPrompts = [...drivers.values()].reduce((sum, driver) => sum + driver.promptCalls.length, 0)
+    expect(totalPrompts).toBe(2)
+    // Settle both watches by completing one turn on whichever driver(s) the
+    // runs bound to (both may share the same fake driver).
+    for (const driver of drivers.values()) {
+      driver.setSnapshot({ running: true, turns: 0 })
+      driver.setSnapshot({ running: false, turns: 1 })
+    }
+    expect(events.filter(event => event.kind === 'settled').length).toBe(2)
+  })
+
+  it('forgets a shared switch failure so a later run can switch again', async () => {
+    let calls = 0
+    const { env, presetSelectCalls, drivers } = makeEnv({
+      presets: {
+        select: async (sessionId, agentPreset) => {
+          calls += 1
+          presetSelectCalls.push([sessionId, agentPreset])
+          if (calls === 1) return { ok: false, error: { message: 'agent-preset-locked' } }
+          return { ok: true }
+        },
+      },
+    })
+    const service = new ExecutionService(env)
+    const events: Array<{ kind: string; outcome?: string; error?: string }> = []
+    const run = (execId: string) => {
+      const task = sampleTask({ mode: 'anchored' })
+      const { execution } = startExecution(task, NOW, execId)
+      return service.run(task, execution, event => { events.push(event) })
+    }
+    await run('exec-1')
+    await run('exec-2')
+    expect(presetSelectCalls).toEqual([['s-1', 'anchored'], ['s-1', 'anchored']])
+    // The first run settled failed at the switch without prompting.
+    expect(events.filter(event => event.kind === 'settled')[0]).toMatchObject({ kind: 'settled', outcome: 'failed' })
+    // Complete a turn on the second run's session so its watch settles.
+    const driver = drivers.get('s-1')
+    driver?.setSnapshot({ running: true, turns: 0 })
+    driver?.setSnapshot({ running: false, turns: 1 })
+    const settled = events.filter(event => event.kind === 'settled')
+    expect(settled[1]).toMatchObject({ kind: 'settled', outcome: 'succeeded' })
+    expect(drivers.get('s-1')?.promptCalls).toHaveLength(1)
+  })
+
   it('settles failed without prompting when the session is not blank', async () => {
     const { env, drivers } = makeEnv({ connectedSummary: { blank: false } })
     const service = new ExecutionService(env)

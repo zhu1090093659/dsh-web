@@ -1,7 +1,7 @@
 /**
- * Code-viewer presentation contract: the preview must render shiki-highlighted
- * source as a plain full-bleed view — the harness CodeBlock banner (language
- * label + copy button) and card chrome are stripped by preview.module.css.
+ * Code-viewer presentation contract: the preview reuses the harness CodeBlock
+ * (official shiki core via tsdown vendoring) and lets it draw its own
+ * frame/padding — the panel only sizes the viewer area.
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -10,14 +10,13 @@ import { describe, expect, it } from 'vitest'
 const css = readFileSync(join(process.cwd(), 'src/client/styles/preview.module.css'), 'utf8')
 
 describe('code viewer presentation contract', () => {
-  it('hides the CodeBlock language/copy banner', () => {
-    expect(css).toContain('.md-code-block > div:first-child')
-    expect(css).toContain('display: none')
+  it('sizes the CodeBlock viewer area without adding its own chrome', () => {
+    expect(css).toContain('.codeViewer')
+    expect(css).toContain('padding: 0')
   })
 
-  it('renders highlighted code as a plain full-bleed source view', () => {
-    expect(css).toContain('.md-code-block pre')
-    expect(css).toContain('white-space: pre')
-    expect(css).toContain('background: transparent !important')
+  it('keeps the viewer scrollable and full-height', () => {
+    expect(css).toContain('overflow: auto')
+    expect(css).toContain('min-height: 0')
   })
 })

@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   AFFINITY_MAX,
   AFFINITY_RANKS,
+  FEED_COOLDOWN_REACTIONS,
+  FEED_REACTIONS,
+  PET_COOLDOWN_REACTIONS,
+  PET_REACTIONS,
   applyInteraction,
   applyTurnReward,
   defaultAffinityConfig,
@@ -52,6 +56,46 @@ describe('applyInteraction', () => {
     const state = { ...emptyAffinity(), points: AFFINITY_MAX - 1 }
     const outcome = applyInteraction(state, 'pet', 1_000_000)
     expect(outcome.affinity.points).toBe(AFFINITY_MAX)
+  })
+
+  it('rotates pet reactions by the lifetime pet count', () => {
+    const now = 1_000_000
+    for (let i = 0; i < PET_REACTIONS.length; i++) {
+      const state = { ...emptyAffinity(), pets: i, lastPetAt: now - defaultAffinityConfig.petCooldownMs }
+      const outcome = applyInteraction(state, 'pet', now)
+      expect(outcome.accepted).toBe(true)
+      expect(outcome.reaction).toBe(PET_REACTIONS[i])
+    }
+  })
+
+  it('rotates pet cooldown reactions by the lifetime pet count', () => {
+    const now = 1_000_000
+    for (let i = 0; i < PET_COOLDOWN_REACTIONS.length; i++) {
+      const state = { ...emptyAffinity(), pets: i, lastPetAt: now }
+      const outcome = applyInteraction(state, 'pet', now)
+      expect(outcome.accepted).toBe(false)
+      expect(outcome.reaction).toBe(PET_COOLDOWN_REACTIONS[i])
+    }
+  })
+
+  it('rotates feed reactions by the lifetime feed count', () => {
+    const now = 1_000_000
+    for (let i = 0; i < FEED_REACTIONS.length; i++) {
+      const state = { ...emptyAffinity(), feeds: i, lastFeedAt: now - defaultAffinityConfig.feedCooldownMs }
+      const outcome = applyInteraction(state, 'feed', now)
+      expect(outcome.accepted).toBe(true)
+      expect(outcome.reaction).toBe(FEED_REACTIONS[i])
+    }
+  })
+
+  it('rotates feed cooldown reactions by the lifetime feed count', () => {
+    const now = 1_000_000
+    for (let i = 0; i < FEED_COOLDOWN_REACTIONS.length; i++) {
+      const state = { ...emptyAffinity(), feeds: i, lastFeedAt: now }
+      const outcome = applyInteraction(state, 'feed', now)
+      expect(outcome.accepted).toBe(false)
+      expect(outcome.reaction).toBe(FEED_COOLDOWN_REACTIONS[i])
+    }
   })
 })
 

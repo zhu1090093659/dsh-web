@@ -122,6 +122,48 @@ function clamp(points: number): number {
 }
 
 /**
+ * Reaction pools (plain strings; the repo bans emoji). The interaction picks
+ * one line deterministically by rotating on the lifetime interaction count,
+ * so repeated petting/feeding stays lively and the choice is testable.
+ */
+export const PET_REACTIONS: string[] = [
+  '咕噜咕噜～被摸摸好舒服！',
+  '蹭蹭你的手心～',
+  '唔…这里也要摸摸！',
+  '尾巴开心地翘起来啦～',
+  '被摸得眯起了眼睛…',
+  '哼～再摸一下下就原谅你',
+  '好温暖…不想动了…',
+]
+
+/** Pet cooldown pool, rotated by the lifetime pet count. */
+export const PET_COOLDOWN_REACTIONS: string[] = [
+  '摸过头啦，让鲸鱼娘歇口气～',
+  '头有点晕晕的…先停一下！',
+  '毛都要被摸秃啦！',
+  '让鱼鳍先缓缓…',
+  '呜…再摸就要咬你了！',
+]
+
+/** Feed success pool, rotated by the lifetime feed count. */
+export const FEED_REACTIONS: string[] = [
+  '呜哇！小鱼干好好吃！',
+  '咔嚓咔嚓～尾巴都翘起来啦！',
+  '好吃到眯起了眼睛～',
+  '再多给一点嘛！',
+  '今天的鱼干格外香！',
+]
+
+/** Feed cooldown pool, rotated by the lifetime feed count. */
+export const FEED_COOLDOWN_REACTIONS: string[] = [
+  '吃饱啦，晚点再喂～',
+  '肚子圆滚滚的了…',
+  '鱼干先留着，待会再吃！',
+  '嗝～真的吃不下了！',
+  '省着点吃，明天还有！',
+]
+
+/**
  * Apply one interaction to a copy of the state (immutable style: returns a
  * new object; the caller replaces the persisted state). Cooldowns only
  * apply once the pet has been interacted with at least once (last*At === 0
@@ -136,7 +178,12 @@ export function applyInteraction(
   const next = { ...state }
   if (kind === 'pet') {
     if (state.lastPetAt !== 0 && nowMs - state.lastPetAt < config.petCooldownMs) {
-      return { affinity: state, delta: 0, reaction: '摸过头啦，让鲸鱼娘歇口气～', accepted: false }
+      return {
+        affinity: state,
+        delta: 0,
+        reaction: PET_COOLDOWN_REACTIONS[state.pets % PET_COOLDOWN_REACTIONS.length]!,
+        accepted: false,
+      }
     }
     next.lastPetAt = nowMs
     next.pets += 1
@@ -144,13 +191,18 @@ export function applyInteraction(
     return {
       affinity: next,
       delta: config.petReward,
-      reaction: '咕噜咕噜～被摸摸好舒服！',
+      reaction: PET_REACTIONS[state.pets % PET_REACTIONS.length]!,
       accepted: true,
     }
   }
   if (kind === 'feed') {
     if (state.lastFeedAt !== 0 && nowMs - state.lastFeedAt < config.feedCooldownMs) {
-      return { affinity: state, delta: 0, reaction: '吃饱啦，晚点再喂～', accepted: false }
+      return {
+        affinity: state,
+        delta: 0,
+        reaction: FEED_COOLDOWN_REACTIONS[state.feeds % FEED_COOLDOWN_REACTIONS.length]!,
+        accepted: false,
+      }
     }
     next.lastFeedAt = nowMs
     next.feeds += 1
@@ -158,7 +210,7 @@ export function applyInteraction(
     return {
       affinity: next,
       delta: config.feedReward,
-      reaction: '呜哇！小鱼干好好吃！',
+      reaction: FEED_REACTIONS[state.feeds % FEED_REACTIONS.length]!,
       accepted: true,
     }
   }

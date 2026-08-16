@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import type { Session, SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-session'
+import { FEED_COOLDOWN_REACTIONS } from '../src/affinity.ts'
 import { loadPetPersist } from '../src/persist.ts'
 import { PetService } from '../src/service.ts'
 import { resolvePetManifest, type PetRegistry } from '../src/registry.ts'
@@ -429,7 +430,7 @@ describe('PetService (rc.6 session events)', () => {
       // Inside the feed cooldown the feed is refused and burns nothing.
       const second = await service.interact('feed')
       expect(second.delta).toBe(0)
-      expect(second.reaction).toContain('吃饱啦')
+      expect(FEED_COOLDOWN_REACTIONS).toContain(second.reaction)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

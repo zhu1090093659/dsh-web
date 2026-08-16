@@ -12,6 +12,7 @@ import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-cli
 import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { PluginSettingsCard, BooleanField, ChoiceField, ValueField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, choiceField, numberField, secretField, textField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
+import { API_STYLE_CHOICES, API_STYLE_LABEL_KEYS, type ClientApiStyle } from './api-styles.ts'
 import { t } from './locales.ts'
 
 /** The describe-image fields this card edits (the namespace's full schema). */
@@ -24,7 +25,7 @@ export interface DescribeImageSettings {
   maxBytes?: number
   maxOutputTokens?: number
   timeoutMs?: number
-  apiStyle?: 'chat-completions' | 'responses'
+  apiStyle?: ClientApiStyle
   renderImagePreview?: boolean
 }
 
@@ -60,7 +61,7 @@ export class DescribeImageSettingsCardController {
     this.form = new CardForm(scope, [
       textField('baseURL'),
       textField('model'),
-      choiceField('apiStyle', ['chat-completions', 'responses']),
+      choiceField('apiStyle', [...API_STYLE_CHOICES]),
       secretField('apiKey'),
       textField('apiKeyEnv'),
       textField('defaultPrompt'),
@@ -149,11 +150,7 @@ export function DescribeImageSettingsCard(props: DescribeImageSettingsCardProps)
         label={t('field.apiStyle')}
         hint={t('field.apiStyle.hint')}
         inheritLabel={t('settings.inherit')}
-        choices={[
-          { value: 'chat-completions', label: t('field.apiStyle.chatCompletions') },
-          { value: 'responses', label: t('field.apiStyle.responses') },
-          { value: 'anthropic-messages', label: t('field.apiStyle.anthropicMessages') },
-        ]}
+        choices={API_STYLE_CHOICES.map(value => ({ value, label: t(API_STYLE_LABEL_KEYS[value]) }))}
         {...fieldProps}
         {...state.apiStyle}
         onEdit={(text) => { props.edit('apiStyle', text) }}

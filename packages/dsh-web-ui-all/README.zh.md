@@ -31,7 +31,11 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-web-ui-all
 
 ### 手工升级
 
-在 profile 的 `package.json` 中改版本后执行 `pnpm install`，顶层 `node_modules/@linxin666/*` 条目不会总是被刷新：它们可能仍链接到旧版本的 store 目录，直到手动重建。升级后请确认这些链接已指向新版本目录（Windows 下：先 `cmd /c rmdir <链接>` 再 `cmd /c mklink /J <链接> <目标>`），然后重启 `dsh web`。
+在 profile 的 `package.json` 中改版本后执行 `pnpm install`，顶层 `node_modules/@linxin666/*` 条目不会总是被刷新：它们可能仍链接到旧版本的 store 目录，直到手动重建。升级后请按以下三步核对，再重启 `dsh web`：
+
+1. **确认链接指向新版本目录**（Windows 下：先 `cmd /c rmdir <链接>` 再 `cmd /c mklink /J <链接> <目标>`）。
+2. **新引入的子包需要新建链接**：升级可能引入此前没有的子包（例如 0.1.19 新增 `dsh-client-ui-community-plugins`），顶层不会自动出现它的链接——缺失时 dsh 启动即报 `Cannot find package`。请对照发布说明中的包清单，在 `node_modules/@linxin666/` 下为每个缺失的子包新建链接（指向 `.pnpm` 中对应版本实体）。
+3. **皮肤子包已并入 `dsh-skins`**：自 0.1.19 起 `dsh-client-ui-skin-blue-fantasy` / `-harbor` / `-qq98` / `-whale-song` 不再有独立包实体，代码位于 `dsh-skins` 的 `skins/<name>/`。升级后请把旧链接 repoint 到 `dsh-skins` 新版本实体的 `skins/<name>` 目录（不要保留旧版本目标，否则皮肤加载会因版本错位失败）。
 
 ## 已知限制
 

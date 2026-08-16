@@ -31,7 +31,11 @@ Restart `dsh web` for the plugins to take effect.
 
 ### Manual upgrade
 
-When you upgrade by bumping the version in the profile `package.json` and running `pnpm install`, the top-level `node_modules/@linxin666/*` entries are not always refreshed: they can stay linked to the previous version's store directory until recreated. After upgrading, verify the links resolve to the new version (on Windows: `cmd /c rmdir <link>` then `cmd /c mklink /J <link> <target>`), then restart `dsh web`.
+When you upgrade by bumping the version in the profile `package.json` and running `pnpm install`, the top-level `node_modules/@linxin666/*` entries are not always refreshed: they can stay linked to the previous version's store directory until recreated. After upgrading, verify the following three points, then restart `dsh web`:
+
+1. **Links resolve to the new version**: confirm each link points at the new version's store entity (on Windows: `cmd /c rmdir <link>` then `cmd /c mklink /J <link> <target>`).
+2. **Newly added sub-packages need links created**: an upgrade can introduce sub-packages that did not exist before (e.g. `dsh-client-ui-community-plugins` is new in 0.1.19) and no top-level link appears for them automatically — a missing link makes dsh crash on startup with `Cannot find package`. Compare the package list in the release notes and create a link under `node_modules/@linxin666/` for each missing sub-package (targeting the matching version entity under `.pnpm`).
+3. **Skin sub-packages moved into `dsh-skins`**: since 0.1.19, `dsh-client-ui-skin-blue-fantasy` / `-harbor` / `-qq98` / `-whale-song` no longer ship as standalone package entities; their code lives under `dsh-skins`'s `skins/<name>/`. Repoint old links to `skins/<name>` inside the new `dsh-skins` entity (do not keep the previous version as the target — a stale target fails skin loading with a version mismatch).
 
 ## Known limitations
 

@@ -57,6 +57,8 @@ export interface PluginSettingsCardProps<TKey extends string = string> {
   alwaysOpen?: boolean
   /** The plugin's controls. */
   children: ReactNode
+  /** Keep the shared bottom actions visible. Defaults to true. */
+  showFooter?: boolean
 }
 
 /**
@@ -139,31 +141,35 @@ export function PluginSettingsCard<TKey extends string = string>(props: PluginSe
           <div className={css.body}>
             {!state.writable ? <p className={css.readOnly} role="status">{props.t('settings.readOnly')}</p> : null}
             {props.children}
-            <div className={css.footer}>
-              {state.failed
-                ? (
-                  <p className={css.failed} role="status">
-                    {props.t('settings.saveFailed')}{state.failedReason ? ' - ' + state.failedReason : ''}
-                  </p>
-                )
-                : null}
-              <button
-                type="button"
-                className={css.discard}
-                disabled={!state.dirty || state.saving}
-                onClick={props.onDiscard}
-              >
-                {props.t('settings.discard')}
-              </button>
-              <button
-                type="button"
-                className={css.save}
-                disabled={blocked}
-                onClick={props.onSave}
-              >
-                {props.t(!state.saving ? 'settings.save' : 'settings.saving')}
-              </button>
-            </div>
+            {props.showFooter !== false
+              ? (
+                <div className={css.footer}>
+                  {state.failed
+                    ? (
+                      <p className={css.failed} role="status">
+                        {props.t('settings.saveFailed')}{state.failedReason ? ' - ' + state.failedReason : ''}
+                      </p>
+                    )
+                    : null}
+                  <button
+                    type="button"
+                    className={css.discard}
+                    disabled={!state.dirty || state.saving}
+                    onClick={props.onDiscard}
+                  >
+                    {props.t('settings.discard')}
+                  </button>
+                  <button
+                    type="button"
+                    className={css.save}
+                    disabled={blocked}
+                    onClick={props.onSave}
+                  >
+                    {props.t(!state.saving ? 'settings.save' : 'settings.saving')}
+                  </button>
+                </div>
+              )
+              : null}
           </div>
         )
         : null}
@@ -252,7 +258,22 @@ export function BooleanField(props: FieldProps & {
   onLabel: string
   /** Copy for the off option. */
   offLabel: string
+  /** Optional actions rendered immediately after the select control. */
+  controlAfter?: ReactNode
 }) {
+  const control = (
+    <select
+      id={props.id}
+      className={css.select}
+      value={props.text}
+      disabled={props.disabled}
+      onChange={(event) => { props.onEdit(event.target.value) }}
+    >
+      <option value="">{props.inheritLabel}</option>
+      <option value="true">{props.onLabel}</option>
+      <option value="false">{props.offLabel}</option>
+    </select>
+  )
   return (
     <div className={css.field}>
       <div className={css.head}>
@@ -273,17 +294,9 @@ export function BooleanField(props: FieldProps & {
           )
           : null}
       </div>
-      <select
-        id={props.id}
-        className={css.select}
-        value={props.text}
-        disabled={props.disabled}
-        onChange={(event) => { props.onEdit(event.target.value) }}
-      >
-        <option value="">{props.inheritLabel}</option>
-        <option value="true">{props.onLabel}</option>
-        <option value="false">{props.offLabel}</option>
-      </select>
+      {props.controlAfter === undefined
+        ? control
+        : <div className={css.controlRow}>{control}{props.controlAfter}</div>}
       <p className={css.hint}>{props.hint}</p>
     </div>
   )

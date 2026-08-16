@@ -271,6 +271,19 @@
   cursor: default;
 }
 
+.controlRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.controlRow .select {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
 .inputInvalid {
   border: 1px solid var(--dsw-alias-label-error);
   background: var(--dsw-alias-bg-layer-3);

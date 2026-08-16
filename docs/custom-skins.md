@@ -179,7 +179,7 @@ DSH_SKINS_DIR=G:\skins
 
 ## 五、让背景图透出的完整 token 清单（关键）
 
-只设置 body 背景是不够的——DSH 的面板、侧边栏默认是**不透明**的，会把背景图盖住。需要同时覆盖以下 token（亮色/暗色各一套，值为半透明色；以下为蓝色幻想皮肤同款调好的值）：
+只设置 body 背景是不够的——DSH 的面板、侧边栏默认是**不透明**的，会把背景图盖住。需要同时覆盖以下 token（亮色/暗色各一套）。以下值**直接提取自 `blue-fantasy` 皮肤**（`packages/skins/blue-fantasy/lib/client.js`），可直接使用，也可按需微调：
 
 ```css
 body[data-dsh-my-wallpaper] {
@@ -190,27 +190,55 @@ body[data-dsh-my-wallpaper] {
   --dsw-alias-bg-layer-3: #dde3f194;
   --dsw-alias-bg-mask-1: #1c254666;
   --dsw-alias-bg-mask-2: #1c254633;
-  --dsw-alias-bg-mask-3: #1c25461a;
-  --dsw-alias-bg-overlay: #ffffffd9;
-  --dsw-alias-bg-module-platform: #ffffffb3;
-  --dsw-alias-tooltip-bg: #ffffffd9;
+  --dsw-alias-bg-mask-3: #1c254680;
+  --dsw-alias-bg-mask-photo: #101424e0;
+  --dsw-alias-bg-module-platform: #e9edf78c;
+  --dsw-alias-bg-multi-select: #dce3f7cc;
+  --dsw-alias-bg-overlay: #eef1f9eb;
+  --dsw-alias-bg-skeleton: #1c25460f;
+  --dsw-alias-tooltip-bg: #ffffe1;
   /* ★ 左侧边栏专用 token（易漏） */
-  --dsw-specific-sidebar-fill: rgba(243, 245, 251, 0.5);
+  --dsw-specific-sidebar-fill: #f2f5fa80;
   /* ★ 右侧 aionui 面板的独立 token 体系 */
-  --aion-bg-base: #ffffff73;
-  --aion-bg-1: #f9fafb80;
-  --aion-bg-2: #f2f3f58c;
-  --aion-bg-3: #e5e6eb94;
-  --aion-bg-hover: #ffffff99;
-  --aion-bg-active: #ffffff80;
-  --aion-fill-2: #f2f3f58c;
-  --aion-fill-3: #e5e6eb94;
+  --aion-bg-base: #fff9;
+  --aion-bg-1: #f3f5fb80;
+  --aion-bg-2: #e9edf79e;
+  --aion-bg-3: #4a5fa838;
+  --aion-bg-4: #4a5fa857;
+  --aion-bg-hover: #4a5fa814;
+  --aion-bg-active: #4a5fa824;
+  --aion-fill-2: #4a5fa80f;
+  --aion-fill-3: #4a5fa824;
 }
-body[data-dsh-my-wallpaper][data-ds-dark-theme] { /* 暗色一套，见 packages/skins/blue-fantasy */ }
+body[data-dsh-my-wallpaper][data-ds-dark-theme] {
+  /* DSH 通用面板 */
+  --dsw-alias-bg-base: #10162a80;
+  --dsw-alias-bg-layer-1: #1a22388c;
+  --dsw-alias-bg-layer-2: #202a4499;
+  --dsw-alias-bg-layer-3: #26324fa3;
+  --dsw-alias-bg-mask-1: #0000008c;
+  --dsw-alias-bg-mask-2: #0000004d;
+  --dsw-alias-bg-mask-3: #0009;
+  --dsw-alias-bg-mask-photo: #060914e6;
+  --dsw-alias-bg-module-platform: #202a4499;
+  --dsw-alias-bg-multi-select: #2c3765cc;
+  --dsw-alias-bg-overlay: #1a2238eb;
+  --dsw-alias-bg-skeleton: #ffffff0f;
+  --dsw-specific-sidebar-fill: #1d25398c;
+  --aion-bg-base: #1a2238d1;
+  --aion-bg-1: #1a223880;
+  --aion-bg-2: #202a4499;
+  --aion-bg-3: #a0b4e633;
+  --aion-bg-4: #a0b9eb4d;
+  --aion-bg-hover: #a0b9eb1f;
+  --aion-bg-active: #a0b9eb33;
+  --aion-fill-2: #a0b9eb1f;
+  --aion-fill-3: #a0b9eb33;
+}
 body[data-dsh-my-wallpaper] [id=root] { background: 0 0; } /* 根元素透明 */
 ```
 
-> 这三个来源缺一不可：`--dsw-alias-bg-*`（主面板）、`--dsw-specific-sidebar-fill`（左侧边栏）、`--aion-bg-*`（右侧面板插件）。完整暗色值可参考 `packages/skins/blue-fantasy/lib/client.js` 与 `packages/skins/whale-song/lib/client.js`。
+> 这三个来源缺一不可：`--dsw-alias-bg-*`（主面板）、`--dsw-specific-sidebar-fill`（左侧边栏）、`--aion-bg-*`（右侧面板插件）。注意暗色下 `--dsw-alias-tooltip-bg` 保持亮色值（`#ffffe1`，与 blue-fantasy 一致）；上表不含 `--dsw-alias-label-*` / `--dsw-alias-brand-*` 等文字与品牌色重映射（blue-fantasy 有整套靛蓝映射，壁纸皮肤通常不需要）。
 
 ## 六、已知限制
 

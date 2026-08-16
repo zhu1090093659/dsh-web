@@ -370,6 +370,19 @@ export class PanelLayoutController {
       this.previewHandle.style.display = preview > 0 && state.root !== '' ? 'block' : 'none'
     }
 
+    // The official shell renders its own details drag handle at
+    // `viewport - details` (details treated as the last track). Once this
+    // panel extends the grid with preview/explorer tracks, the real
+    // center/details boundary shifts left by preview + explorer — re-derive
+    // the handle position from the actual tracks so it stays on the details
+    // column's left edge (degenerates to the official value when both panels
+    // are closed).
+    const detailsTrack = trackPx(this.shellTracks[2])
+    const detailsHandle = frame.querySelector<HTMLElement>('[data-side="details"]')
+    if (detailsHandle !== null) {
+      detailsHandle.style.left = `${Math.round(width - detailsTrack - preview - explorer)}px`
+    }
+
     // Floating expand button: visible only when the explorer is collapsed.
     if (this.floatingButton !== null) {
       const show = state.root !== '' && state.explorerCollapsed

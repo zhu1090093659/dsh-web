@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildInstallPlan,
   filterCatalogRepositories,
+  getInstallModes,
   isUpdateAvailable,
   matchInstalledPlugin,
   parseCatalog,
@@ -58,8 +59,9 @@ describe('API catalog contract', () => {
     expect(() => parseCatalog({ schemaVersion: 1, repositories: 'not-an-array' })).toThrow(/format/i)
   })
 
-  it('builds only an API-owned executable plan bound to the verified GitHub SHA', () => {
-    expect(buildInstallPlan(repository())).toEqual({
+  it('offers verified and latest plans for a verified GitHub project', () => {
+    expect(getInstallModes(repository())).toEqual(['verified', 'latest'])
+    expect(buildInstallPlan(repository(), 'verified')).toEqual({
       source: 'github',
       target: 'example/dsh-plugin',
       command: 'dsh plugin --profile web add github:example/dsh-plugin#0123456789abcdef0123456789abcdef01234567',
@@ -69,6 +71,19 @@ describe('API catalog contract', () => {
         'web',
         'add',
         'github:example/dsh-plugin#0123456789abcdef0123456789abcdef01234567',
+      ],
+      executable: true,
+    })
+    expect(buildInstallPlan(repository(), 'latest')).toEqual({
+      source: 'github',
+      target: 'example/dsh-plugin',
+      command: 'dsh plugin --profile web add github:example/dsh-plugin',
+      args: [
+        'plugin',
+        '--profile',
+        'web',
+        'add',
+        'github:example/dsh-plugin',
       ],
       executable: true,
     })
@@ -85,7 +100,8 @@ describe('API catalog contract', () => {
         },
       },
     })
-    expect(buildInstallPlan(wrongSha)).toBeNull()
+    expect(buildInstallPlan(wrongSha, 'verified')).toBeNull()
+    expect(buildInstallPlan(wrongSha, 'latest')?.args[4]).toBe('github:example/dsh-plugin')
   })
 
   it('rejects shell-like and cross-repository install instructions', () => {

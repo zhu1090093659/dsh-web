@@ -155,7 +155,7 @@ describe('API-backed Community Plugins UI', () => {
         return new Response(JSON.stringify({ ok: true, plugins: [] }), { status: 200 })
       }
       expect(String(input)).toMatch(/\/install$/)
-      expect(JSON.parse(String(init?.body))).toEqual({ repositoryId: 42 })
+      expect(JSON.parse(String(init?.body))).toEqual({ repositoryId: 42, installMode: 'latest' })
       return new Response(JSON.stringify({ ok: true, action: 'install', needsRestart: true, output: 'installed' }), { status: 200 })
     }) as unknown as typeof fetch
 
@@ -170,6 +170,8 @@ describe('API-backed Community Plugins UI', () => {
     expect(screen.getByRole('dialog')).toBeTruthy()
     const confirm = screen.getByRole('button', { name: /confirm install/i })
     expect(confirm.getAttribute('disabled')).not.toBeNull()
+    expect(screen.getByRole('radio', { name: /verified version/i })).toBeTruthy()
+    fireEvent.click(screen.getByRole('radio', { name: /latest version/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /understand the risk/i }))
     fireEvent.click(confirm)
     expect(await screen.findByText(/restart DSH Web/i)).toBeTruthy()

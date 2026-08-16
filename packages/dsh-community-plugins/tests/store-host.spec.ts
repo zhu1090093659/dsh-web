@@ -49,7 +49,7 @@ describe('Host plugin lifecycle', () => {
   it('re-fetches the API-owned plan by exact repository id before installation', async () => {
     const fetcher = vi.fn(async () => catalogResponse()) as unknown as typeof fetch
     const runner = vi.fn(async () => ({ stdout: 'installed', stderr: '' })) as unknown as NativeCommandRunner
-    const result = await installCatalogProject('42', {
+    const result = await installCatalogProject('42', 'verified', {
       fetcher,
       runner,
       execPath: '/node',
@@ -68,6 +68,39 @@ describe('Host plugin lifecycle', () => {
       `github:example/dsh-plugin#${SHA}`,
     ], signal)
     expect(result).toMatchObject({ action: 'install', fullName: 'example/dsh-plugin', needsRestart: true })
+  })
+
+  it('installs the latest GitHub revision only after that mode is selected', async () => {
+    const runner = vi.fn(async () => ({ stdout: 'installed latest', stderr: '' })) as unknown as NativeCommandRunner
+    const result = await installCatalogProject('42', 'latest', {
+      fetcher: vi.fn(async () => catalogResponse()) as unknown as typeof fetch,
+      runner,
+      execPath: '/node',
+      cliPath: '/dsh.js',
+      signal,
+      listInstalled: async () => [],
+    })
+
+    expect(runner).toHaveBeenCalledWith('/node', [
+      '/dsh.js',
+      'plugin',
+      '--profile',
+      'web',
+      'add',
+      'github:example/dsh-plugin',
+    ], signal)
+    expect(result.output).toBe('installed latest')
+  })
+
+  it('requires an explicit mode when verified and latest GitHub plans both exist', async () => {
+    await expect(installCatalogProject('42', undefined, {
+      fetcher: vi.fn(async () => catalogResponse()) as unknown as typeof fetch,
+      runner: vi.fn() as unknown as NativeCommandRunner,
+      execPath: '/node',
+      cliPath: '/dsh.js',
+      signal,
+      listInstalled: async () => [],
+    })).rejects.toThrow(/verified.*latest/i)
   })
 
   it('lists direct Web-profile dependencies through the native DSH command', async () => {
@@ -140,12 +173,15 @@ describe('conversation integration', () => {
   })
 
   it('parses the bundled skill as a model and user invocable definition', () => {
-    const skill = parseBundledStoreSkill(`---\nname: search-dsh-store\ndescription: Search the live DSH Store.\n---\n\nUse store_search.`)
+    const skill = parseBundledStoreSkill(
+      `---\nname: search-dsh-store\ndescription: Search the live DSH Store.\n---\n\nUse store_search.`,
+      'Ask the user to choose verified or latest.',
+    )
     expect(skill).toEqual({
       name: 'search-dsh-store',
       description: 'Search the live DSH Store.',
       source: 'bundled',
-      content: 'Use store_search.',
+      content: 'Use store_search.\n\nAsk the user to choose verified or latest.',
     })
   })
 

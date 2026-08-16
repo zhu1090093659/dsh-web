@@ -11,8 +11,6 @@ export type SkinCenterKey =
   | 'enabled'
   | 'enabledHint'
   | 'offNote'
-  | 'expand'
-  | 'collapse'
   | 'intro'
   | 'official'
   | 'officialTagline'
@@ -44,8 +42,6 @@ export const en: Record<SkinCenterKey, string> = {
   enabled: 'Enable skin center',
   enabledHint: 'When off, try-on, apply and background controls are disabled; turn it back on to resume.',
   offNote: 'The skin center is turned off.',
-  expand: 'Expand',
-  collapse: 'Collapse',
   intro: 'Try on any skin live — it takes effect instantly, exit restores the current look. Apply persists it across restarts.',
   official: 'Official default',
   officialTagline: 'The stock DSH look with no skin applied.',
@@ -78,8 +74,6 @@ export const zh: Record<SkinCenterKey, string> = {
   enabled: '启用皮肤中心',
   enabledHint: '关闭后停用试穿、应用与背景控件，重新打开即恢复。',
   offNote: '皮肤中心已关闭。',
-  expand: '展开',
-  collapse: '收起',
   intro: '任意皮肤可即时试穿，退出即完全还原；「应用」一键持久化，页面自动刷新生效。',
   official: '官方默认',
   officialTagline: '还原 DSH 官方默认外观，不应用任何皮肤。',

@@ -1,10 +1,10 @@
 /** @vitest-environment jsdom */
 
 /**
- * The community plugin index card contract: it renders the contributor links
- * (pointing at the authors' own repositories) only after the header expands,
- * hides the list while its enable switch is off, and explains itself when the
- * index is empty.
+ * The community plugin index card contract: it is always open, so the
+ * contributor links (pointing at the authors' own repositories) are directly
+ * visible on mount, the list hides while its enable switch is off, and the
+ * card explains itself when the index is empty.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -104,16 +104,14 @@ const SAMPLE: CommunityPluginEntry[] = [
 ]
 
 describe('CommunityPluginsCard', () => {
-  it('renders nothing inside until the header expands', () => {
-    render(<CommunityPluginsCard {...cardProps(new FakeScope({}))} plugins={SAMPLE} />)
-    expect(screen.queryByRole('link')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /show settings: community plugins/i }))
-    expect(screen.getByRole('link', { name: /repository/i })).toBeTruthy()
+  it('renders the index and repository links on mount (always open)', () => {
+    render(<CommunityPluginsCard {...cardProps(new FakeScope({}))} />)
+    expect(screen.getByText('Data Agent')).toBeTruthy()
+    expect(screen.getAllByRole('link', { name: /repository/i }).length).toBeGreaterThan(0)
   })
 
   it('links to the contributor repository with the npm name alongside', () => {
     render(<CommunityPluginsCard {...cardProps(new FakeScope({}))} plugins={SAMPLE} />)
-    fireEvent.click(screen.getByRole('button', { name: /show settings: community plugins/i }))
     const link = screen.getByRole('link')
     expect(link.getAttribute('href')).toBe('https://github.com/someone/dsh-sample')
     expect(link.getAttribute('target')).toBe('_blank')
@@ -125,13 +123,11 @@ describe('CommunityPluginsCard', () => {
 
   it('renders the empty notice when no entries are registered', () => {
     render(<CommunityPluginsCard {...cardProps(new FakeScope({}))} plugins={[]} />)
-    fireEvent.click(screen.getByRole('button', { name: /show settings: community plugins/i }))
     expect(screen.getByText(/no community plugins registered yet/i)).toBeTruthy()
   })
 
   it('hides the entry list while the stored enable switch is off', () => {
     render(<CommunityPluginsCard {...cardProps(new FakeScope({ enabled: false }))} plugins={SAMPLE} />)
-    fireEvent.click(screen.getByRole('button', { name: /show settings: community plugins/i }))
     expect(screen.queryByRole('link')).toBeNull()
     expect(screen.getByText(/community plugin index is turned off/i)).toBeTruthy()
   })
@@ -139,7 +135,6 @@ describe('CommunityPluginsCard', () => {
   it('stages the enable edit and persists it on save', async () => {
     const scope = new FakeScope({})
     render(<CommunityPluginsCard {...cardProps(scope)} plugins={SAMPLE} />)
-    fireEvent.click(screen.getByRole('button', { name: /show settings: community plugins/i }))
     fireEvent.change(screen.getByLabelText(/enable the community plugin index/i), { target: { value: 'false' } })
     expect(screen.queryByRole('link')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /save/i }))

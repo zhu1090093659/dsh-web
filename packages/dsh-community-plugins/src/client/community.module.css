@@ -1,5 +1,11 @@
 /* Community plugin index entries, rendered inside the settings card. */
 
+.sectionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .entries {
   display: flex;
   flex-direction: column;

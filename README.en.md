@@ -132,7 +132,7 @@ Gives text-only models vision. When a conversation mentions an image (local path
 
 ### Settings Hub
 
-All family plugins' toggles and parameters live under "Settings" and apply immediately. The settings sidebar lists General, Models, Plugins and Agent presets plus the Web UI Plugins group (hosting task-board / live-stats / remote-web-ui / describe-image), Skin Center and Pet as first-level entries; the plugin configuration page keeps the three built-in cards (Shell / Agent loop / Web search) and the Community Plugins card, each with its own toggle and configuration.
+All family plugins' toggles and parameters live under "Settings" and apply immediately. The settings sidebar lists General, Models, Plugins and Agent presets plus the Web UI Plugins group (hosting task-board / live-stats / remote-web-ui / describe-image), Skin Center, Community Plugins and Pet as first-level entries that open directly expanded; the plugin configuration page keeps the three built-in cards (Shell / Agent loop / Web search), each with its own toggle and configuration.
 
 ![Settings hub](docs/screenshots/02-settings-web-ui-plugins.png)
 

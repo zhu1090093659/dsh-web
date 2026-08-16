@@ -2,11 +2,11 @@
 
 English | [中文](README.zh.md)
 
-Community plugin index card for the dsh web GUI settings page: lists community-contributed plugins with links to each contributor's own repository, gated by its own enable switch in the plugin configuration section.
+Community plugin index section for the dsh web GUI settings page: a first-level settings entry (alongside Web UI Plugins, Skin Center and Pet) that opens directly expanded, lists community-contributed plugins with links to each contributor's own repository, and carries its own enable switch.
 
 ## What it does
 
-- **Plugin-configuration card**: registers one card in the settings page's plugin configuration section, alongside the built-in Shell / Agent loop / Web search cards, with its own enable switch backed by the community-plugins settings namespace. The Web UI Plugins group, Skin Center and Pet instead register first-level settings sections.
+- **First-level section**: registers one settings section next to General / Models / Plugins / Agent presets and the Web UI Plugins, Skin Center and Pet sections. The content renders directly expanded (no disclosure fold), with its own enable switch backed by the community-plugins settings namespace.
 - **Index only**: every entry links to the contributor's own repository; the package never vendors the listed code. The registry lives in community.json and is compiled into the client bundle by scripts/community-index.
 
 ## Install
@@ -30,7 +30,7 @@ Restart `dsh web` for the card to appear in the settings page.
 
 ## Config
 
-- **Enable switch**: Settings > Plugins > Plugin configuration > Community Plugins. Turning it off hides the index list until it is turned back on; the choice persists in the community-plugins settings namespace.
+- **Enable switch**: inside the Community Plugins first-level section itself (the section carries its own switch). Turning it off hides the index list until it is turned back on; the choice persists in the community-plugins settings namespace.
 
 ## Known limitations
 

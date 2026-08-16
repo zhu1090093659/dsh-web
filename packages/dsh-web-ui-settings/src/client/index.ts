@@ -1,12 +1,11 @@
 /**
  * Web UI plugin group, browser half. Registers the `web-ui-plugins`
- * dictionaries and one first-level settings section whose own nav item hosts
- * the family plugin cards (task-board, live-stats, remote-web-ui,
- * describe-image) in its body. The group section declares the
+ * dictionaries and one first-level settings section that renders the family
+ * plugin cards (task-board, live-stats, remote-web-ui, describe-image)
+ * directly under a static heading. The section declares the
  * `web-ui.plugin.item` child slot; the dsh-web-ui family plugins register
- * their per-plugin cards there. Skin Center and Desktop Pet are sibling
- * plugins (both are also first-level sections); Community Plugins stays a
- * plugin-configuration card.
+ * their per-plugin cards there. Skin Center, Community Plugins and Desktop
+ * Pet are sibling plugins that register their own first-level sections.
  */
 
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
@@ -19,7 +18,7 @@ import { WebUiSettingsBinder } from './compat-settings-scope.ts'
 import { WebUIPluginsSection } from './WebUIPluginsCard.tsx'
 import { en, zh, type WebUIPluginsKey } from './locales.ts'
 
-export type { WebUIPluginsCardProps } from './WebUIPluginsCard.tsx'
+export type { WebUIPluginsSectionProps } from './WebUIPluginsCard.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {

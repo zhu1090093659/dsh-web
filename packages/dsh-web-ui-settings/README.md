@@ -6,8 +6,8 @@ The dsh web UI plugin group for the DSH settings page: it adds a first-level set
 
 ## What it is
 
-- **One section for the family**: on the DSH settings page it registers a first-level section that hosts the enable switches and configuration forms of the remaining dsh web UI family plugins (task-board, live-stats, remote-web-ui, describe-image).
-- **Sibling sections**: Skin Center and Desktop Pet ship as their own packages and register their own first-level sections; Community Plugins keeps a card in the Plugins configuration page.
+- **One section for the family**: on the DSH settings page it registers a first-level section that renders directly expanded (a static heading followed by the cards, no disclosure fold) and hosts the enable switches and configuration forms of the remaining dsh web UI family plugins (task-board, live-stats, remote-web-ui, describe-image).
+- **Sibling sections**: Skin Center, Community Plugins and Desktop Pet ship as their own packages and register their own first-level sections that open directly expanded.
 
 ## Install
 

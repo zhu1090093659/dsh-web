@@ -1,13 +1,15 @@
 /**
- * The community plugin index card: one top-level card in the
- * plugin-configuration section (settings.plugin.item). Its own enable switch
- * (backed by the community-plugins settings namespace) gates the entry list;
- * the list itself points at contributors' own repositories — this package
- * only indexes them, it never vendors their code.
+ * The community plugin index card: a first-level settings section that is
+ * always open (a static header with the index list directly visible). Its own
+ * enable switch (backed by the community-plugins settings namespace) gates
+ * the entry list; the list itself points at contributors' own repositories —
+ * this package only indexes them, it never vendors their code.
  */
 
 import type { ReactNode } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+// Type-only: pulls the settings-surface SlotMap merge (the 'settings.section' entry).
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { PluginSettingsCard, BooleanField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
@@ -67,8 +69,7 @@ export class CommunityPluginsCardController {
 
 /** Props the renderer binds for the community plugin card. */
 export type CommunityPluginsCardProps =
-  PropsRuntime<'settings.plugin.item'>
-  & PropsLocale<'community-plugins'>
+  PropsLocale<'community-plugins'>
   & InjectFace<CommunityPluginsCardFace>
   & {
     /** Index entries; defaults to the generated registry (injected for tests). */
@@ -101,6 +102,7 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
       titleKey="settings.title"
       descriptionKey="settings.description"
       state={state}
+      alwaysOpen
       onSave={props.save}
       onDiscard={props.discard}
     >
@@ -140,5 +142,25 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
         : <p className={css.off} role="status">{t('off')}</p>}
       <p className={css.notice} role="note">{t('notice')}</p>
     </PluginSettingsCard>
+  )
+}
+
+/** Props the settings section binds for the community plugin page. */
+export type CommunityPluginsSectionProps =
+  PropsRuntime<'settings.section'>
+  & PropsLocale<'community-plugins'>
+  & InjectFace<CommunityPluginsCardFace>
+  & {
+    /** Index entries; defaults to the generated registry (injected for tests). */
+    plugins?: readonly CommunityPluginEntry[]
+  }
+
+/** Render the community plugin index as a first-level settings page. */
+export function CommunityPluginsSection(props: CommunityPluginsSectionProps): ReactNode {
+  const { t, useCommunityPluginsCard, save, discard, edit, resetField, plugins } = props
+  return (
+    <ul className={css.sectionList}>
+      <CommunityPluginsCard t={t} useCommunityPluginsCard={useCommunityPluginsCard} save={save} discard={discard} edit={edit} resetField={resetField} plugins={plugins} />
+    </ul>
   )
 }

@@ -1,14 +1,15 @@
 ---
 name: skin-developer
-description: Build a new skin for the dsh-web-ui skin collection (DSH Web GUI) and publish it into the skin-center plugin — scaffold with scripts/dsh-skin-new, author skin.json plus the apply/dispose + scoped-CSS contract, build and test with the official standalone bundle standard (turtle-ui shape), regenerate the skin-center registry and gallery, and submit the PR. Use when the user asks to create, add, develop, scaffold, or publish a new skin for the dsh web GUI skin collection.
+description: Build a new skin for the dsh-web-ui skin collection (DSH Web GUI) and publish it into the Skin Center — the first-level settings section — scaffold with scripts/dsh-skin-new, author skin.json plus the apply/dispose + scoped-CSS contract, build and test with the official standalone bundle standard (turtle-ui shape), regenerate the skin-center registry and gallery, and submit the PR. Use when the user asks to create, add, develop, scaffold, or publish a new skin for the dsh web GUI skin collection.
 whenToUse: The user wants a new skin (新建/新增/开发一个皮肤), or wants to publish/发 skin-center, or asks how skins are built and shipped in the dsh-web-ui repo. Not for switching skins (scripts/dsh-skin) or gallery-only edits.
 ---
 
 # 皮肤开发者（dsh-web-ui 皮肤集合）
 
 本技能指导在 `/Users/zcl/code/dsh-web-ui`（或任何 dsh-web-ui 克隆）里从零构建一个新皮肤，
-并把它发布进 **skin-center 插件**（GUI 设置页 Skins 分区）与 gallery。每个皮肤是符合 DSH
-官方插件标准（turtle-ui 式 setup）的自包含包，可被 `dsh plugin add` 安装。
+并把它发布进**皮肤中心**（GUI 设置页一级菜单「皮肤中心」，与通用设置/模式/插件/Agent 预设并列、
+内容直接展开）与 gallery。每个皮肤是符合 DSH 官方插件标准（turtle-ui 式 setup）的自包含包，
+可被 `dsh plugin add` 安装。
 
 ## 仓库与标准速览
 
@@ -20,6 +21,10 @@ whenToUse: The user wants a new skin (新建/新增/开发一个皮肤), or want
   4. devDependencies 只用真实发布版本（tsdown / lightningcss / cordis / vitest / jsdom）——
      `@deepseek-ai/dsh-*` 未发布到 npm，运行时由宿主 shell 的 module table 提供，构建时作 external。
 - 构建预设：`packages/skins/tsdown.client.ts`（官方 `packages/client/tsdown.client.ts` 的 standalone 移植）。
+- 皮肤中心的 GUI 是一级设置分区（`settings.section` id `skin-center`，order 120，直接展开）：注册表由
+  `scripts/skin-center-bundles` 从 `packages/skins/*/skin.json` 内嵌生成
+  （`src/client/generated/skins.ts`）；皮肤包本体仍是官方独立 bundle 标准——两个环节互不耦合，
+  新皮肤先过包标准、再进注册表。
 - 仓库是 pnpm workspace：根目录 `pnpm install` 一次即可构建/测试全部皮肤。
 
 ## 0. 前置
@@ -93,6 +98,8 @@ pnpm --filter @linxin666/dsh-client-ui-skin-center build   # skin-center 重新�
 node scripts/gallery-build         # 重新生成 gallery/manifest.js + gallery/bundles.js
 ```
 
+- 皮肤中心是一级菜单（直接展开，按 `order` 排序展示）：注册表重生成并重建 skin-center bundle 后，
+  新皮肤即出现在「皮肤中心」列表，可试穿与一键应用。
 - 若皮肤要出现在仓库 README「结构」表/「优质推荐」里，同步更新 README.md（中文）与 README.en.md（英文）。
 - `dsh-skin` 的 SKINS 注册表在 `scripts/dsh-skin` 顶部——新皮肤需由维护者添加（或用
   `dsh-skin install <name>` 直接官方安装）。
@@ -105,7 +112,7 @@ node scripts/gallery-build         # 重新生成 gallery/manifest.js + gallery/
 - [ ] `pnpm test` 通过（body 属性与 chrome 的 apply/dispose 契约）
 - [ ] gallery 模拟器试穿真实渲染，亮/暗两态正常（`preview.html?skin=<name>&theme=light|dark`）
 - [ ] `preview/{light,dark}.png` 已用 capture-previews 重拍并提交
-- [ ] `scripts/skin-center-bundles` 已重跑、skin-center 已重建（新皮肤会出现在 GUI 设置页 Skins 分区）
+- [ ] `scripts/skin-center-bundles` 已重跑、skin-center 已重建（新皮肤会出现在 GUI 设置页一级菜单「皮肤中心」）
 - [ ] `scripts/gallery-build` 已重跑，gallery 产物已提交
 - [ ] 纯呈现层约束未违反（无服务注入/事件/模型请求）
 - [ ] 提交信息清晰，PR 附试穿截图
@@ -117,4 +124,4 @@ node scripts/gallery-build         # 重新生成 gallery/manifest.js + gallery/
 - **作用域外漏样式**：检查 CSS 每个规则都以 `body[data-dsh-<name>]` 开头（含暗色变体）。
 - **dispose 没收干净**：对照 qq98 逐项核对——body 属性、每个 append 的节点、favicon、标题。
 - **预览图过期**：改完外观必须重跑 capture-previews，否则 gallery/皮肤中心显示旧图。
-- **皮肤中心不显示新皮肤**：先确认 skin-center-bundles 已重跑 + skin-center 已重建（注册表内嵌在 bundle 里）。
+- **一级菜单「皮肤中心」不显示新皮肤**：先确认 skin-center-bundles 已重跑 + skin-center 已重建（注册表内嵌在 bundle 里），再重启/刷新页面。

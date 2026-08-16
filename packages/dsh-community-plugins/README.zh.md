@@ -2,11 +2,11 @@
 
 [English](README.md) | 中文
 
-面向 dsh web GUI 设置页的社区插件索引卡：列出社区贡献的插件并链接到每位贡献者自己的仓库，配有自己的启用开关，位于插件配置区。
+面向 dsh web GUI 设置页的社区插件索引分区：作为一级菜单项（与 Web UI 插件、皮肤中心、宠物同级）直接展开，列出社区贡献的插件并链接到每位贡献者自己的仓库，配有自己的启用开关。
 
 ## 功能
 
-- **插件配置卡片**：在设置页插件配置区注册一张卡片，与内置的 Shell / Agent loop / Web search 卡片并列，自带启用开关，由 community-plugins 设置命名空间持久化。Web UI 插件组、皮肤中心与宠物则各自注册设置页一级菜单项。
+- **一级菜单项**：在设置页注册一个一级分区，与通用设置 / 模式 / 插件 / Agent 预设以及 Web UI 插件、皮肤中心、宠物同级；内容直接展开（无折叠层），自带启用开关，由 community-plugins 设置命名空间持久化。
 - **只做索引**：每个条目链接到贡献者自己的仓库；本包不打包任何被索引的代码。注册表在 community.json，由 scripts/community-index 编译进客户端 bundle。
 
 ## 安装
@@ -30,7 +30,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-community-plugins
 
 ## 配置
 
-- **启用开关**：设置 > 插件配置 > Community Plugins。关闭后隐藏索引列表，重新打开即恢复；选择持久化在 community-plugins 设置命名空间。
+- **启用开关**：位于「社区插件」一级分区自身（分区卡片自带的开关）。关闭后隐藏索引列表，重新打开即恢复；选择持久化在 community-plugins 设置命名空间。
 
 ## 已知限制
 

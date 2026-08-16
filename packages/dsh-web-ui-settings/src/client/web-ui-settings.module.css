@@ -1,87 +1,30 @@
-/* Web UI plugin group card chrome.
- * The disclosure card chrome mirrors the official ui-settings-plugins
- * PluginCard (same tokens, radius, typography and states) so the group reads
- * as a sibling of the built-in Shell / Agent loop / Web search cards. */
+/* Web UI plugins first-level settings section chrome.
+ * Renders a static heading plus the family plugin cards directly. */
 
-.sectionList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.groupCard {
-  list-style: none;
-  border: 1px solid var(--dsw-alias-border-l2);
-  background: var(--dsw-alias-bg-layer-3);
-  border-radius: 12px;
-  transition: border-color 0.16s, background 0.16s;
-}
-
-.groupCard:hover {
-  border-color: var(--dsw-alias-label-dimmed);
-}
-
-.groupCardOpen {
-  background: var(--dsw-alias-bg-layer-2);
-  border-color: var(--dsw-alias-label-dimmed);
-}
-
-.header {
-  appearance: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 14px 16px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.header:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
-  outline-offset: -2px;
-}
-
-.headText {
+.section {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  gap: 4px;
-  min-width: 0;
 }
 
-.name {
-  font-size: 15px;
+.heading {
+  margin: 0 0 4px;
+  font-size: 17px;
   font-weight: 600;
   line-height: 1.4;
   color: var(--dsw-alias-label-primary);
 }
 
-.description {
+.lede {
+  margin: 0 0 12px;
   font-size: 13px;
   line-height: 1.5;
   color: var(--dsw-alias-label-tertiary);
 }
 
-.chevron {
-  color: var(--dsw-alias-label-tertiary);
-  flex: none;
-  transition: transform 0.16s;
-}
-
-.chevronOpen {
-  transform: rotate(180deg);
-}
-
-.body {
-  border-top: 1px solid var(--dsw-alias-border-l2);
-  margin: 0 16px;
-  padding: 12px 0 8px;
+.sectionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .subcards {
@@ -93,13 +36,60 @@
   list-style: none;
 }
 
-/* Reduced motion: drop the header/chevron transitions. Token colors and the
-   focus ring stay, so usable states remain visible. */
-@media (prefers-reduced-motion: reduce) {
-  .groupCard,
-  .header,
-  .chevron,
-  .chevronOpen {
-    transition: none;
-  }
+/* Family section nav icons: the DSH settings shell hard-codes nav icons by
+   section id and falls back to the gear for every other section. The four
+   family sections (orders 110-140) are the last four nav cells, so the group
+   swaps the gear for per-section masks over the shell's stable class
+   suffixes. The override applies only while exactly eight nav cells exist
+   (all four family sections installed); otherwise the gear stays, so a
+   partial install never shows a wrong icon. */
+[class*="_navList"]:has(> [class*="_navCell"]:nth-child(8)):not(:has(> [class*="_navCell"]:nth-child(9))) > [class*="_navCell"]:nth-child(5) > [class*="_navIcon"],
+[class*="_navList"]:has(> [class*="_navCell"]:nth-child(8)):not(:has(> [class*="_navCell"]:nth-child(9))) > [class*="_navCell"]:nth-child(6) > [class*="_navIcon"],
+[class*="_navList"]:has(> [class*="_navCell"]:nth-child(8)):not(:has(> [class*="_navCell"]:nth-child(9))) > [class*="_navCell"]:nth-child(7) > [class*="_navIcon"],
+[class*="_navList"]:has(> [class*="_navCell"]:nth-child(8)):not(:has(> [class*="_navCell"]:nth-child(9))) > [class*="_navCell"]:nth-child(8) > [class*="_navIcon"] {
+  display: none;
+}
+
+/* Web UI Plugins: a 2x2 plugin grid. */
+[class*="_navList"]:has(> [class*="_navCell"]:nth-child(8)):not(:has(> [class*="_navCell"]:nth-child(9))) > [class*="_navCell"]:nth-child(5)::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Skin Center: a color swatch ring. */
+[class*="_navList"]:has(> [class*="_navCell"]:nth-child(8)):not(:has(> [class*="_navCell"]:nth-child(9))) > [class*="_navCell"]:nth-child(6)::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm0-4a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm0-4a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Pet: a paw print. */
+[class*="_navList"]:has(> [class*="_navCell"]:nth-child(8)):not(:has(> [class*="_navCell"]:nth-child(9))) > [class*="_navCell"]:nth-child(7)::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='11' rx='4.2' ry='2.8'/%3E%3Ccircle cx='2.8' cy='6.2' r='1.9'/%3E%3Ccircle cx='8' cy='4.6' r='1.9'/%3E%3Ccircle cx='13.2' cy='6.2' r='1.9'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='11' rx='4.2' ry='2.8'/%3E%3Ccircle cx='2.8' cy='6.2' r='1.9'/%3E%3Ccircle cx='8' cy='4.6' r='1.9'/%3E%3Ccircle cx='13.2' cy='6.2' r='1.9'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Community Plugins: two people. */
+[class*="_navList"]:has(> [class*="_navCell"]:nth-child(8)):not(:has(> [class*="_navCell"]:nth-child(9))) > [class*="_navCell"]:nth-child(8)::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5.5' cy='5.5' r='3'/%3E%3Ccircle cx='11' cy='5.5' r='3'/%3E%3Cpath d='M2.5 13.5c0-3 2-4.2 3-4.2H11c1.5 0 3 1.2 3 4.2z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5.5' cy='5.5' r='3'/%3E%3Ccircle cx='11' cy='5.5' r='3'/%3E%3Cpath d='M2.5 13.5c0-3 2-4.2 3-4.2H11c1.5 0 3 1.2 3 4.2z'/%3E%3C/svg%3E") center / contain no-repeat;
 }

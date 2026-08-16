@@ -141,12 +141,13 @@ describe('desktop inline conversation edit', () => {
     const create = vi.fn().mockResolvedValue({ result: { ok: true, value: { sessionId: childId } } })
     const models = vi.fn().mockResolvedValue({ result: { ok: true, value: { current: { provider: 'p', model: 'm' } } } })
     const selectModel = vi.fn().mockResolvedValue({ result: { ok: true, value: { selected: { provider: 'p', model: 'm' } } } })
+    const archiveSession = vi.fn().mockResolvedValue({ result: { ok: true, value: { archivedSessionIds: [sessionId] } } })
     const open = vi.fn()
     const sessions = {
       binding: vi.fn(() => ({ sessionId: childId, session: {} })),
       open,
     } as unknown as ISessions
-    const connection = { api: { sessions: { create, models, selectModel, prompt } } } as unknown as ConnectionHandle
+    const connection = { api: { sessions: { create, models, selectModel, prompt }, workspace: { archiveSession } } } as unknown as ConnectionHandle
     const Node = createEditableUserMessageNode(sessions, connection, translate)
     render(<Node {...props(snapshot()) as unknown as Parameters<typeof Node>[0]} />)
 
@@ -162,19 +163,21 @@ describe('desktop inline conversation edit', () => {
     expect(models).toHaveBeenCalledWith({ sessionId })
     expect(selectModel).toHaveBeenCalledWith({ sessionId: childId, provider: 'p', model: 'm' })
     expect(open).toHaveBeenCalledWith(childId)
+    expect(archiveSession).toHaveBeenCalledWith({ sessionId })
   })
 
   it('forks from the previous completed boundary for later turns', async () => {
     const childId = 'session-child' as SessionId
     const fork = vi.fn().mockResolvedValue(childId)
     const prompt = vi.fn().mockResolvedValue({ result: { ok: true, value: { accepted: true } } })
+    const archiveSession = vi.fn().mockResolvedValue({ result: { ok: true, value: { archivedSessionIds: [sessionId] } } })
     const open = vi.fn()
     const sessions = {
       binding: vi.fn(() => ({ sessionId: childId, session: {} })),
       fork,
       open,
     } as unknown as ISessions
-    const connection = { api: { sessions: { prompt } } } as unknown as ConnectionHandle
+    const connection = { api: { sessions: { prompt }, workspace: { archiveSession } } } as unknown as ConnectionHandle
     const laterTurn = snapshot({
       nodes: [
         snapshot().nodes[0]!,
@@ -198,5 +201,32 @@ describe('desktop inline conversation edit', () => {
     }))
     expect(fork).toHaveBeenCalledWith({ sessionId, atSeq: 3 })
     expect(open).toHaveBeenCalledWith(childId)
+    expect(archiveSession).toHaveBeenCalledWith({ sessionId })
+  })
+
+  it('reuses the same child when a failed edit is submitted again', async () => {
+    const childId = 'session-child' as SessionId
+    const create = vi.fn().mockResolvedValue({ result: { ok: true, value: { sessionId: childId } } })
+    const models = vi.fn().mockResolvedValue({ result: { ok: false, error: { message: 'unavailable' } } })
+    const prompt = vi.fn()
+      .mockResolvedValueOnce({ result: { ok: false, error: { message: 'request failed' } } })
+      .mockResolvedValueOnce({ result: { ok: true, value: { accepted: true } } })
+    const archiveSession = vi.fn().mockResolvedValue({ result: { ok: true, value: { archivedSessionIds: [sessionId] } } })
+    const sessions = {
+      binding: vi.fn(() => ({ sessionId: childId, session: {} })),
+      open: vi.fn(),
+    } as unknown as ISessions
+    const connection = { api: { sessions: { create, models, prompt }, workspace: { archiveSession } } } as unknown as ConnectionHandle
+    const Node = createEditableUserMessageNode(sessions, connection, translate)
+    render(<Node {...props(snapshot()) as unknown as Parameters<typeof Node>[0]} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.edit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.edit.save' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.edit.save' }))
+    await waitFor(() => expect(archiveSession).toHaveBeenCalledWith({ sessionId }))
+
+    expect(create).toHaveBeenCalledTimes(1)
+    expect(prompt).toHaveBeenCalledTimes(2)
   })
 })

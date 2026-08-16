@@ -185,14 +185,16 @@ and retrying never mutate the source session log.
   through its own `/m/api` preferences method when a chat opens. On
   browsers that support `field-sizing: content`, the input grows with the
   draft up to its 120px cap in either mode.
-- On desktop Web, the latest settled human message exposes a pencil button at
+- On desktop Web, the latest idle human text message exposes a pencil button at
   the lower-right of its user bubble. Clicking it turns that same bubble into
   an inline editor with Cancel and Send actions; saving forks a child session
   from the previous completed boundary and sends the replacement from there.
   The first-turn case creates an equivalent session in the same workspace and
-  preserves the selected model when the model directory is available. Running,
-  failed, plugin/system, and attachment messages are not editable; the source
-  session always remains unchanged.
+  preserves the selected model when the model directory is available. Once the
+  replacement is accepted, the unchanged source session is archived so repeated
+  edits do not fill the main list with same-title branches; it remains recoverable
+  from the archive. A failed replacement reuses its already-created child on
+  retry. Running, plugin/system, and attachment messages are not editable.
 - On desktop Web, transient model request failures (`EMPTY_RESPONSE`,
   `RATE_LIMIT`, `SERVER`, `TIMEOUT`, and `TRANSPORT`) are automatically retried
   up to five extra times with cancellable bounded exponential backoff. The

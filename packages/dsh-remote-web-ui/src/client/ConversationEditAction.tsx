@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ConnectionHandle, ContentBlock, PromptContentPart } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -202,8 +202,11 @@ function EditableMessage({ sessions, connection, snapshot, sessionId, source, ed
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
+  const submitting = useRef(false)
+  const childSession = useRef<SessionId | undefined>(undefined)
 
   const beginEdit = useCallback(() => {
+    childSession.current = undefined
     setDraft(editable.text)
     setError(false)
     setEditing(true)
@@ -217,26 +220,38 @@ function EditableMessage({ sessions, connection, snapshot, sessionId, source, ed
   }, [busy])
 
   const saveEdit = useCallback(() => {
-    if (draft.trim() === '' || busy) return
+    if (draft.trim() === '' || submitting.current) return
+    submitting.current = true
     setBusy(true)
     setError(false)
     void (async () => {
       const previousBoundary = previousTurnBoundary(snapshot, editable.seq)
-      const childSessionId = previousBoundary === undefined
-        ? await createSessionViaApi(connection, source)
-        : await sessions.fork({ sessionId, atSeq: previousBoundary })
-      if (previousBoundary === undefined) await copyModelSelection(connection, sessionId, childSessionId)
+      let childSessionId = childSession.current
+      if (childSessionId === undefined) {
+        childSessionId = previousBoundary === undefined
+          ? await createSessionViaApi(connection, source)
+          : await sessions.fork({ sessionId, atSeq: previousBoundary })
+        childSession.current = childSessionId
+        if (previousBoundary === undefined) await copyModelSelection(connection, sessionId, childSessionId)
+      }
       await waitForSession(sessions, childSessionId)
       await promptViaApi(connection, childSessionId, draft)
       sessions.open(childSessionId)
+      try {
+        await connection.api.workspace.archiveSession({ sessionId })
+      } catch {
+        // The replacement was already accepted. Do not offer a retry that
+        // would enqueue the edited prompt twice merely because cleanup failed.
+      }
       setEditing(false)
       setDraft('')
     })().catch(() => {
       setError(true)
     }).finally(() => {
+      submitting.current = false
       setBusy(false)
     })
-  }, [busy, connection, draft, editable.seq, sessionId, sessions, snapshot, source])
+  }, [connection, draft, editable.seq, sessionId, sessions, snapshot, source])
 
   if (!editing) {
     return (

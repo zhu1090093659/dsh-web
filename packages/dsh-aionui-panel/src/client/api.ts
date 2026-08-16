@@ -6,7 +6,7 @@
  */
 
 import type {
-  DirListing, FileRead, GitBatchResult, GitStatusView, PanelEnvelope, PanelError, SearchView,
+  ContentSearchView, DirListing, FileRead, GitBatchResult, GitStatusView, PanelEnvelope, PanelError, SearchView,
 } from '../core/types.ts'
 
 /** Transport failure (fetch threw or the response was not JSON). */
@@ -55,6 +55,11 @@ export class PanelApi {
   /** Filename search under the root. */
   search(root: string, query: string): Promise<PanelEnvelope<SearchView>> {
     return post('/aionui-panel/search', { root, query })
+  }
+
+  /** File-content search under the root (matching lines grouped per file). */
+  searchContent(root: string, query: string): Promise<PanelEnvelope<ContentSearchView>> {
+    return post('/aionui-panel/search-content', { root, query })
   }
 
   /** Delete a path (untracked discard). */

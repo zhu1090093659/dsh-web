@@ -1,0 +1,117 @@
+/**
+ * dsh-desktop-launcher — host half. Serves the loopback-only
+ * /api/dsh-desktop-launcher/create route that writes the launcher script
+ * under ~/.dsh/desktop-launcher/ and places a double-click icon on the
+ * Desktop (Windows .lnk, macOS .command, Linux .desktop), plus a
+ * system-prompt announcement. The browser half (./client) renders the
+ * settings card with the "create desktop icon" button. Everything rides
+ * official NPM SDK packages — no dsh source changes.
+ */
+
+import type { Context } from '@deepseek-ai/cordis'
+import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import z from 'schemastery'
+import type {} from '@deepseek-ai/dsh-host-webserver'
+import type {} from '@deepseek-ai/dsh-system-prompt'
+import { DEFAULT_DSH_COMMAND, DEFAULT_URL, resolveLauncherSpec } from './core/launcher.ts'
+import { makeRoutes } from './routes.ts'
+
+/** Stable cordis plugin name. */
+export const name = 'desktop-launcher'
+
+/** Services required before the launcher surfaces can mount. */
+export const inject = ['webServer', 'systemPrompt']
+
+/**
+ * Settings namespace of the desktop-launcher capability — the section the
+ * web settings surface edits. Spelled here rather than imported so the
+ * browser half can spell the same value without depending on a Host package.
+ */
+export const DESKTOP_LAUNCHER_SETTINGS_NAMESPACE = settingsNamespace('desktop-launcher')
+
+/** Plugin config, validated by the same-named schemastery schema. */
+export interface Config {
+  /** When true (default), a system-prompt section announces the plugin. */
+  announceToAgent?: boolean
+  /** Master switch for the plugin (route + announcement). */
+  enabled?: boolean
+  /** Command that starts dsh (must be on PATH when the launcher runs). */
+  dshCommand?: string
+  /** Base URL of the dsh web GUI. */
+  url?: string
+  /** Optional profile passed as `dsh web --profile <profile>`. */
+  profile?: string
+  /** Optional icon file (.ico/.png) for the desktop icon; empty uses the bundled dsh icon. */
+  iconPath?: string
+}
+
+export const Config: z<Config> = z.object({
+  announceToAgent: z.boolean().default(true),
+  enabled: z.boolean().default(true),
+  dshCommand: z.string().default(DEFAULT_DSH_COMMAND),
+  url: z.string().default(DEFAULT_URL),
+  profile: z.string().default(''),
+  iconPath: z.string().default(''),
+})
+
+/** Schema default, re-read for hand-built test contexts (the loader applies them normally). */
+const DEFAULT_ANNOUNCE = true
+
+/** Order of the announcement section within the tool-guidance band. */
+const SECTION_ORDER = 210
+
+/** Model-facing announcement: plugin presence, capabilities, and limits. */
+export const DESKTOP_LAUNCHER_GUIDANCE = '本机已安装 dsh-desktop-launcher 插件（DSH 桌面启动器）：设置 → 插件配置 → Web UI 插件 卡片内「创建桌面图标」可在桌面生成一键启动图标（Windows .lnk / macOS .command / Linux .desktop），双击即启动 dsh web 并打开 Web GUI；可配置 dshCommand / url / profile。限制：图标创建会写用户桌面与 ~/.dsh/desktop-launcher，路由仅限 loopback。用户提到「桌面图标 / 快捷方式 / 一键启动 dsh」时即指本插件，请据此协作。'
+
+/**
+ * Mount the route and announcement, gated on the composition entry config
+ * (and the live settings value once the web settings surface is served).
+ * @param ctx - host plugin context carrying webServer/systemPrompt.
+ * @param config - resolved plugin config (schema defaults applied by the loader).
+ */
+export function apply(ctx: Context, config?: Config): void {
+  let current: () => Config = () => config ?? {}
+  let disposeRoutes: (() => void) | undefined
+  let disposeSection: (() => void) | undefined
+
+  // Register (or drop) every surface to match the current source. Each
+  // group is kept under one disposer: re-registering first tears the old one
+  // down so duplicate-name registrations never throw.
+  const sync = (): void => {
+    if (disposeSection !== undefined) {
+      disposeSection()
+      disposeSection = undefined
+    }
+    if (disposeRoutes !== undefined) {
+      disposeRoutes()
+      disposeRoutes = undefined
+    }
+    const value = current()
+    if ((value.enabled ?? true) === false) return
+    disposeRoutes = ctx.effect(
+      () => {
+        const disposers = makeRoutes({
+          resolveSpec: () => resolveLauncherSpec(current()),
+        }).routes.map(route => ctx.webServer.register(route))
+        return () => { for (const dispose of disposers) dispose() }
+      },
+      'dsh-desktop-launcher: routes',
+    )
+    if ((value.announceToAgent ?? DEFAULT_ANNOUNCE) !== false) {
+      disposeSection = ctx.systemPrompt.section({
+        name: 'plugin:dsh-desktop-launcher',
+        order: SECTION_ORDER,
+        text: DESKTOP_LAUNCHER_GUIDANCE,
+      })
+    }
+  }
+
+  installSettingsSection(ctx, DESKTOP_LAUNCHER_SETTINGS_NAMESPACE, Config, config ?? {}, {
+    setSource: (source) => { current = source; sync() },
+    onChange: sync,
+  })
+
+  // Initial registration from the composition entry (covers deployments with
+  // no settings service, whose installSettingsSection never fires its hooks).
+  sync()
+}

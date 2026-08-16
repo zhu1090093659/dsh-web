@@ -1,0 +1,13 @@
+# dsh-skill-manager bundle patch: inserts the dual-face plugin row into
+# the web profile roster. Applied as a profile bundle layer (the
+# `dsh.bundle.patch` manifest field); install with
+# `dsh plugin --profile web add link:<repo>/packages/dsh-skill-manager`.
+#
+# The row is a bare plugin by package name: the node half (exports ".") runs
+# in the host process (the /api/dsh-skill-manager route family), and the
+# `dsh.client` declaration in package.json makes the browser half
+# (exports "./client") load in the web GUI, registering the Settings page
+# section "Skills".
+- insert:
+    - id: skill-manager
+      name: '@linxin666/dsh-skill-manager'

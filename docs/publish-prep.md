@@ -9,7 +9,7 @@
 
 ## 一、范围
 
-`packages/` 与 `packages/skins/` 下共 22 个插件包（截至快照日）：
+`packages/` 与 `packages/skins/` 下共 26 个插件包（截至快照日）：
 
 | 目录 | 包名 | 当前版本 | private |
 | --- | --- | --- | --- |
@@ -24,6 +24,9 @@
 | packages/dsh-web-ui-settings | @linxin666/dsh-client-ui-web-ui-settings | 0.1.1 | true |
 | packages/dsh-skins | @linxin666/dsh-skins（聚合） | 0.1.1 | true |
 | packages/dsh-web-ui-all | @linxin666/dsh-web-ui-all（聚合） | 0.1.1 | true |
+| packages/dsh-desktop-launcher | @linxin666/dsh-desktop-launcher | 0.1.0 | true |
+| packages/dsh-skill-manager | @linxin666/dsh-skill-manager | 0.1.0 | true |
+| packages/dsh-plugin-manager | @linxin666/dsh-plugin-manager | 0.1.0 | true |
 | packages/skins/qq98 | @linxin666/dsh-client-ui-skin-qq98 | 0.1.1 | true |
 | packages/skins/ths | @linxin666/dsh-client-ui-skin-ths | 0.1.1 | true |
 | packages/skins/xp | @linxin666/dsh-client-ui-skin-xp | 0.1.1 | true |

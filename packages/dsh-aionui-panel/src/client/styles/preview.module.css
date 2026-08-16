@@ -471,19 +471,41 @@
   border-radius: 4px;
 }
 
-/* Code viewer. */
+/* Code viewer: a full-bleed highlighted source view. The harness CodeBlock
+   supplies the shiki tokens; its language/copy banner and card chrome are
+   stripped below so the panel reads like a plain editor, not an embedded
+   markdown code block. */
 .codeViewer {
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+
+.codeViewer :global(.md-code-block) {
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* The banner (language label + copy button) is the block's first child div. */
+.codeViewer :global(.md-code-block > div:first-child) {
+  display: none;
+}
+
+.codeViewer :global(.md-code-block pre) {
   margin: 0;
   padding: 12px 14px;
-  font-family: var(--aion-font-mono);
-  font-size: 13px;
-  line-height: 1.6;
+  background: transparent;
+  border-radius: 0;
   color: var(--aion-text-primary);
-  tab-size: 2;
   white-space: pre;
+  word-break: normal;
+  overflow: visible;
+}
+
+/* Shiki inlines its theme background; route it to the panel surface. */
+.codeViewer :global(.md-code-block pre.shiki) {
+  background: transparent !important;
 }
 
 /* Diff viewer. */

@@ -40,10 +40,13 @@
   --aion-fill-3: #e5e6eb;
   --aion-border-base: #e5e6eb;
   --aion-overlay-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-  --aion-font-sans: -apple-system, "system-ui", "Segoe UI", Roboto, "Helvetica Neue",
-    "PingFang SC", "Microsoft YaHei", sans-serif;
-  --aion-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
-    "Liberation Mono", monospace;
+  /* Prefer the harness shell's font stacks (VSCode-style rounded UI font
+     + code font) when the shell theme tokens are present; fall back to the
+     panel's own stacks when the plugin runs without them. */
+  --aion-font-sans: var(--dsw-font-family, -apple-system, "system-ui", "Segoe UI", Roboto,
+    "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif);
+  --aion-font-mono: var(--ds-font-family-code, ui-monospace, "SF Mono", SFMono-Regular,
+    Menlo, Consolas, "Liberation Mono", monospace);
 }
 
 /* The shell marks dark mode with body[data-ds-dark-theme]; the panel tokens
@@ -87,6 +90,8 @@
   font-size: 13px;
   color: var(--aion-text-primary);
   background-color: var(--aion-bg-1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 :global(.aionui-root *),
@@ -160,6 +165,16 @@
   border-left: 1px solid var(--aion-bg-3);
 }
 
+/* While a panel drag is in flight the columns go pointer-transparent (the
+   drag core sets data-aionui-dragging on the frame): without this the
+   preview column's embedded iframes swallow pointermove/pointerup and the
+   drag stalls the moment the cursor crosses a panel. The handles are frame
+   siblings, so they keep receiving the gesture. */
+:global([data-aionui-dragging] .aionui-preview-col),
+:global([data-aionui-dragging] .aionui-explorer-col) {
+  pointer-events: none;
+}
+
 /* Preview region enter animation (0.25s, translateX(20px) + fade). */
 :global(.aionui-preview-col.aionui-preview-enter) {
   animation: aionui-preview-enter 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -187,7 +202,8 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 2px;
   border-radius: 9999px;
   background-color: var(--aion-bg-3);
@@ -203,11 +219,9 @@
   width: 6px;
   background-color: var(--aion-brand);
 }
-/* The preview handle's line sits at its right edge (its hit zone extends
-   left); the explorer's at its left edge. */
+/* The preview line is fainter at rest (both lines now sit centered on
+   their column border, matching the centered hit zones). */
 :global(.aionui-preview-handle::after) {
-  left: auto;
-  right: 0;
   opacity: 0.3;
 }
 :global(.aionui-preview-handle:hover::after),

@@ -17,8 +17,11 @@ patchFrom:
   - ../dsh-remote-web-ui
   - ../dsh-live-stats
   - ../dsh-ssh
+  - ../dsh-skill-manager
   - ../dsh-tool-describe-image
   - ../dsh-liangshen
+  - ../dsh-desktop-launcher
+  - ../dsh-plugin-manager
   - ../dsh-skins
 self:
   - ui-web-ui-compat
@@ -30,8 +33,11 @@ deps:
   - ../dsh-remote-web-ui
   - ../dsh-live-stats
   - ../dsh-ssh
+  - ../dsh-skill-manager
   - ../dsh-tool-describe-image
   - ../dsh-liangshen
+  - ../dsh-desktop-launcher
+  - ../dsh-plugin-manager
   - ../dsh-web-ui-settings
   - ../dsh-skins
   # skin-center 是 dsh-skins patch 行（ui-skin-center）的宿主，必须与

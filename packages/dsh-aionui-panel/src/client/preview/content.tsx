@@ -9,6 +9,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
+import { CodeBlock } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PreviewTabState } from '../store.ts'
 import { useResizableSplit } from '../hooks/useResizableSplit.ts'
 import { t } from '../locales.ts'
@@ -228,10 +229,25 @@ function HtmlViewer({
   return <iframe className={previewCss.pdfViewer} srcDoc={srcDoc} sandbox="" title="html preview" />
 }
 
-/** Plain code/text viewer. */
+/**
+ * Code/text viewer. Uses the shell's CodeBlock for shiki tokenization (same
+ * grammar set and --shiki-* palette as the harness chat); preview.module.css
+ * strips its language/copy banner and card chrome so programming and
+ * structured languages (ts/js, html, xml, json, yaml, …) render as a plain
+ * full-bleed highlighted source view. Unknown languages fall back to plain
+ * monospace.
+ */
 function CodeViewer({ content, language }: { content: string; language: string }): JSX.Element {
-  void language
-  return <pre className={previewCss.codeViewer}><code>{content}</code></pre>
+  return (
+    <div className={previewCss.codeViewer}>
+      <CodeBlock
+        code={content}
+        lang={language === '' ? undefined : language}
+        copyLabel={t('common.copy')}
+        copiedLabel={t('common.copied')}
+      />
+    </div>
+  )
 }
 
 /**

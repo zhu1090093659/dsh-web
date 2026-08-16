@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { renderInline, renderMarkdown, resolveMarkdownImage } from '../src/client/preview/markdown.ts'
 import { parseCsv, normalizeUrl } from '../src/client/preview/content.tsx'
 import { parseGridTracks, trackPx } from '../src/client/layout.ts'
-import { detectContentType, pdfPreviewUrl } from '../src/client/fileType.ts'
+import { absolutePathOf, detectContentType, pdfPreviewUrl } from '../src/client/fileType.ts'
 
 describe('renderMarkdown', () => {
   it('renders headings, paragraphs and hr', () => {
@@ -92,6 +92,19 @@ describe('detectContentType', () => {
     expect(detectContentType('pic.png')).toBe('image')
     expect(detectContentType('LICENSE')).toBe('text')
     expect(detectContentType('weird.bin')).toBe('unsupported')
+  })
+})
+
+describe('absolutePathOf', () => {
+  it('joins posix roots with forward slashes', () => {
+    expect(absolutePathOf('/work', 'src/a.ts')).toBe('/work/src/a.ts')
+    expect(absolutePathOf('/work/', 'src/a.ts')).toBe('/work/src/a.ts')
+    expect(absolutePathOf('', 'a.ts')).toBe('a.ts')
+  })
+
+  it('joins Windows roots with backslashes', () => {
+    expect(absolutePathOf('C:\\work', 'src/a.ts')).toBe('C:\\work\\src\\a.ts')
+    expect(absolutePathOf('C:\\work\\', 'a.ts')).toBe('C:\\work\\a.ts')
   })
 })
 

@@ -32,6 +32,9 @@ function fakeApi(overrides: Partial<PanelApi> = {}): { api: PanelApi; calls: str
     search: vi.fn(async (): Promise<PanelEnvelope<{ query: string; hits: never[]; truncated: boolean }>> => ({
       ok: true, value: { query: '', hits: [], truncated: false },
     })),
+    searchContent: vi.fn(async (): Promise<PanelEnvelope<{ query: string; hits: never[]; truncated: boolean }>> => ({
+      ok: true, value: { query: '', hits: [], truncated: false },
+    })),
     delete: vi.fn(async () => ({ ok: true, value: { ok: true as const } })),
     gitStatus: vi.fn(async (): Promise<PanelEnvelope<GitStatusView | null>> => ({
       ok: true,
@@ -293,6 +296,20 @@ describe('regression: search debounce + failure paths + save race', () => {
     s.explorer.setSearchQuery('xyz')
     await vi.waitFor(() => expect(s.explorer.getSnapshot().search.status).toBe('error'))
     expect(s.explorer.getSnapshot().search.hits).toEqual([])
+  })
+
+  it('content mode routes the query through api.searchContent', async () => {
+    const { api } = fakeApi()
+    const s = createPanelStores(api)
+    s.explorer.setRoot('/w')
+    s.explorer.setSearchMode('content')
+    expect(s.explorer.getSnapshot().search.mode).toBe('content')
+    s.explorer.setSearchQuery('needle')
+    await vi.waitFor(() =>
+      expect((api.searchContent as ReturnType<typeof vi.fn>).mock.calls.at(-1)).toEqual(['/w', 'needle']))
+    const state = s.explorer.getSnapshot()
+    expect(state.search.status).toBe('done')
+    expect(state.search.hits).toEqual([])
   })
 
   it('saveTab keeps dirty when the user types while the save is in flight', async () => {

@@ -10,7 +10,9 @@
  * @module dsh-aionui-panel/client/store
  */
 
-import type { FileRead, FsEntry, GitStatusView, PreviewContentType, SearchHit } from '../core/types.ts'
+import type {
+  ContentSearchHit, ContentSearchView, FileRead, FsEntry, GitStatusView, PreviewContentType, SearchHit, SearchView,
+} from '../core/types.ts'
 import type { PanelApi } from './api.ts'
 import { detectContentType, isTextType, pdfPreviewUrl, tabIdOf } from './fileType.ts'
 import {
@@ -195,11 +197,14 @@ export interface ExplorerState {
   loading: string[]
   /** Active tab: files | changes. */
   activeTab: 'files' | 'changes'
-  /** Filename search state. */
+  /** Search state (filename or file-content mode). */
   search: {
     query: string
+    /** 'name' searches file names; 'content' searches file contents. */
+    mode: 'name' | 'content'
     status: 'idle' | 'searching' | 'done' | 'error'
     hits: SearchHit[]
+    contentHits: ContentSearchHit[]
     truncated: boolean
   }
   /** Bumped on every fs change event (drives refetch + re-render). */
@@ -214,6 +219,7 @@ export interface ExplorerStore extends StateHandle<ExplorerState> {
   select: (rel: string | null) => void
   reveal: (rel: string) => void
   setSearchQuery: (query: string) => void
+  setSearchMode: (mode: 'name' | 'content') => void
   cancelSearch: () => void
   /** Refetch every expanded dir + active search after a host change event. */
   handleFsChange: () => void
@@ -229,7 +235,9 @@ export function readExplorerUi(root: string): { expanded: string[]; selected: st
   return { expanded, selected }
 }
 
-const EMPTY_SEARCH = { query: '', status: 'idle' as const, hits: [], truncated: false }
+const EMPTY_SEARCH = {
+  query: '', mode: 'name' as const, status: 'idle' as const, hits: [], contentHits: [], truncated: false,
+}
 
 /** Create the explorer store (per-root persistence, debounced writes). */
 export function createExplorerStore(api: PanelApi): ExplorerStore {
@@ -306,6 +314,31 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
     return out
   }
 
+  /** Run the active search mode once (guarded against stale roots/queries). */
+  const runSearch = (root: string, query: string, mode: 'name' | 'content'): void => {
+    const promise = mode === 'name' ? api.search(root, query) : api.searchContent(root, query)
+    void promise.then((result) => {
+      handle.update((prev) => {
+        if (prev.root !== root || prev.search.query !== query || prev.search.mode !== mode) return prev
+        if (!result.ok) {
+          return { ...prev, search: { ...prev.search, status: 'error', hits: [], contentHits: [] } }
+        }
+        if (mode === 'name') {
+          const value = result.value as SearchView
+          return {
+            ...prev,
+            search: { ...prev.search, status: 'done', hits: value.hits, contentHits: [], truncated: value.truncated },
+          }
+        }
+        const value = result.value as ContentSearchView
+        return {
+          ...prev,
+          search: { ...prev.search, status: 'done', hits: [], contentHits: value.hits, truncated: value.truncated },
+        }
+      })
+    })
+  }
+
   const store: ExplorerStore = Object.assign(handle, {
     setRoot(root: string) {
       handle.update((prev) => {
@@ -367,30 +400,39 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
         return {
           ...prev,
           search: trimmed === ''
-            ? { ...EMPTY_SEARCH }
+            ? { ...EMPTY_SEARCH, mode: prev.search.mode }
             : { ...prev.search, query: trimmed, status: 'searching' },
         }
       })
       searchDebounced.dispose()
       if (trimmed === '') return
-      const root = handle.getSnapshot().root
+      const state = handle.getSnapshot()
       searchDebounced.schedule(() => {
-        void api.search(root, trimmed).then((result) => {
-          handle.update((prev) => {
-            if (prev.root !== root || prev.search.query !== trimmed) return prev
-            return {
-              ...prev,
-              search: result.ok
-                ? { query: trimmed, status: 'done', hits: result.value.hits, truncated: result.value.truncated }
-                : { ...prev.search, status: 'error', hits: [] },
-            }
-          })
-        })
+        runSearch(state.root, trimmed, state.search.mode)
       })
+    },
+    setSearchMode(mode: 'name' | 'content') {
+      const state = handle.getSnapshot()
+      if (state.search.mode === mode) return
+      searchDebounced.dispose()
+      handle.update((prev) => ({
+        ...prev,
+        search: {
+          ...prev.search,
+          mode,
+          status: prev.search.query === '' ? 'idle' : 'searching',
+          hits: [],
+          contentHits: [],
+        },
+      }))
+      const current = handle.getSnapshot()
+      if (current.search.query !== '') runSearch(current.root, current.search.query, mode)
     },
     cancelSearch() {
       searchDebounced.dispose()
-      handle.update((prev) => (prev.search.query === '' ? prev : { ...prev, search: { ...EMPTY_SEARCH } }))
+      handle.update((prev) => (
+        prev.search.query === '' ? prev : { ...prev, search: { ...EMPTY_SEARCH, mode: prev.search.mode } }
+      ))
     },
     async handleFsChange() {
       const state = handle.getSnapshot()
@@ -413,17 +455,7 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
         return { ...prev, dirs: nextDirs, version: prev.version + 1 }
       })
       if (state.search.query !== '') {
-        void api.search(root, state.search.query).then((result) => {
-          handle.update((prev) => {
-            if (prev.root !== root || prev.search.query !== state.search.query) return prev
-            return {
-              ...prev,
-              search: result.ok
-                ? { query: state.search.query, status: 'done', hits: result.value.hits, truncated: result.value.truncated }
-                : prev.search,
-            }
-          })
-        })
+        runSearch(root, state.search.query, state.search.mode)
       }
     },
   })

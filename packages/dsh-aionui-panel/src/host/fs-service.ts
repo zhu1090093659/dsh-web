@@ -12,7 +12,9 @@
 import { open, readdir, readFile, realpath, stat, writeFile, rm, mkdir } from 'node:fs/promises'
 import { watch as watchPath, type Dirent, type FSWatcher } from 'node:fs'
 import { join, dirname } from 'node:path'
-import type { DirListing, FileRead, FsEntry, PanelError, SearchHit, SearchView } from '../core/types.ts'
+import type {
+  ContentSearchHit, ContentSearchMatch, ContentSearchView, DirListing, FileRead, FsEntry, PanelError, SearchHit, SearchView,
+} from '../core/types.ts'
 import { isPathInside, type GateVerdict, type WorkspaceGate } from './gate.ts'
 
 /** The fs.watch call shape the service needs (constructor seam for tests). */
@@ -32,6 +34,14 @@ const IMAGE_CAP_BYTES = 8 << 20
 /** Filename-search caps (results and scanned entries). */
 const SEARCH_HIT_CAP = 200
 const SEARCH_SCAN_CAP = 20_000
+/** Content-search caps: files, matches per file, scanned entries. */
+const CONTENT_HIT_FILES = 50
+const CONTENT_MATCHES_PER_FILE = 5
+const CONTENT_SCAN_CAP = 20_000
+/** Per-file read ceiling for content search (matches past the cap are missed). */
+const CONTENT_READ_CAP_BYTES = 256 * 1024
+/** Snippet ceiling for one matched line. */
+const CONTENT_LINE_CAP_CHARS = 240
 /** Directories skipped by search (VS Code-like noise reduction). */
 const SEARCH_SKIP_DIRS = new Set(['.git', 'node_modules'])
 /** Directories never listed in the tree. */
@@ -192,6 +202,27 @@ async function readMagicBytes(abs: string): Promise<Buffer> {
   } finally {
     if (handle !== undefined) await handle.close().catch(() => {})
   }
+}
+
+/** Read the first cap bytes of a file (shorter buffer on EOF/error). */
+async function readTextCap(abs: string, cap: number): Promise<Buffer> {
+  let handle: Awaited<ReturnType<typeof open>> | undefined
+  try {
+    handle = await open(abs, 'r')
+    const buf = Buffer.alloc(cap)
+    const { bytesRead } = await handle.read(buf, 0, cap, 0)
+    return buf.subarray(0, bytesRead)
+  } catch {
+    return Buffer.alloc(0)
+  } finally {
+    if (handle !== undefined) await handle.close().catch(() => {})
+  }
+}
+
+/** Binary probe: a NUL byte in the first 8 KiB marks non-text content. */
+function isBinaryBuffer(buf: Buffer): boolean {
+  const probe = buf.length > 8192 ? buf.subarray(0, 8192) : buf
+  return probe.includes(0)
 }
 
 /**
@@ -392,6 +423,80 @@ export class FsService {
     }
     hits.sort((a, b) => rank(a) - rank(b) || a.path.length - b.path.length || (a.path < b.path ? -1 : 1))
     return { query, hits, truncated }
+  }
+
+  /**
+   * Recursive file-content search (case-insensitive substring over the first
+   * 256 KiB of each text file), pruned at noise dirs and binary content.
+   * Results group matching lines per file; scan and per-file match caps bound
+   * the work so a large workspace cannot stall the panel.
+   */
+  async searchContent(root: string, query: string): Promise<ContentSearchView | PanelError> {
+    const gated = await this.gate(root)
+    if (!gated.ok) return gated.error
+    const needle = query.trim().toLowerCase()
+    if (needle === '') return { query, hits: [], truncated: false }
+    const hits: ContentSearchHit[] = []
+    let scanned = 0
+    let truncated = false
+    const walk = async (rel: string, depth: number): Promise<void> => {
+      if (truncated) return
+      const resolved = await resolveInsideRoot(gated.canonical, rel)
+      if (!resolved.ok) return
+      let dirents: Dirent[]
+      try {
+        dirents = await readdir(resolved.abs, { withFileTypes: true })
+      } catch {
+        return
+      }
+      for (const entry of dirents) {
+        if (truncated) return
+        if (scanned >= CONTENT_SCAN_CAP) {
+          truncated = true
+          return
+        }
+        scanned += 1
+        const path = rel === '' ? entry.name : `${rel}/${entry.name}`
+        if (entry.isDirectory()) {
+          if (SEARCH_SKIP_DIRS.has(entry.name)) continue
+          if (depth < 24) await walk(path, depth + 1)
+          continue
+        }
+        if (hits.length >= CONTENT_HIT_FILES) {
+          truncated = true
+          return
+        }
+        const matches = await this.matchContentFile(join(resolved.abs, entry.name), needle)
+        if (matches !== null) hits.push({ path, name: entry.name, matches })
+      }
+    }
+    try {
+      await walk('', 0)
+    } catch {
+      return { code: 'search-failed', message: 'content search walk failed' }
+    }
+    // Rank: more matches first, then shorter paths, then alpha.
+    hits.sort((a, b) =>
+      b.matches.length - a.matches.length || a.path.length - b.path.length || (a.path < b.path ? -1 : 1))
+    return { query, hits, truncated }
+  }
+
+  /** Read one file's capped text and return its matching lines (null when unreadable/binary/none). */
+  private async matchContentFile(abs: string, needle: string): Promise<ContentSearchMatch[] | null> {
+    const buf = await readTextCap(abs, CONTENT_READ_CAP_BYTES)
+    if (buf.length === 0 || isBinaryBuffer(buf)) return null
+    const lines = buf.toString('utf8').split(/\r?\n/)
+    const matches: ContentSearchMatch[] = []
+    for (let index = 0; index < lines.length && matches.length < CONTENT_MATCHES_PER_FILE; index += 1) {
+      const lineText = lines[index] ?? ''
+      if (lineText.toLowerCase().includes(needle)) {
+        matches.push({
+          line: index + 1,
+          text: lineText.length > CONTENT_LINE_CAP_CHARS ? lineText.slice(0, CONTENT_LINE_CAP_CHARS) : lineText,
+        })
+      }
+    }
+    return matches.length === 0 ? null : matches
   }
 
   /** Delete a path (discard of untracked files). Recursive for directories. */

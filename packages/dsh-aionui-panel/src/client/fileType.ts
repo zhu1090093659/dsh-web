@@ -117,6 +117,21 @@ export function parentRel(path: string): string {
 }
 
 /**
+ * The host absolute path of a workspace-relative path. The separator follows
+ * the root's own convention (backslash roots are Windows paths), so pasting
+ * the result into the host shell works verbatim.
+ * @param root - the workspace root (host path).
+ * @param rel - the workspace-relative path with '/' separators.
+ * @returns the joined absolute path, or the relative path when root is empty.
+ */
+export function absolutePathOf(root: string, rel: string): string {
+  const sep = root.includes('\\') ? '\\' : '/'
+  const base = root.replace(/[\\/]+$/, '')
+  if (base === '') return rel.split('/').join(sep)
+  return `${base}${sep}${rel.split('/').join(sep)}`
+}
+
+/**
  * The streaming URL a pdf tab renders: the host raw route serves the bytes
  * with mime application/pdf, so the preview iframe loads them directly — no
  * base64 round-trip and no read-size cap. The nonce defeats browser caching

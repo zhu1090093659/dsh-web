@@ -1,0 +1,96 @@
+{
+  "name": "@linxin666/dsh-skill-manager",
+  "description": "Skill manager for the dsh web GUI: a top-level Settings page that lists skills for the current workspace, toggles them on/off through the native SKILL.md frontmatter (disable-model-invocation / user-invocable), and installs or uninstalls skills from a local directory or a git repository URL. Hot-pluggable, mounted via ~/.dsh/cordis.patch.yml + a profile node_modules symlink, no dsh source changes.",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b && tsdown",
+    "bundle": "tsdown",
+    "watch": "tsdown --watch",
+    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.vitest.json --pretty false",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "yaml": "^2.4.2"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-agent": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-connection": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-scope": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-session": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-skill": "^0.1.0-rc.6",
+    "@types/node": "^22.20.0",
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "^18.3.5",
+    "jsdom": "^25.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsdown": "0.22.2",
+    "typescript": "~5.7.2",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^3.0.0",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.6"
+  },
+  "files": [
+    "lib/**/*.js",
+    "lib/**/*.js.map",
+    "lib/**/*.d.ts",
+    "lib/**/*.d.ts.map",
+    "src",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "README.i18n.yaml"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
+}

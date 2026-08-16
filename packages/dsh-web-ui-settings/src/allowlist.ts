@@ -21,6 +21,7 @@ export const FAMILY_NAMESPACES = [
   'live-stats',
   'pet',
   'describe-image',
+  'desktop-launcher',
   'skin-background',
 ] as const
 
@@ -47,6 +48,8 @@ const NAMESPACE_ALIASES: Readonly<Record<string, string | null>> = {
   'skin-background': 'skin-background',
   'describe-image': 'describe-image',
   'dsh-tool-describe-image': 'describe-image',
+  'desktop-launcher': 'desktop-launcher',
+  'dsh-desktop-launcher': 'desktop-launcher',
   'dsh-aionui-panel': null,
   'dsh-client-ui-aionui-panel': null,
   'dsh-git-graph': null,

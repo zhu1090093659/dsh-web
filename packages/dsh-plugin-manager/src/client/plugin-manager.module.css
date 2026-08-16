@@ -1,0 +1,244 @@
+/* Settings Plugins "Manage" tab styling (mirrors the official inventory tab
+   and the skill-manager section tokens). */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 720px;
+}
+
+.lead {
+  margin: 0;
+  color: var(--ui-text-secondary, #666);
+  font-size: 13px;
+}
+
+.catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search {
+  display: block;
+}
+
+.search input {
+  width: 100%;
+  max-width: 360px;
+  padding: 6px 10px;
+  border: 1px solid var(--ui-border, #d9d9d9);
+  border-radius: 6px;
+  background: var(--ui-bg, #fff);
+  color: var(--ui-text, #1a1a1a);
+  font-size: 13px;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.catalogHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.catalogHeading h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.catalogHeading span {
+  font-size: 12px;
+  color: var(--ui-text-secondary, #666);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-border, #e4e4e4);
+  border-radius: 8px;
+}
+
+.rowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.entryId {
+  font-size: 12px;
+  color: var(--ui-text-secondary, #666);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 420px;
+}
+
+.badges {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.officialBadge {
+  font-size: 11px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: #f0f4fa;
+  color: #4a6b8a;
+}
+
+.protectedBadge {
+  font-size: 11px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: #f7f0e6;
+  color: #8a6b4a;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ui-text-secondary, #666);
+  min-width: 64px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #bbb;
+}
+
+.statusDot[data-phase='active'] {
+  background: #2f9e57;
+}
+
+.statusDot[data-phase='pending'],
+.statusDot[data-phase='loading'] {
+  background: #c9a227;
+}
+
+.statusDot[data-phase='failed'] {
+  background: #d64541;
+}
+
+.switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: 1px solid #c4c4c4;
+  background: #e2e2e2;
+  cursor: pointer;
+  padding: 0;
+  transition: background 120ms ease;
+}
+
+.switchOn {
+  background: #2f9e57;
+  border-color: #2f9e57;
+}
+
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 120ms ease;
+}
+
+.switchOn .knob {
+  left: 18px;
+}
+
+.switch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.notice {
+  font-size: 12px;
+  color: #1f7a3d;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--ui-text-secondary, #666);
+}
+
+.message {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-text-secondary, #666);
+}
+
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: #a94442;
+}
+
+.failure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.button {
+  padding: 6px 12px;
+  border: 1px solid var(--ui-border, #d9d9d9);
+  border-radius: 6px;
+  background: var(--ui-bg, #fff);
+  color: var(--ui-text, #1a1a1a);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -26,9 +26,9 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-aionui-panel
 
 项目会话（当前会话有工作目录）打开后，聊天区右侧出现两块面板：
 
-- **Explorer（最右栏，默认 260px，范围 220~500px）**：`文件 / 变更` 双 tab；文件树整行点击展开/收起文件夹，点击文件在预览面板打开，顶部按文件名搜索（150ms 防抖，点击结果 = 定位到树中，不打断思路）；`变更` tab 读取真实 git 状态，支持 stage / unstage / discard（untracked 走删除，tracked 走 restore，批量放弃有确认）。
+- **Explorer（最右栏，默认 260px，范围 220~500px）**：`文件 / 变更` 双 tab；文件树整行点击展开/收起文件夹，点击文件在预览面板打开，悬停行会出现两个复制路径按钮（harness 胶囊按钮 + 图标）：复制当前路径（工作区相对路径）与复制全局路径（宿主绝对路径）；顶部搜索框（150ms 防抖）带「文件名 / 内容」模式切换——内容模式在项目范围内全文搜索，按文件分组显示命中行（点击结果在预览中打开文件），文件名模式点击结果 = 定位到树中，不打断思路；`变更` tab 读取真实 git 状态，支持 stage / unstage / discard（untracked 走删除，tracked 走 restore，批量放弃有确认）。
 - **拖拽文件到输入框**：文件树中的文件行可拖拽（目录行除外），拖到聊天输入框区域松手即把相对路径（如 `deploy/base/deployment.yaml`）插入当前会话草稿的光标处，agent 收到消息后会自行读取该文件，无需手动输入路径；拖拽过程中输入框上方显示高亮提示条。
-- **Preview（右二栏，默认 480px，范围 340~1200px）**：多 tab 预览，支持 markdown / html / code / diff / csv / pdf / word / excel / ppt / 图片 / 文本 / url；源码/预览切换、分屏编辑（比例持久化）、保存（mtime 冲突检测）、下载、刷新（4 态：不渲染死按钮）、dirty 点、中键关闭、右键菜单批量关闭（dirty 确认）、tab 溢出渐变指示器。
+- **Preview（右二栏，默认 480px，范围 340~1200px）**：多 tab 预览，支持 markdown / html / code / diff / csv / pdf / word / excel / ppt / 图片 / 文本 / url；code / 文本 tab 经 harness 同一套 shiki 引擎渲染（与聊天区相同的语法集与 `--shiki-*` 配色——直接铺满的高亮源码视图，无语言/复制横幅，html / xml / json / ts 等均高亮）；源码/预览切换、分屏编辑（比例持久化）、保存（mtime 冲突检测）、下载、刷新（4 态：不渲染死按钮）、dirty 点、中键关闭、右键菜单批量关闭（dirty 确认）、tab 溢出渐变指示器。
 
 交互细节：
 
@@ -54,7 +54,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-aionui-panel
 - `src/host/` — fs/git 数据服务与路由层（workspace gate）。
 - `src/core/types.ts` — 前后半区共享的线上类型。
 - `src/client/` — browser 半区：框架无关状态核心（`store.ts`）、拖拽引擎（`drag.ts` + `hooks/useResizableSplit.ts`）、DOM 布局控制器（`layout.ts`，向 shell 的三栏 grid 追加面板轨道）、React 组件（explorer / scm / preview）。
-- `tests/` — clamp 公式、porcelain 解析、持久化校验、markdown/csv 渲染、store 行为等纯逻辑测试（vitest，37 个）。
+- `tests/` — clamp 公式、porcelain 解析、持久化校验、markdown/csv 渲染、store 行为等纯逻辑测试，以及轻量 UI 冒烟测试（vitest，163 个）。
 
 ## 构建
 

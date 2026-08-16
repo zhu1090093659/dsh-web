@@ -32,6 +32,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-conversation':
         specifier: ^0.1.0-rc.6
         version: 0.1.0-rc.6(78fc3f9f304ff6595f4f5e92c31c6241)
+      '@deepseek-ai/dsh-client-ui-primitives':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: ^0.1.0-rc.6
         version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
@@ -76,10 +79,77 @@ importers:
         version: 5.7.3
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.7.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.7.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
+
+  packages/dsh-desktop-launcher:
+    dependencies:
+      schemastery:
+        specifier: ^3.18.0
+        version: 3.18.0
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: ^4.0.1
+        version: 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
+      '@deepseek-ai/dsh-client-connection':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(86cec684b3d89158c84a7d52838247de)
+      '@deepseek-ai/dsh-client-locale':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(83d873809fb7352da75ac0382508b667)
+      '@deepseek-ai/dsh-client-runtime':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(77cba440ffc0cd8d30a5f85f90d1638d)
+      '@deepseek-ai/dsh-client-ui-conversation':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(78fc3f9f304ff6595f4f5e92c31c6241)
+      '@deepseek-ai/dsh-client-ui-settings':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-api-remotes@0.1.0-rc.6(6049fd80745b6a38d45e1541ef9b9c18))(@deepseek-ai/dsh-client-connection@0.1.0-rc.6(86cec684b3d89158c84a7d52838247de))(@deepseek-ai/dsh-client-runtime@0.1.0-rc.6(77cba440ffc0cd8d30a5f85f90d1638d))(@deepseek-ai/dsh-client-ui-slots@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-settings@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/schemastery@3.18.1))(react@18.3.1)
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-host-webserver':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-settings':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/schemastery@3.18.1)
+      '@deepseek-ai/dsh-system-prompt':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-llm@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-attachment@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-timeout@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))))(@deepseek-ai/dsh-scope@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))
+      '@types/node':
+        specifier: ^22.20.0
+        version: 22.20.1
+      '@types/react':
+        specifier: ~18.3.1
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.5
+        version: 18.3.7(@types/react@18.3.31)
+      jsdom:
+        specifier: 29.1.1
+        version: 29.1.1
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      tsdown:
+        specifier: 0.22.2
+        version: 0.22.2(typescript@5.7.3)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
+      vite-tsconfig-paths:
+        specifier: ^6.1.1
+        version: 6.1.1(typescript@5.7.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
+      vitest:
+        specifier: ^4.1.8
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/dsh-git-graph:
     devDependencies:
@@ -151,10 +221,10 @@ importers:
         version: 6.0.3
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/dsh-liangshen:
     dependencies:
@@ -179,7 +249,7 @@ importers:
         version: 5.7.3
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@29.1.1)(lightningcss@1.33.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@29.1.1)(lightningcss@1.33.0)(yaml@2.9.0)
 
   packages/dsh-live-stats:
     dependencies:
@@ -267,10 +337,10 @@ importers:
         version: 5.9.3
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.1
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@26.1.0)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@26.1.0)(yaml@2.9.0)
 
   packages/dsh-pet:
     dependencies:
@@ -343,10 +413,65 @@ importers:
         version: 6.0.3
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
+
+  packages/dsh-plugin-manager:
+    dependencies:
+      yaml:
+        specifier: ^2.4.2
+        version: 2.9.0
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: ^4.0.1
+        version: 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
+      '@deepseek-ai/dsh-client-locale':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(83d873809fb7352da75ac0382508b667)
+      '@deepseek-ai/dsh-client-runtime':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(77cba440ffc0cd8d30a5f85f90d1638d)
+      '@deepseek-ai/dsh-client-ui-settings':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-api-remotes@0.1.0-rc.6(6049fd80745b6a38d45e1541ef9b9c18))(@deepseek-ai/dsh-client-connection@0.1.0-rc.6(86cec684b3d89158c84a7d52838247de))(@deepseek-ai/dsh-client-runtime@0.1.0-rc.6(77cba440ffc0cd8d30a5f85f90d1638d))(@deepseek-ai/dsh-client-ui-slots@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-settings@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/schemastery@3.18.1))(react@18.3.1)
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-host-webserver':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
+      '@types/node':
+        specifier: ^22.20.0
+        version: 22.20.1
+      '@types/react':
+        specifier: ~18.3.1
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.5
+        version: 18.3.7(@types/react@18.3.31)
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      tsdown:
+        specifier: 0.22.2
+        version: 0.22.2(typescript@5.7.3)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
+      vite-tsconfig-paths:
+        specifier: ^6.1.1
+        version: 6.1.1(typescript@5.7.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.33.0)(yaml@2.9.0)
 
   packages/dsh-remote-web-ui:
     dependencies:
@@ -437,10 +562,80 @@ importers:
         version: 6.0.3
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
+
+  packages/dsh-skill-manager:
+    dependencies:
+      yaml:
+        specifier: ^2.4.2
+        version: 2.9.0
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: ^4.0.1
+        version: 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
+      '@deepseek-ai/dsh-agent':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(b0514d7a320728b6d8f5a31eb3960e10)
+      '@deepseek-ai/dsh-client-connection':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(86cec684b3d89158c84a7d52838247de)
+      '@deepseek-ai/dsh-client-locale':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(83d873809fb7352da75ac0382508b667)
+      '@deepseek-ai/dsh-client-runtime':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(77cba440ffc0cd8d30a5f85f90d1638d)
+      '@deepseek-ai/dsh-client-ui-settings':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-api-remotes@0.1.0-rc.6(6049fd80745b6a38d45e1541ef9b9c18))(@deepseek-ai/dsh-client-connection@0.1.0-rc.6(86cec684b3d89158c84a7d52838247de))(@deepseek-ai/dsh-client-runtime@0.1.0-rc.6(77cba440ffc0cd8d30a5f85f90d1638d))(@deepseek-ai/dsh-client-ui-slots@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-settings@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/schemastery@3.18.1))(react@18.3.1)
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-host-webserver':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-scope':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-session':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(6fd26f59436a18b115f326d6060415e6)
+      '@deepseek-ai/dsh-skill':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-llm@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-attachment@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-timeout@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))))(@deepseek-ai/dsh-scope@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))
+      '@types/node':
+        specifier: ^22.20.0
+        version: 22.20.1
+      '@types/react':
+        specifier: ~18.3.1
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.5
+        version: 18.3.7(@types/react@18.3.31)
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      tsdown:
+        specifier: 0.22.2
+        version: 0.22.2(typescript@5.7.3)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
+      vite-tsconfig-paths:
+        specifier: ^6.1.1
+        version: 6.1.1(typescript@5.7.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.33.0)(yaml@2.9.0)
 
   packages/dsh-skins:
     dependencies:
@@ -537,7 +732,7 @@ importers:
         version: 5.7.3
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.9.0)
 
   packages/dsh-task-board:
     dependencies:
@@ -595,7 +790,7 @@ importers:
         version: 5.7.3
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.9.0)
 
   packages/dsh-tool-describe-image:
     dependencies:
@@ -671,7 +866,7 @@ importers:
         version: 5.7.3
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@29.1.1)(lightningcss@1.33.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@29.1.1)(lightningcss@1.33.0)(yaml@2.9.0)
 
   packages/dsh-web-ui-all:
     dependencies:
@@ -690,6 +885,9 @@ importers:
       '@linxin666/dsh-client-ui-web-ui-settings':
         specifier: workspace:*
         version: link:../dsh-web-ui-settings
+      '@linxin666/dsh-desktop-launcher':
+        specifier: workspace:*
+        version: link:../dsh-desktop-launcher
       '@linxin666/dsh-liangshen':
         specifier: workspace:*
         version: link:../dsh-liangshen
@@ -699,9 +897,15 @@ importers:
       '@linxin666/dsh-pet':
         specifier: workspace:*
         version: link:../dsh-pet
+      '@linxin666/dsh-plugin-manager':
+        specifier: workspace:*
+        version: link:../dsh-plugin-manager
       '@linxin666/dsh-remote-web-ui':
         specifier: workspace:*
         version: link:../dsh-remote-web-ui
+      '@linxin666/dsh-skill-manager':
+        specifier: workspace:*
+        version: link:../dsh-skill-manager
       '@linxin666/dsh-skins':
         specifier: workspace:*
         version: link:../dsh-skins
@@ -773,7 +977,7 @@ importers:
         version: 5.7.3
       vitest:
         specifier: ^4.1.1
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@26.1.0)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@26.1.0)(yaml@2.9.0)
 
   packages/skins/blue-fantasy:
     devDependencies:
@@ -791,10 +995,10 @@ importers:
         version: 0.22.2(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/skins/dragon-heir:
     devDependencies:
@@ -812,10 +1016,10 @@ importers:
         version: 0.22.2(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/skins/harbor:
     devDependencies:
@@ -833,10 +1037,10 @@ importers:
         version: 0.22.2(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/skins/miku:
     devDependencies:
@@ -854,10 +1058,10 @@ importers:
         version: 0.22.2(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/skins/minecraft:
     devDependencies:
@@ -875,10 +1079,10 @@ importers:
         version: 0.22.2(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/skins/qq98:
     devDependencies:
@@ -896,10 +1100,10 @@ importers:
         version: 0.22.2(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/skins/skin-center:
     dependencies:
@@ -945,7 +1149,7 @@ importers:
         version: 0.22.2(typescript@6.0.3)
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/skins/ths:
     devDependencies:
@@ -966,10 +1170,10 @@ importers:
         version: 0.22.2(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/skins/trading:
     devDependencies:
@@ -990,10 +1194,10 @@ importers:
         version: 0.22.2(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/skins/whale-song:
     devDependencies:
@@ -1011,10 +1215,10 @@ importers:
         version: 0.22.2(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   packages/skins/xp:
     devDependencies:
@@ -1032,10 +1236,10 @@ importers:
         version: 0.22.2(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
   shared:
     devDependencies:
@@ -1062,10 +1266,10 @@ importers:
         version: 6.0.3
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+        version: 6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
 packages:
 
@@ -3371,7 +3575,6 @@ packages:
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
-    deprecated: unmaintained
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
@@ -3694,6 +3897,11 @@ packages:
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
 
+  yaml@2.9.0:
+    resolution: {integrity: sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
@@ -3753,7 +3961,7 @@ snapshots:
 
   '@babel/generator@8.0.0-rc.6':
     dependencies:
-      '@babel/parser': 8.0.0-rc.6
+      '@babel/parser': 8.0.4
       '@babel/types': 8.0.4
       '@jridgewell/gen-mapping': 0.3.13
       '@jridgewell/trace-mapping': 0.3.31
@@ -4831,29 +5039,29 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.1
 
-  '@vitest/mocker@3.2.7(vite@7.3.6(@types/node@22.20.1)(lightningcss@1.32.0))':
+  '@vitest/mocker@3.2.7(vite@7.3.6(@types/node@22.20.1)(lightningcss@1.32.0)(yaml@2.9.0))':
     dependencies:
       '@vitest/spy': 3.2.7
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.32.0)
+      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.32.0)(yaml@2.9.0)
 
-  '@vitest/mocker@3.2.7(vite@7.3.6(@types/node@22.20.1)(lightningcss@1.33.0))':
+  '@vitest/mocker@3.2.7(vite@7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0))':
     dependencies:
       '@vitest/spy': 3.2.7
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)
+      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0)
 
-  '@vitest/mocker@4.1.10(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))':
+  '@vitest/mocker@4.1.10(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))':
     dependencies:
       '@vitest/spy': 4.1.10
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)
+      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0)
 
   '@vitest/pretty-format@3.2.7':
     dependencies:
@@ -6264,13 +6472,13 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-node@3.2.4(@types/node@22.20.1)(lightningcss@1.32.0):
+  vite-node@3.2.4(@types/node@22.20.1)(lightningcss@1.32.0)(yaml@2.9.0):
     dependencies:
       cac: 6.7.14
       debug: 4.4.3
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.32.0)
+      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.32.0)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -6285,13 +6493,13 @@ snapshots:
       - tsx
       - yaml
 
-  vite-node@3.2.4(@types/node@22.20.1)(lightningcss@1.33.0):
+  vite-node@3.2.4(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0):
     dependencies:
       cac: 6.7.14
       debug: 4.4.3
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)
+      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -6306,37 +6514,37 @@ snapshots:
       - tsx
       - yaml
 
-  vite-tsconfig-paths@6.1.1(typescript@5.7.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)):
+  vite-tsconfig-paths@6.1.1(typescript@5.7.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0)):
     dependencies:
       debug: 4.4.3
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@5.7.3)
-      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)
+      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0)
     transitivePeerDependencies:
       - supports-color
       - typescript
 
-  vite-tsconfig-paths@6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)):
+  vite-tsconfig-paths@6.1.1(typescript@5.9.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0)):
     dependencies:
       debug: 4.4.3
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@5.9.3)
-      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)
+      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0)
     transitivePeerDependencies:
       - supports-color
       - typescript
 
-  vite-tsconfig-paths@6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)):
+  vite-tsconfig-paths@6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0)):
     dependencies:
       debug: 4.4.3
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@6.0.3)
-      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)
+      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0)
     transitivePeerDependencies:
       - supports-color
       - typescript
 
-  vite@7.3.6(@types/node@22.20.1)(lightningcss@1.32.0):
+  vite@7.3.6(@types/node@22.20.1)(lightningcss@1.32.0)(yaml@2.9.0):
     dependencies:
       esbuild: 0.28.2
       fdir: 6.5.0(picomatch@4.0.5)
@@ -6348,8 +6556,9 @@ snapshots:
       '@types/node': 22.20.1
       fsevents: 2.3.3
       lightningcss: 1.32.0
+      yaml: 2.9.0
 
-  vite@7.3.6(@types/node@22.20.1)(lightningcss@1.33.0):
+  vite@7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0):
     dependencies:
       esbuild: 0.28.2
       fdir: 6.5.0(picomatch@4.0.5)
@@ -6361,8 +6570,9 @@ snapshots:
       '@types/node': 22.20.1
       fsevents: 2.3.3
       lightningcss: 1.33.0
+      yaml: 2.9.0
 
-  vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2):
+  vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.5
@@ -6373,12 +6583,13 @@ snapshots:
       '@types/node': 22.20.1
       esbuild: 0.28.2
       fsevents: 2.3.3
+      yaml: 2.9.0
 
-  vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0):
+  vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.9.0):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.7
-      '@vitest/mocker': 3.2.7(vite@7.3.6(@types/node@22.20.1)(lightningcss@1.32.0))
+      '@vitest/mocker': 3.2.7(vite@7.3.6(@types/node@22.20.1)(lightningcss@1.32.0)(yaml@2.9.0))
       '@vitest/pretty-format': 3.2.7
       '@vitest/runner': 3.2.7
       '@vitest/snapshot': 3.2.7
@@ -6396,8 +6607,8 @@ snapshots:
       tinyglobby: 0.2.17
       tinypool: 1.1.1
       tinyrainbow: 2.0.0
-      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.32.0)
-      vite-node: 3.2.4(@types/node@22.20.1)(lightningcss@1.32.0)
+      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.32.0)(yaml@2.9.0)
+      vite-node: 3.2.4(@types/node@22.20.1)(lightningcss@1.32.0)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/debug': 4.1.13
@@ -6417,11 +6628,11 @@ snapshots:
       - tsx
       - yaml
 
-  vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@29.1.1)(lightningcss@1.33.0):
+  vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.33.0)(yaml@2.9.0):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.7
-      '@vitest/mocker': 3.2.7(vite@7.3.6(@types/node@22.20.1)(lightningcss@1.33.0))
+      '@vitest/mocker': 3.2.7(vite@7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0))
       '@vitest/pretty-format': 3.2.7
       '@vitest/runner': 3.2.7
       '@vitest/snapshot': 3.2.7
@@ -6439,8 +6650,51 @@ snapshots:
       tinyglobby: 0.2.17
       tinypool: 1.1.1
       tinyrainbow: 2.0.0
-      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)
-      vite-node: 3.2.4(@types/node@22.20.1)(lightningcss@1.33.0)
+      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0)
+      vite-node: 3.2.4(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/debug': 4.1.13
+      '@types/node': 22.20.1
+      jsdom: 25.0.1
+    transitivePeerDependencies:
+      - jiti
+      - less
+      - lightningcss
+      - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - yaml
+
+  vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@29.1.1)(lightningcss@1.33.0)(yaml@2.9.0):
+    dependencies:
+      '@types/chai': 5.2.3
+      '@vitest/expect': 3.2.7
+      '@vitest/mocker': 3.2.7(vite@7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0))
+      '@vitest/pretty-format': 3.2.7
+      '@vitest/runner': 3.2.7
+      '@vitest/snapshot': 3.2.7
+      '@vitest/spy': 3.2.7
+      '@vitest/utils': 3.2.7
+      chai: 5.3.3
+      debug: 4.4.3
+      expect-type: 1.4.0
+      magic-string: 0.30.21
+      pathe: 2.0.3
+      picomatch: 4.0.5
+      std-env: 3.10.0
+      tinybench: 2.9.0
+      tinyexec: 0.3.2
+      tinyglobby: 0.2.17
+      tinypool: 1.1.1
+      tinyrainbow: 2.0.0
+      vite: 7.3.6(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0)
+      vite-node: 3.2.4(@types/node@22.20.1)(lightningcss@1.33.0)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/debug': 4.1.13
@@ -6460,10 +6714,10 @@ snapshots:
       - tsx
       - yaml
 
-  vitest@4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@26.1.0):
+  vitest@4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@26.1.0)(yaml@2.9.0):
     dependencies:
       '@vitest/expect': 4.1.10
-      '@vitest/mocker': 4.1.10(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+      '@vitest/mocker': 4.1.10(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       '@vitest/pretty-format': 4.1.10
       '@vitest/runner': 4.1.10
       '@vitest/snapshot': 4.1.10
@@ -6480,7 +6734,7 @@ snapshots:
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)
+      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.20.1
@@ -6499,10 +6753,10 @@ snapshots:
       - tsx
       - yaml
 
-  vitest@4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1):
+  vitest@4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0):
     dependencies:
       '@vitest/expect': 4.1.10
-      '@vitest/mocker': 4.1.10(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
+      '@vitest/mocker': 4.1.10(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0))
       '@vitest/pretty-format': 4.1.10
       '@vitest/runner': 4.1.10
       '@vitest/snapshot': 4.1.10
@@ -6519,7 +6773,7 @@ snapshots:
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)
+      vite: 8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.20.1
@@ -6577,6 +6831,8 @@ snapshots:
   xml-name-validator@5.0.0: {}
 
   xmlchars@2.2.0: {}
+
+  yaml@2.9.0: {}
 
   zod@4.4.3: {}
 

@@ -387,6 +387,12 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
         json(res, 'hits' in result ? OK(result) : FAIL(result))
         return
       }
+      case '/aionui-panel/search-content': {
+        const query = strField(payload, 'query') ?? ''
+        const result = await fs.searchContent(root, query)
+        json(res, 'hits' in result ? OK(result) : FAIL(result))
+        return
+      }
       case '/aionui-panel/delete': {
         const path = strField(payload, 'path')
         if (path === null) {

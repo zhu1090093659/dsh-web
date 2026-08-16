@@ -47,6 +47,11 @@
     - id: ssh
       name: '@linxin666/dsh-ssh'
 
+# from ../dsh-skill-manager
+- insert:
+    - id: skill-manager
+      name: '@linxin666/dsh-skill-manager'
+
 # from ../dsh-tool-describe-image
 - insert:
     - id: describe-image
@@ -56,6 +61,16 @@
 - insert:
     - id: liangshen
       name: '@linxin666/dsh-liangshen'
+
+# from ../dsh-desktop-launcher
+- insert:
+    - id: desktop-launcher
+      name: '@linxin666/dsh-desktop-launcher'
+
+# from ../dsh-plugin-manager
+- insert:
+    - id: plugin-manager
+      name: '@linxin666/dsh-plugin-manager'
 
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:

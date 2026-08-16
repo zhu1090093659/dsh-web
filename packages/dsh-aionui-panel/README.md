@@ -26,9 +26,9 @@ After installing, **restart `dsh web`** and open a project session to see the "�
 
 When a project session (the current session has a working directory) is open, two panels appear to the right of the chat area:
 
-- **Explorer (rightmost column, default 260px, range 220–500px)**: `File / Changes` two tabs; clicking a row in the file tree expands/collapses a folder, clicking a file opens it in the preview panel, and the top filename search (150ms debounce, clicking a result locates it in the tree without interrupting flow); the `Changes` tab reads the real git status and supports stage / unstage / discard (untracked via delete, tracked via restore, bulk discard asks for confirmation).
+- **Explorer (rightmost column, default 260px, range 220–500px)**: `File / Changes` two tabs; clicking a row in the file tree expands/collapses a folder, clicking a file opens it in the preview panel, hovering a row reveals two copy-path buttons (harness capsule buttons + icons): copy current path (workspace-relative) and copy global path (host absolute), and the top search box (150ms debounce) has a File name / Content mode toggle — content mode searches file contents project-wide and groups matching lines per file (clicking a result opens the file in preview), while filename mode clicking a result locates it in the tree without interrupting flow; the `Changes` tab reads the real git status and supports stage / unstage / discard (untracked via delete, tracked via restore, bulk discard asks for confirmation).
 - **Drag a file to the input box**: file rows in the tree can be dragged (except directory rows); dropping onto the chat input area inserts the relative path (e.g. `deploy/base/deployment.yaml`) at the cursor of the current draft, and the agent reads the file itself once the message arrives — no need to type the path by hand; a highlighted hint bar shows above the input while dragging.
-- **Preview (second column from right, default 480px, range 340–1200px)**: multi-tab preview supporting markdown / html / code / diff / csv / pdf / word / excel / ppt / image / text / url; source/preview toggle, split-screen editing (ratio persisted), save (mtime conflict detection), download, refresh (4-state: dead buttons are not rendered), dirty dot, middle-click close, right-click menu batch close (dirty confirm), and tab-overflow gradient indicator.
+- **Preview (second column from right, default 480px, range 340–1200px)**: multi-tab preview supporting markdown / html / code / diff / csv / pdf / word / excel / ppt / image / text / url; code/text tabs render through the harness's shiki engine (the same grammar set and `--shiki-*` palette as the chat — a plain full-bleed highlighted source view with no language/copy banner, html / xml / json / ts / … highlighted); source/preview toggle, split-screen editing (ratio persisted), save (mtime conflict detection), download, refresh (4-state: dead buttons are not rendered), dirty dot, middle-click close, right-click menu batch close (dirty confirm), and tab-overflow gradient indicator.
 
 Interaction details:
 
@@ -54,7 +54,7 @@ The real filesystem and the real git repository, no mocks:
 - `src/host/` — fs/git data services and the route layer (workspace gate).
 - `src/core/types.ts` — shared wire types across both halves.
 - `src/client/` — browser half: framework-agnostic state core (`store.ts`), drag engine (`drag.ts` + `hooks/useResizableSplit.ts`), DOM layout controller (`layout.ts`, appending panel tracks to the shell's three-column grid), React components (explorer / scm / preview).
-- `tests/` — pure-logic tests for the clamp formula, porcelain parsing, persistence validation, markdown/csv rendering, store behavior, etc. (vitest, 37 tests).
+- `tests/` — pure-logic tests for the clamp formula, porcelain parsing, persistence validation, markdown/csv rendering, store behavior, plus lightweight UI smoke tests (vitest, 163 tests).
 
 ## Build
 

@@ -70,10 +70,58 @@
   outline-offset: 2px;
 }
 
-/* The persistent filename search area. */
+/* The persistent search area (mode toggle + search box). */
 .searchArea {
   flex-shrink: 0;
   padding: 8px 8px 4px 12px;
+}
+
+/* Filename / content mode switch: small capsule buttons above the box. */
+.searchModes {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.searchMode {
+  height: 22px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--aion-text-secondary);
+  font-size: 12px;
+  font-family: var(--aion-font-sans);
+  cursor: pointer;
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.searchMode:hover {
+  background: var(--aion-fill-2);
+  color: var(--aion-text-primary);
+}
+
+.searchMode:focus-visible {
+  outline: 2px solid var(--aion-primary);
+  outline-offset: 2px;
+}
+
+.searchModeActive {
+  height: 22px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 11px;
+  background: var(--aion-bg-2);
+  color: var(--aion-text-primary);
+  font-size: 12px;
+  font-family: var(--aion-font-sans);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.searchModeActive:focus-visible {
+  outline: 2px solid var(--aion-primary);
+  outline-offset: 2px;
 }
 
 .searchBox {
@@ -173,11 +221,22 @@
   gap: 4px;
   height: 34px;
   padding-right: 8px;
-  cursor: pointer;
   border-radius: 0;
   transition: background-color 0.12s ease;
   white-space: nowrap;
   min-width: 0;
+}
+
+/* The clickable full-row area; the copy-path button sits beside it (a
+   separate sibling so the row keeps one interactive role). */
+.treeRowMain {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  cursor: pointer;
 }
 
 .treeRow:hover {
@@ -200,6 +259,61 @@
 .treeRowSelected,
 .treeRowSelected:hover {
   background-color: var(--aion-fill-3);
+}
+
+/* Copy-path actions: relative + absolute, side by side at the row end. */
+.treeActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+
+/* Copy-path action: the harness capsule-button look (ghost pill, currentColor
+   icon) on a 24px square so it fits the 34px row; visible on hover/focus. */
+.treeCopy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--aion-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s ease,
+    background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.treeRow:hover .treeCopy,
+.treeRow:focus-within .treeCopy,
+.treeCopy:focus-visible {
+  opacity: 1;
+}
+
+.treeCopy:hover {
+  background: var(--dsw-alias-interactive-bg-hover, var(--aion-fill-2));
+  color: var(--aion-text-primary);
+}
+
+.treeCopy:active {
+  background: var(--aion-bg-active);
+}
+
+.treeCopy:focus-visible {
+  outline: 2px solid var(--aion-primary);
+  outline-offset: 2px;
+}
+
+.treeCopyCopied {
+  opacity: 1;
+  color: var(--aion-success);
 }
 
 .treeArrow {
@@ -284,6 +398,67 @@
   font-size: 11px;
   color: var(--aion-text-tertiary);
   flex-shrink: 0;
+}
+
+/* Content-search results: one file group with its matching lines. */
+.contentResult {
+  padding: 2px 0;
+}
+
+.contentResultHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px 0 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s ease;
+}
+
+.contentResultHead:hover {
+  background-color: var(--aion-fill-2);
+}
+
+.contentResultHead:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--aion-primary);
+}
+
+.contentMatch {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  height: 22px;
+  padding: 0 12px 0 40px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s ease;
+}
+
+.contentMatch:hover {
+  background-color: var(--aion-fill-2);
+}
+
+.contentMatch:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--aion-primary);
+}
+
+.contentLine {
+  font-family: var(--aion-font-mono);
+  font-size: 11px;
+  color: var(--aion-text-tertiary);
+  min-width: 26px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.contentSnippet {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--aion-font-mono);
+  font-size: 11px;
+  color: var(--aion-text-secondary);
+  min-width: 0;
 }
 
 .searchStatus {

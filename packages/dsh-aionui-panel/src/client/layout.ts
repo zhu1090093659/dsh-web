@@ -4,8 +4,9 @@
  * region and the explorer column — by mirroring the shell's own inline
  * grid-template-columns string and re-appending the two panel tracks on every
  * shell update (MutationObserver, same frame before paint). Also owns the
- * absolute drag handles (12px explorer / 20px preview hit zones), the
- * floating expand button, and the collapse-as-width-0 keep-mounted behavior.
+ * absolute drag handles (8px hit zones centered on the column borders, so
+ * stray clicks near the boundary do not grab a panel resize), the floating
+ * expand button, and the collapse-as-width-0 keep-mounted behavior.
  *
  * The shell's inline style is the source of truth for the sidebar and details
  * tracks; this controller never guesses their widths. Handles are out-of-flow
@@ -82,8 +83,8 @@ export function trackPx(track: string): number {
 }
 
 /** One drag handle's geometry (hit zone + visual line) — pure CSS in the module. */
-export const EXPLORER_HANDLE_WIDTH = 12
-export const PREVIEW_HANDLE_WIDTH = 20
+export const EXPLORER_HANDLE_WIDTH = 8
+export const PREVIEW_HANDLE_WIDTH = 8
 
 /** The layout controller: frame sync, handles, floating button, width math. */
 export class PanelLayoutController {
@@ -237,19 +238,19 @@ export class PanelLayoutController {
     el.style.position = 'absolute'
     el.style.top = '0'
     el.style.bottom = '0'
-    // Same layer as the columns (z 30): the handle strips overlap the
-    // column tracks, so anything lower would be painted under the opaque
-    // columns and stop receiving pointer events (issue #234 follow-up).
-    // Full-screen overlay drawers must render at the ROOT stacking context
-    // (z 100~1000) to cover both the columns and the handles — see the
-    // columns' stacking-contract note in tokens.module.css.
-    el.style.zIndex = '30'
+    // Above the columns (z 30): the handle strips straddle the column
+    // borders, so anything lower would be painted under the opaque columns
+    // and stop receiving pointer events (issue #234 follow-up). Full-screen
+    // overlay drawers must render at the ROOT stacking context (z 100~1000)
+    // to cover both the columns and the handles — see the columns'
+    // stacking-contract note in tokens.module.css.
+    el.style.zIndex = '40'
     el.style.cursor = 'col-resize'
     el.style.width = `${hitWidth}px`
-    if (reverse) {
-      // The preview handle extends LEFT of the preview region's left edge.
-      el.style.marginLeft = `-${hitWidth}px`
-    }
+    // A narrow hit zone centered on the column border: only a deliberate
+    // grab on the visible line starts a panel resize; stray clicks near the
+    // boundary pass through to the chat or the panel content.
+    el.style.marginLeft = `-${hitWidth / 2}px`
     el.addEventListener('pointerdown', (event: PointerEvent) => {
       const isExplorer = kind === 'explorer'
       handlePointerDragStart(event, el, {
@@ -361,7 +362,6 @@ export class PanelLayoutController {
     if (this.explorerHandle !== null) {
       const left = Math.round(width - explorer)
       this.explorerHandle.style.left = `${left}px`
-      this.explorerHandle.style.marginLeft = `${-EXPLORER_HANDLE_WIDTH / 2}px`
       this.explorerHandle.style.display = explorer > 0 && state.root !== '' ? 'block' : 'none'
     }
     if (this.previewHandle !== null) {

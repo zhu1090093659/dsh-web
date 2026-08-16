@@ -34,4 +34,15 @@ describe('panel stacking contract', () => {
   it('keeps the collapse chevron at the column layer', () => {
     expect(block(':global(.aionui-collapse-chevron)')).toContain('z-index: 30')
   })
+
+  it('makes the columns pointer-transparent while a panel drag is in flight', () => {
+    expect(css).toContain('[data-aionui-dragging] .aionui-preview-col')
+    expect(css).toContain('[data-aionui-dragging] .aionui-explorer-col')
+    expect(css).toContain('pointer-events: none')
+  })
+
+  it('centers the handle visual lines on the column border', () => {
+    expect(css).toContain('left: 50%')
+    expect(css).toContain('transform: translateX(-50%)')
+  })
 })

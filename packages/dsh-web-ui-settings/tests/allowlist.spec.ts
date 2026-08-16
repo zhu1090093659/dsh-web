@@ -53,11 +53,13 @@ describe('resolveNamespaceEntry', () => {
     expect(resolveNamespaceEntry('dsh-client-ui-task-board')).toBe('task-board')
     expect(resolveNamespaceEntry('dsh-skins')).toBe('skin-background')
     expect(resolveNamespaceEntry('dsh-ssh')).toBe('dsh-ssh')
+    expect(resolveNamespaceEntry('dsh-desktop-launcher')).toBe('desktop-launcher')
   })
 
   it('passes bare family namespaces through', () => {
     expect(resolveNamespaceEntry('live-stats')).toBe('live-stats')
     expect(resolveNamespaceEntry('remote-web-ui')).toBe('remote-web-ui')
+    expect(resolveNamespaceEntry('desktop-launcher')).toBe('desktop-launcher')
   })
 
   it('ignores packages without a settings namespace and unknown names', () => {
@@ -71,6 +73,7 @@ describe('resolveNamespaceEntry', () => {
 describe('composeAllowlist', () => {
   const registered = [
     'dsh-ssh',
+    'desktop-launcher',
     'task-board',
     'remote-web-ui',
     'live-stats',
@@ -81,6 +84,7 @@ describe('composeAllowlist', () => {
 
   it('falls back to the family list when the user configured none', () => {
     expect(composeAllowlist([], registered)).toEqual([
+      'desktop-launcher',
       'dsh-ssh',
       'live-stats',
       'pet',

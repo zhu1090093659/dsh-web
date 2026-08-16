@@ -1,0 +1,31 @@
+{
+  // Vitest program: type-checks src + tests together without emitting.
+  // SDK types resolve from the @deepseek-ai/* npm devDependencies.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src",
+    "tests"
+  ],
+  // The host entry pulls dsh-session/dsh-agent root (host Context merges),
+  // which must not meet the browser merges in one program; it is
+  // typechecked by the host project instead (tests never import it).
+  "exclude": [
+    "src/index.ts",
+    "src/invariant.ts"
+  ]
+}

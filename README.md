@@ -29,7 +29,7 @@
 
 ## 是什么
 
-dsh-web-ui 是给 DeepSeek Harness（DSH）Web GUI 用的插件和皮肤集合：面向 DeepSeek V4 Pro 的「梁神模式」agent 预设，以及任务看板、Git 图谱、右侧面板、移动端远程、SSH 运维、图像理解、鲸鱼娘宠物、实时吞吐和皮肤中心。所有插件都走官方 profile 机制挂载到 `dsh web`，不改 DSH 源码；可以逐个安装，也可以用聚合包一次装齐。
+dsh-web-ui 是给 DeepSeek Harness（DSH）Web GUI 用的插件和皮肤集合：面向 DeepSeek V4 Pro 的「梁神模式」agent 预设，以及任务看板、Git 图谱、右侧面板、移动端远程、SSH 运维、图像理解、鲸鱼娘宠物、实时吞吐、桌面一键启动和皮肤中心。所有插件都走官方 profile 机制挂载到 `dsh web`，不改 DSH 源码；可以逐个安装，也可以用聚合包一次装齐。
 
 ![DSH Web UI 主界面](docs/screenshots/13-hero-main.png)
 
@@ -42,6 +42,7 @@ dsh-web-ui 是给 DeepSeek Harness（DSH）Web GUI 用的插件和皮肤集合�
 | 移动端远程 | 无 | 扫码配对，SSE 实时同步 |
 | 远程服务器运维 | 无 | SSH 面板：终端 / 传输 / 隧道 / 集群 |
 | 图像理解 | 无 | `describe_image` 视觉工具 |
+| 桌面一键启动 | 无 | 桌面图标：双击启动 dsh web 并打开 GUI |
 | 主题皮肤 | 默认主题 | 皮肤中心 10 款，先试穿再应用 |
 
 ## 功能插件
@@ -216,6 +217,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-task-board   # 任务看�
 dsh plugin --profile web add @linxin666/dsh-ssh                    # 远程连接（SSH）
 dsh plugin --profile web add @linxin666/dsh-tool-describe-image    # 图像理解工具
 dsh plugin --profile web add @linxin666/dsh-pet                    # 鲸鱼娘宠物
+dsh plugin --profile web add @linxin666/dsh-desktop-launcher      # 桌面启动图标
 ```
 
 ### 验证与卸载

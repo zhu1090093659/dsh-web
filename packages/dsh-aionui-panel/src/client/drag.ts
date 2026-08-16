@@ -111,11 +111,16 @@ export function handlePointerDragStart(event: PointerEvent, el: HTMLElement, opt
   document.body.style.cursor = 'col-resize'
   const frame = el.closest('[data-dsh-frame]')
   frame?.setAttribute('data-aionui-instant', '')
+  // While a panel drag is in flight the columns must not swallow pointer
+  // events (the preview column embeds iframes) — tokens.module.css keys off
+  // this marker to make the columns pointer-transparent.
+  frame?.setAttribute('data-aionui-dragging', '')
 
   const restore = (): void => {
     document.body.style.userSelect = previousUserSelect
     document.body.style.cursor = previousCursor
     frame?.removeAttribute('data-aionui-instant')
+    frame?.removeAttribute('data-aionui-dragging')
   }
 
   if (el.setPointerCapture) {

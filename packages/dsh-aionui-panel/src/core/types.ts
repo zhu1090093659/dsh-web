@@ -88,6 +88,33 @@ export interface SearchView {
   truncated: boolean
 }
 
+/** One matching line inside a content-search hit. */
+export interface ContentSearchMatch {
+  /** 1-based line number in the file. */
+  line: number
+  /** The matched line (host-trimmed to a snippet ceiling). */
+  text: string
+}
+
+/** One content-search hit: a file whose text contains the query. */
+export interface ContentSearchHit {
+  /** Path relative to the root. */
+  path: string
+  /** Display name (basename). */
+  name: string
+  /** Matching lines (capped per file by the host). */
+  matches: ContentSearchMatch[]
+}
+
+/** The content-search result (files grouped with their matching lines). */
+export interface ContentSearchView {
+  /** The query the hits were ranked for. */
+  query: string
+  hits: ContentSearchHit[]
+  /** True when a scan or hit cap cut the result stream. */
+  truncated: boolean
+}
+
 /** Working-tree state of one change row. */
 export type GitFileState = 'created' | 'modified' | 'deleted' | 'renamed' | 'conflicted' | 'untracked' | 'unknown'
 

@@ -408,6 +408,29 @@ describe('TryOnController skin switching', () => {
     for (const dispose of disposers.reverse()) dispose()
   })
 
+  it('trying on matrix itself mounts the full skin (no neutralize rule, own rain path)', async () => {
+    const active = entry('whale-song')
+    window.__DSH_BOOT__ = { entries: [{ id: active.package }] }
+    document.body.setAttribute(active.bodyAttr, '')
+    const c = controller()
+
+    await expect(c.tryOn(entry('matrix'))).resolves.toBe(true)
+
+    // matrix is the PREVIEW, not the active skin: the neutralize rule (which
+    // hides the rain canvas) must NOT be injected, so the preview keeps its
+    // full digital-rain effect. The preview's own apply() mounts the rain
+    // canvas in a real browser (jsdom has no 2d context, so it is mounted
+    // and immediately removed — the marker + absence of any hide rule is
+    // what this environment can assert).
+    expect(document.querySelector('style[data-skin-center-neutralize]')).toBeNull()
+    expect(document.body.getAttribute('data-dsh-matrix')).toBe('')
+    expect(document.body.hasAttribute(active.bodyAttr)).toBe(false)
+
+    c.exit()
+    expect(document.body.hasAttribute('data-dsh-matrix')).toBe(false)
+    expect(document.body.getAttribute(active.bodyAttr)).toBe('')
+  })
+
   it('re-try-on after exit re-registers the same skin cleanly', async () => {
     const c = controller()
     await expect(c.tryOn(entry('qq98'))).resolves.toBe(true)

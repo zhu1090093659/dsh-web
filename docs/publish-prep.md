@@ -37,6 +37,8 @@
 | packages/skins/trading | @linxin666/dsh-client-ui-skin-trading | 0.1.2 | true |
 | packages/skins/skin-center | @linxin666/dsh-client-ui-skin-center | 0.1.1 | true |
 | packages/skins/miku | @linxin666/dsh-client-ui-skin-miku | 0.1.12 | true |
+| packages/skins/matrix | @linxin666/dsh-client-ui-skin-matrix | 0.1.0 | true |
+
 
 ## 二、发布前检查结论（2026-08-11，已修复项标注 [已确认]）
 

@@ -8,7 +8,7 @@
  * @module @linxin666/dsh-client-ui-community-plugins/client
  */
 
-import type { ClientContext, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext, ISessions, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
@@ -47,7 +47,29 @@ interface SettingsBinder {
 }
 
 /** Required services. */
-export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote']
+export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'sessions', 'workspaces', 'remote']
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string') return error.message
+  return String(error)
+}
+
+async function askAgent(ctx: ClientContext, diagnosis: string): Promise<void> {
+  const sessions = ctx.sessions as unknown as ISessions
+  const workspace = ctx.workspaces.list.getSnapshot()
+  const workspaceId = workspace.recentWorkspaceId ?? workspace.items[0]?.workspaceId
+  if (workspaceId === undefined) throw new Error('No workspace is available for the diagnosis conversation')
+
+  const sessionId = await ctx.workspaces.connectWorkspace(workspaceId)
+  const session = sessions.binding(sessionId)?.session
+  if (session === undefined) throw new Error('The diagnosis conversation could not be connected')
+
+  await session.rename('Diagnose community plugin failure').catch(() => undefined)
+  const result = await session.prompt([{ type: 'text', text: diagnosis }], 'queue')
+  if (!result.ok) throw new Error(`The diagnosis prompt was not accepted: ${errorMessage(result.error)}`)
+  sessions.open(sessionId)
+}
 
 /**
  * Mount one settings section. Callers must dispose the current mount before
@@ -64,7 +86,11 @@ function mountSection(ctx: ClientContext, binder: SettingsBinder, catalogStore: 
     priority,
     label: () => ctx.locale.bind('community-plugins')('settings.title'),
     locale: 'community-plugins',
-    inject: () => ({ ...controller.inject(), catalogStore }),
+    inject: () => ({
+      ...controller.inject(),
+      catalogStore,
+      askAgent: (diagnosis: string) => askAgent(ctx, diagnosis),
+    }),
   }, CommunityPluginsSection))
   return () => {
     disposeSlot()

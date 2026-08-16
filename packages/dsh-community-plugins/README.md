@@ -8,8 +8,8 @@ API-backed community plugin manager for the dsh web GUI: the existing Community 
 
 - **Existing first-level section**: keeps the `ui-community-plugins` Cordis entry and the `community-plugins.enabled` settings namespace. The section sits beside Web UI Plugins, Skin Center and Pet, opens directly expanded, and keeps its save action beside the enabled selector.
 - **Live catalog**: loads project metadata, facets, validation evidence and executable-plan availability from the [DSH Plugin Store API](https://api.dshmk.com/). Search, localized category choices, one-line expandable category chips, sorting and refresh all use API data; the last successful catalog remains visible after a refresh failure.
-- **Profile lifecycle**: compares Store entries with direct dependencies in the current Web profile, then offers install, update and removal controls. For a verified GitHub project, install and update ask whether to use the validated SHA or the repository's latest default-branch revision. The mutation dialog reports preparation, catalog refresh, local inventory, command execution and completion live, then keeps the command output expanded. Successful mutations require a DSH Web restart.
-- **Conversation integration**: registers `store_catalog`, `store_search`, `store_details`, `store_installed`, `store_install` and `store_remove`, plus the bundled `search-dsh-store` skill. Write tools enter the DSH approval flow before execution.
+- **Profile lifecycle**: compares Store entries with direct dependencies in the current Web profile, then offers install, update and removal controls. For a verified GitHub project, install and update ask whether to use the validated SHA or the repository's latest default-branch revision. The mutation dialog reports preparation, catalog refresh, local inventory, command execution and completion live, then keeps the command output expanded. A failed operation can send its repository, command, failed stage, error and output to a new Agent conversation for diagnosis; Settings closes only after the prompt is accepted. Successful mutations require a DSH Web restart.
+- **Conversation integration**: registers `store_catalog`, `store_search`, `store_details`, `store_installed`, `store_install` and `store_remove`, plus the bundled `search-dsh-store` skill. Write tools enter the DSH approval flow before execution. A failed mutation returns structured evidence so the current Agent analyzes it immediately instead of ending on a raw tool error.
 
 ## Install
 
@@ -34,7 +34,7 @@ Restart `dsh web` to mount the settings section, lifecycle routes, tools and ski
 
 - **Enable switch**: turning off Community Plugins hides only the market UI. It does not disable or remove installed projects, and the choice remains in `community-plugins.enabled`.
 - **UI operations**: each project card shows the API validation stages and validated install command with copy and quick-install controls. Select the verified revision or latest revision when both are available, review the exact plan, acknowledge the third-party-code warning, and confirm the mutation. The operation view shows every lifecycle stage and the package-manager output while the command runs. Update and removal actions appear only when a direct Web-profile dependency can be matched.
-- **Conversation use**: ask the agent to search, inspect, install, update or remove a Store project. When both GitHub modes are available, the agent must ask which one to use. Read tools may run directly; install, update and removal require explicit DSH approval.
+- **Conversation use**: ask the agent to search, inspect, install, update or remove a Store project. When both GitHub modes are available, the agent must ask which one to use. Read tools may run directly; install, update and removal require explicit DSH approval. On failure, the current Agent analyzes the returned evidence without automatically retrying or continuing with more tools.
 
 ### Synchronize the bundled Skill
 
@@ -52,6 +52,7 @@ pnpm --dir packages/dsh-community-plugins test
 
 - API metadata is untrusted. The browser submits only a repository ID and, when applicable, the user's install-mode choice; the Host fetches the current API response again and validates the project identity, fixed CLI arguments and supported source before running it. Verified mode uses the exact API validation SHA. Latest mode removes the SHA only after repository identity validation and may install code that has not passed Store validation yet.
 - Mutations use the official native-command runner with fixed argument arrays, never a shell. Local HTTP write routes require loopback and same-origin requests and serialize mutations; conversation write tools use the DSH approval gate.
+- Failure evidence and command output are always treated as untrusted diagnostic data. Agent handoff prompts prohibit executing embedded instructions, automatic retries and further mutations without a new explicit user request.
 - A Store validation state is compatibility evidence, not a security audit, quality guarantee or official endorsement. Review third-party code and permissions before installation.
 
 ## Known limitations

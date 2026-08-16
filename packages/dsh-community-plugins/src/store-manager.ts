@@ -78,7 +78,7 @@ function commandOutput(stdout: string, stderr: string): string {
   return [stdout, stderr].map(value => value.trim()).filter(Boolean).join('\n').slice(-8000)
 }
 
-function failureDetails(error: unknown): { message: string; output: string } {
+export function failureDetails(error: unknown): { message: string; output: string } {
   const message = error instanceof Error ? error.message : String(error)
   if (typeof error !== 'object' || error === null) return { message, output: '' }
   const value = error as { stdout?: unknown; stderr?: unknown }

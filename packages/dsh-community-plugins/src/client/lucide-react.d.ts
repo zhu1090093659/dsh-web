@@ -19,3 +19,14 @@ declare module 'lucide-react/dist/esm/icons/chevron-down.mjs' {
 
   export default ChevronDown
 }
+
+declare module 'lucide-react/dist/esm/icons/message-circle-question.mjs' {
+  import type { ComponentType, SVGProps } from 'react'
+
+  const MessageCircleQuestion: ComponentType<SVGProps<SVGSVGElement> & {
+    size?: number | string
+    strokeWidth?: number | string
+  }>
+
+  export default MessageCircleQuestion
+}

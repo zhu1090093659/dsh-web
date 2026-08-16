@@ -308,7 +308,7 @@ describe('API-backed Community Plugins UI', () => {
   })
 
   it('sends a failed settings operation to a new Agent conversation for diagnosis', async () => {
-    const askAgent = vi.fn(async () => {})
+    const askAgent = vi.fn(async (_diagnosis: string) => {})
     const closeSettings = vi.fn()
     const failedOperation = {
       id: 'operation-failed-1',

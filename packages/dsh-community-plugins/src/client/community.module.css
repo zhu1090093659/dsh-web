@@ -775,6 +775,10 @@
   border-top: 1px solid var(--dsw-alias-border-l2);
 }
 
+.askAgentButton {
+  margin-right: auto;
+}
+
 @media (max-width: 720px) {
   .commandRow {
     grid-template-columns: minmax(0, 1fr);

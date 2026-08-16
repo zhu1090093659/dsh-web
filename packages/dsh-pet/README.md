@@ -16,6 +16,7 @@ Re-implemented from the pet feature of the Codex desktop app, as an official DSH
 | Pet selection in settings | The plugin settings card lists every registered pet; switching persists and the sprite swaps immediately |
 | Per-pet naming | Rename from the hover panel; each pet keeps its own name (stored per pet id, migrated from the legacy flat name) |
 | State animation | Official session activity → 9-state animation: `thinking → running`, `tool → running-right`, `review → review`, `waiting → waiting`, `done → jumping`, `failed → failed` |
+| State rotation | Each scene plays a rotating sequence of ≥5 GIFs (e.g. `thinking`: running → running-right → running → running-left → running → waiting → running); every item plays its full track duration before the sequence advances, and the whole sequence loops |
 | Head-pat interaction | Click the pet → bubble feedback + affinity +1 (10s cooldown) |
 | Feeding | Hover panel 喂食 (Feed) → consumes 1 dried fish + affinity +5 (30s cooldown) |
 | Treat economy | Dried-fish stock (cap 20): +1 every 3 rounds of work, +1 every 30 minutes |

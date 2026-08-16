@@ -16,6 +16,7 @@
 | 设置中选择宠物 | 插件设置卡片列出所有已注册宠物；切换即持久化，精灵立即更换 |
 | 每只宠物独立命名 | 在悬浮面板改名；每只宠物保存自己的名字（按宠物 id 存储，旧版平铺名字自动迁移） |
 | 状态动画 | 官方会话活动 → 9 态动画：`thinking → running`、`tool → running-right`、`review → review`、`waiting → waiting`、`done → jumping`、`failed → failed` |
+| 状态轮换 | 每个场景按一条 ≥5 个 GIF 的序列连续轮换（如 `thinking`：running → running-right → running → running-left → running → waiting → running），每段播完自身完整时长后切换到下一个，整条序列循环播放 |
 | 摸头互动 | 点击宠物 → 气泡反馈 + 亲密度 +1（10s 冷却） |
 | 喂食 | 悬浮面板 喂食 → 消耗 1 条小鱼干 + 亲密度 +5（30s 冷却） |
 | 小鱼干经济 | 库存（上限 20）：每工作 3 轮 +1，每 30 分钟 +1 |

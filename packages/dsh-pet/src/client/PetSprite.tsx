@@ -19,7 +19,8 @@ import type { PetStateView } from '../service.ts'
 import type { PetDefinition } from '../registry.ts'
 import type { PetFeedback } from './pet-store.ts'
 import { framePosition, rowOfTrack, trimTrack } from './spritesheet.ts'
-import type { PetAnimation } from '../state.ts'
+import { sequenceFor } from './sequences.ts'
+import type { ActivityPhase, PetAnimation } from '../state.ts'
 import { NS } from './locales.ts'
 import styles from './pet.module.css'
 
@@ -71,10 +72,20 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   const [dragPos, setDragPos] = useState<{ right: number; bottom: number } | null>(null)
   const dragRef = useRef<{ startX: number; startY: number; right: number; bottom: number } | null>(null)
   const hideTimerRef = useRef<number | null>(null)
-  const frameRef = useRef<{ track: PetAnimation | null; index: number; elapsed: number }>({
+  const frameRef = useRef<{
+    track: PetAnimation | null
+    index: number
+    elapsed: number
+    phase: ActivityPhase | null
+    seqIndex: number
+    seqElapsed: number
+  }>({
     track: null,
     index: 0,
     elapsed: 0,
+    phase: null,
+    seqIndex: 0,
+    seqElapsed: 0,
   })
 
   const cell = definition.cell
@@ -103,19 +114,22 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   // the loop reads every tick. Under prefers-reduced-motion the sprite holds
   // its track's first frame instead of animating (presentation-only; the
   // animation state machine is untouched).
+  const phase = snapshot?.phase ?? 'idle'
   const spriteScale = display.size / cell.height
-  const animation = snapshot?.animation ?? 'idle'
   const scaleRef = useRef(spriteScale)
   scaleRef.current = spriteScale
   useEffect(() => {
     const reduceMotion = typeof window !== 'undefined'
       && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
-    const row = rowOfTrack(animation)
-    const track = trimTrack(tracks[animation], rows[row] ?? tracks[animation].frames.length)
     // Paint one static sprite frame up front either way, so the pet is never
-    // blank while the loop heat-up runs.
-    const leadCol = track.frames[0]!
-    const lead = framePosition(cell, columns, row, leadCol, scaleRef.current)
+    // blank while the loop heat-up runs. The lead frame is the first item of
+    // the phase's rotation sequence.
+    const leadSeq = sequenceFor(phase)
+    const leadAnim = leadSeq[0]!
+    const leadRow = rowOfTrack(leadAnim)
+    const leadTrack = trimTrack(tracks[leadAnim], rows[leadRow] ?? tracks[leadAnim].frames.length)
+    const leadCol = leadTrack.frames[0]!
+    const lead = framePosition(cell, columns, leadRow, leadCol, scaleRef.current)
     if (spriteRef.current !== null) {
       spriteRef.current.style.backgroundPosition = lead.x + 'px ' + lead.y + 'px'
     }
@@ -125,17 +139,27 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
     const tick = (ts: number): void => {
       const delta = ts - last
       last = ts
-      // Trim the track to the row's real frame count (transparent cells
-      // would render as a vanishing pet).
-      const row = rowOfTrack(animation)
-      const track = trimTrack(tracks[animation], rows[row] ?? tracks[animation].frames.length)
       const st = frameRef.current
-      if (st.track !== animation) {
-        st.track = animation
+      // Phase changed: restart the rotation sequence from its first item.
+      if (st.phase !== phase) {
+        st.phase = phase
+        st.seqIndex = 0
+        st.seqElapsed = 0
+        st.track = null
+      }
+      const seq = sequenceFor(phase)
+      const anim = seq[st.seqIndex] ?? seq[0]!
+      if (st.track !== anim) {
+        st.track = anim
         st.index = 0
         st.elapsed = 0
       }
+      // Trim the track to the row's real frame count (transparent cells
+      // would render as a vanishing pet).
+      const row = rowOfTrack(anim)
+      const track = trimTrack(tracks[anim], rows[row] ?? tracks[anim].frames.length)
       st.elapsed += delta
+      st.seqElapsed += delta
       const maxIndex = track.frames.length - 1
       while (st.elapsed >= (track.durations[st.index] ?? 0) && st.index < maxIndex) {
         st.elapsed -= track.durations[st.index] ?? 0
@@ -146,7 +170,7 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
           st.elapsed = 0
           st.index = 0
         } else {
-          st.index = maxIndex // hold the final frame; the host switches tracks
+          st.index = maxIndex // hold the final frame until the sequence advances
         }
       }
       const col = track.frames[st.index]!
@@ -154,11 +178,18 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
       if (spriteRef.current !== null) {
         spriteRef.current.style.backgroundPosition = pos.x + 'px ' + pos.y + 'px'
       }
+      // One sequence item = one full play of its track, then advance.
+      const total = track.durations.reduce((sum, d) => sum + d, 0)
+      if (total > 0 && st.seqElapsed >= total) {
+        st.seqElapsed -= total
+        st.seqIndex = (st.seqIndex + 1) % seq.length
+        st.track = null // next tick picks the next item fresh
+      }
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [animation, cell, columns, rows, tracks])
+  }, [phase, cell, columns, rows, tracks])
 
   // Auto-clear the feedback bubble after its CSS animation. The callback
   // rides a ref so re-renders never reset the timer: the 2s poll rebuilds

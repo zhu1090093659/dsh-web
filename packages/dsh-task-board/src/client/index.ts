@@ -8,8 +8,8 @@
  * shell fails the whole boot when a plugin apply throws, and an external
  * plugin must not take the GUI down.
  */
-import type { ClientContext, SessionId, SettingsScope, SettingsScopeSpec, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ConnectionHandle, PromptContentPart } from '@deepseek-ai/dsh-client-connection/client'
+import type { ClientContext, ISessions, IWorkspaces, SessionId, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale) and its
 // LocaleNamespaceMap merge table.
@@ -17,14 +17,13 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { BoardController } from '../core/controller.ts'
-import { ExecutionService } from '../core/execution.ts'
-import { SchedulerService } from '../core/scheduler.ts'
 import { LocalStorageTaskStore } from '../core/store.ts'
 import { claimTaskboardApply, releaseTaskboardApply } from './apply-guard.ts'
 import { mountBoard } from './board-mount.tsx'
 import { mountSidebarEntry } from './sidebar-entry.ts'
 import { TaskBoardSettingsCard, TaskBoardSettingsCardController, type TaskBoardSettings } from './TaskBoardSettingsCard.tsx'
 import { en, zh, type TaskBoardKey } from './locales.ts'
+import { HttpTaskBoardHostTransport } from './host-api.ts'
 
 /** Locale namespace this plugin owns. */
 const NS = 'task-board'
@@ -107,91 +106,24 @@ export function apply(ctx: ClientContext): void {
   let uiDisposer: (() => void) | undefined
   const mountUi = (): void => {
     if (uiDisposer !== undefined) return
-    const sessions = ctx.sessions
-    const workspaces = ctx.workspaces
+    // Host and browser SDK declarations share the Cordis Context name. Read
+    // the browser faces explicitly so Host-side declaration merging cannot
+    // narrow these two client services during a combined package build.
+    const sessions = ctx.get('sessions') as unknown as ISessions
+    const workspaces = ctx.get('workspaces') as unknown as IWorkspaces
     const connection = ctx.get('connection') as ConnectionHandle
 
     // Core wiring: real runtime faces into the framework-free services.
     const store = new LocalStorageTaskStore()
-    const exec = new ExecutionService({
-      sessions: {
-        list: sessions.list,
-        binding: id => {
-          const binding = sessions.binding(id as SessionId)
-          if (binding === undefined) return undefined
-          const { session } = binding
-          return {
-            session: {
-              rename: title => session.rename(title),
-              prompt: (content, mode) =>
-                session.prompt(content as PromptContentPart[], mode).then(result =>
-                  result.ok ? { ok: true as const } : { ok: false as const, error: result.error }),
-              command: line =>
-                session.command(line).then(result =>
-                  result.ok ? { ok: true as const, matched: result.value.matched } : { ok: false as const, error: result.error }),
-              getSnapshot: () => session.getSnapshot(),
-              subscribe: fn => session.subscribe(fn),
-            },
-          }
-        },
-        noteAgentPreset: (sessionId, agentPreset) => sessions.noteAgentPreset(sessionId as SessionId, agentPreset),
-      },
-      workspaces: {
-        list: workspaces.list,
-        connectWorkspace: id => workspaces.connectWorkspace(id as WorkspaceId),
-      },
-      presets: {
-        select: async (sessionId, agentPreset) => {
-          try {
-            const response = await connection.api.agentPresets.select({ sessionId: sessionId as SessionId, agentPreset })
-            return response.result.ok ? { ok: true as const } : { ok: false as const, error: response.result.error }
-          } catch (error) {
-            return { ok: false as const, error }
-          }
-        },
-      },
-      history: {
-        loadTail: async sessionId => {
-          const response = await connection.api.sessions.history({
-            sessionId: sessionId as SessionId,
-            maxMessages: 20,
-          })
-          return response.result.ok
-            ? { events: response.result.value.events.map(entry => entry.event) }
-            : undefined
-        },
-      },
-    })
     const controller = new BoardController({
       store,
-      exec,
+      transport: new HttpTaskBoardHostTransport(),
       sessions: {
         list: sessions.list,
         open: id => sessions.open(id as SessionId),
       },
     })
     controller.start()
-
-    // Scheduled runs: a browser-side heartbeat that triggers due tasks through
-    // the same run path as the manual Run button. The first tick is gated on
-    // the session list baseline so a page-load catch-up never fires into a
-    // not-yet-ready runtime; tab visibility recovery ticks immediately.
-    const scheduler = new SchedulerService({
-      tasks: () => controller.getSnapshot().tasks,
-      // Re-read the persisted ledger before every fire decision: a task
-      // deleted in another tab must never fire from a stale in-memory copy.
-      refresh: () => controller.reloadFromStore(),
-      now: () => Date.now(),
-      runTask: id => controller.runTask(id),
-      applySchedule: (id, nextRunAt, lastTriggeredAt) =>
-        controller.applyScheduleNextRun(id, nextRunAt, lastTriggeredAt),
-      ready: () => sessions.list.getSnapshot().phase === 'ready',
-      environment: {
-        addEventListener: (type, listener) => document.addEventListener(type, listener),
-        removeEventListener: (type, listener) => document.removeEventListener(type, listener),
-      },
-    })
-    scheduler.start()
 
     const disposers: Array<() => void> = []
 
@@ -242,7 +174,6 @@ export function apply(ctx: ClientContext): void {
 
     uiDisposer = () => {
       for (const dispose of disposers.splice(0)) dispose()
-      scheduler.dispose()
       controller.dispose()
       uiDisposer = undefined
     }

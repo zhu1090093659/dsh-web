@@ -60,7 +60,7 @@ function ExecutionRow({ execution, onOpen }: { execution: ExecutionRecord; onOpe
 }
 
 /** The execution-target editor: workspace / mode / permission pickers. */
-function ExecutionSettingsSection({ controller, task }: { controller: BoardController; task: TaskRecord }) {
+function ExecutionSettingsSection({ controller, task, pending }: { controller: BoardController; task: TaskRecord; pending: boolean }) {
   const [options, setOptions] = useState(controller.getSnapshot().executionOptions)
   useEffect(
     () => controller.subscribe(() => setOptions(controller.getSnapshot().executionOptions)),
@@ -83,6 +83,7 @@ function ExecutionSettingsSection({ controller, task }: { controller: BoardContr
         <select
           className={css.select}
           value={workspaceId}
+          disabled={pending}
           onChange={event => { controller.updateTask(task.id, { workspaceId: event.target.value }) }}
         >
           <option value="">{t('exec.workspace.recent')}</option>
@@ -97,6 +98,7 @@ function ExecutionSettingsSection({ controller, task }: { controller: BoardContr
         <select
           className={css.select}
           value={mode}
+          disabled={pending}
           onChange={event => { controller.updateTask(task.id, { mode: event.target.value }) }}
         >
           <option value="">{t('exec.mode.default')}</option>
@@ -115,6 +117,7 @@ function ExecutionSettingsSection({ controller, task }: { controller: BoardContr
         <select
           className={css.select}
           value={permission}
+          disabled={pending}
           onChange={event => { controller.updateTask(task.id, { permission: event.target.value === '' ? undefined : event.target.value as TaskPermission }) }}
         >
           <option value="">{t('exec.permission.default')}</option>
@@ -128,7 +131,7 @@ function ExecutionSettingsSection({ controller, task }: { controller: BoardContr
 }
 
 /** The scheduled-runs editor: enable toggle, cron input + presets, next-run info. */
-function ScheduleSection({ controller, task }: { controller: BoardController; task: TaskRecord }) {
+function ScheduleSection({ controller, task, pending }: { controller: BoardController; task: TaskRecord; pending: boolean }) {
   const schedule = task.schedule
   const [cron, setCron] = useState(schedule?.cron ?? '0 9 * * *')
   const [enabled, setEnabled] = useState(schedule?.enabled ?? false)
@@ -166,8 +169,11 @@ function ScheduleSection({ controller, task }: { controller: BoardController; ta
       return
     }
     setError(undefined)
-    if (next && trimmed !== schedule?.cron) controller.setSchedule(task.id, { cron: trimmed })
-    if (controller.setSchedule(task.id, { enabled: next })) setEnabled(next)
+    const submitted = controller.setSchedule(task.id, {
+      enabled: next,
+      ...(next && trimmed !== schedule?.cron ? { cron: trimmed } : {}),
+    })
+    if (submitted && !controller.isHostBacked()) setEnabled(next)
   }
 
   const applyPreset = (preset: string): void => {
@@ -191,6 +197,7 @@ function ScheduleSection({ controller, task }: { controller: BoardController; ta
         <input
           type="checkbox"
           checked={enabled}
+          disabled={pending}
           onChange={event => { toggleEnabled(event.target.checked) }}
         />
         <span>{t('detail.schedule.enable')}</span>
@@ -199,6 +206,7 @@ function ScheduleSection({ controller, task }: { controller: BoardController; ta
         <input
           className={`${css.input} ${css.scheduleInput}${error !== undefined ? ` ${css.scheduleInputInvalid}` : ''}`}
           value={cron}
+          disabled={pending}
           placeholder="0 9 * * *"
           spellCheck={false}
           aria-label={t('detail.schedule.cron')}
@@ -209,6 +217,7 @@ function ScheduleSection({ controller, task }: { controller: BoardController; ta
         <select
           className={css.schedulePreset}
           value=""
+          disabled={pending}
           aria-label={t('detail.schedule.presets')}
           onChange={event => { applyPreset(event.target.value) }}
         >
@@ -231,6 +240,7 @@ function ScheduleSection({ controller, task }: { controller: BoardController; ta
 export function TaskDetail({ controller, task }: { controller: BoardController; task: TaskRecord }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const running = task.status === 'running'
+  const pending = controller.getSnapshot().pendingTaskIds.includes(task.id)
 
   // Keep the overlay in sync if the task record changes underneath.
   const [latest, setLatest] = useState(task)
@@ -264,9 +274,9 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
             <pre className={css.promptBlock}>{current.prompt !== '' ? current.prompt : current.title}</pre>
           </section>
 
-          <ExecutionSettingsSection controller={controller} task={current} />
+          <ExecutionSettingsSection controller={controller} task={current} pending={pending} />
 
-          <ScheduleSection controller={controller} task={current} />
+          <ScheduleSection controller={controller} task={current} pending={pending} />
 
           <section className={css.detailSection}>
             <h4>{t('detail.execution')}</h4>
@@ -293,7 +303,7 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
                   key={status}
                   type="button"
                   className={css.ghostButton}
-                  disabled={current.status === status || running}
+                  disabled={current.status === status || running || pending}
                   onClick={() => { controller.moveTask(current.id, status) }}
                 >
                   {t(`status.move.${status}` as TaskBoardKey)}
@@ -304,15 +314,15 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
         </div>
 
         <footer className={css.detailFooter}>
+          {pending && <span className={css.detailMeta}>{t('board.pending')}…</span>}
           <button
             type="button"
             className={css.primaryButton}
-            disabled={running}
+            disabled={running || pending}
             onClick={() => {
-              // Running kicks off a real agent session; close the detail so
-              // the whole board stays visible while the task executes.
-              controller.closeTask()
-              void controller.rerunTask(current.id)
+              void controller.rerunTask(current.id).then(() => {
+                if (controller.getSnapshot().transportError === undefined) controller.closeTask()
+              })
             }}
           >
             {current.executions.length === 0 ? t('detail.run') : t('detail.rerun')}
@@ -321,9 +331,9 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
             <button
               type="button"
               className={css.primaryButton}
+              disabled={pending}
               onClick={() => {
                 controller.restoreTask(current.id)
-                controller.closeTask()
               }}
             >
               {t('detail.restore')}
@@ -333,9 +343,9 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
               <button
                 type="button"
                 className={css.ghostButton}
+                disabled={pending}
                 onClick={() => {
                   controller.archiveTask(current.id)
-                  controller.closeTask()
                 }}
               >
                 {t('detail.archive')}
@@ -345,6 +355,7 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
           <button
             type="button"
             className={css.dangerButton}
+            disabled={pending}
             onClick={() => { setConfirmDelete(true) }}
           >
             {t('detail.delete')}
@@ -366,7 +377,6 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
           onConfirm={() => {
             setConfirmDelete(false)
             controller.deleteTask(current.id)
-            controller.closeTask()
           }}
         />
       )}

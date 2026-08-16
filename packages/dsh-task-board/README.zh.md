@@ -2,135 +2,103 @@
 
 [English](README.md) | 中文
 
-一个可热插拔的 DeepSeek Harness (DSH) 客户端 GUI 插件：在侧边栏「新会话」下方增加 **任务看板**入口，点击后中间列整体切换为多列看板视图；任务以 DSH 自身的会话机制 **真实执行**（`session.prompt`），执行状态实时回写卡片。
+一个可热插拔的 DeepSeek Harness (DSH) Web GUI 插件，提供 Host 权威任务账本、真实 DSH 会话执行、Host cron 调度和可选的跨平台空闲睡眠保护。插件只通过 `cordis.patch.yml` 与 profile 机制挂载，不修改 DSH 源码。
 
-- 不修改 DSH 源码：以 cordis 插件 + 浏览器 DOM 扩展挂载（外挂形态与 `dsh-web-ui/packages/skins/skin-center` 一致）。
-- 卸载即恢复原状，其它 managed 段（dsh-skin / skin-center / 个人配置）互不干扰。
-- 任务数据本地持久化，刷新页面、重启 DSH 均不丢失。
+- 浏览器只是异步视图；关闭页面不会停止 Host 调度或执行结算。
+- 每次运行创建独立 DSH 会话，并在发送任务 Prompt 前应用钉住的工作区、agent 预设与权限。
+- 可选电源保护允许显示器熄灭，同时阻止整机因空闲进入系统睡眠。
 
 ## 功能
 
-- **侧边栏入口**：侧边栏列（旧版 `[data-pane="sidebar"]`，DSH 0.1.0-rc.6 AppFrame 布局为 `[class*="sidebarCol"]`）内、新会话按钮下方注入「任务看板」入口行（宽栏显示图标+文字，折叠 rail 显示纯图标，随 DSH 皮肤 token 自适应）。
-- **多列看板**：待规划 / 待办 / 进行中 / 已完成 / 已失败 五列；卡片显示标题、描述、状态、更新时间、执行次数；顶部支持搜索过滤、归档视图（已完成/已失败任务可归档，归档后移出看板，可随时恢复，执行记录与会话 transcript 保留可追溯）、新建任务、返回会话。
-- **任务详情**：点卡片打开详情（标题/描述/执行 Prompt/执行记录），**不会**一点就执行；详情内提供「执行 / 重新执行」「删除（带确认）」「查看会话（跳转到执行 transcript）」以及手动移到待规划/待办。
-- **真实执行**：点「执行」后，插件通过客户端 runtime 连接工作区会话（`workspaces.connectWorkspace`，空白会话复用或 host 新建），把任务标题设为会话名，以任务 Prompt 调用 `session.prompt([{ type: 'text', text }], 'queue')` 驱动真实 agent；随后订阅该会话快照，轮次真实结束后把卡片置为 已完成/已失败 并记录执行结果。执行会话会出现在会话列表，可点进对话查看真实 transcript。
-- **任务级执行目标**：任务可钉住「在哪跑、怎么跑」——**工作区**（执行会话落在指定工作区）、**模式**（会话以指定 agent 预设组合，趁会话仍为空白时走 `agentPresets.select` 切换）、**权限**（经 `/permission <id>` 斜杠命令应用的沙箱预设：read-only / workspace-write / danger-full-access）。留空即回退运行时默认（最近工作区 / 部署预设 / 会话默认）。钉不住的目标会在发 Prompt **之前**失败，任务绝不会悄悄按没要求过的设置运行。
-- **状态回写**：卡片状态（进行中 → 完成/失败）由真实会话状态驱动；刷新页面/重启后，遗留的 running 任务会按会话现状自动对账（reconcile）。
-- **定时任务**：新建任务与详情面板均可配置定时执行——启用开关 + 5 段 cron 表达式（分 时 日 月 周，支持 `*` / `*/n` / `a-b` / 逗号列表）+ 常用预设（每天 09:00、每小时、每 10 分钟、每周一 09:00）；启用即计算并持久化「下次运行时间」，卡片显示定时标识；到点自动走真实执行链路（同手动执行），执行会话照常可跳转。
-- **系统提示词注入**：host 半边（`src/index.ts`）通过 `SystemPrompt.section` 注册 `plugin:task-board` 段（order 200），向每个 agent 声明本插件存在、能力与限制——插件在组合中（mount 后重启 DSH）即注入，移出组合（unmount 后重启）即消失，agent 无需任何外部文档就能知道如何与本看板协作。
+- **任务看板 UI**：新会话按钮下方的侧边栏入口在宽栏显示图标和文字、在折叠 rail 显示图标；看板提供五列布局、搜索、任务详情、归档/恢复、执行历史和执行会话跳转。
+- **Host 权威账本**：任务、计划和执行记录存于 `$DSH_HOME/task-board/ledger-v2.json`；浏览器动作只有经 Host 确认后才成为 UI 状态。
+- **真实执行**：手动运行和定时运行共用 Host runner，新建独立会话、重命名、应用 agent 预设和 `/permission <id>`，再以 queue 模式发送任务 Prompt。
+- **钉子失败即关闭**：工作区缺失、预设缺失或损坏、权限命令被拒绝时，任务 Prompt 不会发送。
+- **Host 调度器**：5 段 cron 支持 `*`、`*/n`、范围、逗号列表、周日 `0/7` 和标准的日期/星期 OR 语义，时间基准为 Host 本地时区。
+- **确定性恢复**：已有 session id 的 running execution 在重启后继续观察；没有 session id 的启动中断会取消且不会重发。
+- **实时同步**：变更返回完整 revision snapshot；SSE 只提示 revision、scheduler 与 power 变化，重连和页面恢复可见时重新拉完整 snapshot。
+- **可选空闲睡眠保护**：默认关闭；开启后覆盖全部运行中的 DSH 会话、已启用的任务计划和未知会话状态。
 
-## 目录结构
+## 架构与协议
 
-```
-package.json / tsconfig.json / tsdown.config.ts   # 独立仓库构建
-build/tsdown.client.ts + build/web/src/platform.ts # 从 DSH checkout 复制的 client bundle 预设（与运行版本保持同步）
-src/index.ts / src/invariant.ts                    # host 半边：仅注入 SystemPrompt section（其余无行为）
-src/client/index.ts                                # apply(ctx)：接线 runtime 服务 + 挂载 DOM
-src/client/sidebar-entry.ts                        # 侧边栏入口注入（自愈式 MutationObserver）
-src/client/board-mount.tsx                         # 中间列看板挂载 + 显隐切换
-src/client/board/*.tsx                             # React 看板视图（列/卡片/详情/新建/确认）
-src/client/board.module.css                        # 样式（--dsw-* token，随主题/皮肤自适应）
-src/core/tasks.ts                                  # 任务模型 + 状态机（纯函数）
-src/core/schedule.ts                               # cron 解析 + 下次运行时刻（纯函数）
-src/core/scheduler.ts                              # 浏览器调度器（每分钟 tick 触发到期任务）
-src/core/store.ts                                  # 持久化（TaskStore 接口 + localStorage 实现）
-src/core/execution.ts                              # 真实执行服务（会话连接/prompt/结算观察）
-src/core/controller.ts                             # 控制器（台账状态、视图状态、导航感知）
-tests/*.spec.ts                                    # 存储/状态流转/执行触发/cron/调度 自动化测试
-scripts/dsh-task-board.js                          # 一键挂载/卸载/状态 CLI
-```
-
-## 为什么这样接（调研结论）
-
-- **侧边栏没有可用的外挂槽位**：侧边栏壳只声明 `sidebar.workspaces` / `sidebar.settings` 两个 single 槽位，且已被 ui-workspace / ui-settings 占用；外部插件无法注册新槽位（声明即占有，重复声明抛错）。因此入口行走 skin 先例的 **DOM 注入**，并用 MutationObserver 自愈（React 重渲染波及该节点时同帧内重新插入，无闪烁）。
-- **中间列无法通过槽位替换**：`conversation` 槽位是 single 且已被 ui-conversation 占用。看板视图以 DOM 方式挂在中间列（旧版 `[data-pane="conversation"]`，DSH 0.1.0-rc.6 AppFrame 布局为 `[class*="centerCol"]`；挂载选择器两者都保留）内（React 不管的尾部子节点），通过 `<html data-dsh-taskboard-active>` 属性切换显隐，底下的对话子树保持挂载有状态。
-- **持久化用浏览器 localStorage**：客户端插件跑在浏览器里，DSH 没有浏览器可写的文件通道（与 skin-center 对 `cordis.patch.yml` 的调研结论一致）；localStorage 也是 DSH 客户端自身快照存储（`createSnapshotStore` persist）的持久化方式。
-- **执行走客户端 runtime**：`ctx.sessions.list` 订阅会话状态（`running` / `byId`），`ctx.workspaces.connectWorkspace()` 创建/复用会话，`session.prompt()` 真实驱动 agent，`ctx.sessions.open()` 跳转 transcript。
-- **执行目标走同样的 runtime 脸**：工作区钉子把任务指定的 id 传给 `workspaces.connectWorkspace()`（先对照工作区列表校验，失效的钉子就地失败）；模式钉子通过 `api.agentPresets.select` 重组仍为空白状态的执行会话——只有首轮之前合法，所以排在 `session.prompt` 之前执行，`sessions.noteAgentPreset` 让会话列表标签即时更新；权限钉子经 `session.command` 提交 `/permission <id>` 斜杠命令——与壳自带权限选择器同一机制。提交被拒或没有命令认领该行时，在发 Prompt 前失败。
-- **后台结算靠列表对账**：未打开的会话没有对话快照窗口（cold），所以执行结算以会话列表为准——每次列表变化都对账 running 任务；结果判定依次取「列表缺失→已取消 / 仍在跑→等待 / 对话快照可见→按 lastAgentError / 原始历史尾部→turn-error 节点证明失败 / 否则按成功」，对账幂等。
-- **定时任务在浏览器端调度**：插件是纯客户端（无服务端通道），所以「到点执行」由标签页内的调度器完成——每分钟 tick 一次，页面从后台恢复可见时立即补 tick；到点触发前先把「下次运行」顺延到下一个 cron 匹配点再执行，同一 tick 不会重复触发；页面加载早期（会话列表基线未就绪）不触发，避免误执行；每次 tick 先重读持久化账本，在别的标签页删除的任务绝不会从陈旧内存副本被触发。限制：需要标签页保持打开（关闭期间错过的调度按「错过即跳过」处理，下次打开时只补跑已顺延的到期任务）；任务处于「进行中」时到点跳过本次，等下一个 cron 匹配点。
-- **多标签页同源共享同一份台账**：任一标签页的增删改通过 storage 事件同步到其他标签页（`LocalStorageTaskStore.subscribeExternal`），删除的任务不会在其他标签页的内存副本里残留触发，也不会被其他标签页的后续持久化写回复活。
+- `src/index.ts` 通过官方 `@deepseek-ai/dsh-host-apiproxy` 与 `@deepseek-ai/dsh-host-webserver` SDK 挂载 Host 服务。
+- `src/host-ledger.ts` 串行动作，并用临时文件加原子 rename 持久化 `{ schemaVersion: 2, revision, tasks, scheduler }`。
+- `src/host-service.ts` 负责 cron tick、错过触发跳过、runner 启动、重启对账和电源保护理由。
+- `src/client/host-api.ts` 单次导入旧浏览器数据、提交幂等动作，并把 Host snapshot 当作唯一已确认 UI 状态。
+- 同源接口为 `GET /api/task-board/state`、`GET /api/task-board/events` 和 `POST /api/task-board/action`。
+- POST 必须为 JSON 且 exact same-origin；没有 `Origin` 的请求只允许 loopback。普通动作上限 64 KiB，导入上限 2 MiB。严格 action 联合中没有命令、可执行路径、shell 文本或任意参数字段。
 
 ## 安装
 
-推荐直接安装全家桶聚合包 `@linxin666/dsh-web-ui-all`（一个包装齐全部功能插件与皮肤），或单独安装本插件：
+安装聚合包或单独安装本包，然后重启 `dsh web`：
 
 ```sh
-### 从 npm 安装（推荐）
 dsh plugin --profile web add @linxin666/dsh-client-ui-task-board
+```
 
-### 从仓库安装（开发调试）
+本地开发安装：
+
+```sh
 git clone https://github.com/zhu1090093659/dsh-web-ui.git
 cd dsh-web-ui
-pnpm install && pnpm -r build
+pnpm install
+pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board
-
 ```
 
-安装后**重启 `dsh web`**，侧边栏「新会话」下方出现「任务看板」入口即生效；页面刷新不够，需重启进程。
+## 配置
 
-## 构建
+| 键 | 默认值 | 行为 |
+| --- | --- | --- |
+| `enabled` | `true` | 启用 Host 服务与浏览器看板。 |
+| `announceToAgent` | `true` | 向 agent 系统提示加入任务看板说明。 |
+| `preventIdleSleep` | `false` | 存在运行中的 DSH 会话、已启用计划或未知会话状态时，持有一个系统空闲睡眠断言。 |
 
-前置：Node ≥ 20，官方 NPM SDK 可访问（若仍使用私有 scope 认证则配置 `NPM_TOKEN` 环境变量 + 项目 `.npmrc`，见仓库 `docs/plugins.md`）。类型与运行时 API 全部来自官方 NPM SDK（`@deepseek-ai/*` devDependencies），**无需任何 DSH 源码 checkout**。
+macOS 后端启动 `/usr/bin/caffeinate -i -w <host-pid>`，绝不请求 `-d`。Windows 后端从 `SystemRoot` 启动绝对路径的 Windows PowerShell，固定 helper 只请求 `ES_CONTINUOUS | ES_SYSTEM_REQUIRED`；不请求 `ES_DISPLAY_REQUIRED`，不修改电源计划，也不需要管理员权限。Linux 和其他平台报告 `unsupported`，不会启动替代命令。
+
+## 数据存储与迁移
+
+- v2 账本位于 `$DSH_HOME/task-board/ledger-v2.json`。POSIX 新文件权限为 `0600`；Windows 继承用户目录 ACL。
+- 损坏的 v2 文件会移动为 `ledger-v2.json.corrupt-<timestamp>`，Host 以空账本和可见 scheduler 错误启动，不覆盖损坏字节。
+- 每个 origin 首次加载新版页面时，按稳定 source id 和 request id 导入 `dsh.taskBoard.v1`。任务按 id 合并，较新的顶层字段优先，执行记录按 execution id 合并。
+- 只有 Host 确认后才写 `dsh.taskBoard.v2.hostImported` 标记。v1 localStorage 原值保持不变，作为只读回退备份。
+
+## 安全模型
+
+- 插件仍处在 DSH Web 既有部署与网络边界内，不返回宽松 CORS 头。
+- 所有变更载荷使用严格、版本化的判别联合；浏览器不能写入 scheduler 独占时间戳或 execution 结果。
+- 工作区、预设、权限、cron、任务状态和导入记录都会在 Host 再校验。
+- 任务 Prompt 是发给 DSH agent 会话的数据。协议不接受 shell 命令、PowerShell 正文、可执行路径或可配置 helper 参数。
+- 电源 helper 使用固定可执行路径、固定参数、`shell: false`，失败后按 1、2、5、10、30 秒有界退避。
+
+## 构建与测试
+
+需要 Node 20 或更高版本及官方 NPM SDK 包；不使用 DSH 源码 checkout。
 
 ```sh
-cd ~/code/dsh-web-ui/packages/dsh-task-board
-pnpm install        # 首次（workspace 根执行 pnpm install）
-pnpm run build      # 产出 lib/index.js + lib/client.js（tsdown + shared/tsdown.client.ts 预设）
-pnpm run typecheck  # 类型检查（node_modules 的 SDK 包类型）
-pnpm test           # vitest：存储读写 / 状态流转 / 执行触发
+pnpm --filter @linxin666/dsh-client-ui-task-board typecheck
+pnpm --filter @linxin666/dsh-client-ui-task-board test
+pnpm --filter @linxin666/dsh-client-ui-task-board build
 ```
 
-## 挂载 / 卸载
+仓库 CI 另在 `windows-latest` 与 `macos-latest` 运行 opt-in 原生 helper smoke：真实启动固定 helper、等待 ready、释放并确认进程退出，不修改系统电源计划。
 
-本插件采用官方 profile-bundle 形态（package.json 声明 `dsh.bundle.patch` + `dsh.client`，见 `cordis.patch.yml`）。挂载 = 在 web profile 清单（`~/.dsh/profiles/web/package.json`）注册依赖与 bundle 行并安装：
+## 手工验证
 
-```sh
-# 挂载（dependencies + dsh.profile.bundles 注册，pnpm install；重启 GUI 后生效）
-node scripts/dsh-task-board.js mount
+1. 挂载插件并重启 `dsh web`，打开任务看板，确认 Host 时区和电源状态可见。
+2. 新建并编辑任务；刷新或打开第二个同源标签页，确认两者显示同一 Host revision。
+3. 执行一个钉住工作区、预设和权限的任务；确认出现新会话，并由该会话的 `turn/end` 历史结算任务。
+4. 启用一个即将到期的 cron，关闭全部浏览器页面，确认 Host 仍只创建并结算一次 execution。
+5. 让 Host 停止并错过一个 cron 触发点，重启后确认该次被跳过，`nextRunAt` 从当前 Host 时间向后滚动。
+6. 开启 `preventIdleSleep` 并运行长任务，让显示器自动熄灭；恢复显示后确认会话继续且 execution 已结算。
+7. 关闭设置并禁用所有计划，再停止 DSH，确认 helper 退出；macOS 可用 `pmset -g assertions` 辅助确认插件没有 display-sleep assertion。
 
-# 查看状态
-node scripts/dsh-task-board.js status
+## 已知限制
 
-# 卸载（移除注册行；重启 GUI 后恢复原状；任务数据保留）
-node scripts/dsh-task-board.js unmount
-```
-
-profile 清单中注册的行：
-
-```json
-{
-  "dependencies": { "@linxin666/dsh-client-ui-task-board": "link:/Users/zcl/code/dsh-web-ui/packages/dsh-task-board" },
-  "dsh": { "profile": { "bundles": [ "...", "@linxin666/dsh-client-ui-task-board" ] } }
-}
-```
-
-> 注意：profile 层（bundle 行、`dsh.client` 元数据）在 dsh web 进程启动时读取，挂载/卸载后需要**重启 dsh web GUI** 才生效（页面刷新不够）。
-
-## 数据存储位置
-
-- 任务台账存于浏览器 localStorage，键 `dsh.taskBoard.v1`（来源为 `http://127.0.0.1:<dsh web 端口>`，同一来源跨刷新/重启持久）。
-- 卸载插件后数据保留；如需清除，浏览器控制台执行 `localStorage.removeItem("dsh.taskBoard.v1")`。
-- 存储层是 `TaskStore` 接口（`src/core/store.ts`），后续可换成 IndexedDB 或 host 文件通道而不动上层逻辑。
-
-## 手动验证步骤
-
-1. `npm run build` → `node scripts/dsh-task-board.js mount` → 刷新 `http://127.0.0.1:3080`。
-2. 侧边栏「新会话」下方出现「任务看板」入口行；点击 → 中间列切换为五列看板。
-3. 「+ 新建任务」填标题/描述/Prompt → 卡片出现在「待办」；对话框同时提供 工作区/模式/权限 三项钉子，留空即运行时默认。
-4. 在对话框或详情里给任务钉上工作区/模式/权限 → 执行 → 执行会话落在指定工作区下，列表行显示指定预设，会话的权限选择器显示指定权限。
-5. 点卡片 → 详情可见内容与 Prompt；点「执行」→ 卡片变「进行中」（会话列表出现以任务标题命名的会话）；agent 跑完后卡片落「已完成」或「已失败」，详情执行记录有结果与时间，可「查看会话」跳转到真实 transcript。
-6. 定时任务：详情 →「定时运行」勾选启用，选预设「每 10 分钟」（cron `*/10 * * * *`），卡片出现定时标识；等待下一个整 10 分钟点，观察卡片自动进入「进行中」并最终完成，详情「上次触发」出现时间、执行记录新增一条（会话可跳转）。
-7. 刷新页面/重启 DSH → 任务仍在；卸载插件 → GUI 恢复原状。
-
-## 验收对照
-
-- 挂载后侧边栏出现「任务看板」入口；点击切换看板，点会话项返回对话视图
-- 新建任务（标题+描述/Prompt）；刷新/重启后任务仍在（localStorage 持久化）
-- 点卡片开详情（内容 + 执行记录）；详情内有「执行」「删除」按钮
-- 执行真实启动会话（会话列表可见 transcript）；卡片状态随真实执行进度变化；详情可跳转到执行会话
-- 删除有确认环节，删除后本地存储同步移除
-- 定时任务：cron 配置/预设/校验、下次运行时间、到点自动真实执行、状态回写、定时卡片标识、刷新后调度恢复（浏览器端调度，标签页需保持打开）
-- 任务级执行目标：工作区/模式/权限 钉子刷新后仍在，驱动执行会话；钉不住的钉子（工作区缺失、预设被锁、权限命令无人认领）在发 Prompt 前失败，执行记录可见原因
-- 一键挂载/卸载；卸载后 GUI 恢复原状，其它 managed 段不受影响
-- README + 覆盖存储读写/状态流转/执行触发/cron 解析/调度器的自动化测试
+- Host 停止、系统睡眠或长暂停期间错过的触发点会跳过，绝不排队补跑。
+- 同一任务已在运行时会跳过到期出现并滚动到下一 cron 匹配点；任务运行不并发、不排队。
+- 电源保护只阻止空闲系统睡眠，明确允许显示器睡眠与锁屏。
+- 合盖、手动睡眠、休眠、关机、低电量强制睡眠和企业电源策略不在保证范围内。
+- 插件不创建唤醒定时器，也不能唤醒已经睡眠的机器。
+- 已启用计划会从未来触发点之前持续持锁，因此可能增加电池消耗。
+- Host 执行消耗与普通 DSH agent 会话相同的 API 额度。

@@ -29,9 +29,8 @@ export interface ExecutionRecord {
 }
 
 /**
- * A scheduled-run rule attached to a task. The browser-side scheduler ticks
- * every minute and triggers the task when `nextRunAt` is due; the rule is
- * persisted with the task (localStorage), so scheduling survives refreshes.
+ * A scheduled-run rule attached to a task. The Host scheduler triggers the
+ * task when `nextRunAt` is due and persists the rule in the Host ledger.
  */
 export interface ScheduleRule {
   /** Whether the schedule is armed. */

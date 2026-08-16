@@ -1,12 +1,13 @@
 /**
- * The task-board settings card: whether the board announces itself in every
- * agent's system prompt. Registers into the `settings.plugin.item` slot the
- * plugin-configuration section renders, bound to the `task-board` settings
- * namespace.
+ * Task-board settings for availability, agent announcement, and optional Host
+ * idle-sleep protection. Registers into the `settings.plugin.item` slot the
+ * plugin-configuration section renders, bound to the `task-board` namespace.
  */
 
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { useEffect, useState } from 'react'
+import type { TaskBoardPowerSnapshot } from '../protocol.ts'
 import { PluginSettingsCard, BooleanField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
 
@@ -16,6 +17,8 @@ export interface TaskBoardSettings {
   enabled?: boolean
   /** Whether the board announces itself in every agent's system prompt. */
   announceToAgent?: boolean
+  /** Prevent host idle sleep while sessions run or schedules are armed. */
+  preventIdleSleep?: boolean
 }
 
 /** What the task-board card renders. */
@@ -24,6 +27,8 @@ export interface TaskBoardSettingsCardState extends CardShell {
   enabled: CardFieldState
   /** System-prompt announcement flag. */
   announceToAgent: CardFieldState
+  /** Idle-system-sleep protection flag. */
+  preventIdleSleep: CardFieldState
 }
 
 /** The registration-side face the card's slot entry injects. */
@@ -44,6 +49,7 @@ export class TaskBoardSettingsCardController {
     this.form = new CardForm(scope, [
       booleanField('enabled'),
       booleanField('announceToAgent'),
+      booleanField('preventIdleSleep'),
     ])
     this.store = this.form.bind(() => this.projection())
   }
@@ -53,6 +59,7 @@ export class TaskBoardSettingsCardController {
       ...this.form.shell(),
       enabled: this.form.field('enabled'),
       announceToAgent: this.form.field('announceToAgent'),
+      preventIdleSleep: this.form.field('preventIdleSleep'),
     }
   }
 
@@ -80,6 +87,23 @@ export function TaskBoardSettingsCard(props: TaskBoardSettingsCardProps) {
   const { t } = props
   const state = props.useTaskBoardSettingsCard(snapshot => snapshot)
   const disabled = !state.writable
+  const [power, setPower] = useState<TaskBoardPowerSnapshot | undefined>()
+  useEffect(() => {
+    let live = true
+    const refresh = async (): Promise<void> => {
+      try {
+        const response = await fetch('/api/task-board/state', { cache: 'no-store', credentials: 'same-origin' })
+        if (!response.ok) return
+        const snapshot = await response.json() as { power?: TaskBoardPowerSnapshot }
+        if (live) setPower(snapshot.power)
+      } catch {
+        // The settings form remains usable while the host status is reconnecting.
+      }
+    }
+    void refresh()
+    const timer = setInterval(() => { void refresh() }, 5_000)
+    return () => { live = false; clearInterval(timer) }
+  }, [])
   const fieldProps = {
     overriddenLabel: t('settings.overridden'),
     resetLabel: t('settings.reset'),
@@ -119,6 +143,28 @@ export function TaskBoardSettingsCard(props: TaskBoardSettingsCardProps) {
         onEdit={(text) => { props.edit('announceToAgent', text) }}
         onReset={() => { props.resetField('announceToAgent') }}
       />
+      <BooleanField
+        id="settings-task-board-prevent-idle-sleep"
+        label={t('settings.preventIdleSleep')}
+        hint={t('settings.preventIdleSleepHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...state.preventIdleSleep}
+        onEdit={(text) => { props.edit('preventIdleSleep', text) }}
+        onReset={() => { props.resetField('preventIdleSleep') }}
+      />
+      <p>
+        {t('settings.powerStatus', {
+          platform: power?.platform ?? t('settings.powerUnknown'),
+          phase: power?.phase ?? t('settings.powerUnknown'),
+          running: String(power?.runningSessions ?? 0),
+          schedules: String(power?.armedSchedules ?? 0),
+        })}
+      </p>
+      <p>{t('settings.powerBoundary')}</p>
+      {power?.lastError !== undefined && <p>{t('settings.powerError', { error: power.lastError })}</p>}
     </PluginSettingsCard>
   )
 }

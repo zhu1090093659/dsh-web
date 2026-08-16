@@ -114,3 +114,38 @@ jobs:
 
       - name: Documentation consistency
         run: pnpm docs:check
+
+  task-board-power:
+    name: Task board power helper (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 11
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Typecheck task board
+        run: pnpm --filter @linxin666/dsh-client-ui-task-board typecheck
+
+      - name: Test task board with native power smoke
+        run: pnpm --filter @linxin666/dsh-client-ui-task-board test
+        env:
+          DSH_POWER_SMOKE: '1'

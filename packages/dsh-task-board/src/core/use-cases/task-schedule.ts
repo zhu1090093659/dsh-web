@@ -43,6 +43,7 @@ export function applySetSchedule(
   if (cron === '' || !isValidCron(cron)) return { tasks, applied: false }
   const enabled = patch.enabled ?? current?.enabled ?? false
   const nextRunAt = enabled ? nextRunAtMs(cron, now) : undefined
+  if (enabled && nextRunAt === undefined) return { tasks, applied: false }
   return {
     tasks: tasks.map(candidate =>
       candidate.id === id ? withSchedule(candidate, { enabled, cron, nextRunAt }, now) : candidate),

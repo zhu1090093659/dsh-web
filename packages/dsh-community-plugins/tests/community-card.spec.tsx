@@ -121,6 +121,33 @@ describe('CommunityPluginsCard', () => {
     expect(screen.getByText('A sample entry.')).toBeTruthy()
   })
 
+  it('shows the npm install command when the plugin is published', () => {
+    render(<CommunityPluginsCard {...cardProps(new FakeScope({}))} plugins={SAMPLE} />)
+    expect(screen.getByText(/dsh plugin --profile web add @someone\/dsh-sample/)).toBeTruthy()
+  })
+
+  it('falls back to the repository URL as the install command without npm', () => {
+    const noNpm: CommunityPluginEntry[] = [{ ...SAMPLE[0]!, npm: undefined }]
+    render(<CommunityPluginsCard {...cardProps(new FakeScope({}))} plugins={noNpm} />)
+    expect(screen.getByText(/dsh plugin --profile web add https:\/\/github\.com\/someone\/dsh-sample/)).toBeTruthy()
+  })
+
+  it('copies the install command on demand', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    const original = Object.getOwnPropertyDescriptor(Navigator.prototype, 'clipboard')
+    Object.defineProperty(Navigator.prototype, 'clipboard', { value: { writeText }, configurable: true })
+    try {
+      render(<CommunityPluginsCard {...cardProps(new FakeScope({}))} plugins={SAMPLE} />)
+      const button = screen.getAllByRole('button', { name: /copy/i })[0]!
+      fireEvent.click(button)
+      expect(writeText).toHaveBeenCalledWith('dsh plugin --profile web add @someone/dsh-sample')
+      await screen.findByRole('button', { name: /copied/i })
+    } finally {
+      if (original) Object.defineProperty(Navigator.prototype, 'clipboard', original)
+      else delete (Navigator.prototype as unknown as Record<string, unknown>).clipboard
+    }
+  })
+
   it('renders the empty notice when no entries are registered', () => {
     render(<CommunityPluginsCard {...cardProps(new FakeScope({}))} plugins={[]} />)
     expect(screen.getByText(/no community plugins registered yet/i)).toBeTruthy()

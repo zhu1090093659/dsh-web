@@ -6,7 +6,7 @@
  * this package only indexes them, it never vendors their code.
  */
 
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the settings-surface SlotMap merge (the 'settings.section' entry).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -67,6 +67,11 @@ export class CommunityPluginsCardController {
   }
 }
 
+/** The one-line install command for an entry: npm package when published, else the contributor repository URL. */
+function installCommand(entry: CommunityPluginEntry): string {
+  return `dsh plugin --profile web add ${entry.npm ?? entry.repo}`
+}
+
 /** Props the renderer binds for the community plugin card. */
 export type CommunityPluginsCardProps =
   PropsLocale<'community-plugins'>
@@ -86,6 +91,28 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
   const { t } = props
   const state = props.useCommunityPluginsCard(snapshot => snapshot)
   const plugins = (props.plugins ?? COMMUNITY_PLUGINS).filter(isCommunityPluginEntry)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const copyCommand = (id: string, command: string): void => {
+    const mark = (): void => { setCopiedId(id) }
+    const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : undefined
+    if (clipboard?.writeText !== undefined) {
+      void clipboard.writeText(command).then(mark, mark)
+      return
+    }
+    // Fallback for browsers without the async clipboard API (or tests).
+    try {
+      const area = document.createElement('textarea')
+      area.value = command
+      area.setAttribute('readonly', '')
+      area.style.position = 'fixed'
+      area.style.opacity = '0'
+      document.body.append(area)
+      area.select()
+      document.execCommand('copy')
+      area.remove()
+    } catch { /* the command stays visible to select by hand */ }
+    mark()
+  }
   const disabled = !state.writable
   // The draft text drives the list: '' (inherit) and 'true' keep it visible,
   // 'false' hides it until the switch is turned back on.
@@ -135,11 +162,22 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
                     <a className={css.entryLink} href={plugin.repo} target="_blank" rel="noreferrer">{t('repository')}</a>
                     {plugin.npm ? <code className={css.entryNpm}>{plugin.npm}</code> : null}
                   </span>
+                  <span className={css.entryInstall}>
+                    <code className={css.entryCommand}>{installCommand(plugin)}</code>
+                    <button
+                      type="button"
+                      className={css.copyButton}
+                      onClick={() => { copyCommand(plugin.id, installCommand(plugin)) }}
+                    >
+                      {copiedId === plugin.id ? t('copied') : t('copy')}
+                    </button>
+                  </span>
                 </li>
               ))}
           </ul>
         )
         : <p className={css.off} role="status">{t('off')}</p>}
+      <p className={css.installNote} role="note">{t('installHint')}</p>
       <p className={css.notice} role="note">{t('notice')}</p>
     </PluginSettingsCard>
   )

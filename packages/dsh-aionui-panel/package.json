@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-aionui-panel",
   "description": "DSH web GUI right-panel system: a pixel-faithful re-implementation of AionUi's Explorer + Preview columns (file tree, filename search, git changes, multi-tab preview of 10+ formats) driven by real host-side fs/git services, hot-pluggable via a profile bundle without any dsh source changes",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

@@ -31,6 +31,7 @@ Restart `dsh web` for the card to appear in the settings page.
 ## Config
 
 - **Enable switch**: inside the Community Plugins first-level section itself (the section carries its own switch). Turning it off hides the index list until it is turned back on; the choice persists in the community-plugins settings namespace.
+- **Running a listed plugin**: the index only registers entries, it never installs code. Each entry shows its install command (the npm package when published, else the contributor repository URL); run it in a terminal, e.g. `dsh plugin --profile web add <name>`. Once installed, the plugin provides its own switch and config (if any) in the plugin configuration section.
 
 ## Known limitations
 

@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { packageFiles, packOne } from './release-assets.mjs'
+import { packageFiles, packOne, waitForPublished } from './release-assets.mjs'
 
 test('packageFiles: walks packages/ and packages/skins/ non-recursively', () => {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-release-assets-'))
@@ -53,4 +53,30 @@ test('packOne: packs the exact published version and resolves the tarball path',
 test('packOne: rejects when npm pack reports no filename', () => {
   const fakeRun = () => JSON.stringify([])
   assert.throws(() => packOne('@linxin666/dsh-ssh', '0.1.15', '/tmp/assets', fakeRun), /no filename/)
+})
+
+test('waitForPublished: polls until every package version is readable', () => {
+  const attempts = []
+  const fakeView = (name) => {
+    attempts.push(name)
+    // aionui-panel stays unreadable for two rounds, like a slow propagation.
+    if (name.includes('aionui') && attempts.filter(n => n === name).length < 3) {
+      throw new Error('not found')
+    }
+  }
+  waitForPublished(
+    [{ name: '@linxin666/dsh-ssh' }, { name: '@linxin666/dsh-client-ui-aionui-panel' }],
+    '0.1.18',
+    fakeView,
+    { attempts: 5, delayMs: 0 },
+  )
+  assert.equal(attempts.filter(n => n.includes('aionui')).length, 3)
+})
+
+test('waitForPublished: throws after the attempt budget', () => {
+  const fakeView = () => { throw new Error('not found') }
+  assert.throws(
+    () => waitForPublished([{ name: '@linxin666/dsh-ssh' }], '0.1.18', fakeView, { attempts: 2, delayMs: 0 }),
+    /timed out waiting for npm propagation/,
+  )
 })

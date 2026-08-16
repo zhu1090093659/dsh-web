@@ -89,6 +89,51 @@
   white-space: nowrap;
 }
 
+.entryInstall {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.entryCommand {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 4px;
+  padding: 2px 6px;
+  overflow-wrap: anywhere;
+}
+
+.copyButton {
+  flex: none;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary);
+  background: transparent;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 4px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.copyButton:hover {
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+}
+
+.installNote {
+  margin: 8px 2px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dsw-alias-label-tertiary);
+}
+
 .empty {
   margin: 0;
   padding: 8px 2px;

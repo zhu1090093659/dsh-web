@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-minecraft",
   "description": "Hot-pluggable Minecraft skin for the dsh web GUI: a voxel take styled after the Minecraft main menu — procedurally drawn pixel-art panorama skybox, classic MC widget sprites, blocky panels",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

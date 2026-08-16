@@ -31,6 +31,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-community-plugins
 ## 配置
 
 - **启用开关**：位于「社区插件」一级分区自身（分区卡片自带的开关）。关闭后隐藏索引列表，重新打开即恢复；选择持久化在 community-plugins 设置命名空间。
+- **运行已登记的插件**：索引只登记、不安装代码。每个条目显示安装命令（已发布 npm 用包名，否则用贡献者仓库地址），在终端执行即可，如 `dsh plugin --profile web add <包名>`。安装后，插件自带的开关与配置（若有）出现在插件配置区。
 
 ## 已知限制
 

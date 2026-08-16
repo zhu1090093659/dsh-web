@@ -11,11 +11,12 @@ import { fileURLToPath } from "node:url";
 * `dsh-skin` binary on PATH (the bug zhu1090093659/dsh-web-ui#5: "dsh-skin
 * CLI not found on PATH").
 *
-* `use` owns the `dsh-skin managed` section of the harness-home
+* `use` owns the `dsh-skin managed` section of the active profile's
 * `cordis.patch.yml` (atomic rewrite, hot-reloaded by the DSH config watcher
 * within seconds, no restart) and the profile node_modules symlink that makes
 * the selected skin resolvable from the running profile. `current` reads the
-* active back.
+* active state back. Keeping the patch profile-scoped prevents non-Web
+* profiles such as dsh-tui from trying to resolve browser-only skin packages.
 *
 * The behaviour/text is a 1:1 port of scripts/dsh-skin (`use`/`current`;
 * workspace assets live in packages/skins/<id>). The skin registry is
@@ -604,7 +605,8 @@ function resolvePaths(home, profile, fromUrl = import.meta.url) {
 	const profilesRoot = join(harnessHome, "profiles");
 	const activeProfile = firstNonBlank(profile, process.env.DSH_SKIN_PROFILE, process.env.DSH_PROFILE) ?? profileFromCwd(process.cwd(), profilesRoot) ?? install?.profile ?? "web";
 	return {
-		patchPath: join(harnessHome, "cordis.patch.yml"),
+		patchPath: join(harnessHome, "profiles", activeProfile, "cordis.patch.yml"),
+		legacyPatchPath: join(harnessHome, "cordis.patch.yml"),
 		profileModulesDir: join(harnessHome, "profiles", activeProfile, "node_modules"),
 		profileManifestPath: join(harnessHome, "profiles", activeProfile, "package.json")
 	};
@@ -810,6 +812,9 @@ function useSkin(name, opts = {}) {
 		if (problem !== null) throw new Error(problem);
 		renderRegistry = registryWithProfileWiring(registry, paths.profileModulesDir, paths.profileManifestPath);
 	}
+	const legacyPatch = readPatch(paths.legacyPatchPath);
+	const migratedLegacyPatch = stripLegacySkinRows(stripManaged(legacyPatch));
+	if (migratedLegacyPatch !== legacyPatch) writePatchAtomic(paths.legacyPatchPath, migratedLegacyPatch);
 	const patch = stripLegacySkinRows(stripManaged(readPatch(paths.patchPath)));
 	let next = `${patch.replace(/\s+$/, "")}\n\n${renderManaged(official ? null : name, renderRegistry)}\n`;
 	let skippedInsert = false;
@@ -838,7 +843,9 @@ function useSkin(name, opts = {}) {
 function currentSkin(patch, opts = {}) {
 	const paths = resolvePaths(opts.home, opts.profile);
 	const registry = opts.registry ?? loadRegistry();
-	return currentActive(patch ?? readPatch(paths.patchPath), registryWithProfileWiring(registry, paths.profileModulesDir, paths.profileManifestPath)) ?? "none";
+	let activePatch = patch ?? readPatch(paths.patchPath);
+	if (patch === void 0 && !activePatch.includes("# --- dsh-skin managed (auto-generated; do not edit) ---")) activePatch = readPatch(paths.legacyPatchPath);
+	return currentActive(activePatch, registryWithProfileWiring(registry, paths.profileModulesDir, paths.profileManifestPath)) ?? "none";
 }
 //#endregion
 //#region src/routes.ts
@@ -849,7 +856,7 @@ function currentSkin(patch, opts = {}) {
 * try-on (the GUI never embeds the ~700KB of art base64 in its own bundle).
 * The host half switches skins in-process (src/skin-switch.ts) — an ESM port
 * of the `dsh-skin` CLI that owns the `dsh-skin managed` section of
-* `~/.dsh/cordis.patch.yml` and the profile symlink, exactly like
+* the active profile's `cordis.patch.yml` and the profile symlink, exactly like
 * `dsh-skin use <name>` — so no `dsh-skin` binary is required on PATH
 * (the bug zhu1090093659/dsh-web-ui#5). The config watcher hot-reloads the
 * patch within seconds and the frontend reloads the page to pick up the new

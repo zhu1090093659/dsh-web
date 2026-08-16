@@ -14,8 +14,10 @@
 
 ## 皮肤启用与资产边界
 
-- 皮肤启用互斥由 `dsh-skin use` 管理（`~/.dsh/cordis.patch.yml` 的 managed
-  区段），因此**皮肤只进 `skins/` 资产，不进 `patchFrom`**。
+- 皮肤启用互斥由 `dsh-skin use` 管理（当前 Web profile 的
+  `cordis.patch.yml` managed 区段），因此**皮肤只进 `skins/` 资产，不进
+  `patchFrom`**；禁止把 Web 皮肤 insert 写到 harness-home 全局补丁，否则其他
+  profile 会尝试加载未安装的浏览器皮肤包。
 - 改任何皮肤后必须重跑 `pnpm --filter @linxin666/dsh-skins build`，否则 npm 安装
   aggregate 后 useSkin 的 insert 行无法 resolve（MODULE_NOT_FOUND）。
 

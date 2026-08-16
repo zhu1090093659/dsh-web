@@ -11,8 +11,8 @@
  *     dsh plugin --profile <name> add /path/to/dsh-web-ui/packages/skins/<skin>
  *     dsh-skin install <skin>        # same thing, profile auto-detected
  *
- * `use` then maintains the mutually-exclusive skin section of
- * ~/.dsh/cordis.patch.yml (hot-reloaded by the config watcher, so switching
+ * `use` then maintains the mutually-exclusive skin section of the active
+ * profile's cordis.patch.yml (hot-reloaded by the config watcher, so switching
  * takes effect in seconds without a restart) and the profile node_modules
  * symlink that makes the chosen package resolvable from the web profile
  * (pnpm's `link:` installs are symlinks too, so both paths coexist).
@@ -30,10 +30,11 @@ const { execFileSync } = require('node:child_process')
 
 /** Harness home: `$DSH_HOME` (set by the dsh launcher), else `~/.dsh`. */
 const DSH_HOME = process.env.DSH_HOME || path.join(os.homedir(), '.dsh')
-const PATCH = path.join(DSH_HOME, 'cordis.patch.yml')
-const PROFILE_MODULES = path.join(DSH_HOME, 'profiles', 'node_modules')
 /** The GUI profile this machine runs (dsh web); overridable via DSH_SKIN_PROFILE. */
 const DEFAULT_PROFILE = process.env.DSH_SKIN_PROFILE || 'web'
+const PATCH = path.join(DSH_HOME, 'profiles', DEFAULT_PROFILE, 'cordis.patch.yml')
+const LEGACY_PATCH = path.join(DSH_HOME, 'cordis.patch.yml')
+const PROFILE_MODULES = path.join(DSH_HOME, 'profiles', 'node_modules')
 /** The dsh-web-ui checkout. Derived from this script's own location so any
  * clone path works; overridable via DSH_SKIN_REPO. */
 const REPO = process.env.DSH_SKIN_REPO || path.resolve(__dirname, '..')
@@ -112,9 +113,16 @@ const MANAGED_END = '# --- end dsh-skin managed ---'
 
 // --- patch file helpers -------------------------------------------------------
 
-function readPatch() {
-  if (!fs.existsSync(PATCH)) return ''
-  return fs.readFileSync(PATCH, 'utf8')
+function readPatch(file = PATCH) {
+  if (!fs.existsSync(file)) return ''
+  return fs.readFileSync(file, 'utf8')
+}
+
+function writePatch(file, next) {
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  const tmp = `${file}.tmp-${process.pid}`
+  fs.writeFileSync(tmp, next)
+  fs.renameSync(tmp, file)
 }
 
 /** Drop legacy hand-written skin rows (insert rows with a name) and old touch comments. */
@@ -130,7 +138,7 @@ function stripManaged(patch) {
   const start = patch.indexOf(MANAGED_START)
   if (start === -1) return patch
   const end = patch.indexOf(MANAGED_END, start)
-  if (end === -1) throw new Error('managed skin section is unterminated; fix ~/.dsh/cordis.patch.yml')
+  if (end === -1) throw new Error('managed skin section is unterminated; fix the active profile cordis.patch.yml')
   return patch.slice(0, start) + patch.slice(end + MANAGED_END.length)
 }
 
@@ -208,14 +216,18 @@ function cmdUse(name) {
     checkInstalled(name)
   }
 
+  // Move pre-profile-scope state out of the harness-wide patch first. An
+  // active insert there makes dsh-tui resolve a Web-only package (issue #290).
+  const legacyPatch = readPatch(LEGACY_PATCH)
+  const migratedLegacyPatch = stripLegacySkinRows(stripManaged(legacyPatch))
+  if (migratedLegacyPatch !== legacyPatch) writePatch(LEGACY_PATCH, migratedLegacyPatch)
+
   const patch = stripLegacySkinRows(stripManaged(readPatch()))
   const next = `${patch.replace(/\s+$/, '')}\n\n${renderManaged(official ? null : name)}\n`
   // Atomic replace: write a sibling temp file then rename over the target, so
   // a crash mid-write can never leave a half-written boot patch, and the
   // config watcher only ever sees complete content.
-  const tmp = `${PATCH}.tmp-${process.pid}`
-  fs.writeFileSync(tmp, next)
-  fs.renameSync(tmp, PATCH)
+  writePatch(PATCH, next)
   console.log(`wrote ${PATCH}`)
   console.log(official
     ? 'restored the official stock look — the config watcher applies it within seconds; refresh the page to see it.'
@@ -240,7 +252,8 @@ function cmdList() {
 }
 
 function cmdCurrent() {
-  const active = currentActive(readPatch())
+  const profilePatch = readPatch()
+  const active = currentActive(profilePatch.includes(MANAGED_START) ? profilePatch : readPatch(LEGACY_PATCH))
   console.log(active ?? 'none')
 }
 

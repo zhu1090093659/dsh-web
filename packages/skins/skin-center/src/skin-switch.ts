@@ -4,11 +4,12 @@
  * `dsh-skin` binary on PATH (the bug zhu1090093659/dsh-web-ui#5: "dsh-skin
  * CLI not found on PATH").
  *
- * `use` owns the `dsh-skin managed` section of the harness-home
+ * `use` owns the `dsh-skin managed` section of the active profile's
  * `cordis.patch.yml` (atomic rewrite, hot-reloaded by the DSH config watcher
  * within seconds, no restart) and the profile node_modules symlink that makes
  * the selected skin resolvable from the running profile. `current` reads the
- * active back.
+ * active state back. Keeping the patch profile-scoped prevents non-Web
+ * profiles such as dsh-tui from trying to resolve browser-only skin packages.
  *
  * The behaviour/text is a 1:1 port of scripts/dsh-skin (`use`/`current`;
  * workspace assets live in packages/skins/<id>). The skin registry is
@@ -591,8 +592,10 @@ function registryWithProfileWiring(registry: Record<string, SkinSwitchEntry>, pr
 
 /** Layout of the DSH home + profile the CLI switches against. */
 export interface SkinSwitchPaths {
-  /** ~/.dsh/cordis.patch.yml */
+  /** ~/.dsh/profiles/<profile>/cordis.patch.yml */
   patchPath: string
+  /** ~/.dsh/cordis.patch.yml (pre-profile-scope migration source). */
+  legacyPatchPath: string
   /** ~/.dsh/profiles/<profile>/node_modules */
   profileModulesDir: string
   /** ~/.dsh/profiles/<profile>/package.json (dsh.profile.bundles wiring). */
@@ -754,7 +757,8 @@ export function resolvePaths(home?: string, profile?: string, fromUrl: string = 
   const explicit = firstNonBlank(profile, process.env.DSH_SKIN_PROFILE, process.env.DSH_PROFILE)
   const activeProfile = explicit ?? profileFromCwd(process.cwd(), profilesRoot) ?? install?.profile ?? 'web'
   return {
-    patchPath: joinPath(harnessHome, 'cordis.patch.yml'),
+    patchPath: joinPath(harnessHome, 'profiles', activeProfile, 'cordis.patch.yml'),
+    legacyPatchPath: joinPath(harnessHome, 'cordis.patch.yml'),
     profileModulesDir: joinPath(harnessHome, 'profiles', activeProfile, 'node_modules'),
     profileManifestPath: joinPath(harnessHome, 'profiles', activeProfile, 'package.json'),
   }
@@ -1013,6 +1017,16 @@ export function useSkin(name: string, opts: { home?: string; profile?: string; r
     renderRegistry = registryWithProfileWiring(registry, paths.profileModulesDir, paths.profileManifestPath)
   }
 
+  // Older releases wrote the managed block at harness-home scope, which
+  // makes every profile inherit the Web-only skin insert. Remove that block
+  // before writing the active profile so a later dsh-tui boot cannot import a
+  // package installed only in the Web profile (issue #290).
+  const legacyPatch = readPatch(paths.legacyPatchPath)
+  const migratedLegacyPatch = stripLegacySkinRows(stripManaged(legacyPatch))
+  if (migratedLegacyPatch !== legacyPatch) {
+    writePatchAtomic(paths.legacyPatchPath, migratedLegacyPatch)
+  }
+
   const patch = stripLegacySkinRows(stripManaged(readPatch(paths.patchPath)))
   let next = `${patch.replace(/\s+$/, '')}\n\n${renderManaged(official ? null : name, renderRegistry)}\n`
   let skippedInsert = false
@@ -1052,5 +1066,12 @@ export function currentSkin(patch: string | undefined, opts: { home?: string; pr
   // Mirror useSkin's wiring view: an installed per-skin bundle provides its
   // own insert row, so the home patch carries only disabled rows for it and
   // currentActive must treat it as bundle-wired to report it as active.
-  return currentActive(patch ?? readPatch(paths.patchPath), registryWithProfileWiring(registry, paths.profileModulesDir, paths.profileManifestPath)) ?? 'none'
+  let activePatch = patch ?? readPatch(paths.patchPath)
+  // Report the pre-migration state until the first switch moves it into the
+  // active profile. An explicit patch argument remains authoritative in tests
+  // and for callers that already read the target file.
+  if (patch === undefined && !activePatch.includes(MANAGED_START)) {
+    activePatch = readPatch(paths.legacyPatchPath)
+  }
+  return currentActive(activePatch, registryWithProfileWiring(registry, paths.profileModulesDir, paths.profileManifestPath)) ?? 'none'
 }

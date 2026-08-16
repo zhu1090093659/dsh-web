@@ -49,13 +49,17 @@ afterAll(() => {
 
 function fakeHome(): string {
   home = mkdtempSync(join(tmpdir(), 'skin-switch-test-'))
-  mkdirSync(join(home, '.dsh'), { recursive: true })
+  mkdirSync(join(home, '.dsh', 'profiles', 'web'), { recursive: true })
   // Mirror the CLI test: the profile symlink target is the real repo skin dir.
   mkdirSync(join(home, 'code', 'dsh-web-ui', 'packages', 'skins'), { recursive: true })
   return home
 }
 
 function patchPath(h: string): string {
+  return join(h, '.dsh', 'profiles', 'web', 'cordis.patch.yml')
+}
+
+function legacyPatchPath(h: string): string {
   return join(h, '.dsh', 'cordis.patch.yml')
 }
 
@@ -257,7 +261,8 @@ describe('harness home resolution (issue #120: DSH_HOME)', () => {
       withEnv({ DSH_HOME: `  ${harness}  ` }, () => {
         expect(resolveHarnessHome(undefined, process.env)).toBe(harness)
         const paths = resolvePaths()
-        expect(paths.patchPath).toBe(join(harness, 'cordis.patch.yml'))
+        expect(paths.patchPath).toBe(join(harness, 'profiles', 'web', 'cordis.patch.yml'))
+        expect(paths.legacyPatchPath).toBe(join(harness, 'cordis.patch.yml'))
         expect(paths.profileModulesDir).toBe(join(harness, 'profiles', 'web', 'node_modules'))
       })
     } finally {
@@ -269,7 +274,7 @@ describe('harness home resolution (issue #120: DSH_HOME)', () => {
     const expected = join(homedir(), '.dsh')
     withEnv({ DSH_HOME: undefined }, () => {
       expect(resolveHarnessHome()).toBe(expected)
-      expect(resolvePaths().patchPath).toBe(join(expected, 'cordis.patch.yml'))
+      expect(resolvePaths().patchPath).toBe(join(expected, 'profiles', 'web', 'cordis.patch.yml'))
     })
     withEnv({ DSH_HOME: '   ' }, () => {
       expect(resolveHarnessHome()).toBe(expected)
@@ -282,7 +287,7 @@ describe('harness home resolution (issue #120: DSH_HOME)', () => {
     try {
       withEnv({ DSH_HOME: harness }, () => {
         const paths = resolvePaths(h, 'web')
-        expect(paths.patchPath).toBe(join(h, '.dsh', 'cordis.patch.yml'))
+        expect(paths.patchPath).toBe(join(h, '.dsh', 'profiles', 'web', 'cordis.patch.yml'))
         expect(paths.profileModulesDir).toBe(join(h, '.dsh', 'profiles', 'web', 'node_modules'))
       })
     } finally {
@@ -297,10 +302,10 @@ describe('harness home resolution (issue #120: DSH_HOME)', () => {
         // patchPath guard before useSkin: a resolvePaths regression must fail
         // here instead of letting useSkin write into the real ~/.dsh.
         const paths = resolvePaths()
-        expect(paths.patchPath).toBe(join(dshHome, 'cordis.patch.yml'))
+        expect(paths.patchPath).toBe(join(dshHome, 'profiles', 'web', 'cordis.patch.yml'))
         expect(paths.patchPath).not.toBe(join(homedir(), '.dsh', 'cordis.patch.yml'))
         useSkin('official', {})
-        expect(existsSync(join(dshHome, 'cordis.patch.yml'))).toBe(true)
+        expect(existsSync(join(dshHome, 'profiles', 'web', 'cordis.patch.yml'))).toBe(true)
         expect(currentSkin(undefined, {})).toBe('none')
       })
     } finally {
@@ -420,7 +425,7 @@ describe('install-layout resolution (issue #254: running profile with no env/cwd
     mkdirSync(pkgDir, { recursive: true })
     withEnv({ DSH_HOME: undefined, DSH_PROFILE: undefined, DSH_SKIN_PROFILE: undefined }, () => {
       const paths = resolvePaths(undefined, undefined, pathToFileURL(join(pkgDir, 'index.js')).href)
-      expect(paths.patchPath).toBe(join(h, '.dsh', 'cordis.patch.yml'))
+      expect(paths.patchPath).toBe(join(h, '.dsh', 'profiles', 'web-ui', 'cordis.patch.yml'))
       expect(paths.profileModulesDir).toBe(join(h, '.dsh', 'profiles', 'web-ui', 'node_modules'))
       expect(paths.profileManifestPath).toBe(join(h, '.dsh', 'profiles', 'web-ui', 'package.json'))
     })
@@ -463,6 +468,18 @@ describe('useSkin / currentSkin against a throwaway HOME', () => {
     useSkin('official', { home: h })
     expect(statSync(patch).mode & 0o777).toBe(0o600)
     expect(readFileSync(patch, 'utf8')).toContain('# custom row survives')
+  })
+
+  it('moves a harness-wide managed skin into the active profile (issue #290)', () => {
+    const h = fakeHome()
+    const registry = loadRegistry()
+    writeFileSync(legacyPatchPath(h), `${renderManaged('qq98', registry)}\n`)
+
+    useSkin('official', { home: h, registry })
+
+    expect(readFileSync(legacyPatchPath(h), 'utf8')).not.toContain(MANAGED_START)
+    expect(readFileSync(patchPath(h), 'utf8')).toContain(MANAGED_START)
+    expect(currentSkin(undefined, { home: h, registry })).toBe('none')
   })
 
   it('use <name> writes an insert row and the profile symlink for a non-wired skin', () => {
@@ -1075,4 +1092,3 @@ describe('self-referential symlink defense (issue #43: ELOOP on second skin swit
     expect(realpathSync(target)).toBe(realpathSync(realDir))
   })
 })
-

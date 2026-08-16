@@ -7,7 +7,7 @@
 - 列表：展示「官方默认」+ 仓库里全部皮肤（qq98 / ths / xp / blue-fantasy / dragon-heir / minecraft）的名称、tagline、强调色；当前激活的目标带 Active 标记。
 - 试穿：点击「Try on」后按需加载该皮肤的 client bundle——host 路由 `/api/skin-center/bundle/<id>` 以同源 script 提供 `lib/client.js`（内核加载插件的同一机制），factory 注册到页面自己的 `window.__ModuleLoader__`，`window.__DSH_MODULES__.import` 物化（不是模拟器、不用 eval），chrome 立即生效；亮/暗切换走官方 theme 服务；「Exit try-on」完全还原——当前皮肤的样式、DOM、favicon、标题、body 内联样式全部恢复。「官方默认」也可试穿：点一下皮肤立即收回、回到官方外观预览。
 - 互斥：试穿期间会按配方暂时收回当前激活皮肤的视觉写面（body 属性、背景内联样式、chrome 子节点、xp 的 footer taskbar），退出后原样恢复；同一时刻页面上只有一套皮肤。
-- 应用：host 半区（`src/index.ts` + `src/routes.ts`）暴露 `/api/skin-center/apply` 与 `/api/skin-center/bundle/<id>`（按需提供皮肤 bundle），点击「Apply / 恢复默认」即在服务端执行内嵌的 `dsh-skin use` 进程内移植版（`src/skin-switch.ts`），写入 `<harness-home>/cordis.patch.yml` 后由 DSH 配置 watcher 秒级热载入，页面自动刷新生效——**无需重启 dsh web，无需复制命令，也不要求 PATH 上有 `dsh-skin` 二进制**。应用失败时错误提示里附带终端兜底命令。harness home 与 dsh 启动器一致：注入的 HOME 映射为 `<home>/.dsh`，否则优先使用去除首尾空白后非空的 `$DSH_HOME`（直接使用，不再追加后缀），最后回退到 `~/.dsh`。目标 profile 依次取：显式选项、`$DSH_SKIN_PROFILE`、`$DSH_PROFILE`、`process.cwd()` 直接位于 `<harness-home>/profiles/<name>` 下时的 `<name>`，最后 `web`。Windows 兼容性：同一套解析规则不依赖 `$HOME` 与固定路径，符号链接权限不足时 profile 链接回退为目录 junction。
+- 应用：host 半区（`src/index.ts` + `src/routes.ts`）暴露 `/api/skin-center/apply` 与 `/api/skin-center/bundle/<id>`（按需提供皮肤 bundle），点击「Apply / 恢复默认」即在服务端执行内嵌的 `dsh-skin use` 进程内移植版（`src/skin-switch.ts`），写入 `<harness-home>/profiles/<profile>/cordis.patch.yml` 后由 DSH 配置 watcher 秒级热载入，页面自动刷新生效——**无需重启 dsh web，无需复制命令，也不要求 PATH 上有 `dsh-skin` 二进制**。应用失败时错误提示里附带终端兜底命令。harness home 与 dsh 启动器一致：注入的 HOME 映射为 `<home>/.dsh`，否则优先使用去除首尾空白后非空的 `$DSH_HOME`（直接使用，不再追加后缀），最后回退到 `~/.dsh`。目标 profile 依次取：显式选项、`$DSH_SKIN_PROFILE`、`$DSH_PROFILE`、`process.cwd()` 直接位于 `<harness-home>/profiles/<name>` 下时的 `<name>`，最后 `web`。Windows 兼容性：同一套解析规则不依赖 `$HOME` 与固定路径，符号链接权限不足时 profile 链接回退为目录 junction。
 
 - 背景控制：背景遮挡滑块（0–100%）为带背景插画的皮肤（blue-fantasy / whale-song）背后的背景加遮罩；另有两条按对话状态区分的背景高斯模糊滑块（0–20 px）——「空对话」在对话为空时生效、「有对话」在出现内容后生效。生效的模糊通过 shell 背后的一个固定 `backdrop-filter` 元素施加；设为 0 即完全关闭（无元素、无 GPU 开销）。这些控件仅对带背景插画的皮肤可见有效；官方默认无背景图。
 
@@ -56,7 +56,7 @@ skins/skin-center/
 - 失败语义：bundle 路由 404（皮肤未安装 / `lib/client.js` 未构建）或网络失败时，script 的 error 事件触发，试穿报通用错误并完整还原激活皮肤；加载与还原之间不会留下半套皮肤（tryOn 的 catch 分支负责恢复）。
 - 退出还原：先跑皮肤的 disposer（属性/chrome/favicon/标题/背景全撤回），再 `invalidate(package)` + 删 style 标签，最后把激活皮肤的视觉快照原样恢复。官方默认试穿 = 同一套收回配方但不挂载任何皮肤，退出同样原样恢复。
 - 激活皮肤检测：`window.__DSH_BOOT__.entries` 只含启用条目，与注册表 package 比对；无匹配即官方默认。
-- 一键应用：host `/api/skin-center/apply` 执行内嵌的 `dsh-skin use <name>` / `use official` 移植版（该移植版是 managed 区段与 symlink 的唯一权威）。路径为 `<harness-home>/cordis.patch.yml` 与 `<harness-home>/profiles/<profile>/node_modules`，home/profile 按上文规则解析。当激活皮肤自身已作为 bundle 安装——出现在 profile manifest 的 `dsh.profile.bundles` 或 `dependencies` 中（loader 仅对这两条通道做 patch 行归并），或注册表标记 `bundleWired`——home 层只写互斥的 `disabled: true` 行，insert 留给 bundle patch；其余情况（包括 skin-center 自建的可解析 symlink）都保留 home 层 insert 行。结构目录探测仅在 profile manifest 缺失/不可读时兜底。DSH 长驻表面自带配置 watcher（`watchUserPatches` + config-only HMR），patch 写入后数秒热载入、无需重启；浏览器刷新页面取新 boot 图即生效（client 插件图行增删不在 `dsh-client-hmr` 语义内）。
+- 一键应用：host `/api/skin-center/apply` 执行内嵌的 `dsh-skin use <name>` / `use official` 移植版（该移植版是 managed 区段与 symlink 的唯一权威）。路径为 `<harness-home>/profiles/<profile>/cordis.patch.yml` 与 `<harness-home>/profiles/<profile>/node_modules`，home/profile 按上文规则解析；首次切换会清理旧的全局 managed 行，避免其他 profile 加载 Web 专用皮肤。当激活皮肤自身已作为 bundle 安装——出现在 profile manifest 的 `dsh.profile.bundles` 或 `dependencies` 中（loader 仅对这两条通道做 patch 行归并），或注册表标记 `bundleWired`——profile 层只写互斥的 `disabled: true` 行，insert 留给 bundle patch；其余情况（包括 skin-center 自建的可解析 symlink）都保留 profile 层 insert 行。结构目录探测仅在 profile manifest 缺失/不可读时兜底。DSH 长驻表面自带配置 watcher（`watchUserPatches` + config-only HMR），patch 写入后数秒热载入、无需重启；浏览器刷新页面取新 boot 图即生效（client 插件图行增删不在 `dsh-client-hmr` 语义内）。
 
 ## 构建（仓库内 tsdown，无需 DSH checkout）
 
@@ -79,7 +79,7 @@ pnpm --filter @linxin666/dsh-client-ui-skin-center run bundle
 ln -sfn ~/code/dsh-web-ui/packages/skins/skin-center \
   ~/.dsh/profiles/node_modules/@linxin666/dsh-client-ui-skin-center
 
-# 2. ~/.dsh/cordis.patch.yml 增加（放在 dsh-skin managed 段之外，勿动该段）：
+# 2. ~/.dsh/profiles/web/cordis.patch.yml 增加（放在 dsh-skin managed 段之外，勿动该段）：
 #   - insert:
 #       - id: ui-skin-center
 #         name: '@linxin666/dsh-client-ui-skin-center'

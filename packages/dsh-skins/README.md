@@ -7,7 +7,7 @@ The skin-family aggregate plugin: installing it gives you the skin center (`skin
 ## What it is
 
 - **Skin center + full collection**: one package replaces installing skins individually.
-- **Mutual exclusion via `dsh-skin use`**: skin activation is exclusive and managed by `dsh-skin use` (the `managed` section of `~/.dsh/cordis.patch.yml`), so skins live as `skins/` assets only and never enter `patchFrom`.
+- **Mutual exclusion via `dsh-skin use`**: skin activation is exclusive and managed by `dsh-skin use` (the active Web profile's `managed` section), so skins live as `skins/` assets only and never enter `patchFrom`; non-Web profiles do not inherit browser-only skin entries.
 
 ## Install
 

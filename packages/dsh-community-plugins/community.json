@@ -92,5 +92,23 @@
     "description": "插件管理面板：已安装插件一键启用/停用，内置 GitHub dsh-plugin 插件市场（官方/聚合识别、子包浏览、一键安装与本地 AI 兜底修复、删除卸载）。",
     "descriptionEn": "Plugin management panel: one-click enable/disable, a GitHub dsh-plugin marketplace with official/aggregate detection, subpackage browsing, one-click installs with local-AI fallback repair, and uninstall.",
     "repo": "https://github.com/Noob-stupid/dsh-plugin-hub"
+  },
+  {
+    "id": "dsh-genui",
+    "name": "GenUI 生成式 UI",
+    "nameEn": "GenUI",
+    "author": "omdsh-dev",
+    "description": "给模型输出配交互式 UI：助手回复内联渲染 dsh-ui fence（布局、图表、表单、Mermaid、3D），支持流式渲染与面板停靠，组件交互可回传模型。",
+    "descriptionEn": "Interactive UI inside assistant replies via the dsh-ui fence: layouts, charts, forms, Mermaid and 3D with streaming rendering, panel docking and actions that loop back to the model.",
+    "repo": "https://github.com/omdsh-dev/dsh-genui"
+  },
+  {
+    "id": "dsh-annotation",
+    "name": "选中批注",
+    "nameEn": "Selection Annotation",
+    "author": "omdsh-dev",
+    "description": "选中助手文字即可批注，回车随消息发送；自己的气泡只显示问题与「批注 ×N」标签，模型按 Annotation N 逐条对照回复（悬浮芯片）。",
+    "descriptionEn": "Select text in an assistant reply to annotate it; annotations are sent with your next message, hidden from your own bubble behind an Annotations xN chip, and the model replies per Annotation N with hoverable chips.",
+    "repo": "https://github.com/omdsh-dev/dsh-annotation"
   }
 ]

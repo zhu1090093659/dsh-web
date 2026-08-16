@@ -140,5 +140,14 @@
     "descriptionEn": "Three-layer auto memory for DSH: user-level/project-notes/daily-logs with automatic injection and retrieval, per-turn auto-consolidation, AI greetings, smart search, calendar, workspace mind map, and inheritance from WorkBuddy/CodeBuddy/Claude Code/Codex.",
     "repo": "https://github.com/Aik358/dsh-auto-memory",
     "npm": "@a9i5k4/dsh-auto-memory"
+  },
+  {
+    "id": "dsh-memoir",
+    "name": "项目记忆 Memoir",
+    "nameEn": "Project Memory Memoir",
+    "author": "Qinling-Melon-Farmers",
+    "description": "项目持久化记忆与会话经验沉淀：memoir_record / memoir_read 工具、每轮工作自动蒸馏、Web GUI 记忆面板与跨项目全局检索，纯本地零外部依赖。",
+    "descriptionEn": "Project persistent memory and session-lessons distillation: memoir_record / memoir_read tools, per-turn auto-distill, a web GUI memory panel and cross-project search - fully local, no external dependency.",
+    "repo": "https://github.com/Qinling-Melon-Farmers/dsh-memoir"
   }
 ]

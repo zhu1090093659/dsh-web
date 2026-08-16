@@ -211,7 +211,7 @@ describe('API-backed Community Plugins UI', () => {
     const catalogStore = new CatalogStore({
       fetcher: vi.fn(async () => new Response(JSON.stringify(apiCatalog()), { status: 200 })),
     })
-    const lifecycleFetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const lifecycleFetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       if (String(input).endsWith('/plugins')) {
         return new Response(JSON.stringify({ ok: true, plugins: [] }), { status: 200 })
       }
@@ -221,7 +221,8 @@ describe('API-backed Community Plugins UI', () => {
       expect(String(input)).toMatch(/\/install$/)
       expect(JSON.parse(String(init?.body))).toMatchObject({ repositoryId: 42, installMode: 'latest', operationId: expect.any(String) })
       return new Response(JSON.stringify({ ok: true, action: 'install', needsRestart: true, output: 'installed' }), { status: 200 })
-    }) as unknown as typeof fetch
+    })
+    const lifecycleFetch = lifecycleFetchMock as unknown as typeof fetch
 
     const view = render(<CommunityPluginsCard {...cardProps(new FakeScope(), catalogStore, lifecycleFetch)} />)
     expect(await screen.findByText('Example plugin')).toBeTruthy()
@@ -250,7 +251,7 @@ describe('API-backed Community Plugins UI', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /understand the risk/i }))
     fireEvent.click(confirm)
     expect(await screen.findByText(/restart DSH Web/i)).toBeTruthy()
-    expect(lifecycleFetch.mock.calls.filter(([input]) => String(input).endsWith('/install'))).toHaveLength(1)
+    expect(lifecycleFetchMock.mock.calls.filter(([input]) => String(input).endsWith('/install'))).toHaveLength(1)
   })
 
   it('shows lifecycle stages while an installation is still running', async () => {
@@ -272,13 +273,14 @@ describe('API-backed Community Plugins UI', () => {
         { name: 'executing', status: 'running', startedAt: '2026-08-17T00:00:00.300Z' },
       ],
     })
-    const lifecycleFetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const lifecycleFetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input)
       if (url.endsWith('/plugins')) return new Response(JSON.stringify({ ok: true, plugins: [] }), { status: 200 })
       if (url.endsWith('/operation')) return new Response(JSON.stringify({ ok: true, operation: operationId === '' ? null : operation() }), { status: 200 })
       operationId = String((JSON.parse(String(init?.body)) as { operationId: string }).operationId)
       return await installResponse.promise
-    }) as unknown as typeof fetch
+    })
+    const lifecycleFetch = lifecycleFetchMock as unknown as typeof fetch
     const catalogStore = new CatalogStore({
       fetcher: vi.fn(async () => new Response(JSON.stringify(apiCatalog()), { status: 200 })),
     })
@@ -293,14 +295,14 @@ describe('API-backed Community Plugins UI', () => {
     expect(await screen.findByText(/reading store catalog/i)).toBeTruthy()
     expect(screen.getByText(/checking installed plugins/i)).toBeTruthy()
     expect(screen.getByText(/running install command/i)).toBeTruthy()
-    expect(screen.getByText(operation().command)).toBeTruthy()
+    expect(screen.getAllByText(operation().command).length).toBeGreaterThanOrEqual(2)
 
     const completed = { ...operation(), status: 'success', output: 'installed 115 packages', stages: [...operation().stages.map(stage => ({ ...stage, status: 'success' })), { name: 'complete', status: 'success' }] }
     installResponse.resolve(new Response(JSON.stringify({ ok: true, needsRestart: true, output: completed.output, operation: completed }), { status: 200 }))
     expect(await screen.findByText(/restart DSH Web/i)).toBeTruthy()
     expect(screen.getByText(/installed 115 packages/i)).toBeTruthy()
     await waitFor(() => {
-      const operationCalls = lifecycleFetch.mock.calls.filter(([input]) => String(input).endsWith('/operation')).length
+      const operationCalls = lifecycleFetchMock.mock.calls.filter(([input]) => String(input).endsWith('/operation')).length
       expect(operationCalls).toBeGreaterThan(0)
     })
   })

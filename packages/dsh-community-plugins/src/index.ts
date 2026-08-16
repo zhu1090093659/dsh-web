@@ -76,6 +76,7 @@ export function apply(ctx: Context): void {
     runner: runNativeCommand,
     execPath: process.execPath,
     cliPath: process.argv[1],
+    logger: ctx.logger,
   })) ctx.webServer.register(route)
 
   for (const tool of createStoreTools({ fetcher: globalThis.fetch, listInstalled, install, remove })) {

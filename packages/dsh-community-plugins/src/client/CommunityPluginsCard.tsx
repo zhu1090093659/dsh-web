@@ -10,12 +10,18 @@ import {
 } from 'react'
 import {
   Button,
+  IconCheckOutline16,
   IconCloseOutline16,
+  IconCopyOutline16,
+  IconDownloadOutline16,
   IconRefreshOutline16,
   IconTrashOutline16,
   IconWarningOutline16,
   Modal,
+  writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down.mjs'
+import Star from 'lucide-react/dist/esm/icons/star.mjs'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
@@ -29,6 +35,9 @@ import {
   type CatalogRepository,
   type InstalledPlugin,
   type InstallMode,
+  type LifecycleAction,
+  type LifecycleOperation,
+  type LifecycleStageName,
 } from '../core/store-catalog.ts'
 import { PluginSettingsCard, BooleanField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
@@ -37,6 +46,20 @@ import type { CommunityPluginKey } from './locales.ts'
 import css from './community.module.css'
 
 const PAGE_SIZE = 24
+const VALIDATION_STAGES = ['discovery', 'identification', 'structure', 'sandbox'] as const
+const CATEGORY_PRESENTATION = {
+  ui: { key: 'store.categoryUi', color: '#a0c3ec' },
+  'agent-session': { key: 'store.categoryAgentSession', color: '#c4b5fd' },
+  development: { key: 'store.categoryDevelopment', color: '#ffffff' },
+  communication: { key: 'store.categoryCommunication', color: '#ffc285' },
+  data: { key: 'store.categoryData', color: '#8ed6c4' },
+  'model-mcp': { key: 'store.categoryModelMcp', color: '#9bb7ff' },
+  security: { key: 'store.categorySecurity', color: '#ff9c8c' },
+  operations: { key: 'store.categoryOperations', color: '#d0d3d8' },
+  lifestyle: { key: 'store.categoryLifestyle', color: '#ffb3d1' },
+  research: { key: 'store.categoryResearch', color: '#b7d987' },
+  other: { key: 'store.categoryOther', color: '#7d8187' },
+} satisfies Record<string, { key: CommunityPluginKey; color: string }>
 
 export interface CommunityPluginsSettings {
   enabled?: boolean
@@ -86,12 +109,45 @@ interface MutationTarget {
   action: 'install' | 'update' | 'remove'
 }
 
+function createOperationId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `store-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
+function initialOperation(id: string, action: LifecycleAction, target: string): LifecycleOperation {
+  const timestamp = new Date().toISOString()
+  return {
+    id,
+    action,
+    status: 'running',
+    target,
+    startedAt: timestamp,
+    updatedAt: timestamp,
+    stages: [{ name: 'preparing', status: 'running', startedAt: timestamp }],
+    output: '',
+  }
+}
+
+function lifecycleStageLabel(stage: LifecycleStageName, action: LifecycleAction, t: Translate): string {
+  if (stage === 'preparing') return t('store.stagePreparing')
+  if (stage === 'catalog') return t('store.stageCatalog')
+  if (stage === 'inventory') return t('store.stageInventory')
+  if (stage === 'complete') return t('store.stageComplete')
+  if (action === 'remove') return t('store.stageExecutingRemove')
+  if (action === 'update') return t('store.stageExecutingUpdate')
+  return t('store.stageExecutingInstall')
+}
+
 function detailUrl(repository: CatalogRepository): string {
   return `https://dshmk.com/plugins/${encodeURIComponent(String(repository.repositoryId))}`
 }
 
 function formatStars(stars: number): string {
   return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(stars)
+}
+
+function categoryLabel(category: string, t: Translate): string {
+  const presentation = CATEGORY_PRESENTATION[category as keyof typeof CATEGORY_PRESENTATION]
+  return presentation === undefined ? category : t(presentation.key)
 }
 
 interface ProjectRowProps {
@@ -105,28 +161,70 @@ function ProjectRow({ repository, onMutate, t }: ProjectRowProps): ReactNode {
   const installed = repository.installed === true
   const update = repository.updateAvailable === true
   const action = update ? 'update' : 'install'
+  const validationLabel = repository.validation?.label ?? repository.validation?.overall ?? t('store.unrecognized')
+  const [copied, setCopied] = useState(false)
+
+  const copyCommand = async (): Promise<void> => {
+    if (plan === null) return
+    setCopied(await writeClipboard(plan.command))
+  }
+
   return (
     <li className={css.entry}>
-      <div className={css.entryHead}>
+      <div className={css.entryTopline}>
+        <div className={css.badges}>
+          <span className={css.badge}>{repository.projectType}</span>
+          <span className={css.badge}>{repository.category}</span>
+          {installed ? <span className={css.installed}>{update ? t('store.updateAvailable') : t('store.installed')}</span> : null}
+        </div>
+        <span className={css.stars} aria-label={t('store.stars', { count: formatStars(repository.stars) })} title={t('store.stars', { count: formatStars(repository.stars) })}>
+          <span>{formatStars(repository.stars)}</span>
+          <Star size={14} strokeWidth={1.6} aria-hidden="true" />
+        </span>
+      </div>
+      <div className={css.entryIdentity}>
         <a className={css.entryName} href={detailUrl(repository)} target="_blank" rel="noreferrer">
           {repository.name}
         </a>
-        <span className={css.stars}>{t('store.stars', { count: formatStars(repository.stars) })}</span>
+        <span className={css.entryRepository}>{repository.fullName}</span>
       </div>
-      <span className={css.entryRepository}>{repository.fullName}</span>
       <p className={css.entryDescription}>{repository.description}</p>
-      <div className={css.badges}>
-        <span className={css.badge}>{repository.projectType}</span>
-        <span className={css.badge}>{repository.category}</span>
-        <span className={css.validation} data-status={repository.validation?.overall ?? 'unrecognized'}>
-          {repository.validation?.label ?? repository.validation?.overall ?? t('store.unrecognized')}
+      <div
+        className={css.validation}
+        data-tone={repository.validation?.tone ?? 'neutral'}
+        aria-label={t('store.validationAria', { status: validationLabel })}
+      >
+        <span className={css.validationLabel}>{validationLabel}</span>
+        <span className={css.validationSteps} aria-hidden="true">
+          {VALIDATION_STAGES.map(stage => (
+            <i
+              key={stage}
+              data-validation-step={stage}
+              data-status={repository.validation?.stages?.[stage]?.status ?? 'pending'}
+            />
+          ))}
         </span>
-        {installed ? <span className={css.installed}>{update ? t('store.updateAvailable') : t('store.installed')}</span> : null}
       </div>
-      <div className={css.entryActions}>
-        {plan === null
-          ? <span className={css.unavailable}>{t('store.installUnavailable')}</span>
-          : (
+      <div className={css.commandRow} role="group" aria-label={t('store.installCommand')}>
+        <code className={css.installCommand} title={plan?.command}>
+          {plan?.command ?? t('store.installUnavailable')}
+        </code>
+        <div className={css.commandActions}>
+          {plan !== null
+            ? (
+              <button
+                type="button"
+                className={css.iconButton}
+                aria-label={copied ? t('store.commandCopied') : t('store.copyCommand')}
+                title={copied ? t('store.commandCopied') : t('store.copyCommand')}
+                onClick={() => { void copyCommand() }}
+              >
+                {copied ? <IconCheckOutline16 size={16} /> : <IconCopyOutline16 size={16} />}
+              </button>
+            )
+            : null}
+          {plan !== null
+            ? (
             <Button
               size="sm"
               variant={update ? 'primary' : 'outline'}
@@ -134,22 +232,29 @@ function ProjectRow({ repository, onMutate, t }: ProjectRowProps): ReactNode {
               disabled={installed && !update}
               onClick={() => { onMutate({ repository, action }) }}
             >
-              {update ? t('store.update') : installed ? t('store.installed') : t('store.install')}
+              {update
+                ? <IconRefreshOutline16 size={16} />
+                : installed
+                  ? <IconCheckOutline16 size={16} />
+                  : <IconDownloadOutline16 size={16} />}
+              <span>{update ? t('store.update') : installed ? t('store.installed') : t('store.install')}</span>
             </Button>
-          )}
-        {installed && repository.installedPlugin !== null && repository.installedPlugin !== undefined
-          ? (
-            <button
-              type="button"
-              className={css.removeButton}
-              aria-label={t('store.removeAria', { name: repository.name })}
-              title={t('store.remove')}
-              onClick={() => { onMutate({ repository, action: 'remove' }) }}
-            >
-              <IconTrashOutline16 size={16} />
-            </button>
-          )
-          : null}
+            )
+            : null}
+          {installed && repository.installedPlugin !== null && repository.installedPlugin !== undefined
+            ? (
+              <button
+                type="button"
+                className={css.removeButton}
+                aria-label={t('store.removeAria', { name: repository.name })}
+                title={t('store.remove')}
+                onClick={() => { onMutate({ repository, action: 'remove' }) }}
+              >
+                <IconTrashOutline16 size={16} />
+              </button>
+            )
+            : null}
+        </div>
       </div>
     </li>
   )
@@ -168,13 +273,44 @@ function MutationModal({ target, lifecycleFetch, onClose, onComplete, t }: Mutat
   const [installMode, setInstallMode] = useState<InstallMode | null>(null)
   const [phase, setPhase] = useState<'idle' | 'running' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
+  const [resultOutput, setResultOutput] = useState('')
+  const [operationId, setOperationId] = useState<string | null>(null)
+  const [operation, setOperation] = useState<LifecycleOperation | null>(null)
 
   useEffect(() => {
     setAcknowledged(false)
     setInstallMode(null)
     setPhase('idle')
     setMessage('')
+    setResultOutput('')
+    setOperationId(null)
+    setOperation(null)
   }, [target?.repository.repositoryId, target?.action])
+
+  useEffect(() => {
+    if (phase !== 'running' || operationId === null) return
+    let disposed = false
+    const poll = async (): Promise<void> => {
+      try {
+        const response = await lifecycleFetch(`${COMMUNITY_STORE_API_PREFIX}/operation`, {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        })
+        const value = await response.json().catch(() => ({})) as { ok?: boolean; operation?: LifecycleOperation | null }
+        if (!disposed && response.ok && value.ok === true && value.operation?.id === operationId) {
+          setOperation(value.operation)
+        }
+      } catch {
+        // The mutation response remains authoritative when a progress poll is missed.
+      }
+    }
+    void poll()
+    const timer = globalThis.setInterval(() => { void poll() }, 300)
+    return () => {
+      disposed = true
+      globalThis.clearInterval(timer)
+    }
+  }, [lifecycleFetch, operationId, phase])
 
   if (target === null) return null
   const removing = target.action === 'remove'
@@ -192,13 +328,18 @@ function MutationModal({ target, lifecycleFetch, onClose, onComplete, t }: Mutat
 
   const mutate = async (): Promise<void> => {
     if (!canConfirm) return
+    const nextOperationId = createOperationId()
     setPhase('running')
     setMessage('')
+    setResultOutput('')
+    setOperationId(nextOperationId)
+    setOperation(initialOperation(nextOperationId, target.action, target.repository.fullName))
     const path = removing ? 'remove' : 'install'
     const body = removing
-      ? { name: target.repository.installedPlugin?.name }
+      ? { name: target.repository.installedPlugin?.name, operationId: nextOperationId }
       : {
           repositoryId: target.repository.repositoryId,
+          operationId: nextOperationId,
           ...(installMode === null ? {} : { installMode }),
         }
     try {
@@ -207,16 +348,29 @@ function MutationModal({ target, lifecycleFetch, onClose, onComplete, t }: Mutat
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const value = await response.json().catch(() => ({})) as { ok?: boolean; message?: string; output?: string }
-      if (!response.ok || value.ok !== true) throw new Error(value.message ?? `${t('store.mutationFailed')} (${response.status})`)
+      const value = await response.json().catch(() => ({})) as {
+        ok?: boolean
+        message?: string
+        output?: string
+        operation?: LifecycleOperation | null
+      }
+      if (value.operation?.id === nextOperationId) setOperation(value.operation)
+      setResultOutput(value.output ?? value.operation?.output ?? '')
+      if (!response.ok || value.ok !== true) {
+        setPhase('error')
+        setMessage(value.message ?? `${t('store.mutationFailed')} (${response.status})`)
+        return
+      }
       setPhase('success')
-      setMessage([t('store.restartRequired'), value.output ?? ''].filter(Boolean).join('\n'))
+      setMessage(t('store.restartRequired'))
       await onComplete()
     } catch (error) {
       setPhase('error')
       setMessage(error instanceof Error ? error.message : String(error))
     }
   }
+
+  const visibleOutput = operation?.output || resultOutput
 
   return (
     <Modal
@@ -278,8 +432,36 @@ function MutationModal({ target, lifecycleFetch, onClose, onComplete, t }: Mutat
             )
             : null}
           {phase === 'running' ? <p role="status">{removing ? t('store.removing') : updating ? t('store.updating') : t('store.installing')}</p> : null}
-          {phase === 'success' ? <pre className={css.success} role="status">{message}</pre> : null}
-          {phase === 'error' ? <pre className={css.error} role="alert">{message}</pre> : null}
+          {operation !== null && phase !== 'idle'
+            ? (
+              <section className={css.operationProgress} aria-live="polite" aria-label={t('store.progressTitle')}>
+                <strong>{t('store.progressTitle')}</strong>
+                <ol>
+                  {operation.stages.map(stage => (
+                    <li key={`${stage.name}-${stage.startedAt}`} data-status={stage.status}>
+                      <i aria-hidden="true" />
+                      <span>{lifecycleStageLabel(stage.name, operation.action, t)}</span>
+                      <small>{t(stage.status === 'running'
+                        ? 'store.stageRunning'
+                        : stage.status === 'error'
+                          ? 'store.stageFailed'
+                          : 'store.stageSucceeded')}</small>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )
+            : null}
+          {phase === 'success' ? <p className={css.success} role="status">{message}</p> : null}
+          {phase === 'error' ? <p className={css.error} role="alert">{message}</p> : null}
+          {visibleOutput !== ''
+            ? (
+              <details className={css.operationOutput} open>
+                <summary>{t('store.operationOutput')}</summary>
+                <pre>{visibleOutput}</pre>
+              </details>
+            )
+            : null}
         </div>
         <footer className={css.modalActions}>
           <Button size="sm" variant="outline" type="button" disabled={busy} onClick={onClose}>
@@ -314,6 +496,7 @@ function StoreView({ catalogStore, lifecycleFetch, t }: StoreViewProps): ReactNo
   const [sort, setSort] = useState<'recommended' | 'stars' | 'updated' | 'name'>('recommended')
   const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [installedOnly, setInstalledOnly] = useState(false)
+  const [categoriesExpanded, setCategoriesExpanded] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [mutationTarget, setMutationTarget] = useState<MutationTarget | null>(null)
 
@@ -373,26 +556,67 @@ function StoreView({ catalogStore, lifecycleFetch, t }: StoreViewProps): ReactNo
       </div>
 
       <div className={css.filters}>
-        <input
-          type="search"
-          className={css.search}
-          value={query}
-          onChange={event => { setQuery(event.target.value) }}
-          placeholder={t('store.search')}
-          aria-label={t('store.search')}
-        />
-        <select value={category} onChange={event => { setCategory(event.target.value) }} aria-label={t('store.category')}>
-          <option value="all">{t('store.categoryAll')}</option>
-          {(facets?.categories ?? []).map(value => <option key={value} value={value}>{value}</option>)}
-        </select>
-        <select value={sort} onChange={event => { setSort(event.target.value as typeof sort) }} aria-label={t('store.sort')}>
-          <option value="recommended">{t('store.sortRecommended')}</option>
-          <option value="stars">{t('store.sortStars')}</option>
-          <option value="updated">{t('store.sortUpdated')}</option>
-          <option value="name">{t('store.sortName')}</option>
-        </select>
-        <label className={css.check}><input type="checkbox" checked={verifiedOnly} onChange={event => { setVerifiedOnly(event.target.checked) }} /><span>{t('store.verifiedOnly')}</span></label>
-        <label className={css.check}><input type="checkbox" checked={installedOnly} onChange={event => { setInstalledOnly(event.target.checked) }} /><span>{t('store.installedOnly')}</span></label>
+        <div className={css.filterControls}>
+          <input
+            type="search"
+            className={css.search}
+            value={query}
+            onChange={event => { setQuery(event.target.value) }}
+            placeholder={t('store.search')}
+            aria-label={t('store.search')}
+          />
+          <select value={category} onChange={event => { setCategory(event.target.value) }} aria-label={t('store.category')}>
+            <option value="all">{t('store.categoryAll')}</option>
+            {(facets?.categories ?? []).map(value => <option key={value} value={value}>{categoryLabel(value, t)}</option>)}
+          </select>
+          <select value={sort} onChange={event => { setSort(event.target.value as typeof sort) }} aria-label={t('store.sort')}>
+            <option value="recommended">{t('store.sortRecommended')}</option>
+            <option value="stars">{t('store.sortStars')}</option>
+            <option value="updated">{t('store.sortUpdated')}</option>
+            <option value="name">{t('store.sortName')}</option>
+          </select>
+        </div>
+        <div className={categoriesExpanded ? `${css.categoryPanel} ${css.categoryPanelExpanded}` : css.categoryPanel}>
+          <div className={css.categoryOptions} role="group" aria-label={t('store.categoryTags')}>
+            <button
+              type="button"
+              className={category === 'all' ? `${css.categoryChip} ${css.categoryChipActive}` : css.categoryChip}
+              aria-pressed={category === 'all'}
+              onClick={() => { setCategory('all') }}
+            >
+              <span className={css.categoryChipLabel}>{t('store.categoryAllShort')}</span>
+            </button>
+            {(facets?.categories ?? []).map(value => {
+              const presentation = CATEGORY_PRESENTATION[value as keyof typeof CATEGORY_PRESENTATION]
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  className={category === value ? `${css.categoryChip} ${css.categoryChipActive}` : css.categoryChip}
+                  aria-pressed={category === value}
+                  onClick={() => { setCategory(value) }}
+                >
+                  <i className={css.categoryDot} style={{ backgroundColor: presentation?.color ?? CATEGORY_PRESENTATION.other.color }} aria-hidden="true" />
+                  <span className={css.categoryChipLabel}>{categoryLabel(value, t)}</span>
+                </button>
+              )
+            })}
+          </div>
+          <button
+            type="button"
+            className={css.categoryToggle}
+            aria-expanded={categoriesExpanded}
+            aria-label={t(categoriesExpanded ? 'store.collapseCategories' : 'store.expandCategories')}
+            title={t(categoriesExpanded ? 'store.collapseCategories' : 'store.expandCategories')}
+            onClick={() => { setCategoriesExpanded(expanded => !expanded) }}
+          >
+            <ChevronDown size={15} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        </div>
+        <div className={css.filterChecks}>
+          <label className={css.check}><input type="checkbox" checked={verifiedOnly} onChange={event => { setVerifiedOnly(event.target.checked) }} /><span>{t('store.verifiedOnly')}</span></label>
+          <label className={css.check}><input type="checkbox" checked={installedOnly} onChange={event => { setInstalledOnly(event.target.checked) }} /><span>{t('store.installedOnly')}</span></label>
+        </div>
       </div>
 
       {snapshot.status === 'loading' && snapshot.catalog === null ? <p className={css.status} role="status">{t('store.loading')}</p> : null}
@@ -445,6 +669,7 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
       descriptionKey="settings.description"
       state={state}
       alwaysOpen
+      showFooter={false}
       onSave={props.save}
       onDiscard={props.discard}
     >
@@ -455,11 +680,36 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
         inheritLabel={t('settings.inherit')}
         onLabel={t('settings.on')}
         offLabel={t('settings.off')}
+        controlAfter={(
+          <span className={css.settingsActions}>
+            <Button
+              size="sm"
+              variant="outline"
+              type="button"
+              disabled={!state.dirty || state.saving}
+              onClick={props.discard}
+            >
+              {t('settings.discard')}
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              type="button"
+              disabled={!state.dirty || state.invalid || state.saving}
+              onClick={props.save}
+            >
+              {t(!state.saving ? 'settings.save' : 'settings.saving')}
+            </Button>
+          </span>
+        )}
         {...fieldProps}
         {...state.enabled}
         onEdit={text => { props.edit('enabled', text) }}
         onReset={() => { props.resetField('enabled') }}
       />
+      {state.failed
+        ? <p className={css.settingsError} role="status">{t('settings.saveFailed')}{state.failedReason ? ` - ${state.failedReason}` : ''}</p>
+        : null}
       {visible
         ? <StoreView catalogStore={props.catalogStore} lifecycleFetch={props.lifecycleFetch ?? globalThis.fetch.bind(globalThis)} t={t} />
         : <p className={css.status} role="status">{t('off')}</p>}

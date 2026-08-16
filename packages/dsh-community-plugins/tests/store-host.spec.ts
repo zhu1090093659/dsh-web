@@ -275,7 +275,7 @@ describe('Host plugin lifecycle', () => {
         id: 'operation-test-2',
         status: 'error',
         output: expect.stringContaining('partial install output'),
-        stages: expect.arrayContaining([{ name: 'executing', status: 'error' }]),
+        stages: expect.arrayContaining([expect.objectContaining({ name: 'executing', status: 'error' })]),
       },
     })
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('registry request failed'))

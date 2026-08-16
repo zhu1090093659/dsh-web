@@ -32,6 +32,11 @@ export interface CatalogValidation {
   sourceSha?: string
   reason?: string | null
   updatedAt?: string
+  stages?: Partial<Record<'discovery' | 'identification' | 'structure' | 'sandbox', {
+    status?: string
+    checkedAt?: string
+    reason?: string | null
+  }>>
 }
 
 export interface CatalogRepository {
@@ -84,6 +89,33 @@ export interface InstallPlan {
 }
 
 export type InstallMode = 'verified' | 'latest'
+
+export type LifecycleAction = 'install' | 'update' | 'remove'
+export type LifecycleOperationStatus = 'running' | 'success' | 'error'
+export type LifecycleStageName = 'preparing' | 'catalog' | 'inventory' | 'executing' | 'complete'
+export type LifecycleStageStatus = 'running' | 'success' | 'error'
+
+export interface LifecycleStage {
+  name: LifecycleStageName
+  status: LifecycleStageStatus
+  startedAt: string
+  finishedAt?: string
+}
+
+/** Current or most recent Host-side Store mutation, exposed to the local UI. */
+export interface LifecycleOperation {
+  id: string
+  action: LifecycleAction
+  status: LifecycleOperationStatus
+  target?: string
+  command?: string
+  startedAt: string
+  updatedAt: string
+  finishedAt?: string
+  stages: LifecycleStage[]
+  output: string
+  error?: string
+}
 
 export interface InstalledPlugin {
   name: string

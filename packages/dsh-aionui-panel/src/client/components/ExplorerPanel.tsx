@@ -537,7 +537,7 @@ function TreeRowBase({
           ) : (
             <span className={explorerCss.treeArrowEmpty} />
           )}
-          <FileTypeIcon name={entry.name} isDir={entry.isDir} expanded={isExpanded} />
+          {!entry.isDir && <FileTypeIcon name={entry.name} isDir={false} expanded={false} />}
           <span className={explorerCss.treeName}>{entry.name}</span>
         </div>
         <div className={explorerCss.treeActions}>

@@ -1,0 +1,8 @@
+# dsh-branch bundle patch: no view replacement. The browser half injects a
+# per-row rollback/restore action column into the OFFICIAL Trajectory ledger at
+# the DOM level (self-healing MutationObserver), leaving the shipped UI
+# untouched. Applied as a profile bundle layer; install with
+# `dsh plugin --profile web add link:<repo>/packages/dsh-branch`.
+- insert:
+    - id: ui-branch
+      name: '@linxin666/dsh-client-ui-branch'

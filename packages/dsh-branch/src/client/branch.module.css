@@ -1,0 +1,379 @@
+/* dsh-branch DOM-injected trajectory actions: quiet line-icon action column,
+ * a minimal tree switcher chip, confirm modal, and notice. All additive —
+ * the official trajectory UI keeps its own classes untouched. */
+
+:root {
+  --branch-bg: #ffffff;
+  --branch-fg: #1f2328;
+  --branch-muted: #57606a;
+  --branch-faint: #8c959f;
+  --branch-border: #d0d7de;
+  --branch-border-soft: #eaeef2;
+  --branch-hover: #f2f4f6;
+  --branch-accent: #0969da;
+  --branch-accent-soft: #ddf4ff;
+  --branch-danger: #cf222e;
+  --branch-danger-soft: #ffebe9;
+  --branch-ok: #1a7f37;
+  --branch-ok-soft: #dafbe1;
+  --branch-warn: #9a6700;
+  --branch-icon-hover-bg: #6e7681;
+  --branch-shadow: 0 12px 32px rgba(27, 31, 36, 0.16);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --branch-bg: #0d1117;
+    --branch-fg: #e6edf3;
+    --branch-muted: #aeb6c0;
+    --branch-faint: #6e7681;
+    --branch-border: #30363d;
+    --branch-border-soft: #21262d;
+    --branch-hover: #161b22;
+    --branch-accent: #4493f8;
+    --branch-accent-soft: #0c2d6b;
+    --branch-danger: #f85149;
+    --branch-danger-soft: #3d1517;
+    --branch-ok: #3fb950;
+    --branch-ok-soft: #12261b;
+    --branch-warn: #d29922;
+    --branch-icon-hover-bg: #484f58;
+    --branch-shadow: 0 12px 32px rgba(1, 4, 9, 0.55);
+  }
+}
+
+/* ---------- per-row action column (line icons, quiet until hover) ---------- */
+
+.actionsCell {
+  padding: 0 10px 0 0;
+  border-bottom: 1px solid var(--branch-border-soft);
+  vertical-align: middle;
+  white-space: nowrap;
+  text-align: right;
+  width: 56px;
+}
+
+.actionsInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  opacity: 0.35;
+  transition: opacity 0.12s ease;
+}
+
+tr:hover .actionsInner {
+  opacity: 1;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--branch-faint);
+  cursor: pointer;
+}
+
+.iconButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.iconButton:hover:not(:disabled) {
+  background: var(--branch-icon-hover-bg);
+  color: #ffffff;
+}
+
+.iconButton:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.iconButtonActive {
+  color: var(--branch-accent);
+}
+
+/* ---------- tree switcher chip (inline in the official toolbar) ---------- */
+
+.treeChip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 20px;
+}
+
+.treeChipButton {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 20px;
+  padding: 0 5px;
+  gap: 4px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--dsw-alias-label-tertiary, var(--branch-muted));
+  background: transparent;
+  cursor: pointer;
+  font: var(--dsw-font-xxs-12, 12px/1.5 -apple-system, 'Segoe UI', sans-serif);
+}
+
+.treeChipButton:hover {
+  color: var(--dsw-alias-label-primary, var(--branch-fg));
+  background: var(--dsw-alias-interactive-bg-hover, var(--branch-hover));
+}
+
+.treeChipButton:focus-visible {
+  outline: 1px solid var(--dsw-alias-state-business-primary, var(--branch-accent));
+  outline-offset: 1px;
+}
+
+.treeChipButton svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--dsw-alias-label-tertiary, var(--branch-faint));
+}
+
+.treeChipName {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeCaret {
+  font-size: 8px;
+  color: var(--dsw-alias-label-caption, var(--branch-faint));
+}
+
+/* ---------- notice ---------- */
+
+.notice {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 220;
+  max-width: 60%;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  box-shadow: var(--branch-shadow);
+}
+
+.noticeOk {
+  border: 1px solid var(--branch-ok);
+  background: var(--branch-ok-soft);
+  color: var(--branch-ok);
+}
+
+.noticeError {
+  border: 1px solid var(--branch-danger);
+  background: var(--branch-danger-soft);
+  color: var(--branch-danger);
+}
+
+/* ---------- confirm modal ---------- */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 17, 23, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 210;
+}
+
+.modalCard {
+  width: 420px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  background: var(--branch-bg);
+  color: var(--branch-fg);
+  border: 1px solid var(--branch-border);
+  border-radius: 12px;
+  box-shadow: var(--branch-shadow);
+  overflow: hidden;
+  font: inherit;
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px;
+}
+
+.modalTitle {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.modalClose {
+  border: 0;
+  background: transparent;
+  color: var(--branch-faint);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: 6px;
+}
+
+.modalClose:hover {
+  background: var(--branch-hover);
+  color: var(--branch-fg);
+}
+
+.modalNode {
+  padding: 0 16px 2px;
+  font-size: 12px;
+  color: var(--branch-muted);
+  overflow-wrap: anywhere;
+}
+
+.modalTree {
+  padding: 4px 16px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--branch-accent);
+}
+
+.modalSubtitle {
+  padding: 10px 16px 4px;
+  font-size: 12px;
+  color: var(--branch-faint);
+}
+
+.modalLoading {
+  padding: 8px 16px 12px;
+  color: var(--branch-muted);
+  font-size: 12px;
+}
+
+.modalList {
+  overflow: auto;
+  max-height: 220px;
+  padding: 2px 16px 10px;
+  display: grid;
+  gap: 3px;
+}
+
+.modalRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: var(--branch-hover);
+}
+
+.modalPath {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+}
+
+.modalBadge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 20px;
+}
+
+.badgeCreate {
+  background: var(--branch-ok-soft);
+  color: var(--branch-ok);
+}
+
+.badgeWrite {
+  background: var(--branch-accent-soft);
+  color: var(--branch-accent);
+}
+
+.badgeDelete {
+  background: var(--branch-danger-soft);
+  color: var(--branch-danger);
+}
+
+.badgeUnchanged {
+  background: var(--branch-hover);
+  color: var(--branch-faint);
+  border: 1px solid var(--branch-border-soft);
+}
+
+.modalSkipped {
+  padding: 2px 8px;
+  color: var(--branch-warn);
+  font-size: 12px;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--branch-border-soft);
+}
+
+.rowAction {
+  border: 1px solid var(--branch-border);
+  background: var(--branch-bg);
+  color: var(--branch-fg);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rowAction:hover:not(:disabled) {
+  border-color: var(--branch-accent);
+  color: var(--branch-accent);
+}
+
+.rowAction:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.primaryButton {
+  border: 1px solid var(--branch-accent);
+  background: var(--branch-accent);
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.primaryButton:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

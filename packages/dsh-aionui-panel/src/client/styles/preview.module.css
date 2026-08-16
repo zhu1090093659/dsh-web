@@ -497,12 +497,41 @@
   border-radius: 4px;
 }
 
-/* Code viewer (CodeBlock draws its own frame/padding). */
+/* Code viewer: a full-bleed highlighted source view. CodeBlock supplies the
+   shiki tokens; its language/copy banner is removed by the component and the
+   card chrome is stripped here so the panel reads like a plain editor. */
 .codeViewer {
   flex: 1;
   min-height: 0;
   overflow: auto;
   padding: 0;
+}
+
+.codeViewer :global(.md-code-block) {
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Hide the banner without ever touching the highlighted body: the banner is
+   the only direct-child div containing a button (the copy control). */
+.codeViewer :global(.md-code-block > div:has(button)) {
+  display: none;
+}
+
+.codeViewer :global(.md-code-block pre) {
+  margin: 0;
+  padding: 12px 14px;
+  background: transparent;
+  border-radius: 0;
+  color: var(--aion-text-primary);
+  white-space: pre;
+  word-break: normal;
+  overflow: visible;
+}
+
+.codeViewer :global(.md-code-block pre.shiki) {
+  background: transparent !important;
 }
 
 /* Diff viewer. */

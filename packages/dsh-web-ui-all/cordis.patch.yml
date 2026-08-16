@@ -77,6 +77,11 @@
     - id: plugin-manager
       name: '@linxin666/dsh-plugin-manager'
 
+# from ../dsh-shutdown
+- insert:
+    - id: shutdown
+      name: '@linxin666/dsh-client-ui-shutdown'
+
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:
     - id: ui-skin-center

@@ -1,0 +1,13 @@
+{
+  "// purpose": "Self-contained compiler settings for the consumer-side `prepare` build (git installs). Type checking stays a dev/CI concern (`pnpm run typecheck`).",
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}

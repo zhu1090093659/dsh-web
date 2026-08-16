@@ -102,10 +102,17 @@ function mountCodeTab(): HTMLElement {
 }
 
 describe('code viewer syntax highlighting', () => {
-  it('renders source tabs through the harness shiki CodeBlock', () => {
+  it('renders highlighted source without the language/copy banner', async () => {
     const host = mountCodeTab()
+    // Let the banner-stripping effect + MutationObserver run.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     expect(host.querySelector('.md-code-block')).not.toBeNull()
+    expect(host.querySelector('.md-code-block pre')).not.toBeNull()
     expect(host.textContent).toContain('"a": 1')
+    expect(host.textContent).not.toContain('复制代码')
+    expect(host.textContent).not.toContain('json')
   })
 })
 

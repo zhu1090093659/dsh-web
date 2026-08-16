@@ -26,7 +26,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-aionui-panel
 
 项目会话（当前会话有工作目录）打开后，聊天区右侧出现两块面板：
 
-- **Explorer（最右栏，默认 260px，范围 220~500px）**：`文件 / 变更` 双 tab；文件树整行点击展开/收起文件夹，点击文件在预览面板打开，悬停行会出现两个复制路径按钮（harness 胶囊按钮 + 图标）：复制当前路径（工作区相对路径）与复制全局路径（宿主绝对路径）；顶部搜索框（150ms 防抖）带「文件名 / 内容」模式切换——内容模式在项目范围内全文搜索，按文件分组显示命中行（点击结果在预览中打开文件），文件名模式点击结果 = 定位到树中，不打断思路；`变更` tab 读取真实 git 状态，支持 stage / unstage / discard（untracked 走删除，tracked 走 restore，批量放弃有确认）。
+- **Explorer（最右栏，默认 260px，范围 220~500px）**：`文件 / 变更` 双 tab；文件树整行点击展开/收起文件夹（文件夹仅显示展开箭头 >/v，不再显示文件夹图标），文件按类型显示真实 vscode-icons 语言 logo（TS / JS / JSON / HTML / CSS / MD / YAML 等，取自 vscode-icons 扩展），点击文件在预览面板打开，悬停行会出现两个复制路径按钮（harness 胶囊按钮 + 图标）：复制当前路径（工作区相对路径）与复制全局路径（宿主绝对路径）；顶部搜索框（150ms 防抖）带「文件名 / 内容」模式切换——内容模式在项目范围内全文搜索，按文件分组显示命中行（点击结果在预览中打开文件），文件名模式点击结果 = 定位到树中，不打断思路；`变更` tab 读取真实 git 状态，支持 stage / unstage / discard（untracked 走删除，tracked 走 restore，批量放弃有确认）。
 - **文件树右键菜单**：右键文件/文件夹弹出菜单——复制路径、复制名称、在文件管理器中显示、用默认应用打开（仅文件）、重命名、新建文件、新建文件夹、删除（二次确认）；全部走工作区门禁（loopback 围栏 + 拒绝 .git 路径），「在文件管理器中显示」Windows 用 `explorer /select`、macOS 用 `open -R`、Linux 桌面回退打开父目录。
 - **拖拽文件到输入框**：文件树中的文件行可拖拽（目录行除外），拖到聊天输入框区域松手即把相对路径（如 `deploy/base/deployment.yaml`）插入当前会话草稿的光标处，agent 收到消息后会自行读取该文件，无需手动输入路径；拖拽过程中输入框上方显示高亮提示条。
 - **Preview（右二栏，默认 480px，范围 340~1200px）**：多 tab 预览，支持 markdown / html / code / diff / csv / pdf / word / excel / ppt / 图片 / 文本 / url（code 预览经由官方 shiki core 语法高亮）；源码/预览切换、分屏编辑（比例持久化）、保存（mtime 冲突检测）、下载、刷新（4 态：不渲染死按钮）、dirty 点、中键关闭、右键菜单批量关闭（dirty 确认）、tab 溢出渐变指示器。
@@ -69,3 +69,5 @@ pnpm -r build
 ## 署名
 
 本项目是 AionUi（iOfficeAI/AionUi，Apache-2.0）右侧面板系统的复刻实现：尺寸、颜色、动效、交互参数来自对 v2.1.53 的实测调研（研究报告与截图见 aionui-research 仓库），实现为全新代码，未大段抄录源码。上游版权归 AionUi 项目所有，本项目仅按 Apache-2.0 约定保留署名。
+
+文件类型 logo 取自 [vscode-icons](https://github.com/vscode-icons/vscode-icons) 扩展（MIT License），Copyright (c) 2016 Roberto Huertas and contributors。

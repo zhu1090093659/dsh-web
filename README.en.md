@@ -26,7 +26,7 @@ CI gates: typecheck / test / scripts / docs / aggregate and gallery consistency.
 
 <p align="center">
   <strong>The plugin and skin family for the DeepSeek Harness (DSH) Web GUI</strong><br>
-  <em>Liang Shen Mode · Task board · Git graph · Right panel · Mobile remote · SSH ops · Image understanding · Whale-girl pet · Live throughput · Skin center</em>
+  <em>Liang Shen Mode · Task board · Git graph · Right panel · Mobile remote · SSH ops · Image understanding · Whale-girl pet · Live throughput · One-click shutdown · Skin center</em>
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@ CI gates: typecheck / test / scripts / docs / aggregate and gallery consistency.
 
 ## What It Is
 
-dsh-web-ui is a set of plugins and skins for the DeepSeek Harness (DSH) Web GUI: the "Liang Shen Mode" agent preset tuned for DeepSeek V4 Pro, plus a task board, Git graph, right panel, mobile remote, SSH ops, image understanding, a whale-girl pet, live throughput and the skin center. Everything mounts into `dsh web` through the official profile mechanism, no DSH source changes. Install plugins one by one, or grab everything with the aggregate package.
+dsh-web-ui is a set of plugins and skins for the DeepSeek Harness (DSH) Web GUI: the "Liang Shen Mode" agent preset tuned for DeepSeek V4 Pro, plus a task board, Git graph, right panel, mobile remote, SSH ops, image understanding, a whale-girl pet, live throughput, one-click shutdown and the skin center. Everything mounts into `dsh web` through the official profile mechanism, no DSH source changes. Install plugins one by one, or grab everything with the aggregate package.
 
 ![DSH Web UI main screen](docs/screenshots/13-hero-main.png)
 
@@ -50,6 +50,8 @@ dsh-web-ui is a set of plugins and skins for the DeepSeek Harness (DSH) Web GUI:
 | Mobile remote control | None | QR pairing with SSE real-time sync |
 | Remote server ops | None | SSH panel: terminal / transfer / tunnels / cluster |
 | Image understanding | None | `describe_image` vision tool |
+| Desktop launcher | None | Desktop icon: double-click starts dsh web and opens the GUI |
+| One-click shutdown | None | Sidebar power button: graceful dsh web exit after confirmation |
 | Themes & skins | Default theme | Skin center with 10 skins, try-on before apply |
 
 ## Feature Plugins
@@ -135,6 +137,10 @@ Gives text-only models vision. When a conversation mentions an image (local path
 All family plugins' toggles and parameters live under "Settings" and apply immediately. The settings sidebar lists General, Models, Plugins and Agent presets plus the Web UI Plugins group (hosting task-board / live-stats / remote-web-ui / describe-image), Skin Center, Community Plugins and Pet as first-level entries that open directly expanded; the plugin configuration page keeps the three built-in cards (Shell / Agent loop / Web search), each with its own toggle and configuration.
 
 ![Settings hub](docs/screenshots/02-settings-web-ui-plugins.png)
+
+### One-click Shutdown
+
+A Windows-style power button sits at the bottom of the sidebar, right next to the settings trigger. Clicking it opens a confirm dialog; confirming asks the host process to exit gracefully (the plugin tree is disposed before the process ends). Exiting stops dsh web, so running sessions and tasks are interrupted. The button toggle and the "confirm before exit" gate live under Settings > Plugin config.
 
 ## Skins
 
@@ -229,6 +235,7 @@ Prefer individual plugins? Install them one by one (published on npm, so use the
 dsh plugin --profile web add @linxin666/dsh-liangshen              # Liang Shen Mode
 dsh plugin --profile web add @linxin666/dsh-client-ui-task-board   # Task board
 dsh plugin --profile web add @linxin666/dsh-ssh                    # Remote connection (SSH)
+dsh plugin --profile web add @linxin666/dsh-client-ui-shutdown     # One-click shutdown
 dsh plugin --profile web add @linxin666/dsh-tool-describe-image    # Image understanding tool
 dsh plugin --profile web add @linxin666/dsh-pet                    # Whale-girl pet
 ```
@@ -302,6 +309,7 @@ A: Install `@linxin666/dsh-skins` for skins only, or use the package names under
 
 - Task-board scheduling is browser-side: the `dsh web` tab has to stay open, and triggers missed while it is closed are skipped, not queued. See [dsh-task-board README](packages/dsh-task-board/README.md).
 - SSH passwords and passphrases are stored in plaintext in `~/.dsh/dsh-ssh.json` (mode 0600); reconnects may replay non-idempotent commands, and remote output is returned unredacted. See the security model in [dsh-ssh README](packages/dsh-ssh/README.md).
+- The shutdown button ends the dsh web process: running sessions, tasks and unsaved state may be interrupted; a confirm dialog guards it by default. See [dsh-shutdown README](packages/dsh-shutdown/README.md).
 - Mobile remote relies on SSE live push: Cloudflare quick tunnels and Tailscale Serve do not pass SSE through, so the plugin falls back to polling and new messages may arrive a few seconds late.
 - Repository installs require Node.js >= 22 and pnpm and are for development only; npm installs are unaffected.
 
@@ -341,7 +349,7 @@ This repository is licensed under [Apache-2.0](LICENSE). Third-party code merged
 
 | Package | Origin | License |
 | --- | --- | --- |
-| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-ui-settings / dsh-liangshen / dsh-skins / dsh-web-ui-all / skins | Authored by zhu1090093659 | Apache-2.0 (zhu1090093659) |
+| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-ui-settings / dsh-liangshen / dsh-skins / dsh-web-ui-all / dsh-shutdown / skins | Authored by zhu1090093659 | Apache-2.0 (zhu1090093659) |
 | dsh-tool-describe-image | Ported from [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image) (deepseek-harness `packages/vision/tool-describe-image`) | Apache-2.0 (zhu1090093659) |
 
 ## Contributors

@@ -263,9 +263,37 @@ function HtmlViewer({
   return <iframe className={previewCss.pdfViewer} srcDoc={srcDoc} sandbox="" title="html preview" />
 }
 
-/** Syntax-highlighted code/text viewer (official shiki core via CodeBlock). */
+/**
+ * Syntax-highlighted code/text viewer (official shiki core via CodeBlock).
+ * The harness CodeBlock always renders its language/copy banner; the preview
+ * shows a plain highlighted source, so the banner node is physically removed
+ * here (and kept gone across lazy-grammar re-renders by the observer).
+ */
 export function CodeViewer({ content, language }: { content: string; language: string }): JSX.Element {
-  return <CodeBlock code={content} lang={language === '' ? undefined : language} className={previewCss.codeViewer} copyLabel={t('preview.copyCode')} copiedLabel={t('preview.copyCodeDone')} />
+  const rootRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const root = rootRef.current
+    if (root === null) return
+    const stripBanner = (): void => {
+      const first = root.querySelector('.md-code-block > div:first-child')
+      if (first === null || first.parentElement === null) return
+      // Only the banner (language label + copy button) is a first-child div
+      // carrying a <button>; the highlighted body div holds the <pre> and
+      // must never be removed — after the banner is gone it becomes the
+      // first child, so the button check is what keeps the code alive.
+      if (first.querySelector('button') === null) return
+      first.remove()
+    }
+    stripBanner()
+    const observer = new MutationObserver(stripBanner)
+    observer.observe(root, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [])
+  return (
+    <div ref={rootRef} className={previewCss.codeViewer}>
+      <CodeBlock code={content} lang={language === '' ? undefined : language} copyLabel={t('preview.copyCode')} copiedLabel={t('preview.copyCodeDone')} />
+    </div>
+  )
 }
 
 /**

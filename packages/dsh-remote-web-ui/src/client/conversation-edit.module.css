@@ -27,14 +27,14 @@
 }
 
 .editorBubble {
-  background: transparent;
-  border: 0;
-  box-shadow: none;
+  background: var(--dsw-specific-input-major);
+  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
+  box-shadow: var(--dsw-shadow-lv2);
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: min(525px, 82vw);
-  padding: 0;
+  padding: 10px 0 0;
 }
 
 .actions {

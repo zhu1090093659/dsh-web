@@ -42,8 +42,35 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
+interface SettingsBinder {
+  bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S>
+}
+
 /** Required services. */
 export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote']
+
+/**
+ * Mount one settings section. Callers must dispose the current mount before
+ * switching binders because the first-level settings slot does not deduplicate
+ * registrations that share an id.
+ */
+function mountSection(ctx: ClientContext, binder: SettingsBinder, catalogStore: CatalogStore, priority: number): () => void {
+  const settingsScope = binder.bind<CommunityPluginsSettings>({ namespace: COMMUNITY_PLUGINS_NS })
+  const controller = new CommunityPluginsCardController(settingsScope)
+  const disposeSlot = ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section',
+    id: 'community-plugins',
+    order: 140,
+    priority,
+    label: () => ctx.locale.bind('community-plugins')('settings.title'),
+    locale: 'community-plugins',
+    inject: () => ({ ...controller.inject(), catalogStore }),
+  }, CommunityPluginsSection))
+  return () => {
+    disposeSlot()
+    controller.dispose()
+  }
+}
 
 /**
  * Register the community plugin manager as a first-level settings section, with
@@ -53,23 +80,35 @@ export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register('community-plugins', { zh, en }), 'community-plugins: dictionaries')
 
-  const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
-  const settingsScope = binder.bind<CommunityPluginsSettings>({ namespace: COMMUNITY_PLUGINS_NS })
-  const controller = new CommunityPluginsCardController(settingsScope)
   const catalogStore = new CatalogStore()
+  let disposed = false
+  let disposeSection = mountSection(ctx, ctx.settingsScope, catalogStore, 10)
 
-  ctx.slots.inject('settings.section', () => {
-    const unregister = ctx.slots.register({
-      name: 'settings.section',
-      id: 'community-plugins',
-      order: 140,
-      label: () => ctx.locale.bind('community-plugins')('settings.title'),
-      locale: 'community-plugins',
-      inject: () => ({ ...controller.inject(), catalogStore }),
-    }, CommunityPluginsSection)
+  ctx.effect(
+    () => () => {
+      disposed = true
+      disposeSection()
+    },
+    'community-plugins: settings section lifecycle',
+  )
+
+  // Standalone installs keep the official scope as a fallback. When the rc.6
+  // compatibility binder arrives later, replace that mount instead of keeping
+  // two registrations with the same id in the first-level navigation.
+  ctx.inject(['webUiSettings'], (settingsCtx: ClientContext) => {
+    const binder = settingsCtx.get('webUiSettings')
+    if (binder === undefined || disposed) return
+
+    disposeSection()
+    disposeSection = mountSection(settingsCtx, binder, catalogStore, 0)
+    let active = true
+
     return () => {
-      controller.dispose()
-      unregister()
+      if (!active) return
+      active = false
+      if (disposed) return
+      disposeSection()
+      disposeSection = mountSection(ctx, ctx.settingsScope, catalogStore, 10)
     }
   })
 }

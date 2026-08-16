@@ -6,9 +6,9 @@
 
 ## 功能
 
-- **保留现有一级分区**：继续使用 `ui-community-plugins` Cordis 条目和 `community-plugins.enabled` 设置命名空间。分区与 Web UI 插件、皮肤中心、宠物同级，打开后直接展开。
-- **实时目录**：从 [DSH 插件市场 API](https://api.dshmk.com/) 加载项目元数据、筛选项、验证证据和可执行计划状态。搜索、筛选、排序和刷新均使用 API 数据；刷新失败时保留上一次成功目录。
-- **Profile 生命周期**：把市场条目与当前 Web profile 的直接依赖进行比对，并提供安装、更新和卸载操作。对已验证的 GitHub 项目，安装和更新时可选择经过验证的 SHA 或仓库默认分支的最新版本。操作成功后需要重启 DSH Web。
+- **保留现有一级分区**：继续使用 `ui-community-plugins` Cordis 条目和 `community-plugins.enabled` 设置命名空间。分区与 Web UI 插件、皮肤中心、宠物同级，打开后直接展开，保存操作位于启用选择框右侧。
+- **实时目录**：从 [DSH 插件市场 API](https://api.dshmk.com/) 加载项目元数据、筛选项、验证证据和可执行计划状态。搜索、中文分类选项、默认单行且可展开的分类标签、排序和刷新均使用 API 数据；刷新失败时保留上一次成功目录。
+- **Profile 生命周期**：把市场条目与当前 Web profile 的直接依赖进行比对，并提供安装、更新和卸载操作。对已验证的 GitHub 项目，安装和更新时可选择经过验证的 SHA 或仓库默认分支的最新版本。操作弹窗会实时显示准备、刷新目录、读取本地清单、执行命令和完成五个阶段，并保持展开显示命令输出。操作成功后需要重启 DSH Web。
 - **对话集成**：注册 `store_catalog`、`store_search`、`store_details`、`store_installed`、`store_install` 和 `store_remove`，并随包提供 `search-dsh-store` Skill。写操作工具执行前进入 DSH 审批流程。
 
 ## 安装
@@ -33,7 +33,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-community-plugins
 ## 配置
 
 - **启用开关**：关闭「社区插件」只会隐藏市场 UI，不会停用或移除已经安装的项目；选择仍保存在 `community-plugins.enabled`。
-- **UI 操作**：选择 API 项目，在两种模式均可用时选择已验证版本或最新版本，检查确切计划，确认第三方代码风险后执行。只有当前 Web profile 的直接依赖能与市场条目匹配时，才会显示更新和卸载操作。
+- **UI 操作**：每张项目卡直接展示 API 验证阶段和经过校验的安装指令，并提供复制与快捷安装操作。在两种模式均可用时选择已验证版本或最新版本，检查确切计划，确认第三方代码风险后执行。操作视图会在命令运行期间显示全部生命周期阶段和包管理器输出。只有当前 Web profile 的直接依赖能与市场条目匹配时，才会显示更新和卸载操作。
 - **对话使用**：让 Agent 搜索、查看、安装、更新或卸载市场项目。两种 GitHub 模式均可用时，Agent 必须先询问用户选择。读取工具可直接运行；安装、更新和卸载必须经过明确的 DSH 审批。
 
 ### 同步随包 Skill
@@ -60,6 +60,7 @@ pnpm --dir packages/dsh-community-plugins test
 - 没有受支持可执行 API 计划的项目可以浏览，但不能通过本包安装。
 - 已安装和更新状态仅覆盖能够匹配市场 npm 或 GitHub 来源的 Web profile 直接依赖。
 - 安装、更新和卸载需要在重启 DSH Web 后生效；本包不会自动重启进程。
+- 本地操作进度只保存在内存中，重启 DSH Web 后会清空最后一次状态。
 - 上游 Skill 变更不会自动进入已安装的包；必须经过显式同步、审查、重新构建和包更新后才会提供。
 
 目录数据与收录规则由 [ZASENJC/dsh-plugins-store](https://github.com/ZASENJC/dsh-plugins-store) 维护；本仓库不保存第二份目录快照。

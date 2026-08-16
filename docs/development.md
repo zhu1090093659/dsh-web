@@ -72,8 +72,7 @@ pnpm --filter @linxin666/dsh-skins build   # 皮肤资产并入 dsh-skins
 pnpm gallery:build                # 画廊产物
 ```
 
-皮肤启用互斥由 `dsh-skin use` 管理（`~/.dsh/cordis.patch.yml` managed
-区段）；皮肤资产全部内置在 dsh-skins 一个包里，不单独发 npm 包。
+皮肤启用互斥由 `dsh-skin use` 管理（`<harness-home>/profiles/<profile>/cordis.patch.yml` managed 区段）；皮肤资产全部内置在 dsh-skins，不单独发 npm 包。
 
 ### 本地验证（挂载进 dsh web）
 

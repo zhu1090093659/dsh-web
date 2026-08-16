@@ -55,10 +55,10 @@ export const SKIN_CENTER_ENTRIES: readonly SkinCenterEntry[] = [
 
   {"id":"trading","name":"交易终端","nameEn":"Trading Terminal","author":"dsh-web-ui","tagline":"实时行情跑马灯 · 长桥港美股行情 · 红涨绿跌交易终端","description":"结合 dsh-fun-ticker 行情跑马灯与 dsh-longbridge 港美股行情的炒股皮肤：顶栏滚动 A股/港股/美股/指数/加密/外汇报价（装 fun-ticker 后跟随你的自选列表），状态栏展示长桥行情快照与 A股/港股/美股交易时段，写代码也像盯盘。","tags":["stock","trading","ticker","live","terminal","longbridge"],"accent":"#f23645","bodyAttr":"data-dsh-trading","package":"@linxin666/dsh-client-ui-skin-trading","order":9},
 
-  {"id":"matrix","name":"Matrix 骇客帝国","nameEn":"Matrix","author":"contributed (seanchen)","tagline":"深夜护眼 · 墨绿暗色 · 数字雨","description":"深夜卧室场景的护眼暗色皮肤：近黑墨绿背景、墨绿等宽字体、低透明度数字雨。强制暗色（不跟随系统主题），整体低亮度，长时间使用不刺眼、不打扰家人睡觉。","tags":["matrix","dark","green","hacker","night","eye-care"],"accent":"#00e676","bodyAttr":"data-dsh-matrix","package":"@linxin666/dsh-client-ui-skin-matrix","order":10},
-
   {"id":"miku","name":"初音未来 · 电子歌姬","nameEn":"Hatsune Miku","author":"涂山苏苏","tagline":"蓝紫双马尾 · 01 编号 · 音符波形 · 电子歌姬主题","description":"以世界第一的虚拟歌姬初音未来为灵感的主题皮肤：蓝紫洋红渐变贯穿全局，音符与声波曲线点缀在半透明面板之间，标题栏与状态栏带有 01 编号徽标与音乐波形，半透明毛玻璃面板透出背景图——沉浸式电子歌姬氛围。","tags":["miku","vocaloid","blue","music","idol","waveform"],"accent":"#2e9bff","bodyAttr":"data-dsh-miku","package":"@linxin666/dsh-client-ui-skin-miku","order":10},
 
   {"id":"whale-mom","name":"鲸鱼妈妈","nameEn":"Whale Mom","author":"dsh-web-ui","tagline":"深海鲸鱼妈妈与幼崽的画作 · 全透面板由背景遮挡驱动 · 金线点缀","description":"dsh web ui 的鲸鱼妈妈主题皮肤：深海鲸鱼妈妈与幼崽们的氛围画作铺满视口，面板全透（透明度由设置-皮肤中心的背景遮挡滑杆驱动，侧边栏基准透明度可用 --dsw-skin-sidebar-alpha 微调），深蓝 / 奶油 / 金色配色贯穿全局，暗色是深海夜航。","tags":["ocean","whale","mother","translucent","gold"],"accent":"#d9a53c","bodyAttr":"data-dsh-whale-mom","package":"@linxin666/dsh-client-ui-skin-whale-mom","order":11},
+
+  {"id":"matrix","name":"Matrix 骇客帝国","nameEn":"Matrix","author":"contributed (seanchen)","tagline":"深夜护眼 · 墨绿暗色 · 数字雨","description":"深夜卧室场景的护眼暗色皮肤：近黑墨绿背景、墨绿等宽字体、低透明度数字雨。强制暗色（不跟随系统主题），整体低亮度，长时间使用不刺眼、不打扰家人睡觉。","tags":["matrix","dark","green","hacker","night","eye-care"],"accent":"#00e676","bodyAttr":"data-dsh-matrix","package":"@linxin666/dsh-client-ui-skin-matrix","order":12},
 
 ]

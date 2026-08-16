@@ -51,6 +51,7 @@ const SKINS = {
   'whale-mom': { pkg: '@linxin666/dsh-client-ui-skin-whale-mom', id: 'ui-skin-whale-mom', dir: `${REPO}/packages/skins/whale-mom` },
   trading: { pkg: '@linxin666/dsh-client-ui-skin-trading', id: 'ui-skin-trading', dir: `${REPO}/packages/skins/trading` },
   miku: { pkg: '@linxin666/dsh-client-ui-skin-miku', id: 'ui-skin-miku', dir: `${REPO}/packages/skins/miku` },
+  matrix: { pkg: '@linxin666/dsh-client-ui-skin-matrix', id: 'ui-skin-matrix', dir: `${REPO}/packages/skins/matrix` },
   harbor: { pkg: '@linxin666/dsh-client-ui-skin-harbor', id: 'ui-skin-harbor', dir: `${REPO}/packages/skins/harbor` },
 }
 /** Skins wired at the bundle layer already (no insert row needed here). Empty in the npm aggregate layout — no skin ships pre-wired; profile-installed skins are detected dynamically via bundleWiredFromProfile(). */

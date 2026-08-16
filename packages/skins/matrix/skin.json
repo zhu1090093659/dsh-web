@@ -24,5 +24,5 @@
     "light": "packages/skins/matrix/preview/light.png",
     "dark": "packages/skins/matrix/preview/dark.png"
   },
-  "order": 10
+  "order": 12
 }

@@ -287,8 +287,14 @@ function EditableMessage({ sessions, connection, snapshot, sessionId, source, ed
       {error && <div className={styles.error} role="alert">{t('conversation.edit.error')}</div>}
       <div className={styles.buttons}>
         <button type="button" className={styles.cancel} disabled={busy} onClick={cancelEdit}>{t('conversation.edit.cancel')}</button>
-        <button type="button" className={styles.save} disabled={busy || draft.trim() === ''} onClick={saveEdit}>
-          {busy ? t('conversation.edit.saving') : <>{t('conversation.edit.save')} <IconSendOutline16 /></>}
+        <button
+          type="button"
+          className={styles.save}
+          disabled={busy || draft.trim() === ''}
+          aria-label={busy ? t('conversation.edit.saving') : t('conversation.edit.save')}
+          onClick={saveEdit}
+        >
+          <IconSendOutline16 />
         </button>
       </div>
     </div>

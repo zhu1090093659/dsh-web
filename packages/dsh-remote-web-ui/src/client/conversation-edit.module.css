@@ -27,8 +27,14 @@
 }
 
 .editorBubble {
+  background: var(--dsw-specific-input-major);
+  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
+  box-shadow: var(--dsw-shadow-lv2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   min-width: min(525px, 82vw);
-  padding: 14px 16px 10px;
+  padding: 10px 0 0;
 }
 
 .actions {
@@ -69,15 +75,19 @@
 .editorBubble .input {
   background: transparent;
   border: 0;
+  caret-color: var(--dsw-alias-state-business-primary);
   box-sizing: border-box;
   color: inherit;
   display: block;
-  font: inherit;
-  line-height: inherit;
+  font-family: var(--dsw-font-family);
+  font-size: inherit;
+  line-height: 24px;
+  max-height: var(--dsh-composer-text-max-height, 336px);
   min-height: 72px;
-  outline: none;
-  padding: 0;
-  resize: vertical;
+  outline: 0;
+  overflow-y: auto;
+  padding: 4px 12px 0 16px;
+  resize: none;
   width: 100%;
 }
 
@@ -86,31 +96,52 @@
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  margin-top: 10px;
+  padding: 2px 8px 6px;
 }
 
 .cancel,
 .save {
   align-items: center;
-  border: 1px solid var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.35));
-  border-radius: 8px;
+  border: 0;
   cursor: pointer;
   display: inline-flex;
   font: inherit;
   gap: 5px;
-  min-height: 30px;
-  padding: 3px 10px;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 8px;
 }
 
 .cancel {
   background: transparent;
+  border-radius: 14px;
   color: inherit;
 }
 
+.cancel:hover:not(:disabled),
+.cancel:focus-visible {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
 .save {
-  background: var(--dsw-alias-button-info-fill, #f3f3f3);
-  border-color: transparent;
-  color: var(--dsw-alias-button-info-label, #222);
+  background: var(--dsw-alias-button-info-fill);
+  border-radius: 999px;
+  color: #fff;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  transform: translateY(-2px);
+  transition: background-color 100ms ease;
+  width: 34px;
+}
+
+.save:hover:not(:disabled) {
+  background: var(--dsw-alias-button-info-hover);
+}
+
+.save:focus-visible {
+  box-shadow: 0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);
+  outline: none;
 }
 
 .cancel:disabled,

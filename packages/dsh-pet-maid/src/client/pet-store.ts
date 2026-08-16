@@ -77,4 +77,3 @@ export type { PetInteraction }
  * system's per-session store scoping).
  */
 export type PetStoreInstance = EngineStoreInstance<PetUiState, PetUiActions>
-

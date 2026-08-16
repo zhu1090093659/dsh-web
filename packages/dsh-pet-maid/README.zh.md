@@ -100,6 +100,9 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-pet-maid
 
 - **内置兜底图集**（`assets/whale/`）为仓库内鲸鱼素材，随包 Apache-2.0 分发；
 - **女仆鲸鱼主题**（Maid-DeepSeek-Whale）是社区 Codex Pet（作者 DeaDumB，<https://codexpet.xyz/pets/community/maid-deepseek-whale/>），**不随本包分发**：安装到 `~/.codex/pets/maid-deepseek-whale` 后插件自动加载（或通过插件配置 `assetDir` 指向任意 Codex Pet 图集目录）。原画许可条款以其来源页声明为准。
+- 精致版的设计方向参考了 DreamSkin 的「DeepSeek-鲸鱼娘」主题。原始项目：<https://dreamskin.cc>；历史来源记录：<https://github.com/zhu1090093659/dsh-web-ui/commit/87edd7ff4800dffd40bc93fb76e4ae450390facd>。
+- DreamSkin 主题的历史记录标注作者为 **powerdog996**，并标注为 MIT。这里仅用于说明来源，不重新定义原始美术作品的授权范围；商用或公开再分发请以原始项目和素材条款为准。
+- 精致版在上述基础上经过 AI 辅助创作、二次调整、细节精修和 dsh Web GUI 适配，不声称为原始主题作者的原始作品。
 
 ## 开发
 

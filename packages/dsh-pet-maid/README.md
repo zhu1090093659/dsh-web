@@ -100,6 +100,9 @@ After installing, **restart `dsh web`** — the whale maid appears at the bottom
 
 - The **bundled fallback atlas** (`assets/whale/`) is the repo's whale artwork, distributed with the package under Apache-2.0;
 - The **whale-maid theme** (Maid-DeepSeek-Whale) is a community Codex Pet (author DeaDumB, <https://codexpet.xyz/pets/community/maid-deepseek-whale/>) and is **not distributed with this package**: install it to `~/.codex/pets/maid-deepseek-whale` and the plugin loads it automatically (or point plugin config `assetDir` at any Codex Pet atlas directory). The artwork's license terms are governed by its source page.
+- The refined design direction references DreamSkin's “DeepSeek-Whale” theme. Original project: <https://dreamskin.cc>; historical source record: <https://github.com/zhu1090093659/dsh-web-ui/commit/87edd7ff4800dffd40bc93fb76e4ae450390facd>.
+- The historical DreamSkin record identifies **powerdog996** as the author and marks the theme as MIT. This attribution records the source but does not redefine the original artwork's licensing scope; commercial use or public redistribution must follow the original project's and asset's terms.
+- The refined version was created with AI assistance and further adjusted, polished, and adapted for the dsh Web GUI. It is not claimed to be the original theme author's work.
 
 ## Development
 

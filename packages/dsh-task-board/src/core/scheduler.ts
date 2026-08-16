@@ -32,7 +32,7 @@ export interface SchedulerDeps {
    *  already running). */
   runTask(id: string): Promise<boolean>
   /** Persist a rolled-forward schedule (next due + this trigger instant). */
-  applySchedule(id: string, nextRunAt: number | undefined, lastTriggeredAt: number | undefined): void
+  applySchedule(id: string, nextRunAt: number | undefined, lastTriggeredAt: number | undefined, disable?: boolean): void
   /** Tick cadence; defaults to 60_000 ms. */
   tickMs?: number
   /**
@@ -129,7 +129,10 @@ export class SchedulerService {
       // after the run is accepted: a rejected run keeps its due slot.
       const next = nextRunAtMs(schedule.cron, schedule.nextRunAt)
       const accepted = await this.deps.runTask(task.id)
-      if (accepted) this.deps.applySchedule(task.id, next, now)
+      if (accepted) {
+        if (schedule.once) this.deps.applySchedule(task.id, undefined, now, true)
+        else this.deps.applySchedule(task.id, next, now)
+      }
     }
   }
 }

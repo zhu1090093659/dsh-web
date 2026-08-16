@@ -38,6 +38,8 @@ export interface ScheduleRule {
   enabled: boolean
   /** 5-field cron expression: `分 时 日 月 周`. */
   cron: string
+  /** Run once: automatically disable the rule after the first successful trigger. */
+  once: boolean
   /** Next due instant (ms epoch); maintained by the scheduler/controller. */
   nextRunAt: number | undefined
   /** Instant of the latest scheduled trigger (ms epoch). */
@@ -178,11 +180,13 @@ export function withSchedule(
   const schedule: ScheduleRule = {
     enabled: current?.enabled ?? false,
     cron: current?.cron ?? '',
+    once: current?.once ?? false,
     nextRunAt: current?.nextRunAt,
     lastTriggeredAt: current?.lastTriggeredAt,
   }
   if ('enabled' in patch) schedule.enabled = patch.enabled ?? false
   if ('cron' in patch) schedule.cron = patch.cron ?? ''
+  if ('once' in patch) schedule.once = patch.once ?? false
   if ('nextRunAt' in patch) schedule.nextRunAt = patch.nextRunAt
   if ('lastTriggeredAt' in patch) schedule.lastTriggeredAt = patch.lastTriggeredAt
   return { ...task, updatedAt: now, schedule }

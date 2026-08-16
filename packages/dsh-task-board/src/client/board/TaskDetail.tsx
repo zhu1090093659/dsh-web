@@ -139,6 +139,7 @@ function ScheduleSection({ controller, task }: { controller: BoardController; ta
   const schedule = task.schedule
   const [cron, setCron] = useState(schedule?.cron ?? '0 9 * * *')
   const [enabled, setEnabled] = useState(schedule?.enabled ?? false)
+  const [once, setOnce] = useState(schedule?.once ?? false)
   const [nextRunAt, setNextRunAt] = useState<number | undefined>(schedule?.nextRunAt)
   const [lastTriggeredAt, setLastTriggeredAt] = useState<number | undefined>(schedule?.lastTriggeredAt)
   const [error, setError] = useState<string | undefined>(undefined)
@@ -148,10 +149,11 @@ function ScheduleSection({ controller, task }: { controller: BoardController; ta
   useEffect(() => {
     setCron(schedule?.cron ?? '0 9 * * *')
     setEnabled(schedule?.enabled ?? false)
+    setOnce(schedule?.once ?? false)
     setNextRunAt(schedule?.nextRunAt)
     setLastTriggeredAt(schedule?.lastTriggeredAt)
     setError(undefined)
-  }, [task.id, schedule?.enabled, schedule?.cron, schedule?.nextRunAt, schedule?.lastTriggeredAt])
+  }, [task.id, schedule?.enabled, schedule?.cron, schedule?.once, schedule?.nextRunAt, schedule?.lastTriggeredAt])
 
   /** Validate + persist the current cron text (Enter or blur). */
   const saveCron = (value: string): void => {
@@ -201,6 +203,18 @@ function ScheduleSection({ controller, task }: { controller: BoardController; ta
           onChange={event => { toggleEnabled(event.target.checked) }}
         />
         <span>{t('detail.schedule.enable')}</span>
+      </label>
+      <label className={css.scheduleToggle}>
+        <input
+          type="checkbox"
+          checked={once}
+          disabled={!enabled}
+          onChange={event => {
+            const next = event.target.checked
+            if (controller.setSchedule(task.id, { once: next })) setOnce(next)
+          }}
+        />
+        <span>{t('detail.schedule.once')}</span>
       </label>
       <div className={css.scheduleRow}>
         <input

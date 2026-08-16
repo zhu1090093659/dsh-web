@@ -111,6 +111,7 @@ function normalizeSchedule(schedule: unknown): ScheduleRule | undefined {
   return {
     enabled: rule.enabled === true,
     cron: rule.cron,
+    once: rule.once === true,
     nextRunAt: typeof rule.nextRunAt === 'number' ? rule.nextRunAt : undefined,
     lastTriggeredAt: typeof rule.lastTriggeredAt === 'number' ? rule.lastTriggeredAt : undefined,
   }

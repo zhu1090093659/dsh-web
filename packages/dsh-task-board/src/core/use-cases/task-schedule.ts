@@ -11,6 +11,8 @@ import { withSchedule, type TaskRecord } from '../tasks.ts'
 export interface SetSchedulePatch {
   enabled?: boolean
   cron?: string
+  /** Run once: auto-disable after the first successful trigger. */
+  once?: boolean
 }
 
 /** Result of arming/disarming a rule. */
@@ -42,10 +44,11 @@ export function applySetSchedule(
   const cron = (patch.cron ?? current?.cron ?? '').trim()
   if (cron === '' || !isValidCron(cron)) return { tasks, applied: false }
   const enabled = patch.enabled ?? current?.enabled ?? false
+  const once = patch.once ?? current?.once ?? false
   const nextRunAt = enabled ? nextRunAtMs(cron, now) : undefined
   return {
     tasks: tasks.map(candidate =>
-      candidate.id === id ? withSchedule(candidate, { enabled, cron, nextRunAt }, now) : candidate),
+      candidate.id === id ? withSchedule(candidate, { enabled, cron, once, nextRunAt }, now) : candidate),
     applied: true,
   }
 }
@@ -66,9 +69,14 @@ export function applyScheduleNextRun(
   nextRunAt: number | undefined,
   lastTriggeredAt: number | undefined,
   now: number,
+  disable?: boolean,
 ): readonly TaskRecord[] {
   return tasks.map(task =>
     task.id === id && task.schedule !== undefined
-      ? withSchedule(task, { nextRunAt, lastTriggeredAt }, now)
+      ? withSchedule(task, {
+          nextRunAt,
+          lastTriggeredAt,
+          ...(disable === true ? { enabled: false } : {}),
+        }, now)
       : task)
 }

@@ -38,6 +38,8 @@ export interface SessionsExecutionFace {
   binding(id: string): { session: SessionDriver } | undefined
   /** Record a host-confirmed preset switch so the list label moves immediately. */
   noteAgentPreset?(sessionId: string, agentPreset: string): void
+  /** Switch the execution session's model before sending the task prompt. */
+  selectModel?(options: { sessionId: string; provider: string; model: string }): Promise<{ result?: { error?: { message?: string; code?: string } } }>
 }
 
 /** The narrow agent-preset wire face the service needs (`agentPreset.select`). */
@@ -165,6 +167,26 @@ export class ExecutionService {
       if (!await this.applyPermission(driver, task, settleFailed)) return
       // Best-effort rename so the execution is recognizable in the session list.
       await driver.rename(task.title).catch(() => { /* rename is cosmetic */ })
+      // Task prompt may carry an `@model provider/model` first line: switch the
+      // execution session model before sending the prompt, then strip the marker.
+      const modelMatch = /^@model\s+([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)\s*$/m.exec(task.prompt)
+      if (modelMatch) {
+        const selectModel = this.env.sessions.selectModel
+        if (selectModel === undefined) {
+          settleFailed('模型切换失败: current DSH runtime does not expose session.selectModel')
+          return
+        }
+        const selected = await selectModel({
+          sessionId,
+          provider: modelMatch[1],
+          model: modelMatch[2],
+        }).catch((error: unknown) => ({ error }))
+        const result = selected && selected.result
+        if (!result || result.error) {
+          settleFailed('模型切换失败: ' + ((result && result.error && (result.error.message || result.error.code)) || 'unknown'))
+          return
+        }
+      }
       // Baseline the turn counter BEFORE the prompt round-trip: a turn that
       // completes while prompt is in flight must still advance past this
       // baseline, or the watch below would never observe it settle.
@@ -343,7 +365,7 @@ export class ExecutionService {
     driver: SessionDriver,
     task: TaskRecord,
   ): Promise<{ ok: true } | { ok: false; error: unknown }> {
-    const text = task.prompt.trim() !== '' ? task.prompt : task.title
+    const text = (task.prompt.trim() !== '' ? task.prompt : task.title).replace(/^@model\s+[^\n]*\n?/, '')
     try {
       const result = await driver.prompt([{ type: 'text', text }], 'queue')
       return result

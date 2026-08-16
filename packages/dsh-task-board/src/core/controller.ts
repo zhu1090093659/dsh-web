@@ -263,8 +263,8 @@ export class BoardController {
    * instant and the trigger instant of this run. No-op when the task has no
    * schedule rule (it was deleted mid-tick, for example).
    */
-  applyScheduleNextRun(id: string, nextRunAt: number | undefined, lastTriggeredAt: number | undefined): void {
-    const next = applyScheduleRollForward(this.tasks, id, nextRunAt, lastTriggeredAt, this.now())
+  applyScheduleNextRun(id: string, nextRunAt: number | undefined, lastTriggeredAt: number | undefined, disable?: boolean): void {
+    const next = applyScheduleRollForward(this.tasks, id, nextRunAt, lastTriggeredAt, this.now(), disable)
     this.tasks = [...next]
     this.persistAndNotify()
   }

@@ -135,6 +135,7 @@ export function apply(ctx: ClientContext): void {
           }
         },
         noteAgentPreset: (sessionId, agentPreset) => sessions.noteAgentPreset(sessionId as SessionId, agentPreset),
+        selectModel: options => sessions.selectModel(options),
       },
       workspaces: {
         list: workspaces.list,
@@ -180,8 +181,8 @@ export function apply(ctx: ClientContext): void {
       tasks: () => controller.getSnapshot().tasks,
       now: () => Date.now(),
       runTask: id => controller.runTask(id),
-      applySchedule: (id, nextRunAt, lastTriggeredAt) =>
-        controller.applyScheduleNextRun(id, nextRunAt, lastTriggeredAt),
+      applySchedule: (id, nextRunAt, lastTriggeredAt, disable) =>
+        controller.applyScheduleNextRun(id, nextRunAt, lastTriggeredAt, disable),
       ready: () => sessions.list.getSnapshot().phase === 'ready',
       environment: {
         addEventListener: (type, listener) => document.addEventListener(type, listener),

@@ -272,7 +272,13 @@ export function extractResponsesContent(payload: unknown): string {
   return text
 }
 
-/** Build the request the configured style sends: its path and JSON body. */
+/**
+ * Build the request the configured style sends: its path and JSON body. When the model id carried
+ * a thinking suffix, Chat Completions maps it to `thinking.type` (`off` -> `disabled`, every
+ * other level -> `enabled`) and Responses forwards it as `reasoning.effort` (`off` ->
+ * `none`, levels pass through); without a suffix no thinking control is sent, so the endpoint
+ * keeps its own default.
+ */
 export function buildVisionRequest(spec: ResolvedConfig, prompt: string, image: LoadedImage): { path: string; body: string } {
   const dataUrl = `data:${image.mimeType};base64,${image.bytes.toString('base64')}`
   if (spec.apiStyle === 'responses') {
@@ -281,6 +287,7 @@ export function buildVisionRequest(spec: ResolvedConfig, prompt: string, image: 
       body: JSON.stringify({
         model: spec.model,
         max_output_tokens: spec.maxOutputTokens,
+        ...spec.thinking === undefined ? {} : { reasoning: { effort: spec.thinking === 'off' ? 'none' : spec.thinking } },
         input: [{
           role: 'user',
           content: [
@@ -296,6 +303,7 @@ export function buildVisionRequest(spec: ResolvedConfig, prompt: string, image: 
     body: JSON.stringify({
       model: spec.model,
       max_tokens: spec.maxOutputTokens,
+      ...spec.thinking === undefined ? {} : { thinking: { type: spec.thinking === 'off' ? 'disabled' : 'enabled' } },
       messages: [{
         role: 'user',
         content: [
@@ -363,7 +371,7 @@ export function createVisionCache(options?: { ttlMs?: number; maxEntries?: numbe
 /** The semantic identity of one vision request: endpoint fields plus the same image bytes and prompt. */
 export function semanticRequestKey(spec: ResolvedConfig, prompt: string, image: LoadedImage): string {
   return JSON.stringify([
-    spec.baseURL, spec.model, spec.maxOutputTokens, spec.apiStyle,
+    spec.baseURL, spec.model, spec.maxOutputTokens, spec.apiStyle, spec.thinking,
     image.bytes.toString('base64'), image.mimeType, prompt,
   ])
 }

@@ -213,6 +213,31 @@ describe('successful descriptions', () => {
     expect(textPart?.text).toBe('Is there text in this image?')
   })
 
+  it('strips the model thinking suffix and maps it to thinking.type', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
+    cleanup.push(server.close)
+    const path = await tempPng()
+
+    const inheritCtx = await setup({ baseURL: server.url })
+    const inheritResult = await callDescribe(inheritCtx, { image: path })
+    expect(inheritResult.isError).toBe(false)
+    expect((server.request(0).body as { model?: unknown; thinking?: unknown }).model).toBe('vision-1')
+    expect((server.request(0).body as { thinking?: unknown }).thinking).toBeUndefined()
+
+    const offCtx = await setup({ baseURL: server.url, model: 'vision-1:off' })
+    const offResult = await callDescribe(offCtx, { image: path })
+    expect(offResult.isError).toBe(false)
+    expect((server.request(1).body as { model?: unknown; thinking?: unknown }).model).toBe('vision-1')
+    expect((server.request(1).body as { thinking?: unknown }).thinking).toEqual({ type: 'disabled' })
+
+    const highCtx = await setup({ baseURL: server.url, model: 'vision-1:high' })
+    const highResult = await callDescribe(highCtx, { image: path })
+    expect(highResult.isError).toBe(false)
+    if (!highResult.isError) expect(highResult.value).toMatchObject({ model: 'vision-1' })
+    expect((server.request(2).body as { model?: unknown; thinking?: unknown }).model).toBe('vision-1')
+    expect((server.request(2).body as { thinking?: unknown }).thinking).toEqual({ type: 'enabled' })
+  })
+
   it('downloads an http(s) image when given a URL', async () => {
     const server = await startMockServer((request, res) => {
       if (request.path === '/img.png') rawReply(res, 200, PNG_BYTES, 'image/png')
@@ -267,6 +292,24 @@ describe('Responses API style', () => {
     expect(body.max_output_tokens).toBe(7)
     const [textPart] = sentInputContent(server.request(0)) as Array<{ text?: string }>
     expect(textPart?.text).toBe('Is there text in this image?')
+  })
+
+  it('maps the model thinking suffix to reasoning.effort in the responses body', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, responsesReply('ok')) })
+    cleanup.push(server.close)
+    const path = await tempPng()
+
+    const inheritCtx = await setup({ baseURL: server.url, apiStyle: 'responses' })
+    await callDescribe(inheritCtx, { image: path })
+    expect((server.request(0).body as { reasoning?: unknown }).reasoning).toBeUndefined()
+
+    const offCtx = await setup({ baseURL: server.url, apiStyle: 'responses', model: 'vision-1:off' })
+    await callDescribe(offCtx, { image: path })
+    expect((server.request(1).body as { reasoning?: unknown }).reasoning).toEqual({ effort: 'none' })
+
+    const highCtx = await setup({ baseURL: server.url, apiStyle: 'responses', model: 'vision-1:high' })
+    await callDescribe(highCtx, { image: path })
+    expect((server.request(2).body as { reasoning?: unknown }).reasoning).toEqual({ effort: 'high' })
   })
 
   it('joins every output_text part of the first assistant message', async () => {
@@ -710,6 +753,30 @@ describe('resolveConfig, sniffing, and bounded reads', () => {
 
   it('honors an explicit renderImagePreview override', () => {
     expect(tool.resolveConfig({ ...minimal, renderImagePreview: false }).renderImagePreview).toBe(false)
+  })
+
+  it('splits a model thinking suffix off the id and leaves bare ids untouched', () => {
+    expect(tool.resolveConfig(minimal)).toMatchObject({ model: 'vision-1', thinking: undefined })
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:off' })).toMatchObject({ model: 'vision-1', thinking: 'off' })
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:low' })).toMatchObject({ model: 'vision-1', thinking: 'low' })
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:medium' })).toMatchObject({ model: 'vision-1', thinking: 'medium' })
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:high' })).toMatchObject({ model: 'vision-1', thinking: 'high' })
+    // Unknown or non-trailing colons are part of the id, not a thinking suffix: real ids
+    // carry colon variants (OpenRouter ':free', Replicate ':version'), so only the four known
+    // thinking tokens are stripped.
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:unknown' })).toMatchObject({ model: 'vision-1:unknown', thinking: undefined })
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:high-custom' })).toMatchObject({ model: 'vision-1:high-custom', thinking: undefined })
+    expect(tool.resolveConfig({ ...minimal, model: 'openrouter/openai/gpt-4o:free' })).toMatchObject({ model: 'openrouter/openai/gpt-4o:free', thinking: undefined })
+  })
+
+  it('rejects a model id that is only a thinking suffix', () => {
+    expect(() => tool.resolveConfig({ ...minimal, model: ':off' })).toThrow(/model must be a non-empty model id/)
+  })
+
+  it('parses thinking suffixes through splitModelSuffix with surrounding whitespace', () => {
+    expect(tool.splitModelSuffix('  mimo-v2.5:off  ')).toEqual({ model: 'mimo-v2.5', thinking: 'off' })
+    expect(tool.splitModelSuffix('mimo-v2.5:high')).toEqual({ model: 'mimo-v2.5', thinking: 'high' })
+    expect(tool.splitModelSuffix('mimo-v2.5')).toEqual({ model: 'mimo-v2.5', thinking: undefined })
   })
 
   it('accepts the responses style and rejects anything else', () => {

@@ -22,6 +22,7 @@ browser half, live settings, no dsh source changes.
 | Custom instructions | The `prompt` argument carries your precise instruction (OCR, chart reading, UI diagnosis, translation…); the `defaultPrompt` config sets the fallback when the model passes none |
 | Live config card | Settings → Plugin config → Web UI Plugins → "Image understanding" card edits `baseURL` / `apiStyle` / `model` / API key / default instruction / bounds (through the settings seam); effective immediately, no restart |
 | Protocol styles | `apiStyle: chat-completions` (default) posts to `baseURL/chat/completions`; `apiStyle: responses` posts to `baseURL/responses` with `input` / `max_output_tokens` and reads `output_text` |
+| Thinking control | The model id carries an optional suffix: `model:off` disables thinking, `model:low` / `model:medium` / `model:high` enable it, and a bare `model` sends no control so the endpoint default applies (MiMo-V2.5 and DeepSeek V4 think by default) |
 | Raw image route | `GET /describe-image/raw/<id>` serves the stored bytes (loopback-only, content-addressed id) so the pasted reference renders in the conversation |
 | Per-call key resolution | Inline `apiKey` → credential seam (`apiKeyEnv`, default `VISION_API_KEY`) → launch environment, tiered fallback |
 | Safety and bounds | All requests refuse redirects; `maxBytes` / `maxOutputTokens` / `timeoutMs` caps; magic-byte type gate; bounded error excerpts (200 chars); keys never logged |
@@ -59,7 +60,7 @@ actually configures it and per-call otherwise.)
 | --- | --- | --- |
 | `baseURL` | — (required) | OpenAI-compatible endpoint root (e.g. `https://dashscope.aliyuncs.com/compatible-mode/v1`); trailing slashes stripped |
 | `apiStyle` | `chat-completions` | Protocol style: `chat-completions` appends `/chat/completions`; `responses` appends `/responses` (OpenAI Responses API `input` / `max_output_tokens` / `output_text` shapes) |
-| `model` | — (required) | Vision model id |
+| `model` | — (required) | Vision model id, optionally with a thinking suffix (`:off` / `:low` / `:medium` / `:high`). The suffix is stripped before the id reaches the endpoint: `:off` maps to `thinking.type: disabled` (`chat-completions`) or `reasoning.effort: none` (`responses`); every other level maps to `enabled` or is forwarded as the `reasoning.effort` value. No suffix means no thinking control field |
 | `apiKey` | — | Inline key for local debugging; prefer `!!js process.env.VISION_API_KEY` over a hardcoded secret |
 | `apiKeyEnv` | `VISION_API_KEY` | Credential reference (environment-variable name); empty string disables reference resolution |
 | `defaultPrompt` | see source | The instruction used when a call omits its `prompt` — tune it to your workload (OCR, UI review, translation…) |
@@ -88,6 +89,17 @@ Endpoints exposing only the Responses API set `apiStyle: responses`:
     baseURL: https://api.openai.com/v1
     apiStyle: responses
     model: gpt-4o-mini
+    apiKey: !!js process.env.VISION_API_KEY
+```
+
+Endpoints whose models enable extended thinking by default (MiMo-V2.5, DeepSeek V4) can turn it off per call so reasoning tokens do not consume the output budget:
+
+```yaml
+- id: describe-image
+  name: '@linxin666/dsh-tool-describe-image'
+  config:
+    baseURL: https://api.xiaomimimo.com/v1
+    model: mimo-v2.5:off
     apiKey: !!js process.env.VISION_API_KEY
 ```
 
@@ -123,6 +135,12 @@ text stays as-is.
 - Extracting text still costs one VLM call: OCR-only deployments can point `baseURL` at a cheaper OCR model.
 - OpenAI-compatible protocol only: Chat Completions (`/chat/completions`) and Responses (`/responses`)
   are supported; vendors with other request/response shapes need separate adapters.
+- The model thinking suffix is a plugin shorthand that adds provider-specific fields
+  (`thinking.type` / `reasoning.effort`) to the request; endpoints that do not accept them (for
+  example plain OpenAI vision models) should use a bare model id. Chat Completions has no effort
+  levels, so `:low` / `:medium` / `:high` all map to `thinking.type: enabled` there. Only the four
+  known suffixes are stripped — ids that end in other colon variants (for example OpenRouter
+  `:free`) are forwarded verbatim.
 
 ## Source and copyright
 

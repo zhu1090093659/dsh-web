@@ -20,6 +20,7 @@ OpenAI 兼容的视觉模型端点（Qwen-VL、GLM-4V、GPT-4o、本地 Ollama �
 | 自定义指令 | `prompt` 参数携带你的精确指令（OCR、图表解读、UI 诊断、翻译…）；`defaultPrompt` 配置设置模型未传指令时的兜底文案 |
 | 实时配置卡 | 设置 → 插件配置 → Web UI 插件组 → 「图像理解」卡修改 `baseURL` / `apiStyle` / `model` / API key / 默认指令 / 各项上限（走设置服务），即时生效，无需重启 |
 | 双协议 | `apiStyle: chat-completions`（默认）请求 `baseURL/chat/completions`；`apiStyle: responses` 请求 `baseURL/responses`，使用 `input` / `max_output_tokens` 并读取 `output_text` |
+| 思考控制 | 模型 id 带可选后缀：`model:off` 禁用思考，`model:low` / `model:medium` / `model:high` 开启思考；不带后缀则不发送控制、沿用端点默认（MiMo-V2.5、DeepSeek V4 默认开启思考） |
 | 原图路由 | `GET /describe-image/raw/<id>` 回读已存字节（仅回环、内容寻址 id），让贴入的引用在会话中渲染 |
 | 每次调用解析密钥 | 内联 `apiKey` → 凭证服务（`apiKeyEnv`，默认 `VISION_API_KEY`）→ 启动环境，逐级回退 |
 | 安全与边界 | 所有请求拒绝重定向；`maxBytes` / `maxOutputTokens` / `timeoutMs` 上限；magic-byte 类型门；错误摘要有界（200 字符）；密钥不进日志 |
@@ -56,7 +57,7 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
 | --- | --- | --- |
 | `baseURL` | —（必填） | OpenAI 兼容端点根（如 `https://dashscope.aliyuncs.com/compatible-mode/v1`），末尾斜杠自动去除 |
 | `apiStyle` | `chat-completions` | 接口协议：`chat-completions` 追加 `/chat/completions`；`responses` 追加 `/responses`（OpenAI Responses API 的 `input` / `max_output_tokens` / `output_text` 形态） |
-| `model` | —（必填） | 视觉模型 id |
+| `model` | —（必填） | 视觉模型 id，可带思考后缀（`:off` / `:low` / `:medium` / `:high`）。后缀在发往端点前剥除：`:off` 映射为 `thinking.type=disabled`（`chat-completions`）或 `reasoning.effort=none`（`responses`）；其余档位映射为 `enabled`，或原样作为 `reasoning.effort` 的值。不带后缀则不发送任何思考控制字段 |
 | `apiKey` | — | 内联密钥；本地调试用。建议用 `!!js process.env.VISION_API_KEY` 从环境注入，勿写死明文 |
 | `apiKeyEnv` | `VISION_API_KEY` | 凭证引用（环境变量名）；空字符串禁用引用解析 |
 | `defaultPrompt` | 见源码 | 调用未带 `prompt` 时的指令——按你的场景调优（OCR、UI 评审、翻译…） |
@@ -88,6 +89,17 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
     apiKey: !!js process.env.VISION_API_KEY
 ```
 
+模型默认开启扩展思考的端点（MiMo-V2.5、DeepSeek V4）可按调用关闭思考，避免思考 token 消耗输出预算：
+
+```yaml
+- id: describe-image
+  name: '@linxin666/dsh-tool-describe-image'
+  config:
+    baseURL: https://api.xiaomimimo.com/v1
+    model: mimo-v2.5:off
+    apiKey: !!js process.env.VISION_API_KEY
+```
+
 ## 使用
 
 ### 自定义指令
@@ -113,6 +125,10 @@ DSH 输入框对纯文本模型没有图片入口，因此在输入框里拖拽�
 - 抽取文本仍消耗一次 VLM 调用：仅需 OCR 的部署可把 `baseURL` 指向更便宜的 OCR 模型。
 - 仅 OpenAI 兼容协议：支持 Chat Completions（`/chat/completions`）与 Responses（`/responses`）
   两种形态，请求 / 响应形态不同的厂商需要单独适配。
+- 模型思考后缀是插件简写，会向请求注入厂商专用字段（`thinking.type` / `reasoning.effort`）；
+  不接受这些字段的端点（如普通 OpenAI 视觉模型）应使用不带后缀的模型 id。chat-completions
+  协议没有 effort 档位，`:low` / `:medium` / `:high` 在该协议下都映射为 `thinking.type=enabled`。
+  只剥除这四个已知后缀，以其他冒号变体结尾的 id（如 OpenRouter 的 `:free`）原样发送。
 
 ## 来源与版权
 

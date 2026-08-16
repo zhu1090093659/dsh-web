@@ -19,6 +19,10 @@ import { DEFAULT_MAX_BYTES } from './media.ts'
 export const DEFAULT_API_KEY_ENV = 'VISION_API_KEY'
 /** Per-call output-token cap sent to the vision model. */
 export const DEFAULT_MAX_OUTPUT_TOKENS = 1024
+/** Thinking-level suffixes accepted after the model id: `:off` disables thinking, the rest enable it. */
+export const THINKING_SUFFIXES = ['off', 'low', 'medium', 'high'] as const
+/** One parsed thinking level from a model-id suffix, or undefined when the model id carries none. */
+export type ThinkingMode = typeof THINKING_SUFFIXES[number]
 /** Per-call vision request timeout in milliseconds. */
 export const DEFAULT_TIMEOUT_MS = 60_000
 /** Protocol styles the tool can speak to the configured endpoint. */
@@ -33,6 +37,21 @@ export const DEFAULT_PROMPT =
   'Analyze this image: describe what is visible factually, transcribe legible text verbatim, and call out layout, notable details, or anything anomalous.'
 
 /**
+ * Split a model id into the id the endpoint receives and its thinking-level suffix. A trailing
+ * `:off` / `:low` / `:medium` / `:high` is the plugin's shorthand for the thinking control:
+ * the suffix never reaches the endpoint, and a model id without one (or with any other suffix) is
+ * forwarded verbatim with no thinking control.
+ * @param model - the raw configured model id.
+ * @returns the cleaned id and the parsed level, if any.
+ */
+export function splitModelSuffix(model: string): { model: string; thinking: ThinkingMode | undefined } {
+  const trimmed = model.trim()
+  const match = /:(off|low|medium|high)$/.exec(trimmed)
+  if (match === null) return { model: trimmed, thinking: undefined }
+  return { model: trimmed.slice(0, -match[0].length), thinking: match[1] as ThinkingMode }
+}
+
+/**
  * Deployment configuration for the describe-image tool. The interface keeps every field optional so
  * programmatic construction is re-judged by {@link resolveConfig}; the schema requires `baseURL` and
  * `model` for composition entries.
@@ -40,7 +59,11 @@ export const DEFAULT_PROMPT =
 export interface Config {
   /** Root of the OpenAI-compatible endpoint, e.g. `https://api.openai.com/v1`; trailing slashes are stripped. */
   baseURL?: string
-  /** Vision model id for the configured endpoint. */
+  /**
+   * Vision model id for the configured endpoint, optionally with a trailing thinking suffix
+   * (`:off` / `:low` / `:medium` / `:high`) — see {@link splitModelSuffix}. The suffix
+   * controls the thinking field the request sends and is stripped before the id reaches the endpoint.
+   */
   model?: string
   /** Inline API key; prefer `apiKeyEnv` with the credential seam. Feed from the environment via `!!js process.env.VISION_API_KEY`. */
   apiKey?: string
@@ -95,6 +118,7 @@ export interface ResolvedConfig {
   maxOutputTokens: number
   timeoutMs: number
   apiStyle: ApiStyle
+  thinking: ThinkingMode | undefined
   renderImagePreview: boolean
 }
 
@@ -111,8 +135,8 @@ export function resolveConfig(config: Config): ResolvedConfig {
   if (!/^https?:\/\//.test(baseURL)) {
     throw new Error('describe-image: baseURL must be an absolute http(s) URL')
   }
-  const model = (config.model ?? '').trim()
-  if (model.length === 0) throw new Error('describe-image: model must be a non-empty model id')
+  const { model, thinking } = splitModelSuffix(config.model ?? '')
+  if (model.length === 0) throw new Error('describe-image: model must be a non-empty model id before any :off/:low/:medium/:high suffix')
   const apiKey = config.apiKey
   if (apiKey !== undefined && apiKey.length === 0) {
     throw new Error('describe-image: apiKey must be non-empty when set')
@@ -138,7 +162,7 @@ export function resolveConfig(config: Config): ResolvedConfig {
   if (!API_STYLES.includes(apiStyle)) {
     throw new Error(`describe-image: apiStyle must be one of ${API_STYLES.map(style => JSON.stringify(style)).join(', ')}`)
   }
-  return { baseURL, model, apiKey, apiKeyEnv, defaultPrompt: config.defaultPrompt ?? DEFAULT_PROMPT, maxBytes, maxOutputTokens, timeoutMs, apiStyle, renderImagePreview: config.renderImagePreview ?? DEFAULT_RENDER_IMAGE_PREVIEW }
+  return { baseURL, model, apiKey, apiKeyEnv, defaultPrompt: config.defaultPrompt ?? DEFAULT_PROMPT, maxBytes, maxOutputTokens, timeoutMs, apiStyle, thinking, renderImagePreview: config.renderImagePreview ?? DEFAULT_RENDER_IMAGE_PREVIEW }
 }
 
 /**

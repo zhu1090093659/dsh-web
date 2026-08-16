@@ -42,10 +42,12 @@ export {
   DEFAULT_RENDER_IMAGE_PREVIEW,
   DEFAULT_TIMEOUT_MS,
   DESCRIBE_IMAGE_SETTINGS_NAMESPACE,
+  THINKING_SUFFIXES,
   resolveApiKey,
   resolveConfig,
+  splitModelSuffix,
 } from './config-resolve.ts'
-export type { ApiStyle, ResolvedConfig } from './config-resolve.ts'
+export type { ApiStyle, ResolvedConfig, ThinkingMode } from './config-resolve.ts'
 export {
   callVision,
   createVisionCache,

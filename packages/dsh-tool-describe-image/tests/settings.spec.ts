@@ -116,6 +116,21 @@ describe('describe-image settings section', () => {
     expect(server.request(0).path).toBe('/responses')
   })
 
+  it('a model thinking suffix committed through the section drives the next call body', async () => {
+    const { ctx, server } = await boot()
+    const path = await tempPng()
+
+    await ctx.settings.update(tool.DESCRIBE_IMAGE_SETTINGS_NAMESPACE, { model: 'entry-model:off' })
+
+    const result = await callDescribe(ctx, path)
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected describe_image success')
+    expect(result.value).toMatchObject({ model: 'entry-model' })
+    const body = server.request(0).body as { model?: unknown; thinking?: unknown }
+    expect(body.model).toBe('entry-model')
+    expect(body.thinking).toEqual({ type: 'disabled' })
+  })
+
   it('an inline apiKey committed through the section drives the next call', async () => {
     const { ctx, server } = await boot({ 'describe-image': { apiKey: 'sk-settings' } })
     const path = await tempPng()

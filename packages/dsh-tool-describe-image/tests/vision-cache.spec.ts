@@ -33,6 +33,7 @@ const SPEC: tool.ResolvedConfig = {
   maxOutputTokens: tool.DEFAULT_MAX_OUTPUT_TOKENS,
   timeoutMs: 60_000,
   apiStyle: 'chat-completions',
+  thinking: undefined,
   renderImagePreview: tool.DEFAULT_RENDER_IMAGE_PREVIEW,
 }
 
@@ -134,10 +135,12 @@ describe('semantic request key', () => {
     const same = tool.semanticRequestKey(SPEC, 'q', loadedImage())
     const otherPrompt = tool.semanticRequestKey(SPEC, 'r', loadedImage())
     const otherModel = tool.semanticRequestKey({ ...SPEC, model: 'vision-2' }, 'q', loadedImage())
+    const otherThinking = tool.semanticRequestKey({ ...SPEC, thinking: 'off' }, 'q', loadedImage())
     const otherImage = tool.semanticRequestKey(SPEC, 'q', loadedImage(Buffer.from('different bytes')))
     expect(a).toBe(same)
     expect(a).not.toBe(otherPrompt)
     expect(a).not.toBe(otherModel)
+    expect(a).not.toBe(otherThinking)
     expect(a).not.toBe(otherImage)
   })
 })

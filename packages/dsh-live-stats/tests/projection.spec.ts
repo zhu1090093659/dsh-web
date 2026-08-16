@@ -638,13 +638,21 @@ describe('liveTokenUsage projection', () => {
     state = definition.apply(state, surfaceEvent(1, 'one', 'append'))
     state = definition.apply(state, surfaceEvent(2, 'two', 'append'))
     state = definition.apply(state, surfaceEvent(3, 'three', { op: 'replace', start: 1, end: 2 }))
-    expect(Object.prototype.hasOwnProperty.call(state.surface, 1)).toBe(false)
-    expect(Object.prototype.hasOwnProperty.call(state.surface, 2)).toBe(false)
-    expect(Object.prototype.hasOwnProperty.call(state.surface, 3)).toBe(true)
-    expect(state.surfaceTokens).toBe(estimateMessageTokens(
+    const threeTokens = estimateMessageTokens(
       createUserMessage({ content: [{ type: 'text', text: 'three' }], source: { kind: 'user' } }),
       spec,
-    ))
+    )
+    expect(state.surface).toEqual([{ seq: 3, tokens: threeTokens }])
+    expect(state.surfaceTokens).toBe(threeTokens)
+
+    // Replacements are positional: after a prior compaction, a newer checkpoint
+    // seq can sit at the surface head while the replaced tail has smaller seqs.
+    state = definition.apply(state, surfaceEvent(98403, 'checkpoint', 'append'))
+    state = definition.apply(state, surfaceEvent(98395, 'older tail', 'append'))
+    state = definition.apply(state, surfaceEvent(125255, 'new checkpoint', { op: 'replace', start: 98403, end: 98395 }))
+    expect(state.surface.map(node => node.seq)).toEqual([3, 125255])
+    expect(state.surfaceTokens).toBe(state.surface.reduce((total, node) => total + node.tokens, 0))
+
     expect(() => definition.apply(state, surfaceEvent(4, 'bad', { op: 'replace', start: 5, end: 2 })))
       .toThrow('invalid current range')
     expect(() => definition.apply(state, surfaceEvent(4, 'bad', { op: 'replace', start: 3, end: 99 })))

@@ -133,8 +133,7 @@ export function createStoreTools(options: StoreToolOptions): ToolDefinition[] {
     name: 'store_details',
     description: 'Read complete live Store metadata and current install availability for one exact DSH project.',
     parameters: {
-      repository_id: { type: 'string', description: 'Exact numeric repository ID returned by store_search.' },
-      full_name: { type: 'string', description: 'Exact GitHub owner/repository name.' },
+      selector: { type: 'string', required: true, description: 'Exact numeric repository ID or GitHub owner/repository name returned by store_search.' },
     },
     output: {
       schema: READ_OUTPUT,
@@ -142,12 +141,8 @@ export function createStoreTools(options: StoreToolOptions): ToolDefinition[] {
     },
     isConcurrencySafe: () => true,
     async execute(args, exec) {
-      const selector = args.repository_id ?? args.full_name
-      if (selector === undefined || (args.repository_id !== undefined && args.full_name !== undefined)) {
-        throw new Error('Provide exactly one of repository_id or full_name')
-      }
       const value = await fetchStoreCatalog(options.fetcher, exec.signal, 'no-store')
-      const repository = findCatalogRepository(value, selector)
+      const repository = findCatalogRepository(value, args.selector)
       if (repository === undefined) throw new Error('Store project was not found')
       return {
         text: [

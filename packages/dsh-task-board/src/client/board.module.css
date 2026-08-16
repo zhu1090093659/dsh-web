@@ -131,6 +131,12 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   white-space: nowrap;
 }
 
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .search {
   flex: 0 1 260px;
   min-width: 120px;

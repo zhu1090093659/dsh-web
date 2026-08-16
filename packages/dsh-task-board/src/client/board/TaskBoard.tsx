@@ -60,6 +60,15 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
   return (
     <div className={css.board} data-dsh-taskboard-board="">
       <header className={css.boardHeader}>
+        <button
+          type="button"
+          className={`${css.ghostButton} ${css.backButton}`}
+          aria-label={t('board.close')}
+          onClick={() => { controller.closeBoard() }}
+        >
+          <span aria-hidden="true">‹</span>
+          <span>{t('board.close')}</span>
+        </button>
         <h2 className={css.boardTitle}>{t('board.title')}</h2>
         <input
           className={css.search}
@@ -84,13 +93,6 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
           onClick={() => { setShowNew(true) }}
         >
           + {t('board.new')}
-        </button>
-        <button
-          type="button"
-          className={css.ghostButton}
-          onClick={() => { controller.closeBoard() }}
-        >
-          {t('board.close')}
         </button>
       </header>
 

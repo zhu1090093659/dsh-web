@@ -133,6 +133,12 @@ html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [class*='centerCol'] 
   white-space: nowrap;
 }
 
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* --- tab bar ------------------------------------------------------------------ */
 
 .tabBar {

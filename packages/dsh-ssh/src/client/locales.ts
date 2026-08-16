@@ -6,6 +6,7 @@ export const zh = {
   'entry.label': 'SSH',
   'entry.tooltip': '远程 SSH 运维面板',
   'panel.title': '远程 SSH',
+  'panel.backToConversation': '返回会话',
   'tab.hosts': '主机',
   'tab.terminal': '终端',
   'tab.transfer': '传输',
@@ -135,7 +136,6 @@ export const zh = {
   'common.loading': '加载中…',
   'common.error': '出错：{error}',
   'common.refresh': '刷新',
-  'common.close': '关闭',
   'common.confirm': '确定',
 } as const
 
@@ -143,6 +143,7 @@ export const en: Record<keyof typeof zh, string> = {
   'entry.label': 'SSH',
   'entry.tooltip': 'Remote SSH operations panel',
   'panel.title': 'Remote SSH',
+  'panel.backToConversation': 'Back to chat',
   'tab.hosts': 'Hosts',
   'tab.terminal': 'Terminal',
   'tab.transfer': 'Transfer',
@@ -265,7 +266,6 @@ export const en: Record<keyof typeof zh, string> = {
   'common.loading': 'Loading…',
   'common.error': 'Error: {error}',
   'common.refresh': 'Refresh',
-  'common.close': 'Close',
   'common.confirm': 'Confirm',
 }
 

@@ -382,6 +382,82 @@ body {
   line-height: 1.2;
 }
 
+.chat-msg-action {
+  display: inline-block;
+  margin-top: 7px;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.chat-msg-action:active {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.chat-msg-retry {
+  color: var(--m-danger);
+}
+
+.chat-edit {
+  min-width: min(62vw, 360px);
+}
+
+.chat-edit-input {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, #fff 12%, transparent);
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
+.chat-edit-input:focus {
+  border-color: currentColor;
+}
+
+.chat-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chat-edit-cancel,
+.chat-edit-save {
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chat-edit-save {
+  border-color: transparent;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.chat-edit-cancel:disabled,
+.chat-edit-save:disabled,
+.chat-msg-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .chat-msg-toggle {
   display: block;
   margin-top: 8px;

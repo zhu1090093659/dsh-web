@@ -59,17 +59,20 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-remote-web-ui
    - 一个工作区的会话**增量**加载（每页 20 行，"加载更多会话"继续；绝不同时加载整份列表），
    - 打开会话**按需**抓取聊天内容（历史分页，"加载更早的消息"继续往回翻），
    - 实时流随消息到达展示新消息，带发送自己消息的输入框（默认 **Enter 发送、Shift+Enter 换行**；设 `mobileEnterToSend: false` 后 Enter 改为换行，发送仅走「发送」按钮），
+   - 最新一条已结束的真人消息支持 **编辑**；保存后从上一轮已完成边界分叉出新会话，再从该位置发送新内容，原会话保持不变。最新一轮失败时还会显示手动 **重试**，同样走安全分叉路径，
    - **亮色优先主题**：界面默认亮色调色板；每个页头内的日/月切换翻到暗色调色板，选择跨访问持久（localStorage），
    - 消息按桌面折叠纪律渲染：推理隐藏在被折叠的 深度思考 揭示下面，工具调用隐藏在被折叠的 工具 行下面（点击查看每个调用的参数），超长回答藏在显式 展开全文 切换下面，每行带时间，并且 assistant 回复按 GFM Markdown 渲染（标题 / 加粗 / 斜体 / 行内码 / 代码块 / 列表 / 表格 / 引用 / 链接 / 图片；零依赖自写渲染器，先转义再白名单协议，移动端 bundle 体积几乎不变；KaTeX 公式暂不支持，后续单独评估），用户消息保持纯文本，
    - 输入栏工具条带 **模型** 选择器（provider 分组目录 + 每模型 思考强度 effort 区）与 **权限** 选择器（权限预设；完全权限 需要显式确认步骤）。两者都走 host 自己的 `session.models` / `session.selectModel` RPC 与 `/permission` 命令——手机改的与桌面改的是同一个会话设置——外加 **显示** 弹层（含 工具调用 与 系统提示词 两个持久开关）和一个 上下文 用量 chip（显示最近一次助手回答的上下文占用百分比）。
 4. 桌面徽标实时翻到 已连接；手机离开时回落到离线/断开。
 5. 刷新二维码 使旧链接失效并铸一枚新的。停止 撤销移动端访问：已配对设备下一次请求 403，包括其实时流。
 
-该移动端界面完全自包含在本插件内：`/m` 页面及其数据通道（`/m/api`）由插件自己的路由伺服，**无需任何 harness 源码改动**——手机的 RPC 调用走插件的 `/m/api` 代理（它委托给 host 的 ApiProxy 服务并自己分页 `session.list`），因此被隧道化的 Host 永远不必进入连接插件的信任围栏。手机受其已配对设备 cookie 与显式方法白名单门控（settings/credentials/host-action 域手机永远不可达；模型读写限制于建议性的 `session.models` / `session.selectModel` 对，创建限制于 `session.create`（仅工作区 id——手机绝不自命名工作目录），权限选择器只通过已放行的 `session.prompt` 发送模式无关的 `/permission` 命令）；实时流在 `/m/api/events.mux` 上经 Server-Sent Events 送达。
+该移动端界面完全自包含在本插件内：`/m` 页面及其数据通道（`/m/api`）由插件自己的路由伺服，**无需任何 harness 源码改动**——手机的 RPC 调用走插件的 `/m/api` 代理（它委托给 host 的 ApiProxy 服务并自己分页 `session.list`），因此被隧道化的 Host 永远不必进入连接插件的信任围栏。手机受其已配对设备 cookie 与显式方法白名单门控（settings/credentials/host-action 域手机永远不可达；模型读写限制于建议性的 `session.models` / `session.selectModel` 对，创建限制于 `session.create`（仅工作区 id——手机绝不自命名工作目录），编辑和重试额外只开放 `session.fork`，权限选择器只通过已放行的 `session.prompt` 发送模式无关的 `/permission` 命令）；实时流在 `/m/api/events.mux` 上经 Server-Sent Events 送达。编辑和重试永远不修改源会话日志。
 
 ### 行为说明
 
 - 移动端输入框默认 Enter 发送（Shift+Enter 换行）。在插件设置卡片（或 profile patch）把 `mobileEnterToSend` 设为 false 后，普通 Enter 改为插入换行，只有「发送」按钮会发送；手机打开聊天时经自己的 `/m/api` 偏好方法读取该开关。在支持 `field-sizing: content` 的浏览器上，输入框随草稿自动增高，最高 120px 封顶（两种模式一致）。
+- 模型请求遇到 `EMPTY_RESPONSE`、`RATE_LIMIT`、`SERVER`、`TIMEOUT` 或 `TRANSPORT` 时，默认自动重试最多 5 次，并采用有界指数退避；等待跟随 agent 取消信号。认证、非法请求、上下文、配额等永久性错误不会重试。工具执行不会自动重放，避免重复外部副作用；可在插件设置中把 `retryAttempts` 调小到 0–5。
+- 编辑只对最新一条已结束的真人消息开放，要求当前会话不在运行中。普通轮次从上一条已完成边界创建子会话；首轮则在同一工作区创建等价会话，并在模型目录可读时保留原模型选择。源会话始终保留。
 - 安装本插件会门控非 loopback 的 `/api` 访问于配对之后（见 `src/index.ts` 的 `requirePairingForLan`）。经局域网 URL 打开的桌面浏览器必须像任何远程设备一样配对；loopback（127.0.0.1）不受影响。把 profile patch 里 `requirePairingForLan` 设为 false 可恢复开放局域网行为，同时保留令牌/状态/撤销。
 - 二维码链接基于机器的非内部 IPv4 字面量构建；多宿主主机（Wi-Fi + 有线，或代理/VPN 虚拟适配器）会显示单选器供你发布手机实际可达的网络。第一个字面量是默认值。设 `publicBaseUrl` 后，单选器在顶部额外加一项 公网地址——默认二维码改用公网 base，选中局域网字面量会重新铸一枚网内链接。
 - 配置的 `publicBaseUrl` 本身满足可达绑定需求：`dsh web` 绑定 `127.0.0.1`（不带 `--host 0.0.0.0`）仍能经隧道铸出可用的公网二维码链接。

@@ -24,6 +24,11 @@ export interface CreatedSession {
   agentPreset?: string
 }
 
+/** The child session published by session.fork. */
+export interface ForkedSession {
+  sessionId: string
+}
+
 /** One history page (already bounded to whole messages by the host). */
 export interface HistoryPage {
   events: import('@deepseek-ai/dsh-host-apiproxy/api/sessions').HistoryEntry[]
@@ -65,6 +70,14 @@ export async function createSession(
   options: { workspaceId?: string; cwd?: string } = {},
 ): Promise<CreatedSession> {
   return await callUnary<CreatedSession>('session.create', options)
+}
+
+/** Fork a completed-turn prefix; the source session remains unchanged. */
+export async function forkSession(sessionId: string, atSeq?: number): Promise<ForkedSession> {
+  return await callUnary<ForkedSession>('session.fork', {
+    sessionId,
+    ...(atSeq !== undefined ? { atSeq } : {}),
+  })
 }
 
 /** One history window; omit beforeSeq for the tail page, pass a signal to abort. */

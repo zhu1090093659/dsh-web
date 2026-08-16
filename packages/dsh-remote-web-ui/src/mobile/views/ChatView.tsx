@@ -16,7 +16,7 @@ import type { MuxFrame } from '@deepseek-ai/dsh-host-apiproxy/api/events'
 import type { SessionModels } from '@deepseek-ai/dsh-host-apiproxy/api/sessions'
 import { loadHistory, prompt, type SessionView } from './App.tsx'
 import { errorText, formatTime, staleHostHint } from './App.tsx'
-import { fetchMobilePreferences, models, selectModel, sendCommand } from '../api.ts'
+import { createSession, fetchMobilePreferences, forkSession, models, selectModel, sendCommand } from '../api.ts'
 import { foldEvents, type RenderMessage, type ToolCallInfo, type WireEvent } from '../messages.ts'
 import { renderMarkdown } from '../markdown.ts'
 import { MuxClient } from '../mux.ts'
@@ -28,6 +28,8 @@ export interface ChatViewProps {
   /** The page-lifetime mux client (undefined before the first effect tick). */
   mux?: MuxClient | undefined
   onBack(): void
+  /** Navigate to a newly forked session after edit/retry succeeds. */
+  onOpenSession?(session: SessionView): void
 }
 
 /**
@@ -120,18 +122,57 @@ function firstMeaningfulLine(text: string): string {
   return newline === -1 ? trimmed : trimmed.slice(0, newline)
 }
 
+/** Find the last completed turn before a user message in one history page. */
+function previousTurnEnd(events: readonly WireEvent[], targetSeq: number): number | undefined {
+  let boundary: number | undefined
+  for (const event of events) {
+    if (event.seq >= targetSeq) break
+    if (event.type === 'turn/end') boundary = event.seq
+  }
+  return boundary
+}
+
+/** Pull older pages when the completed turn boundary falls outside the tail. */
+async function loadRecoveryHistory(sessionId: string, targetId: string): Promise<WireEvent[]> {
+  let page = await loadHistory(sessionId)
+  let events = page.events.map(eventOf)
+  while (page.hasMore) {
+    const target = events.find(event => event.type === 'user/message'
+      && isRecord(event.data)
+      && event.data['id'] === targetId)
+    if (target !== undefined && previousTurnEnd(events, target.seq) !== undefined) return events
+
+    const firstSeq = events.reduce<number | undefined>((minimum, event) => (
+      minimum === undefined || event.seq < minimum ? event.seq : minimum
+    ), undefined)
+    if (firstSeq === undefined || firstSeq <= 0) break
+    const olderPage = await loadHistory(sessionId, firstSeq)
+    const older = olderPage.events.map(eventOf)
+    const olderFirstSeq = older.reduce<number | undefined>((minimum, event) => (
+      minimum === undefined || event.seq < minimum ? event.seq : minimum
+    ), undefined)
+    if (olderFirstSeq === undefined || olderFirstSeq >= firstSeq) break
+    events = [...older, ...events]
+    page = olderPage
+  }
+  return events
+}
+
 /**
  * Render one session's chat.
  * @param props - the session, the mux client, and the back action.
  * @returns the chat surface.
  */
-export function ChatView({ session, mux, onBack }: ChatViewProps) {
+export function ChatView({ session, mux, onBack, onOpenSession }: ChatViewProps) {
   const [messages, setMessages] = useState<RenderMessage[]>([])
   const [hasOlder, setHasOlder] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | undefined>(undefined)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [editingMessageId, setEditingMessageId] = useState<string | undefined>(undefined)
+  const [editDraft, setEditDraft] = useState('')
+  const [recoveryBusy, setRecoveryBusy] = useState(false)
   const scrollRef = useRef<HTMLDivElement | undefined>(undefined)
   const pendingRef = useRef(false)
   /**
@@ -358,6 +399,93 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
     )
   }, [input, sending, session.sessionId])
 
+  const latestUser = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index--) {
+      const message = messages[index]
+      if (message.kind === 'user' && (message.sourceKind === undefined || message.sourceKind === 'user')) return message
+    }
+    return undefined
+  }, [messages])
+  const latestAssistant = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index--) {
+      const message = messages[index]
+      if (message.kind === 'assistant') return message
+    }
+    return undefined
+  }, [messages])
+  const canRecover = session.running === false
+    && sending === false
+    && !messages.some(message => message.pending === true)
+    && latestUser !== undefined
+    && recoveryBusy === false
+
+  /** Fork before the latest user turn, replaying only the replacement text. */
+  const replaceLatestUser = useCallback((replacement: string) => {
+    const text = replacement.trim()
+    if (text === '' || latestUser === undefined || !canRecover) return
+    setRecoveryBusy(true)
+    setError(undefined)
+    void loadRecoveryHistory(session.sessionId, latestUser.id).then(async events => {
+      const target = events.find(event => {
+        if (event.type !== 'user/message' || !isRecord(event.data)) return false
+        return event.data['id'] === latestUser.id
+      })
+      if (target === undefined) throw new Error('最新用户消息不在可编辑的历史窗口中')
+
+      const boundary = previousTurnEnd(events, target.seq)
+      let childSessionId: string
+      let childAgentPreset = session.agentPreset
+      if (boundary !== undefined) {
+        const child = await forkSession(session.sessionId, boundary)
+        childSessionId = child.sessionId
+      } else {
+        // The first turn has no completed prefix to fork. Create an equivalent
+        // session in the same workspace, preserving the source composition and
+        // model selection before admitting the replacement prompt.
+        const child = await createSession({
+          ...(session.workspaceId !== undefined
+            ? { workspaceId: session.workspaceId }
+            : session.cwd !== undefined
+              ? { cwd: session.cwd }
+              : {}),
+        })
+        childSessionId = child.sessionId
+        childAgentPreset = child.agentPreset ?? childAgentPreset
+        try {
+          const sourceModels = await models(session.sessionId)
+          await selectModel(childSessionId, sourceModels.current)
+        } catch {
+          // The replacement remains usable with the session's default model;
+          // a model-directory transport failure must not lose the edit.
+        }
+      }
+      await prompt(childSessionId, text)
+      onOpenSession?.({
+        sessionId: childSessionId,
+        title: session.title,
+        ...(session.workspaceId !== undefined ? { workspaceId: session.workspaceId } : {}),
+        ...(session.cwd !== undefined ? { cwd: session.cwd } : {}),
+        ...(childAgentPreset !== undefined ? { agentPreset: childAgentPreset } : {}),
+        updatedAt: Date.now(),
+        running: true,
+        blank: false,
+      })
+      setEditingMessageId(undefined)
+      setEditDraft('')
+    }).catch((reason: unknown) => {
+      setError(errorText(reason))
+    }).finally(() => {
+      setRecoveryBusy(false)
+    })
+  }, [canRecover, latestUser, onOpenSession, session])
+
+  const beginEdit = useCallback((message: RenderMessage) => {
+    if (!canRecover || message.id !== latestUser?.id) return
+    setEditingMessageId(message.id)
+    setEditDraft(message.text)
+    setError(undefined)
+  }, [canRecover, latestUser?.id])
+
   const modelLabel = currentModel?.model ?? '模型'
   const permissionLabel = permissions === undefined
     ? undefined
@@ -401,6 +529,19 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
             message={message}
             showToolCalls={showToolCalls}
             showSystemMessages={showSystemMessages}
+            editing={editingMessageId === message.id}
+            editDraft={editingMessageId === message.id ? editDraft : undefined}
+            editBusy={recoveryBusy}
+            onEdit={message.kind === 'user' && message.id === latestUser?.id && canRecover ? () => { beginEdit(message) } : undefined}
+            onEditDraft={setEditDraft}
+            onCancelEdit={() => { setEditingMessageId(undefined); setEditDraft('') }}
+            onSaveEdit={() => { replaceLatestUser(editDraft) }}
+            onRetry={message.kind === 'assistant'
+              && message.id === latestAssistant?.id
+              && message.failed === true
+              && canRecover
+              ? () => { replaceLatestUser(latestUser?.text ?? '') }
+              : undefined}
           />
         ))}
         {loading && messages.length === 0 && <p className="chat-typing">加载中…</p>}
@@ -482,10 +623,18 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
 /* ── message rows ─────────────────────────────────────────────────────── */
 
 /** One rendered message row (user bubble or assistant bubble with folds). */
-function MessageRow({ message, showToolCalls, showSystemMessages }: {
+function MessageRow({ message, showToolCalls, showSystemMessages, editing, editDraft, editBusy, onEdit, onEditDraft, onCancelEdit, onSaveEdit, onRetry }: {
   message: RenderMessage
   showToolCalls: boolean
   showSystemMessages: boolean
+  editing?: boolean
+  editDraft?: string
+  editBusy?: boolean
+  onEdit?(): void
+  onEditDraft?(value: string): void
+  onCancelEdit?(): void
+  onSaveEdit?(): void
+  onRetry?(): void
 }) {
   // Injected user messages (sourceKind defined and not 'user') hide behind
   // the system-message toggle. Assistant messages are never hidden.
@@ -503,10 +652,35 @@ function MessageRow({ message, showToolCalls, showSystemMessages }: {
       {showToolCalls && message.kind === 'assistant' && message.tools !== undefined && message.tools.length > 0 && (
         <ToolDisclosure tools={message.tools} />
       )}
-      {message.kind === 'assistant'
+      {editing && message.kind === 'user' && (
+        <div className="chat-edit">
+          <textarea
+            className="chat-edit-input"
+            rows={3}
+            value={editDraft ?? message.text}
+            autoFocus
+            onChange={event => { onEditDraft?.(event.target.value) }}
+          />
+          <div className="chat-edit-actions">
+            <button type="button" className="chat-edit-cancel" disabled={editBusy} onClick={() => { onCancelEdit?.() }}>取消</button>
+            <button type="button" className="chat-edit-save" disabled={editBusy || (editDraft ?? '').trim() === ''} onClick={() => { onSaveEdit?.() }}>
+              {editBusy ? '处理中…' : '从这里重新发送'}
+            </button>
+          </div>
+        </div>
+      )}
+      {!editing && (message.kind === 'assistant'
         ? <MarkdownText text={message.text} />
-        : <CollapsibleText text={message.text} />}
+        : <CollapsibleText text={message.text} />)}
+      {message.kind === 'user' && !editing && onEdit !== undefined && (
+        <button type="button" className="chat-msg-action" onClick={() => { onEdit() }}>编辑</button>
+      )}
       {message.failed === true && <span className="chat-msg-failtag">本次回复失败</span>}
+      {message.failed === true && onRetry !== undefined && (
+        <button type="button" className="chat-msg-action chat-msg-retry" onClick={() => { onRetry() }}>
+          重试
+        </button>
+      )}
       <span className="chat-msg-time">{formatTime(message.time)}</span>
     </div>
   )

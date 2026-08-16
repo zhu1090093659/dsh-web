@@ -11,7 +11,9 @@ import type { WireEvent } from '../messages.ts'
 // The api module is fully mocked; App.tsx's history wrapper is overridden to
 // feed fixed history pages, its pure helpers (errorText / formatTime) stay real.
 vi.mock('../api.ts', () => ({
+  createSession: vi.fn(),
   fetchMobilePreferences: vi.fn(),
+  forkSession: vi.fn(),
   models: vi.fn(),
   selectModel: vi.fn(),
   sendCommand: vi.fn(),
@@ -24,7 +26,7 @@ vi.mock('./App.tsx', async importOriginal => {
     prompt: vi.fn(async () => {}),
   }
 })
-import { fetchMobilePreferences, models, selectModel, sendCommand } from '../api.ts'
+import { createSession, fetchMobilePreferences, forkSession, models, selectModel, sendCommand } from '../api.ts'
 import { loadHistory, prompt } from './App.tsx'
 
 const session: SessionView = {
@@ -69,6 +71,8 @@ function turnEvents(): Array<{ event: WireEvent }> {
 }
 
 const fetchMobilePreferencesMock = vi.mocked(fetchMobilePreferences)
+const createSessionMock = vi.mocked(createSession)
+const forkSessionMock = vi.mocked(forkSession)
 const modelsMock = vi.mocked(models)
 const selectModelMock = vi.mocked(selectModel)
 const sendCommandMock = vi.mocked(sendCommand)
@@ -78,6 +82,8 @@ const promptMock = vi.mocked(prompt)
 beforeEach(() => {
   fetchMobilePreferencesMock.mockResolvedValue({ mobileEnterToSend: true })
   promptMock.mockResolvedValue(undefined)
+  createSessionMock.mockResolvedValue({ sessionId: 's-created' })
+  forkSessionMock.mockResolvedValue({ sessionId: 's-forked' })
   modelsMock.mockResolvedValue({
     current: { provider: 'fx', model: 'fx-1' },
     routable: true,
@@ -189,6 +195,124 @@ describe('ChatView message folds', () => {
     fireEvent.click(await screen.findByRole('button', { name: /确认开启/ }))
     await waitFor(() => {
       expect(sendCommandMock).toHaveBeenCalledWith('s-1', '/permission danger-full-access')
+    })
+  })
+})
+
+describe('ChatView edit and retry actions', () => {
+  const completedTail = (): Array<{ event: WireEvent }> => [
+    makeEntry('user/message', { id: 'u-0', role: 'user', content: [{ type: 'text', text: '前一轮' }] }, 0),
+    makeEntry('assistant/message', {
+      turn: 0,
+      step: 0,
+      message: { id: 'a-0', role: 'assistant', content: [{ type: 'text', text: '前一轮完成' }] },
+    }, 1),
+    makeEntry('turn/end', { turn: 0, reason: { kind: 'completed' } }, 2),
+    makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: '当前问题' }] }, 3),
+    makeEntry('assistant/message', {
+      turn: 1,
+      step: 0,
+      message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: '当前回答' }] },
+    }, 4),
+    makeEntry('turn/end', { turn: 1, reason: { kind: 'completed' } }, 5),
+  ]
+
+  const failedTail = (): Array<{ event: WireEvent }> => [
+    makeEntry('user/message', { id: 'u-0', role: 'user', content: [{ type: 'text', text: '前一轮' }] }, 0),
+    makeEntry('assistant/message', {
+      turn: 0,
+      step: 0,
+      message: { id: 'a-0', role: 'assistant', content: [{ type: 'text', text: '前一轮完成' }] },
+    }, 1),
+    makeEntry('turn/end', { turn: 0, reason: { kind: 'completed' } }, 2),
+    makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: '失败问题' }] }, 3),
+    makeEntry('assistant/message', {
+      turn: 1,
+      step: 0,
+      message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: '部分回答' }] },
+    }, 4),
+    makeEntry('turn/end', { turn: 1, reason: { kind: 'error', error: { message: 'boom' } } }, 5),
+  ]
+
+  it('edits only the latest settled human message by forking before its turn', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage(completedTail()))
+    const opened: SessionView[] = []
+    render(<ChatView session={{ ...session, workspaceId: 'w-1' }} onBack={() => {}} onOpenSession={next => { opened.push(next) }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '编辑' }))
+    const editor = await screen.findByDisplayValue('当前问题')
+    fireEvent.change(editor, { target: { value: '改后的问题' } })
+    fireEvent.click(screen.getByRole('button', { name: '从这里重新发送' }))
+
+    await waitFor(() => {
+      expect(forkSessionMock).toHaveBeenCalledWith('s-1', 2)
+      expect(promptMock).toHaveBeenCalledWith('s-forked', '改后的问题')
+    })
+    expect(opened[0]?.sessionId).toBe('s-forked')
+  })
+
+  it('loads an older history page when the previous boundary is outside the tail', async () => {
+    const tail = [
+      makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: '当前问题' }] }, 3),
+      makeEntry('assistant/message', {
+        turn: 1,
+        step: 0,
+        message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: '当前回答' }] },
+      }, 4),
+      makeEntry('turn/end', { turn: 1, reason: { kind: 'completed' } }, 5),
+    ]
+    const prefix = [
+      makeEntry('user/message', { id: 'u-0', role: 'user', content: [{ type: 'text', text: '前一轮' }] }, 0),
+      makeEntry('assistant/message', {
+        turn: 0,
+        step: 0,
+        message: { id: 'a-0', role: 'assistant', content: [{ type: 'text', text: '前一轮完成' }] },
+      }, 1),
+      makeEntry('turn/end', { turn: 0, reason: { kind: 'completed' } }, 2),
+    ]
+    loadHistoryMock
+      .mockResolvedValueOnce(historyPage(tail, { hasMore: true }))
+      .mockResolvedValueOnce(historyPage(tail, { hasMore: true }))
+      .mockResolvedValueOnce(historyPage(prefix))
+    render(<ChatView session={session} onBack={() => {}} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '编辑' }))
+    fireEvent.click(screen.getByRole('button', { name: '从这里重新发送' }))
+
+    await waitFor(() => {
+      expect(loadHistoryMock.mock.calls[2]?.[1]).toBe(3)
+      expect(forkSessionMock).toHaveBeenCalledWith('s-1', 2)
+      expect(promptMock).toHaveBeenCalledWith('s-forked', '当前问题')
+    })
+  })
+
+  it('offers retry for a failed latest turn and preserves its original prompt', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage(failedTail()))
+    render(<ChatView session={session} onBack={() => {}} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '重试' }))
+    await waitFor(() => {
+      expect(forkSessionMock).toHaveBeenCalledWith('s-1', 2)
+      expect(promptMock).toHaveBeenCalledWith('s-forked', '失败问题')
+    })
+  })
+
+  it('creates a first-turn edit in the workspace without forwarding a cwd', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage([
+      makeEntry('user/message', { id: 'u-first', role: 'user', content: [{ type: 'text', text: '首个问题' }] }, 0),
+    ]))
+    createSessionMock.mockResolvedValue({ sessionId: 's-created', agentPreset: 'preset-a' })
+    render(<ChatView session={{ ...session, workspaceId: 'w-1', cwd: '/tmp/source', agentPreset: 'preset-a' }} onBack={() => {}} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '编辑' }))
+    const editor = await screen.findByDisplayValue('首个问题')
+    fireEvent.change(editor, { target: { value: '改后的首个问题' } })
+    fireEvent.click(screen.getByRole('button', { name: '从这里重新发送' }))
+
+    await waitFor(() => {
+      expect(createSessionMock).toHaveBeenCalledWith({ workspaceId: 'w-1' })
+      expect(selectModelMock).toHaveBeenCalledWith('s-created', { provider: 'fx', model: 'fx-1' })
+      expect(promptMock).toHaveBeenCalledWith('s-created', '改后的首个问题')
     })
   })
 })

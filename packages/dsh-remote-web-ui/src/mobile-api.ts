@@ -34,6 +34,7 @@ const MOBILE_ALLOWLIST = new Set([
   'session.list',
   'session.history',
   'session.search',
+  'session.fork',
   'session.prompt',
   'session.models',
   'session.selectModel',
@@ -303,6 +304,7 @@ async function dispatch(apiProxy: ApiProxy, method: string, payload: unknown, rp
   if (method === 'session.create') return wrap(await apiProxy.sessions.create(request as never))
   if (method === 'session.history') return wrap(await apiProxy.sessions.history(request as never))
   if (method === 'session.search') return wrap(await apiProxy.sessions.search(request as never, new AbortController().signal))
+  if (method === 'session.fork') return wrap(await apiProxy.sessions.fork(request as never))
   if (method === 'session.prompt') return wrap(await apiProxy.sessions.prompt(request as never))
   if (method === 'session.models') return wrap(await apiProxy.sessions.models(request as never))
   if (method === 'session.selectModel') return wrap(await apiProxy.sessions.selectModel(request as never))

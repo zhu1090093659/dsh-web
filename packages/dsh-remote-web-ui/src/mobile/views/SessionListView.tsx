@@ -30,7 +30,7 @@ function ownedItems(page: SessionSummary[], workspace: WorkspaceRow): SessionVie
   const owned = new Set(workspace.sessionIds)
   return page
     .filter(item => owned.has(item.sessionId as never))
-    .map(item => toSessionView(item))
+    .map(item => toSessionView(item, workspace.workspaceId))
 }
 
 /**
@@ -108,6 +108,8 @@ export function SessionListView({ workspace, onBack, onPick }: SessionListViewPr
         const view: SessionView = {
           sessionId: created.sessionId,
           title: '新会话',
+          workspaceId: workspace.workspaceId,
+          ...(created.agentPreset !== undefined ? { agentPreset: created.agentPreset } : {}),
           updatedAt: Date.now(),
           running: false,
           blank: true,

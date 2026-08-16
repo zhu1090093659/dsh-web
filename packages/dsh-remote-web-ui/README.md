@@ -132,8 +132,12 @@ mounts both halves.
      pages, "加载更早的消息" goes further back),
    - a live stream shows new messages as they arrive, with a prompt box
      for sending your own (**Enter sends and Shift+Enter inserts a newline
-     by default**; set `mobileEnterToSend: false` to make Enter insert a
-     newline and reserve sending for the 发送 button),
+      by default**; set `mobileEnterToSend: false` to make Enter insert a
+      newline and reserve sending for the 发送 button),
+   - the latest settled human message can be edited; saving forks the
+      completed prefix into a new session and sends the replacement from that
+      point, while the original session remains intact. A failed latest turn
+      also exposes a manual 重试 action using the same safe fork path,
    - a **light-first theme**: the surface ships a light palette by default;
      a sun/moon toggle in every header flips to the dark palette and the
      choice persists across visits (localStorage),
@@ -166,10 +170,11 @@ cookie and an explicit method allowlist (settings/credentials/host-action
 domains are never reachable from the phone; model reads/writes are limited
 to the advisory `session.models` / `session.selectModel` pair, creation to
 `session.create` (workspace id only — the phone never names a working
-directory of its own), and the permission picker only ever sends the
-mode-agnostic `/permission` command
-through the already-allowlisted `session.prompt`); the live stream arrives
-over Server-Sent Events on `/m/api/events.mux`.
+directory of its own), editing and retrying additionally expose only
+`session.fork`, and the permission picker only ever sends the mode-agnostic
+`/permission` command through the already-allowlisted `session.prompt`); the
+live stream arrives over Server-Sent Events on `/m/api/events.mux`. Editing
+and retrying never mutate the source session log.
 
 ### Behavior notes
 
@@ -180,6 +185,18 @@ over Server-Sent Events on `/m/api/events.mux`.
   through its own `/m/api` preferences method when a chat opens. On
   browsers that support `field-sizing: content`, the input grows with the
   draft up to its 120px cap in either mode.
+- Transient model request failures (`EMPTY_RESPONSE`, `RATE_LIMIT`, `SERVER`,
+  `TIMEOUT`, and `TRANSPORT`) are automatically retried up to five times with
+  bounded exponential backoff. The wait follows the agent cancellation signal;
+  authentication, invalid-request, context, quota, and other permanent errors
+  remain terminal. Tool execution is not automatically replayed because that
+  could duplicate an external side effect. Set `retryAttempts` between 0 and 5
+  in the plugin settings when a deployment needs a smaller budget.
+- Edit is available only for the latest settled human message. It requires a
+  completed turn, creates a child session from the previous completed boundary,
+  and keeps the source session unchanged. The first-turn case creates an
+  equivalent session in the same workspace and preserves the selected model
+  when the model directory is available.
 - Installing this plugin gates non-loopback `/api` access behind pairing
   (see `requirePairingForLan` in `src/index.ts`). A desktop browser opened
   via the LAN URL must pair like any remote device; loopback (127.0.0.1)

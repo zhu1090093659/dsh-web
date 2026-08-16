@@ -12,6 +12,7 @@ import { createRequire } from 'node:module'
 import { setInterval as nodeSetInterval } from 'node:timers'
 import type { IncomingMessage } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-agent'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import type {} from '@deepseek-ai/dsh-host-webserver'
@@ -31,6 +32,7 @@ import {
   type UpdateRunResult,
 } from './update.ts'
 import { makeUpdateRoutes } from './update-routes.ts'
+import { DEFAULT_RETRY_CONFIG, isRetryableFailure, retryDelay, waitForRetry } from './retry.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
@@ -53,7 +55,7 @@ declare module '@deepseek-ai/cordis' {
 export const name = 'remote-web-ui'
 
 /** Services required before the pairing surfaces can mount. */
-export const inject = ['webServer', 'apiProxy']
+export const inject = ['webServer', 'apiProxy', 'agents']
 
 /**
  * Settings namespace of the remote-control capability — the section the web
@@ -103,6 +105,8 @@ export interface Config {
    * sends (Shift+Enter keeps inserting a newline).
    */
   mobileEnterToSend?: boolean
+  /** Maximum automatic retries for transient model request failures. */
+  retryAttempts?: number
   /** Master switch for the plugin (browser half + host pairing surfaces). */
   enabled?: boolean
 }
@@ -116,6 +120,7 @@ export const Config: z<Config> = z.object({
   publicBaseUrl: z.string(),
   autoTunnel: z.boolean().default(false),
   mobileEnterToSend: z.boolean().default(true),
+  retryAttempts: z.number().step(1).min(0).max(5).default(DEFAULT_RETRY_CONFIG.maxRetries),
   enabled: z.boolean().default(true),
 })
 
@@ -139,7 +144,40 @@ const DEFAULTS: ResolvedConfig = {
   publicBaseUrl: undefined,
   autoTunnel: false,
   mobileEnterToSend: true,
+  retryAttempts: DEFAULT_RETRY_CONFIG.maxRetries,
   enabled: true,
+}
+
+/** Install bounded recovery for transient model request failures. */
+function installAutomaticRetry(ctx: Context, readMaxRetries: () => number): void {
+  const attempts = new Map<string, number>()
+  const dispose = ctx.on('agent/request-error', async (payload, next) => {
+    // Let a provider-specific recovery policy own the failure first. If it
+    // delegates or exhausts, this plugin supplies the issue-level five-try cap.
+    const downstream = await next()
+    if (downstream?.kind === 'retry') return downstream
+    const maxRetries = Math.min(Math.max(0, readMaxRetries()), DEFAULT_RETRY_CONFIG.maxRetries)
+    if (!isRetryableFailure(payload.failure) || payload.signal.aborted || maxRetries <= 0) return undefined
+
+    const key = `${String(payload.agent.id)}:${String(payload.turn)}:${String(payload.step)}`
+    const durableAttempts = payload.agent.session.events.reduce((count, event) => {
+      const candidate = event as unknown as { type?: unknown; data?: unknown }
+      if (candidate.type !== 'llm/retry' || typeof candidate.data !== 'object' || candidate.data === null) return count
+      const data = candidate.data as { turn?: unknown; step?: unknown }
+      return data.turn === payload.turn && data.step === payload.step ? count + 1 : count
+    }, 0)
+    const previous = Math.max(attempts.get(key) ?? 0, durableAttempts)
+    if (previous >= maxRetries) return undefined
+    const retry = previous + 1
+    attempts.set(key, retry)
+    const delayMs = retryDelay(retry, { ...DEFAULT_RETRY_CONFIG, maxRetries })
+    if (!await waitForRetry(delayMs, payload.signal)) return undefined
+    return { kind: 'retry' as const }
+  })
+  ctx.effect(() => () => {
+    dispose()
+    attempts.clear()
+  }, 'remote-web-ui: retry recovery')
 }
 
 /**
@@ -157,6 +195,7 @@ export function apply(ctx: Context, config?: Config): void {
     publicBaseUrl: config?.publicBaseUrl,
     autoTunnel: config?.autoTunnel ?? DEFAULTS.autoTunnel,
     mobileEnterToSend: config?.mobileEnterToSend ?? DEFAULTS.mobileEnterToSend,
+    retryAttempts: config?.retryAttempts ?? DEFAULTS.retryAttempts,
     enabled: config?.enabled ?? DEFAULTS.enabled,
   }
   // The live source the pairing service and the gate read: the settings
@@ -174,6 +213,7 @@ export function apply(ctx: Context, config?: Config): void {
       publicBaseUrl: value.publicBaseUrl,
       autoTunnel: value.autoTunnel ?? DEFAULTS.autoTunnel,
       mobileEnterToSend: value.mobileEnterToSend ?? DEFAULTS.mobileEnterToSend,
+      retryAttempts: value.retryAttempts ?? DEFAULTS.retryAttempts,
       enabled: value.enabled ?? DEFAULTS.enabled,
     }
   }
@@ -236,6 +276,7 @@ export function apply(ctx: Context, config?: Config): void {
   if (apiProxy === undefined) {
     console.warn('remote-web-ui: apiProxy service unavailable — the mobile data channel is disabled')
   }
+  installAutomaticRetry(ctx, () => resolve().retryAttempts)
   // ── remote update ────────────────────────────────────────────────────────
   // The dsh-web-ui self-update surface: probe the npm registry for family
   // releases and run `pnpm update --latest` in the owning profile. Resolutions

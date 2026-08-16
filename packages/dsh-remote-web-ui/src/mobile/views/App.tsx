@@ -24,7 +24,9 @@ type Route =
 export interface SessionView {
   sessionId: string
   title: string
+  workspaceId?: string
   cwd?: string
+  agentPreset?: string
   updatedAt: number
   running: boolean
   blank: boolean
@@ -54,9 +56,10 @@ export function toSessionView(item: {
   updatedAt: number
   running: boolean
   blank: boolean
+  agentPreset?: string
   cwd?: string
   projections?: { values?: Record<string, unknown> }
-}): SessionView {
+}, workspaceId?: string): SessionView {
   const titleValue = item.projections?.values?.title
   const title = typeof titleValue === 'string' && titleValue !== ''
     ? titleValue
@@ -64,7 +67,9 @@ export function toSessionView(item: {
   return {
     sessionId: item.sessionId,
     title,
+    ...(workspaceId !== undefined ? { workspaceId } : {}),
     ...(item.cwd !== undefined ? { cwd: item.cwd } : {}),
+    ...(item.agentPreset !== undefined ? { agentPreset: item.agentPreset } : {}),
     updatedAt: item.updatedAt,
     running: item.running,
     blank: item.blank,
@@ -144,7 +149,12 @@ export function App() {
               onPick={(session) => { openChat(session, route.workspace) }}
             />
           )
-          : <ChatView session={route.session} mux={muxRef.current} onBack={back} />}
+          : <ChatView
+            session={route.session}
+            mux={muxRef.current}
+            onBack={back}
+            onOpenSession={(session) => { openChat(session, route.workspace) }}
+          />}
     </div>
   )
 }

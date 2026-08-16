@@ -312,6 +312,19 @@ describe('conversation integration', () => {
     ])
   })
 
+  it('uses one selector for Store details so agents cannot send conflicting identifiers', async () => {
+    const tools = createStoreTools({
+      fetcher: vi.fn(async () => catalogResponse()) as unknown as typeof fetch,
+      listInstalled: async () => [],
+      install: vi.fn(),
+      remove: vi.fn(),
+    })
+    const details = tools.find(tool => tool.name === 'store_details')!
+
+    await expect(details.execute({ selector: '42' }, { signal } as never))
+      .resolves.toMatchObject({ text: expect.stringContaining('example/dsh-plugin') })
+  })
+
   it('parses the bundled skill as a model and user invocable definition', () => {
     const skill = parseBundledStoreSkill(
       `---\nname: search-dsh-store\ndescription: Search the live DSH Store.\n---\n\nUse store_search.`,

@@ -54,7 +54,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board
 | `announceToAgent` | `true` | Adds the task-board guidance section to agent system prompts. |
 | `preventIdleSleep` | `false` | Holds one system idle-sleep assertion while any DSH session runs, any schedule is enabled, or session state is unknown. |
 
-On macOS the backend starts `/usr/bin/caffeinate -i -w <host-pid>` and never requests `-d`. On Windows it starts the absolute Windows PowerShell under `SystemRoot` with a fixed helper that requests only `ES_CONTINUOUS | ES_SYSTEM_REQUIRED`; it never requests `ES_DISPLAY_REQUIRED`, changes a power plan, or requires administrator privileges. Linux and other platforms report `unsupported` and do not start a fallback command.
+On macOS the backend starts `/usr/bin/caffeinate -i -w <host-pid>` and never requests `-d`. On Windows it starts the absolute Windows PowerShell under `SystemRoot` with a fixed helper that requests only `ES_CONTINUOUS | ES_SYSTEM_REQUIRED`; it never requests `ES_DISPLAY_REQUIRED`, changes a power plan, or requires administrator privileges. On Linux it starts a systemd-logind `idle` block inhibitor only from `/usr/bin/systemd-inhibit` or `/bin/systemd-inhibit`; it does not request `sleep`, `handle-lid-switch`, or a display/screensaver inhibitor. A Linux host without systemd-logind reports `unsupported` or a visible error and does not start a desktop-specific fallback. Other platforms report `unsupported`.
 
 ## Data storage and migration
 
@@ -69,7 +69,7 @@ On macOS the backend starts `/usr/bin/caffeinate -i -w <host-pid>` and never req
 - All mutation payloads use a strict, versioned discriminated union; schedule-owned timestamps and execution outcomes cannot be written by the browser.
 - Workspace, preset, permission, cron, task status, and imported records are validated again on the Host.
 - A task prompt is data sent to a DSH agent session. The protocol does not accept shell commands, PowerShell bodies, executable paths, or configurable helper arguments.
-- Power helpers use fixed executable paths, fixed arguments, `shell: false`, and bounded retry delays of 1, 2, 5, 10, then 30 seconds.
+- Power helpers use fixed executable paths, fixed arguments, `shell: false`, and bounded retry delays of 1, 2, 5, 10, then 30 seconds. The Linux helper follows the Host stdin lifetime so the systemd inhibitor is released automatically after an abnormal Host exit.
 
 ## Build and test
 
@@ -81,7 +81,7 @@ pnpm --filter @linxin666/dsh-client-ui-task-board test
 pnpm --filter @linxin666/dsh-client-ui-task-board build
 ```
 
-The repository CI also runs an opt-in native helper smoke test on `windows-latest` and `macos-latest`; it starts the fixed helper, waits for its ready state, releases it, and confirms process exit without changing the system power plan.
+The repository CI also runs an opt-in native helper smoke test on `windows-latest`, `macos-latest`, and `ubuntu-latest`; it starts the fixed helper, waits for its ready state, releases it, and confirms process exit without changing the system power plan. When an Ubuntu runner has no usable systemd-logind system bus, the native portion is explicitly skipped while pure logic tests remain mandatory.
 
 ## Manual verification
 
@@ -92,6 +92,7 @@ The repository CI also runs an opt-in native helper smoke test on `windows-lates
 5. Stop the Host past a cron occurrence, restart it, and confirm the missed occurrence is skipped and `nextRunAt` rolls forward from current Host time.
 6. Enable `preventIdleSleep`, run a long session, and let the display turn off; after restoring the display, confirm the session continued and the execution settled.
 7. Disable the setting and all schedules, stop DSH, and confirm the helper exits; on macOS, `pmset -g assertions` should show no display-sleep assertion from this plugin.
+8. On Linux, use `systemd-inhibit --list` to confirm that only an `idle`/`block` entry exists; the display should still follow desktop settings, while manual sleep and lid close remain under system policy.
 
 ## Known limitations
 
@@ -100,5 +101,6 @@ The repository CI also runs an opt-in native helper smoke test on `windows-lates
 - Power protection prevents only idle system sleep. It deliberately allows display sleep and lock.
 - Lid close, manual sleep, hibernation, shutdown, low-battery forced sleep, and enterprise power policy are outside the guarantee.
 - The plugin does not schedule wake timers and cannot wake a computer that is already asleep.
+- Linux requires systemd-logind and policy permission for the current user to acquire an idle block lock. Containers, WSL, hosts without a system bus, and non-systemd systems may report `unsupported` or `error`. Whether a desktop also associates a logind idle lock with display idleness is desktop policy; the plugin does not request a screensaver or display inhibitor.
 - Keeping enabled schedules armed may increase battery consumption because protection starts before their future trigger time.
 - Host execution consumes the same API quota as an ordinary DSH agent session.

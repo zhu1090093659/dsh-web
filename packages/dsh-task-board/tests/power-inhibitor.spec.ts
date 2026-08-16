@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import type { ChildProcess } from 'node:child_process'
 import { describe, expect, it, vi } from 'vitest'
-import { PowerInhibitor, WINDOWS_HELPER, type SpawnLike } from '../src/power-inhibitor.ts'
+import { LINUX_HELPER, PowerInhibitor, WINDOWS_HELPER, type SpawnLike } from '../src/power-inhibitor.ts'
 
 class FakeChild extends EventEmitter {
   stdout = new EventEmitter()
@@ -84,7 +84,7 @@ describe('PowerInhibitor', () => {
     expect(children).toHaveLength(2)
 
     const unsupportedSpawn = vi.fn()
-    const unsupported = new PowerInhibitor({ platform: 'linux', spawn: unsupportedSpawn as SpawnLike })
+    const unsupported = new PowerInhibitor({ platform: 'freebsd', spawn: unsupportedSpawn as SpawnLike })
     unsupported.setEnabled(true)
     expect(unsupported.snapshot().phase).toBe('unsupported')
     expect(unsupportedSpawn).not.toHaveBeenCalled()
@@ -108,6 +108,44 @@ describe('PowerInhibitor', () => {
     power.setEnabled(true)
     expect(power.snapshot().phase).toBe('error')
     expect(power.snapshot().lastError).toContain('absolute')
+    expect(spawn).not.toHaveBeenCalled()
+    power.dispose()
+  })
+
+  it('uses only a fixed systemd idle inhibitor on Linux and releases it through stdin', () => {
+    let invocation: { file: string; args: readonly string[] } | undefined
+    const process = child()
+    const power = new PowerInhibitor({
+      platform: 'linux',
+      exists: path => path === '/usr/bin/systemd-inhibit',
+      execPath: '/usr/bin/node',
+      spawn: ((file, args) => { invocation = { file, args }; return process }) as SpawnLike,
+    })
+    power.updateReasons({ runningSessions: 0, armedSchedules: 1, sessionStateKnown: true })
+    power.setEnabled(true)
+    expect(invocation?.file).toBe('/usr/bin/systemd-inhibit')
+    expect(invocation?.args).toEqual([
+      '--what=idle',
+      '--who=DeepSeek Harness task board',
+      '--why=DSH sessions are running or schedules are armed',
+      '--mode=block',
+      '--',
+      '/usr/bin/node',
+      '-e',
+      LINUX_HELPER,
+    ])
+    expect(invocation?.args).not.toContain('--what=sleep')
+    process.stdout.emit('data', Buffer.from('READY\n'))
+    expect(power.snapshot().phase).toBe('active')
+    power.updateReasons({ runningSessions: 0, armedSchedules: 0, sessionStateKnown: true })
+    expect(process.stdin.end).toHaveBeenCalledOnce()
+  })
+
+  it('reports Linux without systemd-inhibit as unsupported without searching PATH', () => {
+    const spawn = vi.fn()
+    const power = new PowerInhibitor({ platform: 'linux', exists: () => false, spawn: spawn as SpawnLike })
+    power.setEnabled(true)
+    expect(power.snapshot().phase).toBe('unsupported')
     expect(spawn).not.toHaveBeenCalled()
     power.dispose()
   })

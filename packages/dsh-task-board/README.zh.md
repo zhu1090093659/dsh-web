@@ -54,7 +54,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board
 | `announceToAgent` | `true` | 向 agent 系统提示加入任务看板说明。 |
 | `preventIdleSleep` | `false` | 存在运行中的 DSH 会话、已启用计划或未知会话状态时，持有一个系统空闲睡眠断言。 |
 
-macOS 后端启动 `/usr/bin/caffeinate -i -w <host-pid>`，绝不请求 `-d`。Windows 后端从 `SystemRoot` 启动绝对路径的 Windows PowerShell，固定 helper 只请求 `ES_CONTINUOUS | ES_SYSTEM_REQUIRED`；不请求 `ES_DISPLAY_REQUIRED`，不修改电源计划，也不需要管理员权限。Linux 和其他平台报告 `unsupported`，不会启动替代命令。
+macOS 后端启动 `/usr/bin/caffeinate -i -w <host-pid>`，绝不请求 `-d`。Windows 后端从 `SystemRoot` 启动绝对路径的 Windows PowerShell，固定 helper 只请求 `ES_CONTINUOUS | ES_SYSTEM_REQUIRED`；不请求 `ES_DISPLAY_REQUIRED`，不修改电源计划，也不需要管理员权限。Linux 后端只从 `/usr/bin/systemd-inhibit` 或 `/bin/systemd-inhibit` 启动 systemd-logind `idle` block inhibitor，不请求 `sleep`、`handle-lid-switch` 或显示器/屏保 inhibitor；没有 systemd-logind 时显示 `unsupported` 或可见错误，不启动桌面环境专用替代命令。其他平台报告 `unsupported`。
 
 ## 数据存储与迁移
 
@@ -69,7 +69,7 @@ macOS 后端启动 `/usr/bin/caffeinate -i -w <host-pid>`，绝不请求 `-d`。
 - 所有变更载荷使用严格、版本化的判别联合；浏览器不能写入 scheduler 独占时间戳或 execution 结果。
 - 工作区、预设、权限、cron、任务状态和导入记录都会在 Host 再校验。
 - 任务 Prompt 是发给 DSH agent 会话的数据。协议不接受 shell 命令、PowerShell 正文、可执行路径或可配置 helper 参数。
-- 电源 helper 使用固定可执行路径、固定参数、`shell: false`，失败后按 1、2、5、10、30 秒有界退避。
+- 电源 helper 使用固定可执行路径、固定参数、`shell: false`，失败后按 1、2、5、10、30 秒有界退避。Linux helper 通过 Host stdin 生命周期退出，使 systemd inhibitor 随 Host 异常退出自动释放。
 
 ## 构建与测试
 
@@ -81,7 +81,7 @@ pnpm --filter @linxin666/dsh-client-ui-task-board test
 pnpm --filter @linxin666/dsh-client-ui-task-board build
 ```
 
-仓库 CI 另在 `windows-latest` 与 `macos-latest` 运行 opt-in 原生 helper smoke：真实启动固定 helper、等待 ready、释放并确认进程退出，不修改系统电源计划。
+仓库 CI 另在 `windows-latest`、`macos-latest` 与 `ubuntu-latest` 运行 opt-in 原生 helper smoke：真实启动固定 helper、等待 ready、释放并确认进程退出，不修改系统电源计划。Ubuntu runner 没有可用的 systemd-logind system bus 时原生部分显式跳过，纯逻辑测试仍必须通过。
 
 ## 手工验证
 
@@ -92,6 +92,7 @@ pnpm --filter @linxin666/dsh-client-ui-task-board build
 5. 让 Host 停止并错过一个 cron 触发点，重启后确认该次被跳过，`nextRunAt` 从当前 Host 时间向后滚动。
 6. 开启 `preventIdleSleep` 并运行长任务，让显示器自动熄灭；恢复显示后确认会话继续且 execution 已结算。
 7. 关闭设置并禁用所有计划，再停止 DSH，确认 helper 退出；macOS 可用 `pmset -g assertions` 辅助确认插件没有 display-sleep assertion。
+8. Linux 可用 `systemd-inhibit --list` 确认只存在 `idle`/`block` 条目；显示器仍按桌面设置关闭，手动睡眠和合盖仍由系统策略处理。
 
 ## 已知限制
 
@@ -100,5 +101,6 @@ pnpm --filter @linxin666/dsh-client-ui-task-board build
 - 电源保护只阻止空闲系统睡眠，明确允许显示器睡眠与锁屏。
 - 合盖、手动睡眠、休眠、关机、低电量强制睡眠和企业电源策略不在保证范围内。
 - 插件不创建唤醒定时器，也不能唤醒已经睡眠的机器。
+- Linux 需要 systemd-logind 及允许当前用户取得 idle block lock 的策略；容器、WSL、无 system bus 或非 systemd 系统可能显示 `unsupported` 或 `error`。桌面环境是否把 logind idle lock 与显示器空闲联动属于其自身策略，插件不请求屏保或显示器 inhibitor。
 - 已启用计划会从未来触发点之前持续持锁，因此可能增加电池消耗。
 - Host 执行消耗与普通 DSH agent 会话相同的 API 额度。

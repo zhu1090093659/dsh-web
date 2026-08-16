@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-client-ui-task-board",
-  "description": "Host-authoritative task board for the DSH Web GUI with real session execution, Host cron scheduling, and optional macOS/Windows idle-sleep protection; mounted without DSH source changes.",
+  "description": "Host-authoritative task board for the DSH Web GUI with real session execution, Host cron scheduling, and optional macOS/Windows/Linux idle-sleep protection; mounted without DSH source changes.",
   "version": "0.1.18",
   "type": "module",
   "main": "lib/index.js",

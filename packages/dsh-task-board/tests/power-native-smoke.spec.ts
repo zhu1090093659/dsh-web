@@ -1,8 +1,17 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { PowerInhibitor, type SpawnLike } from '../src/power-inhibitor.ts'
 
-const enabled = process.env.DSH_POWER_SMOKE === '1' && (process.platform === 'win32' || process.platform === 'darwin')
+function linuxLogin1Available(): boolean {
+  if (process.platform !== 'linux') return false
+  const executable = ['/usr/bin/systemd-inhibit', '/bin/systemd-inhibit'].find(path => existsSync(path))
+  if (executable === undefined) return false
+  return spawnSync(executable, ['--list'], { stdio: 'ignore' }).status === 0
+}
+
+const enabled = process.env.DSH_POWER_SMOKE === '1'
+  && (process.platform === 'win32' || process.platform === 'darwin' || linuxLogin1Available())
 
 async function waitUntil(predicate: () => boolean, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs

@@ -1,4 +1,5 @@
 import { spawn as nodeSpawn, type ChildProcess } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { win32 } from 'node:path'
 import type { PowerPhase, TaskBoardPowerSnapshot } from './protocol.ts'
 
@@ -27,6 +28,13 @@ try {
 }
 `
 
+const LINUX_HELPER = String.raw`
+process.stdout.write('READY\n')
+process.stdin.resume()
+`
+
+const LINUX_INHIBIT_PATHS = ['/usr/bin/systemd-inhibit', '/bin/systemd-inhibit'] as const
+
 export interface PowerReasons {
   runningSessions: number
   armedSchedules: number
@@ -46,6 +54,8 @@ export interface PowerInhibitorOptions {
   pid?: number
   env?: NodeJS.ProcessEnv
   spawn?: SpawnLike
+  exists?: typeof existsSync
+  execPath?: string
   setTimeout?: typeof globalThis.setTimeout
   clearTimeout?: typeof globalThis.clearTimeout
 }
@@ -64,6 +74,8 @@ export class PowerInhibitor {
   private readonly pid: number
   private readonly env: NodeJS.ProcessEnv
   private readonly spawn: SpawnLike
+  private readonly exists: typeof existsSync
+  private readonly execPath: string
   private readonly timer: typeof globalThis.setTimeout
   private readonly clearTimer: typeof globalThis.clearTimeout
 
@@ -72,6 +84,8 @@ export class PowerInhibitor {
     this.pid = options.pid ?? process.pid
     this.env = options.env ?? process.env
     this.spawn = options.spawn ?? ((file, args, spawnOptions) => nodeSpawn(file, [...args], spawnOptions))
+    this.exists = options.exists ?? existsSync
+    this.execPath = options.execPath ?? process.execPath
     this.timer = options.setTimeout ?? globalThis.setTimeout
     this.clearTimer = options.clearTimeout ?? globalThis.clearTimeout
   }
@@ -121,7 +135,12 @@ export class PowerInhibitor {
       this.phase = 'disabled'
       return
     }
-    if (this.platform !== 'darwin' && this.platform !== 'win32') {
+    if (this.platform !== 'darwin' && this.platform !== 'win32' && this.platform !== 'linux') {
+      this.release()
+      this.phase = 'unsupported'
+      return
+    }
+    if (this.platform === 'linux' && this.linuxSystemdInhibit() === undefined) {
       this.release()
       this.phase = 'unsupported'
       return
@@ -139,9 +158,7 @@ export class PowerInhibitor {
     this.emit()
     this.stopping = false
     try {
-      const child = this.platform === 'darwin'
-        ? this.spawn('/usr/bin/caffeinate', ['-i', '-w', String(this.pid)], { shell: false, windowsHide: false, stdio: ['ignore', 'ignore', 'ignore'] })
-        : this.spawn(this.windowsPowerShell(), ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_HELPER], { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
+      const child = this.spawnCommand()
       this.child = child
       let ready = false
       let stderr = ''
@@ -205,7 +222,7 @@ export class PowerInhibitor {
     this.child = undefined
     if (child === undefined) return
     this.stopping = true
-    if (this.platform === 'win32') {
+    if (this.platform === 'win32' || this.platform === 'linux') {
       child.stdin?.end()
       const force = this.timer(() => { if (child.exitCode === null) child.kill() }, 1_000)
       child.once('exit', () => { this.clearTimer(force) })
@@ -221,9 +238,42 @@ export class PowerInhibitor {
     return win32.join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
   }
 
+  private linuxSystemdInhibit(): string | undefined {
+    return LINUX_INHIBIT_PATHS.find(path => this.exists(path))
+  }
+
+  private spawnCommand(): ChildProcess {
+    if (this.platform === 'darwin') {
+      return this.spawn('/usr/bin/caffeinate', ['-i', '-w', String(this.pid)], {
+        shell: false,
+        windowsHide: false,
+        stdio: ['ignore', 'ignore', 'ignore'],
+      })
+    }
+    if (this.platform === 'linux') {
+      const executable = this.linuxSystemdInhibit()
+      if (executable === undefined) throw new Error('systemd-inhibit is unavailable')
+      return this.spawn(executable, [
+        '--what=idle',
+        '--who=DeepSeek Harness task board',
+        '--why=DSH sessions are running or schedules are armed',
+        '--mode=block',
+        '--',
+        this.execPath,
+        '-e',
+        LINUX_HELPER,
+      ], { shell: false, windowsHide: false, stdio: ['pipe', 'pipe', 'pipe'] })
+    }
+    return this.spawn(this.windowsPowerShell(), ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_HELPER], {
+      shell: false,
+      windowsHide: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+  }
+
   private emit(): void {
     for (const listener of [...this.listeners]) listener()
   }
 }
 
-export { WINDOWS_HELPER }
+export { LINUX_HELPER, LINUX_INHIBIT_PATHS, WINDOWS_HELPER }

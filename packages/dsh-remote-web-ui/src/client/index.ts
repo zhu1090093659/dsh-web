@@ -22,6 +22,7 @@ import { FooterRemoteEntry } from './FooterRemoteEntry.tsx'
 import { RemoteEntry } from './RemoteEntry.tsx'
 import { PairFailedNotice } from './PairFailedNotice.tsx'
 import { RemoteSettingsCard, RemoteSettingsCardController, type RemoteSettings } from './RemoteSettingsCard.tsx'
+import { FaultHandlingSettingsCard, FaultHandlingSettingsCardController } from './FaultHandlingSettingsCard.tsx'
 import { en, zh, type RemoteKey } from './locales.ts'
 import { PAIR_FAILED_MARKER, runPairBootFlow } from './deep-link.ts'
 import { sendHeartbeat } from './pair-api.ts'
@@ -170,17 +171,27 @@ export function apply(ctx: ClientContext): void {
   // Plugin configuration card: one staged form over the `remote-web-ui`
   // settings namespace, contributed to the Web UI plugin group.
   const remoteSettings = new RemoteSettingsCardController(settingsScope)
+  const faultHandlingSettings = new FaultHandlingSettingsCardController(settingsScope)
   ctx.slots.inject('web-ui.plugin.item', () => {
-    const unregister = ctx.slots.register({
+    const unregisterRemote = ctx.slots.register({
       name: 'web-ui.plugin.item',
       id: 'remote-web-ui',
       order: 90,
       locale: NS,
       inject: () => remoteSettings.inject(),
     }, RemoteSettingsCard)
+    const unregisterFaultHandling = ctx.slots.register({
+      name: 'web-ui.plugin.item',
+      id: 'remote-web-ui-fault-handling',
+      order: 91,
+      locale: NS,
+      inject: () => faultHandlingSettings.inject(),
+    }, FaultHandlingSettingsCard)
     return () => {
       remoteSettings.dispose()
-      unregister()
+      faultHandlingSettings.dispose()
+      unregisterRemote()
+      unregisterFaultHandling()
     }
   })
 

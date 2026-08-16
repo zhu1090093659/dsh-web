@@ -41,12 +41,14 @@ const GIT_POLL_MS = 30_000
 const HEARTBEAT_MS = 15_000
 
 /**
- * Parse a single-range `bytes=start-end` header against the file size.
- * Returns null when no range was requested, 'invalid' for malformed or
- * unsatisfiable ranges (the caller answers 416), or the clamped start/end
- * (inclusive). Multi-range requests are treated as invalid — the panel only
- * ever serves single ranges. Suffix ranges (`bytes=-N`) select the last N
- * bytes. Range support added after human review on #242 (pdf seeking).
+ * Parse a `Range: bytes=start-end` header against the file size. RFC 7233
+ * lets a server ignore any Range it does not support, so unknown units,
+ * malformed headers and multi-range requests all return null (the caller
+ * answers 200 with the full body); only a syntactically valid single range
+ * that cannot be satisfied returns 'invalid' (the caller answers 416).
+ * Suffix ranges (`bytes=-N`) select the last N bytes. Range support added
+ * after human review on #242 (pdf seeking); ignore-instead-of-416 for
+ * unsupported shapes per maintainer feedback.
  */
 export function parseRangeHeader(
   header: string | undefined,
@@ -54,7 +56,7 @@ export function parseRangeHeader(
 ): { start: number; end: number } | 'invalid' | null {
   if (header === undefined) return null
   const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim())
-  if (match === null || (match[1] === '' && match[2] === '')) return 'invalid'
+  if (match === null || (match[1] === '' && match[2] === '')) return null
   if (match[1] === '') {
     const suffix = Number(match[2])
     if (suffix <= 0 || size === 0) return 'invalid'
@@ -64,6 +66,25 @@ export function parseRangeHeader(
   const end = match[2] === '' ? size - 1 : Math.min(Number(match[2]), size - 1)
   if (size === 0 || start > end || start >= size) return 'invalid'
   return { start, end }
+}
+
+/** Strip the weak prefix and quotes so entity-tags compare by opaque value. */
+function normalizeEtag(value: string): string {
+  return value.trim().replace(/^W\//, '').replace(/^"|"$/g, '')
+}
+
+/**
+ * Whether an If-None-Match header matches the current etag. Handles `*` and
+ * comma-separated entity-tag lists; GET revalidation uses weak comparison
+ * (RFC 9110), so the weak prefix is ignored on both sides.
+ */
+export function ifNoneMatchSaidFresh(header: string | undefined, etag: string): boolean {
+  if (header === undefined) return false
+  const current = normalizeEtag(etag)
+  return header.split(',').some((candidate) => {
+    const tag = candidate.trim()
+    return tag === '*' || normalizeEtag(tag) === current
+  })
 }
 
 /**
@@ -260,8 +281,9 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
    * resolves and stats the path, the bytes are piped straight from disk with
    * the derived mime — the whole file never sits in host memory. Single byte
    * ranges are honored (206/416) so the browser pdf viewer can seek large
-   * files. No validators are negotiated, so the browser revalidates every
-   * time — a re-edited file never shows stale bytes.
+   * files; unsupported range shapes are ignored per RFC 7233 (200 full
+   * body). ETag/Last-Modified (size+mtime) keep no-cache revalidation cheap:
+   * unchanged files answer 304, If-Range mismatches fall back to 200.
    */
   const serveRaw = async (req: IncomingMessage, url: URL, res: ServerResponse): Promise<void> => {
     const root = url.searchParams.get('root')
@@ -276,18 +298,36 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
       json(res, FAIL(result), status)
       return
     }
-    const range = parseRangeHeader(req.headers.range, result.size)
-    if (range === 'invalid') {
-      res.writeHead(416, { 'content-range': `bytes */${result.size}` })
-      res.end()
-      return
-    }
-    const headers: Record<string, string | number> = {
+    // Validators from size+mtime: no-cache forces revalidation, and a match
+    // answers 304 instead of re-streaming — scrolling a large pdf issues many
+    // range requests, so they must be cheap (maintainer feedback on #242).
+    const etag = `W/"${result.size}-${Math.floor(result.mtime)}"`
+    const lastModified = new Date(result.mtime).toUTCString()
+    const baseHeaders: Record<string, string | number> = {
       'content-type': result.mime,
       'cache-control': 'no-cache',
       'x-content-type-options': 'nosniff',
       'accept-ranges': 'bytes',
+      etag,
+      'last-modified': lastModified,
     }
+    if (ifNoneMatchSaidFresh(req.headers['if-none-match'], etag) && req.headers.range === undefined) {
+      res.writeHead(304, baseHeaders)
+      res.end()
+      return
+    }
+    // If-Range guards a range against a changed file: a mismatch falls back
+    // to the full 200 body rather than serving a stale slice.
+    const ifRange = req.headers['if-range']
+    const range = ifRange !== undefined && ifRange !== etag && ifRange !== lastModified
+      ? null
+      : parseRangeHeader(req.headers.range, result.size)
+    if (range === 'invalid') {
+      res.writeHead(416, { ...baseHeaders, 'content-range': `bytes */${result.size}` })
+      res.end()
+      return
+    }
+    const headers: Record<string, string | number> = { ...baseHeaders }
     if (range === null) {
       headers['content-length'] = result.size
       res.writeHead(200, headers)

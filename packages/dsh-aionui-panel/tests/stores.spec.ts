@@ -170,7 +170,7 @@ describe('scm store', () => {
   })
 })
 
-describe('preview pdf tabs (issue #236)', () => {
+describe('preview pdf tabs (issue #239)', () => {
   it('openFile on a pdf streams via the raw route without api.read', async () => {
     const { api } = fakeApi()
     const s = createPanelStores(api)

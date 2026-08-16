@@ -163,16 +163,22 @@ export function probeImageSize(data: Buffer): { width: number; height: number } 
   return undefined
 }
 
-/** Derive the mime type for a raw read from the extension, then the content. */
-// pdf mappings (extension + %PDF magic) contributed by EricWang1358 (#239).
-function imageMime(rel: string, data: Buffer): string {
+/** Mime lookup by file extension (undefined when the extension is unknown). */
+function mimeByExtension(rel: string): string | undefined {
   const ext = rel.split('.').pop()?.toLowerCase() ?? ''
   const byExt: Record<string, string> = {
     png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
     webp: 'image/webp', svg: 'image/svg+xml', ico: 'image/x-icon', avif: 'image/avif', bmp: 'image/bmp',
     pdf: 'application/pdf',
   }
-  if (byExt[ext]) return byExt[ext]
+  return byExt[ext]
+}
+
+/** Derive the mime type for a raw read from the extension, then the content. */
+// pdf mappings (extension + %PDF magic) contributed by EricWang1358 (#239).
+function imageMime(rel: string, data: Buffer): string {
+  const byExt = mimeByExtension(rel)
+  if (byExt !== undefined) return byExt
   if (data.length >= 3 && data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e) return 'image/png'
   if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8) return 'image/jpeg'
   if (data.length >= 4 && data[0] === 0x25 && data[1] === 0x50 && data[2] === 0x44 && data[3] === 0x46) return 'application/pdf'
@@ -287,11 +293,12 @@ export class FsService {
   /**
    * Resolve one file for raw streaming (the markdown image / pdf preview
    * route): gated, traversal-guarded, and .git-refusing. Returns the absolute
-   * path with the derived mime and size — the HTTP layer streams the bytes
-   * itself (createReadStream + Range), so even large files never sit in host
-   * memory. Mime magic detection reads only the first few bytes.
+   * path with the derived mime, size and mtime — the HTTP layer streams the
+   * bytes itself (createReadStream + Range), so even large files never sit in
+   * host memory. Mime magic detection reads only the first few bytes. The
+   * mtime feeds the route's ETag/Last-Modified validators.
    */
-  async readRaw(root: string, rel: string): Promise<{ abs: string; mime: string; size: number } | PanelError> {
+  async readRaw(root: string, rel: string): Promise<{ abs: string; mime: string; size: number; mtime: number } | PanelError> {
     const gated = await this.gate(root)
     if (!gated.ok) return gated.error
     if (isGitPath(rel)) return { code: 'path-outside-root', message: 'refusing to read .git' }
@@ -304,7 +311,9 @@ export class FsService {
       return { code: 'not-found', message: `cannot read ${rel}` }
     }
     if (info.isDirectory()) return { code: 'is-directory', message: `${rel} is a directory` }
-    return { abs: resolved.abs, mime: imageMime(rel, await readMagicBytes(resolved.abs)), size: info.size }
+    // Extension-known types skip the magic-bytes open/read entirely.
+    const mime = mimeByExtension(rel) ?? imageMime(rel, await readMagicBytes(resolved.abs))
+    return { abs: resolved.abs, mime, size: info.size, mtime: info.mtimeMs }
   }
 
   /** Write text content back, refusing when the file moved on disk (mtime conflict). */

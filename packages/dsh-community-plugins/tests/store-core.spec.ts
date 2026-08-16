@@ -24,7 +24,14 @@ function repository(overrides: Partial<CatalogRepository> = {}): CatalogReposito
     validation: {
       overall: 'verified',
       label: 'Verified',
+      tone: 'success',
       sourceSha: '0123456789abcdef0123456789abcdef01234567',
+      stages: {
+        discovery: { status: 'passed' },
+        identification: { status: 'passed' },
+        structure: { status: 'passed' },
+        sandbox: { status: 'passed' },
+      },
     },
     install: {
       status: 'recognized',
@@ -158,6 +165,36 @@ describe('installed plugin comparison', () => {
     const match = matchInstalledPlugin(repository(), installed)
     expect(match).not.toBeNull()
     expect(isUpdateAvailable(repository(), match)).toBe(true)
+  })
+
+  it('matches the codeload tarball URL recorded by pnpm for GitHub installs', () => {
+    const adsRepository = repository({
+      name: 'dsh-ads',
+      fullName: 'Nagi-ovo/dsh-ads',
+      validation: {
+        overall: 'verified',
+        sourceSha: 'fbd58579e4f3601b2c38ccbf3f7f854c9f3a9cd6',
+      },
+      install: {
+        status: 'recognized',
+        candidate: {
+          source: 'github',
+          target: 'Nagi-ovo/dsh-ads',
+          command: 'dsh plugin --profile web add github:Nagi-ovo/dsh-ads#fbd58579e4f3601b2c38ccbf3f7f854c9f3a9cd6',
+          args: ['plugin', '--profile', 'web', 'add', 'github:Nagi-ovo/dsh-ads#fbd58579e4f3601b2c38ccbf3f7f854c9f3a9cd6'],
+          executable: true,
+        },
+      },
+    })
+    const installed = [{
+      name: '@dsh-external/dsh-ads',
+      version: '0.1.0',
+      resolved: 'https://codeload.github.com/Nagi-ovo/dsh-ads/tar.gz/fbd58579e4f3601b2c38ccbf3f7f854c9f3a9cd6',
+    }]
+
+    const match = matchInstalledPlugin(adsRepository, installed)
+    expect(match?.name).toBe('@dsh-external/dsh-ads')
+    expect(isUpdateAvailable(adsRepository, match)).toBe(false)
   })
 })
 

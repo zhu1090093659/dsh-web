@@ -57,8 +57,8 @@
 }
 
 .filterControls {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(128px, 0.45fr) minmax(128px, 0.45fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   min-width: 0;
@@ -77,6 +77,16 @@
   font: inherit;
   font-size: 13px;
   letter-spacing: 0;
+}
+
+.search {
+  flex: 1 1 180px;
+  min-width: min(180px, 100%);
+}
+
+.filterControls select {
+  flex: 1 1 104px;
+  min-width: 104px;
 }
 
 .search:focus,
@@ -766,10 +776,6 @@
 }
 
 @media (max-width: 720px) {
-  .filterControls {
-    grid-template-columns: minmax(0, 1fr) minmax(104px, 0.48fr) minmax(104px, 0.48fr);
-  }
-
   .commandRow {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -782,7 +788,6 @@
 
 @media (max-width: 440px) {
   .filterControls {
-    grid-template-columns: minmax(0, 1fr) minmax(78px, 0.55fr) minmax(78px, 0.55fr);
     gap: 6px;
   }
 

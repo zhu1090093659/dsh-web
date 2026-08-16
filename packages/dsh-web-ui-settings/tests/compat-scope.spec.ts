@@ -3,8 +3,8 @@
 /**
  * Compatibility scope state machine: the official scope stays authoritative
  * while it serves the namespace; the bridge controller takes over its
- * unavailable state on loopback; writes route to the active transport; and a
- * remote browser (no fetch) keeps the official process-local behavior.
+ * unavailable state over same-origin fetch; writes route to the active
+ * transport; and a missing fetch keeps the official unavailable behavior.
  */
 
 import { describe, expect, it, vi } from 'vitest'
@@ -131,7 +131,7 @@ describe('createCompatScope', () => {
     expect(scope.getSnapshot().status).toBe('unavailable')
   })
 
-  it('never builds a bridge without a fetch (remote browser)', async () => {
+  it('never builds a bridge when the caller provides no fetch', async () => {
     const primary = fakePrimary<{ enabled: boolean }>(unavailable())
     const scope = createCompatScope<{ enabled: boolean }>({ namespace: 'task-board', primary: primary.scope })
     await vi.waitFor(() => { expect(scope.getSnapshot().status).toBe('unavailable') })

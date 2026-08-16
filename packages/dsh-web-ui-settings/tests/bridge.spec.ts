@@ -4,10 +4,11 @@
  * controller understands.
  */
 
+import type { IncomingMessage } from 'node:http'
 import { describe, expect, it } from 'vitest'
 import { SettingsConflictError } from '@deepseek-ai/dsh-settings'
 import type { SettingsNamespace, SettingsProvider } from '@deepseek-ai/dsh-settings'
-import { makeBridgeHandlers } from '../src/bridge.ts'
+import { isTrustedBridgeRequest, makeBridgeHandlers, WEB_UI_SETTINGS_PROXY_TOKEN_HEADER } from '../src/bridge.ts'
 
 /** One fake settings registration the fake seam serves. */
 interface FakeRegistration {
@@ -59,6 +60,90 @@ const userYaml = (): string => [
   '  - dsh-skins',
   '  - dsh-web-ui',
 ].join('\n')
+
+/** Minimal request facts consumed by the bridge trust fence. */
+function request(options: {
+  address?: string
+  host?: string
+  origin?: string
+  fetchSite?: string
+  proxyToken?: string
+} = {}): IncomingMessage {
+  const headers: Record<string, string> = { host: options.host ?? '127.0.0.1:3080' }
+  if (options.origin !== undefined) headers.origin = options.origin
+  if (options.fetchSite !== undefined) headers['sec-fetch-site'] = options.fetchSite
+  if (options.proxyToken !== undefined) headers[WEB_UI_SETTINGS_PROXY_TOKEN_HEADER] = options.proxyToken
+  return {
+    socket: { remoteAddress: options.address ?? '127.0.0.1' },
+    headers,
+  } as unknown as IncomingMessage
+}
+
+describe('bridge request trust', () => {
+  const proxyAccess = { trustedProxyHosts: ['dsh.example.test'], proxyToken: 'test-proxy-token' }
+
+  it('keeps direct loopback access without proxy config', () => {
+    expect(isTrustedBridgeRequest(request())).toBe(true)
+    expect(isTrustedBridgeRequest(request({ host: 'localhost:3080', origin: 'http://localhost:3080' }))).toBe(true)
+  })
+
+  it('denies a domain Host by default', () => {
+    expect(isTrustedBridgeRequest(request({
+      host: 'dsh.example.test',
+      origin: 'https://dsh.example.test',
+      proxyToken: 'test-proxy-token',
+    }))).toBe(false)
+  })
+
+  it('admits an authenticated same-origin request from the local proxy', () => {
+    expect(isTrustedBridgeRequest(request({
+      host: 'dsh.example.test',
+      origin: 'https://dsh.example.test',
+      fetchSite: 'same-origin',
+      proxyToken: 'test-proxy-token',
+    }), proxyAccess)).toBe(true)
+  })
+
+  it.each([
+    ['non-loopback proxy socket', { address: '192.0.2.10', host: 'dsh.example.test', origin: 'https://dsh.example.test', proxyToken: 'test-proxy-token' }],
+    ['unknown Host', { host: 'other.example.test', origin: 'https://other.example.test', proxyToken: 'test-proxy-token' }],
+    ['mismatched Origin', { host: 'dsh.example.test', origin: 'https://other.example.test', proxyToken: 'test-proxy-token' }],
+    ['cross-site marker', { host: 'dsh.example.test', origin: 'https://dsh.example.test', fetchSite: 'cross-site', proxyToken: 'test-proxy-token' }],
+    ['missing proxy token', { host: 'dsh.example.test', origin: 'https://dsh.example.test' }],
+    ['wrong proxy token', { host: 'dsh.example.test', origin: 'https://dsh.example.test', proxyToken: 'wrong-token' }],
+  ])('denies %s', (_label, options) => {
+    expect(isTrustedBridgeRequest(request(options), proxyAccess)).toBe(false)
+  })
+
+  it('rejects non-canonical trusted proxy authorities at mount time', () => {
+    for (const authority of [
+      'https://dsh.example.test/path',
+      'user@dsh.example.test',
+      'dsh.example.test:08080',
+      'dsh.example.test/path',
+    ]) {
+      expect(() => isTrustedBridgeRequest(request(), {
+        trustedProxyHosts: [authority],
+        proxyToken: 'test-proxy-token',
+      })).toThrow(/canonical host\[:port\] authority/)
+    }
+  })
+
+  it('rejects a non-canonical request Host even when it normalizes to a trusted Host', () => {
+    expect(isTrustedBridgeRequest(request({
+      host: 'dsh.example.test:08080',
+      origin: 'https://dsh.example.test:8080',
+      proxyToken: 'test-proxy-token',
+    }), {
+      trustedProxyHosts: ['dsh.example.test:8080'],
+      proxyToken: 'test-proxy-token',
+    })).toBe(false)
+  })
+
+  it('requires a token whenever proxy Hosts are configured', () => {
+    expect(() => isTrustedBridgeRequest(request(), { trustedProxyHosts: ['dsh.example.test'] })).toThrow(/require a non-empty proxy token/)
+  })
+})
 
 describe('bridge describe', () => {
   it('serves the built-in family allowlist when the user configured none', async () => {

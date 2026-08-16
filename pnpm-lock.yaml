@@ -783,6 +783,10 @@ importers:
         version: link:../dsh-tool-describe-image
 
   packages/dsh-web-ui-settings:
+    dependencies:
+      schemastery:
+        specifier: ^3.18.0
+        version: 3.18.0
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.1

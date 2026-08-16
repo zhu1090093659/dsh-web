@@ -237,7 +237,10 @@ export class PanelLayoutController {
     el.style.position = 'absolute'
     el.style.top = '0'
     el.style.bottom = '0'
-    el.style.zIndex = '30'
+    // Frame chrome must stay below the shell overlay layer (z-index 20,
+    // AppFrame .overlayLayer) so the drag line never floats over
+    // shell.overlay surfaces such as the emoji drawer (issue #234).
+    el.style.zIndex = '10'
     el.style.cursor = 'col-resize'
     el.style.width = `${hitWidth}px`
     if (reverse) {

@@ -134,7 +134,11 @@
    the whole frame). Right-edge overlay plugins would otherwise paint on top of
    the Explorer / Preview columns' content (issue #195). Kept below dialogs
    (1000+) so modals/toasts still stack above the panels. Matches the tab-bar
-   z-index 30 convention (issues #169 / #87), so the three stay consistent. */
+   z-index 30 convention (issues #169 / #87), so the three stay consistent.
+   Full-screen drawer overlays (e.g. the biaoqingbao emoji manager) must
+   therefore render at the ROOT stacking context (portal to document.body,
+   z in (100, 1000)) to cover the panels; the panel's frame chrome below
+   stays under the overlay layer so it never floats over them (#234). */
 :global(.aionui-preview-col),
 :global(.aionui-explorer-col) {
   min-width: 0;
@@ -209,7 +213,8 @@
   opacity: 1;
 }
 
-/* Floating expand button (explorer collapsed). */
+/* Floating expand button (explorer collapsed). Below the shell overlay
+   layer (z-index 20) so it never floats over shell.overlay surfaces. */
 :global(.aionui-floating-expand) {
   position: fixed;
   top: 50%;
@@ -227,7 +232,7 @@
   color: var(--aion-text-secondary);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
   cursor: pointer;
-  z-index: 100;
+  z-index: 10;
   transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 :global(.aionui-floating-expand:hover) {
@@ -242,7 +247,8 @@
   outline-offset: 2px;
 }
 
-/* The collapse chevron inside the explorer tab bar (top-right). */
+/* The collapse chevron inside the explorer tab bar (top-right). Below the
+   shell overlay layer (z-index 20) so it never floats over overlay drawers. */
 :global(.aionui-collapse-chevron) {
   position: absolute;
   /* In desktop wrappers with the Window Controls Overlay, the native
@@ -251,7 +257,7 @@
      unchanged there (issue #169). */
   top: calc(6px + env(titlebar-area-height, 0px));
   right: 8px;
-  z-index: 30;
+  z-index: 10;
   width: 24px;
   height: 24px;
   display: flex;

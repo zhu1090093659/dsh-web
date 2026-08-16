@@ -29,6 +29,8 @@ export interface RemoteSettings {
   autoTunnel?: boolean
   /** Mobile composer: plain Enter sends; off means Enter inserts a newline. */
   mobileEnterToSend?: boolean
+  /** Maximum automatic retries for transient model request failures. */
+  retryAttempts?: number
 }
 
 /** What the remote-control card renders. */
@@ -51,6 +53,8 @@ export interface RemoteSettingsCardState extends CardShell {
   autoTunnel: CardFieldState
   /** Mobile composer Enter-to-send switch. */
   mobileEnterToSend: CardFieldState
+  /** Automatic retry budget for transient model request failures. */
+  retryAttempts: CardFieldState
 }
 
 /** The registration-side face the card's slot entry injects. */
@@ -78,6 +82,7 @@ export class RemoteSettingsCardController {
       textField('publicBaseUrl'),
       booleanField('autoTunnel'),
       booleanField('mobileEnterToSend'),
+      numberField('retryAttempts', { integer: true, min: 0 }),
     ])
     this.store = this.form.bind(() => this.projection())
   }
@@ -94,6 +99,7 @@ export class RemoteSettingsCardController {
       publicBaseUrl: this.form.field('publicBaseUrl'),
       autoTunnel: this.form.field('autoTunnel'),
       mobileEnterToSend: this.form.field('mobileEnterToSend'),
+      retryAttempts: this.form.field('retryAttempts'),
     }
   }
 
@@ -240,6 +246,16 @@ export function RemoteSettingsCard(props: RemoteSettingsCardProps) {
         {...state.mobileEnterToSend}
         onEdit={(text) => { props.edit('mobileEnterToSend', text) }}
         onReset={() => { props.resetField('mobileEnterToSend') }}
+      />
+      <ValueField
+        id="settings-remote-retry-attempts"
+        label={t('settings.retryAttempts')}
+        hint={t('settings.retryAttemptsHint')}
+        numeric
+        {...fieldProps}
+        {...state.retryAttempts}
+        onEdit={(text) => { props.edit('retryAttempts', text) }}
+        onReset={() => { props.resetField('retryAttempts') }}
       />
     </PluginSettingsCard>
   )

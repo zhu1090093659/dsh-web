@@ -122,7 +122,7 @@ export const Config: z<Config> = z.object({
   publicBaseUrl: z.string(),
   autoTunnel: z.boolean().default(false),
   mobileEnterToSend: z.boolean().default(true),
-  retryAttempts: z.number().step(1).min(0).max(5).default(DEFAULT_RETRY_CONFIG.maxRetries),
+  retryAttempts: z.number().step(1).min(0).default(DEFAULT_RETRY_CONFIG.maxRetries),
   enabled: z.boolean().default(true),
 })
 
@@ -153,7 +153,7 @@ const DEFAULTS: ResolvedConfig = {
 /** Install bounded recovery for transient model request failures. */
 function installAutomaticRetry(ctx: Context, readMaxRetries: () => number): void {
   const dispose = ctx.on('agent/request-error', async (payload) => {
-    const maxRetries = Math.min(Math.max(0, readMaxRetries()), DEFAULT_RETRY_CONFIG.maxRetries)
+    const maxRetries = Math.max(0, Math.floor(readMaxRetries()))
     if (!isRetryableFailure(payload.failure) || payload.signal.aborted || maxRetries <= 0) return undefined
 
     // The listener is prepended so the host plugin owns the complete bounded

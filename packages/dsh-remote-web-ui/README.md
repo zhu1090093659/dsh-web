@@ -202,8 +202,9 @@ and retrying never mutate the source session log.
   failure reason. Authentication, invalid-request, context, quota, and other
   permanent errors remain terminal. Tool execution is not automatically
   replayed because that could duplicate an external side effect. Set
-  `retryAttempts` between 0 and 5 in the profile patch or settings file when a
-  deployment needs a smaller budget.
+  `retryAttempts` to any non-negative integer in the Web UI plugin settings
+  card's fault handling field, profile patch, or settings file; setting it to
+  0 disables automatic retry.
 - Installing this plugin gates non-loopback `/api` access behind pairing
   (see `requirePairingForLan` in `src/index.ts`). A desktop browser opened
   via the LAN URL must pair like any remote device; loopback (127.0.0.1)

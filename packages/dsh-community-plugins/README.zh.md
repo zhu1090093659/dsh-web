@@ -43,7 +43,6 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-community-plugins
 ```sh
 pnpm community-skill:check
 pnpm community-skill:sync
-python /Users/samw.stu/.codex/skills/.system/skill-creator/scripts/quick_validate.py packages/dsh-community-plugins/skills/search-dsh-store
 pnpm --dir packages/dsh-community-plugins test
 ```
 

@@ -5,13 +5,13 @@
  * namespace on rc.6 hosts (the apiproxy allowlist is hard-coded), which turns
  * every family plugin card into a read-only explanation. This binder wraps
  * the official scope: when it reports the namespace ready, the wrapper is a
- * pass-through; when it reports unavailable on a loopback connection, a
+ * pass-through; when it reports unavailable, a same-origin
  * bridge controller takes over and serves the same SettingsScope contract
  * from this package's host-side bridge routes (/api/dsh-web-ui-settings).
- * Remote browsers (non-loopback) never use the bridge, matching the official
- * process-local policy. Family plugins opt in through ctx.get('webUiSettings')
- * without a hard service dependency, so a deployment without this package
- * keeps the previous behavior.
+ * The Host keeps the bridge loopback-only by default and may explicitly admit
+ * an authenticated same-host reverse proxy. Family plugins opt in through
+ * ctx.get('webUiSettings') without a hard service dependency, so a deployment
+ * without this package keeps the previous behavior.
  */
 
 import { Service, type Context } from '@deepseek-ai/cordis'
@@ -19,7 +19,6 @@ import { Service, type Context } from '@deepseek-ai/cordis'
 // the forwarded settings invalidation face (ctx.remote).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type { SettingsScope, SettingsScopeSnapshot, SettingsScopeSpec, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { WEB_UI_SETTINGS_BRIDGE_PREFIX } from '../protocol.ts'
@@ -86,7 +85,7 @@ export interface BridgeBatchResult {
  * Build the fetch-backed settings face for the bridge routes. Network and
  * HTTP failures collapse into an ok:false envelope so the controller keeps
  * its unavailable state instead of throwing into plugin activation.
- * @param fetchFn - the fetch implementation (the global fetch on loopback).
+ * @param fetchFn - the same-origin fetch implementation.
  * @returns the settings face.
  */
 export function createBridgeApi(fetchFn: typeof fetch): BridgeSettingsFace {
@@ -376,8 +375,9 @@ export interface WebUiSettingsBinderFace {
 /**
  * The rc.6 compatibility binder, provided as the webUiSettings service. Its
  * bind() rides the official binder first and hands the bridge controller in
- * only when the official scope settles as unavailable on a loopback
- * connection, so official behavior stays untouched wherever it works.
+ * only when the official scope settles as unavailable, so official behavior
+ * stays untouched wherever it works and the Host remains the authority for
+ * loopback or explicitly configured authenticated-proxy access.
  */
 export class WebUiSettingsBinder extends Service {
   constructor(ctx: Context) {
@@ -393,13 +393,10 @@ export class WebUiSettingsBinder extends Service {
       throw new Error('webUiSettings: the official settingsScope binder is unavailable')
     }
     const primary = official.bind(spec)
-    const connectionValue = ctx.get('connection')
-    const connection = isConnectionHandle(connectionValue) ? connectionValue : undefined
-    const loopback = connection?.isLoopback === true
     const scope = createCompatScope<T>({
       namespace: spec.namespace,
       primary,
-      fetchFn: loopback ? ((input, init) => fetch(input, init)) : undefined,
+      fetchFn: (input, init) => fetch(input, init),
     })
     // Bridge refreshes ride the same invalidation edges as the official
     // scope: forwarded settings-document updates and connection resets.
@@ -425,13 +422,6 @@ export class WebUiSettingsBinder extends Service {
 /** True when the value exposes the official settings binder's bind() seam. */
 function isBinderFace(value: unknown): value is WebUiSettingsBinderFace {
   return typeof value === 'object' && value !== null && typeof (value as { bind?: unknown }).bind === 'function'
-}
-
-/** True when the value looks like the client connection handle this wrapper reads. */
-function isConnectionHandle(value: unknown): value is ConnectionHandle {
-  if (typeof value !== 'object' || value === null) return false
-  const record = value as Record<string, unknown>
-  return record.isLoopback === undefined || typeof record.isLoopback === 'boolean'
 }
 
 /** True when the value exposes the settings invalidation face the wrapper listens to. */

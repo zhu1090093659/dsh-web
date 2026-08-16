@@ -3,8 +3,12 @@
  * work together and care for it: every completed turn earns a small reward,
  * petting earns a tiny one (cooldown-gated), feeding earns the most.
  * Persistence lives in the service; this module only computes transitions.
+ * Reaction copy resolves from the shared remark library (first line of each
+ * built-in pool); the ledger layers per-pet custom remarks on top.
  * @module @linxin666/dsh-pet/affinity
  */
+
+import { builtinRemark } from './remarks.ts'
 
 /** One interaction the user can perform on the pet. */
 export type PetInteraction = 'pet' | 'feed'
@@ -25,16 +29,27 @@ export interface AffinityState {
   turns: number
 }
 
-export const AFFINITY_MAX = 100
+/**
+ * Affinity points cap. Historically 100; removed so long-term companions
+ * keep growing — the default limit is now the full 999,999,999 range.
+ */
+export const AFFINITY_MAX = 999_999_999
 
 /** Affinity ranks by points; the pet visibly grows with its rank.
- *  Marker glyphs are plain ASCII (the repo bans all emoji characters);
- *  they read as a growing star trail alongside the rank name. */
+ *  The original four tiers (0/25/50/80) are unchanged; higher tiers reach
+ *  into the extended cap so the ladder stays meaningful for veteran
+ *  companions. Marker glyphs are plain ASCII (the repo bans all emoji
+ *  characters); they read as a growing star trail alongside the rank name. */
 export const AFFINITY_RANKS = [
   { min: 0, name: '幼鲸', emoji: '*' },
   { min: 25, name: '伙伴', emoji: '**' },
   { min: 50, name: '挚友', emoji: '***' },
   { min: 80, name: '深海羁绊', emoji: '****' },
+  { min: 200, name: '心有灵犀', emoji: '*****' },
+  { min: 500, name: '传说羁绊', emoji: '******' },
+  { min: 2_000, name: '神话羁绊', emoji: '*******' },
+  { min: 10_000, name: '永恒之契', emoji: '********' },
+  { min: 100_000, name: '鲸生共渡', emoji: '*********' },
 ] as const
 
 /** Interaction tuning (all in points / ms). */
@@ -136,7 +151,7 @@ export function applyInteraction(
   const next = { ...state }
   if (kind === 'pet') {
     if (state.lastPetAt !== 0 && nowMs - state.lastPetAt < config.petCooldownMs) {
-      return { affinity: state, delta: 0, reaction: '摸过头啦，让鲸鱼娘歇口气～', accepted: false }
+      return { affinity: state, delta: 0, reaction: builtinRemark('petCooldown'), accepted: false }
     }
     next.lastPetAt = nowMs
     next.pets += 1
@@ -144,13 +159,13 @@ export function applyInteraction(
     return {
       affinity: next,
       delta: config.petReward,
-      reaction: '咕噜咕噜～被摸摸好舒服！',
+      reaction: builtinRemark('pet'),
       accepted: true,
     }
   }
   if (kind === 'feed') {
     if (state.lastFeedAt !== 0 && nowMs - state.lastFeedAt < config.feedCooldownMs) {
-      return { affinity: state, delta: 0, reaction: '吃饱啦，晚点再喂～', accepted: false }
+      return { affinity: state, delta: 0, reaction: builtinRemark('feedCooldown'), accepted: false }
     }
     next.lastFeedAt = nowMs
     next.feeds += 1
@@ -158,7 +173,7 @@ export function applyInteraction(
     return {
       affinity: next,
       delta: config.feedReward,
-      reaction: '呜哇！小鱼干好好吃！',
+      reaction: builtinRemark('feed'),
       accepted: true,
     }
   }

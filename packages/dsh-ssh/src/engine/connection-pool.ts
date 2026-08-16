@@ -62,13 +62,13 @@ export interface PoolEngine {
 }
 
 /** Build the ssh2 connect config for one entry (key read from disk). */
-export function buildConnectConfig(entry: SshHostEntry, sock?: ConnectConfig['sock']): ConnectConfig {
+export function buildConnectConfig(entry: SshHostEntry, sock: ConnectConfig['sock'] | undefined, opts: Required<EngineOptions>): ConnectConfig {
   const config: ConnectConfig = {
     host: entry.host,
     port: entry.port,
     username: entry.user,
-    readyTimeout: 15_000,
-    keepaliveInterval: 15_000,
+    readyTimeout: opts.connectTimeoutMs,
+    keepaliveInterval: opts.keepaliveIntervalMs,
     keepaliveCountMax: 3,
   }
   if (sock !== undefined) config.sock = sock
@@ -147,7 +147,7 @@ export async function connectChain(engine: PoolEngine, entry: SshHostEntry): Pro
       for (const client of hops) client.end()
       throw new Error('proxyJump alias \'' + hopAlias + '\' not found — create it first')
     }
-    const hopClient = await connectClient(buildConnectConfig(hop, sock))
+    const hopClient = await connectClient(buildConnectConfig(hop, sock, engine.opts))
     hops.push(hopClient)
     const next = index + 1 < chain.length ? engine.store.find(chain[index + 1]) : undefined
     const nextHost = next !== undefined ? next.host : entry.host
@@ -165,7 +165,7 @@ export async function connectChain(engine: PoolEngine, entry: SshHostEntry): Pro
   }
   let target: Client | undefined
   try {
-    target = await connectClient(buildConnectConfig(entry, sock))
+    target = await connectClient(buildConnectConfig(entry, sock, engine.opts))
     return { client: target, hops }
   } catch (error) {
     for (const client of hops) client.end()

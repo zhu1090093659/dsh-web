@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-harbor",
   "description": "Hot-pluggable 夕港 (harbor) skin for the dsh web GUI: dusk-harbor art backdrop with live theme scrim, deep navy surfaces with amber-orange accents, translucent panes",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

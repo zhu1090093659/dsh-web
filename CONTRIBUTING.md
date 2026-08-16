@@ -74,9 +74,9 @@ pnpm docs:write-pair <包目录名>   # 如 dsh-ssh 或 qq98
   `pnpm --filter @linxin666/dsh-skins build` 把皮肤资产并入聚合包。
 - 新增 / 删除包或改皮肤清单时，同步更新 [docs/publish-prep.md](docs/publish-prep.md)
   的发布清单快照。
-- 第三方插件想进「社区插件」索引卡片（设置 → 插件配置 → Web UI 插件）时，按
+- 第三方插件想进「社区插件」一级设置分区（设置 → 社区插件）时，按
   [docs/plugins.md](docs/plugins.md) 的登记说明在
-  `packages/dsh-web-ui-settings/community.json` 追加条目并重新生成注册表
+  `packages/dsh-community-plugins/community.json` 追加条目并重新生成注册表
   （`node scripts/community-index`）。
 
 ## 文档体系
@@ -100,7 +100,8 @@ pnpm docs:write-pair <包目录名>   # 如 dsh-ssh 或 qq98
 
 ## Issue 与讨论
 
-- Bug / 功能请求用 [Issue 模板](.github/ISSUE_TEMPLATE/standard_issue.yml) 提交；
+- Bug / 功能请求用 [Issue 模板](.github/ISSUE_TEMPLATE/standard_issue.yml) 提交，
+  Bug 用「Bug 报告」表单（自动附加 `bug` 标签），需附截图、冒烟测试、引用代码与建议补丁；
 - 社区交流见根 README 的「社区」小节；
 - 提 Issue 前先按标签检索（`bug` / `enhancement` / `question` /
   `good first issue` / `duplicate`）并搜索关键词，确认没有重复再提交；

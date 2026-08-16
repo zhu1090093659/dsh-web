@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-dragon-heir",
   "description": "Hot-pluggable 龙的传人 (Dragon Heir) skin for the dsh web GUI: one skin, two paintings — light theme rides the ink dragon with a vermilion seal, dark theme rides the Great Wall with gold accents; both artworks inline, no static files",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -89,6 +89,10 @@ export function selectedTaskOf(snapshot: ControllerSnapshot): TaskRecord | undef
 }
 
 function randomUuid(): string {
+  const randomUUID = globalThis.crypto?.randomUUID
+  if (randomUUID !== undefined) {
+    return randomUUID.call(globalThis.crypto!)
+  }
   const bytes = globalThis.crypto?.getRandomValues(new Uint8Array(16))
   if (bytes === undefined) {
     // Non-secure fallback (tests, odd environments).

@@ -46,6 +46,25 @@
   animation: none;
 }
 
+/* 多会话气泡栈：并行会话各自一个气泡，自精灵头顶向上堆叠，
+   最近更新的会话在最上。栈内气泡改流入列布局，不再绝对定位
+   互相覆盖。 */
+.bubbleStack {
+  position: absolute;
+  bottom: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.bubbleStack .bubble {
+  position: relative;
+  bottom: auto;
+  margin-bottom: 0;
+}
+
 @keyframes pet-bubble-pop {
   0% {
     opacity: 0;

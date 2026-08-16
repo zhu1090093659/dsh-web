@@ -7,7 +7,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DirListing, FsEntry, GitStatusView, PanelEnvelope } from '../src/core/types.ts'
-import { createPanelStores, type PanelStores } from '../src/client/store.ts'
+import { createPanelStores, FS_COALESCE_MS, type PanelStores } from '../src/client/store.ts'
 import type { PanelApi } from '../src/client/api.ts'
 
 /** A fake api recording calls with canned responses. */
@@ -131,6 +131,41 @@ describe('explorer store', () => {
     expect(stores.explorer.getSnapshot().dirs['src']).toBeUndefined()
   })
 
+  it('a single fs change refreshes the root listing once', async () => {
+    stores.explorer.setRoot('/w')
+    await vi.waitFor(() => expect(stores.explorer.getSnapshot().dirs['']).toBeDefined())
+    const before = calls.filter((call) => call.startsWith('list:')).length
+    await stores.explorer.handleFsChange()
+    expect(calls.filter((call) => call.startsWith('list:')).length).toBe(before + 1)
+  })
+
+  it('coalesces an fs-event burst into one in-flight pass plus one trailing pass', async () => {
+    const setup = fakeApi()
+    const s = createPanelStores(setup.api)
+    s.explorer.setRoot('/w')
+    await vi.waitFor(() => expect(s.explorer.getSnapshot().dirs['']).toBeDefined())
+
+    // Gate the NEXT list call so the first fs pass stays in flight while
+    // the burst arrives.
+    let release: () => void = () => {}
+    setup.api.list.mockImplementationOnce(() => new Promise((resolve) => {
+      release = () => resolve({ ok: true, value: { root: '/w', entries: [] } })
+    }))
+    const first = s.explorer.handleFsChange()
+    void s.explorer.handleFsChange()
+    void s.explorer.handleFsChange()
+    void s.explorer.handleFsChange()
+    release()
+    await first
+    // Let the single trailing timer fire and finish its pass (the default
+    // listing implementation answers the trailing pass).
+    await new Promise((resolve) => setTimeout(resolve, FS_COALESCE_MS + 60))
+    await vi.waitFor(() => expect(setup.api.list).toHaveBeenCalledTimes(3))
+
+    // 1 initial bind listing + 1 in-flight pass + 1 trailing pass = 3; the
+    // trailing pass lands the listing in state.
+    expect(s.explorer.getSnapshot().dirs['']?.map((entry) => entry.name)).toEqual(['src', 'README.md'])
+  })
   it('reveal expands the ancestor chain and selects, and clears search', async () => {
     stores.explorer.setRoot('/w')
     stores.explorer.reveal('src/deep/file.ts')

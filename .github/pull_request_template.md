@@ -27,6 +27,7 @@
 - [ ] 面向用户的功能或行为变更
 - [ ] Bug 修复
 - [ ] 增强 / 优化（现有功能的改进、性能 / 体验优化）
+- [ ] 新皮肤收录（内容贡献，欢迎直接提交，无需先提 issue）
 - [ ] 仅文档
 - [ ] 维护 / 重构
 
@@ -68,9 +69,23 @@
 
 <!-- 可选。若本 PR 贡献的是插件或皮肤，可在项目 README 末尾「来源与版权」的版权表中追加一行声明你自己的版权（包 / 来源 / 版权三列，格式参考表中现有行）；不声明则维持现有版权归属。 -->
 
+## 新皮肤收录（New Skin）
+
+<!-- 仅当本 PR 新增皮肤时必填；其余改动可跳过本节。新皮肤属于内容贡献，欢迎直接提交（无需先提 issue）。 -->
+
+- [ ] 遵循官方独立 bundle 标准四件套（`dsh.bundle.patch` → `cordis.patch.yml`、`dsh.client` 浏览器半区、`prepare` = tsdown、devDependencies 仅真实发布版本），并满足纯呈现层约束（样式只挂 `body[data-dsh-<name>]`，apply disposer 全部收回）。
+- [ ] `skin.json` 契约完整（id / name / nameEn / author / tagline / description / tags / accent / bodyAttr / package / wiring / preview / order）。
+- [ ] 已重跑 `node scripts/skin-center-bundles` 并重建 skin-center（新皮肤出现在设置 → 皮肤中心）；已重跑 `node scripts/gallery-build` 并提交 gallery 产物（`gallery/bundles.js` / `gallery/manifest.js`）。
+- [ ] 已用 `node scripts/capture-previews` 重拍并提交 `preview/{light,dark}.png`。
+- [ ] README 中英双语三件套、LICENSE 与贡献者版权声明齐全；PR 描述附 gallery 试穿截图（亮 / 暗）。
+
 ## 社区插件索引登记（Community Plugin Index）
 
-<!-- 可选。若你贡献的是第三方插件且希望被 dsh-web-ui 的「社区插件」卡片索引（设置 > 插件配置 > Web UI 插件），按 docs/plugins.md 的说明在 packages/dsh-web-ui-settings/community.json 登记，并运行 node scripts/community-index 重新生成注册表。 -->
+<!-- 仅当本 PR 新增接入一个社区插件时必填；其余改动可跳过本节。新接入的社区插件对下述要求逐项确认。 -->
+
+- [ ] 已按 [docs/plugins.md](../docs/plugins.md) 的登记说明在 `packages/dsh-community-plugins/community.json` 追加条目，并运行 `node scripts/community-index` 重新生成注册表（提交生成的 `packages/dsh-community-plugins/src/client/generated/community.ts`）。
+- [ ] 已确认插件与 dsh-web-ui 插件体系兼容：遵循官方 cordis bundle 独立标准（package.json 声明 `dsh.bundle.patch` 指向 `cordis.patch.yml`、`dsh.client` 浏览器半区），类型仅基于官方 `@deepseek-ai/*` NPM SDK，未修改 DSH 源码；已在本仓库最新代码上验证插件可被 `dsh web` 挂载并正常运行。
+- [ ] 承诺负责后续更新跟进：插件与 DSH / dsh-web-ui 生态保持同步，生态升级导致不兼容时主动跟进修复；条目信息（description / npm 等）变动或插件停更时，及时更新索引登记或提交移除。
 
 ## 本地验证（Local Validation）
 

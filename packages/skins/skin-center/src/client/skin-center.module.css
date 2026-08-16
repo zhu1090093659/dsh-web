@@ -369,10 +369,31 @@ body[data-dsh-skin-center] .backgroundRange {
   height: 4px;
   margin: 0;
   border-radius: 999px;
-  background: var(--dsw-alias-bg-layer-3, #e2e8f0);
+  /* The official default theme collapses every --dsw-alias-bg-layer-* token to
+     the panel background, so a layer-token track is invisible there. Paint the
+     track with the muted foreground token at partial alpha (soft groove on
+     light panels, lighter strip on dark panels, following the active skin's
+     token definitions), and keep the border-token outline so the groove stays
+     visible even when the foreground token drifts close to the panel
+     background (both fixes for issue #309 are kept together). */
+  background: var(--dsw-alias-label-tertiary, #9aa4b5);
+  background: color-mix(in srgb, var(--dsw-alias-label-tertiary, #9aa4b5) 45%, transparent);
+  box-shadow: 0 0 0 1px var(--dsw-alias-border-l3, #cbd5e1);
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
+}
+
+body[data-dsh-skin-center] .backgroundRange::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-3, #e2e8f0);
+}
+
+body[data-dsh-skin-center] .backgroundRange::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-3, #e2e8f0);
 }
 
 body[data-dsh-skin-center] .backgroundRange::-webkit-slider-thumb {

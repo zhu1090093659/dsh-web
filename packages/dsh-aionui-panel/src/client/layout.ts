@@ -86,6 +86,26 @@ export function trackPx(track: string): number {
 export const EXPLORER_HANDLE_WIDTH = 8
 export const PREVIEW_HANDLE_WIDTH = 8
 
+/**
+ * Drag target width: apply the hard px bounds (the same min/max the handle
+ * always enforced), then the store's ordered container-aware clamp so the
+ * grid never re-clamps a width the drag showed.
+ */
+export function dragTargetWidth(
+  kind: 'explorer' | 'preview',
+  startWidth: number,
+  deltaX: number,
+  snapshot: { availableWidth: number; previewOpen: boolean; explorerWidth: number },
+): number {
+  const requested = startWidth + deltaX
+  if (kind === 'explorer') {
+    const bounded = Math.min(MAX_WORKSPACE_PANEL_PX, Math.max(MIN_WORKSPACE_PANEL_PX, requested))
+    return clampExplorerWidth(bounded, snapshot.availableWidth, snapshot.previewOpen)
+  }
+  const bounded = Math.min(MAX_PREVIEW_REGION_PX, Math.max(MIN_PREVIEW_PANEL_PX, requested))
+  return clampPreviewWidth(bounded, snapshot.availableWidth, snapshot.explorerWidth)
+}
+
 /** The layout controller: frame sync, handles, floating button, width math. */
 export class PanelLayoutController {
   private frame: HTMLElement | null = null
@@ -259,12 +279,12 @@ export class PanelLayoutController {
           const state = this.layout.getSnapshot()
           return isExplorer ? state.explorerWidth : state.previewWidth
         },
-        compute: (startWidth, deltaX) => {
-          if (isExplorer) {
-            return Math.min(MAX_WORKSPACE_PANEL_PX, Math.max(MIN_WORKSPACE_PANEL_PX, startWidth + deltaX))
-          }
-          return Math.min(MAX_PREVIEW_REGION_PX, Math.max(MIN_PREVIEW_PANEL_PX, startWidth + deltaX))
-        },
+        compute: (startWidth, deltaX) => dragTargetWidth(
+          isExplorer ? 'explorer' : 'preview',
+          startWidth,
+          deltaX,
+          this.layout.getSnapshot(),
+        ),
         onFrame: (width) => {
           // layout.update notifies the subscribers (subscribe -> applyGrid),
           // so no explicit applyGrid here — double-writing every frame.
@@ -368,6 +388,19 @@ export class PanelLayoutController {
       const left = Math.round(width - explorer - preview)
       this.previewHandle.style.left = `${left}px`
       this.previewHandle.style.display = preview > 0 && state.root !== '' ? 'block' : 'none'
+    }
+
+    // The official shell renders its own details drag handle at
+    // `viewport - details` (details treated as the last track). Once this
+    // panel extends the grid with preview/explorer tracks, the real
+    // center/details boundary shifts left by preview + explorer — re-derive
+    // the handle position from the actual tracks so it stays on the details
+    // column's left edge (degenerates to the official value when both panels
+    // are closed).
+    const detailsTrack = trackPx(this.shellTracks[2])
+    const detailsHandle = frame.querySelector<HTMLElement>('[data-side="details"]')
+    if (detailsHandle !== null) {
+      detailsHandle.style.left = `${Math.round(width - detailsTrack - preview - explorer)}px`
     }
 
     // Floating expand button: visible only when the explorer is collapsed.

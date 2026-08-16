@@ -86,12 +86,21 @@ interface SettledSample {
   tokensPerSecond: number | null
 }
 
+interface SurfaceNode {
+  /** Surface event seq, retained in model-visible order. */
+  seq: number
+  /** Estimated token count for the message at `seq`. */
+  tokens: number
+}
+
 interface State {
   settled: TokenUsageProjection
   settledEstimates: number
   last: SettledSample | null
-  /** Surface message seq -> estimated tokens, kept in increasing seq order. */
-  surface: Record<number, number>
+  /** Priced surface in model-visible order. Replacements splice at their
+   *  declared range, so `seq` values are NOT necessarily increasing after a
+   *  compaction checkpoint lands at the surface head. */
+  surface: SurfaceNode[]
   surfaceTokens: number
   header: EpochHeader | null
   active: ActiveStep | null
@@ -114,34 +123,23 @@ function applySurface(
 ): Pick<State, 'surface' | 'surfaceTokens'> {
   const tokens = estimateMessageTokens(surfaceMessage(event), spec)
   if (event.surfaceOp === 'append') {
-    state.surface[event.seq] = tokens
+    state.surface.push({ seq: event.seq, tokens })
     return {
       surface: state.surface,
       surfaceTokens: state.surfaceTokens + tokens,
     }
   }
   const operation = event.surfaceOp
-  if (
-    !Object.prototype.hasOwnProperty.call(state.surface, operation.start)
-    || !Object.prototype.hasOwnProperty.call(state.surface, operation.end)
-    || operation.start > operation.end
-  ) {
+  const startIdx = state.surface.findIndex(node => node.seq === operation.start)
+  const endIdx = state.surface.findIndex(node => node.seq === operation.end)
+  if (startIdx === -1 || endIdx === -1 || startIdx > endIdx) {
     throw new Error(
       'live-stats: replace at seq ' + event.seq + ' has invalid current range ' + operation.start + '-' + operation.end,
     )
   }
-  // Seq keys enter in increasing order (appends grow, and a replace's own seq
-  // is always the newest), and integer-like object keys enumerate in ascending
-  // numeric order, so one pass with an early exit removes the exact range.
   let removed = 0
-  for (const seqKey of Object.keys(state.surface)) {
-    const seq = Number(seqKey)
-    if (seq < operation.start) continue
-    if (seq > operation.end) break
-    removed += state.surface[seq]
-    delete state.surface[seq]
-  }
-  state.surface[event.seq] = tokens
+  for (const node of state.surface.slice(startIdx, endIdx + 1)) removed += node.tokens
+  state.surface.splice(startIdx, endIdx - startIdx + 1, { seq: event.seq, tokens })
   return {
     surface: state.surface,
     surfaceTokens: state.surfaceTokens - removed + tokens,
@@ -285,7 +283,7 @@ export function createLiveTokenUsageProjectionDefinition(
       settled: zeroBuckets(),
       settledEstimates: 0,
       last: null,
-      surface: {},
+      surface: [],
       surfaceTokens: 0,
       header: null,
       active: null,
@@ -389,10 +387,10 @@ export function createLiveTokenUsageProjectionDefinition(
       return next
     },
     view,
-    // Bumped with the pure-JSON state shape (surface Map->Record,
-    // header/tokensPerSecond undefined->null, sparse blocks->Record):
-    // a checkpoint row with the old shape is discarded at read time
-    // instead of revived into the new shape (issue #250 follow-up).
-    stateVersion: 3,
+    // Bumped with each persisted state shape change so a checkpoint row with
+    // an old shape is discarded at read time instead of revived into the new
+    // shape. v3 moved to pure-JSON (Map->Record, nulls, Record blocks); v4
+    // changes surface from a Record to an ordered array for positional folds.
+    stateVersion: 4,
   }
 }

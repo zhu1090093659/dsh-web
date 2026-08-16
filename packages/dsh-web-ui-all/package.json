@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-web-ui-all",
   "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / remote-web-ui / live-stats / web-ui-settings / skin-center / community-plugins / compat shim）+ 皮肤全家桶（dsh-skins，皮肤资产内置）。compat 桥接层已并入本包（src/client），无需独立 compat npm 包。",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

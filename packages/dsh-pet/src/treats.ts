@@ -3,6 +3,9 @@
  * two sources, both tied to companionship:
  *  - work output: every N completed turns grant one treat;
  *  - time output: every T minutes of wall-clock time grant one treat.
+ * Difficulty tuned deliberately high (10x the original cadence): treats are
+ * a rare delicacy the pet earns through sustained companionship, not a
+ * routine drop.
  * Feeding consumes one treat. Settlement is lazy: it runs whenever the host
  * serves a state snapshot or an interaction, so there is no timer and no
  * drift — elapsed periods are computed from the persisted last-grant marks.
@@ -20,8 +23,8 @@ export interface TreatConfig {
 }
 
 export const defaultTreatConfig: TreatConfig = {
-  turnsPerTreat: 3,
-  timeTreatMs: 30 * 60_000,
+  turnsPerTreat: 30,
+  timeTreatMs: 300 * 60_000,
   maxTreats: 20,
 }
 

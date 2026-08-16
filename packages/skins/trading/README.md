@@ -76,6 +76,15 @@ package) to return to the default look.
   `@deepseek-ai/dsh-client-connection` handle when available; without a
   connection it shows `--`.
 
+### Data read scope
+
+The skin's data surface is strictly read-only (the same precedent as the ths
+skin): it consumes quote feeds (fun-ticker proxy / longbridge snapshot /
+public endpoints) and the `workspace.list` RPC for the workspace-count cell —
+via `ctx.get('connection')` when the connection handle is available. It never
+writes settings, never calls a model endpoint, and never emits cordis events;
+every read fails safe to `--` cells.
+
 ## Model Experience
 
 None. The skin mutates only the browser DOM and reads quote feeds; nothing

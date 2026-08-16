@@ -18,12 +18,13 @@ Re-implemented from the pet feature of the Codex desktop app, as an official DSH
 | State animation | Official session activity → 9-state animation: `thinking → running`, `tool → running-right`, `review → review`, `waiting → waiting`, `done → jumping`, `failed → failed` |
 | Head-pat interaction | Click the pet → bubble feedback + affinity +1 (10s cooldown) |
 | Feeding | Hover panel 喂食 (Feed) → consumes 1 dried fish + affinity +5 (30s cooldown) |
-| Treat economy | Dried-fish stock (cap 20): +1 every 3 rounds of work, +1 every 30 minutes |
-| Affinity | +1 per round completed; 4 levels: 幼鲸 → 伙伴 → 挚友 → 深海羁绊 (capped at 100) |
+| Treat economy | Dried-fish stock (cap 20): +1 every 30 rounds of work, +1 every 300 minutes (5 hours) — 10x rarer than the original cadence |
+| Affinity | +1 per round completed; 9 levels: 幼鲸 → 伙伴 → 挚友 → 深海羁绊 → 心有灵犀 → 传说羁绊 → 神话羁绊 → 永恒之契 → 鲸生共渡 (capped at 999,999,999) |
 | Dragging | Hold and drag the pet to reposition; position persisted |
 | Hide/Summon | Hover panel 隐藏 (Hide); after hiding, a 召唤{name} (Summon {name}) button appears |
-| Status bubble | Shows the current session stage or tool name; transient interaction feedback temporarily takes priority |
-| Multi-session activity | The pet is host-global: the most recent meaningful event controls its display, while completed turns from every session contribute affinity and treats |
+| Witty remarks | Built-in remark library (10 lines per event) plus per-pet custom lines from a manifest remarks block — community PRs give their pet its own voice |
+| Status bubbles | Each concurrently active session gets its own bubble, stacked above the pet (up to 12); transient interaction feedback temporarily takes priority |
+| Multi-session activity | The pet is host-global: the most recent meaningful event drives the sprite animation while every active session reports its own state in a separate bubble; completed turns from every session contribute affinity and treats |
 
 ## Pet contract
 
@@ -40,11 +41,16 @@ A pet is a directory holding one `pet.json` manifest and one atlas image. Nothin
   "frames": [6, 8, 8, 4, 5, 8, 6, 6, 6],   // optional per-row frame counts
   "tracks": {                              // optional per-track rhythm overrides
     "idle": { "durations": [400, 400, 500, 400, 400, 500] }
+  },
+  "remarks": {                             // optional witty remarks (one line or a pool per slot)
+    "pet": "摸摸水獭的头～",
+    "feed": ["小鱼干真香", "再来一条～"]
   }
 }
 ```
 
 - The atlas is an 8-column × 9-row grid (192×208 cells by default); rows are fixed in this order: 0 idle, 1 running-right, 2 running-left, 3 waving, 4 jumping, 5 failed, 6 waiting, 7 running, 8 review. Unused cells stay fully transparent.
+- The optional remarks block overrides the reaction bubbles the pet speaks on pet / petCooldown / feed / feedCooldown / noTreats events. Each slot accepts one line or a pool of lines (cycled round-robin); a declared slot replaces the built-in pool for that slot only. This is how community contributions give their pet its own witty voice.
 - `frames` counts the used columns per row (defaults to the hatch-pet contract table `[6, 8, 8, 4, 5, 8, 6, 6, 6]`); `tracks` overrides per-frame durations (cycled to the row's frame count), `loop`, and `fallback` per animation (defaults: everything loops; `jumping` and `failed` hold their last frame, then fall back to `idle`).
 
 Where pets come from (later sources override earlier ones on id collision):
@@ -76,6 +82,7 @@ dsh-pet/
 |   |-- registry.ts          # multi-pet contract: manifest scan + normalization (assets + custom pets)
 |   |-- service.ts           # PetService: pet selection + state machine + affinity + config
 |   |-- state.ts             # pet state machine: projected session activity → 9 state animations
+|   |-- remarks.ts           # witty-remark library: built-in pools + per-pet overrides + picker
 |   |-- affinity.ts          # affinity ledger (pure functions + cooldowns)
 |   |-- treats.ts            # dried-fish stock ledger
 |   |-- persist.ts           # persistence ($DSH_HOME/pet.json: selection + per-pet names, atomic write)
@@ -106,7 +113,7 @@ global React root (createRoot → document.body) <-- polling 2s -- pet-client (b
 - **Status source**: the host projects official `turn/start`, `step/start`, `assistant/chunk`, `assistant/message`, `tool/call`, `tool/result`, and `turn/end` events into waiting/thinking/tool/review/done/failed states. Optional legacy `activity/status` events remain a compatibility input.
 - **Registry**: the host normalizes every manifest into a full render definition (geometry, per-row frame counts, per-track durations) and serves it over `/api/pet/pets`; the browser half renders any entry from that definition and carries no per-pet code.
 - **Selection & naming**: `petId` lives in the settings namespace; per-pet names live in `pet.json` under `names`, edited through the hover-panel rename of the active pet. Legacy installs migrate their flat `name` onto the whale girl.
-- **Multi-session semantics**: the API and browser mount are host-global and expose no foreground-session identity, so the most recent meaningful event wins the display. Every session's completed turns are still rewarded independently, and disposing a non-current session does not reset the visible state.
+- **Multi-session semantics**: the API and browser mount are host-global and expose no foreground-session identity. Concurrent sessions each keep their own projected state: the most recent meaningful event drives the sprite animation, while every active session reports its stage in its own bubble (the state view's sessions list, capped at 12 most-recent). Every session's completed turns are still rewarded independently; disposing a session removes its bubble, and disposing the display session falls back to the most recent remaining one.
 - **Mount point**: `document.body` (global React root, always shown: no session / new session / mid-session — the old mount point `conversation.composer.dock` only rendered in an active session, hiding the pet in new sessions); the component uses `createPortal` internally to render the global floating layer.
 - **Rendering**: CSS sprite (background-position) per-frame animation; frame durations come from the served definition's tracks.
 - **Communication**: browser ↔ host over the same-origin `/api/pet/*` JSON endpoints (state/pets/interact/set-visible/set-config/set-name/set-pet); each pet's atlas loads from `/pet/<id>/<spritesheetPath>` — the plugin self-sufficiently provides its own API and assets (the same pattern as dsh-remote-web-ui's `/api/pair`).

@@ -199,6 +199,8 @@ dsh plugin --profile web add @linxin666/dsh-web-ui-all
 
 Restart `dsh web` and all plugin entries appear in the sidebar. Skins only? Install `@linxin666/dsh-skins`.
 
+> **Ended up with an old version?** pnpm 11+ gates brand-new releases (~10 days) via the `minimumReleaseAge` setting and silently installs an older version instead of the latest (e.g. `0.1.6` instead of `0.1.10`). Old skin-center versions lack the "bundled-carrier skin entry" fix, so applying a skin then restarting dies with `ERR_MODULE_NOT_FOUND .../dsh-client-ui-skin-<id>/index.js`. Fix: set `minimumReleaseAge: 0` in the profile's `pnpm-workspace.yaml` (or add `@linxin666/*` to `minimumReleaseAgeExclude`), then run `dsh plugin --profile web update @linxin666/dsh-web-ui-all` to reach the latest. See [issue #71](https://github.com/zhu1090093659/dsh-web-ui/issues/71).
+
 ### Install from the GitHub Repository (Development)
 
 The packages are already on npm; installing from this repository is only for development (requires Node.js >= 22 and pnpm):
@@ -331,6 +333,8 @@ You can also join the [Discord community](https://discord.gg/6v4gm9u4S), or head
 - [dsh-data-agent](https://github.com/omdsh-dev/dsh-data-agent) — a dedicated Data Agent preset for DSH that lets AI query, update and analyze your data.
 - [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) — a Claude Code style full-screen terminal plugin filling the official terminal TUI gap: pixel whale header, live status line, streamed reasoning, double-Esc rollback, context progress and a TPS gauge.
 - [dsh-tianshu-tui](https://github.com/huiliyi37/dsh-tianshu-tui) — an interactive terminal UI plugin built on the official DeepSeek Harness, adding TDD and evidence gates on top.
+- [dsh-genui](https://github.com/omdsh-dev/dsh-genui) — renders generative UI inline in assistant replies via the dsh-ui fence: layouts, charts, forms, Mermaid, 3D and panel docking, with component actions looping back to the model.
+- [dsh-annotation](https://github.com/omdsh-dev/dsh-annotation) — select text in DSH Web, annotate it and send it along with your message; the model replies per Annotation N.
 
 </details>
 

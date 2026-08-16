@@ -1,6 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import { CardForm, booleanField, choiceField, numberField, secretField, textField, type BatchedWrite, type BatchResult } from '../client/settings/settings-form.ts'
+// The shared vitest env has no runtime: stub the snapshot-store factory so
+// bind() works in tests.
+vi.mock('@deepseek-ai/dsh-client-runtime/client', () => {
+  const createSnapshotStore = (initial: unknown) => {
+    let value = initial
+    return {
+      getSnapshot: () => value,
+      set: (next: unknown) => { value = next },
+      subscribe: () => () => {},
+    }
+  }
+  return { createSnapshotStore }
+})
 
 /** Minimal in-memory scope backing a CardForm test. */
 class FakeScope<T extends Record<string, unknown>> implements SettingsScope<T> {
@@ -15,6 +28,10 @@ class FakeScope<T extends Record<string, unknown>> implements SettingsScope<T> {
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
+  }
+  /** Notify subscribers after a mutation, the way a real scope does. */
+  notify(): void {
+    for (const listener of this.listeners) listener()
   }
   getSnapshot(): SettingsScopeSnapshot<T> {
     return {
@@ -171,6 +188,20 @@ describe('CardForm', () => {
     expect(form.field('enabled').text).toBe('false')
     actions.resetField('enabled')
     expect(form.field('enabled')).toMatchObject({ text: 'true', overridden: false })
+  })
+
+  it('dispose stops later scope mutations from reaching bound stores', () => {
+    const scope = new FakeScope<Record<string, unknown>>({ name: 'before' })
+    const form = new CardForm(scope, fields())
+    const store = form.bind(() => form.field('name').text)
+    expect(store.getSnapshot()).toBe('before')
+    // Idempotent: a second dispose keeps the first teardown's guarantees.
+    form.dispose()
+    form.dispose()
+    scope.user.name = 'after'
+    scope.settle()
+    scope.notify()
+    expect(store.getSnapshot()).toBe('before')
   })
 })
 

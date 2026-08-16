@@ -55,8 +55,16 @@ export function SshPanel({ controller, api }: SshPanelProps) {
   return (
     <div className={css.panel}>
       <div className={css.panelHeader}>
+        <button
+          type="button"
+          className={`${css.ghostButton} ${css.backButton}`}
+          aria-label={tt('panel.backToConversation')}
+          onClick={() => { controller.close() }}
+        >
+          <span aria-hidden="true">‹</span>
+          <span>{tt('panel.backToConversation')}</span>
+        </button>
         <h2 className={css.panelTitle}>{tt('panel.title')}</h2>
-        <button type="button" className={css.iconButton} title={tt('common.close')} aria-label={tt('common.close')} onClick={() => { controller.close() }}>x</button>
       </div>
       <div className={css.tabBar} role="tablist">
         {TABS.map(tab => (

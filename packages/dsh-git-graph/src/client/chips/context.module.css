@@ -275,13 +275,18 @@
   margin: 0 8px 8px;
   padding: 6px 10px;
   border-radius: 8px;
-  background: var(--dsw-alias-state-error-secondary);
+  /* Never pair a solid state-secondary fill with state-primary text: dark
+     themes alias both onto the same static color (the official dark theme
+     maps both error tokens to red-400), which renders the message invisible.
+     Tint the banner from the primary token instead (the aionui-panel scm
+     banner idiom). */
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 14%, transparent);
   color: var(--dsw-alias-state-error-primary);
   font-size: 12px;
 }
 
 .noticeOk {
-  background: var(--dsw-alias-state-success-secondary);
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 14%, transparent);
   color: var(--dsw-alias-state-success-primary);
 }
 

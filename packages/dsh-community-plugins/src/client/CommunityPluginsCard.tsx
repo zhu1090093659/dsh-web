@@ -65,6 +65,14 @@ export class CommunityPluginsCardController {
   inject(): CommunityPluginsCardFace {
     return { hooks: { communityPluginsCard: this.store }, ...this.form.actions() }
   }
+
+  /**
+   * Release the card's scope subscription and bound stores; the slot
+   * disposer calls this on teardown.
+   */
+  dispose(): void {
+    this.form.dispose()
+  }
 }
 
 /** The one-line install command for an entry: npm package when published, else the contributor repository URL. */

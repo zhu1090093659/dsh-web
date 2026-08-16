@@ -9,7 +9,7 @@
 export const zh = {
   'entry.label': '任务看板',
   'board.title': '任务看板',
-  'board.close': '返回对话',
+  'board.close': '返回会话',
   'board.new': '新建任务',
   'board.search': '筛选任务…',
   'board.empty': '这个状态还没有任务',

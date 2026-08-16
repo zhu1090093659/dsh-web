@@ -148,6 +148,20 @@ describe('task mutations', () => {
     expect(controller.createTask({ title: '   ', description: '', prompt: '' })).toBeUndefined()
   })
 
+  it('uses the default uuid path to mint UUIDv4 task ids', () => {
+    const controller = new BoardController({
+      store: new InMemoryTaskStore(),
+      exec: new StubExec() as unknown as ExecutionService,
+      sessions: new FakeSessions(),
+      now: () => NOW,
+    })
+    controller.start()
+    const task = controller.createTask({ title: 'x', description: '', prompt: '' })!
+    expect(task.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    // crypto.randomUUID is available under node, so the result is provider-agnostic.
+    expect(task.id).not.toMatch(/^t-/)
+  })
+
   it('deletes and clears the selection when the selected task is removed', () => {
     const { controller, store } = makeController()
     const task = controller.createTask({ title: 'x', description: '', prompt: '' })!

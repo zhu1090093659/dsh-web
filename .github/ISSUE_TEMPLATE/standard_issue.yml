@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        请保持本模板完整并填写所有必填部分。删除必填部分的 Issue 将被自动关闭。Bug 请使用「Bug 报告」表单。
+        请保持本模板完整并填写所有必填部分。删除必填部分的 Issue 将被自动关闭。Bug 请使用「Bug 报告」表单，并附截图、冒烟测试、引用代码与补丁。
 
         提交前请先搜索确认没有重复：[搜索现有 Issue](https://github.com/zhu1090093659/dsh-web-ui/issues?q=is%3Aissue)
   - type: checkboxes

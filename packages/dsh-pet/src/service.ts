@@ -5,6 +5,10 @@
  * persistence through `persist`. The API gateway maps these methods onto
  * `pet.state` / `pet.pets` / `pet.interact` / `pet.setVisible` /
  * `pet.setConfig` / `pet.setName` / `pet.setPet` for browser consumers.
+ *
+ * Concurrent sessions each keep their own machine: the sprite animation
+ * follows the most recent meaningful event (the display session) while the
+ * state view carries one bubble per active session.
  * @module @linxin666/dsh-pet/service
  */
 
@@ -91,12 +95,37 @@ export interface PetSettingsSection {
 /** Settings namespace of the pet capability. Spelled here rather than imported: the browser half spells the same value. */
 export const PET_SETTINGS_NAMESPACE = 'pet'
 
+/**
+ * One active session as the pet displays it. Sessions run in parallel, so
+ * each gets its own bubble while the sprite itself follows the most recent
+ * meaningful event (the display session).
+ */
+export interface PetSessionView {
+  /** Session identity (stringified for the wire; never exposed as a key). */
+  sessionId: string
+  /** The animation this session's activity maps onto. */
+  animation: PetStateSnapshot['animation']
+  /** This session's status bubble copy. */
+  bubble: string
+  /** This session's raw activity phase. */
+  phase: PetStateSnapshot['phase']
+}
+
+/** Hard cap on simultaneously displayed session bubbles (most recent first). */
+export const MAX_SESSION_BUBBLES = 12
+
 /** Snapshot returned by `pet.state`. */
 export interface PetStateView {
   animation: PetStateSnapshot['animation']
   bubble?: string
   phase: PetStateSnapshot['phase']
   sessionActive: boolean
+  /**
+   * Per-session bubbles for every concurrently active session, most recent
+   * first; optional so older hosts without the multi-session view stay
+   * consumable. The single 'bubble' above mirrors the display session.
+   */
+  sessions?: PetSessionView[]
   /** Affinity ledger snapshot. */
   affinity: PetAffinityView
   /** Display configuration. */
@@ -130,6 +159,14 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
+/** Per-session pet activity: projection runtime plus the session's own machine. */
+interface SessionActivity {
+  runtime: ProjectionRuntime
+  machine: PetStateMachine
+  /** The session's most recent meaningful input (for display fallback). */
+  lastInput?: PetStateInput
+}
+
 /**
  * Cordis service exposing the pet RPC domain. Lazy: nothing is scanned or
  * written until an economic event or interaction arrives; event listeners
@@ -140,6 +177,7 @@ export class PetService extends Service {
   static inject: string[] = []
 
   private readonly machine: PetStateMachine
+  private readonly stateConfig: PetStateConfig
   private readonly ledger: PetLedger
   private readonly registry: PetRegistry
   private readonly persistDir: string
@@ -147,7 +185,12 @@ export class PetService extends Service {
   private disposeActivity: (() => void) | undefined
   /** Session whose most recent meaningful event currently drives the global pet. */
   private displaySession: Session | undefined
-  private readonly sessionActivity = new WeakMap<Session, ProjectionRuntime>()
+  /**
+   * Per-session activity, most recent last (Map insertion order). Bounded by
+   * MAX_SESSION_BUBBLES so a burst of sessions cannot grow it without bound;
+   * disposed sessions are removed by the 'session/disposed' listener.
+   */
+  private readonly sessionActivity = new Map<Session, SessionActivity>()
 
   constructor(ctx: Context, config: PetConfig = {}) {
     super(ctx, 'pet')
@@ -166,12 +209,15 @@ export class PetService extends Service {
       // copied pet.json): fall back to the registry default.
       persist = { ...persist, petId: this.registry.defaultEntry().id }
     }
-    const ledgerConfig: LedgerConfig = { affinity: config.affinity, treats: config.treats }
+    const selected = this.registry.byId(persist.petId) ?? this.registry.defaultEntry()
+    const ledgerConfig: LedgerConfig = {
+      affinity: config.affinity,
+      treats: config.treats,
+      remarks: selected.remarks,
+    }
     this.ledger = new PetLedger(persist, ledgerConfig)
-    this.machine = new PetStateMachine({
-      ...defaultPetStateConfig,
-      ...(config.state ?? {}),
-    })
+    this.stateConfig = { ...defaultPetStateConfig, ...(config.state ?? {}) }
+    this.machine = new PetStateMachine(this.stateConfig)
     this.enabled = config.enabled ?? true
 
     this.syncActivity()
@@ -224,6 +270,7 @@ export class PetService extends Service {
     const entry = this.registry.byId(petId)
     if (entry === undefined) return { ok: false, error: 'unknown-pet' }
     this.ledger.setPetId(entry.id)
+    this.ledger.setRemarks(entry.remarks)
     this.flush()
     this.syncSettingsFromPet()
     return { ok: true, petId: entry.id }
@@ -244,7 +291,7 @@ export class PetService extends Service {
     this.disposeActivity = (() => {
       const disposers = [
         this.ctx.on('session/event', (session: Session, event: SessionEvent) => {
-          const runtime = this.activityRuntime(session)
+          const runtime = this.activityOf(session).runtime
           // `activity/status` is an optional compatibility input. It is not
           // declared as a durable event type by this package because current
           // Harness installations publish the official session vocabulary.
@@ -274,27 +321,60 @@ export class PetService extends Service {
           }
         }),
         this.ctx.on('session/disposed', (session: Session) => {
+          this.ledger.forgetSession(String(session.id))
+          this.sessionActivity.delete(session)
           if (session !== this.displaySession) return
+          // The display session is gone: fall back to the most recent
+          // remaining session's last input, or settle to idle when none.
           this.displaySession = undefined
-          this.machine.onSessionDisposed()
+          const remaining = [...this.sessionActivity.entries()].at(-1)
+          if (remaining !== undefined) {
+            const [nextSession, activity] = remaining
+            this.displaySession = nextSession
+            if (activity.lastInput !== undefined) this.machine.onActivityStatus(activity.lastInput)
+            this.machine.onSessionActive()
+          } else {
+            this.machine.onSessionDisposed()
+          }
         }),
       ]
       return () => { for (const dispose of disposers) dispose() }
     })()
   }
 
-  /** Return the projection state associated with one live session. */
-  private activityRuntime(session: Session): ProjectionRuntime {
-    let runtime = this.sessionActivity.get(session)
-    if (runtime === undefined) {
-      runtime = emptyProjectionRuntime()
-      this.sessionActivity.set(session, runtime)
+  /** Return the per-session activity record, creating it on first sight. */
+  private activityOf(session: Session): SessionActivity {
+    let activity = this.sessionActivity.get(session)
+    if (activity === undefined) {
+      activity = {
+        runtime: emptyProjectionRuntime(),
+        machine: new PetStateMachine(this.stateConfig),
+      }
+      this.sessionActivity.set(session, activity)
     }
-    return runtime
+    return activity
   }
 
-  /** Commit one activity as the host-global pet's most recent display state. */
+  /**
+   * Commit one activity: the session's own machine renders its bubble, and
+   * the session becomes the host-global display session (most recent
+   * meaningful event wins the sprite animation).
+   */
   private applyActivity(session: Session, input: PetStateInput): void {
+    const activity = this.activityOf(session)
+    activity.lastInput = input
+    activity.machine.onActivityStatus(input)
+    activity.machine.onSessionActive()
+    // Move to the tail so map order reads most-recent-last, then trim the
+    // oldest session states beyond the bubble cap. The display session is
+    // reassigned below, so trimming its stale predecessor is safe.
+    this.sessionActivity.delete(session)
+    this.sessionActivity.set(session, activity)
+    while (this.sessionActivity.size > MAX_SESSION_BUBBLES) {
+      const oldest = this.sessionActivity.keys().next().value
+      if (oldest === undefined) break
+      this.sessionActivity.delete(oldest)
+    }
     this.displaySession = session
     this.machine.onActivityStatus(input)
     this.machine.onSessionActive()
@@ -345,8 +425,10 @@ export class PetService extends Service {
    * @param section - the resolved settings section.
    */
   applySettingsSection(section: PetSettingsSection): void {
-    if (typeof section.petId === 'string' && this.registry.byId(section.petId) !== undefined) {
-      this.ledger.setPetId(section.petId)
+    const selected = typeof section.petId === 'string' ? this.registry.byId(section.petId) : undefined
+    if (selected !== undefined) {
+      this.ledger.setPetId(selected.id)
+      this.ledger.setRemarks(selected.remarks)
     } else if (section.petId !== undefined) {
       // The stored selection names a pet the registry no longer has: keep the
       // current selection and repair the settings document.
@@ -390,6 +472,21 @@ export class PetService extends Service {
   private view(): PetStateView {
     const snapshot = this.machine.render()
     const entry = this.activeEntry()
+    // One bubble per concurrently active session, most recent first.
+    // Sessions whose own machine has settled (no bubble copy) drop out, so a
+    // finished turn does not leave a stale bubble behind.
+    const sessions: PetSessionView[] = []
+    for (const [session, activity] of [...this.sessionActivity.entries()].reverse()) {
+      if (sessions.length >= MAX_SESSION_BUBBLES) break
+      const perSession = activity.machine.render()
+      if (perSession.bubble === undefined) continue
+      sessions.push({
+        sessionId: String(session.id),
+        animation: perSession.animation,
+        bubble: perSession.bubble,
+        phase: perSession.phase,
+      })
+    }
     // Read-only: the ledger settles on economic events only, never on a read,
     // so polling the state cannot trigger pet.json writes.
     return {
@@ -397,6 +494,7 @@ export class PetService extends Service {
       ...(snapshot.bubble === undefined ? {} : { bubble: snapshot.bubble }),
       phase: snapshot.phase,
       sessionActive: snapshot.sessionActive,
+      sessions,
       affinity: this.ledger.affinityView(Date.now()),
       display: { ...this.ledger.snapshot.display },
       pet: {

@@ -69,8 +69,8 @@
     "name": "DeepRead 精读助手",
     "nameEn": "DeepRead Assistant",
     "author": "xiehuan123",
-    "description": "五种模式精读插件（quick / deep / map / feynman / book），支持公众号链接与文件输入，导出 md / mm / html，Web UI 提供工具结果卡片与精读面板。",
-    "descriptionEn": "A five-mode deep reading plugin (quick / deep / map / feynman / book) for links and files, with md / mm / html exports and Web UI tool-result cards plus a reading panel.",
+    "description": "五种模式精读插件（quick / deep / map / feynman / book），支持公众号链接与文件输入、批量对比、预算预检与后台任务进度透明，导出 md / mm / html，Web UI 提供工具结果卡片与精读面板。",
+    "descriptionEn": "A five-mode deep reading plugin (quick / deep / map / feynman / book) for links and files, with batch comparison, budget preflight, transparent background-job progress, md / mm / html exports, and Web UI tool-result cards plus a reading panel.",
     "repo": "https://github.com/xiehuan123/dsh-deepread",
     "npm": "dsh-deepread"
   },
@@ -83,5 +83,52 @@
     "descriptionEn": "A cross-agent, local-first persistent memory plugin integrating the Mnemon CLI: profiles, working memory, project documents and long-term Memory Spaces, with import and export.",
     "repo": "https://github.com/omdsh-dev/dsh-mnemon",
     "npm": "dsh-mnemon"
+  },
+  {
+    "id": "dsh-plugin-hub",
+    "name": "插件中心（dsh-plugin-hub）",
+    "nameEn": "Plugin Hub",
+    "author": "Noob-stupid",
+    "description": "插件管理面板：已安装插件一键启用/停用，内置 GitHub dsh-plugin 插件市场（官方/聚合识别、子包浏览、一键安装与本地 AI 兜底修复、删除卸载）。",
+    "descriptionEn": "Plugin management panel: one-click enable/disable, a GitHub dsh-plugin marketplace with official/aggregate detection, subpackage browsing, one-click installs with local-AI fallback repair, and uninstall.",
+    "repo": "https://github.com/Noob-stupid/dsh-plugin-hub"
+  },
+  {
+    "id": "dsh-genui",
+    "name": "GenUI 生成式 UI",
+    "nameEn": "GenUI",
+    "author": "omdsh-dev",
+    "description": "给模型输出配交互式 UI：助手回复内联渲染 dsh-ui fence（布局、图表、表单、Mermaid、3D），支持流式渲染与面板停靠，组件交互可回传模型。",
+    "descriptionEn": "Interactive UI inside assistant replies via the dsh-ui fence: layouts, charts, forms, Mermaid and 3D with streaming rendering, panel docking and actions that loop back to the model.",
+    "repo": "https://github.com/omdsh-dev/dsh-genui"
+  },
+  {
+    "id": "dsh-annotation",
+    "name": "选中批注",
+    "nameEn": "Selection Annotation",
+    "author": "omdsh-dev",
+    "description": "选中助手文字即可批注，回车随消息发送；自己的气泡只显示问题与「批注 ×N」标签，模型按 Annotation N 逐条对照回复（悬浮芯片）。",
+    "descriptionEn": "Select text in an assistant reply to annotate it; annotations are sent with your next message, hidden from your own bubble behind an Annotations xN chip, and the model replies per Annotation N with hoverable chips.",
+    "repo": "https://github.com/omdsh-dev/dsh-annotation"
+  },
+  {
+    "id": "deepseek-harness-auth",
+    "name": "DeepSeek Harness Auth",
+    "nameEn": "DeepSeek Harness Auth",
+    "author": "taichuy",
+    "description": "为 DSH Web 公网部署提供登录认证前置代理，支持账号密码、验证码、失败锁定和 IP/CIDR 白名单。",
+    "descriptionEn": "An authentication proxy for public DSH Web deployments with password login, captcha, failed-attempt locking, and IP/CIDR allowlists.",
+    "repo": "https://github.com/taichuy/deepseek-harness-auth",
+    "npm": "deepseek-harness-auth"
+  },
+  {
+    "id": "dsh-cloud-sync",
+    "name": "云同步服务",
+    "nameEn": "Cloud Sync",
+    "author": "dickpy",
+    "description": "支持 WebDAV、S3、阿里云 OSS、腾讯云 COS 与 MinIO 的 DSH 云同步插件，可同步 profile、插件配置及本地插件源码归档。",
+    "descriptionEn": "DSH cloud sync for WebDAV, S3, Alibaba Cloud OSS, Tencent Cloud COS and MinIO, syncing profiles, plugin settings and local plugin source archives.",
+    "repo": "https://github.com/dickpy/dsh-cloud-sync",
+    "npm": "@dickpy/dsh-cloud-sync"
   }
 ]

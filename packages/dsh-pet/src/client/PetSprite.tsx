@@ -209,7 +209,13 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   const pos = dragPos ?? { right: display.right, bottom: display.bottom }
   const spriteWidth = Math.round(cell.width * spriteScale)
   const spriteHeight = Math.round(cell.height * spriteScale)
-  const statusBubble = feedback === null && !hovered ? snapshot?.bubble : undefined
+  // Concurrent sessions each render their own bubble (stacked above the
+  // sprite); the legacy single 'bubble' is the fallback when the host serves
+  // no per-session list.
+  const sessionBubbles = snapshot?.sessions ?? []
+  const statusBubble = feedback === null && !hovered && sessionBubbles.length === 0
+    ? snapshot?.bubble
+    : undefined
   const displayName = snapshot?.name ?? definition.displayName
 
   const float = (
@@ -262,6 +268,15 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
       {feedback !== null && (
         <div key={feedback.at} className={clsx(styles.bubble, feedback.kind === 'feed' ? styles.bubbleFeed : styles.bubblePet)}>
           {feedback.text}
+        </div>
+      )}
+      {feedback === null && !hovered && sessionBubbles.length > 0 && (
+        <div className={styles.bubbleStack} role="status" aria-live="polite">
+          {sessionBubbles.map(session => (
+            <div key={session.sessionId} className={clsx(styles.bubble, styles.bubbleStatus)}>
+              {session.bubble}
+            </div>
+          ))}
         </div>
       )}
       {statusBubble !== undefined && (

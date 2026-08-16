@@ -12,6 +12,7 @@ import {
   MIN_WORKSPACE_PANEL_PX, MIN_PREVIEW_PANEL_PX, MIN_CHAT_PANEL_PX,
   PREVIEW_REGION_CHROME_PX,
 } from '../src/client/store.ts'
+import { dragTargetWidth } from '../src/client/layout.ts'
 
 /** Simulate the ordered clamp pair; returns chat width. */
 function solve(requestedExplorer: number, requestedPreview: number, available: number, previewOpen: boolean): {
@@ -85,5 +86,34 @@ describe('ordered clamp pair (chat >= 360)', () => {
     expect(solved.explorer).toBe(260)
     expect(solved.preview).toBe(0)
     expect(solved.chat).toBe(740)
+  })
+})
+
+describe('dragTargetWidth', () => {
+  it('keeps the hard min/max bounds before the container clamp', () => {
+    // Explorer drag bounded to 220..500 even when the container is generous.
+    expect(dragTargetWidth('explorer', 260, -500, { availableWidth: 1400, previewOpen: false, explorerWidth: 260 })).toBe(MIN_WORKSPACE_PANEL_PX)
+    expect(dragTargetWidth('explorer', 260, 1000, { availableWidth: 1400, previewOpen: false, explorerWidth: 260 })).toBe(MAX_WORKSPACE_PANEL_PX)
+    // Preview drag bounded to 340..1200.
+    expect(dragTargetWidth('preview', 480, -1000, { availableWidth: 1844, previewOpen: true, explorerWidth: 260 })).toBe(MIN_PREVIEW_PANEL_PX)
+    expect(dragTargetWidth('preview', 480, 3000, { availableWidth: 1844, previewOpen: true, explorerWidth: 260 })).toBe(MAX_PREVIEW_REGION_PX)
+  })
+
+  it('caps the explorer drag below its hard max when the container is narrow', () => {
+    // With preview open the explorer reserve leaves 276 room at available 1000,
+    // so a drag toward MAX_WORKSPACE_PANEL_PX is re-bounded by clampExplorerWidth.
+    const snapshot = { availableWidth: 1000, previewOpen: true, explorerWidth: 260 }
+    const result = dragTargetWidth('explorer', 260, 300, snapshot)
+    expect(result).toBeLessThan(MAX_WORKSPACE_PANEL_PX)
+    expect(result).toBe(clampExplorerWidth(MAX_WORKSPACE_PANEL_PX, snapshot.availableWidth, snapshot.previewOpen))
+  })
+
+  it('caps the preview drag when the explorer + chat reserve eats the container', () => {
+    // A 500px explorer leaves maxByContainer = 1400 - 360 - 500 - 24 = 516,
+    // so the preview drag toward its hard max is re-bounded by clampPreviewWidth.
+    const snapshot = { availableWidth: 1400, previewOpen: true, explorerWidth: 500 }
+    const result = dragTargetWidth('preview', 480, 800, snapshot)
+    expect(result).toBeLessThan(MAX_PREVIEW_REGION_PX)
+    expect(result).toBe(clampPreviewWidth(1200, snapshot.availableWidth, snapshot.explorerWidth))
   })
 })

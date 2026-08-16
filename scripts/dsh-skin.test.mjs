@@ -21,11 +21,15 @@ const SCRIPT = fileURLToPath(new URL('./dsh-skin', import.meta.url))
 /** A throwaway DSH_HOME with a patch fixture; returns the patch path. */
 function fakeHome() {
   const home = mkdtempSync(join(tmpdir(), 'dsh-skin-test-'))
-  mkdirSync(join(home, '.dsh'), { recursive: true })
+  mkdirSync(join(home, '.dsh', 'profiles', 'web'), { recursive: true })
   return home
 }
 
 function patchPath(home) {
+  return join(home, '.dsh', 'profiles', 'web', 'cordis.patch.yml')
+}
+
+function legacyPatchPath(home) {
   return join(home, '.dsh', 'cordis.patch.yml')
 }
 
@@ -112,6 +116,26 @@ test('use <name> still writes an insert row for a non-wired skin', () => {
       encoding: 'utf8',
     })
     assert.equal(current.trim(), 'qq98')
+  } finally {
+    rmSync(home, { recursive: true, force: true })
+  }
+})
+
+test('use migrates the global managed skin row into the web profile', () => {
+  const home = fakeHome()
+  try {
+    const repo = join(home, 'code', 'dsh-web-ui')
+    mkdirSync(join(repo, 'packages', 'skins', 'qq98'), { recursive: true })
+    writeFileSync(legacyPatchPath(home), `${renderManaged('qq98')}\n`)
+
+    execFileSync(process.execPath, [SCRIPT, 'use', 'qq98'], {
+      env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: repo },
+    })
+
+    assert.ok(!readFileSync(legacyPatchPath(home), 'utf8').includes(MANAGED_START))
+    const scoped = readFileSync(patchPath(home), 'utf8')
+    assert.ok(scoped.includes(MANAGED_START))
+    assert.ok(scoped.includes(`- id: ${SKINS.qq98.id}`))
   } finally {
     rmSync(home, { recursive: true, force: true })
   }

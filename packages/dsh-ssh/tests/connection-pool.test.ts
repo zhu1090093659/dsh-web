@@ -112,6 +112,19 @@ function passwordEntry(alias: string, overrides: Partial<SshHostEntry> = {}): Ss
   } as SshHostEntry
 }
 
+/** Distinctive engine options used to verify timeouts reach the ssh2 config. */
+function defaultOpts(): Record<string, number> {
+  return {
+    idleTimeoutMs: 123_456,
+    connectTimeoutMs: 7_001,
+    keepaliveIntervalMs: 8_002,
+    maxOutputBytes: 1,
+    defaultExecTimeoutMs: 1,
+    defaultMaxWorkers: 1,
+    sftpConcurrency: 1,
+  }
+}
+
 describe('connectClient', () => {
   beforeEach(() => {
     sshMock.instances.length = 0
@@ -122,7 +135,7 @@ describe('connectClient', () => {
     sshMock.behaviors.push((client) => {
       client.emit('error', new Error('handshake dropped'))
     })
-    const config = buildConnectConfig(passwordEntry('a'))
+    const config = buildConnectConfig(passwordEntry('a'), undefined, defaultOpts() as never)
 
     await expect(connectClient(config)).rejects.toThrow('handshake dropped')
 
@@ -138,10 +151,22 @@ describe('connectClient', () => {
     sshMock.behaviors.push((client) => {
       client.emit('ready')
     })
-    const client = await connectClient(buildConnectConfig(passwordEntry('a')))
+    const client = await connectClient(buildConnectConfig(passwordEntry('a'), undefined, defaultOpts() as never))
     expect(client).toBeDefined()
     const instance = sshMock.instances[0]
     expect(instance.destroyCalls).toBe(0)
+  })
+
+  it('threads EngineOptions timeouts into the ssh2 connect config', async () => {
+    sshMock.behaviors.push((client) => {
+      client.emit('ready')
+    })
+    const config = buildConnectConfig(passwordEntry('x'), undefined, defaultOpts() as never)
+    await connectClient(config)
+
+    const instance = sshMock.instances[0]
+    expect(instance.connectConfig?.readyTimeout).toBe(7_001)
+    expect(instance.connectConfig?.keepaliveInterval).toBe(8_002)
   })
 })
 
@@ -177,5 +202,10 @@ describe('connectChain', () => {
     expect(hopInstance.endCalls).toBe(1)
     // The failed target is destroyed (connectClient does it on failure).
     expect(targetInstance.destroyCalls).toBe(1)
+    // EngineOptions timeouts flow into every hop and target config.
+    expect(hopInstance.connectConfig?.readyTimeout).toBe(1)
+    expect(hopInstance.connectConfig?.keepaliveInterval).toBe(1)
+    expect(targetInstance.connectConfig?.readyTimeout).toBe(1)
+    expect(targetInstance.connectConfig?.keepaliveInterval).toBe(1)
   })
 })

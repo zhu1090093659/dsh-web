@@ -108,7 +108,7 @@ describe('loadPetPersist', () => {
       writeFileSync(join(dir, 'pet.json'), JSON.stringify({
         name: '   ',
         names: { bad: '  ' },
-        affinity: { points: 9999, lastPetAt: -5, lastFeedAt: 'x', pets: -1, feeds: 1.5, turns: 0 },
+        affinity: { points: AFFINITY_MAX + 5000, lastPetAt: -5, lastFeedAt: 'x', pets: -1, feeds: 1.5, turns: 0 },
         treats: { treats: 150, lastTreatGrantAt: -1, turnsAtLastTreatGrant: 0 },
         display: { visible: 'yes', size: -10, right: 1e12, bottom: 20 },
       }), 'utf8')

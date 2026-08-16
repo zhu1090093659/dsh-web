@@ -194,6 +194,39 @@ describe('PetSprite status bubble', () => {
     expect(screen.queryByText('摸摸成功')).not.toBeNull()
     expect(screen.queryByText('正在思考')).toBeNull()
   })
+
+  it('renders one bubble per concurrent session without duplicating the global bubble', () => {
+    renderPet({
+      snapshot: {
+        ...workingSnapshot,
+        bubble: '正在思考',
+        sessions: [
+          { sessionId: 's-a', animation: 'running', phase: 'thinking', bubble: '正在思考' },
+          { sessionId: 's-b', animation: 'running-right', phase: 'tool', bubble: '正在使用 grep' },
+        ],
+      },
+    })
+    // The display session appears in the stack exactly once: the legacy
+    // single bubble is not rendered on top of the session list.
+    expect(screen.getAllByText('正在思考')).toHaveLength(1)
+    expect(screen.queryByText('正在使用 grep')).not.toBeNull()
+  })
+
+  it('lets feedback replace the whole session bubble stack', () => {
+    renderPet({
+      snapshot: {
+        ...workingSnapshot,
+        sessions: [
+          { sessionId: 's-a', animation: 'running', phase: 'thinking', bubble: '正在思考' },
+          { sessionId: 's-b', animation: 'running-right', phase: 'tool', bubble: '正在使用 grep' },
+        ],
+      },
+      feedback: { text: '摸摸成功', kind: 'pet', at: 1 },
+    })
+    expect(screen.queryByText('摸摸成功')).not.toBeNull()
+    expect(screen.queryByText('正在思考')).toBeNull()
+    expect(screen.queryByText('正在使用 grep')).toBeNull()
+  })
 })
 
 describe('PetSprite definition-driven render', () => {

@@ -43,6 +43,15 @@ describe('PetStateMachine', () => {
     expect(machine.render().bubble).toBeUndefined()
   })
 
+  it('never bubbles a settled idle session, even with a projected line', () => {
+    // An aborted turn projects idle + '已停止'; a stopped session must not
+    // linger in the bubble stack.
+    const machine = new PetStateMachine(defaultPetStateConfig, () => 1_000)
+    machine.onActivityStatus({ phase: 'idle', line: '已停止' })
+    expect(machine.render().bubble).toBeUndefined()
+    expect(machine.render()).toMatchObject({ animation: 'idle', phase: 'idle' })
+  })
+
   it('resets on session dispose', () => {
     const machine = new PetStateMachine(defaultPetStateConfig, () => 1_000)
     machine.onSessionActive()

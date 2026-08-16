@@ -70,6 +70,33 @@ describe('resolvePetManifest', () => {
     expect(resolvePetManifest({ id: 'ok', displayName: 'x', spritesheetPath: '/absolute.webp' }, '/tmp', { warnings })).toBeUndefined()
     expect(warnings.length).toBe(3)
   })
+
+  it('normalizes a manifest remarks block into per-pet pools', () => {
+    const entry = resolvePetManifest({
+      id: 'otter',
+      displayName: '水獭',
+      spritesheetPath: 'spritesheet.webp',
+      remarks: {
+        pet: '摸摸水獭的头',
+        feed: ['小鱼干真香', ' 再来一条 '],
+      },
+    }, join(tmpdir(), 'otter'))
+    expect(entry!.remarks).toEqual({ pet: ['摸摸水獭的头'], feed: ['小鱼干真香', '再来一条'] })
+  })
+
+  it('warns on malformed remarks slots but keeps the pet', () => {
+    const warnings: string[] = []
+    const entry = resolvePetManifest({
+      id: 'fox',
+      displayName: '狐狸',
+      spritesheetPath: 'spritesheet.webp',
+      remarks: { unknownSlot: ['x'], pet: [1, null] },
+    }, join(tmpdir(), 'fox'), { warnings })
+    expect(entry).toBeDefined()
+    expect(entry!.remarks).toBeUndefined()
+    expect(warnings.some(message => message.includes('unknown remarks slot'))).toBe(true)
+    expect(warnings.some(message => message.includes('no usable lines'))).toBe(true)
+  })
 })
 
 describe('loadPetRegistry', () => {

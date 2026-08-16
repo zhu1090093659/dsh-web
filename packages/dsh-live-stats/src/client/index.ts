@@ -79,13 +79,19 @@ export function apply(ctx: ClientContext): void {
   const liveStatsSettings = new LiveStatsSettingsCardController(
     binder.bind<LiveStatsSettings>({ namespace: LIVE_STATS_NS }),
   )
-  ctx.slots.inject('web-ui.plugin.item', () => ctx.slots.register({
-    name: 'web-ui.plugin.item',
-    id: 'live-stats',
-    order: 110,
-    locale: NS,
-    inject: () => liveStatsSettings.inject(),
-  }, LiveStatsSettingsCard))
+  ctx.slots.inject('web-ui.plugin.item', () => {
+    const unregister = ctx.slots.register({
+      name: 'web-ui.plugin.item',
+      id: 'live-stats',
+      order: 110,
+      locale: NS,
+      inject: () => liveStatsSettings.inject(),
+    }, LiveStatsSettingsCard)
+    return () => {
+      liveStatsSettings.dispose()
+      unregister()
+    }
+  })
 
   // The live TPS row mounts on the composer dock (the shipped stats-line
   // seat). Its session standard kit supplies `useProjection`, which reads the

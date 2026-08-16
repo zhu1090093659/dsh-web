@@ -22,12 +22,15 @@ import {
   settleTreatGrants,
   type TreatConfig,
 } from './treats.ts'
+import { RemarkPicker, type PetRemarks } from './remarks.ts'
 import type { PetDisplayConfig, PetPersist } from './persist.ts'
 
 /** Tuning overrides for the affinity economy. */
 export interface LedgerConfig {
   affinity?: Partial<AffinityConfig>
   treats?: Partial<TreatConfig>
+  /** Per-pet remark pools for the selected pet (custom slots override built-ins). */
+  remarks?: PetRemarks
 }
 
 /** Result of one ledger interaction (the shape the pet RPC returns). */
@@ -48,6 +51,8 @@ export interface LedgerInteractionResult {
 export class PetLedger {
   private readonly affinityConfig: AffinityConfig
   private readonly treatConfig: TreatConfig
+  /** Round-robin reaction picker; rebuilt when the selected pet changes. */
+  private picker: RemarkPicker
   private current: PetPersist
   /** Completed turns already rewarded, per session (turn numbers are per-session). */
   private rewardedTurns = new Map<string, number>()
@@ -57,6 +62,7 @@ export class PetLedger {
   constructor(persist: PetPersist, config: LedgerConfig = {}) {
     this.affinityConfig = { ...defaultAffinityConfig, ...(config.affinity ?? {}) }
     this.treatConfig = { ...defaultTreatConfig, ...(config.treats ?? {}) }
+    this.picker = new RemarkPicker(config.remarks)
     this.current = persist
   }
 
@@ -82,6 +88,14 @@ export class PetLedger {
     return was
   }
 
+  /**
+   * Drop a session's rewarded-turn bookkeeping once that session is disposed,
+   * so the per-session map does not grow without bound.
+   */
+  forgetSession(sessionId: string): void {
+    this.rewardedTurns.delete(sessionId)
+  }
+
   /** Replace the display block (clamping stays a caller concern). */
   setDisplay(display: PetDisplayConfig): void {
     this.current = { ...this.current, display }
@@ -102,9 +116,17 @@ export class PetLedger {
   }
 
   /**
+   * Swap the reaction pools to another pet's custom remarks (called on pet
+   * selection). Slots the pet does not declare fall back to built-ins.
+   */
+  setRemarks(remarks?: PetRemarks): void {
+    this.picker = new RemarkPicker(remarks)
+  }
+
+  /**
    * Settle the treat economy (work + time output since the last settlement).
    * A zero-gain first settlement still starts the time clock (anchor write),
-   * which is how the 30-minute time output can ever accrue. Returns true when
+   * which is how the time output can ever accrue. Returns true when
    * the in-memory ledger changed and should be persisted.
    */
   settleTreats(nowMs: number): boolean {
@@ -161,14 +183,17 @@ export class PetLedger {
   interact(kind: PetInteraction, nowMs: number): LedgerInteractionResult {
     if (kind === 'feed') this.settleTreats(nowMs)
     const outcome = applyInteraction(this.current.affinity, kind, nowMs, this.affinityConfig)
+    // Reactions come from the picker pools (custom per-pet slots override
+    // the built-in library per slot); outcome.reaction stays the fallback
+    // copy for direct applyInteraction callers.
     if (kind === 'feed' && !outcome.accepted) {
-      return { reaction: outcome.reaction, delta: 0, affinity: this.affinityView(nowMs) }
+      return { reaction: this.picker.pick('feedCooldown'), delta: 0, affinity: this.affinityView(nowMs) }
     }
     if (kind === 'feed') {
       const consume = consumeTreat(this.current.treats)
       if (!consume.ok) {
         return {
-          reaction: '没有小鱼干了，多陪我工作一会儿吧～',
+          reaction: this.picker.pick('noTreats'),
           delta: 0,
           affinity: this.affinityView(nowMs),
         }
@@ -180,7 +205,11 @@ export class PetLedger {
       this.current = { ...this.current, affinity: outcome.affinity }
       this.dirty = true
     }
-    return { reaction: outcome.reaction, delta: outcome.delta, affinity: this.affinityView(nowMs) }
+    return {
+      reaction: this.picker.pick(outcome.accepted ? kind : 'petCooldown'),
+      delta: outcome.delta,
+      affinity: this.affinityView(nowMs),
+    }
   }
 
   /** Current affinity view for the RPC snapshot. */

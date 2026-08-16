@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-qq98",
   "description": "Hot-pluggable QQ2008 retro skin for the dsh web GUI: crystal-blue desktop, glassy navy title bar, scarf-wearing penguin, rounded highlighted controls",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

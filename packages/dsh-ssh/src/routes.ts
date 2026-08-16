@@ -16,6 +16,7 @@ import { randomBytes } from 'node:crypto'
 import { WebSocket, WebSocketServer } from 'ws'
 import type { WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { SshEngine, ShellSession } from './engine.ts'
+import { isLoopbackRequest } from './loopback.ts'
 import { SSH_API, type HostPayload, type TerminalClientFrame, type TerminalServerFrame } from './protocol.ts'
 import type { HostStore } from './store.ts'
 
@@ -37,29 +38,6 @@ const BACKPRESSURE_HIGH_WATER = 1024 * 1024
 
 /** …and resume once it drains below this. */
 const BACKPRESSURE_LOW_WATER = 512 * 1024
-
-/** Loopback literal check plus browser same-origin markers (mirrors the pairing routes' fence). */
-function isLoopbackRequest(request: IncomingMessage): boolean {
-  const address = request.socket.remoteAddress
-  if (address !== '127.0.0.1' && address !== '::1' && address !== '::ffff:127.0.0.1') return false
-  const host = request.headers.host
-  if (typeof host !== 'string') return false
-  let hostUrl: URL
-  try {
-    hostUrl = new URL(`http://${host}`)
-  } catch {
-    return false
-  }
-  if (hostUrl.hostname !== '127.0.0.1' && hostUrl.hostname !== 'localhost' && hostUrl.hostname !== '[::1]') return false
-  if (request.headers['sec-fetch-site'] === 'cross-site') return false
-  const origin = request.headers.origin
-  if (origin === undefined) return true
-  try {
-    return new URL(origin).host === hostUrl.host
-  } catch {
-    return false
-  }
-}
 
 /** One JSON response. */
 function writeJson(res: ServerResponse, status: number, body: unknown): void {

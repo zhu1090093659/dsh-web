@@ -95,6 +95,14 @@ export class DescribeImageSettingsCardController {
   inject(): DescribeImageSettingsCardFace {
     return { hooks: { describeImageSettingsCard: this.store }, ...this.form.actions() }
   }
+
+  /**
+   * Release the card's scope subscription and bound stores; the slot
+   * disposer calls this on teardown.
+   */
+  dispose(): void {
+    this.form.dispose()
+  }
 }
 
 /** Props the renderer binds for the describe-image card. */

@@ -11,7 +11,7 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-subprocess'
-import type { SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+import { subprocessRunner as sharedSubprocessRunner, type GitRunResult, type GitRunner } from './git-runner.ts'
 import {
   checkRefFormatArgv, classifySwitchFailure, createBranchArgv, forEachRefArgv,
   gitPathArgv, graphLogArgv, headBranchArgv, headShortArgv, operationMarkersArgv,
@@ -23,20 +23,8 @@ import {
   type BranchesView, type GitError, type GraphView, type RepoStatus, type SwitchResult,
 } from '../core/types.ts'
 
-/** One finished git invocation. */
-export interface GitRunResult {
-  exitCode: number | null
-  stdout: string
-  stderr: string
-}
-
-/** The spawn seam the service runs git through (subprocess service in production). */
-export interface GitRunner {
-  run(argv: readonly string[], cwd: string): Promise<GitRunResult>
-}
-
-/** Collected-output cap for one git command (branch lists and logs fit comfortably). */
-const OUTPUT_CAP_BYTES = 1 << 20
+/** One finished git invocation (shared runner plumbing). */
+export type { GitRunResult, GitRunner } from './git-runner.ts'
 
 /**
  * Build the argv for one git invocation, with the win32 binary variant.
@@ -66,31 +54,13 @@ export type WorkspaceVerdict = { ok: true; canonical: string } | { ok: false; er
 export type WorkspaceGate = (path: string) => Promise<WorkspaceVerdict>
 
 /**
- * Production runner over `ctx.subprocess`: one managed child per command,
- * bounded collect on both streams, tree-scoped teardown on abort.
+ * Production runner over `ctx.subprocess`: shared plumbing with the win32
+ * git.exe argv variant.
  * @param ctx - context carrying the subprocess service.
  * @returns the runner.
  */
 export function subprocessRunner(ctx: Context): GitRunner {
-  return {
-    async run(argv, cwd) {
-      const spec: SubprocessSpawnSpec = {
-        argv: gitSpawnArgv(process.platform, argv),
-        cwd,
-        stdio: {
-          stdin: 'ignore',
-          stdout: { maxBytes: OUTPUT_CAP_BYTES },
-          stderr: { maxBytes: OUTPUT_CAP_BYTES },
-        },
-        graceMs: 10_000,
-      }
-      const handle = ctx.subprocess.spawn(spec)
-      const outcome = await handle.done
-      const stdout = handle.collected.stdout?.readFrom(0).text ?? ''
-      const stderr = handle.collected.stderr?.readFrom(0).text ?? ''
-      return { exitCode: outcome.exitCode, stdout, stderr }
-    },
-  }
+  return sharedSubprocessRunner(ctx, { spawnArgv: (argv) => gitSpawnArgv(process.platform, argv) })
 }
 
 /** HEAD is the symbolic value `git rev-parse --abbrev-ref HEAD` prints when detached. */

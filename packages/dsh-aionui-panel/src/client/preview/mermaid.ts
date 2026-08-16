@@ -89,16 +89,75 @@ export function shellIsDark(): boolean {
 /** Monotonic id source for render calls (mermaid keys its <svg> by id). */
 let renderSeq = 0
 
-/** Apply (or re-apply) the theme then render one diagram source to SVG. */
-async function renderSvg(runtime: MermaidRuntime, theme: string, source: string): Promise<string> {
+/**
+ * Configure the mermaid runtime for the current theme. Called once per
+ * render batch (enhance or retheme), not per diagram, so a surface with
+ * many diagrams initializes the runtime a single time.
+ */
+function initializeRuntime(runtime: MermaidRuntime, theme: string): void {
   runtime.initialize({
     startOnLoad: false,
     theme,
     securityLevel: 'strict',
     fontFamily: '"trebuchet ms", verdana, arial, sans-serif',
   })
+}
+
+/** Render one diagram source to SVG with the already-initialized runtime. */
+async function renderSvg(runtime: MermaidRuntime, source: string): Promise<string> {
   const { svg } = await runtime.render(`aionui-mermaid-${(renderSeq += 1)}`, source)
   return svg
+}
+
+/** Disallowed elements removed from mermaid SVG output before innerHTML. */
+const DISALLOWED_ELEMENTS = ['script', 'foreignObject', 'iframe', 'object', 'embed']
+
+/** Whether an attribute name is an { on* } event-handler (case-insensitive). */
+function isEventHandler(name: string): boolean {
+  return /^on/i.test(name)
+}
+
+/** Whether an href/xlink:href value carries an executable javascript: URL. */
+function isDangerousHref(value: string): boolean {
+  return /^javascript:/i.test(value.trim())
+}
+
+/**
+ * Application-level defense-in-depth on top of mermaid's own strict-mode
+ * escaping: parse the rendered SVG in a detached container, remove disallowed
+ * elements and dangerous attributes, and return the serialized cleaned markup.
+ * Throws when the input cannot be parsed as markup or still carries dangerous
+ * raw tokens, so callers fall back to their failure path.
+ */
+export function sanitizeSvg(svg: string): string {
+  const template = document.createElement('template')
+  template.innerHTML = svg
+  const root = template.content
+
+  // Remove disallowed elements; loop because removals can expose nested ones.
+  for (let found = true; found; ) {
+    found = false
+    for (const el of Array.from(root.querySelectorAll('*'))) {
+      if (DISALLOWED_ELEMENTS.some((tag) => el.tagName.toLowerCase() === tag.toLowerCase())) {
+        el.remove()
+        found = true
+      }
+    }
+  }
+
+  // Strip event-handler attributes and javascript: hrefs from every element.
+  for (const el of Array.from(root.querySelectorAll('*'))) {
+    for (const attr of Array.from(el.attributes)) {
+      if (isEventHandler(attr.name) || isDangerousHref(attr.value)) el.removeAttribute(attr.name)
+    }
+  }
+
+  const cleaned = template.innerHTML
+  const lower = cleaned.toLowerCase()
+  if (lower.includes('<script') || lower.includes('javascript:')) {
+    throw new Error('mermaid SVG still contains dangerous tokens after sanitization')
+  }
+  return cleaned
 }
 
 /**
@@ -160,6 +219,7 @@ export async function enhanceMermaidBlocks(scope: ParentNode, options: EnhanceOp
   } catch {
     return // no vendor route (asset missing): keep plain code blocks
   }
+  initializeRuntime(runtime, options.theme)
   const jobs: Array<Promise<void>> = []
   for (const pre of findMermaidCodeBlocks(scope)) {
     if (options.skip?.(pre) === true) continue
@@ -168,7 +228,8 @@ export async function enhanceMermaidBlocks(scope: ParentNode, options: EnhanceOp
       try {
         container.setAttribute(DATA_STATE, 'rendering')
         const source = container.getAttribute(DATA_SOURCE) ?? ''
-        container.innerHTML = await renderSvg(runtime, options.theme, source)
+        const svg = await renderSvg(runtime, source)
+        container.innerHTML = sanitizeSvg(svg)
         container.setAttribute(DATA_STATE, 'done')
         pre.style.display = 'none'
       } catch {
@@ -189,11 +250,13 @@ export async function enhanceMermaidBlocks(scope: ParentNode, options: EnhanceOp
 export async function rethemeMermaidBlocks(scope: ParentNode, options: { theme: string }): Promise<void> {
   const runtime = mermaidGlobal()
   if (runtime === null) return
+  initializeRuntime(runtime, options.theme)
   const containers = Array.from(scope.querySelectorAll<HTMLElement>('[data-mermaid-state="done"]'))
   await Promise.all(containers.map(async (container) => {
     const source = container.getAttribute(DATA_SOURCE) ?? ''
     try {
-      container.innerHTML = await renderSvg(runtime, options.theme, source)
+      const svg = await renderSvg(runtime, source)
+      container.innerHTML = sanitizeSvg(svg)
     } catch {
       // Keep the previous render; a theme flip must not blank diagrams.
     }

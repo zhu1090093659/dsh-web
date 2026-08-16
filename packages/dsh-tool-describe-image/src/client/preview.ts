@@ -149,7 +149,10 @@ export function installConversationImagePreview(isEnabled: () => boolean, root?:
     overlay.addEventListener('keydown', onKeydown)
     lightboxCleanup = () => {
       overlay.remove()
-      if (trigger.isConnected) trigger.focus()
+      // Restore focus without scrolling: the transcript may have moved while
+      // the overlay stood, and the default focus scroll would yank the view
+      // back to the thumbnail (issue #317).
+      if (trigger.isConnected) trigger.focus({ preventScroll: true })
     }
     document.body.append(overlay)
     overlay.focus()

@@ -115,7 +115,9 @@ export function projectOfficialEvent(
         case 'blocked':
           return { input: { phase: 'waiting', line: '等待继续' } }
         case 'aborted':
-          return { input: { phase: 'idle', line: '已停止' } }
+          // A stopped session settles to idle without a bubble: the pet
+          // visibly calms down and the session drops out of the bubble stack.
+          return { input: { phase: 'idle' } }
         default:
           // TurnEndReasonMap is merge-extensible; a newer ending must not
           // leave the pet showing stale in-progress work.

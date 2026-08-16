@@ -19,6 +19,7 @@ import type { PanelEnvelope, PanelError } from '../core/types.ts'
 import type { FsService } from './fs-service.ts'
 import type { GitService } from './git-service.ts'
 import { PollGuard } from './poll-guard.ts'
+import { isLoopbackRequest } from './loopback.ts'
 
 const OK = (value: unknown): PanelEnvelope<unknown> => ({ ok: true, value })
 const FAIL = (error: PanelError): PanelEnvelope<never> => ({ ok: false, error })
@@ -155,36 +156,6 @@ const GIT_STATUS_TIMEOUT_MS = 15_000
  */
 const GIT_POLL_DEADLINE_MS = Number.MAX_SAFE_INTEGER
 const GIT_POLL_MAX_BACKOFF_MS = GIT_POLL_MS
-
-/**
- * Loopback trust fence — the same judgment dsh-ssh applies to its host
- * routes: a loopback socket address AND a loopback Host header, plus browser
- * same-origin markers. The /aionui-panel operations read/write real workspace
- * files and run git, so a LAN-exposed dsh web must not serve them to unpaired
- * devices. The socket address is authoritative; X-Forwarded-For is never
- * trusted (matching dsh-ssh).
- */
-function isLoopbackRequest(request: IncomingMessage): boolean {
-  const address = request.socket.remoteAddress
-  if (address !== '127.0.0.1' && address !== '::1' && address !== '::ffff:127.0.0.1') return false
-  const host = request.headers.host
-  if (typeof host !== 'string') return false
-  let hostUrl: URL
-  try {
-    hostUrl = new URL(`http://${host}`)
-  } catch {
-    return false
-  }
-  if (hostUrl.hostname !== '127.0.0.1' && hostUrl.hostname !== 'localhost' && hostUrl.hostname !== '[::1]') return false
-  if (request.headers['sec-fetch-site'] === 'cross-site') return false
-  const origin = request.headers.origin
-  if (origin === undefined) return true
-  try {
-    return new URL(origin).host === hostUrl.host
-  } catch {
-    return false
-  }
-}
 
 /** Write the shared non-loopback rejection (same body as dsh-ssh). */
 function forbidden(res: ServerResponse): void {

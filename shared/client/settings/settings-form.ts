@@ -233,6 +233,9 @@ export class CardForm<T> {
   private readonly specs: Map<string, FieldSpec>
   private readonly staged = new Map<string, StagedEdit>()
   private readonly listeners = new Set<() => void>()
+  /** The scope subscription installed in the constructor; released by dispose(). */
+  private readonly disposeScope: () => void
+  private disposed = false
   private saving = false
   private failed = false
   private failedReason: string | undefined
@@ -243,7 +246,18 @@ export class CardForm<T> {
     specs: FieldSpec[],
   ) {
     this.specs = new Map(specs.map(spec => [spec.field, spec]))
-    scope.subscribe(() => { this.publish() })
+    this.disposeScope = scope.subscribe(() => { this.publish() })
+  }
+
+  /**
+   * Release the scope subscription and every bound store listener. The card
+   * must call this on teardown; later calls are no-ops.
+   */
+  dispose(): void {
+    if (this.disposed) return
+    this.disposed = true
+    this.disposeScope()
+    this.listeners.clear()
   }
 
   /** Publish a projection of this form, rebuilt whenever the scope or a draft changes. */

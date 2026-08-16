@@ -56,12 +56,18 @@ export function apply(ctx: ClientContext): void {
   const settingsScope = binder.bind<CommunityPluginsSettings>({ namespace: COMMUNITY_PLUGINS_NS })
   const controller = new CommunityPluginsCardController(settingsScope)
 
-  ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section',
-    id: 'community-plugins',
-    order: 140,
-    label: () => ctx.locale.bind('community-plugins')('settings.title'),
-    locale: 'community-plugins',
-    inject: () => controller.inject(),
-  }, CommunityPluginsSection))
+  ctx.slots.inject('settings.section', () => {
+    const unregister = ctx.slots.register({
+      name: 'settings.section',
+      id: 'community-plugins',
+      order: 140,
+      label: () => ctx.locale.bind('community-plugins')('settings.title'),
+      locale: 'community-plugins',
+      inject: () => controller.inject(),
+    }, CommunityPluginsSection)
+    return () => {
+      controller.dispose()
+      unregister()
+    }
+  })
 }

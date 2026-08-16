@@ -28,7 +28,7 @@
    重复，打 `duplicate` 并关闭，评论附上原 Issue 链接。
 2. **定类型**：按标题前缀与正文模板判断 `bug` / `enhancement` /
    `documentation` / `question`，打对应标签。
-3. **补信息**：正文缺复现步骤、环境信息或截图时，评论请作者补充，并保留
+3. **补信息**：Bug 报告正文缺复现步骤、环境信息、截图、冒烟测试、代码引用或补丁时，评论请作者补充，并保留
    `question` 或 `bug` 标签等待回复。
 4. **新手任务**：范围小、验收明确的任务追加 `good first issue`；涉及深层
    插件架构或需要修改 DSH 核心的不标。
@@ -73,15 +73,15 @@ gh issue list -R zhu1090093659/dsh-web-ui --state open \
 - `.github/workflows/issue-dedup.yml`：对疑似重复的 Issue 自动打 `duplicate`
   标签，评论附原 Issue 链接并关闭（`not_planned`）；作者可回复说明差异请求
   重开；
-- `.github/workflows/issue-template-enforcer.yml`：模板必填段缺失或无效时
+- `.github/workflows/issue-template-enforcer.yml`：Bug 报告必填段（含截图、冒烟测试、引用代码与补丁）缺失或无效、或未带 `bug` 标签时
   自动评论说明并关闭（`not_planned`），补充完整后可请求重开；
 - 自动化只做初筛，人工标签补充与「重开 / 不重开」的最终决定由维护者确认。
 
 ## 贡献者指引
 
 - 提 Issue 前先检索标签与关键词，确认没有重复；
-- 用 [Issue 模板](.github/ISSUE_TEMPLATE/standard_issue.yml) 提交，包含
-  复现步骤与环境信息；
+- 用 [Issue 模板](.github/ISSUE_TEMPLATE/standard_issue.yml) 提交；Bug 报告用
+  「Bug 报告」表单提交，自动附加 `bug` 标签，并包含复现步骤、环境信息、截图、冒烟测试、引用代码与建议补丁；
 - 想认领任务，优先挑选 `good first issue` 或 `help wanted`，在评论区留言；
 - 已关闭的 Issue 若问题仍然存在，请重开并补充最新信息，不要开新 Issue
   重复描述。

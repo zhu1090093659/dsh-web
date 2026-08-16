@@ -120,14 +120,19 @@ export function apply(ctx: ClientContext): void {
       // Live toggle: re-scan (or restore) the moment a settings save settles.
       unsubscribeSettings = settingsScope.subscribe(() => previewRef?.refresh())
       const settingsCard = new DescribeImageSettingsCardController(settingsScope)
-      slots.inject('web-ui.plugin.item', () =>
-        slots.register({
+      slots.inject('web-ui.plugin.item', () => {
+        const unregister = slots.register({
           name: 'web-ui.plugin.item',
           id: 'describe-image',
           order: 115,
           locale: NS,
           inject: () => settingsCard.inject(),
-        }, DescribeImageSettingsCard))
+        }, DescribeImageSettingsCard)
+        return () => {
+          settingsCard.dispose()
+          unregister()
+        }
+      })
     })
   })
 }

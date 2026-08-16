@@ -10,9 +10,7 @@
  * @module dsh-aionui-panel/client/store
  */
 
-import type {
-  ContentSearchHit, ContentSearchView, FileRead, FsEntry, GitStatusView, PreviewContentType, SearchHit, SearchView,
-} from '../core/types.ts'
+import type { FileRead, FsEntry, GitStatusView, PreviewContentType, SearchHit } from '../core/types.ts'
 import type { PanelApi } from './api.ts'
 import { detectContentType, isTextType, pdfPreviewUrl, tabIdOf } from './fileType.ts'
 import {
@@ -71,6 +69,8 @@ export const KEY_EXPLORER_WIDTH = 'chat-workspace-width-px'
 export const KEY_PREVIEW_WIDTH = 'chat-preview-width-px'
 export const KEY_COLLAPSE = 'project-panel-collapse:'
 export const KEY_EXPLORER_UI = 'explorer-ui:'
+/** Trailing window for coalescing explorer fs-event refetches (ms). */
+export const FS_COALESCE_MS = 200
 export const KEY_SCM_UI = 'scm-ui:'
 
 /**
@@ -197,14 +197,11 @@ export interface ExplorerState {
   loading: string[]
   /** Active tab: files | changes. */
   activeTab: 'files' | 'changes'
-  /** Search state (filename or file-content mode). */
+  /** Filename search state. */
   search: {
     query: string
-    /** 'name' searches file names; 'content' searches file contents. */
-    mode: 'name' | 'content'
     status: 'idle' | 'searching' | 'done' | 'error'
     hits: SearchHit[]
-    contentHits: ContentSearchHit[]
     truncated: boolean
   }
   /** Bumped on every fs change event (drives refetch + re-render). */
@@ -219,7 +216,6 @@ export interface ExplorerStore extends StateHandle<ExplorerState> {
   select: (rel: string | null) => void
   reveal: (rel: string) => void
   setSearchQuery: (query: string) => void
-  setSearchMode: (mode: 'name' | 'content') => void
   cancelSearch: () => void
   /** Refetch every expanded dir + active search after a host change event. */
   handleFsChange: () => void
@@ -247,9 +243,7 @@ export function readExplorerUi(root: string): { expanded: string[]; selected: st
   return { expanded, selected }
 }
 
-const EMPTY_SEARCH = {
-  query: '', mode: 'name' as const, status: 'idle' as const, hits: [], contentHits: [], truncated: false,
-}
+const EMPTY_SEARCH = { query: '', status: 'idle' as const, hits: [], truncated: false }
 
 /** Create the explorer store (per-root persistence, debounced writes). */
 export function createExplorerStore(api: PanelApi): ExplorerStore {
@@ -267,6 +261,8 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
   const persistDebounced = createDebounced()
   const searchDebounced = createDebounced()
   let fsVersion = 0
+  let fsInFlight = false
+  let fsScheduled: ReturnType<typeof setTimeout> | undefined
   let persistRoot = ''
   let persistExpanded: string[] = []
   let persistSelected: string | null = null
@@ -326,29 +322,43 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
     return out
   }
 
-  /** Run the active search mode once (guarded against stale roots/queries). */
-  const runSearch = (root: string, query: string, mode: 'name' | 'content'): void => {
-    const promise = mode === 'name' ? api.search(root, query) : api.searchContent(root, query)
-    void promise.then((result) => {
-      handle.update((prev) => {
-        if (prev.root !== root || prev.search.query !== query || prev.search.mode !== mode) return prev
-        if (!result.ok) {
-          return { ...prev, search: { ...prev.search, status: 'error', hits: [], contentHits: [] } }
-        }
-        if (mode === 'name') {
-          const value = result.value as SearchView
+  /**
+   * Refetch the root plus every expanded dir (seq-guarded against stale
+   * results) and the active search after an fs change event.
+   */
+  const runFsRefresh = async (): Promise<void> => {
+    const state = handle.getSnapshot()
+    const root = state.root
+    if (root === '') return
+    const dirs = [...new Set(['', ...state.expanded])]
+    const seq = ++fsVersion
+    const results = await Promise.allSettled(dirs.map((rel) => api.list(root, rel)))
+    handle.update((prev) => {
+      if (prev.root !== root || seq !== fsVersion) return prev
+      const nextDirs = { ...prev.dirs }
+      results.forEach((result, index) => {
+        const rel = dirs[index]
+        if (result.status !== 'fulfilled' || !result.value.ok) return
+        // A dir folded while the event burst was in flight must not be
+        // re-populated (the collapse would revive from a stale snapshot).
+        if (rel !== '' && !prev.expanded.includes(rel)) return
+        nextDirs[rel] = result.value.value.entries
+      })
+      return { ...prev, dirs: nextDirs, version: prev.version + 1 }
+    })
+    if (state.search.query !== '') {
+      void api.search(root, state.search.query).then((result) => {
+        handle.update((prev) => {
+          if (prev.root !== root || prev.search.query !== state.search.query) return prev
           return {
             ...prev,
-            search: { ...prev.search, status: 'done', hits: value.hits, contentHits: [], truncated: value.truncated },
+            search: result.ok
+              ? { query: state.search.query, status: 'done', hits: result.value.hits, truncated: result.value.truncated }
+              : prev.search,
           }
-        }
-        const value = result.value as ContentSearchView
-        return {
-          ...prev,
-          search: { ...prev.search, status: 'done', hits: [], contentHits: value.hits, truncated: value.truncated },
-        }
+        })
       })
-    })
+    }
   }
 
   const store: ExplorerStore = Object.assign(handle, {
@@ -412,39 +422,30 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
         return {
           ...prev,
           search: trimmed === ''
-            ? { ...EMPTY_SEARCH, mode: prev.search.mode }
+            ? { ...EMPTY_SEARCH }
             : { ...prev.search, query: trimmed, status: 'searching' },
         }
       })
       searchDebounced.dispose()
       if (trimmed === '') return
-      const state = handle.getSnapshot()
+      const root = handle.getSnapshot().root
       searchDebounced.schedule(() => {
-        runSearch(state.root, trimmed, state.search.mode)
+        void api.search(root, trimmed).then((result) => {
+          handle.update((prev) => {
+            if (prev.root !== root || prev.search.query !== trimmed) return prev
+            return {
+              ...prev,
+              search: result.ok
+                ? { query: trimmed, status: 'done', hits: result.value.hits, truncated: result.value.truncated }
+                : { ...prev.search, status: 'error', hits: [] },
+            }
+          })
+        })
       })
-    },
-    setSearchMode(mode: 'name' | 'content') {
-      const state = handle.getSnapshot()
-      if (state.search.mode === mode) return
-      searchDebounced.dispose()
-      handle.update((prev) => ({
-        ...prev,
-        search: {
-          ...prev.search,
-          mode,
-          status: prev.search.query === '' ? 'idle' : 'searching',
-          hits: [],
-          contentHits: [],
-        },
-      }))
-      const current = handle.getSnapshot()
-      if (current.search.query !== '') runSearch(current.root, current.search.query, mode)
     },
     cancelSearch() {
       searchDebounced.dispose()
-      handle.update((prev) => (
-        prev.search.query === '' ? prev : { ...prev, search: { ...EMPTY_SEARCH, mode: prev.search.mode } }
-      ))
+      handle.update((prev) => (prev.search.query === '' ? prev : { ...prev, search: { ...EMPTY_SEARCH } }))
     },
     async revealInFileManager(rel: string) {
       const root = handle.getSnapshot().root
@@ -521,27 +522,24 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
       return result.ok
     },
     async handleFsChange() {
-      const state = handle.getSnapshot()
-      const root = state.root
+      const root = handle.getSnapshot().root
       if (root === '') return
-      const dirs = [...new Set(['', ...state.expanded])]
-      const seq = ++fsVersion
-      const results = await Promise.allSettled(dirs.map((rel) => api.list(root, rel)))
-      handle.update((prev) => {
-        if (prev.root !== root || seq !== fsVersion) return prev
-        const nextDirs = { ...prev.dirs }
-        results.forEach((result, index) => {
-          const rel = dirs[index]
-          if (result.status !== 'fulfilled' || !result.value.ok) return
-          // A dir folded while the event burst was in flight must not be
-          // re-populated (the collapse would revive from a stale snapshot).
-          if (rel !== '' && !prev.expanded.includes(rel)) return
-          nextDirs[rel] = result.value.value.entries
-        })
-        return { ...prev, dirs: nextDirs, version: prev.version + 1 }
-      })
-      if (state.search.query !== '') {
-        runSearch(root, state.search.query, state.search.mode)
+      if (fsInFlight) {
+        // Collapse a burst of events into one trailing pass: schedule it
+        // once, then let the timer re-enter here once it fires.
+        if (fsScheduled === undefined) {
+          fsScheduled = setTimeout(() => {
+            fsScheduled = undefined
+            void this.handleFsChange()
+          }, FS_COALESCE_MS)
+        }
+        return
+      }
+      fsInFlight = true
+      try {
+        await runFsRefresh()
+      } finally {
+        fsInFlight = false
       }
     },
   })

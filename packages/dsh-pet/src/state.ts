@@ -144,11 +144,11 @@ export class PetStateMachine {
         animation = 'idle'
       }
     }
-    const bubble = this.phase === 'done'
-      && this.doneAt !== undefined
-      && nowMs - this.doneAt >= this.config.celebrateMs
-      ? undefined
-      : this.phrase ?? this.line
+    // Settled sessions never bubble: idle (e.g. an aborted/stopped turn)
+    // and done past its celebration window both fall silent.
+    const settled = this.phase === 'idle'
+      || (this.phase === 'done' && this.doneAt !== undefined && nowMs - this.doneAt >= this.config.celebrateMs)
+    const bubble = settled ? undefined : this.phrase ?? this.line
     return {
       animation,
       ...(bubble === undefined ? {} : { bubble }),

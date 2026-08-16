@@ -5,7 +5,7 @@
  * try-on (the GUI never embeds the ~700KB of art base64 in its own bundle).
  * The host half switches skins in-process (src/skin-switch.ts) — an ESM port
  * of the `dsh-skin` CLI that owns the `dsh-skin managed` section of
- * `~/.dsh/cordis.patch.yml` and the profile symlink, exactly like
+ * the active profile's `cordis.patch.yml` and the profile symlink, exactly like
  * `dsh-skin use <name>` — so no `dsh-skin` binary is required on PATH
  * (the bug zhu1090093659/dsh-web-ui#5). The config watcher hot-reloads the
  * patch within seconds and the frontend reloads the page to pick up the new

@@ -52,14 +52,19 @@ jobs:
             };
 
             const issueType = readSection('Issue 类型').trim().toLowerCase();
-            const bugScreenshot = readSection('Bug 截图');
-            const requiredSections = issueType === 'bug 报告'
-              ? [...baseRequiredSections, 'Bug 截图']
+            const hasBugLabel = (issue.labels || []).some((label) => String(label.name || '').toLowerCase() === 'bug');
+            const isBug = issueType === 'bug 报告' || hasBugLabel;
+            const requiredSections = isBug
+              ? [...baseRequiredSections, 'Bug 截图', '冒烟测试', '引用代码', '补丁']
               : baseRequiredSections;
 
             const missingSections = requiredSections.filter((label) => isBlank(readSection(label)));
             const invalidSections = [];
-            if (issueType === 'bug 报告' && !isBlank(bugScreenshot) && !hasScreenshotEvidence(bugScreenshot)) {
+            if (isBug && !hasBugLabel) {
+              invalidSections.push('Bug 报告必须附带 bug 标签：请通过「Bug 报告」表单提交，该表单会自动附加 bug 标签。');
+            }
+            const bugScreenshot = readSection('Bug 截图');
+            if (isBug && !isBlank(bugScreenshot) && !hasScreenshotEvidence(bugScreenshot)) {
               invalidSections.push('Bug 截图必须包含上传的图片、Markdown 图片或图片链接。');
             }
             const missingSectionMessages = missingSections.length > 0

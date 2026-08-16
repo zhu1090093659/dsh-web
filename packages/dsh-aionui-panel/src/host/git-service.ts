@@ -12,75 +12,21 @@ import { join, relative } from 'node:path'
 import { realpath } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-subprocess'
-import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+import { subprocessRunner as sharedSubprocessRunner, type GitRunResult, type GitRunner } from './git-runner.ts'
 import type { GitBatchResult, GitChangeRow, GitFileState, GitStatusView, PanelError } from '../core/types.ts'
 import { isPathInside, type WorkspaceGate } from './gate.ts'
 
-/** One finished git invocation. */
-export interface GitRunResult {
-  exitCode: number | null
-  stdout: string
-  stderr: string
-}
-
-/** The spawn seam the service runs git through (subprocess service in production). */
-export interface GitRunner {
-  run(argv: readonly string[], cwd: string): Promise<GitRunResult>
-}
-
-/** Collected-output cap for one git command. */
-const OUTPUT_CAP_BYTES = 1 << 20
+/** One finished git invocation (shared runner plumbing). */
+export type { GitRunResult, GitRunner } from './git-runner.ts'
 
 /** TTL for a positive repo-top-level verdict. */
 const REPO_CACHE_TTL_MS = 60_000
 /** TTL for a negative (null) repo-top-level verdict. */
 const NO_REPO_CACHE_TTL_MS = 30_000
 
-/** Production runner over `ctx.subprocess`: one managed child per command. */
+/** Production runner over `ctx.subprocess`: shared plumbing, degrade mode for the SCM tab. */
 export function subprocessRunner(ctx: Context): GitRunner {
-  return {
-    async run(argv, cwd) {
-      const spec: SubprocessSpawnSpec = {
-        argv: ['git', ...argv],
-        cwd,
-        stdio: {
-          stdin: 'ignore',
-          stdout: { maxBytes: OUTPUT_CAP_BYTES },
-          stderr: { maxBytes: OUTPUT_CAP_BYTES },
-        },
-        graceMs: 10_000,
-      }
-      // A missing git binary (or a subprocess service that cannot spawn) must
-      // degrade to a failed run, not throw through the route layer: the SCM
-      // tab then shows the friendly "not a git repository" state instead of a
-      // bare 400 with no body. Real failures still log and are written into
-      // stderr so a misclassified failure stays diagnosable.
-      let handle: SubprocessHandle
-      try {
-        handle = ctx.subprocess.spawn(spec)
-      } catch (error) {
-        console.error('[dsh-aionui-panel] git spawn failed:', error)
-        return {
-          exitCode: 127,
-          stdout: '',
-          stderr: 'git: spawn failed: ' + (error instanceof Error ? error.message : String(error)),
-        }
-      }
-      try {
-        const outcome = await handle.done
-        const stdout = handle.collected.stdout?.readFrom(0).text ?? ''
-        const stderr = handle.collected.stderr?.readFrom(0).text ?? ''
-        return { exitCode: outcome.exitCode, stdout, stderr }
-      } catch (error) {
-        console.error('[dsh-aionui-panel] git run failed:', error)
-        return {
-          exitCode: 127,
-          stdout: '',
-          stderr: 'git: run failed: ' + (error instanceof Error ? error.message : String(error)),
-        }
-      }
-    },
-  }
+  return sharedSubprocessRunner(ctx, { failureMode: 'degrade', errorTag: 'dsh-aionui-panel' })
 }
 
 /** Map one porcelain letter to the row state (unknown letters stay unknown). */

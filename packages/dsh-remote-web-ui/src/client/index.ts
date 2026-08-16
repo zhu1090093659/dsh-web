@@ -157,13 +157,19 @@ export function apply(ctx: ClientContext): void {
   // Plugin configuration card: one staged form over the `remote-web-ui`
   // settings namespace, contributed to the Web UI plugin group.
   const remoteSettings = new RemoteSettingsCardController(settingsScope)
-  ctx.slots.inject('web-ui.plugin.item', () => ctx.slots.register({
-    name: 'web-ui.plugin.item',
-    id: 'remote-web-ui',
-    order: 90,
-    locale: NS,
-    inject: () => remoteSettings.inject(),
-  }, RemoteSettingsCard))
+  ctx.slots.inject('web-ui.plugin.item', () => {
+    const unregister = ctx.slots.register({
+      name: 'web-ui.plugin.item',
+      id: 'remote-web-ui',
+      order: 90,
+      locale: NS,
+      inject: () => remoteSettings.inject(),
+    }, RemoteSettingsCard)
+    return () => {
+      remoteSettings.dispose()
+      unregister()
+    }
+  })
 
   // Phone-side boot flow + heartbeats. Loopback pages (the desktop) never
   // heartbeat; the server ignores unpaired heartbeats anyway. Both run only

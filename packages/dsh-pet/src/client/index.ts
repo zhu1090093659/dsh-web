@@ -116,14 +116,20 @@ export function apply(ctx: ClientContext): void {
   // namespace, registered as a top-level settings page. The controller loads
   // the petId choices from the registry endpoint itself.
   const petSettings = new PetSettingsCardController(settingsScope)
-  ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section',
-    id: 'pet',
-    order: 130,
-    label: () => ctx.locale.bind('pet')('settings.title'),
-    locale: 'pet',
-    inject: () => petSettings.inject(),
-  }, PetSettingsSection))
+  ctx.slots.inject('settings.section', () => {
+    const unregister = ctx.slots.register({
+      name: 'settings.section',
+      id: 'pet',
+      order: 130,
+      label: () => ctx.locale.bind('pet')('settings.title'),
+      locale: 'pet',
+      inject: () => petSettings.inject(),
+    }, PetSettingsSection)
+    return () => {
+      petSettings.dispose()
+      unregister()
+    }
+  })
 
   // The global pet entry, its store, and the poll loop live while the plugin
   // is enabled; toggling the setting off hides the pet and stops polling.

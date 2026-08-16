@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        请保持本模板完整并填写所有必填部分。缺少截图证据的 Bug 报告将被自动关闭。
+        请保持本模板完整并填写所有必填部分。缺少截图证据、冒烟测试、代码引用或补丁的 Bug 报告将被自动关闭。
 
         提交前请先搜索确认没有重复：[搜索现有 Issue](https://github.com/zhu1090093659/dsh-web-ui/issues?q=is%3Aissue)
   - type: checkboxes
@@ -89,6 +89,40 @@ body:
       label: Bug 截图
       description: 粘贴或上传展示 Bug 的截图。无截图证据的 Bug 报告将被自动关闭。
       placeholder: 将图片拖到此处，或粘贴 GitHub 图片 / 文件链接。
+    validations:
+      required: true
+  - type: textarea
+    id: smoke-test
+    attributes:
+      label: 冒烟测试
+      description: 说明你实际执行过的验证：按复现步骤在具体 DSH / 插件版本上的操作与观察结果、执行过的构建或命令、对照实验。未实际验证的描述视为无效。
+      placeholder: |
+        - 环境（DSH / 插件版本）:
+        - 执行步骤与观察结果:
+        - 对照 / 历史版本差异:
+    validations:
+      required: true
+  - type: textarea
+    id: code-reference
+    attributes:
+      label: 引用代码
+      description: 指向仓库内相关代码的精确位置（文件路径 + 函数 / 行号，可附 GitHub 链接），便于维护者定位。
+      placeholder: |
+        packages/dsh-task-board/src/client/index.ts:120-135
+        https://github.com/zhu1090093659/dsh-web-ui/blob/main/packages/dsh-task-board/src/client/index.ts#L120-L135
+    validations:
+      required: true
+  - type: textarea
+    id: patch
+    attributes:
+      label: 补丁
+      description: 提供你建议的修复补丁或实现草案（diff 或代码片段），即使不完整；只描述问题而不附补丁或草案的 Issue 将被关闭。
+      placeholder: |
+        ```diff
+        --- a/packages/dsh-task-board/src/client/index.ts
+        +++ b/packages/dsh-task-board/src/client/index.ts
+        @@ ... @@
+        ```
     validations:
       required: true
   - type: textarea

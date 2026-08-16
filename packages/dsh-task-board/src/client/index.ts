@@ -92,13 +92,19 @@ export function apply(ctx: ClientContext): void {
   const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
   const settingsScope = binder.bind<TaskBoardSettings>({ namespace: TASK_BOARD_NS })
   const settingsCard = new TaskBoardSettingsCardController(settingsScope)
-  ctx.slots.inject('web-ui.plugin.item', () => ctx.slots.register({
-    name: 'web-ui.plugin.item',
-    id: 'task-board',
-    order: 110,
-    locale: NS,
-    inject: () => settingsCard.inject(),
-  }, TaskBoardSettingsCard))
+  ctx.slots.inject('web-ui.plugin.item', () => {
+    const unregister = ctx.slots.register({
+      name: 'web-ui.plugin.item',
+      id: 'task-board',
+      order: 110,
+      locale: NS,
+      inject: () => settingsCard.inject(),
+    }, TaskBoardSettingsCard)
+    return () => {
+      settingsCard.dispose()
+      unregister()
+    }
+  })
 
   // The sidebar entry and board view mount once the settings scope settles;
   // while the scope is still loading, the composition default is unknown, so

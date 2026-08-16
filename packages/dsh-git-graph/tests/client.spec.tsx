@@ -16,6 +16,7 @@ import type { GitGraphInjected } from '../src/client/index.ts'
 import type { BranchChipProps } from '../src/client/chips/BranchChip.tsx'
 import { BranchChip } from '../src/client/chips/BranchChip.tsx'
 import { zh, type GitGraphKey } from '../src/client/locales.ts'
+import css from '../src/client/chips/context.module.css'
 
 afterEach(() => {
   cleanup()
@@ -316,7 +317,12 @@ describe('BranchChip', () => {
     fireEvent.click(await screen.findByRole('button', { name: '分支' }))
     fireEvent.click(await screen.findByRole('option', { name: 'feature/x' }))
     expect(calls.switchBranch).toEqual([['sess-1', 'feature/x']])
-    expect(await screen.findByText('已切换到分支 feature/x')).toBeTruthy()
+    const notice = await screen.findByText('已切换到分支 feature/x')
+    // The success banner carries the base notice class plus the ok variant
+    // (the variant re-tints the banner; losing it would paint success as an
+    // error banner).
+    expect(notice.classList.contains(css.notice)).toBe(true)
+    expect(notice.classList.contains(css.noticeOk)).toBe(true)
     expect(injected.switchBranch).toHaveBeenCalled()
   })
 
@@ -326,7 +332,10 @@ describe('BranchChip', () => {
     })
     fireEvent.click(await screen.findByRole('button', { name: '分支' }))
     fireEvent.click(await screen.findByRole('option', { name: 'feature/x' }))
-    expect(await screen.findByText('当前仓库还有未解决的冲突，先处理完再切换分支。')).toBeTruthy()
+    const notice = await screen.findByText('当前仓库还有未解决的冲突，先处理完再切换分支。')
+    // The error banner is the base notice only (never the ok variant).
+    expect(notice.classList.contains(css.notice)).toBe(true)
+    expect(notice.classList.contains(css.noticeOk)).toBe(false)
   })
 
   it('shows the overwrite copy with blocked paths', async () => {

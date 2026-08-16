@@ -71,8 +71,8 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-remote-web-ui
 ### 行为说明
 
 - 移动端输入框默认 Enter 发送（Shift+Enter 换行）。在插件设置卡片（或 profile patch）把 `mobileEnterToSend` 设为 false 后，普通 Enter 改为插入换行，只有「发送」按钮会发送；手机打开聊天时经自己的 `/m/api` 偏好方法读取该开关。在支持 `field-sizing: content` 的浏览器上，输入框随草稿自动增高，最高 120px 封顶（两种模式一致）。
-- 模型请求遇到 `EMPTY_RESPONSE`、`RATE_LIMIT`、`SERVER`、`TIMEOUT` 或 `TRANSPORT` 时，默认自动重试最多 5 次，并采用有界指数退避；等待跟随 agent 取消信号。认证、非法请求、上下文、配额等永久性错误不会重试。工具执行不会自动重放，避免重复外部副作用；可在插件设置中把 `retryAttempts` 调小到 0–5。
-- 编辑只对最新一条已结束的真人消息开放，要求当前会话不在运行中。普通轮次从上一条已完成边界创建子会话；首轮则在同一工作区创建等价会话，并在模型目录可读时保留原模型选择。源会话始终保留。
+- 桌面 Web 的最新一条已结束真人消息会在助手操作区显示 **编辑**。点击后进入可取消的草稿态；保存会从上一条已完成边界分叉出子会话并从该位置发送新内容，首轮则在同一工作区创建等价会话，源会话始终保留。运行中、失败中、插件/系统消息和带附件的消息不提供编辑。
+- 桌面 Web 的模型请求遇到 `EMPTY_RESPONSE`、`RATE_LIMIT`、`SERVER`、`TIMEOUT` 或 `TRANSPORT` 时，首次请求之外默认自动重试最多 5 次，并采用可取消的有界指数退避；原生会话状态会显示当前重试次数、等待状态和最终失败原因。认证、非法请求、上下文、配额等永久性错误不会重试；工具执行不会自动重放，避免重复外部副作用。可在 profile patch 或设置文件中把 `retryAttempts` 调小到 0–5。
 - 安装本插件会门控非 loopback 的 `/api` 访问于配对之后（见 `src/index.ts` 的 `requirePairingForLan`）。经局域网 URL 打开的桌面浏览器必须像任何远程设备一样配对；loopback（127.0.0.1）不受影响。把 profile patch 里 `requirePairingForLan` 设为 false 可恢复开放局域网行为，同时保留令牌/状态/撤销。
 - 二维码链接基于机器的非内部 IPv4 字面量构建；多宿主主机（Wi-Fi + 有线，或代理/VPN 虚拟适配器）会显示单选器供你发布手机实际可达的网络。第一个字面量是默认值。设 `publicBaseUrl` 后，单选器在顶部额外加一项 公网地址——默认二维码改用公网 base，选中局域网字面量会重新铸一枚网内链接。
 - 配置的 `publicBaseUrl` 本身满足可达绑定需求：`dsh web` 绑定 `127.0.0.1`（不带 `--host 0.0.0.0`）仍能经隧道铸出可用的公网二维码链接。

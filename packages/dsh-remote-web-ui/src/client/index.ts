@@ -8,7 +8,7 @@
  */
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { ClientContext, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext, ISessions, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale) and the
 // ui-sidebar SlotMap merge (the 'sidebar.remote' hole).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -17,6 +17,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
+import { createConversationEditAction } from './ConversationEditAction.tsx'
 import { FooterRemoteEntry } from './FooterRemoteEntry.tsx'
 import { RemoteEntry } from './RemoteEntry.tsx'
 import { PairFailedNotice } from './PairFailedNotice.tsx'
@@ -90,7 +91,7 @@ const REMOTE_WEB_UI_NS = 'remote-web-ui'
 const HEARTBEAT_INTERVAL_MS = 10_000
 
 /** Services required by this plugin. */
-export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote']
+export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote', 'sessions']
 
 /**
  * Register the remote-control surface.
@@ -100,6 +101,20 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'remote-web-ui: dictionaries')
 
   const t = ctx.locale.bind(NS)
+  const sessions = ctx.get('sessions') as unknown as ISessions
+  const connection = ctx.get('connection') as unknown as ConnectionHandle
+
+  // Desktop conversation action: ui-conversation owns the render site and
+  // supplies the addressed finalized assistant message. This plugin only
+  // contributes the safe latest-human-message edit action through the public
+  // session fork/prompt faces.
+  ctx.slots.inject('conversation.chat.assistant-actions', () => ctx.slots.register({
+    name: 'conversation.chat.assistant-actions',
+    id: 'remote-web-ui-edit',
+    order: 90,
+    locale: NS,
+  }, createConversationEditAction(sessions, connection)))
+
   const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
   const settingsScope = binder.bind<RemoteSettings>({ namespace: REMOTE_WEB_UI_NS })
   const enabled = (): boolean => {

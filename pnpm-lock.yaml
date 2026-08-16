@@ -448,6 +448,9 @@ importers:
       '@deepseek-ai/dsh-client-runtime':
         specifier: ^0.1.0-rc.6
         version: 0.1.0-rc.6(77cba440ffc0cd8d30a5f85f90d1638d)
+      '@deepseek-ai/dsh-client-ui-conversation':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(78fc3f9f304ff6595f4f5e92c31c6241)
       '@deepseek-ai/dsh-client-ui-primitives':
         specifier: ^0.1.0-rc.6
         version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
@@ -469,6 +472,9 @@ importers:
       '@deepseek-ai/dsh-invariants':
         specifier: ^0.1.0-rc.6
         version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)
+      '@deepseek-ai/dsh-llm-retry':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(795f1b0fd6b09f50b082459ed9f9193e)
       '@deepseek-ai/dsh-settings':
         specifier: ^0.1.0-rc.6
         version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/schemastery@3.18.1)

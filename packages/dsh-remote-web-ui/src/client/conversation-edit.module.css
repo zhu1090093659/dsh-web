@@ -1,0 +1,65 @@
+.action {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ds-text-tertiary, #777);
+  cursor: pointer;
+  font: inherit;
+  padding: 3px 6px;
+}
+
+.action:hover,
+.action:focus-visible {
+  background: var(--ds-control-fill-hover, rgba(127, 127, 127, 0.14));
+  color: var(--ds-text-primary, currentColor);
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: min(360px, 60vw);
+}
+
+.input {
+  box-sizing: border-box;
+  min-height: 72px;
+  resize: vertical;
+  width: 100%;
+}
+
+.buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.cancel,
+.save {
+  border: 1px solid var(--ds-border-primary, rgba(127, 127, 127, 0.35));
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 9px;
+}
+
+.cancel {
+  background: transparent;
+}
+
+.save {
+  background: var(--ds-control-fill-primary, #2563eb);
+  color: var(--ds-text-on-fill, #fff);
+}
+
+.cancel:disabled,
+.save:disabled,
+.input:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.error {
+  color: var(--ds-color-danger, #c33);
+  font-size: 12px;
+}

@@ -185,18 +185,22 @@ and retrying never mutate the source session log.
   through its own `/m/api` preferences method when a chat opens. On
   browsers that support `field-sizing: content`, the input grows with the
   draft up to its 120px cap in either mode.
-- Transient model request failures (`EMPTY_RESPONSE`, `RATE_LIMIT`, `SERVER`,
-  `TIMEOUT`, and `TRANSPORT`) are automatically retried up to five times with
-  bounded exponential backoff. The wait follows the agent cancellation signal;
-  authentication, invalid-request, context, quota, and other permanent errors
-  remain terminal. Tool execution is not automatically replayed because that
-  could duplicate an external side effect. Set `retryAttempts` between 0 and 5
-  in the plugin settings when a deployment needs a smaller budget.
-- Edit is available only for the latest settled human message. It requires a
-  completed turn, creates a child session from the previous completed boundary,
-  and keeps the source session unchanged. The first-turn case creates an
-  equivalent session in the same workspace and preserves the selected model
-  when the model directory is available.
+- On desktop Web, the latest settled human message exposes an **Edit** action in
+  the assistant action strip. It opens a cancellable draft; saving forks a child
+  session from the previous completed boundary and sends the replacement from
+  there. The first-turn case creates an equivalent session in the same
+  workspace and preserves the selected model when the model directory is
+  available. Running, failed, plugin/system, and attachment messages are not
+  editable; the source session always remains unchanged.
+- On desktop Web, transient model request failures (`EMPTY_RESPONSE`,
+  `RATE_LIMIT`, `SERVER`, `TIMEOUT`, and `TRANSPORT`) are automatically retried
+  up to five extra times with cancellable bounded exponential backoff. The
+  native session status shows the retry count, waiting state, and terminal
+  failure reason. Authentication, invalid-request, context, quota, and other
+  permanent errors remain terminal. Tool execution is not automatically
+  replayed because that could duplicate an external side effect. Set
+  `retryAttempts` between 0 and 5 in the profile patch or settings file when a
+  deployment needs a smaller budget.
 - Installing this plugin gates non-loopback `/api` access behind pairing
   (see `requirePairingForLan` in `src/index.ts`). A desktop browser opened
   via the LAN URL must pair like any remote device; loopback (127.0.0.1)

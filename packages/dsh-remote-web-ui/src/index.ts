@@ -9,10 +9,12 @@
  */
 
 import { createRequire } from 'node:module'
+import { randomUUID } from 'node:crypto'
 import { setInterval as nodeSetInterval } from 'node:timers'
 import type { IncomingMessage } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-agent'
+import type { LlmRetryEventData } from '@deepseek-ai/dsh-llm-retry/types'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import type {} from '@deepseek-ai/dsh-host-webserver'
@@ -150,33 +152,48 @@ const DEFAULTS: ResolvedConfig = {
 
 /** Install bounded recovery for transient model request failures. */
 function installAutomaticRetry(ctx: Context, readMaxRetries: () => number): void {
-  const attempts = new Map<string, number>()
-  const dispose = ctx.on('agent/request-error', async (payload, next) => {
-    // Let a provider-specific recovery policy own the failure first. If it
-    // delegates or exhausts, this plugin supplies the issue-level five-try cap.
-    const downstream = await next()
-    if (downstream?.kind === 'retry') return downstream
+  const dispose = ctx.on('agent/request-error', async (payload) => {
     const maxRetries = Math.min(Math.max(0, readMaxRetries()), DEFAULT_RETRY_CONFIG.maxRetries)
     if (!isRetryableFailure(payload.failure) || payload.signal.aborted || maxRetries <= 0) return undefined
 
-    const key = `${String(payload.agent.id)}:${String(payload.turn)}:${String(payload.step)}`
-    const durableAttempts = payload.agent.session.events.reduce((count, event) => {
-      const candidate = event as unknown as { type?: unknown; data?: unknown }
-      if (candidate.type !== 'llm/retry' || typeof candidate.data !== 'object' || candidate.data === null) return count
-      const data = candidate.data as { turn?: unknown; step?: unknown }
-      return data.turn === payload.turn && data.step === payload.step ? count + 1 : count
-    }, 0)
-    const previous = Math.max(attempts.get(key) ?? 0, durableAttempts)
+    // The listener is prepended so the host plugin owns the complete bounded
+    // five-retry policy instead of allowing the provider's default 2/2 policy
+    // to short-circuit the native retry status before this fallback runs.
+    const previousEvent = payload.agent.session.events.findLast(event => {
+      if (event.type !== 'llm/retry') return false
+      const data = event.data as LlmRetryEventData
+      return data.turn === payload.turn && data.step === payload.step && data.provider === payload.provider
+    })
+    const previousData = previousEvent === undefined ? undefined : previousEvent.data as LlmRetryEventData
+    const previous = previousData?.retry ?? 0
     if (previous >= maxRetries) return undefined
     const retry = previous + 1
-    attempts.set(key, retry)
+    const retryId = previousData?.retryId ?? (randomUUID() as LlmRetryEventData['retryId'])
     const delayMs = retryDelay(retry, { ...DEFAULT_RETRY_CONFIG, maxRetries })
+    const eventData: LlmRetryEventData = {
+      retryId,
+      turn: payload.turn,
+      step: payload.step,
+      provider: payload.provider,
+      mode: 'normal',
+      policyKey: `remote-web-ui:${String(maxRetries)}`,
+      retry,
+      maxRetries,
+      delayMs,
+      failure: payload.failure,
+    }
+    payload.agent.session.append('llm/retry', eventData)
     if (!await waitForRetry(delayMs, payload.signal)) return undefined
+    payload.agent.session.append('llm/retry-started', {
+      retryId,
+      turn: payload.turn,
+      step: payload.step,
+      retry,
+    })
     return { kind: 'retry' as const }
-  })
+  }, { prepend: true })
   ctx.effect(() => () => {
     dispose()
-    attempts.clear()
   }, 'remote-web-ui: retry recovery')
 }
 

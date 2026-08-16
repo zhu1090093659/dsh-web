@@ -300,6 +300,10 @@ function stripQuotes(value: unknown): string | null {
 function githubSource(value: unknown): { fullName: string; ref?: string } | null {
   const text = stripQuotes(value)
   if (text === null) return null
+  const codeload = /^https?:\/\/codeload\.github\.com\/([^/]+)\/([^/]+)\/tar\.gz\/(.+)$/i.exec(text)
+  if (codeload !== null) {
+    return { fullName: `${codeload[1]}/${codeload[2]}`.toLowerCase(), ref: codeload[3].toLowerCase() }
+  }
   const match = /(?:^github:|^git\+https?:\/\/github\.com\/|^https?:\/\/github\.com\/|^git@github\.com:)([^/#:]+\/[^/#]+?)(?:\.git)?(?:#(.+))?$/i.exec(text)
   if (match === null) return null
   return { fullName: match[1].toLowerCase(), ...optionalString(match[2]) === undefined ? {} : { ref: match[2].toLowerCase() } }

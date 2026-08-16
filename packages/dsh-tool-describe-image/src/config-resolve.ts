@@ -22,7 +22,7 @@ export const DEFAULT_MAX_OUTPUT_TOKENS = 1024
 /** Per-call vision request timeout in milliseconds. */
 export const DEFAULT_TIMEOUT_MS = 60_000
 /** Protocol styles the tool can speak to the configured endpoint. */
-export const API_STYLES = ['chat-completions', 'responses'] as const
+export const API_STYLES = ['chat-completions', 'responses', 'anthropic-messages'] as const
 export type ApiStyle = typeof API_STYLES[number]
 /** Protocol style used unless the configuration overrides it. */
 export const DEFAULT_API_STYLE: ApiStyle = 'chat-completions'

@@ -1,10 +1,11 @@
 /**
  * Vision HTTP client for the describe-image tool: loads one image (local path,
  * http(s) URL, or a stored attachment reference), builds the endpoint request that
- * matches the configured protocol style (chat-completions or responses), and reads
- * back the single text answer — with a short-lifetime, capacity-capped semantic
- * cache so repeat calls for the same image and prompt avoid a second round trip.
- * Response bodies and error excerpts are capped before any bytes are trusted.
+ * matches the configured protocol style (chat-completions, responses, or
+ * anthropic-messages), and reads back the single text answer — with a
+ * short-lifetime, capacity-capped semantic cache so repeat calls for the same
+ * image and prompt avoid a second round trip. Response bodies and error excerpts
+ * are capped before any bytes are trusted.
  * @module @linxin666/dsh-tool-describe-image/vision
  */
 
@@ -272,8 +273,33 @@ export function extractResponsesContent(payload: unknown): string {
   return text
 }
 
-/** Build the request the configured style sends: its path and JSON body. */
-export function buildVisionRequest(spec: ResolvedConfig, prompt: string, image: LoadedImage): { path: string; body: string } {
+/** Extract the text answer from an Anthropic Messages payload: every `text` content block of the top-level `content` array, skipping `thinking` and other non-text blocks. */
+export function extractAnthropicMessagesContent(payload: unknown): string {
+  const root = asRecord(payload)
+  const content = root?.content
+  if (root === undefined || !Array.isArray(content)) unexpectedShape()
+  const parts: string[] = []
+  for (const item of content) {
+    const block = asRecord(item)
+    if (block === undefined) continue
+    if (block.type === 'text' && typeof block.text === 'string' && block.text.trim().length > 0) {
+      parts.push(block.text)
+    }
+  }
+  const text = parts.join('\n')
+  if (text.trim().length === 0) {
+    throw new Error('describe-image: vision endpoint returned no text content')
+  }
+  return text
+}
+
+/** Build the request the configured style sends: its path, JSON body, and auth/version headers. */
+export function buildVisionRequest(
+  spec: ResolvedConfig,
+  prompt: string,
+  image: LoadedImage,
+  apiKey: string,
+): { path: string; body: string; headers: Record<string, string> } {
   const dataUrl = `data:${image.mimeType};base64,${image.bytes.toString('base64')}`
   if (spec.apiStyle === 'responses') {
     return {
@@ -289,6 +315,30 @@ export function buildVisionRequest(spec: ResolvedConfig, prompt: string, image: 
           ],
         }],
       }),
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+    }
+  }
+  if (spec.apiStyle === 'anthropic-messages') {
+    // Anthropic-style endpoints root at a bare host (e.g. https://opencode.ai/zen/go)
+    // and mount the Messages API under /v1/messages, authenticating with x-api-key.
+    return {
+      path: `${spec.baseURL}/v1/messages`,
+      body: JSON.stringify({
+        model: spec.model,
+        max_tokens: spec.maxOutputTokens,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.bytes.toString('base64') } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+      }),
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
     }
   }
   return {
@@ -304,6 +354,7 @@ export function buildVisionRequest(spec: ResolvedConfig, prompt: string, image: 
         ],
       }],
     }),
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
   }
 }
 
@@ -381,10 +432,10 @@ export async function callVision(
     const cached = cache.get(semanticRequestKey(spec, prompt, image))
     if (cached !== undefined) return cached
   }
-  const { path, body } = buildVisionRequest(spec, prompt, image)
+  const { path, body, headers } = buildVisionRequest(spec, prompt, image, apiKey)
   const response = await fetch(path, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+    headers,
     body,
     redirect: 'error',
     signal: AbortSignal.any([signal, AbortSignal.timeout(spec.timeoutMs)]),
@@ -400,7 +451,11 @@ export async function callVision(
   } catch {
     throw new Error('describe-image: vision endpoint returned invalid JSON')
   }
-  const text = spec.apiStyle === 'responses' ? extractResponsesContent(payload) : extractChatCompletionsContent(payload)
+  const text = spec.apiStyle === 'responses'
+    ? extractResponsesContent(payload)
+    : spec.apiStyle === 'anthropic-messages'
+      ? extractAnthropicMessagesContent(payload)
+      : extractChatCompletionsContent(payload)
   if (cache !== undefined) cache.set(semanticRequestKey(spec, prompt, image), text)
   return text
 }

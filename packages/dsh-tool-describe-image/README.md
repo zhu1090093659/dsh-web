@@ -21,7 +21,7 @@ browser half, live settings, no dsh source changes.
 | Direct image send | Dragging or pasting an image into a text-only session is rewritten at send time into a describe-image reference (`![图片](/describe-image/raw/sha256:…)`) instead of an image block the model cannot read, so the image renders in the conversation and the model analyzes it through the tool |
 | Custom instructions | The `prompt` argument carries your precise instruction (OCR, chart reading, UI diagnosis, translation…); the `defaultPrompt` config sets the fallback when the model passes none |
 | Live config card | Settings → Plugin config → Web UI Plugins → "Image understanding" card edits `baseURL` / `apiStyle` / `model` / API key / default instruction / bounds (through the settings seam); effective immediately, no restart |
-| Protocol styles | `apiStyle: chat-completions` (default) posts to `baseURL/chat/completions`; `apiStyle: responses` posts to `baseURL/responses` with `input` / `max_output_tokens` and reads `output_text` |
+| Protocol styles | `apiStyle: chat-completions` (default) posts to `baseURL/chat/completions`; `apiStyle: responses` posts to `baseURL/responses` with `input` / `max_output_tokens` and reads `output_text`; `apiStyle: anthropic-messages` posts to `baseURL/v1/messages` with `x-api-key` auth (Claude-style endpoints such as OpenCode Go, where Qwen/Kimi/MiniMax models are served) and reads `content[].text` |
 | Raw image route | `GET /describe-image/raw/<id>` serves the stored bytes (loopback-only, content-addressed id) so the pasted reference renders in the conversation |
 | Per-call key resolution | Inline `apiKey` → credential seam (`apiKeyEnv`, default `VISION_API_KEY`) → launch environment, tiered fallback |
 | Safety and bounds | All requests refuse redirects; `maxBytes` / `maxOutputTokens` / `timeoutMs` caps; magic-byte type gate; bounded error excerpts (200 chars); keys never logged |
@@ -57,14 +57,14 @@ actually configures it and per-call otherwise.)
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `baseURL` | — (required) | OpenAI-compatible endpoint root (e.g. `https://dashscope.aliyuncs.com/compatible-mode/v1`); trailing slashes stripped |
-| `apiStyle` | `chat-completions` | Protocol style: `chat-completions` appends `/chat/completions`; `responses` appends `/responses` (OpenAI Responses API `input` / `max_output_tokens` / `output_text` shapes) |
+| `baseURL` | — (required) | Endpoint root; the style appends its path (`/chat/completions`, `/responses`, or `/v1/messages`). OpenAI-compatible examples use e.g. `https://dashscope.aliyuncs.com/compatible-mode/v1`; Anthropic-style roots are bare hosts e.g. `https://opencode.ai/zen/go`. Trailing slashes stripped |
+| `apiStyle` | `chat-completions` | Protocol style: `chat-completions` appends `/chat/completions`; `responses` appends `/responses` (OpenAI Responses API `input` / `max_output_tokens` / `output_text` shapes); `anthropic-messages` appends `/v1/messages` (Claude-style `messages` / `max_tokens` / `content[].text`, `x-api-key` + `anthropic-version` headers) |
 | `model` | — (required) | Vision model id |
 | `apiKey` | — | Inline key for local debugging; prefer `!!js process.env.VISION_API_KEY` over a hardcoded secret |
 | `apiKeyEnv` | `VISION_API_KEY` | Credential reference (environment-variable name); empty string disables reference resolution |
 | `defaultPrompt` | see source | The instruction used when a call omits its `prompt` — tune it to your workload (OCR, UI review, translation…) |
 | `maxBytes` | `10485760` | Image byte bound (local files and downloads alike) |
-| `maxOutputTokens` | `1024` | Output-token cap: `max_tokens` under `chat-completions`, `max_output_tokens` under `responses` |
+| `maxOutputTokens` | `1024` | Output-token cap: `max_tokens` under `chat-completions` and `anthropic-messages`, `max_output_tokens` under `responses` |
 | `timeoutMs` | `60000` | Per-call vision request timeout |
 | `renderImagePreview` | `true` | Upgrade image references in the conversation into inline thumbnails (click for full size); `false` keeps the raw reference text. Display-only — message text and model-side analysis are unchanged |
 
@@ -89,6 +89,19 @@ Endpoints exposing only the Responses API set `apiStyle: responses`:
     apiStyle: responses
     model: gpt-4o-mini
     apiKey: !!js process.env.VISION_API_KEY
+```
+
+Claude-style endpoints (e.g. OpenCode Go, which serves Qwen3.7 Plus and other vision models only
+through the Messages API) set `apiStyle: anthropic-messages` with the bare host as `baseURL`:
+
+```yaml
+- id: describe-image
+  name: '@linxin666/dsh-tool-describe-image'
+  config:
+    baseURL: https://opencode.ai/zen/go
+    apiStyle: anthropic-messages
+    model: qwen3.7-plus
+    apiKey: !!js process.env.OPENCODE_GO_API_KEY
 ```
 
 ## Usage
@@ -121,8 +134,9 @@ text stays as-is.
 - One image per answer: no multi-image input, no follow-up on the previous image, no structured
   output (coordinates / boxes).
 - Extracting text still costs one VLM call: OCR-only deployments can point `baseURL` at a cheaper OCR model.
-- OpenAI-compatible protocol only: Chat Completions (`/chat/completions`) and Responses (`/responses`)
-  are supported; vendors with other request/response shapes need separate adapters.
+- Three protocol styles: Chat Completions (`/chat/completions`), Responses (`/responses`), and
+  Anthropic Messages (`/v1/messages`, `x-api-key` auth) — for vendors with other request/response
+  shapes, add another adapter.
 
 ## Source and copyright
 

@@ -152,6 +152,7 @@ export function DescribeImageSettingsCard(props: DescribeImageSettingsCardProps)
         choices={[
           { value: 'chat-completions', label: t('field.apiStyle.chatCompletions') },
           { value: 'responses', label: t('field.apiStyle.responses') },
+          { value: 'anthropic-messages', label: t('field.apiStyle.anthropicMessages') },
         ]}
         {...fieldProps}
         {...state.apiStyle}

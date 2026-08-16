@@ -13,7 +13,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 import * as tool from '../src/index.ts'
 import { registerAttachmentRef } from '../src/attach-routes.ts'
-import { chatReply, FakeWebServer, jsonReply, PNG_BYTES, rawReply, responsesReply, sentContent, sentInputContent, startMockServer } from './mock-server.ts'
+import { anthropicReply, chatReply, FakeWebServer, jsonReply, PNG_BYTES, rawReply, responsesReply, sentAnthropicContent, sentContent, sentInputContent, startMockServer } from './mock-server.ts'
 
 /** In-memory attachment store so the attachment-reference input path is observable. */
 class FakeAttachments extends AttachmentStore {
@@ -315,6 +315,106 @@ describe('Responses API style', () => {
     })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, apiStyle: 'responses' })
+    const path = await tempPng()
+
+    const result = await callDescribe(ctx, { image: path })
+    expect(result.isError).toBe(true)
+    expect(target.requests).toHaveLength(0)
+  })
+})
+
+describe('Anthropic Messages API style', () => {
+  it('posts /v1/messages with x-api-key and anthropic-version headers and parses the text block', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, anthropicReply('Via anthropic.')) })
+    cleanup.push(server.close)
+    const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
+    const path = await tempPng()
+
+    const result = await callDescribe(ctx, { image: path })
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected describe_image success')
+    expect(result.value).toMatchObject({ text: 'Via anthropic.', model: 'vision-1', mimeType: 'image/png' })
+
+    const request = server.request(0)
+    expect(request.authorization).toBeUndefined()
+    expect(request.xApiKey).toBe('sk-inline')
+    expect(request.path).toBe('/v1/messages')
+    const body = request.body as { model?: unknown; max_tokens?: unknown; max_output_tokens?: unknown }
+    expect(body.model).toBe('vision-1')
+    expect(body.max_tokens).toBe(tool.DEFAULT_MAX_OUTPUT_TOKENS)
+    expect(body.max_output_tokens).toBeUndefined()
+    const [imagePart, textPart] = sentAnthropicContent(request) as Array<{ type?: string; text?: string; source?: { type?: string; media_type?: string; data?: string } }>
+    expect(imagePart?.type).toBe('image')
+    expect(imagePart?.source?.type).toBe('base64')
+    expect(imagePart?.source?.media_type).toBe('image/png')
+    expect(imagePart?.source?.data).toBe(PNG_BYTES.toString('base64'))
+    expect(textPart).toEqual({ type: 'text', text: tool.DEFAULT_PROMPT })
+  })
+
+  it('forwards a caller prompt and the configured output cap in the anthropic body', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, anthropicReply('Yes.')) })
+    cleanup.push(server.close)
+    const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages', maxOutputTokens: 7 })
+    const path = await tempPng()
+
+    const result = await callDescribe(ctx, { image: path, prompt: 'Is there text in this image?' })
+    expect(result.isError).toBe(false)
+    const body = server.request(0).body as { max_tokens?: unknown }
+    expect(body.max_tokens).toBe(7)
+    const parts = sentAnthropicContent(server.request(0)) as Array<{ type?: string; text?: string }>
+    const textPart = parts.find(part => part.type === 'text')
+    expect(textPart?.text).toBe('Is there text in this image?')
+  })
+
+  it('joins every text block and skips thinking blocks', async () => {
+    const server = await startMockServer((_request, res) => {
+      jsonReply(res, 200, {
+        type: 'message',
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'private reasoning' },
+          { type: 'text', text: 'Part one.' },
+          { type: 'text', text: 'Part two.' },
+        ],
+      })
+    })
+    cleanup.push(server.close)
+    const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
+    const path = await tempPng()
+
+    const result = await callDescribe(ctx, { image: path })
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected describe_image success')
+    expect(result.value).toMatchObject({ text: 'Part one.\nPart two.' })
+  })
+
+  it('rejects invalid JSON, missing content, and non-string text blocks', async () => {
+    const cases: Array<[string, unknown]> = [
+      ['invalid JSON', 'not json'],
+      ['missing content', {}],
+      ['no text block', { type: 'message', role: 'assistant', content: [{ type: 'thinking', thinking: 'x' }] }],
+      ['non-string text', { type: 'message', role: 'assistant', content: [{ type: 'text', text: 42 }] }],
+    ]
+    for (const [label, reply] of cases) {
+      const server = await startMockServer((_request, res) => { rawReply(res, 200, typeof reply === 'string' ? reply : JSON.stringify(reply), 'application/json') })
+      cleanup.push(server.close)
+      const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
+      const path = await tempPng()
+
+      const result = await callDescribe(ctx, { image: path })
+      expect(result.isError, `expected rejection for ${label}`).toBe(true)
+    }
+  })
+
+  it('never follows a redirect on the anthropic-messages request', async () => {
+    const target = await startMockServer((_request, res) => { jsonReply(res, 200, anthropicReply('should not be reached')) })
+    cleanup.push(target.close)
+    const server = await startMockServer((_request, res) => {
+      res.writeHead(302, { location: `${target.url}/v1/messages` })
+      res.end()
+    })
+    cleanup.push(server.close)
+    const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
     const path = await tempPng()
 
     const result = await callDescribe(ctx, { image: path })
@@ -712,9 +812,10 @@ describe('resolveConfig, sniffing, and bounded reads', () => {
     expect(tool.resolveConfig({ ...minimal, renderImagePreview: false }).renderImagePreview).toBe(false)
   })
 
-  it('accepts the responses style and rejects anything else', () => {
+  it('accepts the responses and anthropic-messages styles and rejects anything else', () => {
     expect(tool.resolveConfig({ ...minimal, apiStyle: 'responses' }).apiStyle).toBe('responses')
-    expect(() => tool.resolveConfig({ ...minimal, apiStyle: 'legacy' as tool.ApiStyle })).toThrow(/apiStyle must be one of "chat-completions", "responses"/)
+    expect(tool.resolveConfig({ ...minimal, apiStyle: 'anthropic-messages' }).apiStyle).toBe('anthropic-messages')
+    expect(() => tool.resolveConfig({ ...minimal, apiStyle: 'legacy' as tool.ApiStyle })).toThrow(/apiStyle must be one of "chat-completions", "responses", "anthropic-messages"/)
   })
 
   it.each([

@@ -28,10 +28,11 @@ export class FakeWebServer extends Service {
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 
-/** One request the fixture recorded: path, bearer authorization, and parsed (or raw) body. */
+/** One request the fixture recorded: path, bearer authorization, x-api-key, and parsed (or raw) body. */
 export interface RecordedRequest {
   path: string
   authorization: string | undefined
+  xApiKey: string | undefined
   body: unknown
 }
 
@@ -63,7 +64,12 @@ export function startMockServer(handler: (request: RecordedRequest, response: Se
       } catch {
         body = raw
       }
-      const request: RecordedRequest = { path: req.url ?? '', authorization: req.headers.authorization, body }
+      const request: RecordedRequest = {
+        path: req.url ?? '',
+        authorization: req.headers.authorization,
+        xApiKey: Array.isArray(req.headers['x-api-key']) ? req.headers['x-api-key'][0] : req.headers['x-api-key'],
+        body,
+      }
       requests.push(request)
       handler(request, res)
     })
@@ -113,6 +119,21 @@ export function responsesReply(content: unknown): unknown {
   return { output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: content }] }] }
 }
 
+/** An Anthropic Messages payload answering `content` as a top-level text block, with a leading thinking block. */
+export function anthropicReply(content: unknown): unknown {
+  return {
+    id: 'msg_test',
+    type: 'message',
+    role: 'assistant',
+    model: 'vision-1',
+    stop_reason: 'end_turn',
+    content: [
+      { type: 'thinking', thinking: 'reasoning the model keeps private' },
+      { type: 'text', text: content },
+    ],
+  }
+}
+
 /** The smallest PNG this suite uses as a valid image (1x1 transparent pixel). */
 export const PNG_BYTES = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -129,4 +150,10 @@ export function sentContent(request: RecordedRequest): unknown {
 export function sentInputContent(request: RecordedRequest): unknown {
   const body = request.body as { input?: Array<{ content?: unknown }> }
   return body?.input?.[0]?.content
+}
+
+/** The request body the Anthropic Messages style is expected to send: `messages[0].content` as the model-visible array. */
+export function sentAnthropicContent(request: RecordedRequest): unknown {
+  const body = request.body as { messages?: Array<{ content?: unknown }> }
+  return body?.messages?.[0]?.content
 }

@@ -62,7 +62,7 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
 | `defaultPrompt` | 见源码 | 调用未带 `prompt` 时的指令——按你的场景调优（OCR、UI 评审、翻译…） |
 | `maxBytes` | `10485760` | 图片字节上限（本地文件与下载一致） |
 | `maxOutputTokens` | `1024` | 输出 token 上限：`chat-completions` 与 `anthropic-messages` 发 `max_tokens`，`responses` 发 `max_output_tokens` |
-| `timeoutMs` | `60000` | 单次视觉请求超时 |
+| `timeoutMs` | `120000` | 单次视觉请求超时（Claude 风格端点服务多模态模型时，大图可能思考近一分钟，默认值留足余量） |
 | `renderImagePreview` | `true` | 会话里的图片引用原地升级为缩略图（点击查看大图）；`false` 保持原始引用文本。仅影响本地显示，消息文本与模型识别不变 |
 
 带配置的挂载示例（profile 的 `cordis.patch.yml` / 组合文件）：
@@ -88,7 +88,8 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
     apiKey: !!js process.env.VISION_API_KEY
 ```
 
-Claude 风格端点（如 OpenCode Go——Qwen3.7 Plus 等视觉模型只走 Messages API）设置
+Claude 风格端点——官方 Anthropic API（`https://api.anthropic.com`）或任何
+Anthropic-Messages 兼容网关（如 OpenCode Go——Qwen3.7 Plus 等视觉模型只走 Messages API）设置
 `apiStyle: anthropic-messages`，`baseURL` 填裸主机：
 
 ```yaml

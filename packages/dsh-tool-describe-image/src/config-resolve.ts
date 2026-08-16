@@ -19,8 +19,10 @@ import { DEFAULT_MAX_BYTES } from './media.ts'
 export const DEFAULT_API_KEY_ENV = 'VISION_API_KEY'
 /** Per-call output-token cap sent to the vision model. */
 export const DEFAULT_MAX_OUTPUT_TOKENS = 1024
-/** Per-call vision request timeout in milliseconds. */
-export const DEFAULT_TIMEOUT_MS = 60_000
+/** Per-call vision request timeout in milliseconds. Claude-style endpoints (anthropic-messages)
+ * serve multimodal models that routinely think for a minute on large images, so the default
+ * leaves headroom beyond the old 60 s. */
+export const DEFAULT_TIMEOUT_MS = 120_000
 /** Protocol styles the tool can speak to the configured endpoint. */
 export const API_STYLES = ['chat-completions', 'responses', 'anthropic-messages'] as const
 export type ApiStyle = typeof API_STYLES[number]

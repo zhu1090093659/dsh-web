@@ -65,7 +65,7 @@ actually configures it and per-call otherwise.)
 | `defaultPrompt` | see source | The instruction used when a call omits its `prompt` — tune it to your workload (OCR, UI review, translation…) |
 | `maxBytes` | `10485760` | Image byte bound (local files and downloads alike) |
 | `maxOutputTokens` | `1024` | Output-token cap: `max_tokens` under `chat-completions` and `anthropic-messages`, `max_output_tokens` under `responses` |
-| `timeoutMs` | `60000` | Per-call vision request timeout |
+| `timeoutMs` | `120000` | Per-call vision request timeout (Claude-style endpoints serving multimodal models can take a minute on large images, so the default leaves headroom) |
 | `renderImagePreview` | `true` | Upgrade image references in the conversation into inline thumbnails (click for full size); `false` keeps the raw reference text. Display-only — message text and model-side analysis are unchanged |
 
 Configured mount example (profile `cordis.patch.yml` / composition file):
@@ -91,8 +91,10 @@ Endpoints exposing only the Responses API set `apiStyle: responses`:
     apiKey: !!js process.env.VISION_API_KEY
 ```
 
-Claude-style endpoints (e.g. OpenCode Go, which serves Qwen3.7 Plus and other vision models only
-through the Messages API) set `apiStyle: anthropic-messages` with the bare host as `baseURL`:
+Claude-style endpoints — the official Anthropic API (`https://api.anthropic.com`) or any
+Anthropic-Messages-compatible gateway (e.g. OpenCode Go, which serves Qwen3.7 Plus and other
+vision models only through the Messages API) — set `apiStyle: anthropic-messages` with the bare
+host as `baseURL`:
 
 ```yaml
 - id: describe-image

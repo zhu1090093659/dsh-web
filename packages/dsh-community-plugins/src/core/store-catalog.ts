@@ -6,6 +6,7 @@
  */
 
 export const STORE_CATALOG_URL = 'https://api.dshmk.com/'
+export const COMMUNITY_STORE_API_PREFIX = '/api/dsh-community-plugins'
 
 const INSTALLABLE_TYPES = new Set(['plugin', 'skill', 'collection', 'channel'])
 const REPOSITORY_FULL_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9_.-]{0,99})\/[A-Za-z0-9](?:[A-Za-z0-9_.-]{0,99})$/

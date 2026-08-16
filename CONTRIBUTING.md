@@ -74,10 +74,10 @@ pnpm docs:write-pair <包目录名>   # 如 dsh-ssh 或 qq98
   `pnpm --filter @linxin666/dsh-skins build` 把皮肤资产并入聚合包。
 - 新增 / 删除包或改皮肤清单时，同步更新 [docs/publish-prep.md](docs/publish-prep.md)
   的发布清单快照。
-- 第三方插件想进「社区插件」一级设置分区（设置 → 社区插件）时，按
-  [docs/plugins.md](docs/plugins.md) 的登记说明在
-  `packages/dsh-community-plugins/community.json` 追加条目并重新生成注册表
-  （`node scripts/community-index`）。
+- 「社区插件」一级设置分区只读取
+  [DSH 插件市场 API](https://api.dshmk.com/)；第三方项目收录与目录规则在
+  [ZASENJC/dsh-plugins-store](https://github.com/ZASENJC/dsh-plugins-store)
+  维护，本仓库只维护现有市场 UI 与 Host 操作壳。
 
 ## 文档体系
 

@@ -5,6 +5,7 @@ import type { NativeCommandRunner } from '@deepseek-ai/dsh-native-command'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import {
   buildInstallPlan,
+  COMMUNITY_STORE_API_PREFIX,
   fetchStoreCatalog,
   findCatalogRepository,
   isInstalledPackageName,
@@ -13,7 +14,7 @@ import {
   type InstalledPlugin,
 } from './core/store-catalog.ts'
 
-export const COMMUNITY_STORE_API_PREFIX = '/api/dsh-community-plugins'
+export { COMMUNITY_STORE_API_PREFIX } from './core/store-catalog.ts'
 
 const LIST_ARGS = Object.freeze(['plugin', '--profile', 'web', 'list', '--depth=0', '--json'])
 const REMOVE_ARGS = Object.freeze(['plugin', '--profile', 'web', '--config.ignore-scripts=true', 'remove'])

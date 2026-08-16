@@ -32,7 +32,7 @@ export const COMMUNITY_PLUGINS_SETTINGS_NAMESPACE = settingsNamespace('community
 
 /** Plugin config, validated by the same-named schemastery schema. */
 export interface Config {
-  /** Master switch for the community plugin index card. */
+  /** Master switch for the community plugin manager card. */
   enabled?: boolean
 }
 

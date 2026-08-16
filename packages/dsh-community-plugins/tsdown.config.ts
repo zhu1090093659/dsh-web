@@ -1,5 +1,5 @@
 /**
- * Standalone build config for the community plugin index card.
+ * Standalone build config for the API-backed community plugin manager.
  *
  * Uses the repo's shared client-bundle preset (shared/tsdown.client.ts):
  * node-half lib/ plus the browser bundle lib/client.js.

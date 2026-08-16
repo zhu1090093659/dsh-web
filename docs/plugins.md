@@ -99,15 +99,11 @@ dsh plugin --profile web add link:<dsh-web-ui>/packages/dsh-web-ui-all
    - 版权归原作者，本仓库仅托管，不主张版权。
 3. **合规红线**：无 LICENSE、作者未授权、或版权归属不明的代码，一律不收编。
 
-### 社区插件索引登记
+### 社区插件市场数据
 
-第三方插件作者可把自己的插件登记进「社区插件」一级菜单项（设置 → 社区插件），页面直接展开列出条目并链接到作者自己的仓库：
+「社区插件」一级菜单项（设置 → 社区插件）把 [DSH 插件市场 API](https://api.dshmk.com/) 作为目录唯一来源；本仓库维护现有 `ui-community-plugins` 的 UI、Host 生命周期操作和对话工具，不维护第二份项目清单。
 
-1. 在 `packages/dsh-community-plugins/community.json` 追加条目：`id` / `name` / `nameEn` / `author` / `repo`（https:// 仓库 URL）必填，`description` / `descriptionEn` / `npm` 可选；
-2. 运行 `node scripts/community-index` 重新生成注册表并提交生成的 `packages/dsh-community-plugins/src/client/generated/community.ts`；
-3. `pnpm community:check` 校验数据与生成物一致（CI 门禁）。
-
-索引只收录链接、不搬代码，条目版权归原作者，由维护者审核合并。
+第三方项目收录、元数据和验证结果由 [ZASENJC/dsh-plugins-store](https://github.com/ZASENJC/dsh-plugins-store) 维护，请按该项目的规则提交。市场收录与验证状态不代表本仓库对第三方代码进行安全审查、质量保证或官方背书。
 
 ## 插件规范要点
 

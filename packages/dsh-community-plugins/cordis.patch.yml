@@ -1,4 +1,4 @@
-# dsh-community-plugins bundle patch: inserts the community plugin index row
+# dsh-community-plugins bundle patch: inserts the community plugin manager row
 # into the web profile roster. Applied as a profile bundle layer (the
 # dsh.bundle.patch manifest field); install with
 # dsh plugin --profile web add link:<repo>/packages/dsh-community-plugins.
@@ -6,8 +6,7 @@
 # The single row mounts BOTH halves: the host side registers the
 # community-plugins settings namespace (the card's enable switch), and the
 # dsh.client declaration in package.json makes the browser half (exports
-# "./client", served from lib/client.js) render the index card in the
-# plugin-configuration section.
+# "./client", served from lib/client.js) render the API-backed Store section.
 - insert:
     - id: ui-community-plugins
       name: '@linxin666/dsh-client-ui-community-plugins'

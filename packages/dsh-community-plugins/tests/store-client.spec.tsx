@@ -4,6 +4,29 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useSyncExternalStore, type ComponentProps } from 'react'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+
+vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
+  createSnapshotStore: (initial: unknown) => {
+    let value = initial
+    const listeners = new Set<() => void>()
+    return {
+      getSnapshot: () => value,
+      set: (next: unknown) => {
+        value = next
+        for (const listener of listeners) listener()
+      },
+      update: (mutator: (draft: never) => void) => {
+        mutator(value as never)
+        for (const listener of listeners) listener()
+      },
+      subscribe: (listener: () => void) => {
+        listeners.add(listener)
+        return () => { listeners.delete(listener) }
+      },
+    }
+  },
+}))
+
 import { CatalogStore } from '../src/client/catalog-store.ts'
 import {
   CommunityPluginsCard,
@@ -85,7 +108,13 @@ class FakeScope implements SettingsScope<CommunityPluginsSettings> {
   })
 }
 
-const t: CommunityPluginsCardProps['t'] = key => (en as Record<string, string>)[key] ?? key
+const t: CommunityPluginsCardProps['t'] = (key, params) => {
+  const template = (en as Record<string, string>)[key] ?? key
+  return template.replace(/\{([^}]+)\}/g, (token, name: string) => {
+    const value = params?.[name]
+    return value === undefined ? token : String(value)
+  })
+}
 
 function cardProps(
   scope: SettingsScope<CommunityPluginsSettings>,

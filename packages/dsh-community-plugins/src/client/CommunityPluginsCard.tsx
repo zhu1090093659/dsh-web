@@ -1,135 +1,406 @@
-/**
- * The community plugin index card: a first-level settings section that is
- * always open (a static header with the index list directly visible). Its own
- * enable switch (backed by the community-plugins settings namespace) gates
- * the entry list; the list itself points at contributors' own repositories —
- * this package only indexes them, it never vendors their code.
- */
+/** API-backed Community Plugins settings section and lifecycle controls. */
 
-import { useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
+import {
+  Button,
+  IconCloseOutline16,
+  IconRefreshOutline16,
+  IconTrashOutline16,
+  IconWarningOutline16,
+  Modal,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: pulls the settings-surface SlotMap merge (the 'settings.section' entry).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import {
+  buildInstallPlan,
+  COMMUNITY_STORE_API_PREFIX,
+  filterCatalogRepositories,
+  getCatalogFacets,
+  mergeInstalledPlugins,
+  type CatalogRepository,
+  type InstalledPlugin,
+} from '../core/store-catalog.ts'
 import { PluginSettingsCard, BooleanField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
+import { CatalogStore } from './catalog-store.ts'
 import type { CommunityPluginKey } from './locales.ts'
-import { COMMUNITY_PLUGINS, type CommunityPluginEntry } from './generated/community.ts'
-import { isCommunityPluginEntry } from './community-guard.ts'
 import css from './community.module.css'
 
-/** The settings fields this card edits (the namespace's full schema). */
+const PAGE_SIZE = 24
+
 export interface CommunityPluginsSettings {
-  /** Master switch for the index card. */
   enabled?: boolean
 }
 
-/** What the community plugin card renders. */
 export interface CommunityPluginsCardState extends CardShell {
-  /** Master switch. */
   enabled: CardFieldState
 }
 
-/** The registration-side face the card's slot entry injects. */
 export interface CommunityPluginsCardFace extends CardActions {
   hooks: {
-    /** Card snapshot bound by the renderer as useCommunityPluginsCard. */
     communityPluginsCard: SnapshotStore<CommunityPluginsCardState>
   }
 }
 
-/** Bridges the community-plugins scope onto the card's staged form. */
 export class CommunityPluginsCardController {
   private readonly form: CardForm<CommunityPluginsSettings>
   private readonly store: SnapshotStore<CommunityPluginsCardState>
 
-  /** @param scope - the bound settings scope for the community-plugins namespace. */
   constructor(scope: SettingsScope<CommunityPluginsSettings>) {
-    this.form = new CardForm(scope, [
-      booleanField('enabled'),
-    ])
-    this.store = this.form.bind(() => this.projection())
-  }
-
-  private projection(): CommunityPluginsCardState {
-    return {
+    this.form = new CardForm(scope, [booleanField('enabled')])
+    this.store = this.form.bind(() => ({
       ...this.form.shell(),
       enabled: this.form.field('enabled'),
-    }
+    }))
   }
 
-  /**
-   * Build the face the card's slot registration injects.
-   * @returns the card's snapshot and its form actions.
-   */
   inject(): CommunityPluginsCardFace {
     return { hooks: { communityPluginsCard: this.store }, ...this.form.actions() }
   }
 
-  /**
-   * Release the card's scope subscription and bound stores; the slot
-   * disposer calls this on teardown.
-   */
   dispose(): void {
     this.form.dispose()
   }
 }
 
-/** The one-line install command for an entry: npm package when published, else the contributor repository URL. */
-function installCommand(entry: CommunityPluginEntry): string {
-  return `dsh plugin --profile web add ${entry.npm ?? entry.repo}`
+type Translate = CommunityPluginsCardProps['t']
+type LifecycleFetch = typeof fetch
+
+interface InventoryState {
+  status: 'loading' | 'ready' | 'error'
+  plugins: InstalledPlugin[]
 }
 
-/** Props the renderer binds for the community plugin card. */
+interface MutationTarget {
+  repository: CatalogRepository
+  action: 'install' | 'update' | 'remove'
+}
+
+function detailUrl(repository: CatalogRepository): string {
+  return `https://dshmk.com/plugins/${encodeURIComponent(String(repository.repositoryId))}`
+}
+
+function formatStars(stars: number): string {
+  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(stars)
+}
+
+interface ProjectRowProps {
+  repository: CatalogRepository
+  onMutate: (target: MutationTarget) => void
+  t: Translate
+}
+
+function ProjectRow({ repository, onMutate, t }: ProjectRowProps): ReactNode {
+  const plan = buildInstallPlan(repository)
+  const installed = repository.installed === true
+  const update = repository.updateAvailable === true
+  const action = update ? 'update' : 'install'
+  return (
+    <li className={css.entry}>
+      <div className={css.entryHead}>
+        <a className={css.entryName} href={detailUrl(repository)} target="_blank" rel="noreferrer">
+          {repository.name}
+        </a>
+        <span className={css.stars}>{t('store.stars', { count: formatStars(repository.stars) })}</span>
+      </div>
+      <span className={css.entryRepository}>{repository.fullName}</span>
+      <p className={css.entryDescription}>{repository.description}</p>
+      <div className={css.badges}>
+        <span className={css.badge}>{repository.projectType}</span>
+        <span className={css.badge}>{repository.category}</span>
+        <span className={css.validation} data-status={repository.validation?.overall ?? 'unrecognized'}>
+          {repository.validation?.label ?? repository.validation?.overall ?? t('store.unrecognized')}
+        </span>
+        {installed ? <span className={css.installed}>{update ? t('store.updateAvailable') : t('store.installed')}</span> : null}
+      </div>
+      <div className={css.entryActions}>
+        {plan === null
+          ? <span className={css.unavailable}>{t('store.installUnavailable')}</span>
+          : (
+            <Button
+              size="sm"
+              variant={update ? 'primary' : 'outline'}
+              type="button"
+              disabled={installed && !update}
+              onClick={() => { onMutate({ repository, action }) }}
+            >
+              {update ? t('store.update') : installed ? t('store.installed') : t('store.install')}
+            </Button>
+          )}
+        {installed && repository.installedPlugin !== null && repository.installedPlugin !== undefined
+          ? (
+            <button
+              type="button"
+              className={css.removeButton}
+              aria-label={t('store.removeAria', { name: repository.name })}
+              title={t('store.remove')}
+              onClick={() => { onMutate({ repository, action: 'remove' }) }}
+            >
+              <IconTrashOutline16 size={16} />
+            </button>
+          )
+          : null}
+      </div>
+    </li>
+  )
+}
+
+interface MutationModalProps {
+  target: MutationTarget | null
+  lifecycleFetch: LifecycleFetch
+  onClose: () => void
+  onComplete: () => Promise<void>
+  t: Translate
+}
+
+function MutationModal({ target, lifecycleFetch, onClose, onComplete, t }: MutationModalProps): ReactNode {
+  const [acknowledged, setAcknowledged] = useState(false)
+  const [phase, setPhase] = useState<'idle' | 'running' | 'success' | 'error'>('idle')
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    setAcknowledged(false)
+    setPhase('idle')
+    setMessage('')
+  }, [target?.repository.repositoryId, target?.action])
+
+  if (target === null) return null
+  const removing = target.action === 'remove'
+  const updating = target.action === 'update'
+  const title = removing ? t('store.removeTitle') : updating ? t('store.updateTitle') : t('store.installTitle')
+  const busy = phase === 'running'
+  const finished = phase === 'success'
+  const canConfirm = !busy && !finished && (removing || acknowledged)
+
+  const mutate = async (): Promise<void> => {
+    if (!canConfirm) return
+    setPhase('running')
+    setMessage('')
+    const path = removing ? 'remove' : 'install'
+    const body = removing
+      ? { name: target.repository.installedPlugin?.name }
+      : { repositoryId: target.repository.repositoryId }
+    try {
+      const response = await lifecycleFetch(`${COMMUNITY_STORE_API_PREFIX}/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const value = await response.json().catch(() => ({})) as { ok?: boolean; message?: string; output?: string }
+      if (!response.ok || value.ok !== true) throw new Error(value.message ?? `${t('store.mutationFailed')} (${response.status})`)
+      setPhase('success')
+      setMessage([t('store.restartRequired'), value.output ?? ''].filter(Boolean).join('\n'))
+      await onComplete()
+    } catch (error) {
+      setPhase('error')
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  return (
+    <Modal
+      open
+      onClose={() => { if (!busy) onClose() }}
+      title={title}
+      closeLabel={t('store.cancel')}
+      className={css.modal}
+      headless
+    >
+      <div className={css.modalShell}>
+        <header className={css.modalHeader}>
+          <span className={css.modalTitle}>
+            {removing ? <IconTrashOutline16 size={18} /> : <IconWarningOutline16 size={18} />}
+            <strong>{title}</strong>
+          </span>
+          <button type="button" className={css.iconButton} onClick={onClose} disabled={busy} aria-label={t('store.cancel')}>
+            <IconCloseOutline16 size={16} />
+          </button>
+        </header>
+        <div className={css.modalBody}>
+          <p>{removing ? t('store.removeRisk') : t('store.installRisk')}</p>
+          <strong>{target.repository.fullName}</strong>
+          <code>{removing ? target.repository.installedPlugin?.name : buildInstallPlan(target.repository)?.command}</code>
+          {!removing && !finished
+            ? (
+              <label className={css.acknowledge}>
+                <input
+                  type="checkbox"
+                  checked={acknowledged}
+                  disabled={busy}
+                  onChange={event => { setAcknowledged(event.target.checked) }}
+                />
+                <span>{t('store.riskAcknowledge')}</span>
+              </label>
+            )
+            : null}
+          {phase === 'running' ? <p role="status">{removing ? t('store.removing') : updating ? t('store.updating') : t('store.installing')}</p> : null}
+          {phase === 'success' ? <pre className={css.success} role="status">{message}</pre> : null}
+          {phase === 'error' ? <pre className={css.error} role="alert">{message}</pre> : null}
+        </div>
+        <footer className={css.modalActions}>
+          <Button size="sm" variant="outline" type="button" disabled={busy} onClick={onClose}>
+            {finished ? t('store.done') : t('store.cancel')}
+          </Button>
+          {!finished
+            ? (
+              <Button size="sm" variant="primary" type="button" disabled={!canConfirm} onClick={() => { void mutate() }}>
+                {busy
+                  ? removing ? t('store.removing') : updating ? t('store.updating') : t('store.installing')
+                  : removing ? t('store.confirmRemove') : updating ? t('store.confirmUpdate') : t('store.confirmInstall')}
+              </Button>
+            )
+            : null}
+        </footer>
+      </div>
+    </Modal>
+  )
+}
+
+interface StoreViewProps {
+  catalogStore: CatalogStore
+  lifecycleFetch: LifecycleFetch
+  t: Translate
+}
+
+function StoreView({ catalogStore, lifecycleFetch, t }: StoreViewProps): ReactNode {
+  const snapshot = useSyncExternalStore(catalogStore.subscribe, catalogStore.getSnapshot)
+  const [inventory, setInventory] = useState<InventoryState>({ status: 'loading', plugins: [] })
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('all')
+  const [sort, setSort] = useState<'recommended' | 'stars' | 'updated' | 'name'>('recommended')
+  const [verifiedOnly, setVerifiedOnly] = useState(false)
+  const [installedOnly, setInstalledOnly] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [mutationTarget, setMutationTarget] = useState<MutationTarget | null>(null)
+
+  const refreshInventory = useCallback(async (): Promise<void> => {
+    setInventory(current => ({ ...current, status: 'loading' }))
+    try {
+      const response = await lifecycleFetch(`${COMMUNITY_STORE_API_PREFIX}/plugins`, {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      })
+      const value = await response.json().catch(() => ({})) as { ok?: boolean; plugins?: unknown; message?: string }
+      if (!response.ok || value.ok !== true || !Array.isArray(value.plugins)) {
+        throw new Error(value.message ?? `${t('store.inventoryFailed')} (${response.status})`)
+      }
+      setInventory({ status: 'ready', plugins: value.plugins as InstalledPlugin[] })
+    } catch {
+      setInventory({ status: 'error', plugins: [] })
+    }
+  }, [lifecycleFetch, t])
+
+  useEffect(() => { void catalogStore.load() }, [catalogStore])
+  useEffect(() => { void refreshInventory() }, [refreshInventory])
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [query, category, sort, verifiedOnly, installedOnly])
+
+  const repositories = useMemo(
+    () => mergeInstalledPlugins(snapshot.catalog?.repositories ?? [], inventory.plugins),
+    [snapshot.catalog, inventory.plugins],
+  )
+  const facets = useMemo(() => snapshot.catalog === null ? null : getCatalogFacets(snapshot.catalog), [snapshot.catalog])
+  const filtered = useMemo(() => filterCatalogRepositories(repositories, {
+    query,
+    category,
+    sort,
+    verifiedOnly,
+    installedOnly,
+  }), [repositories, query, category, sort, verifiedOnly, installedOnly])
+  const visible = filtered.slice(0, visibleCount)
+
+  const refresh = (): void => {
+    void catalogStore.load({ force: true })
+    void refreshInventory()
+  }
+
+  return (
+    <section className={css.store} aria-label={t('settings.title')}>
+      <div className={css.storeHead}>
+        <div className={css.storeMeta}>
+          <span>{t('store.results', { visible: visible.length, total: filtered.length })}</span>
+          {snapshot.catalog?.generatedAt
+            ? <span>{t('store.updated', { date: new Date(snapshot.catalog.generatedAt).toLocaleString() })}</span>
+            : null}
+          {inventory.status === 'error' ? <span className={css.warning}>{t('store.inventoryFailed')}</span> : null}
+        </div>
+        <button type="button" className={css.iconButton} onClick={refresh} disabled={snapshot.status === 'loading'} aria-label={t('store.refresh')} title={t('store.refresh')}>
+          <IconRefreshOutline16 size={16} />
+        </button>
+      </div>
+
+      <div className={css.filters}>
+        <input
+          type="search"
+          className={css.search}
+          value={query}
+          onChange={event => { setQuery(event.target.value) }}
+          placeholder={t('store.search')}
+          aria-label={t('store.search')}
+        />
+        <select value={category} onChange={event => { setCategory(event.target.value) }} aria-label={t('store.category')}>
+          <option value="all">{t('store.categoryAll')}</option>
+          {(facets?.categories ?? []).map(value => <option key={value} value={value}>{value}</option>)}
+        </select>
+        <select value={sort} onChange={event => { setSort(event.target.value as typeof sort) }} aria-label={t('store.sort')}>
+          <option value="recommended">{t('store.sortRecommended')}</option>
+          <option value="stars">{t('store.sortStars')}</option>
+          <option value="updated">{t('store.sortUpdated')}</option>
+          <option value="name">{t('store.sortName')}</option>
+        </select>
+        <label className={css.check}><input type="checkbox" checked={verifiedOnly} onChange={event => { setVerifiedOnly(event.target.checked) }} /><span>{t('store.verifiedOnly')}</span></label>
+        <label className={css.check}><input type="checkbox" checked={installedOnly} onChange={event => { setInstalledOnly(event.target.checked) }} /><span>{t('store.installedOnly')}</span></label>
+      </div>
+
+      {snapshot.status === 'loading' && snapshot.catalog === null ? <p className={css.status} role="status">{t('store.loading')}</p> : null}
+      {snapshot.status === 'error' && snapshot.catalog === null
+        ? <p className={css.error} role="alert">{t('store.loadFailed')}: {snapshot.error}</p>
+        : null}
+      {snapshot.status === 'error' && snapshot.catalog !== null
+        ? <p className={css.warning} role="status">{t('store.refreshFailed')}: {snapshot.error}</p>
+        : null}
+      {snapshot.catalog !== null && filtered.length === 0 ? <p className={css.status}>{t('store.empty')}</p> : null}
+      {visible.length > 0 ? <ul className={css.entries}>{visible.map(repository => <ProjectRow key={repository.id} repository={repository} onMutate={setMutationTarget} t={t} />)}</ul> : null}
+      {visible.length < filtered.length
+        ? <button type="button" className={css.loadMore} onClick={() => { setVisibleCount(count => count + PAGE_SIZE) }}>{t('store.loadMore')}</button>
+        : null}
+      <p className={css.notice} role="note">{t('store.disclaimer')}</p>
+
+      <MutationModal
+        target={mutationTarget}
+        lifecycleFetch={lifecycleFetch}
+        onClose={() => { setMutationTarget(null) }}
+        onComplete={refreshInventory}
+        t={t}
+      />
+    </section>
+  )
+}
+
 export type CommunityPluginsCardProps =
   PropsLocale<'community-plugins'>
   & InjectFace<CommunityPluginsCardFace>
   & {
-    /** Index entries; defaults to the generated registry (injected for tests). */
-    plugins?: readonly CommunityPluginEntry[]
+    catalogStore: CatalogStore
+    lifecycleFetch?: LifecycleFetch
   }
 
-/**
- * Render the community plugin index card.
- * @param props - locale copy, the card snapshot, its form actions, and the
- *   (default-generated) entry list.
- * @returns the card.
- */
 export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNode {
   const { t } = props
   const state = props.useCommunityPluginsCard(snapshot => snapshot)
-  const plugins = (props.plugins ?? COMMUNITY_PLUGINS).filter(isCommunityPluginEntry)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-  const copyCommand = (id: string, command: string): void => {
-    const mark = (): void => { setCopiedId(id) }
-    const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : undefined
-    if (clipboard?.writeText !== undefined) {
-      void clipboard.writeText(command).then(mark, mark)
-      return
-    }
-    // Fallback for browsers without the async clipboard API (or tests).
-    try {
-      const area = document.createElement('textarea')
-      area.value = command
-      area.setAttribute('readonly', '')
-      area.style.position = 'fixed'
-      area.style.opacity = '0'
-      document.body.append(area)
-      area.select()
-      document.execCommand('copy')
-      area.remove()
-    } catch { /* the command stays visible to select by hand */ }
-    mark()
-  }
-  const disabled = !state.writable
-  // The draft text drives the list: '' (inherit) and 'true' keep it visible,
-  // 'false' hides it until the switch is turned back on.
   const visible = state.enabled.text !== 'false'
   const fieldProps = {
     overriddenLabel: t('settings.overridden'),
     resetLabel: t('settings.reset'),
     invalidLabel: t('settings.invalidNumber'),
-    disabled,
+    disabled: !state.writable,
   }
   return (
     <PluginSettingsCard
@@ -150,63 +421,39 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
         offLabel={t('settings.off')}
         {...fieldProps}
         {...state.enabled}
-        onEdit={(text) => { props.edit('enabled', text) }}
+        onEdit={text => { props.edit('enabled', text) }}
         onReset={() => { props.resetField('enabled') }}
       />
       {visible
-        ? (
-          <ul className={css.entries}>
-            {plugins.length === 0
-              ? <li className={css.empty} role="status">{t('empty')}</li>
-              : plugins.map((plugin) => (
-                <li key={plugin.id} className={css.entry}>
-                  <span className={css.entryHead}>
-                    <span className={css.entryName} title={plugin.name}>{plugin.name}</span>
-                    <span className={css.entryAuthor} title={plugin.author}>{t('author')}: {plugin.author}</span>
-                  </span>
-                  {plugin.description ? <p className={css.entryDescription}>{plugin.description}</p> : null}
-                  {plugin.descriptionEn ? <p className={css.entryDescriptionEn}>{plugin.descriptionEn}</p> : null}
-                  <span className={css.entryLinks}>
-                    <a className={css.entryLink} href={plugin.repo} target="_blank" rel="noreferrer">{t('repository')}</a>
-                    {plugin.npm ? <code className={css.entryNpm}>{plugin.npm}</code> : null}
-                  </span>
-                  <span className={css.entryInstall}>
-                    <code className={css.entryCommand}>{installCommand(plugin)}</code>
-                    <button
-                      type="button"
-                      className={css.copyButton}
-                      onClick={() => { copyCommand(plugin.id, installCommand(plugin)) }}
-                    >
-                      {copiedId === plugin.id ? t('copied') : t('copy')}
-                    </button>
-                  </span>
-                </li>
-              ))}
-          </ul>
-        )
-        : <p className={css.off} role="status">{t('off')}</p>}
-      <p className={css.installNote} role="note">{t('installHint')}</p>
-      <p className={css.notice} role="note">{t('notice')}</p>
+        ? <StoreView catalogStore={props.catalogStore} lifecycleFetch={props.lifecycleFetch ?? globalThis.fetch.bind(globalThis)} t={t} />
+        : <p className={css.status} role="status">{t('off')}</p>}
     </PluginSettingsCard>
   )
 }
 
-/** Props the settings section binds for the community plugin page. */
 export type CommunityPluginsSectionProps =
   PropsRuntime<'settings.section'>
   & PropsLocale<'community-plugins'>
   & InjectFace<CommunityPluginsCardFace>
   & {
-    /** Index entries; defaults to the generated registry (injected for tests). */
-    plugins?: readonly CommunityPluginEntry[]
+    catalogStore: CatalogStore
+    lifecycleFetch?: LifecycleFetch
   }
 
-/** Render the community plugin index as a first-level settings page. */
 export function CommunityPluginsSection(props: CommunityPluginsSectionProps): ReactNode {
-  const { t, useCommunityPluginsCard, save, discard, edit, resetField, plugins } = props
+  const { t, useCommunityPluginsCard, save, discard, edit, resetField, catalogStore, lifecycleFetch } = props
   return (
     <ul className={css.sectionList}>
-      <CommunityPluginsCard t={t} useCommunityPluginsCard={useCommunityPluginsCard} save={save} discard={discard} edit={edit} resetField={resetField} plugins={plugins} />
+      <CommunityPluginsCard
+        t={t}
+        useCommunityPluginsCard={useCommunityPluginsCard}
+        save={save}
+        discard={discard}
+        edit={edit}
+        resetField={resetField}
+        catalogStore={catalogStore}
+        lifecycleFetch={lifecycleFetch}
+      />
     </ul>
   )
 }

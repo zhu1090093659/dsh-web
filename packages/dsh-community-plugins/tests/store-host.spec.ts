@@ -1,13 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { IncomingMessage } from 'node:http'
 import type { NativeCommandRunner } from '@deepseek-ai/dsh-native-command'
 import {
   COMMUNITY_STORE_API_PREFIX,
   createStoreRoutes,
   installCatalogProject,
+  isAuthorizedLocalRequest,
+  isAuthorizedMutationRequest,
   listInstalledPlugins,
   removeInstalledPlugin,
 } from '../src/store-manager.ts'
-import { createStoreTools } from '../src/store-tools.ts'
+import { createStoreApprovalGate, createStoreTools } from '../src/store-tools.ts'
 import { parseBundledStoreSkill } from '../src/store-skill.ts'
 
 const signal = new AbortController().signal
@@ -104,6 +107,18 @@ describe('Host plugin lifecycle', () => {
       `${COMMUNITY_STORE_API_PREFIX}/remove`,
     ])
   })
+
+  it('limits inventory to loopback and mutations to a matching browser origin', () => {
+    const request = (remoteAddress: string, host: string, origin?: string) => ({
+      socket: { remoteAddress },
+      headers: { host, ...(origin === undefined ? {} : { origin }) },
+    }) as unknown as IncomingMessage
+
+    expect(isAuthorizedLocalRequest(request('127.0.0.1', 'localhost:19111'))).toBe(true)
+    expect(isAuthorizedLocalRequest(request('192.168.1.4', 'localhost:19111'))).toBe(false)
+    expect(isAuthorizedMutationRequest(request('127.0.0.1', 'localhost:19111', 'http://localhost:19111'))).toBe(true)
+    expect(isAuthorizedMutationRequest(request('127.0.0.1', 'localhost:19111', 'https://example.com'))).toBe(false)
+  })
 })
 
 describe('conversation integration', () => {
@@ -132,5 +147,18 @@ describe('conversation integration', () => {
       source: 'bundled',
       content: 'Use store_search.',
     })
+  })
+
+  it('asks for approval before conversation mutations but not Store reads', async () => {
+    const gate = createStoreApprovalGate()
+    const next = vi.fn(async () => ({ kind: 'allow' as const }))
+
+    await expect(gate({ name: 'store_search' } as never, next)).resolves.toEqual({ kind: 'allow' })
+    expect(next).toHaveBeenCalledOnce()
+
+    next.mockClear()
+    await expect(gate({ name: 'store_install', arguments: { repository_id: '42' } } as never, next))
+      .resolves.toMatchObject({ kind: 'ask', reason: expect.stringContaining('42') })
+    expect(next).not.toHaveBeenCalled()
   })
 })

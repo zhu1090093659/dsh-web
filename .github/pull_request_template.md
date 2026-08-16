@@ -79,14 +79,6 @@
 - [ ] 已用 `node scripts/capture-previews` 重拍并提交 `preview/{light,dark}.png`。
 - [ ] README 中英双语三件套、LICENSE 与贡献者版权声明齐全；PR 描述附 gallery 试穿截图（亮 / 暗）。
 
-## 社区插件索引登记（Community Plugin Index）
-
-<!-- 仅当本 PR 新增接入一个社区插件时必填；其余改动可跳过本节。新接入的社区插件对下述要求逐项确认。 -->
-
-- [ ] 已按 [docs/plugins.md](../docs/plugins.md) 的登记说明在 `packages/dsh-community-plugins/community.json` 追加条目，并运行 `node scripts/community-index` 重新生成注册表（提交生成的 `packages/dsh-community-plugins/src/client/generated/community.ts`）。
-- [ ] 已确认插件与 dsh-web-ui 插件体系兼容：遵循官方 cordis bundle 独立标准（package.json 声明 `dsh.bundle.patch` 指向 `cordis.patch.yml`、`dsh.client` 浏览器半区），类型仅基于官方 `@deepseek-ai/*` NPM SDK，未修改 DSH 源码；已在本仓库最新代码上验证插件可被 `dsh web` 挂载并正常运行。
-- [ ] 承诺负责后续更新跟进：插件与 DSH / dsh-web-ui 生态保持同步，生态升级导致不兼容时主动跟进修复；条目信息（description / npm 等）变动或插件停更时，及时更新索引登记或提交移除。
-
 ## 本地验证（Local Validation）
 
 执行的命令：

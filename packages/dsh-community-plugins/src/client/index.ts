@@ -1,10 +1,10 @@
 /**
- * Community plugin index, browser half. Registers the community-plugins
+ * Community plugin manager, browser half. Registers the community-plugins
  * dictionaries and one section into the settings panel's first-level nav
  * (settings.section; the promoted family sections sit beside the built-in
  * general / models / plugins / agent-presets entries). The card carries its
  * own enable switch (backed by the community-plugins settings namespace) and
- * lists community plugins with links to each contributor's own repository.
+ * loads the live Store catalog with Host-mediated lifecycle controls.
  * @module @linxin666/dsh-client-ui-community-plugins/client
  */
 
@@ -16,6 +16,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the slot-surface types (the settings.section seat).
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import { CommunityPluginsCardController, CommunityPluginsSection, type CommunityPluginsSettings } from './CommunityPluginsCard.tsx'
+import { CatalogStore } from './catalog-store.ts'
 import { en, zh, type CommunityPluginKey } from './locales.ts'
 
 export type { CommunityPluginsCardProps, CommunityPluginsSectionProps } from './CommunityPluginsCard.tsx'
@@ -25,7 +26,7 @@ const COMMUNITY_PLUGINS_NS = 'community-plugins'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** Community plugin index card copy. */
+    /** Community plugin manager copy. */
     'community-plugins': CommunityPluginKey
   }
 }
@@ -45,7 +46,7 @@ declare module '@deepseek-ai/cordis' {
 export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote']
 
 /**
- * Register the community plugin index as a first-level settings section, with
+ * Register the community plugin manager as a first-level settings section, with
  * its own enable switch over the community-plugins settings namespace.
  * @param ctx - client root context.
  */
@@ -55,6 +56,7 @@ export function apply(ctx: ClientContext): void {
   const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
   const settingsScope = binder.bind<CommunityPluginsSettings>({ namespace: COMMUNITY_PLUGINS_NS })
   const controller = new CommunityPluginsCardController(settingsScope)
+  const catalogStore = new CatalogStore()
 
   ctx.slots.inject('settings.section', () => {
     const unregister = ctx.slots.register({
@@ -63,7 +65,7 @@ export function apply(ctx: ClientContext): void {
       order: 140,
       label: () => ctx.locale.bind('community-plugins')('settings.title'),
       locale: 'community-plugins',
-      inject: () => controller.inject(),
+      inject: () => ({ ...controller.inject(), catalogStore }),
     }, CommunityPluginsSection)
     return () => {
       controller.dispose()

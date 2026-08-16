@@ -1,0 +1,4 @@
+interface:
+  display_name: "Use DSH Store"
+  short_description: "Search and manage DSH Store projects"
+  default_prompt: "Use $search-dsh-store to search, inspect, install, update, or remove a DSH Store project within the API and approval boundaries."

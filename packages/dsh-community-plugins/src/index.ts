@@ -1,20 +1,27 @@
 /**
- * Host half of the community plugin index card: registers the
- * community-plugins settings namespace so the card's enable switch persists
- * across reloads. The index itself is build-time data compiled into the
- * browser half (community.json); this half owns only the durable setting.
+ * Host half of Community Plugins: persists the section switch, exposes the
+ * local plugin lifecycle routes, and registers the live Store conversation
+ * tools plus their bundled skill. Catalog metadata always comes from the
+ * public Store API; executable mutations are revalidated in this process.
  * @module @linxin666/dsh-client-ui-community-plugins
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-host-webserver'
+import { runNativeCommand } from '@deepseek-ai/dsh-native-command'
+import type {} from '@deepseek-ai/dsh-skill'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-tools'
 import z from 'schemastery'
+import { createStoreRoutes, installCatalogProject, listInstalledPlugins, removeInstalledPlugin } from './store-manager.ts'
+import { loadBundledStoreSkill } from './store-skill.ts'
+import { createStoreApprovalGate, createStoreTools } from './store-tools.ts'
 
 /** Stable cordis plugin name (matches cordis.patch.yml insert id). */
 export const name = 'ui-community-plugins'
 
-/** Services the settings registration needs (the settings seam is optional). */
-export const inject = []
+/** Host services required by the lifecycle API and conversation integration. */
+export const inject = ['webServer', 'tools', 'skills']
 
 /**
  * Settings namespace of the card's enable switch — the section the web
@@ -45,4 +52,34 @@ export function apply(ctx: Context): void {
     setSource: () => { /* application is browser-side; value is read from the scope */ },
     onChange: () => { /* browser half re-reads on scope publish */ },
   })
+
+  const runnerOptions = (signal: AbortSignal) => ({
+    runner: runNativeCommand,
+    execPath: process.execPath,
+    cliPath: process.argv[1],
+    signal,
+  })
+  const listInstalled = (signal: AbortSignal) => listInstalledPlugins(runnerOptions(signal))
+  const install = (repositoryId: string, signal: AbortSignal) => installCatalogProject(repositoryId, {
+    ...runnerOptions(signal),
+    fetcher: globalThis.fetch,
+    listInstalled,
+  })
+  const remove = async (packageName: string, signal: AbortSignal) => removeInstalledPlugin(packageName, {
+    ...runnerOptions(signal),
+    installed: await listInstalled(signal),
+  })
+
+  for (const route of createStoreRoutes({
+    fetcher: globalThis.fetch,
+    runner: runNativeCommand,
+    execPath: process.execPath,
+    cliPath: process.argv[1],
+  })) ctx.webServer.register(route)
+
+  for (const tool of createStoreTools({ fetcher: globalThis.fetch, listInstalled, install, remove })) {
+    ctx.tools.register(tool)
+  }
+  ctx.on('tools/pre-execute', createStoreApprovalGate())
+  ctx.skills.register(loadBundledStoreSkill())
 }

@@ -1,0 +1,4 @@
+# Violet Evergarden skin bundle patch.
+- insert:
+    - id: ui-skin-violet-evergarden
+      name: '@linxin666/dsh-client-ui-skin-violet-evergarden'

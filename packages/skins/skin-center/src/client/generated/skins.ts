@@ -57,4 +57,6 @@ export const SKIN_CENTER_ENTRIES: readonly SkinCenterEntry[] = [
 
   {"id":"miku","name":"初音未来 · 电子歌姬","nameEn":"Hatsune Miku","author":"涂山苏苏","tagline":"蓝紫双马尾 · 01 编号 · 音符波形 · 电子歌姬主题","description":"以世界第一的虚拟歌姬初音未来为灵感的主题皮肤：蓝紫洋红渐变贯穿全局，音符与声波曲线点缀在半透明面板之间，标题栏与状态栏带有 01 编号徽标与音乐波形，半透明毛玻璃面板透出背景图——沉浸式电子歌姬氛围。","tags":["miku","vocaloid","blue","music","idol","waveform"],"accent":"#2e9bff","bodyAttr":"data-dsh-miku","package":"@linxin666/dsh-client-ui-skin-miku","order":10},
 
+  {"id":"violet-evergarden","name":"紫罗兰永恒花园","nameEn":"Violet Evergarden","author":"dsh-web-ui","tagline":"宣纸象牙 · 水墨灰 · 冷蓝点色","description":"以 Wallpaper Engine 紫罗兰永恒花园主题预览为背景，从原画提取象牙白、墨灰、冷灰蓝和少量朱红组成半透明界面。","tags":["violet-evergarden","anime","ivory","ink","blue-gray","translucent"],"accent":"#7c849f","bodyAttr":"data-dsh-violet","package":"@linxin666/dsh-client-ui-skin-violet-evergarden","order":12},
+
 ]

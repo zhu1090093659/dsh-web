@@ -1,0 +1,18 @@
+{
+  "id": "violet-evergarden",
+  "name": "紫罗兰永恒花园",
+  "nameEn": "Violet Evergarden",
+  "author": "dsh-web-ui",
+  "tagline": "宣纸象牙 · 水墨灰 · 冷蓝点色",
+  "description": "以 Wallpaper Engine 紫罗兰永恒花园主题预览为背景，从原画提取象牙白、墨灰、冷灰蓝和少量朱红组成半透明界面。",
+  "tags": ["violet-evergarden", "anime", "ivory", "ink", "blue-gray", "translucent"],
+  "accent": "#7c849f",
+  "bodyAttr": "data-dsh-violet",
+  "package": "@linxin666/dsh-client-ui-skin-violet-evergarden",
+  "wiring": { "id": "ui-skin-violet-evergarden", "bundleWired": false },
+  "preview": {
+    "light": "packages/skins/violet-evergarden/preview/light.jpg",
+    "dark": "packages/skins/violet-evergarden/preview/dark.jpg"
+  },
+  "order": 12
+}

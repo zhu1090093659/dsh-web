@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { IncomingMessage } from 'node:http'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { NativeCommandRunner } from '@deepseek-ai/dsh-native-command'
 import {
   COMMUNITY_STORE_API_PREFIX,
@@ -15,6 +15,49 @@ import { parseBundledStoreSkill } from '../src/store-skill.ts'
 
 const signal = new AbortController().signal
 const SHA = '0123456789abcdef0123456789abcdef01234567'
+
+function routeRequest(method: 'GET' | 'POST', body?: unknown): IncomingMessage {
+  return {
+    method,
+    headers: {
+      host: '127.0.0.1:3080',
+      ...(method === 'POST'
+        ? { origin: 'http://127.0.0.1:3080', 'content-type': 'application/json' }
+        : {}),
+    },
+    socket: { remoteAddress: '127.0.0.1' },
+    once: vi.fn(),
+    [Symbol.asyncIterator]: async function* () {
+      if (body !== undefined) yield Buffer.from(JSON.stringify(body))
+    },
+  } as unknown as IncomingMessage
+}
+
+function routeResponse(): {
+  response: ServerResponse
+  status: () => number
+  json: () => Record<string, unknown>
+} {
+  let status = 0
+  let body = ''
+  const response = {
+    set statusCode(value: number) { status = value },
+    get statusCode() { return status },
+    setHeader: vi.fn(),
+    end: (chunk?: unknown) => { if (chunk !== undefined) body += String(chunk) },
+  } as unknown as ServerResponse
+  return {
+    response,
+    status: () => status,
+    json: () => JSON.parse(body) as Record<string, unknown>,
+  }
+}
+
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(done => { resolve = done })
+  return { promise, resolve }
+}
 
 function catalogResponse(): Response {
   return new Response(JSON.stringify({
@@ -136,9 +179,106 @@ describe('Host plugin lifecycle', () => {
     })
     expect(routes.map(route => route.path)).toEqual([
       `${COMMUNITY_STORE_API_PREFIX}/plugins`,
+      `${COMMUNITY_STORE_API_PREFIX}/operation`,
       `${COMMUNITY_STORE_API_PREFIX}/install`,
       `${COMMUNITY_STORE_API_PREFIX}/remove`,
     ])
+  })
+
+  it('exposes the active install stages before the native command completes', async () => {
+    const command = deferred<{ stdout: string; stderr: string }>()
+    const runner = vi.fn(async (_execPath: string, args: readonly string[]) => {
+      if (args.includes('list')) return { stdout: JSON.stringify([{ dependencies: {} }]), stderr: '' }
+      return await command.promise
+    }) as unknown as NativeCommandRunner
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    const routes = createStoreRoutes({
+      fetcher: vi.fn(async () => catalogResponse()) as unknown as typeof fetch,
+      runner,
+      execPath: '/node',
+      cliPath: '/dsh.js',
+      logger,
+    })
+    const installRoute = routes.find(route => route.path.endsWith('/install'))!
+    const operationRoute = routes.find(route => route.path.endsWith('/operation'))!
+    const installResponse = routeResponse()
+    const installing = installRoute.handler(routeRequest('POST', {
+      repositoryId: 42,
+      installMode: 'verified',
+      operationId: 'operation-test-1',
+    }), installResponse.response)
+
+    await vi.waitFor(() => { expect(runner).toHaveBeenCalledTimes(2) })
+    const progressResponse = routeResponse()
+    await operationRoute.handler(routeRequest('GET'), progressResponse.response)
+    expect(progressResponse.status()).toBe(200)
+    expect(progressResponse.json()).toMatchObject({
+      ok: true,
+      operation: {
+        id: 'operation-test-1',
+        action: 'install',
+        status: 'running',
+        command: `dsh plugin --profile web add github:example/dsh-plugin#${SHA}`,
+        stages: [
+          { name: 'preparing', status: 'success' },
+          { name: 'catalog', status: 'success' },
+          { name: 'inventory', status: 'success' },
+          { name: 'executing', status: 'running' },
+        ],
+      },
+    })
+
+    command.resolve({ stdout: 'installed 115 packages', stderr: 'one peer warning' })
+    await installing
+    expect(installResponse.status()).toBe(200)
+    expect(installResponse.json()).toMatchObject({
+      ok: true,
+      operation: {
+        status: 'success',
+        output: expect.stringContaining('installed 115 packages'),
+        stages: [{ name: 'preparing' }, { name: 'catalog' }, { name: 'inventory' }, { name: 'executing' }, { name: 'complete', status: 'success' }],
+      },
+    })
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('operation-test-1'))
+  })
+
+  it('retains captured command output when an install fails', async () => {
+    const failure = Object.assign(new Error('Command failed with exit code 1'), {
+      code: 1,
+      stdout: 'partial install output',
+      stderr: 'registry request failed',
+    })
+    const runner = vi.fn(async (_execPath: string, args: readonly string[]) => {
+      if (args.includes('list')) return { stdout: JSON.stringify([{ dependencies: {} }]), stderr: '' }
+      throw failure
+    }) as unknown as NativeCommandRunner
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    const routes = createStoreRoutes({
+      fetcher: vi.fn(async () => catalogResponse()) as unknown as typeof fetch,
+      runner,
+      execPath: '/node',
+      cliPath: '/dsh.js',
+      logger,
+    })
+    const response = routeResponse()
+    await routes.find(route => route.path.endsWith('/install'))!.handler(routeRequest('POST', {
+      repositoryId: 42,
+      installMode: 'verified',
+      operationId: 'operation-test-2',
+    }), response.response)
+
+    expect(response.status()).toBe(502)
+    expect(response.json()).toMatchObject({
+      ok: false,
+      output: expect.stringContaining('registry request failed'),
+      operation: {
+        id: 'operation-test-2',
+        status: 'error',
+        output: expect.stringContaining('partial install output'),
+        stages: expect.arrayContaining([{ name: 'executing', status: 'error' }]),
+      },
+    })
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('registry request failed'))
   })
 
   it('limits inventory to loopback and mutations to a matching browser origin', () => {

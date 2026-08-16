@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import type { SkillRegistration } from '@deepseek-ai/dsh-skill'
 
 const SKILL_URL = new URL('../skills/search-dsh-store/SKILL.md', import.meta.url)
+const INTEGRATION_URL = new URL('../skills/search-dsh-store/references/dsh-web-ui.md', import.meta.url)
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/
 
 function frontmatterValue(frontmatter: string, key: string): string {
@@ -15,17 +16,17 @@ function frontmatterValue(frontmatter: string, key: string): string {
   return value
 }
 
-export function parseBundledStoreSkill(markdown: string): SkillRegistration {
+export function parseBundledStoreSkill(markdown: string, integration = ''): SkillRegistration {
   const match = FRONTMATTER.exec(markdown)
   if (match === null) throw new Error('Bundled Store skill has invalid frontmatter')
   return {
     name: frontmatterValue(match[1], 'name'),
     description: frontmatterValue(match[1], 'description'),
     source: 'bundled',
-    content: match[2].trim(),
+    content: [match[2].trim(), integration.trim()].filter(Boolean).join('\n\n'),
   }
 }
 
 export function loadBundledStoreSkill(): SkillRegistration {
-  return parseBundledStoreSkill(readFileSync(SKILL_URL, 'utf8'))
+  return parseBundledStoreSkill(readFileSync(SKILL_URL, 'utf8'), readFileSync(INTEGRATION_URL, 'utf8'))
 }

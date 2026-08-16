@@ -16,6 +16,7 @@ import z from 'schemastery'
 import { createStoreRoutes, installCatalogProject, listInstalledPlugins, removeInstalledPlugin } from './store-manager.ts'
 import { loadBundledStoreSkill } from './store-skill.ts'
 import { createStoreApprovalGate, createStoreTools } from './store-tools.ts'
+import type { InstallMode } from './core/store-catalog.ts'
 
 /** Stable cordis plugin name (matches cordis.patch.yml insert id). */
 export const name = 'ui-community-plugins'
@@ -60,7 +61,7 @@ export function apply(ctx: Context): void {
     signal,
   })
   const listInstalled = (signal: AbortSignal) => listInstalledPlugins(runnerOptions(signal))
-  const install = (repositoryId: string, signal: AbortSignal) => installCatalogProject(repositoryId, {
+  const install = (repositoryId: string, mode: InstallMode | undefined, signal: AbortSignal) => installCatalogProject(repositoryId, mode, {
     ...runnerOptions(signal),
     fetcher: globalThis.fetch,
     listInstalled,

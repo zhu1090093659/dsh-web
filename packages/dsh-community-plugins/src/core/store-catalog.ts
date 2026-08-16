@@ -1,8 +1,8 @@
 /**
  * Pure catalog and installed-plugin logic shared by the Host tools and the
  * browser settings section. The remote API is untrusted: executable plans are
- * accepted only after their argv, source, repository identity, and verified
- * GitHub revision agree.
+ * accepted only after their argv, source, and repository identity agree. A
+ * verified mode additionally requires the API validation revision to match.
  */
 
 export const STORE_CATALOG_URL = 'https://api.dshmk.com/'
@@ -83,6 +83,8 @@ export interface InstallPlan {
   executable: true
 }
 
+export type InstallMode = 'verified' | 'latest'
+
 export interface InstalledPlugin {
   name: string
   from?: string
@@ -158,7 +160,7 @@ function readInstallArgs(candidate: CatalogInstallCandidate): InstallPlan['args'
 }
 
 /** Build an executable plan only when every API-owned identity constraint agrees. */
-export function buildInstallPlan(repository: CatalogRepository): InstallPlan | null {
+export function buildInstallPlan(repository: CatalogRepository, mode?: InstallMode): InstallPlan | null {
   if (!INSTALLABLE_TYPES.has(repository.projectType) || repository.install?.status !== 'recognized') return null
   const candidate = repository.install.candidate
   if (!isRecord(candidate) || candidate.executable !== true || typeof candidate.target !== 'string') return null
@@ -171,9 +173,32 @@ export function buildInstallPlan(repository: CatalogRepository): InstallPlan | n
       || !REPOSITORY_FULL_NAME.test(match[1])
       || match[1].toLowerCase() !== repository.fullName.toLowerCase()
       || candidate.target.toLowerCase() !== repository.fullName.toLowerCase()) return null
+
+    const latestTarget = `github:${repository.fullName}`
+    const latestPlan: InstallPlan = {
+      source: 'github',
+      target: candidate.target,
+      command: `dsh plugin --profile web add ${latestTarget}`,
+      args: ['plugin', '--profile', 'web', 'add', latestTarget],
+      executable: true,
+    }
+    if (mode === 'latest') return latestPlan
+
+    const sourceSha = repository.validation?.sourceSha ?? ''
+    const verifiedPlan = repository.validation?.overall === 'verified'
+      && SOURCE_SHA.test(sourceSha)
+      && match[2]?.toLowerCase() === sourceSha.toLowerCase()
+      ? {
+          source: 'github' as const,
+          target: candidate.target,
+          command: `dsh plugin --profile web add ${args[4]}`,
+          args,
+          executable: true as const,
+        }
+      : null
+    if (mode === 'verified') return verifiedPlan
     if (repository.validation?.overall === 'verified') {
-      const sourceSha = repository.validation.sourceSha ?? ''
-      if (!SOURCE_SHA.test(sourceSha) || match[2]?.toLowerCase() !== sourceSha.toLowerCase()) return null
+      return verifiedPlan ?? latestPlan
     }
     return {
       source: 'github',
@@ -185,6 +210,7 @@ export function buildInstallPlan(repository: CatalogRepository): InstallPlan | n
   }
 
   if (candidate.source === 'npm') {
+    if (mode === 'verified') return null
     const specifier = args[4].startsWith('npm:') ? args[4].slice(4) : args[4]
     if (!NPM_SPECIFIER.test(specifier) || specifier !== candidate.target) return null
     return {
@@ -196,6 +222,14 @@ export function buildInstallPlan(repository: CatalogRepository): InstallPlan | n
     }
   }
   return null
+}
+
+/** Return an explicit choice only when both verified and latest GitHub plans are safe. */
+export function getInstallModes(repository: CatalogRepository): InstallMode[] {
+  if (repository.validation?.overall !== 'verified') return []
+  return buildInstallPlan(repository, 'verified') !== null && buildInstallPlan(repository, 'latest') !== null
+    ? ['verified', 'latest']
+    : []
 }
 
 function normalizeInstalled(name: unknown, dependency: unknown): InstalledPlugin | null {

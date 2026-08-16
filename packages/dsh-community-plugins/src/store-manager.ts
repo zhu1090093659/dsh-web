@@ -8,10 +8,12 @@ import {
   COMMUNITY_STORE_API_PREFIX,
   fetchStoreCatalog,
   findCatalogRepository,
+  getInstallModes,
   isInstalledPackageName,
   matchInstalledPlugin,
   parseInstalledPluginList,
   type InstalledPlugin,
+  type InstallMode,
 } from './core/store-catalog.ts'
 
 export { COMMUNITY_STORE_API_PREFIX } from './core/store-catalog.ts'
@@ -61,11 +63,15 @@ export async function listInstalledPlugins(options: RunnerOptions): Promise<Inst
 }
 
 /** Re-fetch and validate an exact API project immediately before mutation. */
-export async function installCatalogProject(selector: string, options: InstallOptions): Promise<LifecycleResult> {
+export async function installCatalogProject(selector: string, mode: InstallMode | undefined, options: InstallOptions): Promise<LifecycleResult> {
   const catalog = await fetchStoreCatalog(options.fetcher, options.signal, 'no-store')
   const repository = findCatalogRepository(catalog, selector)
   if (repository === undefined) throw new Error('Store project was not found')
-  const plan = buildInstallPlan(repository)
+  const modes = getInstallModes(repository)
+  if (modes.length > 1 && mode === undefined) {
+    throw new Error('Choose the verified or latest GitHub version before installation')
+  }
+  const plan = buildInstallPlan(repository, mode)
   if (plan === null) throw new Error('Store project has no executable Web install plan')
   const installed = await (options.listInstalled?.(options.signal) ?? listInstalledPlugins(options))
   const action = matchInstalledPlugin(repository, installed) === null ? 'install' : 'update'
@@ -211,19 +217,25 @@ export function createStoreRoutes(dependencies: StoreRouteDependencies): WebRout
         return
       }
       let selector: string
+      let installMode: InstallMode | undefined
       try {
         const body = await readJsonBody(request)
         if (typeof body !== 'object' || body === null || !('repositoryId' in body)) throw new Error('Repository ID is required')
         const repositoryId = (body as { repositoryId: unknown }).repositoryId
         if (typeof repositoryId !== 'string' && typeof repositoryId !== 'number') throw new Error('Repository ID is invalid')
         selector = String(repositoryId)
+        const requestedMode = (body as { installMode?: unknown }).installMode
+        if (requestedMode !== undefined && requestedMode !== 'verified' && requestedMode !== 'latest') {
+          throw new Error('Install mode must be verified or latest')
+        }
+        installMode = requestedMode
       } catch (error) {
         sendJson(response, 400, { ok: false, message: error instanceof Error ? error.message : String(error) })
         return
       }
       mutating = true
       try {
-        const result = await installCatalogProject(selector, {
+        const result = await installCatalogProject(selector, installMode, {
           ...options(requestSignal(request)),
           fetcher: dependencies.fetcher,
         })

@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/ZASENJC/dsh-plugins-store",
+  "ref": "main",
+  "files": {
+    "SKILL.md": {
+      "source": "packages/dsh-plugins-store/skills/search-dsh-store/SKILL.md",
+      "blobSha": "f7b13b9a320687bb5f026c6e8d513cfaf21c10b6"
+    },
+    "agents/openai.yaml": {
+      "source": "packages/dsh-plugins-store/skills/search-dsh-store/agents/openai.yaml",
+      "blobSha": "a62d5650dc02fdf8fce2e0877031b14f8b84e494"
+    },
+    "LICENSE.upstream": {
+      "source": "LICENSE",
+      "blobSha": "aeccebf192bb8613fc33c9df2755865510bfe6e6"
+    }
+  }
+}

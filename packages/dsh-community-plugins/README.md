@@ -8,7 +8,7 @@ API-backed community plugin manager for the dsh web GUI: the existing Community 
 
 - **Existing first-level section**: keeps the `ui-community-plugins` Cordis entry and the `community-plugins.enabled` settings namespace. The section sits beside Web UI Plugins, Skin Center and Pet and opens directly expanded.
 - **Live catalog**: loads project metadata, facets, validation evidence and executable-plan availability from the [DSH Plugin Store API](https://api.dshmk.com/). Search, filters, sorting and refresh all use API data; the last successful catalog remains visible after a refresh failure.
-- **Profile lifecycle**: compares Store entries with direct dependencies in the current Web profile, then offers install, update and removal controls. Successful mutations require a DSH Web restart.
+- **Profile lifecycle**: compares Store entries with direct dependencies in the current Web profile, then offers install, update and removal controls. For a verified GitHub project, install and update ask whether to use the validated SHA or the repository's latest default-branch revision. Successful mutations require a DSH Web restart.
 - **Conversation integration**: registers `store_catalog`, `store_search`, `store_details`, `store_installed`, `store_install` and `store_remove`, plus the bundled `search-dsh-store` skill. Write tools enter the DSH approval flow before execution.
 
 ## Install
@@ -33,12 +33,25 @@ Restart `dsh web` to mount the settings section, lifecycle routes, tools and ski
 ## Config
 
 - **Enable switch**: turning off Community Plugins hides only the market UI. It does not disable or remove installed projects, and the choice remains in `community-plugins.enabled`.
-- **UI operations**: choose an API project, review the exact recognized plan, acknowledge the third-party-code warning, and confirm the mutation. Update and removal actions appear only when a direct Web-profile dependency can be matched.
-- **Conversation use**: ask the agent to search, inspect, install, update or remove a Store project. Read tools may run directly; install, update and removal require explicit DSH approval.
+- **UI operations**: choose an API project, select the verified revision or latest revision when both are available, review the exact plan, acknowledge the third-party-code warning, and confirm the mutation. Update and removal actions appear only when a direct Web-profile dependency can be matched.
+- **Conversation use**: ask the agent to search, inspect, install, update or remove a Store project. When both GitHub modes are available, the agent must ask which one to use. Read tools may run directly; install, update and removal require explicit DSH approval.
+
+### Synchronize the bundled Skill
+
+The package vendors the upstream `search-dsh-store` Skill from [ZASENJC/dsh-plugins-store](https://github.com/ZASENJC/dsh-plugins-store). It does not fetch Skill instructions at runtime. Maintainers synchronize and review upstream changes explicitly:
+
+```sh
+pnpm community-skill:check
+pnpm community-skill:sync
+python /Users/samw.stu/.codex/skills/.system/skill-creator/scripts/quick_validate.py packages/dsh-community-plugins/skills/search-dsh-store
+pnpm --dir packages/dsh-community-plugins test
+```
+
+`community-skill:sync` mirrors the upstream `SKILL.md`, `agents/openai.yaml`, and MIT license, then records their GitHub blob SHAs in `.upstream.json`. The package-owned `references/dsh-web-ui.md` overlay is preserved. Review the diff before rebuilding and publishing this package; installed users receive the synchronized Skill with the next package update.
 
 ## Security model
 
-- API metadata is untrusted. The browser submits only a repository ID for installation; the Host fetches the current API response again and validates the project identity, fixed CLI arguments and supported source before running it. A verified GitHub plan must be pinned to the API validation SHA.
+- API metadata is untrusted. The browser submits only a repository ID and, when applicable, the user's install-mode choice; the Host fetches the current API response again and validates the project identity, fixed CLI arguments and supported source before running it. Verified mode uses the exact API validation SHA. Latest mode removes the SHA only after repository identity validation and may install code that has not passed Store validation yet.
 - Mutations use the official native-command runner with fixed argument arrays, never a shell. Local HTTP write routes require loopback and same-origin requests and serialize mutations; conversation write tools use the DSH approval gate.
 - A Store validation state is compatibility evidence, not a security audit, quality guarantee or official endorsement. Review third-party code and permissions before installation.
 
@@ -48,6 +61,7 @@ Restart `dsh web` to mount the settings section, lifecycle routes, tools and ski
 - Projects without a supported executable API plan can be browsed but cannot be installed from this package.
 - Installed and update states are limited to direct Web-profile dependencies that can be matched to a Store npm or GitHub source.
 - Install, update and removal take effect after restarting DSH Web; this package does not restart the process automatically.
+- Upstream Skill changes are not pulled into installed packages automatically; they become available after an explicit sync, review, rebuild and package update.
 
 Catalog data and listing policy are maintained by [ZASENJC/dsh-plugins-store](https://github.com/ZASENJC/dsh-plugins-store); this repository does not carry a second catalog snapshot.
 

@@ -24,9 +24,11 @@ import {
   COMMUNITY_STORE_API_PREFIX,
   filterCatalogRepositories,
   getCatalogFacets,
+  getInstallModes,
   mergeInstalledPlugins,
   type CatalogRepository,
   type InstalledPlugin,
+  type InstallMode,
 } from '../core/store-catalog.ts'
 import { PluginSettingsCard, BooleanField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
@@ -163,11 +165,13 @@ interface MutationModalProps {
 
 function MutationModal({ target, lifecycleFetch, onClose, onComplete, t }: MutationModalProps): ReactNode {
   const [acknowledged, setAcknowledged] = useState(false)
+  const [installMode, setInstallMode] = useState<InstallMode | null>(null)
   const [phase, setPhase] = useState<'idle' | 'running' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
 
   useEffect(() => {
     setAcknowledged(false)
+    setInstallMode(null)
     setPhase('idle')
     setMessage('')
   }, [target?.repository.repositoryId, target?.action])
@@ -175,10 +179,16 @@ function MutationModal({ target, lifecycleFetch, onClose, onComplete, t }: Mutat
   if (target === null) return null
   const removing = target.action === 'remove'
   const updating = target.action === 'update'
+  const installModes = removing ? [] : getInstallModes(target.repository)
+  const needsModeChoice = installModes.length > 1
+  const selectedMode = needsModeChoice ? installMode ?? undefined : undefined
+  const installPlan = removing || (needsModeChoice && installMode === null)
+    ? null
+    : buildInstallPlan(target.repository, selectedMode)
   const title = removing ? t('store.removeTitle') : updating ? t('store.updateTitle') : t('store.installTitle')
   const busy = phase === 'running'
   const finished = phase === 'success'
-  const canConfirm = !busy && !finished && (removing || acknowledged)
+  const canConfirm = !busy && !finished && (removing || (acknowledged && (!needsModeChoice || installMode !== null)))
 
   const mutate = async (): Promise<void> => {
     if (!canConfirm) return
@@ -187,7 +197,10 @@ function MutationModal({ target, lifecycleFetch, onClose, onComplete, t }: Mutat
     const path = removing ? 'remove' : 'install'
     const body = removing
       ? { name: target.repository.installedPlugin?.name }
-      : { repositoryId: target.repository.repositoryId }
+      : {
+          repositoryId: target.repository.repositoryId,
+          ...(installMode === null ? {} : { installMode }),
+        }
     try {
       const response = await lifecycleFetch(`${COMMUNITY_STORE_API_PREFIX}/${path}`, {
         method: 'POST',
@@ -227,7 +240,30 @@ function MutationModal({ target, lifecycleFetch, onClose, onComplete, t }: Mutat
         <div className={css.modalBody}>
           <p>{removing ? t('store.removeRisk') : t('store.installRisk')}</p>
           <strong>{target.repository.fullName}</strong>
-          <code>{removing ? target.repository.installedPlugin?.name : buildInstallPlan(target.repository)?.command}</code>
+          {needsModeChoice && !finished
+            ? (
+              <fieldset className={css.versionChoices}>
+                <legend>{t('store.versionChoice')}</legend>
+                {installModes.map(mode => (
+                  <label key={mode} className={css.versionOption} data-selected={installMode === mode}>
+                    <input
+                      type="radio"
+                      name="community-plugin-install-mode"
+                      value={mode}
+                      checked={installMode === mode}
+                      disabled={busy}
+                      onChange={() => { setInstallMode(mode) }}
+                    />
+                    <span>
+                      <strong>{mode === 'verified' ? t('store.verifiedVersion') : t('store.latestVersion')}</strong>
+                      <small>{mode === 'verified' ? t('store.verifiedVersionHint') : t('store.latestVersionHint')}</small>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            )
+            : null}
+          <code>{removing ? target.repository.installedPlugin?.name : installPlan?.command ?? t('store.chooseVersion')}</code>
           {!removing && !finished
             ? (
               <label className={css.acknowledge}>

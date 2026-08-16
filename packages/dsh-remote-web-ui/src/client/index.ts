@@ -17,7 +17,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
-import { createConversationEditAction } from './ConversationEditAction.tsx'
+import { createEditableUserMessageNode } from './ConversationEditAction.tsx'
 import { FooterRemoteEntry } from './FooterRemoteEntry.tsx'
 import { RemoteEntry } from './RemoteEntry.tsx'
 import { PairFailedNotice } from './PairFailedNotice.tsx'
@@ -104,16 +104,14 @@ export function apply(ctx: ClientContext): void {
   const sessions = ctx.get('sessions') as unknown as ISessions
   const connection = ctx.get('connection') as unknown as ConnectionHandle
 
-  // Desktop conversation action: ui-conversation owns the render site and
-  // supplies the addressed finalized assistant message. This plugin only
-  // contributes the safe latest-human-message edit action through the public
-  // session fork/prompt faces.
-  ctx.slots.inject('conversation.chat.assistant-actions', () => ctx.slots.register({
-    name: 'conversation.chat.assistant-actions',
-    id: 'remote-web-ui-edit',
-    order: 90,
-    locale: NS,
-  }, createConversationEditAction(sessions, connection)))
+  // Shadow the standard user renderer at a lower priority so the edit affordance
+  // sits inside the user message row, while the standard renderer keeps ownership
+  // of all other keyed message kinds.
+  ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
+    name: 'conversation.chat.node',
+    key: 'user',
+    priority: -1,
+  }, createEditableUserMessageNode(sessions, connection, t)))
 
   const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
   const settingsScope = binder.bind<RemoteSettings>({ namespace: REMOTE_WEB_UI_NS })

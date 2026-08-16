@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { ConnectionHandle, ContentBlock, MessageId, PromptContentPart } from '@deepseek-ai/dsh-client-connection/client'
+import type { ConnectionHandle, ContentBlock, PromptContentPart } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
   AssistantMessageNode,
   ConversationSnapshot,
@@ -11,9 +11,19 @@ import type {
   SessionSummary,
   UserMessageNode,
 } from '@deepseek-ai/dsh-client-runtime/client'
+import {
+  IconCheckOutline16,
+  IconCopyOutline16,
+  IconEditOutline16,
+  IconSendOutline16,
+  JsonBlock,
+  MessageText,
+  writeClipboard,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import styles from './conversation-edit.module.css'
 
-type SlotProps = PropsRuntime<'conversation.chat.assistant-actions'> & PropsLocale<'remote'>
+type UserNodeProps = PropsRuntime<'conversation.chat.node', 'user'>
+type RemoteTranslate = TranslateNS<'remote'>
 
 export interface EditableConversationMessage {
   readonly seq: number
@@ -43,27 +53,29 @@ function latestAssistant(snapshot: ConversationSnapshot): AssistantMessageNode |
 }
 
 /**
- * Return the latest editable human prompt only when the addressed assistant is
- * the final settled assistant in a closed turn. Attachments, plugin/system
- * injections, active turns, and interrupted partials are intentionally denied.
+ * Return a user prompt only when its assistant response is the latest settled
+ * turn. The exact user sequence is checked so every older user bubble remains
+ * read-only even when it is still visible in the same conversation.
  */
 export function findEditableConversationMessage(
   snapshot: ConversationSnapshot,
-  messageId: MessageId,
+  userSeq: number,
 ): EditableConversationMessage | undefined {
   if (snapshot.running || snapshot.removed || snapshot.openState !== 'open') return undefined
   const assistant = latestAssistant(snapshot)
-  if (assistant === undefined || assistant.messageId !== messageId || assistant.interrupted === true) return undefined
+  if (assistant === undefined || assistant.interrupted === true) return undefined
   const turnEnd = snapshot.turnEnds.get(assistant.turn)
   if (turnEnd === undefined || turnEnd < assistant.seq) return undefined
+  if (snapshot.nodes.some(node => node.kind === 'user' && node.seq > assistant.seq)) return undefined
 
-  const user = [...snapshot.nodes]
-    .reverse()
-    .find((node): node is UserMessageNode => node.kind === 'user' && node.seq < assistant.seq)
-  if (user === undefined || !isHumanSource(user.source)) return undefined
+  const user = snapshot.nodes.find((node): node is UserMessageNode => node.kind === 'user' && node.seq === userSeq)
+  if (user === undefined || user.seq >= assistant.seq || !isHumanSource(user.source)) return undefined
   const text = textOnly(user.content)
   if (text === undefined) return undefined
-  return { seq: user.seq, text }
+  const latestUser = [...snapshot.nodes]
+    .filter((node): node is UserMessageNode => node.kind === 'user' && node.seq < assistant.seq)
+    .reduce<UserMessageNode | undefined>((latest, node) => latest === undefined || node.seq > latest.seq ? node : latest, undefined)
+  return latestUser?.seq === user.seq ? { seq: user.seq, text } : undefined
 }
 
 async function promptViaApi(connection: ConnectionHandle, sessionId: SessionId, text: string): Promise<void> {
@@ -120,27 +132,94 @@ function previousTurnBoundary(snapshot: ConversationSnapshot, userSeq: number): 
     .sort((a, b) => b - a)[0]
 }
 
-interface ActionProps extends SlotProps {
-  readonly sessions: ISessions
-  readonly connection: ConnectionHandle
+interface ContentParts {
+  readonly text: string
+  readonly images: readonly unknown[]
+  readonly rest: readonly unknown[]
 }
 
-function ConversationEditAction({ sessions, connection, messageId, useSession, useSessions, t }: ActionProps): ReactNode {
-  const snapshot = useSession(value => value)
-  const sessionId = useSession(value => value.sessionId)
-  const source = useSessions(value => value.byId[sessionId])
-  const editable = findEditableConversationMessage(snapshot, messageId)
+function contentParts(content: readonly ContentBlock[]): ContentParts {
+  const texts: string[] = []
+  const images: unknown[] = []
+  const rest: unknown[] = []
+  for (const block of content) {
+    if (block.type === 'text' && typeof block.text === 'string') {
+      texts.push(block.text)
+    } else if (isRecord(block) && block['type'] === 'image' && block['attachment'] !== undefined) {
+      images.push(block['attachment'])
+    } else {
+      rest.push(block)
+    }
+  }
+  return { text: texts.join(''), images, rest }
+}
+
+function messageClock(time: number): string {
+  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(time)
+}
+
+function ImagePreview({
+  attachment,
+  loadImage,
+  label,
+}: {
+  readonly attachment: unknown
+  readonly loadImage: UserNodeProps['loadImage']
+  readonly label: string
+}): ReactNode {
+  const [src, setSrc] = useState<string>()
+  useEffect(() => {
+    let active = true
+    setSrc(undefined)
+    void loadImage(attachment as Parameters<UserNodeProps['loadImage']>[0]).then(value => {
+      if (active) setSrc(value)
+    }).catch(() => {})
+    return () => { active = false }
+  }, [attachment, loadImage])
+  return src === undefined
+    ? <div className={styles.imagePlaceholder}>{label}</div>
+    : <img className={styles.image} src={src} alt={label} />
+}
+
+function CopyButton({ text, t }: { readonly text: string; readonly t: RemoteTranslate }): ReactNode {
+  const [copied, setCopied] = useState(false)
+  const onCopy = useCallback(() => {
+    if (copied) return
+    void writeClipboard(text).then(ok => {
+      if (!ok) return
+      setCopied(true)
+      window.setTimeout(() => { setCopied(false) }, 1000)
+    })
+  }, [copied, text])
+  return (
+    <button type="button" className={styles.action} onClick={onCopy} aria-label={copied ? t('conversation.copied') : t('conversation.copy')}>
+      {copied ? <IconCheckOutline16 /> : <IconCopyOutline16 />}
+    </button>
+  )
+}
+
+interface EditProps {
+  readonly sessions: ISessions
+  readonly connection: ConnectionHandle
+  readonly snapshot: ConversationSnapshot
+  readonly sessionId: SessionId
+  readonly source: SessionSummary | undefined
+  readonly editable: EditableConversationMessage
+  readonly time: number
+  readonly t: RemoteTranslate
+}
+
+function EditableMessage({ sessions, connection, snapshot, sessionId, source, editable, time, t }: EditProps): ReactNode {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
 
   const beginEdit = useCallback(() => {
-    if (editable === undefined) return
     setDraft(editable.text)
     setError(false)
     setEditing(true)
-  }, [editable])
+  }, [editable.text])
 
   const cancelEdit = useCallback(() => {
     if (busy) return
@@ -150,7 +229,7 @@ function ConversationEditAction({ sessions, connection, messageId, useSession, u
   }, [busy])
 
   const saveEdit = useCallback(() => {
-    if (editable === undefined || draft.trim() === '' || busy) return
+    if (draft.trim() === '' || busy) return
     setBusy(true)
     setError(false)
     void (async () => {
@@ -169,18 +248,27 @@ function ConversationEditAction({ sessions, connection, messageId, useSession, u
     }).finally(() => {
       setBusy(false)
     })
-  }, [busy, connection, draft, editable, sessionId, sessions, snapshot, source])
+  }, [busy, connection, draft, editable.seq, sessionId, sessions, snapshot, source])
 
-  if (editable === undefined) return null
   if (!editing) {
     return (
-      <button type="button" className={styles.action} onClick={beginEdit} aria-label={t('conversation.edit')}>
-        {t('conversation.edit')}
-      </button>
+      <>
+        <div className={styles.bubble}>
+          <MessageText text={editable.text} />
+        </div>
+        <div className={styles.actions}>
+          <span className={styles.time}>{messageClock(time)}</span>
+          <CopyButton text={editable.text} t={t} />
+          <button type="button" className={styles.action} onClick={beginEdit} aria-label={t('conversation.edit')}>
+            <IconEditOutline16 />
+          </button>
+        </div>
+      </>
     )
   }
+
   return (
-    <div className={styles.editor}>
+    <div className={styles.editorBubble}>
       <textarea
         className={styles.input}
         rows={3}
@@ -189,21 +277,83 @@ function ConversationEditAction({ sessions, connection, messageId, useSession, u
         disabled={busy}
         aria-label={t('conversation.edit.input')}
         onChange={event => { setDraft(event.target.value) }}
+        onKeyDown={event => {
+          if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault()
+            saveEdit()
+          }
+        }}
       />
       {error && <div className={styles.error} role="alert">{t('conversation.edit.error')}</div>}
       <div className={styles.buttons}>
         <button type="button" className={styles.cancel} disabled={busy} onClick={cancelEdit}>{t('conversation.edit.cancel')}</button>
         <button type="button" className={styles.save} disabled={busy || draft.trim() === ''} onClick={saveEdit}>
-          {busy ? t('conversation.edit.saving') : t('conversation.edit.save')}
+          {busy ? t('conversation.edit.saving') : <>{t('conversation.edit.save')} <IconSendOutline16 /></>}
         </button>
       </div>
     </div>
   )
 }
 
-export function createConversationEditAction(
+function UserMessageNode({ node, loadImage, useSession, useSessions, sessions, connection, t }: UserNodeProps & {
+  readonly sessions: ISessions
+  readonly connection: ConnectionHandle
+  readonly t: RemoteTranslate
+}): ReactNode {
+  const snapshot = useSession(value => value)
+  const sessionId = useSession(value => value.sessionId)
+  const source = useSessions(value => value.byId[sessionId])
+  const data = node.data
+  const { text, images, rest } = contentParts(data.content)
+  const editable = findEditableConversationMessage(snapshot, data.seq)
+
+  if (editable !== undefined) {
+    return (
+      <div className={styles.userRow} data-time-hover-root>
+        <div className={styles.userStack}>
+          <EditableMessage
+            sessions={sessions}
+            connection={connection}
+            snapshot={snapshot}
+            sessionId={sessionId}
+            source={source}
+            editable={editable}
+            time={data.time}
+            t={t}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  const showBubble = text !== '' || rest.length > 0
+  return (
+    <div className={styles.userRow} data-time-hover-root>
+      <div className={styles.userStack}>
+        {images.map((attachment, index) => (
+          <ImagePreview key={index} attachment={attachment} loadImage={loadImage} label={t('conversation.image')} />
+        ))}
+        {showBubble && (
+          <div className={styles.bubble}>
+            <MessageText text={text} />
+            {rest.map((block, index) => (
+              <JsonBlock key={index} label={t('conversation.extraBlock')} payload={block} truncatedLabel={total => t('conversation.jsonTruncated', { total })} />
+            ))}
+          </div>
+        )}
+      </div>
+      <div className={styles.actions}>
+        <span className={styles.time}>{messageClock(data.time)}</span>
+        <CopyButton text={text} t={t} />
+      </div>
+    </div>
+  )
+}
+
+export function createEditableUserMessageNode(
   sessions: ISessions,
   connection: ConnectionHandle,
-): (props: SlotProps) => ReactNode {
-  return props => <ConversationEditAction {...props} sessions={sessions} connection={connection} />
+  t: RemoteTranslate,
+): (props: UserNodeProps) => ReactNode {
+  return props => <UserMessageNode {...props} sessions={sessions} connection={connection} t={t} />
 }

@@ -69,8 +69,8 @@
     "name": "DeepRead 精读助手",
     "nameEn": "DeepRead Assistant",
     "author": "xiehuan123",
-    "description": "五种模式精读插件（quick / deep / map / feynman / book），支持公众号链接与文件输入，导出 md / mm / html，Web UI 提供工具结果卡片与精读面板。",
-    "descriptionEn": "A five-mode deep reading plugin (quick / deep / map / feynman / book) for links and files, with md / mm / html exports and Web UI tool-result cards plus a reading panel.",
+    "description": "五种模式精读插件（quick / deep / map / feynman / book），支持公众号链接与文件输入、批量对比、预算预检与后台任务进度透明，导出 md / mm / html，Web UI 提供工具结果卡片与精读面板。",
+    "descriptionEn": "A five-mode deep reading plugin (quick / deep / map / feynman / book) for links and files, with batch comparison, budget preflight, transparent background-job progress, md / mm / html exports, and Web UI tool-result cards plus a reading panel.",
     "repo": "https://github.com/xiehuan123/dsh-deepread",
     "npm": "dsh-deepread"
   },

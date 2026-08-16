@@ -1,8 +1,9 @@
 {
-  "AGENTS.md": 1400,
-  "packages/AGENTS.md": 900,
-  "docs/AGENTS.md": 1200,
-  "docs/plugins.md": 2300,
-  "docs/i18n.md": 900,
-  "docs/development.md": 900
+    "AGENTS.md":  1400,
+    "packages/AGENTS.md":  900,
+    "docs/AGENTS.md":  1200,
+    "docs/plugins.md":  2300,
+    "docs/i18n.md":  900,
+    "docs/development.md":  900,
+    "docs/custom-skins.md":  2000
 }

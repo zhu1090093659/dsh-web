@@ -18,6 +18,9 @@ window.__ModuleLoader__.load({
 		//#region src/client/index.ts
 		/** Katakana + ASCII glyphs for the digital rain (classic Matrix flavor). */
 		const GLYPHS = "アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF";
+		/** Bitmap density cap: the rain is a low-opacity ambience layer, so beyond 2x
+		* the extra pixels are invisible — cap to keep the fill cost bounded. */
+		const DPR_CAP = 2;
 		/**
 		* Mount the low-opacity digital-rain overlay. Returns a disposer, or null
 		* when the environment prefers reduced motion / has no canvas support.
@@ -37,17 +40,19 @@ window.__ModuleLoader__.load({
 			}
 			const FONT = "16px Menlo,Consolas,monospace";
 			let cols = [];
-			let w = 0;
-			let h = 0;
 			let raf = 0;
 			let last = 0;
+			/** Bitmap scale for the current display density, capped at DPR_CAP. */
+			const scale = () => Math.min(window.devicePixelRatio || 1, DPR_CAP);
 			const resize = () => {
-				w = canvas.width = window.innerWidth;
-				h = canvas.height = window.innerHeight;
-				const n = Math.max(1, Math.floor(w / 18));
+				const s = scale();
+				canvas.width = Math.round(window.innerWidth * s);
+				canvas.height = Math.round(window.innerHeight * s);
+				g.setTransform(s, 0, 0, s, 0, 0);
+				const n = Math.max(1, Math.floor(window.innerWidth / 18));
 				cols = [];
 				for (let i = 0; i < n; i++) cols.push({
-					y: Math.random() * -h,
+					y: Math.random() * -window.innerHeight,
 					speed: .5 + Math.random() * 1.3,
 					chars: []
 				});
@@ -61,11 +66,11 @@ window.__ModuleLoader__.load({
 				}
 				last = t;
 				g.fillStyle = "rgba(4,8,5,0.14)";
-				g.fillRect(0, 0, w, h);
+				g.fillRect(0, 0, window.innerWidth, window.innerHeight);
 				g.font = FONT;
 				cols.forEach((c, i) => {
 					c.y += c.speed * 16;
-					if (c.y > h + 40) {
+					if (c.y > window.innerHeight + 40) {
 						c.y = -40;
 						c.chars = [];
 					}
@@ -99,6 +104,7 @@ window.__ModuleLoader__.load({
 			const prevDark = body.dataset.dsDarkTheme;
 			body.dataset.dsDarkTheme = "";
 			const attrObs = new MutationObserver(() => {
+				if (body.dataset.dshMatrix === void 0) return;
 				if (body.dataset.dsDarkTheme === void 0) body.dataset.dsDarkTheme = "";
 			});
 			attrObs.observe(body, {

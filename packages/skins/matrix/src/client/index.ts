@@ -19,6 +19,10 @@ void css
 /** Katakana + ASCII glyphs for the digital rain (classic Matrix flavor). */
 const GLYPHS = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF'
 
+/** Bitmap density cap: the rain is a low-opacity ambience layer, so beyond 2x
+ * the extra pixels are invisible — cap to keep the fill cost bounded. */
+const DPR_CAP = 2
+
 /** Column state for the rain overlay. */
 interface RainColumn {
   y: number
@@ -45,17 +49,21 @@ function mountRain(): (() => void) | null {
   }
   const FONT = '16px Menlo,Consolas,monospace'
   let cols: RainColumn[] = []
-  let w = 0
-  let h = 0
   let raf = 0
   let last = 0
+  /** Bitmap scale for the current display density, capped at DPR_CAP. */
+  const scale = () => Math.min(window.devicePixelRatio || 1, DPR_CAP)
   const resize = () => {
-    w = canvas.width = window.innerWidth
-    h = canvas.height = window.innerHeight
-    const n = Math.max(1, Math.floor(w / 18))
+    const s = scale()
+    canvas.width = Math.round(window.innerWidth * s)
+    canvas.height = Math.round(window.innerHeight * s)
+    // All drawing coordinates below stay in CSS pixels; the transform maps
+    // them onto the denser bitmap.
+    g.setTransform(s, 0, 0, s, 0, 0)
+    const n = Math.max(1, Math.floor(window.innerWidth / 18))
     cols = []
     for (let i = 0; i < n; i++) {
-      cols.push({ y: Math.random() * -h, speed: 0.5 + Math.random() * 1.3, chars: [] })
+      cols.push({ y: Math.random() * -window.innerHeight, speed: 0.5 + Math.random() * 1.3, chars: [] })
     }
   }
   const frame = (t: number) => {
@@ -67,11 +75,11 @@ function mountRain(): (() => void) | null {
     }
     last = t
     g.fillStyle = 'rgba(4,8,5,0.14)'
-    g.fillRect(0, 0, w, h)
+    g.fillRect(0, 0, window.innerWidth, window.innerHeight)
     g.font = FONT
     cols.forEach((c, i) => {
       c.y += c.speed * 16
-      if (c.y > h + 40) {
+      if (c.y > window.innerHeight + 40) {
         c.y = -40
         c.chars = []
       }
@@ -106,6 +114,12 @@ export function apply(ctx: Context): void {
   const prevDark = body.dataset.dsDarkTheme
   body.dataset.dsDarkTheme = ''
   const attrObs = new MutationObserver(() => {
+    // Only force the dark flag while the skin itself is mounted: skin-center
+    // try-on retracts `data-dsh-matrix` (the stylesheet scoping attribute)
+    // for the session, and the observer must stay inert for that retraction
+    // to stick — otherwise it would re-add the dark flag the moment a light
+    // preview flips it.
+    if (body.dataset.dshMatrix === undefined) return
     if (body.dataset.dsDarkTheme === undefined) body.dataset.dsDarkTheme = ''
   })
   attrObs.observe(body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })

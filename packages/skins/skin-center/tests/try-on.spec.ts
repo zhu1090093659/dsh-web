@@ -348,6 +348,66 @@ describe('TryOnController skin switching', () => {
     expect(document.querySelector('style[data-plugin-css*="qq98.module.css"]')).not.toBeNull()
   })
 
+  it('try-on of another skin neutralizes an active matrix (canvas hidden, observer inert)', async () => {
+    const matrix = entry('matrix')
+    window.__DSH_BOOT__ = { entries: [{ id: matrix.package }] }
+    // Mount matrix the way the fiber system would: real bundle + mini ctx.
+    ;(0, eval)(bundleTextFor('matrix'))
+    const disposers: Array<() => void> = []
+    const surface = await window.__DSH_MODULES__!.import(matrix.package)
+    surface.apply?.({
+      effect(callback: () => () => void) {
+        disposers.push(callback())
+        return () => {}
+      },
+      get() {
+        return undefined
+      },
+    })
+    // jsdom has no 2d context, so the real rain canvas is never mounted;
+    // simulate the active skin's fixed overlay.
+    const canvas = document.createElement('canvas')
+    canvas.dataset.plugin = 'dsh-matrix-skin'
+    document.body.appendChild(canvas)
+    document.body.dataset.dsDarkTheme = ''
+
+    // The active matrix keep-alive works while its marker is present.
+    delete document.body.dataset.dsDarkTheme
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(document.body.dataset.dsDarkTheme).toBe('')
+
+    const c = controller()
+    await expect(c.tryOn(entry('qq98'))).resolves.toBe(true)
+
+    // Marker retracted and the overlay hidden by the neutralize rule (the
+    // canvas itself stays in the DOM, exactly like xp's taskbar).
+    expect(document.body.hasAttribute('data-dsh-matrix')).toBe(false)
+    expect(document.querySelector('canvas[data-plugin="dsh-matrix-skin"]')).not.toBeNull()
+    const neutralize = document.querySelector('style[data-skin-center-neutralize]')
+    expect(neutralize?.textContent).toContain("[data-plugin='dsh-matrix-skin']")
+
+    // The ghost observer stays inert: a light-preview flip of the dark flag
+    // is not reverted while matrix is retracted.
+    delete document.body.dataset.dsDarkTheme
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(document.body.dataset.dsDarkTheme).toBeUndefined()
+
+    c.exit()
+    expect(document.body.dataset.dshMatrix).toBe('')
+    expect(document.querySelector('style[data-skin-center-neutralize]')).toBeNull()
+    expect(document.querySelector('canvas[data-plugin="dsh-matrix-skin"]')).not.toBeNull()
+
+    // Restoring the marker re-arms the keep-alive for the real session.
+    // (Set a concrete value first: deleting an already-absent attribute
+    // emits no mutation, so the observer would have nothing to react to.)
+    document.body.dataset.dsDarkTheme = 'light'
+    delete document.body.dataset.dsDarkTheme
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(document.body.dataset.dsDarkTheme).toBe('')
+
+    for (const dispose of disposers.reverse()) dispose()
+  })
+
   it('re-try-on after exit re-registers the same skin cleanly', async () => {
     const c = controller()
     await expect(c.tryOn(entry('qq98'))).resolves.toBe(true)

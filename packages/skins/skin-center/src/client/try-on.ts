@@ -23,9 +23,11 @@
  * known skin chrome body children (title/status bars marked `data-skin-chrome`
  * or carrying the skin's body attribute, leaving other plugins' portals and
  * toasts in place), and neutralize known global-rule leaks (xp's sidebar
- * taskbar/start). Everything is snapshotted and restored on exit in original
- * order. The active skin's own fiber is never touched, so exiting try-on
- * returns the page to exactly the pre-try-on state.
+ * taskbar/start; matrix's full-viewport rain canvas, which has no scoping
+ * attribute — matrix's forced-dark observer goes inert on its own once the
+ * body attribute is retracted). Everything is snapshotted and restored on
+ * exit in original order. The active skin's own fiber is never touched, so
+ * exiting try-on returns the page to exactly the pre-try-on state.
  *
  * A ghost MutationObserver may survive retraction (blue-fantasy re-writes
  * its backdrop on theme flips), so during try-on a neutralizing observer
@@ -56,6 +58,14 @@ const NEUTRALIZE_CSS: Record<string, string> = {
   xp: [
     `[data-pane='sidebar'] [class*='xpTaskbar']{background:transparent!important;border-top:none!important;box-shadow:none!important}`,
     `[data-pane='sidebar'] [class*='xpStart']{display:none!important}`,
+  ].join(''),
+  // matrix mounts a fixed full-viewport rain canvas with an extreme z-index
+  // and no scoping attribute of its own, so detaching chrome cannot reach
+  // it; hide it for the try-on session. Its forced-dark observer goes inert
+  // by itself once `data-dsh-matrix` is retracted (the skin's callback
+  // refuses to act without its own marker).
+  matrix: [
+    `[data-plugin='dsh-matrix-skin']{display:none!important}`,
   ].join(''),
 }
 

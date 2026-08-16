@@ -25,15 +25,20 @@ describe('TPS composer line', () => {
     expect(formatTokensPerSecond(142.64)).toBe('143')
   })
 
-  it('renders only after an elapsed output sample exists', () => {
+  it('keeps the merge slot mounted, empty until a rate sample exists', () => {
     const absent = ((key: string): unknown => key === 'liveTokenUsage'
       ? { estimated: true, uncachedInputTokens: 10, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 }
       : undefined) as UseProjection
     const view = render(<TpsLine useProjection={absent} />)
-    expect(view.container.textContent).toBe('')
+    // The slot stays mounted while idle: the merge layout keys on its
+    // presence, so an unmount would flip the official stats row between
+    // content width and full width on every stream start/end.
+    const slot = view.container.querySelector('[data-dsh-live-tps]')
+    expect(slot).not.toBeNull()
+    expect(slot?.textContent).toBe('')
 
     view.rerender(<TpsLine useProjection={live} />)
-    expect(view.container.textContent).toBe('TPS 42.6 tok/s')
+    expect(view.container.querySelector('[data-dsh-live-tps]')?.textContent).toBe('TPS 42.6 tok/s')
   })
 
   it('anchors the row with the data-dsh-live-tps merge hook', () => {
@@ -50,6 +55,9 @@ describe('TPS merge stylesheet', () => {
     // nested :has() fails to parse (rules silently dropped), so the merge uses
     // the plain sibling combinator for the TPS and a flat :has for the row.
     expect(MERGE_CSS).not.toContain(':has(> *:has(')
+    // The wrapper merge is scoped to the moment the TPS slot is mounted, so
+    // the stylesheet never restyles the dock while the plugin is inactive.
+    expect(MERGE_CSS).toContain('div[data-slot="conversation.composer.dock"]:has(> [data-dsh-live-tps])')
     expect(MERGE_CSS).toContain('div[data-slot="conversation.composer.dock"] > *:not([role="tooltip"]):has(+ [data-dsh-live-tps]')
     // also matches when the official Tooltip bubble is inserted between the
     // stats row and the TPS (hover/focus) — otherwise the row reverts to its
@@ -66,8 +74,17 @@ describe('TPS merge stylesheet', () => {
 
   it('never wraps: nowrap + capped official row that ellipsizes', () => {
     expect(MERGE_CSS).not.toContain('flex-wrap: wrap')
-    expect(MERGE_CSS).toContain('max-width: min(620px, calc(100% - 150px))')
+    // The 620px cap keeps the merged unit compact on wide docks; narrow
+    // containers rely on flex shrink (0 1 auto + min-width: 0), so no
+    // container-relative calc that could go negative is involved.
+    expect(MERGE_CSS).toContain('max-width: 620px')
+    expect(MERGE_CSS).not.toContain('calc(100% - 150px)')
     expect(MERGE_CSS).toContain('min-width: 0')
+  })
+
+  it('hides the separator while the slot is empty (idle layout stays stable)', () => {
+    expect(MERGE_CSS).toContain('[data-dsh-live-tps]:empty::before')
+    expect(MERGE_CSS).toContain('content: none')
   })
 
   it('injects the stylesheet once under a stable tag', () => {

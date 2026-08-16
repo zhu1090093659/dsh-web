@@ -307,6 +307,67 @@ describe('API-backed Community Plugins UI', () => {
     })
   })
 
+  it('sends a failed settings operation to a new Agent conversation for diagnosis', async () => {
+    const askAgent = vi.fn(async () => {})
+    const closeSettings = vi.fn()
+    const failedOperation = {
+      id: 'operation-failed-1',
+      action: 'install',
+      status: 'error',
+      target: 'github:example/dsh-plugin',
+      command: `dsh plugin --profile web add github:example/dsh-plugin#${'0123456789abcdef0123456789abcdef01234567'}`,
+      startedAt: '2026-08-17T00:00:00.000Z',
+      updatedAt: '2026-08-17T00:00:01.000Z',
+      finishedAt: '2026-08-17T00:00:01.000Z',
+      output: 'ERR_PNPM_FETCH_503 registry request failed',
+      error: 'Command failed with exit code 1',
+      stages: [
+        { name: 'preparing', status: 'success', startedAt: '2026-08-17T00:00:00.000Z' },
+        { name: 'catalog', status: 'success', startedAt: '2026-08-17T00:00:00.100Z' },
+        { name: 'inventory', status: 'success', startedAt: '2026-08-17T00:00:00.200Z' },
+        { name: 'executing', status: 'error', startedAt: '2026-08-17T00:00:00.300Z' },
+      ],
+    }
+    const lifecycleFetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input)
+      if (url.endsWith('/plugins')) return new Response(JSON.stringify({ ok: true, plugins: [] }), { status: 200 })
+      if (url.endsWith('/operation')) return new Response(JSON.stringify({ ok: true, operation: failedOperation }), { status: 200 })
+      return new Response(JSON.stringify({
+        ok: false,
+        message: failedOperation.error,
+        output: failedOperation.output,
+        operation: failedOperation,
+      }), { status: 502 })
+    }) as unknown as typeof fetch
+    const catalogStore = new CatalogStore({
+      fetcher: vi.fn(async () => new Response(JSON.stringify(apiCatalog()), { status: 200 })),
+    })
+    render(
+      <CommunityPluginsCard
+        {...cardProps(new FakeScope(), catalogStore, lifecycleFetch)}
+        askAgent={askAgent}
+        closeSettings={closeSettings}
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /^install$/i }))
+    fireEvent.click(screen.getByRole('radio', { name: /verified version/i }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /understand the risk/i }))
+    fireEvent.click(screen.getByRole('button', { name: /confirm install/i }))
+
+    expect((await screen.findByRole('alert')).textContent).toContain('Command failed with exit code 1')
+    fireEvent.click(screen.getByRole('button', { name: /ask agent/i }))
+    await waitFor(() => { expect(askAgent).toHaveBeenCalledOnce() })
+    const prompt = String(askAgent.mock.calls[0]?.[0])
+    expect(prompt).toContain('example/dsh-plugin')
+    expect(prompt).toContain(failedOperation.command)
+    expect(prompt).toContain('Command failed with exit code 1')
+    expect(prompt).toContain('ERR_PNPM_FETCH_503 registry request failed')
+    expect(prompt).toContain('executing')
+    expect(prompt).toMatch(/do not execute|不要执行/i)
+    expect(closeSettings).toHaveBeenCalledOnce()
+  })
+
   it('shows update and remove actions for a matched direct dependency', async () => {
     const catalogStore = new CatalogStore({
       fetcher: vi.fn(async () => new Response(JSON.stringify(apiCatalog()), { status: 200 })),

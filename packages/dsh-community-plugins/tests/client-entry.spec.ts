@@ -30,10 +30,14 @@ function scope(): SettingsScope<CommunityPluginsSettings> {
 }
 
 describe('community plugin client entry', () => {
-  it('replaces the fallback settings section when its compatibility service arrives', () => {
+  it('replaces the fallback settings section and can send a diagnosis prompt to a new session', async () => {
     const officialBind = vi.fn(() => scope())
     const compatBind = vi.fn(() => scope())
-    const registrations: Array<{ id?: string; priority?: number }> = []
+    const prompt = vi.fn(async () => ({ ok: true, value: { accepted: true } }))
+    const rename = vi.fn(async () => ({ ok: true, value: { title: 'diagnosis', seq: 1 } }))
+    const open = vi.fn()
+    const connectWorkspace = vi.fn(async () => 'session-diagnosis')
+    const registrations: Array<{ id?: string; priority?: number; inject?: () => Record<string, unknown> }> = []
     const activePriorities = new Set<number>()
     let injectCompat: ((ctx: unknown) => unknown) | undefined
     let compat: { bind: typeof compatBind } | undefined
@@ -47,6 +51,14 @@ describe('community plugin client entry', () => {
         bind: vi.fn(() => () => 'Community Plugins'),
       },
       settingsScope: { bind: officialBind },
+      workspaces: {
+        list: { getSnapshot: () => ({ recentWorkspaceId: 'workspace-1', items: [{ workspaceId: 'workspace-1' }] }) },
+        connectWorkspace,
+      },
+      sessions: {
+        binding: vi.fn(() => ({ session: { prompt, rename } })),
+        open,
+      },
       get(name: string) {
         return name === 'webUiSettings' ? compat : undefined
       },
@@ -55,7 +67,7 @@ describe('community plugin client entry', () => {
           const dispose = callback()
           return typeof dispose === 'function' ? dispose : () => {}
         }),
-        register: vi.fn((options: { id?: string; priority?: number }) => {
+        register: vi.fn((options: { id?: string; priority?: number; inject?: () => Record<string, unknown> }) => {
           registrations.push(options)
           if (options.priority !== undefined) activePriorities.add(options.priority)
           return () => {
@@ -74,6 +86,13 @@ describe('community plugin client entry', () => {
     expect(officialBind).toHaveBeenCalledWith({ namespace: 'community-plugins' })
     expect(registrations).toMatchObject([{ id: 'community-plugins', priority: 10 }])
     expect([...activePriorities]).toEqual([10])
+    const face = registrations[0]?.inject?.()
+    expect(face).toMatchObject({ askAgent: expect.any(Function) })
+    await (face?.askAgent as (diagnosis: string) => Promise<void>)('diagnose this failure')
+    expect(connectWorkspace).toHaveBeenCalledWith('workspace-1')
+    expect(rename).toHaveBeenCalledWith('Diagnose community plugin failure')
+    expect(prompt).toHaveBeenCalledWith([{ type: 'text', text: 'diagnose this failure' }], 'queue')
+    expect(open).toHaveBeenCalledWith('session-diagnosis')
 
     compat = { bind: compatBind }
     const disposeCompat = injectCompat?.(ctx)

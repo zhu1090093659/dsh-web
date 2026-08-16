@@ -325,6 +325,27 @@ describe('conversation integration', () => {
       .resolves.toMatchObject({ text: expect.stringContaining('example/dsh-plugin') })
   })
 
+  it('returns mutation failure evidence so the current Agent can analyze it without retrying', async () => {
+    const failure = Object.assign(new Error('Command failed with exit code 1'), {
+      stdout: 'partial install output',
+      stderr: 'ERR_PNPM_FETCH_503 registry request failed',
+    })
+    const tools = createStoreTools({
+      fetcher: vi.fn() as unknown as typeof fetch,
+      listInstalled: async () => [],
+      install: vi.fn(async () => { throw failure }),
+      remove: vi.fn(),
+    })
+    const install = tools.find(tool => tool.name === 'store_install')!
+
+    await expect(install.execute({ repository_id: '42', install_mode: 'verified' }, { signal } as never))
+      .resolves.toMatchObject({
+        succeeded: false,
+        needsRestart: false,
+        text: expect.stringMatching(/Command failed with exit code 1[\s\S]*ERR_PNPM_FETCH_503[\s\S]*analy[sz]e[\s\S]*do not retry/i),
+      })
+  })
+
   it('parses the bundled skill as a model and user invocable definition', () => {
     const skill = parseBundledStoreSkill(
       `---\nname: search-dsh-store\ndescription: Search the live DSH Store.\n---\n\nUse store_search.`,

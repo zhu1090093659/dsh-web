@@ -25,6 +25,8 @@ export interface PetSettings {
   bottom?: number
   /** Selected pet id (a registry entry). */
   petId?: string
+  /** Selected whale-girl skin variant. */
+  skin?: 'refined' | 'original'
 }
 
 /** What the pet settings card renders. */
@@ -41,6 +43,8 @@ export interface PetSettingsCardState extends CardShell {
   bottom: CardFieldState
   /** Selected pet. */
   petId: CardFieldState
+  /** Selected skin variant. */
+  skin: CardFieldState
   /** Pet choices (registry ids + display names), loaded from the host. */
   petChoices: readonly { value: string; label: string }[]
 }
@@ -87,6 +91,7 @@ export class PetSettingsCardController {
       numberField('right'),
       numberField('bottom'),
       choiceField('petId', this.petChoices),
+      choiceField('skin', ['refined', 'original']),
     ])
     this.store = this.form.bind(() => this.projection())
     void this.loadPets()
@@ -118,6 +123,7 @@ export class PetSettingsCardController {
       right: this.form.field('right'),
       bottom: this.form.field('bottom'),
       petId: this.form.field('petId'),
+      skin: this.form.field('skin'),
       petChoices: this.petChoices.map(id => ({ value: id, label: this.petLabels.get(id) ?? id })),
     }
   }
@@ -172,6 +178,20 @@ export function PetSettingsCard(props: PetSettingsCardProps) {
         {...state.enabled}
         onEdit={(text) => { props.edit('enabled', text) }}
         onReset={() => { props.resetField('enabled') }}
+      />
+      <ChoiceField
+        id="settings-pet-skin"
+        label={t('settings.skin')}
+        hint={t('settings.skinHint')}
+        inheritLabel={t('settings.inherit')}
+        {...fieldProps}
+        {...state.skin}
+        choices={[
+          { value: 'refined', label: t('settings.skinRefined') },
+          { value: 'original', label: t('settings.skinOriginal') },
+        ]}
+        onEdit={(text) => { props.edit('skin', text) }}
+        onReset={() => { props.resetField('skin') }}
       />
       <ChoiceField
         id="settings-pet-pet"

@@ -31,6 +31,7 @@ import {
   savePetPersist,
   type PetDisplayConfig,
   type PetPersist,
+  type PetSkin,
 } from './persist.ts'
 import {
   loadPetRegistry,
@@ -84,6 +85,8 @@ export interface PetSettingsSection {
   right: number
   /** Vertical inset from the viewport bottom edge, px. */
   bottom: number
+  /** Selected skin variant when the pet provides one. */
+  skin?: PetSkin
   /** Master switch for the plugin (browser half + host routes). */
   enabled?: boolean
 }
@@ -322,6 +325,7 @@ export class PetService extends Service {
     next.size = Math.round(Math.min(DISPLAY_SIZE_MAX, Math.max(DISPLAY_SIZE_MIN, next.size)))
     next.right = Math.round(Math.min(DISPLAY_INSET_MAX, Math.max(0, next.right)))
     next.bottom = Math.round(Math.min(DISPLAY_INSET_MAX, Math.max(0, next.bottom)))
+    next.skin = next.skin === 'original' ? 'original' : 'refined'
     this.ledger.setDisplay(next)
     this.flush()
     this.syncSettingsFromPet()
@@ -357,6 +361,7 @@ export class PetService extends Service {
     next.size = Math.round(Math.min(DISPLAY_SIZE_MAX, Math.max(DISPLAY_SIZE_MIN, section.size)))
     next.right = Math.round(Math.min(DISPLAY_INSET_MAX, Math.max(0, section.right)))
     next.bottom = Math.round(Math.min(DISPLAY_INSET_MAX, Math.max(0, section.bottom)))
+    next.skin = section.skin === 'original' ? 'original' : 'refined'
     this.ledger.setDisplay(next)
     this.flush()
   }
@@ -371,6 +376,7 @@ export class PetService extends Service {
       size: snapshot.display.size,
       right: snapshot.display.right,
       bottom: snapshot.display.bottom,
+      skin: snapshot.display.skin,
       petId: snapshot.petId,
     }).catch(() => {
       // A settings write failure must not break the pet's own persistence.

@@ -11,6 +11,9 @@ import { dshHome } from './dsh-home.ts'
 import { AFFINITY_MAX, emptyAffinity, type AffinityState } from './affinity.ts'
 import { defaultTreatConfig, emptyTreatLedger, type TreatLedger } from './treats.ts'
 
+/** Available whale-girl skin variants. */
+export type PetSkin = 'refined' | 'original'
+
 /** Display configuration the user can tweak. */
 export interface PetDisplayConfig {
   /** Master switch. */
@@ -21,6 +24,8 @@ export interface PetDisplayConfig {
   right: number
   /** Vertical inset from the viewport bottom edge, px. */
   bottom: number
+  /** Selected skin variant, when the selected pet provides one. */
+  skin?: PetSkin
 }
 
 export const defaultDisplayConfig: PetDisplayConfig = {
@@ -28,6 +33,7 @@ export const defaultDisplayConfig: PetDisplayConfig = {
   size: 160,
   right: 24,
   bottom: 20,
+  skin: 'refined',
 }
 
 /** Display value bounds (shared by load-time validation and setConfig). */
@@ -133,6 +139,7 @@ export function loadPetPersist(dir: string = petHomeDir()): PetPersist {
       size: Math.round(Math.min(DISPLAY_SIZE_MAX, Math.max(DISPLAY_SIZE_MIN, finiteNum(rawDisplay.size, base.display.size)))),
       right: Math.round(clamp(finiteNum(rawDisplay.right, base.display.right), DISPLAY_INSET_MAX)),
       bottom: Math.round(clamp(finiteNum(rawDisplay.bottom, base.display.bottom), DISPLAY_INSET_MAX)),
+      skin: rawDisplay.skin === 'original' || rawDisplay.skin === 'refined' ? rawDisplay.skin : base.display.skin,
     }
     const petId = typeof parsed.petId === 'string' && parsed.petId.trim() !== ''
       ? parsed.petId.trim()

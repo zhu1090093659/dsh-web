@@ -51,6 +51,22 @@ describe('resolvePetManifest', () => {
     expect(entry!.tracks['running-right'].durations.length).toBe(8)
   })
 
+  it('exposes safe skin atlas URLs alongside the default atlas', () => {
+    const entry = resolvePetManifest({
+      id: 'whale-girl',
+      displayName: '鲸鱼娘',
+      spritesheetPath: 'spritesheet.webp',
+      skins: {
+        refined: 'skins/refined/spritesheet.webp',
+        original: 'skins/original/spritesheet.webp',
+      },
+    }, join(tmpdir(), 'whale'))
+    expect(entry!.skinUrls).toEqual({
+      refined: '/pet/whale-girl/skins/refined/spritesheet.webp',
+      original: '/pet/whale-girl/skins/original/spritesheet.webp',
+    })
+  })
+
   it('cycles short override durations up to the row frame count', () => {
     const entry = resolvePetManifest({
       id: 'fox',

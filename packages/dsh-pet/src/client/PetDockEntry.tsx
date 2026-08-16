@@ -46,7 +46,7 @@ export type PetDockEntryProps =
   PetInjected
   & PropsLocale<typeof NS>
 
-const DEFAULT_DISPLAY: PetDisplayConfig = { visible: true, size: 160, right: 24, bottom: 20 }
+const DEFAULT_DISPLAY: PetDisplayConfig = { visible: true, size: 160, right: 24, bottom: 20, skin: 'refined' }
 
 /**
  * Dock entry: while the pet is visible, mount the floating PetSprite (it

@@ -70,7 +70,7 @@ export {
   petHomeDir,
   savePetPersist,
 } from './persist.ts'
-export type { PetDisplayConfig, PetPersist } from './persist.ts'
+export type { PetDisplayConfig, PetPersist, PetSkin } from './persist.ts'
 export {
   DEFAULT_FRAME_COUNTS,
   DEFAULT_PET_CELL,
@@ -120,6 +120,7 @@ export function makePetSettingsSchema(fallbackPetId: string) {
     size: z.number().step(1).min(DISPLAY_SIZE_MIN).max(DISPLAY_SIZE_MAX).default(160),
     right: z.number().step(1).min(0).max(DISPLAY_INSET_MAX).default(24),
     bottom: z.number().step(1).min(0).max(DISPLAY_INSET_MAX).default(20),
+    skin: z.union(['refined', 'original']).default('refined'),
     petId: z.string().default(fallbackPetId),
     enabled: z.boolean().default(true),
   })
@@ -147,6 +148,7 @@ export function apply(ctx: Context, config: PetConfig = {}): void {
     size: service.display().size,
     right: service.display().right,
     bottom: service.display().bottom,
+    skin: service.display().skin,
     petId: service.selectedPetId(),
     enabled: config.enabled ?? true,
   }

@@ -193,9 +193,11 @@ function assetHandler(registry: PetRegistry): WebRoute['handler'] {
       const manifestFile = join(entry.dir, MANIFEST_FILE)
       file = existsSync(manifestFile) ? manifestFile : undefined
       if (file === undefined) synthesized = true
-    } else if (rest.length > 0 && rel === entry.spritesheetPath) {
-      file = join(entry.dir, entry.spritesheetPath)
-    } else if (rest.length === 2 && rest[0] === PREVIEW_DIR && PREVIEW_PATTERN.test(rest[1]!)) {
+    } else {
+      const skinPath = Object.values(entry.skinPaths).find(path => path === rel)
+      if (skinPath !== undefined) file = join(entry.dir, skinPath)
+    }
+    if (file === undefined && rest.length === 2 && rest[0] === PREVIEW_DIR && PREVIEW_PATTERN.test(rest[1]!)) {
       const preview = join(entry.dir, PREVIEW_DIR, rest[1]!)
       file = existsSync(preview) ? preview : undefined
     }
@@ -258,6 +260,7 @@ export function makePetRoutes(deps: { service: PetService }): WebRoute[] {
       ...(typeof body.right === 'number' ? { right: body.right } : {}),
       ...(typeof body.bottom === 'number' ? { bottom: body.bottom } : {}),
       ...(typeof body.visible === 'boolean' ? { visible: body.visible } : {}),
+      ...(body.skin === 'refined' || body.skin === 'original' ? { skin: body.skin } : {}),
     })),
     postRoute(PET_API_PREFIX + '/set-name', (body) => {
       const name = body.name

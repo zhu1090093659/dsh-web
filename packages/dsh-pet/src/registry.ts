@@ -21,6 +21,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { PetSkin } from './persist.ts'
 import type { PetAnimation } from './state.ts'
 
 /** Fixed row order of the 9-state animation contract. */
@@ -123,6 +124,8 @@ export interface PetManifest {
   description?: string
   /** Atlas path relative to the manifest's directory. */
   spritesheetPath: string
+  /** Optional atlas paths for named skin variants. */
+  skins?: Partial<Record<PetSkin, string>>
   /** Atlas cell size; defaults to the Codex contract 192x208. */
   cell?: { width?: number; height?: number }
   /** Columns per row; defaults to 8. */
@@ -163,6 +166,8 @@ export interface PetDefinition {
   atlasUrl: string
   /** Browser URL of the manifest (served by the host asset route). */
   manifestUrl: string
+  /** Browser URLs for each available skin variant. */
+  skinUrls?: Partial<Record<PetSkin, string>>
 }
 
 /** A resolved pet plus its host-side file location. */
@@ -171,6 +176,8 @@ export interface PetEntry extends PetDefinition {
   dir: string
   /** Atlas path relative to 'dir' (declared by the manifest). */
   spritesheetPath: string
+  /** Atlas paths for skin variants relative to 'dir'. */
+  skinPaths: Partial<Record<PetSkin, string>>
 }
 
 /** Registry load result: resolved entries plus load warnings. */
@@ -240,6 +247,28 @@ export function resolvePetManifest(
     warn('manifest spritesheetPath ' + JSON.stringify(spritesheet) + ' is not a safe relative path')
     return undefined
   }
+  const skinPaths: Partial<Record<PetSkin, string>> = { refined: spritesheetPath.join('/') }
+  const rawSkins = (typeof source.skins === 'object' && source.skins !== null ? source.skins : {}) as Record<string, unknown>
+  for (const skin of ['refined', 'original'] as const) {
+    const candidate = rawSkins[skin]
+    if (candidate === undefined) continue
+    if (typeof candidate !== 'string' || candidate.trim() === '') {
+      warn('manifest ' + id + ': skin ' + skin + ' path is invalid')
+      return undefined
+    }
+    const path = candidate.trim()
+    const segments = path.split('/').filter(segment => segment !== '')
+    if (
+      segments.length === 0
+      || isAbsolute(path)
+      || path.includes('\\')
+      || segments.some(segment => segment === '..' || !PATH_SEGMENT_PATTERN.test(segment))
+    ) {
+      warn('manifest ' + id + ': skin ' + skin + ' path is not safe')
+      return undefined
+    }
+    skinPaths[skin] = segments.join('/')
+  }
   const rawCell = (typeof source.cell === 'object' && source.cell !== null ? source.cell : {}) as Record<string, unknown>
   const cell = {
     width: finiteInt(rawCell.width, DEFAULT_PET_CELL.width, 2048),
@@ -287,8 +316,10 @@ export function resolvePetManifest(
     tracks,
     atlasUrl: assetUrl(assetPrefix, id, spritesheet),
     manifestUrl: assetUrl(assetPrefix, id, 'pet.json'),
+    skinUrls: Object.fromEntries(Object.entries(skinPaths).map(([skin, path]) => [skin, assetUrl(assetPrefix, id, path)])) as Partial<Record<PetSkin, string>>,
     dir,
     spritesheetPath: spritesheetPath.join('/'),
+    skinPaths,
   }
 }
 
@@ -384,6 +415,7 @@ export function petEntryView(entry: PetEntry): PetDefinition {
     tracks: entry.tracks,
     atlasUrl: entry.atlasUrl,
     manifestUrl: entry.manifestUrl,
+    skinUrls: entry.skinUrls,
   }
 }
 

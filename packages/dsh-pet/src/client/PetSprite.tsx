@@ -81,6 +81,7 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   const columns = definition.columns
   const rows = definition.rows
   const tracks = definition.tracks
+  const atlasUrl = definition.skinUrls?.[display.skin ?? 'refined'] ?? definition.atlasUrl
 
   // Load the atlas once; the definition carries the authoritative per-row
   // frame counts and per-track durations, so nothing else is fetched.
@@ -90,12 +91,12 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
     img.onload = () => {
       if (!cancelled) setImageReady(true)
     }
-    img.src = definition.atlasUrl
+    img.src = atlasUrl
     return () => {
       cancelled = true
       img.onload = null
     }
-  }, [definition.atlasUrl])
+  }, [atlasUrl])
 
   // Frame loop: advance the current track and write background-position.
   // Offsets must be in SCALED coordinates (background-position applies to the
@@ -241,7 +242,7 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
         style={{
           width: spriteWidth,
           height: spriteHeight,
-          backgroundImage: imageReady ? 'url(' + definition.atlasUrl + ')' : undefined,
+          backgroundImage: imageReady ? 'url(' + atlasUrl + ')' : undefined,
           backgroundSize: (cell.width * columns * spriteScale) + 'px ' + (cell.height * rows.length * spriteScale) + 'px',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: '0 0',

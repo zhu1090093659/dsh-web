@@ -42,7 +42,10 @@ interface ConversationSendFace {
 /** Installed-marker key on the wrapped service instance. */
 const HOOK_MARKER = '__dshDescribeImageSendHooked'
 
-/** The exact flattened capability rejection emitted by the conversation client. */
+/**
+ * The fallback contract is the flattened DSH web client error text from
+ * `send-hook.ts`; the structured branch is defensive for compatible hosts.
+ */
 function isImageCapabilityRejection(cause: unknown): boolean {
   if (typeof cause !== 'object' || cause === null) return false
   const details = (cause as { details?: unknown }).details

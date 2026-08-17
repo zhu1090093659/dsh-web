@@ -29,14 +29,31 @@ export interface UpdateEntryProps {
 export function UpdateEntry({ wide, t }: UpdateEntryProps) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<UpdateView>({ kind: "checking" })
+  const [updateAvailable, setUpdateAvailable] = useState(false)
   const runToken = useRef(0)
+  const availabilityToken = useRef(0)
+  const mounted = useRef(false)
+
+  const probeAvailability = useCallback(async (): Promise<void> => {
+    const token = ++availabilityToken.current
+    try {
+      const status = await fetchUpdateStatus()
+      if (token === availabilityToken.current) {
+        setUpdateAvailable(status.mode === "npm" && status.outdated)
+      }
+    } catch {
+      if (token === availabilityToken.current) setUpdateAvailable(false)
+    }
+  }, [])
 
   const check = useCallback(async (): Promise<void> => {
+    const availabilityCheck = ++availabilityToken.current
     setView({ kind: "checking" })
     let status: UpdateStatus
     try {
       status = await fetchUpdateStatus()
     } catch (error) {
+      if (availabilityCheck === availabilityToken.current) setUpdateAvailable(false)
       // HTTP 404: the update route is not mounted — the host process runs an
       // older plugin build (client refreshed, host did not). Restarting dsh
       // web loads the new plugin; a plain network failure gets the generic
@@ -47,6 +64,9 @@ export function UpdateEntry({ wide, t }: UpdateEntryProps) {
       }
       setView({ kind: "error", message: t("update.offline"), detail: t("update.offlineDetail") })
       return
+    }
+    if (availabilityCheck === availabilityToken.current) {
+      setUpdateAvailable(status.mode === "npm" && status.outdated)
     }
     if (status.error === "registry-unreachable") {
       setView({ kind: "result", status })
@@ -60,6 +80,7 @@ export function UpdateEntry({ wide, t }: UpdateEntryProps) {
     const token = ++runToken.current
     try {
       const result = await runUpdate()
+      if (result.ok && mounted.current) setUpdateAvailable(false)
       if (token !== runToken.current) return
       setView({ kind: "done", result })
     } catch {
@@ -78,8 +99,18 @@ export function UpdateEntry({ wide, t }: UpdateEntryProps) {
     setOpen(false)
   }, [])
 
-  // Unmount safety: an in-flight update must not land on a dead component.
-  useEffect(() => () => { runToken.current++ }, [])
+  // Check once after mount without opening the panel or starting an update.
+  useEffect(() => {
+    mounted.current = true
+    void probeAvailability()
+    return () => {
+      mounted.current = false
+      runToken.current++
+      availabilityToken.current++
+    }
+  }, [probeAvailability])
+
+  const updateLabel = updateAvailable ? t("update.availableLabel") : t("update.label")
 
   return (
     <>
@@ -87,8 +118,9 @@ export function UpdateEntry({ wide, t }: UpdateEntryProps) {
         type="button"
         className={css.trigger}
         data-wide={wide ? undefined : "rail"}
-        aria-label={t("update.label")}
-        title={t("update.label")}
+        data-update-available={updateAvailable ? "true" : undefined}
+        aria-label={updateLabel}
+        title={updateLabel}
         onClick={openPanel}
       >
         <IconDownloadOutline16 size={wide ? 16 : 18} />

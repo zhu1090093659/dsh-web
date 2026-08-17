@@ -1,9 +1,10 @@
 import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import z from "schemastery";
-import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, rmdirSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, resolve, sep } from "node:path";
+import { chmodSync, cpSync, createReadStream, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, rmdirSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 //#region src/skin-switch.ts
 /**
 * In-process skin switching for the skin center — the official `dsh-skin use`
@@ -598,7 +599,7 @@ function resolveInstallLayout(fromUrl = import.meta.url) {
 * First non-blank string in a list of candidate values. Whitespace-only
 * values (including environment variables set to spaces) count as unset.
 */
-function firstNonBlank(...values) {
+function firstNonBlank$1(...values) {
 	for (const value of values) if (typeof value === "string") {
 		const trimmed = value.trim();
 		if (trimmed !== "") return trimmed;
@@ -621,7 +622,7 @@ function firstNonBlank(...values) {
 */
 function resolveHarnessHome(optsHome, env = process.env, installHome) {
 	if (optsHome !== void 0) return join(optsHome, ".dsh");
-	return firstNonBlank(env.DSH_HOME, installHome) ?? join(homedir(), ".dsh");
+	return firstNonBlank$1(env.DSH_HOME, installHome) ?? join(homedir(), ".dsh");
 }
 /**
 * The profile name when cwd sits directly under `<harnessHome>/profiles/<name>`
@@ -662,7 +663,7 @@ function resolvePaths(home, profile, fromUrl = import.meta.url) {
 	const install = resolveInstallLayout(fromUrl);
 	const harnessHome = resolveHarnessHome(home, process.env, install?.harnessHome);
 	const profilesRoot = join(harnessHome, "profiles");
-	const activeProfile = firstNonBlank(profile, process.env.DSH_SKIN_PROFILE, process.env.DSH_PROFILE) ?? profileFromCwd(process.cwd(), profilesRoot) ?? install?.profile ?? "web";
+	const activeProfile = firstNonBlank$1(profile, process.env.DSH_SKIN_PROFILE, process.env.DSH_PROFILE) ?? profileFromCwd(process.cwd(), profilesRoot) ?? install?.profile ?? "web";
 	return {
 		patchPath: join(harnessHome, "profiles", activeProfile, "cordis.patch.yml"),
 		legacyPatchPath: join(harnessHome, "cordis.patch.yml"),
@@ -928,7 +929,7 @@ function currentSkin(patch, opts = {}) {
 */
 /** Browser-facing base path of the skin-center API. */
 const SKIN_CENTER_API_PREFIX = "/api/skin-center";
-/** One JSON response. */
+/** One JSON response. Shared with the wallpaper routes (we-routes.ts). */
 function json(res, status, body) {
 	res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
 	res.end(JSON.stringify(body));
@@ -965,7 +966,7 @@ function isSameOriginRequest(req) {
 	}
 	return true;
 }
-/** Reject cross-site requests with 403. */
+/** Reject cross-site requests with 403. Shared with we-routes.ts. */
 function requireSameOrigin(req, res) {
 	if (isSameOriginRequest(req)) return true;
 	json(res, 403, {
@@ -974,7 +975,11 @@ function requireSameOrigin(req, res) {
 	});
 	return false;
 }
-/** Read a JSON request body (bounded). */
+/**
+* Read a JSON request body (bounded to 64KB). Shared with we-routes.ts.
+* Note: wallpaper imports copy files host-side, so no large upload ever
+* travels this helper.
+*/
 function readJsonBody(req) {
 	return new Promise((resolve, reject) => {
 		let size = 0;
@@ -1203,6 +1208,880 @@ function makeSkinCenterRoutes(deps = {}) {
 	];
 }
 //#endregion
+//#region src/we-library.ts
+/**
+* Wallpaper Engine library discovery for the skin center (host half).
+*
+* Enumerates locally installed Wallpaper Engine wallpapers so the browser
+* half can list, preview and render them. Discovery sources, in order:
+*
+*   1. The WE install itself (Steam app 431960), located on Windows through
+*      the HKCU Steam registry value plus libraryfolders.vdf, falling back to
+*      common probe paths. Its projects/defaultprojects and
+*      projects/myprojects folders are scanned, and every Steam library that
+*      owns app 431960 contributes its steamapps/workshop/content/431960
+*      directory.
+*   2. Manual library folders (the skin-wallpaper settings field
+*      weLibraryDirs): each entry may be a folder of wallpaper projects (like
+*      a workshop content dir) or a single project folder. A folder without
+*      a project.json is accepted when it directly contains a playable media
+*      file (e.g. a lone .mp4), which is the no-Steam fallback path.
+*   3. The import store (<harnessHome>/skin-center/wallpapers/<id>/): copies
+*      made by the import route. Each holds a manifest.json recording the
+*      source identity and the source file mtime/size at import time, so a
+*      later workshop update can be flagged as updateAvailable.
+*
+* Entries are plain data; the HTTP layer (src/we-routes.ts) assigns media
+* tokens and decides what is playable. Everything here is injectable for
+* tests: roots, platform and environment are parameters, never hard reads.
+* @module @linxin666/dsh-client-ui-skin-center/we-library
+*/
+/** Steam appid of Wallpaper Engine. */
+const WE_APPID = "431960";
+/** Common Steam install locations probed when libraryfolders.vdf is missing. */
+const STEAM_PROBE_DIRS = [
+	"C:\\Program Files (x86)\\Steam",
+	"C:\\Program Files\\Steam",
+	"D:\\Steam",
+	"D:\\SteamLibrary",
+	"E:\\SteamLibrary"
+];
+/**
+* Expand a leading '~' to the user's home directory (manual library folder
+* settings are typed by humans, and existsSync does not understand '~').
+*/
+function expandUser(path) {
+	if (path === "~") return homedir();
+	if (path.startsWith("~/") || path.startsWith("~\\")) return join(homedir(), path.slice(2));
+	return path;
+}
+/** First non-blank value, trimmed. */
+function firstNonBlank(...values) {
+	for (const value of values) if (typeof value === "string" && value.trim() !== "") return value.trim();
+}
+/**
+* The Steam root recorded by the Windows installer (HKCU\\Software\\Valve\\Steam).
+* Returns null off Windows or when reg.exe fails. Injectable for tests.
+* @param run - reg.exe runner (defaults to execFileSync).
+*/
+function steamPathFromRegistry(run = (args) => execFileSync(join(process.env.SystemRoot || "C:\\Windows", "System32", "reg.exe"), [
+	"query",
+	"HKCU\\Software\\Valve\\Steam",
+	"/v",
+	"SteamPath"
+], {
+	encoding: "utf8",
+	windowsHide: true,
+	timeout: 5e3,
+	stdio: [
+		"ignore",
+		"pipe",
+		"ignore"
+	]
+})) {
+	if (process.platform !== "win32") return null;
+	try {
+		const match = /SteamPath\s+REG_SZ\s+(.+)/i.exec(run([]));
+		return match ? match[1].trim() : null;
+	} catch {
+		return null;
+	}
+}
+/** Parse libraryfolders.vdf for library roots that own app 431960. */
+function librariesFromVdf(vdfText) {
+	const libraries = [];
+	let current = null;
+	for (const line of vdfText.split(/\r?\n/)) {
+		const match = /^\s*"path"\s+"([^"]+)"\s*$/.exec(line);
+		if (match) {
+			current = match[1].replace(/\\\\/g, "\\");
+			continue;
+		}
+		if (current && line.includes("431960") && !libraries.includes(current)) libraries.push(current);
+	}
+	return libraries;
+}
+/**
+* Locate the Wallpaper Engine install directory (holds wallpaper32.exe).
+* Probes: registry Steam root, well-known paths, then every library that
+* owns the app. Non-Windows platforms return null (WE ships Windows-only;
+* manual library folders are the fallback there).
+* @param opts.env - environment (tests inject).
+* @param opts.exists - existence probe (tests inject).
+*/
+function locateWallpaperEngine(opts = {}) {
+	const exists = opts.exists ?? existsSync;
+	if (((opts.env ?? process.env).OS ?? "") !== "" || process.platform === "win32") {
+		const registry = opts.registry ?? (() => steamPathFromRegistry());
+		const probes = [...new Set([registry(), ...STEAM_PROBE_DIRS].filter((d) => !!d))];
+		const libraries = [];
+		for (const probe of probes) {
+			const vdf = join(probe, "steamapps", "libraryfolders.vdf");
+			if (exists(vdf)) try {
+				libraries.push(...librariesFromVdf(readFileSync(vdf, "utf8")));
+			} catch {}
+		}
+		const candidates = [];
+		for (const root of [...probes, ...libraries]) candidates.push(join(root, "steamapps", "common", "wallpaper_engine"));
+		candidates.push("C:\\Program Files (x86)\\Wallpaper Engine");
+		for (const dir of candidates) if (exists(join(dir, "wallpaper32.exe"))) return dir;
+	}
+	return null;
+}
+/**
+* Steam library roots that own app 431960 (for the workshop content dir).
+* Empty on non-Windows or when nothing is found.
+*/
+function owningLibraries(opts = {}) {
+	const exists = opts.exists ?? existsSync;
+	if (process.platform !== "win32" && !opts.exists) return [];
+	const registry = opts.registry ?? (() => steamPathFromRegistry());
+	const probes = [...new Set([registry(), ...STEAM_PROBE_DIRS].filter((d) => !!d))];
+	const libraries = [];
+	for (const probe of probes) {
+		const vdf = join(probe, "steamapps", "libraryfolders.vdf");
+		if (exists(vdf)) try {
+			libraries.push(...librariesFromVdf(readFileSync(vdf, "utf8")));
+		} catch {}
+	}
+	return [...new Set(libraries)];
+}
+/** Infer the wallpaper type from the main file extension (project.json fallback). */
+function inferType(file) {
+	if (/\.(mp4|webm|mkv|avi|mov)$/i.test(file)) return "video";
+	if (/\.(html?|js)$/i.test(file)) return "web";
+	return "scene";
+}
+const KNOWN_TYPES = [
+	"scene",
+	"video",
+	"web",
+	"application"
+];
+/** Media file extensions playable through the video element. */
+const VIDEO_FILE_RE = /\.(mp4|webm|mkv|avi|mov)$/i;
+/** Web entry files. */
+const WEB_FILE_RE = /\.html?$/i;
+/** Read one project directory's project.json; null when absent/invalid. */
+function readProjectJson(dir) {
+	const path = join(dir, "project.json");
+	if (!existsSync(path)) return null;
+	try {
+		const raw = JSON.parse(readFileSync(path, "utf8"));
+		if (typeof raw !== "object" || raw === null) return null;
+		const record = raw;
+		if (typeof record.file !== "string" || record.file === "") return null;
+		const declared = typeof record.type === "string" ? record.type.toLowerCase() : "";
+		const type = KNOWN_TYPES.includes(declared) ? declared : inferType(record.file);
+		return {
+			title: typeof record.title === "string" && record.title !== "" ? record.title : null,
+			type,
+			file: record.file,
+			preview: typeof record.preview === "string" && record.preview !== "" ? record.preview : null
+		};
+	} catch {
+		return null;
+	}
+}
+/**
+* Synthesize one entry per playable media file for a folder without a
+* project.json (the no-Steam fallback: the user points a manual folder at a
+* pile of .mp4/.webm files or an index.html site — every video becomes its
+* own wallpaper). A same-stem image (loop.mp4 -> loop.jpg) becomes the
+* entry's preview when present.
+*/
+function synthesizeMediaEntries(dir, source) {
+	let names = [];
+	try {
+		names = readdirSync(dir);
+	} catch {
+		return [];
+	}
+	const media = names.filter((name) => VIDEO_FILE_RE.test(name) || WEB_FILE_RE.test(name));
+	const images = names.filter((name) => /\.(png|jpe?g|webp|gif)$/i.test(name));
+	const entries = [];
+	for (const file of media) {
+		const stem = file.replace(/\.[^.]+$/, "");
+		const preview = images.find((image) => image.replace(/\.[^.]+$/, "") === stem) ?? null;
+		entries.push(entryFromDir(dir, source, {
+			title: stem,
+			type: inferType(file),
+			file,
+			preview
+		}, basename(dir) + "/" + file));
+	}
+	return entries;
+}
+/** Build one entry from a project directory. */
+function entryFromDir(dir, source, project, id) {
+	const fileAbs = resolve(dir, project.file);
+	const previewAbs = project.preview ? resolve(dir, project.preview) : null;
+	let mtime = 0;
+	let size = 0;
+	let fileExists = false;
+	try {
+		const stat = statSync(fileAbs);
+		if (stat.isFile()) {
+			fileExists = true;
+			mtime = stat.mtimeMs;
+			size = stat.size;
+		}
+	} catch {}
+	return {
+		id: id ?? basename(dir),
+		title: project.title ?? basename(dir),
+		type: project.type,
+		file: project.file,
+		preview: project.preview,
+		dir,
+		fileAbs,
+		previewAbs: previewAbs && existsSync(previewAbs) ? previewAbs : null,
+		source,
+		playable: fileExists && (project.type === "video" || project.type === "web"),
+		srcMtime: mtime,
+		srcSize: size,
+		updateAvailable: false
+	};
+}
+/**
+* Scan one root folder of wallpaper projects (workshop content dir,
+* defaultprojects, myprojects, or a manual library folder). A root that is
+* itself a project (has project.json) yields one entry; a manual root
+* holding loose media files yields one entry per file; otherwise each
+* immediate subdirectory is probed the same way.
+*/
+function scanProjectsRoot(root, source) {
+	const direct = readProjectJson(root);
+	if (direct) return [entryFromDir(root, source, direct)];
+	if (source === "local") {
+		const synthesized = synthesizeMediaEntries(root, source);
+		if (synthesized.length > 0) return synthesized;
+	}
+	let names = [];
+	try {
+		names = readdirSync(root);
+	} catch {
+		return [];
+	}
+	const entries = [];
+	for (const name of names) {
+		const dir = join(root, name);
+		try {
+			if (!statSync(dir).isDirectory()) continue;
+		} catch {
+			continue;
+		}
+		const project = readProjectJson(dir);
+		if (project) entries.push(entryFromDir(dir, source, project));
+		else if (source === "local") entries.push(...synthesizeMediaEntries(dir, source));
+	}
+	return entries;
+}
+/** Read one import-store entry's manifest.json; null when absent/invalid. */
+function readImportedManifest(entryDir) {
+	const path = join(entryDir, "manifest.json");
+	if (!existsSync(path)) return null;
+	try {
+		const raw = JSON.parse(readFileSync(path, "utf8"));
+		if (typeof raw !== "object" || raw === null) return null;
+		const record = raw;
+		if (typeof record.sourceId !== "string" || typeof record.file !== "string") return null;
+		const declared = typeof record.type === "string" ? record.type.toLowerCase() : "";
+		return {
+			sourceId: record.sourceId,
+			title: typeof record.title === "string" && record.title !== "" ? record.title : basename(entryDir),
+			type: KNOWN_TYPES.includes(declared) ? declared : inferType(record.file),
+			srcMtime: typeof record.srcMtime === "number" ? record.srcMtime : 0,
+			srcSize: typeof record.srcSize === "number" ? record.srcSize : 0,
+			importedAt: typeof record.importedAt === "number" ? record.importedAt : 0,
+			file: record.file,
+			preview: typeof record.preview === "string" && record.preview !== "" ? record.preview : null
+		};
+	} catch {
+		return null;
+	}
+}
+/**
+* Scan the import store (<harnessHome>/skin-center/wallpapers). Each child
+* directory with a manifest.json becomes an 'imported' entry whose project
+* files live under project/.
+* @param storeDir - the wallpapers store root.
+*/
+function scanImportStore(storeDir) {
+	let names = [];
+	try {
+		names = readdirSync(storeDir);
+	} catch {
+		return [];
+	}
+	const entries = [];
+	for (const name of names) {
+		const dir = join(storeDir, name);
+		const manifest = readImportedManifest(dir);
+		if (!manifest) continue;
+		const projectDir = join(dir, "project");
+		const fileAbs = resolve(dir, manifest.file);
+		const previewAbs = manifest.preview ? resolve(dir, manifest.preview) : null;
+		let mtime = 0;
+		let size = 0;
+		let fileExists = false;
+		try {
+			const stat = statSync(fileAbs);
+			if (stat.isFile()) {
+				fileExists = true;
+				mtime = stat.mtimeMs;
+				size = stat.size;
+			}
+		} catch {}
+		entries.push({
+			id: `imported/${manifest.sourceId}`,
+			title: manifest.title,
+			type: manifest.type,
+			file: manifest.file,
+			preview: manifest.preview,
+			dir: projectDir,
+			fileAbs,
+			previewAbs: previewAbs && existsSync(previewAbs) ? previewAbs : null,
+			source: "imported",
+			playable: fileExists && (manifest.type === "video" || manifest.type === "web"),
+			srcMtime: mtime,
+			srcSize: size,
+			updateAvailable: false,
+			importSrcMtime: manifest.srcMtime,
+			importSrcSize: manifest.srcSize
+		});
+	}
+	return entries;
+}
+/** The default import-store root under the harness home. */
+function defaultWallpapersStoreDir(harnessHome) {
+	return join(harnessHome, "skin-center", "wallpapers");
+}
+/**
+* Assemble the full inventory: WE install projects + workshop content of
+* every owning library + manual library folders + the import store, with
+* update detection joining imported manifests back to their sources.
+* All filesystem inputs are injectable for tests.
+*/
+function buildInventory(opts = {}) {
+	const autoDetect = opts.autoDetect ?? true;
+	const installDir = opts.installDir !== void 0 ? opts.installDir : autoDetect ? locateWallpaperEngine() : null;
+	const libraryDirs = opts.libraryDirs ?? (autoDetect ? owningLibraries() : []);
+	const found = /* @__PURE__ */ new Map();
+	const add = (entry) => {
+		if (!found.has(entry.id)) found.set(entry.id, entry);
+	};
+	if (installDir) for (const sub of ["defaultprojects", "myprojects"]) {
+		const root = join(installDir, "projects", sub);
+		if (existsSync(root)) for (const entry of scanProjectsRoot(root, "local")) add(entry);
+	}
+	for (const library of libraryDirs) {
+		const root = join(library, "steamapps", "workshop", "content", WE_APPID);
+		if (existsSync(root)) for (const entry of scanProjectsRoot(root, "workshop")) add(entry);
+	}
+	for (const manual of opts.manualDirs ?? []) {
+		const trimmed = firstNonBlank(manual);
+		const dir = trimmed !== void 0 ? expandUser(trimmed) : void 0;
+		if (dir !== void 0 && existsSync(dir)) for (const entry of scanProjectsRoot(dir, "local")) add(entry);
+	}
+	const imported = opts.storeDir ? scanImportStore(opts.storeDir) : [];
+	for (const entry of imported) {
+		const source = found.get(entry.id.replace(/^imported\//, ""));
+		if (source && source.srcMtime > 0 && (source.srcMtime > (entry.importSrcMtime ?? 0) || source.srcSize !== (entry.importSrcSize ?? -1))) entry.updateAvailable = true;
+		add(entry);
+	}
+	const wallpapers = [...found.values()].sort((a, b) => a.title.localeCompare(b.title));
+	return {
+		installDir: installDir ?? null,
+		libraryDirs,
+		total: wallpapers.length,
+		portableCount: wallpapers.filter((w) => w.playable).length,
+		wallpapers
+	};
+}
+//#endregion
+//#region src/we-shim-source.ts
+/**
+* The Wallpaper Engine Web API shim, served to web-type wallpaper iframes.
+*
+* Web wallpapers are authored against APIs that Wallpaper Engine injects
+* into its CEF host before the page scripts run: property listeners (user
+* customization values), the audio-level listener (64 stereo bands), and
+* LED/RGB hardware hooks. Inside the skin center there is no editor session
+* and no hardware, so the shim installs benign defaults: properties resolve
+* to empty objects, the audio listener registers but is fed silence, and
+* hardware APIs become no-ops. Wallpapers that never touch these APIs are
+* unaffected; wallpapers that do degrade to their non-reactive visuals
+* instead of crashing on undefined globals.
+* @module @linxin666/dsh-client-ui-skin-center/we-shim-source
+*/
+/** The shim source, injected ahead of every web wallpaper HTML document. */
+const WE_SHIM_JS = [
+	"(function () {",
+	"  if (window.__dshWeShim) return;",
+	"  window.__dshWeShim = true;",
+	"  var props = {};",
+	"  window.wallpaperPropertyListener = {",
+	"    applyUserProperties: function (p) {",
+	"      if (p && typeof p === \"object\") { for (var k in p) { props[k] = p[k]; } }",
+	"    },",
+	"    applyGeneralProperties: function () {},",
+	"    setUserProperty: function (k, v) { props[k] = v; },",
+	"    getUserProperty: function (k) { return props[k]; }",
+	"  };",
+	"  var audioListener = null;",
+	"  window.wallpaperRegisterAudioListener = function (cb) {",
+	"    if (typeof cb === \"function\") audioListener = cb;",
+	"  };",
+	"  // Silence buffer WE wallpapers expect: 64 bands x 2 channels.",
+	"  var silence = [];",
+	"  for (var i = 0; i < 128; i++) silence.push(0);",
+	"  window.__dshWeAudio = {",
+	"    listener: function () { return audioListener; },",
+	"    silence: silence,",
+	"    pump: function () { if (audioListener) { try { audioListener(silence); } catch (e) {} } }",
+	"  };",
+	"  window.wallpaperRegisterLEDColorListener = function () {};",
+	"  window.wallpaperRegisterFPSListener = function () {};",
+	"})();",
+	""
+].join("\n");
+//#endregion
+//#region src/we-routes.ts
+/**
+* Wallpaper Engine HTTP routes for the skin center — the browser half talks
+* to the host through same-origin endpoints under /api/skin-center/we:
+*
+*   GET  /inventory           → JSON wallpaper list (library + import store)
+*   GET  /media/<token>       → video stream (Range supported)
+*   GET  /preview/<token>     → preview image
+*   GET  /web/<token>/<path>  → web-wallpaper project files (HTML is served
+*                               with the WE API shim injected)
+*   GET  /shim.js             → the WE API shim source (we-shim-source.ts)
+*   GET  /scene-frame/<token> → PNG of a scene wallpaper's main texture,
+*                               decoded in-process (pkg-extract.ts), cached
+*                               under the import store's .cache directory
+*   POST /import              → copy a library wallpaper into the import
+*                               store (<harnessHome>/skin-center/wallpapers)
+*   POST /reimport            → refresh an imported copy from its source
+*   POST /remove              → delete an imported copy
+*
+* Tokens are base64url of an absolute path, issued only by the inventory
+* handler, so a crafted token can never reach a path the library scan did
+* not already expose. Every route rides the skin-center same-origin fence
+* (routes.ts) — wallpaper imports must not be triggerable cross-site.
+*
+* Compliance note: this module only ever reads files already present on the
+* user's machine (their own Wallpaper Engine library) or copies them within
+* it. Nothing is downloaded, uploaded, or redistributed.
+* @module @linxin666/dsh-client-ui-skin-center/we-routes
+*/
+/** Browser-facing base path of the wallpaper API. */
+const WE_API_PREFIX = "/api/skin-center/we";
+/** Sanitize a wallpaper id into a safe store directory name. */
+function safeStoreId(id) {
+	return id.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+/** Minimal mime map for wallpaper payloads. */
+function mimeFor(absPath) {
+	return {
+		mp4: "video/mp4",
+		webm: "video/webm",
+		mkv: "video/x-matroska",
+		avi: "video/x-msvideo",
+		mov: "video/quicktime",
+		html: "text/html; charset=utf-8",
+		htm: "text/html; charset=utf-8",
+		js: "text/javascript; charset=utf-8",
+		mjs: "text/javascript; charset=utf-8",
+		css: "text/css; charset=utf-8",
+		json: "application/json; charset=utf-8",
+		png: "image/png",
+		jpg: "image/jpeg",
+		jpeg: "image/jpeg",
+		gif: "image/gif",
+		webp: "image/webp",
+		svg: "image/svg+xml",
+		ico: "image/x-icon",
+		mp3: "audio/mpeg",
+		wav: "audio/wav",
+		ogg: "audio/ogg",
+		woff: "font/woff",
+		woff2: "font/woff2",
+		ttf: "font/ttf",
+		otf: "font/otf",
+		wasm: "application/wasm"
+	}[extname(absPath).slice(1).toLowerCase()] || "application/octet-stream";
+}
+/** Stream one file with Range support (video seeking needs 206). */
+function serveFile(absPath, req, res) {
+	if (!existsSync(absPath) || !statSync(absPath).isFile()) {
+		json(res, 404, {
+			ok: false,
+			error: "not-found"
+		});
+		return;
+	}
+	const size = statSync(absPath).size;
+	res.setHeader("Content-Type", mimeFor(absPath));
+	res.setHeader("Accept-Ranges", "bytes");
+	const range = req.headers.range;
+	if (range) {
+		const match = /bytes=(\d*)-(\d*)/.exec(range);
+		let start = match && match[1] ? parseInt(match[1], 10) : 0;
+		let end = match && match[2] ? parseInt(match[2], 10) : size - 1;
+		if (Number.isNaN(start)) start = 0;
+		if (Number.isNaN(end) || end >= size) end = size - 1;
+		if (start > end) {
+			res.statusCode = 416;
+			res.setHeader("Content-Range", "bytes */" + String(size));
+			res.end();
+			return;
+		}
+		res.statusCode = 206;
+		res.setHeader("Content-Range", "bytes " + String(start) + "-" + String(end) + "/" + String(size));
+		res.setHeader("Content-Length", String(end - start + 1));
+		createReadStream(absPath, {
+			start,
+			end
+		}).pipe(res);
+		return;
+	}
+	res.setHeader("Content-Length", String(size));
+	createReadStream(absPath).pipe(res);
+}
+/** Build the route family. */
+function makeWeRoutes(deps) {
+	const mediaMap = /* @__PURE__ */ new Map();
+	const tokenFor = (absPath) => {
+		const token = Buffer.from(absPath, "utf8").toString("base64url");
+		mediaMap.set(token, absPath);
+		return token;
+	};
+	const freshInventory = () => buildInventory({
+		manualDirs: deps.getConfig().weLibraryDirs ?? [],
+		storeDir: deps.storeDir
+	});
+	const entryToJson = (entry) => {
+		const hasFile = existsSync(entry.fileAbs);
+		return {
+			id: entry.id,
+			title: entry.title,
+			type: entry.type,
+			source: entry.source,
+			playable: entry.playable,
+			updateAvailable: entry.updateAvailable,
+			videoUrl: entry.type === "video" && hasFile ? "/api/skin-center/we/media/" + tokenFor(entry.fileAbs) : null,
+			webUrl: entry.type === "web" && hasFile ? "/api/skin-center/we/web/" + tokenFor(entry.fileAbs) + "/" : null,
+			frameUrl: entry.type === "scene" && hasFile ? "/api/skin-center/we/scene-frame/" + tokenFor(entry.fileAbs) : null,
+			previewUrl: entry.previewAbs ? "/api/skin-center/we/preview/" + tokenFor(entry.previewAbs) : null
+		};
+	};
+	/** Resolve a token from a prefix route, or answer 404. */
+	const resolveToken = (req, res, prefix) => {
+		const pathname = new URL(req.url || "/", "http://localhost").pathname;
+		const token = decodeURIComponent(pathname.slice(prefix.length).split("/")[0] ?? "");
+		const abs = mediaMap.get(token);
+		if (!abs) {
+			json(res, 404, {
+				ok: false,
+				error: "unknown-token"
+			});
+			return null;
+		}
+		return abs;
+	};
+	const routes = [];
+	routes.push({
+		kind: "exact",
+		path: "/api/skin-center/we/inventory",
+		handler: (req, res) => {
+			if (req.method !== "GET") {
+				json(res, 405, {
+					ok: false,
+					error: "method-not-allowed"
+				});
+				return;
+			}
+			if (!requireSameOrigin(req, res)) return;
+			try {
+				const inventory = freshInventory();
+				json(res, 200, {
+					ok: true,
+					installDir: inventory.installDir,
+					total: inventory.total,
+					portableCount: inventory.portableCount,
+					wallpapers: inventory.wallpapers.map(entryToJson)
+				});
+			} catch (error) {
+				json(res, 500, {
+					ok: false,
+					error: error instanceof Error ? error.message : String(error)
+				});
+			}
+		}
+	});
+	routes.push({
+		kind: "exact",
+		path: "/api/skin-center/we/shim.js",
+		handler: (req, res) => {
+			if (req.method !== "GET") {
+				json(res, 405, {
+					ok: false,
+					error: "method-not-allowed"
+				});
+				return;
+			}
+			res.writeHead(200, {
+				"content-type": "text/javascript; charset=utf-8",
+				"cache-control": "no-store"
+			});
+			res.end(WE_SHIM_JS);
+		}
+	});
+	for (const seg of ["media", "preview"]) {
+		const prefix = "/api/skin-center/we/" + seg + "/";
+		routes.push({
+			kind: "prefix",
+			path: "/api/skin-center/we/" + seg,
+			handler: (req, res) => {
+				if (req.method !== "GET") {
+					json(res, 405, {
+						ok: false,
+						error: "method-not-allowed"
+					});
+					return;
+				}
+				const abs = resolveToken(req, res, prefix);
+				if (abs) serveFile(abs, req, res);
+			}
+		});
+	}
+	routes.push({
+		kind: "prefix",
+		path: "/api/skin-center/we/web",
+		handler: (req, res) => {
+			if (req.method !== "GET") {
+				json(res, 405, {
+					ok: false,
+					error: "method-not-allowed"
+				});
+				return;
+			}
+			const pathname = new URL(req.url || "/", "http://localhost").pathname;
+			const rest = decodeURIComponent(pathname.slice(24));
+			const token = rest.split("/")[0] ?? "";
+			const entryAbs = mediaMap.get(token);
+			if (!entryAbs) {
+				json(res, 404, {
+					ok: false,
+					error: "unknown-token"
+				});
+				return;
+			}
+			const root = dirname(entryAbs);
+			const abs = resolve(root, rest.slice(token.length).replace(/^\/+/, "") || basename(entryAbs));
+			if (abs !== root && !abs.startsWith(root + sep)) {
+				json(res, 403, {
+					ok: false,
+					error: "path-escape-rejected"
+				});
+				return;
+			}
+			if (!existsSync(abs) || !statSync(abs).isFile()) {
+				json(res, 404, {
+					ok: false,
+					error: "not-found"
+				});
+				return;
+			}
+			if (/\.html?$/i.test(abs)) {
+				const html = readFileSync(abs, "utf8");
+				const tag = "<script src=\"/api/skin-center/we/shim.js\"><\/script>";
+				const injected = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + tag) : tag + html;
+				res.writeHead(200, {
+					"content-type": "text/html; charset=utf-8",
+					"cache-control": "no-store"
+				});
+				res.end(injected);
+				return;
+			}
+			serveFile(abs, req, res);
+		}
+	});
+	const framePrefix = "/api/skin-center/we/scene-frame/";
+	routes.push({
+		kind: "prefix",
+		path: "/api/skin-center/we/scene-frame",
+		handler: (req, res) => {
+			if (req.method !== "GET") {
+				json(res, 405, {
+					ok: false,
+					error: "method-not-allowed"
+				});
+				return;
+			}
+			const abs = resolveToken(req, res, framePrefix);
+			if (!abs) return;
+			(async () => {
+				let mtime = 0;
+				try {
+					mtime = statSync(abs).mtimeMs;
+				} catch {}
+				const cacheDir = join(deps.storeDir, ".cache", "frames");
+				const cachePath = join(cacheDir, Buffer.from(abs, "utf8").toString("base64url") + "_" + String(Math.round(mtime)) + ".png");
+				if (!existsSync(cachePath)) {
+					const { extractSceneMainImage } = await import("./pkg-extract-D1jRneRL.js");
+					const frame = extractSceneMainImage(new Uint8Array(readFileSync(abs)));
+					mkdirSync(cacheDir, { recursive: true });
+					writeFileSync(cachePath, frame.png);
+				}
+				res.setHeader("Content-Type", "image/png");
+				res.setHeader("Cache-Control", "no-store");
+				createReadStream(cachePath).pipe(res);
+			})().catch((error) => {
+				json(res, 422, {
+					ok: false,
+					error: error instanceof Error ? error.message : String(error)
+				});
+			});
+		}
+	});
+	/** Read the {id} field of a wallpaper POST body. */
+	const readId = (body) => {
+		if (typeof body !== "object" || body === null) return "";
+		const id = body.id;
+		return typeof id === "string" ? id : "";
+	};
+	/** Copy one library entry into the import store; dest must not exist. */
+	const copyIntoStore = (entry, dest) => {
+		mkdirSync(dest, { recursive: true });
+		cpSync(entry.dir, join(dest, "project"), { recursive: true });
+		const manifest = {
+			sourceId: entry.id,
+			title: entry.title,
+			type: entry.type,
+			srcMtime: entry.srcMtime,
+			srcSize: entry.srcSize,
+			importedAt: Date.now(),
+			file: join("project", entry.file),
+			preview: entry.preview ? join("project", entry.preview) : null
+		};
+		writeFileSync(join(dest, "manifest.json"), JSON.stringify(manifest, null, 2), "utf8");
+	};
+	/** Register one JSON POST route with the standard error envelope. */
+	const postJson = (path, run) => {
+		routes.push({
+			kind: "exact",
+			path,
+			handler: (req, res) => {
+				if (req.method !== "POST") {
+					json(res, 405, {
+						ok: false,
+						error: "method-not-allowed"
+					});
+					return;
+				}
+				if (!requireSameOrigin(req, res)) return;
+				readJsonBody(req).then((body) => run(readId(body), res)).catch((error) => {
+					json(res, 500, {
+						ok: false,
+						error: error instanceof Error ? error.message : String(error)
+					});
+				});
+			}
+		});
+	};
+	postJson("/api/skin-center/we/import", (id, res) => {
+		if (id === "" || id.startsWith("imported/")) {
+			json(res, 400, {
+				ok: false,
+				error: "bad-id"
+			});
+			return;
+		}
+		const entry = freshInventory().wallpapers.find((w) => w.id === id);
+		if (!entry) {
+			json(res, 404, {
+				ok: false,
+				error: "wallpaper-not-found"
+			});
+			return;
+		}
+		const dest = join(deps.storeDir, safeStoreId(id));
+		if (existsSync(dest)) {
+			json(res, 409, {
+				ok: false,
+				error: "already-imported"
+			});
+			return;
+		}
+		copyIntoStore(entry, dest);
+		json(res, 200, {
+			ok: true,
+			id: "imported/" + entry.id
+		});
+	});
+	postJson("/api/skin-center/we/reimport", (id, res) => {
+		if (!id.startsWith("imported/")) {
+			json(res, 400, {
+				ok: false,
+				error: "bad-id"
+			});
+			return;
+		}
+		const sourceId = id.slice(9);
+		const dest = join(deps.storeDir, safeStoreId(sourceId));
+		if (!existsSync(dest)) {
+			json(res, 404, {
+				ok: false,
+				error: "import-not-found"
+			});
+			return;
+		}
+		const source = freshInventory().wallpapers.find((w) => w.id === sourceId && w.source !== "imported");
+		if (!source) {
+			json(res, 410, {
+				ok: false,
+				error: "source-gone"
+			});
+			return;
+		}
+		rmSync(dest, {
+			recursive: true,
+			force: true
+		});
+		copyIntoStore(source, dest);
+		json(res, 200, {
+			ok: true,
+			id
+		});
+	});
+	postJson("/api/skin-center/we/remove", (id, res) => {
+		if (!id.startsWith("imported/")) {
+			json(res, 400, {
+				ok: false,
+				error: "bad-id"
+			});
+			return;
+		}
+		const dest = join(deps.storeDir, safeStoreId(id.slice(9)));
+		if (!existsSync(dest)) {
+			json(res, 404, {
+				ok: false,
+				error: "import-not-found"
+			});
+			return;
+		}
+		rmSync(dest, {
+			recursive: true,
+			force: true
+		});
+		json(res, 200, { ok: true });
+	});
+	return routes;
+}
+//#endregion
 //#region src/mount-once.ts
 /**
 * Host single-instance guard shared by the plugin family. The family bundle
@@ -1266,6 +2145,23 @@ const SkinBackgroundConfigSchema = z.object({
 	backgroundBlurContent: z.number().min(0).max(20).step(1).default(0)
 });
 /**
+* Settings namespace for the Wallpaper Engine bridge, owned by the skin
+* center. The browser half renders the applied wallpaper behind the GUI and
+* persists the selection here; the host half reads weLibraryDirs to extend
+* the library scan beyond the auto-detected Steam folders.
+*/
+const SKIN_WALLPAPER_NAMESPACE = settingsNamespace("skin-wallpaper");
+/** Runtime schema for SkinWallpaperConfig. */
+const SkinWallpaperConfigSchema = z.object({
+	enabled: z.boolean().default(true),
+	weLibraryDirs: z.array(z.string()).default([]),
+	selection: z.string().default(""),
+	mode: z.union(["live", "frame"]).default("live"),
+	pauseOnHidden: z.boolean().default(true),
+	dim: z.number().min(0).max(90).step(5).default(25),
+	wallpaperBlur: z.number().min(0).max(60).step(1).default(0)
+});
+/**
 * Register the skin-center API routes.
 *
 * Failure policy: route mounting problems are logged, never thrown — the web
@@ -1279,7 +2175,17 @@ function applyImpl(ctx) {
 		setSource: () => {},
 		onChange: () => {}
 	});
-	const routes = makeSkinCenterRoutes();
+	let wallpaperSource = () => ({});
+	installSettingsSection(ctx, SKIN_WALLPAPER_NAMESPACE, SkinWallpaperConfigSchema, {}, {
+		setSource: (source) => {
+			wallpaperSource = source;
+		},
+		onChange: () => {}
+	});
+	const routes = [...makeSkinCenterRoutes(), ...makeWeRoutes({
+		getConfig: () => wallpaperSource(),
+		storeDir: defaultWallpapersStoreDir(resolveHarnessHome())
+	})];
 	try {
 		ctx.effect(() => {
 			const disposers = [];
@@ -1298,4 +2204,4 @@ function applyImpl(ctx) {
 	}
 }
 //#endregion
-export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_API_PREFIX, SkinBackgroundConfigSchema, apply, inject, makeSkinCenterRoutes, name };
+export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_API_PREFIX, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, inject, makeSkinCenterRoutes, makeWeRoutes, name };

@@ -59,6 +59,9 @@ function mockFetch(issue: MockIssue | MockIssue[]) {
   const issues = Array.isArray(issue) ? [...issue] : [issue]
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
+    if (url === '/api/update/status') {
+      return new Response(JSON.stringify({ mode: 'npm', packages: [], outdated: false }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
     const current = issues.length > 1 ? issues.shift()! : issues[0]
     const status = init?.method === 'POST' && url === '/api/pair/issue' && !current.ok ? (current.status ?? 409) : 200
     const body = url === '/api/pair/issue' && current.ok
@@ -77,7 +80,7 @@ function mockFetch(issue: MockIssue | MockIssue[]) {
   })
 }
 
-function mount(issue: MockIssue | MockIssue[] = { ok: true, url: 'http://192.168.1.5:3080/?pair=tok-1', token: 'tok-1', expiresAt: Date.now() + 60_000, lanAddresses: ['192.168.1.5'] }) {
+function mount(issue: MockIssue | MockIssue[] = { ok: true, url: 'http://192.168.1.5:3080/m/?pair=tok-1', token: 'tok-1', expiresAt: Date.now() + 60_000, lanAddresses: ['192.168.1.5'] }) {
   const fetch = mockFetch(issue)
   vi.stubGlobal('fetch', fetch)
   vi.stubGlobal('EventSource', FakeEventSource)
@@ -100,9 +103,11 @@ afterEach(() => {
 })
 
 describe('RemoteEntry', () => {
-  it('shows a discoverable text label in the expanded sidebar', () => {
+  it('keeps only the phone icon in the expanded sidebar', () => {
     mount()
-    expect(screen.getByText('Mobile remote control')).toBeTruthy()
+    const trigger = screen.getByRole('button', { name: 'Mobile remote control' })
+    expect(screen.queryByText('Mobile remote control')).toBeNull()
+    expect(trigger.querySelector('svg')).not.toBeNull()
   })
 
   it('opens the panel on trigger click: title, subtitle, QR card, hint, actions', async () => {
@@ -117,12 +122,12 @@ describe('RemoteEntry', () => {
     // separate svg; the QR carries its own test id).
     expect(document.querySelector('[data-testid="remote-qr"]')).not.toBeNull()
     expect(screen.getByText('Cannot scan? Open the link on your phone')).toBeTruthy()
-    expect(screen.getByText('http://192.168.1.5:3080/?pair=tok-1')).toBeTruthy()
+    expect(screen.getByText('http://192.168.1.5:3080/m/?pair=tok-1')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Stop' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Refresh QR' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeTruthy()
     // The issue payload carries the current workspace for the deep link.
-    const init = fetch.mock.calls[0]?.[1] as RequestInit
+    const init = fetch.mock.calls.find(call => call[0] === '/api/pair/issue')?.[1] as RequestInit
     expect(JSON.parse(String(init.body))).toEqual({ workspaceId: 'ws-1' })
   })
 
@@ -144,7 +149,7 @@ describe('RemoteEntry', () => {
       { ok: false, code: 'lan-required' },
       {
         ok: true,
-        url: 'https://tunnel.example/?pair=tok-2',
+        url: 'https://tunnel.example/m/?pair=tok-2',
         token: 'tok-2',
         expiresAt: Date.now() + 60_000,
         lanAddresses: ['192.168.1.5'],
@@ -156,7 +161,7 @@ describe('RemoteEntry', () => {
     const source = FakeEventSource.instances[0]
     expect(source?.url).toBe('/api/pair/events')
     source?.emit({ type: 'state', phase: 'lan-required', lanAvailable: true, deviceCount: 0, onlineCount: 0, tunnel: { state: 'running', url: 'https://tunnel.example' } })
-    await waitFor(() => expect(screen.getByText('https://tunnel.example/?pair=tok-2')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('https://tunnel.example/m/?pair=tok-2')).toBeTruthy())
     expect(document.querySelector('[data-testid="remote-qr"]')).not.toBeNull()
     expect(fetch.mock.calls.filter(call => call[0] === '/api/pair/issue')).toHaveLength(2)
   })
@@ -199,7 +204,7 @@ describe('RemoteEntry', () => {
   })
 
   it('renders the address picker on multi-homed hosts and re-mints on switch', async () => {
-    const { fetch } = mount({ ok: true, url: 'http://192.168.1.5:3080/?pair=tok-1', token: 'tok-1', expiresAt: Date.now() + 60_000, lanAddresses: ['192.168.1.5', '10.0.0.3'] })
+    const { fetch } = mount({ ok: true, url: 'http://192.168.1.5:3080/m/?pair=tok-1', token: 'tok-1', expiresAt: Date.now() + 60_000, lanAddresses: ['192.168.1.5', '10.0.0.3'] })
     fireEvent.click(screen.getByRole('button', { name: 'Mobile remote control' }))
     await waitFor(() => expect(screen.getByText('Network the QR code points to')).toBeTruthy())
     expect(screen.getByLabelText('192.168.1.5')).toBeTruthy()
@@ -246,7 +251,7 @@ describe('RemoteEntry', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith('http://192.168.1.5:3080/?pair=tok-1'))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('http://192.168.1.5:3080/m/?pair=tok-1'))
     await waitFor(() => expect(screen.getByText('Copied')).toBeTruthy())
   })
 })

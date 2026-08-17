@@ -133,6 +133,7 @@ export function DescribeImageSettingsCard(props: DescribeImageSettingsCardProps)
       t={t}
       titleKey="card.title"
       descriptionKey="card.description"
+      defaultOpen={false}
       state={state}
       onSave={props.save}
       onDiscard={props.discard}

@@ -95,7 +95,7 @@ async function runAccept(token: string, page: PageSurface): Promise<void> {
     // mobile surface can open the intended workspace instead of losing the
     // QR context at this navigation boundary.
     if (isMobileSurface()) {
-      url.pathname = '/m'
+      url.pathname = '/m/'
       page.navigate(`${url.pathname}${url.search}${url.hash}`)
     } else {
       page.reload()

@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 - Background controls: a background-occlusion slider (0–100%) veils the backdrop behind the panels for skins that paint one (blue-fantasy / whale-song), plus two per-state Gaussian-blur sliders (0–20 px) — 空对话 (blur when the conversation is empty) and 有对话 (blur once it has content). The active blur is applied through a fixed `backdrop-filter` element behind the shell; 0 disables it entirely (no element, no GPU cost). These apply only to skins that paint a backdrop; the official default has none.
 
+- Wallpaper Engine bridge: the card can use the machine's local Wallpaper Engine library as the GUI backdrop. The host half (`src/we-library.ts` + `src/we-routes.ts`) locates the WE install (Steam app 431960: registry + `libraryfolders.vdf` + probe paths on Windows), scans its projects and workshop content plus optional manual folders, and serves the inventory, media (Range-streamed), previews, web-wallpaper project files (with the WE API shim injected), and scene main-texture PNGs (decoded in-process from PKG/TEX by `src/pkg-extract.ts`, cached on disk) through same-origin `/api/skin-center/we/*` routes. Video wallpapers render in a `<video>`, web wallpapers in a sandboxed `<iframe>`, scene wallpapers as a static frame; a "static frame" render mode pins a zero-animation-cost image for any type. Per-wallpaper Import copies the project into `<harness-home>/skin-center/wallpapers/` so it survives Steam library changes, with update detection against the workshop original. Wallpapers are the user's own local files and are never uploaded or redistributed — Workshop content belongs to its authors. No Wallpaper Engine install (e.g. macOS)? The panel's Manual folders row adds any folder of `.mp4`/`.webm` files, a single wallpaper project folder, or a folder of projects as the library ('~' expands to the home directory).
+
 ## Install (official plugin bundle)
 
 Install the family skin aggregate package `@linxin666/dsh-skins` first (all skins plus the skin center in one); for this package alone use the `link:` commands below.
@@ -46,6 +48,12 @@ skins/skin-center/
   src/client/try-on.ts                               # try-on engine (real loader + mutual-exclusion restore, incl. official try-on)
   src/client/locales.ts                              # en/zh copy
   src/client/skin-center.module.css                  # panel styles (--dsw-* tokens, adapting to the skin)
+  src/we-library.ts                                 # WE library discovery (Steam/workshop/manual folders/import store)
+  src/we-routes.ts                                  # /api/skin-center/we/* routes (inventory/media/web/scene-frame/import)
+  src/we-shim-source.ts                             # WE Web API shim served to web wallpapers
+  src/pkg-extract.ts                                # in-process PKG/TEX decoder for scene static frames
+  src/client/wallpaper.ts                           # wallpaper layer controller (media/scrim layers, static frame, pause-on-hidden)
+  src/client/WallpaperPanel.tsx                     # wallpaper grid + render controls in the card
   src/client/generated/skins.ts                      # generated: skin registry (metadata only, do not hand-edit)
 ```
 

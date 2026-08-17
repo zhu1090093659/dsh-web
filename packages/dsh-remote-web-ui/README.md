@@ -2,29 +2,31 @@
 
 
 English | [中文](README.zh.md)
-> 移动端远程控制 + 一键远程更新：扫码配对后用手机远程使用当前 dsh web 工作区；
-> 点击侧边栏更新按钮自动检查并更新 dsh-web-ui 全家桶。
+> Mobile remote control + one-click updates: pair a phone to use the current dsh web workspace remotely; the sidebar checks for a newer dsh-web-ui release after it loads and marks the update button when one is available; clicking it updates the family.
 
 This repository is an external plugin package for DeepSeek Harness (DSH):
 scan-to-pair mobile remote control for the dsh web GUI, plus a one-click
 self-update for the dsh-web-ui family. It is a single dual-face package — the
 host half owns pairing tokens, device sessions, the `/api/pair` route family,
 and the `/api/update` surface; the browser half renders the sidebar-foot
-entries (the download trigger and a labelled mobile-remote row beside the settings button),
+entries (the download trigger and an icon-only mobile-remote control beside the settings button),
 the pairing panel with a QR code, live device status, and stop/refresh/copy
 actions, and the update panel that probes and runs the update.
 
 ## What it does
 
-- **Entry**: a visible "Mobile remote control" label in the expanded sidebar, collapsing to a phone icon in the narrow rail.
+- **Entry**: a phone icon beside the settings button in both the expanded sidebar and narrow rail; its tooltip and accessible label say "Mobile remote control".
 - **Panel**: "移动端远程控制" title, "扫码或在手机上打开链接，即可远程控制当前工作区"
   subtitle, a "手机扫码连接" card with the status area ("等待手机连接" + status
   badge), a large QR code, the "无法扫码？可以在手机上打开链接" hint, and three
   buttons: 停止 / 刷新二维码 / 复制链接.
 - **Phone side**: scanning the QR binds the phone with a one-time,
   time-limited token and lands it on the **standalone mobile surface at
-  `/m`** — a thin client purpose-built for a small screen (see
+  `/m/`** — a thin client purpose-built for a small screen (see
   [Screenshots](#screenshots)), not the desktop UI squeezed into a phone.
+  The page is installable as a PWA. Each installed app uses its own
+  paired-device cookie; a storage-isolated mobile web-app context pairs by
+  opening a fresh QR link there or pasting a fresh desktop-issued link.
   The link carries a `workspace` parameter so the phone lands in the same
   workspace the desktop was looking at.
 - **Security**: one active one-time token (a refresh invalidates the old
@@ -36,12 +38,14 @@ actions, and the update panel that probes and runs the update.
 - **Live status**: the desktop panel mirrors the pairing state in real time
   (waiting → connected → disconnected) over an SSE stream.
 - **Remote update**: the download trigger in the sidebar foot (left of the
-  phone icon) opens the update panel, which probes the npm registry for the
-  installed `@linxin666/dsh-*` family releases. Without the aggregate package,
-  checks and updates cover every registry-managed direct `@linxin666/*`
-  dependency in the profile; local link/file development dependencies are
-  skipped. When a newer release exists
-  the panel runs the update automatically (`pnpm update --latest` inside the
+  phone icon) performs a silent status probe after the sidebar loads. When a
+  newer registry release is available, the trigger shows a dot and the "New
+  version available. Check for updates" tooltip. Clicking the trigger opens the
+  update panel, which probes the npm registry for the installed
+  `@linxin666/dsh-*` family releases. Without the aggregate package, checks and
+  updates cover every registry-managed direct `@linxin666/*` dependency in the
+  profile; local link/file development dependencies are skipped. When a newer
+  release exists, the panel runs the update automatically (`pnpm update --latest` inside the
   owning dsh profile; when pnpm is missing it falls back to `corepack pnpm`
   and then `npx --yes pnpm`, and on Windows the command runs through
   `cmd.exe` so npm-installed `.cmd` shims resolve; the loopback-only
@@ -91,6 +95,7 @@ sun/moon toggle in every header flips to the dark palette at any time.
   runtime download covers installers that skip postinstall scripts). No
   user-side tooling, account, or domain is needed — a Cloudflare quick
   tunnel is free and anonymous.
+- Installing `/m/` as a PWA requires a secure context: `localhost` and `127.0.0.1` work for local use, while phone installation requires HTTPS. Plain LAN HTTP keeps the online mobile remote usable but cannot register its Service Worker.
 
 ## Install
 
@@ -123,7 +128,7 @@ mounts both halves.
 1. `dsh web --host 0.0.0.0` (the printed LAN URL confirms reachability).
 2. Click the phone icon → the panel mints a fresh one-time QR.
 3. Scan with the phone (or open the copied link): the phone binds and
-   lands on the **standalone mobile surface at `/m`** — no desktop UI on a
+   lands on the **standalone mobile surface at `/m/`** — no desktop UI on a
    small screen. The surface is deliberately thin:
    - workspaces straight away (a 新建会话 button lives on each workspace's
      session list: it creates a blank session attached to that workspace via
@@ -152,9 +157,10 @@ mounts both halves.
      sheet with persistent toggles for 工具调用 (tool-call disclosures) and
      系统提示词 (injected system messages), and a 上下文 usage chip that
      shows the latest assistant answer's context-fill percentage.
-4. The desktop badge flips to 已连接 in real time; it falls back to
+4. On a secure origin, install the `/m/` page from the browser. The installed app retains the same mobile remote capabilities; when its browser context has no paired-device cookie, paste a fresh desktop-issued pairing link into its pairing screen.
+5. The desktop badge flips to 已连接 in real time; it falls back to
    offline/断开 when the phone leaves.
-5. 刷新二维码 invalidates the old link and issues a new one. 停止 revokes
+6. 刷新二维码 invalidates the old link and issues a new one. 停止 revokes
    mobile access: paired devices 403 on their next request, including their
    live stream.
 
@@ -171,7 +177,7 @@ to the advisory `session.models` / `session.selectModel` pair, creation to
 directory of its own), and the permission picker only ever sends the
 mode-agnostic `/permission` command
 through the already-allowlisted `session.prompt`); the live stream arrives
-over Server-Sent Events on `/m/api/events.mux`.
+over Server-Sent Events on `/m/api/events.mux`. The canonical `/m/` page owns a same-scope manifest and Service Worker; its cache is limited to the static shell and an offline page, never mobile API responses, session data, or commands.
 
 ### Behavior notes
 
@@ -182,6 +188,7 @@ over Server-Sent Events on `/m/api/events.mux`.
   through its own `/m/api` preferences method when a chat opens. On
   browsers that support `field-sizing: content`, the input grows with the
   draft up to its 120px cap in either mode.
+- The `/m/` worker uses network-first static-shell fallback and waits for current pages to close before an updated worker activates. It bypasses `/m/api`, `/api`, SSE, and every write request.
 - Installing this plugin gates non-loopback `/api` access behind pairing
   (see `requirePairingForLan` in `src/index.ts`). A desktop browser opened
   via the LAN URL must pair like any remote device; loopback (127.0.0.1)
@@ -381,7 +388,8 @@ panel still opens at `http://127.0.0.1`.
 - **Quick-tunnel hostnames change per run**: a `trycloudflare.com` URL is
   random on every `cloudflared` start, so `--trusted-host` and
   `publicBaseUrl` must be updated together whenever the tunnel restarts.
-  A named tunnel (fixed hostname) avoids the churn.
+  A named tunnel (fixed hostname) avoids the churn and is required for a durable installed-PWA address.
+- **PWA is online-first**: only the static shell and offline page are cached. The running DSH host remains required for all mobile remote capabilities; no session, API response, or command is available offline.
 - **Dev HMR**: `dsh web --dev` polls every roster bundle by path, so
   rebuilding this package (its own `tsdown --watch`) hot-reloads the client
   bundle; no harness-side watcher is involved.

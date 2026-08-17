@@ -1,0 +1,36 @@
+---
+name: dsh-web-ui-agent-coding
+description: Use for an implementation, maintenance, or configuration task in the dsh-web-ui monorepo. Establishes the project-specific Agent Coding workflow and routes to focused skills.
+whenToUse: Any request that changes dsh-web-ui source, scripts, plugin configuration, generated assets, or repository automation.
+user-invocable: true
+---
+
+# dsh-web-ui Agent Coding
+
+This skill is guidance, not a replacement for repository instructions. [AGENTS.md](../../../AGENTS.md) is the authoritative source for repository rules.
+
+## Establish scope
+
+1. Confirm the workspace, repository root, current branch, and worktree status before writing. Preserve unrelated changes from other sessions; do not reset, clean, restore, or stage them.
+2. Read the root instructions, then the nearest applicable `AGENTS.md`. Read [packages/AGENTS.md](../../../packages/AGENTS.md) before changing a package and [docs/AGENTS.md](../../../docs/AGENTS.md) before writing documentation.
+3. Identify the smallest owner of the behavior: a plugin package, a skin, `shared/`, a generator in `scripts/`, or an aggregate package. Keep the change in that owner unless an existing shared abstraction is the real source of truth.
+
+## Implement within repository boundaries
+
+- DSH itself is an external host. Do not modify its checkout or make TypeScript resolve against it. Use the official `@deepseek-ai/*` SDK through installed dependencies.
+- Keep host, client, and shared logic in their respective package areas. Browser bundles must retain the platform-import and type-only SDK constraints in [packages/AGENTS.md](../../../packages/AGENTS.md).
+- Edit a generated shared copy only through its source in `shared/`, then run the documented synchronization command.
+- Add a package or change aggregate membership through the repository generators and update required documentation. Do not hand-edit generated output.
+- Build and exercise the affected behavior before declaring it complete. A commit alone is not delivery.
+
+## Route focused work
+
+- Use [dsh-web-ui-code-review](../dsh-web-ui-code-review/SKILL.md) for a review request.
+- Use [dsh-web-ui-pre-push-checks](../dsh-web-ui-pre-push-checks/SKILL.md) before a push, a pull request, or a claim that checks pass.
+- Use [dsh-web-ui-documentation](../dsh-web-ui-documentation/SKILL.md) for README, docs, or instruction changes.
+- Use [dsh-web-ui-web-qa](../dsh-web-ui-web-qa/SKILL.md) for client-facing behavior that needs live GUI verification.
+- For a new skin, community-plugin registration, or release, load the dedicated installed skill for that task instead of recreating its process here.
+
+## Finish
+
+Leave the worktree with only intentional changes from this task, regenerate any owned artifacts, run the relevant checks, and report the evidence actually obtained.

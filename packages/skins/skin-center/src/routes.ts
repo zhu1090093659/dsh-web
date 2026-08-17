@@ -27,8 +27,8 @@ import { currentSkin, useSkin, SKINS_DIR, listSkinDirCandidates, resolvePaths } 
 /** Browser-facing base path of the skin-center API. */
 export const SKIN_CENTER_API_PREFIX = '/api/skin-center'
 
-/** One JSON response. */
-function json(res: ServerResponse, status: number, body: unknown): void {
+/** One JSON response. Shared with the wallpaper routes (we-routes.ts). */
+export function json(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify(body))
 }
@@ -64,15 +64,19 @@ function isSameOriginRequest(req: IncomingMessage): boolean {
   return true
 }
 
-/** Reject cross-site requests with 403. */
-function requireSameOrigin(req: IncomingMessage, res: ServerResponse): boolean {
+/** Reject cross-site requests with 403. Shared with we-routes.ts. */
+export function requireSameOrigin(req: IncomingMessage, res: ServerResponse): boolean {
   if (isSameOriginRequest(req)) return true
   json(res, 403, { ok: false, error: 'cross-site-request-rejected' })
   return false
 }
 
-/** Read a JSON request body (bounded). */
-function readJsonBody(req: IncomingMessage): Promise<unknown> {
+/**
+ * Read a JSON request body (bounded to 64KB). Shared with we-routes.ts.
+ * Note: wallpaper imports copy files host-side, so no large upload ever
+ * travels this helper.
+ */
+export function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let size = 0
     const chunks: Buffer[] = []

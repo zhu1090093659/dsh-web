@@ -11,6 +11,8 @@
 
 - 背景控制：背景遮挡滑块（0–100%）为带背景插画的皮肤（blue-fantasy / whale-song）背后的背景加遮罩；另有两条按对话状态区分的背景高斯模糊滑块（0–20 px）——「空对话」在对话为空时生效、「有对话」在出现内容后生效。生效的模糊通过 shell 背后的一个固定 `backdrop-filter` 元素施加；设为 0 即完全关闭（无元素、无 GPU 开销）。这些控件仅对带背景插画的皮肤可见有效；官方默认无背景图。
 
+- Wallpaper Engine 桥接：卡片可以把本机 Wallpaper Engine 壁纸库用作 GUI 背景。host 半区（`src/we-library.ts` + `src/we-routes.ts`）定位 WE 安装（Steam 应用 431960：Windows 下走注册表 + `libraryfolders.vdf` + 探针路径），扫描其 projects 与创意工坊内容及可选的手动目录，经同源 `/api/skin-center/we/*` 路由提供清单、媒体流（支持 Range）、预览图、web 壁纸项目文件（注入 WE API shim）以及场景壁纸主纹理 PNG（由 `src/pkg-extract.ts` 进程内解码 PKG/TEX，落盘缓存）。视频壁纸用 `<video>` 渲染，网页壁纸用沙箱 `<iframe>`，场景壁纸以静态帧呈现；「静态帧」渲染模式可为任意类型钉一张零动画开销的图片。每张壁纸的「导入」把项目复制进 `<harness-home>/skin-center/wallpapers/`，Steam 库迁移后仍可使用，并对照工坊原件做更新检测。壁纸均为用户本机已有文件，绝不上传或再分发——创意工坊内容版权归其作者所有。没有 Wallpaper Engine（如 macOS）？面板的「手动目录」行可把任意 `.mp4`/`.webm` 文件夹、单个壁纸项目文件夹或项目合集文件夹加为壁纸库（'~' 会展开为用户主目录）。
+
 ## 安装（官方 plugin bundle 方式）
 
 推荐先装皮肤全家桶聚合包 `@linxin666/dsh-skins` 一次到位（含全部皮肤与皮肤中心）；只装本包时用下列 link 命令。
@@ -46,6 +48,12 @@ skins/skin-center/
   src/client/try-on.ts                               # 试穿引擎（真实 loader + 互斥还原，含官方试穿）
   src/client/locales.ts                              # en/zh 文案
   src/client/skin-center.module.css                  # 面板样式（--dsw-* token，随皮肤自适应）
+  src/we-library.ts                                 # WE 库发现（Steam/工坊/手动目录/导入存储）
+  src/we-routes.ts                                  # /api/skin-center/we/* 路由（清单/媒体/web/scene-frame/导入）
+  src/we-shim-source.ts                             # 供 web 壁纸的 WE API shim
+  src/pkg-extract.ts                                # 进程内 PKG/TEX 解码器（场景静态帧）
+  src/client/wallpaper.ts                           # 壁纸层控制器（media/scrim 层、静态帧、后台暂停）
+  src/client/WallpaperPanel.tsx                     # 卡片内的壁纸网格与渲染控件
   src/client/generated/skins.ts                      # 生成：皮肤注册表（仅元数据，勿手改）
 ```
 

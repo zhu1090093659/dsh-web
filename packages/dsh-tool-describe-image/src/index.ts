@@ -20,6 +20,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView } from '@deepseek-ai/dsh-tools'
 import { registerAttachRoute } from './attach-routes.ts'
 import { DEFAULT_MAX_BYTES } from './media.ts'
+import { createCapabilityProbe } from './model-capability.ts'
 import { Config, DESCRIBE_IMAGE_SETTINGS_NAMESPACE, resolveApiKey, resolveConfig, type ResolvedConfig } from './config-resolve.ts'
 import { callVision, createVisionCache, loadImage } from './vision-client.ts'
 import { mountOnce } from './mount-once.ts'
@@ -75,6 +76,11 @@ const DESCRIPTION_HEAD =
   + '"extract the table as CSV", "diagnose the UI layout problems", "translate the text into '
   + 'Chinese" — instead of leaving it to the default description: a targeted instruction produces '
   + 'a much more useful answer. '
+  + 'If your model accepts image input directly, never call this tool for an image that is already '
+  + 'visible to you in the conversation — analyze it with your own vision — and prefer a native '
+  + 'image-reading tool (when one is available to you) for local image files. Reserve this tool '
+  + 'for images you cannot see: http(s) URLs, `[image attachment …]` notes, or when your model '
+  + 'lacks image input entirely. '
 
 /** The describe_image call’s validated arguments. */
 export interface DescribeImageArgs {
@@ -135,8 +141,12 @@ function applyImpl(ctx: Context, config: Config = {}): void {
   // within the TTL reuse the prior answer instead of a second fetch.
   const visionCache = createVisionCache()
   // The webserver is optional (the loader-composition tests boot without one):
-  // the attach route registers only when the service is actually mounted.
-  registerAttachRoute(ctx, () => current().maxBytes ?? DEFAULT_MAX_BYTES)
+  // the attach route registers only when the service is actually mounted. The
+  // capability probe lets the browser send hook pass raw image blocks to
+  // models whose adapter declares image input, instead of rewriting every
+  // image-bearing send into describe-image references.
+  const probe = createCapabilityProbe(ctx)
+  registerAttachRoute(ctx, () => current().maxBytes ?? DEFAULT_MAX_BYTES, probe)
   ctx.tools.register(defineTool({
     name: 'describe_image',
     description: DESCRIPTION_HEAD

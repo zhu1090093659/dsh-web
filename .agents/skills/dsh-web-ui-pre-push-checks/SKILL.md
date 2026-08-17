@@ -1,0 +1,41 @@
+---
+name: dsh-web-ui-pre-push-checks
+description: Use before pushing, opening or updating a pull request, or claiming dsh-web-ui checks pass. Selects the required repository gates and diff-specific generation, build, and GUI evidence.
+whenToUse: A dsh-web-ui change is about to be pushed, submitted for review, merged, or reported as validated.
+user-invocable: true
+---
+
+# dsh-web-ui Pre-Push Checks
+
+Run checks from the repository root after the implementation is stable. This workflow supplements [AGENTS.md](../../../AGENTS.md); it does not replace a focused regression test for changed behavior.
+
+## Inspect the outgoing change
+
+1. Confirm the branch, repository root, and worktree status.
+2. Inspect the requested base-to-head diff and every dirty file that will be included.
+3. Run `git diff --check` before reporting success. Do not stage unrelated changes with `git add -A`.
+
+## Required repository gates
+
+Before a push or review claim, run the repository baseline unless a higher-priority instruction narrows the operation:
+
+```sh
+pnpm typecheck
+pnpm test
+pnpm test:scripts
+pnpm docs:check
+```
+
+Run the narrowest owning test first for a behavior change. Add an affected-package build or `pnpm build` when package exports, manifests, runtime entry points, generated bundles, or build configuration changed.
+
+## Add checks dictated by the diff
+
+- `shared/` changes: run `pnpm sync-shared` followed by `pnpm sync-shared:check`.
+- Aggregate membership or package additions/removals: regenerate with `node scripts/aggregate.mjs`, then run `pnpm aggregate:check`.
+- Skin assets, skin registry, or gallery changes: run `pnpm gallery:check` and `pnpm skin-center:check`.
+- Community plugin index changes: regenerate with `node scripts/community-index`, then run `pnpm community:check`.
+- Browser runtime imports, dependency manifests, or client bundle changes: run `pnpm runtime-deps:check` and the affected package build.
+- Changed package README files: update the paired language and record the pair through `pnpm docs:write-pair` before `pnpm docs:check`.
+- User-facing client changes: follow [dsh-web-ui-web-qa](../dsh-web-ui-web-qa/SKILL.md) and retain the actual GUI evidence.
+
+Report commands that ran and their outcomes. State any check not run and the concrete reason rather than implying full validation.

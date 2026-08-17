@@ -1,35 +1,15 @@
-/* Branch selector chip in the conversation header context hole.
-   Tokens by default; the stock-light fallback defines a small literal
-   palette because the unskinned shell tokens are too low-contrast. */
+/* Branch selector chip for blank sessions. Tokens by default; the stock-light
+   fallback defines a small literal palette because the unskinned shell tokens
+   are too low-contrast. */
 
 .anchor {
   position: relative;
 }
 
-/* Positioning wrapper for the chip + popover: the popover anchors to the
-   chip itself instead of the padded/inset dock row. */
+/* Positioning wrapper for the chip and popover. */
 .chipWrap {
   position: relative;
   display: inline-flex;
-}
-
-/* The dock seat spans its host row while the input card below is inset
-   relative to that row. The hero-phase clearance is the fallback; the
-   component measures the real card edge and applies it inline so the chip
-   starts exactly where the input card starts in every phase. */
-.anchorDock {
-  --gitgraph-dock-gap-tighten: -8px;
-  /* First-paint fallback before the component measures the real card edge:
-     mirror the composer card's centering so the chip starts over the card's
-     left edge instead of flashing at the row's side clearance (#375). The
-     measured inline padding overrides this after the first layout pass. */
-  padding-left: max(
-    var(--dsh-composer-side-clearance, 16px),
-    calc((100% - var(--dsh-composer-card-max-width, 100%)) / 2)
-  );
-  /* The fallback dock row sits above the input card; this keeps its visual
-     gap compact without moving the hero row. */
-  margin-bottom: var(--gitgraph-dock-gap-tighten);
 }
 
 /* Hero phase: leave the dock row and join the official hero chip row. The
@@ -58,40 +38,6 @@
   white-space: nowrap;
   transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease,
     gap 120ms ease, padding 120ms ease;
-}
-
-/* Compact dock chip (#402): in an active conversation the full branch pill
-   above the composer reads as a stray button, so the dock seat collapses to
-   a quiet icon-only chip. Hover, keyboard focus, and the open popover all
-   restore the full pill; the hero row never compacts. */
-.chipCompact {
-  gap: 0;
-  padding: 0 6px;
-}
-
-.chipCompact .chipLabel,
-.chipCompact .chipChevron {
-  max-width: 0;
-  opacity: 0;
-  overflow: hidden;
-  transition: max-width 160ms ease, opacity 120ms ease;
-}
-
-.chipCompact:hover,
-.chipCompact:focus-visible,
-.chipCompact.chipOpen {
-  gap: 6px;
-  padding: 0 10px;
-}
-
-.chipCompact:hover .chipLabel,
-.chipCompact:hover .chipChevron,
-.chipCompact:focus-visible .chipLabel,
-.chipCompact:focus-visible .chipChevron,
-.chipCompact.chipOpen .chipLabel,
-.chipCompact.chipOpen .chipChevron {
-  max-width: 220px;
-  opacity: 1;
 }
 
 .chip:hover {
@@ -746,8 +692,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .chip,
-  .chipCompact .chipLabel,
-  .chipCompact .chipChevron,
   .searchBox,
   .searchInput,
   .item,

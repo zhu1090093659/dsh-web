@@ -21,21 +21,15 @@ export interface ChipProps {
   onClick: () => void
   /** The official hero-row seat style (transparent 28px pill beside the preset chip). */
   hero?: boolean
-  /**
-   * Quiet icon-only form for the active-conversation dock row: the full pill
-   * above the composer reads as a stray button mid-chat (#402), so the dock
-   * seat collapses to the branch icon and re-expands on hover/focus/open.
-   */
-  compact?: boolean
 }
 
 /** The pill button shared by the project and branch chips. */
-export function Chip({ icon, label, ariaLabel, open, onClick, hero = false, compact = false }: ChipProps) {
+export function Chip({ icon, label, ariaLabel, open, onClick, hero = false }: ChipProps) {
   return (
     <button
       type="button"
       data-gitgraph-chip
-      className={cx(css.chip, open && css.chipOpen, hero && css.chipHero, compact && css.chipCompact)}
+      className={cx(css.chip, open && css.chipOpen, hero && css.chipHero)}
       onClick={onClick}
       aria-label={ariaLabel}
       aria-expanded={open}

@@ -126,3 +126,48 @@ describe('installSendHook', () => {
     expect(blocks[0].type).toBe('text')
   })
 })
+
+describe('installSendHook capability gating', () => {
+  it('passes image sends through untouched when the session model accepts images', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const { face, log } = makeConversation()
+    const prompt = vi.fn(async () => ({ ok: true }))
+    installSendHook(face, undefined, async () => true)
+    await face.sendSession({ prompt, sessionId: 's1' } as never, 'look', ['id1'], 'queue')
+    expect(log).toEqual(['original'])
+    expect(prompt).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('rewrites when the checker reports a text-only model', async () => {
+    stubFileReader('QUJD')
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: '![图片](/describe-image/raw/sha256:x)' } }), { status: 200 })))
+    const { face, log } = makeConversation()
+    const prompt = vi.fn(async () => ({ ok: true }))
+    installSendHook(face, undefined, async () => false)
+    await face.sendSession({ prompt, sessionId: 's1' } as never, 'look', ['id1'], 'queue')
+    expect(log).toEqual(['release'])
+    expect(prompt).toHaveBeenCalledTimes(1)
+  })
+
+  it('rewrites when the checker throws, failing closed to the legacy path', async () => {
+    stubFileReader('QUJD')
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: '![图片](/describe-image/raw/sha256:x)' } }), { status: 200 })))
+    const { face, log } = makeConversation()
+    const prompt = vi.fn(async () => ({ ok: true }))
+    installSendHook(face, undefined, async () => { throw new Error('probe down') })
+    await face.sendSession({ prompt, sessionId: 's1' } as never, 'look', ['id1'], 'queue')
+    expect(log).toEqual(['release'])
+    expect(prompt).toHaveBeenCalledTimes(1)
+  })
+
+  it('still honors the disabled switch ahead of the capability check', async () => {
+    const { face, log } = makeConversation()
+    const checker = vi.fn(async () => true)
+    installSendHook(face, () => false, checker)
+    await face.sendSession({ prompt: vi.fn(), sessionId: 's1' } as never, 'look', ['id1'], 'queue')
+    expect(log).toEqual(['original'])
+    expect(checker).not.toHaveBeenCalled()
+  })
+})

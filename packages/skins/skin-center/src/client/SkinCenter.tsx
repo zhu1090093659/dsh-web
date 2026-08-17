@@ -15,7 +15,9 @@ import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { SKIN_CENTER_ENTRIES, type SkinCenterEntry } from './generated/skins.ts'
 import { manifestHasSkin } from './manifest.ts'
 import type { SkinBackgroundHandle } from './background.ts'
+import type { WallpaperHandle } from './wallpaper.ts'
 import { activeSkinEntry, TryOnController } from './try-on.ts'
+import { WallpaperPanel } from './WallpaperPanel.tsx'
 import css from './skin-center.module.css'
 
 /** Business face the skin-center apply() injects into the card. */
@@ -28,6 +30,8 @@ export interface SkinCenterInjected {
   }
   /** Background occluder over the shared skin-background namespace. */
   background: SkinBackgroundHandle
+  /** Wallpaper Engine bridge over the skin-wallpaper namespace. */
+  wallpaper: WallpaperHandle
 }
 
 /** Plugin-card component props: locale seat + injected face. */
@@ -47,7 +51,7 @@ const BACKDROP_SKIN_IDS = new Set(['blue-fantasy', 'whale-song', 'whale-mom'])
  * @param props - card props.
  * @returns the plugin card.
  */
-export function SkinCenter({ t, controller, theme, background }: SkinCenterComponentProps) {
+export function SkinCenter({ t, controller, theme, background, wallpaper }: SkinCenterComponentProps) {
   const snapshot = useSyncExternalStore(theme.subscribe, theme.getTheme)
   const enabled = useSyncExternalStore(background.subscribe, background.enabled)
   const opacity = useSyncExternalStore(background.subscribe, background.opacity)
@@ -416,6 +420,8 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
                   </div>
 
 
+                  <WallpaperPanel t={t} wallpaper={wallpaper} />
+
                   {error !== null && <div className={css.error}>{error}</div>}
 
                   <div className={css.list}>
@@ -491,10 +497,10 @@ export type SkinCenterSectionProps =
 
 /** Render the skin-center card as a first-level settings page. */
 export function SkinCenterSection(props: SkinCenterSectionProps): ReactNode {
-  const { t, controller, theme, background } = props
+  const { t, controller, theme, background, wallpaper } = props
   return (
     <ul className={css.sectionList}>
-      <SkinCenter t={t} controller={controller} theme={theme} background={background} />
+      <SkinCenter t={t} controller={controller} theme={theme} background={background} wallpaper={wallpaper} />
     </ul>
   )
 }

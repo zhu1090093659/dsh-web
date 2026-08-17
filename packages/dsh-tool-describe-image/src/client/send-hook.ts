@@ -48,11 +48,17 @@ const HOOK_MARKER = '__dshDescribeImageSendHooked'
  * (older shell) or already wrapped. When `isEnabled` is given it is read on
  * every send: a send that reports the interception disabled passes straight
  * through to the original `sendSession`, so other vision plugins keep the
- * raw image blocks (issue #301).
+ * raw image blocks (issue #301). When `acceptsImages` is given it is
+ * consulted per image-bearing send: a session whose model accepts image
+ * input passes straight through with the raw image blocks — rewriting them
+ * into references would hide the images behind a redundant describe_image
+ * call the model never needed. A checker failure answers false and the
+ * legacy rewrite proceeds, so text-only models never lose the feature.
  * @param conversation - the `conversation` service instance.
  * @param isEnabled - live switch; consulted per send (default: always on).
+ * @param acceptsImages - per-session capability predicate (default: always false).
  */
-export function installSendHook(conversation: unknown, isEnabled?: () => boolean): void {
+export function installSendHook(conversation: unknown, isEnabled?: () => boolean, acceptsImages?: (session: unknown) => Promise<boolean>): void {
   const face = conversation as ConversationSendFace
   if (face === null || typeof face !== 'object') return
   if (typeof face.sendSession !== 'function') return
@@ -66,6 +72,19 @@ export function installSendHook(conversation: unknown, isEnabled?: () => boolean
     }
     if (imageIds.length === 0) {
       return original.call(face, session, text, imageIds, mode)
+    }
+    if (acceptsImages !== undefined) {
+      let native = false
+      try {
+        native = await acceptsImages(session)
+      } catch {
+        native = false
+      }
+      // The session's model takes image input: the raw blocks reach it
+      // directly, so no describe-image reference rewrite is needed.
+      if (native) {
+        return original.call(face, session, text, imageIds, mode)
+      }
     }
     const attachments = face.draftImages(imageIds)
     if (attachments.length !== imageIds.length) {

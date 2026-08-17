@@ -11,6 +11,8 @@ import { createRoot } from 'react-dom/client'
 import { App } from './views/App.tsx'
 import { mobileCss } from './mobile-styles.ts'
 import { initMobileTheme } from './mobile-theme.ts'
+import { registerMobilePwa } from '../mobile-pwa.ts'
+import { consumeMobilePairUrl } from './pairing.ts'
 
 // Apply the persisted (or default light) theme before first paint, so the
 // page never flashes the wrong palette.
@@ -24,4 +26,16 @@ document.head.appendChild(style)
 
 const root = document.getElementById('root')
 if (root === null) throw new Error('mobile: #root missing')
-createRoot(root).render(<App />)
+void bootMobile(root)
+
+async function bootMobile(mount: HTMLElement): Promise<void> {
+  const pair = await consumeMobilePairUrl(window.location.href)
+  if (pair.kind === 'accepted') {
+    window.location.replace(pair.path)
+    return
+  }
+  if (pair.kind === 'failed') window.history.replaceState(null, '', pair.path)
+
+  void registerMobilePwa()
+  createRoot(mount).render(<App initialPairError={pair.kind === 'failed' ? pair.message : undefined} />)
+}

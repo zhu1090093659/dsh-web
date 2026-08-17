@@ -264,7 +264,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       const workspaceQuery = workspaceId === undefined ? '' : `&workspace=${encodeURIComponent(workspaceId)}`
       writeJson(res, 200, {
         ok: true,
-        url: `${base}/?pair=${token}${workspaceQuery}`,
+        url: `${base}/m/?pair=${token}${workspaceQuery}`,
         token,
         expiresAt,
         // Every constructible base, so a multi-homed panel can switch the

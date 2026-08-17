@@ -60,6 +60,25 @@ describe('PluginSettingsCard availability', () => {
     expect(screen.getByTestId('field')).toBeTruthy()
   })
 
+  it('honors an explicit collapsed default', () => {
+    render(
+      <PluginSettingsCard
+        t={t}
+        titleKey="settings.title"
+        descriptionKey="settings.description"
+        defaultOpen={false}
+        state={base({})}
+        onSave={() => {}}
+        onDiscard={() => {}}
+      >
+        <p data-testid="field">field</p>
+      </PluginSettingsCard>,
+    )
+    expect(screen.queryByTestId('field')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /show settings: live token estimation/i }))
+    expect(screen.getByTestId('field')).toBeTruthy()
+  })
+
   it('renders an explanation instead of vanishing when the namespace is not exposed', () => {
     render(
       <PluginSettingsCard

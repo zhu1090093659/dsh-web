@@ -222,7 +222,7 @@ export function RemoteEntry({ wide, useWorkspaces, t }: RemoteEntryProps) {
   )
 }
 
-/** The trigger: a labelled row when expanded, and an icon in the compact rail. */
+/** The trigger: an icon-only control with a persistent accessible label. */
 function TooltipAnchor({ wide, label, onClick }: { wide: boolean; label: string; onClick: () => void }) {
   return (
     <button
@@ -234,7 +234,6 @@ function TooltipAnchor({ wide, label, onClick }: { wide: boolean; label: string;
       onClick={onClick}
     >
       <PhoneIcon size={wide ? 16 : 18} />
-      {wide ? <span className={css.triggerLabel}>{label}</span> : null}
     </button>
   )
 }

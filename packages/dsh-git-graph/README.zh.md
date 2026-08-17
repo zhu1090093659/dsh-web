@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-外部 dsh Web GUI 插件：**git 分支选择器**与**Git 图谱**面板，优先挂在官方输入选择器行的 context 洞（`conversation.input.selector.context`，session-maybe list 槽位）里，与官方工作区选择胶囊并排、紧贴输入卡上方；若运行 shell 未声明该槽位（npm SDK rc.6 删除了它），等待 `CONTEXT_FALLBACK_MS` 后回退到 `conversation.input.dock`（0.1.9 的挂载点）。dock 上 active 相位测量输入卡左边缘、chip 与输入卡起点对齐；hero（空白会话）相位则把 chip 提升进官方 hero 行，紧贴 agent-preset 座位右侧（即预设名右侧），采用与官方工作区/预设胶囊一致的透明 28px 胶囊配方和 `--dsw-*` 主题 token。git 能力在 host 进程真实执行（磁盘工作树 `git switch`），UI 在浏览器 React；工作区选择完全交给官方入口（产品决策：自研选择器下线，不保留双入口）。
+外部 dsh Web GUI 插件：**git 分支选择器**与**Git 图谱**面板。分支选择器只在空白会话显示，挂在官方输入选择器行的 context 洞（`conversation.input.selector.context`，session-maybe list 槽位）中，与官方工作区选择胶囊并排。若运行 shell 未声明该槽位（npm SDK rc.6 删除了它），等待 `CONTEXT_FALLBACK_MS` 后回退到 `conversation.input.dock`；在其空白会话 hero 相位，chip 会提升进官方 hero 行，紧贴 agent-preset 座位右侧，采用与官方工作区/预设胶囊一致的透明 28px 胶囊配方和 `--dsw-*` 主题 token。active 会话不提供分支选择控件。git 能力在 host 进程执行（磁盘工作树 `git switch`），UI 在浏览器 React；工作区选择保留官方入口。
 
 行为对齐 ZCode 的 `GitBranchSwitcher`：可搜索弹层、当前项打勾、「创建并检出新分支… / Git 图谱」底部操作、切换守卫（未解决冲突 / 进行中操作 / 目标分支被其他 worktree 检出）与可读报错。
 
@@ -30,7 +30,7 @@ git 安装（无 sibling checkout 的消费者机器）走 `prepare` 脚本：`t
 
 ## 激活
 
-本包是 dsh profile bundle（`package.json` 声明 `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }`）。激活后，下次启动 `dsh web`（或对应 profile）时，bundle patch 的 insert 行把 `ui-git-graph`（host half：git 服务 + `/git/*` 路由）与浏览器 half（dsh.client 声明）一起装进 Web 组合；页面刷新后，空白会话上分支胶囊显示在 hero 行的 agent-preset 座位右侧，active 会话上显示在输入卡正上方的 dock 带、与输入卡左边缘对齐。
+本包是 dsh profile bundle（`package.json` 声明 `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }`）。激活后，下次启动 `dsh web`（或对应 profile）时，bundle patch 的 insert 行把 `ui-git-graph`（host half：git 服务 + `/git/*` 路由）与浏览器 half（dsh.client 声明）一起装进 Web 组合；页面刷新后，空白会话的分支胶囊显示在 hero 行的 agent-preset 座位右侧，active 会话不显示该控件。
 
 ### 通用安装（任何机器）
 
@@ -72,9 +72,9 @@ dsh plugin --profile web remove @linxin666/dsh-client-ui-git-graph
 - 边界与加载链调研、关键决策见 [docs/ADR-001-plugin-boundary.md](docs/ADR-001-plugin-boundary.md)。
 - host half 的 `/git/*` 只接受已注册 workspace 的路径（realpath 校验）与 loopback 客户端（loopback socket + loopback Host，与 dsh-ssh 相同的 fence）；浏览器无法对任意目录执行 git，LAN 暴露的 dsh web 对非 loopback 客户端返回 403。
 - 切换语义是工作区级：`git switch --no-guess <branch>` 作用于 repoRoot 磁盘树，影响该工作区所有会话；项目切换 = 激活目标工作区并打开其（复用或新建的）空白会话，不给既有会话换 cwd。
-- 挂载 seam：`conversation.input.selector.context`（官方声明的 session-maybe list 槽位）——输入选择器行的 context 洞，与官方工作区胶囊并排；hero（空白会话）与 active 会话相位都有分支胶囊；无会话 cwd 或非 git 工作区时分支 chip 自行隐藏。声明感知 + 回退：等待该槽位声明 `CONTEXT_FALLBACK_MS`（npm SDK rc.6 的 shell 已删除此声明），超时未声明则改挂 `conversation.input.dock`。dock 上 active 相位实时测量输入卡左边缘并与之对齐，并收起为仅图标的安静形态（悬停/键盘聚焦/弹层打开时展开为完整胶囊，#402）；hero 相位把 chip 重新定位到官方 hero 行 agent-preset 座位右侧（官方 2px 行间距、垂直居中，胶囊尺寸与 token 对齐官方工作区/预设胶囊），弹层改为向下打开、对齐官方工作区菜单。只挂一个座位，回退后迟到的 context 声明被忽略。
+- 挂载 seam：`conversation.input.selector.context`（官方声明的 session-maybe list 槽位）是输入选择器行的 context 洞，与官方工作区胶囊并排。分支胶囊只在空白会话显示；无会话 cwd 或非 Git 工作区时自行隐藏。声明感知回退会等待该槽位声明 `CONTEXT_FALLBACK_MS`（npm SDK rc.6 的 shell 已删除此声明）；超时未声明时，改在 `conversation.input.dock` 的空白会话 hero 相位挂载。此时 chip 重新定位到官方 hero 行 agent-preset 座位右侧（官方 2px 行间距、垂直居中，胶囊尺寸与 token 对齐官方工作区/预设胶囊），弹层向下打开、对齐官方工作区菜单。active 会话没有分支选择控件。只挂一个座位，回退后迟到的 context 声明被忽略。
 - 工作区选择不在此插件内：官方工作区胶囊（`conversation.input.selector.workspace`）是唯一入口，本插件只提供 git 分支上下文。
-- 分支状态刷新：挂载/弹层打开/切换成功后拉取 + host SSE（`/git/events`，订阅期间每 30s 轮询 workspace 状态，单次探测有 15s 超时兜底，挂起的 git 不会卡死推送流）推送外部变更 + window focus 刷新（5s 节流）。SSE 流经跨标签页选主中继共享（Web Locks + BroadcastChannel），同一 URL 全浏览器只保留一条流，多开标签页不会挤占同源 HTTP 连接池（#383）。
+- 分支状态刷新：空白会话 chip 挂载、弹层打开、切换成功后拉取，加上 host SSE（`/git/events`，订阅期间每 30s 轮询 workspace 状态，单次探测有 15s 超时兜底，挂起的 git 不会卡死推送流）推送外部变更和 window focus 刷新（5s 节流）。active 会话不订阅。SSE 流经跨标签页选主中继共享（Web Locks + BroadcastChannel），同一 URL 全浏览器只保留一条流，多开标签页不会挤占同源 HTTP 连接池（#383）。
 
 ## 检查链
 

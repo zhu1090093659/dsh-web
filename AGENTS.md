@@ -106,6 +106,7 @@ Release 更新说明由 `scripts/release-notes.mjs` 从常规提交自动分组�
 | 文件 | 作用 |
 | --- | --- |
 | 本文件（根 AGENTS.md） | 仓库布局、命令、全局规则，每个会话都需要 |
+| [.agents/skills/dsh-web-ui-agent-coding/SKILL.md](.agents/skills/dsh-web-ui-agent-coding/SKILL.md) | 项目 Agent Coding 工作流；按任务加载同目录下的开发、审查、文档、验证或 GUI 验收技能 |
 | [packages/AGENTS.md](packages/AGENTS.md) | 包级规则：SDK 约束、bundle 形态、测试纪律 |
 | [docs/AGENTS.md](docs/AGENTS.md) | 文档标准：结构分层、写作规则、i18n 配对 |
 | 各包 `AGENTS.md` | 该包特有规则（如 dsh-ssh 安全模型、dsh-skins 构建链） |

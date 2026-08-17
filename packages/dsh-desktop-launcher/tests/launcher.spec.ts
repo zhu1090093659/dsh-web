@@ -22,9 +22,9 @@ describe('file names', () => {
     expect(scriptFileName('win32')).toBe('launcher.ps1')
     expect(scriptFileName('darwin')).toBe('launcher.command')
     expect(scriptFileName('linux')).toBe('launcher.sh')
-    expect(desktopFileName('win32')).toBe('DSH.lnk')
-    expect(desktopFileName('darwin')).toBe('DSH.command')
-    expect(desktopFileName('linux')).toBe('dsh.desktop')
+    expect(desktopFileName('win32')).toBe('DeepSeek-Harness.lnk')
+    expect(desktopFileName('darwin')).toBe('DeepSeek-Harness.command')
+    expect(desktopFileName('linux')).toBe('deepseek-harness.desktop')
   })
 })
 
@@ -36,7 +36,10 @@ describe('launcher script rendering', () => {
     expect(script).toContain("$profile = 'web'")
     expect(script).toContain("$arguments += @('--profile', $profile)")
     expect(script).toContain('Start-Process $url')
-    expect(script).toContain('Start-Sleep -Seconds 1')
+    expect(script).toContain('Start-Sleep -Milliseconds 250')
+    expect(script).toContain('DeepSeek Harness')
+    expect(script).toContain('正在启动')
+    expect(script).toContain('XamlReader')
   })
 
   it('omits the profile flag when no profile is set', () => {

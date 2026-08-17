@@ -9,7 +9,10 @@ macOS .command / Linux .desktop），双击启动 dsh web 并打开 Web GUI。�
 - 双半区：host 半区（src/index.ts + src/routes.ts）提供 loopback 专用
   /api/dsh-desktop-launcher/create，写 ~/.dsh/desktop-launcher/ 与桌面图标；
   browser 半区（src/client/）在「Web UI 插件」组注册设置卡片（创建按钮 +
-  enabled / announceToAgent / dshCommand / url / profile 字段）。
+  enabled / announceToAgent / dshCommand / url / profile / iconPath 字段）。
+- Windows 启动器是 WPF「启动中」弹窗（launcher.ps1 内嵌 XAML），图标为内置白底
+  黑鲸资产（assets/dsh.ico + dsh.png）；改弹窗/图标先改 src/core/launcher.ts 与
+  assets/，再重建。launcher.ps1 必须带 UTF-8 BOM 写出（中文文案，PS 5.1 无 BOM 乱码）。
 - 纯逻辑在 src/core/launcher.ts（脚本渲染、文件名、路径转义），禁止在
   routes.ts 里内联生成逻辑；测试注入 homeDir / platform / run，不碰真实进程。
 - 三件套（settings-form.ts / PluginSettingsCard.tsx / settings-card.module.css）

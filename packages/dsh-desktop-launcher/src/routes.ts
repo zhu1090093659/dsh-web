@@ -81,8 +81,10 @@ function writeJson(res: ServerResponse, status: number, body: unknown): void {
  * bundle URL is tolerated (tests inject iconSource instead).
  */
 let bundledIconPath: string | undefined
+let bundledPngPath: string | undefined
 if (import.meta.url.startsWith('file:')) {
   try { bundledIconPath = fileURLToPath(new URL('../assets/dsh.ico', import.meta.url)) } catch { /* keep undefined */ }
+  try { bundledPngPath = fileURLToPath(new URL('../assets/dsh.png', import.meta.url)) } catch { /* keep undefined */ }
 }
 
 /**
@@ -167,15 +169,28 @@ export async function createDesktopShortcut(deps: LauncherRoutesDeps): Promise<C
   const scriptsDir = join(home, '.dsh', 'desktop-launcher')
   await mkdir(scriptsDir, { recursive: true })
   const launcherPath = join(scriptsDir, scriptFileName(platform))
-  await writeFile(launcherPath, renderLauncherScript(platform, spec), { mode: 0o755 })
-  // Copy the icon next to the launcher so the shortcut keeps working even if
-  // the source package moves; windows uses it as the .lnk icon, linux as the
-  // desktop-entry Icon.
-  let iconLocation: string | undefined
+  // UTF-8 BOM on Windows only: PowerShell 5.1 misreads the Chinese popup text
+  // without it, while POSIX scripts must not carry one (a BOM before the
+  // shebang breaks direct execution on Linux/macOS).
+  const launcherBody = renderLauncherScript(platform, spec)
+  const launcherContent = platform === 'win32' ? '\uFEFF' + launcherBody : launcherBody
+  await writeFile(launcherPath, launcherContent, { mode: 0o755 })
+  // Copy the icons next to the launcher so the shortcut keeps working even if
+  // the source package moves: windows uses dsh.ico as the .lnk icon, the
+  // startup popup and linux use dsh.png when available.
+  let iconIco: string | undefined
+  let iconPng: string | undefined
   const iconSource = resolveIconSource(spec.iconPath, deps.iconSource)
   if (iconSource !== undefined) {
-    iconLocation = join(scriptsDir, 'dsh.ico')
-    await copyFile(iconSource, iconLocation)
+    iconIco = join(scriptsDir, 'dsh.ico')
+    await copyFile(iconSource, iconIco)
+    if (/\.png$/i.test(iconSource)) {
+      iconPng = join(scriptsDir, 'dsh.png')
+      await copyFile(iconSource, iconPng)
+    } else if (bundledPngPath !== undefined && existsSync(bundledPngPath)) {
+      iconPng = join(scriptsDir, 'dsh.png')
+      await copyFile(bundledPngPath, iconPng)
+    }
   }
   const desktopDir = resolveDesktopDir(home, platform)
   await mkdir(desktopDir, { recursive: true })
@@ -185,13 +200,13 @@ export async function createDesktopShortcut(deps: LauncherRoutesDeps): Promise<C
   if (!dshFound) warning = `dsh command "${spec.dshCommand}" was not found on PATH; the launcher shows a message when run`
   if (platform === 'win32') {
     const installerPath = join(scriptsDir, 'install-shortcut.ps1')
-    await writeFile(installerPath, renderShortcutInstaller({ launcherPath, desktopPath: iconPath, homeDir: home, iconLocation: iconLocation ?? 'powershell.exe,0' }))
+    await writeFile(installerPath, renderShortcutInstaller({ launcherPath, desktopPath: iconPath, homeDir: home, iconLocation: iconIco ?? 'powershell.exe,0' }))
     const result = await run('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', installerPath])
     if (result.code !== 0) throw new Error(`shortcut creation failed: ${result.stderr}`)
   } else if (platform === 'darwin') {
     await writeFile(iconPath, renderLauncherScript(platform, spec), { mode: 0o755 })
   } else {
-    await writeFile(iconPath, renderDesktopEntry(launcherPath, iconLocation), { mode: 0o755 })
+    await writeFile(iconPath, renderDesktopEntry(launcherPath, iconPng ?? iconIco), { mode: 0o755 })
     await chmod(launcherPath, 0o755)
     // Best-effort trust marker: GNOME refuses untrusted desktop entries.
     const trust = await run('gio', ['set', iconPath, 'metadata::trusted', 'true'])

@@ -1,8 +1,7 @@
 {
   "name": "@linxin666/dsh-desktop-launcher",
   "description": "Desktop launcher for dsh: create a double-click desktop icon that starts dsh web and opens the Web GUI. Hot-pluggable — mounted via ~/.dsh/cordis.patch.yml + a profile node_modules symlink, no dsh source changes.",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.20",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {

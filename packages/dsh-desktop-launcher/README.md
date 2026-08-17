@@ -13,12 +13,17 @@ and Linux (.desktop).
   icon" button; the host writes the launcher script under
   `~/.dsh/desktop-launcher/` and places the icon on the Desktop.
 - Double-click behavior: probe the GUI URL; if it responds, open the browser.
-  Otherwise start `dsh web` (hidden on Windows), poll for up to 30 seconds,
-  then open the browser. If the `dsh` command is missing, the launcher shows a
-  message instead of failing silently.
+  Otherwise start `dsh web` (hidden on Windows), wait for the GUI to become
+  ready (up to 60 seconds on Windows, 30 on macOS/Linux), then open the
+  browser. If the `dsh` command is missing, the launcher shows a message
+  instead of failing silently.
 - The launcher is regenerated from the live settings each time you click the
   button, so `dshCommand`, `url` and `profile` changes apply on the next
   creation without editing the icon target.
+- The Windows shortcut uses the DeepSeek Harness whale icon (white background)
+  and shows a styled "starting" popup instead of a console window: it reports
+  progress (starting dsh, waiting for the GUI) and surfaces failures (missing
+  command, timeout) with a Close button.
 
 ## Install
 
@@ -68,8 +73,8 @@ All fields live in the plugin settings card (or in the composition entry):
 
 - The launcher assumes `dsh` is reachable on PATH at double-click time; if you
   installed dsh outside PATH, set `dshCommand` to the absolute command.
-- The 30-second readiness poll is fixed; very slow first starts may time out
-  (the launcher then shows a message).
+- The readiness poll is fixed (60 seconds on Windows, 30 on macOS/Linux);
+  very slow first starts may time out (the launcher then shows a message).
 - Creating the icon requires a Desktop directory; OneDrive-redirected Windows
   desktops are detected, other redirects may need a manual icon placement.
 

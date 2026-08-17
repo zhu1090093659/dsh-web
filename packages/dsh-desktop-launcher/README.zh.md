@@ -11,10 +11,11 @@
 - 设置 → 插件配置 → Web UI 插件 卡片内有「创建桌面图标」按钮；host 把启动脚本
   写到 `~/.dsh/desktop-launcher/`，并把图标放到桌面。
 - 双击行为：先探测 GUI 地址；已在响应则直接打开浏览器；否则后台启动
-  `dsh web`（Windows 隐藏窗口），最多轮询 30 秒后打开浏览器。找不到 `dsh`
-  命令时弹提示，而不是静默失败。
+  `dsh web`（Windows 隐藏窗口），等待 GUI 就绪（Windows 最多 60 秒，
+  macOS/Linux 30 秒）后打开浏览器。找不到 `dsh` 命令时弹提示，而不是静默失败。
 - 每次点按钮都会按当前设置重新生成启动脚本，因此 `dshCommand` / `url` /
   `profile` 修改后重新创建即生效，无需手动改图标目标。
+- Windows 快捷方式使用 DeepSeek Harness 鲸鱼图标（白底），启动时弹出深色风格的「启动中」小窗代替黑窗：实时显示进度（启动 dsh、等待 GUI 就绪），失败时（找不到命令 / 超时）红字提示并提供「确定」按钮。
 
 ## 安装
 
@@ -60,7 +61,8 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-desktop-launcher
 
 - 启动器假设双击时 `dsh` 在 PATH 中；dsh 不在 PATH 时把 `dshCommand` 配成
   绝对路径。
-- 30 秒就绪轮询是固定值；首次启动特别慢可能超时（启动器会弹提示）。
+- 就绪轮询是固定值（Windows 60 秒，macOS/Linux 30 秒）；首次启动特别慢可能
+  超时（启动器会弹提示）。
 - 创建图标需要桌面目录；Windows 的 OneDrive 重定向桌面会被识别，其他重定向
   可能需要手动放置图标。
 

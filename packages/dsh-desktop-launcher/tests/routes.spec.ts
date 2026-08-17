@@ -42,9 +42,12 @@ describe('createDesktopShortcut', () => {
       writeFileSync(iconFile, 'fake-ico', 'utf8')
       const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'win32', run: recordingRunner(calls), iconSource: iconFile })
       expect(result.ok).toBe(true)
-      expect(result.path).toBe(join(dir, 'Desktop', 'DSH.lnk'))
+      expect(result.path).toBe(join(dir, 'Desktop', 'DeepSeek-Harness.lnk'))
       expect(existsSync(join(dir, '.dsh', 'desktop-launcher', 'launcher.ps1'))).toBe(true)
       expect(existsSync(join(dir, '.dsh', 'desktop-launcher', 'install-shortcut.ps1'))).toBe(true)
+      // UTF-8 BOM: Windows PowerShell 5.1 needs it to read the Chinese popup text
+      const launcherScript = readFileSync(join(dir, '.dsh', 'desktop-launcher', 'launcher.ps1'), 'utf8')
+      expect(launcherScript.startsWith('\uFEFF')).toBe(true)
       // the bundled dsh icon is copied next to the launcher and wired into the .lnk
       expect(existsSync(join(dir, '.dsh', 'desktop-launcher', 'dsh.ico'))).toBe(true)
       expect(calls[0]?.file).toBe('where')
@@ -63,7 +66,7 @@ describe('createDesktopShortcut', () => {
     try {
       const calls: Call[] = []
       const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'darwin', run: recordingRunner(calls) })
-      const commandPath = join(dir, 'Desktop', 'DSH.command')
+      const commandPath = join(dir, 'Desktop', 'DeepSeek-Harness.command')
       expect(result.path).toBe(commandPath)
       // chmod is a no-op on win32 (tests run there too); CI runs the real check.
       if (process.platform !== 'win32') expect(statSync(commandPath).mode & 0o111).not.toBe(0)
@@ -78,11 +81,32 @@ describe('createDesktopShortcut', () => {
     try {
       const calls: Call[] = []
       const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'linux', run: recordingRunner(calls) })
-      const desktopPath = join(dir, 'Desktop', 'dsh.desktop')
+      const desktopPath = join(dir, 'Desktop', 'deepseek-harness.desktop')
       expect(result.path).toBe(desktopPath)
       expect(existsSync(desktopPath)).toBe(true)
+      // POSIX scripts must not carry the UTF-8 BOM (it breaks direct execution)
+      const launcherScript = readFileSync(join(dir, '.dsh', 'desktop-launcher', 'launcher.sh'), 'utf8')
+      expect(launcherScript.startsWith('\uFEFF')).toBe(false)
       const trust = calls.find(call => call.file === 'gio')
       expect(trust?.args).toEqual(['set', desktopPath, 'metadata::trusted', 'true'])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('copies a png icon next to the launcher and references it from the .desktop entry', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-png-'))
+    try {
+      const calls: Call[] = []
+      const pngFile = join(dir, 'custom.png')
+      writeFileSync(pngFile, 'fake-png', 'utf8')
+      const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'linux', run: recordingRunner(calls), iconSource: pngFile })
+      expect(result.ok).toBe(true)
+      const launcherDir = join(dir, '.dsh', 'desktop-launcher')
+      expect(existsSync(join(launcherDir, 'dsh.png'))).toBe(true)
+      expect(existsSync(join(launcherDir, 'dsh.ico'))).toBe(true)
+      const entry = readFileSync(join(dir, 'Desktop', 'deepseek-harness.desktop'), 'utf8')
+      expect(entry).toContain(`Icon=${join(launcherDir, 'dsh.png')}`)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -179,7 +203,7 @@ describe('route fence', () => {
     expect(response.status).toBe(200)
     const body = await response.json() as { result: { ok: boolean; path: string } }
     expect(body.result.ok).toBe(true)
-    expect(body.result.path).toBe(join(dir, 'Desktop', 'dsh.desktop'))
+    expect(body.result.path).toBe(join(dir, 'Desktop', 'deepseek-harness.desktop'))
   })
 
   it('rejects wrong methods with 405', async () => {

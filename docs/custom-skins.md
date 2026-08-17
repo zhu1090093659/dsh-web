@@ -175,7 +175,7 @@ DSH_SKINS_DIR=G:\skins
 
 皮肤中心的「背景遮罩」滑块把 `--dsw-skin-scrim`（0..1）写到 `document.body`。皮肤在背景渐变里用 `var(--dsw-skin-scrim, 默认值)` 引用它，滑块拖动时浏览器实时重绘，无需 JS。
 
-滑块（含模糊调节）当前只对声明了背景的皮肤 id 显示——内置皮肤中 `blue-fantasy`、`whale-song` 有该能力；**自定义皮肤要让滑块出现，需要把 id 加入皮肤中心客户端的背景皮肤白名单**（当前为编译期集合，插件更新会覆盖，见 [issue #354](https://github.com/zhu1090093659/dsh-web-ui/issues/354)）。
+滑块（含模糊调节）**对所有皮肤显示**，但仅对**背景皮肤白名单**内的皮肤生效——内置皮肤中 `blue-fantasy`、`whale-song` 在白名单内（`BACKDROP_SKIN_IDS`）；**自定义皮肤要让滑杆真正生效，需要把 id 加入皮肤中心客户端的背景皮肤白名单**（当前为编译期集合，插件更新会覆盖，见 [issue #354](https://github.com/zhu1090093659/dsh-web-ui/issues/354)）。
 
 ## 五、让背景图透出的完整 token 清单（关键）
 

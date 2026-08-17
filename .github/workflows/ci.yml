@@ -118,8 +118,8 @@ jobs:
   # Pack the aggregate bundle as an npm tarball, mount it into a REAL DSH
   # instance through the official `dsh plugin --profile web add` channel, and
   # render the DSH web UI headlessly (Playwright Chromium) to prove the
-  # right-panel transition: dsh-better-sidebar mounts, the aionui panel is
-  # disabled by default in the bundle (config patch), no crash markers.
+  # right-panel transition: dsh-better-sidebar mounts, no crash markers.
+  # (aionui-panel is no longer supported and carries no assertions.)
   # Requires the published family packages and dsh-better-sidebar (see
   # docs/publish-prep.md for the release order); runs keyless and
   # deterministic, no API key needed.

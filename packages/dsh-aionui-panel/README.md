@@ -2,6 +2,8 @@
 
 English | [中文](README.zh.md)
 
+> **Unsupported**: this panel is no longer maintained, tested, or covered by CI gates. The default right panel is [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar); this package stays installed only as a transitional fallback (Settings → Web UI Plugins → Right panel) and will be removed from the family aggregate in a future release.
+
 > A pixel-faithful re-implementation of AionUi's right-panel system (Apache-2.0 licensed reference implementation, not a copy): Explorer project panel (file tree / filename search / Git changes) + Preview panel (multi-tab preview of 10+ formats) + a unified draggable layout system, with per-project preference persistence.
 
 ## Install

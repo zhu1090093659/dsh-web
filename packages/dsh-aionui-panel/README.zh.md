@@ -2,6 +2,8 @@
 
 [English](README.md) | 中文
 
+> **已停止支持**：本面板不再维护、测试或纳入 CI 门禁。默认右侧面板为 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)；本包仅作过渡回退保留（设置 → Web UI 插件 → 右侧面板 可切回），后续版本将从全家桶聚合包移除。
+
 > AionUi 右侧面板的像素级复刻（Apache-2.0 授权参考实现，非抄录）：Explorer 项目面板（文件树 / 文件名搜索 / Git 变更）+ Preview 预览面板（10+ 格式多 tab 预览）+ 统一拖拽布局系统，按项目隔离的偏好持久化。
 
 ## 安装

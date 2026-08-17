@@ -166,6 +166,59 @@ function postRoute(path: string, run: (body: Record<string, unknown>) => Promise
 export interface SkinCenterRoutesDeps {
   /** Run `['use', <name>]` / `['current']`, resolving the CLI-equivalent stdout. */
   run?: (args: string[]) => Promise<string>
+  /** Skin registry root; tests override it, production uses DSH_SKINS_DIR resolution. */
+  skinsDir?: string
+}
+
+/** Browser-safe display metadata read from one skin.json. */
+interface SkinRosterEntry {
+  id: string
+  name: string
+  nameEn: string
+  tagline: string
+  accent: string
+  bodyAttr: string
+  package: string
+  author?: string
+  description?: string
+  tags?: string[]
+  order?: number
+}
+
+const NPM_PACKAGE_NAME_RE = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/
+
+/** Parse the fields the browser needs, skipping invalid or unbuilt skins. */
+function readRosterEntry(dir: string): SkinRosterEntry | null {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(joinPath(dir, 'skin.json'), 'utf8'))
+    if (typeof parsed !== 'object' || parsed === null) return null
+    const meta = parsed as Record<string, unknown>
+    const required = ['id', 'name', 'nameEn', 'tagline', 'accent', 'bodyAttr', 'package'] as const
+    if (required.some(key => typeof meta[key] !== 'string' || meta[key] === '')) return null
+    if (!/^[a-z0-9-]+$/.test(meta.id as string)) return null
+    if (!/^data-dsh-[a-z0-9-]+$/.test(meta.bodyAttr as string)) return null
+    if (!NPM_PACKAGE_NAME_RE.test(meta.package as string)) return null
+    if (statSync(joinPath(dir, 'lib', 'client.js'), { throwIfNoEntry: false })?.isFile() !== true) return null
+    if (meta.tags !== undefined && (!Array.isArray(meta.tags) || !meta.tags.every(tag => typeof tag === 'string'))) return null
+    if (meta.order !== undefined && (typeof meta.order !== 'number' || !Number.isFinite(meta.order))) return null
+    if (meta.author !== undefined && typeof meta.author !== 'string') return null
+    if (meta.description !== undefined && typeof meta.description !== 'string') return null
+    return {
+      id: meta.id as string,
+      name: meta.name as string,
+      nameEn: meta.nameEn as string,
+      tagline: meta.tagline as string,
+      accent: meta.accent as string,
+      bodyAttr: meta.bodyAttr as string,
+      package: meta.package as string,
+      ...(typeof meta.author === 'string' ? { author: meta.author } : {}),
+      ...(typeof meta.description === 'string' ? { description: meta.description } : {}),
+      ...(Array.isArray(meta.tags) ? { tags: meta.tags as string[] } : {}),
+      ...(typeof meta.order === 'number' ? { order: meta.order } : {}),
+    }
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -181,25 +234,24 @@ export interface SkinCenterRoutesDeps {
 /** Memoized id -> dir map; invalidated when the skins root (or the bundled
  * carrier dir) changes on disk, so a skin added mid-session still appears
  * without restarting. */
-let directoriesCache: { key: string; map: Map<string, string> } | null = null
+let directoriesCache: { key: string; map: Map<string, string>; skins: SkinRosterEntry[] } | null = null
 
-function skinDirectories(): Map<string, string> {
-  const rootStat = statSync(SKINS_DIR, { throwIfNoEntry: false })
-  const carrierStat = statSync(joinPath(SKINS_DIR, 'dsh-skins', 'skins'), { throwIfNoEntry: false })
-  const key = `${rootStat?.mtimeMs ?? -1}|${carrierStat?.mtimeMs ?? -1}`
-  if (directoriesCache !== null && directoriesCache.key === key) return directoriesCache.map
-  const out = new Map<string, string>()
-  for (const dir of listSkinDirCandidates(SKINS_DIR)) {
-    let meta: { id?: unknown }
-    try {
-      meta = JSON.parse(readFileSync(joinPath(dir, 'skin.json'), 'utf8'))
-    } catch {
-      continue
-    }
-    if (typeof meta.id === 'string' && /^[a-z0-9-]+$/.test(meta.id)) out.set(meta.id, dir)
+function discoverSkins(skinsDir: string): { map: Map<string, string>; skins: SkinRosterEntry[] } {
+  const rootStat = statSync(skinsDir, { throwIfNoEntry: false })
+  const carrierStat = statSync(joinPath(skinsDir, 'dsh-skins', 'skins'), { throwIfNoEntry: false })
+  const key = `${skinsDir}|${rootStat?.mtimeMs ?? -1}|${carrierStat?.mtimeMs ?? -1}`
+  if (directoriesCache !== null && directoriesCache.key === key) return directoriesCache
+  const discovered = new Map<string, { dir: string; entry: SkinRosterEntry }>()
+  for (const dir of listSkinDirCandidates(skinsDir)) {
+    const entry = readRosterEntry(dir)
+    if (entry !== null && !discovered.has(entry.id)) discovered.set(entry.id, { dir, entry })
   }
-  directoriesCache = { key, map: out }
-  return out
+  const map = new Map([...discovered].map(([id, value]) => [id, value.dir]))
+  const skins = [...discovered.values()]
+    .map(value => value.entry)
+    .sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.id.localeCompare(b.id))
+  directoriesCache = { key, map, skins }
+  return directoriesCache
 }
 
 /**
@@ -209,7 +261,7 @@ function skinDirectories(): Map<string, string> {
  * `window.__ModuleLoader__` without any eval.
  * @returns the prefix route (matches /api/skin-center/bundle/<id>).
  */
-function bundleRoute(): WebRoute {
+function bundleRoute(skinsDir: string): WebRoute {
   const prefix = `${SKIN_CENTER_API_PREFIX}/bundle`
   return {
     kind: 'prefix',
@@ -229,10 +281,10 @@ function bundleRoute(): WebRoute {
         return
       }
       try {
-        // skinDirectories maps id -> ABSOLUTE candidate dir (see
+        // discoverSkins maps id -> ABSOLUTE candidate dir (see
         // listSkinDirCandidates): direct skin dirs or bundled
         // dsh-skins/skins/<id> carriers.
-        const dir = skinDirectories().get(id)
+        const dir = discoverSkins(skinsDir).map.get(id)
         if (dir === undefined) {
           json(res, 404, { ok: false, error: 'skin-not-found' })
           return
@@ -257,6 +309,7 @@ function bundleRoute(): WebRoute {
  */
 export function makeSkinCenterRoutes(deps: SkinCenterRoutesDeps = {}): WebRoute[] {
   const run = deps.run ?? runDshSkin
+  const skinsDir = deps.skinsDir ?? SKINS_DIR
   // /state is polled every 250ms while an apply confirmation waits for the
   // config watcher. Cache the CLI answer briefly (750ms) keyed by the profile
   // patch path, so about half of the polling rounds never re-scan the patch
@@ -278,11 +331,15 @@ export function makeSkinCenterRoutes(deps: SkinCenterRoutesDeps = {}): WebRoute[
   }
   const invalidateCurrent = (): void => { currentCache = null }
   return [
+    getRoute(`${SKIN_CENTER_API_PREFIX}/skins`, async () => ({
+      ok: true,
+      skins: discoverSkins(skinsDir).skins,
+    })),
     getRoute(`${SKIN_CENTER_API_PREFIX}/state`, async () => ({
       ok: true,
       active: await current(),
     })),
-    bundleRoute(),
+    bundleRoute(skinsDir),
     postRoute(`${SKIN_CENTER_API_PREFIX}/apply`, async (body) => {
       const official = body.official === true
       const skin = body.skin

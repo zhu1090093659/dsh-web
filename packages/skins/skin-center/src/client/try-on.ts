@@ -136,28 +136,28 @@ function bootEntryIds(): string[] {
 }
 
 /** The skin package currently ACTIVE in the boot graph, if it is one of ours. */
-function bootSkinEntry(): SkinCenterEntry | undefined {
+function bootSkinEntry(entries: readonly SkinCenterEntry[] = SKIN_CENTER_ENTRIES): SkinCenterEntry | undefined {
   const ids = new Set(bootEntryIds())
-  return SKIN_CENTER_ENTRIES.find(entry => ids.has(entry.package))
+  return entries.find(entry => ids.has(entry.package))
 }
 
 /**
  * Hot-committed skin override (issue #359): a one-click apply mounts the new
  * skin in place — the boot graph only catches up on the next app start, so
  * until the page reloads, activeSkinEntry reports the committed skin instead
- * of the boot-graph one. A null package means the official stock look was
+ * of the boot-graph one. A null entry means the official stock look was
  * committed.
  */
-let hotOverride: { pkg: string | null } | undefined
+let hotOverride: { entry: SkinCenterEntry | null } | undefined
 
 /** The skin currently driving the page: the hot-committed one, else the boot-graph one. */
-export function activeSkinEntry(): SkinCenterEntry | undefined {
+export function activeSkinEntry(
+  entries: readonly SkinCenterEntry[] = SKIN_CENTER_ENTRIES,
+): SkinCenterEntry | undefined {
   if (hotOverride !== undefined) {
-    return hotOverride.pkg === null
-      ? undefined
-      : SKIN_CENTER_ENTRIES.find(entry => entry.package === hotOverride?.pkg)
+    return hotOverride.entry ?? undefined
   }
-  return bootSkinEntry()
+  return bootSkinEntry(entries)
 }
 
 /** Test seam: clear a hot-committed override (a real page reload does this naturally). */
@@ -225,6 +225,8 @@ interface ActiveVisuals {
  * captured active-skin visuals, and restores everything on exit.
  */
 export class TryOnController {
+  private entries: readonly SkinCenterEntry[] = SKIN_CENTER_ENTRIES
+
   private session: {
     /** The tried-on skin, or null when trying on the official stock look. */
     entry: SkinCenterEntry | null
@@ -263,6 +265,12 @@ export class TryOnController {
   constructor(options: { loadBundle?: (entry: SkinCenterEntry) => Promise<void> } = {}) {
     this.loadBundle = options.loadBundle ?? (entry => loadBundleScript(`${BUNDLE_ROUTE}/${encodeURIComponent(entry.id)}`))
   }
+
+  /** Replace the generated roster with the host-discovered installed skins. */
+  setEntries(entries: readonly SkinCenterEntry[]): void {
+    this.entries = entries
+  }
+
   /** The skin currently being tried on, if any. */
   get trying(): SkinCenterEntry | null {
     return this.session?.entry ?? null
@@ -305,7 +313,7 @@ export class TryOnController {
    * @returns whether this request mounted the target (false when superseded).
    */
   async tryOn(entry: SkinCenterEntry): Promise<boolean> {
-    if (entry.package === activeSkinEntry()?.package) return false
+    if (entry.package === activeSkinEntry(this.entries)?.package) return false
     // Re-trying the skin that is ALREADY the live preview is a no-op: each
     // bundle materialization injects its CSS exactly once (a per-bundle
     // style[data-plugin-css] dedup guard), so the load/transfer/cleanup cycle
@@ -362,7 +370,7 @@ export class TryOnController {
    * active skin exactly like any other try-on session.
    */
   tryOnOfficial(): void {
-    if (activeSkinEntry() === null) return
+    if (this.session === null && activeSkinEntry(this.entries) === undefined) return
     // Already previewing the official look: keep the live session untouched.
     if (this.session !== null && this.session.entry === null) return
     this.epoch += 1
@@ -404,7 +412,7 @@ export class TryOnController {
     const epoch = ++this.epoch
     this.requestedPackage = null
 
-    const currentPackage = activeSkinEntry()?.package ?? null
+    const currentPackage = activeSkinEntry(this.entries)?.package ?? null
     if (currentPackage === (target?.package ?? null)) return
 
     // Load first: a failed load must leave the incumbent untouched.
@@ -431,7 +439,7 @@ export class TryOnController {
         throw error
       }
     }
-    hotOverride = { pkg: target?.package ?? null }
+    hotOverride = { entry: target }
   }
 
   /** Exit the live session: dispose the tried-on skin, then restore the active skin. */
@@ -527,7 +535,7 @@ export class TryOnController {
    * skin can take over the whole surface.
    */
   private captureAndRetractActive(): ActiveVisuals {
-    const skin = activeSkinEntry() ?? null
+    const skin = activeSkinEntry(this.entries) ?? null
     const body = document.body
     const bodyAttr = skin === null ? null : body.getAttribute(skin.bodyAttr)
     if (skin !== null && bodyAttr !== null) body.removeAttribute(skin.bodyAttr)

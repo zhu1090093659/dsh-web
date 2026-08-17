@@ -483,7 +483,7 @@ describe('TryOnController skin switching', () => {
     expect(document.body.getAttribute(active.bodyAttr)).toBe('')
   })
 
-  it('notifies subscribers on session transitions', async () => {
+  it('notifies subscribers when a skin preview switches to the official look', async () => {
     const c = controller()
     const seen: Array<string | null> = []
     c.subscribe(() => seen.push(c.trying?.id ?? null))
@@ -516,6 +516,52 @@ describe('TryOnController commit (hot swap, #359)', () => {
       const c = committed.pop()
       if (c !== undefined) await c.commit(null).catch(() => {})
     }
+  })
+
+  it('recognizes an active skin supplied by the dynamic roster', () => {
+    const custom: SkinCenterEntry = {
+      id: 'custom-wallpaper',
+      name: '自定义壁纸',
+      nameEn: 'Custom Wallpaper',
+      tagline: 'Local wallpaper skin',
+      accent: '#336699',
+      bodyAttr: 'data-dsh-custom-wallpaper',
+      package: '@local/dsh-client-ui-skin-custom-wallpaper',
+    }
+    window.__DSH_BOOT__ = { entries: [{ id: custom.package }] }
+
+    expect(activeSkinEntry([custom])).toBe(custom)
+  })
+
+  it('keeps a dynamically supplied skin active after a hot commit', async () => {
+    const custom: SkinCenterEntry = {
+      id: 'custom-wallpaper',
+      name: '自定义壁纸',
+      nameEn: 'Custom Wallpaper',
+      tagline: 'Local wallpaper skin',
+      accent: '#336699',
+      bodyAttr: 'data-dsh-custom-wallpaper',
+      package: '@local/dsh-client-ui-skin-custom-wallpaper',
+    }
+    const c = tracked(new TryOnController({
+      loadBundle: async target => {
+        window.__ModuleLoader__?.load({
+          id: target.package,
+          factory: () => ({
+            apply(ctx: { effect(register: () => () => void): void }) {
+              document.body.setAttribute(target.bodyAttr, '')
+              ctx.effect(() => () => { document.body.removeAttribute(target.bodyAttr) })
+            },
+          }),
+        })
+      },
+    }))
+    c.setEntries([custom])
+
+    await c.commit(custom)
+
+    expect(document.body.getAttribute(custom.bodyAttr)).toBe('')
+    expect(activeSkinEntry()).toBe(custom)
   })
 
   it('mounts the applied skin in place and flips the active marker', async () => {

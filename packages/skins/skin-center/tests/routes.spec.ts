@@ -5,9 +5,12 @@
  * error path. Mirrors packages/dsh-remote-web-ui/tests/routes.spec.ts.
  */
 import { createServer, request as httpRequest } from 'node:http'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { makeSkinCenterRoutes, SKIN_CENTER_API_PREFIX } from '../src/routes.ts'
 
@@ -103,6 +106,85 @@ async function call(
 }
 
 describe('skin-center routes', () => {
+  it('GET /skins lists a custom skin discovered from the configured root', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'skin-center-roster-'))
+    const custom = join(root, 'custom-wallpaper')
+    mkdirSync(join(custom, 'lib'), { recursive: true })
+    writeFileSync(join(custom, 'lib', 'client.js'), 'window.__customSkin = true')
+    writeFileSync(join(custom, 'skin.json'), JSON.stringify({
+      id: 'custom-wallpaper',
+      name: '自定义壁纸',
+      nameEn: 'Custom Wallpaper',
+      author: 'Local user',
+      tagline: 'Local wallpaper skin',
+      description: 'Loaded from DSH_SKINS_DIR.',
+      tags: ['custom', 'wallpaper'],
+      accent: '#336699',
+      bodyAttr: 'data-dsh-custom-wallpaper',
+      package: '@local/dsh-client-ui-skin-custom-wallpaper',
+      order: 42,
+      wiring: { id: 'ui-skin-custom-wallpaper', bundleWired: false },
+    }))
+    const { run } = stubRunner([])
+    const server = await serve(makeSkinCenterRoutes({ run, skinsDir: root }))
+    try {
+      const response = await call(server.port, 'GET', `${SKIN_CENTER_API_PREFIX}/skins`)
+      expect(response.status).toBe(200)
+      expect(response.body).toEqual({
+        ok: true,
+        skins: [{
+          id: 'custom-wallpaper',
+          name: '自定义壁纸',
+          nameEn: 'Custom Wallpaper',
+          author: 'Local user',
+          tagline: 'Local wallpaper skin',
+          description: 'Loaded from DSH_SKINS_DIR.',
+          tags: ['custom', 'wallpaper'],
+          accent: '#336699',
+          bodyAttr: 'data-dsh-custom-wallpaper',
+          package: '@local/dsh-client-ui-skin-custom-wallpaper',
+          order: 42,
+        }],
+      })
+    } finally {
+      await server.close()
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('GET /skins sorts valid built skins and skips incomplete entries', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'skin-center-roster-filter-'))
+    const writeSkin = (id: string, order: number, built = true): void => {
+      const dir = join(root, id)
+      mkdirSync(join(dir, 'lib'), { recursive: true })
+      if (built) writeFileSync(join(dir, 'lib', 'client.js'), 'window.__skin = true')
+      writeFileSync(join(dir, 'skin.json'), JSON.stringify({
+        id,
+        name: id,
+        nameEn: id,
+        tagline: `${id} tagline`,
+        accent: '#112233',
+        bodyAttr: `data-dsh-${id}`,
+        package: `@local/dsh-client-ui-skin-${id}`,
+        order,
+      }))
+    }
+    writeSkin('later-skin', 20)
+    writeSkin('early-skin', 1)
+    writeSkin('unbuilt-skin', 0, false)
+    const { run } = stubRunner([])
+    const server = await serve(makeSkinCenterRoutes({ run, skinsDir: root }))
+    try {
+      const response = await call(server.port, 'GET', `${SKIN_CENTER_API_PREFIX}/skins`)
+      expect(response.status).toBe(200)
+      expect((response.body as { skins: Array<{ id: string }> }).skins.map(skin => skin.id))
+        .toEqual(['early-skin', 'later-skin'])
+    } finally {
+      await server.close()
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it('GET /state reports the active skin from the CLI', async () => {
     const { run } = stubRunner([{ args: ['current'], out: 'minecraft\n' }])
     const server = await serve(makeSkinCenterRoutes({ run }))

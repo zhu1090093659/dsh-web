@@ -18,6 +18,7 @@ import { SKIN_CENTER_ENTRIES, type SkinCenterEntry } from './generated/skins.ts'
 import { manifestHasSkin } from './manifest.ts'
 import type { SkinBackgroundHandle } from './background.ts'
 import type { WallpaperHandle } from './wallpaper.ts'
+import { loadSkinRoster } from './skin-roster.ts'
 import { activeSkinEntry, TryOnController } from './try-on.ts'
 import { WallpaperPanel } from './WallpaperPanel.tsx'
 import css from './skin-center.module.css'
@@ -59,8 +60,9 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
   const opacity = useSyncExternalStore(background.subscribe, background.opacity)
   const blurEmpty = useSyncExternalStore(background.subscribe, background.blurEmpty)
   const blurContent = useSyncExternalStore(background.subscribe, background.blurContent)
-  const activePackage = activeSkinEntry()?.package
-  const activeId = activeSkinEntry()?.id
+  const [entries, setEntries] = useState<readonly SkinCenterEntry[]>(SKIN_CENTER_ENTRIES)
+  const activePackage = activeSkinEntry(entries)?.package
+  const activeId = activeSkinEntry(entries)?.id
   const backdropActive = activeId !== undefined && BACKDROP_SKIN_IDS.has(activeId)
   // The trying badge tracks the controller's live session instead of local
   // state, so it survives the card unmounting when the settings panel closes
@@ -80,9 +82,18 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
   // UI state chosen by a newer click.
   const tryOnRequest = useRef(0)
   useEffect(() => {
+    let cancelled = false
     mounted.current = true
-    return () => { mounted.current = false }
-  }, [])
+    void loadSkinRoster().then(roster => {
+      if (cancelled) return
+      controller.setEntries(roster)
+      setEntries(roster)
+    })
+    return () => {
+      cancelled = true
+      mounted.current = false
+    }
+  }, [controller])
 
   const tryOn = (entry: SkinCenterEntry): void => {
     if (loadingId === entry.id) return
@@ -243,7 +254,7 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
           }
           const entry = target === OFFICIAL
             ? null
-            : SKIN_CENTER_ENTRIES.find(candidate => candidate.id === target) ?? null
+            : entries.find(candidate => candidate.id === target) ?? null
           if (entry === null && target !== OFFICIAL) {
             reloadFallback()
             return
@@ -314,7 +325,7 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
         <span className={css.headText}>
           <span className={css.pluginName}>
             {t('title')}
-            <span className={css.titleBadge}>{String(SKIN_CENTER_ENTRIES.length)}</span>
+            <span className={css.titleBadge}>{String(entries.length)}</span>
           </span>
           <span className={css.cardDescription} title={t('cardDescription')}>{t('cardDescription')}</span>
         </span>
@@ -451,7 +462,7 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
                       )
                     })()}
 
-                    {SKIN_CENTER_ENTRIES.map(entry => {
+                    {entries.map(entry => {
                       const isActive = entry.package === activePackage
                       const isTrying = entry.id === tryingId
                       const badge = isActive ? t('active') : isTrying ? t('tryingOn') : null

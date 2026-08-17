@@ -63,6 +63,11 @@
     - id: web-ui-liangshen
       name: '@linxin666/dsh-liangshen'
 
+# from ../dsh-desktop-launcher
+- insert:
+    - id: web-ui-desktop-launcher
+      name: '@linxin666/dsh-desktop-launcher'
+
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:
     - id: web-ui-skin-center

@@ -20,6 +20,7 @@
 | packages/dsh-live-stats | @linxin666/dsh-live-stats | 0.1.1 | true |
 | packages/dsh-ssh | @linxin666/dsh-ssh | 0.1.1 | true |
 | packages/dsh-liangshen | @linxin666/dsh-liangshen | 0.1.12 | false |
+| packages/dsh-desktop-launcher | @linxin666/dsh-desktop-launcher | 0.1.20 | false |
 | packages/dsh-aionui-panel | @linxin666/dsh-client-ui-aionui-panel | 0.1.1 | true |
 | packages/dsh-web-ui-settings | @linxin666/dsh-client-ui-web-ui-settings | 0.1.1 | true |
 | packages/dsh-community-plugins | @linxin666/dsh-client-ui-community-plugins | 0.1.17 | false |

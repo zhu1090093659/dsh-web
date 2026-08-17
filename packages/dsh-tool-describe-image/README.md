@@ -18,7 +18,7 @@ browser half, live settings, no dsh source changes.
 | Capability | Description |
 | --- | --- |
 | Three inputs | Local absolute path, http(s) URL (redirects refused), an `[image attachment …]` JSON note, or the short markdown reference a drag/paste produces (`![图片](/describe-image/raw/sha256:…)` — the model passes the id from the URL; the in-process attach registry resolves it and the store's digest verification still runs) |
-| Direct image send | Dragging or pasting an image into a text-only session is rewritten at send time into a describe-image reference (`![图片](/describe-image/raw/sha256:…)`) instead of an image block the model cannot read, so the image renders in the conversation and the model analyzes it through the tool. Models whose adapter declares the image input modality are detected automatically: the raw image blocks reach the model's own vision and no describe_image detour happens |
+| Direct image send | Dragged or pasted images use DSH's native multimodal path first. Only when the host explicitly rejects image input for the current model does the plugin upload them and retry with describe-image references (`![图片](/describe-image/raw/sha256:…)`) for tool-based analysis |
 | Custom instructions | The `prompt` argument carries your precise instruction (OCR, chart reading, UI diagnosis, translation…); the `defaultPrompt` config sets the fallback when the model passes none |
 | Live config card | Settings → Plugin config → Web UI Plugins → "Image understanding" card edits `baseURL` / `apiStyle` / `model` / API key / default instruction / bounds (through the settings seam); effective immediately, no restart |
 | Protocol styles | `apiStyle: chat-completions` (default) posts to `baseURL/chat/completions`; `apiStyle: responses` posts to `baseURL/responses` with `input` / `max_output_tokens` and reads `output_text`; `apiStyle: anthropic-messages` posts to `baseURL/v1/messages` with `x-api-key` auth (Claude-style endpoints such as OpenCode Go, Zhipu GLM, Moonshot Kimi) and reads `content[].text` |
@@ -69,7 +69,7 @@ actually configures it and per-call otherwise.)
 | `maxOutputTokens` | `1024` | Output-token cap: `max_tokens` under `chat-completions` and `anthropic-messages`, `max_output_tokens` under `responses` |
 | `timeoutMs` | `120000` | Per-call vision request timeout |
 | `renderImagePreview` | `true` | Upgrade image references in the conversation into inline thumbnails (click for full size); `false` keeps the raw reference text. Display-only — message text and model-side analysis are unchanged |
-| `interceptImageSend` | `true` | Rewrite image-bearing sends at submit into describe-image references; `false` passes image sends through untouched so other vision plugins sharing the session keep the raw image blocks (the text-only-model rewrite must then come from them) |
+| `interceptImageSend` | `true` | Send images through DSH's native model path first, then fall back to describe-image references only when the host explicitly reports that the current model does not support image input; `false` disables this fallback and leaves native sends and errors untouched |
 
 Configured mount example (profile `cordis.patch.yml` / composition file):
 
@@ -131,22 +131,11 @@ text model toward passing one. Calls without a `prompt` fall back to `defaultPro
 
 ### Sending images directly
 
-Text-only models have no image entry in the DSH input box, so drag or paste an image into the
-composer: at send time the plugin rewrites the image-bearing send into a describe-image reference
-(`![图片](/describe-image/raw/sha256:…)`) instead of an image block the model cannot read. The
-bytes travel to the host `/describe-image/attach` route (validated for size and magic bytes,
-persisted in the attachment store); only the reference text enters the session log.
-The web shell renders user messages as plain text, so the sent reference would sit in the
-transcript as raw markdown; with `renderImagePreview` on (the card's "Render image preview in
-chat" toggle, on by default) the client upgrades each reference in place into an inline thumbnail
-— click it for a full-size overlay. If the raw route is unreachable through the current origin
-(for example behind a proxy that does not forward it), the thumbnail load fails and the reference
-text stays as-is.
+Drag or paste an image into the composer as usual. With `interceptImageSend` enabled, the plugin first leaves the original image blocks intact and sends them through DSH's native multimodal path. If that succeeds, no image is uploaded to describe-image and no external vision endpoint is called. If the DSH host explicitly reports that the current model does not support image input, the plugin uploads the bytes through `/describe-image/attach` (validated for size and magic bytes, then persisted in the attachment store) and retries with describe-image references (`![图片](/describe-image/raw/sha256:…)`); only the reference text enters the fallback session prompt. Attachment corruption, summary mismatches, network failures, and other non-capability errors remain unchanged.
 
-The rewrite is a live switch — the settings card's "Rewrite image sends into describe-image
-references" toggle (`interceptImageSend`, on by default). Turn it off when another vision plugin
-shares the session and must receive the raw image blocks itself; sends then pass through
-untouched.
+The web shell renders user messages as plain text, so a fallback reference would sit in the transcript as raw markdown; with `renderImagePreview` on (the card's "Render image preview in chat" toggle, on by default) the client upgrades each reference in place into an inline thumbnail — click it for a full-size overlay. If the raw route is unreachable through the current origin (for example behind a proxy that does not forward it), the thumbnail load fails and the reference text stays as-is.
+
+The fallback is a live switch: the settings card's "Fall back to describe-image for unsupported models" toggle (`interceptImageSend`, on by default). Turn it off to bypass describe-image fallback completely; image sends and any native-path errors then pass through untouched.
 
 ## Known limitations
 

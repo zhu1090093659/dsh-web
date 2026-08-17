@@ -16,7 +16,7 @@
 | 能力 | 说明 |
 | --- | --- |
 | 三种输入 | 本地绝对路径、http(s) URL（拒绝重定向）、`[image attachment …]` JSON 附件引用，或拖拽/粘贴产生的短 markdown 引用（`![图片](/describe-image/raw/sha256:…)`——模型取 URL 中的 id 传入，进程内附件注册表解析，存储侧摘要校验照常执行） |
-| 直接发图 | 在纯文本会话里拖拽或粘贴图片，发送时被改写为 describe-image 引用（`![图片](/describe-image/raw/sha256:…)`），而不是模型读不了的图片块——图片在会话里正常渲染，模型经工具分析它。支持图片输入的模型（适配器声明 image 模态）会被自动识别：原图块直接交给模型本身的视觉，不再绕行 describe_image |
+| 直接发图 | 拖拽或粘贴的图片优先走 DSH 原生多模态链路；仅当 host 明确拒绝当前模型的图片输入时，插件才上传图片并改用 describe-image 引用（`![图片](/describe-image/raw/sha256:…)`）重试，由工具完成分析 |
 | 自定义指令 | `prompt` 参数携带你的精确指令（OCR、图表解读、UI 诊断、翻译…）；`defaultPrompt` 配置设置模型未传指令时的兜底文案 |
 | 实时配置卡 | 设置 → 插件配置 → Web UI 插件组 → 「图像理解」卡修改 `baseURL` / `apiStyle` / `model` / API key / 默认指令 / 各项上限（走设置服务），即时生效，无需重启 |
 | 多协议 | `apiStyle: chat-completions`（默认）请求 `baseURL/chat/completions`；`apiStyle: responses` 请求 `baseURL/responses`，使用 `input` / `max_output_tokens` 并读取 `output_text`；`apiStyle: anthropic-messages` 请求 `baseURL/v1/messages`（`x-api-key` 鉴权，Claude 风格端点如 OpenCode Go / 智谱 GLM / 月之暗面 Kimi），读取 `content[].text` |
@@ -66,7 +66,7 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
 | `maxOutputTokens` | `1024` | 输出 token 上限：`chat-completions` 与 `anthropic-messages` 发 `max_tokens`，`responses` 发 `max_output_tokens` |
 | `timeoutMs` | `120000` | 单次视觉请求超时 |
 | `renderImagePreview` | `true` | 会话里的图片引用原地升级为缩略图（点击查看大图）；`false` 保持原始引用文本。仅影响本地显示，消息文本与模型识别不变 |
-| `interceptImageSend` | `true` | 发送时把带图片的发送改写为 describe-image 引用；`false` 则图片发送原样放行，让同会话的其他视觉插件拿到原始图片块（此时文本模型的改写由它们负责） |
+| `interceptImageSend` | `true` | 图片优先走 DSH 原生模型链路，仅当 host 明确报告当前模型不支持图片输入时才回退为 describe-image 引用；`false` 完全禁用此回退，保留原生发送行为与错误 |
 
 带配置的挂载示例（profile 的 `cordis.patch.yml` / 组合文件）：
 
@@ -127,17 +127,11 @@ provider 路径会被保留：上述示例最终请求 `https://opencode.ai/zen/
 
 ### 从输入框发送图片
 
-DSH 输入框对纯文本模型没有图片入口，因此在输入框里拖拽或粘贴图片：发送时插件会把携带图片的
-发送改写为 describe-image 引用（`![图片](/describe-image/raw/sha256:…)`），而不是模型读不了的
-图片块。图片字节经 host 端 `/describe-image/attach` 路由上传（校验大小与 magic bytes，持久化
-到附件存储）；只有引用文本进入会话记录。Web shell 把用户消息渲染为纯文本，发送的引用本会
-以原始 markdown 文本留在会话里；开启 `renderImagePreview`（设置卡的「会话内渲染图片预览」
-开关，默认开）后客户端把每条引用原地升级为缩略图——点击查看大图。若 raw 路由经当前访问源
-不可达（如反向代理未转发该路由），缩略图加载失败，引用文本保持原样。
+像平常一样把图片拖拽或粘贴到输入框。启用 `interceptImageSend` 时，插件先保留原始图片块并通过 DSH 原生多模态链路发送；原生发送成功后，不会上传到 describe-image，也不会调用外部视觉端点。仅当 DSH host 明确报告当前模型不支持图片输入时，插件才通过 `/describe-image/attach` 上传图片字节（校验大小与 magic bytes，再持久化到附件存储），然后以 describe-image 引用（`![图片](/describe-image/raw/sha256:…)`）重试；回退会话提示中只有引用文本。附件损坏、摘要不匹配、网络故障及其他非能力错误均保持原样。
 
-改写是一个实时开关——设置卡的「发送时改写图片为 describe-image 引用」(`interceptImageSend`，
-默认开)。当其他视觉插件与当前会话共用、需要由它们接收原始图片块时请关闭；关闭后图片发送
-原样放行。
+Web shell 把用户消息渲染为纯文本，因此回退引用本会以原始 markdown 文本留在会话里；开启 `renderImagePreview`（设置卡的「会话内渲染图片预览」开关，默认开）后，客户端把每条引用原地升级为缩略图——点击查看大图。若 raw 路由经当前访问源不可达（如反向代理未转发该路由），缩略图加载失败，引用文本保持原样。
+
+回退由设置卡的实时开关「为不支持图片的模型启用 describe-image 回退」（`interceptImageSend`，默认开）控制。关闭后将完全绕过 describe-image 回退，图片发送和原生链路产生的错误均保持原样。
 
 ## 已知限制
 

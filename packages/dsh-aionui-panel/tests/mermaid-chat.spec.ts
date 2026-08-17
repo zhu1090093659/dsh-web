@@ -47,6 +47,21 @@ describe('enhanceScopesFor', () => {
     expect(scopes[0]).toBe(pre)
   })
 
+  it('promotes a settled language label mutation to its code-block wrapper', () => {
+    const block = document.createElement('div')
+    block.className = 'md-code-block'
+    const label = document.createElement('div')
+    label.className = '_infostring_shell'
+    const pre = document.createElement('pre')
+    pre.innerHTML = '<code>flowchart LR\nA--&gt;B</code>'
+    block.append(label, pre)
+    document.body.appendChild(block)
+    const language = document.createTextNode('mermaid')
+    label.appendChild(language)
+
+    expect(enhanceScopesFor([record(label, [language])])).toEqual([block])
+  })
+
   it('a removed-node-only record yields nothing', () => {
     const target = document.createElement('div')
     document.body.appendChild(target)

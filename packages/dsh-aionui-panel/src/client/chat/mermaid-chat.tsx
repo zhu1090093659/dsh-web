@@ -25,10 +25,10 @@ import previewCss from '../styles/preview.module.css'
 /**
  * Map a mutation batch to the minimal scan scopes that may contain new
  * mermaid fences. Each record contributes its target and its added nodes
- * (an added element directly; otherwise that node's parentElement), deduped
- * by identity. Disconnected nodes and removed-only records yield nothing —
- * removal never introduces a fence. Pure (DOM-read only) so tests can drive
- * it in jsdom.
+ * (an added element directly; otherwise that node's parentElement), promoted
+ * to the owning `.md-code-block` when present and deduped by identity.
+ * Disconnected nodes and removed-only records yield nothing — removal never
+ * introduces a fence. Pure (DOM-read only) so tests can drive it in jsdom.
  */
 export function enhanceScopesFor(records: MutationRecord[]): Element[] {
   const scopes = new Set<Element>()
@@ -37,11 +37,13 @@ export function enhanceScopesFor(records: MutationRecord[]): Element[] {
     // target scan is wasted, so only records carrying added nodes contribute.
     if (record.addedNodes.length === 0) continue
     if (record.target instanceof Element && record.target.isConnected) {
-      scopes.add(record.target)
+      scopes.add(record.target.closest('.md-code-block') ?? record.target)
     }
     for (const node of record.addedNodes) {
       const element = node instanceof Element ? node : node.parentElement
-      if (element !== null && element.isConnected) scopes.add(element)
+      if (element !== null && element.isConnected) {
+        scopes.add(element.closest('.md-code-block') ?? element)
+      }
     }
   }
   return Array.from(scopes)

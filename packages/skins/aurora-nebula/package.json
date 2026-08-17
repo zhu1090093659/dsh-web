@@ -1,0 +1,47 @@
+{
+  "name": "@linxin666/dsh-client-ui-skin-aurora-nebula",
+  "description": "Hot-pluggable Aurora Nebula skin for the dsh web GUI — 极光星舰: 青·靛·紫极光 · 星点 · 雷达环 · HUD 角标",
+  "version": "0.1.20",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepare": "tsdown",
+    "watch": "tsdown --watch",
+    "test": "vitest run"
+  },
+  "license": "Apache-2.0",
+  "peerDependencies": {},
+  "devDependencies": {
+    "jsdom": "29.1.1",
+    "lightningcss": "^1.32.0",
+    "tsdown": "^0.22.2",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.8",
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "files": [
+    "lib",
+    "skin.json",
+    "preview",
+    "README.md",
+    "README.zh.md",
+    "README.i18n.yaml"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
+}

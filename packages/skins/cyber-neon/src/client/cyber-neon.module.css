@@ -1,0 +1,534 @@
+/* ============================================================================
+   DSH WebUI ·「赛博霓虹 Cyber Neon」皮肤
+   深色科技感设计系统 v2 — 品红 × 青蓝双霓虹 + 透视地网格 + 扫描线
+   ----------------------------------------------------------------------------
+   用法: <html data-ds-skin="neon"> 时启用(由 assets/dsh-skin.js 循环控制)
+   皮肤 = 覆写 --dsw-* 语义 token + 霓虹背景层 + 玻璃质感 chrome
+   深色/浅色两套方案,跟随 body[data-ds-dark-theme] 自动切换
+   ============================================================================ */
+
+/* ---------------- 背景画布 ---------------- */
+
+
+body[data-dsh-cyber-neon] { background: transparent; }
+
+/* ============================================================================
+   背景场景(#dsh-bg 由 dsh-skin.js 注入):
+   霓虹光球 ×4 → 星点 → 雷达环 → HUD 角标 → 顶部能量线 → 透视地网格 → 扫描线
+   所有图层 position:fixed / z-index:-1,位于应用框架之后
+   ============================================================================ */
+body[data-dsh-cyber-neon] :global(.dsh-bg) {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ---- 光球 ×4:品红/青蓝/紫,独立漂移 ---- */
+body[data-dsh-cyber-neon] :global(.dsh-bg-orb) {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.9;
+}
+body[data-dsh-cyber-neon] :global(.dsh-bg-orb-1) {
+  width: 620px; height: 620px; top: -230px; right: -130px;
+  background: radial-gradient(circle, rgba(255, 45, 149, 0.9) 0%, rgba(255, 45, 149, 0.45) 45%, transparent 72%);
+  animation: dshOrbN1 24s ease-in-out infinite alternate;
+}
+body[data-dsh-cyber-neon] :global(.dsh-bg-orb-2) {
+  width: 700px; height: 700px; bottom: -320px; left: -190px;
+  background: radial-gradient(circle, rgba(0, 229, 255, 0.85) 0%, rgba(0, 229, 255, 0.4) 45%, transparent 72%);
+  animation: dshOrbN2 29s ease-in-out infinite alternate;
+}
+body[data-dsh-cyber-neon] :global(.dsh-bg-orb-3) {
+  width: 500px; height: 500px; top: 30%; left: 42%;
+  background: radial-gradient(circle, rgba(162, 89, 255, 0.7) 0%, rgba(162, 89, 255, 0.32) 45%, transparent 72%);
+  animation: dshOrbN3 21s ease-in-out infinite alternate;
+}
+body[data-dsh-cyber-neon] :global(.dsh-bg-orb-4) {
+  width: 420px; height: 420px; bottom: -120px; right: 6%;
+  background: radial-gradient(circle, rgba(255, 110, 199, 0.6) 0%, rgba(255, 110, 199, 0.28) 45%, transparent 72%);
+  animation: dshOrbN4 33s ease-in-out infinite alternate-reverse;
+}
+@keyframes dshOrbN1 { from { transform: translate3d(0, 0, 0) scale(1); }    to { transform: translate3d(64px, 40px, 0) scale(1.14); } }
+@keyframes dshOrbN2 { from { transform: translate3d(0, 0, 0) scale(1.06); } to { transform: translate3d(-58px, -38px, 0) scale(1); } }
+@keyframes dshOrbN3 { from { transform: translate3d(0, 0, 0) scale(1); }    to { transform: translate3d(40px, -48px, 0) scale(1.16); } }
+@keyframes dshOrbN4 { from { transform: translate3d(0, 0, 0) scale(1.08); } to { transform: translate3d(-48px, -28px, 0) scale(1); } }
+
+/* 浅色:粉彩柔光 */
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-orb) {
+  opacity: 0.88;
+}
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-orb-1) { background: radial-gradient(circle, rgba(230, 0, 115, 0.95) 0%, rgba(230, 0, 115, 0.5) 45%, transparent 72%); }
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-orb-2) { background: radial-gradient(circle, rgba(0, 145, 199, 0.85) 0%, rgba(0, 145, 199, 0.45) 45%, transparent 72%); }
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-orb-3) { background: radial-gradient(circle, rgba(124, 58, 237, 0.72) 0%, rgba(124, 58, 237, 0.38) 45%, transparent 72%); }
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-orb-4) { background: radial-gradient(circle, rgba(219, 39, 119, 0.62) 0%, rgba(219, 39, 119, 0.32) 45%, transparent 72%); }
+
+/* ---- 星点:由 JS 生成,整体呼吸闪烁 ---- */
+body[data-dsh-cyber-neon] :global(.dsh-bg-stars) {
+  position: absolute;
+  inset: 0;
+  animation: dshStarsTwinkle 4s ease-in-out infinite alternate;
+}
+@keyframes dshStarsTwinkle {
+  from { opacity: 0.65; }
+  to   { opacity: 1; }
+}
+
+/* ---- 雷达环:霓虹双色,缓慢旋转 ---- */
+body[data-dsh-cyber-neon] :global(.dsh-bg-ring) {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 940px;
+  height: 940px;
+  margin-left: -470px;
+  margin-top: -470px;
+  border: 1px solid rgba(255, 45, 149, 0.34);
+  border-radius: 50%;
+  animation: dshRingSpin 80s linear infinite;
+}
+body[data-dsh-cyber-neon] :global(.dsh-bg-ring)::before {
+  content: "";
+  position: absolute;
+  inset: 96px;
+  border: 1px dashed rgba(0, 229, 255, 0.26);
+  border-radius: 50%;
+  animation: dshRingSpinRev 58s linear infinite;
+}
+body[data-dsh-cyber-neon] :global(.dsh-bg-ring)::after {
+  content: "";
+  position: absolute;
+  inset: 224px;
+  border: 1px solid rgba(162, 89, 255, 0.22);
+  border-radius: 50%;
+}
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-ring) { border-color: rgba(230, 0, 115, 0.55); }
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-ring)::before { border-color: rgba(0, 145, 199, 0.45); }
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-ring)::after { border-color: rgba(124, 58, 237, 0.38); }
+@keyframes dshRingSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes dshRingSpinRev {
+  to { transform: rotate(-360deg); }
+}
+
+/* ---- HUD 角标 ---- */
+body[data-dsh-cyber-neon] :global(.dsh-bg-hud) {
+  position: absolute;
+  inset: 0;
+}
+body[data-dsh-cyber-neon] :global(.dsh-bg-hud) i {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 0 solid rgba(0, 229, 255, 0.75);
+  opacity: 0.9;
+}
+body[data-dsh-cyber-neon] :global(.dsh-hud-tl) { top: 14px; left: 296px; border-top-width: 1.5px; border-left-width: 1.5px; border-top-left-radius: 7px; }
+body[data-dsh-cyber-neon] :global(.dsh-hud-tr) { top: 14px; right: 14px; border-top-width: 1.5px; border-right-width: 1.5px; border-top-right-radius: 7px; }
+body[data-dsh-cyber-neon] :global(.dsh-hud-bl) { bottom: 14px; left: 296px; border-bottom-width: 1.5px; border-left-width: 1.5px; border-bottom-left-radius: 7px; }
+body[data-dsh-cyber-neon] :global(.dsh-hud-br) { bottom: 14px; right: 14px; border-bottom-width: 1.5px; border-right-width: 1.5px; border-bottom-right-radius: 7px; }
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-hud) i { border-color: rgba(0, 145, 199, 0.75); }
+
+/* ---- 顶部能量线:品红→紫→青蓝脉冲 ---- */
+body[data-dsh-cyber-neon] :global(.dsh-bg-line) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255, 45, 149, 1) 26%,
+    rgba(162, 89, 255, 1) 50%,
+    rgba(0, 229, 255, 1) 74%,
+    transparent 100%);
+  filter: blur(0.5px);
+  animation: dshLinePulse 5.5s ease-in-out infinite;
+}
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-line) {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(230, 0, 115, 1) 26%,
+    rgba(124, 58, 237, 1) 50%,
+    rgba(0, 145, 199, 1) 74%,
+    transparent 100%);
+}
+@keyframes dshLinePulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+/* ---- 透视霓虹地网格(synthwave floor) ---- */
+body[data-dsh-cyber-neon] :global(.dsh-bg-floor) {
+  position: absolute;
+  left: -15%;
+  right: -15%;
+  bottom: -8%;
+  height: 55%;
+  background-image:
+    linear-gradient(rgba(255, 45, 149, 0.85) 0 3px, transparent 3px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.75) 0 3px, transparent 3px);
+  background-size: 48px 48px;
+  transform: perspective(900px) rotateX(42deg);
+  transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 58%, rgba(0, 0, 0, 0) 96%);
+  mask-image: linear-gradient(to top, #000 0%, #000 58%, rgba(0, 0, 0, 0) 96%);
+  animation: dshNeonFloor 6s linear infinite;
+}
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-floor) {
+  background-image:
+    linear-gradient(rgba(230, 0, 115, 0.55) 0 3px, transparent 3px),
+    linear-gradient(90deg, rgba(0, 145, 199, 0.45) 0 3px, transparent 3px);
+}
+@keyframes dshNeonFloor {
+  to { background-position: 0 48px, 0 0; }
+}
+
+/* ---- 扫描线 ---- */
+body[data-dsh-cyber-neon] :global(.dsh-bg-scanlines) {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.05) 0,
+    rgba(255, 255, 255, 0.022) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme]) :global(.dsh-bg-scanlines) {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(26, 10, 46, 0.075) 0,
+    rgba(26, 10, 46, 0.024) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* ---- 暗角(保留在 body::before,始终在最底) ---- */
+body[data-dsh-cyber-neon]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(2, 2, 6, 0.22) 100%);
+}
+body[data-dsh-cyber-neon]:not([data-ds-dark-theme])::before {
+  background: radial-gradient(ellipse at center, transparent 62%, rgba(247, 242, 253, 0.35) 100%);
+}
+
+/* ============================================================================
+   Token 覆写 — 浅色(霓虹白瓷方案)
+   ============================================================================ */
+body[data-dsh-cyber-neon] {
+  /* 基底:半透玻璃白 */
+  --dsw-alias-bg-base: rgba(252, 248, 255, 0.74);
+  --dsw-alias-bg-layer-1: rgba(255, 255, 255, 0.62);
+  /* 浮层面板(设置弹窗等):高不透明度保证可读 */
+  --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.9);
+  --dsw-alias-bg-layer-3: rgba(255, 255, 255, 0.92);
+  --dsw-alias-bg-overlay: rgba(255, 255, 255, 0.96);
+  --dsw-alias-bg-mask-1: rgba(26, 10, 46, 0.45);
+  --dsw-alias-bg-mask-2: rgba(26, 10, 46, 0.18);
+  --dsw-alias-bg-mask-3: rgba(26, 10, 46, 0.55);
+  --dsw-alias-bg-mask-photo: rgba(26, 10, 46, 0.8);
+  --dsw-alias-bg-mask-drop: rgba(255, 255, 255, 0.72);
+  --dsw-alias-bg-module-platform: rgba(250, 244, 255, 0.72);
+  --dsw-alias-bg-multi-select: rgba(250, 244, 255, 0.85);
+  --dsw-alias-bg-skeleton: rgba(26, 10, 46, 0.06);
+
+  /* 边框 */
+  --dsw-alias-border-l1: rgba(26, 10, 46, 0.08);
+  --dsw-alias-border-l2-darkmode-thin: rgba(26, 10, 46, 0.1);
+  --dsw-alias-border-l2: rgba(26, 10, 46, 0.12);
+  --dsw-alias-border-l3: rgba(26, 10, 46, 0.16);
+  --dsw-alias-border-l4: rgba(26, 10, 46, 0.22);
+  --dsw-alias-border-inverted: rgba(26, 10, 46, 0.06);
+  --dsw-alias-border-inverted2: rgba(26, 10, 46, 0.08);
+
+  /* 品牌/文字 */
+  --dsw-alias-brand-primary: #14081f;
+  --dsw-alias-brand-text: #14081f;
+  --dsw-alias-brand-primary-invert: #ffffff;
+  --dsw-alias-label-primary: #14081f;
+  --dsw-alias-label-primary-dimmed: #2b1840;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  /* inverted = 反色文字(品牌徽章"HARNESS"文字,深色徽章底 → 浅色字) */
+  --dsw-alias-label-primary-inverted: #f8f4ff;
+  --dsw-alias-label-secondary: #443357;
+  --dsw-alias-label-tertiary: #6b5a86;
+  --dsw-alias-label-caption: #9285ad;
+  --dsw-alias-label-primary-bluish: #5b21b6;
+
+  /* 交互 */
+  --dsw-alias-interactive-bg-hover: rgba(26, 10, 46, 0.05);
+  --dsw-alias-interactive-bg-hover-solid: rgba(26, 10, 46, 0.07);
+  --dsw-alias-interactive-bg-hover-accent: rgba(0, 145, 199, 0.1);
+  --dsw-alias-interactive-bg-hover-danger: rgba(214, 0, 124, 0.08);
+  --dsw-alias-interactive-bg-active: rgba(0, 145, 199, 0.12);
+
+  /* 按钮 */
+  --dsw-alias-button-primary-fill: linear-gradient(120deg, #e60073 0%, #8b5cf6 52%, #06b6d4 100%);
+  --dsw-alias-button-primary-hover: linear-gradient(120deg, #ff2d95 0%, #a259ff 52%, #22d3ee 100%);
+  --dsw-alias-button-primary-dimmed: rgba(230, 0, 115, 0.14);
+  --dsw-alias-button-info-fill: #0891b2;
+  --dsw-alias-button-info-hover: #06b6d4;
+  --dsw-alias-button-contrast-fill: #14081f;
+  --dsw-alias-button-elevated-fill: rgba(255, 255, 255, 0.8);
+  --dsw-alias-button-floating-fill: rgba(255, 255, 255, 0.85);
+  --dsw-alias-button-floating-hover: #ffffff;
+  --dsw-alias-button-ghost-active-fill: rgba(26, 10, 46, 0.07);
+  --dsw-alias-button-ghost-active-hover: rgba(26, 10, 46, 0.11);
+  --dsw-alias-button-ghost-active-border: rgba(26, 10, 46, 0.2);
+  --dsw-alias-button-tool-bar-fill: rgba(26, 10, 46, 0.1);
+  --dsw-alias-button-tool-bar-hover: rgba(26, 10, 46, 0.16);
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(26, 10, 46, 0.04);
+
+  /* 语义色 */
+  --dsw-alias-state-business-primary: #0091c7;
+  --dsw-alias-state-business-tertiary: rgba(0, 145, 199, 0.12);
+  --dsw-alias-state-success-primary: #059669;
+  --dsw-alias-state-success-secondary: #10b981;
+  --dsw-alias-state-success-tertiary: rgba(16, 185, 129, 0.14);
+  --dsw-alias-state-error-primary: #dc2626;
+  --dsw-alias-state-error-secondary: #ef4444;
+  --dsw-alias-state-warn-primary: #d97706;
+  --dsw-alias-state-warn-secondary: #f59e0b;
+  --dsw-alias-state-warn-label: #b45309;
+  --dsw-alias-state-warn-tertiary: rgba(245, 158, 11, 0.14);
+
+  /* Markdown */
+  --dsw-alias-markdown-code-block: #f6f2fc;
+  --dsw-alias-markdown-code-block-banner: #f0eaf9;
+  --dsw-alias-markdown-inline-code: #f3eefb;
+  --dsw-alias-markdown-citation: rgba(124, 58, 237, 0.1);
+  --dsw-alias-markdown-placeholder: rgba(250, 244, 255, 0.7);
+  --dsw-alias-markdown-tag: rgba(124, 58, 237, 0.12);
+  --dsw-alias-markdown-code-segment-selected: rgba(255, 255, 255, 0.85);
+  --dsw-alias-markdown-code-segment-unselected: rgba(246, 242, 252, 0.85);
+
+  /* 滚动条 */
+  --dsw-alias-scrollbar-bg-l1: rgba(26, 10, 46, 0.14);
+  --dsw-alias-scrollbar-bg-l2: rgba(26, 10, 46, 0.18);
+  --dsw-alias-scrollbar-hover-l1: rgba(26, 10, 46, 0.24);
+  --dsw-alias-scrollbar-hover-l2: rgba(26, 10, 46, 0.3);
+
+  /* 浮层 */
+  --dsw-alias-toast-bg: rgba(255, 255, 255, 0.9);
+  --dsw-alias-tooltip-bg: rgba(20, 12, 36, 0.92);
+
+  /* 专用 token */
+  --dsw-specific-bubble: rgba(255, 255, 255, 0.68);
+  --dsw-specific-bubble-highlight: rgba(250, 244, 255, 0.85);
+  --dsw-specific-input-major: rgba(255, 255, 255, 0.66);
+  --dsw-specific-login-input: rgba(255, 255, 255, 0.6);
+  --dsw-specific-menu: var(--dsw-alias-bg-layer-3);
+  --dsw-specific-selector: rgba(250, 244, 255, 0.85);
+  --dsw-specific-sidebar-fill: rgba(255, 255, 255, 0.58);
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(0, 145, 199, 0.16);
+  --dsw-specific-sidebar-nav-item-active: rgba(0, 145, 199, 0.1);
+  --dsw-specific-sidebar-nav-item-hover: rgba(26, 10, 46, 0.06);
+  --dsw-specific-tip: rgba(250, 244, 255, 0.7);
+
+  /* 渐变/阴影 */
+  --dsw-linear-gradient-think: linear-gradient(180deg, #f6f2fc 20.19%, rgba(246, 242, 252, 0) 100%);
+  --dsw-linear-think-select: linear-gradient(180deg, #f0eaf9 20.19%, rgba(240, 234, 249, 0) 100%);
+  --dsw-shadow-lv1: 0 2px 6px rgba(26, 10, 46, 0.06);
+  --dsw-shadow-lv1-blur: 0 4px 16px rgba(26, 10, 46, 0.05);
+  --dsw-shadow-lv2: 0 6px 18px rgba(26, 10, 46, 0.08);
+  --dsw-shadow-lv3: 0 0 1px rgba(124, 58, 237, 0.25), 0 8px 28px rgba(26, 10, 46, 0.14), 0 0 20px rgba(0, 145, 199, 0.05);
+}
+
+/* ============================================================================
+   Token 覆写 — 深色(赛博霓虹主方案)
+   ============================================================================ */
+body[data-dsh-cyber-neon][data-ds-dark-theme] {
+  /* 基底:半透深紫黑,让霓虹透出 */
+  --dsw-alias-bg-base: rgba(5, 4, 10, 0.48);
+  --dsw-alias-bg-layer-1: rgba(10, 8, 18, 0.55);
+  /* 浮层面板(设置弹窗等):高不透明度保证可读 */
+  --dsw-alias-bg-layer-2: rgba(16, 12, 28, 0.87);
+  --dsw-alias-bg-layer-3: rgba(20, 15, 34, 0.82);
+  --dsw-alias-bg-overlay: rgba(28, 21, 46, 0.93);
+  --dsw-alias-bg-mask-1: rgba(2, 2, 6, 0.7);
+  --dsw-alias-bg-mask-2: rgba(2, 2, 6, 0.4);
+  --dsw-alias-bg-mask-3: rgba(2, 2, 6, 0.75);
+  --dsw-alias-bg-mask-photo: rgba(2, 2, 6, 0.85);
+  --dsw-alias-bg-mask-drop: rgba(10, 7, 18, 0.75);
+  --dsw-alias-bg-module-platform: rgba(15, 11, 26, 0.7);
+  --dsw-alias-bg-multi-select: rgba(15, 11, 26, 0.8);
+  --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.06);
+
+  /* 边框:紫调科技线 */
+  --dsw-alias-border-l1: rgba(190, 160, 255, 0.1);
+  --dsw-alias-border-l2-darkmode-thin: rgba(190, 160, 255, 0.14);
+  --dsw-alias-border-l2: rgba(190, 160, 255, 0.16);
+  --dsw-alias-border-l3: rgba(190, 160, 255, 0.24);
+  --dsw-alias-border-l4: rgba(190, 160, 255, 0.32);
+  --dsw-alias-border-inverted: rgba(255, 255, 255, 0.07);
+  --dsw-alias-border-inverted2: rgba(255, 255, 255, 0.1);
+
+  /* 品牌/文字 */
+  --dsw-alias-brand-primary: #f6f1ff;
+  --dsw-alias-brand-text: #f6f1ff;
+  --dsw-alias-brand-primary-invert: #0d0716;
+  --dsw-alias-label-primary: #f6f1ff;
+  --dsw-alias-label-primary-dimmed: #cfc4e8;
+  --dsw-alias-label-primary-foreground: #0a0514;
+  /* inverted = 反色文字(品牌徽章"HARNESS"文字,浅色徽章底 → 深色字) */
+  --dsw-alias-label-primary-inverted: #0d0716;
+  --dsw-alias-label-secondary: #b4a9cc;
+  --dsw-alias-label-tertiary: #7d72a0;
+  --dsw-alias-label-caption: #5c5380;
+  --dsw-alias-label-primary-bluish: #c9b8ff;
+
+  /* 交互 */
+  --dsw-alias-interactive-bg-hover: rgba(190, 160, 255, 0.07);
+  --dsw-alias-interactive-bg-hover-solid: rgba(190, 160, 255, 0.09);
+  --dsw-alias-interactive-bg-hover-accent: rgba(0, 229, 255, 0.14);
+  --dsw-alias-interactive-bg-hover-danger: rgba(255, 77, 109, 0.14);
+  --dsw-alias-interactive-bg-active: rgba(0, 229, 255, 0.12);
+
+  /* 按钮:霓虹双色调 */
+  --dsw-alias-button-primary-fill: linear-gradient(120deg, #ff2d95 0%, #a259ff 52%, #00e5ff 100%);
+  --dsw-alias-button-primary-hover: linear-gradient(120deg, #ff6fb3 0%, #bb86fc 52%, #4df0ff 100%);
+  --dsw-alias-button-primary-dimmed: rgba(255, 45, 149, 0.16);
+  --dsw-alias-button-info-fill: #00e5ff;
+  --dsw-alias-button-info-hover: #4df0ff;
+  --dsw-alias-button-contrast-fill: #f6f1ff;
+  --dsw-alias-button-elevated-fill: rgba(12, 9, 22, 0.7);
+  --dsw-alias-button-floating-fill: rgba(12, 9, 22, 0.75);
+  --dsw-alias-button-floating-hover: rgba(16, 12, 28, 0.85);
+  --dsw-alias-button-ghost-active-fill: rgba(190, 160, 255, 0.1);
+  --dsw-alias-button-ghost-active-hover: rgba(190, 160, 255, 0.14);
+  --dsw-alias-button-ghost-active-border: rgba(190, 160, 255, 0.3);
+  --dsw-alias-button-tool-bar-fill: rgba(190, 160, 255, 0.16);
+  --dsw-alias-button-tool-bar-hover: rgba(190, 160, 255, 0.24);
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(190, 160, 255, 0.08);
+
+  /* 语义色 */
+  --dsw-alias-state-business-primary: #00e5ff;
+  --dsw-alias-state-business-tertiary: rgba(0, 229, 255, 0.16);
+  --dsw-alias-state-success-primary: #2dff8f;
+  --dsw-alias-state-success-secondary: #7dffb8;
+  --dsw-alias-state-success-tertiary: rgba(45, 255, 143, 0.14);
+  --dsw-alias-state-error-primary: #ff4d6d;
+  --dsw-alias-state-error-secondary: #ff8fa3;
+  --dsw-alias-state-warn-primary: #ffc24d;
+  --dsw-alias-state-warn-secondary: #ffd98a;
+  --dsw-alias-state-warn-label: #ffc24d;
+  --dsw-alias-state-warn-tertiary: rgba(255, 194, 77, 0.14);
+
+  /* Markdown */
+  --dsw-alias-markdown-code-block: #090612;
+  --dsw-alias-markdown-code-block-banner: #0c0818;
+  --dsw-alias-markdown-inline-code: #110a1e;
+  --dsw-alias-markdown-citation: rgba(162, 89, 255, 0.12);
+  --dsw-alias-markdown-placeholder: rgba(15, 11, 26, 0.6);
+  --dsw-alias-markdown-tag: rgba(162, 89, 255, 0.14);
+  --dsw-alias-markdown-code-segment-selected: rgba(15, 11, 26, 0.8);
+  --dsw-alias-markdown-code-segment-unselected: rgba(10, 7, 18, 0.7);
+
+  /* 滚动条 */
+  --dsw-alias-scrollbar-bg-l1: rgba(190, 160, 255, 0.14);
+  --dsw-alias-scrollbar-bg-l2: rgba(190, 160, 255, 0.18);
+  --dsw-alias-scrollbar-hover-l1: rgba(190, 160, 255, 0.26);
+  --dsw-alias-scrollbar-hover-l2: rgba(190, 160, 255, 0.34);
+
+  /* 浮层 */
+  --dsw-alias-toast-bg: rgba(15, 11, 26, 0.92);
+  --dsw-alias-tooltip-bg: rgba(18, 13, 30, 0.95);
+
+  /* 专用 token */
+  --dsw-specific-bubble: rgba(15, 11, 26, 0.72);
+  --dsw-specific-bubble-highlight: rgba(20, 15, 34, 0.8);
+  --dsw-specific-input-major: rgba(7, 5, 14, 0.55);
+  --dsw-specific-login-input: rgba(7, 5, 14, 0.6);
+  --dsw-specific-menu: var(--dsw-alias-bg-layer-3);
+  --dsw-specific-selector: rgba(15, 11, 26, 0.8);
+  /* 侧栏:半透深紫玻璃(不可太黑,否则呈黑框) */
+  --dsw-specific-sidebar-fill: rgba(12, 8, 22, 0.62);
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(0, 229, 255, 0.16);
+  --dsw-specific-sidebar-nav-item-active: rgba(0, 229, 255, 0.1);
+  --dsw-specific-sidebar-nav-item-hover: rgba(190, 160, 255, 0.08);
+  --dsw-specific-tip: rgba(15, 11, 26, 0.6);
+
+  /* 渐变/阴影 */
+  --dsw-linear-gradient-think: linear-gradient(180deg, #0c0818 20.19%, rgba(12, 8, 24, 0) 100%);
+  --dsw-linear-think-select: linear-gradient(180deg, #151029 20.19%, rgba(21, 16, 41, 0) 100%);
+  --dsw-shadow-lv1: 0 2px 6px rgba(2, 2, 6, 0.4);
+  --dsw-shadow-lv1-blur: 0 4px 16px rgba(2, 2, 6, 0.3);
+  --dsw-shadow-lv2: 0 6px 18px rgba(2, 2, 6, 0.35);
+  --dsw-shadow-lv3: 0 0 1px rgba(255, 45, 149, 0.35), 0 8px 28px rgba(2, 2, 6, 0.45), 0 0 24px rgba(0, 229, 255, 0.08);
+}
+
+/* ============================================================================
+   Chrome:玻璃质感 + 霓虹辉光
+   注意:backdrop-filter 会成为 position:fixed 弹层的包含块。设置面板
+   (.VOzbGW_overlay)挂在侧栏内部且不用 portal,因此用 :has() 守卫:
+   弹层打开时该列自动去掉模糊,弹层恢复视口定位;关闭后玻璃感回归。
+   ============================================================================ */
+
+/* 主框架:半透玻璃。注意:此处刻意不用 backdrop-filter —— 6px 模糊会把
+   地网格/扫描线等 2px 细线条全部抹掉;玻璃感由侧栏/详情栏模糊承担 */
+body[data-dsh-cyber-neon] [class*="_frame"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* 侧栏:玻璃 + 柔和模糊(设置弹层打开时自动让位) */
+body[data-dsh-cyber-neon] [class*="_sidebarCol"]:not(:has([class*="_overlay"])) {
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  backdrop-filter: blur(22px) saturate(1.15);
+}
+
+/* 详情栏:轻玻璃(同类守卫) */
+body[data-dsh-cyber-neon] [class*="_detailsCol"]:not(:has([class*="_overlay"])) {
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* 输入卡片:品红呼吸辉光 → 聚焦转青蓝 */
+body[data-dsh-cyber-neon] [class*="_composerSeat"] [class*="_card"],
+body[data-dsh-cyber-neon] [class*="_composerHero"] [class*="_card"] {
+  border-color: var(--dsw-alias-border-l2);
+  box-shadow:
+    var(--dsw-shadow-lv2),
+    0 0 0 1px rgba(255, 45, 149, 0.06),
+    0 0 28px rgba(255, 45, 149, 0.08);
+}
+body[data-dsh-cyber-neon] [class*="_composerSeat"] [class*="_card"]:focus-within {
+  border-color: rgba(0, 229, 255, 0.5);
+  box-shadow:
+    0 0 0 3px rgba(0, 229, 255, 0.14),
+    0 0 32px rgba(0, 229, 255, 0.16);
+}
+
+/* 选中文字:品红调 */
+body[data-dsh-cyber-neon] ::selection {
+  background: rgba(255, 45, 149, 0.28);
+}
+
+/* 减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  body[data-dsh-cyber-neon] :global(.dsh-bg-orb),
+  body[data-dsh-cyber-neon] :global(.dsh-bg-stars),
+  body[data-dsh-cyber-neon] :global(.dsh-bg-ring),
+  body[data-dsh-cyber-neon] :global(.dsh-bg-ring)::before,
+  body[data-dsh-cyber-neon] :global(.dsh-bg-line),
+  body[data-dsh-cyber-neon] :global(.dsh-bg-floor) {
+    animation: none;
+  }
+  body[data-dsh-cyber-neon] [class*="_sidebarCol"]:not(:has([class*="_overlay"])),
+  body[data-dsh-cyber-neon] [class*="_detailsCol"]:not(:has([class*="_overlay"])) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+

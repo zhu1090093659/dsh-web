@@ -136,11 +136,11 @@ DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standa
 
 ## 皮肤
 
-皮肤中心有 11 款皮肤，都支持先试穿再应用：试穿即时生效、退出完全还原，满意再一键应用。
+皮肤中心有 13 款皮肤，都支持先试穿再应用：试穿即时生效、退出完全还原，满意再一键应用。
 
 ![皮肤中心](docs/screenshots/03-settings-skin-center.png)
 
-现有 10 款皮肤一览（龙的传人 / 初音未来 · 电子歌姬两款截图待补充）；Maid Atelier 预览见下方：
+现有 12 款皮肤一览（龙的传人 / 初音未来 · 电子歌姬两款截图待补充）；Maid Atelier 预览见下方：
 
 ![10 款皮肤一览](docs/images/skins-montage.png)
 
@@ -173,6 +173,18 @@ DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standa
 深海蓝工坊主题，包含双角色图层与响应式侧边栏装饰。本皮肤单独采用 CC BY-NC-SA 4.0，仅限非商业使用。
 
 ![深海女仆工坊 亮色](packages/skins/maid-atelier/preview/light.png) · ![深海女仆工坊 暗色](packages/skins/maid-atelier/preview/dark.png)
+
+### 极光星舰（Aurora Nebula）
+
+青·靛·紫四颗极光光球在深空底色上缓慢漂移，透视网格、确定性星点与同心雷达环构成舰桥视野，HUD 角标与顶部能量线点缀边缘；全部 `--dsw-*` 语义 token 重映射为青靛紫科技调，暗色为浓烈极光版，浅色为粉彩柔光版。
+
+![极光星舰 亮色](packages/skins/aurora-nebula/preview/light.png) · ![极光星舰 暗色](packages/skins/aurora-nebula/preview/dark.png)
+
+### 赛博霓虹（Cyber Neon）
+
+赛博朋克霓虹终端主题：品红×青双色霓虹光球、合成器波地板网格与扫描线，暗色为浓烈霓虹夜、浅色为柔和粉彩调。
+
+![赛博霓虹 亮色](packages/skins/cyber-neon/preview/light.png) · ![赛博霓虹 暗色](packages/skins/cyber-neon/preview/dark.png)
 
 ## 快速开始
 

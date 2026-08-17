@@ -169,6 +169,26 @@ window.__ModuleLoader__.load({
 				"order": 10
 			},
 			{
+				"id": "aurora-nebula",
+				"name": "极光星舰",
+				"nameEn": "Aurora Nebula",
+				"author": "Boer2333",
+				"tagline": "青·靛·紫极光 · 星点 · 雷达环 · HUD 角标",
+				"description": "《极光星舰》— 深空星舰 HUD 主题：青·靛·紫四颗极光光球在深空底色上缓慢漂移，透视网格、确定性星点与同心雷达环构成舰桥视野，HUD 角标与顶部能量线点缀边缘；全部 --dsw-* 语义 token 重映射为青靛紫科技调，暗色为浓烈极光版，浅色为粉彩柔光版。",
+				"tags": [
+					"aurora",
+					"nebula",
+					"starship",
+					"hud",
+					"grid",
+					"sci-fi"
+				],
+				"accent": "#22d3ee",
+				"bodyAttr": "data-dsh-aurora-nebula",
+				"package": "@linxin666/dsh-client-ui-skin-aurora-nebula",
+				"order": 11
+			},
+			{
 				"id": "whale-mom",
 				"name": "鲸鱼妈妈",
 				"nameEn": "Whale Mom",
@@ -186,6 +206,26 @@ window.__ModuleLoader__.load({
 				"bodyAttr": "data-dsh-whale-mom",
 				"package": "@linxin666/dsh-client-ui-skin-whale-mom",
 				"order": 11
+			},
+			{
+				"id": "cyber-neon",
+				"name": "赛博霓虹",
+				"nameEn": "Cyber Neon",
+				"author": "Boer2333",
+				"tagline": "品红 × 青蓝霓虹 · synthwave 地网格 · 扫描线",
+				"description": "《赛博霓虹》— 赛博朋克终端主题：品红 × 青蓝双霓虹光球、synthwave 透视地网格与扫描线构成夜景终端场景，HUD 角标与顶部能量线强化霓虹边框；全部 --dsw-* 语义 token 重映射为品红·紫·青蓝霓虹调，暗色为浓烈霓虹版，浅色为白瓷粉彩版。",
+				"tags": [
+					"neon",
+					"cyberpunk",
+					"synthwave",
+					"grid",
+					"terminal",
+					"retro-futurism"
+				],
+				"accent": "#ff2d95",
+				"bodyAttr": "data-dsh-cyber-neon",
+				"package": "@linxin666/dsh-client-ui-skin-cyber-neon",
+				"order": 12
 			},
 			{
 				"id": "matrix",

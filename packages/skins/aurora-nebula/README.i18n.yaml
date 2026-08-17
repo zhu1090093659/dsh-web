@@ -1,0 +1,4 @@
+# Bilingual-pair consistency record: the git blob hash of each
+# side as of the last confirmed-consistent state.
+README.md: 656cae055cc0468b3ff2794efa31f0aac117b1aa
+README.zh.md: bf006ae8cc982a778b30feeb7a01070713e5597c

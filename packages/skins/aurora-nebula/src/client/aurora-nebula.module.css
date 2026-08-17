@@ -1,0 +1,532 @@
+/* ============================================================================
+   DSH WebUI ·「极光星舰 Aurora Nebula」皮肤
+   深色科技感设计系统 — 设计语言参考: PH Monitor Redesign
+   ----------------------------------------------------------------------------
+   用法:
+
+   - 皮肤 = 覆写 --dsw-* 语义 token + 极光/网格背景层 + 玻璃质感 chrome
+   - 深色/浅色两套方案，跟随 body[data-ds-dark-theme] 自动切换
+   ============================================================================ */
+
+/* ---------------- 背景画布 ---------------- */
+
+
+body[data-dsh-aurora-nebula] { background: transparent; }
+
+/* ============================================================================
+   背景场景(#dsh-bg 由皮肤 bundle apply 注入):
+   光球 ×4 → 透视网格 → 星点 → 雷达环 → HUD 角标 → 顶部能量线 → 扫描线
+   所有图层 position:fixed / z-index:-1,位于应用框架之后
+   ============================================================================ */
+body[data-dsh-aurora-nebula] :global(.dsh-bg) {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ---- 光球 ×4:模糊大球,独立漂移 ---- */
+body[data-dsh-aurora-nebula] :global(.dsh-bg-orb) {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.9;
+}
+body[data-dsh-aurora-nebula] :global(.dsh-bg-orb-1) {
+  width: 640px; height: 640px; top: -240px; right: -140px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.9) 0%, rgba(34, 211, 238, 0.45) 45%, transparent 72%);
+  animation: dshOrbA1 26s ease-in-out infinite alternate;
+}
+body[data-dsh-aurora-nebula] :global(.dsh-bg-orb-2) {
+  width: 720px; height: 720px; bottom: -340px; left: -200px;
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.85) 0%, rgba(129, 140, 248, 0.4) 45%, transparent 72%);
+  animation: dshOrbA2 31s ease-in-out infinite alternate;
+}
+body[data-dsh-aurora-nebula] :global(.dsh-bg-orb-3) {
+  width: 500px; height: 500px; top: 28%; left: 40%;
+  background: radial-gradient(circle, rgba(192, 132, 252, 0.7) 0%, rgba(192, 132, 252, 0.32) 45%, transparent 72%);
+  animation: dshOrbA3 23s ease-in-out infinite alternate;
+}
+body[data-dsh-aurora-nebula] :global(.dsh-bg-orb-4) {
+  width: 440px; height: 440px; top: -160px; left: 10%;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.62) 0%, rgba(45, 212, 191, 0.3) 45%, transparent 72%);
+  animation: dshOrbA4 35s ease-in-out infinite alternate-reverse;
+}
+@keyframes dshOrbA1 { from { transform: translate3d(0, 0, 0) scale(1); }     to { transform: translate3d(70px, 44px, 0) scale(1.12); } }
+@keyframes dshOrbA2 { from { transform: translate3d(0, 0, 0) scale(1.06); }  to { transform: translate3d(-64px, -40px, 0) scale(1); } }
+@keyframes dshOrbA3 { from { transform: translate3d(0, 0, 0) scale(1); }     to { transform: translate3d(-44px, 54px, 0) scale(1.16); } }
+@keyframes dshOrbA4 { from { transform: translate3d(0, 0, 0) scale(1.08); }  to { transform: translate3d(52px, -30px, 0) scale(1); } }
+
+/* 浅色:粉彩柔光 */
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-orb) {
+  opacity: 1;
+}
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-orb-1) { background: radial-gradient(circle, rgba(6, 182, 212, 0.95) 0%, rgba(6, 182, 212, 0.5) 45%, transparent 72%); }
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-orb-2) { background: radial-gradient(circle, rgba(99, 102, 241, 0.85) 0%, rgba(99, 102, 241, 0.45) 45%, transparent 72%); }
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-orb-3) { background: radial-gradient(circle, rgba(168, 85, 247, 0.7) 0%, rgba(168, 85, 247, 0.38) 45%, transparent 72%); }
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-orb-4) { background: radial-gradient(circle, rgba(13, 148, 136, 0.62) 0%, rgba(13, 148, 136, 0.34) 45%, transparent 72%); }
+
+/* ---- 透视网格:缓慢滚动 ---- */
+body[data-dsh-aurora-nebula] :global(.dsh-bg-grid) {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.13) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.13) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 40%, #000 35%, transparent 88%);
+  mask-image: radial-gradient(ellipse 90% 85% at 50% 40%, #000 35%, transparent 88%);
+  animation: dshGridPan 12s linear infinite;
+}
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-grid) {
+  background-image:
+    linear-gradient(rgba(13, 27, 62, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(13, 27, 62, 0.18) 1px, transparent 1px);
+}
+@keyframes dshGridPan {
+  to { background-position: 44px 44px, 44px 44px; }
+}
+
+/* ---- 星点:由 JS 生成,整体呼吸闪烁 ---- */
+body[data-dsh-aurora-nebula] :global(.dsh-bg-stars) {
+  position: absolute;
+  inset: 0;
+  animation: dshStarsTwinkle 4.5s ease-in-out infinite alternate;
+}
+@keyframes dshStarsTwinkle {
+  from { opacity: 0.65; }
+  to   { opacity: 1; }
+}
+
+/* ---- 雷达环:中心同心圆环,缓慢旋转 ---- */
+body[data-dsh-aurora-nebula] :global(.dsh-bg-ring) {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 940px;
+  height: 940px;
+  margin-left: -470px;
+  margin-top: -470px;
+  border: 1px solid rgba(129, 140, 248, 0.32);
+  border-radius: 50%;
+  animation: dshRingSpin 90s linear infinite;
+}
+body[data-dsh-aurora-nebula] :global(.dsh-bg-ring)::before {
+  content: "";
+  position: absolute;
+  inset: 96px;
+  border: 1px dashed rgba(34, 211, 238, 0.24);
+  border-radius: 50%;
+  animation: dshRingSpinRev 64s linear infinite;
+}
+body[data-dsh-aurora-nebula] :global(.dsh-bg-ring)::after {
+  content: "";
+  position: absolute;
+  inset: 224px;
+  border: 1px solid rgba(192, 132, 252, 0.2);
+  border-radius: 50%;
+}
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-ring) {
+  border-color: rgba(99, 102, 241, 0.5);
+}
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-ring)::before { border-color: rgba(6, 182, 212, 0.38); }
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-ring)::after { border-color: rgba(168, 85, 247, 0.32); }
+@keyframes dshRingSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes dshRingSpinRev {
+  to { transform: rotate(-360deg); }
+}
+
+/* ---- HUD 角标:应用区内角 ---- */
+body[data-dsh-aurora-nebula] :global(.dsh-bg-hud) {
+  position: absolute;
+  inset: 0;
+}
+body[data-dsh-aurora-nebula] :global(.dsh-bg-hud) i {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 0 solid rgba(148, 163, 184, 0.7);
+  opacity: 0.9;
+}
+body[data-dsh-aurora-nebula] :global(.dsh-hud-tl) { top: 14px; left: 296px; border-top-width: 2px; border-left-width: 2px; border-top-left-radius: 7px; }
+body[data-dsh-aurora-nebula] :global(.dsh-hud-tr) { top: 14px; right: 14px; border-top-width: 2px; border-right-width: 2px; border-top-right-radius: 7px; }
+body[data-dsh-aurora-nebula] :global(.dsh-hud-bl) { bottom: 14px; left: 296px; border-bottom-width: 2px; border-left-width: 2px; border-bottom-left-radius: 7px; }
+body[data-dsh-aurora-nebula] :global(.dsh-hud-br) { bottom: 14px; right: 14px; border-bottom-width: 2px; border-right-width: 2px; border-bottom-right-radius: 7px; }
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-hud) i { border-color: rgba(13, 27, 62, 0.7); }
+
+/* ---- 顶部能量线:青→靛→紫渐变脉冲 ---- */
+body[data-dsh-aurora-nebula] :global(.dsh-bg-line) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(34, 211, 238, 1) 28%,
+    rgba(129, 140, 248, 1) 50%,
+    rgba(192, 132, 252, 1) 72%,
+    transparent 100%);
+  filter: blur(0.5px);
+  animation: dshLinePulse 6s ease-in-out infinite;
+}
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-line) {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(6, 182, 212, 1) 28%,
+    rgba(99, 102, 241, 1) 50%,
+    rgba(168, 85, 247, 1) 72%,
+    transparent 100%);
+}
+@keyframes dshLinePulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+/* ---- 扫描线 ---- */
+body[data-dsh-aurora-nebula] :global(.dsh-bg-scanlines) {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.045) 0,
+    rgba(255, 255, 255, 0.018) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme]) :global(.dsh-bg-scanlines) {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(13, 27, 62, 0.07) 0,
+    rgba(13, 27, 62, 0.02) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* ---- 暗角(保留在 body::before,始终在最底) ---- */
+body[data-dsh-aurora-nebula]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(2, 4, 10, 0.2) 100%);
+}
+body[data-dsh-aurora-nebula]:not([data-ds-dark-theme])::before {
+  background: radial-gradient(ellipse at center, transparent 62%, rgba(238, 242, 251, 0.35) 100%);
+}
+
+/* ============================================================================
+   Token 覆写 — 浅色（默认白底方案的科技化玻璃版本）
+   ============================================================================ */
+body[data-dsh-aurora-nebula] {
+  /* 基底:半透玻璃白,让极光透出来 */
+  --dsw-alias-bg-base: rgba(246, 249, 255, 0.72);
+  --dsw-alias-bg-layer-1: rgba(255, 255, 255, 0.62);
+  --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.9);
+  --dsw-alias-bg-layer-3: rgba(255, 255, 255, 0.92);
+  --dsw-alias-bg-overlay: rgba(255, 255, 255, 0.96);
+  --dsw-alias-bg-mask-1: rgba(13, 27, 62, 0.45);
+  --dsw-alias-bg-mask-2: rgba(13, 27, 62, 0.18);
+  --dsw-alias-bg-mask-3: rgba(13, 27, 62, 0.55);
+  --dsw-alias-bg-mask-photo: rgba(13, 27, 62, 0.8);
+  --dsw-alias-bg-mask-drop: rgba(255, 255, 255, 0.72);
+  --dsw-alias-bg-module-platform: rgba(238, 243, 252, 0.72);
+  --dsw-alias-bg-multi-select: rgba(238, 243, 252, 0.85);
+  --dsw-alias-bg-skeleton: rgba(13, 27, 62, 0.06);
+
+  /* 边框 */
+  --dsw-alias-border-l1: rgba(13, 27, 62, 0.08);
+  --dsw-alias-border-l2-darkmode-thin: rgba(13, 27, 62, 0.1);
+  --dsw-alias-border-l2: rgba(13, 27, 62, 0.12);
+  --dsw-alias-border-l3: rgba(13, 27, 62, 0.16);
+  --dsw-alias-border-l4: rgba(13, 27, 62, 0.22);
+  --dsw-alias-border-inverted: rgba(13, 27, 62, 0.06);
+  --dsw-alias-border-inverted2: rgba(13, 27, 62, 0.08);
+
+  /* 品牌/文字 */
+  --dsw-alias-brand-primary: #0b1226;
+  --dsw-alias-brand-text: #0b1226;
+  --dsw-alias-brand-primary-invert: #ffffff;
+  --dsw-alias-label-primary: #0b1226;
+  --dsw-alias-label-primary-dimmed: #1c2a4a;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  /* inverted = 反色文字(品牌徽章"HARNESS"文字,底色为深色徽章 → 用浅色) */
+  --dsw-alias-label-primary-inverted: #f2f6ff;
+  --dsw-alias-label-secondary: #3d4a63;
+  --dsw-alias-label-tertiary: #64708c;
+  --dsw-alias-label-caption: #8b94ac;
+  --dsw-alias-label-primary-bluish: #1e3a8a;
+
+  /* 交互 */
+  --dsw-alias-interactive-bg-hover: rgba(13, 27, 62, 0.05);
+  --dsw-alias-interactive-bg-hover-solid: rgba(13, 27, 62, 0.07);
+  --dsw-alias-interactive-bg-hover-accent: rgba(6, 182, 212, 0.1);
+  --dsw-alias-interactive-bg-hover-danger: rgba(220, 38, 38, 0.08);
+  --dsw-alias-interactive-bg-active: rgba(6, 182, 212, 0.12);
+
+  /* 按钮 */
+  --dsw-alias-button-primary-fill: linear-gradient(120deg, #06b6d4 0%, #6366f1 52%, #a855f7 100%);
+  --dsw-alias-button-primary-hover: linear-gradient(120deg, #22d3ee 0%, #818cf8 52%, #c084fc 100%);
+  --dsw-alias-button-primary-dimmed: rgba(6, 182, 212, 0.38);
+  --dsw-alias-button-info-fill: #0891b2;
+  --dsw-alias-button-info-hover: #06b6d4;
+  --dsw-alias-button-contrast-fill: #0b1226;
+  --dsw-alias-button-elevated-fill: rgba(255, 255, 255, 0.8);
+  --dsw-alias-button-floating-fill: rgba(255, 255, 255, 0.85);
+  --dsw-alias-button-floating-hover: #ffffff;
+  --dsw-alias-button-ghost-active-fill: rgba(13, 27, 62, 0.07);
+  --dsw-alias-button-ghost-active-hover: rgba(13, 27, 62, 0.11);
+  --dsw-alias-button-ghost-active-border: rgba(13, 27, 62, 0.2);
+  --dsw-alias-button-tool-bar-fill: rgba(13, 27, 62, 0.1);
+  --dsw-alias-button-tool-bar-hover: rgba(13, 27, 62, 0.16);
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(13, 27, 62, 0.04);
+
+  /* 语义色 */
+  --dsw-alias-state-business-primary: #0891b2;
+  --dsw-alias-state-business-tertiary: rgba(6, 182, 212, 0.12);
+  --dsw-alias-state-success-primary: #059669;
+  --dsw-alias-state-success-secondary: #10b981;
+  --dsw-alias-state-success-tertiary: rgba(16, 185, 129, 0.14);
+  --dsw-alias-state-error-primary: #dc2626;
+  --dsw-alias-state-error-secondary: #ef4444;
+  --dsw-alias-state-warn-primary: #d97706;
+  --dsw-alias-state-warn-secondary: #f59e0b;
+  --dsw-alias-state-warn-label: #b45309;
+  --dsw-alias-state-warn-tertiary: rgba(245, 158, 11, 0.14);
+
+  /* Markdown */
+  --dsw-alias-markdown-code-block: #f1f5fd;
+  --dsw-alias-markdown-code-block-banner: #eaf0fc;
+  --dsw-alias-markdown-inline-code: #e9effc;
+  --dsw-alias-markdown-citation: rgba(99, 102, 241, 0.1);
+  --dsw-alias-markdown-placeholder: rgba(238, 243, 252, 0.7);
+  --dsw-alias-markdown-tag: rgba(99, 102, 241, 0.12);
+  --dsw-alias-markdown-code-segment-selected: rgba(255, 255, 255, 0.85);
+  --dsw-alias-markdown-code-segment-unselected: rgba(241, 245, 253, 0.85);
+
+  /* 滚动条 */
+  --dsw-alias-scrollbar-bg-l1: rgba(13, 27, 62, 0.14);
+  --dsw-alias-scrollbar-bg-l2: rgba(13, 27, 62, 0.18);
+  --dsw-alias-scrollbar-hover-l1: rgba(13, 27, 62, 0.24);
+  --dsw-alias-scrollbar-hover-l2: rgba(13, 27, 62, 0.3);
+
+  /* 浮层 */
+  --dsw-alias-toast-bg: rgba(255, 255, 255, 0.9);
+  --dsw-alias-tooltip-bg: rgba(13, 20, 40, 0.92);
+
+  /* 专用 token */
+  --dsw-specific-bubble: rgba(255, 255, 255, 0.68);
+  --dsw-specific-bubble-highlight: rgba(238, 243, 252, 0.85);
+  --dsw-specific-input-major: rgba(255, 255, 255, 0.66);
+  --dsw-specific-login-input: rgba(255, 255, 255, 0.6);
+  --dsw-specific-menu: var(--dsw-alias-bg-layer-3);
+  --dsw-specific-selector: rgba(238, 243, 252, 0.85);
+  --dsw-specific-sidebar-fill: rgba(255, 255, 255, 0.58);
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(6, 182, 212, 0.38);
+  --dsw-specific-sidebar-nav-item-active: rgba(6, 182, 212, 0.1);
+  --dsw-specific-sidebar-nav-item-hover: rgba(13, 27, 62, 0.06);
+  --dsw-specific-tip: rgba(238, 243, 252, 0.7);
+
+  /* 渐变/阴影 */
+  --dsw-linear-gradient-think: linear-gradient(180deg, #f1f5fd 20.19%, rgba(241, 245, 253, 0) 100%);
+  --dsw-linear-think-select: linear-gradient(180deg, #e9effc 20.19%, rgba(233, 239, 252, 0) 100%);
+  --dsw-shadow-lv1: 0 2px 6px rgba(13, 27, 62, 0.06);
+  --dsw-shadow-lv1-blur: 0 4px 16px rgba(13, 27, 62, 0.05);
+  --dsw-shadow-lv2: 0 6px 18px rgba(13, 27, 62, 0.08);
+  --dsw-shadow-lv3: 0 0 1px rgba(99, 102, 241, 0.25), 0 8px 28px rgba(13, 27, 62, 0.14), 0 0 20px rgba(6, 182, 212, 0.05);
+}
+
+/* ============================================================================
+   Token 覆写 — 深色（极光星舰主方案）
+   ============================================================================ */
+body[data-dsh-aurora-nebula][data-ds-dark-theme] {
+  /* 基底:半透深海军蓝,让极光透出来 */
+  --dsw-alias-bg-base: rgba(4, 6, 13, 0.45);
+  /* 浮层面板(设置弹窗等):高不透明度保证内容可读,仍保留海军蓝玻璃质感 */
+  --dsw-alias-bg-layer-1: rgba(8, 12, 24, 0.55);
+  --dsw-alias-bg-layer-2: rgba(14, 20, 38, 0.86);
+  --dsw-alias-bg-layer-3: rgba(16, 23, 42, 0.8);
+  --dsw-alias-bg-overlay: rgba(24, 31, 54, 0.92);
+  --dsw-alias-bg-mask-1: rgba(2, 4, 10, 0.7);
+  --dsw-alias-bg-mask-2: rgba(2, 4, 10, 0.4);
+  --dsw-alias-bg-mask-3: rgba(2, 4, 10, 0.75);
+  --dsw-alias-bg-mask-photo: rgba(2, 4, 10, 0.85);
+  --dsw-alias-bg-mask-drop: rgba(8, 12, 24, 0.75);
+  --dsw-alias-bg-module-platform: rgba(13, 18, 34, 0.7);
+  --dsw-alias-bg-multi-select: rgba(13, 18, 34, 0.8);
+  --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.06);
+
+  /* 边框 */
+  --dsw-alias-border-l1: rgba(148, 163, 184, 0.1);
+  --dsw-alias-border-l2-darkmode-thin: rgba(148, 163, 184, 0.14);
+  --dsw-alias-border-l2: rgba(148, 163, 184, 0.16);
+  --dsw-alias-border-l3: rgba(148, 163, 184, 0.24);
+  --dsw-alias-border-l4: rgba(148, 163, 184, 0.32);
+  --dsw-alias-border-inverted: rgba(255, 255, 255, 0.07);
+  --dsw-alias-border-inverted2: rgba(255, 255, 255, 0.1);
+
+  /* 品牌/文字 */
+  --dsw-alias-brand-primary: #eaf4ff;
+  --dsw-alias-brand-text: #eaf4ff;
+  --dsw-alias-brand-primary-invert: #0a1226;
+  --dsw-alias-label-primary: #eef3fc;
+  --dsw-alias-label-primary-dimmed: #c7d2e8;
+  --dsw-alias-label-primary-foreground: #04101f;
+  /* inverted = 反色文字(品牌徽章"HARNESS"文字,底色为浅色徽章 → 用深色) */
+  --dsw-alias-label-primary-inverted: #0a1226;
+  --dsw-alias-label-secondary: #aab4c8;
+  --dsw-alias-label-tertiary: #7884a0;
+  --dsw-alias-label-caption: #55617e;
+  --dsw-alias-label-primary-bluish: #bcd4ff;
+
+  /* 交互 */
+  --dsw-alias-interactive-bg-hover: rgba(148, 163, 184, 0.07);
+  --dsw-alias-interactive-bg-hover-solid: rgba(148, 163, 184, 0.09);
+  --dsw-alias-interactive-bg-hover-accent: rgba(34, 211, 238, 0.14);
+  --dsw-alias-interactive-bg-hover-danger: rgba(248, 113, 113, 0.14);
+  --dsw-alias-interactive-bg-active: rgba(34, 211, 238, 0.24);
+
+  /* 按钮 */
+  --dsw-alias-button-primary-fill: linear-gradient(120deg, #22d3ee 0%, #818cf8 52%, #c084fc 100%);
+  --dsw-alias-button-primary-hover: linear-gradient(120deg, #67e8f9 0%, #a5b4fc 52%, #d8b4fe 100%);
+  --dsw-alias-button-primary-dimmed: rgba(34, 211, 238, 0.24);
+  --dsw-alias-button-info-fill: #22d3ee;
+  --dsw-alias-button-info-hover: #38bdf8;
+  --dsw-alias-button-contrast-fill: #eef3fc;
+  --dsw-alias-button-elevated-fill: rgba(11, 16, 30, 0.7);
+  --dsw-alias-button-floating-fill: rgba(11, 16, 30, 0.75);
+  --dsw-alias-button-floating-hover: rgba(15, 22, 40, 0.85);
+  --dsw-alias-button-ghost-active-fill: rgba(148, 163, 184, 0.1);
+  --dsw-alias-button-ghost-active-hover: rgba(148, 163, 184, 0.14);
+  --dsw-alias-button-ghost-active-border: rgba(148, 163, 184, 0.3);
+  --dsw-alias-button-tool-bar-fill: rgba(148, 163, 184, 0.16);
+  --dsw-alias-button-tool-bar-hover: rgba(148, 163, 184, 0.24);
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(148, 163, 184, 0.08);
+
+  /* 语义色 */
+  --dsw-alias-state-business-primary: #22d3ee;
+  --dsw-alias-state-business-tertiary: rgba(34, 211, 238, 0.16);
+  --dsw-alias-state-success-primary: #34d399;
+  --dsw-alias-state-success-secondary: #6ee7b7;
+  --dsw-alias-state-success-tertiary: rgba(52, 211, 153, 0.14);
+  --dsw-alias-state-error-primary: #f87171;
+  --dsw-alias-state-error-secondary: #fca5a5;
+  --dsw-alias-state-warn-primary: #fbbf24;
+  --dsw-alias-state-warn-secondary: #fcd34d;
+  --dsw-alias-state-warn-label: #fbbf24;
+  --dsw-alias-state-warn-tertiary: rgba(251, 191, 36, 0.14);
+
+  /* Markdown */
+  --dsw-alias-markdown-code-block: #070b16;
+  --dsw-alias-markdown-code-block-banner: #0a0f1e;
+  --dsw-alias-markdown-inline-code: #0d1526;
+  --dsw-alias-markdown-citation: rgba(129, 140, 248, 0.12);
+  --dsw-alias-markdown-placeholder: rgba(13, 18, 34, 0.6);
+  --dsw-alias-markdown-tag: rgba(129, 140, 248, 0.14);
+  --dsw-alias-markdown-code-segment-selected: rgba(13, 18, 34, 0.8);
+  --dsw-alias-markdown-code-segment-unselected: rgba(8, 12, 24, 0.7);
+
+  /* 滚动条 */
+  --dsw-alias-scrollbar-bg-l1: rgba(148, 163, 184, 0.14);
+  --dsw-alias-scrollbar-bg-l2: rgba(148, 163, 184, 0.18);
+  --dsw-alias-scrollbar-hover-l1: rgba(148, 163, 184, 0.26);
+  --dsw-alias-scrollbar-hover-l2: rgba(148, 163, 184, 0.34);
+
+  /* 浮层 */
+  --dsw-alias-toast-bg: rgba(13, 18, 34, 0.92);
+  --dsw-alias-tooltip-bg: rgba(15, 21, 38, 0.95);
+
+  /* 专用 token */
+  --dsw-specific-bubble: rgba(13, 18, 34, 0.72);
+  --dsw-specific-bubble-highlight: rgba(16, 24, 44, 0.8);
+  --dsw-specific-input-major: rgba(6, 9, 18, 0.55);
+  --dsw-specific-login-input: rgba(6, 9, 18, 0.6);
+  --dsw-specific-menu: var(--dsw-alias-bg-layer-3);
+  --dsw-specific-selector: rgba(13, 18, 34, 0.8);
+  /* 侧栏:半透海军蓝玻璃(不可太黑,否则呈黑框;无 backdrop-filter 时极光可透出) */
+  --dsw-specific-sidebar-fill: rgba(15, 21, 40, 0.62);
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(34, 211, 238, 0.16);
+  --dsw-specific-sidebar-nav-item-active: rgba(34, 211, 238, 0.1);
+  --dsw-specific-sidebar-nav-item-hover: rgba(148, 163, 184, 0.08);
+  --dsw-specific-tip: rgba(13, 18, 34, 0.6);
+
+  /* 渐变/阴影 */
+  --dsw-linear-gradient-think: linear-gradient(180deg, #0a0f1e 20.19%, rgba(10, 15, 30, 0) 100%);
+  --dsw-linear-think-select: linear-gradient(180deg, #101a33 20.19%, rgba(16, 26, 51, 0) 100%);
+  --dsw-shadow-lv1: 0 2px 6px rgba(2, 4, 10, 0.4);
+  --dsw-shadow-lv1-blur: 0 4px 16px rgba(2, 4, 10, 0.3);
+  --dsw-shadow-lv2: 0 6px 18px rgba(2, 4, 10, 0.35);
+  --dsw-shadow-lv3: 0 0 1px rgba(129, 140, 248, 0.35), 0 8px 28px rgba(2, 4, 10, 0.45), 0 0 24px rgba(34, 211, 238, 0.06);
+}
+
+/* ============================================================================
+   Chrome:玻璃质感 + 辉光
+   注意:backdrop-filter 会成为 position:fixed 弹层的包含块。设置面板
+   (.VOzbGW_overlay)挂在侧栏内部且不用 portal,因此用 :has() 守卫:
+   弹层打开时该列自动去掉模糊,弹层恢复视口定位;关闭后玻璃感回归。
+   其余弹层(Menu/Tooltip/Modal)均 portal 到 body,不受影响。
+   ============================================================================ */
+
+/* 主框架:半透玻璃。刻意不用 backdrop-filter —— 模糊会抹掉背景场景中的
+   细线条(网格/星点/雷达环);玻璃感由侧栏/详情栏模糊承担 */
+body[data-dsh-aurora-nebula] [class*="_frame"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* 侧栏:玻璃 + 柔和模糊(设置弹层打开时自动让位) */
+body[data-dsh-aurora-nebula] [class*="_sidebarCol"]:not(:has([class*="_overlay"])) {
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  backdrop-filter: blur(22px) saturate(1.15);
+}
+
+/* 详情栏:轻玻璃(同类守卫) */
+body[data-dsh-aurora-nebula] [class*="_detailsCol"]:not(:has([class*="_overlay"])) {
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* 输入卡片(hero + 常驻输入框):呼吸辉光 */
+body[data-dsh-aurora-nebula] [class*="_composerSeat"] [class*="_card"],
+body[data-dsh-aurora-nebula] [class*="_composerHero"] [class*="_card"] {
+  border-color: var(--dsw-alias-border-l2);
+  box-shadow:
+    var(--dsw-shadow-lv2),
+    0 0 0 1px rgba(34, 211, 238, 0.05),
+    0 0 28px rgba(34, 211, 238, 0.07);
+}
+body[data-dsh-aurora-nebula] [class*="_composerSeat"] [class*="_card"]:focus-within {
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow:
+    0 0 0 3px rgba(34, 211, 238, 0.14),
+    0 0 32px rgba(34, 211, 238, 0.16);
+}
+
+/* 选中文字:青色调 */
+body[data-dsh-aurora-nebula] ::selection {
+  background: rgba(34, 211, 238, 0.25);
+}
+
+/* 减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  body[data-dsh-aurora-nebula] :global(.dsh-bg-orb),
+  body[data-dsh-aurora-nebula] :global(.dsh-bg-grid),
+  body[data-dsh-aurora-nebula] :global(.dsh-bg-stars),
+  body[data-dsh-aurora-nebula] :global(.dsh-bg-ring),
+  body[data-dsh-aurora-nebula] :global(.dsh-bg-ring)::before,
+  body[data-dsh-aurora-nebula] :global(.dsh-bg-line) {
+    animation: none;
+  }
+  body[data-dsh-aurora-nebula] [class*="_sidebarCol"]:not(:has([class*="_overlay"])),
+  body[data-dsh-aurora-nebula] [class*="_detailsCol"]:not(:has([class*="_overlay"])) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+

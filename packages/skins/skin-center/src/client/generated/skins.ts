@@ -53,7 +53,11 @@ export const SKIN_CENTER_ENTRIES: readonly SkinCenterEntry[] = [
 
   {"id":"miku","name":"初音未来 · 电子歌姬","nameEn":"Hatsune Miku","author":"涂山苏苏","tagline":"蓝紫双马尾 · 01 编号 · 音符波形 · 电子歌姬主题","description":"以世界第一的虚拟歌姬初音未来为灵感的主题皮肤：蓝紫洋红渐变贯穿全局，音符与声波曲线点缀在半透明面板之间，标题栏与状态栏带有 01 编号徽标与音乐波形，半透明毛玻璃面板透出背景图——沉浸式电子歌姬氛围。","tags":["miku","vocaloid","blue","music","idol","waveform"],"accent":"#2e9bff","bodyAttr":"data-dsh-miku","package":"@linxin666/dsh-client-ui-skin-miku","order":10},
 
+  {"id":"aurora-nebula","name":"极光星舰","nameEn":"Aurora Nebula","author":"Boer2333","tagline":"青·靛·紫极光 · 星点 · 雷达环 · HUD 角标","description":"《极光星舰》— 深空星舰 HUD 主题：青·靛·紫四颗极光光球在深空底色上缓慢漂移，透视网格、确定性星点与同心雷达环构成舰桥视野，HUD 角标与顶部能量线点缀边缘；全部 --dsw-* 语义 token 重映射为青靛紫科技调，暗色为浓烈极光版，浅色为粉彩柔光版。","tags":["aurora","nebula","starship","hud","grid","sci-fi"],"accent":"#22d3ee","bodyAttr":"data-dsh-aurora-nebula","package":"@linxin666/dsh-client-ui-skin-aurora-nebula","order":11},
+
   {"id":"whale-mom","name":"鲸鱼妈妈","nameEn":"Whale Mom","author":"dsh-web-ui","tagline":"深海鲸鱼妈妈与幼崽的画作 · 全透面板由背景遮挡驱动 · 金线点缀","description":"dsh web ui 的鲸鱼妈妈主题皮肤：深海鲸鱼妈妈与幼崽们的氛围画作铺满视口，面板全透（透明度由设置-皮肤中心的背景遮挡滑杆驱动，侧边栏基准透明度可用 --dsw-skin-sidebar-alpha 微调），深蓝 / 奶油 / 金色配色贯穿全局，暗色是深海夜航。","tags":["ocean","whale","mother","translucent","gold"],"accent":"#d9a53c","bodyAttr":"data-dsh-whale-mom","package":"@linxin666/dsh-client-ui-skin-whale-mom","order":11},
+
+  {"id":"cyber-neon","name":"赛博霓虹","nameEn":"Cyber Neon","author":"Boer2333","tagline":"品红 × 青蓝霓虹 · synthwave 地网格 · 扫描线","description":"《赛博霓虹》— 赛博朋克终端主题：品红 × 青蓝双霓虹光球、synthwave 透视地网格与扫描线构成夜景终端场景，HUD 角标与顶部能量线强化霓虹边框；全部 --dsw-* 语义 token 重映射为品红·紫·青蓝霓虹调，暗色为浓烈霓虹版，浅色为白瓷粉彩版。","tags":["neon","cyberpunk","synthwave","grid","terminal","retro-futurism"],"accent":"#ff2d95","bodyAttr":"data-dsh-cyber-neon","package":"@linxin666/dsh-client-ui-skin-cyber-neon","order":12},
 
   {"id":"matrix","name":"Matrix 骇客帝国","nameEn":"Matrix","author":"contributed (seanchen)","tagline":"深夜护眼 · 墨绿暗色 · 数字雨","description":"深夜卧室场景的护眼暗色皮肤：近黑墨绿背景、墨绿等宽字体、低透明度数字雨。强制暗色（不跟随系统主题），整体低亮度，长时间使用不刺眼、不打扰家人睡觉。","tags":["matrix","dark","green","hacker","night","eye-care"],"accent":"#00e676","bodyAttr":"data-dsh-matrix","package":"@linxin666/dsh-client-ui-skin-matrix","order":12},
 

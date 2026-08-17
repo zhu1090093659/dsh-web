@@ -50,7 +50,7 @@ dsh-web-ui is a set of plugins and skins for the DeepSeek Harness (DSH) Web GUI:
 | Mobile remote control | None | QR pairing with SSE real-time sync |
 | Remote server ops | None | SSH panel: terminal / transfer / tunnels / cluster |
 | Image understanding | None | `describe_image` vision tool |
-| Themes & skins | Default theme | Skin center with 11 skins, try-on before apply |
+| Themes & skins | Default theme | Skin center with 13 skins, try-on before apply |
 
 ## Feature Plugins
 
@@ -138,11 +138,11 @@ All family plugins' toggles and parameters live under "Settings" and apply immed
 
 ## Skins
 
-The skin center has eleven skins, each with try-on before apply: the preview applies instantly and reverts fully on exit; apply with one click once you are happy.
+The skin center has thirteen skins, each with try-on before apply: the preview applies instantly and reverts fully on exit; apply with one click once you are happy.
 
 ![Skin center](docs/screenshots/03-settings-skin-center.png)
 
-Ten existing skins at a glance (screenshots for Dragon Heir / Miku are pending); Maid Atelier has its own preview below:
+Twelve existing skins at a glance (screenshots for Dragon Heir / Miku are pending); Maid Atelier has its own preview below:
 
 ![All 10 skins](docs/images/skins-montage.png)
 
@@ -175,6 +175,18 @@ A dusk-harbor theme: the anime-girl harbor painting (a twilight-blue sky melting
 An ornate navy workshop skin with two character layers and responsive sidebar decoration. This skin is licensed separately under CC BY-NC-SA 4.0 and is restricted to non-commercial use.
 
 ![Maid Atelier light](packages/skins/maid-atelier/preview/light.png) · ![Maid Atelier dark](packages/skins/maid-atelier/preview/dark.png)
+
+### Aurora Nebula
+
+Four aurora orbs in cyan/indigo/violet drift slowly over a deep-space base, with a perspective grid, deterministic starfield, concentric radar rings, HUD corner markers and a top energy line; all `--dsw-*` semantic tokens are remapped to the cyan/indigo/violet tech palette — intense aurora in dark mode, soft pastel in light mode.
+
+![Aurora Nebula light](packages/skins/aurora-nebula/preview/light.png) · ![Aurora Nebula dark](packages/skins/aurora-nebula/preview/dark.png)
+
+### Cyber Neon
+
+Cyberpunk neon terminal theme: magenta×cyan neon orbs, synthwave floor grid and scanlines — intense neon night in dark mode, soft pastel in light mode.
+
+![Cyber Neon light](packages/skins/cyber-neon/preview/light.png) · ![Cyber Neon dark](packages/skins/cyber-neon/preview/dark.png)
 
 ## Quick Start
 

@@ -158,7 +158,7 @@ function SplitPane({
           {tab.contentType === 'markdown' && <MarkdownViewer content={content} root={tab.root} path={tab.path} />}
           {tab.contentType === 'html' && <HtmlViewer content={content} />}
           {tab.contentType === 'csv' && <CsvViewer content={content} />}
-          {tab.contentType === 'code' && <CodeViewer content={content} language={tab.title.split('.').pop() ?? ''} />}
+          {(tab.contentType === 'code' || tab.contentType === 'text') && <CodeViewer content={content} language={tab.title.split('.').pop() ?? ''} />}
         </div>
       </div>
     </div>

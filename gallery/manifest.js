@@ -332,6 +332,35 @@ window.SKIN_MANIFEST = {
         "dark": "packages/skins/matrix/preview/dark.png"
       },
       "order": 12
+    },
+    {
+      "id": "summer-liquid-glass",
+      "name": "夏沫琉璃",
+      "nameEn": "Summer Liquid Glass",
+      "author": "dsh-web-ui",
+      "tagline": "日系夏祭背景 · iOS 26 液态玻璃 · 冰青玫瑰琥珀三强调",
+      "description": "《夏沫琉璃》— 日系夏祭背景 + iOS 26 液态玻璃主题：人物与烟花在分层半透明玻璃面板之后若隐若现，玻璃面板带内缘高光、非均匀边缘反射与柔和扩散阴影；冰青 #67DCE7 作主要交互、玫瑰粉 #DD8FAC 作选中与品牌细节、琥珀金 #F3B75F 作运行中与重要提示、黄绿 #CBE77D 仅用于成功。代码、终端、日志与聊天区使用更低透明度的高可读玻璃，长时间使用不累眼。",
+      "tags": [
+        "liquid-glass",
+        "summer",
+        "fireworks",
+        "glass",
+        "cyan",
+        "rose",
+        "ios26"
+      ],
+      "accent": "#67DCE7",
+      "bodyAttr": "data-dsh-summer-liquid-glass",
+      "package": "@linxin666/dsh-client-ui-skin-summer-liquid-glass",
+      "wiring": {
+        "id": "ui-skin-summer-liquid-glass",
+        "bundleWired": false
+      },
+      "preview": {
+        "light": "packages/skins/summer-liquid-glass/preview/light.png",
+        "dark": "packages/skins/summer-liquid-glass/preview/dark.png"
+      },
+      "order": 13
     }
   ]
 };

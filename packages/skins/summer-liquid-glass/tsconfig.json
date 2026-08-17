@@ -1,0 +1,19 @@
+{
+  // Standalone compiler shape for this skin bundle (self-contained port of
+  // the checkout's tsconfig.base.client.json — no monorepo extends).
+  // Builds transpile-only (tsdown, dts: false): no type checking, so the
+  // @deepseek-ai/dsh-* type-only imports resolve to nothing and are erased.
+  "compilerOptions": {
+    "target": "es2024",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}

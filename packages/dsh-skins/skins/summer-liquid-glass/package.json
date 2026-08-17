@@ -1,0 +1,31 @@
+{
+  "name": "@linxin666/dsh-client-ui-skin-summer-liquid-glass",
+  "version": "0.1.0",
+  "description": "Bundled skin inside @linxin666/dsh-skins (@linxin666/dsh-client-ui-skin-summer-liquid-glass).",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "BSD-3-Clause",
+  "files": [
+    "lib",
+    "skin.json",
+    "cordis.patch.yml"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
+}

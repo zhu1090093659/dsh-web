@@ -9,7 +9,7 @@
 
 ## 一、范围
 
-`packages/` 与 `packages/skins/` 下共 23 个插件包（截至快照日）：
+`packages/` 与 `packages/skins/` 下共 24 个插件包（截至快照日）：
 
 | 目录 | 包名 | 当前版本 | private |
 | --- | --- | --- | --- |
@@ -38,6 +38,7 @@
 | packages/skins/skin-center | @linxin666/dsh-client-ui-skin-center | 0.1.1 | true |
 | packages/skins/miku | @linxin666/dsh-client-ui-skin-miku | 0.1.12 | true |
 | packages/skins/matrix | @linxin666/dsh-client-ui-skin-matrix | 0.1.0 | true |
+| packages/skins/summer-liquid-glass | @linxin666/dsh-client-ui-skin-summer-liquid-glass | 0.1.0 | true |
 
 
 ## 二、发布前检查结论（2026-08-11，已修复项标注 [已确认]）

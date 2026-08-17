@@ -1,0 +1,632 @@
+/* summer-liquid-glass (夏沫琉璃) skin — iOS 26 Liquid Glass language over a
+   night-festival backdrop. Deep-night base #071321, glass base #111927, primary
+   text #F8F3F5, secondary #C0CAD5, dim #8997A7; ice cyan #67DCE7 interaction,
+   rose pink #DD8FAC selection/brand, amber #F3B75F running, yellow-green
+   #CBE77D success, coral #F1717F error. A dark-only theme: the same palette
+   applies under both light and dark base modes (the paired selectors keep the
+   dark values winning over the base theme's own light/dark tokens). Everything
+   is scoped under body[data-dsh-summer-liquid-glass], set by apply() and
+   retracted on dispose. The night art is applied by apply() as an inline
+   background-image (WebP data URL under a deep-navy readability mask). */
+
+body[data-dsh-summer-liquid-glass],
+body[data-dsh-summer-liquid-glass][data-ds-dark-theme] {
+  color: #F8F3F5;
+  background-color: #071321;
+  --dsw-glass-mask: 0.26;
+}
+
+/* The runtime root must stay transparent so the body art shows through. */
+body[data-dsh-summer-liquid-glass] [id='root'] {
+  background: transparent;
+}
+
+/* --- Glass tiers --------------------------------------------------------------
+   Three documented material grades. Normal glass sheathes top bars, sidebars
+   and main surfaces; high-readability glass sheathes code, terminal, log and
+   long-text regions (lower transparency); floating glass sheathes popovers,
+   menus and command palettes (stronger blur, crisper edge, deeper shadow). The
+   alias tokens below reference these so the @supports fallback swaps all three
+   at once when backdrop-filter is unavailable. */
+
+body[data-dsh-summer-liquid-glass],
+body[data-dsh-summer-liquid-glass][data-ds-dark-theme] {
+  --dsw-glass-normal: rgba(18, 25, 39, 0.46);
+  --dsw-glass-high: rgba(10, 18, 31, 0.78);
+  --dsw-glass-float: rgba(28, 31, 47, 0.68);
+}
+
+/* --- Static palette (dark, single set) ------------------------------------- */
+
+body[data-dsh-summer-liquid-glass],
+body[data-dsh-summer-liquid-glass][data-ds-dark-theme] {
+  --dsw-static-amber-100: #fcead3;
+  --dsw-static-amber-400: #f7cb8b;
+  --dsw-static-amber-500: #F3B75F;
+  --dsw-static-amber-600: #d99a3f;
+  --dsw-static-amber-900: #7a5220;
+  --dsw-static-blue-100: #dcf8fa;
+  --dsw-static-blue-300: #a3e9ef;
+  --dsw-static-blue-400: #86e2ea;
+  --dsw-static-blue-450: #76dfe8;
+  --dsw-static-blue-500: #67DCE7;
+  --dsw-static-blue-50: #f2fdfe;
+  --dsw-static-blue-50p: #f0fcfd;
+  --dsw-static-blue-600: #45c2cf;
+  --dsw-static-blue-75: #e6fbfc;
+  --dsw-static-blue-800: #27808c;
+  --dsw-static-blue-900: #1e6069;
+  --dsw-static-blue-950: #0f3a40;
+  --dsw-static-deepseek-100: #dcf8fa;
+  --dsw-static-deepseek-200: #c2f1f5;
+  --dsw-static-deepseek-300: #a3e9ef;
+  --dsw-static-deepseek-400: #86e2ea;
+  --dsw-static-deepseek-450: #76dfe8;
+  --dsw-static-deepseek-500: #67DCE7;
+  --dsw-static-deepseek-50: #f2fdfe;
+  --dsw-static-deepseek-600: #45c2cf;
+  --dsw-static-deepseek-700-delete: #33a3af;
+  --dsw-static-deepseek-800: #27808c;
+  --dsw-static-deepseek-900: #1e6069;
+  --dsw-static-green-100: #eef7d8;
+  --dsw-static-green-400: #d6ee9a;
+  --dsw-static-green-500: #CBE77D;
+  --dsw-static-green-900: #5a6f2e;
+  --dsw-static-neutral-00: #071321;
+  --dsw-static-neutral-1000: #F8F3F5;
+  --dsw-static-neutral-100: #0d1a2e;
+  --dsw-static-neutral-150: #111927;
+  --dsw-static-neutral-200: #14243b;
+  --dsw-static-neutral-250: #172a43;
+  --dsw-static-neutral-300: #1d334f;
+  --dsw-static-neutral-400: #2a4463;
+  --dsw-static-neutral-500: #385678;
+  --dsw-static-neutral-50: #0a1424;
+  --dsw-static-neutral-550: #446289;
+  --dsw-static-neutral-600: #52709a;
+  --dsw-static-neutral-700: #6885ad;
+  --dsw-static-neutral-800: #849dbf;
+  --dsw-static-neutral-850: #97adca;
+  --dsw-static-neutral-900: #adbfd6;
+  --dsw-static-neutral-bluish-00: #071321;
+  --dsw-static-neutral-bluish-1000: #F8F3F5;
+  --dsw-static-neutral-bluish-100: #102033;
+  --dsw-static-neutral-bluish-150: #13253a;
+  --dsw-static-neutral-bluish-200: #162a41;
+  --dsw-static-neutral-bluish-300: #1f3a56;
+  --dsw-static-neutral-bluish-400: #2c4c6e;
+  --dsw-static-neutral-bluish-500: #3a6086;
+  --dsw-static-neutral-bluish-50: #0a1626;
+  --dsw-static-neutral-bluish-600: #4f759e;
+  --dsw-static-neutral-bluish-60: #0b1929;
+  --dsw-static-neutral-bluish-700: #648ab2;
+  --dsw-static-neutral-bluish-750: #7498bd;
+  --dsw-static-neutral-bluish-75: #0d1c2e;
+  --dsw-static-neutral-bluish-800: #86a6c8;
+  --dsw-static-neutral-bluish-850: #98b4d1;
+  --dsw-static-neutral-bluish-875: #aac1da;
+  --dsw-static-neutral-bluish-900: #bdcfe4;
+  --dsw-static-neutral-bluish-950: #d3e0ee;
+  --dsw-static-red-100: #fbdde0;
+  --dsw-static-red-400: #f58a95;
+  --dsw-static-red-500: #F1717F;
+  --dsw-static-red-50: #fcebed;
+  --dsw-static-red-600: #d95564;
+  --dsw-static-red-900: #7a2a34;
+}
+
+/* --- Alias palette (dark, single set) -------------------------------------- */
+
+body[data-dsh-summer-liquid-glass],
+body[data-dsh-summer-liquid-glass][data-ds-dark-theme] {
+  --dsw-alias-bg-base: var(--dsw-glass-normal);
+  --dsw-alias-bg-layer-1: rgba(17, 25, 39, 0.42);
+  --dsw-alias-bg-layer-2: rgba(24, 31, 46, 0.46);
+  --dsw-alias-bg-layer-3: rgba(30, 28, 44, 0.46);
+  --dsw-alias-bg-mask-1: rgba(0, 0, 0, 0.5);
+  --dsw-alias-bg-mask-2: rgba(0, 0, 0, 0.28);
+  --dsw-alias-bg-mask-3: rgba(0, 0, 0, 0.58);
+  --dsw-alias-bg-mask-photo: rgba(7, 19, 33, 0.9);
+  --dsw-alias-bg-mask-drop: rgba(7, 19, 33, 0.62);
+  --dsw-alias-bg-module-platform: var(--dsw-glass-normal);
+  --dsw-alias-bg-multi-select: rgba(24, 31, 46, 0.46);
+  --dsw-alias-bg-overlay: rgba(20, 26, 42, 0.9);
+  --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.06);
+  --dsw-alias-border-inverted2: rgba(255, 255, 255, 0.6);
+  --dsw-alias-border-inverted: rgba(255, 255, 255, 0.4);
+  --dsw-alias-border-l1: rgba(103, 220, 231, 0.07);
+  --dsw-alias-border-l2-darkmode-thin: rgba(103, 220, 231, 0.09);
+  --dsw-alias-border-l2: rgba(103, 220, 231, 0.1);
+  --dsw-alias-border-l3: rgba(103, 220, 231, 0.15);
+  --dsw-alias-border-l4: rgba(103, 220, 231, 0.2);
+  --dsw-alias-brand-primary-invert: #071321;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #67DCE7;
+  --dsw-alias-brand-primary: #67DCE7;
+  --dsw-alias-brand-text: #dcf8fa;
+  --dsw-alias-button-contrast-fill: #1e6069;
+  --dsw-alias-button-elevated-fill: #14243b;
+  --dsw-alias-button-floating-fill: #0d1a2e;
+  --dsw-alias-button-floating-hover: #172a43;
+  --dsw-alias-button-ghost-active-border: #45c2cf;
+  --dsw-alias-button-ghost-active-fill: #1d334f;
+  --dsw-alias-button-ghost-active-hover: #1f3a56;
+  --dsw-alias-button-info-fill: #27808c;
+  --dsw-alias-button-info-hover: #33a3af;
+  --dsw-alias-button-primary-dimmed: #1d334f;
+  --dsw-alias-button-primary-fill: #67DCE7;
+  --dsw-alias-button-primary-hover: #76dfe8;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(103, 220, 231, 0.24);
+  --dsw-alias-button-tool-bar-fill: rgba(103, 220, 231, 0.34);
+  --dsw-alias-button-tool-bar-hover: rgba(103, 220, 231, 0.44);
+  --dsw-alias-interactive-bg-active: rgba(103, 220, 231, 0.08);
+  --dsw-alias-interactive-bg-hover-accent: rgba(103, 220, 231, 0.1);
+  --dsw-alias-interactive-bg-hover-danger: rgba(241, 113, 127, 0.12);
+  --dsw-alias-interactive-bg-hover-solid: #1f3a56;
+  --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.07);
+  --dsw-alias-label-caption: #8997A7;
+  --dsw-alias-label-dimmed: #52709a;
+  --dsw-alias-label-primary-bluish: #dcf8fa;
+  --dsw-alias-label-primary-dimmed: #adbfd6;
+  --dsw-alias-label-primary-foreground: #071321;
+  --dsw-alias-label-primary-inverted: #F8F3F5;
+  --dsw-alias-label-primary: #F8F3F5;
+  --dsw-alias-label-secondary: #C0CAD5;
+  --dsw-alias-label-tertiary: #8997A7;
+  --dsw-alias-markdown-citation: rgba(24, 31, 46, 0.44);
+  --dsw-alias-markdown-code-block-banner: var(--dsw-glass-high);
+  --dsw-alias-markdown-code-block: var(--dsw-glass-high);
+  --dsw-alias-markdown-code-segment-selected: rgba(29, 51, 79, 0.78);
+  --dsw-alias-markdown-code-segment-unselected: rgba(13, 22, 39, 0.64);
+  --dsw-alias-markdown-inline-code: rgba(16, 26, 42, 0.68);
+  --dsw-alias-markdown-placeholder: rgba(13, 22, 39, 0.64);
+  --dsw-alias-markdown-tag: rgba(16, 26, 42, 0.68);
+  --dsw-alias-scrollbar-bg-l1: #1d334f;
+  --dsw-alias-scrollbar-bg-l2: #1d334f;
+  --dsw-alias-scrollbar-hover-l1: #3a6086;
+  --dsw-alias-scrollbar-hover-l2: #3a6086;
+  --dsw-alias-state-business-primary: #67DCE7;
+  --dsw-alias-state-business-tertiary: #1d334f;
+  --dsw-alias-state-error-primary: #F1717F;
+  --dsw-alias-state-error-secondary: #f58a95;
+  --dsw-alias-state-success-primary: #CBE77D;
+  --dsw-alias-state-success-secondary: #d6ee9a;
+  --dsw-alias-state-success-tertiary: #5a6f2e;
+  --dsw-alias-state-warn-label: #F3B75F;
+  --dsw-alias-state-warn-primary: #F3B75F;
+  --dsw-alias-state-warn-secondary: #f7cb8b;
+  --dsw-alias-state-warn-tertiary: #7a5220;
+  --dsw-alias-toast-bg: rgba(20, 26, 42, 0.92);
+  --dsw-alias-tooltip-bg: rgba(20, 26, 42, 0.92);
+  --dsw-specific-bubble-highlight: #1f3a56;
+  --dsw-specific-bubble: #1d334f;
+  --dsw-specific-input-major: rgba(13, 22, 39, 0.5);
+  --dsw-specific-login-input: rgba(13, 22, 39, 0.5);
+  --dsw-specific-menu: var(--dsw-glass-float);
+  --dsw-specific-selector: rgba(24, 31, 46, 0.5);
+  --dsw-specific-sidebar-fill: rgba(17, 25, 39, 0.36);
+  --dsw-specific-sidebar-nav-item-active-accent: #1f3a56;
+  --dsw-specific-sidebar-nav-item-active: #1d334f;
+  --dsw-specific-sidebar-nav-item-hover: #172a43;
+  --dsw-specific-tip: #0d1a2e;
+}
+
+/* --- aionui 右侧面板 token（dark） ----------------------------------------- */
+
+body[data-dsh-summer-liquid-glass],
+body[data-dsh-summer-liquid-glass][data-ds-dark-theme] {
+  --aion-bg-base: var(--dsw-glass-normal);
+  --aion-bg-1: rgba(17, 25, 39, 0.4);
+  --aion-bg-2: rgba(24, 31, 46, 0.46);
+  --aion-bg-3: rgba(103, 220, 231, 0.09);
+  --aion-bg-4: rgba(103, 220, 231, 0.28);
+  --aion-bg-hover: rgba(103, 220, 231, 0.1);
+  --aion-bg-active: rgba(221, 143, 172, 0.2);
+  --aion-text-primary: #F8F3F5;
+  --aion-text-secondary: #C0CAD5;
+  --aion-text-tertiary: #8997A7;
+  --aion-text-disabled: #52709a;
+  --aion-primary: #67DCE7;
+  --aion-success: #CBE77D;
+  --aion-warning: #F3B75F;
+  --aion-danger: #F1717F;
+  --aion-brand: #DD8FAC;
+  --aion-aou-1: #0b1929;
+  --aion-aou-2: #102033;
+  --aion-aou-3: #1d334f;
+  --aion-aou-4: #27808c;
+  --aion-aou-5: #45c2cf;
+  --aion-aou-6: #86e2ea;
+  --aion-fill-2: rgba(103, 220, 231, 0.1);
+  --aion-fill-3: rgba(103, 220, 231, 0.09);
+  --aion-border-base: rgba(103, 220, 231, 0.08);
+  --aion-overlay-shadow: 0 12px 32px rgba(0, 7, 18, 0.4);
+  --aion-font-sans: -apple-system, "system-ui", "Segoe UI", Roboto,
+    "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --aion-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+/* --- Shared glass finish tokens --------------------------------------------- */
+
+body[data-dsh-summer-liquid-glass],
+body[data-dsh-summer-liquid-glass][data-ds-dark-theme] {
+  --dsw-mask-blur: blur(30px) saturate(140%);
+  --dsw-shadow-lv1: 0 2px 8px rgba(0, 7, 18, 0.18);
+  --dsw-shadow-lv2: 0 4px 14px rgba(0, 7, 18, 0.22);
+  --dsw-shadow-lv3: 0 10px 30px rgba(0, 7, 18, 0.25);
+}
+
+/* --- Local blur on glass surfaces (kept off the full-viewport frame) ---------
+   Blur concentrates on the top-level regions, navigation and floaters, not on
+   every small element. */
+
+body[data-dsh-summer-liquid-glass] [role='dialog'],
+body[data-dsh-summer-liquid-glass] [role='menu'],
+body[data-dsh-summer-liquid-glass] [role='listbox'] {
+  -webkit-backdrop-filter: blur(30px) saturate(145%);
+  backdrop-filter: blur(30px) saturate(145%);
+}
+
+body[data-dsh-summer-liquid-glass] [role='tooltip'] {
+  -webkit-backdrop-filter: blur(20px) saturate(135%);
+  backdrop-filter: blur(20px) saturate(135%);
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-root) {
+  -webkit-backdrop-filter: blur(26px) saturate(120%);
+  backdrop-filter: blur(26px) saturate(120%);
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-explorer-col),
+body[data-dsh-summer-liquid-glass] :global(.aionui-preview-col) {
+  -webkit-backdrop-filter: blur(26px) saturate(120%);
+  backdrop-filter: blur(26px) saturate(120%);
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-dialog),
+body[data-dsh-summer-liquid-glass] :global(.aionui-menu),
+body[data-dsh-summer-liquid-glass] :global(.aionui-toast) {
+  -webkit-backdrop-filter: blur(30px) saturate(145%);
+  backdrop-filter: blur(30px) saturate(145%);
+}
+
+body[data-dsh-summer-liquid-glass] [data-gitgraph-dialog] {
+  -webkit-backdrop-filter: blur(30px) saturate(145%);
+  backdrop-filter: blur(30px) saturate(145%);
+  border-color: rgba(103, 220, 231, 0.15);
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-overlay) {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* --- Glass edge highlight + sheen + diffuse shadow --------------------------- */
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-root),
+body[data-dsh-summer-liquid-glass] :global(.aionui-dialog),
+body[data-dsh-summer-liquid-glass] :global(.aionui-menu),
+body[data-dsh-summer-liquid-glass] :global(.aionui-toast),
+body[data-dsh-summer-liquid-glass] [data-gitgraph-dialog],
+body[data-dsh-summer-liquid-glass] [role='dialog'] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 10px 30px rgba(0, 7, 18, 0.25);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.015) 18%,
+    rgba(255, 255, 255, 0) 42%
+  );
+}
+
+body[data-dsh-summer-liquid-glass] [role='tooltip'] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 10px 28px rgba(0, 7, 18, 0.3);
+}
+
+/* --- Chrome details --------------------------------------------------------- */
+
+body[data-dsh-summer-liquid-glass] {
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+body[data-dsh-summer-liquid-glass]::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body[data-dsh-summer-liquid-glass]::-webkit-scrollbar-track {
+  background: #071321;
+}
+
+body[data-dsh-summer-liquid-glass]::-webkit-scrollbar-thumb {
+  background: #1d334f;
+  border: 2px solid #071321;
+  border-radius: 5px;
+}
+
+body[data-dsh-summer-liquid-glass]::-webkit-scrollbar-thumb:hover {
+  background: #3a6086;
+}
+
+body[data-dsh-summer-liquid-glass]::-webkit-scrollbar-corner {
+  background: #071321;
+}
+
+body[data-dsh-summer-liquid-glass]::selection {
+  background: rgba(221, 143, 172, 0.38);
+  color: #F8F3F5;
+}
+
+body[data-dsh-summer-liquid-glass] a {
+  color: #67DCE7;
+}
+
+body[data-dsh-summer-liquid-glass] a:visited {
+  color: #b18df0;
+}
+
+body[data-dsh-summer-liquid-glass] :focus-visible {
+  outline: 2px solid rgba(103, 220, 231, 0.7);
+  outline-offset: 2px;
+}
+
+body[data-dsh-summer-liquid-glass] [role='tooltip'] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: #F8F3F5;
+}
+
+body[data-dsh-summer-liquid-glass] [role='dialog'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-summer-liquid-glass] [role='dialog'] [class*='navCell']:not([aria-current='true']) {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-summer-liquid-glass] button[role='tab'],
+body[data-dsh-summer-liquid-glass] button[role='tab']:hover,
+body[data-dsh-summer-liquid-glass] button[role='tab']:active,
+body[data-dsh-summer-liquid-glass] button[role='tab']:disabled,
+body[data-dsh-summer-liquid-glass] button[role='tab']:hover:not(:disabled),
+body[data-dsh-summer-liquid-glass] button[role='tab']:active:not(:disabled) {
+  background-image: none;
+  background-color: transparent;
+  box-shadow: none;
+  text-shadow: none;
+  border: 0;
+  color: var(--dsw-alias-label-primary);
+  transform: none;
+  filter: none;
+  opacity: 1;
+}
+
+/* --- Interactive polish ----------------------------------------------------- */
+
+body[data-dsh-summer-liquid-glass] button,
+body[data-dsh-summer-liquid-glass] a,
+body[data-dsh-summer-liquid-glass] :global(.aionui-btn),
+body[data-dsh-summer-liquid-glass] :global(.aionui-menu-item),
+body[data-dsh-summer-liquid-glass] :global(.aionui-explorer-handle),
+body[data-dsh-summer-liquid-glass] :global(.aionui-preview-handle) {
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+body[data-dsh-summer-liquid-glass] ::-webkit-scrollbar-thumb {
+  transition: background-color 0.15s ease;
+}
+
+body[data-dsh-summer-liquid-glass] a:hover {
+  color: #86e2ea;
+  text-decoration: underline;
+}
+
+body[data-dsh-summer-liquid-glass] a:active {
+  color: #a3e9ef;
+}
+
+/* Thin-glass buttons: hover lifts the inner edge, press darkens (no scale). */
+body[data-dsh-summer-liquid-glass] button:not(:disabled):hover,
+body[data-dsh-summer-liquid-glass] :global(.aionui-btn:not(:disabled)):hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+body[data-dsh-summer-liquid-glass] button:not(:disabled):active,
+body[data-dsh-summer-liquid-glass] :global(.aionui-btn:not(:disabled)):active {
+  filter: brightness(0.92);
+  box-shadow: inset 0 1px 2px rgba(0, 7, 18, 0.35);
+}
+
+body[data-dsh-summer-liquid-glass] button:disabled,
+body[data-dsh-summer-liquid-glass] :global(.aionui-btn:disabled),
+body[data-dsh-summer-liquid-glass] :global(.aionui-menu-item-disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-btn:disabled:hover),
+body[data-dsh-summer-liquid-glass] :global(.aionui-menu-item-disabled):hover {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-explorer-handle),
+body[data-dsh-summer-liquid-glass] :global(.aionui-preview-handle) {
+  background: #1d334f;
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-explorer-handle):hover,
+body[data-dsh-summer-liquid-glass] :global(.aionui-preview-handle):hover {
+  background: #3a6086;
+  box-shadow: 0 0 6px rgba(103, 220, 231, 0.4);
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-floating-expand):hover {
+  background: #1f3a56;
+  border-color: #45c2cf;
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-floating-expand):active {
+  background: #1d334f;
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-collapse-chevron):hover {
+  color: #67DCE7;
+}
+
+body[data-dsh-summer-liquid-glass] :global(.aionui-menu-item:not(.aionui-menu-item-disabled):hover) {
+  background: rgba(103, 220, 231, 0.12);
+}
+
+/* Inputs: slight inset feel, ice-cyan focus ring (colour + offset, not colour
+   alone — the outline is a shape, not a hue change). */
+body[data-dsh-summer-liquid-glass] input,
+body[data-dsh-summer-liquid-glass] textarea {
+  background: var(--dsw-specific-input-major);
+  box-shadow: inset 0 1px 2px rgba(0, 7, 18, 0.3);
+  border: 1px solid var(--dsw-alias-border-l2);
+}
+
+body[data-dsh-summer-liquid-glass] input:focus-visible,
+body[data-dsh-summer-liquid-glass] textarea:focus-visible {
+  border-color: rgba(103, 220, 231, 0.6);
+  outline: 2px solid rgba(103, 220, 231, 0.5);
+  outline-offset: 1px;
+}
+
+/* --- Fade-in for floaters (140–200ms) --------------------------------------- */
+
+@keyframes dshGlassIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+body[data-dsh-summer-liquid-glass] [role='dialog'],
+body[data-dsh-summer-liquid-glass] [role='menu'],
+body[data-dsh-summer-liquid-glass] [role='listbox'],
+body[data-dsh-summer-liquid-glass] [role='tooltip'],
+body[data-dsh-summer-liquid-glass] :global(.aionui-dialog),
+body[data-dsh-summer-liquid-glass] :global(.aionui-menu),
+body[data-dsh-summer-liquid-glass] :global(.aionui-toast) {
+  animation: dshGlassIn 160ms ease-out;
+}
+
+/* --- Reduced motion --------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-dsh-summer-liquid-glass] button,
+  body[data-dsh-summer-liquid-glass] a,
+  body[data-dsh-summer-liquid-glass] :global(.aionui-btn),
+  body[data-dsh-summer-liquid-glass] :global(.aionui-menu-item),
+  body[data-dsh-summer-liquid-glass] :global(.aionui-explorer-handle),
+  body[data-dsh-summer-liquid-glass] :global(.aionui-preview-handle),
+  body[data-dsh-summer-liquid-glass] ::-webkit-scrollbar-thumb {
+    transition: none;
+  }
+
+  body[data-dsh-summer-liquid-glass] [role='dialog'],
+  body[data-dsh-summer-liquid-glass] [role='menu'],
+  body[data-dsh-summer-liquid-glass] [role='listbox'],
+  body[data-dsh-summer-liquid-glass] [role='tooltip'],
+  body[data-dsh-summer-liquid-glass] :global(.aionui-dialog),
+  body[data-dsh-summer-liquid-glass] :global(.aionui-menu),
+  body[data-dsh-summer-liquid-glass] :global(.aionui-toast) {
+    animation: none;
+  }
+}
+
+/* --- Narrow screens: keep the upper-center face visible and deepen the mask - */
+
+@media (max-width: 900px) {
+  body[data-dsh-summer-liquid-glass],
+  body[data-dsh-summer-liquid-glass][data-ds-dark-theme] {
+    --dsw-glass-mask: 0.34;
+  }
+}
+
+@media (max-width: 560px) {
+  body[data-dsh-summer-liquid-glass],
+  body[data-dsh-summer-liquid-glass][data-ds-dark-theme] {
+    --dsw-glass-mask: 0.4;
+  }
+}
+
+/* --- backdrop-filter fallback ------------------------------------------------
+   When backdrop blur is unavailable, raise the glass opacity so every surface
+   stays a stable translucent dark panel rather than turning transparent. */
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body[data-dsh-summer-liquid-glass],
+  body[data-dsh-summer-liquid-glass][data-ds-dark-theme] {
+    --dsw-glass-normal: rgba(10, 18, 31, 0.82);
+    --dsw-glass-high: rgba(7, 15, 27, 0.92);
+    --dsw-glass-float: rgba(16, 22, 37, 0.9);
+  }
+}
+
+/* --- git-graph 提交图适配 -------------------------------------------------- */
+
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+1),
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+1) { color: #67DCE7; }
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+2),
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+2) { color: #CBE77D; }
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+3),
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+3) { color: #F3B75F; }
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+4),
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+4) { color: #DD8FAC; }
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+5),
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+5) { color: #86e2ea; }
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n),
+body[data-dsh-summer-liquid-glass] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n) { color: #d6ee9a; }
+
+body[data-dsh-summer-liquid-glass] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
+  background: rgba(103, 220, 231, 0.12);
+  border: 1px solid rgba(103, 220, 231, 0.1);
+}
+
+/* --- 输入区选择器：工作区 + Git 分支胶囊 ----------------------------------- */
+
+body[data-dsh-summer-liquid-glass] div:has(> div > [data-gitgraph-chip]) {
+  --dsw-alias-button-tool-bar-fill: rgba(103, 220, 231, 0.1);
+  --dsw-alias-border-l2: rgba(103, 220, 231, 0.18);
+  --dsw-alias-label-secondary: #C0CAD5;
+  --dsw-alias-label-tertiary: #8997A7;
+  --dsw-alias-interactive-bg-hover: rgba(103, 220, 231, 0.07);
+  --dsw-alias-interactive-bg-active: rgba(103, 220, 231, 0.1);
+}
+
+body[data-dsh-summer-liquid-glass] div:has(> div > [data-gitgraph-chip]) > button[aria-expanded='true'],
+body[data-dsh-summer-liquid-glass] [data-gitgraph-chip][aria-expanded='true'] {
+  background-color: rgba(103, 220, 231, 0.08);
+}
+
+/* --- 输入框停靠区磨砂渐隐（composerSeat） ---------------------------------- */
+
+body[data-dsh-summer-liquid-glass] [data-phase='active'] [class*='composerSeat'] {
+  background: transparent !important;
+}
+
+body[data-dsh-summer-liquid-glass] [data-phase='active'] [class*='composerSeat']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0px,
+    var(--dsw-alias-bg-base) 36px
+  );
+  -webkit-backdrop-filter: blur(34px) saturate(150%);
+  backdrop-filter: blur(34px) saturate(150%);
+}

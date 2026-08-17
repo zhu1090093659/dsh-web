@@ -162,22 +162,36 @@ export function sanitizeSvg(svg: string): string {
 
 /**
  * Collect the still-unclaimed fenced mermaid code blocks under one scope.
- * Both shapes are found: the panel renderer's `pre.language-mermaid` and
- * the chat renderer's `pre > code.language-mermaid` (the claim always
- * targets the <pre>). Empty blocks and blocks another driver already
- * claimed are skipped. Pure (DOM-read only) so tests can drive it in jsdom.
+ * Two shapes are found (the claim always targets the <pre>):
+ * 1. the panel markdown renderer's `pre.language-mermaid` and the legacy
+ *    chat shape `pre > code.language-mermaid`;
+ * 2. the official shell CodeBlock shape (`@deepseek-ai/dsh-client-ui-primitives`):
+ *    the fence language survives only as the info-string banner text
+ *    (`[class*="infostring"]` inside a `.md-code-block` wrapper), and
+ *    because shiki has no mermaid grammar the body renders as a plain
+ *    `<pre>` with no `language-*` class — so the block is recognized
+ *    through its banner (issue #451).
+ * Empty blocks and blocks another driver already claimed are skipped.
+ * Pure (DOM-read only) so tests can drive it in jsdom.
  */
 export function findMermaidCodeBlocks(scope: ParentNode): HTMLPreElement[] {
   const found: HTMLPreElement[] = []
   const seen = new Set<Element>()
-  for (const el of Array.from(scope.querySelectorAll('pre.language-mermaid, code.language-mermaid'))) {
-    const pre = el instanceof HTMLPreElement ? el : el.parentElement
-    if (pre === null || !(pre instanceof HTMLPreElement)) continue
-    if (seen.has(pre)) continue
+  const consider = (pre: Element | null): void => {
+    if (pre === null || !(pre instanceof HTMLPreElement)) return
+    if (seen.has(pre) || pre.hasAttribute(DATA_CLAIMED)) return
+    if ((pre.textContent ?? '').trim() === '') return
     seen.add(pre)
-    if (pre.hasAttribute(DATA_CLAIMED)) continue
-    if ((pre.textContent ?? '').trim() === '') continue
     found.push(pre)
+  }
+  // Shape 1: language class on the pre/code (panel markdown, legacy chat).
+  for (const el of Array.from(scope.querySelectorAll('pre.language-mermaid, code.language-mermaid'))) {
+    consider(el instanceof HTMLPreElement ? el : el.parentElement)
+  }
+  // Shape 2: shell CodeBlock — resolve the info-string banner to its <pre>.
+  for (const info of Array.from(scope.querySelectorAll<HTMLElement>('[class*="infostring"]'))) {
+    if ((info.textContent ?? '').trim().toLowerCase() !== 'mermaid') continue
+    consider(info.closest('.md-code-block')?.querySelector('pre') ?? null)
   }
   return found
 }

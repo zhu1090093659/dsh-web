@@ -44,6 +44,28 @@ function seedBlocks(root: HTMLElement): { panelPre: HTMLPreElement; chatPre: HTM
   return { panelPre: pres[0] as HTMLPreElement, chatPre: pres[1] as HTMLPreElement }
 }
 
+/**
+ * One shell CodeBlock shape (official `@deepseek-ai/dsh-client-ui-primitives`
+ * markup): a `.md-code-block` wrapper whose language survives only as the
+ * info-string banner text; shiki has no mermaid grammar, so the body is a
+ * plain `<pre>` without any `language-*` class (issue #451).
+ */
+function seedShellBlock(root: HTMLElement, lang = 'mermaid', code = 'gitGraph\n  commit'): { shellPre: HTMLPreElement; info: HTMLElement } {
+  const block = document.createElement('div')
+  block.className = '_block_178r4_4 md-code-block'
+  block.innerHTML = [
+    '<div class="_bannerWrap_178r4_21"><div class="_banner_178r4_21">',
+    `<div class="_infostring_178r4_42">${lang}</div>`,
+    '<div class="_action_178r4_53"><button type="button">复制代码</button></div>',
+    '</div></div>',
+    `<pre class="_plain_178r4_94"><code>${code}</code></pre>`,
+  ].join('')
+  root.appendChild(block)
+  const shellPre = block.querySelector('pre') as HTMLPreElement
+  const info = block.querySelector('[class*="infostring"]') as HTMLElement
+  return { shellPre, info }
+}
+
 describe('findMermaidCodeBlocks', () => {
   it('finds both renderer shapes, skips empty and non-mermaid blocks', () => {
     const root = document.createElement('div')
@@ -56,6 +78,24 @@ describe('findMermaidCodeBlocks', () => {
     const root = document.createElement('div')
     const { panelPre } = seedBlocks(root)
     panelPre.setAttribute('data-mermaid-claimed', '1')
+    expect(findMermaidCodeBlocks(root)).toHaveLength(1)
+  })
+
+  it('finds the shell CodeBlock shape through its info-string banner', () => {
+    const root = document.createElement('div')
+    const { shellPre } = seedShellBlock(root)
+    seedShellBlock(root, 'python', 'print(1)')
+    const found = findMermaidCodeBlocks(root)
+    expect(found).toHaveLength(1)
+    expect(found[0]).toBe(shellPre)
+  })
+
+  it('matches the shell banner case-insensitively and skips claimed shell blocks', () => {
+    const root = document.createElement('div')
+    const { shellPre } = seedShellBlock(root, 'Mermaid')
+    shellPre.setAttribute('data-mermaid-claimed', '1')
+    expect(findMermaidCodeBlocks(root)).toHaveLength(0)
+    shellPre.removeAttribute('data-mermaid-claimed')
     expect(findMermaidCodeBlocks(root)).toHaveLength(1)
   })
 })
@@ -80,6 +120,27 @@ describe('enhanceMermaidBlocks', () => {
       await enhanceMermaidBlocks(root, { className: 'mm', theme: 'default' })
       expect(fake.render).toHaveBeenCalledTimes(2)
       expect(fake.initialize).toHaveBeenCalledTimes(2)
+    } finally {
+      fake.restore()
+      root.remove()
+    }
+  })
+
+  it('renders the shell CodeBlock shape and hides its plain pre', async () => {
+    const root = document.createElement('div')
+    document.body.appendChild(root)
+    const { shellPre, info } = seedShellBlock(root)
+    const fake = fakeMermaid((source) => `<svg data-src="${source}"></svg>`)
+    try {
+      await enhanceMermaidBlocks(root, { className: 'mm', theme: 'default' })
+      const containers = Array.from(root.querySelectorAll('[data-mermaid-state="done"]'))
+      expect(containers).toHaveLength(1)
+      expect(fake.render).toHaveBeenCalledTimes(1)
+      expect(fake.render.mock.calls[0]![1]).toBe('gitGraph\n  commit')
+      expect(shellPre.style.display).toBe('none')
+      expect(info.textContent?.trim()).toBe('mermaid')
+      // The banner and copy affordance survive; only the source pre hides.
+      expect(root.querySelector('.md-code-block')).not.toBeNull()
     } finally {
       fake.restore()
       root.remove()

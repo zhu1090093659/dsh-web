@@ -19,7 +19,8 @@ import type { PetStateView } from '../service.ts'
 import type { PetDefinition } from '../registry.ts'
 import type { PetFeedback } from './pet-store.ts'
 import { framePosition, rowOfTrack, trimTrack } from './spritesheet.ts'
-import type { PetAnimation } from '../state.ts'
+import { sequenceFrameAt } from './sequences.ts'
+import { animationForPhase, type PetAnimation } from '../state.ts'
 import { NS } from './locales.ts'
 import styles from './pet.module.css'
 
@@ -87,6 +88,7 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   const columns = definition.columns
   const rows = definition.rows
   const tracks = definition.tracks
+  const sequences = definition.sequences
 
   // Load the atlas once; the definition carries the authoritative per-row
   // frame counts and per-track durations, so nothing else is fetched.
@@ -110,14 +112,17 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   // its track's first frame instead of animating (presentation-only; the
   // animation state machine is untouched).
   const spriteScale = display.size / cell.height
+  const phase = snapshot?.phase ?? 'idle'
   const animation = snapshot?.animation ?? 'idle'
   const scaleRef = useRef(spriteScale)
   scaleRef.current = spriteScale
   useEffect(() => {
     const reduceMotion = typeof window !== 'undefined'
       && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
-    const row = rowOfTrack(animation)
-    const track = trimTrack(tracks[animation], rows[row] ?? tracks[animation].frames.length)
+    const sequence = animation === animationForPhase(phase) ? sequences?.[phase] : undefined
+    const leadAnimation = sequence?.[0] ?? animation
+    const row = rowOfTrack(leadAnimation)
+    const track = trimTrack(tracks[leadAnimation], rows[row] ?? tracks[leadAnimation].frames.length)
     // Paint one static sprite frame up front either way, so the pet is never
     // blank while the loop heat-up runs.
     const leadCol = track.frames[0]!
@@ -128,9 +133,26 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
     if (reduceMotion) return
     let raf = 0
     let last = performance.now()
+    let sequenceElapsed = 0
     const tick = (ts: number): void => {
       const delta = ts - last
       last = ts
+      if (sequence !== undefined) {
+        sequenceElapsed += delta
+        const current = sequenceFrameAt(sequence, tracks, sequenceElapsed)
+        const currentRow = rowOfTrack(current.animation)
+        const currentTrack = trimTrack(
+          tracks[current.animation],
+          rows[currentRow] ?? tracks[current.animation].frames.length,
+        )
+        const col = currentTrack.frames[current.frameIndex]!
+        const pos = framePosition(cell, columns, currentRow, col, scaleRef.current)
+        if (spriteRef.current !== null) {
+          spriteRef.current.style.backgroundPosition = pos.x + 'px ' + pos.y + 'px'
+        }
+        raf = requestAnimationFrame(tick)
+        return
+      }
       // row/track come from the effect scope: they were computed once above
       // and this effect re-runs when animation/tracks/rows change, so the
       // per-frame recompute (trimTrack slices fresh arrays) is pure waste.
@@ -163,7 +185,7 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [animation, cell, columns, rows, tracks])
+  }, [animation, phase, cell, columns, rows, tracks, sequences])
 
   // Auto-clear the feedback bubble after its CSS animation. The callback
   // rides a ref so re-renders never reset the timer: the 2s poll rebuilds

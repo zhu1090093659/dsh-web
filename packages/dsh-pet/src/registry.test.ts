@@ -67,6 +67,36 @@ describe('resolvePetManifest', () => {
     expect(entry!.tracks['running-right'].durations.length).toBe(8)
   })
 
+  it('normalizes valid per-scene animation sequences', () => {
+    const entry = resolvePetManifest({
+      id: 'whale-girl',
+      displayName: '鲸鱼娘',
+      spritesheetPath: 'spritesheet.webp',
+      sequences: {
+        thinking: ['running', 'running-right', 'running', 'running-left', 'waiting'],
+      },
+    }, join(tmpdir(), 'whale'))
+    expect(entry!.sequences).toEqual({
+      thinking: ['running', 'running-right', 'running', 'running-left', 'waiting'],
+    })
+  })
+
+  it('drops invalid or undersized per-scene animation sequences', () => {
+    const warnings: string[] = []
+    const entry = resolvePetManifest({
+      id: 'whale-girl',
+      displayName: '鲸鱼娘',
+      spritesheetPath: 'spritesheet.webp',
+      sequences: {
+        waiting: ['waiting', 'idle'],
+        thinking: ['running', 'bogus', 'running', 'running-left', 'waiting'],
+      },
+    }, join(tmpdir(), 'whale'), { warnings })
+    expect(entry!.sequences).toBeUndefined()
+    expect(warnings).toContain('manifest whale-girl: sequence waiting must contain at least 5 animations')
+    expect(warnings).toContain('manifest whale-girl: sequence thinking contains unknown animation "bogus"')
+  })
+
   it('cycles short override durations up to the row frame count', () => {
     const entry = resolvePetManifest({
       id: 'fox',

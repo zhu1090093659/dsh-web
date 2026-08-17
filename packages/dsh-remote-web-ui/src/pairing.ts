@@ -16,6 +16,8 @@
  */
 
 import { randomBytes } from 'node:crypto'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 
 /** The observable pairing phases the panel renders. */
 export type PairingPhase =
@@ -95,6 +97,13 @@ export interface PairingConfig {
   maxDevices: number
   /** Cookie name carrying the device id. */
   cookieName: string
+  /**
+   * Path to a JSON file where paired device sessions are persisted. When
+   * set, sessions survive process restarts (the phone keeps its 365-day
+   * cookie), so re-pairing after a dsh web restart is not required. When
+   * unset (default), sessions stay memory-only — the previous behavior.
+   */
+  devicesFile?: string
 }
 
 /** Result of one accept() attempt. */
@@ -154,7 +163,50 @@ export class PairingService {
   constructor(
     public config: PairingConfig,
     private readonly clock: PairingClock = defaultClock,
-  ) {}
+  ) {
+    this.loadPersisted()
+  }
+
+  /**
+   * Restore device sessions persisted by a previous process run. A corrupt
+   * or missing file is tolerated (an empty device table, never a throw) —
+   * persistence is an availability convenience, not a security boundary.
+   */
+  private loadPersisted(): void {
+    const file = this.config.devicesFile
+    if (file === undefined) return
+    try {
+      const saved = JSON.parse(readFileSync(file, 'utf8')) as unknown
+      if (typeof saved !== 'object' || saved === null) return
+      for (const [deviceId, session] of Object.entries(saved)) {
+        if (typeof deviceId !== 'string') continue
+        if (typeof session !== 'object' || session === null) continue
+        const { createdAt, lastSeenAt } = session as { createdAt?: unknown; lastSeenAt?: unknown }
+        if (typeof createdAt !== 'number' || typeof lastSeenAt !== 'number') continue
+        this.devices.set(deviceId, { createdAt, lastSeenAt })
+      }
+    } catch {
+      // Unreadable/corrupt: start empty rather than refusing to boot.
+    }
+  }
+
+  /**
+   * Write the current device table to the configured file. Called on the
+   * mutation boundaries that change the set of live sessions (accept and
+   * stop); `lastSeenAt` refreshes are deliberately not persisted here so a
+   * per-request write storm is avoided — after a restart the phone's first
+   * heartbeat re-warms its own session.
+   */
+  private persist(): void {
+    const file = this.config.devicesFile
+    if (file === undefined) return
+    try {
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(file, JSON.stringify(Object.fromEntries(this.devices)))
+    } catch (error) {
+      console.error('remote-web-ui: failed to persist paired devices', error)
+    }
+  }
 
   /** The default LAN base URL (the first interface; undefined when not LAN-reachable). */
   get lanBaseUrl(): string | undefined {
@@ -254,6 +306,7 @@ export class PairingService {
       if (oldest !== undefined) this.devices.delete(oldest.id)
     }
     this.devices.set(deviceId, { createdAt: now, lastSeenAt: now })
+    this.persist()
     this.notify()
     return { ok: true, deviceId }
   }
@@ -266,6 +319,7 @@ export class PairingService {
   stop(): void {
     this.tokens.clear()
     this.devices.clear()
+    this.persist()
     this.stopped = true
     this.notify()
   }

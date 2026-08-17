@@ -14,5 +14,14 @@
     "waiting": { "durations": [450, 450, 500, 450, 450, 500] },
     "running": { "durations": [250, 250, 250, 250, 250, 250] },
     "review": { "durations": [550, 550, 550, 550, 550, 550] }
+  },
+  "sequences": {
+    "idle": ["idle", "waving", "idle", "waiting", "idle", "idle"],
+    "waiting": ["waiting", "idle", "waving", "waiting", "idle", "waiting"],
+    "thinking": ["running", "running-right", "running", "running-left", "running", "waiting", "running"],
+    "tool": ["running-right", "running", "running-left", "running", "running-right", "running"],
+    "review": ["review", "waiting", "review", "running", "review", "idle"],
+    "done": ["jumping", "waving", "jumping", "waving", "jumping", "idle"],
+    "failed": ["failed", "waiting", "failed", "idle", "waiting", "failed"]
   }
 }

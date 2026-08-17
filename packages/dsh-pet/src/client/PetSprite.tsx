@@ -238,7 +238,7 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   const spriteHeight = Math.round(cell.height * spriteScale)
   // Concurrent sessions each render their own bubble (stacked above the
   // sprite); the legacy single 'bubble' is the fallback when the host serves
-  // no per-session list. The hover panel now sits beside the sprite, so the
+  // no per-session list. The hover panel now sits below the sprite, so the
   // bubbles stay visible and clickable while hovering — no region swap.
   const sessionBubbles = snapshot?.sessions ?? []
   const statusBubble = feedback === null && sessionBubbles.length === 0
@@ -256,11 +256,11 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
         setHovered(true)
       }}
       onPointerLeave={(e) => {
-        // The panel renders OUTSIDE the container's box (absolute, beside
+        // The panel renders OUTSIDE the container's box (absolute, below
         // the sprite), so moving onto it fires pointerleave on the container.
         // Treat a target still inside the container's DOM (the overflowed
         // panel) as "still hovering"; otherwise give the pointer a short
-        // grace period to reach the panel across the gap beside the sprite.
+        // grace period to reach the panel across the gap below the sprite.
         // The bridge ('.panel::after') keeps the pointer inside the hit
         // area, and the grace period covers a slow mouse crossing the
         // remaining sliver.

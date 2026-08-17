@@ -105,14 +105,13 @@
   }
 }
 
-/* 悬浮面板位于精灵左侧（bottom 对齐），不再占据精灵上方的空间：
+/* 悬浮面板位于精灵脚下，不再占据精灵上方的空间：
    会话气泡栈独占精灵头顶区域，两者互不遮挡 —— 气泡因此可以始终
    显示并保持可点击，不必在 hover 时让位给面板。 */
 .panel {
   position: absolute;
-  bottom: 0;
-  right: 100%;
-  margin-right: 8px;
+  top: 100%;
+  margin-top: 8px;
   background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 10px;
@@ -127,17 +126,16 @@
   min-width: 132px;
 }
 
-/* 面板右缘与图标左缘之间的 hover 桥接（issue #49 的水平版）：
-   面板在图标左侧留有 8px 间隙，指针滑过间隙时会触发容器的
-   pointerleave，面板会在指针抵达按钮前收起。这段透明伪元素把命中区
-   向右延伸、覆盖间隙，使指针在图标与按钮之间始终停留在 hover 区域。 */
+/* 面板顶边与精灵底边之间的 hover 桥接（issue #49）：
+   面板在精灵下方留有 8px 间隙，透明伪元素向上覆盖间隙，
+   使指针在精灵与按钮之间始终停留在 hover 区域。 */
 .panel::after {
   content: '';
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 100%;
-  width: 14px;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  height: 14px;
 }
 
 .rankRow {

@@ -178,12 +178,16 @@ export function apply(ctx: ClientContext): void {
 
         disposeEvents?.()
         disposeEvents = undefined
-        const previewOpen = stores.preview.getSnapshot().open
-        lastPreviewOpen = previewOpen
-        layoutSetRoot(stores.layout, root, previewOpen)
         stores.explorer.setRoot(root)
         stores.scm.setRoot(root)
         stores.preview.setRoot(root)
+        // Read the open state AFTER setRoot restores the new root's persisted
+        // tabs, so layout.previewOpen matches the preview store instead of the
+        // stale pre-setRoot value (which kept the preview column hidden until
+        // the first unrelated preview-store change).
+        const previewOpen = stores.preview.getSnapshot().open
+        lastPreviewOpen = previewOpen
+        layoutSetRoot(stores.layout, root, previewOpen)
 
         if (root === '') return
         disposeEvents = subscribePanelEvents(root, (event) => {

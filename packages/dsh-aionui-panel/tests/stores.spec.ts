@@ -204,6 +204,15 @@ describe('preview store', () => {
     expect(second.activeTabId).toBe(first.tabs[0].id)
   })
 
+  it('restores open=true from persisted tabs on setRoot (bind order)', () => {
+    localStorage.setItem('preview-ui:/w', JSON.stringify({
+      savedAt: 1,
+      tabs: [{ id: 't1', title: 'README.md', root: '/w', path: '/w/README.md', contentType: 'markdown', savedAt: 1 }],
+    }))
+    stores.preview.setRoot('/w')
+    expect(stores.preview.getSnapshot().open).toBe(true)
+  })
+
   it('marks dirty on edit and saves through the api', async () => {
     stores.preview.setRoot('/w')
     stores.preview.openFile('/w', 'README.md')

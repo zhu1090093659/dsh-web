@@ -63,6 +63,11 @@
     - id: web-ui-liangshen
       name: '@linxin666/dsh-liangshen'
 
+# from ../dsh-shutdown
+- insert:
+    - id: web-ui-shutdown
+      name: '@linxin666/dsh-client-ui-shutdown'
+
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:
     - id: web-ui-skin-center

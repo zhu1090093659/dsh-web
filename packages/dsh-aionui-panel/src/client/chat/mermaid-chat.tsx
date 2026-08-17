@@ -1,6 +1,8 @@
 /**
  * Chat-transcript mermaid enhancement: the core conversation renderer emits
- * fenced code as `pre > code.language-mermaid`, and the shell has no slot
+ * fenced code either as `pre > code.language-mermaid` or — in the banner
+ * layout — as a class-less `pre > code` whose sibling banner carries the
+ * language in an `infostring` label (issue #451) — and the shell has no slot
  * for message-body post-processing — so this component rides the
  * conversation input dock as a zero-render sentinel and observes the
  * document for mermaid blocks the transcript mounts. Blocks inside the

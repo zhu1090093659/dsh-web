@@ -60,6 +60,108 @@ describe('findMermaidCodeBlocks', () => {
   })
 })
 
+/**
+ * Shell chat banner blocks (issue #451): the conversation renderer emits a
+ * class-less `pre > code` beside a banner whose infostring label carries the
+ * language. Class names mirror the real hashed CSS-module output observed in
+ * the served shell bundle.
+ */
+function seedBannerBlocks(root: HTMLElement): { mermaidPre: HTMLPreElement; tsPre: HTMLPreElement } {
+  root.innerHTML = [
+    '<div class="_block_178r4_4">',
+    '  <div class="_bannerWrap_178r4_21"><div class="_banner_178r4_21">',
+    '    <div class="_infostring_178r4_42">mermaid</div>',
+    '    <div class="_action_178r4_53"><button class="_copyButton_178r4_59" type="button">copy</button></div>',
+    '  </div></div>',
+    '  <pre class="_plain_178r4_94"><code>flowchart LR\nA--&gt;B</code></pre>',
+    '</div>',
+    '<div class="_block_178r4_4">',
+    '  <div class="_bannerWrap_178r4_21"><div class="_banner_178r4_21">',
+    '    <div class="_infostring_178r4_42">ts</div>',
+    '  </div></div>',
+    '  <pre class="_plain_178r4_94"><code>print(1)</code></pre>',
+    '</div>',
+  ].join('')
+  const pres = Array.from(root.querySelectorAll('pre'))
+  return { mermaidPre: pres[0] as HTMLPreElement, tsPre: pres[1] as HTMLPreElement }
+}
+
+describe('findMermaidCodeBlocks shell banner shape (issue #451)', () => {
+  it('matches the infostring-labelled banner block and skips other languages', () => {
+    const root = document.createElement('div')
+    const { mermaidPre } = seedBannerBlocks(root)
+    const found = findMermaidCodeBlocks(root)
+    expect(found).toHaveLength(1)
+    expect(found[0]).toBe(mermaidPre)
+  })
+
+  it('matches the older language-classed label span shape', () => {
+    const root = document.createElement('div')
+    root.innerHTML = [
+      '<div class="code-block">',
+      '  <span class="abc-language-def">mermaid</span>',
+      '  <pre class="plain"><code>graph TD\nC--&gt;D</code></pre>',
+      '</div>',
+    ].join('')
+    const found = findMermaidCodeBlocks(root)
+    expect(found).toHaveLength(1)
+    expect(found[0]!.textContent).toContain('graph TD')
+  })
+
+  it('matches the label case-insensitively', () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<div><div class="_infostring_x">Mermaid</div><pre><code>graph TD</code></pre></div>'
+    expect(findMermaidCodeBlocks(root)).toHaveLength(1)
+  })
+
+  it('never mistakes a code block whose content is "mermaid" for a label', () => {
+    const root = document.createElement('div')
+    // A highlighted block (code carries the language-* class) whose CONTENT
+    // is the word mermaid, plus a banner-labelled ts block containing it.
+    root.innerHTML = [
+      '<pre class="_plain_x"><code class="language-ts">mermaid</code></pre>',
+      '<div><div class="_infostring_x">ts</div><pre class="_plain_x"><code>mermaid</code></pre></div>',
+    ].join('')
+    expect(findMermaidCodeBlocks(root)).toHaveLength(0)
+  })
+
+  it('skips claimed and empty banner blocks', () => {
+    const root = document.createElement('div')
+    const { mermaidPre } = seedBannerBlocks(root)
+    mermaidPre.setAttribute('data-mermaid-claimed', '1')
+    expect(findMermaidCodeBlocks(root)).toHaveLength(0)
+    mermaidPre.removeAttribute('data-mermaid-claimed')
+    mermaidPre.querySelector('code')!.textContent = '   '
+    expect(findMermaidCodeBlocks(root)).toHaveLength(0)
+  })
+
+  it('ignores a label with no pre in its climb budget', () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<div><div class="_infostring_x">mermaid</div><span>no block here</span></div>'
+    expect(findMermaidCodeBlocks(root)).toHaveLength(0)
+  })
+})
+
+describe('enhanceMermaidBlocks shell banner shape (issue #451)', () => {
+  it('renders the banner block and restores it when the render fails', async () => {
+    const root = document.createElement('div')
+    document.body.appendChild(root)
+    const { mermaidPre, tsPre } = seedBannerBlocks(root)
+    const fake = fakeMermaid((source) => `<svg data-src="${source}"></svg>`)
+    try {
+      await enhanceMermaidBlocks(root, { className: 'mm', theme: 'default' })
+      // Only the mermaid banner block renders; the ts block stays code.
+      expect(fake.render).toHaveBeenCalledTimes(1)
+      expect(root.querySelectorAll('[data-mermaid-state="done"]')).toHaveLength(1)
+      expect(mermaidPre.style.display).toBe('none')
+      expect(tsPre.style.display).not.toBe('none')
+    } finally {
+      fake.restore()
+      root.remove()
+    }
+  })
+})
+
 describe('enhanceMermaidBlocks', () => {
   it('renders containers for both shapes and hides the source blocks', async () => {
     const root = document.createElement('div')

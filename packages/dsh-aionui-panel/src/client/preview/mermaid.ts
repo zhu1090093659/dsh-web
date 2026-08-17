@@ -161,23 +161,58 @@ export function sanitizeSvg(svg: string): string {
 }
 
 /**
+ * Language-label element shapes the shell's chat code banner emits. The
+ * shell renders a fenced block as a banner (the language text in an
+ * `infostring`-class element) beside a class-less `pre > code` (issue #451),
+ * so a `pre.language-*` selector alone never matches the transcript; older
+ * clients stamped a `language-*` class on the label span instead. pre/code
+ * elements are excluded from the label hunt so a highlighted code block
+ * whose CONTENT is literally "mermaid" is never mistaken for a label.
+ */
+const BANNER_LABEL_SELECTOR = '[class*="infostring"]:not(pre):not(code), span[class*="language-"], div[class*="language-"]'
+
+/**
+ * Climb from one banner language label to the nearest enclosing pre. The
+ * shell nests the banner and the pre inside one block container, so a short
+ * bounded climb reaches it; the depth cap keeps a stray label from ever
+ * claiming a far-away code block.
+ */
+function preForBannerLabel(label: Element): HTMLPreElement | null {
+  let ancestor = label.parentElement
+  for (let depth = 0; ancestor !== null && depth < 5; depth += 1) {
+    const pre = ancestor.querySelector('pre')
+    if (pre instanceof HTMLPreElement) return pre
+    ancestor = ancestor.parentElement
+  }
+  return null
+}
+
+/**
  * Collect the still-unclaimed fenced mermaid code blocks under one scope.
- * Both shapes are found: the panel renderer's `pre.language-mermaid` and
- * the chat renderer's `pre > code.language-mermaid` (the claim always
- * targets the <pre>). Empty blocks and blocks another driver already
- * claimed are skipped. Pure (DOM-read only) so tests can drive it in jsdom.
+ * Three shapes are found: the panel renderer's `pre.language-mermaid`, the
+ * highlighted-code path's `pre > code.language-mermaid`, and the shell chat
+ * banner — a class-less pre whose sibling banner carries an `infostring` /
+ * `language-*` label reading "mermaid" (issue #451; the claim always targets
+ * the <pre>). Empty blocks and blocks another driver already claimed are
+ * skipped. Pure (DOM-read only) so tests can drive it in jsdom.
  */
 export function findMermaidCodeBlocks(scope: ParentNode): HTMLPreElement[] {
   const found: HTMLPreElement[] = []
   const seen = new Set<Element>()
+  const consider = (candidate: Element | null): void => {
+    if (candidate === null || !(candidate instanceof HTMLPreElement)) return
+    if (seen.has(candidate)) return
+    seen.add(candidate)
+    if (candidate.hasAttribute(DATA_CLAIMED)) return
+    if ((candidate.textContent ?? '').trim() === '') return
+    found.push(candidate)
+  }
   for (const el of Array.from(scope.querySelectorAll('pre.language-mermaid, code.language-mermaid'))) {
-    const pre = el instanceof HTMLPreElement ? el : el.parentElement
-    if (pre === null || !(pre instanceof HTMLPreElement)) continue
-    if (seen.has(pre)) continue
-    seen.add(pre)
-    if (pre.hasAttribute(DATA_CLAIMED)) continue
-    if ((pre.textContent ?? '').trim() === '') continue
-    found.push(pre)
+    consider(el instanceof HTMLPreElement ? el : el.parentElement)
+  }
+  for (const label of Array.from(scope.querySelectorAll<HTMLElement>(BANNER_LABEL_SELECTOR))) {
+    if ((label.textContent ?? '').trim().toLowerCase() !== 'mermaid') continue
+    consider(preForBannerLabel(label))
   }
   return found
 }

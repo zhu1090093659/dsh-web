@@ -68,9 +68,6 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.5
         version: 18.3.7(@types/react@18.3.31)
-      jsdom:
-        specifier: 29.1.1
-        version: 29.1.1
       lightningcss:
         specifier: ^1.32.0
         version: 1.32.0
@@ -92,12 +89,6 @@ importers:
       typescript:
         specifier: ~5.7.2
         version: 5.7.3
-      vite-tsconfig-paths:
-        specifier: ^6.1.1
-        version: 6.1.1(typescript@5.7.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
-      vitest:
-        specifier: ^4.1.8
-        version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
 
   packages/dsh-community-plugins:
     dependencies:

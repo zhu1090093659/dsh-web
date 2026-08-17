@@ -46,7 +46,7 @@ dsh-web-ui is a set of plugins and skins for the DeepSeek Harness (DSH) Web GUI:
 | Agent presets | Official presets (Standard / Minimal…) | Liang Shen Mode: two-phase anchoring tuned for V4 Pro |
 | Task board | None | Multi-column board + cron-scheduled real runs |
 | Git visualization | None | Branch lanes + commit history graph |
-| File preview & changes | None | Right panel: better-sidebar (explorer / editor / terminal / git / browser); the legacy aionui panel is temporarily disabled (migration in progress; the settings card can switch back but it is not recommended) |
+| File preview & changes | None | Right panel: better-sidebar (explorer / editor / terminal / git / browser); the legacy aionui panel is no longer supported (off by default; the settings card can switch back temporarily) |
 | Mobile remote control | None | QR pairing with SSE real-time sync |
 | Remote server ops | None | SSH panel: terminal / transfer / tunnels / cluster |
 | Image understanding | None | `describe_image` vision tool |
@@ -84,7 +84,7 @@ The right panel is provided by the external plugin [dsh-better-sidebar](https://
 
 ![Right panel](docs/screenshots/19-right-panel.png)
 
-> The previous aionui-panel right panel is **temporarily disabled** until its features are fully migrated to dsh-better-sidebar; Settings → Web UI Plugins → Right panel can switch the provider, but it is not recommended to enable it before the migration completes.
+> The previous aionui-panel right panel is **no longer supported**: it is off by default, receives no maintenance, tests, or fixes, and will be removed from the family bundle in a future release; Settings → Web UI Plugins → Right panel can switch the provider back temporarily at your own risk.
 
 ### Whale-Girl Pet
 
@@ -236,7 +236,7 @@ dsh plugin --profile web add @linxin666/dsh-ssh                    # Remote conn
 dsh plugin --profile web add @linxin666/dsh-tool-describe-image    # Image understanding tool
 dsh plugin --profile web add @linxin666/dsh-pet                    # Whale-girl pet
 dsh plugin --profile web add dsh-better-sidebar                    # Right panel (recommended; explorer/editor/terminal/git/browser)
-dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel # Legacy right panel (aionui-panel, deprecated, migration in progress)
+dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel # Legacy right panel (aionui-panel, unsupported, transitional only)
 ```
 
 ### Verify and Uninstall
@@ -367,6 +367,7 @@ This repository is licensed under [Apache-2.0](LICENSE). Third-party code merged
   <a href="https://github.com/zhu1090093659"><img src="https://github.com/zhu1090093659.png?size=64" width="48" height="48" alt="zhu1090093659" title="zhu1090093659" /></a>
   <a href="https://github.com/sharkymew"><img src="https://github.com/sharkymew.png?size=64" width="48" height="48" alt="sharkymew" title="sharkymew" /></a>
   <a href="https://github.com/stushansusu"><img src="https://github.com/stushansusu.png?size=64" width="48" height="48" alt="stushansusu" title="stushansusu" /></a>
+  <a href="https://github.com/Menghuan1918"><img src="https://github.com/Menghuan1918.png?size=64" width="48" height="48" alt="Menghuan1918" title="Menghuan1918" /></a>
   <a href="https://github.com/mkloveyy"><img src="https://github.com/mkloveyy.png?size=64" width="48" height="48" alt="mkloveyy" title="mkloveyy" /></a>
   <a href="https://github.com/TiankunDai"><img src="https://github.com/TiankunDai.png?size=64" width="48" height="48" alt="TiankunDai" title="TiankunDai" /></a>
   <a href="https://github.com/thinkmoon"><img src="https://github.com/thinkmoon.png?size=64" width="48" height="48" alt="thinkmoon" title="thinkmoon" /></a>

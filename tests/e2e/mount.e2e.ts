@@ -1,16 +1,15 @@
 /**
  * Aggregate-bundle mount lane: prove the packed `@linxin666/dsh-web-ui-all`
- * tarball mounts into a real `dsh web` instance and that the right-panel
- * transition is in effect:
+ * tarball mounts into a real `dsh web` instance and that the right panel is
+ * served by the external `dsh-better-sidebar` plugin:
  *
- *  1. the external `dsh-better-sidebar` plugin mounts
- *     (`[data-dsh-better-sidebar]` host div appears);
- *  2. the aionui-panel columns are NOT mounted by default (the right-panel
- *     provider defaults to dsh-better-sidebar in the aionui settings card —
- *     aionui is deprecated; it stays installed and can be switched back from
- *     Settings → Web UI Plugins → Right panel);
- *  3. no crash markers: no `dsh-better-sidebar:` error strips, no
+ *  1. `dsh-better-sidebar` mounts (`[data-dsh-better-sidebar]` host div
+ *     appears);
+ *  2. no crash markers: no `dsh-better-sidebar:` error strips, no
  *     `pageerror`, no plugin-prefixed console errors.
+ *
+ * aionui-panel is no longer supported: it stays installed as a transitional
+ * fallback but carries no tests, gates, or e2e assertions anymore.
  *
  * The server is booted by `scripts/e2e-mount.sh`; the base URL arrives via
  * `DSH_E2E_URL`. Deterministic: every wait is on a DOM marker, and any crash
@@ -26,10 +25,7 @@ if (!BASE_URL) {
 /** Plugin crash-marker prefixes (the client renders a strip instead of crashing). */
 const CRASH_STRIP_PATTERNS = [/^dsh-better-sidebar:/, /^\[dsh-better-sidebar\]/]
 
-/** The aionui right-panel column roots (absent while the master switch is off). */
-const AIONUI_COLUMNS = '[data-aionui-preview-col], [data-aionui-explorer-col]'
-
-test('family bundle mounts better-sidebar and keeps aionui off by default', async ({ page }) => {
+test('family bundle mounts dsh-better-sidebar without crash markers', async ({ page }) => {
   const pageErrors: string[] = []
   const pluginConsoleErrors: string[] = []
   page.on('pageerror', (error) => { pageErrors.push(error.message) })
@@ -46,10 +42,6 @@ test('family bundle mounts better-sidebar and keeps aionui off by default', asyn
   // is attached but not visible — 'attached' is the mount contract.
   await page.waitForSelector('[data-dsh-better-sidebar]', { state: 'attached', timeout: 30_000 })
   await expect(page.locator('[data-dsh-better-sidebar]')).toHaveCount(1)
-
-  // The aionui right-panel columns stay unmounted by default (the provider
-  // choice defaults to dsh-better-sidebar), while the package stays installed.
-  await expect(page.locator(AIONUI_COLUMNS)).toHaveCount(0)
 
   // No better-sidebar crash strips anywhere on the page.
   for (const pattern of CRASH_STRIP_PATTERNS) {

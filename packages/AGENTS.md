@@ -46,6 +46,8 @@
 - `tests/` 放测试，测试文件不得依赖 DSH 源码 checkout 的 fixture。
 - 聚合载具包（dsh-web-ui-all / dsh-skins）可无单测，但聚合生成脚本必须有
   `--check` 一致性门禁（`aggregate.mjs` / `build.mjs` 的 check 模式）。
+- 例外：dsh-aionui-panel 已停止支持——不再保留测试、typecheck 门禁与 e2e 断言
+  （右侧面板由 dsh-better-sidebar 接管），后续版本将从聚合包移除。
 
 ## 双语纪律
 

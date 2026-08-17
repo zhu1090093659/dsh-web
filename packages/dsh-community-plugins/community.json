@@ -174,6 +174,7 @@
     "description": "DeepSeek Harness 工时统计 × 修仙养成：日/周/月/学年四档汇总 agent 活跃时长、token、输入与工具调用，十二重境界（炼气→宇宙洪荒）量化进度，纯本地存储。",
     "descriptionEn": "Worktime statistics meets cultivation: daily / weekly / monthly / yearly agent activity, token, input and tool-call summaries with a twelve-realm progression (Qi Refining to Cosmic Chaos), fully local.",
     "repo": "https://github.com/spacexun2/dsh-worktime-board",
+    "npm": "dsh-worktime-board",
     "category": "utility"
   }
 ]

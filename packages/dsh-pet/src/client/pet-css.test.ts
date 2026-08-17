@@ -16,4 +16,13 @@ describe('pet hover panel css', () => {
     expect(bridge).toContain('bottom: 100%')
     expect(bridge).toContain('height: 14px')
   })
+
+  it('can place the panel above and bridge the lower gap', () => {
+    const panel = css.match(/\.panelAbove\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(panel).toContain('bottom: 100%')
+    expect(panel).toContain('margin-bottom: 8px')
+    const bridge = css.match(/\.panelAbove::after\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(bridge).toContain('top: 100%')
+    expect(bridge).toContain('bottom: auto')
+  })
 })

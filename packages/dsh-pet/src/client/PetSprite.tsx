@@ -9,7 +9,7 @@
  * @module @linxin666/dsh-pet/client/PetSprite
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactPortal } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
@@ -67,9 +67,11 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   const { snapshot, definition, display, feedback } = props
   const spriteRef = useRef<HTMLDivElement | null>(null)
   const floatRef = useRef<HTMLDivElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
   const [imageReady, setImageReady] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [renaming, setRenaming] = useState(false)
+  const [panelAbove, setPanelAbove] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   // Explicit IME composition tracking: some input methods (WeChat IME on
   // Windows) report keydowns with isComposing === false mid-composition, so
@@ -236,10 +238,28 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   const pos = dragPos ?? { right: display.right, bottom: display.bottom }
   const spriteWidth = Math.round(cell.width * spriteScale)
   const spriteHeight = Math.round(cell.height * spriteScale)
+
+  useLayoutEffect(() => {
+    if (!hovered) {
+      setPanelAbove(false)
+      return
+    }
+    const updatePanelPlacement = (): void => {
+      const sprite = spriteRef.current
+      const panel = panelRef.current
+      if (sprite === null || panel === null) return
+      const availableBelow = window.innerHeight - sprite.getBoundingClientRect().bottom
+      setPanelAbove(availableBelow < panel.getBoundingClientRect().height + 8)
+    }
+    updatePanelPlacement()
+    window.addEventListener('resize', updatePanelPlacement)
+    return () => window.removeEventListener('resize', updatePanelPlacement)
+  }, [hovered, renaming, pos.right, pos.bottom, display.size])
+
   // Concurrent sessions each render their own bubble (stacked above the
   // sprite); the legacy single 'bubble' is the fallback when the host serves
-  // no per-session list. The hover panel now sits below the sprite, so the
-  // bubbles stay visible and clickable while hovering — no region swap.
+  // no per-session list. The hover panel normally sits below the sprite, so
+  // the bubbles stay visible and clickable while hovering — no region swap.
   const sessionBubbles = snapshot?.sessions ?? []
   const statusBubble = feedback === null && sessionBubbles.length === 0
     ? snapshot?.bubble
@@ -326,7 +346,9 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
       )}
       {hovered && dragRef.current === null && (
         <div
-          className={styles.panel}
+          ref={panelRef}
+          className={clsx(styles.panel, panelAbove && styles.panelAbove)}
+          data-placement={panelAbove ? 'above' : 'below'}
           onPointerEnter={() => {
             // Reaching the panel (or its bridge) must cancel any hide timer
             // the container's pointerleave may have armed while the pointer

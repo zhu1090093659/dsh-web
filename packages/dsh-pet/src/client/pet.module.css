@@ -105,9 +105,10 @@
   }
 }
 
-/* 悬浮面板位于精灵脚下，不再占据精灵上方的空间：
+/* 悬浮面板默认位于精灵脚下，不再占据精灵上方的空间：
    会话气泡栈独占精灵头顶区域，两者互不遮挡 —— 气泡因此可以始终
-   显示并保持可点击，不必在 hover 时让位给面板。 */
+   显示并保持可点击，不必在 hover 时让位给面板。仅当视口底部空间
+   不足时，面板才回退到精灵上方。 */
 .panel {
   position: absolute;
   top: 100%;
@@ -136,6 +137,18 @@
   left: 0;
   right: 0;
   height: 14px;
+}
+
+.panelAbove {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.panelAbove::after {
+  top: 100%;
+  bottom: auto;
 }
 
 .rankRow {

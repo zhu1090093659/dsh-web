@@ -27,7 +27,7 @@ export const defaultDisplayConfig: PetDisplayConfig = {
   visible: true,
   size: 160,
   right: 24,
-  bottom: 20,
+  bottom: 120,
 }
 
 /** Display value bounds (shared by load-time validation and setConfig). */

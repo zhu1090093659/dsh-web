@@ -20,6 +20,10 @@ function tempDir(): string {
 }
 
 describe('loadPetPersist', () => {
+  it('reserves enough default space for the hover panel below the pet', () => {
+    expect(defaultDisplayConfig.bottom).toBeGreaterThanOrEqual(100)
+  })
+
   it('falls back to defaults when the file is missing', () => {
     const dir = tempDir()
     try {

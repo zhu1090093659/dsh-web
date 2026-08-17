@@ -53,6 +53,11 @@
     - id: web-ui-ssh
       name: '@linxin666/dsh-ssh'
 
+# from ../dsh-file-drop
+- insert:
+    - id: web-ui-file-drop
+      name: '@linxin666/dsh-file-drop'
+
 # from ../dsh-tool-describe-image
 - insert:
     - id: web-ui-describe-image

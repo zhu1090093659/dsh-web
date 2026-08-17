@@ -20,6 +20,7 @@ patchFrom:
   - ../dsh-remote-web-ui
   - ../dsh-live-stats
   - ../dsh-ssh
+  - ../dsh-file-drop
   - ../dsh-tool-describe-image
   - ../dsh-liangshen
   - ../dsh-skins
@@ -34,6 +35,7 @@ deps:
   - ../dsh-remote-web-ui
   - ../dsh-live-stats
   - ../dsh-ssh
+  - ../dsh-file-drop
   - ../dsh-tool-describe-image
   - ../dsh-liangshen
   - ../dsh-web-ui-settings

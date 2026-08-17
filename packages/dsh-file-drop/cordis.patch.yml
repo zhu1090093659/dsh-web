@@ -1,0 +1,8 @@
+# dsh-file-drop bundle patch: inserts the dual-face plugin row into the web
+# profile roster. Applied as a profile bundle layer (the dsh.bundle.patch
+# manifest field) over dsh-base. The node half (exports ".") runs the upload
+# route in the host process; the dsh.client declaration makes the browser half
+# (exports "./client", served at /plugins/<id>/client.js) load in the web GUI.
+- insert:
+    - id: ui-file-drop
+      name: '@linxin666/dsh-file-drop'

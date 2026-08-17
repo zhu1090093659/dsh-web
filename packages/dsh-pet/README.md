@@ -25,6 +25,7 @@ Re-implemented from the pet feature of the Codex desktop app, as an official DSH
 | Witty remarks | Built-in remark library (10 lines per event) plus per-pet custom lines; success lines rotate by persisted success counts and cooldown lines by persisted rejection counts |
 | Status bubbles | Each concurrently active top-level session gets its own bubble, stacked above the pet (up to 12); subagent sessions report through their spawning conversation and never occupy a bubble of their own; click a bubble to jump to its session; transient interaction feedback temporarily takes priority |
 | Multi-session activity | The pet is host-global: the most recent meaningful event drives the sprite animation while every active top-level session reports its own state in a separate bubble; completed turns from every session (subagents included) contribute affinity and treats |
+| Working indicator | The native `Deep diving...` turn status carries an aria-hidden whale that spouts water while the model works; reduced-motion preferences keep the whale static |
 
 ## Pet contract
 
@@ -98,6 +99,7 @@ dsh-pet/
 |       |-- PetSprite.tsx    # definition-driven floating sprite (portal + rAF + dragging)
 |       |-- PetSettingsCard.tsx # settings card: pet selector + display layout
 |       |-- sequences.ts     # full-track scene sequence timing
+|       |-- working-whale.ts # self-healing ornament for the native turn status
 |       |-- spritesheet.ts   # atlas geometry helpers + track trimming
 |       `-- pet.module.css
 |-- assets/whale/            # built-in whale-girl (pet.json + spritesheet.webp + previews)
@@ -120,7 +122,7 @@ global React root (createRoot → document.body) <-- polling 2s -- pet-client (b
 - **Registry**: the host normalizes every manifest into a full render definition (geometry, per-row frame counts, per-track durations) and serves it over `/api/pet/pets`; the browser half renders any entry from that definition and carries no per-pet code.
 - **Selection & naming**: `petId` lives in the settings namespace; per-pet names live in `pet.json` under `names`, edited through the hover-panel rename of the active pet. Legacy installs migrate their flat `name` onto the whale girl.
 - **Multi-session semantics**: the API and browser mount are host-global and expose no foreground-session identity. Concurrent sessions each keep their own projected state: the most recent meaningful event drives the sprite animation, while every active TOP-LEVEL session reports its stage in its own bubble (the state view's sessions list, capped at 12 most-recent). Subagent children are tracked for animation, rewards, and the single display bubble but render no bubble of their own, so N conversations never multiply into an N-plus-subagents stack. Every session's completed turns are still rewarded independently; disposing a session removes its bubble, and disposing the display session falls back to the most recent remaining one.
-- **Mount point**: `document.body` (global React root, always shown: no session / new session / mid-session — the old mount point `conversation.composer.dock` only rendered in an active session, hiding the pet in new sessions); the component uses `createPortal` internally to render the global floating layer.
+- **Mount point**: `document.body` (global React root, always shown: no session / new session / mid-session — the old mount point `conversation.composer.dock` only rendered in an active session, hiding the pet in new sessions); the component uses `createPortal` internally to render the global floating layer. The client also observes the native semantic turn-status row, adds one decorative working whale ahead of its text, and removes it with the plugin effect.
 - **Rendering**: CSS sprite (background-position) per-frame animation; frame durations and optional scene sequences come from the served definition. The hover panel is anchored below the pet with a pointer bridge across the gap.
 - **Communication**: browser ↔ host over the same-origin `/api/pet/*` JSON endpoints (state/pets/interact/set-visible/set-config/set-name/set-pet); each pet's atlas loads from `/pet/<id>/<spritesheetPath>` — the plugin self-sufficiently provides its own API and assets (the same pattern as dsh-remote-web-ui's `/api/pair`).
 

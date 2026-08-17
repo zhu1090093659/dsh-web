@@ -28,6 +28,7 @@ import { createPetStore, type PetStoreInstance } from './pet-store.ts'
 import { PetDockEntry, type PetInjected } from './PetDockEntry.tsx'
 import { PetSettingsSection, PetSettingsCardController, type PetSettings } from './PetSettingsCard.tsx'
 import { NS, en, zh, t } from './locales.ts'
+import { mountWorkingWhale } from './working-whale.ts'
 
 /** The host pet API as the browser sees it (same-origin JSON endpoints). */
 interface PetHttpApi {
@@ -295,8 +296,10 @@ export function apply(ctx: ClientContext): void {
       document.body.appendChild(container)
       const petRoot = createRoot(container)
       petRoot.render(createElement(PetDockEntry, { ...injected(), t }))
+      const disposeWorkingWhale = mountWorkingWhale()
 
       disposeUi = () => {
+        disposeWorkingWhale()
         petRoot.unmount()
         container.remove()
         disposePoll()

@@ -1,7 +1,8 @@
 /**
- * Chat-transcript mermaid enhancement: the core conversation renderer emits
- * fenced code as `pre > code.language-mermaid`, and the shell has no slot
- * for message-body post-processing — so this component rides the
+ * Chat-transcript mermaid enhancement: the shell conversation renderer
+ * emits fenced code as `div.md-code-block` with the language in a banner
+ * infostring element (no language class on pre/code), and the shell has no
+ * slot for message-body post-processing — so this component rides the
  * conversation input dock as a zero-render sentinel and observes the
  * document for mermaid blocks the transcript mounts. Blocks inside the
  * preview panel's own subtree are excluded (each surface owns its blocks).
@@ -46,6 +47,15 @@ export function enhanceScopesFor(records: MutationRecord[]): Element[] {
   return Array.from(scopes)
 }
 
+/**
+ * Chat-side ownership guard: blocks inside the preview panel's own subtrees
+ * (the markdown viewer scope marker, or the preview column hosting the code
+ * viewers) belong to the panel drivers, never to the transcript enhancer.
+ */
+export function isPanelOwnedPre(pre: HTMLPreElement): boolean {
+  return pre.closest(`[${DATA_MD_SCOPE}], [data-aionui-preview-col]`) !== null
+}
+
 /** Hidden sentinel: renders nothing, owns the transcript observer. */
 export function MermaidChatEnhancer(): JSX.Element | null {
   useEffect(() => {
@@ -66,7 +76,7 @@ export function MermaidChatEnhancer(): JSX.Element | null {
         void enhanceMermaidBlocks(document.body, {
           className: previewCss.mermaidBlock,
           theme: mermaidTheme(shellIsDark()),
-          skip: (pre) => pre.closest(`[${DATA_MD_SCOPE}]`) !== null,
+          skip: isPanelOwnedPre,
         })
         return
       }
@@ -74,7 +84,7 @@ export function MermaidChatEnhancer(): JSX.Element | null {
         void enhanceMermaidBlocks(scope, {
           className: previewCss.mermaidBlock,
           theme: mermaidTheme(shellIsDark()),
-          skip: (pre) => pre.closest(`[${DATA_MD_SCOPE}]`) !== null,
+          skip: isPanelOwnedPre,
         })
       }
     }

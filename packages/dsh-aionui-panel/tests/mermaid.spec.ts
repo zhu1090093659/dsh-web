@@ -44,6 +44,21 @@ function seedBlocks(root: HTMLElement): { panelPre: HTMLPreElement; chatPre: HTM
   return { panelPre: pres[0] as HTMLPreElement, chatPre: pres[1] as HTMLPreElement }
 }
 
+/** The shell chat renderer shape: div.md-code-block + banner infostring + plain pre (no language class). */
+function seedShellChatBlock(root: HTMLElement, lang: string, code = 'gitGraph\ncommit'): HTMLPreElement {
+  const block = document.createElement('div')
+  block.className = '_block_178r4_4 md-code-block'
+  block.innerHTML = [
+    '<div class="_bannerWrap_178r4_8"><div class="_banner_178r4_16">',
+    `<div class="_infostring_178r4_42">${lang}</div>`,
+    '<button type="button">copy</button>',
+    '</div></div>',
+    `<pre class="_plain_178r4_94"><code>${code}</code></pre>`,
+  ].join('')
+  root.appendChild(block)
+  return block.querySelector('pre') as HTMLPreElement
+}
+
 describe('findMermaidCodeBlocks', () => {
   it('finds both renderer shapes, skips empty and non-mermaid blocks', () => {
     const root = document.createElement('div')
@@ -57,6 +72,40 @@ describe('findMermaidCodeBlocks', () => {
     const { panelPre } = seedBlocks(root)
     panelPre.setAttribute('data-mermaid-claimed', '1')
     expect(findMermaidCodeBlocks(root)).toHaveLength(1)
+  })
+
+  it('finds the shell chat shape by its banner infostring (no language class on pre/code)', () => {
+    const root = document.createElement('div')
+    const pre = seedShellChatBlock(root, 'mermaid')
+    const found = findMermaidCodeBlocks(root)
+    expect(found).toEqual([pre])
+  })
+
+  it('skips shell blocks whose infostring is not mermaid or still empty (streaming)', () => {
+    const root = document.createElement('div')
+    seedShellChatBlock(root, 'typescript')
+    seedShellChatBlock(root, '')
+    expect(findMermaidCodeBlocks(root)).toHaveLength(0)
+  })
+
+  it('skips shell blocks with empty code text or already claimed', () => {
+    const root = document.createElement('div')
+    seedShellChatBlock(root, 'mermaid', '   ')
+    const claimed = seedShellChatBlock(root, 'mermaid')
+    claimed.setAttribute('data-mermaid-claimed', '1')
+    expect(findMermaidCodeBlocks(root)).toHaveLength(0)
+  })
+
+  it('matches the shell block when the scope is the block element itself', () => {
+    const root = document.createElement('div')
+    document.body.appendChild(root)
+    const pre = seedShellChatBlock(root, 'mermaid')
+    const block = pre.closest('div.md-code-block') as Element
+    try {
+      expect(findMermaidCodeBlocks(block)).toEqual([pre])
+    } finally {
+      root.remove()
+    }
   })
 })
 
@@ -80,6 +129,26 @@ describe('enhanceMermaidBlocks', () => {
       await enhanceMermaidBlocks(root, { className: 'mm', theme: 'default' })
       expect(fake.render).toHaveBeenCalledTimes(2)
       expect(fake.initialize).toHaveBeenCalledTimes(2)
+    } finally {
+      fake.restore()
+      root.remove()
+    }
+  })
+
+  it('renders the shell chat shape and keeps its banner intact', async () => {
+    const root = document.createElement('div')
+    document.body.appendChild(root)
+    const pre = seedShellChatBlock(root, 'mermaid')
+    const fake = fakeMermaid((source) => `<svg data-src="${source}"></svg>`)
+    try {
+      await enhanceMermaidBlocks(root, { className: 'mm', theme: 'default' })
+      expect(fake.render).toHaveBeenCalledTimes(1)
+      const container = root.querySelector('[data-mermaid-state="done"]')
+      expect(container).not.toBeNull()
+      expect(pre.style.display).toBe('none')
+      // The banner (infostring + copy button) stays visible above the diagram.
+      expect(root.querySelector('[class*="_infostring_"]')?.textContent).toBe('mermaid')
+      expect(container!.previousSibling).toBe(pre)
     } finally {
       fake.restore()
       root.remove()

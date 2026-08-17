@@ -162,22 +162,38 @@ export function sanitizeSvg(svg: string): string {
 
 /**
  * Collect the still-unclaimed fenced mermaid code blocks under one scope.
- * Both shapes are found: the panel renderer's `pre.language-mermaid` and
- * the chat renderer's `pre > code.language-mermaid` (the claim always
- * targets the <pre>). Empty blocks and blocks another driver already
- * claimed are skipped. Pure (DOM-read only) so tests can drive it in jsdom.
+ * Three shapes are found:
+ * - the panel renderer's `pre.language-mermaid`;
+ * - `pre > code.language-mermaid` (kept for older shells);
+ * - the shell chat renderer's `div.md-code-block`: its `<pre>` carries
+ *   no language class, so the banner infostring (`[class*="_infostring_"]`,
+ *   text exactly `mermaid`) is the only anchor. Mid-stream fences render
+ *   with an empty infostring and are skipped until the fence closes.
+ * The claim always targets the <pre>. Empty blocks and blocks another
+ * driver already claimed are skipped. Pure (DOM-read only) so tests can
+ * drive it in jsdom.
  */
 export function findMermaidCodeBlocks(scope: ParentNode): HTMLPreElement[] {
   const found: HTMLPreElement[] = []
   const seen = new Set<Element>()
-  for (const el of Array.from(scope.querySelectorAll('pre.language-mermaid, code.language-mermaid'))) {
-    const pre = el instanceof HTMLPreElement ? el : el.parentElement
-    if (pre === null || !(pre instanceof HTMLPreElement)) continue
-    if (seen.has(pre)) continue
+  const push = (pre: Element | null): void => {
+    if (pre === null || !(pre instanceof HTMLPreElement)) return
+    if (seen.has(pre)) return
     seen.add(pre)
-    if (pre.hasAttribute(DATA_CLAIMED)) continue
-    if ((pre.textContent ?? '').trim() === '') continue
+    if (pre.hasAttribute(DATA_CLAIMED)) return
+    if ((pre.textContent ?? '').trim() === '') return
     found.push(pre)
+  }
+  for (const el of Array.from(scope.querySelectorAll('pre.language-mermaid, code.language-mermaid'))) {
+    push(el instanceof HTMLPreElement ? el : el.parentElement)
+  }
+  const shellBlocks: Element[] = []
+  if (scope instanceof Element && scope.matches('div.md-code-block')) shellBlocks.push(scope)
+  shellBlocks.push(...Array.from(scope.querySelectorAll('div.md-code-block')))
+  for (const block of shellBlocks) {
+    const infostring = block.querySelector('[class*="_infostring_"]')
+    if ((infostring?.textContent ?? '').trim() !== 'mermaid') continue
+    push(block.querySelector('pre'))
   }
   return found
 }

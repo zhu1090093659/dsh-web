@@ -4,7 +4,7 @@
  * Pure against the exported helper plus real MutationRecord construction.
  */
 import { describe, expect, it } from 'vitest'
-import { enhanceScopesFor } from '../src/client/chat/mermaid-chat.tsx'
+import { enhanceScopesFor, isPanelOwnedPre } from '../src/client/chat/mermaid-chat.tsx'
 
 /** Record a single-type mutation by hand with the given added/removed lists. */
 function record(
@@ -84,5 +84,31 @@ describe('enhanceScopesFor', () => {
     const scopes = enhanceScopesFor([rec1, rec2])
     expect(scopes).toHaveLength(1)
     expect(scopes[0]).toBe(parent)
+  })
+})
+
+describe('isPanelOwnedPre', () => {
+  it('owns blocks inside the markdown scope marker or the preview column only', () => {
+    const chat = document.createElement('pre')
+    document.body.appendChild(chat)
+    expect(isPanelOwnedPre(chat)).toBe(false)
+
+    const mdScope = document.createElement('div')
+    mdScope.setAttribute('data-aionui-md-scope', '1')
+    const mdPre = document.createElement('pre')
+    mdScope.appendChild(mdPre)
+    document.body.appendChild(mdScope)
+    expect(isPanelOwnedPre(mdPre)).toBe(true)
+
+    const col = document.createElement('div')
+    col.setAttribute('data-aionui-preview-col', '')
+    const codePre = document.createElement('pre')
+    col.appendChild(codePre)
+    document.body.appendChild(col)
+    expect(isPanelOwnedPre(codePre)).toBe(true)
+
+    chat.remove()
+    mdScope.remove()
+    col.remove()
   })
 })

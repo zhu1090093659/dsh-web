@@ -103,7 +103,8 @@ export function apply(ctx: ClientContext): void {
 
   // Transcript mermaid enhancement rides the same dock as a zero-render
   // sentinel: the shell has no message-body slot, so the sentinel observes
-  // the document for the chat renderer's `code.language-mermaid` blocks.
+  // the document for the chat renderer's mermaid blocks (shell shape:
+  // div.md-code-block with the language in its banner infostring).
   ctx.inject(['slots'], (scope: ClientContext) => {
     scope.slots.inject('conversation.input.dock', () =>
       scope.slots.register({

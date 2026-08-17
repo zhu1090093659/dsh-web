@@ -454,6 +454,38 @@
   opacity: 0.6;
 }
 
+/* ── math (KaTeX, issue #421) ────────────────────────────────────── */
+
+/* Display math placeholder: raw TeX fallback before (or without) KaTeX;
+   once typeset, katex.min.css owns the inner layout. Wide formulas scroll
+   inside the panel instead of forcing a horizontal page overflow. */
+.mdViewer [data-aionui-math='block'] {
+  margin: 10px 0;
+  padding: 6px 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+/* Raw TeX fallback reads as source: monospace, left-aligned, pre-wrapped. */
+.mdViewer [data-aionui-math='block']:not([data-aionui-math-state='done']) {
+  font-family: var(--ds-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 13px;
+  white-space: pre-wrap;
+  text-align: left;
+}
+
+.mdViewer [data-aionui-math='inline']:not([data-aionui-math-state='done']) {
+  font-family: var(--ds-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 0.92em;
+}
+
+/* Typeset display math: let the katex layout breathe without extra spacing
+   fights against the markdown paragraph rhythm. */
+.mdViewer [data-aionui-math='block'][data-aionui-math-state='done'] .katex-display {
+  margin: 0;
+}
+
 .mdViewer blockquote {
   margin: 10px 0;
   padding: 4px 14px;

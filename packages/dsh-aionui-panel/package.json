@@ -32,8 +32,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -b && node scripts/copy-mermaid.mjs && tsdown",
-    "prepare": "node scripts/copy-mermaid.mjs && tsdown",
+    "build": "tsc -b && node scripts/copy-mermaid.mjs && node scripts/copy-katex.mjs && tsdown",
+    "prepare": "node scripts/copy-mermaid.mjs && node scripts/copy-katex.mjs && tsdown",
     "watch": "tsdown --watch",
     "test": "vitest run",
     "typecheck": "tsc -b --pretty false"
@@ -66,7 +66,8 @@
     "typescript": "~5.7.2",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.8",
-    "mermaid": "11.16.1"
+    "mermaid": "11.16.1",
+    "katex": "0.18.4"
   },
   "files": [
     "lib",

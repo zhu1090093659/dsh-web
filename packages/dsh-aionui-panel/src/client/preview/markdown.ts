@@ -1,8 +1,14 @@
 /**
  * A compact markdown renderer for the preview panel: headings, paragraphs,
  * fenced + inline code, bold/italic, links/images, lists, blockquotes, hr,
- * and tables. All HTML is escaped before transformation — the output only
- * ever contains the renderer's own tags. Pure and exported for tests.
+ * tables and math ($...$ inline, $$...$$ display). All HTML is escaped
+ * before transformation — the output only ever contains the renderer's own
+ * tags. Pure and exported for tests.
+ *
+ * Math segments are emitted as unrendered placeholders carrying the raw TeX
+ * source (data-aionui-math*); the katex enhancer (client/preview/katex.ts)
+ * upgrades them in place after mount and leaves the raw text as the fallback
+ * when the vendored KaTeX runtime is unavailable (issue #421).
  * @module dsh-aionui-panel/client/preview/markdown
  */
 
@@ -112,7 +118,55 @@ export function safeUrl(raw: string): string | null {
   return name === 'http' || name === 'https' || name === 'mailto' ? trimmed : null
 }
 
-/** Inline pass: code spans, bold, italic, images, links. */
+/** Attribute the renderer stamps on math placeholders (`inline`/`block`). */
+export const DATA_MATH = 'data-aionui-math'
+
+/** Attribute carrying the raw TeX source of a math placeholder. */
+export const DATA_MATH_SOURCE = 'data-aionui-math-source'
+
+/**
+ * One math placeholder element. The raw TeX is both the data source for the
+ * katex enhancer and the visible fallback text (escaped twice: once for the
+ * attribute, once for the element body).
+ */
+function mathPlaceholder(kind: 'inline' | 'block', source: string): string {
+  const escaped = escapeHtml(source)
+  const tag = kind === 'block' ? 'div' : 'span'
+  return `<${tag} ${DATA_MATH}="${kind}" ${DATA_MATH_SOURCE}="${escaped}">${escaped}</${tag}>`
+}
+
+/**
+ * Find the end of an inline math segment starting at the `$` at `start`.
+ * Conservative currency-safe rules (markdown-it-math convention): the
+ * opening $ must not be followed by whitespace, the closing $ must not be
+ * preceded by whitespace nor followed by a digit, the segment is never
+ * empty, and it never spans a newline. Returns the closing index, or -1
+ * when there is none.
+ */
+export function findInlineMathClose(text: string, start: number): number {
+  let i = start + 1
+  const n = text.length
+  if (i >= n) return -1
+  const first = text[i]
+  if (first === ' ' || first === '\t' || first === '\n') return -1
+  while (i < n) {
+    const char = text[i]
+    if (char === '\n') return -1
+    if (char === '$') {
+      // An empty segment ($$ handled elsewhere or a bare pair) is not math.
+      if (i === start + 1) return -1
+      const before = text[i - 1]
+      if (before === ' ' || before === '\t') return -1
+      const after = text[i + 1]
+      if (after !== undefined && after >= '0' && after <= '9') return -1
+      return i
+    }
+    i += 1
+  }
+  return -1
+}
+
+/** Inline pass: code spans, math, bold, italic, images, links. */
 export function renderInline(text: string, options?: MarkdownRenderOptions): string {
   let out = ''
   let i = 0
@@ -126,6 +180,36 @@ export function renderInline(text: string, options?: MarkdownRenderOptions): str
         out += `<code>${escapeHtml(text.slice(i + 1, end))}</code>`
         i = end + 1
         continue
+      }
+    }
+    // Escaped dollar: a literal $, never a math delimiter.
+    if (char === '\\' && text[i + 1] === '$') {
+      out += escapeHtml('$')
+      i += 2
+      continue
+    }
+    // Display math $$...$$ inside a line.
+    if (char === '$' && text[i + 1] === '$') {
+      const end = text.indexOf('$$', i + 2)
+      if (end !== -1) {
+        const source = text.slice(i + 2, end).trim()
+        if (source !== '') {
+          out += mathPlaceholder('block', source)
+          i = end + 2
+          continue
+        }
+      }
+    }
+    // Inline math $...$ (currency-safe, see findInlineMathClose).
+    if (char === '$') {
+      const end = findInlineMathClose(text, i)
+      if (end !== -1) {
+        const source = text.slice(i + 1, end)
+        if (source.trim() !== '') {
+          out += mathPlaceholder('inline', source)
+          i = end + 1
+          continue
+        }
       }
     }
     // Image ![alt](src)
@@ -243,6 +327,45 @@ export function renderMarkdown(source: string, options?: MarkdownRenderOptions):
       const langAttr = lang === '' ? '' : ` class="language-${escapeHtml(lang)}"`
       out.push(`<pre${langAttr}><code>${escapeHtml(code.join('\n'))}</code></pre>`)
       continue
+    }
+
+    // Display math block: an opener line starting with $$, closed by a
+    // trailing $$ on the same line (single-line form) or on a later line.
+    // The raw TeX is collected verbatim — no inline markdown inside.
+    const mathOpen = /^\s*\$\$(.*)$/.exec(line)
+    if (mathOpen !== null) {
+      const rest = mathOpen[1] ?? ''
+      const single = /^(.*)\$\$\s*$/.exec(rest)
+      if (single !== null && (single[1] ?? '').trim() !== '') {
+        flushParagraph(paragraph)
+        out.push(mathPlaceholder('block', (single[1] ?? '').trim()))
+        i += 1
+        continue
+      }
+      // Multi-line form: gather until a line ending with $$.
+      const source: string[] = []
+      if (rest.trim() !== '') source.push(rest)
+      let j = i + 1
+      let closed = false
+      while (j < n) {
+        const closing = /^(.*)\$\$\s*$/.exec(lines[j])
+        if (closing !== null) {
+          if ((closing[1] ?? '').trim() !== '') source.push(closing[1] ?? '')
+          closed = true
+          j += 1
+          break
+        }
+        source.push(lines[j])
+        j += 1
+      }
+      if (closed) {
+        flushParagraph(paragraph)
+        const tex = source.join('\n').trim()
+        if (tex !== '') out.push(mathPlaceholder('block', tex))
+        i = j
+        continue
+      }
+      // Unterminated: fall through and render the opener as plain text.
     }
 
     // Heading.

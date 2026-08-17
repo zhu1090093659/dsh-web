@@ -4,7 +4,7 @@
  * detection.
  */
 import { describe, expect, it } from 'vitest'
-import { renderInline, renderMarkdown, resolveMarkdownImage } from '../src/client/preview/markdown.ts'
+import { findInlineMathClose, renderInline, renderMarkdown, resolveMarkdownImage } from '../src/client/preview/markdown.ts'
 import { parseCsv, normalizeUrl } from '../src/client/preview/content.tsx'
 import { parseGridTracks, trackPx } from '../src/client/layout.ts'
 import { detectContentType, pdfPreviewUrl } from '../src/client/fileType.ts'
@@ -42,6 +42,85 @@ describe('renderMarkdown', () => {
     const html = renderMarkdown('- one\n- two\n\n> quote\n')
     expect(html).toContain('<ul><li>one</li><li>two</li></ul>')
     expect(html).toContain('<blockquote><p>quote</p></blockquote>')
+  })
+})
+
+describe('renderMarkdown math (issue #421)', () => {
+  it('renders a multi-line $$ block as a display placeholder carrying the raw TeX', () => {
+    const html = renderMarkdown('$$\nz_i = q_{2i} + q_{2i+1}\ni = 0, \\dots, d_h/2 - 1\n$$\n')
+    expect(html).toContain('data-aionui-math="block"')
+    expect(html).toContain('data-aionui-math-source="z_i = q_{2i} + q_{2i+1}\ni = 0, \\dots, d_h/2 - 1"')
+    // The visible fallback is the escaped raw TeX itself.
+    expect(html).toContain('z_i = q_{2i} + q_{2i+1}')
+    expect(html).not.toContain('<p>$$')
+  })
+
+  it('renders the single-line $$...$$ block form', () => {
+    const html = renderMarkdown('$$E = mc^2$$\n')
+    expect(html).toContain('data-aionui-math="block"')
+    expect(html).toContain('data-aionui-math-source="E = mc^2"')
+  })
+
+  it('renders the inline form inside a paragraph', () => {
+    const html = renderMarkdown('energy $E = mc^2$ is famous\n')
+    expect(html).toContain('<span data-aionui-math="inline" data-aionui-math-source="E = mc^2">E = mc^2</span>')
+    expect(html).toContain('<p>energy ')
+  })
+
+  it('renders $$...$$ inside a line as display math', () => {
+    const html = renderMarkdown('see $$a^2 + b^2 = c^2$$ here\n')
+    expect(html).toContain('data-aionui-math="block"')
+    expect(html).toContain('data-aionui-math-source="a^2 + b^2 = c^2"')
+  })
+
+  it('escapes HTML special characters in the TeX source', () => {
+    const html = renderMarkdown('$a < b & c > d$\n')
+    expect(html).toContain('data-aionui-math-source="a &lt; b &amp; c &gt; d"')
+    expect(html).not.toContain('< b')
+  })
+
+  it('never treats math inside code fences or code spans as math', () => {
+    const fenced = renderMarkdown('```\n$ not math $\n$$\nstill code\n$$\n```\n')
+    expect(fenced).not.toContain('data-aionui-math')
+    expect(fenced).toContain('<pre><code>')
+    const span = renderInline('pay `$x$` now')
+    expect(span).not.toContain('data-aionui-math')
+    expect(span).toContain('<code>$x$</code>')
+  })
+
+  it('stays currency-safe: loose dollar pairs are plain text', () => {
+    // Closing $ preceded by whitespace is not math.
+    expect(renderInline('costs $5 and $10 total')).not.toContain('data-aionui-math')
+    // Opening $ followed by whitespace is not math.
+    expect(renderInline('profit $ 100')).not.toContain('data-aionui-math')
+    // Closing $ followed by a digit is not math.
+    expect(renderInline('$5+$3$7')).not.toContain('data-aionui-math')
+    // A lone $ with no close stays literal.
+    expect(renderInline('price $5 each')).toBe('price $5 each')
+  })
+
+  it('treats \\$ as a literal dollar, never a delimiter', () => {
+    expect(renderInline('cost \\$5')).toBe('cost $5')
+  })
+
+  it('renders an unterminated $$ block as plain text', () => {
+    const html = renderMarkdown('$$\nx + y\n')
+    expect(html).not.toContain('data-aionui-math')
+    expect(html).toContain('$$')
+  })
+})
+
+describe('findInlineMathClose', () => {
+  it('finds the closing $ under the conservative rules', () => {
+    expect(findInlineMathClose('$a+b$ rest', 0)).toBe(4)
+  })
+
+  it('rejects whitespace edges, newlines and digit-followers', () => {
+    expect(findInlineMathClose('$ a$ rest', 0)).toBe(-1)
+    expect(findInlineMathClose('$a $ rest', 0)).toBe(-1)
+    expect(findInlineMathClose('$a\nb$', 0)).toBe(-1)
+    expect(findInlineMathClose('$a$5', 0)).toBe(-1)
+    expect(findInlineMathClose('$', 0)).toBe(-1)
   })
 })
 

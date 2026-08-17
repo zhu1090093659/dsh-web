@@ -32,8 +32,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -b && node scripts/copy-mermaid.mjs && tsdown",
-    "prepare": "node scripts/copy-mermaid.mjs && tsdown",
+    "build": "tsc -b && node scripts/copy-mermaid.mjs && node scripts/copy-katex.mjs && tsdown",
+    "prepare": "node scripts/copy-mermaid.mjs && node scripts/copy-katex.mjs && tsdown",
     "watch": "tsdown --watch",
     "test": "vitest run",
     "typecheck": "tsc -b --pretty false"
@@ -54,19 +54,20 @@
     "@deepseek-ai/dsh-subprocess": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-workspace": "^0.1.0-rc.6",
-    "schemastery": "^3.18.0",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "^18.3.5",
     "jsdom": "29.1.1",
+    "katex": "0.18.4",
     "lightningcss": "^1.32.0",
+    "mermaid": "11.16.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "schemastery": "^3.18.0",
     "tsdown": "0.22.2",
     "typescript": "~5.7.2",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.1.8",
-    "mermaid": "11.16.1"
+    "vitest": "^4.1.8"
   },
   "files": [
     "lib",

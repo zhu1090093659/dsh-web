@@ -43,6 +43,45 @@ describe('renderMarkdown', () => {
     expect(html).toContain('<ul><li>one</li><li>two</li></ul>')
     expect(html).toContain('<blockquote><p>quote</p></blockquote>')
   })
+
+  it('renders single-line and multi-line block math into katex placeholders', () => {
+    const single = renderMarkdown('$$z_i = q_{2i} + \\mathrm{j}\\, q_{2i+1}$$\n')
+    expect(single).toContain('<div class="katex-block">z_i = q_{2i} + \\mathrm{j}\\, q_{2i+1}</div>')
+    const multi = renderMarkdown('$$\na = b \\\\ c\n$$\n')
+    expect(multi).toContain('<div class="katex-block">a = b \\\\ c</div>')
+  })
+
+  it('keeps an unclosed block math opener visible as a placeholder', () => {
+    const html = renderMarkdown('$$\na = b\n')
+    expect(html).toContain('<div class="katex-block">a = b</div>')
+  })
+
+  it('renders inline math into katex placeholders', () => {
+    expect(renderInline('$e^{i\\pi} + 1 = 0$')).toBe('<span class="katex-inline">e^{i\\pi} + 1 = 0</span>')
+    expect(renderInline('text $x$ end')).toBe('text <span class="katex-inline">x</span> end')
+  })
+
+  it('does not treat money, whitespace-wrapped or doubled dollars as math', () => {
+    expect(renderInline('costs $5 and $10')).toBe('costs $5 and $10')
+    expect(renderInline('$ x $')).toBe('$ x $')
+    expect(renderInline('$$x$$')).toBe('$$x$$')
+    expect(renderInline('$PATH')).toBe('$PATH')
+  })
+
+  it('leaves math inside code spans and fenced blocks untouched', () => {
+    expect(renderInline('`$x$`')).toBe('<code>$x$</code>')
+    const html = renderMarkdown('```\n$x$\n```\n')
+    expect(html).toContain('<pre><code>$x$</code></pre>')
+  })
+
+  it('renders inline math inside table cells', () => {
+    const html = renderMarkdown('| sym |\n|---|\n| $d_h$ |\n')
+    expect(html).toContain('<td><span class="katex-inline">d_h</span></td>')
+  })
+
+  it('escapes the TeX body before it reaches the placeholder', () => {
+    expect(renderInline('$a<b&c$')).toBe('<span class="katex-inline">a&lt;b&amp;c</span>')
+  })
 })
 
 describe('parseCsv', () => {

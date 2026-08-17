@@ -178,6 +178,22 @@ export function renderInline(text: string, options?: MarkdownRenderOptions): str
         }
       }
     }
+    // Inline math $...$: a non-empty span with no leading/trailing space,
+    // single line, and never adjacent to another $ (a doubled $$ stays
+    // literal — the block pass owns it only when it opens a line). The raw
+    // TeX is kept inside the span so a missing KaTeX runtime or a syntax
+    // error degrades to plain text instead of vanishing.
+    if (char === '$' && text[i + 1] !== '$' && text[i - 1] !== '$') {
+      const end = text.indexOf('$', i + 1)
+      if (end !== -1) {
+        const tex = text.slice(i + 1, end)
+        if (tex !== '' && !/^\s|\s$/.test(tex) && !tex.includes('\n')) {
+          out += `<span class="katex-inline">${escapeHtml(tex)}</span>`
+          i = end + 1
+          continue
+        }
+      }
+    }
     // Bold **text**
     if (char === '*' && text[i + 1] === '*') {
       const end = text.indexOf('**', i + 2)
@@ -242,6 +258,34 @@ export function renderMarkdown(source: string, options?: MarkdownRenderOptions):
       i += 1 // closing fence
       const langAttr = lang === '' ? '' : ` class="language-${escapeHtml(lang)}"`
       out.push(`<pre${langAttr}><code>${escapeHtml(code.join('\n'))}</code></pre>`)
+      continue
+    }
+
+    // Block math: a line opening with $$ (but not $$$) collects until a line
+    // closing with $$; a single line of the form $$x$$ closes itself. The raw
+    // TeX stays inside the div so a missing KaTeX runtime or a syntax error
+    // degrades to plain text instead of vanishing.
+    if (/^\$\$(?!\$)/.test(line.trim())) {
+      flushParagraph(paragraph)
+      const single = /^\$\$(?!\$)([\s\S]*)\$\$$/.exec(line.trim())
+      const body: string[] = []
+      if (single !== null) {
+        body.push(single[1])
+        i += 1
+      } else {
+        i += 1
+        while (i < n) {
+          const candidate = lines[i]
+          if (candidate.trim().endsWith('$$')) {
+            body.push(candidate.trim().slice(0, -2))
+            i += 1
+            break
+          }
+          body.push(candidate)
+          i += 1
+        }
+      }
+      out.push(`<div class="katex-block">${escapeHtml(body.join('\n').trim())}</div>`)
       continue
     }
 

@@ -454,6 +454,23 @@
   opacity: 0.6;
 }
 
+/* ── math formulas ─────────────────────────────────────────────────────── */
+
+/* Placeholders emitted by the markdown renderer with bare classes (outside
+   the CSS module scope). KaTeX glyph colors inherit currentColor, so the
+   theme needs no explicit dark-mode override; wide display formulas scroll
+   horizontally instead of clipping (the .mdViewer container hides x
+   overflow). */
+:global(.katex-block) {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+}
+
+:global(.katex-inline) {
+  white-space: nowrap;
+}
+
 .mdViewer blockquote {
   margin: 10px 0;
   padding: 4px 14px;

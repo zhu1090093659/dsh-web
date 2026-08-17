@@ -22,6 +22,7 @@ import {
   shellIsDark,
   watchShellTheme,
 } from './mermaid.ts'
+import { enhanceKatexMath } from './katex.ts'
 import previewCss from '../styles/preview.module.css'
 
 /** Split-ratio persistence key (AionUi contract). */
@@ -210,10 +211,10 @@ function MarkdownViewer({
 }
 
 /**
- * Rendered markdown body plus the mermaid enhancement lifecycle: fresh
- * blocks render once per html, completed diagrams re-render on shell theme
- * flips. The scope marker lets the chat-transcript enhancer skip this
- * subtree (each surface owns its blocks).
+ * Rendered markdown body plus the enhancement lifecycle: fresh mermaid
+ * blocks and KaTeX math render once per html, completed diagrams re-render
+ * on shell theme flips. The scope marker lets the chat-transcript enhancer
+ * skip this subtree (each surface owns its blocks).
  */
 function MermaidAwareMarkdown({ html }: { html: string }): JSX.Element {
   const ref = useRef<HTMLDivElement | null>(null)
@@ -221,6 +222,7 @@ function MermaidAwareMarkdown({ html }: { html: string }): JSX.Element {
     const el = ref.current
     if (el === null) return undefined
     void enhanceMermaidBlocks(el, { className: previewCss.mermaidBlock, theme: mermaidTheme(shellIsDark()) })
+    void enhanceKatexMath(el)
     return watchShellTheme((isDark) => {
       void rethemeMermaidBlocks(el, { theme: mermaidTheme(isDark) })
     })

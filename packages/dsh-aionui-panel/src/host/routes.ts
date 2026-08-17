@@ -416,50 +416,75 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
   }
 
   /**
-   * GET /aionui-panel/vendor/mermaid.js: the mermaid IIFE bundle shipped in
-   * the package (lib/assets/mermaid.min.js, copied from the mermaid npm
-   * dependency at build time). Same-origin for the browser half (no CDN),
-   * loopback-fenced like every other route. One read is cached per plugin
-   * instance; the size+mtime pair doubles as the ETag so the browser
+   * Vendor static assets served same-origin for the browser half (no CDN),
+   * loopback-fenced like every other route: the mermaid IIFE bundle, the
+   * KaTeX runtime + stylesheet, and the KaTeX woff2 fonts (the stylesheet's
+   * relative url(fonts/...) references resolve under the same /vendor tree).
+   * All are build-copied from their npm dependencies (scripts/copy-mermaid.mjs
+   * / scripts/copy-katex.mjs); one read per file is cached per plugin
+   * instance, and the size+mtime pair doubles as the ETag so browser
    * revalidation is a cheap 304. A missing asset (build without the copy
-   * step) 404s and the client keeps plain code blocks.
+   * step) 404s and the client keeps plain text/code blocks.
    */
-  let mermaidAsset: { data: Buffer; etag: string } | undefined
-  const serveVendorMermaid = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-    if (mermaidAsset === undefined) {
+  const vendorCache = new Map<string, { data: Buffer; etag: string; contentType: string }>()
+
+  /** Map a vendor pathname to its asset file, or null when not whitelisted. */
+  function vendorAssetFor(pathname: string): { relative: string; contentType: string } | null {
+    if (pathname === '/aionui-panel/vendor/mermaid.js') {
+      return { relative: 'mermaid.min.js', contentType: 'application/javascript; charset=utf-8' }
+    }
+    if (pathname === '/aionui-panel/vendor/katex.js') {
+      return { relative: 'katex/katex.min.js', contentType: 'application/javascript; charset=utf-8' }
+    }
+    if (pathname === '/aionui-panel/vendor/katex.css') {
+      return { relative: 'katex/katex.min.css', contentType: 'text/css; charset=utf-8' }
+    }
+    // KaTeX font files are a fixed, well-known set (KaTeX_<name>.woff2); the
+    // name is re-validated so nothing outside the fonts directory can be read.
+    const fonts = /^\/aionui-panel\/vendor\/fonts\/(KaTeX_[A-Za-z0-9_-]+\.woff2)$/.exec(pathname)
+    if (fonts !== null) {
+      return { relative: `katex/fonts/${fonts[1]}`, contentType: 'font/woff2' }
+    }
+    return null
+  }
+
+  const serveVendorAsset = async (relative: string, contentType: string, req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    let cached = vendorCache.get(relative)
+    if (cached === undefined) {
       // Candidate layouts: the built lib half (lib/index.js -> lib/assets/)
       // and the source tree (src/host/routes.ts -> lib/assets), so tests
       // running against src serve the same build-copied asset.
-      const candidates = ['./assets/mermaid.min.js', '../../lib/assets/mermaid.min.js']
-      for (const relative of candidates) {
+      const candidates = [`./assets/${relative}`, `../../lib/assets/${relative}`]
+      for (const candidate of candidates) {
         try {
-          const assetPath = fileURLToPath(new URL(relative, import.meta.url))
+          const assetPath = fileURLToPath(new URL(candidate, import.meta.url))
           const [data, info] = await Promise.all([readFile(assetPath), stat(assetPath)])
-          mermaidAsset = { data, etag: `"${data.length}-${info.mtimeMs.toString(16)}"` }
+          cached = { data, etag: `"${data.length}-${info.mtimeMs.toString(16)}"`, contentType }
+          vendorCache.set(relative, cached)
           break
         } catch {
           // try the next layout
         }
       }
-      if (mermaidAsset === undefined) {
+      if (cached === undefined) {
         res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify({ error: 'mermaid vendor asset missing' }))
+        res.end(JSON.stringify({ error: `vendor asset missing: ${relative}` }))
         return
       }
     }
-    if (req.headers['if-none-match'] === mermaidAsset.etag) {
-      res.writeHead(304, { etag: mermaidAsset.etag })
+    if (req.headers['if-none-match'] === cached.etag) {
+      res.writeHead(304, { etag: cached.etag })
       res.end()
       return
     }
     res.writeHead(200, {
-      'content-type': 'application/javascript; charset=utf-8',
-      'content-length': mermaidAsset.data.length,
+      'content-type': cached.contentType,
+      'content-length': cached.data.length,
       'cache-control': 'no-cache',
-      etag: mermaidAsset.etag,
+      etag: cached.etag,
       'x-content-type-options': 'nosniff',
     })
-    res.end(mermaidAsset.data)
+    res.end(cached.data)
   }
 
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -476,8 +501,15 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
         await serveRaw(req, url, res)
         return
       }
-      if (url.pathname === '/aionui-panel/vendor/mermaid.js') {
-        await serveVendorMermaid(req, res)
+      if (url.pathname.startsWith('/aionui-panel/vendor/')) {
+        const asset = vendorAssetFor(url.pathname)
+        if (asset !== null) {
+          await serveVendorAsset(asset.relative, asset.contentType, req, res)
+          return
+        }
+        // Unknown vendor path: 404 without listing anything.
+        res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify({ error: 'unknown vendor asset' }))
         return
       }
       res.writeHead(405)

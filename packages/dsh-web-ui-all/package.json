@@ -46,6 +46,6 @@
     "@linxin666/dsh-client-ui-web-ui-settings": "workspace:*",
     "@linxin666/dsh-skins": "workspace:*",
     "@linxin666/dsh-client-ui-skin-center": "workspace:*",
-    "dsh-better-sidebar": "^0.13.0"
+    "dsh-better-sidebar": "0.13.0"
   }
 }

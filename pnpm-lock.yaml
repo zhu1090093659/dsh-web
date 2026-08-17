@@ -803,7 +803,7 @@ importers:
         specifier: workspace:*
         version: link:../dsh-tool-describe-image
       dsh-better-sidebar:
-        specifier: ^0.13.0
+        specifier: 0.13.0
         version: 0.13.0(6f603ad3aa396ec63bca740fbea6beaa)
 
   packages/dsh-web-ui-settings:

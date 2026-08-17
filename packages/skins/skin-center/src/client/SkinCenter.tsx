@@ -229,8 +229,11 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
             if (ready) {
               window.location.reload()
             } else {
-              const command = target === OFFICIAL ? 'dsh-skin use official' : `dsh-skin use ${target}`
-              setError(`${t('appliedUnconfirmed')} — ${command}`)
+              // The patch write was confirmed active, but the boot manifest
+              // never regenerated: the host has no hot reload for this
+              // install, so a restart is what actually applies the skin.
+              // Re-running `dsh-skin use` would only rewrite the same patch.
+              setError(t('appliedNeedRestart'))
             }
           })
         }

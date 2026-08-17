@@ -24,6 +24,7 @@ export type SkinCenterKey =
   | 'restore'
   | 'applyFailed'
   | 'appliedUnconfirmed'
+  | 'appliedNeedRestart'
   | 'theme'
   | 'themeLight'
   | 'themeDark'
@@ -85,6 +86,7 @@ export const en: Record<SkinCenterKey, string> = {
   restore: 'Restore',
   applyFailed: 'Apply failed',
   appliedUnconfirmed: 'Applied, but the change has not been confirmed — refresh the page in dev mode; packaged installs (DSH Desktop) need an app restart',
+  appliedNeedRestart: 'Applied and confirmed, but the host did not hot-reload — restart dsh to take effect',
   theme: 'Theme preview',
   themeLight: 'Light',
   themeDark: 'Dark',
@@ -147,6 +149,7 @@ export const zh: Record<SkinCenterKey, string> = {
   restore: '恢复默认',
   applyFailed: '应用失败',
   appliedUnconfirmed: '已写入配置但尚未确认生效——开发模式请刷新页面；打包版（DSH Desktop）需重启应用后生效',
+  appliedNeedRestart: '已写入配置并确认生效，但宿主未热重载——请重启 dsh 后生效',
   theme: '主题预览',
   themeLight: '亮色',
   themeDark: '暗色',

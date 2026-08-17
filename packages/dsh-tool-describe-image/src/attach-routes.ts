@@ -17,7 +17,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { decodeBase64, isImageMimeType, sniffMimeType, DEFAULT_MAX_BYTES, type ImageMimeType } from './media.ts'
-import { UNKNOWN_CAPABILITY, type CapabilityProbe } from './model-capability.ts'
 
 /** Request-body byte cap: base64 of a {@link DEFAULT_MAX_BYTES} image plus envelope slack. */
 export const MAX_ATTACH_BODY_BYTES = 16 * 1024 * 1024
@@ -197,21 +196,6 @@ function json(res: ServerResponse, envelope: unknown, status = 200): void {
 }
 
 /**
- * Answer one capability probe (GET /describe-image/capability?session=<id>):
- * whether the session's effective model positively declares image input.
- * The browser send hook passes raw image blocks through only on an explicit
- * acceptsImages; every other answer keeps the legacy describe-image rewrite.
- * @param probe - the per-mount capability probe.
- * @param req - the incoming GET request.
- * @param res - the outgoing response.
- */
-async function serveCapability(probe: CapabilityProbe | undefined, req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const sessionId = new URL(req.url ?? '/', 'http://x').searchParams.get('session') ?? ''
-  const capability = probe === undefined || sessionId === '' ? UNKNOWN_CAPABILITY : await probe(sessionId)
-  json(res, { ok: true, value: capability })
-}
-
-/**
  * Serve one stored image by its bare attachment id (the GET half of the
  * prefix route). Unknown ids and store failures answer 404; the media type
  * comes from the registered reference, never from the URL.
@@ -262,9 +246,8 @@ async function serveRawImage(ctx: Context, req: IncomingMessage, res: ServerResp
  * immediately; the attachment service is resolved per call.
  * @param ctx - registrant context; webServer is required.
  * @param readMaxBytes - per-request byte-bound reader (defaults to the constant).
- * @param probe - per-session image-input capability probe for the GET capability route.
  */
-export function registerAttachRoute(ctx: Context, readMaxBytes: () => number = () => DEFAULT_MAX_BYTES, probe?: CapabilityProbe): void {
+export function registerAttachRoute(ctx: Context, readMaxBytes: () => number = () => DEFAULT_MAX_BYTES): void {
   const webserver = ctx.get('webServer')
   if (webserver === undefined) return
   webserver.register({
@@ -276,13 +259,6 @@ export function registerAttachRoute(ctx: Context, readMaxBytes: () => number = (
       // content-addressed and loopback-only, so a bare read carries no
       // secrets; the store's digest verification still runs.
       if (req.method === 'GET') {
-        // GET /describe-image/capability?session=<id>: the send hook's
-        // per-session image-input verdict; anything else under GET is the
-        // raw-image read.
-        if (new URL(req.url ?? '/', 'http://x').pathname === '/describe-image/capability') {
-          await serveCapability(probe, req, res)
-          return
-        }
         await serveRawImage(ctx, req, res)
         return
       }

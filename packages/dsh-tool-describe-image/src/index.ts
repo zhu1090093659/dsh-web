@@ -20,7 +20,6 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView } from '@deepseek-ai/dsh-tools'
 import { registerAttachRoute } from './attach-routes.ts'
 import { DEFAULT_MAX_BYTES } from './media.ts'
-import { createCapabilityProbe } from './model-capability.ts'
 import { Config, DESCRIBE_IMAGE_SETTINGS_NAMESPACE, resolveApiKey, resolveConfig, type ResolvedConfig } from './config-resolve.ts'
 import { callVision, createVisionCache, loadImage } from './vision-client.ts'
 import { mountOnce } from './mount-once.ts'
@@ -141,12 +140,8 @@ function applyImpl(ctx: Context, config: Config = {}): void {
   // within the TTL reuse the prior answer instead of a second fetch.
   const visionCache = createVisionCache()
   // The webserver is optional (the loader-composition tests boot without one):
-  // the attach route registers only when the service is actually mounted. The
-  // capability probe lets the browser send hook pass raw image blocks to
-  // models whose adapter declares image input, instead of rewriting every
-  // image-bearing send into describe-image references.
-  const probe = createCapabilityProbe(ctx)
-  registerAttachRoute(ctx, () => current().maxBytes ?? DEFAULT_MAX_BYTES, probe)
+  // the attach route registers only when the service is actually mounted.
+  registerAttachRoute(ctx, () => current().maxBytes ?? DEFAULT_MAX_BYTES)
   ctx.tools.register(defineTool({
     name: 'describe_image',
     description: DESCRIPTION_HEAD

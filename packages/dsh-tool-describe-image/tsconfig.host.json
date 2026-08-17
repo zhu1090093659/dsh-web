@@ -29,7 +29,6 @@
     "src/invariant.ts",
     "src/media.ts",
     "src/attach-routes.ts",
-    "src/model-capability.ts",
     "src/config-resolve.ts",
     "src/vision-client.ts"
   ]

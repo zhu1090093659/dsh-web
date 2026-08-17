@@ -1,12 +1,9 @@
 /**
  * Browser half of the describe-image plugin: no composer chrome of its own.
- * The shell's input box has no image entry for text-only models, so image
- * sends are rewritten at submit time (installSendHook) into describe-image
- * references before they reach the model — the way a text-only model gets an
- * image to analyze without the shell's vision pipeline. Sessions whose model
- * accepts image input skip the rewrite entirely (createImageCapabilityChecker
- * asks the host): the raw image blocks reach the model's own vision and no
- * describe_image round-trip is needed. The shell renders
+ * Image sends use the shell's native model path first. When the host rejects
+ * image input for a text-only model, installSendHook retries through a
+ * describe-image reference — the way that model gets an image to analyze
+ * without bypassing native multimodal models. The shell renders
  * user messages as plain text, so a sent reference is then upgraded in place
  * into an inline thumbnail (installConversationImagePreview) unless the
  * deployment turns previews off. The settings card is rendered by the web
@@ -24,7 +21,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { installSendHook } from './send-hook.ts'
-import { createImageCapabilityChecker } from './capability.ts'
 import { installConversationImagePreview, type ConversationImagePreview } from './preview.ts'
 import { DescribeImageSettingsCard, DescribeImageSettingsCardController, type DescribeImageSettings } from './DescribeImageSettingsCard.tsx'
 import { dictionaries, setLanguage, type DescribeImageClientKey } from './locales.ts'
@@ -94,15 +90,10 @@ export function apply(ctx: ClientContext): void {
     // dispose (or a re-inject) never leaves a stale listener behind.
     let unsubscribeSettings: (() => void) | undefined
 
-    // Text-only models reject image blocks at submit: rewrite image-bearing
-    // sends into describe-image references before they reach the model. The
-    // live switch (settings interceptImageSend, default on) is read per
-    // send, so other vision plugins keep the raw image blocks when it is off.
-    // The capability checker passes raw image blocks straight through for
-    // sessions whose model accepts image input — those models see the images
-    // natively and must not be detoured through describe_image.
-    const capabilityChecker = createImageCapabilityChecker()
-    installSendHook(conversation, () => settingsScopeRef?.getSnapshot().value?.interceptImageSend !== false, capabilityChecker)
+    // Try the shell's native image path first; only a model-capability
+    // rejection falls back to describe-image references. The live switch
+    // (settings interceptImageSend, default on) is read per send.
+    installSendHook(conversation, () => settingsScopeRef?.getSnapshot().value?.interceptImageSend !== false)
 
     // The shell renders user messages as plain text, so a sent reference sits
     // in the transcript as raw markdown; upgrade it in place into an inline

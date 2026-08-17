@@ -51,8 +51,8 @@ export const zh = {
   'field.timeoutMs.hint': '单次视觉请求超时。',
   'field.renderImagePreview': '会话内渲染图片预览',
   'field.renderImagePreview.hint': '开：会话里的图片引用原地显示为缩略图，点击查看大图；关：保持原始引用文本。仅影响本地显示，消息文本与模型识别不变。',
-  'field.interceptImageSend': '发送时改写图片为 describe-image 引用',
-  'field.interceptImageSend.hint': '开（默认）：发往纯文本模型的带图发送在提交时被改写为 describe-image 引用；支持图片输入的模型会被自动识别，原图直接交给模型本身。关：发送原样放行，图片与附件块交给会话（与其他视觉插件共用时需要关闭）。',
+  'field.interceptImageSend': '为不支持图片的模型启用 describe-image 回退',
+  'field.interceptImageSend.hint': '开（默认）：优先原样发送图片，仅当当前模型明确不支持图片时改写为 describe-image 引用；关：完全禁用自动回退。',
   'preview.expand': '点击查看大图',
   'preview.close': '关闭大图',
 } satisfies Record<string, string>
@@ -111,8 +111,8 @@ export const en = {
   'field.timeoutMs.hint': 'Per-call vision request timeout.',
   'field.renderImagePreview': 'Render image preview in chat',
   'field.renderImagePreview.hint': 'On: image references in the conversation upgrade into inline thumbnails (click for full size). Off: the raw reference text stays. Display-only — the message text and model-side analysis are unchanged.',
-  'field.interceptImageSend': 'Rewrite image sends into describe-image references',
-  'field.interceptImageSend.hint': 'On (default): image-bearing sends to text-only models are rewritten into describe-image references at submit; models that accept image input are detected automatically and receive the raw images natively. Off: sends pass through untouched, handing the raw image blocks to other vision plugins.',
+  'field.interceptImageSend': 'Fall back to describe-image for unsupported models',
+  'field.interceptImageSend.hint': 'On (default): send images natively first, then rewrite as describe-image references only when the current model explicitly rejects image input. Off: disable automatic fallback entirely.',
   'preview.expand': 'Click to view full size',
   'preview.close': 'Close full image',
 } satisfies Record<string, string>

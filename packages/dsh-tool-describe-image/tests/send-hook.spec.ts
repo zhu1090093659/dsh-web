@@ -25,10 +25,17 @@ function stubFileReader(payload: string): void {
   })
 }
 
+function imageCapabilityError(): Error {
+  return new Error('conversation.send failed: attachment-error: Model "text-only" does not support image input.')
+}
+
 /** One fake conversation surface recording what the hook did with it. */
-function makeConversation() {
-  const original = vi.fn(async (_session: unknown, _text: string, _ids: readonly string[], _mode: string) => { log.push('original') })
+function makeConversation(originalError?: unknown) {
   const log: string[] = []
+  const original = vi.fn(async (_session: unknown, _text: string, _ids: readonly string[], _mode: string) => {
+    log.push('original')
+    if (originalError !== undefined) throw originalError
+  })
   const face = {
     send: vi.fn(async () => { log.push('send') }),
     sendSession: original,
@@ -52,14 +59,33 @@ describe('installSendHook', () => {
     expect(log).toEqual(['original'])
   })
 
+  it('keeps image sends on the native path when the model accepts them', async () => {
+    stubFileReader('QUJD')
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      ok: true,
+      value: { note: 'N', markdown: 'R' },
+    }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { face, log } = makeConversation()
+    const prompt = vi.fn(async () => ({ ok: true }))
+
+    installSendHook(face)
+    await face.sendSession({ prompt } as never, 'look', ['id1'], 'queue')
+
+    expect(log).toEqual(['original'])
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(prompt).not.toHaveBeenCalled()
+    expect(face.releaseDraftImage).not.toHaveBeenCalled()
+  })
+
   it('rewrites an image-bearing send into a text prompt carrying the reference', async () => {
     stubFileReader('QUJD')
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: '![图片](/describe-image/raw/sha256:x)' } }), { status: 200 })))
-    const { face, log } = makeConversation()
+    const { face, log } = makeConversation(imageCapabilityError())
     const prompt = vi.fn(async () => ({ ok: true }))
     installSendHook(face)
     await face.sendSession({ prompt } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['release'])
+    expect(log).toEqual(['original', 'release'])
     expect(prompt).toHaveBeenCalledTimes(1)
     const blocks = (prompt.mock.calls[0] as unknown as [{ type: string; text: string }[]])[0]
     expect(blocks).toHaveLength(1)
@@ -68,27 +94,80 @@ describe('installSendHook', () => {
     expect(blocks[0].text).toContain('![图片](/describe-image/raw/sha256:x)')
   })
 
-  it('falls back to the original send when the upload fails', async () => {
+  it('falls back for the host structured image-capability rejection', async () => {
     stubFileReader('QUJD')
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: false, error: { message: 'boom' } }), { status: 422 })))
-    const { face, log } = makeConversation()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      ok: true,
+      value: { note: 'N', markdown: 'R' },
+    }), { status: 200 })))
+    const originalError = Object.assign(new Error('image capability rejected'), {
+      details: { reason: 'MODEL_DOES_NOT_SUPPORT_IMAGES' },
+    })
+    const { face, log } = makeConversation(originalError)
+    const prompt = vi.fn(async () => ({ ok: true }))
+
     installSendHook(face)
-    await face.sendSession({ prompt: vi.fn() } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['original'])
+    await face.sendSession({ prompt } as never, 'look', ['id1'], 'queue')
+
+    expect(log).toEqual(['original', 'release'])
+    expect(prompt).toHaveBeenCalledTimes(1)
   })
 
-  it('falls back when a draft image id no longer resolves', async () => {
-    const { face, log } = makeConversation()
-    face.draftImages = vi.fn(() => [])
+  it('rethrows unrelated attachment errors without describe-image fallback', async () => {
+    stubFileReader('QUJD')
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      ok: true,
+      value: { note: 'N', markdown: 'R' },
+    }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const originalError = new Error('conversation.send failed: attachment-error: Attachment summary mismatch.')
+    const { face } = makeConversation(originalError)
+    const prompt = vi.fn(async () => ({ ok: true }))
+
     installSendHook(face)
-    await face.sendSession({ prompt: vi.fn() } as never, 'look', ['gone'], 'queue')
+
+    await expect(face.sendSession({ prompt } as never, 'look', ['id1'], 'queue')).rejects.toBe(originalError)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(prompt).not.toHaveBeenCalled()
+    expect(face.releaseDraftImage).not.toHaveBeenCalled()
+  })
+
+  it('preserves the original capability error when the fallback upload fails', async () => {
+    stubFileReader('QUJD')
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: false, error: { message: 'boom' } }), { status: 422 })))
+    const originalError = imageCapabilityError()
+    const { face, log } = makeConversation(originalError)
+    const prompt = vi.fn(async () => ({ ok: true }))
+    installSendHook(face)
+
+    await expect(face.sendSession({ prompt } as never, 'look', ['id1'], 'queue')).rejects.toBe(originalError)
+
     expect(log).toEqual(['original'])
+    expect(prompt).not.toHaveBeenCalled()
+    expect(face.releaseDraftImage).not.toHaveBeenCalled()
+  })
+
+  it('preserves the capability error when a draft image id no longer resolves', async () => {
+    const originalError = imageCapabilityError()
+    const { face, log } = makeConversation(originalError)
+    face.draftImages = vi.fn(() => [])
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const prompt = vi.fn(async () => ({ ok: true }))
+    installSendHook(face)
+
+    await expect(face.sendSession({ prompt } as never, 'look', ['gone'], 'queue')).rejects.toBe(originalError)
+
+    expect(log).toEqual(['original'])
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(prompt).not.toHaveBeenCalled()
+    expect(face.releaseDraftImage).not.toHaveBeenCalled()
   })
 
   it('is idempotent across repeated installs', async () => {
     stubFileReader('QUJD')
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: 'R' } }), { status: 200 })))
-    const { face } = makeConversation()
+    const { face } = makeConversation(imageCapabilityError())
     const prompt = vi.fn(async () => ({ ok: true }))
     installSendHook(face)
     installSendHook(face)
@@ -111,6 +190,12 @@ describe('installSendHook', () => {
     stubFileReader('QUJD')
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: 'R' } }), { status: 200 })))
     const { face, log } = makeConversation()
+    face.sendSession
+      .mockImplementationOnce(async () => { log.push('original') })
+      .mockImplementationOnce(async () => {
+        log.push('original')
+        throw imageCapabilityError()
+      })
     const prompt = vi.fn(async () => ({ ok: true }))
     let enabled = false
     installSendHook(face, () => enabled)
@@ -120,54 +205,9 @@ describe('installSendHook', () => {
     // Flipped on between sends: the very next send is rewritten.
     enabled = true
     await face.sendSession({ prompt } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['original', 'release'])
+    expect(log).toEqual(['original', 'original', 'release'])
     expect(prompt).toHaveBeenCalledTimes(1)
     const blocks = (prompt.mock.calls[0] as unknown as [{ type: string; text: string }[]])[0]
     expect(blocks[0].type).toBe('text')
-  })
-})
-
-describe('installSendHook capability gating', () => {
-  it('passes image sends through untouched when the session model accepts images', async () => {
-    const fetchSpy = vi.fn()
-    vi.stubGlobal('fetch', fetchSpy)
-    const { face, log } = makeConversation()
-    const prompt = vi.fn(async () => ({ ok: true }))
-    installSendHook(face, undefined, async () => true)
-    await face.sendSession({ prompt, sessionId: 's1' } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['original'])
-    expect(prompt).not.toHaveBeenCalled()
-    expect(fetchSpy).not.toHaveBeenCalled()
-  })
-
-  it('rewrites when the checker reports a text-only model', async () => {
-    stubFileReader('QUJD')
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: '![图片](/describe-image/raw/sha256:x)' } }), { status: 200 })))
-    const { face, log } = makeConversation()
-    const prompt = vi.fn(async () => ({ ok: true }))
-    installSendHook(face, undefined, async () => false)
-    await face.sendSession({ prompt, sessionId: 's1' } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['release'])
-    expect(prompt).toHaveBeenCalledTimes(1)
-  })
-
-  it('rewrites when the checker throws, failing closed to the legacy path', async () => {
-    stubFileReader('QUJD')
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: '![图片](/describe-image/raw/sha256:x)' } }), { status: 200 })))
-    const { face, log } = makeConversation()
-    const prompt = vi.fn(async () => ({ ok: true }))
-    installSendHook(face, undefined, async () => { throw new Error('probe down') })
-    await face.sendSession({ prompt, sessionId: 's1' } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['release'])
-    expect(prompt).toHaveBeenCalledTimes(1)
-  })
-
-  it('still honors the disabled switch ahead of the capability check', async () => {
-    const { face, log } = makeConversation()
-    const checker = vi.fn(async () => true)
-    installSendHook(face, () => false, checker)
-    await face.sendSession({ prompt: vi.fn(), sessionId: 's1' } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['original'])
-    expect(checker).not.toHaveBeenCalled()
   })
 })

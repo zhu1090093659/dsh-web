@@ -6,7 +6,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
 import { Context } from '@deepseek-ai/cordis'
@@ -317,70 +317,5 @@ describe('registerAttachRoute', () => {
     expect(status()).toBe(500)
     const envelope = JSON.parse(body()) as { ok: boolean; error: { code: string } }
     expect(envelope.error.code).toBe('internal')
-  })
-})
-
-describe('registerAttachRoute capability route', () => {
-  /** One fake GET request at the given URL. */
-  const makeGet = (url: string): IncomingMessage => ({
-    method: 'GET',
-    url,
-    [Symbol.asyncIterator]: async function* () {},
-  } as unknown as IncomingMessage)
-
-  /** One fake response collecting status/headers/body. */
-  const makeRes = (): { res: ServerResponse; status: () => number; body: () => string } => {
-    let status = 0
-    let body = ''
-    const res = {
-      writeHead: (code: number) => { status = code },
-      end: (chunk?: unknown) => {
-        if (chunk !== undefined && chunk !== null) body += String(chunk)
-      },
-    } as unknown as ServerResponse
-    return { res, status: () => status, body: () => body }
-  }
-
-  /** Register the route with the given probe and return the captured handler. */
-  const captureWithProbe = (probe?: (sessionId: string) => Promise<{ acceptsImages: boolean; known: boolean }>) => {
-    const registrations: Array<{ kind: string; path: string; handler: (req: unknown, res: unknown) => Promise<void> }> = []
-    const webServer = { register: (row: { kind: string; path: string; handler: (req: unknown, res: unknown) => Promise<void> }) => { registrations.push(row); return () => {} } }
-    const ctx = { get: (key: string) => (key === 'webServer' ? webServer : undefined) }
-    registerAttachRoute(ctx as unknown as Context, undefined, probe)
-    return registrations
-  }
-
-  it('answers the probe verdict for the queried session', async () => {
-    const probe = vi.fn(async (sessionId: string) => ({ acceptsImages: sessionId === 'vision-session', known: true }))
-    const registrations = captureWithProbe(probe)
-    const { res, status, body } = makeRes()
-    await registrations[0].handler(makeGet('/describe-image/capability?session=vision-session'), res)
-    expect(status()).toBe(200)
-    expect(JSON.parse(body())).toEqual({ ok: true, value: { acceptsImages: true, known: true } })
-    expect(probe).toHaveBeenCalledWith('vision-session')
-  })
-
-  it('answers unknown-capability when no probe is registered', async () => {
-    const registrations = captureWithProbe()
-    const { res, status, body } = makeRes()
-    await registrations[0].handler(makeGet('/describe-image/capability?session=x'), res)
-    expect(status()).toBe(200)
-    expect(JSON.parse(body())).toEqual({ ok: true, value: { acceptsImages: false, known: false } })
-  })
-
-  it('answers unknown-capability when the session parameter is missing', async () => {
-    const probe = vi.fn(async () => ({ acceptsImages: true, known: true }))
-    const registrations = captureWithProbe(probe)
-    const { res, body } = makeRes()
-    await registrations[0].handler(makeGet('/describe-image/capability'), res)
-    expect(JSON.parse(body())).toEqual({ ok: true, value: { acceptsImages: false, known: false } })
-    expect(probe).not.toHaveBeenCalled()
-  })
-
-  it('keeps raw-image GETs on the raw path', async () => {
-    const registrations = captureWithProbe(async () => ({ acceptsImages: true, known: true }))
-    const { res, status } = makeRes()
-    await registrations[0].handler(makeGet('/describe-image/raw/sha256:missing'), res)
-    expect(status()).toBe(404)
   })
 })

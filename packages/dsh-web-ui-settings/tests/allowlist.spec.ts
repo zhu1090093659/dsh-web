@@ -42,6 +42,23 @@ describe('extractWebSettingsNamespaces', () => {
     expect(extractWebSettingsNamespaces(text)).toEqual(['dsh-ssh'])
   })
 
+  it('reads a block list when the key line carries a trailing comment', () => {
+    const text = [
+      'web_settings_namespaces:  # expose only task-board',
+      '  - task-board',
+    ].join('\n')
+    expect(extractWebSettingsNamespaces(text)).toEqual(['task-board'])
+  })
+
+  it('reads an unindented block list (YAML allows column-0 sequence items)', () => {
+    const text = [
+      'web_settings_namespaces:',
+      '- dsh-ssh',
+      '- dsh-live-stats',
+    ].join('\n')
+    expect(extractWebSettingsNamespaces(text)).toEqual(['dsh-ssh', 'dsh-live-stats'])
+  })
+
   it('returns the empty list when the key is absent or the file is empty', () => {
     expect(extractWebSettingsNamespaces('llm:\n  provider: x\n')).toEqual([])
     expect(extractWebSettingsNamespaces('')).toEqual([])

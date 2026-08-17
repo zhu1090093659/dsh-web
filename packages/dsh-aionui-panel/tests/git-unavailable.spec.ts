@@ -29,6 +29,7 @@ function makeEnv(): {
     gitAvailable: ReturnType<typeof vi.fn>
     isRepositoryCanonical: ReturnType<typeof vi.fn>
     statusCanonical: ReturnType<typeof vi.fn>
+    repositoriesCanonical: ReturnType<typeof vi.fn>
   }
   warn: ReturnType<typeof vi.fn>
 } {
@@ -51,6 +52,7 @@ function makeEnv(): {
     gitAvailable: vi.fn(async () => true),
     isRepositoryCanonical: vi.fn(async () => true),
     statusCanonical: vi.fn(async () => null),
+    repositoriesCanonical: vi.fn(async () => []),
   }
   registerPanelRoutes(ctx as never, fs as never, git as never)
   const row = registrations.find((item) => item.kind === 'exact')
@@ -203,25 +205,24 @@ describe('SSE git polling with git installed', () => {
   it('keeps polling and pushing status changes', async () => {
     const env = makeEnv()
     const status = { root: '/w', branch: 'main', staged: [], unstaged: [], untracked: [] }
-    env.git.statusCanonical.mockResolvedValue(status)
+    env.git.repositoriesCanonical.mockResolvedValue([status])
     const conn = await connect(env.sse, '/w')
 
     await vi.advanceTimersByTimeAsync(30_000)
     expect(env.git.gitAvailable).toHaveBeenCalledTimes(1)
-    expect(env.git.isRepositoryCanonical).toHaveBeenCalledTimes(1)
-    expect(env.git.statusCanonical).toHaveBeenCalledTimes(1)
+    expect(env.git.repositoriesCanonical).toHaveBeenCalledTimes(1)
     expect(eventsOfKind(conn.writes, 'git')).toBe(1)
+    expect(conn.writes.some((write) => write.includes('"repositories"'))).toBe(true)
 
     // Unchanged status pushes nothing; a branch change pushes again.
     await vi.advanceTimersByTimeAsync(30_000)
-    expect(env.git.isRepositoryCanonical).toHaveBeenCalledTimes(2)
-    expect(env.git.statusCanonical).toHaveBeenCalledTimes(2)
+    expect(env.git.repositoriesCanonical).toHaveBeenCalledTimes(2)
     expect(eventsOfKind(conn.writes, 'git')).toBe(1)
     expect(eventsOfKind(conn.writes, 'gitUnavailable')).toBe(0)
 
-    env.git.statusCanonical.mockResolvedValue({ ...status, branch: 'dev' })
+    env.git.repositoriesCanonical.mockResolvedValue([{ ...status, branch: 'dev' }])
     await vi.advanceTimersByTimeAsync(30_000)
-    expect(env.git.statusCanonical).toHaveBeenCalledTimes(3)
+    expect(env.git.repositoriesCanonical).toHaveBeenCalledTimes(3)
     expect(eventsOfKind(conn.writes, 'git')).toBe(2)
     expect(eventsOfKind(conn.writes, 'gitUnavailable')).toBe(0)
 
@@ -235,23 +236,21 @@ describe('SSE git polling on a non-repository workspace', () => {
 
   it('keeps polling but never spawns git status while the workspace is not a repo', async () => {
     const env = makeEnv()
-    env.git.isRepositoryCanonical.mockResolvedValue(false)
+    env.git.repositoriesCanonical.mockResolvedValue([])
     const conn = await connect(env.sse, '/w')
 
     await vi.advanceTimersByTimeAsync(30_000)
 
     expect(env.git.gitAvailable).toHaveBeenCalledTimes(1)
-    expect(env.git.isRepositoryCanonical).toHaveBeenCalledTimes(1)
-    expect(env.git.statusCanonical).not.toHaveBeenCalled()
+    expect(env.git.repositoriesCanonical).toHaveBeenCalledTimes(1)
     expect(eventsOfKind(conn.writes, 'gitUnavailable')).toBe(0)
 
     // Two more ticks: the interval keeps running so the repo probe is
-    // re-asked every tick (GitService re-runs the real rev-parse only when
-    // its TTL expires), but no git status ever runs.
+    // re-asked every tick (GitService re-runs discovery only when its TTL
+    // expires), but no git event is pushed.
     await vi.advanceTimersByTimeAsync(60_000)
 
-    expect(env.git.isRepositoryCanonical).toHaveBeenCalledTimes(3)
-    expect(env.git.statusCanonical).not.toHaveBeenCalled()
+    expect(env.git.repositoriesCanonical).toHaveBeenCalledTimes(3)
     expect(eventsOfKind(conn.writes, 'gitUnavailable')).toBe(0)
 
     conn.close()
@@ -259,7 +258,7 @@ describe('SSE git polling on a non-repository workspace', () => {
 
   it('polls every connected subscriber while the workspace stays non-repo', async () => {
     const env = makeEnv()
-    env.git.isRepositoryCanonical.mockResolvedValue(false)
+    env.git.repositoriesCanonical.mockResolvedValue([])
     const first = await connect(env.sse, '/w')
     await vi.advanceTimersByTimeAsync(30_000)
 
@@ -267,8 +266,7 @@ describe('SSE git polling on a non-repository workspace', () => {
     await vi.advanceTimersByTimeAsync(30_000)
 
     // One tick for the first subscriber alone, then one tick for both.
-    expect(env.git.isRepositoryCanonical).toHaveBeenCalledTimes(3)
-    expect(env.git.statusCanonical).not.toHaveBeenCalled()
+    expect(env.git.repositoriesCanonical).toHaveBeenCalledTimes(3)
 
     first.close()
     second.close()

@@ -8,6 +8,8 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Section: header + body. */
@@ -123,9 +125,23 @@
 }
 
 .branchName {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--aion-text-tertiary);
+}
+
+.sectionActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* One change row. */

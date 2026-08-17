@@ -302,27 +302,21 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
     await Promise.all([...subscribers].map(async (subscriber) => {
       try {
         // Subscribers were gated when the stream opened, so use the
-        // canonical git methods (no double gate per 2s tick). repoOf inside
-        // them re-runs `rev-parse --show-toplevel` only after its TTL
-        // expires: a non-repo root never spawns a git status, and a repo
-        // created or removed while the host is running (git init / deleting
-        // .git) is still discovered by a later tick. The poll interval
-        // therefore keeps running while any subscriber is connected.
-        if (!(await git.isRepositoryCanonical(subscriber.root))) return
+        // canonical multi-repository method (no double gate per tick).
+        // Discovery and repo probes are TTL-cached inside GitService.
         // Capture and clear the timeout handle once the race settles so a
         // fast round never leaves a dead 15s timer pinning the closure.
         let timeout: ReturnType<typeof setTimeout> | undefined
-        const status = await Promise.race([
-          git.statusCanonical(subscriber.root),
+        const repositories = await Promise.race([
+          git.repositoriesCanonical(subscriber.root),
           new Promise<never>((_, reject) => {
             timeout = setTimeout(() => reject(new Error('git status timed out')), GIT_STATUS_TIMEOUT_MS)
           }),
         ]).finally(() => { if (timeout !== undefined) clearTimeout(timeout) })
-        if (status === null) return
-        const key = `${status.branch}|${JSON.stringify(status.staged)}|${JSON.stringify(status.unstaged)}|${JSON.stringify(status.untracked)}`
+        const key = JSON.stringify(repositories)
         if (key === subscriber.lastGit) return
         subscriber.lastGit = key
-        push(subscriber, { kind: 'git', status })
+        push(subscriber, { kind: 'git', repositories })
       } catch (error: unknown) {
         ctx.logger.warn(`dsh-aionui-panel: git poll failed for ${subscriber.root}: ${String(error)}`)
       }
@@ -621,50 +615,54 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
         return
       }
       case '/aionui-panel/git-status': {
-        const result = await git.status(root)
-        json(res, result === null ? OK(null) : 'root' in result ? OK(result) : FAIL(result))
+        const result = await git.repositories(root)
+        json(res, Array.isArray(result) ? OK(result) : FAIL(result))
         return
       }
       case '/aionui-panel/git-diff': {
         const path = strField(payload, 'path')
-        if (path === null) {
+        const repository = strField(payload, 'repository')
+        if (path === null || repository === null) {
           json(res, FAIL(BAD_REQUEST))
           return
         }
         const staged = typeof payload === 'object' && payload !== null
           ? (payload as Record<string, unknown>).staged === true
           : false
-        const result = await git.diff(root, path, staged)
+        const result = await git.diff(root, path, staged, repository)
         json(res, 'content' in result ? OK(result) : FAIL(result))
         return
       }
       case '/aionui-panel/git-stage': {
         const paths = strArray(payload, 'paths')
-        if (paths === null) {
+        const repository = strField(payload, 'repository')
+        if (paths === null || repository === null) {
           json(res, FAIL(BAD_REQUEST))
           return
         }
-        const result = await git.stage(root, paths)
+        const result = await git.stage(root, paths, repository)
         json(res, 'applied' in result ? OK(result) : FAIL(result))
         return
       }
       case '/aionui-panel/git-unstage': {
         const paths = strArray(payload, 'paths')
-        if (paths === null) {
+        const repository = strField(payload, 'repository')
+        if (paths === null || repository === null) {
           json(res, FAIL(BAD_REQUEST))
           return
         }
-        const result = await git.unstage(root, paths)
+        const result = await git.unstage(root, paths, repository)
         json(res, 'applied' in result ? OK(result) : FAIL(result))
         return
       }
       case '/aionui-panel/git-discard': {
         const paths = strArray(payload, 'paths')
-        if (paths === null) {
+        const repository = strField(payload, 'repository')
+        if (paths === null || repository === null) {
           json(res, FAIL(BAD_REQUEST))
           return
         }
-        const result = await git.discard(root, paths)
+        const result = await git.discard(root, paths, repository)
         json(res, 'applied' in result ? OK(result) : FAIL(result))
         return
       }

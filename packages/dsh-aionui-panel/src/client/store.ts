@@ -568,8 +568,8 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
 /** SCM panel state. */
 export interface ScmState {
   root: string
-  /** null: not a git repository (or still loading). */
-  status: GitStatusView | null
+  /** Repository snapshots under the current workspace. */
+  repositories: GitStatusView[]
   /** True when the host reported git is not installed (SSE gitUnavailable). */
   gitMissing: boolean
   loading: boolean
@@ -591,15 +591,20 @@ export interface ScmState {
 export interface ScmStore extends StateHandle<ScmState> {
   setRoot: (root: string) => void
   refresh: () => Promise<void>
-  stage: (paths: string[]) => Promise<void>
-  unstage: (paths: string[]) => Promise<void>
-  discard: (paths: string[]) => Promise<void>
-  discardAll: () => Promise<void>
+  stage: (repository: string, paths: string[]) => Promise<void>
+  unstage: (repository: string, paths: string[]) => Promise<void>
+  discard: (repository: string, paths: string[]) => Promise<void>
+  discardAll: (repository: string) => Promise<void>
   setViewMode: (mode: 'list' | 'tree') => void
   setSectionCollapsed: (id: string, collapsed: boolean) => void
   setTreeExpanded: (keys: string[]) => void
   setFailed: (paths: string[]) => void
-  select: (path: string | null) => void
+  select: (repository: string, path: string | null) => void
+}
+
+/** Stable identity for one repository-relative SCM row. */
+export function scmRowKey(repository: string, path: string): string {
+  return `${repository}\u0000${path}`
 }
 
 /** Read the persisted scm UI state for a root (guarded). */
@@ -620,7 +625,7 @@ export function readScmUi(root: string): { viewMode: 'list' | 'tree'; sectionCol
 export function createScmStore(api: PanelApi): ScmStore {
   const handle = createState<ScmState>({
     root: '',
-    status: null,
+    repositories: [],
     gitMissing: false,
     loading: false,
     busy: [],
@@ -662,9 +667,9 @@ export function createScmStore(api: PanelApi): ScmStore {
       if (prev.root !== root || seq !== loadSeq) return prev
       return {
         ...prev,
-        status: result.ok ? result.value : prev.status,
-        // A real repo view clears the missing-git banner; null keeps it.
-        gitMissing: result.ok && result.value !== null ? false : prev.gitMissing,
+        repositories: result.ok ? result.value : prev.repositories,
+        // A real repository list clears the missing-git banner; empty keeps it.
+        gitMissing: result.ok && result.value.length > 0 ? false : prev.gitMissing,
         loading: false,
         busy: keepBusy,
       }
@@ -679,7 +684,7 @@ export function createScmStore(api: PanelApi): ScmStore {
         return {
           ...prev,
           root,
-          status: null,
+          repositories: [],
           gitMissing: false,
           loading: true,
           busy: [],
@@ -696,49 +701,59 @@ export function createScmStore(api: PanelApi): ScmStore {
       const root = handle.getSnapshot().root
       if (root !== '') await load(root)
     },
-    async stage(paths: string[]) {
+    async stage(repository: string, paths: string[]) {
       const root = handle.getSnapshot().root
       if (root === '' || paths.length === 0) return
-      handle.update((prev) => ({ ...prev, busy: [...prev.busy, ...paths] }))
-      const result = await api.gitStage(root, paths)
+      const keys = paths.map((path) => scmRowKey(repository, path))
+      handle.update((prev) => ({ ...prev, busy: [...prev.busy, ...keys] }))
+      const result = await api.gitStage(root, repository, paths)
       handle.update((prev) => ({
         ...prev,
-        failed: result.ok && Array.isArray(result.value?.failed) ? result.value.failed : (result.ok ? [] : paths),
-        busy: prev.busy.filter((item) => !paths.includes(item)),
+        failed: result.ok && Array.isArray(result.value?.failed)
+          ? result.value.failed.map((path) => scmRowKey(repository, path))
+          : (result.ok ? [] : keys),
+        busy: prev.busy.filter((item) => !keys.includes(item)),
       }))
       await load(root)
     },
-    async unstage(paths: string[]) {
+    async unstage(repository: string, paths: string[]) {
       const root = handle.getSnapshot().root
       if (root === '' || paths.length === 0) return
-      handle.update((prev) => ({ ...prev, busy: [...prev.busy, ...paths] }))
-      const result = await api.gitUnstage(root, paths)
+      const keys = paths.map((path) => scmRowKey(repository, path))
+      handle.update((prev) => ({ ...prev, busy: [...prev.busy, ...keys] }))
+      const result = await api.gitUnstage(root, repository, paths)
       handle.update((prev) => ({
         ...prev,
-        failed: result.ok && Array.isArray(result.value?.failed) ? result.value.failed : (result.ok ? [] : paths),
-        busy: prev.busy.filter((item) => !paths.includes(item)),
+        failed: result.ok && Array.isArray(result.value?.failed)
+          ? result.value.failed.map((path) => scmRowKey(repository, path))
+          : (result.ok ? [] : keys),
+        busy: prev.busy.filter((item) => !keys.includes(item)),
       }))
       await load(root)
     },
-    async discard(paths: string[]) {
+    async discard(repository: string, paths: string[]) {
       const root = handle.getSnapshot().root
       if (root === '' || paths.length === 0) return
-      handle.update((prev) => ({ ...prev, busy: [...prev.busy, ...paths] }))
-      const result = await api.gitDiscard(root, paths)
+      const keys = paths.map((path) => scmRowKey(repository, path))
+      handle.update((prev) => ({ ...prev, busy: [...prev.busy, ...keys] }))
+      const result = await api.gitDiscard(root, repository, paths)
       handle.update((prev) => ({
         ...prev,
-        failed: result.ok && Array.isArray(result.value?.failed) ? result.value.failed : (result.ok ? [] : paths),
-        busy: prev.busy.filter((item) => !paths.includes(item)),
+        failed: result.ok && Array.isArray(result.value?.failed)
+          ? result.value.failed.map((path) => scmRowKey(repository, path))
+          : (result.ok ? [] : keys),
+        busy: prev.busy.filter((item) => !keys.includes(item)),
       }))
       await load(root)
     },
-    async discardAll() {
+    async discardAll(repository: string) {
       const state = handle.getSnapshot()
+      const status = state.repositories.find((candidate) => candidate.root === repository)
       const paths = [
-        ...(state.status?.unstaged ?? []),
-        ...(state.status?.untracked ?? []),
+        ...(status?.unstaged ?? []),
+        ...(status?.untracked ?? []),
       ].map((row) => row.path)
-      await this.discard(paths)
+      await this.discard(repository, paths)
     },
     setViewMode(mode: 'list' | 'tree') {
       handle.update((prev) => (prev.viewMode === mode ? prev : { ...prev, viewMode: mode }))
@@ -755,8 +770,9 @@ export function createScmStore(api: PanelApi): ScmStore {
     setFailed(paths: string[]) {
       handle.update((prev) => ({ ...prev, failed: paths }))
     },
-    select(path: string | null) {
-      handle.update((prev) => (prev.selected === path ? prev : { ...prev, selected: path }))
+    select(repository: string, path: string | null) {
+      const selected = path === null ? null : scmRowKey(repository, path)
+      handle.update((prev) => (prev.selected === selected ? prev : { ...prev, selected }))
       schedulePersist(handle.getSnapshot())
     },
   })
@@ -774,7 +790,7 @@ export interface PreviewTabState {
   path: string
   contentType: PreviewContentType
   /** Diff tabs (opened from the SCM panel): content is the path's git diff. */
-  diff?: { staged: boolean }
+  diff?: { staged: boolean; repository: string }
   /** URL tabs: bumped by reloadTab to re-navigate the preview frame. */
   reloadNonce?: number
   /** null: content not loaded yet. */
@@ -806,7 +822,7 @@ export interface PreviewState {
 export interface PreviewStore extends StateHandle<PreviewState> {
   setRoot: (root: string) => void
   openFile: (root: string, path: string) => void
-  openDiff: (root: string, path: string, staged: boolean) => void
+  openDiff: (root: string, path: string, staged: boolean, repository: string) => void
   switchTab: (id: string) => void
   closeTabs: (ids: string[]) => void
   updateContent: (id: string, content: string) => void
@@ -824,7 +840,7 @@ interface PersistedTab {
   root: string
   path: string
   contentType: PreviewContentType
-  diff?: { staged: boolean }
+  diff?: { staged: boolean; repository: string }
   savedAt: number
 }
 
@@ -840,7 +856,12 @@ export function readPreviewTabs(root: string): PersistedTab[] {
     const rawDiff = record.diff
     const diff = typeof rawDiff === 'object' && rawDiff !== null
       && typeof (rawDiff as Record<string, unknown>).staged === 'boolean'
-      ? { staged: (rawDiff as { staged: boolean }).staged }
+      ? {
+          staged: (rawDiff as { staged: boolean }).staged,
+          repository: typeof (rawDiff as Record<string, unknown>).repository === 'string'
+            ? (rawDiff as { repository: string }).repository
+            : root,
+        }
       : undefined
     out.push({
       id: record.id,
@@ -915,7 +936,7 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
     }
     const asImage = tab.contentType === 'image'
     const result = tab.diff !== undefined
-      ? await api.gitDiff(root, tab.path, tab.diff.staged)
+      ? await api.gitDiff(root, tab.diff.repository, tab.path, tab.diff.staged)
       : await api.read(root, tab.path, asImage)
     handle.update((prev) => {
       if (prev.root !== root) return prev
@@ -962,10 +983,10 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
   const refreshDiffs = async (root: string): Promise<void> => {
     if (handle.getSnapshot().root !== root) return
     const diffs = handle.getSnapshot().tabs
-      .filter((tab): tab is PreviewTabState & { diff: { staged: boolean } } => tab.diff !== undefined)
+      .filter((tab): tab is PreviewTabState & { diff: { staged: boolean; repository: string } } => tab.diff !== undefined)
     await Promise.all(diffs.map(async (tab) => {
       if (tab.content === null || tab.loading) return
-      const result = await api.gitDiff(root, tab.path, tab.diff.staged)
+      const result = await api.gitDiff(root, tab.diff.repository, tab.path, tab.diff.staged)
       handle.update((prev) => {
         if (prev.root !== root) return prev
         return {
@@ -1043,11 +1064,11 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
       void loadContent(root, id)
       schedulePersist(handle.getSnapshot())
     },
-    openDiff(root: string, path: string, staged: boolean) {
-      // A distinct id space (scm-diff: side + root + path) so the same file
+    openDiff(root: string, path: string, staged: boolean, repository: string) {
+      // A distinct id space (scm-diff: side + workspace + repo + path) so the same file
       // can carry a diff tab AND a file tab, and staged/unstaged diffs of one
       // path are separate tabs — each reflects the side it was opened from.
-      const id = `scm-diff:${staged ? 's' : 'u'}\u0000${root}\u0000${path}`
+      const id = `scm-diff:${staged ? 's' : 'u'}\u0000${root}\u0000${repository}\u0000${path}`
       const existing = handle.getSnapshot().tabs.find((tab) => tab.id === id)
       if (existing !== undefined) {
         handle.update((prev) => ({
@@ -1069,7 +1090,7 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
           root,
           path,
           contentType: 'diff',
-          diff: { staged },
+          diff: { staged, repository },
           content: null,
           dirty: false,
           updated: false,
@@ -1183,7 +1204,7 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
         tabs: prev.tabs.map((item) => (item.id === id ? { ...item, loading: true } : item)),
       }))
       const result = tab.diff !== undefined
-        ? await api.gitDiff(state.root, tab.path, tab.diff.staged)
+        ? await api.gitDiff(state.root, tab.diff.repository, tab.path, tab.diff.staged)
         : await api.read(state.root, tab.path, tab.contentType === 'image')
       handle.update((prev) => {
         if (prev.root !== state.root) return prev

@@ -113,6 +113,26 @@ describe('/aionui-panel loopback fence', () => {
     expect(list).toHaveBeenCalledWith('/w', '')
   })
 
+  it('returns all repositories and routes git mutations to the selected repository', async () => {
+    const status = { root: '/w/nested', branch: 'main', staged: [], unstaged: [], untracked: [] }
+    const repositories = vi.fn(async () => [status])
+    const stage = vi.fn(async () => ({ applied: ['inner.txt'], failed: [] }))
+    const { ctx, registrations } = fakeCtx()
+    registerPanelRoutes(ctx as never, {} as never, { repositories, stage } as never)
+    const prefix = registrations.find((row) => row.kind === 'prefix')!
+
+    const listed = await drive(prefix.handler, '/aionui-panel/git-status', {
+      body: JSON.stringify({ root: '/w' }),
+    })
+    const staged = await drive(prefix.handler, '/aionui-panel/git-stage', {
+      body: JSON.stringify({ root: '/w', repository: '/w/nested', paths: ['inner.txt'] }),
+    })
+
+    expect(JSON.parse(listed.body)).toEqual({ ok: true, value: [status] })
+    expect(JSON.parse(staged.body)).toEqual({ ok: true, value: { applied: ['inner.txt'], failed: [] } })
+    expect(stage).toHaveBeenCalledWith('/w', ['inner.txt'], '/w/nested')
+  })
+
   it('serves the full 127/8 range as loopback (unified fence)', async () => {
     const list = vi.fn(async () => ({ root: '/w', entries: [] }))
     const { ctx, registrations } = fakeCtx()

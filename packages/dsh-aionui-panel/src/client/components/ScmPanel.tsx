@@ -15,10 +15,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
-import type { GitChangeRow } from '../../core/types.ts'
+import type { GitChangeRow, GitStatusView } from '../../core/types.ts'
 import { t, format } from '../locales.ts'
 import { useStore } from '../hooks/useStore.ts'
-import type { PanelStores } from '../store.ts'
+import { scmRowKey, type PanelStores } from '../store.ts'
 import { ConfirmDialog } from './overlay.tsx'
 import { activateOnKey } from './a11y.ts'
 import { FileTypeIcon } from './FileIcon.tsx'
@@ -57,6 +57,12 @@ function buildTree(rows: GitChangeRow[]): Map<string, GitChangeRow[]> {
   return byDir
 }
 
+/** Last path segment of a repository root, separator-agnostic. */
+function repositoryName(root: string): string {
+  const parts = root.replaceAll('\\', '/').replace(/\/$/, '').split('/')
+  return parts[parts.length - 1] || root
+}
+
 /** The SCM tab body.
  * @param stores - the panel store bundle.
  */
@@ -64,7 +70,7 @@ export function ScmPanel({ stores }: { stores: PanelStores }): JSX.Element {
   const scm = stores.scm
   const preview = stores.preview
   const state = useStore(scm)
-  const [discardTargets, setDiscardTargets] = useState<GitChangeRow[] | null>(null)
+  const [discardTargets, setDiscardTargets] = useState<{ repository: string; rows: GitChangeRow[] } | null>(null)
 
   // Window focus refreshes (catches external editors writing the tree).
   // Throttled: a focus burst must not spawn a git status per event — the
@@ -84,145 +90,45 @@ export function ScmPanel({ stores }: { stores: PanelStores }): JSX.Element {
     return () => window.removeEventListener('focus', onFocus)
   }, [scm])
 
-  const status = state.status
-  const changesSectionOpen = state.sectionCollapsed['changes'] !== true
-
-  const requestDiscard = (rows: GitChangeRow[]): void => {
+  const requestDiscard = (repository: string, rows: GitChangeRow[]): void => {
     if (rows.length === 0) return
-    setDiscardTargets(rows)
+    setDiscardTargets({ repository, rows })
   }
   const confirmDiscard = (): void => {
     if (discardTargets === null) return
-    void scm.discard(discardTargets.map((row) => row.path))
+    void scm.discard(discardTargets.repository, discardTargets.rows.map((row) => row.path))
     setDiscardTargets(null)
   }
 
-  if (state.loading && status === null) {
+  if (state.loading && state.repositories.length === 0) {
     return <div className={`aionui-root ${scmCss.panel}`}><div className={scmCss.loading}>{t('scm.loading')}</div></div>
   }
   if (state.gitMissing) {
     return <div className={`aionui-root ${scmCss.panel}`}><div className={scmCss.notRepo}>{t('scm.gitMissing')}</div></div>
   }
-  if (status === null) {
+  if (state.repositories.length === 0) {
     return <div className={`aionui-root ${scmCss.panel}`}><div className={scmCss.notRepo}>{t('scm.notRepo')}</div></div>
   }
 
-  const staged = status.staged
-  const unstaged = status.unstaged
-  const untracked = status.untracked
-  const hasChanges = staged.length + unstaged.length + untracked.length > 0
-  const allUntracked = discardTargets !== null && discardTargets.every((row) => row.state === 'untracked')
+  const allUntracked = discardTargets !== null && discardTargets.rows.every((row) => row.state === 'untracked')
 
   return (
     <div className={`aionui-root ${scmCss.panel}`}>
-      {/* Changes section. */}
-      <div className={scmCss.section} style={{ flex: changesSectionOpen ? 1 : undefined, maxHeight: changesSectionOpen ? undefined : 24 }}>
-        <div
-          className={scmCss.sectionHeader}
-          onClick={() => scm.setSectionCollapsed('changes', changesSectionOpen)}
-          onKeyDown={activateOnKey(() => { scm.setSectionCollapsed('changes', changesSectionOpen) })}
-          role="button"
-          tabIndex={0}
-          aria-expanded={changesSectionOpen}
-        >
-          <span className={`${scmCss.sectionChevron}${changesSectionOpen ? ` ${scmCss.sectionChevronOpen}` : ''}`}>
-            <ChevronRightIcon size={13} />
-          </span>
-          <span className={scmCss.sectionTitle}>{t('scm.changes')}</span>
-          {status.branch !== '' && (
-            <span className={scmCss.branchName} style={{ fontSize: 11, color: 'var(--aion-text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <BranchIcon size={12} />
-              {status.branch}
-            </span>
-          )}
-          <span
-            style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 'auto' }}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              className={scmCss.sectionAction}
-              title={t('scm.stageAll')}
-              onClick={() => void scm.stage(unstaged.map((row) => row.path))}
-              disabled={unstaged.length === 0}
-            >
-              <PlusIcon size={13} />
-            </button>
-            <button
-              type="button"
-              className={scmCss.sectionAction}
-              title={t('scm.discardAll')}
-              onClick={() => requestDiscard([...unstaged, ...untracked])}
-              disabled={unstaged.length + untracked.length === 0}
-            >
-              <UndoIcon size={13} />
-            </button>
-            <button
-              type="button"
-              className={scmCss.sectionAction}
-              title={t('scm.viewList')}
-              style={{ color: state.viewMode === 'list' ? 'var(--aion-brand)' : undefined }}
-              onClick={() => scm.setViewMode('list')}
-            >
-              <ListIcon size={13} />
-            </button>
-            <button
-              type="button"
-              className={scmCss.sectionAction}
-              title={t('scm.viewTree')}
-              style={{ color: state.viewMode === 'tree' ? 'var(--aion-brand)' : undefined }}
-              onClick={() => scm.setViewMode('tree')}
-            >
-              <TreeIcon size={13} />
-            </button>
-          </span>
-        </div>
-
-        {changesSectionOpen && (
-          <div className={scmCss.sectionBody}>
-            {!hasChanges && <div className={scmCss.empty}>{t('scm.empty')}</div>}
-            {hasChanges && (
-              <Group
-                scm={scm}
-                preview={preview}
-                title={staged.length > 0 ? t('scm.staged') : undefined}
-                rows={staged}
-                bulkLabel={t('scm.unstage')}
-                onBulk={(rows) => void scm.unstage(rows.map((row) => row.path))}
-                onDiscard={requestDiscard}
-              />
-            )}
-            {hasChanges && unstaged.length > 0 && (
-              <Group
-                scm={scm}
-                preview={preview}
-                rows={unstaged}
-                bulkLabel={t('scm.stage')}
-                onBulk={(rows) => void scm.stage(rows.map((row) => row.path))}
-                onDiscard={requestDiscard}
-              />
-            )}
-            {untracked.length > 0 && (
-              <Group
-                scm={scm}
-                preview={preview}
-                title={t('scm.untracked')}
-                rows={untracked}
-                bulkLabel={t('scm.stage')}
-                onBulk={(rows) => void scm.stage(rows.map((row) => row.path))}
-                onDiscard={requestDiscard}
-              />
-            )}
-          </div>
-        )}
-      </div>
+      {state.repositories.map((status) => (
+        <RepositorySection
+          key={status.root}
+          status={status}
+          stores={stores}
+          onDiscard={(rows) => requestDiscard(status.root, rows)}
+        />
+      ))}
 
       {discardTargets !== null && (
         <ConfirmDialog
           title={t('scm.discard')}
           body={allUntracked
-            ? format(t('scm.discardConfirmUntracked'), { count: discardTargets.length })
-            : format(t('scm.discardConfirmTracked'), { count: discardTargets.length })}
+            ? format(t('scm.discardConfirmUntracked'), { count: discardTargets.rows.length })
+            : format(t('scm.discardConfirmTracked'), { count: discardTargets.rows.length })}
           confirmLabel={t('common.delete')}
           danger
           onConfirm={confirmDiscard}
@@ -233,8 +139,133 @@ export function ScmPanel({ stores }: { stores: PanelStores }): JSX.Element {
   )
 }
 
+/** One independent repository and its staged/worktree groups. */
+function RepositorySection({
+  status,
+  stores,
+  onDiscard,
+}: {
+  status: GitStatusView
+  stores: PanelStores
+  onDiscard: (rows: GitChangeRow[]) => void
+}): JSX.Element {
+  const scm = stores.scm
+  const state = useStore(scm)
+  const sectionId = `repository:${status.root}`
+  const open = state.sectionCollapsed[sectionId] !== true
+  const staged = status.staged
+  const unstaged = status.unstaged
+  const untracked = status.untracked
+  const hasChanges = staged.length + unstaged.length + untracked.length > 0
+  const toggle = (): void => { scm.setSectionCollapsed(sectionId, open) }
+
+  return (
+    <div className={scmCss.section}>
+      <div
+        className={scmCss.sectionHeader}
+        onClick={toggle}
+        onKeyDown={activateOnKey(toggle)}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        title={status.root}
+      >
+        <span className={`${scmCss.sectionChevron}${open ? ` ${scmCss.sectionChevronOpen}` : ''}`}>
+          <ChevronRightIcon size={13} />
+        </span>
+        <span className={scmCss.sectionTitle}>{repositoryName(status.root)}</span>
+        {status.branch !== '' && (
+          <span className={scmCss.branchName}>
+            <BranchIcon size={12} />
+            {status.branch}
+          </span>
+        )}
+        <span className={scmCss.sectionActions} onClick={(event) => event.stopPropagation()}>
+          <button
+            type="button"
+            className={scmCss.sectionAction}
+            title={t('scm.stageAll')}
+            onClick={() => void scm.stage(status.root, [...unstaged, ...untracked].map((row) => row.path))}
+            disabled={unstaged.length + untracked.length === 0}
+          >
+            <PlusIcon size={13} />
+          </button>
+          <button
+            type="button"
+            className={scmCss.sectionAction}
+            title={t('scm.discardAll')}
+            onClick={() => onDiscard([...unstaged, ...untracked])}
+            disabled={unstaged.length + untracked.length === 0}
+          >
+            <UndoIcon size={13} />
+          </button>
+          <button
+            type="button"
+            className={scmCss.sectionAction}
+            title={t('scm.viewList')}
+            style={{ color: state.viewMode === 'list' ? 'var(--aion-brand)' : undefined }}
+            onClick={() => scm.setViewMode('list')}
+          >
+            <ListIcon size={13} />
+          </button>
+          <button
+            type="button"
+            className={scmCss.sectionAction}
+            title={t('scm.viewTree')}
+            style={{ color: state.viewMode === 'tree' ? 'var(--aion-brand)' : undefined }}
+            onClick={() => scm.setViewMode('tree')}
+          >
+            <TreeIcon size={13} />
+          </button>
+        </span>
+      </div>
+      {open && (
+        <div className={scmCss.sectionBody}>
+          {!hasChanges && <div className={scmCss.empty}>{t('scm.empty')}</div>}
+          {staged.length > 0 && (
+            <Group
+              repository={status.root}
+              scm={scm}
+              preview={stores.preview}
+              title={t('scm.staged')}
+              rows={staged}
+              bulkLabel={t('scm.unstage')}
+              onBulk={(rows) => void scm.unstage(status.root, rows.map((row) => row.path))}
+              onDiscard={onDiscard}
+            />
+          )}
+          {unstaged.length > 0 && (
+            <Group
+              repository={status.root}
+              scm={scm}
+              preview={stores.preview}
+              rows={unstaged}
+              bulkLabel={t('scm.stage')}
+              onBulk={(rows) => void scm.stage(status.root, rows.map((row) => row.path))}
+              onDiscard={onDiscard}
+            />
+          )}
+          {untracked.length > 0 && (
+            <Group
+              repository={status.root}
+              scm={scm}
+              preview={stores.preview}
+              title={t('scm.untracked')}
+              rows={untracked}
+              bulkLabel={t('scm.stage')}
+              onBulk={(rows) => void scm.stage(status.root, rows.map((row) => row.path))}
+              onDiscard={onDiscard}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** One change group (staged / unstaged / untracked) with list or tree body. */
 function Group({
+  repository,
   scm,
   preview,
   rows,
@@ -243,6 +274,7 @@ function Group({
   onBulk,
   onDiscard,
 }: {
+  repository: string
   scm: PanelStores['scm']
   preview: PanelStores['preview']
   rows: GitChangeRow[]
@@ -285,6 +317,7 @@ function Group({
             rows={dirRows}
             depth={0}
             state={state}
+            repository={repository}
             expandedSet={expandedSet}
             busySet={busySet}
             failedSet={failedSet}
@@ -298,9 +331,10 @@ function Group({
           <ChangeRow
             key={`${row.staged ? 's' : 'u'}:${row.path}`}
             row={row}
+            repository={repository}
             state={state}
-            busy={busySet.has(row.path)}
-            failed={failedSet.has(row.path)}
+            busy={busySet.has(scmRowKey(repository, row.path))}
+            failed={failedSet.has(scmRowKey(repository, row.path))}
             scm={scm}
             preview={preview}
             onDiscard={onDiscard}
@@ -313,6 +347,7 @@ function Group({
 
 /** Tree-view directory node (expandable). */
 function DirNode({
+  repository,
   dir,
   rows,
   depth,
@@ -324,6 +359,7 @@ function DirNode({
   preview,
   onDiscard,
 }: {
+  repository: string
   dir: string
   rows: GitChangeRow[]
   depth: number
@@ -366,9 +402,10 @@ function DirNode({
           <ChangeRow
             key={`${row.staged ? 's' : 'u'}:${row.path}`}
             row={row}
+            repository={repository}
             state={state}
-            busy={busySet.has(row.path)}
-            failed={failedSet.has(row.path)}
+            busy={busySet.has(scmRowKey(repository, row.path))}
+            failed={failedSet.has(scmRowKey(repository, row.path))}
             scm={scm}
             preview={preview}
             onDiscard={onDiscard}
@@ -385,6 +422,7 @@ function DirNode({
  * has a diff — deleted rows show the removal, untracked rows a new-file diff).
  */
 function ChangeRow({
+  repository,
   row,
   state,
   busy,
@@ -395,6 +433,7 @@ function ChangeRow({
   indent = 0,
   hideDir = false,
 }: {
+  repository: string
   row: GitChangeRow
   state: ReturnType<PanelStores['scm']['getSnapshot']>
   busy: boolean
@@ -411,15 +450,15 @@ function ChangeRow({
   const dir = dirOf(row.path)
 
   const openInPreview = (): void => {
-    scm.select(row.path)
+    scm.select(repository, row.path)
     // Staged rows diff the index against HEAD; unstaged rows the worktree
     // against the index — the side the row was listed under.
-    preview.openDiff(state.root, row.path, row.staged)
+    preview.openDiff(state.root, row.path, row.staged, repository)
   }
 
   return (
     <div
-      className={`${scmCss.changeRow}${state.selected === row.path ? ` ${scmCss.changeRowSelected}` : ''}${failed ? ` ${scmCss.rowFailed}` : ''}`}
+      className={`${scmCss.changeRow}${state.selected === scmRowKey(repository, row.path) ? ` ${scmCss.changeRowSelected}` : ''}${failed ? ` ${scmCss.rowFailed}` : ''}`}
       style={{ paddingLeft: 12 + indent * 12 }}
       title={row.path}
       onClick={openInPreview}
@@ -438,7 +477,7 @@ function ChangeRow({
               className={scmCss.rowAction}
               title={t('scm.unstage')}
               disabled={busy}
-              onClick={(event) => { event.stopPropagation(); void scm.unstage([row.path]) }}
+              onClick={(event) => { event.stopPropagation(); void scm.unstage(repository, [row.path]) }}
             >
               <MinusIcon size={13} />
             </button>
@@ -459,7 +498,7 @@ function ChangeRow({
               className={scmCss.rowAction}
               title={t('scm.stage')}
               disabled={busy}
-              onClick={(event) => { event.stopPropagation(); void scm.stage([row.path]) }}
+              onClick={(event) => { event.stopPropagation(); void scm.stage(repository, [row.path]) }}
             >
               <PlusIcon size={13} />
             </button>

@@ -88,36 +88,36 @@ export class PanelApi {
     return post('/aionui-panel/new-file', { root, path })
   }
 
-  /** The repo status view; null when the root is not a repository. */
-  gitStatus(root: string): Promise<PanelEnvelope<GitStatusView | null>> {
+  /** Status views for every repository associated with the workspace root. */
+  gitStatus(root: string): Promise<PanelEnvelope<GitStatusView[]>> {
     return post('/aionui-panel/git-status', { root })
   }
 
   /** The unified diff text of one path (staged = index vs HEAD). */
-  gitDiff(root: string, path: string, staged: boolean): Promise<PanelEnvelope<{ content: string }>> {
-    return post('/aionui-panel/git-diff', { root, path, staged })
+  gitDiff(root: string, repository: string, path: string, staged: boolean): Promise<PanelEnvelope<{ content: string }>> {
+    return post('/aionui-panel/git-diff', { root, repository, path, staged })
   }
 
   /** Stage paths. */
-  gitStage(root: string, paths: string[]): Promise<PanelEnvelope<GitBatchResult>> {
-    return post('/aionui-panel/git-stage', { root, paths })
+  gitStage(root: string, repository: string, paths: string[]): Promise<PanelEnvelope<GitBatchResult>> {
+    return post('/aionui-panel/git-stage', { root, repository, paths })
   }
 
   /** Unstage paths. */
-  gitUnstage(root: string, paths: string[]): Promise<PanelEnvelope<GitBatchResult>> {
-    return post('/aionui-panel/git-unstage', { root, paths })
+  gitUnstage(root: string, repository: string, paths: string[]): Promise<PanelEnvelope<GitBatchResult>> {
+    return post('/aionui-panel/git-unstage', { root, repository, paths })
   }
 
   /** Discard paths (worktree side; untracked paths are deleted). */
-  gitDiscard(root: string, paths: string[]): Promise<PanelEnvelope<GitBatchResult>> {
-    return post('/aionui-panel/git-discard', { root, paths })
+  gitDiscard(root: string, repository: string, paths: string[]): Promise<PanelEnvelope<GitBatchResult>> {
+    return post('/aionui-panel/git-discard', { root, repository, paths })
   }
 }
 
 /** One SSE change event pushed by the host. */
 export type PanelChangeEvent =
   | { kind: 'fs' }
-  | { kind: 'git'; status: GitStatusView }
+  | { kind: 'git'; repositories: GitStatusView[] }
   | { kind: 'gitUnavailable' }
 
 /**

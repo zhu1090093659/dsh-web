@@ -19,7 +19,7 @@ import type { PanelStores } from '../src/client/store.ts'
 /** Minimal scm snapshot that renders the notRepo branch (no git actions). */
 const baseScmState = {
   root: '',
-  status: null,
+  repositories: [],
   gitMissing: false,
   loading: false,
   busy: [] as string[],

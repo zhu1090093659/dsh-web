@@ -38,13 +38,13 @@ function fakeApi(overrides: Partial<PanelApi> = {}): { api: PanelApi; calls: str
     rename: vi.fn(async () => ({ ok: true, value: { ok: true as const } })),
     mkdir: vi.fn(async () => ({ ok: true, value: { ok: true as const } })),
     newFile: vi.fn(async () => ({ ok: true, value: { ok: true as const } })),
-    gitStatus: vi.fn(async (): Promise<PanelEnvelope<GitStatusView | null>> => ({
+    gitStatus: vi.fn(async (): Promise<PanelEnvelope<GitStatusView[]>> => ({
       ok: true,
-      value: {
+      value: [{
         root: '/w', branch: 'main',
         staged: [], unstaged: [{ path: 'a.txt', state: 'modified', staged: false }],
         untracked: [],
-      },
+      }],
     })),
     gitDiff: vi.fn(async (): Promise<PanelEnvelope<{ content: string }>> => ({
       ok: true, value: { content: 'diff --git a/a.txt b/a.txt\n@@ -1 +1 @@\n-old\n+new\n' },
@@ -204,6 +204,21 @@ describe('preview store', () => {
     expect(second.activeTabId).toBe(first.tabs[0].id)
   })
 
+  it('keeps same-path diff tabs separate across repositories', async () => {
+    const gitDiff = vi.fn(async () => ({ ok: true as const, value: { content: 'diff' } }))
+    const setup = fakeApi({ gitDiff: gitDiff as never })
+    const previewStores = createPanelStores(setup.api)
+    previewStores.preview.setRoot('/w')
+
+    previewStores.preview.openDiff('/w', 'same.txt', false, '/w/one')
+    previewStores.preview.openDiff('/w', 'same.txt', false, '/w/two')
+
+    await vi.waitFor(() => expect(gitDiff).toHaveBeenCalledTimes(2))
+    expect(previewStores.preview.getSnapshot().tabs).toHaveLength(2)
+    expect(gitDiff).toHaveBeenCalledWith('/w', '/w/one', 'same.txt', false)
+    expect(gitDiff).toHaveBeenCalledWith('/w', '/w/two', 'same.txt', false)
+  })
+
   it('restores open=true from persisted tabs on setRoot (bind order)', () => {
     localStorage.setItem('preview-ui:/w', JSON.stringify({
       savedAt: 1,
@@ -239,8 +254,8 @@ describe('preview store', () => {
 describe('scm store', () => {
   it('lands the host status on refresh (host is the only truth)', async () => {
     stores.scm.setRoot('/w')
-    await vi.waitFor(() => expect(stores.scm.getSnapshot().status).not.toBeNull())
-    expect(stores.scm.getSnapshot().status?.unstaged[0].path).toBe('a.txt')
+    await vi.waitFor(() => expect(stores.scm.getSnapshot().repositories).toHaveLength(1))
+    expect(stores.scm.getSnapshot().repositories[0]?.unstaged[0].path).toBe('a.txt')
   })
 
   it('persists view mode per root', async () => {
@@ -257,14 +272,39 @@ describe('scm store', () => {
 
   it('select marks the opened row and persists per root', async () => {
     stores.scm.setRoot('/w')
-    stores.scm.select('a.txt')
-    expect(stores.scm.getSnapshot().selected).toBe('a.txt')
+    stores.scm.select('/w', 'a.txt')
+    expect(stores.scm.getSnapshot().selected).toBe('/w\u0000a.txt')
     await new Promise((resolve) => setTimeout(resolve, 250))
 
     const setup = fakeApi()
     const fresh = createPanelStores(setup.api)
     fresh.scm.setRoot('/w')
-    expect(fresh.scm.getSnapshot().selected).toBe('a.txt')
+    expect(fresh.scm.getSnapshot().selected).toBe('/w\u0000a.txt')
+  })
+
+  it('keeps nested repositories separate and routes actions with their repository root', async () => {
+    const repositories: GitStatusView[] = [
+      { root: '/w', branch: 'main', staged: [], unstaged: [], untracked: [] },
+      {
+        root: '/w/nested',
+        branch: 'feature',
+        staged: [],
+        unstaged: [{ path: 'inner.txt', state: 'modified', staged: false }],
+        untracked: [],
+      },
+    ]
+    const gitStage = vi.fn(async () => ({ ok: true as const, value: { applied: ['inner.txt'], failed: [] } }))
+    const setup = fakeApi({
+      gitStatus: vi.fn(async () => ({ ok: true as const, value: repositories })) as never,
+      gitStage: gitStage as never,
+    })
+    const nestedStores = createPanelStores(setup.api)
+
+    nestedStores.scm.setRoot('/w')
+    await vi.waitFor(() => expect(nestedStores.scm.getSnapshot().repositories).toHaveLength(2))
+    await nestedStores.scm.stage('/w/nested', ['inner.txt'])
+
+    expect(gitStage).toHaveBeenCalledWith('/w', '/w/nested', ['inner.txt'])
   })
 })
 
@@ -310,18 +350,18 @@ describe('preview pdf tabs (issue #239)', () => {
 describe('preview diff tabs', () => {
   it('openDiff creates a diff tab loaded through gitDiff (staged side)', async () => {
     stores.preview.setRoot('/w')
-    stores.preview.openDiff('/w', 'a.txt', true)
+    stores.preview.openDiff('/w', 'a.txt', true, '/w')
     expect(stores.preview.getSnapshot().open).toBe(true)
     const tab = stores.preview.getSnapshot().tabs[0]
     expect(tab.contentType).toBe('diff')
-    expect(tab.diff).toEqual({ staged: true })
+    expect(tab.diff).toEqual({ staged: true, repository: '/w' })
     await vi.waitFor(() => expect(stores.preview.getSnapshot().tabs[0].content).not.toBeNull())
     expect(stores.preview.getSnapshot().tabs[0].content).toContain('diff --git')
   })
 
   it('openDiff and openFile of the same path are distinct tabs', () => {
     stores.preview.setRoot('/w')
-    stores.preview.openDiff('/w', 'a.txt', false)
+    stores.preview.openDiff('/w', 'a.txt', false, '/w')
     stores.preview.openFile('/w', 'a.txt')
     const ids = stores.preview.getSnapshot().tabs.map((tab) => tab.id)
     expect(new Set(ids).size).toBe(2)
@@ -330,9 +370,9 @@ describe('preview diff tabs', () => {
 
   it('openDiff dedups: re-clicking the same row focuses the diff tab', () => {
     stores.preview.setRoot('/w')
-    stores.preview.openDiff('/w', 'a.txt', false)
+    stores.preview.openDiff('/w', 'a.txt', false, '/w')
     const first = stores.preview.getSnapshot().tabs[0].id
-    stores.preview.openDiff('/w', 'a.txt', false)
+    stores.preview.openDiff('/w', 'a.txt', false, '/w')
     expect(stores.preview.getSnapshot().tabs).toHaveLength(1)
     expect(stores.preview.getSnapshot().activeTabId).toBe(first)
   })
@@ -341,7 +381,7 @@ describe('preview diff tabs', () => {
     const { api } = fakeApi()
     const s = createPanelStores(api)
     s.preview.setRoot('/w')
-    s.preview.openDiff('/w', 'a.txt', false)
+    s.preview.openDiff('/w', 'a.txt', false, '/w')
     await vi.waitFor(() => expect(s.preview.getSnapshot().tabs[0].content).not.toBeNull())
     const before = (api.gitDiff as ReturnType<typeof vi.fn>).mock.calls.length
     await s.preview.handleGitChange('/w')
@@ -351,14 +391,14 @@ describe('preview diff tabs', () => {
 
   it('openDiff persists and restores as a diff tab', async () => {
     stores.preview.setRoot('/w')
-    stores.preview.openDiff('/w', 'a.txt', true)
+    stores.preview.openDiff('/w', 'a.txt', true, '/w')
     await new Promise((resolve) => setTimeout(resolve, 250))
 
     const setup = fakeApi()
     const fresh = createPanelStores(setup.api)
     fresh.preview.setRoot('/w')
     const tab = fresh.preview.getSnapshot().tabs[0]
-    expect(tab.diff).toEqual({ staged: true })
+    expect(tab.diff).toEqual({ staged: true, repository: '/w' })
     expect(tab.contentType).toBe('diff')
     // Restore re-fetches through gitDiff, not the fs read.
     await vi.waitFor(() => expect(fresh.preview.getSnapshot().tabs[0].content).not.toBeNull())
@@ -436,8 +476,8 @@ describe('regression: search debounce + failure paths + save race', () => {
     })
     const s = createPanelStores(api)
     s.scm.setRoot('/w')
-    await s.scm.stage(['a.txt', 'out.txt'])
-    expect(s.scm.getSnapshot().failed).toEqual(['out.txt'])
+    await s.scm.stage('/w', ['a.txt', 'out.txt'])
+    expect(s.scm.getSnapshot().failed).toEqual(['/w\u0000out.txt'])
   })
 
   it('readJson top-level null is guarded (no TypeError on rebind)', () => {

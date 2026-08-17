@@ -198,14 +198,14 @@ export function apply(ctx: ClientContext): void {
           }
           if (event.kind === 'git') {
             // The host status is the only truth; land it directly.
-            stores.scm.update((prev) => (prev.root !== root ? prev : { ...prev, status: event.status, loading: false }))
+            stores.scm.update((prev) => (prev.root !== root ? prev : { ...prev, repositories: event.repositories, loading: false }))
             // The index/worktree moved: every open diff tab is stale by now.
             void stores.preview.handleGitChange(root)
           }
           if (event.kind === 'gitUnavailable') {
             // The host could not run git at all: land the friendly unavailable
             // state once instead of leaving the SCM tab on "not a repository".
-            stores.scm.update((prev) => (prev.root !== root ? prev : { ...prev, status: null, loading: false, gitMissing: true }))
+            stores.scm.update((prev) => (prev.root !== root ? prev : { ...prev, repositories: [], loading: false, gitMissing: true }))
           }
         })
       }

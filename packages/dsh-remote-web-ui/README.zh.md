@@ -165,7 +165,7 @@ pnpm run build
 ## 已知限制与待办
 
 - **撤销是逐请求的**：已配对手机请求已在 停止 落地时在途，完成该请求；下一个 403。
-- **设备会话默认在内存中**：配对状态（token + devices）随 `dsh web` 进程重置；设置 `devicesFile` 配置项（绝对路径 JSON）后可跨重启持久化——手机端 cookie 本有 365 天有效期，持久化后重启 `dsh web` 无需重新扫码（点「停止」主动撤销仍会立即生效并同步落盘）。
+- **设备会话默认在内存中**：配对状态（token + devices）随 `dsh web` 进程重置；设置 `devicesFile` 配置项（绝对路径 JSON）后可跨重启持久化——手机端 cookie 本有 365 天有效期，持久化后重启 `dsh web` 无需重新扫码（点「停止」主动撤销仍会立即生效并同步落盘）。设备 id 即会话凭证（网关凭 cookie 中的设备 id 放行请求），文件以 0600 权限经临时文件原子写入，建议把文件放置在 0700 目录（如 `$DSH_HOME`）内；变更 `cookieName` 会使旧设备失效（预期行为）。
 - **无逐设备管理 UI**：面板显示聚合状态（waiting / connected N / offline）；单设备撤销延后。
 - **Quick-tunnel hostname 每次运行变化**：`trycloudflare.com` URL 每次 `cloudflared` 启动随机，所以隧道重启时 `--trusted-host` 与 `publicBaseUrl` 必须一起更新。named tunnel（固定 hostname）避免这种抖动，也是持久安装 PWA 地址所必需的。
 - **PWA 为在线优先**：只缓存静态壳和离线页。全部移动端远程控制能力仍要求运行中的 DSH host；离线时不提供会话、API 响应或命令。

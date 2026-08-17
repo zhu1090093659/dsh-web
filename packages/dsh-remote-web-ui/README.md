@@ -385,7 +385,11 @@ panel still opens at `http://127.0.0.1`.
   (an absolute JSON path) persists sessions across restarts — the phone-side
   cookie already lives 365 days, so with persistence a `dsh web` restart no
   longer requires re-scanning the QR. An explicit 停止 (stop) still revokes
-  immediately and the revocation is persisted.
+  immediately and the revocation is persisted. Device ids are session
+  credentials (the gate authorizes requests by the device id in the cookie),
+  so the file is written 0600 via a temp file + atomic rename; keep it inside
+  a 0700 directory such as `$DSH_HOME`. Changing `cookieName` invalidates
+  existing devices (expected).
 - **No per-device management UI**: the panel shows aggregate status
   (waiting / connected N / offline); individual device revocation is
   deferred.

@@ -4,10 +4,11 @@
  * instance), so a previously paired phone — whose cookie already lives 365
  * days — never needs to re-scan the QR after `dsh web` restarts.
  */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { pairingConfigOf } from './index.ts'
 import { PairingService, type PairingClock, type PairingConfig } from './pairing.ts'
 
 const BASE_CONFIG: Omit<PairingConfig, 'devicesFile'> = {
@@ -51,10 +52,54 @@ describe('PairingService device persistence', () => {
     const first = new PairingService({ ...BASE_CONFIG, devicesFile: file }, makeClock())
     const deviceId = pairDevice(first)
     expect(readFileSync(file, 'utf8')).toContain(deviceId)
+    // Device ids are session credentials: the persisted file is 0600.
+    expect(statSync(file).mode & 0o777).toBe(0o600)
 
     // Simulated restart: a brand-new service instance reading the same file.
     const second = new PairingService({ ...BASE_CONFIG, devicesFile: file }, makeClock())
     expect(second.hasDevice(deviceId)).toBe(true)
+  })
+
+  it('carries devicesFile through the config mapping used by sync() (regression)', () => {
+    const file = join(dir, 'devices.json')
+    const mapped = pairingConfigOf({
+      tokenTtlMs: 60_000,
+      offlineAfterMs: 25_000,
+      maxDevices: 4,
+      cookieName: 'dsh_pair',
+      devicesFile: file,
+    })
+    expect(mapped.devicesFile).toBe(file)
+  })
+
+  it('keeps persisting after a sync-style service.config rebuild', () => {
+    const file = join(dir, 'devices.json')
+    const service = new PairingService({ ...BASE_CONFIG, devicesFile: file }, makeClock())
+    // applyImpl/sync() reassigns service.config from the resolved config on
+    // mount and on every settings change; the rebuild must not drop devicesFile.
+    service.config = pairingConfigOf({
+      tokenTtlMs: 60_000,
+      offlineAfterMs: 25_000,
+      maxDevices: 4,
+      cookieName: 'dsh_pair',
+      devicesFile: file,
+    })
+    const deviceId = pairDevice(service)
+    const restarted = new PairingService({ ...BASE_CONFIG, devicesFile: file }, makeClock())
+    expect(restarted.hasDevice(deviceId)).toBe(true)
+  })
+
+  it('clamps a persisted table to maxDevices when the file holds more sessions', () => {
+    const file = join(dir, 'devices.json')
+    writeFileSync(file, JSON.stringify({
+      dev1: { createdAt: 1_000, lastSeenAt: 1_000 },
+      dev2: { createdAt: 2_000, lastSeenAt: 2_000 },
+      dev3: { createdAt: 3_000, lastSeenAt: 3_000 },
+    }))
+    const service = new PairingService({ ...BASE_CONFIG, maxDevices: 2, devicesFile: file }, makeClock())
+    expect(service.hasDevice('dev3')).toBe(true)
+    expect(service.hasDevice('dev2')).toBe(true)
+    expect(service.hasDevice('dev1')).toBe(false)
   })
 
   it('keeps sessions memory-only when devicesFile is unset', () => {

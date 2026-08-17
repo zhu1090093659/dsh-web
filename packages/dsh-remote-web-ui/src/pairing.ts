@@ -16,7 +16,7 @@
  */
 
 import { randomBytes } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 /** The observable pairing phases the panel renders. */
@@ -185,9 +185,18 @@ export class PairingService {
         if (typeof createdAt !== 'number' || typeof lastSeenAt !== 'number') continue
         this.devices.set(deviceId, { createdAt, lastSeenAt })
       }
+      this.clampToMaxDevices()
     } catch {
       // Unreadable/corrupt: start empty rather than refusing to boot.
     }
+  }
+
+  /** FIFO-cap the device table (a persisted file may outlive a lowered cap). */
+  private clampToMaxDevices(): void {
+    if (this.devices.size <= this.config.maxDevices) return
+    const overflow = this.devices.size - this.config.maxDevices
+    const ordered = [...this.devices.entries()].sort((a, b) => a[1].createdAt - b[1].createdAt)
+    for (const [id] of ordered.slice(0, overflow)) this.devices.delete(id)
   }
 
   /**
@@ -196,13 +205,19 @@ export class PairingService {
    * stop); `lastSeenAt` refreshes are deliberately not persisted here so a
    * per-request write storm is avoided — after a restart the phone's first
    * heartbeat re-warms its own session.
+   *
+   * Device ids are session credentials (the gate authorizes requests by the
+   * cookie's device id), so the file is written 0600 via a temp file and
+   * atomic rename; a crash mid-write can never leave a half-written store.
    */
   private persist(): void {
     const file = this.config.devicesFile
     if (file === undefined) return
     try {
       mkdirSync(dirname(file), { recursive: true })
-      writeFileSync(file, JSON.stringify(Object.fromEntries(this.devices)))
+      const temp = `${file}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
+      writeFileSync(temp, JSON.stringify(Object.fromEntries(this.devices)), { mode: 0o600 })
+      renameSync(temp, file)
     } catch (error) {
       console.error('remote-web-ui: failed to persist paired devices', error)
     }

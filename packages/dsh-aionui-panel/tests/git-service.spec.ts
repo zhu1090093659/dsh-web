@@ -5,6 +5,11 @@
  * the ABSOLUTE path (regression: comparing repo-relative paths against the
  * resolved absolute list silently failed every discard).
  */
+import { execFile } from 'node:child_process'
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GitService, subprocessRunner, type GitRunner } from '../src/host/git-service.ts'
 import type { WorkspaceGate } from '../src/host/gate.ts'
@@ -50,6 +55,121 @@ function fakeRunner(): { runner: GitRunner; calls: string[][] } {
 }
 
 const gate: WorkspaceGate = async (root) => ({ ok: true, canonical: root })
+
+const execFileAsync = promisify(execFile)
+
+/** Real git runner for repository-discovery integration coverage. */
+const realRunner: GitRunner = {
+  async run(argv, cwd) {
+    try {
+      const { stdout, stderr } = await execFileAsync('git', [...argv], {
+        cwd,
+        encoding: 'utf8',
+        maxBuffer: 1 << 20,
+      })
+      return { exitCode: 0, stdout, stderr }
+    } catch (error) {
+      const failure = error as { code?: number; stdout?: string; stderr?: string }
+      return {
+        exitCode: failure.code ?? 1,
+        stdout: failure.stdout ?? '',
+        stderr: failure.stderr ?? '',
+      }
+    }
+  },
+}
+
+/** Run a git command with a local test identity. */
+async function realGit(repo: string, ...argv: string[]): Promise<void> {
+  const result = await realRunner.run([
+    '-c', 'user.email=test@dsh.local',
+    '-c', 'user.name=Test',
+    ...argv,
+  ], repo)
+  if (result.exitCode !== 0) throw new Error(result.stderr)
+}
+
+describe('GitService nested repository discovery', () => {
+  let workspace: string
+  let nested: string
+
+  beforeEach(async () => {
+    workspace = await mkdtemp(join(tmpdir(), 'aionui-nested-repos-'))
+    nested = join(workspace, 'nested')
+
+    await realGit(workspace, 'init', '-b', 'main')
+    await writeFile(join(workspace, '.gitignore'), 'nested/\n')
+    await writeFile(join(workspace, 'outer.txt'), 'outer baseline\n')
+    await realGit(workspace, 'add', '.')
+    await realGit(workspace, 'commit', '-m', 'outer baseline')
+
+    await mkdir(nested)
+    await realGit(nested, 'init', '-b', 'main')
+    await writeFile(join(nested, 'inner.txt'), 'inner baseline\n')
+    await realGit(nested, 'add', '.')
+    await realGit(nested, 'commit', '-m', 'inner baseline')
+
+    await writeFile(join(workspace, 'outer.txt'), 'outer changed\n')
+    await writeFile(join(nested, 'inner.txt'), 'inner changed\n')
+  })
+
+  afterEach(async () => {
+    await rm(workspace, { recursive: true, force: true })
+  })
+
+  it('lists changes from the workspace repository and ignored nested repositories', async () => {
+    const service = new GitService(realRunner, gate, async () => ({ ok: true as const }))
+
+    const repositories = await service.repositories(workspace)
+
+    expect(repositories).toEqual([
+      expect.objectContaining({ root: workspace, unstaged: [expect.objectContaining({ path: 'outer.txt' })] }),
+      expect.objectContaining({ root: nested, unstaged: [expect.objectContaining({ path: 'inner.txt' })] }),
+    ])
+  })
+
+  it('routes stage operations to the selected nested repository', async () => {
+    const service = new GitService(realRunner, gate, async () => ({ ok: true as const }))
+
+    const result = await service.stage(workspace, ['inner.txt'], nested)
+
+    expect(result).toEqual({ applied: ['inner.txt'], failed: [] })
+    const nestedIndex = await realRunner.run(['diff', '--cached', '--name-only'], nested)
+    const outerIndex = await realRunner.run(['diff', '--cached', '--name-only'], workspace)
+    expect(nestedIndex.stdout.trim()).toBe('inner.txt')
+    expect(outerIndex.stdout.trim()).toBe('')
+  })
+
+  it('reads diffs from the selected nested repository', async () => {
+    const service = new GitService(realRunner, gate, async () => ({ ok: true as const }))
+
+    const result = await service.diff(workspace, 'inner.txt', false, nested)
+
+    expect(result).toHaveProperty('content')
+    expect('content' in result ? result.content : '').toContain('+inner changed')
+  })
+
+  it('routes unstage operations to the selected nested repository', async () => {
+    const service = new GitService(realRunner, gate, async () => ({ ok: true as const }))
+    await service.stage(workspace, ['inner.txt'], nested)
+
+    const result = await service.unstage(workspace, ['inner.txt'], nested)
+
+    expect(result).toEqual({ applied: ['inner.txt'], failed: [] })
+    const nestedIndex = await realRunner.run(['diff', '--cached', '--name-only'], nested)
+    expect(nestedIndex.stdout.trim()).toBe('')
+  })
+
+  it('routes discard operations to the selected nested repository', async () => {
+    const service = new GitService(realRunner, gate, async () => ({ ok: true as const }))
+
+    const result = await service.discard(workspace, ['inner.txt'], nested)
+
+    expect(result).toEqual({ applied: ['inner.txt'], failed: [] })
+    const nestedWorktree = await realRunner.run(['diff', '--name-only'], nested)
+    expect(nestedWorktree.stdout.trim()).toBe('')
+  })
+})
 
 describe('GitService.discard', () => {
   it('deletes untracked files through the fs seam (absolute membership check)', async () => {

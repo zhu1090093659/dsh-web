@@ -9,12 +9,12 @@
  */
 
 import { join, relative } from 'node:path'
-import { realpath } from 'node:fs/promises'
+import { readdir, realpath } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-subprocess'
 import { subprocessRunner as sharedSubprocessRunner, type GitRunResult, type GitRunner } from './git-runner.ts'
 import type { GitBatchResult, GitChangeRow, GitFileState, GitStatusView, PanelError } from '../core/types.ts'
-import { isPathInside, type WorkspaceGate } from './gate.ts'
+import { isPathInside, normalizeForPrefix, type WorkspaceGate } from './gate.ts'
 
 /** One finished git invocation (shared runner plumbing). */
 export type { GitRunResult, GitRunner } from './git-runner.ts'
@@ -23,6 +23,12 @@ export type { GitRunResult, GitRunner } from './git-runner.ts'
 const REPO_CACHE_TTL_MS = 60_000
 /** TTL for a negative (null) repo-top-level verdict. */
 const NO_REPO_CACHE_TTL_MS = 30_000
+/** TTL for recursive repository discovery under one workspace. */
+const REPOSITORY_LIST_CACHE_TTL_MS = 30_000
+/** Dependency trees are not user workspaces and can contain thousands of package directories. */
+const REPOSITORY_SCAN_IGNORES = new Set(['.git', 'node_modules'])
+/** Bound recursive discovery on unusually large directory trees. */
+const REPOSITORY_SCAN_MAX_DIRECTORIES = 10_000
 
 /** Production runner over `ctx.subprocess`: shared plumbing, degrade mode for the SCM tab. */
 export function subprocessRunner(ctx: Context): GitRunner {
@@ -128,6 +134,9 @@ export class GitService {
    */
   private readonly repoCache = new Map<string, { value: Promise<string | null>; expiresAt: number }>()
 
+  /** Cached independent repository roots discovered under each workspace. */
+  private readonly repositoryListCache = new Map<string, { value: Promise<string[]>; expiresAt: number }>()
+
   /**
    * Probe the git binary once (git --version) and cache the verdict for the
    * service lifetime. A machine without git then degrades every operation to
@@ -208,10 +217,24 @@ export class GitService {
   }
 
   /** Resolve the gated canonical root and the repository top-level. */
-  private async repo(root: string): Promise<{ ok: true; root: string; repo: string } | { ok: false; error: PanelError }> {
+  private async repo(root: string, requestedRepo?: string): Promise<{ ok: true; root: string; repo: string } | { ok: false; error: PanelError }> {
     const gated = await this.gate(root)
     if (!gated.ok) return { ok: false, error: gated.error }
-    const repo = await this.repoOf(gated.canonical)
+    let repo: string | null
+    if (requestedRepo === undefined) {
+      repo = await this.repoOf(gated.canonical)
+    } else {
+      let canonicalRequested: string
+      try {
+        canonicalRequested = await realpath(requestedRepo)
+      } catch {
+        return { ok: false, error: NO_REPO }
+      }
+      const repositories = await this.repositoryRoots(gated.canonical)
+      repo = repositories.find((candidate) => (
+        isPathInside(candidate, canonicalRequested) && isPathInside(canonicalRequested, candidate)
+      )) ?? null
+    }
     if (repo === null) return { ok: false, error: NO_REPO }
     return { ok: true, root: gated.canonical, repo }
   }
@@ -229,6 +252,20 @@ export class GitService {
     const repo = await this.repo(root)
     if (!repo.ok) return repo.error.code === 'git-unavailable' ? null : repo.error
     return this.statusAt(repo.root, repo.repo)
+  }
+
+  /** Status snapshots for the containing repository and every nested independent repository. */
+  async repositories(root: string): Promise<GitStatusView[] | PanelError> {
+    if (!(await this.gitAvailable())) return []
+    const gated = await this.gate(root)
+    if (!gated.ok) return gated.error
+    return this.repositoriesCanonical(gated.canonical)
+  }
+
+  /** Multi-repository status for an already-gated canonical workspace root. */
+  async repositoriesCanonical(canonicalRoot: string): Promise<GitStatusView[]> {
+    const roots = await this.repositoryRoots(canonicalRoot)
+    return Promise.all(roots.map((repo) => this.statusAt(repo, repo)))
   }
 
   /**
@@ -258,6 +295,57 @@ export class GitService {
     return repo.ok ? repo.repo : null
   }
 
+  /** Discover the containing repo plus independent repos marked by nested `.git` entries. */
+  private repositoryRoots(canonicalRoot: string): Promise<string[]> {
+    const now = Date.now()
+    const cached = this.repositoryListCache.get(canonicalRoot)
+    if (cached !== undefined && cached.expiresAt > now) return cached.value
+
+    const entry: { value: Promise<string[]>; expiresAt: number } = {
+      value: Promise.resolve([]),
+      expiresAt: now + REPOSITORY_LIST_CACHE_TTL_MS,
+    }
+    entry.value = (async () => {
+      const roots = new Set<string>()
+      const containing = await this.repoOf(canonicalRoot)
+      if (containing !== null) {
+        try {
+          roots.add(await realpath(containing))
+        } catch {
+          roots.add(containing)
+        }
+      }
+
+      const queue: string[] = [canonicalRoot]
+      let cursor = 0
+      let visited = 0
+      while (cursor < queue.length && visited < REPOSITORY_SCAN_MAX_DIRECTORIES) {
+        const directory = queue[cursor]
+        cursor += 1
+        visited += 1
+        let entries
+        try {
+          entries = await readdir(directory, { withFileTypes: true })
+        } catch {
+          continue
+        }
+        if (entries.some((candidate) => candidate.name === '.git')) {
+          const repo = await this.repoOf(directory)
+          if (repo !== null && isPathInside(repo, directory) && isPathInside(directory, repo)) {
+            roots.add(directory)
+          }
+        }
+        for (const candidate of entries) {
+          if (!candidate.isDirectory() || REPOSITORY_SCAN_IGNORES.has(candidate.name)) continue
+          queue.push(join(directory, candidate.name))
+        }
+      }
+      return [...roots].sort((left, right) => normalizeForPrefix(left).localeCompare(normalizeForPrefix(right)))
+    })().catch(() => [])
+    this.repositoryListCache.set(canonicalRoot, entry)
+    return entry.value
+  }
+
   /**
    * The unified diff of one path ('' when there is no diff to show). Staged
    * paths diff the index against HEAD (`--cached`); unstaged paths diff the
@@ -265,8 +353,8 @@ export class GitService {
    * they diff against /dev/null (the canonical new-file shape); its exit code
    * is 1 — differences exist — which is a success here, not a failure.
    */
-  async diff(root: string, path: string, staged: boolean): Promise<{ content: string } | PanelError> {
-    const repo = await this.repo(root)
+  async diff(root: string, path: string, staged: boolean, repository?: string): Promise<{ content: string } | PanelError> {
+    const repo = await this.repo(root, repository)
     if (!repo.ok) return repo.error
     const abs = join(repo.repo, path)
     if (!isPathInside(repo.repo, abs)) return { code: 'path-outside-root', message: 'path outside the repository' }
@@ -291,19 +379,19 @@ export class GitService {
   }
 
   /** Stage paths (git add). Batch result reflects the post-op status. */
-  async stage(root: string, paths: string[]): Promise<GitBatchResult | PanelError> {
+  async stage(root: string, paths: string[], repository?: string): Promise<GitBatchResult | PanelError> {
     return this.batch(root, paths, async (repo, inside) => {
       const result = await this.run(['add', '--', ...inside], repo)
       return result.exitCode === 0
-    })
+    }, repository)
   }
 
   /** Unstage paths (git restore --staged). */
-  async unstage(root: string, paths: string[]): Promise<GitBatchResult | PanelError> {
+  async unstage(root: string, paths: string[], repository?: string): Promise<GitBatchResult | PanelError> {
     return this.batch(root, paths, async (repo, inside) => {
       const result = await this.run(['restore', '--staged', '--', ...inside], repo)
       return result.exitCode === 0
-    })
+    }, repository)
   }
 
   /**
@@ -311,8 +399,8 @@ export class GitService {
    * index; untracked paths are deleted through the fs seam. The batch reports
    * applied/failed per path.
    */
-  async discard(root: string, paths: string[]): Promise<GitBatchResult | PanelError> {
-    const repo = await this.repo(root)
+  async discard(root: string, paths: string[], repository?: string): Promise<GitBatchResult | PanelError> {
+    const repo = await this.repo(root, repository)
     if (!repo.ok) return repo.error
     const inside = this.pathsInside(repo.repo, paths)
     const applied: string[] = []
@@ -381,8 +469,9 @@ export class GitService {
     root: string,
     paths: string[],
     op: (repo: string, inside: string[]) => Promise<boolean>,
+    repository?: string,
   ): Promise<GitBatchResult | PanelError> {
-    const repo = await this.repo(root)
+    const repo = await this.repo(root, repository)
     if (!repo.ok) return repo.error
     const inside = this.pathsInside(repo.repo, paths)
     const ok = inside.length > 0 ? await op(repo.repo, inside) : true

@@ -3,6 +3,7 @@ import { defaultTreatConfig } from './treats.ts'
 import { defaultAffinityConfig } from './affinity.ts'
 import { emptyPersist } from './persist.ts'
 import { PetLedger } from './ledger.ts'
+import { BUILTIN_REMARKS } from './remarks.ts'
 
 describe('PetLedger', () => {
   it('settles the economy on completed turns (work treat per 30 turns)', () => {
@@ -66,13 +67,53 @@ describe('PetLedger', () => {
     expect(ledger.interact('feed', n + 2).reaction).toBe('没有小鱼干了，多陪我工作一会儿吧～')
   })
 
+  it('selects success remarks from persisted lifetime interaction counts', () => {
+    const n = 1_000_000
+    const persist = emptyPersist()
+    persist.affinity.pets = 1
+    persist.affinity.feeds = 1
+    persist.treats.treats = 1
+    persist.treats.lastTreatGrantAt = n
+    const ledger = new PetLedger(persist, {
+      remarks: {
+        pet: ['摸头一', '摸头二'],
+        feed: ['喂食一', '喂食二'],
+      },
+    })
+    expect(ledger.interact('pet', n).reaction).toBe('摸头二')
+    expect(ledger.interact('feed', n).reaction).toBe('喂食二')
+  })
+
+  it('rotates cooldown remarks by persisted rejection counts', () => {
+    const n = 1_000_000
+    const remarks = {
+      petCooldown: ['摸头冷却一', '摸头冷却二', '摸头冷却三'],
+      feedCooldown: ['喂食冷却一', '喂食冷却二', '喂食冷却三'],
+    }
+    const persist = emptyPersist()
+    persist.affinity.lastPetAt = n
+    persist.affinity.lastFeedAt = n
+    const ledger = new PetLedger(persist, { remarks })
+    expect(ledger.interact('pet', n + 1).reaction).toBe('摸头冷却一')
+    expect(ledger.interact('pet', n + 2).reaction).toBe('摸头冷却二')
+    expect(ledger.interact('feed', n + 1).reaction).toBe('喂食冷却一')
+    expect(ledger.interact('feed', n + 2).reaction).toBe('喂食冷却二')
+    expect(ledger.snapshot.affinity.petRejects).toBe(2)
+    expect(ledger.snapshot.affinity.feedRejects).toBe(2)
+
+    const restored = new PetLedger(ledger.snapshot, { remarks })
+    expect(restored.interact('pet', n + 3).reaction).toBe('摸头冷却三')
+    expect(restored.interact('feed', n + 3).reaction).toBe('喂食冷却三')
+  })
+
   it('swaps remark pools when the selected pet changes', () => {
     const ledger = new PetLedger(emptyPersist(), { remarks: { pet: ['旧宠物台词'] } })
     expect(ledger.interact('pet', 1_000_000).reaction).toBe('旧宠物台词')
     ledger.setRemarks({ pet: ['新宠物台词'] })
     expect(ledger.interact('pet', 1_011_000).reaction).toBe('新宠物台词')
     ledger.setRemarks(undefined)
-    expect(ledger.interact('pet', 1_022_000).reaction).toBe('咕噜咕噜～被摸摸好舒服！')
+    // Changing pools does not reset the persisted lifetime interaction count.
+    expect(ledger.interact('pet', 1_022_000).reaction).toBe(BUILTIN_REMARKS.pet[2])
   })
 
   it('refuses a feed on an empty stock without burning anything', () => {

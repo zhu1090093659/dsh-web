@@ -67,6 +67,8 @@ describe('loadPetPersist', () => {
       expect(loaded.petId).toBe(DEFAULT_PET_ID)
       expect(loaded.names).toEqual({ [DEFAULT_PET_ID]: '泡泡' })
       expect(loaded.affinity.points).toBe(5)
+      expect(loaded.affinity.petRejects).toBe(0)
+      expect(loaded.affinity.feedRejects).toBe(0)
       expect(loaded.display).toEqual(defaultDisplayConfig)
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -108,7 +110,16 @@ describe('loadPetPersist', () => {
       writeFileSync(join(dir, 'pet.json'), JSON.stringify({
         name: '   ',
         names: { bad: '  ' },
-        affinity: { points: AFFINITY_MAX + 5000, lastPetAt: -5, lastFeedAt: 'x', pets: -1, feeds: 1.5, turns: 0 },
+        affinity: {
+          points: AFFINITY_MAX + 5000,
+          lastPetAt: -5,
+          lastFeedAt: 'x',
+          pets: -1,
+          feeds: 1.5,
+          turns: 0,
+          petRejects: 4,
+          feedRejects: -2,
+        },
         treats: { treats: 150, lastTreatGrantAt: -1, turnsAtLastTreatGrant: 0 },
         display: { visible: 'yes', size: -10, right: 1e12, bottom: 20 },
       }), 'utf8')
@@ -120,6 +131,8 @@ describe('loadPetPersist', () => {
       expect(loaded.affinity.lastFeedAt).toBe(0)
       expect(loaded.affinity.pets).toBe(0)
       expect(loaded.affinity.feeds).toBe(1.5) // finite numbers pass through
+      expect(loaded.affinity.petRejects).toBe(4)
+      expect(loaded.affinity.feedRejects).toBe(0)
       expect(loaded.treats.treats).toBe(defaultTreatConfig.maxTreats)
       expect(loaded.treats.lastTreatGrantAt).toBe(0)
       expect(loaded.display.visible).toBe(defaultDisplayConfig.visible)

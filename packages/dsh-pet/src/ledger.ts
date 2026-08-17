@@ -182,12 +182,19 @@ export class PetLedger {
    */
   interact(kind: PetInteraction, nowMs: number): LedgerInteractionResult {
     if (kind === 'feed') this.settleTreats(nowMs)
-    const outcome = applyInteraction(this.current.affinity, kind, nowMs, this.affinityConfig)
+    const before = this.current.affinity
+    const outcome = applyInteraction(before, kind, nowMs, this.affinityConfig)
     // Reactions come from the picker pools (custom per-pet slots override
     // the built-in library per slot); outcome.reaction stays the fallback
     // copy for direct applyInteraction callers.
     if (kind === 'feed' && !outcome.accepted) {
-      return { reaction: this.picker.pick('feedCooldown'), delta: 0, affinity: this.affinityView(nowMs) }
+      this.current = { ...this.current, affinity: outcome.affinity }
+      this.dirty = true
+      return {
+        reaction: this.picker.pickAt('feedCooldown', before.feedRejects),
+        delta: 0,
+        affinity: this.affinityView(nowMs),
+      }
     }
     if (kind === 'feed') {
       const consume = consumeTreat(this.current.treats)
@@ -201,12 +208,13 @@ export class PetLedger {
       this.current = { ...this.current, treats: consume.ledger }
       this.dirty = true
     }
-    if (outcome.accepted) {
-      this.current = { ...this.current, affinity: outcome.affinity }
-      this.dirty = true
-    }
+    this.current = { ...this.current, affinity: outcome.affinity }
+    this.dirty = true
+    const count = kind === 'pet'
+      ? outcome.accepted ? before.pets : before.petRejects
+      : before.feeds
     return {
-      reaction: this.picker.pick(outcome.accepted ? kind : 'petCooldown'),
+      reaction: this.picker.pickAt(outcome.accepted ? kind : 'petCooldown', count),
       delta: outcome.delta,
       affinity: this.affinityView(nowMs),
     }

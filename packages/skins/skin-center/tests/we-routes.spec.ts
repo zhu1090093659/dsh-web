@@ -117,7 +117,10 @@ describe('inventory', () => {
     expect(res.status).toBe(200)
     expect(res.body.ok).toBe(true)
     const wallpapers = res.body.wallpapers as Array<Record<string, unknown>>
-    expect(wallpapers).toHaveLength(5)
+    // Auto-detection (Steam registry / WE install / workshop roots) may add
+    // real library entries on machines that have Wallpaper Engine installed;
+    // assert on the five manual fixtures instead of an exact total.
+    expect(wallpapers.length).toBeGreaterThanOrEqual(5)
     const video = wallpapers.find(w => w.id === '111')
     expect(video?.type).toBe('video')
     expect(video?.playable).toBe(true)

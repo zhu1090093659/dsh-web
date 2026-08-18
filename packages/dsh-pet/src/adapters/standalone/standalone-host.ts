@@ -3,9 +3,10 @@ import type {
   PetPresentationContext,
   PetPresentationHostView,
 } from '../../presentation/controller.ts'
+import type { StandaloneRuntimeLaunchHandle } from './launcher.ts'
 
 export interface StandalonePetHostOptions {
-  launch(origin: string, nativeToken: string): () => void
+  launch(origin: string, nativeToken: string): StandaloneRuntimeLaunchHandle
 }
 
 /** Controller adapter around the current managed standalone Electron runtime. */
@@ -17,16 +18,24 @@ export class StandalonePetHost implements PetPresentationAdapter {
     embedded: false,
     ownsTray: true,
   }
-  private disposeProcess: (() => void) | undefined
+  private launchHandle: StandaloneRuntimeLaunchHandle | undefined
 
   constructor(private readonly options: StandalonePetHostOptions) {}
 
   async start(context: PetPresentationContext): Promise<void> {
-    if (this.disposeProcess !== undefined) return
+    if (this.launchHandle !== undefined) return
     if (context.bridgeOrigin === undefined || context.nativeToken === undefined) {
       throw new Error('standalone bridge is unavailable')
     }
-    this.disposeProcess = this.options.launch(context.bridgeOrigin, context.nativeToken)
+    const handle = this.options.launch(context.bridgeOrigin, context.nativeToken)
+    this.launchHandle = handle
+    try {
+      await handle.ready
+    } catch (error) {
+      if (this.launchHandle === handle) this.launchHandle = undefined
+      handle.dispose()
+      throw error
+    }
   }
 
   async show(): Promise<void> {
@@ -42,7 +51,7 @@ export class StandalonePetHost implements PetPresentationAdapter {
   }
 
   async stop(_reason?: string): Promise<void> {
-    this.disposeProcess?.()
-    this.disposeProcess = undefined
+    this.launchHandle?.dispose()
+    this.launchHandle = undefined
   }
 }

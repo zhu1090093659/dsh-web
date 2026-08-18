@@ -145,6 +145,22 @@ describe('StandaloneRuntimeManager', () => {
     expect(existsSync(join(root, 'install.lock'))).toBe(false)
   })
 
+  it('rejects a late install request after plugin disposal begins', async () => {
+    const root = await temporaryRoot()
+    const downloadArtifact = vi.fn()
+    const manager = new StandaloneRuntimeManager({
+      root,
+      platform: 'win32',
+      arch: 'x64',
+      downloadArtifact,
+    })
+
+    await manager.dispose()
+
+    expect(() => manager.startInstall({ source: 'official' })).toThrow('runtime-manager-disposed')
+    expect(downloadArtifact).not.toHaveBeenCalled()
+  })
+
   it('never holds a FileHandle across download and never removes a replacement lock', async () => {
     const root = await temporaryRoot()
     let finishDownload: ((archive: string) => void) | undefined

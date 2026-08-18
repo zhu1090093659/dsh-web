@@ -14,9 +14,11 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
+import type { SettingsNamespace, SettingsPathOp, SettingsProvider } from '@deepseek-ai/dsh-settings'
 import type { AffinityConfig, PetAffinityView, PetInteraction } from './affinity.ts'
 import type { TreatConfig } from './treats.ts'
 import { createInteractionIntent, type PetIntent } from './core/intent.ts'
+import { PET_DESKTOP_SCALE_MAX, PET_DESKTOP_SCALE_MIN } from './contracts/desktop-host.ts'
 import {
   emptyProjectionRuntime,
   isActivityPhase,
@@ -66,6 +68,8 @@ export interface PetConfig {
   persistDir?: string
   /** Master switch for the plugin (browser half + host routes). */
   enabled?: boolean
+  /** Desktop presentation defaults; the browser presentation stays independent. */
+  desktop?: Partial<PetDesktopSettings>
   /** Prebuilt registry (tests); defaults to scanning the package + user dirs. */
   registry?: PetRegistry
   /** Extra manifest entries composed by the embedding application. */
@@ -92,7 +96,61 @@ export interface PetSettingsSection {
   bottom: number
   /** Master switch for the plugin (browser half + host routes). */
   enabled?: boolean
+  /** Start the managed desktop presentation with this DSH Host. */
+  desktopEnabled?: boolean
+  /** Show the desktop window while keeping its process available. */
+  desktopVisible?: boolean
+  /** Keep the desktop window above ordinary windows. */
+  desktopAlwaysOnTop?: boolean
+  /** Prevent pointer dragging of the desktop window. */
+  desktopLocked?: boolean
+  /** Desktop surface scale, independent from the browser sprite size. */
+  desktopScale?: number
 }
+
+/** Desktop-only presentation settings stored by the DSH settings namespace. */
+export interface PetDesktopSettings {
+  enabled: boolean
+  visible: boolean
+  alwaysOnTop: boolean
+  locked: boolean
+  scale: number
+}
+
+/** Settings descriptor exposed by the pet's loopback-only browser bridge. */
+export interface PetSettingsView {
+  value: PetSettingsSection
+  base?: Partial<PetSettingsSection>
+  user?: Partial<PetSettingsSection>
+  revision: number
+  writable: boolean
+}
+
+export const DEFAULT_PET_DESKTOP_SETTINGS: PetDesktopSettings = {
+  enabled: false,
+  visible: true,
+  alwaysOnTop: true,
+  locked: false,
+  scale: 1,
+}
+
+/** Normalize composed or persisted desktop preferences through one boundary. */
+export function normalizePetDesktopSettings(
+  value: Partial<PetDesktopSettings> = {},
+): PetDesktopSettings {
+  const scale = typeof value.scale === 'number' && Number.isFinite(value.scale)
+    ? value.scale
+    : DEFAULT_PET_DESKTOP_SETTINGS.scale
+  return {
+    enabled: value.enabled ?? DEFAULT_PET_DESKTOP_SETTINGS.enabled,
+    visible: value.visible ?? DEFAULT_PET_DESKTOP_SETTINGS.visible,
+    alwaysOnTop: value.alwaysOnTop ?? DEFAULT_PET_DESKTOP_SETTINGS.alwaysOnTop,
+    locked: value.locked ?? DEFAULT_PET_DESKTOP_SETTINGS.locked,
+    scale: Math.min(PET_DESKTOP_SCALE_MAX, Math.max(PET_DESKTOP_SCALE_MIN, scale)),
+  }
+}
+
+export { PET_DESKTOP_SCALE_MAX, PET_DESKTOP_SCALE_MIN } from './contracts/desktop-host.ts'
 
 /** Settings namespace of the pet capability. Spelled here rather than imported: the browser half spells the same value. */
 export const PET_SETTINGS_NAMESPACE = 'pet'
@@ -154,6 +212,8 @@ export interface PetStateView {
     /** Stock cap. */
     max: number
   }
+  /** Desktop presentation state; omitted by older Hosts. */
+  companion?: PetDesktopSettings
   /**
    * The display session's fresh inner whisper (碎碎念), when one is within
    * its TTL — short inner-voice copy woken by the model's own output,
@@ -205,6 +265,7 @@ export class PetService extends Service {
   private readonly registry: PetRegistry
   private readonly persistDir: string
   private enabled: boolean
+  private desktop: PetDesktopSettings
   private disposeActivity: (() => void) | undefined
   private readonly presentationTimers = new Map<Session, NodeJS.Timeout>()
   private readonly cooldownTimers = new Map<PetInteraction, NodeJS.Timeout>()
@@ -246,6 +307,7 @@ export class PetService extends Service {
     this.stateConfig = { ...defaultPetStateConfig, ...(config.state ?? {}) }
     this.machine = new PetStateMachine(this.stateConfig)
     this.enabled = config.enabled ?? true
+    this.desktop = normalizePetDesktopSettings(config.desktop)
 
     this.syncActivity()
     ctx.effect(() => () => {
@@ -275,6 +337,37 @@ export class PetService extends Service {
     this.stateListeners.add(listener)
     listener(this.view())
     return () => { this.stateListeners.delete(listener) }
+  }
+
+  /** Current desktop lifecycle and surface preferences. */
+  desktopSettings(): PetDesktopSettings {
+    return { ...this.desktop, enabled: this.enabled && this.desktop.enabled }
+  }
+
+  /** Describe the registered pet namespace for the standalone settings card. */
+  async settingsView(): Promise<PetSettingsView> {
+    const settings = this.settingsProvider()
+    const descriptor = settings.describe({ redactSecrets: true })
+      .find(candidate => String(candidate.ns) === PET_SETTINGS_NAMESPACE)
+    if (descriptor === undefined) throw new Error('pet-settings-unavailable')
+    return {
+      value: descriptor.value as PetSettingsSection,
+      ...(descriptor.base === undefined ? {} : { base: descriptor.base as Partial<PetSettingsSection> }),
+      ...(descriptor.user === undefined ? {} : { user: descriptor.user as Partial<PetSettingsSection> }),
+      revision: descriptor.revision,
+      writable: settings.writable !== false,
+    }
+  }
+
+  /** Apply a revision-fenced settings mutation through the official Host seam. */
+  async mutateSettings(ops: readonly SettingsPathOp[], expectedRevision?: number): Promise<PetSettingsView> {
+    const settings = this.settingsProvider()
+    await settings.mutate(
+      PET_SETTINGS_NAMESPACE as SettingsNamespace,
+      ops,
+      expectedRevision,
+    )
+    return this.settingsView()
   }
 
   /** Current persisted display config (read-only view). */
@@ -453,6 +546,36 @@ export class PetService extends Service {
     }
   }
 
+  /** Update desktop lifecycle/surface preferences through the Host settings document. */
+  async setDesktopSettings(
+    patch: Partial<PetDesktopSettings>,
+  ): Promise<{ ok: true; companion: PetDesktopSettings }> {
+    const next = normalizePetDesktopSettings({ ...this.desktop, ...patch })
+    const settingsPatch: Partial<PetSettingsSection> = {}
+    if (patch.enabled !== undefined) settingsPatch.desktopEnabled = next.enabled
+    if (patch.visible !== undefined) settingsPatch.desktopVisible = next.visible
+    if (patch.alwaysOnTop !== undefined) settingsPatch.desktopAlwaysOnTop = next.alwaysOnTop
+    if (patch.locked !== undefined) settingsPatch.desktopLocked = next.locked
+    if (patch.scale !== undefined) settingsPatch.desktopScale = next.scale
+    if (Object.keys(settingsPatch).length === 0) {
+      return { ok: true, companion: this.desktopSettings() }
+    }
+    await this.settingsProvider().update(
+      PET_SETTINGS_NAMESPACE as SettingsNamespace,
+      settingsPatch,
+    )
+    const accepted = (await this.settingsView()).value
+    this.desktop = normalizePetDesktopSettings({
+      enabled: accepted.desktopEnabled,
+      visible: accepted.desktopVisible,
+      alwaysOnTop: accepted.desktopAlwaysOnTop,
+      locked: accepted.desktopLocked,
+      scale: accepted.desktopScale,
+    })
+    this.publishState()
+    return { ok: true, companion: this.desktopSettings() }
+  }
+
   /** RPC: show or hide the pet. */
   async setVisible(visible: boolean): Promise<{ ok: true; display: PetDisplayConfig }> {
     this.ledger.setDisplay({ ...this.ledger.snapshot.display, visible })
@@ -508,6 +631,13 @@ export class PetService extends Service {
     next.right = Math.round(Math.min(DISPLAY_INSET_MAX, Math.max(0, section.right)))
     next.bottom = Math.round(Math.min(DISPLAY_INSET_MAX, Math.max(0, section.bottom)))
     this.ledger.setDisplay(next)
+    this.desktop = normalizePetDesktopSettings({
+      enabled: section.desktopEnabled ?? DEFAULT_PET_DESKTOP_SETTINGS.enabled,
+      visible: section.desktopVisible ?? DEFAULT_PET_DESKTOP_SETTINGS.visible,
+      alwaysOnTop: section.desktopAlwaysOnTop ?? DEFAULT_PET_DESKTOP_SETTINGS.alwaysOnTop,
+      locked: section.desktopLocked ?? DEFAULT_PET_DESKTOP_SETTINGS.locked,
+      scale: section.desktopScale ?? DEFAULT_PET_DESKTOP_SETTINGS.scale,
+    })
     this.flush()
     this.publishState()
   }
@@ -594,7 +724,14 @@ export class PetService extends Service {
         stocked: this.ledger.snapshot.treats.treats,
         max: this.ledger.treatMax,
       },
+      companion: this.desktopSettings(),
     }
+  }
+
+  private settingsProvider(): SettingsProvider {
+    const settings = this.ctx.get('settings', false)
+    if (settings === undefined) throw new Error('pet-settings-unavailable')
+    return settings
   }
 
   /** Publish the time-based end of a completion pose to push-only consumers. */

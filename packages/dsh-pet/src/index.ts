@@ -14,17 +14,31 @@
 import { Context } from '@deepseek-ai/cordis'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import { join } from 'node:path'
 import z from 'schemastery'
-import { PetService, PET_SETTINGS_NAMESPACE, type PetConfig, type PetSettingsSection } from './service.ts'
-import { makePetRoutes } from './routes.ts'
+import {
+  DEFAULT_PET_DESKTOP_SETTINGS,
+  normalizePetDesktopSettings,
+  PET_DESKTOP_SCALE_MAX,
+  PET_DESKTOP_SCALE_MIN,
+  PetService,
+  PET_SETTINGS_NAMESPACE,
+  type PetConfig,
+  type PetSettingsSection,
+} from './service.ts'
+import { makePetRoutes, makePetRuntimeRoutes, makePetSettingsRoutes } from './routes.ts'
 import { loadPetRegistry, petPackageRoot } from './registry.ts'
 import { DISPLAY_INSET_MAX, DISPLAY_SIZE_MAX, DISPLAY_SIZE_MIN } from './persist.ts'
 import { mountOnce } from './mount-once.ts'
 import { createPetNativeToken } from './adapters/web/native-auth.ts'
+import { StandaloneRuntimeManager } from './adapters/standalone/runtime-manager.ts'
+import { dshHome } from './dsh-home.ts'
+import { PetPresentationIntegration } from './presentation/integration.ts'
 
 export { PetService, MAX_SESSION_BUBBLES } from './service.ts'
 export type {
   PetConfig,
+  PetDesktopSettings,
   PetInteractResult,
   PetSettingsSection,
   PetSessionView,
@@ -109,16 +123,26 @@ export type {
 
 export {
   makePetRoutes,
+  makePetRuntimeRoutes,
+  makePetSettingsRoutes,
   PET_API_PREFIX,
   PET_ASSET_PREFIX,
   PET_NATIVE_API_PREFIX,
+  PET_RUNTIME_API_PREFIX,
+  PET_SETTINGS_API_PREFIX,
 } from './routes.ts'
+
+export {
+  DEFAULT_PET_DESKTOP_SETTINGS,
+  PET_DESKTOP_SCALE_MAX,
+  PET_DESKTOP_SCALE_MIN,
+} from './service.ts'
 
 /** Stable cordis plugin name (matches cordis.patch.yml insert id). */
 export const name = 'pet'
 
-/** Services required before the pet can mount its surfaces. */
-export const inject = ['webServer']
+/** The core stays available even when no Web presentation Host is composed. */
+export const inject = [] as const
 
 /**
  * Settings section schema: pet selection and display fields the web settings
@@ -136,6 +160,12 @@ export function makePetSettingsSchema(fallbackPetId: string) {
     bottom: z.number().step(1).min(0).max(DISPLAY_INSET_MAX).default(20),
     petId: z.string().default(fallbackPetId),
     enabled: z.boolean().default(true),
+    desktopEnabled: z.boolean().default(DEFAULT_PET_DESKTOP_SETTINGS.enabled),
+    desktopVisible: z.boolean().default(DEFAULT_PET_DESKTOP_SETTINGS.visible),
+    desktopAlwaysOnTop: z.boolean().default(DEFAULT_PET_DESKTOP_SETTINGS.alwaysOnTop),
+    desktopLocked: z.boolean().default(DEFAULT_PET_DESKTOP_SETTINGS.locked),
+    desktopScale: z.number().min(PET_DESKTOP_SCALE_MIN).max(PET_DESKTOP_SCALE_MAX)
+      .default(DEFAULT_PET_DESKTOP_SETTINGS.scale),
   })
 }
 
@@ -148,7 +178,12 @@ function applyImpl(ctx: Context, config: PetConfig = {}): void {
       packageRoot: petPackageRoot(import.meta.url),
       ...(config.pets === undefined ? {} : { extra: config.pets }),
     })
-  const service = new PetService(ctx, { ...config, registry })
+  const desktopBase = normalizePetDesktopSettings(config.desktop)
+  const service = new PetService(ctx, { ...config, registry, desktop: desktopBase })
+  const runtime = new StandaloneRuntimeManager({
+    root: join(dshHome(), 'cache', 'dsh-pet', 'electron'),
+  })
+  ctx.effect(() => async () => { await runtime.dispose() }, 'pet: standalone runtime')
 
   // The settings surface edits the pet selection + display config through
   // the 'pet' namespace. The composition 'base' starts as the persisted
@@ -165,31 +200,60 @@ function applyImpl(ctx: Context, config: PetConfig = {}): void {
     bottom: service.display().bottom,
     petId: service.selectedPetId(),
     enabled: config.enabled ?? true,
+    desktopEnabled: desktopBase.enabled,
+    desktopVisible: desktopBase.visible,
+    desktopAlwaysOnTop: desktopBase.alwaysOnTop,
+    desktopLocked: desktopBase.locked,
+    desktopScale: desktopBase.scale,
   }
-  // The browser half talks to the pet through same-origin JSON endpoints and
-  // loads each pet's atlas from the registry's own media route (RPC domains
-  // are platform-registered, so the pet serves its own API — the same
-  // pattern as dsh-remote-web-ui's /api/pair family). The routes are
-  // registered while the plugin is enabled; toggling the setting off makes
-  // the pet API disappear until it is re-enabled.
-  const nativeToken = createPetNativeToken()
-  const routes = makePetRoutes({ service, nativeToken })
-  let disposeRoutes: (() => void) | undefined
-  const syncRoutes = (): void => {
-    const enabled = current().enabled ?? true
-    if (disposeRoutes === undefined && enabled) {
-      disposeRoutes = ctx.effect(
-        () => {
-          const disposers = routes.map((route) => ctx.webServer.register(route))
+  // WebServer is optional: without it the core and activity projection still
+  // run, while routes and native presentation stay dormant. When a WebServer
+  // appears, control routes remain mounted even with the master switch off so
+  // the settings page can re-enable the plugin and explicitly install runtime.
+  let syncWeb = (): void => undefined
+  ctx.inject(['webServer'], (webCtx) => {
+    const nativeToken = createPetNativeToken()
+    const bridgeOrigin = `http://127.0.0.1:${String(webCtx.webServer.port)}`
+    const routes = makePetRoutes({ service, nativeToken })
+    const controlRoutes = [
+      ...makePetSettingsRoutes(service),
+      ...makePetRuntimeRoutes(runtime),
+    ]
+    webCtx.effect(() => {
+      const disposers = controlRoutes.map(route => webCtx.webServer.register(route))
+      return () => { for (const dispose of disposers) dispose() }
+    }, 'pet: control routes')
+
+    const presentation = new PetPresentationIntegration({
+      runtime,
+      settings: () => current(),
+      moduleUrl: import.meta.url,
+      bridgeOrigin,
+      nativeToken,
+    })
+    let disposeRoutes: (() => void) | undefined
+    const sync = (): void => {
+      const enabled = current().enabled ?? true
+      if (disposeRoutes === undefined && enabled) {
+        disposeRoutes = webCtx.effect(() => {
+          const disposers = routes.map(route => webCtx.webServer.register(route))
           return () => { for (const dispose of disposers) dispose() }
-        },
-        'pet: routes',
-      )
-    } else if (disposeRoutes !== undefined && !enabled) {
-      disposeRoutes()
-      disposeRoutes = undefined
+        }, 'pet: routes')
+      } else if (disposeRoutes !== undefined && !enabled) {
+        disposeRoutes()
+        disposeRoutes = undefined
+      }
+      void presentation.reconcile()
     }
-  }
+    syncWeb = sync
+    webCtx.effect(() => async () => {
+      if (syncWeb === sync) syncWeb = () => undefined
+      disposeRoutes?.()
+      disposeRoutes = undefined
+      await presentation.dispose()
+    }, 'pet: presentation integration')
+    sync()
+  })
   installSettingsSection(
     ctx,
     settingsNamespace(PET_SETTINGS_NAMESPACE),
@@ -201,9 +265,12 @@ function applyImpl(ctx: Context, config: PetConfig = {}): void {
         const section = current()
         service.applySettingsSection(section)
         service.setEnabled(section.enabled ?? true)
-        syncRoutes()
+        syncWeb()
       },
     },
   )
-  syncRoutes()
+  const section = current()
+  service.applySettingsSection(section)
+  service.setEnabled(section.enabled ?? true)
+  syncWeb()
 }

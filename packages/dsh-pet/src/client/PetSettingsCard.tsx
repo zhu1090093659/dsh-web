@@ -14,6 +14,7 @@ import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runti
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PluginSettingsCard, ValueField, BooleanField, ChoiceField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, choiceField, numberField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
+import { DesktopRuntimeField } from './DesktopRuntimeField.tsx'
 import sectionCss from './settings-section.module.css'
 
 /** The pet's settings fields this card edits (the namespace's full schema). */
@@ -22,6 +23,8 @@ export interface PetSettings {
   enabled?: boolean
   /** Master switch. */
   visible?: boolean
+  /** Start the managed desktop pet with this DSH Host. */
+  desktopEnabled?: boolean
   /** Scale of the rendered pet in px (sprite cell height). */
   size?: number
   /** Horizontal inset from the viewport right edge, px. */
@@ -38,6 +41,8 @@ export interface PetSettingsCardState extends CardShell {
   enabled: CardFieldState
   /** Master switch. */
   visible: CardFieldState
+  /** Managed desktop presentation switch. */
+  desktopEnabled: CardFieldState
   /** Pet scale. */
   size: CardFieldState
   /** Right inset. */
@@ -52,6 +57,8 @@ export interface PetSettingsCardState extends CardShell {
 
 /** The registration-side face the card's slot entry injects. */
 export interface PetSettingsCardFace extends CardActions {
+  /** Persist desktop enable only after the optional runtime is ready. */
+  enableDesktop: () => Promise<boolean>
   hooks: {
     /** Card snapshot bound by the renderer as usePetSettingsCard. */
     petSettingsCard: SnapshotStore<PetSettingsCardState>
@@ -84,10 +91,11 @@ export class PetSettingsCardController {
   private attempts = 0
 
   /** @param scope - the bound settings scope for the 'pet' namespace. */
-  constructor(scope: SettingsScope<PetSettings>) {
+  constructor(private readonly scope: SettingsScope<PetSettings>) {
     this.form = new CardForm(scope, [
       booleanField('enabled'),
       booleanField('visible'),
+      booleanField('desktopEnabled'),
       numberField('size'),
       numberField('right'),
       numberField('bottom'),
@@ -119,6 +127,7 @@ export class PetSettingsCardController {
       ...this.form.shell(),
       enabled: this.form.field('enabled'),
       visible: this.form.field('visible'),
+      desktopEnabled: this.form.field('desktopEnabled'),
       size: this.form.field('size'),
       right: this.form.field('right'),
       bottom: this.form.field('bottom'),
@@ -132,7 +141,18 @@ export class PetSettingsCardController {
    * @returns the card's snapshot and its form actions.
    */
   inject(): PetSettingsCardFace {
-    return { hooks: { petSettingsCard: this.store }, ...this.form.actions() }
+    return {
+      hooks: { petSettingsCard: this.store },
+      ...this.form.actions(),
+      enableDesktop: async () => {
+        try {
+          await this.scope.set('desktopEnabled', true)
+          return this.scope.getSnapshot().value?.desktopEnabled === true
+        } catch {
+          return false
+        }
+      },
+    }
   }
 
   /**
@@ -209,6 +229,17 @@ export function PetSettingsCard(props: PetSettingsCardProps) {
         onEdit={(text) => { props.edit('visible', text) }}
         onReset={() => { props.resetField('visible') }}
       />
+      <DesktopRuntimeField
+        id="settings-pet-desktop-enabled"
+        label={t('settings.desktopEnabled')}
+        hint={t('settings.desktopEnabledHint')}
+        t={t}
+        enableDesktop={props.enableDesktop}
+        {...fieldProps}
+        {...state.desktopEnabled}
+        onEdit={(text) => { props.edit('desktopEnabled', text) }}
+        onReset={() => { props.resetField('desktopEnabled') }}
+      />
       <ValueField
         id="settings-pet-size"
         label={t('settings.size')}
@@ -251,10 +282,18 @@ export type PetSettingsSectionProps =
 
 /** Render the pet settings card as a first-level settings page. */
 export function PetSettingsSection(props: PetSettingsSectionProps): ReactNode {
-  const { t, usePetSettingsCard, save, discard, edit, resetField } = props
+  const { t, usePetSettingsCard, save, discard, edit, resetField, enableDesktop } = props
   return (
     <ul className={sectionCss.sectionList}>
-      <PetSettingsCard t={t} usePetSettingsCard={usePetSettingsCard} save={save} discard={discard} edit={edit} resetField={resetField} />
+      <PetSettingsCard
+        t={t}
+        usePetSettingsCard={usePetSettingsCard}
+        save={save}
+        discard={discard}
+        edit={edit}
+        resetField={resetField}
+        enableDesktop={enableDesktop}
+      />
     </ul>
   )
 }

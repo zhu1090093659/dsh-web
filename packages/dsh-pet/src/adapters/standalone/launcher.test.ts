@@ -129,7 +129,7 @@ describe('Standalone launcher', () => {
       return child
     })
 
-    const dispose = launchStandaloneRuntime({
+    const handle = launchStandaloneRuntime({
       moduleUrl,
       origin: 'http://127.0.0.1:3080',
       nativeToken: token,
@@ -159,12 +159,44 @@ describe('Standalone launcher', () => {
       DSH_PET_ORIGIN: 'http://127.0.0.1:3080',
       DSH_PET_NATIVE_TOKEN: token,
     })
+    calls[0]?.child.emit('spawn')
+    await expect(handle.ready).resolves.toBeUndefined()
 
-    dispose()
-    dispose()
+    handle.dispose()
+    handle.dispose()
     expect(calls).toHaveLength(2)
     expect(calls[1]?.args).toContain('--dsh-parent-action=remove')
     expect(calls[1]?.options.env).toMatchObject({ DSH_PET_PARENT_ACTION: 'remove' })
+  })
+
+  it('reports a real asynchronous ChildProcess spawn error through ready and onError', async () => {
+    const root = await temporaryRoot()
+    const moduleUrl = await pluginModule(root)
+    const executable = await file(join(root, 'dsh-pet-standalone.exe'))
+    const child = fakeChild()
+    const onError = vi.fn()
+    const spawnProcess = vi.fn(() => child)
+
+    const handle = launchStandaloneRuntime({
+      moduleUrl,
+      origin: 'http://127.0.0.1:3080',
+      nativeToken: token,
+      parentPid: 4200,
+      sourceId: 'web:async-error',
+      environment: { DSH_PET_STANDALONE_EXECUTABLE: executable },
+      spawnProcess,
+      onError,
+    })
+    expect(onError).not.toHaveBeenCalled()
+
+    setTimeout(() => {
+      child.emit('error', Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }))
+    }, 0)
+
+    await expect(handle.ready).rejects.toThrow('standalone-launch-failed')
+    expect(onError).toHaveBeenCalledOnce()
+    expect(onError).toHaveBeenCalledWith('launch-failed')
+    handle.dispose()
   })
 
   it('prefixes appRoot only for an Electron app target', () => {

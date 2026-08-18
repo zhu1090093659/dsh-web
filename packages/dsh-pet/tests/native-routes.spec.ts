@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createServer, type Server } from 'node:http'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -101,6 +101,53 @@ describe('native pet routes', () => {
         playback: 'once',
       },
     })
+  })
+
+  it('authenticates and strictly validates desktop surface settings', async () => {
+    const update = vi.spyOn(service, 'setDesktopSettings').mockResolvedValue({
+      ok: true,
+      companion: {
+        enabled: false,
+        visible: true,
+        alwaysOnTop: true,
+        locked: false,
+        scale: 1.5,
+      },
+    })
+    try {
+      const accepted = await fetch(url(`${PET_NATIVE_API_PREFIX}/surface-settings`), {
+        method: 'POST',
+        headers: { ...authorization(), 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled: false, scale: 1.5 }),
+      })
+      expect(accepted.status).toBe(200)
+      expect(update).toHaveBeenCalledWith({ enabled: false, scale: 1.5 })
+
+      for (const body of [
+        {},
+        { enabled: 'false' },
+        { scale: 0.75 },
+        { scale: 2.01 },
+        { enabled: false, unknown: true },
+      ]) {
+        const rejected = await fetch(url(`${PET_NATIVE_API_PREFIX}/surface-settings`), {
+          method: 'POST',
+          headers: { ...authorization(), 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        expect(rejected.status).toBe(400)
+      }
+      expect(update).toHaveBeenCalledOnce()
+
+      const unauthenticated = await fetch(url(`${PET_NATIVE_API_PREFIX}/surface-settings`), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled: false }),
+      })
+      expect(unauthenticated.status).toBe(401)
+    } finally {
+      update.mockRestore()
+    }
   })
 
   it('pushes the initial snapshot and later state changes over authenticated SSE', async () => {

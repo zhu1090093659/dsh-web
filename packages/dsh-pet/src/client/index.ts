@@ -27,6 +27,7 @@ import { createRoot } from 'react-dom/client'
 import { createPetStore, type PetStoreInstance } from './pet-store.ts'
 import { PetDockEntry, type PetInjected } from './PetDockEntry.tsx'
 import { PetSettingsSection, PetSettingsCardController, type PetSettings } from './PetSettingsCard.tsx'
+import { createPetSettingsScope } from './pet-settings-scope.ts'
 import { NS, en, zh, t } from './locales.ts'
 
 /** The host pet API as the browser sees it (same-origin JSON endpoints). */
@@ -104,7 +105,8 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'pet: dictionaries')
 
   const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
-  const settingsScope = binder.bind<PetSettings>({ namespace: PET_SETTINGS_NS })
+  const primarySettingsScope = binder.bind<PetSettings>({ namespace: PET_SETTINGS_NS })
+  const settingsScope = createPetSettingsScope(primarySettingsScope, (input, init) => fetch(input, init))
   const enabled = (): boolean => {
     const snapshot = settingsScope.getSnapshot()
     return snapshot.status === 'ready'
@@ -116,6 +118,23 @@ export function apply(ctx: ClientContext): void {
   // namespace, registered as a top-level settings page. The controller loads
   // the petId choices from the registry endpoint itself.
   const petSettings = new PetSettingsCardController(settingsScope)
+  ctx.effect(() => {
+    const disposers: Array<() => void> = [
+      ctx.on('connection/reset', () => { void settingsScope.reloadFallback() }),
+    ]
+    const remote = ctx.get('remote', false) as unknown
+    if (typeof remote === 'object'
+      && remote !== null
+      && typeof (remote as { $on?: unknown }).$on === 'function') {
+      disposers.push((remote as {
+        $on: (event: string, callback: (namespace?: unknown) => void) => () => void
+      }).$on('settings/document-updated', (namespace) => {
+        if (namespace !== undefined && namespace !== PET_SETTINGS_NS) return
+        void settingsScope.reloadFallback()
+      }))
+    }
+    return () => { for (const dispose of disposers) dispose() }
+  }, 'pet: settings invalidation')
   ctx.slots.inject('settings.section', () => {
     const unregister = ctx.slots.register({
       name: 'settings.section',
@@ -308,6 +327,11 @@ export function apply(ctx: ClientContext): void {
       disposeUi = undefined
     }
   }
-  settingsScope.subscribe(syncUi)
+  const unsubscribeSettings = settingsScope.subscribe(syncUi)
   syncUi()
+  ctx.effect(() => () => {
+    unsubscribeSettings()
+    disposeUi?.()
+    settingsScope.dispose()
+  }, 'pet: settings scope and ui lifecycle')
 }

@@ -38,6 +38,14 @@ export interface LaunchStandaloneRuntimeOptions extends DiscoverStandaloneRuntim
   onError?: (code: 'launch-failed' | 'cleanup-failed') => void
 }
 
+/** One launched parent registration with an explicit asynchronous startup result. */
+export interface StandaloneRuntimeLaunchHandle {
+  /** Resolves on ChildProcess `spawn`; rejects when Node reports an asynchronous spawn error. */
+  readonly ready: Promise<void>
+  /** Remove this parent registration. Idempotent. */
+  dispose(): void
+}
+
 interface StandalonePackageJson {
   name?: unknown
   version?: unknown
@@ -227,8 +235,8 @@ export function standaloneLaunchArguments(
   ]
 }
 
-/** Launch Standalone and return an idempotent parent-registration disposer. */
-export function launchStandaloneRuntime(options: LaunchStandaloneRuntimeOptions): () => void {
+/** Launch Standalone and return its startup result plus an idempotent registration disposer. */
+export function launchStandaloneRuntime(options: LaunchStandaloneRuntimeOptions): StandaloneRuntimeLaunchHandle {
   const parentPid = options.parentPid ?? process.pid
   if (!Number.isInteger(parentPid) || parentPid <= 0) throw new TypeError('standalone-parent-pid-invalid')
   if (!isPetNativeToken(options.nativeToken)) throw new TypeError('standalone-native-token-invalid')
@@ -262,11 +270,25 @@ export function launchStandaloneRuntime(options: LaunchStandaloneRuntimeOptions)
     options.onError?.('launch-failed')
     throw new Error('standalone-launch-failed')
   }
-  child.once('error', () => { options.onError?.('launch-failed') })
+  let spawned = false
+  const ready = new Promise<void>((resolve, reject) => {
+    child.once('spawn', () => {
+      spawned = true
+      resolve()
+    })
+    child.once('error', (cause) => {
+      if (!spawned) reject(new Error('standalone-launch-failed', { cause }))
+      try {
+        options.onError?.('launch-failed')
+      } catch {
+        // Diagnostics must never replace the startup result delivered to the Host.
+      }
+    })
+  })
   child.unref()
 
   let disposed = false
-  return () => {
+  const dispose = (): void => {
     if (disposed) return
     disposed = true
     const cleanupEnvironment = standaloneChildEnvironment(
@@ -288,11 +310,18 @@ export function launchStandaloneRuntime(options: LaunchStandaloneRuntimeOptions)
           windowsHide: true,
         },
       )
-      cleanup.once('error', () => { options.onError?.('cleanup-failed') })
+      cleanup.once('error', () => {
+        try {
+          options.onError?.('cleanup-failed')
+        } catch {
+          // Cleanup is already best-effort; diagnostics cannot make it throw later.
+        }
+      })
       cleanup.unref()
     } catch {
       options.onError?.('cleanup-failed')
       // The Standalone parent-liveness watcher is the final cleanup path.
     }
   }
+  return { ready, dispose }
 }

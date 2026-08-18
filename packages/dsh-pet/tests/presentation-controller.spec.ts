@@ -108,7 +108,8 @@ function fakeAdapter(kind: PetPresentationAdapter['kind']): PetPresentationAdapt
 
 describe('presentation controller and desktop host contract', () => {
   it('starts one Standalone adapter for repeated reconciliation and disposes it once', async () => {
-    const launch = vi.fn(() => vi.fn())
+    const disposeProcess = vi.fn()
+    const launch = vi.fn(() => ({ ready: Promise.resolve(), dispose: disposeProcess }))
     const adapter = new StandalonePetHost({ launch })
     const controller = new PetPresentationController({
       createAdapter: resolution => resolution.kind === 'standalone' ? adapter : new NullPresentation(),
@@ -126,7 +127,7 @@ describe('presentation controller and desktop host contract', () => {
       returnTarget: { kind: 'web' },
     })
     await controller.dispose()
-    expect(launch.mock.results[0]?.value).toHaveBeenCalledOnce()
+    expect(disposeProcess).toHaveBeenCalledOnce()
   })
 
   it('uses NullPresentation in a headless environment without starting Standalone', async () => {

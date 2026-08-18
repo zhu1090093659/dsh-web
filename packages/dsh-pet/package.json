@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-pet",
-  "description": "Multi-pet companion plugin for the dsh web GUI: a registry-driven floating pet that reacts to model activity, with per-pet naming, petting/feeding interactions and an affinity score",
+  "description": "Multi-pet companion plugin for DeepSeek Harness with shared Web and optional managed desktop presentations, model activity, per-pet naming, interactions and affinity",
   "version": "0.2.1",
   "type": "module",
   "packageManager": "pnpm@11.7.0",

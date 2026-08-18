@@ -74,6 +74,7 @@ function fakeContext(): ClientContext {
       const dispose = fn()
       return typeof dispose === 'function' ? dispose : () => {}
     },
+    on: () => () => {},
     locale: { register: () => () => {} },
     get: () => undefined,
     settingsScope: { bind: () => scope },

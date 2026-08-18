@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-> A registry-driven desktop companion for DeepSeek Harness — the built-in whale girl plus any pet you drop in.
+> A registry-driven Web and desktop companion for DeepSeek Harness — the built-in whale girl plus any pet you drop in.
 
 While the model thinks, you wait — your pet swims. It follows official session activity and switches animations while waiting, thinking, using tools, composing a reply, celebrating completion, or reporting failure; you can also pat its head, feed it dried fish, and watch its affinity grow. Pets are registry entries, not code: every pet is one `pet.json` manifest plus one atlas image, and the host discovers them at startup.
 
@@ -26,6 +26,29 @@ Re-implemented from the pet feature of the Codex desktop app, as an official DSH
 | Status bubbles | Only the most recently active top-level session speaks by default — when several sessions run at once, the rest collapse behind a +N badge on the main bubble instead of stacking a tall column; hover the bubble (or tap the badge, for touch) to fan every session's bubble out above it and click one to jump to its session; subagent sessions report through their spawning conversation and never occupy a bubble of their own; transient interaction feedback temporarily takes priority. Bubble copy comes from generous rotating pools per scene (waiting / thinking / writing / done / failed...), tool calls map onto per-family witty lines carrying the real argument hint (e.g. 跑跑 npm test), and a long-lived scene re-phrases itself every few seconds |
 | Inner whispers | 碎碎念: while the model streams, the pet occasionally speaks its inner voice through its own bubble — a fresh whisper takes over the display session's bubble and marks it with 「」 quotes — sharing the same DeepSeek-blue glass as every status bubble, so stacked bubbles never clash — instead of stacking a second bubble — keyword moods woken by the model output (errors, test greens, plans, victories...) plus ambient whispers earned by output volume; paced by a cooldown, the status copy returns after a few seconds |
 | Multi-session activity | The pet is host-global: the most recent meaningful event drives the sprite animation while every active top-level session reports its own state in a separate bubble; completed turns from every session (subagents included) contribute affinity and treats |
+| Web + desktop coexistence | The browser pet remains available while an optional managed Electron pet runs beside it; their visibility and lifecycle controls are independent |
+| Shared companion data | Browser and desktop interactions call the same Host-owned `PetService`, so model selection, naming, affinity, treats, cooldowns, session bubbles and completed-turn rewards have one source of truth |
+| Managed desktop lifecycle | The desktop pet is off by default; after it is enabled, it starts and stops with the WebServer-backed DSH Host and quitting it from the tray writes the switch back to off |
+| On-demand Electron runtime | Installing the plugin does not download Electron. First enable opens a confirmation dialog with official, npmmirror, or custom HTTPS sources, progress, cancellation and retry; the desktop switch is persisted only after the checksum-pinned runtime is ready |
+| Desktop ergonomics | Scale is limited to 100%–200% to prevent clipping; controls open toward available screen space, status and whisper bubbles overlay the sprite without enlarging its window, and position, visibility, lock and always-on-top preferences persist |
+
+## Config
+
+The `pet` settings namespace is shared by aggregate and standalone installation modes. The browser card edits the common fields and desktop switch; the desktop settings drawer writes its own surface preferences back through the authenticated Host bridge.
+
+| Field | Default | Meaning |
+|---|---:|---|
+| `enabled` | `true` | Master switch for pet activity and presentation routes |
+| `petId` | Registry default | Selected pet model; a removed id falls back to the registry default |
+| `visible` | `true` | Browser-pet visibility |
+| `size` | `160` | Browser sprite height in pixels (`32`–`512`) |
+| `right` | `24` | Browser inset from the viewport right edge |
+| `bottom` | `20` | Browser inset from the viewport bottom edge |
+| `desktopEnabled` | `false` | Managed desktop-pet lifecycle switch |
+| `desktopVisible` | `true` | Desktop-window visibility while its presentation remains enabled |
+| `desktopAlwaysOnTop` | `true` | Keep the desktop window above ordinary windows |
+| `desktopLocked` | `false` | Prevent pointer dragging of the desktop window |
+| `desktopScale` | `1` | Desktop scale (`1`–`2`, or 100%–200%) |
 
 ## Pet contract
 
@@ -88,6 +111,9 @@ dsh-pet/
 |   |-- registry.ts          # multi-pet contract: manifest scan + normalization (assets + custom pets)
 |   |-- service.ts           # PetService: pet selection + state machine + affinity + config
 |   |-- state.ts             # pet state machine: projected session activity → 9 state animations
+|   |-- core/                # renderer-neutral activity, intent and narration contracts
+|   |-- presentation/        # presentation resolver, controller and production coordinator
+|   |-- adapters/standalone/ # explicit runtime installer, launcher and Standalone adapter
 |   |-- remarks.ts           # witty-remark library: built-in pools + per-pet overrides + counted picker
 |   |-- affinity.ts          # affinity ledger (pure functions + cooldowns)
 |   |-- treats.ts            # dried-fish stock ledger
@@ -101,6 +127,7 @@ dsh-pet/
 |       |-- sequences.ts     # full-track scene sequence timing
 |       |-- spritesheet.ts   # atlas geometry helpers + track trimming
 |       `-- pet.module.css
+|-- desktop/                 # optional managed Electron presentation Host
 |-- assets/whale/            # built-in whale-girl (pet.json + spritesheet.webp + previews)
 `-- cordis.patch.yml         # bundle patch: inserts the pet plugin row
 ```
@@ -111,10 +138,12 @@ dsh-pet/
 official session events (turn/step/chunk/tool) ----\
                                                     > PetService (host) <-- registry (assets + custom pets)
 optional legacy activity/status ------------------/
-                                                              | /api/pet/* JSON
-global React root (createRoot → document.body) <-- polling 2s -- pet-client (browser)
-                                                              |
-                                       PetSprite floating layer (portal + rAF)
+                                          |                         |
+                               /api/pet/* JSON      authenticated loopback SSE
+                                          |                         |
+                         pet-client (browser)              Electron desktop pet
+                                  |
+                 PetSprite floating layer (portal + rAF)
 ```
 
 - **Status source**: the host projects official `turn/start`, `step/start`, `assistant/chunk`, `assistant/message`, `tool/call`, `tool/result`, and `turn/end` events into waiting/thinking/tool/review/done/failed states. Optional legacy `activity/status` events remain a compatibility input.
@@ -123,7 +152,8 @@ global React root (createRoot → document.body) <-- polling 2s -- pet-client (b
 - **Multi-session semantics**: the API and browser mount are host-global and expose no foreground-session identity. Concurrent sessions each keep their own projected state: the most recent meaningful event drives the sprite animation, while every active TOP-LEVEL session reports its stage in its own bubble (the state view's sessions list, capped at 12 most-recent). Subagent children are tracked for animation, rewards, and the single display bubble but render no bubble of their own, so N conversations never multiply into an N-plus-subagents stack. Every session's completed turns are still rewarded independently; disposing a session removes its bubble, and disposing the display session falls back to the most recent remaining one.
 - **Mount point**: `document.body` (global React root, always shown: no session / new session / mid-session — the old mount point `conversation.composer.dock` only rendered in an active session, hiding the pet in new sessions); the component uses `createPortal` internally to render the global floating layer.
 - **Rendering**: CSS sprite (background-position) per-frame animation; frame durations and optional scene sequences come from the served definition. The hover panel is anchored below the pet with a pointer bridge across the gap; when the viewport leaves no room below, it flips above the pet and is lifted clear of the status bubble stack so the two never overlap.
-- **Communication**: browser ↔ host over the same-origin `/api/pet/*` JSON endpoints (state/pets/interact/set-visible/set-config/set-name/set-pet); each pet's atlas loads from `/pet/<id>/<spritesheetPath>` — the plugin self-sufficiently provides its own API and assets (the same pattern as dsh-remote-web-ui's `/api/pair`).
+- **Communication**: browser ↔ host uses same-origin `/api/pet/*` JSON endpoints and each atlas loads from `/pet/<id>/<spritesheetPath>`. A standalone install falls back to the loopback-only `/api/pet/settings` pair when the primary settings scope is unavailable; `/api/pet/runtime` exposes status, explicit install and cancellation to the settings dialog. The managed child uses token-authenticated `/api/pet/native/*` state, interaction and SSE routes and never reads or writes `pet.json` directly.
+- **Presentation isolation**: `visible` controls only the browser pet, while `desktopEnabled` controls the managed Electron lifecycle. Desktop visibility, scale, lock and always-on-top remain separate, so hiding either surface does not hide the other.
 
 ## Install
 
@@ -141,18 +171,34 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-pet
 
 ```
 
-After installing, **restart `dsh web`** — your selected pet appears at the bottom-right of the interface. In link mode, `pnpm build` and refresh the page after a code change; no reinstall needed.
+After installing, **restart `dsh web`** — the browser pet appears at the bottom-right of the interface. Installation itself does not download Electron. To use the desktop pet, open **Settings → Pet**, enable it, choose a download source and confirm the first-use installation; the pinned runtime is stored below `$DSH_HOME/cache/dsh-pet/electron`, and cancellation or failure leaves the browser pet unaffected. In link mode, run `pnpm build` and refresh after a code change; no reinstall is needed.
 
 ## Development
 
 ```sh
-pnpm build        # tsc -b (types+declarations) && tsdown (node half + browser bundle)
-pnpm test         # vitest unit/component tests (registry / event projection / state / UI / ledgers)
-pnpm prepare      # transpile-only build (no type checking, for consumer installs)
-pnpm typecheck    # type check only
+pnpm build          # Host/browser bundles plus the managed Electron presentation
+pnpm test           # Host/Web tests followed by Electron main/renderer tests
+pnpm desktop:dev    # run the Electron presentation in development mode
+pnpm desktop:smoke  # bounded real-Electron smoke test
+pnpm typecheck      # Host, browser, tests and desktop type checking
 ```
 
+`electron` is a source-development dependency, not a runtime payload installed with the plugin. End users receive it only after explicit confirmation in the settings dialog.
+
 The browser bundle rides the `window.__ModuleLoader__.load` contract; React/cordis and so on resolve from the loader's module table (external); CSS Modules are inlined by lightningcss as `<style data-plugin>`.
+
+## Security model
+
+- Browser settings and runtime-control routes accept only direct loopback, same-site requests. They expose only the `pet` namespace and allowlisted single-field mutations.
+- Each WebServer attachment creates a fresh 256-bit bearer token for the native bridge. The token and origin are passed in the child environment rather than command-line arguments; state changes use authenticated loopback SSE.
+- Electron download starts only after explicit user confirmation. Official, npmmirror and custom HTTPS sources all resolve to the platform artifact pinned by version and SHA-256 checksum before extraction is accepted.
+- The Electron process consumes Host APIs and stores only native window/model preferences; affinity, treats, names and session activity stay owned by `PetService`.
+
+## Known limitations
+
+- The managed desktop presentation requires an interactive Windows, macOS or Linux session and a WebServer-backed DSH Host. CI, containers, headless sessions and Hosts without the Web bridge keep the core active but do not launch Electron.
+- The initial Electron download can be large and depends on the selected mirror. Closing or refreshing the browser does not start a second installation; reopening the dialog reconnects to the Host-owned progress.
+- The embedded desktop-host contract is available for future providers, but this package currently ships the managed Standalone presentation. Custom pet registry changes still require a DSH Host restart.
 
 ## Sprites and animation-track calibration
 

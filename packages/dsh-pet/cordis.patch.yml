@@ -1,6 +1,6 @@
 # dsh-pet bundle patch: inserts its plugin row into the web plugin roster.
 # The bundle is the official dsh plugin shape — install it into a dsh profile
-# (`dsh plugin --profile <name> add link:/Users/zcl/code/dsh-web-ui/packages/dsh-pet`). The single
+# (`dsh plugin --profile <name> add link:<repo>/packages/dsh-pet`). The single
 # row mounts BOTH halves: the host side (pet registry, state machine,
 # affinity score, pet.* RPC service) and the browser side (the modules node
 # half scans dsh.client packages into the web plugin roster, served from this

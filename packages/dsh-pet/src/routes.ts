@@ -14,7 +14,14 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
-import type { PetService } from './service.ts'
+import type { SettingsPathOp } from '@deepseek-ai/dsh-settings'
+import {
+  PET_DESKTOP_SCALE_MAX,
+  PET_DESKTOP_SCALE_MIN,
+  type PetDesktopSettings,
+  type PetService,
+  type PetSettingsSection,
+} from './service.ts'
 import type { PetInteraction } from './affinity.ts'
 import {
   authorizePetNativeRequest,
@@ -22,9 +29,16 @@ import {
 } from './adapters/web/native-auth.ts'
 import { petEntryView, type PetEntry, type PetRegistry } from './registry.ts'
 import { isLoopbackRequest } from './loopback.ts'
+import type { StandaloneRuntimeManager } from './adapters/standalone/runtime-manager.ts'
 
 /** Browser-facing base path of the pet API. */
 export const PET_API_PREFIX = '/api/pet'
+
+/** Standalone settings bridge; always mount it even while the pet is disabled. */
+export const PET_SETTINGS_API_PREFIX = `${PET_API_PREFIX}/settings`
+
+/** Browser-facing, loopback-only Electron runtime installer. */
+export const PET_RUNTIME_API_PREFIX = `${PET_API_PREFIX}/runtime`
 
 /** Authenticated loopback bridge consumed only by a managed desktop child. */
 export const PET_NATIVE_API_PREFIX = `${PET_API_PREFIX}/native`
@@ -156,6 +170,114 @@ function postRoute(
       })
     },
   }
+}
+
+const PET_SETTINGS_FIELDS = new Set<keyof PetSettingsSection>([
+  'petId',
+  'visible',
+  'size',
+  'right',
+  'bottom',
+  'enabled',
+  'desktopEnabled',
+  'desktopVisible',
+  'desktopAlwaysOnTop',
+  'desktopLocked',
+  'desktopScale',
+])
+
+interface PetSettingsMutationRequest {
+  ops: SettingsPathOp[]
+  expectedRevision?: number
+}
+
+/** Accept only single-field operations inside this plugin's settings namespace. */
+function parseSettingsMutation(body: Record<string, unknown>): PetSettingsMutationRequest | undefined {
+  if (Object.keys(body).some(key => key !== 'ops' && key !== 'expectedRevision')) return undefined
+  const expectedRevision = body.expectedRevision
+  if (expectedRevision !== undefined
+    && (typeof expectedRevision !== 'number'
+      || !Number.isInteger(expectedRevision)
+      || expectedRevision < 0)) return undefined
+  if (!Array.isArray(body.ops) || body.ops.length === 0) return undefined
+  const ops: SettingsPathOp[] = []
+  for (const candidate of body.ops) {
+    if (typeof candidate !== 'object' || candidate === null || Array.isArray(candidate)) return undefined
+    const op = candidate as Record<string, unknown>
+    if ((op.op !== 'set' && op.op !== 'unset')
+      || !Array.isArray(op.path)
+      || op.path.length !== 1
+      || typeof op.path[0] !== 'string'
+      || !PET_SETTINGS_FIELDS.has(op.path[0] as keyof PetSettingsSection)) return undefined
+    if (op.op === 'set') {
+      if (!Object.hasOwn(op, 'value')
+        || Object.keys(op).some(key => key !== 'op' && key !== 'path' && key !== 'value')) return undefined
+      ops.push({ op: 'set', path: [op.path[0]], value: op.value })
+    } else {
+      if (Object.hasOwn(op, 'value')
+        || Object.keys(op).some(key => key !== 'op' && key !== 'path')) return undefined
+      ops.push({ op: 'unset', path: [op.path[0]] })
+    }
+  }
+  return {
+    ops,
+    ...(typeof expectedRevision === 'number' ? { expectedRevision } : {}),
+  }
+}
+
+/** Settings routes remain reachable while the plugin master switch is off. */
+export function makePetSettingsRoutes(service: PetService): WebRoute[] {
+  return [
+    getRoute(PET_SETTINGS_API_PREFIX, () => service.settingsView()),
+    postRoute(`${PET_SETTINGS_API_PREFIX}/mutate`, (body) => {
+      const request = parseSettingsMutation(body)
+      if (request === undefined) return Promise.reject(new Error('invalid-pet-settings-mutation'))
+      return service.mutateSettings(request.ops, request.expectedRevision)
+    }),
+  ]
+}
+
+/** Runtime installation routes remain reachable before a desktop presentation exists. */
+export function makePetRuntimeRoutes(runtime: StandaloneRuntimeManager): WebRoute[] {
+  return [
+    getRoute(PET_RUNTIME_API_PREFIX, async () => runtime.state()),
+    postRoute(`${PET_RUNTIME_API_PREFIX}/install`, async body => runtime.startInstall({
+      source: body.source,
+      ...(body.customMirror === undefined ? {} : { customMirror: body.customMirror }),
+    })),
+    postRoute(`${PET_RUNTIME_API_PREFIX}/cancel`, async () => runtime.cancelInstall()),
+  ]
+}
+
+const DESKTOP_SETTINGS_KEYS = new Set<keyof PetDesktopSettings>([
+  'enabled',
+  'visible',
+  'alwaysOnTop',
+  'locked',
+  'scale',
+])
+
+/** Strictly parse the native surface patch before it reaches Host settings. */
+function parseDesktopSettingsPatch(body: Record<string, unknown>): Partial<PetDesktopSettings> | undefined {
+  const keys = Object.keys(body)
+  if (keys.length === 0 || keys.some(key => !DESKTOP_SETTINGS_KEYS.has(key as keyof PetDesktopSettings))) {
+    return undefined
+  }
+  const patch: Partial<PetDesktopSettings> = {}
+  for (const key of ['enabled', 'visible', 'alwaysOnTop', 'locked'] as const) {
+    const value = body[key]
+    if (value === undefined) continue
+    if (typeof value !== 'boolean') return undefined
+    patch[key] = value
+  }
+  if (body.scale !== undefined) {
+    if (typeof body.scale !== 'number'
+      || !Number.isFinite(body.scale)
+      || body.scale < PET_DESKTOP_SCALE_MIN
+      || body.scale > PET_DESKTOP_SCALE_MAX) return undefined
+    patch.scale = body.scale
+  }
+  return patch
 }
 
 /** Push every Host-owned state change to one authenticated desktop process. */
@@ -385,6 +507,11 @@ export function makePetRoutes(deps: { service: PetService; nativeToken?: string 
           const kind = body.kind as PetInteraction | undefined
           if (kind !== 'pet' && kind !== 'feed') return Promise.reject(new Error('invalid-kind'))
           return service.interact(kind)
+        }, nativeGuard),
+        postRoute(`${PET_NATIVE_API_PREFIX}/surface-settings`, (body) => {
+          const patch = parseDesktopSettingsPatch(body)
+          if (patch === undefined) return Promise.reject(new Error('invalid-desktop-settings'))
+          return service.setDesktopSettings(patch)
         }, nativeGuard),
       ]
 

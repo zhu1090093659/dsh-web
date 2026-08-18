@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { makePetSettingsSchema } from './index.ts'
+import { inject, makePetSettingsSchema } from './index.ts'
+
+it('keeps the pet core loadable without a WebServer', () => {
+  expect(inject).toEqual([])
+})
 
 describe('makePetSettingsSchema', () => {
   it('resolves the selected pet and display defaults from an empty section', () => {
@@ -11,6 +15,11 @@ describe('makePetSettingsSchema', () => {
       right: 24,
       bottom: 20,
       enabled: true,
+      desktopEnabled: false,
+      desktopVisible: true,
+      desktopAlwaysOnTop: true,
+      desktopLocked: false,
+      desktopScale: 1,
     })
   })
 

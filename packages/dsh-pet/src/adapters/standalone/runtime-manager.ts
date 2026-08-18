@@ -227,6 +227,7 @@ export class StandaloneRuntimeManager {
   private current: StandaloneRuntimeView
   private abortController: AbortController | undefined
   private installPromise: Promise<void> | undefined
+  private disposed = false
 
   constructor(private readonly options: StandaloneRuntimeManagerOptions) {
     this.platform = options.platform ?? process.platform
@@ -259,6 +260,7 @@ export class StandaloneRuntimeManager {
 
   /** Start one explicit installation; concurrent callers observe the same state. */
   startInstall(selectionValue: unknown): StandaloneRuntimeView {
+    if (this.disposed) throw new Error('runtime-manager-disposed')
     const selection = normalizeStandaloneRuntimeMirror(selectionValue)
     if (standaloneElectronArtifact(this.platform, this.arch) === undefined) {
       this.publish({ ...this.baseState(selection), phase: 'unsupported', installed: false, managed: false })
@@ -304,6 +306,11 @@ export class StandaloneRuntimeManager {
   }
 
   async dispose(): Promise<void> {
+    if (this.disposed) {
+      await this.installPromise
+      return
+    }
+    this.disposed = true
     const task = this.installPromise
     this.abortController?.abort()
     this.listeners.clear()

@@ -1093,7 +1093,7 @@ export function useSkin(name: string, opts: { home?: string; profile?: string; r
   const legacyPatch = readPatch(paths.legacyPatchPath)
   const migratedLegacyPatch = stripLegacySkinRows(stripManaged(legacyPatch))
   if (migratedLegacyPatch !== legacyPatch) {
-    writePatchAtomic(paths.legacyPatchPath, migratedLegacyPatch)
+    writePatchOrRemove(paths.legacyPatchPath, migratedLegacyPatch)
   }
 
   const patch = normalizePatchForManagedAppend(stripEmptyPatchList(stripLegacySkinRows(stripManaged(readPatch(paths.patchPath)))))
@@ -1143,4 +1143,125 @@ export function currentSkin(patch: string | undefined, opts: { home?: string; pr
     activePatch = readPatch(paths.legacyPatchPath)
   }
   return currentActive(activePatch, registryWithProfileWiring(registry, paths.profileModulesDir, paths.profileManifestPath)) ?? 'none'
+}
+
+/**
+ * Write a patch file, or remove it when the new content is empty — the boot
+ * parser rejects an empty patch file ("must be a top-level YAML array"), and a
+ * missing file means "no layer". A managed-section migration that strips the
+ * last row therefore deletes the file instead of writing ''.
+ * @param filePath - target patch file.
+ * @param next - full next content ('' or whitespace removes the file).
+ */
+function writePatchOrRemove(filePath: string, next: string): void {
+  if (next.trim() === '') {
+    try {
+      unlinkSync(filePath)
+    } catch {
+      // Absent already — nothing to remove.
+    }
+    return
+  }
+  writePatchAtomic(filePath, next)
+}
+
+/** Whether a patch text contains at least one top-level list row. The boot
+ * parser requires a top-level YAML array; a comment-only file parses as null
+ * and is rejected, so empty sections must fall back to the template's flow
+ * form instead of leaving a comment-only file behind. */
+function hasAnyListRow(patch: string): boolean {
+  return patch.split(/\r?\n/).some(line => /^\s*-\s/.test(line) && !/^\s*#/.test(line))
+}
+
+/**
+ * Reconcile the managed skin section against the live registry and the
+ * resolvable installed state — the boot-time self-heal for issue #495.
+ *
+ * The managed section is rendered from the registry and rewritten only by
+ * skin switches, so when a skin package stops being resolvable (dropped from
+ * the family bundle's dependencies and pruned by pnpm, or the whole plugin
+ * removed) the stale insert row survives and the next boot dies on
+ * ERR_MODULE_NOT_FOUND. Re-rendering the section from the current registry
+ * at boot, with the active skin validated against the registry AND the
+ * resolvable installed state, makes the section self-healing:
+ *  - a legacy harness-wide block (pre-issue-#290) is migrated into the active
+ *    profile, or removed when it carried no usable state — at boot, not only
+ *    on the next explicit switch;
+ *  - an active skin that is unknown to the registry, or whose package is not
+ *    resolvable from the profile, falls back to the official stock look
+ *    (every skin disabled) instead of leaving a dangling insert row;
+ *  - a healthy section re-renders byte-identically and no file is written.
+ * Idempotent. Never throws on a malformed user patch (the boot must not fail
+ * over skin-center's own bookkeeping) — such a patch is left untouched for
+ * the next explicit switch, whose error then names the problem.
+ * @param opts - injectable HOME/profile/registry (tests use a throwaway HOME).
+ * @returns whether any file changed and which skin is active afterwards.
+ */
+export function reconcileSkinPatches(opts: { home?: string; profile?: string; registry?: Record<string, SkinSwitchEntry> } = {}): { changed: boolean; activeAfter: string | null; notes: string[] } {
+  const paths = resolvePaths(opts.home, opts.profile)
+  const registry = opts.registry ?? loadRegistry()
+  const renderRegistry = registryWithProfileWiring(registry, paths.profileModulesDir, paths.profileManifestPath)
+  const legacyPatch = readPatch(paths.legacyPatchPath)
+  const profilePatch = readPatch(paths.patchPath)
+  // No managed section anywhere: nothing dsh-skin ever wrote can be stale,
+  // and appending one would mutate a patch the user never asked to touch.
+  if (!legacyPatch.includes(MANAGED_START) && !profilePatch.includes(MANAGED_START)) {
+    return { changed: false, activeAfter: null, notes: [] }
+  }
+  // The active skin: the profile patch when it carries the managed section,
+  // else the legacy harness-wide patch (pre-#290 state).
+  const activeNow = currentActive(profilePatch.includes(MANAGED_START) ? profilePatch : legacyPatch, renderRegistry)
+  const notes: string[] = []
+  let activeAfter = activeNow
+  if (activeAfter !== null) {
+    const entry = registry[activeAfter]
+    if (entry === undefined) {
+      notes.push(`skin "${activeAfter}" is no longer in the skin registry — falling back to the official stock look (issue #495)`)
+      activeAfter = null
+    } else if (!renderRegistry[activeAfter].bundleWired) {
+      // A bundle-wired skin is imported through its own installed bundle row,
+      // so only a non-wired insert row needs the resolvability gate.
+      const problem = checkResolvable(entry, paths.profileModulesDir)
+      if (problem !== null) {
+        notes.push(`skin "${activeAfter}" (${entry.pkg}) is not resolvable from the profile — falling back to the official stock look (issue #495)`)
+        activeAfter = null
+      }
+    }
+  }
+  let changed = false
+  // Migrate (or drop) the legacy harness-wide managed block: a Web-only
+  // insert there would make a non-Web profile resolve a Web-only package
+  // (issue #290).
+  const strippedLegacy = stripEmptyPatchList(stripLegacySkinRows(stripManaged(legacyPatch)))
+  if (strippedLegacy !== legacyPatch) {
+    writePatchOrRemove(paths.legacyPatchPath, strippedLegacy)
+    changed = true
+  }
+  // Re-render the profile managed section from the registry: insert rows for
+  // skins that no longer exist or are no longer resolvable cannot survive a
+  // boot (issue #495).
+  const base = stripEmptyPatchList(stripLegacySkinRows(stripManaged(profilePatch)))
+  let next: string
+  try {
+    next = normalizePatchForManagedAppend(appendManagedPatch(base, renderManaged(activeAfter, renderRegistry)))
+  } catch (error) {
+    // A malformed user patch is the user's to fix; never take the boot down
+    // over skin-center's own bookkeeping. Leave it for the next explicit
+    // switch, which reports the same problem as a normal useSkin error.
+    notes.push(`managed-section rewrite skipped (${String(error)})`)
+    return { changed, activeAfter, notes }
+  }
+  if (!hasAnyListRow(next)) {
+    // The managed section referenced skins that are all gone (registry empty)
+    // and the user layer carries no rows: a comment-only patch parses as null
+    // and the boot parser rejects it. Fall back to the template's empty-flow
+    // form so the file stays bootable.
+    notes.push('no skins are installed — removed the managed skin section')
+    next = `${base.replace(/\s+$/, '')}${base.trim() === '' ? '' : '\n\n'}[]\n`
+  }
+  if (next !== profilePatch) {
+    writePatchAtomic(paths.patchPath, next)
+    changed = true
+  }
+  return { changed, activeAfter, notes }
 }

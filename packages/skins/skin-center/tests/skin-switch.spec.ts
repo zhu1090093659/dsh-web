@@ -32,6 +32,7 @@ import {
   wiredNames,
   useSkin,
   currentSkin,
+  reconcileSkinPatches,
   resolvePaths,
   resolveHarnessHome,
   resolveInstallLayout,
@@ -532,7 +533,9 @@ describe('useSkin / currentSkin against a throwaway HOME', () => {
 
     useSkin('official', { home: h, registry })
 
-    expect(readFileSync(legacyPatchPath(h), 'utf8')).not.toContain(MANAGED_START)
+    // The legacy file held only the managed block: removed, never emptied —
+    // the boot parser rejects an empty patch file.
+    expect(existsSync(legacyPatchPath(h))).toBe(false)
     expect(readFileSync(patchPath(h), 'utf8')).toContain(MANAGED_START)
     expect(currentSkin(undefined, { home: h, registry })).toBe('none')
   })
@@ -1145,5 +1148,117 @@ describe('self-referential symlink defense (issue #43: ELOOP on second skin swit
     expect(readlinkSync(target)).toBe(realDir)
     // And it still resolves (no ELOOP on realpath).
     expect(realpathSync(target)).toBe(realpathSync(realDir))
+  })
+})
+
+describe('reconcileSkinPatches (boot-time self-heal, issue #495)', () => {
+  it('drops an insert row whose skin package is no longer resolvable from the profile', () => {
+    const h = fakeHome()
+    const registry = loadRegistry()
+    // The patch names xp as active, but no package sits under the profile —
+    // exactly the post-upgrade state where pnpm pruned the orphan package.
+    writeFileSync(patchPath(h), `${renderManaged('xp', registry)}\n`)
+
+    const result = reconcileSkinPatches({ home: h, registry })
+
+    expect(result.changed).toBe(true)
+    expect(result.activeAfter).toBeNull()
+    expect(result.notes.some(note => note.includes('xp'))).toBe(true)
+    const after = readFileSync(patchPath(h), 'utf8')
+    expect(after).not.toContain('- insert:')
+    expect(after).toContain(`- id: ${registry.xp.id}\n  disabled: true`)
+    expect(currentSkin(after, { home: h, registry })).toBe('none')
+  })
+
+  it('keeps a resolvable active skin and rewrites nothing (idempotent)', () => {
+    const h = fakeHome()
+    const registry = loadRegistry()
+    const xp = registry.xp
+    // npm layout: the skin package physically sits under the profile modules.
+    const installed = join(resolvePaths(h).profileModulesDir, xp.pkg)
+    makeSkinPackage(installed, xp)
+    const fakeRegistry: Record<string, SkinSwitchEntry> = { ...registry, xp: { ...xp, dir: installed } }
+    writeFileSync(patchPath(h), `${renderManaged('xp', fakeRegistry)}\n`)
+
+    const result = reconcileSkinPatches({ home: h, registry: fakeRegistry })
+
+    expect(result.changed).toBe(false)
+    expect(result.activeAfter).toBe('xp')
+    expect(result.notes).toEqual([])
+    expect(readFileSync(patchPath(h), 'utf8')).toBe(`${renderManaged('xp', fakeRegistry)}\n`)
+  })
+
+  it('migrates a legacy harness-wide managed block and drops its unresolvable insert (the uninstall scenario)', () => {
+    const h = fakeHome()
+    const registry = loadRegistry()
+    // Pre-#290 state: the managed section lives at harness-home scope with
+    // whale-song active — what a skin switch on an old release leaves behind
+    // after the package stops being resolvable.
+    writeFileSync(legacyPatchPath(h), `${renderManaged('whale-song', registry)}\n`)
+    writeFileSync(patchPath(h), '# profile patch\n[]\n')
+
+    const result = reconcileSkinPatches({ home: h, registry })
+
+    expect(result.changed).toBe(true)
+    expect(result.activeAfter).toBeNull()
+    // The legacy file held only the managed block: it must be removed, not
+    // emptied — the boot parser rejects an empty patch file.
+    expect(existsSync(legacyPatchPath(h))).toBe(false)
+    const after = readFileSync(patchPath(h), 'utf8')
+    expect(after).not.toContain('- insert:')
+    expect(after).toContain(MANAGED_START)
+    expect(currentSkin(after, { home: h, registry })).toBe('none')
+  })
+
+  it('drops an active skin the registry no longer knows', () => {
+    const h = fakeHome()
+    const registry = loadRegistry()
+    const ghost = { pkg: '@linxin666/dsh-client-ui-skin-ghost', id: 'ui-skin-ghost', dir: '/tmp/ghost', bundleWired: false }
+    const ghostRegistry: Record<string, SkinSwitchEntry> = { ...registry, ghost }
+    writeFileSync(patchPath(h), `${renderManaged('ghost', ghostRegistry)}\n`)
+
+    const result = reconcileSkinPatches({ home: h, registry })
+
+    expect(result.changed).toBe(true)
+    expect(result.activeAfter).toBeNull()
+    const after = readFileSync(patchPath(h), 'utf8')
+    expect(after).not.toContain('ghost')
+    expect(after).not.toContain('- insert:')
+  })
+
+  it('leaves a patch without a managed section untouched', () => {
+    const h = fakeHome()
+    writeFileSync(patchPath(h), '# user rows\n- id: custom\n  config: 1\n')
+
+    const result = reconcileSkinPatches({ home: h })
+
+    expect(result.changed).toBe(false)
+    expect(result.activeAfter).toBeNull()
+    expect(result.notes).toEqual([])
+    expect(readFileSync(patchPath(h), 'utf8')).toBe('# user rows\n- id: custom\n  config: 1\n')
+  })
+
+  it('a second run on a reconciled patch is a no-op (converges after one write)', () => {
+    const h = fakeHome()
+    const registry = loadRegistry()
+    writeFileSync(patchPath(h), `${renderManaged('xp', registry)}\n`)
+    const first = reconcileSkinPatches({ home: h, registry })
+    expect(first.changed).toBe(true)
+    const second = reconcileSkinPatches({ home: h, registry })
+    expect(second.changed).toBe(false)
+    expect(second.activeAfter).toBeNull()
+  })
+
+  it('writes the template empty-flow form when the registry is empty (comment-only patch would not parse)', () => {
+    const h = fakeHome()
+    // A stale managed section survives a full uninstall; the registry no
+    // longer knows any skin (every skin package is gone).
+    writeFileSync(patchPath(h), `${MANAGED_START}\n- insert:\n    - id: ui-skin-whale-song\n      name: '@linxin666/dsh-client-ui-skin-whale-song'\n${MANAGED_END}\n`)
+
+    const result = reconcileSkinPatches({ home: h, registry: {} })
+
+    expect(result.changed).toBe(true)
+    expect(readFileSync(patchPath(h), 'utf8').trim()).toBe('[]')
+    expect(result.notes.some(note => note.includes('no skins'))).toBe(true)
   })
 })

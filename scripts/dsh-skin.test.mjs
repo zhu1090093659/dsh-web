@@ -6,7 +6,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -235,10 +235,111 @@ test('use migrates the global managed skin row into the web profile', () => {
       env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: repo },
     })
 
-    assert.ok(!readFileSync(legacyPatchPath(home), 'utf8').includes(MANAGED_START))
+    // The legacy file held only the managed block: removed, never emptied —
+    // the boot parser rejects an empty patch file.
+    assert.ok(!existsSync(legacyPatchPath(home)))
     const scoped = readFileSync(patchPath(home), 'utf8')
     assert.ok(scoped.includes(MANAGED_START))
     assert.ok(scoped.includes(`- id: ${SKINS.xp.id}`))
+  } finally {
+    rmSync(home, { recursive: true, force: true })
+  }
+})
+
+/** Install a resolvable skin package under a profile's node_modules (the npm
+ * layout the boot graph imports): package.json named after the skin, main
+ * entry that exists. */
+function fakeSkinPackage(modulesDir, name) {
+  const dir = join(modulesDir, '@linxin666', `dsh-client-ui-skin-${name}`)
+  mkdirSync(join(dir, 'lib'), { recursive: true })
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({
+    name: `@linxin666/dsh-client-ui-skin-${name}`,
+    version: '0.2.0',
+    type: 'module',
+    main: 'lib/index.js',
+  }))
+  writeFileSync(join(dir, 'lib', 'index.js'), 'export function apply() {}\n')
+  return dir
+}
+
+test('repair drops an insert row whose skin package is no longer resolvable (issue #495)', () => {
+  const home = fakeHome()
+  try {
+    const repo = join(home, 'code', 'dsh-web-ui')
+    for (const name of Object.keys(SKINS)) fakeSkinDir(repo, name)
+    // The patch names xp as active; no package sits under the profile
+    // node_modules — the state a pnpm prune leaves behind.
+    writeFileSync(patchPath(home), `${renderManaged('xp')}\n`)
+    const out = execFileSync(process.execPath, [SCRIPT, 'repair'], {
+      env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: repo },
+      encoding: 'utf8',
+    })
+    assert.ok(out.includes('repaired'))
+    const after = readFileSync(patchPath(home), 'utf8')
+    assert.ok(!after.includes('- insert:'), 'dangling insert row must be dropped')
+    assert.ok(after.includes(`- id: ${SKINS.xp.id}\n  disabled: true`), 'xp falls back to disabled')
+    const current = execFileSync(process.execPath, [SCRIPT, 'current'], {
+      env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: repo },
+      encoding: 'utf8',
+    })
+    assert.equal(current.trim(), 'none')
+  } finally {
+    rmSync(home, { recursive: true, force: true })
+  }
+})
+
+test('repair keeps a resolvable active skin and reports nothing to repair', () => {
+  const home = fakeHome()
+  try {
+    const repo = join(home, 'code', 'dsh-web-ui')
+    for (const name of Object.keys(SKINS)) fakeSkinDir(repo, name)
+    fakeSkinPackage(join(home, '.dsh', 'profiles', 'web', 'node_modules'), 'xp')
+    writeFileSync(patchPath(home), `${renderManaged('xp')}\n`)
+    const out = execFileSync(process.execPath, [SCRIPT, 'repair'], {
+      env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: repo },
+      encoding: 'utf8',
+    })
+    assert.ok(out.includes('already consistent'))
+    assert.equal(readFileSync(patchPath(home), 'utf8'), `${renderManaged('xp')}\n`)
+  } finally {
+    rmSync(home, { recursive: true, force: true })
+  }
+})
+
+test('repair migrates a legacy harness-wide managed block and removes the emptied file', () => {
+  const home = fakeHome()
+  try {
+    const repo = join(home, 'code', 'dsh-web-ui')
+    for (const name of Object.keys(SKINS)) fakeSkinDir(repo, name)
+    // Pre-#290 state: the managed section lives at harness-home scope with an
+    // unresolvable active skin; the profile patch is the stock template.
+    writeFileSync(legacyPatchPath(home), `${renderManaged('whale-song')}\n`)
+    writeFileSync(patchPath(home), '# profile patch\n[]\n')
+    execFileSync(process.execPath, [SCRIPT, 'repair'], {
+      env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: repo },
+    })
+    // The legacy file held only the managed block: removed, not emptied —
+    // the boot parser rejects an empty patch file.
+    assert.ok(!existsSync(legacyPatchPath(home)))
+    const after = readFileSync(patchPath(home), 'utf8')
+    assert.ok(!after.includes('- insert:'))
+    assert.ok(after.includes(MANAGED_START))
+  } finally {
+    rmSync(home, { recursive: true, force: true })
+  }
+})
+
+test('repair falls back to the template empty-flow form when no skins are installed', () => {
+  const home = fakeHome()
+  try {
+    // The fake repo has no skin dirs, so the subprocess registry is empty.
+    const repo = join(home, 'code', 'dsh-web-ui')
+    writeFileSync(patchPath(home), `${MANAGED_START}\n- insert:\n    - id: ui-skin-whale-song\n      name: '@linxin666/dsh-client-ui-skin-whale-song'\n${MANAGED_END}\n`)
+    execFileSync(process.execPath, [SCRIPT, 'repair'], {
+      env: { ...process.env, DSH_HOME: join(home, '.dsh'), DSH_SKIN_REPO: repo },
+    })
+    // A comment-only patch would not parse; the template's empty-flow form is bootable.
+    assert.equal(readFileSync(patchPath(home), 'utf8').trim(), '[]')
   } finally {
     rmSync(home, { recursive: true, force: true })
   }

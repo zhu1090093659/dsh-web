@@ -16,7 +16,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import { makeSkinCenterRoutes, SKIN_CENTER_API_PREFIX } from './routes.ts'
 import { makeWeRoutes, WE_API_PREFIX } from './we-routes.ts'
 import { defaultWallpapersStoreDir } from './we-library.ts'
-import { resolveHarnessHome } from './skin-switch.ts'
+import { reconcileSkinPatches, resolveHarnessHome } from './skin-switch.ts'
 import { mountOnce } from './mount-once.ts'
 
 export { makeSkinCenterRoutes, SKIN_CENTER_API_PREFIX } from './routes.ts'
@@ -126,6 +126,18 @@ export const SkinWallpaperConfigSchema: z<SkinWallpaperConfig> = z.object({
 export const apply = mountOnce('@linxin666/dsh-client-ui-skin-center', applyImpl)
 
 function applyImpl(ctx: Context): void {
+  // Boot-time self-heal of the managed skin section (issue #495): re-render it
+  // from the live registry so insert rows referencing packages that pnpm
+  // pruned (a skin dropped from the family bundle, or the whole plugin
+  // removed) cannot leave a stale boot-breaking patch behind. Idempotent;
+  // logs, never throws — the skin center must not take the GUI down.
+  try {
+    const { notes } = reconcileSkinPatches()
+    for (const note of notes) console.warn('[ui-skin-center] ' + note)
+  } catch (error) {
+    console.error('[ui-skin-center] managed-section reconciliation failed:', error)
+  }
+
   // Optional-settings wiring for the background scrim namespace. The browser
   // half binds the scope and applies the value to the body CSS variable;
   // this side just declares the namespace + schema so the value persists and

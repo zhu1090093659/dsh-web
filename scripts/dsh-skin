@@ -312,7 +312,15 @@ function cmdUse(name) {
   // active insert there makes dsh-tui resolve a Web-only package (issue #290).
   const legacyPatch = readPatch(LEGACY_PATCH)
   const migratedLegacyPatch = stripLegacySkinRows(stripManaged(legacyPatch))
-  if (migratedLegacyPatch !== legacyPatch) writePatch(LEGACY_PATCH, migratedLegacyPatch)
+  if (migratedLegacyPatch !== legacyPatch) {
+    // The boot parser rejects an empty patch file; a missing file means
+    // "no layer", so strip the last row by removing the file, not emptying it.
+    if (migratedLegacyPatch.trim() === '') {
+      try { fs.unlinkSync(LEGACY_PATCH) } catch { /* already absent */ }
+    } else {
+      writePatch(LEGACY_PATCH, migratedLegacyPatch)
+    }
+  }
 
   const patch = normalizePatchForManagedAppend(stripEmptyPatchList(stripLegacySkinRows(stripManaged(readPatch()))))
   const next = appendManagedPatch(patch, renderManaged(official ? null : name))
@@ -349,6 +357,92 @@ function cmdCurrent() {
   console.log(active ?? 'none')
 }
 
+/**
+ * Whether a skin package is resolvable from the web profile — the same
+ * directory contract the boot graph relies on when it loads the insert row:
+ * the profile-target package dir must carry a package.json whose name is this
+ * skin's package and a host entry (main, else index.js) that exists. A
+ * package pnpm pruned (dropped from the family bundle, or the whole plugin
+ * removed) fails this check, mirroring checkResolvable in skin-switch.ts.
+ * @param name - skin id.
+ */
+function skinResolvable(name) {
+  const target = path.join(DSH_HOME, 'profiles', DEFAULT_PROFILE, 'node_modules', SKINS[name].pkg)
+  try {
+    if (!fs.statSync(target).isDirectory()) return false
+    const manifest = JSON.parse(fs.readFileSync(path.join(target, 'package.json'), 'utf8'))
+    if (manifest.name !== SKINS[name].pkg) return false
+    const main = typeof manifest.main === 'string' ? manifest.main : 'index.js'
+    return fs.statSync(path.join(target, main)).isFile()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The active skin a repair keeps: null when it must fall back to the stock
+ * look — unknown to the registry (dropped from the family bundle), or not
+ * resolvable from the profile (a package pnpm pruned, issue #495). A
+ * bundle-wired active skin is imported through its own installed bundle row
+ * and needs no insert row, so it survives without the package-dir probe.
+ * @param active - the skin currentActive read from the patches.
+ */
+function reconcilableActive(active) {
+  if (active === null) return null
+  if (!SKINS[active]) return null
+  if (bundleWiredFromProfile().has(active)) return active
+  return skinResolvable(active) ? active : null
+}
+
+/** Whether a patch text contains at least one top-level list row (the boot
+ * parser requires a YAML array; a comment-only file parses as null). */
+function hasListRow(patch) {
+  return patch.split(/\r?\n/).some(line => /^\s*-\s/.test(line) && !/^\s*#/.test(line))
+}
+
+/**
+ * Reconcile the managed skin section against the live registry and the
+ * resolvable installed state (issue #495): migrate the legacy harness-wide
+ * block into the active profile, drop insert rows for skins that are gone or
+ * unresolvable (falling back to the official stock look), and leave a
+ * healthy section untouched. The offline counterpart of the skin-center
+ * plugin's boot-time reconcileSkinPatches, runnable when a dangling insert
+ * has already broken the boot.
+ */
+function cmdRepair() {
+  const legacyPatch = readPatch(LEGACY_PATCH)
+  const profilePatch = readPatch()
+  // Read the active skin before migrating, so a legacy-only managed block
+  // still reports its choice (the resolve step decides whether it survives).
+  const active = reconcilableActive(currentActive(profilePatch.includes(MANAGED_START) ? profilePatch : legacyPatch))
+  let changed = false
+  const migratedLegacyPatch = stripEmptyPatchList(stripLegacySkinRows(stripManaged(legacyPatch)))
+  if (migratedLegacyPatch !== legacyPatch) {
+    if (migratedLegacyPatch.trim() === '') {
+      try { fs.unlinkSync(LEGACY_PATCH) } catch { /* already absent */ }
+    } else {
+      writePatch(LEGACY_PATCH, migratedLegacyPatch)
+    }
+    changed = true
+  }
+  const patch = normalizePatchForManagedAppend(stripEmptyPatchList(stripLegacySkinRows(stripManaged(profilePatch))))
+  let next = appendManagedPatch(patch, renderManaged(active))
+  if (!hasListRow(next)) {
+    // The managed section referenced skins that are all gone and the user
+    // layer carries no rows: a comment-only patch parses as null and the boot
+    // parser rejects it. Fall back to the template's empty-flow form so the
+    // file stays bootable.
+    next = `${patch.replace(/\s+$/, '')}${patch.trim() === '' ? '' : '\n\n'}[]\n`
+  }
+  if (next !== profilePatch) {
+    writePatch(PATCH, next)
+    changed = true
+  }
+  console.log(changed
+    ? `repaired the managed skin section (active: ${active ?? 'none'}) — the config watcher applies it within seconds; refresh the page to see it.`
+    : 'managed skin section is already consistent — nothing to repair.')
+}
+
 // Pure helpers exported so tests can assert the managed-section rendering
 // and parsing without touching the real ~/.dsh (the entry-script guard below
 // keeps an import side-effect free).
@@ -363,6 +457,7 @@ module.exports = {
   stripEmptyPatchList,
   stripLegacySkinRows,
   currentActive,
+  reconcilableActive,
 }
 
 // Run only when invoked as the entry script (as a CLI), so the module can be
@@ -374,6 +469,7 @@ if (require.main === module) {
     case 'install': cmdInstall(arg); break
     case 'list': cmdList(); break
     case 'current': cmdCurrent(); break
+    case 'repair': cmdRepair(); break
     default:
       console.log('dsh-skin — one-command skin switching for the DSH web GUI')
       console.log('')
@@ -383,6 +479,7 @@ if (require.main === module) {
       console.log('  dsh-skin use official     restore the official stock look (disable every skin)')
       console.log('  dsh-skin list             show skins, the active one, and symlink state')
       console.log('  dsh-skin current          print the active skin name (or "none")')
+      console.log('  dsh-skin repair           reconcile the managed patch section against the installed skins (fixes a stale insert row)')
       console.log('')
       console.log(`skins: ${Object.keys(SKINS).join(', ')}`)
       process.exit(cmd ? 1 : 0)

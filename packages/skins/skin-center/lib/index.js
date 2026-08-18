@@ -874,7 +874,7 @@ function useSkin(name, opts = {}) {
 	}
 	const legacyPatch = readPatch(paths.legacyPatchPath);
 	const migratedLegacyPatch = stripLegacySkinRows(stripManaged(legacyPatch));
-	if (migratedLegacyPatch !== legacyPatch) writePatchAtomic(paths.legacyPatchPath, migratedLegacyPatch);
+	if (migratedLegacyPatch !== legacyPatch) writePatchOrRemove(paths.legacyPatchPath, migratedLegacyPatch);
 	const patch = normalizePatchForManagedAppend(stripEmptyPatchList(stripLegacySkinRows(stripManaged(readPatch(paths.patchPath)))));
 	let next = appendManagedPatch(patch, renderManaged(official ? null : name, renderRegistry));
 	let skippedInsert = false;
@@ -905,6 +905,112 @@ function currentSkin(patch, opts = {}) {
 	let activePatch = patch ?? readPatch(paths.patchPath);
 	if (patch === void 0 && !activePatch.includes("# --- dsh-skin managed (auto-generated; do not edit) ---")) activePatch = readPatch(paths.legacyPatchPath);
 	return currentActive(activePatch, registryWithProfileWiring(registry, paths.profileModulesDir, paths.profileManifestPath)) ?? "none";
+}
+/**
+* Write a patch file, or remove it when the new content is empty — the boot
+* parser rejects an empty patch file ("must be a top-level YAML array"), and a
+* missing file means "no layer". A managed-section migration that strips the
+* last row therefore deletes the file instead of writing ''.
+* @param filePath - target patch file.
+* @param next - full next content ('' or whitespace removes the file).
+*/
+function writePatchOrRemove(filePath, next) {
+	if (next.trim() === "") {
+		try {
+			unlinkSync(filePath);
+		} catch {}
+		return;
+	}
+	writePatchAtomic(filePath, next);
+}
+/** Whether a patch text contains at least one top-level list row. The boot
+* parser requires a top-level YAML array; a comment-only file parses as null
+* and is rejected, so empty sections must fall back to the template's flow
+* form instead of leaving a comment-only file behind. */
+function hasAnyListRow(patch) {
+	return patch.split(/\r?\n/).some((line) => /^\s*-\s/.test(line) && !/^\s*#/.test(line));
+}
+/**
+* Reconcile the managed skin section against the live registry and the
+* resolvable installed state — the boot-time self-heal for issue #495.
+*
+* The managed section is rendered from the registry and rewritten only by
+* skin switches, so when a skin package stops being resolvable (dropped from
+* the family bundle's dependencies and pruned by pnpm, or the whole plugin
+* removed) the stale insert row survives and the next boot dies on
+* ERR_MODULE_NOT_FOUND. Re-rendering the section from the current registry
+* at boot, with the active skin validated against the registry AND the
+* resolvable installed state, makes the section self-healing:
+*  - a legacy harness-wide block (pre-issue-#290) is migrated into the active
+*    profile, or removed when it carried no usable state — at boot, not only
+*    on the next explicit switch;
+*  - an active skin that is unknown to the registry, or whose package is not
+*    resolvable from the profile, falls back to the official stock look
+*    (every skin disabled) instead of leaving a dangling insert row;
+*  - a healthy section re-renders byte-identically and no file is written.
+* Idempotent. Never throws on a malformed user patch (the boot must not fail
+* over skin-center's own bookkeeping) — such a patch is left untouched for
+* the next explicit switch, whose error then names the problem.
+* @param opts - injectable HOME/profile/registry (tests use a throwaway HOME).
+* @returns whether any file changed and which skin is active afterwards.
+*/
+function reconcileSkinPatches(opts = {}) {
+	const paths = resolvePaths(opts.home, opts.profile);
+	const registry = opts.registry ?? loadRegistry();
+	const renderRegistry = registryWithProfileWiring(registry, paths.profileModulesDir, paths.profileManifestPath);
+	const legacyPatch = readPatch(paths.legacyPatchPath);
+	const profilePatch = readPatch(paths.patchPath);
+	if (!legacyPatch.includes("# --- dsh-skin managed (auto-generated; do not edit) ---") && !profilePatch.includes("# --- dsh-skin managed (auto-generated; do not edit) ---")) return {
+		changed: false,
+		activeAfter: null,
+		notes: []
+	};
+	const activeNow = currentActive(profilePatch.includes("# --- dsh-skin managed (auto-generated; do not edit) ---") ? profilePatch : legacyPatch, renderRegistry);
+	const notes = [];
+	let activeAfter = activeNow;
+	if (activeAfter !== null) {
+		const entry = registry[activeAfter];
+		if (entry === void 0) {
+			notes.push(`skin "${activeAfter}" is no longer in the skin registry — falling back to the official stock look (issue #495)`);
+			activeAfter = null;
+		} else if (!renderRegistry[activeAfter].bundleWired) {
+			if (checkResolvable(entry, paths.profileModulesDir) !== null) {
+				notes.push(`skin "${activeAfter}" (${entry.pkg}) is not resolvable from the profile — falling back to the official stock look (issue #495)`);
+				activeAfter = null;
+			}
+		}
+	}
+	let changed = false;
+	const strippedLegacy = stripEmptyPatchList(stripLegacySkinRows(stripManaged(legacyPatch)));
+	if (strippedLegacy !== legacyPatch) {
+		writePatchOrRemove(paths.legacyPatchPath, strippedLegacy);
+		changed = true;
+	}
+	const base = stripEmptyPatchList(stripLegacySkinRows(stripManaged(profilePatch)));
+	let next;
+	try {
+		next = normalizePatchForManagedAppend(appendManagedPatch(base, renderManaged(activeAfter, renderRegistry)));
+	} catch (error) {
+		notes.push(`managed-section rewrite skipped (${String(error)})`);
+		return {
+			changed,
+			activeAfter,
+			notes
+		};
+	}
+	if (!hasAnyListRow(next)) {
+		notes.push("no skins are installed — removed the managed skin section");
+		next = `${base.replace(/\s+$/, "")}${base.trim() === "" ? "" : "\n\n"}[]\n`;
+	}
+	if (next !== profilePatch) {
+		writePatchAtomic(paths.patchPath, next);
+		changed = true;
+	}
+	return {
+		changed,
+		activeAfter,
+		notes
+	};
 }
 //#endregion
 //#region src/routes.ts
@@ -2171,6 +2277,12 @@ const SkinWallpaperConfigSchema = z.object({
 */
 const apply = mountOnce("@linxin666/dsh-client-ui-skin-center", applyImpl);
 function applyImpl(ctx) {
+	try {
+		const { notes } = reconcileSkinPatches();
+		for (const note of notes) console.warn("[ui-skin-center] " + note);
+	} catch (error) {
+		console.error("[ui-skin-center] managed-section reconciliation failed:", error);
+	}
 	installSettingsSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
 		setSource: () => {},
 		onChange: () => {}

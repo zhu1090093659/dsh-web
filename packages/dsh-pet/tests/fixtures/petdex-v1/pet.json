@@ -1,0 +1,6 @@
+{
+  "id": "fixture-v1",
+  "displayName": "PetDex V1 Fixture",
+  "description": "Frozen PetDex version 1 manifest used by the stable-baseline tests.",
+  "spritesheetPath": "spritesheet.webp"
+}

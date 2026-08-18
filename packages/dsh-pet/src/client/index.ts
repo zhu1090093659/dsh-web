@@ -310,6 +310,12 @@ export function apply(ctx: ClientContext): void {
       disposeUi = undefined
     }
   }
-  settingsScope.subscribe(syncUi)
-  syncUi()
+  ctx.effect(() => {
+    const unsubscribe = settingsScope.subscribe(syncUi)
+    syncUi()
+    return () => {
+      unsubscribe()
+      disposeUi?.()
+    }
+  }, 'pet: ui lifecycle')
 }

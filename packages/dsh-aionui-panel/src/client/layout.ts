@@ -547,6 +547,9 @@ export class PanelLayoutController {
     this.styleObserver?.disconnect()
     this.sizeObserver?.disconnect()
     for (const dispose of this.disposers) dispose()
+    if (this.frame !== null && this.shellTracks.length === 3) {
+      this.frame.style.gridTemplateColumns = this.shellTracks.join(' ')
+    }
     this.previewCol?.remove()
     this.explorerCol?.remove()
     this.explorerHandle?.remove()

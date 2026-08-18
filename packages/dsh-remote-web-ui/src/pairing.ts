@@ -18,6 +18,7 @@
 import { randomBytes } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
+import type { PostureSnapshot } from './posture.ts'
 
 /** The observable pairing phases the panel renders. */
 export type PairingPhase =
@@ -77,6 +78,8 @@ export interface PairingSnapshot {
   publicUrl?: string
   /** Auto-tunnel status, while the auto-tunnel feature is active. */
   tunnel?: TunnelStatus
+  /** Latest /api posture probe (undefined until the first round completes). */
+  posture?: PostureSnapshot
   /** Opaque (non-secret) id of the active token (undefined when stopped/lan-required). */
   tokenId?: string
   /** Absolute expiry of the active token. */
@@ -153,6 +156,7 @@ export class PairingService {
   private publicBase: string | undefined
   /** Auto-tunnel status, while the auto-tunnel feature is active. */
   private tunnelStatus: TunnelStatus | undefined
+  private posture: PostureSnapshot | undefined
 
   /**
    * @param config - tunables. The settings surface replaces the object (a
@@ -258,6 +262,12 @@ export class PairingService {
   /** Set or clear the auto-tunnel status frame (undefined when the feature is off). */
   setTunnelStatus(status: TunnelStatus | undefined): void {
     this.tunnelStatus = status
+    this.notify()
+  }
+
+  /** Set the latest /api posture probe result (see posture.ts). */
+  setPosture(snapshot: PostureSnapshot | undefined): void {
+    this.posture = snapshot
     this.notify()
   }
 
@@ -379,6 +389,7 @@ export class PairingService {
       lanAddresses: [...this.lanBases.keys()],
       ...(this.publicBase !== undefined ? { publicUrl: this.publicBase } : {}),
       ...(this.tunnelStatus !== undefined ? { tunnel: this.tunnelStatus } : {}),
+      ...(this.posture !== undefined ? { posture: this.posture } : {}),
       ...(token !== undefined ? { tokenId: token.record.id, tokenExpiresAt: token.record.expiresAt } : {}),
       deviceCount: this.devices.size,
       onlineCount,

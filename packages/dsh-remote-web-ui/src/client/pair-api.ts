@@ -46,6 +46,12 @@ export interface TunnelStatusFrame {
   error?: string
 }
 
+/** One /api posture frame (host half probe; see src/posture.ts). */
+export interface PostureFrame {
+  checkedAt: number
+  hosts: { host: string; exposed: boolean }[]
+}
+
 /** One /api/pair/events frame. */
 export interface PairStateFrame {
   type: 'state'
@@ -57,6 +63,8 @@ export interface PairStateFrame {
   onlineCount: number
   /** Auto-tunnel status, while the auto-tunnel feature is active. */
   tunnel?: TunnelStatusFrame
+  /** Latest /api fence posture probe, once a round has completed. */
+  posture?: PostureFrame
 }
 
 /**

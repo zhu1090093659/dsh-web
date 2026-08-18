@@ -9,7 +9,7 @@
  */
 
 import { createRequire } from 'node:module'
-import { setInterval as nodeSetInterval } from 'node:timers'
+import { setInterval as nodeSetInterval, setTimeout as nodeSetTimeout } from 'node:timers'
 import type { IncomingMessage } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
@@ -21,6 +21,8 @@ import { RemoteWebUiPairing } from './pairing-access.ts'
 import { isTrustedApiRequest, makeRoutes } from './routes.ts'
 import { makeMobileRoutes } from './mobile-routes.ts'
 import { makeMobileApiRoutes } from './mobile-api.ts'
+import { makeRemoteApiRoutes, makeRemoteApiUpgradeRoutes } from './remote-api.ts'
+import { anyExposed, postureTargets, probePosture } from './posture.ts'
 import { lanIPv4Addresses } from './lan.ts'
 import { TunnelManager, type TunnelInfo } from './tunnel.ts'
 import {
@@ -230,6 +232,7 @@ function applyImpl(ctx: Context, config?: Config): void {
     if (info.phase === 'running' && info.url !== undefined) {
       service.setPublicBaseUrl(info.url)
       service.setTunnelStatus({ state: 'running', url: info.url })
+      runPostureProbe()
     } else if (info.phase === 'starting') {
       // A restart mints a NEW hostname: the previous URL dies with the old
       // process, so clear it now rather than advertising a dead link.
@@ -338,10 +341,55 @@ function applyImpl(ctx: Context, config?: Config): void {
     ...(apiProxy !== undefined
       ? makeMobileApiRoutes({ service, apiProxy, mobileEnterToSend: () => resolve().mobileEnterToSend })
       : []),
+    // The remote desktop channel: the paired-cookie-gated mirror of /api for
+    // desktop browsers opened at a non-loopback origin (see remote-api.ts).
+    ...(apiProxy !== undefined
+      ? makeRemoteApiRoutes({ service, apiProxy, port: ctx.webServer.port })
+      : []),
     ...updateRoutes,
   ]
+  const upgrades = apiProxy !== undefined ? makeRemoteApiUpgradeRoutes({ service, port: ctx.webServer.port }) : []
   const gate = makeGateListener(service, () => resolve().requirePairingForLan, () => resolve().enabled)
   ctx.effect(() => ctx.on('api/gate', gate), 'remote-web-ui: api gate')
+
+  // ── posture probe ─────────────────────────────────────────────────────────
+  // Guardrail for the one seam this plugin cannot mount a gate into: the
+  // connection plugin's /api Host fence. Forged-Host probes against every
+  // advertised origin (public base + LAN bases) make a re-opened /api (a
+  // re-added --trusted-host, or the SDK's LAN auto-trust under 0.0.0.0)
+  // visible on the panel and the log instead of silently trusted.
+  let postureKey: string | undefined
+  let postureWasExposed = false
+  const runPostureProbe = (): void => {
+    if (!resolve().enabled) return
+    const targets = postureTargets(service.publicBaseUrl, service.lanAddresses, ctx.webServer.port)
+    if (targets.length === 0) {
+      postureKey = undefined
+      service.setPosture(undefined)
+      return
+    }
+    const key = targets.join('|')
+    if (key === postureKey) return
+    postureKey = key
+    void probePosture({ port: ctx.webServer.port, targets }).then((snapshot) => {
+      service.setPosture(snapshot)
+      const exposedHosts = snapshot.hosts.filter(host => host.exposed).map(host => host.host)
+      const exposed = exposedHosts.length > 0
+      if (exposed && !postureWasExposed) {
+        console.error(`remote-web-ui: CRITICAL — the /api fence is OPEN for [${exposedHosts.join(', ')}]: unpaired clients reach the full host API. Remove --trusted-host for these hosts (pairing covers them) or bind loopback.`)
+      } else if (!exposed && postureWasExposed) {
+        console.log('remote-web-ui: the /api posture probe is clean again (every advertised origin refused with 403).')
+      }
+      postureWasExposed = exposed
+    }).catch(() => {
+      // A failed probe round keeps the previous snapshot; the next trigger re-probes.
+    })
+  }
+  // The first round waits for the connection plugin's /api route: a probe
+  // before it mounts would read the SPA fallback and false-positive.
+  const initialPostureTimer = nodeSetTimeout(() => { runPostureProbe() }, 5_000)
+  initialPostureTimer.unref()
+  ctx.effect(() => () => { clearTimeout(initialPostureTimer) }, 'remote-web-ui: posture probe boot')
   // Sibling plugins (aionui-panel, …) look this up by name. Absent when this
   // plugin is not installed; stop() / enabled=false still refuse cookies.
   new RemoteWebUiPairing(ctx, (request) => {
@@ -376,7 +424,10 @@ function applyImpl(ctx: Context, config?: Config): void {
     if (disposeRoutes === undefined && enabled) {
       disposeRoutes = ctx.effect(
         () => {
-          const disposers = routes.map(route => ctx.webServer.register(route))
+          const disposers = [
+            ...routes.map(route => ctx.webServer.register(route)),
+            ...upgrades.map(route => ctx.webServer.registerUpgrade(route)),
+          ]
           return () => { for (const dispose of disposers) dispose() }
         },
         'remote-web-ui: pairing routes',
@@ -398,6 +449,9 @@ function applyImpl(ctx: Context, config?: Config): void {
       disposeSweep()
       disposeSweep = undefined
     }
+    // Settings changed the reachable posture (manual publicBaseUrl, bind):
+    // re-probe unless the target set is unchanged.
+    runPostureProbe()
   }
   installSettingsSection(ctx, REMOTE_WEB_UI_SETTINGS_NAMESPACE, Config, config ?? {}, {
     setSource: (source) => {

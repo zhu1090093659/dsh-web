@@ -49,7 +49,7 @@ dsh-web-ui inherits the core philosophy of DeepSeek Harness (DSH) — "everythin
 | Task board | None | Multi-column board + cron-scheduled real runs |
 | Git visualization | None | Branch lanes + commit history graph |
 | File preview & changes | None | Right panel: better-sidebar (explorer / editor / terminal / git / browser); the legacy aionui panel is no longer supported (off by default; the settings card can switch back temporarily) |
-| Mobile remote control | None | QR pairing with SSE real-time sync |
+| Mobile remote control | None | QR pairing with SSE real-time sync; the same link also pairs a PC browser to run the full Web GUI remotely |
 | Remote server ops | None | SSH panel: terminal / transfer / tunnels / cluster |
 | Image understanding | None | `describe_image` vision tool |
 | Themes & skins | Default theme | Skin center with 11 skins, try-on before apply |
@@ -82,7 +82,7 @@ The branch picker above the input box switches branches and browses commit histo
 
 ### Mobile Remote Control
 
-The phone icon at the bottom of the sidebar opens the pairing panel. Scan the QR code (or copy the link) and the phone lands on a standalone mobile surface for the current dsh web workspace: browse and create sessions, send and receive messages, switch models and reasoning effort, adjust the permission preset, all in sync with the desktop. Pairing tokens are one-time and time-limited; "Stop" revokes every device at any time. The QR targets the LAN by default; turn on the cloudflared public tunnel and the phone can pair from any network.
+The phone icon at the bottom of the sidebar opens the pairing panel. Scan the QR code (or copy the link) and the phone lands on a standalone mobile surface for the current dsh web workspace: browse and create sessions, send and receive messages, switch models and reasoning effort, adjust the permission preset, all in sync with the desktop. The same pairing link also pairs a **PC browser**: open the desktop-URL form of the link on another computer and the full Web GUI runs there, its traffic on the pairing-gated `/remote/api` channel — unpaired devices get a banner and no data. Pairing tokens are one-time and time-limited; "Stop" revokes every device at any time. The QR targets the LAN by default; turn on the cloudflared public tunnel and the phone (and PC) can pair from any network. Note: do **not** pass `--trusted-host` for a tunnel domain — that opens the ungated `/api` to the whole internet (see the plugin README security model).
 
 > **Real-time messages and tunnels**: mobile relies on SSE (Server-Sent Events) for live messages. Cloudflare quick tunnels (trycloudflare.com) and Tailscale Serve do not pass SSE through: plain HTTP works, live push never arrives. On those networks the plugin falls back to polling, so messages still flow and only new ones may lag a few seconds. For instant push use an SSE-capable tunnel (Cloudflare named tunnel, custom TCP port forwarding, etc.).
 

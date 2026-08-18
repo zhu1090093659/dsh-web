@@ -39,6 +39,7 @@ function mergeFrame(state: PanelState, frame: PairStateFrame): PanelState {
     deviceCount: frame.deviceCount,
     onlineCount: frame.onlineCount,
     ...(frame.tunnel !== undefined ? { tunnel: frame.tunnel as TunnelStatusFrame } : {}),
+    ...(frame.posture !== undefined ? { posture: frame.posture } : {}),
   }
 }
 

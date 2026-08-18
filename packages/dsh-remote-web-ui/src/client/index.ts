@@ -24,6 +24,8 @@ import { RemoteSettingsCard, RemoteSettingsCardController, type RemoteSettings }
 import { en, zh, type RemoteKey } from './locales.ts'
 import { PAIR_FAILED_MARKER, runPairBootFlow } from './deep-link.ts'
 import { sendHeartbeat } from './pair-api.ts'
+import { installRemoteChannel, isLoopbackHostname } from './remote-channel.ts'
+import { FenceNotice } from './FenceNotice.tsx'
 
 export type { RemoteEntryProps } from './RemoteEntry.tsx'
 export type { PanelState, RemotePanelProps } from './RemotePanel.tsx'
@@ -192,6 +194,50 @@ export function apply(ctx: ClientContext): void {
   }
   settingsScope.subscribe(syncRuntime)
   syncRuntime()
+
+  // Remote desktop channel: on a non-loopback origin (LAN address or public
+  // tunnel) the connection plugin's /api fence refuses this desktop Web GUI,
+  // and pairing is the access control — so the SDK client's /api traffic is
+  // rewritten onto this plugin's gated /remote/api prefix (remote-channel.ts)
+  // while the fence setting demands it. Loopback origins are untouched.
+  let disposeChannel: (() => void) | undefined
+  let fenceNotice: { unmount: () => void; node: HTMLElement } | undefined
+  const showFenceNotice = (): void => {
+    if (fenceNotice !== undefined) return
+    const node = document.createElement('div')
+    document.body.appendChild(node)
+    const root = createRoot(node)
+    root.render(createElement(FenceNotice, { t }))
+    fenceNotice = { unmount: () => { root.unmount(); node.remove() }, node }
+  }
+  const hideFenceNotice = (): void => {
+    fenceNotice?.unmount()
+    fenceNotice = undefined
+  }
+  const channelActive = (): boolean => {
+    if (isLoopbackHostname(window.location.hostname)) return false
+    // A not-yet-loaded (or unavailable) settings snapshot falls back to the
+    // schema defaults — enabled and requirePairingForLan are both true, and
+    // on a remote origin the snapshot may never load (its own transport is
+    // what the channel gates), so waiting for 'ready' here would deadlock
+    // the channel off exactly where it is needed most.
+    const snapshot = settingsScope.getSnapshot()
+    const value = snapshot.status === 'ready' ? snapshot.value : undefined
+    return (value?.enabled ?? true) && (value?.requirePairingForLan ?? true)
+  }
+  const syncChannel = (): void => {
+    if (channelActive() && disposeChannel === undefined) {
+      disposeChannel = ctx.effect(() => {
+        const restore = installRemoteChannel(window, { onUnpaired: showFenceNotice, onPaired: hideFenceNotice })
+        return restore
+      }, 'remote-web-ui: remote desktop channel')
+    } else if (!channelActive() && disposeChannel !== undefined) {
+      disposeChannel()
+      disposeChannel = undefined
+    }
+  }
+  settingsScope.subscribe(syncChannel)
+  syncChannel()
 
   // One-time failed-pair toast. The accept result lands asynchronously, so
   // the marker check is deferred past the accept round trip.

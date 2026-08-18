@@ -148,7 +148,21 @@ export function apply(ctx: ClientContext): void {
       // A missing settings seam must not break the panel boot: default on.
       panelScope = undefined
     }
-    const enabled = (): boolean => panelScope?.getSnapshot().value?.enabled ?? true
+    /**
+     * Master switch read with three states (issue #499):
+     * - no settings seam at all: mount (the original default-on fallback);
+     * - scope bound but the snapshot has not synced yet: stay unmounted and
+     *   wait for the persisted value, so a disabled panel never flashes on a
+     *   refresh (the pre-sync `?? true` default used to mount immediately);
+     * - value synced: follow the switch (fresh installs get the schema
+     *   default true and mount).
+     */
+    const enabled = (): boolean => {
+      if (panelScope === undefined) return true
+      const value = panelScope.getSnapshot().value
+      if (value === undefined) return false
+      return value.enabled ?? true
+    }
     let disposeUi: (() => void) | undefined
 
     /**

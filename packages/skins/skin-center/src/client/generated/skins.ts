@@ -39,6 +39,8 @@ export interface SkinCenterEntry {
 export const SKIN_CENTER_ENTRIES: readonly SkinCenterEntry[] = [
   {"id":"blue-fantasy","name":"蓝色幻想","nameEn":"Blue Fantasy","author":"powerdog996（DreamSkin 社区）· dsh-web-ui 适配","tagline":"鲸鱼插画背景 · periwinkle 靛蓝调色板 · 半透明面板","description":"DreamSkin「DeepSeek-鲸鱼娘」Codex 桌面主题的 dsh 适配：鲸鱼插画背景垫在半透明面板之下，遮罩随亮/暗主题实时切换，periwinkle 靛蓝色调重映射到全部 dsh token。","tags":["dreamskin","whale","indigo","art","translucent"],"accent":"#4a5fa8","bodyAttr":"data-dsh-blue-fantasy","package":"@linxin666/dsh-client-ui-skin-blue-fantasy","order":1},
 
+  {"id":"furina","name":"芙宁娜","nameEn":"Furina","author":"sclass53","tagline":"芙宁娜背景 · 淡蓝主题 · 半透明面板","description":"基于原神角色芙宁娜的dsh-web-ui主题","tags":["whale","blue","Furina","translucent","anime"],"accent":"#4a5fb5","bodyAttr":"data-dsh-furina","package":"@linxin666/dsh-client-ui-skin-furina","order":1},
+
   {"id":"whale-song","name":"鲸吟","nameEn":"Whale Song","author":"dsh-web-ui","tagline":"深海鲸语女神背景 · 冰蓝海洋调色板 · 金色细线点缀","description":"《鲸吟》— 深海鲸语女神主题：无文字纯氛围背景画（蓝发女神与鲸群居左、冰蓝星座网格与金线点缀、右侧大量留白）垫在半透明面板之下，遮罩随亮/暗主题实时切换，冰蓝/浅青/深海军蓝/钴蓝冷色体系重映射到全部 dsh token，暗色变体为深海夜航调。","tags":["whale","ocean","ice-blue","goddess","art","translucent"],"accent":"#4d8fd4","bodyAttr":"data-dsh-whale-song","package":"@linxin666/dsh-client-ui-skin-whale-song","order":2},
 
   {"id":"harbor","name":"夕港","nameEn":"Harbor","author":"moeblack","tagline":"暮光蓝港 · 日落橙辉 · 半透明夜色面板","description":"《夕港》黄昏港口主题：动漫少女黄昏港口背景（暮光蓝天空渐入日落橙）垫在半透明面板之下，遮罩随亮/暗主题实时切换，深暮蓝 #141a2e 底与日落橙 #ff9d5c 主色重映射到 dsh token，亮色是薄暮纱、暗色是深海夜航纱，同一幅画两种读法。","tags":["harbor","dusk","twilight","sunset","amber","art","translucent"],"accent":"#ff9d5c","bodyAttr":"data-dsh-harbor","package":"@linxin666/dsh-client-ui-skin-harbor","order":3},

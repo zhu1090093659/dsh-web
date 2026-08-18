@@ -1,0 +1,27 @@
+{
+  "id": "furina",
+  "name": "芙宁娜",
+  "nameEn": "Furina",
+  "author": "sclass53",
+  "tagline": "芙宁娜背景 · 淡蓝主题 · 半透明面板",
+  "description": "基于原神角色芙宁娜的dsh-web-ui主题",
+  "tags": [
+    "whale",
+    "blue",
+    "Furina",
+    "translucent",
+    "anime"
+  ],
+  "accent": "#4a5fb5",
+  "bodyAttr": "data-dsh-furina",
+  "package": "@linxin666/dsh-client-ui-skin-furina",
+  "wiring": {
+    "id": "ui-skin-furina",
+    "bundleWired": false
+  },
+  "preview": {
+    "light": "packages/skins/furina/preview/light.png",
+    "dark": "packages/skins/furina/preview/dark.png"
+  },
+  "order": 1
+}

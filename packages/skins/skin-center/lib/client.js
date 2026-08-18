@@ -29,6 +29,25 @@ window.__ModuleLoader__.load({
 				"order": 1
 			},
 			{
+				"id": "furina",
+				"name": "芙宁娜",
+				"nameEn": "Furina",
+				"author": "sclass53",
+				"tagline": "芙宁娜背景 · 淡蓝主题 · 半透明面板",
+				"description": "基于原神角色芙宁娜的dsh-web-ui主题",
+				"tags": [
+					"whale",
+					"blue",
+					"Furina",
+					"translucent",
+					"anime"
+				],
+				"accent": "#4a5fb5",
+				"bodyAttr": "data-dsh-furina",
+				"package": "@linxin666/dsh-client-ui-skin-furina",
+				"order": 1
+			},
+			{
 				"id": "whale-song",
 				"name": "鲸吟",
 				"nameEn": "Whale Song",

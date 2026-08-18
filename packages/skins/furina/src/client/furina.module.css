@@ -1,0 +1,891 @@
+body[data-dsh-furina] {
+  color: #1d2539;
+  background-color: #e8ecf5;
+}
+
+body[data-dsh-furina][data-ds-dark-theme] {
+  color: #dbe2f2;
+  background-color: #101624;
+}
+
+/* The app frame itself is transparent — the panes below carry the frosted
+   glass over the art. */
+body[data-dsh-furina] [id='root'] {
+  background: transparent;
+}
+
+/* --- Static palette: light -------------------------------------------------
+   Whale-ink indigo replaces the deepseek/blue families; periwinkle-tinted
+   grays carry the neutrals; the gold comes from the theme's accentAlt and
+   the sea-green/red keep semantic safety. */
+
+body[data-dsh-furina] {
+  --dsw-static-amber-100: #f7ecd8;
+  --dsw-static-amber-400: #d9a94f;
+  --dsw-static-amber-500: #c08a33;
+  --dsw-static-amber-600: #a3732a;
+  --dsw-static-amber-900: #4a3515;
+  --dsw-static-blue-100: #dce3f7;
+  --dsw-static-blue-300: #a5b7e2;
+  --dsw-static-blue-400: #7f96d2;
+  --dsw-static-blue-450: #647ebf;
+  --dsw-static-blue-500: #4a5fa8;
+  --dsw-static-blue-50: #eef1fb;
+  --dsw-static-blue-50p: #e4eaf7;
+  --dsw-static-blue-600: #3c4e92;
+  --dsw-static-blue-75: #dce3f7;
+  --dsw-static-blue-800: #2c3765;
+  --dsw-static-blue-950: #141a2b;
+  --dsw-static-deepseek-100: #dce3f7;
+  --dsw-static-deepseek-200: #c3cfee;
+  --dsw-static-deepseek-300: #a5b7e2;
+  --dsw-static-deepseek-400: #7f96d2;
+  --dsw-static-deepseek-450: #647ebf;
+  --dsw-static-deepseek-500: #4a5fa8;
+  --dsw-static-deepseek-50: #eef1fb;
+  --dsw-static-deepseek-600: #3c4e92;
+  --dsw-static-deepseek-700-delete: #33417a;
+  --dsw-static-deepseek-800: #2c3765;
+  --dsw-static-deepseek-900: #222b4d;
+  --dsw-static-green-100: #dcefe2;
+  --dsw-static-green-400: #5cb877;
+  --dsw-static-green-500: #2e8e52;
+  --dsw-static-green-900: #1e3f2c;
+  --dsw-static-neutral-00: #ffffff;
+  --dsw-static-neutral-1000: #0e1220;
+  --dsw-static-neutral-100: #eef0f6;
+  --dsw-static-neutral-150: #e6e9f1;
+  --dsw-static-neutral-200: #dee2ec;
+  --dsw-static-neutral-250: #d6dae6;
+  --dsw-static-neutral-300: #c7ccda;
+  --dsw-static-neutral-400: #a8afc2;
+  --dsw-static-neutral-500: #8b93a9;
+  --dsw-static-neutral-50: #f7f8fb;
+  --dsw-static-neutral-550: #7b839a;
+  --dsw-static-neutral-600: #6b738a;
+  --dsw-static-neutral-700: #535b73;
+  --dsw-static-neutral-800: #3b4257;
+  --dsw-static-neutral-850: #343b4f;
+  --dsw-static-neutral-900: #262c3e;
+  --dsw-static-neutral-bluish-00: #ffffff;
+  --dsw-static-neutral-bluish-1000: #0e1220;
+  --dsw-static-neutral-bluish-100: #e3e8f2;
+  --dsw-static-neutral-bluish-150: #dae0ec;
+  --dsw-static-neutral-bluish-200: #d1d8e6;
+  --dsw-static-neutral-bluish-250: #c7cfe0;
+  --dsw-static-neutral-bluish-300: #b4bed4;
+  --dsw-static-neutral-bluish-400: #909dbb;
+  --dsw-static-neutral-bluish-500: #7280a3;
+  --dsw-static-neutral-bluish-50: #f2f5fa;
+  --dsw-static-neutral-bluish-600: #5b6989;
+  --dsw-static-neutral-bluish-60: #edf1f8;
+  --dsw-static-neutral-bluish-700: #48567a;
+  --dsw-static-neutral-bluish-750: #3e4b6d;
+  --dsw-static-neutral-bluish-75: #e7ecf5;
+  --dsw-static-neutral-bluish-800: #303b59;
+  --dsw-static-neutral-bluish-850: #2a3450;
+  --dsw-static-neutral-bluish-875: #242d46;
+  --dsw-static-neutral-bluish-900: #1d2539;
+  --dsw-static-neutral-bluish-950: #141a2b;
+  --dsw-static-red-100: #f7d9d9;
+  --dsw-static-red-400: #e05c5c;
+  --dsw-static-red-500: #c00000;
+  --dsw-static-red-50: #fbecec;
+  --dsw-static-red-600: #a00000;
+  --dsw-static-red-900: #5c1010;
+}
+
+/* --- Static palette: dark (night whale) ------------------------------------ */
+
+body[data-dsh-furina][data-ds-dark-theme] {
+  --dsw-static-amber-100: #4a3515;
+  --dsw-static-amber-400: #d9a94f;
+  --dsw-static-amber-500: #c08a33;
+  --dsw-static-amber-600: #a3732a;
+  --dsw-static-amber-900: #4a3515;
+  --dsw-static-blue-100: #2c3765;
+  --dsw-static-blue-300: #3c4e92;
+  --dsw-static-blue-400: #4a5fa8;
+  --dsw-static-blue-450: #647ebf;
+  --dsw-static-blue-500: #7f96d2;
+  --dsw-static-blue-50: #222b4d;
+  --dsw-static-blue-50p: #26304f;
+  --dsw-static-blue-600: #94a8dc;
+  --dsw-static-blue-75: #283352;
+  --dsw-static-blue-800: #b4c3e8;
+  --dsw-static-blue-950: #c9d4ef;
+  --dsw-static-deepseek-100: #2c3765;
+  --dsw-static-deepseek-200: #33417a;
+  --dsw-static-deepseek-300: #3c4e92;
+  --dsw-static-deepseek-400: #4a5fa8;
+  --dsw-static-deepseek-450: #647ebf;
+  --dsw-static-deepseek-500: #7f96d2;
+  --dsw-static-deepseek-50: #222b4d;
+  --dsw-static-deepseek-600: #94a8dc;
+  --dsw-static-deepseek-700-delete: #a5b7e2;
+  --dsw-static-deepseek-800: #b4c3e8;
+  --dsw-static-deepseek-900: #c3cfee;
+  --dsw-static-green-100: #1e3f2c;
+  --dsw-static-green-400: #5cb877;
+  --dsw-static-green-500: #2e8e52;
+  --dsw-static-green-900: #1e3f2c;
+  --dsw-static-neutral-00: #141a2b;
+  --dsw-static-neutral-1000: #e8ebf3;
+  --dsw-static-neutral-100: #1d2539;
+  --dsw-static-neutral-150: #212a40;
+  --dsw-static-neutral-200: #253047;
+  --dsw-static-neutral-250: #2a3550;
+  --dsw-static-neutral-300: #32405e;
+  --dsw-static-neutral-400: #455678;
+  --dsw-static-neutral-500: #586b90;
+  --dsw-static-neutral-50: #191f33;
+  --dsw-static-neutral-550: #64779c;
+  --dsw-static-neutral-600: #7083a8;
+  --dsw-static-neutral-700: #8b9cbc;
+  --dsw-static-neutral-800: #a9b7d0;
+  --dsw-static-neutral-850: #b6c2d8;
+  --dsw-static-neutral-900: #c9d2e2;
+  --dsw-static-neutral-bluish-00: #141a2b;
+  --dsw-static-neutral-bluish-1000: #e8ebf3;
+  --dsw-static-neutral-bluish-100: #232e4a;
+  --dsw-static-neutral-bluish-150: #273352;
+  --dsw-static-neutral-bluish-200: #2c3a5c;
+  --dsw-static-neutral-bluish-250: #324067;
+  --dsw-static-neutral-bluish-300: #3c4c77;
+  --dsw-static-neutral-bluish-400: #4e618f;
+  --dsw-static-neutral-bluish-500: #6276a5;
+  --dsw-static-neutral-bluish-50: #1a2238;
+  --dsw-static-neutral-bluish-600: #788bb4;
+  --dsw-static-neutral-bluish-60: #1d263e;
+  --dsw-static-neutral-bluish-700: #8fa0c2;
+  --dsw-static-neutral-bluish-750: #9baaca;
+  --dsw-static-neutral-bluish-75: #202a44;
+  --dsw-static-neutral-bluish-800: #a9b7d0;
+  --dsw-static-neutral-bluish-850: #b4c0d6;
+  --dsw-static-neutral-bluish-875: #bcc7da;
+  --dsw-static-neutral-bluish-900: #c6cfe0;
+  --dsw-static-neutral-bluish-950: #d4dae7;
+  --dsw-static-red-100: #4a2222;
+  --dsw-static-red-400: #e07070;
+  --dsw-static-red-500: #d05050;
+  --dsw-static-red-50: #3a1c1c;
+  --dsw-static-red-600: #b84040;
+  --dsw-static-red-900: #5c1010;
+}
+
+/* --- Alias palette: light ---------------------------------------------------
+   The semantic surface the components actually read; every hue derives
+   from the whale indigo/cyan/gold families above. The big surfaces
+   (bg-base, the layer stack, sidebar fill) are translucent on purpose: the
+   app rides on the whale art, so panels let it glow through instead of
+   covering it. No body- or pane-ancestor backdrop-filter is used — an
+   ancestor with backdrop-filter becomes the containing block for
+   fixed-position descendants, which would trap overlays like the settings
+   panel inside the sidebar column. The one local exception is the
+   composer seat fade band (see the composerSeat section), where a small
+   blur hides transcript bleed under the input card. */
+
+body[data-dsh-furina] {
+  --dsw-alias-bg-base: rgba(255, 255, 255, 0.1);
+  --dsw-alias-bg-layer-1: rgba(243, 245, 251, 0.5);
+  --dsw-alias-bg-layer-2: rgba(233, 237, 247, 0.75);
+  --dsw-alias-bg-layer-3: rgba(221, 227, 241, 0.58);
+  --dsw-alias-bg-mask-1: rgba(28, 37, 70, 0.4);
+  --dsw-alias-bg-mask-2: rgba(28, 37, 70, 0.2);
+  --dsw-alias-bg-mask-3: rgba(28, 37, 70, 0.5);
+  --dsw-alias-bg-mask-photo: transparent;
+  --dsw-alias-bg-module-platform: rgba(233, 237, 247, 0.55);
+  --dsw-alias-bg-multi-select: rgba(220, 227, 247, 0.8);
+  --dsw-alias-bg-overlay: rgba(238, 241, 249, 0.1);
+  --dsw-alias-bg-skeleton: rgba(28, 37, 70, 0.06);
+  --dsw-alias-border-inverted2: rgba(255, 255, 255, 0.6);
+  --dsw-alias-border-inverted: rgba(255, 255, 255, 0.4);
+  --dsw-alias-border-l1: rgba(44, 58, 115, 0.15);
+  --dsw-alias-border-l2-darkmode-thin: rgba(44, 58, 115, 0.2);
+  --dsw-alias-border-l2: rgba(44, 58, 115, 0.22);
+  --dsw-alias-border-l3: rgba(44, 58, 115, 0.32);
+  --dsw-alias-border-l4: rgba(44, 58, 115, 0.42);
+  --dsw-alias-brand-primary-invert: #ffffff;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #4a5fa8;
+  --dsw-alias-brand-primary: #4a5fa8;
+  --dsw-alias-brand-text: #222b4d;
+  --dsw-alias-button-contrast-fill: #3c4e92;
+  --dsw-alias-button-elevated-fill: #ffffff;
+  --dsw-alias-button-floating-fill: #ffffff;
+  --dsw-alias-button-floating-hover: #e9edf7;
+  --dsw-alias-button-ghost-active-border: #a5b7e2;
+  --dsw-alias-button-ghost-active-fill: #dce3f7;
+  --dsw-alias-button-ghost-active-hover: #c3cfee;
+  --dsw-alias-button-info-fill: #4a5fa8;
+  --dsw-alias-button-info-hover: #5d74c4;
+  --dsw-alias-button-primary-dimmed: #dce3f7;
+  --dsw-alias-button-primary-fill: #4a5fa8;
+  --dsw-alias-button-primary-hover: #5d74c4;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(74, 95, 168, 0.36);
+  --dsw-alias-button-tool-bar-fill: rgba(74, 95, 168, 0.5);
+  --dsw-alias-button-tool-bar-hover: rgba(74, 95, 168, 0.6);
+  --dsw-alias-interactive-bg-active: rgba(74, 95, 168, 0.14);
+  --dsw-alias-interactive-bg-hover-accent: rgba(74, 95, 168, 0.18);
+  --dsw-alias-interactive-bg-hover-danger: rgba(192, 0, 0, 0.06);
+  --dsw-alias-interactive-bg-hover-solid: #e4eaf7;
+  --dsw-alias-interactive-bg-hover: rgba(74, 95, 168, 0.08);
+  --dsw-alias-label-caption: #7c8bab;
+  --dsw-alias-label-dimmed: #909dbb;
+  --dsw-alias-label-primary-dimmed: #3e4b6d;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-alias-label-primary-inverted: #ffffff;
+  --dsw-alias-label-primary: #1d2539;
+  --dsw-alias-label-secondary: #3e4b6d;
+  --dsw-alias-label-tertiary: #5f6e93;
+  --dsw-alias-markdown-citation: rgba(233, 237, 247, 0.6);
+  --dsw-alias-markdown-code-block-banner: rgba(243, 245, 251, 0.58);
+  --dsw-alias-markdown-code-block: rgba(243, 245, 251, 0.58);
+  --dsw-alias-markdown-code-segment-selected: rgba(255, 255, 255, 0.8);
+  --dsw-alias-markdown-code-segment-unselected: rgba(238, 241, 249, 0.6);
+  --dsw-alias-markdown-inline-code: rgba(231, 236, 245, 0.6);
+  --dsw-alias-markdown-placeholder: rgba(243, 245, 251, 0.58);
+  --dsw-alias-markdown-tag: rgba(231, 236, 245, 0.6);
+  --dsw-alias-scrollbar-bg-l1: #d8dfec;
+  --dsw-alias-scrollbar-bg-l2: #d8dfec;
+  --dsw-alias-scrollbar-hover-l1: #a5b7e2;
+  --dsw-alias-scrollbar-hover-l2: #a5b7e2;
+  --dsw-alias-state-business-primary: #4a5fa8;
+  --dsw-alias-state-business-tertiary: #dce3f7;
+  --dsw-alias-state-error-primary: #c00000;
+  --dsw-alias-state-error-secondary: #e05c5c;
+  --dsw-alias-state-success-primary: #2e8e52;
+  --dsw-alias-state-success-secondary: #58b058;
+  --dsw-alias-state-success-tertiary: #dcefe2;
+  --dsw-alias-state-warn-label: #a3732a;
+  --dsw-alias-state-warn-primary: #c08a33;
+  --dsw-alias-state-warn-secondary: #d9a94f;
+  --dsw-alias-state-warn-tertiary: #f7ecd8;
+  --dsw-alias-toast-bg: #3c4e92;
+  --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-fg: #1a2238;
+  --dsw-specific-bubble-highlight: #c3cfee;
+  --dsw-specific-bubble: #dce3f7;
+  --dsw-specific-input-major: rgba(255, 255, 255, 0.6);
+  --dsw-specific-login-input: rgba(255, 255, 255, 0.6);
+  --dsw-specific-menu: rgba(243, 245, 251, 0.94);
+  --dsw-specific-selector: rgba(228, 234, 247, 0.85);
+  --dsw-specific-sidebar-fill: rgba(242, 245, 250, 0.9);
+  --dsw-specific-sidebar-nav-item-active-accent: #a5b7e2;
+  --dsw-specific-sidebar-nav-item-active: #dce3f7;
+  --dsw-specific-sidebar-nav-item-hover: #e4eaf7;
+  --dsw-specific-tip: #f3f5fb;
+}
+
+/* --- Alias palette: dark ----------------------------------------------------- */
+
+body[data-dsh-furina][data-ds-dark-theme] {
+  --dsw-alias-bg-base: rgba(16, 22, 42, 0.1);
+  --dsw-alias-bg-layer-1: rgba(26, 34, 56, 0.55);
+  --dsw-alias-bg-layer-2: rgba(38, 57, 83, 0.75);
+  --dsw-alias-bg-layer-3: rgba(38, 50, 79, 0.64);
+  --dsw-alias-bg-mask-1: rgba(0, 0, 0, 0.55);
+  --dsw-alias-bg-mask-2: rgba(0, 0, 0, 0.3);
+  --dsw-alias-bg-mask-3: rgba(0, 0, 0, 0.6);
+  --dsw-alias-bg-mask-photo: transparent;
+  --dsw-alias-bg-module-platform: rgba(32, 42, 68, 0.6);
+  --dsw-alias-bg-multi-select: rgba(44, 55, 101, 0.8);
+  --dsw-alias-bg-overlay: rgba(26, 34, 56, 0.1);
+  --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.06);
+  --dsw-alias-border-inverted2: rgba(255, 255, 255, 0.6);
+  --dsw-alias-border-inverted: rgba(255, 255, 255, 0.4);
+  --dsw-alias-border-l1: rgba(160, 180, 230, 0.12);
+  --dsw-alias-border-l2-darkmode-thin: rgba(160, 180, 230, 0.15);
+  --dsw-alias-border-l2: rgba(160, 180, 230, 0.18);
+  --dsw-alias-border-l3: rgba(160, 180, 230, 0.26);
+  --dsw-alias-border-l4: rgba(160, 180, 230, 0.34);
+  --dsw-alias-brand-primary-invert: #10141f;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #7f96d2;
+  --dsw-alias-brand-primary: #7f96d2;
+  --dsw-alias-brand-text: #c3cfee;
+  --dsw-alias-button-contrast-fill: #3c4e92;
+  --dsw-alias-button-elevated-fill: #202a44;
+  --dsw-alias-button-floating-fill: #1a2238;
+  --dsw-alias-button-floating-hover: #2c3765;
+  --dsw-alias-button-ghost-active-border: #647ebf;
+  --dsw-alias-button-ghost-active-fill: #2c3765;
+  --dsw-alias-button-ghost-active-hover: #33417a;
+  --dsw-alias-button-info-fill: #3c4e92;
+  --dsw-alias-button-info-hover: #4a5fa8;
+  --dsw-alias-button-primary-dimmed: #33417a;
+  --dsw-alias-button-primary-fill: #3c4e92;
+  --dsw-alias-button-primary-hover: #4a5fa8;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(160, 185, 235, 0.36);
+  --dsw-alias-button-tool-bar-fill: rgba(160, 185, 235, 0.5);
+  --dsw-alias-button-tool-bar-hover: rgba(160, 185, 235, 0.6);
+  --dsw-alias-interactive-bg-active: rgba(160, 185, 235, 0.14);
+  --dsw-alias-interactive-bg-hover-accent: rgba(160, 185, 235, 0.2);
+  --dsw-alias-interactive-bg-hover-danger: rgba(224, 92, 92, 0.12);
+  --dsw-alias-interactive-bg-hover-solid: #2c3765;
+  --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.07);
+  --dsw-alias-label-caption: #788bb4;
+  --dsw-alias-label-dimmed: #6276a5;
+  --dsw-alias-label-primary-dimmed: #b4c0d6;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-alias-label-primary-inverted: #10141f;
+  --dsw-alias-label-primary: #dbe2f2;
+  --dsw-alias-label-secondary: #a9b7d0;
+  --dsw-alias-label-tertiary: #8b9cbc;
+  --dsw-alias-markdown-citation: rgba(32, 42, 68, 0.62);
+  --dsw-alias-markdown-code-block-banner: rgba(23, 30, 51, 0.66);
+  --dsw-alias-markdown-code-block: rgba(23, 30, 51, 0.66);
+  --dsw-alias-markdown-code-segment-selected: rgba(38, 50, 79, 0.75);
+  --dsw-alias-markdown-code-segment-unselected: rgba(26, 34, 56, 0.6);
+  --dsw-alias-markdown-inline-code: rgba(30, 39, 64, 0.62);
+  --dsw-alias-markdown-placeholder: rgba(26, 34, 56, 0.6);
+  --dsw-alias-markdown-tag: rgba(30, 39, 64, 0.62);
+  --dsw-alias-scrollbar-bg-l1: #33406a;
+  --dsw-alias-scrollbar-bg-l2: #33406a;
+  --dsw-alias-scrollbar-hover-l1: #4a5fa8;
+  --dsw-alias-scrollbar-hover-l2: #4a5fa8;
+  --dsw-alias-state-business-primary: #7f96d2;
+  --dsw-alias-state-business-tertiary: #2c3765;
+  --dsw-alias-state-error-primary: #e05c5c;
+  --dsw-alias-state-error-secondary: #e07070;
+  --dsw-alias-state-success-primary: #58b058;
+  --dsw-alias-state-success-secondary: #58b058;
+  --dsw-alias-state-success-tertiary: #1e3f2c;
+  --dsw-alias-state-warn-label: #d9a94f;
+  --dsw-alias-state-warn-primary: #d9a94f;
+  --dsw-alias-state-warn-secondary: #d9a94f;
+  --dsw-alias-state-warn-tertiary: #4a3515;
+  --dsw-alias-toast-bg: #33417a;
+  --dsw-alias-tooltip-bg: #ffffe1;
+  --dsw-alias-tooltip-fg: #1a2238;
+  --dsw-specific-bubble-highlight: #33417a;
+  --dsw-specific-bubble: #2c3765;
+  --dsw-specific-input-major: rgba(26, 34, 56, 0.65);
+  --dsw-specific-login-input: rgba(26, 34, 56, 0.65);
+  --dsw-specific-menu: rgba(26, 34, 56, 0.94);
+  --dsw-specific-selector: rgba(30, 39, 64, 0.85);
+  --dsw-specific-sidebar-fill: rgba(29, 37, 57, 0.9);
+  --dsw-specific-sidebar-nav-item-active-accent: #33417a;
+  --dsw-specific-sidebar-nav-item-active: #2c3765;
+  --dsw-specific-sidebar-nav-item-hover: #202a44;
+  --dsw-specific-tip: #1a2238;
+}
+
+/* --- Ambient surfaces -------------------------------------------------------
+   No pane-level rules here: the app rides on the whale art through the
+   translucent tokens above (bg-base, the layer stack, sidebar fill, menus,
+   inputs). backdrop-filter stays off every ancestor surface — it would trap
+   fixed overlays (e.g. the settings panel) inside their ancestor's box —
+   except the composer seat fade band below, whose local blur only frosts
+   the transcript bleed under the input card. */
+
+body[data-dsh-furina] [id='root'] {
+  background: transparent;
+}
+
+/* --- Chrome details ---------------------------------------------------------
+   Scrollbars, selection, links, and focus rings in the whale inks. */
+
+body[data-dsh-furina] {
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+body[data-dsh-furina]::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body[data-dsh-furina]::-webkit-scrollbar-track {
+  background: #eef1f9;
+}
+
+body[data-dsh-furina]::-webkit-scrollbar-thumb {
+  background: #b4c3e8;
+  border: 2px solid #eef1f9;
+  border-radius: 5px;
+}
+
+body[data-dsh-furina]::-webkit-scrollbar-thumb:hover {
+  background: #7f96d2;
+}
+
+body[data-dsh-furina]::-webkit-scrollbar-corner {
+  background: #eef1f9;
+}
+
+body[data-dsh-furina][data-ds-dark-theme]::-webkit-scrollbar-track,
+body[data-dsh-furina][data-ds-dark-theme]::-webkit-scrollbar-corner {
+  background: #141a2b;
+}
+
+body[data-dsh-furina][data-ds-dark-theme]::-webkit-scrollbar-thumb {
+  background: #455678;
+  border-color: #141a2b;
+}
+
+body[data-dsh-furina][data-ds-dark-theme]::-webkit-scrollbar-thumb:hover {
+  background: #6276a5;
+}
+
+body[data-dsh-furina]::selection {
+  background: #4a5fa8;
+  color: #ffffff;
+}
+
+body[data-dsh-furina][data-ds-dark-theme]::selection {
+  background: #7f96d2;
+  color: #10141f;
+}
+
+body[data-dsh-furina] a {
+  color: #3c4e92;
+}
+
+body[data-dsh-furina] a:visited {
+  color: #6a5fa8;
+}
+
+body[data-dsh-furina][data-ds-dark-theme] a {
+  color: #94a8dc;
+}
+
+body[data-dsh-furina][data-ds-dark-theme] a:visited {
+  color: #a58fdc;
+}
+
+/* Keyboard focus: a clear 2px ring in the whale-ink primary, floated 2px off
+   the element so it stays legible against the frosted surfaces. Uses the
+   theme-token primary so it tracks the light/dark variant and never the
+   UA default outline. */
+body[data-dsh-furina] :focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+body[data-dsh-furina][data-ds-dark-theme] :focus-visible {
+  outline-color: var(--dsw-alias-state-business-primary);
+}
+
+body[data-dsh-furina] [data-pane='sidebar'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-furina] [role='tooltip'] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
+}
+
+body[data-dsh-furina] [role='dialog'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-dsh-furina] [role='dialog'] [class*='navCell']:not([aria-current='true']) {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Text tabs are labels, not chrome plates. */
+body[data-dsh-furina] button[role='tab'],
+body[data-dsh-furina] button[role='tab']:hover,
+body[data-dsh-furina] button[role='tab']:active,
+body[data-dsh-furina] button[role='tab']:disabled,
+body[data-dsh-furina] button[role='tab']:hover:not(:disabled),
+body[data-dsh-furina] button[role='tab']:active:not(:disabled) {
+  background-image: none;
+  background-color: transparent;
+  box-shadow: none;
+  text-shadow: none;
+  border: 0;
+  color: var(--dsw-alias-label-primary);
+  transform: none;
+  filter: none;
+  opacity: 1;
+}
+
+/* --- aionui 右侧面板适配（dsh-aionui-panel）-------------------------------
+   The host right-hand panel system (Explorer 文件树 + SCM 变更 + Preview
+   预览) rides its own `--aion-*` token set, remapped here into the
+   furina periwinkle-indigo palette so the panel floats on the whale
+   art exactly like the main interface: translucent frosted surfaces with a
+   backdrop blur. All token values share the skin's palette (blue-* /
+   neutral-bluish-* above). The panel's own overlays (dialog, context menu,
+   toast) are React-portaled to document.body, so applying backdrop-filter on
+   the columns cannot trap them — the skin's usual no-blur discipline does
+   not apply here and the frosted glass is safe. Divided into 1) token remap,
+   2) columns & roots (frost + readability), 3) interactive controls.
+
+   --- 1) token remap: light (periwinkle-indigo translucent) ------------- */
+
+body[data-dsh-furina] {
+  --aion-bg-base: rgba(255, 255, 255, 0.6);
+  --aion-bg-1: rgba(243, 245, 251, 0.5);
+  --aion-bg-2: rgba(233, 237, 247, 0.62);
+  --aion-bg-3: rgba(74, 95, 168, 0.22);
+  --aion-bg-4: rgba(74, 95, 168, 0.34);
+  --aion-bg-hover: rgba(74, 95, 168, 0.08);
+  --aion-bg-active: rgba(74, 95, 168, 0.14);
+  --aion-text-primary: #1d2539;
+  --aion-text-secondary: #3e4b6d;
+  --aion-text-tertiary: #5f6e93;
+  --aion-text-disabled: #909dbb;
+  --aion-primary: #4a5fa8;
+  --aion-success: #2e8e52;
+  --aion-warning: #c08a33;
+  --aion-danger: #c00000;
+  --aion-brand: #a5b7e2;
+  --aion-aou-1: #eef1fb;
+  --aion-aou-2: #dce3f7;
+  --aion-aou-3: #a5b7e2;
+  --aion-aou-4: #647ebf;
+  --aion-aou-5: #4a5fa8;
+  --aion-aou-6: #33417a;
+  --aion-fill-2: rgba(74, 95, 168, 0.06);
+  --aion-fill-3: rgba(74, 95, 168, 0.14);
+  --aion-border-base: rgba(44, 58, 115, 0.18);
+  --aion-overlay-shadow: 0 8px 24px rgba(28, 37, 70, 0.25);
+  --aion-font-sans: -apple-system, "system-ui", "Segoe UI", Roboto,
+    "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --aion-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+/* --- 1) token remap: dark (deeper indigo frosted) ------------------------ */
+
+body[data-dsh-furina][data-ds-dark-theme] {
+  --aion-bg-base: rgba(26, 34, 56, 0.82);
+  --aion-bg-1: rgba(26, 34, 56, 0.5);
+  --aion-bg-2: rgba(32, 42, 68, 0.6);
+  --aion-bg-3: rgba(160, 180, 230, 0.2);
+  --aion-bg-4: rgba(160, 185, 235, 0.3);
+  --aion-bg-hover: rgba(160, 185, 235, 0.12);
+  --aion-bg-active: rgba(160, 185, 235, 0.2);
+  --aion-text-primary: #dbe2f2;
+  --aion-text-secondary: #a9b7d0;
+  --aion-text-tertiary: #8b9cbc;
+  --aion-text-disabled: #6276a5;
+  --aion-primary: #7f96d2;
+  --aion-success: #58b058;
+  --aion-warning: #d9a94f;
+  --aion-danger: #e05c5c;
+  --aion-brand: #a5b7e2;
+  --aion-aou-1: #202a44;
+  --aion-aou-2: #26304f;
+  --aion-aou-3: #33417a;
+  --aion-aou-4: #4a5fa8;
+  --aion-aou-5: #647ebf;
+  --aion-aou-6: #94a8dc;
+  --aion-fill-2: rgba(160, 185, 235, 0.12);
+  --aion-fill-3: rgba(160, 185, 235, 0.2);
+  --aion-border-base: rgba(160, 180, 230, 0.15);
+  --aion-overlay-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* --- 2) columns & roots: frosted glass over the whale art --------------- */
+
+body[data-dsh-furina] [data-aionui-explorer-col],
+body[data-dsh-furina] [data-aionui-preview-col] {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+body[data-dsh-furina] :global(.aionui-root) {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* --- 3) interactive controls: portal'd frosted floaters + theme mask ----- */
+
+body[data-dsh-furina] :global(.aionui-dialog),
+body[data-dsh-furina] :global(.aionui-menu),
+body[data-dsh-furina] :global(.aionui-toast) {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+body[data-dsh-furina] :global(.aionui-overlay) {
+  background: rgba(28, 37, 70, 0.4);
+}
+
+body[data-dsh-furina][data-ds-dark-theme] :global(.aionui-overlay) {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* --- 3) interactive polish ------------------------------------------------
+   Smooth the state changes the token remap already drives. All transitions
+   are short (130ms) and appearance-only (color / background / border / box-shadow /
+   opacity) so nothing reflows; the whole set folds to `transition: none` under
+   prefers-reduced-motion at the end of this section. Disabled controls get an
+   obvious dim and stop responding to hover. */
+
+body[data-dsh-furina] button,
+body[data-dsh-furina] a,
+body[data-dsh-furina] :global(.aionui-btn),
+body[data-dsh-furina] :global(.aionui-menu-item),
+body[data-dsh-furina] :global(.aionui-explorer-handle),
+body[data-dsh-furina] :global(.aionui-preview-handle) {
+  transition: background-color 0.13s ease, border-color 0.13s ease,
+    box-shadow 0.13s ease, color 0.13s ease, opacity 0.13s ease;
+}
+
+body[data-dsh-furina] ::-webkit-scrollbar-thumb {
+  transition: background-color 0.13s ease;
+}
+
+/* Links: breathe toward the deeper ink on hover, press flat on active. */
+body[data-dsh-furina] a:hover {
+  color: #2c3765;
+  text-decoration: underline;
+}
+
+body[data-dsh-furina] a:active {
+  color: #222b4d;
+}
+
+body[data-dsh-furina][data-ds-dark-theme] a:hover {
+  color: #b4c3e8;
+}
+
+body[data-dsh-furina][data-ds-dark-theme] a:active {
+  color: #c9d4ef;
+}
+
+/* Disabled controls: visibly dimmed and inert to hover / focus. */
+body[data-dsh-furina] button:disabled,
+body[data-dsh-furina] :global(.aionui-btn:disabled),
+body[data-dsh-furina] :global(.aionui-menu-item-disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+body[data-dsh-furina] :global(.aionui-btn:disabled:hover),
+body[data-dsh-furina] :global(.aionui-menu-item-disabled):hover {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+/* aionui panel: drag handles glow with the whale indigo on hover, and the
+   collapsed-expand affordance mirrors the hand. */
+body[data-dsh-furina] :global(.aionui-explorer-handle),
+body[data-dsh-furina] :global(.aionui-preview-handle) {
+  background: #d8dfec;
+}
+
+body[data-dsh-furina] :global(.aionui-explorer-handle):hover,
+body[data-dsh-furina] :global(.aionui-preview-handle):hover {
+  background: #7f96d2;
+  box-shadow: 0 0 6px rgba(74, 95, 168, 0.4);
+}
+
+body[data-dsh-furina][data-ds-dark-theme] :global(.aionui-explorer-handle),
+body[data-dsh-furina][data-ds-dark-theme] :global(.aionui-preview-handle) {
+  background: #33406a;
+}
+
+body[data-dsh-furina][data-ds-dark-theme] :global(.aionui-explorer-handle):hover,
+body[data-dsh-furina][data-ds-dark-theme] :global(.aionui-preview-handle):hover {
+  background: #6276a5;
+  box-shadow: 0 0 6px rgba(127, 150, 210, 0.4);
+}
+
+body[data-dsh-furina] :global(.aionui-floating-expand):hover {
+  background: #e4eaf7;
+  border-color: #647ebf;
+}
+
+body[data-dsh-furina] :global(.aionui-floating-expand):active {
+  background: #dce3f7;
+}
+
+body[data-dsh-furina][data-ds-dark-theme] :global(.aionui-floating-expand):hover {
+  background: #2c3765;
+  border-color: #647ebf;
+}
+
+body[data-dsh-furina][data-ds-dark-theme] :global(.aionui-floating-expand):active {
+  background: #33417a;
+}
+
+body[data-dsh-furina] :global(.aionui-collapse-chevron):hover {
+  color: #647ebf;
+}
+
+body[data-dsh-furina][data-ds-dark-theme] :global(.aionui-collapse-chevron):hover {
+  color: #a5b7e2;
+}
+
+/* aionui menu items: hover only on enabled rows (the token remap supplies
+   the resting fill; disabled rows keep their dim and no hover). */
+body[data-dsh-furina] :global(.aionui-menu-item:not(.aionui-menu-item-disabled):hover) {
+  background: rgba(74, 95, 168, 0.12);
+}
+
+body[data-dsh-furina][data-ds-dark-theme] :global(.aionui-menu-item:not(.aionui-menu-item-disabled):hover) {
+  background: rgba(160, 185, 235, 0.16);
+}
+
+/* --- reduced-motion: fold all transitions to instant --------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-dsh-furina] button,
+  body[data-dsh-furina] a,
+  body[data-dsh-furina] :global(.aionui-btn),
+  body[data-dsh-furina] :global(.aionui-menu-item),
+  body[data-dsh-furina] :global(.aionui-explorer-handle),
+  body[data-dsh-furina] :global(.aionui-preview-handle),
+  body[data-dsh-furina] ::-webkit-scrollbar-thumb {
+    transition: none;
+  }
+}
+
+/* --- git-graph 提交图适配（dsh-git-graph） -----------------------------------
+   The git graph dialog / branch popover / selector chip read the shell's
+   --dsw-alias-* remap, so their surfaces already float on the periwinkle
+   frosted palette. These rules add the skin's own color voice to the commit
+   topology: each lane column gets a hue from the whale-indigo family (pass
+   lines stay muted; the current-branch badge keeps the brand fill), and the
+   dialog frame joins the panel's frosted-glass treatment. Hooks are the
+   presentation-neutral data-gitgraph-* attributes emitted by the
+   dsh-git-graph bundle — no hashed class names are involved. */
+
+/* Lane hue ramp: indigo / green / amber / periwinkle, repeating every six
+   columns. Node and merge glyphs share the column hue; pass and gap cells
+   keep the muted lane color from the plugin's own tokens. */
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+1),
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+1) { color: #4a5fa8; }
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+2),
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+2) { color: #2e8e52; }
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+3),
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+3) { color: #c08a33; }
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+4),
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+4) { color: #647ebf; }
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+5),
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+5) { color: #3c4e92; }
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n),
+body[data-dsh-furina] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n) { color: #58b058; }
+
+/* Night variant: the same hue family, lifted for the deep indigo sea. */
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+1),
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+1) { color: #7f96d2; }
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+2),
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+2) { color: #58b058; }
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+3),
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+3) { color: #d9a94f; }
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+4),
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+4) { color: #94a8dc; }
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+5),
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+5) { color: #647ebf; }
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n),
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n) { color: #7cc97c; }
+
+/* Dialog frame: frosted glass over the whale art, like the panel columns. */
+body[data-dsh-furina] [data-gitgraph-dialog] {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-color: rgba(160, 180, 230, 0.4);
+}
+
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-dialog] {
+  border-color: rgba(160, 180, 230, 0.22);
+}
+
+/* Ref badges (non-current): translucent periwinkle chips; the current branch
+   keeps the brand fill from the token remap. */
+body[data-dsh-furina] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
+  background: rgba(74, 95, 168, 0.12);
+  border: 1px solid rgba(44, 58, 115, 0.2);
+}
+
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
+  background: rgba(160, 185, 235, 0.14);
+  border-color: rgba(160, 180, 230, 0.2);
+}
+
+
+/* --- 输入区选择器适配：工作区 + Git 分支胶囊（dsh-git-graph） -------------
+   The composer selector row above the input card holds two pills: the
+   official workspace picker and the git-graph branch chip. Both draw from
+   --dsw-alias-button-tool-bar-fill / border-l2 / label-secondary, and the
+   skin's global remap paints them with a heavy 50%-alpha indigo fill that
+   reads as a washed-out lavender and loses its fill on hover. This section
+   re-scopes those tokens on the selector row (located structurally through
+   the git-graph chip hook data-gitgraph-chip) so both pills become crisp
+   frosted periwinkle chips: a hairline lavender fill, a clear indigo border,
+   deep ink labels, tinted hover/active, and an open-state tint. Row-scoped
+   values only reach the row's own descendants (the two chips); the rest of
+   the shell keeps the global remap. Light + dark. */
+
+body[data-dsh-furina] div:has(> div > [data-gitgraph-chip]) {
+  --dsw-alias-button-tool-bar-fill: rgba(74, 95, 168, 0.08);
+  --dsw-alias-border-l2: rgba(74, 95, 168, 0.38);
+  --dsw-alias-label-secondary: #2c3765;
+  --dsw-alias-label-tertiary: #647ebf;
+  --dsw-alias-interactive-bg-hover: rgba(74, 95, 168, 0.14);
+  --dsw-alias-interactive-bg-active: rgba(74, 95, 168, 0.2);
+}
+
+body[data-dsh-furina][data-ds-dark-theme] div:has(> div > [data-gitgraph-chip]) {
+  --dsw-alias-button-tool-bar-fill: rgba(160, 185, 235, 0.08);
+  --dsw-alias-border-l2: rgba(160, 180, 230, 0.38);
+  --dsw-alias-label-secondary: #c9d4ef;
+  --dsw-alias-label-tertiary: #8b9cbc;
+  --dsw-alias-interactive-bg-hover: rgba(160, 185, 235, 0.14);
+  --dsw-alias-interactive-bg-active: rgba(160, 185, 235, 0.22);
+}
+
+/* Open state: both chips keep a soft periwinkle tint under the brand border
+   (the workspace chip toggles aria-expanded, the branch chip too). */
+body[data-dsh-furina] div:has(> div > [data-gitgraph-chip]) > button[aria-expanded='true'],
+body[data-dsh-furina] [data-gitgraph-chip][aria-expanded='true'] {
+  background-color: rgba(74, 95, 168, 0.16);
+}
+
+body[data-dsh-furina][data-ds-dark-theme] div:has(> div > [data-gitgraph-chip]) > button[aria-expanded='true'],
+body[data-dsh-furina][data-ds-dark-theme] [data-gitgraph-chip][aria-expanded='true'] {
+  background-color: rgba(160, 185, 235, 0.18);
+}
+
+
+/* --- 输入框停靠区磨砂渐隐（composerSeat） ----------------------------------
+   The official composer seat fades the scrolled transcript out under a
+   36px band that ends in var(--dsw-alias-bg-base). This skin keeps
+   --dsw-alias-bg-base translucent so the whale art shows through the
+   panes; the same token leaks into the seat's fade band, leaving its solid
+   region see-through and letting scrolled messages bleed under the input
+   card. Keep the fade, but end it in a translucent version of the page ink
+   instead of an opaque plate, and blur whatever still shows through with a
+   local backdrop filter. The whale art stays visible through the seat while
+   the scrolled transcript stays hidden; the input card itself keeps the
+   skin's normal frosted surfaces. The frost (the veil gradient plus
+   backdrop-filter) sits on the seat's own ::before, never on the seat
+   element itself: a filter on the seat would become the containing block
+   for the fixed-position descendants rendered inside it (the git-graph
+   popover backdrop and graph dialog), re-anchoring them to the seat box.
+   Light + dark. */
+
+body[data-dsh-furina] [data-phase='active'] [class*='composerSeat'] {
+  background: transparent !important;
+}
+
+body[data-dsh-furina] [data-phase='active'] [class*='composerSeat']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0px,
+    rgba(232, 236, 245, 0.86) 36px
+  );
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+body[data-dsh-furina][data-ds-dark-theme] [data-phase='active'] [class*='composerSeat']::before {
+  background: linear-gradient(
+    180deg,
+    transparent 0px,
+    rgba(16, 22, 36, 0.82) 36px
+  );
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+

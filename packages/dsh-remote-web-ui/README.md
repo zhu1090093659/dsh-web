@@ -270,6 +270,11 @@ pairing fence trusts the tunneled host. Two knobs are involved:
   card): the public origin, e.g. `https://foo.trycloudflare.com`. The QR
   link is built from it, and `accept`/`heartbeat`/`status` accept its host.
   Malformed values are ignored with a warning (LAN-only behavior kept).
+  Unpaired callers of `status` see only the pairing-relevant fields (phase /
+  LAN bases); token expiry, device roster, and the tunnel URL require a live
+  device cookie. The accept rate limit partitions its buckets by the
+  client-visible `X-Forwarded-For` hop so one internet client cannot
+  exhaust the shared bucket behind the tunnel.
 - **`--trusted-host <authority>`** (dsh web flag): the transport-level
   `/api` fence of the connection plugin must accept the public host too —
   without it every `/api` request through the tunnel 403s *before* the

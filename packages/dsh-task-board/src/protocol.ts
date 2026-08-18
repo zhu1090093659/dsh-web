@@ -33,6 +33,13 @@ export interface TaskBoardSnapshot {
   power: TaskBoardPowerSnapshot
 }
 
+/** SSE event frame: revision/scheduler/power only, never the task list. */
+export interface TaskBoardEventPayload {
+  revision: number
+  scheduler: TaskBoardSchedulerSnapshot
+  power: TaskBoardPowerSnapshot
+}
+
 export type TaskBoardAction =
   | { kind: 'import'; sourceId: string; tasks: TaskRecord[] }
   | { kind: 'create'; id: string; input: NewTaskInput }

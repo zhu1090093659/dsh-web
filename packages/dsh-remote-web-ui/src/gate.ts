@@ -89,6 +89,8 @@ export function makeGateListener(
     if (!active) return false
     const require = typeof requirePairingForLan === 'function' ? requirePairingForLan() : requirePairingForLan
     if (!require) return next()
+    // The paired-device cookie is a full host-API credential: it passes this
+    // gate for the whole ApiProxy surface, not just the /m/api allowlist.
     return isPairedDeviceRequest(service, request) ? next() : false
   }
 }

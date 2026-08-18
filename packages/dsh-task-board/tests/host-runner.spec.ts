@@ -111,4 +111,20 @@ describe('HostExecutionRunner', () => {
     expect(history).toHaveBeenCalledTimes(2)
     expect(history.mock.calls[1][0].payload.beforeSeq).toBe(300)
   })
+
+  it('carries the session list in listRunning and reuses it in inspect without another list RPC', async () => {
+    const items = [{ sessionId: 'session-a', running: false }]
+    const list = vi.fn(async (request: { rpcId: unknown }) => ok(request, { items }))
+    const history = vi.fn(async (request: { rpcId: unknown }) => ok(request, {
+      events: [{ event: { type: 'turn/end', seq: 10, time: 1_100, data: { reason: { kind: 'complete' } } } }],
+      hasMore: false,
+    }))
+    const runner = new HostExecutionRunner({ sessions: { list, history } } as unknown as ApiProxy)
+    const running = await runner.listRunning()
+    expect(running).toEqual({ known: true, count: 0, items })
+    if (!running.known) throw new Error('expected known')
+    await expect(runner.inspect('session-a', 1_000, running.items)).resolves.toEqual({ outcome: 'succeeded' })
+    expect(list).toHaveBeenCalledOnce()
+    expect(history).toHaveBeenCalledOnce()
+  })
 })

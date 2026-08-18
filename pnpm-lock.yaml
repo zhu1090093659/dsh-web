@@ -850,6 +850,9 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
 
   packages/skins/dragon-heir:
     devDependencies:
@@ -871,6 +874,9 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
 
   packages/skins/harbor:
     devDependencies:
@@ -892,6 +898,9 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
 
   packages/skins/maid-atelier:
     devDependencies:
@@ -940,6 +949,9 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
 
   packages/skins/miku:
     devDependencies:
@@ -961,6 +973,9 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
 
   packages/skins/minecraft:
     devDependencies:
@@ -982,6 +997,9 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
 
   packages/skins/skin-center:
     dependencies:
@@ -1025,9 +1043,21 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
+      '@types/node':
+        specifier: ^22.20.0
+        version: 22.20.1
+      '@types/react':
+        specifier: ^18.3.0
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.7(@types/react@18.3.31)
       tsdown:
         specifier: ^0.22.2
-        version: 0.22.2(typescript@6.0.3)
+        version: 0.22.2(typescript@5.7.3)
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
@@ -1055,6 +1085,9 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
 
   packages/skins/whale-mom:
     devDependencies:
@@ -1076,6 +1109,9 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
 
   packages/skins/whale-song:
     devDependencies:
@@ -1097,6 +1133,9 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
 
   packages/skins/xp:
     devDependencies:
@@ -1118,6 +1157,9 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)
+      typescript:
+        specifier: ~5.7.2
+        version: 5.7.3
 
   shared:
     devDependencies:
@@ -1142,9 +1184,6 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^6.1.1
-        version: 6.1.1(typescript@6.0.3)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2))
       vitest:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)

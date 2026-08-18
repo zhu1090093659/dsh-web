@@ -2,9 +2,9 @@ import type { ApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
 import { nextRunAtMs } from './core/schedule.ts'
 import type { TaskRecord } from './core/tasks.ts'
 import { HostTaskLedger, type OpenedRun } from './host-ledger.ts'
-import { HostExecutionRunner, SessionLaunchError } from './host-runner.ts'
+import { HostExecutionRunner, SessionLaunchError, type SessionSummary } from './host-runner.ts'
 import { PowerInhibitor } from './power-inhibitor.ts'
-import type { TaskBoardAction, TaskBoardSnapshot } from './protocol.ts'
+import type { TaskBoardAction, TaskBoardEventPayload, TaskBoardSnapshot } from './protocol.ts'
 
 const SESSION_POLL_MS = 5_000
 const SCHEDULE_TICK_MS = 30_000
@@ -22,6 +22,7 @@ export class TaskBoardHostService {
   private tickInFlight = false
   private active = true
   private preventIdleSleep = false
+  private lastPowerJson = ''
   private readonly now: () => number
 
   constructor(api: ApiProxy, options: { ledger?: HostTaskLedger; power?: PowerInhibitor; now?: () => number } = {}) {
@@ -33,7 +34,15 @@ export class TaskBoardHostService {
       this.syncPowerReasons()
       this.emit()
     })
-    this.power.subscribe(() => { this.emit() })
+    this.power.subscribe(() => {
+      // updateReasons emits on every poll tick even when nothing changed;
+      // gate on the actual snapshot so the 5 s heartbeat does not push an
+      // empty SSE frame per tab forever.
+      const json = JSON.stringify(this.power.snapshot())
+      if (json === this.lastPowerJson) return
+      this.lastPowerJson = json
+      this.emit()
+    })
   }
 
   start(): void {
@@ -74,6 +83,12 @@ export class TaskBoardHostService {
       scheduler: state.scheduler,
       power: this.power.snapshot(),
     }
+  }
+
+  /** SSE frame payload; deliberately skips the tasks deep-clone of {@link snapshot}. */
+  eventPayload(): TaskBoardEventPayload {
+    const { revision, scheduler } = this.ledger.summary()
+    return { revision, scheduler, power: this.power.snapshot() }
   }
 
   subscribe(listener: () => void): () => void {
@@ -124,16 +139,18 @@ export class TaskBoardHostService {
       armedSchedules: this.armedSchedules(),
       sessionStateKnown: running.known,
     })
-    if (running.known) await this.reconcileExecutions()
-    this.emit()
+    // No unconditional emit here: real changes already emit through the
+    // ledger subscription (settles) and the gated power listener above.
+    if (running.known) await this.reconcileExecutions(running.items)
   }
 
-  private async reconcileExecutions(): Promise<void> {
+  /** Reuse the session list this poll already fetched: one list RPC per tick, not 1 + E. */
+  private async reconcileExecutions(sessions: readonly SessionSummary[]): Promise<void> {
     for (const task of this.ledger.state().tasks) {
       for (const execution of task.executions) {
         if (execution.sessionId === undefined || execution.endedAt !== undefined) continue
         try {
-          const result = await this.runner.inspect(execution.sessionId, execution.startedAt)
+          const result = await this.runner.inspect(execution.sessionId, execution.startedAt, sessions)
           if (result.outcome === 'pending') continue
           this.ledger.settle(task.id, execution.id, result.outcome, 'error' in result ? result.error : undefined)
         } catch {

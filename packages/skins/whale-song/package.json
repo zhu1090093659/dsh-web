@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-whale-song",
   "description": "Hot-pluggable 鲸吟 (whale-song) skin for the dsh web GUI: deep-sea whale-goddess ambience — text-free ocean art backdrop with live theme scrim, ice-blue/cyan/navy palette with gold-thread accents, translucent panes",
-  "version": "0.1.20",
+  "version": "0.2.0",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -20,6 +20,7 @@
     "build": "tsdown",
     "prepare": "tsdown",
     "watch": "tsdown --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.vitest.json --noEmit",
     "test": "vitest run"
   },
   "license": "Apache-2.0",
@@ -30,7 +31,8 @@
     "tsdown": "^0.22.2",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.8",
-    "@deepseek-ai/cordis": "^4.0.1"
+    "@deepseek-ai/cordis": "^4.0.1",
+    "typescript": "~5.7.2"
   },
   "files": [
     "lib",

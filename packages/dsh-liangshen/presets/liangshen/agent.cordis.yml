@@ -2,7 +2,7 @@
 # preset's exact two tools (persistent `bash` plus `str_replace_editor`) and
 # the same one-line persona, with no runtime contexts and no injected pre-step
 # messages, anchoring the Minimal trajectory; after a stabilized anchor the
-# wire switches to Code Mode (PTC) and the ordinary injections open. The
+# wire switches to PTC Mode and the ordinary injections open. The
 # phase-1 surface matches the official "exact RL prompt and schemas" snapshot
 # byte-for-byte on the model-visible wire shape, at the cost of keeping the
 # persistent shell for the whole session. Unlike the builtin Minimal preset,
@@ -50,14 +50,14 @@
 # `promoteAfterFirstResponse` avoids a permanent two-tool session after a
 # tool-less first response, and releases an anchor-gated session once its
 # first turn ends (`turn/end`). After promotion the catalog is presented as
-# Code Mode (PTC): a single `run_code` tool on the wire, switched at the step
+# PTC Mode: a single `run_code` tool on the wire, switched at the step
 # boundary; workspace instructions and the skill catalog are deferred one
 # step after promotion. `bootstrapMaxTokens` caps the phase-1 request output
 # budget (community-observed "We need" trigger window, 1024) and is stripped
 # again after promotion so the cap never solders into later requests.
 # After a compaction the session falls back to the controlled phase — the
 # bootstrap pair plus `compactionTools` (a core work set) — until a NEW
-# promotion signal exists past the boundary, and Code Mode is released until
+# promotion signal exists past the boundary, and PTC Mode is released until
 # the session re-promotes.
 # `phase1FirstCallInstruction` is an opt-in extra line appended to the
 # phase-1 persona for test builds (issue #274): the model is asked to ground

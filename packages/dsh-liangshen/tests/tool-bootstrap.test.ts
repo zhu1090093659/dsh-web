@@ -475,7 +475,7 @@ describe('anchored-tool-bootstrap', () => {
     expect(hasAnchoredReasoning(minimalThenStandard)).toBe(true)
   })
 
-  test('promotedPresentation switches to Code Mode once per session', async () => {
+  test('promotedPresentation switches to PTC Mode once per session', async () => {
     expect(inject).toContain('tools')
 
     const listeners = register({ promotedPresentation: 'code', anchorGate: true })
@@ -664,7 +664,7 @@ describe('anchored-tool-bootstrap', () => {
     expect(result.tools.map((tool: any) => tool.name)).toEqual(['bash', 'read', 'write', 'edit'])
   })
 
-  test('compaction/end disposes the Code Mode presentation and re-declares on re-promotion', async () => {
+  test('compaction/end disposes the PTC Mode presentation and re-declares on re-promotion', async () => {
     const listeners = register({ promotedPresentation: 'code', anchorGate: true })
     const assembleListener = listener(listeners, 'system-prompt/assemble')
     const eventListener = listener(listeners, 'session/event')
@@ -681,12 +681,12 @@ describe('anchored-tool-bootstrap', () => {
     const tools = [{ name: 'bash' }, { name: 'read' }, { name: 'edit' }]
     const next = async () => ({ system: 'minimal persona', tools, contexts: [], sections: SECTIONS })
 
-    // Promoted: Code Mode declared.
+    // Promoted: PTC Mode declared.
     await assembleListener(undefined, { agent }, next)
     expect(modes).toEqual(['code'])
     expect(disposed).toBe(0)
 
-    // The compaction releases Code Mode.
+    // The compaction releases PTC Mode.
     sessionObj.events.push({ type: 'compaction/end', seq: 10 })
     await eventListener(sessionObj, { type: 'compaction/end', seq: 10 })
     expect(disposed).toBe(1)
@@ -695,7 +695,7 @@ describe('anchored-tool-bootstrap', () => {
     const after = await assembleListener(undefined, { agent }, next)
     expect(after.tools.map((tool: any) => tool.name)).toEqual(['bash', 'read'])
 
-    // A new anchor re-promotes and re-declares Code Mode.
+    // A new anchor re-promotes and re-declares PTC Mode.
     sessionObj.events.push(stepEvent(), reasoningEvent('We need inspect the repo again.'), { type: 'tool/call' })
     await eventListener(sessionObj, { type: 'step/end' })
     const rePromoted = await assembleListener(undefined, { agent }, next)

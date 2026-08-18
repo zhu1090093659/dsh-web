@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTask } from '../src/core/tasks.ts'
 import { HttpTaskBoardHostTransport } from '../src/client/host-api.ts'
-import type { TaskBoardSnapshot } from '../src/protocol.ts'
+import type { TaskBoardEventPayload, TaskBoardSnapshot } from '../src/protocol.ts'
 
 const snapshot: TaskBoardSnapshot = {
   schemaVersion: 2,
@@ -81,5 +81,59 @@ describe('HttpTaskBoardHostTransport migration', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('HttpTaskBoardHostTransport SSE subscription', () => {
+  class FakeEventSource {
+    static instances: FakeEventSource[] = []
+    onmessage: ((message: MessageEvent<string>) => void) | null = null
+    closed = false
+    constructor(readonly url: string) { FakeEventSource.instances.push(this) }
+    close(): void { this.closed = true }
+  }
+
+  const frame: TaskBoardEventPayload = {
+    revision: 1,
+    scheduler: { timeZone: 'UTC', ledgerId: 'ledger-a' },
+    power: snapshot.power,
+  }
+
+  beforeEach(() => {
+    FakeEventSource.instances = []
+    vi.stubGlobal('EventSource', FakeEventSource)
+    vi.stubGlobal('document', {
+      visibilityState: 'visible',
+      addEventListener: (name: string, handler: () => void) => {
+        if (name === 'visibilitychange') visibilityListener = handler
+      },
+      removeEventListener: () => undefined,
+    })
+  })
+
+  let visibilityListener: (() => void) | undefined
+
+  it('forwards parsed event frames and falls back to a bare call on malformed frames', () => {
+    const transport = new HttpTaskBoardHostTransport(new MemoryStorage())
+    const calls: Array<TaskBoardEventPayload | undefined> = []
+    const unsubscribe = transport.subscribe(event => { calls.push(event) })
+    const source = FakeEventSource.instances.at(-1)
+    if (source === undefined) throw new Error('EventSource was not constructed')
+    source.onmessage?.({ data: JSON.stringify(frame) } as MessageEvent<string>)
+    expect(calls).toEqual([frame])
+    source.onmessage?.({ data: 'not json' } as MessageEvent<string>)
+    source.onmessage?.({ data: JSON.stringify({ hello: 'world' }) } as MessageEvent<string>)
+    expect(calls).toEqual([frame, undefined, undefined])
+    expect(calls[1]).toBeUndefined()
+    unsubscribe()
+    expect(source.closed).toBe(true)
+  })
+
+  it('calls the listener on visibilitychange while the tab is visible', () => {
+    const transport = new HttpTaskBoardHostTransport(new MemoryStorage())
+    const calls: Array<TaskBoardEventPayload | undefined> = []
+    transport.subscribe(event => { calls.push(event) })
+    visibilityListener?.()
+    expect(calls).toEqual([undefined])
   })
 })

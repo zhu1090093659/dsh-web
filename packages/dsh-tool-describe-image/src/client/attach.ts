@@ -2,9 +2,9 @@
  * Browser half of the attach seam: pure draft-splicing math plus the
  * upload client for the host /describe-image/attach route. The browser
  * sends the picked image as base64 text; the host validates magic bytes,
- * persists the bytes in the attachment store, and returns the
- * `[image attachment …]` note text to splice into the composer draft.
- * Image bytes never enter the conversation log — only the note text does.
+ * persists the bytes in the attachment store, and returns both a durable
+ * `[image attachment ...]` note and self-contained Markdown reference. Image
+ * bytes never enter the conversation log — only durable reference text does.
  * @module @linxin666/dsh-tool-describe-image/client/attach
  */
 
@@ -18,8 +18,8 @@ export const ACCEPTED_IMAGE_MIME: readonly string[] = ['image/png', 'image/jpeg'
 export const CLIENT_MAX_BYTES = 10 * 1024 * 1024
 
 /**
- * Placeholder alt text of the markdown image reference; the model reads the
- * URL and extracts the attachment id. Kept deliberately short.
+ * Placeholder alt text of the Markdown image reference. The generated URL
+ * carries the durable attachment metadata while keeping the visible label short.
  */
 export const IMAGE_ALT = '图片'
 
@@ -71,7 +71,7 @@ export function readFileAsBase64(file: File): Promise<{ ok: true; base64: string
  * @param base64 - the base64 image payload.
  * @param mediaType - the declared media type (verified against magic bytes on the host).
  * @param name - optional display name.
- * @returns the `[image attachment …]` note text, or a structured rejection.
+ * @returns durable note and Markdown reference text, or a structured rejection.
  */
 export async function uploadImageForDescribe(
   base64: string,

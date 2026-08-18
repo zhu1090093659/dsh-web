@@ -1,11 +1,10 @@
 /**
  * The /describe-image/attach route: a browser-to-host upload seam that turns a
- * picked image into a durable attachment reference and returns the
- * `[image attachment …]` note text the browser half splices into the composer
- * draft. The note is plain text, so a text-only model sees the reference and
- * can hand the exact JSON to describe_image; the image bytes themselves never
- * cross into the conversation log — they live in the attachment store, exactly
- * like images the vision pipeline uploads.
+ * picked image into a durable attachment reference and returns both its
+ * `[image attachment ...]` note and self-contained Markdown reference. The
+ * Markdown carries immutable metadata, so a text-only model can pass it intact
+ * to describe_image after a restart or from a PTC nested tool call; image bytes
+ * never cross into the conversation log and remain in the attachment store.
  *
  * The route works without any plugin configuration (the family aggregate mounts
  * this way): the byte bound falls back to the default and the attachment store
@@ -16,8 +15,11 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
+import { attachmentMarkdown as renderAttachmentMarkdown, parseImageAttachmentRef } from './attachment-reference.ts'
 import { decodeBase64, isImageMimeType, sniffMimeType, DEFAULT_MAX_BYTES, type ImageMimeType } from './media.ts'
 import { UNKNOWN_CAPABILITY, type CapabilityProbe } from './model-capability.ts'
+
+export { renderAttachmentMarkdown as attachmentMarkdown }
 
 /** Request-body byte cap: base64 of a {@link DEFAULT_MAX_BYTES} image plus envelope slack. */
 export const MAX_ATTACH_BODY_BYTES = 16 * 1024 * 1024
@@ -48,12 +50,10 @@ export type AttachOutcome =
 export const METHOD_NOT_ALLOWED: AttachError = { code: 'internal', message: 'only POST is allowed' }
 
 /**
- * In-memory registry of references this process's attach route persisted,
- * keyed by attachment id. Text models that copy only the id out of an
- * `[image attachment …]` note (instead of the whole JSON) still resolve
- * through here, and the attachment store's digest verification runs on the
- * read regardless. Bounded FIFO; ids are content-addressed so a stale entry
- * cannot be confused with another image.
+ * In-memory fallback for callers that copied only a bare attachment id instead
+ * of the complete durable Markdown or note. The attachment store still verifies
+ * the digest on every read. Bounded FIFO; ids are content-addressed so a stale
+ * entry cannot be confused with another image.
  */
 const ATTACHMENT_REF_REGISTRY = new Map<string, ImageAttachmentRef>()
 
@@ -83,20 +83,6 @@ export function safeDecodeUriComponent(value: string): string | null {
 
 export function attachmentRefById(id: string): ImageAttachmentRef | undefined {
   return ATTACHMENT_REF_REGISTRY.get(id)
-}
-
-/**
- * The markdown image reference inserted into the composer draft: short,
- * renders as an image/link in the conversation, and carries the attachment
- * id in the URL so a text model can extract it and hand it to
- * describe_image (the tool resolves bare ids through the registry).
- * @param id - the attachment id (e.g. `sha256:…`).
- * @returns the markdown text to splice into the draft.
- */
-export function attachmentMarkdown(id: string): string {
-  // The `:` of `sha256:…` stays readable and extractable for the model;
-  // everything else is escaped for the path segment.
-  return `![图片](/describe-image/raw/${encodeURIComponent(id).replace(/%3A/gi, ':')})`
 }
 
 /** Build the `[image attachment …]` note text for one reference. */
@@ -165,7 +151,7 @@ export async function handleAttach(ctx: Context, maxBytes: number, payload: unkn
       ...validated.payload.name === undefined ? {} : { name: validated.payload.name },
     })
     registerAttachmentRef(ref)
-    return { ok: true, ref, note: attachmentNote(ref), markdown: attachmentMarkdown(ref.attachmentId) }
+    return { ok: true, ref, note: attachmentNote(ref), markdown: renderAttachmentMarkdown(ref) }
   } catch (error) {
     return { ok: false, error: { code: 'internal', message: `attachment store rejected the image: ${(error as Error).message ?? String(error)}` } }
   }
@@ -212,15 +198,16 @@ async function serveCapability(probe: CapabilityProbe | undefined, req: Incoming
 }
 
 /**
- * Serve one stored image by its bare attachment id (the GET half of the
- * prefix route). Unknown ids and store failures answer 404; the media type
- * comes from the registered reference, never from the URL.
+ * Serve one stored image by its raw-route id. Unknown ids and store failures
+ * answer 404; current Markdown supplies verified reference metadata in its
+ * query string, while legacy id-only Markdown falls back to the process registry.
  * @param ctx - registrant context carrying the optional attachment service.
  * @param req - the incoming GET request.
  * @param res - the outgoing response.
  */
 async function serveRawImage(ctx: Context, req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const match = /^\/describe-image\/raw\/([^/]+)$/.exec(new URL(req.url ?? '/', 'http://x').pathname)
+  const requestUrl = new URL(req.url ?? '/', 'http://x')
+  const match = /^\/describe-image\/raw\/([^/]+)$/.exec(requestUrl.pathname)
   if (match === null) {
     res.writeHead(404)
     res.end()
@@ -234,7 +221,23 @@ async function serveRawImage(ctx: Context, req: IncomingMessage, res: ServerResp
     res.end()
     return
   }
-  const ref = attachmentRefById(id)
+  let ref: ImageAttachmentRef | undefined
+  const serializedRef = requestUrl.searchParams.get('ref')
+  if (serializedRef !== null) {
+    try {
+      ref = parseImageAttachmentRef(serializedRef)
+    } catch {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    if (ref.attachmentId !== id) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+  }
+  ref ??= attachmentRefById(id)
   if (ref === undefined) {
     res.writeHead(404)
     res.end()
@@ -248,7 +251,7 @@ async function serveRawImage(ctx: Context, req: IncomingMessage, res: ServerResp
   }
   try {
     const stored = await attachments.readImage(ref)
-    res.writeHead(200, { 'content-type': ref.mediaType, 'content-length': String(stored.data.byteLength), 'cache-control': 'private, max-age=3600' })
+    res.writeHead(200, { 'content-type': stored.ref.mediaType, 'content-length': String(stored.data.byteLength), 'cache-control': 'private, max-age=3600' })
     res.end(Buffer.from(stored.data))
   } catch {
     res.writeHead(404)

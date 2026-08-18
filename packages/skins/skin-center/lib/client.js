@@ -338,6 +338,19 @@ window.__ModuleLoader__.load({
 		* and keeps it (no reload, no restart), retracting the incumbent permanently
 		* instead of snapshot-restoring it; activeSkinEntry() then answers the
 		* committed skin until the next real page load.
+		*
+		* Re-trying the skin that is ALREADY the live preview is a no-op. A skin
+		* bundle injects its CSS once per materialization (a `style[data-plugin-css]`
+		* dedup guard inside each bundle), so the normal load/transfer/cleanup cycle
+		* would strip the only style tag and leave the preview visually unstyled —
+		* the page falls back to the default look while the session still reports
+		* the skin as tried on. The controller answers such a request as satisfied
+		* without touching the session.
+		*
+		* The session is observable: `subscribe()` fires on every transition (a
+		* try-on starts, switches, exits or commits), which lets the settings card
+		* derive its "trying on" badge from the controller instead of component-local
+		* state that a panel close/reopen would wipe.
 		*/
 		/** Body-level backdrop properties skins may write inline (blue-fantasy). */
 		const BACKDROP_PROPS = [
@@ -472,6 +485,26 @@ window.__ModuleLoader__.load({
 			get tryingOfficial() {
 				return this.session !== null && this.session.entry === null;
 			}
+			/** Session-change subscribers (the settings card re-syncs its trying badge). */
+			listeners = /* @__PURE__ */ new Set();
+			/**
+			* Subscribe to session transitions: a try-on starts, switches, exits or
+			* commits (commit exits any live preview first). The settings card derives
+			* its "trying on" badge from the controller this way, so the badge survives
+			* the card unmounting when the settings panel closes. Declared as an arrow
+			* property so it can be handed to React's useSyncExternalStore unbound.
+			* @param listener - called after any session transition.
+			* @returns an unsubscribe function.
+			*/
+			subscribe = (listener) => {
+				this.listeners.add(listener);
+				return () => {
+					this.listeners.delete(listener);
+				};
+			};
+			emit() {
+				for (const listener of this.listeners) listener();
+			}
 			/**
 			* Start trying on `entry` (replaces any live session).
 			*
@@ -484,6 +517,7 @@ window.__ModuleLoader__.load({
 			*/
 			async tryOn(entry) {
 				if (entry.package === activeSkinEntry()?.package) return false;
+				if (this.session !== null && this.session.entry?.package === entry.package) return true;
 				const epoch = ++this.epoch;
 				this.requestedPackage = entry.package;
 				let apply;
@@ -518,6 +552,7 @@ window.__ModuleLoader__.load({
 					dispose,
 					active
 				};
+				this.emit();
 				return true;
 			}
 			/**
@@ -527,6 +562,7 @@ window.__ModuleLoader__.load({
 			*/
 			tryOnOfficial() {
 				if (activeSkinEntry() === null) return;
+				if (this.session !== null && this.session.entry === null) return;
 				this.epoch += 1;
 				this.requestedPackage = null;
 				const previous = this.session;
@@ -539,6 +575,7 @@ window.__ModuleLoader__.load({
 						dispose: () => {},
 						active: previous.active
 					};
+					this.emit();
 					return;
 				}
 				const active = this.captureAndRetractActive();
@@ -547,6 +584,7 @@ window.__ModuleLoader__.load({
 					dispose: () => {},
 					active
 				};
+				this.emit();
 			}
 			/** The skin mounted by a previous commit, owned (and disposable) by this controller. */
 			hotIncumbent = null;
@@ -600,6 +638,7 @@ window.__ModuleLoader__.load({
 				session.dispose();
 				if (session.entry !== null) this.cleanupModule(session.entry);
 				this.restoreActive(session.active);
+				this.emit();
 			}
 			/** Share one materialization while repeated requests for a package overlap. */
 			loadModuleOnce(entry) {
@@ -1130,6 +1169,13 @@ window.__ModuleLoader__.load({
 												src: item.previewUrl,
 												alt: "",
 												loading: "lazy"
+											}) : item.videoUrl !== null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("video", {
+												className: skin_center_module_css_default.wallpaperThumb,
+												src: item.videoUrl,
+												preload: "metadata",
+												muted: true,
+												playsInline: true,
+												"aria-hidden": "true"
 											}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 												className: skin_center_module_css_default.wallpaperThumbEmpty,
 												"aria-hidden": "true"
@@ -1234,7 +1280,9 @@ window.__ModuleLoader__.load({
 		* and the new skin is hot-committed in place (issue #359 — no reload, no
 		* app restart; a page reload remains the fallback). Copy rides the standard `t` seat;
 		* the theme preview control drives the official theme service (persisted,
-		* same as the Appearance row).
+		* same as the Appearance row). The "trying on" badge tracks the controller's
+		* live session (via subscribe), so closing and reopening the settings panel
+		* keeps showing the skin that is still being previewed.
 		*/
 		/** The apply target of the official stock-look card. */
 		const OFFICIAL = "official";
@@ -1260,8 +1308,8 @@ window.__ModuleLoader__.load({
 			const activePackage = activeSkinEntry()?.package;
 			const activeId = activeSkinEntry()?.id;
 			const backdropActive = activeId !== void 0 && BACKDROP_SKIN_IDS.has(activeId);
-			const [tryingId, setTryingId] = (0, react.useState)(null);
-			const [tryingOfficial, setTryingOfficial] = (0, react.useState)(false);
+			const tryingId = (0, react.useSyncExternalStore)(controller.subscribe, () => controller.trying?.id ?? null);
+			const tryingOfficial = (0, react.useSyncExternalStore)(controller.subscribe, () => controller.tryingOfficial);
 			const [loadingId, setLoadingId] = (0, react.useState)(null);
 			const [applying, setApplying] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
@@ -1282,14 +1330,10 @@ window.__ModuleLoader__.load({
 				controller.tryOn(entry).then((mountedTarget) => {
 					if (!mounted.current || request !== tryOnRequest.current || !mountedTarget) return;
 					setLoadingId(null);
-					setTryingId(entry.id);
-					setTryingOfficial(false);
 				}).catch(() => {
 					if (!mounted.current || request !== tryOnRequest.current) return;
 					setLoadingId(null);
 					setError(t("tryOnError"));
-					setTryingId(controller.trying?.id ?? null);
-					setTryingOfficial(controller.tryingOfficial);
 				});
 			};
 			const tryOnOfficial = () => {
@@ -1300,18 +1344,12 @@ window.__ModuleLoader__.load({
 					controller.tryOnOfficial();
 				} catch {
 					setError(t("tryOnError"));
-					setTryingOfficial(false);
-					return;
 				}
-				setTryingId(null);
-				setTryingOfficial(true);
 			};
 			const exitTryOn = () => {
 				++tryOnRequest.current;
 				controller.exit();
 				setLoadingId(null);
-				setTryingId(null);
-				setTryingOfficial(false);
 			};
 			/**
 			* Poll the host state until the config watcher reports the target active
@@ -1415,8 +1453,6 @@ window.__ModuleLoader__.load({
 						}
 						controller.commit(entry).then(() => {
 							if (!mounted.current) return;
-							setTryingId(null);
-							setTryingOfficial(false);
 							forceRender((tick) => tick + 1);
 						}).catch(() => {
 							if (!mounted.current) return;

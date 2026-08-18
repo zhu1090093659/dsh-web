@@ -92,7 +92,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-remote-web-ui
 
 二维码链接通常是局域网 URL，所以家外的手机无法使用。把隧道指向 dsh web 端口，并告知插件其公网地址——二维码随后由隧道 URL 构建，面向手机的配对围栏信任隧道化的主机。涉及两个钮：
 
-- **`publicBaseUrl`**（插件配置，在 profile patch 或设置卡片里）：公网 origin，如 `https://foo.trycloudflare.com`。二维码链接由它构建，`accept`/`heartbeat`/`status` 接受它的主机。畸形值被忽略并告警（保持仅局域网行为）。
+- **`publicBaseUrl`**（插件配置，在 profile patch 或设置卡片里）：公网 origin，如 `https://foo.trycloudflare.com`。二维码链接由它构建，`accept`/`heartbeat`/`status` 接受它的主机。畸形值被忽略并告警（保持仅局域网行为）。未配对调用方的 `status` 只看到配对相关字段（phase / 局域网地址）；token 过期时间、设备列表与隧道 URL 需要有效设备 cookie。accept 限速按客户端可见的 `X-Forwarded-For` 跳点分桶，避免隧道背后的单个来源耗尽共享桶。
 - **`--trusted-host <authority>`**（dsh web flag）：连接插件传输层 `/api` 围栏也必须接受公网主机——否则经隧道的每个 `/api` 请求在**配对层之前**就 403（插件自己的围栏只覆盖 `/api/pair` 路由）。请像隧道转发那样精确传入公网主机（或 `host:port`）。
 
 ### Cloudflare 隧道（quick tunnel——无账号、无域名）

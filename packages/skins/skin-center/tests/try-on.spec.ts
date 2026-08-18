@@ -444,6 +444,62 @@ describe('TryOnController skin switching', () => {
     await expect(c.tryOn(entry('xp'))).resolves.toBe(true)
     expect(document.body.getAttribute('data-dsh-xp')).toBe('')
   })
+
+  it('re-trying the skin already being previewed keeps its CSS and live session', async () => {
+    const c = controller()
+
+    await expect(c.tryOn(entry('xp'))).resolves.toBe(true)
+    expect(document.body.getAttribute('data-dsh-xp')).toBe('')
+    expect(document.querySelector('style[data-plugin-css*="xp.module.css"]')).not.toBeNull()
+
+    // Same skin again while the preview is live must be a no-op, not a
+    // reload: each bundle materialization injects its CSS exactly once (a
+    // per-bundle style[data-plugin-css] dedup guard), so reload + style
+    // cleanup would delete the only style tag and the page would fall back
+    // to the default look while the badge still claims "trying on".
+    await expect(c.tryOn(entry('xp'))).resolves.toBe(true)
+    expect(c.trying?.id).toBe('xp')
+    expect(document.body.getAttribute('data-dsh-xp')).toBe('')
+    expect(document.querySelector('style[data-plugin-css*="xp.module.css"]')).not.toBeNull()
+
+    c.exit()
+    expect(document.body.hasAttribute('data-dsh-xp')).toBe(false)
+    expect(document.querySelector('style[data-plugin-css*="xp.module.css"]')).toBeNull()
+  })
+
+  it('re-trying the official preview while it is live is a no-op', async () => {
+    const active = entry('whale-song')
+    window.__DSH_BOOT__ = { entries: [{ id: active.package }] }
+    document.body.setAttribute(active.bodyAttr, '')
+
+    const c = controller()
+    c.tryOnOfficial()
+    expect(c.tryingOfficial).toBe(true)
+
+    c.tryOnOfficial()
+    expect(c.tryingOfficial).toBe(true)
+
+    c.exit()
+    expect(document.body.getAttribute(active.bodyAttr)).toBe('')
+  })
+
+  it('notifies subscribers on session transitions', async () => {
+    const c = controller()
+    const seen: Array<string | null> = []
+    c.subscribe(() => seen.push(c.trying?.id ?? null))
+
+    await c.tryOn(entry('xp'))
+    expect(seen).toEqual(['xp'])
+
+    c.tryOnOfficial()
+    expect(seen).toEqual(['xp', null])
+
+    await c.tryOn(entry('miku'))
+    expect(seen).toEqual(['xp', null, 'miku'])
+
+    c.exit()
+    expect(seen).toEqual(['xp', null, 'miku', null])
+  })
 })
 
 describe('TryOnController commit (hot swap, #359)', () => {

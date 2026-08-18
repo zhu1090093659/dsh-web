@@ -116,7 +116,7 @@ export class GitService {
     private readonly fsDelete: (root: string, rel: string) => Promise<{ ok: true } | PanelError>,
   ) {}
 
-  /** Cached one-shot git binary probe; never re-probes after the first call. */
+  /** Cached git-binary probe; an aborted attempt is cleared so it can retry. */
   private availablePromise: Promise<boolean> | undefined
 
   /**
@@ -128,6 +128,12 @@ export class GitService {
    */
   private readonly repoCache = new Map<string, { value: Promise<string | null>; expiresAt: number }>()
 
+  /** One complete direct status request per requested workspace root. */
+  private readonly statusRequests = new Map<string, Promise<GitStatusView | null | PanelError>>()
+
+  /** One underlying status scan per canonical workspace, even after a caller times out. */
+  private readonly statusRuns = new Map<string, Promise<GitStatusView>>()
+
   /**
    * Probe the git binary once (git --version) and cache the verdict for the
    * service lifetime. A machine without git then degrades every operation to
@@ -135,12 +141,21 @@ export class GitService {
    * instead of re-spawning ENOENT on every poll tick. The cache stays false
    * even if git is installed later; the host restart picks it up.
    */
-  gitAvailable(): Promise<boolean> {
+  gitAvailable(signal?: AbortSignal): Promise<boolean> {
     if (this.availablePromise === undefined) {
-      this.availablePromise = this.runner
-        .run(['--version'], '/')
+      let cached: Promise<boolean>
+      cached = this.runner
+        .run(['--version'], '/', signal)
         .then((result) => result.exitCode === 0)
-        .catch(() => false)
+        .catch((error: unknown) => {
+          if (signal?.aborted) {
+            if (this.availablePromise === cached) this.availablePromise = undefined
+            signal.throwIfAborted()
+            throw error
+          }
+          return false
+        })
+      this.availablePromise = cached
     }
     return this.availablePromise
   }
@@ -154,7 +169,7 @@ export class GitService {
    * deliberately not cached so the next call retries. Any other failure is
    * cached as a negative verdict for its TTL.
    */
-  private repoOf(root: string): Promise<string | null> {
+  private repoOf(root: string, signal?: AbortSignal): Promise<string | null> {
     const now = Date.now()
     const cached = this.repoCache.get(root)
     if (cached !== undefined && cached.expiresAt > now) return cached.value
@@ -164,7 +179,7 @@ export class GitService {
       value: Promise.resolve(null),
       expiresAt: Number.POSITIVE_INFINITY,
     }
-    entry.value = this.run(['rev-parse', '--show-toplevel'], root)
+    entry.value = this.run(['rev-parse', '--show-toplevel'], root, signal)
       .then((result) => {
         if (result.exitCode === 127) {
           // Spawn/run failure is not a repo verdict: leave nothing cached.
@@ -180,7 +195,12 @@ export class GitService {
         entry.expiresAt = now + (found === null ? NO_REPO_CACHE_TTL_MS : REPO_CACHE_TTL_MS)
         return found
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        if (signal?.aborted) {
+          if (this.repoCache.get(root) === entry) this.repoCache.delete(root)
+          signal.throwIfAborted()
+          throw error
+        }
         entry.expiresAt = now + NO_REPO_CACHE_TTL_MS
         return null
       })
@@ -193,8 +213,8 @@ export class GitService {
    * workspace gate so the SSE poll does not double-gate every 2s tick; the
    * underlying repoOf cache keeps rev-parse probes at TTL cadence.
    */
-  isRepositoryCanonical(canonicalRoot: string): Promise<boolean> {
-    return this.repoOf(canonicalRoot).then((repo) => repo !== null)
+  isRepositoryCanonical(canonicalRoot: string, signal?: AbortSignal): Promise<boolean> {
+    return this.repoOf(canonicalRoot, signal).then((repo) => repo !== null)
   }
 
   /**
@@ -208,27 +228,39 @@ export class GitService {
   }
 
   /** Resolve the gated canonical root and the repository top-level. */
-  private async repo(root: string): Promise<{ ok: true; root: string; repo: string } | { ok: false; error: PanelError }> {
+  private async repo(root: string, signal?: AbortSignal): Promise<{ ok: true; root: string; repo: string } | { ok: false; error: PanelError }> {
     const gated = await this.gate(root)
     if (!gated.ok) return { ok: false, error: gated.error }
-    const repo = await this.repoOf(gated.canonical)
+    const repo = await this.repoOf(gated.canonical, signal)
     if (repo === null) return { ok: false, error: NO_REPO }
     return { ok: true, root: gated.canonical, repo }
   }
 
   /** Run one git invocation and classify failures. */
-  private async run(argv: readonly string[], cwd: string): Promise<GitRunResult> {
-    return this.runner.run(argv, cwd)
+  private async run(argv: readonly string[], cwd: string, signal?: AbortSignal): Promise<GitRunResult> {
+    return this.runner.run(argv, cwd, signal)
   }
 
   /** The repo status view; null when the root is not a repository. */
-  async status(root: string): Promise<GitStatusView | null | PanelError> {
+  status(root: string, signal?: AbortSignal): Promise<GitStatusView | null | PanelError> {
+    const existing = this.statusRequests.get(root)
+    if (existing !== undefined) return existing
+    const request = this.statusFromRoot(root, signal)
+    this.statusRequests.set(root, request)
+    const clear = (): void => {
+      if (this.statusRequests.get(root) === request) this.statusRequests.delete(root)
+    }
+    void request.then(clear, clear)
+    return request
+  }
+
+  private async statusFromRoot(root: string, signal?: AbortSignal): Promise<GitStatusView | null | PanelError> {
     // A missing git binary answers before any spawn: the probe runs once per
     // service lifetime, so a git-less machine never re-spawns ENOENT here.
-    if (!(await this.gitAvailable())) return null
-    const repo = await this.repo(root)
+    if (!(await this.gitAvailable(signal))) return null
+    const repo = await this.repo(root, signal)
     if (!repo.ok) return repo.error.code === 'git-unavailable' ? null : repo.error
-    return this.statusAt(repo.root, repo.repo)
+    return this.statusAt(repo.root, repo.repo, signal)
   }
 
   /**
@@ -236,20 +268,31 @@ export class GitService {
    * not a repository. Skips the workspace gate (SSE subscribers were gated at
    * connect) and reuses the same repoOf cache + status parsing as `status`.
    */
-  async statusCanonical(canonicalRoot: string): Promise<GitStatusView | null> {
-    const repo = await this.repoOf(canonicalRoot)
+  async statusCanonical(canonicalRoot: string, signal?: AbortSignal): Promise<GitStatusView | null> {
+    const repo = await this.repoOf(canonicalRoot, signal)
     if (repo === null) return null
-    return this.statusAt(canonicalRoot, repo)
+    return this.statusAt(canonicalRoot, repo, signal)
   }
 
-  /** Run branch + porcelain status for one resolved repo and parse the view. */
-  private async statusAt(root: string, repo: string): Promise<GitStatusView> {
-    const [branchResult, statusResult] = await Promise.all([
-      this.run(['rev-parse', '--abbrev-ref', 'HEAD'], repo),
-      this.run(['status', '--porcelain=v1', '-z', '--untracked-files=all'], repo),
-    ])
-    const branch = branchResult.stdout.trim() === 'HEAD' ? '' : branchResult.stdout.trim()
-    return parseStatusView(root, branch, statusResult.stdout)
+  /** Run one shared branch + porcelain scan for a canonical workspace. */
+  private statusAt(root: string, repo: string, signal?: AbortSignal): Promise<GitStatusView> {
+    const existing = this.statusRuns.get(root)
+    if (existing !== undefined) return existing
+
+    const run = (async () => {
+      const [branchResult, statusResult] = await Promise.all([
+        this.run(['rev-parse', '--abbrev-ref', 'HEAD'], repo, signal),
+        this.run(['status', '--porcelain=v1', '-z', '--untracked-files=all'], repo, signal),
+      ])
+      const branch = branchResult.stdout.trim() === 'HEAD' ? '' : branchResult.stdout.trim()
+      return parseStatusView(root, branch, statusResult.stdout)
+    })()
+    this.statusRuns.set(root, run)
+    const clear = (): void => {
+      if (this.statusRuns.get(root) === run) this.statusRuns.delete(root)
+    }
+    void run.then(clear, clear)
+    return run
   }
 
   /** The repo root for the watch layer (null when not a repository). */

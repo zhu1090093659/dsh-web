@@ -15,7 +15,6 @@
 - [ ] 右侧面板 `packages/dsh-aionui-panel`
 - [ ] 远程 Web UI `packages/dsh-remote-web-ui`
 - [ ] SSH 远程运维 `packages/dsh-ssh`
-- [ ] 实时令牌统计 `packages/dsh-live-stats`
 - [ ] 宠物 `packages/dsh-pet`
 - [ ] 皮肤 / 皮肤中心 `packages/dsh-skins` / `packages/skins`
 - [ ] 聚合包 / 设置 `packages/dsh-web-ui-all` / `packages/dsh-web-ui-settings`

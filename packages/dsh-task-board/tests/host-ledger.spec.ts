@@ -206,4 +206,47 @@ describe('HostTaskLedger', () => {
     })).toThrow('invalid schedule')
     expect(ledger.state().tasks).toEqual([])
   })
+
+  it('persists scheduler heartbeats to a sidecar without rewriting the ledger document', () => {
+    const root = tempRoot()
+    const ledger = new HostTaskLedger(root, () => NOW)
+    ledger.applyRequest('create', { kind: 'create', id: 'task-a', input: { title: 'A', description: '', prompt: '' } })
+    const before = readFileSync(join(root, 'ledger-v2.json'), 'utf8')
+    ledger.setScheduler({ lastTickAt: NOW + 30_000 })
+    ledger.setScheduler({ lastTickAt: NOW + 60_000 })
+    expect(readFileSync(join(root, 'ledger-v2.json'), 'utf8')).toBe(before)
+    expect(readdirSync(root).filter(name => name.includes('.tmp-'))).toEqual([])
+    ledger.dispose()
+    const restarted = new HostTaskLedger(root, () => NOW + 61_000)
+    expect(restarted.state().scheduler.lastTickAt).toBe(NOW + 60_000)
+    restarted.dispose()
+  })
+
+  it('takes the newer of the document and sidecar heartbeat after restart', () => {
+    const root = tempRoot()
+    const ledger = new HostTaskLedger(root, () => NOW)
+    ledger.setScheduler({ lastTickAt: NOW + 30_000 })
+    ledger.applyRequest('create', { kind: 'create', id: 'task-a', input: { title: 'A', description: '', prompt: '' } })
+    // Full commit persists lastTickAt; a sidecar left over from an earlier
+    // crash must not roll it back, and a newer sidecar must win.
+    writeFileSync(join(root, 'scheduler-v2.json'), JSON.stringify({ lastTickAt: NOW - 5_000 }), 'utf8')
+    ledger.dispose()
+    const older = new HostTaskLedger(root, () => NOW + 31_000)
+    expect(older.state().scheduler.lastTickAt).toBe(NOW + 30_000)
+    older.dispose()
+    writeFileSync(join(root, 'scheduler-v2.json'), JSON.stringify({ lastTickAt: NOW + 90_000 }), 'utf8')
+    const newer = new HostTaskLedger(root, () => NOW + 91_000)
+    expect(newer.state().scheduler.lastTickAt).toBe(NOW + 90_000)
+    newer.dispose()
+  })
+
+  it('still commits non-heartbeat scheduler patches through the full document write', () => {
+    const root = tempRoot()
+    const ledger = new HostTaskLedger(root, () => NOW)
+    ledger.setScheduler({ error: 'visible after restart' })
+    ledger.dispose()
+    const restarted = new HostTaskLedger(root, () => NOW + 1_000)
+    expect(restarted.state().scheduler.error).toBe('visible after restart')
+    restarted.dispose()
+  })
 })

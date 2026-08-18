@@ -23,8 +23,8 @@
 </p>
 
 <p align="center">
-  <strong>DeepSeek Harness（DSH）Web GUI 的插件与皮肤全家桶</strong><br>
-  <em>梁神模式 · 任务看板 · Git 图谱 · 右侧面板 · 移动端远程 · SSH 运维 · 图像理解 · 鲸鱼娘宠物 · 实时吞吐 · 皮肤中心</em>
+  <strong>DeepSeek Harness（DSH）Web GUI 的插件与皮肤全家桶 · 一切皆开发，一切皆插件</strong><br>
+  <em>梁神模式 · 任务看板 · Git 图谱 · 右侧面板 · 移动端远程 · SSH 运维 · 图像理解 · 鲸鱼娘宠物 · 皮肤中心</em>
 </p>
 
 <div align="center">
@@ -35,7 +35,7 @@
 
 ## 是什么
 
-dsh-web-ui 是给 DeepSeek Harness（DSH）Web GUI 用的插件和皮肤集合：面向 DeepSeek V4 Pro 的「梁神模式」agent 预设，以及任务看板、Git 图谱、右侧面板、移动端远程、SSH 运维、图像理解、鲸鱼娘宠物、实时吞吐和皮肤中心。所有插件都走官方 profile 机制挂载到 `dsh web`，不改 DSH 源码；可以逐个安装，也可以用聚合包一次装齐。
+dsh-web-ui 继承 DeepSeek Harness（DSH）「一切皆开发、一切皆插件」的核心理念，也是这一理念在 Web GUI 上最完整的落地：它不只是一个插件包，更是一个可拓展性极强的插件生态。面向 DeepSeek V4 Pro 的「梁神模式」agent 预设，以及任务看板、Git 图谱、右侧面板、移动端远程、SSH 运维、图像理解、鲸鱼娘宠物和皮肤中心——每一样都是独立成包的模块，可插拔、可替换、可再开发；可以一次装齐全家桶，拼出完整的开发工作台，也可以只挑一两个，安静地融入原生界面。所有插件都走官方 profile 机制挂载到 `dsh web`，不改 DSH 源码；聚合包还能把外部插件（如 `dsh-better-sidebar`）拼进全家桶，详见 [dsh-web-ui-all README](packages/dsh-web-ui-all/README.zh.md)。
 
 ![DSH Web UI 主界面](docs/screenshots/13-hero-main.png)
 
@@ -44,7 +44,7 @@ dsh-web-ui 是给 DeepSeek Harness（DSH）Web GUI 用的插件和皮肤集合�
 | Agent 预设 | 官方预设（Standard / Minimal 等） | 梁神模式：面向 V4 Pro 的两阶段锚定预设 |
 | 任务看板 | 无 | 多列看板 + cron 定时真实执行 |
 | Git 可视化 | 无 | 分支泳道 + 提交历史图谱 |
-| 文件预览与变更 | 无 | 右侧面板：预览 / 文件树 / SCM |
+| 文件预览与变更 | 无 | 右侧面板：better-sidebar（资源管理器 / 编辑器 / 终端 / Git / 浏览器）；旧 aionui 面板已停止支持（默认关闭，设置卡可临时切回） |
 | 移动端远程 | 无 | 扫码配对，SSE 实时同步 |
 | 远程服务器运维 | 无 | SSH 面板：终端 / 传输 / 隧道 / 集群 |
 | 图像理解 | 无 | `describe_image` 视觉工具 |
@@ -54,7 +54,7 @@ dsh-web-ui 是给 DeepSeek Harness（DSH）Web GUI 用的插件和皮肤集合�
 
 ### 梁神模式
 
-DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standard / PTC 预设只有 91 / 92 分，Minimal 能到 99 / 96，但 Minimal 只有两个工具。梁神模式把这两步拼起来：新建会话时在预设选择器里选「梁神模式」，首轮按 Minimal 开局（只暴露持久 `bash` 与 `str_replace_editor`，只放行你自己的消息），轨迹锚定后自动切到 Code Mode（PTC），完整工具注册表、workspace 指令和 skill 目录随后恢复。Windows 原生环境实测（DeepSeek V4 Pro）98 / 99，均值 98.5，不是抽卡，也不需要牺牲完整工具能力。
+DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standard / PTC 预设只有 91 / 92 分，Minimal 能到 99 / 96，但 Minimal 只有两个工具。梁神模式把这两步拼起来：新建会话时在预设选择器里选「梁神模式」，首轮按 Minimal 开局（只暴露持久 `bash` 与 `str_replace_editor`，只放行你自己的消息），轨迹锚定后自动切到 PTC Mode，完整工具注册表、workspace 指令和 skill 目录随后恢复。Windows 原生环境实测（DeepSeek V4 Pro）98 / 99，均值 98.5，不是抽卡，也不需要牺牲完整工具能力。
 
 ![梁神模式两阶段锚定效果对比（示意图，模拟渲染）](docs/images/liangshen-mode.png)
 
@@ -75,32 +75,6 @@ DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standa
 输入框上方有分支选择器，可以切分支、翻提交历史；Git 图谱把分支泳道和提交历史画出来，仓库再大也能顺着时间线找到变更。
 
 ![Git 图谱](docs/screenshots/04-git-graph.png)
-
-### 右侧面板
-
-项目会话打开时，聊天区右侧出现「预览」与「文件/变更」两块面板：
-
-- **文件树**：浏览工作目录，点文件名在预览面板打开，点整行展开文件夹，支持按文件名搜索；
-- **预览**：多标签预览 markdown、HTML、代码、diff、CSV、PDF、Office、图片与文本，可切换源码 / 预览、分屏编辑、保存；
-- **变更（SCM）**：真实的 git 变更面板，stage / unstage / discard；
-- 面板宽度可拖，双击把手复位；折叠状态和宽度按项目记住；
-- 11 款皮肤都适配右侧面板，换肤后面板跟着变。
-
-![右侧面板](docs/screenshots/19-right-panel.png)
-
-### 鲸鱼娘宠物
-
-一只常驻界面的鲸鱼娘，跟着智能体状态换动画：思考、等待、工作、庆祝。可以点她互动（摸头），喂小鱼干加亲密度，从幼鲸一路养到「深海羁绊」。名字能改，位置能拖，不想看就藏起来。
-
-| 陪伴工作 | 互动面板 |
-| --- | --- |
-| ![鲸鱼娘宠物](docs/screenshots/11-pet-new-chat.png) | ![宠物互动面板](docs/screenshots/12-pet-panel.png) |
-
-### 实时吞吐统计
-
-会话状态行本来就有 token 用量，本插件补的是实时吞吐：响应边流边更新输入 / 输出 token 估算（`~` 表示启发式估算），TPS 跟在步骤计数后面；provider 用量一到，估算自动换成真实值。
-
-![实时吞吐统计](docs/screenshots/18-live-stats.png)
 
 ### 移动端远程
 
@@ -128,11 +102,21 @@ DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standa
 
 给纯文本模型补上视觉：对话里提到图片（本地路径、http(s) URL、会话附件）时，`describe_image` 把图片发给配置好的 OpenAI 兼容视觉端点（Qwen-VL、GLM-4V、GPT-4o、本地 Ollama 都行）回答，**进会话的只有返回的文本，图片本身不进会话记录**。纯文本模型输入框没有图片入口，插件在输入框加了个图片按钮：选图后生成附件引用插进草稿，模型就能用 `describe_image` 分析；工具还支持 `prompt` 参数传自定义指令（OCR、UI 诊断、翻译），比默认描述准。端点、模型、密钥、默认指令在「设置 > 插件配置 > Image understanding」里配，即时生效。
 
-### 设置中心
+### 右侧面板
 
-全部插件的开关和参数都在「设置」里，改了即时生效。设置侧边栏的一级菜单：通用设置、模式、插件、Agent 预设，加上 Web UI 插件组（归组 task-board / live-stats / remote-web-ui / describe-image）、皮肤中心、社区插件与宠物，打开即直接展开内容、无需再点折叠；插件配置页保留三个内置插件（Shell / Agent loop / Web search），各自独立开关与配置。
+右侧面板由外部插件 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 提供（聚合包已集成并默认启用），支持其内置功能与第三方插件注册，详见其 [README](https://github.com/omdsh-dev/DSH-better-sidebar)。
 
-![设置中心](docs/screenshots/02-settings-web-ui-plugins.png)
+![右侧面板](docs/screenshots/19-right-panel.png)
+
+> 此前的 aionui-panel 右侧面板已**停止支持**：默认关闭，不再维护、测试或接受修复，后续版本将从全家桶移除；设置 → Web UI 插件 → 侧边卡片 卡内嵌其常用设置。
+
+### 鲸鱼娘宠物
+
+一只常驻界面的鲸鱼娘，跟着智能体状态换动画：思考、等待、工作、庆祝。可以点她互动（摸头），喂小鱼干加亲密度，从幼鲸一路养到「深海羁绊」。名字能改，位置能拖，不想看就藏起来。
+
+| 陪伴工作 | 互动面板 |
+| --- | --- |
+| ![鲸鱼娘宠物](docs/screenshots/11-pet-new-chat.png) | ![宠物互动面板](docs/screenshots/12-pet-panel.png) |
 
 ## 皮肤
 
@@ -248,6 +232,8 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-task-board   # 任务看�
 dsh plugin --profile web add @linxin666/dsh-ssh                    # 远程连接（SSH）
 dsh plugin --profile web add @linxin666/dsh-tool-describe-image    # 图像理解工具
 dsh plugin --profile web add @linxin666/dsh-pet                    # 鲸鱼娘宠物
+dsh plugin --profile web add dsh-better-sidebar                    # 右侧面板（推荐；资源管理器/编辑器/终端/Git/浏览器）
+dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel # 旧右侧面板（aionui-panel，已停止支持，仅过渡保留）
 ```
 
 ### 验证与卸载
@@ -367,9 +353,10 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
 
 | 包 | 来源 | 版权 |
 | --- | --- | --- |
-| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-web-ui-settings / dsh-liangshen / dsh-skins / dsh-web-ui-all / skins | 作者 zhu1090093659 个人开发 | Apache-2.0（zhu1090093659） |
+| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-web-ui-settings / dsh-liangshen / dsh-skins / dsh-web-ui-all / skins | 作者 zhu1090093659 个人开发 | Apache-2.0（zhu1090093659） |
 | dsh-client-ui-skin-matrix | 贡献者原创（Matrix 深夜护眼暗色皮肤） | Apache-2.0（贡献者 seanchen 声明） |
 | dsh-tool-describe-image | 移植自 [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)（deepseek-harness `packages/vision/tool-describe-image`） | Apache-2.0（zhu1090093659） |
+| dsh-better-sidebar | 外部集成插件 [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)（右侧面板，npm 依赖引用） | MIT（omdsh-dev） |
 
 ## 贡献者
 
@@ -378,6 +365,7 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
   <a href="https://github.com/zhu1090093659"><img src="https://github.com/zhu1090093659.png?size=64" width="48" height="48" alt="zhu1090093659" title="zhu1090093659" /></a>
   <a href="https://github.com/sharkymew"><img src="https://github.com/sharkymew.png?size=64" width="48" height="48" alt="sharkymew" title="sharkymew" /></a>
   <a href="https://github.com/stushansusu"><img src="https://github.com/stushansusu.png?size=64" width="48" height="48" alt="stushansusu" title="stushansusu" /></a>
+  <a href="https://github.com/Menghuan1918"><img src="https://github.com/Menghuan1918.png?size=64" width="48" height="48" alt="Menghuan1918" title="Menghuan1918" /></a>
   <a href="https://github.com/mkloveyy"><img src="https://github.com/mkloveyy.png?size=64" width="48" height="48" alt="mkloveyy" title="mkloveyy" /></a>
   <a href="https://github.com/TiankunDai"><img src="https://github.com/TiankunDai.png?size=64" width="48" height="48" alt="TiankunDai" title="TiankunDai" /></a>
   <a href="https://github.com/thinkmoon"><img src="https://github.com/thinkmoon.png?size=64" width="48" height="48" alt="thinkmoon" title="thinkmoon" /></a>
@@ -389,13 +377,16 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
   <a href="https://github.com/ads4395-prog"><img src="https://github.com/ads4395-prog.png?size=64" width="48" height="48" alt="ads4395-prog" title="ads4395-prog" /></a>
   <a href="https://github.com/Small-tailqwq"><img src="https://github.com/Small-tailqwq.png?size=64" width="48" height="48" alt="Small-tailqwq" title="Small-tailqwq" /></a>
   <a href="https://github.com/Grivn"><img src="https://github.com/Grivn.png?size=64" width="48" height="48" alt="Grivn" title="Grivn" /></a>
+  <a href="https://github.com/JsonFish"><img src="https://github.com/JsonFish.png?size=64" width="48" height="48" alt="JsonFish" title="JsonFish" /></a>
   <a href="https://github.com/Abyss-Seeker"><img src="https://github.com/Abyss-Seeker.png?size=64" width="48" height="48" alt="Abyss-Seeker" title="Abyss-Seeker" /></a>
   <a href="https://github.com/YEYUbaka"><img src="https://github.com/YEYUbaka.png?size=64" width="48" height="48" alt="YEYUbaka" title="YEYUbaka" /></a>
   <a href="https://github.com/whitelonng"><img src="https://github.com/whitelonng.png?size=64" width="48" height="48" alt="whitelonng" title="whitelonng" /></a>
   <a href="https://github.com/guo6x"><img src="https://github.com/guo6x.png?size=64" width="48" height="48" alt="guo6x" title="guo6x" /></a>
   <a href="https://github.com/Zacklinkk"><img src="https://github.com/Zacklinkk.png?size=64" width="48" height="48" alt="Zacklinkk" title="Zacklinkk" /></a>
   <a href="https://github.com/weike-zhang"><img src="https://github.com/weike-zhang.png?size=64" width="48" height="48" alt="weike-zhang" title="weike-zhang" /></a>
+  <a href="https://github.com/RevolutionLA"><img src="https://github.com/RevolutionLA.png?size=64" width="48" height="48" alt="RevolutionLA" title="RevolutionLA" /></a>
   <a href="https://github.com/BlessedWithLuck1105"><img src="https://github.com/BlessedWithLuck1105.png?size=64" width="48" height="48" alt="BlessedWithLuck1105" title="BlessedWithLuck1105" /></a>
+  <a href="https://github.com/Aik358"><img src="https://github.com/Aik358.png?size=64" width="48" height="48" alt="Aik358" title="Aik358" /></a>
   <a href="https://github.com/cncolder"><img src="https://github.com/cncolder.png?size=64" width="48" height="48" alt="cncolder" title="cncolder" /></a>
   <a href="https://github.com/YeqingTang"><img src="https://github.com/YeqingTang.png?size=64" width="48" height="48" alt="YeqingTang" title="YeqingTang" /></a>
   <a href="https://github.com/taekchef"><img src="https://github.com/taekchef.png?size=64" width="48" height="48" alt="taekchef" title="taekchef" /></a>
@@ -415,7 +406,6 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
   <a href="https://github.com/DDDMUC"><img src="https://github.com/DDDMUC.png?size=64" width="48" height="48" alt="DDDMUC" title="DDDMUC" /></a>
   <a href="https://github.com/AngleNaris"><img src="https://github.com/AngleNaris.png?size=64" width="48" height="48" alt="AngleNaris" title="AngleNaris" /></a>
   <a href="https://github.com/JAVA-LW"><img src="https://github.com/JAVA-LW.png?size=64" width="48" height="48" alt="JAVA-LW" title="JAVA-LW" /></a>
-  <a href="https://github.com/Aik358"><img src="https://github.com/Aik358.png?size=64" width="48" height="48" alt="Aik358" title="Aik358" /></a>
   <a href="https://github.com/Beverly621"><img src="https://github.com/Beverly621.png?size=64" width="48" height="48" alt="Beverly621" title="Beverly621" /></a>
   <a href="https://github.com/farobute"><img src="https://github.com/farobute.png?size=64" width="48" height="48" alt="farobute" title="farobute" /></a>
   <a href="https://github.com/HAN102300"><img src="https://github.com/HAN102300.png?size=64" width="48" height="48" alt="HAN102300" title="HAN102300" /></a>
@@ -427,6 +417,7 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
   <a href="https://github.com/Scotlight"><img src="https://github.com/Scotlight.png?size=64" width="48" height="48" alt="Scotlight" title="Scotlight" /></a>
   <a href="https://github.com/Signalight"><img src="https://github.com/Signalight.png?size=64" width="48" height="48" alt="Signalight" title="Signalight" /></a>
   <a href="https://github.com/Nath-Vikky"><img src="https://github.com/Nath-Vikky.png?size=64" width="48" height="48" alt="Nath-Vikky" title="Nath-Vikky" /></a>
+  <a href="https://github.com/Walvez"><img src="https://github.com/Walvez.png?size=64" width="48" height="48" alt="Walvez" title="Walvez" /></a>
   <a href="https://github.com/wanpan11"><img src="https://github.com/wanpan11.png?size=64" width="48" height="48" alt="wanpan11" title="wanpan11" /></a>
   <a href="https://github.com/CCMKCCMK"><img src="https://github.com/CCMKCCMK.png?size=64" width="48" height="48" alt="CCMKCCMK" title="CCMKCCMK" /></a>
   <a href="https://github.com/Wike-CHI"><img src="https://github.com/Wike-CHI.png?size=64" width="48" height="48" alt="Wike-CHI" title="Wike-CHI" /></a>

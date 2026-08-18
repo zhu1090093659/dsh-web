@@ -1,9 +1,9 @@
 /**
  * Send interception: text-only models reject image blocks at submit, so a
  * send that carries draft images is rewritten into a plain-text prompt that
- * carries describe-image references instead. The images are uploaded through
- * the host attach route (so bytes stay out of the conversation log), the
- * draft images are released, and the model analyzes them through the
+ * carries durable describe-image references instead. The images are uploaded
+ * through the host attach route (so bytes stay out of the conversation log),
+ * the draft images are released, and the model analyzes them through the
  * describe_image tool rather than receiving the bytes it cannot read.
  *
  * The hook wraps the conversation service's sendSession method in place. It

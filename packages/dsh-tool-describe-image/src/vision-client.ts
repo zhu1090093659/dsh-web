@@ -11,20 +11,18 @@
 import { createHash } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
-import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
+import { ATTACHMENT_REF_GUIDANCE, parseImageAttachmentRef, parseMarkdownAttachmentReference } from './attachment-reference.ts'
 import { attachmentRefById } from './attach-routes.ts'
 import { DEFAULT_MAX_BYTES, isImageMimeType, sniffMimeType, type ImageMimeType } from './media.ts'
 import type { ApiStyle, ResolvedConfig } from './config-resolve.ts'
+
+export { parseImageAttachmentRef } from './attachment-reference.ts'
 
 /** One loaded image: its bytes and the sniffed media type. */
 export interface LoadedImage {
   bytes: Buffer
   mimeType: ImageMimeType
 }
-
-/** Error text shown when a model-supplied attachment reference does not validate. */
-const ATTACHMENT_REF_GUIDANCE =
-  'describe-image: image is not a valid attachment reference; copy the exact JSON from the [image attachment …] note'
 
 /** Promise rejection helper shared by both response-shape extractors. */
 function unexpectedShape(): never {
@@ -37,61 +35,9 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value as Record<string, unknown>
 }
 
-/** Whether a record field holds a positive safe integer. */
-function isPositiveSafeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
-}
-
-/** A non-empty string from a record under `key`, else undefined. */
-function nonEmptyString(record: Record<string, unknown>, key: string): string | undefined {
-  const value = record[key]
-  return typeof value === 'string' && value.length > 0 ? value : undefined
-}
-
 /** Whether `error` carries the attachment store not-found marker. */
 function isAttachmentNotFound(error: unknown): boolean {
   return asRecord(error)?.['code'] === 'ATTACHMENT_NOT_FOUND'
-}
-
-/**
- * Validate and narrow a model-supplied attachment reference into its typed storage
- * form. Every field is re-checked (the schema is authoritative, not a cast), and a
- * misshaped value fails with the copy-verbatim guidance.
- * @param raw - the JSON the model copied from an `[image attachment …]` note.
- * @returns the narrowed, typed reference.
- */
-export function parseImageAttachmentRef(raw: string): ImageAttachmentRef {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    throw new Error(ATTACHMENT_REF_GUIDANCE)
-  }
-  const record = asRecord(parsed)
-  if (record === undefined) throw new Error(ATTACHMENT_REF_GUIDANCE)
-  const attachmentId = nonEmptyString(record, 'attachmentId')
-  const mediaType = record['mediaType']
-  const bytes = record['bytes']
-  const width = record['width']
-  const height = record['height']
-  const name = record['name']
-  if (attachmentId === undefined
-    || !isImageMimeType(mediaType)
-    || !isPositiveSafeInteger(bytes)
-    || !isPositiveSafeInteger(width)
-    || !isPositiveSafeInteger(height)
-    || (name !== undefined && typeof name !== 'string')) {
-    throw new Error(ATTACHMENT_REF_GUIDANCE)
-  }
-  const ref: ImageAttachmentRef = {
-    attachmentId: attachmentId as ImageAttachmentRef['attachmentId'],
-    mediaType,
-    bytes,
-    width,
-    height,
-    ...name === undefined ? {} : { name },
-  }
-  return ref
 }
 
 /**
@@ -137,9 +83,9 @@ function finishLoad(bytes: Buffer, source: string, maxBytes: number): LoadedImag
 }
 
 /**
- * Load one image from a local absolute path, an http(s) URL, or a durable attachment reference
- * (the JSON an `[image attachment …]` note carries), enforcing the byte bound before any bytes
- * reach the vision model. Non-http(s) URL schemes are rejected.
+ * Load one image from a local absolute path, an http(s) URL, a complete durable attachment
+ * reference, or the plugin's self-contained Markdown attachment reference, enforcing the byte
+ * bound before any bytes reach the vision model. Non-http(s) URL schemes are rejected.
  * @param ctx - registrant context; supplies the optional attachment service.
  * @param input - the model-supplied image reference.
  * @param signal - caller cancellation.
@@ -149,10 +95,17 @@ function finishLoad(bytes: Buffer, source: string, maxBytes: number): LoadedImag
 export async function loadImage(ctx: Context, input: string, signal: AbortSignal, maxBytes: number): Promise<LoadedImage> {
   const trimmed = input.trim()
   if (trimmed.length === 0) throw new Error('describe-image: image must be a non-empty path, URL, or attachment reference')
+  const markdownReference = parseMarkdownAttachmentReference(trimmed)
+  if (markdownReference !== undefined) {
+    const ref = markdownReference.ref ?? attachmentRefById(markdownReference.attachmentId)
+    if (ref === undefined) throw new Error(ATTACHMENT_REF_GUIDANCE)
+    const bytes = await readAttachment(ctx, JSON.stringify(ref), signal)
+    return finishLoad(bytes, trimmed.slice(0, 96), maxBytes)
+  }
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) && !/^https?:\/\//i.test(trimmed)) {
     throw new Error('describe-image: only http(s) URLs, local file paths, and attachment references are supported')
   }
-  if (trimmed.startsWith('{')) {
+  if (trimmed.startsWith('{') || trimmed.startsWith('[image attachment ')) {
     const bytes = await readAttachment(ctx, trimmed, signal)
     return finishLoad(bytes, trimmed.slice(0, 96), maxBytes)
   }

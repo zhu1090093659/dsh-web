@@ -21,10 +21,10 @@ describe('extractWebSettingsNamespaces', () => {
   it('reads a block map', () => {
     const text = [
       'web_settings_namespaces:',
-      '  dsh-live-stats: true',
+      '  dsh-remote-web-ui: true',
       '  dsh-pet: {}',
     ].join('\n')
-    expect(extractWebSettingsNamespaces(text)).toEqual(['dsh-live-stats', 'dsh-pet'])
+    expect(extractWebSettingsNamespaces(text)).toEqual(['dsh-remote-web-ui', 'dsh-pet'])
   })
 
   it('reads an inline flow list', () => {
@@ -54,9 +54,9 @@ describe('extractWebSettingsNamespaces', () => {
     const text = [
       'web_settings_namespaces:',
       '- dsh-ssh',
-      '- dsh-live-stats',
+      '- dsh-remote-web-ui',
     ].join('\n')
-    expect(extractWebSettingsNamespaces(text)).toEqual(['dsh-ssh', 'dsh-live-stats'])
+    expect(extractWebSettingsNamespaces(text)).toEqual(['dsh-ssh', 'dsh-remote-web-ui'])
   })
 
   it('returns the empty list when the key is absent or the file is empty', () => {
@@ -73,7 +73,7 @@ describe('resolveNamespaceEntry', () => {
   })
 
   it('passes bare family namespaces through', () => {
-    expect(resolveNamespaceEntry('live-stats')).toBe('live-stats')
+    expect(resolveNamespaceEntry('pet')).toBe('pet')
     expect(resolveNamespaceEntry('remote-web-ui')).toBe('remote-web-ui')
     expect(resolveNamespaceEntry('community-plugins')).toBe('community-plugins')
   })
@@ -96,7 +96,6 @@ describe('composeAllowlist', () => {
     'dsh-ssh',
     'task-board',
     'remote-web-ui',
-    'live-stats',
     'pet',
     'skin-background',
     'community-plugins',
@@ -107,7 +106,6 @@ describe('composeAllowlist', () => {
     expect(composeAllowlist([], registered)).toEqual([
       'community-plugins',
       'dsh-ssh',
-      'live-stats',
       'pet',
       'remote-web-ui',
       'skin-background',

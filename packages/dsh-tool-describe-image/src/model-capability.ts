@@ -7,13 +7,19 @@
  * model metadata, so the host answers per session through the
  * /describe-image/capability route.
  *
- * The effective provider/model of a session is resolved from, in order: the
- * passive agent/request waterfall record (the exact config the loop
- * assembled, live model switches included), the agent's own options, then the
- * agentDefaultModel service. Modalities come from the owning adapter's exact
- * model metadata; an adapter that reports none is "unknown" and every failure
- * resolves conservative — acceptsImages false keeps the legacy rewrite, so a
- * probe failure can never strip images from a text-only model's reach.
+ * The session's effective model is resolved from, in order: the session's own
+ * logged request route (the exact config the loop assembled, so resumed
+ * sessions keep their model), then the agentDefaultModel service (what a
+ * fresh session with no requests yet will run). Seeded agent options are
+ * deliberately NOT consulted: they are a creation-time snapshot that stops
+ * matching the selection once the user picks a different model, and a wrong
+ * "accepts images" guess hands raw image blocks to a model the host then
+ * rejects (MODEL_DOES_NOT_SUPPORT_IMAGES) — the very failure this plugin
+ * exists to route around. Modalities come from the owning adapter's exact
+ * model metadata; an adapter that reports none is "unknown" and every
+ * failure resolves conservative — acceptsImages false keeps the legacy
+ * rewrite, so a probe failure can never strip images from a text-only
+ * model's reach.
  * @module @linxin666/dsh-tool-describe-image/model-capability
  */
 
@@ -32,14 +38,17 @@ export interface ModelImageCapability {
 export const UNKNOWN_CAPABILITY: ModelImageCapability = { acceptsImages: false, known: false }
 
 /** Provider/model pair one session's requests run under. */
-interface ModelRoute {
+export interface ModelRoute {
   provider: string
   model: string
 }
 
+/** Resolve one exact route's image-input capability; every failure fails closed to {@link UNKNOWN_CAPABILITY}. */
+export type RouteCapabilityResolver = (route: ModelRoute) => Promise<ModelImageCapability>
+
 /** Minimal face of the agent registry this probe reads. */
 interface AgentRegistryFace {
-  get(id: string): { options?: { provider?: string; model?: string } } | undefined
+  get(id: string): { session?: { requestHeader?(): { config?: { provider?: string; model?: string } } | undefined } } | undefined
 }
 
 /** Minimal face of the agentDefaultModel service (official package, typed structurally). */
@@ -60,36 +69,23 @@ const ROUTE_ERR_TTL_MS = 30 * 1000
 const RESOLVE_TIMEOUT_MS = 3000
 
 /** Read an optional, possibly untyped cordis service by name. */
-function optionalService<T>(ctx: Context, name: string): T | undefined {
+export function optionalService<T>(ctx: Context, name: string): T | undefined {
   return (ctx.get as (key: string) => unknown).call(ctx, name) as T | undefined
 }
 
-/** Probe one session's image-input capability; every failure fails closed to {@link UNKNOWN_CAPABILITY}. */
-export type CapabilityProbe = (sessionId: string) => Promise<ModelImageCapability>
-
 /**
- * Create the per-mount probe. Installs a passive agent/request waterfall
- * listener that records the exact provider/model each agent's requests run
- * under — the one place live model switches surface before the next request
- * is built. The listener observes only: it always delegates and returns the
- * downstream config unchanged.
- * @param ctx - registrant context; the listener unwinds with the plugin.
- * @returns the session-id-keyed probe.
+ * Create the shared exact-route resolver: model-metadata resolutions cached
+ * per route (successes for ten minutes, failures for thirty seconds,
+ * in-flight calls deduped). Both the capability probe and the tool-visibility
+ * controller resolve through one instance so a session's verdict is
+ * consistent across the two seams.
+ * @param ctx - registrant context carrying the optional llm service.
+ * @returns the route-keyed resolver.
  */
-export function createCapabilityProbe(ctx: Context): CapabilityProbe {
-  const recorded = new Map<string, ModelRoute>()
-  ctx.on('agent/request', async (payload, next) => {
-    const resolved = await next()
-    recorded.set(String(payload.agent.id), { provider: resolved.provider, model: resolved.model })
-    return resolved
-  })
-
-  // Exact-model metadata resolutions, cached per route: successes for ten
-  // minutes, failures for thirty seconds, in-flight calls deduped.
+export function createRouteResolver(ctx: Context): RouteCapabilityResolver {
   const routeCache = new Map<string, { at: number; cap: ModelImageCapability }>()
   const routeInflight = new Map<string, Promise<ModelImageCapability>>()
-
-  const resolveRoute = async (route: ModelRoute): Promise<ModelImageCapability> => {
+  return async (route: ModelRoute): Promise<ModelImageCapability> => {
     const key = route.provider + '/' + route.model
     const hit = routeCache.get(key)
     if (hit !== undefined && Date.now() - hit.at < (hit.cap.known ? ROUTE_OK_TTL_MS : ROUTE_ERR_TTL_MS)) return hit.cap
@@ -126,18 +122,31 @@ export function createCapabilityProbe(ctx: Context): CapabilityProbe {
       routeInflight.delete(key)
     }
   }
+}
 
+/** Probe one session's image-input capability; every failure fails closed to {@link UNKNOWN_CAPABILITY}. */
+export type CapabilityProbe = (sessionId: string) => Promise<ModelImageCapability>
+
+/**
+ * Create the per-mount probe. The session's model comes from its own logged
+ * request route (the exact config the loop assembled, so a session resumed
+ * with a history keeps the model it was running), then the agentDefaultModel
+ * service (a fresh session with no requests yet runs the current default
+ * selection). A session that resolves no route at all answers unknown,
+ * keeping the always-safe rewrite.
+ * @param ctx - registrant context carrying the optional agents and agentDefaultModel services.
+ * @param resolver - shared exact-route resolver (defaults to a private one).
+ * @returns the session-id-keyed probe.
+ */
+export function createCapabilityProbe(ctx: Context, resolver: RouteCapabilityResolver = createRouteResolver(ctx)): CapabilityProbe {
   return async (sessionId: string): Promise<ModelImageCapability> => {
-    const live = recorded.get(sessionId)
-    if (live !== undefined) return resolveRoute(live)
-    const agents = optionalService<AgentRegistryFace>(ctx, 'agents')
-    const options = agents?.get(sessionId)?.options
-    if (typeof options?.provider === 'string' && options.provider !== '' && typeof options.model === 'string' && options.model !== '') {
-      return resolveRoute({ provider: options.provider, model: options.model })
+    const logged = optionalService<AgentRegistryFace>(ctx, 'agents')?.get(sessionId)?.session?.requestHeader?.()?.config
+    if (typeof logged?.provider === 'string' && logged.provider !== '' && typeof logged.model === 'string' && logged.model !== '') {
+      return resolver({ provider: logged.provider, model: logged.model })
     }
     const fallback = optionalService<DefaultModelFace>(ctx, 'agentDefaultModel')?.currentSelection()
     if (typeof fallback?.provider === 'string' && fallback.provider !== '' && typeof fallback.model === 'string' && fallback.model !== '') {
-      return resolveRoute({ provider: fallback.provider, model: fallback.model })
+      return resolver({ provider: fallback.provider, model: fallback.model })
     }
     return UNKNOWN_CAPABILITY
   }

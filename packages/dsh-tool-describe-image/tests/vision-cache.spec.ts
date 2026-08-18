@@ -162,6 +162,11 @@ describe('parseImageAttachmentRef narrowing', () => {
     expect(ref.height).toBe(1)
   })
 
+  it('accepts the complete attachment note carrier', () => {
+    const ref = tool.parseImageAttachmentRef(`[image attachment ${valid}]`)
+    expect(ref).toMatchObject({ attachmentId: `sha256:${'c'.repeat(64)}`, mediaType: 'image/png' })
+  })
+
   it('rejects malformed references without narrowing', () => {
     const bad = [
       '{not json',

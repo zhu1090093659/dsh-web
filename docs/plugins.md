@@ -140,7 +140,7 @@ dsh plugin --profile web add link:<dsh-web-ui>/packages/dsh-web-ui-all
   `companions` 等）。**禁止**再复制预设到包内。
 - **测试基建**：vitest 配置需 `server.deps.inline: [/@deepseek-ai\//]`（SDK 包走 vite 转译，
   处理 CSS）；client 半区闭包工厂在测试中不可直接 import——用 `vitest.setup.ts` 的最小
-  `__ModuleLoader__` stub（`packages/dsh-live-stats/vitest.setup.ts`）或 `vi.mock` 替换
+  `__ModuleLoader__` stub（`packages/dsh-remote-web-ui/vitest.setup.ts`）或 `vi.mock` 替换
   （`packages/dsh-remote-web-ui/tests/remote-entry.spec.tsx` 的 `createSnapshotStore` mock）。
 - **设置页插件配置（20260811+ 可选能力）**：DSH web 设置的「插件配置」区展示每插件一张卡片（`settings.plugin.item` 槽）。Web UI 插件组、皮肤中心、社区插件、桌面宠物各注册一级设置分区（`settings.section`，`label` 用 thunk 跟随语言，内容直接展开）；Web UI 插件组声明 `web-ui.plugin.item` 子槽归组 task-board 等卡片。插件接入只需两步：
   1. **host 半区**：`installSettingsSection(ctx, settingsNamespace('<ns>'), <z-schema>, <composition entry>, { setSource, onChange })`（`@deepseek-ai/dsh-settings`）注册命名空间；`setSource` 注入动态读取器，`onChange` 让已派生的行为跟随已提交的修改，无需重启。

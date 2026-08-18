@@ -176,5 +176,26 @@
     "repo": "https://github.com/spacexun2/dsh-worktime-board",
     "npm": "dsh-worktime-board",
     "category": "utility"
+  },
+  {
+    "id": "dsh-skill-explorer",
+    "name": "技能中心（Skill Explorer）",
+    "nameEn": "Skill Explorer",
+    "author": "wingsky-1",
+    "description": "DSH 技能中心：按来源分级浏览已加载 skill（系统内置 / 项目 / 用户 / 自定义 / 运行时），支持启用/禁用、创建与删除（移入 .trash）。",
+    "descriptionEn": "DSH skill center: browse loaded skills grouped by source (bundled / project / user / custom / runtime), with enable/disable, create and delete (move to .trash).",
+    "repo": "https://github.com/wingsky-1/dsh-skill-explorer",
+    "npm": "@linxin666/dsh-client-ui-skill-explorer",
+    "category": "tools"
+  },
+  {
+    "id": "dsh-dream-skin",
+    "name": "dsh-dream-skin",
+    "nameEn": "dsh-dream-skin",
+    "author": "RevolutionLA",
+    "description": "DSH Web 一键换肤插件：8 套原创主题、背景壁纸（透明度/模糊/渐变/URL）、每用户强调色、主题包导入导出与分享链接、收藏与随机，纯原生 token 系统。",
+    "descriptionEn": "One-command skinning for DSH Web: 8 original themes, wallpaper (opacity/blur/gradient/URL), per-user accent, shareable theme packs with favorites and surprise-me. Purely native token system.",
+    "repo": "https://github.com/RevolutionLA/dsh-dream-skin",
+    "category": "ui"
   }
 ]

@@ -1,6 +1,6 @@
 ---
 name: dsh-web-ui-release
-description: Release and publish the dsh-web-ui monorepo (DSH Web GUI plugin family + skin collection) — bump all packages to one unified version, commit and tag, push the vX.Y.Z tag that triggers the GitHub Actions publish pipeline, and verify the npm publish + GitHub Release. Covers post-release verification and bad-version recovery. Use when the user asks to 发布/发版/release/bump 版本/publish a new version of dsh-web-ui or any @linxin666/dsh-* package.
+description: Release and publish the dsh-web-ui monorepo (DSH Web GUI plugin family + skin collection) — bump all packages to one unified version, commit and tag, push the vX.Y.Z tag that triggers the GitHub Actions publish pipeline, and verify the npm publish + GitHub Release. Defaults an unspecified target to the next patch after the previous published release. Covers post-release verification and bad-version recovery. Use when the user asks to 发布/发版/release/bump 版本/publish a new version of dsh-web-ui or any @linxin666/dsh-* package.
 whenToUse: The user wants to release dsh-web-ui (发布新版、发个版本、release、tag、publish @linxin666/dsh-* 包), build or change the release pipeline (release 管线、CI 发布), or recover from a bad published version (坏包、回滚、deprecate). Not for routine commits, skin development (see skin-developer skill), or CI-only changes without a release.
 ---
 
@@ -15,6 +15,9 @@ GitHub Actions 发布管线（构建/测试/npm 发布/GitHub Release）→ 发�
 - 全家桶 23 个包：packages/dsh-*（12 个）+ packages/skins/*（11 个，含 skin-center）。
   全部发布到 npm scope `@linxin666`，registry 固定 registry.npmjs.org。
 - **版本策略：全仓统一版本**（tag vX.Y.Z = 每个 package.json 的 version，由管线强制校验）。
+- **未指定具体版本号时**：不追问版本号；以远端最新且已发布的正式 `vX.Y.Z` tag 为上一版本，
+  默认目标为下一个补丁版本 `X.Y.(Z+1)`。用户明确给出版本号，或明确要求 major/minor/prerelease
+  变更时，按该要求执行；远端 tag 与 npm 已发布版本不一致时，按下方失败恢复规则处理，不自行猜测。
 - npm 不允许重复发布同一版本号：已发布过的版本号（如 0.1.3/0.1.4/0.1.5）不可重发，
   只能 bump 到下一个版本。
 - 发布通道：本机通常没有 npm 登录态（`npm whoami` 401 属正常）；npm 发布全部由
@@ -48,6 +51,32 @@ pnpm gallery:check         # 必须通过；产物与 gallery 资产要同一次
 ```
 
 ## 1. 版本 bump（全仓统一）
+
+### 选择目标版本
+
+1. 用户明确给出 `X.Y.Z`，或明确要求 major/minor/prerelease 变更时，以该要求为准，并确认目标版本未在 npm 发布过。
+2. 用户没有指定具体版本号时，直接运行以下命令得出默认目标，不向用户追问：
+
+```sh
+PREVIOUS_TAG="$(
+  git ls-remote --tags --refs --sort=-version:refname origin 'v*' \
+    | awk '$2 ~ /^refs\/tags\/v[0-9]+\.[0-9]+\.[0-9]+$/ { sub("refs/tags/", "", $2); print $2; exit }'
+)"
+test -n "$PREVIOUS_TAG" || { echo "No previous release tag"; exit 1; }
+
+PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
+test "$(npm view "@linxin666/dsh-web-ui-all@$PREVIOUS_VERSION" version)" = "$PREVIOUS_VERSION" \
+  || { echo "Remote tag and npm publication disagree"; exit 1; }
+
+IFS=. read -r MAJOR MINOR PATCH <<EOF
+$PREVIOUS_VERSION
+EOF
+TARGET_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+printf 'Previous release: %s; default target: %s\n' "$PREVIOUS_VERSION" "$TARGET_VERSION"
+```
+
+`TARGET_VERSION` 即后续命令中的 `X.Y.Z`。如果没有可确认的上一正式发布，或远端 tag 和 npm
+记录不一致，不编造版本号；先按下方失败恢复规则处理。
 
 ```sh
 find packages -name package.json -not -path '*/node_modules/*' \

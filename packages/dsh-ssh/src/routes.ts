@@ -7,7 +7,7 @@
  * deployments must not serve them.
  */
 
-import { createReadStream, createWriteStream, mkdirSync } from 'node:fs'
+import { closeSync, createReadStream, createWriteStream, mkdirSync, openSync } from 'node:fs'
 import { unlink } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { basename, join } from 'node:path'
@@ -93,7 +93,9 @@ export function makeRoutes(deps: SshRoutesDeps): { routes: WebRoute[]; upgrade: 
 const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
   // The upload route stages request bodies here; it must exist before the
   // first request (a missing dir would hang the first upload forever).
-  mkdirSync(staging, { recursive: true })
+  // 0700 keeps in-flight transfers unreadable to other local users (the
+  // staged files below are 0600; downloads are pre-created 0600 as well).
+  mkdirSync(staging, { recursive: true, mode: 0o700 })
 
   /** Guard helper: fence + method check. */
   const guard = (req: IncomingMessage, res: ServerResponse, method: string): boolean => {
@@ -353,7 +355,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
         }
         // Stage the uploaded bytes, then SFTP them out with progress frames.
         const tmp = join(staging, `upload-${randomBytes(6).toString('hex')}`)
-        const sink = createWriteStream(tmp)
+        const sink = createWriteStream(tmp, { mode: 0o600 })
         let settled = false
         // Every terminal path (sink error, client abort, response loss) must
         // emit a result frame, end the response, and remove the tmp file.
@@ -437,6 +439,9 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
         }
         const tmp = join(staging, `download-${randomBytes(6).toString('hex')}`)
         try {
+          // Pre-create with 0600: ssh2's fastGet opens the destination with
+          // umask-default permissions and a pre-created file keeps the mode.
+          closeSync(openSync(tmp, 'w', 0o600))
           const outcome = await engine.download(alias, remotePath, tmp)
           res.writeHead(200, {
             'content-type': 'application/octet-stream',

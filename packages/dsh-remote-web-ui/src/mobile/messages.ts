@@ -191,16 +191,6 @@ function chunkTarget(data: unknown): { text: string; kind: 'text' | 'reasoning';
   return result
 }
 
-/** Max message seq across an existing list, or -1 for an empty list. */
-function watermarkOf(existing: readonly RenderMessage[] | undefined): number {
-  if (existing === undefined) return -1
-  let maxSeq = -1
-  for (const message of existing) {
-    if (message.seq > maxSeq) maxSeq = message.seq
-  }
-  return maxSeq
-}
-
 /** Mutable fold state; message objects are immutable and swapped on change. */
 interface FoldState {
   messages: RenderMessage[]
@@ -215,6 +205,8 @@ interface FoldState {
   toolNames: Map<string, Set<string>>
   /** Context window for the current model (from request/context). */
   contextWindow?: number
+  /** Highest seq folded so far; the replay/watermark gate. */
+  maxSeq: number
 }
 
 function createState(existing: readonly RenderMessage[] | undefined): FoldState {
@@ -226,8 +218,10 @@ function createState(existing: readonly RenderMessage[] | undefined): FoldState 
     turnStepMessage: new Map(),
     messageTurn: new Map(),
     toolNames: new Map(),
+    maxSeq: -1,
   }
   for (const message of messages) {
+    if (message.seq > state.maxSeq) state.maxSeq = message.seq
     state.byId.set(message.id, message)
     if (message.kind !== 'assistant') continue
     // Rebuild the (turn, step) and turn index maps lost when `existing` was
@@ -287,6 +281,7 @@ function retargetTurnStep(state: FoldState, key: string | undefined, oldMessage:
 
 /** Fold one event into the working state. Assumes the event passes the watermark. */
 function applyEvent(state: FoldState, event: WireEvent): void {
+  if (event.seq > state.maxSeq) state.maxSeq = event.seq
   switch (event.type) {
     case 'user/message':
       applyUserMessage(state, event)
@@ -608,17 +603,65 @@ function applyTurnEnd(state: FoldState, event: WireEvent): void {
  * @returns messages sorted by seq.
  */
 export function foldEvents(events: readonly WireEvent[], existing?: readonly RenderMessage[]): RenderMessage[] {
-  const sorted = [...events].sort((a, b) => a.seq - b.seq)
-  const watermark = watermarkOf(existing)
-  const state = createState(existing)
-  for (const event of sorted) {
-    if (event.seq <= watermark) continue
-    applyEvent(state, event)
+  return new EventFolder(existing).fold(events)
+}
+
+/**
+ * Incremental folder for one message stream. Live chat folds one event at a
+ * time; rebuilding the five index maps by scanning every message per event
+ * made that path O(n) per event (O(n * events) per turn). A folder keeps the
+ * indexes alive across folds, applies each event in O(1) map operations, and
+ * returns the previous snapshot identity unchanged when nothing applied, so
+ * React skips the re-render entirely. Replayed events are no-ops: the maxSeq
+ * watermark advanced by the first application skips them, which also makes a
+ * double-invoked React state updater harmless.
+ */
+export class EventFolder {
+  private state: FoldState
+  private snapshotList: RenderMessage[] | undefined
+
+  /** @param initial - seed rows (history tail load); omit for an empty stream. */
+  constructor(initial?: readonly RenderMessage[]) {
+    this.state = createState(initial)
   }
-  // Incremental tails (the live-stream hot path) are appended in seq order
-  // or updated in place, so the list is usually ordered already — verify in
-  // O(n) and skip the O(n log n) re-sort when it is.
-  const out = state.messages
+
+  /** Fold one batch incrementally; returns the current snapshot list. */
+  fold(events: readonly WireEvent[]): RenderMessage[] {
+    const sorted = [...events].sort((a, b) => a.seq - b.seq)
+    let applied = false
+    for (const event of sorted) {
+      if (event.seq <= this.state.maxSeq) continue
+      applyEvent(this.state, event)
+      applied = true
+    }
+    if (!applied && this.snapshotList !== undefined) return this.snapshotList
+    this.snapshotList = snapshotOf(this.state)
+    return this.snapshotList
+  }
+
+  /** Replace the whole stream (history reload / session switch). */
+  seed(messages: readonly RenderMessage[]): void {
+    this.state = createState(messages)
+    this.snapshotList = undefined
+  }
+
+  /** Prepend an older history page (exact seam; no overlapping seqs). */
+  prepend(older: readonly RenderMessage[]): void {
+    this.state = createState([...older, ...this.state.messages])
+    this.snapshotList = undefined
+  }
+
+  /** Current snapshot list; a fresh copy whenever the folder changed. */
+  snapshot(): RenderMessage[] {
+    if (this.snapshotList !== undefined) return this.snapshotList
+    this.snapshotList = snapshotOf(this.state)
+    return this.snapshotList
+  }
+}
+
+/** Copy the folder's rows and keep them seq-ordered (skips re-sorting the common ordered case). */
+function snapshotOf(state: FoldState): RenderMessage[] {
+  const out = [...state.messages]
   let ordered = true
   for (let index = 1; index < out.length; index += 1) {
     const prev = out[index - 1]!
@@ -628,5 +671,5 @@ export function foldEvents(events: readonly WireEvent[], existing?: readonly Ren
       break
     }
   }
-  return ordered ? out : [...out].sort((a, b) => a.seq - b.seq || (a.id < b.id ? -1 : 1))
+  return ordered ? out : out.sort((a, b) => a.seq - b.seq || (a.id < b.id ? -1 : 1))
 }

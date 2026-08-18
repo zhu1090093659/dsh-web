@@ -9,6 +9,12 @@ function failure(error: { code: string; message: string }): Error {
   return new Error(`${error.code}: ${error.message}`)
 }
 
+/** One session-list row, extracted from the sessions.list RPC result. */
+export type SessionSummary = Extract<
+  Awaited<ReturnType<ApiProxy['sessions']['list']>>['result'],
+  { ok: true }
+>['value']['items'][number]
+
 export type ExecutionInspection =
   | { outcome: 'pending' }
   | { outcome: 'succeeded' }
@@ -77,21 +83,33 @@ export class HostExecutionRunner {
     return sessionId
   }
 
-  async listRunning(): Promise<{ known: true; count: number } | { known: false }> {
+  async listRunning(): Promise<{ known: true; count: number; items: SessionSummary[] } | { known: false }> {
     try {
       const response = await this.api.sessions.list(request({}))
       return response.result.ok
-        ? { known: true, count: response.result.value.items.filter(item => item.running).length }
+        ? { known: true, count: response.result.value.items.filter(item => item.running).length, items: response.result.value.items }
         : { known: false }
     } catch {
       return { known: false }
     }
   }
 
-  async inspect(sessionId: string, startedAt = 0): Promise<ExecutionInspection> {
-    const sessions = await this.api.sessions.list(request({}))
-    if (!sessions.result.ok) return { outcome: 'pending' }
-    const summary = sessions.result.value.items.find(item => item.sessionId === sessionId)
+  /**
+   * Resolve one execution's outcome. The caller may pass the session list it
+   * already fetched this poll tick; otherwise inspect lists sessions itself.
+   * Sharing the list keeps a poll with E open executions at one list RPC
+   * instead of 1 + E.
+   */
+  async inspect(sessionId: string, startedAt = 0, sessions?: readonly SessionSummary[]): Promise<ExecutionInspection> {
+    let items: readonly SessionSummary[]
+    if (sessions !== undefined) {
+      items = sessions
+    } else {
+      const response = await this.api.sessions.list(request({}))
+      if (!response.result.ok) return { outcome: 'pending' }
+      items = response.result.value.items
+    }
+    const summary = items.find(item => item.sessionId === sessionId)
     if (summary === undefined) return { outcome: 'cancelled', error: 'execution session no longer exists' }
     if (summary.running) return { outcome: 'pending' }
     const events: Array<{ event: { type: string; seq?: number; time?: number; data: unknown } }> = []

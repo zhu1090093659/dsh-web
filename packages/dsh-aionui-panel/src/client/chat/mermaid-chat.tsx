@@ -67,6 +67,14 @@ export function MermaidChatEnhancer(): JSX.Element | null {
     let pendingRecords: MutationRecord[] = []
     const run = (): void => {
       scheduled = false
+      // The chat mermaid enhancement is a right-panel feature: while the
+      // panel is disabled (provider = dsh-better-sidebar), the host does not
+      // register the /aionui-panel/* routes, so the vendor script fetch would
+      // receive the SPA fallback HTML and throw a parse error. The panel
+      // columns only exist while the panel is mounted — bail on their
+      // absence (the observer stays armed and the firstPass flag stays true,
+      // so a later panel mount triggers the full-document scan).
+      if (document.querySelector('[data-aionui-preview-col]') === null) return
       const records = pendingRecords
       pendingRecords = []
       const scopes = enhanceScopesFor(records)

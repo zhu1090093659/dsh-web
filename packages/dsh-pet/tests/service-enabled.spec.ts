@@ -249,6 +249,56 @@ describe('PetService (rc.6 session events)', () => {
     }
   })
 
+  it('whispers an inner line woken by the model output, then expires it', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      // A reasoning chunk whose text matches the error mood wakes a whisper
+      // while the status bubble reports the scene as usual.
+      ctx.emit('session/event', session, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: '这里有个错误要修',
+      }, 1))
+      const view = await service.state()
+      expect(view.bubble).toBe('正在思考')
+      expect(view.whisper).toBe('哎呀，好像踩到小石子了')
+
+      // The cooldown keeps a second keyword hit quiet right after.
+      ctx.emit('session/event', session, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: '又一个错误',
+      }, 2))
+      expect((await service.state()).whisper).toBe('哎呀，好像踩到小石子了')
+
+      // Past the TTL the whisper leaves the view.
+      const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 8100)
+      try {
+        expect((await service.state()).whisper).toBeUndefined()
+      } finally {
+        clock.mockRestore()
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('stays silent when the model output carries no whisper trigger', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      ctx.emit('session/event', session, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: '嗯',
+      }, 1))
+      const view = await service.state()
+      expect(view.bubble).toBe('正在思考')
+      expect(view.whisper).toBeUndefined()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('keeps parallel tool activity visible and surfaces a failed result', async () => {
     const ctx = new Context()
     const dir = tempDir()
@@ -276,9 +326,11 @@ describe('PetService (rc.6 session events)', () => {
         name: 'ToolError',
         code: 'WRITE_FAILED',
       }))
+      // The failure voice rotates round-robin: the second tool failure in
+      // one session speaks the pool's next line instead of repeating.
       expect(await service.state()).toMatchObject({
         animation: 'failed',
-        bubble: '工具执行失败',
+        bubble: '工具闹脾气了，哄哄它',
       })
     } finally {
       rmSync(dir, { recursive: true, force: true })

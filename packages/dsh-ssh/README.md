@@ -53,7 +53,7 @@ The settings panel (plugin config) toggles `announceToAgent` (whether to announc
 ## Data
 
 - Host config: `~/.dsh/dsh-ssh.json` (versioned JSON, atomic write)
-- Transfer staging: `os.tmpdir()/dsh-ssh-uploads/`
+- Transfer staging: `os.tmpdir()/dsh-ssh-uploads/` (0700 directory, 0600 in-flight files)
 
 ## Development
 

@@ -132,4 +132,64 @@ describe('nextRunAtMs', () => {
   it('returns undefined for invalid expressions', () => {
     expect(nextRunAtMs('not a cron', at(2026, 1, 1, 0, 0))).toBeUndefined()
   })
+
+  it('matches the legacy minute scan across sparse and dense schedules', () => {
+    const crons = [
+      '* * * * *',
+      '*/5 * * * *',
+      '0 9 * * *',
+      '0 9 * * 1',
+      '0 9 15 * 1',
+      '0 9 1-31 * 1',
+      '0 0 1 * *',
+      '30 2 * * *',
+      '0 0 29 2 *',
+      '0 0 31 12 *',
+      '15 8-18/3 * * *',
+      '0 9 * 2 1',
+      '0 0 1 */2 *',
+      '0 0 30 2 *',
+    ]
+    const froms = [
+      at(2026, 1, 1, 0, 0),
+      at(2026, 1, 1, 10, 30),
+      at(2026, 6, 15, 12, 0),
+      at(2025, 3, 1, 0, 0),
+      at(2026, 12, 31, 23, 59),
+      at(2027, 2, 28, 23, 59),
+    ]
+    for (const expr of crons) {
+      for (const fromMs of froms) {
+        expect(nextRunAtMs(expr, fromMs), `${expr} from ${new Date(fromMs).toISOString()}`).toBe(referenceNextRunAtMs(expr, fromMs))
+      }
+    }
+  })
 })
+
+/** The pre-jump minute scan, kept verbatim as the behavioural reference. */
+function referenceNextRunAtMs(expr: string, fromMs: number): number | undefined {
+  const schedule = parseCron(expr)
+  if (schedule === null) return undefined
+  if (!schedule.dayWildcard && schedule.weekdayWildcard) {
+    const maximumDay = new Map<number, number>([
+      [1, 31], [2, 29], [3, 31], [4, 30], [5, 31], [6, 30],
+      [7, 31], [8, 31], [9, 30], [10, 31], [11, 30], [12, 31],
+    ])
+    const possible = [...schedule.months].some(month => [...schedule.days].some(day => day <= (maximumDay.get(month) ?? 0)))
+    if (!possible) return undefined
+  }
+  const from = new Date(fromMs)
+  const scan = new Date(from.getFullYear(), from.getMonth(), from.getDate(), from.getHours(), from.getMinutes() + 1, 0, 0)
+  const limitMs = fromMs + 5 * 366 * 24 * 60 * 60 * 1000
+  while (scan.getTime() <= limitMs) {
+    const dayMatches = schedule.days.has(scan.getDate())
+    const weekdayMatches = schedule.weekdays.has(scan.getDay())
+    const matchesDay = schedule.dayWildcard ? weekdayMatches : schedule.weekdayWildcard ? dayMatches : dayMatches || weekdayMatches
+    if (schedule.minutes.has(scan.getMinutes()) && schedule.hours.has(scan.getHours())
+      && schedule.months.has(scan.getMonth() + 1) && matchesDay) {
+      return scan.getTime()
+    }
+    scan.setMinutes(scan.getMinutes() + 1)
+  }
+  return undefined
+}

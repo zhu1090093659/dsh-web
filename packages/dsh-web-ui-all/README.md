@@ -2,12 +2,13 @@
 
 English | [中文](README.zh.md)
 
-The one-click aggregate package for the whole dsh web UI family: installing it brings every functional plugin (task-board / git-graph / pet / remote-web-ui / live-stats / web-ui-settings / skin-center / community-plugins) plus the skin family (`dsh-skins`, skin assets bundled inside). The compat bridge layer is folded into this package (`src/client`), so no separate compat npm package is needed.
+The one-click aggregate package for the whole dsh web UI family: installing it brings every functional plugin (task-board / git-graph / pet / remote-web-ui / web-ui-settings / skin-center / community-plugins / aionui-panel) plus the external right-sidebar plugin `dsh-better-sidebar` and the skin family (`dsh-skins`, skin assets bundled inside). The compat bridge layer is folded into this package (`src/client`), so no separate compat npm package is needed.
 
 ## What it is
 
-- **One install, everything on**: its dependencies pull in all sub-plugin packages (dsh-client-ui-aionui-panel / dsh-client-ui-task-board / dsh-client-ui-git-graph / dsh-pet / dsh-remote-web-ui / dsh-live-stats / dsh-ssh / dsh-client-ui-web-ui-settings / dsh-client-ui-skin-center / dsh-client-ui-community-plugins / dsh-skins).
-- **Aggregation carrier**: `cordis.patch.yml` aggregates the `insert` lines of each sub-plugin, mounted through the dsh plugin profile mechanism.
+- **One install, everything on**: its dependencies pull in all sub-plugin packages (dsh-client-ui-aionui-panel / dsh-client-ui-task-board / dsh-client-ui-git-graph / dsh-pet / dsh-remote-web-ui / dsh-ssh / dsh-client-ui-web-ui-settings / dsh-client-ui-skin-center / dsh-client-ui-community-plugins / dsh-skins) plus the external npm plugin `dsh-better-sidebar` (the default right sidebar: explorer / editor / terminal / git / browser).
+- **Aggregation carrier**: `cordis.patch.yml` aggregates the `insert` lines of each sub-plugin plus the external `dsh-better-sidebar` row, mounted through the dsh plugin profile mechanism.
+- **Right panel**: the right panel is always `dsh-better-sidebar` (the aionui panel can no longer be enabled). Settings → Web UI Plugins → Side Card declares the right panel comes from [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) and edits its everyday settings inline; the provider choice was removed.
 
 ## Install
 
@@ -37,4 +38,5 @@ When you upgrade by bumping the version in the profile `package.json` and runnin
 
 - Every sub-plugin activates together. For only a subset, install that sub-plugin package directly.
 - Aggregate rows are namespaced `web-ui-*`, so the bundle can coexist with a standalone install of the same plugin: the loader no longer rejects the duplicate id, the host half runs once (the second source is a no-op), and the browser half is deduped by package name. Keeping both sources has no benefit; prefer one. When the bundle is the source, profile patch config rows must use the `web-ui-*` id (e.g. `web-ui-remote-web-ui` for the remote-web-ui `autoTunnel` row); standalone installs keep the plugin's own id.
+- `dsh-better-sidebar` is an external npm dependency (not authored in this repo); it must be published before this package's release (see `docs/publish-prep.md` for the release order).
 - Dependencies on the `@deepseek-ai/*` SDK are pinned; compatibility follows the repository's release cadence.

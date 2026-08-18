@@ -10,7 +10,7 @@
  * The preset is the "anchored-standard" idea shipped as a named mode: the
  * first model request sees only the builtin Minimal preset's exact two tools
  * (persistent `bash` plus `str_replace_editor`), and after the anchor the
- * wire switches to Code Mode (PTC). Derived from
+ * wire switches to PTC Mode. Derived from
  * https://github.com/xiaobright/dsh-anchored-standard (MIT).
  */
 
@@ -50,7 +50,7 @@ const DEFAULT_ANNOUNCE = true
 const SECTION_ORDER = 150
 
 /** Model-facing announcement: plugin presence, principle, and limits. */
-export const LIANGSHEN_GUIDANCE = '本机已安装 dsh-liangshen 插件（梁神模式 agent preset）：新建会话的预设选择器中可选「梁神模式」。原理：两阶段锚定——首轮模型请求仅暴露官方 Minimal 精确双工具（持久 bash 与 str_replace_editor，文件工具继承宿主沙箱），只保留一行 persona，清空运行时上下文并只放行用户的直接消息，锚定 Minimal 推理轨迹；晋升受首块锚定门控（首块包含 we 且无 let me，四步兜底），无工具首轮会在响应后自动晋升，晋升后 wire 切换为 Code Mode（PTC，单一 run_code）并在 persona 追加所选工作区路径，workspace 指令与 skill 目录在晋升后再延迟一步注入。preset 文件由插件维护于 ~/.dsh/.agent-presets，升级插件时自动更新；默认预设由用户自行选择。用户提到「梁神模式 / 锚定模式 / anchored standard」时即指本插件，请据此协作。'
+export const LIANGSHEN_GUIDANCE = '本机已安装 dsh-liangshen 插件（梁神模式 agent preset）：新建会话的预设选择器中可选「梁神模式」。原理：两阶段锚定——首轮模型请求仅暴露官方 Minimal 精确双工具（持久 bash 与 str_replace_editor，文件工具继承宿主沙箱），只保留一行 persona，清空运行时上下文并只放行用户的直接消息，锚定 Minimal 推理轨迹；晋升受首块锚定门控（首块包含 we 且无 let me，四步兜底），无工具首轮会在响应后自动晋升，晋升后 wire 切换为 PTC Mode（单一 run_code）并在 persona 追加所选工作区路径，workspace 指令与 skill 目录在晋升后再延迟一步注入。preset 文件由插件维护于 ~/.dsh/.agent-presets，升级插件时自动更新；默认预设由用户自行选择。用户提到「梁神模式 / 锚定模式 / anchored standard」时即指本插件，请据此协作。'
 // The harness-home resolution (DSH_HOME override with the platform-home
 // fallback and ~ expansion) lives in the family-shared copy ./dsh-home.ts.
 // Re-export it so the plugin surface stays stable while the implementation is

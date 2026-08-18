@@ -133,4 +133,52 @@ describe('task-board HTTP routes', () => {
     expect(response.status).toBe(413)
     expect(apply).not.toHaveBeenCalled()
   })
+
+  it('pushes an event frame with revision/scheduler/power and no task list', async () => {
+    const frame = {
+      revision: 3,
+      scheduler: { timeZone: 'UTC', ledgerId: 'ledger-a', lastTickAt: 7 },
+      power: snapshot.power,
+    }
+    const service = {
+      snapshot: () => snapshot,
+      apply,
+      eventPayload: () => frame,
+      subscribe: () => () => undefined,
+    } as unknown as TaskBoardHostService
+    const routes = makeTaskBoardRoutes(service)
+    const stream = createServer((req, res) => {
+      const route = routes.find(candidate => candidate.path === new URL(req.url ?? '/', 'http://local').pathname)
+      if (route === undefined) { res.writeHead(404); res.end(); return }
+      void route.handler(req, res)
+    })
+    await new Promise<void>(resolve => { stream.listen(0, '127.0.0.1', resolve) })
+    const address = stream.address()
+    if (address === null || typeof address === 'string') throw new Error('SSE test server did not bind')
+    try {
+      const received = await new Promise<Record<string, unknown>>((resolve, reject) => {
+        const outgoing = request(`http://127.0.0.1:${address.port}/api/task-board/events`, {
+          headers: { 'sec-fetch-site': 'same-origin' },
+        }, response => {
+          let buffer = ''
+          response.setEncoding('utf8')
+          response.on('data', (chunk: string) => {
+            buffer += chunk
+            const line = buffer.split('\n').find(entry => entry.startsWith('data: '))
+            if (line !== undefined) {
+              outgoing.destroy()
+              resolve(JSON.parse(line.slice('data: '.length)) as Record<string, unknown>)
+            }
+          })
+          response.once('error', reject)
+        })
+        outgoing.once('error', reject)
+        outgoing.end()
+      })
+      expect(received).toEqual(frame)
+      expect(received).not.toHaveProperty('tasks')
+    } finally {
+      await new Promise<void>((resolve, reject) => { stream.close(error => { if (error) reject(error); else resolve() }) })
+    }
+  })
 })

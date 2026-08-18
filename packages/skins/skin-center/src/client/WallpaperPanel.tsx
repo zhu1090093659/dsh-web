@@ -299,7 +299,11 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                     <div className={css.wallpaperThumbWrap}>
                       {item.previewUrl !== null
                         ? <img className={css.wallpaperThumb} src={item.previewUrl} alt="" loading="lazy" />
-                        : <div className={css.wallpaperThumbEmpty} aria-hidden="true" />}
+                        : item.videoUrl !== null
+                          // No preview image (bare .mp4 without project.json):
+                          // the video element's first frame is the cover.
+                          ? <video className={css.wallpaperThumb} src={item.videoUrl} preload="metadata" muted playsInline aria-hidden="true" />
+                          : <div className={css.wallpaperThumbEmpty} aria-hidden="true" />}
                       <span className={css.wallpaperType}>{t(typeKey(item))}</span>
                       {isMounted && (
                         <span className={css.badge + ' ' + (trying ? css.badgeTrying : css.badgeActive)}>

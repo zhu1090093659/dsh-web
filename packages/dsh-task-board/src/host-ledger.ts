@@ -120,11 +120,14 @@ export class HostTaskLedger {
   private lockFd: number | undefined
   readonly file: string
   readonly lockFile: string
+  /** Small sidecar for the 30 s scheduler heartbeat (lastTickAt only). */
+  readonly schedulerFile: string
 
   constructor(dir: string = join(dshHome(), 'task-board'), private readonly now: () => number = Date.now) {
     mkdirSync(dir, { recursive: true })
     this.file = join(dir, 'ledger-v2.json')
     this.lockFile = join(dir, 'ledger-v2.lock')
+    this.schedulerFile = join(dir, 'scheduler-v2.json')
     this.lockFd = this.acquireLock()
     try {
       this.document = this.load(dir)
@@ -142,9 +145,15 @@ export class HostTaskLedger {
     }
   }
 
-  state(): LedgerState {
+  /** Revision + scheduler without any task cloning; feeds the SSE event frame. */
+  summary(): { revision: number; scheduler: TaskBoardSchedulerSnapshot } {
     const { importedSources: _imports, ...scheduler } = this.document.scheduler
-    return { revision: this.document.revision, tasks: cloneTasks(this.document.tasks), scheduler: { ...scheduler } }
+    return { revision: this.document.revision, scheduler: { ...scheduler } }
+  }
+
+  state(): LedgerState {
+    const { revision, scheduler } = this.summary()
+    return { revision, tasks: cloneTasks(this.document.tasks), scheduler }
   }
 
   subscribe(listener: () => void): () => void {
@@ -215,6 +224,14 @@ export class HostTaskLedger {
 
   setScheduler(patch: Partial<TaskBoardSchedulerSnapshot>): void {
     this.document.scheduler = { ...this.document.scheduler, ...patch }
+    // The 30 s heartbeat only moves lastTickAt; rewriting the whole ledger
+    // for it made idle idle cost O(ledger bytes) every tick. Persist it to a
+    // tiny sidecar instead; any other patch still goes through the full
+    // atomic commit.
+    if (patch.lastTickAt !== undefined && Object.keys(patch).every(key => key === 'lastTickAt')) {
+      this.writeSchedulerSidecar()
+      return
+    }
     this.commit(false)
   }
 
@@ -374,6 +391,13 @@ export class HostTaskLedger {
           ? [typeof row.id === 'string' ? row.id : 'unknown']
           : []
       })
+      const documentLastTickAt = typeof parsed.scheduler?.lastTickAt === 'number' ? parsed.scheduler.lastTickAt : undefined
+      const sidecarLastTickAt = this.readSchedulerSidecar()
+      // A sidecar write can be newer than the last full commit (crash between
+      // the two); lastTickAt only ever moves forward, so take the greater.
+      const lastTickAt = sidecarLastTickAt === undefined || (documentLastTickAt !== undefined && documentLastTickAt >= sidecarLastTickAt)
+        ? documentLastTickAt
+        : sidecarLastTickAt
       return {
         schemaVersion: TASK_BOARD_SCHEMA_VERSION,
         revision: Number.isSafeInteger(parsed.revision) && (parsed.revision as number) >= 0 ? parsed.revision as number : 0,
@@ -381,7 +405,7 @@ export class HostTaskLedger {
         scheduler: {
           timeZone: timeZone(),
           ledgerId: typeof parsed.scheduler?.ledgerId === 'string' && parsed.scheduler.ledgerId !== '' ? parsed.scheduler.ledgerId : crypto.randomUUID(),
-          ...(typeof parsed.scheduler?.lastTickAt === 'number' ? { lastTickAt: parsed.scheduler.lastTickAt } : {}),
+          ...(lastTickAt === undefined ? {} : { lastTickAt }),
           ...(typeof parsed.scheduler?.error === 'string' ? { error: parsed.scheduler.error } : {}),
           ...(invalidScheduleIds.length > 0 ? { error: `invalid cron disabled for task(s): ${invalidScheduleIds.join(', ')}` } : {}),
           ...(Array.isArray(parsed.scheduler?.importedSources) ? { importedSources: parsed.scheduler.importedSources.filter(x => typeof x === 'string') } : {}),
@@ -414,6 +438,43 @@ export class HostTaskLedger {
       requestId,
       fingerprint: request.fingerprint,
     }))
+  }
+
+  private readSchedulerSidecar(): number | undefined {
+    try {
+      const parsed = JSON.parse(readFileSync(this.schedulerFile, 'utf8')) as { lastTickAt?: unknown }
+      return typeof parsed.lastTickAt === 'number' && Number.isFinite(parsed.lastTickAt) ? parsed.lastTickAt : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** Atomic write of the scheduler heartbeat sidecar (0600, tmp + rename + fsync). */
+  private writeSchedulerSidecar(): void {
+    const payload = JSON.stringify({ lastTickAt: this.document.scheduler.lastTickAt })
+    mkdirSync(dirname(this.schedulerFile), { recursive: true })
+    const tmp = `${this.schedulerFile}.tmp-${process.pid}`
+    let fd: number | undefined
+    try {
+      fd = openSync(tmp, 'w', 0o600)
+      writeFileSync(fd, payload, { encoding: 'utf8' })
+      fsyncSync(fd)
+      closeSync(fd)
+      fd = undefined
+      try { chmodSync(tmp, 0o600) } catch { /* Windows ACLs own access */ }
+      renameSync(tmp, this.schedulerFile)
+      try {
+        const dirFd = openSync(dirname(this.schedulerFile), 'r')
+        try { fsyncSync(dirFd) } finally { closeSync(dirFd) }
+      } catch {
+        // Windows does not permit fsync on a directory handle; rename remains atomic.
+      }
+    } catch (error) {
+      if (fd !== undefined) closeSync(fd)
+      try { unlinkSync(tmp) } catch { /* best-effort temporary cleanup */ }
+      throw error
+    }
+    this.notify()
   }
 
   private commit(bumpRevision = true): void {

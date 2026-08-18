@@ -28,7 +28,13 @@ import type { PairingService } from './pairing.ts'
 import { readBoundedJson, writeJson } from './http.ts'
 import { readCookie } from './gate.ts'
 
-/** Methods the phone surface may call. Everything else is refused. */
+/**
+ * Methods the phone surface may call. Everything else is refused HERE — but
+ * note the paired-device cookie also passes the global api/gate for the full
+ * ApiProxy surface (gate.ts), so a paired phone is a full-control credential:
+ * the allowlist only constrains this /m/api proxy, not the cookie's reach.
+ * stop() revokes every device; there is no per-device revocation yet.
+ */
 const MOBILE_ALLOWLIST = new Set([
   'workspace.list',
   'session.create',

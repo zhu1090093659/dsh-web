@@ -37,26 +37,103 @@
   background: rgba(56, 189, 248, 0.92);
 }
 
+/* 状态气泡：深色渐变玻璃 + 青色描边微光 + 进场浮现。碎碎念不再单独
+   渲染第二只气泡，而是以 .bubbleWhisper 色调变体接管这同一只气泡。 */
 .bubbleStatus {
   max-width: min(280px, calc(100vw - 24px));
   overflow: hidden;
   text-overflow: ellipsis;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(125, 211, 252, 0.5);
-  animation: none;
+  padding: 5px 12px;
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.88), rgba(15, 23, 42, 0.92));
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  box-shadow:
+    0 4px 12px rgba(2, 6, 23, 0.35),
+    inset 0 1px 0 rgba(226, 232, 240, 0.1),
+    0 0 12px rgba(56, 189, 248, 0.14);
+  backdrop-filter: blur(8px);
+  letter-spacing: 0.02em;
+  animation: pet-bubble-in 240ms ease-out;
 }
 
-/* 多会话气泡栈：并行会话各自一个气泡，自精灵头顶向上堆叠，
-   最近更新的会话在最上。栈内气泡改流入列布局，不再绝对定位
-   互相覆盖。气泡可点击：点击跳转到对应会话。 */
+/* 碎碎念色调（与 .bubbleStatus 叠加使用）：同一只气泡切换为深紫粉玻璃 +
+   「」引号，表现宠物的内心独白。深底白字保证对比度（弃用旧的浅粉斜体 +
+   虚线描边）；叠在会话气泡上时保持可点击，跳转语义不变。规则顺序在
+   .bubbleStatus 之后，色调声明方可胜出。 */
+.bubbleWhisper {
+  color: #fdf4ff;
+  letter-spacing: 0.03em;
+  background: linear-gradient(150deg, rgba(76, 29, 149, 0.9), rgba(112, 26, 117, 0.92));
+  border-color: rgba(240, 171, 252, 0.5);
+  box-shadow:
+    0 4px 12px rgba(46, 16, 101, 0.35),
+    inset 0 1px 0 rgba(250, 245, 255, 0.14),
+    0 0 12px rgba(217, 70, 239, 0.2);
+  animation: pet-whisper-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bubbleWhisper::before {
+  content: '「';
+  margin-right: 2px;
+  opacity: 0.7;
+}
+
+.bubbleWhisper::after {
+  content: '」';
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
+/* 多会话气泡栈：默认收起为「主会话一只气泡 + 右上角 +N 角标」，
+   悬停或点按角标才展开整栈。反向列布局让 DOM 首位的主气泡钉在栈底
+   （紧贴精灵），展开时其余气泡从它上方向上生长，主气泡与角标原地
+   不动，悬停目标不会抖动。气泡可点击：点击跳转到对应会话。 */
 .bubbleStack {
   position: absolute;
   bottom: 100%;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   align-items: center;
   gap: 4px;
   pointer-events: auto;
+}
+
+/* 主气泡的定位锚：+N 角标相对它定位，展开整栈时随之固定不动。 */
+.bubbleAnchor {
+  position: relative;
+  display: inline-flex;
+}
+
+/* +N 角标：收起态提示其余在忙会话数，点击/轻触展开或收起整栈。 */
+.bubbleMore {
+  position: absolute;
+  top: -9px;
+  right: -10px;
+  z-index: 1;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid rgba(125, 211, 252, 0.5);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: #e0f2fe;
+  background: linear-gradient(160deg, rgba(14, 116, 144, 0.95), rgba(8, 74, 110, 0.95));
+  box-shadow: 0 2px 6px rgba(2, 6, 23, 0.4);
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+
+.bubbleMore:hover {
+  filter: brightness(1.15);
+}
+
+.bubbleMore:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.85);
 }
 
 .bubbleStack .bubble {
@@ -82,6 +159,42 @@
   outline: none;
   /* 2px accent ring on the pet's own palette, theme-agnostic. */
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.85);
+}
+
+@keyframes pet-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pet-whisper-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+  60% {
+    transform: translateY(-1px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pet-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes pet-bubble-pop {
@@ -113,18 +226,23 @@
   position: absolute;
   top: 100%;
   margin-top: 8px;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 10px;
-  padding: 8px 10px;
+  background: linear-gradient(165deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.96));
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  padding: 10px 12px;
   color: #e2e8f0;
   font-size: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(6px);
+  box-shadow:
+    0 8px 24px rgba(2, 6, 23, 0.45),
+    0 0 0 1px rgba(125, 211, 252, 0.08),
+    inset 0 1px 0 rgba(226, 232, 240, 0.08);
+  backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 132px;
+  gap: 7px;
+  min-width: 148px;
+  animation: pet-panel-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: 50% 0;
 }
 
 /* 面板顶边与精灵底边之间的 hover 桥接（issue #49）：
@@ -144,6 +262,7 @@
   bottom: 100%;
   margin-top: 0;
   margin-bottom: 8px;
+  transform-origin: 50% 100%;
 }
 
 .panelAbove::after {
@@ -159,6 +278,28 @@
 }
 
 .nameCell {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, #7dd3fc, #38bdf8 60%, #818cf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 面板数值的专属配色：称号紫、小鱼干青、亲密度琥珀，
+   让两行数据扫一眼就能分辨。 */
+.statRank {
+  color: #c4b5fd;
+  font-weight: 600;
+}
+
+.statTreats {
+  color: #7dd3fc;
+  font-weight: 600;
+}
+
+.statPoints {
+  color: #fcd34d;
   font-weight: 600;
 }
 
@@ -200,15 +341,20 @@
   cursor: pointer;
   color: #0f172a;
   background: linear-gradient(180deg, #7dd3fc, #38bdf8);
-  transition: filter 120ms ease, box-shadow 120ms ease;
+  box-shadow: 0 2px 6px rgba(56, 189, 248, 0.25);
+  transition: filter 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
 .action:hover {
   filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(56, 189, 248, 0.35);
 }
 
 .action:active {
   filter: brightness(0.94);
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(56, 189, 248, 0.25);
 }
 
 .action:focus-visible {
@@ -249,13 +395,17 @@
 /* Reduced motion: freeze the reaction bubble and kill the overlay transitions
    so the pet's motion is static or minimal without hiding interaction. */
 @media (prefers-reduced-motion: reduce) {
-  .bubble {
+  .bubble,
+  .bubbleStatus,
+  .bubbleWhisper,
+  .panel {
     animation: none;
     opacity: 1;
   }
 
   .action,
-  .summon {
+  .summon,
+  .bubbleMore {
     transition: none;
   }
 }

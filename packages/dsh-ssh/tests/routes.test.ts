@@ -6,7 +6,7 @@
 
 import { createServer, request as httpRequest, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { WebSocket } from 'ws'
@@ -41,8 +41,12 @@ class StubEngine {
     if (this.uploadError !== undefined) throw this.uploadError
     return { bytes: this.uploadBytes, files: 1 }
   }
+  /** Mode of the staged destination file, recorded when download writes it. */
+  downloadMode: number | undefined
+
   async download(_alias: string, _remotePath: string, localPath: string): Promise<{ bytes: number }> {
     // Materialize the staged file the download route streams out.
+    this.downloadMode = statSync(localPath).mode & 0o777
     writeFileSync(localPath, 'hello', 'utf8')
     return { bytes: 5 }
   }
@@ -269,6 +273,11 @@ describe('upload', () => {
     expect(result?.ok).toBe(false)
     expect(String(result?.error)).toContain('remote rejected')
   })
+
+  it('keeps the staging directory private (0700)', () => {
+    const mode = statSync(join(dir, 'staging')).mode & 0o777
+    expect(mode).toBe(0o700)
+  })
 })
 
 describe('download', () => {
@@ -277,6 +286,11 @@ describe('download', () => {
     expect(res.status).toBe(200)
     expect(res.headers.get('content-disposition')).toContain('app.tar.gz')
     expect(res.headers.get('content-length')).toBe('5')
+  })
+
+  it('stages the download in a 0600 file', async () => {
+    await fetch('http://127.0.0.1:' + port + SSH_API.download + '?alias=web-01&remotePath=/tmp/private.tar.gz')
+    expect(stub.downloadMode).toBe(0o600)
   })
 })
 

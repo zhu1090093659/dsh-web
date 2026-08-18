@@ -1,6 +1,6 @@
 /** foldEvents: message-list folding from a session event stream. */
 import { describe, expect, it } from 'vitest'
-import { foldEvents, type WireEvent } from './messages.ts'
+import { EventFolder, foldEvents, type WireEvent } from './messages.ts'
 
 /** Assemble one event with an auto-incrementing seq / time. */
 function makeEvent(
@@ -324,5 +324,56 @@ describe('foldEvents', () => {
     // request/context with no window and the unknown event render nothing.
     expect(result).toHaveLength(1)
     expect(result[0]).toMatchObject({ id: 'u-1', kind: 'user' })
+  })
+})
+
+describe('EventFolder incremental folding', () => {
+  it('matches a one-shot fold when events arrive one at a time', () => {
+    const stream: WireEvent[] = [
+      makeEvent('user/message', userMessageData('u-1', 'hi'), 0),
+      textChunk(0, 0, '你', 1),
+      textChunk(0, 0, '好', 2),
+      makeEvent('assistant/message', assistantMessageData('a-1', 0, 0, '你好'), 3),
+      makeEvent('message/update', { id: 'u-1', text: '更新' }, 4),
+    ]
+    const oneShot = foldEvents(stream)
+    const folder = new EventFolder()
+    let incremental: ReturnType<typeof foldEvents> = []
+    for (const event of stream) incremental = folder.fold([event])
+    expect(incremental).toEqual(oneShot)
+  })
+
+  it('replays and re-folds are no-ops and reuse the previous snapshot identity', () => {
+    const folder = new EventFolder(foldEvents([
+      makeEvent('user/message', userMessageData('u-1', 'hi'), 0),
+      textChunk(0, 0, '你', 1),
+    ]))
+    const first = folder.fold([textChunk(0, 0, '好', 2)])
+    expect(first[first.length - 1]).toMatchObject({ text: '你好', pending: true })
+    // Same event again (wire replay or a double-invoked state updater): no change, same identity.
+    const replay = folder.fold([textChunk(0, 0, '好', 2)])
+    expect(replay).toBe(first)
+    // A no-op batch over an already folded stream also keeps the identity.
+    expect(folder.fold([])).toBe(first)
+  })
+
+  it('prepends older pages and keeps folding live events on top', () => {
+    const folder = new EventFolder(foldEvents([
+      makeEvent('user/message', userMessageData('u-2', '第二页'), 10),
+    ]))
+    folder.prepend(foldEvents([makeEvent('user/message', userMessageData('u-1', '第一页'), 5)]))
+    const withLive = folder.fold([textChunk(0, 0, '新', 11)])
+    expect(withLive.map(message => message.id)).toEqual(['u-1', 'u-2', 'assistant,0.0#11'])
+    // The live fold must not lose the prepended rows on later events.
+    const later = folder.fold([textChunk(0, 0, '续', 12)])
+    expect(later.map(message => message.id)).toEqual(['u-1', 'u-2', 'assistant,0.0#11'])
+    expect(later[2]).toMatchObject({ text: '新续', pending: true })
+  })
+
+  it('seed replaces the whole stream', () => {
+    const folder = new EventFolder(foldEvents([makeEvent('user/message', userMessageData('u-1', '旧'), 0)]))
+    folder.seed(foldEvents([makeEvent('user/message', userMessageData('u-2', '新'), 5)]))
+    expect(folder.snapshot().map(message => message.id)).toEqual(['u-2'])
+    expect(folder.fold([textChunk(0, 0, '追加', 6)]).map(message => message.id)).toEqual(['u-2', 'assistant,0.0#6'])
   })
 })

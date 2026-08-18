@@ -11,13 +11,13 @@
  *   permission pickers, both as bottom sheets.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { MuxFrame } from '@deepseek-ai/dsh-host-apiproxy/api/events'
 import type { SessionModels } from '@deepseek-ai/dsh-host-apiproxy/api/sessions'
 import { loadHistory, prompt, type SessionView } from './App.tsx'
 import { errorText, formatTime, staleHostHint } from './App.tsx'
 import { fetchMobilePreferences, models, selectModel, sendCommand } from '../api.ts'
-import { foldEvents, type RenderMessage, type ToolCallInfo, type WireEvent } from '../messages.ts'
+import { EventFolder, foldEvents, type RenderMessage, type ToolCallInfo, type WireEvent } from '../messages.ts'
 import { renderMarkdown } from '../markdown.ts'
 import { MuxClient } from '../mux.ts'
 import { ThemeToggle } from '../theme-toggle.tsx'
@@ -144,6 +144,8 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
   const tailLoadingRef = useRef(true)
   /** Live session events buffered while the initial tail page loads. */
   const liveBufferRef = useRef<WireEvent[]>([])
+  /** Incremental folder for this session's stream (indexes stay hot across events). */
+  const folderRef = useRef<EventFolder | undefined>(undefined)
   /** True once the live buffer hit its cap (oldest events were dropped). */
   const liveBufferOverflowRef = useRef(false)
 
@@ -188,6 +190,7 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
     tailLoadingRef.current = true
     liveBufferRef.current = []
     liveBufferOverflowRef.current = false
+    folderRef.current = undefined
     setLoading(true)
     setError(undefined)
     setMessages([])
@@ -199,7 +202,9 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
         const buffered = liveBufferRef.current
         liveBufferRef.current = []
         tailLoadingRef.current = false
-        setMessages(foldEvents(buffered, foldEvents(page.events.map(eventOf))))
+        const folder = new EventFolder(foldEvents(page.events.map(eventOf)))
+        folderRef.current = folder
+        setMessages(folder.fold(buffered))
         setHasOlder(page.hasMore)
         setLoading(false)
         // The history-tail projection baseline seeds the permission picker.
@@ -215,7 +220,9 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
           void loadHistory(session.sessionId, undefined, controller.signal).then(
             (fresh) => {
               if (cancelled) return
-              setMessages(previous => foldEvents(fresh.events.map(eventOf), previous))
+              const folder = folderRef.current
+              const freshEvents = fresh.events.map(eventOf)
+              setMessages(previous => folder === undefined ? foldEvents(freshEvents, previous) : folder.fold(freshEvents))
               liveBufferOverflowRef.current = false
             },
             (reason: unknown) => {
@@ -231,7 +238,10 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
         const buffered = liveBufferRef.current
         liveBufferRef.current = []
         tailLoadingRef.current = false
-        if (buffered.length > 0) setMessages(foldEvents(buffered))
+        if (buffered.length > 0) {
+          const folder = folderRef.current
+          setMessages(folder === undefined ? foldEvents(buffered) : folder.fold(buffered))
+        }
         setError(errorText(reason))
         setLoading(false)
       },
@@ -274,7 +284,10 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
           liveBufferRef.current.push(event)
           return
         }
-        setMessages(previous => foldEvents([event], previous))
+        setMessages(previous => {
+          const folder = folderRef.current
+          return folder === undefined ? foldEvents([event], previous) : folder.fold([event])
+        })
         return
       }
       // Live projection pushes keep the permission picker current.
@@ -330,7 +343,13 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
         pendingRef.current = false
         setLoading(false)
         const older = foldEvents(page.events.map(eventOf))
-        setMessages(previous => [...older, ...previous])
+        const folder = folderRef.current
+        if (folder === undefined) {
+          setMessages(previous => [...older, ...previous])
+        } else {
+          folder.prepend(older)
+          setMessages(folder.snapshot())
+        }
         setHasOlder(page.hasMore)
       },
       (reason: unknown) => {
@@ -481,8 +500,12 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
 
 /* ── message rows ─────────────────────────────────────────────────────── */
 
-/** One rendered message row (user bubble or assistant bubble with folds). */
-function MessageRow({ message, showToolCalls, showSystemMessages }: {
+/**
+ * One rendered message row (user bubble or assistant bubble with folds).
+ * Memoized: live streaming updates exactly one message object per frame, so
+ * unchanged rows skip re-rendering their markdown/sub-components.
+ */
+const MessageRow = memo(function MessageRow({ message, showToolCalls, showSystemMessages }: {
   message: RenderMessage
   showToolCalls: boolean
   showSystemMessages: boolean
@@ -510,7 +533,7 @@ function MessageRow({ message, showToolCalls, showSystemMessages }: {
       <span className="chat-msg-time">{formatTime(message.time)}</span>
     </div>
   )
-}
+})
 
 /** Collapsed-by-default reasoning disclosure (web-UI Think-row parity). */
 function ReasoningDisclosure({ text, pending }: { text: string; pending: boolean }) {

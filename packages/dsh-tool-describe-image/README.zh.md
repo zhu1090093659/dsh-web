@@ -15,14 +15,14 @@
 
 | 能力 | 说明 |
 | --- | --- |
-| 三种输入 | 本地绝对路径、http(s) URL（拒绝重定向）、`[image attachment …]` JSON 附件引用，或拖拽/粘贴产生的短 markdown 引用（`![图片](/describe-image/raw/sha256:…)`——模型取 URL 中的 id 传入，进程内附件注册表解析，存储侧摘要校验照常执行） |
-| 直接发图 | 在纯文本会话里拖拽或粘贴图片，发送时被改写为 describe-image 引用（`![图片](/describe-image/raw/sha256:…)`），而不是模型读不了的图片块——图片在会话里正常渲染，模型经工具分析它。支持图片输入的模型（适配器声明 image 模态）会被自动识别：原图块直接交给模型本身的视觉，不再绕行 describe_image |
+| 三种输入 | 本地绝对路径、http(s) URL（拒绝重定向）、完整的 `[image attachment ...]` 注记，或拖拽/粘贴产生的完整自描述 Markdown 引用（`![图片](/describe-image/raw/sha256:...?ref=...)`）。把完整 Markdown 引用直接传给工具：其中序列化的不可变元数据可在 Host 重启后及 PTC 嵌套工具调用中解析已存图片；裸 id 只作为当前进程的兼容兜底 |
+| 直接发图 | 在纯文本会话里拖拽或粘贴图片，发送时被改写为自描述 describe-image 引用（`![图片](/describe-image/raw/sha256:...?ref=...)`），而不是模型读不了的图片块——图片在会话里正常渲染，模型经工具分析它。支持图片输入的模型（适配器声明 image 模态）会被自动识别：原图块直接交给模型本身的视觉，不再绕行 describe_image，且该会话的 `describe_image` 工具会被隐藏——多模态模型看不到、也无法调用它（包括 run_code 内的嵌套调用） |
 | 自定义指令 | `prompt` 参数携带你的精确指令（OCR、图表解读、UI 诊断、翻译…）；`defaultPrompt` 配置设置模型未传指令时的兜底文案 |
 | 实时配置卡 | 设置 → 插件配置 → Web UI 插件组 → 「图像理解」卡修改 `baseURL` / `apiStyle` / `model` / API key / 默认指令 / 各项上限（走设置服务），即时生效，无需重启 |
 | 多协议 | `apiStyle: chat-completions`（默认）请求 `baseURL/chat/completions`；`apiStyle: responses` 请求 `baseURL/responses`，使用 `input` / `max_output_tokens` 并读取 `output_text`；`apiStyle: anthropic-messages` 请求 `baseURL/v1/messages`（`x-api-key` 鉴权，Claude 风格端点如 OpenCode Go / 智谱 GLM / 月之暗面 Kimi），读取 `content[].text` |
 | 思考控制 | 模型 id 带可选后缀：`model:off` 禁用思考，`model:low` / `model:medium` / `model:high` 开启思考；不带后缀则不发送控制、沿用端点默认（MiMo-V2.5、DeepSeek V4 默认开启思考） |
 | 原图路由 | `GET /describe-image/raw/<id>` 回读已存字节（仅回环、内容寻址 id），让贴入的引用在会话中渲染 |
-| 能力探测路由 | `GET /describe-image/capability?session=<id>` 回答该会话模型是否声明图片输入（生效路由依次取 agent/request 实况记录、agent 选项、默认模型服务；模态经 `resolveModelInfo` 精确解析）。一切未知与失败都保守回答 false，保留改写行为 |
+| 能力探测路由 | `GET /describe-image/capability?session=<id>` 回答该会话模型是否声明图片输入（以会话自身的请求头路由确认生效模型——恢复的会话沿用其日志模型、无请求历史的新会话取当前默认模型选择；模态经 `resolveModelInfo` 精确解析）。无路由可解析、一切未知与失败都保守回答 false，保留改写行为 |
 | 每次调用解析密钥 | 内联 `apiKey` → 凭证服务（`apiKeyEnv`，默认 `VISION_API_KEY`）→ 启动环境，逐级回退 |
 | 安全与边界 | 所有请求拒绝重定向；`maxBytes` / `maxOutputTokens` / `timeoutMs` 上限；magic-byte 类型门；错误摘要有界（200 字符）；密钥不进日志 |
 | 返回规范值 | `{ text, model, image, mimeType, bytes }`——模型只看到 `text` |
@@ -128,12 +128,13 @@ provider 路径会被保留：上述示例最终请求 `https://opencode.ai/zen/
 ### 从输入框发送图片
 
 DSH 输入框对纯文本模型没有图片入口，因此在输入框里拖拽或粘贴图片：发送时插件会把携带图片的
-发送改写为 describe-image 引用（`![图片](/describe-image/raw/sha256:…)`），而不是模型读不了的
+发送改写为自描述 describe-image 引用（`![图片](/describe-image/raw/sha256:...?ref=...)`），而不是模型读不了的
 图片块。图片字节经 host 端 `/describe-image/attach` 路由上传（校验大小与 magic bytes，持久化
-到附件存储）；只有引用文本进入会话记录。Web shell 把用户消息渲染为纯文本，发送的引用本会
-以原始 markdown 文本留在会话里；开启 `renderImagePreview`（设置卡的「会话内渲染图片预览」
-开关，默认开）后客户端把每条引用原地升级为缩略图——点击查看大图。若 raw 路由经当前访问源
-不可达（如反向代理未转发该路由），缩略图加载失败，引用文本保持原样。
+到附件存储）；只有可持久解析的引用文本进入会话记录。Host 重启后或 PTC 嵌套工具调用中，都可将完整
+引用原样传给 `describe_image`。Web shell 把用户消息渲染为纯文本，发送的引用本会以原始 markdown
+文本留在会话里；开启 `renderImagePreview`（设置卡的「会话内渲染图片预览」开关，默认开）后客户端
+把每条引用原地升级为缩略图——点击查看大图。若 raw 路由经当前访问源不可达（如反向代理未转发该
+路由），缩略图加载失败，引用文本保持原样。
 
 改写是一个实时开关——设置卡的「发送时改写图片为 describe-image 引用」(`interceptImageSend`，
 默认开)。当其他视觉插件与当前会话共用、需要由它们接收原始图片块时请关闭；关闭后图片发送

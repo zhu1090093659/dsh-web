@@ -56,6 +56,12 @@ export interface PluginSettingsCardProps<TKey extends string = string> {
    * already provides the selection.
    */
   alwaysOpen?: boolean
+  /**
+   * Hide the save/discard footer: cards whose body applies its own changes
+   * immediately (an embedded external settings section) have no staged
+   * edits, so the footer would sit there permanently disabled.
+   */
+  hideFooter?: boolean
   /** The plugin's controls. */
   children: ReactNode
 }
@@ -140,6 +146,9 @@ export function PluginSettingsCard<TKey extends string = string>(props: PluginSe
           <div className={css.body}>
             {!state.writable ? <p className={css.readOnly} role="status">{props.t('settings.readOnly')}</p> : null}
             {props.children}
+            {props.hideFooter === true
+              ? null
+              : (
             <div className={css.footer}>
               {state.failed
                 ? (
@@ -165,6 +174,7 @@ export function PluginSettingsCard<TKey extends string = string>(props: PluginSe
                 {props.t(!state.saving ? 'settings.save' : 'settings.saving')}
               </button>
             </div>
+              )}
           </div>
         )
         : null}

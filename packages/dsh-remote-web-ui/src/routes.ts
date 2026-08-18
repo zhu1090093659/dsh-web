@@ -222,7 +222,16 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
   const ACCEPT_MAX_ATTEMPTS = 10
   const ACCEPT_WINDOW_MS = 30_000
   const rateLimitAccept = (req: IncomingMessage): boolean => {
-    const ip = (req.socket as { remoteAddress?: string } | undefined)?.remoteAddress ?? 'unknown'
+    const socketIp = (req.socket as { remoteAddress?: string } | undefined)?.remoteAddress ?? 'unknown'
+    // Behind the auto-tunnel every internet client arrives from 127.0.0.1,
+    // so a single shared bucket would let one attacker keep the legitimate
+    // owner rate-limited. Partition the availability bucket by the first
+    // client-visible XFF hop (set by the tunnel edge): XFF is untrusted for
+    // authentication and only separates buckets, it never grants access.
+    const forwarded = typeof req.headers['x-forwarded-for'] === 'string'
+      ? (req.headers['x-forwarded-for'].split(',')[0] ?? '').trim()
+      : undefined
+    const ip = forwarded === undefined || forwarded === '' ? socketIp : socketIp + '|' + forwarded
     const nowMs = Date.now()
     // The map lives as long as the plugin: prune expired windows once the
     // table grows past a modest size so distinct source IPs (LAN clients,
@@ -306,6 +315,9 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       writeJson(res, result.code === 'used' ? 409 : 404, { ok: false, code: result.code })
       return
     }
+    // No Secure attribute: LAN pairing runs over plain HTTP (the cookie must
+    // work there), and the same cookie rides HTTPS on the tunnel. Lax keeps
+    // top-level navigations working while blocking cross-site subrequests.
     res.writeHead(200, {
       'content-type': 'application/json; charset=utf-8',
       'set-cookie': [
@@ -356,7 +368,15 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       return
     }
     const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
-    writeJson(res, 200, { ok: true, paired: deviceId !== undefined && service.hasDevice(deviceId), ...service.snapshot() })
+    const paired = deviceId !== undefined && service.hasDevice(deviceId)
+    const snapshot = service.snapshot()
+    // Unpaired LAN/tunnel clients get only the pairing-relevant fields; the
+    // token expiry, device roster, and public tunnel URL are an oracle for
+    // targeting and timing and stay behind a live device cookie.
+    const visible = paired
+      ? snapshot
+      : { phase: snapshot.phase, lanAvailable: snapshot.lanAvailable, lanAddresses: snapshot.lanAddresses }
+    writeJson(res, 200, { ok: true, paired, ...visible })
   }
 
   const handleEvents = (req: IncomingMessage, res: ServerResponse): void => {

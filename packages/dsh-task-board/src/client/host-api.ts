@@ -3,6 +3,7 @@ import {
   TASK_BOARD_API_PREFIX,
   type TaskBoardAction,
   type TaskBoardActionEnvelope,
+  type TaskBoardEventPayload,
   type TaskBoardSnapshot,
 } from '../protocol.ts'
 
@@ -25,7 +26,7 @@ export interface TaskBoardHostTransport {
   bootstrap(legacy: readonly TaskRecord[]): Promise<TaskBoardSnapshot>
   state(): Promise<TaskBoardSnapshot>
   action(action: TaskBoardAction): Promise<TaskBoardSnapshot>
-  subscribe(listener: () => void): () => void
+  subscribe(listener: (event?: TaskBoardEventPayload) => void): () => void
 }
 
 export class HttpTaskBoardHostTransport implements TaskBoardHostTransport {
@@ -82,9 +83,17 @@ export class HttpTaskBoardHostTransport implements TaskBoardHostTransport {
     }
   }
 
-  subscribe(listener: () => void): () => void {
+  subscribe(listener: (event?: TaskBoardEventPayload) => void): () => void {
     const events = new EventSource(`${TASK_BOARD_API_PREFIX}/events`)
-    events.onmessage = () => { listener() }
+    events.onmessage = (message: MessageEvent<string>): void => {
+      try {
+        const parsed = JSON.parse(message.data) as TaskBoardEventPayload
+        if (parsed === null || typeof parsed !== 'object' || typeof parsed.revision !== 'number') throw new Error('invalid event frame')
+        listener(parsed)
+      } catch {
+        listener()
+      }
+    }
     const onVisible = (): void => { if (document.visibilityState === 'visible') listener() }
     document.addEventListener('visibilitychange', onVisible)
     return () => {

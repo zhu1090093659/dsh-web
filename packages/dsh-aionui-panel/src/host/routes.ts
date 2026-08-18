@@ -98,6 +98,8 @@ interface Subscriber {
   res: ServerResponse
   /** Set when the client disconnects; guards against late fs/git/heartbeat writes. */
   closed: boolean
+  /** Cancels the current status process tree when this subscriber goes away. */
+  statusAbort?: AbortController
 }
 
 /**
@@ -159,14 +161,32 @@ export function ifNoneMatchSaidFresh(header: string | undefined, etag: string): 
 }
 
 /**
- * Deadline for one git-status subprocess inside pollGit. Not an execution
- * timeout — the subprocess' own graceMs limits a single binary run; this is
- * the route layer's guard against a hung status (e.g. a wedged git daemon on
- * a cold path) that would otherwise leave the anti-overlap guard (owned by
- * PollGuard) wedged forever and silence SCM. Owned here so the deadline is independent
- * of any service-level setting.
+ * Deadline for one status request. The timer aborts every subprocess spawned
+ * for that request; service-level single-flight keeps a failed termination
+ * from turning later poll ticks into additional live process trees.
  */
 const GIT_STATUS_TIMEOUT_MS = 15_000
+const GIT_STATUS_TIMEOUT_MESSAGE = 'git status timed out'
+
+/** Run one status operation under a deadline that also aborts its process tree. */
+export async function runGitStatusWithTimeout<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  controller: AbortController = new AbortController(),
+): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      const error = new Error(GIT_STATUS_TIMEOUT_MESSAGE)
+      controller.abort(error)
+      reject(error)
+    }, GIT_STATUS_TIMEOUT_MS)
+  })
+  try {
+    return await Promise.race([run(controller.signal), deadline])
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout)
+  }
+}
 
 /**
  * PollGuard loop bounds. The poll is stopped by the SSE subscriber lifecycle
@@ -250,9 +270,12 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
   // setInterval so polling stays alive while any stream is connected.
   let gitPoll: PollGuard | undefined
   let heartbeatTimer: NodeJS.Timeout | undefined
+  let gitProbeAbort: AbortController | undefined
 
   const removeSubscriber = (subscriber: Subscriber): void => {
     subscriber.closed = true
+    subscriber.statusAbort?.abort(new Error('git status cancelled'))
+    subscriber.statusAbort = undefined
     subscribers.delete(subscriber)
     if (subscribers.size === 0) {
       stopGitPoll()
@@ -282,7 +305,7 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
   }
 
   // One-shot availability state: a machine without a git binary must not
-  // re-spawn ENOENT every 2s tick. The probe result is cached inside the git
+  // re-spawn ENOENT every poll tick. The probe result is cached inside the git
   // service, so this runs once, logs at most once, and then git polling stops
   // for the rest of this route instance while fs watching keeps working.
   let gitProbed = false
@@ -291,40 +314,46 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
   // a tick that arrives mid-run is dropped), replacing the old `polling` bool.
   const pollGit = async (): Promise<void> => {
     if (!gitProbed) {
-      gitProbed = true
-      if (!(await git.gitAvailable())) {
-        gitUnavailable = true
-        ctx.logger.warn('dsh-aionui-panel: git binary unavailable, SCM polling disabled')
-        for (const subscriber of subscribers) push(subscriber, { kind: 'gitUnavailable' })
+      const controller = new AbortController()
+      gitProbeAbort = controller
+      try {
+        const available = await runGitStatusWithTimeout((signal) => git.gitAvailable(signal), controller)
+        gitProbed = true
+        if (!available) {
+          gitUnavailable = true
+          ctx.logger.warn('dsh-aionui-panel: git binary unavailable, SCM polling disabled')
+          for (const subscriber of subscribers) push(subscriber, { kind: 'gitUnavailable' })
+        }
+      } catch (error: unknown) {
+        ctx.logger.warn('dsh-aionui-panel: git availability probe failed: ' + String(error))
+        return
+      } finally {
+        if (gitProbeAbort === controller) gitProbeAbort = undefined
       }
     }
     if (gitUnavailable) return
     await Promise.all([...subscribers].map(async (subscriber) => {
+      const controller = new AbortController()
+      subscriber.statusAbort = controller
       try {
-        // Subscribers were gated when the stream opened, so use the
-        // canonical git methods (no double gate per 2s tick). repoOf inside
-        // them re-runs `rev-parse --show-toplevel` only after its TTL
-        // expires: a non-repo root never spawns a git status, and a repo
-        // created or removed while the host is running (git init / deleting
-        // .git) is still discovered by a later tick. The poll interval
-        // therefore keeps running while any subscriber is connected.
-        if (!(await git.isRepositoryCanonical(subscriber.root))) return
-        // Capture and clear the timeout handle once the race settles so a
-        // fast round never leaves a dead 15s timer pinning the closure.
-        let timeout: ReturnType<typeof setTimeout> | undefined
-        const status = await Promise.race([
-          git.statusCanonical(subscriber.root),
-          new Promise<never>((_, reject) => {
-            timeout = setTimeout(() => reject(new Error('git status timed out')), GIT_STATUS_TIMEOUT_MS)
-          }),
-        ]).finally(() => { if (timeout !== undefined) clearTimeout(timeout) })
+        // The deadline covers repo discovery and the status scan. Its signal
+        // reaches every spawned git child, while GitService keeps the
+        // underlying scan single-flight until that child really settles.
+        const status = await runGitStatusWithTimeout(async (signal) => {
+          if (!(await git.isRepositoryCanonical(subscriber.root, signal))) return null
+          return git.statusCanonical(subscriber.root, signal)
+        }, controller)
         if (status === null) return
         const key = `${status.branch}|${JSON.stringify(status.staged)}|${JSON.stringify(status.unstaged)}|${JSON.stringify(status.untracked)}`
         if (key === subscriber.lastGit) return
         subscriber.lastGit = key
         push(subscriber, { kind: 'git', status })
       } catch (error: unknown) {
-        ctx.logger.warn(`dsh-aionui-panel: git poll failed for ${subscriber.root}: ${String(error)}`)
+        if (!subscriber.closed) {
+          ctx.logger.warn(`dsh-aionui-panel: git poll failed for ${subscriber.root}: ${String(error)}`)
+        }
+      } finally {
+        if (subscriber.statusAbort === controller) subscriber.statusAbort = undefined
       }
     }))
   }
@@ -340,6 +369,8 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
     gitPoll.start()
   }
   const stopGitPoll = (): void => {
+    gitProbeAbort?.abort(new Error('git status cancelled'))
+    gitProbeAbort = undefined
     if (gitPoll === undefined) return
     gitPoll.stop()
     gitPoll = undefined
@@ -621,8 +652,13 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
         return
       }
       case '/aionui-panel/git-status': {
-        const result = await git.status(root)
-        json(res, result === null ? OK(null) : 'root' in result ? OK(result) : FAIL(result))
+        try {
+          const result = await runGitStatusWithTimeout((signal) => git.status(root, signal))
+          json(res, result === null ? OK(null) : 'root' in result ? OK(result) : FAIL(result))
+        } catch (error: unknown) {
+          ctx.logger.warn(`dsh-aionui-panel: git status failed for ${root}: ${String(error)}`)
+          json(res, FAIL({ code: 'internal', message: GIT_STATUS_TIMEOUT_MESSAGE }))
+        }
         return
       }
       case '/aionui-panel/git-diff': {
@@ -736,7 +772,11 @@ export function registerPanelRoutes(ctx: Context, fs: FsService, git: GitService
     for (const dispose of disposers) dispose()
     stopGitPoll()
     if (heartbeatTimer !== undefined) clearInterval(heartbeatTimer)
-    for (const subscriber of subscribers) subscriber.res.end()
+    for (const subscriber of subscribers) {
+      subscriber.closed = true
+      subscriber.statusAbort?.abort(new Error('git status cancelled'))
+      subscriber.res.end()
+    }
     subscribers.clear()
   }
 }

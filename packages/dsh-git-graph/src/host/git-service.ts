@@ -87,12 +87,15 @@ export class GitService {
     private readonly gate: WorkspaceGate,
   ) {}
 
+  /** Status work currently running for each requested workspace path. */
+  private readonly statusFlights = new Map<string, Promise<RepoStatus | null>>()
+
   /**
    * The plumbing every read view shares: gate, repo root, current branch, and
    * the porcelain counts + operation marker. Null when the path is not a
    * usable repository (the workspace-gate semantics both views keep).
    */
-  private async snapshot(path: string): Promise<{
+  private async snapshot(path: string, signal?: AbortSignal): Promise<{
     root: string
     branch: string
     counts: ReturnType<typeof parsePorcelain>
@@ -100,26 +103,48 @@ export class GitService {
   } | null> {
     const gated = await this.gate(path)
     if (!gated.ok) return null
-    const root = await this.repoRoot(gated.canonical)
+    const root = await this.repoRoot(gated.canonical, signal)
     if (root === null) return null
     const [branchResult, porcelain] = await Promise.all([
-      this.runner.run(headBranchArgv(), root),
-      this.runner.run(statusPorcelainArgv(), root),
+      this.runner.run(headBranchArgv(), root, signal),
+      this.runner.run(statusPorcelainArgv(), root, signal),
     ])
     const branch = branchResult.stdout.trim()
     return {
       root,
       branch: branch === DETACHED ? '' : branch,
       counts: parsePorcelain(porcelain.stdout),
-      operationInProgress: await this.operationInProgress(root),
+      operationInProgress: await this.operationInProgress(root, signal),
     }
   }
 
-  /** The repository snapshot the branch chip renders; null when not a repository. */
-  async status(path: string): Promise<RepoStatus | null> {
-    const snap = await this.snapshot(path)
+  /**
+   * The repository snapshot the branch chip renders; null when not a repository.
+   * Concurrent reads for the same requested workspace share one underlying
+   * status task until it settles, preventing timed-out polls from accumulating.
+   */
+  status(path: string, signal?: AbortSignal): Promise<RepoStatus | null> {
+    const existing = this.statusFlights.get(path)
+    if (existing !== undefined) return existing
+    const flight = this.statusFromPath(path, signal)
+    this.statusFlights.set(path, flight)
+    const clear = (): void => {
+      if (this.statusFlights.get(path) === flight) this.statusFlights.delete(path)
+    }
+    void flight.then(clear, clear)
+    return flight
+  }
+
+  private async statusFromPath(path: string, signal?: AbortSignal): Promise<RepoStatus | null> {
+    const gated = await this.gate(path)
+    if (!gated.ok) return null
+    return this.statusFromGatedPath(gated.canonical, signal)
+  }
+
+  private async statusFromGatedPath(path: string, signal?: AbortSignal): Promise<RepoStatus | null> {
+    const snap = await this.snapshotFromGatedPath(path, signal)
     if (snap === null) return null
-    const headResult = await this.runner.run(headShortArgv(), snap.root)
+    const headResult = await this.runner.run(headShortArgv(), snap.root, signal)
     return {
       root: snap.root,
       branch: snap.branch,
@@ -128,6 +153,27 @@ export class GitService {
       untrackedFiles: snap.counts.untrackedFiles,
       conflicts: snap.counts.conflicts,
       operationInProgress: snap.operationInProgress,
+    }
+  }
+
+  private async snapshotFromGatedPath(path: string, signal?: AbortSignal): Promise<{
+    root: string
+    branch: string
+    counts: ReturnType<typeof parsePorcelain>
+    operationInProgress: boolean
+  } | null> {
+    const root = await this.repoRoot(path, signal)
+    if (root === null) return null
+    const [branchResult, porcelain] = await Promise.all([
+      this.runner.run(headBranchArgv(), root, signal),
+      this.runner.run(statusPorcelainArgv(), root, signal),
+    ])
+    const branch = branchResult.stdout.trim()
+    return {
+      root,
+      branch: branch === DETACHED ? '' : branch,
+      counts: parsePorcelain(porcelain.stdout),
+      operationInProgress: await this.operationInProgress(root, signal),
     }
   }
 
@@ -232,20 +278,20 @@ export class GitService {
   }
 
   /** Repository root of a canonical path, or null when not inside a git repository. */
-  private async repoRoot(path: string): Promise<string | null> {
-    const result = await this.runner.run(topLevelArgv(), path)
+  private async repoRoot(path: string, signal?: AbortSignal): Promise<string | null> {
+    const result = await this.runner.run(topLevelArgv(), path, signal)
     if (result.exitCode !== 0) return null
     const root = result.stdout.trim()
     return root === '' ? null : root
   }
 
   /** Whether any git operation marker is present in the repository. */
-  private async operationInProgress(root: string): Promise<boolean> {
+  private async operationInProgress(root: string, signal?: AbortSignal): Promise<boolean> {
     // Preferred path: one spawn for all seven markers (Windows: 7 git.exe
     // cold starts -> 1). --git-path prints a repo-relative path for in-repo
     // markers (and an absolute one for worktree/linked stores); resolve
     // covers both.
-    const resolved = await this.runner.run(operationMarkersArgv(), root)
+    const resolved = await this.runner.run(operationMarkersArgv(), root, signal)
     if (resolved.exitCode === 0) {
       const markerPaths = resolved.stdout
         .split('\n')
@@ -259,7 +305,7 @@ export class GitService {
     // and the verdict is true when any path exists; all-missing returns false.
     let inProgress = false
     for (const marker of OPERATION_MARKERS) {
-      const single = await this.runner.run(gitPathArgv(marker), root)
+      const single = await this.runner.run(gitPathArgv(marker), root, signal)
       const markerPath = single.stdout.trim()
       if (markerPath !== '' && existsSync(resolve(root, markerPath))) inProgress = true
     }

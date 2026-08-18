@@ -16,7 +16,7 @@
  * `promoteAfterFirstResponse` promotes a tool-less first response once it has
  * responded, and also releases an anchor-gated session when its first turn
  * ends (`turn/end`). With `promotedPresentation: code` the promoted catalog
- * is presented as Code Mode (PTC): the wire shows a single `run_code` tool
+ * is presented as PTC Mode: the wire shows a single `run_code` tool
  * backed by the generated SDK, switched at the step boundary so the current
  * step's native calls are never interrupted. `deferredSources` and
  * `deferredGraceSteps` delay selected injected message kinds (workspace
@@ -25,7 +25,7 @@
  * COMPACTION (local addition, ported from the upstream compaction-epoch
  * semantics): a compaction rewrites the whole model-visible surface, so the
  * first post-compaction request is a "second first request". A
- * `compaction/end` event releases Code Mode (the presentation disposer) and
+ * `compaction/end` event releases PTC Mode (the presentation disposer) and
  * resets the promotion state to the CONTROLLED phase — bootstrap pair plus
  * `compactionTools` (a core work set, default none) — until a NEW durable
  * promotion signal exists past that boundary. The reset lives both in the
@@ -257,7 +257,7 @@ function stateFor(session) {
  * first-token conditions the bootstrap exists to control — so the session
  * re-anchors: promotion state is cleared (the durable `next` scan pointer is
  * kept, so events recorded BEFORE the boundary never re-promote), and the
- * Code Mode presentation is disposed so the next assembly sees the native
+ * PTC Mode presentation is disposed so the next assembly sees the native
  * catalog and the phase-1 filter can narrow it again.
  */
 function resetToControlled(state) {
@@ -266,7 +266,7 @@ function resetToControlled(state) {
       state.presentationDisposer()
     } catch {
       // A failed presentation reset must never break the session; the
-      // next promotion re-declares Code Mode anyway.
+      // next promotion re-declares PTC Mode anyway.
     }
     state.presentationDisposer = undefined
   }
@@ -283,7 +283,7 @@ function resetToControlled(state) {
 }
 
 /**
- * Switch one agent's wire presentation to Code Mode (PTC: a single `run_code`
+ * Switch one agent's wire presentation to PTC Mode (PTC: a single `run_code`
  * tool backed by the generated SDK) after promotion. `agent.ctx.tools` is the
  * per-agent view of the host registry, so the switch affects this session only.
  */
@@ -291,10 +291,10 @@ function applyPresentation(agent, state, policy) {
   if (state.presentationApplied || policy.promotedPresentation !== 'code') return
   const tools = agent.ctx.tools
   // Latch only after the switch really happened: without a tools view there
-  // is nothing to present, and latching early would skip Code Mode forever.
+  // is nothing to present, and latching early would skip PTC Mode forever.
   if (tools === undefined) return
   // The disposer restores the deployment-default (native) presentation; it is
-  // kept on the state so a post-compaction reset can release Code Mode and
+  // kept on the state so a post-compaction reset can release PTC Mode and
   // let the phase-1 catalog filter see the native tool list again.
   state.presentationDisposer = tools.presentAs('code')
   state.presentationApplied = true
@@ -432,8 +432,8 @@ export function apply(ctx, config) {
   // executing tools: switching the presentation mid-step would collapse the
   // native calls that step already planned. By `step/end` the tool-call and
   // reasoning events are durable, so the NEXT prompt assembly already sees
-  // Code Mode with its generated SDK section. A `compaction/end` event
-  // releases Code Mode and resets the promotion state (see
+  // PTC Mode with its generated SDK section. A `compaction/end` event
+  // releases PTC Mode and resets the promotion state (see
   // resetToControlled); the reset also runs inside scanEvents, so a cold
   // start reconstructs the same controlled phase from the durable log.
   ctx.on('session/event', (session, event) => {

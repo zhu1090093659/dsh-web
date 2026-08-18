@@ -240,7 +240,66 @@ describe('PetSprite hover panel placement', () => {
     renderPet({ display: { ...snapshot.display, bottom: 20 } })
     fireEvent.pointerOver(screen.getByRole('button', { name: '鲸鱼娘' }))
 
-    expect(screen.getByText('改名').closest('[data-placement]')?.getAttribute('data-placement')).toBe('above')
+    const panel = screen.getByText('改名').closest('[data-placement]') as HTMLElement
+    expect(panel.getAttribute('data-placement')).toBe('above')
+    // No bubble above the sprite: the panel keeps its default 8px gap.
+    expect(panel.style.marginBottom).toBe('')
+  })
+
+  it('lifts the above-panel clear of the status bubble instead of overlapping it', () => {
+    // Regression: the fallback above-placement anchored the panel at the
+    // sprite's top edge — the exact region the status bubble occupies — so
+    // the panel covered the bubble. The panel must now ride above it.
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 })
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.className.includes('bubbleStack')) {
+        // The bubble area (stack wrapping the status bubble): 40px tall.
+        return { top: 650, right: 1200, bottom: 690, left: 1120, width: 80, height: 40, x: 1120, y: 650, toJSON: () => ({}) }
+      }
+      // Sprite (bottom 974 of a 900px viewport) and panel (86px tall).
+      return { top: 888, right: 1259, bottom: 974, left: 1105, width: 154, height: 86, x: 1105, y: 888, toJSON: () => ({}) }
+    })
+
+    renderPet({
+      snapshot: { ...snapshot, bubble: '正在思考' },
+      display: { ...snapshot.display, bottom: 20 },
+    })
+    fireEvent.pointerOver(screen.getByRole('button', { name: '鲸鱼娘' }))
+
+    const panel = screen.getByText('改名').closest('[data-placement]') as HTMLElement
+    expect(panel.getAttribute('data-placement')).toBe('above')
+    // 40px bubble height + 14px (8px base gap + 6px clearance).
+    expect(panel.style.marginBottom).toBe('54px')
+    // The bubble stays rendered while the lifted panel is open.
+    expect(screen.queryByText('正在思考')).not.toBeNull()
+  })
+
+  it('lifts the above-panel clear of the session bubble stack', () => {
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 })
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.className.includes('bubbleStack')) {
+        // Two stacked bubbles: 88px tall.
+        return { top: 600, right: 1200, bottom: 688, left: 1100, width: 100, height: 88, x: 1100, y: 600, toJSON: () => ({}) }
+      }
+      return { top: 888, right: 1259, bottom: 974, left: 1105, width: 154, height: 86, x: 1105, y: 888, toJSON: () => ({}) }
+    })
+
+    renderPet({
+      snapshot: {
+        ...snapshot,
+        sessions: [
+          { sessionId: 's-a', animation: 'running', phase: 'thinking', bubble: '正在思考' },
+          { sessionId: 's-b', animation: 'running-right', phase: 'tool', bubble: '正在使用 grep' },
+        ],
+      },
+      display: { ...snapshot.display, bottom: 20 },
+    })
+    fireEvent.pointerOver(screen.getByRole('button', { name: '鲸鱼娘' }))
+
+    const panel = screen.getByText('改名').closest('[data-placement]') as HTMLElement
+    expect(panel.getAttribute('data-placement')).toBe('above')
+    // 88px stack height + 14px clearance.
+    expect(panel.style.marginBottom).toBe('102px')
   })
 })
 
@@ -266,7 +325,14 @@ describe('PetSprite status bubble', () => {
     expect(screen.queryByText('正在思考')).toBeNull()
   })
 
-  it('renders one bubble per concurrent session without duplicating the global bubble', () => {
+  /** Expand a collapsed session stack by hovering its bubble area. */
+  function expandStack(): void {
+    const stack = screen.getByText('正在思考').closest('div')
+    expect(stack).not.toBeNull()
+    fireEvent.pointerOver(stack!)
+  }
+
+  it('collapses concurrent sessions behind the display session bubble', () => {
     renderPet({
       snapshot: {
         ...workingSnapshot,
@@ -277,10 +343,92 @@ describe('PetSprite status bubble', () => {
         ],
       },
     })
+    // Only the display session speaks; the other session hides behind the
+    // '+1' badge so the pet never wears a tall bubble stack.
+    expect(screen.getAllByText('正在思考')).toHaveLength(1)
+    expect(screen.queryByText('正在使用 grep')).toBeNull()
+    expect(screen.queryByRole('button', { name: '展开其余 1 个会话的气泡' })).not.toBeNull()
+  })
+
+  it('expands the collapsed stack on hover and on badge tap', () => {
+    renderPet({
+      snapshot: {
+        ...workingSnapshot,
+        sessions: [
+          { sessionId: 's-a', animation: 'running', phase: 'thinking', bubble: '正在思考' },
+          { sessionId: 's-b', animation: 'running-right', phase: 'tool', bubble: '正在使用 grep' },
+        ],
+      },
+    })
+    // Hover peek: extras appear, and leaving collapses them again.
+    expandStack()
+    expect(screen.queryByText('正在使用 grep')).not.toBeNull()
+    fireEvent.pointerOut(screen.getByText('正在思考').closest('div')!)
+    expect(screen.queryByText('正在使用 grep')).toBeNull()
+    // Badge tap pins the stack open (touch path); tapping again collapses.
+    fireEvent.click(screen.getByRole('button', { name: '展开其余 1 个会话的气泡' }))
+    expect(screen.queryByText('正在使用 grep')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '收起会话气泡' }))
+    expect(screen.queryByText('正在使用 grep')).toBeNull()
+  })
+
+  it('renders one bubble per concurrent session in the expanded stack', () => {
+    renderPet({
+      snapshot: {
+        ...workingSnapshot,
+        bubble: '正在思考',
+        sessions: [
+          { sessionId: 's-a', animation: 'running', phase: 'thinking', bubble: '正在思考' },
+          { sessionId: 's-b', animation: 'running-right', phase: 'tool', bubble: '正在使用 grep' },
+        ],
+      },
+    })
+    expandStack()
     // The display session appears in the stack exactly once: the legacy
     // single bubble is not rendered on top of the session list.
     expect(screen.getAllByText('正在思考')).toHaveLength(1)
     expect(screen.queryByText('正在使用 grep')).not.toBeNull()
+  })
+
+  it('lets the inner whisper take over the status bubble', () => {
+    renderPet({ snapshot: { ...workingSnapshot, whisper: '哼哧哼哧，大脑转得飞快～' } })
+    // The whisper speaks THROUGH the bubble: it replaces (not accompanies)
+    // the status copy, so the pet never shows two bubbles at once.
+    expect(screen.queryByText('哼哧哼哧，大脑转得飞快～')).not.toBeNull()
+    expect(screen.queryByText('正在思考')).toBeNull()
+  })
+
+  it('lets the whisper take over the display session bubble in the stack', () => {
+    const { onOpenSession } = renderPet({
+      snapshot: {
+        ...workingSnapshot,
+        whisper: '我在这儿陪着你呢，别急别急',
+        sessions: [
+          { sessionId: 's-a', animation: 'running', phase: 'thinking', bubble: '正在思考' },
+          { sessionId: 's-b', animation: 'running-right', phase: 'tool', bubble: '正在使用 grep' },
+        ],
+      },
+    })
+    // The primary bubble (the display session) speaks the whisper instead
+    // of its status copy; the collapsed extra session hides behind the badge.
+    expect(screen.queryByText('我在这儿陪着你呢，别急别急')).not.toBeNull()
+    expect(screen.queryByText('正在思考')).toBeNull()
+    expect(screen.queryByText('正在使用 grep')).toBeNull()
+    // Expanding reveals the other session's own bubble, untouched.
+    fireEvent.pointerOver(screen.getByText('我在这儿陪着你呢，别急别急').closest('div')!)
+    expect(screen.queryByText('正在使用 grep')).not.toBeNull()
+    // The whisper-toned bubble stays clickable and still opens its session.
+    fireEvent.click(screen.getByText('我在这儿陪着你呢，别急别急'))
+    expect(onOpenSession).toHaveBeenCalledWith('s-a')
+  })
+
+  it('lets transient interaction feedback take over the whisper too', () => {
+    renderPet({
+      snapshot: { ...workingSnapshot, whisper: '哼哧哼哧，大脑转得飞快～' },
+      feedback: { text: '摸摸成功', kind: 'pet', at: 1 },
+    })
+    expect(screen.queryByText('摸摸成功')).not.toBeNull()
+    expect(screen.queryByText('哼哧哼哧，大脑转得飞快～')).toBeNull()
   })
 
   it('lets feedback replace the whole session bubble stack', () => {
@@ -310,6 +458,8 @@ describe('PetSprite status bubble', () => {
         ],
       },
     })
+    // The collapsed stack must be expanded before its extras can be hit.
+    fireEvent.pointerOver(screen.getByText('正在思考').closest('div')!)
     fireEvent.click(screen.getByText('正在使用 grep'))
     expect(onOpenSession).toHaveBeenCalledTimes(1)
     expect(onOpenSession).toHaveBeenCalledWith('s-b')
@@ -341,7 +491,9 @@ describe('PetSprite status bubble', () => {
     fireEvent.pointerOver(screen.getByRole('button', { name: '鲸鱼娘' }))
     // The hover panel is open...
     expect(screen.queryByText('改名')).not.toBeNull()
-    // ...and the bubbles are still there, still clickable.
+    // ...and the bubbles are still there, still clickable once the collapsed
+    // stack is expanded by hovering it.
+    fireEvent.pointerOver(screen.getByText('正在思考').closest('div')!)
     expect(screen.getByText('正在使用 grep')).not.toBeNull()
     fireEvent.click(screen.getByText('正在使用 grep'))
     expect(onOpenSession).toHaveBeenCalledWith('s-b')

@@ -53,7 +53,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-ssh
 ## 数据
 
 - 主机配置：`~/.dsh/dsh-ssh.json`（版本化 JSON，原子写入）
-- 传输暂存：`os.tmpdir()/dsh-ssh-uploads/`
+- 传输暂存：`os.tmpdir()/dsh-ssh-uploads/`（目录 0700，传输中的文件 0600）
 
 ## 开发
 

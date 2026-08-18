@@ -63,6 +63,7 @@ export function UpdatePanel({ t, view, onClose, onRecheck }: UpdatePanelProps) {
           <p className={css.updateStatus}>
             {t("update.updating", { name: anchorName(status) ?? "", version: anchorLatest(status) ?? "" })}
           </p>
+          <p className={css.updateDetail}>{t("update.cooldownNotice")}</p>
           <PackageList status={status} />
         </div>
       )}
@@ -136,6 +137,7 @@ function ResultBody({ t, status }: { t: TranslateNS<"remote">; status: UpdateSta
         <p className={css.updateDetail}>
           {anchor !== undefined ? t("update.foundDetail", { name: anchor, version: latest ?? "" }) : ""}
         </p>
+        <p className={css.updateDetail}>{t("update.cooldownNotice")}</p>
       </div>
     )
   }

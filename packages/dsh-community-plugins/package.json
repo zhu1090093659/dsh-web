@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-community-plugins",
   "description": "Community plugin index card for the dsh web GUI settings page: lists community-contributed plugins with links to each contributor's own repository, gated by its own enable switch in the plugin configuration section.",
-  "version": "0.1.20",
+  "version": "0.2.0",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

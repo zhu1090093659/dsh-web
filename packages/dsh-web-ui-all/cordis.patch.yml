@@ -43,11 +43,6 @@
     - id: web-ui-remote-web-ui
       name: '@linxin666/dsh-remote-web-ui'
 
-# from ../dsh-live-stats
-- insert:
-    - id: web-ui-live-stats
-      name: '@linxin666/dsh-live-stats'
-
 # from ../dsh-ssh
 - insert:
     - id: web-ui-ssh
@@ -63,7 +58,17 @@
     - id: web-ui-liangshen
       name: '@linxin666/dsh-liangshen'
 
+# from ../dsh-skill-explorer
+- insert:
+    - id: web-ui-skill-explorer
+      name: '@linxin666/dsh-client-ui-skill-explorer'
+
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:
     - id: web-ui-skin-center
       name: '@linxin666/dsh-client-ui-skin-center'
+
+# external: dsh-better-sidebar
+- insert:
+    - id: web-ui-better-sidebar
+      name: 'dsh-better-sidebar'

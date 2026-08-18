@@ -7,7 +7,9 @@
  * and the new skin is hot-committed in place (issue #359 — no reload, no
  * app restart; a page reload remains the fallback). Copy rides the standard `t` seat;
  * the theme preview control drives the official theme service (persisted,
- * same as the Appearance row).
+ * same as the Appearance row). The "trying on" badge tracks the controller's
+ * live session (via subscribe), so closing and reopening the settings panel
+ * keeps showing the skin that is still being previewed.
  */
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -60,8 +62,11 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
   const activePackage = activeSkinEntry()?.package
   const activeId = activeSkinEntry()?.id
   const backdropActive = activeId !== undefined && BACKDROP_SKIN_IDS.has(activeId)
-  const [tryingId, setTryingId] = useState<string | null>(null)
-  const [tryingOfficial, setTryingOfficial] = useState(false)
+  // The trying badge tracks the controller's live session instead of local
+  // state, so it survives the card unmounting when the settings panel closes
+  // (the controller owns the preview and persists for the page lifetime).
+  const tryingId = useSyncExternalStore(controller.subscribe, () => controller.trying?.id ?? null)
+  const tryingOfficial = useSyncExternalStore(controller.subscribe, () => controller.tryingOfficial)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [applying, setApplying] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -84,22 +89,20 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
     const request = ++tryOnRequest.current
     setError(null)
     setLoadingId(entry.id)
+    // The controller notifies the store on every session transition, so the
+    // trying badge here is derived, not set from the promise result.
     void controller.tryOn(entry)
       .then(mountedTarget => {
         if (!mounted.current || request !== tryOnRequest.current || !mountedTarget) return
         setLoadingId(null)
-        setTryingId(entry.id)
-        setTryingOfficial(false)
       })
       .catch(() => {
         if (!mounted.current || request !== tryOnRequest.current) return
         // A load failure keeps the previous preview mounted; a mount failure
-        // restores the original active skin. Mirror the controller's actual
-        // session instead of blindly clearing a preview that may still exist.
+        // restores the original active skin. The store reflects the
+        // controller's actual session either way.
         setLoadingId(null)
         setError(t('tryOnError'))
-        setTryingId(controller.trying?.id ?? null)
-        setTryingOfficial(controller.tryingOfficial)
       })
   }
 
@@ -111,19 +114,13 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
       controller.tryOnOfficial()
     } catch {
       setError(t('tryOnError'))
-      setTryingOfficial(false)
-      return
     }
-    setTryingId(null)
-    setTryingOfficial(true)
   }
 
   const exitTryOn = (): void => {
     ++tryOnRequest.current
     controller.exit()
     setLoadingId(null)
-    setTryingId(null)
-    setTryingOfficial(false)
   }
 
   /**
@@ -253,10 +250,9 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
           }
           void controller.commit(entry).then(() => {
             if (!mounted.current) return
-            setTryingId(null)
-            setTryingOfficial(false)
-            // Re-render so the active markers follow the hot-committed skin
-            // (activeSkinEntry now answers the override).
+            // commit() exits any live preview, which the store already
+            // reflected; re-render so the active markers follow the
+            // hot-committed skin (activeSkinEntry now answers the override).
             forceRender(tick => tick + 1)
           }).catch(() => {
             if (!mounted.current) return

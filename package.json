@@ -13,6 +13,7 @@
     "community:check": "node scripts/community-index --check",
     "runtime-deps:check": "node scripts/runtime-deps-check.mjs",
     "test:scripts": "node --test scripts/*.test.mjs",
+    "test:mount": "bash scripts/e2e-mount.sh",
     "skin:new": "node scripts/dsh-skin-new",
     "pr:review": "node scripts/pr-review.mjs",
     "gallery:build": "node scripts/gallery-build",
@@ -25,6 +26,7 @@
     "sync-shared:check": "node scripts/sync-shared.mjs --check"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "lightningcss": "^1.32.0",
     "playwright": "^1.62.1",
     "tsdown": "^0.22.2"

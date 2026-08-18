@@ -77,20 +77,71 @@ export function isValidCron(expr: string): boolean {
  * can never match (for example `0 0 30 2 *`). The five-year horizon includes
  * a full leap cycle, so a valid February 29 schedule remains reachable from
  * every non-leap year.
+ *
+ * Walks candidate year/month/day/hour/minute values straight from the parsed
+ * field sets instead of scanning every minute: a sparse expression such as
+ * `0 0 29 2 *` used to iterate ~1.5M wall-clock minutes before reaching the
+ * next leap day. Wall-clock field construction + the final `matches` re-check
+ * preserve the old minute scan's DST semantics exactly (nonexistent spring
+ * minutes normalize forward and the repeated fall-back hour is never visited).
  */
 export function nextRunAtMs(expr: string, fromMs: number): number | undefined {
   const schedule = parseCron(expr)
   if (schedule === null) return undefined
   if (!hasPossibleCalendarDay(schedule)) return undefined
   const from = new Date(fromMs)
-  // Scan from the next minute; Date rolls overflow (Feb 30 → Mar 2) for free.
-  const scan = new Date(from.getFullYear(), from.getMonth(), from.getDate(), from.getHours(), from.getMinutes() + 1, 0, 0)
   const limitMs = fromMs + 5 * 366 * 24 * 60 * 60 * 1000
-  while (scan.getTime() <= limitMs) {
-    if (matches(schedule, scan)) return scan.getTime()
-    scan.setMinutes(scan.getMinutes() + 1)
+
+  const sortedMinutes = [...schedule.minutes].sort((a, b) => a - b)
+  const sortedHours = [...schedule.hours].sort((a, b) => a - b)
+  const sortedMonths = [...schedule.months].sort((a, b) => a - b)
+
+  let year = from.getFullYear()
+  let month = from.getMonth() + 1
+  let day = from.getDate()
+  let hour = from.getHours()
+  // Strictly after fromMs: the old scan started from the next minute.
+  let minute = from.getMinutes() + 1
+
+  while (new Date(year, month - 1, 1, 0, 0, 0, 0).getTime() <= limitMs) {
+    for (const candidateMonth of sortedMonths) {
+      if (candidateMonth < month) continue
+      const daysInMonth = new Date(year, candidateMonth, 0).getDate()
+      const dayStart = candidateMonth === month ? day : 1
+      for (let candidateDay = dayStart; candidateDay <= daysInMonth; candidateDay += 1) {
+        const dayProbe = new Date(year, candidateMonth - 1, candidateDay, 0, 0, 0, 0)
+        if (!dayCandidate(schedule, dayProbe)) continue
+        const hourStart = candidateMonth === month && candidateDay === day ? hour : 0
+        for (const candidateHour of sortedHours) {
+          if (candidateHour < hourStart) continue
+          const minuteStart = candidateMonth === month && candidateDay === day && candidateHour === hour ? minute : 0
+          for (const candidateMinute of sortedMinutes) {
+            if (candidateMinute < minuteStart) continue
+            const candidate = new Date(year, candidateMonth - 1, candidateDay, candidateHour, candidateMinute, 0, 0)
+            const time = candidate.getTime()
+            if (time <= fromMs) continue
+            if (time > limitMs) return undefined
+            if (matches(schedule, candidate)) return time
+          }
+        }
+      }
+    }
+    year += 1
+    month = 1
+    day = 1
+    hour = 0
+    minute = 0
   }
   return undefined
+}
+
+/** Day/weekday OR gate shared by {@link matches} and the candidate scan. */
+function dayCandidate(schedule: CronSchedule, date: Date): boolean {
+  const dayMatches = schedule.days.has(date.getDate())
+  const weekdayMatches = schedule.weekdays.has(date.getDay())
+  if (schedule.dayWildcard) return weekdayMatches
+  if (schedule.weekdayWildcard) return dayMatches
+  return dayMatches || weekdayMatches
 }
 
 /** Reject impossible month/day pairs without spending the multi-year scan. */
@@ -145,11 +196,7 @@ function matches(schedule: CronSchedule, date: Date): boolean {
   if (!schedule.minutes.has(date.getMinutes())) return false
   if (!schedule.hours.has(date.getHours())) return false
   if (!schedule.months.has(date.getMonth() + 1)) return false
-  const dayMatches = schedule.days.has(date.getDate())
-  const weekdayMatches = schedule.weekdays.has(date.getDay())
-  if (schedule.dayWildcard) return weekdayMatches
-  if (schedule.weekdayWildcard) return dayMatches
-  return dayMatches || weekdayMatches
+  return dayCandidate(schedule, date)
 }
 
 function isDigits(value: string): boolean {

@@ -48,11 +48,13 @@ class FakeAttachments extends AttachmentStore {
 
   /** Bytes by attachment id, for the raw-image GET tests. */
   readonly stored = new Map<string, Buffer>()
+  /** Optional canonical metadata returned after the store validates a reference. */
+  readRef?: ImageAttachmentRef
 
   readImage(ref: ImageAttachmentRef, _signal?: AbortSignal): Promise<StoredImageAttachment> {
     const data = this.stored.get(String(ref.attachmentId))
     if (data === undefined) return Promise.reject(new Error('no such attachment'))
-    return Promise.resolve({ data, mediaType: ref.mediaType, ref })
+    return Promise.resolve({ data, mediaType: ref.mediaType, ref: this.readRef ?? ref })
   }
 }
 
@@ -147,6 +149,29 @@ describe('attachmentNote', () => {
   })
 })
 
+describe('attachmentMarkdown', () => {
+  it('embeds the complete durable reference when metadata is available', () => {
+    const ref: ImageAttachmentRef = {
+      attachmentId: `sha256:${'d'.repeat(64)}` as ImageAttachmentRef['attachmentId'],
+      mediaType: 'image/png',
+      bytes: PNG_BYTES.length,
+      width: 1,
+      height: 1,
+      name: 'screen (1).png',
+    }
+    const markdown = attachmentMarkdown(ref)
+    const match = /\(([^)]+)\)$/.exec(markdown)
+    expect(match).not.toBeNull()
+    const url = new URL(match?.[1] ?? '', 'http://dsh.local')
+    expect(url.pathname).toBe(`/describe-image/raw/${ref.attachmentId}`)
+    expect(url.searchParams.get('ref')).toBe(JSON.stringify(ref))
+  })
+
+  it('keeps legacy id-only Markdown available for callers without metadata', () => {
+    expect(attachmentMarkdown('sha256:legacy')).toBe('![图片](/describe-image/raw/sha256:legacy)')
+  })
+})
+
 describe('attachment reference registry', () => {
   it('remembers references persisted by the route and resolves them by bare id', async () => {
     const { ctx, store } = await makeCtx(true)
@@ -186,7 +211,10 @@ describe('handleAttach', () => {
     expect(outcome.ok).toBe(true)
     if (outcome.ok) {
       expect(outcome.note.startsWith('[image attachment {')).toBe(true)
-      expect(outcome.markdown).toMatch(/^!\[图片\]\(\/describe-image\/raw\/sha256:/)
+      expect(outcome.markdown).toMatch(/^!\[图片\]\(\/describe-image\/raw\/sha256:.*\?ref=/)
+      const path = /\(([^)]+)\)$/.exec(outcome.markdown)?.[1]
+      const url = new URL(path ?? '', 'http://dsh.local')
+      expect(url.searchParams.get('ref')).toBe(JSON.stringify(outcome.ref))
       expect(outcome.ref.mediaType).toBe('image/png')
       expect(store?.saved).toHaveLength(1)
       expect(store?.saved[0].input.data).toEqual(PNG_BYTES)
@@ -234,16 +262,20 @@ describe('registerAttachRoute', () => {
   } as unknown as IncomingMessage)
 
   /** One fake response collecting status/headers/body. */
-  const makeRes = (): { res: ServerResponse; status: () => number; body: () => string } => {
+  const makeRes = (): { res: ServerResponse; status: () => number; body: () => string; headers: () => Record<string, string | number> | undefined } => {
     let status = 0
     let body = ''
+    let headers: Record<string, string | number> | undefined
     const res = {
-      writeHead: (code: number) => { status = code },
+      writeHead: (code: number, nextHeaders?: Record<string, string | number>) => {
+        status = code
+        headers = nextHeaders
+      },
       end: (chunk?: unknown) => {
         if (chunk !== undefined && chunk !== null) body += String(chunk)
       },
     } as unknown as ServerResponse
-    return { res, status: () => status, body: () => body }
+    return { res, status: () => status, body: () => body, headers: () => headers }
   }
 
   /** Register the route and return the captured prefix row. */
@@ -298,6 +330,61 @@ describe('registerAttachRoute', () => {
     expect(envelope.ok).toBe(true)
     expect(envelope.value?.note.startsWith('[image attachment {')).toBe(true)
     expect(store?.saved).toHaveLength(1)
+  })
+
+  it('serves a durable Markdown reference without the in-process id registry', async () => {
+    const { store } = await makeCtx(true)
+    const ref: ImageAttachmentRef = {
+      attachmentId: `sha256:${'b'.repeat(64)}` as ImageAttachmentRef['attachmentId'],
+      mediaType: 'image/png',
+      bytes: PNG_BYTES.length,
+      width: 1,
+      height: 1,
+    }
+    store?.stored.set(String(ref.attachmentId), PNG_BYTES)
+    expect(attachmentRefById(String(ref.attachmentId))).toBeUndefined()
+    const registrations = capture(store, true)
+    const { res, status } = makeRes()
+    const markdown = attachmentMarkdown(ref)
+    const path = /\(([^)]+)\)$/.exec(markdown)?.[1]
+    await registrations[0].handler(makeReq('GET', undefined, path), res)
+    expect(status()).toBe(200)
+  })
+
+  it('uses the attachment store canonical media type rather than URL metadata', async () => {
+    const { store } = await makeCtx(true)
+    const ref: ImageAttachmentRef = {
+      attachmentId: `sha256:${'9'.repeat(64)}` as ImageAttachmentRef['attachmentId'],
+      mediaType: 'image/png',
+      bytes: PNG_BYTES.length,
+      width: 1,
+      height: 1,
+    }
+    store?.stored.set(String(ref.attachmentId), PNG_BYTES)
+    if (store !== undefined) store.readRef = { ...ref, mediaType: 'image/jpeg' }
+    const registrations = capture(store, true)
+    const { res, status, headers } = makeRes()
+    const path = /\(([^)]+)\)$/.exec(attachmentMarkdown(ref))?.[1]
+    await registrations[0].handler(makeReq('GET', undefined, path), res)
+    expect(status()).toBe(200)
+    expect(headers()?.['content-type']).toBe('image/jpeg')
+  })
+
+  it('rejects a durable Markdown reference whose path and metadata disagree', async () => {
+    const { store } = await makeCtx(true)
+    const ref: ImageAttachmentRef = {
+      attachmentId: `sha256:${'e'.repeat(64)}` as ImageAttachmentRef['attachmentId'],
+      mediaType: 'image/png',
+      bytes: PNG_BYTES.length,
+      width: 1,
+      height: 1,
+    }
+    const markdown = attachmentMarkdown(ref).replace(`raw/${ref.attachmentId}`, `raw/sha256:${'f'.repeat(64)}`)
+    const path = /\(([^)]+)\)$/.exec(markdown)?.[1]
+    const registrations = capture(store, true)
+    const { res, status } = makeRes()
+    await registrations[0].handler(makeReq('GET', undefined, path), res)
+    expect(status()).toBe(404)
   })
 
   it('answers a rejected payload with 422 and the structured error', async () => {

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { BoardController, type SessionsControllerFace, type TaskBoardTransport } from '../src/core/controller.ts'
 import { InMemoryTaskStore } from '../src/core/store.ts'
 import { createTask, type TaskRecord } from '../src/core/tasks.ts'
-import type { TaskBoardSnapshot } from '../src/protocol.ts'
+import type { TaskBoardEventPayload, TaskBoardSnapshot } from '../src/protocol.ts'
 
 function snapshot(revision: number, tasks: TaskRecord[] = [], ledgerId = 'ledger-a'): TaskBoardSnapshot {
   return {
@@ -151,6 +151,73 @@ describe('Host-backed BoardController', () => {
     await vi.waitFor(() => { expect(controller.getSnapshot().host?.scheduler.ledgerId).toBe('ledger-b') })
     expect(controller.getSnapshot().host?.revision).toBe(0)
     expect(controller.getSnapshot().tasks).toEqual([])
+    controller.dispose()
+  })
+
+  it('applies a same-revision SSE frame in place without refetching the full state', async () => {
+    const confirmed = createTask({ title: 'A', description: '', prompt: '' }, 1, 'task-a')
+    const state = vi.fn(async () => snapshot(2, [confirmed]))
+    let onEvent: ((event?: TaskBoardEventPayload) => void) | undefined
+    const transport: TaskBoardTransport = {
+      bootstrap: async () => snapshot(2, [confirmed]),
+      state,
+      action: async () => snapshot(2, [confirmed]),
+      subscribe: listener => { onEvent = listener; return () => undefined },
+    }
+    const controller = new BoardController({ store: new InMemoryTaskStore(), sessions: sessions(), transport })
+    controller.start()
+    await controller.retryHostSync()
+    expect(state).not.toHaveBeenCalled()
+    onEvent?.({
+      revision: 2,
+      scheduler: { timeZone: 'UTC', ledgerId: 'ledger-a', lastTickAt: 7 },
+      power: {
+        platform: 'linux', phase: 'unsupported', enabled: false,
+        runningSessions: 3, armedSchedules: 0, sessionStateKnown: true,
+      },
+    })
+    await Promise.resolve()
+    expect(state).not.toHaveBeenCalled()
+    expect(controller.getSnapshot().host?.scheduler.lastTickAt).toBe(7)
+    expect(controller.getSnapshot().host?.power.runningSessions).toBe(3)
+    expect(controller.getSnapshot().tasks).toEqual([confirmed])
+    controller.dispose()
+  })
+
+  it('still refetches the full state when the SSE revision differs', async () => {
+    const confirmed = createTask({ title: 'A', description: '', prompt: '' }, 1, 'task-a')
+    const state = vi.fn(async () => snapshot(3, [confirmed]))
+    let onEvent: ((event?: TaskBoardEventPayload) => void) | undefined
+    const transport: TaskBoardTransport = {
+      bootstrap: async () => snapshot(2, [confirmed]),
+      state,
+      action: async () => snapshot(2, [confirmed]),
+      subscribe: listener => { onEvent = listener; return () => undefined },
+    }
+    const controller = new BoardController({ store: new InMemoryTaskStore(), sessions: sessions(), transport })
+    controller.start()
+    await controller.retryHostSync()
+    onEvent?.({ revision: 3, scheduler: { timeZone: 'UTC', ledgerId: 'ledger-a' }, power: snapshot(2).power })
+    await vi.waitFor(() => { expect(state).toHaveBeenCalledOnce() })
+    expect(controller.getSnapshot().host?.revision).toBe(3)
+    controller.dispose()
+  })
+
+  it('falls back to a full refresh when the SSE frame is missing', async () => {
+    const confirmed = createTask({ title: 'A', description: '', prompt: '' }, 1, 'task-a')
+    const state = vi.fn(async () => snapshot(2, [confirmed]))
+    let onEvent: ((event?: TaskBoardEventPayload) => void) | undefined
+    const transport: TaskBoardTransport = {
+      bootstrap: async () => snapshot(2, [confirmed]),
+      state,
+      action: async () => snapshot(2, [confirmed]),
+      subscribe: listener => { onEvent = listener; return () => undefined },
+    }
+    const controller = new BoardController({ store: new InMemoryTaskStore(), sessions: sessions(), transport })
+    controller.start()
+    await controller.retryHostSync()
+    onEvent?.()
+    await vi.waitFor(() => { expect(state).toHaveBeenCalledOnce() })
     controller.dispose()
   })
 })

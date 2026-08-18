@@ -114,3 +114,57 @@ jobs:
 
       - name: Documentation consistency
         run: pnpm docs:check
+
+  # Pack the aggregate bundle as an npm tarball, mount it into a REAL DSH
+  # instance through the official `dsh plugin --profile web add` channel, and
+  # render the DSH web UI headlessly (Playwright Chromium) to prove the
+  # right-panel transition: dsh-better-sidebar mounts, no crash markers.
+  # (aionui-panel is no longer supported and carries no assertions.)
+  # Requires the published family packages and dsh-better-sidebar (see
+  # docs/publish-prep.md for the release order); runs keyless and
+  # deterministic, no API key needed.
+  plugin-mount:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DSH_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Pin the DSH CLI the lane mounts into; the profile's bundle stack
+      # (dsh-base / dsh-web-app) resolves from this installation.
+      - name: Install dsh CLI (pinned)
+        run: npm install -g @deepseek-ai/dsh@0.1.0-rc.6
+
+      # lib/ bundles are committed for the consistency checks, but the
+      # aggregate tarball must be produced from a fresh build.
+      - name: Build
+        run: pnpm build
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Mount + headless-render smoke
+        run: bash scripts/e2e-mount.sh
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore

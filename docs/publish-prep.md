@@ -9,7 +9,7 @@
 
 ## 一、范围
 
-`packages/` 与 `packages/skins/` 下共 22 个插件包（截至快照日）：
+`packages/` 与 `packages/skins/` 下共 23 个插件包（截至快照日）：
 
 | 目录 | 包名 | 当前版本 | private |
 | --- | --- | --- | --- |
@@ -17,11 +17,11 @@
 | packages/dsh-git-graph | @linxin666/dsh-client-ui-git-graph | 0.1.1 | true |
 | packages/dsh-pet | @linxin666/dsh-pet | 0.1.1 | true |
 | packages/dsh-remote-web-ui | @linxin666/dsh-remote-web-ui | 0.1.1 | true |
-| packages/dsh-live-stats | @linxin666/dsh-live-stats | 0.1.1 | true |
 | packages/dsh-ssh | @linxin666/dsh-ssh | 0.1.1 | true |
 | packages/dsh-liangshen | @linxin666/dsh-liangshen | 0.1.12 | false |
 | packages/dsh-aionui-panel | @linxin666/dsh-client-ui-aionui-panel | 0.1.1 | true |
 | packages/dsh-web-ui-settings | @linxin666/dsh-client-ui-web-ui-settings | 0.1.1 | true |
+| packages/dsh-skill-explorer | @linxin666/dsh-client-ui-skill-explorer | 0.1.20 | true |
 | packages/dsh-community-plugins | @linxin666/dsh-client-ui-community-plugins | 0.1.17 | false |
 | packages/dsh-skins | @linxin666/dsh-skins（聚合） | 0.1.1 | true |
 | packages/dsh-web-ui-all | @linxin666/dsh-web-ui-all（聚合） | 0.1.1 | true |
@@ -63,7 +63,7 @@
 
 ### [建议] 建议项（registry 安装兼容性）— [已确认] 已修复
 
-5. **peerDeps 版本声明不匹配**：git-graph / live-stats / pet / remote-web-ui
+5. **peerDeps 版本声明不匹配**：git-graph / pet / remote-web-ui
    的 `@deepseek-ai/*` peerDeps
    已从旧 `^0.0.1` 系列改为 **`^0.1.0-rc.6`**（与 npm 已发布版本匹配，避免 ERESOLVE）。
 
@@ -71,7 +71,7 @@
 
 6. **LICENSE 文件缺失 11 包** — [已确认] **已补全**（Apache-2.0），打包验证 LICENSE 已进 tarball。Maid Atelier 作为例外采用 CC BY-NC-SA 4.0，仅限非商业使用；聚合包必须携带该皮肤的 LICENSE / NOTICE 与 THIRD_PARTY_NOTICES.md。
 7. **files 缺 `cordis.patch.yml`**（发布后 bundle patch 缺失会装不上）—
-   [已确认] **已补全**：task-board / live-stats
+   [已确认] **已补全**：task-board
    的 files 均加入 `cordis.patch.yml`（task-board 同时补齐
    `src` 与 `lib/types/**/*.d.ts.map`）。打包验证全部进 tarball。
 8. **blue-fantasy 打包警告**：`MODULE_TYPELESS_PACKAGE_JSON`（packages/skins/
@@ -97,9 +97,12 @@ npm 侧已发布 @deepseek-ai 核心 SDK 包至 `0.1.0-rc.6`，插件包仍按�
 2. 发布前仍需处理：移除 `private: true`（20 包）；
 3. 按依赖顺序发布（用 **`pnpm publish`**，自动改写 workspace:*）：
    各功能包 > 皮肤包 > dsh-skins > web-ui-all；
-4. 逐包 `pnpm pack --dry-run` 复核 tarball 内容（注意：dry-run 仍会执行
+4. **外部依赖先行**：web-ui-all 的 dependencies 含 `dsh-better-sidebar`（^0.13.0，
+   非本仓库出品），其版本必须已在 npm 上可解析（当前 0.13.0 待发布：右侧面板
+   互斥能力；发布顺序为 better-sidebar 0.13.0 → web-ui-all），再更新 lockfile）；
+5. 逐包 `pnpm pack --dry-run` 复核 tarball 内容（注意：dry-run 仍会执行
    prepack/prepare 脚本）；
-5. 发布动作前**必须**经维护者确认。
+6. 发布动作前**必须**经维护者确认。
 
 ## 五、重新核对时机
 

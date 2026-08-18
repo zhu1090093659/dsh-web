@@ -17,6 +17,7 @@ import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { PetService } from './service.ts'
 import type { PetInteraction } from './affinity.ts'
 import { petEntryView, type PetEntry, type PetRegistry } from './registry.ts'
+import { isLoopbackRequest } from './loopback.ts'
 
 /** Browser-facing base path of the pet API. */
 export const PET_API_PREFIX = '/api/pet'
@@ -86,12 +87,20 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
   })
 }
 
+/** Shared route fence: the browser UI is a loopback client; LAN hosts stay out. */
+function guard(req: IncomingMessage, res: ServerResponse): boolean {
+  if (isLoopbackRequest(req)) return true
+  json(res, 403, { ok: false, error: 'forbidden: loopback-only' })
+  return false
+}
+
 /** Wrap one async service call as a GET JSON route. */
 function getRoute(path: string, run: () => Promise<unknown>): WebRoute {
   return {
     kind: 'exact',
     path,
     handler: (req: IncomingMessage, res: ServerResponse): void => {
+      if (!guard(req, res)) return
       if (!requireMethod(req, res, 'GET')) return
       run().then((value) => json(res, 200, value), (error) => {
         json(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
@@ -106,6 +115,7 @@ function postRoute(path: string, run: (body: Record<string, unknown>) => Promise
     kind: 'exact',
     path,
     handler: (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+      if (!guard(req, res)) return Promise.resolve()
       if (!requireMethod(req, res, 'POST')) return Promise.resolve()
       return readJsonBody(req).then((body) => {
         const record = (typeof body === 'object' && body !== null) ? body as Record<string, unknown> : {}
@@ -141,6 +151,7 @@ function dirAliases(registry: PetRegistry): Map<string, PetEntry> {
 function assetHandler(registry: PetRegistry): WebRoute['handler'] {
   const aliases = dirAliases(registry)
   return (req: IncomingMessage, res: ServerResponse): void => {
+    if (!guard(req, res)) return
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.writeHead(405)
       res.end()

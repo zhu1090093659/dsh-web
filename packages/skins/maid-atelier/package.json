@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-maid-atelier",
   "description": "Hot-pluggable Abyssal Maid Atelier skin for the dsh web GUI with a dual-maid backdrop, ornamental navy interface, and responsive character staging",
-  "version": "0.1.20",
+  "version": "0.2.0",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

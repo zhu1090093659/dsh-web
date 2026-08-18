@@ -1,0 +1,4 @@
+out/
+.smoke-artifacts/
+node_modules/
+pixelmodel/

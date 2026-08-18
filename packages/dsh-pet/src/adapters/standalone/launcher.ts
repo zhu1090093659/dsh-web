@@ -68,16 +68,11 @@ function readPackageJson(path: string): StandalonePackageJson | undefined {
   }
 }
 
-function electronExecutable(moduleUrl: string, explicit?: string): string | undefined {
-  const managed = existingPath(explicit)
-  if (managed !== undefined) return managed
-  let value: unknown
-  try {
-    value = createRequire(moduleUrl)('electron')
-  } catch {
-    return undefined
-  }
-  return existingPath(value)
+function electronExecutable(explicit?: string): string | undefined {
+  // Never discover an arbitrary Electron dependency from the DSH profile.
+  // The managed runtime is supplied only after the user-approved installer
+  // has selected and verified one exact executable.
+  return existingPath(explicit)
 }
 
 function electronAppTarget(
@@ -136,7 +131,7 @@ function installedPackageTarget(
     }
   }
   if (packageJsonPath === undefined) return undefined
-  const executable = electronExecutable(packageJsonPath, options.runtimeExecutable)
+  const executable = electronExecutable(options.runtimeExecutable)
   return electronAppTarget(packageJsonPath, 'package', executable)
 }
 
@@ -146,7 +141,7 @@ function developmentTarget(
   const packageRoot = findPluginPackageRoot(options.moduleUrl)
   if (packageRoot === undefined) return undefined
   const packageJsonPath = resolve(packageRoot, 'desktop', 'package.json')
-  const executable = electronExecutable(options.moduleUrl, options.runtimeExecutable)
+  const executable = electronExecutable(options.runtimeExecutable)
   return electronAppTarget(packageJsonPath, 'development', executable)
 }
 

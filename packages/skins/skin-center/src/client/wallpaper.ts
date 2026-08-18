@@ -315,6 +315,11 @@ export class WallpaperController implements WallpaperHandle {
       styleLayer(this.scrimLayer, -2)
       document.body.appendChild(this.scrimLayer)
     }
+    // While a wallpaper is mounted the shell's own opaque frame/column
+    // backgrounds would hide the fixed layers behind them; the body flag
+    // switches those backgrounds to transparent (skin-center.module.css) and
+    // is removed again on teardown.
+    document.body.setAttribute('data-dsh-wallpaper-active', '')
     const mediaKey = descriptor.id + ':' + this.modeValue
     if (this.mediaLayer.dataset.mediaKey !== mediaKey) {
       this.mediaLayer.dataset.mediaKey = mediaKey
@@ -431,6 +436,7 @@ export class WallpaperController implements WallpaperHandle {
       this.scrimLayer.remove()
       this.scrimLayer = null
     }
+    document.body.removeAttribute('data-dsh-wallpaper-active')
   }
 
   private publish(): void {

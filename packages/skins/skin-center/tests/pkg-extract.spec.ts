@@ -10,6 +10,9 @@
  */
 
 import { Buffer } from 'node:buffer'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { inflateSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
 
@@ -19,6 +22,7 @@ import {
   decodeTex,
   encodePng,
   extractSceneMainImage,
+  extractSceneMainImageFromDir,
   lz4DecompressBlock,
   parsePkg,
   parseTex,
@@ -361,6 +365,11 @@ describe('parsePkg', () => {
     expect(readPkgEntry(pkg, one)).toEqual(compressedSingle)
     expect(readPkgEntry(pkg, two)).toEqual(concat(chunkA, chunkB))
   })
+
+  it('normalizes backslash entry paths to forward slashes', () => {
+    const pkg = buildPkg([{ path: 'materials\\bg.tex', data: bgTex }])
+    expect(parsePkg(pkg)[0].path).toBe('materials/bg.tex')
+  })
 })
 
 describe('lz4DecompressBlock', () => {
@@ -509,6 +518,67 @@ describe('decodeTex', () => {
       mipmaps: [{ width: 1, height: 1, data: Uint8Array.of(7, 9) }],
     })
     expect(decodeTex(rg88).rgba).toEqual(Uint8Array.of(7, 9, 0, 255))
+  })
+
+  it('converts RGB888 and RGB565 to RGBA', () => {
+    const rgb888 = buildTex({
+      width: 2,
+      height: 1,
+      format: TexFormat.RGB888,
+      mipmaps: [{ width: 2, height: 1, data: Uint8Array.of(10, 20, 30, 200, 100, 50) }],
+    })
+    expect(decodeTex(rgb888).rgba).toEqual(Uint8Array.of(10, 20, 30, 255, 200, 100, 50, 255))
+    const rgb565 = buildTex({
+      width: 2,
+      height: 1,
+      format: TexFormat.RGB565,
+      mipmaps: [{ width: 2, height: 1, data: concat(u16le(0xf800), u16le(0x07e0)) }],
+    })
+    expect(decodeTex(rgb565).rgba).toEqual(Uint8Array.of(255, 0, 0, 255, 0, 255, 0, 255))
+  })
+
+  it('converts packed RGBA1010102 to RGBA', () => {
+    // r=1023 (255), g=0, b=0, alpha=2 (170)
+    const tex = buildTex({
+      width: 1,
+      height: 1,
+      format: TexFormat.RGBA1010102,
+      mipmaps: [{ width: 1, height: 1, data: u32le((2 << 30) | (1023 << 20)) }],
+    })
+    expect(decodeTex(tex).rgba).toEqual(Uint8Array.of(255, 0, 0, 170))
+  })
+
+  it('converts half-float formats to RGBA', () => {
+    const one = 0x3c00 // 1.0
+    const half = 0x3800 // 0.5 -> 128
+    const r16f = buildTex({
+      width: 2,
+      height: 1,
+      format: TexFormat.R16F,
+      mipmaps: [{ width: 2, height: 1, data: concat(u16le(one), u16le(half)) }],
+    })
+    expect(decodeTex(r16f).rgba).toEqual(Uint8Array.of(255, 255, 255, 255, 128, 128, 128, 255))
+    const rg1616f = buildTex({
+      width: 1,
+      height: 1,
+      format: TexFormat.RG1616F,
+      mipmaps: [{ width: 1, height: 1, data: concat(u16le(one), u16le(half)) }],
+    })
+    expect(decodeTex(rg1616f).rgba).toEqual(Uint8Array.of(255, 128, 0, 255))
+    const rgba16161616f = buildTex({
+      width: 1,
+      height: 1,
+      format: TexFormat.RGBA16161616F,
+      mipmaps: [{ width: 1, height: 1, data: concat(u16le(one), u16le(half), u16le(0), u16le(one)) }],
+    })
+    expect(decodeTex(rgba16161616f).rgba).toEqual(Uint8Array.of(255, 128, 0, 255))
+    const rgb161616f = buildTex({
+      width: 1,
+      height: 1,
+      format: TexFormat.RGB161616F,
+      mipmaps: [{ width: 1, height: 1, data: concat(u16le(half), u16le(one), u16le(0)) }],
+    })
+    expect(decodeTex(rgb161616f).rgba).toEqual(Uint8Array.of(128, 255, 0, 255))
   })
 
   it('decodes a DXT1 single block with known endpoints', () => {
@@ -692,8 +762,90 @@ describe('extractSceneMainImage', () => {
     expect(decodePng(result.png).rgba).toEqual(bgPixels)
   })
 
-  it('throws when scene.json is absent', () => {
+  it('falls back to the largest texture when scene.json is absent', () => {
     const pkg = buildPkg([{ path: 'materials/bg.tex', data: bgTex }])
-    expect(() => extractSceneMainImage(pkg)).toThrow(/pkg: scene.json not found or invalid/)
+    const result = extractSceneMainImage(pkg)
+    expect(result.texturePath).toBe('materials/bg.tex')
+    expect(decodePng(result.png).rgba).toEqual(bgPixels)
+  })
+
+  it('collects inline texture refs from shader-style scene objects', () => {
+    const shaderScene = encoder.encode(JSON.stringify({
+      objects: [{ id: 1, name: 'shader bg', shader: 'background', textures: ['materials/bg.tex'] }],
+    }))
+    const pkg = buildPkg([
+      { path: 'scene.json', data: shaderScene },
+      { path: 'materials/bg.tex', data: bgTex },
+    ])
+    const result = extractSceneMainImage(pkg)
+    expect(result.texturePath).toBe('materials/bg.tex')
+    expect(decodePng(result.png).rgba).toEqual(bgPixels)
+  })
+
+  it('resolves backslash material and texture references', () => {
+    const scene = sceneJson('materials\\bg.json')
+    const pkg = buildPkg([
+      { path: 'scene.json', data: scene },
+      { path: 'materials\\bg.json', data: materialJson },
+      { path: 'materials\\bg.tex', data: bgTex },
+    ])
+    const result = extractSceneMainImage(pkg)
+    expect(result.texturePath).toBe('materials/bg.tex')
+    expect(decodePng(result.png).rgba).toEqual(bgPixels)
+  })
+
+  it('throws a readable error for an undecodable candidate texture', () => {
+    const badTex = buildTex({
+      width: 4,
+      height: 4,
+      format: TexFormat.BC7,
+      mipmaps: [{ width: 4, height: 4, data: new Uint8Array(16) }],
+    })
+    const pkg = buildPkg([
+      { path: 'scene.json', data: sceneJson('materials/bad.tex') },
+      { path: 'materials/bad.tex', data: badTex },
+    ])
+    expect(() => extractSceneMainImage(pkg)).toThrow(/cannot decode texture 'materials\/bad\.tex' \(BC7\)/)
+  })
+
+  it('throws when the package has no texture candidates at all', () => {
+    const pkg = buildPkg([{ path: 'scene.json', data: sceneJson('materials/missing.json') }])
+    expect(() => extractSceneMainImage(pkg)).toThrow(/pkg: no texture candidates found/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// loose scene project extraction (scene.json + materials on disk)
+// ---------------------------------------------------------------------------
+
+describe('extractSceneMainImageFromDir', () => {
+  it('decodes the material texture of a loose image scene', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pkg-extract-scene-'))
+    try {
+      writeFileSync(join(dir, 'scene.json'), encoder.encode(JSON.stringify({
+        objects: [{ id: 1, name: 'bg', image: 'materials/bg.json' }],
+      })))
+      mkdirSync(join(dir, 'materials'))
+      writeFileSync(join(dir, 'materials', 'bg.json'), materialJson)
+      writeFileSync(join(dir, 'materials', 'bg.tex'), bgTex)
+      const result = extractSceneMainImageFromDir(dir)
+      expect(result).not.toBeNull()
+      expect(result!.texturePath).toBe('materials/bg.tex')
+      expect(decodePng(result!.png).rgba).toEqual(bgPixels)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('returns null for a model-only scene with no static texture', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pkg-extract-scene-'))
+    try {
+      writeFileSync(join(dir, 'scene.json'), encoder.encode(JSON.stringify({
+        objects: [{ id: 1, name: 'pistols', model: 'models/pistols.mdl' }],
+      })))
+      expect(extractSceneMainImageFromDir(dir)).toBeNull()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

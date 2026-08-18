@@ -91,7 +91,14 @@ beforeEach(async () => {
   makeProject(join(library, '333'), { title: 'Scene', type: 'scene', file: 'scene.pkg' }, {
     'scene.pkg': 'NOT-A-REAL-PKG',
   })
-  const routes = makeWeRoutes({ getConfig: () => ({ weLibraryDirs: [library] }), storeDir: store })
+  makeProject(join(library, '444'), { title: 'Packed scene', type: 'scene', file: 'project\\scene.json' }, {
+    'scene.pkg': 'NOT-A-REAL-PKG',
+  })
+  makeProject(join(library, '555'), { title: 'Model scene', type: 'scene', file: 'scene.json', preview: 'preview.jpg' }, {
+    'scene.json': JSON.stringify({ objects: [{ id: 1, model: 'models/x.mdl' }] }),
+    'preview.jpg': 'FAKE-PREVIEW-555',
+  })
+  const routes = makeWeRoutes({ getConfig: () => ({ weLibraryDirs: [library] }), storeDir: store, autoDetect: false })
   await serve(routes)
 })
 
@@ -106,7 +113,7 @@ describe('inventory', () => {
     expect(res.status).toBe(200)
     expect(res.body.ok).toBe(true)
     const wallpapers = res.body.wallpapers as Array<Record<string, unknown>>
-    expect(wallpapers).toHaveLength(3)
+    expect(wallpapers).toHaveLength(5)
     const video = wallpapers.find(w => w.id === '111')
     expect(video?.type).toBe('video')
     expect(video?.playable).toBe(true)
@@ -114,8 +121,16 @@ describe('inventory', () => {
     const web = wallpapers.find(w => w.id === '222')
     expect(String(web?.webUrl)).toContain(WE_API_PREFIX + '/web/')
     const scene = wallpapers.find(w => w.id === '333')
-    expect(scene?.playable).toBe(false)
+    expect(scene?.playable).toBe(true)
     expect(String(scene?.frameUrl)).toContain(WE_API_PREFIX + '/scene-frame/')
+    // The declared project\scene.json is absent; the entry resolves the
+    // actual scene.pkg and still gets a frame url.
+    const packed = wallpapers.find(w => w.id === '444')
+    expect(packed?.playable).toBe(true)
+    expect(String(packed?.frameUrl)).toContain(WE_API_PREFIX + '/scene-frame/')
+    const modelScene = wallpapers.find(w => w.id === '555')
+    expect(modelScene?.playable).toBe(true)
+    expect(String(modelScene?.frameUrl)).toContain(WE_API_PREFIX + '/scene-frame/')
   })
 
   it('rejects cross-site requests', async () => {
@@ -181,6 +196,14 @@ describe('scene-frame', () => {
     expect(res.status).toBe(422)
     expect(res.body.ok).toBe(false)
   })
+
+  it('serves the preview when a loose scene has no static frame', async () => {
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const scene = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '555')
+    const res = await call('GET', String(scene?.frameUrl))
+    expect(res.status).toBe(200)
+    expect(res.raw).toBe('FAKE-PREVIEW-555')
+  })
 })
 
 describe('import lifecycle', () => {
@@ -211,6 +234,14 @@ describe('import lifecycle', () => {
     expect(removed.status).toBe(200)
     expect(existsSync(join(store, '111'))).toBe(false)
     expect(existsSync(join(library, '111'))).toBe(true)
+  })
+
+  it('records the actual scene container in the import manifest', async () => {
+    const imported = await call('POST', WE_API_PREFIX + '/import', { body: { id: '444' } })
+    expect(imported.status).toBe(200)
+    const manifest = JSON.parse(readFileSync(join(store, '444', 'manifest.json'), 'utf8')) as Record<string, unknown>
+    expect(String(manifest.file)).toContain('scene.pkg')
+    expect(String(manifest.file)).not.toContain('scene.json')
   })
 
   it('rejects bad ids and cross-site posts', async () => {

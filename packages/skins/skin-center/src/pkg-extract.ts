@@ -31,11 +31,16 @@
  *
  * LZ4 block decoding follows the official lz4 block format specification;
  * BC1/BC2/BC3 follow the standard public algorithms. No npm dependencies.
+ * `extractSceneMainImageFromDir` additionally handles loose scene projects
+ * (scene.json + materials/*.tex on disk, as WE's bundled defaultprojects
+ * ship them) so local scenes without a .pkg still yield a static frame.
  *
  * @module @linxin666/dsh-client-ui-skin-center/pkg-extract
  */
 
 import { Buffer } from 'node:buffer'
+import { readFileSync } from 'node:fs'
+import { isAbsolute, join as joinPath, relative, resolve as resolvePath } from 'node:path'
 import { deflateSync } from 'node:zlib'
 
 /** One file inside a PKG container. */
@@ -139,6 +144,11 @@ export interface SceneMainImage {
 }
 
 const textDecoder = new TextDecoder('utf-8')
+
+/** Package paths may use backslashes; normalize to '/' for lookups. */
+function normalizePkgPath(path: string): string {
+  return path.replace(/\\/g, '/')
+}
 
 /**
  * Bounds-checked little-endian binary reader. Every failed read throws an
@@ -331,14 +341,15 @@ export function parsePkg(data: Uint8Array): PkgEntry[] {
   }
   const dataStart = r.pos
   return index.map(({ path, offset, length }) => {
+    const normalized = normalizePkgPath(path)
     const abs = dataStart + offset
     if (abs + length > data.byteLength) {
-      throw new Error("pkg: entry '" + path + "' out of bounds")
+      throw new Error("pkg: entry '" + normalized + "' out of bounds")
     }
     const originalSize = probeCompressedEntry(data, abs, length)
     return originalSize === null
-      ? { path, offset: abs, compressedSize: length, size: length, flags: 0 }
-      : { path, offset: abs, compressedSize: length, size: originalSize, flags: PKG_ENTRY_FLAG_LZ4 }
+      ? { path: normalized, offset: abs, compressedSize: length, size: length, flags: 0 }
+      : { path: normalized, offset: abs, compressedSize: length, size: originalSize, flags: PKG_ENTRY_FLAG_LZ4 }
   })
 }
 
@@ -687,10 +698,35 @@ function decodeDxt5(src: Uint8Array, width: number, height: number): Uint8Array 
   return out
 }
 
+/** IEEE 754 half float to number; NaN/Infinity propagate to callers. */
+function halfFloatToNumber(half: number): number {
+  const sign = (half & 0x8000) !== 0 ? -1 : 1
+  const exponent = (half >> 10) & 0x1f
+  const mantissa = half & 0x3ff
+  if (exponent === 0) return sign * mantissa * 2 ** -24
+  if (exponent === 31) return mantissa === 0 ? sign * Infinity : NaN
+  return sign * (1 + mantissa / 1024) * 2 ** (exponent - 15)
+}
+
+/** Half float to 8-bit channel: NaN to 0, out-of-range values clipped. */
+function halfFloatToByte(half: number): number {
+  const value = halfFloatToNumber(half)
+  if (Number.isNaN(value)) return 0
+  if (!Number.isFinite(value)) return value > 0 ? 255 : 0
+  return Math.max(0, Math.min(255, Math.round(value * 255)))
+}
+
+/** 10-bit channel to 8-bit (rounds, then clips). */
+function channel10To8(value: number): number {
+  return Math.max(0, Math.min(255, Math.round((value * 255) / 1023)))
+}
+
 /**
  * Decode the first (largest) mipmap of a TEX container to RGBA8888.
- * Supports RGBA8888, R8, RG88 and DXT1/DXT3/DXT5; embedded MP4 textures and
- * unknown formats throw a descriptive error instead of failing silently.
+ * Supports RGBA8888, RGB888, RGB565, R8, RG88, RG1616F, R16F,
+ * RGBA1010102, RGBA16161616F, RGB161616F and DXT1/DXT3/DXT5; embedded MP4
+ * textures and unknown formats throw a descriptive error instead of failing
+ * silently.
  */
 export function decodeTex(data: Uint8Array): DecodedImage {
   const parsed = parseTexInternal(data)
@@ -742,6 +778,103 @@ export function decodeTex(data: Uint8Array): DecodedImage {
       const expected = Math.ceil(width / 4) * Math.ceil(height / 4) * 16
       if (bytes.length < expected) throw new Error('tex: mipmap size mismatch for DXT5')
       return { width, height, rgba: decodeDxt5(bytes, width, height) }
+    }
+    case TexFormat.RGB888: {
+      if (bytes.length < width * height * 3) throw new Error('tex: mipmap size mismatch for RGB888')
+      const rgba = new Uint8Array(width * height * 4)
+      for (let i = 0; i < width * height; i++) {
+        const source = i * 3
+        const target = i * 4
+        rgba[target] = bytes[source]
+        rgba[target + 1] = bytes[source + 1]
+        rgba[target + 2] = bytes[source + 2]
+        rgba[target + 3] = 255
+      }
+      return { width, height, rgba }
+    }
+    case TexFormat.RGB565: {
+      if (bytes.length < width * height * 2) throw new Error('tex: mipmap size mismatch for RGB565')
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      const rgba = new Uint8Array(width * height * 4)
+      for (let i = 0; i < width * height; i++) {
+        const [r, g, b] = rgb565(view.getUint16(i * 2, true))
+        const target = i * 4
+        rgba[target] = r
+        rgba[target + 1] = g
+        rgba[target + 2] = b
+        rgba[target + 3] = 255
+      }
+      return { width, height, rgba }
+    }
+    case TexFormat.RG1616F: {
+      if (bytes.length < width * height * 4) throw new Error('tex: mipmap size mismatch for RG1616F')
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      const rgba = new Uint8Array(width * height * 4)
+      for (let i = 0; i < width * height; i++) {
+        const source = i * 4
+        const target = i * 4
+        rgba[target] = halfFloatToByte(view.getUint16(source, true))
+        rgba[target + 1] = halfFloatToByte(view.getUint16(source + 2, true))
+        rgba[target + 2] = 0
+        rgba[target + 3] = 255
+      }
+      return { width, height, rgba }
+    }
+    case TexFormat.R16F: {
+      if (bytes.length < width * height * 2) throw new Error('tex: mipmap size mismatch for R16F')
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      const rgba = new Uint8Array(width * height * 4)
+      for (let i = 0; i < width * height; i++) {
+        const value = halfFloatToByte(view.getUint16(i * 2, true))
+        const target = i * 4
+        rgba[target] = value
+        rgba[target + 1] = value
+        rgba[target + 2] = value
+        rgba[target + 3] = 255
+      }
+      return { width, height, rgba }
+    }
+    case TexFormat.RGBA1010102: {
+      if (bytes.length < width * height * 4) throw new Error('tex: mipmap size mismatch for RGBA1010102')
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      const rgba = new Uint8Array(width * height * 4)
+      for (let i = 0; i < width * height; i++) {
+        const value = view.getUint32(i * 4, true)
+        const target = i * 4
+        rgba[target] = channel10To8((value >>> 20) & 0x3ff)
+        rgba[target + 1] = channel10To8((value >>> 10) & 0x3ff)
+        rgba[target + 2] = channel10To8(value & 0x3ff)
+        rgba[target + 3] = (value >>> 30) * 85
+      }
+      return { width, height, rgba }
+    }
+    case TexFormat.RGBA16161616F: {
+      if (bytes.length < width * height * 8) throw new Error('tex: mipmap size mismatch for RGBA16161616F')
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      const rgba = new Uint8Array(width * height * 4)
+      for (let i = 0; i < width * height; i++) {
+        const source = i * 8
+        const target = i * 4
+        rgba[target] = halfFloatToByte(view.getUint16(source, true))
+        rgba[target + 1] = halfFloatToByte(view.getUint16(source + 2, true))
+        rgba[target + 2] = halfFloatToByte(view.getUint16(source + 4, true))
+        rgba[target + 3] = halfFloatToByte(view.getUint16(source + 6, true))
+      }
+      return { width, height, rgba }
+    }
+    case TexFormat.RGB161616F: {
+      if (bytes.length < width * height * 6) throw new Error('tex: mipmap size mismatch for RGB161616F')
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      const rgba = new Uint8Array(width * height * 4)
+      for (let i = 0; i < width * height; i++) {
+        const source = i * 6
+        const target = i * 4
+        rgba[target] = halfFloatToByte(view.getUint16(source, true))
+        rgba[target + 1] = halfFloatToByte(view.getUint16(source + 2, true))
+        rgba[target + 2] = halfFloatToByte(view.getUint16(source + 4, true))
+        rgba[target + 3] = 255
+      }
+      return { width, height, rgba }
     }
     default:
       throw new Error('tex: unsupported format ' + parsed.format)
@@ -804,38 +937,60 @@ export function encodePng(width: number, height: number, rgba: Uint8Array): Buff
   ])
 }
 
-/** Extract .tex candidate paths referenced by one scene.json image object. */
+/** Push one texture reference, normalized to '/'. */
+function pushTextureRef(ref: unknown, out: string[]): void {
+  if (typeof ref !== 'string') return
+  const name = normalizePkgPath(ref)
+  if (name.toLowerCase().endsWith('.tex')) out.push(name)
+}
+
+/** Walk arbitrary JSON, pushing every string that references a .tex file. */
+function walkTextureRefs(value: unknown, out: string[]): void {
+  if (typeof value === 'string') {
+    pushTextureRef(value, out)
+    return
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) walkTextureRefs(item, out)
+    return
+  }
+  if (value !== null && typeof value === 'object') {
+    for (const child of Object.values(value)) walkTextureRefs(child, out)
+  }
+}
+
+/**
+ * Extract .tex candidate paths referenced by one scene.json image object.
+ * The `image` reference normally names a material json whose passes carry
+ * the texture paths (RePKG scene model); shader scenes can also inline
+ * texture lists in other fields, so every non-image field is walked
+ * recursively for `.tex` references.
+ */
 function collectImageObjectTextures(
   imageObject: Record<string, unknown>,
   readJson: (path: string) => unknown | null,
 ): string[] {
   const out: string[] = []
-  const pushTextureList = (list: unknown): void => {
-    if (!Array.isArray(list)) return
-    for (const item of list) {
-      const name =
-        typeof item === 'string'
-          ? item
-          : item && typeof item === 'object' && typeof (item as { name?: unknown }).name === 'string'
-            ? (item as { name: string }).name
-            : null
-      if (name && name.toLowerCase().endsWith('.tex')) out.push(name)
+  const image = imageObject.image
+  if (typeof image === 'string') {
+    const ref = normalizePkgPath(image)
+    if (ref.toLowerCase().endsWith('.tex')) {
+      out.push(ref)
+    } else {
+      const material = readJson(ref) as { passes?: { textures?: unknown }[] } | null
+      if (material && Array.isArray(material.passes)) {
+        for (const pass of material.passes) {
+          if (pass && typeof pass === 'object' && Array.isArray(pass.textures)) {
+            for (const texture of pass.textures) pushTextureRef(texture, out)
+          }
+        }
+      }
     }
   }
-  const ref = imageObject.image as string
-  if (ref.toLowerCase().endsWith('.tex')) {
-    out.push(ref)
-  } else {
-    // the image reference normally points at a material json whose passes
-    // carry the actual texture paths (RePKG scene model)
-    const material = readJson(ref) as { passes?: { textures?: unknown }[] } | null
-    if (material && Array.isArray(material.passes)) {
-      for (const pass of material.passes) pushTextureList(pass?.textures)
-    }
+  for (const [key, value] of Object.entries(imageObject)) {
+    if (key === 'image') continue
+    walkTextureRefs(value, out)
   }
-  // per-instance texture overrides
-  const instance = imageObject.instance as { textures?: unknown } | undefined
-  if (instance && typeof instance === 'object') pushTextureList(instance.textures)
   return out
 }
 
@@ -851,7 +1006,7 @@ export function extractSceneMainImage(pkgData: Uint8Array): SceneMainImage {
   const entries = parsePkg(pkgData)
   const byPath = new Map(entries.map((entry) => [entry.path.toLowerCase(), entry]))
   const readJson = (path: string): unknown | null => {
-    const entry = byPath.get(path.toLowerCase())
+    const entry = byPath.get(normalizePkgPath(path).toLowerCase())
     if (!entry) return null
     try {
       return JSON.parse(textDecoder.decode(readPkgEntry(pkgData, entry)))
@@ -859,17 +1014,18 @@ export function extractSceneMainImage(pkgData: Uint8Array): SceneMainImage {
       return null
     }
   }
-  const scene = readJson('scene.json') as { objects?: unknown } | null
-  if (!scene || !Array.isArray(scene.objects)) {
-    throw new Error('pkg: scene.json not found or invalid')
-  }
   const candidates: string[] = []
-  const imageObject = (scene.objects as unknown[]).find(
-    (o): o is Record<string, unknown> =>
-      !!o && typeof o === 'object' && typeof (o as { image?: unknown }).image === 'string',
-  )
-  if (imageObject) candidates.push(...collectImageObjectTextures(imageObject, readJson))
-  // fallback: every .tex in the package, largest pixel area first
+  const scene = readJson('scene.json') as { objects?: unknown } | null
+  if (scene && Array.isArray(scene.objects)) {
+    for (const object of scene.objects as unknown[]) {
+      if (object !== null && typeof object === 'object') {
+        candidates.push(...collectImageObjectTextures(object as Record<string, unknown>, readJson))
+      }
+    }
+  }
+  // Fallback: every .tex in the package, largest pixel area first. This also
+  // covers packages without a (readable) scene.json, shader-only scenes and
+  // scene.json files whose image objects never materialize a texture path.
   const texEntries = entries.filter((entry) => entry.path.toLowerCase().endsWith('.tex'))
   const ranked: { path: string; area: number }[] = []
   for (const entry of texEntries) {
@@ -889,7 +1045,7 @@ export function extractSceneMainImage(pkgData: Uint8Array): SceneMainImage {
   }
   let lastError: unknown = null
   for (const path of candidates) {
-    const entry = byPath.get(path.toLowerCase())
+    const entry = byPath.get(normalizePkgPath(path).toLowerCase())
     if (!entry) {
       lastError = new Error("pkg: texture '" + path + "' not found in package")
       continue
@@ -898,8 +1054,87 @@ export function extractSceneMainImage(pkgData: Uint8Array): SceneMainImage {
       const { width, height, rgba } = decodeTex(readPkgEntry(pkgData, entry))
       return { width, height, png: encodePng(width, height, rgba), texturePath: entry.path }
     } catch (err) {
-      lastError = err
+      // Wrap with the failing texture path and format name so the route's
+      // 422 payload explains exactly which scene asset could not decode.
+      const detail = err instanceof Error ? err.message : String(err)
+      const formatName = (() => {
+        try {
+          return parseTex(readPkgEntry(pkgData, entry)).formatName
+        } catch {
+          return null
+        }
+      })()
+      lastError = new Error(
+        "pkg: cannot decode texture '" + entry.path + "'" +
+        (formatName !== null ? ' (' + formatName + ')' : '') + ': ' + detail,
+      )
     }
   }
   throw lastError instanceof Error ? lastError : new Error('pkg: no decodable texture found')
+}
+
+/**
+ * A scene-dir json reader: resolves material paths against `sceneDir` and
+ * refuses anything that escapes it. Local wallpaper content is trusted
+ * input, but a stray `../` must never read outside the project.
+ */
+function dirReadJson(sceneDir: string): (path: string) => unknown | null {
+  const root = resolvePath(sceneDir)
+  return (path: string): unknown | null => {
+    const abs = resolvePath(root, normalizePkgPath(path))
+    const rel = relative(root, abs)
+    if (rel.startsWith('..') || isAbsolute(rel)) return null
+    try {
+      return JSON.parse(readFileSync(abs, 'utf8'))
+    } catch {
+      return null
+    }
+  }
+}
+
+/**
+ * Extract a static frame from a loose scene project (scene.json sitting
+ * next to its materials/*.tex files on disk, the layout of Wallpaper
+ * Engine's bundled defaultprojects). Only textures referenced by scene.json
+ * image objects are considered: model / particle scenes carry no usable
+ * static texture, so they return null and the caller falls back to the
+ * project's preview image.
+ * @param sceneDir - absolute project directory holding scene.json.
+ */
+export function extractSceneMainImageFromDir(sceneDir: string): SceneMainImage | null {
+  let scene: unknown
+  try {
+    scene = JSON.parse(readFileSync(joinPath(sceneDir, 'scene.json'), 'utf8'))
+  } catch {
+    return null
+  }
+  if (scene === null || typeof scene !== 'object') return null
+  const objects = (scene as { objects?: unknown }).objects
+  if (!Array.isArray(objects)) return null
+  const readJson = dirReadJson(sceneDir)
+  const root = resolvePath(sceneDir)
+  const candidates: string[] = []
+  for (const object of objects) {
+    if (object === null || typeof object !== 'object') continue
+    candidates.push(...collectImageObjectTextures(object as Record<string, unknown>, readJson))
+  }
+  for (const path of candidates) {
+    const abs = resolvePath(root, normalizePkgPath(path))
+    const rel = relative(root, abs)
+    if (rel.startsWith('..') || isAbsolute(rel)) continue
+    let data: Uint8Array
+    try {
+      data = new Uint8Array(readFileSync(abs))
+    } catch {
+      continue
+    }
+    try {
+      const { width, height, rgba } = decodeTex(data)
+      return { width, height, png: encodePng(width, height, rgba), texturePath: normalizePkgPath(path) }
+    } catch {
+      // Try the next candidate; a model scene with no image textures ends
+      // up returning null below.
+    }
+  }
+  return null
 }

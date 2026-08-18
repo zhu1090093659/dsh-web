@@ -7,6 +7,21 @@
    is themed by the active (or tried-on) skin automatically. Never use bare
    hex here: a token-less rule is a light-theme-only bug. */
 
+/* While a wallpaper is mounted the fixed media/scrim layers live behind
+   the shell's grid; the shell's own opaque frame + sidebar backgrounds would
+   otherwise cover them. The controller flags document.body with
+   data-dsh-wallpaper-active and these rules punch the backgrounds through.
+   The data-dsh-frame / data-pane attributes are stamped by the dsh-web-ui-all
+   compat shim; the :has() rule covers standalone installs without the shim. */
+body[data-dsh-skin-center][data-dsh-wallpaper-active] [data-dsh-frame],
+body[data-dsh-skin-center][data-dsh-wallpaper-active] :has(> [class*="sidebarCol"]) {
+  background: transparent;
+}
+body[data-dsh-skin-center][data-dsh-wallpaper-active] [data-pane="sidebar"],
+body[data-dsh-skin-center][data-dsh-wallpaper-active] [class*="sidebarCol"] {
+  background: transparent;
+}
+
 /* The section wrapper: one list that stacks the skin-center card rows. */
 body[data-dsh-skin-center] .sectionList {
   list-style: none;

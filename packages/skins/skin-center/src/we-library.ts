@@ -60,7 +60,7 @@ export interface WallpaperEntry {
   previewAbs: string | null
   /** Discovery source. */
   source: WallpaperSource
-  /** Main file exists and the type is renderable in the browser (video/web). */
+  /** Main file exists and the entry is renderable (video/web directly, scene via the host-decoded frame). */
   playable: boolean
   /** Main-file mtime (ms) and size (bytes); 0 when the file is missing. */
   srcMtime: number
@@ -98,7 +98,7 @@ export interface WeInventory {
   /** Steam library roots that own app 431960. */
   libraryDirs: string[]
   total: number
-  /** Entries playable in the browser (video/web with an existing main file). */
+  /** Entries renderable in the browser (video/web/scene with an existing main file). */
   portableCount: number
   wallpapers: WallpaperEntry[]
 }
@@ -249,6 +249,75 @@ const VIDEO_FILE_RE = /\.(mp4|webm|mkv|avi|mov)$/i
 /** Web entry files. */
 const WEB_FILE_RE = /\.html?$/i
 
+/** Scene containers tried when project.json's declared main file is absent. */
+const SCENE_FILE_FALLBACKS = ['scene.pkg', 'scene.json']
+
+/** Normalize project.json paths to forward slashes (portable join/display). */
+export function normalizeSlashes(path: string): string {
+  return path.replace(/\\/g, '/')
+}
+
+/** True when `path` names an existing regular file. */
+function isFile(path: string): boolean {
+  try {
+    return statSync(path).isFile()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Pick a scene container from a project directory: `scene.pkg` first, then
+ * `scene.json`, then the single `*.pkg` file present (stable sorted order
+ * when several remain). Workshop scenes ship their assets inside scene.pkg
+ * while project.json often declares a `project\scene.json` path that does
+ * not exist on disk.
+ */
+function findSceneFallback(dir: string): string | null {
+  let names: string[] = []
+  try {
+    names = readdirSync(dir)
+  } catch {
+    return null
+  }
+  const files = names.filter((name) => isFile(joinPath(dir, name)))
+  const byLower = new Map(files.map((name) => [name.toLowerCase(), name]))
+  for (const candidate of SCENE_FILE_FALLBACKS) {
+    const hit = byLower.get(candidate)
+    if (hit !== undefined) return hit
+  }
+  const pkgs = files.filter((name) => name.toLowerCase().endsWith('.pkg')).sort((a, b) => a.localeCompare(b))
+  return pkgs[0] ?? null
+}
+
+/**
+ * Resolve a project's main file. The project.json `file` field is
+ * authoritative while it exists; scene projects frequently declare a path
+ * their published files do not contain (scene.json vs the actual scene.pkg),
+ * so scenes fall back to the container actually present. Returns the path
+ * relative to `dir` plus its absolute form.
+ */
+export function resolveMainFile(
+  dir: string,
+  declared: string,
+  type: WallpaperType,
+): { file: string; fileAbs: string; exists: boolean } {
+  const file = normalizeSlashes(declared)
+  // Scenes resolve through the container actually present, even when the
+  // declared scene.json also exists on disk: the frame route can only
+  // decode a scene.pkg, and a loose scene.json next to the real package
+  // must never win over it.
+  if (type === 'scene') {
+    const fallback = findSceneFallback(dir)
+    if (fallback !== null) {
+      return { file: fallback, fileAbs: resolvePath(dir, fallback), exists: true }
+    }
+  }
+  const direct = resolvePath(dir, file)
+  if (isFile(direct)) return { file, fileAbs: direct, exists: true }
+  return { file, fileAbs: direct, exists: false }
+}
+
 interface ProjectJson {
   title: string | null
   type: WallpaperType
@@ -272,8 +341,8 @@ export function readProjectJson(dir: string): ProjectJson | null {
     return {
       title: typeof record.title === 'string' && record.title !== '' ? record.title : null,
       type,
-      file: record.file,
-      preview: typeof record.preview === 'string' && record.preview !== '' ? record.preview : null,
+      file: normalizeSlashes(record.file),
+      preview: typeof record.preview === 'string' && record.preview !== '' ? normalizeSlashes(record.preview) : null,
     }
   } catch {
     return null
@@ -307,32 +376,30 @@ function synthesizeMediaEntries(dir: string, source: WallpaperSource): Wallpaper
 
 /** Build one entry from a project directory. */
 function entryFromDir(dir: string, source: WallpaperSource, project: ProjectJson, id?: string): WallpaperEntry {
-  const fileAbs = resolvePath(dir, project.file)
+  const main = resolveMainFile(dir, project.file, project.type)
   const previewAbs = project.preview ? resolvePath(dir, project.preview) : null
   let mtime = 0
   let size = 0
-  let fileExists = false
-  try {
-    const stat = statSync(fileAbs)
-    if (stat.isFile()) {
-      fileExists = true
+  if (main.exists) {
+    try {
+      const stat = statSync(main.fileAbs)
       mtime = stat.mtimeMs
       size = stat.size
+    } catch {
+      // Vanished between the existence check and the stat: keep zeros.
     }
-  } catch {
-    // Missing main file: keep zeros.
   }
   return {
     id: id ?? basename(dir),
     title: project.title ?? basename(dir),
     type: project.type,
-    file: project.file,
+    file: main.file,
     preview: project.preview,
     dir,
-    fileAbs,
+    fileAbs: main.fileAbs,
     previewAbs: previewAbs && existsSync(previewAbs) ? previewAbs : null,
     source,
-    playable: fileExists && (project.type === 'video' || project.type === 'web'),
+    playable: main.exists && (project.type === 'video' || project.type === 'web' || project.type === 'scene'),
     srcMtime: mtime,
     srcSize: size,
     updateAvailable: false,
@@ -391,8 +458,8 @@ export function readImportedManifest(entryDir: string): ImportedManifest | null 
       srcMtime: typeof record.srcMtime === 'number' ? record.srcMtime : 0,
       srcSize: typeof record.srcSize === 'number' ? record.srcSize : 0,
       importedAt: typeof record.importedAt === 'number' ? record.importedAt : 0,
-      file: record.file,
-      preview: typeof record.preview === 'string' && record.preview !== '' ? record.preview : null,
+      file: normalizeSlashes(record.file),
+      preview: typeof record.preview === 'string' && record.preview !== '' ? normalizeSlashes(record.preview) : null,
     }
   } catch {
     return null
@@ -418,35 +485,48 @@ export function scanImportStore(storeDir: string): WallpaperEntry[] {
     const manifest = readImportedManifest(dir)
     if (!manifest) continue
     const projectDir = joinPath(dir, 'project')
-    const fileAbs = resolvePath(dir, manifest.file)
+    // The manifest records the copied main file relative to the store entry
+    // dir ('project/<file>'). Manifests written before the scene fallback
+    // kept the declared-but-never-copied path (scene.json vs the actual
+    // scene.pkg); re-find the scene container inside the copied project dir.
+    let file = manifest.file
+    let fileAbs = resolvePath(dir, manifest.file)
+    if (!isFile(fileAbs) && manifest.type === 'scene') {
+      const fallback = findSceneFallback(projectDir)
+      if (fallback !== null) {
+        file = fallback
+        fileAbs = resolvePath(projectDir, fallback)
+      }
+    }
+    if (file.startsWith('project/')) file = file.slice('project/'.length)
     const previewAbs = manifest.preview ? resolvePath(dir, manifest.preview) : null
+    const preview = manifest.preview && manifest.preview.startsWith('project/')
+      ? manifest.preview.slice('project/'.length)
+      : manifest.preview
     let mtime = 0
     let size = 0
     let fileExists = false
-    try {
-      const stat = statSync(fileAbs)
-      if (stat.isFile()) {
-        fileExists = true
+    if (isFile(fileAbs)) {
+      fileExists = true
+      try {
+        const stat = statSync(fileAbs)
         mtime = stat.mtimeMs
         size = stat.size
+      } catch {
+        // Vanished between the existence check and the stat: keep zeros.
       }
-    } catch {
-      // Missing copy: keep zeros.
     }
-    // A scene import is playable through the extracted frame route even
-    // though the raw .pkg is not browser-renderable; the routes layer
-    // decides. Here 'playable' stays the video/web definition.
     entries.push({
       id: `imported/${manifest.sourceId}`,
       title: manifest.title,
       type: manifest.type,
-      file: manifest.file,
-      preview: manifest.preview,
+      file,
+      preview,
       dir: projectDir,
       fileAbs,
       previewAbs: previewAbs && existsSync(previewAbs) ? previewAbs : null,
       source: 'imported',
-      playable: fileExists && (manifest.type === 'video' || manifest.type === 'web'),
+      playable: fileExists && (manifest.type === 'video' || manifest.type === 'web' || manifest.type === 'scene'),
       srcMtime: mtime,
       srcSize: size,
       updateAvailable: false,

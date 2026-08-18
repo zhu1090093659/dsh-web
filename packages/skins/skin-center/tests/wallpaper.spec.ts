@@ -123,6 +123,17 @@ describe('WallpaperController', () => {
     controller.dispose()
   })
 
+  it('flags the body while a wallpaper layer is mounted and clears it on teardown', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    expect(document.body.hasAttribute('data-dsh-wallpaper-active')).toBe(false)
+    controller.applySelection(scene)
+    expect(document.body.hasAttribute('data-dsh-wallpaper-active')).toBe(true)
+    controller.clearSelection()
+    expect(document.body.hasAttribute('data-dsh-wallpaper-active')).toBe(false)
+    controller.dispose()
+  })
+
   it('frame mode renders the video preview instead of the video element', () => {
     const { scope } = fakeScope({ mode: 'frame' })
     const controller = new WallpaperController(scope)

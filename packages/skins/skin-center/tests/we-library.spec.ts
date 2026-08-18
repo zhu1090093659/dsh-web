@@ -5,7 +5,7 @@
  * synthetic fixture trees in a temp dir; nothing real is ever touched.
  */
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
@@ -67,9 +67,10 @@ describe('librariesFromVdf', () => {
 
 describe('expandUser', () => {
   it('expands a leading tilde to the home directory and leaves other paths alone', () => {
-    const home = process.env.HOME ?? ''
+    // expandUser resolves through os.homedir(), not the HOME env var.
+    const home = homedir()
     expect(expandUser('~')).toBe(home)
-    expect(expandUser('~/Movies/wallpapers')).toBe(home + '/Movies/wallpapers')
+    expect(expandUser('~/Movies/wallpapers')).toBe(join(home, 'Movies', 'wallpapers'))
     expect(expandUser('/abs/path')).toBe('/abs/path')
     expect(expandUser('relative/path')).toBe('relative/path')
     expect(expandUser('~user/x')).toBe('~user/x')
@@ -99,6 +100,14 @@ describe('readProjectJson', () => {
     writeFileSync(join(dir, 'project.json'), '{ not json', 'utf8')
     expect(readProjectJson(dir)).toBeNull()
   })
+
+  it('normalizes backslash paths to forward slashes', () => {
+    const dir = join(root, 'slashed')
+    makeProject(dir, { title: 'S', type: 'scene', file: 'project\\scene.json', preview: 'preview\\p.jpg' })
+    expect(readProjectJson(dir)).toEqual({
+      title: 'S', type: 'scene', file: 'project/scene.json', preview: 'preview/p.jpg',
+    })
+  })
 })
 
 describe('scanProjectsRoot', () => {
@@ -112,7 +121,23 @@ describe('scanProjectsRoot', () => {
     expect(video?.playable).toBe(true)
     expect(video?.source).toBe('workshop')
     const scene = entries.find(e => e.id === '222')
-    expect(scene?.playable).toBe(false)
+    expect(scene?.playable).toBe(true)
+  })
+
+  it('falls back to the actual scene container when the declared file is absent', () => {
+    const ws = join(root, 'workshop')
+    makeProject(join(ws, '444'), { title: 'Scenery', type: 'scene', file: 'project\\scene.json' }, ['scene.pkg'])
+    const scene = scanProjectsRoot(ws, 'workshop')[0]
+    expect(scene?.file).toBe('scene.pkg')
+    expect(scene?.playable).toBe(true)
+    expect(scene?.srcSize).toBe(1)
+  })
+
+  it('prefers scene.pkg over scene.json when both exist', () => {
+    const ws = join(root, 'workshop')
+    makeProject(join(ws, '555'), { title: 'Packed', type: 'scene', file: 'scene.json' }, ['scene.json', 'scene.pkg'])
+    const scene = scanProjectsRoot(ws, 'workshop')[0]
+    expect(scene?.file).toBe('scene.pkg')
   })
 
   it('accepts a root that is itself a single project', () => {
@@ -170,6 +195,24 @@ describe('scanImportStore', () => {
     const store = join(root, 'store')
     mkdirSync(join(store, 'junk'), { recursive: true })
     expect(scanImportStore(store)).toHaveLength(0)
+  })
+
+  it('re-finds the scene container for legacy scene manifests', () => {
+    const store = join(root, 'store')
+    const entryDir = join(store, '111')
+    mkdirSync(join(entryDir, 'project'), { recursive: true })
+    writeFileSync(join(entryDir, 'project', 'scene.pkg'), 'pkg', 'utf8')
+    // A pre-fix manifest recorded the declared project\scene.json path.
+    writeFileSync(join(entryDir, 'manifest.json'), JSON.stringify({
+      sourceId: '111', title: 'Imported Scene', type: 'scene',
+      srcMtime: 1, srcSize: 3, importedAt: 20,
+      file: join('project', 'project', 'scene.json'), preview: null,
+    }), 'utf8')
+    const entries = scanImportStore(store)
+    expect(entries).toHaveLength(1)
+    expect(entries[0].file).toBe('scene.pkg')
+    expect(entries[0].playable).toBe(true)
+    expect(entries[0].srcSize).toBe(3)
   })
 })
 

@@ -54,6 +54,8 @@ export interface WeRouteDeps {
   getConfig: () => WeRouteConfig
   /** Import-store root (<harnessHome>/skin-center/wallpapers). */
   storeDir: string
+  /** Disable Wallpaper Engine auto-detection (tests inject a synthetic library). */
+  autoDetect?: boolean
 }
 
 /** Sanitize a wallpaper id into a safe store directory name. */
@@ -128,6 +130,8 @@ interface WallpaperJson {
 export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
   // token -> absolute path, issued by the inventory handler only.
   const mediaMap = new Map<string, string>()
+  /** frame token -> preview path to serve when the frame cannot be decoded. */
+  const frameFallback = new Map<string, string | null>()
   const tokenFor = (absPath: string): string => {
     const token = Buffer.from(absPath, 'utf8').toString('base64url')
     mediaMap.set(token, absPath)
@@ -137,10 +141,20 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
   const freshInventory = () => buildInventory({
     manualDirs: deps.getConfig().weLibraryDirs ?? [],
     storeDir: deps.storeDir,
+    autoDetect: deps.autoDetect ?? true,
   })
 
   const entryToJson = (entry: WallpaperEntry): WallpaperJson => {
     const hasFile = existsSync(entry.fileAbs)
+    let frameUrl: string | null = null
+    if (entry.type === 'scene' && hasFile) {
+      const token = tokenFor(entry.fileAbs)
+      frameUrl = WE_API_PREFIX + '/scene-frame/' + token
+      // A scene whose frame cannot be decoded (model-only loose scenes, an
+      // unsupported texture format) falls back to the preview image instead
+      // of a broken <img>.
+      frameFallback.set(token, entry.previewAbs)
+    }
     return {
       id: entry.id,
       title: entry.title,
@@ -150,7 +164,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
       updateAvailable: entry.updateAvailable,
       videoUrl: entry.type === 'video' && hasFile ? WE_API_PREFIX + '/media/' + tokenFor(entry.fileAbs) : null,
       webUrl: entry.type === 'web' && hasFile ? WE_API_PREFIX + '/web/' + tokenFor(entry.fileAbs) + '/' : null,
-      frameUrl: entry.type === 'scene' && hasFile ? WE_API_PREFIX + '/scene-frame/' + tokenFor(entry.fileAbs) : null,
+      frameUrl,
       previewUrl: entry.previewAbs ? WE_API_PREFIX + '/preview/' + tokenFor(entry.previewAbs) : null,
     }
   }
@@ -252,14 +266,20 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     },
   })
 
-  // GET /scene-frame/<token> — decode the scene pkg's main texture to PNG,
-  // cached under <store>/.cache/frames (keyed by path + mtime).
+  // GET /scene-frame/<token> — decode the scene's main texture to PNG,
+  // cached under <store>/.cache/frames (keyed by path + mtime). A packed
+  // scene.pkg goes through the pkg decoder; a loose scene.json resolves its
+  // materials from the same directory. When no static frame can be produced
+  // (model/particle scenes, unsupported formats) the entry preview is served
+  // instead of a broken image.
   const framePrefix = WE_API_PREFIX + '/scene-frame/'
   routes.push({
     kind: 'prefix',
     path: WE_API_PREFIX + '/scene-frame',
     handler: (req, res) => {
       if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      const pathname = new URL(req.url || '/', 'http://localhost').pathname
+      const token = decodeURIComponent(pathname.slice(framePrefix.length).split('/')[0] ?? '')
       const abs = resolveToken(req, res, framePrefix)
       if (!abs) return
       void (async () => {
@@ -269,10 +289,23 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
         const key = Buffer.from(abs, 'utf8').toString('base64url') + '_' + String(Math.round(mtime)) + '.png'
         const cachePath = joinPath(cacheDir, key)
         if (!existsSync(cachePath)) {
-          const { extractSceneMainImage } = await import('./pkg-extract.ts')
-          const frame = extractSceneMainImage(new Uint8Array(readFileSync(abs)))
-          mkdirSync(cacheDir, { recursive: true })
-          writeFileSync(cachePath, frame.png)
+          try {
+            const { extractSceneMainImage, extractSceneMainImageFromDir } = await import('./pkg-extract.ts')
+            const frame = /\.pkg$/i.test(abs)
+              ? extractSceneMainImage(new Uint8Array(readFileSync(abs)))
+              : extractSceneMainImageFromDir(dirname(abs))
+            if (frame === null) throw new Error('scene-frame-unavailable')
+            mkdirSync(cacheDir, { recursive: true })
+            writeFileSync(cachePath, frame.png)
+          } catch (error) {
+            const preview = frameFallback.get(token) ?? null
+            if (preview !== null && existsSync(preview)) {
+              serveFile(preview, req, res)
+              return
+            }
+            json(res, 422, { ok: false, error: error instanceof Error ? error.message : String(error) })
+            return
+          }
         }
         res.setHeader('Content-Type', 'image/png')
         res.setHeader('Cache-Control', 'no-store')
@@ -294,6 +327,9 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
   const copyIntoStore = (entry: WallpaperEntry, dest: string): void => {
     mkdirSync(dest, { recursive: true })
     cpSync(entry.dir, joinPath(dest, 'project'), { recursive: true })
+    // entry.file is the main file actually present in entry.dir: scene
+    // entries fall back to scene.pkg in we-library before this point, so the
+    // manifest never records a declared-but-missing scene.json path.
     const manifest = {
       sourceId: entry.id,
       title: entry.title,

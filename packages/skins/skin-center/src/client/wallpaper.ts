@@ -373,9 +373,12 @@ export class WallpaperController implements WallpaperHandle {
         // The host decodes the frame in-process; a scene variant that
         // defeats the decoder answers 422. Fall back to the preview image so
         // the wallpaper never renders as a broken frame.
-        image?.addEventListener('error', () => {
-          if (descriptor.previewUrl !== null) image.src = descriptor.previewUrl
-        }, { once: true })
+        if (image !== null) {
+          const previewUrl = descriptor.previewUrl
+          image.addEventListener('error', () => {
+            image.src = previewUrl
+          }, { once: true })
+        }
         return image
       }
       return this.buildImage(descriptor.frameUrl ?? descriptor.previewUrl)
@@ -429,7 +432,7 @@ export class WallpaperController implements WallpaperHandle {
     return image
   }
 
-  private buildImage(url: string | null): HTMLElement | null {
+  private buildImage(url: string | null): HTMLImageElement | null {
     if (url === null) return null
     const image = document.createElement('img')
     image.src = url

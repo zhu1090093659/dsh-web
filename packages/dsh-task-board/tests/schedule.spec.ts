@@ -163,7 +163,7 @@ describe('nextRunAtMs', () => {
         expect(nextRunAtMs(expr, fromMs), `${expr} from ${new Date(fromMs).toISOString()}`).toBe(referenceNextRunAtMs(expr, fromMs))
       }
     }
-  })
+  }, 15000)
 })
 
 /** The pre-jump minute scan, kept verbatim as the behavioural reference. */

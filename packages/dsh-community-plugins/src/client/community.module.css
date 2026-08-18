@@ -1,4 +1,5 @@
-/* Community plugin index entries, rendered inside the settings card. */
+/* Community plugin marketplace index, rendered inside the settings card:
+ * a search box, category filter pills, and a two-column card grid. */
 
 .sectionList {
   list-style: none;
@@ -6,26 +7,124 @@
   padding: 0;
 }
 
-.entries {
+.market {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* Search box. */
+
+.toolbar {
+  display: flex;
+}
+
+.search {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-1);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.search::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.search:focus {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.search:disabled {
+  opacity: 0.5;
+}
+
+/* Category filter pills. */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-layer-1);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.pill:hover:enabled {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-label-dimmed);
+}
+
+.pill:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pillActive {
+  color: var(--dsw-alias-bg-layer-3);
+  background: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.pillActive:hover:enabled {
+  color: var(--dsw-alias-bg-layer-3);
+  border-color: var(--dsw-alias-label-primary);
+}
+
+/* Result count. */
+
+.resultCount {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Card grid. */
+
+.grid {
+  display: grid;
+  /* Two columns in the settings panel's ~530px content area; one column on narrow screens. */
+  grid-template-columns: repeat(auto-fill, minmax(256px, 1fr));
   gap: 8px;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.entry {
+.card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
   border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
 }
 
-.entryHead {
+.card:hover {
+  border-color: var(--dsw-alias-label-dimmed);
+}
+
+.cardHead {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -33,7 +132,7 @@
   min-width: 0;
 }
 
-.entryName {
+.cardName {
   font-weight: 600;
   color: var(--dsw-alias-label-primary);
   overflow: hidden;
@@ -41,90 +140,136 @@
   white-space: nowrap;
 }
 
-.entryAuthor {
+.badge {
   flex: none;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-module-platform);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.badgePublished {
+  color: var(--dsw-alias-link-primary, var(--dsw-alias-button-info-fill));
+  border-color: var(--dsw-alias-link-primary, var(--dsw-alias-button-info-fill));
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
   font-size: 12px;
+  line-height: 1.4;
   color: var(--dsw-alias-label-tertiary);
+}
+
+.cardCategory {
+  flex: none;
+  color: var(--dsw-alias-label-secondary);
+  white-space: nowrap;
+}
+
+.cardDot {
+  flex: none;
+}
+
+.cardAuthor {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.entryDescription,
-.entryDescriptionEn {
+.cardDescription {
   margin: 0;
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--dsw-alias-label-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
-.entryDescriptionEn {
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 12px;
+/* Card footer: repository link + primary copy command, and the full-width
+ * install command chip under it (more of the command stays readable at
+ * two-column widths). */
+
+.cardFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 6px;
 }
 
-.entryLinks {
+.cardTop {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 2px;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
 }
 
-.entryLink {
+.cardLink {
   color: var(--dsw-alias-link-primary, var(--dsw-alias-button-info-fill));
   font-size: 13px;
-  text-decoration: underline;
-}
-
-.entryLink:hover {
   text-decoration: none;
 }
 
-.entryNpm {
-  font-size: 12px;
-  color: var(--dsw-alias-label-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.cardLink:hover {
+  text-decoration: underline;
 }
 
-.entryInstall {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 2px;
-}
-
-.entryCommand {
-  flex: 1;
+.cardCommand {
+  width: 100%;
   min-width: 0;
+  box-sizing: border-box;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--dsw-alias-label-secondary);
   background: var(--dsw-alias-bg-layer-2);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 4px;
   padding: 2px 6px;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.copyButton {
+.installButton {
   flex: none;
+  font: inherit;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dsw-alias-label-secondary);
-  background: transparent;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 4px;
-  padding: 2px 10px;
+  font-weight: 600;
+  color: var(--dsw-alias-bg-layer-3);
+  background: var(--dsw-alias-button-info-fill);
+  border: 1px solid var(--dsw-alias-button-info-fill);
+  border-radius: 6px;
+  padding: 4px 12px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.copyButton:hover {
-  background: var(--dsw-alias-bg-layer-2);
+.installButton:hover:enabled {
+  opacity: 0.88;
+}
+
+.installButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.installButtonCopied {
   color: var(--dsw-alias-label-primary);
+  background: transparent;
+  border-color: var(--dsw-alias-label-dimmed);
 }
 
 .installNote {

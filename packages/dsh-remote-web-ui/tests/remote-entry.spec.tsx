@@ -42,21 +42,45 @@ class FakeEventSource {
   }
 }
 
-/** fetch stub answering the pair endpoints. */
-function mockFetch(issue: { ok: boolean; status?: number; code?: string; url?: string; token?: string; expiresAt?: number; lanAddresses?: string[] }) {
+/** One issue() response for the fetch stub (a list feeds sequential calls). */
+type MockIssue = {
+  ok: boolean
+  status?: number
+  code?: string
+  url?: string
+  token?: string
+  expiresAt?: number
+  lanAddresses?: string[]
+  publicBaseUrl?: string
+}
+
+/** fetch stub answering the pair endpoints; a list answers issue() in order. */
+function mockFetch(issue: MockIssue | MockIssue[]) {
+  const issues = Array.isArray(issue) ? [...issue] : [issue]
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
-    const status = init?.method === 'POST' && url === '/api/pair/issue' && !issue.ok ? (issue.status ?? 409) : 200
-    const body = url === '/api/pair/issue' && issue.ok
-      ? { ok: true, url: issue.url, token: issue.token, expiresAt: issue.expiresAt, lanAddresses: issue.lanAddresses ?? ['192.168.1.5'] }
+    if (url === '/api/update/status') {
+      return new Response(JSON.stringify({ mode: 'npm', packages: [], outdated: false }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+    const current = issues.length > 1 ? issues.shift()! : issues[0]
+    const status = init?.method === 'POST' && url === '/api/pair/issue' && !current.ok ? (current.status ?? 409) : 200
+    const body = url === '/api/pair/issue' && current.ok
+      ? {
+          ok: true,
+          url: current.url,
+          token: current.token,
+          expiresAt: current.expiresAt,
+          lanAddresses: current.lanAddresses ?? ['192.168.1.5'],
+          ...(current.publicBaseUrl !== undefined ? { publicBaseUrl: current.publicBaseUrl } : {}),
+        }
       : url === '/api/pair/issue'
-        ? { ok: false, code: issue.code }
+        ? { ok: false, code: current.code }
         : { ok: true }
     return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
   })
 }
 
-function mount(issue: { ok: boolean; status?: number; code?: string; url?: string; token?: string; expiresAt?: number; lanAddresses?: string[] } = { ok: true, url: 'http://192.168.1.5:3080/?pair=tok-1', token: 'tok-1', expiresAt: Date.now() + 60_000, lanAddresses: ['192.168.1.5'] }) {
+function mount(issue: MockIssue | MockIssue[] = { ok: true, url: 'http://192.168.1.5:3080/m/?pair=tok-1', token: 'tok-1', expiresAt: Date.now() + 60_000, lanAddresses: ['192.168.1.5'] }) {
   const fetch = mockFetch(issue)
   vi.stubGlobal('fetch', fetch)
   vi.stubGlobal('EventSource', FakeEventSource)
@@ -79,11 +103,18 @@ afterEach(() => {
 })
 
 describe('RemoteEntry', () => {
+  it('keeps only the phone icon in the expanded sidebar', () => {
+    mount()
+    const trigger = screen.getByRole('button', { name: 'Mobile remote control' })
+    expect(screen.queryByText('Mobile remote control')).toBeNull()
+    expect(trigger.querySelector('svg')).not.toBeNull()
+  })
+
   it('opens the panel on trigger click: title, subtitle, QR card, hint, actions', async () => {
     const { fetch } = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Mobile remote control' }))
     expect(fetch).toHaveBeenCalledWith('/api/pair/issue', expect.objectContaining({ method: 'POST' }))
-    await waitFor(() => expect(screen.getByText('Mobile remote control')).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Mobile remote control' })).toBeTruthy())
     expect(screen.getByText('Scan the QR code or open the link on your phone to control this workspace remotely')).toBeTruthy()
     expect(screen.getByText('Scan to connect')).toBeTruthy()
     expect(screen.getByText('Waiting for a phone')).toBeTruthy()
@@ -91,12 +122,12 @@ describe('RemoteEntry', () => {
     // separate svg; the QR carries its own test id).
     expect(document.querySelector('[data-testid="remote-qr"]')).not.toBeNull()
     expect(screen.getByText('Cannot scan? Open the link on your phone')).toBeTruthy()
-    expect(screen.getByText('http://192.168.1.5:3080/?pair=tok-1')).toBeTruthy()
+    expect(screen.getByText('http://192.168.1.5:3080/m/?pair=tok-1')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Stop' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Refresh QR' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeTruthy()
     // The issue payload carries the current workspace for the deep link.
-    const init = fetch.mock.calls[0]?.[1] as RequestInit
+    const init = fetch.mock.calls.find(call => call[0] === '/api/pair/issue')?.[1] as RequestInit
     expect(JSON.parse(String(init.body))).toEqual({ workspaceId: 'ws-1' })
   })
 
@@ -105,6 +136,46 @@ describe('RemoteEntry', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mobile remote control' }))
     await waitFor(() => expect(screen.getByText('This feature needs dsh web started with --host 0.0.0.0, or a configured public address')).toBeTruthy())
     expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull()
+    expect(document.querySelector('[data-testid="remote-qr"]')).toBeNull()
+    // The status stream stays open on the lan-required banner: the
+    // auto-tunnel may still be starting, and its running frame drives the
+    // re-issue below.
+    expect(FakeEventSource.instances).toHaveLength(1)
+    expect(FakeEventSource.instances[0]?.url).toBe('/api/pair/events')
+  })
+
+  it('re-issues once the auto-tunnel reaches running and renders the ready QR', async () => {
+    const { fetch } = mount([
+      { ok: false, code: 'lan-required' },
+      {
+        ok: true,
+        url: 'https://tunnel.example/m/?pair=tok-2',
+        token: 'tok-2',
+        expiresAt: Date.now() + 60_000,
+        lanAddresses: ['192.168.1.5'],
+        publicBaseUrl: 'https://tunnel.example',
+      },
+    ])
+    fireEvent.click(screen.getByRole('button', { name: 'Mobile remote control' }))
+    await waitFor(() => expect(screen.getByText('This feature needs dsh web started with --host 0.0.0.0, or a configured public address')).toBeTruthy())
+    const source = FakeEventSource.instances[0]
+    expect(source?.url).toBe('/api/pair/events')
+    source?.emit({ type: 'state', phase: 'lan-required', lanAvailable: true, deviceCount: 0, onlineCount: 0, tunnel: { state: 'running', url: 'https://tunnel.example' } })
+    await waitFor(() => expect(screen.getByText('https://tunnel.example/m/?pair=tok-2')).toBeTruthy())
+    expect(document.querySelector('[data-testid="remote-qr"]')).not.toBeNull()
+    expect(fetch.mock.calls.filter(call => call[0] === '/api/pair/issue')).toHaveLength(2)
+  })
+
+  it('stays on the lan-required banner while the auto-tunnel is starting', async () => {
+    const { fetch } = mount({ ok: false, code: 'lan-required' })
+    fireEvent.click(screen.getByRole('button', { name: 'Mobile remote control' }))
+    await waitFor(() => expect(screen.getByText('This feature needs dsh web started with --host 0.0.0.0, or a configured public address')).toBeTruthy())
+    const source = FakeEventSource.instances[0]
+    source?.emit({ type: 'state', phase: 'lan-required', lanAvailable: true, deviceCount: 0, onlineCount: 0, tunnel: { state: 'starting' } })
+    // Let a stray re-issue surface before asserting none happened.
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(fetch.mock.calls.filter(call => call[0] === '/api/pair/issue')).toHaveLength(1)
+    expect(screen.getByText('This feature needs dsh web started with --host 0.0.0.0, or a configured public address')).toBeTruthy()
     expect(document.querySelector('[data-testid="remote-qr"]')).toBeNull()
   })
 
@@ -133,7 +204,7 @@ describe('RemoteEntry', () => {
   })
 
   it('renders the address picker on multi-homed hosts and re-mints on switch', async () => {
-    const { fetch } = mount({ ok: true, url: 'http://192.168.1.5:3080/?pair=tok-1', token: 'tok-1', expiresAt: Date.now() + 60_000, lanAddresses: ['192.168.1.5', '10.0.0.3'] })
+    const { fetch } = mount({ ok: true, url: 'http://192.168.1.5:3080/m/?pair=tok-1', token: 'tok-1', expiresAt: Date.now() + 60_000, lanAddresses: ['192.168.1.5', '10.0.0.3'] })
     fireEvent.click(screen.getByRole('button', { name: 'Mobile remote control' }))
     await waitFor(() => expect(screen.getByText('Network the QR code points to')).toBeTruthy())
     expect(screen.getByLabelText('192.168.1.5')).toBeTruthy()
@@ -180,7 +251,7 @@ describe('RemoteEntry', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith('http://192.168.1.5:3080/?pair=tok-1'))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('http://192.168.1.5:3080/m/?pair=tok-1'))
     await waitFor(() => expect(screen.getByText('Copied')).toBeTruthy())
   })
 })
@@ -248,14 +319,14 @@ describe('apply registration', () => {
       },
     }
     apply(ctx as never)
-    expect(registered).toEqual(['conversation.chat.node', 'web-ui.plugin.item'])
+    expect(registered).toEqual(['conversation.chat.node', 'web-ui.plugin.item', 'web-ui.plugin.item'])
 
     snapshot = { status: 'ready' as const, writable: true, value: { enabled: false } }
     notify()
-    expect(registered).toEqual(['conversation.chat.node', 'web-ui.plugin.item'])
+    expect(registered).toEqual(['conversation.chat.node', 'web-ui.plugin.item', 'web-ui.plugin.item'])
 
     snapshot = { status: 'ready' as const, writable: true, value: { enabled: true } }
     notify()
-    expect(registered).toEqual(['conversation.chat.node', 'web-ui.plugin.item', 'sidebar.remote', 'sidebar.footer.action'])
+    expect(registered).toEqual(['conversation.chat.node', 'web-ui.plugin.item', 'web-ui.plugin.item', 'sidebar.remote', 'sidebar.footer.action'])
   })
 })

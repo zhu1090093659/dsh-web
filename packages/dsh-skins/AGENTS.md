@@ -7,15 +7,20 @@
 
 - `build.mjs` 把每个 `packages/skins/<id>` 的 `skin.json` + `lib/client.js`
   （try-on bundle）+ `lib/index.js`（host 空入口）——连同生成的叶子
-  `package.json` 与 `cordis.patch.yml`——复制进 `packages/dsh-skins/skins/<id>/`。
+  `package.json` 及皮肤存在的 `LICENSE` / `NOTICE`——复制进 `packages/dsh-skins/skins/<id>/`（叶子只声明
+  `dsh.client`，不含 `dsh.bundle`；皮肤由皮肤管理器接线，见下）。
   无 `skin.json`（skin-center、脚手架）的目录跳过。
 - 缺 `lib/client.js` / `lib/index.js` 的皮肤会被跳过并告警，源码里先产出 bundle
   再聚合。
 
 ## 皮肤启用与资产边界
 
-- 皮肤启用互斥由 `dsh-skin use` 管理（`~/.dsh/cordis.patch.yml` 的 managed
-  区段），因此**皮肤只进 `skins/` 资产，不进 `patchFrom`**。
+- 皮肤启用互斥由 `dsh-skin use` 管理（当前 Web profile 的
+  `cordis.patch.yml` managed 区段），因此**皮肤只进 `skins/` 资产，不进
+  `patchFrom`，叶子 `package.json` 也不声明 `dsh.bundle`**（声明会让 CLI 的
+  plugin reconcile 把皮肤包静默加进 profile 的 `dsh.profile.bundles`，与 insert
+  叠加报 `duplicate loader entry id`，issue #381）；禁止把 Web 皮肤 insert
+  写到 harness-home 全局补丁，否则其他 profile 会尝试加载未安装的浏览器皮肤包。
 - 改任何皮肤后必须重跑 `pnpm --filter @linxin666/dsh-skins build`，否则 npm 安装
   aggregate 后 useSkin 的 insert 行无法 resolve（MODULE_NOT_FOUND）。
 

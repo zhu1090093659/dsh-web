@@ -227,6 +227,68 @@ describe('anchored-tool-bootstrap', () => {
     expect(result.messages).toEqual(messages)
   })
 
+  test('instructionHint swaps the first post-promotion instructions dump for a hint (#388)', async () => {
+    const listeners = register({ instructionHint: true })
+    const preStepListener = listener(listeners, 'agent/pre-step')
+    const assembleListener = listener(listeners, 'system-prompt/assemble')
+    const sessionObj = { events: [{ type: 'tool/call' }] }
+    await assembleListener(undefined, { agent: { session: sessionObj } }, async () => ({
+      system: 'minimal persona',
+      tools: [{ name: 'bash' }, { name: 'read' }],
+    }))
+
+    const dump = {
+      id: 'instructions',
+      role: 'user',
+      content: [{
+        type: 'text',
+        text: '<system-reminder>\n\nInstructions from: ~/.dsh/AGENTS.md\n\nGlobal rules.\n\nInstructions from: AGENTS.md\n\nRepo rules.\n</system-reminder>',
+      }],
+      source: { kind: 'agent-instructions' },
+    }
+    const messages = [message('user', 'user'), dump]
+    const first = await preStepListener(
+      { agent: { session: sessionObj }, messages, turn: 1, step: 1, signal: {} },
+      async () => ({ kind: 'enter', messages }),
+    )
+    expect(first.messages).toHaveLength(2)
+    expect(first.messages[0].id).toBe('user')
+    const hint = first.messages[1]
+    expect(hint.source.kind).toBe('instruction-hint')
+    expect(hint.content[0].text).toContain('Reference documents exist: ~/.dsh/AGENTS.md, AGENTS.md.')
+    expect(hint.content[0].text).toContain('not task instructions')
+    expect(hint.content[0].text).not.toContain('Global rules.')
+
+    // Later injections are dropped silently; the model reads on demand.
+    const second = await preStepListener(
+      { agent: { session: sessionObj }, messages, turn: 1, step: 2, signal: {} },
+      async () => ({ kind: 'enter', messages }),
+    )
+    expect(second.messages.map((entry: any) => entry.id)).toEqual(['user'])
+  })
+
+  test('instructionHint passes an instructions message with no file sections through', async () => {
+    const listeners = register({ instructionHint: true })
+    const preStepListener = listener(listeners, 'agent/pre-step')
+    const assembleListener = listener(listeners, 'system-prompt/assemble')
+    const sessionObj = { events: [{ type: 'tool/call' }] }
+    await assembleListener(undefined, { agent: { session: sessionObj } }, async () => ({
+      system: 'minimal persona',
+      tools: [{ name: 'bash' }, { name: 'read' }],
+    }))
+    const empty = {
+      id: 'instructions',
+      content: [{ type: 'text', text: '<system-reminder>\n\nNo workspace instructions.\n</system-reminder>' }],
+      source: { kind: 'agent-instructions' },
+    }
+    const messages = [message('user', 'user'), empty]
+    const result = await preStepListener(
+      { agent: { session: sessionObj }, messages, turn: 1, step: 1, signal: {} },
+      async () => ({ kind: 'enter', messages }),
+    )
+    expect(result.messages).toEqual(messages)
+  })
+
   test('phase 1 only lets explicit user messages through, whatever messageSources names', async () => {
     const preStepListener = listener(register({ messageSources: ['user', 'agent-instructions'] }), 'agent/pre-step')
     const messages = [
@@ -413,7 +475,7 @@ describe('anchored-tool-bootstrap', () => {
     expect(hasAnchoredReasoning(minimalThenStandard)).toBe(true)
   })
 
-  test('promotedPresentation switches to Code Mode once per session', async () => {
+  test('promotedPresentation switches to PTC Mode once per session', async () => {
     expect(inject).toContain('tools')
 
     const listeners = register({ promotedPresentation: 'code', anchorGate: true })
@@ -424,6 +486,23 @@ describe('anchored-tool-bootstrap', () => {
     const tools = [{ name: 'bash' }, { name: 'read' }, { name: 'edit' }]
 
     await assembleListener(undefined, { agent }, async () => ({ system: 'minimal persona', tools, contexts: [], sections: SECTIONS }))
+    await assembleListener(undefined, { agent }, async () => ({ system: 'minimal persona', tools, contexts: [], sections: SECTIONS }))
+    expect(calls).toEqual(['code'])
+  })
+
+  test('promotedPresentation retries when the tools view arrives later', async () => {
+    const listeners = register({ promotedPresentation: 'code', anchorGate: true })
+    const assembleListener = listener(listeners, 'system-prompt/assemble')
+    const calls: string[] = []
+    const sessionObj = { events: [stepEvent(), reasoningEvent('We need inspect the repo.'), { type: 'tool/call' }] }
+    // No tools view yet: the switch must not latch.
+    const agent: { session: unknown; ctx: { tools?: { presentAs: (mode: string) => void } } } = { session: sessionObj, ctx: {} }
+    const tools = [{ name: 'bash' }, { name: 'read' }, { name: 'edit' }]
+
+    await assembleListener(undefined, { agent }, async () => ({ system: 'minimal persona', tools, contexts: [], sections: SECTIONS }))
+    expect(calls).toEqual([])
+
+    agent.ctx.tools = { presentAs: (mode: string) => { calls.push(mode) } }
     await assembleListener(undefined, { agent }, async () => ({ system: 'minimal persona', tools, contexts: [], sections: SECTIONS }))
     expect(calls).toEqual(['code'])
   })
@@ -585,7 +664,7 @@ describe('anchored-tool-bootstrap', () => {
     expect(result.tools.map((tool: any) => tool.name)).toEqual(['bash', 'read', 'write', 'edit'])
   })
 
-  test('compaction/end disposes the Code Mode presentation and re-declares on re-promotion', async () => {
+  test('compaction/end disposes the PTC Mode presentation and re-declares on re-promotion', async () => {
     const listeners = register({ promotedPresentation: 'code', anchorGate: true })
     const assembleListener = listener(listeners, 'system-prompt/assemble')
     const eventListener = listener(listeners, 'session/event')
@@ -602,12 +681,12 @@ describe('anchored-tool-bootstrap', () => {
     const tools = [{ name: 'bash' }, { name: 'read' }, { name: 'edit' }]
     const next = async () => ({ system: 'minimal persona', tools, contexts: [], sections: SECTIONS })
 
-    // Promoted: Code Mode declared.
+    // Promoted: PTC Mode declared.
     await assembleListener(undefined, { agent }, next)
     expect(modes).toEqual(['code'])
     expect(disposed).toBe(0)
 
-    // The compaction releases Code Mode.
+    // The compaction releases PTC Mode.
     sessionObj.events.push({ type: 'compaction/end', seq: 10 })
     await eventListener(sessionObj, { type: 'compaction/end', seq: 10 })
     expect(disposed).toBe(1)
@@ -616,7 +695,7 @@ describe('anchored-tool-bootstrap', () => {
     const after = await assembleListener(undefined, { agent }, next)
     expect(after.tools.map((tool: any) => tool.name)).toEqual(['bash', 'read'])
 
-    // A new anchor re-promotes and re-declares Code Mode.
+    // A new anchor re-promotes and re-declares PTC Mode.
     sessionObj.events.push(stepEvent(), reasoningEvent('We need inspect the repo again.'), { type: 'tool/call' })
     await eventListener(sessionObj, { type: 'step/end' })
     const rePromoted = await assembleListener(undefined, { agent }, next)

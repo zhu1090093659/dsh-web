@@ -33,6 +33,7 @@ interface Subscriber {
   path: string
   last: string
   res: ServerResponse
+  statusAbort?: AbortController
 }
 
 /**
@@ -48,14 +49,12 @@ const POLL_INTERVAL_MS = 30_000
 const HEARTBEAT_INTERVAL_MS = 15_000
 
 /**
- * Route-layer deadline for one subscribed status poll. The subprocess graceMs
- * is a teardown grace, not an execution timeout, so a hung git child would
- * otherwise leave the overlap guard stuck forever (polling stays true and no
- * later tick fires). This deadline is owned by the poll loop: on expiry the
- * subscriber is treated as failed for this tick, Promise.all still settles,
- * the finally resets the guard, and the next tick retries.
+ * Route-layer deadline for one git status request. On expiry the controller
+ * aborts the read path so the subprocess can terminate; the JSON handler keeps
+ * the stable envelope and the SSE poll loop can clear its overlap guard.
  */
 const STATUS_TIMEOUT_MS = 15_000
+const STATUS_TIMEOUT_MESSAGE = 'git status timed out'
 
 /**
  * PollGuard lifetime bound. The SSE loop must live exactly as long as the
@@ -147,6 +146,18 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
   let guard: PollGuard | undefined
   let heartbeatTimer: NodeJS.Timeout | undefined
 
+  const removeSubscriber = (subscriber: Subscriber): void => {
+    subscriber.statusAbort?.abort(new Error('git status subscriber closed'))
+    subscriber.statusAbort = undefined
+    subscribers.delete(subscriber)
+    if (subscribers.size === 0) {
+      guard?.stop()
+      guard = undefined
+      if (heartbeatTimer !== undefined) clearInterval(heartbeatTimer)
+      heartbeatTimer = undefined
+    }
+  }
+
   const push = (subscriber: Subscriber, payload: unknown): void => {
     subscriber.res.write(`event: change\ndata: ${JSON.stringify(payload)}\n\n`)
   }
@@ -155,23 +166,39 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
   // runs at a time (a tick arriving mid-run is dropped), consecutive failures
   // back off up to the base interval (cadence stays exactly 30s), and the
   // loop stops when the last subscriber closes. The per-subscriber 15s
-  // STATUS_TIMEOUT_MS race below bounds one round so a hung git child cannot
-  // wedge the loop forever.
+  // STATUS_TIMEOUT_MS controller aborts hung status work so a round settles.
+  const statusWithDeadline = async (path: string, controller: AbortController = new AbortController()): Promise<Awaited<ReturnType<GitService['status']>>> => {
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    const deadline = new Promise<never>((_, reject) => {
+      timeout = setTimeout(() => {
+        const error = new Error(STATUS_TIMEOUT_MESSAGE)
+        controller.abort(error)
+        reject(error)
+      }, STATUS_TIMEOUT_MS)
+    })
+    try {
+      return await Promise.race([service.status(path, controller.signal), deadline])
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout)
+    }
+  }
+
   const runPoll = async (): Promise<void> => {
     await Promise.all([...subscribers].map(async (subscriber) => {
+      const controller = new AbortController()
+      subscriber.statusAbort = controller
       try {
-        const status = await Promise.race([
-          service.status(subscriber.path),
-          new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('git status timed out')), STATUS_TIMEOUT_MS)
-          }),
-        ])
+        const status = await statusWithDeadline(subscriber.path, controller)
         const key = status === null ? 'no-repo' : `${status.root}|${status.branch}|${status.head}`
         if (key === subscriber.last) return
         subscriber.last = key
         push(subscriber, { path: subscriber.path, status })
       } catch (error: unknown) {
-        ctx.logger.warn(`dsh-git-graph: status poll failed for ${subscriber.path}: ${String(error)}`)
+        if (subscribers.has(subscriber)) {
+          ctx.logger.warn(`dsh-git-graph: status poll failed for ${subscriber.path}: ${String(error)}`)
+        }
+      } finally {
+        if (subscriber.statusAbort === controller) subscriber.statusAbort = undefined
       }
     }))
   }
@@ -207,7 +234,12 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
     }
     switch (pathname) {
       case '/git/status':
-        okView(res, await service.status(path), isRepoStatus)
+        try {
+          okView(res, await statusWithDeadline(path), isRepoStatus)
+        } catch (error: unknown) {
+          ctx.logger.warn(`dsh-git-graph: status request failed for ${path}: ${String(error)}`)
+          json(res, FAIL({ code: 'internal', message: STATUS_TIMEOUT_MESSAGE }))
+        }
         return
       case '/git/branches':
         okView(res, await service.branches(path), isBranchesView)
@@ -272,6 +304,11 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
     res.write('retry: 2000\n\n')
     const subscriber: Subscriber = { path, last: '', res }
     subscribers.add(subscriber)
+    // A push/heartbeat write racing socket teardown emits 'error' on the
+    // response stream; unhandled, that can crash the host. Dropping the
+    // subscriber degrades the race to a lost write; req 'close' finishes
+    // the remaining cleanup.
+    res.on('error', () => { removeSubscriber(subscriber) })
     if (guard === undefined) {
       guard = new PollGuard({
         intervalMs: POLL_INTERVAL_MS,
@@ -286,15 +323,7 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
         for (const current of subscribers) current.res.write(': ping\n\n')
       }, HEARTBEAT_INTERVAL_MS)
     }
-    req.on('close', () => {
-      subscribers.delete(subscriber)
-      if (subscribers.size === 0) {
-        guard?.stop()
-        guard = undefined
-        if (heartbeatTimer !== undefined) clearInterval(heartbeatTimer)
-        heartbeatTimer = undefined
-      }
-    })
+    req.on('close', () => { removeSubscriber(subscriber) })
   }
 
   const disposers = [
@@ -305,7 +334,10 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
     for (const dispose of disposers) dispose()
     guard?.stop()
     if (heartbeatTimer !== undefined) clearInterval(heartbeatTimer)
-    for (const subscriber of subscribers) subscriber.res.end()
+    for (const subscriber of subscribers) {
+      subscriber.statusAbort?.abort(new Error('git status routes disposed'))
+      subscriber.res.end()
+    }
     subscribers.clear()
   }
 }

@@ -4,7 +4,7 @@
  * released exactly once so sshd's MaxSessions cap is never exhausted.
  */
 
-import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve as resolvePath } from 'node:path'
 import { Client, type SFTPWrapper } from 'ssh2'
 import type { RemoteDirEntry, TransferProgress } from '../protocol.ts'
@@ -16,7 +16,11 @@ export function walkLocalDir(root: string): string[] {
   const visit = (dir: string): void => {
     for (const name of readdirSync(dir)) {
       const full = join(dir, name)
-      const stat = statSync(full)
+      // lstat, not stat: a symlink must never be followed — a link cycle
+      // (ln -s . self) recurses forever under stat, and a link to a file
+      // would silently upload the target's bytes.
+      const stat = lstatSync(full)
+      if (stat.isSymbolicLink()) continue
       if (stat.isDirectory()) visit(full)
       else if (stat.isFile()) files.push(relative(root, full))
     }
@@ -169,13 +173,20 @@ function ensureRemoteDir(sftp: SFTPWrapper, remote: string): Promise<void> {
   })
 }
 
-function fastPut(sftp: SFTPWrapper, src: string, dst: string, concurrency: number, onProgress?: (progress: TransferProgress) => void): Promise<void> {
+/** One fastPut/fastGet transfer with throttled progress (the two directions share everything but the verb). */
+function fastTransfer(sftp: SFTPWrapper, kind: 'put' | 'get', src: string, dst: string, concurrency: number, onProgress?: (progress: TransferProgress) => void): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Progress frames name the destination on upload, the source on download;
+    // the final size comes from the local side of the transfer.
+    const file = kind === 'put' ? dst : src
+    const finalSize = (): number => statSync(kind === 'put' ? src : dst).size
     let last = 0
     let lastEmit = 0
     const started = Date.now()
-    onProgress?.({ phase: 'transferring', file: dst, transferred: 0, total: statSync(src).size, percent: 0 })
-    sftp.fastPut(src, dst, { concurrency, step: (transferred: number, _chunk: number, total: number) => {
+    if (kind === 'put') {
+      onProgress?.({ phase: 'transferring', file, transferred: 0, total: statSync(src).size, percent: 0 })
+    }
+    const step = (transferred: number, _chunk: number, total: number): void => {
       const now = Date.now()
       // Throttle: high-speed links fire one callback per chunk; the UI only
       // needs ~10 frames per second.
@@ -184,52 +195,32 @@ function fastPut(sftp: SFTPWrapper, src: string, dst: string, concurrency: numbe
       const elapsed = (now - started) / 1000
       onProgress?.({
         phase: 'transferring',
-        file: dst,
+        file,
         transferred,
         total,
         percent: total > 0 ? Math.round((transferred / total) * 1000) / 10 : 0,
         speedBps: elapsed > 0 ? Math.round((transferred - last) / elapsed) : undefined,
       })
       last = transferred
-    } }, (error) => {
+    }
+    const done = (error: unknown): void => {
       if (error !== undefined) {
-        onProgress?.({ phase: 'error', file: dst, transferred: 0, total: 0, percent: 0, error: String(error) })
+        onProgress?.({ phase: 'error', file, transferred: 0, total: 0, percent: 0, error: String(error) })
         reject(error)
       } else {
-        onProgress?.({ phase: 'done', file: dst, transferred: statSync(src).size, total: statSync(src).size, percent: 100 })
+        onProgress?.({ phase: 'done', file, transferred: finalSize(), total: finalSize(), percent: 100 })
         resolve()
       }
-    })
+    }
+    if (kind === 'put') sftp.fastPut(src, dst, { concurrency, step }, done)
+    else sftp.fastGet(src, dst, { concurrency, step }, done)
   })
 }
 
+function fastPut(sftp: SFTPWrapper, src: string, dst: string, concurrency: number, onProgress?: (progress: TransferProgress) => void): Promise<void> {
+  return fastTransfer(sftp, 'put', src, dst, concurrency, onProgress)
+}
+
 function fastGet(sftp: SFTPWrapper, src: string, dst: string, concurrency: number, onProgress?: (progress: TransferProgress) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    let last = 0
-    let lastEmit = 0
-    const started = Date.now()
-    sftp.fastGet(src, dst, { concurrency, step: (transferred: number, _chunk: number, total: number) => {
-      const now = Date.now()
-      if (now - lastEmit < 100 && transferred < total) return
-      lastEmit = now
-      const elapsed = (now - started) / 1000
-      onProgress?.({
-        phase: 'transferring',
-        file: src,
-        transferred,
-        total,
-        percent: total > 0 ? Math.round((transferred / total) * 1000) / 10 : 0,
-        speedBps: elapsed > 0 ? Math.round((transferred - last) / elapsed) : undefined,
-      })
-      last = transferred
-    } }, (error) => {
-      if (error !== undefined) {
-        onProgress?.({ phase: 'error', file: src, transferred: 0, total: 0, percent: 0, error: String(error) })
-        reject(error)
-      } else {
-        onProgress?.({ phase: 'done', file: src, transferred: statSync(dst).size, total: statSync(dst).size, percent: 100 })
-        resolve()
-      }
-    })
-  })
+  return fastTransfer(sftp, 'get', src, dst, concurrency, onProgress)
 }

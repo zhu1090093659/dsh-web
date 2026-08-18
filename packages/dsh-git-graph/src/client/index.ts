@@ -1,30 +1,16 @@
 /**
- * Git-graph surface plugin, browser half: the git branch selector chip,
- * docked above the input card. Preferred seat is the input selector row's
- * context hole (`conversation.input.selector.context`, a session-maybe
- * list slot declared and rendered by newer shipped ui-conversation shells),
- * right beside the official workspace selector; the published npm SDK
- * (rc.6) and the current shipped shell dropped that hole, so the chip waits
- * on its declaration for {@link CONTEXT_FALLBACK_MS} and then falls back to
- * `conversation.input.dock` (the 0.1.9 seat). On the dock, BranchChip
- * indents by the shell's composer side clearance so it starts flush with
- * the input card below it in the active phase; in the hero (blank-session)
- * phase it lifts itself into the official hero chip row, immediately after
- * the agent-preset seat, so the branch chip sits right of the preset name.
- * All git facts arrive through the host /git routes (this package's own host
- * half); the inject face carries the business verbs, the components stay
- * pure props.
+ * Git-graph surface plugin, browser half. The branch selector is rendered
+ * only for blank sessions: it uses the input selector row's context hole
+ * (`conversation.input.selector.context`) beside the official workspace
+ * selector. When that shell slot is unavailable, it waits for
+ * {@link CONTEXT_FALLBACK_MS} then uses `conversation.input.dock` for the
+ * blank-session hero phase, where it joins the official hero chip row after
+ * the agent-preset seat. Active sessions render no branch-selection control.
  *
- * The context hole is session-maybe: the chip stays mounted from cold start
- * through the active phase and hides itself when its data source is absent
- * (no session cwd, or not a git repository) — no workspace selector lives
- * here, the official selector chip docked above the input card owns that
- * surface. The dock fallback is session-scoped: the chip mounts once a
- * session is active and renders on the dock's own row above the composer
- * card, left-aligned with the input card. Revision 0be6546 moved the chip
- * back to the context hole without a fallback, so on rc.6 shells the inject
- * wait never resolved and the chip disappeared. The published npm SDK (rc.6)
- * dropped the hole's type, so it is spelled locally below.
+ * All git facts arrive through this package's host /git routes. The inject
+ * face carries the business verbs and the components remain pure props. The
+ * published npm SDK (rc.6) dropped the context-hole type, so it is declared
+ * locally below for type-checked registration.
  * @module dsh-git-graph/client
  */
 
@@ -55,8 +41,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /**
      * The input selector context-chip hole: feature chips rendered right
      * after the workspace selector (the git branch selector's seat).
-     * Session-maybe: entries stay mounted without a session and hide
-     * themselves when their data source is absent.
+     * Session-maybe: the component identifies blank sessions from the
+     * baseline and renders no control for an active session.
      *
      * Declared and rendered by the running dsh web shell
      * (ui-conversation's InputSelectorRow); the published npm SDK (rc.6)
@@ -192,12 +178,9 @@ export function apply(ctx: ClientContext): void {
     // slots), so both seats route through inject like the pet / remote-web-ui
     // entries. The preferred context wait resolves the moment the shell
     // declares the hole; when it never does (rc.6 and the current shipped
-    // shell), the fallback disposes that wait and moves the chip to the
-    // dock, whose row sits directly above the composer card. BranchChip
-    // indents the dock copy by the shell's composer side clearance in the
-    // active phase and joins the official hero chip row (right of the agent
-    // preset) in the hero phase. Exactly one seat mounts: a context
-    // declaration landing after the fallback finds the wait gone.
+    // shell), the fallback disposes that wait and uses the dock only for the
+    // blank-session hero phase. Exactly one seat mounts: a context declaration
+    // landing after the fallback finds the wait gone.
     let mounted = false
     const disposeContextWait = scope.slots.inject('conversation.input.selector.context', () => {
       mounted = true

@@ -8,7 +8,7 @@ light theme rides 不屈龙魂 (Unyielding Dragon Soul — an ink dragon, vermil
 dusk, dawn-gold 鎏金 accents). Both artworks and both seal favicons are inline
 data URLs, so the skin ships no static files.
 
-Hot-pluggable as a client plugin in the official standalone bundle shape:
+Hot-pluggable as a client plugin:
 `apply()` sets the `data-dsh-dragon-heir` body attribute (the scope of the whole
 stylesheet), mounts the themed dragon backdrop with a readability scrim and the
 themed 龙-seal favicon — swapping art, scrim and seal live when the base theme
@@ -19,28 +19,15 @@ CSS-modules auto-inject, so the loader removes it with the entry.
 The skin is presentation-only: no services are injected, no cordis events are
 emitted, and nothing reaches a model request.
 
-## Installing (official bundle)
+## Installing
 
-推荐先装皮肤全家桶聚合包 `@linxin666/dsh-skins` 一次到位；只装本皮肤时用下列 link 命令。
+Skins ship inside the family aggregate package `@linxin666/dsh-skins` (installing it brings every skin) and are wired by the skin manager — this package declares no `dsh.bundle` (skin.json `wiring.bundleWired: false`), so `dsh-skin use` renders the insert row into the profile's own patch:
 
 ```sh
-# 装全部皮肤（推荐）
 dsh plugin --profile web add @linxin666/dsh-skins
-# 或单独装本皮肤
-dsh plugin --profile web add @linxin666/dsh-client-ui-skin-dragon-heir
-# 皮肤启用：dsh-skin use dragon-heir
-# 从仓库安装（开发调试）：dsh plugin --profile web add link:$(pwd)/packages/skins/dragon-heir
 ```
 
-`$(pwd)` 指克隆全家桶仓库后的目录。
-
-本地 link 安装前需先在全家桶仓库内构建产物（`lib/` 被 git 忽略、不随仓库提交）：
-`pnpm install && pnpm -r build` 后再 link 安装。
-通过 git 安装（`dsh plugin --profile web add github:<org>/dsh-web-ui#<sha>`）时
-`prepare` 脚本自动自包含构建 `lib/`，无需单独构建；pnpm ≥10 首次安装 git 依赖需先把
-pnpm 打印的包键加入相应 profile 的 `pnpm-workspace.yaml` 的 `allowBuilds` 列表再重试。
-
-皮肤启用 / 切换用 `dsh-skin use dragon-heir`（本仓库 `scripts/dsh-skin` 辅助脚本）；同一时刻只激活一个皮肤。
+Activate or switch with `dsh-skin use <id>` (helper script `scripts/dsh-skin` in the monorepo); only one skin is active at a time.
 
 ## Building and testing
 

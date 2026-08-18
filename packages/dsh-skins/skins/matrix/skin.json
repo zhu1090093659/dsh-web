@@ -1,0 +1,28 @@
+{
+  "id": "matrix",
+  "name": "Matrix 骇客帝国",
+  "nameEn": "Matrix",
+  "author": "contributed (seanchen)",
+  "tagline": "深夜护眼 · 墨绿暗色 · 数字雨",
+  "description": "深夜卧室场景的护眼暗色皮肤：近黑墨绿背景、墨绿等宽字体、低透明度数字雨。强制暗色（不跟随系统主题），整体低亮度，长时间使用不刺眼、不打扰家人睡觉。",
+  "tags": [
+    "matrix",
+    "dark",
+    "green",
+    "hacker",
+    "night",
+    "eye-care"
+  ],
+  "accent": "#00e676",
+  "bodyAttr": "data-dsh-matrix",
+  "package": "@linxin666/dsh-client-ui-skin-matrix",
+  "wiring": {
+    "id": "ui-skin-matrix",
+    "bundleWired": false
+  },
+  "preview": {
+    "light": "packages/skins/matrix/preview/light.png",
+    "dark": "packages/skins/matrix/preview/dark.png"
+  },
+  "order": 12
+}

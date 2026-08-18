@@ -5,6 +5,7 @@
  * @module dsh-aionui-panel/client/api
  */
 
+import { subscribeSharedEvents } from './sse-leader.ts'
 import type {
   DirListing, FileRead, GitBatchResult, GitStatusView, PanelEnvelope, PanelError, SearchView,
 } from '../core/types.ts'
@@ -128,14 +129,15 @@ export type PanelChangeEvent =
  * @returns the disposer closing the stream.
  */
 export function subscribePanelEvents(root: string, onChange: (event: PanelChangeEvent) => void): () => void {
-  const source = new EventSource(`/aionui-panel/events?root=${encodeURIComponent(root)}`)
-  source.addEventListener('change', (raw) => {
+  // The stream is shared browser-wide through the cross-tab leader relay
+  // (issue #383): two tabs of the same project must not pin two SSE
+  // connections against the per-origin HTTP pool.
+  return subscribeSharedEvents(`/aionui-panel/events?root=${encodeURIComponent(root)}`, 'change', (data) => {
     try {
-      const event = JSON.parse((raw as MessageEvent).data as string) as PanelChangeEvent
+      const event = JSON.parse(data) as PanelChangeEvent
       onChange(event)
     } catch {
       // malformed push; ignore
     }
   })
-  return () => { source.close() }
 }

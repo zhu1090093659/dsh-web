@@ -23,6 +23,8 @@ import previewCss from '../styles/preview.module.css'
 export function PreviewPanel({ stores }: { stores: PanelStores }): JSX.Element {
   const preview = stores.preview
   const state = useStore(preview)
+  const layoutState = useStore(stores.layout)
+  const maximizedPreview = layoutState.maximized === 'preview'
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [closingIds, setClosingIds] = useState<string[] | null>(null)
   const [viewMode, setViewMode] = useState<'source' | 'preview'>('preview')
@@ -115,6 +117,10 @@ export function PreviewPanel({ stores }: { stores: PanelStores }): JSX.Element {
         onContextMenu={closeMenuFor}
         onNewUrlTab={newUrlTab}
         onClosePanel={() => preview.setOpen(false)}
+        maximized={maximizedPreview}
+        onMaximize={() => {
+          stores.layout.update((prev) => ({ ...prev, maximized: maximizedPreview ? null : 'preview' }))
+        }}
       />
       {activeTab !== null && (
         <>

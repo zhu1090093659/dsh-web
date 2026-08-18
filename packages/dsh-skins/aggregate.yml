@@ -4,7 +4,8 @@
 # profile 配 hoist（nodeLinker: hoisted 或 public-hoist-pattern，见根 README）
 # 皮肤不再独立成包：资产内置在 dsh-skins/skins/<id>（build.mjs 从 packages/skins/<id>
 # 复制 skin.json + lib/client.js），皮肤中心 npm 布局直接扫描该目录；
-# 因此这里只保留 skin-center（patch 行 ui-skin-center 的宿主）。
+# 因此这里只保留 skin-center（patch 行 web-ui-skin-center 的宿主）。
+# 聚合行 id 统一加 web-ui- 命名空间：与独立包安装共存，避免 loader duplicate entry id。
 patchFrom:
   - ../skins/skin-center
 deps:

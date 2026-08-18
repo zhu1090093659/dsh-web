@@ -74,6 +74,7 @@ function fakeResponse(): {
       if (chunk !== undefined && chunk !== null) state.writes.push(String(chunk))
       state.body = state.writes.join('')
     },
+    on: () => {},
   }
   return {
     res,
@@ -109,7 +110,36 @@ describe('/git loopback fence', () => {
 
     expect(result.status).toBe(200)
     expect(JSON.parse(result.body)).toEqual({ ok: true, value: makeStatus() })
-    expect(status).toHaveBeenCalledWith('/w')
+    expect(status).toHaveBeenCalledWith('/w', expect.any(AbortSignal))
+  })
+
+  it('aborts a hung direct status request and returns a stable envelope', async () => {
+    vi.useFakeTimers()
+    try {
+      let signal: AbortSignal | undefined
+      const status = vi.fn((_path: string, current: AbortSignal) => {
+        signal = current
+        return new Promise<RepoStatus | null>(() => {})
+      })
+      const { ctx, registrations } = fakeCtx()
+      registerGitRoutes(ctx as never, { status } as never)
+      const prefix = registrations.find((row) => row.kind === 'prefix')!
+
+      const pending = drive(prefix.handler, '/git/status', {
+        body: JSON.stringify({ path: '/w' }),
+      })
+      await vi.advanceTimersByTimeAsync(15_000)
+      const result = await pending
+
+      expect(signal?.aborted).toBe(true)
+      expect(signal?.reason).toEqual(expect.objectContaining({ message: 'git status timed out' }))
+      expect(JSON.parse(result.body)).toEqual({
+        ok: false,
+        error: { code: 'internal', message: 'git status timed out' },
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('rejects a structurally invalid status view at the route boundary', async () => {
@@ -130,7 +160,7 @@ describe('/git loopback fence', () => {
       ok: false,
       error: { code: 'internal', message: 'malformed git response' },
     })
-    expect(status).toHaveBeenCalledWith('/w')
+    expect(status).toHaveBeenCalledWith('/w', expect.any(AbortSignal))
   })
 
   it('rejects non-loopback JSON operations with 403 before touching the service', async () => {
@@ -236,6 +266,7 @@ function connect(sse: (req: unknown, res: unknown) => Promise<void>): { writes: 
     writeHead: () => {},
     write: (chunk: unknown) => { writes.push(String(chunk)) },
     end: () => {},
+    on: () => {},
   }
   const req = {
     url: '/git/events?path=%2Fw',
@@ -278,7 +309,7 @@ describe('SSE poll loop', () => {
     await vi.advanceTimersByTimeAsync(30_000)
 
     expect(env.status).toHaveBeenCalledTimes(1)
-    expect(env.status).toHaveBeenCalledWith('/w')
+    expect(env.status).toHaveBeenCalledWith('/w', expect.any(AbortSignal))
     expect(changeEvents(conn.writes)).toBe(1)
     conn.close()
   })
@@ -326,8 +357,12 @@ describe('SSE poll loop', () => {
 
   it('times out a hung status at 15s, warns, and recovers on the next tick', async () => {
     const env = makePollEnv()
+    let signal: AbortSignal | undefined
     env.status
-      .mockImplementationOnce(() => new Promise<RepoStatus | null>(() => {}))
+      .mockImplementationOnce((_path: string, current: AbortSignal) => {
+        signal = current
+        return new Promise<RepoStatus | null>(() => {})
+      })
       .mockResolvedValue(makeStatus())
     const conn = connect(env.sse)
 
@@ -339,6 +374,8 @@ describe('SSE poll loop', () => {
     // The 15s deadline fires the race rejection; the catch warns and the
     // finally resets the guard.
     await vi.advanceTimersByTimeAsync(15_000)
+    expect(signal?.aborted).toBe(true)
+    expect(signal?.reason).toEqual(expect.objectContaining({ message: 'git status timed out' }))
     expect(env.warn).toHaveBeenCalledTimes(1)
     expect(env.warn).toHaveBeenCalledWith(expect.stringContaining('git status timed out'))
 

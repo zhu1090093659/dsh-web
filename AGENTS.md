@@ -9,11 +9,12 @@ DSH 源码。改 `packages/` 前先读 [packages/AGENTS.md](packages/AGENTS.md)�
 
 ```text
 packages/
-  dsh-<plugin>/       功能插件包（task-board / git-graph / ssh / pet / live-stats /
-                      aionui-panel / remote-web-ui / web-ui-settings / community-plugins）
+  dsh-<plugin>/       功能插件包（task-board / git-graph / ssh / pet /
+                      aionui-panel（已停止支持）/ remote-web-ui / web-ui-settings / community-plugins）
   skins/skin-center/  皮肤中心 GUI 卡（独立包，经 dsh-skins 聚合，顶层设置卡）
   dsh-skins/          皮肤聚合包：build.mjs 把 skins/* 皮肤资产收进一个 npm 包
-  dsh-web-ui-all/     全家桶聚合包：aggregate.yml 汇总全部功能插件
+  dsh-web-ui-all/     全家桶聚合包：aggregate.yml 汇总全部功能插件 + 外部右侧栏插件
+                      dsh-better-sidebar（rows 节）
   skins/<id>/         皮肤包（skin.json + lib/client.js，资产并入 dsh-skins）
 shared/
   tsdown.client.ts    唯一共享构建预设（禁止在包内复制）
@@ -106,12 +107,12 @@ Release 更新说明由 `scripts/release-notes.mjs` 从常规提交自动分组�
 | 文件 | 作用 |
 | --- | --- |
 | 本文件（根 AGENTS.md） | 仓库布局、命令、全局规则，每个会话都需要 |
+| [.agents/skills/dsh-web-ui-agent-coding/SKILL.md](.agents/skills/dsh-web-ui-agent-coding/SKILL.md) | 项目 Agent Coding 工作流；按任务加载同目录下的开发、审查、文档、验证或 GUI 验收技能 |
 | [packages/AGENTS.md](packages/AGENTS.md) | 包级规则：SDK 约束、bundle 形态、测试纪律 |
-| [docs/AGENTS.md](docs/AGENTS.md) | 文档标准：结构分层、写作规则、i18n 配对、预算 |
+| [docs/AGENTS.md](docs/AGENTS.md) | 文档标准：结构分层、写作规则、i18n 配对 |
 | 各包 `AGENTS.md` | 该包特有规则（如 dsh-ssh 安全模型、dsh-skins 构建链） |
 
 ## 编辑这些指令
 
 规则只在其归属层写一次，其他层引用链接，不重复展开。保持每条规则自包含（1-3
-行），细节链接到归属文档。精简优于扩充；需要更多空间时提高
-`scripts/doc-budgets.manifest.json` 中对应预算并在 PR 说明理由。
+行），细节链接到归属文档。精简优于扩充。

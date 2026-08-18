@@ -1,20 +1,16 @@
 /**
- * Task persistence: a small storage seam with a localStorage backend.
+ * Legacy v1 browser persistence and the store seam used by pure client tests.
  *
- * The task-board client plugin runs in the browser, and dsh exposes no
- * browser-writable file channel (same conclusion the skin-center research
- * reached for cordis.patch.yml), so tasks persist in the browser's
- * localStorage under a versioned key — the same persistence mechanism dsh's
- * own client snapshot stores use (`createSnapshotStore` persist). Data
- * survives page refreshes and dsh restarts (same origin), and survives
- * plugin uninstall (the key is simply left in place).
+ * Production v2 state is Host-authoritative. This backend is retained only to
+ * read `dsh.taskBoard.v1` for one-time import; the old value is never removed,
+ * so it remains a read-only rollback copy after migration.
  *
  * The seam keeps the backend swappable (e.g. an IndexedDB or a host-file
  * channel later); tests run against the in-memory backend and a jsdom
  * localStorage backend.
  */
 import { isValidCron } from './schedule.ts'
-import { isTaskPermission, isTaskStatus, type ScheduleRule, type TaskRecord, type TaskPermission, type TaskStatus } from './tasks.ts'
+import { isTaskPermission, isTaskStatus, normalizeTargetId, type ScheduleRule, type TaskRecord, type TaskPermission, type TaskStatus } from './tasks.ts'
 
 /** Persistence seam for the task ledger. */
 export interface TaskStore {
@@ -78,11 +74,6 @@ function isTaskRecordShape(value: unknown): value is Omit<TaskRecord, 'status'> 
     if (entry.error !== undefined && typeof entry.error !== 'string') return false
   }
   return true
-}
-
-/** Collapse a blank persisted target string to undefined (clears the pin). */
-function normalizeTargetId(value: string | undefined): string | undefined {
-  return value !== undefined && value.trim() === '' ? undefined : value
 }
 
 /** A task record is structurally valid if it round-trips through the UI. */

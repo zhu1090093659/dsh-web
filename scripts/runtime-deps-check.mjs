@@ -62,14 +62,20 @@ export function checkRuntimeImports(pkgJson, files) {
   return violations
 }
 
-/** All git-tracked files under packages/, grouped by package dir. */
+/** All git-tracked files under packages/, grouped by owning package root. */
 function trackedPackageFiles() {
   const files = execFileSync('git', ['ls-files', 'packages'], { encoding: 'utf8', cwd: ROOT })
     .split('\n')
     .filter(Boolean)
+  // A file belongs to the nearest ancestor directory carrying a tracked
+  // package.json. Grouping by plain dirname() strands lib/ files in their
+  // own package.json-less group and the gate then scans zero files.
+  const tracked = new Set(files)
   const byDir = new Map()
   for (const file of files) {
-    const dir = dirname(file)
+    let dir = dirname(file)
+    while (dir !== '.' && dir !== 'packages' && !tracked.has(dir + '/package.json')) dir = dirname(dir)
+    if (!tracked.has(dir + '/package.json')) continue
     if (!byDir.has(dir)) byDir.set(dir, [])
     byDir.get(dir).push(file)
   }
@@ -81,16 +87,18 @@ const isCli = process.argv[1] && pathToFileURL(process.argv[1]).href === import.
 if (isCli) {
   const byDir = trackedPackageFiles()
   let failed = 0
+  let scanned = 0
   for (const [dir, files] of byDir) {
     if (!files.includes(`${dir}/package.json`)) continue
     const pkgJson = JSON.parse(readFileSync(join(ROOT, dir, 'package.json'), 'utf8'))
     const libPrefix = `${dir}/lib/`
     const libFiles = files.filter((f) => f.startsWith(libPrefix) && /\.(?:js|cjs|mjs)$/.test(f))
     if (libFiles.length === 0) continue
+    scanned += 1
     const sources = Object.fromEntries(libFiles.map((f) => [f, readFileSync(join(ROOT, f), 'utf8')]))
     const violations = checkRuntimeImports(pkgJson, sources)
     if (violations.length === 0) {
-      console.log(`[OK]   ${pkgJson.name}`)
+      console.log(`[OK]   ${pkgJson.name} (${libFiles.length} lib files)`)
     } else {
       failed += 1
       console.error(`[FAIL] ${pkgJson.name}`)
@@ -103,5 +111,5 @@ if (isCli) {
     console.error(`\n${failed} package(s) FAILED runtime dependency check`)
     process.exit(1)
   }
-  console.log('\nall packages pass the runtime dependency check')
+  console.log(`\nall ${scanned} scanned packages pass the runtime dependency check`)
 }

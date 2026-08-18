@@ -12,7 +12,6 @@ import { t } from '../locales.ts'
 import type { AionUiPanelKey } from '../locales.ts'
 
 /** One transient toast message. */
-let toastTimer: ReturnType<typeof setTimeout> | undefined
 export function toast(message: string): void {
   const el = document.createElement('div')
   el.className = 'aionui-toast'
@@ -23,8 +22,6 @@ export function toast(message: string): void {
     el.style.transition = 'opacity 0.2s ease'
   }, 1800)
   setTimeout(() => el.remove(), 2100)
-  if (toastTimer !== undefined) clearTimeout(toastTimer)
-  toastTimer = undefined
 }
 
 /** One context-menu entry (separators carry no handler). */

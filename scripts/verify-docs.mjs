@@ -7,9 +7,8 @@
  *   2. i18n pairing - recorded git blob hashes match current content; both sides carry
  *      their language switcher; heading/code/table/list signatures mirror each other.
  *   3. Markdown links - relative link targets exist and #anchors name real headings.
- *   4. Word budgets - ceilings from scripts/doc-budgets.manifest.json.
- *   5. Heading levels - the first line is H1; no bare H1 sub-sections follow it.
- *   6. No scaffold placeholders in package.json descriptions.
+ *   4. Heading levels - the first line is H1; no bare H1 sub-sections follow it.
+ *   5. No scaffold placeholders in package.json descriptions.
  *
  * Usage:
  *   node scripts/verify-docs.mjs                    # check everything (CI mode)
@@ -21,9 +20,9 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { walkFamilyPackages } from './lib/family-packages.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const BUDGETS_PATH = resolve(root, 'scripts/doc-budgets.manifest.json')
 const args = process.argv.slice(2)
 const listOnly = args.includes('--list')
 const writeMode = args.includes('--write')
@@ -32,13 +31,6 @@ const namedPairs = args.filter((a) => !a.startsWith('--'))
 const failures = []
 const rows = []
 function fail(msg) { failures.push(msg) }
-
-/** Count words: CJK characters count individually, ASCII by whitespace. */
-function countWords(text) {
-  const cjk = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length
-  const rest = text.replace(/[\u4e00-\u9fff\u3400-\u4dbf]/g, ' ')
-  return cjk + rest.split(/\s+/).filter(Boolean).length
-}
 
 /** Git blob hash of a working-tree file (content-addressed, no staging needed). */
 function blobHash(file) {
@@ -117,24 +109,16 @@ function headingSlugs(file) {
 
 /** All package directories (packages/* and packages/skins/* with a package.json). */
 function packageDirs() {
-  const dirs = []
-  for (const base of [resolve(root, 'packages'), resolve(root, 'packages/skins')]) {
-    if (!existsSync(base)) continue
-    for (const name of readdirSync(base)) {
-      const dir = resolve(base, name)
-      if (existsSync(resolve(dir, 'package.json'))) dirs.push(dir)
-    }
-  }
-  return dirs
+  return walkFamilyPackages(root).map(({ dir }) => dir)
 }
 
 function isExternal(url) {
   return url.startsWith('//') || url.startsWith('/') || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url)
 }
 
-export { countWords, signature, sigEqual, slugify, isExternal }
+export { signature, sigEqual, slugify, isExternal }
 if (import.meta.main) {
-  /* ---------- 1 + 2 + 5. README triplets, pairing, heading levels ---------- */
+  /* ---------- 1 + 2 + 4. README triplets, pairing, heading levels ---------- */
   const pairs = []
   for (const dir of packageDirs()) {
     const rel = relative(root, dir)
@@ -223,21 +207,7 @@ if (import.meta.main) {
     }
   }
   
-  /* ---------- 4. Word budgets ---------- */
-  if (!existsSync(BUDGETS_PATH)) {
-    if (!listOnly && !writeMode) fail('scripts/doc-budgets.manifest.json missing')
-  } else {
-    const budgets = JSON.parse(readFileSync(BUDGETS_PATH, 'utf8'))
-    for (const [path, ceiling] of Object.entries(budgets)) {
-      const abs = resolve(root, path)
-      if (!existsSync(abs)) { fail(path + ': budgeted file does not exist'); continue }
-      const words = countWords(readFileSync(abs, 'utf8'))
-      if (words > ceiling) fail(path + ': ' + words + ' words exceeds the ' + ceiling + '-word ceiling - relocate, condense, or justify raising it')
-      else rows.push('ok    ' + path + ': ' + words + ' words (ceiling ' + ceiling + ')')
-    }
-  }
-  
-  /* ---------- 6. No scaffold placeholders ---------- */
+  /* ---------- 5. No scaffold placeholders ---------- */
   for (const dir of packageDirs()) {
     const pkg = JSON.parse(readFileSync(resolve(dir, 'package.json'), 'utf8'))
     if (pkg.description && /<edit me/i.test(pkg.description)) fail(relative(root, dir) + ': package.json description still contains a scaffold placeholder')

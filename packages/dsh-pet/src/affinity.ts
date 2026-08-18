@@ -8,7 +8,7 @@
  * @module @linxin666/dsh-pet/affinity
  */
 
-import { builtinRemark } from './remarks.ts'
+import { BUILTIN_REMARKS, builtinRemark } from './remarks.ts'
 
 /** One interaction the user can perform on the pet. */
 export type PetInteraction = 'pet' | 'feed'
@@ -25,6 +25,10 @@ export interface AffinityState {
   pets: number
   /** Total feed count (lifetime). */
   feeds: number
+  /** Total pet attempts rejected by cooldown (lifetime). */
+  petRejects: number
+  /** Total feed attempts rejected by cooldown (lifetime). */
+  feedRejects: number
   /** Total completed turns witnessed (lifetime). */
   turns: number
 }
@@ -75,7 +79,16 @@ export const defaultAffinityConfig: AffinityConfig = {
 }
 
 export function emptyAffinity(): AffinityState {
-  return { points: 0, lastPetAt: 0, lastFeedAt: 0, pets: 0, feeds: 0, turns: 0 }
+  return {
+    points: 0,
+    lastPetAt: 0,
+    lastFeedAt: 0,
+    pets: 0,
+    feeds: 0,
+    petRejects: 0,
+    feedRejects: 0,
+    turns: 0,
+  }
 }
 
 /** Outcome of one interaction. */
@@ -136,6 +149,12 @@ function clamp(points: number): number {
   return Math.min(AFFINITY_MAX, Math.max(0, points))
 }
 
+/** Built-in reaction selected deterministically from a persisted counter. */
+function countedRemark(kind: 'pet' | 'petCooldown' | 'feed' | 'feedCooldown', count: number): string {
+  const pool = BUILTIN_REMARKS[kind]
+  return pool[Math.max(0, Math.floor(count)) % pool.length] ?? builtinRemark(kind)
+}
+
 /**
  * Apply one interaction to a copy of the state (immutable style: returns a
  * new object; the caller replaces the persisted state). Cooldowns only
@@ -151,7 +170,13 @@ export function applyInteraction(
   const next = { ...state }
   if (kind === 'pet') {
     if (state.lastPetAt !== 0 && nowMs - state.lastPetAt < config.petCooldownMs) {
-      return { affinity: state, delta: 0, reaction: builtinRemark('petCooldown'), accepted: false }
+      next.petRejects += 1
+      return {
+        affinity: next,
+        delta: 0,
+        reaction: countedRemark('petCooldown', state.petRejects),
+        accepted: false,
+      }
     }
     next.lastPetAt = nowMs
     next.pets += 1
@@ -159,13 +184,19 @@ export function applyInteraction(
     return {
       affinity: next,
       delta: config.petReward,
-      reaction: builtinRemark('pet'),
+      reaction: countedRemark('pet', state.pets),
       accepted: true,
     }
   }
   if (kind === 'feed') {
     if (state.lastFeedAt !== 0 && nowMs - state.lastFeedAt < config.feedCooldownMs) {
-      return { affinity: state, delta: 0, reaction: builtinRemark('feedCooldown'), accepted: false }
+      next.feedRejects += 1
+      return {
+        affinity: next,
+        delta: 0,
+        reaction: countedRemark('feedCooldown', state.feedRejects),
+        accepted: false,
+      }
     }
     next.lastFeedAt = nowMs
     next.feeds += 1
@@ -173,7 +204,7 @@ export function applyInteraction(
     return {
       affinity: next,
       delta: config.feedReward,
-      reaction: builtinRemark('feed'),
+      reaction: countedRemark('feed', state.feeds),
       accepted: true,
     }
   }

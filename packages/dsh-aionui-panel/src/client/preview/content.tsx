@@ -42,9 +42,10 @@ export function TabContent({
   onSave: () => void
 }): JSX.Element {
   if (tab.error !== null) {
+    const message = tab.error === 'write-conflict' ? t('preview.saveConflict') : tab.error
     return <div className={previewCss.placeholder}>
       <div className={previewCss.placeholderTitle}>{tab.title}</div>
-      <div className={previewCss.placeholderError}>{tab.error}</div>
+      <div className={previewCss.placeholderError}>{message}</div>
     </div>
   }
 
@@ -157,7 +158,7 @@ function SplitPane({
           {tab.contentType === 'markdown' && <MarkdownViewer content={content} root={tab.root} path={tab.path} />}
           {tab.contentType === 'html' && <HtmlViewer content={content} />}
           {tab.contentType === 'csv' && <CsvViewer content={content} />}
-          {tab.contentType === 'code' && <CodeViewer content={content} language={tab.title.split('.').pop() ?? ''} />}
+          {(tab.contentType === 'code' || tab.contentType === 'text') && <CodeViewer content={content} language={tab.title.split('.').pop() ?? ''} />}
         </div>
       </div>
     </div>

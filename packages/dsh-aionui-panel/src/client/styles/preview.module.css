@@ -178,11 +178,15 @@
 .tabBarRight {
   display: flex;
   align-items: center;
+  gap: 6px;
   padding: 0 10px;
   flex-shrink: 0;
 }
 
-.panelCollapse {
+
+
+.panelCollapse,
+.panelMaximize {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -194,16 +198,19 @@
   transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.panelCollapse:hover {
+.panelCollapse:hover,
+.panelMaximize:hover {
   background: var(--aion-bg-3);
   color: var(--aion-text-primary);
 }
 
-.panelCollapse:active {
+.panelCollapse:active,
+.panelMaximize:active {
   background: var(--aion-bg-active);
 }
 
-.panelCollapse:focus-visible {
+.panelCollapse:focus-visible,
+.panelMaximize:focus-visible {
   box-shadow: inset 0 0 0 2px var(--aion-primary);
 }
 

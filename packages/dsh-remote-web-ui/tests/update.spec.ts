@@ -18,6 +18,7 @@ import {
   resolveUpdateTarget,
   runUpdate,
   runUpdateVerified,
+  SELF_PACKAGE,
 } from "../src/update.ts"
 
 /** One temp fixture root per suite; removed after each test. */
@@ -61,6 +62,30 @@ function npmFixture(anchorVersion = "0.1.10", childVersion = "0.1.10"): string {
     version: childVersion,
   })
   return join(anchorDir, "package.json")
+}
+
+/** A profile with family plugins installed directly and no aggregate package. */
+function standaloneFixture(): { anchor: string; profileDir: string } {
+  const root = makeFixture()
+  const profileDir = join(root, "profiles", "web")
+  writeManifest(profileDir, {
+    name: "dsh-profile-web",
+    private: true,
+    dependencies: {
+      [SELF_PACKAGE]: "^0.1.19",
+      "@linxin666/dsh-client-ui-aionui-panel": "^0.1.19",
+      "@linxin666/dsh-pet": "link:../../../code/dsh-web-ui/packages/dsh-pet",
+      "@linxin666/dsh-ssh": "^0.1.19",
+      react: "^18.2.0",
+    },
+  })
+  for (const name of [SELF_PACKAGE, "@linxin666/dsh-client-ui-aionui-panel", "@linxin666/dsh-ssh"]) {
+    writeManifest(join(profileDir, "node_modules", ...name.split("/")), { name, version: "0.1.19" })
+  }
+  return {
+    anchor: join(profileDir, "node_modules", ...SELF_PACKAGE.split("/"), "package.json"),
+    profileDir,
+  }
 }
 
 describe("parseSemver", () => {
@@ -169,6 +194,25 @@ describe("resolveAnchorManifest", () => {
 })
 
 describe("checkUpdates", () => {
+  it("checks every directly installed family package when the aggregate is absent", async () => {
+    const { anchor } = standaloneFixture()
+    const status = await checkUpdates({
+      anchorManifestPath: anchor,
+      // Package-scoped resolution cannot see sibling direct dependencies in
+      // pnpm's strict layout; their profile manifests are the fallback.
+      resolve: specifier => specifier === SELF_PACKAGE + "/package.json" ? anchor : undefined,
+      fetchLatest: async () => "0.1.20",
+    })
+    expect(status.mode).toBe("npm")
+    expect(status.anchor).toBe(SELF_PACKAGE)
+    expect(status.packages.map(item => item.name)).toEqual([
+      SELF_PACKAGE,
+      "@linxin666/dsh-client-ui-aionui-panel",
+      "@linxin666/dsh-ssh",
+    ])
+    expect(status.packages.map(item => item.current)).toEqual(["0.1.19", "0.1.19", "0.1.19"])
+  })
+
   it("reports an outdated npm install with per-package comparison", async () => {
     const anchor = npmFixture("0.1.10", "0.1.9")
     const status = await checkUpdates({
@@ -240,6 +284,19 @@ describe("checkUpdates", () => {
 })
 
 describe("resolveUpdateTarget", () => {
+  it("updates every directly installed family package when the aggregate is absent", () => {
+    const { anchor, profileDir } = standaloneFixture()
+    expect(resolveUpdateTarget({ anchorManifestPath: anchor })).toEqual({
+      profileName: "web",
+      profileDir,
+      packages: [
+        SELF_PACKAGE,
+        "@linxin666/dsh-client-ui-aionui-panel",
+        "@linxin666/dsh-ssh",
+      ],
+    })
+  })
+
   it("resolves the npm target with anchor + children", () => {
     const anchor = npmFixture()
     const target = resolveUpdateTarget({ anchorManifestPath: anchor })
@@ -525,6 +582,25 @@ describe("runUpdateVerified", () => {
       fetchLatest,
     }
   }
+
+  it("verifies version movement for directly installed family packages", async () => {
+    const { anchor, profileDir } = standaloneFixture()
+    const packages = [SELF_PACKAGE, "@linxin666/dsh-client-ui-aionui-panel", "@linxin666/dsh-ssh"]
+    const child = new FakeChild(0)
+    const promise = runUpdateVerified({
+      run: { profileDir, packages, spawnImpl: (() => child) as never },
+      check: {
+        anchorManifestPath: anchor,
+        resolve: specifier => specifier === SELF_PACKAGE + "/package.json" ? anchor : undefined,
+        fetchLatest: async () => "0.1.20",
+      },
+    })
+    for (const name of packages) {
+      writeManifest(join(profileDir, "node_modules", ...name.split("/")), { name, version: "0.1.20" })
+    }
+    child.run(0)
+    await expect(promise).resolves.toEqual({ ok: true, exitCode: 0, output: "" })
+  })
 
   it("reports stale when pnpm exits 0 but the installed versions did not move", async () => {
     // Registry carries 0.1.11 while the installed anchor stays 0.1.10 — the

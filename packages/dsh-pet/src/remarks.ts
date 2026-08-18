@@ -174,4 +174,10 @@ export class RemarkPicker {
     this.counters.set(kind, index + 1)
     return pool[index]!
   }
+
+  /** Select a line from a stable external counter without changing local picker state. */
+  pickAt(kind: RemarkKind, count: number): string {
+    const pool = this.pools[kind]
+    return pool[Math.max(0, Math.floor(count)) % pool.length]!
+  }
 }

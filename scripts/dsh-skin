@@ -4,15 +4,15 @@
 /**
  * dsh-skin — one-command skin switching for the DSH web GUI.
  *
- * Every skin in this repo is a standalone plugin package in the official
- * turtle-ui shape: `dsh.bundle` manifest + cordis.patch.yml + self-contained
- * `prepare` build, so the canonical install is
+ * Every skin in this repo is a standalone client-bundle package (official
+ * turtle-ui shape minus the `dsh.bundle` declaration — the skin manager wires
+ * it): it declares `dsh.client` and ships a self-contained built `lib/`, and
+ * its `use` row is rendered by `scripts/dsh-skin`, so activation needs no
+ * `dsh plugin add` (a plain dependency install only makes the package
+ * resolvable).
  *
- *     dsh plugin --profile <name> add /path/to/dsh-web-ui/packages/skins/<skin>
- *     dsh-skin install <skin>        # same thing, profile auto-detected
- *
- * `use` then maintains the mutually-exclusive skin section of
- * ~/.dsh/cordis.patch.yml (hot-reloaded by the config watcher, so switching
+ * `use` maintains the mutually-exclusive skin section of the active
+ * profile's cordis.patch.yml (hot-reloaded by the config watcher, so switching
  * takes effect in seconds without a restart) and the profile node_modules
  * symlink that makes the chosen package resolvable from the web profile
  * (pnpm's `link:` installs are symlinks too, so both paths coexist).
@@ -30,29 +30,40 @@ const { execFileSync } = require('node:child_process')
 
 /** Harness home: `$DSH_HOME` (set by the dsh launcher), else `~/.dsh`. */
 const DSH_HOME = process.env.DSH_HOME || path.join(os.homedir(), '.dsh')
-const PATCH = path.join(DSH_HOME, 'cordis.patch.yml')
-const PROFILE_MODULES = path.join(DSH_HOME, 'profiles', 'node_modules')
 /** The GUI profile this machine runs (dsh web); overridable via DSH_SKIN_PROFILE. */
 const DEFAULT_PROFILE = process.env.DSH_SKIN_PROFILE || 'web'
+const PATCH = path.join(DSH_HOME, 'profiles', DEFAULT_PROFILE, 'cordis.patch.yml')
+const LEGACY_PATCH = path.join(DSH_HOME, 'cordis.patch.yml')
+const PROFILE_MODULES = path.join(DSH_HOME, 'profiles', 'node_modules')
 /** The dsh-web-ui checkout. Derived from this script's own location so any
  * clone path works; overridable via DSH_SKIN_REPO. */
 const REPO = process.env.DSH_SKIN_REPO || path.resolve(__dirname, '..')
 
-/** Skin registry: name -> package, cordis row id, symlink resolve target (all repo dirs). */
-const SKINS = {
-  qq98: { pkg: '@linxin666/dsh-client-ui-skin-qq98', id: 'ui-skin-qq98', dir: `${REPO}/packages/skins/qq98` },
-  ths: { pkg: '@linxin666/dsh-client-ui-skin-ths', id: 'ui-skin-ths', dir: `${REPO}/packages/skins/ths` },
-  xp: { pkg: '@linxin666/dsh-client-ui-skin-xp', id: 'ui-skin-xp', dir: `${REPO}/packages/skins/xp` },
-  'blue-fantasy': { pkg: '@linxin666/dsh-client-ui-skin-blue-fantasy', id: 'ui-skin-blue-fantasy', dir: `${REPO}/packages/skins/blue-fantasy` },
-  'dragon-heir': { pkg: '@linxin666/dsh-client-ui-skin-dragon-heir', id: 'ui-skin-dragon-heir', dir: `${REPO}/packages/skins/dragon-heir` },
-  minecraft: { pkg: '@linxin666/dsh-client-ui-skin-minecraft', id: 'ui-skin-minecraft', dir: `${REPO}/packages/skins/minecraft` },
-  'whale-song': { pkg: '@linxin666/dsh-client-ui-skin-whale-song', id: 'ui-skin-whale-song', dir: `${REPO}/packages/skins/whale-song` },
-  trading: { pkg: '@linxin666/dsh-client-ui-skin-trading', id: 'ui-skin-trading', dir: `${REPO}/packages/skins/trading` },
-  miku: { pkg: '@linxin666/dsh-client-ui-skin-miku', id: 'ui-skin-miku', dir: `${REPO}/packages/skins/miku` },
-  harbor: { pkg: '@linxin666/dsh-client-ui-skin-harbor', id: 'ui-skin-harbor', dir: `${REPO}/packages/skins/harbor` },
+/**
+ * Skin registry: name -> package, cordis row id, symlink resolve target.
+ * Scanned from each packages/skins/<dir>/skin.json at load (id / package / wiring.id
+ * live there), so a scaffolded skin is switchable without editing this
+ * script. Deterministic: sorted by directory name.
+ */
+function loadSkins() {
+  const skinsRoot = path.join(REPO, 'packages', 'skins')
+  const out = {}
+  if (!fs.existsSync(skinsRoot)) return out
+  for (const entry of fs.readdirSync(skinsRoot).sort()) {
+    const manifestPath = path.join(skinsRoot, entry, 'skin.json')
+    if (!fs.existsSync(manifestPath)) continue
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+      if (typeof manifest.package === 'string' && typeof manifest.wiring?.id === 'string') {
+        out[manifest.id ?? entry] = { pkg: manifest.package, id: manifest.wiring.id, dir: path.join(skinsRoot, entry) }
+      }
+    } catch {
+      // A malformed skin.json skips that skin instead of breaking the switcher.
+    }
+  }
+  return out
 }
-/** Skins wired at the bundle layer already (no insert row needed here). Empty in the npm aggregate layout — no skin ships pre-wired; profile-installed skins are detected dynamically via bundleWiredFromProfile(). */
-const BUNDLE_WIRED = new Set()
+const SKINS = loadSkins()
 
 /** The profile manifest path (`$DSH_HOME/profiles/<profile>/package.json`). */
 function profileManifestPath() {
@@ -104,7 +115,7 @@ function cmdInstall(name) {
   }
   console.log(`dsh plugin --profile ${DEFAULT_PROFILE} add ${SKINS[name].dir}`)
   execFileSync('dsh', ['plugin', '--profile', DEFAULT_PROFILE, 'add', SKINS[name].dir], { stdio: 'inherit' })
-  console.log(`installed ${SKINS[name].pkg} into profile "${DEFAULT_PROFILE}" — the dshClient row comes from the bundle's cordis.patch.yml.`)
+  console.log(`installed ${SKINS[name].pkg} into profile "${DEFAULT_PROFILE}" — run dsh-skin use ${name} to write its insert row (the skin declares no dsh.bundle).`)
 }
 
 const MANAGED_START = '# --- dsh-skin managed (auto-generated; do not edit) ---'
@@ -112,9 +123,28 @@ const MANAGED_END = '# --- end dsh-skin managed ---'
 
 // --- patch file helpers -------------------------------------------------------
 
-function readPatch() {
-  if (!fs.existsSync(PATCH)) return ''
-  return fs.readFileSync(PATCH, 'utf8')
+function readPatch(file = PATCH) {
+  if (!fs.existsSync(file)) return ''
+  return fs.readFileSync(file, 'utf8')
+}
+
+function writePatch(file, next) {
+  const dir = path.dirname(file)
+  const base = path.basename(file)
+  fs.mkdirSync(dir, { recursive: true })
+  let previousMode
+  try { previousMode = fs.statSync(file).mode & 0o777 } catch { previousMode = undefined }
+  const tmpDir = fs.mkdtempSync(path.join(dir, `${base}.tmp-`))
+  const tmp = path.join(tmpDir, base)
+  try {
+    fs.writeFileSync(tmp, next, { flag: 'wx' })
+    fs.chmodSync(tmp, previousMode ?? 0o600)
+    fs.renameSync(tmp, file)
+  } catch (error) {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch { /* preserve write failure */ }
+    throw error
+  }
+  try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch { /* replacement already succeeded */ }
 }
 
 /** Drop legacy hand-written skin rows (insert rows with a name) and old touch comments. */
@@ -130,12 +160,82 @@ function stripManaged(patch) {
   const start = patch.indexOf(MANAGED_START)
   if (start === -1) return patch
   const end = patch.indexOf(MANAGED_END, start)
-  if (end === -1) throw new Error('managed skin section is unterminated; fix ~/.dsh/cordis.patch.yml')
+  if (end === -1) throw new Error('managed skin section is unterminated; fix the active profile cordis.patch.yml')
   return patch.slice(0, start) + patch.slice(end + MANAGED_END.length)
 }
 
+/**
+ * Drop bare top-level empty flow lists (`[]`) left by the stock profile
+ * template. The managed skin section below provides the actual patch array,
+ * and an empty flow list followed by block entries is not parseable YAML
+ * ("end of the stream or a document separator is expected"), which breaks the
+ * next dsh boot. Nested `list: []` mapping values are untouched (the line
+ * does not match a standalone `[]`). Runs before
+ * normalizePatchForManagedAppend so a template `[]` sitting above the
+ * user's own block rows is removed instead of failing that stricter check.
+ */
+function stripEmptyPatchList(patch) {
+  return patch.replace(/^[ \t]*\[\s*\][ \t]*\r?\n?/gm, '')
+}
+
+/**
+ * Prepare a user patch for appending the managed block sequence. DSH creates
+ * new profile overlays with a flow-style empty sequence (`[]`); appending
+ * block rows after that root would create a second YAML root and break boot.
+ */
+function normalizePatchForManagedAppend(patch) {
+  const lines = (patch.match(/[^\r\n]*(?:\r\n|\n|$)/g) ?? []).filter(line => line !== '')
+  const significant = []
+  let sawDocumentStart = false
+  for (let index = 0; index < lines.length; index += 1) {
+    const body = lines[index].replace(/\r?\n$/, '')
+    const text = body.trim()
+    if (text === '' || text.startsWith('#')) continue
+    if (/^---(?:\s+#.*)?$/.test(text)) {
+      if (sawDocumentStart || significant.length > 0) {
+        throw new Error('cordis.patch.yml must contain one YAML document before dsh-skin can append its managed section')
+      }
+      sawDocumentStart = true
+      continue
+    }
+    if (/^\.\.\.(?:\s+#.*)?$/.test(text)) {
+      throw new Error('cordis.patch.yml document-end markers are not supported before the dsh-skin managed section')
+    }
+    significant.push({ index, text, indent: body.length - body.trimStart().length })
+  }
+  if (significant.length === 0) return patch
+  const root = significant[0]
+  if (/^\[\]\s*(?:#.*)?$/.test(root.text)) {
+    if (significant.length !== 1) {
+      throw new Error('cordis.patch.yml must contain one top-level sequence before dsh-skin can append its managed section')
+    }
+    lines.splice(root.index, 1)
+    return lines.join('')
+  }
+  if (!root.text.startsWith('-')) {
+    throw new Error('cordis.patch.yml must use a top-level block sequence before dsh-skin can append its managed section')
+  }
+  for (const entry of significant.slice(1)) {
+    if (entry.indent < root.indent || (entry.indent === root.indent && !entry.text.startsWith('-'))) {
+      throw new Error('cordis.patch.yml must contain one top-level block sequence before dsh-skin can append its managed section')
+    }
+  }
+  return patch
+}
+
+function appendManagedPatch(patch, managed) {
+  const eol = patch.includes('\r\n') ? '\r\n' : '\n'
+  const base = patch.replace(/\s+$/, '')
+  const block = managed.replace(/\n/g, eol)
+  return `${base}${base === '' ? '' : eol + eol}${block}${eol}`
+}
+
+function yamlSingleQuote(value) {
+  return `'${value.replace(/'/g, "''")}'`
+}
+
 function renderManaged(active) {
-  const wired = new Set([...BUNDLE_WIRED, ...bundleWiredFromProfile()])
+  const wired = bundleWiredFromProfile()
   const lines = [MANAGED_START]
   for (const name of Object.keys(SKINS)) {
     if (name === active) continue
@@ -144,7 +244,7 @@ function renderManaged(active) {
   // `official` (active === null) = every skin disabled, no insert row — the
   // stock look. A wired active skin also needs no insert row.
   if (active !== null && !wired.has(active)) {
-    lines.push('- insert:', `    - id: ${SKINS[active].id}`, `      name: '${SKINS[active].pkg}'`)
+    lines.push('- insert:', `    - id: ${SKINS[active].id}`, `      name: ${yamlSingleQuote(SKINS[active].pkg)}`)
   }
   lines.push(MANAGED_END)
   return lines.join('\n')
@@ -161,7 +261,7 @@ function currentActive(patch) {
   for (const m of patch.matchAll(/^- id: (ui-skin-[a-z0-9-]+)\n  disabled: true/gm)) {
     disabled.add(m[1])
   }
-  const wired = new Set([...BUNDLE_WIRED, ...bundleWiredFromProfile()])
+  const wired = bundleWiredFromProfile()
   for (const [name, skin] of Object.entries(SKINS)) {
     if (wired.has(name) && !disabled.has(skin.id)) return name
   }
@@ -208,14 +308,18 @@ function cmdUse(name) {
     checkInstalled(name)
   }
 
-  const patch = stripLegacySkinRows(stripManaged(readPatch()))
-  const next = `${patch.replace(/\s+$/, '')}\n\n${renderManaged(official ? null : name)}\n`
+  // Move pre-profile-scope state out of the harness-wide patch first. An
+  // active insert there makes dsh-tui resolve a Web-only package (issue #290).
+  const legacyPatch = readPatch(LEGACY_PATCH)
+  const migratedLegacyPatch = stripLegacySkinRows(stripManaged(legacyPatch))
+  if (migratedLegacyPatch !== legacyPatch) writePatch(LEGACY_PATCH, migratedLegacyPatch)
+
+  const patch = normalizePatchForManagedAppend(stripEmptyPatchList(stripLegacySkinRows(stripManaged(readPatch()))))
+  const next = appendManagedPatch(patch, renderManaged(official ? null : name))
   // Atomic replace: write a sibling temp file then rename over the target, so
   // a crash mid-write can never leave a half-written boot patch, and the
   // config watcher only ever sees complete content.
-  const tmp = `${PATCH}.tmp-${process.pid}`
-  fs.writeFileSync(tmp, next)
-  fs.renameSync(tmp, PATCH)
+  writePatch(PATCH, next)
   console.log(`wrote ${PATCH}`)
   console.log(official
     ? 'restored the official stock look — the config watcher applies it within seconds; refresh the page to see it.'
@@ -240,7 +344,8 @@ function cmdList() {
 }
 
 function cmdCurrent() {
-  const active = currentActive(readPatch())
+  const profilePatch = readPatch()
+  const active = currentActive(profilePatch.includes(MANAGED_START) ? profilePatch : readPatch(LEGACY_PATCH))
   console.log(active ?? 'none')
 }
 
@@ -252,7 +357,10 @@ module.exports = {
   MANAGED_START,
   MANAGED_END,
   renderManaged,
+  normalizePatchForManagedAppend,
+  appendManagedPatch,
   stripManaged,
+  stripEmptyPatchList,
   stripLegacySkinRows,
   currentActive,
 }

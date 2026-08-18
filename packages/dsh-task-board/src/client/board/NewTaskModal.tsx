@@ -1,6 +1,6 @@
 /**
  * New-task modal: title + description + the prompt that execution will send.
- * Creates through the controller (which persists immediately).
+ * Creates through the Host and closes only after the Host confirms it.
  */
 import { useEffect, useState } from 'react'
 import type { BoardController } from '../../core/controller.ts'
@@ -22,6 +22,7 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
   const [scheduleCron, setScheduleCron] = useState('')
   const [scheduleError, setScheduleError] = useState<string | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
+  const [pending, setPending] = useState(false)
   const [options, setOptions] = useState(controller.getSnapshot().executionOptions)
 
   // The workspace list and preset roster arrive from the runtime after mount;
@@ -31,7 +32,7 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
     [controller],
   )
 
-  const submit = (): void => {
+  const submit = async (): Promise<void> => {
     if (scheduleEnabled) {
       const cron = scheduleCron.trim()
       if (cron === '' || !isValidCron(cron)) {
@@ -39,7 +40,8 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
         return
       }
     }
-    const task = controller.createTask({
+    setPending(true)
+    const task = await controller.createTaskConfirmed({
       title,
       description,
       prompt,
@@ -49,7 +51,8 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
       schedule: scheduleEnabled ? { enabled: true, cron: scheduleCron.trim() } : undefined,
     })
     if (task === undefined) {
-      setError(t('new.required'))
+      setPending(false)
+      setError(controller.getSnapshot().transportError ?? t('new.required'))
       return
     }
     onClose()
@@ -66,7 +69,7 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
         className={css.modal}
         role="dialog"
         aria-label={t('board.new')}
-        onSubmit={event => { event.preventDefault(); submit() }}
+        onSubmit={event => { event.preventDefault(); void submit() }}
       >
         <h2 className={css.modalTitle}>{t('board.new')}</h2>
 
@@ -205,7 +208,7 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
           <button type="button" className={css.ghostButton} onClick={onClose}>
             {t('new.cancel')}
           </button>
-          <button type="submit" className={css.primaryButton}>
+          <button type="submit" className={css.primaryButton} disabled={pending}>
             {t('new.submit')}
           </button>
         </footer>

@@ -208,6 +208,31 @@ describe('connection pool', () => {
     expect(result.success).toBe(true)
     expect(server.connectCount).toBe(before + 1)
   })
+
+  it('retries a mid-flight failure on a fresh connection within the attempt budget', async () => {
+    addHost('pool-midflight')
+    await engine.exec('pool-midflight', 'true')
+    const before = server.connectCount
+    const pending = engine.exec('pool-midflight', 'hang', 3_000)
+    await new Promise(resolve => setTimeout(resolve, 150))
+    server.killAllClients()
+    const result = await pending
+    // Attempt one died with the link; the retry re-ran on a fresh connection
+    // and surfaced the command timeout there instead of a connection error.
+    expect(result.timedOut).toBe(true)
+    expect(server.connectCount).toBe(before + 1)
+  }, 10_000)
+
+  it('dropAlias closes the pooled connection so the next exec reconnects', async () => {
+    addHost('pool-drop')
+    await engine.exec('pool-drop', 'true')
+    const before = server.connectCount
+    engine.dropAlias('pool-drop')
+    expect(engine.pool.has('pool-drop')).toBe(false)
+    const result = await engine.exec('pool-drop', 'echo hello')
+    expect(result.success).toBe(true)
+    expect(server.connectCount).toBe(before + 1)
+  })
 })
 
 describe('key auth', () => {
@@ -284,6 +309,31 @@ describe('tunnel', () => {
     expect(reply).toBe('ping-through-tunnel')
     expect(engine.stopTunnel(tunnel.id)).toBe(true)
     expect(engine.listTunnels()).toHaveLength(0)
+  })
+
+  it('stopping one tunnel keeps sibling tunnels on the same alias forwarding', async () => {
+    addHost('tunnel-shared')
+    const first = await engine.startTunnel('tunnel-shared', { remotePort: server.echoPort })
+    const second = await engine.startTunnel('tunnel-shared', { remotePort: server.echoPort })
+    expect(engine.listTunnels()).toHaveLength(2)
+
+    expect(engine.stopTunnel(first.id)).toBe(true)
+    const reply = await new Promise<string>((resolve, reject) => {
+      const socket = connect(second.localPort, '127.0.0.1')
+      const timer = setTimeout(() => { socket.destroy(); reject(new Error('sibling tunnel echo timed out')) }, 3_000)
+      socket.on('connect', () => socket.write('still-alive'))
+      socket.on('data', (chunk: Buffer) => {
+        clearTimeout(timer)
+        socket.destroy()
+        resolve(chunk.toString('utf8'))
+      })
+      socket.on('error', (error) => { clearTimeout(timer); reject(error) })
+    })
+    expect(reply).toBe('still-alive')
+
+    // The last tunnel releases the shared connection.
+    expect(engine.stopTunnel(second.id)).toBe(true)
+    expect(engine.pool.has('tunnel-shared')).toBe(false)
   })
 })
 

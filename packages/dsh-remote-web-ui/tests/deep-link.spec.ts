@@ -70,7 +70,7 @@ describe('runPairBootFlow', () => {
     vi.stubGlobal('fetch', fetch)
     const ctx = { get: () => undefined }
     runPairBootFlow(ctx as never, '?pair=tok-1', page)
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/m'))
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/m/'))
     expect(reload).not.toHaveBeenCalled()
     expect(replaceState).toHaveBeenCalledWith('/')
   })
@@ -84,7 +84,7 @@ describe('runPairBootFlow', () => {
 
     runPairBootFlow(ctx as never, '?pair=tok-1&workspace=ws-7', page)
 
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/m?workspace=ws-7'))
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/m/?workspace=ws-7'))
     expect(replaceState).toHaveBeenCalledWith('/?workspace=ws-7')
   })
 

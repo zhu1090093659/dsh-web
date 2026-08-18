@@ -22,6 +22,11 @@ describe('safeUrl', () => {
     expect(safeUrl('')).toBeNull()
     expect(safeUrl('   ')).toBeNull()
   })
+
+  it('rejects protocol-relative targets that escape the origin', () => {
+    expect(safeUrl('//attacker.example/x')).toBeNull()
+    expect(safeUrl('  //attacker.example/track.png')).toBeNull()
+  })
 })
 
 describe('renderInline', () => {

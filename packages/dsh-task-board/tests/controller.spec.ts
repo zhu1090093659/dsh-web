@@ -289,6 +289,20 @@ describe('run loop', () => {
     expect(exec.runCalls).toHaveLength(2)
   })
 
+  it('rejects manual runs and reruns of archived tasks', async () => {
+    const stub = new StubExec()
+    const { controller, stub: exec } = makeController(stub)
+    const task = controller.createTask({ title: '归档任务', description: '', prompt: '干活' })!
+    controller.moveTask(task.id, 'done')
+    expect(controller.archiveTask(task.id)).toBe(true)
+
+    expect(await controller.runTask(task.id)).toBe(false)
+    await controller.rerunTask(task.id)
+
+    expect(exec.runCalls).toHaveLength(0)
+    expect(controller.getSnapshot().tasks[0]).toMatchObject({ status: 'done', archivedAt: NOW })
+  })
+
   it('reconciles running tasks left over from a previous load', async () => {
     const stub = new StubExec()
     stub.reconcileResult = { kind: 'settled', taskId: 'task-a', executionId: 'e1', outcome: 'cancelled', error: 'gone' }
@@ -385,6 +399,16 @@ describe('scheduling', () => {
     expect(persisted.schedule?.enabled).toBe(true)
     expect(persisted.schedule?.cron).toBe('* * * * *')
     expect(persisted.schedule?.nextRunAt).toBeDefined()
+  })
+
+  it('does not let archived tasks re-enable their schedules', () => {
+    const { controller, store } = makeController()
+    const task = controller.createTask({ title: 'x', description: '', prompt: '' })!
+    expect(controller.setSchedule(task.id, { enabled: true, cron: '* * * * *' })).toBe(true)
+    controller.moveTask(task.id, 'done')
+    expect(controller.archiveTask(task.id)).toBe(true)
+    expect(store.load()[0].schedule).toMatchObject({ enabled: false, nextRunAt: undefined })
+    expect(controller.setSchedule(task.id, { enabled: true, cron: '* * * * *' })).toBe(false)
   })
 
   it('rejects blank or invalid cron expressions without touching state', () => {

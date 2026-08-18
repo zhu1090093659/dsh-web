@@ -205,15 +205,17 @@ export interface BridgeHandlers {
  * @returns the handlers.
  */
 export function makeBridgeHandlers(deps: BridgeDeps): BridgeHandlers {
-  const allowlisted = (): string[] => {
-    const descriptors = deps.settings.describe({ redactSecrets: true })
+  // The allowlist derives from the same describe scan the handlers already
+  // need: pass the descriptors in instead of scanning the seam twice per
+  // request.
+  const allowlisted = (descriptors: SettingsDescriptor[]): string[] => {
     const registered = descriptors.map(descriptor => String(descriptor.ns))
     return composeAllowlist(extractWebSettingsNamespaces(deps.readSettingsYaml()), registered)
   }
   return {
     async describe() {
       const descriptors = deps.settings.describe({ redactSecrets: true })
-      const allowlist = allowlisted()
+      const allowlist = allowlisted(descriptors)
       const namespaces = allowlist
         .map(ns => descriptors.find(descriptor => String(descriptor.ns) === ns))
         .filter((descriptor): descriptor is SettingsDescriptor => descriptor !== undefined)
@@ -229,7 +231,7 @@ export function makeBridgeHandlers(deps: BridgeDeps): BridgeHandlers {
         return { ok: false, code: 'settings-rejected', message: 'malformed bridge settings request' }
       }
       const { ns } = body
-      const allowlist = allowlisted()
+      const allowlist = allowlisted(deps.settings.describe({ redactSecrets: true }))
       if (!allowlist.includes(ns)) {
         return { ok: false, code: 'settings-not-exposed', message: 'settings namespace "' + ns + '" is not exposed to configuration clients' }
       }

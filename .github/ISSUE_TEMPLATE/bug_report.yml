@@ -28,7 +28,6 @@ body:
         - 右侧面板 (dsh-aionui-panel)
         - 远程 Web UI (dsh-remote-web-ui)
         - SSH 远程运维 (dsh-ssh)
-        - 实时令牌统计 (dsh-live-stats)
         - 宠物 (dsh-pet)
         - 皮肤 / 皮肤中心 (dsh-skins)
         - 聚合包 / 安装 (dsh-web-ui-all / dsh-web-ui-settings)

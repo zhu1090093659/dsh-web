@@ -53,9 +53,11 @@ export interface PetStateSnapshot {
 export interface PetStateConfig {
   /** Celebration window after `done` before settling to idle, ms (default 2400). */
   celebrateMs: number
+  /** Failure display window before settling to idle, ms (default 2400). */
+  failureMs: number
 }
 
-export const defaultPetStateConfig: PetStateConfig = { celebrateMs: 2400 }
+export const defaultPetStateConfig: PetStateConfig = { celebrateMs: 2400, failureMs: 2400 }
 
 /**
  * Map one activity phase onto the animation contract.
@@ -63,7 +65,7 @@ export const defaultPetStateConfig: PetStateConfig = { celebrateMs: 2400 }
  * - review → `review` while answer text is streaming.
  * - waiting → `waiting` (expectant pose, needs user input).
  * - done → `jumping` (celebration), then back to `idle` after the window.
- * - failed → `failed` until another activity event arrives.
+ * - failed → `failed` briefly, then back to `idle`.
  * - idle → `idle` (calm breathing loop).
  */
 export function animationForPhase(phase: ActivityPhase): PetAnimation {
@@ -96,7 +98,7 @@ export function rowOf(animation: PetAnimation): number {
 
 /**
  * PetStateMachine — one instance per host process. Holds only the latest
- * input snapshot and the celebration timing; no storage, no side effects.
+ * input snapshot and terminal-state timing; no storage, no side effects.
  */
 export class PetStateMachine {
   private phase: ActivityPhase = 'idle'
@@ -104,18 +106,23 @@ export class PetStateMachine {
   private phrase: string | undefined
   private sessionActive = false
   private doneAt: number | undefined
+  private failedAt: number | undefined
+  private readonly config: PetStateConfig
 
   constructor(
-    private readonly config: PetStateConfig = defaultPetStateConfig,
+    config: Partial<PetStateConfig> = defaultPetStateConfig,
     private readonly now: () => number = Date.now,
-  ) {}
+  ) {
+    this.config = { ...defaultPetStateConfig, ...config }
+  }
 
   /** Consume one projected activity update. */
   onActivityStatus(input: PetStateInput): void {
     this.phase = input.phase
     this.line = input.line
     this.phrase = input.phrase
-    if (input.phase === 'done') this.doneAt = this.now()
+    this.doneAt = input.phase === 'done' ? this.now() : undefined
+    this.failedAt = input.phase === 'failed' ? this.now() : undefined
   }
 
   /** A session became the active one (or a fresh session started). */
@@ -130,25 +137,24 @@ export class PetStateMachine {
     this.line = undefined
     this.phrase = undefined
     this.doneAt = undefined
+    this.failedAt = undefined
   }
 
   /** Render the current animation decision. */
   render(): PetStateSnapshot {
     const nowMs = this.now()
     let animation = animationForPhase(this.phase)
-    // Celebration window: after `done`, jump for celebrateMs then settle idle.
-    if (this.phase === 'done' && this.doneAt !== undefined) {
-      if (nowMs - this.doneAt < this.config.celebrateMs) {
-        animation = 'jumping'
-      } else {
-        animation = 'idle'
-      }
-    }
-    const bubble = this.phase === 'done'
+    const doneSettled = this.phase === 'done'
       && this.doneAt !== undefined
       && nowMs - this.doneAt >= this.config.celebrateMs
-      ? undefined
-      : this.phrase ?? this.line
+    const failedSettled = this.phase === 'failed'
+      && this.failedAt !== undefined
+      && nowMs - this.failedAt >= this.config.failureMs
+    if (doneSettled || failedSettled) animation = 'idle'
+    // Settled sessions never bubble: idle (e.g. an aborted/stopped turn),
+    // completed celebration expiry, and failed display expiry all fall silent.
+    const settled = this.phase === 'idle' || doneSettled || failedSettled
+    const bubble = settled ? undefined : this.phrase ?? this.line
     return {
       animation,
       ...(bubble === undefined ? {} : { bubble }),

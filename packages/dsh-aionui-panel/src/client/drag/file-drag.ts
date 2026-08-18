@@ -25,6 +25,24 @@ export function hasFileDrag(types: readonly string[] | undefined): boolean {
 }
 
 /**
+ * Whether a drop payload is a plausible workspace-relative path. The custom
+ * MIME only proves the drag carries *some* string — a foreign page can set it
+ * too, so the payload itself is validated before it reaches the draft:
+ * relative POSIX shape only; no absolute paths, no '..' segments, no
+ * backslashes, no control characters, and a sane length.
+ * @param path - the raw payload from dataTransfer.
+ * @returns true when the payload is safe to splice into the draft.
+ */
+export function isValidFileDragPayload(path: string): boolean {
+  if (path === '' || path.length > 512) return false
+  if (path.startsWith('/') || path.includes('\\')) return false
+  // eslint-disable-next-line no-control-regex
+  if (/[\x00-\x1f\x7f]/.test(path)) return false
+  if (path.split('/').some(segment => segment === '..')) return false
+  return true
+}
+
+/**
  * Splice a workspace-relative path into a composer draft at the caret.
  *
  * Separator rule: one space is added before the path unless the caret sits

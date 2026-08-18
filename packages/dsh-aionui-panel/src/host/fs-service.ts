@@ -11,7 +11,7 @@
 
 import { open, readdir, readFile, realpath, rename as renameFile, stat, writeFile, rm, mkdir } from 'node:fs/promises'
 import { watch as watchPath, type Dirent, type FSWatcher } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { join, dirname, relative } from 'node:path'
 import type { DirListing, FileRead, FsEntry, PanelError, SearchHit, SearchView } from '../core/types.ts'
 import { isPathInside, type GateVerdict, type WorkspaceGate } from './gate.ts'
 
@@ -258,18 +258,25 @@ export class FsService {
     if (!gated.ok) return gated.error
     const resolved = await resolveInsideRoot(gated.canonical, rel)
     if (!resolved.ok) return resolved.error
-    let data: Buffer
+    // Stat before reading: directories, oversized images, and the text cap
+    // are all decidable from metadata, so a huge file never enters memory
+    // just to be truncated afterwards.
     let info: Awaited<ReturnType<typeof stat>>
     try {
-      data = await readFile(resolved.abs)
       info = await stat(resolved.abs)
     } catch {
       return { code: 'not-found', message: `cannot read ${rel}` }
     }
     if (info.isDirectory()) return { code: 'is-directory', message: `${rel} is a directory` }
     if (asImage) {
-      if (data.length > IMAGE_CAP_BYTES) {
+      if (info.size > IMAGE_CAP_BYTES) {
         return { code: 'read-failed', message: 'image exceeds preview cap' }
+      }
+      let data: Buffer
+      try {
+        data = await readFile(resolved.abs)
+      } catch {
+        return { code: 'not-found', message: `cannot read ${rel}` }
       }
       const mime = imageMime(rel, data)
       return {
@@ -280,12 +287,32 @@ export class FsService {
         image: probeImageSize(data),
       }
     }
+    // Bounded text read: 4 bytes per UTF-8 code point is the worst case, so
+    // this budget always covers the character cap without decoding the tail.
+    const budget = TEXT_CAP_CHARS * 4 + 3
+    let data: Buffer
+    try {
+      if (info.size <= budget) {
+        data = await readFile(resolved.abs)
+      } else {
+        const handle = await open(resolved.abs, 'r')
+        try {
+          const buffer = Buffer.alloc(budget)
+          const { bytesRead } = await handle.read(buffer, 0, budget, 0)
+          data = buffer.subarray(0, bytesRead)
+        } finally {
+          await handle.close()
+        }
+      }
+    } catch {
+      return { code: 'not-found', message: `cannot read ${rel}` }
+    }
     const text = data.toString('utf8')
-    const truncated = text.length > TEXT_CAP_CHARS
+    const truncated = info.size > data.length || text.length > TEXT_CAP_CHARS
     return {
       content: truncated ? text.slice(0, TEXT_CAP_CHARS) : text,
       truncated,
-      size: data.length,
+      size: info.size,
       mtime: info.mtimeMs,
     }
   }
@@ -363,6 +390,9 @@ export class FsService {
     }
     const resolved = await resolveInsideRoot(gated.canonical, rel)
     if (!resolved.ok) return resolved.error
+    // Spellings like '.', './' or 'sub/..' land on the root itself (trailing
+    // separators included), so compare by relative(), not string equality.
+    if (relative(gated.canonical, resolved.abs) === '') return { code: 'path-outside-root', message: 'refusing to rename the root' }
     const target = join(dirname(resolved.abs), name)
     if (!isPathInside(gated.canonical, target)) {
       return { code: 'path-outside-root', message: `path escapes root: ${rel}` }
@@ -484,6 +514,9 @@ export class FsService {
     if (isGitPath(rel)) return { code: 'path-outside-root', message: 'refusing to touch .git' }
     const resolved = await resolveInsideRoot(gated.canonical, rel)
     if (!resolved.ok) return resolved.error
+    // Spellings like '.', './' or 'sub/..' land on the root itself (trailing
+    // separators included), so compare by relative(), not string equality.
+    if (relative(gated.canonical, resolved.abs) === '') return { code: 'path-outside-root', message: 'refusing to delete the root' }
     try {
       await rm(resolved.abs, { recursive: true, force: true })
       return { ok: true }

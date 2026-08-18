@@ -17,7 +17,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { FILE_DRAG_MIME, hasFileDrag } from './file-drag.ts'
+import { FILE_DRAG_MIME, hasFileDrag, isValidFileDragPayload } from './file-drag.ts'
 import { t } from '../locales.ts'
 import dragCss from '../styles/drag.module.css'
 
@@ -62,7 +62,7 @@ export function DragFileInlay(props: DragFileInlayProps): ReactElement {
       event.preventDefault()
       const path = event.dataTransfer?.getData(FILE_DRAG_MIME) ?? ''
       reset()
-      if (path !== '') props.insertPath(path)
+      if (isValidFileDragPayload(path)) props.insertPath(path)
     }
     const onDragEnd = (): void => reset()
     document.addEventListener('dragover', onDragOver)

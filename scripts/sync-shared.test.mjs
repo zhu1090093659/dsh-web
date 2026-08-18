@@ -23,11 +23,14 @@ test('copies cover the settings trio for six consumers plus host helpers', () =>
   // Normalize separators: node:path join yields backslashes on Windows, and
   // the copy-count buckets below match on forward slashes.
   const entries = copyEntries().map(entry => ({ ...entry, target: entry.target.replaceAll('\\', '/') }))
-  assert.equal(entries.length, 28)
+  assert.equal(entries.length, 45)
   const clientTrio = entries.filter(entry => entry.target.includes('/src/client/'))
-  assert.equal(clientTrio.length, 18)
-  const hostCopies = entries.filter(entry => entry.target.includes('/src/host/') || entry.target.includes('/src/dsh-home.ts'))
-  assert.equal(hostCopies.length, 8)
+  assert.equal(clientTrio.length, 20)
+  const hostCopies = entries.filter(entry => entry.target.includes('/src/host/')
+    || entry.target.includes('/src/dsh-home.ts')
+    || entry.target.includes('/src/mount-once.ts')
+    || entry.target.includes('/src/loopback.ts'))
+  assert.equal(hostCopies.length, 25)
 })
 
 test('checkSync detects drift and applySync repairs it', async () => {
@@ -39,12 +42,14 @@ test('checkSync detects drift and applySync repairs it', async () => {
     await writeFile(join(sourceDir, 'settings-form.ts'), 'export const good = 1' + String.fromCharCode(10))
     await writeFile(join(sourceDir, 'PluginSettingsCard.tsx'), 'export const card = 1' + String.fromCharCode(10))
     await writeFile(join(sourceDir, 'settings-card.module.css'), '.card { color: red }' + String.fromCharCode(10))
+    await writeFile(join(root, 'shared', 'client', 'sse-leader.ts'), 'export const leader = 1' + String.fromCharCode(10))
     const hostDir = join(root, 'shared', 'host')
     await mkdir(hostDir, { recursive: true })
     await writeFile(join(hostDir, 'poll-guard.ts'), 'export const guard = 1' + String.fromCharCode(10))
     await writeFile(join(hostDir, 'dsh-home.ts'), 'export const home = 1' + String.fromCharCode(10))
     await writeFile(join(hostDir, 'loopback.ts'), 'export const loop = 1' + String.fromCharCode(10))
     await writeFile(join(hostDir, 'git-runner.ts'), 'export const runner = 1' + String.fromCharCode(10))
+    await writeFile(join(hostDir, 'mount-once.ts'), 'export const once = 1' + String.fromCharCode(10))
     const targetDir = join(root, 'packages', 'dsh-pet', 'src', 'client')
     await mkdir(targetDir, { recursive: true })
     await writeFile(join(targetDir, 'settings-form.ts'), renderCopy('export const bad = 2' + String.fromCharCode(10), 'settings-form.ts', 'shared/client/settings/settings-form.ts'))

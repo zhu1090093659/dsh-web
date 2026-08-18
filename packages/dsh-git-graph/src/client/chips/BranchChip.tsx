@@ -1,15 +1,10 @@
 /**
- * The git branch selector chip, mounted above the input card. Preferred
- * seat is the selector row's context hole
- * (`conversation.input.selector.context`, session-maybe) right beside the
- * official workspace selector; on shells that dropped the hole (rc.6 and the
- * current shipped shell) the chip falls back to `conversation.input.dock`
- * (session-scoped). On the dock's hero phase the chip joins the official
- * hero row after the agent-preset seat (right of the workspace and preset
- * chips), styled from the official `dsh-client-ui-theme` tokens; on the
- * active phase it measures the input card's left edge and aligns itself
- * flush with it. The chip hides itself only when its data source is absent
- * (no session cwd, or not a git repository).
+ * The git branch selector chip for blank sessions. It mounts in the selector
+ * context hole (`conversation.input.selector.context`) beside the official
+ * workspace selector. On shells that dropped the hole, it uses
+ * `conversation.input.dock` only for the blank-session hero phase and lifts
+ * itself into the official hero chip row. It is intentionally absent while a
+ * session is running.
  * @module dsh-git-graph/client/chips/BranchChip
  */
 
@@ -24,7 +19,7 @@ import { CreateBranchDialog } from './CreateBranchDialog.tsx'
 import { GraphDialog } from '../graph/GraphDialog.tsx'
 import css from './context.module.css'
 
-/** Full props of the branch chip: either seat's runtime share (the session-maybe context hole or the session-scoped dock fallback) + the git-graph inject face + the locale seat. */
+/** Full props of the branch chip: either seat's runtime share (the session-maybe context hole or the dock fallback's blank-session hero) + the git-graph inject face + the locale seat. */
 export type BranchChipProps =
   (PropsRuntime<'conversation.input.selector.context'> | PropsRuntime<'conversation.input.dock'>)
   & GitGraphInjected
@@ -121,7 +116,7 @@ function frameScheduler(update: () => void): { schedule: () => void, cancel: () 
 }
 
 /**
- * The git branch selector chip.
+ * The git branch selector chip for blank sessions.
  * @param props - the composed entry props of whichever seat it mounted in.
  */
 export function BranchChip(props: BranchChipProps) {
@@ -134,18 +129,13 @@ export function BranchChip(props: BranchChipProps) {
     const sessions = state as { byId?: Record<string, { blank?: boolean }> }
     return sessions.byId?.[sessionId]?.blank === true
   })
-  // Only the dock seat carries the conversation snapshot + input owner share;
-  // its row spans the whole composer stack, so the chip indents by the
-  // shell's composer side clearance to start flush with the input card below
-  // it. In the hero phase it leaves that row and joins the official hero
-  // chip row instead (see the hero placement effect below).
+  // The dock seat carries the composer snapshot. It exposes the selector
+  // only in the blank hero phase; the session-maybe context seat uses the
+  // session baseline's blank flag instead.
   const dockSeat = 'session' in props && 'input' in props
   const sessionSnapshot = dockSeat ? props.session : undefined
-  // The same predicate the official shell uses for its hero phase: a blank
-  // conversation with an open session. A still-loading blank session already
-  // lists as blank in the session store, so it may enter the hero row before
-  // the composer snapshot settles to `open`.
   const heroSeat = sessionSnapshot?.composerPhase === 'blank' && (sessionSnapshot.openState === 'open' || blankSession === true)
+  const showBranchSelector = dockSeat ? heroSeat : blankSession
   const stockLightTheme = useStockLightTheme()
 
   /** Repository state: undefined = loading, null = not a repository, else the snapshot. */
@@ -155,46 +145,9 @@ export function BranchChip(props: BranchChipProps) {
   const [branchOpen, setBranchOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
-  /** Measured left offset between the dock row and the input card; null until measured. */
-  const [dockInset, setDockInset] = useState<number | null>(null)
   /** Measured hero-row placement (relative to the composer stack); null until measured. */
   const [heroPlacement, setHeroPlacement] = useState<{ left: number, top: number } | null>(null)
   const anchorRef = useRef<HTMLDivElement | null>(null)
-  /** Latest `[data-composer-card]` query result for the dock measure pass. */
-  const cardRef = useRef<HTMLElement | null>(null)
-
-  // Active-phase dock placement: the dock row spans different containers per
-  // shell phase (the centered hero composer stack, or the full-width
-  // active-session column), so the chip measures the input card's left edge
-  // and matches it instead of trusting a fixed indent. The CSS class keeps
-  // the side clearance as a fallback before the first measurement.
-  useLayoutEffect(() => {
-    if (!dockSeat || heroSeat) return
-    const anchor = anchorRef.current
-    if (anchor === null) return
-    const measure = (): void => {
-      // One query per update pass; the result is cached for the observer
-      // wiring below and reused across the burst of triggers in a frame.
-      const card = document.querySelector<HTMLElement>('[data-composer-card]')
-      cardRef.current = card
-      if (card === null) return
-      observer?.observe(card)
-      const inset = Math.max(0, card.getBoundingClientRect().left - anchor.getBoundingClientRect().left)
-      setDockInset(previous => previous === inset ? previous : inset)
-    }
-    const scheduler = frameScheduler(measure)
-    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(scheduler.schedule)
-    observer?.observe(anchor)
-    scheduler.schedule()
-    const card = cardRef.current
-    if (card !== null) observer?.observe(card)
-    window.addEventListener('resize', scheduler.schedule)
-    return () => {
-      scheduler.cancel()
-      observer?.disconnect()
-      window.removeEventListener('resize', scheduler.schedule)
-    }
-  }, [dockSeat, heroSeat, repo !== undefined && repo !== null])
 
   // Hero-phase placement: the rc.6 shell renders the dock as its own row
   // between the official hero chip row and the composer card. The chip is
@@ -244,14 +197,16 @@ export function BranchChip(props: BranchChipProps) {
     return () => { live = false }
   }, [props.repoStatus, sessionId])
 
-  // Initial load + host-pushed external changes + focus refresh. A session
-  // switch changes props.sessionId and re-fetches through the session-keyed
-  // verbs. Focus refetches are throttled (a focus burst would otherwise
-  // spawn a full git status round-trip per event; the host poll and SSE
-  // pushes already keep the chip fresh within 30s).
+  // Blank-session data stays fresh through the initial load, host-pushed
+  // changes, and a throttled focus refresh. Active sessions never subscribe
+  // or start a Git status round trip.
   const lastFocusRefetch = useRef(0)
-  useEffect(() => refetch(), [refetch])
   useEffect(() => {
+    if (!showBranchSelector) return undefined
+    return refetch()
+  }, [showBranchSelector, refetch])
+  useEffect(() => {
+    if (!showBranchSelector) return undefined
     const unsubscribe = props.subscribeChanges(sessionId, () => { refetch() })
     const onFocus = (): void => {
       const now = Date.now()
@@ -264,7 +219,7 @@ export function BranchChip(props: BranchChipProps) {
       unsubscribe()
       window.removeEventListener('focus', onFocus)
     }
-  }, [props.subscribeChanges, sessionId, refetch])
+  }, [showBranchSelector, props.subscribeChanges, sessionId, refetch])
 
   const closeCreate = (): void => {
     setCreateOpen(false)
@@ -275,16 +230,16 @@ export function BranchChip(props: BranchChipProps) {
   // above the data-gated returns so the hook order is stable while `repo`
   // settles from undefined (loading) to a snapshot.
   useEffect(() => {
-    if (!branchOpen) return
+    if (!showBranchSelector || !branchOpen) return undefined
     let live = true
     setBranchesView(null)
     props.branches(sessionId).then((view) => { if (live) setBranchesView(view) })
     return () => { live = false }
-  }, [branchOpen, props.branches, sessionId])
+  }, [showBranchSelector, branchOpen, props.branches, sessionId])
 
-  // Loading or not a repository: no chip (no dead control). A workspace that
-  // becomes a repository appears on the next refresh.
-  if (repo === undefined || repo === null) return null
+  // Active sessions intentionally expose no branch-selection control. Loading
+  // and non-repository workspaces likewise render no dead control.
+  if (!showBranchSelector || repo === undefined || repo === null) return null
 
   const openBranchPopover = (): void => {
     setBranchOpen(open => !open)
@@ -295,14 +250,10 @@ export function BranchChip(props: BranchChipProps) {
       ref={anchorRef}
       data-gitgraph-chip-anchor
       data-gitgraph-stock-light={stockLightTheme || undefined}
-      className={cx(css.anchor, dockSeat && css.anchorDock, heroSeat && css.anchorHero)}
-      style={
-        heroSeat && heroPlacement !== null
-          ? { left: `${heroPlacement.left}px`, top: `${heroPlacement.top}px`, paddingLeft: 0 }
-          : dockSeat && dockInset !== null
-            ? { paddingLeft: `${dockInset}px` }
-            : undefined
-      }
+      className={cx(css.anchor, heroSeat && css.anchorHero)}
+      style={heroSeat && heroPlacement !== null
+        ? { left: `${heroPlacement.left}px`, top: `${heroPlacement.top}px`, paddingLeft: 0 }
+        : undefined}
     >
       <div className={css.chipWrap}>
         <Chip

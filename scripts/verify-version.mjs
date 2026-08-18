@@ -10,9 +10,10 @@
  *
  * Usage: node scripts/verify-version.mjs <x.y.z|vX.Y.Z>
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { walkFamilyPackages } from './lib/family-packages.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '..')
@@ -27,16 +28,7 @@ const version = match[1]
 
 /** Every package.json under packages/ (non-recursive, both roots). */
 function packageFiles() {
-  const out = []
-  for (const root of ['packages', join('packages', 'skins')]) {
-    const abs = join(REPO_ROOT, root)
-    if (!existsSync(abs)) continue
-    for (const entry of readdirSync(abs)) {
-      const pkgPath = join(abs, entry, 'package.json')
-      if (existsSync(pkgPath)) out.push(pkgPath)
-    }
-  }
-  return out.sort()
+  return walkFamilyPackages(REPO_ROOT).map(({ pkgPath }) => pkgPath)
 }
 
 const files = packageFiles()

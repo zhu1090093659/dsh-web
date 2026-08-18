@@ -1,8 +1,8 @@
 /**
  * Remote update support for the dsh-web-ui family — host half. Detects the
- * installed aggregate package (@linxin666/dsh-web-ui-all) and its family
- * children, probes the npm registry for newer releases, and runs the actual
- * update as `pnpm update --latest` inside the owning dsh profile directory.
+ * installed aggregate package (@linxin666/dsh-web-ui-all), or the directly
+ * installed family packages when the aggregate is absent, probes npm for newer
+ * releases, and runs `pnpm update --latest` inside the owning dsh profile.
  *
  * Pure logic with injected seams (manifest reading, registry fetches, process
  * spawning) so the whole surface is unit-testable without touching disk,
@@ -235,10 +235,13 @@ export function resolveUpdateTarget(
   const profileManifest = readManifest(join(profile.dir, 'package.json'))
   const spec = (profileManifest?.dependencies as Record<string, DependencySpec> | undefined)?.[anchor]
   if (isLinkedSpec(spec)) return { error: 'link' }
+  // Standalone installs carry no aggregate: the anchor's own dependency
+  // list misses every sibling @linxin666/* plugin installed directly into
+  // the profile, so union the profile's direct family deps (#377).
   return {
     profileName: profile.name,
     profileDir: profile.dir,
-    packages: [anchor, ...familyChildren(manifest)],
+    packages: familyUpdatePackages(anchor, manifest, profileManifest),
   }
 }
 
@@ -251,6 +254,21 @@ export function familyChildren(anchorManifest: Record<string, unknown>): string[
     if (name.startsWith(FAMILY_SCOPE) && typeof spec === 'string') names.push(name)
   }
   return names
+}
+
+/** Registry-managed family packages covered by one update operation. */
+function familyUpdatePackages(
+  anchor: string,
+  anchorManifest: Record<string, unknown>,
+  profileManifest: Record<string, unknown> | undefined,
+): string[] {
+  const names = new Set([anchor, ...familyChildren(anchorManifest)])
+  const dependencies = profileManifest?.dependencies
+  if (typeof dependencies !== 'object' || dependencies === null) return [...names]
+  for (const [name, spec] of Object.entries(dependencies)) {
+    if (name.startsWith(FAMILY_SCOPE) && typeof spec === 'string' && !isLinkedSpec(spec)) names.add(name)
+  }
+  return [...names]
 }
 
 /**
@@ -292,14 +310,21 @@ export async function fetchLatestVersion(
 const VERSION_UNKNOWN = '0.0.0'
 
 /** The resolved current version of one family package (probe failure tolerated). */
-function readInstalledVersion(resolve: (specifier: string) => string | undefined, name: string): string {
+function readInstalledVersion(
+  resolve: (specifier: string) => string | undefined,
+  name: string,
+  profileDir?: string,
+): string {
   try {
     const path = resolve(name + '/package.json')
     const version = path === undefined ? undefined : readManifest(path)?.version
-    return typeof version === 'string' ? version : VERSION_UNKNOWN
-  } catch {
-    return VERSION_UNKNOWN
-  }
+    if (typeof version === 'string') return version
+  } catch { /* fall through to the profile's direct dependency path */ }
+  // Names originate in the profile dependency map, but still validate the
+  // npm package shape before using one as path segments.
+  if (profileDir === undefined || !/^@linxin666\/[a-z0-9][a-z0-9._-]*$/.test(name)) return VERSION_UNKNOWN
+  const version = readManifest(join(profileDir, 'node_modules', ...name.split('/'), 'package.json'))?.version
+  return typeof version === 'string' ? version : VERSION_UNKNOWN
 }
 
 /**
@@ -331,20 +356,26 @@ export async function checkUpdates(deps: UpdateCheckDeps): Promise<UpdateStatus>
   if (profile === undefined) {
     return { mode: 'link', packages: [], outdated: false }
   }
-  const names = [anchor, ...familyChildren(manifest)]
+  // Union the profile's direct family deps so standalone installs (no
+  // aggregate) still check every installed @linxin666/* plugin (#377);
+  // familyUpdatePackages skips link:/file: development dependencies.
+  const names = familyUpdatePackages(anchor, manifest, profileManifest)
+  // The registry probes are independent: run them together instead of
+  // serializing up to N x 10s of registry latency behind one status call.
+  const latestList = await Promise.all(names.map(name => deps.fetchLatest(name)))
   const packages: UpdatePackageStatus[] = []
   let probeFailures = 0
-  for (const name of names) {
-    const latest = await deps.fetchLatest(name)
+  names.forEach((name, index) => {
+    const latest = latestList[index]
     if (latest === undefined) probeFailures++
-    const current = readInstalledVersion(deps.resolve, name)
+    const current = readInstalledVersion(deps.resolve, name, profile.dir)
     packages.push({
       name,
       current,
       latest,
       outdated: latest !== undefined && latest !== current && compareVersions(latest, current) > 0,
     })
-  }
+  })
   // Registry unreachable: every probe failed — report the outage distinctly
   // instead of a misleading "all up to date" (the panel needs the reason).
   const error = probeFailures === names.length && names.length > 0 ? 'registry-unreachable' : undefined
@@ -601,7 +632,7 @@ export async function runUpdateVerified(deps: UpdateRunVerifiedDeps): Promise<Up
   // green exit that left everything in place could be mistaken for success.
   const before = new Map<string, string>()
   for (const name of deps.run.packages) {
-    const version = readInstalledVersion(deps.check.resolve, name)
+    const version = readInstalledVersion(deps.check.resolve, name, deps.run.profileDir)
     if (version !== VERSION_UNKNOWN) before.set(name, version)
   }
   const result = await runUpdate(deps.run)

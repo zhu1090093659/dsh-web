@@ -7,12 +7,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { WorkspaceView as WorkspaceRow } from '@deepseek-ai/dsh-host-apiproxy/api/workspace'
-import { history as fetchHistory, listSessions, listWorkspaces, prompt } from '../api.ts'
+import { fetchMobilePreferences, history as fetchHistory, listSessions, listWorkspaces, prompt } from '../api.ts'
 import { MuxClient } from '../mux.ts'
 import { RpcCallError, RpcTransportError } from '../rpc.ts'
 import { ChatView } from './ChatView.tsx'
 import { SessionListView } from './SessionListView.tsx'
 import { WorkspaceView as WorkspaceRoster } from './WorkspaceView.tsx'
+import { PairRequiredView } from '../PairRequiredView.tsx'
 
 /** One navigation level. */
 type Route =
@@ -30,18 +31,6 @@ export interface SessionView {
   updatedAt: number
   running: boolean
   blank: boolean
-}
-
-/** One rendered chat message (produced by the fold). */
-export interface RenderMessage {
-  id: string
-  kind: 'user' | 'assistant'
-  text: string
-  seq: number
-  time: number
-  pending?: boolean
-  failed?: boolean
-  toolSummary?: string
 }
 
 /** Read the optional workspace target carried from the pairing QR flow. */
@@ -88,11 +77,57 @@ export function formatTime(epochMs: number): string {
   return `${String(date.getMonth() + 1)}月${String(date.getDate())}日 ${clock}`
 }
 
-/**
- * The surface root.
- * @returns the app tree.
- */
-export function App() {
+/** Props accepted by the mobile root before it begins paired-device RPC calls. */
+export interface AppProps {
+  initialPairError?: string
+}
+
+/** Whether the mobile gateway rejected this browser for lack of a paired cookie. */
+export function isUnpairedMobileError(error: unknown): boolean {
+  return error instanceof RpcTransportError && error.message === 'HTTP 403'
+}
+
+/** The result of probing the paired-device-only mobile preference endpoint. */
+export type MobilePairState = 'checking' | 'paired' | 'unpaired' | 'unavailable'
+
+/** Classify an initial mobile preference failure without treating outage as authorization. */
+export function mobilePairStateForError(error: unknown): Extract<MobilePairState, 'unpaired' | 'unavailable'> {
+  return isUnpairedMobileError(error) ? 'unpaired' : 'unavailable'
+}
+
+/** Gate the independent mobile bundle until its own browser context is paired. */
+export function App({ initialPairError }: AppProps) {
+  const [pairState, setPairState] = useState<MobilePairState>('checking')
+
+  useEffect(() => {
+    let current = true
+    void fetchMobilePreferences().then(
+      () => { if (current) setPairState('paired') },
+      (error: unknown) => { if (current) setPairState(mobilePairStateForError(error)) },
+    )
+    return () => { current = false }
+  }, [])
+
+  if (pairState === 'checking') {
+    return <main className="mobile mobile-empty"><p className="mobile-muted">正在连接...</p></main>
+  }
+  if (pairState === 'unpaired') {
+    return <PairRequiredView initialError={initialPairError} onPaired={(path) => { window.location.replace(path) }} />
+  }
+  if (pairState === 'unavailable') {
+    return (
+      <main className="mobile mobile-empty">
+        <p className="mobile-error" role="alert">无法连接到运行中的 DSH host。</p>
+        <button className="mobile-new" type="button" onClick={() => { window.location.reload() }}>重试</button>
+      </main>
+    )
+  }
+
+  return <PairedApp />
+}
+
+/** The existing remote mobile surface, mounted only after device pairing succeeds. */
+function PairedApp() {
   const [route, setRoute] = useState<Route>({ kind: 'workspaces' })
   const [initialWorkspaceId, setInitialWorkspaceId] = useState<string | undefined>(
     () => mobileWorkspaceTarget(window.location.search),

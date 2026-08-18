@@ -64,9 +64,11 @@ describe('BoardController archive', () => {
   it('restores an archived task back to its column', () => {
     const done = { ...task('done', 'done'), archivedAt: NOW }
     const { controller, store } = makeController([done])
+    controller.openTask('done')
     expect(controller.restoreTask('done')).toBe(true)
     expect(store.load()[0]).toMatchObject({ id: 'done', status: 'done' })
     expect(store.load()[0].archivedAt).toBeUndefined()
+    expect(controller.getSnapshot().selectedTaskId).toBeUndefined()
     expect(controller.restoreTask('done')).toBe(false)
   })
 

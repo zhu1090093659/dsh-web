@@ -23,8 +23,8 @@ test('packageFiles: walks packages/ and packages/skins/ non-recursively', () => 
       writeFileSync(join(dir, pkg), JSON.stringify({ name: 'x', version: '0.1.15' }))
     }
     // A nested carrier must NOT be picked up (it is not a publish root).
-    mkdirSync(join(dir, 'packages/dsh-skins/skins/qq98'), { recursive: true })
-    writeFileSync(join(dir, 'packages/dsh-skins/skins/qq98/package.json'), JSON.stringify({ name: 'nested', version: '0.1.15' }))
+    mkdirSync(join(dir, 'packages/dsh-skins/skins/xp'), { recursive: true })
+    writeFileSync(join(dir, 'packages/dsh-skins/skins/xp/package.json'), JSON.stringify({ name: 'nested', version: '0.1.15' }))
     const files = packageFiles(dir)
     assert.deepEqual(files, [
       join(dir, 'packages/dsh-skins/package.json'),

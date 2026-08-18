@@ -5,7 +5,7 @@
  * covered by tests/engine.test.ts against the embedded ssh2 server.
  */
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
@@ -111,6 +111,19 @@ describe('sftp', () => {
     }
   })
 
+  it('walkLocalDir skips symlinks (a link cycle must not recurse forever)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-ssh-sftp-walk-'))
+    try {
+      writeFileSync(join(dir, 'real.txt'), 'x', 'utf8')
+      symlinkSync('.', join(dir, 'self'))
+      symlinkSync('real.txt', join(dir, 'alias.txt'))
+      const files = walkLocalDir(dir)
+      expect(files).toEqual(['real.txt'])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('upload rejects a relative remote path before touching the pool', async () => {
     const engine = fakeEngine()
     await expect(upload(engine, 'host', '/tmp/x', 'relative/file.txt', false)).rejects.toThrow(/absolute/)
@@ -126,6 +139,7 @@ describe('tunnel', () => {
       info: { id, alias, localPort: 40000, remoteHost: 'db', remotePort: 5432, state: 'forwarding', startedAt: 1 },
       server: { close: vi.fn() } as unknown as TunnelRecord['server'],
       alias,
+      record: { client: { end: vi.fn() }, hops: [], idleAt: 0, pinned: true, broken: false, inFlight: 0 } as unknown as TunnelRecord['record'],
       sockets: new Set(),
     })
     engine.tunnels.set('tun-1', makeRecord('tun-1', 'api'))

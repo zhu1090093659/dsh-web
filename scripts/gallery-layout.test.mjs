@@ -3,7 +3,7 @@
  * preview 与 explorer 两列折叠（右侧面板不展示），且 hero /
  * composer 关键节点没有被水平裁切。
  *
- * 用真实浏览器（playwright + chromium）测量，覆盖 stock/qq98 × light/dark。
+ * 用真实浏览器（playwright + chromium）测量，覆盖 stock/xp × light/dark。
  * 无 chromium 的环境（如 CI 用 --ignore-scripts 安装、未下载浏览器）自动跳过，
  * 不阻断其它脚本测试。
  */
@@ -28,8 +28,8 @@ const SKIP = browser === null
 const CASES = [
   { skin: 'stock', theme: 'light' },
   { skin: 'stock', theme: 'dark' },
-  { skin: 'qq98', theme: 'light' },
-  { skin: 'qq98', theme: 'dark' },
+  { skin: 'xp', theme: 'light' },
+  { skin: 'xp', theme: 'dark' },
 ]
 
 for (const c of CASES) {

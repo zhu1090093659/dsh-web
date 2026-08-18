@@ -239,10 +239,10 @@ export function addedLinesFromDiff(text) {
   return out
 }
 
-/** 密钥扫描：命中新增行即拒绝；测试目录内的命中降级为警告（防 fixture 误拒）。 */
-export function checkSecrets(diffText) {
+/** 密钥扫描：命中新增行即拒绝；测试目录内的命中降级为警告（防 fixture 误拒）。调用方可传入预解析的新增行避免重复解析 diff。 */
+export function checkSecrets(diffText, addedLines) {
   const findings = []
-  for (const { path, line, text } of addedLinesFromDiff(diffText)) {
+  for (const { path, line, text } of addedLines ?? addedLinesFromDiff(diffText)) {
     const isTest = TEST_PATH_RE.test(path)
     for (const { re, name } of SECRET_RES) {
       if (re.test(text)) {
@@ -258,12 +258,11 @@ export function checkSecrets(diffText) {
 }
 
 /** emoji 扫描：与 ci.yml 相同码点范围，命中新增行即拒绝。 */
-export function checkEmoji(diffText) {
+export function checkEmoji(diffText, addedLines) {
   const findings = []
-  for (const { path, line, text } of addedLinesFromDiff(diffText)) {
-    const re = new RegExp(EMOJI_RE.source, 'gu')
-    let m
-    while ((m = re.exec(text)) !== null) {
+  // matchAll 复用模块级正则（不改动其 lastIndex），不再逐行 new RegExp。
+  for (const { path, line, text } of addedLines ?? addedLinesFromDiff(diffText)) {
+    for (const m of text.matchAll(EMOJI_GLOBAL_RE)) {
       findings.push({
         severity: `reject`, rule: `emoji`,
         message: `新增行含 emoji 字符 U+` + m[0].codePointAt(0).toString(16).toUpperCase().padStart(4, `0`) + `: ` + path + `:` + line,
@@ -667,11 +666,13 @@ export function staticReview(prInfo, diff, opts, repoOwner) {
   if (sizeFindings.some((f) => f.severity === `reject`)) {
     return [...sizeFindings, ...checkForbiddenFiles(diff.addedFiles, diff.sizes, opts.maxFileBytes)]
   }
+  // addedLinesFromDiff 解析一次，密钥与 emoji 扫描共享。
+  const addedLines = addedLinesFromDiff(diff.diffText)
   return [
     ...sizeFindings,
     ...checkForbiddenFiles(diff.addedFiles, diff.sizes, opts.maxFileBytes),
-    ...checkSecrets(diff.diffText),
-    ...checkEmoji(diff.diffText),
+    ...checkSecrets(diff.diffText, addedLines),
+    ...checkEmoji(diff.diffText, addedLines),
     ...checkWorkflowChanges(diff.allChanges),
     ...checkLockfile(diff.allChanges),
     ...checkTemplate(prInfo, repoOwner),

@@ -14,12 +14,19 @@ function task(id: string, status: TaskRecord['status']): TaskRecord {
 }
 
 describe('applyArchiveTask', () => {
-  it('archives a done task, keeping status and executions', () => {
-    const t = { ...task('t1', 'done'), executions: [{ id: 'e1', sessionId: 's1', startedAt: 1, endedAt: 2, result: 'succeeded' as const, error: undefined }] }
+  it('archives a done task, retaining history and disarming its schedule', () => {
+    const t = {
+      ...task('t1', 'done'),
+      executions: [{ id: 'e1', sessionId: 's1', startedAt: 1, endedAt: 2, result: 'succeeded' as const, error: undefined }],
+      schedule: { enabled: true, cron: '0 9 * * *', nextRunAt: NOW + 60_000, lastTriggeredAt: NOW - 60_000 },
+    }
     const { tasks, archived } = applyArchiveTask([t], 't1', NOW + 5)
     expect(archived).toBe(true)
     expect(tasks[0]).toMatchObject({ id: 't1', status: 'done', archivedAt: NOW + 5 })
     expect(tasks[0].executions).toEqual(t.executions)
+    expect(tasks[0].schedule).toEqual({
+      enabled: false, cron: '0 9 * * *', nextRunAt: undefined, lastTriggeredAt: NOW - 60_000,
+    })
   })
 
   it('archives a failed task', () => {

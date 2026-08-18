@@ -8,22 +8,21 @@
  * @module @linxin666/dsh-tool-describe-image/vision
  */
 
+import { createHash } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
-import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
+import { ATTACHMENT_REF_GUIDANCE, parseImageAttachmentRef, parseMarkdownAttachmentReference } from './attachment-reference.ts'
 import { attachmentRefById } from './attach-routes.ts'
 import { DEFAULT_MAX_BYTES, isImageMimeType, sniffMimeType, type ImageMimeType } from './media.ts'
 import type { ApiStyle, ResolvedConfig } from './config-resolve.ts'
+
+export { parseImageAttachmentRef } from './attachment-reference.ts'
 
 /** One loaded image: its bytes and the sniffed media type. */
 export interface LoadedImage {
   bytes: Buffer
   mimeType: ImageMimeType
 }
-
-/** Error text shown when a model-supplied attachment reference does not validate. */
-const ATTACHMENT_REF_GUIDANCE =
-  'describe-image: image is not a valid attachment reference; copy the exact JSON from the [image attachment …] note'
 
 /** Promise rejection helper shared by both response-shape extractors. */
 function unexpectedShape(): never {
@@ -36,61 +35,9 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value as Record<string, unknown>
 }
 
-/** Whether a record field holds a positive safe integer. */
-function isPositiveSafeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
-}
-
-/** A non-empty string from a record under `key`, else undefined. */
-function nonEmptyString(record: Record<string, unknown>, key: string): string | undefined {
-  const value = record[key]
-  return typeof value === 'string' && value.length > 0 ? value : undefined
-}
-
 /** Whether `error` carries the attachment store not-found marker. */
 function isAttachmentNotFound(error: unknown): boolean {
   return asRecord(error)?.['code'] === 'ATTACHMENT_NOT_FOUND'
-}
-
-/**
- * Validate and narrow a model-supplied attachment reference into its typed storage
- * form. Every field is re-checked (the schema is authoritative, not a cast), and a
- * misshaped value fails with the copy-verbatim guidance.
- * @param raw - the JSON the model copied from an `[image attachment …]` note.
- * @returns the narrowed, typed reference.
- */
-export function parseImageAttachmentRef(raw: string): ImageAttachmentRef {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    throw new Error(ATTACHMENT_REF_GUIDANCE)
-  }
-  const record = asRecord(parsed)
-  if (record === undefined) throw new Error(ATTACHMENT_REF_GUIDANCE)
-  const attachmentId = nonEmptyString(record, 'attachmentId')
-  const mediaType = record['mediaType']
-  const bytes = record['bytes']
-  const width = record['width']
-  const height = record['height']
-  const name = record['name']
-  if (attachmentId === undefined
-    || !isImageMimeType(mediaType)
-    || !isPositiveSafeInteger(bytes)
-    || !isPositiveSafeInteger(width)
-    || !isPositiveSafeInteger(height)
-    || (name !== undefined && typeof name !== 'string')) {
-    throw new Error(ATTACHMENT_REF_GUIDANCE)
-  }
-  const ref: ImageAttachmentRef = {
-    attachmentId: attachmentId as ImageAttachmentRef['attachmentId'],
-    mediaType,
-    bytes,
-    width,
-    height,
-    ...name === undefined ? {} : { name },
-  }
-  return ref
 }
 
 /**
@@ -127,10 +74,18 @@ function toImage(bytes: Buffer, source: string): LoadedImage {
   return { bytes, mimeType }
 }
 
+/** Bound-check then sniff one loaded buffer — the shared tail of every input branch. */
+function finishLoad(bytes: Buffer, source: string, maxBytes: number): LoadedImage {
+  if (bytes.length > maxBytes) {
+    throw new Error(`describe-image: image is ${bytes.length} bytes, above the ${maxBytes}-byte bound`)
+  }
+  return toImage(bytes, source)
+}
+
 /**
- * Load one image from a local absolute path, an http(s) URL, or a durable attachment reference
- * (the JSON an `[image attachment …]` note carries), enforcing the byte bound before any bytes
- * reach the vision model. Non-http(s) URL schemes are rejected.
+ * Load one image from a local absolute path, an http(s) URL, a complete durable attachment
+ * reference, or the plugin's self-contained Markdown attachment reference, enforcing the byte
+ * bound before any bytes reach the vision model. Non-http(s) URL schemes are rejected.
  * @param ctx - registrant context; supplies the optional attachment service.
  * @param input - the model-supplied image reference.
  * @param signal - caller cancellation.
@@ -140,15 +95,19 @@ function toImage(bytes: Buffer, source: string): LoadedImage {
 export async function loadImage(ctx: Context, input: string, signal: AbortSignal, maxBytes: number): Promise<LoadedImage> {
   const trimmed = input.trim()
   if (trimmed.length === 0) throw new Error('describe-image: image must be a non-empty path, URL, or attachment reference')
+  const markdownReference = parseMarkdownAttachmentReference(trimmed)
+  if (markdownReference !== undefined) {
+    const ref = markdownReference.ref ?? attachmentRefById(markdownReference.attachmentId)
+    if (ref === undefined) throw new Error(ATTACHMENT_REF_GUIDANCE)
+    const bytes = await readAttachment(ctx, JSON.stringify(ref), signal)
+    return finishLoad(bytes, trimmed.slice(0, 96), maxBytes)
+  }
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) && !/^https?:\/\//i.test(trimmed)) {
     throw new Error('describe-image: only http(s) URLs, local file paths, and attachment references are supported')
   }
-  if (trimmed.startsWith('{')) {
+  if (trimmed.startsWith('{') || trimmed.startsWith('[image attachment ')) {
     const bytes = await readAttachment(ctx, trimmed, signal)
-    if (bytes.length > maxBytes) {
-      throw new Error(`describe-image: image is ${bytes.length} bytes, above the ${maxBytes}-byte bound`)
-    }
-    return toImage(bytes, trimmed.slice(0, 96))
+    return finishLoad(bytes, trimmed.slice(0, 96), maxBytes)
   }
   if (/^https?:\/\//i.test(trimmed)) {
     const response = await fetch(trimmed, { signal, redirect: 'error' })
@@ -160,7 +119,7 @@ export async function loadImage(ctx: Context, input: string, signal: AbortSignal
       throw new Error(`describe-image: image is ${declared} bytes, above the ${maxBytes}-byte bound`)
     }
     const bytes = await readBoundedBody(response, maxBytes)
-    return toImage(bytes, trimmed)
+    return finishLoad(bytes, trimmed, maxBytes)
   }
   // A bare attachment id — the `sha256:…` string text models tend to copy out of
   // an `[image attachment …]` note instead of the whole JSON. Resolve it through
@@ -168,10 +127,7 @@ export async function loadImage(ctx: Context, input: string, signal: AbortSignal
   const registered = attachmentRefById(trimmed)
   if (registered !== undefined) {
     const bytes = await readAttachment(ctx, JSON.stringify(registered), signal)
-    if (bytes.length > maxBytes) {
-      throw new Error(`describe-image: image is ${bytes.length} bytes, above the ${maxBytes}-byte bound`)
-    }
-    return toImage(bytes, trimmed)
+    return finishLoad(bytes, trimmed, maxBytes)
   }
   const info = await stat(trimmed, { bigint: false })
   if (!info.isFile()) throw new Error(`describe-image: image path is not a file: ${trimmed}`)
@@ -179,7 +135,7 @@ export async function loadImage(ctx: Context, input: string, signal: AbortSignal
     throw new Error(`describe-image: image is ${info.size} bytes, above the ${maxBytes}-byte bound`)
   }
   const bytes = await readFile(trimmed, { signal })
-  return toImage(bytes, trimmed)
+  return finishLoad(bytes, trimmed, maxBytes)
 }
 
 /**
@@ -188,23 +144,31 @@ export async function loadImage(ctx: Context, input: string, signal: AbortSignal
  * @param cap - the byte bound.
  * @returns the accumulated body bytes.
  */
-export async function readBoundedBody(response: Response, cap: number): Promise<Buffer> {
-  if (response.body === null) return Buffer.alloc(0)
+/** Drain a response body chunk by chunk, always releasing the reader lock. */
+async function drainResponse(response: Response, onChunk: (value: Uint8Array) => 'stop' | undefined): Promise<void> {
+  if (response.body === null) return
   const reader = response.body.getReader()
-  const chunks: Buffer[] = []
-  let total = 0
   try {
     for (;;) {
       const { done, value } = await reader.read()
       if (done) break
-      const chunk = Buffer.from(value)
-      total += chunk.length
-      if (total > cap) throw new Error(`describe-image: response exceeds the ${cap}-byte bound`)
-      chunks.push(chunk)
+      if (onChunk(value) === 'stop') return
     }
   } finally {
     reader.releaseLock()
   }
+}
+
+export async function readBoundedBody(response: Response, cap: number): Promise<Buffer> {
+  const chunks: Buffer[] = []
+  let total = 0
+  await drainResponse(response, (value) => {
+    const chunk = Buffer.from(value)
+    total += chunk.length
+    if (total > cap) throw new Error(`describe-image: response exceeds the ${cap}-byte bound`)
+    chunks.push(chunk)
+    return undefined
+  })
   return Buffer.concat(chunks)
 }
 
@@ -215,21 +179,20 @@ export async function readBoundedBody(response: Response, cap: number): Promise<
  * @returns the decoded text, never longer than `cap` characters.
  */
 export async function readBoundedText(response: Response, cap: number): Promise<string> {
-  if (response.body === null) return ''
-  const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let text = ''
-  try {
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      text += decoder.decode(value, { stream: true })
-      if (text.length > cap) return text.slice(0, cap)
+  let stopped = false
+  await drainResponse(response, (value) => {
+    text += decoder.decode(value, { stream: true })
+    if (text.length > cap) {
+      stopped = true
+      return 'stop'
     }
-    text += decoder.decode()
-  } finally {
-    reader.releaseLock()
-  }
+    return undefined
+  })
+  // The final flush decode matters only for a fully-read stream; a truncated
+  // read cuts mid-sequence anyway.
+  if (!stopped) text += decoder.decode()
   return text.length > cap ? text.slice(0, cap) : text
 }
 
@@ -272,8 +235,56 @@ export function extractResponsesContent(payload: unknown): string {
   return text
 }
 
-/** Build the request the configured style sends: its path and JSON body. */
+/** Extract the text answer from an Anthropic Messages payload: every `text` content block of the top-level `content` array, skipping `thinking` and other non-text blocks. */
+export function extractAnthropicMessagesContent(payload: unknown): string {
+  const root = asRecord(payload)
+  const content = root?.content
+  if (root === undefined || !Array.isArray(content)) unexpectedShape()
+  const parts: string[] = []
+  for (const item of content) {
+    const block = asRecord(item)
+    if (block === undefined) continue
+    if (block.type === 'text' && typeof block.text === 'string' && block.text.trim().length > 0) {
+      parts.push(block.text)
+    }
+  }
+  const text = parts.join('\n')
+  if (text.trim().length === 0) {
+    throw new Error('describe-image: vision endpoint returned no text content')
+  }
+  return text
+}
+
+/**
+ * Build the request the configured style sends: its path and JSON body. When the model id carried
+ * a thinking suffix, Chat Completions maps it to `thinking.type` (`off` -> `disabled`, every
+ * other level -> `enabled`) and Responses forwards it as `reasoning.effort` (`off` ->
+ * `none`, levels pass through); without a suffix no thinking control is sent, so the endpoint
+ * keeps its own default. The `anthropic-messages` style accepts a provider root, a `/v1` API root,
+ * or a complete `/v1/messages` endpoint and posts an Anthropic-style body (`max_tokens`, `messages[0].content` = base64 image block + text).
+ */
 export function buildVisionRequest(spec: ResolvedConfig, prompt: string, image: LoadedImage): { path: string; body: string } {
+  if (spec.apiStyle === 'anthropic-messages') {
+    const path = spec.baseURL.endsWith('/v1/messages')
+      ? spec.baseURL
+      : spec.baseURL.endsWith('/v1')
+        ? `${spec.baseURL}/messages`
+        : `${spec.baseURL}/v1/messages`
+    return {
+      path,
+      body: JSON.stringify({
+        model: spec.model,
+        max_tokens: spec.maxOutputTokens,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.bytes.toString('base64') } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+      }),
+    }
+  }
   const dataUrl = `data:${image.mimeType};base64,${image.bytes.toString('base64')}`
   if (spec.apiStyle === 'responses') {
     return {
@@ -281,6 +292,7 @@ export function buildVisionRequest(spec: ResolvedConfig, prompt: string, image: 
       body: JSON.stringify({
         model: spec.model,
         max_output_tokens: spec.maxOutputTokens,
+        ...spec.thinking === undefined ? {} : { reasoning: { effort: spec.thinking === 'off' ? 'none' : spec.thinking } },
         input: [{
           role: 'user',
           content: [
@@ -296,6 +308,7 @@ export function buildVisionRequest(spec: ResolvedConfig, prompt: string, image: 
     body: JSON.stringify({
       model: spec.model,
       max_tokens: spec.maxOutputTokens,
+      ...spec.thinking === undefined ? {} : { thinking: { type: spec.thinking === 'off' ? 'disabled' : 'enabled' } },
       messages: [{
         role: 'user',
         content: [
@@ -362,9 +375,13 @@ export function createVisionCache(options?: { ttlMs?: number; maxEntries?: numbe
 
 /** The semantic identity of one vision request: endpoint fields plus the same image bytes and prompt. */
 export function semanticRequestKey(spec: ResolvedConfig, prompt: string, image: LoadedImage): string {
+  // Key by a digest of the bytes, not the base64 text itself: the full
+  // encoding is ~1.33x a multi-MB image and every cached entry would pin
+  // that string for the TTL, while a digest is 64 chars.
+  const digest = createHash('sha256').update(image.bytes).digest('hex')
   return JSON.stringify([
-    spec.baseURL, spec.model, spec.maxOutputTokens, spec.apiStyle,
-    image.bytes.toString('base64'), image.mimeType, prompt,
+    spec.baseURL, spec.model, spec.maxOutputTokens, spec.apiStyle, spec.thinking,
+    digest, image.mimeType, prompt,
   ])
 }
 
@@ -382,9 +399,12 @@ export async function callVision(
     if (cached !== undefined) return cached
   }
   const { path, body } = buildVisionRequest(spec, prompt, image)
+  const headers: Record<string, string> = spec.apiStyle === 'anthropic-messages'
+    ? { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
+    : { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` }
   const response = await fetch(path, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+    headers,
     body,
     redirect: 'error',
     signal: AbortSignal.any([signal, AbortSignal.timeout(spec.timeoutMs)]),
@@ -400,7 +420,11 @@ export async function callVision(
   } catch {
     throw new Error('describe-image: vision endpoint returned invalid JSON')
   }
-  const text = spec.apiStyle === 'responses' ? extractResponsesContent(payload) : extractChatCompletionsContent(payload)
+  const text = spec.apiStyle === 'responses'
+    ? extractResponsesContent(payload)
+    : spec.apiStyle === 'anthropic-messages'
+      ? extractAnthropicMessagesContent(payload)
+      : extractChatCompletionsContent(payload)
   if (cache !== undefined) cache.set(semanticRequestKey(spec, prompt, image), text)
   return text
 }

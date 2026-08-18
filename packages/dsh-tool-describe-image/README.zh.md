@@ -4,8 +4,8 @@
 
 模型侧 `describe_image` 工具：为**纯文本模型**（DeepSeek V4 等）提供图像理解能力。
 每次调用加载一张图片——本地文件路径、http(s) URL，或会话附件引用——交给
-OpenAI 兼容的视觉模型端点（Qwen-VL、GLM-4V、GPT-4o、本地 Ollama 等）回答，
-支持 Chat Completions 与 Responses 两种协议；**只有返回的文本进入对话，图片本身绝不进入会话记录**。
+视觉模型端点（Qwen-VL、GLM-4V、GPT-4o、Claude 风格端点如 OpenCode Go、本地 Ollama 等）回答，
+支持 Chat Completions / Responses / Anthropic Messages 三种协议；**只有返回的文本进入对话，图片本身绝不进入会话记录**。
 
 本包由 deepseek-harness `packages/vision/tool-describe-image` 移植（镜像仓库
 [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)），
@@ -15,12 +15,14 @@ OpenAI 兼容的视觉模型端点（Qwen-VL、GLM-4V、GPT-4o、本地 Ollama �
 
 | 能力 | 说明 |
 | --- | --- |
-| 三种输入 | 本地绝对路径、http(s) URL（拒绝重定向）、`[image attachment …]` JSON 附件引用，或拖拽/粘贴产生的短 markdown 引用（`![图片](/describe-image/raw/sha256:…)`——模型取 URL 中的 id 传入，进程内附件注册表解析，存储侧摘要校验照常执行） |
-| 直接发图 | 在纯文本会话里拖拽或粘贴图片，发送时被改写为 describe-image 引用（`![图片](/describe-image/raw/sha256:…)`），而不是模型读不了的图片块——图片在会话里正常渲染，模型经工具分析它 |
+| 三种输入 | 本地绝对路径、http(s) URL（拒绝重定向）、完整的 `[image attachment ...]` 注记，或拖拽/粘贴产生的完整自描述 Markdown 引用（`![图片](/describe-image/raw/sha256:...?ref=...)`）。把完整 Markdown 引用直接传给工具：其中序列化的不可变元数据可在 Host 重启后及 PTC 嵌套工具调用中解析已存图片；裸 id 只作为当前进程的兼容兜底 |
+| 直接发图 | 在纯文本会话里拖拽或粘贴图片，发送时被改写为自描述 describe-image 引用（`![图片](/describe-image/raw/sha256:...?ref=...)`），而不是模型读不了的图片块——图片在会话里正常渲染，模型经工具分析它。支持图片输入的模型（适配器声明 image 模态）会被自动识别：原图块直接交给模型本身的视觉，不再绕行 describe_image，且该会话的 `describe_image` 工具会被隐藏——多模态模型看不到、也无法调用它（包括 run_code 内的嵌套调用） |
 | 自定义指令 | `prompt` 参数携带你的精确指令（OCR、图表解读、UI 诊断、翻译…）；`defaultPrompt` 配置设置模型未传指令时的兜底文案 |
 | 实时配置卡 | 设置 → 插件配置 → Web UI 插件组 → 「图像理解」卡修改 `baseURL` / `apiStyle` / `model` / API key / 默认指令 / 各项上限（走设置服务），即时生效，无需重启 |
-| 双协议 | `apiStyle: chat-completions`（默认）请求 `baseURL/chat/completions`；`apiStyle: responses` 请求 `baseURL/responses`，使用 `input` / `max_output_tokens` 并读取 `output_text` |
+| 多协议 | `apiStyle: chat-completions`（默认）请求 `baseURL/chat/completions`；`apiStyle: responses` 请求 `baseURL/responses`，使用 `input` / `max_output_tokens` 并读取 `output_text`；`apiStyle: anthropic-messages` 请求 `baseURL/v1/messages`（`x-api-key` 鉴权，Claude 风格端点如 OpenCode Go / 智谱 GLM / 月之暗面 Kimi），读取 `content[].text` |
+| 思考控制 | 模型 id 带可选后缀：`model:off` 禁用思考，`model:low` / `model:medium` / `model:high` 开启思考；不带后缀则不发送控制、沿用端点默认（MiMo-V2.5、DeepSeek V4 默认开启思考） |
 | 原图路由 | `GET /describe-image/raw/<id>` 回读已存字节（仅回环、内容寻址 id），让贴入的引用在会话中渲染 |
+| 能力探测路由 | `GET /describe-image/capability?session=<id>` 回答该会话模型是否声明图片输入（以会话自身的请求头路由确认生效模型——恢复的会话沿用其日志模型、无请求历史的新会话取当前默认模型选择；模态经 `resolveModelInfo` 精确解析）。无路由可解析、一切未知与失败都保守回答 false，保留改写行为 |
 | 每次调用解析密钥 | 内联 `apiKey` → 凭证服务（`apiKeyEnv`，默认 `VISION_API_KEY`）→ 启动环境，逐级回退 |
 | 安全与边界 | 所有请求拒绝重定向；`maxBytes` / `maxOutputTokens` / `timeoutMs` 上限；magic-byte 类型门；错误摘要有界（200 字符）；密钥不进日志 |
 | 返回规范值 | `{ text, model, image, mimeType, bytes }`——模型只看到 `text` |
@@ -54,16 +56,17 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
 
 | 键 | 默认 | 含义 |
 | --- | --- | --- |
-| `baseURL` | —（必填） | OpenAI 兼容端点根（如 `https://dashscope.aliyuncs.com/compatible-mode/v1`），末尾斜杠自动去除 |
-| `apiStyle` | `chat-completions` | 接口协议：`chat-completions` 追加 `/chat/completions`；`responses` 追加 `/responses`（OpenAI Responses API 的 `input` / `max_output_tokens` / `output_text` 形态） |
-| `model` | —（必填） | 视觉模型 id |
+| `baseURL` | —（必填） | 端点根地址，按协议追加路径（`/chat/completions`、`/responses` 或 `/v1/messages`）。OpenAI 兼容端点如 `https://dashscope.aliyuncs.com/compatible-mode/v1`；Anthropic 风格可填写 provider 根地址（如 `https://opencode.ai/zen/go`）、常规 `/v1` API 根地址或完整 `/v1/messages` 端点。末尾斜杠自动去除 |
+| `apiStyle` | `chat-completions` | 接口协议：`chat-completions` 追加 `/chat/completions`；`responses` 追加 `/responses`（OpenAI Responses API 的 `input` / `max_output_tokens` / `output_text` 形态）；`anthropic-messages` 将地址规范化为唯一的 `/v1/messages` 端点（Claude 风格 `messages` / `max_tokens` / `content[].text`，`x-api-key` + `anthropic-version` 头） |
+| `model` | —（必填） | 视觉模型 id，可带思考后缀（`:off` / `:low` / `:medium` / `:high`）。后缀在发往端点前剥除：`:off` 映射为 `thinking.type=disabled`（`chat-completions`）或 `reasoning.effort=none`（`responses`）；其余档位映射为 `enabled`，或原样作为 `reasoning.effort` 的值。不带后缀则不发送任何思考控制字段；`anthropic-messages` 协议不发送思考字段，保持端点自身默认 |
 | `apiKey` | — | 内联密钥；本地调试用。建议用 `!!js process.env.VISION_API_KEY` 从环境注入，勿写死明文 |
 | `apiKeyEnv` | `VISION_API_KEY` | 凭证引用（环境变量名）；空字符串禁用引用解析 |
 | `defaultPrompt` | 见源码 | 调用未带 `prompt` 时的指令——按你的场景调优（OCR、UI 评审、翻译…） |
 | `maxBytes` | `10485760` | 图片字节上限（本地文件与下载一致） |
-| `maxOutputTokens` | `1024` | 输出 token 上限：`chat-completions` 发 `max_tokens`，`responses` 发 `max_output_tokens` |
-| `timeoutMs` | `60000` | 单次视觉请求超时 |
+| `maxOutputTokens` | `1024` | 输出 token 上限：`chat-completions` 与 `anthropic-messages` 发 `max_tokens`，`responses` 发 `max_output_tokens` |
+| `timeoutMs` | `120000` | 单次视觉请求超时 |
 | `renderImagePreview` | `true` | 会话里的图片引用原地升级为缩略图（点击查看大图）；`false` 保持原始引用文本。仅影响本地显示，消息文本与模型识别不变 |
+| `interceptImageSend` | `true` | 发送时把带图片的发送改写为 describe-image 引用；`false` 则图片发送原样放行，让同会话的其他视觉插件拿到原始图片块（此时文本模型的改写由它们负责） |
 
 带配置的挂载示例（profile 的 `cordis.patch.yml` / 组合文件）：
 
@@ -88,6 +91,32 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
     apiKey: !!js process.env.VISION_API_KEY
 ```
 
+模型默认开启扩展思考的端点（MiMo-V2.5、DeepSeek V4）可按调用关闭思考，避免思考 token 消耗输出预算：
+
+```yaml
+- id: describe-image
+  name: '@linxin666/dsh-tool-describe-image'
+  config:
+    baseURL: https://api.xiaomimimo.com/v1
+    model: mimo-v2.5:off
+    apiKey: !!js process.env.VISION_API_KEY
+```
+
+Claude 风格端点（如 OpenCode Go——Qwen3.7 Plus 等视觉模型只走 Messages API）设置
+`apiStyle: anthropic-messages`；`baseURL` 最简单的写法是 provider 根地址：
+
+```yaml
+- id: describe-image
+  name: '@linxin666/dsh-tool-describe-image'
+  config:
+    baseURL: https://opencode.ai/zen/go
+    apiStyle: anthropic-messages
+    model: qwen3.7-plus
+    apiKey: !!js process.env.OPENCODE_GO_API_KEY
+```
+
+provider 路径会被保留：上述示例最终请求 `https://opencode.ai/zen/go/v1/messages`。
+
 ## 使用
 
 ### 自定义指令
@@ -99,20 +128,29 @@ dsh plugin --profile web add @linxin666/dsh-tool-describe-image
 ### 从输入框发送图片
 
 DSH 输入框对纯文本模型没有图片入口，因此在输入框里拖拽或粘贴图片：发送时插件会把携带图片的
-发送改写为 describe-image 引用（`![图片](/describe-image/raw/sha256:…)`），而不是模型读不了的
+发送改写为自描述 describe-image 引用（`![图片](/describe-image/raw/sha256:...?ref=...)`），而不是模型读不了的
 图片块。图片字节经 host 端 `/describe-image/attach` 路由上传（校验大小与 magic bytes，持久化
-到附件存储）；只有引用文本进入会话记录。Web shell 把用户消息渲染为纯文本，发送的引用本会
-以原始 markdown 文本留在会话里；开启 `renderImagePreview`（设置卡的「会话内渲染图片预览」
-开关，默认开）后客户端把每条引用原地升级为缩略图——点击查看大图。若 raw 路由经当前访问源
-不可达（如反向代理未转发该路由），缩略图加载失败，引用文本保持原样。
+到附件存储）；只有可持久解析的引用文本进入会话记录。Host 重启后或 PTC 嵌套工具调用中，都可将完整
+引用原样传给 `describe_image`。Web shell 把用户消息渲染为纯文本，发送的引用本会以原始 markdown
+文本留在会话里；开启 `renderImagePreview`（设置卡的「会话内渲染图片预览」开关，默认开）后客户端
+把每条引用原地升级为缩略图——点击查看大图。若 raw 路由经当前访问源不可达（如反向代理未转发该
+路由），缩略图加载失败，引用文本保持原样。
+
+改写是一个实时开关——设置卡的「发送时改写图片为 describe-image 引用」(`interceptImageSend`，
+默认开)。当其他视觉插件与当前会话共用、需要由它们接收原始图片块时请关闭；关闭后图片发送
+原样放行。
 
 ## 已知限制
 
 - 仅 magic-byte 门校验类型、不解码图片：头合法但内容损坏的文件会在视觉端点才报错。
 - 单图单答：不支持多图输入、追问上一张图、结构化输出（坐标 / 框）。
 - 抽取文本仍消耗一次 VLM 调用：仅需 OCR 的部署可把 `baseURL` 指向更便宜的 OCR 模型。
-- 仅 OpenAI 兼容协议：支持 Chat Completions（`/chat/completions`）与 Responses（`/responses`）
-  两种形态，请求 / 响应形态不同的厂商需要单独适配。
+- 支持三种协议：Chat Completions（`/chat/completions`）、Responses（`/responses`）、
+  Anthropic Messages（`/v1/messages`，`x-api-key` 鉴权）——其他请求/响应形态的厂商需要单独的适配器。
+- 模型思考后缀是插件简写，会向请求注入厂商专用字段（`thinking.type` / `reasoning.effort`）；
+  不接受这些字段的端点（如普通 OpenAI 视觉模型）应使用不带后缀的模型 id。chat-completions
+  协议没有 effort 档位，`:low` / `:medium` / `:high` 在该协议下都映射为 `thinking.type=enabled`。
+  只剥除这四个已知后缀，以其他冒号变体结尾的 id（如 OpenRouter 的 `:free`）原样发送。
 
 ## 来源与版权
 

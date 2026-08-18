@@ -1,28 +1,15 @@
-/* Branch selector chip in the conversation header context hole.
-   Tokens by default; the stock-light fallback defines a small literal
-   palette because the unskinned shell tokens are too low-contrast. */
+/* Branch selector chip for blank sessions. Tokens by default; the stock-light
+   fallback defines a small literal palette because the unskinned shell tokens
+   are too low-contrast. */
 
 .anchor {
   position: relative;
 }
 
-/* Positioning wrapper for the chip + popover: the popover anchors to the
-   chip itself instead of the padded/inset dock row. */
+/* Positioning wrapper for the chip and popover. */
 .chipWrap {
   position: relative;
   display: inline-flex;
-}
-
-/* The dock seat spans its host row while the input card below is inset
-   relative to that row. The hero-phase clearance is the fallback; the
-   component measures the real card edge and applies it inline so the chip
-   starts exactly where the input card starts in every phase. */
-.anchorDock {
-  --gitgraph-dock-gap-tighten: -8px;
-  padding-left: var(--dsh-composer-side-clearance, 16px);
-  /* The fallback dock row sits above the input card; this keeps its visual
-     gap compact without moving the hero row. */
-  margin-bottom: var(--gitgraph-dock-gap-tighten);
 }
 
 /* Hero phase: leave the dock row and join the official hero chip row. The
@@ -49,7 +36,8 @@
   font-size: 12px;
   line-height: 1;
   white-space: nowrap;
-  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease,
+    gap 120ms ease, padding 120ms ease;
 }
 
 .chip:hover {

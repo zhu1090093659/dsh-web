@@ -15,7 +15,7 @@
  * can observe (and surface) a broken preset rather than silently shipping it.
  */
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, utimesSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
 import { validateAgentCordis } from './schema.ts'
 
@@ -99,6 +99,33 @@ function validatePresetAgentFile(presetDir: string): string[] {
   return validateAgentCordis(readFileSync(agent, 'utf8'))
 }
 
+/**
+ * Copy the whole tree under `sourceDir` into `targetDir`, creating the target
+ * directory as needed. Intentionally not `fs.cpSync` (recursive): on Node 22
+ * for Windows, `fs.cpSync` with `recursive: true` crashes the process with a
+ * fatal error (STATUS_STACK_BUFFER_OVERRUN / 0xC0000409, no JS exception is
+ * thrown) whenever the source path contains non-ASCII characters such as a
+ * CJK home directory (nodejs/node#54476, regression from nodejs/node#53614).
+ * Since `engines` supports Node ^22.19.0, this must work on Node 22, so the
+ * copy is done with the same per-entry primitives the rest of the module
+ * already uses. Source mtimes are preserved to keep the `preserveTimestamps`
+ * contract of the previous `cpSync` call.
+ */
+function copyTreeSync(sourceDir: string, targetDir: string): void {
+  mkdirSync(targetDir, { recursive: true })
+  for (const entry of readdirSync(sourceDir)) {
+    const source = join(sourceDir, entry)
+    const target = join(targetDir, entry)
+    const stat = statSync(source)
+    if (stat.isDirectory()) {
+      copyTreeSync(source, target)
+    } else {
+      copyFileSync(source, target)
+      utimesSync(target, stat.atime, stat.mtime)
+    }
+  }
+}
+
 /** Copy `sourceRoot/<id>` into `targetRoot/<id>`, idempotently. */
 export function syncOnePreset(sourceDir: string, targetDir: string): 'synced' | 'current' {
   const sourceFiles = filesUnder(sourceDir)
@@ -108,7 +135,7 @@ export function syncOnePreset(sourceDir: string, targetDir: string): 'synced' | 
     rmSync(targetDir, { recursive: true, force: true })
   }
   if (!existsSync(targetDir)) {
-    cpSync(sourceDir, targetDir, { recursive: true, preserveTimestamps: true })
+    copyTreeSync(sourceDir, targetDir)
     pruneExtras(targetDir, sourceSet)
     return 'synced'
   }
@@ -131,10 +158,10 @@ export function syncOnePreset(sourceDir: string, targetDir: string): 'synced' | 
   }
   if (!dirty) return 'current'
 
-  // Drop target-only entries first so file/dir type clashes never reach cpSync,
-  // then copy and prune again per the post-copy contract.
+  // Drop target-only entries first so file/dir type clashes never reach the
+  // copy, then copy and prune again per the post-copy contract.
   pruneExtras(targetDir, sourceSet)
-  cpSync(sourceDir, targetDir, { recursive: true, preserveTimestamps: true })
+  copyTreeSync(sourceDir, targetDir)
   pruneExtras(targetDir, sourceSet)
   return 'synced'
 }

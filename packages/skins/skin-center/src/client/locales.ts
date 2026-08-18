@@ -24,6 +24,7 @@ export type SkinCenterKey =
   | 'restore'
   | 'applyFailed'
   | 'appliedUnconfirmed'
+  | 'appliedNeedRestart'
   | 'theme'
   | 'themeLight'
   | 'themeDark'
@@ -35,6 +36,36 @@ export type SkinCenterKey =
   | 'backgroundBlurInert'
   | 'backgroundHint'
   | 'backgroundHintInert'
+  | 'wallpaperTitle'
+  | 'wallpaperEnable'
+  | 'wallpaperHint'
+  | 'wallpaperLoadError'
+  | 'wallpaperLibraryFound'
+  | 'wallpaperLibraryManual'
+  | 'wallpaperRefresh'
+  | 'wallpaperMode'
+  | 'wallpaperModeLive'
+  | 'wallpaperModeFrame'
+  | 'wallpaperClear'
+  | 'wallpaperDim'
+  | 'wallpaperBlur'
+  | 'wallpaperPauseHidden'
+  | 'wallpaperImport'
+  | 'wallpaperImportHint'
+  | 'wallpaperReimport'
+  | 'wallpaperRemove'
+  | 'wallpaperUpdateAvailable'
+  | 'wallpaperEmpty'
+  | 'wallpaperLegal'
+  | 'wallpaperTypeVideo'
+  | 'wallpaperTypeWeb'
+  | 'wallpaperTypeScene'
+  | 'wallpaperTypeApp'
+  | 'wallpaperDirs'
+  | 'wallpaperDirsEmpty'
+  | 'wallpaperDirsHint'
+  | 'wallpaperDirPlaceholder'
+  | 'wallpaperDirAdd'
 
 export const en: Record<SkinCenterKey, string> = {
   title: 'Skin Center',
@@ -54,7 +85,8 @@ export const en: Record<SkinCenterKey, string> = {
   applying: 'Applying…',
   restore: 'Restore',
   applyFailed: 'Apply failed',
-  appliedUnconfirmed: 'Applied, but the change has not been confirmed — refresh the page if the skin did not switch',
+  appliedUnconfirmed: 'Applied, but the change has not been confirmed — refresh the page in dev mode; packaged installs (DSH Desktop) need an app restart',
+  appliedNeedRestart: 'Applied and confirmed, but the host did not hot-reload — restart dsh to take effect',
   theme: 'Theme preview',
   themeLight: 'Light',
   themeDark: 'Dark',
@@ -66,6 +98,36 @@ export const en: Record<SkinCenterKey, string> = {
   backgroundBlurInert: 'Visible only with skins that paint a backdrop; the official default has none.',
   backgroundHint: 'Instantly veils the backdrop behind the panels — higher values obscure the art to help you focus.',
   backgroundHintInert: 'Only applies to skins that paint a backdrop (Blue Fantasy / Whale Song). Applies to the official default automatically once such a skin is active.',
+  wallpaperTitle: 'Wallpaper Engine',
+  wallpaperEnable: 'Enable wallpapers',
+  wallpaperHint: 'Use your local Wallpaper Engine library as the GUI backdrop: video and web wallpapers render live, scene wallpapers as a static frame.',
+  wallpaperLoadError: 'Wallpaper library failed to load',
+  wallpaperLibraryFound: 'Wallpaper Engine library detected',
+  wallpaperLibraryManual: 'Manual folders only (no Wallpaper Engine install found; set folders in the skin-wallpaper settings)',
+  wallpaperRefresh: 'Refresh',
+  wallpaperMode: 'Render mode',
+  wallpaperModeLive: 'Live',
+  wallpaperModeFrame: 'Static frame',
+  wallpaperClear: 'Turn off wallpaper',
+  wallpaperDim: 'Wallpaper dimming',
+  wallpaperBlur: 'Wallpaper blur',
+  wallpaperPauseHidden: 'Pause when window hidden',
+  wallpaperImport: 'Import',
+  wallpaperImportHint: 'Copy this wallpaper into local storage, so it keeps working even if the Steam library moves or changes',
+  wallpaperReimport: 'Update',
+  wallpaperRemove: 'Remove',
+  wallpaperUpdateAvailable: 'The workshop original changed since import — update the local copy',
+  wallpaperEmpty: 'No wallpapers found. Subscribe in the Wallpaper Engine workshop, or add manual folders to the skin-wallpaper settings.',
+  wallpaperLegal: 'Wallpapers belong to their Workshop authors. Everything stays on this machine for personal use; nothing is uploaded or shared.',
+  wallpaperTypeVideo: 'Video',
+  wallpaperTypeWeb: 'Web',
+  wallpaperTypeScene: 'Scene (static)',
+  wallpaperTypeApp: 'Unsupported',
+  wallpaperDirs: 'Manual folders',
+  wallpaperDirsEmpty: 'No manual folders yet.',
+  wallpaperDirsHint: 'No Wallpaper Engine (e.g. macOS)? Point a folder at any .mp4/.webm files, a wallpaper project folder, or a folder of projects — they become your wallpaper library.',
+  wallpaperDirPlaceholder: '/path/to/wallpapers or ~/Movies/wallpapers',
+  wallpaperDirAdd: 'Add',
 }
 
 export const zh: Record<SkinCenterKey, string> = {
@@ -86,7 +148,8 @@ export const zh: Record<SkinCenterKey, string> = {
   applying: '应用中…',
   restore: '恢复默认',
   applyFailed: '应用失败',
-  appliedUnconfirmed: '已写入配置但尚未确认生效——若皮肤未切换请手动刷新页面',
+  appliedUnconfirmed: '已写入配置但尚未确认生效——开发模式请刷新页面；打包版（DSH Desktop）需重启应用后生效',
+  appliedNeedRestart: '已写入配置并确认生效，但宿主未热重载——请重启 dsh 后生效',
   theme: '主题预览',
   themeLight: '亮色',
   themeDark: '暗色',
@@ -98,4 +161,34 @@ export const zh: Record<SkinCenterKey, string> = {
   backgroundBlurInert: '仅对带背景图插画的皮肤可见；官方默认无背景图。',
   backgroundHint: '即时为面板背后的背景加遮罩——数值越高越能弱化插画，帮你集中注意力。',
   backgroundHintInert: '仅对带背景图插画的皮肤（蓝色幻想 / 鲸吟）生效；官方默认无背景图，该滑块对这些皮肤自动生效。',
+  wallpaperTitle: 'Wallpaper Engine',
+  wallpaperEnable: '启用动态壁纸',
+  wallpaperHint: '把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频与网页壁纸动态渲染，场景壁纸以静态帧呈现。',
+  wallpaperLoadError: '壁纸库加载失败',
+  wallpaperLibraryFound: '已检测到 Wallpaper Engine 壁纸库',
+  wallpaperLibraryManual: '仅手动目录（未检测到 Wallpaper Engine 安装，可在 skin-wallpaper 设置里添加目录）',
+  wallpaperRefresh: '刷新',
+  wallpaperMode: '渲染模式',
+  wallpaperModeLive: '动态',
+  wallpaperModeFrame: '静态帧',
+  wallpaperClear: '关闭壁纸',
+  wallpaperDim: '壁纸暗化',
+  wallpaperBlur: '壁纸模糊',
+  wallpaperPauseHidden: '窗口隐藏时暂停',
+  wallpaperImport: '导入',
+  wallpaperImportHint: '把该壁纸复制到本地存储，Steam 库迁移或变动后仍可继续使用',
+  wallpaperReimport: '更新',
+  wallpaperRemove: '移除',
+  wallpaperUpdateAvailable: '工坊原件在导入后有更新——同步更新本地副本',
+  wallpaperEmpty: '未发现壁纸。可先在 Wallpaper Engine 创意工坊订阅，或在 skin-wallpaper 设置里添加手动目录。',
+  wallpaperLegal: '壁纸素材版权归创意工坊作者所有，仅供本机个人使用，不上传、不分享。',
+  wallpaperTypeVideo: '视频',
+  wallpaperTypeWeb: '网页',
+  wallpaperTypeScene: '场景(静态)',
+  wallpaperTypeApp: '不支持',
+  wallpaperDirs: '手动目录',
+  wallpaperDirsEmpty: '还没有手动目录。',
+  wallpaperDirsHint: '没有 Wallpaper Engine（如 macOS）？把任意 .mp4/.webm 视频、单个壁纸项目文件夹或项目合集文件夹加进来，就是你的壁纸库。',
+  wallpaperDirPlaceholder: '/path/to/wallpapers 或 ~/Movies/wallpapers',
+  wallpaperDirAdd: '添加',
 }

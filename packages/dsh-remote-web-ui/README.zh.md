@@ -2,18 +2,18 @@
 
 [English](README.md) | 中文
 
-> 移动端远程控制 + 一键远程更新：扫码配对后用手机远程使用当前 dsh web 工作区；点击侧边栏更新按钮自动检查并更新 dsh-web-ui 全家桶。
+> 移动端远程控制 + 一键远程更新：扫码配对后用手机远程使用当前 dsh web 工作区；侧边栏加载后静默检查 dsh-web-ui 全家桶新版本，发现时标记更新按钮；点击按钮后自动更新全家桶。
 
-本仓库是 DeepSeek Harness（DSH）的外部插件包：为 dsh web GUI 提供扫码配对式移动端远程控制，外加 dsh-web-ui 全家桶的一键自更新。它是单一双半区包——host 半区持有配对令牌、设备会话、`/api/pair` 路由族与 `/api/update` 面板；浏览器半区渲染侧边栏底部入口（下载触发按钮与设置按钮旁的手机图标）、带二维码的配对面板、实时设备状态，以及停止/刷新/复制操作，还渲染探测并执行更新的更新面板。
+本仓库是 DeepSeek Harness（DSH）的外部插件包：为 dsh web GUI 提供扫码配对式移动端远程控制，外加 dsh-web-ui 全家桶的一键自更新。它是单一双半区包——host 半区持有配对令牌、设备会话、`/api/pair` 路由族与 `/api/update` 面板；浏览器半区渲染侧边栏底部入口（下载触发按钮与设置按钮旁的手机图标入口）、带二维码的配对面板、实时设备状态，以及停止/刷新/复制操作，还渲染探测并执行更新的更新面板。
 
 ## 功能
 
-- **入口**：侧边栏底部靠设置按钮旁的手机图标。
+- **入口**：设置按钮旁始终显示手机图标；悬停时显示“移动端远程控制”提示。
 - **面板**：「移动端远程控制」标题、「扫码或在手机上打开链接，即可远程控制当前工作区」副标题、「手机扫码连接」卡片（含状态区「等待手机连接」+ 状态徽标）、大号二维码、「无法扫码？可以在手机上打开链接」提示，以及三个按钮：停止 / 刷新二维码 / 复制链接。
-- **手机侧**：扫码将手机与一次性、限时令牌绑定，并落地到 **`/m` 独立移动端界面**——一款专为小屏设计的轻客户端（见[截图](#截图)），而不是把桌面 UI 塞进手机。链接携带 `workspace` 参数，手机落地到桌面正在查看的同一工作区。
+- **手机侧**：扫码将手机与一次性、限时令牌绑定，并落地到 **`/m/` 独立移动端界面**——一款专为小屏设计的轻客户端（见[截图](#截图)），而不是把桌面 UI 塞进手机。该页面可安装为 PWA；每个已安装应用使用自己的已配对设备 cookie，存储隔离的移动端 Web App 需要在该上下文打开新的二维码链接，或粘贴桌面端新复制的链接完成配对。链接携带 `workspace` 参数，手机落地到桌面正在查看的同一工作区。
 - **安全**：一个有效的一次性令牌（刷新会使旧链接失效；已接受的令牌不可复用；令牌会过期）。停止会撤销每一台已配对设备与当前令牌——已配对设备在下一次请求时被切断。当插件 `requirePairingForLan` 门开启（默认）时，每个非 loopback 的 `/api` 请求必须携带有效的已配对设备 cookie，因此二维码是进入暴露在局域网上的 dsh web 的唯一途径。
 - **实时状态**：桌面面板经 SSE 流实时镜像配对状态（等待 → 已连接 → 已断开）。
-- **远程更新**：侧边栏底部的下载触发按钮（手机图标左侧）打开更新面板，它探测 npm registry 上已安装的 `@linxin666/dsh-*` 全家桶版本。当存在较新版本时，面板自动执行更新（在所属 dsh profile 内 `pnpm update --latest`；pnpm 缺失时依次回退 `corepack pnpm`、`npx --yes pnpm`，Windows 上经 `cmd.exe` 执行以解析 npm 安装的 `.cmd` shim；由仅 loopback 的 `/api/update/status` + `/api/update/run` 端点驱动）并请求重启 dsh web 以生效。pnpm 绿色退出后还会对照 registry 复核已装版本：绿色退出但版本纹丝不动（例如 pnpm 的 `minimumReleaseAge` 门禁静默跳过同日发布的新版本）会报告为「未更新成功」并附配置指引，而不是误报成功。本地 link 安装（开发模式）会被探测到，只报告 npm 状态而不更新。
+- **远程更新**：侧边栏加载后，底部的下载触发按钮（手机图标左侧）会静默探测 npm registry 上已安装的 `@linxin666/dsh-*` 全家桶版本；发现可自动更新的新版本时，按钮显示圆点并提供“发现新版本，检查更新”提示。点击按钮打开更新面板；未安装聚合包时，检查和更新覆盖 profile 中 registry 管理的全部 `@linxin666/*` 直接依赖，本地 link / file 开发依赖会被跳过。当存在较新版本时，面板自动执行更新（在所属 dsh profile 内 `pnpm update --latest`；pnpm 缺失时依次回退 `corepack pnpm`、`npx --yes pnpm`，Windows 上经 `cmd.exe` 执行以解析 npm 安装的 `.cmd` shim；由仅 loopback 的 `/api/update/status` + `/api/update/run` 端点驱动）并请求重启 dsh web 以生效。pnpm 绿色退出后还会对照 registry 复核已装版本：绿色退出但版本纹丝不动（例如 pnpm 的 `minimumReleaseAge` 门禁静默跳过同日发布的新版本）会报告为「未更新成功」并附配置指引，而不是误报成功。锚点自身是本地 link 安装（开发模式）时，只报告 npm 状态而不更新。
 
 ## 截图
 
@@ -29,6 +29,7 @@
 - 其 `dsh` CLI 支持 profile（`dsh --profile`、`dsh plugin`）的 DSH 安装——本包所依托的 profile/bundle 机制。
 - 局域网使用必须手机可到达服务器：用 `dsh web --host 0.0.0.0` 启动。默认 `127.0.0.1` 绑定时，面板会显示明确说明而不是死二维码——除非配置了公网 base URL（见下文「通过互联网远程访问」），那会让二维码在无需重新绑定即可从任意位置访问。面板的 mint/stop 端点设计上仅限 loopback：在局域网 URL 打开的桌面浏览器只会看到「配对面板仅限本机使用」横幅——请在 `http://127.0.0.1` 打开面板，让手机使用配对链接。
 - 一键公网隧道（`autoTunnel`）需要 `cloudflared` 平台二进制随包分发（其 postinstall 会下载它；运行时下载覆盖跳过 postinstall 脚本的安装器）。无需用户侧工具、账号或域名——Cloudflare quick tunnel 免费且匿名。
+- 把 `/m/` 安装为 PWA 需要安全上下文：`localhost` 和 `127.0.0.1` 可用于本机，手机安装需要 HTTPS。普通局域网 HTTP 仍可在线使用移动端远程控制，但无法注册其 Service Worker。
 
 ## 安装
 
@@ -54,7 +55,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-remote-web-ui
 
 1. `dsh web --host 0.0.0.0`（打印的局域网 URL 确认可达性）。
 2. 点击手机图标 → 面板铸一枚新的二维码。
-3. 用手机扫码（或打开复制的链接）：手机绑定并落到 **`/m` 独立移动端界面**——不在小屏显示桌面 UI。该界面刻意精简：
+3. 用手机扫码（或打开复制的链接）：手机绑定并落到 **`/m/` 独立移动端界面**——不在小屏显示桌面 UI。该界面刻意精简：
    - 直接进入工作区（每个工作区的会话列表上有 新建会话 按钮：它经 host 的 `session.create` 创建附加到该工作区的空白会话，并立即打开新聊天），
    - 一个工作区的会话**增量**加载（每页 20 行，"加载更多会话"继续；绝不同时加载整份列表），
    - 打开会话**按需**抓取聊天内容（历史分页，"加载更早的消息"继续往回翻），
@@ -63,17 +64,20 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-remote-web-ui
    - **亮色优先主题**：界面默认亮色调色板；每个页头内的日/月切换翻到暗色调色板，选择跨访问持久（localStorage），
    - 消息按桌面折叠纪律渲染：推理隐藏在被折叠的 深度思考 揭示下面，工具调用隐藏在被折叠的 工具 行下面（点击查看每个调用的参数），超长回答藏在显式 展开全文 切换下面，每行带时间，并且 assistant 回复按 GFM Markdown 渲染（标题 / 加粗 / 斜体 / 行内码 / 代码块 / 列表 / 表格 / 引用 / 链接 / 图片；零依赖自写渲染器，先转义再白名单协议，移动端 bundle 体积几乎不变；KaTeX 公式暂不支持，后续单独评估），用户消息保持纯文本，
    - 输入栏工具条带 **模型** 选择器（provider 分组目录 + 每模型 思考强度 effort 区）与 **权限** 选择器（权限预设；完全权限 需要显式确认步骤）。两者都走 host 自己的 `session.models` / `session.selectModel` RPC 与 `/permission` 命令——手机改的与桌面改的是同一个会话设置——外加 **显示** 弹层（含 工具调用 与 系统提示词 两个持久开关）和一个 上下文 用量 chip（显示最近一次助手回答的上下文占用百分比）。
-4. 桌面徽标实时翻到 已连接；手机离开时回落到离线/断开。
-5. 刷新二维码 使旧链接失效并铸一枚新的。停止 撤销移动端访问：已配对设备下一次请求 403，包括其实时流。
+4. 在安全 origin 上从浏览器安装 `/m/` 页面。已安装应用保留相同的移动端远程控制能力；其浏览器上下文没有已配对设备 cookie 时，把桌面端新复制的配对链接粘贴进配对页面。
+5. 桌面徽标实时翻到 已连接；手机离开时回落到离线/断开。
+6. 刷新二维码 使旧链接失效并铸一枚新的。停止 撤销移动端访问：已配对设备下一次请求 403，包括其实时流。
 
-该移动端界面完全自包含在本插件内：`/m` 页面及其数据通道（`/m/api`）由插件自己的路由伺服，**无需任何 harness 源码改动**——手机的 RPC 调用走插件的 `/m/api` 代理（它委托给 host 的 ApiProxy 服务并自己分页 `session.list`），因此被隧道化的 Host 永远不必进入连接插件的信任围栏。手机受其已配对设备 cookie 与显式方法白名单门控（settings/credentials/host-action 域手机永远不可达；模型读写限制于建议性的 `session.models` / `session.selectModel` 对，创建限制于 `session.create`（仅工作区 id——手机绝不自命名工作目录），编辑和重试额外只开放 `session.fork`，权限选择器只通过已放行的 `session.prompt` 发送模式无关的 `/permission` 命令）；实时流在 `/m/api/events.mux` 上经 Server-Sent Events 送达。编辑和重试永远不修改源会话日志。
+该移动端界面完全自包含在本插件内：`/m/` 页面及其数据通道（`/m/api`）由插件自己的路由伺服，**无需任何 harness 源码改动**——手机的 RPC 调用走插件的 `/m/api` 代理（它委托给 host 的 ApiProxy 服务并自己分页 `session.list`），因此被隧道化的 Host 永远不必进入连接插件的信任围栏。手机受其已配对设备 cookie 与显式方法白名单门控（settings/credentials/host-action 域手机永远不可达；模型读写限制于建议性的 `session.models` / `session.selectModel` 对，创建限制于 `session.create`（仅工作区 id——手机绝不自命名工作目录），编辑和重试额外只开放 `session.fork`，权限选择器只通过已放行的 `session.prompt` 发送模式无关的 `/permission` 命令）；实时流在 `/m/api/events.mux` 上经 Server-Sent Events 送达。编辑和重试永远不修改源会话日志。规范的 `/m/` 页面拥有同 scope 的 manifest 与 Service Worker；其缓存仅包含静态壳和离线页，绝不包含移动端 API 响应、会话数据或命令。
 
 ### 行为说明
 
 - 移动端输入框默认 Enter 发送（Shift+Enter 换行）。在插件设置卡片（或 profile patch）把 `mobileEnterToSend` 设为 false 后，普通 Enter 改为插入换行，只有「发送」按钮会发送；手机打开聊天时经自己的 `/m/api` 偏好方法读取该开关。在支持 `field-sizing: content` 的浏览器上，输入框随草稿自动增高，最高 120px 封顶（两种模式一致）。
 - 桌面 Web 的最新一条已空闲真人纯文本消息会在用户气泡右下角显示铅笔编辑按钮。点击后原气泡直接切换为内联编辑器，提供「取消」和「发送」操作；保存会从上一条已完成边界分叉出子会话并从该位置发送新内容，首轮则在同一工作区创建等价会话并尽量保留当前模型。替换消息被接受后，不变的源会话会从主列表归档，避免连续编辑堆积同名分支，仍可从归档恢复；替换失败后再次发送会复用已创建的子会话。运行中、插件/系统消息和带附件的消息不提供编辑。
 - 桌面 Web 的模型请求遇到 `EMPTY_RESPONSE`、`RATE_LIMIT`、`SERVER`、`TIMEOUT` 或 `TRANSPORT` 时，首次请求之外默认自动重试最多 5 次，并采用可取消的有界指数退避；原生会话状态会显示当前重试次数、等待状态和最终失败原因。认证、非法请求、上下文、配额等永久性错误不会重试；工具执行不会自动重放，避免重复外部副作用。可在 Web UI 插件设置卡片的故障处理项、profile patch 或设置文件中把 `retryAttempts` 调整为任意非负整数，设为 0 可关闭自动重试。
+- `/m/` Worker 对静态壳使用 network-first 回退，并等待当前页面关闭后才激活更新。它旁路 `/m/api`、`/api`、SSE 与所有写请求。
 - 安装本插件会门控非 loopback 的 `/api` 访问于配对之后（见 `src/index.ts` 的 `requirePairingForLan`）。经局域网 URL 打开的桌面浏览器必须像任何远程设备一样配对；loopback（127.0.0.1）不受影响。把 profile patch 里 `requirePairingForLan` 设为 false 可恢复开放局域网行为，同时保留令牌/状态/撤销。
+- `/api` 之外的兄弟 host 路由（右侧面板的 `/aionui-panel/*`）可查询本插件的 `remoteWebUiPairing` 服务：有效的已配对设备 cookie 是放行路径，`stop()` 仍会切断它们；未安装本插件时该服务不存在。
 - 二维码链接基于机器的非内部 IPv4 字面量构建；多宿主主机（Wi-Fi + 有线，或代理/VPN 虚拟适配器）会显示单选器供你发布手机实际可达的网络。第一个字面量是默认值。设 `publicBaseUrl` 后，单选器在顶部额外加一项 公网地址——默认二维码改用公网 base，选中局域网字面量会重新铸一枚网内链接。
 - 配置的 `publicBaseUrl` 本身满足可达绑定需求：`dsh web` 绑定 `127.0.0.1`（不带 `--host 0.0.0.0`）仍能经隧道铸出可用的公网二维码链接。
 
@@ -164,9 +168,10 @@ pnpm run build
 ## 已知限制与待办
 
 - **撤销是逐请求的**：已配对手机请求已在 停止 落地时在途，完成该请求；下一个 403。
-- **设备会话在内存中**：配对状态（token + devices）随 `dsh web` 进程重置。
+- **设备会话默认在内存中**：配对状态（token + devices）随 `dsh web` 进程重置；设置 `devicesFile` 配置项（绝对路径 JSON）后可跨重启持久化——手机端 cookie 本有 365 天有效期，持久化后重启 `dsh web` 无需重新扫码（点「停止」主动撤销仍会立即生效并同步落盘）。设备 id 即会话凭证（网关凭 cookie 中的设备 id 放行请求），文件以 0600 权限经临时文件原子写入，建议把文件放置在 0700 目录（如 `$DSH_HOME`）内；变更 `cookieName` 会使旧设备失效（预期行为）。
 - **无逐设备管理 UI**：面板显示聚合状态（waiting / connected N / offline）；单设备撤销延后。
-- **Quick-tunnel hostname 每次运行变化**：`trycloudflare.com` URL 每次 `cloudflared` 启动随机，所以隧道重启时 `--trusted-host` 与 `publicBaseUrl` 必须一起更新。named tunnel（固定 hostname）避免这种抖动。
+- **Quick-tunnel hostname 每次运行变化**：`trycloudflare.com` URL 每次 `cloudflared` 启动随机，所以隧道重启时 `--trusted-host` 与 `publicBaseUrl` 必须一起更新。named tunnel（固定 hostname）避免这种抖动，也是持久安装 PWA 地址所必需的。
+- **PWA 为在线优先**：只缓存静态壳和离线页。全部移动端远程控制能力仍要求运行中的 DSH host；离线时不提供会话、API 响应或命令。
 - **开发 HMR**：`dsh web --dev` 按路径轮询每个 roster bundle，因此重建本包（其自己的 `tsdown --watch`）会热重载 client bundle；无 harness 侧 watcher。
 
 ## 依赖理由

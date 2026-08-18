@@ -159,7 +159,7 @@ export function ScmPanel({ stores }: { stores: PanelStores }): JSX.Element {
             </button>
             <button
               type="button"
-              className={`${scmCss.sectionAction}${state.viewMode === 'list' ? '' : ''}`}
+              className={scmCss.sectionAction}
               title={t('scm.viewList')}
               style={{ color: state.viewMode === 'list' ? 'var(--aion-brand)' : undefined }}
               onClick={() => scm.setViewMode('list')}
@@ -255,6 +255,11 @@ function Group({
   const tree = useMemo(() => buildTree(rows), [rows])
   const viewTree = state.viewMode === 'tree'
   const allActionable = rows.filter((row) => row.state !== 'conflicted')
+  // O(1) lookups for row rendering: an includes() per row per array is
+  // O(rows x ops) on every batch operation.
+  const busySet = useMemo(() => new Set(state.busy), [state.busy])
+  const failedSet = useMemo(() => new Set(state.failed), [state.failed])
+  const expandedSet = useMemo(() => new Set(state.treeExpanded), [state.treeExpanded])
 
   return (
     <div>
@@ -280,6 +285,9 @@ function Group({
             rows={dirRows}
             depth={0}
             state={state}
+            expandedSet={expandedSet}
+            busySet={busySet}
+            failedSet={failedSet}
             scm={scm}
             preview={preview}
             onDiscard={onDiscard}
@@ -291,6 +299,8 @@ function Group({
             key={`${row.staged ? 's' : 'u'}:${row.path}`}
             row={row}
             state={state}
+            busy={busySet.has(row.path)}
+            failed={failedSet.has(row.path)}
             scm={scm}
             preview={preview}
             onDiscard={onDiscard}
@@ -307,6 +317,9 @@ function DirNode({
   rows,
   depth,
   state,
+  expandedSet,
+  busySet,
+  failedSet,
   scm,
   preview,
   onDiscard,
@@ -315,11 +328,14 @@ function DirNode({
   rows: GitChangeRow[]
   depth: number
   state: ReturnType<PanelStores['scm']['getSnapshot']>
+  expandedSet: ReadonlySet<string>
+  busySet: ReadonlySet<string>
+  failedSet: ReadonlySet<string>
   scm: PanelStores['scm']
   preview: PanelStores['preview']
   onDiscard: (rows: GitChangeRow[]) => void
 }): JSX.Element {
-  const expanded = state.treeExpanded.includes(dir)
+  const expanded = expandedSet.has(dir)
   const label = dir === '' ? '/' : dir.split('/').pop() ?? dir
   const toggleExpanded = (): void => {
     const next = expanded
@@ -351,6 +367,8 @@ function DirNode({
             key={`${row.staged ? 's' : 'u'}:${row.path}`}
             row={row}
             state={state}
+            busy={busySet.has(row.path)}
+            failed={failedSet.has(row.path)}
             scm={scm}
             preview={preview}
             onDiscard={onDiscard}
@@ -369,6 +387,8 @@ function DirNode({
 function ChangeRow({
   row,
   state,
+  busy,
+  failed,
   scm,
   preview,
   onDiscard,
@@ -377,6 +397,8 @@ function ChangeRow({
 }: {
   row: GitChangeRow
   state: ReturnType<PanelStores['scm']['getSnapshot']>
+  busy: boolean
+  failed: boolean
   scm: PanelStores['scm']
   preview: PanelStores['preview']
   onDiscard: (rows: GitChangeRow[]) => void
@@ -384,8 +406,6 @@ function ChangeRow({
   hideDir?: boolean
 }): JSX.Element {
   const badge = BADGE[row.state] ?? BADGE.unknown
-  const busy = state.busy.includes(row.path)
-  const failed = state.failed.includes(row.path)
   const conflicted = row.state === 'conflicted'
   const displayName = row.oldPath !== undefined ? `${row.oldPath.split('/').pop()} -> ${row.path.split('/').pop()}` : (row.path.split('/').pop() ?? row.path)
   const dir = dirOf(row.path)

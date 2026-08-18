@@ -4,9 +4,12 @@
  * try-on executes the real bundle inside the GUI (light/dark preview, full
  * restore on exit); Apply is one click — the host half runs `dsh-skin use`
  * through /api/skin-center/apply, the config watcher hot-reloads the patch,
- * and the page reloads into the new skin. Copy rides the standard `t` seat;
+ * and the new skin is hot-committed in place (issue #359 — no reload, no
+ * app restart; a page reload remains the fallback). Copy rides the standard `t` seat;
  * the theme preview control drives the official theme service (persisted,
- * same as the Appearance row).
+ * same as the Appearance row). The "trying on" badge tracks the controller's
+ * live session (via subscribe), so closing and reopening the settings panel
+ * keeps showing the skin that is still being previewed.
  */
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -14,7 +17,9 @@ import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { SKIN_CENTER_ENTRIES, type SkinCenterEntry } from './generated/skins.ts'
 import { manifestHasSkin } from './manifest.ts'
 import type { SkinBackgroundHandle } from './background.ts'
+import type { WallpaperHandle } from './wallpaper.ts'
 import { activeSkinEntry, TryOnController } from './try-on.ts'
+import { WallpaperPanel } from './WallpaperPanel.tsx'
 import css from './skin-center.module.css'
 
 /** Business face the skin-center apply() injects into the card. */
@@ -27,6 +32,8 @@ export interface SkinCenterInjected {
   }
   /** Background occluder over the shared skin-background namespace. */
   background: SkinBackgroundHandle
+  /** Wallpaper Engine bridge over the skin-wallpaper namespace. */
+  wallpaper: WallpaperHandle
 }
 
 /** Plugin-card component props: locale seat + injected face. */
@@ -37,7 +44,7 @@ export type SkinCenterComponentProps =
 const OFFICIAL = 'official'
 
 /** Skin ids that read the background-scrim variable and paint a backdrop. */
-const BACKDROP_SKIN_IDS = new Set(['blue-fantasy', 'whale-song'])
+const BACKDROP_SKIN_IDS = new Set(['blue-fantasy', 'whale-song', 'whale-mom'])
 
 /**
  * Render the skin-center card: a static header naming the plugin, with the
@@ -46,7 +53,7 @@ const BACKDROP_SKIN_IDS = new Set(['blue-fantasy', 'whale-song'])
  * @param props - card props.
  * @returns the plugin card.
  */
-export function SkinCenter({ t, controller, theme, background }: SkinCenterComponentProps) {
+export function SkinCenter({ t, controller, theme, background, wallpaper }: SkinCenterComponentProps) {
   const snapshot = useSyncExternalStore(theme.subscribe, theme.getTheme)
   const enabled = useSyncExternalStore(background.subscribe, background.enabled)
   const opacity = useSyncExternalStore(background.subscribe, background.opacity)
@@ -55,11 +62,16 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
   const activePackage = activeSkinEntry()?.package
   const activeId = activeSkinEntry()?.id
   const backdropActive = activeId !== undefined && BACKDROP_SKIN_IDS.has(activeId)
-  const [tryingId, setTryingId] = useState<string | null>(null)
-  const [tryingOfficial, setTryingOfficial] = useState(false)
+  // The trying badge tracks the controller's live session instead of local
+  // state, so it survives the card unmounting when the settings panel closes
+  // (the controller owns the preview and persists for the page lifetime).
+  const tryingId = useSyncExternalStore(controller.subscribe, () => controller.trying?.id ?? null)
+  const tryingOfficial = useSyncExternalStore(controller.subscribe, () => controller.tryingOfficial)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [applying, setApplying] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Re-render trigger after a hot commit flips the active-skin override.
+  const [, forceRender] = useState(0)
   // Unmount guard for the confirmation poll: once the card is gone, the
   // pending timers must stop and no reload / setState may fire.
   const mounted = useRef(false)
@@ -77,22 +89,20 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
     const request = ++tryOnRequest.current
     setError(null)
     setLoadingId(entry.id)
+    // The controller notifies the store on every session transition, so the
+    // trying badge here is derived, not set from the promise result.
     void controller.tryOn(entry)
       .then(mountedTarget => {
         if (!mounted.current || request !== tryOnRequest.current || !mountedTarget) return
         setLoadingId(null)
-        setTryingId(entry.id)
-        setTryingOfficial(false)
       })
       .catch(() => {
         if (!mounted.current || request !== tryOnRequest.current) return
         // A load failure keeps the previous preview mounted; a mount failure
-        // restores the original active skin. Mirror the controller's actual
-        // session instead of blindly clearing a preview that may still exist.
+        // restores the original active skin. The store reflects the
+        // controller's actual session either way.
         setLoadingId(null)
         setError(t('tryOnError'))
-        setTryingId(controller.trying?.id ?? null)
-        setTryingOfficial(controller.tryingOfficial)
       })
   }
 
@@ -104,19 +114,13 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
       controller.tryOnOfficial()
     } catch {
       setError(t('tryOnError'))
-      setTryingOfficial(false)
-      return
     }
-    setTryingId(null)
-    setTryingOfficial(true)
   }
 
   const exitTryOn = (): void => {
     ++tryOnRequest.current
     controller.exit()
     setLoadingId(null)
-    setTryingId(null)
-    setTryingOfficial(false)
   }
 
   /**
@@ -212,9 +216,24 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
           throw new Error(payload?.error ?? `HTTP ${response.status}`)
         }
         setApplying(null)
-        // Patch written; reload only once the watcher reports the target
-        // active AND the boot manifest caught up, so the page never boots
-        // into the old skin.
+        // Patch written; once the watcher reports the target active, hot-swap
+        // it in place (issue #359: packaged installs only refresh the boot
+        // graph on app restart, so a reload alone cannot switch the skin).
+        // The reload path stays as the fallback when the hot mount fails.
+        const reloadFallback = (): void => {
+          void manifestReady(target).then(ready => {
+            if (!mounted.current) return
+            if (ready) {
+              window.location.reload()
+            } else {
+              // The patch write was confirmed active, but the boot manifest
+              // never regenerated: the host has no hot reload for this
+              // install, so a restart is what actually applies the skin.
+              // Re-running `dsh-skin use` would only rewrite the same patch.
+              setError(t('appliedNeedRestart'))
+            }
+          })
+        }
         void confirmActive(target).then(confirmed => {
           if (!mounted.current) return
           if (!confirmed) {
@@ -222,14 +241,22 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
             setError(`${t('appliedUnconfirmed')} — ${command}`)
             return
           }
-          void manifestReady(target).then(ready => {
+          const entry = target === OFFICIAL
+            ? null
+            : SKIN_CENTER_ENTRIES.find(candidate => candidate.id === target) ?? null
+          if (entry === null && target !== OFFICIAL) {
+            reloadFallback()
+            return
+          }
+          void controller.commit(entry).then(() => {
             if (!mounted.current) return
-            if (ready) {
-              window.location.reload()
-            } else {
-              const command = target === OFFICIAL ? 'dsh-skin use official' : `dsh-skin use ${target}`
-              setError(`${t('appliedUnconfirmed')} — ${command}`)
-            }
+            // commit() exits any live preview, which the store already
+            // reflected; re-render so the active markers follow the
+            // hot-committed skin (activeSkinEntry now answers the override).
+            forceRender(tick => tick + 1)
+          }).catch(() => {
+            if (!mounted.current) return
+            reloadFallback()
           })
         })
       })
@@ -392,6 +419,8 @@ export function SkinCenter({ t, controller, theme, background }: SkinCenterCompo
                   </div>
 
 
+                  <WallpaperPanel t={t} wallpaper={wallpaper} />
+
                   {error !== null && <div className={css.error}>{error}</div>}
 
                   <div className={css.list}>
@@ -467,10 +496,10 @@ export type SkinCenterSectionProps =
 
 /** Render the skin-center card as a first-level settings page. */
 export function SkinCenterSection(props: SkinCenterSectionProps): ReactNode {
-  const { t, controller, theme, background } = props
+  const { t, controller, theme, background, wallpaper } = props
   return (
     <ul className={css.sectionList}>
-      <SkinCenter t={t} controller={controller} theme={theme} background={background} />
+      <SkinCenter t={t} controller={controller} theme={theme} background={background} wallpaper={wallpaper} />
     </ul>
   )
 }

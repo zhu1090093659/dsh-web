@@ -43,10 +43,6 @@ export const SKIN_CENTER_ENTRIES: readonly SkinCenterEntry[] = [
 
   {"id":"harbor","name":"夕港","nameEn":"Harbor","author":"moeblack","tagline":"暮光蓝港 · 日落橙辉 · 半透明夜色面板","description":"《夕港》黄昏港口主题：动漫少女黄昏港口背景（暮光蓝天空渐入日落橙）垫在半透明面板之下，遮罩随亮/暗主题实时切换，深暮蓝 #141a2e 底与日落橙 #ff9d5c 主色重映射到 dsh token，亮色是薄暮纱、暗色是深海夜航纱，同一幅画两种读法。","tags":["harbor","dusk","twilight","sunset","amber","art","translucent"],"accent":"#ff9d5c","bodyAttr":"data-dsh-harbor","package":"@linxin666/dsh-client-ui-skin-harbor","order":3},
 
-  {"id":"qq98","name":"QQ2008 怀旧版","nameEn":"QQ2008 Retro","author":"dsh-web-ui","tagline":"水晶蓝桌面 · 玻璃深蓝标题栏 · 戴围巾企鹅","description":"dsh web ui 家族收录的第一个皮肤：QQ2008 水晶蓝年代。深蓝渐变桌面、玻璃质感标题栏、浅蓝状态栏和圆角高光控件，配一只戴围巾的企鹅。","tags":["retro","qq","2008","crystal-blue","nostalgia"],"accent":"#2b7cd9","bodyAttr":"data-dsh-retro","package":"@linxin666/dsh-client-ui-skin-qq98","order":4},
-
-  {"id":"ths","name":"同花顺风格","nameEn":"Tonghuashun Trading","author":"dsh-web-ui","tagline":"品牌红标题栏 · 实时行情状态栏 · 灰蓝数据终端","description":"同花顺风格炒股主题：品牌红标题栏带上证指数行情签，状态栏红涨绿跌，自选股风格的侧边栏和交易终端面板，写代码也像盯盘。","tags":["stock","trading","terminal","red"],"accent":"#e60012","bodyAttr":"data-dsh-ths","package":"@linxin666/dsh-client-ui-skin-ths","order":5},
-
   {"id":"xp","name":"Windows XP (Luna)","nameEn":"Windows XP Luna","author":"dsh-web-ui","tagline":"Luna 蓝窗口条 · 绿色开始按钮 · Bliss 蓝天桌面","description":"Windows XP (Luna) 复古主题：蓝色渐变窗口条带窗口按钮、米色状态栏（大写/数字/滚动指示灯）、侧边栏任务栏上的绿色「开始」按钮、资源管理器风格树行和 Bliss 蓝天桌面，全局直角。","tags":["retro","xp","luna","windows","start-button"],"accent":"#316ac5","bodyAttr":"data-dsh-xp","package":"@linxin666/dsh-client-ui-skin-xp","order":6},
 
   {"id":"dragon-heir","name":"龙的传人","nameEn":"Dragon Heir","author":"dsh-web-ui","tagline":"不屈龙魂 · 万里长城双主题 · 朱砂龙印","description":"龙的传人 — 一面是不屈龙魂（墨龙穿云、朱砂印章、不屈锋芒），一面是万里长城（青黛山色、金晖镀墙、苍茫暮色）。亮暗主题各自配一幅画与一枚龙印 favicon，面板半透明磨砂，让画透出来。","tags":["dragon","loong","chinese","ink-wash","great-wall","dual-theme"],"accent":"#c3272b","bodyAttr":"data-dsh-dragon-heir","package":"@linxin666/dsh-client-ui-skin-dragon-heir","order":7},
@@ -56,5 +52,11 @@ export const SKIN_CENTER_ENTRIES: readonly SkinCenterEntry[] = [
   {"id":"trading","name":"交易终端","nameEn":"Trading Terminal","author":"dsh-web-ui","tagline":"实时行情跑马灯 · 长桥港美股行情 · 红涨绿跌交易终端","description":"结合 dsh-fun-ticker 行情跑马灯与 dsh-longbridge 港美股行情的炒股皮肤：顶栏滚动 A股/港股/美股/指数/加密/外汇报价（装 fun-ticker 后跟随你的自选列表），状态栏展示长桥行情快照与 A股/港股/美股交易时段，写代码也像盯盘。","tags":["stock","trading","ticker","live","terminal","longbridge"],"accent":"#f23645","bodyAttr":"data-dsh-trading","package":"@linxin666/dsh-client-ui-skin-trading","order":9},
 
   {"id":"miku","name":"初音未来 · 电子歌姬","nameEn":"Hatsune Miku","author":"涂山苏苏","tagline":"蓝紫双马尾 · 01 编号 · 音符波形 · 电子歌姬主题","description":"以世界第一的虚拟歌姬初音未来为灵感的主题皮肤：蓝紫洋红渐变贯穿全局，音符与声波曲线点缀在半透明面板之间，标题栏与状态栏带有 01 编号徽标与音乐波形，半透明毛玻璃面板透出背景图——沉浸式电子歌姬氛围。","tags":["miku","vocaloid","blue","music","idol","waveform"],"accent":"#2e9bff","bodyAttr":"data-dsh-miku","package":"@linxin666/dsh-client-ui-skin-miku","order":10},
+
+  {"id":"whale-mom","name":"鲸鱼妈妈","nameEn":"Whale Mom","author":"dsh-web-ui","tagline":"深海鲸鱼妈妈与幼崽的画作 · 全透面板由背景遮挡驱动 · 金线点缀","description":"dsh web ui 的鲸鱼妈妈主题皮肤：深海鲸鱼妈妈与幼崽们的氛围画作铺满视口，面板全透（透明度由设置-皮肤中心的背景遮挡滑杆驱动，侧边栏基准透明度可用 --dsw-skin-sidebar-alpha 微调），深蓝 / 奶油 / 金色配色贯穿全局，暗色是深海夜航。","tags":["ocean","whale","mother","translucent","gold"],"accent":"#d9a53c","bodyAttr":"data-dsh-whale-mom","package":"@linxin666/dsh-client-ui-skin-whale-mom","order":11},
+
+  {"id":"matrix","name":"Matrix 骇客帝国","nameEn":"Matrix","author":"contributed (seanchen)","tagline":"深夜护眼 · 墨绿暗色 · 数字雨","description":"深夜卧室场景的护眼暗色皮肤：近黑墨绿背景、墨绿等宽字体、低透明度数字雨。强制暗色（不跟随系统主题），整体低亮度，长时间使用不刺眼、不打扰家人睡觉。","tags":["matrix","dark","green","hacker","night","eye-care"],"accent":"#00e676","bodyAttr":"data-dsh-matrix","package":"@linxin666/dsh-client-ui-skin-matrix","order":12},
+
+  {"id":"maid-atelier","name":"深海女仆工坊","nameEn":"Abyssal Maid Atelier","author":"Small-tailqwq","tagline":"双女仆背景、深海蓝蕾丝界面与 Q 版侧栏","description":"一套面向 DeepSeek Harness Web GUI 的高定制动漫角色皮肤。它使用双女仆工坊场景作为对话区背景，以深海蓝、陶瓷白、长春花蓝和柔金构成可热切换的界面覆盖层，并为加载、思考和工具运行状态提供动画反馈。","tags":["anime","maid","whale","navy","ornate","glass"],"accent":"#c5a468","bodyAttr":"data-dsh-maid-atelier","package":"@linxin666/dsh-client-ui-skin-maid-atelier","order":13},
 
 ]

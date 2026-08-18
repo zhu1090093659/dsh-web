@@ -73,21 +73,38 @@ export function isValidCron(expr: string): boolean {
 /**
  * Compute the next matching instant after `fromMs` (ms epoch), in local time,
  * at minute granularity, strictly greater than `fromMs`. Returns the ms epoch
- * of the matching minute's start, or undefined when nothing matches within
- * 366 days (e.g. `0 0 30 2 *`).
+ * of the matching minute's start, or undefined when the calendar constraint
+ * can never match (for example `0 0 30 2 *`). The five-year horizon includes
+ * a full leap cycle, so a valid February 29 schedule remains reachable from
+ * every non-leap year.
  */
 export function nextRunAtMs(expr: string, fromMs: number): number | undefined {
   const schedule = parseCron(expr)
   if (schedule === null) return undefined
+  if (!hasPossibleCalendarDay(schedule)) return undefined
   const from = new Date(fromMs)
   // Scan from the next minute; Date rolls overflow (Feb 30 → Mar 2) for free.
   const scan = new Date(from.getFullYear(), from.getMonth(), from.getDate(), from.getHours(), from.getMinutes() + 1, 0, 0)
-  const limitMs = fromMs + 366 * 24 * 60 * 60 * 1000
+  const limitMs = fromMs + 5 * 366 * 24 * 60 * 60 * 1000
   while (scan.getTime() <= limitMs) {
     if (matches(schedule, scan)) return scan.getTime()
     scan.setMinutes(scan.getMinutes() + 1)
   }
   return undefined
+}
+
+/** Reject impossible month/day pairs without spending the multi-year scan. */
+function hasPossibleCalendarDay(schedule: CronSchedule): boolean {
+  if (schedule.dayWildcard || !schedule.weekdayWildcard) return true
+  const maximumDay = new Map<number, number>([
+    [1, 31], [2, 29], [3, 31], [4, 30], [5, 31], [6, 30],
+    [7, 31], [8, 31], [9, 30], [10, 31], [11, 30], [12, 31],
+  ])
+  for (const month of schedule.months) {
+    const maximum = maximumDay.get(month) ?? 0
+    if ([...schedule.days].some(day => day <= maximum)) return true
+  }
+  return false
 }
 
 /** Parse one comma-list field into the match set. */

@@ -1,7 +1,7 @@
 /**
  * Web UI plugin group, browser half. Registers the `web-ui-plugins`
  * dictionaries and one first-level settings section that renders the family
- * plugin cards (task-board, live-stats, remote-web-ui, describe-image)
+ * plugin cards (task-board, remote-web-ui, describe-image)
  * directly under a static heading. The section declares the
  * `web-ui.plugin.item` child slot; the dsh-web-ui family plugins register
  * their per-plugin cards there. Skin Center, Community Plugins and Desktop

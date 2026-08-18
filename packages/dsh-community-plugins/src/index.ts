@@ -9,6 +9,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
+import { mountOnce } from './mount-once.ts'
 
 /** Stable cordis plugin name (matches cordis.patch.yml insert id). */
 export const name = 'ui-community-plugins'
@@ -40,7 +41,9 @@ export const Config: z<Config> = z.object({
  * settings service is mounted (pure community-card installs skip it).
  * @param ctx - cordis context.
  */
-export function apply(ctx: Context): void {
+export const apply = mountOnce('@linxin666/dsh-client-ui-community-plugins', applyImpl)
+
+function applyImpl(ctx: Context): void {
   installSettingsSection(ctx, COMMUNITY_PLUGINS_SETTINGS_NAMESPACE, Config, {}, {
     setSource: () => { /* application is browser-side; value is read from the scope */ },
     onChange: () => { /* browser half re-reads on scope publish */ },

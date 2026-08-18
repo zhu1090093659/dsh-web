@@ -4,9 +4,12 @@
 /**
  * dsh-skin-new — scaffold a new skin for the dsh-web-ui skin collection.
  *
- * Generates packages/skins/<name>/ from the official standalone bundle standard
- * (turtle-ui shape): package.json with `dsh.bundle` + `dsh.client` +
- * self-contained `prepare` build, cordis.patch.yml, tsdown.config.ts,
+ * Generates packages/skins/<name>/ from the standalone bundle standard:
+ * package.json with the `dsh.client` manifest (no `dsh.bundle` — skins are
+ * wired by the skin manager, whose skin.json `wiring.bundleWired: false`
+ * renders the insert row into the profile's own cordis.patch.yml managed
+ * section, never as a bundle layer),
+ * self-contained `prepare` build, tsdown.config.ts,
  * skin.json, a minimal apply()/dispose client entry with a scoped stylesheet,
  * and a generic apply spec. The author then fills in the skin.json metadata
  * and the CSS/TS surface, runs `pnpm build`/`pnpm test`, regenerates the
@@ -43,7 +46,7 @@ function pascalName(name) {
 
 function pkgJson(name) {
   return {
-    name: `@deepseek-ai/dsh-client-ui-skin-${name}`,
+    name: `@linxin666/dsh-client-ui-skin-${name}`,
     description: `Hot-pluggable ${displayName(name)} skin for the dsh web GUI: <edit me — one line pitch>`,
     version: '0.0.1',
     private: true,
@@ -56,7 +59,6 @@ function pkgJson(name) {
       './package.json': './package.json',
     },
     dsh: {
-      bundle: { patch: './cordis.patch.yml' },
       client: { inject: [], platform: 'web' },
     },
     scripts: {
@@ -75,25 +77,14 @@ function pkgJson(name) {
       vitest: '^4.1.8',
       '@deepseek-ai/cordis': '^4.0.1',
     },
-    files: ['lib', 'cordis.patch.yml', 'skin.json', 'preview', 'README.md'],
+    files: ['lib', 'skin.json', 'preview', 'README.md'],
   }
-}
-
-function cordisPatch(name) {
-  return `# ${name} skin bundle patch: inserts its dsh.client row into the web plugin roster.
-# The bundle is the official dsh plugin shape — install it with
-# \`dsh plugin --profile <name> add <path-or-git-url>\`; mutual exclusion between
-# skins is managed by scripts/dsh-skin (home-layer disabled rows).
-- insert:
-    - id: ui-skin-${name}
-      name: '@deepseek-ai/dsh-client-ui-skin-${name}'
-`
 }
 
 function tsdownConfig(name) {
   return `import { clientBundle } from '../../../shared/tsdown.client.ts'
 
-export default clientBundle('@deepseek-ai/dsh-client-ui-skin-${name}', ['src/index.ts'])
+export default clientBundle('@linxin666/dsh-client-ui-skin-${name}', ['src/index.ts'])
 `
 }
 
@@ -284,7 +275,7 @@ function skinJson(name, order) {
     tags: [name, 'new'],
     accent: '#6c5ce7',
     bodyAttr: `data-dsh-${name}`,
-    package: `@deepseek-ai/dsh-client-ui-skin-${name}`,
+    package: `@linxin666/dsh-client-ui-skin-${name}`,
     wiring: { id: `ui-skin-${name}`, bundleWired: false },
     preview: {
       light: `packages/skins/${name}/preview/light.png`,
@@ -351,7 +342,7 @@ describe('${displayName(name)} skin apply', () => {
 function readme(name) {
   const dataAttr = `data-dsh-${name}`
   const display = displayName(name)
-  return `# @deepseek-ai/dsh-client-ui-skin-${name}
+  return `# @linxin666/dsh-client-ui-skin-${name}
 
 ${display} skin for the dsh web GUI — <edit me: one-line pitch>.
 
@@ -364,14 +355,12 @@ auto-inject, so the loader removes it with the entry.
 The skin is presentation-only: no services are injected, no cordis events are
 emitted, and nothing reaches a model request.
 
-## Installing (official bundle)
+## Installing
 
-1. Local path: \`dsh plugin --profile <name> add /path/to/dsh-web-ui/packages/skins/${name}\`
-2. Git: \`dsh plugin --profile <name> add github:<org>/dsh-web-ui#<sha>\` —
-   pnpm ≥10 asks once for \`allowBuilds\` authorization (the \`prepare\` script
-   self-containedly builds \`lib/\`; no monorepo reference needed).
-3. Switch with \`scripts/dsh-skin\` (\`dsh-skin use ${name}\`); only one skin is
-   ever active at a time.
+Skins ship inside the family aggregate \`@linxin666/dsh-skins\` and are wired by
+the skin manager, so this package declares no \`dsh.bundle\`. Install and switch
+with \`scripts/dsh-skin\` (\`dsh-skin use ${name}\`); only one skin is ever active
+at a time.
 
 ## Building and testing
 
@@ -422,7 +411,6 @@ function main() {
 
   const files = {
     'package.json': JSON.stringify(pkgJson(name), null, 2) + '\n',
-    'cordis.patch.yml': cordisPatch(name),
     'tsdown.config.ts': tsdownConfig(name),
     'tsconfig.json': tsconfig(),
     'tsconfig.vitest.json': tsconfigVitest(),

@@ -1,0 +1,7 @@
+# bundle patch for the skill-explorer plugin: inserts its plugin row into the web
+# profile roster. Applied as a profile bundle layer (the `dsh.bundle.patch`
+# manifest field); install with
+# `dsh plugin --profile web add link:<repo>/packages/dsh-skill-explorer`.
+- insert:
+    - id: ui-skill-explorer
+      name: '@linxin666/dsh-client-ui-skill-explorer'

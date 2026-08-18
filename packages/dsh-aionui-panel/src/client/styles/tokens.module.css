@@ -156,6 +156,18 @@
   border-left: 1px solid var(--aion-bg-3);
 }
 
+/* Maximized narrow-screen overlay (issue #315): on viewports below the
+   breakpoint the maximized column leaves the grid and covers the whole
+   window (mobile-friendly full-screen mode). The layout controller toggles
+   this class; removing it restores the normal grid position. Above the
+   columns/chrome (60) and below dialogs (1000+). */
+:global(.aionui-preview-col.aionui-maximized),
+:global(.aionui-explorer-col.aionui-maximized) {
+  position: fixed !important;
+  inset: 0;
+  z-index: 60;
+}
+
 :global(.aionui-explorer-col) {
   border-left: 1px solid var(--aion-bg-3);
 }
@@ -203,11 +215,15 @@
   width: 6px;
   background-color: var(--aion-brand);
 }
-/* The preview handle's line sits at its right edge (its hit zone extends
-   left); the explorer's at its left edge. */
+/* The visual line of each handle sits exactly on the panel boundary: the hit
+   zone now extends mostly into the panel (thin lip on the far side), so the
+   line is offset from the handle's own left edge by the lip width. */
+:global(.aionui-explorer-handle::after) {
+  left: 2px;
+}
 :global(.aionui-preview-handle::after) {
-  left: auto;
-  right: 0;
+  left: 4px;
+  right: auto;
   opacity: 0.3;
 }
 :global(.aionui-preview-handle:hover::after),
@@ -215,27 +231,31 @@
   opacity: 1;
 }
 
-/* Floating expand button (explorer collapsed). Above the columns (z 30):
-   when the preview region is open it overlaps the rightmost column track,
-   so anything lower would be painted under the opaque column and stop
-   receiving clicks (issue #234 follow-up). Full-screen overlay drawers
-   must render at the ROOT stacking context (z 100~1000) to cover it. */
+/* Floating expand button (explorer collapsed). Docked at the viewport's
+   top-right corner, just below the shell header's bottom divider (the
+   horizontal line under the "Session log" row) — the layout controller
+   sets an inline top for that, so the button never overlaps the header
+   chrome (issues #374 / #292). Above the columns (z 30): when the preview
+   region is open it overlaps the rightmost column track, so anything
+   lower would be painted under the opaque column and stop receiving
+   clicks (issue #234 follow-up). Full-screen overlay drawers must render
+   at the ROOT stacking context (z 100~1000) to cover it.
+   The top below is only the pre-JS fallback (the chevron row); the
+   controller overwrites it inline. */
 :global(.aionui-floating-expand) {
   position: fixed;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 64px;
+  top: calc(6px + env(titlebar-area-height, 0px));
+  right: 8px;
+  width: 24px;
+  height: 24px;
   display: none;
   align-items: center;
   justify-content: center;
   border: none;
-  border-top-left-radius: 10px;
-  border-bottom-left-radius: 10px;
+  border-radius: 4px;
   background-color: var(--aion-bg-2);
   color: var(--aion-text-secondary);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   cursor: pointer;
   z-index: 100;
   transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);

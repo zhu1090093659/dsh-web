@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -52,6 +52,21 @@ type ToolResultError = NonNullable<SessionEvent<'tool/result'>['data']['error']>
 
 function makeSession(id: string): Session {
   return { id } as unknown as Session
+}
+
+/** A session the host classifies as a subagent child (see SessionHeader). */
+function makeSubagentSession(id: string, parentId: string): Session {
+  return {
+    id,
+    header: {
+      version: 0,
+      id,
+      createdAt: 0,
+      parentSession: parentId,
+      origin: 'subagent',
+      delegationDepth: 1,
+    },
+  } as unknown as Session
 }
 
 function callId(value: string): ToolCallId {
@@ -234,6 +249,56 @@ describe('PetService (rc.6 session events)', () => {
     }
   })
 
+  it('whispers an inner line woken by the model output, then expires it', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      // A reasoning chunk whose text matches the error mood wakes a whisper
+      // while the status bubble reports the scene as usual.
+      ctx.emit('session/event', session, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: '这里有个错误要修',
+      }, 1))
+      const view = await service.state()
+      expect(view.bubble).toBe('正在思考')
+      expect(view.whisper).toBe('哎呀，好像踩到小石子了')
+
+      // The cooldown keeps a second keyword hit quiet right after.
+      ctx.emit('session/event', session, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: '又一个错误',
+      }, 2))
+      expect((await service.state()).whisper).toBe('哎呀，好像踩到小石子了')
+
+      // Past the TTL the whisper leaves the view.
+      const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 8100)
+      try {
+        expect((await service.state()).whisper).toBeUndefined()
+      } finally {
+        clock.mockRestore()
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('stays silent when the model output carries no whisper trigger', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      ctx.emit('session/event', session, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: '嗯',
+      }, 1))
+      const view = await service.state()
+      expect(view.bubble).toBe('正在思考')
+      expect(view.whisper).toBeUndefined()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('keeps parallel tool activity visible and surfaces a failed result', async () => {
     const ctx = new Context()
     const dir = tempDir()
@@ -261,9 +326,11 @@ describe('PetService (rc.6 session events)', () => {
         name: 'ToolError',
         code: 'WRITE_FAILED',
       }))
+      // The failure voice rotates round-robin: the second tool failure in
+      // one session speaks the pool's next line instead of repeating.
       expect(await service.state()).toMatchObject({
         animation: 'failed',
-        bubble: '工具执行失败',
+        bubble: '工具闹脾气了，哄哄它',
       })
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -355,6 +422,53 @@ describe('PetService (rc.6 session events)', () => {
       view = await service.state()
       expect(view.sessions).toEqual([])
       expect(view).toMatchObject({ animation: 'idle', sessionActive: false })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps subagent sessions out of the bubble stack while they still drive the display', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const sessionA = makeSession('s-a')
+    const sessionB = makeSession('s-b')
+    const child = makeSubagentSession('s-child', 's-b')
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+
+      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: 'A',
+      }, 1))
+      ctx.emit('session/event', sessionB, toolCall(1, 1, 'call-b', 'search', 1))
+      // The subagent's activity is the most recent meaningful event: the
+      // sprite follows it, but it must not occupy its own bubble.
+      ctx.emit('session/event', child, toolCall(1, 1, 'call-c', 'run_code', 1))
+
+      const view = await service.state()
+      expect(view).toMatchObject({ animation: 'running-right', bubble: '正在使用 run_code' })
+      expect(view.sessions).toEqual([
+        { sessionId: 's-b', animation: 'running-right', phase: 'tool', bubble: '正在使用 search' },
+        { sessionId: 's-a', animation: 'running', phase: 'thinking', bubble: '正在思考' },
+      ])
+      expect(view.sessions?.some(entry => entry.sessionId === 's-child')).toBe(false)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('falls back to the single display bubble when only subagent sessions are active', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const child = makeSubagentSession('s-child', 's-parent')
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      ctx.emit('session/event', child, toolCall(1, 1, 'call-c', 'run_code', 1))
+
+      const view = await service.state()
+      // No top-level session: the stack is empty and the subagent's work is
+      // reported through the legacy single bubble instead.
+      expect(view.sessions ?? []).toEqual([])
+      expect(view).toMatchObject({ animation: 'running-right', bubble: '正在使用 run_code' })
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -461,9 +575,39 @@ describe('PetService (rc.6 session events)', () => {
         kind: 'aborted', reason: { kind: 'user' },
       }, 2))
       const view = await service.state()
-      expect(view).toMatchObject({ animation: 'idle', bubble: '已停止' })
+      // A stopped session settles to idle without any bubble or stack entry.
+      expect(view).toMatchObject({ animation: 'idle' })
+      expect(view.bubble).toBeUndefined()
+      expect(view.sessions ?? []).toEqual([])
       expect(view.affinity.turns).toBe(0)
       expect(view.treats.stocked).toBe(0)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('drops the bubble of a stopped session while concurrent sessions keep theirs', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const sessionA = makeSession('s-a')
+    const sessionB = makeSession('s-b')
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      ctx.emit('session/event', sessionA, toolCall(1, 1, 'call-a', 'grep', 1))
+      ctx.emit('session/event', sessionB, toolCall(1, 1, 'call-b', 'shell', 1))
+      ctx.emit('session/event', sessionA, turnEnd(1, {
+        kind: 'aborted', reason: { kind: 'user' },
+      }, 2))
+      const view = await service.state()
+      // The stopped session leaves no bubble; B keeps reporting its tool work.
+      expect(view.sessions).toEqual([
+        { sessionId: 's-b', animation: 'running-right', phase: 'tool', bubble: '正在使用 shell' },
+      ])
+      // The stopped session was the latest event, so the sprite settles to
+      // idle while B's bubble stays in the stack.
+      expect(view).toMatchObject({ animation: 'idle' })
+      expect(view.bubble).toBeUndefined()
+      expect(view.affinity.turns).toBe(0)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -502,6 +646,36 @@ describe('PetService (rc.6 session events)', () => {
       }
       expect((await service.state()).affinity.turns).toBe(0)
     } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('expires failed session bubbles while other sessions remain active', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const failed = makeSession('failed')
+    const active = makeSession('active')
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000)
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      ctx.emit('session/event', failed, turnEnd(1, {
+        kind: 'error', error: { message: 'boom', code: 'UNKNOWN' },
+      }, 1))
+      ctx.emit('session/event', active, toolCall(1, 1, 'call-active', 'search', 2))
+      expect((await service.state()).sessions).toEqual([
+        { sessionId: 'active', animation: 'running-right', phase: 'tool', bubble: '正在使用 search' },
+        { sessionId: 'failed', animation: 'failed', phase: 'failed', bubble: '执行失败' },
+      ])
+
+      vi.advanceTimersByTime(2400)
+      const view = await service.state()
+      expect(view).toMatchObject({ animation: 'running-right', bubble: '正在使用 search' })
+      expect(view.sessions).toEqual([
+        { sessionId: 'active', animation: 'running-right', phase: 'tool', bubble: '正在使用 search' },
+      ])
+    } finally {
+      vi.useRealTimers()
       rmSync(dir, { recursive: true, force: true })
     }
   })

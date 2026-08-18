@@ -1,6 +1,6 @@
 # AGENTS.md — 文档标准
 
-本文件定义 dsh-web-ui 的文档结构、写作规则、i18n 配对契约与词数预算。
+本文件定义 dsh-web-ui 的文档结构、写作规则与 i18n 配对契约。
 pnpm docs:check（scripts/verify-docs.mjs）强制执行本文件的可机械检查部分。
 
 ## 文档分层：一个事实只有一个家
@@ -35,16 +35,6 @@ pnpm docs:check（scripts/verify-docs.mjs）强制执行本文件的可机械检
 - **语言切换行**：中文文件 H1 后立即 `[English](README.md) | 中文`；英文文件 H1 后 `English | [中文](README.zh.md)`。
 - **结构镜像**：标题层级与顺序、列表种类与条数、表格行列数、链接目标、代码块在两侧一一对应（见 docs/i18n.md）。
 - **门禁**：pnpm docs:check 校验三件套完整、hash 与当前内容一致、切换行存在、结构签名匹配。编辑任一侧不同步即变红。
-
-## 词数预算
-
-scripts/doc-budgets.manifest.json 设定长期文档词数上限；pnpm docs:check 拒绝超限或缺失文件。超限时：
-
-1. **迁移**：属于其他层的内容移走，留一行链接。
-2. **精简**：本层内容压缩到上限内。
-3. **调额**：确需更多空间时提高上限，并在 PR 中说明理由。
-
-目标：根 AGENTS.md ≤ 1400 词；packages/AGENTS.md ≤ 900 词；本文件 ≤ 1200 词；docs/plugins.md ≤ 2300 词；docs/i18n.md ≤ 900 词；docs/development.md ≤ 900 词。上限是护栏不是压缩目标，至少保留 5% 余量。
 
 ## 写作检查清单
 

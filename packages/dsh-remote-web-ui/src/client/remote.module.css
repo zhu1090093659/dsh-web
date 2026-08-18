@@ -21,6 +21,7 @@
 /* Trigger: settings row height beside the trigger row (wide), or the 36px
    rail circle; the seat's owner (ui-sidebar) lays out the geometry. */
 .trigger {
+  position: relative;
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -35,6 +36,30 @@
   cursor: pointer;
   /* Transition + focus ring consent (box-shadow from :focus-visible). */
   transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+
+.trigger[data-update-available]::after {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border: 2px solid var(--dsw-alias-bg-layer-1);
+  border-radius: 50%;
+  background: var(--dsw-alias-brand-primary);
+  content: '';
+  pointer-events: none;
+}
+
+.trigger[data-wide='wide'] {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  width: auto;
+  min-width: 0;
+  border-radius: 8px;
+  gap: 8px;
+  padding: 0 10px;
 }
 
 .trigger:hover:not(:disabled) {
@@ -429,6 +454,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .entryRow[data-rail='rail'] {

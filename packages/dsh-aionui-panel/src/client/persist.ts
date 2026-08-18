@@ -25,15 +25,6 @@ export function readStoredNumber(key: string, min: number, max: number, fallback
   }
 }
 
-/** Read a stored string; fallback when absent. */
-export function readStoredString(key: string, fallback = ''): string {
-  try {
-    return localStorage.getItem(key) ?? fallback
-  } catch {
-    return fallback
-  }
-}
-
 /** Write a number if it differs from the stored value (avoids churn). */
 export function writeStoredNumber(key: string, value: number): void {
   try {
@@ -42,49 +33,6 @@ export function writeStoredNumber(key: string, value: number): void {
     localStorage.setItem(key, raw)
   } catch {
     // persistence is best-effort; the panel still works
-  }
-}
-
-/** Write a string if it differs from the stored value. */
-export function writeStoredString(key: string, value: string): void {
-  try {
-    if (localStorage.getItem(key) === value) return
-    localStorage.setItem(key, value)
-  } catch {
-    // best-effort
-  }
-}
-
-/** Debounced writer: coalesces rapid updates (drag frames) into one write. */
-export function debouncedWriter(write: (value: unknown) => void, delayMs = 150): {
-  schedule: (value: unknown) => void
-  flush: () => void
-  dispose: () => void
-} {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  let pending: unknown = undefined
-  let hasPending = false
-  const flush = (): void => {
-    if (timer !== undefined) clearTimeout(timer)
-    timer = undefined
-    if (hasPending) {
-      hasPending = false
-      write(pending)
-    }
-  }
-  return {
-    schedule(value: unknown) {
-      pending = value
-      hasPending = true
-      if (timer !== undefined) return
-      timer = setTimeout(flush, delayMs)
-    },
-    flush,
-    dispose() {
-      if (timer !== undefined) clearTimeout(timer)
-      timer = undefined
-      hasPending = false
-    },
   }
 }
 
@@ -198,6 +146,10 @@ export function listPreviewScopes(): Array<{ root: string; savedAt: number }> {
 
 /** Evict the oldest scopes beyond the cap. */
 export function evictPreviewScopes(keep: string): void {
+  // Cheap pre-check first: enumerate keys only (no JSON.parse, no sort).
+  // Writes far below the cap — the common case — return here instead of
+  // parsing and sorting every stored preview scope on each persist.
+  if (listStoredKeysByPrefix(PREVIEW_SCOPE_PREFIX).length <= PREVIEW_SCOPE_CAP) return
   const scopes = listPreviewScopes().filter((scope) => scope.root !== keep)
   let excess = scopes.length - (PREVIEW_SCOPE_CAP - 1)
   for (const scope of scopes) {

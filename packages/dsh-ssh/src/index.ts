@@ -18,6 +18,7 @@ import { SshEngine } from './engine.ts'
 import { makeRoutes } from './routes.ts'
 import { HostStore } from './store.ts'
 import { sshClusterTool, sshDownloadTool, sshExecTool, sshListTool, sshTunnelTool, sshUploadTool } from './tools.ts'
+import { mountOnce } from './mount-once.ts'
 
 /** Stable cordis plugin name. */
 export const name = 'ssh'
@@ -62,7 +63,9 @@ export const SSH_GUIDANCE = '本机已安装 dsh-ssh 插件（DSH 远程 SSH 运
  * @param ctx - host plugin context carrying webServer/tools/systemPrompt.
  * @param config - resolved plugin config (schema defaults applied by the loader).
  */
-export function apply(ctx: Context, config?: Config): void {
+export const apply = mountOnce('@linxin666/dsh-ssh', applyImpl)
+
+function applyImpl(ctx: Context, config?: Config): void {
   // The live source the surfaces read: the settings section once the web
   // settings surface is served, the composition entry otherwise.
   let current: () => Config = () => config ?? {}

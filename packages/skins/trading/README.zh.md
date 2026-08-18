@@ -12,29 +12,15 @@ dsh web GUI 的炒股皮肤（交易终端）：把 DeepSeek 聊天界面变成�
 
 皮肤只做呈现 + 只读：不发 cordis 事件、不触及模型请求。深色调色板（`body[data-dsh-trading][data-ds-dark-theme]`）是夜间终端变体（TradingView 风格石墨色），基础块是亮色交易白天。
 
-## 安装（官方 bundle 方式）
+## 安装
 
-推荐先装皮肤全家桶聚合包 `@linxin666/dsh-skins` 一次到位；只装本皮肤时用下列 link 命令。
+皮肤内置在家族聚合包 `@linxin666/dsh-skins` 里（装它 = 全部皮肤一次到位），由皮肤管理器接线——本包不声明 `dsh.bundle`（skin.json 的 `wiring.bundleWired: false`），`dsh-skin use` 会把 insert 行写进 profile 自己的 patch：
 
 ```sh
-# 装全部皮肤（推荐）
 dsh plugin --profile web add @linxin666/dsh-skins
-# 或单独装本皮肤
-dsh plugin --profile web add @linxin666/dsh-client-ui-skin-trading
-# 皮肤启用：dsh-skin use trading
-# 从仓库安装（开发调试）：dsh plugin --profile web add link:$(pwd)/packages/skins/trading
 ```
 
-`$(pwd)` 指克隆全家桶仓库后的目录。
-
-本地 link 安装前需先在全家桶仓库内构建产物（`lib/` 被 git 忽略、不随仓库提交）：
-`pnpm install && pnpm -r build` 后再 link 安装。
-通过 git 安装（`dsh plugin --profile web add github:<org>/dsh-web-ui#<sha>`）时
-`prepare` 脚本自动自包含构建 `lib/`，无需单独构建；pnpm ≥10 首次安装 git 依赖需先把
-pnpm 打印的包键加入相应 profile 的 `pnpm-workspace.yaml` 的 `allowBuilds` 列表再重试。
-
-皮肤启用 / 切换用 `dsh-skin use trading`（本仓库 `scripts/dsh-skin` 辅助脚本）；同一时刻只激活一个皮肤。
-同一时刻只应激活一个皮肤行——两个皮肤会同时注入窗口 chrome。移除该行（连同包）即可回到默认外观。
+用 `dsh-skin use <id>`（monorepo 里的辅助脚本 `scripts/dsh-skin`）激活或切换；同一时刻只激活一款皮肤。
 
 ## 依赖
 
@@ -43,6 +29,13 @@ pnpm 打印的包键加入相应 profile 的 `pnpm-workspace.yaml` 的 `allowBui
   网络屏蔽这些域名时仍显示 chrome，只是单元格为 `--`。
 - 工作区计数格通过 `@deepseek-ai/dsh-client-connection` 句柄读 `workspace.list` RPC；
   无连接时显示 `--`。
+
+### 数据读取范围
+
+皮肤的数据面严格只读（与家族行情皮肤同一先例）：只消费行情源（fun-ticker 代理 /
+长桥快照 / 公共端点）与 `workspace.list` RPC（工作区计数格，经
+`ctx.get('connection')` 在有连接句柄时读取）。不写任何设置、不调用模型端点、
+不发 cordis 事件；所有读取失败均安全降级为 `--` 单元格。
 
 ## 模型体验
 

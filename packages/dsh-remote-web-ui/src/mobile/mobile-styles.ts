@@ -1096,4 +1096,52 @@ body {
     transition: none;
   }
 }
+
+/* ── installed-app pairing ───────────────────────────────────────────── */
+
+.mobile-pair {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.mobile-pairCard {
+  display: grid;
+  width: min(100%, 420px);
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--m-border);
+  border-radius: 12px;
+  background: var(--m-bg-raised);
+  box-shadow: var(--m-shadow-raise);
+}
+
+.mobile-pairLabel {
+  color: var(--m-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mobile-pairInput {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid var(--m-border);
+  border-radius: 8px;
+  background: var(--m-bg-input);
+  color: var(--m-text);
+  font: inherit;
+  outline: none;
+}
+
+.mobile-pairInput:focus-visible {
+  border-color: var(--m-accent);
+  box-shadow: 0 0 0 2px var(--m-bg), 0 0 0 4px var(--m-accent);
+}
+
+.mobile-pairSubmit {
+  width: 100%;
+}
 `

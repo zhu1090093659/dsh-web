@@ -70,6 +70,36 @@
   outline-offset: 2px;
 }
 
+/* The in-flow tab-bar icon button (maximize/restore, issue #315). */
+.tabIconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--aion-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tabIconBtn:hover {
+  background: var(--aion-bg-3);
+  color: var(--aion-text-primary);
+}
+
+.tabIconBtn:active {
+  background: var(--aion-bg-active);
+}
+
+.tabIconBtn:focus-visible {
+  outline: 2px solid var(--aion-primary);
+  outline-offset: 2px;
+}
+
 /* The persistent filename search area. */
 .searchArea {
   flex-shrink: 0;

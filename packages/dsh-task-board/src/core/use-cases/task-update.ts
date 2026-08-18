@@ -8,15 +8,10 @@
  * back to the runtime default); an unknown permission string is ignored so
  * stale UI can never persist a value the execution service rejects.
  */
-import { isTaskPermission, type TaskRecord, type TaskPermission } from '../tasks.ts'
+import { isTaskPermission, normalizeTargetId, type TaskRecord, type TaskPermission } from '../tasks.ts'
 
 /** Editable fields on a task (the update patch surface). */
 export type TaskUpdatePatch = Partial<Pick<TaskRecord, 'title' | 'description' | 'prompt' | 'workspaceId' | 'mode' | 'permission'>>
-
-/** Collapse a blank target string to undefined (clears the pin). */
-function normalizeTargetId(value: string | undefined): string | undefined {
-  return value !== undefined && value.trim() === '' ? undefined : value
-}
 
 /** Keep an unknown permission string from entering the ledger. */
 function normalizePermission(

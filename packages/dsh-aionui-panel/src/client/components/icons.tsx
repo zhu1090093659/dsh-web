@@ -255,3 +255,20 @@ export function EmptyFolderIcon({ size = 16, className }: IconProps): JSX.Elemen
     </svg>
   )
 }
+
+export function MaximizeIcon({ size = 14, className }: IconProps): JSX.Element {
+  return (
+    <svg {...base(size)} className={className}>
+      <rect x="3" y="3" width="10" height="10" rx="1" />
+    </svg>
+  )
+}
+
+export function RestoreIcon({ size = 14, className }: IconProps): JSX.Element {
+  return (
+    <svg {...base(size)} className={className}>
+      <rect x="3" y="5" width="8" height="8" rx="1" />
+      <path d="M6.5 3.5h5a1 1 0 0 1 1 1V10" />
+    </svg>
+  )
+}

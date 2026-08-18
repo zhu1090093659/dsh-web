@@ -242,6 +242,81 @@ html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [class*='centerCol'] 
   color: var(--dsw-alias-label-tertiary);
 }
 
+.groupBySelect {
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-specific-input-major);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  outline: none;
+}
+
+/* --- host groups (#379) ------------------------------------------------------- */
+
+.groupSection + .groupSection {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  position: sticky;
+  top: 0;
+  background: var(--dsw-alias-bg-base, var(--dsw-specific-input-major));
+}
+
+.groupToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: none;
+  background: none;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 6px;
+}
+
+.groupToggle:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.groupChevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--dsw-alias-label-tertiary);
+  border-bottom: 1.5px solid var(--dsw-alias-label-tertiary);
+  transform: rotate(45deg);
+  transition: transform 120ms ease;
+  flex: none;
+  margin-bottom: 2px;
+}
+
+.groupChevron[data-collapsed] {
+  transform: rotate(-45deg);
+  margin-bottom: 0;
+}
+
+.groupName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupCount {
+  color: var(--dsw-alias-label-tertiary);
+  font-weight: 400;
+  flex: none;
+}
+
 /* --- tables ------------------------------------------------------------------- */
 
 .tableWrap {

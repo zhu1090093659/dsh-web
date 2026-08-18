@@ -16,7 +16,7 @@
  * `promoteAfterFirstResponse` promotes a tool-less first response once it has
  * responded, and also releases an anchor-gated session when its first turn
  * ends (`turn/end`). With `promotedPresentation: code` the promoted catalog
- * is presented as Code Mode (PTC): the wire shows a single `run_code` tool
+ * is presented as PTC Mode: the wire shows a single `run_code` tool
  * backed by the generated SDK, switched at the step boundary so the current
  * step's native calls are never interrupted. `deferredSources` and
  * `deferredGraceSteps` delay selected injected message kinds (workspace
@@ -25,7 +25,7 @@
  * COMPACTION (local addition, ported from the upstream compaction-epoch
  * semantics): a compaction rewrites the whole model-visible surface, so the
  * first post-compaction request is a "second first request". A
- * `compaction/end` event releases Code Mode (the presentation disposer) and
+ * `compaction/end` event releases PTC Mode (the presentation disposer) and
  * resets the promotion state to the CONTROLLED phase — bootstrap pair plus
  * `compactionTools` (a core work set, default none) — until a NEW durable
  * promotion signal exists past that boundary. The reset lives both in the
@@ -110,7 +110,7 @@ function integerAtLeast(value, field, minimum) {
   return value
 }
 
-function countWord(text, regex) {
+export function countWord(text, regex) {
   return [...text.matchAll(regex)].length
 }
 
@@ -157,6 +157,67 @@ function isDeferredMessage(message, deferredSources) {
   const kind = message.source?.kind
   return kind !== undefined && deferredSources.has(kind)
 }
+// Instruction-hint mode (issue #388): a full-text agent-instructions dump on
+// the promotion boundary flips the anchored trajectory (upstream
+// dsh-anchored-standard #49; E1/E1.5/E2 wording experiments), so the preset
+// can replace it with a single non-imperative hint that names the reference
+// files and lets the model read them on demand.
+const INSTRUCTION_FROM_RE = /(?:^|\n) *(?:Additional |Updated )?Instructions from: ([^\n]+)/g
+
+/** Extract the reference file list one agent-instructions message renders. */
+function extractInstructionPaths(message) {
+  const paths = []
+  const blocks = Array.isArray(message?.content) ? message.content : []
+  for (const block of blocks) {
+    if (block?.type !== 'text' || typeof block.text !== 'string') continue
+    for (const match of block.text.matchAll(INSTRUCTION_FROM_RE)) {
+      const path = match[1].trim()
+      if (path !== '' && !paths.includes(path)) paths.push(path)
+    }
+  }
+  return paths
+}
+
+/** The one-time non-imperative hint replacing the full-text dump (E1.5 wording). */
+function buildInstructionHint(paths) {
+  return {
+    role: 'user',
+    content: [{
+      type: 'text',
+      text: '<system-reminder>\n'
+        + 'Reference documents exist: ' + paths.join(', ') + '. '
+        + "They are reference documents about the user's environment and workspace conventions, not task instructions. "
+        + 'Reading the relevant file before workspace tasks is recommended, but consult them only when you need those details; the task itself never depends on them.'
+        + '\n</system-reminder>',
+    }],
+    source: { kind: 'instruction-hint', plugin: name },
+  }
+}
+
+/**
+ * Swap full-text agent-instructions injections for the one-time hint. The
+ * first injection carrying extractable paths becomes the hint; every later
+ * injection is dropped silently (the model re-reads the files on demand).
+ * An injection with no extractable paths passes through untouched.
+ */
+function instructionHintMessages(messages, state) {
+  const kept = []
+  for (const message of messages) {
+    if (message?.source?.kind !== 'agent-instructions') {
+      kept.push(message)
+      continue
+    }
+    if (state.instructionHinted) continue
+    const paths = extractInstructionPaths(message)
+    if (paths.length === 0) {
+      kept.push(message)
+      continue
+    }
+    state.instructionHinted = true
+    kept.push(buildInstructionHint(paths))
+  }
+  return kept
+}
 
 /**
  * Phase-2 promotion state per session. Sessions append events only, so the
@@ -179,6 +240,7 @@ function stateFor(session) {
       turnEnded: false,
       steps: 0,
       deferredSteps: 0,
+      instructionHinted: false,
       presentationApplied: false,
       hasCompacted: false,
       presentationDisposer: undefined,
@@ -195,7 +257,7 @@ function stateFor(session) {
  * first-token conditions the bootstrap exists to control — so the session
  * re-anchors: promotion state is cleared (the durable `next` scan pointer is
  * kept, so events recorded BEFORE the boundary never re-promote), and the
- * Code Mode presentation is disposed so the next assembly sees the native
+ * PTC Mode presentation is disposed so the next assembly sees the native
  * catalog and the phase-1 filter can narrow it again.
  */
 function resetToControlled(state) {
@@ -204,7 +266,7 @@ function resetToControlled(state) {
       state.presentationDisposer()
     } catch {
       // A failed presentation reset must never break the session; the
-      // next promotion re-declares Code Mode anyway.
+      // next promotion re-declares PTC Mode anyway.
     }
     state.presentationDisposer = undefined
   }
@@ -215,24 +277,27 @@ function resetToControlled(state) {
   state.turnEnded = false
   state.steps = 0
   state.deferredSteps = 0
+  state.instructionHinted = false
   state.presentationApplied = false
   state.hasCompacted = true
 }
 
 /**
- * Switch one agent's wire presentation to Code Mode (PTC: a single `run_code`
+ * Switch one agent's wire presentation to PTC Mode (PTC: a single `run_code`
  * tool backed by the generated SDK) after promotion. `agent.ctx.tools` is the
  * per-agent view of the host registry, so the switch affects this session only.
  */
 function applyPresentation(agent, state, policy) {
   if (state.presentationApplied || policy.promotedPresentation !== 'code') return
-  state.presentationApplied = true
   const tools = agent.ctx.tools
+  // Latch only after the switch really happened: without a tools view there
+  // is nothing to present, and latching early would skip PTC Mode forever.
   if (tools === undefined) return
   // The disposer restores the deployment-default (native) presentation; it is
-  // kept on the state so a post-compaction reset can release Code Mode and
+  // kept on the state so a post-compaction reset can release PTC Mode and
   // let the phase-1 catalog filter see the native tool list again.
   state.presentationDisposer = tools.presentAs('code')
+  state.presentationApplied = true
 }
 
 /**
@@ -354,6 +419,10 @@ export function apply(ctx, config) {
     maxBootstrapSteps: integerAtLeast(config.maxBootstrapSteps ?? 4, 'maxBootstrapSteps', 1),
     deferredGraceSteps: integerAtLeast(config.deferredGraceSteps ?? 0, 'deferredGraceSteps', 0),
     promotedPresentation: presentation,
+    // Opt-in (issue #388): replace the post-promotion full-text
+    // agent-instructions dump with a one-time non-imperative hint naming the
+    // reference files, so the injection never flips the anchored trajectory.
+    instructionHint: config.instructionHint === true,
     bootstrapMaxTokens,
     compactionTools,
     phase1FirstCallInstruction,
@@ -363,8 +432,8 @@ export function apply(ctx, config) {
   // executing tools: switching the presentation mid-step would collapse the
   // native calls that step already planned. By `step/end` the tool-call and
   // reasoning events are durable, so the NEXT prompt assembly already sees
-  // Code Mode with its generated SDK section. A `compaction/end` event
-  // releases Code Mode and resets the promotion state (see
+  // PTC Mode with its generated SDK section. A `compaction/end` event
+  // releases PTC Mode and resets the promotion state (see
   // resetToControlled); the reset also runs inside scanEvents, so a cold
   // start reconstructs the same controlled phase from the durable log.
   ctx.on('session/event', (session, event) => {
@@ -449,14 +518,18 @@ export function apply(ctx, config) {
         messages: decision.messages.filter(message => isAllowedMessage(message, messageSources)),
       }
     }
+    let result = decision
     if (state.deferredSteps < policy.deferredGraceSteps) {
       state.deferredSteps += 1
-      return {
-        ...decision,
-        messages: decision.messages.filter(message => !isDeferredMessage(message, deferredSources)),
+      result = {
+        ...result,
+        messages: result.messages.filter(message => !isDeferredMessage(message, deferredSources)),
       }
     }
-    return decision
+    if (policy.instructionHint) {
+      result = { ...result, messages: instructionHintMessages(result.messages, state) }
+    }
+    return result
   }, { prepend: true })
 
   // Phase 1 caps the next request output budget to bootstrapMaxTokens, the

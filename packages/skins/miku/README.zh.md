@@ -36,26 +36,19 @@ pnpm test        # apply/dispose 契约测试
 
 构建产物 `lib/` 已随仓库提交，克隆后即使跳过构建也可安装；但建议完整构建一次。
 
-## 安装到 DSH
+## 安装
 
-```bash
-dsh plugin --profile web add "link:<本仓库绝对路径>"
+皮肤内置在家族聚合包 `@linxin666/dsh-skins` 里（装它 = 全部皮肤一次到位），由皮肤管理器接线——本包不声明 `dsh.bundle`（skin.json 的 `wiring.bundleWired: false`），`dsh-skin use` 会把 insert 行写进 profile 自己的 patch：
+
+```sh
+dsh plugin --profile web add @linxin666/dsh-skins
 ```
 
-- 路径含空格（Windows）：`dsh plugin add` 会把含空格的参数拆断，请改用：
-
-  ```bash
-  cd ~/.dsh/profiles/web
-  pnpm add "link:<本仓库绝对路径>"
-  ```
-
-  然后把 `@linxin666/dsh-client-ui-skin-miku` 追加到 `~/.dsh/profiles/web/package.json` 的 `dsh.profile.bundles` 数组。
-
-- 安装后重启 `dsh web`，强制刷新页面（Ctrl+Shift+R）。
+用 `dsh-skin use miku`（monorepo 里的辅助脚本 `scripts/dsh-skin`）激活或切换；同一时刻只激活一款皮肤。
 
 ## 切换皮肤
 
-皮肤启用互斥，通过 `scripts/dsh-skin` 管理（写入 `~/.dsh/cordis.patch.yml` 的 managed 区段 + profile 链接）：
+皮肤启用互斥，通过 `scripts/dsh-skin` 管理（写入当前 Web profile 的 `<harness-home>/profiles/<profile>/cordis.patch.yml` managed 区段 + profile 链接）：
 
 ```bash
 dsh-skin use miku       # 启用本皮肤

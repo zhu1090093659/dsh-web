@@ -5,7 +5,7 @@
  * try-on (the GUI never embeds the ~700KB of art base64 in its own bundle).
  * The host half switches skins in-process (src/skin-switch.ts) — an ESM port
  * of the `dsh-skin` CLI that owns the `dsh-skin managed` section of
- * `~/.dsh/cordis.patch.yml` and the profile symlink, exactly like
+ * the active profile's `cordis.patch.yml` and the profile symlink, exactly like
  * `dsh-skin use <name>` — so no `dsh-skin` binary is required on PATH
  * (the bug zhu1090093659/dsh-web-ui#5). The config watcher hot-reloads the
  * patch within seconds and the frontend reloads the page to pick up the new
@@ -27,8 +27,8 @@ import { currentSkin, useSkin, SKINS_DIR, listSkinDirCandidates, resolvePaths } 
 /** Browser-facing base path of the skin-center API. */
 export const SKIN_CENTER_API_PREFIX = '/api/skin-center'
 
-/** One JSON response. */
-function json(res: ServerResponse, status: number, body: unknown): void {
+/** One JSON response. Shared with the wallpaper routes (we-routes.ts). */
+export function json(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify(body))
 }
@@ -64,15 +64,19 @@ function isSameOriginRequest(req: IncomingMessage): boolean {
   return true
 }
 
-/** Reject cross-site requests with 403. */
-function requireSameOrigin(req: IncomingMessage, res: ServerResponse): boolean {
+/** Reject cross-site requests with 403. Shared with we-routes.ts. */
+export function requireSameOrigin(req: IncomingMessage, res: ServerResponse): boolean {
   if (isSameOriginRequest(req)) return true
   json(res, 403, { ok: false, error: 'cross-site-request-rejected' })
   return false
 }
 
-/** Read a JSON request body (bounded). */
-function readJsonBody(req: IncomingMessage): Promise<unknown> {
+/**
+ * Read a JSON request body (bounded to 64KB). Shared with we-routes.ts.
+ * Note: wallpaper imports copy files host-side, so no large upload ever
+ * travels this helper.
+ */
+export function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let size = 0
     const chunks: Buffer[] = []
@@ -106,7 +110,7 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
  * binary — it calls the embedded port of the CLI (src/skin-switch.ts), which
  * writes the boot patch and the profile symlink directly. Returns the same
  * stdout text the CLI would print, and rejects with the same error messages.
- * @param args - command arguments (e.g. `['use', 'qq98']`).
+ * @param args - command arguments (e.g. `['use', 'xp']`).
  */
 function runDshSkin(args: string[]): Promise<string> {
   const [command, argument] = args

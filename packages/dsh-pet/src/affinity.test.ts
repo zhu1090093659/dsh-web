@@ -26,8 +26,9 @@ describe('applyInteraction', () => {
     const second = applyInteraction(first.affinity, 'pet', now + defaultAffinityConfig.petCooldownMs - 1)
     expect(second.accepted).toBe(false)
     expect(second.delta).toBe(0)
-    expect(second.affinity).toBe(first.affinity) // same reference: no mutation
+    expect(second.affinity).not.toBe(first.affinity)
     expect(second.affinity.pets).toBe(1)
+    expect(second.affinity.petRejects).toBe(1)
   })
 
   it('accepts a pet again after the cooldown elapsed', () => {
@@ -44,8 +45,9 @@ describe('applyInteraction', () => {
     const second = applyInteraction(first.affinity, 'feed', now + defaultAffinityConfig.feedCooldownMs - 1)
     expect(second.accepted).toBe(false)
     expect(second.delta).toBe(0)
-    expect(second.affinity).toBe(first.affinity)
+    expect(second.affinity).not.toBe(first.affinity)
     expect(second.affinity.feeds).toBe(1)
+    expect(second.affinity.feedRejects).toBe(1)
   })
 
   it('clamps points at AFFINITY_MAX', () => {

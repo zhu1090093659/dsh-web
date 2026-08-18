@@ -1,8 +1,8 @@
 /**
  * Archive/restore task use case: move a settled (done/failed) task off the
- * main board and back. Purely a marker transition — the task keeps its
- * status, execution history and transcript references, so archiving never
- * loses traceability and restoring lands it in the exact column it left.
+ * main board and back. The task keeps its status, execution history, and
+ * transcript references, while archiving disarms any schedule so it cannot
+ * create more execution records until the user restores and re-enables it.
  */
 import type { TaskRecord } from '../tasks.ts'
 import { ARCHIVABLE_STATUSES } from '../tasks.ts'
@@ -18,7 +18,8 @@ export interface ArchiveTaskResult {
 /**
  * Archive one task: only settled statuses (done/failed) can be archived;
  * a running or not-yet-settled task stays on the board (its runner still
- * owns its lifecycle). Already-archived tasks are a no-op.
+ * owns its lifecycle). Archiving disarms a schedule; already-archived tasks
+ * are a no-op.
  */
 export function applyArchiveTask(
   tasks: readonly TaskRecord[],
@@ -30,7 +31,15 @@ export function applyArchiveTask(
     if (task.id !== id || task.archivedAt !== undefined) return task
     if (!(ARCHIVABLE_STATUSES as readonly string[]).includes(task.status)) return task
     applied = true
-    return { ...task, archivedAt: now, updatedAt: now }
+    const schedule = task.schedule === undefined
+      ? undefined
+      : { ...task.schedule, enabled: false, nextRunAt: undefined }
+    return {
+      ...task,
+      ...(schedule === undefined ? {} : { schedule }),
+      archivedAt: now,
+      updatedAt: now,
+    }
   })
   return { tasks: next, archived: applied }
 }

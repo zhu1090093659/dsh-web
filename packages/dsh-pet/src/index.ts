@@ -19,6 +19,7 @@ import { PetService, PET_SETTINGS_NAMESPACE, type PetConfig, type PetSettingsSec
 import { makePetRoutes } from './routes.ts'
 import { loadPetRegistry, petPackageRoot } from './registry.ts'
 import { DISPLAY_INSET_MAX, DISPLAY_SIZE_MAX, DISPLAY_SIZE_MIN } from './persist.ts'
+import { mountOnce } from './mount-once.ts'
 
 export { PetService, MAX_SESSION_BUBBLES } from './service.ts'
 export type {
@@ -137,7 +138,9 @@ export function makePetSettingsSchema(fallbackPetId: string) {
 }
 
 /** Register the pet service and its API + asset routes on the context. */
-export function apply(ctx: Context, config: PetConfig = {}): void {
+export const apply = mountOnce('@linxin666/dsh-pet', applyImpl)
+
+function applyImpl(ctx: Context, config: PetConfig = {}): void {
   const registry = config.registry
     ?? loadPetRegistry({
       packageRoot: petPackageRoot(import.meta.url),

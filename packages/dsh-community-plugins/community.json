@@ -6,7 +6,8 @@
     "author": "omdsh-dev",
     "description": "为 DSH 定义专用 Data Agent 预设，让 AI 帮你查询、更新、分析数据。",
     "descriptionEn": "Defines a dedicated Data Agent preset for DSH so the AI can query, update and analyze data.",
-    "repo": "https://github.com/omdsh-dev/dsh-data-agent"
+    "repo": "https://github.com/omdsh-dev/dsh-data-agent",
+    "category": "agent"
   },
   {
     "id": "dsh-tui",
@@ -15,7 +16,8 @@
     "author": "ccch1mneyyy",
     "description": "Claude Code 风格全屏交互终端插件：像素鲸鱼顶栏、实时工作状态行、思考流式展开、双击 Esc 回滚、上下文进度条与 TPS 仪表。",
     "descriptionEn": "A Claude Code style fullscreen interactive terminal plugin: pixel-whale header, live working-state line, streaming reasoning expansion, double-Esc rollback, context progress bar and TPS gauges.",
-    "repo": "https://github.com/ccch1mneyyy/dsh-TUI"
+    "repo": "https://github.com/ccch1mneyyy/dsh-TUI",
+    "category": "ui"
   },
   {
     "id": "dsh-tianshu-tui",
@@ -24,7 +26,8 @@
     "author": "huiliyi37",
     "description": "基于官方 DeepSeek Harness 的交互式终端 UI 插件，在官方基础上增加 TDD 与证据门等工作流。",
     "descriptionEn": "An interactive terminal UI plugin for DeepSeek Harness that adds TDD and evidence-gate workflows on top of the official base.",
-    "repo": "https://github.com/huiliyi37/dsh-tianshu-tui"
+    "repo": "https://github.com/huiliyi37/dsh-tianshu-tui",
+    "category": "ui"
   },
   {
     "id": "dsh-chat-summary",
@@ -34,7 +37,8 @@
     "description": "总结当前对话并导出为 Markdown / DOCX / PDF，可选 LLM 智能总结（用户自配 API Key）。",
     "descriptionEn": "Summarize the current conversation and export it as Markdown / DOCX / PDF, with optional LLM summarization using your own API key.",
     "repo": "https://github.com/v833/dsh-chat-summary",
-    "npm": "@linxin666/dsh-client-ui-chat-summary"
+    "npm": "@linxin666/dsh-client-ui-chat-summary",
+    "category": "knowledge"
   },
   {
     "id": "dsh-builtin-toggles",
@@ -44,7 +48,8 @@
     "description": "Evidence-backed 内置 capability Inspector：展示 DSH Web built-in capability 的 provenance、compatibility 与 structural drift；仅对 9 个经过审阅的 UI leaves 提供 fail-closed 开关。",
     "descriptionEn": "Evidence-backed built-in capability Inspector: surfaces provenance, compatibility and structural drift of DSH Web built-ins, with fail-closed toggles for only the nine reviewed UI leaves.",
     "repo": "https://github.com/Starfie1d1272/dsh-builtin-toggles",
-    "npm": "dsh-builtin-toggles"
+    "npm": "dsh-builtin-toggles",
+    "category": "tools"
   },
   {
     "id": "dsh-pilot",
@@ -53,7 +58,8 @@
     "author": "guo6x",
     "description": "给 agent 一双会开车的手：零依赖 CDP 浏览器操控（8 个 pilot_* 工具：导航/点击/输入/按键/JS/截图）+ Web GUI 可拖拽驾驶舱面板，无需 Playwright、无需 API key。",
     "descriptionEn": "Give your agent hands: zero-dependency CDP browser control (8 pilot_* tools: navigate/click/type/keys/eval/screenshot) plus a draggable cockpit panel in the Web GUI - no Playwright, no API key.",
-    "repo": "https://github.com/guo6x/dsh-pilot"
+    "repo": "https://github.com/guo6x/dsh-pilot",
+    "category": "tools"
   },
   {
     "id": "dsh-housekeeper",
@@ -62,7 +68,8 @@
     "author": "guo6x",
     "description": "管住 agent 的脏手：工具链台账（node/pnpm/git/gh/ffmpeg 等自动探测）、缓存与临时目录扫描 + 白名单安全一键清理、机器规则 AGENTS.md 查看编辑，全在设置面板完成。",
     "descriptionEn": "Keep your agent's hands clean: toolchain inventory, scratch/cache scan with whitelist-guarded one-click cleanup, and the machine rules file (AGENTS.md) view/edit - all in the settings panel.",
-    "repo": "https://github.com/guo6x/dsh-housekeeper"
+    "repo": "https://github.com/guo6x/dsh-housekeeper",
+    "category": "utility"
   },
   {
     "id": "dsh-deepread",
@@ -72,7 +79,8 @@
     "description": "五种模式精读插件（quick / deep / map / feynman / book），支持公众号链接与文件输入、批量对比、预算预检与后台任务进度透明，导出 md / mm / html，Web UI 提供工具结果卡片与精读面板。",
     "descriptionEn": "A five-mode deep reading plugin (quick / deep / map / feynman / book) for links and files, with batch comparison, budget preflight, transparent background-job progress, md / mm / html exports, and Web UI tool-result cards plus a reading panel.",
     "repo": "https://github.com/xiehuan123/dsh-deepread",
-    "npm": "dsh-deepread"
+    "npm": "dsh-deepread",
+    "category": "knowledge"
   },
   {
     "id": "dsh-mnemon",
@@ -82,7 +90,8 @@
     "description": "与 Mnemon CLI 集成的跨 Agent、本地优先持久记忆插件：用户画像 / 工作记忆 / 项目档案与长期 Memory Spaces，支持导入导出。",
     "descriptionEn": "A cross-agent, local-first persistent memory plugin integrating the Mnemon CLI: profiles, working memory, project documents and long-term Memory Spaces, with import and export.",
     "repo": "https://github.com/omdsh-dev/dsh-mnemon",
-    "npm": "dsh-mnemon"
+    "npm": "dsh-mnemon",
+    "category": "knowledge"
   },
   {
     "id": "dsh-plugin-hub",
@@ -91,7 +100,8 @@
     "author": "Noob-stupid",
     "description": "插件管理面板：已安装插件一键启用/停用，内置 GitHub dsh-plugin 插件市场（官方/聚合识别、子包浏览、一键安装与本地 AI 兜底修复、删除卸载）。",
     "descriptionEn": "Plugin management panel: one-click enable/disable, a GitHub dsh-plugin marketplace with official/aggregate detection, subpackage browsing, one-click installs with local-AI fallback repair, and uninstall.",
-    "repo": "https://github.com/Noob-stupid/dsh-plugin-hub"
+    "repo": "https://github.com/Noob-stupid/dsh-plugin-hub",
+    "category": "tools"
   },
   {
     "id": "dsh-genui",
@@ -100,7 +110,8 @@
     "author": "omdsh-dev",
     "description": "给模型输出配交互式 UI：助手回复内联渲染 dsh-ui fence（布局、图表、表单、Mermaid、3D），支持流式渲染与面板停靠，组件交互可回传模型。",
     "descriptionEn": "Interactive UI inside assistant replies via the dsh-ui fence: layouts, charts, forms, Mermaid and 3D with streaming rendering, panel docking and actions that loop back to the model.",
-    "repo": "https://github.com/omdsh-dev/dsh-genui"
+    "repo": "https://github.com/omdsh-dev/dsh-genui",
+    "category": "ui"
   },
   {
     "id": "dsh-annotation",
@@ -109,7 +120,8 @@
     "author": "omdsh-dev",
     "description": "选中助手文字即可批注，回车随消息发送；自己的气泡只显示问题与「批注 ×N」标签，模型按 Annotation N 逐条对照回复（悬浮芯片）。",
     "descriptionEn": "Select text in an assistant reply to annotate it; annotations are sent with your next message, hidden from your own bubble behind an Annotations xN chip, and the model replies per Annotation N with hoverable chips.",
-    "repo": "https://github.com/omdsh-dev/dsh-annotation"
+    "repo": "https://github.com/omdsh-dev/dsh-annotation",
+    "category": "ui"
   },
   {
     "id": "deepseek-harness-auth",
@@ -119,7 +131,8 @@
     "description": "为 DSH Web 公网部署提供登录认证前置代理，支持账号密码、验证码、失败锁定和 IP/CIDR 白名单。",
     "descriptionEn": "An authentication proxy for public DSH Web deployments with password login, captcha, failed-attempt locking, and IP/CIDR allowlists.",
     "repo": "https://github.com/taichuy/deepseek-harness-auth",
-    "npm": "deepseek-harness-auth"
+    "npm": "deepseek-harness-auth",
+    "category": "security"
   },
   {
     "id": "dsh-cloud-sync",
@@ -129,6 +142,60 @@
     "description": "支持 WebDAV、S3、阿里云 OSS、腾讯云 COS 与 MinIO 的 DSH 云同步插件，可同步 profile、插件配置及本地插件源码归档。",
     "descriptionEn": "DSH cloud sync for WebDAV, S3, Alibaba Cloud OSS, Tencent Cloud COS and MinIO, syncing profiles, plugin settings and local plugin source archives.",
     "repo": "https://github.com/dickpy/dsh-cloud-sync",
-    "npm": "@dickpy/dsh-cloud-sync"
+    "npm": "@dickpy/dsh-cloud-sync",
+    "category": "integration"
+  },
+  {
+    "id": "dsh-auto-memory",
+    "name": "自动记忆",
+    "nameEn": "Auto Memory",
+    "author": "Aik358",
+    "description": "三层自动记忆插件：用户级/项目笔记/每日日志自动注入与检索、每轮自动沉淀、AI 时段问候、智能检索、日历与工作区思维导图，支持继承 WorkBuddy/CodeBuddy/Claude Code/Codex 等其他 AI 工具的记忆。",
+    "descriptionEn": "Three-layer auto memory for DSH: user-level/project-notes/daily-logs with automatic injection and retrieval, per-turn auto-consolidation, AI greetings, smart search, calendar, workspace mind map, and inheritance from WorkBuddy/CodeBuddy/Claude Code/Codex.",
+    "repo": "https://github.com/Aik358/dsh-auto-memory",
+    "npm": "@a9i5k4/dsh-auto-memory",
+    "category": "knowledge"
+  },
+  {
+    "id": "dsh-memoir",
+    "name": "项目记忆 Memoir",
+    "nameEn": "Project Memory Memoir",
+    "author": "Qinling-Melon-Farmers",
+    "description": "项目持久化记忆与会话经验沉淀：memoir_record / memoir_read 工具（BM25 相关度排序检索）、每轮工作自动蒸馏、记忆诊断面板与跨项目全局检索，纯本地零外部依赖。",
+    "descriptionEn": "Project persistent memory and session-lessons distillation: memoir_record / memoir_read tools with BM25-ranked retrieval, per-turn auto-distill, a memory diagnostics panel and cross-project search - fully local, no external dependency.",
+    "repo": "https://github.com/Qinling-Melon-Farmers/dsh-memoir",
+    "category": "knowledge"
+  },
+  {
+    "id": "dsh-worktime-board",
+    "name": "牛马修仙看板",
+    "nameEn": "Worktime Cultivation Board",
+    "author": "spacexun2",
+    "description": "DeepSeek Harness 工时统计 × 修仙养成：日/周/月/学年四档汇总 agent 活跃时长、token、输入与工具调用，十二重境界（炼气→宇宙洪荒）量化进度，纯本地存储。",
+    "descriptionEn": "Worktime statistics meets cultivation: daily / weekly / monthly / yearly agent activity, token, input and tool-call summaries with a twelve-realm progression (Qi Refining to Cosmic Chaos), fully local.",
+    "repo": "https://github.com/spacexun2/dsh-worktime-board",
+    "npm": "dsh-worktime-board",
+    "category": "utility"
+  },
+  {
+    "id": "dsh-skill-explorer",
+    "name": "技能中心（Skill Explorer）",
+    "nameEn": "Skill Explorer",
+    "author": "wingsky-1",
+    "description": "DSH 技能中心：按来源分级浏览已加载 skill（系统内置 / 项目 / 用户 / 自定义 / 运行时），支持启用/禁用、创建与删除（移入 .trash）。",
+    "descriptionEn": "DSH skill center: browse loaded skills grouped by source (bundled / project / user / custom / runtime), with enable/disable, create and delete (move to .trash).",
+    "repo": "https://github.com/wingsky-1/dsh-skill-explorer",
+    "npm": "@linxin666/dsh-client-ui-skill-explorer",
+    "category": "tools"
+  },
+  {
+    "id": "dsh-dream-skin",
+    "name": "dsh-dream-skin",
+    "nameEn": "dsh-dream-skin",
+    "author": "RevolutionLA",
+    "description": "DSH Web 一键换肤插件：8 套原创主题、背景壁纸（透明度/模糊/渐变/URL）、每用户强调色、主题包导入导出与分享链接、收藏与随机，纯原生 token 系统。",
+    "descriptionEn": "One-command skinning for DSH Web: 8 original themes, wallpaper (opacity/blur/gradient/URL), per-user accent, shareable theme packs with favorites and surprise-me. Purely native token system.",
+    "repo": "https://github.com/RevolutionLA/dsh-dream-skin",
+    "category": "ui"
   }
 ]

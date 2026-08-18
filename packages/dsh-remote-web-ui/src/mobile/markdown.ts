@@ -22,15 +22,18 @@ export function escapeHtml(text: string): string {
 
 /**
  * Guard a raw link/image target against dangerous protocols. Returns the
- * (trimmed) raw string when safe, else null. Only http:, https:, mailto:
- * and fragment anchors (#...) are allowed; anything with another scheme
- * — javascript:, data:, vbscript:, etc. — is rejected so the value never
- * reaches dangerouslySetInnerHTML.
+ * (trimmed) raw string when safe, else null. Only http:, https:, mailto:,
+ * fragment anchors (#...) and strictly relative paths are allowed; anything
+ * with another scheme — javascript:, data:, vbscript:, etc. — or a
+ * protocol-relative //host target (the browser resolves it against the
+ * current scheme, reaching an arbitrary origin) is rejected so the value
+ * never reaches dangerouslySetInnerHTML.
  */
 export function safeUrl(raw: string): string | null {
   const trimmed = raw.trim()
   if (trimmed === '') return null
   if (trimmed.startsWith('#')) return trimmed
+  if (trimmed.startsWith('//')) return null
   const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(trimmed)
   if (scheme === null) return trimmed
   const name = scheme[1].toLowerCase()

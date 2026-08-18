@@ -52,6 +52,23 @@ describe('syncPresetTrees', () => {
     } finally { f.dispose() }
   })
 
+  it('copies a preset whose source path contains non-ASCII characters', () => {
+    const f = fixture()
+    try {
+      // Regression test for nodejs/node#54476: on Node 22 for Windows,
+      // fs.cpSync({ recursive: true }) aborts the process (0xC0000409) when
+      // the source path contains CJK characters, e.g. a CJK home directory.
+      // sync.ts must not use fs.cpSync; a CJK user profile must still boot.
+      const chinese = join(f.source, '梁神')
+      mkdirSync(chinese, { recursive: true })
+      writeFileSync(join(chinese, 'agent.cordis.yml'), VALID_AGENT_YAML)
+      writeFileSync(join(chinese, 'preset.yml'), 'name: 梁神模式\n')
+      const result = syncPresetTrees(f.source, f.target)
+      expect(result.synced).toContain('梁神')
+      expect(readFileSync(join(f.target, '梁神', 'agent.cordis.yml'), 'utf8')).toBe(VALID_AGENT_YAML)
+    } finally { f.dispose() }
+  })
+
   it('retires a previously bundled preset directory removed from the source', () => {
     const f = fixture()
     try {

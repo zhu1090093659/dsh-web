@@ -213,8 +213,13 @@ export function disposeRecord(engine: PoolEngine, alias: string, record?: PoolRe
   if (record !== undefined && current !== record) return
   if (current === undefined) return
   engine.pool.delete(alias)
-  try { current.client.end() } catch { /* already closed */ }
-  for (const hop of current.hops) {
+  endRecordChain(current)
+}
+
+/** End one record's client and hop chain (best-effort, safe to repeat). */
+export function endRecordChain(record: PoolRecord): void {
+  try { record.client.end() } catch { /* already closed */ }
+  for (const hop of record.hops) {
     try { hop.end() } catch { /* already closed */ }
   }
 }
@@ -247,6 +252,14 @@ export async function withClient<T>(engine: PoolEngine, alias: string, fn: (clie
       const result = await fn(record.client)
       record.idleAt = Date.now()
       return result
+    } catch (error) {
+      lastError = error
+      // Retry only when the connection actually broke mid-flight: drop the
+      // corpse and let the next attempt reconnect (a reconnect may replay a
+      // non-idempotent command — the documented trade-off). A failure on a
+      // healthy connection is a logic error and is rethrown, not replayed.
+      if (!record.broken) throw error
+      disposeRecord(engine, alias, record)
     } finally {
       record.inFlight -= 1
     }
@@ -297,8 +310,15 @@ export async function execCommand(engine: PoolEngine, alias: string, command: st
           if (settled) return
           settled = true
           clearTimeout(timer)
+          if (typeof code !== 'number' && !timedOut) {
+            // The channel closed without an exit status: the connection
+            // dropped mid-flight. Reject so withClient can reconnect and
+            // retry within the attempt budget.
+            reject(new Error('ssh: connection lost mid-flight (channel closed without an exit status)'))
+            return
+          }
           resolve({
-            success: code === 0 && !timedOut,
+            success: code === 0,
             exitCode: code,
             timedOut,
             stdout: stdout.text,

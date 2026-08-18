@@ -12,8 +12,8 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 import * as tool from '../src/index.ts'
-import { registerAttachmentRef } from '../src/attach-routes.ts'
-import { chatReply, FakeWebServer, jsonReply, PNG_BYTES, rawReply, responsesReply, sentContent, sentInputContent, startMockServer } from './mock-server.ts'
+import { attachmentMarkdown, attachmentRefById, handleAttach, registerAttachmentRef, safeDecodeUriComponent } from '../src/attach-routes.ts'
+import { anthropicReply, chatReply, FakeWebServer, jsonReply, PNG_BYTES, rawReply, responsesReply, sentAnthropicContent, sentContent, sentInputContent, startMockServer } from './mock-server.ts'
 
 /** In-memory attachment store so the attachment-reference input path is observable. */
 class FakeAttachments extends AttachmentStore {
@@ -87,6 +87,7 @@ class FakeCredentials extends CredentialProvider {
 
 const savedEnv = new Map<string, string | undefined>()
 const cleanup: Array<() => Promise<void>> = []
+const contexts: Context[] = []
 
 const BASE_CONFIG = { baseURL: 'http://127.0.0.1:9/v1/', model: 'vision-1' }
 
@@ -96,6 +97,7 @@ async function setup(
   options: { seed?: Record<string, string>; noInlineKey?: boolean; attachments?: boolean } = {},
 ): Promise<Context> {
   const ctx = new Context()
+  contexts.push(ctx)
   if (options.seed !== undefined) await ctx.plugin(FakeCredentials, options.seed)
   if (options.attachments === true) await ctx.plugin(FakeAttachments)
   await ctx.plugin(FakeWebServer)
@@ -126,6 +128,13 @@ function callDescribe(ctx: Context, args: unknown, signal?: AbortSignal) {
   })
 }
 
+/** Dispose one mounted context early so the mountOnce guard releases the package for the next setup. */
+async function teardown(ctx: Context): Promise<void> {
+  const at = contexts.indexOf(ctx)
+  if (at !== -1) contexts.splice(at, 1)
+  await Promise.resolve(ctx.fiber.dispose())
+}
+
 function errorText(result: { content: { type: string; text?: string }[] }): string {
   return result.content.filter(block => block.type === 'text').map(block => block.text).join('')
 }
@@ -140,6 +149,7 @@ afterEach(async () => {
   if (env === undefined) delete process.env.VISION_API_KEY
   else process.env.VISION_API_KEY = env
   savedEnv.clear()
+  await Promise.all(contexts.splice(0).map(ctx => Promise.resolve(ctx.fiber.dispose())))
   await Promise.all(cleanup.splice(0).map(close => close()))
 })
 
@@ -213,6 +223,33 @@ describe('successful descriptions', () => {
     expect(textPart?.text).toBe('Is there text in this image?')
   })
 
+  it('strips the model thinking suffix and maps it to thinking.type', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
+    cleanup.push(server.close)
+    const path = await tempPng()
+
+    const inheritCtx = await setup({ baseURL: server.url })
+    const inheritResult = await callDescribe(inheritCtx, { image: path })
+    expect(inheritResult.isError).toBe(false)
+    expect((server.request(0).body as { model?: unknown; thinking?: unknown }).model).toBe('vision-1')
+    expect((server.request(0).body as { thinking?: unknown }).thinking).toBeUndefined()
+    await teardown(inheritCtx)
+
+    const offCtx = await setup({ baseURL: server.url, model: 'vision-1:off' })
+    const offResult = await callDescribe(offCtx, { image: path })
+    expect(offResult.isError).toBe(false)
+    expect((server.request(1).body as { model?: unknown; thinking?: unknown }).model).toBe('vision-1')
+    expect((server.request(1).body as { thinking?: unknown }).thinking).toEqual({ type: 'disabled' })
+    await teardown(offCtx)
+
+    const highCtx = await setup({ baseURL: server.url, model: 'vision-1:high' })
+    const highResult = await callDescribe(highCtx, { image: path })
+    expect(highResult.isError).toBe(false)
+    if (!highResult.isError) expect(highResult.value).toMatchObject({ model: 'vision-1' })
+    expect((server.request(2).body as { model?: unknown; thinking?: unknown }).model).toBe('vision-1')
+    expect((server.request(2).body as { thinking?: unknown }).thinking).toEqual({ type: 'enabled' })
+  })
+
   it('downloads an http(s) image when given a URL', async () => {
     const server = await startMockServer((request, res) => {
       if (request.path === '/img.png') rawReply(res, 200, PNG_BYTES, 'image/png')
@@ -269,6 +306,26 @@ describe('Responses API style', () => {
     expect(textPart?.text).toBe('Is there text in this image?')
   })
 
+  it('maps the model thinking suffix to reasoning.effort in the responses body', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, responsesReply('ok')) })
+    cleanup.push(server.close)
+    const path = await tempPng()
+
+    const inheritCtx = await setup({ baseURL: server.url, apiStyle: 'responses' })
+    await callDescribe(inheritCtx, { image: path })
+    expect((server.request(0).body as { reasoning?: unknown }).reasoning).toBeUndefined()
+    await teardown(inheritCtx)
+
+    const offCtx = await setup({ baseURL: server.url, apiStyle: 'responses', model: 'vision-1:off' })
+    await callDescribe(offCtx, { image: path })
+    expect((server.request(1).body as { reasoning?: unknown }).reasoning).toEqual({ effort: 'none' })
+    await teardown(offCtx)
+
+    const highCtx = await setup({ baseURL: server.url, apiStyle: 'responses', model: 'vision-1:high' })
+    await callDescribe(highCtx, { image: path })
+    expect((server.request(2).body as { reasoning?: unknown }).reasoning).toEqual({ effort: 'high' })
+  })
+
   it('joins every output_text part of the first assistant message', async () => {
     const server = await startMockServer((_request, res) => {
       jsonReply(res, 200, {
@@ -315,6 +372,130 @@ describe('Responses API style', () => {
     })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, apiStyle: 'responses' })
+    const path = await tempPng()
+
+    const result = await callDescribe(ctx, { image: path })
+    expect(result.isError).toBe(true)
+    expect(target.requests).toHaveLength(0)
+  })
+})
+
+describe('Anthropic Messages API style', () => {
+  it('posts /v1/messages with x-api-key and anthropic-version headers and parses the text block', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, anthropicReply('Via anthropic.')) })
+    cleanup.push(server.close)
+    const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
+    const path = await tempPng()
+
+    const result = await callDescribe(ctx, { image: path })
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected describe_image success')
+    expect(result.value).toMatchObject({ text: 'Via anthropic.', model: 'vision-1', mimeType: 'image/png' })
+
+    const request = server.request(0)
+    expect(request.authorization).toBeUndefined()
+    expect(request.xApiKey).toBe('sk-inline')
+    expect(request.anthropicVersion).toBe('2023-06-01')
+    expect(request.path).toBe('/v1/messages')
+    const body = request.body as { model?: unknown; max_tokens?: unknown; max_output_tokens?: unknown }
+    expect(body.model).toBe('vision-1')
+    expect(body.max_tokens).toBe(tool.DEFAULT_MAX_OUTPUT_TOKENS)
+    expect(body.max_output_tokens).toBeUndefined()
+    const [imagePart, textPart] = sentAnthropicContent(request) as Array<{ type?: string; text?: string; source?: { type?: string; media_type?: string; data?: string } }>
+    expect(imagePart?.type).toBe('image')
+    expect(imagePart?.source?.type).toBe('base64')
+    expect(imagePart?.source?.media_type).toBe('image/png')
+    expect(imagePart?.source?.data).toBe(PNG_BYTES.toString('base64'))
+    expect(textPart).toEqual({ type: 'text', text: tool.DEFAULT_PROMPT })
+  })
+
+  it('preserves provider paths and normalizes /v1 roots and complete endpoints', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, anthropicReply('normalized')) })
+    cleanup.push(server.close)
+    const path = await tempPng()
+
+    const providerCtx = await setup({ baseURL: `${server.url}/zen/go`, apiStyle: 'anthropic-messages' })
+    expect((await callDescribe(providerCtx, { image: path })).isError).toBe(false)
+    await teardown(providerCtx)
+
+    const apiRootCtx = await setup({ baseURL: `${server.url}/v1`, apiStyle: 'anthropic-messages' })
+    expect((await callDescribe(apiRootCtx, { image: path })).isError).toBe(false)
+    await teardown(apiRootCtx)
+
+    const endpointCtx = await setup({ baseURL: `${server.url}/v1/messages`, apiStyle: 'anthropic-messages' })
+    expect((await callDescribe(endpointCtx, { image: path })).isError).toBe(false)
+
+    expect(server.requests.map(request => request.path)).toEqual([
+      '/zen/go/v1/messages',
+      '/v1/messages',
+      '/v1/messages',
+    ])
+  })
+
+  it('forwards a caller prompt and the configured output cap in the anthropic body', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, anthropicReply('Yes.')) })
+    cleanup.push(server.close)
+    const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages', maxOutputTokens: 7 })
+    const path = await tempPng()
+
+    const result = await callDescribe(ctx, { image: path, prompt: 'Is there text in this image?' })
+    expect(result.isError).toBe(false)
+    const body = server.request(0).body as { max_tokens?: unknown }
+    expect(body.max_tokens).toBe(7)
+    const parts = sentAnthropicContent(server.request(0)) as Array<{ type?: string; text?: string }>
+    const textPart = parts.find(part => part.type === 'text')
+    expect(textPart?.text).toBe('Is there text in this image?')
+  })
+
+  it('joins every text block and skips thinking blocks', async () => {
+    const server = await startMockServer((_request, res) => {
+      jsonReply(res, 200, {
+        type: 'message',
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'private reasoning' },
+          { type: 'text', text: 'Part one.' },
+          { type: 'text', text: 'Part two.' },
+        ],
+      })
+    })
+    cleanup.push(server.close)
+    const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
+    const path = await tempPng()
+
+    const result = await callDescribe(ctx, { image: path })
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected describe_image success')
+    expect(result.value).toMatchObject({ text: 'Part one.\nPart two.' })
+  })
+
+  it('rejects invalid JSON, missing content, and non-string text blocks', async () => {
+    const cases: Array<[string, unknown]> = [
+      ['invalid JSON', 'not json'],
+      ['missing content', {}],
+      ['no text block', { type: 'message', role: 'assistant', content: [{ type: 'thinking', thinking: 'x' }] }],
+      ['non-string text', { type: 'message', role: 'assistant', content: [{ type: 'text', text: 42 }] }],
+    ]
+    for (const [label, reply] of cases) {
+      const server = await startMockServer((_request, res) => { rawReply(res, 200, typeof reply === 'string' ? reply : JSON.stringify(reply), 'application/json') })
+      cleanup.push(server.close)
+      const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
+      const path = await tempPng()
+
+      const result = await callDescribe(ctx, { image: path })
+      expect(result.isError, `expected rejection for ${label}`).toBe(true)
+    }
+  })
+
+  it('never follows a redirect on the anthropic-messages request', async () => {
+    const target = await startMockServer((_request, res) => { jsonReply(res, 200, anthropicReply('should not be reached')) })
+    cleanup.push(target.close)
+    const server = await startMockServer((_request, res) => {
+      res.writeHead(302, { location: `${target.url}/v1/messages` })
+      res.end()
+    })
+    cleanup.push(server.close)
+    const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
     const path = await tempPng()
 
     const result = await callDescribe(ctx, { image: path })
@@ -473,6 +654,14 @@ describe('input bounds', () => {
   })
 })
 
+describe('safeDecodeUriComponent', () => {
+  it('decodes valid input and returns null for malformed percent-encoding', () => {
+    expect(safeDecodeUriComponent('sha256%3Aabc')).toBe('sha256:abc')
+    expect(safeDecodeUriComponent('%E0%A4%A')).toBeNull()
+    expect(safeDecodeUriComponent('%')).toBeNull()
+  })
+})
+
 describe('attachment references', () => {
   const ref = JSON.stringify({
     attachmentId: `sha256:${'c'.repeat(64)}`,
@@ -532,6 +721,55 @@ describe('attachment references', () => {
     expect(imagePart?.image_url?.url).toMatch(/^data:image\/png;base64,/)
   })
 
+  it('describes a stored attachment from a complete attachment note', async () => {
+    const ctx = await seedAttachment(PNG_BYTES)
+    const result = await callDescribe(ctx, { image: `[image attachment ${ref}]` })
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected complete attachment note success')
+    expect(result.value).toMatchObject({ text: 'From attachment.', mimeType: 'image/png' })
+  })
+
+  it('describes a stored attachment from self-contained Markdown without the id registry', async () => {
+    const ctx = await seedAttachment(PNG_BYTES)
+    const attachment: ImageAttachmentRef = {
+      attachmentId: `sha256:${'b'.repeat(64)}` as ImageAttachmentRef['attachmentId'],
+      mediaType: 'image/png',
+      bytes: PNG_BYTES.length,
+      width: 1,
+      height: 1,
+    }
+    const attachments = ctx.get('attachments') as FakeAttachments
+    attachments.stored.set(String(attachment.attachmentId), PNG_BYTES)
+    const image = attachmentMarkdown(attachment)
+
+    const result = await callDescribe(ctx, { image })
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected self-contained Markdown reference success')
+    expect(result.value).toMatchObject({ text: 'From attachment.', image, mimeType: 'image/png' })
+  })
+
+  it('describes the attach route Markdown after the bare-id registry is evicted', async () => {
+    const ctx = await seedAttachment(PNG_BYTES)
+    const outcome = await handleAttach(ctx, 10_000_000, { data: PNG_BYTES.toString('base64'), mediaType: 'image/png' })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error('expected attachment route success')
+    for (let index = 0; index < 140; index += 1) {
+      registerAttachmentRef({
+        attachmentId: `sha256:${String(index).padStart(64, '0')}` as ImageAttachmentRef['attachmentId'],
+        mediaType: 'image/png',
+        bytes: PNG_BYTES.length,
+        width: 1,
+        height: 1,
+      })
+    }
+    expect(attachmentRefById(String(outcome.ref.attachmentId))).toBeUndefined()
+
+    const result = await callDescribe(ctx, { image: outcome.markdown })
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected durable attach-route Markdown success')
+    expect(result.value).toMatchObject({ text: 'From attachment.', image: outcome.markdown, mimeType: 'image/png' })
+  })
+
   it('rejects an attachment reference without a mounted attachment service', async () => {
     const ctx = await setup()
     const result = await callDescribe(ctx, { image: ref })
@@ -566,7 +804,7 @@ describe('attachment references', () => {
     ]) {
       const result = await callDescribe(ctx, { image })
       expect(result.isError, `expected rejection for ${image}`).toBe(true)
-      expect(errorText(result)).toContain('copy the exact JSON from the [image attachment …] note')
+      expect(errorText(result)).toContain('not a valid attachment reference')
     }
   })
 
@@ -705,6 +943,7 @@ describe('resolveConfig, sniffing, and bounded reads', () => {
       timeoutMs: tool.DEFAULT_TIMEOUT_MS,
       apiStyle: tool.DEFAULT_API_STYLE,
       renderImagePreview: tool.DEFAULT_RENDER_IMAGE_PREVIEW,
+      interceptImageSend: tool.DEFAULT_INTERCEPT_IMAGE_SEND,
     })
   })
 
@@ -712,9 +951,38 @@ describe('resolveConfig, sniffing, and bounded reads', () => {
     expect(tool.resolveConfig({ ...minimal, renderImagePreview: false }).renderImagePreview).toBe(false)
   })
 
-  it('accepts the responses style and rejects anything else', () => {
+  it('honors an explicit interceptImageSend override', () => {
+    expect(tool.resolveConfig({ ...minimal, interceptImageSend: false }).interceptImageSend).toBe(false)
+  })
+
+  it('splits a model thinking suffix off the id and leaves bare ids untouched', () => {
+    expect(tool.resolveConfig(minimal)).toMatchObject({ model: 'vision-1', thinking: undefined })
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:off' })).toMatchObject({ model: 'vision-1', thinking: 'off' })
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:low' })).toMatchObject({ model: 'vision-1', thinking: 'low' })
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:medium' })).toMatchObject({ model: 'vision-1', thinking: 'medium' })
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:high' })).toMatchObject({ model: 'vision-1', thinking: 'high' })
+    // Unknown or non-trailing colons are part of the id, not a thinking suffix: real ids
+    // carry colon variants (OpenRouter ':free', Replicate ':version'), so only the four known
+    // thinking tokens are stripped.
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:unknown' })).toMatchObject({ model: 'vision-1:unknown', thinking: undefined })
+    expect(tool.resolveConfig({ ...minimal, model: 'vision-1:high-custom' })).toMatchObject({ model: 'vision-1:high-custom', thinking: undefined })
+    expect(tool.resolveConfig({ ...minimal, model: 'openrouter/openai/gpt-4o:free' })).toMatchObject({ model: 'openrouter/openai/gpt-4o:free', thinking: undefined })
+  })
+
+  it('rejects a model id that is only a thinking suffix', () => {
+    expect(() => tool.resolveConfig({ ...minimal, model: ':off' })).toThrow(/model must be a non-empty model id/)
+  })
+
+  it('parses thinking suffixes through splitModelSuffix with surrounding whitespace', () => {
+    expect(tool.splitModelSuffix('  mimo-v2.5:off  ')).toEqual({ model: 'mimo-v2.5', thinking: 'off' })
+    expect(tool.splitModelSuffix('mimo-v2.5:high')).toEqual({ model: 'mimo-v2.5', thinking: 'high' })
+    expect(tool.splitModelSuffix('mimo-v2.5')).toEqual({ model: 'mimo-v2.5', thinking: undefined })
+  })
+
+  it('accepts the responses and anthropic-messages styles and rejects anything else', () => {
     expect(tool.resolveConfig({ ...minimal, apiStyle: 'responses' }).apiStyle).toBe('responses')
-    expect(() => tool.resolveConfig({ ...minimal, apiStyle: 'legacy' as tool.ApiStyle })).toThrow(/apiStyle must be one of "chat-completions", "responses"/)
+    expect(tool.resolveConfig({ ...minimal, apiStyle: 'anthropic-messages' }).apiStyle).toBe('anthropic-messages')
+    expect(() => tool.resolveConfig({ ...minimal, apiStyle: 'legacy' as tool.ApiStyle })).toThrow(/apiStyle must be one of "chat-completions", "responses", "anthropic-messages"/)
   })
 
   it.each([

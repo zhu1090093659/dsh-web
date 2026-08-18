@@ -8,6 +8,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { UpdateRunResult, UpdateStatus } from './update.ts'
+import { writeJson } from './http.ts'
 
 /** Route paths (exact matches under /api). */
 export const UPDATE_PATHS = {
@@ -23,13 +24,6 @@ export interface UpdateRoutesDeps {
   check(): Promise<UpdateStatus>
   /** Run the pnpm update (resolves when pnpm exits). */
   run(): Promise<UpdateRunResult>
-}
-
-/** One JSON response. */
-function writeJson(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body)
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'referrer-policy': 'no-referrer' })
-  res.end(payload)
 }
 
 /**

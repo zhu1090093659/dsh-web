@@ -5,7 +5,12 @@
  * grid-template-columns string and re-appending the two panel tracks on every
  * shell update (MutationObserver, same frame before paint). Also owns the
  * absolute drag handles (12px explorer / 20px preview hit zones), the
- * floating expand button, and the collapse-as-width-0 keep-mounted behavior.
+ * floating expand button (docked at the top-right corner, just below the
+ * shell header's divider — issues #374 / #292), the collapse-as-width-0
+ * keep-mounted behavior, and the transient
+ * maximize mode (issue #315): while a panel is maximized the target column
+ * takes over the whole frame row (or renders as a fixed full-screen overlay
+ * on narrow viewports), and Esc / the header button restore the layout.
  *
  * The shell's inline style is the source of truth for the sidebar and details
  * tracks; this controller never guesses their widths. Handles are out-of-flow
@@ -25,8 +30,14 @@ import {
   MIN_PREVIEW_PANEL_PX, MIN_WORKSPACE_PANEL_PX,
   KEY_EXPLORER_WIDTH, KEY_PREVIEW_WIDTH,
   clampExplorerWidth, clampPreviewWidth,
+  type MaximizeTarget,
 } from './store.ts'
 import { writeStoredNumber } from './persist.ts'
+import { maximizedGridTracks, maximizedOverlay } from './maximize.ts'
+import {
+  FLOATING_BUTTON_HEIGHT_PX, FLOATING_HEADER_GAP_PX,
+  clampFloatingTop, titlebarAreaHeight, topAlignedFloatingTop,
+} from './floating.ts'
 import type { LayoutStore } from './store.ts'
 
 /** The frame grid element (portals target it). */
@@ -86,6 +97,17 @@ export const EXPLORER_HANDLE_WIDTH = 12
 export const PREVIEW_HANDLE_WIDTH = 20
 
 /**
+ * How far each handle's hit zone may reach into its NEIGHBOURING column.
+ * The chat column owns its scrollbar at its very right edge — the boundary the
+ * preview handle sits on — so a full-width overlap swallows the scrollbar and
+ * makes the conversation undraggable (only the panel resize stays reachable).
+ * Keep a thin lip on the far side so the boundary stays discoverable, and put
+ * the bulk of the zone inside the panel, whose own left padding absorbs it.
+ */
+const EXPLORER_HANDLE_LIP = 2
+const PREVIEW_HANDLE_LIP = 4
+
+/**
  * Drag target width: apply the hard px bounds (the same min/max the handle
  * always enforced), then the store's ordered container-aware clamp so the
  * grid never re-clamps a width the drag showed.
@@ -117,11 +139,12 @@ export class PanelLayoutController {
   private sizeObserver: ResizeObserver | null = null
   private waitObserver: MutationObserver | null = null
   private frameWidth = 0
+  /** Cached shell details handle (re-resolved when the shell rebuilds it). */
+  private detailsHandle: HTMLElement | null = null
   /** The shell's own 3 tracks (sidebar, center, details) — mirror of its inline style. */
   private shellTracks: string[] = []
   private instantTimer: ReturnType<typeof setTimeout> | undefined
   private disposers: Array<() => void> = []
-
   constructor(private readonly layout: LayoutStore) {}
 
   /** Start watching for the frame and attach once it appears. */
@@ -141,6 +164,12 @@ export class PanelLayoutController {
   private attach(frame: HTMLElement): void {
     this.frame = frame
     frameElement = frame
+    // The wait observer's only job was finding the frame; a document-wide
+    // MutationObserver left running would fire on every chat render for the
+    // rest of the session.
+    this.waitObserver?.disconnect()
+    this.waitObserver = null
+    this.detailsHandle = null
 
     // The two panel columns: trailing grid items (tracks 4 and 5).
     const previewCol = document.createElement('div')
@@ -173,7 +202,10 @@ export class PanelLayoutController {
     frame.appendChild(this.explorerHandle)
     frame.appendChild(this.previewHandle)
 
-    // The floating expand button (fixed, right edge) — DOM-level, no React.
+    // The floating expand button (fixed, top-right corner) — DOM-level,
+    // no React. Docked exactly where the explorer's collapse chevron sits,
+    // so collapsing and re-expanding toggle in place (issue #374 follow-up);
+    // a click toggles the explorer.
     this.floatingButton = document.createElement('button')
     this.floatingButton.type = 'button'
     this.floatingButton.className = 'aionui-floating-expand'
@@ -181,6 +213,26 @@ export class PanelLayoutController {
     this.floatingButton.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>'
     this.floatingButton.addEventListener('click', () => { this.toggleExplorer() })
     document.body.appendChild(this.floatingButton)
+
+    // Window Controls Overlay (dsh-desktop, issue #292): re-position when
+    // the titlebar area changes (button must stay below the window buttons).
+    const overlay = (navigator as Navigator & { windowControlsOverlay?: EventTarget }).windowControlsOverlay
+    if (overlay !== undefined) {
+      const onGeometryChange = (): void => { this.positionFloatingButton() }
+      overlay.addEventListener('geometrychange', onGeometryChange)
+      this.disposers.push(() => overlay.removeEventListener('geometrychange', onGeometryChange))
+    }
+
+    // Esc restores a maximized panel (issue #315). Editing surfaces own Esc:
+    // while an input/textarea/contenteditable is focused, leave it alone.
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      const target = event.target instanceof Element ? event.target : null
+      if (target !== null && target.closest('input, textarea, [contenteditable="true"]') !== null) return
+      this.layout.update((prev) => (prev.maximized === null ? prev : { ...prev, maximized: null }))
+    }
+    window.addEventListener('keydown', onKeyDown)
+    this.disposers.push(() => window.removeEventListener('keydown', onKeyDown))
 
     // Sync the shell's inline grid: any shell write re-appends our tracks.
     const syncGrid = (): void => {
@@ -267,8 +319,10 @@ export class PanelLayoutController {
     el.style.cursor = 'col-resize'
     el.style.width = `${hitWidth}px`
     if (reverse) {
-      // The preview handle extends LEFT of the preview region's left edge.
-      el.style.marginLeft = `-${hitWidth}px`
+      // Only the thin lip may reach past the panel edge into the neighbouring
+      // column (see EXPLORER_HANDLE_LIP / PREVIEW_HANDLE_LIP): a full-width
+      // overlap would cover the neighbour's scrollbar and block its dragging.
+      el.style.marginLeft = kind === 'preview' ? `-${PREVIEW_HANDLE_LIP}px` : `-${EXPLORER_HANDLE_LIP}px`
     }
     el.addEventListener('pointerdown', (event: PointerEvent) => {
       const isExplorer = kind === 'explorer'
@@ -335,6 +389,38 @@ export class PanelLayoutController {
     })
   }
 
+  /**
+   * Locate the shell conversation header: its bottom border is the
+   * horizontal divider under the "Session log" row the button should
+   * sit below. Resolved per call (the shell may mount it late); null when
+   * the shell has no header (standalone installs, desktop variants).
+   */
+  private findHeaderBottom(): number | null {
+    const frame = this.frame
+    if (frame === null) return null
+    const header = frame.querySelector<HTMLElement>(
+      '[data-pane="conversation"] header, [class*="centerCol"] header',
+    )
+    if (header === null) return null
+    const bottom = header.getBoundingClientRect().bottom
+    return Number.isFinite(bottom) ? bottom : null
+  }
+
+  /** Position the floating button: docked at the top-right corner, just
+   * below the shell header's bottom divider (fallback: the chevron row). */
+  private positionFloatingButton(): void {
+    const el = this.floatingButton
+    if (el === null) return
+    const height = window.innerHeight
+    const titlebar = titlebarAreaHeight()
+    const headerBottom = this.findHeaderBottom()
+    const top = headerBottom !== null
+      ? clampFloatingTop(headerBottom + FLOATING_HEADER_GAP_PX, height, FLOATING_BUTTON_HEIGHT_PX, titlebar)
+      : topAlignedFloatingTop(height, FLOATING_BUTTON_HEIGHT_PX, titlebar)
+    el.style.top = `${Math.round(top)}px`
+    el.style.transform = 'none'
+  }
+
   /** Apply one store update with transitions disabled for exactly one frame. */
   private instant(fn: () => void): void {
     const frame = this.frame
@@ -361,6 +447,14 @@ export class PanelLayoutController {
     // the shell's own 3-track grid.
     if (this.shellTracks.length !== 3) return
     const state = this.layout.getSnapshot()
+    const width = this.frameWidth > 0 ? this.frameWidth : frame.getBoundingClientRect().width
+
+    if (state.maximized !== null) {
+      this.applyMaximized(frame, state.maximized, width)
+      return
+    }
+    this.clearMaximizedChrome()
+
     const explorer = this.layout.explorerWidthPx(state)
     const preview = this.layout.previewWidthPx(state)
 
@@ -377,11 +471,10 @@ export class PanelLayoutController {
     }
 
     // Handles: at the left edge of each panel.
-    const width = this.frameWidth > 0 ? this.frameWidth : frame.getBoundingClientRect().width
     if (this.explorerHandle !== null) {
       const left = Math.round(width - explorer)
       this.explorerHandle.style.left = `${left}px`
-      this.explorerHandle.style.marginLeft = `${-EXPLORER_HANDLE_WIDTH / 2}px`
+      this.explorerHandle.style.marginLeft = `-${EXPLORER_HANDLE_LIP}px`
       this.explorerHandle.style.display = explorer > 0 && state.root !== '' ? 'block' : 'none'
     }
     if (this.previewHandle !== null) {
@@ -398,16 +491,54 @@ export class PanelLayoutController {
     // column's left edge (degenerates to the official value when both panels
     // are closed).
     const detailsTrack = trackPx(this.shellTracks[2])
-    const detailsHandle = frame.querySelector<HTMLElement>('[data-side="details"]')
-    if (detailsHandle !== null) {
-      detailsHandle.style.left = `${Math.round(width - detailsTrack - preview - explorer)}px`
+    // applyGrid runs on every drag frame: resolve the shell handle once and
+    // cache it instead of scanning the whole frame subtree each call. The
+    // cache resets on attach (the shell may rebuild its chrome on HMR).
+    if (this.detailsHandle === null || !this.detailsHandle.isConnected) {
+      this.detailsHandle = frame.querySelector<HTMLElement>('[data-side="details"]')
+    }
+    if (this.detailsHandle !== null) {
+      this.detailsHandle.style.left = `${Math.round(width - detailsTrack - preview - explorer)}px`
     }
 
     // Floating expand button: visible only when the explorer is collapsed.
     if (this.floatingButton !== null) {
       const show = state.root !== '' && state.explorerCollapsed
       this.floatingButton.style.display = show ? 'flex' : 'none'
+      this.positionFloatingButton()
     }
+  }
+
+  /**
+   * Maximize layout: the target column takes over the whole frame row (the
+   * other tracks collapse to 0px). On narrow viewports the takeover grid is
+   * skipped and the column renders as a fixed full-screen overlay instead
+   * (issue #315). Everything stays mounted — only geometry changes.
+   */
+  private applyMaximized(frame: HTMLElement, target: MaximizeTarget, width: number): void {
+    const overlay = maximizedOverlay(this.layout.getSnapshot().availableWidth)
+    if (!overlay) {
+      frame.style.gridTemplateColumns = maximizedGridTracks(target, width)
+    }
+    if (this.explorerCol !== null) {
+      this.explorerCol.style.visibility = target === 'explorer' ? 'visible' : 'hidden'
+      this.explorerCol.classList.toggle('aionui-maximized', target === 'explorer' && overlay)
+    }
+    if (this.previewCol !== null) {
+      this.previewCol.style.visibility = target === 'preview' ? 'visible' : 'hidden'
+      this.previewCol.classList.toggle('aionui-maximized', target === 'preview' && overlay)
+    }
+    // No drag chrome while maximized: nothing to resize, and the floating
+    // button only makes sense for the collapsed explorer.
+    if (this.explorerHandle !== null) this.explorerHandle.style.display = 'none'
+    if (this.previewHandle !== null) this.previewHandle.style.display = 'none'
+    if (this.floatingButton !== null) this.floatingButton.style.display = 'none'
+  }
+
+  /** Remove the narrow-screen overlay class from both columns. */
+  private clearMaximizedChrome(): void {
+    this.explorerCol?.classList.remove('aionui-maximized')
+    this.previewCol?.classList.remove('aionui-maximized')
   }
 
   /** Detach everything (plugin unload). */

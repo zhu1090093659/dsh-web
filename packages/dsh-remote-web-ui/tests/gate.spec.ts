@@ -3,7 +3,7 @@ import { Readable } from 'node:stream'
 import { describe, expect, it } from 'vitest'
 import type { IncomingMessage } from 'node:http'
 import { PairingService } from '../src/pairing.ts'
-import { makeGateListener, readCookie } from '../src/gate.ts'
+import { makeGateListener, readCookie, isPairedDeviceRequest } from '../src/gate.ts'
 
 function request(headers: Record<string, string>, remoteAddress = '127.0.0.1'): IncomingMessage {
   const req = Readable.from([]) as unknown as IncomingMessage
@@ -149,5 +149,36 @@ describe('readCookie', () => {
     expect(readCookie('a=1; dsh_pair=  abc ; b=2', 'dsh_pair')).toBe('abc')
     expect(readCookie(undefined, 'dsh_pair')).toBeUndefined()
     expect(readCookie('a=1', 'dsh_pair')).toBeUndefined()
+  })
+})
+
+describe('isPairedDeviceRequest', () => {
+  it('refuses a request with no device cookie', () => {
+    const service = makeService()
+    expect(isPairedDeviceRequest(service, request({ host: 'dsh.example:443' }, '203.0.113.7'))).toBe(false)
+  })
+
+  it('accepts a live paired cookie and records activity', () => {
+    const service = makeService()
+    const { token } = service.issue()
+    const accepted = service.accept(token)
+    const deviceId = accepted.ok ? accepted.deviceId : ''
+    expect(isPairedDeviceRequest(
+      service,
+      request({ host: 'dsh.example:443', cookie: `dsh_pair=${deviceId}` }, '203.0.113.7'),
+    )).toBe(true)
+    expect(service.snapshot().phase).toBe('connected')
+  })
+
+  it('refuses a cookie after stop()', () => {
+    const service = makeService()
+    const { token } = service.issue()
+    const accepted = service.accept(token)
+    const deviceId = accepted.ok ? accepted.deviceId : ''
+    service.stop()
+    expect(isPairedDeviceRequest(
+      service,
+      request({ host: 'dsh.example:443', cookie: `dsh_pair=${deviceId}` }, '203.0.113.7'),
+    )).toBe(false)
   })
 })

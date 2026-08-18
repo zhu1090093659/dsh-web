@@ -26,24 +26,24 @@ export const REPO_ROOT = resolve(SCRIPT_DIR, '..')
  * The sync manifest: every shared-module copy this repo carries. Sources
  * live exactly once under shared/; consumers import the committed copy.
  */
+// Consumers of the settings card trio: one list, three derivations below.
+const SETTINGS_CONSUMERS = ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-aionui-panel', 'dsh-tool-describe-image', 'dsh-community-plugins']
+
 const MANIFEST = [
   {
     file: 'settings-form.ts',
     source: 'shared/client/settings/settings-form.ts',
-    targets: ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-live-stats', 'dsh-tool-describe-image', 'dsh-community-plugins']
-      .map(pkg => `packages/${pkg}/src/client/settings-form.ts`),
+    targets: SETTINGS_CONSUMERS.map(pkg => `packages/${pkg}/src/client/settings-form.ts`),
   },
   {
     file: 'PluginSettingsCard.tsx',
     source: 'shared/client/settings/PluginSettingsCard.tsx',
-    targets: ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-live-stats', 'dsh-tool-describe-image', 'dsh-community-plugins']
-      .map(pkg => `packages/${pkg}/src/client/PluginSettingsCard.tsx`),
+    targets: SETTINGS_CONSUMERS.map(pkg => `packages/${pkg}/src/client/PluginSettingsCard.tsx`),
   },
   {
     file: 'settings-card.module.css',
     source: 'shared/client/settings/settings-card.module.css',
-    targets: ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-live-stats', 'dsh-tool-describe-image', 'dsh-community-plugins']
-      .map(pkg => `packages/${pkg}/src/client/settings-card.module.css`),
+    targets: SETTINGS_CONSUMERS.map(pkg => `packages/${pkg}/src/client/settings-card.module.css`),
   },
   {
     file: 'poll-guard.ts',
@@ -59,6 +59,7 @@ const MANIFEST = [
     targets: [
       'packages/dsh-pet/src/dsh-home.ts',
       'packages/dsh-liangshen/src/dsh-home.ts',
+      'packages/dsh-task-board/src/dsh-home.ts',
     ],
   },
   {
@@ -67,9 +68,33 @@ const MANIFEST = [
     targets: ['packages/dsh-aionui-panel/src/host/git-runner.ts', 'packages/dsh-git-graph/src/host/git-runner.ts'],
   },
   {
+    file: 'mount-once.ts',
+    source: 'shared/host/mount-once.ts',
+    targets: [
+      'packages/dsh-pet/src/mount-once.ts',
+      'packages/dsh-ssh/src/mount-once.ts',
+      'packages/dsh-remote-web-ui/src/mount-once.ts',
+      'packages/dsh-liangshen/src/mount-once.ts',
+      'packages/dsh-task-board/src/mount-once.ts',
+      'packages/dsh-git-graph/src/mount-once.ts',
+      'packages/dsh-aionui-panel/src/mount-once.ts',
+      'packages/dsh-community-plugins/src/mount-once.ts',
+      'packages/dsh-web-ui-settings/src/mount-once.ts',
+      'packages/dsh-tool-describe-image/src/mount-once.ts',
+      'packages/dsh-skill-explorer/src/mount-once.ts',
+      'packages/skins/skin-center/src/mount-once.ts',
+    ],
+  },
+
+  {
+    file: 'sse-leader.ts',
+    source: 'shared/client/sse-leader.ts',
+    targets: ['packages/dsh-aionui-panel/src/client/sse-leader.ts', 'packages/dsh-git-graph/src/client/sse-leader.ts'],
+  },
+  {
     file: 'loopback.ts',
     source: 'shared/host/loopback.ts',
-    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-git-graph/src/host/loopback.ts', 'packages/dsh-aionui-panel/src/host/loopback.ts', 'packages/dsh-remote-web-ui/src/loopback.ts'],
+    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-git-graph/src/host/loopback.ts', 'packages/dsh-aionui-panel/src/host/loopback.ts', 'packages/dsh-remote-web-ui/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts'],
   },
 ]
 

@@ -14,7 +14,7 @@
  *
  * Usage:
  *   node scripts/capture-previews              # all skins, light + dark
- *   node scripts/capture-previews qq98 xp      # only named skins
+ *   node scripts/capture-previews xp miku      # only named skins
  *   node scripts/capture-previews --serve      # serve via http instead of file://
  *
  * Outputs PNGs at 1440×900 device scale 2 (2880×1800); the gallery cards

@@ -135,6 +135,17 @@ export class SshEngine {
     return stopAllTunnels(this, alias)
   }
 
+  /**
+   * Drop every live artifact bound to one alias: stop its tunnels and close
+   * the pooled connection. Host entries that are deleted or whose connection
+   * fields change must never keep serving a stale, previously authenticated
+   * connection — the next operation re-connects from the current config.
+   */
+  dropAlias(alias: string): void {
+    stopAllTunnels(this, alias)
+    disposeRecord(this, alias)
+  }
+
   // ------------------------------------------------------------- misc
 
   /** Probe connectivity: connect, run `true`, close. */

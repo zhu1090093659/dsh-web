@@ -135,7 +135,9 @@ function renderBundlesJs(skins) {
     'window.SKIN_BUNDLES = {',
   ]
   for (const { meta, bundle } of skins) {
-    const text = fs.readFileSync(bundle, 'utf8')
+    // Generated bundles are text artifacts. Normalize checkout/build line endings
+    // so Windows and POSIX hosts produce the same gallery registry.
+    const text = fs.readFileSync(bundle, 'utf8').replace(/\r\n?/g, '\n')
     lines.push(`\t${JSON.stringify(meta.id)}: ${JSON.stringify(text)},`)
   }
   lines.push('};', '')

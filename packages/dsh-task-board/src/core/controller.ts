@@ -1,10 +1,9 @@
 /**
  * Board controller: the single owner of task-ledger state and view state.
  *
- * It keeps the ledger in memory, persists every mutation through the
- * {@link TaskStore}, drives real executions through the
- * {@link ExecutionService}, and closes the board view whenever the user
- * navigates to a session (the sessions-list `current` selection changes).
+ * In production it projects the Host ledger and submits confirmed actions;
+ * the legacy store/execution seams remain for v1 migration tests. It also
+ * closes the board whenever the user navigates to a session.
  * Framework-free (structural runtime faces) so the whole orchestration is
  * unit-testable with fakes.
  *
@@ -13,7 +12,7 @@
  * owns only the orchestration seam (state, persistence, notify, execution,
  * navigation, reconciliation).
  */
-import { ExecutionService, type ExecutionEvent } from './execution.ts'
+import type { ExecutionEvent, ExecutionService } from './execution.ts'
 import type { TaskStore } from './store.ts'
 import {
   settleExecution, startExecution, withStatus,
@@ -24,6 +23,14 @@ import { applyCreateTask } from './use-cases/task-create.ts'
 import { applyDeleteTask } from './use-cases/task-delete.ts'
 import { applyScheduleNextRun as applyScheduleRollForward, applySetSchedule } from './use-cases/task-schedule.ts'
 import { applyUpdateTask, type TaskUpdatePatch } from './use-cases/task-update.ts'
+import type { TaskBoardAction, TaskBoardSnapshot } from '../protocol.ts'
+
+export interface TaskBoardTransport {
+  bootstrap(legacy: readonly TaskRecord[]): Promise<TaskBoardSnapshot>
+  state(): Promise<TaskBoardSnapshot>
+  action(action: TaskBoardAction): Promise<TaskBoardSnapshot>
+  subscribe(listener: () => void): () => void
+}
 
 /** The sessions face the controller needs for navigation awareness. */
 export interface SessionsControllerFace {
@@ -38,7 +45,8 @@ export interface SessionsControllerFace {
 /** Controller dependencies (all swappable in tests). */
 export interface ControllerDeps {
   store: TaskStore
-  exec: ExecutionService
+  /** Legacy browser execution seam used only by isolated v1 tests. */
+  exec?: ExecutionService
   sessions: SessionsControllerFace
   /** Clock; defaults to Date.now. */
   now?: () => number
@@ -46,6 +54,8 @@ export interface ControllerDeps {
   uuid?: () => string
   /** Debounce (ms) for session-list-changed reconciles; defaults to 350. */
   reconcileDebounceMs?: number
+  /** Host-authoritative transport; absent keeps the legacy in-memory test path. */
+  transport?: TaskBoardTransport
 }
 
 /** One workspace option the execution-target pickers offer. */
@@ -80,6 +90,9 @@ export interface ControllerSnapshot {
   selectedTaskId: string | undefined
   /** Picker option sets (workspace list + agent-preset roster). */
   executionOptions: ExecutionOptionsSnapshot
+  pendingTaskIds: readonly string[]
+  transportError?: string
+  host?: Pick<TaskBoardSnapshot, 'revision' | 'scheduler' | 'power'>
 }
 
 /** The selected task (resolved from the ledger), or undefined. */
@@ -109,6 +122,10 @@ function currentOf(sessions: SessionsControllerFace): string | undefined {
   return sessions.list.getSnapshot().current
 }
 
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 /**
  * Board controller (see module doc). All mutations bump the snapshot and
  * persist through the store; UI and DOM mounts subscribe and re-render.
@@ -123,6 +140,12 @@ export class BoardController {
   private disposers: Array<() => void> = []
   private readonly now: () => number
   private readonly uuid: () => string
+  private readonly pendingTaskIds = new Set<string>()
+  private readonly taskQueues = new Map<string, Promise<void>>()
+  private transportError: string | undefined
+  private hostState: Pick<TaskBoardSnapshot, 'revision' | 'scheduler' | 'power'> | undefined
+  private remoteSubscribed = false
+  private remoteInitialization: Promise<boolean> | undefined
 
   /** @param deps - store, execution service, and the sessions navigation face. */
   constructor(private readonly deps: ControllerDeps) {
@@ -135,15 +158,19 @@ export class BoardController {
   /** Load the persisted ledger and start the navigation/status subscriptions. */
   start(): void {
     this.tasks = this.deps.store.load()
-    void this.reconcileRunningTasks()
+    if (this.deps.transport !== undefined) {
+      void this.initializeRemote()
+    } else {
+      void this.reconcileRunningTasks()
+    }
     // A sibling tab may have edited or deleted the ledger (same origin,
     // storage events). Reload on external change so a task deleted in
     // another tab stops firing here — and is never written back by this
     // tab's stale copy (scheduler roll-forward, execution settlement).
-    const unsubscribeExternal = this.deps.store.subscribeExternal?.(() => {
+    const unsubscribeExternal = this.deps.transport === undefined ? this.deps.store.subscribeExternal?.(() => {
       this.tasks = this.deps.store.load()
       this.notify()
-    })
+    }) : undefined
     if (unsubscribeExternal !== undefined) this.disposers.push(unsubscribeExternal)
     this.disposers.push(this.deps.sessions.list.subscribe(() => {
       this.onSessionsChanged()
@@ -168,12 +195,25 @@ export class BoardController {
       archiveView: this.archiveView,
       selectedTaskId: this.selectedTaskId,
       executionOptions: this.executionOptions,
+      pendingTaskIds: [...this.pendingTaskIds],
+      ...(this.transportError === undefined ? {} : { transportError: this.transportError }),
+      ...(this.hostState === undefined ? {} : { host: this.hostState }),
     }
   }
 
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn)
     return () => { this.listeners.delete(fn) }
+  }
+
+  /** Whether production mutations are confirmed by the Host transport. */
+  isHostBacked(): boolean {
+    return this.deps.transport !== undefined
+  }
+
+  /** Retry initial migration/state synchronization after an explicit Host error. */
+  async retryHostSync(): Promise<boolean> {
+    return await this.initializeRemote()
   }
 
   // --- view state -------------------------------------------------------------
@@ -229,14 +269,30 @@ export class BoardController {
   // --- task mutations (use-case transitions in core/use-cases) -----------------
 
   createTask(input: NewTaskInput): TaskRecord | undefined {
-    const { task, tasks } = applyCreateTask(this.tasks, input, this.now(), this.uuid())
+    const id = this.uuid()
+    const { task, tasks } = applyCreateTask(this.tasks, input, this.now(), id)
     if (task === undefined) return undefined
     this.tasks = [...tasks]
     this.persistAndNotify()
     return task
   }
 
+  /** Create through the Host and expose the task only after confirmation. */
+  async createTaskConfirmed(input: NewTaskInput): Promise<TaskRecord | undefined> {
+    if (this.deps.transport === undefined) return this.createTask(input)
+    const id = this.uuid()
+    const preview = applyCreateTask(this.tasks, input, this.now(), id).task
+    if (preview === undefined) return undefined
+    return await this.commitRemote({ kind: 'create', id, input }, id)
+      ? this.tasks.find(task => task.id === id)
+      : undefined
+  }
+
   updateTask(id: string, patch: TaskUpdatePatch): void {
+    if (this.deps.transport !== undefined) {
+      void this.commitRemote({ kind: 'update', taskId: id, patch }, id)
+      return
+    }
     this.tasks = [...applyUpdateTask(this.tasks, id, patch, this.now())]
     this.persistAndNotify()
   }
@@ -251,11 +307,19 @@ export class BoardController {
   }
 
   moveTask(id: string, status: TaskStatus): void {
+    if (this.deps.transport !== undefined) {
+      void this.commitRemote({ kind: 'move', taskId: id, status }, id)
+      return
+    }
     this.tasks = this.tasks.map(task => task.id === id ? withStatus(task, status, this.now()) : task)
     this.persistAndNotify()
   }
 
   deleteTask(id: string): void {
+    if (this.deps.transport !== undefined) {
+      void this.commitRemote({ kind: 'delete', taskId: id }, id)
+      return
+    }
     const { tasks, selectionCleared } = applyDeleteTask(this.tasks, this.selectedTaskId, id)
     this.tasks = [...tasks]
     if (selectionCleared) this.selectedTaskId = undefined
@@ -271,6 +335,10 @@ export class BoardController {
   archiveTask(id: string): boolean {
     const { tasks, archived } = applyArchiveTask(this.tasks, id, this.now())
     if (!archived) return false
+    if (this.deps.transport !== undefined) {
+      void this.commitRemote({ kind: 'archive', taskId: id }, id)
+      return true
+    }
     this.tasks = [...tasks]
     this.persistAndNotify()
     return true
@@ -280,7 +348,14 @@ export class BoardController {
   restoreTask(id: string): boolean {
     const { tasks, archived } = applyRestoreTask(this.tasks, id, this.now())
     if (!archived) return false
+    if (this.deps.transport !== undefined) {
+      void this.commitRemote({ kind: 'restore', taskId: id }, id).then(restored => {
+        if (restored && this.selectedTaskId === id) this.closeTask()
+      })
+      return true
+    }
     this.tasks = [...tasks]
+    if (this.selectedTaskId === id) this.selectedTaskId = undefined
     this.persistAndNotify()
     return true
   }
@@ -299,15 +374,18 @@ export class BoardController {
   setSchedule(id: string, patch: { enabled?: boolean; cron?: string }): boolean {
     const { tasks, applied } = applySetSchedule(this.tasks, id, patch, this.now())
     if (!applied) return false
+    if (this.deps.transport !== undefined) {
+      void this.commitRemote({ kind: 'set-schedule', taskId: id, patch }, id)
+      return true
+    }
     this.tasks = [...tasks]
     this.persistAndNotify()
     return true
   }
 
   /**
-   * Roll a task's schedule forward (scheduler callback): persist the next due
-   * instant and the trigger instant of this run. No-op when the task has no
-   * schedule rule (it was deleted mid-tick, for example).
+   * Legacy pure-controller seam retained for migration-focused tests. The
+   * production browser never rolls schedules; the Host ledger owns them.
    */
   applyScheduleNextRun(id: string, nextRunAt: number | undefined, lastTriggeredAt: number | undefined): void {
     const next = applyScheduleRollForward(this.tasks, id, nextRunAt, lastTriggeredAt, this.now())
@@ -316,12 +394,8 @@ export class BoardController {
   }
 
   /**
-   * Reload the ledger from the persisted store without notifying subscribers.
-   * The scheduler calls this before every tick so a task deleted in another
-   * tab (or a stale in-memory copy) can never be fired from this tab: the
-   * fire decision and the subsequent roll-forward both run on the freshest
-   * persisted truth. Deliberately silent — same-origin external changes still
-   * reach subscribers through the storage-event subscription.
+   * Reload the legacy v1 store without notifying subscribers. Production v2
+   * reads Host snapshots instead; this remains only for isolated legacy tests.
    */
   reloadFromStore(): void {
     this.tasks = this.deps.store.load()
@@ -345,7 +419,10 @@ export class BoardController {
    */
   async runTask(id: string): Promise<boolean> {
     const task = this.tasks.find(candidate => candidate.id === id)
-    if (task === undefined || task.status === 'running') return false
+    if (task === undefined || task.archivedAt !== undefined || task.status === 'running') return false
+    if (this.deps.transport !== undefined) {
+      return await this.commitRemote({ kind: 'run', taskId: id }, id)
+    }
     const { task: next, execution } = startExecution(task, this.now(), this.uuid())
     this.tasks = this.tasks.map(candidate => candidate.id === id ? next : candidate)
     this.persistAndNotify()
@@ -354,6 +431,7 @@ export class BoardController {
     // reconciliation must not pre-empt it with a session that has not
     // started a turn yet (its list row is idle, not completed).
     this.activeExecutionIds.add(execution.id)
+    if (this.deps.exec === undefined) throw new Error('legacy execution service is unavailable')
     await this.deps.exec.run(next, execution, (event) => { this.handleExecutionEvent(event) })
     return true
   }
@@ -361,7 +439,11 @@ export class BoardController {
   /** Re-run a settled task: move it back to 'todo' first, then execute. */
   async rerunTask(id: string): Promise<void> {
     const task = this.tasks.find(candidate => candidate.id === id)
-    if (task === undefined) return
+    if (task === undefined || task.archivedAt !== undefined) return
+    if (this.deps.transport !== undefined) {
+      await this.commitRemote({ kind: 'rerun', taskId: id }, id)
+      return
+    }
     if (task.status !== 'running') {
       this.tasks = this.tasks.map(candidate => candidate.id === id ? withStatus(candidate, 'todo', this.now()) : candidate)
       this.persistAndNotify()
@@ -392,7 +474,7 @@ export class BoardController {
     // conversation snapshots stay cold until opened). Coalesce the burst of
     // list notifications into one reconcile pass instead of fanning out a
     // history read per notification; see scheduleReconcile.
-    this.scheduleReconcile()
+    if (this.deps.transport === undefined) this.scheduleReconcile()
     if (!this.boardOpen) return
     const current = currentOf(this.deps.sessions)
     if (current !== this.lastCurrent) this.closeBoard()
@@ -426,6 +508,7 @@ export class BoardController {
 
   /** Settle tasks left 'running' whose sessions already finished. */
   private async reconcileRunningTasks(): Promise<void> {
+    if (this.deps.exec === undefined) return
     if (this.reconcileInFlight) return
     this.reconcileInFlight = true
     try {
@@ -461,8 +544,107 @@ export class BoardController {
   }
 
   private persistAndNotify(): void {
-    this.deps.store.save(this.tasks)
+    if (this.deps.transport === undefined) this.deps.store.save(this.tasks)
     this.notify()
+  }
+
+  private async commitRemote(action: TaskBoardAction, taskId?: string): Promise<boolean> {
+    const transport = this.deps.transport
+    if (transport === undefined) return true
+    if (taskId === undefined) return await this.performRemote(action)
+    const previous = this.taskQueues.get(taskId) ?? Promise.resolve()
+    const operation = previous.catch(() => {}).then(async () => await this.performRemote(action))
+    const tail = operation.then(() => {}, () => {})
+    this.taskQueues.set(taskId, tail)
+    this.pendingTaskIds.add(taskId)
+    this.notify()
+    try {
+      return await operation
+    } finally {
+      if (this.taskQueues.get(taskId) === tail) {
+        this.taskQueues.delete(taskId)
+        this.pendingTaskIds.delete(taskId)
+        this.notify()
+      }
+    }
+  }
+
+  private async performRemote(action: TaskBoardAction): Promise<boolean> {
+    const transport = this.deps.transport
+    if (transport === undefined) return true
+    this.transportError = undefined
+    this.notify()
+    try {
+      const accepted = this.acceptRemote(await transport.action(action))
+      return accepted || await this.refreshRemote()
+    } catch (error) {
+      await this.refreshRemote(messageOf(error))
+      return false
+    }
+  }
+
+  private async initializeRemote(): Promise<boolean> {
+    if (this.remoteInitialization !== undefined) return await this.remoteInitialization
+    const initialization = this.doInitializeRemote()
+    this.remoteInitialization = initialization
+    try {
+      return await initialization
+    } finally {
+      if (this.remoteInitialization === initialization) this.remoteInitialization = undefined
+    }
+  }
+
+  private async doInitializeRemote(): Promise<boolean> {
+    const transport = this.deps.transport
+    if (transport === undefined) return true
+    try {
+      this.acceptRemote(await transport.bootstrap(this.tasks))
+      if (!this.remoteSubscribed) {
+        this.remoteSubscribed = true
+        this.disposers.push(transport.subscribe(() => { void this.refreshRemote() }))
+      }
+      return true
+    } catch (error) {
+      this.transportError = messageOf(error)
+      this.notify()
+      return false
+    }
+  }
+
+  private async refreshRemote(preserveError?: string): Promise<boolean> {
+    const transport = this.deps.transport
+    if (transport === undefined) return true
+    try {
+      this.acceptRemote(await transport.state())
+      if (preserveError !== undefined) {
+        this.transportError = preserveError
+        this.notify()
+      }
+      return true
+    } catch (error) {
+      this.transportError = preserveError ?? messageOf(error)
+      this.notify()
+      return false
+    }
+  }
+
+  private acceptRemote(snapshot: TaskBoardSnapshot): boolean {
+    const currentLedgerId = this.hostState?.scheduler.ledgerId
+    const nextLedgerId = snapshot.scheduler.ledgerId
+    const sameGeneration = currentLedgerId === nextLedgerId
+    if (sameGeneration && this.hostState !== undefined && snapshot.revision < this.hostState.revision) return false
+    this.tasks = [...snapshot.tasks]
+    this.hostState = { revision: snapshot.revision, scheduler: snapshot.scheduler, power: snapshot.power }
+    this.transportError = undefined
+    if (this.selectedTaskId !== undefined && !this.tasks.some(task => task.id === this.selectedTaskId)) {
+      this.selectedTaskId = undefined
+    }
+    if (!this.archiveView && this.selectedTaskId !== undefined
+      && this.tasks.find(task => task.id === this.selectedTaskId)?.archivedAt !== undefined) {
+      this.selectedTaskId = undefined
+    }
+    this.notify()
+    return true
   }
 
   private notify(): void {
@@ -484,4 +666,3 @@ function attachSessionId(
       execution.id === executionId ? { ...execution, sessionId } : execution),
   }
 }
-

@@ -10,6 +10,10 @@
   `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }` 声明 bundle 激活；
   `dsh.client` 声明浏览器半区注入与 `platform: "web"`（形态参照
   `packages/dsh-task-board/`）。
+- **聚合包 id 命名空间**：聚合生成器把子插件行 id 统一改为 `web-ui-*`（剥掉子包 `ui-` 前缀），
+  与独立包安装共存，不再触发 loader 的 duplicate entry id；生成文件勿手改。host 半区经
+  `shared/host/mount-once.ts`（sync-shared 同步副本）防重：同一插件双源加载时只注册一次，
+  第二个来源为空操作，浏览器半区由官方 client 模块系统按包名去重。
 - **host / client 半区分层**：`src/index.ts` 是 host 半区（运行在 dsh host 进程），
   `src/client/` 是 browser 半区（Web GUI 侧），`src/core/` 是两侧共享的纯逻辑
   （两侧 program 都编译）。新增源码文件必须落在三个区之一。
@@ -42,6 +46,10 @@
 - `tests/` 放测试，测试文件不得依赖 DSH 源码 checkout 的 fixture。
 - 聚合载具包（dsh-web-ui-all / dsh-skins）可无单测，但聚合生成脚本必须有
   `--check` 一致性门禁（`aggregate.mjs` / `build.mjs` 的 check 模式）。
+- 例外：dsh-aionui-panel 已停止支持——不再保留测试、typecheck 门禁与 e2e 断言
+  （右侧面板由 dsh-better-sidebar 接管），后续版本将从聚合包移除。
+- 例外：dsh-live-stats（实时令牌估算）已彻底移除——包、测试、门禁与文档引用
+  均已清理，不再支持。
 
 ## 双语纪律
 

@@ -11,7 +11,7 @@
 import { createReadStream } from 'node:fs'
 import readline from 'node:readline'
 
-import { classifyReasoning } from '../presets/liangshen/tool-bootstrap.mjs'
+import { classifyReasoning, countWord } from '../presets/liangshen/tool-bootstrap.mjs'
 
 const WORD = {
   we: /\bwe\b/gi,
@@ -27,27 +27,6 @@ export function countMarkers(text) {
     lets: countWord(text, WORD.lets),
     i: countWord(text, WORD.i),
   }
-}
-
-function countWord(text, regex) {
-  return [...text.matchAll(regex)].length
-}
-
-/** Legacy helper: materialize every parsed event (kept for callers that need the array). */
-export async function readEvents(path) {
-  const events = []
-  const input = createReadStream(path)
-  const lines = readline.createInterface({ input, crlfDelay: Infinity })
-  for await (const line of lines) {
-    const trimmed = line.trim()
-    if (trimmed.length === 0) continue
-    try {
-      events.push(JSON.parse(trimmed))
-    } catch {
-      // Ignore malformed tail lines from a partially flushed export.
-    }
-  }
-  return events
 }
 
 /**

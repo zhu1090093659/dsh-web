@@ -13,6 +13,7 @@ import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { z, type ZodType } from 'zod'
 import { UnknownLanAddressError, type PairingService, type PairingSnapshot } from './pairing.ts'
 import { isLoopbackClient, readCookie } from './gate.ts'
+import { readBoundedJson, writeJson } from './http.ts'
 
 /**
  * Browser-trust fence for the /api/pair routes, mirroring the connection
@@ -120,25 +121,10 @@ function parsePairPayload<T>(schema: ZodType<T>, body: Record<string, unknown> |
   return result.success ? result.data : undefined
 }
 
-/** One JSON response. */
-function writeJson(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body)
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'referrer-policy': 'no-referrer' })
-  res.end(payload)
-}
-
-/** Read a request body up to MAX_BODY_BYTES and parse it as JSON. */
+/** Read a request body up to MAX_BODY_BYTES and parse it as JSON (undefined on failure). */
 async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown> | undefined> {
-  const chunks: Buffer[] = []
-  let size = 0
-  for await (const chunk of req) {
-    const buffer = chunk as Buffer
-    size += buffer.length
-    if (size > MAX_BODY_BYTES) return undefined
-    chunks.push(buffer)
-  }
   try {
-    const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    const parsed: unknown = await readBoundedJson(req, MAX_BODY_BYTES)
     return typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : undefined
   } catch {
     return undefined
@@ -238,6 +224,14 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
   const rateLimitAccept = (req: IncomingMessage): boolean => {
     const ip = (req.socket as { remoteAddress?: string } | undefined)?.remoteAddress ?? 'unknown'
     const nowMs = Date.now()
+    // The map lives as long as the plugin: prune expired windows once the
+    // table grows past a modest size so distinct source IPs (LAN clients,
+    // brute-force scans) cannot accumulate forever.
+    if (acceptAttempts.size > 256) {
+      for (const [key, attempt] of acceptAttempts) {
+        if (nowMs - attempt.windowStart > ACCEPT_WINDOW_MS) acceptAttempts.delete(key)
+      }
+    }
     const entry = acceptAttempts.get(ip)
     if (entry === undefined || nowMs - entry.windowStart > ACCEPT_WINDOW_MS) {
       acceptAttempts.set(ip, { count: 1, windowStart: nowMs })
@@ -270,7 +264,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       const workspaceQuery = workspaceId === undefined ? '' : `&workspace=${encodeURIComponent(workspaceId)}`
       writeJson(res, 200, {
         ok: true,
-        url: `${base}/?pair=${token}${workspaceQuery}`,
+        url: `${base}/m/?pair=${token}${workspaceQuery}`,
         token,
         expiresAt,
         // Every constructible base, so a multi-homed panel can switch the

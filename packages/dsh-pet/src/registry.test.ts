@@ -25,6 +25,7 @@ describe('resolvePetManifest', () => {
     expect(entry!.id).toBe('otter')
     expect(entry!.cell).toEqual(DEFAULT_PET_CELL)
     expect(entry!.columns).toBe(8)
+    expect(entry!.atlasRows).toBe(9)
     expect(entry!.rows).toEqual([...DEFAULT_FRAME_COUNTS])
     expect(entry!.atlasUrl).toBe('/pet/otter/spritesheet.webp')
     expect(entry!.manifestUrl).toBe('/pet/otter/pet.json')
@@ -35,6 +36,21 @@ describe('resolvePetManifest', () => {
     expect(entry!.tracks.jumping.fallback).toBe('idle')
     expect(entry!.tracks.failed.loop).toBe(false)
     expect(entry!.tracks.running.loop).toBe(true)
+  })
+
+  it('marks v2 (spriteVersionNumber 2) atlases with 11 rows', () => {
+    const entry = resolvePetManifest({
+      id: 'firefly',
+      displayName: 'Firefly',
+      spritesheetPath: 'spritesheet.webp',
+      spriteVersionNumber: 2,
+    }, join(tmpdir(), 'firefly'))
+    expect(entry).toBeDefined()
+    // v2 atlases carry 11 rows: the 9 animation rows plus 2 look rows.
+    expect(entry!.atlasRows).toBe(11)
+    // The 9 animation rows still resolve the hatch-pet contract.
+    expect(entry!.rows).toEqual([...DEFAULT_FRAME_COUNTS])
+    expect(entry!.tracks.idle.frames.length).toBe(entry!.rows[0])
   })
 
   it('keeps the legacy whale-girl frame counts and its own durations', () => {
@@ -49,6 +65,36 @@ describe('resolvePetManifest', () => {
     expect(entry!.tracks.idle.durations).toEqual([400, 400, 500, 400, 400, 500])
     // Non-overridden tracks keep the contract rhythm.
     expect(entry!.tracks['running-right'].durations.length).toBe(8)
+  })
+
+  it('normalizes valid per-scene animation sequences', () => {
+    const entry = resolvePetManifest({
+      id: 'whale-girl',
+      displayName: '鲸鱼娘',
+      spritesheetPath: 'spritesheet.webp',
+      sequences: {
+        thinking: ['running', 'running-right', 'running', 'running-left', 'waiting'],
+      },
+    }, join(tmpdir(), 'whale'))
+    expect(entry!.sequences).toEqual({
+      thinking: ['running', 'running-right', 'running', 'running-left', 'waiting'],
+    })
+  })
+
+  it('drops invalid or undersized per-scene animation sequences', () => {
+    const warnings: string[] = []
+    const entry = resolvePetManifest({
+      id: 'whale-girl',
+      displayName: '鲸鱼娘',
+      spritesheetPath: 'spritesheet.webp',
+      sequences: {
+        waiting: ['waiting', 'idle'],
+        thinking: ['running', 'bogus', 'running', 'running-left', 'waiting'],
+      },
+    }, join(tmpdir(), 'whale'), { warnings })
+    expect(entry!.sequences).toBeUndefined()
+    expect(warnings).toContain('manifest whale-girl: sequence waiting must contain at least 5 animations')
+    expect(warnings).toContain('manifest whale-girl: sequence thinking contains unknown animation "bogus"')
   })
 
   it('cycles short override durations up to the row frame count', () => {
@@ -152,8 +198,9 @@ describe('loadPetRegistry', () => {
 
 describe('codexPetsDir', () => {
   it('honors CODEX_HOME and expands a leading tilde', () => {
-    expect(codexPetsDir({ CODEX_HOME: '/opt/codex' }, '/home/user')).toBe('/opt/codex/pets')
-    expect(codexPetsDir({ CODEX_HOME: '~/codex' }, '/home/user')).toBe('/home/user/codex/pets')
-    expect(codexPetsDir({}, '/home/user')).toBe('/home/user/.codex/pets')
+    // Expected values join through the platform separator (POSIX on CI).
+    expect(codexPetsDir({ CODEX_HOME: '/opt/codex' }, '/home/user')).toBe(join('/opt/codex', 'pets'))
+    expect(codexPetsDir({ CODEX_HOME: '~/codex' }, '/home/user')).toBe(join('/home/user', 'codex', 'pets'))
+    expect(codexPetsDir({}, '/home/user')).toBe(join('/home/user', '.codex', 'pets'))
   })
 })

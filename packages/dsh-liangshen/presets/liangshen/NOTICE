@@ -1,4 +1,7 @@
 agent.cordis.yml 改编自 DeepSeek Harness 内置 Minimal 与 Standard preset（MIT）。
 tool-bootstrap.mjs 来自 https://github.com/xiaobright/dsh-anchored-standard（MIT），
 并包含 dsh-liangshen 的两阶段隔离扩展。
+custom-bash.mjs 移植自同一上游（xiaobright/dsh-anchored-standard，MIT）的
+combo-anchored/custom-bash.mjs，用于 win32 上以跨平台子进程通道提供同名
+`bash` 工具（Git Bash）。
 原始 DeepSeek 版权和 MIT 许可声明见开源仓库。

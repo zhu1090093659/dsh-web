@@ -2,9 +2,9 @@
 
 状态：已实现。日期：2026-08-09。
 
-> 修正（2026-08）：分支 chip 挂载槽位为官方声明的 `conversation.input.selector.context`（list、session-maybe 作用域），与官方工作区选择胶囊并排。此前 acbcf80 曾把 chip 迁到 `conversation.input.dock`，理由是「selector-context 洞在 rc.6 从未声明」——该前提不成立：随发行 shell 的 apply.ts 同时声明了 selector-context（session-maybe）与 dock（session），selector-context 才是分支 chip 的正确席位，现已回迁。hero（空白会话）与 active 会话相位都挂载；见 README 挂载 seam。
+> 修正（2026-08）：分支 chip 挂载槽位为官方声明的 `conversation.input.selector.context`（list、session-maybe 作用域），与官方工作区选择胶囊并排。此前 acbcf80 曾把 chip 迁到 `conversation.input.dock`，理由是「selector-context 洞在 rc.6 从未声明」——该前提不成立：随发行 shell 的 apply.ts 同时声明了 selector-context（session-maybe）与 dock（session），selector-context 才是分支 chip 的正确席位，现已回迁。选择器只在 hero（空白会话）中显示，active 会话不渲染选择控件；见 README 挂载 seam。
 >
-> 再修正（2026-08-15）：发布 npm SDK rc.6 与当前随发行 shell 实际未声明 `conversation.input.selector.context`，插件保持「声明感知 + 超时回退 `conversation.input.dock`」；在 dock 的 hero 相位，BranchChip 重新定位进官方 hero 行、贴到 agent-preset 座位右侧（视觉上与官方工作区/预设胶囊同一行），active 相位维持输入卡左对齐，见 README 挂载 seam。
+> 再修正（2026-08-15）：发布 npm SDK rc.6 与当前随发行 shell 实际未声明 `conversation.input.selector.context`，插件保持「声明感知 + 超时回退 `conversation.input.dock`」；在 dock 的 hero 相位，BranchChip 重新定位进官方 hero 行、贴到 agent-preset 座位右侧（视觉上与官方工作区/预设胶囊同一行），active 会话不渲染选择控件，见 README 挂载 seam。
 
 ## 背景
 
@@ -36,9 +36,9 @@
 2. ~~工作区语义~~：项目（工作区）选择已下线（产品决策：自研 WorkspaceChip 整体移除，工作区选择与 placeholder 由官方 header 入口全权负责）；本插件不再携带任何工作区动词。
 3. **git 操作语义**：`git switch --no-guess <branch>` / `git switch --no-guess -c <name>`，在 repoRoot 执行，作用于磁盘工作树，影响该工作区所有会话。守卫（对齐 ZCode branchSwitcher 错误码）：未解决冲突（`conflicts-present`）、进行中操作（`operation-in-progress`，检查 MERGE_HEAD/CHERRY_PICK_HEAD/REVERT_HEAD/BISECT_LOG/rebase-merge/rebase-apply/sequencer 标记）、目标分支被其他 worktree 检出（`branch-in-other-worktree`，`git worktree list --porcelain`）、切换失败按 stderr 归类（tracked/untracked overwrite + 文件列表、target-branch-not-found、internal）。创建分支：客户端镜像 `check-ref-format --branch` 规则即时反馈 + host `git check-ref-format` 权威门 + 重名拒绝。
 4. **安全边界**：`/git/*` 只接受「realpath 后等于某已注册 workspace.path」的路径（`ctx.workspace.list()`），浏览器无法对任意目录执行 git。
-5. **输入选择器席位**：`conversation.input.selector.context` 是 session-maybe 洞——分支 chip 从冷启动到 active 全程挂载，与输入卡 dock 在一起（与卡片同款宽度配方）；无会话 cwd（pathOf 解析失败）或非 git 工作区（status 返回 null）时 chip 自行隐藏。hero（空白会话）有 cwd，分支胶囊照常显示——与官方工作区胶囊并排，两个相位一致。
+5. **输入选择器席位**：`conversation.input.selector.context` 是 session-maybe 洞。分支选择器只为空白会话渲染；active 会话不渲染控件，也不订阅 Git 状态。无会话 cwd（pathOf 解析失败）或非 git 工作区（status 返回 null）时 chip 自行隐藏。hero（空白会话）有 cwd，分支胶囊与官方工作区胶囊并排。
 6. **非 git 工作区降级**：分支 chip 隐藏（status 返回 null 即不渲染）。隐藏优于禁用：不产生死控件，且工作区变仓库后自动出现（SSE/打开弹层时刷新）。
-7. **刷新策略**：chip 挂载时拉取、弹层打开时重新拉取、切换/创建成功后刷新、SSE 推送与 window focus 触发刷新。
+7. **刷新策略**：空白会话 chip 挂载时拉取、弹层打开时重新拉取、切换/创建成功后刷新、SSE 推送与 window focus 触发刷新。
 8. ~~「远程连接」占位~~：随项目选择器一并下线（`WorkspacePopover` 移除）。
 9. **包结构**：外部单包不按主仓三包缝拆分（interface/impl/consumer 是主仓能力缝约定）；内部按 core（纯函数）/host（服务+路由）/client（组件）分层，`GitRunner` 缝使测试用普通 child_process 替代 subprocess 服务。
 10. **Git 图谱**：`git log --branches --tags --remotes --topo-order --parents --format=…` 数据 + 客户端泳道算法（`computeLanes`，首父续道、旁支开道、合并汇入），等宽字体渲染 lane 列 + ref 标签；只读，分页加载。

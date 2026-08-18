@@ -13,8 +13,10 @@ import * as tool from '../src/index.ts'
 import { chatReply, FakeWebServer, jsonReply, PNG_BYTES, startMockServer } from './mock-server.ts'
 
 const cleanup: Array<() => Promise<void>> = []
+const contexts: Context[] = []
 
 afterEach(async () => {
+  await Promise.all(contexts.splice(0).map(ctx => Promise.resolve(ctx.fiber.dispose())))
   await Promise.all(cleanup.splice(0).map(close => close()))
 })
 
@@ -33,7 +35,9 @@ const SPEC: tool.ResolvedConfig = {
   maxOutputTokens: tool.DEFAULT_MAX_OUTPUT_TOKENS,
   timeoutMs: 60_000,
   apiStyle: 'chat-completions',
+  thinking: undefined,
   renderImagePreview: tool.DEFAULT_RENDER_IMAGE_PREVIEW,
+  interceptImageSend: tool.DEFAULT_INTERCEPT_IMAGE_SEND,
 }
 
 async function tempPng(): Promise<string> {
@@ -65,6 +69,7 @@ describe('semantic vision cache', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('Cached answer.')) })
     cleanup.push(server.close)
     const ctx = new Context()
+  contexts.push(ctx)
     await boot(ctx, server.url)
     const path = await tempPng()
 
@@ -85,6 +90,7 @@ describe('semantic vision cache', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
     const ctx = new Context()
+  contexts.push(ctx)
     await boot(ctx, server.url)
     const path = await tempPng()
 
@@ -134,10 +140,12 @@ describe('semantic request key', () => {
     const same = tool.semanticRequestKey(SPEC, 'q', loadedImage())
     const otherPrompt = tool.semanticRequestKey(SPEC, 'r', loadedImage())
     const otherModel = tool.semanticRequestKey({ ...SPEC, model: 'vision-2' }, 'q', loadedImage())
+    const otherThinking = tool.semanticRequestKey({ ...SPEC, thinking: 'off' }, 'q', loadedImage())
     const otherImage = tool.semanticRequestKey(SPEC, 'q', loadedImage(Buffer.from('different bytes')))
     expect(a).toBe(same)
     expect(a).not.toBe(otherPrompt)
     expect(a).not.toBe(otherModel)
+    expect(a).not.toBe(otherThinking)
     expect(a).not.toBe(otherImage)
   })
 })
@@ -152,6 +160,11 @@ describe('parseImageAttachmentRef narrowing', () => {
     expect(ref.bytes).toBe(PNG_BYTES.length)
     expect(ref.width).toBe(1)
     expect(ref.height).toBe(1)
+  })
+
+  it('accepts the complete attachment note carrier', () => {
+    const ref = tool.parseImageAttachmentRef(`[image attachment ${valid}]`)
+    expect(ref).toMatchObject({ attachmentId: `sha256:${'c'.repeat(64)}`, mediaType: 'image/png' })
   })
 
   it('rejects malformed references without narrowing', () => {

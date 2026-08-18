@@ -1,0 +1,28 @@
+maid-atelier (深海女仆工坊 · Abyssal Maid Atelier)
+====================================================
+
+Third-party derivative notice (CC BY-NC-SA 4.0 attribution chain)
+
+This skin's artwork is a tertiary derivative. Per the ShareAlike and
+Attribution requirements of CC BY-NC-SA 4.0, every upstream author in the
+chain is credited:
+
+1. 一创 (initial creation): 上善 —— 鲸鱼娘 (whale-girl) 角色形象的原作者。
+   个人主页 (profile): https://www.pixiv.net/users/62155430
+   The original whale-girl character design.
+
+2. 二创 (secondary creation): zipzip —— 在上善的鲸鱼娘形象基础上加入
+   DeepSeek 元素的女仆鲸鱼娘 (maid whale-girl) 二次设计（生成模型：GPT Image 2）。
+   个人主页 (profile): https://www.pixiv.net/users/18604994
+   The maid whale-girl redesign adding DeepSeek elements, based on 上善's
+   whale-girl (generated with GPT Image 2).
+
+3. 三创 (this skin): Small-tailqwq (Small-tailqwq/dsh-deep-whale) —— 本皮肤
+   使用的素材为该形象的 DeepSeek 元素再设计。
+   The DeepSeek-element secondary design used in this skin.
+
+The title-bar label is plain text styling. This package does not embed the
+DeepSeek Harness BrandWordmark vector.
+
+Usage terms: CC BY-NC-SA 4.0 —— 署名 (attribution) 必须保留以上完整创作链；
+非商业性使用 (non-commercial only)；衍生作品必须以相同方式共享 (share-alike)。

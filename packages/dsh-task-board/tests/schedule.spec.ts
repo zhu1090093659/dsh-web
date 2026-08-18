@@ -125,6 +125,10 @@ describe('nextRunAtMs', () => {
     expect(nextRunAtMs('0 0 30 2 *', at(2026, 1, 1, 0, 0))).toBeUndefined()
   })
 
+  it('finds a leap-day occurrence beyond the old one-year scan horizon', () => {
+    expect(nextRunAtMs('0 0 29 2 *', at(2025, 3, 1, 0, 0))).toBe(at(2028, 2, 29, 0, 0))
+  })
+
   it('returns undefined for invalid expressions', () => {
     expect(nextRunAtMs('not a cron', at(2026, 1, 1, 0, 0))).toBeUndefined()
   })

@@ -98,6 +98,9 @@ export function clampPreviewWidth(requested: number, available: number, explorer
   return Math.min(requested, maxByContainer)
 }
 
+/** Which panel is maximized (null = normal layout). */
+export type MaximizeTarget = 'explorer' | 'preview'
+
 /** Layout panel state (project-scoped). */
 export interface LayoutState {
   /** The project root ('' when no project is bound). */
@@ -114,6 +117,13 @@ export interface LayoutState {
   availableWidth: number
   /** True while a panel drag is in flight (disables transitions). */
   dragging: boolean
+  /**
+   * Maximized panel (transient, never persisted): the panel takes over the
+   * whole frame row (or the viewport as an overlay on narrow screens) while
+   * the other panel, the chat area and the shell side columns hide. Restoring
+   * re-applies the stored widths/collapse — nothing else changes.
+   */
+  maximized: MaximizeTarget | null
 }
 
 /** The layout store plus its pure width math. */
@@ -139,6 +149,7 @@ export function createLayoutStore(): LayoutStore {
     previewOpen: false,
     availableWidth: 0,
     dragging: false,
+    maximized: null,
   })
   const store: LayoutStore = Object.assign(handle, {
     explorerWidthPx(state: LayoutState): number {
@@ -178,7 +189,9 @@ export function layoutSetRoot(store: LayoutStore, root: string, previewOpen: boo
         collapsed = false
       }
     }
-    return { ...prev, root, explorerCollapsed: collapsed, previewOpen }
+    // Maximize is a transient layout state: it must never leak from one
+    // project/session into another (issue #315 acceptance).
+    return { ...prev, root, explorerCollapsed: collapsed, previewOpen, maximized: prev.root === root ? prev.maximized : null }
   })
 }
 
@@ -363,9 +376,9 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
 
   const store: ExplorerStore = Object.assign(handle, {
     setRoot(root: string) {
+      const ui = readExplorerUi(root)
       handle.update((prev) => {
         if (prev.root === root) return prev
-        const ui = readExplorerUi(root)
         return {
           ...prev,
           root,
@@ -377,6 +390,9 @@ export function createExplorerStore(api: PanelApi): ExplorerStore {
         }
       })
       void ensureDir(root, '')
+      // Rehydrate every restored expanded dir so the persisted expanded
+      // arrows render real content without a manual collapse/expand round-trip.
+      for (const rel of ui.expanded) void ensureDir(root, rel)
     },
     setActiveTab(tab: 'files' | 'changes') {
       handle.update((prev) => (prev.activeTab === tab ? prev : { ...prev, activeTab: tab }))
@@ -849,6 +865,10 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
     version: 0,
   })
 
+  // handleFsChange single-flight + trailing coalesce (see its guard).
+  let previewFsInFlight = false
+  let previewFsScheduled: ReturnType<typeof setTimeout> | undefined
+
   const persistDebounced = createDebounced()
   const persistWrite = (): void => {
     const current = handle.getSnapshot()
@@ -1116,7 +1136,7 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
                 ...item,
                 loading: false,
                 error: result.error.code === 'write-conflict'
-                  ? '文件已在磁盘上被修改，保存冲突：请刷新后重试'
+                  ? 'write-conflict'
                   : result.error.message,
               }
             }
@@ -1194,26 +1214,43 @@ export function createPreviewStore(api: PanelApi): PreviewStore {
     async handleFsChange() {
       const state = handle.getSnapshot()
       if (state.root === '') return
-      handle.update((prev) => ({ ...prev, version: prev.version + 1 }))
-      // Diff tabs are derived views: any fs change may alter them, so refresh
-      // them in place (never mark "updated" — the refresh is automatic).
-      await refreshDiffs(state.root)
-      // Staleness probe for the ACTIVE file tab only (cheap; the fs watcher
-      // debounces bursts). A newer disk mtime flips the tab to "updated".
-      const active = handle.getSnapshot().tabs.find((tab) => tab.id === handle.getSnapshot().activeTabId)
-      if (active === undefined || active.content === null || active.dirty || active.diff !== undefined || !isTextType(active.contentType)) return
-      const result = await api.read(state.root, active.path, false)
-      handle.update((prev) => {
-        if (prev.root !== state.root) return prev
-        return {
-          ...prev,
-          tabs: prev.tabs.map((tab) => {
-            if (tab.id !== active.id || tab.dirty) return tab
-            if (!result.ok) return tab
-            return { ...tab, updated: tab.mtime !== undefined && result.value.mtime > tab.mtime + 1 }
-          }),
+      if (previewFsInFlight) {
+        // Collapse a burst of fs events into one trailing pass: each refresh
+        // respawns git per diff tab and re-reads the active file, so a write
+        // storm must not queue one full round per event.
+        if (previewFsScheduled === undefined) {
+          previewFsScheduled = setTimeout(() => {
+            previewFsScheduled = undefined
+            void this.handleFsChange()
+          }, FS_COALESCE_MS)
         }
-      })
+        return
+      }
+      previewFsInFlight = true
+      try {
+        handle.update((prev) => ({ ...prev, version: prev.version + 1 }))
+        // Diff tabs are derived views: any fs change may alter them, so refresh
+        // them in place (never mark "updated" — the refresh is automatic).
+        await refreshDiffs(state.root)
+        // Staleness probe for the ACTIVE file tab only (cheap; the fs watcher
+        // debounces bursts). A newer disk mtime flips the tab to "updated".
+        const active = handle.getSnapshot().tabs.find((tab) => tab.id === handle.getSnapshot().activeTabId)
+        if (active === undefined || active.content === null || active.dirty || active.diff !== undefined || !isTextType(active.contentType)) return
+        const result = await api.read(state.root, active.path, false)
+        handle.update((prev) => {
+          if (prev.root !== state.root) return prev
+          return {
+            ...prev,
+            tabs: prev.tabs.map((tab) => {
+              if (tab.id !== active.id || tab.dirty) return tab
+              if (!result.ok) return tab
+              return { ...tab, updated: tab.mtime !== undefined && result.value.mtime > tab.mtime + 1 }
+            }),
+          }
+        })
+      } finally {
+        previewFsInFlight = false
+      }
     },
     async handleGitChange(root: string) {
       // A git push means the index/worktree moved (stage/unstage/discard or

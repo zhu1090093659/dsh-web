@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-miku",
-  "version": "0.1.18",
+  "version": "0.2.0",
   "description": "Bundled skin inside @linxin666/dsh-skins (@linxin666/dsh-client-ui-skin-miku).",
   "type": "module",
   "main": "lib/index.js",
@@ -10,9 +10,6 @@
     "./package.json": "./package.json"
   },
   "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
     "client": {
       "inject": [],
       "platform": "web"
@@ -22,7 +19,8 @@
   "files": [
     "lib",
     "skin.json",
-    "cordis.patch.yml"
+    "LICENSE",
+    "NOTICE"
   ],
   "repository": {
     "type": "git",

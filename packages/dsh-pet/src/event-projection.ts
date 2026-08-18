@@ -3,11 +3,17 @@
  * vocabulary onto the pet's visual phases and carries an optional completed-
  * turn reward for the ledger. Holds no state of its own; callers keep a
  * {@link ProjectionRuntime} per session and feed events in arrival order.
+ *
+ * Status copy comes from the chatter voice (big rotating pools, per-tool
+ * families, real-argument hints), and streamed model output feeds the murmur
+ * engine so the pet can whisper its inner voice (碎碎念). The wall clock is
+ * injected by the caller, keeping every projection reproducible.
  * @module @linxin666/dsh-pet/event-projection
  */
 
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { PetStateInput } from './state.ts'
+import { StatusVoice, toolArgHint, WhisperEngine } from './chatter.ts'
 
 /** Runtime shape of the optional legacy activity event. */
 export interface ActivityStatusEventLike {
@@ -21,23 +27,35 @@ export interface ProjectionRuntime {
   activeTools: Set<string>
   officialEventsSeen: boolean
   stepHadFailure: boolean
+  /** Round-robin status copy voice (scene-stable, cadence-rotated). */
+  voice: StatusVoice
+  /** Inner-whisper engine fed by the model's own streamed output. */
+  whispers: WhisperEngine
 }
 
 /** One official event projection, optionally carrying a completed turn reward. */
 export interface PetActivityTransition {
   input: PetStateInput
   completedTurn?: number
+  /** A fresh inner whisper woken by this event's model output, when any. */
+  whisper?: string
 }
 
 /** Fresh projection runtime for a newly seen session. */
 export function emptyProjectionRuntime(): ProjectionRuntime {
-  return { activeTools: new Set(), officialEventsSeen: false, stepHadFailure: false }
+  return {
+    activeTools: new Set(),
+    officialEventsSeen: false,
+    stepHadFailure: false,
+    voice: new StatusVoice(),
+    whispers: new WhisperEngine(),
+  }
 }
 
 /** Keep tool names readable inside the compact status bubble. */
 function displayToolName(name: string): string {
   const compact = name.replace(/\s+/g, ' ').trim() || '工具'
-  return compact.length <= 24 ? compact : `${compact.slice(0, 21)}...`
+  return compact.length <= 24 ? compact : compact.slice(0, 21) + '...'
 }
 
 /** Whether a legacy phase is part of the pet's supported vocabulary. */
@@ -48,38 +66,53 @@ export function isActivityPhase(phase: string): phase is PetStateInput['phase'] 
 /**
  * Project the durable DSH session vocabulary into the pet's visual phases.
  * Unknown and log-only events do not disturb the last meaningful activity.
+ * @param nowMs - injected wall clock for copy rotation and whisper pacing.
  */
 export function projectOfficialEvent(
   event: SessionEvent,
   runtime: ProjectionRuntime,
+  nowMs: number = Date.now(),
 ): PetActivityTransition | undefined {
   switch (event.type) {
     case 'turn/start':
       runtime.activeTools.clear()
       runtime.stepHadFailure = false
-      return { input: { phase: 'waiting', line: '准备开始' } }
+      return { input: { phase: 'waiting', line: runtime.voice.scene('prepare', nowMs) } }
     case 'step/start':
       runtime.activeTools.clear()
       runtime.stepHadFailure = false
-      return { input: { phase: 'waiting', line: '等待模型响应' } }
+      return { input: { phase: 'waiting', line: runtime.voice.scene('waiting', nowMs) } }
     case 'assistant/chunk': {
       const { chunk } = event.data
       if (chunk.type === 'reasoning-delta' && chunk.text.length > 0) {
-        return { input: { phase: 'thinking', line: '正在思考' } }
+        const whisper = runtime.whispers.feed(chunk.text, nowMs)
+        return {
+          input: { phase: 'thinking', line: runtime.voice.scene('thinking', nowMs) },
+          ...(whisper === undefined ? {} : { whisper }),
+        }
       }
       if (chunk.type === 'text-delta' && chunk.text.length > 0) {
-        return { input: { phase: 'review', line: '整理回复中' } }
+        const whisper = runtime.whispers.feed(chunk.text, nowMs)
+        return {
+          input: { phase: 'review', line: runtime.voice.scene('review', nowMs) },
+          ...(whisper === undefined ? {} : { whisper }),
+        }
       }
       return undefined
     }
     case 'assistant/message':
-      return { input: { phase: 'review', line: '整理回复中' } }
+      return { input: { phase: 'review', line: runtime.voice.scene('review', nowMs) } }
     case 'tool/call':
       runtime.activeTools.add(String(event.data.callId))
       return {
         input: {
           phase: 'tool',
-          line: `正在使用 ${displayToolName(event.data.name)}`,
+          line: runtime.voice.tool(
+            event.data.name,
+            displayToolName(event.data.name),
+            toolArgHint(event.data.name, event.data.arguments),
+            nowMs,
+          ),
         },
       }
     case 'tool/result': {
@@ -90,32 +123,34 @@ export function projectOfficialEvent(
         return {
           input: {
             phase: 'tool',
-            line: `还有 ${runtime.activeTools.size} 个工具运行中`,
+            line: runtime.voice.toolRemaining(runtime.activeTools.size, nowMs),
           },
         }
       }
       return runtime.stepHadFailure
-        ? { input: { phase: 'failed', line: '工具执行失败' } }
-        : { input: { phase: 'thinking', line: '处理工具结果' } }
+        ? { input: { phase: 'failed', line: runtime.voice.scene('toolFailed', nowMs) } }
+        : { input: { phase: 'thinking', line: runtime.voice.scene('toolResult', nowMs) } }
     }
     case 'turn/end': {
       runtime.activeTools.clear()
       switch (event.data.reason.kind) {
         case 'completed':
           return {
-            input: { phase: 'done', line: '完成啦' },
+            input: { phase: 'done', line: runtime.voice.scene('done', nowMs) },
             completedTurn: event.data.turn,
           }
         case 'error':
-          return { input: { phase: 'failed', line: '执行失败' } }
+          return { input: { phase: 'failed', line: runtime.voice.scene('failed', nowMs) } }
         case 'max-tokens':
-          return { input: { phase: 'failed', line: '达到输出上限' } }
+          return { input: { phase: 'failed', line: runtime.voice.scene('maxTokens', nowMs) } }
         case 'interrupted':
-          return { input: { phase: 'failed', line: '执行意外中断' } }
+          return { input: { phase: 'failed', line: runtime.voice.scene('interrupted', nowMs) } }
         case 'blocked':
-          return { input: { phase: 'waiting', line: '等待继续' } }
+          return { input: { phase: 'waiting', line: runtime.voice.scene('blocked', nowMs) } }
         case 'aborted':
-          return { input: { phase: 'idle', line: '已停止' } }
+          // A stopped session settles to idle without a bubble: the pet
+          // visibly calms down and the session drops out of the bubble stack.
+          return { input: { phase: 'idle' } }
         default:
           // TurnEndReasonMap is merge-extensible; a newer ending must not
           // leave the pet showing stale in-progress work.

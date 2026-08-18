@@ -23,13 +23,35 @@
  * known skin chrome body children (title/status bars marked `data-skin-chrome`
  * or carrying the skin's body attribute, leaving other plugins' portals and
  * toasts in place), and neutralize known global-rule leaks (xp's sidebar
- * taskbar/start). Everything is snapshotted and restored on exit in original
- * order. The active skin's own fiber is never touched, so exiting try-on
- * returns the page to exactly the pre-try-on state.
+ * taskbar/start; matrix's full-viewport rain canvas, which has no scoping
+ * attribute — matrix's forced-dark observer goes inert on its own once the
+ * body attribute is retracted). Everything is snapshotted and restored on
+ * exit in original order. The active skin's own fiber is never touched, so
+ * exiting try-on returns the page to exactly the pre-try-on state.
  *
  * A ghost MutationObserver may survive retraction (blue-fantasy re-writes
  * its backdrop on theme flips), so during try-on a neutralizing observer
  * re-clears the backdrop props whenever `data-ds-dark-theme` changes.
+ *
+ * Hot swap (issue #359): the same machinery also powers one-click apply in
+ * packaged installs, where the client-module startup graph only refreshes on
+ * an app restart. TryOnController.commit() mounts the applied skin in place
+ * and keeps it (no reload, no restart), retracting the incumbent permanently
+ * instead of snapshot-restoring it; activeSkinEntry() then answers the
+ * committed skin until the next real page load.
+ *
+ * Re-trying the skin that is ALREADY the live preview is a no-op. A skin
+ * bundle injects its CSS once per materialization (a `style[data-plugin-css]`
+ * dedup guard inside each bundle), so the normal load/transfer/cleanup cycle
+ * would strip the only style tag and leave the preview visually unstyled —
+ * the page falls back to the default look while the session still reports
+ * the skin as tried on. The controller answers such a request as satisfied
+ * without touching the session.
+ *
+ * The session is observable: `subscribe()` fires on every transition (a
+ * try-on starts, switches, exits or commits), which lets the settings card
+ * derive its "trying on" badge from the controller instead of component-local
+ * state that a panel close/reopen would wipe.
  */
 
 import { SKIN_CENTER_ENTRIES, type SkinCenterEntry } from './generated/skins.ts'
@@ -56,6 +78,14 @@ const NEUTRALIZE_CSS: Record<string, string> = {
   xp: [
     `[data-pane='sidebar'] [class*='xpTaskbar']{background:transparent!important;border-top:none!important;box-shadow:none!important}`,
     `[data-pane='sidebar'] [class*='xpStart']{display:none!important}`,
+  ].join(''),
+  // matrix mounts a fixed full-viewport rain canvas with an extreme z-index
+  // and no scoping attribute of its own, so detaching chrome cannot reach
+  // it; hide it for the try-on session. Its forced-dark observer goes inert
+  // by itself once `data-dsh-matrix` is retracted (the skin's callback
+  // refuses to act without its own marker).
+  matrix: [
+    `[data-plugin='dsh-matrix-skin']{display:none!important}`,
   ].join(''),
 }
 
@@ -106,9 +136,33 @@ function bootEntryIds(): string[] {
 }
 
 /** The skin package currently ACTIVE in the boot graph, if it is one of ours. */
-export function activeSkinEntry(): SkinCenterEntry | undefined {
+function bootSkinEntry(): SkinCenterEntry | undefined {
   const ids = new Set(bootEntryIds())
   return SKIN_CENTER_ENTRIES.find(entry => ids.has(entry.package))
+}
+
+/**
+ * Hot-committed skin override (issue #359): a one-click apply mounts the new
+ * skin in place — the boot graph only catches up on the next app start, so
+ * until the page reloads, activeSkinEntry reports the committed skin instead
+ * of the boot-graph one. A null package means the official stock look was
+ * committed.
+ */
+let hotOverride: { pkg: string | null } | undefined
+
+/** The skin currently driving the page: the hot-committed one, else the boot-graph one. */
+export function activeSkinEntry(): SkinCenterEntry | undefined {
+  if (hotOverride !== undefined) {
+    return hotOverride.pkg === null
+      ? undefined
+      : SKIN_CENTER_ENTRIES.find(entry => entry.package === hotOverride?.pkg)
+  }
+  return bootSkinEntry()
+}
+
+/** Test seam: clear a hot-committed override (a real page reload does this naturally). */
+export function resetHotOverride(): void {
+  hotOverride = undefined
 }
 
 /**
@@ -127,7 +181,7 @@ interface MiniCtx {
   effect(callback: () => () => void, label?: string): () => void
   /**
    * Service reads are answered with undefined: try-on is a pure-DOM stage,
-   * so optional service access (e.g. ths reading the connection handle)
+   * so optional service access (e.g. trading reading the connection handle)
    * degrades to its fallback instead of throwing mid-apply.
    */
   get(key: string): unknown
@@ -219,6 +273,27 @@ export class TryOnController {
     return this.session !== null && this.session.entry === null
   }
 
+  /** Session-change subscribers (the settings card re-syncs its trying badge). */
+  private readonly listeners = new Set<() => void>()
+
+  /**
+   * Subscribe to session transitions: a try-on starts, switches, exits or
+   * commits (commit exits any live preview first). The settings card derives
+   * its "trying on" badge from the controller this way, so the badge survives
+   * the card unmounting when the settings panel closes. Declared as an arrow
+   * property so it can be handed to React's useSyncExternalStore unbound.
+   * @param listener - called after any session transition.
+   * @returns an unsubscribe function.
+   */
+  readonly subscribe: (listener: () => void) => () => void = (listener) => {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+
+  private emit(): void {
+    for (const listener of this.listeners) listener()
+  }
+
   /**
    * Start trying on `entry` (replaces any live session).
    *
@@ -231,6 +306,13 @@ export class TryOnController {
    */
   async tryOn(entry: SkinCenterEntry): Promise<boolean> {
     if (entry.package === activeSkinEntry()?.package) return false
+    // Re-trying the skin that is ALREADY the live preview is a no-op: each
+    // bundle materialization injects its CSS exactly once (a per-bundle
+    // style[data-plugin-css] dedup guard), so the load/transfer/cleanup cycle
+    // would delete the only style tag and leave the preview unstyled — the
+    // page would fall back to the default look while the badge still claims
+    // the skin is tried on. Report the request as satisfied instead.
+    if (this.session !== null && this.session.entry?.package === entry.package) return true
     const epoch = ++this.epoch
     this.requestedPackage = entry.package
 
@@ -270,6 +352,7 @@ export class TryOnController {
       throw error
     }
     this.session = { entry, dispose, active }
+    this.emit()
     return true
   }
 
@@ -280,6 +363,8 @@ export class TryOnController {
    */
   tryOnOfficial(): void {
     if (activeSkinEntry() === null) return
+    // Already previewing the official look: keep the live session untouched.
+    if (this.session !== null && this.session.entry === null) return
     this.epoch += 1
     this.requestedPackage = null
     const previous = this.session
@@ -291,10 +376,62 @@ export class TryOnController {
       previous.dispose()
       if (previous.entry !== null) this.cleanupModule(previous.entry)
       this.session = { entry: null, dispose: () => {}, active: previous.active }
+      this.emit()
       return
     }
     const active: ActiveVisuals = this.captureAndRetractActive()
     this.session = { entry: null, dispose: () => {}, active }
+    this.emit()
+  }
+
+  /** The skin mounted by a previous commit, owned (and disposable) by this controller. */
+  private hotIncumbent: { entry: SkinCenterEntry; dispose: () => void } | null = null
+
+  /**
+   * One-click-apply hot swap (issue #359): mount `target` in place and KEEP
+   * it — no page reload, no app restart. The incumbent is retracted the same
+   * way try-on retracts the active skin, except nothing is restored: a
+   * boot-graph incumbent's neutralizers (the ghost-observer guard and the
+   * leak-hiding style) stay installed for the page lifetime, while a
+   * previously hot-mounted incumbent is properly disposed through its own
+   * ctx effects. The target bundle loads BEFORE the incumbent is touched, so
+   * a load failure leaves the current skin fully intact; an apply() failure
+   * restores the incumbent's visuals whenever they were captured.
+   * @param target - the skin to commit, or null for the official stock look.
+   */
+  async commit(target: SkinCenterEntry | null): Promise<void> {
+    if (this.session !== null) this.exit()
+    const epoch = ++this.epoch
+    this.requestedPackage = null
+
+    const currentPackage = activeSkinEntry()?.package ?? null
+    if (currentPackage === (target?.package ?? null)) return
+
+    // Load first: a failed load must leave the incumbent untouched.
+    let apply: ((ctx: unknown) => unknown) | null = null
+    if (target !== null) apply = await this.loadModuleOnce(target)
+    if (epoch !== this.epoch) throw new Error('skin-center: commit superseded by a newer request')
+
+    const incumbent = this.hotIncumbent
+    let snapshot: ActiveVisuals | null = null
+    if (incumbent !== null) {
+      this.hotIncumbent = null
+      incumbent.dispose()
+      this.cleanupModule(incumbent.entry)
+    } else if (currentPackage !== null) {
+      snapshot = this.captureAndRetractActive()
+    }
+
+    if (target !== null) {
+      try {
+        const dispose = this.applyLoaded(target, apply as (ctx: unknown) => unknown)
+        this.hotIncumbent = { entry: target, dispose }
+      } catch (error) {
+        if (snapshot !== null) this.restoreActive(snapshot)
+        throw error
+      }
+    }
+    hotOverride = { pkg: target?.package ?? null }
   }
 
   /** Exit the live session: dispose the tried-on skin, then restore the active skin. */
@@ -310,6 +447,7 @@ export class TryOnController {
     session.dispose()
     if (session.entry !== null) this.cleanupModule(session.entry)
     this.restoreActive(session.active)
+    this.emit()
   }
 
   /** Share one materialization while repeated requests for a package overlap. */

@@ -2,135 +2,113 @@
 
 English | [中文](README.zh.md)
 
-A hot-pluggable DeepSeek Harness (DSH) client GUI plugin: it adds a **task board** entry below "新会话" (New session) in the sidebar; clicking it switches the middle column entirely to a multi-column kanban view. Tasks execute for **real** through DSH's own session mechanism (`session.prompt`), and execution status is written back to the card in real time.
+A hot-pluggable DeepSeek Harness (DSH) Web GUI plugin with a Host-authoritative task ledger, real DSH session execution, Host cron scheduling, and optional cross-platform idle-sleep protection. It is mounted through `cordis.patch.yml` and the profile mechanism and does not modify DSH source code.
 
-- No DSH source modification: mounted as a cordis plugin + browser DOM extension (add-on shape identical to `dsh-web-ui/packages/skins/skin-center`).
-- Unmounting restores the original state; other managed segments (dsh-skin / skin-center / personal config) are unaffected.
-- Task data persists locally; it survives a page refresh and a DSH restart.
+- The browser is an asynchronous view; closing the page does not stop Host scheduling or execution settlement.
+- Every run creates a separate DSH session and applies pinned workspace, agent preset, and permission before sending the task prompt.
+- The display may turn off while optional power protection keeps the computer from entering idle system sleep.
 
 ## Features
 
-- **Sidebar entry**: injects a "任务看板" (task board) entry row inside the sidebar column (`[data-pane="sidebar"]` on older shells, `[class*="sidebarCol"]` on the DSH 0.1.0-rc.6 AppFrame layout) below the new-session button (wide rail shows icon + text, collapsed rail shows a bare icon, adapting to DSH skin tokens).
-- **Multi-column board**: five columns — 待规划 (to plan) / 待办 (to do) / 进行中 (in progress) / 已完成 (done) / 已失败 (failed); cards show title, description, status, update time, and execution count; the top supports search filter, an archive view (done/failed tasks can be archived off the board and restored anytime, keeping execution history and session transcripts traceable), new task, and back to chat.
-- **Task details**: click a card to open details (title/description/execution prompt/execution log) — it does **not** execute on a single click; the details offer "执行 / 重新执行" (Run / Re-run), "删除" (Delete, with confirm), "查看会话" (View session, jumps to the execution transcript), and a manual move to 待规划/待办.
-- **Real execution**: on "执行" (Run), the plugin connects a workspace session through the client runtime (`workspaces.connectWorkspace`, reusing a blank session or letting the host create one), names the session after the task title, and drives a real agent via `session.prompt([{ type: 'text', text }], 'queue')`; it then subscribes to that session's snapshot and, once the round really finishes, sets the card to 已完成/已失败 and records the execution result. The execution session appears in the session list and can be opened to view the real transcript.
-- **Per-task execution targets**: a task can pin where and how it runs — **workspace** (the execution session lands in that workspace), **mode** (the agent preset the session is composed from, switched through `agentPresets.select` while the session is still blank), and **permission** (a sandbox preset applied through the `/permission <id>` slash command: read-only / workspace-write / danger-full-access). Blank pins fall back to the runtime defaults (recent workspace / deployment preset / session default). A pin that cannot be applied fails the run **before** the prompt is sent, so a task never silently runs under settings it did not ask for.
-- **Status write-back**: card status (进行中 → 完成/失败) is driven by the real session state; after a page refresh/restart, leftover running tasks are auto-reconciled against the current session state (reconcile).
-- **Scheduled tasks**: the new-task dialog and the details panel can schedule a task — an enable switch + a 5-field cron expression (分 时 日 月 周, supporting `*` / `*/n` / `a-b` / comma lists) + common presets (daily 09:00, every hour, every 10 minutes, Mondays 09:00); enabling computes and persists the "下次运行时间" (next run time), and the card shows a scheduled marker; at the due time it automatically takes the same real-execution path (as manual run), and the execution session remains linkable.
-- **System-prompt injection**: the host half (`src/index.ts`) registers a `plugin:task-board` section (order 200) via `SystemPrompt.section`, declaring this plugin's existence, capabilities, and limits to every agent — it is injected when the plugin is in the composition (after mount + DSH restart) and disappears when removed (after unmount + restart), so an agent needs no external docs to know how to work with this board.
+- **Task board UI**: a sidebar entry below New Session shows icon and text in the wide sidebar and an icon in the collapsed rail; the board provides five kanban columns, search, task details, archive/restore, execution history, and links to execution transcripts. Archived tasks are read-only except for restore, delete, and transcript viewing, and cannot run manually or on schedule until restored.
+- **Host-authoritative ledger**: tasks, schedules, and execution records live in `$DSH_HOME/task-board/ledger-v2.json`; browser actions become confirmed Host transactions.
+- **Real execution**: manual and scheduled runs use the same Host runner, create a fresh session, rename it, apply the agent preset and `/permission <id>`, then queue the task prompt.
+- **Fail-closed pins**: a missing workspace, missing or broken preset, or rejected permission command fails before the task prompt is sent.
+- **Host scheduler**: 5-field cron supports `*`, `*/n`, ranges, comma lists, Sunday `0/7`, and standard day-of-month/day-of-week OR semantics in the Host local time zone.
+- **Deterministic recovery**: a running execution with a recorded session is observed after restart; an interrupted start without a session id is cancelled and is not resent.
+- **Live synchronization**: mutations return a full revisioned snapshot; SSE announces revision, scheduler, and power changes, while reconnect and page visibility recovery fetch a full snapshot.
+- **Optional idle-sleep protection**: off by default; when enabled it covers every running DSH session, enabled non-archived task-board schedules, and unknown session state.
+- **System-prompt injection**: the Host registers a `plugin:task-board` section (order 200) through `SystemPrompt.section`, and the task-board settings can disable the announcement without disabling the board.
 
-## Directory structure
+## Architecture and protocol
 
-```
-package.json / tsconfig.json / tsdown.config.ts   # standalone repo build
-build/tsdown.client.ts + build/web/src/platform.ts # client bundle preset copied from the DSH checkout (kept in sync with the running version)
-src/index.ts / src/invariant.ts                    # host half: only injects SystemPrompt section (no other behavior)
-src/client/index.ts                                # apply(ctx): wires runtime services + mounts DOM
-src/client/sidebar-entry.ts                        # sidebar entry injection (self-healing MutationObserver)
-src/client/board-mount.tsx                         # middle-column board mount + show/hide toggle
-src/client/board/*.tsx                             # React board views (columns/cards/details/new/confirm)
-src/client/board.module.css                        # styles (--dsw-* tokens, adapting to theme/skin)
-src/core/tasks.ts                                  # task model + state machine (pure functions)
-src/core/schedule.ts                               # cron parsing + next-run time (pure functions)
-src/core/scheduler.ts                              # browser scheduler (ticks every minute to fire due tasks)
-src/core/store.ts                                  # persistence (TaskStore interface + localStorage impl)
-src/core/execution.ts                              # real execution service (session connect/prompt/settlement watch)
-src/core/controller.ts                             # controller (ledger state, view state, navigation awareness)
-tests/*.spec.ts                                    # automated tests: storage/state transitions/execution trigger/cron/scheduling
-scripts/dsh-task-board.js                          # one-click mount/unmount/status CLI
-```
-
-## Why it is wired this way (research conclusions)
-
-- **No usable add-on slot in the sidebar**: the sidebar shell only declares two single slots, `sidebar.workspaces` / `sidebar.settings`, both already taken by ui-workspace / ui-settings; an external plugin cannot register a new slot (declaring means claiming, and duplicating throws). So the entry goes through the skin-precedent **DOM injection**, self-healed with a MutationObserver (when a React re-render touches the node it re-inserts within the same frame, no flicker).
-- **The middle column cannot be replaced through a slot**: the `conversation` slot is single and already taken by ui-conversation. The board view mounts on the center column (`[data-pane="conversation"]` on older shells, `[class*="centerCol"]` on the DSH 0.1.0-rc.6 AppFrame layout) as a tail child node (outside React's ownership), toggled via the `<html data-dsh-taskboard-active>` attribute, keeping the chat subtree below mounted and stateful.
-- **Persistence uses browser localStorage**: client plugins run in the browser and DSH has no browser-writable file channel (matching skin-center's research on `cordis.patch.yml`); localStorage is also how DSH's own client snapshot store (`createSnapshotStore` persist) persists.
-- **Execution rides the client runtime**: `ctx.sessions.list` subscribes to session state (`running` / `byId`), `ctx.workspaces.connectWorkspace()` creates/reuses a session, `session.prompt()` drives a real agent, and `ctx.sessions.open()` jumps to the transcript.
-- **Execution targets ride the same runtime faces**: the workspace pin passes the task's id to `workspaces.connectWorkspace()` (validated against the workspace list first, so a stale pin fails locally); the mode pin recomposes the blank execution session via `api.agentPresets.select` — only legal before the first turn, so it runs before `session.prompt`, and `sessions.noteAgentPreset` keeps the list label current; the permission pin admits a `/permission <id>` slash command through `session.command` — the same mechanism the shell's own permission picker uses. A rejected admission or a line no command claims fails the run before the prompt.
-- **Background settlement relies on list reconciliation**: an unopened session has no chat-snapshot window (cold), so settlement keys off the session list — every list change reconciles running tasks; result judgment takes, in order, "missing from list → cancelled / still running → wait / chat snapshot visible → by lastAgentError / tail of raw history → a turn-error node proves failure / otherwise success", and reconciliation is idempotent.
-- **Scheduled tasks run in the browser scheduler**: the plugin is pure-client (no server channel), so "run at the due time" is done by the in-tab scheduler — a tick every minute, with an immediate catch-up tick when the page returns from the background; before firing it first moves "next run" forward to the next cron match so the same tick never fires twice; it does not fire early in page load (before the session-list baseline is ready), avoiding mis-execution. Every tick first re-reads the persisted ledger, so a task deleted in another tab can never be fired from a stale in-memory copy. Limitation: the tab must stay open (schedules missed while closed are "miss = skip", and only already-deferred due tasks are caught up on the next open); a task that is 进行中 (in progress) skips the current due time and waits for the next cron match.
-- **Same-origin tabs share one ledger**: additions, edits, and deletions in any tab propagate to the others through storage events (`LocalStorageTaskStore.subscribeExternal`), so a task deleted in one tab can never keep firing from another tab's stale in-memory copy — nor be written back by that copy's later persistence (schedule roll-forward, execution settlement).
+- `src/index.ts` mounts the Host service through the official `@deepseek-ai/dsh-host-apiproxy` and `@deepseek-ai/dsh-host-webserver` SDKs.
+- `src/host-ledger.ts` serializes actions and persists `{ schemaVersion: 2, revision, tasks, scheduler, recentRequests }` through a temporary file plus atomic rename.
+- `src/host-service.ts` owns cron ticks, missed-trigger skipping, runner launch, restart reconciliation, and power reasons.
+- `src/client/host-api.ts` imports legacy browser data once, submits idempotent actions, and treats Host snapshots as the only confirmed UI state.
+- Same-origin endpoints are `GET /api/task-board/state`, `GET /api/task-board/events`, and `POST /api/task-board/action`.
+- Every endpoint requires a browser same-origin marker. Direct access is restricted to the DSH loopback origin; an authenticated same-host reverse proxy must use an explicit Host allowlist and a server-injected token. POST requests additionally require JSON. Ordinary actions are limited to 64 KiB and import to 2 MiB. The action union has no command, executable path, shell text, or arbitrary argument field.
 
 ## Install
 
-Install the family aggregate package `@linxin666/dsh-web-ui-all` (all plugins and skins in one) or this plugin alone:
+Install the aggregate package or this package alone, then restart `dsh web`:
 
 ```sh
-### 从 npm 安装（推荐）
 dsh plugin --profile web add @linxin666/dsh-client-ui-task-board
+```
 
-### 从仓库安装（开发调试）
+For local development:
+
+```sh
 git clone https://github.com/zhu1090093659/dsh-web-ui.git
 cd dsh-web-ui
-pnpm install && pnpm -r build
+pnpm install
+pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board
-
 ```
 
-After installing, **restart `dsh web`** — a "任务看板" (task board) entry appears below "新会话" (New session) in the sidebar; a page refresh is not enough, the process must restart.
+## Configuration
 
-## Build
+| Key | Default | Behavior |
+| --- | --- | --- |
+| `enabled` | `true` | Enables the Host service and browser board. |
+| `announceToAgent` | `true` | Adds the task-board guidance section to agent system prompts. |
+| `preventIdleSleep` | `false` | Holds one system idle-sleep assertion while any DSH session runs, any schedule is enabled, or session state is unknown. |
+| `trustedProxyHosts` | `[]` | Canonical `host[:port]` authorities accepted only through the authenticated loopback reverse-proxy path. |
+| `proxyTokenEnv` | `DSH_TASK_BOARD_PROXY_TOKEN` | Environment variable containing the reverse-proxy token; the token itself is never stored in plugin config. |
 
-Prerequisites: Node ≥ 20 with the official NPM SDK reachable (configure the `NPM_TOKEN` env var + project `.npmrc` if still using private-scope auth; see the repo `docs/plugins.md`). Types and runtime APIs all come from the official NPM SDK (`@deepseek-ai/*` devDependencies); **no DSH source checkout is required**.
+Direct browser access remains limited to the DSH loopback origin. For a same-host authenticated reverse proxy, bind DSH Web to loopback, set `trustedProxyHosts`, place a high-entropy token in the environment variable selected by `proxyTokenEnv`, and configure the proxy to replace (not forward from the client) `X-Dsh-Task-Board-Proxy-Token` after it authenticates the request. The proxy Host must be allowlisted, and the browser `Origin` must have that same authority. Restart the Host after changing these composition-level proxy settings.
+
+On macOS the backend starts `/usr/bin/caffeinate -i -w <host-pid>` and never requests `-d`. On Windows it starts the absolute Windows PowerShell under `SystemRoot` with a fixed helper that requests only `ES_CONTINUOUS | ES_SYSTEM_REQUIRED`; it never requests `ES_DISPLAY_REQUIRED`, changes a power plan, or requires administrator privileges. On Linux it starts a systemd-logind `idle` block inhibitor only from `/usr/bin/systemd-inhibit` or `/bin/systemd-inhibit`; it does not request `sleep`, `handle-lid-switch`, or a display/screensaver inhibitor. A Linux host without systemd-logind reports `unsupported` or a visible error and does not start a desktop-specific fallback. Other platforms report `unsupported`.
+
+## Data storage and migration
+
+- The v2 ledger is `$DSH_HOME/task-board/ledger-v2.json`. New POSIX files use mode `0600`; Windows inherits the user directory ACL.
+- A corrupt v2 file is moved to a collision-resistant `ledger-v2.json.corrupt-*` name and the Host starts with an empty ledger plus a visible scheduler error. The corrupt bytes are not overwritten.
+- On the first upgraded page load for an origin, `dsh.taskBoard.v1` is imported by stable source and request ids. Tasks merge by id, strictly newer browser top-level fields win, equal timestamps keep Host fields, and execution records merge by execution id.
+- The most recent 256 request ids and SHA-256 action fingerprints are stored with the ledger, so a retried mutation remains idempotent after a Host restart without duplicating full action payloads.
+- The import marker `dsh.taskBoard.v2.hostImported` stores the confirmed Host ledger generation only after import succeeds. A new or recovered ledger generation is offered the retained v1 data again. The v1 localStorage value remains untouched as a read-only rollback copy.
+- One Host process owns a task-board ledger directory at a time through `$DSH_HOME/task-board/ledger-v2.lock`; a second Host using the same DSH home fails closed instead of concurrently writing the ledger.
+
+## Security model
+
+- The plugin stays inside the existing DSH Web deployment and network boundary and emits no permissive CORS headers. State, action, and SSE routes share the same access fence; bare local command-line requests are not accepted as browser requests.
+- All mutation payloads use a strict, versioned discriminated union; schedule-owned timestamps and execution outcomes cannot be written by the browser.
+- Workspace, preset, permission, cron, task status, and imported records are validated again on the Host.
+- A task prompt is data sent to a DSH agent session. The protocol does not accept shell commands, PowerShell bodies, executable paths, or configurable helper arguments.
+- Power helpers use fixed executable paths, fixed arguments, `shell: false`, and bounded retry delays of 1, 2, 5, 10, then 30 seconds. The Linux helper follows the Host stdin lifetime so the systemd inhibitor is released automatically after an abnormal Host exit.
+
+## Build and test
+
+Node 20 or newer and the official NPM SDK packages are required; no DSH source checkout is used.
 
 ```sh
-cd ~/code/dsh-web-ui/packages/dsh-task-board
-pnpm install        # first time (run pnpm install at the workspace root)
-pnpm run build      # produces lib/index.js + lib/client.js (tsdown + shared/tsdown.client.ts preset)
-pnpm run typecheck  # type check (SDK package types from node_modules)
-pnpm test           # vitest: storage read/write / state transitions / execution trigger
+pnpm --filter @linxin666/dsh-client-ui-task-board typecheck
+pnpm --filter @linxin666/dsh-client-ui-task-board test
+pnpm --filter @linxin666/dsh-client-ui-task-board build
 ```
 
-## Mount / Unmount
+Set `DSH_POWER_SMOKE=1` to opt into the native helper smoke test on Windows, macOS, or Linux. It starts the fixed helper, waits for readiness, releases it in cleanup, and confirms process exit without changing the system power plan. Linux first probes systemd-logind with a bounded timeout; without a usable system bus the native portion is skipped while pure logic tests remain available.
 
-This plugin uses the official profile-bundle shape (package.json declares `dsh.bundle.patch` + `dsh.client`, see `cordis.patch.yml`). Mounting = registering the dependency and bundle rows in the web profile manifest (`~/.dsh/profiles/web/package.json`) and installing:
+## Manual verification
 
-```sh
-# Mount (registers dependencies + dsh.profile.bundles, pnpm install; takes effect after restarting the GUI)
-node scripts/dsh-task-board.js mount
+1. Mount the package, restart `dsh web`, open the task board, and confirm the Host time zone and power status are visible.
+2. Create and edit a task; refresh or open a second same-origin tab and confirm both show the same Host revision.
+3. Run a task with pinned workspace, preset, and permission; confirm a new session appears and the task settles from its `turn/end` history.
+4. Enable a near-future cron, close all browser pages, and confirm the Host still creates and settles exactly one execution.
+5. Stop the Host past a cron occurrence, restart it, and confirm the missed occurrence is skipped and `nextRunAt` rolls forward from current Host time.
+6. Enable `preventIdleSleep`, run a long session, and let the display turn off; after restoring the display, confirm the session continued and the execution settled.
+7. Disable the setting and all schedules, stop DSH, and confirm the helper exits; on macOS, `pmset -g assertions` should show no display-sleep assertion from this plugin.
+8. On Linux, use `systemd-inhibit --list` to confirm that only an `idle`/`block` entry exists; the display should still follow desktop settings, while manual sleep and lid close remain under system policy.
 
-# View status
-node scripts/dsh-task-board.js status
+## Known limitations
 
-# Unmount (removes the registered rows; restores the original GUI after restart; task data is kept)
-node scripts/dsh-task-board.js unmount
-```
-
-The rows registered in the profile manifest:
-
-```json
-{
-  "dependencies": { "@linxin666/dsh-client-ui-task-board": "link:/Users/zcl/code/dsh-web-ui/packages/dsh-task-board" },
-  "dsh": { "profile": { "bundles": [ "...", "@linxin666/dsh-client-ui-task-board" ] } }
-}
-```
-
-> Note: the profile layer (bundle rows, `dsh.client` metadata) is read when the dsh web process starts, so a **restart of the dsh web GUI** is required after mount/unmount (a page refresh is not enough).
-
-## Data storage location
-
-- The task ledger lives in browser localStorage under the key `dsh.taskBoard.v1` (origin `http://127.0.0.1:<dsh web port>`; same origin persists across refresh/restart).
-- Data is retained after unmount; to clear it, run `localStorage.removeItem("dsh.taskBoard.v1")` in the browser console.
-- The storage layer is the `TaskStore` interface (`src/core/store.ts`); it can later be swapped for IndexedDB or a host file channel without touching the upper logic.
-
-## Manual verification steps
-
-1. `npm run build` → `node scripts/dsh-task-board.js mount` → refresh `http://127.0.0.1:3080`.
-2. A "任务看板" (task board) entry row appears below "新会话" in the sidebar; click it → the middle column switches to the five-column board.
-3. "+ 新建任务" (New task) with title/description/Prompt → the card appears in 待办 (to do). The dialog also offers 工作区/模式/权限 (workspace / mode / permission) pins — leave them blank for runtime defaults.
-4. Pin a workspace/mode/permission on a task (in the dialog or the task detail) → run it → the execution session appears under the pinned workspace, its list row shows the pinned preset, and the session's permission selector shows the pinned permission.
-5. Click the card → details show content and Prompt; click "执行" (Run) → the card becomes 进行中 (in progress) (a session named after the task title appears in the session list); after the agent finishes the card lands in 已完成 (done) or 已失败 (failed), the detail execution log has a result and time, and "查看会话" (View session) jumps to the real transcript.
-6. Scheduled task: details → tick "定时运行" (Scheduled run) to enable, pick the preset "每 10 分钟" (every 10 minutes, cron `*/10 * * * *`); a scheduled marker appears on the card; wait for the next whole 10-minute mark, watch the card automatically enter 进行中 (in progress) and eventually complete, with "上次触发" (last trigger) showing a time and a new execution-log row (the session is linkable).
-7. Refresh the page / restart DSH → tasks remain; unmount the plugin → the GUI restores to its original state.
-
-## Acceptance checklist
-
-- After mount, a "任务看板" (task board) entry appears in the sidebar; clicking toggles the board, and clicking a session item returns to the chat view
-- New task (title + description/Prompt); tasks remain after refresh/restart (localStorage persistence)
-- Click a card to open details (content + execution log); the details have "执行" (Run) and "删除" (Delete) buttons
-- Execution really starts a session (its transcript is visible in the session list); card status follows the real execution progress; the details can jump to the execution session
-- Delete has a confirm step, and the local store is synced-removed after deletion
-- Scheduled tasks: cron config/preset/validation, next-run time, auto real execution at the due time, status write-back, scheduled card marker, scheduling resumes after refresh (browser-side scheduling, the tab must stay open)
-- Per-task execution targets: workspace/mode/permission pins persist across refresh, drive the execution session, and an un-appliable pin (missing workspace, locked preset, unknown permission command) fails the run with the reason visible in the execution log
-- One-click mount/unmount; after unmount the GUI restores and other managed segments are unaffected
-- README + automated tests covering storage read/write, state transitions, execution trigger, cron parsing, and the scheduler
+- Missed occurrences during Host downtime, system sleep, or a long pause are skipped and never queued for catch-up.
+- A task that is already running skips its due occurrence and rolls to the next cron match; task runs never overlap or queue.
+- DST follows the Host local wall clock: a nonexistent spring-forward minute is skipped, and a repeated fall-back minute is not replayed a second time.
+- Power protection prevents only idle system sleep. It deliberately allows display sleep and lock.
+- Lid close, manual sleep, hibernation, shutdown, low-battery forced sleep, and enterprise power policy are outside the guarantee.
+- The plugin does not schedule wake timers and cannot wake a computer that is already asleep.
+- Linux requires systemd-logind and policy permission for the current user to acquire an idle block lock. Containers, WSL, hosts without a system bus, and non-systemd systems may report `unsupported` or `error`. Whether a desktop also associates a logind idle lock with display idleness is desktop policy; the plugin does not request a screensaver or display inhibitor.
+- Keeping enabled schedules armed may increase battery consumption because protection starts before their future trigger time.
+- Host execution consumes the same API quota as an ordinary DSH agent session.

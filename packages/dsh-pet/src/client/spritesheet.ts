@@ -7,7 +7,7 @@
  * @module @linxin666/dsh-pet/client/spritesheet
  */
 
-import type { PetAnimation } from '../state.ts'
+import { rowOf, type PetAnimation } from '../state.ts'
 import type { PetCell, PetTrackDef } from '../registry.ts'
 
 /** Animation track shape the frame loop consumes. */
@@ -15,18 +15,8 @@ export type TrackDef = PetTrackDef
 
 /** Row index of one animation track (the fixed 9-row contract). */
 export function rowOfTrack(animation: PetAnimation): number {
-  const rows: Record<PetAnimation, number> = {
-    idle: 0,
-    'running-right': 1,
-    'running-left': 2,
-    waving: 3,
-    jumping: 4,
-    failed: 5,
-    waiting: 6,
-    running: 7,
-    review: 8,
-  }
-  return rows[animation]
+  // The table itself lives in state.ts (rowOf) — the single source of truth.
+  return rowOf(animation)
 }
 
 /**

@@ -1,7 +1,0 @@
-# minecraft skin bundle patch: inserts its dsh.client row into the web plugin roster.
-# The bundle is the official dsh plugin shape — install it with
-# `dsh plugin --profile <name> add <path-or-git-url>`; mutual exclusion between
-# skins is managed by scripts/dsh-skin (home-layer disabled rows).
-- insert:
-    - id: ui-skin-minecraft
-      name: '@linxin666/dsh-client-ui-skin-minecraft'

@@ -21,13 +21,17 @@ const JSON_FILE = path.join(ROOT, 'packages', 'dsh-community-plugins', 'communit
 const OUT_DIR = path.join(ROOT, 'packages', 'dsh-community-plugins', 'src', 'client', 'generated')
 const OUT_FILE = path.join(OUT_DIR, 'community.ts')
 
-/** https://-only repository URLs (no other schemes, no bare strings). */
-const REPO_RE = /^https:\/\/[^\s]+$/
+/** https://-only repository URLs limited to path-safe characters (the card turns them into shell commands, so no whitespace or shell metacharacters). */
+const REPO_RE = /^https:\/\/[A-Za-z0-9._~\/-]+$/
+/** npm package names (optionally scoped); install commands embed them verbatim. */
+const NPM_RE = /^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/
 
 /** Required entry fields, in output order. */
 const REQUIRED = ['id', 'name', 'nameEn', 'author', 'repo']
 /** Optional entry fields, copied through when present. */
-const OPTIONAL = ['description', 'descriptionEn', 'npm']
+const OPTIONAL = ['description', 'descriptionEn', 'npm', 'category']
+/** Stable category ids rendered as filter pills; budgets tracked per entry. */
+const CATEGORIES = ['ui', 'agent', 'tools', 'knowledge', 'integration', 'security', 'utility']
 
 /**
  * Validate the parsed community.json body.
@@ -53,12 +57,18 @@ function validateEntries(raw) {
     }
     seen.add(entry.id)
     if (!REPO_RE.test(entry.repo)) {
-      throw new Error('community.json: entry ' + entry.id + ' repo must be an https:// URL')
+      throw new Error('community.json: entry ' + entry.id + ' repo must be an https:// URL of path-safe characters')
+    }
+    if (entry.npm !== undefined && (typeof entry.npm !== 'string' || !NPM_RE.test(entry.npm))) {
+      throw new Error('community.json: entry ' + entry.id + ' npm must be a valid package name')
     }
     for (const key of OPTIONAL) {
       if (entry[key] !== undefined && typeof entry[key] !== 'string') {
         throw new Error('community.json: entry ' + entry.id + ' ' + key + ' must be a string')
       }
+    }
+    if (entry.category !== undefined && !CATEGORIES.includes(entry.category)) {
+      throw new Error('community.json: entry ' + entry.id + ' category must be one of ' + CATEGORIES.join(' / '))
     }
   }
 }
@@ -86,6 +96,12 @@ function buildOutput(entries) {
     ' * Regenerate with `node scripts/community-index`.',
     ' */',
     '',
+    '/** Stable category ids rendered as marketplace-style filter pills (the runtime guard imports this). */',
+    'export const COMMUNITY_CATEGORIES = [' + CATEGORIES.map(c => "'" + c + "'").join(', ') + '] as const',
+    '',
+    '/** One category id. */',
+    'export type CommunityPluginCategory = typeof COMMUNITY_CATEGORIES[number]',
+    '',
     '/** One community plugin entry: contributor metadata plus the repository link. */',
     'export interface CommunityPluginEntry {',
     '  /** Stable entry id (unique in community.json). */',
@@ -104,6 +120,8 @@ function buildOutput(entries) {
     '  repo: string',
     '  /** npm package name, when the plugin is published there. */',
     '  npm?: string',
+    '  /** Category id for the marketplace filter pills. */',
+    '  category?: CommunityPluginCategory',
     '}',
     '',
     '/** Every community plugin, in community.json order. */',

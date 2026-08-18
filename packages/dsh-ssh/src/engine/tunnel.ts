@@ -6,13 +6,15 @@
 
 import { createServer, type Server as NetServer, type Socket } from 'node:net'
 import type { TunnelInfo } from '../protocol.ts'
-import { acquire, disposeRecord, type PoolEngine } from './connection-pool.ts'
+import { acquire, disposeRecord, endRecordChain, type PoolEngine, type PoolRecord } from './connection-pool.ts'
 
-/** One active tunnel record (server + pinned client + live sockets). */
+/** One active tunnel record (server + pinned connection + live sockets). */
 export interface TunnelRecord {
   info: TunnelInfo
   server: NetServer
   alias: string
+  /** The pooled connection this tunnel pins; siblings on one alias may share it. */
+  record: PoolRecord
   sockets: Set<Socket>
 }
 
@@ -48,7 +50,12 @@ export async function startTunnel(
     state: 'connecting',
     startedAt: Date.now(),
   }
-  const record = await acquire(engine, alias)
+  // Reuse the live pooled connection when one exists so sibling tunnels on
+  // one alias multiplex over it (and no orphaned connection leaks); recycle
+  // a broken one first.
+  const existing = engine.pool.get(alias)
+  if (existing !== undefined && existing.broken) disposeRecord(engine, alias, existing)
+  const record = engine.pool.get(alias) ?? (await acquire(engine, alias))
   const client = record.client
   const sockets = new Set<Socket>()
   const server = createServer((socket) => {
@@ -89,7 +96,7 @@ export async function startTunnel(
   const address = server.address()
   info.localPort = typeof address === 'object' && address !== null ? address.port : 0
   info.state = 'forwarding'
-  engine.tunnels.set(id, { info, server, alias, sockets })
+  engine.tunnels.set(id, { info, server, alias, record, sockets })
   return info
 }
 
@@ -108,7 +115,14 @@ export function stopTunnel(engine: TunnelEngine, id: string): boolean {
     try { socket.destroy() } catch { /* already closed */ }
   }
   tunnel.sockets.clear()
-  disposeRecord(engine, tunnel.alias)
+  // Sibling tunnels on the same alias share the pinned connection: release it
+  // only once the last tunnel using it is gone. A record the pool has since
+  // replaced (e.g. after a broken-connection recycle) is ended directly.
+  const shared = [...engine.tunnels.values()].some(candidate => candidate.record === tunnel.record)
+  if (!shared) {
+    if (engine.pool.get(tunnel.alias) === tunnel.record) disposeRecord(engine, tunnel.alias, tunnel.record)
+    else endRecordChain(tunnel.record)
+  }
   return true
 }
 

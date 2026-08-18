@@ -21,7 +21,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { PetAnimation } from './state.ts'
+import type { ActivityPhase, PetAnimation } from './state.ts'
 import { normalizePetRemarks, type PetRemarks, type PetRemarksManifest } from './remarks.ts'
 
 /** Fixed row order of the 9-state animation contract. */
@@ -135,6 +135,8 @@ export interface PetManifest {
   frames?: number[]
   /** Optional per-track rhythm overrides; omitted tracks use the defaults. */
   tracks?: Partial<Record<PetAnimation, PetTrackOverride>>
+  /** Optional per-scene track sequences; every declared sequence has at least 5 items. */
+  sequences?: Partial<Record<ActivityPhase, PetAnimation[]>>
   /**
    * Optional witty-remark overrides the pet speaks on interactions
    * (community contributions use this to give their pet its own voice).
@@ -165,8 +167,12 @@ export interface PetDefinition {
   columns: number
   /** Per-row frame counts (length 9, row order above). */
   rows: number[]
+  /** Total atlas rows (9 for v1, 11 for v2 look-row atlases). */
+  atlasRows: number
   /** Fully resolved animation tracks (frames + durations + loop/fallback). */
   tracks: Record<PetAnimation, PetTrackDef>
+  /** Validated per-scene track sequences; omitted scenes keep single-track playback. */
+  sequences?: Partial<Record<ActivityPhase, PetAnimation[]>>
   /** Browser URL of the atlas (served by the host asset route). */
   atlasUrl: string
   /** Browser URL of the manifest (served by the host asset route). */
@@ -209,6 +215,39 @@ const PET_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 /** Safe path-segment charset for atlas files. */
 const PATH_SEGMENT_PATTERN = /^[A-Za-z0-9._-]+$/
 const PET_NAME_MAX_LENGTH = 80
+const PET_PHASES: readonly ActivityPhase[] = ['idle', 'waiting', 'thinking', 'tool', 'review', 'done', 'failed']
+
+/** Validate optional scene sequences without rejecting an otherwise usable pet. */
+function normalizeSequences(
+  raw: unknown,
+  id: string,
+  warn: (message: string) => void,
+): Partial<Record<ActivityPhase, PetAnimation[]>> | undefined {
+  if (raw === undefined) return undefined
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    warn('manifest ' + id + ': sequences must be an object keyed by activity phase')
+    return undefined
+  }
+  const sequences: Partial<Record<ActivityPhase, PetAnimation[]>> = {}
+  for (const [phase, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!PET_PHASES.includes(phase as ActivityPhase)) {
+      warn('manifest ' + id + ': unknown sequence phase ' + JSON.stringify(phase))
+      continue
+    }
+    if (!Array.isArray(value) || value.length < 5) {
+      warn('manifest ' + id + ': sequence ' + phase + ' must contain at least 5 animations')
+      continue
+    }
+    const unknownIndex = value.findIndex(animation => typeof animation !== 'string' || !PET_ROW_ORDER.includes(animation as PetAnimation))
+    if (unknownIndex !== -1) {
+      const unknown = value[unknownIndex]
+      warn('manifest ' + id + ': sequence ' + phase + ' contains unknown animation ' + JSON.stringify(unknown))
+      continue
+    }
+    sequences[phase as ActivityPhase] = value as PetAnimation[]
+  }
+  return Object.keys(sequences).length === 0 ? undefined : sequences
+}
 
 /**
  * Normalize one parsed manifest into a renderable pet entry, or undefined
@@ -256,11 +295,14 @@ export function resolvePetManifest(
     height: finiteInt(rawCell.height, DEFAULT_PET_CELL.height, 2048),
   }
   const columns = finiteInt(source.columns, DEFAULT_PET_COLUMNS, 32)
+  // v2 atlases (spriteVersionNumber 2) hold 11 rows: 9 animation rows + 2 look rows.
+  const atlasRowCount = source.spriteVersionNumber === 2 ? 11 : DEFAULT_PET_ROW_COUNT
   const rows = DEFAULT_FRAME_COUNTS.map((fallback, index) => {
     const value = Array.isArray(source.frames) ? source.frames[index] : undefined
     return finiteInt(value, fallback, columns)
   })
   const remarks = normalizePetRemarks(source.remarks, message => warn('manifest ' + id + ': ' + message))
+  const sequences = normalizeSequences(source.sequences, id, warn)
   const trackOverrides = (typeof source.tracks === 'object' && source.tracks !== null ? source.tracks : {}) as Partial<Record<PetAnimation, PetTrackOverride>>
   const tracks = {} as Record<PetAnimation, PetTrackDef>
   for (const [row, animation] of PET_ROW_ORDER.entries()) {
@@ -295,7 +337,9 @@ export function resolvePetManifest(
     cell,
     columns,
     rows,
+    atlasRows: atlasRowCount,
     tracks,
+    ...(sequences === undefined ? {} : { sequences }),
     atlasUrl: assetUrl(assetPrefix, id, spritesheet),
     manifestUrl: assetUrl(assetPrefix, id, 'pet.json'),
     dir,
@@ -393,7 +437,9 @@ export function petEntryView(entry: PetEntry): PetDefinition {
     cell: entry.cell,
     columns: entry.columns,
     rows: entry.rows,
+    atlasRows: entry.atlasRows,
     tracks: entry.tracks,
+    ...(entry.sequences === undefined ? {} : { sequences: entry.sequences }),
     atlasUrl: entry.atlasUrl,
     manifestUrl: entry.manifestUrl,
   }
@@ -408,5 +454,3 @@ export function petAtlasFile(entry: PetEntry): string {
 export function petDirAlias(entry: PetEntry): string {
   return basename(entry.dir)
 }
-
-

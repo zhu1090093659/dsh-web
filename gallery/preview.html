@@ -173,7 +173,7 @@
     if (typeof skinApply !== 'function') throw new Error(id + ' bundle 未导出 apply()')
     skinApply({
       effect: function (cb) { disposers.push(cb()) },
-      // ths 皮肤可选读取 connection（代码指数行情）——模拟器无宿主连接，降级为占位
+      // trading 皮肤可选读取 connection（行情报价）——模拟器无宿主连接，降级为占位
       get: function () { return undefined },
     })
   }

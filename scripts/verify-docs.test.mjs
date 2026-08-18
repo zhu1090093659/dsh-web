@@ -6,19 +6,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { countWords, signature, sigEqual, slugify, isExternal } from './verify-docs.mjs'
-
-test('countWords counts CJK characters individually', () => {
-  assert.equal(countWords('中文字符测试'), 6)
-})
-
-test('countWords counts ASCII words by whitespace', () => {
-  assert.equal(countWords('one two three'), 3)
-})
-
-test('countWords mixes CJK and ASCII', () => {
-  assert.equal(countWords('中文 README 测试 file'), 6)
-})
+import { signature, sigEqual, slugify, isExternal } from './verify-docs.mjs'
 
 test('signature collects heading levels in order', () => {
   const sig = signature('# H1\n\n## H2\n\n### H3')

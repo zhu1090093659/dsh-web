@@ -1,0 +1,3097 @@
+/* Deep-sea maid atelier: a self-contained presentation layer over the stock
+   web GUI. The generated palace and character layers are applied separately
+   by client/index.ts; this file owns their composition and state motion. */
+
+body[data-dsh-maid-atelier] {
+  color: #172347;
+  background-color: #dce6f5;
+  --maid-navy-950: #091333;
+  --maid-navy-900: #10204d;
+  --maid-navy-800: #1c326b;
+  --maid-indigo: #526aa8;
+  --maid-periwinkle: #8ea5da;
+  --maid-porcelain: #f8f6f0;
+  --maid-gold: #c5a468;
+  --maid-gold-soft: #e2cfaa;
+  --maid-ink: #172347;
+  --maid-glass: rgba(248, 250, 255, 0.68);
+  --maid-shadow: 0 18px 54px rgba(15, 30, 72, 0.2), 0 2px 8px rgba(15, 30, 72, 0.12);
+
+  --dsw-alias-bg-base: transparent;
+  --dsw-alias-bg-layer-1: rgba(248, 250, 255, 0.72);
+  --dsw-alias-bg-layer-2: rgba(235, 240, 250, 0.84);
+  --dsw-alias-bg-layer-3: rgba(224, 231, 246, 0.88);
+  --dsw-alias-bg-overlay: rgba(248, 250, 255, 0.96);
+  --dsw-alias-border-l1: rgba(71, 91, 145, 0.18);
+  --dsw-alias-border-l2-darkmode-thin: rgba(71, 91, 145, 0.25);
+  --dsw-alias-border-l2: rgba(71, 91, 145, 0.3);
+  --dsw-alias-border-l3: rgba(197, 164, 104, 0.64);
+  --dsw-alias-brand-primary: #526aa8;
+  --dsw-alias-brand-text: #172347;
+  --dsw-alias-button-elevated-fill: rgba(255, 253, 248, 0.88);
+  --dsw-alias-button-floating-fill: rgba(255, 253, 248, 0.94);
+  --dsw-alias-button-floating-hover: #ece6d8;
+  --dsw-alias-button-info-fill: #536eae;
+  --dsw-alias-button-info-hover: #405a99;
+  --dsw-alias-interactive-bg-active: rgba(197, 164, 104, 0.24);
+  --dsw-alias-interactive-bg-hover: rgba(103, 126, 183, 0.12);
+  --dsw-alias-interactive-bg-hover-solid: #e2e8f5;
+  --dsw-alias-label-primary: #172347;
+  --dsw-alias-label-primary-bluish: #243866;
+  --dsw-alias-label-secondary: #4d5d7f;
+  --dsw-alias-label-tertiary: #6f7c99;
+  --dsw-alias-label-caption: #8a94aa;
+  --dsw-alias-state-business-primary: #536eae;
+  --dsw-alias-state-business-tertiary: #e1e7f5;
+  --dsw-shadow-lv2: var(--maid-shadow);
+  --dsw-specific-input-major: rgba(255, 253, 248, 0.82);
+  --dsw-specific-selector: rgba(226, 232, 246, 0.9);
+  --dsw-specific-sidebar-fill: rgba(11, 25, 66, 0.88);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] {
+  color: #e5eaf6;
+  background-color: #080f27;
+  --maid-glass: rgba(13, 25, 59, 0.74);
+  --maid-shadow: 0 18px 58px rgba(0, 0, 0, 0.38), 0 2px 10px rgba(0, 0, 0, 0.3);
+  --dsw-alias-bg-base: transparent;
+  --dsw-alias-bg-layer-1: rgba(18, 31, 67, 0.9);
+  --dsw-alias-bg-layer-2: rgba(24, 40, 80, 0.92);
+  --dsw-alias-bg-layer-3: rgba(32, 49, 91, 0.94);
+  --dsw-alias-bg-overlay: rgba(13, 25, 59, 0.97);
+  --dsw-alias-border-l1: rgba(151, 169, 216, 0.2);
+  --dsw-alias-border-l2-darkmode-thin: rgba(151, 169, 216, 0.3);
+  --dsw-alias-border-l2: rgba(151, 169, 216, 0.34);
+  --dsw-alias-border-l3: rgba(211, 180, 119, 0.66);
+  --dsw-alias-brand-primary: #9bb0e1;
+  --dsw-alias-brand-text: #e7ecf7;
+  --dsw-alias-button-elevated-fill: rgba(28, 44, 84, 0.94);
+  --dsw-alias-button-floating-fill: rgba(31, 49, 92, 0.96);
+  --dsw-alias-button-floating-hover: #354d88;
+  --dsw-alias-button-info-fill: #8ca4dc;
+  --dsw-alias-button-info-hover: #a3b7e5;
+  --dsw-alias-interactive-bg-active: rgba(211, 180, 119, 0.24);
+  --dsw-alias-interactive-bg-hover: rgba(164, 183, 229, 0.14);
+  --dsw-alias-interactive-bg-hover-solid: #293f78;
+  --dsw-alias-label-primary: #e7ecf7;
+  --dsw-alias-label-primary-bluish: #d5dff3;
+  --dsw-alias-label-secondary: #bdc9e3;
+  --dsw-alias-label-tertiary: #96a6c9;
+  --dsw-alias-label-caption: #7f90b4;
+  --dsw-alias-state-business-primary: #9bb0e1;
+  --dsw-alias-state-business-tertiary: #293d73;
+  --dsw-specific-input-major: rgba(17, 30, 66, 0.88);
+  --dsw-specific-selector: rgba(45, 64, 111, 0.9);
+  --dsw-specific-sidebar-fill: rgba(5, 13, 40, 0.9);
+}
+
+body[data-dsh-maid-atelier] [id='root'] {
+  position: relative;
+  background: transparent;
+}
+
+/* High-resolution characters remain independent from the palace so viewport
+   and conversation changes never resample the architecture behind them. */
+body[data-dsh-maid-atelier] [data-skin-chrome='character-stage'] {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+body[data-dsh-maid-atelier] [data-maid-character] {
+  position: absolute;
+  display: block;
+  z-index: 1;
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 20px 24px rgba(27, 44, 91, 0.14));
+  transition:
+    translate 620ms cubic-bezier(0.22, 0.78, 0.2, 1),
+    bottom 620ms cubic-bezier(0.22, 0.78, 0.2, 1),
+    height 620ms cubic-bezier(0.22, 0.78, 0.2, 1),
+    opacity 420ms ease;
+}
+
+body[data-dsh-maid-atelier] [data-maid-character='left'] {
+  bottom: clamp(-34px, -2.4vh, -12px);
+  left: 0;
+  translate: calc(var(--maid-sidebar-width) + clamp(8px, 1.3vw, 24px)) 0;
+  height: clamp(560px, 96vh, 1180px);
+}
+
+body[data-dsh-maid-atelier] [data-maid-character='right'] {
+  right: 0;
+  translate: clamp(-8px, -0.2vw, 0px) 0;
+  bottom: clamp(-26px, -1.8vh, -8px);
+  height: clamp(540px, 92vh, 1120px);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-maid-character] {
+  filter:
+    brightness(0.84)
+    saturate(0.92)
+    drop-shadow(0 22px 28px rgba(0, 0, 0, 0.3));
+}
+
+/* Chat alone retreats the two figures toward the edges. Inspection views do
+   not expose data-chat-flow, so Trajectory and similar canvases stay put. */
+body[data-dsh-maid-atelier][data-maid-chat-active]
+  [data-maid-character='left'] {
+  translate: calc(var(--maid-sidebar-width) + clamp(8px, 1.3vw, 24px)) 0;
+  bottom: clamp(-24px, -1.5vh, -8px);
+  height: clamp(420px, 64vh, 760px);
+  opacity: 0.9;
+}
+
+body[data-dsh-maid-atelier][data-maid-chat-active]
+  [data-maid-character='right'] {
+  translate: clamp(-8px, -0.5vw, 0px) 0;
+  bottom: clamp(-24px, -1.5vh, -8px);
+  height: clamp(420px, 62vh, 730px);
+  opacity: 0.9;
+}
+
+@media (max-width: 1080px) {
+  body[data-dsh-maid-atelier]:not([data-maid-chat-active])
+    [data-maid-character='left'] {
+    translate: var(--maid-sidebar-width) 0;
+  }
+
+  body[data-dsh-maid-atelier]:not([data-maid-chat-active])
+    [data-maid-character='right'] {
+    translate: 0;
+  }
+
+  body[data-dsh-maid-atelier] [data-maid-character] {
+    opacity: 0.74;
+  }
+}
+
+@media (max-width: 700px) {
+  body[data-dsh-maid-atelier][data-maid-chat-active]
+    [data-maid-character='left'] {
+    translate: var(--maid-sidebar-width) 0;
+    height: clamp(300px, 46vh, 410px);
+  }
+
+  body[data-dsh-maid-atelier][data-maid-chat-active]
+    [data-maid-character='right'] {
+    translate: 0;
+    height: clamp(300px, 44vh, 390px);
+  }
+}
+
+/* dsh-better-sidebar ports a right workbench onto document.body. While its
+   right panel is open, pull the right maid left of the panel so the artwork
+   is not hidden behind the fixed workbench. The skin projects that state
+   without a root :has(), so terminal row writes stay locally invalidated. */
+body[data-dsh-maid-atelier][data-maid-better-sidebar-open]
+  [data-maid-character='right'] {
+  translate: clamp(-460px, -24vw, -320px) 0;
+}
+
+body[data-dsh-maid-atelier][data-maid-better-sidebar-open][data-maid-chat-active]
+  [data-maid-character='right'] {
+  translate: clamp(-460px, -24vw, -320px) 0;
+  height: clamp(360px, 56vh, 680px);
+  opacity: 0.86;
+}
+
+/* On narrow viewports better-sidebar becomes a full-width drawer; hide the
+   right maid instead of pushing it past the left edge. */
+@media (max-width: 700px) {
+  body[data-dsh-maid-atelier][data-maid-better-sidebar-open]
+    [data-maid-character='right'] {
+    translate: 0;
+    opacity: 0;
+  }
+}
+
+/* A continuously changing viewport gives layout transitions a new destination
+   every frame. Follow the resize directly, then restore state-change motion. */
+body[data-dsh-maid-atelier][data-maid-viewport-resizing]
+  [data-maid-character] {
+  transition: none;
+  filter: none;
+}
+
+/* Chromium rejects failIfMajorPerformanceCaveat when it would fall back to a
+   software renderer. Keep large transparent character layers cheap there. */
+body[data-dsh-maid-atelier][data-maid-low-power]
+  [data-maid-character] {
+  filter: none;
+  transition: opacity 180ms ease;
+}
+
+/* The top curtain belongs to the main pane, not to the sidebar. Its two
+   independently translated layers let the landing ornament leave upward
+   while the lace-free workspace band drops in from above. */
+body[data-dsh-maid-atelier] [data-skin-chrome='top-trim'] {
+  position: fixed;
+  inset: 0 0 auto 0;
+  translate: var(--maid-sidebar-width) 0;
+  z-index: 20;
+  height: 76px;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+}
+
+body[data-dsh-maid-atelier] [data-skin-trim-layer] {
+  position: absolute;
+  inset: 0;
+  transition: transform 520ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* The compact source retains the landing-page lace. Slight overscan keeps the
+   source's transparent edge rows outside the 48px layer. */
+body[data-dsh-maid-atelier] [data-skin-trim-layer='landing'] {
+  height: 48px;
+  background: var(--maid-top-trim-art) left -2px / auto 51px repeat-x;
+  transform: translateY(0);
+}
+
+/* At the expanded scale, the source's white embroidery starts below this
+   76px layer, leaving only the navy fabric and gold horizontal rules. */
+body[data-dsh-maid-atelier] [data-skin-trim-layer='workspace'] {
+  height: 76px;
+  background: var(--maid-top-trim-art) left -4px / auto 149px repeat-x;
+  transform: translateY(-100%);
+}
+
+body[data-dsh-maid-atelier][data-maid-workspace]
+  [data-skin-trim-layer='landing'] {
+  transform: translateY(-100%);
+}
+
+body[data-dsh-maid-atelier][data-maid-workspace]
+  [data-skin-trim-layer='workspace'] {
+  transform: translateY(0);
+}
+
+body[data-dsh-maid-atelier][data-maid-composer-motion]
+  [data-skin-trim-layer] {
+  will-change: transform;
+}
+
+body[data-dsh-maid-atelier] [data-skin-trim-layer='landing']::after {
+  content: '';
+  position: absolute;
+  /* ConversationRoot reserves DSH's stable 8px scrollbar gutter. Center the
+     ornaments on that content box, the same axis as the title and composer. */
+  left: calc((100% - var(--maid-sidebar-width) - 8px) / 2);
+  top: -1px;
+  width: 80px;
+  height: 42px;
+  transform: translateX(-50%);
+  background: var(--maid-bow-art) center / contain no-repeat;
+  filter: drop-shadow(0 3px 6px rgba(4, 11, 35, 0.32));
+}
+
+/* The bottom band repeats at its native height while the center crest remains
+   an independent fixed-size layer. Resizing the sidebar therefore changes the
+   main-pane span without scaling either raster ornament. */
+body[data-dsh-maid-atelier] [data-skin-chrome='bottom-trim'] {
+  position: fixed;
+  inset: auto 0 0 0;
+  translate: var(--maid-sidebar-width) 0;
+  transform: translateY(0);
+  z-index: 19;
+  height: 60px;
+  pointer-events: none;
+  background: var(--maid-bottom-trim-art) left bottom / auto 30px repeat-x;
+  contain: paint;
+  transition: transform 520ms cubic-bezier(0.22, 0.78, 0.2, 1);
+}
+
+body[data-dsh-maid-atelier][data-maid-conversation-active] [data-skin-chrome='bottom-trim'] {
+  transform: translateY(100%);
+}
+
+body[data-dsh-maid-atelier][data-maid-composer-motion]
+  [data-skin-chrome='bottom-trim'] {
+  will-change: transform;
+}
+
+body[data-dsh-maid-atelier] [data-skin-chrome='bottom-trim']::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: calc((100% - var(--maid-sidebar-width) - 8px) / 2);
+  width: 94px;
+  height: 54px;
+  transform: translateX(-50%);
+  background: var(--maid-bottom-crest-art) center / contain no-repeat;
+  filter: drop-shadow(0 3px 6px rgba(4, 11, 35, 0.34));
+}
+
+/* pointer-events does not affect painting order. Keep the semantic workspace
+   header above the fixed decorative layer so its controls remain visible. */
+body[data-dsh-maid-atelier] header:has([role='tablist']) {
+  position: relative;
+  z-index: 21;
+  border-bottom: 0;
+  animation: maidAtelierWorkspaceHeaderEnter 320ms 110ms both;
+}
+
+@keyframes maidAtelierWorkspaceHeaderEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-dsh-maid-atelier] [data-skin-trim-layer] {
+    transition: none;
+  }
+
+  body[data-dsh-maid-atelier] [data-skin-chrome='top-trim'] {
+    transition: none;
+  }
+
+  body[data-dsh-maid-atelier] [data-skin-chrome='bottom-trim'] {
+    transition: none;
+  }
+
+  body[data-dsh-maid-atelier] header:has([role='tablist']) {
+    animation: none;
+  }
+
+  body[data-dsh-maid-atelier] [data-maid-workspace-active]::before,
+  body[data-dsh-maid-atelier] [data-maid-workspace-active] > [class*='folder'],
+  body[data-dsh-maid-atelier] [data-maid-workspace-active] [class*='projectText'] {
+    animation: none;
+  }
+}
+
+/* The trim backs the conversation header and its tablist with the navy band;
+   dress the overlaid text in the porcelain/gold system for contrast. */
+body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']) header[class*='header'] {
+  color: #f8f3e8;
+  text-shadow: 0 1px 3px rgba(4, 11, 35, 0.55);
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']) header[class*='header'] :is(nav, span, button, a, div) {
+  color: inherit;
+}
+
+/* Secondary readouts (counters, captions, meta) step down in brightness. */
+body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']) header[class*='header'] :is([class*='counter'], [class*='caption'], [class*='meta']) {
+  color: #b5c1dd;
+}
+
+/* Header icon buttons and the reroll action keep the gold trim. */
+body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']) [class*='header'] button:hover {
+  color: var(--maid-gold-soft);
+}
+
+body[data-dsh-maid-atelier]
+  :is([data-pane='conversation'], [class*='centerCol'])
+  header[class*='header'] :is(button, [role='tab']):focus-visible {
+  border-radius: 4px;
+  outline: 1px solid rgba(235, 204, 143, 0.86);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(6, 17, 48, 0.68);
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']) header[class*='header'] [class*='reroll'] {
+  border-color: rgba(225, 191, 124, 0.55);
+  background: rgba(255, 252, 243, 0.08);
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']) [class*='tabs'] {
+  border-color: rgba(225, 207, 170, 0.4);
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']) button[class*='tab'] {
+  color: #b5c1dd;
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']) button[class*='tab']:hover {
+  color: #f8f3e8;
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']) button[class*='tabActive'] {
+  color: #f8f3e8;
+  border-bottom-color: var(--maid-gold);
+}
+
+/* Pane surfaces. Class-substring fallbacks support the current product build;
+   data-pane hooks support the forward-facing skin facade. */
+body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) {
+  --dsw-alias-label-primary: #f8f3e8;
+  --dsw-alias-label-secondary: #d7def0;
+  --dsw-alias-label-tertiary: #b5c1dd;
+  --dsw-alias-label-caption: #96a8ce;
+  --dsw-alias-border-l1: rgba(225, 207, 170, 0.2);
+  --dsw-alias-border-l2: rgba(225, 207, 170, 0.32);
+  --dsw-alias-button-elevated-fill: rgba(255, 252, 243, 0.13);
+  --dsw-alias-button-floating-hover: rgba(255, 252, 243, 0.18);
+  --dsw-alias-interactive-bg-hover: rgba(255, 252, 243, 0.1);
+  --dsw-alias-interactive-bg-active: rgba(197, 164, 104, 0.3);
+  position: relative;
+  z-index: auto;
+  border-right: 0;
+  background: #0a173b;
+  box-shadow:
+    8px 0 34px rgba(8, 17, 48, 0.22),
+    inset -1px 0 rgba(255, 245, 215, 0.82),
+    inset -3px 0 rgba(226, 207, 166, 0.72);
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) > div {
+  isolation: auto;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 14%, rgba(91, 119, 188, 0.23), transparent 31%),
+    linear-gradient(180deg, rgba(16, 36, 86, 0.97), rgba(5, 14, 43, 0.96)),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.026) 0 1px, transparent 1px 7px);
+  box-shadow:
+    inset 9px 0 16px rgba(255, 255, 255, 0.018),
+    inset -8px 0 18px rgba(0, 0, 0, 0.26);
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) > div::before {
+  content: '';
+  position: absolute;
+  inset: 9px 7px 0;
+  z-index: 0;
+  pointer-events: none;
+  border: 0;
+  background: transparent;
+}
+
+/* Tooltip bubbles are fixed-position siblings of the rail controls. Keeping
+   them out of this stacking helper prevents their delayed mount from becoming
+   another row in the sidebar's column flex layout. */
+body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) > div > :not(
+    [data-skin-chrome='sidebar-mascot'],
+    [data-skin-chrome='sidebar-corners'],
+    [role='tooltip']
+  ) {
+  position: relative;
+  z-index: 2;
+}
+
+/* A fixed-size raster corner keeps the original curl detail intact while the
+   straight frame segments remain free to grow with the resizable sidebar. */
+body[data-dsh-maid-atelier] [data-skin-chrome='sidebar-corners'] {
+  --maid-sidebar-frame-line-x: 1.35px;
+  --maid-sidebar-frame-line-y: 1.25px;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background:
+    linear-gradient(90deg, rgba(238, 210, 153, 0.94), rgba(190, 145, 75, 0.96), rgba(238, 210, 153, 0.94)) left 62px top 8.875px / calc(100% - 124px) var(--maid-sidebar-frame-line-y) no-repeat,
+    linear-gradient(90deg, rgba(238, 210, 153, 0.94), rgba(190, 145, 75, 0.96), rgba(238, 210, 153, 0.94)) left 62px bottom 8.875px / calc(100% - 124px) var(--maid-sidebar-frame-line-y) no-repeat,
+    linear-gradient(180deg, rgba(238, 210, 153, 0.94), rgba(190, 145, 75, 0.96), rgba(238, 210, 153, 0.94)) left 8.05px top 62px / var(--maid-sidebar-frame-line-x) calc(100% - 124px) no-repeat,
+    linear-gradient(180deg, rgba(238, 210, 153, 0.94), rgba(190, 145, 75, 0.96), rgba(238, 210, 153, 0.94)) right 8.05px top 62px / var(--maid-sidebar-frame-line-x) calc(100% - 124px) no-repeat;
+  pointer-events: none;
+}
+
+body[data-dsh-maid-atelier] [data-skin-chrome='sidebar-corners'] > [data-skin-corner] {
+  position: absolute;
+  width: 62px;
+  height: 62px;
+  background: var(--maid-sidebar-corner-art) top right / 130px 130px no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(2, 7, 24, 0.42));
+  transform-origin: center;
+}
+
+body[data-dsh-maid-atelier] [data-skin-corner='top-left'] {
+  top: 1px;
+  left: 1px;
+  transform: scaleX(-1);
+}
+
+body[data-dsh-maid-atelier] [data-skin-corner='top-right'] {
+  top: 1px;
+  right: 1px;
+}
+
+body[data-dsh-maid-atelier] [data-skin-corner='bottom-right'] {
+  right: 1px;
+  bottom: 1px;
+  transform: scaleY(-1);
+}
+
+body[data-dsh-maid-atelier] [data-skin-corner='bottom-left'] {
+  bottom: 1px;
+  left: 1px;
+  transform: scale(-1);
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) [class*='fade'] {
+  background: none;
+}
+
+body[data-dsh-maid-atelier] [data-skin-chrome='sidebar-mascot'] {
+  position: absolute;
+  left: 52%;
+  bottom: calc(var(--maid-sidebar-swag-height) + 94px);
+  z-index: 1;
+  width: var(--maid-sidebar-mascot-width);
+  height: auto;
+  max-height: 38%;
+  object-fit: contain;
+  object-position: center bottom;
+  pointer-events: none;
+  opacity: 0.22;
+  filter:
+    saturate(1)
+    brightness(1.08)
+    contrast(1.04)
+    drop-shadow(0 5px 12px rgba(2, 7, 24, 0.24));
+  transform: translateX(-50%) translateZ(0);
+}
+
+body[data-dsh-maid-atelier]
+  :is([data-pane='sidebar'], [class*='sidebarCol']):has([role='tree'])
+  [data-skin-chrome='sidebar-mascot'] {
+  display: none;
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']) {
+  background: transparent;
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='details'], [class*='detailsCol']) {
+  background: rgba(242, 246, 253, 0.82);
+  border-left-color: rgba(197, 164, 104, 0.52);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] :is([data-pane='details'], [class*='detailsCol']) {
+  background: rgba(11, 23, 55, 0.9);
+}
+
+/* Sidebar controls use porcelain and gold instead of the stock gray system. */
+body[data-dsh-maid-atelier] [class*='logoRow'] {
+  min-height: 60px;
+  margin: 8px 8px 0;
+  padding: 8px 8px 10px;
+  border: 1px solid rgba(226, 207, 170, 0.72);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(92, 119, 187, 0.26), transparent 44%),
+    linear-gradient(180deg, rgba(18, 40, 92, 0.98), rgba(7, 18, 54, 0.98));
+  box-shadow:
+    inset 0 0 0 2px rgba(8, 18, 51, 0.88),
+    inset 0 0 0 3px rgba(197, 164, 104, 0.2),
+    0 7px 18px rgba(2, 7, 25, 0.28);
+}
+
+/* Reuse the product's exact 182x24 vector wordmark. Porcelain ink keeps the
+   DeepSeek paths crisp on navy, while the HARNESS plate uses the same gold
+   accent as the surrounding frame and knocks its lettering back to navy. */
+body[data-dsh-maid-atelier] button[class*='brand'] {
+  color: #f3e3c0;
+  --dsw-alias-label-primary-inverted: #10204d;
+}
+
+body[data-dsh-maid-atelier] button[class*='brand'] > svg {
+  display: block;
+  width: min(182px, 100%);
+  height: auto;
+  flex: none;
+  overflow: visible;
+  filter: drop-shadow(0 1px 2px rgba(2, 8, 28, 0.72));
+  transition: color 150ms ease, filter 150ms ease;
+}
+
+body[data-dsh-maid-atelier] button[class*='brand'] > svg > rect {
+  fill: #d7b46a;
+  transition: fill 150ms ease;
+}
+
+body[data-dsh-maid-atelier] button[class*='brand']:is(:hover, :focus-visible) > svg {
+  color: #fff4d9;
+  filter: drop-shadow(0 1px 3px rgba(2, 8, 28, 0.82));
+}
+
+body[data-dsh-maid-atelier] button[class*='brand']:is(:hover, :focus-visible) > svg > rect {
+  fill: #e6c77e;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] [data-skin-chrome='sidebar-corners'] {
+  display: none;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] [data-skin-chrome='sidebar-mascot'] {
+  display: none;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] [class*='logoRow'] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 54px;
+  margin: 0;
+  padding: 7px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] [class*='logoRow'] [class*='toggle'] {
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(225, 191, 124, 0.76);
+  border-radius: 50%;
+  color: #ebd29e;
+  background: linear-gradient(145deg, rgba(77, 103, 169, 0.48), rgba(7, 18, 52, 0.82));
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 15, 45, 0.76),
+    0 3px 10px rgba(1, 7, 24, 0.28);
+}
+
+body[data-dsh-maid-atelier] button[class*='newSession'] {
+  box-sizing: border-box;
+  min-height: 58px;
+  margin-block: 4px 8px;
+  color: #152246;
+  border-style: solid;
+  border-width: 0 40px;
+  border-image-source: var(--maid-new-session-art);
+  border-image-slice: 0 210 0 210 fill;
+  border-image-width: 0 40px;
+  border-image-repeat: stretch;
+  border-radius: 0;
+  background: none;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 5px 9px rgba(2, 8, 28, 0.22));
+  transition: filter 150ms ease, transform 150ms ease;
+}
+
+body[data-dsh-maid-atelier] button[class*='newSession']:hover {
+  filter: brightness(1.06) drop-shadow(0 7px 12px rgba(2, 8, 28, 0.28));
+  transform: translateY(-1px);
+}
+
+body[data-dsh-maid-atelier] button[class*='newSession'] svg {
+  color: #24345c;
+  stroke-width: 1.8;
+}
+
+/* The lower sidebar keeps the U-shaped textile ornament independent from the
+   live Plan button. Its height follows the source aspect ratio, while the
+   button uses fixed raster end caps and a stretchable center slice.
+   Direct-child scoping: overlay surfaces (dialogs/menus) are portaled into
+   this element and must not inherit the navy-and-gold foot button face. */
+body[data-dsh-maid-atelier] [data-maid-sidebar-footer] {
+  box-sizing: border-box;
+  position: relative;
+  isolation: auto;
+  flex: 0 0 auto;
+  min-height: calc(var(--maid-sidebar-swag-height) + 82px);
+  padding: calc(var(--maid-sidebar-swag-height) + 2px) 18px 22px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-dsh-maid-atelier] [data-maid-sidebar-footer]::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 0;
+  height: var(--maid-sidebar-swag-height);
+  background: var(--maid-sidebar-swag-art) center top / 100% 100% no-repeat;
+  pointer-events: none;
+  filter:
+    brightness(1.1)
+    saturate(1.04)
+    contrast(1.04)
+    drop-shadow(0 4px 9px rgba(2, 8, 28, 0.26));
+}
+
+body[data-dsh-maid-atelier]
+    [data-maid-sidebar-footer]
+    [data-slot='sidebar.settings']
+    > :is(button, [role='button']) {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 50px;
+  padding-inline: 34px;
+  color: #f2dfba;
+  border-style: solid;
+  border-width: 0 34px;
+  border-image-source: var(--maid-settings-frame-art);
+  border-image-slice: 0 220 0 220 fill;
+  border-image-width: 0 34px;
+  border-image-repeat: stretch;
+  border-radius: 0;
+  background: none;
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 4px 10px rgba(2, 8, 28, 0.26));
+  transition: color 150ms ease, filter 150ms ease, transform 150ms ease;
+}
+
+/* Keep the icon and label side by side in the framed wide trigger, exactly
+   like the New Session button: a fixed gap binds them into one pair that
+   moves together, so resizing the sidebar never separates them. The pair
+   stays optically centered in the content box. */
+body[data-dsh-maid-atelier]:not([data-maid-sidebar-size='rail'])
+    [data-maid-sidebar-footer]
+    [data-slot='sidebar.settings']
+    > :is(button, [role='button']) {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  margin-inline: 0;
+  justify-content: center;
+  gap: 8px;
+}
+
+body[data-dsh-maid-atelier]:not([data-maid-sidebar-size='rail'])
+    [data-maid-sidebar-footer]
+    [data-slot='sidebar.settings']
+    > :is(button, [role='button'])
+    [data-slot='settings.trigger'] {
+  line-height: 1;
+}
+
+body[data-dsh-maid-atelier]
+    [data-maid-sidebar-footer]
+    [data-slot='sidebar.settings']
+    > :is(button, [role='button'])::before {
+  content: none;
+}
+
+body[data-dsh-maid-atelier]
+    [data-maid-sidebar-footer]
+    [data-slot='sidebar.settings']
+    > :is(button, [role='button']):is(:hover, :focus-visible) {
+  color: #fff8e8;
+  background: none;
+  filter: brightness(1.1) drop-shadow(0 5px 12px rgba(2, 8, 28, 0.3));
+  transform: translateY(-1px);
+  outline: none;
+}
+
+body[data-dsh-maid-atelier]
+    [data-maid-sidebar-footer]
+    [data-slot='sidebar.settings']
+    > :is(button, [role='button']) svg {
+  color: #e8c77f;
+  filter: drop-shadow(0 1px 2px rgba(2, 7, 24, 0.62));
+}
+
+body[data-dsh-maid-atelier]:is([data-maid-sidebar-size='rail'], [data-maid-sidebar-size='narrow']) button[class*='newSession'] {
+  padding-inline: 0;
+  border-width: 0 32px;
+  border-image-width: 0 32px;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] button[class*='newSession'] {
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  align-self: center;
+  margin: 6px 0 10px;
+  padding: 0;
+  border: 1px solid rgba(225, 207, 170, 0.72);
+  border-image: none;
+  border-radius: 50%;
+  color: #ebd29e;
+  background: linear-gradient(145deg, rgba(77, 103, 169, 0.4), rgba(7, 18, 52, 0.78));
+  box-shadow: inset 0 0 0 2px rgba(5, 15, 45, 0.7);
+  filter: drop-shadow(0 3px 7px rgba(1, 7, 24, 0.26));
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] button[class*='newSession'] svg {
+  color: #efd7a1;
+  stroke-width: 1.9;
+  filter: drop-shadow(0 1px 2px rgba(1, 7, 24, 0.48));
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    :is([data-pane='sidebar'], [class*='sidebarCol'])
+    :is([class*='iconButton'], [class*='searchButton']):not([class*='toggle']):not([role='dialog'] *) {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  margin-inline: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: #dfbf7c;
+  background: transparent;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    :is([data-pane='sidebar'], [class*='sidebarCol'])
+    :is([class*='iconButton'], [class*='searchButton']):not([class*='toggle']):not([role='dialog'] *):is(:hover, :focus-visible) {
+  border-color: rgba(225, 191, 124, 0.68);
+  color: #fff1ce;
+  background: rgba(87, 117, 190, 0.28);
+  outline: none;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] [data-maid-sidebar-footer] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-basis: 54px;
+  min-height: 54px;
+  padding: 5px;
+  background: none;
+  box-shadow: none;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] [data-maid-sidebar-footer]::before {
+  display: none;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    [data-maid-sidebar-footer]
+    [data-slot='sidebar.settings']
+    > :is(button, [role='button']) {
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(225, 191, 124, 0.76);
+  border-image: none;
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgba(77, 103, 169, 0.48), rgba(7, 18, 52, 0.82));
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 15, 45, 0.76),
+    0 3px 9px rgba(1, 7, 24, 0.24);
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    [data-maid-sidebar-footer]
+    [data-slot='sidebar.settings']
+    > :is(button, [role='button'])::before {
+  display: none;
+}
+
+/* Cordis contributes a second footer action. The wide footer grows from its
+   content; the fixed-height rail needs explicit room for both circles. */
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    [data-maid-sidebar-footer]:has([data-cordis-badge]) {
+  flex-basis: 100px;
+  min-height: 100px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Cordis mounts its fixed panel inside the sidebar content root instead of a
+   document portal. Promote that owning root while the panel is open so it
+   follows the same overlay tier as portalled menus and dialogs. */
+body[data-dsh-maid-atelier][data-maid-cordis-panel-open]
+  :is([data-pane='sidebar'], [class*='sidebarCol'])
+  > div
+  > :has([data-cordis-panel]) {
+  z-index: 40;
+}
+
+body[data-dsh-maid-atelier]
+    [data-slot='sidebar.footer.action']
+    > :has([data-cordis-badge]) {
+  width: 100%;
+  margin-top: 0;
+}
+
+body[data-dsh-maid-atelier] [data-cordis-badge] {
+  min-height: 49px;
+  color: #f4e3bf;
+  border: 1px solid rgba(225, 191, 124, 0.58);
+  background: linear-gradient(145deg, rgba(44, 68, 132, 0.74), rgba(8, 23, 59, 0.92));
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 15, 45, 0.64),
+    0 4px 11px rgba(1, 7, 24, 0.24);
+}
+
+body[data-dsh-maid-atelier] [data-cordis-badge]:is(:hover, :focus-visible, [data-active]) {
+  color: #fff8e8;
+  border-color: rgba(244, 218, 164, 0.92);
+  background: linear-gradient(145deg, rgba(91, 119, 188, 0.72), rgba(13, 31, 76, 0.96));
+  outline: none;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] [data-cordis-badge] {
+  box-sizing: border-box;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+/* The Cordis panel uses --dsw-alias-bg-base for both its shell and rows. The
+   skin makes that global token transparent, so restore a self-contained glass
+   palette on the plugin's stable panel hook. */
+body[data-dsh-maid-atelier] [data-cordis-panel] {
+  left: calc(var(--maid-sidebar-width) + 12px);
+  width: min(420px, calc(100vw - var(--maid-sidebar-width) - 24px));
+  min-width: min(300px, calc(100vw - var(--maid-sidebar-width) - 24px));
+  --dsw-alias-bg-base: rgba(230, 237, 250, 0.96);
+  --dsw-alias-label-primary: #17284f;
+  --dsw-alias-label-secondary: #304875;
+  --dsw-alias-label-tertiary: #526789;
+  --dsw-alias-label-caption: #6a7895;
+  --dsw-alias-border-l1: rgba(190, 153, 82, 0.72);
+  --dsw-alias-border-l2: rgba(83, 105, 158, 0.34);
+  --dsw-alias-interactive-bg-hover: rgba(86, 112, 174, 0.16);
+  --dsw-alias-state-warn-tertiary: rgba(218, 180, 104, 0.2);
+  --dsw-alias-state-warn-label: #815c18;
+  border-color: rgba(190, 153, 82, 0.78);
+  background: linear-gradient(145deg, rgba(239, 244, 253, 0.97), rgba(207, 220, 244, 0.94));
+  color: #17284f;
+  box-shadow:
+    0 18px 44px rgba(13, 29, 68, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(16px) saturate(0.9);
+}
+
+body[data-dsh-maid-atelier] [data-cordis-panel] > header {
+  background: rgba(226, 235, 250, 0.88);
+}
+
+body[data-dsh-maid-atelier] [data-cordis-row] {
+  background: rgba(247, 249, 254, 0.72);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+body[data-dsh-maid-atelier] [data-cordis-row][data-cordis-awaiting] {
+  border-color: rgba(190, 153, 82, 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 226, 0.46),
+    0 4px 12px rgba(31, 52, 99, 0.1);
+}
+
+body[data-dsh-maid-atelier] [data-cordis-panel]
+    :is([data-cordis-approve], [data-cordis-approve-plugin], [data-cordis-decline]) {
+  color: #334d7d;
+  border: 1px solid rgba(91, 112, 166, 0.34);
+  background: rgba(239, 244, 253, 0.82);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-cordis-panel] {
+  --dsw-alias-bg-base: rgba(10, 22, 54, 0.96);
+  --dsw-alias-label-primary: #f3e8cf;
+  --dsw-alias-label-secondary: #d6def1;
+  --dsw-alias-label-tertiary: #afbddc;
+  --dsw-alias-label-caption: #95a6cb;
+  --dsw-alias-border-l1: rgba(211, 180, 119, 0.68);
+  --dsw-alias-border-l2: rgba(143, 163, 211, 0.32);
+  --dsw-alias-interactive-bg-hover: rgba(151, 171, 218, 0.16);
+  --dsw-alias-state-warn-tertiary: rgba(211, 164, 72, 0.18);
+  --dsw-alias-state-warn-label: #f0cf8c;
+  border-color: rgba(211, 180, 119, 0.7);
+  background: linear-gradient(145deg, rgba(19, 38, 82, 0.97), rgba(7, 19, 51, 0.96));
+  color: #f3e8cf;
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-cordis-panel] > header {
+  background: rgba(16, 34, 75, 0.9);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-cordis-row] {
+  background: rgba(18, 36, 77, 0.78);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.06);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-cordis-panel]
+    :is([data-cordis-approve], [data-cordis-approve-plugin], [data-cordis-decline]) {
+  color: #d6def1;
+  border-color: rgba(143, 163, 211, 0.34);
+  background: rgba(29, 51, 99, 0.82);
+}
+
+/* dsh-better-sidebar mounts its workbench directly on document.body and
+   inherits the skin's global tokens. Restore a self-contained porcelain
+   palette so its shell, panes and terminal are not transparent over the
+   palace art and keep readable labels in both themes. */
+body[data-dsh-maid-atelier] [data-dsh-better-sidebar] {
+  --dsw-specific-sidebar-fill: rgba(230, 237, 250, 0.96);
+  --dsw-alias-bg-base: rgba(248, 250, 255, 0.96);
+  --dsw-alias-bg-layer-1: rgba(235, 240, 250, 0.92);
+  --dsw-alias-bg-layer-2: rgba(224, 231, 246, 0.94);
+  --dsw-alias-bg-layer-3: rgba(214, 223, 242, 0.96);
+  --dsw-alias-bg-overlay: rgba(248, 250, 255, 0.98);
+  --dsw-alias-label-primary: #172347;
+  --dsw-alias-label-primary-bluish: #243866;
+  --dsw-alias-label-secondary: #4d5d7f;
+  --dsw-alias-label-tertiary: #6f7c99;
+  --dsw-alias-label-caption: #8a94aa;
+  --dsw-alias-border-l1: rgba(71, 91, 145, 0.18);
+  --dsw-alias-border-l2-darkmode-thin: rgba(71, 91, 145, 0.25);
+  --dsw-alias-border-l2: rgba(71, 91, 145, 0.3);
+  --dsw-alias-border-l3: rgba(197, 164, 104, 0.64);
+  --dsw-alias-brand-primary: #526aa8;
+  --dsw-alias-brand-text: #172347;
+  --dsw-alias-button-elevated-fill: rgba(255, 253, 248, 0.9);
+  --dsw-alias-button-floating-fill: rgba(255, 253, 248, 0.94);
+  --dsw-alias-button-floating-hover: #ece6d8;
+  --dsw-alias-button-info-fill: #536eae;
+  --dsw-alias-button-info-hover: #405a99;
+  --dsw-alias-interactive-bg-active: rgba(197, 164, 104, 0.24);
+  --dsw-alias-interactive-bg-hover: rgba(103, 126, 183, 0.12);
+  --dsw-alias-interactive-bg-hover-solid: #e2e8f5;
+  --dsw-alias-state-business-primary: #536eae;
+  --dsw-alias-state-business-tertiary: #e1e7f5;
+  --dsw-alias-state-warn-tertiary: rgba(218, 180, 104, 0.2);
+  --dsw-alias-state-warn-label: #815c18;
+  --dsw-specific-input-major: rgba(255, 253, 248, 0.86);
+  --dsw-specific-selector: rgba(226, 232, 246, 0.9);
+  color: #172347;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-dsh-better-sidebar] {
+  --dsw-specific-sidebar-fill: rgba(10, 22, 54, 0.96);
+  --dsw-alias-bg-base: rgba(13, 25, 59, 0.96);
+  --dsw-alias-bg-layer-1: rgba(18, 31, 67, 0.94);
+  --dsw-alias-bg-layer-2: rgba(24, 40, 80, 0.95);
+  --dsw-alias-bg-layer-3: rgba(32, 49, 91, 0.96);
+  --dsw-alias-bg-overlay: rgba(13, 25, 59, 0.98);
+  --dsw-alias-label-primary: #e7ecf7;
+  --dsw-alias-label-primary-bluish: #d5dff3;
+  --dsw-alias-label-secondary: #bdc9e3;
+  --dsw-alias-label-tertiary: #96a6c9;
+  --dsw-alias-label-caption: #7f90b4;
+  --dsw-alias-border-l1: rgba(151, 169, 216, 0.2);
+  --dsw-alias-border-l2-darkmode-thin: rgba(151, 169, 216, 0.3);
+  --dsw-alias-border-l2: rgba(151, 169, 216, 0.34);
+  --dsw-alias-border-l3: rgba(211, 180, 119, 0.66);
+  --dsw-alias-brand-primary: #9bb0e1;
+  --dsw-alias-brand-text: #e7ecf7;
+  --dsw-alias-button-elevated-fill: rgba(28, 44, 84, 0.94);
+  --dsw-alias-button-floating-fill: rgba(31, 49, 92, 0.96);
+  --dsw-alias-button-floating-hover: #354d88;
+  --dsw-alias-button-info-fill: #8ca4dc;
+  --dsw-alias-button-info-hover: #a3b7e5;
+  --dsw-alias-interactive-bg-active: rgba(211, 180, 119, 0.24);
+  --dsw-alias-interactive-bg-hover: rgba(164, 183, 229, 0.14);
+  --dsw-alias-interactive-bg-hover-solid: #293f78;
+  --dsw-alias-state-business-primary: #9bb0e1;
+  --dsw-alias-state-business-tertiary: #293d73;
+  --dsw-alias-state-warn-tertiary: rgba(211, 164, 72, 0.18);
+  --dsw-alias-state-warn-label: #f0cf8c;
+  --dsw-specific-input-major: rgba(17, 30, 66, 0.9);
+  --dsw-specific-selector: rgba(45, 64, 111, 0.92);
+  color: #e7ecf7;
+}
+
+body[data-dsh-maid-atelier] [class*='sectionHeader'] {
+  color: #d9bd83;
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: 0;
+  text-shadow: 0 1px 2px rgba(2, 7, 24, 0.62);
+}
+
+body[data-dsh-maid-atelier] [class*='sectionHeader'] [class*='sectionLabel'] {
+  color: #d9bd83;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+body[data-dsh-maid-atelier] [class*='sectionHeader'] [class*='iconButton'] {
+  position: relative;
+  color: #d9bd83;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+body[data-dsh-maid-atelier] [class*='sectionHeader'] [class*='iconButton']:is(:hover, :focus-visible) {
+  color: #fff1cf;
+  border-color: rgba(225, 191, 124, 0.56);
+  background: rgba(91, 119, 188, 0.2);
+  box-shadow: inset 0 0 0 2px rgba(7, 18, 50, 0.54);
+  outline: none;
+}
+
+body[data-dsh-maid-atelier] [class*='sectionHeader'] [class*='iconButton'] svg {
+  color: inherit;
+  filter: drop-shadow(0 1px 2px rgba(2, 7, 24, 0.68));
+}
+
+/* RC6 centers the expanded 42px search capsule inside a 36px clipped header.
+   Give the expanded row its own height so the porcelain rim remains intact. */
+body[data-dsh-maid-atelier]
+  :is([data-pane='sidebar'], [class*='sidebarCol'])
+  [class*='sectionHeader']:has([class*='searchSlotExpanded']) {
+  height: 46px;
+  overflow: visible;
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) [class*='search'][class*='searchExpanded']:has(> input[class*='searchInput']) {
+  --dsh-search-input-fill: transparent;
+  height: 42px;
+  margin: 0 2px;
+  padding-inline: 14px;
+  color: #d8bc80;
+  border: 1px solid rgba(225, 191, 124, 0.72);
+  background: linear-gradient(180deg, rgba(7, 20, 55, 0.5), rgba(9, 25, 63, 0.32));
+  box-shadow:
+    inset 0 0 0 1px rgba(6, 16, 44, 0.7),
+    0 3px 9px rgba(2, 7, 24, 0.14);
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) [class*='search'][class*='searchExpanded']:has(> input[class*='searchInput']):focus-within {
+  border-color: rgba(244, 218, 164, 0.94);
+  background: linear-gradient(180deg, rgba(17, 39, 85, 0.68), rgba(8, 23, 59, 0.52));
+  box-shadow:
+    inset 0 0 0 1px rgba(6, 16, 44, 0.72),
+    0 0 0 2px rgba(225, 191, 124, 0.12),
+    0 4px 12px rgba(2, 7, 24, 0.2);
+}
+
+body[data-dsh-maid-atelier] [class*='searchInput'] {
+  color: #f8f3e8;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+body[data-dsh-maid-atelier] [class*='searchInput']::placeholder {
+  color: #aeb9d3;
+  opacity: 1;
+}
+
+body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) :is([class*='searchButton'], [class*='clearButton']) {
+  color: #d8bc80;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] [class*='sectionHeader'] {
+  justify-content: center;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    :is([data-pane='sidebar'], [class*='sidebarCol'])
+    [class*='search']:has(> [class*='searchButton']) {
+  justify-content: center;
+}
+
+/* Every rail action shares the stock 36px control box. Keeping the ornament
+   inside that box prevents the workspace header and search capsule from
+   clipping a larger child, while one selector keeps all five actions visually
+   identical. */
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    :is([data-pane='sidebar'], [class*='sidebarCol']) {
+  --maid-rail-control-size: 36px;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    :is([data-pane='sidebar'], [class*='sidebarCol'])
+    :is(
+      [class*='logoRow'] [class*='toggle'],
+      button[class*='newSession'],
+      [class*='sectionHeader'] [class*='iconButton'],
+      [class*='search'] [class*='searchButton'],
+      [data-maid-sidebar-footer] [data-slot='sidebar.settings'] > :is(button, [role='button'])
+    ) {
+  box-sizing: border-box;
+  width: var(--maid-rail-control-size);
+  min-width: var(--maid-rail-control-size);
+  height: var(--maid-rail-control-size);
+  min-height: var(--maid-rail-control-size);
+  flex: 0 0 var(--maid-rail-control-size);
+  margin-inline: 0;
+  padding: 0;
+  border: 1px solid rgba(225, 191, 124, 0.76);
+  border-image: none;
+  border-radius: 50%;
+  color: #ebd29e;
+  background: linear-gradient(145deg, rgba(77, 103, 169, 0.48), rgba(7, 18, 52, 0.82));
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 15, 45, 0.76),
+    0 3px 9px rgba(1, 7, 24, 0.24);
+  filter: none;
+  transform: none;
+  overflow: visible;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    :is([data-pane='sidebar'], [class*='sidebarCol'])
+    :is(
+      [class*='logoRow'] [class*='toggle'],
+      button[class*='newSession'],
+      [class*='sectionHeader'] [class*='iconButton'],
+      [class*='search'] [class*='searchButton'],
+      [data-maid-sidebar-footer] [data-slot='sidebar.settings'] > :is(button, [role='button'])
+    ):is(:hover, :focus-visible) {
+  color: #fff1ce;
+  border-color: rgba(244, 218, 164, 0.94);
+  background: linear-gradient(145deg, rgba(98, 129, 205, 0.58), rgba(11, 27, 70, 0.9));
+  box-shadow:
+    inset 0 0 0 2px rgba(5, 15, 45, 0.7),
+    0 0 0 2px rgba(225, 191, 124, 0.12),
+    0 4px 11px rgba(1, 7, 24, 0.3);
+  filter: none;
+  transform: none;
+  outline: none;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    :is([data-pane='sidebar'], [class*='sidebarCol'])
+    :is([class*='logoRow'], [class*='sectionHeader'], [class*='search']:has(> [class*='searchButton']), [class*='regionArea']) {
+  overflow: visible;
+}
+
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    :is([data-pane='sidebar'], [class*='sidebarCol'])
+    [class*='search']:has(> [class*='searchButton']) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Workspace groups receive skin-owned semantic hooks from the client entry.
+   This keeps the ornamental tree independent from generated CSS-module names
+   while leaving the official rows and their interactions intact. */
+body[data-dsh-maid-atelier] [data-maid-workspace-row] {
+  isolation: isolate;
+  position: relative;
+  height: 54px;
+  padding: 7px 10px 7px 7px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #f4ead5;
+  font-family: Georgia, 'Times New Roman', serif;
+  overflow: visible;
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-row]:hover {
+  background: rgba(91, 119, 188, 0.12);
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-row] > * {
+  position: relative;
+  z-index: 2;
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-row] > [class*='folder'] {
+  display: inline-flex;
+  width: 28px;
+  height: 34px;
+  margin: 4px 0 0 -7px;
+  background: var(--maid-workspace-crest-art) center / contain no-repeat;
+  color: transparent;
+  filter: drop-shadow(0 2px 3px rgba(2, 8, 28, 0.48));
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-row] > [class*='folder'] svg {
+  display: none;
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-row]:hover > [class*='folder'] {
+  display: inline-flex;
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-row]:hover > [class*='chevron'] {
+  display: none;
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-row] [class*='title'] {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-row] [class*='meta'] {
+  color: #d9bd83;
+  font-size: 12px;
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-active] {
+  isolation: isolate;
+  color: #fff8e8;
+  background: transparent;
+  text-shadow: 0 1px 2px rgba(2, 8, 28, 0.54);
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-active] > [class*='folder'] {
+  width: 30px;
+  height: 38px;
+  margin-block-start: 0;
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-active] [class*='projectText'] {
+  margin-inline-start: -4px;
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-active]:hover {
+  background: transparent;
+}
+
+/* Preserve the source's 140px rolled edge and 145px folded tail; only the
+   flat center band stretches with the live sidebar width. */
+body[data-dsh-maid-atelier] [data-maid-workspace-active]::before {
+  content: '';
+  position: absolute;
+  box-sizing: border-box;
+  inset: -3px 0 -3px -12px;
+  z-index: 0;
+  border-style: solid;
+  border-width: 0 36px 0 35px;
+  border-image-source: var(--maid-workspace-ribbon-art);
+  border-image-slice: 0 145 0 140 fill;
+  border-image-width: 0 36px 0 35px;
+  border-image-repeat: stretch;
+  filter: drop-shadow(0 5px 8px rgba(2, 8, 28, 0.4));
+  animation: maidAtelierWorkspaceRibbonEnter 420ms cubic-bezier(0.2, 0.74, 0.22, 1) both;
+  pointer-events: none;
+}
+
+body[data-dsh-maid-atelier] [data-maid-workspace-active] > [class*='folder'],
+body[data-dsh-maid-atelier] [data-maid-workspace-active] [class*='projectText'] {
+  animation: maidAtelierWorkspaceRibbonContentEnter 260ms 90ms cubic-bezier(0.2, 0.74, 0.22, 1) both;
+}
+
+@keyframes maidAtelierWorkspaceRibbonEnter {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    transform: translateX(-8px);
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  70% {
+    clip-path: inset(0 12% 0 0);
+    transform: translateX(0);
+  }
+
+  92% {
+    clip-path: inset(0);
+    transform: translateX(2px);
+  }
+
+  100% {
+    opacity: 1;
+    clip-path: inset(0);
+    transform: translateX(0);
+  }
+}
+
+@keyframes maidAtelierWorkspaceRibbonContentEnter {
+  from {
+    opacity: 0.32;
+    transform: translateX(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row] {
+  position: relative;
+  height: 32px;
+  padding: 0 8px 0 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #d7c8a8;
+  font-family: Georgia, 'Times New Roman', serif;
+  box-shadow: none;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row][aria-selected='true'] {
+  background: transparent;
+  color: #fff8e8;
+  box-shadow: none;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row][aria-selected='true'] [class*='title'] {
+  color: #fffaf0;
+  text-shadow: 0 1px 3px rgba(2, 8, 28, 0.72);
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row][aria-selected='true'] [class*='time'] {
+  color: #ead29c;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row]:hover:not([aria-selected='true']) {
+  background: rgba(97, 122, 183, 0.1);
+  box-shadow: none;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row] > [class*='slot'] {
+  position: absolute;
+  left: 6px;
+  z-index: 2;
+}
+
+/* Keep the official StateDot running semantics and restyle its eight-cell
+   chase as a tiny atelier jewel: a fixed sapphire core with a gold orbit. */
+body[data-dsh-maid-atelier] [data-maid-session-row] svg[data-state='ongoing'] {
+  width: 12px;
+  height: 12px;
+  overflow: visible;
+  color: #e2bd6e;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 44% 40%, rgba(255, 255, 255, 0.96) 0 0.55px, transparent 0.7px),
+    radial-gradient(circle, #a9bce8 0 1.15px, #5e79b9 1.3px 2px, #1a356f 2.15px 3px, transparent 3.15px);
+  filter: drop-shadow(0 0 2px rgba(231, 199, 128, 0.62));
+  shape-rendering: geometricPrecision;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row] svg[data-state='ongoing'] > rect {
+  fill: currentColor;
+  opacity: 0.18;
+  rx: 1px;
+  ry: 1px;
+  animation: maidAtelierSessionJewelChase 1s linear infinite;
+}
+
+@keyframes maidAtelierSessionJewelChase {
+  0% {
+    opacity: 1;
+  }
+
+  18% {
+    opacity: 0.72;
+  }
+
+  36% {
+    opacity: 0.42;
+  }
+
+  55%, 100% {
+    opacity: 0.18;
+  }
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 8px;
+  z-index: 1;
+  width: 10px;
+  background:
+    repeating-linear-gradient(
+      to right,
+      rgba(224, 190, 120, 0.76) 0 3px,
+      transparent 3px 5px
+    ) 0 50% / 100% 1px no-repeat,
+    repeating-linear-gradient(
+      to bottom,
+      rgba(224, 190, 120, 0.78) 0 3px,
+      transparent 3px 7px
+    ) 0 0 / 1px 100% no-repeat;
+  pointer-events: none;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-last]::before {
+  background:
+    repeating-linear-gradient(
+      to right,
+      rgba(224, 190, 120, 0.76) 0 3px,
+      transparent 3px 5px
+    ) 0 50% / 100% 1px no-repeat,
+    repeating-linear-gradient(
+      to bottom,
+      rgba(224, 190, 120, 0.78) 0 3px,
+      transparent 3px 7px
+    ) 0 0 / 1px 50% no-repeat;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row]:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 28px;
+  height: 1px;
+  background: rgba(183, 196, 226, 0.32);
+  pointer-events: none;
+}
+
+body[data-dsh-maid-atelier]
+  [data-maid-session-row]:not([data-maid-session-flat])[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 18px;
+  z-index: 0;
+  width: auto;
+  height: auto;
+  border: 1px solid rgba(226, 190, 112, 0.72);
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(82, 111, 184, 0.74),
+    rgba(43, 70, 139, 0.62) 72%,
+    rgba(20, 42, 94, 0.5)
+  );
+  box-shadow:
+    inset 0 1px rgba(255, 244, 215, 0.18),
+    inset 0 -1px rgba(7, 19, 55, 0.24);
+  pointer-events: none;
+}
+
+body[data-dsh-maid-atelier]
+  [data-maid-session-row]:not([data-maid-session-flat])[aria-selected='true']
+  > :is([class*='title'], [class*='time'], [class*='rowActions']) {
+  position: relative;
+  z-index: 2;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row] [class*='title'] {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-row] [class*='time'] {
+  color: #c8b891;
+  font-size: 12px;
+}
+
+/* Flat mode has no Workspace stem, so give its current Session a complete
+   compact plaque instead of reserving the grouped tree's connector gutter. */
+body[data-dsh-maid-atelier] [data-maid-session-flat] {
+  box-sizing: border-box;
+  height: 36px;
+  margin-inline: 2px;
+  padding-inline: 26px 9px;
+  border-radius: 7px;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-flat]::before {
+  content: none;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-flat]:not(:last-child)::after {
+  right: 9px;
+  left: 26px;
+  background: linear-gradient(90deg, rgba(183, 196, 226, 0.26), rgba(183, 196, 226, 0.08));
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-flat][aria-selected='true'] {
+  border: 1px solid rgba(226, 190, 112, 0.72);
+  background:
+    linear-gradient(90deg, rgba(82, 111, 184, 0.74), rgba(43, 70, 139, 0.62) 72%, rgba(20, 42, 94, 0.5));
+  box-shadow:
+    inset 0 1px rgba(255, 244, 215, 0.2),
+    inset 0 -1px rgba(7, 19, 55, 0.28),
+    0 3px 9px rgba(2, 8, 28, 0.3);
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-flat][aria-selected='true']::before {
+  content: '';
+  position: absolute;
+  inset: 7px auto 7px 5px;
+  display: block;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(#fff0c5, #d4a951);
+  box-shadow: 0 0 5px rgba(231, 199, 128, 0.72);
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-flat][aria-selected='true']::after {
+  content: none;
+}
+
+body[data-dsh-maid-atelier] [data-maid-session-flat]:hover:not([aria-selected='true']) {
+  border-radius: 7px;
+  background: linear-gradient(90deg, rgba(97, 122, 183, 0.16), rgba(97, 122, 183, 0.06));
+}
+
+/* The hero inherits the official responsive width contract, but scales from
+   the viewport instead of freezing the card at the upstream desktop width. */
+body[data-dsh-maid-atelier] [data-phase='hero'] {
+  --dsh-chat-content-width: clamp(560px, 41vw, 740px);
+  --dsh-composer-card-max-width: calc(var(--dsh-chat-content-width) + 32px);
+}
+
+/* Empty-state headline and workspace chip establish the atelier identity. */
+body[data-dsh-maid-atelier] [class*='headline'] {
+  color: var(--maid-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 5px 18px rgba(32, 49, 96, 0.16);
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [class*='headline']:has(> [class*='fish']) {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 9px;
+  row-gap: 13px;
+  justify-content: center;
+  align-items: center;
+  min-width: min(560px, 72vw);
+  min-height: 120px;
+  margin-bottom: 24px;
+  font-size: clamp(27px, 2vw, 36px);
+  line-height: 1.16;
+  transform: translateY(clamp(-34px, calc(80px - 11.4vh), -2px));
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [class*='headline']:has(> [class*='fish'])::before {
+  content: '';
+  position: absolute;
+  top: 34px;
+  right: 13%;
+  left: 13%;
+  z-index: -1;
+  height: 1px;
+  background:
+    radial-gradient(circle, #d9b76f 0 2px, transparent 2.5px) left center / 8px 8px no-repeat,
+    radial-gradient(circle, #d9b76f 0 2px, transparent 2.5px) right center / 8px 8px no-repeat,
+    linear-gradient(90deg, transparent, rgba(197, 164, 104, 0.82) 16% 84%, transparent);
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [class*='headline']:has(> [class*='fish'])::after {
+  content: '';
+  position: absolute;
+  right: 8%;
+  bottom: -10px;
+  left: 8%;
+  height: 12px;
+  background:
+    linear-gradient(45deg, transparent 42%, #c5a468 43% 57%, transparent 58%) center / 10px 10px no-repeat,
+    linear-gradient(135deg, transparent 42%, #c5a468 43% 57%, transparent 58%) center / 10px 10px no-repeat,
+    linear-gradient(90deg, transparent, rgba(197, 164, 104, 0.74) 10% 47%, transparent 47% 53%, rgba(197, 164, 104, 0.74) 53% 90%, transparent) center 3px / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent, rgba(226, 207, 170, 0.74) 18% 46%, transparent 46% 54%, rgba(226, 207, 170, 0.74) 54% 82%, transparent) center 7px / 100% 1px no-repeat;
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [class*='headline']:has(> [class*='fish']) > [class*='fish'] {
+  position: static !important;
+  inset: auto;
+  box-sizing: border-box;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: center;
+  width: 70px;
+  height: 70px;
+  margin: 0;
+  padding: 15px;
+  border: 1px solid rgba(197, 164, 104, 0.92);
+  border-radius: 50%;
+  outline: 1px solid rgba(226, 207, 170, 0.76);
+  outline-offset: 4px;
+  color: var(--maid-indigo);
+  background: rgba(255, 253, 248, 0.72);
+  box-shadow:
+    0 0 0 8px rgba(255, 253, 248, 0.24),
+    0 5px 16px rgba(33, 51, 96, 0.16),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.72);
+  filter: drop-shadow(0 2px 3px rgba(197, 164, 104, 0.26));
+  transform: none !important;
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero'] [class*='headlineText'] {
+  position: static !important;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero'] [class*='previewBadge'] {
+  position: static !important;
+  grid-column: 3;
+  grid-row: 2;
+  align-self: center;
+  justify-self: start;
+  border-color: rgba(197, 164, 104, 0.48);
+  color: #526487;
+  background: rgba(255, 253, 248, 0.48);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-phase='hero']
+  [class*='headline']:has(> [class*='fish']) > [class*='fish'] {
+  color: #6f86be;
+  background: rgba(238, 242, 251, 0.76);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [class*='headline'] {
+  color: #f6eedf;
+  text-shadow: 0 2px 5px rgba(3, 9, 28, 0.82), 0 0 20px rgba(116, 142, 205, 0.26);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-phase='hero'] [class*='headlineText'] {
+  color: #fffaf0;
+  font-weight: 650;
+  letter-spacing: 0;
+  -webkit-text-stroke: 0.35px rgba(4, 11, 34, 0.9);
+  text-shadow:
+    0 1px 0 rgba(4, 11, 34, 0.96),
+    0 3px 7px rgba(0, 0, 0, 0.86),
+    0 0 18px rgba(255, 235, 190, 0.24);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-phase='hero'] [class*='previewBadge'] {
+  border-color: rgba(226, 207, 170, 0.58);
+  color: #f0dfba;
+  background: rgba(7, 18, 52, 0.58);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.28);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [class*='headline'] [class*='fish'] {
+  color: var(--maid-indigo);
+  filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.42));
+}
+
+body[data-dsh-maid-atelier] button[class*='workspace'][aria-expanded],
+body[data-dsh-maid-atelier] button[class*='workspace']:hover,
+body[data-dsh-maid-atelier] button[class*='seat'][aria-expanded],
+body[data-dsh-maid-atelier] button[class*='seat']:hover {
+  background: rgba(255, 253, 248, 0.54);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] button[class*='workspace'][aria-expanded],
+body[data-dsh-maid-atelier][data-ds-dark-theme] button[class*='workspace']:hover,
+body[data-dsh-maid-atelier][data-ds-dark-theme] button[class*='seat'][aria-expanded],
+body[data-dsh-maid-atelier][data-ds-dark-theme] button[class*='seat']:hover {
+  background: rgba(30, 46, 87, 0.68);
+}
+
+/* Keep the sticky seat transparent outside the composer card. The card is the
+   only surface that covers transcript content; a full-width seat background
+   would cut through the decorative characters at one shared horizontal edge. */
+body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-seat] {
+  --dsw-alias-bg-base: transparent;
+  background: none;
+}
+
+/* Composer card: live controls sit beneath one hollow raster plate that keeps
+   the reference frame, porcelain rim, continuous lace, and bow aligned. */
+body[data-dsh-maid-atelier] [data-composer-card] {
+  isolation: isolate;
+  overflow: visible;
+  /* Preserve the upstream mirror-driven auto-grow contract. Hero and active
+     composers have different text floors; a fixed skin height creates a
+     dead band below the toolbar in both states. */
+  min-height: 0;
+  padding-top: 34px;
+  border: 0;
+  border-radius: 34px;
+  background:
+    linear-gradient(180deg, rgba(255, 254, 250, 0.88), rgba(244, 247, 253, 0.76)),
+    var(--dsw-specific-input-major);
+  box-shadow: var(--maid-shadow);
+}
+
+/* Restore the generous landing-page composition without imposing its height
+   on the docked workspace composer. The hidden mirror is the one node that
+   already owns text measurement; growing it also grows the textarea and
+   backdrop, keeps the toolbar attached to the card edge, and limits the
+   transition to one layout-changing property. */
+body[data-dsh-maid-atelier] [data-input-mirror] {
+  min-height: 0;
+  transition: min-height 520ms cubic-bezier(0.22, 0.78, 0.2, 1);
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero'] [data-input-mirror] {
+  min-height: clamp(72px, 9vh, 118px);
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero'] [data-composer-card] {
+  border-radius: clamp(26px, 2vw, 34px);
+  background:
+    linear-gradient(180deg, rgba(255, 254, 250, 0.94), rgba(241, 245, 253, 0.9)),
+    rgba(255, 253, 248, 0.72);
+  box-shadow:
+    0 18px 52px rgba(29, 48, 94, 0.18),
+    inset 0 1px rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(8px) saturate(0.94);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-phase='hero'] [data-composer-card] {
+  background:
+    linear-gradient(180deg, rgba(27, 44, 84, 0.94), rgba(10, 23, 58, 0.9)),
+    rgba(13, 25, 59, 0.72);
+  backdrop-filter: blur(8px) saturate(0.88);
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [data-composer-card] > [class*='row'] {
+  min-height: 50px;
+  padding: 2px clamp(10px, 1vw, 18px) 10px;
+  align-items: flex-end;
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [data-composer-card] button[class*='add'] {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(197, 164, 104, 0.72);
+  border-radius: 50%;
+  color: #405a99;
+  background: rgba(255, 253, 248, 0.62);
+  box-shadow:
+    0 3px 10px rgba(37, 54, 99, 0.12),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.46);
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [data-composer-card] [class*='modes'] button[class*='trigger'] {
+  box-sizing: border-box;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  border: 1px solid rgba(197, 164, 104, 0.68);
+  border-radius: 50%;
+  color: #405a99;
+  background: rgba(255, 253, 248, 0.52);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [data-composer-card] [class*='modes'] :is([class*='triggerLabel'], [class*='chevron']) {
+  display: none;
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [data-composer-card] [class*='trailing'] button[class*='trigger'] {
+  width: auto;
+  min-width: 0;
+  max-width: 220px;
+  height: 38px;
+  padding: 0 4px 0 8px;
+  border: 0;
+  color: #ad894b;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* SettingsRoot keeps its fixed overlay inside the sidebar tree. Let the
+   footer release its local stacking context without demoting the content
+   root that keeps workspace cards above the decorative mascot. */
+body[data-dsh-maid-atelier]
+  :is([data-pane='sidebar'], [class*='sidebarCol'])
+  > div > [data-maid-sidebar-footer] {
+  z-index: auto;
+}
+
+/* The sidebar content root normally sits at layer 2 above the mascot. Since
+   SettingsPanel is mounted inside that root instead of a document portal,
+   promote the owning root while the dialog is open. Its fixed layer can then
+   cover sticky Markdown banners and the skin's conversation header. */
+body[data-dsh-maid-atelier][data-maid-settings-open]
+  :is([data-pane='sidebar'], [class*='sidebarCol'])
+  > div
+  > :has(
+    [data-slot='sidebar.settings']
+      > :is(button, [role='button'])[aria-expanded='true']
+  ) {
+  z-index: 1000;
+}
+
+/* This copy sits immediately before the official mask, so the mask samples
+   and blurs it together with the rest of the sidebar instead of dropping the
+   sibling frame's composited layer. */
+body[data-dsh-maid-atelier] [data-maid-settings-backdrop-frame] {
+  inset: 0 auto 0 0;
+  width: var(--maid-sidebar-width);
+  height: 100%;
+  z-index: 0;
+}
+
+/* The settings surface is translucent by design. Demote the raster composer
+   while its trigger owns the expanded dialog so the ornate input frame does
+   not visually compete with, or accept input through, the modal surface. */
+body[data-dsh-maid-atelier][data-maid-settings-open] [data-composer-card] {
+  z-index: 0;
+  opacity: 0.75;
+  pointer-events: none;
+  animation: none;
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [data-composer-card] button[class*='primary'] {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #d8bd82;
+  border-radius: 50%;
+  color: #fffaf0;
+  background: linear-gradient(145deg, #6079b5, #294587);
+  box-shadow:
+    0 4px 12px rgba(26, 50, 108, 0.28),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.12);
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [data-composer-card]::after {
+  background: rgba(248, 250, 255, 0.2);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-phase='hero'] [data-composer-card]::after {
+  background: rgba(13, 25, 59, 0.22);
+}
+
+body[data-dsh-maid-atelier] [data-phase='hero']
+  [data-composer-card] button[class*='primary']:disabled {
+  opacity: 0.78;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] {
+  background: linear-gradient(180deg, rgba(25, 42, 83, 0.92), rgba(12, 25, 60, 0.9));
+  box-shadow: var(--maid-shadow), inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+body[data-dsh-maid-atelier] [data-composer-card]::before {
+  content: '';
+  position: absolute;
+  box-sizing: border-box;
+  inset: -20px -14px -18px;
+  /* The frame stays above the backing plate, but below the live controls and
+     their in-place menus. A higher layer traps both selectors under the bow. */
+  z-index: 1;
+  border-style: solid;
+  border-width: 72px 54px 52px;
+  border-image-source: var(--maid-composer-frame-art);
+  border-image-slice: 170 120 115 120;
+  border-image-width: 72px 54px 52px 54px;
+  border-image-repeat: stretch;
+  filter: drop-shadow(0 9px 18px rgba(5, 13, 38, 0.22));
+  pointer-events: none;
+}
+
+/* The phase machine keeps one card mounted. A short one-shot translation
+   bridges its layout move while min-height and the nine-slice frame interpolate
+   in step with the 520ms top-curtain motion. */
+body[data-dsh-maid-atelier][data-maid-composer-motion='dock']
+  [data-phase='active'] [data-composer-card] {
+  animation: maidAtelierComposerDock 520ms cubic-bezier(0.22, 0.78, 0.2, 1) both;
+}
+
+body[data-dsh-maid-atelier][data-maid-composer-motion='rise']
+  [data-phase='hero'] [data-composer-card] {
+  animation: maidAtelierComposerRise 520ms cubic-bezier(0.22, 0.78, 0.2, 1) both;
+}
+
+/* Promote only the moving card, and release the layer with the one-shot body
+   marker instead of reserving compositor memory for the whole session. */
+body[data-dsh-maid-atelier][data-maid-composer-motion]
+  [data-composer-card] {
+  will-change: transform, opacity;
+}
+
+@keyframes maidAtelierComposerDock {
+  from {
+    opacity: 0.94;
+    transform: translateY(clamp(-240px, -26vh, -150px));
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes maidAtelierComposerRise {
+  from {
+    opacity: 0.94;
+    transform: translateY(clamp(150px, 26vh, 240px));
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+body[data-dsh-maid-atelier] [data-composer-card]::after {
+  content: '';
+  position: absolute;
+  inset: 0 -0.52% -2%;
+  z-index: 0;
+  border-radius: 38px;
+  background: inherit;
+  pointer-events: none;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] > * {
+  position: relative;
+  z-index: 2;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] textarea {
+  caret-color: #405a99;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] textarea::placeholder {
+  color: #4d5d7f;
+  opacity: 1;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] textarea::placeholder {
+  color: #d5dff3;
+  opacity: 1;
+}
+
+/* The navy caret disappears against the dark composer card (≈2:1 contrast);
+   the light periwinkle keeps the caret legible on the night palette. */
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] textarea {
+  caret-color: #bcd2ff;
+}
+
+/* The raster extends below the naturally sized active card. Reserve that
+   bleed before the docked statistics line so the gold rim cannot cover it. */
+body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card]:has(+ *) {
+  margin-block-end: 12px;
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  [data-slot='conversation.composer.dock'] > * {
+  color: #4a5d82;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(248, 250, 255, 0.3) 10%,
+    rgba(248, 250, 255, 0.3) 90%,
+    transparent
+  );
+  backdrop-filter: blur(2px);
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  [data-slot='conversation.composer.dock'] > * [class*='sep'] {
+  color: rgba(74, 93, 130, 0.55);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-slot='conversation.composer.dock'] > * {
+  color: #aebdde;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(10, 20, 48, 0.48) 10%,
+    rgba(10, 20, 48, 0.48) 90%,
+    transparent
+  );
+  backdrop-filter: blur(2px);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-slot='conversation.composer.dock'] > * [class*='sep'] {
+  color: rgba(174, 189, 222, 0.5);
+}
+
+/* ChatView exposes data-chat-flow in every loading and content state. Give
+   Trajectory, Timeline, and other inspect-only views the full canvas while
+   leaving the resident composer DOM and its draft state mounted. */
+body[data-dsh-maid-atelier] [data-phase='active']
+  [data-conversation-scroll]:not(:has([data-chat-flow]))
+  > [data-composer-seat] {
+  display: none;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] button {
+  transition: transform 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] button[class*='primary'] {
+  border: 1px solid rgba(225, 207, 170, 0.82);
+  background: linear-gradient(145deg, #6680bd, #304a91);
+  box-shadow: 0 4px 12px rgba(26, 50, 108, 0.28);
+}
+
+/* Docked composer: echo the hero's paired circular controls while keeping the
+   smaller conversation footprint. The extra horizontal inset follows the
+   card's large corner radius instead of seating controls in its tight tips. */
+body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card] > [class*='row'] {
+  min-height: 48px;
+  padding: 2px 14px 10px;
+}
+
+body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card] [class*='tools'] {
+  gap: 9px;
+}
+
+body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card] [class*='modes'] {
+  gap: 8px;
+}
+
+body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card] [class*='trailing'] {
+  gap: 8px;
+}
+
+body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card] button[class*='add'],
+body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card]
+  [class*='modes'] button[class*='trigger']:has([class*='triggerIcon']) {
+  display: grid;
+  box-sizing: border-box;
+  place-items: center;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(197, 164, 104, 0.68);
+  border-radius: 50%;
+  color: #405a99;
+  background: rgba(255, 253, 248, 0.68);
+  box-shadow:
+    0 3px 10px rgba(37, 54, 99, 0.12),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.42);
+}
+
+body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card]
+  [class*='modes'] button[class*='trigger']:has([class*='triggerIcon'])
+  :is([class*='triggerLabel'], [class*='chevron']) {
+  display: none;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-phase='active'] [data-composer-card]
+  :is(button[class*='add'], [class*='modes'] button[class*='trigger']:has([class*='triggerIcon'])) {
+  border-color: rgba(211, 180, 119, 0.72);
+  color: #ead39f;
+  background: rgba(28, 45, 88, 0.82);
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.26),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.05);
+}
+
+body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card] button[class*='primary'] {
+  width: 38px;
+  height: 38px;
+  transform: none;
+}
+
+/* Model identity remains one control, but name and reasoning effort have
+   separate visual jobs: navy identifies the route, gold identifies compute. */
+body[data-dsh-maid-atelier] [data-composer-card] [class*='trailing']
+  button[aria-haspopup='menu'] {
+  height: 32px;
+  max-width: min(240px, 38vw);
+  padding: 0 5px 0 8px;
+  border-radius: 10px;
+  color: #314979;
+  font-family: Georgia, 'Times New Roman', var(--dsw-font-family);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] [class*='trailing']
+  button[aria-haspopup='menu'] [class*='triggerLabel'] {
+  color: #314979;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] [class*='trailing']
+  button[aria-haspopup='menu'] [class*='triggerEffort'] {
+  color: #a77c36;
+  font-family: var(--dsw-font-family);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] [class*='trailing']
+  button[aria-haspopup='menu'] [class*='triggerEffort']::before {
+  content: '·';
+  margin-right: 4px;
+  color: rgba(87, 105, 148, 0.72);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] [class*='trailing']
+  button[aria-haspopup='menu'] {
+  color: #e7ecf7;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] [class*='trailing']
+  button[aria-haspopup='menu'] [class*='triggerLabel'] {
+  color: #e7ecf7;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] [class*='trailing']
+  button[aria-haspopup='menu'] [class*='triggerEffort'] {
+  color: #e1c17d;
+}
+
+/* Context pressure: blue is the available-capacity base and gold is the
+   occupied share. The popover repeats that grammar, using three gold values
+   only to preserve its system/tools/messages breakdown. */
+body[data-dsh-maid-atelier] [data-composer-card] button[aria-haspopup='dialog'] {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(69, 94, 153, 0.22);
+  background: rgba(225, 233, 251, 0.5);
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] button[aria-haspopup='dialog'] [class*='track'] {
+  stroke: #4d6bab;
+  stroke-width: 2.2;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card] button[aria-haspopup='dialog'] [class*='fill'] {
+  stroke: #d3a957;
+  stroke-width: 2.4;
+  filter: drop-shadow(0 0 2px rgba(211, 169, 87, 0.36));
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card]
+  button[aria-haspopup='dialog'] {
+  border-color: rgba(125, 153, 216, 0.24);
+  background: rgba(39, 60, 112, 0.56);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card]
+  button[aria-haspopup='dialog'] [class*='track'] {
+  stroke: #7896d4;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [role='dialog'] [class*='bar'] {
+  background: rgba(71, 103, 174, 0.68);
+}
+
+body[data-dsh-maid-atelier] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [role='dialog'] [class*='segment'] {
+  background: var(--meter-tint, #d3a957);
+}
+
+body[data-dsh-maid-atelier] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [role='dialog'] [class*='header'],
+body[data-dsh-maid-atelier] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [role='dialog'] [class*='header'] :is(span, div) {
+  color: #172347;
+  text-shadow: none;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [role='dialog'] [class*='headline'] {
+  color: #56678c;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [role='dialog'] [class*='header'],
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [role='dialog'] [class*='header'] :is(span, div) {
+  color: #f2e7cf;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [role='dialog'] [class*='headline'] {
+  color: #afbddb;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [class*='colorSystem'] {
+  --meter-tint: #f0d99f;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [class*='colorTools'] {
+  --meter-tint: #dfbd73;
+}
+
+body[data-dsh-maid-atelier] [data-composer-card]
+  span:has(> button[aria-haspopup='dialog']) [class*='colorMessages'] {
+  --meter-tint: #c99a43;
+}
+
+@container (max-width: 560px) {
+  body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card] > [class*='row'] {
+    padding-inline: 10px;
+  }
+
+  body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card]
+    :is(button[class*='add'], [class*='modes'] button[class*='trigger']:has([class*='triggerIcon'])) {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+  }
+
+  body[data-dsh-maid-atelier] [data-composer-card] [class*='trailing']
+    button[aria-haspopup='menu'] [class*='triggerEffort'] {
+    display: none;
+  }
+}
+
+/* Conversation surfaces stay transparent so the character backdrop shows
+   through (including the new-session workspace); only message-carrying
+   surfaces (bubbles, think blocks) get a translucent porcelain base. */
+body[data-dsh-maid-atelier] [class*='ConversationRoot'] {
+  background: transparent;
+}
+
+body[data-dsh-maid-atelier] header[class*='header'] {
+  border-bottom-color: rgba(197, 164, 104, 0.28);
+}
+
+/* Tool cards share generic class fragments such as `header` with the page
+   chrome, but their porcelain/code surfaces need their own contrast pair.
+   Rebinding the official tokens keeps TerminalBlock's command, cwd, copy,
+   output and empty states coherent without overriding ANSI-colored spans. */
+body[data-dsh-maid-atelier] [data-terminal] {
+  --dsw-alias-markdown-code-block: rgba(249, 250, 253, 0.97);
+  --dsw-alias-label-primary: #172347;
+  --dsw-alias-label-secondary: #4d5d7f;
+  --dsw-alias-label-tertiary: #6f7c99;
+  color: #172347;
+  text-shadow: none;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-terminal] {
+  --dsw-alias-markdown-code-block: rgba(10, 20, 48, 0.97);
+  --dsw-alias-label-primary: #edf1fa;
+  --dsw-alias-label-secondary: #bdc9e3;
+  --dsw-alias-label-tertiary: #96a6c9;
+  color: #edf1fa;
+}
+
+body[data-dsh-maid-atelier] [class*='userRow'] [class*='bubble'] {
+  border: 1px solid rgba(197, 164, 104, 0.48);
+  background: rgba(232, 237, 249, 0.95);
+  box-shadow: 0 6px 20px rgba(19, 38, 87, 0.1);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [class*='userRow'] [class*='bubble'] {
+  background: rgba(30, 47, 90, 0.97);
+}
+
+/* Assistant steps expose a stable flow-kind hook. The three intermediate
+   wrappers are the renderer seat, AssistantMarkdown root, and block column.
+   Select the MarkdownText root positively: reasoning, images, and other
+   assistant blocks keep the same disclosure treatment as command rows. */
+body[data-dsh-maid-atelier]
+  [data-chat-flow-kind='assistant-step'] > * > * > * > div[class*='markdown'] {
+  box-sizing: border-box;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: min(680px, 96%);
+  padding: 14px 18px;
+  border: 1px solid rgba(197, 164, 104, 0.42);
+  border-radius: 18px 18px 18px 7px;
+  background: rgba(248, 250, 255, 0.94);
+  box-shadow: 0 4px 14px rgba(19, 38, 87, 0.08);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-chat-flow-kind='assistant-step'] > * > * > * > div[class*='markdown'] {
+  border-color: rgba(211, 180, 119, 0.4);
+  background: rgba(18, 31, 67, 0.94);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+}
+
+/* Collapsed reasoning, tool, and context rows sit directly over detailed
+   background art. A low-contrast porcelain wash stabilizes legibility without
+   turning the compact disclosure list into a stack of message cards. */
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  :is([data-variant], [data-chat-flow-kind='context']) {
+  --dsw-alias-label-secondary: #2f4778;
+  --dsw-alias-label-tertiary: #405273;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  :is([data-variant], [data-chat-flow-kind='context']) {
+  --dsw-alias-label-secondary: #d3ddf2;
+  --dsw-alias-label-tertiary: #b8c5e1;
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  :is([data-variant], [data-chat-flow-kind='context']) [data-disclosure-row='true'] {
+  border-radius: 7px;
+  background: linear-gradient(
+    90deg,
+    rgba(248, 250, 255, 0.32),
+    rgba(248, 250, 255, 0.2) 72%,
+    rgba(248, 250, 255, 0.08)
+  );
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  :is([data-variant], [data-chat-flow-kind='context']) [data-disclosure-row='true'] {
+  border-radius: 7px;
+  background: linear-gradient(
+    90deg,
+    rgba(10, 20, 48, 0.58),
+    rgba(13, 25, 59, 0.4) 72%,
+    rgba(13, 25, 59, 0.16)
+  );
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  :is(
+    [data-variant]:not([data-variant='think']) > [data-open='true'],
+    [data-chat-flow-kind='context'] > [data-slot='conversation.chat.node'] > [data-open='true']
+  ) {
+  overflow: hidden;
+  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    rgba(248, 250, 255, 0.5),
+    rgba(248, 250, 255, 0.3)
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  :is(
+    [data-variant]:not([data-variant='think']) > [data-open='true'],
+    [data-chat-flow-kind='context'] > [data-slot='conversation.chat.node'] > [data-open='true']
+  ) {
+  overflow: hidden;
+  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    rgba(10, 20, 48, 0.76),
+    rgba(18, 31, 67, 0.54)
+  );
+  box-shadow: inset 0 0 0 1px rgba(151, 169, 216, 0.18);
+}
+
+/* Tool/command/think/context disclosure surfaces stay translucent so the
+   character backdrop reads through them. Blur what is sampled underneath the
+   translucent wash: without it the navy-blue UI text sits directly on busy
+   palace art of the same hue. The header inside an expanded container keeps
+   `backdrop-filter: none` below and relies on its parent's single blur layer
+   (nested backdrop filters would double-sample the backdrop). */
+body[data-dsh-maid-atelier]
+  :is(
+    [data-variant]:not([data-variant='think']) > [data-open='true'],
+    [data-chat-flow-kind='context'] > [data-slot='conversation.chat.node'] > [data-open='true']
+  ) {
+  backdrop-filter: blur(12px) saturate(0.92);
+}
+
+/* Collapsed rows have no expanded container, so each row blurs its own strip.
+   `:not([data-open='true'])` keeps the already-covered in-card header alone. */
+body[data-dsh-maid-atelier]
+  :is(
+    [data-variant] > :not([data-open='true']),
+    [data-chat-flow-kind='context'] > [data-slot='conversation.chat.node'] > :not([data-open='true'])
+  ) > [data-disclosure-row='true'] {
+  width: max-content;
+  max-width: 100%;
+  align-self: flex-start;
+  border-radius: 8px;
+  backdrop-filter: blur(8px) saturate(0.92);
+}
+
+/* The bash toolview registers its own row without the shared DisclosureRow
+   (data-variant='bash' IS the single-line row itself). Its collapsed state is
+   transparent over the palace art, so blur that strip directly; the expanded
+   terminal/IO card below stays opaque and needs no filter. Keep a theme-tinted
+   background like the think rows so dark backdrop art cannot make the text
+   unreadable. */
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme]) [data-variant='bash'] {
+  width: max-content;
+  max-width: 100%;
+  align-self: flex-start;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(248, 250, 255, 0.32),
+    rgba(248, 250, 255, 0.2) 72%,
+    rgba(248, 250, 255, 0.08)
+  );
+  backdrop-filter: blur(8px) saturate(0.92);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-variant='bash'] {
+  width: max-content;
+  max-width: 100%;
+  align-self: flex-start;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(10, 20, 48, 0.58),
+    rgba(13, 25, 59, 0.4) 72%,
+    rgba(13, 25, 59, 0.16)
+  );
+  backdrop-filter: blur(8px) saturate(0.92);
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  :is(
+    [data-variant]:not([data-variant='think']) > [data-open='true'],
+    [data-chat-flow-kind='context'] > [data-slot='conversation.chat.node'] > [data-open='true']
+  ) > [data-disclosure-row='true'] {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  :is(
+    [data-variant]:not([data-variant='think']) > [data-open='true'],
+    [data-chat-flow-kind='context'] > [data-slot='conversation.chat.node'] > [data-open='true']
+  ) > [data-disclosure-row='true'] {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  [data-variant='think'] > [data-open='true'] > [data-disclosure-row='true'] {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-self: flex-start;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(248, 250, 255, 0.32),
+    rgba(248, 250, 255, 0.2) 72%,
+    rgba(248, 250, 255, 0.08)
+  );
+  backdrop-filter: blur(8px) saturate(0.92);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-variant='think'] > [data-open='true'] > [data-disclosure-row='true'] {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-self: flex-start;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(10, 20, 48, 0.58),
+    rgba(13, 25, 59, 0.4) 72%,
+    rgba(13, 25, 59, 0.16)
+  );
+  backdrop-filter: blur(8px) saturate(0.92);
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  [data-variant='think'] > [data-open='true'] > [data-disclosure-row='true'] + * {
+  display: inline-block;
+  width: max-content;
+  max-width: 100%;
+  align-self: flex-start;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(248, 250, 255, 0.32),
+    rgba(248, 250, 255, 0.2) 72%,
+    rgba(248, 250, 255, 0.08)
+  );
+  backdrop-filter: blur(8px) saturate(0.92);
+  color: #34486f;
+  line-height: 1.65;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-variant='think'] > [data-open='true'] > [data-disclosure-row='true'] + * {
+  display: inline-block;
+  width: max-content;
+  max-width: 100%;
+  align-self: flex-start;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(10, 20, 48, 0.58),
+    rgba(13, 25, 59, 0.4) 72%,
+    rgba(13, 25, 59, 0.16)
+  );
+  backdrop-filter: blur(8px) saturate(0.92);
+  color: #c7d2e9;
+  line-height: 1.65;
+}
+
+/* Running reasoning becomes a restrained gold-and-periwinkle service sweep.
+   The data hooks are stable and later assets can replace this CSS-only pass. */
+body[data-dsh-maid-atelier] [data-variant='think'][data-state='running'] [class*='row']::after {
+  left: -240px;
+  width: 240px;
+  background: linear-gradient(90deg, transparent, rgba(225, 207, 170, 0.3) 46%, rgba(142, 165, 218, 0.24) 62%, transparent);
+  animation: maid-atelier-reasoning-sweep 2.8s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes maid-atelier-reasoning-sweep {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  15% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { transform: translate3d(calc(100vw + 240px), 0, 0); opacity: 0; }
+}
+
+body[data-dsh-maid-atelier] [data-state='running'] :is([class*='runState'], [class*='stateDot']) {
+  filter: drop-shadow(0 0 6px rgba(197, 164, 104, 0.7));
+}
+
+/* The subagent catalog is mounted inside the navy conversation header. Reset
+   that header's inverted copy before presenting the light porcelain tree. */
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  [data-slot='conversation.session.header.actions'] [role='tree'] {
+  --dsw-alias-label-primary: #233763;
+  --dsw-alias-label-secondary: #40557f;
+  --dsw-alias-label-tertiary: #596b8e;
+  --dsw-alias-label-dimmed: #8995ad;
+  --dsw-alias-border-l2: rgba(95, 117, 169, 0.4);
+  --dsw-alias-interactive-bg-hover: rgba(103, 126, 183, 0.14);
+  border: 1px solid rgba(95, 117, 169, 0.26);
+  background: linear-gradient(
+    145deg,
+    rgba(248, 250, 255, 0.93),
+    rgba(232, 238, 250, 0.89)
+  );
+  color: #233763;
+  text-shadow: none;
+  box-shadow: 0 16px 36px rgba(19, 38, 87, 0.2);
+  backdrop-filter: blur(8px) saturate(0.92);
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  [data-slot='conversation.session.header.actions'] [role='tree']
+  :is([role='treeitem'], [class*='label']) {
+  color: #233763;
+  text-shadow: none;
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  [data-slot='conversation.session.header.actions'] [role='tree']
+  :is([class*='summary'], [class*='metrics'], [class*='notice']) {
+  color: #596b8e;
+  text-shadow: none;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-slot='conversation.session.header.actions'] [role='tree'] {
+  --dsw-alias-label-primary: #edf1fa;
+  --dsw-alias-label-secondary: #d3ddf2;
+  --dsw-alias-label-tertiary: #b8c5e1;
+  --dsw-alias-label-dimmed: #7f90b4;
+  --dsw-alias-border-l2: rgba(151, 169, 216, 0.4);
+  --dsw-alias-interactive-bg-hover: rgba(164, 183, 229, 0.14);
+  border: 1px solid rgba(151, 169, 216, 0.26);
+  background: linear-gradient(
+    145deg,
+    rgba(10, 20, 48, 0.93),
+    rgba(18, 31, 67, 0.89)
+  );
+  color: #edf1fa;
+  text-shadow: none;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(8px) saturate(0.92);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-slot='conversation.session.header.actions'] [role='tree']
+  :is([role='treeitem'], [class*='label']) {
+  color: #edf1fa;
+  text-shadow: none;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-slot='conversation.session.header.actions'] [role='tree']
+  :is([class*='summary'], [class*='metrics'], [class*='notice']) {
+  color: #b8c5e1;
+  text-shadow: none;
+}
+
+/* Question takeover: this component is seated directly in the composer and
+   is not a portaled dialog. Pair each card surface with its own readable
+   copy instead of inheriting unrelated composer descendants' colors. */
+body[data-dsh-maid-atelier] [data-question-key] {
+  --dsw-alias-label-primary: #142044;
+  --dsw-alias-label-primary-bluish: #233663;
+  --dsw-alias-label-secondary: #344a75;
+  --dsw-alias-label-tertiary: #50638c;
+  --dsw-alias-label-caption: #6d7994;
+  --dsw-alias-label-dimmed: #a1a8b8;
+  --dsw-alias-label-primary-foreground: #fffaf0;
+  --dsw-alias-border-l1: rgba(116, 91, 47, 0.22);
+  --dsw-alias-border-l2: rgba(145, 110, 50, 0.48);
+  --dsw-alias-border-l2-darkmode-thin: rgba(145, 110, 50, 0.38);
+  --dsw-alias-border-l4: rgba(73, 91, 133, 0.64);
+  --dsw-alias-bg-overlay: rgba(47, 69, 119, 0.09);
+  --dsw-alias-bg-module-platform: rgba(255, 253, 248, 0.7);
+  --dsw-alias-interactive-bg-hover: rgba(62, 88, 150, 0.11);
+  --dsw-alias-state-business-primary: #385a9e;
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(219, 190, 124, 0.26);
+  --dsw-alias-button-info-fill: #29477f;
+  --dsw-specific-input-major: transparent;
+  color: #142044;
+  text-shadow: none;
+}
+
+body[data-dsh-maid-atelier] [data-question-key] > section {
+  border-color: rgba(190, 153, 82, 0.66);
+  background:
+    linear-gradient(145deg, rgba(255, 254, 250, 0.97), rgba(244, 247, 255, 0.93));
+  box-shadow:
+    0 16px 42px rgba(13, 29, 70, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(16px) saturate(0.9);
+}
+
+body[data-dsh-maid-atelier] [data-question-key] [class*='header'],
+body[data-dsh-maid-atelier] [data-question-key] [class*='header'] :is(div, h2, span, button) {
+  color: #142044;
+  text-shadow: none;
+}
+
+body[data-dsh-maid-atelier] [data-question-key] [class*='header'] [class*='eyebrow'] {
+  color: #50638c;
+}
+
+body[data-dsh-maid-atelier] [data-question-key] :is(h2, button, input, textarea) {
+  color: inherit;
+  text-shadow: none;
+}
+
+body[data-dsh-maid-atelier] [data-question-key] [role='radio'],
+body[data-dsh-maid-atelier] [data-question-key] [role='checkbox'] {
+  border-color: transparent;
+}
+
+body[data-dsh-maid-atelier] [data-question-key] [role='radio']:is(:hover, :focus-visible),
+body[data-dsh-maid-atelier] [data-question-key] [role='checkbox']:is(:hover, :focus-visible),
+body[data-dsh-maid-atelier] [data-question-key] [aria-checked='true'] {
+  border-color: rgba(174, 136, 66, 0.48);
+  background: linear-gradient(90deg, rgba(220, 231, 255, 0.76), rgba(250, 244, 229, 0.74));
+  outline: none;
+}
+
+body[data-dsh-maid-atelier] [data-question-key] [class*='description'] {
+  color: #4e638f;
+}
+
+body[data-dsh-maid-atelier] [data-question-key] [class*='badge'] {
+  border: 1px solid rgba(174, 136, 66, 0.28);
+  background: rgba(229, 211, 166, 0.38);
+  color: #29477f;
+}
+
+body[data-dsh-maid-atelier] [data-question-key] footer > :last-child button:last-child {
+  border-color: #2f4f91;
+  background: linear-gradient(145deg, #4264a9, #29477f);
+  color: #fffaf0;
+  box-shadow: 0 4px 12px rgba(25, 48, 96, 0.2);
+}
+
+body[data-dsh-maid-atelier] [data-question-key] footer > :last-child button:first-child {
+  border-color: rgba(75, 96, 143, 0.34);
+  background: rgba(255, 253, 248, 0.74);
+  color: #243966;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] {
+  --dsw-alias-label-primary: #edf1fa;
+  --dsw-alias-label-primary-bluish: #dbe4f7;
+  --dsw-alias-label-secondary: #c6d1e9;
+  --dsw-alias-label-tertiary: #a2b1d0;
+  --dsw-alias-label-caption: #8798bd;
+  --dsw-alias-label-dimmed: #66769a;
+  --dsw-alias-label-primary-foreground: #15234a;
+  --dsw-alias-border-l1: rgba(170, 187, 226, 0.2);
+  --dsw-alias-border-l2: rgba(193, 162, 101, 0.52);
+  --dsw-alias-border-l2-darkmode-thin: rgba(193, 162, 101, 0.44);
+  --dsw-alias-border-l4: rgba(164, 181, 221, 0.58);
+  --dsw-alias-bg-overlay: rgba(135, 158, 211, 0.14);
+  --dsw-alias-bg-module-platform: rgba(7, 18, 48, 0.68);
+  --dsw-alias-interactive-bg-hover: rgba(142, 165, 218, 0.16);
+  --dsw-alias-state-business-primary: #9bb0e1;
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(219, 190, 124, 0.2);
+  --dsw-alias-button-info-fill: #e7d19e;
+  color: #edf1fa;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] > section {
+  border-color: rgba(211, 180, 119, 0.7);
+  background:
+    linear-gradient(145deg, rgba(19, 35, 76, 0.98), rgba(8, 19, 48, 0.96));
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] [class*='header'],
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] [class*='header'] :is(div, h2, span, button) {
+  color: #edf1fa;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] [class*='header'] [class*='eyebrow'] {
+  color: #a2b1d0;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] [role='radio']:is(:hover, :focus-visible),
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] [role='checkbox']:is(:hover, :focus-visible),
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] [aria-checked='true'] {
+  border-color: rgba(211, 180, 119, 0.5);
+  background: linear-gradient(90deg, rgba(74, 99, 163, 0.5), rgba(76, 57, 30, 0.38));
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] [class*='description'] {
+  color: #aab8d6;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] [class*='badge'] {
+  border-color: rgba(219, 190, 124, 0.34);
+  background: rgba(211, 180, 119, 0.18);
+  color: #efd79e;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] footer > :last-child button:last-child {
+  border-color: #8299d0;
+  background: linear-gradient(145deg, #6680bd, #405d9e);
+  color: #fffaf0;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.28);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-question-key] footer > :last-child button:first-child {
+  border-color: rgba(174, 192, 230, 0.34);
+  background: rgba(22, 38, 78, 0.9);
+  color: #e7ecf7;
+}
+
+/* Todo is a separate input-dock surface. Give it an explicit contrast pair
+   so its summary and expanded items stay readable over character artwork. */
+body[data-dsh-maid-atelier] [data-testid='todo-panel'] {
+  --dsw-alias-label-primary: #172347;
+  --dsw-alias-label-secondary: #344b78;
+  --dsw-alias-label-tertiary: #52658c;
+  --dsw-alias-label-caption: #74809a;
+  border-color: rgba(190, 153, 82, 0.56);
+  background: rgba(252, 250, 245, 0.94);
+  color: #172347;
+  box-shadow: 0 8px 24px rgba(12, 27, 65, 0.16);
+  backdrop-filter: blur(14px) saturate(0.9);
+}
+
+body[data-dsh-maid-atelier] [data-testid='todo-panel'] button {
+  color: #172347;
+  text-shadow: none;
+}
+
+body[data-dsh-maid-atelier] [data-testid='todo-panel'] [class*='header'],
+body[data-dsh-maid-atelier] [data-testid='todo-panel'] [class*='header'] :is(span, button) {
+  color: #172347;
+  text-shadow: none;
+}
+
+body[data-dsh-maid-atelier] [data-testid='todo-panel'] [class*='header']:focus-visible {
+  border-radius: 6px;
+  outline: 1px solid rgba(190, 153, 82, 0.78);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(255, 253, 248, 0.76);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-testid='todo-panel'] {
+  --dsw-alias-label-primary: #f4ead3;
+  --dsw-alias-label-secondary: #d7dfef;
+  --dsw-alias-label-tertiary: #afbddb;
+  --dsw-alias-label-caption: #8f9fc2;
+  border-color: rgba(211, 180, 119, 0.66);
+  background: rgba(15, 29, 65, 0.95);
+  color: #f4ead3;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3), inset 0 1px rgba(255, 255, 255, 0.07);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-testid='todo-panel'] button {
+  color: #f4ead3;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-testid='todo-panel'] [class*='header'],
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-testid='todo-panel'] [class*='header'] :is(span, button) {
+  color: #f4ead3;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-testid='todo-panel'] [class*='header']:focus-visible {
+  box-shadow: 0 0 0 2px rgba(7, 18, 48, 0.72);
+}
+
+/* Overlay surfaces (dialogs, menus, poppers) are portaled into the sidebar
+   DOM and would inherit its light-on-dark tokens; reset them to the skin's
+   body-level palette so light mode keeps dark text on the light panel. */
+body[data-dsh-maid-atelier] :is([role='dialog'], [role='menu'], [data-radix-popper-content-wrapper] > *) {
+  color: var(--dsw-alias-label-primary, #172347);
+  --dsw-alias-label-primary: #172347;
+  --dsw-alias-label-primary-bluish: #243866;
+  --dsw-alias-label-secondary: #4d5d7f;
+  --dsw-alias-label-tertiary: #6f7c99;
+  --dsw-alias-label-caption: #8a94aa;
+  --dsw-alias-border-l1: rgba(71, 91, 145, 0.18);
+  --dsw-alias-border-l2-darkmode-thin: rgba(71, 91, 145, 0.25);
+  --dsw-alias-border-l2: rgba(71, 91, 145, 0.3);
+  --dsw-alias-button-elevated-fill: rgba(255, 253, 248, 0.88);
+  --dsw-alias-button-floating-fill: rgba(255, 253, 248, 0.94);
+  --dsw-alias-button-floating-hover: #ece6d8;
+  --dsw-alias-interactive-bg-hover: rgba(103, 126, 183, 0.12);
+  --dsw-alias-interactive-bg-hover-solid: #e2e8f5;
+  --dsw-alias-interactive-bg-active: rgba(197, 164, 104, 0.24);
+  --dsw-specific-input-major: rgba(255, 253, 248, 0.82);
+  border-color: rgba(197, 164, 104, 0.52);
+  box-shadow: var(--maid-shadow);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] :is([role='dialog'], [role='menu'], [data-radix-popper-content-wrapper] > *) {
+  color: var(--dsw-alias-label-primary, #e7ecf7);
+  --dsw-alias-label-primary: #e7ecf7;
+  --dsw-alias-label-primary-bluish: #d5dff3;
+  --dsw-alias-label-secondary: #bdc9e3;
+  --dsw-alias-label-tertiary: #96a6c9;
+  --dsw-alias-label-caption: #7f90b4;
+  --dsw-alias-border-l1: rgba(151, 169, 216, 0.2);
+  --dsw-alias-border-l2-darkmode-thin: rgba(151, 169, 216, 0.3);
+  --dsw-alias-border-l2: rgba(151, 169, 216, 0.34);
+  --dsw-alias-button-elevated-fill: rgba(28, 44, 84, 0.94);
+  --dsw-alias-button-floating-fill: rgba(31, 49, 92, 0.96);
+  --dsw-alias-button-floating-hover: #354d88;
+  --dsw-alias-interactive-bg-hover: rgba(164, 183, 229, 0.14);
+  --dsw-alias-interactive-bg-hover-solid: #293f78;
+  --dsw-alias-interactive-bg-active: rgba(211, 180, 119, 0.24);
+  --dsw-specific-input-major: rgba(17, 30, 66, 0.88);
+  border-color: rgba(211, 180, 119, 0.66);
+  box-shadow: var(--maid-shadow), inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Keep the settings surface above the composer while leaving the composer
+   visible as a dimmed, blurred background layer. */
+body[data-dsh-maid-atelier]
+  [data-slot='sidebar.settings']
+  [role='presentation']
+  > [role='dialog'][aria-modal='true'] {
+  --dsw-alias-bg-layer-2: rgba(235, 240, 250, 0.68);
+  background: var(--dsw-alias-bg-layer-2);
+  backdrop-filter: blur(6px) saturate(0.9);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  [data-slot='sidebar.settings']
+  [role='presentation']
+  > [role='dialog'][aria-modal='true'] {
+  --dsw-alias-bg-layer-2: rgba(24, 40, 80, 0.82);
+}
+
+/* The frameless title bar (Web-app overlay / desktop shell) carries a text
+   label at the center of the window. It rides the navy gradient and never
+   hides with the rail: it is purely decorative (pointer-events none), so
+   the drag region and the window buttons stay fully usable. */
+body[data-dsh-maid-atelier] [data-skin-chrome='titlebar-brand'] {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #f3e3c0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 18px;
+  text-shadow: 0 1px 2px rgba(2, 8, 28, 0.62);
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* The top curtain is position:fixed against the viewport, so it paints over
+   the frame's own title-bar row in frameless surfaces (Web-app overlay /
+   desktop shell). Move it below that row. env() cannot be used here: the
+   CSS-modules pipeline rewrites its identifier, so the fallback always
+   wins; the skin runtime instead measures the sidebar column's rendered
+   top edge (the exact row boundary) into --maid-titlebar-height. */
+body[data-dsh-maid-atelier] [data-skin-chrome='top-trim'] {
+  top: var(--maid-titlebar-height, 0px);
+}
+
+/* Dress the official title-bar row with the sidebar navy so the sidebar
+   reads as starting at the very top of the window. The strip is a vertical
+   gradient, deepest where it meets the sidebar and the trim band, lightening
+   toward the top edge; the gold seam that the trim band repeats below. */
+body[data-dsh-maid-atelier] [class*='titlebar'] {
+  position: relative;
+  background: linear-gradient(
+    to top,
+    rgba(9, 19, 51, 0.98) 0%,
+    rgba(13, 29, 70, 0.96) 45%,
+    rgba(22, 43, 97, 0.93) 75%,
+    rgba(31, 56, 118, 0.9) 100%
+  );
+  border-bottom: 1px solid rgba(197, 164, 104, 0.42);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [class*='titlebar'] {
+  background: linear-gradient(
+    to top,
+    rgba(4, 11, 38, 0.98) 0%,
+    rgba(8, 19, 52, 0.96) 45%,
+    rgba(15, 30, 72, 0.93) 75%,
+    rgba(23, 41, 92, 0.9) 100%
+  );
+  border-bottom-color: rgba(211, 180, 119, 0.5);
+}
+
+body[data-dsh-maid-atelier] [class*='titlebar'] [class*='button'] {
+  color: #d9bd83;
+}
+
+body[data-dsh-maid-atelier] [class*='titlebar'] [class*='button']:hover {
+  color: #f3e3c0;
+  background: rgba(87, 117, 190, 0.28);
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-dsh-maid-atelier] [data-maid-session-row] svg[data-state='ongoing'] > rect {
+    animation: none;
+    opacity: 0.2;
+  }
+
+  body[data-dsh-maid-atelier] [data-maid-session-row] svg[data-state='ongoing'] > rect:nth-child(1) {
+    opacity: 1;
+  }
+
+  body[data-dsh-maid-atelier] [data-maid-session-row] svg[data-state='ongoing'] > rect:nth-child(2) {
+    opacity: 0.7;
+  }
+
+  body[data-dsh-maid-atelier] [data-maid-session-row] svg[data-state='ongoing'] > rect:nth-child(3) {
+    opacity: 0.4;
+  }
+
+  body[data-dsh-maid-atelier] [data-variant='think'][data-state='running'] [class*='row']::after,
+  body[data-dsh-maid-atelier] [data-composer-card] button {
+    animation: none;
+    transition: none;
+  }
+
+  body[data-dsh-maid-atelier] [data-composer-card],
+  body[data-dsh-maid-atelier] [data-input-mirror] {
+    animation: none;
+    transition: none;
+  }
+}

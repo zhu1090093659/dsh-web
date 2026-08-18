@@ -1,0 +1,29 @@
+{
+  "name": "@linxin666/dsh-client-ui-skin-matrix",
+  "version": "0.2.0",
+  "description": "Bundled skin inside @linxin666/dsh-skins (@linxin666/dsh-client-ui-skin-matrix).",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "Apache-2.0",
+  "files": [
+    "lib",
+    "skin.json",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhu1090093659/dsh-web-ui.git"
+  }
+}

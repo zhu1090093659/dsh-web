@@ -8,22 +8,13 @@ It is a hot-pluggable client plugin. `apply()` sets the `data-dsh-whale-song` bo
 
 The skin is presentation-only: no services are injected, no cordis events are emitted, nothing reaches a model request. The dark palette (`body[data-dsh-whale-song][data-ds-dark-theme]`) is a night-cruise take on the same ocean — a deep navy veil over the dimmed backdrop — so the base theme system keeps working underneath.
 
-## Installing (official bundle)
+## Installing
 
-Prefer the family aggregate package `@linxin666/dsh-skins` — every skin at once; for this skin alone, install with `link:`:
+Skins ship inside the family aggregate package `@linxin666/dsh-skins` (installing it brings every skin) and are wired by the skin manager — this package declares no `dsh.bundle` (skin.json `wiring.bundleWired: false`), so `dsh-skin use` renders the insert row into the profile's own patch:
 
 ```sh
-# All skins (recommended)
 dsh plugin --profile web add @linxin666/dsh-skins
-# Or just this skin
-dsh plugin --profile web add @linxin666/dsh-client-ui-skin-whale-song
-# Activate: dsh-skin use whale-song
-# From the repo (dev): dsh plugin --profile web add link:$(pwd)/packages/skins/whale-song
 ```
-
-`$(pwd)` is your clone of the dsh-web-ui monorepo.
-
-A local `link:` install needs built artifacts first — `lib/` is git-ignored and not committed, so run `pnpm install && pnpm -r build` in the monorepo before linking. Git installs (`dsh plugin --profile web add github:<org>/dsh-web-ui#<sha>`) build `lib/` themselves via the `prepare` script; pnpm ≥10 blocks that until you copy the printed package key into the profile's `pnpm-workspace.yaml` `allowBuilds` list and re-run.
 
 Activate or switch with `dsh-skin use whale-song` (helper script `scripts/dsh-skin` in the monorepo); only one skin is active at a time.
 

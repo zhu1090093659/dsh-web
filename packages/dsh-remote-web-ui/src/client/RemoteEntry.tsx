@@ -20,8 +20,18 @@ import css from './remote.module.css'
 /** Entry props: the sidebar column state + the standard locale seat. */
 export type RemoteEntryProps = PropsRuntime<'sidebar.remote'> & PropsLocale<'remote'>
 
-/** Apply one status frame onto the current ready state. */
+/**
+ * Apply one status frame onto the current state: the ready state mirrors
+ * the full phase/device picture, while the lan-required banner only keeps
+ * the auto-tunnel frame (the signal for the running re-issue).
+ */
 function mergeFrame(state: PanelState, frame: PairStateFrame): PanelState {
+  if (state.kind === 'lan-required') {
+    return {
+      ...state,
+      ...(frame.tunnel !== undefined ? { tunnel: frame.tunnel } : {}),
+    }
+  }
   if (state.kind !== 'ready') return state
   return {
     ...state,
@@ -40,6 +50,11 @@ function mergeFrame(state: PanelState, frame: PairStateFrame): PanelState {
 export function RemoteEntry({ wide, useWorkspaces, t }: RemoteEntryProps) {
   const [open, setOpen] = useState(false)
   const [state, setState] = useState<PanelState>({ kind: 'lan-required' })
+  // Latest-state mirror for the EventSource callback: transition detection
+  // must live outside setState updaters (updaters may run twice and must be
+  // pure), so mint decisions read this ref instead.
+  const stateRef = useRef(state)
+  useEffect(() => { stateRef.current = state }, [state])
   const [copied, setCopied] = useState(false)
   const eventSource = useRef<EventSource | undefined>(undefined)
 
@@ -93,17 +108,34 @@ export function RemoteEntry({ wide, useWorkspaces, t }: RemoteEntryProps) {
     const next = await mint()
     setState(next)
     // Live status: the desktop panel mirrors the pairing service state. The
-    // stream only makes sense in the ready state — on a failure banner the
-    // events endpoint is unreachable too (loopback fence), so opening it
-    // would just start a doomed reconnect loop.
-    if (next.kind !== 'ready') return
+    // stream makes sense in the ready state and on the lan-required banner —
+    // there the auto-tunnel may still be starting, and following its frames
+    // lets the panel re-issue once it runs. The loopback-required and
+    // unreachable origins are fenced out of the events endpoint, so opening
+    // it there would just start a doomed reconnect loop.
+    if (next.kind !== 'ready' && next.kind !== 'lan-required') return
     const source = new EventSource('/api/pair/events')
     eventSource.current = source
     source.onmessage = (event) => {
       try {
         const frame = JSON.parse(event.data as string) as PairStateFrame
         if (frame.type !== 'state') return
-        setState(previous => mergeFrame(previous, frame))
+        // The auto-tunnel crossed into running while the panel sat on the
+        // lan-required banner: re-issue so the server hands back a ready QR
+        // built on the public base (only on the transition into running, to
+        // avoid mint storms). Detected on the ref, outside the updater: an
+        // updater may be invoked twice and must stay pure, so mint() cannot
+        // run inside it.
+        const previous = stateRef.current
+        if (
+          previous.kind === 'lan-required'
+          && frame.tunnel?.state === 'running'
+          && previous.tunnel?.state !== 'running'
+        ) {
+          void mint().then(setState)
+          return
+        }
+        setState(current => mergeFrame(current, frame))
       } catch {
         // Malformed frames are dropped; the snapshot on open is authoritative.
       }
@@ -190,13 +222,13 @@ export function RemoteEntry({ wide, useWorkspaces, t }: RemoteEntryProps) {
   )
 }
 
-/** The trigger: an icon button matching the settings rail/row geometry. */
+/** The trigger: an icon-only control with a persistent accessible label. */
 function TooltipAnchor({ wide, label, onClick }: { wide: boolean; label: string; onClick: () => void }) {
   return (
     <button
       type="button"
       className={css.trigger}
-      data-wide={wide ? undefined : 'rail'}
+      data-wide={wide ? 'wide' : 'rail'}
       aria-label={label}
       title={label}
       onClick={onClick}

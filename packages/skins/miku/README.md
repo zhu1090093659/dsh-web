@@ -36,26 +36,19 @@ pnpm test        # apply/dispose contract test
 
 The built `lib/` is committed with the repo, so you can install even after cloning without building; a full build is still recommended.
 
-## Install into DSH
+## Install
 
-```bash
-dsh plugin --profile web add "link:<absolute path to this repo>"
+Skins ship inside the family aggregate package `@linxin666/dsh-skins` (installing it brings every skin) and are wired by the skin manager — this package declares no `dsh.bundle` (skin.json `wiring.bundleWired: false`), so `dsh-skin use` renders the insert row into the profile's own patch:
+
+```sh
+dsh plugin --profile web add @linxin666/dsh-skins
 ```
 
-- Spaces in the path (Windows): `dsh plugin add` breaks arguments containing spaces; use this instead:
-
-  ```bash
-  cd ~/.dsh/profiles/web
-  pnpm add "link:<absolute path to this repo>"
-  ```
-
-  Then append `@linxin666/dsh-client-ui-skin-miku` to the `dsh.profile.bundles` array in `~/.dsh/profiles/web/package.json`.
-
-- After installing, restart `dsh web` and hard-refresh the page (Ctrl+Shift+R).
+Activate or switch with `dsh-skin use miku` (helper script `scripts/dsh-skin` in the monorepo); only one skin is active at a time.
 
 ## Switch skins
 
-Skin activation is mutually exclusive and managed via `scripts/dsh-skin` (writes into the managed section of `~/.dsh/cordis.patch.yml` + the profile symlink):
+Skin activation is mutually exclusive and managed via `scripts/dsh-skin` (writes into the managed section of the active Web profile's `<harness-home>/profiles/<profile>/cordis.patch.yml` + the profile symlink):
 
 ```bash
 dsh-skin use miku       # activate this skin

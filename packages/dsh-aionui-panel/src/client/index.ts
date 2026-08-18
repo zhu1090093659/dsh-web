@@ -1,9 +1,11 @@
 /**
- * AionUI right-panel system — browser half: mounts the explorer and preview
- * columns into the web shell's frame grid (through the layout controller),
- * binds the four stores to the live client runtime (the active session's cwd
- * is the project root), subscribes to the host change stream (fs + git), and
- * follows the shell's dark marker (body[data-ds-dark-theme]) via CSS only.
+ * AionUI right-panel system — browser half. The panel itself is retired: the
+ * provider choice was removed and the right panel is always the external
+ * dsh-better-sidebar side card, so the explorer/preview columns never mount.
+ * What remains active here: the composer drop target and transcript mermaid
+ * sentinels (both inert without the panel columns), and the side-card
+ * settings card in the Web UI Plugins group, which embeds the side card's
+ * own settings section inline.
  *
  * Failure policy: every DOM/runtime wiring failure is logged, never thrown —
  * the web shell fails the whole boot when a plugin apply throws.
@@ -13,16 +15,17 @@
  * @module dsh-aionui-panel/client
  */
 
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext, SessionId, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: pulls the official settings-scope service onto the client
+// Context, and the 'settings.section' SlotMap merge the card renders.
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the ui-conversation SlotMap merge (the input dock entry).
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { PanelApi, subscribePanelEvents } from './api.ts'
-import { PanelLayoutController } from './layout.ts'
-import { createPanelStores, layoutSetRoot } from './store.ts'
-import { mountPanels } from './mount.tsx'
-import { NS, dictionaries, setLanguage, type AionUiPanelKey } from './locales.ts'
+import { AionUiSettingsCard, AionUiSettingsCardController, type AionUiPanelSettings } from './AionUiSettingsCard.tsx'
+import type { SideCardRegistry } from './SideCardPrefs.tsx'
+import { NS, dictionaries, type AionUiPanelKey } from './locales.ts'
 import { DragFileInlay, type DragFileInjected } from './drag/DragFileInlay.tsx'
 import { insertPathIntoDraft } from './drag/file-drag.ts'
 import { MermaidChatEnhancer } from './chat/mermaid-chat.tsx'
@@ -32,10 +35,42 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** Panel surface copy. */
     'aionui-panel': AionUiPanelKey
   }
+
+  interface SlotMap {
+    /**
+     * One family plugin card inside the Web UI Plugins group. Spelled here
+     * with the same shape so this package can register without depending on
+     * the sibling web-ui-settings package.
+     */
+    'web-ui.plugin.item': { kind: 'list'; scope: 'root'; owner: SettingsPluginItemOwnerProps }
+  }
 }
 
-/** Required services: sessions for the project root, locale for the copy. */
-export const inject = ['sessions', 'locale']
+/** Owner share of a plugin card (the section supplies nothing). */
+export interface SettingsPluginItemOwnerProps {
+  /** Marker field: card owner props are intentionally empty. */
+  children?: never
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /**
+     * Optional rc.6 compatibility binder provided by dsh-web-ui-settings;
+     * absent when that group plugin is not installed, so callers fall back to
+     * the official settings scope.
+     */
+    webUiSettings?: { bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S> }
+    /**
+     * The external dsh-better-sidebar plugin's registry service, published
+     * while that plugin is loaded; the settings card enumerates its tab and
+     * viewer descriptors for the enable switches.
+     */
+    betterSidebar?: SideCardRegistry
+  }
+}
+
+/** Required services: sessions for the project root, locale for the copy, and the settings scope for the provider choice. */
+export const inject = ['sessions', 'locale', 'settingsScope']
 
 /** Apply the browser half. */
 export function apply(ctx: ClientContext): void {
@@ -73,7 +108,8 @@ export function apply(ctx: ClientContext): void {
 
   // Transcript mermaid enhancement rides the same dock as a zero-render
   // sentinel: the shell has no message-body slot, so the sentinel observes
-  // the document for the chat renderer's `code.language-mermaid` blocks.
+  // the document for the chat renderer's mermaid blocks (shell shape:
+  // div.md-code-block with the language in its banner infostring).
   ctx.inject(['slots'], (scope: ClientContext) => {
     scope.slots.inject('conversation.input.dock', () =>
       scope.slots.register({
@@ -83,105 +119,31 @@ export function apply(ctx: ClientContext): void {
       }, MermaidChatEnhancer))
   })
 
-  ctx.effect(() => {
-    const api = new PanelApi()
-    const stores = createPanelStores(api)
-    const layout = new PanelLayoutController(stores.layout)
-    const disposers: Array<() => void> = []
-    let disposeEvents: (() => void) | undefined
-    let currentRoot = ''
-    let lastPreviewOpen = false
-
-    // The project root follows the active session's cwd; switching sessions
-    // re-binds every store (widths, collapse, tree, tabs persist per root).
-    const bindRoot = (): void => {
-      const snapshot = ctx.sessions.list.getSnapshot()
-      const sessionId = snapshot.current as SessionId | undefined
-      const cwd = sessionId === undefined ? undefined : snapshot.byId[sessionId]?.cwd
-      const root = typeof cwd === 'string' && cwd !== '' ? cwd : ''
-      if (root === currentRoot) return
-      currentRoot = root
-
-      disposeEvents?.()
-      disposeEvents = undefined
-      const previewOpen = stores.preview.getSnapshot().open
-      lastPreviewOpen = previewOpen
-      layoutSetRoot(stores.layout, root, previewOpen)
-      stores.explorer.setRoot(root)
-      stores.scm.setRoot(root)
-      stores.preview.setRoot(root)
-
-      if (root === '') return
-      disposeEvents = subscribePanelEvents(root, (event) => {
-        if (event.kind === 'fs') {
-          void stores.explorer.handleFsChange()
-          void stores.preview.handleFsChange()
-        }
-        if (event.kind === 'git') {
-          // The host status is the only truth; land it directly.
-          stores.scm.update((prev) => (prev.root !== root ? prev : { ...prev, status: event.status, loading: false }))
-          // The index/worktree moved: every open diff tab is stale by now.
-          void stores.preview.handleGitChange(root)
-        }
-        if (event.kind === 'gitUnavailable') {
-          // The host could not run git at all: land the friendly unavailable
-          // state once instead of leaving the SCM tab on "not a repository".
-          stores.scm.update((prev) => (prev.root !== root ? prev : { ...prev, status: null, loading: false, gitMissing: true }))
-        }
-      })
-    }
-    disposers.push(ctx.sessions.list.subscribe(bindRoot))
-    bindRoot()
-
-    // Mirror the preview open state into the layout store (single source: the
-    // preview store), and play the enter animation when the region opens.
-    const mirrorPreviewOpen = (): void => {
-      const open = stores.preview.getSnapshot().open
-      if (open === lastPreviewOpen) return
-      lastPreviewOpen = open
-      stores.layout.update((prev) => ({ ...prev, previewOpen: open }))
-      if (open) {
-        const col = document.querySelector<HTMLElement>('[data-aionui-preview-col]')
-        col?.classList.add('aionui-preview-enter')
-        setTimeout(() => col?.classList.remove('aionui-preview-enter'), 300)
+  // The side-card settings card in the Web UI Plugins group: it declares
+  // the side card's origin and edits its everyday preferences inline through
+  // the external plugin's own settings transport. The 'aionui-panel'
+  // namespace binding is only the card's availability anchor — no editable
+  // fields remain. The registry face (tab/viewer enumeration) comes from the
+  // external plugin's cordis service when it is loaded.
+  ctx.inject(['slots', 'settingsScope'], (settingsCtx: ClientContext) => {
+    const binder = settingsCtx.get('webUiSettings') ?? settingsCtx.settingsScope
+    const panelScope = binder.bind<AionUiPanelSettings>({ namespace: NS })
+    const settingsCard = new AionUiSettingsCardController(panelScope)
+    settingsCtx.slots.inject('web-ui.plugin.item', () => {
+      const unregister = settingsCtx.slots.register({
+        name: 'web-ui.plugin.item',
+        id: 'aionui-panel',
+        order: 110,
+        locale: NS,
+        inject: () => ({
+          ...settingsCard.inject(),
+          sidebar: settingsCtx.get('betterSidebar'),
+        }),
+      }, AionUiSettingsCard)
+      return () => {
+        settingsCard.dispose()
+        unregister()
       }
-    }
-    disposers.push(stores.preview.subscribe(mirrorPreviewOpen))
-
-    // Language mirroring (the shell owns <html lang>; the dictionary follows).
-    let langObserver: MutationObserver | undefined
-    const syncLanguage = (): void => {
-      setLanguage(document.documentElement.lang?.startsWith('zh') ? 'zh' : 'en')
-    }
-    langObserver = new MutationObserver(syncLanguage)
-    langObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
-    syncLanguage()
-
-    // Mount everything. DOM failures degrade the panels, never the GUI.
-    try {
-      layout.mount()
-      mountPanels(stores, () => layout.toggleExplorer())
-    } catch (error) {
-      console.error('[dsh-aionui-panel] mount failed:', error)
-    }
-
-    // Debounced persists (explorer/scm/preview) may be pending when the page
-    // hides; flush them so a close/background never drops the last 150ms.
-    const flushOnHide = (): void => stores.flushNow()
-    const onVisibilityChange = (): void => {
-      if (document.visibilityState === 'hidden') flushOnHide()
-    }
-    window.addEventListener('pagehide', flushOnHide)
-    document.addEventListener('visibilitychange', onVisibilityChange)
-
-    return () => {
-      flushOnHide()
-      window.removeEventListener('pagehide', flushOnHide)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-      disposeEvents?.()
-      langObserver?.disconnect()
-      for (const dispose of disposers) dispose()
-      layout.dispose()
-    }
-  }, 'dsh-aionui-panel: wiring')
+    })
+  })
 }

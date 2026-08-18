@@ -70,14 +70,13 @@ export function resolveMarkdownImage(filePath: string, src: string): MarkdownIma
   const trimmed = src.trim()
   if (trimmed === '' || trimmed.startsWith('#')) return { kind: 'absolute' }
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return { kind: 'absolute' }
-  const decoded = decodePathPart(trimmed)
-  const q = decoded.indexOf('?')
-  const h = decoded.indexOf('#')
-  let cut = decoded.length
+  const q = trimmed.indexOf('?')
+  const h = trimmed.indexOf('#')
+  let cut = trimmed.length
   if (q !== -1) cut = Math.min(cut, q)
   if (h !== -1) cut = Math.min(cut, h)
-  const pathPart = decoded.slice(0, cut)
-  const suffix = decoded.slice(cut)
+  const pathPart = decodePathPart(trimmed.slice(0, cut))
+  const suffix = trimmed.slice(cut)
   const base = pathPart.startsWith('/') ? '' : dirOf(filePath)
   const joined = base === '' ? pathPart : `${base}/${pathPart}`
   const normalized = normalizeRelPath(joined)

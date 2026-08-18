@@ -89,8 +89,20 @@ export function makeGateListener(
     if (!active) return false
     const require = typeof requirePairingForLan === 'function' ? requirePairingForLan() : requirePairingForLan
     if (!require) return next()
-    const deviceId = readCookie(request.headers.cookie, service.config.cookieName)
-    if (deviceId === undefined) return false
-    return service.touchDevice(deviceId) ? next() : false
+    return isPairedDeviceRequest(service, request) ? next() : false
   }
+}
+
+/**
+ * Whether a request carries a live, non-revoked paired-device cookie for
+ * this service. Sibling host routes outside /api (aionui-panel, etc.) use
+ * the same check via the remoteWebUiPairing service.
+ * @param service - the pairing service that owns the device table.
+ * @param request - the incoming HTTP request.
+ * @returns true when the cookie names a live session (and lastSeenAt was refreshed).
+ */
+export function isPairedDeviceRequest(service: PairingService, request: IncomingMessage): boolean {
+  const deviceId = readCookie(request.headers.cookie, service.config.cookieName)
+  if (deviceId === undefined) return false
+  return service.touchDevice(deviceId)
 }

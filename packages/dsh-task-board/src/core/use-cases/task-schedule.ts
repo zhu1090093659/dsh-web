@@ -22,9 +22,9 @@ export interface SetScheduleResult {
 }
 
 /**
- * Set a task's schedule rule. A blank or invalid cron is rejected (state
- * untouched); an enabled rule computes the next run instant immediately, a
- * disabled or invalid one carries no next-run instant.
+ * Set an on-board task's schedule rule. A blank or invalid cron, or an
+ * archived task, is rejected (state untouched); an enabled rule computes the
+ * next run instant immediately, a disabled one carries no next-run instant.
  * @param tasks - current ledger.
  * @param id - the task to schedule.
  * @param patch - rule fields to change (absent fields keep their current value).
@@ -37,12 +37,13 @@ export function applySetSchedule(
   now: number,
 ): SetScheduleResult {
   const task = tasks.find(candidate => candidate.id === id)
-  if (task === undefined) return { tasks, applied: false }
+  if (task === undefined || task.archivedAt !== undefined) return { tasks, applied: false }
   const current = task.schedule
   const cron = (patch.cron ?? current?.cron ?? '').trim()
   if (cron === '' || !isValidCron(cron)) return { tasks, applied: false }
   const enabled = patch.enabled ?? current?.enabled ?? false
   const nextRunAt = enabled ? nextRunAtMs(cron, now) : undefined
+  if (enabled && nextRunAt === undefined) return { tasks, applied: false }
   return {
     tasks: tasks.map(candidate =>
       candidate.id === id ? withSchedule(candidate, { enabled, cron, nextRunAt }, now) : candidate),
@@ -68,7 +69,7 @@ export function applyScheduleNextRun(
   now: number,
 ): readonly TaskRecord[] {
   return tasks.map(task =>
-    task.id === id && task.schedule !== undefined
+    task.id === id && task.archivedAt === undefined && task.schedule !== undefined
       ? withSchedule(task, { nextRunAt, lastTriggeredAt }, now)
       : task)
 }

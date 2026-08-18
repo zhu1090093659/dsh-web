@@ -25,3 +25,8 @@ REVIEW-PROMPT.md
 
 # pnpm 11 项目内包存储（本地依赖缓存，不入库）
 .pnpm-store/
+
+# 挂载冒烟产物（scripts/e2e-mount.sh）
+*.tgz
+playwright-report/
+test-results/

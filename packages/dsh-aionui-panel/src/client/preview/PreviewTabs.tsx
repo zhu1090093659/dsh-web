@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import type { PreviewTabState } from '../store.ts'
 import { t } from '../locales.ts'
-import { CloseIcon, PlusIcon, ShrinkIcon } from '../components/icons.tsx'
+import { CloseIcon, MaximizeIcon, PlusIcon, RestoreIcon, ShrinkIcon } from '../components/icons.tsx'
 import { activateOnKey } from '../components/a11y.ts'
 import previewCss from '../styles/preview.module.css'
 
@@ -35,6 +35,8 @@ export function PreviewTabs({
   onContextMenu,
   onNewUrlTab,
   onClosePanel,
+  maximized,
+  onMaximize,
 }: {
   tabs: PreviewTabState[]
   activeTabId: string | null
@@ -43,6 +45,8 @@ export function PreviewTabs({
   onContextMenu: (event: React.MouseEvent, tab: PreviewTabState) => void
   onNewUrlTab: () => void
   onClosePanel: () => void
+  maximized: boolean
+  onMaximize: () => void
 }): JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [fade, setFade] = useState<TabFadeState>({ left: false, right: false })
@@ -123,6 +127,19 @@ export function PreviewTabs({
         </div>
       </div>
       <div className={previewCss.tabBarRight}>
+        {/* Maximize/restore (issue #315): the layout controller owns the grid
+            takeover, Esc and the restore path. */}
+        <div
+          className={previewCss.panelMaximize}
+          role="button"
+          tabIndex={0}
+          onClick={onMaximize}
+          onKeyDown={activateOnKey(onMaximize)}
+          title={t(maximized ? 'preview.restore' : 'preview.maximize')}
+          aria-label={t(maximized ? 'preview.restore' : 'preview.maximize')}
+        >
+          {maximized ? <RestoreIcon size={14} /> : <MaximizeIcon size={14} />}
+        </div>
         <div
           className={previewCss.panelCollapse}
           role="button"

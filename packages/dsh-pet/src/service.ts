@@ -44,6 +44,7 @@ import {
   type PetManifest,
   type PetRegistry,
 } from './registry.ts'
+import { WHISPER_TTL_MS } from './chatter.ts'
 import {
   defaultPetStateConfig,
   PetStateMachine,
@@ -96,9 +97,12 @@ export interface PetSettingsSection {
 export const PET_SETTINGS_NAMESPACE = 'pet'
 
 /**
- * One active session as the pet displays it. Sessions run in parallel, so
- * each gets its own bubble while the sprite itself follows the most recent
- * meaningful event (the display session).
+ * One active TOP-LEVEL session as the pet displays it. Sessions run in
+ * parallel, so each gets its own bubble while the sprite itself follows the
+ * most recent meaningful event (the display session). Subagent children
+ * report no bubble of their own: their work is already reflected by the
+ * bubble of the conversation that spawned them, and the bubble buttons
+ * navigate to GUI sessions, which subagents are not.
  */
 export interface PetSessionView {
   /** Session identity (stringified for the wire; never exposed as a key). */
@@ -121,9 +125,10 @@ export interface PetStateView {
   phase: PetStateSnapshot['phase']
   sessionActive: boolean
   /**
-   * Per-session bubbles for every concurrently active session, most recent
-   * first; optional so older hosts without the multi-session view stay
-   * consumable. The single 'bubble' above mirrors the display session.
+   * Per-session bubbles for every concurrently active TOP-LEVEL session,
+   * most recent first; optional so older hosts without the multi-session
+   * view stay consumable. The single 'bubble' above mirrors the display
+   * session.
    */
   sessions?: PetSessionView[]
   /** Affinity ledger snapshot. */
@@ -148,6 +153,12 @@ export interface PetStateView {
     /** Stock cap. */
     max: number
   }
+  /**
+   * The display session's fresh inner whisper (碎碎念), when one is within
+   * its TTL — short inner-voice copy woken by the model's own output,
+   * rendered by the client as a distinct whisper bubble.
+   */
+  whisper?: string
 }
 
 /** Result of `pet.interact`. */
@@ -165,6 +176,13 @@ interface SessionActivity {
   machine: PetStateMachine
   /** The session's most recent meaningful input (for display fallback). */
   lastInput?: PetStateInput
+  /** Latest inner whisper woken by this session's model output (碎碎念). */
+  whisper?: {
+    /** Whisper copy. */
+    text: string
+    /** Epoch ms when it appeared (view-side TTL applies). */
+    at: number
+  }
 }
 
 /**
@@ -315,7 +333,7 @@ export class PetService extends Service {
           const transition = projectOfficialEvent(event, runtime)
           if (transition === undefined) return
           runtime.officialEventsSeen = true
-          this.applyActivity(session, transition.input)
+          this.applyActivity(session, transition.input, transition.whisper)
           if (transition.completedTurn !== undefined) {
             this.rewardTurn(String(session.id), transition.completedTurn)
           }
@@ -360,9 +378,10 @@ export class PetService extends Service {
    * the session becomes the host-global display session (most recent
    * meaningful event wins the sprite animation).
    */
-  private applyActivity(session: Session, input: PetStateInput): void {
+  private applyActivity(session: Session, input: PetStateInput, whisper?: string): void {
     const activity = this.activityOf(session)
     activity.lastInput = input
+    if (whisper !== undefined) activity.whisper = { text: whisper, at: Date.now() }
     activity.machine.onActivityStatus(input)
     activity.machine.onSessionActive()
     // Move to the tail so map order reads most-recent-last, then trim the
@@ -472,12 +491,16 @@ export class PetService extends Service {
   private view(): PetStateView {
     const snapshot = this.machine.render()
     const entry = this.activeEntry()
-    // One bubble per concurrently active session, most recent first.
+    // One bubble per concurrently active TOP-LEVEL session, most recent
+    // first. Subagent children render no bubble of their own (their activity
+    // already shows through the spawning conversation's bubble/display, and
+    // the bubble buttons navigate to GUI sessions, which subagents are not).
     // Sessions whose own machine has settled (no bubble copy) drop out, so a
     // finished turn does not leave a stale bubble behind.
     const sessions: PetSessionView[] = []
     for (const [session, activity] of [...this.sessionActivity.entries()].reverse()) {
       if (sessions.length >= MAX_SESSION_BUBBLES) break
+      if (session.header?.origin === 'subagent') continue
       const perSession = activity.machine.render()
       if (perSession.bubble === undefined) continue
       sessions.push({
@@ -487,6 +510,15 @@ export class PetService extends Service {
         phase: perSession.phase,
       })
     }
+    // The display session's inner whisper rides the global view while fresh;
+    // an expired whisper simply stops appearing (the client's 2s poll drops it).
+    const displayActivity = this.displaySession === undefined
+      ? undefined
+      : this.sessionActivity.get(this.displaySession)
+    const whisper = displayActivity?.whisper
+    const freshWhisper = whisper !== undefined && Date.now() - whisper.at < WHISPER_TTL_MS
+      ? whisper.text
+      : undefined
     // Read-only: the ledger settles on economic events only, never on a read,
     // so polling the state cannot trigger pet.json writes.
     return {
@@ -495,6 +527,7 @@ export class PetService extends Service {
       phase: snapshot.phase,
       sessionActive: snapshot.sessionActive,
       sessions,
+      ...(freshWhisper === undefined ? {} : { whisper: freshWhisper }),
       affinity: this.ledger.affinityView(Date.now()),
       display: { ...this.ledger.snapshot.display },
       pet: {

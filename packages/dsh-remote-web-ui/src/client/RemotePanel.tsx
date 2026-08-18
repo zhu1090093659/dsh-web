@@ -16,7 +16,7 @@ import css from './remote.module.css'
 
 /** The panel's view state, owned by the entry component. */
 export type PanelState =
-  | { kind: 'lan-required' }
+  | { kind: 'lan-required'; tunnel?: TunnelStatusFrame }
   | { kind: 'loopback-required' }
   | { kind: 'unreachable' }
   | {

@@ -37,6 +37,8 @@ export interface PetInjected {
   dragEnd: (right: number, bottom: number) => void
   /** Rename the selected pet (persisted by the host). */
   rename: (name: string) => void
+  /** Navigate the GUI to the session a bubble reports on. */
+  openSession: (sessionId: string) => void
   /** Clear the reaction bubble. */
   feedbackDone: () => void
 }
@@ -83,6 +85,7 @@ export function PetDockEntry(props: PetDockEntryProps): ReactElement {
               onHide={props.hide}
               onDragEnd={props.dragEnd}
               onRename={props.rename}
+              onOpenSession={props.openSession}
               onFeedbackDone={props.feedbackDone}
               t={props.t}
             />

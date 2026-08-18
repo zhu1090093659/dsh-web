@@ -4,7 +4,7 @@
  * @module dsh-git-graph/client/graph/GraphDialog
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IconCloseOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import { computeLanes, type LaneGlyph } from '../../core/types.ts'
@@ -68,14 +68,23 @@ export function GraphDialog({ graph, onClose, t }: GraphDialogProps) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Out-of-order guard: two rapid loads (load-more while a fetch is in
+  // flight) must never let the older, smaller page overwrite the newer one.
+  const requestSeq = useRef(0)
   const load = useCallback((limit: number): void => {
+    const seq = requestSeq.current + 1
+    requestSeq.current = seq
     setLoading(true)
     void graph(limit).then((next) => {
+      if (seq !== requestSeq.current) return
       setView(next)
       setError(next === null ? t('error.internal') : null)
     }).catch(() => {
+      if (seq !== requestSeq.current) return
       setError(t('error.internal'))
-    }).finally(() => { setLoading(false) })
+    }).finally(() => {
+      if (seq === requestSeq.current) setLoading(false)
+    })
   }, [graph, t])
 
   useEffect(() => { load(INITIAL_LIMIT) }, [load])

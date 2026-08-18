@@ -108,6 +108,20 @@ describe('CRUD', () => {
     expect(entry.auth.keyPath).not.toContain('~')
     expect(entry.auth.keyPath).toContain('keys/id')
   })
+
+  it('serves repeated reads consistently and notices external rewrites', () => {
+    const store = makeStore()
+    store.create(basePayload)
+    // Cached reads stay consistent.
+    expect(store.list()).toHaveLength(1)
+    expect(store.list()).toHaveLength(1)
+    // An external rewrite (another dsh process editing the same file) must
+    // not be hidden by the cache.
+    const onDisk = JSON.parse(readFileSync(store.path, 'utf8')) as { hosts: Array<{ alias: string; host: string }> }
+    onDisk.hosts[0]!.host = '10.9.8.7'
+    writeFileSync(store.path, JSON.stringify(onDisk, null, 2) + '\n')
+    expect(store.find('web-01')?.host).toBe('10.9.8.7')
+  })
 })
 
 describe('import from ssh config', () => {

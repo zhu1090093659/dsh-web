@@ -6,7 +6,7 @@
  * as ssh-skill's annotated ssh-config comments; document it, never log it.
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import type { HostPayload, ImportResult, SshHostEntry, SshHostSummary } from './protocol.ts'
@@ -306,18 +306,36 @@ export class HostStore {
 
   private skippedNames = new Set<string>()
 
+  /**
+   * Last parsed store keyed by file identity. list/find ride every acquire
+   * and GUI refresh; re-reading and re-parsing the whole file each call is
+   * wasted work when the file has not changed. Any save invalidates.
+   */
+  private cache: { mtimeMs: number; size: number; file: StoreFile } | undefined
+
   private load(): StoreFile {
-    if (!existsSync(this.path)) return { version: FORMAT_VERSION, hosts: [] }
+    let stats: { mtimeMs: number; size: number }
+    try {
+      stats = statSync(this.path)
+    } catch {
+      this.cache = undefined
+      return { version: FORMAT_VERSION, hosts: [] }
+    }
+    if (this.cache !== undefined && this.cache.mtimeMs === stats.mtimeMs && this.cache.size === stats.size) {
+      return this.cache.file
+    }
     try {
       const parsed = JSON.parse(readFileSync(this.path, 'utf8')) as StoreFile
       if (typeof parsed !== 'object' || parsed === null || !Array.isArray(parsed.hosts)) {
         throw new Error('store file shape invalid')
       }
+      this.cache = { mtimeMs: stats.mtimeMs, size: stats.size, file: parsed }
       return parsed
     } catch {
       // A corrupt store must not brick the plugin — and must not be silently
       // overwritten by the next save: rename it aside for manual recovery
       // (the plugin then starts from an empty list).
+      this.cache = undefined
       try {
         renameSync(this.path, `${this.path}.corrupt-${Date.now()}`)
       } catch { /* best effort */ }
@@ -333,6 +351,7 @@ export class HostStore {
     // tmp file carries the 0600 mode through the rename.
     writeFileSync(tmp, JSON.stringify(file, null, 2) + '\n', { encoding: 'utf8', mode: 0o600 })
     renameSync(tmp, this.path)
+    this.cache = undefined
   }
 }
 

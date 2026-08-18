@@ -133,14 +133,17 @@ export function collectNotes(cwd, tag, repo = DEFAULT_REPO) {
   return renderNotes(version, rows, repo)
 }
 
-/** The nearest previous v* tag below `tag`, or null when none exists. */
+/** The nearest previous tag reachable from `tag`'s first parent, or null when none exists. */
 function previousTag(cwd, tag) {
-  const listed = execFileSync('git', ['tag', '--list', 'v*', '--sort=-v:refname'], { cwd, encoding: 'utf8' })
-  for (const candidate of listed.split('\n')) {
-    if (candidate === '' || candidate === tag) continue
-    return candidate
+  // Ancestor semantics, not version sort: the second-highest version may be
+  // a sibling or descendant of tag (hotfix lines, re-tags), which would make
+  // the log range empty or bloated. describe walks the actual commit graph.
+  try {
+    const found = execFileSync('git', ['describe', '--tags', '--abbrev=0', '--match', 'v*', tag + '^'], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+    return found === '' ? null : found
+  } catch {
+    return null
   }
-  return null
 }
 
 /** Resolve the GitHub owner/repo from the origin URL (constant fallback). */

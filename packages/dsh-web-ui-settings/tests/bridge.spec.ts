@@ -164,7 +164,7 @@ describe('bridge describe', () => {
     const { seam } = fakeSettings({
       'task-board': { value: { enabled: true }, revision: 1 },
       'skin-background': { value: { backgroundOpacity: 0.5 }, revision: 2 },
-      'live-stats': { value: { enabled: true }, revision: 3 },
+      pet: { value: { visible: true }, revision: 3 },
     })
     const handlers = makeBridgeHandlers({ settings: seam as unknown as SettingsProvider, readSettingsYaml: userYaml })
     const result = await handlers.describe()

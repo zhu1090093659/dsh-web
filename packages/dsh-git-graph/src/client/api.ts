@@ -5,6 +5,7 @@
  * @module dsh-git-graph/client/api
  */
 
+import { subscribeSharedEvents } from './sse-leader.ts'
 import type {
   BranchesView, GitError, GraphView, RepoStatus,
 } from '../core/types.ts'
@@ -77,7 +78,8 @@ export class GitApi {
  * @returns the disposer closing the stream.
  */
 export function subscribeChanges(path: string, onChange: () => void): () => void {
-  const source = new EventSource(`/git/events?path=${encodeURIComponent(path)}`)
-  source.addEventListener('change', () => { onChange() })
-  return () => { source.close() }
+  // The stream is shared browser-wide through the cross-tab leader relay
+  // (issue #383): two tabs of the same workspace must not pin two SSE
+  // connections against the per-origin HTTP pool.
+  return subscribeSharedEvents(`/git/events?path=${encodeURIComponent(path)}`, 'change', () => { onChange() })
 }

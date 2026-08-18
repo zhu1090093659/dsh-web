@@ -1,0 +1,54 @@
+name: Update contributors
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    # Daily refresh in case contributors changed via merged PRs that did not
+    # themselves trigger a push (e.g. force-pushed or rebased merges).
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: contributors-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update-contributors:
+    name: Sync contributor list into READMEs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Regenerate contributor sections
+        run: |
+          node scripts/update-contributors.mjs
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- README.md README.en.md; then
+            echo "Contributor list unchanged; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md README.en.md
+          git commit -m "docs(readme): sync contributor list from GitHub API [skip ci]"
+          git push

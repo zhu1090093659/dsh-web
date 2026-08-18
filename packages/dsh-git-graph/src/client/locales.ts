@@ -37,7 +37,6 @@ export const zh = {
   'error.internal': '操作失败，请稍后重试。',
   'error.requestFailed': '分支操作失败：{error}',
   'toast.switchSuccess': '已切换到分支 {branchName}',
-  'toast.createSuccess': '已创建并切换到分支 {branchName}',
   'chip.aria.branch': '分支',
 } satisfies Record<string, string>
 
@@ -81,6 +80,5 @@ export const en = {
   'error.internal': 'The operation failed. Please try again.',
   'error.requestFailed': 'Branch operation failed: {error}',
   'toast.switchSuccess': 'Switched to branch {branchName}',
-  'toast.createSuccess': 'Created and switched to branch {branchName}',
   'chip.aria.branch': 'Branch',
 } satisfies Record<GitGraphKey, string>

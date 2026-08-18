@@ -314,7 +314,7 @@ export interface CompatScopeOptions<T> {
  * @param options - the official scope, the namespace, and the loopback fetch.
  * @returns the compatibility scope implementing the SettingsScope contract.
  */
-export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsScope<T> & { load(): Promise<void> } & { mutate?: (fields: BridgeBatchOp[]) => Promise<BridgeBatchResult> } {
+export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsScope<T> & { load(): Promise<void> } & { mutate?: (fields: BridgeBatchOp[]) => Promise<BridgeBatchResult> } & { dispose(): void } {
   const { namespace, primary } = options
   const fallback = options.fetchFn === undefined
     ? undefined
@@ -336,13 +336,21 @@ export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsSc
     if (bridgeSnapshot.status === 'loading') return { ...primarySnapshot, status: 'loading' }
     return primarySnapshot
   }
-  primary.subscribe(() => {
+  // The wrapper lives behind bind()'s effect disposer: subscriptions must
+  // be released on plugin unload/HMR, not pinned to the singleton primary
+  // scope store forever.
+  const unsubscribes: Array<() => void> = []
+  unsubscribes.push(primary.subscribe(() => {
     publish()
     if (primary.getSnapshot().status === 'unavailable') startFallback()
-  })
-  fallback?.subscribe(publish)
+  }))
+  if (fallback !== undefined) unsubscribes.push(fallback.subscribe(publish))
   if (primary.getSnapshot().status === 'unavailable') startFallback()
   return {
+    dispose: () => {
+      for (const unsubscribe of unsubscribes.splice(0)) unsubscribe()
+      void fallback?.dispose()
+    },
     getSnapshot: () => store.getSnapshot(),
     subscribe: listener => store.subscribe(listener),
     set: (field, value) => active().set(field, value),
@@ -413,6 +421,9 @@ export class WebUiSettingsBinder extends Service {
       disposers.push(ctx.on('connection/reset', () => { void scope.load() }))
       return () => {
         for (const dispose of disposers) dispose()
+        // Release the scope's own subscriptions (primary + fallback) so an
+        // unloaded plugin stops republishing into the singleton stores.
+        scope.dispose()
       }
     }, 'web-ui-settings: compat scope invalidation')
     return scope

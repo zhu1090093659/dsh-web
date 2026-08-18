@@ -30,6 +30,17 @@ export interface DragHandleProps {
 }
 
 /**
+ * Convert a drag's pixel delta into the next width in ratio (percentage) mode.
+ * The raw deltaX is pixels; a percentage width must scale that delta by the
+ * container width, otherwise a 30px drag moves a 50% width straight to the
+ * 80% maximum instead of ~4%.
+ */
+export function ratioWidthFromDelta(startWidth: number, deltaX: number, containerWidth: number): number {
+  if (containerWidth <= 0) return startWidth
+  return startWidth + (deltaX / containerWidth) * 100
+}
+
+/**
  * Resizable-split engine.
  * @param options - width contract + persistence key.
  * @returns current width, the committed setter, handle props, and the clamp.
@@ -75,11 +86,19 @@ export function useResizableSplit(options: UseResizableSplitOptions = {}) {
     handlePointerDragStart(event.nativeEvent, el, {
       reverse: el.dataset.reverse === 'true',
       getStartWidth: () => widthRef.current,
-      compute: (startWidth, deltaX) => clamp(startWidth + deltaX),
+      compute: (startWidth, deltaX) => {
+        if (isPx) return clamp(startWidth + deltaX)
+        // ratio mode: deltaX is a pixel delta, startWidth is a percentage.
+        // Scale the pixel delta by the split container width (the handle is
+        // its direct child) so the pane tracks the pointer instead of jumping
+        // to the min/max clamp on a small drag.
+        const containerWidth = el.parentElement?.clientWidth ?? 0
+        return clamp(ratioWidthFromDelta(startWidth, deltaX, containerWidth))
+      },
       onFrame: (value) => setWidthState(value),
       onEnd: (value) => setWidth(value),
     })
-  }, [clamp, setWidth])
+  }, [clamp, setWidth, isPx])
 
   const handleDoubleClick = useCallback(() => {
     setWidth(defaultWidth)

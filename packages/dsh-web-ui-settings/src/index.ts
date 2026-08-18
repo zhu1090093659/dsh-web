@@ -18,6 +18,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import { makeBridgeRoutes } from './bridge.ts'
+import { mountOnce } from './mount-once.ts'
 
 /** Default environment variable holding the reverse-proxy shared token. */
 export const DEFAULT_PROXY_TOKEN_ENV = 'DSH_WEB_UI_SETTINGS_PROXY_TOKEN'
@@ -57,7 +58,9 @@ export const inject = ['webServer'] as const
  * @param ctx - host plugin context.
  * @param config - loopback-default bridge and authenticated-proxy config.
  */
-export function apply(ctx: Context, config?: Config): void {
+export const apply = mountOnce('@linxin666/dsh-client-ui-web-ui-settings', applyImpl)
+
+function applyImpl(ctx: Context, config?: Config): void {
   const access = resolveProxyAccess(config)
   ctx.inject(['settings'], (sctx) => {
     const settingsYamlPath = sctx.settings.documentPath ?? join(homedir(), '.dsh', 'settings.yaml')

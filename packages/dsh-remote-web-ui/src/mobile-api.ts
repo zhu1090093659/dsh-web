@@ -25,6 +25,7 @@ import type { ApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
 import type { RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
 import type { PairingService } from './pairing.ts'
+import { readBoundedJson, writeJson } from './http.ts'
 import { readCookie } from './gate.ts'
 
 /** Methods the phone surface may call. Everything else is refused. */
@@ -123,11 +124,6 @@ export function makeMobileApiRoutes(deps: MobileApiDeps): WebRoute[] {
     return touchDeviceFor(req)
   }
 
-  const writeJson = (res: ServerResponse, status: number, body: unknown): void => {
-    res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
-    res.end(JSON.stringify(body))
-  }
-
   const handleMethod = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     if (req.method !== 'POST') {
       res.writeHead(405)
@@ -171,7 +167,11 @@ export function makeMobileApiRoutes(deps: MobileApiDeps): WebRoute[] {
       return
     }
     try {
-      const response = await dispatch(apiProxy, method, parsed?.payload, rpcId)
+      // Cancel the host-side work when the phone goes away mid-call (the
+      // response stream closing before we answer means nobody is listening).
+      const abort = new AbortController()
+      res.on('close', () => { if (!res.writableEnded) abort.abort() })
+      const response = await dispatch(apiProxy, method, parsed?.payload, rpcId, abort.signal)
       writeJson(res, 200, response)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -245,19 +245,11 @@ export function makeMobileApiRoutes(deps: MobileApiDeps): WebRoute[] {
 
 /** Read a request body as JSON (bounded). */
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = []
-  let size = 0
-  for await (const chunk of req) {
-    const buffer = chunk as Buffer
-    size += buffer.length
-    if (size > 64 * 1024) throw new Error('body too large')
-    chunks.push(buffer)
-  }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+  return readBoundedJson(req, 64 * 1024)
 }
 
 /** Dispatch one allowlisted method through the host ApiProxy. */
-async function dispatch(apiProxy: ApiProxy, method: string, payload: unknown, rpcId: string): Promise<unknown> {
+async function dispatch(apiProxy: ApiProxy, method: string, payload: unknown, rpcId: string, signal?: AbortSignal): Promise<unknown> {
   const request: RpcRequest<unknown> = { rpcId: RpcId(rpcId), payload }
   if (method === 'session.list') {
     const full = await apiProxy.sessions.list(request as never)
@@ -303,7 +295,7 @@ async function dispatch(apiProxy: ApiProxy, method: string, payload: unknown, rp
   if (method === 'workspace.list') return wrap(await apiProxy.workspace.list(request as never))
   if (method === 'session.create') return wrap(await apiProxy.sessions.create(request as never))
   if (method === 'session.history') return wrap(await apiProxy.sessions.history(request as never))
-  if (method === 'session.search') return wrap(await apiProxy.sessions.search(request as never, new AbortController().signal))
+  if (method === 'session.search') return wrap(await apiProxy.sessions.search(request as never, signal ?? new AbortController().signal))
   if (method === 'session.fork') return wrap(await apiProxy.sessions.fork(request as never))
   if (method === 'session.prompt') return wrap(await apiProxy.sessions.prompt(request as never))
   if (method === 'session.models') return wrap(await apiProxy.sessions.models(request as never))

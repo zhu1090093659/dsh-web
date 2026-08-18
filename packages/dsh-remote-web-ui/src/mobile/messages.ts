@@ -615,5 +615,18 @@ export function foldEvents(events: readonly WireEvent[], existing?: readonly Ren
     if (event.seq <= watermark) continue
     applyEvent(state, event)
   }
-  return [...state.messages].sort((a, b) => a.seq - b.seq || (a.id < b.id ? -1 : 1))
+  // Incremental tails (the live-stream hot path) are appended in seq order
+  // or updated in place, so the list is usually ordered already — verify in
+  // O(n) and skip the O(n log n) re-sort when it is.
+  const out = state.messages
+  let ordered = true
+  for (let index = 1; index < out.length; index += 1) {
+    const prev = out[index - 1]!
+    const current = out[index]!
+    if (prev.seq > current.seq || (prev.seq === current.seq && prev.id >= current.id)) {
+      ordered = false
+      break
+    }
+  }
+  return ordered ? out : [...out].sort((a, b) => a.seq - b.seq || (a.id < b.id ? -1 : 1))
 }

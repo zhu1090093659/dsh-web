@@ -25,6 +25,16 @@ describe('findImageReferences', () => {
     expect(findImageReferences(`看 ${REF} 一下`)).toEqual([{ alt: '图片', path: PATH, start: 2, end: 2 + REF.length }])
   })
 
+  it('preserves durable reference metadata in the preview path', () => {
+    const durable = `![图片](${PATH}?ref=%7B%22attachmentId%22%3A%22sha256%3Aabc%22%7D)`
+    expect(findImageReferences(durable)).toEqual([{
+      alt: '图片',
+      path: `${PATH}?ref=%7B%22attachmentId%22%3A%22sha256%3Aabc%22%7D`,
+      start: 0,
+      end: durable.length,
+    }])
+  })
+
   it('locates repeated references in one chunk', () => {
     const matches = findImageReferences(`${REF} 和 ${REF}`)
     expect(matches).toHaveLength(2)

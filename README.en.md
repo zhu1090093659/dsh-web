@@ -430,7 +430,7 @@ This repository is licensed under [Apache-2.0](LICENSE). Third-party code merged
   <a href="https://github.com/Twelveeee"><img src="https://github.com/Twelveeee.png?size=64" width="48" height="48" alt="Twelveeee" title="Twelveeee" /></a>
 </p>
 <p align="center">
-  <sub><a href="https://github.com/sclass53/dsh-web-ui/graphs/contributors">View all contributors</a></sub>
+  <sub><a href="https://github.com/zhu1090093659/dsh-web-ui/graphs/contributors">View all contributors</a></sub>
 </p>
 <!-- CONTRIBUTORS:END -->
 

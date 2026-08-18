@@ -420,6 +420,18 @@ function readMipmap(r: Reader, containerVersion: number): TexMipmap {
   if (isLz4) {
     return { width, height, bytes: lz4DecompressBlock(stored, decompressedCount) }
   }
+  // Some TEX writers store an LZ4 block without setting the flag: the
+  // declared decompressed size then exceeds the stored byte count. When the
+  // counts are consistent with a compressed payload (and the target size is
+  // plausible for this mip), attempt the block decode; a payload that does
+  // not reconstruct exactly stays raw and fails size checks downstream.
+  if (decompressedCount > stored.length && decompressedCount <= width * height * 4) {
+    try {
+      return { width, height, bytes: lz4DecompressBlock(stored, decompressedCount) }
+    } catch {
+      // Not a valid LZ4 block: keep the stored payload as-is.
+    }
+  }
   return { width, height, bytes: stored }
 }
 
@@ -702,7 +714,17 @@ export function decodeTex(data: Uint8Array): DecodedImage {
   switch (parsed.format) {
     case TexFormat.RGBA8888: {
       if (bytes.length < width * height * 4) {
-        throw new Error('tex: mipmap size mismatch for RGBA8888')
+        // Some TEX files declare RGBA8888 while storing a block-compressed
+        // payload (observed in workshop scene.pkg variants). Salvage the
+        // frame when the stored bytes fit a BC1 block grid exactly.
+        const blocks = Math.ceil(width / 4) * Math.ceil(height / 4)
+        if (bytes.length === blocks * 8) {
+          return { width, height, rgba: decodeDxt1(bytes, width, height) }
+        }
+        throw new Error(
+          'tex: mipmap size mismatch for RGBA8888 (' + width + 'x' + height +
+          ' needs ' + (width * height * 4) + ' bytes, stored ' + bytes.length + ')',
+        )
       }
       return { width, height, rgba: bytes.slice(0, width * height * 4) }
     }
@@ -898,7 +920,9 @@ export function extractSceneMainImage(pkgData: Uint8Array): SceneMainImage {
       const { width, height, rgba } = decodeTex(readPkgEntry(pkgData, entry))
       return { width, height, png: encodePng(width, height, rgba), texturePath: entry.path }
     } catch (err) {
-      lastError = err
+      // Carry the texture path so a failing candidate is identifiable in the
+      // final error; the candidate loop itself moves on to the next texture.
+      lastError = new Error("pkg: texture '" + path + "': " + (err instanceof Error ? err.message : String(err)))
     }
   }
   throw lastError instanceof Error ? lastError : new Error('pkg: no decodable texture found')

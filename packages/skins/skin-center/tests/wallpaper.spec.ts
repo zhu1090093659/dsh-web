@@ -123,6 +123,34 @@ describe('WallpaperController', () => {
     controller.dispose()
   })
 
+  it('falls back to the preview when the scene frame fails to load', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection(scene)
+    const [media] = layers()
+    const image = media.querySelector('img')
+    expect(image).not.toBeNull()
+    image?.dispatchEvent(new Event('error'))
+    expect(image?.src).toContain('/api/skin-center/we/preview/ddd')
+    controller.dispose()
+  })
+
+  it('injects and removes the shell-surface transparency override with the layers', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    expect(document.body.dataset.dshWallpaperActive).toBeUndefined()
+    controller.applySelection(video)
+    expect(document.body.dataset.dshWallpaperActive).toBe('')
+    const style = document.head.querySelector('style[data-dsh-wallpaper-override]')
+    expect(style).not.toBeNull()
+    expect(style?.textContent).toContain('[data-slot="conversation"]')
+    expect(style?.textContent).toContain('background: transparent !important')
+    controller.clearSelection()
+    expect(document.body.dataset.dshWallpaperActive).toBeUndefined()
+    expect(document.head.querySelector('style[data-dsh-wallpaper-override]')).toBeNull()
+    controller.dispose()
+  })
+
   it('frame mode renders the video preview instead of the video element', () => {
     const { scope } = fakeScope({ mode: 'frame' })
     const controller = new WallpaperController(scope)

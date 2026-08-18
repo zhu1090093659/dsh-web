@@ -141,6 +141,11 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
 
   const entryToJson = (entry: WallpaperEntry): WallpaperJson => {
     const hasFile = existsSync(entry.fileAbs)
+    // Scene frames are decoded from a PKG container. A scene whose main file
+    // is the loose scene.json (Wallpaper Engine bundled projects) has no
+    // container to decode, so no frameUrl is issued and the browser half
+    // falls back to the preview image.
+    const isPkg = hasFile && entry.fileAbs.toLowerCase().endsWith('.pkg')
     return {
       id: entry.id,
       title: entry.title,
@@ -150,7 +155,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
       updateAvailable: entry.updateAvailable,
       videoUrl: entry.type === 'video' && hasFile ? WE_API_PREFIX + '/media/' + tokenFor(entry.fileAbs) : null,
       webUrl: entry.type === 'web' && hasFile ? WE_API_PREFIX + '/web/' + tokenFor(entry.fileAbs) + '/' : null,
-      frameUrl: entry.type === 'scene' && hasFile ? WE_API_PREFIX + '/scene-frame/' + tokenFor(entry.fileAbs) : null,
+      frameUrl: entry.type === 'scene' && isPkg ? WE_API_PREFIX + '/scene-frame/' + tokenFor(entry.fileAbs) : null,
       previewUrl: entry.previewAbs ? WE_API_PREFIX + '/preview/' + tokenFor(entry.previewAbs) : null,
     }
   }
@@ -262,6 +267,13 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
       if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
       const abs = resolveToken(req, res, framePrefix)
       if (!abs) return
+      // Defense in depth: only PKG containers are decodable. Stale tokens
+      // pointing at a loose scene.json answer a readable error instead of a
+      // raw parser stack (inventory no longer issues such tokens).
+      if (!abs.toLowerCase().endsWith('.pkg')) {
+        json(res, 422, { ok: false, error: 'scene-frame: not a PKG container' })
+        return
+      }
       void (async () => {
         let mtime = 0
         try { mtime = statSync(abs).mtimeMs } catch { /* stays 0 */ }

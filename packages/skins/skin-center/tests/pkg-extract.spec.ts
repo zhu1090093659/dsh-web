@@ -162,6 +162,8 @@ interface MipSpec {
   data: Uint8Array
   /** Wrap the payload in a literal-only LZ4 block (TEXB0002+). */
   lz4?: boolean
+  /** Store an LZ4 block while leaving the isLz4 flag at 0 (writer variant). */
+  lz4NoFlag?: boolean
 }
 
 interface TexSpec {
@@ -206,8 +208,15 @@ const buildTex = (spec: TexSpec): Uint8Array => {
     if (version === 1) {
       parts.push(i32le(mip.data.length), mip.data)
     } else {
-      const payload = mip.lz4 ? lz4LiteralBlock(mip.data) : mip.data
-      parts.push(i32le(mip.lz4 ? 1 : 0), i32le(mip.data.length), i32le(payload.length), payload)
+      const compressed = mip.lz4 === true || mip.lz4NoFlag === true
+      // An un-flagged writer variant only makes sense with a payload that
+      // actually beats the raw size, i.e. a block with matches (period-4).
+      const payload = mip.lz4 === true
+        ? lz4LiteralBlock(mip.data)
+        : mip.lz4NoFlag === true
+          ? lz4CompressPeriodic(mip.data)
+          : mip.data
+      parts.push(i32le(mip.lz4 === true ? 1 : 0), i32le(mip.data.length), i32le(payload.length), payload)
     }
   }
   if (spec.frames) {
@@ -596,6 +605,49 @@ describe('decodeTex', () => {
     })
     expect(parseTex(tex).formatName).toBe('BC7')
     expect(() => decodeTex(tex)).toThrow(/tex: unsupported format 12/)
+  })
+
+  it('salvages an RGBA8888-declared mip that stores a BC1 block grid', () => {
+    // Declared format RGBA8888 but the payload is one DXT1 block (c0 pure
+    // red, c1 pure blue): the byte count matches the BC1 grid exactly, so
+    // the frame is decoded as DXT1 instead of failing the size check.
+    const block = concat(u16le(0xf800), u16le(0x001f), u32le(0))
+    const tex = buildTex({
+      width: 4,
+      height: 4,
+      format: TexFormat.RGBA8888,
+      mipmaps: [{ width: 4, height: 4, data: block }],
+    })
+    const { rgba } = decodeTex(tex)
+    for (let i = 0; i < 16; i++) {
+      expect(Array.from(rgba.subarray(i * 4, i * 4 + 4))).toEqual([255, 0, 0, 255])
+    }
+  })
+
+  it('reports the expected and stored sizes for a short RGBA8888 mip', () => {
+    const tex = buildTex({
+      width: 4,
+      height: 4,
+      format: TexFormat.RGBA8888,
+      mipmaps: [{ width: 4, height: 4, data: new Uint8Array(12) }],
+    })
+    expect(() => decodeTex(tex))
+      .toThrow(/tex: mipmap size mismatch for RGBA8888 \(4x4 needs 64 bytes, stored 12\)/)
+  })
+
+  it('decodes an un-flagged LZ4 mipmap when the declared size exceeds the stored bytes', () => {
+    // 4x4 RGBA8888, period-4 pixels: the writer stored an LZ4 block with
+    // matches but left the isLz4 flag at 0 (the reported workshop variant).
+    const pixels = new Uint8Array(64)
+    for (let i = 0; i < 64; i += 4) pixels.set([10, 20, 30, 255], i)
+    const tex = buildTex({
+      width: 4,
+      height: 4,
+      format: TexFormat.RGBA8888,
+      mipmaps: [{ width: 4, height: 4, data: pixels, lz4NoFlag: true }],
+    })
+    const { rgba } = decodeTex(tex)
+    expect(rgba).toEqual(pixels)
   })
 })
 

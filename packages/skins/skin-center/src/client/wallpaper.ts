@@ -16,6 +16,13 @@
  * media layer covers the body's background, no skin writes are touched, and
  * unmounting restores the previous view for free.
  *
+ * The official shell paints its layout surfaces (app frame and the
+ * conversation/details/sidebar columns) with an opaque base color that would
+ * cover the media layer entirely. While a wallpaper is mounted the controller
+ * injects a scoped stylesheet that makes those surfaces transparent (see
+ * ensureVisibilityOverride) and removes it on teardown, so the wallpaper
+ * shows through under every skin, not only translucent backdrop skins.
+ *
  * Render modes: 'live' mounts video/web directly; 'frame' pins a static
  * image (video: first frame captured to a canvas; scene: the host-decoded
  * PNG; web: the preview image) for a zero-animation-cost backdrop. When
@@ -139,6 +146,8 @@ export class WallpaperController implements WallpaperHandle {
   private mediaLayer: HTMLDivElement | null = null
   private scrimLayer: HTMLDivElement | null = null
   private videoElement: HTMLVideoElement | null = null
+  /** The injected shell-surface transparency stylesheet, while mounted. */
+  private overrideStyle: HTMLStyleElement | null = null
   private disposed = false
 
   constructor(scope: SettingsScope<WallpaperSection>) {
@@ -315,6 +324,7 @@ export class WallpaperController implements WallpaperHandle {
       styleLayer(this.scrimLayer, -2)
       document.body.appendChild(this.scrimLayer)
     }
+    this.ensureVisibilityOverride()
     const mediaKey = descriptor.id + ':' + this.modeValue
     if (this.mediaLayer.dataset.mediaKey !== mediaKey) {
       this.mediaLayer.dataset.mediaKey = mediaKey
@@ -358,6 +368,16 @@ export class WallpaperController implements WallpaperHandle {
       return this.buildImage(descriptor.previewUrl)
     }
     if (descriptor.type === 'scene') {
+      if (descriptor.frameUrl !== null && descriptor.previewUrl !== null) {
+        const image = this.buildImage(descriptor.frameUrl)
+        // The host decodes the frame in-process; a scene variant that
+        // defeats the decoder answers 422. Fall back to the preview image so
+        // the wallpaper never renders as a broken frame.
+        image?.addEventListener('error', () => {
+          if (descriptor.previewUrl !== null) image.src = descriptor.previewUrl
+        }, { once: true })
+        return image
+      }
       return this.buildImage(descriptor.frameUrl ?? descriptor.previewUrl)
     }
     return this.buildImage(descriptor.previewUrl)
@@ -418,6 +438,41 @@ export class WallpaperController implements WallpaperHandle {
     return image
   }
 
+  /**
+   * While a wallpaper is mounted, make the official shell's opaque layout
+   * surfaces transparent so the body-level wallpaper layers can show through.
+   * The shell paints the app frame and the conversation/details/sidebar
+   * columns with an opaque base color, which otherwise covers the
+   * z-index:-3 media layer entirely. The shell stamps stable data-slot
+   * attributes on these seats, so structural selectors survive hash changes
+   * in its CSS-module class names; the scrim layer keeps text readable.
+   */
+  private ensureVisibilityOverride(): void {
+    if (this.overrideStyle !== null) return
+    document.body.dataset.dshWallpaperActive = ''
+    const style = document.createElement('style')
+    style.setAttribute('data-dsh-wallpaper-override', '')
+    style.textContent = [
+      'body[data-dsh-wallpaper-active] #root [data-slot="root"] > :first-child,',
+      'body[data-dsh-wallpaper-active] #root [data-slot="conversation"] > :first-child,',
+      'body[data-dsh-wallpaper-active] #root [data-slot="details"] > :first-child,',
+      'body[data-dsh-wallpaper-active] #root [data-slot="sidebar"] > :first-child {',
+      '  background: transparent !important;',
+      '}',
+    ].join('\n')
+    document.head.appendChild(style)
+    this.overrideStyle = style
+  }
+
+  /** Restore the shell surfaces and drop the override stylesheet. */
+  private removeVisibilityOverride(): void {
+    delete document.body.dataset.dshWallpaperActive
+    if (this.overrideStyle !== null) {
+      this.overrideStyle.remove()
+      this.overrideStyle = null
+    }
+  }
+
   private teardownLayers(): void {
     if (this.videoElement !== null) {
       this.videoElement.pause()
@@ -431,6 +486,7 @@ export class WallpaperController implements WallpaperHandle {
       this.scrimLayer.remove()
       this.scrimLayer = null
     }
+    this.removeVisibilityOverride()
   }
 
   private publish(): void {

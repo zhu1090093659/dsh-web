@@ -29,7 +29,7 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, join as joinPath, resolve as resolvePath } from 'node:path'
+import { basename, dirname, join as joinPath, resolve as resolvePath } from 'node:path'
 
 /** Steam appid of Wallpaper Engine. */
 export const WE_APPID = '431960'
@@ -305,9 +305,23 @@ function synthesizeMediaEntries(dir: string, source: WallpaperSource): Wallpaper
   return entries
 }
 
+/**
+ * Resolve the main file (relative to the project dir) for one entry. Scene
+ * wallpapers declare "scene.json" in project.json, but workshop distributions
+ * ship the compiled scene.pkg container without the source json. When the
+ * declared file is absent, prefer a scene.pkg sitting next to it so the entry
+ * gets a real fileAbs and the scene-frame route can decode a static frame.
+ */
+function resolveEntryFile(dir: string, type: WallpaperType, file: string): string {
+  if (type !== 'scene' || existsSync(resolvePath(dir, file))) return file
+  const pkg = joinPath(dirname(file), 'scene.pkg')
+  return existsSync(resolvePath(dir, pkg)) ? pkg : file
+}
+
 /** Build one entry from a project directory. */
 function entryFromDir(dir: string, source: WallpaperSource, project: ProjectJson, id?: string): WallpaperEntry {
-  const fileAbs = resolvePath(dir, project.file)
+  const file = resolveEntryFile(dir, project.type, project.file)
+  const fileAbs = resolvePath(dir, file)
   const previewAbs = project.preview ? resolvePath(dir, project.preview) : null
   let mtime = 0
   let size = 0
@@ -326,7 +340,7 @@ function entryFromDir(dir: string, source: WallpaperSource, project: ProjectJson
     id: id ?? basename(dir),
     title: project.title ?? basename(dir),
     type: project.type,
-    file: project.file,
+    file,
     preview: project.preview,
     dir,
     fileAbs,
@@ -418,7 +432,8 @@ export function scanImportStore(storeDir: string): WallpaperEntry[] {
     const manifest = readImportedManifest(dir)
     if (!manifest) continue
     const projectDir = joinPath(dir, 'project')
-    const fileAbs = resolvePath(dir, manifest.file)
+    const file = resolveEntryFile(dir, manifest.type, manifest.file)
+    const fileAbs = resolvePath(dir, file)
     const previewAbs = manifest.preview ? resolvePath(dir, manifest.preview) : null
     let mtime = 0
     let size = 0
@@ -440,7 +455,7 @@ export function scanImportStore(storeDir: string): WallpaperEntry[] {
       id: `imported/${manifest.sourceId}`,
       title: manifest.title,
       type: manifest.type,
-      file: manifest.file,
+      file,
       preview: manifest.preview,
       dir: projectDir,
       fileAbs,

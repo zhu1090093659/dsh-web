@@ -146,6 +146,29 @@ describe('scanProjectsRoot', () => {
     writeFileSync(join(dir, 'loop.mp4'), 'x', 'utf8')
     expect(scanProjectsRoot(ws, 'workshop')).toHaveLength(0)
   })
+
+  it('falls back to scene.pkg for scenes whose declared scene.json is absent', () => {
+    const ws = join(root, 'ws')
+    makeProject(join(ws, '1441698666'), { title: 'Scene', type: 'scene', file: 'scene.json' }, ['scene.pkg'])
+    const entries = scanProjectsRoot(ws, 'workshop')
+    expect(entries).toHaveLength(1)
+    const scene = entries[0]
+    expect(scene?.file).toBe('scene.pkg')
+    expect(scene?.fileAbs).toBe(join(ws, '1441698666', 'scene.pkg'))
+    // Scenes stay unplayable in the video/web sense; the routes layer decides
+    // frameUrl issuance from the now-existing pkg container.
+    expect(scene?.playable).toBe(false)
+    expect(scene?.srcSize).toBeGreaterThan(0)
+  })
+
+  it('keeps the declared scene.json when it exists next to a scene.pkg', () => {
+    const ws = join(root, 'ws')
+    makeProject(join(ws, 'arsenal'), { title: 'Arsenal', type: 'scene', file: 'scene.json' }, ['scene.json', 'scene.pkg'])
+    const entries = scanProjectsRoot(ws, 'workshop')
+    expect(entries).toHaveLength(1)
+    expect(entries[0].file).toBe('scene.json')
+    expect(entries[0].fileAbs).toBe(join(ws, 'arsenal', 'scene.json'))
+  })
 })
 
 describe('scanImportStore', () => {
@@ -170,6 +193,23 @@ describe('scanImportStore', () => {
     const store = join(root, 'store')
     mkdirSync(join(store, 'junk'), { recursive: true })
     expect(scanImportStore(store)).toHaveLength(0)
+  })
+
+  it('applies the scene.pkg fallback to imported scene manifests', () => {
+    const store = join(root, 'store')
+    const entryDir = join(store, '777')
+    mkdirSync(join(entryDir, 'project'), { recursive: true })
+    writeFileSync(join(entryDir, 'project', 'scene.pkg'), 'x', 'utf8')
+    writeFileSync(join(entryDir, 'manifest.json'), JSON.stringify({
+      sourceId: '777', title: 'Imported Scene', type: 'scene',
+      srcMtime: 10, srcSize: 1, importedAt: 20,
+      file: join('project', 'scene.json'), preview: null,
+    }), 'utf8')
+    const entries = scanImportStore(store)
+    expect(entries).toHaveLength(1)
+    expect(entries[0].file).toBe(join('project', 'scene.pkg'))
+    expect(entries[0].fileAbs).toBe(join(entryDir, 'project', 'scene.pkg'))
+    expect(entries[0].srcSize).toBeGreaterThan(0)
   })
 })
 

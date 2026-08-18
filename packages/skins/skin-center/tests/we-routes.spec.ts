@@ -91,6 +91,17 @@ beforeEach(async () => {
   makeProject(join(library, '333'), { title: 'Scene', type: 'scene', file: 'scene.pkg' }, {
     'scene.pkg': 'NOT-A-REAL-PKG',
   })
+  // Workshop-style scene: project.json declares scene.json, only the
+  // compiled scene.pkg container ships.
+  makeProject(join(library, '444'), { title: 'Workshop Scene', type: 'scene', file: 'scene.json', preview: 'p.gif' }, {
+    'scene.pkg': 'NOT-A-REAL-PKG',
+    'p.gif': 'FAKE-GIF',
+  })
+  // Bundled scene: the loose scene.json exists and no pkg container ships.
+  makeProject(join(library, '555'), { title: 'Bundled Scene', type: 'scene', file: 'scene.json', preview: 'p.jpg' }, {
+    'scene.json': '{"objects":[]}',
+    'p.jpg': 'FAKE-IMAGE',
+  })
   const routes = makeWeRoutes({ getConfig: () => ({ weLibraryDirs: [library] }), storeDir: store })
   await serve(routes)
 })
@@ -106,7 +117,7 @@ describe('inventory', () => {
     expect(res.status).toBe(200)
     expect(res.body.ok).toBe(true)
     const wallpapers = res.body.wallpapers as Array<Record<string, unknown>>
-    expect(wallpapers).toHaveLength(3)
+    expect(wallpapers).toHaveLength(5)
     const video = wallpapers.find(w => w.id === '111')
     expect(video?.type).toBe('video')
     expect(video?.playable).toBe(true)
@@ -116,6 +127,20 @@ describe('inventory', () => {
     const scene = wallpapers.find(w => w.id === '333')
     expect(scene?.playable).toBe(false)
     expect(String(scene?.frameUrl)).toContain(WE_API_PREFIX + '/scene-frame/')
+  })
+
+  it('issues a frameUrl for scenes whose declared scene.json fell back to scene.pkg', async () => {
+    const res = await call('GET', WE_API_PREFIX + '/inventory')
+    const workshop = (res.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '444')
+    expect(workshop?.frameUrl).not.toBeNull()
+    expect(String(workshop?.frameUrl)).toContain(WE_API_PREFIX + '/scene-frame/')
+  })
+
+  it('issues no frameUrl for a bundled scene that ships only scene.json', async () => {
+    const res = await call('GET', WE_API_PREFIX + '/inventory')
+    const bundled = (res.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '555')
+    expect(bundled?.frameUrl).toBeNull()
+    expect(String(bundled?.previewUrl)).toContain(WE_API_PREFIX + '/preview/')
   })
 
   it('rejects cross-site requests', async () => {

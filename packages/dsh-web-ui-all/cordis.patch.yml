@@ -72,3 +72,8 @@
 - insert:
     - id: web-ui-better-sidebar
       name: 'dsh-better-sidebar'
+
+# external: dsh-shikitor
+- insert:
+    - id: web-ui-shikitor
+      name: 'dsh-shikitor'

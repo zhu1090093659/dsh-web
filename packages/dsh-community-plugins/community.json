@@ -197,5 +197,16 @@
     "descriptionEn": "One-command skinning for DSH Web: 8 original themes, wallpaper (opacity/blur/gradient/URL), per-user accent, shareable theme packs with favorites and surprise-me. Purely native token system.",
     "repo": "https://github.com/RevolutionLA/dsh-dream-skin",
     "category": "ui"
+  },
+  {
+    "id": "dsh-shikitor",
+    "name": "Shikitor 编辑器",
+    "nameEn": "Shikitor Editor",
+    "author": "oneworks-ai",
+    "description": "为 DeepSeek Harness 提供可扩展的 Shikitor 消息发送器和工作区文件编辑器，支持 # 会话、@ 文件与插件、$ Skills、/ 命令补全，以及文件编辑和 Cordis 扩展点。",
+    "descriptionEn": "An extensible Shikitor sender and workspace file editor for DeepSeek Harness, with # session, @ file/plugin, $ skill and / command completions plus Cordis extension points.",
+    "repo": "https://github.com/oneworks-ai/shikitor",
+    "npm": "dsh-shikitor",
+    "category": "ui"
   }
 ]

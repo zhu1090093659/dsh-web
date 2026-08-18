@@ -49,3 +49,4 @@ deps:
 # （即将弃用）/ 使用 DSH-better-sidebar」，默认后者），无需行级 config patch。
 rows:
   - {"id": "better-sidebar", "name": "dsh-better-sidebar"}
+  - {"id": "shikitor", "name": "dsh-shikitor", "version": "1.0.2"}

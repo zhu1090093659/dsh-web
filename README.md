@@ -44,13 +44,21 @@ dsh-web-ui 继承 DeepSeek Harness（DSH）「一切皆开发、一切皆插件�
 | Agent 预设 | 官方预设（Standard / Minimal 等） | 梁神模式：面向 V4 Pro 的两阶段锚定预设 |
 | 任务看板 | 无 | 多列看板 + cron 定时真实执行 |
 | Git 可视化 | 无 | 分支泳道 + 提交历史图谱 |
-| 文件预览与变更 | 无 | 右侧面板：better-sidebar（资源管理器 / 编辑器 / 终端 / Git / 浏览器）；旧 aionui 面板已停止支持（默认关闭，设置卡可临时切回） |
+| 文件预览与变更 | 无 | Shikitor 工作区编辑器与 better-sidebar（资源管理器 / 编辑器 / 终端 / Git / 浏览器）；旧 aionui 面板已停止支持（默认关闭，设置卡可临时切回） |
 | 移动端远程 | 无 | 扫码配对，SSE 实时同步 |
 | 远程服务器运维 | 无 | SSH 面板：终端 / 传输 / 隧道 / 集群 |
 | 图像理解 | 无 | `describe_image` 视觉工具 |
 | 主题皮肤 | 默认主题 | 皮肤中心 11 款，先试穿再应用 |
 
 ## 功能插件
+
+### Shikitor 编辑器
+
+外部插件 [Shikitor](https://github.com/oneworks-ai/shikitor) 提供可扩展的消息发送器和工作区文件编辑器。输入 `#` 补全会话、`@` 补全文件与插件、`$` 补全 Skills、`/` 补全命令，并通过 Cordis 扩展点接入 DSH Web。
+
+| 消息发送器 | 工作区文件编辑器 |
+| --- | --- |
+| ![Shikitor sender](docs/screenshots/dsh-shikitor-sender-dark.png) | ![Shikitor editor](docs/screenshots/dsh-shikitor-editor-dark.png) |
 
 ### 梁神模式
 
@@ -221,6 +229,7 @@ dsh plugin --profile web add @linxin666/dsh-ssh                    # 远程连�
 dsh plugin --profile web add @linxin666/dsh-tool-describe-image    # 图像理解工具
 dsh plugin --profile web add @linxin666/dsh-pet                    # 鲸鱼娘宠物
 dsh plugin --profile web add dsh-better-sidebar                    # 右侧面板（推荐；资源管理器/编辑器/终端/Git/浏览器）
+dsh plugin --profile web add dsh-shikitor                          # Shikitor 消息发送器与工作区编辑器
 dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel # 旧右侧面板（aionui-panel，已停止支持，仅过渡保留）
 ```
 
@@ -345,6 +354,7 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
 | dsh-client-ui-skin-matrix | 贡献者原创（Matrix 深夜护眼暗色皮肤） | Apache-2.0（贡献者 seanchen 声明） |
 | dsh-tool-describe-image | 移植自 [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)（deepseek-harness `packages/vision/tool-describe-image`） | Apache-2.0（zhu1090093659） |
 | dsh-better-sidebar | 外部集成插件 [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)（右侧面板，npm 依赖引用） | MIT（omdsh-dev） |
+| dsh-shikitor | 外部集成插件 [oneworks-ai/shikitor](https://github.com/oneworks-ai/shikitor)（消息发送器与工作区编辑器，npm 依赖引用） | MIT（oneworks-ai） |
 
 ## 贡献者
 

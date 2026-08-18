@@ -278,12 +278,15 @@ function resolveEntries(pkgDir, entries, section, errors) {
  * profile root, and pnpm installs these children as normal dependencies
  * (hoisting them to the top level in the default layout).
  */
-function renderPackageJson(pkgPath, resolvedDeps) {
+function renderPackageJson(pkgPath, resolvedDeps, externalRows = []) {
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
   const next = {}
   for (const { name } of resolvedDeps) next[name] = 'workspace:*'
   for (const key of Object.keys(pkg.dependencies ?? {}).filter((k) => !(k in next)).sort()) {
     next[key] = pkg.dependencies[key]
+  }
+  for (const row of externalRows) {
+    if (typeof row.name === 'string' && typeof row.version === 'string') next[row.name] = row.version
   }
   if (Object.keys(next).length) pkg.dependencies = next
   else delete pkg.dependencies
@@ -335,7 +338,7 @@ for (const { pkgDir, ymlPath } of aggregates) {
   }
   const patch = renderPatch(blocks, manifest.rows, errors, rel)
   const resolvedDeps = resolveEntries(pkgDir, manifest.deps, 'deps', errors)
-  const pkgJson = renderPackageJson(join(pkgDir, 'package.json'), resolvedDeps)
+  const pkgJson = renderPackageJson(join(pkgDir, 'package.json'), resolvedDeps, manifest.rows)
   results.push({ rel, blocks, patch, resolvedDeps, pkgJson })
 }
 

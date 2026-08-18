@@ -46,13 +46,21 @@ dsh-web-ui inherits the core philosophy of DeepSeek Harness (DSH) — "everythin
 | Agent presets | Official presets (Standard / Minimal…) | Liang Shen Mode: two-phase anchoring tuned for V4 Pro |
 | Task board | None | Multi-column board + cron-scheduled real runs |
 | Git visualization | None | Branch lanes + commit history graph |
-| File preview & changes | None | Right panel: better-sidebar (explorer / editor / terminal / git / browser); the legacy aionui panel is no longer supported (off by default; the settings card can switch back temporarily) |
+| File preview & changes | None | Shikitor workspace editor plus better-sidebar (explorer / editor / terminal / git / browser); the legacy aionui panel is no longer supported (off by default; the settings card can switch back temporarily) |
 | Mobile remote control | None | QR pairing with SSE real-time sync |
 | Remote server ops | None | SSH panel: terminal / transfer / tunnels / cluster |
 | Image understanding | None | `describe_image` vision tool |
 | Themes & skins | Default theme | Skin center with 11 skins, try-on before apply |
 
 ## Feature Plugins
+
+### Shikitor Editor
+
+The external [Shikitor](https://github.com/oneworks-ai/shikitor) plugin provides an extensible message sender and workspace file editor. Type `#` for session completions, `@` for files and plugins, `$` for Skills, and `/` for commands; Cordis extension points connect it to DSH Web.
+
+| Message sender | Workspace file editor |
+| --- | --- |
+| ![Shikitor sender](docs/screenshots/dsh-shikitor-sender-dark.png) | ![Shikitor editor](docs/screenshots/dsh-shikitor-editor-dark.png) |
 
 ### Liang Shen Mode
 
@@ -224,6 +232,7 @@ dsh plugin --profile web add @linxin666/dsh-ssh                    # Remote conn
 dsh plugin --profile web add @linxin666/dsh-tool-describe-image    # Image understanding tool
 dsh plugin --profile web add @linxin666/dsh-pet                    # Whale-girl pet
 dsh plugin --profile web add dsh-better-sidebar                    # Right panel (recommended; explorer/editor/terminal/git/browser)
+dsh plugin --profile web add dsh-shikitor                          # Shikitor sender and workspace editor
 dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel # Legacy right panel (aionui-panel, unsupported, transitional only)
 ```
 
@@ -347,6 +356,7 @@ This repository is licensed under [Apache-2.0](LICENSE). Third-party code merged
 | dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-web-ui-settings / dsh-liangshen / dsh-skins / dsh-web-ui-all / skins | Authored by zhu1090093659 | Apache-2.0 (zhu1090093659) |
 | dsh-tool-describe-image | Ported from [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image) (deepseek-harness `packages/vision/tool-describe-image`) | Apache-2.0 (zhu1090093659) |
 | dsh-better-sidebar | External integrated plugin [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) (right panel, npm dependency reference) | MIT (omdsh-dev) |
+| dsh-shikitor | External integrated plugin [oneworks-ai/shikitor](https://github.com/oneworks-ai/shikitor) (sender and workspace editor, npm dependency reference) | MIT (oneworks-ai) |
 
 ## Contributors
 

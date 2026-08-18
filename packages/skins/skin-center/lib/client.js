@@ -1252,6 +1252,8 @@ window.__ModuleLoader__.load({
 			"whale-song",
 			"whale-mom"
 		]);
+		/** Skin ids that read the bubble-alpha variable for their message bubbles. */
+		const BUBBLE_SKIN_IDS = /* @__PURE__ */ new Set(["whale-mom"]);
 		/**
 		* Render the skin-center card: a static header naming the plugin, with the
 		* always-visible skin list (official default + every installed skin; try-on /
@@ -1265,9 +1267,11 @@ window.__ModuleLoader__.load({
 			const opacity = (0, react.useSyncExternalStore)(background.subscribe, background.opacity);
 			const blurEmpty = (0, react.useSyncExternalStore)(background.subscribe, background.blurEmpty);
 			const blurContent = (0, react.useSyncExternalStore)(background.subscribe, background.blurContent);
+			const bubbleOpacity = (0, react.useSyncExternalStore)(background.subscribe, background.bubbleOpacity);
 			const activePackage = activeSkinEntry()?.package;
 			const activeId = activeSkinEntry()?.id;
 			const backdropActive = activeId !== void 0 && BACKDROP_SKIN_IDS.has(activeId);
+			const bubbleActive = activeId !== void 0 && BUBBLE_SKIN_IDS.has(activeId);
 			const tryingId = (0, react.useSyncExternalStore)(controller.subscribe, () => controller.trying?.id ?? null);
 			const tryingOfficial = (0, react.useSyncExternalStore)(controller.subscribe, () => controller.tryingOfficial);
 			const [loadingId, setLoadingId] = (0, react.useState)(null);
@@ -1626,6 +1630,40 @@ window.__ModuleLoader__.load({
 								})
 							]
 						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: skin_center_module_css_default.backgroundRow,
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: skin_center_module_css_default.backgroundHead,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.backgroundLabel,
+										children: t("bubbleOpacity")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: skin_center_module_css_default.backgroundValue,
+										"aria-hidden": "true",
+										children: [bubbleOpacity, "%"]
+									})]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									id: "skin-center-bubble-opacity",
+									className: skin_center_module_css_default.backgroundRange,
+									type: "range",
+									min: "0",
+									max: "100",
+									step: "5",
+									value: bubbleOpacity,
+									"aria-valuetext": `${bubbleOpacity}%`,
+									"aria-label": t("bubbleOpacity"),
+									onChange: (event) => {
+										background.setBubbleOpacity(Number(event.target.value));
+									}
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+									className: bubbleActive ? skin_center_module_css_default.backgroundHint : skin_center_module_css_default.backgroundHintMuted,
+									children: bubbleActive ? t("bubbleOpacityHint") : t("bubbleOpacityHintInert")
+								})
+							]
+						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(WallpaperPanel, {
 							t,
 							wallpaper
@@ -1752,8 +1790,12 @@ window.__ModuleLoader__.load({
 		const BLUR_EMPTY_FIELD = "backgroundBlurEmpty";
 		/** Field of the with-content backdrop blur inside the namespace section. */
 		const BLUR_CONTENT_FIELD = "backgroundBlurContent";
+		/** Field of the message-bubble opacity inside the namespace section. */
+		const BUBBLE_FIELD = "bubbleOpacity";
 		/** CSS custom property written to document.body and read by backdrop skins. */
 		const SCRIM_VAR = "--dsw-skin-scrim";
+		/** CSS custom property written to document.body and read by bubble-styling skins. */
+		const BUBBLE_ALPHA_VAR = "--dsw-skin-bubble-alpha";
 		/**
 		* Selector for a conversation message row inside the shell's center column.
 		* The `data-pane="conversation"` attribute is stamped by the dsh-web-ui-all
@@ -1778,6 +1820,7 @@ window.__ModuleLoader__.load({
 			opacityValue = 0;
 			blurEmptyValue = 0;
 			blurContentValue = 0;
+			bubbleOpacityValue = 50;
 			listeners = /* @__PURE__ */ new Set();
 			scope;
 			/** The fixed backdrop-filter element, present only while active blur > 0. */
@@ -1797,14 +1840,16 @@ window.__ModuleLoader__.load({
 				this.opacityValue = this.readOpacity();
 				this.blurEmptyValue = this.readBlur(BLUR_EMPTY_FIELD);
 				this.blurContentValue = this.readBlur(BLUR_CONTENT_FIELD);
-				this.applyOcclusion();
+				this.bubbleOpacityValue = this.readBubbleOpacity();
+				this.applyBodyVars();
 				this.syncBlur();
 				scope.subscribe(() => {
 					this.enabledValue = this.readEnabled();
 					this.opacityValue = this.readOpacity();
 					this.blurEmptyValue = this.readBlur(BLUR_EMPTY_FIELD);
 					this.blurContentValue = this.readBlur(BLUR_CONTENT_FIELD);
-					this.applyOcclusion();
+					this.bubbleOpacityValue = this.readBubbleOpacity();
+					this.applyBodyVars();
 					this.syncBlur();
 					this.publish();
 				});
@@ -1814,7 +1859,7 @@ window.__ModuleLoader__.load({
 			}
 			setEnabled(value) {
 				this.enabledValue = value;
-				this.applyOcclusion();
+				this.applyBodyVars();
 				this.syncBlur();
 				this.publish();
 				this.scope.set("enabled", value);
@@ -1828,6 +1873,9 @@ window.__ModuleLoader__.load({
 			blurContent() {
 				return this.blurContentValue;
 			}
+			bubbleOpacity() {
+				return this.bubbleOpacityValue;
+			}
 			subscribe(listener) {
 				this.listeners.add(listener);
 				return () => {
@@ -1837,9 +1885,16 @@ window.__ModuleLoader__.load({
 			set(opacity) {
 				const clamped = Math.max(0, Math.min(100, Math.round(opacity)));
 				this.opacityValue = clamped;
-				this.applyOcclusion();
+				this.applyBodyVars();
 				this.publish();
 				this.scope.set(OPACITY_FIELD, clamped);
+			}
+			setBubbleOpacity(value) {
+				const clamped = Math.max(0, Math.min(100, Math.round(value)));
+				this.bubbleOpacityValue = clamped;
+				this.applyBodyVars();
+				this.publish();
+				this.scope.set(BUBBLE_FIELD, clamped);
 			}
 			setBlurEmpty(value) {
 				const clamped = this.clampBlur(value);
@@ -1880,6 +1935,12 @@ window.__ModuleLoader__.load({
 				if (typeof raw !== "number" || !Number.isFinite(raw)) return 0;
 				return Math.max(0, Math.min(100, raw));
 			}
+			/** The effective bubble-opacity section value, clamped 0-100, defaulting to 50. */
+			readBubbleOpacity() {
+				const raw = this.scope.getSnapshot().value?.bubbleOpacity;
+				if (typeof raw !== "number" || !Number.isFinite(raw)) return 50;
+				return Math.max(0, Math.min(100, Math.round(raw)));
+			}
 			/** The effective blur section value for one field, clamped 0-20, defaulting to 0. */
 			readBlur(field) {
 				const raw = this.scope.getSnapshot().value?.[field];
@@ -1889,13 +1950,19 @@ window.__ModuleLoader__.load({
 			clampBlur(value) {
 				return Math.max(0, Math.min(20, Math.round(value)));
 			}
-			/** Write the current occlusion onto the body CSS variable (0..1 alpha). */
-			applyOcclusion() {
+			/**
+			* Write the current occlusion (0..1) and bubble opacity (0..1) onto the
+			* body CSS variables. Both are gated by the master switch: disabled means
+			* the variables are removed so skins fall back to their own defaults.
+			*/
+			applyBodyVars() {
 				if (!this.enabledValue) {
 					document.body.style.removeProperty(SCRIM_VAR);
+					document.body.style.removeProperty(BUBBLE_ALPHA_VAR);
 					return;
 				}
 				document.body.style.setProperty(SCRIM_VAR, String(this.opacityValue / 100));
+				document.body.style.setProperty(BUBBLE_ALPHA_VAR, String(this.bubbleOpacityValue / 100));
 			}
 			/**
 			* Apply the active blur: empty or with-content strength depending on the
@@ -2305,6 +2372,9 @@ window.__ModuleLoader__.load({
 			backgroundBlurInert: "Visible only with skins that paint a backdrop; the official default has none.",
 			backgroundHint: "Instantly veils the backdrop behind the panels — higher values obscure the art to help you focus.",
 			backgroundHintInert: "Only applies to skins that paint a backdrop (Blue Fantasy / Whale Song). Applies to the official default automatically once such a skin is active.",
+			bubbleOpacity: "Bubble opacity",
+			bubbleOpacityHint: "Instantly tunes the Whale Mom message bubbles — 50% is half-transparent, the skin default.",
+			bubbleOpacityHintInert: "Only applies to skins that style their own message bubbles (currently Whale Mom); every other skin keeps its own bubbles.",
 			wallpaperTitle: "Wallpaper Engine",
 			wallpaperEnable: "Enable wallpapers",
 			wallpaperHint: "Use your local Wallpaper Engine library as the GUI backdrop: video and web wallpapers render live, scene wallpapers as a static frame.",
@@ -2367,6 +2437,9 @@ window.__ModuleLoader__.load({
 			backgroundBlurInert: "仅对带背景图插画的皮肤可见；官方默认无背景图。",
 			backgroundHint: "即时为面板背后的背景加遮罩——数值越高越能弱化插画，帮你集中注意力。",
 			backgroundHintInert: "仅对带背景图插画的皮肤（蓝色幻想 / 鲸吟）生效；官方默认无背景图，该滑块对这些皮肤自动生效。",
+			bubbleOpacity: "气泡不透明度",
+			bubbleOpacityHint: "即时调整鲸鱼妈妈皮肤的消息气泡不透明度——50% 即半透明，也是皮肤默认值。",
+			bubbleOpacityHintInert: "仅对自带消息气泡配色的皮肤生效（当前为鲸鱼妈妈）；其他皮肤保持自身气泡样式。",
 			wallpaperTitle: "Wallpaper Engine",
 			wallpaperEnable: "启用动态壁纸",
 			wallpaperHint: "把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频与网页壁纸动态渲染，场景壁纸以静态帧呈现。",
@@ -2447,10 +2520,12 @@ window.__ModuleLoader__.load({
 					opacity: () => background.opacity(),
 					blurEmpty: () => background.blurEmpty(),
 					blurContent: () => background.blurContent(),
+					bubbleOpacity: () => background.bubbleOpacity(),
 					subscribe: (listener) => background.subscribe(listener),
 					set: (opacity) => background.set(opacity),
 					setBlurEmpty: (value) => background.setBlurEmpty(value),
 					setBlurContent: (value) => background.setBlurContent(value),
+					setBubbleOpacity: (value) => background.setBubbleOpacity(value),
 					dispose: () => background.dispose()
 				},
 				wallpaper: {

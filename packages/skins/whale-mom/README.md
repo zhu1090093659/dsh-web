@@ -30,6 +30,12 @@ The pane opacities are token-level (`--dsw-alias-bg-*`, `--dsw-specific-sidebar-
 document.body.style.setProperty('--dsw-skin-sidebar-alpha', '0.4')
 ```
 
+Message bubbles share the same idea through a second variable (`--dsw-skin-bubble-alpha`, default `0.5` = half-transparent): the user-bubble token (`--dsw-specific-bubble`) and the model-output / thinking bubble tokens (`--dsw-skin-bubble*`) all resolve their alpha from it. The skin-center card exposes it as the "Bubble opacity" slider (default 50%), so no console is needed:
+
+```js
+document.body.style.setProperty('--dsw-skin-bubble-alpha', '0.7')
+```
+
 ## Preview
 
 Light ([preview/light.png](preview/light.png)) · Dark ([preview/dark.png](preview/dark.png))

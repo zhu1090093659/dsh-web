@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 /**
  * BackgroundController regression tests for the skin-background namespace:
- * the occlusion veil and the per-state backdrop blur (empty vs. with-content
- * conversation). A fake SettingsScope drives reads / writes so no real
- * settings surface is ever touched.
+ * the occlusion veil, the per-state backdrop blur (empty vs. with-content
+ * conversation) and the message-bubble opacity variable. A fake
+ * SettingsScope drives reads / writes so no real settings surface is ever
+ * touched.
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
@@ -11,6 +12,8 @@ import {
   BackgroundController,
   BLUR_CONTENT_FIELD,
   BLUR_EMPTY_FIELD,
+  BUBBLE_ALPHA_VAR,
+  BUBBLE_FIELD,
   SCRIM_VAR,
 } from '../src/client/background.ts'
 
@@ -20,6 +23,7 @@ interface Section {
   backgroundOpacity?: number
   backgroundBlurEmpty?: number
   backgroundBlurContent?: number
+  bubbleOpacity?: number
 }
 
 /** A fake SettingsScope recording every set() call. */
@@ -90,12 +94,14 @@ describe('BackgroundController', () => {
     document.body.innerHTML = ''
   })
 
-  it('defaults: no blur element and the occlusion var is still set', () => {
+  it('defaults: no blur element and the occlusion + bubble vars are still set', () => {
     const { scope } = fakeScope()
     const controller = new BackgroundController(scope)
     expect(blurElement()).toBeNull()
     // Occlusion is unchanged: the veil variable is written on a default-0 scope.
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('0')
+    // Bubble opacity defaults to 50% (half-transparent), the whale-mom default.
+    expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('0.5')
     controller.dispose()
   })
 
@@ -141,6 +147,28 @@ describe('BackgroundController', () => {
     expect(blurElement()).toBeNull()
   })
 
+  it('setBubbleOpacity(30) applies the alpha and persists via scope.set', () => {
+    const { scope, calls } = fakeScope()
+    const controller = new BackgroundController(scope)
+    controller.setBubbleOpacity(30)
+    expect(controller.bubbleOpacity()).toBe(30)
+    expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('0.3')
+    expect(calls).toContainEqual({ field: BUBBLE_FIELD, value: 30 })
+    controller.dispose()
+  })
+
+  it('clamps setBubbleOpacity beyond the range to 0..100', () => {
+    const { scope } = fakeScope()
+    const controller = new BackgroundController(scope)
+    controller.setBubbleOpacity(150)
+    expect(controller.bubbleOpacity()).toBe(100)
+    expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('1')
+    controller.setBubbleOpacity(-40)
+    expect(controller.bubbleOpacity()).toBe(0)
+    expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('0')
+    controller.dispose()
+  })
+
   it('clamps setBlurEmpty(99) to 20', () => {
     const { scope, calls } = fakeScope()
     const controller = new BackgroundController(scope)
@@ -151,7 +179,7 @@ describe('BackgroundController', () => {
     controller.dispose()
   })
 
-  it('getSnapshot with absent blur fields behaves as 0', () => {
+  it('getSnapshot with absent blur fields behaves as 0 and keeps the bubble default', () => {
     const { scope } = fakeScope({ backgroundOpacity: 42 })
     const controller = new BackgroundController(scope)
     expect(controller.blurEmpty()).toBe(0)
@@ -159,27 +187,34 @@ describe('BackgroundController', () => {
     expect(blurElement()).toBeNull()
     // Occlusion still reads its own field.
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('0.42')
+    // Absent bubbleOpacity stays at the 50% default.
+    expect(controller.bubbleOpacity()).toBe(50)
+    expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('0.5')
     controller.dispose()
   })
 
-  it('disabled section (enabled=false) applies no scrim var and no blur element even with nonzero values', () => {
-    const { scope } = fakeScope({ enabled: false, backgroundOpacity: 60, backgroundBlurEmpty: 8 })
+  it('disabled section (enabled=false) applies no scrim / bubble vars and no blur element even with nonzero values', () => {
+    const { scope } = fakeScope({ enabled: false, backgroundOpacity: 60, backgroundBlurEmpty: 8, bubbleOpacity: 80 })
     const controller = new BackgroundController(scope)
     expect(controller.enabled()).toBe(false)
     // Occlusion is gated: the veil variable is removed, not written.
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('')
+    // Bubble opacity is gated the same way: removed, not written.
+    expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('')
     // Blur is gated: no blur element is created despite a nonzero blur value.
     expect(blurElement()).toBeNull()
     controller.dispose()
   })
 
-  it('setEnabled(true) restores occlusion application', () => {
-    const { scope } = fakeScope({ enabled: false, backgroundOpacity: 60 })
+  it('setEnabled(true) restores occlusion and bubble application', () => {
+    const { scope } = fakeScope({ enabled: false, backgroundOpacity: 60, bubbleOpacity: 70 })
     const controller = new BackgroundController(scope)
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('')
+    expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('')
     controller.setEnabled(true)
     expect(controller.enabled()).toBe(true)
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('0.6')
+    expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('0.7')
     controller.dispose()
   })
 

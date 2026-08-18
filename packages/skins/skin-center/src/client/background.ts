@@ -10,6 +10,11 @@
  * inert there — the value still persists so it is ready for the next backdrop
  * skin.
  *
+ * Message-bubble opacity is a second CSS variable on `document.body`
+ * (--dsw-skin-bubble-alpha, 0..1): whale-mom reads it for its user and
+ * model bubbles so the card can tune them live (default 50% = half
+ * transparent). Skins that do not read the variable are unaffected.
+ *
  * The Gaussian blur targets the same painted backdrop through a fixed child
  * of `document.body` using backdrop-filter: it samples the body's own
  * background painted behind it. Separate strengths apply to the empty
@@ -37,11 +42,20 @@ export const BLUR_EMPTY_FIELD = 'backgroundBlurEmpty'
 /** Field of the with-content backdrop blur inside the namespace section. */
 export const BLUR_CONTENT_FIELD = 'backgroundBlurContent'
 
+/** Field of the message-bubble opacity inside the namespace section. */
+export const BUBBLE_FIELD = 'bubbleOpacity'
+
 /** CSS custom property written to document.body and read by backdrop skins. */
 export const SCRIM_VAR = '--dsw-skin-scrim'
 
+/** CSS custom property written to document.body and read by bubble-styling skins. */
+export const BUBBLE_ALPHA_VAR = '--dsw-skin-bubble-alpha'
+
 /** Default occlusion (0 = no extra veil) when the section carries none. */
 export const DEFAULT_OPACITY = 0
+
+/** Default bubble opacity (50 = half-transparent) when the section carries none. */
+export const DEFAULT_BUBBLE_OPACITY = 50
 
 /** Default blur (0 = disabled) when the section carries none. */
 export const DEFAULT_BLUR = 0
@@ -58,6 +72,8 @@ export interface SkinBackgroundHandle {
   blurEmpty(): number
   /** Current with-content backdrop blur 0-20 px. */
   blurContent(): number
+  /** Current message-bubble opacity 0-100 (default 50). */
+  bubbleOpacity(): number
   /** Observe a change in the applied values. */
   subscribe(listener: () => void): () => void
   /** Apply + persist a new occlusion. */
@@ -66,6 +82,8 @@ export interface SkinBackgroundHandle {
   setBlurEmpty(value: number): void
   /** Apply + persist a new with-content backdrop blur (0-20 px). */
   setBlurContent(value: number): void
+  /** Apply + persist a new message-bubble opacity (0-100). */
+  setBubbleOpacity(value: number): void
   /** Tear down the blur element and MutationObserver. */
   dispose(): void
 }
@@ -95,12 +113,14 @@ export class BackgroundController implements SkinBackgroundHandle {
   private opacityValue = DEFAULT_OPACITY
   private blurEmptyValue = DEFAULT_BLUR
   private blurContentValue = DEFAULT_BLUR
+  private bubbleOpacityValue = DEFAULT_BUBBLE_OPACITY
   private readonly listeners = new Set<() => void>()
   private readonly scope: SettingsScope<{
     enabled?: boolean
     backgroundOpacity?: number
     backgroundBlurEmpty?: number
     backgroundBlurContent?: number
+    bubbleOpacity?: number
   }>
   /** The fixed backdrop-filter element, present only while active blur > 0. */
   private blurElement: HTMLDivElement | null = null
@@ -119,20 +139,23 @@ export class BackgroundController implements SkinBackgroundHandle {
     backgroundOpacity?: number
     backgroundBlurEmpty?: number
     backgroundBlurContent?: number
+    bubbleOpacity?: number
   }>) {
     this.scope = scope
     this.enabledValue = this.readEnabled()
     this.opacityValue = this.readOpacity()
     this.blurEmptyValue = this.readBlur(BLUR_EMPTY_FIELD)
     this.blurContentValue = this.readBlur(BLUR_CONTENT_FIELD)
-    this.applyOcclusion()
+    this.bubbleOpacityValue = this.readBubbleOpacity()
+    this.applyBodyVars()
     this.syncBlur()
     scope.subscribe(() => {
       this.enabledValue = this.readEnabled()
       this.opacityValue = this.readOpacity()
       this.blurEmptyValue = this.readBlur(BLUR_EMPTY_FIELD)
       this.blurContentValue = this.readBlur(BLUR_CONTENT_FIELD)
-      this.applyOcclusion()
+      this.bubbleOpacityValue = this.readBubbleOpacity()
+      this.applyBodyVars()
       this.syncBlur()
       this.publish()
     })
@@ -142,7 +165,7 @@ export class BackgroundController implements SkinBackgroundHandle {
 
   setEnabled(value: boolean): void {
     this.enabledValue = value
-    this.applyOcclusion()
+    this.applyBodyVars()
     this.syncBlur()
     this.publish()
     void this.scope.set('enabled', value)
@@ -154,6 +177,8 @@ export class BackgroundController implements SkinBackgroundHandle {
 
   blurContent(): number { return this.blurContentValue }
 
+  bubbleOpacity(): number { return this.bubbleOpacityValue }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
@@ -162,11 +187,19 @@ export class BackgroundController implements SkinBackgroundHandle {
   set(opacity: number): void {
     const clamped = Math.max(0, Math.min(100, Math.round(opacity)))
     this.opacityValue = clamped
-    this.applyOcclusion()
+    this.applyBodyVars()
     this.publish()
     // Persist: queue the write on the settings scope. Failures are silent —
     // the live value is already applied, and the write drains on reconnect.
     void this.scope.set(OPACITY_FIELD, clamped)
+  }
+
+  setBubbleOpacity(value: number): void {
+    const clamped = Math.max(0, Math.min(100, Math.round(value)))
+    this.bubbleOpacityValue = clamped
+    this.applyBodyVars()
+    this.publish()
+    void this.scope.set(BUBBLE_FIELD, clamped)
   }
 
   setBlurEmpty(value: number): void {
@@ -215,6 +248,14 @@ export class BackgroundController implements SkinBackgroundHandle {
     return Math.max(0, Math.min(100, raw))
   }
 
+  /** The effective bubble-opacity section value, clamped 0-100, defaulting to 50. */
+  private readBubbleOpacity(): number {
+    const snapshot: SettingsScopeSnapshot<{ bubbleOpacity?: number }> = this.scope.getSnapshot()
+    const raw = snapshot.value?.bubbleOpacity
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) return DEFAULT_BUBBLE_OPACITY
+    return Math.max(0, Math.min(100, Math.round(raw)))
+  }
+
   /** The effective blur section value for one field, clamped 0-20, defaulting to 0. */
   private readBlur(field: 'backgroundBlurEmpty' | 'backgroundBlurContent'): number {
     const snapshot: SettingsScopeSnapshot<{
@@ -230,13 +271,19 @@ export class BackgroundController implements SkinBackgroundHandle {
     return Math.max(0, Math.min(20, Math.round(value)))
   }
 
-  /** Write the current occlusion onto the body CSS variable (0..1 alpha). */
-  private applyOcclusion(): void {
+  /**
+   * Write the current occlusion (0..1) and bubble opacity (0..1) onto the
+   * body CSS variables. Both are gated by the master switch: disabled means
+   * the variables are removed so skins fall back to their own defaults.
+   */
+  private applyBodyVars(): void {
     if (!this.enabledValue) {
       document.body.style.removeProperty(SCRIM_VAR)
+      document.body.style.removeProperty(BUBBLE_ALPHA_VAR)
       return
     }
     document.body.style.setProperty(SCRIM_VAR, String(this.opacityValue / 100))
+    document.body.style.setProperty(BUBBLE_ALPHA_VAR, String(this.bubbleOpacityValue / 100))
   }
 
   /**

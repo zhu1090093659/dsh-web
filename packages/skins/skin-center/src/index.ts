@@ -61,6 +61,13 @@ export interface SkinBackgroundConfig {
    * the with-content blur.
    */
   backgroundBlurContent?: number
+  /**
+   * Message-bubble opacity 0-100 (default 50 = half-transparent). The
+   * browser half writes the equivalent 0..1 alpha to the body CSS variable
+   * --dsw-skin-bubble-alpha; skins that style their own bubbles (whale-mom)
+   * read it, every other skin ignores it.
+   */
+  bubbleOpacity?: number
 }
 
 /**
@@ -72,6 +79,7 @@ export const SkinBackgroundConfigSchema: z<SkinBackgroundConfig> = z.object({
   backgroundOpacity: z.number().min(0).max(100).step(5).default(0),
   backgroundBlurEmpty: z.number().min(0).max(20).step(1).default(0),
   backgroundBlurContent: z.number().min(0).max(20).step(1).default(0),
+  bubbleOpacity: z.number().min(0).max(100).step(5).default(50),
 })
 
 /**

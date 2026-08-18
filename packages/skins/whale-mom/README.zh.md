@@ -30,6 +30,12 @@ dsh plugin --profile web add @linxin666/dsh-skins
 document.body.style.setProperty('--dsw-skin-sidebar-alpha', '0.4')
 ```
 
+消息气泡同理，走第二个变量（`--dsw-skin-bubble-alpha`，默认 `0.5` = 半透明）：用户气泡 token（`--dsw-specific-bubble`）与模型输出 / 思考气泡 token（`--dsw-skin-bubble*`）的 alpha 都从它解析。皮肤中心卡片把它暴露为「气泡不透明度」滑杆（默认 50%），无需控制台：
+
+```js
+document.body.style.setProperty('--dsw-skin-bubble-alpha', '0.7')
+```
+
 ## 预览
 
 亮色（[preview/light.png](preview/light.png)）· 暗色（[preview/dark.png](preview/dark.png)）

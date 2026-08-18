@@ -36,6 +36,9 @@ export type SkinCenterKey =
   | 'backgroundBlurInert'
   | 'backgroundHint'
   | 'backgroundHintInert'
+  | 'bubbleOpacity'
+  | 'bubbleOpacityHint'
+  | 'bubbleOpacityHintInert'
   | 'wallpaperTitle'
   | 'wallpaperEnable'
   | 'wallpaperHint'
@@ -98,6 +101,9 @@ export const en: Record<SkinCenterKey, string> = {
   backgroundBlurInert: 'Visible only with skins that paint a backdrop; the official default has none.',
   backgroundHint: 'Instantly veils the backdrop behind the panels — higher values obscure the art to help you focus.',
   backgroundHintInert: 'Only applies to skins that paint a backdrop (Blue Fantasy / Whale Song). Applies to the official default automatically once such a skin is active.',
+  bubbleOpacity: 'Bubble opacity',
+  bubbleOpacityHint: 'Instantly tunes the Whale Mom message bubbles — 50% is half-transparent, the skin default.',
+  bubbleOpacityHintInert: 'Only applies to skins that style their own message bubbles (currently Whale Mom); every other skin keeps its own bubbles.',
   wallpaperTitle: 'Wallpaper Engine',
   wallpaperEnable: 'Enable wallpapers',
   wallpaperHint: 'Use your local Wallpaper Engine library as the GUI backdrop: video and web wallpapers render live, scene wallpapers as a static frame.',
@@ -161,6 +167,9 @@ export const zh: Record<SkinCenterKey, string> = {
   backgroundBlurInert: '仅对带背景图插画的皮肤可见；官方默认无背景图。',
   backgroundHint: '即时为面板背后的背景加遮罩——数值越高越能弱化插画，帮你集中注意力。',
   backgroundHintInert: '仅对带背景图插画的皮肤（蓝色幻想 / 鲸吟）生效；官方默认无背景图，该滑块对这些皮肤自动生效。',
+  bubbleOpacity: '气泡不透明度',
+  bubbleOpacityHint: '即时调整鲸鱼妈妈皮肤的消息气泡不透明度——50% 即半透明，也是皮肤默认值。',
+  bubbleOpacityHintInert: '仅对自带消息气泡配色的皮肤生效（当前为鲸鱼妈妈）；其他皮肤保持自身气泡样式。',
   wallpaperTitle: 'Wallpaper Engine',
   wallpaperEnable: '启用动态壁纸',
   wallpaperHint: '把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频与网页壁纸动态渲染，场景壁纸以静态帧呈现。',

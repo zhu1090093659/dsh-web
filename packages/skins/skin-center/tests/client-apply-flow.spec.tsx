@@ -34,11 +34,13 @@ const noopBackground = {
   opacity: () => 0,
   blurEmpty: () => 0,
   blurContent: () => 0,
+  bubbleOpacity: () => 50,
   subscribe: () => () => {},
   setEnabled: () => {},
   setOpacity: () => {},
   setBlurEmpty: () => {},
   setBlurContent: () => {},
+  setBubbleOpacity: () => {},
 }
 // Cached snapshot: useSyncExternalStore loops when getSnapshot returns a
 // fresh object on every call.

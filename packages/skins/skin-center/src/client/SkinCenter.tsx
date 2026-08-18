@@ -46,6 +46,9 @@ const OFFICIAL = 'official'
 /** Skin ids that read the background-scrim variable and paint a backdrop. */
 const BACKDROP_SKIN_IDS = new Set(['blue-fantasy', 'whale-song', 'whale-mom'])
 
+/** Skin ids that read the bubble-alpha variable for their message bubbles. */
+const BUBBLE_SKIN_IDS = new Set(['whale-mom'])
+
 /**
  * Render the skin-center card: a static header naming the plugin, with the
  * always-visible skin list (official default + every installed skin; try-on /
@@ -59,9 +62,11 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
   const opacity = useSyncExternalStore(background.subscribe, background.opacity)
   const blurEmpty = useSyncExternalStore(background.subscribe, background.blurEmpty)
   const blurContent = useSyncExternalStore(background.subscribe, background.blurContent)
+  const bubbleOpacity = useSyncExternalStore(background.subscribe, background.bubbleOpacity)
   const activePackage = activeSkinEntry()?.package
   const activeId = activeSkinEntry()?.id
   const backdropActive = activeId !== undefined && BACKDROP_SKIN_IDS.has(activeId)
+  const bubbleActive = activeId !== undefined && BUBBLE_SKIN_IDS.has(activeId)
   // The trying badge tracks the controller's live session instead of local
   // state, so it survives the card unmounting when the settings panel closes
   // (the controller owns the preview and persists for the page lifetime).
@@ -415,6 +420,27 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
                     />
                     <p className={backdropActive ? css.backgroundHint : css.backgroundHintMuted}>
                       {backdropActive ? t('backgroundBlurHint') : t('backgroundBlurInert')}
+                    </p>
+                  </div>
+                  <div className={css.backgroundRow}>
+                    <div className={css.backgroundHead}>
+                      <span className={css.backgroundLabel}>{t('bubbleOpacity')}</span>
+                      <span className={css.backgroundValue} aria-hidden="true">{bubbleOpacity}%</span>
+                    </div>
+                    <input
+                      id="skin-center-bubble-opacity"
+                      className={css.backgroundRange}
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={bubbleOpacity}
+                      aria-valuetext={`${bubbleOpacity}%`}
+                      aria-label={t('bubbleOpacity')}
+                      onChange={(event) => { background.setBubbleOpacity(Number(event.target.value)) }}
+                    />
+                    <p className={bubbleActive ? css.backgroundHint : css.backgroundHintMuted}>
+                      {bubbleActive ? t('bubbleOpacityHint') : t('bubbleOpacityHintInert')}
                     </p>
                   </div>
 

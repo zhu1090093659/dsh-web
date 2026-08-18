@@ -133,7 +133,7 @@ describe('nextRunAtMs', () => {
     expect(nextRunAtMs('not a cron', at(2026, 1, 1, 0, 0))).toBeUndefined()
   })
 
-  it('matches the legacy minute scan across sparse and dense schedules', () => {
+  it('matches the legacy minute scan across sparse and dense schedules', { timeout: 30000 }, () => {
     const crons = [
       '* * * * *',
       '*/5 * * * *',

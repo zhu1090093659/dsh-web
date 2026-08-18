@@ -11,7 +11,7 @@
  * live session (via subscribe), so closing and reopening the settings panel
  * keeps showing the skin that is still being previewed.
  */
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { SKIN_CENTER_ENTRIES, type SkinCenterEntry } from './generated/skins.ts'
@@ -70,8 +70,10 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [applying, setApplying] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** Target of the most recent apply failure; the retry button re-applies it. */
+  const [lastFailedTarget, setLastFailedTarget] = useState<string | null>(null)
   // Re-render trigger after a hot commit flips the active-skin override.
-  const [, forceRender] = useState(0)
+  const [, forceRender] = useReducer((x: number) => x + 1, 0)
   // Unmount guard for the confirmation poll: once the card is gone, the
   // pending timers must stop and no reload / setState may fire.
   const mounted = useRef(false)
@@ -238,7 +240,7 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
           if (!mounted.current) return
           if (!confirmed) {
             const command = target === OFFICIAL ? 'dsh-skin use official' : `dsh-skin use ${target}`
-            setError(`${t('appliedUnconfirmed')} — ${command}`)
+            setError(`${t('appliedUnconfirmed')}\n${t('appliedUnconfirmedDetail')}\n${command}`)
             return
           }
           const entry = target === OFFICIAL
@@ -253,7 +255,7 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
             // commit() exits any live preview, which the store already
             // reflected; re-render so the active markers follow the
             // hot-committed skin (activeSkinEntry now answers the override).
-            forceRender(tick => tick + 1)
+            forceRender()
           }).catch(() => {
             if (!mounted.current) return
             reloadFallback()
@@ -264,6 +266,7 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
         setApplying(null)
         const detail = cause instanceof Error ? cause.message : String(cause)
         const command = target === OFFICIAL ? 'dsh-skin use official' : `dsh-skin use ${target}`
+        setLastFailedTarget(target)
         setError(`${t('applyFailed')} (${detail}) — ${command}`)
       })
   }
@@ -316,18 +319,19 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
             {t('title')}
             <span className={css.titleBadge}>{String(SKIN_CENTER_ENTRIES.length)}</span>
           </span>
-          <span className={css.cardDescription} title={t('cardDescription')}>{t('cardDescription')}</span>
+          <span className={css.cardDescription}>{t('cardDescription')}</span>
         </span>
       </div>
 
       <div className={css.cardBody}>
             <div className={css.enableRow}>
-              <span className={css.enableLabel} title={t('enabled')}>{t('enabled')}</span>
+              <span className={css.enableLabel}>{t('enabled')}</span>
               <button
                 type="button"
                 role="switch"
                 aria-checked={enabled}
                 aria-label={t('enabled')}
+                disabled={loadingId !== null || applying !== null}
                 className={enabled ? css.switch + ' ' + css.switchOn : css.switch}
                 onClick={() => { background.setEnabled(!enabled) }}
               >
@@ -339,11 +343,12 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
               ? (
                 <>
                   <div className={css.head}>
-                    <div className={css.intro} title={t('intro')}>{t('intro')}</div>
+                    <div className={css.intro}>{t('intro')}</div>
                     <div className={css.themeRow}>
                       <span className={css.themeLabel}>{t('theme')}</span>
                       <button
                         type="button"
+                        aria-pressed={!dark}
                         className={`${css.themeButton} ${dark ? '' : css.themeButtonActive}`}
                         onClick={() => { theme.setTheme('light') }}
                       >
@@ -351,6 +356,7 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
                       </button>
                       <button
                         type="button"
+                        aria-pressed={dark}
                         className={`${css.themeButton} ${dark ? css.themeButtonActive : ''}`}
                         onClick={() => { theme.setTheme('dark') }}
                       >
@@ -361,7 +367,9 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
 
                   <div className={css.backgroundRow}>
                     <div className={css.backgroundHead}>
-                      <span className={css.backgroundLabel}>{t('backgroundOpacity')}</span>
+                      <label className={css.backgroundLabel} htmlFor="skin-center-background-opacity">
+                        {t('backgroundOpacity')}
+                      </label>
                       <span className={css.backgroundValue} aria-hidden="true">{opacity}%</span>
                     </div>
                     <input
@@ -373,7 +381,7 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
                       step="5"
                       value={opacity}
                       aria-valuetext={`${opacity}%`}
-                      aria-label={t('backgroundOpacity')}
+                      style={{ ['--slider-progress' as string]: `${opacity}%` }}
                       onChange={(event) => { background.set(Number(event.target.value)) }}
                     />
                     <p className={backdropActive ? css.backgroundHint : css.backgroundHintMuted}>
@@ -382,7 +390,9 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
                   </div>
                   <div className={css.backgroundRow}>
                     <div className={css.backgroundHead}>
-                      <span className={css.backgroundLabel}>{t('backgroundBlurEmpty')}</span>
+                      <label className={css.backgroundLabel} htmlFor="skin-center-background-blur-empty">
+                        {t('backgroundBlurEmpty')}
+                      </label>
                       <span className={css.backgroundValue} aria-hidden="true">{blurEmpty}px</span>
                     </div>
                     <input
@@ -394,11 +404,13 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
                       step="1"
                       value={blurEmpty}
                       aria-valuetext={`${blurEmpty}px`}
-                      aria-label={t('backgroundBlurEmpty')}
+                      style={{ ['--slider-progress' as string]: `${(blurEmpty / 20) * 100}%` }}
                       onChange={(event) => { background.setBlurEmpty(Number(event.target.value)) }}
                     />
                     <div className={css.backgroundHead}>
-                      <span className={css.backgroundLabel}>{t('backgroundBlurContent')}</span>
+                      <label className={css.backgroundLabel} htmlFor="skin-center-background-blur-content">
+                        {t('backgroundBlurContent')}
+                      </label>
                       <span className={css.backgroundValue} aria-hidden="true">{blurContent}px</span>
                     </div>
                     <input
@@ -410,7 +422,7 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
                       step="1"
                       value={blurContent}
                       aria-valuetext={`${blurContent}px`}
-                      aria-label={t('backgroundBlurContent')}
+                      style={{ ['--slider-progress' as string]: `${(blurContent / 20) * 100}%` }}
                       onChange={(event) => { background.setBlurContent(Number(event.target.value)) }}
                     />
                     <p className={backdropActive ? css.backgroundHint : css.backgroundHintMuted}>
@@ -419,9 +431,28 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
                   </div>
 
 
-                  <WallpaperPanel t={t} wallpaper={wallpaper} />
+                  <WallpaperPanel t={t} wallpaper={wallpaper} busy={loadingId !== null || applying !== null} />
 
-                  {error !== null && <div className={css.error}>{error}</div>}
+                  {error !== null && (
+                    <div className={css.error} role="alert">
+                      <span className={css.errorMessage}>{error}</span>
+                      {lastFailedTarget !== null && (
+                        <button
+                          type="button"
+                          className={css.button}
+                          disabled={applying !== null || loadingId !== null}
+                          onClick={() => {
+                            const target = lastFailedTarget
+                            setLastFailedTarget(null)
+                            setError(null)
+                            applySkin(target)
+                          }}
+                        >
+                          {t('retry')}
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   <div className={css.list}>
                     {(() => {
@@ -431,8 +462,12 @@ export function SkinCenter({ t, controller, theme, background, wallpaper }: Skin
                       return (
                         <div className={css.card} key={OFFICIAL}>
                           <div className={css.cardHead}>
-                            <span className={css.swatch} style={{ background: '#98a1ab' }} aria-hidden="true" />
-                            <span className={css.cardName} title={t('official')}>{t('official')}</span>
+                            <span
+                              className={css.swatch}
+                              style={{ background: 'var(--dsw-alias-label-tertiary, #98a1ab)' }}
+                              aria-hidden="true"
+                            />
+                            <span className={css.cardName}>{t('official')}</span>
                             {badge !== null && (
                               <span className={`${css.badge} ${isActive ? css.badgeActive : css.badgeTrying}`}>
                                 {badge}

@@ -19,12 +19,12 @@ describe('skin-center background slider track', () => {
   it('styles the webkit runnable track explicitly', () => {
     const block = css.match(/.backgroundRange::-webkit-slider-runnable-track\s*\{([^}]*)\}/)?.[1] ?? ''
     expect(block).toContain('height: 4px')
-    expect(block).toContain('background: var(--dsw-alias-bg-layer-3, #e2e8f0)')
+    expect(block).toContain('var(--dsw-alias-bg-layer-3, #e2e8f0)')
   })
 
   it('styles the moz range track explicitly', () => {
     const block = css.match(/.backgroundRange::-moz-range-track\s*\{([^}]*)\}/)?.[1] ?? ''
     expect(block).toContain('height: 4px')
-    expect(block).toContain('background: var(--dsw-alias-bg-layer-3, #e2e8f0)')
+    expect(block).toContain('var(--dsw-alias-bg-layer-3, #e2e8f0)')
   })
 })

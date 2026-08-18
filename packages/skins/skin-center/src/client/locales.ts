@@ -24,7 +24,9 @@ export type SkinCenterKey =
   | 'restore'
   | 'applyFailed'
   | 'appliedUnconfirmed'
+  | 'appliedUnconfirmedDetail'
   | 'appliedNeedRestart'
+  | 'retry'
   | 'theme'
   | 'themeLight'
   | 'themeDark'
@@ -42,6 +44,7 @@ export type SkinCenterKey =
   | 'wallpaperLoadError'
   | 'wallpaperLibraryFound'
   | 'wallpaperLibraryManual'
+  | 'wallpaperLibraryManualHint'
   | 'wallpaperRefresh'
   | 'wallpaperMode'
   | 'wallpaperModeLive'
@@ -61,6 +64,7 @@ export type SkinCenterKey =
   | 'wallpaperTypeWeb'
   | 'wallpaperTypeScene'
   | 'wallpaperTypeApp'
+  | 'wallpaperRequiresApp'
   | 'wallpaperDirs'
   | 'wallpaperDirsEmpty'
   | 'wallpaperDirsHint'
@@ -85,8 +89,10 @@ export const en: Record<SkinCenterKey, string> = {
   applying: 'Applying…',
   restore: 'Restore',
   applyFailed: 'Apply failed',
-  appliedUnconfirmed: 'Applied, but the change has not been confirmed — refresh the page in dev mode; packaged installs (DSH Desktop) need an app restart',
+  appliedUnconfirmed: 'Applied, but the change has not been confirmed',
+  appliedUnconfirmedDetail: 'Refresh the page in dev mode; packaged installs (DSH Desktop) need an app restart.',
   appliedNeedRestart: 'Applied and confirmed, but the host did not hot-reload — restart dsh to take effect',
+  retry: 'Retry',
   theme: 'Theme preview',
   themeLight: 'Light',
   themeDark: 'Dark',
@@ -103,7 +109,8 @@ export const en: Record<SkinCenterKey, string> = {
   wallpaperHint: 'Use your local Wallpaper Engine library as the GUI backdrop: video and web wallpapers render live, scene wallpapers as a static frame.',
   wallpaperLoadError: 'Wallpaper library failed to load',
   wallpaperLibraryFound: 'Wallpaper Engine library detected',
-  wallpaperLibraryManual: 'Manual folders only (no Wallpaper Engine install found; set folders in the skin-wallpaper settings)',
+  wallpaperLibraryManual: 'Manual folders only',
+  wallpaperLibraryManualHint: 'No Wallpaper Engine install found. Add folders in the skin-wallpaper settings.',
   wallpaperRefresh: 'Refresh',
   wallpaperMode: 'Render mode',
   wallpaperModeLive: 'Live',
@@ -122,7 +129,8 @@ export const en: Record<SkinCenterKey, string> = {
   wallpaperTypeVideo: 'Video',
   wallpaperTypeWeb: 'Web',
   wallpaperTypeScene: 'Scene (static)',
-  wallpaperTypeApp: 'Unsupported',
+  wallpaperTypeApp: 'Requires app',
+  wallpaperRequiresApp: 'This wallpaper type needs the Wallpaper Engine application to run. Open the wallpaper in the WE desktop app and try a different export.',
   wallpaperDirs: 'Manual folders',
   wallpaperDirsEmpty: 'No manual folders yet.',
   wallpaperDirsHint: 'No Wallpaper Engine (e.g. macOS)? Point a folder at any .mp4/.webm files, a wallpaper project folder, or a folder of projects — they become your wallpaper library.',
@@ -148,8 +156,10 @@ export const zh: Record<SkinCenterKey, string> = {
   applying: '应用中…',
   restore: '恢复默认',
   applyFailed: '应用失败',
-  appliedUnconfirmed: '已写入配置但尚未确认生效——开发模式请刷新页面；打包版（DSH Desktop）需重启应用后生效',
+  appliedUnconfirmed: '已写入配置但尚未确认生效',
+  appliedUnconfirmedDetail: '开发模式请刷新页面；打包版（DSH Desktop）需重启应用。',
   appliedNeedRestart: '已写入配置并确认生效，但宿主未热重载——请重启 dsh 后生效',
+  retry: '重试',
   theme: '主题预览',
   themeLight: '亮色',
   themeDark: '暗色',
@@ -166,7 +176,8 @@ export const zh: Record<SkinCenterKey, string> = {
   wallpaperHint: '把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频与网页壁纸动态渲染，场景壁纸以静态帧呈现。',
   wallpaperLoadError: '壁纸库加载失败',
   wallpaperLibraryFound: '已检测到 Wallpaper Engine 壁纸库',
-  wallpaperLibraryManual: '仅手动目录（未检测到 Wallpaper Engine 安装，可在 skin-wallpaper 设置里添加目录）',
+  wallpaperLibraryManual: '仅手动目录',
+  wallpaperLibraryManualHint: '未检测到 Wallpaper Engine 安装。可在皮肤壁纸设置中添加目录。',
   wallpaperRefresh: '刷新',
   wallpaperMode: '渲染模式',
   wallpaperModeLive: '动态',
@@ -184,8 +195,9 @@ export const zh: Record<SkinCenterKey, string> = {
   wallpaperLegal: '壁纸素材版权归创意工坊作者所有，仅供本机个人使用，不上传、不分享。',
   wallpaperTypeVideo: '视频',
   wallpaperTypeWeb: '网页',
-  wallpaperTypeScene: '场景(静态)',
-  wallpaperTypeApp: '不支持',
+  wallpaperTypeScene: '场景（静态）',
+  wallpaperTypeApp: '需客户端',
+  wallpaperRequiresApp: '该壁纸类型需要 Wallpaper Engine 客户端运行。请在 WE 桌面应用中打开该壁纸并选择其他导出格式。',
   wallpaperDirs: '手动目录',
   wallpaperDirsEmpty: '还没有手动目录。',
   wallpaperDirsHint: '没有 Wallpaper Engine（如 macOS）？把任意 .mp4/.webm 视频、单个壁纸项目文件夹或项目合集文件夹加进来，就是你的壁纸库。',

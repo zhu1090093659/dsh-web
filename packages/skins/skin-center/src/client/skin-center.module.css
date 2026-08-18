@@ -75,8 +75,14 @@ body[data-dsh-skin-center] .head {
 }
 
 body[data-dsh-skin-center] .titleBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 0 6px;
   font-size: 11px;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--dsw-alias-label-secondary, #6b7280);
 }
 
@@ -173,6 +179,10 @@ body[data-dsh-skin-center] .cardName {
 }
 
 body[data-dsh-skin-center] .cardTagline {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-size: 12px;
   line-height: 1.45;
   color: var(--dsw-alias-label-secondary, #6b7280);
@@ -257,14 +267,38 @@ body[data-dsh-skin-center] .buttonGhost {
   background: transparent;
 }
 
+body[data-dsh-skin-center] .switch:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+body[data-dsh-skin-center] .switch:disabled .switchThumb {
+  transform: translateX(0);
+}
+
 body[data-dsh-skin-center] .button:disabled {
   opacity: 0.55;
   cursor: default;
 }
 
 body[data-dsh-skin-center] .error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   font-size: 12px;
+  line-height: 1.5;
   color: var(--dsw-alias-state-error-primary, #b42318);
+  background: var(--dsw-alias-state-error-tertiary, #fde7e7);
+  border: 1px solid var(--dsw-alias-state-error-secondary, #fecdca);
+  border-radius: 8px;
+  padding: 8px 10px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+body[data-dsh-skin-center] .errorMessage {
+  flex: 1;
+  min-width: 0;
 }
 
 body[data-dsh-skin-center] .enableRow {
@@ -375,9 +409,19 @@ body[data-dsh-skin-center] .backgroundRange {
      light panels, lighter strip on dark panels, following the active skin's
      token definitions), and keep the border-token outline so the groove stays
      visible even when the foreground token drifts close to the panel
-     background (both fixes for issue #309 are kept together). */
-  background: var(--dsw-alias-label-tertiary, #9aa4b5);
-  background: color-mix(in srgb, var(--dsw-alias-label-tertiary, #9aa4b5) 45%, transparent);
+     background (both fixes for issue #309 are kept together).
+     The inline --slider-progress (set on each input below) drives a brand
+     gradient overlay so the user sees how far they have moved the slider,
+     not just the thumb position. */
+  background:
+    linear-gradient(
+      to right,
+      var(--dsw-alias-brand-primary, #2b7cd9) 0%,
+      var(--dsw-alias-brand-primary, #2b7cd9) var(--slider-progress, 0%),
+      color-mix(in srgb, var(--dsw-alias-label-tertiary, #9aa4b5) 45%, transparent) var(--slider-progress, 0%),
+      color-mix(in srgb, var(--dsw-alias-label-tertiary, #9aa4b5) 45%, transparent) 100%
+    ),
+  color-mix(in srgb, var(--dsw-alias-label-tertiary, #9aa4b5) 45%, transparent);
   box-shadow: 0 0 0 1px var(--dsw-alias-border-l3, #cbd5e1);
   -webkit-appearance: none;
   appearance: none;
@@ -387,13 +431,32 @@ body[data-dsh-skin-center] .backgroundRange {
 body[data-dsh-skin-center] .backgroundRange::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 999px;
-  background: var(--dsw-alias-bg-layer-3, #e2e8f0);
+  /* Layer 1 keeps the issue #309 layer-token fallback so the track stays
+     visible on the official default theme; layer 2 paints the brand-tinted
+     fill from --slider-progress (set on the input itself). */
+  background:
+    linear-gradient(
+      to right,
+      var(--dsw-alias-brand-primary, #2b7cd9) 0%,
+      var(--dsw-alias-brand-primary, #2b7cd9) var(--slider-progress, 0%),
+      color-mix(in srgb, var(--dsw-alias-label-tertiary, #9aa4b5) 45%, transparent) var(--slider-progress, 0%),
+      color-mix(in srgb, var(--dsw-alias-label-tertiary, #9aa4b5) 45%, transparent) 100%
+    ),
+  var(--dsw-alias-bg-layer-3, #e2e8f0);
 }
 
 body[data-dsh-skin-center] .backgroundRange::-moz-range-track {
   height: 4px;
   border-radius: 999px;
-  background: var(--dsw-alias-bg-layer-3, #e2e8f0);
+  background:
+    linear-gradient(
+      to right,
+      var(--dsw-alias-brand-primary, #2b7cd9) 0%,
+      var(--dsw-alias-brand-primary, #2b7cd9) var(--slider-progress, 0%),
+      color-mix(in srgb, var(--dsw-alias-label-tertiary, #9aa4b5) 45%, transparent) var(--slider-progress, 0%),
+      color-mix(in srgb, var(--dsw-alias-label-tertiary, #9aa4b5) 45%, transparent) 100%
+    ),
+  var(--dsw-alias-bg-layer-3, #e2e8f0);
 }
 
 body[data-dsh-skin-center] .backgroundRange::-webkit-slider-thumb {
@@ -526,6 +589,7 @@ body[data-dsh-skin-center] .wallpaperType {
   border-radius: 4px;
   color: var(--dsw-alias-label-primary, #172a45);
   background: var(--dsw-alias-bg-layer-2, rgba(255, 255, 255, 0.85));
+  backdrop-filter: blur(4px);
 }
 
 body[data-dsh-skin-center] .wallpaperThumbWrap .badge {
@@ -535,17 +599,99 @@ body[data-dsh-skin-center] .wallpaperThumbWrap .badge {
 }
 
 body[data-dsh-skin-center] .wallpaperName {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-size: 12px;
   line-height: 1.35;
   color: var(--dsw-alias-label-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 body[data-dsh-skin-center] .wallpaperActions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* Manual wallpaper folder management (no-WE fallback, e.g. macOS):
+   chip per directory with an inline × remove button, plus an inline input
+   row to add new paths. Density mirrors .wallpaperSection above. */
+body[data-dsh-skin-center] .wallpaperDirs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+body[data-dsh-skin-center] .wallpaperDir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-2, #ffffff);
+  border: 1px solid var(--dsw-alias-border-l2);
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 100%;
+}
+
+body[data-dsh-skin-center] .wallpaperDirPath {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 360px;
+  color: var(--dsw-alias-label-primary, #172a45);
+}
+
+body[data-dsh-skin-center] .wallpaperDirRemove {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+body[data-dsh-skin-center] .wallpaperDirRemove:hover {
+  color: var(--dsw-alias-state-error-primary, #b42318);
+  background: var(--dsw-alias-state-error-tertiary, #fde7e7);
+}
+
+body[data-dsh-skin-center] .wallpaperDirRemove:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #2b7cd9);
+  outline-offset: 2px;
+}
+
+body[data-dsh-skin-center] .wallpaperDirAdd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+body[data-dsh-skin-center] .wallpaperDirInput {
+  flex: 1;
+  min-width: 220px;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l3, #cbd5e1);
+  background: var(--dsw-alias-bg-layer-1, #f1f5f9);
+  color: var(--dsw-alias-label-primary, #172a45);
+}
+
+body[data-dsh-skin-center] .wallpaperDirInput:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #2b7cd9);
+  outline-offset: 2px;
+  border-color: var(--dsw-alias-brand-primary, #2b7cd9);
 }
 

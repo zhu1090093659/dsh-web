@@ -711,7 +711,7 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:packages/skins/skin-center/src/client/skin-center.module.css.mjs
-		const css = "body[data-dsh-skin-center] .eDzMgW_sectionList{margin:0;padding:0;list-style:none}body[data-dsh-skin-center] .eDzMgW_pluginCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}body[data-dsh-skin-center] .eDzMgW_pluginCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_cardHeaderStatic{align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}body[data-dsh-skin-center] .eDzMgW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_pluginName{color:var(--dsw-alias-label-primary);align-items:baseline;gap:8px;font-size:15px;font-weight:600;line-height:1.4;display:flex}body[data-dsh-skin-center] .eDzMgW_cardDescription{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_cardBody{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:12px;margin:0 16px;padding:12px 0 8px;display:flex}body[data-dsh-skin-center] .eDzMgW_head{flex-direction:column;gap:6px;display:flex}body[data-dsh-skin-center] .eDzMgW_titleBadge{color:var(--dsw-alias-label-secondary,#6b7280);font-size:11px;font-weight:500}body[data-dsh-skin-center] .eDzMgW_intro{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12.5px;line-height:1.55}body[data-dsh-skin-center] .eDzMgW_themeRow{align-items:center;gap:8px;margin-top:2px;display:flex}body[data-dsh-skin-center] .eDzMgW_themeLabel{color:var(--dsw-alias-label-secondary,#6b7280);margin-right:2px;font-size:12px}body[data-dsh-skin-center] .eDzMgW_themeButton{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_themeButton:hover{border-color:var(--dsw-alias-border-l4,#94a3b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:active{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_themeButtonActive{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_list{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_card{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:8px;padding:12px 14px;display:flex}body[data-dsh-skin-center] .eDzMgW_cardHead{align-items:center;gap:10px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_swatch{width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;flex:none}body[data-dsh-skin-center] .eDzMgW_cardName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_cardTagline{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.45}body[data-dsh-skin-center] .eDzMgW_badge{letter-spacing:.02em;border-radius:999px;flex:none;min-width:0;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_badgeActive{color:var(--dsw-alias-state-success-primary,#0f6b3a);background:var(--dsw-alias-state-success-tertiary,#dcf3e5)}body[data-dsh-skin-center] .eDzMgW_badgeTrying{color:var(--dsw-alias-brand-primary,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e2edfc)}body[data-dsh-skin-center] .eDzMgW_actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_button{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:7px;padding:6px 12px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_button:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary,#2b7cd9);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:active:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_buttonPrimary{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-fill,#2b7cd9);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:active:not(:disabled),body[data-dsh-skin-center] .eDzMgW_buttonPrimary:focus-visible:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_buttonGhost{background:0 0;border-color:#0000}body[data-dsh-skin-center] .eDzMgW_button:disabled{opacity:.55;cursor:default}body[data-dsh-skin-center] .eDzMgW_error{color:var(--dsw-alias-state-error-primary,#b42318);font-size:12px}body[data-dsh-skin-center] .eDzMgW_enableRow{flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_enableLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_enableHint{min-width:100%;color:var(--dsw-alias-label-secondary,#6b7280);flex:1;margin:0;font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_switch{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-3,#e2e8f0);cursor:pointer;border-radius:999px;flex:none;align-items:center;width:40px;height:22px;padding:2px;transition:background .12s,border-color .12s;display:inline-flex;position:relative}body[data-dsh-skin-center] .eDzMgW_switchOn{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-brand-primary,#2b7cd9)}body[data-dsh-skin-center] .eDzMgW_switch:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_switchThumb{background:var(--dsw-alias-label-primary-foreground,#fff);width:18px;height:18px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;transition:transform .12s;display:block;transform:translate(0)}body[data-dsh-skin-center] .eDzMgW_switchOn .eDzMgW_switchThumb{transform:translate(18px)}body[data-dsh-skin-center] .eDzMgW_offNote{color:var(--dsw-alias-label-secondary,#6b7280);margin:0;font-size:12.5px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundRow{flex-direction:column;gap:6px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundHead{align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_backgroundValue{font-variant-numeric:tabular-nums;color:var(--dsw-alias-brand-primary,#2b7cd9);flex:none;margin-left:auto;font-size:12px}body[data-dsh-skin-center] .eDzMgW_backgroundRange{background:var(--dsw-alias-label-tertiary,#9aa4b5);background:color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent);width:100%;height:4px;box-shadow:0 0 0 1px var(--dsw-alias-border-l3,#cbd5e1);-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:999px;margin:0}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-runnable-track{background:var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-track{background:var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:14px;height:14px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-thumb{border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:12px;height:12px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_backgroundHint{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundHintMuted{color:var(--dsw-alias-label-tertiary,#9aa4b5);font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){body[data-dsh-skin-center] .eDzMgW_pluginCard,body[data-dsh-skin-center] .eDzMgW_themeButton,body[data-dsh-skin-center] .eDzMgW_button,body[data-dsh-skin-center] .eDzMgW_switch,body[data-dsh-skin-center] .eDzMgW_switchThumb{transition:none}}body[data-dsh-skin-center] .eDzMgW_wallpaperSection{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:10px;padding-top:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatus{color:var(--dsw-alias-label-secondary,#6b7280);align-items:center;gap:8px;font-size:12px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatusError{color:var(--dsw-alias-state-danger,#c53030)}body[data-dsh-skin-center] .eDzMgW_wallpaperControls{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperGrid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;display:grid}body[data-dsh-skin-center] .eDzMgW_wallpaperCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:6px;padding:8px;transition:border-color .16s;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap{aspect-ratio:16/9;background:var(--dsw-alias-bg-layer-1,#f1f5f9);border-radius:6px;position:relative;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperThumb{object-fit:cover;width:100%;height:100%;display:block}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbEmpty{width:100%;height:100%}body[data-dsh-skin-center] .eDzMgW_wallpaperType{color:var(--dsw-alias-label-primary,#172a45);background:var(--dsw-alias-bg-layer-2,#ffffffd9);border-radius:4px;padding:3px 6px;font-size:10.5px;line-height:1;position:absolute;top:6px;left:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap .eDzMgW_badge{position:absolute;top:6px;right:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:1.35;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperActions{flex-wrap:wrap;gap:6px;display:flex}";
+		const css = "body[data-dsh-skin-center] .eDzMgW_sectionList{margin:0;padding:0;list-style:none}body[data-dsh-skin-center] .eDzMgW_pluginCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}body[data-dsh-skin-center] .eDzMgW_pluginCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_cardHeaderStatic{align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}body[data-dsh-skin-center] .eDzMgW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_pluginName{color:var(--dsw-alias-label-primary);align-items:baseline;gap:8px;font-size:15px;font-weight:600;line-height:1.4;display:flex}body[data-dsh-skin-center] .eDzMgW_cardDescription{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_cardBody{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:12px;margin:0 16px;padding:12px 0 8px;display:flex}body[data-dsh-skin-center] .eDzMgW_head{flex-direction:column;gap:6px;display:flex}body[data-dsh-skin-center] .eDzMgW_titleBadge{font-variant-numeric:tabular-nums;min-width:22px;color:var(--dsw-alias-label-secondary,#6b7280);justify-content:center;align-items:center;padding:0 6px;font-size:11px;font-weight:500;display:inline-flex}body[data-dsh-skin-center] .eDzMgW_intro{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12.5px;line-height:1.55}body[data-dsh-skin-center] .eDzMgW_themeRow{align-items:center;gap:8px;margin-top:2px;display:flex}body[data-dsh-skin-center] .eDzMgW_themeLabel{color:var(--dsw-alias-label-secondary,#6b7280);margin-right:2px;font-size:12px}body[data-dsh-skin-center] .eDzMgW_themeButton{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_themeButton:hover{border-color:var(--dsw-alias-border-l4,#94a3b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:active{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_themeButtonActive{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_list{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_card{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:8px;padding:12px 14px;display:flex}body[data-dsh-skin-center] .eDzMgW_cardHead{align-items:center;gap:10px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_swatch{width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;flex:none}body[data-dsh-skin-center] .eDzMgW_cardName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_cardTagline{-webkit-line-clamp:2;color:var(--dsw-alias-label-secondary,#6b7280);-webkit-box-orient:vertical;font-size:12px;line-height:1.45;display:-webkit-box;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_badge{letter-spacing:.02em;border-radius:999px;flex:none;min-width:0;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_badgeActive{color:var(--dsw-alias-state-success-primary,#0f6b3a);background:var(--dsw-alias-state-success-tertiary,#dcf3e5)}body[data-dsh-skin-center] .eDzMgW_badgeTrying{color:var(--dsw-alias-brand-primary,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e2edfc)}body[data-dsh-skin-center] .eDzMgW_actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_button{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:7px;padding:6px 12px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_button:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary,#2b7cd9);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:active:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_buttonPrimary{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-fill,#2b7cd9);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:active:not(:disabled),body[data-dsh-skin-center] .eDzMgW_buttonPrimary:focus-visible:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_buttonGhost{background:0 0;border-color:#0000}body[data-dsh-skin-center] .eDzMgW_switch:disabled{cursor:default;opacity:.55}body[data-dsh-skin-center] .eDzMgW_switch:disabled .eDzMgW_switchThumb{transform:translate(0)}body[data-dsh-skin-center] .eDzMgW_button:disabled{opacity:.55;cursor:default}body[data-dsh-skin-center] .eDzMgW_error{color:var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-state-error-tertiary,#fde7e7);border:1px solid var(--dsw-alias-state-error-secondary,#fecdca);word-break:break-word;white-space:pre-wrap;border-radius:8px;align-items:flex-start;gap:8px;padding:8px 10px;font-size:12px;line-height:1.5;display:flex}body[data-dsh-skin-center] .eDzMgW_errorMessage{flex:1;min-width:0}body[data-dsh-skin-center] .eDzMgW_enableRow{flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_enableLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_enableHint{min-width:100%;color:var(--dsw-alias-label-secondary,#6b7280);flex:1;margin:0;font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_switch{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-3,#e2e8f0);cursor:pointer;border-radius:999px;flex:none;align-items:center;width:40px;height:22px;padding:2px;transition:background .12s,border-color .12s;display:inline-flex;position:relative}body[data-dsh-skin-center] .eDzMgW_switchOn{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-brand-primary,#2b7cd9)}body[data-dsh-skin-center] .eDzMgW_switch:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_switchThumb{background:var(--dsw-alias-label-primary-foreground,#fff);width:18px;height:18px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;transition:transform .12s;display:block;transform:translate(0)}body[data-dsh-skin-center] .eDzMgW_switchOn .eDzMgW_switchThumb{transform:translate(18px)}body[data-dsh-skin-center] .eDzMgW_offNote{color:var(--dsw-alias-label-secondary,#6b7280);margin:0;font-size:12.5px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundRow{flex-direction:column;gap:6px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundHead{align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_backgroundValue{font-variant-numeric:tabular-nums;color:var(--dsw-alias-brand-primary,#2b7cd9);flex:none;margin-left:auto;font-size:12px}body[data-dsh-skin-center] .eDzMgW_backgroundRange{background:linear-gradient(to right, var(--dsw-alias-brand-primary,#2b7cd9) 0%, var(--dsw-alias-brand-primary,#2b7cd9) var(--slider-progress,0%), color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent) var(--slider-progress,0%), color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent) 100%), color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent);width:100%;height:4px;box-shadow:0 0 0 1px var(--dsw-alias-border-l3,#cbd5e1);-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:999px;margin:0}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-runnable-track{background:linear-gradient(to right, var(--dsw-alias-brand-primary,#2b7cd9) 0%, var(--dsw-alias-brand-primary,#2b7cd9) var(--slider-progress,0%), color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent) var(--slider-progress,0%), color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent) 100%), var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-track{background:linear-gradient(to right, var(--dsw-alias-brand-primary,#2b7cd9) 0%, var(--dsw-alias-brand-primary,#2b7cd9) var(--slider-progress,0%), color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent) var(--slider-progress,0%), color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent) 100%), var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:14px;height:14px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-thumb{border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:12px;height:12px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_backgroundHint{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundHintMuted{color:var(--dsw-alias-label-tertiary,#9aa4b5);font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){body[data-dsh-skin-center] .eDzMgW_pluginCard,body[data-dsh-skin-center] .eDzMgW_themeButton,body[data-dsh-skin-center] .eDzMgW_button,body[data-dsh-skin-center] .eDzMgW_switch,body[data-dsh-skin-center] .eDzMgW_switchThumb{transition:none}}body[data-dsh-skin-center] .eDzMgW_wallpaperSection{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:10px;padding-top:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatus{color:var(--dsw-alias-label-secondary,#6b7280);align-items:center;gap:8px;font-size:12px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatusError{color:var(--dsw-alias-state-danger,#c53030)}body[data-dsh-skin-center] .eDzMgW_wallpaperControls{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperGrid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;display:grid}body[data-dsh-skin-center] .eDzMgW_wallpaperCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:6px;padding:8px;transition:border-color .16s;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap{aspect-ratio:16/9;background:var(--dsw-alias-bg-layer-1,#f1f5f9);border-radius:6px;position:relative;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperThumb{object-fit:cover;width:100%;height:100%;display:block}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbEmpty{width:100%;height:100%}body[data-dsh-skin-center] .eDzMgW_wallpaperType{color:var(--dsw-alias-label-primary,#172a45);background:var(--dsw-alias-bg-layer-2,#ffffffd9);backdrop-filter:blur(4px);border-radius:4px;padding:3px 6px;font-size:10.5px;line-height:1;position:absolute;top:6px;left:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap .eDzMgW_badge{position:absolute;top:6px;right:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperName{-webkit-line-clamp:2;color:var(--dsw-alias-label-primary);-webkit-box-orient:vertical;font-size:12px;line-height:1.35;display:-webkit-box;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperActions{flex-wrap:wrap;gap:6px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperDirs{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperDir{background:var(--dsw-alias-bg-layer-2,#fff);border:1px solid var(--dsw-alias-border-l2);border-radius:999px;align-items:center;gap:6px;max-width:100%;padding:4px 10px;font-size:12px;line-height:1.4;display:inline-flex}body[data-dsh-skin-center] .eDzMgW_wallpaperDirPath{text-overflow:ellipsis;white-space:nowrap;min-width:0;max-width:360px;color:var(--dsw-alias-label-primary,#172a45);overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperDirRemove{color:var(--dsw-alias-label-secondary,#6b7280);cursor:pointer;background:0 0;border:none;border-radius:4px;flex:none;padding:2px 4px;font-size:16px;line-height:1;transition:color .12s,background .12s}body[data-dsh-skin-center] .eDzMgW_wallpaperDirRemove:hover{color:var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-state-error-tertiary,#fde7e7)}body[data-dsh-skin-center] .eDzMgW_wallpaperDirRemove:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_wallpaperDirAdd{flex-wrap:wrap;align-items:center;gap:6px;width:100%;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperDirInput{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-1,#f1f5f9);min-width:220px;color:var(--dsw-alias-label-primary,#172a45);border-radius:6px;flex:1;padding:5px 8px;font-size:12px;line-height:1.4}body[data-dsh-skin-center] .eDzMgW_wallpaperDirInput:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px;border-color:var(--dsw-alias-brand-primary,#2b7cd9)}";
 		const tagId = "@linxin666/dsh-client-ui-skin-center/skin-center.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -746,6 +746,7 @@ window.__ModuleLoader__.load({
 			"enableLabel": "eDzMgW_enableLabel",
 			"enableRow": "eDzMgW_enableRow",
 			"error": "eDzMgW_error",
+			"errorMessage": "eDzMgW_errorMessage",
 			"head": "eDzMgW_head",
 			"headText": "eDzMgW_headText",
 			"intro": "eDzMgW_intro",
@@ -766,6 +767,12 @@ window.__ModuleLoader__.load({
 			"wallpaperActions": "eDzMgW_wallpaperActions",
 			"wallpaperCard": "eDzMgW_wallpaperCard",
 			"wallpaperControls": "eDzMgW_wallpaperControls",
+			"wallpaperDir": "eDzMgW_wallpaperDir",
+			"wallpaperDirAdd": "eDzMgW_wallpaperDirAdd",
+			"wallpaperDirInput": "eDzMgW_wallpaperDirInput",
+			"wallpaperDirPath": "eDzMgW_wallpaperDirPath",
+			"wallpaperDirRemove": "eDzMgW_wallpaperDirRemove",
+			"wallpaperDirs": "eDzMgW_wallpaperDirs",
 			"wallpaperGrid": "eDzMgW_wallpaperGrid",
 			"wallpaperName": "eDzMgW_wallpaperName",
 			"wallpaperSection": "eDzMgW_wallpaperSection",
@@ -816,7 +823,7 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** Render the Wallpaper Engine section of the skin-center card. */
-		function WallpaperPanel({ t, wallpaper }) {
+		function WallpaperPanel({ t, wallpaper, busy = false }) {
 			const enabled = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.enabled);
 			const selection = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.selection);
 			const mode = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.mode);
@@ -903,6 +910,7 @@ window.__ModuleLoader__.load({
 							role: "switch",
 							"aria-checked": enabled,
 							"aria-label": t("wallpaperEnable"),
+							disabled: busy,
 							className: enabled ? skin_center_module_css_default.switch + " " + skin_center_module_css_default.switchOn : skin_center_module_css_default.switch,
 							onClick: () => {
 								wallpaper.setEnabled(!enabled);
@@ -939,6 +947,10 @@ window.__ModuleLoader__.load({
 							children: t("wallpaperRefresh")
 						})]
 					}),
+					loadError === null && items !== null && installDir === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: skin_center_module_css_default.backgroundHintMuted,
+						children: t("wallpaperLibraryManualHint")
+					}),
 					activeSelection !== "" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: skin_center_module_css_default.wallpaperControls,
 						children: [
@@ -951,6 +963,7 @@ window.__ModuleLoader__.load({
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
+										"aria-pressed": mode === "live",
 										className: skin_center_module_css_default.themeButton + (mode === "live" ? " " + skin_center_module_css_default.themeButtonActive : ""),
 										onClick: () => {
 											wallpaper.setMode("live");
@@ -959,6 +972,7 @@ window.__ModuleLoader__.load({
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
+										"aria-pressed": mode === "frame",
 										className: skin_center_module_css_default.themeButton + (mode === "frame" ? " " + skin_center_module_css_default.themeButtonActive : ""),
 										onClick: () => {
 											wallpaper.setMode("frame");
@@ -980,8 +994,9 @@ window.__ModuleLoader__.load({
 								children: [
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 										className: skin_center_module_css_default.backgroundHead,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
 											className: skin_center_module_css_default.backgroundLabel,
+											htmlFor: "wallpaper-panel-dim",
 											children: t("wallpaperDim")
 										}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 											className: skin_center_module_css_default.backgroundValue,
@@ -990,21 +1005,24 @@ window.__ModuleLoader__.load({
 										})]
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+										id: "wallpaper-panel-dim",
 										className: skin_center_module_css_default.backgroundRange,
 										type: "range",
 										min: "0",
 										max: "90",
 										step: "5",
 										value: dim,
-										"aria-label": t("wallpaperDim"),
+										"aria-valuetext": `${dim}%`,
+										style: { ["--slider-progress"]: `${dim / 90 * 100}%` },
 										onChange: (event) => {
 											wallpaper.setDim(Number(event.target.value));
 										}
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 										className: skin_center_module_css_default.backgroundHead,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
 											className: skin_center_module_css_default.backgroundLabel,
+											htmlFor: "wallpaper-panel-blur",
 											children: t("wallpaperBlur")
 										}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 											className: skin_center_module_css_default.backgroundValue,
@@ -1013,13 +1031,15 @@ window.__ModuleLoader__.load({
 										})]
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+										id: "wallpaper-panel-blur",
 										className: skin_center_module_css_default.backgroundRange,
 										type: "range",
 										min: "0",
 										max: "60",
 										step: "1",
 										value: blur,
-										"aria-label": t("wallpaperBlur"),
+										style: { ["--slider-progress"]: `${blur / 60 * 100}%` },
+										"aria-valuetext": `${blur}px`,
 										onChange: (event) => {
 											wallpaper.setBlur(Number(event.target.value));
 										}
@@ -1169,6 +1189,7 @@ window.__ModuleLoader__.load({
 												type: "button",
 												className: skin_center_module_css_default.button + " " + skin_center_module_css_default.buttonPrimary,
 												disabled: !renderable(item) || isMounted && isApplied || busy,
+												title: !renderable(item) && item.type === "application" ? t("wallpaperRequiresApp") : void 0,
 												onClick: () => {
 													wallpaper.tryOn(descriptorOf(item));
 												},
@@ -1273,7 +1294,9 @@ window.__ModuleLoader__.load({
 			const [loadingId, setLoadingId] = (0, react.useState)(null);
 			const [applying, setApplying] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
-			const [, forceRender] = (0, react.useState)(0);
+			/** Target of the most recent apply failure; the retry button re-applies it. */
+			const [lastFailedTarget, setLastFailedTarget] = (0, react.useState)(null);
+			const [, forceRender] = (0, react.useReducer)((x) => x + 1, 0);
 			const mounted = (0, react.useRef)(false);
 			const tryOnRequest = (0, react.useRef)(0);
 			(0, react.useEffect)(() => {
@@ -1403,7 +1426,7 @@ window.__ModuleLoader__.load({
 						if (!mounted.current) return;
 						if (!confirmed) {
 							const command = target === OFFICIAL ? "dsh-skin use official" : `dsh-skin use ${target}`;
-							setError(`${t("appliedUnconfirmed")} — ${command}`);
+							setError(`${t("appliedUnconfirmed")}\n${t("appliedUnconfirmedDetail")}\n${command}`);
 							return;
 						}
 						const entry = target === OFFICIAL ? null : SKIN_CENTER_ENTRIES.find((candidate) => candidate.id === target) ?? null;
@@ -1413,7 +1436,7 @@ window.__ModuleLoader__.load({
 						}
 						controller.commit(entry).then(() => {
 							if (!mounted.current) return;
-							forceRender((tick) => tick + 1);
+							forceRender();
 						}).catch(() => {
 							if (!mounted.current) return;
 							reloadFallback();
@@ -1423,6 +1446,7 @@ window.__ModuleLoader__.load({
 					setApplying(null);
 					const detail = cause instanceof Error ? cause.message : String(cause);
 					const command = target === OFFICIAL ? "dsh-skin use official" : `dsh-skin use ${target}`;
+					setLastFailedTarget(target);
 					setError(`${t("applyFailed")} (${detail}) — ${command}`);
 				});
 			};
@@ -1470,7 +1494,6 @@ window.__ModuleLoader__.load({
 							})]
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: skin_center_module_css_default.cardDescription,
-							title: t("cardDescription"),
 							children: t("cardDescription")
 						})]
 					})
@@ -1481,7 +1504,6 @@ window.__ModuleLoader__.load({
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								className: skin_center_module_css_default.enableLabel,
-								title: t("enabled"),
 								children: t("enabled")
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
@@ -1489,6 +1511,7 @@ window.__ModuleLoader__.load({
 								role: "switch",
 								"aria-checked": enabled,
 								"aria-label": t("enabled"),
+								disabled: loadingId !== null || applying !== null,
 								className: enabled ? skin_center_module_css_default.switch + " " + skin_center_module_css_default.switchOn : skin_center_module_css_default.switch,
 								onClick: () => {
 									background.setEnabled(!enabled);
@@ -1505,7 +1528,6 @@ window.__ModuleLoader__.load({
 							className: skin_center_module_css_default.head,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 								className: skin_center_module_css_default.intro,
-								title: t("intro"),
 								children: t("intro")
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: skin_center_module_css_default.themeRow,
@@ -1516,6 +1538,7 @@ window.__ModuleLoader__.load({
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
+										"aria-pressed": !dark,
 										className: `${skin_center_module_css_default.themeButton} ${dark ? "" : skin_center_module_css_default.themeButtonActive}`,
 										onClick: () => {
 											theme.setTheme("light");
@@ -1524,6 +1547,7 @@ window.__ModuleLoader__.load({
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
+										"aria-pressed": dark,
 										className: `${skin_center_module_css_default.themeButton} ${dark ? skin_center_module_css_default.themeButtonActive : ""}`,
 										onClick: () => {
 											theme.setTheme("dark");
@@ -1538,8 +1562,9 @@ window.__ModuleLoader__.load({
 							children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: skin_center_module_css_default.backgroundHead,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
 										className: skin_center_module_css_default.backgroundLabel,
+										htmlFor: "skin-center-background-opacity",
 										children: t("backgroundOpacity")
 									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 										className: skin_center_module_css_default.backgroundValue,
@@ -1556,7 +1581,7 @@ window.__ModuleLoader__.load({
 									step: "5",
 									value: opacity,
 									"aria-valuetext": `${opacity}%`,
-									"aria-label": t("backgroundOpacity"),
+									style: { ["--slider-progress"]: `${opacity}%` },
 									onChange: (event) => {
 										background.set(Number(event.target.value));
 									}
@@ -1572,8 +1597,9 @@ window.__ModuleLoader__.load({
 							children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: skin_center_module_css_default.backgroundHead,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
 										className: skin_center_module_css_default.backgroundLabel,
+										htmlFor: "skin-center-background-blur-empty",
 										children: t("backgroundBlurEmpty")
 									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 										className: skin_center_module_css_default.backgroundValue,
@@ -1590,15 +1616,16 @@ window.__ModuleLoader__.load({
 									step: "1",
 									value: blurEmpty,
 									"aria-valuetext": `${blurEmpty}px`,
-									"aria-label": t("backgroundBlurEmpty"),
+									style: { ["--slider-progress"]: `${blurEmpty / 20 * 100}%` },
 									onChange: (event) => {
 										background.setBlurEmpty(Number(event.target.value));
 									}
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: skin_center_module_css_default.backgroundHead,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
 										className: skin_center_module_css_default.backgroundLabel,
+										htmlFor: "skin-center-background-blur-content",
 										children: t("backgroundBlurContent")
 									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 										className: skin_center_module_css_default.backgroundValue,
@@ -1615,7 +1642,7 @@ window.__ModuleLoader__.load({
 									step: "1",
 									value: blurContent,
 									"aria-valuetext": `${blurContent}px`,
-									"aria-label": t("backgroundBlurContent"),
+									style: { ["--slider-progress"]: `${blurContent / 20 * 100}%` },
 									onChange: (event) => {
 										background.setBlurContent(Number(event.target.value));
 									}
@@ -1628,11 +1655,27 @@ window.__ModuleLoader__.load({
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(WallpaperPanel, {
 							t,
-							wallpaper
+							wallpaper,
+							busy: loadingId !== null || applying !== null
 						}),
-						error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: skin_center_module_css_default.error,
-							children: error
+							role: "alert",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: skin_center_module_css_default.errorMessage,
+								children: error
+							}), lastFailedTarget !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: skin_center_module_css_default.button,
+								disabled: applying !== null || loadingId !== null,
+								onClick: () => {
+									const target = lastFailedTarget;
+									setLastFailedTarget(null);
+									setError(null);
+									applySkin(target);
+								},
+								children: t("retry")
+							})]
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: skin_center_module_css_default.list,
@@ -1648,12 +1691,11 @@ window.__ModuleLoader__.load({
 											children: [
 												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 													className: skin_center_module_css_default.swatch,
-													style: { background: "#98a1ab" },
+													style: { background: "var(--dsw-alias-label-tertiary, #98a1ab)" },
 													"aria-hidden": "true"
 												}),
 												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 													className: skin_center_module_css_default.cardName,
-													title: t("official"),
 													children: t("official")
 												}),
 												badge !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
@@ -2292,8 +2334,10 @@ window.__ModuleLoader__.load({
 			applying: "Applying…",
 			restore: "Restore",
 			applyFailed: "Apply failed",
-			appliedUnconfirmed: "Applied, but the change has not been confirmed — refresh the page in dev mode; packaged installs (DSH Desktop) need an app restart",
+			appliedUnconfirmed: "Applied, but the change has not been confirmed",
+			appliedUnconfirmedDetail: "Refresh the page in dev mode; packaged installs (DSH Desktop) need an app restart.",
 			appliedNeedRestart: "Applied and confirmed, but the host did not hot-reload — restart dsh to take effect",
+			retry: "Retry",
 			theme: "Theme preview",
 			themeLight: "Light",
 			themeDark: "Dark",
@@ -2310,7 +2354,8 @@ window.__ModuleLoader__.load({
 			wallpaperHint: "Use your local Wallpaper Engine library as the GUI backdrop: video and web wallpapers render live, scene wallpapers as a static frame.",
 			wallpaperLoadError: "Wallpaper library failed to load",
 			wallpaperLibraryFound: "Wallpaper Engine library detected",
-			wallpaperLibraryManual: "Manual folders only (no Wallpaper Engine install found; set folders in the skin-wallpaper settings)",
+			wallpaperLibraryManual: "Manual folders only",
+			wallpaperLibraryManualHint: "No Wallpaper Engine install found. Add folders in the skin-wallpaper settings.",
 			wallpaperRefresh: "Refresh",
 			wallpaperMode: "Render mode",
 			wallpaperModeLive: "Live",
@@ -2329,7 +2374,8 @@ window.__ModuleLoader__.load({
 			wallpaperTypeVideo: "Video",
 			wallpaperTypeWeb: "Web",
 			wallpaperTypeScene: "Scene (static)",
-			wallpaperTypeApp: "Unsupported",
+			wallpaperTypeApp: "Requires app",
+			wallpaperRequiresApp: "This wallpaper type needs the Wallpaper Engine application to run. Open the wallpaper in the WE desktop app and try a different export.",
 			wallpaperDirs: "Manual folders",
 			wallpaperDirsEmpty: "No manual folders yet.",
 			wallpaperDirsHint: "No Wallpaper Engine (e.g. macOS)? Point a folder at any .mp4/.webm files, a wallpaper project folder, or a folder of projects — they become your wallpaper library.",
@@ -2354,8 +2400,10 @@ window.__ModuleLoader__.load({
 			applying: "应用中…",
 			restore: "恢复默认",
 			applyFailed: "应用失败",
-			appliedUnconfirmed: "已写入配置但尚未确认生效——开发模式请刷新页面；打包版（DSH Desktop）需重启应用后生效",
+			appliedUnconfirmed: "已写入配置但尚未确认生效",
+			appliedUnconfirmedDetail: "开发模式请刷新页面；打包版（DSH Desktop）需重启应用。",
 			appliedNeedRestart: "已写入配置并确认生效，但宿主未热重载——请重启 dsh 后生效",
+			retry: "重试",
 			theme: "主题预览",
 			themeLight: "亮色",
 			themeDark: "暗色",
@@ -2372,7 +2420,8 @@ window.__ModuleLoader__.load({
 			wallpaperHint: "把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频与网页壁纸动态渲染，场景壁纸以静态帧呈现。",
 			wallpaperLoadError: "壁纸库加载失败",
 			wallpaperLibraryFound: "已检测到 Wallpaper Engine 壁纸库",
-			wallpaperLibraryManual: "仅手动目录（未检测到 Wallpaper Engine 安装，可在 skin-wallpaper 设置里添加目录）",
+			wallpaperLibraryManual: "仅手动目录",
+			wallpaperLibraryManualHint: "未检测到 Wallpaper Engine 安装。可在皮肤壁纸设置中添加目录。",
 			wallpaperRefresh: "刷新",
 			wallpaperMode: "渲染模式",
 			wallpaperModeLive: "动态",
@@ -2390,8 +2439,9 @@ window.__ModuleLoader__.load({
 			wallpaperLegal: "壁纸素材版权归创意工坊作者所有，仅供本机个人使用，不上传、不分享。",
 			wallpaperTypeVideo: "视频",
 			wallpaperTypeWeb: "网页",
-			wallpaperTypeScene: "场景(静态)",
-			wallpaperTypeApp: "不支持",
+			wallpaperTypeScene: "场景（静态）",
+			wallpaperTypeApp: "需客户端",
+			wallpaperRequiresApp: "该壁纸类型需要 Wallpaper Engine 客户端运行。请在 WE 桌面应用中打开该壁纸并选择其他导出格式。",
 			wallpaperDirs: "手动目录",
 			wallpaperDirsEmpty: "还没有手动目录。",
 			wallpaperDirsHint: "没有 Wallpaper Engine（如 macOS）？把任意 .mp4/.webm 视频、单个壁纸项目文件夹或项目合集文件夹加进来，就是你的壁纸库。",

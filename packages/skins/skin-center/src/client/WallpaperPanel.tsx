@@ -61,7 +61,7 @@ function typeKey(item: WallpaperItem): 'wallpaperTypeVideo' | 'wallpaperTypeWeb'
 }
 
 /** Render the Wallpaper Engine section of the skin-center card. */
-export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>['t']; wallpaper: WallpaperHandle }): ReactNode {
+export function WallpaperPanel({ t, wallpaper, busy = false }: { t: PropsLocale<'skinCenter'>['t']; wallpaper: WallpaperHandle; busy?: boolean }): ReactNode {
   const enabled = useSyncExternalStore(wallpaper.subscribe, wallpaper.enabled)
   const selection = useSyncExternalStore(wallpaper.subscribe, wallpaper.selection)
   const mode = useSyncExternalStore(wallpaper.subscribe, wallpaper.mode)
@@ -151,6 +151,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
           role="switch"
           aria-checked={enabled}
           aria-label={t('wallpaperEnable')}
+          disabled={busy}
           className={enabled ? css.switch + ' ' + css.switchOn : css.switch}
           onClick={() => { wallpaper.setEnabled(!enabled) }}
         >
@@ -170,6 +171,9 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                   : <span>{t('wallpaperLibraryManual')} · {items.length}</span>}
             <button type="button" className={css.button} onClick={load}>{t('wallpaperRefresh')}</button>
           </div>
+          {loadError === null && items !== null && installDir === null && (
+            <p className={css.backgroundHintMuted}>{t('wallpaperLibraryManualHint')}</p>
+          )}
 
           {activeSelection !== '' && (
             <div className={css.wallpaperControls}>
@@ -177,6 +181,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                 <span className={css.themeLabel}>{t('wallpaperMode')}</span>
                 <button
                   type="button"
+                  aria-pressed={mode === 'live'}
                   className={css.themeButton + (mode === 'live' ? ' ' + css.themeButtonActive : '')}
                   onClick={() => { wallpaper.setMode('live') }}
                 >
@@ -184,6 +189,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                 </button>
                 <button
                   type="button"
+                  aria-pressed={mode === 'frame'}
                   className={css.themeButton + (mode === 'frame' ? ' ' + css.themeButtonActive : '')}
                   onClick={() => { wallpaper.setMode('frame') }}
                 >
@@ -199,31 +205,39 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
               </div>
               <div className={css.backgroundRow}>
                 <div className={css.backgroundHead}>
-                  <span className={css.backgroundLabel}>{t('wallpaperDim')}</span>
+                  <label className={css.backgroundLabel} htmlFor="wallpaper-panel-dim">
+                    {t('wallpaperDim')}
+                  </label>
                   <span className={css.backgroundValue} aria-hidden="true">{dim}%</span>
                 </div>
                 <input
+                  id="wallpaper-panel-dim"
                   className={css.backgroundRange}
                   type="range"
                   min="0"
                   max="90"
                   step="5"
                   value={dim}
-                  aria-label={t('wallpaperDim')}
+                  aria-valuetext={`${dim}%`}
+                  style={{ ['--slider-progress' as string]: `${(dim / 90) * 100}%` }}
                   onChange={(event) => { wallpaper.setDim(Number(event.target.value)) }}
                 />
                 <div className={css.backgroundHead}>
-                  <span className={css.backgroundLabel}>{t('wallpaperBlur')}</span>
+                  <label className={css.backgroundLabel} htmlFor="wallpaper-panel-blur">
+                    {t('wallpaperBlur')}
+                  </label>
                   <span className={css.backgroundValue} aria-hidden="true">{blur}px</span>
                 </div>
                 <input
+                  id="wallpaper-panel-blur"
                   className={css.backgroundRange}
                   type="range"
                   min="0"
                   max="60"
                   step="1"
                   value={blur}
-                  aria-label={t('wallpaperBlur')}
+                  style={{ ['--slider-progress' as string]: `${(blur / 60) * 100}%` }}
+                  aria-valuetext={`${blur}px`}
                   onChange={(event) => { wallpaper.setBlur(Number(event.target.value)) }}
                 />
               </div>
@@ -322,6 +336,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                           type="button"
                           className={css.button + ' ' + css.buttonPrimary}
                           disabled={!renderable(item) || (isMounted && isApplied) || busy}
+                          title={!renderable(item) && item.type === 'application' ? t('wallpaperRequiresApp') : undefined}
                           onClick={() => { wallpaper.tryOn(descriptorOf(item)) }}
                         >
                           {t('tryOn')}

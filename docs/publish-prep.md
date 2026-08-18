@@ -37,6 +37,8 @@
 | packages/skins/miku | @linxin666/dsh-client-ui-skin-miku | 0.1.12 | true |
 | packages/skins/matrix | @linxin666/dsh-client-ui-skin-matrix | 0.1.0 | true |
 | packages/skins/maid-atelier | @linxin666/dsh-client-ui-skin-maid-atelier | 0.1.20 | false |
+| packages/skins/aurora-nebula | @linxin666/dsh-client-ui-skin-aurora-nebula | 0.1.0 | false |
+| packages/skins/cyber-neon | @linxin666/dsh-client-ui-skin-cyber-neon | 0.1.0 | false |
 
 
 ## 二、发布前检查结论（2026-08-11，已修复项标注 [已确认]）

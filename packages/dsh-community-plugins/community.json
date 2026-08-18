@@ -197,5 +197,35 @@
     "descriptionEn": "One-command skinning for DSH Web: 8 original themes, wallpaper (opacity/blur/gradient/URL), per-user accent, shareable theme packs with favorites and surprise-me. Purely native token system.",
     "repo": "https://github.com/RevolutionLA/dsh-dream-skin",
     "category": "ui"
+  },
+  {
+    "id": "dsh-skill-fuzzy",
+    "name": "技能模糊搜索",
+    "nameEn": "Skill Fuzzy Search",
+    "author": "ch1bug",
+    "description": "Codex 风格模糊技能搜索：/bug、/diag、/regression 都能在 / 技能菜单里命中 diagnosing-bugs（名称子序列 + 描述连续子串匹配）。",
+    "descriptionEn": "Codex-style fuzzy skill search: /bug, /diag and /regression all find diagnosing-bugs in the / skill menu (name subsequence + description substring matching).",
+    "repo": "https://github.com/ch1bug/dsh-skill-fuzzy",
+    "category": "ui"
+  },
+  {
+    "id": "dsh-mimo-agent-tools",
+    "name": "MiMo 多模态工具",
+    "nameEn": "MiMo Multimodal Tools",
+    "author": "ch1bug",
+    "description": "把小米 MiMo API 封装为 agent 工具：联网搜索、图像/音频/视频理解、语音转写、语音合成与音色克隆（mimo_search/vision/audio/video/asr/tts/voiceclone）。",
+    "descriptionEn": "Turns the Xiaomi MiMo API into agent tools: web search, image/audio/video understanding, speech-to-text, text-to-speech and voice cloning (mimo_search/vision/audio/video/asr/tts/voiceclone).",
+    "repo": "https://github.com/ch1bug/dsh-mimo-agent-tools",
+    "category": "tools"
+  },
+  {
+    "id": "dsh-wsl-bridge",
+    "name": "WSL Windows 桥",
+    "nameEn": "WSL Windows Bridge",
+    "author": "ch1bug",
+    "description": "让 WSL 里的 agent 访问 Windows 侧：读写 C:\\ 文件、运行 .exe、Explorer 打开、wslpath 路径互转与盘符枚举（win_ls/read/write/run/open/path/drives）。",
+    "descriptionEn": "Lets a WSL agent reach the Windows host: read/write C:\\ files, run .exe programs, open in Explorer, convert paths via wslpath and list drives (win_ls/read/write/run/open/path/drives).",
+    "repo": "https://github.com/ch1bug/dsh-wsl-bridge",
+    "category": "integration"
   }
 ]

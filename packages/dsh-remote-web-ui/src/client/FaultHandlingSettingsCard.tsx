@@ -54,6 +54,7 @@ export function FaultHandlingSettingsCard(props: FaultHandlingSettingsCardProps)
       t={t}
       titleKey="settings.faultHandling"
       descriptionKey="settings.faultHandlingDescription"
+      defaultOpen={false}
       state={state}
       onSave={props.save}
       onDiscard={props.discard}

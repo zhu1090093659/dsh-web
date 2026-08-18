@@ -145,3 +145,13 @@ describe('floating expand button (issues #374 / #292)', () => {
     expect(floatingButton().style.display).toBe('none')
   })
 })
+
+describe('dispose restores the shell grid (issue #499)', () => {
+  it('returns the frame to the native 3-track grid after unmount', () => {
+    expect(grid()).toBe('240px minmax(0, 1fr) 0px 0px 260px')
+    controller.dispose()
+    expect(grid()).toBe('240px minmax(0, 1fr) 0px')
+    expect(explorerCol()).toBeNull()
+    expect(previewCol()).toBeNull()
+  })
+})

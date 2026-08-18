@@ -534,6 +534,13 @@ export class PanelLayoutController {
     this.styleObserver?.disconnect()
     this.sizeObserver?.disconnect()
     for (const dispose of this.disposers) dispose()
+    // Restore the shell's native 3-track grid before removing the columns:
+    // a live unmount (settings toggle, hot reload) otherwise leaves the
+    // panel's 4/5-track inline grid behind and the chat area never
+    // re-centers (issue #499).
+    if (this.frame !== null && this.shellTracks.length === 3) {
+      this.frame.style.gridTemplateColumns = this.shellTracks.join(' ')
+    }
     this.previewCol?.remove()
     this.explorerCol?.remove()
     this.explorerHandle?.remove()

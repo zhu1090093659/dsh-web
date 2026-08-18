@@ -87,59 +87,6 @@ window.SKIN_MANIFEST = {
       "order": 3
     },
     {
-      "id": "qq98",
-      "name": "QQ2008 怀旧版",
-      "nameEn": "QQ2008 Retro",
-      "author": "dsh-web-ui",
-      "tagline": "水晶蓝桌面 · 玻璃深蓝标题栏 · 戴围巾企鹅",
-      "description": "dsh web ui 家族收录的第一个皮肤：QQ2008 水晶蓝年代。深蓝渐变桌面、玻璃质感标题栏、浅蓝状态栏和圆角高光控件，配一只戴围巾的企鹅。",
-      "tags": [
-        "retro",
-        "qq",
-        "2008",
-        "crystal-blue",
-        "nostalgia"
-      ],
-      "accent": "#2b7cd9",
-      "bodyAttr": "data-dsh-retro",
-      "package": "@linxin666/dsh-client-ui-skin-qq98",
-      "wiring": {
-        "id": "ui-skin-qq98",
-        "bundleWired": false
-      },
-      "preview": {
-        "light": "packages/skins/qq98/preview/light.png",
-        "dark": "packages/skins/qq98/preview/dark.png"
-      },
-      "order": 4
-    },
-    {
-      "id": "ths",
-      "name": "同花顺风格",
-      "nameEn": "Tonghuashun Trading",
-      "author": "dsh-web-ui",
-      "tagline": "品牌红标题栏 · 实时行情状态栏 · 灰蓝数据终端",
-      "description": "同花顺风格炒股主题：品牌红标题栏带上证指数行情签，状态栏红涨绿跌，自选股风格的侧边栏和交易终端面板，写代码也像盯盘。",
-      "tags": [
-        "stock",
-        "trading",
-        "terminal",
-        "red"
-      ],
-      "accent": "#e60012",
-      "bodyAttr": "data-dsh-ths",
-      "package": "@linxin666/dsh-client-ui-skin-ths",
-      "wiring": {
-        "id": "ui-skin-ths",
-        "bundleWired": false
-      },
-      "preview": {
-        "light": "packages/skins/ths/preview/light.png",
-        "dark": "packages/skins/ths/preview/dark.png"
-      },
-      "order": 5
-    },
-    {
       "id": "xp",
       "name": "Windows XP (Luna)",
       "nameEn": "Windows XP Luna",
@@ -332,6 +279,39 @@ window.SKIN_MANIFEST = {
         "dark": "packages/skins/matrix/preview/dark.png"
       },
       "order": 12
+    },
+    {
+      "id": "maid-atelier",
+      "name": "深海女仆工坊",
+      "nameEn": "Abyssal Maid Atelier",
+      "author": "Small-tailqwq",
+      "tagline": "双女仆背景、深海蓝蕾丝界面与 Q 版侧栏",
+      "description": "一套面向 DeepSeek Harness Web GUI 的高定制动漫角色皮肤。它使用双女仆工坊场景作为对话区背景，以深海蓝、陶瓷白、长春花蓝和柔金构成可热切换的界面覆盖层，并为加载、思考和工具运行状态提供动画反馈。",
+      "tags": [
+        "anime",
+        "maid",
+        "whale",
+        "navy",
+        "ornate",
+        "glass"
+      ],
+      "accent": "#c5a468",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseUrl": "https://github.com/Small-tailqwq/dsh-deep-whale/blob/main/maid-atelier/LICENSE",
+      "noticeUrl": "https://github.com/Small-tailqwq/dsh-deep-whale/blob/main/maid-atelier/NOTICE",
+      "sourceUrl": "https://github.com/Small-tailqwq/dsh-deep-whale/tree/main/maid-atelier",
+      "attribution": "上善 → zipzip → Small-tailqwq",
+      "bodyAttr": "data-dsh-maid-atelier",
+      "package": "@linxin666/dsh-client-ui-skin-maid-atelier",
+      "wiring": {
+        "id": "ui-skin-maid-atelier",
+        "bundleWired": false
+      },
+      "preview": {
+        "light": "packages/skins/maid-atelier/preview/light.png",
+        "dark": "packages/skins/maid-atelier/preview/dark.png"
+      },
+      "order": 13
     }
   ]
 };

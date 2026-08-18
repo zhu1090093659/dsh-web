@@ -9,6 +9,7 @@ A Hatsune Miku (初音未来) theme skin for the DeepSeek Harness (DSH) Web GUI.
 - **Custom backdrop**: a built-in sample background that you can replace with your own Miku image
 - **Light/dark dual themes**: light is a blue-pink clear sky, dark is a neon blue-violet night
 - **Electronic idol elements**: the 01 number badge at the top, a music-note icon, and a music waveform in the status bar
+- **Miku cursors**: the theme's pointer shapes mapped onto the standard cursor states (default / link / text / wait / progress / ...), embedded inline
 
 ![Light](preview/light.png) · ![Dark](preview/dark.png)
 
@@ -17,7 +18,7 @@ A Hatsune Miku (初音未来) theme skin for the DeepSeek Harness (DSH) Web GUI.
 - Pure presentation layer: no services injected, no events emitted, no model requests touched
 - `apply()` only writes what it withdraws; the disposer fully recovers (body attribute, injected elements, favicon, title)
 - All styles hang under `body[data-dsh-miku]` (dark variant `[data-ds-dark-theme]`)
-- No static asset files: the background is embedded as a data URI
+- No static asset files: the background and the cursor art are embedded as data URIs
 - `prefers-reduced-transparency` support: users who enable "Reduce Transparency" (macOS / iOS Safari) get the same translucent fills without the GPU blur cost
 
 ## Requirements
@@ -36,15 +37,22 @@ pnpm test        # apply/dispose contract test
 
 The built `lib/` is committed with the repo, so you can install even after cloning without building; a full build is still recommended.
 
-## Install
+## Install into DSH
 
-Skins ship inside the family aggregate package `@linxin666/dsh-skins` (installing it brings every skin) and are wired by the skin manager — this package declares no `dsh.bundle` (skin.json `wiring.bundleWired: false`), so `dsh-skin use` renders the insert row into the profile's own patch:
-
-```sh
-dsh plugin --profile web add @linxin666/dsh-skins
+```bash
+dsh plugin --profile web add "link:<absolute path to this repo>"
 ```
 
-Activate or switch with `dsh-skin use miku` (helper script `scripts/dsh-skin` in the monorepo); only one skin is active at a time.
+- Spaces in the path (Windows): `dsh plugin add` breaks arguments containing spaces; use this instead:
+
+  ```bash
+  cd ~/.dsh/profiles/web
+  pnpm add "link:<absolute path to this repo>"
+  ```
+
+  Then append `@linxin666/dsh-client-ui-skin-miku` to the `dsh.profile.bundles` array in `~/.dsh/profiles/web/package.json`.
+
+- After installing, restart `dsh web` and hard-refresh the page (Ctrl+Shift+R).
 
 ## Switch skins
 
@@ -60,18 +68,25 @@ After switching, the config watcher hot-reloads within seconds; refresh the page
 
 ## Custom backdrop
 
-The background lives in the `MIKU_ART` constant of `src/client/art.ts` (a data URI).
+The backdrop is split per theme: the dark theme wears the Miku art in
+`MIKU_ART` (`src/client/art.ts`), the light theme wears its own seaside-girl
+art in `MIKU_ART_LIGHT` (`src/client/art-light.ts`); both are data URIs.
 
-To replace it, drop an image you like into this repo (e.g. `bg.png`), then run:
+To replace the light-theme art, drop an image you like into this repo, then
+run:
 
 ```bash
-node scripts/embed-bg.mjs  # converts bg.png to WebP and writes it into art.ts (if the script is absent, convert to base64 manually)
+node scripts/embed-art-light.mjs [imagePath]  # base64 the image into art-light.ts (light theme)
 ```
 
-Or convert the image to base64 with any tool and replace the `MIKU_ART` value:
+(The dark-theme art lives in `art.ts`'s `MIKU_ART`; if a helper script is
+absent, convert to base64 manually.)
+
+Or convert the image to base64 with any tool and replace the constants:
 
 ```ts
-export const MIKU_ART = 'data:image/webp;base64,<...>'
+export const MIKU_ART = 'data:image/png;base64,<...>'
+export const MIKU_ART_LIGHT = 'data:image/jpeg;base64,<...>'
 ```
 
 Rebuild and refresh the page.

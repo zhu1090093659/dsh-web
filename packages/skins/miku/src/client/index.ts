@@ -5,11 +5,12 @@
  * wrote): the `data-dsh-miku` body attribute the stylesheet is scoped on,
  * the idol backdrop (an original teal-ponytail art with a readability scrim
  * chosen by the current theme, swapped live on `data-ds-dark-theme`
- * changes), the title bar (note icon + 01 badge + window glyphs), the status
- * bar (waveform + status cells), the injected favicon, and the document
- * title. The CSS rides the bundle's CSS-modules auto-inject (style tag owned
- * by the loader, removed on entry dispose). No services are injected: the
- * skin needs only the DOM.
+ * changes; the light theme wears its own seaside-girl art), the title bar
+ * (note icon + 01 badge + window glyphs), the status bar (waveform +
+ * status cells), the injected favicon, and the document title. The CSS
+ * rides the bundle's CSS-modules auto-inject (style tag owned by the
+ * loader, removed on entry dispose). No services are injected: the skin
+ * needs only the DOM.
  *
  * Backdrop strategy: the art + scrim are written straight onto the body's
  * inline background (via the canonical hyphenated CSSOM API), so any prior
@@ -23,6 +24,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import css from './miku.module.css'
 import { MIKU_ART } from './art.ts'
+import { MIKU_ART_LIGHT } from './art-light.ts'
+import { MIKU_CURSOR_CSS } from './cursors.ts'
 
 /** The product title the skin pins (captured by the shell's DocumentTitle after settle). */
 const SKIN_TITLE = '初音未来 · DeepSeek 在线'
@@ -168,7 +171,10 @@ export function apply(ctx: Context): void {
 
   const setBackdrop = (): void => {
     const dark = body.dataset.dsDarkTheme !== undefined
-    body.style.setProperty('background-image', `${dark ? SCRIM_DARK : SCRIM_LIGHT}, url(${MIKU_ART})`)
+    // The artwork follows the theme: light wears the seaside girl, dark
+    // keeps the Miku backdrop; the scrim is layered per theme too.
+    const art = dark ? MIKU_ART : MIKU_ART_LIGHT
+    body.style.setProperty('background-image', `${dark ? SCRIM_DARK : SCRIM_LIGHT}, url(${art})`)
     body.style.setProperty('background-position', 'center')
     body.style.setProperty('background-size', 'cover')
     body.style.setProperty('background-attachment', 'fixed')
@@ -179,6 +185,20 @@ export function apply(ctx: Context): void {
   // Swap the scrim live when the base theme system flips dark/light.
   const observer = new MutationObserver(setBackdrop)
   observer.observe(body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
+
+  // Right-panel collapse state: when the aionui panel collapses to a thin
+  // rail, the "collapse" button must hide and the "expand" button appears.
+  // A lightweight poll keeps the body flag current across open/close; the
+  // skin CSS uses it to keep the two floating buttons from overlapping.
+  const syncPanelCollapsed = (): void => {
+    const collapsed = Array.from(document.querySelectorAll('.aionui-root')).some(
+      (root) => (root as HTMLElement).getBoundingClientRect().width < 24,
+    )
+    if (collapsed) body.dataset.dshAionuiCollapsed = ''
+    else delete body.dataset.dshAionuiCollapsed
+  }
+  syncPanelCollapsed()
+  const panelTimer = setInterval(syncPanelCollapsed, 500)
 
   const titlebar = document.createElement('div')
   titlebar.className = cls('mikuTitlebar')
@@ -227,11 +247,21 @@ export function apply(ctx: Context): void {
   favicon.href = `data:image/svg+xml;utf8,${encodeURIComponent(FAVICON_SVG)}`
   document.head.append(favicon)
 
+  // Custom Miku cursors: inline PNGs mapped to the standard cursor states
+  // (default / pointer / text / wait / ...). Injected as a style element so
+  // the skin carries no static assets; retracted on dispose.
+  const cursorStyle = document.createElement('style')
+  cursorStyle.dataset.skinChrome = 'cursor'
+  cursorStyle.textContent = MIKU_CURSOR_CSS
+  document.head.append(cursorStyle)
+
   document.title = pinnedTitle
   body.append(titlebar, statusbar)
 
   ctx.effect(() => () => {
     delete body.dataset.dshMiku
+    clearInterval(panelTimer)
+    delete body.dataset.dshAionuiCollapsed
     observer.disconnect()
     for (const [prop, value] of previous) {
       body.style.setProperty(prop, value)
@@ -239,6 +269,7 @@ export function apply(ctx: Context): void {
     titlebar.remove()
     statusbar.remove()
     favicon.remove()
+    cursorStyle.remove()
     // Only restore when the skin's own title still stands — a session title
     // projected by the shell must not be clobbered by skin teardown.
     if (document.title === pinnedTitle) document.title = originalTitle

@@ -9,6 +9,7 @@
 - **自定义背景图**：内置示例背景，可替换为你自己的初音图片
 - **亮/暗双主题**：亮色为蓝粉晴空，暗色为霓虹蓝紫夜
 - **电子歌姬元素**：顶部 01 编号徽标、音符图标、状态栏音乐波形
+- **初音光标**：把主题的指针图形映射到标准光标状态（默认 / 链接 / 输入 / 等待 / 后台 / …），以内嵌 data URI 提供
 
 ![亮色](preview/light.png) · ![暗色](preview/dark.png)
 
@@ -17,7 +18,7 @@
 - 纯呈现层：不注入服务、不发事件、不触模型请求
 - `apply()` 只写自己会收回的东西，disposer 完整回收（body 属性、注入元素、favicon、标题）
 - 样式全部挂在 `body[data-dsh-miku]` 下（暗色变体 `[data-ds-dark-theme]`）
-- 无静态资源文件：背景图以 data URI 内嵌
+- 无静态资源文件：背景图与光标图形均以 data URI 内嵌
 - 支持 `prefers-reduced-transparency`：开启系统「降低透明度」（macOS / iOS Safari）的用户会得到同样的半透明表面，但省去 GPU 模糊开销
 
 ## 环境要求
@@ -36,15 +37,22 @@ pnpm test        # apply/dispose 契约测试
 
 构建产物 `lib/` 已随仓库提交，克隆后即使跳过构建也可安装；但建议完整构建一次。
 
-## 安装
+## 安装到 DSH
 
-皮肤内置在家族聚合包 `@linxin666/dsh-skins` 里（装它 = 全部皮肤一次到位），由皮肤管理器接线——本包不声明 `dsh.bundle`（skin.json 的 `wiring.bundleWired: false`），`dsh-skin use` 会把 insert 行写进 profile 自己的 patch：
-
-```sh
-dsh plugin --profile web add @linxin666/dsh-skins
+```bash
+dsh plugin --profile web add "link:<本仓库绝对路径>"
 ```
 
-用 `dsh-skin use miku`（monorepo 里的辅助脚本 `scripts/dsh-skin`）激活或切换；同一时刻只激活一款皮肤。
+- 路径含空格（Windows）：`dsh plugin add` 会把含空格的参数拆断，请改用：
+
+  ```bash
+  cd ~/.dsh/profiles/web
+  pnpm add "link:<本仓库绝对路径>"
+  ```
+
+  然后把 `@linxin666/dsh-client-ui-skin-miku` 追加到 `~/.dsh/profiles/web/package.json` 的 `dsh.profile.bundles` 数组。
+
+- 安装后重启 `dsh web`，强制刷新页面（Ctrl+Shift+R）。
 
 ## 切换皮肤
 
@@ -60,18 +68,21 @@ dsh-skin list           # 查看皮肤与当前激活项
 
 ## 自定义背景图
 
-背景图在 `src/client/art.ts` 的 `MIKU_ART` 常量中（data URI）。
+背景按主题分开：暗色主题用 `src/client/art.ts` 的 `MIKU_ART`（初音图），亮色主题用 `src/client/art-light.ts` 的 `MIKU_ART_LIGHT`（海边少女图），均为 data URI 内嵌。
 
-替换方式：把你喜欢的图片放到本仓库（例如 `bg.png`），然后执行：
+替换亮色背景：把你喜欢的图片放到本仓库，然后执行：
 
 ```bash
-node scripts/embed-bg.mjs  # 将 bg.png 转成 WebP 并写入 art.ts（如无此脚本请手动转 base64）
+node scripts/embed-art-light.mjs [图片路径]  # 将图片 base64 写入 art-light.ts（亮色主题）
 ```
 
-或用任意工具把图片转成 base64 后替换 `MIKU_ART` 的值：
+（暗色主题背景在 `art.ts` 的 `MIKU_ART`；如无辅助脚本请手动转 base64。）
+
+或用任意工具把图片转成 base64 后替换常量：
 
 ```ts
-export const MIKU_ART = 'data:image/webp;base64,<...>'
+export const MIKU_ART = 'data:image/png;base64,<...>'
+export const MIKU_ART_LIGHT = 'data:image/jpeg;base64,<...>'
 ```
 
 重新构建后刷新页面即可。

@@ -79,6 +79,20 @@ describe('Miku skin apply', () => {
     expect(document.body.querySelectorAll('[data-skin-chrome]').length).toBe(0)
   })
 
+  it('injects the custom cursor stylesheet and retracts it on dispose', async () => {
+    fiber = await mount()
+    const style = document.head.querySelector<HTMLStyleElement>('style[data-skin-chrome="cursor"]')
+    expect(style).not.toBeNull()
+    // The inline PNG cursor surface maps the default state and the text /
+    // pointer states, all as base64 data URIs.
+    expect(style?.textContent).toContain('data:image/png;base64,')
+    expect(style?.textContent).toContain('cursor: url(')
+    expect(style?.textContent).toContain('cursor: url("data:image/png;base64,')
+    expect(style?.textContent).toContain(', text;')
+    await fiber.dispose()
+    expect(document.head.querySelector('style[data-skin-chrome="cursor"]')).toBeNull()
+  })
+
   it('pins the skin title and restores the original on dispose', async () => {
     document.title = 'original'
     fiber = await mount()
@@ -94,11 +108,24 @@ describe('Miku skin apply', () => {
     fiber = await mount()
     // The art + scrim land on the body's inline background (jsdom normalizes
     // the data URI inside url() with quotes, so match on the media type).
-    expect(document.body.style.backgroundImage).toContain('image/webp')
+    // Light theme wears the JPEG seaside-girl art, dark theme the PNG Miku art.
+    expect(document.body.style.backgroundImage).toContain('image/jpeg')
     expect(document.body.style.backgroundAttachment).toBe('fixed')
     await fiber.dispose()
     expect(document.body.style.backgroundImage).toBe('linear-gradient(rgb(17, 17, 17), rgb(34, 34, 34))')
     expect(document.body.style.backgroundAttachment).toBe('')
+  })
+
+  it('swaps to the dark-theme Miku art when the theme flips', async () => {
+    fiber = await mount()
+    expect(document.body.style.backgroundImage).toContain('image/jpeg')
+    // The scrim swap runs in a MutationObserver callback, so let a tick pass.
+    document.body.setAttribute('data-ds-dark-theme', '')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(document.body.style.backgroundImage).toContain('image/png')
+    document.body.removeAttribute('data-ds-dark-theme')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(document.body.style.backgroundImage).toContain('image/jpeg')
   })
 
   it('honours the localStorage title override', async () => {

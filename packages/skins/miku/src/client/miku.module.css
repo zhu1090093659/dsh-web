@@ -563,7 +563,6 @@ body[data-dsh-miku][data-ds-dark-theme] a:visited {
 @media (prefers-reduced-transparency: reduce) {
   body[data-dsh-miku] * {
     backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
   }
   body[data-dsh-miku] [data-pane='sidebar'] > div,
   body[data-dsh-miku] [data-pane='conversation'],
@@ -598,23 +597,44 @@ body[data-dsh-miku][data-ds-dark-theme] a:visited {
   gap: 8px;
   height: 30px;
   padding: 0 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 60%), linear-gradient(90deg, rgba(30, 111, 217, 0.55) 0%, rgba(46, 155, 255, 0.45) 40%, rgba(155, 93, 255, 0.42) 68%, rgba(255, 77, 166, 0.42) 100%);
+  /* Seamless loop: the color gradient repeats identically across the left
+     and right halves of the 200%-wide background, so sliding
+     background-position 0% -> 100% (one half-width) lands on exactly the
+     same picture the loop restarts from — no jump anywhere along the bar.
+     The vertical white sheen stays pinned (100%). */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 60%), linear-gradient(90deg, rgba(30, 111, 217, 0.55) 0%, rgba(46, 155, 255, 0.45) 12.5%, rgba(155, 93, 255, 0.42) 25%, rgba(255, 77, 166, 0.42) 37.5%, rgba(30, 111, 217, 0.55) 50%, rgba(46, 155, 255, 0.45) 62.5%, rgba(155, 93, 255, 0.42) 75%, rgba(255, 77, 166, 0.42) 87.5%, rgba(30, 111, 217, 0.55) 100%);
+  background-size: 100% 100%, 200% 100%;
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border-bottom: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   color: #fff;
   font: bold 12px/30px 'PingFang SC', 'Microsoft YaHei', sans-serif;
   text-shadow: 0 1px 1px rgba(6, 22, 48, 0.4);
   user-select: none;
+  animation: miku-bar-flow 8s linear infinite;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] .mikuTitlebar {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 60%), linear-gradient(90deg, rgba(13, 43, 86, 0.6) 0%, rgba(30, 79, 158, 0.5) 45%, rgba(122, 63, 208, 0.46) 72%, rgba(208, 41, 138, 0.46) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 60%), linear-gradient(90deg, rgba(13, 43, 86, 0.6) 0%, rgba(30, 79, 158, 0.5) 12.5%, rgba(122, 63, 208, 0.46) 25%, rgba(208, 41, 138, 0.46) 37.5%, rgba(13, 43, 86, 0.6) 50%, rgba(30, 79, 158, 0.5) 62.5%, rgba(122, 63, 208, 0.46) 75%, rgba(208, 41, 138, 0.46) 87.5%, rgba(13, 43, 86, 0.6) 100%);
+  background-size: 100% 100%, 200% 100%;
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border-bottom: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 亮色主题：上下渐变流动改用海边少女背景提取的青色系配色（替换默认的
+   蓝紫品红），保持两半重复的无缝流动与 8s 动画；文字/按钮改深色，避免
+   白字在浅青渐变上不清。暗色主题保持上方的深色渐变。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) .mikuTitlebar,
+body[data-dsh-miku]:not([data-ds-dark-theme]) .mikuStatusbar {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 60%), linear-gradient(90deg, rgba(64, 140, 205, 0.85) 0%, rgba(92, 172, 218, 0.75) 12.5%, rgba(128, 200, 224, 0.7) 25%, rgba(92, 172, 218, 0.75) 37.5%, rgba(64, 140, 205, 0.85) 50%, rgba(92, 172, 218, 0.75) 62.5%, rgba(128, 200, 224, 0.7) 75%, rgba(92, 172, 218, 0.75) 87.5%, rgba(64, 140, 205, 0.85) 100%);
+  background-size: 100% 100%, 200% 100%;
+  color: #14263f !important;
+  text-shadow: none;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) .mikuTitlebar [class*='Btn'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) .mikuStatusbar [class*='Btn'] {
+  color: #14263f !important;
 }
 
 .mikuTitlebarTitle {
@@ -681,26 +701,48 @@ body[data-dsh-miku][data-ds-dark-theme] .mikuTitlebar {
   height: 26px;
   padding: 2px 8px;
   box-sizing: border-box;
-  /* Same blue-violet-magenta gradient as the title bar. */
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 60%), linear-gradient(90deg, rgba(30, 111, 217, 0.55) 0%, rgba(46, 155, 255, 0.45) 40%, rgba(155, 93, 255, 0.42) 68%, rgba(255, 77, 166, 0.42) 100%);
+  /* Same repeating blue-violet-magenta gradient as the title bar: the two
+     halves of the 200%-wide background are identical, so the loop is
+     seamless (no jump). */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 60%), linear-gradient(90deg, rgba(30, 111, 217, 0.55) 0%, rgba(46, 155, 255, 0.45) 12.5%, rgba(155, 93, 255, 0.42) 25%, rgba(255, 77, 166, 0.42) 37.5%, rgba(30, 111, 217, 0.55) 50%, rgba(46, 155, 255, 0.45) 62.5%, rgba(155, 93, 255, 0.42) 75%, rgba(255, 77, 166, 0.42) 87.5%, rgba(30, 111, 217, 0.55) 100%);
+  background-size: 100% 100%, 200% 100%;
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border-top: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   color: #fff;
   font: 11px/1 'PingFang SC', 'Microsoft YaHei', sans-serif;
   text-shadow: 0 1px 1px rgba(6, 22, 48, 0.4);
   user-select: none;
+  animation: miku-bar-flow 8s linear infinite;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] .mikuStatusbar {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 60%), linear-gradient(90deg, rgba(13, 43, 86, 0.6) 0%, rgba(30, 79, 158, 0.5) 45%, rgba(122, 63, 208, 0.46) 72%, rgba(208, 41, 138, 0.46) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 60%), linear-gradient(90deg, rgba(13, 43, 86, 0.6) 0%, rgba(30, 79, 158, 0.5) 12.5%, rgba(122, 63, 208, 0.46) 25%, rgba(208, 41, 138, 0.46) 37.5%, rgba(13, 43, 86, 0.6) 50%, rgba(30, 79, 158, 0.5) 62.5%, rgba(122, 63, 208, 0.46) 75%, rgba(208, 41, 138, 0.46) 87.5%, rgba(13, 43, 86, 0.6) 100%);
+  background-size: 100% 100%, 200% 100%;
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border-top: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+/* --- 上下状态栏渐变流动动画（无缝循环） ----------------------------------
+   The title/status bars wear a blue → violet → magenta gradient. For a
+   jump-free loop the color layer is stretched to 200% width with the
+   LEFT and RIGHT halves of the gradient being identical repeats; this
+   keyframes slides background-position 0% -> 100% (exactly one half
+   width), so the picture at the loop restart is identical to the one at
+   the loop end — nothing jumps anywhere along the bar. The first layer
+   (vertical white sheen) is pinned. 8s one-way loop; reduced-motion
+   users get the static gradient via the global rule below. */
+
+@keyframes miku-bar-flow {
+  from {
+    background-position: 0% 50%, 0% 50%;
+  }
+  to {
+    background-position: 0% 50%, 100% 50%;
+  }
 }
 
 .mikuStatusbarWave {
@@ -756,13 +798,11 @@ body[data-dsh-miku] [data-pane='sidebar'] > div {
      directly (was a thick white pane). */
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [data-pane='sidebar'] > div {
   background: rgba(10, 20, 44, 0.22);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 /* Live GUI wraps the sidebar; :first-child is the whole column, not the
@@ -816,6 +856,26 @@ body[data-dsh-miku][data-ds-dark-theme] [data-pane='sidebar'] [class*='logoRow']
   color: #fff;
 }
 
+/* 亮色主题：顶部 logo 行原本是深色蓝紫洋红渐变，与透明侧边栏 / 海边少女
+   背景不协调。改走半透明白毛玻璃，logo 文字改深色使它在浅底可读；暗色
+   主题保持上方的深色渐变不变。logoRow 在侧边栏顶部，不是设置 overlay 的
+   祖先，这层 backdrop-filter 不会影响设置面板定位。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-pane='sidebar'] [class*='logoRow'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-pane='sidebar'] [class*='logoRow'] * {
+  color: #14263f !important;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-pane='sidebar'] [class*='logoRow'] {
+  background:
+    linear-gradient(180deg, rgba(164, 209, 230, 0.5) 0%, rgba(164, 209, 230, 0.16) 62%, rgba(164, 209, 230, 0) 100%),
+    linear-gradient(90deg, rgba(142, 178, 224, 0.3), rgba(187, 231, 223, 0.14) 60%, rgba(255, 255, 255, 0)) !important;
+  backdrop-filter: blur(8px) !important;
+  border-bottom: 1px solid rgba(30, 111, 217, 0.35) !important;
+  box-shadow: none !important;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-pane='sidebar'] [class*='logoRow'] button {
+  color: #14263f !important;
+}
+
 /* Header-band buttons stay flat and transparent (no silver squares on the
    teal strip); white glyphs match the logo row's white ink. */
 body[data-dsh-miku] [data-pane='sidebar'] [class*='logoRow'] button {
@@ -849,13 +909,11 @@ body[data-dsh-miku] [data-pane='conversation'] {
      enough that deep-ink text stays readable over the art's dark areas. */
   background: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [data-pane='conversation'] {
   background: rgba(11, 33, 30, 0.62);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 body[data-dsh-miku] [data-pane='conversation'] > div > header {
@@ -871,13 +929,11 @@ body[data-dsh-miku][data-ds-dark-theme] [data-pane='conversation'] > div > heade
 body[data-dsh-miku] [data-pane='details'] {
   background: rgba(255, 255, 255, 0.42);
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [data-pane='details'] {
   background: rgba(12, 26, 58, 0.58);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 body[data-dsh-miku] [role='tooltip'] {
@@ -962,6 +1018,31 @@ body[data-dsh-miku] {
   --aion-font-mono: 'JetBrains Mono', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
 }
 
+/* --- aionui 右侧文件区文字提亮（浅色主题，不挡背景图） ------------------
+   The Explorer / Preview file tree sits on the translucent aionui panes,
+   so the backdrop art shows through the file names. Deep-ink text washed
+   out over the art's dark areas, and the previous fix (near-opaque pale
+   fills) hid the art — the user wants the backdrop visible AND the file
+   text readable. Light theme only: primary file text (treeName /
+   resultName) turns white with a deep-blue shadow, secondary text (meta /
+   path / status) turns bright miku blue, so both read over any backdrop
+   region while the art stays fully visible. Tabs and the search input are
+   untouched (they ride pale fills and keep the deep-ink tokens). */
+
+body[data-dsh-miku]:not([data-ds-dark-theme]) :global(.aionui-root) [class*='treeName'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) :global(.aionui-root) [class*='resultName'] {
+  color: #14263f !important;
+  text-shadow: none !important;
+}
+
+body[data-dsh-miku]:not([data-ds-dark-theme]) :global(.aionui-root) [class*='treeMeta'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) :global(.aionui-root) [class*='resultPath'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) :global(.aionui-root) [class*='searchStatus'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) :global(.aionui-root) [class*='emptyState'] {
+  color: #3a5070 !important;
+  text-shadow: none !important;
+}
+
 /* --- aionui tokens: dark ---------------------------------------------------- */
 
 body[data-dsh-miku][data-ds-dark-theme] {
@@ -1025,14 +1106,26 @@ body[data-dsh-miku] :global(.aionui-root) {
      keep text readable over the art. */
   background: transparent;
   backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   color: var(--aion-text-primary);
+}
+
+/* 右侧面板根与面板体：背景强制透明（不挡背景图）。
+   The aionui host paints .aionui-root / inner panel bodies with
+   background-color: var(--aion-bg-1) (a pale blue in light theme); the
+   skin's own rules already set background transparent, but this explicit
+   !important override guarantees the miku backdrop shows through the SCM /
+   Explorer / Preview pane bodies (e.g. the "not a git repository" notice)
+   regardless of rule order, and keeps the art fully visible. */
+body[data-dsh-miku] :global(.aionui-root),
+body[data-dsh-miku] :global(.aionui-root) [class*='panel'],
+body[data-dsh-miku] :global(.aionui-root) [class*='notRepo'] {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-root) {
   background: transparent;
   backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   color: var(--aion-text-primary);
 }
 
@@ -1111,6 +1204,75 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-collapse-chevron) {
   color: #8ba0c4;
 }
 
+/* 右侧面板收起/展开按钮（右箭头 chevron）：默认小而贴在顶部 tab 栏角落，
+   改放到屏幕右缘垂直居中并放大，明显可点。 */
+body[data-dsh-miku] :global(.aionui-collapse-chevron) {
+  position: fixed !important;
+  top: 50% !important;
+  right: 6px !important;
+  transform: translateY(-50%) !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 10px !important;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.65) !important;
+  box-shadow: 0 2px 8px rgba(10, 30, 66, 0.25) !important;
+}
+body[data-dsh-miku] :global(.aionui-collapse-chevron) svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-collapse-chevron) {
+  background: rgba(14, 28, 60, 0.7) !important;
+  color: #d6f1ec !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* 展开按钮（面板收起后出现的 aionui-floating-expand）：同样放大并放到屏幕
+   右缘垂直居中，与收起按钮位置一致（两按钮在面板状态切换时互斥显示）。 */
+body[data-dsh-miku] :global(.aionui-floating-expand) {
+  position: fixed !important;
+  top: 50% !important;
+  right: 6px !important;
+  transform: translateY(-50%) !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 10px !important;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(10, 30, 66, 0.25) !important;
+}
+body[data-dsh-miku] :global(.aionui-floating-expand) svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-floating-expand) {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* 收起/展开按钮互斥：面板收起时（body 由皮肤 JS 打上 data-dsh-aionui-
+   collapsed）隐藏收起按钮、显示并固定展开按钮；面板展开时隐藏展开按钮。 */
+body[data-dsh-miku][data-dsh-aionui-collapsed] :global(.aionui-collapse-chevron) {
+  display: none !important;
+}
+body[data-dsh-miku][data-dsh-aionui-collapsed] :global(.aionui-floating-expand) {
+  display: flex !important;
+}
+body[data-dsh-miku]:not([data-dsh-aionui-collapsed]) :global(.aionui-floating-expand) {
+  display: none !important;
+}
+
+/* 右侧文件栏的收起/展开按钮在某些状态下被插件设成 visibility:hidden
+   （面板已收起或未悬浮时），导致用户看不到它们。强制始终可见，两主题
+   通用。 */
+body[data-dsh-miku] [class$='_panelCollapse'],
+body[data-dsh-miku] [class$='_panelMaximize'],
+body[data-dsh-miku] :global(.aionui-collapse-chevron) {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
 /* --- aionui overlays, dialogs, buttons ---------------------------------------
    Confirmation dialogs and the shared chrome re-read the window's mint
    surface and teal buttons. */
@@ -1126,7 +1288,6 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-overlay) {
 body[data-dsh-miku] :global(.aionui-dialog) {
   background: linear-gradient(180deg, rgba(250, 253, 255, 0.9), rgba(255, 255, 255, 0.82));
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid #9cc6ff;
   box-shadow: var(--aion-overlay-shadow);
   color: var(--aion-text-primary);
@@ -1135,7 +1296,6 @@ body[data-dsh-miku] :global(.aionui-dialog) {
 body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-dialog) {
   background: linear-gradient(180deg, rgba(14, 28, 60, 0.88), rgba(13, 26, 56, 0.8));
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border-color: #22407a;
   box-shadow: var(--aion-overlay-shadow);
   color: var(--aion-text-primary);
@@ -1144,7 +1304,6 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-dialog) {
 body[data-dsh-miku] :global(.aionui-btn) {
   background: rgba(46, 155, 255, 0.14);
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(30, 111, 217, 0.45);
   color: #1e6fd9;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 2px rgba(10, 30, 66, 0.12);
@@ -1190,7 +1349,6 @@ body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-btn-danger) {
 body[data-dsh-miku] :global(.aionui-menu) {
   background: rgba(248, 251, 255, 0.82);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(156, 198, 255, 0.6);
   box-shadow: var(--aion-overlay-shadow);
   color: var(--aion-text-primary);
@@ -1589,14 +1747,12 @@ body[data-dsh-miku] [class*='sidebarCol'] {
   /* Frosted: art glows through, deep-ink session text stays readable. */
   background: rgba(255, 255, 255, 0.55) !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='sidebarCol'] {
   border-left: none !important;
   background: rgba(10, 20, 44, 0.22) !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 body[data-dsh-miku] [class*='sidebarCol'] > div > div {
   background: transparent !important;
@@ -1613,14 +1769,12 @@ body[data-dsh-miku] [class*='centerCol'] {
   border-left: none !important;
   background: rgba(255, 255, 255, 0.45) !important;
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='centerCol'] {
   border-left: none !important;
   background: rgba(8, 18, 42, 0.1) !important;
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 /* Details column. */
@@ -1628,14 +1782,49 @@ body[data-dsh-miku] [class*='detailsCol'] {
   border-left: none !important;
   background: rgba(255, 255, 255, 0.42) !important;
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 body[data-dsh-miku][data-ds-dark-theme] [class*='detailsCol'] {
   border-left: none !important;
   background: rgba(10, 20, 44, 0.18) !important;
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+}
+
+/* 亮色主题：界面背景的白色毛玻璃全部改为透明（用户偏好）——侧边栏、对话
+   列、右侧列与输入区卡片都不再自己填充，完全透出亮色背景图；暗色主题
+   保持深蓝毛玻璃。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='sidebarCol'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='centerCol'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='detailsCol'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [class$='_card'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [class*='card'] {
+  background: transparent !important;
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+}
+
+/* 设置面板要屏幕居中（官方 position:fixed）。backdrop-filter 会创建
+   containing block，令 fixed 元素相对带 blur 的祖先定位——侧边栏内任何含
+   设置 overlay 的祖先（root / 内容层 / sidebarCol）都不能有 blur，否则设置
+   面板会挤在会话栏里。故两主题下移除侧边栏全部 blur，用半透明白背景保持
+   通透。 */
+body[data-dsh-miku] [class*='sidebarCol'],
+body[data-dsh-miku] [class*='sidebarCol'] * {
+  backdrop-filter: none !important;
+}
+
+/* 亮色主题：透明背景上给三列加相对明显的细蓝边框（inset，不占布局），
+   让界面区域界限清晰；输入区恢复适度白色毛玻璃，突出显示输入区域。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='sidebarCol'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='centerCol'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='detailsCol'] {
+  box-shadow: inset 0 0 0 1px rgba(30, 111, 217, 0.45) !important;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [class$='_card'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [class*='card'] {
+  background: rgba(255, 255, 255, 0.5) !important;
+  backdrop-filter: blur(10px) !important;
 }
 
 
@@ -1657,6 +1846,21 @@ body[data-dsh-miku] [class*='scrollBody'] {
   background: transparent !important;
 }
 
+/* 亮色主题：对话里的代码块从近白改为白色毛玻璃，与透明背景协调——
+   shiki 高亮 pre 与代码块容器换成半透明白 + 轻模糊，让背景图透出。
+   注意只写标准 backdrop-filter（lightningcss 会把双份的 -webkit- 前缀版
+   保留进产物，而 Chromium 丢弃 -webkit-backdrop-filter，导致模糊失效）。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) {
+  --dsw-alias-markdown-code-block: rgba(255, 255, 255, 0.55) !important;
+  --dsw-alias-markdown-code-block-banner: rgba(255, 255, 255, 0.55) !important;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) pre:global(.shiki),
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='codeBlock'] {
+  --shiki-background: transparent !important;
+  background-color: rgba(255, 255, 255, 0.55) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
 /* --- 菜单 / 弹出层美化（dropdown / popover / menu / sheet） ---------------------
    Menus and popovers re-read the Miku glass: frosted blue-violet surface,
    teal-free accent text, soft shadow. Class-suffix match covers the
@@ -1671,7 +1875,6 @@ body[data-dsh-miku] [role='menu'],
 body[data-dsh-miku] [role='listbox'] {
   background: linear-gradient(180deg, rgba(250, 253, 255, 0.92), rgba(240, 248, 255, 0.88)) !important;
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(156, 198, 255, 0.6) !important;
   box-shadow: 0 12px 32px rgba(10, 30, 66, 0.25), 0 2px 8px rgba(10, 30, 66, 0.12) !important;
   color: var(--dsw-alias-label-primary);
@@ -1686,7 +1889,6 @@ body[data-dsh-miku][data-ds-dark-theme] [role='menu'],
 body[data-dsh-miku][data-ds-dark-theme] [role='listbox'] {
   background: linear-gradient(180deg, rgba(20, 34, 72, 0.92), rgba(13, 26, 56, 0.88)) !important;
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border-color: rgba(53, 96, 172, 0.6) !important;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
   color: #c2d4f0;
@@ -1760,7 +1962,6 @@ body[data-dsh-miku] [class*='composerStack'],
 body[data-dsh-miku] [class*='composerHero'] {
   background: transparent !important;
   backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 /* The typing surface itself: translucent glass with a blue tint, keeping the
@@ -1773,7 +1974,6 @@ body[data-dsh-miku] input:not([type='checkbox']):not([type='radio']) {
      backdrop area (a translucent blue veil washed out in dark regions). */
   background: rgba(250, 253, 255, 0.92) !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border-color: rgba(30, 111, 217, 0.5) !important;
   color: #14263f !important;
 }
@@ -1783,9 +1983,27 @@ body[data-dsh-miku][data-ds-dark-theme] [contenteditable='true'],
 body[data-dsh-miku][data-ds-dark-theme] input:not([type='checkbox']):not([type='radio']) {
   background: rgba(14, 28, 60, 0.42) !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border-color: rgba(88, 169, 255, 0.28) !important;
   color: #d6f1ec !important;
+}
+
+/* The hero composer's textarea is a transparent overlay (the official
+   module renders the visible text via a mirror layer and keeps the
+   textarea itself background:0 0; border:none). The global input rules
+   above would paint it with its own frosted fill, stacking a second box
+   (with a border) inside the composer card — two boxes, two colors.
+   Make every typing surface inside the composer transparent and
+   borderless so the card's single frosted layer is the only fill: one
+   unified color for the whole input area, in both themes. */
+body[data-dsh-miku] [class*='composer'] textarea,
+body[data-dsh-miku] [class*='composer'] [contenteditable='true'],
+body[data-dsh-miku] [class*='composer'] input:not([type='checkbox']):not([type='radio']) {
+  background: transparent !important;
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Composer toolbar / action row keeps a translucent tint. */
@@ -1807,7 +2025,6 @@ body[data-dsh-miku] [class*='settingsRoot'] {
      the light-ink contrast. Keep a whisper of translucency for the art. */
   background: linear-gradient(180deg, rgba(14, 28, 60, 0.96), rgba(10, 20, 44, 0.94)) !important;
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(88, 169, 255, 0.45) !important;
   color: #d6f1ec;
   /* The panel is deep sea-glass in both themes, but light mode still
@@ -1833,9 +2050,226 @@ body[data-dsh-miku][data-ds-dark-theme] [class*='drawer'],
 body[data-dsh-miku][data-ds-dark-theme] [class*='settingsRoot'] {
   background: linear-gradient(180deg, rgba(14, 28, 60, 0.82), rgba(10, 20, 44, 0.76)) !important;
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border-color: rgba(88, 169, 255, 0.3) !important;
   color: #d6f1ec;
+}
+
+/* 设置面板改为屏幕居中弹窗（用户偏好：不要挤在侧边栏里）。官方把设置
+   面板作为侧边栏底部 settingsArea 内的相对定位抽屉；这里把 overlay 扩成
+   全屏 flex 居中，面板在其中自适应居中显示。作用域限定 settingsArea，
+   避免误伤 SSH/taskboard 的 panel。 */
+body[data-dsh-miku] [class*='settingsArea'] [class$='_overlay'] {
+  inset: 0 !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  transform: none !important;
+  margin: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+body[data-dsh-miku] [class*='settingsArea'] [class$='_panel'] {
+  position: static !important;
+  width: min(800px, 92vw) !important;
+  max-height: 88vh !important;
+}
+
+/* --- dsh-ssh / 任务看板（浅色 + 暗色）：透明，复用对话列毛玻璃 -----------
+   The generic [class*='panel'] deep sea-glass rule above was written for
+   the settings drawer but also matched the dsh-ssh panel (its root class
+   contains "panel"), painting the SSH panel deep blue. The dsh-ssh view
+   and the dsh-task-board view are both mounted INSIDE the center column,
+   and the center column already carries the conversation frosted glass
+   (light: rgba(255,255,255,0.45) + blur 6px; dark: rgba(8,18,42,0.1) +
+   blur 6px). So these panels must NOT paint their own fill: any extra
+   layer stacks on top of the column's and reads deeper / less transparent
+   than the chat area. Make both views and all inner bodies fully
+   transparent (killing the deep sea-glass override and the panel/board
+   modules' own --dsw-alias-bg-base fill), letting the column's single
+   frosted layer show through identically to the conversation. Text keeps
+   the theme's normal ink: deep ink in light, light ink in dark. */
+
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-ssh-view],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-ssh-view] [class*='panel'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-ssh-view] [class*='panelTitle'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-ssh-view] [class*='panelHeader'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-ssh-view] [class*='panelContent'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-ssh-view] [class*='fillBody'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-ssh-view] [class*='tabBody'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-taskboard-view],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-taskboard-view] [class*='board'] {
+  background: transparent !important;
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+}
+
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-ssh-view] {
+  color: #14263f;
+}
+
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-ssh-view] [class*='panelTitle'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-ssh-view] [class*='panel'] {
+  color: #14263f;
+  --dsw-alias-label-primary: #14263f;
+  --dsw-alias-label-secondary: #3a5070;
+  --dsw-alias-label-tertiary: #4a5f80;
+  --dsw-alias-label-caption: #3a5070;
+  --dsw-alias-label-dimmed: #5f7a9e;
+}
+
+/* Dark theme: same transparency as above. The [data-ds-dark-theme]
+   attribute keeps specificity above the deep sea-glass rule
+   (body[data-dsh-miku][data-ds-dark-theme] [class*='panel']) that would
+   otherwise repaint the SSH panel deep blue. Ink stays on the dark alias
+   tokens (light on the near-transparent column over the art). */
+
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-ssh-view],
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-ssh-view] [class*='panel'],
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-ssh-view] [class*='panelTitle'],
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-ssh-view] [class*='panelHeader'],
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-ssh-view] [class*='panelContent'],
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-ssh-view] [class*='fillBody'],
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-ssh-view] [class*='tabBody'],
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-taskboard-view],
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-taskboard-view] [class*='board'] {
+  background: transparent !important;
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+}
+
+/* Task-board columns (待规划 / 待办 / ...): the board module paints each
+   column with an opaque --dsw-alias-bg-layer-2 fill, which reads as a
+   solid navy block against the transparent board frame. Turn the columns
+   into frosted translucent surfaces (semi-transparent tint + backdrop
+   blur) so the art glows through, matching the conversation glass. The
+   cards keep a slightly more opaque fill so their text stays legible
+   over the blur. Hashed-class suffix matches target exactly the column /
+   card bodies (columnHeader, columnCount, cardTitle, ... end in their own
+   suffixes and are skipped). */
+body[data-dsh-miku] [data-dsh-taskboard-view] [class$='_column'] {
+  background: rgba(255, 255, 255, 0.32) !important;
+  backdrop-filter: blur(10px);
+  border-color: rgba(88, 169, 255, 0.18) !important;
+}
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-taskboard-view] [class$='_column'] {
+  background: rgba(14, 28, 60, 0.38) !important;
+  backdrop-filter: blur(10px);
+  border-color: rgba(88, 169, 255, 0.22) !important;
+}
+body[data-dsh-miku] [data-dsh-taskboard-view] [class$='_cards'] [class$='_card'] {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(88, 169, 255, 0.25) !important;
+}
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-taskboard-view] [class$='_cards'] [class$='_card'] {
+  background: rgba(10, 20, 44, 0.55) !important;
+  border-color: rgba(88, 169, 255, 0.3) !important;
+}
+
+/* task-board 顶部栏：官方 @container task-board-view (max-width: 600px) 会让
+   boardHeader 换行（flex-wrap: wrap）并把所有按钮拉成全宽（flex: 1 1 0），
+   窄容器下看板顶部看起来像文字重叠错位。皮肤强制恢复单行布局：标题可收缩
+   省略，搜索框可收缩，按钮保持固有宽度。 */
+body[data-dsh-miku] [data-dsh-taskboard-view] [class$='_boardHeader'] {
+  flex-wrap: nowrap !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+body[data-dsh-miku] [data-dsh-taskboard-view] [class$='_boardHeader'] > * {
+  min-width: 0 !important;
+}
+body[data-dsh-miku] [data-dsh-taskboard-view] [class$='_boardHeader'] > h2,
+body[data-dsh-miku] [data-dsh-taskboard-view] [class$='_boardHeader'] [class$='_boardTitle'] {
+  flex: 0 1 auto !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+body[data-dsh-miku] [data-dsh-taskboard-view] [class$='_boardHeader'] > button {
+  flex: 0 0 auto !important;
+}
+body[data-dsh-miku] [data-dsh-taskboard-view] [class$='_boardHeader'] > input {
+  flex: 0 1 260px !important;
+  min-width: 120px !important;
+}
+/* 弹窗 / 详情底部的操作按钮同样避免被容器查询拉宽。 */
+body[data-dsh-miku] [data-dsh-taskboard-view] [class$='_modalFooter'] > *,
+body[data-dsh-miku] [data-dsh-taskboard-view] [class$='_detailFooter'] > * {
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+}
+
+/* 明亮主题下看板顶部栏文字统一为黑色（用户偏好）：返回按钮、标题、搜索
+   框及占位符、归档 / 新建任务按钮。暗色主题保持浅色文字。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-taskboard-view] [class$='_boardHeader'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-taskboard-view] [class$='_boardHeader'] h2,
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-taskboard-view] [class$='_boardHeader'] button,
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-taskboard-view] [class$='_boardHeader'] input {
+  color: #000 !important;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-taskboard-view] [class$='_boardHeader'] input::placeholder {
+  color: #000 !important;
+  opacity: 1 !important;
+}
+
+/* --- dsh-better-sidebar（侧边卡片 / 右侧栏）：透明毛玻璃，复用左侧栏效果 ------
+   The generic [class*='panel'] deep sea-glass rule above also matches the
+   better-sidebar right / bottom panel (its hashed class contains "panel"),
+   painting it deep navy. Like the dsh-ssh view and the task board, the
+   better-sidebar must not paint its own fill: kill the deep-sea override so
+   both themes stay transparent and let the backdrop show through, mirroring
+   the left sidebar column (sidebarCol). Light theme also gets the left
+   column's subtle inset blue hairline; dark theme stays fully transparent.
+   文字墨水：明亮用深色，暗色用浅色。 */
+body[data-dsh-miku] [data-dsh-better-sidebar] [class*='panel'],
+body[data-dsh-miku] [data-dsh-better-sidebar] [class*='workbench'],
+body[data-dsh-miku] [data-dsh-better-sidebar] [class*='explorerBody'],
+body[data-dsh-miku] [data-dsh-better-sidebar] [class*='editorBody'],
+body[data-dsh-miku] [data-dsh-better-sidebar] [class*='git'],
+body[data-dsh-miku] [data-dsh-better-sidebar] [class*='terminal'],
+body[data-dsh-miku] [data-dsh-better-sidebar] [class*='browser'] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 终端（xterm）/ 编辑器（CodeMirror）底层：inline 白色或自带底色的一律透明，
+   让面板毛玻璃透出。只写标准 backdrop-filter——双份 -webkit- 前缀会让
+   Chromium 丢弃导致模糊失效（见上方代码块注释）。 */
+body[data-dsh-miku] [data-dsh-better-sidebar] [class*='xterm'],
+body[data-dsh-miku] [data-dsh-better-sidebar] [class*='cm-editor'],
+body[data-dsh-miku] [data-dsh-better-sidebar] [class*='cm-content'] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 明亮主题：跟左侧栏一致 —— 透明 + 同款细蓝内描边 + 深色文字。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-dsh-better-sidebar] [class*='panel'] {
+  box-shadow: inset 0 0 0 1px rgba(30, 111, 217, 0.45) !important;
+  border-left: none !important;
+  color: #14263f;
+  --dsw-alias-label-primary: #14263f;
+  --dsw-alias-label-secondary: #3a5070;
+  --dsw-alias-label-tertiary: #4a5f80;
+  --dsw-alias-label-caption: #3a5070;
+  --dsw-alias-label-dimmed: #5f7a9e;
+}
+
+/* 暗色主题：全透明，文字用浅色。 */
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-better-sidebar] {
+  color: #d6f1ec;
+}
+body[data-dsh-miku][data-ds-dark-theme] [data-dsh-better-sidebar] [class*='panel'] {
+  color: #d6f1ec;
+  --dsw-alias-label-primary: #d6f1ec;
+  --dsw-alias-label-secondary: #b8cae8;
+  --dsw-alias-label-tertiary: #8ba0c4;
+  --dsw-alias-label-caption: #b8cae8;
+  --dsw-alias-label-dimmed: #4c6390;
 }
 
 /* Settings sections / cards inside the panel: deep tint so content stays
@@ -1933,7 +2367,6 @@ body[data-dsh-miku] [class*='newSession'],
 body[data-dsh-miku] [class*='primary'] {
   background: rgba(46, 155, 255, 0.12) !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border: none !important;
   box-shadow: none !important;
   color: #1e6fd9 !important;
@@ -1942,7 +2375,6 @@ body[data-dsh-miku] [class*='primary'] {
 body[data-dsh-miku][data-ds-dark-theme] [class*='newSession'] {
   background: rgba(16, 34, 72, 0.2) !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border: none !important;
   box-shadow: none !important;
   color: #d6f1ec !important;
@@ -1951,7 +2383,6 @@ body[data-dsh-miku][data-ds-dark-theme] [class*='newSession'] {
 body[data-dsh-miku][data-ds-dark-theme] [class*='primary'] {
   background: rgba(16, 34, 72, 0.2) !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border: none !important;
   color: #d6f1ec !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
@@ -1976,7 +2407,6 @@ body[data-dsh-miku] [class*='ghost'],
 body[data-dsh-miku] [class*='quiet'] {
   background: rgba(46, 155, 255, 0.12) !important;
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(30, 111, 217, 0.4) !important;
   color: #1e6fd9 !important;
 }
@@ -1987,7 +2417,6 @@ body[data-dsh-miku][data-ds-dark-theme] [class*='ghost'],
 body[data-dsh-miku][data-ds-dark-theme] [class*='quiet'] {
   background: rgba(16, 34, 72, 0.18) !important;
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   border: none !important;
   color: #c2d4f0 !important;
 }
@@ -2024,7 +2453,6 @@ body[data-dsh-miku] [class*='composer'] [class$='_card'],
 body[data-dsh-miku] [class*='composer'] [class*='card'] {
   background: rgba(244, 249, 255, 0.85) !important;
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: none !important;
   box-shadow: none !important;
 }
@@ -2033,7 +2461,6 @@ body[data-dsh-miku][data-ds-dark-theme] [class*='composer'] [class$='_card'],
 body[data-dsh-miku][data-ds-dark-theme] [class*='composer'] [class*='card'] {
   background: rgba(13, 26, 58, 0.4) !important;
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: none !important;
   box-shadow: none !important;
 }
@@ -2066,4 +2493,134 @@ body[data-dsh-miku] textarea,
 body[data-dsh-miku] [contenteditable='true'],
 body[data-dsh-miku] select {
   border: none !important;
+}
+
+/* 亮色主题：输入区（composer）内带文字的按钮与输入框毛玻璃统一——半透明
+   白底 + 轻模糊 + 细蓝边框提高可见性，文字改黑色（并覆盖上面的全局去
+   边框规则）。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] button,
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [role='button'] {
+  background: rgba(255, 255, 255, 0.55) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(30, 111, 217, 0.45) !important;
+  color: #000 !important;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] button:hover,
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [role='button']:hover {
+  background: rgba(255, 255, 255, 0.75) !important;
+}
+
+/* 输入区顶部那些用 <span class="…triggerLabel"> 渲染的选择触发器（模型 /
+   权限等）不是 <button>，上面的规则没有覆盖——补一处：文字改黑，并去掉
+   label 的浅蓝底（透出底下 trigger 的毛玻璃），彻底与输入框统一。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [class*='trigger'] {
+  color: #000 !important;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [class*='triggerLabel'] {
+  color: #000 !important;
+  background: transparent !important;
+}
+
+/* trigger 内其它小标签（如推理力度 High 的 triggerEffort、以及任意
+   label/effort 子元素）同样去浅蓝底、文字改黑。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [class*='triggerEffort'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [class*='trigger'] [class*='effort'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='composer'] [class*='trigger'] [class*='label'] {
+  color: #000 !important;
+  background: transparent !important;
+}
+
+/* 亮色主题：侧边栏"新会话""设置"文字由蓝色改为黑色。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-pane='sidebar'] [class*='newSession'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [data-pane='sidebar'] [class*='trigger'] {
+  color: #000 !important;
+}
+
+/* 亮色主题：设置面板改用海边少女背景提取的青蓝色渐变（与顶部 logo 行一
+   致），内部卡片/文字一并浅色化，保证深色文字在浅青底上可读；暗色主题
+   保持深海毛玻璃不变。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='settingsArea'] [class$='_panel'] {
+  background:
+    linear-gradient(180deg, rgba(164, 209, 230, 0.96) 0%, rgba(164, 209, 230, 0.88) 55%, rgba(142, 178, 224, 0.94) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.5)) !important;
+  color: #14263f !important;
+  border-color: rgba(30, 111, 217, 0.4) !important;
+  /* 面板自身的浅色 token 会覆盖容器的继承，这里在面板上同样改成深色 token，
+     保证标题/字段文字在浅青底上可读。 */
+  --dsw-alias-label-primary: #14263f !important;
+  --dsw-alias-label-secondary: #3a5070 !important;
+  --dsw-alias-label-tertiary: #4a5f80 !important;
+  --dsw-alias-label-caption: #3a5070 !important;
+  --dsw-alias-label-dimmed: #5f7a9e !important;
+  --aion-text-primary: #14263f !important;
+  --aion-text-secondary: #3a5070 !important;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='settingsArea'] [class*='section'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='settingsArea'] [class*='card'] {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border-color: rgba(30, 111, 217, 0.35) !important;
+  color: #14263f !important;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='settingsArea'] {
+  --dsw-alias-label-primary: #14263f !important;
+  --dsw-alias-label-secondary: #3a5070 !important;
+  --dsw-alias-label-tertiary: #4a5f80 !important;
+  --dsw-alias-label-caption: #3a5070 !important;
+  --dsw-alias-label-dimmed: #5f7a9e !important;
+}
+
+/* 亮色主题：设置面板内的二级下拉选择器（如"标准模式"）默认是浅薄荷绿底，
+   与青色设置面板不是一个调——统一成青色系。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='settingsArea'] [class*='selector'] {
+  background: rgba(164, 209, 230, 0.4) !important;
+  border-color: rgba(30, 111, 217, 0.35) !important;
+  color: #14263f !important;
+}
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='settingsArea'] [class*='selector']:hover {
+  background: rgba(164, 209, 230, 0.55) !important;
+}
+
+/* 亮色主题：右侧文件栏整体文字用深色（远不止文件名——标签、说明等也一起
+   改黑），透明白底上清晰可读。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) :global(.aionui-root) {
+  --aion-text-primary: #14263f !important;
+  --aion-text-secondary: #3a5070 !important;
+  color: #14263f !important;
+}
+
+/* 左侧菜单栏（侧边栏会话列表区）透明模糊毛玻璃，与右侧文件栏一致。只加到
+   不含设置面板的层（listArea 会话列表等），避免在设置 overlay 的祖先链上
+   引入 backdrop-filter，从而不影响设置面板的 fixed 居中定位。 */
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='sidebarCol'] [class*='_listArea'],
+body[data-dsh-miku]:not([data-ds-dark-theme]) [class*='sidebarCol'] [class*='_listBody'] {
+  backdrop-filter: blur(8px) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+/* 深色主题：界面背景完全透明，取消所有毛玻璃模糊，让背景图完整透出
+   （用户偏好：深色下不要模糊透明）。html 前缀提升特异性，确保压过现有
+   的暗色毛玻璃规则。 */
+html body[data-dsh-miku][data-ds-dark-theme] [class*='sidebarCol'],
+html body[data-dsh-miku][data-ds-dark-theme] [class*='sidebarCol'] > div,
+html body[data-dsh-miku][data-ds-dark-theme] [class*='sidebarCol'] > div > div,
+html body[data-dsh-miku][data-ds-dark-theme] [class*='centerCol'],
+html body[data-dsh-miku][data-ds-dark-theme] [class*='detailsCol'],
+html body[data-dsh-miku][data-ds-dark-theme] :global(.aionui-root),
+html body[data-dsh-miku][data-ds-dark-theme] [class*='composer'] [class$='_card'],
+html body[data-dsh-miku][data-ds-dark-theme] [class*='composer'] [class*='card'] {
+  /* 只写标准 backdrop-filter：双份的 -webkit- 会被 lightningcss 保留进产物，
+     而 Chromium 丢弃 -webkit-backdrop-filter，导致 none 不生效。 */
+  backdrop-filter: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 深色主题：输入区顶部几个触发器（模型 / 权限 / 力度标签）背景统一为透明、
+   文字统一为浅色，避免各自的 tint 背景深浅不一。 */
+body[data-dsh-miku][data-ds-dark-theme] [class*='composer'] [class*='trigger'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='composer'] [class*='triggerLabel'],
+body[data-dsh-miku][data-ds-dark-theme] [class*='composer'] [class*='triggerEffort'] {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #c2d4f0 !important;
 }

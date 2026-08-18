@@ -5,9 +5,15 @@
  * namespace on rc.6 hosts (the apiproxy allowlist is hard-coded), which turns
  * every family plugin card into a read-only explanation. This binder wraps
  * the official scope: when it reports the namespace ready, the wrapper is a
- * pass-through; when it reports unavailable, a same-origin
- * bridge controller takes over and serves the same SettingsScope contract
- * from this package's host-side bridge routes (/api/dsh-web-ui-settings).
+ * pass-through for reads and single-field writes; when it reports
+ * unavailable, a same-origin bridge controller takes over and serves the
+ * same SettingsScope contract from this package's host-side bridge routes
+ * (/api/dsh-web-ui-settings). The bridge is described once on bind either
+ * way, because the official controller carries no batched mutate: cards
+ * whose cross-field validate hooks must judge several fields together (the
+ * describe-image baseURL+model pair, issue #516) route their atomic batch
+ * through the bridge whenever it serves the namespace, even while the
+ * official scope stays the read authority.
  * The Host keeps the bridge loopback-only by default and may explicitly admit
  * an authenticated same-host reverse proxy. Family plugins opt in through
  * ctx.get('webUiSettings') without a hard service dependency, so a deployment
@@ -345,7 +351,11 @@ export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsSc
     if (primary.getSnapshot().status === 'unavailable') startFallback()
   }))
   if (fallback !== undefined) unsubscribes.push(fallback.subscribe(publish))
-  if (primary.getSnapshot().status === 'unavailable') startFallback()
+  // Describe the bridge once on bind even while the official scope is ready:
+  // its snapshot is what the batch-mutate getter below gates on, so the
+  // verdict "bridge reachable and serving this namespace" is reached up front
+  // instead of only after the official scope turns unavailable.
+  startFallback()
   return {
     dispose: () => {
       for (const unsubscribe of unsubscribes.splice(0)) unsubscribe()
@@ -359,14 +369,22 @@ export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsSc
       fallbackStarted = true
       await fallback?.load()
     },
-    // The batch surface exists only while the bridge controller is the active
-    // transport; the official scope path still writes per-field (its writes
-    // are out of our reach, so the card's duck-typed detection falls back to
-    // the per-field loop there). A getter keeps the capability decision at
-    // call time instead of freezing it when the wrapper is built.
+    // The batch surface exists while the bridge controller is the active
+    // transport. A ready official scope still has no batched mutate (its
+    // controller exposes set/unset only), so an atomic batch is routed
+    // through the bridge whenever the bridge serves the namespace: the
+    // describe-image card's baseURL+model pair must land together (issue
+    // #516), and per-field writes deadlock on the host validate hook. The
+    // gate is the bridge's own snapshot — a remote browser (bridge 403) or an
+    // allowlisted-out namespace keeps this getter undefined and the card's
+    // per-field loop runs exactly as before. A getter keeps the capability
+    // decision at call time instead of freezing it when the wrapper is built.
     get mutate() {
       const backend = active()
       if (fallback !== undefined && backend === fallback && typeof fallback.mutate === 'function') return fallback.mutate.bind(fallback)
+      if (fallback !== undefined && typeof fallback.mutate === 'function' && fallback.getSnapshot().status === 'ready') {
+        return fallback.mutate.bind(fallback)
+      }
       return undefined
     },
   }

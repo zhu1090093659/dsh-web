@@ -2,9 +2,11 @@
 
 /**
  * Compatibility scope state machine: the official scope stays authoritative
- * while it serves the namespace; the bridge controller takes over its
- * unavailable state over same-origin fetch; writes route to the active
- * transport; and a missing fetch keeps the official unavailable behavior.
+ * for reads and single-field writes while it serves the namespace; the bridge
+ * controller takes over its unavailable state over same-origin fetch and also
+ * answers the batched mutate the official scope lacks whenever it serves the
+ * namespace (the describe-image baseURL+model pair, issue #516). A missing
+ * fetch keeps the official unavailable behavior.
  */
 
 import { describe, expect, it, vi } from 'vitest'
@@ -103,13 +105,16 @@ const unavailable = (): SettingsScopeSnapshot<never> => ({
 })
 
 describe('createCompatScope', () => {
-  it('passes the official scope through while it serves the namespace', () => {
+  it('passes the official scope through while it serves the namespace', async () => {
     const primary = fakePrimary<{ enabled: boolean }>(ready({ enabled: true }))
     const { fetchFn, handler } = fakeFetch(async () => describeResult([]))
     const scope = createCompatScope<{ enabled: boolean }>({ namespace: 'task-board', primary: primary.scope, fetchFn })
     expect(scope.getSnapshot().status).toBe('ready')
     expect(scope.getSnapshot().value).toEqual({ enabled: true })
-    expect(handler).not.toHaveBeenCalled()
+    // The bridge is described once on bind even while the official scope is
+    // ready, so the batch-mutate getter can judge bridge reachability up
+    // front instead of only after the official scope turns unavailable.
+    await vi.waitFor(() => { expect(handler).toHaveBeenCalledTimes(1) })
   })
 
   it('bridges the namespace when the official scope reports unavailable', async () => {
@@ -185,12 +190,58 @@ function batchView(ns: string, value: unknown, revision: number, extra: { user?:
 }
 
 describe('createCompatScope batch mutate', () => {
-  it('exposes no mutate while the official scope serves the namespace', async () => {
+  it('exposes no mutate while the official scope serves the namespace but the bridge does not', async () => {
     const primary = fakePrimary<{ enabled: boolean }>(ready({ enabled: true }))
-    const { fetchFn } = fakeFetch(async () => describeResult([]))
+    const { fetchFn, handler } = fakeFetch(async () => describeResult([]))
     const scope = createCompatScope<{ enabled: boolean }>({ namespace: 'task-board', primary: primary.scope, fetchFn })
     expect(scope.getSnapshot().status).toBe('ready')
+    await vi.waitFor(() => { expect(handler).toHaveBeenCalledTimes(1) })
     expect(typeof (scope as unknown as { mutate?: unknown }).mutate).not.toBe('function')
+  })
+
+  it('exposes the bridge batch surface while the official scope is ready, for atomic multi-field saves', async () => {
+    const primary = fakePrimary<{ baseURL: string; model: string }>(ready({ baseURL: 'https://old/v1', model: 'old' }))
+    const calls: Array<{ body: Record<string, unknown> }> = []
+    const { fetchFn } = fakeFetch(async (url, init) => {
+      if (url === WEB_UI_SETTINGS_BRIDGE_PREFIX + '/describe') {
+        return describeResult([batchView('describe-image', { baseURL: 'https://old/v1', model: 'old' }, 3, { user: { baseURL: 'https://old/v1', model: 'old' } })])
+      }
+      calls.push({ body: JSON.parse(String(init.body)) as Record<string, unknown> })
+      return { ok: true, value: batchView('describe-image', { baseURL: 'https://a/v1', model: 'm' }, 4, { user: { baseURL: 'https://a/v1', model: 'm' } }) }
+    })
+    const scope = createCompatScope<{ baseURL: string; model: string }>({ namespace: 'describe-image', primary: primary.scope, fetchFn })
+    expect(scope.getSnapshot().status).toBe('ready')
+    // Reads still project the official scope.
+    expect(scope.getSnapshot().value).toEqual({ baseURL: 'https://old/v1', model: 'old' })
+    // The getter turns on once the bridge describe settles ready.
+    await vi.waitFor(() => { expect(typeof (scope as unknown as { mutate?: unknown }).mutate).toBe('function') })
+    const mutate = (scope as unknown as { mutate: (writes: { field: string; op: 'set'; value: unknown }[]) => Promise<{ ok: boolean; fields: { field: string; landed: boolean }[] }> }).mutate
+    const result = await mutate([
+      { field: 'baseURL', op: 'set', value: 'https://a/v1' },
+      { field: 'model', op: 'set', value: 'm' },
+    ])
+    expect(calls).toHaveLength(1)
+    const body = calls[0].body
+    expect(body.ns).toBe('describe-image')
+    expect(body.expectedRevision).toBe(3)
+    expect(body.ops).toEqual([
+      { op: 'set', path: ['baseURL'], value: 'https://a/v1' },
+      { op: 'set', path: ['model'], value: 'm' },
+    ])
+    expect(result.ok).toBe(true)
+    expect(result.fields).toEqual([
+      { field: 'baseURL', landed: true },
+      { field: 'model', landed: true },
+    ])
+  })
+
+  it('keeps single-field writes on the official scope while the bridge is ready for batches', async () => {
+    const primary = fakePrimary<{ enabled: boolean }>(ready({ enabled: true }))
+    const { fetchFn } = fakeFetch(async () => describeResult([bridgeView('task-board', { enabled: true }, 3)]))
+    const scope = createCompatScope<{ enabled: boolean }>({ namespace: 'task-board', primary: primary.scope, fetchFn })
+    await vi.waitFor(() => { expect(typeof (scope as unknown as { mutate?: unknown }).mutate).toBe('function') })
+    await scope.set('enabled', false)
+    expect(primary.sets).toEqual([['enabled', false]])
   })
 
   it('posts every op in one /mutate and reports per-field success', async () => {

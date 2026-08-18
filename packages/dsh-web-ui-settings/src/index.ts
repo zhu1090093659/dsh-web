@@ -5,9 +5,10 @@
  * user's web_settings_namespaces allowlist from settings.yaml (with the
  * built-in family fallback list). An explicit authenticated-proxy config may
  * admit exact same-origin Hosts without changing the default. The browser
- * half uses it only when the official settings scope reports the namespace
- * unavailable, so hosts whose apiproxy already exposes the namespaces never
- * touch the bridge.
+ * half uses it for reads and writes only when the official settings scope
+ * reports the namespace unavailable; on hosts whose apiproxy already exposes
+ * the namespaces it still answers the atomic batch mutate the official scope
+ * lacks (issue #516).
  */
 
 import { readFileSync } from 'node:fs'

@@ -10,7 +10,9 @@
  * HTTP pair, gated by the user's web_settings_namespaces allowlist from
  * settings.yaml with a built-in family fallback list. On hosts whose
  * apiproxy already exposes the namespaces, the official settings scope stays
- * the primary transport and this bridge never activates.
+ * the primary read and single-field transport; atomic batched writes (the
+ * describe-image baseURL+model pair, issue #516) still ride the bridge while
+ * it serves the namespace.
  */
 
 /** Bridge route prefix (same-origin, loopback-only). */

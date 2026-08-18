@@ -359,14 +359,14 @@ export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsSc
       fallbackStarted = true
       await fallback?.load()
     },
-    // The batch surface exists only while the bridge controller is the active
-    // transport; the official scope path still writes per-field (its writes
-    // are out of our reach, so the card's duck-typed detection falls back to
-    // the per-field loop there). A getter keeps the capability decision at
-    // call time instead of freezing it when the wrapper is built.
+    // The batch surface is exposed whenever the bridge exists: the family
+    // cards use it to keep cross-field host validation atomic even when the
+    // official scope already serves the namespace.
     get mutate() {
-      const backend = active()
-      if (fallback !== undefined && backend === fallback && typeof fallback.mutate === 'function') return fallback.mutate.bind(fallback)
+      if (fallback !== undefined && typeof fallback.mutate === 'function') {
+        startFallback()
+        return fallback.mutate.bind(fallback)
+      }
       return undefined
     },
   }

@@ -185,12 +185,31 @@ function batchView(ns: string, value: unknown, revision: number, extra: { user?:
 }
 
 describe('createCompatScope batch mutate', () => {
-  it('exposes no mutate while the official scope serves the namespace', async () => {
-    const primary = fakePrimary<{ enabled: boolean }>(ready({ enabled: true }))
-    const { fetchFn } = fakeFetch(async () => describeResult([]))
-    const scope = createCompatScope<{ enabled: boolean }>({ namespace: 'task-board', primary: primary.scope, fetchFn })
+  it('exposes batch mutate while the official scope serves the namespace', async () => {
+    const primary = fakePrimary<{ baseURL: string; model: string }>(ready({ baseURL: '', model: '' }))
+    const calls: Array<{ body: Record<string, unknown> }> = []
+    const { fetchFn } = fakeFetch(async (url, init) => {
+      if (url === WEB_UI_SETTINGS_BRIDGE_PREFIX + '/describe') {
+        return describeResult([batchView('describe-image', { baseURL: '', model: '' }, 3, { user: {} })])
+      }
+      calls.push({ body: JSON.parse(String(init.body)) as Record<string, unknown> })
+      return { ok: true, value: batchView('describe-image', { baseURL: 'https://a/v1', model: 'm' }, 4, { user: { baseURL: 'https://a/v1', model: 'm' } }) }
+    })
+    const scope = createCompatScope<{ baseURL: string; model: string }>({ namespace: 'describe-image', primary: primary.scope, fetchFn })
     expect(scope.getSnapshot().status).toBe('ready')
-    expect(typeof (scope as unknown as { mutate?: unknown }).mutate).not.toBe('function')
+    const mutate = (scope as unknown as { mutate?: (writes: unknown[]) => Promise<{ ok: boolean; fields: { field: string; landed: boolean }[] }> }).mutate
+    expect(typeof mutate).toBe('function')
+    const result = await mutate!([
+      { field: 'baseURL', op: 'set', value: 'https://a/v1' },
+      { field: 'model', op: 'set', value: 'm' },
+    ])
+    expect(calls).toHaveLength(1)
+    expect(calls[0].body.expectedRevision).toBe(3)
+    expect(result.ok).toBe(true)
+    expect(result.fields).toEqual([
+      { field: 'baseURL', landed: true },
+      { field: 'model', landed: true },
+    ])
   })
 
   it('posts every op in one /mutate and reports per-field success', async () => {

@@ -7,6 +7,7 @@ import type { Session, SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-sess
 import { loadPetPersist } from '../src/persist.ts'
 import { PetService } from '../src/service.ts'
 import { resolvePetManifest, type PetRegistry } from '../src/registry.ts'
+import { WHISPER_TTL_MS } from '../src/chatter.ts'
 
 /** Two-pet registry fixture (whale-girl + otter) for selection/name tests. */
 function fixtureRegistry(): PetRegistry {
@@ -278,6 +279,135 @@ describe('PetService (rc.6 session events)', () => {
         clock.mockRestore()
       }
     } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('publishes whisper expiry to push-only native subscribers', () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000)
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      const snapshots: Array<{ whisper?: string }> = []
+      const unsubscribe = service.subscribeState((view) => {
+        snapshots.push(view.whisper === undefined ? {} : { whisper: view.whisper })
+      })
+
+      ctx.emit('session/event', session, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: '这里有个错误要修',
+      }, 1))
+      expect(snapshots.at(-1)).toEqual({ whisper: '哎呀，踩到小石子了' })
+
+      vi.advanceTimersByTime(WHISPER_TTL_MS + 1)
+      expect(snapshots.at(-1)).toEqual({})
+      unsubscribe()
+    } finally {
+      vi.useRealTimers()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('reschedules only the remaining whisper lifetime when returning to a session', () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const sessionA = makeSession('s-a')
+    const sessionB = makeSession('s-b')
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000)
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      const whispers: Array<string | undefined> = []
+      const unsubscribe = service.subscribeState(view => whispers.push(view.whisper))
+
+      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: '这里有个错误要修',
+      }, 1))
+      expect(whispers.at(-1)).toBe('哎呀，踩到小石子了')
+
+      vi.advanceTimersByTime(3_000)
+      ctx.emit('session/event', sessionB, toolCall(1, 1, 'call-b', 'search', 2))
+      expect(whispers.at(-1)).toBeUndefined()
+
+      vi.advanceTimersByTime(1_000)
+      ctx.emit('session/event', sessionA, toolCall(1, 1, 'call-a', 'shell', 3))
+      expect(whispers.at(-1)).toBe('哎呀，踩到小石子了')
+
+      vi.advanceTimersByTime(WHISPER_TTL_MS - 4_000 + 1)
+      expect(whispers.at(-1)).toBeUndefined()
+      unsubscribe()
+    } finally {
+      vi.useRealTimers()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('publishes independent completion and failure expiry for concurrent sessions', () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const completed = makeSession('completed')
+    const failed = makeSession('failed')
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000)
+    try {
+      const service = new PetService(ctx, {
+        persistDir: dir,
+        state: { celebrateMs: 1_000, failureMs: 2_000 },
+      })
+      const snapshots: string[][] = []
+      const unsubscribe = service.subscribeState((view) => {
+        snapshots.push((view.sessions ?? []).map(session => session.sessionId))
+      })
+
+      ctx.emit('session/event', completed, turnEnd(1, { kind: 'completed' }, 1))
+      ctx.emit('session/event', failed, turnEnd(1, {
+        kind: 'error', error: { message: 'boom', code: 'UNKNOWN' },
+      }, 1))
+      expect(snapshots.at(-1)).toEqual(['failed', 'completed'])
+
+      vi.advanceTimersByTime(1_001)
+      expect(snapshots.at(-1)).toEqual(['failed'])
+
+      vi.advanceTimersByTime(1_000)
+      expect(snapshots.at(-1)).toEqual([])
+      unsubscribe()
+    } finally {
+      vi.useRealTimers()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('publishes interaction cooldown expiry without extending it after a rejected retry', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000)
+    try {
+      const service = new PetService(ctx, {
+        persistDir: dir,
+        affinity: { petCooldownMs: 100 },
+      })
+      const cooldowns: boolean[] = []
+      const unsubscribe = service.subscribeState((view) => {
+        cooldowns.push(view.affinity.petCooldown)
+      })
+
+      await service.interact('pet')
+      expect(cooldowns.at(-1)).toBe(true)
+
+      vi.advanceTimersByTime(50)
+      await service.interact('pet')
+      expect(cooldowns.at(-1)).toBe(true)
+
+      vi.advanceTimersByTime(50)
+      expect(cooldowns.at(-1)).toBe(true)
+      vi.advanceTimersByTime(1)
+      expect(cooldowns.at(-1)).toBe(false)
+      unsubscribe()
+    } finally {
+      vi.useRealTimers()
       rmSync(dir, { recursive: true, force: true })
     }
   })

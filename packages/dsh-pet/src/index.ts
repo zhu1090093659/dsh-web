@@ -20,6 +20,7 @@ import { makePetRoutes } from './routes.ts'
 import { loadPetRegistry, petPackageRoot } from './registry.ts'
 import { DISPLAY_INSET_MAX, DISPLAY_SIZE_MAX, DISPLAY_SIZE_MIN } from './persist.ts'
 import { mountOnce } from './mount-once.ts'
+import { createPetNativeToken } from './adapters/web/native-auth.ts'
 
 export { PetService, MAX_SESSION_BUBBLES } from './service.ts'
 export type {
@@ -110,6 +111,7 @@ export {
   makePetRoutes,
   PET_API_PREFIX,
   PET_ASSET_PREFIX,
+  PET_NATIVE_API_PREFIX,
 } from './routes.ts'
 
 /** Stable cordis plugin name (matches cordis.patch.yml insert id). */
@@ -170,7 +172,8 @@ function applyImpl(ctx: Context, config: PetConfig = {}): void {
   // pattern as dsh-remote-web-ui's /api/pair family). The routes are
   // registered while the plugin is enabled; toggling the setting off makes
   // the pet API disappear until it is re-enabled.
-  const routes = makePetRoutes({ service })
+  const nativeToken = createPetNativeToken()
+  const routes = makePetRoutes({ service, nativeToken })
   let disposeRoutes: (() => void) | undefined
   const syncRoutes = (): void => {
     const enabled = current().enabled ?? true

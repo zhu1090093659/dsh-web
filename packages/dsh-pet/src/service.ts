@@ -16,6 +16,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { AffinityConfig, PetAffinityView, PetInteraction } from './affinity.ts'
 import type { TreatConfig } from './treats.ts'
+import { createInteractionIntent, type PetIntent } from './core/intent.ts'
 import {
   emptyProjectionRuntime,
   isActivityPhase,
@@ -161,8 +162,12 @@ export interface PetStateView {
   whisper?: string
 }
 
-/** Result of `pet.interact`. */
-export type PetInteractResult = LedgerInteractionResult
+/** Result of `pet.interact`, including the renderer-neutral reaction intent. */
+export interface PetInteractResult extends LedgerInteractionResult {
+  intent: PetIntent
+}
+
+type PetStateListener = (snapshot: PetStateView) => void
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -201,6 +206,10 @@ export class PetService extends Service {
   private readonly persistDir: string
   private enabled: boolean
   private disposeActivity: (() => void) | undefined
+  private readonly presentationTimers = new Map<Session, NodeJS.Timeout>()
+  private readonly cooldownTimers = new Map<PetInteraction, NodeJS.Timeout>()
+  private whisperTimer: NodeJS.Timeout | undefined
+  private readonly stateListeners = new Set<PetStateListener>()
   /** Session whose most recent meaningful event currently drives the global pet. */
   private displaySession: Session | undefined
   /**
@@ -239,6 +248,16 @@ export class PetService extends Service {
     this.enabled = config.enabled ?? true
 
     this.syncActivity()
+    ctx.effect(() => () => {
+      // Notify active native streams before dropping listeners so plugin
+      // reload/unload cannot leave a heartbeat-only connection behind.
+      this.enabled = false
+      this.clearPresentationTimers()
+      this.clearCooldownTimers()
+      this.clearWhisperTimer()
+      this.publishState()
+      this.stateListeners.clear()
+    }, 'pet: state stream')
   }
 
   /** Whether the pet service consumes session activity while enabled. */
@@ -249,6 +268,13 @@ export class PetService extends Service {
   /** RPC: current pet state snapshot. */
   async state(): Promise<PetStateView> {
     return this.view()
+  }
+
+  /** Subscribe to the Host-owned snapshot used by browser polling and native SSE. */
+  subscribeState(listener: PetStateListener): () => void {
+    this.stateListeners.add(listener)
+    listener(this.view())
+    return () => { this.stateListeners.delete(listener) }
   }
 
   /** Current persisted display config (read-only view). */
@@ -291,13 +317,16 @@ export class PetService extends Service {
     this.ledger.setRemarks(entry.remarks)
     this.flush()
     this.syncSettingsFromPet()
+    this.publishState()
     return { ok: true, petId: entry.id }
   }
 
   /** Start or stop the session-activity listeners that drive the pet. */
   setEnabled(enabled: boolean): void {
+    if (this.enabled === enabled) return
     this.enabled = enabled
     this.syncActivity()
+    this.publishState()
   }
 
   private syncActivity(): void {
@@ -339,9 +368,13 @@ export class PetService extends Service {
           }
         }),
         this.ctx.on('session/disposed', (session: Session) => {
+          this.clearPresentationTimer(session)
           this.ledger.forgetSession(String(session.id))
           this.sessionActivity.delete(session)
-          if (session !== this.displaySession) return
+          if (session !== this.displaySession) {
+            this.publishState()
+            return
+          }
           // The display session is gone: fall back to the most recent
           // remaining session's last input, or settle to idle when none.
           this.displaySession = undefined
@@ -354,6 +387,8 @@ export class PetService extends Service {
           } else {
             this.machine.onSessionDisposed()
           }
+          this.scheduleWhisperRefresh()
+          this.publishState()
         }),
       ]
       return () => { for (const dispose of disposers) dispose() }
@@ -381,7 +416,9 @@ export class PetService extends Service {
   private applyActivity(session: Session, input: PetStateInput, whisper?: string): void {
     const activity = this.activityOf(session)
     activity.lastInput = input
-    if (whisper !== undefined) activity.whisper = { text: whisper, at: Date.now() }
+    if (whisper !== undefined) {
+      activity.whisper = { text: whisper, at: Date.now() }
+    }
     activity.machine.onActivityStatus(input)
     activity.machine.onSessionActive()
     // Move to the tail so map order reads most-recent-last, then trim the
@@ -393,10 +430,14 @@ export class PetService extends Service {
       const oldest = this.sessionActivity.keys().next().value
       if (oldest === undefined) break
       this.sessionActivity.delete(oldest)
+      this.clearPresentationTimer(oldest)
     }
     this.displaySession = session
     this.machine.onActivityStatus(input)
     this.machine.onSessionActive()
+    this.schedulePresentationRefresh(session, input.phase)
+    this.scheduleWhisperRefresh()
+    this.publishState()
   }
 
   /** RPC: pet or feed the pet. */
@@ -404,7 +445,12 @@ export class PetService extends Service {
     const nowMs = Date.now()
     const result = this.ledger.interact(kind, nowMs)
     if (this.ledger.takeDirty()) this.flush()
-    return result
+    this.scheduleCooldownRefresh(kind, nowMs)
+    this.publishState()
+    return {
+      ...result,
+      intent: createInteractionIntent(kind, result.reaction, nowMs, result.delta > 0),
+    }
   }
 
   /** RPC: show or hide the pet. */
@@ -412,6 +458,7 @@ export class PetService extends Service {
     this.ledger.setDisplay({ ...this.ledger.snapshot.display, visible })
     this.flush()
     this.syncSettingsFromPet()
+    this.publishState()
     return { ok: true, display: this.ledger.snapshot.display }
   }
 
@@ -424,6 +471,7 @@ export class PetService extends Service {
     this.ledger.setDisplay(next)
     this.flush()
     this.syncSettingsFromPet()
+    this.publishState()
     return { ok: true, display: this.ledger.snapshot.display }
   }
 
@@ -434,6 +482,7 @@ export class PetService extends Service {
     if (trimmed.length > PET_NAME_MAX_LENGTH) return { ok: false, error: 'name-too-long' }
     this.ledger.setPetName(this.selectedPetId(), trimmed)
     this.flush()
+    this.publishState()
     return { ok: true, name: trimmed }
   }
 
@@ -460,6 +509,7 @@ export class PetService extends Service {
     next.bottom = Math.round(Math.min(DISPLAY_INSET_MAX, Math.max(0, section.bottom)))
     this.ledger.setDisplay(next)
     this.flush()
+    this.publishState()
   }
 
   /** Mirror the persisted display config into the settings document (best-effort). */
@@ -480,12 +530,16 @@ export class PetService extends Service {
 
   /** Award the turn reward once per completed turn (idempotent per session + turn). */
   private rewardTurn(sessionId: string, turn: number): void {
-    if (this.ledger.rewardTurn(sessionId, turn, Date.now())) this.flush()
+    if (!this.ledger.rewardTurn(sessionId, turn, Date.now())) return
+    this.flush()
+    this.publishState()
   }
 
   /** Preserve turn rewards for installations that only emit legacy activity. */
   private rewardLegacyTurn(): void {
-    if (this.ledger.rewardLegacyTurn(Date.now())) this.flush()
+    if (!this.ledger.rewardLegacyTurn(Date.now())) return
+    this.flush()
+    this.publishState()
   }
 
   private view(): PetStateView {
@@ -540,6 +594,100 @@ export class PetService extends Service {
         stocked: this.ledger.snapshot.treats.treats,
         max: this.ledger.treatMax,
       },
+    }
+  }
+
+  /** Publish the time-based end of a completion pose to push-only consumers. */
+  private schedulePresentationRefresh(session: Session, phase: PetStateInput['phase']): void {
+    this.clearPresentationTimer(session)
+    const duration = phase === 'done'
+      ? this.stateConfig.celebrateMs
+      : phase === 'failed'
+        ? this.stateConfig.failureMs
+        : undefined
+    if (duration === undefined) return
+    const timer = setTimeout(() => {
+      if (this.presentationTimers.get(session) !== timer) return
+      this.presentationTimers.delete(session)
+      this.publishState()
+    }, duration + 1)
+    this.presentationTimers.set(session, timer)
+    timer.unref?.()
+  }
+
+  private clearPresentationTimer(session: Session): void {
+    const timer = this.presentationTimers.get(session)
+    if (timer !== undefined) clearTimeout(timer)
+    this.presentationTimers.delete(session)
+  }
+
+  private clearPresentationTimers(): void {
+    for (const timer of this.presentationTimers.values()) clearTimeout(timer)
+    this.presentationTimers.clear()
+  }
+
+  /** Publish when an interaction cooldown ends so push-only clients stay current. */
+  private scheduleCooldownRefresh(kind: PetInteraction, nowMs: number): void {
+    this.clearCooldownTimer(kind)
+    const affinity = this.ledger.snapshot.affinity
+    const lastAt = kind === 'pet' ? affinity.lastPetAt : affinity.lastFeedAt
+    if (lastAt === 0) return
+    const duration = kind === 'pet'
+      ? this.ledger.affinity.petCooldownMs
+      : this.ledger.affinity.feedCooldownMs
+    const remainingMs = duration - (nowMs - lastAt)
+    if (remainingMs <= 0) return
+    const timer = setTimeout(() => {
+      if (this.cooldownTimers.get(kind) !== timer) return
+      this.cooldownTimers.delete(kind)
+      this.publishState()
+    }, remainingMs + 1)
+    this.cooldownTimers.set(kind, timer)
+    timer.unref?.()
+  }
+
+  private clearCooldownTimer(kind: PetInteraction): void {
+    const timer = this.cooldownTimers.get(kind)
+    if (timer !== undefined) clearTimeout(timer)
+    this.cooldownTimers.delete(kind)
+  }
+
+  private clearCooldownTimers(): void {
+    for (const timer of this.cooldownTimers.values()) clearTimeout(timer)
+    this.cooldownTimers.clear()
+  }
+
+  /** Publish when the displayed whisper expires so SSE does not leave stale copy. */
+  private scheduleWhisperRefresh(): void {
+    this.clearWhisperTimer()
+    const activity = this.displaySession === undefined
+      ? undefined
+      : this.sessionActivity.get(this.displaySession)
+    const whisper = activity?.whisper
+    if (whisper === undefined) return
+    const remainingMs = WHISPER_TTL_MS - (Date.now() - whisper.at)
+    if (remainingMs <= 0) return
+    this.whisperTimer = setTimeout(() => {
+      this.whisperTimer = undefined
+      this.publishState()
+    }, remainingMs + 1)
+    this.whisperTimer.unref?.()
+  }
+
+  private clearWhisperTimer(): void {
+    if (this.whisperTimer !== undefined) clearTimeout(this.whisperTimer)
+    this.whisperTimer = undefined
+  }
+
+  private publishState(): void {
+    if (this.stateListeners.size === 0) return
+    const snapshot = this.view()
+    for (const listener of [...this.stateListeners]) {
+      try {
+        listener(snapshot)
+      } catch {
+        // One closed native stream must not unwind Host session projection.
+      }
     }
   }
 

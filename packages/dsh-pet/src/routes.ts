@@ -16,11 +16,19 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { PetService } from './service.ts'
 import type { PetInteraction } from './affinity.ts'
+import {
+  authorizePetNativeRequest,
+  isPetNativeToken,
+} from './adapters/web/native-auth.ts'
 import { petEntryView, type PetEntry, type PetRegistry } from './registry.ts'
 import { isLoopbackRequest } from './loopback.ts'
 
 /** Browser-facing base path of the pet API. */
 export const PET_API_PREFIX = '/api/pet'
+
+/** Authenticated loopback bridge consumed only by a managed desktop child. */
+export const PET_NATIVE_API_PREFIX = `${PET_API_PREFIX}/native`
+export const PET_SSE_HEARTBEAT_MS = 15_000
 
 /** Browser-facing base path of the pet asset routes ('/pet/<id>/...'). */
 export const PET_ASSET_PREFIX = '/pet'
@@ -55,6 +63,14 @@ function json(res: ServerResponse, status: number, body: unknown): void {
 function requireMethod(req: IncomingMessage, res: ServerResponse, method: string): boolean {
   if (req.method === method) return true
   json(res, 405, { ok: false, error: 'method-not-allowed' })
+  return false
+}
+
+/** Reject remote peers and requests that do not carry this Host boot's token. */
+function requireNative(req: IncomingMessage, res: ServerResponse, token: string): boolean {
+  const denial = authorizePetNativeRequest(req, token)
+  if (denial === undefined) return true
+  json(res, denial === 'NATIVE_LOOPBACK_REQUIRED' ? 403 : 401, { ok: false, error: denial })
   return false
 }
 
@@ -95,12 +111,18 @@ function guard(req: IncomingMessage, res: ServerResponse): boolean {
 }
 
 /** Wrap one async service call as a GET JSON route. */
-function getRoute(path: string, run: () => Promise<unknown>): WebRoute {
+type RequestGuard = (req: IncomingMessage, res: ServerResponse) => boolean
+
+function getRoute(
+  path: string,
+  run: () => Promise<unknown>,
+  authorize: RequestGuard = guard,
+): WebRoute {
   return {
     kind: 'exact',
     path,
     handler: (req: IncomingMessage, res: ServerResponse): void => {
-      if (!guard(req, res)) return
+      if (!authorize(req, res)) return
       if (!requireMethod(req, res, 'GET')) return
       run().then((value) => json(res, 200, value), (error) => {
         json(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
@@ -110,12 +132,16 @@ function getRoute(path: string, run: () => Promise<unknown>): WebRoute {
 }
 
 /** Wrap one async service call as a POST JSON route (body passed through). */
-function postRoute(path: string, run: (body: Record<string, unknown>) => Promise<unknown>): WebRoute {
+function postRoute(
+  path: string,
+  run: (body: Record<string, unknown>) => Promise<unknown>,
+  authorize: RequestGuard = guard,
+): WebRoute {
   return {
     kind: 'exact',
     path,
     handler: (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-      if (!guard(req, res)) return Promise.resolve()
+      if (!authorize(req, res)) return Promise.resolve()
       if (!requireMethod(req, res, 'POST')) return Promise.resolve()
       return readJsonBody(req).then((body) => {
         const record = (typeof body === 'object' && body !== null) ? body as Record<string, unknown> : {}
@@ -128,6 +154,62 @@ function postRoute(path: string, run: (body: Record<string, unknown>) => Promise
       }, (error) => {
         json(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) })
       })
+    },
+  }
+}
+
+/** Push every Host-owned state change to one authenticated desktop process. */
+function eventStreamRoute(service: PetService, nativeToken: string): WebRoute {
+  return {
+    kind: 'exact',
+    path: `${PET_NATIVE_API_PREFIX}/events`,
+    handler: (req: IncomingMessage, res: ServerResponse): void => {
+      if (!requireNative(req, res, nativeToken) || !requireMethod(req, res, 'GET')) return
+      res.writeHead(200, {
+        'content-type': 'text/event-stream; charset=utf-8',
+        'cache-control': 'no-cache, no-transform',
+        'connection': 'keep-alive',
+        'x-accel-buffering': 'no',
+      })
+      res.flushHeaders?.()
+
+      let closed = false
+      let heartbeat: NodeJS.Timeout | undefined
+      let unsubscribe = (): void => undefined
+      const onRequestClose = (): void => { close(false) }
+      const close = (endResponse: boolean): void => {
+        if (closed) return
+        closed = true
+        if (heartbeat !== undefined) clearInterval(heartbeat)
+        unsubscribe()
+        req.off('close', onRequestClose)
+        if (endResponse && !res.writableEnded) res.end()
+      }
+      const send = (snapshot: Awaited<ReturnType<PetService['state']>>): void => {
+        if (closed) return
+        try {
+          res.write(`data: ${JSON.stringify(snapshot)}\n\n`)
+          if (!service.isEnabled()) close(true)
+        } catch {
+          close(false)
+        }
+      }
+      req.once('close', onRequestClose)
+      const disposeSubscription = service.subscribeState(send)
+      if (closed) {
+        disposeSubscription()
+        return
+      }
+      unsubscribe = disposeSubscription
+      heartbeat = setInterval(() => {
+        if (closed) return
+        try {
+          res.write(': heartbeat\n\n')
+        } catch {
+          close(false)
+        }
+      }, PET_SSE_HEARTBEAT_MS)
+      heartbeat.unref?.()
     },
   }
 }
@@ -248,9 +330,12 @@ function assetHandler(registry: PetRegistry): WebRoute['handler'] {
   }
 }
 
-/** Build the full route family (API + assets) for one service. */
-export function makePetRoutes(deps: { service: PetService }): WebRoute[] {
-  const { service } = deps
+/** Build the full route family (browser API, optional native bridge, and assets). */
+export function makePetRoutes(deps: { service: PetService; nativeToken?: string }): WebRoute[] {
+  const { service, nativeToken } = deps
+  if (nativeToken !== undefined && !isPetNativeToken(nativeToken)) {
+    throw new TypeError('invalid pet native token')
+  }
   const apiRoutes: WebRoute[] = [
     getRoute(PET_API_PREFIX + '/state', () => service.state()),
     getRoute(PET_API_PREFIX + '/pets', () => service.pets()),
@@ -288,7 +373,22 @@ export function makePetRoutes(deps: { service: PetService }): WebRoute[] {
     handler: assetHandler(service.registrySnapshot()),
   }
 
-  return [...apiRoutes, assetRoute]
+  const nativeGuard: RequestGuard | undefined = nativeToken === undefined
+    ? undefined
+    : (req, res) => requireNative(req, res, nativeToken)
+  const nativeRoutes: WebRoute[] = nativeGuard === undefined || nativeToken === undefined
+    ? []
+    : [
+        getRoute(`${PET_NATIVE_API_PREFIX}/state`, () => service.state(), nativeGuard),
+        eventStreamRoute(service, nativeToken),
+        postRoute(`${PET_NATIVE_API_PREFIX}/interact`, (body) => {
+          const kind = body.kind as PetInteraction | undefined
+          if (kind !== 'pet' && kind !== 'feed') return Promise.reject(new Error('invalid-kind'))
+          return service.interact(kind)
+        }, nativeGuard),
+      ]
+
+  return [...apiRoutes, ...nativeRoutes, assetRoute]
 }
 
 // Re-exported for the package surface (the registry owns the definition now).

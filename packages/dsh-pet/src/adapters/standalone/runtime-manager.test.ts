@@ -283,18 +283,20 @@ describe('Standalone runtime mirror policy', () => {
 })
 
 describe('published runtime dependency policy', () => {
-  it('keeps Electron itself out of normal plugin installation', async () => {
+  it('keeps Electron itself out of published runtime dependencies', async () => {
     const packageJson = JSON.parse(
       await readFile(new URL('../../../package.json', import.meta.url), 'utf8'),
     ) as {
       dependencies?: Record<string, string>
       optionalDependencies?: Record<string, string>
+      peerDependencies?: Record<string, string>
       devDependencies?: Record<string, string>
     }
 
     expect(packageJson.dependencies?.electron).toBeUndefined()
     expect(packageJson.optionalDependencies?.electron).toBeUndefined()
-    expect(packageJson.devDependencies?.electron).toBeUndefined()
+    expect(packageJson.peerDependencies?.electron).toBeUndefined()
+    expect(packageJson.devDependencies?.electron).toBe(STANDALONE_ELECTRON_VERSION)
     expect(packageJson.dependencies?.['@electron-internal/extract-zip']).toBe('1.0.5')
     expect(packageJson.dependencies?.['@electron/get']).toBe('5.1.0')
   })

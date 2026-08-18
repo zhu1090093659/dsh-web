@@ -1,0 +1,7 @@
+{
+  "name": "@linxin666/dsh-pet-standalone",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Bundled Standalone presentation host for @linxin666/dsh-pet.",
+  "main": "./out/main/index.js"
+}

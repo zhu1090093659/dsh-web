@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 6,
+  "visible": false,
+  "locked": true,
+  "alwaysOnTop": false,
+  "scale": 1.25,
+  "webDshUrl": "http://localhost:4080",
+  "pixelModelId": "local:lian",
+  "pixelModelNames": {
+    "local:lian": "小狮子",
+    "imported:boba": "波霸"
+  },
+  "position": {
+    "x": -420,
+    "y": 82
+  }
+}

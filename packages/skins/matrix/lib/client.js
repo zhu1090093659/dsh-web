@@ -57,9 +57,10 @@ window.__ModuleLoader__.load({
 					chars: []
 				});
 			};
+			let cancelled = false;
 			const frame = (t) => {
 				raf = 0;
-				if (document.hidden) return;
+				if (cancelled || document.hidden) return;
 				if (t - last < 50) {
 					raf = requestAnimationFrame(frame);
 					return;
@@ -88,6 +89,7 @@ window.__ModuleLoader__.load({
 			window.addEventListener("resize", resize);
 			raf = requestAnimationFrame(frame);
 			return () => {
+				cancelled = true;
 				cancelAnimationFrame(raf);
 				window.removeEventListener("resize", resize);
 				canvas.remove();

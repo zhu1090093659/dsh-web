@@ -1411,6 +1411,16 @@ body[data-dsh-xp][data-ds-dark-theme] [data-gitgraph-dialog] {
 /* Ref badges (non-current): classic cream chips with the brown border; the
    current branch keeps the XP-blue brand fill from the token remap. */
 body[data-dsh-xp] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
+  background: #ece9d8;
+  border: 1px solid #b3ad95;
+  color: #3d4a5c;
+}
+
+body[data-dsh-xp][data-ds-dark-theme] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
+  background: #23262b;
+  border-color: #3a3d42;
+  color: #c8ccd2;
+}
 
 /* --- 输入区选择器适配：工作区 + Git 分支胶囊（dsh-git-graph） -------------
    The composer selector pills (official workspace picker + git-graph branch
@@ -1452,16 +1462,5 @@ body[data-dsh-xp] [data-gitgraph-chip][aria-expanded='true'] {
 body[data-dsh-xp][data-ds-dark-theme] div:has(> div > [data-gitgraph-chip]) > button[aria-expanded='true'],
 body[data-dsh-xp][data-ds-dark-theme] [data-gitgraph-chip][aria-expanded='true'] {
   background-color: rgba(109, 168, 232, 0.16);
-}
-
-  background: #ece9d8;
-  border: 1px solid #b3ad95;
-  color: #3d4a5c;
-}
-
-body[data-dsh-xp][data-ds-dark-theme] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
-  background: #23262b;
-  border-color: #3a3d42;
-  color: #c8ccd2;
 }
 

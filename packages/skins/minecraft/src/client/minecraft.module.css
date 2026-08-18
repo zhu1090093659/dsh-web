@@ -287,9 +287,9 @@ body[data-dsh-minecraft] select {
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
 }
 
-body[data-dsh-minecraft] input:not([type='checkbox']):not([type='radio']):focus,
-body[data-dsh-minecraft] textarea:focus,
-body[data-dsh-minecraft] select:focus {
+body[data-dsh-minecraft] input:not([type='checkbox']):not([type='radio']):focus-visible,
+body[data-dsh-minecraft] textarea:focus-visible,
+body[data-dsh-minecraft] select:focus-visible {
   color: #fff;
   border-color: #f2ead4;
   box-shadow:

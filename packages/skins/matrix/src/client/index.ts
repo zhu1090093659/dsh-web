@@ -66,9 +66,10 @@ function mountRain(): (() => void) | null {
       cols.push({ y: Math.random() * -window.innerHeight, speed: 0.5 + Math.random() * 1.3, chars: [] })
     }
   }
+  let cancelled = false
   const frame = (t: number) => {
     raf = 0
-    if (document.hidden) return
+    if (cancelled || document.hidden) return
     if (t - last < 50) {
       raf = requestAnimationFrame(frame)
       return
@@ -97,6 +98,7 @@ function mountRain(): (() => void) | null {
   window.addEventListener('resize', resize)
   raf = requestAnimationFrame(frame)
   return () => {
+    cancelled = true
     cancelAnimationFrame(raf)
     window.removeEventListener('resize', resize)
     canvas.remove()

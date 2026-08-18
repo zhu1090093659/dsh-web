@@ -56,6 +56,8 @@
     }
   },
   "dependencies": {
+    "@electron-internal/extract-zip": "1.0.5",
+    "@electron/get": "5.1.0",
     "clsx": "^2.1.1",
     "schemastery": "^3.18.0"
   },

@@ -7,6 +7,8 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-commands'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import type {} from '@deepseek-ai/dsh-system-prompt'
@@ -22,7 +24,7 @@ const SECTION_ORDER = 200
 /** Default environment variable holding the authenticated proxy token. */
 export const DEFAULT_PROXY_TOKEN_ENV = 'DSH_TASK_BOARD_PROXY_TOKEN'
 
-export const inject = ['systemPrompt', 'apiProxy', 'webServer']
+export const inject = ['systemPrompt', 'apiProxy', 'webServer', 'agents', 'commands']
 
 /** Model-facing announcement: plugin presence, capabilities, and limits. */
 export const TASK_BOARD_GUIDANCE = '本机已安装 dsh-task-board 插件（DSH Web GUI 的任务看板）：侧边栏「任务看板」入口；在 dsh-web-ui 插件全家桶仓库（packages/dsh-task-board）统一维护，经聚合包 web-ui-all 一键安装。能力：多列看板管理任务；Host 权威账本；关闭浏览器后仍由 Host 执行和结算；任务可钉住工作区、agent 预设和权限；支持 Host 本地时区的 5 段 cron，错过的触发点不补跑；可选且默认关闭的空闲系统睡眠保护允许屏幕熄灭，但不承诺拦截合盖、手动睡眠、休眠、关机或唤醒已睡眠机器。执行消耗 API 额度。用户提到「任务看板 / 看板 / 定时任务」时即指本插件，请据此协作。'
@@ -87,7 +89,15 @@ const DEFAULT_ANNOUNCE = true
 export const apply = mountOnce('@linxin666/dsh-client-ui-task-board', applyImpl)
 
 function applyImpl(ctx: Context, config?: Config): void {
-  const host = new TaskBoardHostService(ctx.apiProxy)
+  const host = new TaskBoardHostService(ctx.apiProxy, {
+    commandDispatcher: {
+      async execute(sessionId, line, signal) {
+        const agent = ctx.agents.get(sessionId)
+        if (agent === undefined) throw new Error(`execution session ${sessionId} is not available`)
+        return (await ctx.commands.execute(agent, line, [], signal))?.result
+      },
+    },
+  })
   host.setConfiguration(config?.enabled ?? true, config?.preventIdleSleep ?? false)
   host.start()
   ctx.effect(() => {

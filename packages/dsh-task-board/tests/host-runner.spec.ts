@@ -20,6 +20,13 @@ describe('HostExecutionRunner', () => {
   it('validates and applies workspace, preset, and permission before the task prompt', async () => {
     const order: string[] = []
     const promptPayloads: unknown[] = []
+    const commands = {
+      execute: vi.fn(async (_sessionId, line: string) => {
+        order.push('permission')
+        expect(line).toBe('/permission workspace-write')
+        return { kind: 'success' as const }
+      }),
+    }
     const api = {
       workspace: { list: vi.fn(async (request) => { order.push('workspace'); return ok(request, { items: [{ workspaceId: 'workspace-a' }] }) }) },
       agentPresets: { list: vi.fn(async (request) => { order.push('preset'); return ok(request, { presets: [{ id: 'preset-a', isDefault: false }] }) }) },
@@ -28,16 +35,15 @@ describe('HostExecutionRunner', () => {
         rename: vi.fn(async (request) => { order.push('rename'); return ok(request, { title: 'Run me', seq: 1 }) }),
         prompt: vi.fn(async (request) => {
           promptPayloads.push(request.payload)
-          const text = request.payload.content[0].text
-          order.push(text.startsWith('/permission') ? 'permission' : 'prompt')
-          return ok(request, text.startsWith('/permission') ? { accepted: true, command: { kind: 'success' } } : { accepted: true })
+          order.push('prompt')
+          return ok(request, { accepted: true })
         }),
       },
     }
-    await expect(new HostExecutionRunner(api as unknown as ApiProxy).launch(configuredTask())).resolves.toBe('session-a')
+    await expect(new HostExecutionRunner(api as unknown as ApiProxy, commands).launch(configuredTask())).resolves.toBe('session-a')
     expect(order).toEqual(['workspace', 'preset', 'create', 'rename', 'permission', 'prompt'])
     expect(api.sessions.create.mock.calls[0][0].payload).toMatchObject({ workspaceId: 'workspace-a', agentPreset: 'preset-a' })
-    expect(promptPayloads).toHaveLength(2)
+    expect(promptPayloads).toEqual([{ sessionId: 'session-a', mode: 'queue', content: [{ type: 'text', text: 'do work' }] }])
   })
 
   it('fails closed on a stale workspace or unacknowledged permission command', async () => {
@@ -50,23 +56,77 @@ describe('HostExecutionRunner', () => {
     await expect(new HostExecutionRunner(missingWorkspace as unknown as ApiProxy).launch(configuredTask())).rejects.toThrow('workspace not found')
     expect(create).not.toHaveBeenCalled()
 
-    const prompts: string[] = []
+    const prompt = vi.fn()
     const permissionRejected = {
       workspace: { list: async (request: { rpcId: unknown }) => ok(request, { items: [{ workspaceId: 'workspace-a' }] }) },
       agentPresets: { list: async (request: { rpcId: unknown }) => ok(request, { presets: [{ id: 'preset-a' }] }) },
       sessions: {
         create: async (request: { rpcId: unknown }) => ok(request, { sessionId: 'session-a' }),
         rename: async (request: { rpcId: unknown }) => ok(request, { title: 'Run me', seq: 1 }),
-        prompt: async (request: { rpcId: unknown; payload: { content: Array<{ text: string }> } }) => {
-          prompts.push(request.payload.content[0].text)
-          return ok(request, { accepted: true })
-        },
+        prompt,
       },
     }
-    const rejected = new HostExecutionRunner(permissionRejected as unknown as ApiProxy).launch(configuredTask())
+    const unavailable = new HostExecutionRunner(permissionRejected as unknown as ApiProxy).launch(configuredTask())
+    await expect(unavailable).rejects.toThrow('permission command dispatcher is unavailable')
+    await expect(unavailable).rejects.toMatchObject({ sessionId: 'session-a' })
+    expect(prompt).not.toHaveBeenCalled()
+
+    const rejected = new HostExecutionRunner(permissionRejected as unknown as ApiProxy, {
+      execute: async () => undefined,
+    }).launch(configuredTask())
     await expect(rejected).rejects.toBeInstanceOf(SessionLaunchError)
     await expect(rejected).rejects.toMatchObject({ sessionId: 'session-a' })
-    expect(prompts).toEqual(['/permission workspace-write'])
+    expect(prompt).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when the permission command reports an error', async () => {
+    const prompt = vi.fn()
+    const api = {
+      workspace: { list: async (request: { rpcId: unknown }) => ok(request, { items: [{ workspaceId: 'workspace-a' }] }) },
+      agentPresets: { list: async (request: { rpcId: unknown }) => ok(request, { presets: [{ id: 'preset-a' }] }) },
+      sessions: {
+        create: async (request: { rpcId: unknown }) => ok(request, { sessionId: 'session-a' }),
+        rename: async (request: { rpcId: unknown }) => ok(request, { title: 'Run me', seq: 1 }),
+        prompt,
+      },
+    }
+    const launch = new HostExecutionRunner(api as unknown as ApiProxy, {
+      execute: async () => ({ kind: 'error', text: 'permission denied' }),
+    }).launch(configuredTask())
+    await expect(launch).rejects.toThrow('permission denied')
+    expect(prompt).not.toHaveBeenCalled()
+  })
+
+  it('bounds permission dispatch and fails closed when the command throws', async () => {
+    const timeoutSignal = new AbortController().signal
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeoutSignal)
+    try {
+      const prompt = vi.fn()
+      const execute = vi.fn(async (_sessionId: string, _line: string, signal: AbortSignal) => {
+        expect(signal).toBe(timeoutSignal)
+        throw new Error('permission command timed out')
+      })
+      const api = {
+        workspace: { list: async (request: { rpcId: unknown }) => ok(request, { items: [{ workspaceId: 'workspace-a' }] }) },
+        agentPresets: { list: async (request: { rpcId: unknown }) => ok(request, { presets: [{ id: 'preset-a' }] }) },
+        sessions: {
+          create: async (request: { rpcId: unknown }) => ok(request, { sessionId: 'session-a' }),
+          rename: async (request: { rpcId: unknown }) => ok(request, { title: 'Run me', seq: 1 }),
+          prompt,
+        },
+      }
+      const launch = new HostExecutionRunner(api as unknown as ApiProxy, { execute }).launch(configuredTask())
+      await expect(launch).rejects.toMatchObject({
+        name: 'SessionLaunchError',
+        sessionId: 'session-a',
+        message: expect.stringContaining('permission command timed out'),
+      })
+      expect(timeout).toHaveBeenCalledOnce()
+      expect(timeout).toHaveBeenCalledWith(30_000)
+      expect(prompt).not.toHaveBeenCalled()
+    } finally {
+      timeout.mockRestore()
+    }
   })
 
   it('settles from session list plus the newest turn end and waits on read failures', async () => {

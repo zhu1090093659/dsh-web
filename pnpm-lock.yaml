@@ -766,6 +766,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: ^4.0.1
         version: 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
+      '@deepseek-ai/dsh-agent':
+        specifier: ^0.1.0-rc.8
+        version: 0.1.0-rc.8(92f269661ea5e195fab72177f1a12db7)
       '@deepseek-ai/dsh-client-connection':
         specifier: ^0.1.0-rc.8
         version: 0.1.0-rc.8(f4748f05eda5f2724af2c9dae4210332)
@@ -781,6 +784,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: ^0.1.0-rc.8
         version: 0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-commands':
+        specifier: ^0.1.0-rc.8
+        version: 0.1.0-rc.8(72bbe6fdb3741b872b5fbe4132676802)
       '@deepseek-ai/dsh-host-apiproxy':
         specifier: ^0.1.0-rc.8
         version: 0.1.0-rc.8(87e50522ee3e6c004ae77f9049f48ed1)

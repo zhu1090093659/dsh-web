@@ -92,6 +92,7 @@ function layers(): HTMLElement[] {
 
 beforeEach(() => {
   document.body.innerHTML = ''
+  document.documentElement.removeAttribute('data-dsh-wallpaper-active')
 })
 
 describe('WallpaperController', () => {
@@ -101,17 +102,25 @@ describe('WallpaperController', () => {
     const { scope } = fakeScope()
     const controller = new WallpaperController(scope)
     expect(neutralizers()).toHaveLength(0)
+    expect(document.documentElement.hasAttribute('data-dsh-wallpaper-active')).toBe(false)
     controller.applySelection(video)
     expect(neutralizers()).toHaveLength(1)
     expect(neutralizers()[0]!.textContent).toContain('[id="root"] { background: transparent; }')
+    expect(neutralizers()[0]!.textContent).toContain('body { background: transparent !important; }')
+    expect(neutralizers()[0]!.textContent).toContain('[id="root"] > div > div { background: transparent !important; }')
+    expect(neutralizers()[0]!.textContent).toContain('[class*="composerSeat"]')
+    expect(document.documentElement.hasAttribute('data-dsh-wallpaper-active')).toBe(true)
     // Tearing the wallpaper down restores the stock shell background.
     controller.clearSelection()
     expect(neutralizers()).toHaveLength(0)
+    expect(document.documentElement.hasAttribute('data-dsh-wallpaper-active')).toBe(false)
     // Re-applying and disposing behaves the same way.
     controller.applySelection(video)
     expect(neutralizers()).toHaveLength(1)
+    expect(document.documentElement.hasAttribute('data-dsh-wallpaper-active')).toBe(true)
     controller.dispose()
     expect(neutralizers()).toHaveLength(0)
+    expect(document.documentElement.hasAttribute('data-dsh-wallpaper-active')).toBe(false)
   })
 
   it('mounts media + scrim layers under the app for a video selection', () => {

@@ -158,9 +158,13 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
 
   let latestRequest = 0
   let currentActivation: number | null = null
-  let active: string | null = null
+  // The tapIndex adapter stamps html[data-dsh-skin] before first paint; read
+  // it at controller creation so the settings card's first frame shows the
+  // real active skin instead of a stock-look flash (#661).
+  const initialSkinId = doc.documentElement.getAttribute('data-dsh-skin')
+  let active: string | null = initialSkinId
   /** The committed selection try-on restores (component scope). */
-  let committed: { id: string | null; entry: ControllerSkinEntry | null } = { id: null, entry: null }
+  let committed: { id: string | null; entry: ControllerSkinEntry | null } = { id: initialSkinId, entry: null }
   /** Last non-null applied entry, so refresh() can re-activate it. */
   let lastEntry: ControllerSkinEntry | null = null
   /** Last evaluated background-suppression verdict (refresh() skips no-ops). */
@@ -171,10 +175,35 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
   // React's useSyncExternalStore requires a CACHED snapshot: getSnapshot must
   // return the same reference until the state actually changes, or the store
   // consumer loops forever (and the settings card crashes blank).
-  let stateSnapshot: SkinControllerState = { active: null, trying: null, previewing: false }
+  let stateSnapshot: SkinControllerState = { active: initialSkinId, trying: null, previewing: false }
   const emit = (): void => {
     stateSnapshot = { active, trying, previewing }
     for (const listener of listeners) listener()
+  }
+
+  /**
+   * Skins intentionally drop the composer-seat bottom mask; only the stock
+   * official look keeps it (see #151 and the skin patches). This style is
+   * present whenever a skin is active, independent of the wallpaper bridge.
+   */
+  let composerNeutralizer: HTMLStyleElement | null = null
+  function syncComposerNeutralizer(): void {
+    if (active === null) {
+      composerNeutralizer?.remove()
+      composerNeutralizer = null
+      return
+    }
+    if (composerNeutralizer !== null) return
+    composerNeutralizer = doc.createElement('style')
+    composerNeutralizer.dataset.dshSkinComposer = ''
+    composerNeutralizer.textContent = [
+      'html[data-dsh-skin] [data-phase="active"] [class*="composerSeat"],',
+      'html[data-dsh-skin] [data-phase="active"] [class*="composerSeat"]:before {',
+      '  background: none !important;',
+      '  backdrop-filter: none !important;',
+      '}',
+    ].join('\n')
+    doc.head.appendChild(composerNeutralizer)
   }
 
   /**
@@ -352,6 +381,7 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
       const previous = currentActivation
       currentActivation = activation
       active = id
+      syncComposerNeutralizer()
       if (entry !== null) lastEntry = entry
       if (shouldPersist) {
         committed = { id, entry }
@@ -374,6 +404,10 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
       return active
     }
   }
+
+  // If the controller was created with an already-active skin (boot read
+  // from html[data-dsh-skin]), install the composer-seat neutralizer now.
+  syncComposerNeutralizer()
 
   return {
     get active() {
@@ -406,6 +440,10 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
     },
 
     async refresh() {
+      // Boot race (#661): the controller may be created with an active skin
+      // read from html[data-dsh-skin] before the catalog/entry is known. A
+      // refresh at that point must not re-activate the stock look.
+      if (active !== null && lastEntry === null) return active
       const suppressed = deps.suppressBackgroundMedia?.() === true
       if (suppressed === lastSuppressed) return active
       lastSuppressed = suppressed
@@ -420,6 +458,7 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
         currentActivation = null
       }
       active = null
+      syncComposerNeutralizer()
       trying = null
       previewing = false
       committed = { id: null, entry: null }

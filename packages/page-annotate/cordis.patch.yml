@@ -3,5 +3,5 @@
 # manifest field); install with
 # `dsh plugin --profile web add link:<repo>/packages/page-annotate`.
 - insert:
-    - id: ui-page-annotate
-      name: '@linxin666/dsh-client-ui-page-annotate'
+    - id: page-annotate
+      name: '@linxin666/dsh-page-annotate'

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "aurora-nebula",
+  "name": "极光星舰",
+  "nameEn": "Aurora Nebula",
+  "author": "Boer2333",
+  "tagline": "青·靛·紫极光 · 星点 · 雷达环 · HUD 角标",
+  "description": "《极光星舰》— 深空星舰 HUD 主题：青·靛·紫四颗极光光球在深空底色上缓慢漂移，透视网格、确定性星点与同心雷达环构成舰桥视野，HUD 角标与顶部能量线点缀边缘；全部 --dsw-* 语义 token 重映射为青靛紫科技调，暗色为浓烈极光版，浅色为粉彩柔光版。",
+  "tags": [
+    "aurora",
+    "nebula",
+    "starship",
+    "hud",
+    "grid",
+    "sci-fi"
+  ],
+  "accent": "#22d3ee",
+  "order": 14,
+  "version": "0.1.20",
+  "preview": {
+    "light": "preview/light.png",
+    "dark": "preview/dark.png"
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+        "kind": "SkinHooks",
+        "optional": true
+      }
+    ]
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css"
+  },
+  "facets": {
+    "client": {
+      "entry": "hooks.mjs",
+      "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+    }
+  }
+}

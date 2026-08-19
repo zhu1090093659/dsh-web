@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "cyber-neon",
+  "name": "赛博霓虹",
+  "nameEn": "Cyber Neon",
+  "author": "Boer2333",
+  "tagline": "品红 × 青蓝霓虹 · synthwave 地网格 · 扫描线",
+  "description": "《赛博霓虹》— 赛博朋克终端主题：品红 × 青蓝双霓虹光球、synthwave 透视地网格与扫描线构成夜景终端场景，HUD 角标与顶部能量线强化霓虹边框；全部 --dsw-* 语义 token 重映射为品红·紫·青蓝霓虹调，暗色为浓烈霓虹版，浅色为白瓷粉彩版。",
+  "tags": [
+    "neon",
+    "cyberpunk",
+    "synthwave",
+    "grid",
+    "terminal",
+    "retro-futurism"
+  ],
+  "accent": "#ff2d95",
+  "order": 15,
+  "version": "0.1.20",
+  "preview": {
+    "light": "preview/light.png",
+    "dark": "preview/dark.png"
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+        "kind": "SkinHooks",
+        "optional": true
+      }
+    ]
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css"
+  },
+  "facets": {
+    "client": {
+      "entry": "hooks.mjs",
+      "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+    }
+  }
+}

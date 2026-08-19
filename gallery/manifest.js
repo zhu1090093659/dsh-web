@@ -564,6 +564,50 @@ window.SKIN_MANIFEST = {
     {
       "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
       "skinManifestVersion": 2,
+      "id": "aurora-nebula",
+      "name": "极光星舰",
+      "nameEn": "Aurora Nebula",
+      "author": "Boer2333",
+      "tagline": "青·靛·紫极光 · 星点 · 雷达环 · HUD 角标",
+      "description": "《极光星舰》— 深空星舰 HUD 主题：青·靛·紫四颗极光光球在深空底色上缓慢漂移，透视网格、确定性星点与同心雷达环构成舰桥视野，HUD 角标与顶部能量线点缀边缘；全部 --dsw-* 语义 token 重映射为青靛紫科技调，暗色为浓烈极光版，浅色为粉彩柔光版。",
+      "tags": [
+        "aurora",
+        "nebula",
+        "starship",
+        "hud",
+        "grid",
+        "sci-fi"
+      ],
+      "accent": "#22d3ee",
+      "order": 14,
+      "version": "0.1.20",
+      "preview": {
+        "light": "packages/skins/skin-center/skins/aurora-nebula/preview/light.png",
+        "dark": "packages/skins/skin-center/skins/aurora-nebula/preview/dark.png"
+      },
+      "requires": {
+        "contracts": [
+          {
+            "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+            "kind": "SkinHooks",
+            "optional": true
+          }
+        ]
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css"
+      },
+      "facets": {
+        "client": {
+          "entry": "hooks.mjs",
+          "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+        }
+      }
+    },
+    {
+      "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+      "skinManifestVersion": 2,
       "id": "summer-liquid-glass",
       "name": "夏沫琉璃",
       "nameEn": "Summer Liquid Glass",
@@ -600,6 +644,50 @@ window.SKIN_MANIFEST = {
             "src": "assets/summer-liquid-glass-art.jpg",
             "scrim": "linear-gradient(rgba(7, 19, 33, 0.34) 0%, rgba(7, 19, 33, 0.28) 45%, rgba(7, 19, 33, 0.38) 100%)"
           }
+        }
+      }
+    },
+    {
+      "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+      "skinManifestVersion": 2,
+      "id": "cyber-neon",
+      "name": "赛博霓虹",
+      "nameEn": "Cyber Neon",
+      "author": "Boer2333",
+      "tagline": "品红 × 青蓝霓虹 · synthwave 地网格 · 扫描线",
+      "description": "《赛博霓虹》— 赛博朋克终端主题：品红 × 青蓝双霓虹光球、synthwave 透视地网格与扫描线构成夜景终端场景，HUD 角标与顶部能量线强化霓虹边框；全部 --dsw-* 语义 token 重映射为品红·紫·青蓝霓虹调，暗色为浓烈霓虹版，浅色为白瓷粉彩版。",
+      "tags": [
+        "neon",
+        "cyberpunk",
+        "synthwave",
+        "grid",
+        "terminal",
+        "retro-futurism"
+      ],
+      "accent": "#ff2d95",
+      "order": 15,
+      "version": "0.1.20",
+      "preview": {
+        "light": "packages/skins/skin-center/skins/cyber-neon/preview/light.png",
+        "dark": "packages/skins/skin-center/skins/cyber-neon/preview/dark.png"
+      },
+      "requires": {
+        "contracts": [
+          {
+            "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+            "kind": "SkinHooks",
+            "optional": true
+          }
+        ]
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css"
+      },
+      "facets": {
+        "client": {
+          "entry": "hooks.mjs",
+          "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
         }
       }
     },

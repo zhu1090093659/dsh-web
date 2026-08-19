@@ -105,7 +105,7 @@ describe('WallpaperController', () => {
     expect(document.documentElement.hasAttribute('data-dsh-wallpaper-active')).toBe(false)
     controller.applySelection(video)
     expect(neutralizers()).toHaveLength(1)
-    expect(neutralizers()[0]!.textContent).toContain('[id="root"] { background: transparent; }')
+    expect(neutralizers()[0]!.textContent).toContain('[id="root"] { background: transparent !important; }')
     expect(neutralizers()[0]!.textContent).toContain('body { background: transparent !important; }')
     expect(neutralizers()[0]!.textContent).toContain('[id="root"] > div > div { background: transparent !important; }')
     expect(neutralizers()[0]!.textContent).toContain('[class*="composerSeat"]')

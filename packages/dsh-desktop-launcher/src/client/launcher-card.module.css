@@ -1,0 +1,46 @@
+.actions {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 0;
+  display: flex;
+}
+
+.create {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 16px;
+  background: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-bg-layer-3);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.create:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.create:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.ok {
+  color: var(--dsw-alias-label-secondary);
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.error {
+  color: var(--dsw-alias-label-error);
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
+}

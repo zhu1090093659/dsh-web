@@ -235,7 +235,7 @@ window.__ModuleLoader__.load({
 				if (this.rootNeutralizer === null) {
 					this.rootNeutralizer = document.createElement("style");
 					this.rootNeutralizer.dataset.dshWallpaperRoot = "";
-					this.rootNeutralizer.textContent = "[id=\"root\"] { background: transparent; }";
+					this.rootNeutralizer.textContent = "body { background: transparent !important; } [id=\"root\"] { background: transparent !important; } [id=\"root\"] > div { background: transparent !important; } [id=\"root\"] > div > div { background: transparent !important; } [id=\"root\"] .pI_x6G_frame { background: transparent !important; } [id=\"root\"] .wSkVaW_root { background: transparent !important; } [id=\"root\"] .ydkMvW_root { background: transparent !important; } [id=\"root\"] [class*=\"composerSeat\"] { background: none !important; } [id=\"root\"] [class*=\"composerSeat\"]:before { background: none !important; backdrop-filter: none !important; }";
 					document.head.appendChild(this.rootNeutralizer);
 				}
 				if (this.mediaLayer === null) {
@@ -2084,12 +2084,9 @@ window.__ModuleLoader__.load({
 			}));
 			let latestRequest = 0;
 			let currentActivation = null;
-			let active = null;
+			const initialSkinId = doc.documentElement.getAttribute("data-dsh-skin"); let active = initialSkinId;
 			/** The committed selection try-on restores (component scope). */
-			let committed = {
-				id: null,
-				entry: null
-			};
+			let committed = { id: initialSkinId, entry: null };
 			/** Last non-null applied entry, so refresh() can re-activate it. */
 			let lastEntry = null;
 			/** Last evaluated background-suppression verdict (refresh() skips no-ops). */
@@ -2097,11 +2094,7 @@ window.__ModuleLoader__.load({
 			let trying = null;
 			let previewing = false;
 			const listeners = /* @__PURE__ */ new Set();
-			let stateSnapshot = {
-				active: null,
-				trying: null,
-				previewing: false
-			};
+			let stateSnapshot = { active: initialSkinId, trying: null, previewing: false };
 			const emit = () => {
 				stateSnapshot = {
 					active,
@@ -2110,7 +2103,19 @@ window.__ModuleLoader__.load({
 				};
 				for (const listener of listeners) listener();
 			};
-			/**
+			let composerNeutralizer = null;
+			function syncComposerNeutralizer() {
+				if (active === null) {
+					if (composerNeutralizer !== null) composerNeutralizer.remove();
+					composerNeutralizer = null;
+					return;
+				}
+				if (composerNeutralizer !== null) return;
+				composerNeutralizer = doc.createElement("style");
+				composerNeutralizer.dataset.dshSkinComposer = "";
+				composerNeutralizer.textContent = "html[data-dsh-skin] [data-phase=\"active\"] [class*=\"composerSeat\"],html[data-dsh-skin] [data-phase=\"active\"] [class*=\"composerSeat\"]:before{background:none !important;backdrop-filter:none !important}";
+				doc.head.appendChild(composerNeutralizer);
+			}/**
 			* Install one stylesheet as a tracked <link> (the load itself happened in
 			* loadStylesheet; here we only register the teardown). Links keep relative
 			* url() resolution intact — a <style> tag would resolve them against the
@@ -2252,7 +2257,7 @@ window.__ModuleLoader__.load({
 					const previous = currentActivation;
 					currentActivation = activation;
 					active = id;
-					if (entry !== null) lastEntry = entry;
+					syncComposerNeutralizer();if (entry !== null) lastEntry = entry;
 					if (shouldPersist) {
 						committed = {
 							id,
@@ -2275,7 +2280,7 @@ window.__ModuleLoader__.load({
 					return active;
 				}
 			}
-			return {
+			syncComposerNeutralizer();return {
 				get active() {
 					return active;
 				},
@@ -2299,7 +2304,7 @@ window.__ModuleLoader__.load({
 					return stateSnapshot;
 				},
 				async refresh() {
-					const suppressed = deps.suppressBackgroundMedia?.() === true;
+					if (active !== null && lastEntry === null) return active;const suppressed = deps.suppressBackgroundMedia?.() === true;
 					if (suppressed === lastSuppressed) return active;
 					lastSuppressed = suppressed;
 					const id = active;
@@ -2312,7 +2317,7 @@ window.__ModuleLoader__.load({
 						currentActivation = null;
 					}
 					active = null;
-					trying = null;
+					syncComposerNeutralizer();trying = null;
 					previewing = false;
 					committed = {
 						id: null,

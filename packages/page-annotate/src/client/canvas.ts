@@ -65,6 +65,16 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, annotation: Annota
       ctx.globalAlpha = 0.12
       ctx.fillStyle = annotation.color
       ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
+      if (annotation.comment !== undefined && annotation.comment.trim() !== '') {
+        const fontSize = fontSizePixels(14, scale)
+        const inset = Math.max(stroke * 2, 8 * scale)
+        ctx.save()
+        ctx.beginPath()
+        ctx.rect(rect.x, rect.y, rect.w, rect.h)
+        ctx.clip()
+        drawTextMarker(ctx, rect.x + inset, rect.y + inset + fontSize / 2, annotation.comment, annotation.color, stroke, fontSize, scale)
+        ctx.restore()
+      }
       break
     }
     case 'arrow': {

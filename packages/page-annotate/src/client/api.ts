@@ -24,6 +24,42 @@ export interface CaptureValue {
 /** Result of a capture call. */
 export type CaptureOutcome = { ok: true; value: CaptureValue } | { ok: false; code: string; message: string }
 
+interface BrowserEnvelopeValue extends Partial<CaptureValue> {
+  url?: string
+}
+
+/** Open or navigate the user-triggered persistent desktop browser. */
+export async function openInteractiveBrowser(url: string): Promise<{ ok: true; url: string } | { ok: false; code: string; message: string }> {
+  const outcome = await postBrowser('/page-annotate/browser/open', { url })
+  if (!outcome.ok) return outcome
+  return { ok: true, url: typeof outcome.value.url === 'string' ? outcome.value.url : url }
+}
+
+/** Capture the current page in the persistent desktop browser. */
+export async function captureInteractiveBrowser(width: number, height: number): Promise<CaptureOutcome & { url?: string }> {
+  const outcome = await postBrowser('/page-annotate/browser/capture', { viewport: { width, height } })
+  if (!outcome.ok) return outcome
+  const value = outcome.value as CaptureValue
+  if (typeof value.data !== 'string' || value.data === '') return { ok: false, code: 'bad-response', message: 'capture returned no image data' }
+  return { ok: true, value, url: typeof outcome.value.url === 'string' ? outcome.value.url : undefined }
+}
+
+async function postBrowser(path: string, body: unknown): Promise<{ ok: true; value: BrowserEnvelopeValue } | { ok: false; code: string; message: string }> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 30_000)
+  try {
+    const response = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal })
+    const envelope = (await response.json()) as { ok?: unknown; value?: BrowserEnvelopeValue; error?: { code?: unknown; message?: unknown } } | null
+    if (envelope?.ok === true && envelope.value !== undefined) return { ok: true, value: envelope.value }
+    return { ok: false, code: typeof envelope?.error?.code === 'string' ? envelope.error.code : 'server-failed', message: typeof envelope?.error?.message === 'string' ? envelope.error.message : 'HTTP ' + response.status }
+  } catch (error) {
+    const timedOut = error instanceof DOMException && error.name === 'AbortError'
+    return { ok: false, code: timedOut ? 'timeout' : 'network-failed', message: timedOut ? 'interactive browser request timed out' : 'interactive browser request failed' }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** Request a screenshot from the host route. */
 export async function captureScreenshot(request: CaptureRequest): Promise<CaptureOutcome> {
   try {

@@ -21,6 +21,8 @@ export interface Annotation {
   strokeWidth: number
   /** Text payload for `kind === 'text'`. */
   text?: string
+  /** Human explanation bound to a selected region. */
+  comment?: string
   /** Auto-incremented label for `kind === 'number'`. */
   number?: number
 }
@@ -68,6 +70,7 @@ export interface DraftAnnotation {
   strokeWidth: number
   rect: { x: number; y: number; w: number; h: number }
   text?: string
+  comment?: string
   number?: number
 }
 
@@ -76,6 +79,7 @@ export interface AnnotationStore {
   getSnapshot(): readonly Annotation[]
   subscribe(listener: () => void): () => void
   add(draft: DraftAnnotation): string
+  update(id: string, patch: Pick<Partial<Annotation>, 'comment'>): void
   remove(id: string): void
   undo(): void
   clear(): void
@@ -108,6 +112,7 @@ export function createAnnotationStore(capacity = 50): AnnotationStore {
         color: draft.color,
         strokeWidth: draft.strokeWidth,
         text: draft.text,
+        comment: draft.comment,
         number: draft.kind === 'number' ? nextNumber : undefined,
       }
       if (annotation.kind === 'number') nextNumber += 1
@@ -116,6 +121,17 @@ export function createAnnotationStore(capacity = 50): AnnotationStore {
       items = [...items, annotation]
       emit()
       return annotation.id
+    },
+    update(id, patch) {
+      const index = items.findIndex((item) => item.id === id)
+      if (index < 0) return
+      const next = { ...items[index], ...patch }
+      if (next.comment !== undefined && next.comment.trim() === '') delete next.comment
+      if (next.comment === items[index].comment) return
+      undoStack.push(items)
+      if (undoStack.length > capacity) undoStack.shift()
+      items = items.map((item, itemIndex) => (itemIndex === index ? next : item))
+      emit()
     },
     remove(id) {
       const target = items.find((item) => item.id === id)

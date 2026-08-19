@@ -18,7 +18,8 @@ import Schema from 'schemastery'
 import type { AttachmentStoreFace } from './attach-routes.ts'
 import { makeAttachRoutes } from './attach-routes.ts'
 import { mountOnce } from './mount-once.ts'
-import { makeScreenshotRoutes, type WebRoute } from './routes.ts'
+import { makeInteractiveBrowserRoutes, makeScreenshotRoutes, type WebRoute } from './routes.ts'
+import { createInteractiveBrowserService } from './screenshot/interactive-browser.ts'
 import { createCaptureService } from './screenshot/service.ts'
 
 export const name = 'page-annotate'
@@ -37,13 +38,16 @@ export interface PageAnnotateConfig {
 /** Register the host routes (single instance guard for aggregate coexistence). */
 function applyImpl(ctx: Context, config: PageAnnotateConfig): void {
   const service = createCaptureService({ timeoutMs: config.screenshotTimeoutMs })
+  const browser = createInteractiveBrowserService()
   const routes: WebRoute[] = [
     ...makeScreenshotRoutes(service),
+    ...makeInteractiveBrowserRoutes(browser),
     ...makeAttachRoutes(() => ctx.get('attachments') as unknown as AttachmentStoreFace | undefined),
   ]
   const disposers = routes.map((route) => ctx.webServer.register(route))
   ctx.effect(() => () => {
     for (const dispose of disposers.splice(0)) dispose()
+    browser.dispose()
   }, 'page-annotate: routes')
 }
 

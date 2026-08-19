@@ -55,6 +55,32 @@ describe('createAnnotationStore', () => {
     expect(store.getSnapshot().length).toBe(1)
     expect(store.getSnapshot()[0].color).toBe('#00f')
   })
+
+  it('updates the comment bound to a rectangle and supports undo', () => {
+    const store = createAnnotationStore()
+    const id = store.add({
+      kind: 'rect',
+      rect: { x: 0.1, y: 0.2, w: 0.4, h: 0.3 },
+      color: '#f00',
+      strokeWidth: 4,
+    })
+
+    store.update(id, { comment: '登录按钮点了没有反应' })
+    expect(store.getSnapshot()[0].comment).toBe('登录按钮点了没有反应')
+
+    store.undo()
+    expect(store.getSnapshot()[0].comment).toBeUndefined()
+  })
+
+  it('does not consume undo history when a region comment is unchanged', () => {
+    const store = createAnnotationStore()
+    const id = store.add({ kind: 'rect', rect: { x: 0, y: 0, w: 0.5, h: 0.5 }, color: '#f00', strokeWidth: 2 })
+    store.update(id, { comment: '保持不变' })
+    store.update(id, { comment: '保持不变' })
+
+    store.undo()
+    expect(store.getSnapshot()[0].comment).toBeUndefined()
+  })
 })
 
 describe('hitTest', () => {

@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { describe, expect, it } from 'vitest'
-import { makeScreenshotRoutes, readBoundedJson, type WebRoute } from '../src/routes.ts'
+import { makeInteractiveBrowserRoutes, makeScreenshotRoutes, readBoundedJson, type WebRoute } from '../src/routes.ts'
+import type { InteractiveBrowserService } from '../src/screenshot/interactive-browser.ts'
 import type { CaptureService, ScreenshotResult } from '../src/screenshot/service.ts'
 
 /** A minimal fake incoming request for the route handlers. */
@@ -115,6 +116,41 @@ describe('screenshot route', () => {
     await health.handler(fakeRequest(undefined, 'GET'), capture.res)
     expect(capture.status).toBe(200)
     expect(JSON.parse(capture.body)).toEqual({ ok: true, value: { engines: ['playwright'], chromiumPath: '/x/chrome' } })
+  })
+})
+
+describe('interactive browser routes', () => {
+  it('opens a validated URL and captures the current authenticated page', async () => {
+    const calls: string[] = []
+    const browser: InteractiveBrowserService = {
+      open: async (url) => { calls.push('open:' + url); return { url } },
+      capture: async () => ({ data: Buffer.from('png'), width: 900, height: 600, url: 'https://example.com/account' }),
+      dispose: () => undefined,
+    }
+    const [open, capture] = makeInteractiveBrowserRoutes(browser, { loopback: () => true })
+    const opened = fakeResponse()
+    await open.handler(fakeRequest({ url: 'example.com' }), opened.res)
+    expect(opened.status).toBe(200)
+    expect(calls).toEqual(['open:https://example.com/'])
+
+    const shot = fakeResponse()
+    await capture.handler(fakeRequest({ viewport: { width: 900, height: 600 } }), shot.res)
+    expect(shot.status).toBe(200)
+    expect(JSON.parse(shot.body).value).toMatchObject({ data: Buffer.from('png').toString('base64'), engine: 'electron-interactive', url: 'https://example.com/account' })
+  })
+
+  it('rejects unsafe URLs before opening a window', async () => {
+    let opened = false
+    const browser: InteractiveBrowserService = {
+      open: async (url) => { opened = true; return { url } },
+      capture: async () => { throw new Error('not open') },
+      dispose: () => undefined,
+    }
+    const [open] = makeInteractiveBrowserRoutes(browser, { loopback: () => true })
+    const response = fakeResponse()
+    await open.handler(fakeRequest({ url: 'file:///etc/passwd' }), response.res)
+    expect(response.status).toBe(400)
+    expect(opened).toBe(false)
   })
 })
 

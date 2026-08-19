@@ -9,6 +9,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { CaptureService } from './screenshot/service.ts'
+import type { InteractiveBrowserService } from './screenshot/interactive-browser.ts'
 import { clampViewport, validateScreenshotUrl } from './core/url.ts'
 import { isLoopbackRequest } from './loopback.ts'
 
@@ -22,6 +23,8 @@ export interface WebRoute {
 /** Route paths the client uses. */
 export const SCREENSHOT_ROUTE = '/page-annotate/screenshot'
 export const HEALTH_ROUTE = '/page-annotate/health'
+export const BROWSER_OPEN_ROUTE = '/page-annotate/browser/open'
+export const BROWSER_CAPTURE_ROUTE = '/page-annotate/browser/capture'
 
 /** JSON request-body byte cap for screenshot requests. */
 export const MAX_BODY_BYTES = 64 * 1024
@@ -117,4 +120,64 @@ export function makeScreenshotRoutes(service: CaptureService, options: Screensho
   }
 
   return [health, screenshot]
+}
+
+/** Build routes for the user-triggered persistent desktop browser session. */
+export function makeInteractiveBrowserRoutes(service: InteractiveBrowserService, options: ScreenshotRouteOptions = {}): WebRoute[] {
+  const loopback = options.loopback ?? isLoopbackRequest
+  const fenced = (req: IncomingMessage, res: ServerResponse): boolean => {
+    if (loopback(req)) return true
+    json(res, 403, { ok: false, error: { code: 'forbidden', message: 'loopback-only' } })
+    return false
+  }
+  const parsePost = async (req: IncomingMessage, res: ServerResponse): Promise<Record<string, unknown> | undefined> => {
+    if (!fenced(req, res)) return undefined
+    if (req.method !== 'POST') {
+      json(res, 405, { ok: false, error: { code: 'method-not-allowed', message: 'POST required' } })
+      return undefined
+    }
+    try {
+      const value = await readBoundedJson(req)
+      return (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>
+    } catch {
+      json(res, 400, { ok: false, error: { code: 'bad-body', message: 'request body must be small JSON' } })
+      return undefined
+    }
+  }
+  const open: WebRoute = {
+    kind: 'exact',
+    path: BROWSER_OPEN_ROUTE,
+    handler: async (req, res) => {
+      const body = await parsePost(req, res)
+      if (body === undefined) return
+      const checked = validateScreenshotUrl(typeof body.url === 'string' ? body.url : '')
+      if (!checked.ok) {
+        json(res, 400, { ok: false, error: { code: checked.reason, message: 'invalid browser URL' } })
+        return
+      }
+      try {
+        json(res, 200, { ok: true, value: await service.open(checked.url) })
+      } catch (error) {
+        const coded = error as { code?: string; message?: string }
+        json(res, 500, { ok: false, error: { code: coded.code ?? 'browser-open-failed', message: coded.message ?? String(error) } })
+      }
+    },
+  }
+  const capture: WebRoute = {
+    kind: 'exact',
+    path: BROWSER_CAPTURE_ROUTE,
+    handler: async (req, res) => {
+      const body = await parsePost(req, res)
+      if (body === undefined) return
+      try {
+        const viewport = clampViewport(body.viewport)
+        const shot = await service.capture(viewport)
+        json(res, 200, { ok: true, value: { data: shot.data.toString('base64'), mediaType: 'image/png', width: shot.width, height: shot.height, engine: 'electron-interactive', url: shot.url } })
+      } catch (error) {
+        const coded = error as { code?: string; message?: string }
+        json(res, 500, { ok: false, error: { code: coded.code ?? 'browser-capture-failed', message: coded.message ?? String(error) } })
+      }
+    },
+  }
+  return [open, capture]
 }

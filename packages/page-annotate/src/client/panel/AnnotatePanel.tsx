@@ -11,15 +11,13 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement } from 'react'
 import { clampUnitRect, createAnnotationStore, normalizeRect, type PendingAnnotation, type ShapeKind } from '../annotate-model.ts'
-import { captureScreenshot, insertNoteIntoDraft, uploadAnnotatedImage, type CaptureValue } from '../api.ts'
+import { captureInteractiveBrowser, captureScreenshot, insertNoteIntoDraft, openInteractiveBrowser, uploadAnnotatedImage, type CaptureValue } from '../api.ts'
 import { isHttpUrl, type SessionScopeLike, type SidebarTabLike } from '../better-sidebar.ts'
+import { iframeSandboxForUrl } from '../browse.ts'
 import { drawComposite } from '../canvas.ts'
 import { normalizeUrl } from '../../core/url.ts'
 import { format, t, type PageAnnotateKey } from '../locales.ts'
 import css from './panel.module.css'
-
-/** The iframe sandbox (same posture as the built-in sidebar browser). */
-const IFRAME_SANDBOX = 'allow-scripts allow-forms allow-popups allow-downloads allow-modals allow-popups-to-escape-sandbox'
 
 /** Export scale of the composited PNG (2x for OCR quality). */
 const EXPORT_SCALE = 2
@@ -95,6 +93,8 @@ export function AnnotatePanel(props: AnnotatePanelProps): ReactElement {
   const [draft, setDraft] = useState<PendingAnnotation | null>(null)
   const [textPending, setTextPending] = useState<{ x: number; y: number } | null>(null)
   const [textValue, setTextValue] = useState('')
+  const [regionPending, setRegionPending] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [regionComment, setRegionComment] = useState('')
 
   const stageRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -178,7 +178,18 @@ export function AnnotatePanel(props: AnnotatePanelProps): ReactElement {
     const rect = clampUnitRect(normalizeRect(draft.x1, draft.y1, draft.x2, draft.y2))
     setDraft(null)
     if (rect.w < 0.004 || rect.h < 0.004) return
-    store.add({ kind: tool === 'arrow' ? 'arrow' : 'rect', rect, color, strokeWidth })
+    const kind = tool === 'arrow' ? 'arrow' : 'rect'
+    const id = store.add({ kind, rect, color, strokeWidth })
+    if (kind === 'rect') {
+      setRegionPending({ id, x: rect.x, y: Math.min(0.96, rect.y + rect.h) })
+      setRegionComment('')
+    }
+  }
+
+  const commitRegionComment = (): void => {
+    if (regionPending !== null) store.update(regionPending.id, { comment: regionComment.trim() })
+    setRegionPending(null)
+    setRegionComment('')
   }
 
   const commitText = (): void => {
@@ -188,6 +199,59 @@ export function AnnotatePanel(props: AnnotatePanelProps): ReactElement {
     }
     setTextPending(null)
     setTextValue('')
+  }
+
+  const onNavigate = (): void => {
+    const url = normalizeUrl(urlInput)
+    if (url === null) {
+      setStatus('error')
+      setStatusText(t('error.noUrl'))
+      return
+    }
+    setUrlInput(url)
+    setCurrentUrl(url)
+    setMode('browse')
+    setStatus('idle')
+    setStatusText('')
+  }
+
+  const onOpenInteractive = async (): Promise<void> => {
+    const url = normalizeUrl(urlInput)
+    if (url === null) {
+      setStatus('error')
+      setStatusText(t('error.noUrl'))
+      return
+    }
+    setStatusText(t('status.openingBrowser'))
+    const outcome = await openInteractiveBrowser(url)
+    if (!outcome.ok) {
+      setStatus('error')
+      setStatusText(format(t('error.browser'), { message: outcome.message }))
+      return
+    }
+    setUrlInput(outcome.url)
+    setCurrentUrl(outcome.url)
+    setStatus('idle')
+    setStatusText(t('status.browserOpen'))
+  }
+
+  const onCaptureInteractive = async (): Promise<void> => {
+    setStatus('capturing')
+    setStatusText(t('status.capturingInteractive'))
+    const outcome = await captureInteractiveBrowser(Math.max(320, Math.round(stageSize.width)), Math.max(240, Math.round(stageSize.height)))
+    if (!outcome.ok) {
+      setStatus('error')
+      setStatusText(format(t('error.browser'), { message: outcome.message }))
+      return
+    }
+    if (outcome.url !== undefined) {
+      setUrlInput(outcome.url)
+      setCurrentUrl(outcome.url)
+    }
+    setCaptured({ ...outcome.value, dataUrl: `data:${outcome.value.mediaType};base64,${outcome.value.data}` })
+    setMode('annotate')
+    setStatus('captured')
+    setStatusText(format(t('status.captured'), { engine: outcome.value.engine }))
   }
 
   const onCapture = async (): Promise<void> => {
@@ -331,11 +395,20 @@ export function AnnotatePanel(props: AnnotatePanelProps): ReactElement {
           value={urlInput}
           onChange={(event) => setUrlInput(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') void onCapture()
+            if (event.key === 'Enter') onNavigate()
           }}
           placeholder={t('url.placeholder')}
           spellCheck={false}
         />
+        <button type="button" className={css.action} onClick={onNavigate}>
+          {t('url.go')}
+        </button>
+        <button type="button" className={css.action} onClick={() => void onOpenInteractive()}>
+          {t('action.interactive')}
+        </button>
+        <button type="button" className={css.action} onClick={() => void onCaptureInteractive()} disabled={status === 'capturing'}>
+          {t('action.captureInteractive')}
+        </button>
         <button type="button" className={css.action} onClick={() => void onCapture()} disabled={status === 'capturing'}>
           {status === 'capturing' ? t('status.capturing') : t('action.capture')}
         </button>
@@ -382,7 +455,7 @@ export function AnnotatePanel(props: AnnotatePanelProps): ReactElement {
               key={currentUrl}
               className={css.frame}
               src={currentUrl}
-              sandbox={IFRAME_SANDBOX}
+              sandbox={iframeSandboxForUrl(currentUrl, window.location.origin)}
               referrerPolicy="no-referrer"
               title={currentUrl}
             />
@@ -402,6 +475,24 @@ export function AnnotatePanel(props: AnnotatePanelProps): ReactElement {
               onPointerUp={onPointerUp}
               onPointerCancel={() => setDraft(null)}
             />
+            {regionPending !== null && (
+              <div className={css.textEditor} style={{ left: regionPending.x * fit.width, top: regionPending.y * fit.height }}>
+                <input
+                  autoFocus
+                  value={regionComment}
+                  onChange={(event) => setRegionComment(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') commitRegionComment()
+                    if (event.key === 'Escape') {
+                      setRegionPending(null)
+                      setRegionComment('')
+                    }
+                  }}
+                  onBlur={commitRegionComment}
+                  placeholder={t('region.placeholder')}
+                />
+              </div>
+            )}
             {textPending !== null && (
               <div className={css.textEditor} style={{ left: textPending.x * fit.width, top: textPending.y * fit.height }}>
                 <input
@@ -425,6 +516,22 @@ export function AnnotatePanel(props: AnnotatePanelProps): ReactElement {
       </div>
 
       {mode === 'annotate' && captured !== null ? toolbar : null}
+
+      {mode === 'annotate' && items.some((item) => item.kind === 'rect') ? (
+        <div className={css.regionNotes} data-dsh-part="region-notes">
+          {items.filter((item) => item.kind === 'rect').map((item, index) => (
+            <label key={item.id} className={css.regionNote}>
+              <span>{format(t('region.label'), { number: String(index + 1) })}</span>
+              <input
+                key={item.comment ?? ''}
+                defaultValue={item.comment ?? ''}
+                onBlur={(event) => store.update(item.id, { comment: event.target.value.trim() })}
+                placeholder={t('region.placeholder')}
+              />
+            </label>
+          ))}
+        </div>
+      ) : null}
 
       {(status === 'error' || status === 'captured' || status === 'inserted') && (
         <div className={status === 'error' ? css.statusError : css.status} data-dsh-part="status">

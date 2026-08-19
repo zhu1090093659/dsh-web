@@ -222,3 +222,27 @@
 .hiddenFile {
   display: none;
 }
+
+.regionNotes {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+
+.regionNote {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: var(--dsh-text-secondary, #64748b);
+  font-size: 12px;
+}
+
+.regionNote input {
+  min-width: 0;
+  border: 1px solid var(--dsh-border, #d7dde5);
+  border-radius: 6px;
+  background: var(--dsh-surface, #ffffff);
+  color: var(--dsh-text, #111827);
+  padding: 6px 8px;
+}

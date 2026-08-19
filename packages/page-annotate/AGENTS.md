@@ -5,11 +5,12 @@ DSH web GUI 插件 page-annotate：右侧面板（dsh-better-sidebar tab）页�
 
 ## 本包要点
 
-- 实现：URL 栏 + 沙箱 iframe 浏览，截图后在真实截图像素上绘制矩形 / 箭头 /
-  文字 / 数字批注，合成 PNG 后经 describe-image attach 注入会话草稿供模型 OCR。
-- 截图引擎（host 半区）：优先 Electron offscreen BrowserWindow（DSH Desktop 壳
-  主进程），回退 playwright-core 无头 Chromium；两者都不可用时报 no-engine，
-  面板提供本地图片上传兜底。
+- 实现：URL 栏 + 沙箱 iframe 浏览；登录、跳转或拒绝 iframe 的页面使用用户主动触发的
+  Electron 持久交互窗口。截图后在真实像素上绘制矩形 / 箭头 / 文字 / 数字批注，
+  矩形可绑定区域说明，合成 PNG 后经 describe-image attach 注入会话草稿供模型 OCR。
+- 浏览与截图引擎（host 半区）：Electron 持久交互 BrowserWindow 使用独立
+  `persist:page-annotate` 分区并从当前页面截图；匿名截图优先 Electron offscreen
+  BrowserWindow，回退 playwright-core 无头 Chromium；引擎不可用时提供本地图片上传。
 - 挂载位置：dsh-better-sidebar 右侧面板 tab（id `page-annotate`，order 95，
   single: true，拦截 http(s) 外链）。依赖 dsh-better-sidebar 与
   dsh-client-ui-conversation 的草稿注入接口，均为结构化镜像访问，不做 value 导入。
@@ -20,7 +21,8 @@ DSH web GUI 插件 page-annotate：右侧面板（dsh-better-sidebar tab）页�
 ## 关键约束
 
 - electron 不声明为依赖（避免安装数百 MB）；动态 import + 结构化类型 +
-  electron-module.d.ts shim 仅供 typecheck，勿删。
+  electron-module.d.ts shim 仅供 typecheck，勿删。交互窗口只能由用户显式操作显示，
+  必须启用 sandbox / contextIsolation / webSecurity、禁用 nodeIntegration，卸载时销毁。
 - 截图路由 loopback 围栏（src/loopback.ts 同步副本）；URL 只允许 http(s)。
 - 附件注册表（REF_REGISTRY）上限 128 条，LRU 淘汰；data 经 16MB 上限与
   base64 严格校验后再 saveImage。

@@ -227,7 +227,9 @@ export function migrateLegacySelection(options: {
     // A patch whose only content was the managed section would be left
     // empty — and an empty cordis.patch.yml is not a valid patch list (the
     // next boot fails on it). Normalize to the stock empty-sequence root.
-    if (cleaned.trim() === '') cleaned = '[]\n'
+    const isCommentOnly = cleaned.split(/\r?\n/)
+      .every(line => line.trim() === '' || line.trimStart().startsWith('#'))
+    if (isCommentOnly) cleaned = '[]\n'
     if (cleaned !== patch) {
       const write = options.writePatch ?? writePatchAtomic
       write(patchPath, cleaned)

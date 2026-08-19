@@ -90,6 +90,15 @@
 
 注册表在宿主启动时构建一次；新增或修改宠物后重启 `dsh web` 生效。
 
+## 内置宠物
+
+| 注册表 id | 选择器名称 | 来源 |
+|---|---|---|
+| `whale-girl` | 鲸鱼娘（原版） | 仓库原有的鲸鱼娘图集 |
+| `whale-girl-refined` | 鲸鱼娘（精致版） | 以鲸鱼娘设计方向为基础，经 AI 辅助二次创作、修复和细节精修的衍生版本 |
+
+精致版参考了 DreamSkin 的「DeepSeek-鲸鱼娘」主题。历史来源记录标注原主题作者为 `powerdog996`，并标注主题为 MIT：[DreamSkin](https://dreamskin.cc)、[仓库来源记录](https://github.com/zhu1090093659/dsh-web-ui/commit/87edd7ff4800dffd40bc93fb76e4ae450390facd)。此处用于记录素材来源与衍生关系；精致版不表述为原作者的官方作品，也不重新定义原始美术作品的授权范围。
+
 ## 动画预览
 
 精灵图是由 [hatch-pet](https://github.com/dsh2026) 流水线生成的 8 列 × 9 行图集（192×208 单元格）；各状态预览：
@@ -128,7 +137,8 @@ dsh-pet/
 |       |-- spritesheet.ts   # 图集几何辅助 + 轨道裁剪
 |       `-- pet.module.css
 |-- desktop/                 # 可选的受管 Electron 表现宿主
-|-- assets/whale/            # 内置鲸鱼娘（pet.json + spritesheet.webp + 预览）
+|-- assets/whale/            # 内置原版鲸鱼娘（manifest + 图集 + 预览）
+|-- assets/whale-refined/    # 内置精致版鲸鱼娘注册表变体
 `-- cordis.patch.yml         # bundle 补丁：插入宠物插件行
 ```
 
@@ -203,7 +213,7 @@ pnpm typecheck      # 宿主、网页、测试与桌面端类型检查
 
 ## 精灵图与动画轨道校准
 
-内置鲸鱼娘图集由 hatch-pet 流水线生成，9 态 × 8 列：`assets/whale/spritesheet.webp`（1536×1872，8 列 × 9 行，192×208 单元格）+ `assets/whale/pet.json`。每行的帧数、节奏与场景轮换写在该 manifest 的 `frames`、`tracks` 与 `sequences` 字段里；未覆盖的宠物沿用 hatch-pet 契约节奏和标准单轨场景映射。重做美术因此只需修改 `assets/whale/pet.json`（行序契约：0 idle / 1 running-right / 2 running-left / 3 waving / 4 jumping / 5 failed / 6 waiting / 7 running / 8 review）。
+两套内置鲸鱼娘图集使用同一份 9 态 × 8 列契约：`assets/whale/` 是原版，`assets/whale-refined/` 是精致版。每张图集均为 1536×1872（8 列 × 9 行，192×208 单元格）。每行帧数、节奏与场景轮换写在各目录的 `pet.json` 中；未覆盖的宠物沿用 hatch-pet 契约节奏和标准单轨场景映射（行序：0 idle / 1 running-right / 2 running-left / 3 waving / 4 jumping / 5 failed / 6 waiting / 7 running / 8 review）。
 
 ## 许可证
 

@@ -52,7 +52,7 @@ Fully restart `dsh web`, open a NEW empty session, and pick "梁神模式" as th
 Export the session JSONL and inspect `request/header`:
 
 - The first header should carry only `bash/str_replace_editor` (the persistent shell plus the sandboxed editor);
-- The first turn should contain only the user's own messages — no workspace-instruction baseline, no runtime snapshot, no skill-catalog message — and only the `deployment:persona` prompt section;
+- The first turn should contain only whitelisted source kinds (the user's own messages and `/goal` auto-round messages) — no workspace-instruction baseline, no runtime snapshot, no skill-catalog message — and only the `deployment:persona` prompt section;
 - After the first tool call, the next changed header should carry exactly `run_code` (PTC); the runtime snapshot and all prompt sections arrive with that step (including plan mode's `plan:policy`, and the persona now ends with the selected workspace path), and the workspace instructions and skill catalog arrive one step later;
 - Phase-1 editor writes obey the host file sandbox policy — there is no bare local-filesystem bypass;
 - Later requests keep `run_code`.

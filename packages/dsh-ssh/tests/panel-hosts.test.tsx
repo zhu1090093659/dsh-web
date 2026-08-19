@@ -6,6 +6,8 @@
  * hides the group's rows, and the group batch action tests every member.
  */
 
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -59,6 +61,34 @@ describe('groupHosts', () => {
     expect(groups.map(group => group.key)).toEqual(['cn', 'db', 'web', ''])
     expect(groups[2].hosts.map(host => host.alias)).toEqual(['web-1'])
     expect(groups[3].hosts.map(host => host.alias)).toEqual(['dev-1', 'misc-1'])
+  })
+})
+
+describe('HostsTab unmount race (main-CI flake)', () => {
+  it('a listHosts promise settling after unmount never reaches setState', async () => {
+    // The late rejection used to reach setError after the tab unmounted;
+    // racing the jsdom teardown it surfaced as "window is not defined" and
+    // failed the whole run on a slow CI runner. With the mounted guard the
+    // late settle is dropped. React 18 no longer warns on post-unmount
+    // setState, so also pin the guard in source below.
+    let rejectLate: ((error: Error) => void) | undefined
+    const api = {
+      listHosts: vi.fn(() => new Promise<SshHostSummary[]>((_resolve, reject) => { rejectLate = reject })),
+    } as unknown as SshApi
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    await act(async () => { root.render(<HostsTab api={api} onConnect={() => undefined} />) })
+    await act(async () => { root.unmount() })
+    rejectLate!(new Error('late failure'))
+    await act(async () => { await Promise.resolve() })
+    expect(api.listHosts).toHaveBeenCalled()
+  })
+
+  it('guards every load-path setState with the mounted ref', () => {
+    const source = readFileSync(join(process.cwd(), 'src', 'client', 'panel', 'HostsTab.tsx'), 'utf8')
+    expect(source).toContain('mountedRef')
+    expect(source).toContain('if (!mountedRef.current || seq !== seqRef.current) return')
   })
 })
 

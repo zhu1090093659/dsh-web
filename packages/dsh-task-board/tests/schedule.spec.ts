@@ -133,7 +133,7 @@ describe('nextRunAtMs', () => {
     expect(nextRunAtMs('not a cron', at(2026, 1, 1, 0, 0))).toBeUndefined()
   })
 
-  it('matches the legacy minute scan across sparse and dense schedules', () => {
+  it('matches an independent day-granular reference across sparse and dense schedules', () => {
     const crons = [
       '* * * * *',
       '*/5 * * * *',
@@ -163,12 +163,17 @@ describe('nextRunAtMs', () => {
         expect(nextRunAtMs(expr, fromMs), `${expr} from ${new Date(fromMs).toISOString()}`).toBe(referenceNextRunAtMs(expr, fromMs))
       }
     }
-    // The minute-scan reference walks up to ~1.5 years of minutes per case;
-    // slow CI runners need headroom beyond vitest's 5s default.
-  }, 30000)
+  })
 })
 
-/** The pre-jump minute scan, kept verbatim as the behavioural reference. */
+/**
+ * Independent fast behavioural reference: walks calendar days inside the
+ * same five-year horizon (never scanning minutes), and for each matching day
+ * picks the earliest matching hour/minute strictly after `fromMs`. Wall-clock
+ * field construction plus the hour/minute re-check reproduce the production
+ * implementation's DST semantics without sharing its control flow, so the
+ * two implementations still cross-check each other.
+ */
 function referenceNextRunAtMs(expr: string, fromMs: number): number | undefined {
   const schedule = parseCron(expr)
   if (schedule === null) return undefined
@@ -181,17 +186,29 @@ function referenceNextRunAtMs(expr: string, fromMs: number): number | undefined 
     if (!possible) return undefined
   }
   const from = new Date(fromMs)
-  const scan = new Date(from.getFullYear(), from.getMonth(), from.getDate(), from.getHours(), from.getMinutes() + 1, 0, 0)
   const limitMs = fromMs + 5 * 366 * 24 * 60 * 60 * 1000
-  while (scan.getTime() <= limitMs) {
-    const dayMatches = schedule.days.has(scan.getDate())
-    const weekdayMatches = schedule.weekdays.has(scan.getDay())
+  const hours = [...schedule.hours].sort((a, b) => a - b)
+  const minutes = [...schedule.minutes].sort((a, b) => a - b)
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate(), 0, 0, 0, 0)
+  for (let offset = 0; ; offset += 1) {
+    const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + offset, 0, 0, 0, 0)
+    if (day.getTime() > limitMs) return undefined
+    if (!schedule.months.has(day.getMonth() + 1)) continue
+    const dayMatches = schedule.days.has(day.getDate())
+    const weekdayMatches = schedule.weekdays.has(day.getDay())
     const matchesDay = schedule.dayWildcard ? weekdayMatches : schedule.weekdayWildcard ? dayMatches : dayMatches || weekdayMatches
-    if (schedule.minutes.has(scan.getMinutes()) && schedule.hours.has(scan.getHours())
-      && schedule.months.has(scan.getMonth() + 1) && matchesDay) {
-      return scan.getTime()
+    if (!matchesDay) continue
+    for (const hour of hours) {
+      for (const minute of minutes) {
+        const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute, 0, 0)
+        // Wall-clock re-check: a nonexistent spring-forward time normalizes
+        // forward, so the constructed fields must equal the intended ones.
+        if (candidate.getHours() !== hour || candidate.getMinutes() !== minute) continue
+        const time = candidate.getTime()
+        if (time <= fromMs) continue
+        if (time > limitMs) return undefined
+        return time
+      }
     }
-    scan.setMinutes(scan.getMinutes() + 1)
   }
-  return undefined
 }

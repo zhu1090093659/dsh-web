@@ -68,6 +68,8 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
   const dim = useSyncExternalStore(wallpaper.subscribe, wallpaper.dim)
   const blur = useSyncExternalStore(wallpaper.subscribe, wallpaper.wallpaperBlur)
   const pauseOnHidden = useSyncExternalStore(wallpaper.subscribe, wallpaper.pauseOnHidden)
+  const sound = useSyncExternalStore(wallpaper.subscribe, wallpaper.sound)
+  const volume = useSyncExternalStore(wallpaper.subscribe, wallpaper.volume)
   const activeId = useSyncExternalStore(wallpaper.subscribe, wallpaper.activeId)
   const trying = useSyncExternalStore(wallpaper.subscribe, wallpaper.trying)
   const dirs = useSyncExternalStore(wallpaper.subscribe, wallpaper.dirs)
@@ -240,6 +242,37 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                   <span className={css.switchThumb} />
                 </button>
               </div>
+              <div className={css.enableRow}>
+                <span className={css.enableLabel} title={t('wallpaperSoundHint')}>{t('wallpaperSound')}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={sound}
+                  aria-label={t('wallpaperSound')}
+                  className={sound ? css.switch + ' ' + css.switchOn : css.switch}
+                  onClick={() => { wallpaper.setSound(!sound) }}
+                >
+                  <span className={css.switchThumb} />
+                </button>
+              </div>
+              {sound && (
+                <div className={css.backgroundRow}>
+                  <div className={css.backgroundHead}>
+                    <span className={css.backgroundLabel}>{t('wallpaperVolume')}</span>
+                    <span className={css.backgroundValue} aria-hidden="true">{volume}%</span>
+                  </div>
+                  <input
+                    className={css.backgroundRange}
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={volume}
+                    aria-label={t('wallpaperVolume')}
+                    onChange={(event) => { wallpaper.setVolume(Number(event.target.value)) }}
+                  />
+                </div>
+              )}
             </div>
           )}
 

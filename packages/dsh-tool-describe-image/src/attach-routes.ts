@@ -18,6 +18,9 @@ import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { attachmentMarkdown as renderAttachmentMarkdown, parseImageAttachmentRef } from './attachment-reference.ts'
 import { decodeBase64, isImageMimeType, sniffMimeType, DEFAULT_MAX_BYTES, type ImageMimeType } from './media.ts'
 import { UNKNOWN_CAPABILITY, type CapabilityProbe } from './model-capability.ts'
+import { handleModelProbe, handleModelTest, type ProbeKeyResolver } from './model-probe.ts'
+import { isLoopbackRequest } from './loopback.ts'
+import type { Config } from './config-resolve.ts'
 
 export { renderAttachmentMarkdown as attachmentMarkdown }
 
@@ -59,6 +62,16 @@ export type AttachOutcome =
 
 /** The failure envelope used when a non-POST request hits the route. */
 export const METHOD_NOT_ALLOWED: AttachError = { code: 'internal', message: 'only POST is allowed' }
+
+/**
+ * Write the shared non-loopback rejection (same body as dsh-ssh and
+ * dsh-git-graph): the probe routes spend the stored credential on a
+ * user-steered URL, so a cross-site simple request must never reach them.
+ */
+function forbidden(res: ServerResponse): void {
+  res.writeHead(403, { 'content-type': 'application/json; charset=utf-8' })
+  res.end(JSON.stringify({ error: 'forbidden: loopback-only' }))
+}
 
 /**
  * In-memory fallback for callers that copied only a bare attachment id instead
@@ -316,6 +329,65 @@ export function registerAttachRoute(ctx: Context, readMaxBytes: () => number = (
         return
       }
       json(res, { ok: false, error: outcome.error }, outcome.error.code === 'rejected' ? 422 : 500)
+    },
+  })
+}
+
+/** Request-body byte cap for the model probe: three short connection-field drafts. */
+export const MAX_MODEL_PROBE_BODY_BYTES = 4096
+
+/**
+ * Register the /describe-image/models POST routes on the shared webserver.
+ * Two actions share the prefix: the bare path lists the configured
+ * endpoint's models (the settings card's fetch control — a success doubles
+ * as the endpoint connectivity and credential check), and the /test suffix
+ * pings the selected model with a minimal completion so the card reports
+ * the model's own round-trip latency. The stored settings and the key
+ * resolver are read per request, so the card's unsaved drafts can override
+ * the connection fields before any save, while the key itself never crosses
+ * into the browser (only the id list or the latency comes back).
+ * @param ctx - registrant context; webServer is required.
+ * @param readConfig - per-request reader of the settings currently in effect.
+ * @param resolveKey - the credential resolver for the final configuration.
+ */
+export function registerModelRoutes(ctx: Context, readConfig: () => Config, resolveKey: ProbeKeyResolver): void {
+  const webserver = ctx.get('webServer')
+  if (webserver === undefined) return
+  webserver.register({
+    kind: 'prefix',
+    path: '/describe-image/models',
+    handler: async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+      // Loopback fence first: the probe forwards the stored key to the
+      // endpoint named in the settings or drafts, so a LAN or cross-site
+      // caller must be turned away regardless of method or content-type.
+      if (!isLoopbackRequest(req)) {
+        forbidden(res)
+        return
+      }
+      if (req.method !== 'POST') {
+        json(res, { ok: false, error: METHOD_NOT_ALLOWED }, 405)
+        return
+      }
+      const body = await readJsonBody(req, MAX_MODEL_PROBE_BODY_BYTES)
+      const overrides = body !== null && typeof body === 'object' && !Array.isArray(body)
+        ? body as Record<string, unknown>
+        : {}
+      const pathname = new URL(req.url ?? '/', 'http://x').pathname
+      if (pathname === '/describe-image/models/test') {
+        const test = await handleModelTest(readConfig(), overrides, resolveKey)
+        if (test.ok) {
+          json(res, { ok: true, value: { latencyMs: test.latencyMs } })
+          return
+        }
+        json(res, { ok: false, error: test.error }, test.error.code === 'rejected' ? 422 : 502)
+        return
+      }
+      const outcome = await handleModelProbe(readConfig(), overrides, resolveKey)
+      if (outcome.ok) {
+        json(res, { ok: true, value: { models: outcome.models } })
+        return
+      }
+      json(res, { ok: false, error: outcome.error }, outcome.error.code === 'rejected' ? 422 : 502)
     },
   })
 }

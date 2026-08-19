@@ -36,6 +36,8 @@
  */
 
 import { Buffer } from 'node:buffer'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join as joinPath, resolve as resolvePath, sep } from 'node:path'
 import { deflateSync } from 'node:zlib'
 
 /** One file inside a PKG container. */
@@ -847,37 +849,131 @@ function collectImageObjectTextures(
  * pixel formats) are skipped in favor of the next candidate; if nothing is
  * decodable the last parse error is rethrown so failures are never silent.
  */
-export function extractSceneMainImage(pkgData: Uint8Array): SceneMainImage {
+/** One readable file inside a scene project, with its canonical path. */
+interface SceneFile {
+  path: string
+  bytes: Uint8Array
+}
+
+/**
+ * Internal read access over one scene's files — either a PKG container or a
+ * loose project directory. Paths are the relative, slash-separated paths
+ * used by scene.json material references.
+ */
+interface SceneAccess {
+  /** Parse one JSON file; null when absent or invalid. */
+  readJson: (path: string) => unknown | null
+  /** Read one file; null when absent (or, for directories, an escape). */
+  readFile: (path: string) => SceneFile | null
+  /** Every available .tex path (fallback texture candidates). */
+  listTexPaths: () => string[]
+}
+
+/** SceneAccess over a packed scene.pkg container (case-insensitive paths). */
+function pkgSceneAccess(pkgData: Uint8Array): SceneAccess {
   const entries = parsePkg(pkgData)
   const byPath = new Map(entries.map((entry) => [entry.path.toLowerCase(), entry]))
-  const readJson = (path: string): unknown | null => {
+  const readFile = (path: string): SceneFile | null => {
     const entry = byPath.get(path.toLowerCase())
     if (!entry) return null
+    return { path: entry.path, bytes: readPkgEntry(pkgData, entry) }
+  }
+  return {
+    readJson: (path) => {
+      const file = readFile(path)
+      if (!file) return null
+      try {
+        return JSON.parse(textDecoder.decode(file.bytes))
+      } catch {
+        return null
+      }
+    },
+    readFile,
+    listTexPaths: () =>
+      entries.filter((entry) => entry.path.toLowerCase().endsWith('.tex')).map((entry) => entry.path),
+  }
+}
+
+/**
+ * SceneAccess over a loose scene project directory (scene.json plus loose
+ * .tex/.json files, e.g. WE defaultprojects). Reads are fenced inside the
+ * directory; texture references escaping it resolve to null.
+ */
+function dirSceneAccess(dir: string): SceneAccess {
+  const readFile = (path: string): SceneFile | null => {
+    const abs = resolvePath(dir, path)
+    if (abs !== dir && !abs.startsWith(dir + sep)) return null
     try {
-      return JSON.parse(textDecoder.decode(readPkgEntry(pkgData, entry)))
+      if (!statSync(abs).isFile()) return null
+      return { path, bytes: new Uint8Array(readFileSync(abs)) }
     } catch {
       return null
     }
   }
-  const scene = readJson('scene.json') as { objects?: unknown } | null
+  const listTexPaths = (): string[] => {
+    const out: string[] = []
+    const walk = (sub: string, depth: number): void => {
+      if (depth > 4) return
+      let names: string[] = []
+      try {
+        names = readdirSync(sub === '' ? dir : joinPath(dir, sub))
+      } catch {
+        return
+      }
+      for (const name of names) {
+        const rel = sub === '' ? name : sub + '/' + name
+        let isDir = false
+        let isFile = false
+        try {
+          const stat = statSync(joinPath(dir, rel))
+          isDir = stat.isDirectory()
+          isFile = stat.isFile()
+        } catch {
+          continue
+        }
+        if (isDir) walk(rel, depth + 1)
+        else if (isFile && name.toLowerCase().endsWith('.tex')) out.push(rel)
+      }
+    }
+    walk('', 0)
+    return out
+  }
+  return {
+    readJson: (path) => {
+      const file = readFile(path)
+      if (!file) return null
+      try {
+        return JSON.parse(textDecoder.decode(file.bytes))
+      } catch {
+        return null
+      }
+    },
+    readFile,
+    listTexPaths,
+  }
+}
+
+/** Shared scene pipeline over one access layer; label prefixes error text. */
+function extractSceneMainImageVia(access: SceneAccess, label: string): SceneMainImage {
+  const scene = access.readJson('scene.json') as { objects?: unknown } | null
   if (!scene || !Array.isArray(scene.objects)) {
-    throw new Error('pkg: scene.json not found or invalid')
+    throw new Error(label + ': scene.json not found or invalid')
   }
   const candidates: string[] = []
   const imageObject = (scene.objects as unknown[]).find(
     (o): o is Record<string, unknown> =>
       !!o && typeof o === 'object' && typeof (o as { image?: unknown }).image === 'string',
   )
-  if (imageObject) candidates.push(...collectImageObjectTextures(imageObject, readJson))
-  // fallback: every .tex in the package, largest pixel area first
-  const texEntries = entries.filter((entry) => entry.path.toLowerCase().endsWith('.tex'))
+  if (imageObject) candidates.push(...collectImageObjectTextures(imageObject, access.readJson))
+  // fallback: every available .tex, largest pixel area first
   const ranked: { path: string; area: number }[] = []
-  for (const entry of texEntries) {
+  for (const path of access.listTexPaths()) {
     try {
-      const info = parseTex(readPkgEntry(pkgData, entry))
-      ranked.push({ path: entry.path, area: info.width * info.height })
+      const file = access.readFile(path)
+      const info = file ? parseTex(file.bytes) : null
+      ranked.push({ path, area: info ? info.width * info.height : 0 })
     } catch {
-      ranked.push({ path: entry.path, area: 0 })
+      ranked.push({ path, area: 0 })
     }
   }
   ranked.sort((a, b) => b.area - a.area)
@@ -885,21 +981,34 @@ export function extractSceneMainImage(pkgData: Uint8Array): SceneMainImage {
     if (!candidates.some((c) => c.toLowerCase() === path.toLowerCase())) candidates.push(path)
   }
   if (candidates.length === 0) {
-    throw new Error('pkg: no texture candidates found')
+    throw new Error(label + ': no texture candidates found')
   }
   let lastError: unknown = null
   for (const path of candidates) {
-    const entry = byPath.get(path.toLowerCase())
-    if (!entry) {
-      lastError = new Error("pkg: texture '" + path + "' not found in package")
+    const file = access.readFile(path)
+    if (!file) {
+      lastError = new Error(label + ": texture '" + path + "' not found in " + (label === 'pkg' ? 'package' : 'directory'))
       continue
     }
     try {
-      const { width, height, rgba } = decodeTex(readPkgEntry(pkgData, entry))
-      return { width, height, png: encodePng(width, height, rgba), texturePath: entry.path }
+      const { width, height, rgba } = decodeTex(file.bytes)
+      return { width, height, png: encodePng(width, height, rgba), texturePath: file.path }
     } catch (err) {
       lastError = err
     }
   }
-  throw lastError instanceof Error ? lastError : new Error('pkg: no decodable texture found')
+  throw lastError instanceof Error ? lastError : new Error(label + ': no decodable texture found')
+}
+
+export function extractSceneMainImage(pkgData: Uint8Array): SceneMainImage {
+  return extractSceneMainImageVia(pkgSceneAccess(pkgData), 'pkg')
+}
+
+/**
+ * Loose-scene variant of extractSceneMainImage: decode the main texture of a
+ * scene project directory that ships scene.json and textures as plain files
+ * instead of a packed scene.pkg (#521).
+ */
+export function extractSceneMainImageFromDir(dir: string): SceneMainImage {
+  return extractSceneMainImageVia(dirSceneAccess(dir), 'scene')
 }

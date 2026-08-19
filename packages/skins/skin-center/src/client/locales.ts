@@ -50,6 +50,9 @@ export type SkinCenterKey =
   | 'wallpaperDim'
   | 'wallpaperBlur'
   | 'wallpaperPauseHidden'
+  | 'wallpaperSound'
+  | 'wallpaperSoundHint'
+  | 'wallpaperVolume'
   | 'wallpaperImport'
   | 'wallpaperImportHint'
   | 'wallpaperReimport'
@@ -112,6 +115,9 @@ export const en: Record<SkinCenterKey, string> = {
   wallpaperDim: 'Wallpaper dimming',
   wallpaperBlur: 'Wallpaper blur',
   wallpaperPauseHidden: 'Pause when window hidden',
+  wallpaperSound: 'Wallpaper sound',
+  wallpaperSoundHint: 'Play video wallpaper audio. The browser may keep it silent until you click or press a key once.',
+  wallpaperVolume: 'Wallpaper volume',
   wallpaperImport: 'Import',
   wallpaperImportHint: 'Copy this wallpaper into local storage, so it keeps working even if the Steam library moves or changes',
   wallpaperReimport: 'Update',
@@ -175,6 +181,9 @@ export const zh: Record<SkinCenterKey, string> = {
   wallpaperDim: '壁纸暗化',
   wallpaperBlur: '壁纸模糊',
   wallpaperPauseHidden: '窗口隐藏时暂停',
+  wallpaperSound: '壁纸声音',
+  wallpaperSoundHint: '播放视频壁纸的声音。浏览器可能在首次点击或按键前保持静音。',
+  wallpaperVolume: '壁纸音量',
   wallpaperImport: '导入',
   wallpaperImportHint: '把该壁纸复制到本地存储，Steam 库迁移或变动后仍可继续使用',
   wallpaperReimport: '更新',

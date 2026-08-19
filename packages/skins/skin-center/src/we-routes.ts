@@ -269,8 +269,13 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
         const key = Buffer.from(abs, 'utf8').toString('base64url') + '_' + String(Math.round(mtime)) + '.png'
         const cachePath = joinPath(cacheDir, key)
         if (!existsSync(cachePath)) {
-          const { extractSceneMainImage } = await import('./pkg-extract.ts')
-          const frame = extractSceneMainImage(new Uint8Array(readFileSync(abs)))
+          const { extractSceneMainImage, extractSceneMainImageFromDir } = await import('./pkg-extract.ts')
+          // A scene's main file is either the packed container (scene.pkg) or
+          // a loose scene.json whose textures live alongside it in the
+          // project directory (#521).
+          const frame = abs.toLowerCase().endsWith('.json')
+            ? extractSceneMainImageFromDir(dirname(abs))
+            : extractSceneMainImage(new Uint8Array(readFileSync(abs)))
           mkdirSync(cacheDir, { recursive: true })
           writeFileSync(cachePath, frame.png)
         }

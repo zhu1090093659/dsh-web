@@ -119,6 +119,8 @@ window.__ModuleLoader__.load({
 			const dim = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.dim);
 			const blur = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.wallpaperBlur);
 			const pauseOnHidden = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.pauseOnHidden);
+			const sound = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.sound);
+			const volume = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.volume);
 			const activeId = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.activeId);
 			const trying = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.trying);
 			const dirs = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.dirs);
@@ -337,6 +339,49 @@ window.__ModuleLoader__.load({
 										wallpaper.setPauseOnHidden(!pauseOnHidden);
 									},
 									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: skin_center_module_css_default.switchThumb })
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: skin_center_module_css_default.enableRow,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: skin_center_module_css_default.enableLabel,
+									title: t("wallpaperSoundHint"),
+									children: t("wallpaperSound")
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									role: "switch",
+									"aria-checked": sound,
+									"aria-label": t("wallpaperSound"),
+									className: sound ? skin_center_module_css_default.switch + " " + skin_center_module_css_default.switchOn : skin_center_module_css_default.switch,
+									onClick: () => {
+										wallpaper.setSound(!sound);
+									},
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: skin_center_module_css_default.switchThumb })
+								})]
+							}),
+							sound && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: skin_center_module_css_default.backgroundRow,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: skin_center_module_css_default.backgroundHead,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.backgroundLabel,
+										children: t("wallpaperVolume")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: skin_center_module_css_default.backgroundValue,
+										"aria-hidden": "true",
+										children: [volume, "%"]
+									})]
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									className: skin_center_module_css_default.backgroundRange,
+									type: "range",
+									min: "0",
+									max: "100",
+									step: "5",
+									value: volume,
+									"aria-label": t("wallpaperVolume"),
+									onChange: (event) => {
+										wallpaper.setVolume(Number(event.target.value));
+									}
 								})]
 							})
 						]
@@ -1189,6 +1234,8 @@ window.__ModuleLoader__.load({
 			selectionValue = "";
 			modeValue = "live";
 			pauseOnHiddenValue = true;
+			soundValue = false;
+			volumeValue = 100;
 			dimValue = 25;
 			blurValue = 0;
 			dirsValue = [];
@@ -1201,6 +1248,7 @@ window.__ModuleLoader__.load({
 			mediaLayer = null;
 			scrimLayer = null;
 			videoElement = null;
+			rootNeutralizer = null;
 			disposed = false;
 			constructor(scope) {
 				this.scope = scope;
@@ -1211,6 +1259,8 @@ window.__ModuleLoader__.load({
 					this.publish();
 				});
 				document.addEventListener("visibilitychange", this.onVisibility);
+				document.addEventListener("pointerdown", this.onFirstGesture);
+				document.addEventListener("keydown", this.onFirstGesture);
 			}
 			enabled() {
 				return this.enabledValue;
@@ -1229,6 +1279,12 @@ window.__ModuleLoader__.load({
 			}
 			pauseOnHidden() {
 				return this.pauseOnHiddenValue;
+			}
+			sound() {
+				return this.soundValue;
+			}
+			volume() {
+				return this.volumeValue;
 			}
 			dirs() {
 				return this.dirsValue;
@@ -1289,6 +1345,18 @@ window.__ModuleLoader__.load({
 				this.publish();
 				this.scope.set("pauseOnHidden", value);
 			}
+			setSound(value) {
+				this.soundValue = value;
+				this.applySound();
+				this.publish();
+				this.scope.set("sound", value);
+			}
+			setVolume(value) {
+				this.volumeValue = clamp(value, 0, 100);
+				this.applySound();
+				this.publish();
+				this.scope.set("volume", this.volumeValue);
+			}
 			applySelection(descriptor) {
 				this.applied = descriptor;
 				this.previewing = null;
@@ -1323,6 +1391,8 @@ window.__ModuleLoader__.load({
 			dispose() {
 				this.disposed = true;
 				document.removeEventListener("visibilitychange", this.onVisibility);
+				document.removeEventListener("pointerdown", this.onFirstGesture);
+				document.removeEventListener("keydown", this.onFirstGesture);
 				this.teardownLayers();
 			}
 			readAll() {
@@ -1331,10 +1401,17 @@ window.__ModuleLoader__.load({
 				this.selectionValue = typeof value.selection === "string" ? value.selection : "";
 				this.modeValue = value.mode === "frame" ? "frame" : "live";
 				this.pauseOnHiddenValue = typeof value.pauseOnHidden === "boolean" ? value.pauseOnHidden : true;
+				this.soundValue = typeof value.sound === "boolean" ? value.sound : false;
+				this.volumeValue = typeof value.volume === "number" && Number.isFinite(value.volume) ? clamp(value.volume, 0, 100) : 100;
 				this.dimValue = typeof value.dim === "number" && Number.isFinite(value.dim) ? clamp(value.dim, 0, 90) : 25;
 				this.blurValue = typeof value.wallpaperBlur === "number" && Number.isFinite(value.wallpaperBlur) ? clamp(value.wallpaperBlur, 0, 60) : 0;
 				this.dirsValue = Array.isArray(value.weLibraryDirs) ? value.weLibraryDirs.filter((d) => typeof d === "string" && d.trim() !== "") : [];
 			}
+			/** Resume a policy-blocked video on the first user gesture (#580). */
+			onFirstGesture = () => {
+				if (this.videoElement === null || !this.videoElement.paused) return;
+				this.videoElement.play()?.catch(() => {});
+			};
 			onVisibility = () => {
 				if (this.videoElement === null || !this.pauseOnHiddenValue) return;
 				if (document.hidden) this.videoElement.pause();
@@ -1351,6 +1428,12 @@ window.__ModuleLoader__.load({
 				this.ensureLayers(current);
 			}
 			ensureLayers(descriptor) {
+				if (this.rootNeutralizer === null) {
+					this.rootNeutralizer = document.createElement("style");
+					this.rootNeutralizer.dataset.dshWallpaperRoot = "";
+					this.rootNeutralizer.textContent = "[id=\"root\"] { background: transparent; }";
+					document.head.appendChild(this.rootNeutralizer);
+				}
 				if (this.mediaLayer === null) {
 					this.mediaLayer = document.createElement("div");
 					styleLayer(this.mediaLayer, -3);
@@ -1392,13 +1475,20 @@ window.__ModuleLoader__.load({
 					}
 					return this.buildImage(descriptor.previewUrl);
 				}
-				if (descriptor.type === "scene") return this.buildImage(descriptor.frameUrl ?? descriptor.previewUrl);
+				if (descriptor.type === "scene") return this.buildImage(descriptor.frameUrl ?? descriptor.previewUrl, descriptor.previewUrl);
 				return this.buildImage(descriptor.previewUrl);
+			}
+			/** Push the persisted sound/volume settings onto the mounted video. */
+			applySound() {
+				if (this.videoElement === null) return;
+				this.videoElement.muted = !this.soundValue;
+				this.videoElement.volume = this.volumeValue / 100;
 			}
 			buildVideo(url) {
 				const video = document.createElement("video");
 				video.src = url;
-				video.muted = true;
+				video.muted = !this.soundValue;
+				video.volume = this.volumeValue / 100;
 				video.loop = true;
 				video.autoplay = true;
 				video.playsInline = true;
@@ -1434,15 +1524,22 @@ window.__ModuleLoader__.load({
 				}, { once: true });
 				return image;
 			}
-			buildImage(url) {
+			buildImage(url, fallbackUrl = null) {
 				if (url === null) return null;
 				const image = document.createElement("img");
 				image.src = url;
 				image.alt = "";
+				if (fallbackUrl !== null && fallbackUrl !== url) image.addEventListener("error", () => {
+					image.src = fallbackUrl;
+				}, { once: true });
 				styleCover(image);
 				return image;
 			}
 			teardownLayers() {
+				if (this.rootNeutralizer !== null) {
+					this.rootNeutralizer.remove();
+					this.rootNeutralizer = null;
+				}
 				if (this.videoElement !== null) {
 					this.videoElement.pause();
 					this.videoElement = null;
@@ -1507,6 +1604,9 @@ window.__ModuleLoader__.load({
 			wallpaperDim: "Wallpaper dimming",
 			wallpaperBlur: "Wallpaper blur",
 			wallpaperPauseHidden: "Pause when window hidden",
+			wallpaperSound: "Wallpaper sound",
+			wallpaperSoundHint: "Play video wallpaper audio. The browser may keep it silent until you click or press a key once.",
+			wallpaperVolume: "Wallpaper volume",
 			wallpaperImport: "Import",
 			wallpaperImportHint: "Copy this wallpaper into local storage, so it keeps working even if the Steam library moves or changes",
 			wallpaperReimport: "Update",
@@ -1569,6 +1669,9 @@ window.__ModuleLoader__.load({
 			wallpaperDim: "壁纸暗化",
 			wallpaperBlur: "壁纸模糊",
 			wallpaperPauseHidden: "窗口隐藏时暂停",
+			wallpaperSound: "壁纸声音",
+			wallpaperSoundHint: "播放视频壁纸的声音。浏览器可能在首次点击或按键前保持静音。",
+			wallpaperVolume: "壁纸音量",
 			wallpaperImport: "导入",
 			wallpaperImportHint: "把该壁纸复制到本地存储，Steam 库迁移或变动后仍可继续使用",
 			wallpaperReimport: "更新",
@@ -2342,6 +2445,8 @@ window.__ModuleLoader__.load({
 					dim: () => wallpaper.dim(),
 					wallpaperBlur: () => wallpaper.wallpaperBlur(),
 					pauseOnHidden: () => wallpaper.pauseOnHidden(),
+					sound: () => wallpaper.sound(),
+					volume: () => wallpaper.volume(),
 					dirs: () => wallpaper.dirs(),
 					addDir: (dir) => wallpaper.addDir(dir),
 					removeDir: (dir) => wallpaper.removeDir(dir),
@@ -2353,6 +2458,8 @@ window.__ModuleLoader__.load({
 					setDim: (value) => wallpaper.setDim(value),
 					setBlur: (value) => wallpaper.setBlur(value),
 					setPauseOnHidden: (value) => wallpaper.setPauseOnHidden(value),
+					setSound: (value) => wallpaper.setSound(value),
+					setVolume: (value) => wallpaper.setVolume(value),
 					applySelection: (descriptor) => wallpaper.applySelection(descriptor),
 					clearSelection: () => wallpaper.clearSelection(),
 					sync: (descriptor) => wallpaper.sync(descriptor),

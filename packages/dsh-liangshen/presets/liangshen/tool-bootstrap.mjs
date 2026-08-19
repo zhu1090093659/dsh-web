@@ -7,7 +7,8 @@
  * - prompt sections: only the persona section (all other sections,
  *   including plan-mode's `plan:policy`, return after promotion)
  * - runtime contexts: emptied (no sandbox/approval snapshot)
- * - pre-step messages: only explicit user messages pass
+ * - pre-step messages: only whitelisted source kinds pass (direct user
+ *   messages and goal auto-rounds by default)
  *
  * Promotion opens the full tool catalog and restores runtime contexts and all
  * prompt sections. With `anchorGate` the promotion after the first tool call
@@ -73,8 +74,13 @@ const PERSONA_SECTION_NAMES = new Set(['deployment:persona', 'persona'])
  */
 const WORKSPACE_LINE_PREFIX = '\n\nYour working directory is '
 
-/** Message-source kinds the model may see during phase 1. */
-const DEFAULT_MESSAGE_SOURCES = ['user']
+/**
+ * Message-source kinds the model may see during phase 1. Goal auto-rounds
+ * (source kind `goal`, issue #578) must be here: a filtered-out goal round
+ * never produces a response or tool call, so no promotion branch ever fires
+ * and the goal resume/pause loop deadlocks.
+ */
+const DEFAULT_MESSAGE_SOURCES = ['user', 'goal']
 
 /** Message-source kinds delayed after promotion. */
 const DEFAULT_DEFERRED_SOURCES = []
@@ -144,12 +150,15 @@ export function hasAnchoredReasoning(content) {
 }
 
 /**
- * Whether one pre-step message is an explicit user message. Only `kind:
- * 'user'` passes; injected kinds and source-less seed messages never pass.
+ * Whether one pre-step message belongs to a whitelisted source kind. The
+ * configured whitelist alone decides; injected kinds and source-less seed
+ * messages never pass unless explicitly named. (Before issue #578 this also
+ * hardcoded `kind === 'user'`, so no whitelist entry could ever admit a
+ * goal auto-round and `/goal` sessions deadlocked in phase 1.)
  */
 function isAllowedMessage(message, allowedSources) {
   const kind = message.source?.kind
-  return kind === 'user' && allowedSources.has(kind)
+  return kind !== undefined && allowedSources.has(kind)
 }
 
 /** Whether one pre-step message belongs to a deferred injection kind. */

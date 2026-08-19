@@ -48,7 +48,7 @@ After installing, **restart `dsh web`**: a "SSH" entry appears in the sidebar; t
 
 ## Configuration
 
-The settings panel (plugin config) toggles `announceToAgent` (whether to announce the plugin to the Agent) and `enabled` (master switch).
+The settings panel (plugin config) toggles `announceToAgent` (whether to announce the plugin to the Agent) and `enabled` (master switch), and sets `terminalFontFamily` (the web terminal font; empty defers to the CSS chain: `--dsh-ssh-terminal-font` → the official `--ds-font-family-code` token → the built-in monospace stack). The terminal font is fixed in the xterm constructor, so a plain stylesheet cannot override it; to render powerline / Nerd Font glyphs, enter a Nerd Font stack here (e.g. `"SauceCodePro Nerd Font", monospace`). Changes re-apply to open terminals live, no reconnect needed.
 
 ## Data
 

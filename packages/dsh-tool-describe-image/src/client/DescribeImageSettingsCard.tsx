@@ -12,7 +12,10 @@ import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-cli
 import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { PluginSettingsCard, BooleanField, ChoiceField, ValueField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, choiceField, numberField, secretField, textField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
+import { fetchEndpointModels, testEndpointModel } from './model-probe.ts'
 import { t } from './locales.ts'
+import cardCss from './settings-card.module.css'
+import css from './probe.module.css'
 
 /** The describe-image fields this card edits (the namespace's full schema). */
 export interface DescribeImageSettings {
@@ -29,6 +32,20 @@ export interface DescribeImageSettings {
   interceptImageSend?: boolean
 }
 
+/** The probe button's live state between clicks. */
+export interface ProbeState {
+  /** idle before the first click, running while a request crosses the wire. */
+  status: 'idle' | 'running'
+  /** Which action is running (or ran last), so the status line words itself. */
+  pending?: 'fetch' | 'test'
+  /** Model ids the last successful listing returned, in listing order. */
+  models: string[]
+  /** Round-trip milliseconds of the last successful model ping. */
+  latencyMs?: number
+  /** The failure reason the last action surfaced; absent until one fails. */
+  error?: string
+}
+
 /** What the describe-image card renders. */
 export interface DescribeImageSettingsCardState extends CardShell {
   baseURL: CardFieldState
@@ -42,10 +59,15 @@ export interface DescribeImageSettingsCardState extends CardShell {
   apiStyle: CardFieldState
   renderImagePreview: CardFieldState
   interceptImageSend: CardFieldState
+  probe: ProbeState
 }
 
 /** The registration-side face the card's slot entry injects. */
 export interface DescribeImageSettingsCardFace extends CardActions {
+  /** List the endpoint's models against the card's current connection drafts. */
+  fetchModels: () => void
+  /** Ping the selected model once and report its round-trip latency. */
+  testModel: () => void
   hooks: {
     /** Card snapshot bound by the renderer as useDescribeImageSettingsCard. */
     describeImageSettingsCard: SnapshotStore<DescribeImageSettingsCardState>
@@ -56,6 +78,8 @@ export interface DescribeImageSettingsCardFace extends CardActions {
 export class DescribeImageSettingsCardController {
   private readonly form: CardForm<DescribeImageSettings>
   private readonly store: SnapshotStore<DescribeImageSettingsCardState>
+  private probeState: ProbeState = { status: 'idle', models: [] }
+  private disposed = false
 
   /** @param scope - the bound settings scope for the `describe-image` namespace. */
   constructor(scope: SettingsScope<DescribeImageSettings>) {
@@ -75,6 +99,60 @@ export class DescribeImageSettingsCardController {
     this.store = this.form.bind(() => this.projection())
   }
 
+  /**
+   * List the endpoint named by the card's current drafts. Drafts ride the
+   * request so an unsaved endpoint can be verified before saving; the key
+   * never crosses into the browser. A failed listing drops any stale list.
+   */
+  fetchModels(): void {
+    if (this.disposed || this.probeState.status === 'running') return
+    const draft = {
+      baseURL: this.form.field('baseURL').text,
+      apiStyle: this.form.field('apiStyle').text,
+      apiKey: this.form.field('apiKey').text,
+    }
+    this.probeState = { ...this.probeState, status: 'running', pending: 'fetch', error: undefined }
+    this.publish()
+    void fetchEndpointModels(draft).then((result) => {
+      if (this.disposed) return
+      this.probeState = result.ok
+        ? { status: 'idle', pending: 'fetch', models: result.models }
+        : { status: 'idle', pending: 'fetch', models: [], error: result.message }
+      this.publish()
+    })
+  }
+
+  /**
+   * Ping the selected model once: one minimal completion call whose
+   * round-trip latency is the model's own first-response time. Hidden until
+   * the model field carries a value; the listing stays while it runs.
+   */
+  testModel(): void {
+    if (this.disposed || this.probeState.status === 'running') return
+    const model = this.form.field('model').text
+    if (model.trim() === '') return
+    const draft = {
+      baseURL: this.form.field('baseURL').text,
+      apiStyle: this.form.field('apiStyle').text,
+      apiKey: this.form.field('apiKey').text,
+      model,
+    }
+    this.probeState = { ...this.probeState, status: 'running', pending: 'test', latencyMs: undefined, error: undefined }
+    this.publish()
+    void testEndpointModel(draft).then((result) => {
+      if (this.disposed) return
+      this.probeState = result.ok
+        ? { ...this.probeState, status: 'idle', pending: 'test', latencyMs: result.latencyMs }
+        : { ...this.probeState, status: 'idle', pending: 'test', error: result.message }
+      this.publish()
+    })
+  }
+
+  /** Re-emit the projection; a probe settling publishes outside scope changes. */
+  private publish(): void {
+    this.store.set(this.projection())
+  }
+
   private projection(): DescribeImageSettingsCardState {
     return {
       ...this.form.shell(),
@@ -89,6 +167,7 @@ export class DescribeImageSettingsCardController {
       timeoutMs: this.form.field('timeoutMs'),
       renderImagePreview: this.form.field('renderImagePreview'),
       interceptImageSend: this.form.field('interceptImageSend'),
+      probe: this.probeState,
     }
   }
 
@@ -97,14 +176,21 @@ export class DescribeImageSettingsCardController {
    * @returns the card's snapshot and its form actions.
    */
   inject(): DescribeImageSettingsCardFace {
-    return { hooks: { describeImageSettingsCard: this.store }, ...this.form.actions() }
+    return {
+      hooks: { describeImageSettingsCard: this.store },
+      ...this.form.actions(),
+      fetchModels: () => { this.fetchModels() },
+      testModel: () => { this.testModel() },
+    }
   }
 
   /**
    * Release the card's scope subscription and bound stores; the slot
-   * disposer calls this on teardown.
+   * disposer calls this on teardown. A request still in flight settles into
+   * nothing once disposed.
    */
   dispose(): void {
+    this.disposed = true
     this.form.dispose()
   }
 }
@@ -148,15 +234,93 @@ export function DescribeImageSettingsCard(props: DescribeImageSettingsCardProps)
         onEdit={(text) => { props.edit('baseURL', text) }}
         onReset={() => { props.resetField('baseURL') }}
       />
-      <ValueField
-        id="settings-describe-image-model"
-        label={t('field.model')}
-        hint={t('field.model.hint')}
-        {...fieldProps}
-        {...state.model}
-        onEdit={(text) => { props.edit('model', text) }}
-        onReset={() => { props.resetField('model') }}
-      />
+      <div className={cardCss.field}>
+        <div className={cardCss.head}>
+          <label className={cardCss.label} htmlFor="settings-describe-image-model">{t('field.model')}</label>
+          <span className={cardCss.badges}>
+            {state.model.overridden ? <span className={cardCss.badge}>{t('settings.overridden')}</span> : null}
+            <button
+              type="button"
+              className={css.probeInline}
+              title={t('probe.hint')}
+              disabled={disabled || state.probe.status === 'running'}
+              onClick={props.fetchModels}
+            >
+              {t(state.probe.status === 'running' && state.probe.pending === 'fetch' ? 'probe.running' : 'probe.fetchModels')}
+            </button>
+            {state.model.text.trim() !== ''
+              ? (
+                <button
+                  type="button"
+                  className={css.probeInline}
+                  title={t('probe.testHint')}
+                  disabled={disabled || state.probe.status === 'running'}
+                  onClick={props.testModel}
+                >
+                  {t(state.probe.status === 'running' && state.probe.pending === 'test' ? 'probe.running' : 'probe.connectivity')}
+                </button>
+              )
+              : null}
+          </span>
+        </div>
+        {state.probe.models.length > 0
+          ? (
+            <select
+              id="settings-describe-image-model"
+              className={cardCss.select}
+              value={state.model.text}
+              disabled={disabled}
+              onChange={(event) => { props.edit('model', event.target.value) }}
+            >
+              <option value="">{t('settings.inherit')}</option>
+              {state.model.text !== '' && !state.probe.models.includes(state.model.text)
+                ? <option value={state.model.text}>{state.model.text}</option>
+                : null}
+              {state.probe.models.map(model => (
+                <option key={model} value={model}>{model}</option>
+              ))}
+            </select>
+          )
+          : (
+            <input
+              id="settings-describe-image-model"
+              className={state.model.invalid ? cardCss.inputInvalid : cardCss.input}
+              type="text"
+              {...state.model.invalid ? { 'aria-invalid': true } : {}}
+              value={state.model.text}
+              placeholder=""
+              disabled={disabled}
+              onChange={(event) => { props.edit('model', event.target.value) }}
+            />
+          )}
+        {state.probe.status === 'running'
+          ? <p className={css.probeRunning} role="status">{t('probe.running')}</p>
+          : null}
+        {state.probe.status === 'idle' && state.probe.error !== undefined
+          ? <p className={css.probeError} role="status">{t('probe.error', { error: state.probe.error })}</p>
+          : null}
+        {state.probe.status === 'idle' && state.probe.error === undefined && state.probe.pending === 'test' && state.probe.latencyMs !== undefined
+          ? (
+            <p className={css.probeOk} role="status">
+              {t('probe.success', { ms: String(state.probe.latencyMs) })}
+            </p>
+          )
+          : null}
+        {state.probe.status === 'idle' && state.probe.error === undefined && state.probe.pending === 'fetch' && state.probe.models.length > 0
+          ? (
+            <p className={css.probeOk} role="status">
+              {t('probe.fetched', { count: String(state.probe.models.length) })}
+            </p>
+          )
+          : null}
+        {state.probe.status === 'idle' && state.probe.error === undefined && state.probe.models.length === 0
+          ? (
+            <p className={state.model.invalid ? cardCss.invalid : cardCss.hint}>
+              {state.model.invalid ? t('settings.invalidNumber') : t('field.model.hint')}
+            </p>
+          )
+          : null}
+      </div>
       <ChoiceField
         id="settings-describe-image-apistyle"
         label={t('field.apiStyle')}

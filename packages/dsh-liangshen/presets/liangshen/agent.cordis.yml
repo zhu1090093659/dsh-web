@@ -45,7 +45,10 @@
 # Two-phase input bootstrap with the exact Minimal phase-1 tools. Before the
 # first durable tool/call event the model sees only persistent `bash` plus
 # `str_replace_editor`, only the `persona` prompt section, no runtime
-# contexts, and only direct user messages. `anchorGate` holds the promotion
+# contexts, and only whitelisted source kinds (direct user messages plus
+# goal auto-rounds — a filtered-out `/goal` round never reaches the model, so
+# no promotion branch fires and the resume/pause loop deadlocks, issue #578).
+# `anchorGate` holds the promotion
 # open until the first reasoning block is minimal-like (four-step fallback);
 # `promoteAfterFirstResponse` avoids a permanent two-tool session after a
 # tool-less first response, and releases an anchor-gated session once its
@@ -70,7 +73,7 @@
   config:
     shellTools: [bash]
     commonTools: [str_replace_editor]
-    messageSources: [user]
+    messageSources: [user, goal]
     anchorGate: true
     maxBootstrapSteps: 4
     promoteAfterFirstResponse: true

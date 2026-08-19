@@ -21,6 +21,7 @@ browser half, live settings, no dsh source changes.
 | Direct image send | Dragging or pasting an image into a text-only session is rewritten at send time into a self-contained describe-image reference (`![图片](/describe-image/raw/sha256:...?ref=...)`) instead of an image block the model cannot read, so the image renders in the conversation and the model analyzes it through the tool. Models whose adapter declares the image input modality are detected automatically: the raw image blocks reach the model's own vision, no describe_image detour happens, and the `describe_image` tool is hidden from that session — the multimodal model neither sees nor can call it (including nested calls from run_code) |
 | Custom instructions | The `prompt` argument carries your precise instruction (OCR, chart reading, UI diagnosis, translation…); the `defaultPrompt` config sets the fallback when the model passes none |
 | Live config card | Settings → Plugin config → Web UI Plugins → "Image understanding" card edits `baseURL` / `apiStyle` / `model` / API key / default instruction / bounds (through the settings seam); effective immediately, no restart |
+| Connection probe | The model field carries a "Fetch models" control and — once the model field holds a value — a "Test connectivity" control, both working before saving. Fetch posts the drafts to `POST /describe-image/models`, which resolves the credential through the key-resolution chain on the host and returns only the model id list; a successful listing proves the endpoint is reachable and the key authenticates, and the model field swaps into a dropdown of the fetched models. Test connectivity pings the selected model with one minimal completion (`max_tokens` 1) and reports the model's own round-trip latency |
 | Protocol styles | `apiStyle: chat-completions` (default) posts to `baseURL/chat/completions`; `apiStyle: responses` posts to `baseURL/responses` with `input` / `max_output_tokens` and reads `output_text`; `apiStyle: anthropic-messages` posts to `baseURL/v1/messages` with `x-api-key` auth (Claude-style endpoints such as OpenCode Go, Zhipu GLM, Moonshot Kimi) and reads `content[].text` |
 | Thinking control | The model id carries an optional suffix: `model:off` disables thinking, `model:low` / `model:medium` / `model:high` enable it, and a bare `model` sends no control so the endpoint default applies (MiMo-V2.5 and DeepSeek V4 think by default) |
 | Raw image route | `GET /describe-image/raw/<id>` serves the stored bytes (loopback-only, content-addressed id) so the pasted reference renders in the conversation |
@@ -38,6 +39,13 @@ browser half, live settings, no dsh source changes.
 - The attach route validates base64, magic bytes, and the byte bound before the attachment store
   persists anything; only the reference JSON (text) crosses into the conversation.
 - Response bodies are truncated at the cap (`maxOutputTokens * 8 + 64 KiB`) before parsing.
+- The model probe's key stays on the host: the browser half only posts the connection
+  drafts and receives only the model id list or a latency number; the fetch makes one
+  `GET` models listing and the connectivity test one `max_tokens` 1 completion, so a
+  test spends a single output token.
+- The model probe routes are loopback-only with same-origin checks (the shared
+  `host/loopback` fence, same as dsh-ssh): a cross-site page can never steer the
+  stored key at an attacker-controlled URL.
 
 ## Installation
 

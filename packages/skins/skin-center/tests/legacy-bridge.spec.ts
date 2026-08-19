@@ -167,6 +167,12 @@ describe('migrateLegacySelection', () => {
     expect(after.trim()).toBe('[]')
   })
 
+  it('a comment-only patch after cleanup normalizes to []', () => {
+    writeFileSync(patchPath, '# User patch layer.\n\n' + STOCK_PATCH)
+    migrateLegacySelection({ knownIds: KNOWN, activeStatePath: statePath, patchPath })
+    expect(readFileSync(patchPath, 'utf8')).toBe('[]\n')
+  })
+
   it('stock-look legacy state migrates no id and still cleans', () => {
     writeFileSync(patchPath, STOCK_PATCH)
     const result = migrateLegacySelection({ knownIds: KNOWN, activeStatePath: statePath, patchPath })

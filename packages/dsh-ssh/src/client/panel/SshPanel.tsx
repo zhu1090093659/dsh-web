@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import type { SshApi } from '../api.ts'
 import type { PanelController } from './controller.ts'
-import { tt } from './helpers.ts'
+import { tt, type TerminalFontSource } from './helpers.ts'
 import { ClusterTab } from './ClusterTab.tsx'
 import { HostsTab } from './HostsTab.tsx'
 import { TerminalTab } from './TerminalTab.tsx'
@@ -25,6 +25,8 @@ export interface SshPanelProps {
   controller: PanelController
   /** The SSH API client every tab operates through. */
   api: SshApi
+  /** Live terminal-font setting source handed to the terminal tab (issue #577). */
+  terminalFont?: TerminalFontSource
 }
 
 /** The tab bar definition (labels resolved at render time). */
@@ -43,7 +45,7 @@ interface ConnectRequest {
 }
 
 /** The tabbed SSH panel. */
-export function SshPanel({ controller, api }: SshPanelProps) {
+export function SshPanel({ controller, api, terminalFont }: SshPanelProps) {
   const [activeTab, setActiveTab] = useState<SshTab>('hosts')
   const [connectRequest, setConnectRequest] = useState<ConnectRequest | null>(null)
 
@@ -75,7 +77,7 @@ export function SshPanel({ controller, api }: SshPanelProps) {
       </div>
       <div className={css.panelContent}>
         {activeTab === 'hosts' && <HostsTab api={api} onConnect={handleConnect} />}
-        {activeTab === 'terminal' && <TerminalTab api={api} presetAlias={connectRequest?.alias} requestId={connectRequest?.nonce} />}
+        {activeTab === 'terminal' && <TerminalTab api={api} presetAlias={connectRequest?.alias} requestId={connectRequest?.nonce} terminalFont={terminalFont} />}
         {activeTab === 'transfer' && <TransferTab api={api} />}
         {activeTab === 'tunnels' && <TunnelsTab api={api} />}
         {activeTab === 'cluster' && <ClusterTab api={api} />}

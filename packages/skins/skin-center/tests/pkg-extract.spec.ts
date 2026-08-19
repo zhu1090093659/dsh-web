@@ -10,6 +10,9 @@
  */
 
 import { Buffer } from 'node:buffer'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { inflateSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
 
@@ -19,6 +22,7 @@ import {
   decodeTex,
   encodePng,
   extractSceneMainImage,
+  extractSceneMainImageFromDir,
   lz4DecompressBlock,
   parsePkg,
   parseTex,
@@ -695,5 +699,78 @@ describe('extractSceneMainImage', () => {
   it('throws when scene.json is absent', () => {
     const pkg = buildPkg([{ path: 'materials/bg.tex', data: bgTex }])
     expect(() => extractSceneMainImage(pkg)).toThrow(/pkg: scene.json not found or invalid/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// extractSceneMainImageFromDir: loose scene projects (scene.json + plain
+// files, e.g. WE defaultprojects) decoded straight from the directory (#521)
+// ---------------------------------------------------------------------------
+
+describe('extractSceneMainImageFromDir', () => {
+  const sceneJson = (image: string): string =>
+    JSON.stringify({ objects: [{ id: 1, name: 'background', image }] })
+
+  /** Write a loose scene project into a fresh temp dir; returns the dir. */
+  const makeSceneDir = (files: Record<string, Uint8Array | string>): string => {
+    const dir = mkdtempSync(join(tmpdir(), 'scene-dir-'))
+    for (const [name, content] of Object.entries(files)) {
+      const abs = join(dir, ...name.split('/'))
+      mkdirSync(join(abs, '..'), { recursive: true })
+      writeFileSync(abs, typeof content === 'string' ? content : Buffer.from(content))
+    }
+    return dir
+  }
+
+  it('decodes the material texture of a loose scene project', () => {
+    const dir = makeSceneDir({
+      'scene.json': sceneJson('materials/bg.json'),
+      'materials/bg.json': JSON.stringify({ passes: [{ textures: ['materials/bg.tex'] }] }),
+      'materials/bg.tex': bgTex,
+    })
+    try {
+      const result = extractSceneMainImageFromDir(dir)
+      expect(result.texturePath).toBe('materials/bg.tex')
+      expect(result.width).toBe(2)
+      expect(result.height).toBe(2)
+      expect(decodePng(result.png).rgba).toEqual(bgPixels)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('falls back to the largest .tex found in the directory tree', () => {
+    const dir = makeSceneDir({
+      'scene.json': sceneJson('materials/missing.json'),
+      'materials/bg.tex': bgTex,
+      'nested/deep/big.tex': bigTex,
+    })
+    try {
+      const result = extractSceneMainImageFromDir(dir)
+      expect(result.texturePath).toBe('nested/deep/big.tex')
+      expect(result.width).toBe(4)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('fences texture references that escape the project directory', () => {
+    const dir = makeSceneDir({
+      'scene.json': sceneJson('../outside.tex'),
+    })
+    try {
+      expect(() => extractSceneMainImageFromDir(dir)).toThrow(/scene: texture '..\/outside.tex' not found in directory/)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('throws when the directory has no scene.json', () => {
+    const dir = makeSceneDir({ 'materials/bg.tex': bgTex })
+    try {
+      expect(() => extractSceneMainImageFromDir(dir)).toThrow(/scene: scene.json not found or invalid/)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

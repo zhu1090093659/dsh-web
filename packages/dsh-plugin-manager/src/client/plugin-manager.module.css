@@ -1,0 +1,382 @@
+/* Plugin-manager tab chrome. Palette and shadows come from the host theme
+ * through the --dsw-alias-* variables (the same set the official installer
+ * tab uses); no emoji, no hard-coded colors beyond the variable fallbacks. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notice {
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--dsw-alias-bg-layer-1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notice p {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.state {
+  color: var(--dsw-alias-label-secondary);
+  padding: 16px 0;
+}
+
+/* Install box. */
+.installRow {
+  display: flex;
+  gap: 8px;
+}
+
+.spec {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+}
+
+.spec:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Progress. */
+.progressRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progressTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--dsw-alias-bg-layer-2);
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--dsw-alias-state-business-primary);
+  transition: width 0.2s ease;
+}
+
+.progressBar[data-indeterminate='true'] {
+  width: 40%;
+  animation: pluginManagerIndeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes pluginManagerIndeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+.progressLabel {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressBar[data-indeterminate='true'] {
+    animation: none;
+    width: 40%;
+  }
+}
+
+/* Error row. */
+.errorRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--dsw-alias-bg-danger);
+}
+
+.error {
+  flex: 1;
+  min-width: 200px;
+  color: var(--dsw-alias-label-danger);
+  word-break: break-all;
+}
+
+/* Groups and rows. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+  min-width: 0;
+}
+
+.version {
+  white-space: nowrap;
+}
+
+.sourceBadge {
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.specText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+.latest {
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.empty {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.link {
+  color: var(--dsw-alias-state-business-primary);
+}
+
+/* State label next to each switch. */
+.stateLabel {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.stateLabel[data-state='enabled'] {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.stateLabel[data-state='disabled'] {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Switch. */
+.switch {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-2);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s ease;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-on-danger, #fff);
+  transition: transform 0.2s ease;
+}
+
+.switch[aria-checked='true'] {
+  background: var(--dsw-alias-state-success-primary);
+}
+
+.switch[aria-checked='true']::after {
+  transform: translateX(14px);
+}
+
+.switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch, .switch::after {
+    transition: none;
+  }
+}
+
+/* Failure blocks. */
+.failure {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--dsw-alias-bg-danger);
+  margin-top: 4px;
+}
+
+.badge {
+  align-self: flex-start;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  background: var(--dsw-alias-label-danger);
+  color: var(--dsw-alias-label-on-danger);
+}
+
+.failureMessage {
+  font-size: 12px;
+  color: var(--dsw-alias-label-danger);
+  word-break: break-all;
+}
+
+.failureActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Conflict ledger. */
+.conflicts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Bottom rows. */
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ok {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.applying {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.restartRow {
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--dsw-alias-bg-brand);
+}
+
+.restartRow p {
+  margin: 0;
+  color: var(--dsw-alias-brand-primary);
+}
+
+.safeModeBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--dsw-alias-bg-warning);
+}
+
+.safeModeBanner p {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Uninstall confirmation modal. */
+.confirmBody {
+  margin: 0 0 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dangerButton {
+  background: var(--dsw-alias-label-danger) !important;
+  color: var(--dsw-alias-label-on-danger) !important;
+}

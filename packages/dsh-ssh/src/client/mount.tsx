@@ -14,6 +14,7 @@
 import { createRoot, type Root } from 'react-dom/client'
 import type { SshApi } from './api.ts'
 import type { PanelController } from './panel/controller.ts'
+import type { TerminalFontSource } from './panel/helpers.ts'
 import { SshPanel } from './panel/SshPanel.tsx'
 import css from './panel/panel.module.css'
 
@@ -38,9 +39,10 @@ function conversationColumn(): HTMLElement | undefined {
  * to the controller's panelOpen state.
  * @param controller - the panel controller driving the view.
  * @param api - the SSH API client the tabs operate through.
+ * @param terminalFont - live terminal-font setting source (issue #577).
  * @returns disposer unmounting the tree and restoring the column.
  */
-export function mountPanel(controller: PanelController, api: SshApi): () => void {
+export function mountPanel(controller: PanelController, api: SshApi, terminalFont?: TerminalFontSource): () => void {
   let root: Root | undefined
   let container: HTMLDivElement | undefined
 
@@ -61,7 +63,7 @@ export function mountPanel(controller: PanelController, api: SshApi): () => void
     container.className = css.view
     column.appendChild(container)
     root = createRoot(container)
-    root.render(<SshPanel controller={controller} api={api} />)
+    root.render(<SshPanel controller={controller} api={api} terminalFont={terminalFont} />)
   }
 
   // The frame mounts after boot settlement; watch for the column's arrival.

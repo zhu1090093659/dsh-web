@@ -153,8 +153,21 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Browser binaries are cached by lockfile hash (the playwright version
+      # lives in the root package.json). The ubuntu-latest image already
+      # ships Chromium's system libraries via its preinstalled Chrome, so
+      # --with-deps is dropped on purpose: its apt run has hung on the
+      # Ubuntu mirrors until the 30-minute job timeout killed it. The step
+      # timeout keeps any future network hang a fast failure.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
       - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        timeout-minutes: 10
+        run: pnpm exec playwright install chromium
 
       - name: Mount + headless-render smoke
         run: bash scripts/e2e-mount.sh

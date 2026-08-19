@@ -115,7 +115,7 @@ body[data-ds-dark-theme] {
   --dsw-alias-toast-bg: #101a2ceb;
   --dsw-alias-tooltip-bg: #162446f2;
   --dsw-alias-tooltip-fg: #eef2f8;
-  --dsw-specific-bubble: #f6fafead;
+  --dsw-specific-bubble: rgb(246 250 254 / var(--dsh-skin-bubble-alpha));
   --dsw-specific-bubble-highlight: #78c0f047;
   --dsw-specific-input-major: #f0f7fd85;
   --dsw-specific-login-input: #f0f7fd85;
@@ -214,7 +214,7 @@ body[data-ds-dark-theme] {
   --dsw-alias-toast-bg: #080c18f0;
   --dsw-alias-tooltip-bg: #0a1020f5;
   --dsw-alias-tooltip-fg: #eef2f8;
-  --dsw-specific-bubble: #0b101edb;
+  --dsw-specific-bubble: rgb(11 16 30 / var(--dsh-skin-bubble-alpha));
   --dsw-specific-bubble-highlight: #78c0f024;
   --dsw-specific-input-major: #060a14db;
   --dsw-specific-login-input: #060a14db;
@@ -342,14 +342,18 @@ body[data-ds-dark-theme] {
   --dsh-skin-text-mid: #eef2f8;
 }
 
+/* Bubble backgrounds share one alpha knob (#486): the rgb channels stay
+   per-variant while --dsh-skin-bubble-alpha sets the opacity (default 50% —
+   the previous 68%-88% hardcoded alphas hid the backdrop). */
 :root {
-  --dsh-skin-bubble-v2: #f6fafead;
-  --dsh-skin-bubble-v3: #f9fcfebd;
-  --dsh-skin-bubble-v4: #f6fafee0;
+  --dsh-skin-bubble-alpha: 0.5;
+  --dsh-skin-bubble-v2: rgb(246 250 254 / var(--dsh-skin-bubble-alpha));
+  --dsh-skin-bubble-v3: rgb(249 252 254 / var(--dsh-skin-bubble-alpha));
+  --dsh-skin-bubble-v4: rgb(246 250 254 / var(--dsh-skin-bubble-alpha));
 }
 
 body[data-ds-dark-theme] {
-  --dsh-skin-bubble-v2: #0b101edb;
-  --dsh-skin-bubble-v3: #0b101ede;
-  --dsh-skin-bubble-v4: #0a0e1bde;
+  --dsh-skin-bubble-v2: rgb(11 16 30 / var(--dsh-skin-bubble-alpha));
+  --dsh-skin-bubble-v3: rgb(11 16 30 / var(--dsh-skin-bubble-alpha));
+  --dsh-skin-bubble-v4: rgb(10 14 27 / var(--dsh-skin-bubble-alpha));
 }

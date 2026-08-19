@@ -29,7 +29,7 @@ skin-center is a self-contained bundle meeting the official DSH plugin standard 
 
 - **Enable switch**: turns the whole card (try-on / apply / background controls) on or off; persisted in the `skin-background` settings namespace.
 - **Background sliders**: occlusion (0–100%) and the two blur radii (0–20 px), same namespace.
-- **Wallpaper panel**: library folders, selection, render mode (live / static frame), dim, blur, pause-on-hidden; persisted in the `skin-wallpaper` namespace.
+- **Wallpaper panel**: library folders, selection, render mode (live / static frame), dim, blur, pause-on-hidden, sound toggle and volume; persisted in the `skin-wallpaper` namespace.
 - **User skin directory**: `$DSH_HOME/skins/<id>/`; `DSH_SKINS_HOME` overrides the root (development and tests).
 
 ## Security model

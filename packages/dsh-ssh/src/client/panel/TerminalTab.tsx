@@ -5,13 +5,13 @@
  * output stays visible and input is disabled. xterm's stylesheet is injected
  * once per page load (module-level guard).
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Terminal, type IDisposable } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import type { SshApi, TerminalConnection } from '../api.ts'
 import type { SshHostSummary } from '../../protocol.ts'
 import { XTERM_CSS } from './xterm.css.ts'
-import { errorMessage, tt } from './helpers.ts'
+import { errorMessage, resolveTerminalFontFamily, tt, type TerminalFontSource } from './helpers.ts'
 import css from './panel.module.css'
 
 /** Terminal tab props. */
@@ -21,6 +21,11 @@ export interface TerminalTabProps {
   presetAlias?: string
   /** Monotonic id of the connect request (re-applies presetAlias). */
   requestId?: number
+  /**
+   * Live terminal-font setting source (issue #577). Absent in tests and
+   * legacy mounts: the font then comes from the CSS custom-property chain.
+   */
+  terminalFont?: TerminalFontSource
 }
 
 /** The terminal session lifecycle state shown in the status banner. */
@@ -44,8 +49,14 @@ function ensureXtermCss(): void {
   document.head.appendChild(style)
 }
 
+/** No-op source stand-in so the hook order stays stable without the prop. */
+const NO_FONT_SOURCE: TerminalFontSource = {
+  get: () => undefined,
+  subscribe: () => () => undefined,
+}
+
 /** The xterm terminal view. */
-export function TerminalTab({ api, presetAlias, requestId }: TerminalTabProps) {
+export function TerminalTab({ api, presetAlias, requestId, terminalFont }: TerminalTabProps) {
   const [hosts, setHosts] = useState<SshHostSummary[]>([])
   const [alias, setAlias] = useState(presetAlias ?? '')
   const [status, setStatus] = useState<TerminalStatus>({ kind: 'idle' })
@@ -54,8 +65,23 @@ export function TerminalTab({ api, presetAlias, requestId }: TerminalTabProps) {
   const fitRef = useRef<FitAddon | null>(null)
   const connRef = useRef<TerminalConnection | null>(null)
   const dataSubRef = useRef<IDisposable | null>(null)
+  const fontSource = terminalFont ?? NO_FONT_SOURCE
+  const fontOverride = useSyncExternalStore(fontSource.subscribe, fontSource.get)
 
   useEffect(() => { ensureXtermCss() }, [])
+
+  // Live re-apply a terminal-font change (issue #577): xterm re-measures
+  // and repaints on the options write; a refit keeps cols/rows aligned with
+  // the new metrics and the remote PTY learns the new size.
+  useEffect(() => {
+    const term = termRef.current
+    if (term === null) return
+    const next = resolveTerminalFontFamily(fontOverride)
+    if (term.options.fontFamily === next) return
+    term.options.fontFamily = next
+    fitRef.current?.fit()
+    connRef.current?.resize(term.cols, term.rows)
+  }, [fontOverride])
 
   // Fetch the host list on tab activation.
   useEffect(() => {
@@ -122,7 +148,7 @@ export function TerminalTab({ api, presetAlias, requestId }: TerminalTabProps) {
       convertEol: false,
       cursorBlink: true,
       fontSize: 13,
-      fontFamily: 'Menlo, Consolas, "Liberation Mono", monospace',
+      fontFamily: resolveTerminalFontFamily(fontOverride),
       theme: { background: '#0b0e14', foreground: '#d8dee9', cursor: '#a3b8d0' },
     })
     const fit = new FitAddon()

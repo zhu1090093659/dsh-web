@@ -305,9 +305,38 @@ function synthesizeMediaEntries(dir: string, source: WallpaperSource): Wallpaper
   return entries
 }
 
+/**
+ * Resolve a scene project's real main container. project.json's file field
+ * is trusted when it exists on disk, but workshop items frequently declare
+ * `scene.json` while shipping only the packed `scene.pkg` (and loose
+ * projects ship the reverse) — probe the declared file, then scene.pkg,
+ * then scene.json, then a single *.pkg in the directory (#521). Returns the
+ * hit relative to dir, or null when nothing matches.
+ */
+export function resolveSceneMainFile(dir: string, declared: string): string | null {
+  for (const candidate of [declared, 'scene.pkg', 'scene.json']) {
+    if (candidate === '') continue
+    try {
+      if (statSync(resolvePath(dir, candidate)).isFile()) return candidate
+    } catch {
+      // keep probing
+    }
+  }
+  let pkgs: string[] = []
+  try {
+    pkgs = readdirSync(dir).filter((name) => name.toLowerCase().endsWith('.pkg'))
+  } catch {
+    return null
+  }
+  return pkgs.length === 1 ? pkgs[0] : null
+}
+
 /** Build one entry from a project directory. */
 function entryFromDir(dir: string, source: WallpaperSource, project: ProjectJson, id?: string): WallpaperEntry {
-  const fileAbs = resolvePath(dir, project.file)
+  // A scene project's declared file is only a hint (#521); resolve the
+  // container that actually exists so frameUrl, stats and imports follow it.
+  const file = project.type === 'scene' ? resolveSceneMainFile(dir, project.file) ?? project.file : project.file
+  const fileAbs = resolvePath(dir, file)
   const previewAbs = project.preview ? resolvePath(dir, project.preview) : null
   let mtime = 0
   let size = 0
@@ -326,7 +355,7 @@ function entryFromDir(dir: string, source: WallpaperSource, project: ProjectJson
     id: id ?? basename(dir),
     title: project.title ?? basename(dir),
     type: project.type,
-    file: project.file,
+    file,
     preview: project.preview,
     dir,
     fileAbs,
@@ -418,7 +447,13 @@ export function scanImportStore(storeDir: string): WallpaperEntry[] {
     const manifest = readImportedManifest(dir)
     if (!manifest) continue
     const projectDir = joinPath(dir, 'project')
-    const fileAbs = resolvePath(dir, manifest.file)
+    // Heal manifests written from a wrong declared scene file (#521):
+    // re-resolve the container inside the copied project directory.
+    const declaredRel = manifest.file.replace(/^project[\\/]/, '')
+    const file = manifest.type === 'scene'
+      ? joinPath('project', resolveSceneMainFile(projectDir, declaredRel) ?? declaredRel)
+      : manifest.file
+    const fileAbs = resolvePath(dir, file)
     const previewAbs = manifest.preview ? resolvePath(dir, manifest.preview) : null
     let mtime = 0
     let size = 0
@@ -440,7 +475,7 @@ export function scanImportStore(storeDir: string): WallpaperEntry[] {
       id: `imported/${manifest.sourceId}`,
       title: manifest.title,
       type: manifest.type,
-      file: manifest.file,
+      file,
       preview: manifest.preview,
       dir: projectDir,
       fileAbs,

@@ -1,0 +1,7 @@
+{
+  "id": "whale-girl-refined",
+  "displayName": "鲸鱼娘（精致版）",
+  "description": "基于鲸鱼娘形象进行 AI 辅助二次创作、修复与细节精修的内置变体。",
+  "spritesheetPath": "spritesheet.webp",
+  "frames": [6, 8, 8, 4, 5, 8, 6, 6, 6]
+}

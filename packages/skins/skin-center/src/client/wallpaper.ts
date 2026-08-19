@@ -46,6 +46,10 @@ interface WallpaperSection {
   pauseOnHidden?: boolean
   dim?: number
   wallpaperBlur?: number
+  /** Audible video wallpaper playback (default off = muted, #580). */
+  sound?: boolean
+  /** Wallpaper audio volume 0-100 (default 100). */
+  volume?: number
   weLibraryDirs?: string[]
 }
 
@@ -58,6 +62,10 @@ export interface WallpaperHandle {
   dim(): number
   wallpaperBlur(): number
   pauseOnHidden(): boolean
+  /** Audible playback for video wallpapers (default false = muted). */
+  sound(): boolean
+  /** Wallpaper audio volume 0-100. */
+  volume(): number
   /** Manual library folders (settings field weLibraryDirs). */
   dirs(): string[]
   /** Add a manual library folder (trimmed, deduped) and persist. */
@@ -74,6 +82,8 @@ export interface WallpaperHandle {
   setDim(value: number): void
   setBlur(value: number): void
   setPauseOnHidden(value: boolean): void
+  setSound(value: boolean): void
+  setVolume(value: number): void
   /** Persist + render a selection. */
   applySelection(descriptor: WallpaperDescriptor): void
   /** Unmount + clear the persisted selection. */
@@ -125,6 +135,8 @@ export class WallpaperController implements WallpaperHandle {
   private selectionValue = ''
   private modeValue: 'live' | 'frame' = 'live'
   private pauseOnHiddenValue = true
+  private soundValue = false
+  private volumeValue = 100
   private dimValue = 25
   private blurValue = 0
   private dirsValue: string[] = []
@@ -139,6 +151,7 @@ export class WallpaperController implements WallpaperHandle {
   private mediaLayer: HTMLDivElement | null = null
   private scrimLayer: HTMLDivElement | null = null
   private videoElement: HTMLVideoElement | null = null
+  private rootNeutralizer: HTMLStyleElement | null = null
   private disposed = false
 
   constructor(scope: SettingsScope<WallpaperSection>) {
@@ -152,6 +165,10 @@ export class WallpaperController implements WallpaperHandle {
     // Pause-on-hidden wiring lives for the controller's whole life; it only
     // ever acts while a video is mounted.
     document.addEventListener('visibilitychange', this.onVisibility)
+    // Audible autoplay stays blocked until the first user gesture; retry
+    // play() on that gesture so an unmuted live wallpaper starts (#580).
+    document.addEventListener('pointerdown', this.onFirstGesture)
+    document.addEventListener('keydown', this.onFirstGesture)
   }
 
   enabled(): boolean { return this.enabledValue }
@@ -160,6 +177,8 @@ export class WallpaperController implements WallpaperHandle {
   dim(): number { return this.dimValue }
   wallpaperBlur(): number { return this.blurValue }
   pauseOnHidden(): boolean { return this.pauseOnHiddenValue }
+  sound(): boolean { return this.soundValue }
+  volume(): number { return this.volumeValue }
   dirs(): string[] { return this.dirsValue }
 
   addDir(dir: string): void {
@@ -223,6 +242,20 @@ export class WallpaperController implements WallpaperHandle {
     void this.scope.set('pauseOnHidden', value)
   }
 
+  setSound(value: boolean): void {
+    this.soundValue = value
+    this.applySound()
+    this.publish()
+    void this.scope.set('sound', value)
+  }
+
+  setVolume(value: number): void {
+    this.volumeValue = clamp(value, 0, 100)
+    this.applySound()
+    this.publish()
+    void this.scope.set('volume', this.volumeValue)
+  }
+
   applySelection(descriptor: WallpaperDescriptor): void {
     this.applied = descriptor
     this.previewing = null
@@ -262,6 +295,8 @@ export class WallpaperController implements WallpaperHandle {
   dispose(): void {
     this.disposed = true
     document.removeEventListener('visibilitychange', this.onVisibility)
+    document.removeEventListener('pointerdown', this.onFirstGesture)
+    document.removeEventListener('keydown', this.onFirstGesture)
     this.teardownLayers()
   }
 
@@ -274,6 +309,10 @@ export class WallpaperController implements WallpaperHandle {
     this.selectionValue = typeof value.selection === 'string' ? value.selection : ''
     this.modeValue = value.mode === 'frame' ? 'frame' : 'live'
     this.pauseOnHiddenValue = typeof value.pauseOnHidden === 'boolean' ? value.pauseOnHidden : true
+    this.soundValue = typeof value.sound === 'boolean' ? value.sound : false
+    this.volumeValue = typeof value.volume === 'number' && Number.isFinite(value.volume)
+      ? clamp(value.volume, 0, 100)
+      : 100
     this.dimValue = typeof value.dim === 'number' && Number.isFinite(value.dim) ? clamp(value.dim, 0, 90) : 25
     this.blurValue = typeof value.wallpaperBlur === 'number' && Number.isFinite(value.wallpaperBlur)
       ? clamp(value.wallpaperBlur, 0, 60)
@@ -281,6 +320,13 @@ export class WallpaperController implements WallpaperHandle {
     this.dirsValue = Array.isArray(value.weLibraryDirs)
       ? value.weLibraryDirs.filter((d): d is string => typeof d === 'string' && d.trim() !== '')
       : []
+  }
+
+  /** Resume a policy-blocked video on the first user gesture (#580). */
+  private readonly onFirstGesture = (): void => {
+    if (this.videoElement === null || !this.videoElement.paused) return
+    // jsdom (and older engines) return undefined, real browsers a promise.
+    void this.videoElement.play()?.catch(() => { /* still blocked: retry on the next gesture */ })
   }
 
   private readonly onVisibility = (): void => {
@@ -305,6 +351,19 @@ export class WallpaperController implements WallpaperHandle {
   }
 
   private ensureLayers(descriptor: WallpaperDescriptor): void {
+    // The stock shell paints an opaque background on the app root, which
+    // fully covers the negative-z wallpaper layers (issue #505). Neutralize
+    // it while a wallpaper is mounted — the same contract the v2 skin CSS
+    // pipeline appends for every skin (`[id="root"] { background:
+    // transparent }`). The id selector outranks the shell's class rule, and
+    // the token itself is left untouched so every other --dsw-alias-bg-base
+    // consumer keeps its color.
+    if (this.rootNeutralizer === null) {
+      this.rootNeutralizer = document.createElement('style')
+      this.rootNeutralizer.dataset.dshWallpaperRoot = ''
+      this.rootNeutralizer.textContent = '[id="root"] { background: transparent; }'
+      document.head.appendChild(this.rootNeutralizer)
+    }
     if (this.mediaLayer === null) {
       this.mediaLayer = document.createElement('div')
       styleLayer(this.mediaLayer, -3)
@@ -358,15 +417,25 @@ export class WallpaperController implements WallpaperHandle {
       return this.buildImage(descriptor.previewUrl)
     }
     if (descriptor.type === 'scene') {
-      return this.buildImage(descriptor.frameUrl ?? descriptor.previewUrl)
+      // The host frame decode can still fail (422): fall back to the preview
+      // image instead of leaving a blank layer (#521).
+      return this.buildImage(descriptor.frameUrl ?? descriptor.previewUrl, descriptor.previewUrl)
     }
     return this.buildImage(descriptor.previewUrl)
+  }
+
+  /** Push the persisted sound/volume settings onto the mounted video. */
+  private applySound(): void {
+    if (this.videoElement === null) return
+    this.videoElement.muted = !this.soundValue
+    this.videoElement.volume = this.volumeValue / 100
   }
 
   private buildVideo(url: string): HTMLVideoElement {
     const video = document.createElement('video')
     video.src = url
-    video.muted = true
+    video.muted = !this.soundValue
+    video.volume = this.volumeValue / 100
     video.loop = true
     video.autoplay = true
     video.playsInline = true
@@ -409,16 +478,25 @@ export class WallpaperController implements WallpaperHandle {
     return image
   }
 
-  private buildImage(url: string | null): HTMLElement | null {
+  private buildImage(url: string | null, fallbackUrl: string | null = null): HTMLElement | null {
     if (url === null) return null
     const image = document.createElement('img')
     image.src = url
     image.alt = ''
+    if (fallbackUrl !== null && fallbackUrl !== url) {
+      image.addEventListener('error', () => {
+        image.src = fallbackUrl
+      }, { once: true })
+    }
     styleCover(image)
     return image
   }
 
   private teardownLayers(): void {
+    if (this.rootNeutralizer !== null) {
+      this.rootNeutralizer.remove()
+      this.rootNeutralizer = null
+    }
     if (this.videoElement !== null) {
       this.videoElement.pause()
       this.videoElement = null

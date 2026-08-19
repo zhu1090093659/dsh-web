@@ -173,6 +173,44 @@ describe('scanImportStore', () => {
   })
 })
 
+describe('scene container resolution (#521)', () => {
+  it('falls back to scene.pkg when the declared scene.json is missing', () => {
+    const ws = join(root, 'workshop')
+    makeProject(join(ws, '444'), { title: 'S', type: 'scene', file: 'scene.json' }, ['scene.pkg'])
+    const entries = scanProjectsRoot(ws, 'workshop')
+    expect(entries).toHaveLength(1)
+    expect(entries[0].file).toBe('scene.pkg')
+    expect(entries[0].fileAbs).toBe(join(ws, '444', 'scene.pkg'))
+    expect(entries[0].srcSize).toBeGreaterThan(0)
+  })
+
+  it('keeps an existing declared file and probes a lone *.pkg last', () => {
+    const ws = join(root, 'workshop2')
+    makeProject(join(ws, '555'), { title: 'S', type: 'scene', file: 'scene.json' }, ['scene.json'])
+    expect(scanProjectsRoot(ws, 'workshop2')[0].file).toBe('scene.json')
+    const ws2 = join(root, 'workshop3')
+    makeProject(join(ws2, '666'), { title: 'S', type: 'scene', file: 'main.json' }, ['effect.pkg'])
+    expect(scanProjectsRoot(ws2, 'workshop3')[0].file).toBe('effect.pkg')
+  })
+
+  it('heals imported manifests that recorded the wrong declared name', () => {
+    const store = join(root, 'store')
+    const entryDir = join(store, '777')
+    mkdirSync(join(entryDir, 'project'), { recursive: true })
+    writeFileSync(join(entryDir, 'project', 'scene.pkg'), 'x', 'utf8')
+    writeFileSync(join(entryDir, 'manifest.json'), JSON.stringify({
+      sourceId: '777', title: 'Imported S', type: 'scene',
+      srcMtime: 10, srcSize: 1, importedAt: 20,
+      file: join('project', 'scene.json'), preview: null,
+    }), 'utf8')
+    const entries = scanImportStore(store)
+    expect(entries).toHaveLength(1)
+    expect(entries[0].file).toBe(join('project', 'scene.pkg'))
+    expect(entries[0].fileAbs).toBe(join(entryDir, 'project', 'scene.pkg'))
+    expect(entries[0].srcSize).toBeGreaterThan(0)
+  })
+})
+
 describe('readImportedManifest', () => {
   it('rejects invalid manifests', () => {
     const dir = join(root, 'bad')

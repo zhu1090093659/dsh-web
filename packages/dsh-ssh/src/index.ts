@@ -42,11 +42,19 @@ export interface Config {
   announceToAgent?: boolean
   /** Master switch for the plugin (routes, tools, prompt section). */
   enabled?: boolean
+  /**
+   * xterm `fontFamily` for the web terminal (issue #577). Empty (default)
+   * defers to the CSS chain: `--dsh-ssh-terminal-font`, then the official
+   * `--ds-font-family-code` token, then the built-in monospace stack. Set a
+   * Nerd Font stack here to render powerline/Nerd glyphs.
+   */
+  terminalFontFamily?: string
 }
 
 export const Config: z<Config> = z.object({
   announceToAgent: z.boolean().default(true),
   enabled: z.boolean().default(true),
+  terminalFontFamily: z.string().default(''),
 })
 
 /** Schema default, re-read for hand-built test contexts (the loader applies them normally). */

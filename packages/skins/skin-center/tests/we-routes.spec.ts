@@ -12,7 +12,27 @@ import { join } from 'node:path'
 import type { AddressInfo } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
+import { TexFormat } from '../src/pkg-extract.ts'
 import { makeWeRoutes, WE_API_PREFIX } from '../src/we-routes.ts'
+
+/** Minimal 1x1 RGBA8888 TEX (container v2, uncompressed) for scene decode tests. */
+const tex1x1Red = ((): Buffer => {
+  const enc = new TextEncoder()
+  const nstr = (s: string): number[] => [...enc.encode(s), 0]
+  const i32 = (v: number): number[] => {
+    const b = new DataView(new ArrayBuffer(4))
+    b.setInt32(0, v, true)
+    return [...new Uint8Array(b.buffer)]
+  }
+  return Buffer.from([
+    ...nstr('TEXV0005'), ...nstr('TEXI0001'),
+    ...i32(TexFormat.RGBA8888), ...i32(0),
+    ...i32(1), ...i32(1), ...i32(1), ...i32(1), ...i32(0),
+    ...nstr('TEXB0002'), ...i32(1),
+    ...i32(1), ...i32(1), ...i32(1),
+    ...i32(0), ...i32(4), ...i32(4), 255, 0, 0, 255,
+  ])
+})()
 
 let root: string
 let library: string
@@ -180,6 +200,46 @@ describe('scene-frame', () => {
     const res = await call('GET', String(scene?.frameUrl))
     expect(res.status).toBe(422)
     expect(res.body.ok).toBe(false)
+  })
+})
+
+describe('scene container resolution (#521)', () => {
+  it('exposes a frame url when only scene.pkg exists under a scene.json declaration', async () => {
+    makeProject(join(library, '444'), { title: 'PkgScene', type: 'scene', file: 'scene.json' }, {
+      'scene.pkg': 'NOT-A-REAL-PKG',
+    })
+    const res = await call('GET', WE_API_PREFIX + '/inventory')
+    const scene = (res.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '444')
+    expect(scene?.type).toBe('scene')
+    expect(String(scene?.frameUrl)).toContain(WE_API_PREFIX + '/scene-frame/')
+  })
+
+  it('records the resolved scene container in the import manifest', async () => {
+    makeProject(join(library, '444'), { title: 'PkgScene', type: 'scene', file: 'scene.json' }, {
+      'scene.pkg': 'NOT-A-REAL-PKG',
+    })
+    const imported = await call('POST', WE_API_PREFIX + '/import', { body: { id: '444' } })
+    expect(imported.status).toBe(200)
+    const manifest = JSON.parse(readFileSync(join(store, '444', 'manifest.json'), 'utf8')) as Record<string, unknown>
+    expect(manifest.file).toBe(join('project', 'scene.pkg'))
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const entry = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === 'imported/444')
+    expect(String(entry?.frameUrl)).toContain(WE_API_PREFIX + '/scene-frame/')
+  })
+
+  it('decodes a loose scene directory (scene.json + .tex) into a PNG frame', async () => {
+    makeProject(join(library, '555'), { title: 'Loose', type: 'scene', file: 'scene.json' }, {
+      'scene.json': JSON.stringify({ objects: [{ image: 'materials/red.tex' }] }),
+    })
+    mkdirSync(join(library, '555', 'materials'), { recursive: true })
+    writeFileSync(join(library, '555', 'materials', 'red.tex'), tex1x1Red)
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const scene = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '555')
+    const res = await call('GET', String(scene?.frameUrl))
+    expect(res.status).toBe(200)
+    expect(String(res.headers['content-type'])).toContain('image/png')
+    // PNG signature survives the utf8 decode except the 0x89 lead byte.
+    expect(res.raw.slice(1, 4)).toBe('PNG')
   })
 })
 

@@ -24,6 +24,8 @@ export interface UpdatePanelProps {
   onClose(): void
   /** Re-run the check from a terminal state. */
   onRecheck(): void
+  /** Start the update from the result view (the confirmation step, #507). */
+  onStartUpdate(status: UpdateStatus): void
 }
 
 /** The anchor package name (aggregate first) for copy purposes. */
@@ -41,7 +43,7 @@ function anchorLatest(status: UpdateStatus | undefined): string | undefined {
  * @param props - copy, view state, and actions.
  * @returns the panel element tree.
  */
-export function UpdatePanel({ t, view, onClose, onRecheck }: UpdatePanelProps) {
+export function UpdatePanel({ t, view, onClose, onRecheck, onStartUpdate }: UpdatePanelProps) {
   const status = view.kind === "result" || view.kind === "updating" ? view.status : undefined
   const title = view.kind === "done" && view.result.ok ? t("update.done") : t("update.title")
   const subtitle = subtitleOf(t, view)
@@ -58,6 +60,13 @@ export function UpdatePanel({ t, view, onClose, onRecheck }: UpdatePanelProps) {
       </div>
       {view.kind === "checking" && <p className={css.updateStatus}>{t("update.checking")}</p>}
       {view.kind === "result" && status !== undefined && <ResultBody t={t} status={status} />}
+      {view.kind === "result" && status !== undefined && status.mode === "npm" && status.outdated && status.error === undefined && (
+        <div className={css.updateActions}>
+          <button type="button" className={css.updateRetry} onClick={() => onStartUpdate(status)}>
+            {t("update.start")}
+          </button>
+        </div>
+      )}
       {view.kind === "updating" && status !== undefined && (
         <div>
           <p className={css.updateStatus}>

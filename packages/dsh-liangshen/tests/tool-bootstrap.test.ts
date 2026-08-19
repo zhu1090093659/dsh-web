@@ -321,7 +321,7 @@ describe('anchored-tool-bootstrap', () => {
     expect(result.messages).toEqual(messages)
   })
 
-  test('phase 1 only lets explicit user messages through, whatever messageSources names', async () => {
+  test('phase 1 honors the configured messageSources whitelist', async () => {
     const preStepListener = listener(register({ messageSources: ['user', 'agent-instructions'] }), 'agent/pre-step')
     const messages = [
       message('user', 'user'),
@@ -329,7 +329,39 @@ describe('anchored-tool-bootstrap', () => {
       message('skill-catalog', 'skills'),
     ]
     const result = await preStep(preStepListener, [], messages)
-    expect(result.messages.map((entry: any) => entry.id)).toEqual(['user'])
+    expect(result.messages.map((entry: any) => entry.id)).toEqual(['user', 'instructions'])
+  })
+
+  test('phase 1 lets goal auto-round messages through by default (issue #578)', async () => {
+    const preStepListener = listener(register(), 'agent/pre-step')
+    const messages = [
+      message('goal', 'goal-round'),
+      message('agent-instructions', 'instructions'),
+      message(undefined, 'seed'),
+    ]
+    const result = await preStep(preStepListener, [], messages)
+    expect(result.messages.map((entry: any) => entry.id)).toEqual(['goal-round'])
+  })
+
+  test('a tool-less goal auto-round response still promotes (issue #578 deadlock)', async () => {
+    // A goal round that reaches the model can end without any tool call and
+    // without a minimal-like reasoning anchor. Branch (d) must still promote
+    // — otherwise every later goal round is filtered out again and the goal
+    // resume/pause loop deadlocks.
+    const assembleListener = listener(
+      register({ promoteAfterFirstResponse: true, anchorGate: true, maxBootstrapSteps: 4 }),
+      'system-prompt/assemble',
+    )
+    const tools = [{ name: 'bash' }, { name: 'read' }, { name: 'edit' }]
+    const events = [
+      {
+        type: 'assistant/message',
+        data: { message: { content: [{ type: 'text', text: 'Continuing the goal this round.' }] } },
+      },
+      turnEndEvent(1),
+    ]
+    const result = await assemble(assembleListener, events, tools)
+    expect(result.tools).toEqual(tools)
   })
 
   test('anchorGate holds promotion after a standard-like first block', async () => {

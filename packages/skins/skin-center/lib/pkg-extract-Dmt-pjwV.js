@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, resolve, sep } from "node:path";
 import { Buffer } from "node:buffer";
 import { deflateSync } from "node:zlib";
 /** Wallpaper Engine texture format ids (TEXI0001 header), per RePKG/lwe. */
@@ -678,68 +680,148 @@ function collectImageObjectTextures(imageObject, readJson) {
 	if (instance && typeof instance === "object") pushTextureList(instance.textures);
 	return out;
 }
-/**
-* High-level pipeline: unpack a scene package, pick the main texture (the
-* material texture of the first image object in scene.json, falling back to
-* the largest decodable .tex in the package), decode it and re-encode as PNG.
-* Textures that cannot produce a static frame (embedded MP4, unsupported
-* pixel formats) are skipped in favor of the next candidate; if nothing is
-* decodable the last parse error is rethrown so failures are never silent.
-*/
-function extractSceneMainImage(pkgData) {
+/** SceneAccess over a packed scene.pkg container (case-insensitive paths). */
+function pkgSceneAccess(pkgData) {
 	const entries = parsePkg(pkgData);
 	const byPath = new Map(entries.map((entry) => [entry.path.toLowerCase(), entry]));
-	const readJson = (path) => {
+	const readFile = (path) => {
 		const entry = byPath.get(path.toLowerCase());
 		if (!entry) return null;
+		return {
+			path: entry.path,
+			bytes: readPkgEntry(pkgData, entry)
+		};
+	};
+	return {
+		readJson: (path) => {
+			const file = readFile(path);
+			if (!file) return null;
+			try {
+				return JSON.parse(textDecoder.decode(file.bytes));
+			} catch {
+				return null;
+			}
+		},
+		readFile,
+		listTexPaths: () => entries.filter((entry) => entry.path.toLowerCase().endsWith(".tex")).map((entry) => entry.path)
+	};
+}
+/**
+* SceneAccess over a loose scene project directory (scene.json plus loose
+* .tex/.json files, e.g. WE defaultprojects). Reads are fenced inside the
+* directory; texture references escaping it resolve to null.
+*/
+function dirSceneAccess(dir) {
+	const readFile = (path) => {
+		const abs = resolve(dir, path);
+		if (abs !== dir && !abs.startsWith(dir + sep)) return null;
 		try {
-			return JSON.parse(textDecoder.decode(readPkgEntry(pkgData, entry)));
+			if (!statSync(abs).isFile()) return null;
+			return {
+				path,
+				bytes: new Uint8Array(readFileSync(abs))
+			};
 		} catch {
 			return null;
 		}
 	};
-	const scene = readJson("scene.json");
-	if (!scene || !Array.isArray(scene.objects)) throw new Error("pkg: scene.json not found or invalid");
+	const listTexPaths = () => {
+		const out = [];
+		const walk = (sub, depth) => {
+			if (depth > 4) return;
+			let names = [];
+			try {
+				names = readdirSync(sub === "" ? dir : join(dir, sub));
+			} catch {
+				return;
+			}
+			for (const name of names) {
+				const rel = sub === "" ? name : sub + "/" + name;
+				let isDir = false;
+				let isFile = false;
+				try {
+					const stat = statSync(join(dir, rel));
+					isDir = stat.isDirectory();
+					isFile = stat.isFile();
+				} catch {
+					continue;
+				}
+				if (isDir) walk(rel, depth + 1);
+				else if (isFile && name.toLowerCase().endsWith(".tex")) out.push(rel);
+			}
+		};
+		walk("", 0);
+		return out;
+	};
+	return {
+		readJson: (path) => {
+			const file = readFile(path);
+			if (!file) return null;
+			try {
+				return JSON.parse(textDecoder.decode(file.bytes));
+			} catch {
+				return null;
+			}
+		},
+		readFile,
+		listTexPaths
+	};
+}
+/** Shared scene pipeline over one access layer; label prefixes error text. */
+function extractSceneMainImageVia(access, label) {
+	const scene = access.readJson("scene.json");
+	if (!scene || !Array.isArray(scene.objects)) throw new Error(label + ": scene.json not found or invalid");
 	const candidates = [];
 	const imageObject = scene.objects.find((o) => !!o && typeof o === "object" && typeof o.image === "string");
-	if (imageObject) candidates.push(...collectImageObjectTextures(imageObject, readJson));
-	const texEntries = entries.filter((entry) => entry.path.toLowerCase().endsWith(".tex"));
+	if (imageObject) candidates.push(...collectImageObjectTextures(imageObject, access.readJson));
 	const ranked = [];
-	for (const entry of texEntries) try {
-		const info = parseTex(readPkgEntry(pkgData, entry));
+	for (const path of access.listTexPaths()) try {
+		const file = access.readFile(path);
+		const info = file ? parseTex(file.bytes) : null;
 		ranked.push({
-			path: entry.path,
-			area: info.width * info.height
+			path,
+			area: info ? info.width * info.height : 0
 		});
 	} catch {
 		ranked.push({
-			path: entry.path,
+			path,
 			area: 0
 		});
 	}
 	ranked.sort((a, b) => b.area - a.area);
 	for (const { path } of ranked) if (!candidates.some((c) => c.toLowerCase() === path.toLowerCase())) candidates.push(path);
-	if (candidates.length === 0) throw new Error("pkg: no texture candidates found");
+	if (candidates.length === 0) throw new Error(label + ": no texture candidates found");
 	let lastError = null;
 	for (const path of candidates) {
-		const entry = byPath.get(path.toLowerCase());
-		if (!entry) {
-			lastError = /* @__PURE__ */ new Error("pkg: texture '" + path + "' not found in package");
+		const file = access.readFile(path);
+		if (!file) {
+			lastError = /* @__PURE__ */ new Error(label + ": texture '" + path + "' not found in " + (label === "pkg" ? "package" : "directory"));
 			continue;
 		}
 		try {
-			const { width, height, rgba } = decodeTex(readPkgEntry(pkgData, entry));
+			const { width, height, rgba } = decodeTex(file.bytes);
 			return {
 				width,
 				height,
 				png: encodePng(width, height, rgba),
-				texturePath: entry.path
+				texturePath: file.path
 			};
 		} catch (err) {
 			lastError = err;
 		}
 	}
-	throw lastError instanceof Error ? lastError : /* @__PURE__ */ new Error("pkg: no decodable texture found");
+	throw lastError instanceof Error ? lastError : /* @__PURE__ */ new Error(label + ": no decodable texture found");
+}
+function extractSceneMainImage(pkgData) {
+	return extractSceneMainImageVia(pkgSceneAccess(pkgData), "pkg");
+}
+/**
+* Loose-scene variant of extractSceneMainImage: decode the main texture of a
+* scene project directory that ships scene.json and textures as plain files
+* instead of a packed scene.pkg (#521).
+*/
+function extractSceneMainImageFromDir(dir) {
+	return extractSceneMainImageVia(dirSceneAccess(dir), "scene");
 }
 //#endregion
-export { extractSceneMainImage };
+export { extractSceneMainImage, extractSceneMainImageFromDir };

@@ -345,5 +345,16 @@
     "description": "统计会话与每日 token 用量和估算成本，超预算提醒。",
     "descriptionEn": "Tracks token usage and estimated cost per session/day with budget alerts.",
     "repo": "https://github.com/DamonKoy/dsh-plugins/tree/main/packages/dsh-usage-cost"
+  },
+  {
+    "id": "dsh-notifier",
+    "name": "dsh-notifier",
+    "nameEn": "dsh-notifier",
+    "author": "wingsky-1",
+    "description": "审批/完成/错误事件通知：浏览器 Notification + 系统原生 toast（Windows PowerShell WinRT / Linux·macOS notify-send，零依赖）；提示音可配、错误同类合并、免打扰时段、通知历史与配置面板；非安全上下文自动降级横幅。",
+    "descriptionEn": "Approval / completion / error event notifications: browser Notification API plus native OS toasts (Windows PowerShell WinRT, Linux and macOS notify-send, zero dependencies); configurable sound, error merging, quiet hours, notification history and a settings panel; falls back to in-page banners outside secure contexts.",
+    "repo": "https://github.com/wingsky-1/dsh-plugin-hub/tree/main/packages/dsh-notifier",
+    "npm": "@wingsky-1/dsh-notifier",
+    "category": "utility"
   }
 ]

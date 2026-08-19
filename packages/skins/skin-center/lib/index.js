@@ -1714,7 +1714,7 @@ function migrateLegacySelection(options) {
 			} else notes.push("legacy state resolves to the stock look; selection store left unset");
 		} else notes.push("v2 selection already present; skipped id migration");
 		let cleaned = stripLegacySkinState(patch);
-		if (cleaned.trim() === "") cleaned = "[]\n";
+		if (cleaned.split(/\r?\n/).every((line) => line.trim() === "" || line.trimStart().startsWith("#"))) cleaned = "[]\n";
 		if (cleaned !== patch) {
 			(options.writePatch ?? writePatchAtomic)(patchPath, cleaned);
 			result.patchCleaned = true;
@@ -1931,9 +1931,37 @@ function synthesizeMediaEntries(dir, source) {
 	}
 	return entries;
 }
+/**
+* Resolve a scene project's real main container. project.json's file field
+* is trusted when it exists on disk, but workshop items frequently declare
+* `scene.json` while shipping only the packed `scene.pkg` (and loose
+* projects ship the reverse) — probe the declared file, then scene.pkg,
+* then scene.json, then a single *.pkg in the directory (#521). Returns the
+* hit relative to dir, or null when nothing matches.
+*/
+function resolveSceneMainFile(dir, declared) {
+	for (const candidate of [
+		declared,
+		"scene.pkg",
+		"scene.json"
+	]) {
+		if (candidate === "") continue;
+		try {
+			if (statSync(resolve(dir, candidate)).isFile()) return candidate;
+		} catch {}
+	}
+	let pkgs = [];
+	try {
+		pkgs = readdirSync(dir).filter((name) => name.toLowerCase().endsWith(".pkg"));
+	} catch {
+		return null;
+	}
+	return pkgs.length === 1 ? pkgs[0] : null;
+}
 /** Build one entry from a project directory. */
 function entryFromDir(dir, source, project, id) {
-	const fileAbs = resolve(dir, project.file);
+	const file = project.type === "scene" ? resolveSceneMainFile(dir, project.file) ?? project.file : project.file;
+	const fileAbs = resolve(dir, file);
 	const previewAbs = project.preview ? resolve(dir, project.preview) : null;
 	let mtime = 0;
 	let size = 0;
@@ -1950,7 +1978,7 @@ function entryFromDir(dir, source, project, id) {
 		id: id ?? basename(dir),
 		title: project.title ?? basename(dir),
 		type: project.type,
-		file: project.file,
+		file,
 		preview: project.preview,
 		dir,
 		fileAbs,
@@ -2039,7 +2067,9 @@ function scanImportStore(storeDir) {
 		const manifest = readImportedManifest(dir);
 		if (!manifest) continue;
 		const projectDir = join(dir, "project");
-		const fileAbs = resolve(dir, manifest.file);
+		const declaredRel = manifest.file.replace(/^project[\\/]/, "");
+		const file = manifest.type === "scene" ? join("project", resolveSceneMainFile(projectDir, declaredRel) ?? declaredRel) : manifest.file;
+		const fileAbs = resolve(dir, file);
 		const previewAbs = manifest.preview ? resolve(dir, manifest.preview) : null;
 		let mtime = 0;
 		let size = 0;
@@ -2056,7 +2086,7 @@ function scanImportStore(storeDir) {
 			id: `imported/${manifest.sourceId}`,
 			title: manifest.title,
 			type: manifest.type,
-			file: manifest.file,
+			file,
 			preview: manifest.preview,
 			dir: projectDir,
 			fileAbs,
@@ -2450,8 +2480,8 @@ function makeWeRoutes(deps) {
 				const cacheDir = join(deps.storeDir, ".cache", "frames");
 				const cachePath = join(cacheDir, Buffer.from(abs, "utf8").toString("base64url") + "_" + String(Math.round(mtime)) + ".png");
 				if (!existsSync(cachePath)) {
-					const { extractSceneMainImage } = await import("./pkg-extract-D1jRneRL.js");
-					const frame = extractSceneMainImage(new Uint8Array(readFileSync(abs)));
+					const { extractSceneMainImage, extractSceneMainImageFromDir } = await import("./pkg-extract-Dmt-pjwV.js");
+					const frame = abs.toLowerCase().endsWith(".json") ? extractSceneMainImageFromDir(dirname(abs)) : extractSceneMainImage(new Uint8Array(readFileSync(abs)));
 					mkdirSync(cacheDir, { recursive: true });
 					writeFileSync(cachePath, frame.png);
 				}

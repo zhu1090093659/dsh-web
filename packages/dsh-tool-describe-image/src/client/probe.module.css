@@ -1,0 +1,53 @@
+/* Model-probe surface of the describe-image settings card: the fetch /
+ * connectivity controls riding the model field's head row (styled like the
+ * field's reset control), their live states, and the fetched dropdown the
+ * model field swaps into. Plugin-specific, so it stays outside the
+ * family-shared settings-card.module.css sync pair. */
+
+.probeInline {
+  font: inherit;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.probeInline:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary);
+}
+
+.probeInline:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.probeInline:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+.probeRunning {
+  color: var(--dsw-alias-label-secondary);
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.probeError {
+  color: var(--dsw-alias-label-error);
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.probeOk {
+  color: var(--dsw-alias-brand-primary);
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}

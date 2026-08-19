@@ -1,8 +1,9 @@
 /**
  * The sidebar update seat: the download trigger beside the remote-control
  * trigger plus the update panel modal. Owns the flow — probe the registry
- * on open, auto-run the update when a newer release exists, report the
- * outcome (restart hint on success, translated failure on error).
+ * on open, show the result, and let the user start the update from the
+ * result view (#507), then report the outcome (restart hint on success,
+ * translated failure on error).
  * Component-local state per the client stack rules.
  */
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -72,9 +73,12 @@ export function UpdateEntry({ wide, t }: UpdateEntryProps) {
       setView({ kind: "result", status })
       return
     }
+    // Checking never starts an update by itself (#507): the result view
+    // carries the confirmation button that calls startUpdate.
     setView({ kind: "result", status })
-    // Auto-update: an npm install with a newer release proceeds without a
-    // second confirmation — clicking the update trigger is the intent.
+  }, [t])
+
+  const startUpdate = useCallback(async (status: UpdateStatus): Promise<void> => {
     if (status.mode !== "npm" || !status.outdated) return
     setView({ kind: "updating", status })
     const token = ++runToken.current
@@ -128,7 +132,7 @@ export function UpdateEntry({ wide, t }: UpdateEntryProps) {
       {open && createPortal((
         <div className={css.overlay} role="presentation">
           <div className={css.mask} aria-hidden="true" onClick={closePanel} />
-          <UpdatePanel t={t} view={view} onClose={closePanel} onRecheck={() => { void check() }} />
+          <UpdatePanel t={t} view={view} onClose={closePanel} onRecheck={() => { void check() }} onStartUpdate={(status) => { void startUpdate(status) }} />
         </div>
       ), document.body)}
     </>

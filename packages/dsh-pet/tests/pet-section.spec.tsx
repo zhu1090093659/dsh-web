@@ -6,7 +6,7 @@
  * switch renders as an Inherit/On/Off select without any expansion interaction.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useSyncExternalStore, type ComponentProps } from 'react'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
@@ -27,6 +27,16 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
 }))
 import { PetSettingsSection, PetSettingsCardController, type PetSettingsSectionProps, type PetSettings } from '../src/client/PetSettingsCard.tsx'
 import { en } from '../src/client/locales.ts'
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([
+    { id: 'whale-girl', displayName: '鲸鱼娘（原版）' },
+    { id: 'whale-girl-refined', displayName: '鲸鱼娘（精致版）' },
+  ]), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  })))
+})
 
 afterEach(() => {
   cleanup()
@@ -308,5 +318,19 @@ describe('PetSettingsSection', () => {
 
     expect(await screen.findByText(/runtime request failed/i)).toBeDefined()
     expect(screen.queryByText(/checking the desktop runtime/i)).toBeNull()
+  })
+
+  it('renders every live registry entry in the existing pet selector', async () => {
+    render(<PetSettingsSection {...sectionProps(new FakeScope({ petId: 'whale-girl' }))} />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Pet').textContent).toContain('鲸鱼娘（原版）')
+    })
+    fireEvent.click(screen.getByLabelText('Pet'))
+    expect(screen.getAllByRole('option').map(option => option.textContent)).toEqual([
+      'Inherit',
+      '鲸鱼娘（原版）',
+      '鲸鱼娘（精致版）',
+    ])
   })
 })

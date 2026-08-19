@@ -19,6 +19,7 @@
 | 直接发图 | 在纯文本会话里拖拽或粘贴图片，发送时被改写为自描述 describe-image 引用（`![图片](/describe-image/raw/sha256:...?ref=...)`），而不是模型读不了的图片块——图片在会话里正常渲染，模型经工具分析它。支持图片输入的模型（适配器声明 image 模态）会被自动识别：原图块直接交给模型本身的视觉，不再绕行 describe_image，且该会话的 `describe_image` 工具会被隐藏——多模态模型看不到、也无法调用它（包括 run_code 内的嵌套调用） |
 | 自定义指令 | `prompt` 参数携带你的精确指令（OCR、图表解读、UI 诊断、翻译…）；`defaultPrompt` 配置设置模型未传指令时的兜底文案 |
 | 实时配置卡 | 设置 → 插件配置 → Web UI 插件组 → 「图像理解」卡修改 `baseURL` / `apiStyle` / `model` / API key / 默认指令 / 各项上限（走设置服务），即时生效，无需重启 |
+| 连通测试与模型获取 | 模型字段带「获取模型」控件，模型字段有值时再出现「测试连通性」控件，两者未保存也可用。获取把草稿提交到 `POST /describe-image/models`，Host 侧按密钥解析链解析凭证、只回模型 id 列表；列出成功即端点可达且鉴权通过，模型字段随之切换为已获取模型的下拉选择。测试连通性用所选模型发一次最小补全（`max_tokens` 1），回报模型本身的往返延迟 |
 | 多协议 | `apiStyle: chat-completions`（默认）请求 `baseURL/chat/completions`；`apiStyle: responses` 请求 `baseURL/responses`，使用 `input` / `max_output_tokens` 并读取 `output_text`；`apiStyle: anthropic-messages` 请求 `baseURL/v1/messages`（`x-api-key` 鉴权，Claude 风格端点如 OpenCode Go / 智谱 GLM / 月之暗面 Kimi），读取 `content[].text` |
 | 思考控制 | 模型 id 带可选后缀：`model:off` 禁用思考，`model:low` / `model:medium` / `model:high` 开启思考；不带后缀则不发送控制、沿用端点默认（MiMo-V2.5、DeepSeek V4 默认开启思考） |
 | 原图路由 | `GET /describe-image/raw/<id>` 回读已存字节（仅回环、内容寻址 id），让贴入的引用在会话中渲染 |
@@ -36,6 +37,11 @@
 - attach 路由先校验 base64、magic bytes 与字节上限，再交给附件存储持久化；
   只有引用 JSON（文本）进入会话。
 - 响应体先按上限（`maxOutputTokens * 8 + 64 KiB`）截断再解析。
+- 模型探测的密钥留在 Host：浏览器侧只提交连接字段草稿、只接收模型 id 列表
+  或延迟数字；获取只做一次 `GET` 模型列举，连通性测试只发一次 `max_tokens` 1
+  的最小补全，消耗一个输出 token。
+- 模型探测路由仅接受回环同源请求（共享 `host/loopback` 围栏，与 dsh-ssh 同款）：
+  跨站页面无法把已存密钥引向攻击者控制的 URL。
 
 ## 安装
 

@@ -80,6 +80,9 @@ export function startMockServer(handler: (request: RecordedRequest, response: Se
     server.once('error', reject)
     server.listen(0, '127.0.0.1', () => {
       const { port } = server.address() as AddressInfo
+      // Idempotent: one case closes early to stage an unreachable endpoint,
+      // then the teardown sweep closes every server again.
+      let closed: Promise<void> | undefined
       resolve({
         url: `http://127.0.0.1:${port}`,
         requests,
@@ -88,12 +91,17 @@ export function startMockServer(handler: (request: RecordedRequest, response: Se
           if (found === undefined) throw new Error(`mock server recorded no request at index ${index}`)
           return found
         },
-        close: () => new Promise<void>((ok, fail) => {
-          server.close((error) => {
-            if (error) fail(error)
-            else ok()
-          })
-        }),
+        close: () => {
+          if (closed === undefined) {
+            closed = new Promise<void>((ok, fail) => {
+              server.close((error) => {
+                if (error) fail(error)
+                else ok()
+              })
+            })
+          }
+          return closed
+        },
       })
     })
   })

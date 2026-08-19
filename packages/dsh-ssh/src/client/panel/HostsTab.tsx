@@ -72,16 +72,24 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [testingGroup, setTestingGroup] = useState<string | null>(null)
   const seqRef = useRef(0)
+  // Unmount guard for the async load below: the seq check only orders
+  // overlapping loads, it does not stop a late resolution/rejection landing
+  // after the tab unmounted — a setState there races the test-environment
+  // teardown (window is not defined; observed as a main-CI flake). The
+  // sibling tabs (terminal / transfer / tunnels) already guard with a
+  // disposed flag.
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
 
   const load = useCallback(async (query?: string): Promise<void> => {
     const seq = ++seqRef.current
     try {
       const list = await api.listHosts(query)
-      if (seq !== seqRef.current) return
+      if (!mountedRef.current || seq !== seqRef.current) return
       setHosts(list)
       setError(null)
     } catch (cause) {
-      if (seq !== seqRef.current) return
+      if (!mountedRef.current || seq !== seqRef.current) return
       setError(errorMessage(cause))
     }
   }, [api])

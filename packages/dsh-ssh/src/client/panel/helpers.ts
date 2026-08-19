@@ -24,3 +24,47 @@ export function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   return String(error)
 }
+
+/**
+ * The terminal font stack used before issue #577, kept as the last resort
+ * when neither the plugin setting nor a CSS custom property names a font.
+ */
+export const TERMINAL_FONT_FALLBACK = 'Menlo, Consolas, "Liberation Mono", monospace'
+
+/**
+ * Live source of the user's configured terminal font family: the client
+ * entry binds the dsh-ssh settings namespace into one of these and hands it
+ * to the panel, so a settings change re-applies without a remount.
+ */
+export interface TerminalFontSource {
+  /** Current configured family, or undefined when unset / not yet loaded. */
+  get(): string | undefined
+  /** Subscribe to changes; the returned function unsubscribes. */
+  subscribe(listener: () => void): () => void
+}
+
+/**
+ * Resolve the xterm `fontFamily` (issue #577). xterm's DOM renderer takes
+ * the font only from constructor/options, so a plain stylesheet rule cannot
+ * retarget it — the value must be read back into the options. The chain,
+ * first non-empty value wins:
+ *   1. `override` — the `terminalFontFamily` plugin setting;
+ *   2. `--dsh-ssh-terminal-font` — dedicated hook for skins and user CSS
+ *      (e.g. a Nerd Font for powerline glyphs);
+ *   3. `--ds-font-family-code` — the official code-font token several skins
+ *      already remap;
+ *   4. {@link TERMINAL_FONT_FALLBACK}.
+ */
+export function resolveTerminalFontFamily(override?: string): string {
+  const trimmed = override?.trim()
+  if (trimmed !== undefined && trimmed !== '') return trimmed
+  if (typeof getComputedStyle === 'function' && typeof document !== 'undefined') {
+    const target = document.body ?? document.documentElement
+    const style = getComputedStyle(target)
+    for (const name of ['--dsh-ssh-terminal-font', '--ds-font-family-code']) {
+      const value = style.getPropertyValue(name).trim()
+      if (value !== '') return value
+    }
+  }
+  return TERMINAL_FONT_FALLBACK
+}

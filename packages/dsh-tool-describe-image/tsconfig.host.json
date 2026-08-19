@@ -31,6 +31,8 @@
     "src/attachment-reference.ts",
     "src/attach-routes.ts",
     "src/model-capability.ts",
+    "src/model-probe.ts",
+    "src/loopback.ts",
     "src/tool-visibility.ts",
     "src/config-resolve.ts",
     "src/vision-client.ts"

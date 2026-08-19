@@ -195,6 +195,17 @@ describe('voice-pack overrides (pet-center M4)', () => {
     expect(voice.toolRemaining(4, 0)).toBe('后台还有 4 个')
   })
 
+  it('interpolates every occurrence of a repeated placeholder', () => {
+    const pack: ReturnType<typeof PACK> = {
+      ...PACK(),
+      tools: { shell: ['{tool} 和 {tool} 一起跑 {hint} {hint}'] },
+      toolRemaining: ['{n} 路并进，共 {n} 路'],
+    }
+    const voice = new StatusVoice(() => pack)
+    expect(voice.tool('bash', 'bash', 'npm test', 0)).toBe('bash 和 bash 一起跑 npm test npm test')
+    expect(voice.toolRemaining(2, 5000)).toBe('2 路并进，共 2 路')
+  })
+
   it('follows a provider swap on the next draw without rebuilding the engine', () => {
     let pack: ReturnType<typeof PACK> = PACK()
     const voice = new StatusVoice(() => pack)

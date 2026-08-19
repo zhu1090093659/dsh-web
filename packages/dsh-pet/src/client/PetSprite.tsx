@@ -81,6 +81,11 @@ function StatusOrnament(props: { decoration: DecorationView; phase: ActivityPhas
   const scale = 18 / decoration.cell.height
   const frameWidth = Math.round(decoration.cell.width * scale)
   const stripWidth = decoration.columns * frameWidth
+  // Value-stable dependency key: the host serves a fresh DecorationView
+  // object on every state poll (2 s), so the effect must not depend on the
+  // object identity — otherwise each poll would cancel and restart the
+  // frame loop and the animation would jump back to its first frame.
+  const durationsKey = decoration.durations.join(',')
   useEffect(() => {
     if (segment === undefined || segment === 'hide') return
     const el = spanRef.current
@@ -104,11 +109,14 @@ function StatusOrnament(props: { decoration: DecorationView; phase: ActivityPhas
         else if (decoration.loop) index = segment.from
       }
       el.style.backgroundPosition = position(index)
+      // A non-looping segment settles on its last frame; stop scheduling
+      // instead of repainting the same position every frame.
+      if (!decoration.loop && index === segment.to) return
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [shown, segmentKey, decoration, frameWidth])
+  }, [shown, segmentKey, frameWidth, decoration.loop, durationsKey])
   if (!shown) return null
   return (
     <span
@@ -190,8 +198,17 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
     values: Record<string, string | number>,
   ): string => {
     const format = panel?.stats?.[slot] ?? props.t(i18nKey, values)
+    if (panel?.stats?.[slot] === undefined) return format
+    // The host whitelists {rank}/{n}/{points} in every stat slot, so a pack
+    // format may reference any of them; substitute all three live values
+    // (the slot's own value plus the siblings) instead of only the slot's.
+    const all: Record<string, string | number> = {
+      rank: snapshot?.affinity.rank ?? '?',
+      n: snapshot?.treats.stocked ?? 0,
+      points: snapshot?.affinity.points ?? 0,
+    }
     let text = format
-    for (const [name, value] of Object.entries(values)) text = text.replaceAll('{' + name + '}', String(value))
+    for (const [name, value] of Object.entries(all)) text = text.replaceAll('{' + name + '}', String(value))
     return text
   }
   const panelShows = (action: 'feed' | 'rename' | 'hide'): boolean =>

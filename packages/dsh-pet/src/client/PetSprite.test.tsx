@@ -92,14 +92,9 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-/** Render the pet with mocked callbacks; returns the rename and open spys. */
-function renderPet(overrides: Partial<PetSpriteProps> = {}): {
-  onRename: ReturnType<typeof vi.fn>
-  onOpenSession: ReturnType<typeof vi.fn>
-} {
-  const onRename = vi.fn()
-  const onOpenSession = vi.fn()
-  const props: PetSpriteProps = {
+/** Build the mocked props for one render. */
+function petProps(overrides: Partial<PetSpriteProps> = {}): PetSpriteProps {
+  return {
     snapshot,
     definition: petDefinition(),
     display: snapshot.display,
@@ -108,14 +103,24 @@ function renderPet(overrides: Partial<PetSpriteProps> = {}): {
     onFeed: vi.fn(),
     onHide: vi.fn(),
     onDragEnd: vi.fn(),
-    onRename,
-    onOpenSession,
+    onRename: vi.fn(),
+    onOpenSession: vi.fn(),
     onFeedbackDone: vi.fn(),
     t,
     ...overrides,
   }
-  render(<PetSprite {...props} />)
-  return { onRename, onOpenSession }
+}
+
+/** Render the pet with mocked callbacks; returns the rename/open spys + the RTL result. */
+function renderPet(overrides: Partial<PetSpriteProps> = {}): {
+  onRename: ReturnType<typeof vi.fn>
+  onOpenSession: ReturnType<typeof vi.fn>
+  result: ReturnType<typeof render>
+} {
+  const onRename = vi.fn()
+  const onOpenSession = vi.fn()
+  const result = render(<PetSprite {...petProps({ onRename, onOpenSession, ...overrides })} />)
+  return { onRename, onOpenSession, result }
 }
 
 /** Hover the sprite to open the panel, then click the rename button. */
@@ -616,9 +621,18 @@ describe('PetSprite panel chrome from the voice pack (pet-center M4)', () => {
     expect(screen.getByText('隐藏')).toBeDefined()
     expect(screen.getByText('亲密度 幼鲸')).toBeDefined()
   })
+
+  it('substitutes cross-slot placeholders in pack stat formats', () => {
+    renderPet({ definition: { ...petDefinition(), panel: { stats: { treats: '鱼干 {n}（{points} 分，{rank}）' } } } })
+    fireEvent.pointerOver(screen.getByRole('button', { name: '鲸鱼娘' }))
+    // The host whitelists {rank}/{n}/{points} in every stat slot, so a pack
+    // format may reference any of them; all three live values substitute.
+    expect(screen.getByText('鱼干 3（0 分，幼鲸）')).toBeDefined()
+  })
 })
 describe('PetSprite status decoration (pet-center M5, #567)', () => {
   const decoration: DecorationView = {
+    apiVersion: 'x-org.linxin666.pet-center/status-decoration-v1',
     id: 'whale',
     assetBase: '/api/pet/decoration/whale',
     entryUrl: '/api/pet/decoration/whale/whale-frames.png',
@@ -671,5 +685,115 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
   it('renders no ornament when the host serves no decoration', () => {
     renderPet({ snapshot: { ...snapshot, bubble: '正在思考', phase: 'thinking' } })
     expect(ornament()).toBeNull()
+  })
+
+  it('advances the ornament frames on the rAF loop and wraps when looping', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })
+    vi.spyOn(performance, 'now').mockReturnValue(0)
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.push(callback)
+      return frames.length
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    renderPet({ snapshot: { ...snapshot, bubble: '正在思考', phase: 'thinking', decoration } })
+    const el = ornament()!
+    // Both the sprite loop and the ornament loop schedule frames; step every
+    // pending callback together (the sprite's idle track never moves).
+    const step = (ts: number): void => { for (const callback of frames.splice(0)) callback(ts) }
+    // frameWidth = round(64 * 18 / 48) = 24 px; thinking binds frames 0..3.
+    expect(el.style.backgroundPosition).toBe('0px 0px')
+    act(() => { step(161) })
+    expect(el.style.backgroundPosition).toBe('-24px 0px')
+    act(() => { step(322) })
+    expect(el.style.backgroundPosition).toBe('-48px 0px')
+    act(() => { step(483) })
+    expect(el.style.backgroundPosition).toBe('-72px 0px')
+    act(() => { step(644) })
+    // The looping segment wraps back to its first frame.
+    expect(el.style.backgroundPosition).toBe('0px 0px')
+  })
+
+  it('holds the segment last frame when the loop is off and stops scheduling', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })
+    vi.spyOn(performance, 'now').mockReturnValue(0)
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.push(callback)
+      return frames.length
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    renderPet({ snapshot: { ...snapshot, bubble: '完成', phase: 'done', decoration: { ...decoration, loop: false } } })
+    const el = ornament()!
+    const step = (ts: number): void => { for (const callback of frames.splice(0)) callback(ts) }
+    // done binds frames 2..3; the segment starts on frame 2.
+    expect(el.style.backgroundPosition).toBe('-48px 0px')
+    act(() => { step(161) })
+    expect(el.style.backgroundPosition).toBe('-72px 0px')
+    // The ornament stopped scheduling (only the sprite loop remains pending).
+    expect(frames).toHaveLength(1)
+    act(() => { step(161) })
+    // The last frame holds.
+    expect(el.style.backgroundPosition).toBe('-72px 0px')
+  })
+
+  it('does not restart the frame loop when an equal-content decoration re-renders', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })
+    vi.spyOn(performance, 'now').mockReturnValue(0)
+    const frames: FrameRequestCallback[] = []
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.push(callback)
+      return frames.length
+    })
+    const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    // The definition comes from '/api/pet/pets', fetched once — a state
+    // poll never replaces it, so both renders share one definition object.
+    const definition = petDefinition()
+    const { result } = renderPet({ definition, snapshot: { ...snapshot, bubble: '正在思考', phase: 'thinking', decoration } })
+    const step = (ts: number): void => { for (const callback of frames.splice(0)) callback(ts) }
+    act(() => { step(161) })
+    expect(ornament()!.style.backgroundPosition).toBe('-24px 0px')
+    const schedulesBefore = rafSpy.mock.calls.length
+    // The 2 s poll delivers a fresh JSON round-trip: identical content, new
+    // object identities everywhere. The loop must not cancel/restart.
+    const repolled: DecorationView = {
+      ...decoration,
+      cell: { ...decoration.cell },
+      durations: [...decoration.durations],
+      phases: { ...decoration.phases },
+    }
+    result.rerender(<PetSprite {...petProps({ definition, snapshot: { ...snapshot, bubble: '正在思考', phase: 'thinking', decoration: repolled } })} />)
+    act(() => { step(322) })
+    expect(ornament()!.style.backgroundPosition).toBe('-48px 0px')
+    expect(cancelSpy).not.toHaveBeenCalled()
+    // One reschedule per loop tick; no effect restart added new schedules.
+    expect(rafSpy.mock.calls.length).toBe(schedulesBefore + 2)
   })
 })

@@ -4,7 +4,11 @@
  * PNG/WebP entry discipline.
  */
 import { describe, expect, it } from 'vitest'
-import { parseDecorationManifest, safeDecorationEntry } from './decoration.ts'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { KNOWN_DECORATION_TOP_LEVEL, parseDecorationManifest, safeDecorationEntry } from './decoration.ts'
+import { PET_ACTIVITY_PHASES } from './manifest-v2.ts'
+import { petPackageRoot } from './registry.ts'
 
 function parse(raw: unknown) {
   return parseDecorationManifest(raw, 'test/decoration.json')
@@ -116,17 +120,59 @@ describe('parseDecorationManifest content (warn-and-drop)', () => {
     if (!verdict.ok) return
     expect(verdict.manifest.durations).toEqual([120, 130, 140, 150])
   })
+
+  it('warns and defaults to looping when loop is not a boolean', () => {
+    const verdict = parse({ ...valid(), loop: 'yes' })
+    expect(verdict.ok).toBe(true)
+    if (!verdict.ok) return
+    expect(verdict.manifest.loop).toBe(true)
+    expect(verdict.diagnostics.some(d => d.level === 'warning' && d.message.includes('loop'))).toBe(true)
+    const off = parse({ ...valid(), loop: false })
+    expect(off.ok && off.manifest.loop).toBe(false)
+  })
 })
 
 describe('safeDecorationEntry', () => {
   it('accepts safe relative PNG/WebP paths and rejects everything else', () => {
     expect(safeDecorationEntry('frames.webp')).toBe('frames.webp')
-    expect(safeDecorationEntry('img/FRAMES.PNG')).toBe('img/FRAMES.PNG')
     expect(safeDecorationEntry('a/b.png')).toBe('a/b.png')
     expect(safeDecorationEntry('')).toBeUndefined()
     expect(safeDecorationEntry('a/../b.png')).toBeUndefined()
     expect(safeDecorationEntry('/tmp/x.png')).toBeUndefined()
     expect(safeDecorationEntry('x.svg')).toBeUndefined()
     expect(safeDecorationEntry('x')).toBeUndefined()
+  })
+
+  it('rejects case-mismatched extensions (the route serves paths verbatim)', () => {
+    // A lenient case check would pass validation here, but the asset route
+    // matches the declared path exactly and 403s on case-sensitive hosts.
+    expect(safeDecorationEntry('img/FRAMES.PNG')).toBeUndefined()
+    expect(safeDecorationEntry('img/frames.WebP')).toBeUndefined()
+    expect(safeDecorationEntry('img/frames.png')).toBe('img/frames.png')
+  })
+})
+
+describe('status-decoration schema file drift lock', () => {
+  const schema = JSON.parse(readFileSync(
+    join(petPackageRoot(import.meta.url), 'contracts', 'status-decoration-v1.schema.json'),
+    'utf8',
+  )) as {
+    required: string[]
+    properties: Record<string, { const?: number; properties?: Record<string, unknown> }>
+  }
+
+  it('locks the schema top-level fields to the validator allow-list', () => {
+    expect(new Set(Object.keys(schema.properties))).toEqual(KNOWN_DECORATION_TOP_LEVEL)
+  })
+
+  it('locks the required set and the version const', () => {
+    expect([...schema.required].sort()).toEqual([
+      'cell', 'columns', 'decorationManifestVersion', 'entry', 'id', 'license',
+    ])
+    expect(schema.properties.decorationManifestVersion?.const).toBe(1)
+  })
+
+  it('locks the phases key set to the ActivityPhase stream', () => {
+    expect(new Set(Object.keys(schema.properties.phases?.properties ?? {}))).toEqual(new Set(PET_ACTIVITY_PHASES))
   })
 })

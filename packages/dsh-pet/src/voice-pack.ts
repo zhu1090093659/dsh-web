@@ -97,7 +97,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function normalizeLine(raw: string, kind: PoolKind, onWarning: (message: string) => void): string | undefined {
   const trimmed = raw.trim()
   if (trimmed === '') return undefined
-  const capped = trimmed.length > VOICE_LINE_MAX ? trimmed.slice(0, VOICE_LINE_MAX) : trimmed
+  let capped = trimmed.length > VOICE_LINE_MAX ? trimmed.slice(0, VOICE_LINE_MAX) : trimmed
+  // The length cap may cut a placeholder token in half, leaving a dangling
+  // '{' that would render literally; drop the tail from the unmatched brace.
+  const dangling = capped.lastIndexOf('{')
+  if (dangling !== -1 && capped.indexOf('}', dangling) === -1) {
+    onWarning('line cut at an unterminated placeholder; tail dropped: ' + capped.slice(0, 40) + '...')
+    capped = capped.slice(0, dangling)
+  }
+  if (capped === '') return undefined
   const allowed = PLACEHOLDER_WHITELIST[kind]
   const tokens = capped.match(PLACEHOLDER_PATTERN) ?? []
   for (const token of tokens) {
@@ -259,11 +267,11 @@ export function normalizePanel(
   return panel
 }
 
-/** Voice-pack top-level fields. */
-const VOICE_PACK_KEYS = new Set(['voicePackVersion', 'status', 'tools', 'toolRemaining', 'whispers', 'panel'])
+/** Voice-pack top-level fields ('$schema' mirrors the schema twin; drift-locked in tests). */
+export const VOICE_PACK_KEYS = new Set(['$schema', 'voicePackVersion', 'status', 'tools', 'toolRemaining', 'whispers', 'panel'])
 
-/** Allowed whisper-section fields. */
-const WHISPER_KEYS = new Set(['generic', 'rules'])
+/** Allowed whisper-section fields (drift-locked in tests). */
+export const WHISPER_KEYS = new Set(['generic', 'rules'])
 
 /**
  * Normalize one raw voice.json document into a VoicePack, or undefined when

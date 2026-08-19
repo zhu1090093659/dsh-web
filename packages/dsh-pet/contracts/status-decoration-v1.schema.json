@@ -10,8 +10,7 @@
     "license",
     "entry",
     "cell",
-    "columns",
-    "phases"
+    "columns"
   ],
   "additionalProperties": false,
   "properties": {

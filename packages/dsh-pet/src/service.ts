@@ -301,7 +301,7 @@ export class PetService extends Service {
 
   /** RPC: the registry entries the browser half renders and selects from. */
   async pets(): Promise<PetDefinition[]> {
-    return this.registry.entries.map(petEntryView)
+    return this.registry.entries.map(entry => petEntryView(entry, this.registry.globalVoice))
   }
 
   /** The loaded registry (the asset routes serve its entries). */

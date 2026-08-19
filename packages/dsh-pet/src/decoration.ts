@@ -64,20 +64,25 @@ function finiteInt(value: unknown, min: number, max: number): number | undefined
 
 /**
  * Validate a descriptor-relative entry path: no absolute paths, no
- * backslashes, no traversal, plain safe segments only, and a PNG/WebP
- * extension (the adopted entry discipline — SVG/CSS are not accepted).
+ * backslashes, no traversal, plain safe segments only, and an exact
+ * lowercase PNG/WebP extension (the adopted entry discipline — SVG/CSS are
+ * not accepted). The extension match is case-sensitive on purpose: the
+ * asset route serves the declared path verbatim, so a case-mismatched
+ * suffix (frames.PNG vs frames.png) would pass a lenient check but 403 on
+ * case-sensitive filesystems.
  * Returns the normalized path or undefined.
  */
 export function safeDecorationEntry(raw: unknown): string | undefined {
   if (typeof raw !== 'string' || raw.trim() === '') return undefined
   const value = raw.trim()
+  if (value.length > 256) return undefined
   if (isAbsolute(value) || value.includes('\\') || /^[a-z][a-z0-9+.-]*:/i.test(value)) return undefined
   const segments = value.split('/').filter(segment => segment !== '')
   if (segments.length === 0) return undefined
   if (segments.some(segment => segment === '.' || segment === '..' || !PATH_SEGMENT_PATTERN.test(segment))) return undefined
   const last = segments[segments.length - 1]!
   const dot = last.lastIndexOf('.')
-  if (dot <= 0 || !(DECORATION_ENTRY_EXTENSIONS as readonly string[]).includes(last.slice(dot).toLowerCase())) return undefined
+  if (dot <= 0 || !(DECORATION_ENTRY_EXTENSIONS as readonly string[]).includes(last.slice(dot))) return undefined
   return segments.join('/')
 }
 
@@ -125,13 +130,22 @@ export function parseDecorationManifest(
   if (!PET_ID_PATTERN.test(id)) {
     diag.error('id must be a lowercase kebab id')
   }
+  if (id.length > 64) {
+    diag.error('id must be at most 64 characters')
+  }
   const license = typeof raw.license === 'string' ? raw.license.trim() : ''
   if (license === '') diag.error('license is required (asset provenance)')
+  if (license.length > 128) {
+    diag.error('license must be at most 128 characters')
+  }
   const entry = safeDecorationEntry(raw.entry)
   if (entry === undefined) {
     diag.error('entry must be a safe relative PNG/WebP path')
   }
   const rawCell = isRecord(raw.cell) ? raw.cell : {}
+  for (const key of Object.keys(rawCell)) {
+    if (key !== 'width' && key !== 'height') diag.warn('unknown cell field ' + JSON.stringify(key) + ' ignored')
+  }
   const cellWidth = finiteInt(rawCell.width, 1, DECORATION_CELL_MAX)
   const cellHeight = finiteInt(rawCell.height, 1, DECORATION_CELL_MAX)
   if (cellWidth === undefined || cellHeight === undefined) {
@@ -147,7 +161,13 @@ export function parseDecorationManifest(
   const displayName = typeof raw.displayName === 'string' && raw.displayName.trim() !== ''
     ? raw.displayName.trim().slice(0, DECORATION_DISPLAY_NAME_MAX)
     : id
-  const loop = typeof raw.loop === 'boolean' ? raw.loop : true
+  let loop: boolean
+  if (raw.loop === undefined || typeof raw.loop === 'boolean') {
+    loop = raw.loop ?? true
+  } else {
+    diag.warn('loop must be a boolean; defaulting to true')
+    loop = true
+  }
   const rawDurations = raw.durations
   let durations: number[]
   if (Array.isArray(rawDurations)) {

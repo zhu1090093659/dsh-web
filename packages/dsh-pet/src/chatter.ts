@@ -502,8 +502,8 @@ export class StatusVoice {
     const pool = override !== undefined && override.length > 0 ? override : TOOL_POOLS[category]
     const line = this.voice('tool:' + category, 'tool:' + category, pool, nowMs)
     return line
-      .replace('{tool}', displayName)
-      .replace('{hint}', hint ?? displayName)
+      .replaceAll('{tool}', displayName)
+      .replaceAll('{hint}', hint ?? displayName)
   }
 
   /** Status line while sibling tools still run (always reflects the count). */
@@ -511,7 +511,7 @@ export class StatusVoice {
     const override = this.pools().toolRemaining
     const pool = override !== undefined && override.length > 0 ? override : TOOL_REMAINING_POOL
     return this.voice('toolRemaining', 'toolRemaining', pool, nowMs)
-      .replace('{n}', String(count))
+      .replaceAll('{n}', String(count))
   }
 }
 

@@ -263,7 +263,7 @@ function assetHandler(registry: PetRegistry, caps: PetAssetCaps): WebRoute['hand
       file = existsSync(preview) ? preview : undefined
     }
     if (synthesized) {
-      const body = Buffer.from(JSON.stringify(petEntryView(entry), null, 2), 'utf8')
+      const body = Buffer.from(JSON.stringify(petEntryView(entry, registry.globalVoice), null, 2), 'utf8')
       res.writeHead(200, {
         'content-type': 'application/json; charset=utf-8',
         'content-length': String(body.byteLength),
@@ -504,8 +504,10 @@ function decorationHandler(registry: PetRegistry, caps: PetAssetCaps): WebRoute[
       return
     }
     const cap = rel === 'decoration.json' ? caps.manifest : caps.image
+    let stat: ReturnType<typeof statSync>
     try {
-      if (statSync(resolved).size > cap) {
+      stat = statSync(resolved)
+      if (stat.size > cap) {
         res.writeHead(413)
         res.end()
         return
@@ -515,11 +517,22 @@ function decorationHandler(registry: PetRegistry, caps: PetAssetCaps): WebRoute[
       res.end()
       return
     }
+    // Weak ETag from size + mtime: 'no-cache' forces revalidation, and the
+    // validator lets repeat requests settle as 304 — the ornament remounts
+    // on whisper and display-session flips, and without a validator each
+    // remount would re-download the full strip body.
+    const etag = '"' + stat.size.toString(16) + '-' + Math.round(stat.mtimeMs).toString(16) + '"'
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304, { etag, 'cache-control': 'no-cache' })
+      res.end()
+      return
+    }
     readFile(resolved).then((body) => {
       res.writeHead(200, {
         'content-type': mimeFor(resolved),
         'content-length': String(body.byteLength),
         'cache-control': 'no-cache',
+        etag,
       })
       if (req.method === 'HEAD') {
         res.end()

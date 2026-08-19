@@ -9,6 +9,7 @@ import { PetService } from '../src/service.ts'
 import { resolvePetManifest, type DecorationEntry, type PetRegistry } from '../src/registry.ts'
 import { normalizeVoicePack } from '../src/voice-pack.ts'
 import { parseDecorationManifest } from '../src/decoration.ts'
+import { PET_DECORATION_API_VERSION } from '../src/contracts/status-decoration.ts'
 
 /** Two-pet registry fixture (whale-girl + otter) for selection/name tests. */
 function fixtureRegistry(): PetRegistry {
@@ -998,6 +999,31 @@ describe('voice packs in PetService (pet-center M4, issue #677)', () => {
     }
   })
 
+  it('serves the global panel chrome on the pets list (pet over global, per slot)', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    try {
+      const registry = voicedRegistry('plain', { panel: { labels: { feed: '宠物投喂' } } }, {
+        globalVoice: normalizeVoicePack({ panel: { labels: { feed: '全局投喂', hide: '全局藏' } } }),
+      })
+      const service = new PetService(ctx, { persistDir: dir, registry })
+      const pets = await service.pets()
+      const plain = pets.find(pet => pet.id === 'plain')
+      expect(plain).toBeDefined()
+      expect(plain!.panel?.labels).toEqual({ feed: '宠物投喂', hide: '全局藏' })
+      // A pack-less pet receives the global panel as-is.
+      const registryBare = voicedRegistry('bare', undefined, {
+        globalVoice: normalizeVoicePack({ panel: { labels: { hide: '全局藏' } } }),
+      })
+      const ctxBare = new Context()
+      const serviceBare = new PetService(ctxBare, { persistDir: join(dir, 'bare'), registry: registryBare })
+      const bare = (await serviceBare.pets()).find(pet => pet.id === 'bare')
+      expect(bare!.panel?.labels).toEqual({ hide: '全局藏' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('wakes a whisper from the pet pack keyword rules', async () => {
     const ctx = new Context()
     const dir = tempDir()
@@ -1038,6 +1064,7 @@ describe('status decorations in PetService (pet-center M5, #567)', () => {
     if (!verdict.ok) throw new Error('fixture decoration must parse')
     const manifest = verdict.manifest
     const entry: DecorationEntry = {
+      apiVersion: PET_DECORATION_API_VERSION,
       id: manifest.id,
       dir: join(tmpdir(), 'whale'),
       entryPath: manifest.entry,

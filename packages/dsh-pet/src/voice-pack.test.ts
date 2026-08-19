@@ -5,14 +5,24 @@
  * (later layers win per slot).
  */
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   mergeVoicePacks,
   normalizePanel,
   normalizePool,
   normalizeVoicePack,
   normalizeWhisperRules,
+  PANEL_ACTIONS,
+  PANEL_LABEL_KEYS,
+  PANEL_STAT_KEYS,
   VOICE_LINE_MAX,
+  VOICE_PACK_KEYS,
+  VOICE_PACK_V1,
+  WHISPER_KEYS,
 } from './voice-pack.ts'
+import { STATUS_SCENES, TOOL_CATEGORIES } from './chatter.ts'
+import { petPackageRoot } from './registry.ts'
 
 function collectWarnings(pack: unknown): { pack: ReturnType<typeof normalizeVoicePack>; warnings: string[] } {
   const warnings: string[] = []
@@ -153,5 +163,54 @@ describe('mergeVoicePacks', () => {
 
   it('returns undefined when every layer is empty', () => {
     expect(mergeVoicePacks(undefined, undefined)).toBeUndefined()
+  })
+})
+
+describe('normalizeVoicePack schema twin', () => {
+  it('accepts the $schema field without a warning', () => {
+    const { pack, warnings } = collectWarnings({
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      status: { done: ['收工'] },
+    })
+    expect(pack).toBeDefined()
+    expect(warnings).toEqual([])
+  })
+
+  it('drops the tail when the length cap cuts a placeholder token in half', () => {
+    const line = 'x'.repeat(155) + '{tool}'
+    const { pack, warnings } = collectWarnings({ tools: { shell: [line] } })
+    expect(pack?.overrides.tools?.shell).toEqual(['x'.repeat(155)])
+    expect(warnings.some(w => w.includes('unterminated placeholder'))).toBe(true)
+  })
+})
+
+describe('voice-pack schema file drift lock', () => {
+  const schema = JSON.parse(readFileSync(
+    join(petPackageRoot(import.meta.url), 'contracts', 'voice-pack-v1.schema.json'),
+    'utf8',
+  )) as {
+    properties: Record<string, { const?: number; properties?: Record<string, unknown>; items?: { enum?: string[] } }>
+  }
+
+  it('locks the schema top-level fields to the validator allow-list', () => {
+    expect(new Set(Object.keys(schema.properties))).toEqual(VOICE_PACK_KEYS)
+  })
+
+  it('locks the scene, tool, whisper and panel key sets', () => {
+    const props = schema.properties
+    expect(new Set(Object.keys(props.status?.properties ?? {}))).toEqual(new Set(STATUS_SCENES))
+    expect(new Set(Object.keys(props.tools?.properties ?? {}))).toEqual(new Set(TOOL_CATEGORIES))
+    expect(new Set(Object.keys(props.whispers?.properties ?? {}))).toEqual(WHISPER_KEYS)
+    const panel = props.panel?.properties ?? {}
+    const labels = (panel.labels as { properties?: Record<string, unknown> } | undefined)?.properties ?? {}
+    const stats = (panel.stats as { properties?: Record<string, unknown> } | undefined)?.properties ?? {}
+    expect(new Set(Object.keys(labels))).toEqual(new Set(PANEL_LABEL_KEYS))
+    expect(new Set(Object.keys(stats))).toEqual(new Set(PANEL_STAT_KEYS))
+    const actions = (panel.actions as { items?: { enum?: string[] } } | undefined)
+    expect(actions?.items?.enum).toEqual([...PANEL_ACTIONS])
+  })
+
+  it('keeps the schema version const in sync', () => {
+    expect(schema.properties.voicePackVersion?.const).toBe(VOICE_PACK_V1)
   })
 })

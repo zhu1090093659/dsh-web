@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createServer, type Server } from 'node:http'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { once } from 'node:events'
@@ -17,6 +17,7 @@ let dir: string
 let server: Server
 let port: number
 let routes: ReturnType<typeof makePetRoutes>
+let service: PetService
 
 beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), 'dsh-pet-routes-'))
@@ -50,7 +51,7 @@ beforeAll(async () => {
 
   const ctx = new Context()
   const registry = loadPetRegistry({ packageRoot: dir, petsDir: '', dshPetsDir: '' })
-  const service = new PetService(ctx, { persistDir: join(dir, 'home'), registry })
+  service = new PetService(ctx, { persistDir: join(dir, 'home'), registry })
   routes = makePetRoutes({ service })
   server = createServer((req, res) => {
     const pathname = (req.url ?? '').split('?')[0]!
@@ -215,8 +216,96 @@ describe('decoration routes (pet-center M5, #567)', () => {
   it('serves the decoration block in the state view', async () => {
     const state = await fetch(`http://127.0.0.1:${port}/api/pet/state`)
     const body = await state.json()
+    expect(body.decoration.apiVersion).toBe('x-org.linxin666.pet-center/status-decoration-v1')
     expect(body.decoration.id).toBe('whale')
     expect(body.decoration.entryUrl).toBe('/api/pet/decoration/whale/whale-frames.png')
     expect(body.decoration.phases.thinking).toEqual({ from: 0, to: 3 })
+  })
+
+  it('serves the strip and descriptor with correct content types', async () => {
+    const strip = await fetch('http://127.0.0.1:' + port + '/api/pet/decoration/whale/whale-frames.png')
+    expect(strip.headers.get('content-type')).toBe('image/png')
+    const manifest = await fetch('http://127.0.0.1:' + port + '/api/pet/decoration/whale/decoration.json')
+    expect(manifest.headers.get('content-type')).toContain('application/json')
+  })
+
+  it('answers 405 to POST and 200 with an empty body to HEAD', async () => {
+    const post = await fetch('http://127.0.0.1:' + port + '/api/pet/decoration/whale/whale-frames.png', { method: 'POST' })
+    expect(post.status).toBe(405)
+    const head = await fetch('http://127.0.0.1:' + port + '/api/pet/decoration/whale/whale-frames.png', { method: 'HEAD' })
+    expect(head.status).toBe(200)
+    expect(await head.arrayBuffer()).toHaveProperty('byteLength', 0)
+  })
+
+  it('revalidates with the ETag instead of re-downloading the strip', async () => {
+    const first = await fetch('http://127.0.0.1:' + port + '/api/pet/decoration/whale/whale-frames.png')
+    expect(first.status).toBe(200)
+    const etag = first.headers.get('etag')
+    expect(etag).not.toBeNull()
+    const cached = await fetch('http://127.0.0.1:' + port + '/api/pet/decoration/whale/whale-frames.png', {
+      headers: { 'if-none-match': etag! },
+    })
+    expect(cached.status).toBe(304)
+    expect(await cached.arrayBuffer()).toHaveProperty('byteLength', 0)
+    const stale = await fetch('http://127.0.0.1:' + port + '/api/pet/decoration/whale/whale-frames.png', {
+      headers: { 'if-none-match': '"bogus"' },
+    })
+    expect(stale.status).toBe(200)
+  })
+
+  it('enforces the size ceiling and refuses symlink escapes', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-pet-deco-caps-'))
+    try {
+      mkdirSync(join(root, 'assets', 'pet'), { recursive: true })
+      writeFileSync(join(root, 'assets', 'pet', 'pet.json'), JSON.stringify({
+        id: 'plain-pet', displayName: 'Plain', spritesheetPath: 'spritesheet.webp',
+      }), 'utf8')
+      writeFileSync(join(root, 'assets', 'pet', 'spritesheet.webp'), WEBP_BYTES)
+      const assets = join(root, 'assets', 'decorations', 'whale')
+      mkdirSync(assets, { recursive: true })
+      writeFileSync(join(assets, 'decoration.json'), JSON.stringify({
+        decorationManifestVersion: 1,
+        id: 'whale',
+        license: 'MIT',
+        entry: 'whale-frames.png',
+        cell: { width: 64, height: 48 },
+        columns: 4,
+        phases: { thinking: { from: 0, to: 3 } },
+      }), 'utf8')
+      writeFileSync(join(assets, 'whale-frames.png'), Buffer.alloc(128, 1))
+      const ctx = new Context()
+      const registry = loadPetRegistry({ packageRoot: root, petsDir: '', dshPetsDir: '' })
+      const capped = new PetService(ctx, { persistDir: join(root, 'home'), registry })
+      const tinyRoutes = makePetRoutes({ service: capped, assetCaps: { manifest: 64, image: 64, model: 64 } })
+      const srv = createServer((req, res) => {
+        const pathname = (req.url ?? '').split('?')[0]!
+        for (const route of tinyRoutes) {
+          if (route.kind === 'exact' && pathname === route.path) { void route.handler(req, res); return }
+        }
+        for (const route of tinyRoutes) {
+          if (route.kind === 'prefix' && (pathname === route.path || pathname.startsWith(route.path + '/'))) { void route.handler(req, res); return }
+        }
+        res.writeHead(404)
+        res.end()
+      })
+      srv.listen(0, '127.0.0.1')
+      await once(srv, 'listening')
+      try {
+        const capPort = (srv.address() as AddressInfo).port
+        const oversized = await fetch('http://127.0.0.1:' + capPort + '/api/pet/decoration/whale/whale-frames.png')
+        expect(oversized.status).toBe(413)
+        // A strip symlinked outside the decoration directory is refused.
+        rmSync(join(assets, 'whale-frames.png'))
+        const outside = join(root, 'outside.png')
+        writeFileSync(outside, Buffer.alloc(4, 1))
+        symlinkSync(outside, join(assets, 'whale-frames.png'))
+        const escaped = await fetch('http://127.0.0.1:' + capPort + '/api/pet/decoration/whale/whale-frames.png')
+        expect(escaped.status).toBe(403)
+      } finally {
+        await new Promise<void>((resolve) => srv.close(() => resolve()))
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })

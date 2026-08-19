@@ -27,15 +27,15 @@
  * @module @linxin666/dsh-pet/registry
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { ActivityPhase, PetAnimation } from './state.ts'
 import { normalizePetRemarks, type PetRemarks, type PetRemarksManifest } from './remarks.ts'
-import { normalizeVoicePack, type PetPanelView, type VoicePack } from './voice-pack.ts'
+import { mergeVoicePacks, normalizeVoicePack, type PetPanelView, type VoicePack } from './voice-pack.ts'
 import { parseDecorationManifest } from './decoration.ts'
-import type { DecorationView } from './contracts/status-decoration.ts'
+import { PET_DECORATION_API_VERSION, type DecorationView } from './contracts/status-decoration.ts'
 import { dshHome } from './dsh-home.ts'
 import { parsePetManifest, type PetManifestLive2d, type PetManifestV2, type PetRendererKind } from './manifest-v2.ts'
 import { collectModel3References } from './model3.ts'
@@ -619,6 +619,47 @@ function readPetJson(file: string, warnings: string[] | undefined): unknown {
 }
 
 /**
+ * Scan-time read ceiling for user-authored JSON descriptors (voice.json,
+ * .voice.json, decoration.json): the registry reads these synchronously at
+ * plugin startup, and a pathological file — multi-GB, or a FIFO/device
+ * symlink — must not hang or exhaust the host before the warn-and-drop
+ * discipline can apply (review-spd follow-up, pet-center M4/M5).
+ */
+export const PET_SCAN_JSON_CAP = 64 * 1024
+
+/**
+ * Stat one scanned JSON descriptor with a regular-file + size guard, so a
+ * pathological user file is skipped with a warning instead of stalling or
+ * OOM-ing the host at startup. Returns the Stats, or undefined when the
+ * caller must skip the file (a warning was recorded).
+ */
+function guardedScannedJsonStat(
+  file: string,
+  options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] },
+  what: string,
+): ReturnType<typeof statSync> | undefined {
+  let st: ReturnType<typeof statSync>
+  try {
+    st = statSync(file)
+  } catch {
+    return undefined
+  }
+  const warn = (message: string): void => {
+    options.warnings?.push(file + ': ' + message)
+    options.diagnostics?.push({ level: 'warning', source: file, message: file + ': ' + message })
+  }
+  if (!st.isFile()) {
+    warn(what + ' is not a regular file; ignored')
+    return undefined
+  }
+  if (st.size > PET_SCAN_JSON_CAP) {
+    warn(what + ' exceeds the ' + PET_SCAN_JSON_CAP + '-byte scan ceiling; ignored')
+    return undefined
+  }
+  return st
+}
+
+/**
  * Load and normalize one optional voice.json (pet-center M4). A missing
  * file is silent; a broken file warns and drops. The pack is pure content,
  * so every issue stays a warning — a bad voice.json never rejects a pet.
@@ -628,6 +669,7 @@ function loadVoicePackFile(
   options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] },
 ): VoicePack | undefined {
   if (!existsSync(file)) return undefined
+  if (guardedScannedJsonStat(file, options, 'voice pack') === undefined) return undefined
   const warn = (message: string): void => {
     options.warnings?.push(file + ': ' + message)
     options.diagnostics?.push({ level: 'warning', source: file, message: file + ': ' + message })
@@ -664,6 +706,7 @@ function scanDecorationDir(dir: string, options: { warnings?: string[]; diagnost
     const entryDir = join(dir, name)
     const manifestFile = join(entryDir, 'decoration.json')
     if (!existsSync(manifestFile)) continue
+    if (guardedScannedJsonStat(manifestFile, options, 'decoration descriptor') === undefined) continue
     let raw: unknown
     try {
       raw = JSON.parse(readFileSync(manifestFile, 'utf8'))
@@ -680,7 +723,16 @@ function scanDecorationDir(dir: string, options: { warnings?: string[]; diagnost
     }
     if (!verdict.ok) continue
     const manifest = verdict.manifest
+    // A missing strip keeps the entry listed (mirroring the live2d closure
+    // discipline) but earns a diagnostic: the ornament will silently render
+    // nothing, and the warning names the file to fix.
+    if (!existsSync(join(entryDir, manifest.entry))) {
+      const message = 'decoration ' + manifest.id + ': strip file missing: ' + manifest.entry
+      options.warnings?.push(message)
+      options.diagnostics?.push({ level: 'warning', source: entryDir, message })
+    }
     entries.push({
+      apiVersion: PET_DECORATION_API_VERSION,
       id: manifest.id,
       dir: entryDir,
       entryPath: manifest.entry,
@@ -793,6 +845,7 @@ export const DEFAULT_DECORATION_ID = 'whale'
 /** Strip host-only fields, leaving the browser-visible decoration view. */
 export function decorationView(entry: DecorationEntry): DecorationView {
   return {
+    apiVersion: PET_DECORATION_API_VERSION,
     id: entry.id,
     assetBase: entry.assetBase,
     entryUrl: entry.entryUrl,
@@ -804,8 +857,16 @@ export function decorationView(entry: DecorationEntry): DecorationView {
   }
 }
 
-/** Strip host-only fields, leaving the client-visible definition. */
-export function petEntryView(entry: PetEntry): PetDefinition {
+/**
+ * Strip host-only fields, leaving the client-visible definition. When the
+ * registry carries a global voice pack, its panel chrome layers under the
+ * entry's own pack (per-slot merge, pet > global), mirroring the voice-pool
+ * layering (pet-center M4, issue #677).
+ */
+export function petEntryView(entry: PetEntry, globalVoice?: VoicePack): PetDefinition {
+  const panel = globalVoice === undefined
+    ? entry.voice?.panel
+    : mergeVoicePacks(globalVoice, entry.voice)?.panel
   return {
     id: entry.id,
     displayName: entry.displayName,
@@ -820,7 +881,7 @@ export function petEntryView(entry: PetEntry): PetDefinition {
     ...(entry.sequences === undefined ? {} : { sequences: entry.sequences }),
     atlasUrl: entry.atlasUrl,
     manifestUrl: entry.manifestUrl,
-    ...(entry.voice?.panel === undefined ? {} : { panel: entry.voice.panel }),
+    ...(panel === undefined ? {} : { panel }),
   }
 }
 

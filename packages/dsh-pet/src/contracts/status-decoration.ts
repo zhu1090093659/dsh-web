@@ -58,9 +58,13 @@ export type DecorationManifestParse =
 
 /**
  * The decoration block the host serves inside the pet state view — exactly
- * what the browser half needs to render the ornament, nothing more.
+ * what the browser half needs to render the ornament, nothing more. The
+ * apiVersion rides the wire so a future protocol revision can be detected
+ * and negotiated by clients (review-spd follow-up, pet-center M5).
  */
 export interface DecorationView {
+  /** The protocol version this view speaks (PET_DECORATION_API_VERSION). */
+  apiVersion: typeof PET_DECORATION_API_VERSION
   id: string
   /** Same-origin URL prefix of the decoration's assets. */
   assetBase: string

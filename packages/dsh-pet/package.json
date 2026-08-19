@@ -38,7 +38,8 @@
     "lib/**/*.d.ts.map",
     "src",
     "cordis.patch.yml",
-    "assets"
+    "assets",
+    "contracts"
   ],
   "license": "Apache-2.0",
   "dsh": {

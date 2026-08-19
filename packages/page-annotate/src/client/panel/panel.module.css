@@ -1,0 +1,224 @@
+.panel {
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--dsw-alias-bg-base, #ffffff);
+  color: var(--dsw-alias-label-primary, #1f2328);
+  font: var(--dsw-font-xs-13, 13px/1.5 system-ui, sans-serif);
+}
+
+.urlBar {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+}
+
+.urlInput {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-1, #fafafa);
+  color: inherit;
+  font: inherit;
+  padding: 0 10px;
+}
+.urlInput:focus {
+  outline: none;
+  border-color: var(--dsw-alias-border-l2, #cbd5e1);
+}
+
+.action,
+.mode,
+.modeActive,
+.tool,
+.toolActive,
+.swatch,
+.swatchActive,
+.width,
+.widthActive {
+  border: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+  background: var(--dsw-alias-bg-layer-1, #fafafa);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  height: 28px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+.action:hover,
+.mode:hover,
+.tool:hover,
+.width:hover {
+  background: var(--dsw-alias-interactive-bg-hover, #f1f5f9);
+}
+.action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.modeTabs {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px 0;
+}
+.mode,
+.modeActive {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: none;
+}
+.modeActive {
+  background: var(--dsw-alias-bg-layer-2, #ffffff);
+  border-color: var(--dsw-alias-border-l2, #cbd5e1);
+  font-weight: 600;
+}
+.mode:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-layer-2, #f4f4f5);
+  margin: 8px;
+  border: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+  border-radius: 8px;
+}
+
+.placeholder {
+  color: var(--dsw-alias-label-tertiary, #9ca3af);
+  text-align: center;
+  padding: 24px 16px;
+  max-width: 280px;
+}
+
+.frame {
+  border: none;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+}
+
+.canvasWrap {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.canvas {
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+  border-radius: 4px;
+}
+
+.textEditor {
+  position: absolute;
+  transform: translate(-4px, -16px);
+  z-index: 5;
+}
+.textEditor input {
+  width: 180px;
+  height: 28px;
+  border: 1px solid var(--dsw-alias-border-l2, #cbd5e1);
+  border-radius: 6px;
+  padding: 0 8px;
+  font: inherit;
+}
+
+.toolbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 8px 8px;
+}
+.toolGroup {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.tool,
+.toolActive {
+  padding: 0 8px;
+}
+.toolActive {
+  background: var(--dsw-alias-interactive-bg-active, #e0e7ff);
+  border-color: var(--dsw-alias-brand-primary, #4f46e5);
+  color: var(--dsw-alias-brand-primary, #4f46e5);
+}
+.swatch,
+.swatchActive {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+.swatchActive {
+  border-color: var(--dsw-alias-label-primary, #1f2328);
+}
+.width,
+.widthActive {
+  padding: 0 7px;
+  height: 24px;
+}
+.widthActive {
+  background: var(--dsw-alias-interactive-bg-active, #e0e7ff);
+}
+
+.status,
+.statusError {
+  flex: none;
+  padding: 4px 12px;
+  font-size: 12px;
+  border-top: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+  color: var(--dsw-alias-label-secondary, #4b5563);
+  overflow-wrap: anywhere;
+}
+.statusError {
+  color: var(--dsw-alias-state-error-primary, #dc2626);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #dc2626) 8%, transparent);
+}
+
+.sendBar {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 8px 8px;
+}
+.send {
+  border: none;
+  border-radius: 6px;
+  height: 30px;
+  padding: 0 16px;
+  background: var(--dsw-alias-button-primary-fill, #4f46e5);
+  color: var(--dsw-alias-button-primary-label, #ffffff);
+  cursor: pointer;
+  font: inherit;
+}
+.send:hover {
+  background: var(--dsw-alias-button-primary-hover, #4338ca);
+}
+.send:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.hiddenFile {
+  display: none;
+}

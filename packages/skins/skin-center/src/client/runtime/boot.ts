@@ -142,9 +142,12 @@ export function bootSkinRuntime(options: BootOptions = {}): SkinRuntimeStore {
   void (async () => {
     try {
       await refreshCatalog()
-      const res = await fetchImpl(`${apiBase}/active`)
-      const payload = (await res.json()) as { ok: boolean; active?: string | null }
-      const active = payload.ok && typeof payload.active === 'string' ? payload.active : null
+      let active = doc.documentElement?.getAttribute('data-dsh-skin') || null
+      if (!active) {
+        const res = await fetchImpl(`${apiBase}/active`)
+        const payload = (await res.json()) as { ok: boolean; active?: string | null }
+        active = payload.ok && typeof payload.active === 'string' ? payload.active : null
+      }
       if (active === null) return
       const entry = store.find(active)
       if (entry === null) return

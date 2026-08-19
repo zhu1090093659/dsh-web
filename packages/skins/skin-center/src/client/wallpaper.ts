@@ -147,12 +147,51 @@ export class WallpaperController implements WallpaperHandle {
     this.readAll()
     scope.subscribe(() => {
       this.readAll()
-      this.render()
-      this.publish()
+      if (this.enabledValue && this.selectionValue && (!this.applied || this.applied.id !== this.selectionValue)) {
+        this.fetchAndSync()
+      } else {
+        this.render()
+        this.publish()
+      }
     })
     // Pause-on-hidden wiring lives for the controller's whole life; it only
     // ever acts while a video is mounted.
     document.addEventListener('visibilitychange', this.onVisibility)
+    if (this.enabledValue && this.selectionValue) {
+      this.fetchAndSync()
+    }
+  }
+
+  private fetchAndSync(): void {
+    if (!this.selectionValue) return
+    const targetId = this.selectionValue
+    fetch('/api/skin-center/we/inventory')
+      .then(async (response) => {
+        if (this.disposed || !response.ok) return
+        const payload = (await response.json().catch(() => null)) as {
+          ok?: boolean
+          wallpapers?: WallpaperDescriptor[]
+        } | null
+        if (payload?.ok === true && Array.isArray(payload.wallpapers)) {
+          const item = payload.wallpapers.find((w) => w.id === targetId)
+          if (item && this.selectionValue === targetId) {
+            this.applied = {
+              id: item.id,
+              title: item.title,
+              type: item.type,
+              videoUrl: item.videoUrl,
+              webUrl: item.webUrl,
+              frameUrl: item.frameUrl,
+              previewUrl: item.previewUrl,
+            }
+            this.render()
+            this.publish()
+          }
+        }
+      })
+      .catch(() => {
+        // Fail-silent on network errors
+      })
   }
 
   enabled(): boolean { return this.enabledValue }
@@ -316,9 +355,23 @@ export class WallpaperController implements WallpaperHandle {
     if (this.rootNeutralizer === null) {
       this.rootNeutralizer = document.createElement('style')
       this.rootNeutralizer.dataset.dshWallpaperRoot = ''
-      this.rootNeutralizer.textContent = '[id="root"] { background: transparent; }'
+      this.rootNeutralizer.textContent = `
+        [id="root"] { background: transparent; }
+        html[data-dsh-wallpaper-active],
+        body[data-dsh-wallpaper-active],
+        html[data-dsh-skin][data-dsh-wallpaper-active],
+        html[data-dsh-skin][data-dsh-wallpaper-active] body,
+        html[data-dsh-skin] body[data-dsh-wallpaper-active],
+        body[data-dsh-wallpaper-active][data-ds-dark-theme],
+        html[data-dsh-wallpaper-active] #root,
+        html[data-dsh-wallpaper-active] [id="root"] {
+          background-color: transparent !important;
+        }
+      `
       document.head.appendChild(this.rootNeutralizer)
     }
+    document.body.dataset.dshWallpaperActive = 'true'
+    document.documentElement.dataset.dshWallpaperActive = 'true'
     if (this.mediaLayer === null) {
       this.mediaLayer = document.createElement('div')
       styleLayer(this.mediaLayer, -3)
@@ -440,6 +493,8 @@ export class WallpaperController implements WallpaperHandle {
   }
 
   private teardownLayers(): void {
+    delete document.body.dataset.dshWallpaperActive
+    delete document.documentElement.dataset.dshWallpaperActive
     if (this.rootNeutralizer !== null) {
       this.rootNeutralizer.remove()
       this.rootNeutralizer = null

@@ -163,9 +163,10 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
 
   let latestRequest = 0
   let currentActivation: number | null = null
-  let active: string | null = null
+  const initialSkinId = doc.documentElement?.getAttribute('data-dsh-skin') || null
+  let active: string | null = initialSkinId
   /** The committed selection try-on restores (component scope). */
-  let committed: { id: string | null; entry: ControllerSkinEntry | null } = { id: null, entry: null }
+  let committed: { id: string | null; entry: ControllerSkinEntry | null } = { id: initialSkinId, entry: null }
   /** Last non-null applied entry, so refresh() can re-activate it. */
   let lastEntry: ControllerSkinEntry | null = null
   /** Last evaluated background-suppression verdict (refresh() skips no-ops). */
@@ -176,7 +177,7 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
   // React's useSyncExternalStore requires a CACHED snapshot: getSnapshot must
   // return the same reference until the state actually changes, or the store
   // consumer loops forever (and the settings card crashes blank).
-  let stateSnapshot: SkinControllerState = { active: null, trying: null, previewing: false }
+  let stateSnapshot: SkinControllerState = { active: initialSkinId, trying: null, previewing: false }
   const emit = (): void => {
     stateSnapshot = { active, trying, previewing }
     for (const listener of listeners) listener()

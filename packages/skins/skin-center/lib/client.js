@@ -1208,10 +1208,38 @@ window.__ModuleLoader__.load({
 				this.readAll();
 				scope.subscribe(() => {
 					this.readAll();
-					this.render();
-					this.publish();
+					if (this.enabledValue && this.selectionValue && (!this.applied || this.applied.id !== this.selectionValue)) this.fetchAndSync();
+					else {
+						this.render();
+						this.publish();
+					}
 				});
 				document.addEventListener("visibilitychange", this.onVisibility);
+				if (this.enabledValue && this.selectionValue) this.fetchAndSync();
+			}
+			fetchAndSync() {
+				if (!this.selectionValue) return;
+				const targetId = this.selectionValue;
+				fetch("/api/skin-center/we/inventory").then(async (response) => {
+					if (this.disposed || !response.ok) return;
+					const payload = await response.json().catch(() => null);
+					if (payload?.ok === true && Array.isArray(payload.wallpapers)) {
+						const item = payload.wallpapers.find((w) => w.id === targetId);
+						if (item && this.selectionValue === targetId) {
+							this.applied = {
+								id: item.id,
+								title: item.title,
+								type: item.type,
+								videoUrl: item.videoUrl,
+								webUrl: item.webUrl,
+								frameUrl: item.frameUrl,
+								previewUrl: item.previewUrl
+							};
+							this.render();
+							this.publish();
+						}
+					}
+				}).catch(() => {});
 			}
 			enabled() {
 				return this.enabledValue;
@@ -1355,9 +1383,23 @@ window.__ModuleLoader__.load({
 				if (this.rootNeutralizer === null) {
 					this.rootNeutralizer = document.createElement("style");
 					this.rootNeutralizer.dataset.dshWallpaperRoot = "";
-					this.rootNeutralizer.textContent = "[id=\"root\"] { background: transparent; }";
+					this.rootNeutralizer.textContent = `
+        [id="root"] { background: transparent; }
+        html[data-dsh-wallpaper-active],
+        body[data-dsh-wallpaper-active],
+        html[data-dsh-skin][data-dsh-wallpaper-active],
+        html[data-dsh-skin][data-dsh-wallpaper-active] body,
+        html[data-dsh-skin] body[data-dsh-wallpaper-active],
+        body[data-dsh-wallpaper-active][data-ds-dark-theme],
+        html[data-dsh-wallpaper-active] #root,
+        html[data-dsh-wallpaper-active] [id="root"] {
+          background-color: transparent !important;
+        }
+      `;
 					document.head.appendChild(this.rootNeutralizer);
 				}
+				document.body.dataset.dshWallpaperActive = "true";
+				document.documentElement.dataset.dshWallpaperActive = "true";
 				if (this.mediaLayer === null) {
 					this.mediaLayer = document.createElement("div");
 					styleLayer(this.mediaLayer, -3);
@@ -1453,6 +1495,8 @@ window.__ModuleLoader__.load({
 				return image;
 			}
 			teardownLayers() {
+				delete document.body.dataset.dshWallpaperActive;
+				delete document.documentElement.dataset.dshWallpaperActive;
 				if (this.rootNeutralizer !== null) {
 					this.rootNeutralizer.remove();
 					this.rootNeutralizer = null;
@@ -1962,10 +2006,11 @@ window.__ModuleLoader__.load({
 			}));
 			let latestRequest = 0;
 			let currentActivation = null;
-			let active = null;
+			const initialSkinId = doc.documentElement?.getAttribute("data-dsh-skin") || null;
+			let active = initialSkinId;
 			/** The committed selection try-on restores (component scope). */
 			let committed = {
-				id: null,
+				id: initialSkinId,
 				entry: null
 			};
 			/** Last non-null applied entry, so refresh() can re-activate it. */
@@ -1976,7 +2021,7 @@ window.__ModuleLoader__.load({
 			let previewing = false;
 			const listeners = /* @__PURE__ */ new Set();
 			let stateSnapshot = {
-				active: null,
+				active: initialSkinId,
 				trying: null,
 				previewing: false
 			};
@@ -2280,8 +2325,11 @@ window.__ModuleLoader__.load({
 			(async () => {
 				try {
 					await refreshCatalog();
-					const payload = await (await fetchImpl(`${apiBase}/active`)).json();
-					const active = payload.ok && typeof payload.active === "string" ? payload.active : null;
+					let active = doc.documentElement?.getAttribute("data-dsh-skin") || null;
+					if (!active) {
+						const payload = await (await fetchImpl(`${apiBase}/active`)).json();
+						active = payload.ok && typeof payload.active === "string" ? payload.active : null;
+					}
 					if (active === null) return;
 					const entry = store.find(active);
 					if (entry === null) return;

@@ -23,6 +23,7 @@ import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { ActivityPhase, PetAnimation } from './state.ts'
 import { normalizePetRemarks, type PetRemarks, type PetRemarksManifest } from './remarks.ts'
+import { DEFAULT_PET_ID } from './persist.ts'
 
 /** Fixed row order of the 9-state animation contract. */
 export const PET_ROW_ORDER: readonly PetAnimation[] = [
@@ -432,7 +433,9 @@ export function loadPetRegistry(options: PetRegistryOptions): PetRegistry {
     entries,
     warnings,
     byId: (id: string) => byId.get(id),
-    defaultEntry: () => entries.find(entry => builtinIds.has(entry.id)) ?? entries[0]!,
+    defaultEntry: () => byId.get(DEFAULT_PET_ID)
+      ?? entries.find(entry => builtinIds.has(entry.id))
+      ?? entries[0]!,
   }
 }
 

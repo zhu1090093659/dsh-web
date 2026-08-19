@@ -71,6 +71,7 @@
 
 | 注册表 id | 选择器名称 | 来源 |
 |---|---|---|
+| `bobo` | 啵啵 | 以贡献者自家的虎斑小猫为原型的灰棕色小猫（11 行 v2 图集） |
 | `whale-girl` | 鲸鱼娘（原版） | 仓库原有的鲸鱼娘图集 |
 | `whale-girl-refined` | 鲸鱼娘（精致版） | 以鲸鱼娘设计方向为基础，经 AI 辅助二次创作、修复和细节精修的衍生版本 |
 
@@ -110,6 +111,7 @@ dsh-pet/
 |       |-- sequences.ts     # 完整轨道场景序列计时
 |       |-- spritesheet.ts   # 图集几何辅助 + 轨道裁剪
 |       `-- pet.module.css
+|-- assets/bobo/             # 内置啵啵虎斑小猫（11 行 v2 图集：manifest + 图集）
 |-- assets/whale/            # 内置原版鲸鱼娘（manifest + 图集 + 预览）
 |-- assets/whale-refined/    # 内置精致版鲸鱼娘注册表变体
 `-- cordis.patch.yml         # bundle 补丁：插入宠物插件行

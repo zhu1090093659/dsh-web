@@ -71,6 +71,7 @@ The registry is built once at host startup; add or change a pet, then restart `d
 
 | Registry id | Selector label | Source |
 |---|---|---|
+| `bobo` | 啵啵 | A gray-brown tabby kitten based on the contributor's own cat (11-row v2 atlas) |
 | `whale-girl` | 鲸鱼娘（原版） | The repository's original whale-girl atlas |
 | `whale-girl-refined` | 鲸鱼娘（精致版） | An AI-assisted derivative with repaired and refined details, based on the whale-girl design direction |
 
@@ -110,6 +111,7 @@ dsh-pet/
 |       |-- sequences.ts     # full-track scene sequence timing
 |       |-- spritesheet.ts   # atlas geometry helpers + track trimming
 |       `-- pet.module.css
+|-- assets/bobo/             # built-in bobo tabby kitten (11-row v2 atlas: manifest + atlas)
 |-- assets/whale/            # built-in original whale-girl (manifest + atlas + previews)
 |-- assets/whale-refined/    # built-in refined whale-girl registry variant
 `-- cordis.patch.yml         # bundle patch: inserts the pet plugin row

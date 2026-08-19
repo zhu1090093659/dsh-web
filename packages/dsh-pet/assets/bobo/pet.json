@@ -1,0 +1,18 @@
+{
+  "id": "bobo",
+  "displayName": "啵啵",
+  "description": "以贡献者自家的虎斑小猫「啵啵」为原型的灰棕色小猫。11 行 v2 图集（9 行动画行 + 2 行视线跟随行）。",
+  "spritesheetPath": "spritesheet.webp",
+  "spriteVersionNumber": 2,
+  "frames": [
+    6,
+    8,
+    8,
+    4,
+    5,
+    8,
+    6,
+    6,
+    6
+  ]
+}

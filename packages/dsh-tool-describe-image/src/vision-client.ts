@@ -129,6 +129,12 @@ export async function loadImage(ctx: Context, input: string, signal: AbortSignal
     const bytes = await readAttachment(ctx, JSON.stringify(registered), signal)
     return finishLoad(bytes, trimmed, maxBytes)
   }
+  // A bare content-addressed attachment id no longer in the registry (host
+  // restart or FIFO eviction) must not fall through to a filesystem stat,
+  // which surfaces a misleading ENOENT for a non-path string.
+  if (/^sha256:[0-9a-f]{64}$/i.test(trimmed)) {
+    throw new Error(ATTACHMENT_REF_GUIDANCE)
+  }
   const info = await stat(trimmed, { bigint: false })
   if (!info.isFile()) throw new Error(`describe-image: image path is not a file: ${trimmed}`)
   if (info.size > maxBytes) {

@@ -351,19 +351,39 @@ export class WallpaperController implements WallpaperHandle {
   }
 
   private ensureLayers(descriptor: WallpaperDescriptor): void {
-    // The stock shell paints an opaque background on the app root, which
-    // fully covers the negative-z wallpaper layers (issue #505). Neutralize
-    // it while a wallpaper is mounted — the same contract the v2 skin CSS
-    // pipeline appends for every skin (`[id="root"] { background:
-    // transparent }`). The id selector outranks the shell's class rule, and
-    // the token itself is left untouched so every other --dsw-alias-bg-base
-    // consumer keeps its color.
+    // The stock shell and the v2 skin pipeline paint opaque backgrounds on
+    // several full-viewport containers (body, the layout frame, the
+    // conversation root, and the details root). Those backgrounds are painted
+    // above the negative-z wallpaper layers and hide them even while the media
+    // element is mounted and playing (#505, #632). Neutralize them while a
+    // wallpaper is mounted. The token itself is left untouched so every other
+    // --dsw-alias-bg-base consumer keeps its color.
     if (this.rootNeutralizer === null) {
       this.rootNeutralizer = document.createElement('style')
       this.rootNeutralizer.dataset.dshWallpaperRoot = ''
-      this.rootNeutralizer.textContent = '[id="root"] { background: transparent; }'
+      // DSH rc.7 wraps the layout frame in an anonymous div below #root, so
+      // the direct-child rule alone is not enough; keep the structural and
+      // current known class selectors in sync with the shell's background
+      // layers.
+      this.rootNeutralizer.textContent = [
+        'body { background: transparent !important; }',
+        '[id="root"] { background: transparent !important; }',
+        '[id="root"] > div { background: transparent !important; }',
+        '[id="root"] > div > div { background: transparent !important; }',
+        '[id="root"] .pI_x6G_frame { background: transparent !important; }',
+        '[id="root"] .wSkVaW_root { background: transparent !important; }',
+        '[id="root"] .ydkMvW_root { background: transparent !important; }',
+        // The composer seat paints a bottom gradient over the wallpaper
+        // (#151, #661); remove it while a wallpaper is mounted so the
+        // backdrop stays visible behind the input area.
+        '[id="root"] [class*="composerSeat"] { background: none !important; }',
+        '[id="root"] [class*="composerSeat"]:before { background: none !important; backdrop-filter: none !important; }',
+      ].join(' ')
       document.head.appendChild(this.rootNeutralizer)
     }
+    // Expose the active wallpaper state to skin CSS via the html attribute so
+    // skin-scoped rules can react to the wallpaper layer (#661).
+    document.documentElement.setAttribute('data-dsh-wallpaper-active', '')
     if (this.mediaLayer === null) {
       this.mediaLayer = document.createElement('div')
       styleLayer(this.mediaLayer, -3)
@@ -493,6 +513,7 @@ export class WallpaperController implements WallpaperHandle {
   }
 
   private teardownLayers(): void {
+    document.documentElement.removeAttribute('data-dsh-wallpaper-active')
     if (this.rootNeutralizer !== null) {
       this.rootNeutralizer.remove()
       this.rootNeutralizer = null

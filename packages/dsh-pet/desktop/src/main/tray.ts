@@ -23,6 +23,10 @@ export class TrayController {
   constructor(
     private readonly windows: WindowManager,
     private readonly disableDesktopPet: () => Promise<unknown>,
+    private readonly quitDesktop: () => Promise<boolean> = async () => {
+      app.quit()
+      return true
+    },
   ) {
     this.tray.setToolTip('DSH Pet Desktop')
     this.tray.on('click', () => windows.toggleVisibility())
@@ -61,10 +65,12 @@ export class TrayController {
     if (this.exiting) return
     this.exiting = true
     this.rebuildMenu()
-    const disabled = await disableDesktopPetAndQuit(this.disableDesktopPet, () => app.quit())
-    if (disabled) return
+    const result = await disableDesktopPetAndQuit(this.disableDesktopPet, this.quitDesktop)
+    if (result === 'quitting') return
     this.exiting = false
     this.rebuildMenu()
-    dialog.showErrorBox('无法退出桌宠', '未能更新 DSH 的桌面宠物开关，请确认 DSH 正在运行后重试。')
+    if (result === 'disable-failed') {
+      dialog.showErrorBox('无法退出桌宠', '未能更新 DSH 的桌面宠物开关，请确认 DSH 正在运行后重试。')
+    }
   }
 }

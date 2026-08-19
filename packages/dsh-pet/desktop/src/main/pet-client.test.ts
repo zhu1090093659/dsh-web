@@ -141,6 +141,24 @@ describe('desktop pet client', () => {
     )
   })
 
+  it('acknowledges one managed source with the actual primary desktop pid', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ ok: true })))
+    const client = new PetClient(fetchImpl, undefined, NATIVE_TOKEN)
+
+    await expect(client.announcePresentationReady(
+      'dsh-pet:web:42:generation',
+      6_300,
+    )).resolves.toBeUndefined()
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://127.0.0.1:3080/api/pet/native/ready',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ authorization: `Bearer ${NATIVE_TOKEN}` }),
+        body: JSON.stringify({ sourceId: 'dsh-pet:web:42:generation', desktopPid: 6_300 }),
+      }),
+    )
+  })
+
   it('keeps the last valid snapshot when Harness is temporarily unavailable', async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(snapshot)))
@@ -150,6 +168,23 @@ describe('desktop pet client', () => {
     await client.refresh()
     await client.refresh()
     expect(client.state()).toMatchObject({ connection: 'unavailable', snapshot: { animation: 'waiting' } })
+  })
+
+  it('reports connection readiness only after the first snapshot parses successfully', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...snapshot, animation: 'invalid' })))
+      .mockResolvedValueOnce(new Response(JSON.stringify(snapshot)))
+    const client = new PetClient(fetchImpl, undefined, NATIVE_TOKEN)
+    let ready = false
+    const firstReady = client.whenReady().then(() => { ready = true })
+
+    await client.refresh()
+    expect(client.state().connection).toBe('unavailable')
+    expect(ready).toBe(false)
+    await client.refresh()
+    await firstReady
+    expect(client.state().connection).toBe('ready')
+    expect(ready).toBe(true)
   })
 
   it('switches future REST requests to a newly configured local origin', async () => {
@@ -181,6 +216,65 @@ describe('desktop pet client', () => {
       }),
     )
     expect(String(fetchImpl.mock.calls[0]?.[0])).not.toContain(nextToken)
+  })
+
+  it('clears a previous Host snapshot when switching connection generations', async () => {
+    const nextToken = 's'.repeat(43)
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(snapshot)))
+    const client = new PetClient(fetchImpl, undefined, NATIVE_TOKEN)
+
+    await client.refresh()
+    expect(client.state().snapshot).toBeDefined()
+    expect(client.setConnection('http://localhost:4080', nextToken)).toEqual({
+      connection: 'connecting',
+      snapshot: null,
+    })
+  })
+
+  it('updates an explicit Host without changing the active connection', async () => {
+    const otherToken = 'u'.repeat(43)
+    const companion = {
+      enabled: false,
+      visible: true,
+      alwaysOnTop: true,
+      locked: false,
+      scale: 1,
+    }
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ ok: true, companion })))
+    const client = new PetClient(fetchImpl, 'http://127.0.0.1:3080', NATIVE_TOKEN)
+
+    await expect(client.setCompanionSettingsForConnection(
+      'http://localhost:4080/',
+      otherToken,
+      { enabled: false },
+    )).resolves.toEqual(companion)
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://localhost:4080/api/pet/native/surface-settings',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ authorization: `Bearer ${otherToken}` }),
+      }),
+    )
+    expect(client.originUrl()).toBe('http://127.0.0.1:3080')
+  })
+
+  it('verifies a rotated Host with its explicit origin and token', async () => {
+    const nextToken = 't'.repeat(43)
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(snapshot)))
+    const client = new PetClient(fetchImpl, 'http://127.0.0.1:3080', NATIVE_TOKEN)
+
+    await expect(client.verifyConnection('http://localhost:4080/', nextToken))
+      .resolves.toMatchObject({ animation: 'waiting' })
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://localhost:4080/api/pet/native/state',
+      expect.objectContaining({
+        headers: {
+          accept: 'application/json',
+          authorization: `Bearer ${nextToken}`,
+        },
+      }),
+    )
+    expect(client.originUrl()).toBe('http://127.0.0.1:3080')
   })
 
   it('starts a new-generation refresh immediately and ignores a stale host response', async () => {

@@ -16,13 +16,14 @@ let server: Server
 let port: number
 let token: string
 let service: PetService
+const nativeReady = vi.fn(() => true)
 
 beforeAll(async () => {
   context = new Context()
   directory = mkdtempSync(join(tmpdir(), 'dsh-pet-native-routes-'))
   service = new PetService(context, { persistDir: directory })
   token = createPetNativeToken()
-  const routes = makePetRoutes({ service, nativeToken: token })
+  const routes = makePetRoutes({ service, nativeToken: token, onNativeReady: nativeReady })
   server = createServer((request, response) => {
     const pathname = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
     const route = routes.find(candidate => candidate.kind === 'exact' && candidate.path === pathname)
@@ -148,6 +149,42 @@ describe('native pet routes', () => {
     } finally {
       update.mockRestore()
     }
+  })
+
+  it('accepts only an authenticated generation-scoped desktop readiness acknowledgement', async () => {
+    nativeReady.mockClear()
+    const accepted = await fetch(url(`${PET_NATIVE_API_PREFIX}/ready`), {
+      method: 'POST',
+      headers: { ...authorization(), 'content-type': 'application/json' },
+      body: JSON.stringify({ sourceId: 'dsh-pet:web:42:generation', desktopPid: 6_200 }),
+    })
+    expect(accepted.status).toBe(200)
+    expect(nativeReady).toHaveBeenCalledWith({
+      sourceId: 'dsh-pet:web:42:generation',
+      desktopPid: 6_200,
+    })
+
+    for (const body of [
+      { sourceId: '', desktopPid: 6_200 },
+      { sourceId: 'valid', desktopPid: 0 },
+      { sourceId: 'valid', desktopPid: 1.5 },
+      { sourceId: 'valid', desktopPid: 6_200, extra: true },
+    ]) {
+      const rejected = await fetch(url(`${PET_NATIVE_API_PREFIX}/ready`), {
+        method: 'POST',
+        headers: { ...authorization(), 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      expect(rejected.status).toBe(400)
+    }
+    expect(nativeReady).toHaveBeenCalledOnce()
+
+    const unauthenticated = await fetch(url(`${PET_NATIVE_API_PREFIX}/ready`), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sourceId: 'valid', desktopPid: 6_200 }),
+    })
+    expect(unauthenticated.status).toBe(401)
   })
 
   it('pushes the initial snapshot and later state changes over authenticated SSE', async () => {

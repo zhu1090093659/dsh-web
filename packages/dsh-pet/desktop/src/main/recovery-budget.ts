@@ -14,3 +14,14 @@ export class RecoveryBudget {
     return true
   }
 }
+
+/** Consume one recovery slot or synchronously report an unrecoverable loop. */
+export function requestRecovery(
+  budget: RecoveryBudget,
+  onUnrecoverable: () => void,
+  now = Date.now(),
+): boolean {
+  if (budget.allow(now)) return true
+  onUnrecoverable()
+  return false
+}

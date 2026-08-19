@@ -36,6 +36,10 @@ export interface PetPresentationAdapter {
   hide(): Promise<void>
   update(snapshot: unknown): void
   stop(reason?: string): Promise<void>
+  /** Synchronously interrupt a pending `start()` when policy changes. */
+  cancelStart?(reason?: string): void
+  /** Report a failure after `start()` completed; explicit `stop()` is silent. */
+  onTerminated?(listener: (reason: string) => void): () => void
 }
 
 export interface PetPresentationControllerOptions {
@@ -59,6 +63,9 @@ export class PetPresentationController {
   private readonly now: () => number
   private currentAdapter: PetPresentationAdapter | undefined
   private currentKey: string | undefined
+  private unsubscribeTermination: (() => void) | undefined
+  private pendingAdapter: PetPresentationAdapter | undefined
+  private pendingRevision: number | undefined
   private currentState: PetPresentationState = {
     mode: 'auto',
     resolved: 'none',
@@ -100,6 +107,7 @@ export class PetPresentationController {
   ): Promise<void> {
     if (this.disposed) return Promise.resolve()
     const revision = ++this.revision
+    this.cancelPendingStart('stale-reconcile')
     const resolution = resolvePetPresentation(settings, environment)
     const next = this.queue.then(async () => {
       if (revision !== this.revision || this.disposed) return
@@ -121,10 +129,12 @@ export class PetPresentationController {
     if (this.disposed) return this.queue
     this.disposed = true
     this.revision += 1
+    this.cancelPendingStart('controller-disposed')
     await this.queue
     const adapter = this.currentAdapter
     this.currentAdapter = undefined
     this.currentKey = undefined
+    this.clearTerminationSubscription()
     if (adapter !== undefined) await adapter.stop('controller-disposed').catch(() => undefined)
     this.listeners.clear()
   }
@@ -150,7 +160,9 @@ export class PetPresentationController {
         const failed = this.currentAdapter
         this.currentAdapter = undefined
         this.currentKey = undefined
+        this.clearTerminationSubscription()
         await failed.stop('visibility-failed').catch(() => undefined)
+        if (revision !== this.revision || this.disposed) return
         this.retryAfter.set(key, this.now() + this.retryDelayMs)
         this.publishFailure(baseState, context.returnTarget)
       }
@@ -160,6 +172,7 @@ export class PetPresentationController {
     const previous = this.currentAdapter
     this.currentAdapter = undefined
     this.currentKey = undefined
+    this.clearTerminationSubscription()
     if (previous !== undefined) await previous.stop('presentation-switched').catch(() => undefined)
     if (revision !== this.revision || this.disposed) return
 
@@ -191,26 +204,49 @@ export class PetPresentationController {
         returnTarget: context.returnTarget,
       })
     }
+    let terminatedReason: string | undefined
+    const unsubscribeTermination = adapter.onTerminated?.((reason) => {
+      terminatedReason = reason
+      this.handleUnexpectedTermination(adapter, key, baseState, context.returnTarget)
+    })
+    this.pendingAdapter = adapter
+    this.pendingRevision = revision
     try {
       await adapter.start(context)
+      if (this.pendingAdapter === adapter && this.pendingRevision === revision) {
+        this.pendingAdapter = undefined
+        this.pendingRevision = undefined
+      }
+      if (terminatedReason !== undefined) throw new Error(terminatedReason)
       if (revision !== this.revision || this.disposed) {
+        unsubscribeTermination?.()
         await adapter.stop('stale-reconcile').catch(() => undefined)
         return
       }
       if (visible) await adapter.show()
       else await adapter.hide()
+      if (terminatedReason !== undefined) throw new Error(terminatedReason)
       if (revision !== this.revision || this.disposed) {
+        unsubscribeTermination?.()
         await adapter.stop('stale-reconcile').catch(() => undefined)
         return
       }
       this.retryAfter.delete(key)
       this.currentAdapter = adapter
       this.currentKey = key
+      this.unsubscribeTermination = unsubscribeTermination
       this.publish(this.withAdapterState(baseState, adapter, context.returnTarget))
     } catch {
+      unsubscribeTermination?.()
       await adapter.stop('start-failed').catch(() => undefined)
+      if (revision !== this.revision || this.disposed) return
       this.retryAfter.set(key, this.now() + this.retryDelayMs)
       this.publishFailure(baseState, context.returnTarget)
+    } finally {
+      if (this.pendingAdapter === adapter && this.pendingRevision === revision) {
+        this.pendingAdapter = undefined
+        this.pendingRevision = undefined
+      }
     }
   }
 
@@ -235,6 +271,42 @@ export class PetPresentationController {
       errorCode: PET_ERROR_CODES.presentationStartFailed,
       returnTarget,
     })
+  }
+
+  private handleUnexpectedTermination(
+    adapter: PetPresentationAdapter,
+    key: string,
+    state: PetPresentationState,
+    returnTarget: PetReturnTarget,
+  ): void {
+    const next = this.queue.then(async () => {
+      if (this.disposed || this.currentAdapter !== adapter || this.currentKey !== key) return
+      this.currentAdapter = undefined
+      this.currentKey = undefined
+      this.clearTerminationSubscription()
+      await adapter.stop('unexpected-termination').catch(() => undefined)
+      this.retryAfter.set(key, this.now() + this.retryDelayMs)
+      this.publishFailure(state, returnTarget)
+    })
+    this.queue = next.catch(() => undefined)
+  }
+
+  private clearTerminationSubscription(): void {
+    this.unsubscribeTermination?.()
+    this.unsubscribeTermination = undefined
+  }
+
+  private cancelPendingStart(reason: string): void {
+    const adapter = this.pendingAdapter
+    this.pendingAdapter = undefined
+    this.pendingRevision = undefined
+    if (adapter === undefined) return
+    try {
+      adapter.cancelStart?.(reason)
+    } catch {
+      // The queued start path still owns final cleanup and stale-revision
+      // suppression; cancellation must remain synchronous and best-effort.
+    }
   }
 
   private publish(state: PetPresentationState): void {

@@ -199,6 +199,30 @@ describe('Standalone launcher', () => {
     handle.dispose()
   })
 
+  it('reports the spawned pid and exit without interpreting a normal proxy exit as failure', async () => {
+    const root = await temporaryRoot()
+    const moduleUrl = await pluginModule(root)
+    const executable = await file(join(root, 'dsh-pet-standalone.exe'))
+    const child = fakeChild()
+    Object.defineProperty(child, 'pid', { value: 6_100 })
+    const handle = launchStandaloneRuntime({
+      moduleUrl,
+      origin: 'http://127.0.0.1:3080',
+      nativeToken: token,
+      parentPid: 4_200,
+      sourceId: 'web:exit-fact',
+      environment: { DSH_PET_STANDALONE_EXECUTABLE: executable },
+      spawnProcess: () => child,
+    })
+
+    child.emit('spawn')
+    await expect(handle.ready).resolves.toBeUndefined()
+    expect(handle.pid).toBe(6_100)
+    child.emit('exit', 0, null)
+    await expect(handle.exited).resolves.toEqual({ code: 0, signal: null })
+    handle.dispose()
+  })
+
   it('prefixes appRoot only for an Electron app target', () => {
     const target = {
       executablePath: 'electron.exe',

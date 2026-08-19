@@ -6,6 +6,7 @@ import { PetModelCatalog } from '../../../src/models/catalog.ts'
 import { petModelRoot } from '../../../src/models/store.ts'
 import { codexPetsDir } from '../../../src/registry.ts'
 import { installDesktopIpc } from './ipc.ts'
+import { disableManagedDesktopPets } from './managed-disable.ts'
 import {
   managedParentAction,
   managedParentActionFromData,
@@ -19,11 +20,18 @@ import {
   managedParentSourceId,
   managedParentSourceIdFromData,
   processIsAlive,
+  shouldShowForSecondaryInstance,
   type ManagedParentAction,
 } from './managed-parent.ts'
+import { createManagedQuitGate, quitSingleInstance } from './managed-quit.ts'
 import { PetClient } from './pet-client.ts'
 import { installDesktopRecoveryEvents } from './lifecycle-recovery.ts'
 import { PetModelProtocol, registerPetModelScheme } from './model-protocol.ts'
+import {
+  startReadyAcknowledgementRetry,
+  type ReadyAcknowledgementRetry,
+  verifyAndAcknowledgeManagedConnection,
+} from './ready-ack-retry.ts'
 import { TrayController } from './tray.ts'
 import { WindowManager } from './window-manager.ts'
 
@@ -43,6 +51,14 @@ interface ManagedConnection {
 const managedParents = new Map<string, ManagedConnection>()
 let activeManagedOrigin: string | undefined
 let activeManagedNativeToken: string | undefined
+let desktopInitialized = false
+const readyAcknowledgements = new Map<string, ReadyAcknowledgementRetry>()
+const quitDesktop = (): void => { quitSingleInstance(app) }
+const managedQuit = createManagedQuitGate(
+  quitDesktop,
+  250,
+  () => managedParents.size === 0,
+)
 
 registerPetModelScheme()
 
@@ -59,6 +75,43 @@ function applyManagedConnection(connection: ManagedConnection): void {
   }
 }
 
+function acknowledgeManagedConnection(connection: ManagedConnection): void {
+  if (!desktopInitialized
+    || pet === undefined
+    || connection.sourceId === undefined
+    || connection.origin === undefined
+    || connection.nativeToken === undefined) return
+  const key = managedParentRegistrationKey(connection.pid, connection.sourceId)
+  if (readyAcknowledgements.has(key)) return
+  const client = pet
+  const isCurrent = (): boolean => desktopInitialized
+    && pet === client
+    && managedParents.get(key) === connection
+  let retry!: ReadyAcknowledgementRetry
+  retry = startReadyAcknowledgementRetry(
+    () => verifyAndAcknowledgeManagedConnection(
+      client,
+      {
+        sourceId: connection.sourceId!,
+        origin: connection.origin!,
+        nativeToken: connection.nativeToken!,
+      },
+      process.pid,
+      isCurrent,
+    ),
+    isCurrent,
+    () => {
+      if (readyAcknowledgements.get(key) === retry) readyAcknowledgements.delete(key)
+    },
+  )
+  readyAcknowledgements.set(key, retry)
+}
+
+function clearReadyAcknowledgement(key: string): void {
+  readyAcknowledgements.get(key)?.dispose()
+  readyAcknowledgements.delete(key)
+}
+
 function latestManagedConnection(): ManagedConnection {
   return [...managedParents.values()].at(-1) ?? { pid: process.pid }
 }
@@ -69,6 +122,7 @@ function addManagedParent(
   origin: string | undefined,
   nativeToken: string | undefined,
 ): void {
+  managedQuit.cancel()
   const connection: ManagedConnection = {
     pid: pid ?? process.pid,
     ...(sourceId === undefined ? {} : { sourceId }),
@@ -80,18 +134,21 @@ function addManagedParent(
     return
   }
   const key = managedParentRegistrationKey(pid, sourceId)
+  clearReadyAcknowledgement(key)
   managedParents.delete(key)
   managedParents.set(key, connection)
   applyManagedConnection(connection)
+  acknowledgeManagedConnection(connection)
   if (parentTimer !== undefined) return
   parentTimer = setInterval(() => {
     let changed = false
     for (const [key, candidate] of managedParents) {
       if (processIsAlive(candidate.pid)) continue
       managedParents.delete(key)
+      clearReadyAcknowledgement(key)
       changed = true
     }
-    if (managedParents.size === 0) app.quit()
+    if (managedParents.size === 0) managedQuit.schedule()
     else if (changed) applyManagedConnection(latestManagedConnection())
   }, 750)
   parentTimer.unref?.()
@@ -109,8 +166,10 @@ function updateManagedParent(
     addManagedParent(pid, sourceId, origin, nativeToken)
     return
   }
-  managedParents.delete(managedParentRegistrationKey(pid, sourceId))
-  if (managedParents.size === 0) app.quit()
+  const key = managedParentRegistrationKey(pid, sourceId)
+  managedParents.delete(key)
+  clearReadyAcknowledgement(key)
+  if (managedParents.size === 0) managedQuit.schedule()
   else applyManagedConnection(latestManagedConnection())
 }
 
@@ -155,7 +214,12 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock(
       },
 )
 const shouldStart = hasSingleInstanceLock && initialParentAction === 'add'
-if (!shouldStart) app.quit()
+if (!shouldStart) {
+  // A remove-only helper that became the primary must not hold the lock while
+  // quitting; a rapid re-enable can immediately become the real first instance.
+  if (hasSingleInstanceLock) quitDesktop()
+  else app.quit()
+}
 else addManagedParent(initialParentPid, initialSourceId, initialOrigin, environmentNativeToken)
 
 app.on('second-instance', (_event, commandLine, _workingDirectory, additionalData) => {
@@ -165,14 +229,15 @@ app.on('second-instance', (_event, commandLine, _workingDirectory, additionalDat
   const origin = managedParentOriginFromData(additionalData) ?? managedParentOrigin(commandLine)
   const sourceId = managedParentSourceIdFromData(additionalData) ?? managedParentSourceId(commandLine)
   const nativeToken = managedParentNativeTokenFromData(additionalData)
+  const parentPid = managedParentFromData(additionalData) ?? parentFromArguments(commandLine)
   updateManagedParent(
-    managedParentFromData(additionalData) ?? parentFromArguments(commandLine),
+    parentPid,
     sourceId,
     action,
     origin,
     nativeToken,
   )
-  if (action === 'add') windows?.show()
+  if (shouldShowForSecondaryInstance(action, parentPid)) windows?.show()
 })
 app.on('activate', () => windows?.show())
 app.on('window-all-closed', () => {
@@ -180,6 +245,9 @@ app.on('window-all-closed', () => {
 })
 app.on('before-quit', () => windows?.setQuitting())
 app.on('will-quit', () => {
+  managedQuit.dispose()
+  desktopInitialized = false
+  for (const key of readyAcknowledgements.keys()) clearReadyAcknowledgement(key)
   if (parentTimer !== undefined) clearInterval(parentTimer)
   parentTimer = undefined
   removeIpc?.()
@@ -223,13 +291,15 @@ if (shouldStart) {
         // Keep the local preference while Harness is restarting; the next
         // successful Host snapshot will reconcile the shared settings.
       })
-    })
+    }, undefined, () => { app.exit(1) })
     windows.create()
-    removeIpc = installDesktopIpc(windows, petClient, models)
+    const disableDesktopPet = () => disableManagedDesktopPets(petClient, managedParents.values())
+    removeIpc = installDesktopIpc(windows, petClient, models, () => managedQuit.schedule(), disableDesktopPet)
     petClient.start()
     tray = new TrayController(
       windows,
-      () => petClient.setCompanionSettings({ enabled: false }),
+      disableDesktopPet,
+      () => managedQuit.schedule(),
     )
     removeRecoveryEvents = installDesktopRecoveryEvents(app, powerMonitor, {
       onResume: () => {
@@ -238,5 +308,16 @@ if (shouldStart) {
       },
       onGpuProcessGone: () => { windows?.recoverRenderer() },
     })
+    await Promise.all([
+      windows.whenRendererReady(),
+      petClient.whenReady(),
+    ])
+    desktopInitialized = true
+    for (const connection of managedParents.values()) acknowledgeManagedConnection(connection)
+  }).catch(() => {
+    // Never leave a spawned-but-uninitialized process looking healthy to the
+    // Host. Without a ready acknowledgement the generation times out; this
+    // explicit exit also gives a matching first-instance launcher an exit fact.
+    app.exit(1)
   })
 }

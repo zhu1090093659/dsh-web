@@ -35,6 +35,14 @@ export function managedParentActionFromData(value: unknown): ManagedParentAction
   return Reflect.get(value, 'dshParentAction') === 'remove' ? 'remove' : 'add'
 }
 
+/** Only an unmanaged second launch is an explicit request to reveal the window. */
+export function shouldShowForSecondaryInstance(
+  action: ManagedParentAction,
+  parentPid: number | undefined,
+): boolean {
+  return action === 'add' && parentPid === undefined
+}
+
 /** Identify one plugin source independently from its shared Host process. */
 export function managedParentSourceId(arguments_: readonly string[]): string | undefined {
   for (const argument of arguments_) {

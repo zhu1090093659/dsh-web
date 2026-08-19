@@ -256,6 +256,23 @@ const DESKTOP_SETTINGS_KEYS = new Set<keyof PetDesktopSettings>([
   'locked',
   'scale',
 ])
+const NATIVE_SOURCE_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/
+
+export interface PetNativeReadyAck {
+  sourceId: string
+  desktopPid: number
+}
+
+function parseNativeReadyAck(body: Record<string, unknown>): PetNativeReadyAck | undefined {
+  if (Object.keys(body).some(key => key !== 'sourceId' && key !== 'desktopPid')) return undefined
+  const { sourceId, desktopPid } = body
+  if (typeof sourceId !== 'string' || !NATIVE_SOURCE_ID_PATTERN.test(sourceId)) return undefined
+  if (typeof desktopPid !== 'number'
+    || !Number.isSafeInteger(desktopPid)
+    || desktopPid <= 0
+    || desktopPid > 0x7fff_ffff) return undefined
+  return { sourceId, desktopPid }
+}
 
 /** Strictly parse the native surface patch before it reaches Host settings. */
 function parseDesktopSettingsPatch(body: Record<string, unknown>): Partial<PetDesktopSettings> | undefined {
@@ -453,8 +470,12 @@ function assetHandler(registry: PetRegistry): WebRoute['handler'] {
 }
 
 /** Build the full route family (browser API, optional native bridge, and assets). */
-export function makePetRoutes(deps: { service: PetService; nativeToken?: string }): WebRoute[] {
-  const { service, nativeToken } = deps
+export function makePetRoutes(deps: {
+  service: PetService
+  nativeToken?: string
+  onNativeReady?: (ack: PetNativeReadyAck) => boolean
+}): WebRoute[] {
+  const { service, nativeToken, onNativeReady } = deps
   if (nativeToken !== undefined && !isPetNativeToken(nativeToken)) {
     throw new TypeError('invalid pet native token')
   }
@@ -513,6 +534,14 @@ export function makePetRoutes(deps: { service: PetService; nativeToken?: string 
           if (patch === undefined) return Promise.reject(new Error('invalid-desktop-settings'))
           return service.setDesktopSettings(patch)
         }, nativeGuard),
+        ...(onNativeReady === undefined
+          ? []
+          : [postRoute(`${PET_NATIVE_API_PREFIX}/ready`, async (body) => {
+              const ack = parseNativeReadyAck(body)
+              if (ack === undefined) throw new Error('invalid-native-ready')
+              if (!onNativeReady(ack)) throw new Error('unknown-native-ready-source')
+              return { ok: true }
+            }, nativeGuard)]),
       ]
 
   return [...apiRoutes, ...nativeRoutes, assetRoute]

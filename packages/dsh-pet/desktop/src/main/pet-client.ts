@@ -22,6 +22,7 @@ const POLL_INTERVAL_MS = 800
 const REQUEST_TIMEOUT_MS = 2_500
 const STREAM_RETRY_MS = 5_000
 const MAX_EVENT_BUFFER = 64 * 1024
+const NATIVE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/
 
 type PetStateListener = (state: PetBridgeState) => void
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
@@ -304,6 +305,23 @@ export class PetClient {
     return this.current
   }
 
+  /** Resolve after the first successfully parsed Host snapshot. */
+  whenReady(): Promise<void> {
+    if (this.current.connection === 'ready') return Promise.resolve()
+    return new Promise((resolve) => {
+      let unsubscribe = (): void => undefined
+      const finish = (state: PetBridgeState): void => {
+        if (state.connection !== 'ready') return
+        unsubscribe()
+        resolve()
+      }
+      unsubscribe = this.subscribe(finish)
+      // Close the state/subscribe race without resolving on a mere HTTP 200:
+      // `ready` is assigned only after parsePetSnapshot succeeds.
+      finish(this.current)
+    })
+  }
+
   start(): void {
     if (this.running) return
     this.running = true
@@ -357,11 +375,14 @@ export class PetClient {
     this.origin = next
     this.nativeToken = nativeToken
     this.connectionGeneration += 1
-    return this.restartConnection()
+    return this.restartConnection(true)
   }
 
-  private restartConnection(): PetBridgeState {
-    this.setState({ connection: 'connecting', snapshot: this.current.snapshot })
+  private restartConnection(clearSnapshot = false): PetBridgeState {
+    this.setState({
+      connection: 'connecting',
+      snapshot: clearSnapshot ? null : this.current.snapshot,
+    })
     if (!this.running) return this.current
     this.stopPolling()
     if (this.reconnectTimer !== undefined) clearTimeout(this.reconnectTimer)
@@ -405,6 +426,73 @@ export class PetClient {
     const result = await this.postJson('/api/pet/native/surface-settings', patch)
     if (!isRecord(result) || result.ok !== true) throw new Error('companion settings were rejected')
     return parseCompanionSettings(result.companion)
+  }
+
+  /** Write settings to one explicit managed Host without switching the active view. */
+  async setCompanionSettingsForConnection(
+    origin: string,
+    nativeToken: string,
+    patch: Partial<DesktopCompanionSettings>,
+  ): Promise<DesktopCompanionSettings> {
+    if (!NATIVE_TOKEN_PATTERN.test(nativeToken)) throw new Error('invalid native token')
+    const result = await this.postJson(
+      '/api/pet/native/surface-settings',
+      patch,
+      normalizeWebDshUrl(origin),
+      nativeToken,
+    )
+    if (!isRecord(result) || result.ok !== true) throw new Error('companion settings were rejected')
+    return parseCompanionSettings(result.companion)
+  }
+
+  /**
+   * Verify one explicit managed Host generation without changing the active
+   * connection or relying on readiness established for an older credential.
+   */
+  async verifyConnection(origin: string, nativeToken: string): Promise<PetSnapshot> {
+    const response = await this.fetchImpl(
+      `${normalizeWebDshUrl(origin)}/api/pet/native/state`,
+      {
+        headers: {
+          accept: 'application/json',
+          ...this.authorizationHeader(nativeToken),
+        },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      },
+    )
+    if (!response.ok) throw new Error(`pet connection verification failed: ${response.status}`)
+    return parsePetSnapshot(await response.json())
+  }
+
+  /**
+   * Confirm that the primary Electron instance finished initialization for one
+   * managed Host registration. An existing primary may acknowledge a source
+   * whose short-lived launcher process has already exited.
+   */
+  async announcePresentationReady(
+    sourceId: string,
+    desktopPid: number,
+    origin: string = this.origin,
+    nativeToken: string | undefined = this.nativeToken,
+  ): Promise<void> {
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(sourceId)
+      || !Number.isSafeInteger(desktopPid)
+      || desktopPid <= 0
+      || desktopPid > 0x7fff_ffff
+      || nativeToken === undefined) throw new Error('invalid presentation readiness')
+    const response = await this.fetchImpl(`${normalizeWebDshUrl(origin)}/api/pet/native/ready`, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        ...this.authorizationHeader(nativeToken),
+      },
+      body: JSON.stringify({ sourceId, desktopPid }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+    if (!response.ok) throw new Error(`pet ready acknowledgement failed: ${response.status}`)
+    const result = await response.json() as unknown
+    if (!isRecord(result) || result.ok !== true) throw new Error('pet ready acknowledgement was rejected')
   }
 
   private async connectEventStream(): Promise<void> {
@@ -484,13 +572,18 @@ export class PetClient {
     return response.json()
   }
 
-  private async postJson(path: string, body: unknown): Promise<unknown> {
-    const response = await this.fetchImpl(`${this.origin}${path}`, {
+  private async postJson(
+    path: string,
+    body: unknown,
+    origin: string = this.origin,
+    nativeToken: string | undefined = this.nativeToken,
+  ): Promise<unknown> {
+    const response = await this.fetchImpl(`${origin}${path}`, {
       method: 'POST',
       headers: {
         accept: 'application/json',
         'content-type': 'application/json',
-        ...this.authorizationHeader(),
+        ...this.authorizationHeader(nativeToken),
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -499,10 +592,10 @@ export class PetClient {
     return response.json()
   }
 
-  private authorizationHeader(): Record<string, string> {
-    return this.nativeToken === undefined
+  private authorizationHeader(nativeToken: string | undefined = this.nativeToken): Record<string, string> {
+    return nativeToken === undefined
       ? {}
-      : { authorization: `Bearer ${this.nativeToken}` }
+      : { authorization: `Bearer ${nativeToken}` }
   }
 
   private setState(state: PetBridgeState): void {

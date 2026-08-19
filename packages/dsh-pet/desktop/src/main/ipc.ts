@@ -1,4 +1,4 @@
-import { app, dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron'
+import { dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron'
 
 import { DESKTOP_CHANNELS } from '../shared/desktop-api.ts'
 import {
@@ -19,7 +19,13 @@ function requirePetRenderer(event: IpcMainInvokeEvent, windows: WindowManager): 
   if (!windows.ownsWebContents(event.sender.id)) throw new Error('untrusted renderer')
 }
 
-export function installDesktopIpc(windows: WindowManager, pet: PetClient, models: PetModelProtocol): () => void {
+export function installDesktopIpc(
+  windows: WindowManager,
+  pet: PetClient,
+  models: PetModelProtocol,
+  requestQuit: () => Promise<boolean>,
+  disableDesktopPet: () => Promise<unknown> = () => pet.setCompanionSettings({ enabled: false }),
+): () => void {
   ipcMain.handle(DESKTOP_CHANNELS.getState, event => {
     requirePetRenderer(event, windows)
     return windows.state()
@@ -46,8 +52,8 @@ export function installDesktopIpc(windows: WindowManager, pet: PetClient, models
   })
   ipcMain.handle(DESKTOP_CHANNELS.disablePlugin, async event => {
     requirePetRenderer(event, windows)
-    const companion = await pet.setCompanionSettings({ enabled: false })
-    if (!companion.enabled) setTimeout(() => app.quit(), 50).unref?.()
+    await disableDesktopPet()
+    setTimeout(() => { void requestQuit() }, 50).unref?.()
   })
   ipcMain.handle(DESKTOP_CHANNELS.setWebDshUrl, (event, value: unknown) => {
     requirePetRenderer(event, windows)
@@ -141,7 +147,7 @@ export function installDesktopIpc(windows: WindowManager, pet: PetClient, models
   })
   const unsubscribePet = pet.subscribe((state) => {
     if (state.snapshot?.companion !== undefined) {
-      if (!state.snapshot.companion.enabled) app.quit()
+      if (!state.snapshot.companion.enabled) void requestQuit()
       else windows.applyCompanionSettings({
         visible: state.snapshot.companion.visible,
         alwaysOnTop: state.snapshot.companion.alwaysOnTop,

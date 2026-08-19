@@ -12,6 +12,7 @@ import {
   managedParentRegistrationKey,
   managedParentSourceId,
   managedParentSourceIdFromData,
+  shouldShowForSecondaryInstance,
 } from './managed-parent.ts'
 
 describe('managed desktop parent argument', () => {
@@ -36,6 +37,12 @@ describe('managed desktop parent argument', () => {
     expect(managedParentAction(['--dsh-parent-action=unknown'])).toBe('add')
     expect(managedParentActionFromData({ dshParentAction: 'remove' })).toBe('remove')
     expect(managedParentActionFromData({ dshParentAction: 'unknown' })).toBe('add')
+  })
+
+  it('reveals the window only for an unmanaged secondary launch', () => {
+    expect(shouldShowForSecondaryInstance('add', undefined)).toBe(true)
+    expect(shouldShowForSecondaryInstance('add', 4200)).toBe(false)
+    expect(shouldShowForSecondaryInstance('remove', undefined)).toBe(false)
   })
 
   it('keeps multiple plugin sources in one Host process distinct', () => {

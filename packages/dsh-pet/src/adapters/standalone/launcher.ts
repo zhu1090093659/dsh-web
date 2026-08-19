@@ -42,8 +42,22 @@ export interface LaunchStandaloneRuntimeOptions extends DiscoverStandaloneRuntim
 export interface StandaloneRuntimeLaunchHandle {
   /** Resolves on ChildProcess `spawn`; rejects when Node reports an asynchronous spawn error. */
   readonly ready: Promise<void>
+  /** PID of the process passed to `spawn`, when Node assigned one. */
+  readonly pid?: number
+  /**
+   * Process termination as an uninterpreted launcher fact. A successfully
+   * spawned secondary Electron instance may exit normally after forwarding a
+   * registration to the existing primary instance, so callers must not treat
+   * this promise alone as a presentation failure.
+   */
+  readonly exited?: Promise<StandaloneRuntimeExit>
   /** Remove this parent registration. Idempotent. */
   dispose(): void
+}
+
+export interface StandaloneRuntimeExit {
+  code: number | null
+  signal: NodeJS.Signals | null
 }
 
 interface StandalonePackageJson {
@@ -285,6 +299,9 @@ export function launchStandaloneRuntime(options: LaunchStandaloneRuntimeOptions)
       }
     })
   })
+  const exited = new Promise<StandaloneRuntimeExit>((resolve) => {
+    child.once('exit', (code, signal) => { resolve({ code, signal }) })
+  })
   child.unref()
 
   let disposed = false
@@ -323,5 +340,10 @@ export function launchStandaloneRuntime(options: LaunchStandaloneRuntimeOptions)
       // The Standalone parent-liveness watcher is the final cleanup path.
     }
   }
-  return { ready, dispose }
+  return {
+    ready,
+    ...(child.pid === undefined ? {} : { pid: child.pid }),
+    exited,
+    dispose,
+  }
 }

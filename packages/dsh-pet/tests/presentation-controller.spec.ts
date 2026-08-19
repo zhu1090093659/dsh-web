@@ -107,10 +107,18 @@ function fakeAdapter(kind: PetPresentationAdapter['kind']): PetPresentationAdapt
 }
 
 describe('presentation controller and desktop host contract', () => {
-  it('starts one Standalone adapter for repeated reconciliation and disposes it once', async () => {
+  it('preserves the legacy spawn-ready Standalone contract without PID monitoring', async () => {
     const disposeProcess = vi.fn()
-    const launch = vi.fn(() => ({ ready: Promise.resolve(), dispose: disposeProcess }))
-    const adapter = new StandalonePetHost({ launch })
+    const isProcessAlive = vi.fn(() => false)
+    const launch = vi.fn(() => ({
+      ready: Promise.resolve(),
+      dispose: disposeProcess,
+    }))
+    const adapter = new StandalonePetHost({
+      launch,
+      isProcessAlive,
+      livenessIntervalMs: 1,
+    })
     const controller = new PetPresentationController({
       createAdapter: resolution => resolution.kind === 'standalone' ? adapter : new NullPresentation(),
       createContext: context,
@@ -128,6 +136,34 @@ describe('presentation controller and desktop host contract', () => {
     })
     await controller.dispose()
     expect(disposeProcess).toHaveBeenCalledOnce()
+    expect(isProcessAlive).not.toHaveBeenCalled()
+  })
+
+  it('isolates standalone termination listeners from one another', async () => {
+    let exit!: (value: { code: number | null; signal: NodeJS.Signals | null }) => void
+    const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => {
+      exit = resolve
+    })
+    const adapter = new StandalonePetHost({
+      launch: () => ({ ready: Promise.resolve(), pid: 5_200, exited, dispose: vi.fn() }),
+      waitForReady: () => ({
+        ready: Promise.resolve({ sourceId: 'test:listeners', desktopPid: 5_200 }),
+        dispose: vi.fn(),
+      }),
+      isProcessAlive: () => true,
+    })
+    const surviving = vi.fn()
+    adapter.onTerminated(() => { throw new Error('diagnostic listener failed') })
+    adapter.onTerminated(surviving)
+
+    await adapter.start(context(
+      settings(),
+      { kind: 'standalone', reason: 'auto-standalone', hostId: 'standalone' },
+      true,
+    ))
+    exit({ code: 1, signal: null })
+    await vi.waitFor(() => expect(surviving).toHaveBeenCalledOnce())
+    await adapter.stop()
   })
 
   it('uses NullPresentation in a headless environment without starting Standalone', async () => {
@@ -173,6 +209,117 @@ describe('presentation controller and desktop host contract', () => {
     now = 1_500
     await controller.reconcile(settings(), environment())
     expect(failing.start).toHaveBeenCalledTimes(2)
+    await controller.dispose()
+  })
+
+  it('turns an active adapter termination into a serialized failed state', async () => {
+    let terminate: ((reason: string) => void) | undefined
+    const adapter: PetPresentationAdapter = {
+      ...fakeAdapter('standalone'),
+      onTerminated: (listener) => {
+        terminate = listener
+        return () => { terminate = undefined }
+      },
+    }
+    const controller = new PetPresentationController({
+      createAdapter: () => adapter,
+      createContext: context,
+      retryDelayMs: 10,
+    })
+
+    await controller.reconcile(settings(), environment())
+    expect(controller.state()).toMatchObject({ phase: 'ready' })
+    terminate?.('desktop-exited')
+    await vi.waitFor(() => {
+      expect(controller.state()).toMatchObject({
+        phase: 'failed',
+        errorCode: 'PRESENTATION_START_FAILED',
+      })
+    })
+    expect(adapter.stop).toHaveBeenCalledOnce()
+    await controller.dispose()
+  })
+
+  it('cancels a pending start immediately and never publishes its stale failure', async () => {
+    let rejectStart!: (error: Error) => void
+    const starting = {
+      ...fakeAdapter('standalone'),
+      start: vi.fn(() => new Promise<void>((_resolve, reject) => { rejectStart = reject })),
+      cancelStart: vi.fn(() => { rejectStart(new Error('cancelled')) }),
+    }
+    const phases: string[] = []
+    const controller = new PetPresentationController({
+      createAdapter: resolution => resolution.kind === 'standalone' ? starting : new NullPresentation(),
+      createContext: context,
+    })
+    controller.subscribe(state => { phases.push(state.phase) })
+
+    const pending = controller.reconcile(settings(), environment())
+    await vi.waitFor(() => expect(starting.start).toHaveBeenCalledOnce())
+    const disabled = controller.reconcile(
+      settings({ presentation: { mode: 'none', standaloneAutoStart: false } }),
+      environment(),
+    )
+    await Promise.all([pending, disabled])
+
+    expect(starting.cancelStart).toHaveBeenCalledWith('stale-reconcile')
+    expect(controller.state()).toMatchObject({ phase: 'none', reason: 'configured-none' })
+    expect(phases.at(-1)).toBe('none')
+    expect(phases.slice(phases.lastIndexOf('starting') + 1)).not.toContain('failed')
+    await controller.dispose()
+  })
+
+  it('does not cancel an adapter whose start completed while show is pending', async () => {
+    let finishShow!: () => void
+    const adapter = {
+      ...fakeAdapter('standalone'),
+      show: vi.fn(() => new Promise<void>((resolve) => { finishShow = resolve })),
+      cancelStart: vi.fn(),
+    }
+    const controller = new PetPresentationController({
+      createAdapter: resolution => resolution.kind === 'standalone' ? adapter : new NullPresentation(),
+      createContext: context,
+    })
+
+    const starting = controller.reconcile(settings(), environment())
+    await vi.waitFor(() => expect(adapter.show).toHaveBeenCalledOnce())
+    const disabled = controller.reconcile(
+      settings({ presentation: { mode: 'none', standaloneAutoStart: false } }),
+      environment(),
+    )
+    expect(adapter.cancelStart).not.toHaveBeenCalled()
+    finishShow()
+    await Promise.all([starting, disabled])
+
+    expect(controller.state()).toMatchObject({ phase: 'none', reason: 'configured-none' })
+    await controller.dispose()
+  })
+
+  it('does not publish a stale visibility failure after a newer reconcile', async () => {
+    let rejectHide!: (error: Error) => void
+    const adapter = {
+      ...fakeAdapter('standalone'),
+      hide: vi.fn(() => new Promise<void>((_resolve, reject) => { rejectHide = reject })),
+    }
+    const phases: string[] = []
+    const controller = new PetPresentationController({
+      createAdapter: resolution => resolution.kind === 'standalone' ? adapter : new NullPresentation(),
+      createContext: context,
+    })
+
+    await controller.reconcile(settings(), environment())
+    controller.subscribe(state => { phases.push(state.phase) })
+    const hiding = controller.reconcile(settings(), environment(), false)
+    await vi.waitFor(() => expect(adapter.hide).toHaveBeenCalledOnce())
+    const disabled = controller.reconcile(
+      settings({ presentation: { mode: 'none', standaloneAutoStart: false } }),
+      environment(),
+    )
+    rejectHide(new Error('surface disappeared'))
+    await Promise.all([hiding, disabled])
+
+    expect(phases).not.toContain('failed')
+    expect(controller.state()).toMatchObject({ phase: 'none', reason: 'configured-none' })
     await controller.dispose()
   })
 

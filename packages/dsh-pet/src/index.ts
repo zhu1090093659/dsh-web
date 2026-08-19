@@ -214,7 +214,6 @@ function applyImpl(ctx: Context, config: PetConfig = {}): void {
   ctx.inject(['webServer'], (webCtx) => {
     const nativeToken = createPetNativeToken()
     const bridgeOrigin = `http://127.0.0.1:${String(webCtx.webServer.port)}`
-    const routes = makePetRoutes({ service, nativeToken })
     const controlRoutes = [
       ...makePetSettingsRoutes(service),
       ...makePetRuntimeRoutes(runtime),
@@ -224,12 +223,29 @@ function applyImpl(ctx: Context, config: PetConfig = {}): void {
       return () => { for (const dispose of disposers) dispose() }
     }, 'pet: control routes')
 
+    let retryExhaustionUpdate: Promise<void> | undefined
     const presentation = new PetPresentationIntegration({
       runtime,
       settings: () => current(),
       moduleUrl: import.meta.url,
       bridgeOrigin,
       nativeToken,
+      onRetryExhausted: () => {
+        if (!(current().desktopEnabled ?? false)) return
+        if (retryExhaustionUpdate !== undefined) return retryExhaustionUpdate
+        const update = service.setDesktopSettings({ enabled: false })
+          .then(() => undefined)
+        retryExhaustionUpdate = update
+        void update.finally(() => {
+          if (retryExhaustionUpdate === update) retryExhaustionUpdate = undefined
+        }).catch(() => undefined)
+        return update
+      },
+    })
+    const routes = makePetRoutes({
+      service,
+      nativeToken,
+      onNativeReady: ack => presentation.acknowledgeReady(ack.sourceId, ack.desktopPid),
     })
     let disposeRoutes: (() => void) | undefined
     const sync = (): void => {

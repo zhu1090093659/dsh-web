@@ -16,11 +16,19 @@ import { createDragSession, cursorChanged, dragTargetAt, type DragSession } from
 import { clampWindowPosition, resizedContentBounds } from './window-bounds.ts'
 import { interactionPanelPlacement, petWindowContentSize } from './window-layout.ts'
 import { showPetWindow } from './window-visibility.ts'
-import { RecoveryBudget } from './recovery-budget.ts'
+import { RecoveryBudget, requestRecovery } from './recovery-budget.ts'
+import { watchRendererReload, type RendererReloadWatchdog } from './renderer-recovery.ts'
 const EDGE_MARGIN = 24
 const DRAG_POLL_MS = 16
+const RENDERER_RELOAD_DELAY_MS = 50
+const RENDERER_RELOAD_TIMEOUT_MS = 15_000
 
 type StateListener = (state: DesktopState) => void
+
+interface RendererRecoveryAttempt {
+  generation: number
+  watchdog?: RendererReloadWatchdog
+}
 
 export class WindowManager {
   private window: BrowserWindow | undefined
@@ -31,6 +39,9 @@ export class WindowManager {
   private dragTimer: NodeJS.Timeout | undefined
   private dragSession: DragSession | undefined
   private rendererReloadTimer: NodeJS.Timeout | undefined
+  private rendererRecovery: RendererRecoveryAttempt | undefined
+  private rendererRecoveryGeneration = 0
+  private rendererReady: Promise<void> | undefined
   private readonly rendererRecoveryBudget = new RecoveryBudget(1, 60_000)
   private readonly listeners = new Set<StateListener>()
   private returnTarget: DesktopReturnTarget
@@ -40,6 +51,7 @@ export class WindowManager {
     private readonly configStore: ConfigStore,
     private readonly onCompanionSettingsChange: (patch: Partial<DesktopWindowSettings>) => void = () => undefined,
     returnTarget?: DesktopReturnTarget,
+    private readonly onUnrecoverableRenderer: () => void = () => undefined,
   ) {
     this.returnTarget = returnTarget ?? {
       kind: 'web',
@@ -85,6 +97,7 @@ export class WindowManager {
       },
     })
     this.window = window
+    this.rendererReady = this.createRendererReadyPromise(window)
     window.setMovable(!this.config.surface.locked)
     window.setMenuBarVisibility(false)
 
@@ -126,6 +139,11 @@ export class WindowManager {
     return window
   }
 
+  /** Resolve only after the main renderer loaded and produced its first frame. */
+  whenRendererReady(): Promise<void> {
+    return this.rendererReady ?? Promise.reject(new Error('pet renderer was not created'))
+  }
+
   ownsWebContents(id: number): boolean {
     return this.window?.webContents.id === id
   }
@@ -158,6 +176,55 @@ export class WindowManager {
   subscribe(listener: StateListener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  private createRendererReadyPromise(window: BrowserWindow): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let loaded = false
+      let readyToShow = false
+      let settled = false
+      const cleanup = (): void => {
+        window.webContents.off('did-finish-load', onLoaded)
+        window.webContents.off('did-fail-load', onLoadFailed)
+        window.off('ready-to-show', onReadyToShow)
+        window.off('closed', onClosed)
+      }
+      const finish = (): void => {
+        if (settled || !loaded || !readyToShow) return
+        settled = true
+        cleanup()
+        resolve()
+      }
+      const fail = (error: Error): void => {
+        if (settled) return
+        settled = true
+        cleanup()
+        reject(error)
+      }
+      const onLoaded = (): void => {
+        loaded = true
+        finish()
+      }
+      const onReadyToShow = (): void => {
+        readyToShow = true
+        finish()
+      }
+      const onLoadFailed = (
+        _event: Electron.Event,
+        errorCode: number,
+        errorDescription: string,
+        _validatedURL: string,
+        isMainFrame: boolean,
+      ): void => {
+        if (!isMainFrame) return
+        fail(new Error(`pet renderer failed to load (${String(errorCode)}): ${errorDescription}`))
+      }
+      const onClosed = (): void => { fail(new Error('pet renderer closed before ready')) }
+      window.webContents.on('did-finish-load', onLoaded)
+      window.webContents.on('did-fail-load', onLoadFailed)
+      window.on('ready-to-show', onReadyToShow)
+      window.on('closed', onClosed)
+    })
   }
 
   setDrawerOpen(open: boolean): DesktopState {
@@ -369,13 +436,36 @@ export class WindowManager {
   recoverRenderer(): boolean {
     const window = this.window
     if (this.quitting || window === undefined || window.webContents.isDestroyed()
-      || this.rendererReloadTimer !== undefined || !this.rendererRecoveryBudget.allow()) return false
+      || this.rendererRecovery !== undefined) return false
+    if (!requestRecovery(this.rendererRecoveryBudget, this.onUnrecoverableRenderer)) return false
+    const recovery: RendererRecoveryAttempt = { generation: ++this.rendererRecoveryGeneration }
+    this.rendererRecovery = recovery
     this.rendererReloadTimer = setTimeout(() => {
       this.rendererReloadTimer = undefined
-      if (!this.quitting && !window.isDestroyed() && !window.webContents.isDestroyed()) {
-        window.webContents.reloadIgnoringCache()
+      if (this.rendererRecovery?.generation !== recovery.generation) return
+      if (this.quitting) {
+        this.finishRendererRecovery(recovery.generation, false)
+        return
       }
-    }, 50)
+      if (window.isDestroyed() || window.webContents.isDestroyed()) {
+        this.finishRendererRecovery(recovery.generation, true)
+        return
+      }
+      recovery.watchdog = watchRendererReload(
+        window.webContents,
+        RENDERER_RELOAD_TIMEOUT_MS,
+        outcome => this.finishRendererRecovery(recovery.generation, outcome !== 'loaded'),
+      )
+      if (this.rendererRecovery?.generation !== recovery.generation) {
+        recovery.watchdog.dispose()
+        return
+      }
+      try {
+        window.webContents.reloadIgnoringCache()
+      } catch {
+        this.finishRendererRecovery(recovery.generation, true)
+      }
+    }, RENDERER_RELOAD_DELAY_MS)
     this.rendererReloadTimer.unref?.()
     return true
   }
@@ -387,6 +477,7 @@ export class WindowManager {
 
   setQuitting(): void {
     this.quitting = true
+    this.cancelRendererRecovery()
   }
 
   destroy(): void {
@@ -394,9 +485,25 @@ export class WindowManager {
     screen.off('display-added', this.ensureVisible)
     screen.off('display-metrics-changed', this.ensureVisible)
     if (this.saveTimer !== undefined) clearTimeout(this.saveTimer)
-    if (this.rendererReloadTimer !== undefined) clearTimeout(this.rendererReloadTimer)
+    this.cancelRendererRecovery()
     this.cancelDrag()
     this.listeners.clear()
+  }
+
+  private finishRendererRecovery(generation: number, unrecoverable: boolean): void {
+    const recovery = this.rendererRecovery
+    if (recovery?.generation !== generation) return
+    this.rendererRecovery = undefined
+    recovery.watchdog?.dispose()
+    if (unrecoverable) this.onUnrecoverableRenderer()
+  }
+
+  private cancelRendererRecovery(): void {
+    if (this.rendererReloadTimer !== undefined) clearTimeout(this.rendererReloadTimer)
+    this.rendererReloadTimer = undefined
+    const recovery = this.rendererRecovery
+    this.rendererRecovery = undefined
+    recovery?.watchdog?.dispose()
   }
 
   private requiredWindow(): BrowserWindow {

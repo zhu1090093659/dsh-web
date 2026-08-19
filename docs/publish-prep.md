@@ -6,14 +6,12 @@
 >
 > **红线（务必遵守）**：发布动作仍须先经仓库维护者明确批准，并按 registry 规范
 > 操作（`npm pack --dry-run` 级别的演练可先行）。
-
 ## 一、范围
-
-`packages/` 与 `packages/skins/` 下共 13 个插件包（截至快照日）。皮肤不再独立成包：全部内置皮肤是纯资产目录（`packages/skins/skin-center/skins/<id>/`），随 `@linxin666/dsh-client-ui-skin-center` 分发；`@linxin666/dsh-skins` 是只带依赖的退役载具（保留一个发布周期）：
-
+`packages/` 与 `packages/skins/` 下共 14 个插件包（截至快照日）。皮肤不再独立成包：全部内置皮肤是纯资产目录（`packages/skins/skin-center/skins/<id>/`），随 `@linxin666/dsh-client-ui-skin-center` 分发；`@linxin666/dsh-skins` 是只带依赖的退役载具（保留一个发布周期）：
 | 目录 | 包名 | 当前版本 | private |
 | --- | --- | --- | --- |
 | packages/dsh-task-board | @linxin666/dsh-client-ui-task-board | 0.1.1 | true |
+| packages/dsh-codex-board | @linxin666/dsh-client-ui-codex-board | 0.1.0 | true |
 | packages/dsh-git-graph | @linxin666/dsh-client-ui-git-graph | 0.1.1 | true |
 | packages/dsh-pet | @linxin666/dsh-pet | 0.1.1 | true |
 | packages/dsh-remote-web-ui | @linxin666/dsh-remote-web-ui | 0.1.1 | true |
@@ -27,12 +25,8 @@
 | packages/dsh-skins | @linxin666/dsh-skins（聚合） | 0.1.1 | true |
 | packages/dsh-web-ui-all | @linxin666/dsh-web-ui-all（聚合） | 0.1.1 | true |
 | packages/skins/skin-center | @linxin666/dsh-client-ui-skin-center | 0.1.1 | true |
-
-
 ## 二、发布前检查结论（2026-08-11，已修复项标注 [已确认]）
-
 ### [阻断] 阻断项（不修复无法发布/无法被消费）
-
 1. **11 包 `private: true`** — npm 直接拒绝发布 private 包
    （`This package has been marked as private`）。发布前需逐个移除。
    **（发布前需按流程移除，当前仍保留）**
@@ -48,15 +42,11 @@
    **（发布动作本身，无法提前修复；发布顺序已排定）**
    [已确认] **已失效**：2026-08-12 调整移除 code-kline / ui-code-kline 包后，
    该发布依赖不再存在，无需处理。
-
 ### [建议] 建议项（registry 安装兼容性）— [已确认] 已修复
-
 5. **peerDeps 版本声明不匹配**：git-graph / pet / remote-web-ui
    的 `@deepseek-ai/*` peerDeps
    已从旧 `^0.0.1` 系列改为 **`^0.1.0-rc.6`**（与 npm 已发布版本匹配，避免 ERESOLVE）。
-
 ### [卫生] 卫生项
-
 6. **LICENSE 文件缺失 11 包** — [已确认] **已补全**（Apache-2.0），打包验证 LICENSE 已进 tarball。Maid Atelier 作为例外采用 CC BY-NC-SA 4.0，仅限非商业使用；其 LICENSE / NOTICE 随皮肤中心包内的 maid-atelier 皮肤目录分发。
 7. **files 缺 `cordis.patch.yml`**（发布后 bundle patch 缺失会装不上）—
    [已确认] **已补全**：task-board
@@ -64,21 +54,15 @@
    `src` 与 `lib/types/**/*.d.ts.map`）。打包验证全部进 tarball。
 8. **blue-fantasy 打包警告**：[已确认] **已失效**：独立皮肤包已退役（皮肤改为
    skin-center 包内纯资产目录），该构建卫生问题随包移除不复存在。
-
 ## 三、兼容性现状（npm 版 DSH × 插件）
-
 2026-08-13 用隔离环境（`DSH_HOME` 隔离 + `dsh plugin add link:`）实测
 npm 版 `@deepseek-ai/dsh@0.1.0-rc.6`：
-
 - web GUI 启动正常（HTTP 200），`dsh plugin` 安装 task-board / blue-fantasy 成功；
 - boot manifest 正确注册插件，`/plugins/@deepseek-ai/<pkg>/client.js` 可访问（200）；
 - 日志无 error/warn，插件 `dsh.client` 声明（platform/inject/exports["./client"]）
   与 npm 版 `dsh-client-modules` 消费逻辑逐字段吻合。
-
 npm 侧已发布 @deepseek-ai 核心 SDK 包至 `0.1.0-rc.6`，插件包仍按本仓库版本管理。
-
 ## 四、建议的发布流程（批准后执行）
-
 1. 同步官方版本号节奏（当前为 `0.1.0-rc.6`，与 @deepseek-ai/dsh 对齐）；
 2. 发布前仍需处理：移除 `private: true`（11 包）；
 3. 按依赖顺序发布（用 **`pnpm publish`**，自动改写 workspace:*）：
@@ -89,8 +73,6 @@ npm 侧已发布 @deepseek-ai 核心 SDK 包至 `0.1.0-rc.6`，插件包仍按�
 5. 逐包 `pnpm pack --dry-run` 复核 tarball 内容（注意：dry-run 仍会执行
    prepack/prepare 脚本）；
 6. 发布动作前**必须**经维护者确认。
-
 ## 五、重新核对时机
-
 插件清单或版本发生任何变更后（新增/删除包、升版本、改字段），本节结论即失效，
 需重新执行本文档的检查流程（字段扫描 + pack 演练 + peerDeps 核对）。

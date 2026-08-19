@@ -15,6 +15,7 @@ patchFrom:
   - ../dsh-community-plugins
   - ../dsh-aionui-panel
   - ../dsh-task-board
+  - ../dsh-codex-board
   - ../dsh-git-graph
   - ../dsh-pet
   - ../dsh-remote-web-ui
@@ -29,6 +30,7 @@ deps:
   - ../dsh-community-plugins
   - ../dsh-aionui-panel
   - ../dsh-task-board
+  - ../dsh-codex-board
   - ../dsh-git-graph
   - ../dsh-pet
   - ../dsh-remote-web-ui

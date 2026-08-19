@@ -1,0 +1,191 @@
+/* Codex-style floating task board: fixed top-right, follows the current
+   session's todos projection. Uses dsw design tokens so it adapts to the
+   active skin/theme. */
+
+.root {
+  box-sizing: border-box;
+  position: fixed;
+  top: 72px;
+  right: 16px;
+  z-index: 2147483000;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  border: 1px solid var(--dsw-alias-border-l1);
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.18);
+  font-family: var(--dsw-font-family, Inter, system-ui, sans-serif);
+  color: var(--dsw-alias-label-primary);
+  overflow: hidden;
+}
+
+/* Collapsed: only the header row remains, pinned to the top-right. */
+.root[data-collapsed='true'] {
+  width: 232px;
+}
+
+.header {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 10px 0 14px;
+  cursor: pointer;
+  user-select: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+}
+
+.header:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.glyph {
+  display: inline-flex;
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.count {
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.chevron {
+  flex: none;
+  display: inline-flex;
+  color: var(--dsw-alias-label-tertiary);
+  transition: transform 120ms ease;
+}
+
+.chevron[data-expanded='true'] {
+  transform: rotate(180deg);
+}
+
+/* Progress track under the header when expanded. */
+.progressTrack {
+  box-sizing: border-box;
+  height: 3px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--dsw-alias-state-business-primary, var(--dsw-alias-state-success-primary));
+  transition: width 200ms ease;
+}
+
+.body {
+  box-sizing: border-box;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px 6px 8px;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+}
+
+.row[data-status='in_progress'] {
+  background: var(--dsw-alias-state-business-tertiary, color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent));
+}
+
+.row[data-status='completed'] {
+  opacity: 0.55;
+}
+
+.marker {
+  flex: none;
+  display: inline-flex;
+  margin-top: 2px;
+  width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pending: hollow circle. */
+.marker[data-status='pending'] {
+  border: 1.5px solid var(--dsw-alias-label-tertiary);
+  border-radius: 50%;
+}
+
+/* In progress: pulsing dot. */
+.marker[data-status='in_progress'] {
+  border-radius: 50%;
+  background: var(--dsw-alias-state-business-primary);
+  animation: codex-board-pulse 1.2s ease-in-out infinite;
+}
+
+/* Completed: filled check circle. */
+.marker[data-status='completed'] {
+  border-radius: 50%;
+  background: var(--dsw-alias-state-success-primary, var(--dsw-alias-state-business-primary));
+  color: var(--dsw-alias-bg-base);
+}
+
+@keyframes codex-board-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.text {
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+  line-height: 18px;
+  word-break: break-word;
+}
+
+.row[data-status='completed'] .text {
+  text-decoration: line-through;
+}
+
+.row[data-status='in_progress'] .text {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
+
+.empty {
+  padding: 12px 8px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-dimmed);
+}
+
+/* Drag handle affordance on the header (optional; header click toggles). */
+.dragging {
+  opacity: 0.9;
+  cursor: grabbing;
+}

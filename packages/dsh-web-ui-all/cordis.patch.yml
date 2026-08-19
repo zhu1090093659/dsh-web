@@ -28,6 +28,11 @@
     - id: web-ui-task-board
       name: '@linxin666/dsh-client-ui-task-board'
 
+# from ../dsh-codex-board
+- insert:
+    - id: web-ui-codex-board
+      name: '@linxin666/dsh-client-ui-codex-board'
+
 # from ../dsh-git-graph
 - insert:
     - id: web-ui-git-graph

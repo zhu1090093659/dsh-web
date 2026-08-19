@@ -33,6 +33,7 @@ import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { ActivityPhase, PetAnimation } from './state.ts'
 import { normalizePetRemarks, type PetRemarks, type PetRemarksManifest } from './remarks.ts'
+import { normalizeVoicePack, type PetPanelView, type VoicePack } from './voice-pack.ts'
 import { dshHome } from './dsh-home.ts'
 import { parsePetManifest, type PetManifestLive2d, type PetManifestV2, type PetRendererKind } from './manifest-v2.ts'
 import { collectModel3References } from './model3.ts'
@@ -212,6 +213,8 @@ export interface PetDefinition {
   atlasUrl: string
   /** Browser URL of the manifest (served by the host asset route). */
   manifestUrl: string
+  /** Hover-panel chrome overrides (voice.json 'panel'; pet-center M4). */
+  panel?: PetPanelView
 }
 
 /** A resolved pet plus its host-side file location. */
@@ -228,6 +231,11 @@ export interface PetEntry extends PetDefinition {
   servable: readonly string[]
   /** Normalized per-pet remark pools (manifest 'remarks'), when declared. */
   remarks?: PetRemarks
+  /**
+   * Normalized per-pet voice pack (the directory's voice.json; pet-center
+   * M4). Host-side only — the browser half receives its 'panel' slice.
+   */
+  voice?: VoicePack
 }
 
 /** Registry load result: resolved entries plus load warnings. */
@@ -239,6 +247,11 @@ export interface PetRegistry {
   byId(id: string): PetEntry | undefined
   /** The pet an installation falls back to when the selection is unknown. */
   defaultEntry(): PetEntry
+  /**
+   * The global voice override ('$DSH_HOME/pets/.voice.json'), when present —
+   * layers under every per-pet pack and over the built-in pools (M4, #677).
+   */
+  globalVoice?: VoicePack
 }
 
 /** One structured registry diagnostic (manifest-v2 era). */
@@ -551,20 +564,23 @@ function scanPetDir(dir: string, options: { assetPrefix?: string; warnings?: str
       options.warnings?.push(diagnostic.message)
     }
     if (!verdict.ok) continue
+    let entry: PetEntry | undefined
     if (verdict.manifest.renderer === 'live2d') {
-      const entry = resolveLive2dEntry(verdict.manifest, entryDir, options)
-      if (entry !== undefined) entries.push(entry)
-      continue
+      entry = resolveLive2dEntry(verdict.manifest, entryDir, options)
+    } else {
+      const legacy = flattenV2Sprite2d(verdict.manifest)
+      if (legacy === undefined) {
+        const note = 'pet ' + verdict.manifest.id + ': sprite2d.atlasRows only supports 9 or 11 under the v1 compat resolver'
+        options.diagnostics?.push({ level: 'error', source: entryDir, message: note })
+        options.warnings?.push(note)
+        continue
+      }
+      entry = resolvePetManifest(legacy, entryDir, options)
     }
-    const legacy = flattenV2Sprite2d(verdict.manifest)
-    if (legacy === undefined) {
-      const note = 'pet ' + verdict.manifest.id + ': sprite2d.atlasRows only supports 9 or 11 under the v1 compat resolver'
-      options.diagnostics?.push({ level: 'error', source: entryDir, message: note })
-      options.warnings?.push(note)
-      continue
-    }
-    const entry = resolvePetManifest(legacy, entryDir, options)
-    if (entry !== undefined) entries.push(entry)
+    if (entry === undefined) continue
+    // Optional voice pack (voice.json) — pure content, warn-and-drop (M4).
+    const voice = loadVoicePackFile(join(entryDir, 'voice.json'), options)
+    entries.push({ ...entry, ...(voice === undefined ? {} : { voice }) })
   }
   return entries
 }
@@ -577,6 +593,30 @@ function readPetJson(file: string, warnings: string[] | undefined): unknown {
     warnings?.push('skipping ' + file + ': ' + (error instanceof Error ? error.message : String(error)))
     return undefined
   }
+}
+
+/**
+ * Load and normalize one optional voice.json (pet-center M4). A missing
+ * file is silent; a broken file warns and drops. The pack is pure content,
+ * so every issue stays a warning — a bad voice.json never rejects a pet.
+ */
+function loadVoicePackFile(
+  file: string,
+  options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] },
+): VoicePack | undefined {
+  if (!existsSync(file)) return undefined
+  const warn = (message: string): void => {
+    options.warnings?.push(file + ': ' + message)
+    options.diagnostics?.push({ level: 'warning', source: file, message: file + ': ' + message })
+  }
+  let raw: unknown
+  try {
+    raw = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    warn('voice pack is not valid JSON; ignored: ' + (error instanceof Error ? error.message : String(error)))
+    return undefined
+  }
+  return normalizeVoicePack(raw, warn)
 }
 
 /**
@@ -611,11 +651,14 @@ export function loadPetRegistry(options: PetRegistryOptions): PetRegistry {
 
   // The pet-center user directory ranks above the legacy hatch-pet source.
   const dshPetsDir = options.dshPetsDir ?? join(dshHome(), 'pets')
+  let globalVoice: VoicePack | undefined
   if (dshPetsDir !== '') {
     for (const entry of scanPetDir(dshPetsDir, { assetPrefix, warnings, diagnostics })) {
       if (byId.has(entry.id)) warnings.push('user pet ' + entry.id + ' overrides an earlier registration')
       byId.set(entry.id, entry)
     }
+    // The global voice override layers under every per-pet pack (M4, #677).
+    globalVoice = loadVoicePackFile(join(dshPetsDir, '.voice.json'), { warnings, diagnostics })
   }
 
   for (const manifest of options.extra ?? []) {
@@ -643,6 +686,7 @@ export function loadPetRegistry(options: PetRegistryOptions): PetRegistry {
     diagnostics,
     byId: (id: string) => byId.get(id),
     defaultEntry: () => entries.find(entry => builtinIds.has(entry.id)) ?? entries[0]!,
+    ...(globalVoice === undefined ? {} : { globalVoice }),
   }
 }
 
@@ -662,6 +706,7 @@ export function petEntryView(entry: PetEntry): PetDefinition {
     ...(entry.sequences === undefined ? {} : { sequences: entry.sequences }),
     atlasUrl: entry.atlasUrl,
     manifestUrl: entry.manifestUrl,
+    ...(entry.voice?.panel === undefined ? {} : { panel: entry.voice.panel }),
   }
 }
 

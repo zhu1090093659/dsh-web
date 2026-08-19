@@ -110,6 +110,24 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   const rows = definition.rows
   const tracks = definition.tracks
   const sequences = definition.sequences
+  // Hover-panel chrome from the pet's voice pack (pet-center M4, issue
+  // #677): every slot falls back to the i18n dictionary when unset. Stat
+  // formats carry {rank}/{n}/{points} placeholders the host validated.
+  const panel = definition.panel
+  const panelLabel = (slot: 'feed' | 'rename' | 'hide' | 'confirm', i18n: string): string =>
+    panel?.labels?.[slot] ?? i18n
+  const panelStat = (
+    slot: 'rank' | 'treats' | 'points',
+    i18nKey: 'pet.rank' | 'pet.treats' | 'pet.points',
+    values: Record<string, string | number>,
+  ): string => {
+    const format = panel?.stats?.[slot] ?? props.t(i18nKey, values)
+    let text = format
+    for (const [name, value] of Object.entries(values)) text = text.replaceAll('{' + name + '}', String(value))
+    return text
+  }
+  const panelShows = (action: 'feed' | 'rename' | 'hide'): boolean =>
+    panel?.actions === undefined || panel.actions.includes(action)
 
   // Load the atlas once; the definition carries the authoritative per-row
   // frame counts and per-track durations, so nothing else is fetched. A
@@ -507,39 +525,45 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
                   }
                 }}
               >
-                {props.t('pet.confirm')}
+                {panelLabel('confirm', props.t('pet.confirm'))}
               </button>
             </div>
           ) : (
             <>
               <div className={styles.rankRow}>
                 <span className={styles.nameCell}>{displayName}</span>
-                <span className={styles.statRank}>{props.t('pet.rank', { rank: snapshot?.affinity.rank ?? '?' })}</span>
+                <span className={styles.statRank}>{panelStat('rank', 'pet.rank', { rank: snapshot?.affinity.rank ?? '?' })}</span>
               </div>
               <div className={styles.rankRow}>
-                <span className={styles.statTreats}>{props.t('pet.treats', { n: snapshot?.treats.stocked ?? 0 })}</span>
-                <span className={styles.statPoints}>{props.t('pet.points', { points: snapshot?.affinity.points ?? 0 })}</span>
+                <span className={styles.statTreats}>{panelStat('treats', 'pet.treats', { n: snapshot?.treats.stocked ?? 0 })}</span>
+                <span className={styles.statPoints}>{panelStat('points', 'pet.points', { points: snapshot?.affinity.points ?? 0 })}</span>
               </div>
               <div className={styles.actions}>
-                <button type="button" className={styles.action} onClick={props.onFeed}>
-                  {props.t('pet.feed')}
-                </button>
-                <button
-                  type="button"
-                  className={styles.action}
-                  onClick={() => {
-                    // Cancel any pending hide so the rename box cannot
-                    // unmount right as the user starts typing (#303).
-                    clearHideTimer()
-                    setNameDraft(displayName)
-                    setRenaming(true)
-                  }}
-                >
-                  {props.t('pet.rename')}
-                </button>
-                <button type="button" className={styles.action} onClick={props.onHide}>
-                  {props.t('pet.hide')}
-                </button>
+                {panelShows('feed') && (
+                  <button type="button" className={styles.action} onClick={props.onFeed}>
+                    {panelLabel('feed', props.t('pet.feed'))}
+                  </button>
+                )}
+                {panelShows('rename') && (
+                  <button
+                    type="button"
+                    className={styles.action}
+                    onClick={() => {
+                      // Cancel any pending hide so the rename box cannot
+                      // unmount right as the user starts typing (#303).
+                      clearHideTimer()
+                      setNameDraft(displayName)
+                      setRenaming(true)
+                    }}
+                  >
+                    {panelLabel('rename', props.t('pet.rename'))}
+                  </button>
+                )}
+                {panelShows('hide') && (
+                  <button type="button" className={styles.action} onClick={props.onHide}>
+                    {panelLabel('hide', props.t('pet.hide'))}
+                  </button>
+                )}
               </div>
             </>
           )}

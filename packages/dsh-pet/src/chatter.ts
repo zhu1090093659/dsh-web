@@ -17,6 +17,11 @@
  * plugin has always shown, so existing installs keep their wording until the
  * scene cycles. No emoji anywhere (repository rule); ～ is the whale-girl's
  * signature.
+ *
+ * Since pet-center M4 (issue #677) every pool is overridable through a
+ * {@link VoicePoolsProvider}: the built-in pools are the fallback layer, and
+ * voice packs (per-pet voice.json / the global .voice.json) layer their
+ * pools on top at draw time.
  * @module @linxin666/dsh-pet/chatter
  */
 
@@ -192,6 +197,18 @@ export type ToolCategory =
   | 'git'
   | 'ask'
   | 'generic'
+
+/** Every status scene key, in declaration order (voice-pack key allow-list). */
+export const STATUS_SCENES: readonly StatusScene[] = [
+  'prepare', 'waiting', 'thinking', 'review', 'toolResult', 'done',
+  'failed', 'toolFailed', 'maxTokens', 'interrupted', 'blocked',
+]
+
+/** Every tool-family key, in declaration order (voice-pack key allow-list). */
+export const TOOL_CATEGORIES: readonly ToolCategory[] = [
+  'read', 'write', 'edit', 'shell', 'grep', 'find', 'ls', 'webSearch',
+  'webFetch', 'mcp', 'memory', 'subagent', 'todo', 'browser', 'git', 'ask', 'generic',
+]
 
 /** Map a raw tool name onto its copy family (working-activity style regexes). */
 export function toolCategory(toolName: string): ToolCategory {
@@ -433,12 +450,19 @@ export function toolArgHint(toolName: string, argumentsJson: string): string | u
  * stretch keeps changing its wording.
  */
 export class StatusVoice {
+  private readonly pools: VoicePoolsProvider
+  private readonly rotateMs: number
   private readonly counters = new Map<string, number>()
   private lastScene = ''
   private lastLine = ''
   private lastLineAt = Number.NEGATIVE_INFINITY
 
-  constructor(private readonly rotateMs: number = STATUS_ROTATE_MS) {}
+  constructor(pools: VoicePoolsProvider = () => BUILTIN_VOICE_PACK, rotateMs: number = STATUS_ROTATE_MS) {
+    // Plain property assignment, not parameter properties: this module is
+    // imported by scripts/ under node's strip-only mode (pet-center M4).
+    this.pools = pools
+    this.rotateMs = rotateMs
+  }
 
   /** Draw the next line of one pool, advancing its round-robin cursor. */
   private draw(poolKey: string, pool: readonly string[]): string {
@@ -456,15 +480,27 @@ export class StatusVoice {
     return this.lastLine
   }
 
+  /**
+   * A scene's effective pool: the voice-pack override when it carries lines,
+   * else the built-in pool. Empty overrides fall back rather than blank the
+   * bubble — a scene line always renders.
+   */
+  private scenePool(scene: StatusScene): readonly string[] {
+    const override = this.pools().status?.[scene]
+    return override !== undefined && override.length > 0 ? override : STATUS_POOLS[scene]
+  }
+
   /** Status line for a phase scene. */
   scene(scene: StatusScene, nowMs: number): string {
-    return this.voice('scene:' + scene, 'pool:' + scene, STATUS_POOLS[scene], nowMs)
+    return this.voice('scene:' + scene, 'pool:' + scene, this.scenePool(scene), nowMs)
   }
 
   /** Status line for a tool call, with the real-argument hint when known. */
   tool(toolName: string, displayName: string, hint: string | undefined, nowMs: number): string {
     const category = toolCategory(toolName)
-    const line = this.voice('tool:' + category, 'tool:' + category, TOOL_POOLS[category], nowMs)
+    const override = this.pools().tools?.[category]
+    const pool = override !== undefined && override.length > 0 ? override : TOOL_POOLS[category]
+    const line = this.voice('tool:' + category, 'tool:' + category, pool, nowMs)
     return line
       .replace('{tool}', displayName)
       .replace('{hint}', hint ?? displayName)
@@ -472,7 +508,9 @@ export class StatusVoice {
 
   /** Status line while sibling tools still run (always reflects the count). */
   toolRemaining(count: number, nowMs: number): string {
-    return this.voice('toolRemaining', 'toolRemaining', TOOL_REMAINING_POOL, nowMs)
+    const override = this.pools().toolRemaining
+    const pool = override !== undefined && override.length > 0 ? override : TOOL_REMAINING_POOL
+    return this.voice('toolRemaining', 'toolRemaining', pool, nowMs)
       .replace('{n}', String(count))
   }
 }
@@ -735,23 +773,88 @@ export const WHISPER_RULES: readonly WhisperRule[] = [
 ]
 
 /**
+ * Voice-pack overrides (pet-center M4, issue #677): the content a voice
+ * pack can replace, one pool at a time. Every field is optional — missing
+ * keys inherit the built-in pools. Resolution happens at draw time through
+ * a provider function, so swapping pets (or editing the global file) re-
+ * voices live engines without rebuilding them.
+ *
+ * Override semantics:
+ *  - status/tools/toolRemaining: a non-empty override replaces the built-in
+ *    pool for that key; an empty override falls back to the built-in pool
+ *    (a scene line always renders, so it can never be blanked).
+ *  - whispers.generic / whispers.rules: the override REPLACES the built-in
+ *    section; an empty array mutes that channel (ambient or keyword).
+ */
+export interface VoicePackOverrides {
+  /** Status copy pools by scene; each key replaces that scene's pool. */
+  status?: Partial<Record<StatusScene, readonly string[]>>
+  /** Tool copy pools by family; each key replaces that family's pool. */
+  tools?: Partial<Record<ToolCategory, readonly string[]>>
+  /** The parallel-tools count line pool ({n} interpolates the count). */
+  toolRemaining?: readonly string[]
+  /** Murmur pools; each section replaces the built-in one as a whole. */
+  whispers?: {
+    /** Ambient inner-whisper pool (empty mutes ambient whispers). */
+    generic?: readonly string[]
+    /** Ordered keyword rules (empty disables keyword-triggered whispers). */
+    rules?: readonly WhisperRule[]
+  }
+}
+
+/** Read the current effective voice-pack overrides (draw-time resolution). */
+export type VoicePoolsProvider = () => VoicePackOverrides
+
+/** The built-in voice pack: the plugin's default copy, unchanged since v1. */
+export const BUILTIN_VOICE_PACK: VoicePackOverrides = {
+  status: STATUS_POOLS,
+  tools: TOOL_POOLS,
+  toolRemaining: TOOL_REMAINING_POOL,
+  whispers: { generic: WHISPER_GENERIC_POOL, rules: WHISPER_RULES },
+}
+
+/**
  * The murmur engine (碎碎念): watches the model's own output and lets the pet
  * whisper its inner voice. Two ways to earn a whisper:
  *  - a keyword rule matches the fresh chunk text (themed whisper);
  *  - enough output volume flowed by without one (ambient whisper).
  * A cooldown keeps whispers occasional; all picks are round-robin so tests
- * reproduce exact lines.
+ * reproduce exact lines. The voice-pack provider (pet-center M4) swaps the
+ * pools at draw time, so a pet switch re-voices live engines in place.
  */
 export class WhisperEngine {
+  private readonly pools: VoicePoolsProvider
+  private readonly cooldownMs: number
+  private readonly charBudget: number
   private readonly counters = new Map<number, number>()
   private genericCursor = 0
   private lastWhisperAt = Number.NEGATIVE_INFINITY
   private charsSinceWhisper = 0
 
   constructor(
-    private readonly cooldownMs: number = WHISPER_COOLDOWN_MS,
-    private readonly charBudget: number = WHISPER_CHAR_BUDGET,
-  ) {}
+    pools: VoicePoolsProvider = () => BUILTIN_VOICE_PACK,
+    cooldownMs: number = WHISPER_COOLDOWN_MS,
+    charBudget: number = WHISPER_CHAR_BUDGET,
+  ) {
+    this.pools = pools
+    this.cooldownMs = cooldownMs
+    this.charBudget = charBudget
+  }
+
+  /**
+   * Effective keyword rules: an override replaces the built-in rules as a
+   * whole; an explicit empty array disables keyword-triggered whispers.
+   */
+  private rules(): readonly WhisperRule[] {
+    const override = this.pools().whispers?.rules
+    return override === undefined ? WHISPER_RULES : override
+  }
+
+  /** Effective ambient pool (an explicit empty array mutes ambient whispers). */
+  private generic(): readonly string[] {
+    const override = this.pools().whispers?.generic
+    return override === undefined ? WHISPER_GENERIC_POOL : override
+  }
 
   /**
    * Feed one model-output chunk (reasoning or text). Returns the whisper to
@@ -765,8 +868,9 @@ export class WhisperEngine {
       return undefined
     }
     const haystack = text.toLowerCase()
-    for (let ruleIndex = 0; ruleIndex < WHISPER_RULES.length; ruleIndex += 1) {
-      const rule = WHISPER_RULES[ruleIndex]!
+    const rules = this.rules()
+    for (let ruleIndex = 0; ruleIndex < rules.length; ruleIndex += 1) {
+      const rule = rules[ruleIndex]!
       if (!rule.keywords.some(keyword => haystack.includes(keyword))) continue
       const index = (this.counters.get(ruleIndex) ?? 0) % rule.pool.length
       this.counters.set(ruleIndex, index + 1)
@@ -774,7 +878,9 @@ export class WhisperEngine {
     }
     this.charsSinceWhisper += text.length
     if (this.charsSinceWhisper < this.charBudget) return undefined
-    const line = WHISPER_GENERIC_POOL[this.genericCursor % WHISPER_GENERIC_POOL.length]!
+    const generic = this.generic()
+    if (generic.length === 0) return undefined
+    const line = generic[this.genericCursor % generic.length]!
     this.genericCursor += 1
     return this.speak(line, nowMs)
   }

@@ -7,6 +7,7 @@ import type { Session, SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-sess
 import { loadPetPersist } from '../src/persist.ts'
 import { PetService } from '../src/service.ts'
 import { resolvePetManifest, type PetRegistry } from '../src/registry.ts'
+import { normalizeVoicePack } from '../src/voice-pack.ts'
 
 /** Two-pet registry fixture (whale-girl + otter) for selection/name tests. */
 function fixtureRegistry(): PetRegistry {
@@ -902,6 +903,115 @@ describe('PetService (rc.6 session events)', () => {
       const result = await service.setName('   ')
       expect(result.ok).toBe(false)
       expect(service.petName()).toBe('鲸鱼娘')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('voice packs in PetService (pet-center M4, issue #677)', () => {
+  function voicedRegistry(petId: string, pack: unknown, extra?: Partial<PetRegistry>): PetRegistry {
+    const warnings: string[] = []
+    const base = resolvePetManifest({
+      id: petId,
+      displayName: petId,
+      spritesheetPath: 'spritesheet.webp',
+    }, join(tmpdir(), petId), { warnings })
+    const entry = { ...base!, voice: normalizeVoicePack(pack) }
+    const entries = [entry]
+    return {
+      entries,
+      warnings,
+      diagnostics: [],
+      byId: id => entries.find(e => e.id === id),
+      defaultEntry: () => entries[0]!,
+      ...extra,
+    }
+  }
+
+  it('speaks the selected pet pack for status scenes', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const service = new PetService(ctx, {
+        persistDir: dir,
+        registry: voicedRegistry('talker', { status: { prepare: ['自定义开工'], done: ['自定义完工'] } }),
+      })
+      ctx.emit('session/event', session, turnStart(1, 1))
+      expect(await service.state()).toMatchObject({ bubble: '自定义开工' })
+      ctx.emit('session/event', session, turnEnd(1, { kind: 'completed' }, 2))
+      expect(await service.state()).toMatchObject({ bubble: '自定义完工' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('re-voices a live session when the pet switches', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const warnings: string[] = []
+      const otter = resolvePetManifest({
+        id: 'otter',
+        displayName: '水獭',
+        spritesheetPath: 'spritesheet.webp',
+      }, join(tmpdir(), 'otter'), { warnings })
+      const talker = voicedRegistry('talker', { status: { done: ['自定义完工'] } })
+      const entries = [...talker.entries, otter!]
+      const registry: PetRegistry = {
+        entries,
+        warnings: [],
+        diagnostics: [],
+        byId: id => entries.find(entry => entry.id === id),
+        defaultEntry: () => entries[0]!,
+      }
+      const service = new PetService(ctx, { persistDir: dir, registry })
+      ctx.emit('session/event', session, turnEnd(1, { kind: 'completed' }, 1))
+      expect(await service.state()).toMatchObject({ bubble: '自定义完工' })
+      await service.setPetId('otter')
+      // A new session's runtime resolves the provider against the now-
+      // selected otter (no pack) and draws the built-in pool.
+      const other = makeSession('s2')
+      ctx.emit('session/event', other, turnEnd(2, { kind: 'completed' }, 2))
+      expect(await service.state()).toMatchObject({ bubble: '完成啦' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('falls back to the global override when the pet carries no pack', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const registry = voicedRegistry('plain', undefined, {
+        globalVoice: normalizeVoicePack({ status: { done: ['全局完工'] } }),
+      })
+      const service = new PetService(ctx, { persistDir: dir, registry })
+      ctx.emit('session/event', session, turnEnd(1, { kind: 'completed' }, 1))
+      expect(await service.state()).toMatchObject({ bubble: '全局完工' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('wakes a whisper from the pet pack keyword rules', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const service = new PetService(ctx, {
+        persistDir: dir,
+        registry: voicedRegistry('talker', {
+          whispers: { rules: [{ keywords: ['测试通过'], pool: ['自定义全绿'] }] },
+        }),
+      })
+      ctx.emit('session/event', session, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: '测试通过',
+      }, 1))
+      expect((await service.state()).whisper).toBe('自定义全绿')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

@@ -12,6 +12,7 @@
  *
  * Commands:
  *   dsh-pet validate <dir>   validate manifest + declared assets + Live2D closure
+ *                            + optional voice.json (pet-center M4, issue #677)
  *   dsh-pet install <dir>    validate, then copy into $DSH_HOME/pets/<id>/
  *                            [--force overwrites an existing same-id install]
  *
@@ -30,7 +31,8 @@ async function loadContracts() {
   const manifest = await import(pathToFileURL(path.join(SRC, 'manifest-v2.ts')).href)
   const model3 = await import(pathToFileURL(path.join(SRC, 'model3.ts')).href)
   const dshHome = await import(pathToFileURL(path.join(SRC, 'dsh-home.ts')).href)
-  return { parsePetManifest: manifest.parsePetManifest, model3, dshHome: dshHome.dshHome }
+  const voicePack = await import(pathToFileURL(path.join(SRC, 'voice-pack.ts')).href)
+  return { parsePetManifest: manifest.parsePetManifest, model3, dshHome: dshHome.dshHome, voicePack }
 }
 
 function printDiagnostics(diagnostics) {
@@ -81,6 +83,27 @@ async function checkAssets(dir, manifest, contracts) {
   return diagnostics
 }
 
+/** Validate an optional voice.json (M4, #677): structure fail-closed, content warn-only. */
+function checkVoicePack(dir, contracts) {
+  const diagnostics = []
+  const file = path.join(dir, 'voice.json')
+  if (!fs.existsSync(file)) return diagnostics
+  let raw
+  try {
+    raw = JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch (e) {
+    diagnostics.push({ level: 'error', message: 'voice.json is not valid JSON: ' + (e && e.message ? e.message : String(e)) })
+    return diagnostics
+  }
+  const warn = (message) => diagnostics.push({ level: 'warning', message: 'voice.json: ' + message })
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    diagnostics.push({ level: 'error', message: 'voice.json must be a JSON object' })
+    return diagnostics
+  }
+  contracts.voicePack.normalizeVoicePack(raw, warn)
+  return diagnostics
+}
+
 async function validate(dir, contracts) {
   const manifestFile = path.join(dir, 'pet.json')
   if (!fs.existsSync(manifestFile)) {
@@ -100,6 +123,7 @@ async function validate(dir, contracts) {
   if (verdict.ok) {
     manifest = verdict.manifest
     diagnostics.push(...await checkAssets(dir, manifest, contracts))
+    diagnostics.push(...checkVoicePack(dir, contracts))
     if (verdict.migrated === 'v1-compat') {
       console.log('note: v1 manifest compat-read as sprite2d; run scripts/dsh-pet-migrate-v2.mjs to migrate')
     }

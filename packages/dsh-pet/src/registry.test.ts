@@ -465,3 +465,76 @@ describe('loadPetRegistry pet-center v2 (issue #623)', () => {
     }
   })
 })
+
+describe('voice packs (pet-center M4, issue #677)', () => {
+  function writeVoice(dir: string, name: string, pack: unknown): void {
+    mkdirSync(join(dir, name), { recursive: true })
+    writeFileSync(join(dir, name, 'pet.json'), JSON.stringify({ id: name, displayName: name, spritesheetPath: 'spritesheet.webp' }), 'utf8')
+    writeFileSync(join(dir, name, 'spritesheet.webp'), 'webp', 'utf8')
+    writeFileSync(join(dir, name, 'voice.json'), JSON.stringify(pack), 'utf8')
+  }
+
+  it('loads a pet voice.json and serves its panel slice to the browser view', () => {
+    const root = tempDir()
+    try {
+      const petsDir = join(root, 'pets')
+      writeVoice(petsDir, 'talker', {
+        status: { done: ['自定义完工'] },
+        panel: { labels: { feed: '投喂' }, stats: { rank: '好感 {rank}' }, actions: ['feed'] },
+      })
+      const registry = loadPetRegistry({ packageRoot: join(root, 'none'), petsDir, dshPetsDir: '' })
+      const entry = registry.byId('talker')!
+      expect(entry.voice?.overrides.status?.done).toEqual(['自定义完工'])
+      const view = petEntryView(entry)
+      expect(view.panel).toEqual({
+        labels: { feed: '投喂' },
+        stats: { rank: '好感 {rank}' },
+        actions: ['feed'],
+      })
+      // Host-only voice content never reaches the browser half.
+      expect('voice' in view).toBe(false)
+      // A healthy voice pack records no diagnostics of its own.
+      expect(registry.diagnostics.filter(d => d.message.includes('voice'))).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('warns and drops a broken voice.json without rejecting the pet', () => {
+    const root = tempDir()
+    try {
+      const petsDir = join(root, 'pets')
+      mkdirSync(join(petsDir, 'mumbler'), { recursive: true })
+      writeFileSync(join(petsDir, 'mumbler', 'pet.json'), JSON.stringify({ id: 'mumbler', displayName: 'Mumbler', spritesheetPath: 'spritesheet.webp' }), 'utf8')
+      writeFileSync(join(petsDir, 'mumbler', 'spritesheet.webp'), 'webp', 'utf8')
+      writeFileSync(join(petsDir, 'mumbler', 'voice.json'), '{ not json', 'utf8')
+      const registry = loadPetRegistry({ packageRoot: join(root, 'none'), petsDir, dshPetsDir: '' })
+      expect(registry.byId('mumbler')).toBeDefined()
+      expect(registry.byId('mumbler')!.voice).toBeUndefined()
+      expect(registry.diagnostics.some(d => d.level === 'warning' && d.message.includes('voice pack is not valid JSON'))).toBe(true)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('loads the global .voice.json override from the DSH_HOME pets dir', () => {
+    const root = tempDir()
+    try {
+      const petsDir = join(root, 'pets')
+      mkdirSync(join(petsDir, 'plain'), { recursive: true })
+      writeFileSync(join(petsDir, 'plain', 'pet.json'), JSON.stringify({ id: 'plain', displayName: 'Plain', spritesheetPath: 'spritesheet.webp' }), 'utf8')
+      writeFileSync(join(petsDir, 'plain', 'spritesheet.webp'), 'webp', 'utf8')
+      writeFileSync(join(petsDir, '.voice.json'), JSON.stringify({
+        status: { done: ['全局完工'] },
+        panel: { labels: { hide: '全局藏' } },
+      }), 'utf8')
+      const registry = loadPetRegistry({ packageRoot: join(root, 'none'), petsDir, dshPetsDir: petsDir })
+      expect(registry.globalVoice?.overrides.status?.done).toEqual(['全局完工'])
+      expect(registry.globalVoice?.panel?.labels).toEqual({ hide: '全局藏' })
+      // The dotfile itself is never scanned as a pet directory.
+      expect(registry.entries.map(e => e.id)).toEqual(['plain'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})

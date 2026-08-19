@@ -44,7 +44,8 @@ import {
   type PetRegistry,
   type PetRegistryDiagnostic,
 } from './registry.ts'
-import { WHISPER_TTL_MS } from './chatter.ts'
+import { WHISPER_TTL_MS, type VoicePackOverrides, type VoicePoolsProvider } from './chatter.ts'
+import { mergeVoicePacks } from './voice-pack.ts'
 import {
   defaultPetStateConfig,
   PetStateMachine,
@@ -204,6 +205,12 @@ export class PetService extends Service {
   /** Session whose most recent meaningful event currently drives the global pet. */
   private displaySession: Session | undefined
   /**
+   * Effective voice-pack overrides for the currently selected pet (M4,
+   * #677). Cached per pet id; the registry is an immutable snapshot, so the
+   * global pack and each entry's pack cannot change behind the cache.
+   */
+  private voiceCache: { petId: string; overrides: VoicePackOverrides } | undefined
+  /**
    * Per-session activity, most recent last (Map insertion order). Bounded by
    * MAX_SESSION_BUBBLES so a burst of sessions cannot grow it without bound;
    * disposed sessions are removed by the 'session/disposed' listener.
@@ -239,6 +246,23 @@ export class PetService extends Service {
     this.enabled = config.enabled ?? true
 
     this.syncActivity()
+  }
+
+  /**
+   * The draw-time voice-pool provider handed to every projection runtime.
+   * It re-resolves when the selected pet changes, so live engines re-voice
+   * on the next draw without being rebuilt (M4, #677).
+   */
+  private voicePools(): VoicePoolsProvider {
+    return () => {
+      const entry = this.activeEntry()
+      if (this.voiceCache !== undefined && this.voiceCache.petId === entry.id) {
+        return this.voiceCache.overrides
+      }
+      const overrides = mergeVoicePacks(this.registry.globalVoice, entry.voice)?.overrides ?? {}
+      this.voiceCache = { petId: entry.id, overrides }
+      return overrides
+    }
   }
 
   /** Whether the pet service consumes session activity while enabled. */
@@ -370,7 +394,7 @@ export class PetService extends Service {
     let activity = this.sessionActivity.get(session)
     if (activity === undefined) {
       activity = {
-        runtime: emptyProjectionRuntime(),
+        runtime: emptyProjectionRuntime(this.voicePools()),
         machine: new PetStateMachine(this.stateConfig),
       }
       this.sessionActivity.set(session, activity)

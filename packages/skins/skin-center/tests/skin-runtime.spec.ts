@@ -104,10 +104,15 @@ describe('skin controller', () => {
     hooks?: Record<string, unknown>
     failFetchFor?: string[]
     persist?: (id: string | null) => Promise<void>
+    initialSkin?: string | null
   } = {}) {
     document.head.innerHTML = ''
     document.body.innerHTML = ''
-    document.documentElement.removeAttribute('data-dsh-skin')
+    if (options.initialSkin === undefined || options.initialSkin === null) {
+      document.documentElement.removeAttribute('data-dsh-skin')
+    } else {
+      document.documentElement.setAttribute('data-dsh-skin', options.initialSkin)
+    }
     const ledger = createEffectLedger()
     const loadStylesheet = vi.fn(async (href: string) => {
       for (const bad of options.failFetchFor ?? []) {
@@ -264,6 +269,48 @@ describe('skin controller', () => {
     expect(second).not.toBe(first)
     expect(second).toEqual({ active: 'harbor', trying: null, previewing: false })
     expect(controller.getState()).toBe(second)
+  })
+
+  it('initializes state from html[data-dsh-skin] at creation (#661)', () => {
+    const { controller } = harness({ initialSkin: 'harbor' })
+    expect(controller.active).toBe('harbor')
+    expect(controller.getState()).toEqual({ active: 'harbor', trying: null, previewing: false })
+    // The committed selection is initialized too, so exitTryOn can restore it.
+    document.documentElement.removeAttribute('data-dsh-skin')
+  })
+
+  it('refresh skips while an active skin has no catalog entry yet (boot race #661)', async () => {
+    const { controller, loadStylesheet } = harness({ initialSkin: 'harbor' })
+    // lastEntry is null because the controller was created from the attribute
+    // before boot fetched the catalog; refresh must not re-activate stock.
+    await controller.refresh()
+    expect(controller.active).toBe('harbor')
+    expect(document.documentElement.getAttribute('data-dsh-skin')).toBe('harbor')
+    expect(loadStylesheet).not.toHaveBeenCalled()
+  })
+
+  it('installs composer-seat neutralizer while a skin is active and removes it on stock (#151 #661)', async () => {
+    const { controller } = harness()
+    const style = () => document.head.querySelector<HTMLStyleElement>('style[data-dsh-skin-composer]')
+    expect(style()).toBeNull()
+    await controller.switchTo('harbor', entryFor('harbor'))
+    expect(style()).not.toBeNull()
+    expect(style()!.textContent).toContain('composerSeat')
+    await controller.switchTo(null, null)
+    expect(style()).toBeNull()
+    // Re-activate and shutdown also remove it.
+    await controller.switchTo('harbor', entryFor('harbor'))
+    expect(style()).not.toBeNull()
+    controller.shutdown()
+    expect(style()).toBeNull()
+  })
+
+  it('installs composer-seat neutralizer immediately when created with an active skin', () => {
+    const { controller } = harness({ initialSkin: 'harbor' })
+    const style = document.head.querySelector<HTMLStyleElement>('style[data-dsh-skin-composer]')
+    expect(style).not.toBeNull()
+    controller.shutdown()
+    expect(document.head.querySelector('style[data-dsh-skin-composer]')).toBeNull()
   })
 
   it('subscribe emits on every state transition', async () => {

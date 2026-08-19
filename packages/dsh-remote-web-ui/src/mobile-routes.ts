@@ -16,6 +16,10 @@ const MOBILE_BUNDLE_URL = '/m/mobile.js'
 const MOBILE_MANIFEST_URL = '/m/manifest.webmanifest'
 const MOBILE_WORKER_URL = '/m/service-worker.js'
 const MOBILE_OFFLINE_URL = '/m/offline.html'
+const MOBILE_APPLE_TOUCH_ICON_URL = '/m/apple-touch-icon-v2.png'
+const MOBILE_ICON_192_URL = '/m/icon-192-v2.png'
+const MOBILE_ICON_512_URL = '/m/icon-512-v2.png'
+const MOBILE_MASKABLE_ICON_512_URL = '/m/icon-maskable-512-v2.png'
 
 /** The standalone mobile bundle (built artifact, next to this file's own lib output). */
 function mobileBundlePath(): string {
@@ -41,7 +45,7 @@ function pageHtml(bundleUrl: string): string {
     '<meta name="apple-mobile-web-app-capable" content="yes">',
     '<meta name="apple-mobile-web-app-title" content="DSH Remote">',
     '<link rel="manifest" href="/m/manifest.webmanifest">',
-    '<link rel="apple-touch-icon" href="/m/apple-touch-icon.png">',
+    '<link rel="apple-touch-icon" href="' + MOBILE_APPLE_TOUCH_ICON_URL + '">',
     '<title>移动端远程控制</title>',
     '</head>',
     '<body>',
@@ -64,8 +68,9 @@ function manifestJson(): string {
     background_color: '#151424',
     theme_color: '#f3f5f9',
     icons: [
-      { src: '/m/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-      { src: '/m/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      { src: MOBILE_ICON_192_URL, sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: MOBILE_ICON_512_URL, sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: MOBILE_MASKABLE_ICON_512_URL, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }, null, 2)
 }
@@ -202,6 +207,12 @@ export function makeMobileRoutes(): WebRoute[] {
     { kind: 'exact', path: MOBILE_MANIFEST_URL, handler: handleManifest },
     { kind: 'exact', path: MOBILE_WORKER_URL, handler: handleWorker },
     { kind: 'exact', path: MOBILE_OFFLINE_URL, handler: handleOffline },
+    { kind: 'exact', path: MOBILE_APPLE_TOUCH_ICON_URL, handler: makeIconHandler('apple-touch-icon.png') },
+    { kind: 'exact', path: MOBILE_ICON_192_URL, handler: makeIconHandler('mobile-icon-192.png') },
+    { kind: 'exact', path: MOBILE_ICON_512_URL, handler: makeIconHandler('mobile-icon-512.png') },
+    { kind: 'exact', path: MOBILE_MASKABLE_ICON_512_URL, handler: makeIconHandler('mobile-icon-maskable-512.png') },
+    // Keep the pre-v2 URLs alive for already-installed shells while the new
+    // manifest moves launchers onto cache-busting, purpose-specific assets.
     { kind: 'exact', path: '/m/apple-touch-icon.png', handler: makeIconHandler('apple-touch-icon.png') },
     { kind: 'exact', path: '/m/icon-192.png', handler: makeIconHandler('mobile-icon-192.png') },
     { kind: 'exact', path: '/m/icon-512.png', handler: makeIconHandler('mobile-icon-512.png') },

@@ -3,7 +3,7 @@ import { runInNewContext } from 'node:vm'
 import { describe, expect, it, vi } from 'vitest'
 
 const ORIGIN = 'https://dsh.example'
-const CACHE_NAME = 'dsh-remote-mobile-shell-v1'
+const CACHE_NAME = 'dsh-remote-mobile-shell-v2'
 
 type WorkerRequest = { method: string; mode: string; url: string }
 type FetchListener = (event: { request: WorkerRequest; respondWith(response: Promise<Response> | Response): void }) => void

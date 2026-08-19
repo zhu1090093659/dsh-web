@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type { WallpaperDescriptor, WallpaperHandle } from './wallpaper.ts'
+import { resolveSelection, type WallpaperDescriptor, type WallpaperHandle } from './wallpaper.ts'
 import css from './skin-center.module.css'
 
 /** Host base path of the wallpaper API (mirrors src/we-routes.ts). */
@@ -101,7 +101,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
         setItems(payload.wallpapers)
         setInstallDir(typeof payload.installDir === 'string' ? payload.installDir : null)
         const selected = wallpaper.selection()
-        wallpaper.sync(payload.wallpapers.find(w => w.id === selected) ?? null)
+        wallpaper.sync(resolveSelection(payload.wallpapers, selected) ?? null)
       })
       .catch((error: unknown) => {
         if (!mounted.current) return

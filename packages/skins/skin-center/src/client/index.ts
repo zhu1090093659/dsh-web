@@ -15,7 +15,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { SkinCenterSection, type SkinCenterInjected } from './SkinCenter.tsx'
 import { BackgroundController, SKIN_BACKGROUND_NS } from './background.ts'
-import { SKIN_WALLPAPER_NS, WallpaperController } from './wallpaper.ts'
+import { SKIN_WALLPAPER_NS, WallpaperController, installBootRestore } from './wallpaper.ts'
 import { en, zh, type SkinCenterKey } from './locales.ts'
 import { bootSkinRuntime } from './runtime/boot.ts'
 
@@ -86,6 +86,9 @@ export function apply(ctx: ClientContext): void {
   }>({ namespace: SKIN_WALLPAPER_NS })
   const wallpaper = new WallpaperController(wallpaperScope)
   ctx.effect(() => () => wallpaper.dispose(), 'ui-skin-center: wallpaper dispose')
+  // Mount the persisted wallpaper selection at boot (page load), so a
+  // selection survives reloads without first opening the skin-center card.
+  installBootRestore(wallpaper)
 
   // The v2 skin runtime store: outlives the settings card so a try-on
   // preview survives closing and reopening the panel. Background-media

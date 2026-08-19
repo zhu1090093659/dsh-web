@@ -5,9 +5,15 @@
  * persistence, pause-on-hidden, and full dispose — driven by a fake
  * SettingsScope so no real settings surface is touched.
  */
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
-import { WallpaperController, type WallpaperDescriptor } from '../src/client/wallpaper.ts'
+import {
+  WallpaperController,
+  installBootRestore,
+  resolveSelection,
+  type WallpaperDescriptor,
+  type WallpaperHandle,
+} from '../src/client/wallpaper.ts'
 
 interface Section {
   enabled?: boolean
@@ -266,5 +272,143 @@ describe('WallpaperController', () => {
     controller.sync(null)
     expect(layers()).toHaveLength(0)
     controller.dispose()
+  })
+})
+
+/** A minimal fake WallpaperHandle recording every sync() call. */
+function fakeHandle(selection: string): {
+  handle: WallpaperHandle
+  synced: Array<WallpaperDescriptor | null>
+  listeners: Set<() => void>
+} {
+  const synced: Array<WallpaperDescriptor | null> = []
+  const listeners = new Set<() => void>()
+  const handle: WallpaperHandle = {
+    enabled: () => true,
+    selection: () => selection,
+    mode: () => 'live',
+    dim: () => 25,
+    wallpaperBlur: () => 0,
+    pauseOnHidden: () => true,
+    sound: () => false,
+    volume: () => 100,
+    dirs: () => [],
+    addDir: () => {},
+    removeDir: () => {},
+    activeId: () => null,
+    trying: () => false,
+    subscribe: listener => {
+      listeners.add(listener)
+      return () => { listeners.delete(listener) }
+    },
+    setEnabled: () => {},
+    setMode: () => {},
+    setDim: () => {},
+    setBlur: () => {},
+    setPauseOnHidden: () => {},
+    setSound: () => {},
+    setVolume: () => {},
+    applySelection: () => {},
+    clearSelection: () => {},
+    sync: descriptor => { synced.push(descriptor) },
+    tryOn: () => {},
+    exitTryOn: () => {},
+    dispose: () => {},
+  }
+  return { handle, synced, listeners }
+}
+
+/** Stub global fetch with one JSON payload. */
+function stubInventory(wallpapers: WallpaperDescriptor[], ok = true): ReturnType<typeof vi.fn> {
+  const mock = vi.fn(async () => new Response(JSON.stringify({ ok, wallpapers }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  }))
+  vi.stubGlobal('fetch', mock)
+  return mock
+}
+
+describe('resolveSelection', () => {
+  it('matches the exact id', () => {
+    expect(resolveSelection([video, scene], '111')).toBe(video)
+    expect(resolveSelection([video, scene], '333')).toBe(scene)
+  })
+
+  it('falls back to the imported copy when the id lacks the prefix', () => {
+    const imported: WallpaperDescriptor = { ...scene, id: 'imported/333' }
+    expect(resolveSelection([imported], '333')).toBe(imported)
+  })
+
+  it('returns undefined when nothing matches', () => {
+    expect(resolveSelection([video], 'missing')).toBeUndefined()
+    expect(resolveSelection([], '111')).toBeUndefined()
+  })
+})
+
+describe('installBootRestore', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('mounts the persisted selection at boot from the inventory', async () => {
+    stubInventory([video, scene])
+    const { handle, synced } = fakeHandle('333')
+    installBootRestore(handle)
+    await vi.waitFor(() => expect(synced).toHaveLength(1))
+    expect(synced[0]).toEqual(scene)
+  })
+
+  it('resolves the imported copy for a bare id', async () => {
+    const imported: WallpaperDescriptor = { ...scene, id: 'imported/333' }
+    stubInventory([imported])
+    const { handle, synced } = fakeHandle('333')
+    installBootRestore(handle)
+    await vi.waitFor(() => expect(synced).toHaveLength(1))
+    expect(synced[0]).toEqual(imported)
+  })
+
+  it('does nothing without a persisted selection', async () => {
+    const fetchMock = stubInventory([video])
+    const { handle, synced } = fakeHandle('')
+    installBootRestore(handle)
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(synced).toHaveLength(0)
+  })
+
+  it('skips sync when the selection is not in the inventory', async () => {
+    const fetchMock = stubInventory([video])
+    const { handle, synced } = fakeHandle('missing')
+    installBootRestore(handle)
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(synced).toHaveLength(0)
+  })
+
+  it('skips sync when the inventory errors', async () => {
+    const fetchMock = stubInventory([], false)
+    const { handle, synced } = fakeHandle('333')
+    installBootRestore(handle)
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(synced).toHaveLength(0)
+  })
+
+  it('stays silent when the inventory fetch rejects', async () => {
+    const mock = vi.fn(async () => { throw new Error('offline') })
+    vi.stubGlobal('fetch', mock)
+    const { handle, synced } = fakeHandle('333')
+    installBootRestore(handle)
+    await vi.waitFor(() => expect(mock).toHaveBeenCalled())
+    expect(synced).toHaveLength(0)
+  })
+
+  it('syncs only once even when the selection arrives later', async () => {
+    stubInventory([video, scene])
+    const { handle, synced, listeners } = fakeHandle('')
+    installBootRestore(handle)
+    // A later settings publish now reports the persisted selection.
+    handle.selection = () => '333'
+    for (const listener of listeners) listener()
+    await vi.waitFor(() => expect(synced).toHaveLength(1))
+    expect(synced[0]).toEqual(scene)
   })
 })

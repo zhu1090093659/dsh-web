@@ -151,7 +151,7 @@ window.__ModuleLoader__.load({
 					setItems(payload.wallpapers);
 					setInstallDir(typeof payload.installDir === "string" ? payload.installDir : null);
 					const selected = wallpaper.selection();
-					wallpaper.sync(payload.wallpapers.find((w) => w.id === selected) ?? null);
+					wallpaper.sync(resolveSelection(payload.wallpapers, selected) ?? null);
 				}).catch((error) => {
 					if (!mounted.current) return;
 					setLoadError(error instanceof Error ? error.message : String(error));
@@ -1557,6 +1557,39 @@ window.__ModuleLoader__.load({
 				for (const listener of this.listeners) listener();
 			}
 		};
+		/** Resolve a persisted selection id against an inventory list: exact id first, then the imported copy. */
+		function resolveSelection(wallpapers, selection) {
+			return wallpapers.find((w) => w.id === selection) ?? wallpapers.find((w) => w.id === "imported/" + selection);
+		}
+		/**
+		* Restore the persisted wallpaper selection at boot: resolve it against the
+		* host inventory and mount it, without waiting for the skin-center panel to
+		* open — the panel's mount effect is the only other sync() caller, so a page
+		* load with a persisted selection otherwise renders nothing until the card
+		* is opened. Best-effort and idempotent: the first non-empty selection wins;
+		* the panel re-resolves on open if the inventory is still in flight or fails.
+		*/
+		function installBootRestore(wallpaper) {
+			let synced = false;
+			const restore = () => {
+				if (synced) return;
+				const selected = wallpaper.selection();
+				if (selected === "") return;
+				synced = true;
+				(async () => {
+					try {
+						const response = await fetch("/api/skin-center/we/inventory");
+						if (!response.ok) return;
+						const payload = await response.json().catch(() => null);
+						if (payload?.ok !== true || !Array.isArray(payload.wallpapers)) return;
+						const match = resolveSelection(payload.wallpapers, selected);
+						if (match !== void 0) wallpaper.sync(match);
+					} catch {}
+				})();
+			};
+			restore();
+			wallpaper.subscribe(restore);
+		}
 		//#endregion
 		//#region src/client/locales.ts
 		const en = {
@@ -2414,6 +2447,7 @@ window.__ModuleLoader__.load({
 			ctx.effect(() => () => background.dispose(), "ui-skin-center: background dispose");
 			const wallpaper = new WallpaperController(binder.bind({ namespace: SKIN_WALLPAPER_NS }));
 			ctx.effect(() => () => wallpaper.dispose(), "ui-skin-center: wallpaper dispose");
+			installBootRestore(wallpaper);
 			const runtime = bootSkinRuntime({ suppressBackgroundMedia: () => wallpaper.enabled() && wallpaper.activeId() !== null && wallpaper.activeId() !== "" });
 			ctx.effect(() => () => runtime.shutdown(), "ui-skin-center: runtime shutdown");
 			ctx.effect(() => wallpaper.subscribe(() => {

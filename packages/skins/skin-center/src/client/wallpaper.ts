@@ -515,3 +515,41 @@ export class WallpaperController implements WallpaperHandle {
     for (const listener of this.listeners) listener()
   }
 }
+
+/** Resolve a persisted selection id against an inventory list: exact id first, then the imported copy. */
+export function resolveSelection(wallpapers: WallpaperDescriptor[], selection: string): WallpaperDescriptor | undefined {
+  return wallpapers.find(w => w.id === selection)
+    ?? wallpapers.find(w => w.id === 'imported/' + selection)
+}
+
+/**
+ * Restore the persisted wallpaper selection at boot: resolve it against the
+ * host inventory and mount it, without waiting for the skin-center panel to
+ * open — the panel's mount effect is the only other sync() caller, so a page
+ * load with a persisted selection otherwise renders nothing until the card
+ * is opened. Best-effort and idempotent: the first non-empty selection wins;
+ * the panel re-resolves on open if the inventory is still in flight or fails.
+ */
+export function installBootRestore(wallpaper: WallpaperHandle): void {
+  let synced = false
+  const restore = (): void => {
+    if (synced) return
+    const selected = wallpaper.selection()
+    if (selected === '') return
+    synced = true
+    void (async () => {
+      try {
+        const response = await fetch('/api/skin-center/we/inventory')
+        if (!response.ok) return
+        const payload = await response.json().catch(() => null) as { ok?: boolean; wallpapers?: WallpaperDescriptor[] } | null
+        if (payload?.ok !== true || !Array.isArray(payload.wallpapers)) return
+        const match = resolveSelection(payload.wallpapers, selected)
+        if (match !== undefined) wallpaper.sync(match)
+      } catch {
+        // Best-effort: the panel re-resolves on open.
+      }
+    })()
+  }
+  restore()
+  wallpaper.subscribe(restore)
+}

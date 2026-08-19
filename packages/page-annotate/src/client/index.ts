@@ -16,6 +16,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import { resolveBetterSidebar } from './better-sidebar.ts'
 import { createTabComponent } from './tab-component.tsx'
+import { TAB_ICON } from './tab-icon.tsx'
 import { dictionaries, NS, setLanguage, t, type PageAnnotateKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -27,9 +28,6 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 /** Required services: locale for the dictionary registration. */
 export const inject = ['locale']
-
-/** Inline tab icon (a pen-over-rectangle glyph, 16px nav-icon look). */
-const ICON = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="9" height="9" rx="1.5"/><path d="M12.5 4.5l1.5 1.5-5.5 5.5H7v-1.5z"/><path d="M11 3.5l1.5 1.5"/></svg>'
 
 /**
  * Apply the browser half.
@@ -50,22 +48,28 @@ export function apply(ctx: ClientContext): void {
     return () => observer.disconnect()
   }, 'page-annotate: language mirror')
 
-  // Register the right-side tab through dsh-better-sidebar.
-  ctx.effect(() => {
-    const service = resolveBetterSidebar(ctx)
+  // Register the right-side tab through dsh-better-sidebar. The service is
+  // awaited via ctx.inject instead of a direct get: loader entries boot
+  // concurrently, so the provider may not have started when this apply
+  // runs, and a synchronous get would silently lose the tab. The injected
+  // fiber stays pending until the service appears, then registers; without
+  // the provider the rest of the surface keeps working and only the tab
+  // is absent.
+  ctx.inject(['betterSidebar'], (betterCtx) => {
+    const service = resolveBetterSidebar(betterCtx)
     if (service === undefined) {
       console.warn('[page-annotate] dsh-better-sidebar not loaded; right-panel tab unavailable')
-      return () => undefined
+      return
     }
     const dispose = service.registerTab({
       id: 'page-annotate',
       title: () => t('tab.title'),
-      icon: ICON,
+      icon: TAB_ICON,
       order: 95,
       single: true,
       urlTarget: (url: URL) => url.protocol === 'http:' || url.protocol === 'https:',
       component: createTabComponent,
     })
     return () => dispose()
-  }, 'page-annotate: tab registration')
+  })
 }

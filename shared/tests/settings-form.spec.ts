@@ -180,6 +180,24 @@ describe('CardForm', () => {
     expect(form.shell()).toMatchObject({ failed: true, dirty: true })
   })
 
+  it('clears saving when a write rejects (no stuck shell)', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ name: 'old' })
+    scope.set.mockImplementation(async () => { throw new Error('boom') })
+    const form = new CardForm(scope, fields())
+    form.actions().edit('name', 'new')
+    await expect(form.save()).rejects.toThrow('boom')
+    expect(form.shell().saving).toBe(false)
+  })
+
+  it('does not show the overridden badge for a draft equal to the effective value', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ name: 'inherited' })
+    const form = new CardForm(scope, fields())
+    form.actions().edit('name', 'inherited')
+    // plan() skips this draft (it matches the effective value), so no write
+    // would be staged — the badge must not claim one.
+    expect(form.field('name').overridden).toBe(false)
+  })
+
   it('resets a field back to its base value', () => {
     const scope = new FakeScope<Record<string, unknown>>({ enabled: true })
     const form = new CardForm(scope, fields())

@@ -294,7 +294,9 @@ export class CardForm<T> {
     const write = staged.clear ? { kind: 'clear' as const } : spec.parse(staged.text)
     return {
       text: staged.text,
-      overridden: write?.kind === 'set',
+      // Overridden only when the save would actually write: a draft equal to
+      // the effective value is skipped by plan(), so it must not show the badge.
+      overridden: write?.kind === 'set' && staged.text !== spec.format(this.sectionValue(field)),
       invalid: write === undefined,
     }
   }
@@ -341,27 +343,32 @@ export class CardForm<T> {
     this.failedReason = undefined
     this.publish()
     const landed = new Set<string>()
-    const batch = this.batchedScope()
-    if (batch !== undefined) {
-      const result = await batch.mutate(plannedWrites)
-      if (result.ok) {
-        for (const field of result.fields) {
-          if (field.landed) landed.add(field.field)
+    try {
+      const batch = this.batchedScope()
+      if (batch !== undefined) {
+        const result = await batch.mutate(plannedWrites)
+        if (result.ok) {
+          for (const field of result.fields) {
+            if (field.landed) landed.add(field.field)
+          }
+        } else {
+          this.failedReason = result.message
         }
       } else {
-        this.failedReason = result.message
+        for (const item of valid) {
+          if (await item.run!()) landed.add(item.field)
+        }
       }
-    } else {
-      for (const item of valid) {
-        if (await item.run!()) landed.add(item.field)
+      for (const field of fields) {
+        if (landed.has(field)) this.staged.delete(field)
       }
+      this.failed = landed.size !== fields.size
+    } finally {
+      // An exceptional write rejection must never leave the shell stuck
+      // saving (a rejected write keeps its drafts staged for a retry).
+      this.saving = false
+      this.publish()
     }
-    for (const field of fields) {
-      if (landed.has(field)) this.staged.delete(field)
-    }
-    this.saving = false
-    this.failed = landed.size !== fields.size
-    this.publish()
   }
 
   /** The scope's batch surface when it supports one; undefined conservatively otherwise. */

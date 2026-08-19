@@ -27,6 +27,7 @@
 - Agent 使用工具前，主机需先在 GUI 中配置（或从 ~/.ssh/config 导入）。
 - `ssh_upload` / `ssh_download` 以宿主进程权限直接读写本机任意路径（不经 bash 沙箱）——与 ssh-skill 的宿主本地路径语义一致，注意该权限面。
 - exec / cluster 的远程输出原样返回（不脱敏），命令如 `env` 可能把远端环境中的密钥带回对话记录。
+- Agent 工具可通过 `defaultPermissionMode` 限制（见「配置」）；默认 `allow` 保持完整能力，`readonly` / `deny` / `ask` 可降低模型代替你执行操作的风险。
 
 ## 安装
 
@@ -49,6 +50,32 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-ssh
 ## 配置
 
 设置面板（插件配置）可开关 `announceToAgent`（是否向 Agent 宣告插件）与 `enabled`（总开关），并可设置 `terminalFontFamily`（Web 终端字体，留空则按 CSS 链解析：`--dsh-ssh-terminal-font` → 官方 `--ds-font-family-code` token → 内置 monospace 栈）。终端字体写死在 xterm 构造参数里，CSS 无法直接覆盖；要渲染 powerline / Nerd Font 图标，请在此填入对应 Nerd Font 栈（如 `"SauceCodePro Nerd Font", monospace`），修改对已打开的终端即时生效，无需重连。
+
+SSH Agent 工具还可通过权限策略进行限制：
+
+- `defaultPermissionMode`：`allow`（默认）、`readonly`、`deny` 或 `ask`。
+  - `allow` — 全部 SSH Agent 工具正常运行。
+  - `readonly` — 只允许 `permissionReadonlyTools` 中的工具。
+  - `deny` — 拒绝全部 `permissionTools` 中的工具。
+  - `ask` — 每次调用受管工具都请求人工批准。
+- `permissionTools`：受该模式管理的工具；默认是全部六个 SSH Agent 工具。
+- `permissionReadonlyTools`：`readonly` 模式下仍允许的工具；默认是 `ssh_list`。
+
+该策略只作用于 Agent 工具。Web GUI（主机管理、终端、传输、隧道）始终是人工操作，不受此策略限制。`~/.dsh/settings.yaml` 示例：
+
+```yaml
+dsh-ssh:
+  defaultPermissionMode: readonly
+  permissionTools:
+    - ssh_list
+    - ssh_exec
+    - ssh_upload
+    - ssh_download
+    - ssh_tunnel
+    - ssh_cluster
+  permissionReadonlyTools:
+    - ssh_list
+```
 
 ## 数据
 

@@ -16,6 +16,12 @@ import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
 import { SshEngine } from './engine.ts'
 import { makeRoutes } from './routes.ts'
+import {
+  resolveSshPermission,
+  SSH_PERMISSION_TOOLS,
+  SSH_READONLY_TOOLS,
+  type SshPermissionMode,
+} from './permission.ts'
 import { HostStore } from './store.ts'
 import { sshClusterTool, sshDownloadTool, sshExecTool, sshListTool, sshTunnelTool, sshUploadTool } from './tools.ts'
 import { mountOnce } from './mount-once.ts'
@@ -49,12 +55,28 @@ export interface Config {
    * Nerd Font stack here to render powerline/Nerd glyphs.
    */
   terminalFontFamily?: string
+  /**
+   * Default permission mode for the six SSH agent tools. The GUI surfaces are
+   * manual user actions and are never gated by this setting.
+   * - `allow`: all SSH tools run normally (default).
+   * - `readonly`: only `permissionReadonlyTools` are allowed.
+   * - `deny`: all `permissionTools` are denied.
+   * - `ask`: every call to a listed SSH tool requests human approval.
+   */
+  defaultPermissionMode?: SshPermissionMode
+  /** Tools governed by `defaultPermissionMode`; defaults to all six SSH tools. */
+  permissionTools?: string[]
+  /** Tools still allowed when `defaultPermissionMode` is `readonly`; defaults to `ssh_list`. */
+  permissionReadonlyTools?: string[]
 }
 
 export const Config: z<Config> = z.object({
   announceToAgent: z.boolean().default(true),
   enabled: z.boolean().default(true),
   terminalFontFamily: z.string().default(''),
+  defaultPermissionMode: z.union(['allow', 'readonly', 'deny', 'ask']).default('allow'),
+  permissionTools: z.array(z.string()).default([...SSH_PERMISSION_TOOLS]),
+  permissionReadonlyTools: z.array(z.string()).default([...SSH_READONLY_TOOLS]),
 })
 
 /** Schema default, re-read for hand-built test contexts (the loader applies them normally). */
@@ -82,6 +104,9 @@ function applyImpl(ctx: Context, config?: Config): void {
     return {
       announceToAgent: value.announceToAgent ?? DEFAULT_ANNOUNCE,
       enabled: value.enabled ?? true,
+      defaultPermissionMode: value.defaultPermissionMode ?? 'allow',
+      permissionTools: value.permissionTools,
+      permissionReadonlyTools: value.permissionReadonlyTools,
     }
   }
 
@@ -107,6 +132,9 @@ function applyImpl(ctx: Context, config?: Config): void {
   // System-prompt announcement.
   let disposeSection: (() => void) | undefined
 
+  // Agent-tool permission policy (guard / pre-execute approval).
+  let disposePermission: (() => void) | undefined
+
   // Register (or drop) every surface to match the current source. Each group
   // is kept under one disposer: re-registering first tears the old one down
   // so duplicate-name registrations never throw.
@@ -123,6 +151,10 @@ function applyImpl(ctx: Context, config?: Config): void {
     if (disposeTools !== undefined) {
       disposeTools()
       disposeTools = undefined
+    }
+    if (disposePermission !== undefined) {
+      disposePermission()
+      disposePermission = undefined
     }
     if (!value.enabled) return
     if (value.announceToAgent) {
@@ -150,6 +182,26 @@ function applyImpl(ctx: Context, config?: Config): void {
       },
       'dsh-ssh: tools',
     )
+
+    // Permission policy: guards only the six SSH agent tools; the web GUI is
+    // always manual and unaffected. `allow` (the default) installs nothing.
+    const permission = {
+      mode: value.defaultPermissionMode ?? 'allow',
+      tools: value.permissionTools,
+      readonlyTools: value.permissionReadonlyTools,
+    }
+    if (permission.mode === 'ask') {
+      disposePermission = ctx.on('tools/pre-execute', async (exec, next) => {
+        const decision = resolveSshPermission(exec.name, permission)
+        if (decision.kind === 'ask') return { kind: 'ask', reason: decision.reason }
+        return next()
+      })
+    } else if (permission.mode === 'deny' || permission.mode === 'readonly') {
+      disposePermission = ctx.tools.guard((exec) => {
+        const decision = resolveSshPermission(exec.name, permission)
+        return decision.kind === 'deny' ? decision.reason : undefined
+      })
+    }
   }
 
   installSettingsSection(ctx, SSH_SETTINGS_NAMESPACE, Config, config ?? {}, {

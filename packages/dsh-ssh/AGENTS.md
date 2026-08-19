@@ -14,6 +14,8 @@ dsh Web GUI 的远程 SSH 运维插件：Host 进程内的持久 ssh2 连接池 
   对话记录；传输 / 执行消耗**真实远程资源**，Agent 使用前先确认。
 - `ssh_upload` / `ssh_download` 以宿主进程权限直接读写本机任意路径（不经
   bash 沙箱）；所有 `/api/dsh-ssh/*` 路由仅限 loopback，隧道只监听 `127.0.0.1`。
+- Agent 工具默认全部可用；`defaultPermissionMode` 可设为 `readonly` / `deny` /
+  `ask` 收紧模型侧行为（GUI 人工操作不受影响）。改权限语义必须同步 README 与测试。
 
 ## Agent 工具面
 
@@ -21,6 +23,7 @@ dsh Web GUI 的远程 SSH 运维插件：Host 进程内的持久 ssh2 连接池 
   `ssh_tunnel` / `ssh_cluster`，GUI 与 Agent 共享同一份主机配置。
 - Agent 只能用**用户在 GUI 配置过**（或从 `~/.ssh/config` 导入）的主机；别名
   未配置时先告知用户去 GUI 配置，不得臆造。
+- 权限策略只拦截列在 `permissionTools` 中的 Agent 工具；非 SSH 工具不受本包策略影响。
 
 ## 提交前检查
 

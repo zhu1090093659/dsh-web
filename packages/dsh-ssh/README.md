@@ -27,6 +27,7 @@ Built on the capability list of [badseal/ssh-skill](https://github.com/badseal/s
 - Before the Agent uses a tool, the host must first be configured in the GUI (or imported from ~/.ssh/config).
 - `ssh_upload` / `ssh_download` read/write arbitrary local paths on this machine with host-process privileges (not through the bash sandbox) — same host-local-path semantics as ssh-skill, be aware of that permission surface.
 - The remote output of exec / cluster is returned verbatim (not sanitized); a command like `env` may bring secrets from the remote environment back into the conversation log.
+- Agent tool use can be restricted through `defaultPermissionMode` (see Configuration); the default `allow` keeps full functionality, while `readonly` / `deny` / `ask` reduce what the model may do on your behalf.
 
 ## Install
 
@@ -49,6 +50,32 @@ After installing, **restart `dsh web`**: a "SSH" entry appears in the sidebar; t
 ## Configuration
 
 The settings panel (plugin config) toggles `announceToAgent` (whether to announce the plugin to the Agent) and `enabled` (master switch), and sets `terminalFontFamily` (the web terminal font; empty defers to the CSS chain: `--dsh-ssh-terminal-font` → the official `--ds-font-family-code` token → the built-in monospace stack). The terminal font is fixed in the xterm constructor, so a plain stylesheet cannot override it; to render powerline / Nerd Font glyphs, enter a Nerd Font stack here (e.g. `"SauceCodePro Nerd Font", monospace`). Changes re-apply to open terminals live, no reconnect needed.
+
+The SSH agent tools can also be gated by a permission policy:
+
+- `defaultPermissionMode`: `allow` (default), `readonly`, `deny`, or `ask`.
+  - `allow` — all SSH agent tools run normally.
+  - `readonly` — only `permissionReadonlyTools` are allowed.
+  - `deny` — all `permissionTools` are denied.
+  - `ask` — every call to a listed SSH tool requests human approval.
+- `permissionTools`: the tools governed by the mode; defaults to all six SSH agent tools.
+- `permissionReadonlyTools`: tools still allowed in `readonly` mode; defaults to `ssh_list`.
+
+This policy applies only to the agent-facing tools. The web GUI (host manager, terminal, transfers, tunnels) is always manual user interaction and is never gated. Example in `~/.dsh/settings.yaml`:
+
+```yaml
+dsh-ssh:
+  defaultPermissionMode: readonly
+  permissionTools:
+    - ssh_list
+    - ssh_exec
+    - ssh_upload
+    - ssh_download
+    - ssh_tunnel
+    - ssh_cluster
+  permissionReadonlyTools:
+    - ssh_list
+```
 
 ## Data
 

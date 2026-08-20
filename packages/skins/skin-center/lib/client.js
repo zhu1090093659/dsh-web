@@ -69,7 +69,8 @@ window.__ModuleLoader__.load({
 		function resolveCssColor(doc, name) {
 			const win = doc.defaultView;
 			if (win === null || doc.documentElement === null) return null;
-			const raw = win.getComputedStyle(doc.documentElement).getPropertyValue(name).trim();
+			let raw = win.getComputedStyle(doc.documentElement).getPropertyValue(name).trim();
+			if (raw === "" && doc.body !== null) raw = win.getComputedStyle(doc.body).getPropertyValue(name).trim();
 			if (raw === "") return null;
 			const probe = doc.createElement("div");
 			probe.style.setProperty("background-color", raw);

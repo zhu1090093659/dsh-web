@@ -457,6 +457,26 @@ describe('WallpaperController', () => {
     document.documentElement.style.removeProperty('--dsw-alias-bg-base')
   })
 
+  it('defaultWallpaperSurface resolves tokens defined on body (official shells)', () => {
+    // The official shells define --dsw-alias-* on body, never on :root
+    // (rc.7 dsh-web-frontend index.css and the rc.8 dsh-client-ui-theme
+    // design-platform.css alike), and custom properties do not inherit
+    // upward — a documentElement-only read resolves nothing, the surface
+    // detector tags zero elements, and the WE wallpaper stays covered under
+    // the stock look. The detector must fall back to body.
+    document.body.innerHTML = ''
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+    document.body.style.setProperty('--dsw-alias-bg-base', '#f6f7f8')
+    const surface = document.createElement('div')
+    surface.style.height = '100%'
+    surface.style.backgroundColor = '#f6f7f8'
+    root.appendChild(surface)
+    expect(defaultWallpaperSurface(surface, document)).toBe(true)
+    document.body.style.removeProperty('--dsw-alias-bg-base')
+  })
+
   it('defaultWallpaperSurface uses rendered px geometry in real browsers (#734 review)', () => {
     // Real browsers return USED values: computed height in px ("913px") and
     // layout rects in px. jsdom lays nothing out, so this fake exercises the

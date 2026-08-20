@@ -178,7 +178,15 @@ export function defaultWallpaperSurface(el: HTMLElement, doc: Document): boolean
 function resolveCssColor(doc: Document, name: string): string | null {
   const win = doc.defaultView
   if (win === null || doc.documentElement === null) return null
-  const raw = win.getComputedStyle(doc.documentElement).getPropertyValue(name).trim()
+  // The official shells define the --dsw-alias-* tokens on body, not on :root
+  // (rc.7 dsh-web-frontend index.css and the rc.8 dsh-client-ui-theme
+  // design-platform.css alike), and custom properties never inherit upward,
+  // so a documentElement-only read resolves nothing and the wallpaper-surface
+  // detector silently tags zero elements. Fall back to body.
+  let raw = win.getComputedStyle(doc.documentElement).getPropertyValue(name).trim()
+  if (raw === '' && doc.body !== null) {
+    raw = win.getComputedStyle(doc.body).getPropertyValue(name).trim()
+  }
   if (raw === '') return null
   const probe = doc.createElement('div')
   probe.style.setProperty('background-color', raw)

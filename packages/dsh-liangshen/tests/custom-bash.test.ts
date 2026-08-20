@@ -49,6 +49,10 @@ function execFace(partial: Record<string, unknown> = {}): never {
   } as never
 }
 
+function portablePath(path: string): string {
+  return path.replace(/\\/g, '/')
+}
+
 /** The registered tool spec + its execute function. */
 function toolOf(ctx: ReturnType<typeof makeCtx>) {
   expect(ctx.registered).toHaveLength(1)
@@ -58,9 +62,7 @@ function toolOf(ctx: ReturnType<typeof makeCtx>) {
 
 describe('bashCandidates', () => {
   it('derives Git Bash roots from the git executable path', () => {
-    // node:path follows the runner platform, so probe with a POSIX-style
-    // git path: <root>/cmd/git.exe -> <root>/bin/bash.exe.
-    const candidates = bashCandidates({}, '/opt/git/cmd/git.exe')
+    const candidates = bashCandidates({}, '/opt/git/cmd/git.exe').map(portablePath)
     expect(candidates).toContain('/opt/git/bin/bash.exe')
     expect(candidates).toContain('/opt/git/cmd/bash.exe')
     expect(candidates).toContain('/opt/bin/bash.exe')
@@ -74,9 +76,8 @@ describe('bashCandidates', () => {
       USERPROFILE: 'C:\\Users\\me',
     }
     const candidates = bashCandidates(env, undefined)
-    // Platform-agnostic tails: each well-known root must appear
-    // (separator varies with the runner, which is what the probe chain
-    // actually uses on Windows).
+    // Platform-agnostic tails: each well-known root must appear.
+    const normalized = candidates.map(portablePath)
     const tails = [
       'Git/bin/bash.exe',
       'Program Files/Git/bin/bash.exe',
@@ -85,7 +86,7 @@ describe('bashCandidates', () => {
       'scoop/apps/git/current/bin/bash.exe',
     ]
     for (const tail of tails) {
-      expect(candidates.some(c => c.includes(tail))).toBe(true)
+      expect(normalized.some(c => c.includes(tail))).toBe(true)
     }
   })
 

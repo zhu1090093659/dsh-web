@@ -15,25 +15,10 @@ body[data-ds-dark-theme] {
   background-image: radial-gradient(circle at 16% 10%, #2e9bff1f, #0000 42%), radial-gradient(circle at 84% 22%, #58aaff1a, #0000 38%), radial-gradient(circle at 58% 94%, #2e9bff24, #0000 45%), linear-gradient(168deg, #041110 0%, #0a1430 48%, #101f42 100%);
 }
 
-/* 明/暗背景用 CSS 直接在 body 上画（锚定 body / body[data-ds-dark-theme]），
-   theme 属性翻转时即时换图，不再依赖皮肤中心的“激活时一次性安装”。
-   图片为皮肤目录内相对路径 url(assets/...)，换设备不坏；
-   !important 用于盖过皮肤中心按激活时间写入的 body 背景。 */
-body {
-  background-color: transparent !important;
-  background-image: url(assets/miku-art-light.jpg) !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-}
-
-body[data-ds-dark-theme] {
-  background-color: #0a1430 !important;
-  background-image: linear-gradient(rgba(4, 10, 28, 0.12) 0%, rgba(6, 14, 36, 0.16) 60%, rgba(8, 18, 42, 0.18) 100%), url(assets/miku-art-dark.png) !important;
-  background-size: cover, cover !important;
-  background-position: center, center !important;
-  background-repeat: no-repeat, no-repeat !important;
-}
+/* 背景由皮肤中心运行时统一绘制：明暗两图已在 skin.json 的
+   contributes.backgroundMedia 中声明（light=assets/miku-art-light.jpg，
+   dark=assets/miku-art-dark.png）。不再用 CSS 对 body 写 !important 覆盖，
+   以免绕过 WE 壁纸 / 用户手动背景 的优先级以及背景 scrim 契约。 */
 
 :root {
   --dsw-alias-bg-base: #ffffff29;

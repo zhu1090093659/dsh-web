@@ -192,63 +192,10 @@ export default function defineSkinHooks() {
       syncPanelCollapsed()
       const panelTimer = setInterval(syncPanelCollapsed, 500)
 
-      // The rc.8 shell deliberately hides the composer while a just-submitted
-      // session settles. On this image-backed skin that transition reads as a
-      // disappearing input, and remounted nodes can briefly miss stylesheet
-      // guards. Reassert the stable composer surface after phase/DOM/input
-      // transitions with inline important declarations.
-      const composerStyles = new Map()
-      const setComposerStyle = (element, property, value) => {
-        if (!(element instanceof HTMLElement)) return
-        let saved = composerStyles.get(element)
-        if (saved === undefined) {
-          saved = new Map()
-          composerStyles.set(element, saved)
-        }
-        if (!saved.has(property)) {
-          saved.set(property, [element.style.getPropertyValue(property), element.style.getPropertyPriority(property)])
-        }
-        element.style.setProperty(property, value, 'important')
-      }
-      const syncComposer = () => {
-        const seat = document.querySelector('[data-composer-seat]')
-        const card = document.querySelector('[data-composer-card]')
-        const scroll = card?.querySelector('[data-input-scroll]')
-        const input = card?.querySelector('textarea[data-dsh-part="composer-input"]')
-        const backdrop = card?.querySelector('[data-input-backdrop]')
-        for (const [property, value] of [['display', 'flex'], ['visibility', 'visible'], ['opacity', '1'], ['min-height', '92px']]) {
-          setComposerStyle(seat, property, value)
-          setComposerStyle(card, property, value)
-        }
-        const dark = body.hasAttribute('data-ds-dark-theme')
-        setComposerStyle(card, 'background', dark ? 'rgba(13, 26, 58, 0.72)' : 'rgba(250, 253, 255, 0.96)')
-        setComposerStyle(card, 'border', dark ? '1px solid rgba(88, 169, 255, 0.42)' : '1px solid rgba(30, 111, 217, 0.5)')
-        setComposerStyle(card, 'box-shadow', dark ? '0 8px 28px rgba(0, 8, 28, 0.38)' : '0 8px 24px rgba(8, 35, 75, 0.16)')
-        setComposerStyle(scroll, 'display', 'block')
-        setComposerStyle(scroll, 'visibility', 'visible')
-        setComposerStyle(scroll, 'opacity', '1')
-        setComposerStyle(scroll, 'min-height', '28px')
-        setComposerStyle(input, 'display', 'block')
-        setComposerStyle(input, 'visibility', 'visible')
-        setComposerStyle(input, 'opacity', '1')
-        setComposerStyle(input, 'color', dark ? '#e7f5ff' : '#000')
-        setComposerStyle(input, '-webkit-text-fill-color', dark ? '#e7f5ff' : '#000')
-        setComposerStyle(input, 'background', 'transparent')
-        setComposerStyle(backdrop, 'visibility', 'hidden')
-        setComposerStyle(backdrop, 'opacity', '0')
-      }
-      let composerFrame = 0
-      const scheduleComposerSync = () => {
-        cancelAnimationFrame(composerFrame)
-        composerFrame = requestAnimationFrame(syncComposer)
-      }
-      syncComposer()
-      const composerObserver = new MutationObserver(scheduleComposerSync)
-      composerObserver.observe(body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-phase', 'data-ds-dark-theme'] })
-      const themeObserver = new MutationObserver(scheduleComposerSync)
-      themeObserver.observe(body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
-      document.addEventListener('input', scheduleComposerSync, true)
-      document.addEventListener('click', scheduleComposerSync, true)
+      // 输入卡（composer）settling 阶段可见性改由 patches.css 用稳定语义锚点
+      // （data-composer-seat / data-composer-card / data-dsh-part）声明式修复，
+      // 颜色走 --dsw-alias-* token。不再用 JS 每帧写内联 !important，避免对抗
+      // rc.8 shell 的 settling 状态机并绕过皮肤中心 token 体系。
 
       const originalTitle = document.title
       // Resolve the pinned title once up front so the title-bar text and the
@@ -309,17 +256,6 @@ export default function defineSkinHooks() {
       ctx.onCleanup(() => {
         cursorStyle.remove()
         clearInterval(panelTimer)
-        cancelAnimationFrame(composerFrame)
-        composerObserver.disconnect()
-        themeObserver.disconnect()
-        document.removeEventListener('input', scheduleComposerSync, true)
-        document.removeEventListener('click', scheduleComposerSync, true)
-        for (const [element, saved] of composerStyles) {
-          for (const [property, [value, priority]] of saved) {
-            if (value === '') element.style.removeProperty(property)
-            else element.style.setProperty(property, value, priority)
-          }
-        }
         if (originalHtmlTranslate === null) html.removeAttribute('translate')
         else html.setAttribute('translate', originalHtmlTranslate)
         if (originalBodyTranslate === null) body.removeAttribute('translate')

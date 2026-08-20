@@ -45,18 +45,31 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
   },
 }))
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import { releasePetClientApply } from './apply-guard.ts'
 import { apply } from './index.ts'
 
 beforeAll(() => {
   document.documentElement.lang = 'zh'
 })
 
+interface FakeClientLifecycle {
+  ctx: ClientContext
+  dispose(): void
+  settingsListenerCount(): number
+}
+
+const activeClients: FakeClientLifecycle[] = []
+
 afterEach(() => {
+  for (const client of activeClients.splice(0).reverse()) client.dispose()
+  releasePetClientApply()
   document.body.replaceChildren()
 })
 
-/** A minimal client root context: ready settings scope, no-op slot system. */
-function fakeContext(): ClientContext {
+/** A minimal client root context with observable fiber disposal. */
+function fakeContext(): FakeClientLifecycle {
+  const disposers: (() => void)[] = []
+  const settingsListeners = new Set<() => void>()
   const scope = {
     getSnapshot: () => ({
       status: 'ready',
@@ -67,29 +80,71 @@ function fakeContext(): ClientContext {
       revision: 1,
       mode: 'host',
     }),
-    subscribe: () => () => {},
+    subscribe: (listener: () => void) => {
+      settingsListeners.add(listener)
+      return () => { settingsListeners.delete(listener) }
+    },
   }
-  return {
+  const ctx = {
     effect: (fn: () => unknown) => {
       const dispose = fn()
-      return typeof dispose === 'function' ? dispose : () => {}
+      if (typeof dispose !== 'function') return () => {}
+      const cleanup = dispose as () => void
+      disposers.push(cleanup)
+      return cleanup
     },
     locale: { register: () => () => {} },
     get: () => undefined,
     settingsScope: { bind: () => scope },
     slots: {
-      inject: (_name: string, callback: () => () => void) => callback(),
+      inject: (_name: string, callback: () => () => void) => {
+        const dispose = callback()
+        disposers.push(dispose)
+        return dispose
+      },
       register: () => () => {},
     },
     sessions: undefined,
   } as unknown as ClientContext
+  let disposed = false
+  const lifecycle: FakeClientLifecycle = {
+    ctx,
+    dispose: () => {
+      if (disposed) return
+      disposed = true
+      for (const dispose of disposers.splice(0).reverse()) dispose()
+    },
+    settingsListenerCount: () => settingsListeners.size,
+  }
+  activeClients.push(lifecycle)
+  return lifecycle
 }
 
-describe('pet client apply L2 semantic attributes (#506)', () => {
-  it('mounts the pet root container with data-dsh-plugin="pet"', () => {
-    apply(fakeContext())
+describe('pet client apply', () => {
+  it('mounts the pet root container with the L2 data-dsh-plugin attribute (#506)', () => {
+    apply(fakeContext().ctx)
     const root = document.body.querySelector('[data-dsh-pet-root]')
     expect(root).not.toBeNull()
     expect(root!.getAttribute('data-dsh-plugin')).toBe('pet')
+  })
+
+  it('keeps one global pet root when two client factories overlap', () => {
+    apply(fakeContext().ctx)
+    apply(fakeContext().ctx)
+
+    expect(document.body.querySelectorAll('[data-dsh-pet-root]')).toHaveLength(1)
+  })
+
+  it('cleans the root and settings subscriptions before a client re-apply', () => {
+    const first = fakeContext()
+    apply(first.ctx)
+    expect(first.settingsListenerCount()).toBeGreaterThan(0)
+
+    first.dispose()
+    expect(first.settingsListenerCount()).toBe(0)
+    expect(document.body.querySelectorAll('[data-dsh-pet-root]')).toHaveLength(0)
+
+    apply(fakeContext().ctx)
+    expect(document.body.querySelectorAll('[data-dsh-pet-root]')).toHaveLength(1)
   })
 })

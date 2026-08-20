@@ -24,6 +24,7 @@ import type { PetInteraction } from '../affinity.ts'
 import type { PetDefinition } from '../registry.ts'
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
+import { claimPetClientApply, releasePetClientApply } from './apply-guard.ts'
 import { createPetStore, type PetStoreInstance } from './pet-store.ts'
 import { PetDockEntry, type PetInjected } from './PetDockEntry.tsx'
 import { defaultPetRendererRegistry } from './renderers/registry.ts'
@@ -103,6 +104,11 @@ declare module '@deepseek-ai/cordis' {
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  // A stale client bundle can overlap a rebuilt one during client reload.
+  // Only one module instance may own the page-global pet root at a time.
+  if (!claimPetClientApply()) return
+  ctx.effect(() => releasePetClientApply, 'pet: apply claim')
+
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'pet: dictionaries')
 
   // Built-in renderers dispatch through the plugin-wide registry (pet-center
@@ -314,6 +320,13 @@ export function apply(ctx: ClientContext): void {
       disposeUi = undefined
     }
   }
-  settingsScope.subscribe(syncUi)
+  const unsubscribeSettings = settingsScope.subscribe(syncUi)
+  ctx.effect(() => () => {
+    try {
+      unsubscribeSettings()
+    } finally {
+      disposeUi?.()
+    }
+  }, 'pet: client lifecycle')
   syncUi()
 }

@@ -9,15 +9,15 @@ body[data-ds-dark-theme] {
 }
 
 :root {
-  --dsw-alias-bg-base: #ffffff73;
-  --dsw-alias-bg-layer-1: #f3f5fb80;
-  --dsw-alias-bg-layer-2: #e9edf78c;
-  --dsw-alias-bg-layer-3: #dde3f194;
+  --dsw-alias-bg-base: rgba(255, 255, 255, calc(var(--dsh-skin-scrim, 0) * .45));
+  --dsw-alias-bg-layer-1: rgba(243, 245, 251, calc(1 - var(--dsh-skin-scrim, 0) * .5));
+  --dsw-alias-bg-layer-2: rgba(233, 237, 247, calc(1 - var(--dsh-skin-scrim, 0) * .45));
+  --dsw-alias-bg-layer-3: rgba(221, 227, 241, calc(1 - var(--dsh-skin-scrim, 0) * .42));
   --dsw-alias-bg-mask-1: #1c254666;
   --dsw-alias-bg-mask-2: #1c254633;
   --dsw-alias-bg-mask-3: #1c254680;
   --dsw-alias-bg-mask-photo: #101424e0;
-  --dsw-alias-bg-module-platform: #e9edf78c;
+  --dsw-alias-bg-module-platform: rgba(233, 237, 247, calc(1 - var(--dsh-skin-scrim, 0) * .45));
   --dsw-alias-bg-multi-select: #dce3f7cc;
   --dsw-alias-bg-overlay: #eef1f9eb;
   --dsw-alias-bg-skeleton: #1c25460f;
@@ -88,11 +88,11 @@ body[data-ds-dark-theme] {
   --dsw-alias-tooltip-fg: #1a2238;
   --dsw-specific-bubble-highlight: #c3cfee;
   --dsw-specific-bubble: #dce3f7;
-  --dsw-specific-input-major: #fff9;
-  --dsw-specific-login-input: #fff9;
+  --dsw-specific-input-major: rgba(255, 255, 255, calc(1 - var(--dsh-skin-scrim, 0) * .4));
+  --dsw-specific-login-input: rgba(255, 255, 255, calc(1 - var(--dsh-skin-scrim, 0) * .4));
   --dsw-specific-menu: #f3f5fbf0;
   --dsw-specific-selector: #e4eaf7d9;
-  --dsw-specific-sidebar-fill: #f2f5fa80;
+  --dsw-specific-sidebar-fill: rgba(242, 245, 250, calc(1 - var(--dsh-skin-scrim, 0) * .5));
   --dsw-specific-sidebar-nav-item-active-accent: #a5b7e2;
   --dsw-specific-sidebar-nav-item-active: #dce3f7;
   --dsw-specific-sidebar-nav-item-hover: #e4eaf7;
@@ -100,15 +100,15 @@ body[data-ds-dark-theme] {
 }
 
 body[data-ds-dark-theme] {
-  --dsw-alias-bg-base: #10162a80;
-  --dsw-alias-bg-layer-1: #1a22388c;
-  --dsw-alias-bg-layer-2: #202a4499;
-  --dsw-alias-bg-layer-3: #26324fa3;
+  --dsw-alias-bg-base: rgba(16, 22, 42, calc(var(--dsh-skin-scrim, 0) * .5));
+  --dsw-alias-bg-layer-1: rgba(26, 34, 56, calc(1 - var(--dsh-skin-scrim, 0) * .45));
+  --dsw-alias-bg-layer-2: rgba(32, 42, 68, calc(1 - var(--dsh-skin-scrim, 0) * .4));
+  --dsw-alias-bg-layer-3: rgba(38, 50, 79, calc(1 - var(--dsh-skin-scrim, 0) * .36));
   --dsw-alias-bg-mask-1: #0000008c;
   --dsw-alias-bg-mask-2: #0000004d;
   --dsw-alias-bg-mask-3: #0009;
   --dsw-alias-bg-mask-photo: #060914e6;
-  --dsw-alias-bg-module-platform: #202a4499;
+  --dsw-alias-bg-module-platform: rgba(32, 42, 68, calc(1 - var(--dsh-skin-scrim, 0) * .4));
   --dsw-alias-bg-multi-select: #2c3765cc;
   --dsw-alias-bg-overlay: #1a2238eb;
   --dsw-alias-bg-skeleton: #ffffff0f;
@@ -179,11 +179,11 @@ body[data-ds-dark-theme] {
   --dsw-alias-tooltip-fg: #1a2238;
   --dsw-specific-bubble-highlight: #33417a;
   --dsw-specific-bubble: #2c3765;
-  --dsw-specific-input-major: #1a2238a6;
-  --dsw-specific-login-input: #1a2238a6;
+  --dsw-specific-input-major: rgba(26, 34, 56, calc(1 - var(--dsh-skin-scrim, 0) * .35));
+  --dsw-specific-login-input: rgba(26, 34, 56, calc(1 - var(--dsh-skin-scrim, 0) * .35));
   --dsw-specific-menu: #1a2238f0;
   --dsw-specific-selector: #1e2740d9;
-  --dsw-specific-sidebar-fill: #1d25398c;
+  --dsw-specific-sidebar-fill: rgba(29, 37, 57, calc(1 - var(--dsh-skin-scrim, 0) * .45));
   --dsw-specific-sidebar-nav-item-active-accent: #33417a;
   --dsw-specific-sidebar-nav-item-active: #2c3765;
   --dsw-specific-sidebar-nav-item-hover: #202a44;

@@ -457,6 +457,33 @@ describe('WallpaperController', () => {
     document.documentElement.style.removeProperty('--dsw-alias-bg-base')
   })
 
+  it('defaultWallpaperSurface uses rendered px geometry in real browsers (#734 review)', () => {
+    // Real browsers return USED values: computed height in px ("913px") and
+    // layout rects in px. jsdom lays nothing out, so this fake exercises the
+    // geometry branch the review asked for: a full-height rect within 2px of
+    // the viewport height wins; a half-height rect is rejected even though
+    // the computed style string would have said "100%".
+    const probe = { style: { setProperty: () => {} }, remove: () => {} }
+    const html = { clientHeight: 1000, appendChild: () => {} }
+    const win = {
+      innerHeight: 1000,
+      getComputedStyle: (target: unknown) => {
+        if (target === probe) return { backgroundColor: 'rgb(246, 247, 248)' }
+        if (target === html) return { getPropertyValue: () => '#f6f7f8' }
+        return { height: '913px', backgroundColor: 'rgb(246, 247, 248)' }
+      },
+    } as unknown as Window
+    const doc = {
+      defaultView: win,
+      documentElement: html,
+      createElement: () => probe,
+    } as unknown as Document
+    const full = { getBoundingClientRect: () => ({ height: 1000 }) } as unknown as HTMLElement
+    const short = { getBoundingClientRect: () => ({ height: 500 }) } as unknown as HTMLElement
+    expect(defaultWallpaperSurface(full, doc)).toBe(true)
+    expect(defaultWallpaperSurface(short, doc)).toBe(false)
+  })
+
   it('tags the sidebar workspaces fade while a wallpaper is mounted (#734)', () => {
     const { scope } = fakeScope()
     document.body.innerHTML = ''

@@ -31,27 +31,37 @@ window.__ModuleLoader__.load({
 		const FRAME_MAX_EDGE = 1920;
 		/**
 		* Default full-viewport-surface detector for WE wallpaper neutralization
-		* (#734): an element is a shell surface when it is exactly the viewport
-		* height (100% / 100vh) AND its computed background-color equals the resolved
-		* --dsw-alias-bg-base color. That matches the official shell frame/root
-		* containers (AppFrame, conversation root, details root) which paint the app
-		* base background at full height and only carry hashed CSS-module classes, so
-		* this selector-free check never depends on class names. Returns false when
-		* the token cannot be resolved.
+		* (#734): an element is a shell surface when its rendered box is the full
+		* viewport height AND its computed background-color equals the resolved
+		* --dsw-alias-bg-base color. The height check uses GEOMETRY, not the literal
+		* computed "100%": real browsers return the used value in px (e.g. "913px")
+		* for rendered elements, and the literal "100%" only appears on unrendered
+		* 0x0 subtrees — a style-string check would silently never tag the
+		* AppFrame / conversation / details roots. jsdom does no layout (every rect
+		* is 0 and clientHeight is 0), so when no viewport height is measurable the
+		* check falls back to the style string to keep jsdom tests meaningful. The
+		* color check matches the official shell frame/root containers which paint
+		* the app base background at full height and only carry hashed CSS-module
+		* classes, so this selector-free check never depends on class names. Returns
+		* false when the token cannot be resolved.
 		*/
 		function defaultWallpaperSurface(el, doc) {
 			const win = doc.defaultView;
 			if (win === null) return false;
-			let height = "";
+			let rectHeight = 0;
+			let viewportHeight = 0;
+			let heightStyle = "";
 			let background = "";
 			try {
+				rectHeight = el.getBoundingClientRect().height;
+				viewportHeight = doc.documentElement.clientHeight || win.innerHeight || 0;
 				const cs = win.getComputedStyle(el);
-				height = cs.height;
+				heightStyle = cs.height;
 				background = cs.backgroundColor;
 			} catch {
 				return false;
 			}
-			if (height !== "100%" && height !== "100vh") return false;
+			if (!(rectHeight > 0 ? Math.abs(rectHeight - viewportHeight) <= 2 : heightStyle === "100%" || heightStyle === "100vh")) return false;
 			const base = resolveCssColor(doc, "--dsw-alias-bg-base");
 			return base !== null && background === base;
 		}

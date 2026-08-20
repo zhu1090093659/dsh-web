@@ -584,7 +584,15 @@ export class WallpaperController implements WallpaperHandle {
       this.mediaLayer.replaceChildren()
       this.videoElement = null
       const child = this.buildMedia(descriptor)
-      if (child !== null) this.mediaLayer.appendChild(child)
+      if (child !== null) {
+        this.mediaLayer.appendChild(child)
+        // The initial play() in buildVideo ran while the element was detached
+        // and may have been rejected; retry once mounted so large files start
+        // streaming without a user gesture (#805 loading).
+        if (child instanceof HTMLVideoElement && child.paused) {
+          void child.play()?.catch(() => { /* retried on first gesture */ })
+        }
+      }
     }
     // Sizing mode changes apply in place: rebuilding would restart video
     // playback and re-parse the scene on every click (#717 follow-up).
@@ -683,6 +691,9 @@ export class WallpaperController implements WallpaperHandle {
     video.loop = true
     video.autoplay = true
     video.playsInline = true
+    // Large local files may have the moov atom at the end: preload auto makes
+    // Chromium fetch metadata eagerly instead of waiting for a gesture.
+    video.preload = 'auto'
     video.setAttribute('aria-hidden', 'true')
     styleCover(video, this.fitValue)
     this.videoElement = video

@@ -512,7 +512,10 @@ window.__ModuleLoader__.load({
 					this.mediaLayer.replaceChildren();
 					this.videoElement = null;
 					const child = this.buildMedia(descriptor);
-					if (child !== null) this.mediaLayer.appendChild(child);
+					if (child !== null) {
+						this.mediaLayer.appendChild(child);
+						if (child instanceof HTMLVideoElement && child.paused) child.play()?.catch(() => {});
+					}
 				}
 				this.applyFit();
 				const blur = this.blurValue > 0 ? "blur(" + String(this.blurValue) + "px)" : "";
@@ -587,6 +590,7 @@ window.__ModuleLoader__.load({
 				video.loop = true;
 				video.autoplay = true;
 				video.playsInline = true;
+				video.preload = "auto";
 				video.setAttribute("aria-hidden", "true");
 				styleCover(video, this.fitValue);
 				this.videoElement = video;

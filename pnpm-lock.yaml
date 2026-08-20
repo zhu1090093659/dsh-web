@@ -1029,6 +1029,9 @@ importers:
 
   packages/skins/skin-center:
     dependencies:
+      jpeg-js:
+        specifier: ^0.4.4
+        version: 0.4.4
       lightningcss:
         specifier: ^1.32.0
         version: 1.32.0
@@ -1060,6 +1063,9 @@ importers:
       '@deepseek-ai/dsh-settings':
         specifier: ^0.1.0-rc.8
         version: 0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/schemastery@3.18.1)
+      '@types/jpeg-js':
+        specifier: ^0.3.7
+        version: 0.3.7
       '@types/node':
         specifier: ^22.20.0
         version: 22.20.1
@@ -2579,6 +2585,10 @@ packages:
   '@types/hast@3.0.5':
     resolution: {integrity: sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==}
 
+  '@types/jpeg-js@0.3.7':
+    resolution: {integrity: sha512-v3FEzt2TXOOIgvwwOqMoeEhqYqUoK4wcV/K7JbKj8CzwDE9sSuor8EZpSJKaOnuEtyO0W+Nd2uKk8MbtusYpEg==}
+    deprecated: This is a stub types definition. jpeg-js provides its own type definitions, so you do not need this installed.
+
   '@types/jsesc@2.5.1':
     resolution: {integrity: sha512-9VN+6yxLOPLOav+7PwjZbxiID2bVaeq0ED4qSQmdQTdjnXJSaCVKTR58t15oqH1H5t8Ng2ZX1SabJVoN9Q34bw==}
 
@@ -3265,6 +3275,9 @@ packages:
 
   ismobilejs@1.1.1:
     resolution: {integrity: sha512-VaFW53yt8QO61k2WJui0dHf4SlL8lxBofUuUmwBo0ljPk0Drz2TiuDW4jo3wDcv41qy/SxrJ+VAzJ/qYqsmzRw==}
+
+  jpeg-js@0.4.4:
+    resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==}
 
   js-binary-schema-parser@2.0.3:
     resolution: {integrity: sha512-xezGJmOb4lk/M1ZZLTR/jaBHQ4gG/lqQnJqdIv4721DMggsa1bDVlHXNeHYogaIEHD9vCRv0fcL4hMA+Coarkg==}
@@ -5698,6 +5711,10 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
 
+  '@types/jpeg-js@0.3.7':
+    dependencies:
+      jpeg-js: 0.4.4
+
   '@types/jsesc@2.5.1': {}
 
   '@types/katex@0.16.8': {}
@@ -6440,6 +6457,8 @@ snapshots:
   is-potential-custom-element-name@1.0.1: {}
 
   ismobilejs@1.1.1: {}
+
+  jpeg-js@0.4.4: {}
 
   js-binary-schema-parser@2.0.3: {}
 

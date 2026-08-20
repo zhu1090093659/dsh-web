@@ -32,6 +32,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
+    "jpeg-js": "^0.4.4",
     "lightningcss": "^1.32.0",
     "schemastery": "^3.18.0"
   },
@@ -39,11 +40,6 @@
     "react": "^18.2.0"
   },
   "devDependencies": {
-    "jsdom": "29.1.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.3.1",
-    "tsdown": "^0.22.2",
-    "vitest": "^4.1.8",
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.8",
@@ -52,10 +48,16 @@
     "@deepseek-ai/dsh-client-ui-theme": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-settings": "^0.1.0-rc.8",
-    "typescript": "~5.7.2",
+    "@types/jpeg-js": "^0.3.7",
     "@types/node": "^22.20.0",
     "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0"
+    "@types/react-dom": "^18.3.0",
+    "jsdom": "29.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.3.1",
+    "tsdown": "^0.22.2",
+    "typescript": "~5.7.2",
+    "vitest": "^4.1.8"
   },
   "files": [
     "lib",

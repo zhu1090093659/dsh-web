@@ -33,6 +33,7 @@ import {
   readPkgEntry,
   extractSceneResourceFromDir,
 } from '../src/pkg-extract.ts'
+import { encode as encodeJpeg } from 'jpeg-js'
 
 // ---------------------------------------------------------------------------
 // binary builders
@@ -1498,8 +1499,8 @@ describe('scene robustness (#717 follow-up)', () => {
 // ---------------------------------------------------------------------------
 // JPEG-embedded TEX (issue #756): the TEXB0003 layout is imageCount ->
 // FreeImage format -> per-image mipmapCount; FreeImage FIF_JPEG = 2. Such
-// mipmaps carry JPEG bytes (FF D8) with a TEXI format of RGBA8888, which has
-// no pure-JS decoder — the failure must be explicit, not an RGBA size mismatch.
+// mipmaps carry JPEG bytes (FF D8) with a TEXI format of RGBA8888. They now
+// decode through the pure-JS jpeg-js decoder (round-tripped via its encoder).
 // ---------------------------------------------------------------------------
 
 const jpegBytes = (size: number): Uint8Array => {
@@ -1509,6 +1510,18 @@ const jpegBytes = (size: number): Uint8Array => {
   bytes[2] = 0xff
   bytes[3] = 0xe0
   return bytes
+}
+
+/** Solid-color JPEG produced by the jpeg-js encoder (deterministic fixture). */
+const solidJpeg = (width: number, height: number, r: number, g: number, b: number): Uint8Array => {
+  const rgba = new Uint8Array(width * height * 4)
+  for (let i = 0; i < width * height; i++) {
+    rgba[i * 4] = r
+    rgba[i * 4 + 1] = g
+    rgba[i * 4 + 2] = b
+    rgba[i * 4 + 3] = 255
+  }
+  return new Uint8Array(encodeJpeg({ data: rgba, width, height }, 92).data)
 }
 
 describe('JPEG-embedded TEX (issue #756)', () => {
@@ -1532,7 +1545,36 @@ describe('JPEG-embedded TEX (issue #756)', () => {
     expect(parsed.mipLevels).toBe(4)
   })
 
-  it('reports JPEG-encoded mipmaps explicitly instead of an RGBA size mismatch', () => {
+  it('decodes FreeImage JPEG mipmaps through the pure-JS decoder', () => {
+    const jpeg = solidJpeg(32, 16, 200, 60, 30)
+    const tex = buildTex({
+      format: TexFormat.RGBA8888,
+      width: 32,
+      height: 16,
+      containerVersion: 3,
+      freeImageFormat: 2,
+      mipmaps: [{ width: 32, height: 16, data: jpeg }],
+    })
+    const decoded = decodeTex(tex)
+    expect(decoded.width).toBe(32)
+    expect(decoded.height).toBe(16)
+    let r = 0
+    let g = 0
+    let b = 0
+    let n = 0
+    for (let i = 0; i < decoded.rgba.length; i += 4) {
+      r += decoded.rgba[i]
+      g += decoded.rgba[i + 1]
+      b += decoded.rgba[i + 2]
+      n += 1
+    }
+    // JPEG is lossy: channel means must land close to the source color.
+    expect(Math.abs(r / n - 200)).toBeLessThan(12)
+    expect(Math.abs(g / n - 60)).toBeLessThan(12)
+    expect(Math.abs(b / n - 30)).toBeLessThan(12)
+  })
+
+  it('fails with a JPEG decode error, not an RGBA size mismatch, for corrupt bytes', () => {
     const tex = buildTex({
       format: TexFormat.RGBA8888,
       width: 2704,
@@ -1541,6 +1583,13 @@ describe('JPEG-embedded TEX (issue #756)', () => {
       freeImageFormat: 2,
       mipmaps: [{ width: 2704, height: 1520, data: jpegBytes(350_695) }],
     })
-    expect(() => decodeTex(tex)).toThrow(/JPEG-encoded mipmaps are not supported/)
+    let message = ''
+    try {
+      decodeTex(tex)
+    } catch (error) {
+      message = (error as Error).message
+    }
+    expect(message.length).toBeGreaterThan(0)
+    expect(message).not.toContain('mipmap size mismatch for RGBA8888')
   })
 })

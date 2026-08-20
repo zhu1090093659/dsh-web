@@ -1,13 +1,14 @@
 /**
- * Wallpaper Engine scene.pkg / .tex resource extraction, dependency-free.
+ * Wallpaper Engine scene.pkg / .tex resource extraction.
  *
  * This module is the core of the skin center's "scene wallpaper static frame
  * extraction" feature: it unpacks a Wallpaper Engine scene package (PKG
  * container, magic PKGVxxxx), parses the nested TEX texture containers
  * (TEXV0005 header -> TEXI0001 image info -> TEXB0001..4 mipmap data ->
  * TEXS0001..3 frame animation metadata), decodes the main mipmap to RGBA8888
- * (raw RGBA8888/R8/RG88 plus hand-rolled BC1/BC2/BC3 block decompression for
- * DXT1/DXT3/DXT5), and re-encodes the result as a PNG using only node:zlib.
+ * (raw RGBA8888/R8/RG88, FreeImage-embedded JPEG via jpeg-js, plus hand-rolled
+ * BC1/BC2/BC3 block decompression for DXT1/DXT3/DXT5), and re-encodes the
+ * result as a PNG using only node:zlib.
  *
  * Format facts were cross-checked against the two reference implementations:
  * RePKG (github.com/notscuffed/repkg, PackageReader / TexReader and friends)
@@ -30,13 +31,15 @@
  *   (bit 2) pull in a TEXS frame container exposed via TexInfo.frames.
  *
  * LZ4 block decoding follows the official lz4 block format specification;
- * BC1/BC2/BC3 follow the standard public algorithms. No npm dependencies.
+ * BC1/BC2/BC3 follow the standard public algorithms. One npm dependency:
+ * jpeg-js (pure JavaScript, no native builds) for FreeImage JPEG mipmaps.
  *
  * @module @linxin666/dsh-client-ui-skin-center/pkg-extract
  */
 
 import { Buffer } from 'node:buffer'
 import { lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
+import { decode as decodeJpeg } from 'jpeg-js'
 import { join as joinPath, resolve as resolvePath, sep } from 'node:path'
 import { deflateSync, inflateSync } from 'node:zlib'
 
@@ -814,6 +817,21 @@ function decodeDxt5(src: Uint8Array, width: number, height: number): Uint8Array 
  * 2048x2048 mip); the TEXI header's image rect is the real content, anchored
  * top-left, so the result is cropped to it before returning.
  */
+/** Crop the power-of-two padding: the TEXI image rect sits at the top-left of
+ * the stored mip (verified by render probe), anything beyond it is filler. */
+function cropToImageRect(decoded: DecodedImage, imageWidth: number, imageHeight: number): DecodedImage {
+  const cropW = Math.min(imageWidth, decoded.width)
+  const cropH = Math.min(imageHeight, decoded.height)
+  if (cropW > 0 && cropH > 0 && (cropW < decoded.width || cropH < decoded.height)) {
+    const cropped = new Uint8Array(cropW * cropH * 4)
+    for (let y = 0; y < cropH; y++) {
+      cropped.set(decoded.rgba.subarray(y * decoded.width * 4, (y * decoded.width + cropW) * 4), y * cropW * 4)
+    }
+    return { width: cropW, height: cropH, rgba: cropped }
+  }
+  return decoded
+}
+
 export function decodeTex(data: Uint8Array): DecodedImage {
   const parsed = parseTexInternal(data)
   if (parsed.isVideoMp4) {
@@ -823,10 +841,12 @@ export function decodeTex(data: Uint8Array): DecodedImage {
   if (isPngBuffer(mip.bytes)) {
     return decodePngToRgba(mip.bytes)
   }
-  // FreeImage-embedded JPEG mipmaps (FF D8) have no pure-JS decoder; report
-  // that truthfully instead of failing later as an RGBA size mismatch (#756).
+  // FreeImage-embedded JPEG mipmaps (FF D8): decode through the pure-JS
+  // jpeg-js decoder; cropToImageRect below trims any power-of-two padding (#756).
   if (mip.bytes[0] === 0xff && mip.bytes[1] === 0xd8) {
-    throw new Error('tex: JPEG-encoded mipmaps are not supported (no pure-JS JPEG decoder)')
+    const jpeg = decodeJpeg(Buffer.from(mip.bytes), { useTArray: true })
+    const rgba: Uint8Array = jpeg.data
+    return cropToImageRect({ width: jpeg.width, height: jpeg.height, rgba }, parsed.width, parsed.height)
   }
   const { width, height, bytes } = mip
   let decoded: DecodedImage
@@ -885,18 +905,7 @@ export function decodeTex(data: Uint8Array): DecodedImage {
     default:
       throw new Error('tex: unsupported format ' + parsed.format)
   }
-  // Crop the power-of-two padding: the image rect sits at the top-left of the
-  // stored mip (verified by render probe), anything beyond it is filler.
-  const cropW = Math.min(parsed.width, width)
-  const cropH = Math.min(parsed.height, height)
-  if (cropW > 0 && cropH > 0 && (cropW < width || cropH < height)) {
-    const cropped = new Uint8Array(cropW * cropH * 4)
-    for (let y = 0; y < cropH; y++) {
-      cropped.set(decoded.rgba.subarray(y * width * 4, (y * width + cropW) * 4), y * cropW * 4)
-    }
-    return { width: cropW, height: cropH, rgba: cropped }
-  }
-  return decoded
+  return cropToImageRect(decoded, parsed.width, parsed.height)
 }
 
 const CRC_TABLE = (() => {

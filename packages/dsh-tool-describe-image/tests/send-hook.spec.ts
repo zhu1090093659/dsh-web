@@ -30,7 +30,7 @@ function stubFileReader(payload: string): void {
 
 /** One fake conversation surface recording what the hook did with it. */
 function makeConversation() {
-  const original = vi.fn(async (_session: unknown, _text: string, _ids: readonly string[], _mode: string, _signal?: AbortSignal): Promise<unknown> => { log.push('original'); return undefined })
+  const original = vi.fn(async (_session: unknown, _text: string, _ids: readonly string[], _mode: string, _signal?: AbortSignal): Promise<unknown> => { log.push('original'); return { kind: 'success' } })
   const log: string[] = []
   const face = {
     send: vi.fn(async () => { log.push('send') }),
@@ -43,6 +43,8 @@ function makeConversation() {
 
     }))),
     releaseDraftImage: vi.fn(() => { log.push('release') }),
+    /** Exposed for tests: the original sendSession spy, still reachable after the hook wraps sendSession. */
+    _original: original,
   }
   return { face, log }
 }
@@ -62,12 +64,18 @@ describe('installSendHook', () => {
     const prompt = vi.fn(async () => ({ ok: true }))
     installSendHook(face)
     await face.sendSession({ prompt } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['release'])
-    expect(prompt).toHaveBeenCalledTimes(1)
-    const blocks = (prompt.mock.calls[0] as unknown as [{ type: string; text: string }[]])[0]
-    expect(blocks).toHaveLength(1)
-    expect(blocks[0].type).toBe('text')
-    expect(blocks[0].text).toBe(`look\n${DURABLE_MARKDOWN}`)
+    // The rewritten text is submitted through the original sendSession with
+    // empty image IDs, so the conversation service manages its state (clears
+    // input, updates transcript, etc.) exactly like a normal text-only send.
+    expect(log).toEqual(['release', 'original'])
+    expect(prompt).not.toHaveBeenCalled()
+    expect(face._original).toHaveBeenCalledWith(
+      { prompt },
+      `look\n${DURABLE_MARKDOWN}`,
+      [],
+      'queue',
+      undefined,
+    )
   })
 
   it('falls back to the original send when the upload fails', async () => {
@@ -90,12 +98,11 @@ describe('installSendHook', () => {
   it('is idempotent across repeated installs', async () => {
     stubFileReader('QUJD')
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: 'R' } }), { status: 200 })))
-    const { face } = makeConversation()
-    const prompt = vi.fn(async () => ({ ok: true }))
+    const { face, log } = makeConversation()
     installSendHook(face)
     installSendHook(face)
-    await face.sendSession({ prompt } as never, 'look', ['id1'], 'queue')
-    expect(prompt).toHaveBeenCalledTimes(1)
+    await face.sendSession({ prompt: vi.fn() } as never, 'look', ['id1'], 'queue')
+    expect(log).toEqual(['release', 'original'])
   })
 
   it('passes image-bearing sends through untouched when the live switch is off', async () => {
@@ -122,10 +129,13 @@ describe('installSendHook', () => {
     // Flipped on between sends: the very next send is rewritten.
     enabled = true
     await face.sendSession({ prompt } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['original', 'release'])
-    expect(prompt).toHaveBeenCalledTimes(1)
-    const blocks = (prompt.mock.calls[0] as unknown as [{ type: string; text: string }[]])[0]
-    expect(blocks[0].type).toBe('text')
+    expect(log).toEqual(['original', 'release', 'original'])
+    expect(prompt).not.toHaveBeenCalled()
+    // Both sends went through the original sendSession: the first one passed
+    // through untouched (live switch off), the second was rewritten.
+    expect(face._original).toHaveBeenCalledTimes(2)
+    expect(face._original).toHaveBeenNthCalledWith(1, { prompt }, 'look', ['id1'], 'queue', undefined)
+    expect(face._original).toHaveBeenNthCalledWith(2, { prompt }, expect.any(String), [], 'queue', undefined)
   })
 })
 
@@ -149,8 +159,8 @@ describe('installSendHook capability gating', () => {
     const prompt = vi.fn(async () => ({ ok: true }))
     installSendHook(face, undefined, async () => false)
     await face.sendSession({ prompt, sessionId: 's1' } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['release'])
-    expect(prompt).toHaveBeenCalledTimes(1)
+    expect(log).toEqual(['release', 'original'])
+    expect(prompt).not.toHaveBeenCalled()
   })
 
   it('rewrites when the checker throws, failing closed to the legacy path', async () => {
@@ -160,8 +170,8 @@ describe('installSendHook capability gating', () => {
     const prompt = vi.fn(async () => ({ ok: true }))
     installSendHook(face, undefined, async () => { throw new Error('probe down') })
     await face.sendSession({ prompt, sessionId: 's1' } as never, 'look', ['id1'], 'queue')
-    expect(log).toEqual(['release'])
-    expect(prompt).toHaveBeenCalledTimes(1)
+    expect(log).toEqual(['release', 'original'])
+    expect(prompt).not.toHaveBeenCalled()
   })
 
   it('still honors the disabled switch ahead of the capability check', async () => {
@@ -196,7 +206,7 @@ describe('installSendHook rc.8 signal and outcome contract', () => {
     expect(original).toHaveBeenCalledWith(expect.anything(), 'look', ['id1'], 'queue', signal)
   })
 
-  it('forwards the signal into the session prompt on the rewritten path', async () => {
+  it('forwards the signal and returns SubmitOutcome on the rewritten path', async () => {
     stubFileReader('QUJD')
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: DURABLE_MARKDOWN } }), { status: 200 })))
     const { face, log } = makeConversation()
@@ -205,9 +215,9 @@ describe('installSendHook rc.8 signal and outcome contract', () => {
     const signal = new AbortController().signal
     const outcome = await face.sendSession({ prompt } as never, 'look', ['id1'], 'queue', signal)
     expect(outcome).toEqual({ kind: 'success' })
-    expect(log).toEqual(['release'])
-    const call = prompt.mock.calls[0] as unknown as [unknown, unknown, AbortSignal]
-    expect(call[2]).toBe(signal)
+    expect(log).toEqual(['release', 'original'])
+    // The signal is forwarded to the original sendSession (not to session.prompt).
+    expect(face._original).toHaveBeenCalledWith({ prompt }, expect.any(String), [], 'queue', signal)
   })
 
   it('forwards the signal on the upload-shortfall fallback', async () => {

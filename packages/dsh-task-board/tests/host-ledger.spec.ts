@@ -158,6 +158,72 @@ describe('HostTaskLedger', () => {
     expect(current.schedule?.nextRunAt).toBe(NOW + 120_000)
   })
 
+  it('derives detached runtime projections without copying settled execution details', () => {
+    const ledger = new HostTaskLedger(tempRoot(), () => NOW)
+    const history = Array.from({ length: 2_000 }, (_, index) => ({
+      id: `settled-${index}`,
+      sessionId: `session-${index}`,
+      startedAt: NOW - 4_000 - index * 2,
+      endedAt: NOW - 3_999 - index * 2,
+      result: 'succeeded' as const,
+      error: undefined,
+    }))
+    const running = startExecution({ ...task('running'), executions: history }, NOW - 1_000, 'open').task
+    const awaitingSession = {
+      ...startExecution(task('awaiting-session'), NOW - 500, 'awaiting-session-open').task,
+      status: 'todo' as const,
+    }
+    const archivedSchedule = {
+      ...withSchedule(task('archived-schedule'), {
+        enabled: true, cron: '* * * * *', nextRunAt: NOW, lastTriggeredAt: undefined,
+      }, NOW),
+      status: 'done' as const,
+      archivedAt: NOW - 1,
+    }
+    ledger.applyRequest('import-running', {
+      kind: 'import',
+      sourceId: 'browser',
+      tasks: [
+        {
+          ...running,
+          executions: running.executions.map(execution => execution.id === 'open'
+            ? { ...execution, sessionId: 'session-open' }
+            : execution),
+        },
+        awaitingSession,
+        archivedSchedule,
+      ],
+    })
+    ledger.applyRequest('create-scheduled', {
+      kind: 'create',
+      id: 'scheduled',
+      input: { title: 'Scheduled', description: '', prompt: '', schedule: { enabled: true, cron: '* * * * *' } },
+    })
+
+    const runtime = ledger.runtimeView()
+    expect(runtime).toEqual({
+      armedSchedules: 1,
+      openExecutions: [{
+        taskId: 'running',
+        executionId: 'open',
+        sessionId: 'session-open',
+        startedAt: NOW - 1_000,
+      }, {
+        taskId: 'awaiting-session',
+        executionId: 'awaiting-session-open',
+        sessionId: undefined,
+        startedAt: NOW - 500,
+      }],
+    })
+    expect(ledger.armedScheduleCount()).toBe(1)
+    expect(ledger.dueSchedules(NOW + 60_000)).toEqual([{
+      taskId: 'scheduled',
+      cron: '* * * * *',
+      nextRunAt: NOW + 30_000,
+    }])
+    expect(ledger.runtimeView().openExecutions[0]).not.toBe(runtime.openExecutions[0])
+  })
+
   it('cancels a running record without a session id after restart instead of resending it', () => {
     const root = tempRoot()
     const ledger = new HostTaskLedger(root, () => NOW)

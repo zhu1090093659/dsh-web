@@ -264,4 +264,53 @@ describe('TaskBoardHostService poll heartbeat', () => {
     expect(history).toHaveBeenCalledOnce()
     service.dispose()
   })
+
+  it('keeps hot polling and scheduling off the full-state clone with long histories', async () => {
+    const now = new Date(2026, 7, 16, 10, 0, 30).getTime()
+    const ledger = new HostTaskLedger(root(), () => now)
+    const base = createTask({ title: 'A', description: '', prompt: '' }, now - 10_000, 'task-a')
+    const executions = Array.from({ length: 2_000 }, (_, index) => ({
+      id: `settled-${index}`,
+      sessionId: `old-session-${index}`,
+      startedAt: now - 8_000 - index * 2,
+      endedAt: now - 7_999 - index * 2,
+      result: 'succeeded' as const,
+      error: undefined,
+    }))
+    const opened = startExecution({ ...base, executions }, now - 1_000, 'execution-open').task
+    ledger.applyRequest('import', {
+      kind: 'import',
+      sourceId: 'browser',
+      tasks: [{
+        ...opened,
+        executions: opened.executions.map(execution => execution.id === 'execution-open'
+          ? { ...execution, sessionId: 'session-open' }
+          : execution),
+      }],
+    })
+    let sessionStateAvailable = false
+    const list = vi.fn(async (request: { rpcId: unknown }) => {
+      if (!sessionStateAvailable) throw new Error('temporary list failure')
+      return ok(request, { items: [{ sessionId: 'session-open', running: true }] })
+    })
+    const service = new TaskBoardHostService({ sessions: { list } } as unknown as ApiProxy, {
+      ledger,
+      power: new PowerInhibitor({ platform: 'linux' }),
+      now: () => now,
+    })
+    const state = vi.spyOn(ledger, 'state')
+    const runtimeView = vi.spyOn(ledger, 'runtimeView')
+
+    await (service as unknown as { pollSessions(): Promise<void> }).pollSessions()
+    expect(runtimeView).not.toHaveBeenCalled()
+    sessionStateAvailable = true
+    await (service as unknown as { pollSessions(): Promise<void> }).pollSessions()
+    await (service as unknown as { tickSchedule(first: boolean): Promise<void> }).tickSchedule(false)
+
+    expect(state).not.toHaveBeenCalled()
+    expect(runtimeView).toHaveBeenCalledOnce()
+    expect(service.snapshot().tasks[0].executions).toHaveLength(2_001)
+    expect(state).toHaveBeenCalledOnce()
+    service.dispose()
+  })
 })

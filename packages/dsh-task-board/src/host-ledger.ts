@@ -41,6 +41,27 @@ export interface OpenedRun {
   execution: ExecutionRecord
 }
 
+/** Minimal value copy used by the Host session monitor. */
+export interface OpenExecutionReference {
+  readonly taskId: string
+  readonly executionId: string
+  readonly sessionId: string | undefined
+  readonly startedAt: number
+}
+
+/** Minimal value copy used by the Host scheduler. */
+export interface DueScheduleReference {
+  readonly taskId: string
+  readonly cron: string
+  readonly nextRunAt: number
+}
+
+/** Derived runtime data for one session-poll pass. */
+export interface LedgerRuntimeView {
+  readonly armedSchedules: number
+  readonly openExecutions: readonly OpenExecutionReference[]
+}
+
 const MAX_REQUEST_CACHE = 256
 
 interface CachedRequest {
@@ -282,6 +303,50 @@ export class HostTaskLedger {
   state(): LedgerState {
     const { revision, scheduler } = this.summary()
     return { revision, tasks: cloneTasks(this.document.tasks), scheduler }
+  }
+
+  /**
+   * Runtime-only projection for the 5 s Host poll. It copies just primitive
+   * identifiers and timestamps, never the complete task/execution history or
+   * an authoritative mutable object from the ledger.
+   */
+  runtimeView(): LedgerRuntimeView {
+    let armedSchedules = 0
+    const openExecutions: OpenExecutionReference[] = []
+    for (const task of this.document.tasks) {
+      if (task.archivedAt === undefined && task.schedule?.enabled === true) armedSchedules += 1
+      for (const execution of task.executions) {
+        if (execution.endedAt !== undefined) continue
+        openExecutions.push({
+          taskId: task.id,
+          executionId: execution.id,
+          sessionId: execution.sessionId,
+          startedAt: execution.startedAt,
+        })
+      }
+    }
+    return { armedSchedules, openExecutions }
+  }
+
+  /** Count armed, non-archived schedules without cloning task histories. */
+  armedScheduleCount(): number {
+    let count = 0
+    for (const task of this.document.tasks) {
+      if (task.archivedAt === undefined && task.schedule?.enabled === true) count += 1
+    }
+    return count
+  }
+
+  /** Return value-only references for schedules due at the supplied Host time. */
+  dueSchedules(now: number): DueScheduleReference[] {
+    const due: DueScheduleReference[] = []
+    for (const task of this.document.tasks) {
+      if (task.archivedAt !== undefined) continue
+      const schedule = task.schedule
+      if (schedule === undefined || !schedule.enabled || schedule.nextRunAt === undefined || schedule.nextRunAt > now) continue
+      due.push({ taskId: task.id, cron: schedule.cron, nextRunAt: schedule.nextRunAt })
+    }
+    return due
   }
 
   subscribe(listener: () => void): () => void {

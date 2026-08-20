@@ -1,7 +1,7 @@
 import type { ApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
 import { nextRunAtMs } from './core/schedule.ts'
 import type { TaskRecord } from './core/tasks.ts'
-import { HostTaskLedger, type OpenedRun } from './host-ledger.ts'
+import { HostTaskLedger, type OpenedRun, type OpenExecutionReference } from './host-ledger.ts'
 import { HostExecutionRunner, SessionLaunchError, type SessionCommandDispatcher, type SessionSummary } from './host-runner.ts'
 import { PowerInhibitor } from './power-inhibitor.ts'
 import type { TaskBoardAction, TaskBoardEventPayload, TaskBoardSnapshot } from './protocol.ts'
@@ -136,31 +136,43 @@ export class TaskBoardHostService {
 
   private async pollSessions(): Promise<void> {
     if (this.disposed) return
-    if (!this.active && !this.hasOpenExecutions()) return
+    if (!this.active && this.ledger.runtimeView().openExecutions.length === 0) return
     const running = await this.runner.listRunning()
     const previous = this.power.snapshot()
+    if (!running.known) {
+      this.power.updateReasons({
+        runningSessions: previous.runningSessions,
+        armedSchedules: this.ledger.armedScheduleCount(),
+        sessionStateKnown: false,
+      })
+      return
+    }
+    // Read after the RPC so executions attached while it was in flight are
+    // included in this pass, matching the former full-state snapshot timing.
+    const runtime = this.ledger.runtimeView()
     this.power.updateReasons({
-      runningSessions: running.known ? running.count : previous.runningSessions,
-      armedSchedules: this.armedSchedules(),
-      sessionStateKnown: running.known,
+      runningSessions: running.count,
+      armedSchedules: runtime.armedSchedules,
+      sessionStateKnown: true,
     })
     // No unconditional emit here: real changes already emit through the
     // ledger subscription (settles) and the gated power listener above.
-    if (running.known) await this.reconcileExecutions(running.items)
+    await this.reconcileExecutions(running.items, runtime.openExecutions)
   }
 
   /** Reuse the session list this poll already fetched: one list RPC per tick, not 1 + E. */
-  private async reconcileExecutions(sessions: readonly SessionSummary[]): Promise<void> {
-    for (const task of this.ledger.state().tasks) {
-      for (const execution of task.executions) {
-        if (execution.sessionId === undefined || execution.endedAt !== undefined) continue
-        try {
-          const result = await this.runner.inspect(execution.sessionId, execution.startedAt, sessions)
-          if (result.outcome === 'pending') continue
-          this.ledger.settle(task.id, execution.id, result.outcome, 'error' in result ? result.error : undefined)
-        } catch {
-          // A transient inspection failure never settles a running execution.
-        }
+  private async reconcileExecutions(
+    sessions: readonly SessionSummary[],
+    executions: readonly OpenExecutionReference[],
+  ): Promise<void> {
+    for (const execution of executions) {
+      if (execution.sessionId === undefined) continue
+      try {
+        const result = await this.runner.inspect(execution.sessionId, execution.startedAt, sessions)
+        if (result.outcome === 'pending') continue
+        this.ledger.settle(execution.taskId, execution.executionId, result.outcome, 'error' in result ? result.error : undefined)
+      } catch {
+        // A transient inspection failure never settles a running execution.
       }
     }
   }
@@ -175,22 +187,15 @@ export class TaskBoardHostService {
       this.ledger.skipMissed(now)
       return
     }
-    for (const task of this.ledger.state().tasks) {
-      if (task.archivedAt !== undefined) continue
-      const schedule = task.schedule
-      if (schedule === undefined || !schedule.enabled || schedule.nextRunAt === undefined || schedule.nextRunAt > now) continue
+    for (const schedule of this.ledger.dueSchedules(now)) {
       const next = nextRunAtMs(schedule.cron, schedule.nextRunAt)
-      const opened = this.ledger.openScheduled(task.id, next, now)
+      const opened = this.ledger.openScheduled(schedule.taskId, next, now)
       if (opened !== undefined) this.scheduleLaunch(opened)
     }
   }
 
   private armedSchedules(): number {
-    return this.ledger.state().tasks.filter((task: TaskRecord) => task.archivedAt === undefined && task.schedule?.enabled === true).length
-  }
-
-  private hasOpenExecutions(): boolean {
-    return this.ledger.state().tasks.some(task => task.executions.some(execution => execution.endedAt === undefined))
+    return this.ledger.armedScheduleCount()
   }
 
   private scheduleLaunch(opened: OpenedRun): void {

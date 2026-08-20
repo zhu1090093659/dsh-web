@@ -247,6 +247,13 @@ export class BackgroundController implements SkinBackgroundHandle {
    */
   private syncBlur(): void {
     if (this.disposed) return
+    if (this.hasWallpaper()) {
+      // The wallpaper module owns its own blur (wallpaperBlur); the skin-center
+      // background blur layer must stay off while a wallpaper is mounted so
+      // the two settings remain independent (#777 decouple).
+      this.removeBlurElement()
+      return
+    }
     if (!this.enabledValue) {
       this.removeBlurElement()
       return
@@ -260,6 +267,11 @@ export class BackgroundController implements SkinBackgroundHandle {
   /** True when the conversation pane hosts at least one message row. */
   private hasConversationContent(): boolean {
     return document.querySelector(CONVERSATION_CONTENT_SELECTOR) !== null
+  }
+
+  /** True while a Wallpaper Engine wallpaper is mounted. */
+  private hasWallpaper(): boolean {
+    return document.documentElement.hasAttribute('data-dsh-wallpaper-active')
   }
 
   /** Create (if needed) and size the fixed backdrop-filter element. */
@@ -301,6 +313,12 @@ export class BackgroundController implements SkinBackgroundHandle {
       subtree: true,
       attributes: true,
       attributeFilter: ['class'],
+    })
+    // Also react to the wallpaper marker so the background blur layer is
+    // removed/restored exactly when a wallpaper mounts/unmounts.
+    this.observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-dsh-wallpaper-active'],
     })
   }
 

@@ -95,6 +95,7 @@ function removeConversationRow(): void {
 describe('BackgroundController', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
+    document.documentElement.removeAttribute('data-dsh-wallpaper-active')
   })
 
   it('defaults: no blur element and the occlusion var is still set', () => {
@@ -187,6 +188,21 @@ describe('BackgroundController', () => {
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('')
     // Blur is gated: no blur element is created despite a nonzero blur value.
     expect(blurElement()).toBeNull()
+    controller.dispose()
+  })
+
+  it('wallpaper active suppresses the background blur layer even with nonzero blur (#777 decouple)', () => {
+    document.documentElement.setAttribute('data-dsh-wallpaper-active', 'true')
+    const { scope } = fakeScope({ backgroundBlurEmpty: 6 })
+    const controller = new BackgroundController(scope)
+    expect(blurElement()).toBeNull()
+    controller.setBlurEmpty(10)
+    expect(blurElement()).toBeNull()
+    // Unmount wallpaper: the blur layer is allowed again on the next sync.
+    document.documentElement.removeAttribute('data-dsh-wallpaper-active')
+    controller.setBlurEmpty(10)
+    expect(blurElement()).not.toBeNull()
+    expect(blurElement()!.style.backdropFilter).toContain('blur(10px)')
     controller.dispose()
   })
 

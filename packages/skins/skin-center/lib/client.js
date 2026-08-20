@@ -1887,6 +1887,10 @@ window.__ModuleLoader__.load({
 			*/
 			syncBlur() {
 				if (this.disposed) return;
+				if (this.hasWallpaper()) {
+					this.removeBlurElement();
+					return;
+				}
 				if (!this.enabledValue) {
 					this.removeBlurElement();
 					return;
@@ -1899,6 +1903,10 @@ window.__ModuleLoader__.load({
 			/** True when the conversation pane hosts at least one message row. */
 			hasConversationContent() {
 				return document.querySelector(CONVERSATION_CONTENT_SELECTOR) !== null;
+			}
+			/** True while a Wallpaper Engine wallpaper is mounted. */
+			hasWallpaper() {
+				return document.documentElement.hasAttribute("data-dsh-wallpaper-active");
 			}
 			/** Create (if needed) and size the fixed backdrop-filter element. */
 			ensureBlurElement(active) {
@@ -1936,6 +1944,10 @@ window.__ModuleLoader__.load({
 					subtree: true,
 					attributes: true,
 					attributeFilter: ["class"]
+				});
+				this.observer.observe(document.documentElement, {
+					attributes: true,
+					attributeFilter: ["data-dsh-wallpaper-active"]
 				});
 			}
 			/** Coalesce burst mutations into one rAF-delayed recheck. */

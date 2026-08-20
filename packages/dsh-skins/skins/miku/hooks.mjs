@@ -211,8 +211,10 @@ export default function defineSkinHooks() {
           setComposerStyle(seat, property, value)
           setComposerStyle(card, property, value)
         }
-        setComposerStyle(card, 'background', 'rgba(250, 253, 255, 0.96)')
-        setComposerStyle(card, 'border', '1px solid rgba(30, 111, 217, 0.5)')
+        const dark = body.hasAttribute('data-ds-dark-theme')
+        setComposerStyle(card, 'background', dark ? 'rgba(13, 26, 58, 0.72)' : 'rgba(250, 253, 255, 0.96)')
+        setComposerStyle(card, 'border', dark ? '1px solid rgba(88, 169, 255, 0.42)' : '1px solid rgba(30, 111, 217, 0.5)')
+        setComposerStyle(card, 'box-shadow', dark ? '0 8px 28px rgba(0, 8, 28, 0.38)' : '0 8px 24px rgba(8, 35, 75, 0.16)')
         setComposerStyle(scroll, 'display', 'block')
         setComposerStyle(scroll, 'visibility', 'visible')
         setComposerStyle(scroll, 'opacity', '1')
@@ -220,8 +222,8 @@ export default function defineSkinHooks() {
         setComposerStyle(input, 'display', 'block')
         setComposerStyle(input, 'visibility', 'visible')
         setComposerStyle(input, 'opacity', '1')
-        setComposerStyle(input, 'color', '#000')
-        setComposerStyle(input, '-webkit-text-fill-color', '#000')
+        setComposerStyle(input, 'color', dark ? '#e7f5ff' : '#000')
+        setComposerStyle(input, '-webkit-text-fill-color', dark ? '#e7f5ff' : '#000')
         setComposerStyle(input, 'background', 'transparent')
         setComposerStyle(backdrop, 'visibility', 'hidden')
         setComposerStyle(backdrop, 'opacity', '0')
@@ -233,7 +235,9 @@ export default function defineSkinHooks() {
       }
       syncComposer()
       const composerObserver = new MutationObserver(scheduleComposerSync)
-      composerObserver.observe(body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-phase'] })
+      composerObserver.observe(body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-phase', 'data-ds-dark-theme'] })
+      const themeObserver = new MutationObserver(scheduleComposerSync)
+      themeObserver.observe(body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
       document.addEventListener('input', scheduleComposerSync, true)
       document.addEventListener('click', scheduleComposerSync, true)
 
@@ -298,6 +302,7 @@ export default function defineSkinHooks() {
         clearInterval(panelTimer)
         cancelAnimationFrame(composerFrame)
         composerObserver.disconnect()
+        themeObserver.disconnect()
         document.removeEventListener('input', scheduleComposerSync, true)
         document.removeEventListener('click', scheduleComposerSync, true)
         for (const [element, saved] of composerStyles) {

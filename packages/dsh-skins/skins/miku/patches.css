@@ -1553,6 +1553,31 @@ button, [role="button"], .aionui-btn, .aionui-btn-primary, .aionui-btn-danger, .
   opacity: 1 !important;
 }
 
+body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] {
+  color: #e7f5ff !important;
+  background: rgba(13, 26, 58, 0.72) !important;
+  border-color: rgba(88, 169, 255, 0.42) !important;
+  box-shadow: 0 8px 28px rgba(0, 8, 28, 0.38) !important;
+  --dsw-alias-label-primary: #e7f5ff;
+  --dsw-alias-label-secondary: #b8cae8;
+  --dsw-alias-label-tertiary: #8ba0c4;
+  --dsw-alias-label-caption: #b8cae8;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] textarea[data-dsh-part="composer-input"] {
+  color: #e7f5ff !important;
+  -webkit-text-fill-color: #e7f5ff !important;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] textarea[data-dsh-part="composer-input"]::placeholder {
+  color: #b8cae8 !important;
+  -webkit-text-fill-color: #b8cae8 !important;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] :is(button, button *, [role="button"], [role="button"] *) {
+  color: #e7f5ff !important;
+}
+
 /* --- Miku custom node cursors (ported from the v1 miku skin; art by Moos柚眠, used with permission) --- */
 /* Miku cursor surface: inline PNG cursors extracted from the user's
    Miku cursor theme (art by Moos??). Maps the standard cursor states to

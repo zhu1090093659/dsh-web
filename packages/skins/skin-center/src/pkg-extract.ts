@@ -823,6 +823,11 @@ export function decodeTex(data: Uint8Array): DecodedImage {
   if (isPngBuffer(mip.bytes)) {
     return decodePngToRgba(mip.bytes)
   }
+  // FreeImage-embedded JPEG mipmaps (FF D8) have no pure-JS decoder; report
+  // that truthfully instead of failing later as an RGBA size mismatch (#756).
+  if (mip.bytes[0] === 0xff && mip.bytes[1] === 0xd8) {
+    throw new Error('tex: JPEG-encoded mipmaps are not supported (no pure-JS JPEG decoder)')
+  }
   const { width, height, bytes } = mip
   let decoded: DecodedImage
   switch (parsed.format) {

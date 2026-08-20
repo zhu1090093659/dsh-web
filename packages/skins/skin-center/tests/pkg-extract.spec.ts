@@ -1494,3 +1494,53 @@ describe('scene robustness (#717 follow-up)', () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// JPEG-embedded TEX (issue #756): the TEXB0003 layout is imageCount ->
+// FreeImage format -> per-image mipmapCount; FreeImage FIF_JPEG = 2. Such
+// mipmaps carry JPEG bytes (FF D8) with a TEXI format of RGBA8888, which has
+// no pure-JS decoder — the failure must be explicit, not an RGBA size mismatch.
+// ---------------------------------------------------------------------------
+
+const jpegBytes = (size: number): Uint8Array => {
+  const bytes = new Uint8Array(size)
+  bytes[0] = 0xff
+  bytes[1] = 0xd8
+  bytes[2] = 0xff
+  bytes[3] = 0xe0
+  return bytes
+}
+
+describe('JPEG-embedded TEX (issue #756)', () => {
+  it('parses imageCount -> FreeImage format -> mipmapCount without misalignment', () => {
+    const tex = buildTex({
+      format: TexFormat.RGBA8888,
+      width: 2704,
+      height: 1520,
+      containerVersion: 3,
+      freeImageFormat: 2, // FIF_JPEG
+      mipmaps: [
+        { width: 2704, height: 1520, data: jpegBytes(350_695) },
+        { width: 1352, height: 760, data: jpegBytes(90_000) },
+        { width: 676, height: 380, data: jpegBytes(24_000) },
+        { width: 338, height: 190, data: jpegBytes(7_000) },
+      ],
+    })
+    const parsed = parseTex(tex)
+    expect(parsed.width).toBe(2704)
+    expect(parsed.height).toBe(1520)
+    expect(parsed.mipLevels).toBe(4)
+  })
+
+  it('reports JPEG-encoded mipmaps explicitly instead of an RGBA size mismatch', () => {
+    const tex = buildTex({
+      format: TexFormat.RGBA8888,
+      width: 2704,
+      height: 1520,
+      containerVersion: 3,
+      freeImageFormat: 2,
+      mipmaps: [{ width: 2704, height: 1520, data: jpegBytes(350_695) }],
+    })
+    expect(() => decodeTex(tex)).toThrow(/JPEG-encoded mipmaps are not supported/)
+  })
+})

@@ -40,7 +40,7 @@ describe('createDesktopShortcut', () => {
       const calls: Call[] = []
       const iconFile = join(dir, 'dsh.ico')
       writeFileSync(iconFile, 'fake-ico', 'utf8')
-      const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'win32', run: recordingRunner(calls), iconSource: iconFile })
+      const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, env: {}, platform: 'win32', run: recordingRunner(calls), iconSource: iconFile })
       expect(result.ok).toBe(true)
       expect(result.path).toBe(join(dir, 'Desktop', 'DeepSeek-Harness.lnk'))
       expect(existsSync(join(dir, '.dsh', 'desktop-launcher', 'launcher.ps1'))).toBe(true)
@@ -58,11 +58,30 @@ describe('createDesktopShortcut', () => {
     }
   })
 
+  it('writes launcher assets under DSH_HOME while keeping the icon on the user desktop', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-home-'))
+    const dshHome = join(dir, 'custom-dsh-home')
+    try {
+      const result = await createDesktopShortcut({
+        resolveSpec: spec,
+        homeDir: dir,
+        env: { DSH_HOME: dshHome },
+        platform: 'linux',
+        run: recordingRunner([]),
+      })
+      expect(result.path).toBe(join(dir, 'Desktop', 'deepseek-harness.desktop'))
+      expect(existsSync(join(dshHome, 'desktop-launcher', 'launcher.sh'))).toBe(true)
+      expect(existsSync(join(dir, '.dsh', 'desktop-launcher', 'launcher.sh'))).toBe(false)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('writes an executable .command on macOS', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-mac-'))
     try {
       const calls: Call[] = []
-      const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'darwin', run: recordingRunner(calls) })
+      const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, env: {}, platform: 'darwin', run: recordingRunner(calls) })
       const commandPath = join(dir, 'Desktop', 'DeepSeek-Harness.command')
       expect(result.path).toBe(commandPath)
       // chmod is a no-op on win32 (tests run there too); CI runs the real check.
@@ -77,7 +96,7 @@ describe('createDesktopShortcut', () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-linux-'))
     try {
       const calls: Call[] = []
-      const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'linux', run: recordingRunner(calls) })
+      const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, env: {}, platform: 'linux', run: recordingRunner(calls) })
       const desktopPath = join(dir, 'Desktop', 'deepseek-harness.desktop')
       expect(result.path).toBe(desktopPath)
       expect(existsSync(desktopPath)).toBe(true)
@@ -97,6 +116,7 @@ describe('createDesktopShortcut', () => {
       const result = await createDesktopShortcut({
         resolveSpec: () => ({ dshCommand: fakeDsh, url: 'http://127.0.0.1:3080' }),
         homeDir: dir,
+        env: {},
         platform: 'win32',
         run: recordingRunner(calls),
       })
@@ -116,7 +136,7 @@ describe('createDesktopShortcut', () => {
         if (file === 'sh') return { code: 1, stderr: 'not found' }
         return { code: 0, stderr: '' }
       }
-      const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'linux', run })
+      const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, env: {}, platform: 'linux', run })
       expect(result.warning).toContain('not found on PATH')
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -124,7 +144,7 @@ describe('createDesktopShortcut', () => {
   })
 
   it('rejects unsupported platforms', async () => {
-    await expect(createDesktopShortcut({ resolveSpec: spec, homeDir: tmpdir(), platform: 'freebsd', run: recordingRunner([]) }))
+    await expect(createDesktopShortcut({ resolveSpec: spec, homeDir: tmpdir(), env: {}, platform: 'freebsd', run: recordingRunner([]) }))
       .rejects.toThrow('unsupported platform')
   })
 
@@ -132,7 +152,7 @@ describe('createDesktopShortcut', () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-fail-'))
     try {
       const run = async (file: string) => file === 'powershell' ? { code: 1, stderr: 'com failed' } : { code: 0, stderr: '' }
-      await expect(createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'win32', run }))
+      await expect(createDesktopShortcut({ resolveSpec: spec, homeDir: dir, env: {}, platform: 'win32', run }))
         .rejects.toThrow('shortcut creation failed')
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -146,7 +166,7 @@ describe('route fence', () => {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-route-'))
 
   beforeAll(async () => {
-    const { routes } = makeRoutes({ resolveSpec: spec, homeDir: dir, platform: 'linux', run: recordingRunner([]) })
+    const { routes } = makeRoutes({ resolveSpec: spec, homeDir: dir, env: {}, platform: 'linux', run: recordingRunner([]) })
     server = createServer((req, res) => {
       const rawPath = new URL(req.url ?? '/', 'http://x').pathname
       const route = routes.find(r => r.kind === 'exact' && r.path === rawPath)
@@ -187,3 +207,4 @@ describe('route fence', () => {
     expect(response.status).toBe(405)
   })
 })
+

@@ -235,6 +235,56 @@ export function extractResponsesContent(payload: unknown): string {
   return text
 }
 
+/**
+ * Extract the text answer from an SSE (`text/event-stream`) Responses payload.
+ * Relay endpoints that wrap the Responses wire API (codex-lb style backends) always
+ * stream — `codex.keepalive`, `response.output_text.delta`, `response.output_item.done`,
+ * `response.completed`, then `[DONE]` — even for a non-stream request. Delta events
+ * accumulate the final text; `output_item.done` carries the completed message content;
+ * `response.completed` may carry the standard non-stream `output` shape on endpoints
+ * that populate it. Deltas win when present so the text is never assembled twice.
+ */
+function extractResponsesStreamContent(payloadBytes: Buffer): string {
+  const deltas: string[] = []
+  const completedParts: string[] = []
+  let completedOutput: unknown
+  for (const line of payloadBytes.toString('utf8').split('\n')) {
+    if (!line.startsWith('data:')) continue
+    const data = line.slice(5).trim()
+    if (data.length === 0 || data === '[DONE]') continue
+    let ev: unknown
+    try {
+      ev = JSON.parse(data)
+    } catch {
+      continue
+    }
+    const record = asRecord(ev)
+    if (record === undefined) continue
+    if (record.type === 'response.output_text.delta' && typeof record.delta === 'string' && record.delta.length > 0) {
+      deltas.push(record.delta)
+    } else if (record.type === 'response.output_item.done') {
+      const item = asRecord(record.item)
+      if (item?.type === 'message' && Array.isArray(item.content)) {
+        for (const part of item.content) {
+          const block = asRecord(part)
+          if (block?.type === 'output_text' && typeof block.text === 'string' && block.text.trim().length > 0) {
+            completedParts.push(block.text)
+          }
+        }
+      }
+    } else if (record.type === 'response.completed' && record.response !== undefined) {
+      completedOutput = record.response
+    }
+  }
+  if (deltas.length > 0) {
+    const deltaText = deltas.join('')
+    if (deltaText.trim().length > 0) return deltaText
+  }
+  if (completedParts.length > 0) return completedParts.join('\n')
+  if (completedOutput !== undefined) return extractResponsesContent(completedOutput)
+  throw new Error('describe-image: vision endpoint returned no text content (SSE stream)')
+}
+
 /** Extract the text answer from an Anthropic Messages payload: every `text` content block of the top-level `content` array, skipping `thinking` and other non-text blocks. */
 export function extractAnthropicMessagesContent(payload: unknown): string {
   const root = asRecord(payload)
@@ -413,18 +463,37 @@ export async function callVision(
     const excerpt = await readBoundedText(response, 200)
     throw new Error(`describe-image: vision endpoint returned HTTP ${response.status}: ${excerpt}`)
   }
-  const payloadBytes = await readBoundedBody(response, spec.maxOutputTokens * 8 + 64 * 1024)
+  // SSE relay streams carry event-framing overhead plus reasoning traces; give the
+  // responses style a wider body bound than the JSON styles.
+  const bodyCap = spec.apiStyle === 'responses'
+    ? spec.maxOutputTokens * 16 + 256 * 1024
+    : spec.maxOutputTokens * 8 + 64 * 1024
+  const payloadBytes = await readBoundedBody(response, bodyCap)
   let payload: unknown
-  try {
-    payload = JSON.parse(payloadBytes.toString('utf8'))
-  } catch {
-    throw new Error('describe-image: vision endpoint returned invalid JSON')
+  let useStream = false
+  const contentType = response.headers.get('content-type') ?? ''
+  if (spec.apiStyle === 'responses' && contentType.includes('text/event-stream')) {
+    useStream = true
+  } else {
+    try {
+      payload = JSON.parse(payloadBytes.toString('utf8'))
+    } catch {
+      // Some relay endpoints always stream SSE regardless of the content-type or
+      // stream flag; fall back to stream parsing for the responses style.
+      if (spec.apiStyle === 'responses') {
+        useStream = true
+      } else {
+        throw new Error('describe-image: vision endpoint returned invalid JSON')
+      }
+    }
   }
-  const text = spec.apiStyle === 'responses'
-    ? extractResponsesContent(payload)
-    : spec.apiStyle === 'anthropic-messages'
-      ? extractAnthropicMessagesContent(payload)
-      : extractChatCompletionsContent(payload)
+  const text = useStream
+    ? extractResponsesStreamContent(payloadBytes)
+    : spec.apiStyle === 'responses'
+      ? extractResponsesContent(payload)
+      : spec.apiStyle === 'anthropic-messages'
+        ? extractAnthropicMessagesContent(payload)
+        : extractChatCompletionsContent(payload)
   if (cache !== undefined) cache.set(semanticRequestKey(spec, prompt, image), text)
   return text
 }

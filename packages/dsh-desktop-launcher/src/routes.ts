@@ -1,6 +1,7 @@
 /**
  * The /api/dsh-desktop-launcher route family: one POST that writes the
- * launcher script under ~/.dsh/desktop-launcher/ and places the double-click
+ * launcher script under $DSH_HOME/desktop-launcher/ (defaulting to ~/.dsh)
+ * and places the double-click
  * icon on the Desktop. Every route carries the same loopback-only trust
  * fence as the dsh-ssh routes — this endpoint writes files on the host
  * machine, so LAN-exposed dsh web deployments must not serve it.
@@ -16,6 +17,7 @@ import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { desktopFileName, renderDesktopEntry, renderLauncherScript, renderShortcutInstaller, scriptFileName, type LauncherPlatform, type LauncherSpec } from './core/launcher.ts'
+import { resolveDshHome } from './dsh-home.ts'
 import { LAUNCHER_API, type CreateResult } from './protocol.ts'
 import { isLoopbackRequest } from './loopback.ts'
 
@@ -38,6 +40,8 @@ export interface LauncherRoutesDeps {
   resolveSpec: () => LauncherSpec
   /** Home directory (defaults to os.homedir()). */
   homeDir?: string
+  /** Process environment used to resolve DSH_HOME (defaults to process.env). */
+  env?: NodeJS.ProcessEnv
   /** Host platform (defaults to process.platform). */
   platform?: string
   /** Command runner (defaults to child_process.execFile). */
@@ -144,7 +148,7 @@ export async function createDesktopShortcut(deps: LauncherRoutesDeps): Promise<C
   const platform = toLauncherPlatform(deps.platform ?? process.platform)
   const home = deps.homeDir ?? homedir()
   const run = deps.run ?? defaultRunner
-  const scriptsDir = join(home, '.dsh', 'desktop-launcher')
+  const scriptsDir = join(resolveDshHome(deps.env ?? process.env, home), 'desktop-launcher')
   await mkdir(scriptsDir, { recursive: true })
   const launcherPath = join(scriptsDir, scriptFileName(platform))
   // UTF-8 BOM: Windows PowerShell 5.1 misreads the Chinese popup text without it.
@@ -216,3 +220,4 @@ export function makeRoutes(deps: LauncherRoutesDeps): { routes: WebRoute[] } {
   }]
   return { routes }
 }
+

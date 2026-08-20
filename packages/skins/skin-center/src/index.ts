@@ -94,6 +94,33 @@ export const SkinBackgroundConfigSchema: z<SkinBackgroundConfig> = z.object({
  */
 export const SKIN_WALLPAPER_NAMESPACE = settingsNamespace('skin-wallpaper')
 
+/** Settings namespace for the standalone custom theme. */
+export const SKIN_CUSTOM_THEME_NAMESPACE = settingsNamespace('skin-custom-theme')
+
+export interface SkinCustomThemeConfig {
+  lightAccent?: string
+  lightBackground?: string
+  lightForeground?: string
+  lightContrast?: number
+  darkAccent?: string
+  darkBackground?: string
+  darkForeground?: string
+  darkContrast?: number
+  applied?: boolean
+}
+
+export const SkinCustomThemeConfigSchema: z<SkinCustomThemeConfig> = z.object({
+  lightAccent: z.string().default('#4f6faf'),
+  lightBackground: z.string().default('#f7f9fc'),
+  lightForeground: z.string().default('#1b2533'),
+  lightContrast: z.number().min(0).max(100).step(1).default(50),
+  darkAccent: z.string().default('#86a7ff'),
+  darkBackground: z.string().default('#162235'),
+  darkForeground: z.string().default('#e7edf7'),
+  darkContrast: z.number().min(0).max(100).step(1).default(50),
+  applied: z.boolean().default(false),
+})
+
 /**
  * Wallpaper bridge configuration. Wallpapers only ever come from the user's
  * own machine (their Wallpaper Engine library or manual folders); the import
@@ -157,6 +184,11 @@ function applyImpl(ctx: Context): void {
   installSettingsSection(ctx, SKIN_WALLPAPER_NAMESPACE, SkinWallpaperConfigSchema, {}, {
     setSource: (source) => { wallpaperSource = source },
     onChange: () => { /* routes re-read through the getter per request */ },
+  })
+
+  installSettingsSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, {}, {
+    setSource: () => { /* browser half applies the current official profile */ },
+    onChange: () => { /* browser scope publishes changes */ },
   })
 
   const routes = [

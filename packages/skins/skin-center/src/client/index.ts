@@ -18,6 +18,8 @@ import { BackgroundController, SKIN_BACKGROUND_NS } from './background.ts'
 import { SKIN_WALLPAPER_NS, WallpaperController, installBootRestore } from './wallpaper.ts'
 import { en, zh, type SkinCenterKey } from './locales.ts'
 import { bootSkinRuntime } from './runtime/boot.ts'
+import { CustomThemeController } from './custom-theme-controller.ts'
+import { SKIN_CUSTOM_THEME_NS } from './custom-theme.ts'
 
 export type { SkinCenterComponentProps, SkinCenterInjected } from './SkinCenter.tsx'
 export { bootSkinRuntime } from './runtime/boot.ts'
@@ -75,6 +77,26 @@ export function apply(ctx: ClientContext): void {
   const background = new BackgroundController(backgroundScope)
   // Tear the blur element + observer down when this plugin's fiber goes away.
   ctx.effect(() => () => background.dispose(), 'ui-skin-center: background dispose')
+  const customThemeScope = binder.bind<{
+    lightAccent?: string
+    lightBackground?: string
+    lightForeground?: string
+    lightContrast?: number
+    darkAccent?: string
+    darkBackground?: string
+    darkForeground?: string
+    darkContrast?: number
+    applied?: boolean
+  }>({ namespace: SKIN_CUSTOM_THEME_NS })
+  const customTheme = new CustomThemeController(customThemeScope)
+  customTheme.setScheme(theme.getTheme().active.colorScheme === 'dark' ? 'dark' : 'light')
+  ctx.effect(() => () => customTheme.dispose(), 'ui-skin-center: custom theme dispose')
+  ctx.effect(
+    () => ctx.on('theme/change', () => {
+      customTheme.setScheme(theme.getTheme().active.colorScheme === 'dark' ? 'dark' : 'light')
+    }),
+    'ui-skin-center: custom theme mode sync',
+  )
   // The Wallpaper Engine bridge over the skin-wallpaper namespace.
   const wallpaperScope = binder.bind<{
     enabled?: boolean
@@ -103,6 +125,11 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(
     () => wallpaper.subscribe(() => { void runtime.controller.refresh() }),
     'ui-skin-center: wallpaper priority refresh',
+  )
+  customTheme.setBaseSkinState(runtime.controller.getState())
+  ctx.effect(
+    () => runtime.subscribe(() => { customTheme.setBaseSkinState(runtime.controller.getState()) }),
+    'ui-skin-center: custom theme skin sync',
   )
   const injected = (): SkinCenterInjected => ({
     runtime,
@@ -154,6 +181,7 @@ export function apply(ctx: ClientContext): void {
       exitTryOn: () => wallpaper.exitTryOn(),
       dispose: () => wallpaper.dispose(),
     },
+    customTheme,
   })
 
   ctx.slots.inject('settings.section', () => ctx.slots.register({

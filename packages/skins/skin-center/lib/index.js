@@ -7257,6 +7257,19 @@ const SkinBackgroundConfigSchema = z.object({
 * the library scan beyond the auto-detected Steam folders.
 */
 const SKIN_WALLPAPER_NAMESPACE = settingsNamespace("skin-wallpaper");
+/** Settings namespace for the standalone custom theme. */
+const SKIN_CUSTOM_THEME_NAMESPACE = settingsNamespace("skin-custom-theme");
+const SkinCustomThemeConfigSchema = z.object({
+	lightAccent: z.string().default("#4f6faf"),
+	lightBackground: z.string().default("#f7f9fc"),
+	lightForeground: z.string().default("#1b2533"),
+	lightContrast: z.number().min(0).max(100).step(1).default(50),
+	darkAccent: z.string().default("#86a7ff"),
+	darkBackground: z.string().default("#162235"),
+	darkForeground: z.string().default("#e7edf7"),
+	darkContrast: z.number().min(0).max(100).step(1).default(50),
+	applied: z.boolean().default(false)
+});
 /** Runtime schema for SkinWallpaperConfig. */
 const SkinWallpaperConfigSchema = z.object({
 	enabled: z.boolean().default(true),
@@ -7291,6 +7304,10 @@ function applyImpl(ctx) {
 		setSource: (source) => {
 			wallpaperSource = source;
 		},
+		onChange: () => {}
+	});
+	installSettingsSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, {}, {
+		setSource: () => {},
 		onChange: () => {}
 	});
 	const routes = [...makeSkinCenterV2Routes(), ...makeWeRoutes({
@@ -7328,4 +7345,4 @@ function applyImpl(ctx) {
 	}
 }
 //#endregion
-export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_V2_PREFIX, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinCssSafetyError, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, builtinSkinsDir, defaultActiveStatePath, findSkin, inject, loadSkinCatalog, makeSkinCenterV2Routes, makeWeRoutes, name, readActiveSelection, resolveInsideSkin, transformSkinCss, userSkinsDir, validateSkinManifestV2, writeActiveSelection };
+export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_V2_PREFIX, SKIN_CUSTOM_THEME_NAMESPACE, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinCssSafetyError, SkinCustomThemeConfigSchema, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, builtinSkinsDir, defaultActiveStatePath, findSkin, inject, loadSkinCatalog, makeSkinCenterV2Routes, makeWeRoutes, name, readActiveSelection, resolveInsideSkin, transformSkinCss, userSkinsDir, validateSkinManifestV2, writeActiveSelection };

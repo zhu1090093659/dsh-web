@@ -73,6 +73,17 @@ export type SkinCenterKey =
   | 'wallpaperDirsHint'
   | 'wallpaperDirPlaceholder'
   | 'wallpaperDirAdd'
+  | 'customTheme'
+  | 'customThemeTagline'
+  | 'customThemeAccent'
+  | 'customThemeBackground'
+  | 'customThemeForeground'
+  | 'customThemeContrast'
+  | 'customThemeReset'
+  | 'customThemeLight'
+  | 'customThemeDark'
+  | 'editTheme'
+  | 'closeThemeEditor'
 
 export const en: Record<SkinCenterKey, string> = {
   title: 'Skin Center',
@@ -142,6 +153,17 @@ export const en: Record<SkinCenterKey, string> = {
   wallpaperDirsHint: 'No Wallpaper Engine (e.g. macOS)? Point a folder at any .mp4/.webm files, a wallpaper project folder, or a folder of projects — they become your wallpaper library.',
   wallpaperDirPlaceholder: '/path/to/wallpapers or ~/Movies/wallpapers',
   wallpaperDirAdd: 'Add',
+  customTheme: 'Custom theme',
+  customThemeTagline: 'A standalone theme based on the official default; Wallpaper Engine remains the shared background layer.',
+  customThemeAccent: 'Accent color',
+  customThemeBackground: 'Background color',
+  customThemeForeground: 'Foreground color',
+  customThemeContrast: 'Contrast',
+  customThemeReset: 'Reset current mode defaults',
+  customThemeLight: 'Light',
+  customThemeDark: 'Dark',
+  editTheme: 'Edit',
+  closeThemeEditor: 'Collapse',
 }
 
 export const zh: Record<SkinCenterKey, string> = {
@@ -212,4 +234,15 @@ export const zh: Record<SkinCenterKey, string> = {
   wallpaperDirsHint: '没有 Wallpaper Engine（如 macOS）？把任意 .mp4/.webm 视频、单个壁纸项目文件夹或项目合集文件夹加进来，就是你的壁纸库。',
   wallpaperDirPlaceholder: '/path/to/wallpapers 或 ~/Movies/wallpapers',
   wallpaperDirAdd: '添加',
+  customTheme: '自定义主题',
+  customThemeTagline: '基于官方默认主题独立保存；背景继续复用 Wallpaper Engine 的全局壁纸层。',
+  customThemeAccent: '强调色',
+  customThemeBackground: '背景色',
+  customThemeForeground: '前景色',
+  customThemeContrast: '对比度',
+  customThemeReset: '恢复当前模式默认',
+  customThemeLight: '浅色',
+  customThemeDark: '深色',
+  editTheme: '编辑',
+  closeThemeEditor: '收起',
 }

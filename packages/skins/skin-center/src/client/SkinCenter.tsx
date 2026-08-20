@@ -20,6 +20,8 @@ import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { CatalogSkin, SkinRuntimeStore } from './runtime/boot.ts'
 import type { SkinBackgroundHandle } from './background.ts'
 import type { WallpaperHandle } from './wallpaper.ts'
+import type { CustomThemeController } from './custom-theme-controller.ts'
+import { CustomThemePanel } from './CustomThemePanel.tsx'
 import { WallpaperPanel } from './WallpaperPanel.tsx'
 import css from './skin-center.module.css'
 
@@ -36,6 +38,8 @@ export interface SkinCenterInjected {
   background: SkinBackgroundHandle
   /** Wallpaper Engine bridge over the skin-wallpaper namespace. */
   wallpaper: WallpaperHandle
+  /** Standalone custom theme controller; does not alter third-party skins. */
+  customTheme: CustomThemeController
 }
 
 /** Plugin-card component props: locale seat + injected face. */
@@ -52,7 +56,7 @@ const OFFICIAL = 'official'
  * @param props - card props.
  * @returns the plugin card.
  */
-export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCenterComponentProps) {
+export function SkinCenter({ t, runtime, theme, background, wallpaper, customTheme }: SkinCenterComponentProps) {
   const snapshot = useSyncExternalStore((listener) => theme.subscribe(listener), () => theme.getTheme())
   const enabled = useSyncExternalStore(background.subscribe, background.enabled)
   const opacity = useSyncExternalStore(background.subscribe, background.opacity)
@@ -60,6 +64,7 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCen
   const blurContent = useSyncExternalStore(background.subscribe, background.blurContent)
   const catalog = useSyncExternalStore(runtime.subscribe, runtime.catalog)
   const state = useSyncExternalStore(runtime.subscribe, runtime.controller.getState)
+  const customState = useSyncExternalStore(customTheme.subscribe, customTheme.getState)
   const activeId = state.active
   const previewing = state.previewing
   const tryingId = state.trying
@@ -93,15 +98,27 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCen
   }
 
   const tryOn = (entry: CatalogSkin): void => {
-    run(entry.manifest.id, () => runtime.controller.tryOn(entry.manifest.id, entry))
+    run(entry.manifest.id, async () => {
+      const result = await runtime.controller.tryOn(entry.manifest.id, entry)
+      customTheme.setOfficialPreview(false)
+      return result
+    })
   }
 
   const tryOnOfficial = (): void => {
-    run(OFFICIAL, () => runtime.controller.tryOn(null, null))
+    run(OFFICIAL, async () => {
+      const result = await runtime.controller.tryOn(null, null)
+      if (result === null) customTheme.setOfficialPreview(true)
+      return result
+    })
   }
 
   const exitTryOn = (): void => {
-    run(tryingId ?? OFFICIAL, () => runtime.controller.exitTryOn())
+    run(tryingId ?? OFFICIAL, async () => {
+      const result = await runtime.controller.exitTryOn()
+      if (result === null) customTheme.setOfficialPreview(false)
+      return result
+    })
   }
 
   /**
@@ -112,7 +129,14 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCen
    */
   const applySkin = (target: string): void => {
     if (target === OFFICIAL) {
-      run(OFFICIAL, () => runtime.controller.switchTo(null, null))
+      run(OFFICIAL, async () => {
+        const result = await runtime.controller.switchTo(null, null)
+        if (result === null) {
+          customTheme.clearApplied()
+          customTheme.setOfficialPreview(false)
+        }
+        return result
+      })
       return
     }
     const entry = runtime.find(target)
@@ -120,7 +144,11 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCen
       setError(t('applyFailed'))
       return
     }
-    run(target, () => runtime.controller.switchTo(target, entry))
+    run(target, async () => {
+      const result = await runtime.controller.switchTo(target, entry)
+      if (result === target) customTheme.clearApplied()
+      return result
+    })
   }
 
   const dark = snapshot.active.colorScheme === 'dark'
@@ -280,7 +308,7 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCen
 
                   <div className={css.list}>
                     {(() => {
-                      const isActive = activeId === null && !previewing
+                      const isActive = activeId === null && !previewing && !customState.applied
                       const isTrying = previewing && tryingId === null
                       const badge = isActive ? t('active') : isTrying ? t('tryingOn') : null
                       return (
@@ -339,6 +367,7 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCen
                         </div>
                       )
                     })}
+                    <CustomThemePanel t={t} runtime={runtime} theme={theme} customTheme={customTheme} />
                   </div>
                 </>
               )
@@ -358,10 +387,10 @@ export type SkinCenterSectionProps =
 
 /** Render the skin-center card as a first-level settings page. */
 export function SkinCenterSection(props: SkinCenterSectionProps): ReactNode {
-  const { t, runtime, theme, background, wallpaper } = props
+  const { t, runtime, theme, background, wallpaper, customTheme } = props
   return (
     <ul className={css.sectionList}>
-      <SkinCenter t={t} runtime={runtime} theme={theme} background={background} wallpaper={wallpaper} />
+      <SkinCenter t={t} runtime={runtime} theme={theme} background={background} wallpaper={wallpaper} customTheme={customTheme} />
     </ul>
   )
 }

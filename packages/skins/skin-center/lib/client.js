@@ -6,10 +6,335 @@ window.__ModuleLoader__.load({
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		let react = require("react");
 		let react_jsx_runtime = require("react/jsx-runtime");
+		//#region \0dsh-css:packages/skins/skin-center/src/client/skin-center.module.css.mjs
+		const css = "body[data-dsh-skin-center] .eDzMgW_sectionList{margin:0;padding:0;list-style:none}body[data-dsh-skin-center] .eDzMgW_pluginCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}body[data-dsh-skin-center] .eDzMgW_pluginCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_cardHeaderStatic{align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}body[data-dsh-skin-center] .eDzMgW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_pluginName{color:var(--dsw-alias-label-primary);align-items:baseline;gap:8px;font-size:15px;font-weight:600;line-height:1.4;display:flex}body[data-dsh-skin-center] .eDzMgW_cardDescription{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_cardBody{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:12px;margin:0 16px;padding:12px 0 8px;display:flex}body[data-dsh-skin-center] .eDzMgW_head{flex-direction:column;gap:6px;display:flex}body[data-dsh-skin-center] .eDzMgW_titleBadge{color:var(--dsw-alias-label-secondary,#6b7280);font-size:11px;font-weight:500}body[data-dsh-skin-center] .eDzMgW_intro{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12.5px;line-height:1.55}body[data-dsh-skin-center] .eDzMgW_themeRow{align-items:center;gap:8px;margin-top:2px;display:flex}body[data-dsh-skin-center] .eDzMgW_themeLabel{color:var(--dsw-alias-label-secondary,#6b7280);margin-right:2px;font-size:12px}body[data-dsh-skin-center] .eDzMgW_themeButton{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_themeButton:hover{border-color:var(--dsw-alias-border-l4,#94a3b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:active{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_themeButtonActive{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_list{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_card{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:8px;padding:12px 14px;display:flex}body[data-dsh-skin-center] .eDzMgW_cardHead{align-items:center;gap:10px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_swatch{width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;flex:none}body[data-dsh-skin-center] .eDzMgW_cardName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_cardTagline{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.45}body[data-dsh-skin-center] .eDzMgW_badge{letter-spacing:.02em;border-radius:999px;flex:none;min-width:0;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_badgeActive{color:var(--dsw-alias-state-success-primary,#0f6b3a);background:var(--dsw-alias-state-success-tertiary,#dcf3e5)}body[data-dsh-skin-center] .eDzMgW_badgeTrying{color:var(--dsw-alias-brand-primary,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e2edfc)}body[data-dsh-skin-center] .eDzMgW_actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_button{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:7px;padding:6px 12px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_button:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary,#2b7cd9);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:active:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_buttonPrimary{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-fill,#2b7cd9);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:active:not(:disabled),body[data-dsh-skin-center] .eDzMgW_buttonPrimary:focus-visible:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_buttonGhost{background:0 0;border-color:#0000}body[data-dsh-skin-center] .eDzMgW_button:disabled{opacity:.55;cursor:default}body[data-dsh-skin-center] .eDzMgW_error{color:var(--dsw-alias-state-error-primary,#b42318);font-size:12px}body[data-dsh-skin-center] .eDzMgW_enableRow{flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_enableLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_enableHint{min-width:100%;color:var(--dsw-alias-label-secondary,#6b7280);flex:1;margin:0;font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_switch{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-3,#e2e8f0);cursor:pointer;border-radius:999px;flex:none;align-items:center;width:40px;height:22px;padding:2px;transition:background .12s,border-color .12s;display:inline-flex;position:relative}body[data-dsh-skin-center] .eDzMgW_switchOn{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-brand-primary,#2b7cd9)}body[data-dsh-skin-center] .eDzMgW_switch:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_switchThumb{background:var(--dsw-alias-label-primary-foreground,#fff);width:18px;height:18px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;transition:transform .12s;display:block;transform:translate(0)}body[data-dsh-skin-center] .eDzMgW_switchOn .eDzMgW_switchThumb{transform:translate(18px)}body[data-dsh-skin-center] .eDzMgW_offNote{color:var(--dsw-alias-label-secondary,#6b7280);margin:0;font-size:12.5px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundRow{flex-direction:column;gap:6px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundHead{align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_backgroundValue{font-variant-numeric:tabular-nums;color:var(--dsw-alias-brand-primary,#2b7cd9);flex:none;margin-left:auto;font-size:12px}body[data-dsh-skin-center] .eDzMgW_backgroundRange{background:var(--dsw-alias-label-tertiary,#9aa4b5);background:color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent);width:100%;height:4px;box-shadow:0 0 0 1px var(--dsw-alias-border-l3,#cbd5e1);-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:999px;margin:0}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-runnable-track{background:var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-track{background:var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:14px;height:14px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-thumb{border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:12px;height:12px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_backgroundHint{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundHintMuted{color:var(--dsw-alias-label-tertiary,#9aa4b5);font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){body[data-dsh-skin-center] .eDzMgW_pluginCard,body[data-dsh-skin-center] .eDzMgW_themeButton,body[data-dsh-skin-center] .eDzMgW_button,body[data-dsh-skin-center] .eDzMgW_switch,body[data-dsh-skin-center] .eDzMgW_switchThumb{transition:none}}.eDzMgW_customThemeEditor{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;gap:10px;padding:12px;display:grid}.eDzMgW_officialThemeGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;display:grid}.eDzMgW_officialThemeField{color:var(--dsw-alias-label-secondary,#6b7280);gap:6px;font-size:12px;display:grid}.eDzMgW_officialThemeInputRow{align-items:center;gap:6px;display:flex}.eDzMgW_officialThemeInputRow input[type=color]{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:0 0;border-radius:6px;width:32px;height:28px;padding:2px}.eDzMgW_officialThemeInputRow input[type=text]{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-1,#fff);width:100%;min-width:0;color:var(--dsw-alias-label-primary,#172a45);font:inherit;border-radius:6px;padding:5px 7px}body[data-dsh-skin-center] .eDzMgW_wallpaperSection{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:10px;padding-top:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatus{color:var(--dsw-alias-label-secondary,#6b7280);align-items:center;gap:8px;font-size:12px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatusError{color:var(--dsw-alias-state-danger,#c53030)}body[data-dsh-skin-center] .eDzMgW_wallpaperControls{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperGrid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;display:grid}body[data-dsh-skin-center] .eDzMgW_wallpaperCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:6px;padding:8px;transition:border-color .16s;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap{aspect-ratio:16/9;background:var(--dsw-alias-bg-layer-1,#f1f5f9);border-radius:6px;position:relative;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperThumb{object-fit:cover;width:100%;height:100%;display:block}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbEmpty{width:100%;height:100%}body[data-dsh-skin-center] .eDzMgW_wallpaperType{color:var(--dsw-alias-label-primary,#172a45);background:var(--dsw-alias-bg-layer-2,#ffffffd9);border-radius:4px;padding:3px 6px;font-size:10.5px;line-height:1;position:absolute;top:6px;left:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap .eDzMgW_badge{position:absolute;top:6px;right:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:1.35;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperActions{flex-wrap:wrap;gap:6px;display:flex}";
+		const tagId = "@linxin666/dsh-client-ui-skin-center/skin-center.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@linxin666/dsh-client-ui-skin-center";
+			tag.dataset.pluginCss = tagId;
+			tag.textContent = css;
+			document.head.appendChild(tag);
+		}
+		var skin_center_module_css_default = {
+			"actions": "eDzMgW_actions",
+			"backgroundHead": "eDzMgW_backgroundHead",
+			"backgroundHint": "eDzMgW_backgroundHint",
+			"backgroundHintMuted": "eDzMgW_backgroundHintMuted",
+			"backgroundLabel": "eDzMgW_backgroundLabel",
+			"backgroundRange": "eDzMgW_backgroundRange",
+			"backgroundRow": "eDzMgW_backgroundRow",
+			"backgroundValue": "eDzMgW_backgroundValue",
+			"badge": "eDzMgW_badge",
+			"badgeActive": "eDzMgW_badgeActive",
+			"badgeTrying": "eDzMgW_badgeTrying",
+			"button": "eDzMgW_button",
+			"buttonGhost": "eDzMgW_buttonGhost",
+			"buttonPrimary": "eDzMgW_buttonPrimary",
+			"card": "eDzMgW_card",
+			"cardBody": "eDzMgW_cardBody",
+			"cardDescription": "eDzMgW_cardDescription",
+			"cardHead": "eDzMgW_cardHead",
+			"cardHeaderStatic": "eDzMgW_cardHeaderStatic",
+			"cardName": "eDzMgW_cardName",
+			"cardTagline": "eDzMgW_cardTagline",
+			"customThemeEditor": "eDzMgW_customThemeEditor",
+			"enableHint": "eDzMgW_enableHint",
+			"enableLabel": "eDzMgW_enableLabel",
+			"enableRow": "eDzMgW_enableRow",
+			"error": "eDzMgW_error",
+			"head": "eDzMgW_head",
+			"headText": "eDzMgW_headText",
+			"intro": "eDzMgW_intro",
+			"list": "eDzMgW_list",
+			"offNote": "eDzMgW_offNote",
+			"officialThemeField": "eDzMgW_officialThemeField",
+			"officialThemeGrid": "eDzMgW_officialThemeGrid",
+			"officialThemeInputRow": "eDzMgW_officialThemeInputRow",
+			"pluginCard": "eDzMgW_pluginCard",
+			"pluginName": "eDzMgW_pluginName",
+			"sectionList": "eDzMgW_sectionList",
+			"swatch": "eDzMgW_swatch",
+			"switch": "eDzMgW_switch",
+			"switchOn": "eDzMgW_switchOn",
+			"switchThumb": "eDzMgW_switchThumb",
+			"themeButton": "eDzMgW_themeButton",
+			"themeButtonActive": "eDzMgW_themeButtonActive",
+			"themeLabel": "eDzMgW_themeLabel",
+			"themeRow": "eDzMgW_themeRow",
+			"titleBadge": "eDzMgW_titleBadge",
+			"wallpaperActions": "eDzMgW_wallpaperActions",
+			"wallpaperCard": "eDzMgW_wallpaperCard",
+			"wallpaperControls": "eDzMgW_wallpaperControls",
+			"wallpaperGrid": "eDzMgW_wallpaperGrid",
+			"wallpaperName": "eDzMgW_wallpaperName",
+			"wallpaperSection": "eDzMgW_wallpaperSection",
+			"wallpaperStatus": "eDzMgW_wallpaperStatus",
+			"wallpaperStatusError": "eDzMgW_wallpaperStatusError",
+			"wallpaperThumb": "eDzMgW_wallpaperThumb",
+			"wallpaperThumbEmpty": "eDzMgW_wallpaperThumbEmpty",
+			"wallpaperThumbWrap": "eDzMgW_wallpaperThumbWrap",
+			"wallpaperType": "eDzMgW_wallpaperType"
+		};
+		//#endregion
+		//#region src/client/CustomThemePanel.tsx
+		/** Standalone custom-theme card; it deliberately uses the existing runtime API. */
+		function CustomThemePanel({ t, runtime, theme, customTheme }) {
+			const custom = (0, react.useSyncExternalStore)(customTheme.subscribe, customTheme.getState);
+			const base = (0, react.useSyncExternalStore)(runtime.subscribe, runtime.controller.getState);
+			const scheme = custom.scheme;
+			const profile = custom.profile;
+			const [editing, setEditing] = (0, react.useState)(false);
+			const [draftColors, setDraftColors] = (0, react.useState)({
+				accent: profile.accent,
+				background: profile.background,
+				foreground: profile.foreground
+			});
+			const [busy, setBusy] = (0, react.useState)(false);
+			const [error, setError] = (0, react.useState)(null);
+			const dark = theme.getTheme().active.colorScheme === "dark";
+			const officialBase = base.active === null;
+			const active = officialBase && !base.previewing && custom.applied;
+			const trying = officialBase && base.previewing && base.trying === null && custom.previewing;
+			(0, react.useEffect)(() => {
+				setDraftColors({
+					accent: profile.accent,
+					background: profile.background,
+					foreground: profile.foreground
+				});
+			}, [
+				scheme,
+				profile.accent,
+				profile.background,
+				profile.foreground
+			]);
+			const run = async (action) => {
+				if (busy) return;
+				setBusy(true);
+				setError(null);
+				try {
+					await action();
+				} catch {
+					setError(t("applyFailed"));
+				} finally {
+					setBusy(false);
+				}
+			};
+			const tryCustom = () => {
+				run(async () => {
+					if (await runtime.controller.tryOn(null, null) !== null) throw new Error("official base preview failed");
+					customTheme.tryOn();
+				});
+			};
+			const applyCustom = () => {
+				run(async () => {
+					if (await runtime.controller.switchTo(null, null) !== null) throw new Error("official base apply failed");
+					customTheme.apply();
+				});
+			};
+			const exitCustom = () => {
+				run(async () => {
+					if (await runtime.controller.exitTryOn() !== null) throw new Error("base try-on exit failed");
+					customTheme.exitTryOn();
+				});
+			};
+			const setColor = (key, value) => {
+				setDraftColors((current) => ({
+					...current,
+					[key]: value
+				}));
+				if (/^#[0-9a-f]{6}$/i.test(value)) customTheme.set(key, value);
+			};
+			const commitColor = (key) => {
+				const value = draftColors[key];
+				if (/^#[0-9a-f]{6}$/i.test(value)) customTheme.set(key, value);
+				else setDraftColors((current) => ({
+					...current,
+					[key]: profile[key]
+				}));
+			};
+			const colorField = (key, label) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+				className: skin_center_module_css_default.officialThemeField,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: label }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+					className: skin_center_module_css_default.officialThemeInputRow,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+						type: "color",
+						value: draftColors[key],
+						"aria-label": label,
+						onChange: (event) => {
+							setColor(key, event.target.value);
+						}
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+						type: "text",
+						value: draftColors[key],
+						"aria-label": `${label} hex`,
+						onChange: (event) => {
+							setColor(key, event.target.value);
+						},
+						onInput: (event) => {
+							setColor(key, event.currentTarget.value);
+						},
+						onBlur: () => {
+							commitColor(key);
+						}
+					})]
+				})]
+			}, key);
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: skin_center_module_css_default.card,
+				"data-custom-theme-card": "true",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: skin_center_module_css_default.cardHead,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: skin_center_module_css_default.swatch,
+								style: { background: profile.accent },
+								"aria-hidden": "true"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: skin_center_module_css_default.cardName,
+								children: t("customTheme")
+							}),
+							active && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: `${skin_center_module_css_default.badge} ${skin_center_module_css_default.badgeActive}`,
+								children: t("active")
+							}),
+							trying && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: `${skin_center_module_css_default.badge} ${skin_center_module_css_default.badgeTrying}`,
+								children: t("tryingOn")
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: skin_center_module_css_default.cardTagline,
+						children: t("customThemeTagline")
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: skin_center_module_css_default.actions,
+						children: [
+							trying ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonPrimary}`,
+								disabled: busy,
+								onClick: exitCustom,
+								children: t("exitTryOn")
+							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonPrimary}`,
+								disabled: busy,
+								onClick: tryCustom,
+								children: t("tryOn")
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: skin_center_module_css_default.button,
+								disabled: busy || active,
+								onClick: applyCustom,
+								children: t("apply")
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonGhost}`,
+								onClick: () => {
+									setEditing((value) => !value);
+								},
+								children: editing ? t("closeThemeEditor") : t("editTheme")
+							})
+						]
+					}),
+					editing && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: skin_center_module_css_default.customThemeEditor,
+						"data-custom-theme-editor": "true",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: skin_center_module_css_default.themeRow,
+								role: "tablist",
+								"aria-label": t("theme"),
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.themeLabel,
+										children: t("theme")
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										role: "tab",
+										"aria-selected": scheme === "light",
+										className: `${skin_center_module_css_default.themeButton} ${scheme === "light" ? skin_center_module_css_default.themeButtonActive : ""}`,
+										onClick: () => {
+											customTheme.setScheme("light");
+										},
+										children: t("customThemeLight")
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										role: "tab",
+										"aria-selected": scheme === "dark",
+										className: `${skin_center_module_css_default.themeButton} ${scheme === "dark" ? skin_center_module_css_default.themeButtonActive : ""}`,
+										onClick: () => {
+											customTheme.setScheme("dark");
+										},
+										children: t("customThemeDark")
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: skin_center_module_css_default.officialThemeGrid,
+								children: [
+									colorField("accent", t("customThemeAccent")),
+									colorField("background", t("customThemeBackground")),
+									colorField("foreground", t("customThemeForeground"))
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: skin_center_module_css_default.backgroundHead,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: skin_center_module_css_default.backgroundLabel,
+									children: t("customThemeContrast")
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: skin_center_module_css_default.backgroundValue,
+									children: profile.contrast
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+								className: skin_center_module_css_default.backgroundRange,
+								type: "range",
+								min: "0",
+								max: "100",
+								step: "1",
+								value: profile.contrast,
+								"aria-label": t("customThemeContrast"),
+								onChange: (event) => {
+									customTheme.set("contrast", Number(event.target.value));
+								}
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonGhost}`,
+								onClick: () => {
+									customTheme.resetCurrent();
+								},
+								children: t("customThemeReset")
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+								className: skin_center_module_css_default.backgroundHint,
+								children: dark ? t("customThemeDark") : t("customThemeLight")
+							})
+						]
+					}),
+					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: skin_center_module_css_default.error,
+						role: "alert",
+						children: error
+					})
+				]
+			});
+		}
+		//#endregion
 		//#region src/client/wallpaper.ts
 		/** The namespace string the Host registers (mirrors src/index.ts). */
 		const SKIN_WALLPAPER_NS = "skin-wallpaper";
-		const clamp = (value, min, max) => Math.max(min, Math.min(max, Math.round(value)));
+		const clamp$1 = (value, min, max) => Math.max(min, Math.min(max, Math.round(value)));
 		/** Style one fixed, non-interactive, under-everything layer. */
 		function styleLayer(element, zIndex) {
 			element.style.position = "fixed";
@@ -218,13 +543,13 @@ window.__ModuleLoader__.load({
 				this.scope.set("fit", fit);
 			}
 			setDim(value) {
-				this.dimValue = clamp(value, 0, 90);
+				this.dimValue = clamp$1(value, 0, 90);
 				this.render();
 				this.publish();
 				this.scope.set("dim", this.dimValue);
 			}
 			setBlur(value) {
-				this.blurValue = clamp(value, 0, 60);
+				this.blurValue = clamp$1(value, 0, 60);
 				this.render();
 				this.publish();
 				this.scope.set("wallpaperBlur", this.blurValue);
@@ -241,7 +566,7 @@ window.__ModuleLoader__.load({
 				this.scope.set("sound", value);
 			}
 			setVolume(value) {
-				this.volumeValue = clamp(value, 0, 100);
+				this.volumeValue = clamp$1(value, 0, 100);
 				this.applySound();
 				this.publish();
 				this.scope.set("volume", this.volumeValue);
@@ -293,9 +618,9 @@ window.__ModuleLoader__.load({
 				this.fitValue = rawFit === "contain" || rawFit === "fill" ? rawFit : "cover";
 				this.pauseOnHiddenValue = typeof value.pauseOnHidden === "boolean" ? value.pauseOnHidden : true;
 				this.soundValue = typeof value.sound === "boolean" ? value.sound : false;
-				this.volumeValue = typeof value.volume === "number" && Number.isFinite(value.volume) ? clamp(value.volume, 0, 100) : 100;
-				this.dimValue = typeof value.dim === "number" && Number.isFinite(value.dim) ? clamp(value.dim, 0, 90) : 25;
-				this.blurValue = typeof value.wallpaperBlur === "number" && Number.isFinite(value.wallpaperBlur) ? clamp(value.wallpaperBlur, 0, 60) : 0;
+				this.volumeValue = typeof value.volume === "number" && Number.isFinite(value.volume) ? clamp$1(value.volume, 0, 100) : 100;
+				this.dimValue = typeof value.dim === "number" && Number.isFinite(value.dim) ? clamp$1(value.dim, 0, 90) : 25;
+				this.blurValue = typeof value.wallpaperBlur === "number" && Number.isFinite(value.wallpaperBlur) ? clamp$1(value.wallpaperBlur, 0, 60) : 0;
 				this.dirsValue = Array.isArray(value.weLibraryDirs) ? value.weLibraryDirs.filter((d) => typeof d === "string" && d.trim() !== "") : [];
 			}
 			/** Resume a policy-blocked video on the first user gesture (#580). */
@@ -609,73 +934,6 @@ window.__ModuleLoader__.load({
 			restore();
 			wallpaper.subscribe(restore);
 		}
-		//#endregion
-		//#region \0dsh-css:packages/skins/skin-center/src/client/skin-center.module.css.mjs
-		const css = "body[data-dsh-skin-center] .eDzMgW_sectionList{margin:0;padding:0;list-style:none}body[data-dsh-skin-center] .eDzMgW_pluginCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}body[data-dsh-skin-center] .eDzMgW_pluginCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_cardHeaderStatic{align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}body[data-dsh-skin-center] .eDzMgW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_pluginName{color:var(--dsw-alias-label-primary);align-items:baseline;gap:8px;font-size:15px;font-weight:600;line-height:1.4;display:flex}body[data-dsh-skin-center] .eDzMgW_cardDescription{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_cardBody{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:12px;margin:0 16px;padding:12px 0 8px;display:flex}body[data-dsh-skin-center] .eDzMgW_head{flex-direction:column;gap:6px;display:flex}body[data-dsh-skin-center] .eDzMgW_titleBadge{color:var(--dsw-alias-label-secondary,#6b7280);font-size:11px;font-weight:500}body[data-dsh-skin-center] .eDzMgW_intro{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12.5px;line-height:1.55}body[data-dsh-skin-center] .eDzMgW_themeRow{align-items:center;gap:8px;margin-top:2px;display:flex}body[data-dsh-skin-center] .eDzMgW_themeLabel{color:var(--dsw-alias-label-secondary,#6b7280);margin-right:2px;font-size:12px}body[data-dsh-skin-center] .eDzMgW_themeButton{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_themeButton:hover{border-color:var(--dsw-alias-border-l4,#94a3b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:active{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_themeButtonActive{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_list{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_card{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:8px;padding:12px 14px;display:flex}body[data-dsh-skin-center] .eDzMgW_cardHead{align-items:center;gap:10px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_swatch{width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;flex:none}body[data-dsh-skin-center] .eDzMgW_cardName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_cardTagline{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.45}body[data-dsh-skin-center] .eDzMgW_badge{letter-spacing:.02em;border-radius:999px;flex:none;min-width:0;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_badgeActive{color:var(--dsw-alias-state-success-primary,#0f6b3a);background:var(--dsw-alias-state-success-tertiary,#dcf3e5)}body[data-dsh-skin-center] .eDzMgW_badgeTrying{color:var(--dsw-alias-brand-primary,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e2edfc)}body[data-dsh-skin-center] .eDzMgW_actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_button{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:7px;padding:6px 12px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_button:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary,#2b7cd9);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:active:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_buttonPrimary{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-fill,#2b7cd9);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:active:not(:disabled),body[data-dsh-skin-center] .eDzMgW_buttonPrimary:focus-visible:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_buttonGhost{background:0 0;border-color:#0000}body[data-dsh-skin-center] .eDzMgW_button:disabled{opacity:.55;cursor:default}body[data-dsh-skin-center] .eDzMgW_error{color:var(--dsw-alias-state-error-primary,#b42318);font-size:12px}body[data-dsh-skin-center] .eDzMgW_enableRow{flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_enableLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_enableHint{min-width:100%;color:var(--dsw-alias-label-secondary,#6b7280);flex:1;margin:0;font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_switch{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-3,#e2e8f0);cursor:pointer;border-radius:999px;flex:none;align-items:center;width:40px;height:22px;padding:2px;transition:background .12s,border-color .12s;display:inline-flex;position:relative}body[data-dsh-skin-center] .eDzMgW_switchOn{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-brand-primary,#2b7cd9)}body[data-dsh-skin-center] .eDzMgW_switch:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_switchThumb{background:var(--dsw-alias-label-primary-foreground,#fff);width:18px;height:18px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;transition:transform .12s;display:block;transform:translate(0)}body[data-dsh-skin-center] .eDzMgW_switchOn .eDzMgW_switchThumb{transform:translate(18px)}body[data-dsh-skin-center] .eDzMgW_offNote{color:var(--dsw-alias-label-secondary,#6b7280);margin:0;font-size:12.5px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundRow{flex-direction:column;gap:6px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundHead{align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_backgroundValue{font-variant-numeric:tabular-nums;color:var(--dsw-alias-brand-primary,#2b7cd9);flex:none;margin-left:auto;font-size:12px}body[data-dsh-skin-center] .eDzMgW_backgroundRange{background:var(--dsw-alias-label-tertiary,#9aa4b5);background:color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent);width:100%;height:4px;box-shadow:0 0 0 1px var(--dsw-alias-border-l3,#cbd5e1);-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:999px;margin:0}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-runnable-track{background:var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-track{background:var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:14px;height:14px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-thumb{border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:12px;height:12px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_backgroundHint{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundHintMuted{color:var(--dsw-alias-label-tertiary,#9aa4b5);font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){body[data-dsh-skin-center] .eDzMgW_pluginCard,body[data-dsh-skin-center] .eDzMgW_themeButton,body[data-dsh-skin-center] .eDzMgW_button,body[data-dsh-skin-center] .eDzMgW_switch,body[data-dsh-skin-center] .eDzMgW_switchThumb{transition:none}}body[data-dsh-skin-center] .eDzMgW_wallpaperSection{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:10px;padding-top:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatus{color:var(--dsw-alias-label-secondary,#6b7280);align-items:center;gap:8px;font-size:12px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatusError{color:var(--dsw-alias-state-danger,#c53030)}body[data-dsh-skin-center] .eDzMgW_wallpaperControls{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperGrid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;display:grid}body[data-dsh-skin-center] .eDzMgW_wallpaperCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:6px;padding:8px;transition:border-color .16s;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap{aspect-ratio:16/9;background:var(--dsw-alias-bg-layer-1,#f1f5f9);border-radius:6px;position:relative;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperThumb{object-fit:cover;width:100%;height:100%;display:block}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbEmpty{width:100%;height:100%}body[data-dsh-skin-center] .eDzMgW_wallpaperType{color:var(--dsw-alias-label-primary,#172a45);background:var(--dsw-alias-bg-layer-2,#ffffffd9);border-radius:4px;padding:3px 6px;font-size:10.5px;line-height:1;position:absolute;top:6px;left:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap .eDzMgW_badge{position:absolute;top:6px;right:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:1.35;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperActions{flex-wrap:wrap;gap:6px;display:flex}";
-		const tagId = "@linxin666/dsh-client-ui-skin-center/skin-center.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
-			const tag = document.createElement("style");
-			tag.dataset.plugin = "@linxin666/dsh-client-ui-skin-center";
-			tag.dataset.pluginCss = tagId;
-			tag.textContent = css;
-			document.head.appendChild(tag);
-		}
-		var skin_center_module_css_default = {
-			"actions": "eDzMgW_actions",
-			"backgroundHead": "eDzMgW_backgroundHead",
-			"backgroundHint": "eDzMgW_backgroundHint",
-			"backgroundHintMuted": "eDzMgW_backgroundHintMuted",
-			"backgroundLabel": "eDzMgW_backgroundLabel",
-			"backgroundRange": "eDzMgW_backgroundRange",
-			"backgroundRow": "eDzMgW_backgroundRow",
-			"backgroundValue": "eDzMgW_backgroundValue",
-			"badge": "eDzMgW_badge",
-			"badgeActive": "eDzMgW_badgeActive",
-			"badgeTrying": "eDzMgW_badgeTrying",
-			"button": "eDzMgW_button",
-			"buttonGhost": "eDzMgW_buttonGhost",
-			"buttonPrimary": "eDzMgW_buttonPrimary",
-			"card": "eDzMgW_card",
-			"cardBody": "eDzMgW_cardBody",
-			"cardDescription": "eDzMgW_cardDescription",
-			"cardHead": "eDzMgW_cardHead",
-			"cardHeaderStatic": "eDzMgW_cardHeaderStatic",
-			"cardName": "eDzMgW_cardName",
-			"cardTagline": "eDzMgW_cardTagline",
-			"enableHint": "eDzMgW_enableHint",
-			"enableLabel": "eDzMgW_enableLabel",
-			"enableRow": "eDzMgW_enableRow",
-			"error": "eDzMgW_error",
-			"head": "eDzMgW_head",
-			"headText": "eDzMgW_headText",
-			"intro": "eDzMgW_intro",
-			"list": "eDzMgW_list",
-			"offNote": "eDzMgW_offNote",
-			"pluginCard": "eDzMgW_pluginCard",
-			"pluginName": "eDzMgW_pluginName",
-			"sectionList": "eDzMgW_sectionList",
-			"swatch": "eDzMgW_swatch",
-			"switch": "eDzMgW_switch",
-			"switchOn": "eDzMgW_switchOn",
-			"switchThumb": "eDzMgW_switchThumb",
-			"themeButton": "eDzMgW_themeButton",
-			"themeButtonActive": "eDzMgW_themeButtonActive",
-			"themeLabel": "eDzMgW_themeLabel",
-			"themeRow": "eDzMgW_themeRow",
-			"titleBadge": "eDzMgW_titleBadge",
-			"wallpaperActions": "eDzMgW_wallpaperActions",
-			"wallpaperCard": "eDzMgW_wallpaperCard",
-			"wallpaperControls": "eDzMgW_wallpaperControls",
-			"wallpaperGrid": "eDzMgW_wallpaperGrid",
-			"wallpaperName": "eDzMgW_wallpaperName",
-			"wallpaperSection": "eDzMgW_wallpaperSection",
-			"wallpaperStatus": "eDzMgW_wallpaperStatus",
-			"wallpaperStatusError": "eDzMgW_wallpaperStatusError",
-			"wallpaperThumb": "eDzMgW_wallpaperThumb",
-			"wallpaperThumbEmpty": "eDzMgW_wallpaperThumbEmpty",
-			"wallpaperThumbWrap": "eDzMgW_wallpaperThumbWrap",
-			"wallpaperType": "eDzMgW_wallpaperType"
-		};
 		//#endregion
 		//#region src/client/WallpaperPanel.tsx
 		/**
@@ -1236,7 +1494,7 @@ window.__ModuleLoader__.load({
 		* @param props - card props.
 		* @returns the plugin card.
 		*/
-		function SkinCenter({ t, runtime, theme, background, wallpaper }) {
+		function SkinCenter({ t, runtime, theme, background, wallpaper, customTheme }) {
 			const snapshot = (0, react.useSyncExternalStore)((listener) => theme.subscribe(listener), () => theme.getTheme());
 			const enabled = (0, react.useSyncExternalStore)(background.subscribe, background.enabled);
 			const opacity = (0, react.useSyncExternalStore)(background.subscribe, background.opacity);
@@ -1244,6 +1502,7 @@ window.__ModuleLoader__.load({
 			const blurContent = (0, react.useSyncExternalStore)(background.subscribe, background.blurContent);
 			const catalog = (0, react.useSyncExternalStore)(runtime.subscribe, runtime.catalog);
 			const state = (0, react.useSyncExternalStore)(runtime.subscribe, runtime.controller.getState);
+			const customState = (0, react.useSyncExternalStore)(customTheme.subscribe, customTheme.getState);
 			const activeId = state.active;
 			const previewing = state.previewing;
 			const tryingId = state.trying;
@@ -1271,13 +1530,25 @@ window.__ModuleLoader__.load({
 				});
 			};
 			const tryOn = (entry) => {
-				run(entry.manifest.id, () => runtime.controller.tryOn(entry.manifest.id, entry));
+				run(entry.manifest.id, async () => {
+					const result = await runtime.controller.tryOn(entry.manifest.id, entry);
+					customTheme.setOfficialPreview(false);
+					return result;
+				});
 			};
 			const tryOnOfficial = () => {
-				run(OFFICIAL, () => runtime.controller.tryOn(null, null));
+				run(OFFICIAL, async () => {
+					const result = await runtime.controller.tryOn(null, null);
+					if (result === null) customTheme.setOfficialPreview(true);
+					return result;
+				});
 			};
 			const exitTryOn = () => {
-				run(tryingId ?? OFFICIAL, () => runtime.controller.exitTryOn());
+				run(tryingId ?? OFFICIAL, async () => {
+					const result = await runtime.controller.exitTryOn();
+					if (result === null) customTheme.setOfficialPreview(false);
+					return result;
+				});
 			};
 			/**
 			* One-click apply: atomic client-side switch + persisted selection. No
@@ -1287,7 +1558,14 @@ window.__ModuleLoader__.load({
 			*/
 			const applySkin = (target) => {
 				if (target === OFFICIAL) {
-					run(OFFICIAL, () => runtime.controller.switchTo(null, null));
+					run(OFFICIAL, async () => {
+						const result = await runtime.controller.switchTo(null, null);
+						if (result === null) {
+							customTheme.clearApplied();
+							customTheme.setOfficialPreview(false);
+						}
+						return result;
+					});
 					return;
 				}
 				const entry = runtime.find(target);
@@ -1295,7 +1573,11 @@ window.__ModuleLoader__.load({
 					setError(t("applyFailed"));
 					return;
 				}
-				run(target, () => runtime.controller.switchTo(target, entry));
+				run(target, async () => {
+					const result = await runtime.controller.switchTo(target, entry);
+					if (result === target) customTheme.clearApplied();
+					return result;
+				});
 			};
 			const dark = snapshot.active.colorScheme === "dark";
 			/** One row: try-on control + apply button. Shared by the official card and every skin card. */
@@ -1507,90 +1789,99 @@ window.__ModuleLoader__.load({
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: skin_center_module_css_default.list,
-							children: [(() => {
-								const isActive = activeId === null && !previewing;
-								const isTrying = previewing && tryingId === null;
-								const badge = isActive ? t("active") : isTrying ? t("tryingOn") : null;
-								return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: skin_center_module_css_default.card,
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-											className: skin_center_module_css_default.cardHead,
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: skin_center_module_css_default.swatch,
-													style: { background: "#98a1ab" },
-													"aria-hidden": "true"
-												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: skin_center_module_css_default.cardName,
-													title: t("official"),
-													children: t("official")
-												}),
-												badge !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: `${skin_center_module_css_default.badge} ${isActive ? skin_center_module_css_default.badgeActive : skin_center_module_css_default.badgeTrying}`,
-													children: badge
-												})
-											]
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											className: skin_center_module_css_default.cardTagline,
-											title: t("officialTagline"),
-											children: t("officialTagline")
-										}),
-										actionButtons({
-											key: OFFICIAL,
-											isActive,
-											isTrying,
-											onTryOn: tryOnOfficial,
-											applyLabel: t("restore")
-										})
-									]
-								}, OFFICIAL);
-							})(), (catalog ?? []).map((entry) => {
-								const id = entry.manifest.id;
-								const isActive = id === activeId && !previewing;
-								const isTrying = previewing && id === tryingId;
-								const badge = isActive ? t("active") : isTrying ? t("tryingOn") : null;
-								return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: skin_center_module_css_default.card,
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-											className: skin_center_module_css_default.cardHead,
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: skin_center_module_css_default.swatch,
-													style: { background: entry.manifest.accent ?? "#98a1ab" },
-													"aria-hidden": "true"
-												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: skin_center_module_css_default.cardName,
-													title: entry.manifest.nameEn,
-													children: entry.manifest.nameEn
-												}),
-												badge !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: `${skin_center_module_css_default.badge} ${isActive ? skin_center_module_css_default.badgeActive : skin_center_module_css_default.badgeTrying}`,
-													children: badge
-												})
-											]
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											className: skin_center_module_css_default.cardTagline,
-											title: entry.manifest.tagline ?? "",
-											children: entry.manifest.tagline ?? ""
-										}),
-										actionButtons({
-											key: id,
-											isActive,
-											isTrying,
-											onTryOn: () => {
-												tryOn(entry);
-											},
-											applyLabel: t("apply")
-										})
-									]
-								}, id);
-							})]
+							children: [
+								(() => {
+									const isActive = activeId === null && !previewing && !customState.applied;
+									const isTrying = previewing && tryingId === null;
+									const badge = isActive ? t("active") : isTrying ? t("tryingOn") : null;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: skin_center_module_css_default.card,
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+												className: skin_center_module_css_default.cardHead,
+												children: [
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: skin_center_module_css_default.swatch,
+														style: { background: "#98a1ab" },
+														"aria-hidden": "true"
+													}),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: skin_center_module_css_default.cardName,
+														title: t("official"),
+														children: t("official")
+													}),
+													badge !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: `${skin_center_module_css_default.badge} ${isActive ? skin_center_module_css_default.badgeActive : skin_center_module_css_default.badgeTrying}`,
+														children: badge
+													})
+												]
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+												className: skin_center_module_css_default.cardTagline,
+												title: t("officialTagline"),
+												children: t("officialTagline")
+											}),
+											actionButtons({
+												key: OFFICIAL,
+												isActive,
+												isTrying,
+												onTryOn: tryOnOfficial,
+												applyLabel: t("restore")
+											})
+										]
+									}, OFFICIAL);
+								})(),
+								(catalog ?? []).map((entry) => {
+									const id = entry.manifest.id;
+									const isActive = id === activeId && !previewing;
+									const isTrying = previewing && id === tryingId;
+									const badge = isActive ? t("active") : isTrying ? t("tryingOn") : null;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: skin_center_module_css_default.card,
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+												className: skin_center_module_css_default.cardHead,
+												children: [
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: skin_center_module_css_default.swatch,
+														style: { background: entry.manifest.accent ?? "#98a1ab" },
+														"aria-hidden": "true"
+													}),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: skin_center_module_css_default.cardName,
+														title: entry.manifest.nameEn,
+														children: entry.manifest.nameEn
+													}),
+													badge !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: `${skin_center_module_css_default.badge} ${isActive ? skin_center_module_css_default.badgeActive : skin_center_module_css_default.badgeTrying}`,
+														children: badge
+													})
+												]
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+												className: skin_center_module_css_default.cardTagline,
+												title: entry.manifest.tagline ?? "",
+												children: entry.manifest.tagline ?? ""
+											}),
+											actionButtons({
+												key: id,
+												isActive,
+												isTrying,
+												onTryOn: () => {
+													tryOn(entry);
+												},
+												applyLabel: t("apply")
+											})
+										]
+									}, id);
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(CustomThemePanel, {
+									t,
+									runtime,
+									theme,
+									customTheme
+								})
+							]
 						})
 					] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 						className: skin_center_module_css_default.offNote,
@@ -1602,7 +1893,7 @@ window.__ModuleLoader__.load({
 		}
 		/** Render the skin-center card as a first-level settings page. */
 		function SkinCenterSection(props) {
-			const { t, runtime, theme, background, wallpaper } = props;
+			const { t, runtime, theme, background, wallpaper, customTheme } = props;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
 				className: skin_center_module_css_default.sectionList,
 				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SkinCenter, {
@@ -1610,7 +1901,8 @@ window.__ModuleLoader__.load({
 					runtime,
 					theme,
 					background,
-					wallpaper
+					wallpaper,
+					customTheme
 				})
 			});
 		}
@@ -1902,7 +2194,18 @@ window.__ModuleLoader__.load({
 			wallpaperDirsEmpty: "No manual folders yet.",
 			wallpaperDirsHint: "No Wallpaper Engine (e.g. macOS)? Point a folder at any .mp4/.webm files, a wallpaper project folder, or a folder of projects — they become your wallpaper library.",
 			wallpaperDirPlaceholder: "/path/to/wallpapers or ~/Movies/wallpapers",
-			wallpaperDirAdd: "Add"
+			wallpaperDirAdd: "Add",
+			customTheme: "Custom theme",
+			customThemeTagline: "A standalone theme based on the official default; Wallpaper Engine remains the shared background layer.",
+			customThemeAccent: "Accent color",
+			customThemeBackground: "Background color",
+			customThemeForeground: "Foreground color",
+			customThemeContrast: "Contrast",
+			customThemeReset: "Reset current mode defaults",
+			customThemeLight: "Light",
+			customThemeDark: "Dark",
+			editTheme: "Edit",
+			closeThemeEditor: "Collapse"
 		};
 		const zh = {
 			title: "皮肤中心",
@@ -1971,7 +2274,18 @@ window.__ModuleLoader__.load({
 			wallpaperDirsEmpty: "还没有手动目录。",
 			wallpaperDirsHint: "没有 Wallpaper Engine（如 macOS）？把任意 .mp4/.webm 视频、单个壁纸项目文件夹或项目合集文件夹加进来，就是你的壁纸库。",
 			wallpaperDirPlaceholder: "/path/to/wallpapers 或 ~/Movies/wallpapers",
-			wallpaperDirAdd: "添加"
+			wallpaperDirAdd: "添加",
+			customTheme: "自定义主题",
+			customThemeTagline: "基于官方默认主题独立保存；背景继续复用 Wallpaper Engine 的全局壁纸层。",
+			customThemeAccent: "强调色",
+			customThemeBackground: "背景色",
+			customThemeForeground: "前景色",
+			customThemeContrast: "对比度",
+			customThemeReset: "恢复当前模式默认",
+			customThemeLight: "浅色",
+			customThemeDark: "深色",
+			editTheme: "编辑",
+			closeThemeEditor: "收起"
 		};
 		//#endregion
 		//#region src/client/runtime/effect-ledger.ts
@@ -2683,6 +2997,444 @@ window.__ModuleLoader__.load({
 			return store;
 		}
 		//#endregion
+		//#region src/client/custom-theme.ts
+		const SKIN_CUSTOM_THEME_NS = "skin-custom-theme";
+		const DEFAULT_CUSTOM_THEME = {
+			light: {
+				accent: "#4f6faf",
+				background: "#f7f9fc",
+				foreground: "#1b2533",
+				contrast: 50
+			},
+			dark: {
+				accent: "#86a7ff",
+				background: "#162235",
+				foreground: "#e7edf7",
+				contrast: 50
+			}
+		};
+		const HEX = /^#[0-9a-f]{6}$/i;
+		function clamp(value, min, max) {
+			return Math.max(min, Math.min(max, value));
+		}
+		function parseHex(value) {
+			return [
+				Number.parseInt(value.slice(1, 3), 16),
+				Number.parseInt(value.slice(3, 5), 16),
+				Number.parseInt(value.slice(5, 7), 16)
+			];
+		}
+		function toHex(value) {
+			return clamp(Math.round(value), 0, 255).toString(16).padStart(2, "0");
+		}
+		/** Mix a source color into a target color by a percentage. */
+		function mix(source, target, amount) {
+			const [sr, sg, sb] = parseHex(source);
+			const [tr, tg, tb] = parseHex(target);
+			const ratio = clamp(amount, 0, 100) / 100;
+			return `#${toHex(sr + (tr - sr) * ratio)}${toHex(sg + (tg - sg) * ratio)}${toHex(sb + (tb - sb) * ratio)}`;
+		}
+		function rgba(color, alpha) {
+			const [r, g, b] = parseHex(color);
+			return `rgba(${r}, ${g}, ${b}, ${clamp(alpha, 0, 1).toFixed(2)})`;
+		}
+		function luminance(color) {
+			const [r, g, b] = parseHex(color);
+			const channel = (value) => {
+				const normalized = value / 255;
+				return normalized <= .03928 ? normalized / 12.92 : ((normalized + .055) / 1.055) ** 2.4;
+			};
+			return .2126 * channel(r) + .7152 * channel(g) + .0722 * channel(b);
+		}
+		/** Clamp the UI value to a CSS-safe contrast factor around the neutral 50. */
+		function contrastScale(value) {
+			return .8 + (Number.isFinite(value) ? clamp(Math.round(value), 0, 100) : 50) / 100 * .4;
+		}
+		function validateCustomThemeProfile(input, fallback) {
+			const color = (value, defaultValue) => typeof value === "string" && HEX.test(value) ? value.toLowerCase() : defaultValue;
+			const contrast = typeof input.contrast === "number" && Number.isFinite(input.contrast) ? Math.round(clamp(input.contrast, 0, 100)) : fallback.contrast;
+			return {
+				accent: color(input.accent, fallback.accent),
+				background: color(input.background, fallback.background),
+				foreground: color(input.foreground, fallback.foreground),
+				contrast
+			};
+		}
+		/**
+		* Generate only plugin-owned, fixed selectors. All colors have been validated
+		* before this function is called; no user CSS or selector can enter the result.
+		*/
+		function customThemeCss(profile) {
+			const { accent, background, foreground } = profile;
+			const contrast = contrastScale(profile.contrast);
+			const darkSurface = luminance(background) < .45;
+			const contrastDelta = (contrast - 1) * 100;
+			const darken = clamp((darkSurface ? 12 : 0) - contrastDelta * .5, 0, 52);
+			const lighten = clamp((contrast - 1) * 100 + (darkSurface ? 0 : 8), 0, 32);
+			const layer1 = mix(background, foreground, darken);
+			const layer2 = mix(background, foreground, darkSurface ? darken + 8 : darken);
+			const layer3 = mix(background, foreground, darkSurface ? darken + 16 : darken);
+			const elevated = mix(background, foreground, darkSurface ? darken + 22 : 6 + darken);
+			const primary = mix(foreground, background, 0);
+			const secondary = mix(foreground, background, clamp(32 / contrast, 0, 48));
+			const tertiary = mix(foreground, background, clamp(55 / contrast, 0, 72));
+			const accentHover = mix(accent, "#ffffff", 18 + lighten);
+			const accentSoft = mix(accent, background, 78 - lighten);
+			const border = rgba(foreground, .18 + (contrast - .8) * .2);
+			const borderStrong = rgba(foreground, .32 + (contrast - .8) * .2);
+			const error = mix("#ef4444", foreground, 14);
+			const success = mix("#22c55e", foreground, 14);
+			const warning = mix("#f59e0b", foreground, 12);
+			const tokens = `
+    --dsw-alias-bg-base: ${background};
+    --dsw-alias-bg-layer-1: ${layer1};
+    --dsw-alias-bg-layer-2: ${layer2};
+    --dsw-alias-bg-layer-3: ${layer3};
+    --dsw-alias-bg-overlay: ${rgba(layer3, .92)};
+    --dsw-alias-bg-mask-1: ${rgba(background, .64)};
+    --dsw-alias-bg-mask-2: ${rgba(background, .48)};
+    --dsw-alias-bg-mask-3: ${rgba(background, .32)};
+    --dsw-alias-bg-mask-photo: ${rgba(background, .88)};
+    --dsw-alias-bg-module-platform: ${elevated};
+    --dsw-alias-bg-multi-select: ${layer3};
+    --dsw-alias-bg-skeleton: ${mix(background, foreground, 10)};
+    --dsw-alias-border-inverted: ${border};
+    --dsw-alias-border-inverted2: ${borderStrong};
+    --dsw-alias-border-l1: ${rgba(foreground, .12)};
+    --dsw-alias-border-l2: ${rgba(foreground, .2)};
+    --dsw-alias-border-l2-darkmode-thin: ${rgba(foreground, .12)};
+    --dsw-alias-border-l3: ${rgba(foreground, .3)};
+    --dsw-alias-border-l4: ${rgba(foreground, .42)};
+    --dsw-alias-label-primary: ${primary};
+    --dsw-alias-label-secondary: ${secondary};
+    --dsw-alias-label-tertiary: ${tertiary};
+    --dsw-alias-label-dimmed: ${mix(foreground, background, 68)};
+    --dsw-alias-label-primary-dimmed: ${mix(foreground, background, 36)};
+    --dsw-alias-label-caption: ${mix(foreground, background, 58)};
+    --dsw-alias-label-primary-bluish: ${foreground};
+    --dsw-alias-label-primary-foreground: ${foreground};
+    --dsw-alias-label-primary-inverted: ${layer3};
+    --dsw-alias-brand-primary: ${accent};
+    --dsw-alias-brand-text: ${accent};
+    --dsw-alias-brand-primary-invert: ${mix(accent, foreground, 22)};
+    --dsw-alias-brand-primary-new-colorprimary-new-color: ${accent};
+    --dsw-alias-button-contrast-fill: ${foreground};
+    --dsw-alias-button-elevated-fill: ${layer3};
+    --dsw-alias-button-floating-fill: ${elevated};
+    --dsw-alias-button-floating-hover: ${accentHover};
+    --dsw-alias-button-primary-fill: ${accent};
+    --dsw-alias-button-primary-hover: ${accentHover};
+    --dsw-alias-button-primary-dimmed: ${accentSoft};
+    --dsw-alias-button-ghost-active-border: ${mix(accent, foreground, 26)};
+    --dsw-alias-button-ghost-active-fill: ${accentSoft};
+    --dsw-alias-button-ghost-active-hover: ${mix(accent, background, 68)};
+    --dsw-alias-button-info-fill: ${accent};
+    --dsw-alias-button-info-hover: ${accentHover};
+    --dsw-alias-button-tool-bar-fill: ${rgba(foreground, .08)};
+    --dsw-alias-button-tool-bar-fill-invisible: ${rgba(foreground, .18)};
+    --dsw-alias-button-tool-bar-hover: ${rgba(accent, .14)};
+    --dsw-alias-interactive-bg-active: ${rgba(accent, .2)};
+    --dsw-alias-interactive-bg-hover: ${rgba(accent, .12)};
+    --dsw-alias-interactive-bg-hover-accent: ${rgba(accent, .2)};
+    --dsw-alias-interactive-bg-hover-solid: ${layer2};
+    --dsw-alias-markdown-citation: ${accent};
+    --dsw-alias-markdown-code-block: ${layer1};
+    --dsw-alias-markdown-code-block-banner: ${layer2};
+    --dsw-alias-markdown-code-segment-selected: ${accentSoft};
+    --dsw-alias-markdown-code-segment-unselected: ${layer1};
+    --dsw-alias-markdown-inline-code: ${layer2};
+    --dsw-alias-markdown-placeholder: ${layer2};
+    --dsw-alias-markdown-tag: ${layer2};
+    --dsw-alias-state-business-primary: ${accent};
+    --dsw-alias-state-business-tertiary: ${accentSoft};
+    --dsw-alias-state-error-primary: ${error};
+    --dsw-alias-state-error-secondary: ${mix(error, background, 72)};
+    --dsw-alias-state-success-primary: ${success};
+    --dsw-alias-state-success-secondary: ${mix(success, background, 72)};
+    --dsw-alias-state-success-tertiary: ${mix(success, background, 20)};
+    --dsw-alias-state-warn-label: ${warning};
+    --dsw-alias-state-warn-primary: ${warning};
+    --dsw-alias-state-warn-secondary: ${mix(warning, background, 72)};
+    --dsw-alias-state-warn-tertiary: ${mix(warning, background, 20)};
+    --dsw-alias-tooltip-bg: ${elevated};
+    --dsw-alias-toast-bg: ${layer3};
+    --dsw-hovercard-bg: ${layer3};
+    --dsw-specific-bubble: ${layer2};
+    --dsw-specific-bubble-highlight: ${layer3};
+    --dsw-specific-input-major: ${elevated};
+    --dsw-specific-login-input: ${background};
+    --dsw-specific-menu: ${layer3};
+    --dsw-specific-selector: ${elevated};
+    --dsw-specific-sidebar-fill: ${background};
+    --dsw-specific-sidebar-nav-item-active: ${accentSoft};
+    --dsw-specific-sidebar-nav-item-active-accent: ${accent};
+    --dsw-specific-sidebar-nav-item-hover: ${rgba(accent, .12)};
+    --dsw-specific-tip: ${elevated};
+    --dsh-custom-theme-contrast: ${contrast.toFixed(2)};
+  `;
+			return `:root[data-dsh-custom-theme] { ${tokens} }
+:root[data-dsh-custom-theme] body { ${tokens} }`;
+		}
+		//#endregion
+		//#region src/client/custom-theme-controller.ts
+		const FIELD = {
+			light: {
+				accent: "lightAccent",
+				background: "lightBackground",
+				foreground: "lightForeground",
+				contrast: "lightContrast"
+			},
+			dark: {
+				accent: "darkAccent",
+				background: "darkBackground",
+				foreground: "darkForeground",
+				contrast: "darkContrast"
+			}
+		};
+		/**
+		* The Host settings section is the source of truth whenever it has a user
+		* layer. This small browser cache only bridges an already-running Host that
+		* has not yet loaded the new settings namespace, so Apply still survives a
+		* page refresh before the next DSH restart.
+		*/
+		const BROWSER_FALLBACK_KEY = "dsh-skin-custom-theme:v1";
+		function hasOwn(object, key) {
+			return Object.prototype.hasOwnProperty.call(object, key);
+		}
+		function hasCustomThemeUserValue(value) {
+			if (value === null || typeof value !== "object") return false;
+			return [
+				"lightAccent",
+				"lightBackground",
+				"lightForeground",
+				"lightContrast",
+				"darkAccent",
+				"darkBackground",
+				"darkForeground",
+				"darkContrast",
+				"applied"
+			].some((key) => hasOwn(value, key));
+		}
+		function profileFromConfig(value, scheme) {
+			const fallback = DEFAULT_CUSTOM_THEME[scheme];
+			const fields = FIELD[scheme];
+			return validateCustomThemeProfile({
+				accent: value?.[fields.accent],
+				background: value?.[fields.background],
+				foreground: value?.[fields.foreground],
+				contrast: value?.[fields.contrast]
+			}, fallback);
+		}
+		var CustomThemeController = class {
+			scope;
+			doc;
+			schemeValue = "light";
+			profileValue = { ...DEFAULT_CUSTOM_THEME.light };
+			appliedValue = false;
+			configValue = {};
+			previewingValue = false;
+			officialPreviewValue = false;
+			baseState = {
+				active: null,
+				trying: null,
+				previewing: false
+			};
+			listeners = /* @__PURE__ */ new Set();
+			style;
+			unsubscribeScope;
+			disposed = false;
+			stateSnapshot;
+			constructor(scope, doc = document) {
+				this.scope = scope;
+				this.doc = doc;
+				this.style = doc.createElement("style");
+				this.style.dataset.dshCustomTheme = "";
+				doc.head.appendChild(this.style);
+				this.read();
+				this.stateSnapshot = this.snapshot();
+				this.render();
+				this.unsubscribeScope = scope.subscribe(() => {
+					this.read();
+					this.render();
+					this.publish();
+				});
+			}
+			getState = () => this.stateSnapshot;
+			profile = () => this.profileValue;
+			scheme = () => this.schemeValue;
+			applied = () => this.appliedValue;
+			subscribe = (listener) => {
+				this.listeners.add(listener);
+				return () => {
+					this.listeners.delete(listener);
+				};
+			};
+			setScheme(scheme) {
+				if (scheme === this.schemeValue) return;
+				this.schemeValue = scheme;
+				this.read();
+				this.render();
+				this.publish();
+			}
+			set(key, value) {
+				const next = validateCustomThemeProfile({
+					...this.profileValue,
+					[key]: value
+				}, this.profileValue);
+				this.profileValue = next;
+				const field = FIELD[this.schemeValue][key];
+				this.configValue = {
+					...this.configValue,
+					[field]: next[key]
+				};
+				this.writeBrowserFallback();
+				this.render();
+				this.publish();
+				this.scope.set(field, next[key]);
+			}
+			resetCurrent() {
+				const defaults = DEFAULT_CUSTOM_THEME[this.schemeValue];
+				this.profileValue = { ...defaults };
+				const fields = FIELD[this.schemeValue];
+				for (const key of Object.keys(fields)) this.configValue = {
+					...this.configValue,
+					[fields[key]]: defaults[key]
+				};
+				this.writeBrowserFallback();
+				this.render();
+				this.publish();
+				for (const key of Object.keys(fields)) this.scope.set(fields[key], defaults[key]);
+			}
+			tryOn() {
+				this.previewingValue = true;
+				this.officialPreviewValue = false;
+				this.render();
+				this.publish();
+			}
+			exitTryOn() {
+				this.previewingValue = false;
+				this.render();
+				this.publish();
+			}
+			apply() {
+				this.appliedValue = true;
+				this.configValue = {
+					...this.configValue,
+					applied: true
+				};
+				this.writeBrowserFallback();
+				this.previewingValue = false;
+				this.officialPreviewValue = false;
+				this.render();
+				this.publish();
+				this.scope.set("applied", true);
+			}
+			clearApplied() {
+				this.appliedValue = false;
+				this.configValue = {
+					...this.configValue,
+					applied: false
+				};
+				this.writeBrowserFallback();
+				this.previewingValue = false;
+				this.officialPreviewValue = false;
+				this.render();
+				this.publish();
+				this.scope.set("applied", false);
+			}
+			/** Synchronize with the existing SkinController without changing it. */
+			setBaseSkinState(state) {
+				this.baseState = state;
+				if (state.active !== null && state.previewing) this.previewingValue = false;
+				this.officialPreviewValue = state.active === null && state.previewing && !this.previewingValue;
+				this.render();
+				this.publish();
+			}
+			/** Mark the existing official card's preview as active without changing applied config. */
+			setOfficialPreview(value) {
+				this.officialPreviewValue = value;
+				this.render();
+				this.publish();
+			}
+			dispose() {
+				if (this.disposed) return;
+				this.disposed = true;
+				this.unsubscribeScope();
+				this.style.remove();
+				delete this.doc.documentElement.dataset.dshCustomTheme;
+				this.listeners.clear();
+			}
+			read() {
+				const snapshot = this.scope.getSnapshot();
+				const scopeValue = snapshot.value ?? {};
+				const fallback = this.readBrowserFallback();
+				this.configValue = hasCustomThemeUserValue(snapshot.user) ? scopeValue : {
+					...scopeValue,
+					...fallback
+				};
+				if (hasCustomThemeUserValue(snapshot.user)) this.writeBrowserFallback();
+				this.profileValue = profileFromConfig(this.configValue, this.schemeValue);
+				this.appliedValue = this.configValue.applied === true;
+			}
+			readBrowserFallback() {
+				try {
+					const raw = this.doc.defaultView?.localStorage.getItem(BROWSER_FALLBACK_KEY);
+					if (raw === null || raw === void 0) return {};
+					const value = JSON.parse(raw);
+					if (value === null || typeof value !== "object") return {};
+					const source = value;
+					return {
+						lightAccent: typeof source.lightAccent === "string" ? source.lightAccent : void 0,
+						lightBackground: typeof source.lightBackground === "string" ? source.lightBackground : void 0,
+						lightForeground: typeof source.lightForeground === "string" ? source.lightForeground : void 0,
+						lightContrast: typeof source.lightContrast === "number" ? source.lightContrast : void 0,
+						darkAccent: typeof source.darkAccent === "string" ? source.darkAccent : void 0,
+						darkBackground: typeof source.darkBackground === "string" ? source.darkBackground : void 0,
+						darkForeground: typeof source.darkForeground === "string" ? source.darkForeground : void 0,
+						darkContrast: typeof source.darkContrast === "number" ? source.darkContrast : void 0,
+						applied: typeof source.applied === "boolean" ? source.applied : void 0
+					};
+				} catch {
+					return {};
+				}
+			}
+			writeBrowserFallback() {
+				try {
+					this.doc.defaultView?.localStorage.setItem(BROWSER_FALLBACK_KEY, JSON.stringify(this.configValue));
+				} catch {}
+			}
+			isOfficialBase() {
+				return this.baseState.active === null;
+			}
+			shouldShow() {
+				return this.isOfficialBase() && !this.officialPreviewValue && (this.appliedValue || this.previewingValue);
+			}
+			render() {
+				if (this.disposed) return;
+				if (!this.shouldShow()) {
+					this.style.textContent = "";
+					delete this.doc.documentElement.dataset.dshCustomTheme;
+				} else {
+					this.style.textContent = customThemeCss(this.profileValue);
+					this.doc.documentElement.dataset.dshCustomTheme = "";
+				}
+				this.stateSnapshot = this.snapshot();
+			}
+			snapshot() {
+				return {
+					scheme: this.schemeValue,
+					profile: { ...this.profileValue },
+					applied: this.appliedValue,
+					previewing: this.previewingValue,
+					visible: this.shouldShow()
+				};
+			}
+			publish() {
+				this.stateSnapshot = this.snapshot();
+				for (const listener of this.listeners) listener();
+			}
+		};
+		//#endregion
 		//#region src/client/index.ts
 		/** Locale namespace owned by this plugin. */
 		const NS = "skinCenter";
@@ -2715,6 +3467,12 @@ window.__ModuleLoader__.load({
 			const binder = ctx.get("webUiSettings") ?? ctx.settingsScope;
 			const background = new BackgroundController(binder.bind({ namespace: SKIN_BACKGROUND_NS }));
 			ctx.effect(() => () => background.dispose(), "ui-skin-center: background dispose");
+			const customTheme = new CustomThemeController(binder.bind({ namespace: SKIN_CUSTOM_THEME_NS }));
+			customTheme.setScheme(theme.getTheme().active.colorScheme === "dark" ? "dark" : "light");
+			ctx.effect(() => () => customTheme.dispose(), "ui-skin-center: custom theme dispose");
+			ctx.effect(() => ctx.on("theme/change", () => {
+				customTheme.setScheme(theme.getTheme().active.colorScheme === "dark" ? "dark" : "light");
+			}), "ui-skin-center: custom theme mode sync");
 			const wallpaper = new WallpaperController(binder.bind({ namespace: SKIN_WALLPAPER_NS }));
 			ctx.effect(() => () => wallpaper.dispose(), "ui-skin-center: wallpaper dispose");
 			installBootRestore(wallpaper);
@@ -2723,6 +3481,10 @@ window.__ModuleLoader__.load({
 			ctx.effect(() => wallpaper.subscribe(() => {
 				runtime.controller.refresh();
 			}), "ui-skin-center: wallpaper priority refresh");
+			customTheme.setBaseSkinState(runtime.controller.getState());
+			ctx.effect(() => runtime.subscribe(() => {
+				customTheme.setBaseSkinState(runtime.controller.getState());
+			}), "ui-skin-center: custom theme skin sync");
 			const injected = () => ({
 				runtime,
 				theme: {
@@ -2772,7 +3534,8 @@ window.__ModuleLoader__.load({
 					tryOn: (descriptor) => wallpaper.tryOn(descriptor),
 					exitTryOn: () => wallpaper.exitTryOn(),
 					dispose: () => wallpaper.dispose()
-				}
+				},
+				customTheme
 			});
 			ctx.slots.inject("settings.section", () => ctx.slots.register({
 				name: "settings.section",

@@ -449,6 +449,54 @@ body[data-dsh-skin-center] .backgroundHintMuted {
 
 /* --- Wallpaper Engine panel ------------------------------------------------ */
 
+.customThemeEditor {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-2, #fff);
+}
+
+.officialThemeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.officialThemeField {
+  display: grid;
+  gap: 6px;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+  font-size: 12px;
+}
+
+.officialThemeInputRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.officialThemeInputRow input[type='color'] {
+  width: 32px;
+  height: 28px;
+  padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l3, #cbd5e1);
+  border-radius: 6px;
+  background: transparent;
+}
+
+.officialThemeInputRow input[type='text'] {
+  min-width: 0;
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid var(--dsw-alias-border-l3, #cbd5e1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-1, #fff);
+  color: var(--dsw-alias-label-primary, #172a45);
+  font: inherit;
+}
+
 body[data-dsh-skin-center] .wallpaperSection {
   display: flex;
   flex-direction: column;
@@ -548,4 +596,3 @@ body[data-dsh-skin-center] .wallpaperActions {
   flex-wrap: wrap;
   gap: 6px;
 }
-

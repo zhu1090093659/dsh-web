@@ -687,7 +687,7 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
     expect(ornament()).toBeNull()
   })
 
-  it('advances the ornament frames on the rAF loop and wraps when looping', () => {
+  it('advances the ornament frames on the duration timer and wraps when looping', () => {
     vi.spyOn(window, 'matchMedia').mockReturnValue({
       matches: false,
       media: '(prefers-reduced-motion: reduce)',
@@ -698,7 +698,17 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
       removeListener: () => {},
       dispatchEvent: () => false,
     })
-    vi.spyOn(performance, 'now').mockReturnValue(0)
+    let now = 0
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    // The ornament schedules by frame duration (setTimeout), the sprite
+    // still uses rAF; capture both so stepping advances both loops.
+    const timers: { at: number; callback: () => void }[] = []
+    let timerId = 0
+    vi.spyOn(window, 'setTimeout').mockImplementation(((callback: () => void, delay = 0) => {
+      timers.push({ at: now + delay, callback })
+      return ++timerId
+    }) as typeof window.setTimeout)
+    vi.spyOn(window, 'clearTimeout').mockImplementation(() => {})
     const frames: FrameRequestCallback[] = []
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
       frames.push(callback)
@@ -707,18 +717,31 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
     vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
     renderPet({ snapshot: { ...snapshot, bubble: '正在思考', phase: 'thinking', decoration } })
     const el = ornament()!
-    // Both the sprite loop and the ornament loop schedule frames; step every
-    // pending callback together (the sprite's idle track never moves).
-    const step = (ts: number): void => { for (const callback of frames.splice(0)) callback(ts) }
+    // Run the sprite rAF callbacks immediately (its idle track never moves);
+    // run ornament timers as the clock reaches them, repeatedly, because a
+    // due timer reschedules the next one at now + duration.
+    const step = (ms: number): void => {
+      for (const callback of frames.splice(0)) callback(now)
+      now += ms
+      for (;;) {
+        const due = timers.filter(t => t.at <= now)
+        if (due.length === 0) break
+        for (const t of due) {
+          const idx = timers.indexOf(t)
+          if (idx >= 0) timers.splice(idx, 1)
+          t.callback()
+        }
+      }
+    }
     // frameWidth = round(64 * 18 / 48) = 24 px; thinking binds frames 0..3.
     expect(el.style.backgroundPosition).toBe('0px 0px')
     act(() => { step(161) })
     expect(el.style.backgroundPosition).toBe('-24px 0px')
-    act(() => { step(322) })
+    act(() => { step(161) })
     expect(el.style.backgroundPosition).toBe('-48px 0px')
-    act(() => { step(483) })
+    act(() => { step(161) })
     expect(el.style.backgroundPosition).toBe('-72px 0px')
-    act(() => { step(644) })
+    act(() => { step(161) })
     // The looping segment wraps back to its first frame.
     expect(el.style.backgroundPosition).toBe('0px 0px')
   })
@@ -734,7 +757,15 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
       removeListener: () => {},
       dispatchEvent: () => false,
     })
-    vi.spyOn(performance, 'now').mockReturnValue(0)
+    let now = 0
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    const timers: { at: number; callback: () => void }[] = []
+    let timerId = 0
+    vi.spyOn(window, 'setTimeout').mockImplementation(((callback: () => void, delay = 0) => {
+      timers.push({ at: now + delay, callback })
+      return ++timerId
+    }) as typeof window.setTimeout)
+    vi.spyOn(window, 'clearTimeout').mockImplementation(() => {})
     const frames: FrameRequestCallback[] = []
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
       frames.push(callback)
@@ -743,13 +774,25 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
     vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
     renderPet({ snapshot: { ...snapshot, bubble: '完成', phase: 'done', decoration: { ...decoration, loop: false } } })
     const el = ornament()!
-    const step = (ts: number): void => { for (const callback of frames.splice(0)) callback(ts) }
+    const step = (ms: number): void => {
+      for (const callback of frames.splice(0)) callback(now)
+      now += ms
+      for (;;) {
+        const due = timers.filter(t => t.at <= now)
+        if (due.length === 0) break
+        for (const t of due) {
+          const idx = timers.indexOf(t)
+          if (idx >= 0) timers.splice(idx, 1)
+          t.callback()
+        }
+      }
+    }
     // done binds frames 2..3; the segment starts on frame 2.
     expect(el.style.backgroundPosition).toBe('-48px 0px')
     act(() => { step(161) })
     expect(el.style.backgroundPosition).toBe('-72px 0px')
-    // The ornament stopped scheduling (only the sprite loop remains pending).
-    expect(frames).toHaveLength(1)
+    // The ornament stopped scheduling timers (only the sprite rAF remains).
+    expect(timers).toHaveLength(0)
     act(() => { step(161) })
     // The last frame holds.
     expect(el.style.backgroundPosition).toBe('-72px 0px')
@@ -767,6 +810,13 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
       dispatchEvent: () => false,
     })
     vi.spyOn(performance, 'now').mockReturnValue(0)
+    const timers: { at: number; callback: () => void }[] = []
+    let timerId = 0
+    vi.spyOn(window, 'setTimeout').mockImplementation(((callback: () => void, delay = 0) => {
+      timers.push({ at: delay, callback })
+      return ++timerId
+    }) as typeof window.setTimeout)
+    vi.spyOn(window, 'clearTimeout').mockImplementation(() => {})
     const frames: FrameRequestCallback[] = []
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
       frames.push(callback)
@@ -784,15 +834,15 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
     })
     const el = ornament()!
     // The ornament settles on its only frame, exactly like the reduced-motion
-    // hold — no rAF loop may start, so only the sprite's idle loop is pending.
+    // hold — no timer may start (only the sprite's idle rAF is pending).
     expect(el.style.backgroundPosition).toBe('-72px 0px')
-    expect(frames).toHaveLength(1)
+    expect(timers).toHaveLength(0)
     const step = (ts: number): void => { for (const callback of frames.splice(0)) callback(ts) }
     act(() => { step(161) })
     act(() => { step(322) })
     // The frame never moves and the ornament never reschedules itself.
     expect(el.style.backgroundPosition).toBe('-72px 0px')
-    expect(frames).toHaveLength(1)
+    expect(timers).toHaveLength(0)
   })
 
   it('does not advance the background while a frame is still in play', () => {
@@ -806,7 +856,15 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
       removeListener: () => {},
       dispatchEvent: () => false,
     })
-    vi.spyOn(performance, 'now').mockReturnValue(0)
+    let now = 0
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    const timers: { at: number; callback: () => void }[] = []
+    let timerId = 0
+    vi.spyOn(window, 'setTimeout').mockImplementation(((callback: () => void, delay = 0) => {
+      timers.push({ at: now + delay, callback })
+      return ++timerId
+    }) as typeof window.setTimeout)
+    vi.spyOn(window, 'clearTimeout').mockImplementation(() => {})
     const frames: FrameRequestCallback[] = []
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
       frames.push(callback)
@@ -815,7 +873,19 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
     vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
     renderPet({ snapshot: { ...snapshot, bubble: '正在思考', phase: 'thinking', decoration } })
     const el = ornament()!
-    const step = (ts: number): void => { for (const callback of frames.splice(0)) callback(ts) }
+    const step = (ms: number): void => {
+      for (const callback of frames.splice(0)) callback(now)
+      now += ms
+      for (;;) {
+        const due = timers.filter(t => t.at <= now)
+        if (due.length === 0) break
+        for (const t of due) {
+          const idx = timers.indexOf(t)
+          if (idx >= 0) timers.splice(idx, 1)
+          t.callback()
+        }
+      }
+    }
     // thinking binds frames 0..3 at 160 ms/frame. The effect holds frame 0;
     // a step at 80 ms — inside the first frame — must not move the ornament,
     // and only crossing the 160 ms boundary advances to the next frame.
@@ -824,6 +894,58 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
     expect(el.style.backgroundPosition).toBe('0px 0px')
     act(() => { step(161) })
     expect(el.style.backgroundPosition).toBe('-24px 0px')
+  })
+
+  it('catches up every due frame after a long idle gap', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })
+    let now = 0
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    const timers: { at: number; callback: () => void }[] = []
+    let timerId = 0
+    vi.spyOn(window, 'setTimeout').mockImplementation(((callback: () => void, delay = 0) => {
+      timers.push({ at: now + delay, callback })
+      return ++timerId
+    }) as typeof window.setTimeout)
+    vi.spyOn(window, 'clearTimeout').mockImplementation(() => {})
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.push(callback)
+      return frames.length
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    renderPet({ snapshot: { ...snapshot, bubble: '正在思考', phase: 'thinking', decoration } })
+    const el = ornament()!
+    const step = (ms: number): void => {
+      for (const callback of frames.splice(0)) callback(now)
+      now += ms
+      for (;;) {
+        const due = timers.filter(t => t.at <= now)
+        if (due.length === 0) break
+        for (const t of due) {
+          const idx = timers.indexOf(t)
+          if (idx >= 0) timers.splice(idx, 1)
+          t.callback()
+        }
+      }
+    }
+    // A 500 ms gap (jank / background tab) spans three 160 ms frames; the
+    // ornament must advance through all of them (0 -> 1 -> 2 -> 3), not
+    // drop the surplus time.
+    expect(el.style.backgroundPosition).toBe('0px 0px')
+    act(() => { step(500) })
+    expect(el.style.backgroundPosition).toBe('-72px 0px')
+    act(() => { step(161) })
+    // The next frame tick wraps the looping segment back to its first frame.
+    expect(el.style.backgroundPosition).toBe('0px 0px')
   })
 
   it('does not restart the frame loop when an equal-content decoration re-renders', () => {
@@ -837,21 +959,41 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
       removeListener: () => {},
       dispatchEvent: () => false,
     })
-    vi.spyOn(performance, 'now').mockReturnValue(0)
+    let now = 0
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    const timers: { at: number; callback: () => void }[] = []
+    let timerId = 0
+    const timerSpy = vi.spyOn(window, 'setTimeout').mockImplementation(((callback: () => void, delay = 0) => {
+      timers.push({ at: now + delay, callback })
+      return ++timerId
+    }) as typeof window.setTimeout)
+    const clearSpy = vi.spyOn(window, 'clearTimeout').mockImplementation(() => {})
     const frames: FrameRequestCallback[] = []
-    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
       frames.push(callback)
       return frames.length
     })
-    const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
     // The definition comes from '/api/pet/pets', fetched once — a state
     // poll never replaces it, so both renders share one definition object.
     const definition = petDefinition()
     const { result } = renderPet({ definition, snapshot: { ...snapshot, bubble: '正在思考', phase: 'thinking', decoration } })
-    const step = (ts: number): void => { for (const callback of frames.splice(0)) callback(ts) }
+    const step = (ms: number): void => {
+      for (const callback of frames.splice(0)) callback(now)
+      now += ms
+      for (;;) {
+        const due = timers.filter(t => t.at <= now)
+        if (due.length === 0) break
+        for (const t of due) {
+          const idx = timers.indexOf(t)
+          if (idx >= 0) timers.splice(idx, 1)
+          t.callback()
+        }
+      }
+    }
     act(() => { step(161) })
     expect(ornament()!.style.backgroundPosition).toBe('-24px 0px')
-    const schedulesBefore = rafSpy.mock.calls.length
+    const schedulesBefore = timerSpy.mock.calls.length
     // The 2 s poll delivers a fresh JSON round-trip: identical content, new
     // object identities everywhere. The loop must not cancel/restart.
     const repolled: DecorationView = {
@@ -861,10 +1003,10 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
       phases: { ...decoration.phases },
     }
     result.rerender(<PetSprite {...petProps({ definition, snapshot: { ...snapshot, bubble: '正在思考', phase: 'thinking', decoration: repolled } })} />)
-    act(() => { step(322) })
+    act(() => { step(161) })
     expect(ornament()!.style.backgroundPosition).toBe('-48px 0px')
-    expect(cancelSpy).not.toHaveBeenCalled()
-    // One reschedule per loop tick; no effect restart added new schedules.
-    expect(rafSpy.mock.calls.length).toBe(schedulesBefore + 2)
+    expect(clearSpy).not.toHaveBeenCalled()
+    // One reschedule per frame tick; no effect restart added new timers.
+    expect(timerSpy.mock.calls.length).toBe(schedulesBefore + 1)
   })
 })

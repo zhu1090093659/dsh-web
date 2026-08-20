@@ -98,32 +98,38 @@ function StatusOrnament(props: { decoration: DecorationView; phase: ActivityPhas
     // tick would keep rescheduling a no-op rAF forever. Settle on the one
     // frame instead — same as the reduced-motion static hold.
     if (reduceMotion || segment.from === segment.to) return
-    let raf = 0
+    let timer = 0
     let index = segment.from
     let elapsed = 0
     let last = performance.now()
-    const tick = (ts: number): void => {
-      const delta = ts - last
-      last = ts
+    const tick = (): void => {
+      const now = performance.now()
+      const delta = now - last
+      last = now
       elapsed += delta
-      const duration = decoration.durations[index] ?? 160
+      const duration = decoration.durations[index] ?? 120
+      // The segment's frame rate (duration ms, typically 90-160) is far
+      // below the rAF cadence, so a 60fps loop would spend ~90% of its
+      // ticks doing nothing. Schedule by the remaining time to the next
+      // frame instead — the ornament wakes once per frame, not once per
+      // screen refresh. A late wake (background tab, jank) carries extra
+      // elapsed time, so catch up every due frame like the sprite loop.
       if (elapsed >= duration) {
-        elapsed = 0
-        if (index < segment.to) index += 1
-        else if (decoration.loop) index = segment.from
-        // Only advance the background when the frame actually changes:
-        // the segment's frame rate (duration ms, typically 90-160) is far
-        // below the rAF cadence, so writing the same position every frame
-        // would churn style recalculations for no visual change.
+        do {
+          elapsed -= duration
+          if (index < segment.to) index += 1
+          else if (decoration.loop) index = segment.from
+        } while (elapsed >= duration)
+        // Only advance the background when the frame actually changes.
         el.style.backgroundPosition = position(index)
       }
       // A non-looping segment settles on its last frame; stop scheduling
       // instead of repainting the same position every frame.
       if (!decoration.loop && index === segment.to) return
-      raf = requestAnimationFrame(tick)
+      timer = window.setTimeout(tick, Math.max(1, duration - elapsed))
     }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    timer = window.setTimeout(tick, 0)
+    return () => window.clearTimeout(timer)
   }, [shown, segmentKey, frameWidth, decoration.loop, durationsKey])
   if (!shown) return null
   return (

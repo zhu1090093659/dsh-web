@@ -130,10 +130,58 @@ function styleCover(element: HTMLElement, fit: 'cover' | 'contain' | 'fill' = 'c
 /** Max static-frame capture edge (the backdrop never needs more pixels). */
 const FRAME_MAX_EDGE = 1920
 
+/**
+ * Default full-viewport-surface detector for WE wallpaper neutralization
+ * (#734): an element is a shell surface when it is exactly the viewport
+ * height (100% / 100vh) AND its computed background-color equals the resolved
+ * --dsw-alias-bg-base color. That matches the official shell frame/root
+ * containers (AppFrame, conversation root, details root) which paint the app
+ * base background at full height and only carry hashed CSS-module classes, so
+ * this selector-free check never depends on class names. Returns false when
+ * the token cannot be resolved.
+ */
+export function defaultWallpaperSurface(el: HTMLElement, doc: Document): boolean {
+  const win = doc.defaultView
+  if (win === null) return false
+  let height = ''
+  let background = ''
+  try {
+    const cs = win.getComputedStyle(el)
+    height = cs.height
+    background = cs.backgroundColor
+  } catch {
+    return false
+  }
+  if (height !== '100%' && height !== '100vh') return false
+  const base = resolveCssColor(doc, '--dsw-alias-bg-base')
+  return base !== null && background === base
+}
+
+/** Resolve a color custom property to its computed CSS color, if any. */
+function resolveCssColor(doc: Document, name: string): string | null {
+  const win = doc.defaultView
+  if (win === null || doc.documentElement === null) return null
+  const raw = win.getComputedStyle(doc.documentElement).getPropertyValue(name).trim()
+  if (raw === '') return null
+  const probe = doc.createElement('div')
+  probe.style.setProperty('background-color', raw)
+  doc.documentElement.appendChild(probe)
+  try {
+    return win.getComputedStyle(probe).backgroundColor
+  } catch {
+    return null
+  } finally {
+    probe.remove()
+  }
+}
+
 export interface WallpaperControllerOptions {
   apiBase?: string
   fetchImpl?: typeof fetch
   doc?: Document
+  /** Override the full-viewport-surface detector (tests); defaults to the
+   * computed-style heuristic in defaultWallpaperSurface. */
+  declareSurface?: (el: HTMLElement, doc: Document) => boolean
 }
 
 /**
@@ -165,6 +213,8 @@ export class WallpaperController implements WallpaperHandle {
   private scrimLayer: HTMLDivElement | null = null
   private videoElement: HTMLVideoElement | null = null
   private rootNeutralizer: HTMLStyleElement | null = null
+  /** Shell surfaces tagged with data-dsh-wallpaper-surface during this mount. */
+  private taggedSurfaces: HTMLElement[] = []
   private disposed = false
 
   constructor(scope: SettingsScope<WallpaperSection>, options: WallpaperControllerOptions = {}) {
@@ -453,11 +503,22 @@ export class WallpaperController implements WallpaperHandle {
         html[data-dsh-wallpaper-active] [data-composer-seat] {
           background: none !important;
         }
+        /* Full-viewport shell surfaces (AppFrame frame, conversation root,
+           details root) paint the opaque app base background via hashed
+           CSS-module classes. While a WE wallpaper is mounted the controller
+           tags them with the own marker data-dsh-wallpaper-surface
+           (markWallpaperSurfaces), and this rule neutralizes them with no
+           class-name dependency (issue #734). */
+        html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface] {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
       `
       this.doc.head.appendChild(this.rootNeutralizer)
     }
     this.doc.body.dataset.dshWallpaperActive = 'true'
     this.doc.documentElement.dataset.dshWallpaperActive = 'true'
+    this.markSurfaces()
     if (this.mediaLayer === null) {
       this.mediaLayer = this.doc.createElement('div')
       styleLayer(this.mediaLayer, -3)
@@ -638,7 +699,34 @@ export class WallpaperController implements WallpaperHandle {
     return image
   }
 
+  /** Tag the official shell full-viewport background surfaces (AppFrame
+   * frame, conversation root, details root) with the own marker
+   * data-dsh-wallpaper-surface so the neutralizer can target them without
+   * hashed class names (#734). Idempotent across renders within one mount;
+   * untagged on teardown. */
+  private markSurfaces(): void {
+    const root = this.doc.getElementById('root')
+    if (root === null) return
+    const isSurface = this.options.declareSurface ?? defaultWallpaperSurface
+    const stack: Element[] = [root]
+    while (stack.length > 0) {
+      const node = stack.pop()
+      if (node === undefined) continue
+      if (node instanceof HTMLElement && !node.hasAttribute('data-dsh-wallpaper-surface') && isSurface(node, this.doc)) {
+        node.setAttribute('data-dsh-wallpaper-surface', '')
+        this.taggedSurfaces.push(node)
+      }
+      for (const child of Array.from(node.children)) stack.push(child)
+    }
+  }
+
+  private untagSurfaces(): void {
+    for (const el of this.taggedSurfaces) el.removeAttribute('data-dsh-wallpaper-surface')
+    this.taggedSurfaces = []
+  }
+
   private teardownLayers(): void {
+    this.untagSurfaces()
     delete this.doc.body.dataset.dshWallpaperActive
     delete this.doc.documentElement.dataset.dshWallpaperActive
     if (this.rootNeutralizer !== null) {

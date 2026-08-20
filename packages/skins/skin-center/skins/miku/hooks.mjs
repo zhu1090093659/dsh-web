@@ -144,12 +144,21 @@ export default function defineSkinHooks() {
       const html = document.documentElement
       const originalHtmlTranslate = html.getAttribute('translate')
       const originalBodyTranslate = body.getAttribute('translate')
-      const htmlWasNotranslate = html.classList.contains('notranslate')
-      const bodyWasNotranslate = body.classList.contains('notranslate')
+      const originalHtmlClass = html.getAttribute('class')
+      const originalBodyClass = body.getAttribute('class')
       html.setAttribute('translate', 'no')
       body.setAttribute('translate', 'no')
-      html.classList.add('notranslate')
-      body.classList.add('notranslate')
+      // Use an explicit class-attribute append (not classList.add) so teardown
+      // can restore the exact original class attribute (jsdom keeps an empty
+      // `class=""` after classList.remove, which the lifecycle test flags).
+      const appendClass = (el, token) => {
+        const current = el.getAttribute('class') ?? ''
+        const tokens = current.split(/\s+/).filter(Boolean)
+        if (!tokens.includes(token)) tokens.push(token)
+        el.setAttribute('class', tokens.join(' '))
+      }
+      appendClass(html, 'notranslate')
+      appendClass(body, 'notranslate')
       let translateMeta = document.querySelector('meta[name="google"][content="notranslate"]')
       const ownsTranslateMeta = translateMeta === null
       if (translateMeta === null) {
@@ -315,8 +324,12 @@ export default function defineSkinHooks() {
         else html.setAttribute('translate', originalHtmlTranslate)
         if (originalBodyTranslate === null) body.removeAttribute('translate')
         else body.setAttribute('translate', originalBodyTranslate)
-        if (!htmlWasNotranslate) html.classList.remove('notranslate')
-        if (!bodyWasNotranslate) body.classList.remove('notranslate')
+        // Restore the exact original class attribute (or remove it when it did
+        // not exist) so no empty class="" survives in jsdom/real DOM.
+        if (originalHtmlClass === null) html.removeAttribute('class')
+        else html.setAttribute('class', originalHtmlClass)
+        if (originalBodyClass === null) body.removeAttribute('class')
+        else body.setAttribute('class', originalBodyClass)
         if (ownsTranslateMeta) translateMeta.remove()
         delete body.dataset.dshAionuiCollapsed
         titlebar.remove()

@@ -401,7 +401,7 @@ window.SKIN_MANIFEST = {
           },
           "dark": {
             "type": "image",
-            "src": "assets/miku-art-dark.png",
+            "src": "assets/miku-art.webp",
             "scrim": "linear-gradient(rgba(4, 10, 28, 0.12) 0%, rgba(6, 14, 36, 0.16) 60%, rgba(8, 18, 42, 0.18) 100%)"
           }
         }

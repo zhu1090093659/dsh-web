@@ -456,6 +456,32 @@ describe('WallpaperController', () => {
     expect(defaultWallpaperSurface(offColor, document)).toBe(false)
     document.documentElement.style.removeProperty('--dsw-alias-bg-base')
   })
+
+  it('tags the sidebar workspaces fade while a wallpaper is mounted (#734)', () => {
+    const { scope } = fakeScope()
+    document.body.innerHTML = ''
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+    const slot = document.createElement('div')
+    slot.setAttribute('data-slot', 'sidebar.workspaces')
+    const fade = document.createElement('span')
+    const other = document.createElement('span')
+    slot.append(fade, other)
+    root.appendChild(slot)
+    const controller = new WallpaperController(scope, {
+      doc: document,
+      declareWorkspaceFade: (el) => el === fade,
+    })
+    controller.applySelection(video)
+    expect(fade.getAttribute('data-dsh-wallpaper-surface')).toBe('')
+    expect(other.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
+    // The existing surface neutralization rule clears the fade's gradient too.
+    const style = document.head.querySelector('style[data-dsh-wallpaper-root]')
+    expect(style?.textContent).toContain('background-image: none !important;')
+    controller.dispose()
+    expect(fade.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
+  })
 })
 
 /** A minimal fake WallpaperHandle recording every sync() call. */

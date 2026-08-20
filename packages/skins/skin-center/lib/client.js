@@ -73,6 +73,21 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/**
+		* Workspace-list end-fade detector (#734): a gradient-background element inside
+		* the sidebar workspaces slot. The official `data-slot="sidebar.workspaces"`
+		* anchor is stable; the fade element only carries hashed CSS-module classes, so
+		* this selects it by computed style instead of class names.
+		*/
+		function defaultWorkspaceFade(el, doc) {
+			const win = doc.defaultView;
+			if (win === null) return false;
+			try {
+				return win.getComputedStyle(el).backgroundImage.includes("gradient");
+			} catch {
+				return false;
+			}
+		}
+		/**
 		* Own the skin-wallpaper scope: keep the mounted layers in sync with the
 		* persisted selection and the card-driven descriptor resolution.
 		*/
@@ -481,19 +496,37 @@ window.__ModuleLoader__.load({
 				return image;
 			}
 			/** Tag the official shell full-viewport background surfaces (AppFrame
-			* frame, conversation root, details root) with the own marker
-			* data-dsh-wallpaper-surface so the neutralizer can target them without
-			* hashed class names (#734). Idempotent across renders within one mount;
-			* untagged on teardown. */
+			* frame, conversation root, details root) and the sidebar workspace-list
+			* end fade with the own marker data-dsh-wallpaper-surface so the
+			* neutralizer can target them without hashed class names (#734). Idempotent
+			* across renders within one mount; untagged on teardown. */
 			markSurfaces() {
 				const root = this.doc.getElementById("root");
-				if (root === null) return;
-				const isSurface = this.options.declareSurface ?? defaultWallpaperSurface;
-				const stack = [root];
+				if (root !== null) {
+					const isSurface = this.options.declareSurface ?? defaultWallpaperSurface;
+					const stack = [root];
+					while (stack.length > 0) {
+						const node = stack.pop();
+						if (node === void 0) continue;
+						if (node instanceof HTMLElement && !node.hasAttribute("data-dsh-wallpaper-surface") && isSurface(node, this.doc)) {
+							node.setAttribute("data-dsh-wallpaper-surface", "");
+							this.taggedSurfaces.push(node);
+						}
+						for (const child of Array.from(node.children)) stack.push(child);
+					}
+				}
+				this.markWorkspaceFades();
+			}
+			/** Tag the sidebar workspaces list-end fade with the same own marker (#734). */
+			markWorkspaceFades() {
+				const slot = this.doc.querySelector("[data-slot=\"sidebar.workspaces\"]");
+				if (slot === null) return;
+				const isFade = this.options.declareWorkspaceFade ?? defaultWorkspaceFade;
+				const stack = [slot];
 				while (stack.length > 0) {
 					const node = stack.pop();
 					if (node === void 0) continue;
-					if (node instanceof HTMLElement && !node.hasAttribute("data-dsh-wallpaper-surface") && isSurface(node, this.doc)) {
+					if (node instanceof HTMLElement && !node.hasAttribute("data-dsh-wallpaper-surface") && isFade(node, this.doc)) {
 						node.setAttribute("data-dsh-wallpaper-surface", "");
 						this.taggedSurfaces.push(node);
 					}

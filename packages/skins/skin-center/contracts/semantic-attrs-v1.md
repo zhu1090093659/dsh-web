@@ -41,7 +41,7 @@
 | 属性 | 位置 | 含义 / 锚定方式 |
 | --- | --- | --- |
 | `data-dsh-wallpaper-active` | html + body（body/html 级，另行管理） | WE 壁纸挂载期间置 `true`，卸载 / 禁用清除；供皮肤 CSS 与壁纸中和规则锚定（#734） |
-| `data-dsh-wallpaper-surface` | 官方 shell 全视口背景元素（元素级） | `WallpaperController.markWallpaperSurfaces()` 在 WE 壁纸挂载期间打标，命中 `html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface]` 中和全视口 bg-base 背景；卸载清除，不含哈希类依赖（#734） |
+| `data-dsh-wallpaper-surface` | 官方 shell 全视口背景元素 + 侧栏工作区淡化条（元素级） | `WallpaperController.markWallpaperSurfaces()` 在 WE 壁纸挂载期间打标（全视口 bg-base 背景 + `data-slot="sidebar.workspaces"` 内渐变淡化条），命中 `html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface]` 中和；卸载清除，不含哈希类依赖（#734） |
 
 ## part 组（24 个）
 

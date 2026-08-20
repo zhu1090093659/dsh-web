@@ -137,6 +137,7 @@ export const TurnActionsView = memo(function TurnActionsView(props: TurnActionsP
         <button
           type="button"
           className={styles.button}
+          title={t('retry.forkHint')}
           onClick={() => manualRetry(sessionId)}
         >
           {t('retry.button')}

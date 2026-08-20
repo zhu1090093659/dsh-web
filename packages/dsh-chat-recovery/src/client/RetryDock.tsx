@@ -48,15 +48,18 @@ export const RetryDockView = memo(function RetryDockView(props: RetryDockProps) 
       })
     return (
       <div className={styles.dock}>
-        <span>{label}</span>
-        <span className={styles.buttons}>
-          {state.kind === 'auto' ? (
-            <button type="button" className={styles.button} onClick={() => supervisor.retryNow()}>
-              {t('retry.retryNow')}
-            </button>
-          ) : null}
-          {cancelButton}
-        </span>
+        <div className={styles.row}>
+          <span>{label}</span>
+          <span className={styles.buttons}>
+            {state.kind === 'auto' ? (
+              <button type="button" className={styles.button} onClick={() => supervisor.retryNow()}>
+                {t('retry.retryNow')}
+              </button>
+            ) : null}
+            {cancelButton}
+          </span>
+        </div>
+        <span className={styles.hint}>{t('retry.forkHint')}</span>
       </div>
     )
   }
@@ -67,8 +70,11 @@ export const RetryDockView = memo(function RetryDockView(props: RetryDockProps) 
       : t('retry.running', { attempt: String(state.attempt), max: String(state.maxAttempts) })
     return (
       <div className={styles.dock}>
-        <span>{label}</span>
-        <span className={styles.buttons}>{cancelButton}</span>
+        <div className={styles.row}>
+          <span>{label}</span>
+          <span className={styles.buttons}>{cancelButton}</span>
+        </div>
+        <span className={styles.hint}>{t('retry.forkHint')}</span>
       </div>
     )
   }
@@ -80,12 +86,15 @@ export const RetryDockView = memo(function RetryDockView(props: RetryDockProps) 
     : t('retry.failed', { reason })
   return (
     <div className={styles.dock}>
-      <span className={styles.error}>{label}</span>
-      <span className={styles.buttons}>
-        <button type="button" className={styles.button} onClick={() => manualRetry(sessionId)}>
-          {t('retry.manualRetry')}
-        </button>
-      </span>
+      <div className={styles.row}>
+        <span className={styles.error}>{label}</span>
+        <span className={styles.buttons}>
+          <button type="button" className={styles.button} onClick={() => manualRetry(sessionId)}>
+            {t('retry.manualRetry')}
+          </button>
+        </span>
+      </div>
+      <span className={styles.hint}>{t('retry.forkHint')}</span>
     </div>
   )
 })

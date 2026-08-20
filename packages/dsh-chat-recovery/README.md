@@ -35,6 +35,9 @@ text is re-submitted there, and the original conversation is never touched.
     controls. Cancel stops all further attempts.
   - The host's own scheduled llm/retry chain always takes precedence: while
     it is retrying, this plugin stands down.
+  - The dock and the Retry button show a visible hint that retrying forks a
+    new session branch: the original session stays untouched, and failed
+    forks remain in the session list.
 
 ## Safety model
 
@@ -45,6 +48,10 @@ text is re-submitted there, and the original conversation is never touched.
 - **Original sessions stay untouched**: edit and retry only create child
   sessions. A fork or resubmit failure leaves the source session exactly as
   it was.
+- **Failed forks stay in the list**: every attempt is its own child session,
+  and abandoned attempts (cancelled, exhausted or failed) are kept for
+  inspection. The client runtime exposes no session-removal API, so stale
+  retry forks must be cleaned up manually from the session list.
 - **Conservative auto retry**: auth failures, permission errors, invalid
   arguments, quotas, cancellations and any turn that ran tools or commands
   are never auto-retried. Tool side effects replay only on explicit user

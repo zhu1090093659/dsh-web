@@ -1,0 +1,171 @@
+/**
+ * Pink Sakura - token-first v2 skin.
+ *
+ * L1 remaps official semantic tokens. L2 selectors only use semantic
+ * attributes owned by Skin Center, avoiding generated class names.
+ */
+
+:root {
+  --pink-sakura-accent: #e95c91;
+  --pink-sakura-text: #3b2e36;
+  --pink-sakura-panel: #fff7fa;
+  --pink-sakura-border: #be6e9638;
+
+  --dsw-alias-bg-base: #fff1f6;
+  --dsw-alias-bg-layer-1: #fff8fb;
+  --dsw-alias-bg-layer-2: #fcebf2;
+  --dsw-alias-bg-layer-3: #f6dfe9;
+  --dsw-alias-bg-overlay: #fffffff0;
+  --dsw-alias-bg-skeleton: #e95c9112;
+  --dsw-alias-border-l1: #3c192d0f;
+  --dsw-alias-border-l2: #be6e9638;
+  --dsw-alias-border-l3: #be6e964d;
+  --dsw-alias-border-l4: #be6e9661;
+  --dsw-alias-label-primary: #3b2e36;
+  --dsw-alias-label-secondary: #6e5b65;
+  --dsw-alias-label-tertiary: #7c6a74;
+  --dsw-alias-label-dimmed: #9f8c96;
+  --dsw-alias-label-caption: #8a7680;
+  --dsw-alias-brand-primary: #e95c91;
+  --dsw-alias-brand-text: #c23e6f;
+  --dsw-alias-interactive-bg-hover: #e95c9112;
+  --dsw-alias-interactive-bg-active: #e95c9129;
+  --dsw-alias-state-error-primary: #c92a2a;
+  --dsw-alias-state-warn-primary: #8f5c10;
+  --dsw-alias-state-success-primary: #157a52;
+  --dsw-alias-state-business-primary: #c23e6f;
+  --dsw-alias-button-primary-fill: #e95c91;
+  --dsw-alias-button-primary-hover: #d64b80;
+  --dsw-alias-button-contrast-fill: #3b2a35;
+  --dsw-alias-button-elevated-fill: #fff7fa;
+  --dsw-alias-button-floating-fill: #f9e7ef;
+  --dsw-alias-button-floating-hover: #f4dce7;
+  --dsw-specific-bubble: #fff7fa;
+  --dsw-specific-input-major: #fff9fb;
+  --dsw-specific-menu: #fff8fb;
+  --dsw-specific-selector: #fae9f1;
+  --dsw-specific-sidebar-fill: #f8e4ed;
+  --dsw-specific-sidebar-nav-item-hover: #e95c9112;
+  --dsw-specific-sidebar-nav-item-active: #e95c9121;
+  --dsw-alias-tooltip-bg: #4a3944;
+  --dsw-shadow-lv1: 0 1px 2px #3b2e3614;
+  --dsw-shadow-lv2: 0 6px 18px #8d496c1f;
+  --dsw-shadow-lv3: 0 18px 42px #8d496c2b;
+  --dsw-alias-scrollbar-bg-l2: #b4789138;
+  --dsw-alias-scrollbar-hover-l2: #b478915c;
+}
+
+body[data-ds-dark-theme] {
+  --pink-sakura-accent: #ff7fae;
+  --pink-sakura-text: #f2e7ed;
+  --pink-sakura-panel: #1d181e;
+  --pink-sakura-border: #ff7fae33;
+
+  --dsw-alias-bg-base: #151217;
+  --dsw-alias-bg-layer-1: #1d181e;
+  --dsw-alias-bg-layer-2: #221b23;
+  --dsw-alias-bg-layer-3: #2a222b;
+  --dsw-alias-bg-overlay: #2e2530f2;
+  --dsw-alias-bg-skeleton: #ff7fae12;
+  --dsw-alias-border-l1: #ff7fae1a;
+  --dsw-alias-border-l2: #ff7fae33;
+  --dsw-alias-border-l3: #ff7fae47;
+  --dsw-alias-border-l4: #ff7fae5c;
+  --dsw-alias-label-primary: #f2e7ed;
+  --dsw-alias-label-secondary: #c9b6c1;
+  --dsw-alias-label-tertiary: #a18e9a;
+  --dsw-alias-label-dimmed: #806d77;
+  --dsw-alias-label-caption: #95818d;
+  --dsw-alias-brand-primary: #ff7fae;
+  --dsw-alias-brand-text: #ff9bc0;
+  --dsw-alias-interactive-bg-hover: #ff7fae1a;
+  --dsw-alias-interactive-bg-active: #ff7fae38;
+  --dsw-alias-state-error-primary: #f2616c;
+  --dsw-alias-state-warn-primary: #f5a83b;
+  --dsw-alias-state-success-primary: #3fbf8f;
+  --dsw-alias-state-business-primary: #ff7fae;
+  --dsw-alias-button-primary-fill: #ff4f91;
+  --dsw-alias-button-primary-hover: #ff7fae;
+  --dsw-alias-button-contrast-fill: #f5ecf1;
+  --dsw-alias-button-elevated-fill: #2a222b;
+  --dsw-alias-button-floating-fill: #2a222b;
+  --dsw-alias-button-floating-hover: #332936;
+  --dsw-specific-bubble: #1e171f;
+  --dsw-specific-input-major: #1b151d;
+  --dsw-specific-menu: #251e27;
+  --dsw-specific-selector: #211a23;
+  --dsw-specific-sidebar-fill: #181318;
+  --dsw-specific-sidebar-nav-item-hover: #ff7fae1a;
+  --dsw-specific-sidebar-nav-item-active: #ff7fae29;
+  --dsw-alias-tooltip-bg: #332a36;
+  --dsw-shadow-lv1: 0 1px 2px #00000066;
+  --dsw-shadow-lv2: 0 6px 18px #00000080;
+  --dsw-shadow-lv3: 0 18px 42px #00000099;
+  --dsw-alias-scrollbar-bg-l2: #ff7fae38;
+  --dsw-alias-scrollbar-hover-l2: #ff7fae66;
+}
+
+body[data-dsh-wallpaper-active] {
+  --dsw-alias-bg-base: #faf4f78a;
+  --dsw-alias-bg-layer-1: #fffafcb8;
+  --dsw-alias-bg-layer-2: #fdf1f6ad;
+  --dsw-alias-bg-layer-3: #f7e7efa3;
+  --dsw-specific-sidebar-fill: #f4e9efb3;
+}
+
+body[data-ds-dark-theme][data-dsh-wallpaper-active] {
+  --dsw-alias-bg-base: #1512178f;
+  --dsw-alias-bg-layer-1: #1d181ebd;
+  --dsw-alias-bg-layer-2: #221b23b3;
+  --dsw-alias-bg-layer-3: #2a222bad;
+  --dsw-specific-sidebar-fill: #181318bd;
+}
+
+[data-dsh-surface="composer"],
+[data-dsh-surface="settings"],
+[data-dsh-part="dialog"],
+[data-dsh-part="panel"] {
+  border-color: var(--pink-sakura-border);
+  box-shadow: var(--dsw-shadow-lv2);
+}
+
+[data-dsh-plugin="task-board"] [data-dsh-part="column"],
+[data-dsh-plugin="task-board"] [data-dsh-part="card"],
+[data-dsh-plugin="web-ui-settings"] [data-dsh-part="plugin-item"],
+[data-dsh-plugin="community-plugins"] [data-dsh-part="marketplace-card"] {
+  background: var(--pink-sakura-panel);
+  border-color: var(--pink-sakura-border);
+  transition: transform 160ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+[data-dsh-plugin="task-board"] [data-dsh-part="card"]:hover,
+[data-dsh-plugin="web-ui-settings"] [data-dsh-part="plugin-item"]:hover,
+[data-dsh-plugin="community-plugins"] [data-dsh-part="marketplace-card"]:hover {
+  border-color: var(--pink-sakura-accent);
+  box-shadow: var(--dsw-shadow-lv2);
+  transform: translateY(-1px);
+}
+
+[data-dsh-plugin="git-graph"] [data-dsh-part="chip"],
+[data-dsh-plugin="git-graph"] [data-dsh-part="ref"],
+[data-dsh-plugin="ssh"] [data-dsh-part="tab"] {
+  border-color: var(--pink-sakura-border);
+}
+
+[data-dsh-plugin="ssh"] [data-dsh-part="terminal"] {
+  background: #181419;
+  color: #f2e7ed;
+}
+
+[data-dsh-plugin="pet"] [data-dsh-part="bubble"] {
+  background: var(--pink-sakura-panel);
+  border: 1px solid var(--pink-sakura-border);
+  color: var(--pink-sakura-text);
+  box-shadow: var(--dsw-shadow-lv2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-dsh-plugin] [data-dsh-part] {
+    transition: none;
+  }
+}

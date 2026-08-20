@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "pink-sakura",
+  "name": "粉樱",
+  "nameEn": "Pink Sakura",
+  "version": "1.0.0",
+  "author": "guomengjia618-dot",
+  "tagline": "奶油粉与樱花玫瑰色组成的克制开发者主题",
+  "description": "粉樱以低饱和奶油粉、玫瑰强调色和暖灰文字重塑 DSH Web GUI。亮暗两态均保留成功、警告、错误等语义色，并通过 L2 语义属性覆盖任务看板、Git 图谱、SSH、设置卡和鲸鱼娘等插件区域；Wallpaper Engine 启用时自动切换为半透明面板。",
+  "tags": [
+    "pink",
+    "sakura",
+    "rose",
+    "developer",
+    "light-dark",
+    "wallpaper"
+  ],
+  "accent": "#ff7fae",
+  "order": 101,
+  "preview": {
+    "light": "preview/light.png",
+    "dark": "preview/dark.png"
+  },
+  "contributes": {
+    "stylesheet": "skin.css"
+  }
+}

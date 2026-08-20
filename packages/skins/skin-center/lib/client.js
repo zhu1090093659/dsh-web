@@ -20,15 +20,83 @@ window.__ModuleLoader__.load({
 			element.setAttribute("aria-hidden", "true");
 		}
 		/** Style a full-bleed cover child (video / img / iframe). */
-		function styleCover(element) {
+		function styleCover(element, fit = "cover") {
 			element.style.width = "100%";
 			element.style.height = "100%";
-			element.style.objectFit = "cover";
+			element.style.objectFit = fit;
 			element.style.border = "0";
 			element.style.display = "block";
 		}
 		/** Max static-frame capture edge (the backdrop never needs more pixels). */
 		const FRAME_MAX_EDGE = 1920;
+		/**
+		* Default full-viewport-surface detector for WE wallpaper neutralization
+		* (#734): an element is a shell surface when its rendered box is the full
+		* viewport height AND its computed background-color equals the resolved
+		* --dsw-alias-bg-base color. The height check uses GEOMETRY, not the literal
+		* computed "100%": real browsers return the used value in px (e.g. "913px")
+		* for rendered elements, and the literal "100%" only appears on unrendered
+		* 0x0 subtrees — a style-string check would silently never tag the
+		* AppFrame / conversation / details roots. jsdom does no layout (every rect
+		* is 0 and clientHeight is 0), so when no viewport height is measurable the
+		* check falls back to the style string to keep jsdom tests meaningful. The
+		* color check matches the official shell frame/root containers which paint
+		* the app base background at full height and only carry hashed CSS-module
+		* classes, so this selector-free check never depends on class names. Returns
+		* false when the token cannot be resolved.
+		*/
+		function defaultWallpaperSurface(el, doc) {
+			const win = doc.defaultView;
+			if (win === null) return false;
+			let rectHeight = 0;
+			let viewportHeight = 0;
+			let heightStyle = "";
+			let background = "";
+			try {
+				rectHeight = el.getBoundingClientRect().height;
+				viewportHeight = doc.documentElement.clientHeight || win.innerHeight || 0;
+				const cs = win.getComputedStyle(el);
+				heightStyle = cs.height;
+				background = cs.backgroundColor;
+			} catch {
+				return false;
+			}
+			if (!(rectHeight > 0 ? Math.abs(rectHeight - viewportHeight) <= 2 : heightStyle === "100%" || heightStyle === "100vh")) return false;
+			const base = resolveCssColor(doc, "--dsw-alias-bg-base");
+			return base !== null && background === base;
+		}
+		/** Resolve a color custom property to its computed CSS color, if any. */
+		function resolveCssColor(doc, name) {
+			const win = doc.defaultView;
+			if (win === null || doc.documentElement === null) return null;
+			const raw = win.getComputedStyle(doc.documentElement).getPropertyValue(name).trim();
+			if (raw === "") return null;
+			const probe = doc.createElement("div");
+			probe.style.setProperty("background-color", raw);
+			doc.documentElement.appendChild(probe);
+			try {
+				return win.getComputedStyle(probe).backgroundColor;
+			} catch {
+				return null;
+			} finally {
+				probe.remove();
+			}
+		}
+		/**
+		* Workspace-list end-fade detector (#734): a gradient-background element inside
+		* the sidebar workspaces slot. The official `data-slot="sidebar.workspaces"`
+		* anchor is stable; the fade element only carries hashed CSS-module classes, so
+		* this selects it by computed style instead of class names.
+		*/
+		function defaultWorkspaceFade(el, doc) {
+			const win = doc.defaultView;
+			if (win === null) return false;
+			try {
+				return win.getComputedStyle(el).backgroundImage.includes("gradient");
+			} catch {
+				return false;
+			}
+		}
 		/**
 		* Own the skin-wallpaper scope: keep the mounted layers in sync with the
 		* persisted selection and the card-driven descriptor resolution.
@@ -37,6 +105,7 @@ window.__ModuleLoader__.load({
 			enabledValue = true;
 			selectionValue = "";
 			modeValue = "live";
+			fitValue = "cover";
 			pauseOnHiddenValue = true;
 			soundValue = false;
 			volumeValue = 100;
@@ -45,6 +114,8 @@ window.__ModuleLoader__.load({
 			dirsValue = [];
 			listeners = /* @__PURE__ */ new Set();
 			scope;
+			options;
+			doc;
 			/** The descriptor of the applied selection, resolved by the card. */
 			applied = null;
 			/** The try-on descriptor while a preview is up. */
@@ -53,46 +124,55 @@ window.__ModuleLoader__.load({
 			scrimLayer = null;
 			videoElement = null;
 			rootNeutralizer = null;
+			/** Shell surfaces tagged with data-dsh-wallpaper-surface during this mount. */
+			taggedSurfaces = [];
 			disposed = false;
-			constructor(scope) {
+			constructor(scope, options = {}) {
 				this.scope = scope;
+				this.options = options;
+				this.doc = options.doc ?? document;
 				this.readAll();
 				scope.subscribe(() => {
 					this.readAll();
-					this.render();
-					this.publish();
+					if (this.enabledValue && this.selectionValue && (!this.applied || this.applied.id !== this.selectionValue)) this.fetchAndSync();
+					else {
+						this.render();
+						this.publish();
+					}
 				});
-				document.addEventListener("visibilitychange", this.onVisibility);
-				document.addEventListener("pointerdown", this.onFirstGesture);
-				document.addEventListener("keydown", this.onFirstGesture);
+				this.doc.addEventListener("visibilitychange", this.onVisibility);
+				this.doc.addEventListener("pointerdown", this.onFirstGesture);
+				this.doc.addEventListener("keydown", this.onFirstGesture);
+				if (this.enabledValue && this.selectionValue) this.fetchAndSync();
 			}
-			enabled() {
-				return this.enabledValue;
+			fetchAndSync() {
+				if (!this.selectionValue || !this.doc) return;
+				const targetId = this.selectionValue;
+				const fetchFn = this.options.fetchImpl ?? (typeof fetch !== "undefined" ? fetch.bind(this.doc.defaultView ?? globalThis) : void 0);
+				if (!fetchFn) return;
+				fetchFn(`${this.options.apiBase ?? "/api/skin-center/we"}/inventory`).then(async (response) => {
+					if (this.disposed || !response.ok) return;
+					const payload = await response.json().catch(() => null);
+					if (payload?.ok === true && Array.isArray(payload.wallpapers)) {
+						const item = payload.wallpapers.find((w) => w.id === targetId);
+						if (item && this.selectionValue === targetId) {
+							this.applied = item;
+							this.render();
+							this.publish();
+						}
+					}
+				}).catch(() => {});
 			}
-			selection() {
-				return this.selectionValue;
-			}
-			mode() {
-				return this.modeValue;
-			}
-			dim() {
-				return this.dimValue;
-			}
-			wallpaperBlur() {
-				return this.blurValue;
-			}
-			pauseOnHidden() {
-				return this.pauseOnHiddenValue;
-			}
-			sound() {
-				return this.soundValue;
-			}
-			volume() {
-				return this.volumeValue;
-			}
-			dirs() {
-				return this.dirsValue;
-			}
+			enabled = () => this.enabledValue;
+			selection = () => this.selectionValue;
+			mode = () => this.modeValue;
+			fit = () => this.fitValue;
+			dim = () => this.dimValue;
+			wallpaperBlur = () => this.blurValue;
+			pauseOnHidden = () => this.pauseOnHiddenValue;
+			sound = () => this.soundValue;
+			volume = () => this.volumeValue;
+			dirs = () => this.dirsValue;
 			addDir(dir) {
 				const trimmed = dir.trim();
 				if (trimmed === "" || this.dirsValue.includes(trimmed)) return;
@@ -107,19 +187,17 @@ window.__ModuleLoader__.load({
 				this.publish();
 				this.scope.set("weLibraryDirs", this.dirsValue);
 			}
-			activeId() {
+			activeId = () => {
 				const current = this.previewing ?? this.applied;
 				return this.mediaLayer !== null && current !== null ? current.id : null;
-			}
-			trying() {
-				return this.previewing !== null;
-			}
-			subscribe(listener) {
+			};
+			trying = () => this.previewing !== null;
+			subscribe = (listener) => {
 				this.listeners.add(listener);
 				return () => {
 					this.listeners.delete(listener);
 				};
-			}
+			};
 			setEnabled(value) {
 				this.enabledValue = value;
 				this.render();
@@ -131,6 +209,12 @@ window.__ModuleLoader__.load({
 				this.render();
 				this.publish();
 				this.scope.set("mode", mode);
+			}
+			setFit(fit) {
+				this.fitValue = fit;
+				this.render();
+				this.publish();
+				this.scope.set("fit", fit);
 			}
 			setDim(value) {
 				this.dimValue = clamp(value, 0, 90);
@@ -194,9 +278,9 @@ window.__ModuleLoader__.load({
 			}
 			dispose() {
 				this.disposed = true;
-				document.removeEventListener("visibilitychange", this.onVisibility);
-				document.removeEventListener("pointerdown", this.onFirstGesture);
-				document.removeEventListener("keydown", this.onFirstGesture);
+				this.doc.removeEventListener("visibilitychange", this.onVisibility);
+				this.doc.removeEventListener("pointerdown", this.onFirstGesture);
+				this.doc.removeEventListener("keydown", this.onFirstGesture);
 				this.teardownLayers();
 			}
 			readAll() {
@@ -204,6 +288,8 @@ window.__ModuleLoader__.load({
 				this.enabledValue = typeof value.enabled === "boolean" ? value.enabled : true;
 				this.selectionValue = typeof value.selection === "string" ? value.selection : "";
 				this.modeValue = value.mode === "frame" ? "frame" : "live";
+				const rawFit = value.fit;
+				this.fitValue = rawFit === "contain" || rawFit === "fill" ? rawFit : "cover";
 				this.pauseOnHiddenValue = typeof value.pauseOnHidden === "boolean" ? value.pauseOnHidden : true;
 				this.soundValue = typeof value.sound === "boolean" ? value.sound : false;
 				this.volumeValue = typeof value.volume === "number" && Number.isFinite(value.volume) ? clamp(value.volume, 0, 100) : 100;
@@ -217,9 +303,16 @@ window.__ModuleLoader__.load({
 				this.videoElement.play()?.catch(() => {});
 			};
 			onVisibility = () => {
-				if (this.videoElement === null || !this.pauseOnHiddenValue) return;
-				if (document.hidden) this.videoElement.pause();
+				if (!this.pauseOnHiddenValue) return;
+				if (this.videoElement !== null) if (this.doc.hidden) this.videoElement.pause();
 				else this.videoElement.play()?.catch(() => {});
+				const scenePlayer = this.mediaLayer?.firstElementChild ?? null;
+				if (scenePlayer instanceof HTMLIFrameElement && scenePlayer.dataset.dshScenePlayer === "") try {
+					scenePlayer.contentWindow?.postMessage({
+						type: "dsh-set-pause",
+						paused: this.doc.hidden
+					}, window.location.origin);
+				} catch {}
 			};
 			/** Reconcile the DOM with (enabled, previewing ?? applied, mode, dim, blur). */
 			render() {
@@ -233,20 +326,57 @@ window.__ModuleLoader__.load({
 			}
 			ensureLayers(descriptor) {
 				if (this.rootNeutralizer === null) {
-					this.rootNeutralizer = document.createElement("style");
+					this.rootNeutralizer = this.doc.createElement("style");
 					this.rootNeutralizer.dataset.dshWallpaperRoot = "";
-					this.rootNeutralizer.textContent = "[id=\"root\"] { background: transparent; }";
-					document.head.appendChild(this.rootNeutralizer);
+					this.rootNeutralizer.textContent = `
+        [id="root"] { background: transparent; }
+        html[data-dsh-wallpaper-active],
+        body[data-dsh-wallpaper-active],
+        html[data-dsh-skin][data-dsh-wallpaper-active],
+        html[data-dsh-skin][data-dsh-wallpaper-active] body,
+        html[data-dsh-skin] body[data-dsh-wallpaper-active],
+        body[data-dsh-wallpaper-active][data-ds-dark-theme],
+        html[data-dsh-wallpaper-active] [id="root"] {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
+        /* The composer seat paints an opaque base fade under the input card
+           (rc.8: a linear gradient to --dsw-alias-bg-base, z-index 7; some
+           builds additionally use a ::before with backdrop-filter). Remove it
+           while the WE wallpaper is mounted so the backdrop shows behind the
+           input area (issue #734). It is anchored on the stable semantic
+           attribute data-composer-seat that the official shell outputs, so it
+           does not depend on hashed class names. */
+        html[data-dsh-wallpaper-active] [data-composer-seat],
+        html[data-dsh-wallpaper-active] [data-composer-seat]::before {
+          background: none !important;
+          backdrop-filter: none !important;
+        }
+        /* Full-viewport shell surfaces (AppFrame frame, conversation root,
+           details root) paint the opaque app base background via hashed
+           CSS-module classes. While a WE wallpaper is mounted the controller
+           tags them with the own marker data-dsh-wallpaper-surface
+           (markWallpaperSurfaces), and this rule neutralizes them with no
+           class-name dependency (issue #734). */
+        html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface] {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
+      `;
+					this.doc.head.appendChild(this.rootNeutralizer);
 				}
+				this.doc.body.dataset.dshWallpaperActive = "true";
+				this.doc.documentElement.dataset.dshWallpaperActive = "true";
+				this.markSurfaces();
 				if (this.mediaLayer === null) {
-					this.mediaLayer = document.createElement("div");
+					this.mediaLayer = this.doc.createElement("div");
 					styleLayer(this.mediaLayer, -3);
-					document.body.appendChild(this.mediaLayer);
+					this.doc.body.appendChild(this.mediaLayer);
 				}
 				if (this.scrimLayer === null) {
-					this.scrimLayer = document.createElement("div");
+					this.scrimLayer = this.doc.createElement("div");
 					styleLayer(this.scrimLayer, -2);
-					document.body.appendChild(this.scrimLayer);
+					this.doc.body.appendChild(this.scrimLayer);
 				}
 				const mediaKey = descriptor.id + ":" + this.modeValue;
 				if (this.mediaLayer.dataset.mediaKey !== mediaKey) {
@@ -256,10 +386,22 @@ window.__ModuleLoader__.load({
 					const child = this.buildMedia(descriptor);
 					if (child !== null) this.mediaLayer.appendChild(child);
 				}
+				this.applyFit();
 				const blur = this.blurValue > 0 ? "blur(" + String(this.blurValue) + "px)" : "";
 				this.mediaLayer.style.filter = blur;
 				this.mediaLayer.style.transform = this.blurValue > 0 ? "scale(1.05)" : "";
 				this.scrimLayer.style.background = "rgba(0, 0, 0, " + String(this.dimValue / 100) + ")";
+			}
+			/** Push the current sizing mode onto the mounted media element. */
+			applyFit() {
+				const child = this.mediaLayer?.firstElementChild ?? null;
+				if (child instanceof HTMLElement) styleCover(child, this.fitValue);
+				if (child instanceof HTMLIFrameElement && child.dataset.dshScenePlayer === "") try {
+					child.contentWindow?.postMessage({
+						type: "dsh-set-fit",
+						fit: this.fitValue
+					}, window.location.origin);
+				} catch {}
 			}
 			/** Build the cover child for one descriptor + mode; null when unrenderable. */
 			buildMedia(descriptor) {
@@ -270,16 +412,37 @@ window.__ModuleLoader__.load({
 				}
 				if (descriptor.type === "web") {
 					if (this.modeValue === "live" && descriptor.webUrl !== null) {
-						const iframe = document.createElement("iframe");
+						const iframe = this.doc.createElement("iframe");
 						iframe.src = descriptor.webUrl;
 						iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
 						iframe.setAttribute("tabindex", "-1");
-						styleCover(iframe);
+						styleCover(iframe, this.fitValue);
 						return iframe;
 					}
 					return this.buildImage(descriptor.previewUrl);
 				}
-				if (descriptor.type === "scene") return this.buildImage(descriptor.frameUrl ?? descriptor.previewUrl, descriptor.previewUrl);
+				if (descriptor.type === "scene") {
+					if (this.modeValue === "live" && descriptor.videoUrl !== null) return this.buildVideo(descriptor.videoUrl, descriptor.frameUrl, descriptor.previewUrl);
+					if (this.modeValue === "live" && descriptor.sceneUrl) {
+						const iframe = this.doc.createElement("iframe");
+						iframe.src = descriptor.sceneUrl;
+						iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+						iframe.setAttribute("tabindex", "-1");
+						iframe.dataset.dshScenePlayer = "";
+						styleCover(iframe, this.fitValue);
+						iframe.addEventListener("load", () => {
+							try {
+								iframe.contentWindow?.postMessage({
+									type: "dsh-set-fit",
+									fit: this.fitValue
+								}, window.location.origin);
+							} catch {}
+						});
+						return iframe;
+					}
+					if (this.modeValue === "frame" && descriptor.videoUrl !== null && descriptor.frameUrl === null) return this.buildVideoFrame(descriptor.videoUrl, descriptor.previewUrl);
+					return this.buildImage(descriptor.frameUrl ?? descriptor.previewUrl, descriptor.previewUrl);
+				}
 				return this.buildImage(descriptor.previewUrl);
 			}
 			/** Push the persisted sound/volume settings onto the mounted video. */
@@ -288,8 +451,8 @@ window.__ModuleLoader__.load({
 				this.videoElement.muted = !this.soundValue;
 				this.videoElement.volume = this.volumeValue / 100;
 			}
-			buildVideo(url) {
-				const video = document.createElement("video");
+			buildVideo(url, frameUrl = null, previewUrl = null) {
+				const video = this.doc.createElement("video");
 				video.src = url;
 				video.muted = !this.soundValue;
 				video.volume = this.volumeValue / 100;
@@ -297,17 +460,23 @@ window.__ModuleLoader__.load({
 				video.autoplay = true;
 				video.playsInline = true;
 				video.setAttribute("aria-hidden", "true");
-				styleCover(video);
+				styleCover(video, this.fitValue);
 				this.videoElement = video;
+				if (frameUrl !== null || previewUrl !== null) video.addEventListener("error", () => {
+					const nextUrl = frameUrl ?? previewUrl;
+					const nextFallback = frameUrl !== null ? previewUrl : null;
+					const img = this.buildImage(nextUrl, nextFallback);
+					if (img && video.parentElement) video.parentElement.replaceChild(img, video);
+				}, { once: true });
 				video.play()?.catch(() => {});
 				return video;
 			}
 			/** Static-frame mode for video: capture the first frame into an image. */
 			buildVideoFrame(url, previewUrl) {
-				const image = document.createElement("img");
-				styleCover(image);
+				const image = this.doc.createElement("img");
+				styleCover(image, this.fitValue);
 				if (previewUrl !== null) image.src = previewUrl;
-				const video = document.createElement("video");
+				const video = this.doc.createElement("video");
 				video.muted = true;
 				video.playsInline = true;
 				video.preload = "auto";
@@ -315,7 +484,7 @@ window.__ModuleLoader__.load({
 				video.addEventListener("loadeddata", () => {
 					try {
 						const scale = Math.min(1, FRAME_MAX_EDGE / Math.max(video.videoWidth, video.videoHeight));
-						const canvas = document.createElement("canvas");
+						const canvas = this.doc.createElement("canvas");
 						canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
 						canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
 						const context = canvas.getContext("2d");
@@ -330,16 +499,61 @@ window.__ModuleLoader__.load({
 			}
 			buildImage(url, fallbackUrl = null) {
 				if (url === null) return null;
-				const image = document.createElement("img");
+				const image = this.doc.createElement("img");
 				image.src = url;
 				image.alt = "";
 				if (fallbackUrl !== null && fallbackUrl !== url) image.addEventListener("error", () => {
-					image.src = fallbackUrl;
+					if (image.src !== fallbackUrl) image.src = fallbackUrl;
 				}, { once: true });
-				styleCover(image);
+				styleCover(image, this.fitValue);
 				return image;
 			}
+			/** Tag the official shell full-viewport background surfaces (AppFrame
+			* frame, conversation root, details root) and the sidebar workspace-list
+			* end fade with the own marker data-dsh-wallpaper-surface so the
+			* neutralizer can target them without hashed class names (#734). Idempotent
+			* across renders within one mount; untagged on teardown. */
+			markSurfaces() {
+				const root = this.doc.getElementById("root");
+				if (root !== null) {
+					const isSurface = this.options.declareSurface ?? defaultWallpaperSurface;
+					const stack = [root];
+					while (stack.length > 0) {
+						const node = stack.pop();
+						if (node === void 0) continue;
+						if (node instanceof HTMLElement && !node.hasAttribute("data-dsh-wallpaper-surface") && isSurface(node, this.doc)) {
+							node.setAttribute("data-dsh-wallpaper-surface", "");
+							this.taggedSurfaces.push(node);
+						}
+						for (const child of Array.from(node.children)) stack.push(child);
+					}
+				}
+				this.markWorkspaceFades();
+			}
+			/** Tag the sidebar workspaces list-end fade with the same own marker (#734). */
+			markWorkspaceFades() {
+				const slot = this.doc.querySelector("[data-slot=\"sidebar.workspaces\"]");
+				if (slot === null) return;
+				const isFade = this.options.declareWorkspaceFade ?? defaultWorkspaceFade;
+				const stack = [slot];
+				while (stack.length > 0) {
+					const node = stack.pop();
+					if (node === void 0) continue;
+					if (node instanceof HTMLElement && !node.hasAttribute("data-dsh-wallpaper-surface") && isFade(node, this.doc)) {
+						node.setAttribute("data-dsh-wallpaper-surface", "");
+						this.taggedSurfaces.push(node);
+					}
+					for (const child of Array.from(node.children)) stack.push(child);
+				}
+			}
+			untagSurfaces() {
+				for (const el of this.taggedSurfaces) el.removeAttribute("data-dsh-wallpaper-surface");
+				this.taggedSurfaces = [];
+			}
 			teardownLayers() {
+				this.untagSurfaces();
+				delete this.doc.body.dataset.dshWallpaperActive;
+				delete this.doc.documentElement.dataset.dshWallpaperActive;
 				if (this.rootNeutralizer !== null) {
 					this.rootNeutralizer.remove();
 					this.rootNeutralizer = null;
@@ -505,6 +719,7 @@ window.__ModuleLoader__.load({
 			const enabled = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.enabled);
 			const selection = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.selection);
 			const mode = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.mode);
+			const fit = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.fit);
 			const dim = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.dim);
 			const blur = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.wallpaperBlur);
 			const pauseOnHidden = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.pauseOnHidden);
@@ -570,6 +785,7 @@ window.__ModuleLoader__.load({
 				videoUrl: item.videoUrl,
 				webUrl: item.webUrl,
 				frameUrl: item.frameUrl,
+				sceneUrl: item.sceneUrl,
 				previewUrl: item.previewUrl
 			});
 			/** Whether one entry can be mounted at all in the current mode. */
@@ -659,6 +875,39 @@ window.__ModuleLoader__.load({
 											wallpaper.clearSelection();
 										},
 										children: t("wallpaperClear")
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: skin_center_module_css_default.themeRow,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.themeLabel,
+										children: t("wallpaperFit")
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: skin_center_module_css_default.themeButton + (fit === "cover" ? " " + skin_center_module_css_default.themeButtonActive : ""),
+										onClick: () => {
+											wallpaper.setFit("cover");
+										},
+										children: t("wallpaperFitCover")
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: skin_center_module_css_default.themeButton + (fit === "contain" ? " " + skin_center_module_css_default.themeButtonActive : ""),
+										onClick: () => {
+											wallpaper.setFit("contain");
+										},
+										children: t("wallpaperFitContain")
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: skin_center_module_css_default.themeButton + (fit === "fill" ? " " + skin_center_module_css_default.themeButtonActive : ""),
+										onClick: () => {
+											wallpaper.setFit("fill");
+										},
+										children: t("wallpaperFitFill")
 									})
 								]
 							}),
@@ -987,7 +1236,7 @@ window.__ModuleLoader__.load({
 		* @returns the plugin card.
 		*/
 		function SkinCenter({ t, runtime, theme, background, wallpaper }) {
-			const snapshot = (0, react.useSyncExternalStore)(theme.subscribe, theme.getTheme);
+			const snapshot = (0, react.useSyncExternalStore)((listener) => theme.subscribe(listener), () => theme.getTheme());
 			const enabled = (0, react.useSyncExternalStore)(background.subscribe, background.enabled);
 			const opacity = (0, react.useSyncExternalStore)(background.subscribe, background.opacity);
 			const blurEmpty = (0, react.useSyncExternalStore)(background.subscribe, background.blurEmpty);
@@ -1378,13 +1627,14 @@ window.__ModuleLoader__.load({
 		const SCRIM_VAR = "--dsw-skin-scrim";
 		/**
 		* Selector for a conversation message row inside the shell's center column.
-		* The `data-pane="conversation"` attribute is stamped by the dsh-web-ui-all
-		* compat shim on the center column; the _userRow / _compactionRow /
-		* _contextRow / _turnErrorRow suffixes are the official shell's CSS-module
-		* hashed message-row classes (hash prefix varies, suffix is stable). Stable
-		* like the repo's compat shim, not hash-dependent.
+		* Official shell message rows carry `data-chat-anchor-key`; the
+		* `data-pane="conversation"` attribute is stamped by the dsh-web-ui-all compat
+		* shim on the center column, where the _userRow / _compactionRow /
+		* _contextRow / _turnErrorRow suffixes are CSS-module message-row classes
+		* (hash prefix varies, suffix is stable).
 		*/
 		const CONVERSATION_CONTENT_SELECTOR = [
+			"[data-chat-anchor-key]",
 			"[data-pane=\"conversation\"] [class*=\"_userRow\"]",
 			"[data-pane=\"conversation\"] [class*=\"_compactionRow\"]",
 			"[data-pane=\"conversation\"] [class*=\"_contextRow\"]",
@@ -1431,9 +1681,7 @@ window.__ModuleLoader__.load({
 					this.publish();
 				});
 			}
-			enabled() {
-				return this.enabledValue;
-			}
+			enabled = () => this.enabledValue;
 			setEnabled(value) {
 				this.enabledValue = value;
 				this.applyOcclusion();
@@ -1441,21 +1689,15 @@ window.__ModuleLoader__.load({
 				this.publish();
 				this.scope.set("enabled", value);
 			}
-			opacity() {
-				return this.opacityValue;
-			}
-			blurEmpty() {
-				return this.blurEmptyValue;
-			}
-			blurContent() {
-				return this.blurContentValue;
-			}
-			subscribe(listener) {
+			opacity = () => this.opacityValue;
+			blurEmpty = () => this.blurEmptyValue;
+			blurContent = () => this.blurContentValue;
+			subscribe = (listener) => {
 				this.listeners.add(listener);
 				return () => {
 					this.listeners.delete(listener);
 				};
-			}
+			};
 			set(opacity) {
 				const clamped = Math.max(0, Math.min(100, Math.round(opacity)));
 				this.opacityValue = clamped;
@@ -1625,7 +1867,7 @@ window.__ModuleLoader__.load({
 			backgroundHintInert: "Only applies to skins that paint a backdrop (Blue Fantasy / Whale Song). Applies to the official default automatically once such a skin is active.",
 			wallpaperTitle: "Wallpaper Engine",
 			wallpaperEnable: "Enable wallpapers",
-			wallpaperHint: "Use your local Wallpaper Engine library as the GUI backdrop: video and web wallpapers render live, scene wallpapers as a static frame.",
+			wallpaperHint: "Use your local Wallpaper Engine library as the GUI backdrop: video, web, and scene wallpapers render live (scene wallpapers need WebGL).",
 			wallpaperLoadError: "Wallpaper library failed to load",
 			wallpaperLibraryFound: "Wallpaper Engine library detected",
 			wallpaperLibraryManual: "Manual folders only (no Wallpaper Engine install found; set folders in the skin-wallpaper settings)",
@@ -1633,6 +1875,10 @@ window.__ModuleLoader__.load({
 			wallpaperMode: "Render mode",
 			wallpaperModeLive: "Live",
 			wallpaperModeFrame: "Static frame",
+			wallpaperFit: "Sizing mode",
+			wallpaperFitCover: "Cover (fill)",
+			wallpaperFitContain: "Fit (entire image)",
+			wallpaperFitFill: "Stretch",
 			wallpaperClear: "Turn off wallpaper",
 			wallpaperDim: "Wallpaper dimming",
 			wallpaperBlur: "Wallpaper blur",
@@ -1690,7 +1936,7 @@ window.__ModuleLoader__.load({
 			backgroundHintInert: "仅对带背景图插画的皮肤（蓝色幻想 / 鲸吟）生效；官方默认无背景图，该滑块对这些皮肤自动生效。",
 			wallpaperTitle: "Wallpaper Engine",
 			wallpaperEnable: "启用动态壁纸",
-			wallpaperHint: "把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频与网页壁纸动态渲染，场景壁纸以静态帧呈现。",
+			wallpaperHint: "把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频、网页与场景壁纸均动态渲染（场景壁纸需要 WebGL）。",
 			wallpaperLoadError: "壁纸库加载失败",
 			wallpaperLibraryFound: "已检测到 Wallpaper Engine 壁纸库",
 			wallpaperLibraryManual: "仅手动目录（未检测到 Wallpaper Engine 安装，可在 skin-wallpaper 设置里添加目录）",
@@ -1698,6 +1944,10 @@ window.__ModuleLoader__.load({
 			wallpaperMode: "渲染模式",
 			wallpaperModeLive: "动态",
 			wallpaperModeFrame: "静态帧",
+			wallpaperFit: "适应方式",
+			wallpaperFitCover: "铺满裁剪",
+			wallpaperFitContain: "完整缩放",
+			wallpaperFitFill: "拉伸铺满",
 			wallpaperClear: "关闭壁纸",
 			wallpaperDim: "壁纸暗化",
 			wallpaperBlur: "壁纸模糊",
@@ -1811,7 +2061,7 @@ window.__ModuleLoader__.load({
 			{
 				selector: "[data-slot=\"root\"]",
 				attrs: [["data-dsh-surface", "root"]],
-				note: "web-react root outlet"
+				note: "ui-renderer root outlet"
 			},
 			{
 				selector: "[data-slot=\"sidebar\"]",
@@ -2084,10 +2334,11 @@ window.__ModuleLoader__.load({
 			}));
 			let latestRequest = 0;
 			let currentActivation = null;
-			let active = null;
+			const initialSkinId = doc.documentElement?.getAttribute("data-dsh-skin") || null;
+			let active = initialSkinId;
 			/** The committed selection try-on restores (component scope). */
 			let committed = {
-				id: null,
+				id: initialSkinId,
 				entry: null
 			};
 			/** Last non-null applied entry, so refresh() can re-activate it. */
@@ -2098,7 +2349,7 @@ window.__ModuleLoader__.load({
 			let previewing = false;
 			const listeners = /* @__PURE__ */ new Set();
 			let stateSnapshot = {
-				active: null,
+				active: initialSkinId,
 				trying: null,
 				previewing: false
 			};
@@ -2271,6 +2522,15 @@ window.__ModuleLoader__.load({
 				} catch (error) {
 					ledger.disposeActivation(activation);
 					if (error instanceof StaleSwitch) return active;
+					if (currentActivation === null) {
+						active = null;
+						committed = {
+							id: null,
+							entry: null
+						};
+						doc.documentElement.removeAttribute("data-dsh-skin");
+						emit();
+					}
 					onError(`switch to ${id ?? "stock"} failed; previous skin intact`, error);
 					return active;
 				}
@@ -2303,6 +2563,7 @@ window.__ModuleLoader__.load({
 					if (suppressed === lastSuppressed) return active;
 					lastSuppressed = suppressed;
 					const id = active;
+					if (id !== null && lastEntry === null) return active;
 					return await switchInternal(id, id === null ? null : lastEntry, false);
 				},
 				shutdown() {
@@ -2402,13 +2663,21 @@ window.__ModuleLoader__.load({
 			(async () => {
 				try {
 					await refreshCatalog();
-					const payload = await (await fetchImpl(`${apiBase}/active`)).json();
-					const active = payload.ok && typeof payload.active === "string" ? payload.active : null;
+					let active = doc.documentElement?.getAttribute("data-dsh-skin") || null;
+					if (!active) {
+						const payload = await (await fetchImpl(`${apiBase}/active`)).json();
+						active = payload.ok && typeof payload.active === "string" ? payload.active : null;
+					}
 					if (active === null) return;
 					const entry = store.find(active);
-					if (entry === null) return;
+					if (entry === null) {
+						await controller.switchTo(null, null);
+						return;
+					}
 					await controller.switchTo(active, entry);
-				} catch {}
+				} catch {
+					await controller.switchTo(null, null).catch(() => {});
+				}
 			})();
 			return store;
 		}
@@ -2476,6 +2745,7 @@ window.__ModuleLoader__.load({
 					enabled: () => wallpaper.enabled(),
 					selection: () => wallpaper.selection(),
 					mode: () => wallpaper.mode(),
+					fit: () => wallpaper.fit(),
 					dim: () => wallpaper.dim(),
 					wallpaperBlur: () => wallpaper.wallpaperBlur(),
 					pauseOnHidden: () => wallpaper.pauseOnHidden(),
@@ -2489,6 +2759,7 @@ window.__ModuleLoader__.load({
 					subscribe: (listener) => wallpaper.subscribe(listener),
 					setEnabled: (value) => wallpaper.setEnabled(value),
 					setMode: (value) => wallpaper.setMode(value),
+					setFit: (fit) => wallpaper.setFit(fit),
 					setDim: (value) => wallpaper.setDim(value),
 					setBlur: (value) => wallpaper.setBlur(value),
 					setPauseOnHidden: (value) => wallpaper.setPauseOnHidden(value),

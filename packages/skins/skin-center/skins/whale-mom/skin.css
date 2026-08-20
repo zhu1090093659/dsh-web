@@ -30,7 +30,7 @@ body[data-ds-dark-theme] {
   --dsw-static-neutral-bluish-750: #8498cd;
   --dsw-static-neutral-bluish-800: #9fb0da;
   --dsw-static-neutral-bluish-950: #e6ebf6;
-  --dsw-alias-bg-base: rgba(236, 244, 252, calc(.13 + var(--dsh-skin-scrim, 0) * .5));
+  --dsw-alias-bg-base: rgba(236, 244, 252, calc(var(--dsh-skin-scrim, 0) * .5));
   --dsw-alias-bg-layer-1: rgba(var(--dsh-skin-sidebar-rgb), calc(var(--dsh-skin-sidebar-alpha) + var(--dsh-skin-scrim, 0) * .3));
   --dsh-skin-sidebar-rgb: 240, 247, 253;
   --dsh-skin-sidebar-alpha: 0;
@@ -129,7 +129,7 @@ body[data-ds-dark-theme] {
 }
 
 body[data-ds-dark-theme] {
-  --dsw-alias-bg-base: rgba(6, 10, 20, calc(.17 + var(--dsh-skin-scrim, 0) * .5));
+  --dsw-alias-bg-base: rgba(6, 10, 20, calc(var(--dsh-skin-scrim, 0) * .5));
   --dsw-alias-bg-layer-1: rgba(var(--dsh-skin-sidebar-rgb), calc(var(--dsh-skin-sidebar-alpha) + var(--dsh-skin-scrim, 0) * .3));
   --dsh-skin-sidebar-rgb: 8, 12, 24;
   --dsh-skin-sidebar-alpha: 0;

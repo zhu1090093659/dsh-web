@@ -27,12 +27,16 @@
  * @module @linxin666/dsh-pet/registry
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { ActivityPhase, PetAnimation } from './state.ts'
 import { normalizePetRemarks, type PetRemarks, type PetRemarksManifest } from './remarks.ts'
+import { mergeVoicePacks, normalizeVoicePack, type PetPanelView, type VoicePack } from './voice-pack.ts'
+import { parseDecorationManifest } from './decoration.ts'
+import { imageDimensions } from './image-dimensions.ts'
+import { PET_DECORATION_API_VERSION, type DecorationView } from './contracts/status-decoration.ts'
 import { dshHome } from './dsh-home.ts'
 import { parsePetManifest, type PetManifestLive2d, type PetManifestV2, type PetRendererKind } from './manifest-v2.ts'
 import { collectModel3References } from './model3.ts'
@@ -212,6 +216,8 @@ export interface PetDefinition {
   atlasUrl: string
   /** Browser URL of the manifest (served by the host asset route). */
   manifestUrl: string
+  /** Hover-panel chrome overrides (voice.json 'panel'; pet-center M4). */
+  panel?: PetPanelView
 }
 
 /** A resolved pet plus its host-side file location. */
@@ -228,6 +234,11 @@ export interface PetEntry extends PetDefinition {
   servable: readonly string[]
   /** Normalized per-pet remark pools (manifest 'remarks'), when declared. */
   remarks?: PetRemarks
+  /**
+   * Normalized per-pet voice pack (the directory's voice.json; pet-center
+   * M4). Host-side only — the browser half receives its 'panel' slice.
+   */
+  voice?: VoicePack
 }
 
 /** Registry load result: resolved entries plus load warnings. */
@@ -239,6 +250,32 @@ export interface PetRegistry {
   byId(id: string): PetEntry | undefined
   /** The pet an installation falls back to when the selection is unknown. */
   defaultEntry(): PetEntry
+  /**
+   * The global voice override ('$DSH_HOME/pets/.voice.json'), when present —
+   * layers under every per-pet pack and over the built-in pools (M4, #677).
+   */
+  globalVoice?: VoicePack
+  /**
+   * Status decorations (pet-center M5, #567): built-in 'assets/decorations'
+   * entries overridden by same-id user entries under
+   * '$DSH_HOME/pets/decorations'. Independent of the pet entries. Optional
+   * so prebuilt test registries without decorations keep compiling.
+   */
+  decorations?: DecorationEntry[]
+  /** Look up one decoration by id. */
+  decorationById?(id: string): DecorationEntry | undefined
+}
+
+/** One resolved status decoration plus its host-side file location. */
+export interface DecorationEntry extends DecorationView {
+  /** Absolute directory holding the descriptor and strip. */
+  dir: string
+  /** Strip path relative to 'dir' (declared by the descriptor). */
+  entryPath: string
+  /** Descriptor-relative files the decoration asset route may serve. */
+  servable: readonly string[]
+  /** Asset license identifier (required by the descriptor). */
+  license: string
 }
 
 /** One structured registry diagnostic (manifest-v2 era). */
@@ -551,20 +588,23 @@ function scanPetDir(dir: string, options: { assetPrefix?: string; warnings?: str
       options.warnings?.push(diagnostic.message)
     }
     if (!verdict.ok) continue
+    let entry: PetEntry | undefined
     if (verdict.manifest.renderer === 'live2d') {
-      const entry = resolveLive2dEntry(verdict.manifest, entryDir, options)
-      if (entry !== undefined) entries.push(entry)
-      continue
+      entry = resolveLive2dEntry(verdict.manifest, entryDir, options)
+    } else {
+      const legacy = flattenV2Sprite2d(verdict.manifest)
+      if (legacy === undefined) {
+        const note = 'pet ' + verdict.manifest.id + ': sprite2d.atlasRows only supports 9 or 11 under the v1 compat resolver'
+        options.diagnostics?.push({ level: 'error', source: entryDir, message: note })
+        options.warnings?.push(note)
+        continue
+      }
+      entry = resolvePetManifest(legacy, entryDir, options)
     }
-    const legacy = flattenV2Sprite2d(verdict.manifest)
-    if (legacy === undefined) {
-      const note = 'pet ' + verdict.manifest.id + ': sprite2d.atlasRows only supports 9 or 11 under the v1 compat resolver'
-      options.diagnostics?.push({ level: 'error', source: entryDir, message: note })
-      options.warnings?.push(note)
-      continue
-    }
-    const entry = resolvePetManifest(legacy, entryDir, options)
-    if (entry !== undefined) entries.push(entry)
+    if (entry === undefined) continue
+    // Optional voice pack (voice.json) — pure content, warn-and-drop (M4).
+    const voice = loadVoicePackFile(join(entryDir, 'voice.json'), options)
+    entries.push({ ...entry, ...(voice === undefined ? {} : { voice }) })
   }
   return entries
 }
@@ -577,6 +617,176 @@ function readPetJson(file: string, warnings: string[] | undefined): unknown {
     warnings?.push('skipping ' + file + ': ' + (error instanceof Error ? error.message : String(error)))
     return undefined
   }
+}
+
+/**
+ * Scan-time read ceiling for user-authored JSON descriptors (voice.json,
+ * .voice.json, decoration.json): the registry reads these synchronously at
+ * plugin startup, and a pathological file — multi-GB, or a FIFO/device
+ * symlink — must not hang or exhaust the host before the warn-and-drop
+ * discipline can apply (review-spd follow-up, pet-center M4/M5).
+ */
+export const PET_SCAN_JSON_CAP = 64 * 1024
+
+/**
+ * Stat one scanned JSON descriptor with a regular-file + size guard, so a
+ * pathological user file is skipped with a warning instead of stalling or
+ * OOM-ing the host at startup. Returns the Stats, or undefined when the
+ * caller must skip the file (a warning was recorded).
+ */
+function guardedScannedJsonStat(
+  file: string,
+  options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] },
+  what: string,
+): ReturnType<typeof statSync> | undefined {
+  let st: ReturnType<typeof statSync>
+  try {
+    st = statSync(file)
+  } catch {
+    return undefined
+  }
+  const warn = (message: string): void => {
+    options.warnings?.push(file + ': ' + message)
+    options.diagnostics?.push({ level: 'warning', source: file, message: file + ': ' + message })
+  }
+  if (!st.isFile()) {
+    warn(what + ' is not a regular file; ignored')
+    return undefined
+  }
+  if (st.size > PET_SCAN_JSON_CAP) {
+    warn(what + ' exceeds the ' + PET_SCAN_JSON_CAP + '-byte scan ceiling; ignored')
+    return undefined
+  }
+  return st
+}
+
+/**
+ * Load and normalize one optional voice.json (pet-center M4). A missing
+ * file is silent; a broken file warns and drops. The pack is pure content,
+ * so every issue stays a warning — a bad voice.json never rejects a pet.
+ */
+function loadVoicePackFile(
+  file: string,
+  options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] },
+): VoicePack | undefined {
+  if (!existsSync(file)) return undefined
+  if (guardedScannedJsonStat(file, options, 'voice pack') === undefined) return undefined
+  const warn = (message: string): void => {
+    options.warnings?.push(file + ': ' + message)
+    options.diagnostics?.push({ level: 'warning', source: file, message: file + ': ' + message })
+  }
+  let raw: unknown
+  try {
+    raw = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    warn('voice pack is not valid JSON; ignored: ' + (error instanceof Error ? error.message : String(error)))
+    return undefined
+  }
+  return normalizeVoicePack(raw, warn)
+}
+
+/** Decoration asset URL prefix (served by the decoration route, M5). */
+export const DECORATION_ASSET_PREFIX = '/api/pet/decoration'
+
+/** Read the pixel dimensions of a decoration strip (PNG/WebP), if decodable. */
+function readImageDimensions(file: string): { width: number; height: number } | undefined {
+  let header: Buffer
+  try {
+    // Only the header is needed for dimensions; cap the read so a huge or
+    // corrupt strip cannot balloon memory during the registry scan.
+    const fd = openSync(file, 'r')
+    try {
+      header = Buffer.alloc(64)
+      const read = readSync(fd, header, 0, header.length, 0)
+      if (read < 0) return undefined
+      header = header.subarray(0, read)
+    } finally {
+      closeSync(fd)
+    }
+  } catch {
+    return undefined
+  }
+  return imageDimensions(header)
+}
+
+/**
+ * Scan one directory of decoration folders ('decoration.json' + strip).
+ * Later scans override earlier ones on id collision; a bad descriptor warns
+ * and skips — the never-throw philosophy holds for decorations too (M5).
+ */
+function scanDecorationDir(dir: string, options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] }): DecorationEntry[] {
+  if (!existsSync(dir)) return []
+  let names: string[] = []
+  try {
+    names = readdirSync(dir).filter(name => !name.startsWith('.'))
+  } catch {
+    return []
+  }
+  names.sort()
+  const entries: DecorationEntry[] = []
+  for (const name of names) {
+    const entryDir = join(dir, name)
+    const manifestFile = join(entryDir, 'decoration.json')
+    if (!existsSync(manifestFile)) continue
+    if (guardedScannedJsonStat(manifestFile, options, 'decoration descriptor') === undefined) continue
+    let raw: unknown
+    try {
+      raw = JSON.parse(readFileSync(manifestFile, 'utf8'))
+    } catch (error) {
+      const message = 'skipping ' + manifestFile + ': ' + (error instanceof Error ? error.message : String(error))
+      options.warnings?.push(message)
+      options.diagnostics?.push({ level: 'error', source: entryDir, message })
+      continue
+    }
+    const verdict = parseDecorationManifest(raw, manifestFile)
+    for (const diagnostic of verdict.diagnostics) {
+      options.diagnostics?.push({ level: diagnostic.level, source: entryDir, message: diagnostic.message })
+      options.warnings?.push(diagnostic.message)
+    }
+    if (!verdict.ok) continue
+    const manifest = verdict.manifest
+    // A missing strip keeps the entry listed (mirroring the live2d closure
+    // discipline) but earns a diagnostic: the ornament will silently render
+    // nothing, and the warning names the file to fix.
+    if (!existsSync(join(entryDir, manifest.entry))) {
+      const message = 'decoration ' + manifest.id + ': strip file missing: ' + manifest.entry
+      options.warnings?.push(message)
+      options.diagnostics?.push({ level: 'warning', source: entryDir, message })
+    } else {
+      // Geometry check: the client renders the strip as a single row of
+      // 'columns' frames (background-position advances by frame width only),
+      // so the strip must be exactly cell.width * columns wide and cell.height
+      // tall. A mismatched strip silently shows the wrong/partial frames —
+      // warn-and-keep, mirroring the missing-strip discipline (never throw).
+      const actual = readImageDimensions(join(entryDir, manifest.entry))
+      if (actual !== undefined) {
+        const expectedWidth = manifest.cell.width * manifest.columns
+        if (actual.width !== expectedWidth || actual.height !== manifest.cell.height) {
+          const message = 'decoration ' + manifest.id + ': strip ' + actual.width + 'x' + actual.height
+            + ' does not match cell ' + manifest.cell.width + 'x' + manifest.cell.height + ' x ' + manifest.columns
+            + ' columns (expected ' + expectedWidth + 'x' + manifest.cell.height + '); frames will render wrong'
+          options.warnings?.push(message)
+          options.diagnostics?.push({ level: 'warning', source: entryDir, message })
+        }
+      }
+    }
+    entries.push({
+      apiVersion: PET_DECORATION_API_VERSION,
+      id: manifest.id,
+      dir: entryDir,
+      entryPath: manifest.entry,
+      servable: ['decoration.json', manifest.entry],
+      license: manifest.license,
+      assetBase: DECORATION_ASSET_PREFIX + '/' + encodeURIComponent(manifest.id),
+      entryUrl: DECORATION_ASSET_PREFIX + '/' + encodeURIComponent(manifest.id) + '/' + manifest.entry,
+      cell: manifest.cell,
+      columns: manifest.columns,
+      durations: manifest.durations,
+      loop: manifest.loop,
+      phases: manifest.phases,
+    })
+  }
+  return entries
 }
 
 /**
@@ -611,11 +821,14 @@ export function loadPetRegistry(options: PetRegistryOptions): PetRegistry {
 
   // The pet-center user directory ranks above the legacy hatch-pet source.
   const dshPetsDir = options.dshPetsDir ?? join(dshHome(), 'pets')
+  let globalVoice: VoicePack | undefined
   if (dshPetsDir !== '') {
     for (const entry of scanPetDir(dshPetsDir, { assetPrefix, warnings, diagnostics })) {
       if (byId.has(entry.id)) warnings.push('user pet ' + entry.id + ' overrides an earlier registration')
       byId.set(entry.id, entry)
     }
+    // The global voice override layers under every per-pet pack (M4, #677).
+    globalVoice = loadVoicePackFile(join(dshPetsDir, '.voice.json'), { warnings, diagnostics })
   }
 
   for (const manifest of options.extra ?? []) {
@@ -636,18 +849,63 @@ export function loadPetRegistry(options: PetRegistryOptions): PetRegistry {
     byId.set(entry.id, entry)
   }
 
+  // Status decorations (pet-center M5, #567): built-in entries first,
+  // then same-id user entries under '$DSH_HOME/pets/decorations' override.
+  const decorationById = new Map<string, DecorationEntry>()
+  for (const entry of scanDecorationDir(join(packageRoot, 'assets', 'decorations'), { warnings, diagnostics })) {
+    decorationById.set(entry.id, entry)
+  }
+  if (dshPetsDir !== '') {
+    for (const entry of scanDecorationDir(join(dshPetsDir, 'decorations'), { warnings, diagnostics })) {
+      if (decorationById.has(entry.id)) {
+        warnings.push('user decoration ' + entry.id + ' overrides the built-in one')
+      }
+      decorationById.set(entry.id, entry)
+    }
+  }
+
   const entries = [...byId.values()]
+  const decorations = [...decorationById.values()]
   return {
     entries,
     warnings,
     diagnostics,
     byId: (id: string) => byId.get(id),
     defaultEntry: () => entries.find(entry => builtinIds.has(entry.id)) ?? entries[0]!,
+    ...(globalVoice === undefined ? {} : { globalVoice }),
+    decorations,
+    decorationById: (id: string) => decorationById.get(id),
   }
 }
 
-/** Strip host-only fields, leaving the client-visible definition. */
-export function petEntryView(entry: PetEntry): PetDefinition {
+/** The built-in default decoration id (M5): the first reference ornament. */
+export const DEFAULT_DECORATION_ID = 'whale'
+
+/** Strip host-only fields, leaving the browser-visible decoration view. */
+export function decorationView(entry: DecorationEntry): DecorationView {
+  return {
+    apiVersion: PET_DECORATION_API_VERSION,
+    id: entry.id,
+    assetBase: entry.assetBase,
+    entryUrl: entry.entryUrl,
+    cell: entry.cell,
+    columns: entry.columns,
+    durations: entry.durations,
+    loop: entry.loop,
+    phases: entry.phases,
+  }
+}
+
+/**
+ * Strip host-only fields, leaving the client-visible definition. When the
+ * registry carries a global voice pack, its panel chrome layers under the
+ * entry's own pack (per-slot merge, pet > global), mirroring the voice-pool
+ * layering (pet-center M4, issue #677).
+ */
+export function petEntryView(entry: PetEntry, globalVoice?: VoicePack): PetDefinition {
+  const panel = globalVoice === undefined
+    ? entry.voice?.panel
+    : mergeVoicePacks(globalVoice, entry.voice)?.panel
   return {
     id: entry.id,
     displayName: entry.displayName,
@@ -662,6 +920,7 @@ export function petEntryView(entry: PetEntry): PetDefinition {
     ...(entry.sequences === undefined ? {} : { sequences: entry.sequences }),
     atlasUrl: entry.atlasUrl,
     manifestUrl: entry.manifestUrl,
+    ...(panel === undefined ? {} : { panel }),
   }
 }
 

@@ -5,7 +5,10 @@
  * domains are platform-registered, so the pet serves its own API and media —
  * the same pattern as dsh-remote-web-ui's '/api/pair' family. The asset route
  * is one prefix registration serving every registry entry (manifest, atlas,
- * optional previews), so adding a pet never touches route wiring.
+ * optional previews), so adding a pet never touches route wiring. Both the
+ * JSON API, the asset prefix, and the Live2D runtime prefix are loopback-only
+ * by default; a live paired-device cookie is an extra allow path when
+ * remote-web-ui is loaded.
  * @module @linxin666/dsh-pet/routes
  */
 
@@ -13,11 +16,12 @@ import { existsSync, realpathSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, sep } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { Context } from '@deepseek-ai/cordis'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { PetService } from './service.ts'
 import type { PetInteraction } from './affinity.ts'
-import { petEntryView, petPackageRoot, type PetEntry, type PetRegistry } from './registry.ts'
-import { isLoopbackRequest } from './loopback.ts'
+import { DECORATION_ASSET_PREFIX, petEntryView, petPackageRoot, type PetEntry, type PetRegistry } from './registry.ts'
+import { isPetAllowed } from './access.ts'
 import { dshHome } from './dsh-home.ts'
 
 /** Browser-facing base path of the pet API. */
@@ -135,20 +139,20 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
   })
 }
 
-/** Shared route fence: the browser UI is a loopback client; LAN hosts stay out. */
-function guard(req: IncomingMessage, res: ServerResponse): boolean {
-  if (isLoopbackRequest(req)) return true
+/** Shared route fence: loopback always passes; a live paired-device cookie is an extra allow path. */
+function guard(ctx: Context, req: IncomingMessage, res: ServerResponse): boolean {
+  if (isPetAllowed(ctx, req)) return true
   json(res, 403, { ok: false, error: 'forbidden: loopback-only' })
   return false
 }
 
 /** Wrap one async service call as a GET JSON route. */
-function getRoute(path: string, run: () => Promise<unknown>): WebRoute {
+function getRoute(ctx: Context, path: string, run: () => Promise<unknown>): WebRoute {
   return {
     kind: 'exact',
     path,
     handler: (req: IncomingMessage, res: ServerResponse): void => {
-      if (!guard(req, res)) return
+      if (!guard(ctx, req, res)) return
       if (!requireMethod(req, res, 'GET')) return
       run().then((value) => json(res, 200, value), (error) => {
         json(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
@@ -158,12 +162,12 @@ function getRoute(path: string, run: () => Promise<unknown>): WebRoute {
 }
 
 /** Wrap one async service call as a POST JSON route (body passed through). */
-function postRoute(path: string, run: (body: Record<string, unknown>) => Promise<unknown>): WebRoute {
+function postRoute(ctx: Context, path: string, run: (body: Record<string, unknown>) => Promise<unknown>): WebRoute {
   return {
     kind: 'exact',
     path,
     handler: (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-      if (!guard(req, res)) return Promise.resolve()
+      if (!guard(ctx, req, res)) return Promise.resolve()
       if (!requireMethod(req, res, 'POST')) return Promise.resolve()
       return readJsonBody(req).then((body) => {
         const record = (typeof body === 'object' && body !== null) ? body as Record<string, unknown> : {}
@@ -200,10 +204,10 @@ function dirAliases(registry: PetRegistry): Map<string, PetEntry> {
  * match; containedRealpath stays as the second layer. Composed pets without
  * a manifest file get a synthesized pet.json.
  */
-function assetHandler(registry: PetRegistry, caps: PetAssetCaps): WebRoute['handler'] {
+function assetHandler(ctx: Context, registry: PetRegistry, caps: PetAssetCaps): WebRoute['handler'] {
   const aliases = dirAliases(registry)
-  return (req: IncomingMessage, res: ServerResponse): void => {
-    if (!guard(req, res)) return
+  return ((req: IncomingMessage, res: ServerResponse) => {
+    if (!guard(ctx, req, res)) return
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.writeHead(405)
       res.end()
@@ -263,7 +267,7 @@ function assetHandler(registry: PetRegistry, caps: PetAssetCaps): WebRoute['hand
       file = existsSync(preview) ? preview : undefined
     }
     if (synthesized) {
-      const body = Buffer.from(JSON.stringify(petEntryView(entry), null, 2), 'utf8')
+      const body = Buffer.from(JSON.stringify(petEntryView(entry, registry.globalVoice), null, 2), 'utf8')
       res.writeHead(200, {
         'content-type': 'application/json; charset=utf-8',
         'content-length': String(body.byteLength),
@@ -303,7 +307,7 @@ function assetHandler(registry: PetRegistry, caps: PetAssetCaps): WebRoute['hand
       res.end()
       return
     }
-    readFile(resolved).then((body) => {
+    return readFile(resolved).then((body) => {
       res.writeHead(200, {
         'content-type': mimeFor(resolved),
         'content-length': String(body.byteLength),
@@ -318,7 +322,7 @@ function assetHandler(registry: PetRegistry, caps: PetAssetCaps): WebRoute['hand
       res.writeHead(404)
       res.end()
     })
-  }
+  }) as WebRoute['handler']
 }
 
 /** Browser-facing base path of the plugin runtime files (pet-center M3). */
@@ -354,9 +358,9 @@ export interface PetRuntimeRoots {
  * guidance (the Cubism Core is user-supplied, so its absence is a normal
  * state, not an error).
  */
-function runtimeHandler(roots: { runtimeDir: string; vendorDir: string }): WebRoute['handler'] {
-  return (req: IncomingMessage, res: ServerResponse): void => {
-    if (!guard(req, res)) return
+function runtimeHandler(ctx: Context, roots: { runtimeDir: string; vendorDir: string }): WebRoute['handler'] {
+  return ((req: IncomingMessage, res: ServerResponse) => {
+    if (!guard(ctx, req, res)) return
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.writeHead(405)
       res.end()
@@ -409,7 +413,7 @@ function runtimeHandler(roots: { runtimeDir: string; vendorDir: string }): WebRo
       res.end()
       return
     }
-    readFile(resolved).then((body) => {
+    return readFile(resolved).then((body) => {
       res.writeHead(200, {
         'content-type': name.endsWith('.map') ? 'application/json' : 'application/javascript; charset=utf-8',
         'content-length': String(body.byteLength),
@@ -424,38 +428,157 @@ function runtimeHandler(roots: { runtimeDir: string; vendorDir: string }): WebRo
       res.writeHead(404)
       res.end()
     })
+  }) as WebRoute['handler']
+}
+
+/**
+ * The decoration asset handler behind '/api/pet/decoration/<id>/<file>'
+ * (pet-center M5, #567). Serves exactly the files a decoration descriptor
+ * declares — decoration.json and the PNG/WebP strip — by exact allow-list
+ * match, with realpath containment and the same size ceilings as pet
+ * assets. Crafted '..' or '.' segments never match the normalized closure.
+ */
+function decorationHandler(ctx: Context, registry: PetRegistry, caps: PetAssetCaps): WebRoute['handler'] {
+  return (req: IncomingMessage, res: ServerResponse): void => {
+    if (!guard(ctx, req, res)) return
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      res.writeHead(405)
+      res.end()
+      return
+    }
+    let pathname: string
+    try {
+      pathname = new URL(req.url ?? '/', 'http://pet.local').pathname
+    } catch {
+      res.writeHead(400)
+      res.end()
+      return
+    }
+    const segments = pathname.split('/').filter(segment => segment !== '')
+    const prefixSegments = DECORATION_ASSET_PREFIX.split('/').filter(segment => segment !== '')
+    if (segments.length < prefixSegments.length + 2) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    for (let i = 0; i < prefixSegments.length; i += 1) {
+      if (segments[i] !== prefixSegments[i]) {
+        res.writeHead(404)
+        res.end()
+        return
+      }
+    }
+    let id: string
+    try {
+      id = decodeURIComponent(segments[prefixSegments.length])
+    } catch {
+      res.writeHead(400)
+      res.end()
+      return
+    }
+    const entry = registry.decorationById?.(id)
+    if (entry === undefined) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    const rest: string[] = []
+    for (const segment of segments.slice(prefixSegments.length + 1)) {
+      let decoded: string
+      try {
+        decoded = decodeURIComponent(segment)
+      } catch {
+        res.writeHead(400)
+        res.end()
+        return
+      }
+      rest.push(decoded)
+    }
+    const rel = rest.join('/')
+    if (!entry.servable.includes(rel)) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    const file = join(entry.dir, rel)
+    const resolved = containedRealpath(entry.dir, file)
+    if (resolved === undefined) {
+      res.writeHead(403)
+      res.end()
+      return
+    }
+    const cap = rel === 'decoration.json' ? caps.manifest : caps.image
+    let stat: ReturnType<typeof statSync>
+    try {
+      stat = statSync(resolved)
+      if (stat.size > cap) {
+        res.writeHead(413)
+        res.end()
+        return
+      }
+    } catch {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    // Weak ETag from size + mtime: 'no-cache' forces revalidation, and the
+    // validator lets repeat requests settle as 304 — the ornament remounts
+    // on whisper and display-session flips, and without a validator each
+    // remount would re-download the full strip body.
+    const etag = '"' + stat.size.toString(16) + '-' + Math.round(stat.mtimeMs).toString(16) + '"'
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304, { etag, 'cache-control': 'no-cache' })
+      res.end()
+      return
+    }
+    readFile(resolved).then((body) => {
+      res.writeHead(200, {
+        'content-type': mimeFor(resolved),
+        'content-length': String(body.byteLength),
+        'cache-control': 'no-cache',
+        etag,
+      })
+      if (req.method === 'HEAD') {
+        res.end()
+        return
+      }
+      res.end(body)
+    }, () => {
+      res.writeHead(404)
+      res.end()
+    })
   }
 }
 
 /** Build the full route family (API + assets + runtime) for one service. */
-export function makePetRoutes(deps: { service: PetService; assetCaps?: PetAssetCaps } & PetRuntimeRoots): WebRoute[] {
-  const { service } = deps
+export function makePetRoutes(deps: { service: PetService; ctx: Context; assetCaps?: PetAssetCaps } & PetRuntimeRoots): WebRoute[] {
+  const { service, ctx } = deps
   const apiRoutes: WebRoute[] = [
-    getRoute(PET_API_PREFIX + '/state', () => service.state()),
-    getRoute(PET_API_PREFIX + '/pets', () => service.pets()),
-    getRoute(PET_API_PREFIX + '/diagnostics', () => service.diagnostics()),
-    postRoute(PET_API_PREFIX + '/interact', (body) => {
+    getRoute(ctx, PET_API_PREFIX + '/state', () => service.state()),
+    getRoute(ctx, PET_API_PREFIX + '/pets', () => service.pets()),
+    getRoute(ctx, PET_API_PREFIX + '/diagnostics', () => service.diagnostics()),
+    postRoute(ctx, PET_API_PREFIX + '/interact', (body) => {
       const kind = body.kind as PetInteraction | undefined
       if (kind !== 'pet' && kind !== 'feed') return Promise.reject(new Error('invalid-kind'))
       return service.interact(kind)
     }),
-    postRoute(PET_API_PREFIX + '/set-visible', (body) => {
+    postRoute(ctx, PET_API_PREFIX + '/set-visible', (body) => {
       const visible = body.visible
       if (typeof visible !== 'boolean') return Promise.reject(new Error('invalid-visible'))
       return service.setVisible(visible)
     }),
-    postRoute(PET_API_PREFIX + '/set-config', (body) => service.setConfig({
+    postRoute(ctx, PET_API_PREFIX + '/set-config', (body) => service.setConfig({
       ...(typeof body.size === 'number' ? { size: body.size } : {}),
       ...(typeof body.right === 'number' ? { right: body.right } : {}),
       ...(typeof body.bottom === 'number' ? { bottom: body.bottom } : {}),
       ...(typeof body.visible === 'boolean' ? { visible: body.visible } : {}),
     })),
-    postRoute(PET_API_PREFIX + '/set-name', (body) => {
+    postRoute(ctx, PET_API_PREFIX + '/set-name', (body) => {
       const name = body.name
       if (typeof name !== 'string') return Promise.reject(new Error('invalid-name'))
       return service.setName(name)
     }),
-    postRoute(PET_API_PREFIX + '/set-pet', (body) => {
+    postRoute(ctx, PET_API_PREFIX + '/set-pet', (body) => {
       const petId = body.petId
       if (typeof petId !== 'string') return Promise.reject(new Error('invalid-pet'))
       return service.setPetId(petId)
@@ -465,19 +588,25 @@ export function makePetRoutes(deps: { service: PetService; assetCaps?: PetAssetC
   const assetRoute: WebRoute = {
     kind: 'prefix',
     path: PET_ASSET_PREFIX,
-    handler: assetHandler(service.registrySnapshot(), deps.assetCaps ?? PET_ASSET_CAPS),
+    handler: assetHandler(ctx, service.registrySnapshot(), deps.assetCaps ?? PET_ASSET_CAPS),
   }
 
   const runtimeRoute: WebRoute = {
     kind: 'prefix',
     path: PET_RUNTIME_PREFIX,
-    handler: runtimeHandler({
+    handler: runtimeHandler(ctx, {
       runtimeDir: deps.runtimeDir ?? join(dshHome(), 'pets', '.runtime'),
       vendorDir: deps.vendorDir ?? join(petPackageRoot(import.meta.url), 'lib'),
     }),
   }
 
-  return [...apiRoutes, assetRoute, runtimeRoute]
+  const decorationRoute: WebRoute = {
+    kind: 'prefix',
+    path: DECORATION_ASSET_PREFIX,
+    handler: decorationHandler(ctx, service.registrySnapshot(), deps.assetCaps ?? PET_ASSET_CAPS),
+  }
+
+  return [...apiRoutes, assetRoute, runtimeRoute, decorationRoute]
 }
 
 // Re-exported for the package surface (the registry owns the definition now).

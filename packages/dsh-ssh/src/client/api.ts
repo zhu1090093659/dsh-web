@@ -34,6 +34,17 @@ export class SshApiError extends Error {
   }
 }
 
+/** Extract the `.error` message from a JSON error body; undefined when absent. */
+function extractError(text: string): string | undefined {
+  if (text === '') return undefined
+  try {
+    const parsed = JSON.parse(text) as { error?: unknown } | null
+    return typeof parsed?.error === 'string' ? parsed.error : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** Parse a JSON response or throw an SshApiError. */
 async function readJson<T>(response: Response): Promise<T> {
   let body: unknown
@@ -219,7 +230,9 @@ export class SshApi {
       body: file,
     })
     if (!response.ok || response.body === null) {
-      throw new SshApiError(`upload failed: HTTP ${response.status}`)
+      const text = await response.text().catch(() => '')
+      const error = extractError(text)
+      throw new SshApiError(error ?? `upload failed: HTTP ${response.status}`)
     }
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
@@ -268,7 +281,8 @@ export class SshApi {
     const response = await fetch(SSH_API.download + query({ alias, remotePath }))
     if (!response.ok || response.body === null) {
       const text = await response.text().catch(() => '')
-      throw new SshApiError(text !== '' && text.startsWith('{') ? text : `download failed: HTTP ${response.status}`)
+      const error = extractError(text)
+      throw new SshApiError(error ?? `download failed: HTTP ${response.status}`)
     }
     const total = Number(response.headers.get('content-length') ?? '0')
     const disposition = response.headers.get('content-disposition') ?? ''

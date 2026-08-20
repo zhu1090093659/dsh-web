@@ -6,7 +6,10 @@ import { Context } from '@deepseek-ai/cordis'
 import type { Session, SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-session'
 import { loadPetPersist } from '../src/persist.ts'
 import { PetService } from '../src/service.ts'
-import { resolvePetManifest, type PetRegistry } from '../src/registry.ts'
+import { resolvePetManifest, type DecorationEntry, type PetRegistry } from '../src/registry.ts'
+import { normalizeVoicePack } from '../src/voice-pack.ts'
+import { parseDecorationManifest } from '../src/decoration.ts'
+import { PET_DECORATION_API_VERSION } from '../src/contracts/status-decoration.ts'
 
 /** Two-pet registry fixture (whale-girl + otter) for selection/name tests. */
 function fixtureRegistry(): PetRegistry {
@@ -902,6 +905,239 @@ describe('PetService (rc.6 session events)', () => {
       const result = await service.setName('   ')
       expect(result.ok).toBe(false)
       expect(service.petName()).toBe('鲸鱼娘')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('voice packs in PetService (pet-center M4, issue #677)', () => {
+  function voicedRegistry(petId: string, pack: unknown, extra?: Partial<PetRegistry>): PetRegistry {
+    const warnings: string[] = []
+    const base = resolvePetManifest({
+      id: petId,
+      displayName: petId,
+      spritesheetPath: 'spritesheet.webp',
+    }, join(tmpdir(), petId), { warnings })
+    const entry = { ...base!, voice: normalizeVoicePack(pack) }
+    const entries = [entry]
+    return {
+      entries,
+      warnings,
+      diagnostics: [],
+      byId: id => entries.find(e => e.id === id),
+      defaultEntry: () => entries[0]!,
+      ...extra,
+    }
+  }
+
+  it('speaks the selected pet pack for status scenes', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const service = new PetService(ctx, {
+        persistDir: dir,
+        registry: voicedRegistry('talker', { status: { prepare: ['自定义开工'], done: ['自定义完工'] } }),
+      })
+      ctx.emit('session/event', session, turnStart(1, 1))
+      expect(await service.state()).toMatchObject({ bubble: '自定义开工' })
+      ctx.emit('session/event', session, turnEnd(1, { kind: 'completed' }, 2))
+      expect(await service.state()).toMatchObject({ bubble: '自定义完工' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('re-voices a live session when the pet switches', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const warnings: string[] = []
+      const otter = resolvePetManifest({
+        id: 'otter',
+        displayName: '水獭',
+        spritesheetPath: 'spritesheet.webp',
+      }, join(tmpdir(), 'otter'), { warnings })
+      const talker = voicedRegistry('talker', { status: { done: ['自定义完工'] } })
+      const entries = [...talker.entries, otter!]
+      const registry: PetRegistry = {
+        entries,
+        warnings: [],
+        diagnostics: [],
+        byId: id => entries.find(entry => entry.id === id),
+        defaultEntry: () => entries[0]!,
+      }
+      const service = new PetService(ctx, { persistDir: dir, registry })
+      ctx.emit('session/event', session, turnEnd(1, { kind: 'completed' }, 1))
+      expect(await service.state()).toMatchObject({ bubble: '自定义完工' })
+      await service.setPetId('otter')
+      // A new session's runtime resolves the provider against the now-
+      // selected otter (no pack) and draws the built-in pool.
+      const other = makeSession('s2')
+      ctx.emit('session/event', other, turnEnd(2, { kind: 'completed' }, 2))
+      expect(await service.state()).toMatchObject({ bubble: '完成啦' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('falls back to the global override when the pet carries no pack', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const registry = voicedRegistry('plain', undefined, {
+        globalVoice: normalizeVoicePack({ status: { done: ['全局完工'] } }),
+      })
+      const service = new PetService(ctx, { persistDir: dir, registry })
+      ctx.emit('session/event', session, turnEnd(1, { kind: 'completed' }, 1))
+      expect(await service.state()).toMatchObject({ bubble: '全局完工' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('serves the global panel chrome on the pets list (pet over global, per slot)', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    try {
+      const registry = voicedRegistry('plain', { panel: { labels: { feed: '宠物投喂' } } }, {
+        globalVoice: normalizeVoicePack({ panel: { labels: { feed: '全局投喂', hide: '全局藏' } } }),
+      })
+      const service = new PetService(ctx, { persistDir: dir, registry })
+      const pets = await service.pets()
+      const plain = pets.find(pet => pet.id === 'plain')
+      expect(plain).toBeDefined()
+      expect(plain!.panel?.labels).toEqual({ feed: '宠物投喂', hide: '全局藏' })
+      // A pack-less pet receives the global panel as-is.
+      const registryBare = voicedRegistry('bare', undefined, {
+        globalVoice: normalizeVoicePack({ panel: { labels: { hide: '全局藏' } } }),
+      })
+      const ctxBare = new Context()
+      const serviceBare = new PetService(ctxBare, { persistDir: join(dir, 'bare'), registry: registryBare })
+      const bare = (await serviceBare.pets()).find(pet => pet.id === 'bare')
+      expect(bare!.panel?.labels).toEqual({ hide: '全局藏' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('wakes a whisper from the pet pack keyword rules', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('s1')
+    try {
+      const service = new PetService(ctx, {
+        persistDir: dir,
+        registry: voicedRegistry('talker', {
+          whispers: { rules: [{ keywords: ['测试通过'], pool: ['自定义全绿'] }] },
+        }),
+      })
+      ctx.emit('session/event', session, assistantChunk(1, 1, {
+        type: 'reasoning-delta', index: 0, text: '测试通过',
+      }, 1))
+      expect((await service.state()).whisper).toBe('自定义全绿')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+describe('status decorations in PetService (pet-center M5, #567)', () => {
+  function decorationRegistry(): PetRegistry {
+    const warnings: string[] = []
+    const whale = resolvePetManifest({
+      id: 'whale-girl',
+      displayName: '鲸鱼娘',
+      spritesheetPath: 'spritesheet.webp',
+    }, join(tmpdir(), 'whale'), { warnings })
+    const verdict = parseDecorationManifest({
+      decorationManifestVersion: 1,
+      id: 'whale',
+      license: 'MIT',
+      entry: 'whale-frames.png',
+      cell: { width: 64, height: 48 },
+      columns: 4,
+      phases: { idle: 'hide', thinking: { from: 0, to: 3 } },
+    }, 'whale/decoration.json')
+    if (!verdict.ok) throw new Error('fixture decoration must parse')
+    const manifest = verdict.manifest
+    const entry: DecorationEntry = {
+      apiVersion: PET_DECORATION_API_VERSION,
+      id: manifest.id,
+      dir: join(tmpdir(), 'whale'),
+      entryPath: manifest.entry,
+      servable: ['decoration.json', manifest.entry],
+      license: manifest.license,
+      assetBase: '/api/pet/decoration/whale',
+      entryUrl: '/api/pet/decoration/whale/whale-frames.png',
+      cell: manifest.cell,
+      columns: manifest.columns,
+      durations: manifest.durations,
+      loop: manifest.loop,
+      phases: manifest.phases,
+    }
+    const entries = [whale!]
+    return {
+      entries,
+      warnings,
+      diagnostics: [],
+      byId: id => entries.find(e => e.id === id),
+      defaultEntry: () => entries[0]!,
+      decorations: [entry],
+      decorationById: id => (id === 'whale' ? entry : undefined),
+    }
+  }
+
+  it('serves the active decoration block by default', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    try {
+      const service = new PetService(ctx, { persistDir: dir, registry: decorationRegistry() })
+      const view = await service.state()
+      expect(view.decoration?.id).toBe('whale')
+      expect(view.decoration?.entryUrl).toBe('/api/pet/decoration/whale/whale-frames.png')
+      expect(view.decoration?.phases.thinking).toEqual({ from: 0, to: 3 })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('hides the decoration when the config switch is off', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    try {
+      const service = new PetService(ctx, { persistDir: dir, registry: decorationRegistry(), decorationEnabled: false })
+      expect((await service.state()).decoration).toBeUndefined()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('mirrors the settings-section switch', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    try {
+      const service = new PetService(ctx, { persistDir: dir, registry: decorationRegistry() })
+      service.applySettingsSection({
+        visible: true,
+        size: 160,
+        right: 24,
+        bottom: 120,
+        petId: 'whale-girl',
+        decorationEnabled: false,
+      })
+      expect((await service.state()).decoration).toBeUndefined()
+      service.applySettingsSection({
+        visible: true,
+        size: 160,
+        right: 24,
+        bottom: 120,
+        petId: 'whale-girl',
+        decorationEnabled: true,
+      })
+      expect((await service.state()).decoration?.id).toBe('whale')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

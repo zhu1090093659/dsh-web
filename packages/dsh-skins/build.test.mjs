@@ -1,15 +1,26 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
-import fs from 'node:fs'
-import path from 'node:path'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
-import { fileURLToPath } from 'node:url'
 
-const here = path.dirname(fileURLToPath(import.meta.url))
+import { buildCompatibilityShims, LEGACY_SKIN_IDS } from './build.mjs'
 
-test('retired carrier build is a no-op and copies no skin assets', () => {
-  const out = execFileSync(process.execPath, [path.join(here, 'build.mjs')], { encoding: 'utf8' })
-  assert.match(out, /no-op/)
-  // The carrier ships no skins/ directory: assets live in the skin-center package.
-  assert.equal(fs.existsSync(path.join(here, 'skins')), false)
+test('builds resolvable no-op packages for every retired v1 skin junction', async (t) => {
+  const out = mkdtempSync(join(tmpdir(), 'dsh-skins-shims-'))
+  t.after(() => rmSync(out, { recursive: true, force: true }))
+  buildCompatibilityShims(out)
+
+  for (const id of LEGACY_SKIN_IDS) {
+    const dir = join(out, id)
+    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
+    assert.equal(pkg.name, `@linxin666/dsh-client-ui-skin-${id}`)
+    assert.equal(typeof (await import(join(dir, 'lib', 'index.js'))).apply, 'function')
+    assert.match(readFileSync(join(dir, 'lib', 'client.js'), 'utf8'), new RegExp(`skin-${id}`))
+  }
+
+  const link = join(out, 'node_modules', '@linxin666', 'dsh-client-ui-skin-whale-song')
+  mkdirSync(join(link, '..'), { recursive: true })
+  symlinkSync(join(out, 'whale-song'), link, process.platform === 'win32' ? 'junction' : 'dir')
+  assert.equal(typeof (await import(join(link, 'lib', 'index.js'))).apply, 'function')
 })

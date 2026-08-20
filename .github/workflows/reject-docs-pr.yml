@@ -32,10 +32,11 @@ jobs:
               return;
             }
 
-            // 仓库所有者维护文档 / 发布说明的 PR 不受此规则限制。
-            const isRepoOwner = pr.user.login === context.repo.owner;
+            // 仓库所有者维护文档 / 发布说明的 PR 不受此规则限制；
+            // contributors 工作流（github-actions[bot]）的贡献者名单同步同样豁免。
+            const isRepoOwner = pr.user.login === context.repo.owner || pr.user.login === 'github-actions[bot]';
             if (isRepoOwner) {
-              console.log(`PR #${pr.number}: authored by repo owner, keeping open.`);
+              console.log(`PR #${pr.number}: authored by repo owner or bot, keeping open.`);
               return;
             }
 

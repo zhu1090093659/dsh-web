@@ -72,6 +72,7 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
       <header className={css.skillHeader}>
         <span className={css.skillName}>{skill.name}</span>
         {skill.provider !== undefined && <span className={css.badge}>{skill.provider}</span>}
+        {skill.linked === true && <span className={css.badge}>{tt('list.linked')}</span>}
         {(skill.modelInvocable || skill.userInvocable) && (
           <span className={`${css.badge} ${css.badgeInvokable}`}>{tt('list.invokable', { marks: invokableMarks(skill) })}</span>
         )}
@@ -88,7 +89,7 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
             <span className={css.switchTrack}><span className={css.switchThumb} /></span>
           </button>
         )}
-        {skill.path !== undefined && (
+        {skill.path !== undefined && skill.linked !== true && (
           <button type="button" className={css.deleteButton} disabled={busy} onClick={() => { void remove() }}>
             {tt('list.delete')}
           </button>

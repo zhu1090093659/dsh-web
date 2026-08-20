@@ -28,13 +28,22 @@ interface PromptResult { ok: boolean; error?: { code: string; message?: string }
 
 /** The session face needed to re-send a text-only prompt. */
 interface SessionPromptFace {
-  prompt(content: readonly TextBlock[], mode: string): Promise<PromptResult>
+  prompt(content: readonly TextBlock[], mode: string, signal?: AbortSignal): Promise<PromptResult>
 }
 
-/** The conversation-service surface this hook wraps. */
+/** Submission result consumed by the conversation input state machine. */
+interface SubmitOutcome { kind: 'success' | 'error'; text?: string }
+
+/**
+ * The conversation-service surface this hook wraps. rc.8 added the optional
+ * AbortSignal (send cancellation) and a SubmitOutcome return on sendSession;
+ * the wrapper forwards both so a wrapped send behaves exactly like an
+ * unwrapped one, while the rewritten path passes the signal into the
+ * session's prompt RPC.
+ */
 interface ConversationSendFace {
   send(text: string): Promise<void>
-  sendSession(session: SessionPromptFace, text: string, imageIds: readonly string[], mode: string): Promise<void>
+  sendSession(session: SessionPromptFace, text: string, imageIds: readonly string[], mode: string, signal?: AbortSignal): Promise<SubmitOutcome>
   draftImages(ids: readonly string[]): readonly DraftImageFace[]
   releaseDraftImage(id: string): void
 }
@@ -66,12 +75,12 @@ export function installSendHook(conversation: unknown, isEnabled?: () => boolean
   if ((face as unknown as Record<string, unknown>)[HOOK_MARKER] === true) return
 
   const original = face.sendSession
-  face.sendSession = async (session, text, imageIds, mode): Promise<void> => {
+  face.sendSession = async (session, text, imageIds, mode, signal): Promise<SubmitOutcome> => {
     if (isEnabled !== undefined && !isEnabled()) {
-      return original.call(face, session, text, imageIds, mode)
+      return original.call(face, session, text, imageIds, mode, signal)
     }
     if (imageIds.length === 0) {
-      return original.call(face, session, text, imageIds, mode)
+      return original.call(face, session, text, imageIds, mode, signal)
     }
     if (acceptsImages !== undefined) {
       let native = false
@@ -83,12 +92,12 @@ export function installSendHook(conversation: unknown, isEnabled?: () => boolean
       // The session's model takes image input: the raw blocks reach it
       // directly, so no describe-image reference rewrite is needed.
       if (native) {
-        return original.call(face, session, text, imageIds, mode)
+        return original.call(face, session, text, imageIds, mode, signal)
       }
     }
     const attachments = face.draftImages(imageIds)
     if (attachments.length !== imageIds.length) {
-      return original.call(face, session, text, imageIds, mode)
+      return original.call(face, session, text, imageIds, mode, signal)
     }
     const refs: string[] = []
     for (const attachment of attachments) {
@@ -101,14 +110,15 @@ export function installSendHook(conversation: unknown, isEnabled?: () => boolean
     if (refs.length !== attachments.length) {
       // Upload fell short: keep the shell's original behavior (which will
       // reject the image block for a text-only model).
-      return original.call(face, session, text, imageIds, mode)
+      return original.call(face, session, text, imageIds, mode, signal)
     }
     const fullText = [text.trim(), ...refs].filter(part => part !== '').join('\n')
-    const result = await session.prompt([{ type: 'text', text: fullText }], mode)
+    const result = await session.prompt([{ type: 'text', text: fullText }], mode, signal)
     if (!result.ok) {
       throw new Error(`conversation.send failed: ${result.error?.code ?? 'unknown'}: ${result.error?.message ?? ''}`)
     }
     for (const id of imageIds) face.releaseDraftImage(id)
+    return { kind: 'success' }
   }
   ;(face as unknown as Record<string, unknown>)[HOOK_MARKER] = true
 }

@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { connect, createServer, type AddressInfo } from 'node:net'
 import type { Client } from 'ssh2'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { SshEngine } from '../src/engine.ts'
 import { HostStore } from '../src/store.ts'
 import type { HostPayload } from '../src/protocol.ts'
@@ -564,6 +564,25 @@ describe('upload path rules', () => {
 })
 
 describe('probe', () => {
+  it('uses a cross-platform command to probe connectivity', async () => {
+    const execSpy = vi.spyOn(engine, 'exec').mockResolvedValue({
+      success: true,
+      exitCode: 0,
+      timedOut: false,
+      stdout: 'ok\n',
+      stderr: '',
+      durationMs: 1,
+    })
+
+    try {
+      const result = await engine.test('probe-command')
+      expect(execSpy).toHaveBeenCalledWith('probe-command', 'echo ok', 10_000)
+      expect(result).toEqual({ ok: true, latencyMs: 1 })
+    } finally {
+      execSpy.mockRestore()
+    }
+  })
+
   it('reports a working connection', async () => {
     addHost('probe-host')
     const result = await engine.test('probe-host')

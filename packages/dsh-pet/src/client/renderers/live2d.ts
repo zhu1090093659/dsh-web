@@ -60,6 +60,52 @@ export interface Live2dRendererHandle extends PetRendererHandle {
 /** The de-facto tap-motion group of Cubism sample models. */
 const TAP_GROUP = 'TapBody'
 
+/**
+ * Keep one screen-appropriate atlas LOD instead of asking Pixi for the
+ * engine's default full mip chain. A user model can legitimately carry an
+ * 8192px texture while the pet itself is only a few hundred pixels tall;
+ * `single-auto` preserves the source for larger renders and generates one
+ * downsampled atlas only when the effective on-screen scale warrants it.
+ */
+const TEXTURE_OPTIONS = { lod: 'single-auto' } as const
+/** Recursively release the activation without invalidating shared texture caches. */
+const DESTROY_OPTIONS = { children: true } as const
+/** Remove only this activation's canvas; `true` would release Pixi globals. */
+const RENDERER_DESTROY_OPTIONS = { removeView: true } as const
+
+interface Live2dModelSize {
+  width: number
+  height: number
+}
+
+/** Ignore hidden/zero boxes and keep Pixi dimensions stable and integral. */
+function normalizeRendererSize(width: number, height: number): Live2dModelSize | undefined {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return undefined
+  return {
+    width: Math.max(1, Math.round(width)),
+    height: Math.max(1, Math.round(height)),
+  }
+}
+
+/** Fit the model from its unscaled dimensions into the current Pixi screen. */
+function layoutModel(
+  app: Live2dVendorApp,
+  model: Live2dVendorModel,
+  sourceSize: Live2dModelSize,
+  config: PetLive2dConfig,
+): void {
+  const fit = Math.min(
+    app.renderer.width / sourceSize.width,
+    app.renderer.height / sourceSize.height,
+  ) * 0.92
+  model.scale.set(fit * (config.scale ?? 1))
+  model.anchor.set(0.5)
+  model.position.set(
+    app.renderer.width / 2 + (config.translate?.x ?? 0),
+    app.renderer.height / 2 + (config.translate?.y ?? 0),
+  )
+}
+
 let vendorConfigured = false
 
 /** Configure pixi extensions + the Cubism SDK once per page. */
@@ -96,11 +142,63 @@ export const live2dRenderer: PetRenderer<PetLive2dConfig> = {
     let disposed = false
     let app: Live2dVendorApp | undefined
     let model: Live2dVendorModel | undefined
+    let modelAttached = false
+    let modelSourceSize: Live2dModelSize | undefined
+    let resizeObserver: ResizeObserver | undefined
+    let resizeTracking = false
     let errorListener: ((code: Live2dErrorCode) => void) | undefined
     let unsubscribe: (() => void) | undefined
     /** The motion group the current phase maps to (resume target after taps). */
     let phaseGroup: string = config.motions.idle
     let tapPlaying = false
+
+    const stopResizeTracking = (): void => {
+      resizeTracking = false
+      resizeObserver?.disconnect()
+      resizeObserver = undefined
+    }
+
+    const resizeRenderer = (pixiApp: Live2dVendorApp, width: number, height: number): void => {
+      const next = normalizeRendererSize(width, height)
+      if (disposed || !resizeTracking || next === undefined) return
+      if (pixiApp.renderer.width === next.width && pixiApp.renderer.height === next.height) return
+      pixiApp.renderer.resize(next.width, next.height)
+      if (model !== undefined && modelSourceSize !== undefined) {
+        layoutModel(pixiApp, model, modelSourceSize, config)
+      }
+    }
+
+    const trackContainerSize = (pixiApp: Live2dVendorApp): void => {
+      if (typeof ResizeObserver === 'undefined') return
+      resizeTracking = true
+      resizeObserver = new ResizeObserver((entries) => {
+        const entry = entries.find(candidate => candidate.target === ctx.container)
+        if (entry === undefined) return
+        resizeRenderer(pixiApp, entry.contentRect.width, entry.contentRect.height)
+      })
+      resizeObserver.observe(ctx.container)
+      // Catch a synchronous layout change between init() and observe().
+      resizeRenderer(pixiApp, ctx.container.clientWidth, ctx.container.clientHeight)
+    }
+
+    /** Release every resource currently owned by this activation exactly once. */
+    const destroyResources = (): void => {
+      stopResizeTracking()
+      unsubscribe?.()
+      unsubscribe = undefined
+      const currentApp = app
+      const currentModel = model
+      const modelOwnedByApp = currentApp !== undefined && modelAttached
+      app = undefined
+      model = undefined
+      modelSourceSize = undefined
+      modelAttached = false
+      try {
+        if (currentModel !== undefined && !modelOwnedByApp) currentModel.destroy(DESTROY_OPTIONS)
+      } finally {
+        currentApp?.destroy(RENDERER_DESTROY_OPTIONS, DESTROY_OPTIONS)
+      }
+    }
 
     const playGroup = (group: string): void => {
       if (model === undefined) return
@@ -134,42 +232,58 @@ export const live2dRenderer: PetRenderer<PetLive2dConfig> = {
       }
       configureOnce(vendor)
       const pixiApp = new vendor.Application()
-      await pixiApp.init({
-        width: Math.max(1, ctx.container.clientWidth || 160),
-        height: Math.max(1, ctx.container.clientHeight || 174),
-        backgroundAlpha: 0,
-        antialias: true,
-        autoDensity: true,
-        preference: 'webgl',
-      })
+      const initialSize = normalizeRendererSize(ctx.container.clientWidth, ctx.container.clientHeight) ?? {
+        width: 160,
+        height: 174,
+      }
+      try {
+        await pixiApp.init({
+          width: initialSize.width,
+          height: initialSize.height,
+          backgroundAlpha: 0,
+          antialias: true,
+          autoDensity: true,
+          preference: 'webgl',
+        })
+      } catch (error) {
+        // init() can fail after allocating a partial renderer; cleanup is
+        // best-effort because Pixi may not consider that partial app ready.
+        try { pixiApp.destroy(RENDERER_DESTROY_OPTIONS, DESTROY_OPTIONS) } catch {}
+        throw error
+      }
       if (disposed) {
-        pixiApp.destroy(true, { children: true })
+        pixiApp.destroy(RENDERER_DESTROY_OPTIONS, DESTROY_OPTIONS)
         return
       }
+      app = pixiApp
       pixiApp.canvas.style.display = 'block'
       pixiApp.canvas.style.width = '100%'
       pixiApp.canvas.style.height = '100%'
       ctx.container.appendChild(pixiApp.canvas)
-      const loaded = await vendor.Live2DModel.from(config.modelUrl, { autoHitTest: false, autoFocus: false })
+      // Keep a model that rejects during setup off Ticker.shared; from()
+      // does not expose that partial instance to callers for disposal.
+      trackContainerSize(pixiApp)
+      const loaded = await vendor.Live2DModel.from(config.modelUrl, {
+        autoUpdate: false,
+        autoHitTest: false,
+        autoFocus: false,
+        textureOptions: TEXTURE_OPTIONS,
+      })
+      model = loaded
       if (disposed) {
-        pixiApp.destroy(true, { children: true })
+        destroyResources()
         return
       }
-      app = pixiApp
-      model = loaded
+      modelSourceSize = {
+        width: Math.max(1, loaded.width),
+        height: Math.max(1, loaded.height),
+      }
       // Auto-fit the model into the container; the manifest scale multiplies
       // the fit and translate offsets from the center anchor.
-      const fit = Math.min(
-        pixiApp.renderer.width / Math.max(1, loaded.width),
-        pixiApp.renderer.height / Math.max(1, loaded.height),
-      ) * 0.92
-      loaded.scale.set(fit * (config.scale ?? 1))
-      loaded.anchor.set(0.5)
-      loaded.position.set(
-        pixiApp.renderer.width / 2 + (config.translate?.x ?? 0),
-        pixiApp.renderer.height / 2 + (config.translate?.y ?? 0),
-      )
+      layoutModel(pixiApp, loaded, modelSourceSize, config)
       pixiApp.stage.addChild(loaded)
+      modelAttached = true
+      loaded.automator.autoUpdate = true
       // Resume the phase group once a tap motion finishes playing.
       loaded.on('motionFinish', () => {
         if (tapPlaying) {
@@ -182,19 +296,18 @@ export const live2dRenderer: PetRenderer<PetLive2dConfig> = {
     }
 
     void boot().catch(() => {
-      if (!disposed) errorListener?.('load-failed')
+      try {
+        destroyResources()
+      } finally {
+        if (!disposed) errorListener?.('load-failed')
+      }
     })
 
     return {
       dispose() {
         if (disposed) return
         disposed = true
-        unsubscribe?.()
-        model = undefined
-        if (app !== undefined) {
-          app.destroy(true, { children: true })
-          app = undefined
-        }
+        destroyResources()
       },
       tap(x: number, y: number) {
         const current = model

@@ -13,11 +13,14 @@
  *   unknown one (no oracle for validity).
  * - `stop()` revokes every device session and clears the token, so paired
  *   devices are cut off on their next gated request.
+ * - `revoke()` drops one device session; idle sessions older than
+ *   `idleExpireMs` are deleted on sweep, load, and the next gated request.
  */
 
 import { randomBytes } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
+import type { PostureSnapshot } from './posture.ts'
 
 /** The observable pairing phases the panel renders. */
 export type PairingPhase =
@@ -48,12 +51,34 @@ export interface TokenRecord {
   address?: string
 }
 
+/** Default idle-expiry window: 7 days without heartbeat or a gated request. */
+export const DEFAULT_IDLE_EXPIRE_MS = 7 * 24 * 60 * 60 * 1000
+
+/** Cap on the persisted/displayed User-Agent string. */
+const MAX_USER_AGENT_CHARS = 180
+
 /** One paired device session, keyed by the device id stored in its cookie. */
 export interface DeviceSession {
   /** Pairing time (ms epoch). */
   createdAt: number
   /** Last time the device passed a gated request or heartbeat. */
   lastSeenAt: number
+  /** Sanitized User-Agent captured at accept (optional; missing on old files). */
+  userAgent?: string
+}
+
+/** One device row in a loopback snapshot (ids are session credentials). */
+export interface DeviceSnapshot {
+  /** Cookie value / session credential of this device. */
+  id: string
+  /** Pairing time (ms epoch). */
+  createdAt: number
+  /** Last heartbeat or gated request (ms epoch). */
+  lastSeenAt: number
+  /** Whether lastSeenAt is within the offline window. */
+  online: boolean
+  /** Sanitized User-Agent captured at accept, when known. */
+  userAgent?: string
 }
 
 /** One tunnel status frame (auto-tunnel only; undefined when disabled). */
@@ -77,6 +102,8 @@ export interface PairingSnapshot {
   publicUrl?: string
   /** Auto-tunnel status, while the auto-tunnel feature is active. */
   tunnel?: TunnelStatus
+  /** Latest /api posture probe (undefined until the first round completes). */
+  posture?: PostureSnapshot
   /** Opaque (non-secret) id of the active token (undefined when stopped/lan-required). */
   tokenId?: string
   /** Absolute expiry of the active token. */
@@ -85,6 +112,8 @@ export interface PairingSnapshot {
   deviceCount: number
   /** Count of devices active within the offline window. */
   onlineCount: number
+  /** Per-device roster for the loopback panel (never sent on /api/pair/status). */
+  devices: DeviceSnapshot[]
 }
 
 /** Service tunables (config-validated upstream; plain numbers here). */
@@ -98,10 +127,15 @@ export interface PairingConfig {
   /** Cookie name carrying the device id. */
   cookieName: string
   /**
+   * Idle sessions older than this are deleted (memory and disk). Defaults
+   * to {@link DEFAULT_IDLE_EXPIRE_MS} when omitted.
+   */
+  idleExpireMs?: number
+  /**
    * Path to a JSON file where paired device sessions are persisted. When
    * set, sessions survive process restarts (the phone keeps its 365-day
    * cookie), so re-pairing after a dsh web restart is not required. When
-   * unset (default), sessions stay memory-only — the previous behavior.
+   * unset, sessions stay memory-only.
    */
   devicesFile?: string
 }
@@ -153,6 +187,9 @@ export class PairingService {
   private publicBase: string | undefined
   /** Auto-tunnel status, while the auto-tunnel feature is active. */
   private tunnelStatus: TunnelStatus | undefined
+  private posture: PostureSnapshot | undefined
+  /** True when lastSeenAt changed since the last persist (flushed on sweep). */
+  private dirty = false
 
   /**
    * @param config - tunables. The settings surface replaces the object (a
@@ -181,11 +218,21 @@ export class PairingService {
       for (const [deviceId, session] of Object.entries(saved)) {
         if (typeof deviceId !== 'string') continue
         if (typeof session !== 'object' || session === null) continue
-        const { createdAt, lastSeenAt } = session as { createdAt?: unknown; lastSeenAt?: unknown }
+        const { createdAt, lastSeenAt, userAgent } = session as {
+          createdAt?: unknown
+          lastSeenAt?: unknown
+          userAgent?: unknown
+        }
         if (typeof createdAt !== 'number' || typeof lastSeenAt !== 'number') continue
-        this.devices.set(deviceId, { createdAt, lastSeenAt })
+        const label = typeof userAgent === 'string' ? sanitizeUserAgent(userAgent) : undefined
+        this.devices.set(deviceId, {
+          createdAt,
+          lastSeenAt,
+          ...(label !== undefined ? { userAgent: label } : {}),
+        })
       }
       this.clampToMaxDevices()
+      if (this.evictIdle()) this.persist()
     } catch {
       // Unreadable/corrupt: start empty rather than refusing to boot.
     }
@@ -199,12 +246,25 @@ export class PairingService {
     for (const [id] of ordered.slice(0, overflow)) this.devices.delete(id)
   }
 
+  /** Drop sessions whose lastSeenAt is older than idleExpireMs. */
+  private evictIdle(): boolean {
+    const now = this.clock.now()
+    const limit = this.config.idleExpireMs ?? DEFAULT_IDLE_EXPIRE_MS
+    let removed = false
+    for (const [id, session] of [...this.devices]) {
+      if (now - session.lastSeenAt > limit) {
+        this.devices.delete(id)
+        removed = true
+      }
+    }
+    return removed
+  }
+
   /**
    * Write the current device table to the configured file. Called on the
-   * mutation boundaries that change the set of live sessions (accept and
-   * stop); `lastSeenAt` refreshes are deliberately not persisted here so a
-   * per-request write storm is avoided — after a restart the phone's first
-   * heartbeat re-warms its own session.
+   * mutation boundaries that change the set of live sessions (accept, stop,
+   * revoke, idle eviction) and, throttled, from sweep() so lastSeenAt
+   * survives a restart without a write per request.
    *
    * Device ids are session credentials (the gate authorizes requests by the
    * cookie's device id), so the file is written 0600 via a temp file and
@@ -216,8 +276,11 @@ export class PairingService {
     try {
       mkdirSync(dirname(file), { recursive: true })
       const temp = `${file}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
-      writeFileSync(temp, JSON.stringify(Object.fromEntries(this.devices)), { mode: 0o600 })
+      const payload: Record<string, DeviceSession> = {}
+      for (const [id, session] of this.devices) payload[id] = session
+      writeFileSync(temp, JSON.stringify(payload), { mode: 0o600 })
       renameSync(temp, file)
+      this.dirty = false
     } catch (error) {
       console.error('remote-web-ui: failed to persist paired devices', error)
     }
@@ -258,6 +321,12 @@ export class PairingService {
   /** Set or clear the auto-tunnel status frame (undefined when the feature is off). */
   setTunnelStatus(status: TunnelStatus | undefined): void {
     this.tunnelStatus = status
+    this.notify()
+  }
+
+  /** Set the latest /api posture probe result (see posture.ts). */
+  setPosture(snapshot: PostureSnapshot | undefined): void {
+    this.posture = snapshot
     this.notify()
   }
 
@@ -302,9 +371,10 @@ export class PairingService {
    * successful call for the same token is impossible because the first
    * consumes it.
    * @param token - the token secret from the QR link.
+   * @param userAgent - optional User-Agent header captured at accept.
    * @returns the new device id, or a refusal code.
    */
-  accept(token: string): AcceptResult {
+  accept(token: string, userAgent?: string): AcceptResult {
     const record = this.tokens.get(token)
     if (record === undefined || record.consumed || this.stopped || this.clock.now() > record.expiresAt) {
       return { ok: false, code: record?.consumed === true ? 'used' : 'invalid' }
@@ -320,7 +390,12 @@ export class PairingService {
       }
       if (oldest !== undefined) this.devices.delete(oldest.id)
     }
-    this.devices.set(deviceId, { createdAt: now, lastSeenAt: now })
+    const label = sanitizeUserAgent(userAgent)
+    this.devices.set(deviceId, {
+      createdAt: now,
+      lastSeenAt: now,
+      ...(label !== undefined ? { userAgent: label } : {}),
+    })
     this.persist()
     this.notify()
     return { ok: true, deviceId }
@@ -340,16 +415,31 @@ export class PairingService {
   }
 
   /**
+   * Revoke one paired device. The next gated request from that cookie is
+   * refused; other sessions stay live. Unknown ids are a no-op.
+   * @param deviceId - the cookie value of the device to drop.
+   * @returns true when a live session was removed.
+   */
+  revoke(deviceId: string): boolean {
+    if (this.stopped) return false
+    if (!this.devices.delete(deviceId)) return false
+    this.persist()
+    this.notify()
+    return true
+  }
+
+  /**
    * The api/gate path: record activity for a device id and report whether
    * the request may proceed. Unknown or revoked ids (including any device
-   * after stop()) are refused.
+   * after stop() or idle expiry) are refused.
    * @param deviceId - the cookie value of the requesting device.
    * @returns true when the device session is live and was refreshed.
    */
   touchDevice(deviceId: string): boolean {
-    const session = this.devices.get(deviceId)
-    if (session === undefined || this.stopped) return false
+    const session = this.liveSession(deviceId)
+    if (session === undefined) return false
     session.lastSeenAt = this.clock.now()
+    this.dirty = true
     this.notify()
     return true
   }
@@ -360,18 +450,24 @@ export class PairingService {
   }
 
   /**
-   * Periodic sweep: re-evaluate the derived snapshot (a device aging past
-   * the offline window flips the phase to disconnected). Emits only when
-   * the snapshot actually changed.
+   * Periodic sweep: drop idle sessions, flush a dirty lastSeenAt, and
+   * re-evaluate the derived snapshot (a device aging past the offline
+   * window flips the phase to disconnected). Emits only when the snapshot
+   * actually changed.
    */
   sweep(): void {
+    const evicted = this.evictIdle()
+    if (evicted || this.dirty) this.persist()
     this.notify()
   }
 
   /** The current snapshot (fresh object per call — stable between emits). */
   snapshot(): PairingSnapshot {
     const now = this.clock.now()
-    const onlineCount = [...this.devices.values()].filter(session => this.isOnlineAt(session, now)).length
+    const devices = [...this.devices.entries()]
+      .sort((a, b) => a[1].createdAt - b[1].createdAt)
+      .map(([id, session]) => this.toDeviceSnapshot(id, session, now))
+    const onlineCount = devices.filter(device => device.online).length
     const token = this.activeToken()
     return {
       phase: this.derivePhase(onlineCount, token !== undefined),
@@ -379,16 +475,17 @@ export class PairingService {
       lanAddresses: [...this.lanBases.keys()],
       ...(this.publicBase !== undefined ? { publicUrl: this.publicBase } : {}),
       ...(this.tunnelStatus !== undefined ? { tunnel: this.tunnelStatus } : {}),
+      ...(this.posture !== undefined ? { posture: this.posture } : {}),
       ...(token !== undefined ? { tokenId: token.record.id, tokenExpiresAt: token.record.expiresAt } : {}),
       deviceCount: this.devices.size,
       onlineCount,
+      devices,
     }
   }
 
-  /** Whether a cookie value names a currently live device session. */
+  /** Whether a cookie value names a currently live (non-idle) device session. */
   hasDevice(deviceId: string): boolean {
-    const session = this.devices.get(deviceId)
-    return session !== undefined && !this.stopped
+    return this.liveSession(deviceId) !== undefined
   }
 
   /** Subscribe to snapshot changes (each emit passes a fresh snapshot). */
@@ -404,6 +501,34 @@ export class PairingService {
       return { token, record }
     }
     return undefined
+  }
+
+  /**
+   * Return a live session, deleting it first when idle-expired. Side-effecting
+   * so a stale cookie cannot pass the gate between sweeps.
+   */
+  private liveSession(deviceId: string): DeviceSession | undefined {
+    if (this.stopped) return undefined
+    const session = this.devices.get(deviceId)
+    if (session === undefined) return undefined
+    const limit = this.config.idleExpireMs ?? DEFAULT_IDLE_EXPIRE_MS
+    if (this.clock.now() - session.lastSeenAt > limit) {
+      this.devices.delete(deviceId)
+      this.persist()
+      this.notify()
+      return undefined
+    }
+    return session
+  }
+
+  private toDeviceSnapshot(id: string, session: DeviceSession, now: number): DeviceSnapshot {
+    return {
+      id,
+      createdAt: session.createdAt,
+      lastSeenAt: session.lastSeenAt,
+      online: this.isOnlineAt(session, now),
+      ...(session.userAgent !== undefined ? { userAgent: session.userAgent } : {}),
+    }
   }
 
   private derivePhase(onlineCount: number, hasToken: boolean): PairingPhase {
@@ -445,6 +570,20 @@ function snapshotsEqual(a: PairingSnapshot, b: PairingSnapshot): boolean {
     && a.tokenExpiresAt === b.tokenExpiresAt
     && a.deviceCount === b.deviceCount
     && a.onlineCount === b.onlineCount
+    && devicesEqual(a.devices, b.devices)
+}
+
+/** Per-device roster equality (order is pairing time). */
+function devicesEqual(a: readonly DeviceSnapshot[], b: readonly DeviceSnapshot[]): boolean {
+  return a.length === b.length && a.every((device, index) => {
+    const other = b[index]
+    return other !== undefined
+      && device.id === other.id
+      && device.createdAt === other.createdAt
+      && device.lastSeenAt === other.lastSeenAt
+      && device.online === other.online
+      && device.userAgent === other.userAgent
+  })
 }
 
 /** Tunnel frame equality (undefined equals undefined; fields compared shallowly). */
@@ -456,4 +595,12 @@ function tunnelEqual(a: TunnelStatus | undefined, b: TunnelStatus | undefined): 
 /** Element-wise string list equality (interface order is meaningful). */
 function sameStrings(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index])
+}
+
+/** Strip control characters and cap the User-Agent stored with a session. */
+export function sanitizeUserAgent(raw: string | undefined): string | undefined {
+  if (raw === undefined) return undefined
+  const cleaned = raw.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (cleaned === '') return undefined
+  return cleaned.length <= MAX_USER_AGENT_CHARS ? cleaned : cleaned.slice(0, MAX_USER_AGENT_CHARS)
 }

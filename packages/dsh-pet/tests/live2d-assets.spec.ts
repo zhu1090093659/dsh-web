@@ -83,7 +83,7 @@ beforeAll(async () => {
   const ctx = new Context()
   const registry = loadPetRegistry({ packageRoot: dir, petsDir: '', dshPetsDir: '' })
   const service = new PetService(ctx, { persistDir: join(dir, 'home'), registry })
-  server = await serve(makePetRoutes({ service, assetCaps: TEST_CAPS, runtimeDir, vendorDir }))
+  server = await serve(makePetRoutes({ service, ctx, assetCaps: TEST_CAPS, runtimeDir, vendorDir }))
   port = (server.address() as AddressInfo).port
 })
 
@@ -123,6 +123,7 @@ describe('live2d closure serving', () => {
     const service = new PetService(ctx, { persistDir: join(dir, 'home-tight'), registry })
     const tight = await serve(makePetRoutes({
       service,
+      ctx,
       assetCaps: { manifest: 64 * 1024, image: 20 * 1024 * 1024, model: 2 },
       runtimeDir,
       vendorDir,

@@ -1,4 +1,5 @@
 import type { ApiProxy, RpcId } from '@deepseek-ai/dsh-host-apiproxy'
+import type { CommandResult } from '@deepseek-ai/dsh-commands/types'
 import type { TaskRecord } from './core/tasks.ts'
 
 function request<T>(payload: T) {
@@ -14,6 +15,19 @@ export type SessionSummary = Extract<
   Awaited<ReturnType<ApiProxy['sessions']['list']>>['result'],
   { ok: true }
 >['value']['items'][number]
+
+type ExecutionSessionId = Extract<
+  Awaited<ReturnType<ApiProxy['sessions']['create']>>['result'],
+  { ok: true }
+>['value']['sessionId']
+
+export interface SessionCommandDispatcher {
+  execute(
+    sessionId: ExecutionSessionId,
+    line: string,
+    signal: AbortSignal,
+  ): Promise<CommandResult | undefined>
+}
 
 export type ExecutionInspection =
   | { outcome: 'pending' }
@@ -36,7 +50,10 @@ function isErrorTurnEnd(data: unknown): boolean {
 }
 
 export class HostExecutionRunner {
-  constructor(private readonly api: ApiProxy) {}
+  constructor(
+    private readonly api: ApiProxy,
+    private readonly commands?: SessionCommandDispatcher,
+  ) {}
 
   async launch(task: TaskRecord): Promise<string> {
     if (task.workspaceId !== undefined) {
@@ -63,13 +80,10 @@ export class HostExecutionRunner {
       const renamed = await this.api.sessions.rename(request({ sessionId, title: task.title }))
       if (!renamed.result.ok) throw failure(renamed.result.error)
       if (task.permission !== undefined) {
-        const command = await this.api.sessions.prompt(request({
-          sessionId,
-          mode: 'queue' as const,
-          content: [{ type: 'text' as const, text: `/permission ${task.permission}` }],
-        }))
-        if (!command.result.ok) throw failure(command.result.error)
-        if (command.result.value.command?.kind !== 'success') throw new Error('permission command was not acknowledged')
+        if (this.commands === undefined) throw new Error('permission command dispatcher is unavailable')
+        const command = await this.commands.execute(sessionId, `/permission ${task.permission}`, AbortSignal.timeout(30_000))
+        if (command === undefined) throw new Error('permission command was not acknowledged')
+        if (command.kind !== 'success') throw new Error(command.text ?? 'permission command failed')
       }
       const prompt = await this.api.sessions.prompt(request({
         sessionId,

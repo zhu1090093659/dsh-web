@@ -88,6 +88,7 @@ export const PAIR_PATHS = {
   issue: '/api/pair/issue',
   accept: '/api/pair/accept',
   stop: '/api/pair/stop',
+  revoke: '/api/pair/revoke',
   heartbeat: '/api/pair/heartbeat',
   status: '/api/pair/status',
   events: '/api/pair/events',
@@ -107,6 +108,9 @@ export const issuePayloadSchema = z.object({
 })
 export const acceptPayloadSchema = z.object({
   token: z.string().default(''),
+})
+export const revokePayloadSchema = z.object({
+  deviceId: z.string().min(1),
 })
 export const pairActionPayloadSchema = z.object({}).passthrough()
 
@@ -310,7 +314,8 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       writeJson(res, 400, { ok: false, code: 'bad-payload' })
       return
     }
-    const result = service.accept(payload.token)
+    const ua = req.headers['user-agent']
+    const result = service.accept(payload.token, typeof ua === 'string' ? ua : undefined)
     if (!result.ok) {
       writeJson(res, result.code === 'used' ? 409 : 404, { ok: false, code: result.code })
       return
@@ -339,6 +344,26 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       return
     }
     service.stop()
+    writeJson(res, 200, { ok: true })
+  }
+
+  const handleRevoke = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    if (!requireMethod(req, res, 'POST')) return
+    if (!loopbackFence(req)) {
+      writeJson(res, 403, { ok: false, code: 'forbidden' })
+      return
+    }
+    const body = await readJsonBody(req)
+    const payload = parsePairPayload(revokePayloadSchema, body)
+    if (payload === undefined) {
+      writeJson(res, 400, { ok: false, code: 'bad-payload' })
+      return
+    }
+    const revoked = service.revoke(payload.deviceId)
+    if (!revoked) {
+      writeJson(res, 404, { ok: false, code: 'unknown-device' })
+      return
+    }
     writeJson(res, 200, { ok: true })
   }
 
@@ -371,10 +396,13 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
     const paired = deviceId !== undefined && service.hasDevice(deviceId)
     const snapshot = service.snapshot()
     // Unpaired LAN/tunnel clients get only the pairing-relevant fields; the
-    // token expiry, device roster, and public tunnel URL are an oracle for
-    // targeting and timing and stay behind a live device cookie.
+    // token expiry, public tunnel URL, and counts are an oracle for targeting
+    // and stay behind a live device cookie. The per-device roster (ids are
+    // session credentials) is never returned here — only the loopback events
+    // stream carries it to the desktop panel.
+    const { devices: _devices, ...rest } = snapshot
     const visible = paired
-      ? snapshot
+      ? rest
       : { phase: snapshot.phase, lanAvailable: snapshot.lanAvailable, lanAddresses: snapshot.lanAddresses }
     writeJson(res, 200, { ok: true, paired, ...visible })
   }
@@ -394,6 +422,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
     { kind: 'exact', path: PAIR_PATHS.issue, handler: handleIssue },
     { kind: 'exact', path: PAIR_PATHS.accept, handler: handleAccept },
     { kind: 'exact', path: PAIR_PATHS.stop, handler: handleStop },
+    { kind: 'exact', path: PAIR_PATHS.revoke, handler: handleRevoke },
     { kind: 'exact', path: PAIR_PATHS.heartbeat, handler: handleHeartbeat },
     { kind: 'exact', path: PAIR_PATHS.status, handler: handleStatus },
     { kind: 'exact', path: PAIR_PATHS.events, handler: handleEvents },

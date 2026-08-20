@@ -35,6 +35,7 @@ export interface WallpaperDescriptor {
   videoUrl: string | null
   webUrl: string | null
   frameUrl: string | null
+  sceneUrl?: string | null
   previewUrl: string | null
 }
 
@@ -43,6 +44,7 @@ interface WallpaperSection {
   enabled?: boolean
   selection?: string
   mode?: 'live' | 'frame'
+  fit?: 'cover' | 'contain' | 'fill'
   pauseOnHidden?: boolean
   dim?: number
   wallpaperBlur?: number
@@ -59,6 +61,7 @@ export interface WallpaperHandle {
   /** The persisted selection id ('' = none). */
   selection(): string
   mode(): 'live' | 'frame'
+  fit(): 'cover' | 'contain' | 'fill'
   dim(): number
   wallpaperBlur(): number
   pauseOnHidden(): boolean
@@ -79,6 +82,7 @@ export interface WallpaperHandle {
   subscribe(listener: () => void): () => void
   setEnabled(value: boolean): void
   setMode(mode: 'live' | 'frame'): void
+  setFit(fit: 'cover' | 'contain' | 'fill'): void
   setDim(value: number): void
   setBlur(value: number): void
   setPauseOnHidden(value: boolean): void
@@ -115,16 +119,106 @@ function styleLayer(element: HTMLElement, zIndex: number): void {
 }
 
 /** Style a full-bleed cover child (video / img / iframe). */
-function styleCover(element: HTMLElement): void {
+function styleCover(element: HTMLElement, fit: 'cover' | 'contain' | 'fill' = 'cover'): void {
   element.style.width = '100%'
   element.style.height = '100%'
-  element.style.objectFit = 'cover'
+  element.style.objectFit = fit
   element.style.border = '0'
   element.style.display = 'block'
 }
 
 /** Max static-frame capture edge (the backdrop never needs more pixels). */
 const FRAME_MAX_EDGE = 1920
+
+/**
+ * Default full-viewport-surface detector for WE wallpaper neutralization
+ * (#734): an element is a shell surface when its rendered box is the full
+ * viewport height AND its computed background-color equals the resolved
+ * --dsw-alias-bg-base color. The height check uses GEOMETRY, not the literal
+ * computed "100%": real browsers return the used value in px (e.g. "913px")
+ * for rendered elements, and the literal "100%" only appears on unrendered
+ * 0x0 subtrees — a style-string check would silently never tag the
+ * AppFrame / conversation / details roots. jsdom does no layout (every rect
+ * is 0 and clientHeight is 0), so when no viewport height is measurable the
+ * check falls back to the style string to keep jsdom tests meaningful. The
+ * color check matches the official shell frame/root containers which paint
+ * the app base background at full height and only carry hashed CSS-module
+ * classes, so this selector-free check never depends on class names. Returns
+ * false when the token cannot be resolved.
+ */
+export function defaultWallpaperSurface(el: HTMLElement, doc: Document): boolean {
+  const win = doc.defaultView
+  if (win === null) return false
+  let rectHeight = 0
+  let viewportHeight = 0
+  let heightStyle = ''
+  let background = ''
+  try {
+    rectHeight = el.getBoundingClientRect().height
+    viewportHeight = doc.documentElement.clientHeight || win.innerHeight || 0
+    const cs = win.getComputedStyle(el)
+    heightStyle = cs.height
+    background = cs.backgroundColor
+  } catch {
+    return false
+  }
+  // Geometry wins when the element is laid out (real browsers return px used
+  // values and real rects); jsdom and unrendered subtrees report rect 0, so
+  // fall back to the style-string check there — an unrendered element is
+  // invisible, so a false tag has no visual effect.
+  const isFullHeight = rectHeight > 0
+    ? Math.abs(rectHeight - viewportHeight) <= 2
+    : heightStyle === '100%' || heightStyle === '100vh'
+  if (!isFullHeight) return false
+  const base = resolveCssColor(doc, '--dsw-alias-bg-base')
+  return base !== null && background === base
+}
+
+/** Resolve a color custom property to its computed CSS color, if any. */
+function resolveCssColor(doc: Document, name: string): string | null {
+  const win = doc.defaultView
+  if (win === null || doc.documentElement === null) return null
+  const raw = win.getComputedStyle(doc.documentElement).getPropertyValue(name).trim()
+  if (raw === '') return null
+  const probe = doc.createElement('div')
+  probe.style.setProperty('background-color', raw)
+  doc.documentElement.appendChild(probe)
+  try {
+    return win.getComputedStyle(probe).backgroundColor
+  } catch {
+    return null
+  } finally {
+    probe.remove()
+  }
+}
+
+/**
+ * Workspace-list end-fade detector (#734): a gradient-background element inside
+ * the sidebar workspaces slot. The official `data-slot="sidebar.workspaces"`
+ * anchor is stable; the fade element only carries hashed CSS-module classes, so
+ * this selects it by computed style instead of class names.
+ */
+export function defaultWorkspaceFade(el: HTMLElement, doc: Document): boolean {
+  const win = doc.defaultView
+  if (win === null) return false
+  try {
+    return win.getComputedStyle(el).backgroundImage.includes('gradient')
+  } catch {
+    return false
+  }
+}
+
+export interface WallpaperControllerOptions {
+  apiBase?: string
+  fetchImpl?: typeof fetch
+  doc?: Document
+  /** Override the full-viewport-surface detector (tests); defaults to the
+   * computed-style heuristic in defaultWallpaperSurface. */
+  declareSurface?: (el: HTMLElement, doc: Document) => boolean
+  /** Override the sidebar workspaces end-fade detector (tests); defaults to
+   * defaultWorkspaceFade. */
+  declareWorkspaceFade?: (el: HTMLElement, doc: Document) => boolean
+}
 
 /**
  * Own the skin-wallpaper scope: keep the mounted layers in sync with the
@@ -134,6 +228,7 @@ export class WallpaperController implements WallpaperHandle {
   private enabledValue = true
   private selectionValue = ''
   private modeValue: 'live' | 'frame' = 'live'
+  private fitValue: 'cover' | 'contain' | 'fill' = 'cover'
   private pauseOnHiddenValue = true
   private soundValue = false
   private volumeValue = 100
@@ -142,6 +237,8 @@ export class WallpaperController implements WallpaperHandle {
   private dirsValue: string[] = []
   private readonly listeners = new Set<() => void>()
   private readonly scope: SettingsScope<WallpaperSection>
+  private readonly options: WallpaperControllerOptions
+  private readonly doc: Document
 
   /** The descriptor of the applied selection, resolved by the card. */
   private applied: WallpaperDescriptor | null = null
@@ -152,34 +249,73 @@ export class WallpaperController implements WallpaperHandle {
   private scrimLayer: HTMLDivElement | null = null
   private videoElement: HTMLVideoElement | null = null
   private rootNeutralizer: HTMLStyleElement | null = null
+  /** Shell surfaces tagged with data-dsh-wallpaper-surface during this mount. */
+  private taggedSurfaces: HTMLElement[] = []
   private disposed = false
 
-  constructor(scope: SettingsScope<WallpaperSection>) {
+  constructor(scope: SettingsScope<WallpaperSection>, options: WallpaperControllerOptions = {}) {
     this.scope = scope
+    this.options = options
+    this.doc = options.doc ?? document
     this.readAll()
     scope.subscribe(() => {
       this.readAll()
-      this.render()
-      this.publish()
+      if (this.enabledValue && this.selectionValue && (!this.applied || this.applied.id !== this.selectionValue)) {
+        this.fetchAndSync()
+      } else {
+        this.render()
+        this.publish()
+      }
     })
     // Pause-on-hidden wiring lives for the controller's whole life; it only
     // ever acts while a video is mounted.
-    document.addEventListener('visibilitychange', this.onVisibility)
+    this.doc.addEventListener('visibilitychange', this.onVisibility)
     // Audible autoplay stays blocked until the first user gesture; retry
     // play() on that gesture so an unmuted live wallpaper starts (#580).
-    document.addEventListener('pointerdown', this.onFirstGesture)
-    document.addEventListener('keydown', this.onFirstGesture)
+    this.doc.addEventListener('pointerdown', this.onFirstGesture)
+    this.doc.addEventListener('keydown', this.onFirstGesture)
+    if (this.enabledValue && this.selectionValue) {
+      this.fetchAndSync()
+    }
   }
 
-  enabled(): boolean { return this.enabledValue }
-  selection(): string { return this.selectionValue }
-  mode(): 'live' | 'frame' { return this.modeValue }
-  dim(): number { return this.dimValue }
-  wallpaperBlur(): number { return this.blurValue }
-  pauseOnHidden(): boolean { return this.pauseOnHiddenValue }
-  sound(): boolean { return this.soundValue }
-  volume(): number { return this.volumeValue }
-  dirs(): string[] { return this.dirsValue }
+  private fetchAndSync(): void {
+    if (!this.selectionValue || !this.doc) return
+    const targetId = this.selectionValue
+    const fetchFn = this.options.fetchImpl ?? (typeof fetch !== 'undefined' ? fetch.bind(this.doc.defaultView ?? globalThis) : undefined)
+    if (!fetchFn) return
+    const apiBase = this.options.apiBase ?? '/api/skin-center/we'
+    fetchFn(`${apiBase}/inventory`)
+      .then(async (response) => {
+        if (this.disposed || !response.ok) return
+        const payload = (await response.json().catch(() => null)) as {
+          ok?: boolean
+          wallpapers?: WallpaperDescriptor[]
+        } | null
+        if (payload?.ok === true && Array.isArray(payload.wallpapers)) {
+          const item = payload.wallpapers.find((w) => w.id === targetId)
+          if (item && this.selectionValue === targetId) {
+            this.applied = item
+            this.render()
+            this.publish()
+          }
+        }
+      })
+      .catch(() => {
+        // Fail-silent on network errors
+      })
+  }
+
+  enabled = (): boolean => this.enabledValue
+  selection = (): string => this.selectionValue
+  mode = (): 'live' | 'frame' => this.modeValue
+  fit = (): 'cover' | 'contain' | 'fill' => this.fitValue
+  dim = (): number => this.dimValue
+  wallpaperBlur = (): number => this.blurValue
+  pauseOnHidden = (): boolean => this.pauseOnHiddenValue
+  sound = (): boolean => this.soundValue
+  volume = (): number => this.volumeValue
+  dirs = (): string[] => this.dirsValue
 
   addDir(dir: string): void {
     const trimmed = dir.trim()
@@ -197,13 +333,13 @@ export class WallpaperController implements WallpaperHandle {
     void this.scope.set('weLibraryDirs', this.dirsValue)
   }
 
-  activeId(): string | null {
+  activeId = (): string | null => {
     const current = this.previewing ?? this.applied
     return this.mediaLayer !== null && current !== null ? current.id : null
   }
-  trying(): boolean { return this.previewing !== null }
+  trying = (): boolean => this.previewing !== null
 
-  subscribe(listener: () => void): () => void {
+  subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
   }
@@ -220,6 +356,13 @@ export class WallpaperController implements WallpaperHandle {
     this.render()
     this.publish()
     void this.scope.set('mode', mode)
+  }
+
+  setFit(fit: 'cover' | 'contain' | 'fill'): void {
+    this.fitValue = fit
+    this.render()
+    this.publish()
+    void this.scope.set('fit', fit)
   }
 
   setDim(value: number): void {
@@ -294,9 +437,9 @@ export class WallpaperController implements WallpaperHandle {
 
   dispose(): void {
     this.disposed = true
-    document.removeEventListener('visibilitychange', this.onVisibility)
-    document.removeEventListener('pointerdown', this.onFirstGesture)
-    document.removeEventListener('keydown', this.onFirstGesture)
+    this.doc.removeEventListener('visibilitychange', this.onVisibility)
+    this.doc.removeEventListener('pointerdown', this.onFirstGesture)
+    this.doc.removeEventListener('keydown', this.onFirstGesture)
     this.teardownLayers()
   }
 
@@ -308,6 +451,8 @@ export class WallpaperController implements WallpaperHandle {
     this.enabledValue = typeof value.enabled === 'boolean' ? value.enabled : true
     this.selectionValue = typeof value.selection === 'string' ? value.selection : ''
     this.modeValue = value.mode === 'frame' ? 'frame' : 'live'
+    const rawFit = value.fit
+    this.fitValue = rawFit === 'contain' || rawFit === 'fill' ? rawFit : 'cover'
     this.pauseOnHiddenValue = typeof value.pauseOnHidden === 'boolean' ? value.pauseOnHidden : true
     this.soundValue = typeof value.sound === 'boolean' ? value.sound : false
     this.volumeValue = typeof value.volume === 'number' && Number.isFinite(value.volume)
@@ -330,12 +475,22 @@ export class WallpaperController implements WallpaperHandle {
   }
 
   private readonly onVisibility = (): void => {
-    if (this.videoElement === null || !this.pauseOnHiddenValue) return
-    if (document.hidden) {
-      this.videoElement.pause()
-    } else {
-      // jsdom (and older engines) return undefined, real browsers a promise.
-      void this.videoElement.play()?.catch(() => { /* autoplay policy */ })
+    if (!this.pauseOnHiddenValue) return
+    if (this.videoElement !== null) {
+      if (this.doc.hidden) {
+        this.videoElement.pause()
+      } else {
+        // jsdom (and older engines) return undefined, real browsers a promise.
+        void this.videoElement.play()?.catch(() => { /* autoplay policy */ })
+      }
+    }
+    const scenePlayer = this.mediaLayer?.firstElementChild ?? null
+    if (scenePlayer instanceof HTMLIFrameElement && scenePlayer.dataset.dshScenePlayer === '') {
+      try {
+        scenePlayer.contentWindow?.postMessage({ type: 'dsh-set-pause', paused: this.doc.hidden }, window.location.origin)
+      } catch {
+        // ignore
+      }
     }
   }
 
@@ -351,28 +506,67 @@ export class WallpaperController implements WallpaperHandle {
   }
 
   private ensureLayers(descriptor: WallpaperDescriptor): void {
-    // The stock shell paints an opaque background on the app root, which
-    // fully covers the negative-z wallpaper layers (issue #505). Neutralize
-    // it while a wallpaper is mounted — the same contract the v2 skin CSS
-    // pipeline appends for every skin (`[id="root"] { background:
-    // transparent }`). The id selector outranks the shell's class rule, and
-    // the token itself is left untouched so every other --dsw-alias-bg-base
-    // consumer keeps its color.
+    // The stock shell paints opaque backgrounds on the app root and on the
+    // composer seat, which fully cover the negative-z wallpaper layers
+    // (issue #505, #632). Neutralize them ONLY while the own marker
+    // data-dsh-wallpaper-active is present, so no skin or plugin style is
+    // affected outside a mounted wallpaper (#506). The app-root rules mirror
+    // the contract the v2 skin CSS pipeline appends for every skin
+    // (`[id="root"] { background: transparent }`); the id/attribute selectors
+    // outrank the shell's class rules, and the --dsw-alias-bg-base token
+    // itself is left untouched for every other consumer.
     if (this.rootNeutralizer === null) {
-      this.rootNeutralizer = document.createElement('style')
+      this.rootNeutralizer = this.doc.createElement('style')
       this.rootNeutralizer.dataset.dshWallpaperRoot = ''
-      this.rootNeutralizer.textContent = '[id="root"] { background: transparent; }'
-      document.head.appendChild(this.rootNeutralizer)
+      this.rootNeutralizer.textContent = `
+        [id="root"] { background: transparent; }
+        html[data-dsh-wallpaper-active],
+        body[data-dsh-wallpaper-active],
+        html[data-dsh-skin][data-dsh-wallpaper-active],
+        html[data-dsh-skin][data-dsh-wallpaper-active] body,
+        html[data-dsh-skin] body[data-dsh-wallpaper-active],
+        body[data-dsh-wallpaper-active][data-ds-dark-theme],
+        html[data-dsh-wallpaper-active] [id="root"] {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
+        /* The composer seat paints an opaque base fade under the input card
+           (rc.8: a linear gradient to --dsw-alias-bg-base, z-index 7; some
+           builds additionally use a ::before with backdrop-filter). Remove it
+           while the WE wallpaper is mounted so the backdrop shows behind the
+           input area (issue #734). It is anchored on the stable semantic
+           attribute data-composer-seat that the official shell outputs, so it
+           does not depend on hashed class names. */
+        html[data-dsh-wallpaper-active] [data-composer-seat],
+        html[data-dsh-wallpaper-active] [data-composer-seat]::before {
+          background: none !important;
+          backdrop-filter: none !important;
+        }
+        /* Full-viewport shell surfaces (AppFrame frame, conversation root,
+           details root) paint the opaque app base background via hashed
+           CSS-module classes. While a WE wallpaper is mounted the controller
+           tags them with the own marker data-dsh-wallpaper-surface
+           (markWallpaperSurfaces), and this rule neutralizes them with no
+           class-name dependency (issue #734). */
+        html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface] {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
+      `
+      this.doc.head.appendChild(this.rootNeutralizer)
     }
+    this.doc.body.dataset.dshWallpaperActive = 'true'
+    this.doc.documentElement.dataset.dshWallpaperActive = 'true'
+    this.markSurfaces()
     if (this.mediaLayer === null) {
-      this.mediaLayer = document.createElement('div')
+      this.mediaLayer = this.doc.createElement('div')
       styleLayer(this.mediaLayer, -3)
-      document.body.appendChild(this.mediaLayer)
+      this.doc.body.appendChild(this.mediaLayer)
     }
     if (this.scrimLayer === null) {
-      this.scrimLayer = document.createElement('div')
+      this.scrimLayer = this.doc.createElement('div')
       styleLayer(this.scrimLayer, -2)
-      document.body.appendChild(this.scrimLayer)
+      this.doc.body.appendChild(this.scrimLayer)
     }
     const mediaKey = descriptor.id + ':' + this.modeValue
     if (this.mediaLayer.dataset.mediaKey !== mediaKey) {
@@ -382,12 +576,30 @@ export class WallpaperController implements WallpaperHandle {
       const child = this.buildMedia(descriptor)
       if (child !== null) this.mediaLayer.appendChild(child)
     }
+    // Sizing mode changes apply in place: rebuilding would restart video
+    // playback and re-parse the scene on every click (#717 follow-up).
+    this.applyFit()
     // Blur the wallpaper itself (the -1 backdrop-filter element stays the
     // skin-center blur control's business and blurs everything behind).
     const blur = this.blurValue > 0 ? 'blur(' + String(this.blurValue) + 'px)' : ''
     this.mediaLayer.style.filter = blur
     this.mediaLayer.style.transform = this.blurValue > 0 ? 'scale(1.05)' : ''
     this.scrimLayer.style.background = 'rgba(0, 0, 0, ' + String(this.dimValue / 100) + ')'
+  }
+
+  /** Push the current sizing mode onto the mounted media element. */
+  private applyFit(): void {
+    const child = this.mediaLayer?.firstElementChild ?? null
+    if (child instanceof HTMLElement) {
+      styleCover(child, this.fitValue)
+    }
+    if (child instanceof HTMLIFrameElement && child.dataset.dshScenePlayer === '') {
+      try {
+        child.contentWindow?.postMessage({ type: 'dsh-set-fit', fit: this.fitValue }, window.location.origin)
+      } catch {
+        // ignore: the player also receives the fit on its own load handler
+      }
+    }
   }
 
   /** Build the cover child for one descriptor + mode; null when unrenderable. */
@@ -403,7 +615,7 @@ export class WallpaperController implements WallpaperHandle {
     }
     if (descriptor.type === 'web') {
       if (this.modeValue === 'live' && descriptor.webUrl !== null) {
-        const iframe = document.createElement('iframe')
+        const iframe = this.doc.createElement('iframe')
         iframe.src = descriptor.webUrl
         // Web wallpapers are the user's own installed local content (the
         // same trust Wallpaper Engine extends to them); scripts + same-origin
@@ -411,14 +623,36 @@ export class WallpaperController implements WallpaperHandle {
         // downloads stay blocked.
         iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin')
         iframe.setAttribute('tabindex', '-1')
-        styleCover(iframe)
+        styleCover(iframe, this.fitValue)
         return iframe
       }
       return this.buildImage(descriptor.previewUrl)
     }
     if (descriptor.type === 'scene') {
-      // The host frame decode can still fail (422): fall back to the preview
-      // image instead of leaving a blank layer (#521).
+      if (this.modeValue === 'live' && descriptor.videoUrl !== null) {
+        return this.buildVideo(descriptor.videoUrl, descriptor.frameUrl, descriptor.previewUrl)
+      }
+      if (this.modeValue === 'live' && descriptor.sceneUrl) {
+        const iframe = this.doc.createElement('iframe')
+        iframe.src = descriptor.sceneUrl
+        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin')
+        iframe.setAttribute('tabindex', '-1')
+        iframe.dataset.dshScenePlayer = ''
+        styleCover(iframe, this.fitValue)
+        iframe.addEventListener('load', () => {
+          try {
+            iframe.contentWindow?.postMessage({ type: 'dsh-set-fit', fit: this.fitValue }, window.location.origin)
+          } catch {
+            // ignore
+          }
+        })
+        return iframe
+      }
+      if (this.modeValue === 'frame' && descriptor.videoUrl !== null && descriptor.frameUrl === null) {
+        return this.buildVideoFrame(descriptor.videoUrl, descriptor.previewUrl)
+      }
+      // The host frame decode yields the native full-resolution texture (1080p/4K);
+      // fall back to the preview image if the scene frame decode fails (422) (#521).
       return this.buildImage(descriptor.frameUrl ?? descriptor.previewUrl, descriptor.previewUrl)
     }
     return this.buildImage(descriptor.previewUrl)
@@ -431,8 +665,8 @@ export class WallpaperController implements WallpaperHandle {
     this.videoElement.volume = this.volumeValue / 100
   }
 
-  private buildVideo(url: string): HTMLVideoElement {
-    const video = document.createElement('video')
+  private buildVideo(url: string, frameUrl: string | null = null, previewUrl: string | null = null): HTMLVideoElement {
+    const video = this.doc.createElement('video')
     video.src = url
     video.muted = !this.soundValue
     video.volume = this.volumeValue / 100
@@ -440,8 +674,18 @@ export class WallpaperController implements WallpaperHandle {
     video.autoplay = true
     video.playsInline = true
     video.setAttribute('aria-hidden', 'true')
-    styleCover(video)
+    styleCover(video, this.fitValue)
     this.videoElement = video
+    if (frameUrl !== null || previewUrl !== null) {
+      video.addEventListener('error', () => {
+        const nextUrl = frameUrl ?? previewUrl
+        const nextFallback = frameUrl !== null ? previewUrl : null
+        const img = this.buildImage(nextUrl, nextFallback)
+        if (img && video.parentElement) {
+          video.parentElement.replaceChild(img, video)
+        }
+      }, { once: true })
+    }
     // jsdom (and older engines) return undefined, real browsers a promise.
     void video.play()?.catch(() => { /* autoplay policy: stays paused */ })
     return video
@@ -449,10 +693,10 @@ export class WallpaperController implements WallpaperHandle {
 
   /** Static-frame mode for video: capture the first frame into an image. */
   private buildVideoFrame(url: string, previewUrl: string | null): HTMLElement {
-    const image = document.createElement('img')
-    styleCover(image)
+    const image = this.doc.createElement('img')
+    styleCover(image, this.fitValue)
     if (previewUrl !== null) image.src = previewUrl
-    const video = document.createElement('video')
+    const video = this.doc.createElement('video')
     video.muted = true
     video.playsInline = true
     video.preload = 'auto'
@@ -460,7 +704,7 @@ export class WallpaperController implements WallpaperHandle {
     video.addEventListener('loadeddata', () => {
       try {
         const scale = Math.min(1, FRAME_MAX_EDGE / Math.max(video.videoWidth, video.videoHeight))
-        const canvas = document.createElement('canvas')
+        const canvas = this.doc.createElement('canvas')
         canvas.width = Math.max(1, Math.round(video.videoWidth * scale))
         canvas.height = Math.max(1, Math.round(video.videoHeight * scale))
         const context = canvas.getContext('2d')
@@ -480,19 +724,69 @@ export class WallpaperController implements WallpaperHandle {
 
   private buildImage(url: string | null, fallbackUrl: string | null = null): HTMLElement | null {
     if (url === null) return null
-    const image = document.createElement('img')
+    const image = this.doc.createElement('img')
     image.src = url
     image.alt = ''
     if (fallbackUrl !== null && fallbackUrl !== url) {
       image.addEventListener('error', () => {
-        image.src = fallbackUrl
+        if (image.src !== fallbackUrl) {
+          image.src = fallbackUrl
+        }
       }, { once: true })
     }
-    styleCover(image)
+    styleCover(image, this.fitValue)
     return image
   }
 
+  /** Tag the official shell full-viewport background surfaces (AppFrame
+   * frame, conversation root, details root) and the sidebar workspace-list
+   * end fade with the own marker data-dsh-wallpaper-surface so the
+   * neutralizer can target them without hashed class names (#734). Idempotent
+   * across renders within one mount; untagged on teardown. */
+  private markSurfaces(): void {
+    const root = this.doc.getElementById('root')
+    if (root !== null) {
+      const isSurface = this.options.declareSurface ?? defaultWallpaperSurface
+      const stack: Element[] = [root]
+      while (stack.length > 0) {
+        const node = stack.pop()
+        if (node === undefined) continue
+        if (node instanceof HTMLElement && !node.hasAttribute('data-dsh-wallpaper-surface') && isSurface(node, this.doc)) {
+          node.setAttribute('data-dsh-wallpaper-surface', '')
+          this.taggedSurfaces.push(node)
+        }
+        for (const child of Array.from(node.children)) stack.push(child)
+      }
+    }
+    this.markWorkspaceFades()
+  }
+
+  /** Tag the sidebar workspaces list-end fade with the same own marker (#734). */
+  private markWorkspaceFades(): void {
+    const slot = this.doc.querySelector('[data-slot="sidebar.workspaces"]')
+    if (slot === null) return
+    const isFade = this.options.declareWorkspaceFade ?? defaultWorkspaceFade
+    const stack: Element[] = [slot]
+    while (stack.length > 0) {
+      const node = stack.pop()
+      if (node === undefined) continue
+      if (node instanceof HTMLElement && !node.hasAttribute('data-dsh-wallpaper-surface') && isFade(node, this.doc)) {
+        node.setAttribute('data-dsh-wallpaper-surface', '')
+        this.taggedSurfaces.push(node)
+      }
+      for (const child of Array.from(node.children)) stack.push(child)
+    }
+  }
+
+  private untagSurfaces(): void {
+    for (const el of this.taggedSurfaces) el.removeAttribute('data-dsh-wallpaper-surface')
+    this.taggedSurfaces = []
+  }
+
   private teardownLayers(): void {
+    this.untagSurfaces()
+    delete this.doc.body.dataset.dshWallpaperActive
+    delete this.doc.documentElement.dataset.dshWallpaperActive
     if (this.rootNeutralizer !== null) {
       this.rootNeutralizer.remove()
       this.rootNeutralizer = null

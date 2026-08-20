@@ -3,7 +3,7 @@
  * set-enabled/delete dispatch (fake IncomingMessage + ServerResponse, temp
  * skill roots).
  */
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, symlinkSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -19,6 +19,17 @@ mkdirSync(join(PROJ, '.dsh', 'skills', 'poc-first'), { recursive: true })
 mkdirSync(join(HOME, 'skills', 'user-tool'), { recursive: true })
 writeFileSync(join(PROJ, '.dsh', 'skills', 'poc-first', 'SKILL.md'), '---\nname: poc-first\ndescription: 快速 POC\n---\n# 正文\n', 'utf8')
 writeFileSync(join(HOME, 'skills', 'user-tool', 'SKILL.md'), '---\nname: user-tool\ndescription: 用户级技能\n---\n', 'utf8')
+
+// Symlink support is environment-dependent (Windows needs Developer Mode,
+// some sandboxed Linux runners disallow it) — probe once and skip linked cases.
+let CAN_SYMLINK = false
+try {
+  mkdirSync(join(TMP, 'probe', 'target'), { recursive: true })
+  symlinkSync(join(TMP, 'probe', 'target'), join(TMP, 'probe', 'linked'), 'dir')
+  CAN_SYMLINK = true
+} catch {
+  CAN_SYMLINK = false
+}
 
 afterAll(() => { rmSync(TMP, { recursive: true, force: true }) })
 
@@ -234,6 +245,23 @@ describe('delete', () => {
     await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'new-skill' } }), res)
     expect(status()).toBe(200)
     expect(existsSync(join(HOME, 'skills', 'new-skill', 'SKILL.md'))).toBe(false)
+  })
+
+  it('refuses to delete a linked skill (target is left in place)', async () => {
+    if (!CAN_SYMLINK) return
+    const shared = join(TMP, 'shared', 'linked-skill')
+    mkdirSync(shared, { recursive: true })
+    writeFileSync(join(shared, 'SKILL.md'), '---\nname: linked-skill\ndescription: 链接技能\n---\n', 'utf8')
+    symlinkSync(shared, join(HOME, 'skills', 'linked-skill'), 'dir')
+    try {
+      const { res, status } = response()
+      await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'linked-skill' } }), res)
+      expect(status()).toBe(400)
+      expect(existsSync(join(shared, 'SKILL.md'))).toBe(true)
+    } finally {
+      rmSync(join(HOME, 'skills', 'linked-skill'), { recursive: true, force: true })
+      rmSync(shared, { recursive: true, force: true })
+    }
   })
 
   it('returns 404 for unknown skills', async () => {

@@ -71,6 +71,12 @@ node scripts/dsh-skin-new            # 脚手架：新皮肤资产目录
 所有代码改动（本地开发与远程 PR）必须遵循本流程。贡献者入口文档：
 [CONTRIBUTING.md](CONTRIBUTING.md)；日常开发细节见 [docs/development.md](docs/development.md)。
 
+### 分支模型
+
+- `dev` 是开发分支（集成分支）：本地开发与远程 PR 统一合并到 `dev`，
+  提交前先 `git fetch origin && git rebase origin/dev` 同步。
+- `main` 是稳定分支：只接收 `dev` 上测试通过后合入的代码（由维护者执行）。
+
 ### 提交规范（Conventional Commits）
 
 提交信息格式 `type(scope): subject`，type 用 `feat` / `fix` / `chore` / `docs` /
@@ -87,8 +93,15 @@ node scripts/dsh-skin-new            # 脚手架：新皮肤资产目录
 
 ### PR 要求（本地与远程一致）
 
-- 按 [PR 模板](.github/pull_request_template.md) 填写（摘要、涉及包、类型、AI
-  编码披露、仓库规范检查、本地验证；用户可见变更附证据）。
+- 一律以 `dev` 为 base 提 PR；按 [PR 模板](.github/pull_request_template.md)
+  填写（摘要、涉及包、类型、最新代码确认、测试证据与上游同步、AI 编码披露、
+  仓库规范检查、本地验证；用户可见变更附证据）。
+- **测试证据必填**：贡献者 PR 必须提供自己本地测试的证据，并附上同步上游
+  最新 `dev` 分支后重新测试通过的证据（CI 与 scripts/pr-review.mjs 双重
+  拦截）。文本类改动可不附截图；视觉修复 / 用户可见变更必须附截图（视觉
+  修复需完成态或修复前后对比），且视觉修复必须用支持图像输入的多模态
+  模型完成——纯文本模型（如 deepseek-chat / deepseek-reasoner / gpt-3.5）
+  修复的视觉类 PR 不接受。
 - 改包 README 必须同 PR 维护中英三件套并 `pnpm docs:write-pair` 重录配对；
   任一侧不同步另一侧 `docs:check` 即红。
 - 新增/删除包、改皮肤清单时同步 `docs/publish-prep.md` 与

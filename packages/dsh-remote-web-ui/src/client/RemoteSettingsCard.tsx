@@ -19,6 +19,8 @@ export interface RemoteSettings {
   offlineAfterMs?: number
   /** Hard cap on paired device sessions (oldest evicted when full). */
   maxDevices?: number
+  /** Idle sessions older than this (ms) are deleted. */
+  idleExpireMs?: number
   /** Cookie name carrying the paired device id. */
   cookieName?: string
   /** Fence flag: whether non-loopback /api requests must carry a live paired-device cookie. */
@@ -41,6 +43,8 @@ export interface RemoteSettingsCardState extends CardShell {
   offlineAfterMs: CardFieldState
   /** Paired-device cap. */
   maxDevices: CardFieldState
+  /** Idle-expiry window. */
+  idleExpireMs: CardFieldState
   /** Device cookie name. */
   cookieName: CardFieldState
   /** LAN fence flag. */
@@ -73,6 +77,7 @@ export class RemoteSettingsCardController {
       numberField('tokenTtlMs'),
       numberField('offlineAfterMs'),
       numberField('maxDevices'),
+      numberField('idleExpireMs'),
       textField('cookieName'),
       booleanField('requirePairingForLan'),
       textField('publicBaseUrl'),
@@ -89,6 +94,7 @@ export class RemoteSettingsCardController {
       tokenTtlMs: this.form.field('tokenTtlMs'),
       offlineAfterMs: this.form.field('offlineAfterMs'),
       maxDevices: this.form.field('maxDevices'),
+      idleExpireMs: this.form.field('idleExpireMs'),
       cookieName: this.form.field('cookieName'),
       requirePairingForLan: this.form.field('requirePairingForLan'),
       publicBaseUrl: this.form.field('publicBaseUrl'),
@@ -186,6 +192,16 @@ export function RemoteSettingsCard(props: RemoteSettingsCardProps) {
         {...state.maxDevices}
         onEdit={(text) => { props.edit('maxDevices', text) }}
         onReset={() => { props.resetField('maxDevices') }}
+      />
+      <ValueField
+        id="settings-remote-idle-expire"
+        label={t('settings.idleExpireMs')}
+        hint={t('settings.idleExpireMsHint')}
+        numeric
+        {...fieldProps}
+        {...state.idleExpireMs}
+        onEdit={(text) => { props.edit('idleExpireMs', text) }}
+        onReset={() => { props.resetField('idleExpireMs') }}
       />
       <ValueField
         id="settings-remote-cookie"

@@ -170,6 +170,33 @@ describe('CardForm', () => {
     expect(form.shell().dirty).toBe(false)
   })
 
+  it('keeps an in-flight edit to the SAME field being saved', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ enabled: true, size: 32, name: 'old' })
+    scope.autoReflect()
+    const form = new CardForm(scope, fields())
+    const actions = form.actions()
+    actions.edit('name', 'new')
+    // A deferred write keeps the save in flight so we can re-edit the same
+    // field mid-save.
+    let release: (() => void) | undefined
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const originalSet = scope.set.getMockImplementation()
+    scope.set.mockImplementation(async (field: string, value: unknown) => {
+      await gate
+      await originalSet!(field, value)
+    })
+    const saving = form.save()
+    actions.edit('name', 'newer')
+    release!()
+    await saving
+    // The newer draft survives: only the entry this save started from is
+    // cleared, not a draft the user staged while the write was in flight.
+    expect(form.field('name')).toMatchObject({ text: 'newer', invalid: false })
+    expect(form.shell().dirty).toBe(true)
+    await form.save()
+    expect(form.shell().dirty).toBe(false)
+  })
+
   it('marks the shell failed when a write does not land', async () => {
     const scope = new FakeScope<Record<string, unknown>>({ name: 'old' })
     // Drop the write on the floor: the read-back never sees the staged value.

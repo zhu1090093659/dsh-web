@@ -19,11 +19,14 @@ whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/�
 - **GUI 形态**：社区插件是设置页**一级菜单**（`settings.section` id `community-plugins`，order 140），
   与通用设置/模式/插件/Agent 预设及 Web UI 插件、皮肤中心、宠物并列，内容**直接展开**
   （`alwaysOpen`，无折叠），自带启用开关（`community-plugins` 设置命名空间，开关就在分区卡片内）。
+- **插件管理器联动**：卡片桥接同家族 sibling `dsh-plugin-manager`（cordis 服务
+  `pluginManager`，可选）——在场时展示已安装状态并可发起安装/卸载/看进度；缺席时
+  降级为只读的复制安装命令索引。
 - **数据流**：`community.json` → `node scripts/community-index` →
   `packages/dsh-community-plugins/src/client/generated/community.ts`（自动生成，内嵌进 client bundle）
   → 重建社区插件包。
-- **门禁**：`node scripts/community-index --check` 是 CI 漂移门禁；`scripts/community-index.test.mjs`
-  在 `pnpm test:scripts` 里校验条目契约。
+- **门禁**：`node scripts/community-index --check`（等价 `pnpm community:check`）是 CI 漂移门禁；
+  `scripts/community-index.test.mjs` 在 `pnpm test:scripts` 里校验条目契约。
 
 ## 1. 路径 A：在自己的仓库开发社区插件
 
@@ -52,13 +55,14 @@ whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/�
 ## 2. 路径 B：登记进社区插件索引
 
 1. 编辑 `packages/dsh-community-plugins/community.json`，追加一条记录。字段契约
-   （`scripts/community-index` 强制校验）：
-   - `id`：唯一，小写 kebab；
-   - `name` / `nameEn`：显示名（中/英）；
-   - `author`：贡献者（GitHub 用户或组织）；
-   - `repo`：`https://` 完整 URL，指向**贡献者自己的仓库**（其它 scheme 或裸字符串会被拒绝）；
-   - `description` / `descriptionEn`：一句介绍（中/英，可选但建议成对填写）；
-   - `npm`：npm 包名（**实际发布过才填**，可选）。
+   （`scripts/community-index` 强制校验，缺必填即抛错）：
+   - 必填：`id`（唯一，小写 kebab）；`name` / `nameEn`（显示名，中/英）；`author`
+     （贡献者 GitHub 用户或组织）；`repo`（`https://` 完整 URL，且只允许 path-safe
+     字符 `^[A-Za-z0-9._~/-]+$`——卡片会把 repo 拼进 shell 安装命令，空格与 shell
+     元字符直接拒绝）；
+   - 可选：`description` / `descriptionEn`（一句介绍，建议成对填写）；`npm`（npm 包名，
+     **实际发布过才填**，且必须是合法包名）；`category`（`ui` / `agent` / `tools` /
+     `knowledge` / `integration` / `security` / `utility` 之一，不在枚举即拒绝）。
 2. 重新生成索引、重建并测试：
    ```sh
    node scripts/community-index            # 重写 generated/community.ts（禁手改；改条目只改 community.json）
@@ -75,7 +79,8 @@ whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/�
 ## 3. 验收清单（全部满足才算完成）
 
 - [ ] 插件本体在贡献者自己的仓库，官方 bundle 标准四件套齐全（或明确走家族聚合流程）
-- [ ] community.json 条目字段契约全部满足（id 唯一、repo 为 https://、无 emoji）
+- [ ] community.json 条目字段契约全部满足（id 唯一、repo 为 path-safe 的 https:// URL、
+       category 在枚举内、无 emoji）
 - [ ] `node scripts/community-index --check` 通过（生成文件已同步提交）
 - [ ] 社区插件包 `build` 与 `test` 通过（guard 测试逐条校验条目）
 - [ ] 本地 GUI 实测：一级菜单「社区插件」直接展开，新条目与链接正确
@@ -83,7 +88,9 @@ whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/�
 
 ## 4. 常见坑
 
-- **repo 不是 https:// 完整 URL**：校验直接拒绝（`must be an https:// URL`）。
+- **repo 不是 path-safe 的 https:// URL**：校验直接拒绝（`must be an https:// URL of
+  path-safe characters`；空格与 shell 元字符不允许）。
+- **category 不在枚举内**：直接拒绝（`category must be one of ...`）。
 - **把第三方代码提交进本仓库**：索引只登记元数据，任何第三方实现都应留在贡献者仓库。
 - **手改 generated/community.ts**：它是 `scripts/community-index` 的产物，手改会在 --check 门禁下报漂移。
 - **npm 字段提前填**：包还没发布就填会误导用户安装失败；发布后再补并重新生成。

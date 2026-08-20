@@ -115,6 +115,20 @@ test(`diff 新增行提取：文件与行号正确`, () => {
   ])
 })
 
+test(`diff 新增行提取：忽略 '\\ No newline at end of file' 标记`, () => {
+  const diff = [
+    `diff --git a/f.txt b/f.txt`,
+    `--- a/f.txt`,
+    `+++ b/f.txt`,
+    `@@ -1 +1 @@`,
+    `-old`,
+    `\\ No newline at end of file`,
+    `+new`,
+  ].join(`\n`)
+  const out = addedLinesFromDiff(diff)
+  assert.deepEqual(out, [{ path: `f.txt`, line: 1, text: `new` }])
+})
+
 // ---------------------------------------------------------------- checkSecrets
 
 test(`密钥扫描：命中拒绝，测试目录降级警告`, () => {
@@ -184,8 +198,17 @@ function makeBody(overrides = {}) {
     `- [x] 任务看板 packages/dsh-task-board`,
     `## PR 类型（PR Type）`,
     `- [x] 面向用户的功能或行为变更`,
+    ...(overrides.visual ? [`- [x] 视觉修复（UI / 视觉类问题的修复）`] : []),
     `## 最新代码确认（Latest Codebase Confirmation）`,
-    `- [x] 我已基于最新 main 分支开发，或在提交前已 rebase / 合并最新 main。`,
+    `- [x] 我已基于最新 \`dev\` 分支开发，或在提交前已 rebase / 合并最新 \`dev\`。`,
+    `## 测试证据与上游同步（Test Evidence & Upstream Sync）`,
+    `- [x] 我提供了自己本地测试的证据（执行的命令 / 测试结果 / 运行截图）。`,
+    `- [x] 我已同步上游最新 \`dev\` 分支（\`git fetch origin && git rebase origin/dev\`），并附上同步后重新测试通过的证据（视觉 / 用户可见变更附截图）。`,
+    ...(overrides.visual ? [
+      `## 视觉修复要求（Visual Fix Requirements）`,
+      `- [x] 我提供了修复完成后的截图（完成态或修复前后对比）。`,
+      `- [x] 修复使用的 AI 模型支持图像输入（多模态模型）；未使用 AI 编码时此项视为满足。`,
+    ] : []),
     `## AI 编码披露（AI Coding Disclosure）`,
     `- [x] 部分 AI 辅助：AI 帮助编写或修改了部分编程改动。`,
     `使用的 AI 模型：DeepSeek`,
@@ -227,13 +250,55 @@ test(`声明 AI 但模型为空拒绝`, () => {
   assert.ok(f.some((x) => x.message.includes(`AI 模型`)))
 })
 
-test(`外部贡献者功能 PR 无证据拒绝；仓库所有者豁免`, () => {
+test(`外部贡献者 PR 无测试截图拒绝；仓库所有者豁免`, () => {
   const noEvidence = makeBody({ author: { login: `someone` } }).body
     .replace(/^\!\[screenshot\].*$/m, ``)
   const f1 = checkTemplate({ body: noEvidence, author: { login: `someone` } }, `owner`)
   assert.ok(f1.some((x) => x.message.includes(`证据`)))
   const f2 = checkTemplate({ body: noEvidence, author: { login: `owner` } }, `owner`)
   assert.ok(!f2.some((x) => x.message.includes(`证据`)))
+})
+
+test(`外部贡献者 PR 未勾选自测证据 / 上游同步项拒绝；所有者豁免`, () => {
+  let body = makeBody({ author: { login: `someone` } }).body
+  body = body.replace(/^\- \[x\] 我提供了自己本地测试的证据.*$/m, ``)
+  const f1 = checkTemplate({ body, author: { login: `someone` } }, `owner`)
+  assert.ok(f1.some((x) => x.message.includes(`自测证据`)))
+  body = body.replace(/^\- \[x\] 我已同步上游最新.*$/m, ``)
+  const f2 = checkTemplate({ body, author: { login: `someone` } }, `owner`)
+  assert.ok(f2.some((x) => x.message.includes(`上游同步`)))
+  const f3 = checkTemplate({ body, author: { login: `owner` } }, `owner`)
+  assert.ok(!f3.some((x) => x.message.includes(`上游同步`)))
+})
+
+test(`视觉修复 PR：未勾选完成截图 / 多模态声明拒绝`, () => {
+  let body = makeBody({ author: { login: `someone` }, visual: true }).body
+  body = body.replace(/^\- \[x\] 我提供了修复完成后的截图.*$/m, ``)
+  const f1 = checkTemplate({ body, author: { login: `someone` } }, `owner`)
+  assert.ok(f1.some((x) => x.message.includes(`完成截图`)))
+  body = body.replace(/^\- \[x\] 修复使用的 AI 模型支持图像输入.*$/m, ``)
+  const f2 = checkTemplate({ body, author: { login: `someone` } }, `owner`)
+  assert.ok(f2.some((x) => x.message.includes(`多模态`)))
+})
+
+test(`视觉修复 PR：纯文本模型拒绝，多模态模型通过，所有者豁免`, () => {
+  const makeVisual = (model) => makeBody({ author: { login: `someone` }, visual: true }).body
+    .replace(/^使用的 AI 模型：.*$/m, `使用的 AI 模型：` + model)
+  const f1 = checkTemplate({ body: makeVisual(`deepseek-chat`), author: { login: `someone` } }, `owner`)
+  assert.ok(f1.some((x) => x.message.includes(`多模态`)))
+  const f2 = checkTemplate({ body: makeVisual(`DeepSeek-VL2`), author: { login: `someone` } }, `owner`)
+  assert.ok(!f2.some((x) => x.message.includes(`多模态`)))
+  const f3 = checkTemplate({ body: makeVisual(`deepseek-chat`), author: { login: `owner` } }, `owner`)
+  assert.ok(!f3.some((x) => x.message.includes(`多模态`)))
+})
+
+test(`文本类改动可不附截图`, () => {
+  let body = makeBody({ author: { login: `someone` } }).body
+  body = body
+    .replace(/^\- \[x\] 面向用户的功能或行为变更.*$/m, `- [x] 维护 / 重构`)
+    .replace(/^\!\[screenshot\].*$/m, ``)
+  const f = checkTemplate({ body, author: { login: `someone` } }, `owner`)
+  assert.ok(!f.some((x) => x.message.includes(`证据`)))
 })
 
 test(`本地验证为空拒绝`, () => {

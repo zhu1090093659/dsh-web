@@ -26,6 +26,7 @@
 
 - [ ] 面向用户的功能或行为变更
 - [ ] Bug 修复
+- [ ] 视觉修复（UI / 视觉类问题的修复）
 - [ ] 增强 / 优化（现有功能的改进、性能 / 体验优化）
 - [ ] 新皮肤收录（内容贡献，欢迎直接提交，无需先提 issue）
 - [ ] 维护 / 重构
@@ -34,11 +35,27 @@
 
 ## 最新代码确认（Latest Codebase Confirmation）
 
-- [ ] 我已基于最新 `main` 分支开发，或在提交前已 rebase / 合并最新 `main`。
+- [ ] 我已基于最新 `dev` 分支开发，或在提交前已 rebase / 合并最新 `dev`。
 
 同步命令：
 
-<!-- 示例：git fetch origin && git rebase origin/main -->
+<!-- 示例：git fetch origin && git rebase origin/dev -->
+
+## 测试证据与上游同步（Test Evidence & Upstream Sync）
+
+<!-- 必填。缺少下列任一证据的 PR 不予接受；文本类改动可不附截图，但必须提供测试证据。 -->
+
+- [ ] 我提供了自己本地测试的证据（执行的命令 / 测试结果 / 运行截图）。
+- [ ] 我已同步上游最新 `dev` 分支（`git fetch origin && git rebase origin/dev`），并附上同步后重新测试通过的证据（视觉 / 用户可见变更附截图）。
+
+## 视觉修复要求（Visual Fix Requirements）
+
+<!-- 仅当 PR 类型勾选了「视觉修复」时必填；纯文本类改动可跳过本节。 -->
+
+- [ ] 我提供了修复完成后的截图（完成态或修复前后对比）。
+- [ ] 修复使用的 AI 模型支持图像输入（多模态模型）；未使用 AI 编码时此项视为满足。
+
+<!-- 使用纯文本模型（如 deepseek-chat / deepseek-reasoner / gpt-3.5 等不支持图像输入的模型）进行视觉修复的 PR 不接受；使用的多模态模型请在「AI 编码披露」节填写。 -->
 
 ## AI 编码披露（AI Coding Disclosure）
 

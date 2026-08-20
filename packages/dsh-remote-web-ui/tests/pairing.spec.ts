@@ -197,4 +197,48 @@ describe('PairingService', () => {
     expect(service.hasDevice(cId)).toBe(true)
     expect(service.snapshot().deviceCount).toBe(2)
   })
+
+  it('sweep deletes a session idle longer than idleExpireMs', () => {
+    const service = makeService({ idleExpireMs: 60_000 })
+    const { token } = service.issue()
+    const accepted = service.accept(token)
+    const deviceId = accepted.ok ? accepted.deviceId : ''
+    now += 60_001
+    service.sweep()
+    expect(service.hasDevice(deviceId)).toBe(false)
+    expect(service.snapshot().deviceCount).toBe(0)
+  })
+
+  it('touchDevice refuses an idle cookie without waiting for sweep', () => {
+    const service = makeService({ idleExpireMs: 60_000 })
+    const { token } = service.issue()
+    const accepted = service.accept(token)
+    const deviceId = accepted.ok ? accepted.deviceId : ''
+    now += 60_001
+    expect(service.touchDevice(deviceId)).toBe(false)
+    expect(service.hasDevice(deviceId)).toBe(false)
+  })
+
+  it('revoke drops one device and leaves the others', () => {
+    const service = makeService({ maxDevices: 4 })
+    const first = service.issue()
+    const a = service.accept(first.token)
+    const second = service.issue()
+    const b = service.accept(second.token)
+    const aId = a.ok ? a.deviceId : ''
+    const bId = b.ok ? b.deviceId : ''
+    expect(service.revoke(aId)).toBe(true)
+    expect(service.hasDevice(aId)).toBe(false)
+    expect(service.hasDevice(bId)).toBe(true)
+    expect(service.revoke('missing')).toBe(false)
+  })
+
+  it('surfaces devices in the snapshot with sanitized User-Agent', () => {
+    const service = makeService()
+    const { token } = service.issue()
+    service.accept(token, 'Mozilla/5.0 Phone')
+    const [device] = service.snapshot().devices
+    expect(device).toMatchObject({ online: true, userAgent: 'Mozilla/5.0 Phone' })
+    expect(device?.id).toMatch(/^tok-/)
+  })
 })

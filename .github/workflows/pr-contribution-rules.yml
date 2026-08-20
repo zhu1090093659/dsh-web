@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   enforce:
@@ -60,15 +60,35 @@ jobs:
 
             const prType = readSection('PR 类型（PR Type）');
             const latest = readSection('最新代码确认（Latest Codebase Confirmation）');
+            const evidenceRules = readSection('测试证据与上游同步（Test Evidence & Upstream Sync）');
+            const visualRules = readSection('视觉修复要求（Visual Fix Requirements）');
             const validation = readSection('本地验证（Local Validation）');
             const evidence = readSection('用户可见变更证据（Local Feature Evidence）');
+            const ai = readSection('AI 编码披露（AI Coding Disclosure）');
+            const aiUsed = hasCheckedLine(ai, '完全 AI 编码') || hasCheckedLine(ai, '部分 AI 辅助');
+            const aiModelMatch = ai.match(/使用的 AI 模型[：:]\s*([^\n]+)/);
+            const aiModel = aiModelMatch ? aiModelMatch[1].trim() : '';
+            // 已知纯文本模型（不支持图像输入）：视觉修复类 PR 禁用。
+            const textOnlyModel = [
+              /^deepseek$/i,
+              /deepseek[-_ ]?(chat|reasoner|r1|v3|v2|v1)/i,
+              /gpt[-_ ]?3(\.5)?([-_ ]turbo)?/i,
+              /llama[-_ ]?(2|3)/i,
+              /glm[-_ ]?(3|4)/i,
+              /moonshot|kimi/i,
+              /doubao|豆包/i,
+              /ernie|文心/i,
+              /mistral/i,
+            ];
+            const visualFix = hasCheckedLine(prType, '视觉修复（UI / 视觉类问题的修复）');
+            const userFacing = hasCheckedLine(prType, '面向用户的功能或行为变更');
 
             const errors = [];
             if (!hasAnyCheckedBox(prType)) {
               errors.push('请在 `PR 类型（PR Type）` 中至少勾选一项。');
             }
-            if (!hasCheckedLine(latest, '我已基于最新 `main` 分支开发，或在提交前已 rebase / 合并最新 `main`。')) {
-              errors.push('请在 `最新代码确认（Latest Codebase Confirmation）` 中确认本 PR 基于最新 `main`。');
+            if (!hasCheckedLine(latest, '我已基于最新 `dev` 分支开发，或在提交前已 rebase / 合并最新 `dev`。')) {
+              errors.push('请在 `最新代码确认（Latest Codebase Confirmation）` 中确认本 PR 基于最新 `dev` 分支。');
             }
             const validationCommands = readValidationPart(validation, '执行的命令', '结果摘要');
             const validationSummary = readValidationPart(validation, '结果摘要');
@@ -76,12 +96,32 @@ jobs:
               errors.push('请填写 `本地验证（Local Validation）` 中的执行的命令与结果摘要。');
             }
 
-            const userFacing = hasCheckedLine(prType, '面向用户的功能或行为变更');
-            // 仓库所有者自审的 PR 由发布构建与自动化套件把关，
-            // 截图/录屏证据门槛面向外部贡献者。
+            // 证据门槛面向外部贡献者：自测证据 + 同步上游最新 dev 分支后
+            // 重新测试通过的截图，缺一即拒绝；仓库所有者自审的 PR 由发布
+            // 构建与自动化套件把关。
             const isRepoOwner = pr.user.login === context.repo.owner;
-            if (userFacing && !isRepoOwner && !hasEvidence(evidence)) {
-              errors.push('面向用户的功能 PR 必须附带本地功能证据：截图、短视频、Markdown 图片或图片/视频链接。');
+            const isBot = pr.user.login === 'github-actions[bot]';
+            if (!isRepoOwner && !isBot) {
+              if (!hasCheckedLine(evidenceRules, '我提供了自己本地测试的证据（执行的命令 / 测试结果 / 运行截图）。')) {
+                errors.push('请在 `测试证据与上游同步（Test Evidence & Upstream Sync）` 中勾选「我提供了自己本地测试的证据」。');
+              }
+              if (!hasCheckedLine(evidenceRules, '我已同步上游最新 `dev` 分支（`git fetch origin && git rebase origin/dev`），并附上同步后重新测试通过的证据（视觉 / 用户可见变更附截图）。')) {
+                errors.push('请在 `测试证据与上游同步（Test Evidence & Upstream Sync）` 中勾选上游同步项，并附上同步 `dev` 最新代码后重新测试通过的证据。');
+              }
+              if ((visualFix || userFacing) && !hasEvidence(evidence)) {
+                errors.push('视觉修复 / 用户可见变更的 PR 必须附带截图或视频证据：视觉修复还需完成态或修复前后对比截图。');
+              }
+              if (visualFix) {
+                if (!hasCheckedLine(visualRules, '我提供了修复完成后的截图（完成态或修复前后对比）。')) {
+                  errors.push('请在 `视觉修复要求（Visual Fix Requirements）` 中勾选「我提供了修复完成后的截图」。');
+                }
+                if (aiUsed && !hasCheckedLine(visualRules, '修复使用的 AI 模型支持图像输入（多模态模型）；未使用 AI 编码时此项视为满足。')) {
+                  errors.push('视觉修复必须使用支持图像输入的多模态 AI 模型完成；请在 `视觉修复要求` 中勾选并填写模型名。');
+                }
+                if (aiUsed && (aiModel === '' || textOnlyModel.some((re) => re.test(aiModel)))) {
+                  errors.push('视觉修复使用的 AI 模型必须是多模态模型（支持图像输入）；纯文本模型（如 deepseek-chat / deepseek-reasoner / gpt-3.5）修复的视觉类 PR 不接受。');
+                }
+              }
             }
 
             if (errors.length === 0) {
@@ -95,16 +135,21 @@ jobs:
               '',
               ...errors.map((error) => `- ${error}`),
               '',
-              '新增或变更的用户可见功能必须附带本地截图或短视频，展示插件从最新代码 / 本 PR head 加载，以及功能正常工作。',
+              '贡献者 PR 必须附带本地测试证据：自测测试记录 + 同步上游最新 dev 分支后重新测试通过的证据；视觉修复需附完成截图（完成态或修复前后对比），且必须使用支持图像输入的多模态 AI 模型完成。',
             ].join('\n');
 
             if (context.payload.action !== 'synchronize') {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                body: comment,
-              });
+              try {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: comment,
+                });
+              } catch (error) {
+                // A comment failure must never mask the real checklist result.
+                core.warning('failed to post checklist comment: ' + String((error && error.message) || error));
+              }
             }
 
             core.setFailed(errors.join('\n'));

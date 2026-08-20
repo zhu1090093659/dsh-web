@@ -138,6 +138,28 @@ describe('mobile api envelope', () => {
     }
   })
 
+  it('wraps a session.list error in the server-response envelope, not a bare rpc body', async () => {
+    const failingApiProxy = {
+      ...apiProxy,
+      sessions: {
+        ...apiProxy.sessions,
+        list: async () => ({ rpcId: 'r', result: { ok: false as const, error: { code: 'forbidden', message: 'nope' } } }),
+      },
+    } as unknown as ApiProxy
+    const server = await serve(makeMobileApiRoutes({ service, apiProxy: failingApiProxy, mobileEnterToSend }))
+    try {
+      const { status, body } = await call(server.port, 'session.list')
+      expect(status).toBe(200)
+      const envelope = JSON.parse(body) as { type?: string; rpcId?: string; result?: { ok?: boolean; error?: unknown } }
+      expect(envelope.type).toBe('server-response')
+      expect(envelope.rpcId).toBe('probe-1')
+      expect(envelope.result?.ok).toBe(false)
+      expect(envelope.result?.error).toEqual({ code: 'forbidden', message: 'nope' })
+    } finally {
+      await server.close()
+    }
+  })
+
   it('answers mobile.preferences locally from the plugin config', async () => {
     let mobileEnterToSend = true
     const server = await serve(makeMobileApiRoutes({

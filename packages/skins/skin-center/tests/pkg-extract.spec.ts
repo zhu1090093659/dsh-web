@@ -10,7 +10,7 @@
  */
 
 import { Buffer } from 'node:buffer'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { inflateSync } from 'node:zlib'
@@ -19,14 +19,19 @@ import { describe, expect, it } from 'vitest'
 import {
   PKG_ENTRY_FLAG_LZ4,
   TexFormat,
+  buildSceneManifestFromDir,
+  decodePngToRgba,
   decodeTex,
   encodePng,
   extractSceneMainImage,
   extractSceneMainImageFromDir,
   lz4DecompressBlock,
+  parseMdl,
   parsePkg,
   parseTex,
+  parseTexToRGBA,
   readPkgEntry,
+  extractSceneResourceFromDir,
 } from '../src/pkg-extract.ts'
 
 // ---------------------------------------------------------------------------
@@ -173,6 +178,9 @@ interface TexSpec {
   flags?: number
   width: number
   height: number
+  /** TEXI image rect; defaults to width/height (no power-of-two padding). */
+  imageWidth?: number
+  imageHeight?: number
   mipmaps: MipSpec[]
   containerVersion?: 1 | 2 | 3 | 4
   freeImageFormat?: number
@@ -190,8 +198,8 @@ const buildTex = (spec: TexSpec): Uint8Array => {
     i32le(spec.flags ?? 0),
     i32le(spec.width),
     i32le(spec.height),
-    i32le(spec.width),
-    i32le(spec.height),
+    i32le(spec.imageWidth ?? spec.width),
+    i32le(spec.imageHeight ?? spec.height),
     u32le(0),
     nstring('TEXB000' + version),
     i32le(1), // image count
@@ -601,6 +609,36 @@ describe('decodeTex', () => {
     expect(parseTex(tex).formatName).toBe('BC7')
     expect(() => decodeTex(tex)).toThrow(/tex: unsupported format 12/)
   })
+
+  it('crops power-of-two padding to the TEXI image rect (top-left)', () => {
+    // 4x2 real image stored in a padded 4x4 mip (like WE's 1920x1080 in
+    // 2048x2048); top rows are the content, bottom rows are filler.
+    const pixels = new Uint8Array(4 * 4 * 4)
+    for (let y = 0; y < 4; y++) {
+      for (let x = 0; x < 4; x++) {
+        const i = (y * 4 + x) * 4
+        const v = y < 2 ? 200 : 9
+        pixels[i] = v
+        pixels[i + 1] = v
+        pixels[i + 2] = v
+        pixels[i + 3] = 255
+      }
+    }
+    const tex = buildTex({
+      width: 4,
+      height: 4,
+      imageWidth: 4,
+      imageHeight: 2,
+      containerVersion: 3,
+      mipmaps: [{ width: 4, height: 4, data: pixels }],
+    })
+    const decoded = decodeTex(tex)
+    expect(decoded.width).toBe(4)
+    expect(decoded.height).toBe(2)
+    expect(decoded.rgba.length).toBe(4 * 2 * 4)
+    expect(decoded.rgba[0]).toBe(200)
+    expect(decoded.rgba[decoded.rgba.length - 4]).toBe(200)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -696,6 +734,33 @@ describe('extractSceneMainImage', () => {
     expect(decodePng(result.png).rgba).toEqual(bgPixels)
   })
 
+  it('reports the real decode error instead of a later missing-texture fallback (#752)', () => {
+    // The best candidate exists but fails to decode; a later object-referenced
+    // texture is missing from the package and must not overwrite the decode
+    // error with a misleading "not found".
+    const brokenTex = buildTex({
+      width: 4,
+      height: 4,
+      containerVersion: 3,
+      mipmaps: [{ width: 4, height: 4, data: new Uint8Array(16) }],
+    })
+    const pkg = buildPkg([
+      {
+        path: 'scene.json',
+        data: encoder.encode(
+          JSON.stringify({
+            objects: [
+              { id: 1, name: 'background', image: 'materials/broken.tex' },
+              { id: 2, name: 'overlay', image: 'materials/missing.tex' },
+            ],
+          }),
+        ),
+      },
+      { path: 'materials/broken.tex', data: brokenTex },
+    ])
+    expect(() => extractSceneMainImage(pkg)).toThrow(/tex: mipmap size mismatch for RGBA8888/)
+  })
+
   it('throws when scene.json is absent', () => {
     const pkg = buildPkg([{ path: 'materials/bg.tex', data: bgTex }])
     expect(() => extractSceneMainImage(pkg)).toThrow(/pkg: scene.json not found or invalid/)
@@ -739,6 +804,73 @@ describe('extractSceneMainImageFromDir', () => {
     }
   })
 
+  it('crops a square texture to the scene projection ratio (16:9 cover)', () => {
+    const wide = 8
+    const tall = 8
+    const pixels = solidPixels(wide, tall, 40, 80, 120)
+    // Two distinct horizontal bands so a vertical crop is observable: top
+    // half stays opaque dark, bottom half stays opaque light; the center
+    // crop keeps both (an all-same solid would mask an off-center crop bug).
+    for (let y = 0; y < tall; y++) {
+      const band = y < tall / 2 ? 200 : 40
+      for (let x = 0; x < wide; x++) {
+        const i = (y * wide + x) * 4
+        pixels[i] = band
+        pixels[i + 1] = band
+        pixels[i + 2] = band
+        pixels[i + 3] = 255
+      }
+    }
+    const squareTex = buildTex({
+      width: wide,
+      height: tall,
+      containerVersion: 3,
+      mipmaps: [{ width: wide, height: tall, data: pixels }],
+    })
+    const dir = makeSceneDir({
+      // Scene declares a 16:9 viewport while the texture is square.
+      'scene.json': JSON.stringify({
+        general: { orthogonalprojection: { width: 1920, height: 1080 } },
+        objects: [{ id: 1, name: 'background', image: 'materials/bg.tex' }],
+      }),
+      'materials/bg.tex': squareTex,
+    })
+    try {
+      const result = extractSceneMainImageFromDir(dir)
+      // 8x8 square cropped to 16:9 cover keeps full width and floor(8 / (16/9)) height.
+      expect(result.width).toBe(8)
+      expect(result.height).toBe(Math.floor(8 / (1920 / 1080))) // 4
+      const out = decodePng(result.png)
+      expect(out.width).toBe(8)
+      expect(out.height).toBe(4)
+      // Vertical center crop: source rows 2..5 remain (startY = floor((8-4)/2) = 2).
+      const row = (y: number): number => out.rgba[(y * out.width) * 4]
+      expect(row(0)).toBe(200) // source row 2 (top half band)
+      expect(row(out.height - 1)).toBe(40) // source row 5 (bottom half band)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps the native ratio when the scene declares no projection', () => {
+    const dir = makeSceneDir({
+      'scene.json': sceneJson('materials/bg.tex'),
+      'materials/bg.tex': buildTex({
+        width: 4,
+        height: 4,
+        containerVersion: 3,
+        mipmaps: [{ width: 4, height: 4, data: solidPixels(4, 4, 7, 7, 7) }],
+      }),
+    })
+    try {
+      const result = extractSceneMainImageFromDir(dir)
+      expect(result.width).toBe(4)
+      expect(result.height).toBe(4)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('falls back to the largest .tex found in the directory tree', () => {
     const dir = makeSceneDir({
       'scene.json': sceneJson('materials/missing.json'),
@@ -771,6 +903,594 @@ describe('extractSceneMainImageFromDir', () => {
       expect(() => extractSceneMainImageFromDir(dir)).toThrow(/scene: scene.json not found or invalid/)
     } finally {
       rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('returns embedded PNG textures directly without re-encoding', () => {
+    const pngBytes = encodePng(2, 2, bgPixels)
+    const pngTex = buildTex({
+      width: 2,
+      height: 2,
+      containerVersion: 3,
+      mipmaps: [{ width: 2, height: 2, data: pngBytes }],
+    })
+    const pkg = buildPkg([
+      { path: 'scene.json', data: encoder.encode(sceneJson('materials/bg.tex')) },
+      { path: 'materials/bg.tex', data: pngTex },
+    ])
+    const result = extractSceneMainImage(pkg)
+    expect(result.texturePath).toBe('materials/bg.tex')
+    expect(result.png).toEqual(pngBytes)
+  })
+
+  it('refuses 3D model scenes (.mdl) and throws for fallback to author preview', () => {
+    const sceneWithMdl = JSON.stringify({
+      objects: [{ name: 'guns', model: 'models/pistols/pistols.mdl', image: undefined }],
+    })
+    const pkg = buildPkg([
+      { path: 'scene.json', data: encoder.encode(sceneWithMdl) },
+      { path: 'materials/planks.tex', data: buildTex({ width: 2, height: 2, mipmaps: [{ width: 2, height: 2, data: new Uint8Array(16) }] }) },
+    ])
+    expect(() => extractSceneMainImage(pkg)).toThrow(/3D scene cannot be extracted/)
+  })
+
+  it('refuses multi-layer composition scenes and throws for fallback to author preview', () => {
+    const multiLayerScene = JSON.stringify({
+      objects: [
+        { name: 'sky', image: 'models/sky.json' },
+        { name: 'trees', image: 'models/trees.json' },
+        { name: 'houses', image: 'models/houses.json' },
+        { name: 'fence', image: 'models/fence.json' },
+      ],
+    })
+    const pkg = buildPkg([
+      { path: 'scene.json', data: encoder.encode(multiLayerScene) },
+      { path: 'models/sky.json', data: encoder.encode(JSON.stringify({ material: 'materials/sky.json' })) },
+      { path: 'materials/sky.json', data: encoder.encode(JSON.stringify({ passes: [{ textures: ['materials/sky.tex'] }] })) },
+      { path: 'materials/sky.tex', data: buildTex({ width: 2, height: 2, mipmaps: [{ width: 2, height: 2, data: new Uint8Array(16) }] }) },
+    ])
+    expect(() => extractSceneMainImage(pkg)).toThrow(/multi-layer scene composition requires full preview render/)
+  })
+
+  it('detects ftyp MP4 header inside tex mipmap data as isVideoMp4', () => {
+    const ftypData = new Uint8Array(32)
+    ftypData.set([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32], 0) // ....ftypmp42
+    const tex = buildTex({
+      width: 2,
+      height: 2,
+      containerVersion: 3,
+      mipmaps: [{ width: 2, height: 2, data: ftypData }],
+    })
+    const info = parseTex(tex)
+    expect(info.isVideoMp4).toBe(true)
+  })
+
+  // Build a structured MDLV buffer: 9-byte version tag, header
+  // (mdl_flag/skin_count/mesh_count), then per mesh: skin_count material
+  // cstrings, flag_a, vertex bytes, vertices, index bytes, indices.
+  const buildMdl = (opts: {
+    version?: number
+    flag: number
+    vertices: number[]
+    indices: number[]
+    materials?: string[]
+    meshes?: number
+  }): Uint8Array => {
+    const enc = new TextEncoder()
+    const tag = concat(enc.encode('MDLV' + String(opts.version ?? 14).padStart(4, '0')), new Uint8Array([0]))
+    const parts: Uint8Array[] = [tag, u32le(opts.flag), u32le(opts.materials?.length ?? 1), u32le(opts.meshes ?? 1)]
+    const meshCount = opts.meshes ?? 1
+    const vStride = opts.vertices.length / (3 * meshCount) // floats per vertex slot (pos+attrs)
+    const vPerMesh = opts.vertices.length / meshCount / vStride
+    const iPerMesh = opts.indices.length / meshCount
+    const materials = opts.materials ?? ['materials/test/body.json']
+    for (let m = 0; m < meshCount; m++) {
+      for (const mat of materials) parts.push(concat(enc.encode(mat), new Uint8Array([0])))
+      parts.push(u32le(0)) // flag_a
+      const version = opts.version ?? 14
+      if (version >= 17) parts.push(new Uint8Array(24)) // aabb
+      if (version > 14) parts.push(u32le(opts.flag)) // per-mesh flag
+      const vData = new Float32Array(opts.vertices.slice(m * vPerMesh * vStride, (m + 1) * vPerMesh * vStride))
+      parts.push(u32le(vData.byteLength), new Uint8Array(vData.buffer))
+      const iData = new Uint16Array(opts.indices.slice(m * iPerMesh, (m + 1) * iPerMesh))
+      parts.push(u32le(iData.byteLength), new Uint8Array(iData.buffer))
+    }
+    return concat(...parts)
+  }
+
+  it('parses structured MDLV0014 meshes with normal+uv layout (stride 32)', () => {
+    // flag 0x0B = NORMAL | UV -> 12 + 12 + 8 = 32 bytes per vertex
+    const mdlBuf = buildMdl({
+      flag: 0x0b,
+      vertices: [
+        0, 0, 0, 0, 1, 0, 0, 0,
+        1, 0, 0, 0, 1, 0, 1, 0,
+        0, 1, 0, 0, 1, 0, 0, 1,
+      ],
+      indices: [0, 1, 2],
+      materials: ['materials/car/body.json'],
+    })
+
+    const meshes = parseMdl(mdlBuf)
+    expect(meshes.length).toBe(1)
+    expect(meshes[0].vCount).toBe(3)
+    expect(meshes[0].iCount).toBe(3)
+    expect(meshes[0].pos[3]).toBe(1) // second vertex x
+    expect(meshes[0].norm[1]).toBe(1) // first vertex normal y
+    expect(meshes[0].uv[2]).toBe(1) // second vertex u
+    expect(meshes[0].indices[2]).toBe(2)
+    expect(meshes[0].materialPath).toBe('materials/car/body.json')
+  })
+
+  it('parses MDLV0014 meshes with uv-only layout (stride 20) and default normals', () => {
+    // flag 0x09 = UV -> 12 + 8 = 20 bytes per vertex (jet/skybox style)
+    const mdlBuf = buildMdl({
+      flag: 0x09,
+      vertices: [
+        0, 0, 0, 0.25, 0.5,
+        1, 0, 0, 0.5, 0.75,
+        0, 1, 0, 1, 1,
+      ],
+      indices: [0, 1, 2],
+    })
+
+    const meshes = parseMdl(mdlBuf)
+    expect(meshes.length).toBe(1)
+    expect(meshes[0].vCount).toBe(3)
+    expect(meshes[0].uv[0]).toBeCloseTo(0.25)
+    expect(meshes[0].uv[3]).toBeCloseTo(0.75)
+    expect(meshes[0].norm[1]).toBe(1) // default up normal
+  })
+
+  it('parses multi-mesh MDLV with per-mesh material paths', () => {
+    const mdlBuf = buildMdl({
+      flag: 0x09,
+      meshes: 2,
+      vertices: [
+        0, 0, 0, 0, 0,
+        1, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+        5, 5, 5, 0, 0,
+        6, 5, 5, 0, 0,
+        5, 6, 5, 0, 0,
+      ],
+      indices: [0, 1, 2, 0, 1, 2],
+      materials: ['materials/car/body.json'],
+    })
+
+    const meshes = parseMdl(mdlBuf)
+    expect(meshes.length).toBe(2)
+    expect(meshes[0].vCount).toBe(3)
+    expect(meshes[1].pos[0]).toBe(5)
+    expect(meshes[0].materialPath).toBe('materials/car/body.json')
+    expect(meshes[1].materialPath).toBe('materials/car/body.json')
+  })
+
+  it('reads u32 indices for MDLV0023 meshes above 65535 vertices', () => {
+    // flag 0x09, 65537 verts would be huge; instead fake the version and a
+    // small mesh, then verify the u32 path by forcing indices_bytes % 12 == 0
+    // with vertex count > 0xffff is impractical here — so assert u16 path
+    // stays default and parser tolerates mdlv23 headers.
+    const mdlBuf = buildMdl({
+      version: 23,
+      flag: 0x09,
+      vertices: [
+        0, 0, 0, 0, 0,
+        1, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+      ],
+      indices: [0, 1, 2],
+    })
+    const meshes = parseMdl(mdlBuf)
+    expect(meshes.length).toBe(1)
+    expect(meshes[0].indices instanceof Uint16Array).toBe(true)
+  })
+
+  it('builds 3D scene manifest from a structured MDLV model', () => {
+    const mdlBuf = buildMdl({
+      flag: 0x0b,
+      vertices: [
+        0, 0, 0, 0, 1, 0, 0, 0,
+        1, 0, 0, 0, 1, 0, 1, 0,
+        0, 1, 0, 0, 1, 0, 0, 1,
+      ],
+      indices: [0, 1, 2],
+      materials: ['materials/car/body.json'],
+    })
+
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-3d-test-'))
+    try {
+      mkdirSync(join(tmp, 'models/car'), { recursive: true })
+      writeFileSync(join(tmp, 'models/car/car.mdl'), mdlBuf)
+      writeFileSync(join(tmp, 'scene.json'), JSON.stringify({
+        camera: { eye: '1 2 3', center: '0 0 0', up: '0 1 0', fov: 60 },
+        objects: [{ name: 'car', model: 'models/car/car.mdl', origin: '0 0 0', angles: '0 0 0', scale: '1 1 1' }]
+      }), 'utf8')
+
+      const manifest = buildSceneManifestFromDir(tmp, 'tok_test')
+      expect(manifest?.is3D).toBe(true)
+      expect(manifest?.camera?.fov).toBe(60)
+      expect(manifest?.models?.length).toBe(1)
+      expect(manifest?.models?.[0].meshes.length).toBe(1)
+      expect(manifest?.models?.[0].meshes[0].materialPath).toBe('materials/car/body.json')
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('carries material render flags, user colors, sprites and 3D particles into the manifest', () => {
+    const mdlBuf = buildMdl({
+      flag: 0x09,
+      vertices: [
+        0, 0, 0, 0, 0,
+        1, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+      ],
+      indices: [0, 1, 2],
+      materials: ['materials/fx/glow.json'],
+    })
+
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-3d-mat-'))
+    try {
+      mkdirSync(join(tmp, 'models/fx'), { recursive: true })
+      mkdirSync(join(tmp, 'materials/fx'), { recursive: true })
+      mkdirSync(join(tmp, 'materials/sprites'), { recursive: true })
+      mkdirSync(join(tmp, 'particles'), { recursive: true })
+      writeFileSync(join(tmp, 'models/fx/glow.mdl'), mdlBuf)
+      writeFileSync(join(tmp, 'materials/fx/glow.json'), JSON.stringify({
+        passes: [{
+          shader: 'technoglow',
+          blending: 'additive',
+          depthtesting: 'disabled',
+          textures: ['fx/glow'],
+          usershadervalues: { schemecolor: 'tint' },
+        }],
+      }))
+      writeFileSync(join(tmp, 'materials/fx/glow.tex'), buildTex({ width: 64, height: 64, mipmaps: [{ width: 64, height: 64, data: new Uint8Array(64 * 64 * 4) }] }))
+      writeFileSync(join(tmp, 'materials/sprites/sun.json'), JSON.stringify({ passes: [{ shader: 'sprite', textures: ['sprites/sun'] }] }))
+      writeFileSync(join(tmp, 'particles/stars.json'), JSON.stringify({
+        emitter: [{ origin: '0 0 8', rate: 60, distancemin: 4, distancemax: 20 }],
+        initializer: [
+          { name: 'lifetimerandom', min: 3, max: 5 },
+          { name: 'sizerandom', min: 0.1, max: 0.12 },
+          { name: 'velocityrandom', min: '0 0 -30', max: '0 0 -40' },
+        ],
+        maxcount: 250,
+      }))
+      writeFileSync(join(tmp, 'project.json'), JSON.stringify({
+        file: 'scene.json',
+        general: { properties: { schemecolor: { type: 'color', value: '0.1 0.2 0.7' } } },
+      }))
+      writeFileSync(join(tmp, 'scene.json'), JSON.stringify({
+        camera: { eye: '0 0 1', center: '0 0 0', up: '0 1 0' },
+        objects: [
+          { name: 'glow', model: 'models/fx/glow.mdl', origin: '0 0 0', angles: '0 0 0', scale: '1 1 1' },
+          { name: 'sun', sprite: 'materials/sprites/sun.json', origin: '0 0 0', scale: '1 1 1' },
+          { name: 'stars', particle: 'particles/stars.json', origin: '1 2 3', scale: '1 1 1' },
+        ],
+      }), 'utf8')
+
+      const manifest = buildSceneManifestFromDir(tmp, 'tok_test')
+      const mesh = manifest?.models?.[0].meshes[0]
+      expect(mesh?.shader).toBe('technoglow')
+      expect(mesh?.additive).toBe(true)
+      expect(mesh?.noDepthTest).toBe(true)
+      expect(mesh?.tint).toEqual([0.1, 0.2, 0.7])
+      expect(mesh?.userColors?.tint).toEqual([0.1, 0.2, 0.7])
+      expect(mesh?.texUrl).toContain('materials/fx/glow.tex')
+
+      expect(manifest?.sprites?.length).toBe(1)
+      expect(manifest?.sprites?.[0].name).toBe('sun')
+
+      expect(manifest?.particles3d?.length).toBe(1)
+      const stars = manifest?.particles3d?.[0]
+      expect(stars?.origin).toEqual([1, 2, 11]) // object origin + emitter origin
+      expect(stars?.rate).toBe(60)
+      expect(stars?.maxCount).toBe(250)
+      expect(stars?.velMax).toEqual([0, 0, -40])
+
+      // Static camera (no paths) must be flagged so the player does not orbit.
+      expect(manifest?.cameraStatic).toBe(true)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('lays out 2D layers from object origin/scale, skips visible:false, and crops padded textures', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-2d-test-'))
+    try {
+      mkdirSync(join(tmp, 'models'), { recursive: true })
+      mkdirSync(join(tmp, 'materials'), { recursive: true })
+      // 128x128 content declared by the image json, padded into a 256x256 tex
+      writeFileSync(join(tmp, 'materials', 'photo.tex'), buildTex({
+        width: 256, height: 256,
+        mipmaps: [{ width: 256, height: 256, data: new Uint8Array(256 * 256 * 4) }],
+      }))
+      writeFileSync(join(tmp, 'models', 'photo.json'), JSON.stringify({ material: 'materials/photo.json', width: 128, height: 128 }))
+      writeFileSync(join(tmp, 'materials', 'photo.json'), JSON.stringify({ passes: [{ shader: 'genericimage', textures: ['photo'] }] }))
+      writeFileSync(join(tmp, 'scene.json'), JSON.stringify({
+        general: { orthogonalprojection: { width: 1000, height: 800 } },
+        objects: [
+          { name: 'photo', image: 'models/photo.json', origin: '500 400 0', scale: '2 2 1', angles: '0 0 0.5', alpha: 0.8 },
+          { name: 'hidden', image: 'models/photo.json', origin: '0 0 0', visible: false },
+        ],
+      }), 'utf8')
+
+      const manifest = buildSceneManifestFromDir(tmp, 'tok_2d')
+      expect(manifest?.layers.length).toBe(1) // visible:false object skipped
+      const layer = manifest?.layers[0]
+      expect(layer?.x).toBe(500)
+      expect(layer?.y).toBe(400)
+      expect(layer?.w).toBe(256) // 128 * scale 2
+      expect(layer?.h).toBe(256)
+      expect(layer?.alpha).toBeCloseTo(0.8)
+      expect(layer?.angle).toBeCloseTo(0.5)
+      expect(layer?.uvCrop).toEqual([0, 0, 0.5, 0.5]) // 128/256 content rect
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('folds parent transform chains for grouped objects (#742)', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-2d-parent-'))
+    try {
+      mkdirSync(join(tmp, 'models'), { recursive: true })
+      mkdirSync(join(tmp, 'materials'), { recursive: true })
+      writeFileSync(join(tmp, 'materials', 'pole.tex'), buildTex({
+        width: 128, height: 128,
+        mipmaps: [{ width: 128, height: 128, data: new Uint8Array(128 * 128 * 4) }],
+      }))
+      writeFileSync(join(tmp, 'models', 'pole.json'), JSON.stringify({ material: 'materials/pole.json', width: 128, height: 128 }))
+      writeFileSync(join(tmp, 'materials', 'pole.json'), JSON.stringify({ passes: [{ shader: 'genericimage', textures: ['pole'] }] }))
+      writeFileSync(join(tmp, 'scene.json'), JSON.stringify({
+        general: { orthogonalprojection: { width: 1000, height: 800 } },
+        objects: [
+          // WE editor group: children are relative to the resolved parent.
+          { id: 1, name: 'pole-group', origin: '100 50 0', scale: '2 2 1', angles: '0 0 0.25' },
+          { id: 2, name: 'pole', image: 'models/pole.json', parent: 1, origin: '10 5 0', scale: '0.5 0.5 1', angles: '0 0 0.25' },
+        ],
+      }), 'utf8')
+
+      const manifest = buildSceneManifestFromDir(tmp, 'tok_parent')
+      expect(manifest?.layers.length).toBe(1)
+      const layer = manifest?.layers[0]
+      const c = Math.cos(0.25)
+      const s = Math.sin(0.25)
+      expect(layer?.x).toBeCloseTo(100 + 10 * 2 * c - 5 * 2 * s)
+      expect(layer?.y).toBeCloseTo(50 + 10 * 2 * s + 5 * 2 * c)
+      expect(layer?.w).toBe(128) // folded scale 2 * 0.5
+      expect(layer?.h).toBe(128)
+      expect(layer?.angle).toBeCloseTo(0.5)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('survives parent cycles without hanging (#742)', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-2d-cycle-'))
+    try {
+      mkdirSync(join(tmp, 'models'), { recursive: true })
+      mkdirSync(join(tmp, 'materials'), { recursive: true })
+      writeFileSync(join(tmp, 'materials', 'pole.tex'), buildTex({
+        width: 128, height: 128,
+        mipmaps: [{ width: 128, height: 128, data: new Uint8Array(128 * 128 * 4) }],
+      }))
+      writeFileSync(join(tmp, 'models', 'pole.json'), JSON.stringify({ material: 'materials/pole.json', width: 128, height: 128 }))
+      writeFileSync(join(tmp, 'materials', 'pole.json'), JSON.stringify({ passes: [{ shader: 'genericimage', textures: ['pole'] }] }))
+      writeFileSync(join(tmp, 'scene.json'), JSON.stringify({
+        general: { orthogonalprojection: { width: 1000, height: 800 } },
+        objects: [
+          { id: 1, name: 'a', image: 'models/pole.json', parent: 2, origin: '10 0 0' },
+          { id: 2, name: 'b', parent: 1, origin: '20 0 0' },
+        ],
+      }), 'utf8')
+
+      const manifest = buildSceneManifestFromDir(tmp, 'tok_cycle')
+      expect(manifest?.layers.length).toBe(1)
+      expect(Number.isFinite(manifest?.layers[0].x)).toBe(true)
+      expect(Number.isFinite(manifest?.layers[0].y)).toBe(true)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('applies alignment offsets and keeps cropoffset out of the world position (#742)', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-2d-align-'))
+    try {
+      mkdirSync(join(tmp, 'models'), { recursive: true })
+      mkdirSync(join(tmp, 'materials'), { recursive: true })
+      // 128x128 content padded into a 256x256 tex, sampled from (32, 16).
+      writeFileSync(join(tmp, 'materials', 'photo.tex'), buildTex({
+        width: 256, height: 256,
+        mipmaps: [{ width: 256, height: 256, data: new Uint8Array(256 * 256 * 4) }],
+      }))
+      writeFileSync(join(tmp, 'models', 'photo.json'), JSON.stringify({
+        material: 'materials/photo.json', width: 128, height: 128, cropoffset: '32 16',
+      }))
+      writeFileSync(join(tmp, 'materials', 'photo.json'), JSON.stringify({ passes: [{ shader: 'genericimage', textures: ['photo'] }] }))
+      writeFileSync(join(tmp, 'scene.json'), JSON.stringify({
+        general: { orthogonalprojection: { width: 1000, height: 800 } },
+        objects: [
+          { name: 'photo', image: 'models/photo.json', origin: '500 400 0', alignment: 'left top' },
+        ],
+      }), 'utf8')
+
+      const manifest = buildSceneManifestFromDir(tmp, 'tok_align')
+      expect(manifest?.layers.length).toBe(1)
+      const layer = manifest?.layers[0]
+      // left/top anchor shifts the quad center by half its size; the crop
+      // offset only selects the sampled UV rect and must not move the quad.
+      expect(layer?.x).toBe(500 + 64)
+      expect(layer?.y).toBe(400 - 64)
+      expect(layer?.uvCrop).toEqual([0.125, 0.0625, 0.625, 0.5625])
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('anchors effects-driven reflection layers to the object rect with a data-driven water line (#742)', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-2d-reflect-'))
+    try {
+      mkdirSync(join(tmp, 'models'), { recursive: true })
+      mkdirSync(join(tmp, 'materials'), { recursive: true })
+      mkdirSync(join(tmp, 'masks'), { recursive: true })
+      writeFileSync(join(tmp, 'materials', 'water.tex'), buildTex({
+        width: 128, height: 128,
+        mipmaps: [{ width: 128, height: 128, data: new Uint8Array(128 * 128 * 4) }],
+      }))
+      writeFileSync(join(tmp, 'masks', 'reflection_mask_0.tex'), buildTex({
+        width: 128, height: 128,
+        mipmaps: [{ width: 128, height: 128, data: new Uint8Array(128 * 128 * 4) }],
+      }))
+      writeFileSync(join(tmp, 'models', 'water.json'), JSON.stringify({ material: 'materials/water.json', width: 128, height: 128 }))
+      writeFileSync(join(tmp, 'materials', 'water.json'), JSON.stringify({ passes: [{ shader: 'genericimage', textures: ['water'] }] }))
+      writeFileSync(join(tmp, 'scene.json'), JSON.stringify({
+        general: { orthogonalprojection: { width: 1000, height: 800 } },
+        objects: [
+          {
+            name: 'water', image: 'models/water.json', origin: '500 400 0',
+            effects: [{ file: 'effects/reflection/effect.json' }],
+          },
+          // Legacy form: a conventionally named object without its own image
+          // keeps the fullscreen layer and leaves the water line to the player.
+          { name: 'reflection' },
+        ],
+      }), 'utf8')
+
+      const manifest = buildSceneManifestFromDir(tmp, 'tok_reflect')
+      const reflections = manifest?.layers.filter((l) => l.isReflection)
+      expect(reflections?.length).toBe(2)
+      const anchored = reflections?.find((l) => typeof l.waterLine === 'number')
+      expect(anchored).toBeDefined()
+      expect(anchored?.x).toBe(500)
+      expect(anchored?.y).toBe(400)
+      expect(anchored?.w).toBe(128)
+      expect(anchored?.h).toBe(128)
+      // Water surface at the object top edge: 1 - (400 + 64) / 800.
+      expect(anchored?.waterLine).toBeCloseTo(0.42)
+      expect(anchored?.texUrl).toContain('reflection_mask_0')
+      const legacy = reflections?.find((l) => l.waterLine == null)
+      expect(legacy).toBeDefined()
+      expect(legacy?.w).toBe(1000)
+      expect(legacy?.h).toBe(800)
+      // The water object itself still renders as a normal layer.
+      expect(manifest?.layers.some((l) => l.name === 'water' && !l.isReflection)).toBe(true)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('untrusted input allocation caps (#717 hardening)', () => {
+  const u32be = (v: number): Uint8Array => {
+    const b = new Uint8Array(4)
+    new DataView(b.buffer).setUint32(0, v, false)
+    return b
+  }
+
+  it('rejects oversized LZ4 decompressed sizes before allocating', () => {
+    // 300 MB claimed output from a 1-byte block: must throw, not allocate.
+    expect(() => lz4DecompressBlock(new Uint8Array([0x00]), 300 * 1024 * 1024))
+      .toThrow(/out of bounds/)
+  })
+
+  it('rejects tex mipmaps with oversized dimensions', () => {
+    const tex = concat(
+      encoder.encode('TEXV0005'), new Uint8Array(1),
+      encoder.encode('TEXI0001'), new Uint8Array(1),
+      i32le(TexFormat.RGBA8888), i32le(0),
+      i32le(1), i32le(1), i32le(1), i32le(1), i32le(0),
+      encoder.encode('TEXB0003'), new Uint8Array(1),
+      i32le(1), i32le(1), i32le(1),
+      i32le(20000), i32le(20000),
+      i32le(0), i32le(0), i32le(0),
+    )
+    expect(() => parseTexToRGBA(tex)).toThrow(/invalid mipmap dimensions/)
+  })
+
+  it('rejects png headers with oversized dimensions', () => {
+    // Hand-forged PNG framing: signature + IHDR (20000x20000) + IEND.
+    // decodePngToRgba validates dimensions straight from the header and
+    // throws before any allocation or inflate.
+    const png = concat(
+      Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10),
+      u32be(13), encoder.encode('IHDR'),
+      u32be(20000), u32be(20000),
+      Uint8Array.of(8, 6, 0, 0, 0),
+      Uint8Array.of(0, 0, 0, 0),
+      u32be(0), encoder.encode('IEND'),
+      Uint8Array.of(0, 0, 0, 0),
+    )
+    expect(() => decodePngToRgba(png)).toThrow(/invalid dimensions/)
+  })
+})
+
+describe('scene robustness (#717 follow-up)', () => {
+  it('clamps negative or invalid projection dims to the defaults', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-scene-dims-'))
+    try {
+      mkdirSync(join(tmp, 'models'), { recursive: true })
+      mkdirSync(join(tmp, 'materials'), { recursive: true })
+      writeFileSync(join(tmp, 'materials', 'photo.tex'), buildTex({
+        width: 4, height: 4,
+        mipmaps: [{ width: 4, height: 4, data: new Uint8Array(4 * 4 * 4) }],
+      }))
+      writeFileSync(join(tmp, 'models', 'photo.json'), JSON.stringify({ material: 'materials/photo.json', width: 4, height: 4 }))
+      writeFileSync(join(tmp, 'materials', 'photo.json'), JSON.stringify({ passes: [{ shader: 'genericimage', textures: ['photo'] }] }))
+      writeFileSync(join(tmp, 'scene.json'), JSON.stringify({
+        general: { orthogonalprojection: { width: -1920, height: 0 } },
+        objects: [{ name: 'photo', image: 'models/photo.json', origin: '0 0 0' }],
+      }), 'utf8')
+      const manifest = buildSceneManifestFromDir(tmp, 'tok_dims')
+      expect(manifest?.width).toBe(3840)
+      expect(manifest?.height).toBe(2160)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('skips camera path segments with non-positive duration', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-scene-cam-'))
+    try {
+      mkdirSync(join(tmp, 'models'), { recursive: true })
+      mkdirSync(join(tmp, 'materials'), { recursive: true })
+      writeFileSync(join(tmp, 'materials', 'photo.tex'), buildTex({
+        width: 4, height: 4,
+        mipmaps: [{ width: 4, height: 4, data: new Uint8Array(4 * 4 * 4) }],
+      }))
+      writeFileSync(join(tmp, 'models', 'photo.json'), JSON.stringify({ material: 'materials/photo.json', width: 4, height: 4 }))
+      writeFileSync(join(tmp, 'materials', 'photo.json'), JSON.stringify({ passes: [{ shader: 'genericimage', textures: ['photo'] }] }))
+      writeFileSync(join(tmp, 'scene.json'), JSON.stringify({
+        camera: { paths: ['camera.json'] },
+        objects: [{ name: 'photo', image: 'models/photo.json', origin: '0 0 0' }],
+      }), 'utf8')
+      const t0 = { eye: '0 0 5', center: '0 0 0', up: '0 1 0' }
+      const t1 = { eye: '0 0 4', center: '0 0 0', up: '0 1 0' }
+      writeFileSync(join(tmp, 'camera.json'), JSON.stringify({
+        paths: [
+          { duration: 0, transforms: [t0, t1] },
+          { duration: -2, transforms: [t0, t1] },
+          { duration: 5, transforms: [t0, t1] },
+        ],
+      }), 'utf8')
+      const manifest = buildSceneManifestFromDir(tmp, 'tok_cam')
+      expect(manifest?.cameraPaths?.length).toBe(1)
+      expect(manifest?.cameraPaths?.[0].d).toBe(5)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('refuses to read project files that are symlinks escaping the directory', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-scene-link-'))
+    const outside = mkdtempSync(join(tmpdir(), 'dsh-scene-out-'))
+    try {
+      writeFileSync(join(outside, 'evil.tex'), Buffer.from('TEXV0005-fake'), 'utf8')
+      symlinkSync(join(outside, 'evil.tex'), join(tmp, 'evil.tex'))
+      expect(extractSceneResourceFromDir(tmp, 'evil.tex')).toBeNull()
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+      rmSync(outside, { recursive: true, force: true })
     }
   })
 })

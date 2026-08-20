@@ -95,9 +95,7 @@ export class RetrySupervisor {
 
   constructor(private readonly ports: RetryPorts) {}
 
-  getSnapshot(): RetryState {
-    return this.state
-  }
+  getSnapshot = (): RetryState => this.state
 
   subscribe = (fn: () => void): (() => void) => {
     this.listeners.add(fn)

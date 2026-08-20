@@ -114,6 +114,8 @@ export interface SkinWallpaperConfig {
   dim?: number
   /** Blur radius applied to the wallpaper itself, 0-60 px. */
   wallpaperBlur?: number
+  /** Sizing mode for live wallpapers: cover | contain | fill (stretch). */
+  fit?: 'cover' | 'contain' | 'fill'
 }
 
 /** Runtime schema for SkinWallpaperConfig. */
@@ -125,6 +127,7 @@ export const SkinWallpaperConfigSchema: z<SkinWallpaperConfig> = z.object({
   pauseOnHidden: z.boolean().default(true),
   dim: z.number().min(0).max(90).step(5).default(25),
   wallpaperBlur: z.number().min(0).max(60).step(1).default(0),
+  fit: z.union(['cover', 'contain', 'fill'] as const).default('cover'),
 })
 
 /**

@@ -50,7 +50,7 @@ beforeAll(async () => {
   const ctx = new Context()
   const registry = loadPetRegistry({ packageRoot: dir, petsDir: '' })
   const service = new PetService(ctx, { persistDir: join(dir, 'home'), registry })
-  const routes = makePetRoutes({ service, assetCaps: TEST_CAPS })
+  const routes = makePetRoutes({ service, ctx, assetCaps: TEST_CAPS })
   server = createServer((req, res) => {
     const pathname = (req.url ?? '').split('?')[0]!
     for (const route of routes) {
@@ -109,7 +109,7 @@ describe('asset route security', () => {
     const ctx = new Context()
     const registry = loadPetRegistry({ packageRoot: dir, petsDir: '' })
     const service = new PetService(ctx, { persistDir: join(dir, 'home2'), registry })
-    const tight = makePetRoutes({ service, assetCaps: { manifest: 64 * 1024, image: 4, model: 32 * 1024 * 1024 } })
+    const tight = makePetRoutes({ service, ctx, assetCaps: { manifest: 64 * 1024, image: 4, model: 32 * 1024 * 1024 } })
     const tightServer = createServer((req, res) => {
       const pathname = (req.url ?? '').split('?')[0]!
       for (const route of tight) {

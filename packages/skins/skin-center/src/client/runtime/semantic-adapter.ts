@@ -39,7 +39,7 @@ export interface SemanticRule {
  */
 export const SEMANTIC_RULES_V1: readonly SemanticRule[] = [
   // ---- surfaces (official shell) ----
-  { selector: '[data-slot="root"]', attrs: [['data-dsh-surface', 'root']], note: 'web-react root outlet' },
+  { selector: '[data-slot="root"]', attrs: [['data-dsh-surface', 'root']], note: 'ui-renderer root outlet' },
   { selector: '[data-slot="sidebar"]', attrs: [['data-dsh-surface', 'sidebar']], note: 'layout sidebar outlet' },
   { selector: '[data-slot="conversation"]', attrs: [['data-dsh-surface', 'conversation']], note: 'layout conversation outlet' },
   { selector: '[data-slot="conversation.session.header"]', attrs: [['data-dsh-surface', 'session-header']], note: 'conversation header outlet' },

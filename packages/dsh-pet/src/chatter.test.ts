@@ -14,6 +14,7 @@ import {
   WHISPER_GENERIC_POOL,
   WHISPER_RULES,
   WhisperEngine,
+  type VoicePackOverrides,
 } from './chatter.ts'
 
 describe('StatusVoice', () => {
@@ -139,7 +140,7 @@ describe('WhisperEngine', () => {
   })
 
   it('earns an ambient whisper from output volume alone', () => {
-    const engine = new WhisperEngine(0, 10)
+    const engine = new WhisperEngine(undefined, 0, 10)
     expect(engine.feed('aaaaaaaa', 0)).toBeUndefined()
     expect(engine.feed('bbbb', 1)).toBe(WHISPER_GENERIC_POOL[0])
     // The counter resets after speaking: another budget must accumulate.
@@ -148,7 +149,93 @@ describe('WhisperEngine', () => {
   })
 
   it('ignores empty chunks', () => {
-    const engine = new WhisperEngine(0, 0)
+    const engine = new WhisperEngine(undefined, 0, 0)
     expect(engine.feed('', 0)).toBeUndefined()
+  })
+})
+
+describe('voice-pack overrides (pet-center M4)', () => {
+  const PACK = (): VoicePackOverrides => ({
+    status: {
+      done: ['自定义完工', '第二句完工'],
+      thinking: [],
+    },
+    tools: {
+      shell: ['敲命令 {hint}', '再来一次 {tool}'],
+    },
+    toolRemaining: ['后台还有 {n} 个'],
+    whispers: {
+      generic: ['自定义碎碎念 A', '自定义碎碎念 B'],
+      rules: [{ keywords: ['测试通过'], pool: ['自定义全绿'] }],
+    },
+  })
+
+  it('replaces a scene pool and keeps untouched scenes on the built-in pools', () => {
+    const voice = new StatusVoice(PACK)
+    expect(voice.scene('done', 0)).toBe('自定义完工')
+    expect(voice.scene('done', 5000)).toBe('第二句完工')
+    expect(voice.scene('thinking', 0)).toBe(STATUS_POOLS.thinking[0])
+  })
+
+  it('falls back to the built-in pool when the override pool is empty', () => {
+    const voice = new StatusVoice(PACK)
+    // PACK.thinking is an empty array: a scene line always renders.
+    expect(voice.scene('thinking', 0)).toBe(STATUS_POOLS.thinking[0])
+  })
+
+  it('interpolates placeholders from an overridden tool pool', () => {
+    const voice = new StatusVoice(PACK)
+    expect(voice.tool('bash', 'bash', 'npm test', 0)).toBe('敲命令 npm test')
+    const rotated = voice.tool('bash', 'bash', 'npm test', 5000)
+    expect(rotated).toBe('再来一次 bash')
+  })
+
+  it('uses an overridden remaining-tools pool', () => {
+    const voice = new StatusVoice(PACK)
+    expect(voice.toolRemaining(4, 0)).toBe('后台还有 4 个')
+  })
+
+  it('interpolates every occurrence of a repeated placeholder', () => {
+    const pack: ReturnType<typeof PACK> = {
+      ...PACK(),
+      tools: { shell: ['{tool} 和 {tool} 一起跑 {hint} {hint}'] },
+      toolRemaining: ['{n} 路并进，共 {n} 路'],
+    }
+    const voice = new StatusVoice(() => pack)
+    expect(voice.tool('bash', 'bash', 'npm test', 0)).toBe('bash 和 bash 一起跑 npm test npm test')
+    expect(voice.toolRemaining(2, 5000)).toBe('2 路并进，共 2 路')
+  })
+
+  it('follows a provider swap on the next draw without rebuilding the engine', () => {
+    let pack: ReturnType<typeof PACK> = PACK()
+    const voice = new StatusVoice(() => pack)
+    expect(voice.scene('done', 0)).toBe('自定义完工')
+    pack = { ...PACK(), status: { done: ['换声了'] } }
+    expect(voice.scene('done', 5000)).toBe('换声了')
+  })
+
+  it('replaces the whisper rules as a whole', () => {
+    const engine = new WhisperEngine(PACK)
+    expect(engine.feed('这里有一个错误', 0)).toBeUndefined()
+    // The built-in error rule is gone; only the pack's rule fires.
+    expect(engine.feed('测试通过', 1000)).toBe('自定义全绿')
+  })
+
+  it('replaces the ambient generic pool', () => {
+    const engine = new WhisperEngine(PACK, 0, 3)
+    expect(engine.feed('aaaa', 0)).toBe('自定义碎碎念 A')
+    expect(engine.feed('bbbb', 1)).toBe('自定义碎碎念 B')
+  })
+
+  it('mutes ambient whispers when the generic pool is explicitly empty', () => {
+    const engine = new WhisperEngine(() => ({ whispers: { generic: [] } }), 0, 3)
+    expect(engine.feed('aaaa', 0)).toBeUndefined()
+    expect(engine.feed('bbbb', 1)).toBeUndefined()
+  })
+
+  it('disables keyword rules when the rules array is explicitly empty', () => {
+    const engine = new WhisperEngine(() => ({ whispers: { rules: [] } }), 0, 3)
+    // No keyword rule matches anymore; volume still earns a built-in ambient.
+    expect(engine.feed('测试通过', 0)).toBe(WHISPER_GENERIC_POOL[0])
   })
 })

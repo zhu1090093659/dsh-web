@@ -87,7 +87,13 @@ export function GraphDialog({ graph, onClose, t }: GraphDialogProps) {
     })
   }, [graph, t])
 
-  useEffect(() => { load(INITIAL_LIMIT) }, [load])
+  // Initial load exactly once on mount. The parent passes a fresh inline
+  // `graph` arrow on every BranchChip render, which changes `load`'s identity
+  // and would re-run the initial fetch (resetting any loaded pages) if it
+  // were a dependency — so read the latest `load` through a ref instead.
+  const loadRef = useRef(load)
+  loadRef.current = load
+  useEffect(() => { loadRef.current(INITIAL_LIMIT) }, [])
 
   const lanes = useMemo(() => {
     if (view === null) return []

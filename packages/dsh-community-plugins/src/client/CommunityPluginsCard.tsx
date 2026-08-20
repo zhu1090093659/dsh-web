@@ -7,7 +7,7 @@
  * indexes them, it never vendors their code.
  */
 
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the settings-surface SlotMap merge (the 'settings.section' entry).
@@ -160,6 +160,15 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
   const bridge = useSyncExternalStore(subscribePluginManager, getPluginManagerSnapshot)
   const face = props.pluginManager !== undefined ? props.pluginManager : bridge.face
   const faceLoopback = face !== null && face.isLoopback
+  // A bridge version can change while cordis re-provides the same face
+  // reference. Give every committed provision its own lifetime so async
+  // completions from the previous one cannot mutate the replacement UI.
+  const faceRevision = props.pluginManager !== undefined ? face : bridge.version
+  const faceLifetime = useMemo(() => ({ active: true }), [face, faceRevision])
+  useLayoutEffect(() => {
+    faceLifetime.active = true
+    return () => { faceLifetime.active = false }
+  }, [faceLifetime])
 
   // Installed snapshot served by the face (null = not loaded / no face).
   const [installed, setInstalled] = useState<readonly InstalledPluginItem[] | null>(null)
@@ -171,26 +180,40 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
   const [errors, setErrors] = useState<Readonly<Record<string, string>>>({})
   // The entry awaiting uninstall confirmation.
   const [uninstallTarget, setUninstallTarget] = useState<CommunityPluginEntry | null>(null)
+  // Latest-issued list request wins. An earlier request may complete after a
+  // mutation refresh even when the service face itself did not change.
+  const listRequestRef = useRef(0)
 
   // Keep the installed snapshot in sync with the face: initial load, plus
   // onChange so edits made in the Plugin manager tab reflect here. Only
   // loopback faces are queried — remote browsers render the read-only index.
   useEffect(() => {
+    // An operation belongs to the face that started it. Once that face is
+    // replaced, release its local UI lock and discard its dialog/error state;
+    // the new face's list request below becomes authoritative.
+    setPending(null)
+    setProgress(null)
+    setErrors({})
+    setUninstallTarget(null)
+    listRequestRef.current += 1
     if (face === null || !face.isLoopback) {
       setInstalled(null)
       return
     }
     let alive = true
     const refresh = (): void => {
+      const request = ++listRequestRef.current
       void face.list().then(
-        (list) => { if (alive) setInstalled(list) },
+        (list) => {
+          if (alive && faceLifetime.active && request === listRequestRef.current) setInstalled(list)
+        },
         () => { /* keep the last known snapshot on transient failures */ },
       )
     }
     refresh()
     const unsubscribe = face.onChange(refresh)
     return () => { alive = false; unsubscribe() }
-  }, [face, faceLoopback])
+  }, [face, faceLoopback, faceLifetime])
 
   // Poll the host's install progress while an install is in flight; the
   // first poll runs immediately so the stage line appears without delay.
@@ -202,7 +225,7 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
     let alive = true
     const poll = (): void => {
       void face.status().then(
-        (item) => { if (alive) setProgress(item) },
+        (item) => { if (alive && faceLifetime.active) setProgress(item) },
         () => { /* transient poll failure: keep the last known stage */ },
       )
     }
@@ -210,7 +233,7 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
     const timer = setInterval(poll, PROGRESS_POLL_MS)
     return () => { alive = false; clearInterval(timer) }
     // Keyed on the boolean, not the entry: restarting the poll per entry is unnecessary.
-  }, [face, pending?.kind === 'install'])
+  }, [face, faceLifetime, pending?.kind === 'install'])
 
   const clearError = (id: string): void => {
     setErrors((previous) => {
@@ -223,14 +246,23 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
 
   const onInstall = (entry: CommunityPluginEntry): void => {
     if (face === null || !face.isLoopback || pending !== null) return
+    const lifetime = faceLifetime
     clearError(entry.id)
     setPending({ kind: 'install', id: entry.id })
-    face.install(installSpec(entry)).then(
-      () => { void face.list().then(setInstalled, () => {}) },
-      (reason: unknown) => {
+    void (async () => {
+      try {
+        await face.install(installSpec(entry))
+        if (!lifetime.active) return
+        const request = ++listRequestRef.current
+        const list = await face.list().catch(() => undefined)
+        if (lifetime.active && list !== undefined && request === listRequestRef.current) setInstalled(list)
+      } catch (reason) {
+        if (!lifetime.active) return
         setErrors((previous) => ({ ...previous, [entry.id]: t('installFailed', { reason: messageOf(reason) }) }))
-      },
-    ).finally(() => { setPending(null) })
+      } finally {
+        if (lifetime.active) setPending(null)
+      }
+    })()
   }
 
   const onUninstallConfirm = (): void => {
@@ -243,14 +275,21 @@ export function CommunityPluginsCard(props: CommunityPluginsCardProps): ReactNod
       setUninstallTarget(null)
       return
     }
+    const lifetime = faceLifetime
     setPending({ kind: 'uninstall', id: target.id })
     face.uninstall(item.id).then(
-      (list) => { setInstalled(list); setUninstallTarget(null) },
+      (list) => {
+        if (!lifetime.active) return
+        listRequestRef.current += 1
+        setInstalled(list)
+        setUninstallTarget(null)
+      },
       (reason: unknown) => {
+        if (!lifetime.active) return
         setErrors((previous) => ({ ...previous, [target.id]: t('uninstallFailed', { reason: messageOf(reason) }) }))
         setUninstallTarget(null)
       },
-    ).finally(() => { setPending(null) })
+    ).finally(() => { if (lifetime.active) setPending(null) })
   }
 
   const copyCommand = (id: string, command: string): void => {

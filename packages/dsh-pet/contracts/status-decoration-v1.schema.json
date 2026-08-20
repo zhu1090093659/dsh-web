@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.linxin666.org/dsh-pet/status-decoration-v1.schema.json",
+  "title": "DSH Pet Status Decoration v1",
+  "description": "Status-decoration descriptor (issue #623 M5, protocol #567). A pure-content entry ornamenting the pet center's status bubble chrome with a PNG/WebP sprite strip driven by the ActivityPhase stream. Structure is fail-closed; phase-binding content issues drop that binding only. Entry assets are PNG/WebP strips only (no SVG/CSS) per the adopted disciplines.",
+  "type": "object",
+  "required": [
+    "decorationManifestVersion",
+    "id",
+    "license",
+    "entry",
+    "cell",
+    "columns"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "decorationManifestVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "maxLength": 64
+    },
+    "displayName": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Asset license identifier (SPDX id or free text). Required so community decorations always carry provenance."
+    },
+    "entry": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "PNG/WebP single-row sprite strip, relative to the descriptor directory."
+    },
+    "cell": {
+      "type": "object",
+      "required": [
+        "width",
+        "height"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        }
+      }
+    },
+    "columns": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16
+    },
+    "frameMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2000,
+      "description": "Constant per-frame duration; 'durations' overrides per frame."
+    },
+    "durations": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 2000
+      },
+      "description": "Per-frame durations; length must equal 'columns'."
+    },
+    "loop": {
+      "type": "boolean",
+      "default": true
+    },
+    "phases": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "ActivityPhase -> frame segment; 'hide' (default) shows no ornament.",
+      "properties": {
+        "idle": {
+          "$ref": "#/definitions/phaseBinding"
+        },
+        "waiting": {
+          "$ref": "#/definitions/phaseBinding"
+        },
+        "thinking": {
+          "$ref": "#/definitions/phaseBinding"
+        },
+        "tool": {
+          "$ref": "#/definitions/phaseBinding"
+        },
+        "review": {
+          "$ref": "#/definitions/phaseBinding"
+        },
+        "done": {
+          "$ref": "#/definitions/phaseBinding"
+        },
+        "failed": {
+          "$ref": "#/definitions/phaseBinding"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "phaseBinding": {
+      "oneOf": [
+        {
+          "const": "hide"
+        },
+        {
+          "type": "object",
+          "required": [
+            "from",
+            "to"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "to": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Inclusive frame segment into the strip; must satisfy from <= to < columns."
+        }
+      ]
+    }
+  }
+}

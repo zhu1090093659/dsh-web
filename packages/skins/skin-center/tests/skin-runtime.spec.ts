@@ -422,4 +422,74 @@ describe('skin controller', () => {
     expect(document.documentElement.hasAttribute('data-dsh-skin')).toBe(false)
     expect(document.head.querySelectorAll('link[rel="stylesheet"]')).toHaveLength(0)
   })
+
+  it('refresh during in-flight boot switchTo does not stale or clobber the activation (#604)', async () => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    document.documentElement.setAttribute('data-dsh-skin', 'miku')
+    const ledger = createEffectLedger()
+    let resolveStylesheet!: () => void
+    const stylesheetPromise = new Promise<void>((r) => { resolveStylesheet = r })
+    const loadStylesheet = vi.fn(async (href: string) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = href
+      document.head.appendChild(link)
+      await stylesheetPromise
+    })
+    let suppressed = false
+    const controller = createSkinController({
+      doc: document,
+      ledger,
+      loadStylesheet,
+      suppressBackgroundMedia: () => suppressed,
+      persist: async () => {},
+    })
+
+    // Boot begins switchTo('miku', entry) while loadStylesheet is pending
+    const bootSwitch = controller.switchTo('miku', entryFor('miku'))
+
+    // While loadStylesheet is still pending, wallpaper inventory resolves and triggers refresh()
+    suppressed = true
+    const refreshResult = await controller.refresh()
+    expect(refreshResult).toBe('miku')
+
+    // Finish the stylesheet load
+    resolveStylesheet()
+    await bootSwitch
+
+    // Stylesheet link and attributes remain installed, not destroyed as stale
+    expect(controller.active).toBe('miku')
+    expect(document.documentElement.getAttribute('data-dsh-skin')).toBe('miku')
+    const links = document.head.querySelectorAll('link[rel="stylesheet"]')
+    expect(links).toHaveLength(1)
+    expect(links[0].getAttribute('href')).toContain('miku')
+  })
+
+  it('fail-closed on initial boot switch failure resets active state to null', async () => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    document.documentElement.setAttribute('data-dsh-skin', 'broken-skin')
+    const ledger = createEffectLedger()
+    const loadStylesheet = vi.fn(async () => {
+      throw new Error('404 stylesheet not found')
+    })
+    const errors: string[] = []
+    const controller = createSkinController({
+      doc: document,
+      ledger,
+      loadStylesheet,
+      onError: (m) => errors.push(m),
+    })
+
+    expect(controller.active).toBe('broken-skin')
+    await controller.switchTo('broken-skin', entryFor('broken-skin'))
+
+    // Controller active state, committed state, and html attribute reset to null
+    expect(controller.active).toBeNull()
+    expect(controller.getState().active).toBeNull()
+    expect(document.documentElement.hasAttribute('data-dsh-skin')).toBe(false)
+    expect(errors.some((m) => m.includes('broken-skin'))).toBe(true)
+  })
 })
+

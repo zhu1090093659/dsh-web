@@ -65,6 +65,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
   const enabled = useSyncExternalStore(wallpaper.subscribe, wallpaper.enabled)
   const selection = useSyncExternalStore(wallpaper.subscribe, wallpaper.selection)
   const mode = useSyncExternalStore(wallpaper.subscribe, wallpaper.mode)
+  const fit = useSyncExternalStore(wallpaper.subscribe, wallpaper.fit)
   const dim = useSyncExternalStore(wallpaper.subscribe, wallpaper.dim)
   const blur = useSyncExternalStore(wallpaper.subscribe, wallpaper.wallpaperBlur)
   const pauseOnHidden = useSyncExternalStore(wallpaper.subscribe, wallpaper.pauseOnHidden)
@@ -135,6 +136,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
     videoUrl: item.videoUrl,
     webUrl: item.webUrl,
     frameUrl: item.frameUrl,
+    sceneUrl: item.sceneUrl,
     previewUrl: item.previewUrl,
   })
 
@@ -197,6 +199,30 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                   onClick={() => { wallpaper.clearSelection() }}
                 >
                   {t('wallpaperClear')}
+                </button>
+              </div>
+              <div className={css.themeRow}>
+                <span className={css.themeLabel}>{t('wallpaperFit')}</span>
+                <button
+                  type="button"
+                  className={css.themeButton + (fit === 'cover' ? ' ' + css.themeButtonActive : '')}
+                  onClick={() => { wallpaper.setFit('cover') }}
+                >
+                  {t('wallpaperFitCover')}
+                </button>
+                <button
+                  type="button"
+                  className={css.themeButton + (fit === 'contain' ? ' ' + css.themeButtonActive : '')}
+                  onClick={() => { wallpaper.setFit('contain') }}
+                >
+                  {t('wallpaperFitContain')}
+                </button>
+                <button
+                  type="button"
+                  className={css.themeButton + (fit === 'fill' ? ' ' + css.themeButtonActive : '')}
+                  onClick={() => { wallpaper.setFit('fill') }}
+                >
+                  {t('wallpaperFitFill')}
                 </button>
               </div>
               <div className={css.backgroundRow}>

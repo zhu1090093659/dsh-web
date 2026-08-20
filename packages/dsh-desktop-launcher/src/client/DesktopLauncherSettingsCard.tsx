@@ -141,6 +141,7 @@ export function DesktopLauncherSettingsCard(props: DesktopLauncherSettingsCardPr
       t={t}
       titleKey="settings.title"
       descriptionKey="settings.description"
+      defaultOpen={false}
       state={state}
       onSave={props.save}
       onDiscard={props.discard}

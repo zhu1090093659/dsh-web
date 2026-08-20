@@ -11,13 +11,14 @@
 'use strict'
 
 const path = require('node:path')
+const { pathToFileURL } = require('node:url')
 
 const LIB_PATH = path.join(__dirname, '..', 'packages', 'skins', 'skin-center', 'lib', 'index.js')
 const SKINS_DIR = path.join(__dirname, '..', 'packages', 'skins', 'skin-center', 'skins')
 
 async function main() {
   const checkMode = process.argv.includes('--check')
-  const lib = await import(LIB_PATH)
+  const lib = await import(pathToFileURL(LIB_PATH).href)
   const catalog = lib.loadSkinCatalog({ builtinDir: SKINS_DIR, userDir: path.join(SKINS_DIR, '.nonexistent-user-root') })
   let failed = false
   if (catalog.skins.length === 0) {

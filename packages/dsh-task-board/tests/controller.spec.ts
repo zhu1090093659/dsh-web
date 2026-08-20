@@ -562,6 +562,52 @@ describe('external (cross-tab) ledger changes', () => {
     expect(JSON.stringify(store.load())).not.toContain('旧标题')
   })
 
+  it('re-arms a session change that arrives while reconcile is in flight', async () => {
+    let resolveFirst: (() => void) | undefined
+    let reconcileCalls = 0
+    const stub = {
+      reconcile: (task: { id: string }): Promise<ExecutionEvent | undefined> => {
+        reconcileCalls += 1
+        if (task.id === 'task-a') {
+          // The startup pass for A parks; a later pass finds A still running.
+          if (reconcileCalls === 1) return new Promise(resolve => { resolveFirst = () => resolve(undefined) })
+          return Promise.resolve(undefined)
+        }
+        // B's session already finished: settle it.
+        return Promise.resolve({ kind: 'settled', taskId: 'task-b', executionId: 'e2', outcome: 'succeeded', error: undefined })
+      },
+    }
+    const store = new ExternalAwareStore()
+    const sessions = new FakeSessions()
+    const seedA = seedTask(store, { id: 'task-a', title: 'A' })
+    const seedB = seedTask(store, { id: 'task-b', title: 'B' })
+    const runningA = { ...seedA, status: 'running' as const, executions: [{ id: 'e1', sessionId: 's-1', startedAt: NOW, endedAt: undefined, result: undefined, error: undefined }] }
+    const runningB = { ...seedB, status: 'running' as const, executions: [{ id: 'e2', sessionId: 's-2', startedAt: NOW, endedAt: undefined, result: undefined, error: undefined }] }
+    store.save([runningA, runningB])
+    const controller = new BoardController({
+      store, exec: stub as unknown as ExecutionService, sessions, now: () => NOW, uuid, reconcileDebounceMs: 0,
+    })
+    controller.start()
+    await flush()
+    // The startup pass is parked on A.
+    expect(reconcileCalls).toBe(1)
+    expect(resolveFirst).toBeDefined()
+
+    // B's session finishes while A's reconcile is still in flight; the change
+    // must re-arm the debounce, not drop B.
+    sessions.setCurrent('s-other')
+    await flush()
+    resolveFirst!()
+    await flush()
+    await flush()
+    await flush()
+
+    // The re-armed pass settled B instead of dropping the notification.
+    const b = controller.getSnapshot().tasks.find(t => t.id === 'task-b')
+    expect(b?.status).toBe('done')
+    expect(reconcileCalls).toBeGreaterThanOrEqual(3)
+  })
+
   it('stops reacting to external changes after dispose', () => {
     const { controller, store } = makeWithExternalStore()
     let notified = 0

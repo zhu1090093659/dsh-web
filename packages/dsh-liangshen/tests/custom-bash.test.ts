@@ -2,12 +2,31 @@
  * custom-bash behavior tests (issue #283): the win32 `bash` tool must
  * register the Minimal-compatible schema, spawn `bash -c` through the
  * ordinary cross-platform subprocess seam, and fail with actionable errors
- * instead of silently switching shells. All checks run on POSIX — no real
- * Windows binary is involved.
+ * instead of silently switching shells. Path assertions are separator-
+ * normalized so they hold on win32 runners, and the executable-existence
+ * probe is mocked so the suite is hermetic (issue #763): results no longer
+ * depend on whether the runner has Git for Windows installed.
  */
 
 import { describe, expect, it, vi } from 'vitest'
 import { apply, bashCandidates } from '../presets/liangshen/custom-bash.mjs'
+
+/** Normalize path separators so assertions are runner-platform independent. */
+const normSep = (p: string): string => p.replaceAll('\\', '/')
+
+// The implementation probes candidate executables on the real filesystem
+// (access resolves when the file exists). Mock the probe to reject like
+// ENOENT so tests behave identically with or without Git for Windows on the
+// runner (issue #763).
+const { accessMock } = vi.hoisted(() => ({
+  accessMock: vi.fn(async () => {
+    throw new Error('ENOENT')
+  }),
+}))
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  return { ...actual, access: accessMock }
+})
 
 type SpawnFace = { argv: readonly string[]; cwd?: string }
 
@@ -59,8 +78,9 @@ function toolOf(ctx: ReturnType<typeof makeCtx>) {
 describe('bashCandidates', () => {
   it('derives Git Bash roots from the git executable path', () => {
     // node:path follows the runner platform, so probe with a POSIX-style
-    // git path: <root>/cmd/git.exe -> <root>/bin/bash.exe.
-    const candidates = bashCandidates({}, '/opt/git/cmd/git.exe')
+    // git path: <root>/cmd/git.exe -> <root>/bin/bash.exe; separators are
+    // normalized before asserting so the expectations hold on win32 too.
+    const candidates = bashCandidates({}, '/opt/git/cmd/git.exe').map(normSep)
     expect(candidates).toContain('/opt/git/bin/bash.exe')
     expect(candidates).toContain('/opt/git/cmd/bash.exe')
     expect(candidates).toContain('/opt/bin/bash.exe')
@@ -73,10 +93,9 @@ describe('bashCandidates', () => {
       LOCALAPPDATA: 'C:\\Users\\me\\AppData\\Local',
       USERPROFILE: 'C:\\Users\\me',
     }
-    const candidates = bashCandidates(env, undefined)
+    const candidates = bashCandidates(env, undefined).map(normSep)
     // Platform-agnostic tails: each well-known root must appear
-    // (separator varies with the runner, which is what the probe chain
-    // actually uses on Windows).
+    // (separators are normalized, so the same tails hold on win32).
     const tails = [
       'Git/bin/bash.exe',
       'Program Files/Git/bin/bash.exe',

@@ -277,6 +277,39 @@ describe('CliGateway unresolvable insert rollback (B6)', () => {
 })
 
 describe('CliGateway mutation queue (B7)', () => {
+  it('uses the same queue for direct profile writes and CLI jobs', async () => {
+    const { facts, dir } = makeProfile({})
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] === 'plugin' && args[3] === 'add') installPackage(facts.profileDir, args[4] ?? '', {})
+      return { code: 0 }
+    }, calls)
+    let release!: () => void
+    const blocker = new Promise<void>(resolve => { release = resolve })
+    const direct = gateway.withMutationLock(async () => {
+      await blocker
+    })
+    const { jobId } = gateway.install('queued-after-toggle')
+    await Promise.resolve()
+    expect(calls).toEqual([])
+    release()
+    await direct
+    const job = await settle(gateway, jobId)
+    expect(job.phase).toBe('done')
+    expect(calls.filter(args => args[3] === 'add').map(args => args[4])).toEqual(['queued-after-toggle'])
+  })
+
+  it('does not let a rejected direct mutation poison the queue', async () => {
+    const { facts, dir } = makeProfile({})
+    tempDirs.push(dir)
+    const gateway = gatewayFor(facts, () => ({ code: 0 }), [])
+    await expect(gateway.withMutationLock(async () => {
+      throw new Error('write failed')
+    })).rejects.toThrow('write failed')
+    await expect(gateway.withMutationLock(async () => 'next mutation')).resolves.toBe('next mutation')
+  })
+
   it('two concurrent installs stay serialized and attribute rows correctly', async () => {
     const { facts, dir } = makeProfile({})
     tempDirs.push(dir)

@@ -144,6 +144,18 @@ export function isLinkedSpec(spec: DependencySpec): boolean {
   return /^(?:link|file):|^\.{1,2}(?:[/\\]|$)/.test(spec)
 }
 
+/** Whether a direct local dependency overrides one of the aggregate's children. */
+function hasLinkedFamilyOverride(
+  anchorManifest: Record<string, unknown>,
+  profileManifest: Record<string, unknown> | undefined,
+): boolean {
+  const dependencies = profileManifest?.dependencies
+  if (typeof dependencies !== 'object' || dependencies === null) return false
+  return familyChildren(anchorManifest).some(name =>
+    isLinkedSpec((dependencies as Record<string, DependencySpec>)[name]),
+  )
+}
+
 /** One package's current-vs-latest comparison. */
 export interface UpdatePackageStatus {
   /** Package name. */
@@ -234,7 +246,7 @@ export function resolveUpdateTarget(
   if (profile === undefined) return { error: 'link' }
   const profileManifest = readManifest(join(profile.dir, 'package.json'))
   const spec = (profileManifest?.dependencies as Record<string, DependencySpec> | undefined)?.[anchor]
-  if (isLinkedSpec(spec)) return { error: 'link' }
+  if (isLinkedSpec(spec) || hasLinkedFamilyOverride(manifest, profileManifest)) return { error: 'link' }
   // Standalone installs carry no aggregate: the anchor's own dependency
   // list misses every sibling @linxin666/* plugin installed directly into
   // the profile, so union the profile's direct family deps (#377).
@@ -353,6 +365,7 @@ export async function checkUpdates(deps: UpdateCheckDeps): Promise<UpdateStatus>
   const profileManifest = profile === undefined ? undefined : readManifest(join(profile.dir, "package.json"))
   const linked = profile === undefined
     || isLinkedSpec((profileManifest?.dependencies as Record<string, DependencySpec> | undefined)?.[anchor])
+    || hasLinkedFamilyOverride(manifest, profileManifest)
   if (profile === undefined) {
     return { mode: 'link', packages: [], outdated: false }
   }

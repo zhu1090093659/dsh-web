@@ -83,6 +83,7 @@ export function apply(ctx: ClientContext): void {
     pauseOnHidden?: boolean
     dim?: number
     wallpaperBlur?: number
+    fit?: 'cover' | 'contain' | 'fill'
   }>({ namespace: SKIN_WALLPAPER_NS })
   const wallpaper = new WallpaperController(wallpaperScope)
   ctx.effect(() => () => wallpaper.dispose(), 'ui-skin-center: wallpaper dispose')
@@ -126,6 +127,7 @@ export function apply(ctx: ClientContext): void {
       enabled: () => wallpaper.enabled(),
       selection: () => wallpaper.selection(),
       mode: () => wallpaper.mode(),
+      fit: () => wallpaper.fit(),
       dim: () => wallpaper.dim(),
       wallpaperBlur: () => wallpaper.wallpaperBlur(),
       pauseOnHidden: () => wallpaper.pauseOnHidden(),
@@ -139,6 +141,7 @@ export function apply(ctx: ClientContext): void {
       subscribe: listener => wallpaper.subscribe(listener),
       setEnabled: value => wallpaper.setEnabled(value),
       setMode: value => wallpaper.setMode(value),
+      setFit: fit => wallpaper.setFit(fit),
       setDim: value => wallpaper.setDim(value),
       setBlur: value => wallpaper.setBlur(value),
       setPauseOnHidden: value => wallpaper.setPauseOnHidden(value),

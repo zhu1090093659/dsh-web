@@ -88,6 +88,36 @@ async function call(
   })
 }
 
+/** Read the first SSE `data:` frame then abort the stream. */
+async function readFirstSse(port: number, path: string): Promise<Record<string, unknown>> {
+  return await new Promise((resolve, reject) => {
+    const req = httpRequest(
+      { host: '127.0.0.1', port, path, method: 'GET', headers: { host: `127.0.0.1:${String(port)}` } },
+      (response) => {
+        let buf = ''
+        response.on('data', (chunk) => {
+          buf += String(chunk)
+          const match = /data: (.+)\n\n/.exec(buf)
+          if (match?.[1] === undefined) return
+          try {
+            const parsed = JSON.parse(match[1]) as Record<string, unknown>
+            req.destroy()
+            resolve(parsed)
+          } catch (error) {
+            req.destroy()
+            reject(error)
+          }
+        })
+      },
+    )
+    req.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.code === 'ECONNRESET' || error.message.includes('aborted')) return
+      reject(error)
+    })
+    req.end()
+  })
+}
+
 describe('/api/pair routes', () => {
   it('runs the full flow: issue (loopback) → accept (LAN) → cookie → reuse refused', async () => {
     const service = makeService()
@@ -319,6 +349,62 @@ describe('/api/pair routes', () => {
       const badAccept = await call(port, 'POST', '/api/pair/accept', { host: '192.168.1.5:3080', body: { token: 7 } })
       expect(badAccept.status).toBe(400)
       expect(badAccept.body).toEqual({ ok: false, code: 'bad-payload' })
+    } finally {
+      await close()
+    }
+  })
+
+  it('omits the device roster from status even for a paired cookie', async () => {
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({ service, lanAddresses: ['192.168.1.5'] }))
+    try {
+      await call(port, 'POST', '/api/pair/issue', {})
+      await call(port, 'POST', '/api/pair/accept', {
+        host: '192.168.1.5:3080',
+        body: { token: 'tok-1' },
+        headers: { 'user-agent': 'Mozilla/5.0 TestPhone' },
+      })
+      const status = await call(port, 'GET', '/api/pair/status', { host: '192.168.1.5:3080', cookie: 'dsh_pair=tok-1' })
+      expect(status.body).toMatchObject({ ok: true, paired: true, deviceCount: 1 })
+      expect(status.body).not.toHaveProperty('devices')
+    } finally {
+      await close()
+    }
+  })
+
+  it('pushes the device roster on the loopback events stream', async () => {
+    const service = makeService()
+    service.issue()
+    service.accept('tok-1', 'Mozilla/5.0 TestPhone')
+    const { port, close } = await serve(makeRoutes({ service, lanAddresses: ['192.168.1.5'] }))
+    try {
+      const frame = await readFirstSse(port, '/api/pair/events')
+      expect(frame.type).toBe('state')
+      expect(frame.devices).toEqual([
+        expect.objectContaining({ id: 'tok-1', online: true, userAgent: 'Mozilla/5.0 TestPhone' }),
+      ])
+    } finally {
+      await close()
+    }
+  })
+
+  it('revokes one device from loopback and refuses LAN revoke', async () => {
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({ service, lanAddresses: ['192.168.1.5'] }))
+    try {
+      await call(port, 'POST', '/api/pair/issue', {})
+      await call(port, 'POST', '/api/pair/accept', { host: '192.168.1.5:3080', body: { token: 'tok-1' } })
+      const lanRevoke = await call(port, 'POST', '/api/pair/revoke', {
+        host: '192.168.1.5:3080',
+        body: { deviceId: 'tok-1' },
+      })
+      expect(lanRevoke.status).toBe(403)
+      expect(service.hasDevice('tok-1')).toBe(true)
+      const revoked = await call(port, 'POST', '/api/pair/revoke', { body: { deviceId: 'tok-1' } })
+      expect(revoked.status).toBe(200)
+      expect(service.hasDevice('tok-1')).toBe(false)
+      const missing = await call(port, 'POST', '/api/pair/revoke', { body: { deviceId: 'tok-1' } })
+      expect(missing.status).toBe(404)
     } finally {
       await close()
     }

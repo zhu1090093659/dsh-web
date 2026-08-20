@@ -12,6 +12,13 @@ dsh-web-ui 是 DeepSeek Harness Web GUI 的插件与皮肤 monorepo。本文定�
   用户级 `~/.npmrc`，项目 `.npmrc` 只留 scope 映射（见
 [plugins.md](plugins.md)）。
 
+## 分支模型
+
+- `dev`：开发分支（集成分支），本地开发与远程 PR 的统一目标；提交 /
+  提 PR 前先 `git fetch origin && git rebase origin/dev` 同步上游最新代码。
+- `main`：稳定分支，只接收从 `dev` 合入且测试通过的代码；`dev` 上
+  验证通过后由维护者合入 `main`（发布 tag 仍从 `main` 打）。
+
 ## 日常循环
 
 ```sh
@@ -38,6 +45,13 @@ skin-center / docs / emoji）。
 test:scripts/aggregate/docs）。worktree 与 e2e 验证统一放在
 `~/remote-e2e`（同 head 复用，跑完保留便于排查），定期用
 `pnpm pr:review --cleanup` 或手动 `rm -rf ~/remote-e2e` 清理。
+
+外部 PR 的模板硬检查含「测试证据与上游同步」与「视觉修复要求」：贡献者
+必须提供自己本地测试的证据，并附上同步上游最新 `dev` 分支后重新测试
+通过的证据；文本类改动可不附截图，视觉修复 / 用户可见变更必须附截图，
+且视觉修复必须使用支持图像输入的多模态模型完成（纯文本模型如
+deepseek-chat / deepseek-reasoner / gpt-3.5 直接拒绝）。缺失即 REJECT；
+`.github/workflows/pr-contribution-rules.yml` 在 CI 侧同步拦截（评论 + 挂红）。
 
 皮肤 PR 额外自动做视觉验证：生成亮/暗预览与画廊页截图（
 `~/remote-e2e/e2e-<pr>/previews/`），像素指标分析自动判定过曝

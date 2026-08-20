@@ -92,6 +92,12 @@ export function HostFormDialog({ api, editing, onClose, onSaved }: HostFormDialo
       setError(tt('form.portInvalid'))
       return
     }
+    // A password-auth host needs a password on create; when editing, a blank
+    // secret field preserves the stored credential instead.
+    if (editing == null && form.authKind === 'password' && form.password === '') {
+      setError(tt('form.passwordRequired'))
+      return
+    }
     // Secrets are never echoed back by the API: when editing and the secret
     // fields are left empty, the auth block is omitted so the stored
     // authentication is preserved.

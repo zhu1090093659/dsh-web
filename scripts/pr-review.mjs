@@ -76,6 +76,19 @@ export const EMOJI_GLOBAL_RE = new RegExp(EMOJI_RE.source, 'gu')
 /** Conventional Commits（仓库允许的 type 集合）。 */
 export const CONVENTIONAL_COMMIT_RE = /^(feat|fix|chore|docs|test|refactor|perf)(\([^)]+\))?!?: .+/
 
+/** 已知纯文本模型（不支持图像输入）：视觉修复类 PR 禁用。 */
+export const TEXT_ONLY_MODEL_RES = [
+  /^deepseek$/i,
+  /deepseek[-_ ]?(chat|reasoner|r1|v3|v2|v1)/i,
+  /gpt[-_ ]?3(\.5)?([-_ ]turbo)?/i,
+  /llama[-_ ]?(2|3)/i,
+  /glm[-_ ]?(3|4)/i,
+  /moonshot|kimi/i,
+  /doubao|\u8c46\u5305/i,
+  /ernie|\u6587\u5fc3/i,
+  /mistral/i,
+]
+
 /** 新增二进制文件白名单（对齐 ci.yml emoji 检查的 skip_suffixes + 常见文档）。 */
 export const ALLOWED_BINARY_EXT = new Set([
   `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.ico`,
@@ -232,7 +245,7 @@ export function addedLinesFromDiff(text) {
     } else if (line.startsWith(`+`) && !line.startsWith(`+++`)) {
       newLine += 1
       out.push({ path: file, line: newLine, text: line.slice(1) })
-    } else if (!line.startsWith(`-`)) {
+    } else if (!line.startsWith(`-`) && !line.startsWith(`\\`)) {
       newLine += 1
     }
   }
@@ -428,6 +441,8 @@ export function checkTemplate(prInfo, repoOwner) {
   const summary = readSection(body, `摘要（Summary）`)
   const prType = readSection(body, `PR 类型（PR Type）`)
   const latest = readSection(body, `最新代码确认（Latest Codebase Confirmation）`)
+  const evidenceRules = readSection(body, `测试证据与上游同步（Test Evidence & Upstream Sync）`)
+  const visualRules = readSection(body, `视觉修复要求（Visual Fix Requirements）`)
   const validation = readSection(body, `本地验证（Local Validation）`)
   const evidence = readSection(body, `用户可见变更证据（Local Feature Evidence）`)
   const packages = readSection(body, `涉及包（Affected Packages）`)
@@ -439,7 +454,7 @@ export function checkTemplate(prInfo, repoOwner) {
     findings.push({ severity: `reject`, rule: `template`, message: `PR 类型（PR Type）未勾选任何一项` })
   }
   if (!hasCheckedLine(latest, `我已基于最新`)) {
-    findings.push({ severity: `reject`, rule: `template`, message: `最新代码确认（Latest Codebase Confirmation）未勾选` })
+    findings.push({ severity: `reject`, rule: `template`, message: `最新代码确认（Latest Codebase Confirmation）未勾选（须基于最新 dev 分支）` })
   }
   const validationCommands = readField(validation, `执行的命令`)
   const validationSummary = readField(validation, `结果摘要`)
@@ -461,10 +476,36 @@ export function checkTemplate(prInfo, repoOwner) {
     }
   }
 
-  const userFacing = hasCheckedLine(prType, `面向用户的功能或行为变更`)
   const isRepoOwner = prInfo.author && prInfo.author.login === repoOwner
-  if (userFacing && !isRepoOwner && !hasEvidence(evidence)) {
-    findings.push({ severity: `reject`, rule: `template`, message: `面向用户的功能 PR 必须附带本地功能证据（截图 / 视频 / 链接）` })
+  if (!isRepoOwner) {
+    // 贡献者 PR 证据门槛（模板「测试证据与上游同步」必填）：自测证据 +
+    // 同步上游最新 dev 分支后重新测试通过的证据，缺失即拒绝。
+    if (!hasCheckedLine(evidenceRules, `我提供了自己本地测试的证据`)) {
+      findings.push({ severity: `reject`, rule: `template`, message: `贡献者 PR 必须勾选「测试证据与上游同步」的自测证据项（提供自己本地测试的证据）` })
+    }
+    if (!hasCheckedLine(evidenceRules, `我已同步上游最新`)) {
+      findings.push({ severity: `reject`, rule: `template`, message: `贡献者 PR 必须勾选「测试证据与上游同步」的上游同步项（同步 dev 最新代码并附重测证据）` })
+    }
+    const userFacing = hasCheckedLine(prType, `面向用户的功能或行为变更`)
+    const visualFix = hasCheckedLine(prType, `视觉修复`)
+    if ((visualFix || userFacing) && !hasEvidence(evidence)) {
+      findings.push({ severity: `reject`, rule: `template`, message: `视觉修复 / 用户可见变更的 PR 必须附带截图或视频证据（视觉修复还需完成态或修复前后对比截图）` })
+    }
+    if (visualFix) {
+      if (!hasCheckedLine(visualRules, `我提供了修复完成后的截图`)) {
+        findings.push({ severity: `reject`, rule: `template`, message: `视觉修复 PR 必须勾选「视觉修复要求」的完成截图项（提供修复完成后的截图）` })
+      }
+      const aiUsed = fullyAI || partialAI
+      if (aiUsed && !hasCheckedLine(visualRules, `修复使用的 AI 模型支持图像输入`)) {
+        findings.push({ severity: `reject`, rule: `template`, message: `视觉修复必须使用支持图像输入的多模态 AI 模型完成（「视觉修复要求」节勾选并填写模型名）` })
+      }
+      if (aiUsed) {
+        const model = readField(ai, `使用的 AI 模型`)
+        if (isBlank(model) || TEXT_ONLY_MODEL_RES.some((re) => re.test(model))) {
+          findings.push({ severity: `reject`, rule: `template`, message: `视觉修复使用的 AI 模型必须是多模态模型（支持图像输入）；纯文本模型（如 deepseek-chat / deepseek-reasoner / gpt-3.5）修复的视觉类 PR 不接受` })
+        }
+      }
+    }
   }
 
   if (packages && !hasAnyCheckedBox(packages)) {

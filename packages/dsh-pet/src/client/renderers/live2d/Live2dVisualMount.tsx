@@ -33,6 +33,7 @@ export function Live2dVisualMount(props: {
 
   // One activation per pet definition: build the contract context and mount.
   useEffect(() => {
+    setError(null)
     const container = containerRef.current
     const live2d = props.definition.live2d
     if (container === null || live2d === undefined) return undefined

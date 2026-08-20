@@ -30,6 +30,8 @@ export interface PetSettings {
   bottom?: number
   /** Selected pet id (a registry entry). */
   petId?: string
+  /** Status-decoration master switch (pet-center M5, #567). */
+  decorationEnabled?: boolean
 }
 
 /** What the pet settings card renders. */
@@ -46,6 +48,8 @@ export interface PetSettingsCardState extends CardShell {
   bottom: CardFieldState
   /** Selected pet. */
   petId: CardFieldState
+  /** Status-decoration master switch. */
+  decorationEnabled: CardFieldState
   /** Pet choices (registry ids + display names), loaded from the host. */
   petChoices: readonly { value: string; label: string }[]
   /** Registry diagnostics (v1 migration hints, invalid entries), host-served. */
@@ -104,6 +108,7 @@ export class PetSettingsCardController {
   constructor(scope: SettingsScope<PetSettings>) {
     this.form = new CardForm(scope, [
       booleanField('enabled'),
+      booleanField('decorationEnabled'),
       booleanField('visible'),
       numberField('size'),
       numberField('right'),
@@ -111,8 +116,14 @@ export class PetSettingsCardController {
       choiceField('petId', this.petChoices),
     ])
     this.store = this.form.bind(() => this.projection())
-    void this.loadPets()
-    void this.loadDiagnostics()
+    // Client plugins are applied synchronously during shell startup. Defer
+    // the first registry request until that pass completes so transport
+    // plugins (notably remote-web-ui on a paired non-loopback origin) can
+    // install their fetch channel before /api/pet/pets is issued.
+    window.setTimeout(() => {
+      void this.loadPets()
+      void this.loadDiagnostics()
+    }, 0)
   }
 
   /** Fetch registry diagnostics once (soft-fail: an empty list on error). */
@@ -146,6 +157,7 @@ export class PetSettingsCardController {
     return {
       ...this.form.shell(),
       enabled: this.form.field('enabled'),
+      decorationEnabled: this.form.field('decorationEnabled'),
       visible: this.form.field('visible'),
       size: this.form.field('size'),
       right: this.form.field('right'),
@@ -214,6 +226,18 @@ export function PetSettingsCard(props: PetSettingsCardProps) {
         {...state.enabled}
         onEdit={(text) => { props.edit('enabled', text) }}
         onReset={() => { props.resetField('enabled') }}
+      />
+      <BooleanField
+        id="settings-pet-decoration"
+        label={t('settings.decoration')}
+        hint={t('settings.decorationHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...state.decorationEnabled}
+        onEdit={(text) => { props.edit('decorationEnabled', text) }}
+        onReset={() => { props.resetField('decorationEnabled') }}
       />
       <ChoiceField
         id="settings-pet-pet"

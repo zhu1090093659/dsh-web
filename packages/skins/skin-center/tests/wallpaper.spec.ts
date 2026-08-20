@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import {
   WallpaperController,
+  defaultWallpaperSurface,
   installBootRestore,
   resolveSelection,
   type WallpaperDescriptor,
@@ -162,6 +163,57 @@ describe('WallpaperController', () => {
     controller.dispose()
   })
 
+  it('applies fit mode (cover / contain / fill) and updates media objectFit', () => {
+    const { scope, calls } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection(video)
+    const [media] = layers()
+    const vid = media.querySelector('video')
+    expect(vid?.style.objectFit).toBe('cover')
+    controller.setFit('contain')
+    expect(controller.fit()).toBe('contain')
+    expect(calls.some(c => c.field === 'fit' && c.value === 'contain')).toBe(true)
+    const [media2] = layers()
+    const vid2 = media2.querySelector('video')
+    expect(vid2?.style.objectFit).toBe('contain')
+    controller.dispose()
+  })
+
+  it('keeps the media element across fit changes instead of rebuilding (#717 follow-up)', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection(video)
+    const [media] = layers()
+    const vid = media.querySelector('video')
+    expect(vid).not.toBeNull()
+    controller.setFit('fill')
+    const [media2] = layers()
+    const vid2 = media2.querySelector('video')
+    expect(vid2).toBe(vid) // same element: only objectFit updated
+    expect(vid2?.style.objectFit).toBe('fill')
+    controller.dispose()
+  })
+
+  it('mounts video for scene wallpaper when videoUrl is present in live mode', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    const sceneWithVideo: WallpaperDescriptor = {
+      id: 'scene-vid',
+      title: 'Scene with MP4',
+      type: 'scene',
+      videoUrl: '/api/skin-center/we/scene-video/eee',
+      webUrl: null,
+      frameUrl: '/api/skin-center/we/scene-frame/eee',
+      previewUrl: '/api/skin-center/we/preview/eee',
+    }
+    controller.applySelection(sceneWithVideo)
+    const [media] = layers()
+    const vid = media.querySelector('video')
+    expect(vid).not.toBeNull()
+    expect(vid?.src).toContain('/api/skin-center/we/scene-video/eee')
+    controller.dispose()
+  })
+
   it('keeps videos muted by default and applies sound/volume live (#580)', () => {
     const { scope, calls } = fakeScope()
     const controller = new WallpaperController(scope)
@@ -272,6 +324,190 @@ describe('WallpaperController', () => {
     controller.sync(null)
     expect(layers()).toHaveLength(0)
     controller.dispose()
+  })
+
+  it('fetchAndSync loads wallpaper inventory on boot when selection is set (#604)', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        wallpapers: [video, scene],
+      }),
+    })) as unknown as typeof fetch
+    const { scope } = fakeScope({ enabled: true, selection: '111' })
+    const controller = new WallpaperController(scope, {
+      fetchImpl,
+      doc: document,
+    })
+
+    // Allow promise microtasks in fetchAndSync to resolve
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(fetchImpl).toHaveBeenCalledWith('/api/skin-center/we/inventory')
+    expect(controller.activeId()).toBe('111')
+    expect(document.body.dataset.dshWallpaperActive).toBe('true')
+    expect(document.documentElement.dataset.dshWallpaperActive).toBe('true')
+    const [media] = layers()
+    expect(media.querySelector('video')).not.toBeNull()
+    controller.dispose()
+  })
+
+  it('fetchAndSync triggers on scope selection update when descriptor not yet loaded', async () => {
+    let inventory = [video]
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        wallpapers: inventory,
+      }),
+    })) as unknown as typeof fetch
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope, {
+      fetchImpl,
+      doc: document,
+    })
+
+    expect(controller.activeId()).toBeNull()
+    inventory = [video, scene]
+    await scope.set('selection', '333')
+
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(controller.activeId()).toBe('333')
+    const [media] = layers()
+    expect(media.querySelector('img')?.src).toContain('/api/skin-center/we/scene-frame/ccc')
+    controller.dispose()
+  })
+
+  it('neutralizer CSS contains background-image none and removes on teardown', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection(video)
+    const style = document.head.querySelector('style[data-dsh-wallpaper-root]')
+    expect(style?.textContent).toContain('background-image: none !important;')
+    expect(style?.textContent).toContain('background-color: transparent !important;')
+    expect(document.body.dataset.dshWallpaperActive).toBe('true')
+    expect(document.documentElement.dataset.dshWallpaperActive).toBe('true')
+
+    controller.dispose()
+    expect(document.head.querySelector('style[data-dsh-wallpaper-root]')).toBeNull()
+    expect(document.body.dataset.dshWallpaperActive).toBeUndefined()
+    expect(document.documentElement.dataset.dshWallpaperActive).toBeUndefined()
+  })
+
+  it('removes the composer seat mask while a wallpaper is mounted (#734)', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection(video)
+    const style = document.head.querySelector('style[data-dsh-wallpaper-root]')
+    expect(style?.textContent).toContain('html[data-dsh-wallpaper-active] [data-composer-seat]')
+    expect(style?.textContent).toContain('background: none !important;')
+    // The rule exists only while a wallpaper is mounted: teardown removes it.
+    controller.clearSelection()
+    expect(document.head.querySelector('style[data-dsh-wallpaper-root]')).toBeNull()
+    expect(document.documentElement.dataset.dshWallpaperActive).toBeUndefined()
+    controller.dispose()
+  })
+
+  it('tags full-viewport shell surfaces and untags on teardown (#734)', () => {
+    const { scope } = fakeScope()
+    document.body.innerHTML = ''
+    const root = document.createElement('div')
+    root.id = 'root'
+    const shellSurface = document.createElement('div')
+    const other = document.createElement('div')
+    shellSurface.style.height = '100%'
+    other.style.height = '100%'
+    root.append(shellSurface, other)
+    document.body.appendChild(root)
+    const controller = new WallpaperController(scope, {
+      doc: document,
+      // Simulate the computed-style heuristic (jsdom cannot resolve token vars).
+      declareSurface: (el) => el === shellSurface,
+    })
+    controller.applySelection(video)
+    expect(shellSurface.getAttribute('data-dsh-wallpaper-surface')).toBe('')
+    expect(other.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
+    const style = document.head.querySelector('style[data-dsh-wallpaper-root]')
+    expect(style?.textContent).toContain('html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface]')
+    expect(style?.textContent).toContain('background-color: transparent !important;')
+    controller.dispose()
+    expect(shellSurface.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
+  })
+
+  it('defaultWallpaperSurface matches full-height bg-base surfaces', () => {
+    document.body.innerHTML = ''
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+    document.documentElement.style.setProperty('--dsw-alias-bg-base', '#f6f7f8')
+    const surface = document.createElement('div')
+    surface.style.height = '100%'
+    surface.style.backgroundColor = '#f6f7f8'
+    const short = document.createElement('div')
+    short.style.height = '50%'
+    short.style.backgroundColor = '#f6f7f8'
+    const offColor = document.createElement('div')
+    offColor.style.height = '100%'
+    offColor.style.backgroundColor = '#101010'
+    root.append(surface, short, offColor)
+    expect(defaultWallpaperSurface(surface, document)).toBe(true)
+    expect(defaultWallpaperSurface(short, document)).toBe(false)
+    expect(defaultWallpaperSurface(offColor, document)).toBe(false)
+    document.documentElement.style.removeProperty('--dsw-alias-bg-base')
+  })
+
+  it('defaultWallpaperSurface uses rendered px geometry in real browsers (#734 review)', () => {
+    // Real browsers return USED values: computed height in px ("913px") and
+    // layout rects in px. jsdom lays nothing out, so this fake exercises the
+    // geometry branch the review asked for: a full-height rect within 2px of
+    // the viewport height wins; a half-height rect is rejected even though
+    // the computed style string would have said "100%".
+    const probe = { style: { setProperty: () => {} }, remove: () => {} }
+    const html = { clientHeight: 1000, appendChild: () => {} }
+    const win = {
+      innerHeight: 1000,
+      getComputedStyle: (target: unknown) => {
+        if (target === probe) return { backgroundColor: 'rgb(246, 247, 248)' }
+        if (target === html) return { getPropertyValue: () => '#f6f7f8' }
+        return { height: '913px', backgroundColor: 'rgb(246, 247, 248)' }
+      },
+    } as unknown as Window
+    const doc = {
+      defaultView: win,
+      documentElement: html,
+      createElement: () => probe,
+    } as unknown as Document
+    const full = { getBoundingClientRect: () => ({ height: 1000 }) } as unknown as HTMLElement
+    const short = { getBoundingClientRect: () => ({ height: 500 }) } as unknown as HTMLElement
+    expect(defaultWallpaperSurface(full, doc)).toBe(true)
+    expect(defaultWallpaperSurface(short, doc)).toBe(false)
+  })
+
+  it('tags the sidebar workspaces fade while a wallpaper is mounted (#734)', () => {
+    const { scope } = fakeScope()
+    document.body.innerHTML = ''
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+    const slot = document.createElement('div')
+    slot.setAttribute('data-slot', 'sidebar.workspaces')
+    const fade = document.createElement('span')
+    const other = document.createElement('span')
+    slot.append(fade, other)
+    root.appendChild(slot)
+    const controller = new WallpaperController(scope, {
+      doc: document,
+      declareWorkspaceFade: (el) => el === fade,
+    })
+    controller.applySelection(video)
+    expect(fade.getAttribute('data-dsh-wallpaper-surface')).toBe('')
+    expect(other.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
+    // The existing surface neutralization rule clears the fade's gradient too.
+    const style = document.head.querySelector('style[data-dsh-wallpaper-root]')
+    expect(style?.textContent).toContain('background-image: none !important;')
+    controller.dispose()
+    expect(fade.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
   })
 })
 

@@ -1,0 +1,19 @@
+{
+  "name": "@linxin666/dsh-client-ui-skin-whale-mom",
+  "version": "0.2.5",
+  "description": "No-op compatibility shim for the retired whale-mom skin package.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "Apache-2.0"
+}

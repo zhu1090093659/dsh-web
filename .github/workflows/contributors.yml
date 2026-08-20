@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: contributors-${{ github.ref }}
@@ -41,7 +42,9 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit if changed
+      - name: Commit and open PR if changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if git diff --quiet -- README.md README.en.md; then
             echo "Contributor list unchanged; nothing to commit."
@@ -49,6 +52,17 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH="chore/contributors-sync"
+          git checkout -b "$BRANCH"
           git add README.md README.en.md
-          git commit -m "docs(readme): sync contributor list from GitHub API [skip ci]"
-          git push
+          git commit -m "docs(readme): sync contributor list from GitHub API"
+          # 分支保护（dev/main 要求 PR）下 bot 无法直推，改为向 dev 开 PR；
+          # 分支仅含 bot 自身提交，force push 更新 head 幂等且安全。
+          git push -f -u origin "$BRANCH"
+          if gh pr view "$BRANCH" --repo "$GITHUB_REPOSITORY" --json number >/dev/null 2>&1; then
+            echo "PR already open for $BRANCH; head updated."
+          else
+            gh pr create --repo "$GITHUB_REPOSITORY" --base dev --head "$BRANCH" \
+              --title "docs(readme): sync contributor list from GitHub API" \
+              --body "由 contributors 工作流自动生成的贡献者名单同步（bot 维护类文档 PR，不受仅文档 PR 关闭规则限制）。"
+          fi

@@ -46,6 +46,11 @@ export interface ModelRoute {
 /** Resolve one exact route's image-input capability; every failure fails closed to {@link UNKNOWN_CAPABILITY}. */
 export type RouteCapabilityResolver = (route: ModelRoute) => Promise<ModelImageCapability>
 
+/** A resolver that can also drop its cached verdict (the native-image toggle uses it). */
+export type InvalidatableRouteResolver = RouteCapabilityResolver & {
+  invalidate(route: ModelRoute): void
+}
+
 /** Minimal face of the agent registry this probe reads. */
 interface AgentRegistryFace {
   get(id: string): { session?: { requestHeader?(): { config?: { provider?: string; model?: string } } | undefined } } | undefined
@@ -82,10 +87,10 @@ export function optionalService<T>(ctx: Context, name: string): T | undefined {
  * @param ctx - registrant context carrying the optional llm service.
  * @returns the route-keyed resolver.
  */
-export function createRouteResolver(ctx: Context): RouteCapabilityResolver {
+export function createRouteResolver(ctx: Context): InvalidatableRouteResolver {
   const routeCache = new Map<string, { at: number; cap: ModelImageCapability }>()
   const routeInflight = new Map<string, Promise<ModelImageCapability>>()
-  return async (route: ModelRoute): Promise<ModelImageCapability> => {
+  const resolver = (async (route: ModelRoute): Promise<ModelImageCapability> => {
     const key = route.provider + '/' + route.model
     const hit = routeCache.get(key)
     if (hit !== undefined && Date.now() - hit.at < (hit.cap.known ? ROUTE_OK_TTL_MS : ROUTE_ERR_TTL_MS)) return hit.cap
@@ -121,7 +126,14 @@ export function createRouteResolver(ctx: Context): RouteCapabilityResolver {
     } finally {
       routeInflight.delete(key)
     }
+  }) as InvalidatableRouteResolver
+  // The native-image toggle rewrites the adapter catalog: a cached verdict
+  // must not survive the write, or the UI (and the send hook) keep the old
+  // capability for up to the success TTL after every toggle.
+  resolver.invalidate = (route: ModelRoute): void => {
+    routeCache.delete(route.provider + '/' + route.model)
   }
+  return resolver
 }
 
 /** Probe one session's image-input capability; every failure fails closed to {@link UNKNOWN_CAPABILITY}. */

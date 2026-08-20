@@ -51,6 +51,10 @@ export function SessionListView({ workspace, onBack, onPick }: SessionListViewPr
   const [presetsLoading, setPresetsLoading] = useState(true)
   const cursorRef = useRef<string | undefined>(undefined)
   const busyRef = useRef(false)
+  // The freshest owned-id set: the mount effect re-reads the workspace roster
+  // so a session created since this row was captured still shows; loadMore
+  // filters later pages through this ref instead of the stale prop.
+  const workspaceRef = useRef(workspace)
 
   // First page on mount. The workspace roster is re-read alongside so the
   // owned-id set is fresh: a session created (or attached) since this
@@ -64,6 +68,7 @@ export function SessionListView({ workspace, onBack, onPick }: SessionListViewPr
         if (cancelled) return
         const fresh = workspaces.find(candidate => candidate.workspaceId === workspace.workspaceId)
         const current = fresh ?? workspace
+        workspaceRef.current = current
         setRows(ownedItems(page.items, current))
         cursorRef.current = page.nextCursor
         setHasMore(page.hasMore)
@@ -112,7 +117,7 @@ export function SessionListView({ workspace, onBack, onPick }: SessionListViewPr
         setLoading(false)
         cursorRef.current = page.nextCursor
         setHasMore(page.hasMore)
-        setRows(previous => [...previous, ...ownedItems(page.items, workspace)])
+        setRows(previous => [...previous, ...ownedItems(page.items, workspaceRef.current)])
       },
       (reason: unknown) => {
         busyRef.current = false

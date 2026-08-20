@@ -1,6 +1,6 @@
 ---
 name: dsh-web-ui-release
-description: Release and publish the dsh-web-ui monorepo (DSH Web GUI plugin family + skin collection) — bump all packages to one unified version, commit and tag, push the vX.Y.Z tag that triggers the GitHub Actions publish pipeline, and verify the npm publish + GitHub Release. Defaults an unspecified target to the next patch after the previous published release. Covers post-release verification and bad-version recovery. Use when the user asks to 发布/发版/release/bump 版本/publish a new version of dsh-web-ui or any @linxin666/dsh-* package.
+description: Release and publish the dsh-web-ui monorepo (DSH Web GUI plugin family + skin collection) — bump all packages to one unified version, commit and tag (tags are cut from main after dev integration; dev is the integration branch), push the vX.Y.Z tag that triggers the GitHub Actions publish pipeline, and verify the npm publish + GitHub Release. Defaults an unspecified target to the next patch after the previous published release. Covers post-release verification and bad-version recovery. Use when the user asks to 发布/发版/release/bump 版本/publish a new version of dsh-web-ui or any @linxin666/dsh-* package.
 whenToUse: The user wants to release dsh-web-ui (发布新版、发个版本、release、tag、publish @linxin666/dsh-* 包), build or change the release pipeline (release 管线、CI 发布), or recover from a bad published version (坏包、回滚、deprecate). Not for routine commits, skin development (see skin-developer skill), or CI-only changes without a release.
 ---
 
@@ -24,18 +24,28 @@ GitHub Actions 发布管线（构建/测试/npm 发布/GitHub Release）→ 发�
   （npm automation token，@linxin666 scope）；本机 npm 登录态不固定（无登录态时
   `npm whoami` 401 属正常；本机当前以 linxin666 登录），发版不依赖本机登录态。
 - 根 package.json 是 private（不发布）；`pnpm -r publish` 自动跳过。
+- **分支模型**：`dev` 是开发分支（集成分支），本地开发与远程 PR 统一以
+  `dev` 为目标（远端默认分支）；`main` 是稳定分支（发布分支），只接收
+  `dev` 上测试通过后合入的代码，发版 tag 一律从 `main` 打。`dev` /
+  `main` 均已启用分支保护（要求 PR + CI 全绿；管理员可绕过，维护者直推
+  仍可用，功能改动仍须先经 `dev`）。
 - 仓库禁 emoji（所有文件含提交信息与 tag 信息）；CI 会校验。
 
 ## 0. 发版前检查（本地全绿才允许打 tag）
 
 ```sh
 cd /Users/zcl/code/dsh-web-ui
+git checkout dev                   # 本地工作分支以 dev 为基线（远端默认分支）
+git fetch origin && git rebase origin/dev   # 先同步上游最新 dev
 git status --short                 # 明确本次要提交的内容，无意外文件
 pnpm test                          # 全仓测试
 pnpm test:scripts                  # 脚本测试（link-profile 等）
 node scripts/aggregate.mjs --check # 聚合清单与磁盘一致（改过 aggregate.yml 时必须先重跑生成）
 git log --oneline -5               # 确认包含本次全部改动、无未推送提交
 ```
+
+发版前提：待发布的全部改动先合入 `dev` 并在 `dev` 上全绿；发版时把
+`dev` 合入 `main`（见第 2 节），tag 从 `main` 打。
 
 皮肤相关变更（skin.json / skin.css / 皮肤资产）额外跑：
 
@@ -91,6 +101,15 @@ pnpm-lock.yaml 不记录包版本，无需改动；聚合包依赖用 workspace:
 
 ## 2. 提交与 tag
 
+发版提交与 tag 在 `main` 上执行（tag 从 `main` 打）；打 tag 前先确保
+`main` 已包含全部待发布内容（= `dev`，含版本 bump 前的一切功能改动）：
+
+```sh
+git checkout main && git pull origin main
+git merge --ff-only dev            # dev 已全绿，main 应能快进（非快进说明 main 有独有提交，先核对再合）
+git push origin main               # 分支保护允许管理员直推；非管理员走 PR：dev -> main
+```
+
 提交按两类拆分（保持历史可读）：
 
 ```sh
@@ -112,6 +131,9 @@ git commit -m "chore(release): bump to X.Y.Z"
 git tag "vX.Y.Z"                    # tag 命名固定 v 前缀；tag 即版本事实源
 git push origin main
 git push origin "vX.Y.Z"            # 推送 tag 即触发发布管线（唯一发布开关）
+
+# 发布后把 main 合回 dev（版本 bump 与 notes 提交也进入 dev），保持双分支一致
+git checkout dev && git merge main && git push origin dev
 ```
 
 ## 3. 发布管线（tag 触发，.github/workflows/release.yml）
@@ -120,11 +142,10 @@ git push origin "vX.Y.Z"            # 推送 tag 即触发发布管线（唯一�
 
 1. actionlint + pnpm install（frozen lockfile，checkout 用 fetch-depth: 0 取全量历史）；
 2. 全量 gate：typecheck / build / test / test:scripts / aggregate --check；
-3. **版本一致性校验**：tag 版本必须与全部 23 个包的 package.json version 完全一致，不一致直接失败（防止忘 bump 就发版）；
+3. **版本一致性校验**：tag 版本必须与全部 17 个家族包的 package.json version 完全一致（walkFamilyPackages：packages/* 与 packages/skins/* 非递归），不一致直接失败（防止忘 bump 就发版）；
 4. **生成 release notes**：优先使用已提交的 `docs/release-notes/$TAG.md`（v0.2.1 起维护者在发版提交中附带逐条 EN / 中文 双语版，管线直接采用）；文件缺失时兜底跑 `node scripts/release-notes.mjs $TAG` 生成单语草稿（把上一 tag 以来的**全部**常规提交——含合并进来的分支提交，不能只走 --first-parent，v0.1.15 曾因此漏掉整条 perf/refactor 分支——分组为 New Features / Bug Fixes / Other Changes 并链接 issue）。发布前执行，失败即中止，不触碰 npm；
-5. `pnpm -r publish --no-git-checks --access public`（NPM_TOKEN 写入 ~/.npmrc，拓扑序发布，workspace:* 自动转真实版本）；
-6. `gh release create --notes-file` 创建 GitHub Release（notes 即第 4 步生成的内容）；
-7. **上传 npm tarball 资产**：`node scripts/release-assets.mjs $TAG <outDir>` 从 registry 逐包 `npm pack <name>@<version>`（与已发布内容字节一致），再 `gh release upload` 附到 Release——裸 `gh release create` 只有 GitHub 自动源码归档，不带 npm 包。
+5. `pnpm -r publish --no-git-checks --access public`（NPM_TOKEN 写入 ~/.npmrc，拓扑序发布，workspace:* 自动转真实版本；private 包由 pnpm 自动跳过——若某 private 包被聚合依赖引用，先解除引用或改为公开，否则全家桶安装 404）；
+6. `gh release create --notes-file` 创建 GitHub Release（notes 即第 4 步生成的内容）；Release 只保留 GitHub 自动源码归档，不附 npm tarball（与官方 DSH 一致，v0.2.4 起约定）。
 
 关注与排障：
 
@@ -146,7 +167,6 @@ gh run list --workflow=release.yml    # 查历史
 npm view @linxin666/dsh-web-ui-all version          # 期望 = X.Y.Z
 npm view @linxin666/dsh-client-ui-skin-center version
 gh release view "vX.Y.Z" --json body --jq .body    # Release 已创建；v0.2.1 起每个条目必须为 "EN / 中文" 双语（逐条抽查）
-gh release view "vX.Y.Z" --json assets               # 23 个 @linxin666/dsh-* tgz 资产已附上（scripts/release-assets.mjs 上传）
 gh run list --workflow=release.yml                  # 全部成功
 git ls-remote --tags origin | grep "vX.Y.Z"         # tag 已在远端
 ```
@@ -161,6 +181,10 @@ git ls-remote --tags origin | grep "vX.Y.Z"         # tag 已在远端
   （--ignore-scripts 安装 + 检查放在 Build 之前）：提交者必须把「产物 + gallery 资产」同一次
   构建一起提交；不要试图在 CI 里重新构建后做一致性比对。
 - 提交信息、tag、Release 标题均禁 emoji（仓库硬性规则，CI 强制）。
+- **分支纪律**：功能改动一律先合入 `dev`（本地开发与远程 PR 的目标分支），
+  `dev` 全绿后才合入 `main`；发版 tag 只从 `main` 打，发布后把 `main`
+  合回 `dev`。分支保护下非管理员无法直推 `main` / `dev`，维护者直推
+  仍可用（管理员绕过），但功能改动仍须先经 `dev`。
 - **Release 更新说明必须逐条中英双语**（v0.2.1 起强制，用户约定）：每个条目
   `EN / 中文` 成对出现（不只是标题/摘要双语）。双语 notes 作为 `docs/release-notes/vX.Y.Z.md`
   随发版提交入库，管线优先使用；漏提交时脚本草稿兜底，但发布后必须立即用

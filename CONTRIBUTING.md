@@ -4,6 +4,13 @@
 入口；仓库的全部规则与机制以 [AGENTS.md](AGENTS.md)（及其分层指令）为准，
 冲突时以 AGENTS.md 为准。
 
+## 分支与合入流程
+
+- `dev` 是开发分支（集成分支）：本地开发与远程 PR 统一以 `dev` 为
+  目标分支；`dev` 上测试通过后，由维护者合入 `main`。
+- `main` 是稳定分支：只接收从 `dev` 合入且测试通过的代码。
+- 提 PR 一律以 `dev` 为 base，不要以 `main` 为 base。
+
 ## PR 范围：接受修复、增强与优化，暂不接受全新功能
 
 本仓库接受以下 PR：
@@ -32,6 +39,8 @@
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web-ui.git
 cd dsh-web-ui
+git checkout dev                                 # 开发基线：dev 分支
+git fetch origin && git rebase origin/dev        # 提交 / 提 PR 前同步最新 dev
 pnpm install
 pnpm -r build
 pnpm typecheck && pnpm test && pnpm docs:check   # 提交前必过
@@ -60,7 +69,13 @@ pnpm docs:write-pair <包目录名>   # 如 dsh-ssh 或 xp
    检查）。
 4. **一次性记录**（任务交接、验证快照）放 `docs/archive/`，不进长期文档目录。
 5. **按模板填 PR**：摘要、涉及包、类型、最新代码确认、AI 编码披露、仓库
-   规范检查、本地验证结果；用户可见功能变更附截图 / 视频证据。
+   规范检查、本地验证结果；**测试证据与上游同步必填**：提供自己本地测试
+   的证据，并附上同步上游最新 `dev` 分支（`git fetch origin && git
+   rebase origin/dev`）后重新测试通过的证据。文本类改动可不附截图；
+   **视觉修复 / 用户可见变更必须附截图**（视觉修复还需完成态或修复前后
+   对比截图），且视觉修复必须使用支持图像输入的多模态 AI 模型完成——
+   使用纯文本模型（如 deepseek-chat / deepseek-reasoner / gpt-3.5）修复
+   的视觉类 PR 不予接受。缺少上述证据的 PR 不予接受。
 6. **AI 编码披露**：使用 AI 编码时在 PR 模板中如实披露模型与工具。
 
 ## 新增包或皮肤

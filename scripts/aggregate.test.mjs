@@ -49,7 +49,8 @@ test('aggregate ids never collide with standalone package ids', () => {
       } catch {
         continue
       }
-      if (patch === 'packages/dsh-web-ui-all/cordis.patch.yml' || patch === 'packages/dsh-skins/cordis.patch.yml') continue
+      const normPatch = patch.replaceAll('\\', '/')
+      if (normPatch === 'packages/dsh-web-ui-all/cordis.patch.yml' || normPatch === 'packages/dsh-skins/cordis.patch.yml') continue
       standalonePatches.push(patch)
     }
   }

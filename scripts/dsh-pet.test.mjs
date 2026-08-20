@@ -140,3 +140,40 @@ test('usage errors exit 2 with guidance', () => {
   assert.equal(run(['validate']).code, 2)
   assert.equal(run(['bogus', 'x']).code, 2)
 })
+
+test('validate accepts a voice.json and warns on content issues (M4, #677)', () => {
+  const dir = makeSpritePet(join(tmp(), 'voiced'))
+  writeFileSync(join(dir, 'voice.json'), JSON.stringify({
+    status: { done: ['自定义完工'], bogusScene: ['x'] },
+    panel: { labels: { feed: '投喂' }, actions: ['feed', 'bogus'] },
+  }))
+  const result = run(['validate', dir])
+  assert.equal(result.code, 0, result.stderr + result.stdout)
+  assert.match(result.stdout, /unknown status scene bogusScene/)
+  assert.match(result.stdout, /unknown panel action dropped: bogus/)
+})
+
+test('validate rejects a voice.json that is not valid JSON (M4, #677)', () => {
+  const dir = makeSpritePet(join(tmp(), 'broken-voice'))
+  writeFileSync(join(dir, 'voice.json'), '{ nope')
+  const result = run(['validate', dir])
+  assert.equal(result.code, 1)
+  assert.ok((result.stderr + result.stdout).includes('voice.json is not valid JSON'))
+})
+
+test('validate rejects a voice.json whose root is not an object (M4, #677)', () => {
+  const dir = makeSpritePet(join(tmp(), 'array-voice'))
+  writeFileSync(join(dir, 'voice.json'), JSON.stringify([1, 2]))
+  const result = run(['validate', dir])
+  assert.equal(result.code, 1)
+  assert.ok((result.stderr + result.stdout).includes('voice.json must be a JSON object'))
+})
+
+test('install copies voice.json into DSH_HOME/pets (M4, #677)', () => {
+  const dir = makeSpritePet(join(tmp(), 'voiced-install'))
+  writeFileSync(join(dir, 'voice.json'), JSON.stringify({ status: { done: ['装好的'] } }))
+  const home = tmp()
+  const result = run(['install', dir], { DSH_HOME: home })
+  assert.equal(result.code, 0, result.stderr + result.stdout)
+  assert.ok(existsSync(join(home, 'pets', 'test-cat', 'voice.json')))
+})

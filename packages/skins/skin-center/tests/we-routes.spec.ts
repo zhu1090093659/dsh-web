@@ -8,7 +8,7 @@
 import { createServer, request as httpRequest, type Server } from 'node:http'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import type { AddressInfo } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
@@ -34,6 +34,28 @@ const tex1x1Red = ((): Buffer => {
   ])
 })()
 
+/** 64x64 RGBA8888 TEX (scene layers below 64px are skipped as helpers). */
+const tex64Red = ((): Buffer => {
+  const enc = new TextEncoder()
+  const nstr = (s: string): number[] => [...enc.encode(s), 0]
+  const i32 = (v: number): number[] => {
+    const b = new DataView(new ArrayBuffer(4))
+    b.setInt32(0, v, true)
+    return [...new Uint8Array(b.buffer)]
+  }
+  const px = 64 * 64 * 4
+  const pixels: number[] = []
+  for (let i = 0; i < 64 * 64; i++) pixels.push(255, 0, 0, 255)
+  return Buffer.from([
+    ...nstr('TEXV0005'), ...nstr('TEXI0001'),
+    ...i32(TexFormat.RGBA8888), ...i32(0),
+    ...i32(64), ...i32(64), ...i32(64), ...i32(64), ...i32(0),
+    ...nstr('TEXB0002'), ...i32(1),
+    ...i32(1), ...i32(64), ...i32(64),
+    ...i32(0), ...i32(px), ...i32(px), ...pixels,
+  ])
+})()
+
 let root: string
 let library: string
 let store: string
@@ -44,7 +66,9 @@ function makeProject(dir: string, project: Record<string, unknown>, files: Recor
   mkdirSync(dir, { recursive: true })
   writeFileSync(join(dir, 'project.json'), JSON.stringify(project), 'utf8')
   for (const [name, content] of Object.entries(files)) {
-    writeFileSync(join(dir, name), content, 'utf8')
+    const target = join(dir, name)
+    mkdirSync(dirname(target), { recursive: true })
+    writeFileSync(target, content, 'utf8')
   }
 }
 
@@ -111,7 +135,7 @@ beforeEach(async () => {
   makeProject(join(library, '333'), { title: 'Scene', type: 'scene', file: 'scene.pkg' }, {
     'scene.pkg': 'NOT-A-REAL-PKG',
   })
-  const routes = makeWeRoutes({ getConfig: () => ({ weLibraryDirs: [library] }), storeDir: store })
+  const routes = makeWeRoutes({ getConfig: () => ({ weLibraryDirs: [library] }), storeDir: store, autoDetect: false })
   await serve(routes)
 })
 
@@ -160,6 +184,38 @@ describe('media and preview', () => {
   it('404s on unknown tokens', async () => {
     const res = await call('GET', WE_API_PREFIX + '/media/bm9wZXJl')
     expect(res.status).toBe(404)
+  })
+
+  it('404s on crafted tokens for existing but never-issued paths (no decode fallback)', async () => {
+    // app.js exists inside the web project, but tokens are only issued for
+    // the entry HTML. Under the removed base64url-path fallback this request
+    // would have streamed the file.
+    const neverIssued = join(library, '222', 'app.js')
+    const token = Buffer.from(neverIssued, 'utf8').toString('base64url')
+    const res = await call('GET', WE_API_PREFIX + '/media/' + token)
+    expect(res.status).toBe(404)
+    expect(res.body.ok).toBe(false)
+  })
+
+  it('rejects cross-site media requests', async () => {
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const video = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '111')
+    const res = await call('GET', String(video?.videoUrl), { headers: { 'sec-fetch-site': 'cross-site' } })
+    expect(res.status).toBe(403)
+  })
+
+  it('serves issued tokens after a route-family restart (persisted token store)', async () => {
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const video = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '111')
+    const url = String(video?.videoUrl)
+    // Rebuild the route family from scratch (fresh process-local state, same
+    // store dir): the persisted token store must make the old URL work.
+    await new Promise<void>((resolve, reject) => server.close(e => (e ? reject(e) : resolve())))
+    const routes = makeWeRoutes({ getConfig: () => ({ weLibraryDirs: [library] }), storeDir: store, autoDetect: false })
+    await serve(routes)
+    const res = await call('GET', url)
+    expect(res.status).toBe(200)
+    expect(res.raw).toBe('FAKE-VIDEO-BYTES')
   })
 })
 
@@ -240,6 +296,44 @@ describe('scene container resolution (#521)', () => {
     expect(String(res.headers['content-type'])).toContain('image/png')
     // PNG signature survives the utf8 decode except the 0x89 lead byte.
     expect(res.raw.slice(1, 4)).toBe('PNG')
+  })
+
+  it('serves scene-runtime, scene-manifest, and scene-resource for WebGL playback', async () => {
+    makeProject(join(library, '666'), { title: 'SceneWebGL', type: 'scene', file: 'scene.json' }, {
+      'scene.json': JSON.stringify({
+        objects: [
+          { name: 'sky', image: 'models/sky.json' },
+          { name: 'Reflection', effects: [{ file: 'effects/reflection/effect.json' }] },
+        ],
+      }),
+      'models/sky.json': JSON.stringify({ material: 'materials/sky.json' }),
+      'materials/sky.json': JSON.stringify({ passes: [{ textures: ['materials/sky.tex'] }] }),
+    })
+    mkdirSync(join(library, '666', 'materials'), { recursive: true })
+    writeFileSync(join(library, '666', 'materials', 'sky.tex'), tex64Red)
+    writeFileSync(join(library, '666', 'materials', 'reflection_mask.tex'), tex1x1Red)
+
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const entry = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '666')
+    expect(String(entry?.sceneUrl)).toContain(WE_API_PREFIX + '/scene-runtime/')
+
+    // Scene runtime HTML
+    const runtimeRes = await call('GET', String(entry?.sceneUrl))
+    expect(runtimeRes.status).toBe(200)
+    expect(String(runtimeRes.headers['content-type'])).toContain('text/html')
+    expect(runtimeRes.raw).toContain('<canvas id="canvas"></canvas>')
+
+    // Scene manifest JSON
+    const token = String(entry?.sceneUrl).split('/').pop()
+    const manifestRes = await call('GET', WE_API_PREFIX + '/scene-manifest/' + token)
+    expect(manifestRes.status).toBe(200)
+    expect(manifestRes.body.ok).toBe(true)
+    expect(manifestRes.body.manifest.layers.length).toBeGreaterThanOrEqual(1)
+
+    // Scene resource
+    const resRes = await call('GET', WE_API_PREFIX + '/scene-resource/' + token + '/materials/sky.tex')
+    expect(resRes.status).toBe(200)
+    expect(String(resRes.headers['content-type'])).toContain('image/png')
   })
 })
 

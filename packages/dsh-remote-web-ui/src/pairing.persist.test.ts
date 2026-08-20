@@ -1,20 +1,21 @@
 /**
  * PairingService device-session persistence: with `devicesFile` set, sessions
- * written on accept/stop survive a process restart (a new PairingService
- * instance), so a previously paired phone — whose cookie already lives 365
- * days — never needs to re-scan the QR after `dsh web` restarts.
+ * written on accept/stop/revoke/sweep survive a process restart (a new
+ * PairingService instance). lastSeenAt is flushed on sweep, not on every
+ * touch; idle sessions older than idleExpireMs are dropped on load.
  */
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { pairingConfigOf } from './index.ts'
-import { PairingService, type PairingClock, type PairingConfig } from './pairing.ts'
+import { DEFAULT_IDLE_EXPIRE_MS, PairingService, type PairingClock, type PairingConfig } from './pairing.ts'
 
 const BASE_CONFIG: Omit<PairingConfig, 'devicesFile'> = {
   tokenTtlMs: 60_000,
   offlineAfterMs: 25_000,
   maxDevices: 4,
+  idleExpireMs: DEFAULT_IDLE_EXPIRE_MS,
   cookieName: 'dsh_pair',
 }
 
@@ -53,7 +54,11 @@ describe('PairingService device persistence', () => {
     const deviceId = pairDevice(first)
     expect(readFileSync(file, 'utf8')).toContain(deviceId)
     // Device ids are session credentials: the persisted file is 0600.
-    expect(statSync(file).mode & 0o777).toBe(0o600)
+    // win32: NTFS has no POSIX mode bits and Node ignores the writeFileSync
+    // mode option there, so the mode assertion only applies on POSIX (#772).
+    if (process.platform !== 'win32') {
+      expect(statSync(file).mode & 0o777).toBe(0o600)
+    }
 
     // Simulated restart: a brand-new service instance reading the same file.
     const second = new PairingService({ ...BASE_CONFIG, devicesFile: file }, makeClock())
@@ -66,6 +71,7 @@ describe('PairingService device persistence', () => {
       tokenTtlMs: 60_000,
       offlineAfterMs: 25_000,
       maxDevices: 4,
+      idleExpireMs: DEFAULT_IDLE_EXPIRE_MS,
       cookieName: 'dsh_pair',
       devicesFile: file,
     })
@@ -81,6 +87,7 @@ describe('PairingService device persistence', () => {
       tokenTtlMs: 60_000,
       offlineAfterMs: 25_000,
       maxDevices: 4,
+      idleExpireMs: DEFAULT_IDLE_EXPIRE_MS,
       cookieName: 'dsh_pair',
       devicesFile: file,
     })
@@ -141,5 +148,57 @@ describe('PairingService device persistence', () => {
 
     const ghost = join(dir, 'does-not-exist.json')
     expect(() => new PairingService({ ...BASE_CONFIG, devicesFile: ghost }, makeClock())).not.toThrow()
+  })
+
+  it('does not persist lastSeenAt on touch; sweep flushes it', () => {
+    const file = join(dir, 'devices.json')
+    const now = { value: 1_000_000 }
+    let n = 0
+    const clock: PairingClock = {
+      now: () => now.value,
+      randomToken: () => `tok${(n++).toString().padStart(6, '0')}`,
+    }
+    const first = new PairingService({ ...BASE_CONFIG, devicesFile: file }, clock)
+    const deviceId = pairDevice(first)
+    const afterAccept = JSON.parse(readFileSync(file, 'utf8')) as Record<string, { lastSeenAt: number }>
+    expect(afterAccept[deviceId]?.lastSeenAt).toBe(1_000_000)
+    now.value = 1_500_000
+    expect(first.touchDevice(deviceId)).toBe(true)
+    const afterTouch = JSON.parse(readFileSync(file, 'utf8')) as Record<string, { lastSeenAt: number }>
+    expect(afterTouch[deviceId]?.lastSeenAt).toBe(1_000_000)
+    first.sweep()
+    const afterSweep = JSON.parse(readFileSync(file, 'utf8')) as Record<string, { lastSeenAt: number }>
+    expect(afterSweep[deviceId]?.lastSeenAt).toBe(1_500_000)
+
+    const second = new PairingService({ ...BASE_CONFIG, devicesFile: file }, clock)
+    expect(second.hasDevice(deviceId)).toBe(true)
+    expect(second.snapshot().devices[0]?.lastSeenAt).toBe(1_500_000)
+  })
+
+  it('drops idle sessions on load instead of restoring them', () => {
+    const file = join(dir, 'devices.json')
+    writeFileSync(file, JSON.stringify({
+      stale: { createdAt: 1, lastSeenAt: 1 },
+    }))
+    const clock: PairingClock = {
+      now: () => 1 + DEFAULT_IDLE_EXPIRE_MS + 1,
+      randomToken: () => 'tok',
+    }
+    const service = new PairingService({ ...BASE_CONFIG, devicesFile: file }, clock)
+    expect(service.hasDevice('stale')).toBe(false)
+    const saved = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>
+    expect(saved).toEqual({})
+  })
+
+  it('persists a User-Agent captured at accept', () => {
+    const file = join(dir, 'devices.json')
+    const service = new PairingService({ ...BASE_CONFIG, devicesFile: file }, makeClock())
+    service.setPublicBaseUrl('https://pairing.example.trycloudflare.com')
+    const { token } = service.issue()
+    const result = service.accept(token, 'Mozilla/5.0 TestPhone')
+    expect(result.ok).toBe(true)
+    const saved = JSON.parse(readFileSync(file, 'utf8')) as Record<string, { userAgent?: string }>
+    const deviceId = result.ok ? result.deviceId : ''
+    expect(saved[deviceId]?.userAgent).toBe('Mozilla/5.0 TestPhone')
   })
 })

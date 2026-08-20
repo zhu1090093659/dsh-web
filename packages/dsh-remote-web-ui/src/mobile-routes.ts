@@ -42,7 +42,7 @@ function pageHtml(bundleUrl: string): string {
     '<meta name="apple-mobile-web-app-title" content="DSH Remote">',
     '<link rel="manifest" href="/m/manifest.webmanifest">',
     '<link rel="apple-touch-icon" href="/m/apple-touch-icon.png">',
-    '<title>移动端远程控制</title>',
+    '<title>远程访问</title>',
     '</head>',
     '<body>',
     '<div id="root"></div>',

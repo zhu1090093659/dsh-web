@@ -703,8 +703,10 @@ html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [class*='centerCol'] 
 
 .termContainer {
   position: absolute;
-  inset: 0;
-  padding: 8px 10px;
+  /* Inset offsets, not padding: FitAddon measures this element's height as
+     the drawable area, so padding here would be measured as terminal space
+     and clip the bottom line under a global border-box reset. */
+  inset: 8px 10px;
 }
 
 .termPlaceholder {

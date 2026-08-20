@@ -23,6 +23,7 @@ export const FAMILY_NAMESPACES = [
   'describe-image',
   'skin-background',
   'community-plugins',
+  'desktop-launcher',
 ] as const
 
 /**
@@ -52,6 +53,8 @@ const NAMESPACE_ALIASES: Readonly<Record<string, string | null>> = {
   'aionui-panel': 'aionui-panel',
   'dsh-aionui-panel': 'aionui-panel',
   'dsh-client-ui-aionui-panel': 'aionui-panel',
+  'desktop-launcher': 'desktop-launcher',
+  'dsh-desktop-launcher': 'desktop-launcher',
   'dsh-git-graph': null,
   'dsh-client-ui-git-graph': null,
   'dsh-web-ui': null,

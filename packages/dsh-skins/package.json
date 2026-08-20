@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-skins",
   "description": "已退役的兼容载具（保留一个发布周期）：皮肤已全部内置进 @linxin666/dsh-client-ui-skin-center，本包不再携带皮肤资产，仅通过依赖把皮肤中心带给升级用户。",
-  "version": "0.2.3",
+  "version": "0.2.5",
   "type": "module",
   "dsh": {
     "bundle": {
@@ -15,7 +15,7 @@
   },
   "license": "Apache-2.0",
   "files": [
-    "lib",
+    "skins",
     "cordis.patch.yml",
     "THIRD_PARTY_NOTICES.md"
   ],

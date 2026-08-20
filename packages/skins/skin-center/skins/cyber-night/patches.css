@@ -1,0 +1,383 @@
+/* cyber-night (赛博夜城) skin — component-level patches: translucent panes,
+   focus/links, aionui panel, git-graph lanes, composer seat frost, and
+   transition polish. Loaded together with skin.css by the skin-center. */
+
+#root {
+background: transparent !important;
+}
+
+a {
+color: #0090b8;
+}
+
+a:visited {
+color: #9d4edd;
+}
+
+body[data-ds-dark-theme] a {
+color: #00d9ff;
+}
+
+body[data-ds-dark-theme] a:visited {
+color: #c77dff;
+}
+
+[data-aionui-explorer-col],
+[data-aionui-preview-col] {
+-webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.aionui-root {
+-webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.aionui-dialog,
+.aionui-menu,
+.aionui-toast {
+-webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.aionui-overlay {
+background: rgba(6, 40, 56, 0.42);
+}
+
+body[data-ds-dark-theme] .aionui-overlay {
+background: rgba(0, 0, 0, 0.6);
+}
+
+button,
+a,
+.aionui-btn,
+.aionui-menu-item,
+.aionui-explorer-handle,
+.aionui-preview-handle {
+transition: background-color 0.13s ease, border-color 0.13s ease,
+    box-shadow 0.13s ease, color 0.13s ease, opacity 0.13s ease;
+}
+
+a:hover {
+color: #0a5466;
+  text-decoration: underline;
+}
+
+a:active {
+color: #06323f;
+}
+
+body[data-ds-dark-theme] a:hover {
+color: #bdf3ff;
+}
+
+body[data-ds-dark-theme] a:active {
+color: #d6f9ff;
+}
+
+button:disabled,
+.aionui-btn:disabled,
+.aionui-menu-item-disabled {
+opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.aionui-btn:disabled:hover,
+.aionui-menu-item-disabled:hover {
+background-color: transparent;
+  box-shadow: none;
+}
+
+.aionui-explorer-handle,
+.aionui-preview-handle {
+background: #cdecf7;
+}
+
+.aionui-explorer-handle:hover,
+.aionui-preview-handle:hover {
+background: #54aecf;
+  box-shadow: 0 0 6px rgba(0, 200, 255, 0.5);
+}
+
+body[data-ds-dark-theme] .aionui-explorer-handle,
+body[data-ds-dark-theme] .aionui-preview-handle {
+background: #1e3a52;
+}
+
+body[data-ds-dark-theme] .aionui-explorer-handle:hover,
+body[data-ds-dark-theme] .aionui-preview-handle:hover {
+background: #2fa3c8;
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.5);
+}
+
+.aionui-floating-expand:hover {
+background: #e8f9ff;
+  border-color: #33dcff;
+}
+
+.aionui-floating-expand:active {
+background: #e0faff;
+}
+
+body[data-ds-dark-theme] .aionui-floating-expand:hover {
+background: #142030;
+  border-color: #33dcff;
+}
+
+body[data-ds-dark-theme] .aionui-floating-expand:active {
+background: #182638;
+}
+
+.aionui-collapse-chevron:hover {
+color: #2f8fb3;
+}
+
+body[data-ds-dark-theme] .aionui-collapse-chevron:hover {
+color: #00e5ff;
+}
+
+.aionui-menu-item:not(.aionui-menu-item-disabled) {
+background: rgba(0, 200, 255, 0.12);
+}
+
+body[data-ds-dark-theme] .aionui-menu-item:not(.aionui-menu-item-disabled) {
+background: rgba(0, 229, 255, 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+button,
+  a,
+  .aionui-btn,
+  .aionui-menu-item,
+  .aionui-explorer-handle,
+  .aionui-preview-handle,
+  ::-webkit-scrollbar-thumb {
+transition: none;
+}
+
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+1),
+[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+1) {
+color: #00b8d4;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+2),
+[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+2) {
+color: #00d98a;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+3),
+[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+3) {
+color: #e6b800;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+4),
+[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+4) {
+color: #33dcff;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+5),
+[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+5) {
+color: #9d4edd;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n),
+[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n) {
+color: #ff2d78;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+1),
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+1) {
+color: #00e5ff;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+2),
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+2) {
+color: #00ff9c;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+3),
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+3) {
+color: #ffe94d;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+4),
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+4) {
+color: #7adff5;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+5),
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+5) {
+color: #c77dff;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n),
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n) {
+color: #ff5c82;
+}
+
+[data-gitgraph-dialog] {
+-webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-color: rgba(0, 229, 255, 0.4);
+}
+
+body[data-ds-dark-theme] [data-gitgraph-dialog] {
+border-color: rgba(0, 229, 255, 0.22);
+}
+
+[data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
+background: rgba(0, 200, 255, 0.12);
+  border: 1px solid rgba(0, 150, 210, 0.2);
+}
+
+body[data-ds-dark-theme] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
+background: rgba(0, 229, 255, 0.14);
+  border-color: rgba(0, 229, 255, 0.2);
+}
+
+div:has(> div > [data-gitgraph-chip]) > button[aria-expanded='true'],
+[data-gitgraph-chip][aria-expanded='true'] {
+background-color: rgba(0, 200, 255, 0.16);
+}
+
+body[data-ds-dark-theme] div:has(> div > [data-gitgraph-chip]) > button[aria-expanded='true'],
+body[data-ds-dark-theme] [data-gitgraph-chip][aria-expanded='true'] {
+background-color: rgba(0, 229, 255, 0.18);
+}
+
+[data-phase='active'] [class*='composerSeat'] {
+background: transparent !important;
+}
+
+/* --- moved from skin.css: component-level selectors (v2 convention) --- */
+
+body::-webkit-scrollbar {
+width: 10px;
+  height: 10px;
+}
+
+body::-webkit-scrollbar-track {
+background: #eaf6fb;
+}
+
+body::-webkit-scrollbar-thumb {
+background: #9fd8ee;
+  border: 2px solid #eaf6fb;
+  border-radius: 5px;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+background: #4fc0e0;
+}
+
+body::-webkit-scrollbar-corner {
+background: #eaf6fb;
+}
+
+body[data-ds-dark-theme]::-webkit-scrollbar-track,
+body[data-ds-dark-theme]::-webkit-scrollbar-corner {
+background: #080d16;
+}
+
+body[data-ds-dark-theme]::-webkit-scrollbar-thumb {
+background: #182a3e;
+  border-color: #080d16;
+}
+
+body[data-ds-dark-theme]::-webkit-scrollbar-thumb:hover {
+background: #2fa3c8;
+}
+
+body::selection {
+background: #00b8d4;
+  color: #ffffff;
+}
+
+body[data-ds-dark-theme]::selection {
+background: #00e5ff;
+  color: #05070f;
+}
+
+:focus-visible {
+outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+body[data-ds-dark-theme] :focus-visible {
+outline-color: var(--dsw-alias-state-business-primary);
+}
+
+[data-pane='sidebar'] {
+color: var(--dsw-alias-label-primary);
+}
+
+[role='tooltip'] {
+background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
+}
+
+[role='dialog'] {
+color: var(--dsw-alias-label-primary);
+}
+
+[role='dialog'] [class*='navCell']:not([aria-current='true']) {
+color: var(--dsw-alias-label-primary);
+}
+
+button[role='tab'],
+button[role='tab']:hover,
+button[role='tab']:active,
+button[role='tab']:disabled,
+button[role='tab']:hover:not(:disabled),
+button[role='tab']:active:not(:disabled) {
+background-image: none;
+  background-color: transparent;
+  box-shadow: none;
+  text-shadow: none;
+  border: 0;
+  color: var(--dsw-alias-label-primary);
+  transform: none;
+  filter: none;
+  opacity: 1;
+}
+
+
+
+::-webkit-scrollbar-thumb {
+transition: background-color 0.13s ease;
+}
+
+div:has(> div > [data-gitgraph-chip]) {
+--dsw-alias-button-tool-bar-fill: rgba(0, 200, 255, 0.08);
+  --dsw-alias-border-l2: rgba(0, 150, 210, 0.38);
+  --dsw-alias-label-secondary: #20839a;
+  --dsw-alias-label-tertiary: #2497b2;
+  --dsw-alias-interactive-bg-hover: rgba(0, 200, 255, 0.14);
+  --dsw-alias-interactive-bg-active: rgba(0, 200, 255, 0.2);
+}
+
+body[data-ds-dark-theme] div:has(> div > [data-gitgraph-chip]) {
+--dsw-alias-button-tool-bar-fill: rgba(0, 229, 255, 0.08);
+  --dsw-alias-border-l2: rgba(0, 229, 255, 0.38);
+  --dsw-alias-label-secondary: #d6f9ff;
+  --dsw-alias-label-tertiary: #a8d8e8;
+  --dsw-alias-interactive-bg-hover: rgba(0, 229, 255, 0.14);
+  --dsw-alias-interactive-bg-active: rgba(0, 229, 255, 0.22);
+}
+
+[data-phase='active'] [class*='composerSeat']::before {
+content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0px,
+    var(--dsw-alias-bg-base) 36px
+  );
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}

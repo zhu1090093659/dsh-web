@@ -21,13 +21,18 @@ const VENDOR_URL = '/api/pet/runtime/live2d-vendor.js'
 export interface Live2dVendorApp {
   canvas: HTMLCanvasElement
   stage: { addChild(child: unknown): unknown }
-  renderer: { readonly width: number; readonly height: number }
+  renderer: {
+    readonly width: number
+    readonly height: number
+    resize(width: number, height: number): void
+  }
   init(options: Record<string, unknown>): Promise<void>
-  destroy(removeView?: boolean, options?: Record<string, unknown>): void
+  destroy(rendererOptions?: boolean | { removeView?: boolean; releaseGlobalResources?: boolean }, options?: Record<string, unknown>): void
 }
 
 /** The Live2DModel slice the renderer uses. */
 export interface Live2dVendorModel {
+  automator: { autoUpdate: boolean }
   anchor: { set(x: number, y?: number): void }
   position: { set(x: number, y: number): void }
   scale: { set(x: number, y?: number): void }
@@ -43,6 +48,7 @@ export interface Live2dVendorModel {
   expression(name?: string): unknown
   hitTest(x: number, y: number): string[]
   on(event: string, fn: () => void): unknown
+  destroy(options?: { children?: boolean; texture?: boolean; baseTexture?: boolean }): void
 }
 
 /** The vendor bundle global (window.__dshPetLive2d). */

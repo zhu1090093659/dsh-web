@@ -26,6 +26,7 @@ Re-implemented from the pet feature of the Codex desktop app, as an official DSH
 | Status bubbles | Only the most recently active top-level session speaks by default — when several sessions run at once, the rest collapse behind a +N badge on the main bubble instead of stacking a tall column; hover the bubble (or tap the badge, for touch) to fan every session's bubble out above it and click one to jump to its session; subagent sessions report through their spawning conversation and never occupy a bubble of their own; transient interaction feedback temporarily takes priority. Bubble copy comes from generous rotating pools per scene (waiting / thinking / writing / done / failed...), tool calls map onto per-family witty lines carrying the real argument hint (e.g. 跑跑 npm test), and a long-lived scene re-phrases itself every few seconds |
 | Inner whispers | 碎碎念: while the model streams, the pet occasionally speaks its inner voice through its own bubble — a fresh whisper takes over the display session's bubble and marks it with 「」 quotes — sharing the same DeepSeek-blue glass as every status bubble, so stacked bubbles never clash — instead of stacking a second bubble — keyword moods woken by the model output (errors, test greens, plans, victories...) plus ambient whispers earned by output volume; paced by a cooldown, the status copy returns after a few seconds |
 | Multi-session activity | The pet is host-global: the most recent meaningful event drives the sprite animation while every active top-level session reports its own state in a separate bubble; completed turns from every session (subagents included) contribute affinity and treats |
+| Voice packs and panel DIY | A per-pet voice.json plus the global $DSH_HOME/pets/.voice.json override replace every bubble word and the hover panel (button labels, stat formats, button visibility); merge precedence per-pet > global > built-in, broken packs warn and never reject a pet |
 
 ## Pet contract
 
@@ -80,12 +81,46 @@ Where pets come from (later sources override earlier ones on id collision):
 Validate and install a pet directory with the CLI (no build step, no npm publish):
 
 ```sh
-node scripts/dsh-pet validate <dir>           # manifest + assets + Live2D reference closure
+node scripts/dsh-pet validate <dir>           # manifest + assets + Live2D reference closure + voice.json
 node scripts/dsh-pet install <dir>            # validate, then copy into $DSH_HOME/pets/<id>/
 node scripts/dsh-pet install <dir> --force    # overwrite an existing same-id install
 ```
 
 Invalid entries never override a working pet: they are skipped with a diagnostic listed in the settings (Pet section). The registry is built once at host startup; add or change a pet, then restart `dsh web`.
+
+## Voice packs and panel chrome (voice.json, pet-center M4, #677)
+
+Every word in the thought bubble (status / tool / whisper copy) and the hover panel (button labels, stat formats, button visibility) can be replaced by a pet — or by you — without touching plugin code. Pets ship an optional voice.json in their directory; a global override at $DSH_HOME/pets/.voice.json re-voices pets without editing their directories.
+
+```jsonc
+{
+  "voicePackVersion": 1,              // optional; absent reads as v1
+  "status": {                          // status pools keyed by scene id; per-key override
+    "done": ["Done for today!", "Another one down"]
+  },
+  "tools": {                           // tool pools keyed by tool family; {tool} / {hint} allowed
+    "shell": ["Running {hint}", "Hit enter: {hint}"]
+  },
+  "toolRemaining": ["{n} helpers still at work"],   // {n} allowed
+  "whispers": {                        // murmur pools; each section replaces the built-in one
+    "generic": ["On it", "Almost there"],  // ambient pool; an explicit empty array mutes it
+    "rules": [                         // ordered keyword rules; given rules replace the built-ins
+      { "keywords": ["all tests pass"], "pool": ["All green!"] }
+    ]
+  },
+  "panel": {                           // hover panel; unset slots keep the plugin i18n copy
+    "labels": { "feed": "Treat", "hide": "Dive", "rename": "Rename me", "confirm": "Sure" },
+    "stats": { "rank": "Affinity {rank}", "treats": "Treats x{n}", "points": "{points} pts" },
+    "actions": ["feed", "rename", "hide"]  // subset in canonical order; absent = all; [] = stats only
+  }
+}
+```
+
+- Merge precedence (per slot): the pet voice.json > the global .voice.json > built-in copy. status/tools merge per key, whispers replace per section, panel merges per slot; any slot a layer misses falls through.
+- Placeholder whitelist: tools accept {tool} / {hint}; toolRemaining accepts {n}; panel.stats accept {rank} / {n} / {points}; status, whisper and panel-label lines accept no placeholders (lines carrying one are dropped with a warning).
+- Caps (warn-and-drop): at most 64 lines per pool and 160 characters per line; at most 32 rules and 16 keywords (40 characters) per rule; panel labels 40 and stats 80 characters.
+- A broken pack never breaks the pet: voice.json that is not valid JSON or whose root is not an object is ignored with a warning; every other issue drops its slot only. Diagnostics appear under Settings > Pet directory diagnostics. node scripts/dsh-pet validate <dir> fails installs on structure errors and lists content issues as warnings.
+- Semantics: an empty status/tools pool falls back to the built-in copy (a scene line always renders); an explicit empty whisper pool mutes that channel; an empty panel actions array hides all three buttons; uncovered buttons and stats keep the plugin bilingual dictionary.
 
 ## Live2D pets (renderer: live2d)
 
@@ -122,6 +157,34 @@ A Live2D manifest maps the seven activity phases onto the model's motion groups:
 
 Model licensing: the official Live2D sample models (Hiyori, Haru, and friends) are evaluation-only and must not be redistributed — ship only models you have rights to (original creations or permissively licensed ones).
 
+## Status decorations (decoration.json, pet-center M5, #567)
+
+A status bubble can carry a small ornament ahead of its text (built-in: the spouting whale), driven by the ActivityPhase stream. Decorations are independent of pets: own descriptor, own id, own directory — switching pets never switches decorations. Entry assets are PNG/WebP single-row sprite strips only (no SVG/CSS); the bubble always keeps its role=status/aria-live (or session-bubble button semantics), the ornament is aria-hidden; prefers-reduced-motion holds the segment first frame, and a broken asset only removes the ornament — the text stays.
+
+```jsonc
+{
+  "decorationManifestVersion": 1,
+  "id": "whale",                     // unique lowercase kebab id
+  "displayName": "Spouting whale",    // optional
+  "license": "MIT",                   // required: asset provenance
+  "entry": "whale-frames.png",        // PNG/WebP strip, relative to this directory
+  "cell": { "width": 64, "height": 48 },
+  "columns": 4,                       // strip frames (1..16)
+  "frameMs": 160,                     // constant frame duration; or "durations": [..] per frame
+  "loop": true,
+  "phases": {                         // ActivityPhase -> inclusive frame segment; "hide" = none; default hide
+    "idle": "hide",
+    "waiting": { "from": 0, "to": 1 },
+    "thinking": { "from": 0, "to": 3 },
+    "done": { "from": 2, "to": 3 },
+    "failed": { "from": 3, "to": 3 }
+  }
+}
+```
+
+- Structure is fail-closed (unknown fields, out-of-range geometry, non-PNG/WebP entries reject with diagnostics); segment content is warn-and-drop. The machine-readable twin lives at contracts/status-decoration-v1.schema.json; the authoritative validator is src/decoration.ts.
+- Sources: built-in assets/decorations/ plus the user directory $DSH_HOME/pets/decorations/<id>/ (same id overrides the built-in). Assets ride /api/pet/decoration/<id>/<file> with the same containment and allow-lists as pet assets.
+- Switch: Settings > Pet > Status decoration (on by default). The built-in whale derives from the DeepSeek wordmark (MIT); see THIRD_PARTY_NOTICES.md.
 ## Built-in pets
 
 | Registry id | Selector label | Source |
@@ -225,7 +288,7 @@ The two built-in whale-girl atlases use the same 9-state × 8-column contract: `
 
 ## Security model
 
-- All pet API and asset routes are fenced to loopback clients.
+- Every `/api/pet/*` and `/pet/<id>/*` route is loopback-only by default (the shared plugin-family fence: loopback socket + Host header + browser same-origin markers): unpaired LAN clients get `403 forbidden: loopback-only` before any pet state or atlas is served. When `dsh-remote-web-ui` is also loaded, a live paired-device cookie is an additional allow path (the same cookie `api/gate` already checks); unpaired and revoked devices stay 403. The pet does not depend on the remote plugin.
 - Asset serving resolves both the pet directory and the candidate file through `realpath`; symlink escapes are refused (403). Files are size-capped before being read into memory (manifest 64 KB, imagery 20 MB; over-cap answers 413).
 - Live2D models are served by closure: only the manifest, the declared primary assets, and the files the `.model3.json` references (each screened against traversal, absolute and URL forms).
 - The plugin never downloads executables and never bundles the Live2D Cubism Core.

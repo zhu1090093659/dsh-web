@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { packageFiles, packOne, waitForPublished } from './release-assets.mjs'
+import { packageFiles, packOne, publishablePackages, waitForPublished } from './release-assets.mjs'
 
 test('packageFiles: walks packages/ and packages/skins/ non-recursively', () => {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-release-assets-'))
@@ -53,6 +53,14 @@ test('packOne: packs the exact published version and resolves the tarball path',
 test('packOne: rejects when npm pack reports no filename', () => {
   const fakeRun = () => JSON.stringify([])
   assert.throws(() => packOne('@linxin666/dsh-ssh', '0.1.15', '/tmp/assets', fakeRun), /no filename/)
+})
+
+test('publishablePackages: drops private family packages', () => {
+  const out = publishablePackages([
+    { name: '@linxin666/dsh-ssh', version: '0.2.4' },
+    { name: '@linxin666/dsh-chat-recovery', version: '0.2.4', private: true },
+  ])
+  assert.deepEqual(out, [{ name: '@linxin666/dsh-ssh', version: '0.2.4' }])
 })
 
 test('waitForPublished: polls until every package version is readable', () => {

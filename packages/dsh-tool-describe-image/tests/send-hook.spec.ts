@@ -30,7 +30,7 @@ function stubFileReader(payload: string): void {
 
 /** One fake conversation surface recording what the hook did with it. */
 function makeConversation() {
-  const original = vi.fn(async (_session: unknown, _text: string, _ids: readonly string[], _mode: string) => { log.push('original') })
+  const original = vi.fn(async (_session: unknown, _text: string, _ids: readonly string[], _mode: string, _signal?: AbortSignal): Promise<unknown> => { log.push('original'); return undefined })
   const log: string[] = []
   const face = {
     send: vi.fn(async () => { log.push('send') }),
@@ -171,5 +171,53 @@ describe('installSendHook capability gating', () => {
     await face.sendSession({ prompt: vi.fn(), sessionId: 's1' } as never, 'look', ['id1'], 'queue')
     expect(log).toEqual(['original'])
     expect(checker).not.toHaveBeenCalled()
+  })
+})
+describe('installSendHook rc.8 signal and outcome contract', () => {
+  it('forwards the AbortSignal and preserves the SubmitOutcome on the passthrough paths', async () => {
+    const { face } = makeConversation()
+    const outcome = { accepted: true }
+    const original = face.sendSession = vi.fn(async (_session: unknown, _text: string, _ids: readonly string[], _mode: string, _signal?: AbortSignal) => outcome)
+    installSendHook(face)
+    const signal = new AbortController().signal
+    const result = await face.sendSession({ prompt: vi.fn() } as never, 'hello', [], 'queue', signal)
+    expect(result).toBe(outcome)
+    expect(original).toHaveBeenCalledWith(expect.anything(), 'hello', [], 'queue', signal)
+    const second = await face.sendSession({ prompt: vi.fn() } as never, 'hello', [], 'queue', signal)
+    expect(second).toBe(outcome)
+  })
+
+  it('forwards the signal to the original when the model accepts images natively', async () => {
+    const { face } = makeConversation()
+    const original = face.sendSession
+    installSendHook(face, undefined, async () => true)
+    const signal = new AbortController().signal
+    await face.sendSession({ prompt: vi.fn(), sessionId: 's1' } as never, 'look', ['id1'], 'queue', signal)
+    expect(original).toHaveBeenCalledWith(expect.anything(), 'look', ['id1'], 'queue', signal)
+  })
+
+  it('forwards the signal into the session prompt on the rewritten path', async () => {
+    stubFileReader('QUJD')
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: DURABLE_MARKDOWN } }), { status: 200 })))
+    const { face, log } = makeConversation()
+    const prompt = vi.fn(async () => ({ ok: true }))
+    installSendHook(face)
+    const signal = new AbortController().signal
+    const outcome = await face.sendSession({ prompt } as never, 'look', ['id1'], 'queue', signal)
+    expect(outcome).toEqual({ kind: 'success' })
+    expect(log).toEqual(['release'])
+    const call = prompt.mock.calls[0] as unknown as [unknown, unknown, AbortSignal]
+    expect(call[2]).toBe(signal)
+  })
+
+  it('forwards the signal on the upload-shortfall fallback', async () => {
+    const { face, log } = makeConversation()
+    const original = face.sendSession
+    face.draftImages = vi.fn(() => [])
+    installSendHook(face)
+    const signal = new AbortController().signal
+    await face.sendSession({ prompt: vi.fn() } as never, 'look', ['id1'], 'queue', signal)
+    expect(log).toEqual(['original'])
+    expect(original).toHaveBeenCalledWith(expect.anything(), 'look', ['id1'], 'queue', signal)
   })
 })

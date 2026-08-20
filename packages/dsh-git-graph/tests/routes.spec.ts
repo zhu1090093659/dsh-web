@@ -1,8 +1,9 @@
 /**
- * Route-layer tests for /git/*: the loopback fence must reject non-loopback
- * clients (JSON operations and the SSE stream alike) with the same 403 body
- * dsh-ssh uses, while loopback clients keep working exactly as before.
- * Exercises the handlers through a fake ctx.webServer registry.
+ * Route-layer tests for /git/*: the trust fence must reject unpaired
+ * non-loopback clients (JSON operations and the SSE stream alike) with the
+ * same 403 body dsh-ssh uses, while loopback clients and paired-device
+ * cookies keep working. Exercises the handlers through a fake ctx.webServer
+ * registry.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { registerGitRoutes } from '../src/host/routes.ts'
@@ -30,6 +31,7 @@ interface RequestOptions {
   method?: string
   remoteAddress?: string
   host?: string
+  cookie?: string
   body?: string
   on?: (event: string, handler: () => void) => void
 }
@@ -43,6 +45,7 @@ function fakeRequest(url: string, options: RequestOptions = {}): Record<string, 
     headers: {
       host: options.host ?? '127.0.0.1:3000',
       'content-type': 'application/json',
+      ...(options.cookie === undefined ? {} : { cookie: options.cookie }),
     },
     socket: { remoteAddress: options.remoteAddress ?? '127.0.0.1' },
     on: options.on ?? vi.fn(),
@@ -163,6 +166,24 @@ describe('/git loopback fence', () => {
     expect(status).toHaveBeenCalledWith('/w', expect.any(AbortSignal))
   })
 
+  it('clamps a graph limit above 1000 instead of resetting to the default', async () => {
+    const graph = vi.fn(async () => ({ root: '/w', branch: 'main', commits: [], hasMore: false }))
+    const { ctx, registrations } = fakeCtx()
+    registerGitRoutes(ctx as never, { graph } as never)
+    const prefix = registrations.find((row) => row.kind === 'prefix')!
+
+    const result = await drive(prefix.handler, '/git/graph', {
+      body: JSON.stringify({ path: '/w', limit: 1100 }),
+    })
+
+    expect(result.status).toBe(200)
+    expect(graph).toHaveBeenCalledWith('/w', 1000)
+    expect(JSON.parse(result.body)).toEqual({
+      ok: true,
+      value: { root: '/w', branch: 'main', commits: [], hasMore: false },
+    })
+  })
+
   it('rejects non-loopback JSON operations with 403 before touching the service', async () => {
     const status = vi.fn(async () => null)
     const { ctx, registrations } = fakeCtx()
@@ -212,6 +233,50 @@ describe('/git loopback fence', () => {
     expect(JSON.parse(result.body)).toEqual({ error: 'forbidden: loopback-only' })
     expect(result.writes.join('')).not.toContain('retry:')
     expect(status).not.toHaveBeenCalled()
+  })
+
+  it('allows a LAN client with a live paired-device cookie on JSON operations', async () => {
+    const status = vi.fn(async () => makeStatus())
+    const isPairedDevice = vi.fn(() => true)
+    const { ctx, registrations } = fakeCtx()
+    ctx.get = (name: string) => name === 'remoteWebUiPairing' ? { isPairedDevice } : undefined
+    registerGitRoutes(ctx as never, { status } as never)
+    const prefix = registrations.find((row) => row.kind === 'prefix')!
+
+    const result = await drive(prefix.handler, '/git/status', {
+      remoteAddress: '192.168.1.20',
+      host: 'dsh.thinkmoon.cn',
+      cookie: 'dsh_pair=dev-1',
+      body: JSON.stringify({ path: '/w' }),
+    })
+
+    expect(result.status).toBe(200)
+    expect(isPairedDevice).toHaveBeenCalled()
+    expect(status).toHaveBeenCalled()
+  })
+
+  it('allows a LAN client with a live paired-device cookie on SSE', async () => {
+    const closeHandlers: Array<() => void> = []
+    const isPairedDevice = vi.fn(() => true)
+    const { ctx, registrations } = fakeCtx()
+    ctx.get = (name: string) => name === 'remoteWebUiPairing' ? { isPairedDevice } : undefined
+    registerGitRoutes(ctx as never, { status: async () => null } as never)
+    const sse = registrations.find((row) => row.kind === 'exact')!
+
+    const result = await drive(sse.handler, '/git/events?path=%2Fw', {
+      method: 'GET',
+      remoteAddress: '192.168.1.20',
+      host: 'dsh.thinkmoon.cn',
+      cookie: 'dsh_pair=dev-1',
+      on: (event, handler) => {
+        if (event === 'close') closeHandlers.push(handler)
+      },
+    })
+
+    expect(result.status).toBe(200)
+    expect(result.writes.join('')).toContain('retry: 2000')
+    expect(isPairedDevice).toHaveBeenCalled()
+    for (const close of closeHandlers) close()
   })
 
   it('still opens the SSE stream for loopback clients', async () => {

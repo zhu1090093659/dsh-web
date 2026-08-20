@@ -9,18 +9,22 @@
  */
 
 import { createRequire } from 'node:module'
-import { setInterval as nodeSetInterval } from 'node:timers'
+import { join } from 'node:path'
+import { setInterval as nodeSetInterval, setTimeout as nodeSetTimeout } from 'node:timers'
 import type { IncomingMessage } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { PairingService, type PairingConfig } from './pairing.ts'
+import { DEFAULT_IDLE_EXPIRE_MS, PairingService, type PairingConfig } from './pairing.ts'
+import { dshHome } from './dsh-home.ts'
 import { isPairedDeviceRequest, makeGateListener } from './gate.ts'
 import { RemoteWebUiPairing } from './pairing-access.ts'
 import { isTrustedApiRequest, makeRoutes } from './routes.ts'
 import { makeMobileRoutes } from './mobile-routes.ts'
 import { makeMobileApiRoutes } from './mobile-api.ts'
+import { makeRemoteApiRoutes, makeRemoteApiUpgradeRoutes } from './remote-api.ts'
+import { anyExposed, claimPostureKey, postureTargets, probePosture, releasePostureKey } from './posture.ts'
 import { lanIPv4Addresses } from './lan.ts'
 import { TunnelManager, type TunnelInfo } from './tunnel.ts'
 import {
@@ -72,13 +76,19 @@ export interface Config {
   offlineAfterMs?: number
   /** Hard cap on paired device sessions (oldest evicted when full). */
   maxDevices?: number
+  /**
+   * Idle sessions older than this (ms) are deleted from memory and disk.
+   * Default is 7 days; a leftover cookie no longer authorizes after expiry.
+   */
+  idleExpireMs?: number
   /** Cookie name carrying the paired device id. */
   cookieName?: string
   /**
-   * When true (default), every non-loopback /api request must carry a live
-   * paired-device cookie — the QR is the only way into a LAN-exposed dsh
-   * web, and stop() genuinely cuts paired devices off. Set false to keep
-   * the fence's open-LAN behavior and use pairing only for tokens/status.
+   * When true (default), a desktop Web GUI opened at a non-loopback origin
+   * rides the gated `/remote/api` channel and must carry a live paired-device
+   * cookie — the QR is the only way into remote desktop, and stop() cuts
+   * paired devices off. Set false to keep the desktop on plain `/api`
+   * (only useful when that origin is already trusted for `/api`).
    */
   requirePairingForLan?: boolean
   /**
@@ -92,17 +102,16 @@ export interface Config {
   publicBaseUrl?: string
   /**
    * Absolute path to a JSON file where paired device sessions are persisted.
-   * When set, a paired phone keeps its session across `dsh web` restarts
-   * (the phone-side cookie already lives 365 days), so re-scanning the QR
-   * after each restart is unnecessary. Unset keeps sessions memory-only
-   * (previous behavior).
+   * Defaults to `$DSH_HOME/remote-web-ui-devices.json` so a paired device
+   * keeps its session across `dsh web` restarts (the cookie already lives
+   * 365 days). Override to another absolute path when needed.
    */
   devicesFile?: string
   /**
    * When true, the plugin runs its own Cloudflare quick tunnel (the
    * cloudflared binary ships with the package — no user-side install) and
-   * feeds the minted public URL into both the QR base and the /api trust
-   * fence dynamically, so phones anywhere can pair without any manual
+   * feeds the minted public URL into the QR base and the phone-facing
+   * pairing fence dynamically, so phones anywhere can pair without any manual
    * tunnel setup. The manual `publicBaseUrl` is ignored while this is on.
    */
   autoTunnel?: boolean
@@ -121,6 +130,7 @@ export const Config: z<Config> = z.object({
   tokenTtlMs: z.number().step(1).min(60_000).default(10 * 60_000),
   offlineAfterMs: z.number().step(1).min(5_000).default(25_000),
   maxDevices: z.number().step(1).min(1).max(64).default(4),
+  idleExpireMs: z.number().step(1).min(60_000).default(DEFAULT_IDLE_EXPIRE_MS),
   cookieName: z.string().min(1).default('dsh_pair'),
   requirePairingForLan: z.boolean().default(true),
   publicBaseUrl: z.string(),
@@ -140,7 +150,7 @@ const SWEEP_INTERVAL_MS = 10_000
  */
 type ResolvedConfig = Required<Omit<Config, 'publicBaseUrl' | 'devicesFile'>> & {
   publicBaseUrl: string | undefined
-  devicesFile: string | undefined
+  devicesFile: string
 }
 
 /**
@@ -151,15 +161,21 @@ type ResolvedConfig = Required<Omit<Config, 'publicBaseUrl' | 'devicesFile'>> & 
  */
 export function pairingConfigOf(resolved: Pick<
   ResolvedConfig,
-  'tokenTtlMs' | 'offlineAfterMs' | 'maxDevices' | 'cookieName' | 'devicesFile'
+  'tokenTtlMs' | 'offlineAfterMs' | 'maxDevices' | 'idleExpireMs' | 'cookieName' | 'devicesFile'
 >): PairingConfig {
   return {
     tokenTtlMs: resolved.tokenTtlMs,
     offlineAfterMs: resolved.offlineAfterMs,
     maxDevices: resolved.maxDevices,
+    idleExpireMs: resolved.idleExpireMs,
     cookieName: resolved.cookieName,
     devicesFile: resolved.devicesFile,
   }
+}
+
+/** Default paired-session store: `$DSH_HOME/remote-web-ui-devices.json`. */
+export function defaultDevicesFile(home: string = dshHome()): string {
+  return join(home, 'remote-web-ui-devices.json')
 }
 
 /** Schema defaults, re-read for hand-built test contexts (the loader applies them normally). */
@@ -167,10 +183,11 @@ const DEFAULTS: ResolvedConfig = {
   tokenTtlMs: 10 * 60_000,
   offlineAfterMs: 25_000,
   maxDevices: 4,
+  idleExpireMs: DEFAULT_IDLE_EXPIRE_MS,
   cookieName: 'dsh_pair',
   requirePairingForLan: true,
   publicBaseUrl: undefined,
-  devicesFile: undefined,
+  devicesFile: defaultDevicesFile(),
   autoTunnel: false,
   mobileEnterToSend: true,
   enabled: true,
@@ -188,10 +205,11 @@ function applyImpl(ctx: Context, config?: Config): void {
     tokenTtlMs: config?.tokenTtlMs ?? DEFAULTS.tokenTtlMs,
     offlineAfterMs: config?.offlineAfterMs ?? DEFAULTS.offlineAfterMs,
     maxDevices: config?.maxDevices ?? DEFAULTS.maxDevices,
+    idleExpireMs: config?.idleExpireMs ?? DEFAULTS.idleExpireMs,
     cookieName: config?.cookieName ?? DEFAULTS.cookieName,
     requirePairingForLan: config?.requirePairingForLan ?? DEFAULTS.requirePairingForLan,
     publicBaseUrl: config?.publicBaseUrl,
-    devicesFile: config?.devicesFile,
+    devicesFile: config?.devicesFile ?? DEFAULTS.devicesFile,
     autoTunnel: config?.autoTunnel ?? DEFAULTS.autoTunnel,
     mobileEnterToSend: config?.mobileEnterToSend ?? DEFAULTS.mobileEnterToSend,
     enabled: config?.enabled ?? DEFAULTS.enabled,
@@ -206,6 +224,7 @@ function applyImpl(ctx: Context, config?: Config): void {
       tokenTtlMs: value.tokenTtlMs ?? DEFAULTS.tokenTtlMs,
       offlineAfterMs: value.offlineAfterMs ?? DEFAULTS.offlineAfterMs,
       maxDevices: value.maxDevices ?? DEFAULTS.maxDevices,
+      idleExpireMs: value.idleExpireMs ?? DEFAULTS.idleExpireMs,
       cookieName: value.cookieName ?? DEFAULTS.cookieName,
       requirePairingForLan: value.requirePairingForLan ?? DEFAULTS.requirePairingForLan,
       publicBaseUrl: value.publicBaseUrl,
@@ -230,6 +249,7 @@ function applyImpl(ctx: Context, config?: Config): void {
     if (info.phase === 'running' && info.url !== undefined) {
       service.setPublicBaseUrl(info.url)
       service.setTunnelStatus({ state: 'running', url: info.url })
+      runPostureProbe()
     } else if (info.phase === 'starting') {
       // A restart mints a NEW hostname: the previous URL dies with the old
       // process, so clear it now rather than advertising a dead link.
@@ -338,10 +358,56 @@ function applyImpl(ctx: Context, config?: Config): void {
     ...(apiProxy !== undefined
       ? makeMobileApiRoutes({ service, apiProxy, mobileEnterToSend: () => resolve().mobileEnterToSend })
       : []),
+    // The remote desktop channel: paired-cookie-gated `/remote` prefix that
+    // re-issues fenced paths to loopback (see remote-api.ts).
+    ...makeRemoteApiRoutes({ service, port: ctx.webServer.port }),
     ...updateRoutes,
   ]
+  const upgrades = makeRemoteApiUpgradeRoutes({ service, port: ctx.webServer.port })
   const gate = makeGateListener(service, () => resolve().requirePairingForLan, () => resolve().enabled)
   ctx.effect(() => ctx.on('api/gate', gate), 'remote-web-ui: api gate')
+
+  // ── posture probe ─────────────────────────────────────────────────────────
+  // Guardrail for the one seam this plugin cannot mount a gate into: the
+  // connection plugin's /api Host fence. Forged-Host probes against every
+  // advertised origin (public base + LAN bases) make a re-opened /api (a
+  // re-added --trusted-host, or the SDK's LAN auto-trust under 0.0.0.0)
+  // visible on the panel and the log instead of silently trusted.
+  let postureKey: string | undefined
+  let postureWasExposed = false
+  const runPostureProbe = (): void => {
+    if (!resolve().enabled) return
+    const targets = postureTargets(service.publicBaseUrl, service.lanAddresses, ctx.webServer.port)
+    if (targets.length === 0) {
+      postureKey = undefined
+      service.setPosture(undefined)
+      return
+    }
+    const key = targets.join('|')
+    const claim = claimPostureKey(postureKey, key)
+    if (!claim.run) return
+    postureKey = claim.next
+    void probePosture({ port: ctx.webServer.port, targets }).then((snapshot) => {
+      service.setPosture(snapshot)
+      const exposedHosts = snapshot.hosts.filter(host => host.exposed).map(host => host.host)
+      const exposed = exposedHosts.length > 0
+      if (exposed && !postureWasExposed) {
+        console.error(`remote-web-ui: CRITICAL — the /api fence is OPEN for [${exposedHosts.join(', ')}]: unpaired clients reach the full host API. Remove --trusted-host for these hosts (pairing covers them) or bind loopback.`)
+      } else if (!exposed && postureWasExposed) {
+        console.log('remote-web-ui: the /api posture probe is clean again (every advertised origin refused with 403).')
+      }
+      postureWasExposed = exposed
+    }).catch(() => {
+      // Keep the previous snapshot; drop the in-flight key so the same
+      // targets retry instead of sticking on a failed round.
+      postureKey = releasePostureKey(postureKey, key)
+    })
+  }
+  // The first round waits for the connection plugin's /api route: a probe
+  // before it mounts would read the SPA fallback and false-positive.
+  const initialPostureTimer = nodeSetTimeout(() => { runPostureProbe() }, 5_000)
+  initialPostureTimer.unref()
+  ctx.effect(() => () => { clearTimeout(initialPostureTimer) }, 'remote-web-ui: posture probe boot')
   // Sibling plugins (aionui-panel, …) look this up by name. Absent when this
   // plugin is not installed; stop() / enabled=false still refuse cookies.
   new RemoteWebUiPairing(ctx, (request) => {
@@ -376,7 +442,10 @@ function applyImpl(ctx: Context, config?: Config): void {
     if (disposeRoutes === undefined && enabled) {
       disposeRoutes = ctx.effect(
         () => {
-          const disposers = routes.map(route => ctx.webServer.register(route))
+          const disposers = [
+            ...routes.map(route => ctx.webServer.register(route)),
+            ...upgrades.map(route => ctx.webServer.registerUpgrade(route)),
+          ]
           return () => { for (const dispose of disposers) dispose() }
         },
         'remote-web-ui: pairing routes',
@@ -398,6 +467,9 @@ function applyImpl(ctx: Context, config?: Config): void {
       disposeSweep()
       disposeSweep = undefined
     }
+    // Settings changed the reachable posture (manual publicBaseUrl, bind):
+    // re-probe unless the target set is unchanged.
+    runPostureProbe()
   }
   installSettingsSection(ctx, REMOTE_WEB_UI_SETTINGS_NAMESPACE, Config, config ?? {}, {
     setSource: (source) => {

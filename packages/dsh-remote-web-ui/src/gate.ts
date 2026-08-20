@@ -84,13 +84,16 @@ export function makeGateListener(
   enabled: boolean | (() => boolean) = true,
 ): (request: IncomingMessage, method: string | undefined, next: () => boolean | Promise<boolean>) => boolean | Promise<boolean> {
   return (request, _method, next) => {
+    // Loopback clients (desktop at 127.0.0.1) always pass without cookie check.
     if (isLoopbackClient(request)) return next()
     const active = typeof enabled === 'function' ? enabled() : enabled
     if (!active) return false
     const require = typeof requirePairingForLan === 'function' ? requirePairingForLan() : requirePairingForLan
+    // When pairing is not required for LAN, non-loopback requests pass too.
     if (!require) return next()
-    // The paired-device cookie is a full host-API credential: it passes this
-    // gate for the whole ApiProxy surface, not just the /m/api allowlist.
+    // Non-loopback origin: verify paired-device cookie. Sibling plugins that
+    // own their own prefixes (/pet, /git, /sidebar, …) consult the same cookie
+    // through the remoteWebUiPairing service — this listener only covers /api.
     return isPairedDeviceRequest(service, request) ? next() : false
   }
 }

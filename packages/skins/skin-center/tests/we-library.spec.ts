@@ -5,7 +5,7 @@
  * synthetic fixture trees in a temp dir; nothing real is ever touched.
  */
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
@@ -67,9 +67,9 @@ describe('librariesFromVdf', () => {
 
 describe('expandUser', () => {
   it('expands a leading tilde to the home directory and leaves other paths alone', () => {
-    const home = process.env.HOME ?? ''
+    const home = homedir()
     expect(expandUser('~')).toBe(home)
-    expect(expandUser('~/Movies/wallpapers')).toBe(home + '/Movies/wallpapers')
+    expect(expandUser('~/Movies/wallpapers')).toBe(join(home, 'Movies/wallpapers'))
     expect(expandUser('/abs/path')).toBe('/abs/path')
     expect(expandUser('relative/path')).toBe('relative/path')
     expect(expandUser('~user/x')).toBe('~user/x')

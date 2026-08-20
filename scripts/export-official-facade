@@ -33,7 +33,15 @@ const DEFAULT_URL = 'http://127.0.0.1:3080/'
 
 const args = process.argv.slice(2)
 const check = args.includes('--check')
-const url = (args.find((a) => a.startsWith('--url=')) || '').split('=')[1] || DEFAULT_URL
+// Support both `--url <value>` (the documented form) and `--url=<value>`.
+let url = DEFAULT_URL
+const equals = args.find((a) => a.startsWith('--url='))
+if (equals !== undefined) {
+  url = equals.slice('--url='.length) || DEFAULT_URL
+} else {
+  const index = args.indexOf('--url')
+  if (index !== -1 && args[index + 1] !== undefined) url = args[index + 1]
+}
 
 async function collect() {
   const { chromium } = require('playwright')

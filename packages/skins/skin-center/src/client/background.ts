@@ -72,13 +72,14 @@ export interface SkinBackgroundHandle {
 
 /**
  * Selector for a conversation message row inside the shell's center column.
- * The `data-pane="conversation"` attribute is stamped by the dsh-web-ui-all
- * compat shim on the center column; the _userRow / _compactionRow /
- * _contextRow / _turnErrorRow suffixes are the official shell's CSS-module
- * hashed message-row classes (hash prefix varies, suffix is stable). Stable
- * like the repo's compat shim, not hash-dependent.
+ * Official shell message rows carry `data-chat-anchor-key`; the
+ * `data-pane="conversation"` attribute is stamped by the dsh-web-ui-all compat
+ * shim on the center column, where the _userRow / _compactionRow /
+ * _contextRow / _turnErrorRow suffixes are CSS-module message-row classes
+ * (hash prefix varies, suffix is stable).
  */
 const CONVERSATION_CONTENT_SELECTOR = [
+  '[data-chat-anchor-key]',
   '[data-pane="conversation"] [class*="_userRow"]',
   '[data-pane="conversation"] [class*="_compactionRow"]',
   '[data-pane="conversation"] [class*="_contextRow"]',
@@ -138,7 +139,7 @@ export class BackgroundController implements SkinBackgroundHandle {
     })
   }
 
-  enabled(): boolean { return this.enabledValue }
+  enabled = (): boolean => this.enabledValue
 
   setEnabled(value: boolean): void {
     this.enabledValue = value
@@ -148,13 +149,13 @@ export class BackgroundController implements SkinBackgroundHandle {
     void this.scope.set('enabled', value)
   }
 
-  opacity(): number { return this.opacityValue }
+  opacity = (): number => this.opacityValue
 
-  blurEmpty(): number { return this.blurEmptyValue }
+  blurEmpty = (): number => this.blurEmptyValue
 
-  blurContent(): number { return this.blurContentValue }
+  blurContent = (): number => this.blurContentValue
 
-  subscribe(listener: () => void): () => void {
+  subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
   }

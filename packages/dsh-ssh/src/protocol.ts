@@ -5,7 +5,7 @@
  */
 
 /** Authentication flavors a host entry may carry. */
-export type SshAuthKind = 'key' | 'password'
+export type SshAuthKind = 'key' | 'password' | 'agent'
 
 /** One stored host entry (the ~/.dsh/dsh-ssh.json store shape). */
 export interface SshHostEntry {
@@ -26,6 +26,12 @@ export interface SshHostEntry {
     passphrase?: string
     /** Password for 'password' auth. */
     password?: string
+    /**
+     * ssh-agent endpoint for 'agent' auth. A socket path, the special value
+     * 'pageant' (PuTTY Pageant on Windows), or undefined for auto-detect
+     * (SSH_AUTH_SOCK, then Pageant on Windows).
+     */
+    agentPath?: string
   }
   /** Jump chain: local aliases connected through in order (ProxyJump). */
   proxyJump: string[]

@@ -170,6 +170,44 @@ describe('connectClient', () => {
   })
 })
 
+describe('buildConnectConfig agent auth', () => {
+  it('uses an explicit agent path', () => {
+    const entry = passwordEntry('agent', { auth: { kind: 'agent', agentPath: '/tmp/agent.sock' } })
+    const config = buildConnectConfig(entry, undefined, defaultOpts() as never)
+    expect(config.agent).toBe('/tmp/agent.sock')
+    expect(config.password).toBeUndefined()
+    expect(config.privateKey).toBeUndefined()
+  })
+
+  it('falls back to SSH_AUTH_SOCK when no agent path is configured', () => {
+    const previous = process.env.SSH_AUTH_SOCK
+    process.env.SSH_AUTH_SOCK = '/tmp/auto-agent.sock'
+    try {
+      const entry = passwordEntry('agent-auto', { auth: { kind: 'agent' } })
+      const config = buildConnectConfig(entry, undefined, defaultOpts() as never)
+      expect(config.agent).toBe('/tmp/auto-agent.sock')
+    } finally {
+      if (previous === undefined) delete process.env.SSH_AUTH_SOCK
+      else process.env.SSH_AUTH_SOCK = previous
+    }
+  })
+
+  it('rejects agent auth when no agent endpoint is available', () => {
+    const previous = process.env.SSH_AUTH_SOCK
+    delete process.env.SSH_AUTH_SOCK
+    const previousPlatform = process.platform
+    // Force the non-Windows branch (Pageant is the Windows fallback).
+    Object.defineProperty(process, 'platform', { value: 'linux' })
+    try {
+      const entry = passwordEntry('agent-none', { auth: { kind: 'agent' } })
+      expect(() => buildConnectConfig(entry, undefined, defaultOpts() as never)).toThrow(/ssh-agent is not available/)
+    } finally {
+      if (previous !== undefined) process.env.SSH_AUTH_SOCK = previous
+      Object.defineProperty(process, 'platform', { value: previousPlatform })
+    }
+  })
+})
+
 describe('connectChain', () => {
   beforeEach(() => {
     sshMock.instances.length = 0

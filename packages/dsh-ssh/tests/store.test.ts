@@ -3,7 +3,7 @@
  */
 
 import { mkdtempSync, writeFileSync, rmSync, statSync, readdirSync, readFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { HostStore, validateAlias, validateHostPayload } from '../src/store.ts'
@@ -60,6 +60,8 @@ describe('validation', () => {
     // A missing/empty password is accepted (filled later in the GUI after import)
     expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'password' } })).toBeUndefined()
     expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'password', password: 123 } })).toContain('password')
+    expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'agent', agentPath: 123 } })).toContain('agentPath')
+    expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'agent' } })).toBeUndefined()
     expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'bogus' } })).toContain('kind')
   })
 })
@@ -75,6 +77,32 @@ describe('CRUD', () => {
     const summary = store.summarize(entry)
     expect(summary.auth).toBe('password')
     expect('password' in summary).toBe(false)
+  })
+
+  it('creates and summarizes an agent-auth entry without leaking the agent path', () => {
+    const store = makeStore()
+    const entry = store.create({ ...basePayload, auth: { kind: 'agent', agentPath: 'pageant' } })
+    expect(entry.auth.kind).toBe('agent')
+    expect(entry.auth.agentPath).toBe('pageant')
+    const summary = store.summarize(entry)
+    expect(summary.auth).toBe('agent')
+    expect('agentPath' in summary).toBe(false)
+    expect(summary.keyReady).toBe(false)
+  })
+
+  it('normalizes ~ and SSH_AUTH_SOCK for agent paths', () => {
+    const store = makeStore()
+    const previous = process.env.SSH_AUTH_SOCK
+    process.env.SSH_AUTH_SOCK = '/tmp/from-env.sock'
+    try {
+      const tilde = store.create({ ...basePayload, auth: { kind: 'agent', agentPath: '~/.ssh/agent.sock' } })
+      expect(tilde.auth.agentPath).toBe(join(homedir(), '.ssh', 'agent.sock'))
+      const envAgent = store.create({ ...basePayload, alias: 'env-agent', auth: { kind: 'agent', agentPath: 'SSH_AUTH_SOCK' } })
+      expect(envAgent.auth.agentPath).toBe('/tmp/from-env.sock')
+    } finally {
+      if (previous === undefined) delete process.env.SSH_AUTH_SOCK
+      else process.env.SSH_AUTH_SOCK = previous
+    }
   })
 
   it('rejects duplicate and invalid aliases', () => {
@@ -191,6 +219,25 @@ describe('import from ssh config', () => {
     expect(result.added).toBe(1)
     expect(store.find('lower-host')?.host).toBe('10.9.9.9')
   })
+
+  it('imports IdentityAgent as agent auth and treats IdentityAgent none as password', () => {
+    const store = makeStore([
+      'Host agent-host',
+      '    Hostname 10.7.7.7',
+      '    User root',
+      '    IdentityAgent ~/.ssh/agent.sock',
+      '',
+      'Host no-agent',
+      '    Hostname 10.7.7.8',
+      '    User root',
+      '    IdentityAgent none',
+    ].join('\n'))
+    const result = store.importFromSshConfig()
+    expect(result.added).toBe(2)
+    expect(store.find('agent-host')?.auth.kind).toBe('agent')
+    expect(store.find('agent-host')?.auth.agentPath).toBe(join(homedir(), '.ssh', 'agent.sock'))
+    expect(store.find('no-agent')?.auth.kind).toBe('password')
+  })
 })
 
 describe('file safety', () => {
@@ -247,6 +294,16 @@ describe('partial updates', () => {
     expect(updated.auth.password).toBe('')
     expect(() => store.update('web-01', { auth: { kind: 'password', password: 123 as unknown as string } }))
       .toThrow(/password/)
+  })
+
+  it('updates agent auth and keeps the stored agent path when omitted', () => {
+    const store = makeStore()
+    store.create({ ...basePayload, auth: { kind: 'agent', agentPath: 'pageant' } })
+    const updated = store.update('web-01', { auth: { kind: 'agent' } })
+    expect(updated.auth.kind).toBe('agent')
+    expect(updated.auth.agentPath).toBe('pageant')
+    const switched = store.update('web-01', { auth: { kind: 'agent', agentPath: '\\\\.\\pipe\\openssh-ssh-agent' } })
+    expect(switched.auth.agentPath).toBe('\\\\.\\pipe\\openssh-ssh-agent')
   })
 
   it('drops the stored passphrase when the key path changes without one', () => {

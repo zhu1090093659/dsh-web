@@ -157,7 +157,7 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
         <td className={css.mono}>{host.alias}</td>
         <td className={css.mono}>{host.host}:{host.port}</td>
         <td>{host.user}</td>
-        <td><span className={css.badge} data-kind={host.auth}>{host.auth === 'key' ? tt('form.auth.key') : tt('form.auth.password')}</span></td>
+        <td><span className={css.badge} data-kind={host.auth}>{host.auth === 'key' ? tt('form.auth.key') : host.auth === 'password' ? tt('form.auth.password') : tt('form.auth.agent')}</span></td>
         <td className={css.cellMuted}>{host.environment ?? ''}</td>
         <td className={css.cellMuted}>{host.tags.join(', ')}</td>
         <td className={css.cellMuted}>{host.description ?? ''}</td>

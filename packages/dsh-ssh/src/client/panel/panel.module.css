@@ -414,6 +414,11 @@ html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [class*='centerCol'] 
   border-color: var(--dsw-alias-state-warn-primary);
 }
 
+.badge[data-kind='agent'] {
+  color: var(--dsw-alias-state-success-primary);
+  border-color: var(--dsw-alias-state-success-primary);
+}
+
 .badge[data-status='ok'] {
   color: var(--dsw-alias-state-success-primary);
   border-color: var(--dsw-alias-state-success-primary);

@@ -8,8 +8,8 @@ Built on the capability list of [badseal/ssh-skill](https://github.com/badseal/s
 
 | Capability | Description |
 | --- | --- |
-| Host management | CRUD, search, connection test; collapsible grouping by environment / tags with per-group batch test; config stored in `~/.dsh/dsh-ssh.json`; supports key / password auth, passphrase keys, ProxyJump jump hosts (multi-level) |
-| Config import | One-click parse of a standard `~/.ssh/config` (Host/HostName/User/Port/IdentityFile/ProxyJump etc.); existing aliases are skipped |
+| Host management | CRUD, search, connection test; collapsible grouping by environment / tags with per-group batch test; config stored in `~/.dsh/dsh-ssh.json`; supports key / password / ssh-agent auth (OpenSSH agent / Pageant), passphrase keys, ProxyJump jump hosts (multi-level) |
+| Config import | One-click parse of a standard `~/.ssh/config` (Host/HostName/User/Port/IdentityFile/IdentityAgent/ProxyJump etc.); existing aliases are skipped |
 | Persistent connection pool | Reuses a long-lived connection per host (opposite of the ssh-skill daemon), automatically disconnects after 30 minutes idle, auto-reconnects on disconnect (up to 3 times) |
 | Command execution | exec with a timeout (default 60s), stdout/stderr separated, output truncation guard (2MB) |
 | Web terminal | xterm.js + WebSocket PTY terminal, auto-sizing, real-time output |
@@ -22,6 +22,7 @@ Built on the capability list of [badseal/ssh-skill](https://github.com/badseal/s
 
 - All `/api/dsh-ssh/*` routes are loopback-only (with same-origin checks) — the interfaces that execute commands against remote servers are not exposed to the LAN.
 - Passwords / key passphrases are stored in plain text in `~/.dsh/dsh-ssh.json`, file mode 0600, directory 0700 (the same trust model as ssh-skill writing passwords into ssh-config comments).
+- ssh-agent auth stores only the agent socket path (or the special value `pageant`); it never reads or stores private-key material.
 - Tunnels only listen on `127.0.0.1`.
 - Deleting a host or changing its connection fields (host / port / user / auth / proxyJump) immediately closes that alias's pooled connection and tunnels; later operations reconnect with the new configuration and never reuse a connection authenticated with the old credentials.
 - Before the Agent uses a tool, the host must first be configured in the GUI (or imported from ~/.ssh/config).

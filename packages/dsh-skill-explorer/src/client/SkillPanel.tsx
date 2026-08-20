@@ -72,7 +72,7 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
   }
 
   return (
-    <article className={css.skill}>
+    <article className={css.skill} data-dsh-part="skill-row">
       <header className={css.skillHeader}>
         <span className={css.skillName}>{skill.name}</span>
         {skill.provider !== undefined && <span className={css.badge}>{skill.provider}</span>}
@@ -255,8 +255,8 @@ export function SkillPanel({ api, onClose }: SkillPanelProps): React.JSX.Element
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className={css.card}>
-        <header className={css.head}>
+      <div className={css.card} data-dsh-part="card">
+        <header className={css.head} data-dsh-part="head">
           <h2 className={css.headTitle}>{tt('panel.title')}</h2>
           {cwd !== undefined && <span className={css.headCwd}>{tt('cwd', { cwd })}</span>}
           <button type="button" className={css.headButton} onClick={() => { setRefreshTick((tick) => tick + 1) }}>
@@ -264,11 +264,11 @@ export function SkillPanel({ api, onClose }: SkillPanelProps): React.JSX.Element
           </button>
           <button type="button" className={css.headButton} onClick={onClose}>{tt('close')}</button>
         </header>
-        <div className={css.tabs}>
-          <button type="button" className={`${css.tab} ${tab === 'list' ? css.tabActive : ''}`} onClick={() => { setTab('list') }}>
+        <div className={css.tabs} data-dsh-part="tab-bar" role="tablist">
+          <button type="button" role="tab" className={`${css.tab} ${tab === 'list' ? css.tabActive : ''}`} data-dsh-part="tab" aria-selected={tab === 'list'} data-active={tab === 'list' ? '' : undefined} onClick={() => { setTab('list') }}>
             {tt('tab.list')}
           </button>
-          <button type="button" className={`${css.tab} ${tab === 'create' ? css.tabActive : ''}`} onClick={() => { setTab('create') }}>
+          <button type="button" role="tab" className={`${css.tab} ${tab === 'create' ? css.tabActive : ''}`} data-dsh-part="tab" aria-selected={tab === 'create'} data-active={tab === 'create' ? '' : undefined} onClick={() => { setTab('create') }}>
             {tt('tab.create')}
           </button>
         </div>

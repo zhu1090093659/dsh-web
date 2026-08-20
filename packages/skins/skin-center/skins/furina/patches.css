@@ -1,0 +1,261 @@
+[id="root"] {
+  background: none;
+}
+
+a {
+  color: #3c4e92;
+}
+
+a:visited {
+  color: #6a5fa8;
+}
+
+body[data-ds-dark-theme] a {
+  color: #94a8dc;
+}
+
+body[data-ds-dark-theme] a:visited {
+  color: #a58fdc;
+}
+
+:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+[data-pane="sidebar"] {
+  color: var(--dsw-alias-label-primary);
+}
+
+[role="tooltip"] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
+}
+
+[role="dialog"], [role="dialog"] [class*="navCell"]:not([aria-current="true"]) {
+  color: var(--dsw-alias-label-primary);
+}
+
+button[role="tab"], button[role="tab"]:hover, button[role="tab"]:active, button[role="tab"]:disabled, button[role="tab"]:hover:not(:disabled), button[role="tab"]:active:not(:disabled) {
+  box-shadow: none;
+  text-shadow: none;
+  color: var(--dsw-alias-label-primary);
+  filter: none;
+  opacity: 1;
+  background-color: #0000;
+  background-image: none;
+  border: 0;
+  transform: none;
+}
+
+[data-aionui-explorer-col], [data-aionui-preview-col], .aionui-root {
+  backdrop-filter: blur(12px);
+}
+
+.aionui-dialog, .aionui-menu, .aionui-toast {
+  backdrop-filter: blur(14px);
+}
+
+.aionui-overlay {
+  background: #1c254666;
+}
+
+body[data-ds-dark-theme] .aionui-overlay {
+  background: #0000008c;
+}
+
+button, a, .aionui-btn, .aionui-menu-item, .aionui-explorer-handle, .aionui-preview-handle {
+  transition: background-color .13s, border-color .13s, box-shadow .13s, color .13s, opacity .13s;
+}
+
+::-webkit-scrollbar-thumb {
+  transition: background-color .13s;
+}
+
+a:hover {
+  color: #2c3765;
+  text-decoration: underline;
+}
+
+a:active {
+  color: #222b4d;
+}
+
+body[data-ds-dark-theme] a:hover {
+  color: #b4c3e8;
+}
+
+body[data-ds-dark-theme] a:active {
+  color: #c9d4ef;
+}
+
+button:disabled, .aionui-btn:disabled, .aionui-menu-item-disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.aionui-btn:disabled:hover, .aionui-menu-item-disabled:hover {
+  box-shadow: none;
+  background-color: #0000;
+}
+
+.aionui-explorer-handle, .aionui-preview-handle {
+  background: #d8dfec;
+}
+
+.aionui-explorer-handle:hover, .aionui-preview-handle:hover {
+  background: #7f96d2;
+  box-shadow: 0 0 6px #4a5fa866;
+}
+
+body[data-ds-dark-theme] .aionui-explorer-handle, body[data-ds-dark-theme] .aionui-preview-handle {
+  background: #33406a;
+}
+
+body[data-ds-dark-theme] .aionui-explorer-handle:hover, body[data-ds-dark-theme] .aionui-preview-handle:hover {
+  background: #6276a5;
+  box-shadow: 0 0 6px #7f96d266;
+}
+
+.aionui-floating-expand:hover {
+  background: #e4eaf7;
+  border-color: #647ebf;
+}
+
+.aionui-floating-expand:active {
+  background: #dce3f7;
+}
+
+body[data-ds-dark-theme] .aionui-floating-expand:hover {
+  background: #2c3765;
+  border-color: #647ebf;
+}
+
+body[data-ds-dark-theme] .aionui-floating-expand:active {
+  background: #33417a;
+}
+
+.aionui-collapse-chevron:hover {
+  color: #647ebf;
+}
+
+body[data-ds-dark-theme] .aionui-collapse-chevron:hover {
+  color: #a5b7e2;
+}
+
+.aionui-menu-item:not(.aionui-menu-item-disabled):hover {
+  background: #4a5fa81f;
+}
+
+body[data-ds-dark-theme] .aionui-menu-item:not(.aionui-menu-item-disabled):hover {
+  background: #a0b9eb29;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button, a, .aionui-btn, .aionui-menu-item, .aionui-explorer-handle, .aionui-preview-handle, ::-webkit-scrollbar-thumb {
+    transition: none;
+  }
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) {
+  color: #4a5fa8;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) {
+  color: #2e8e52;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) {
+  color: #c08a33;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) {
+  color: #647ebf;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) {
+  color: #3c4e92;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) {
+  color: #58b058;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) {
+  color: #7f96d2;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) {
+  color: #58b058;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) {
+  color: #d9a94f;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) {
+  color: #94a8dc;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) {
+  color: #647ebf;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) {
+  color: #7cc97c;
+}
+
+[data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
+  background: #4a5fa81f;
+  border: 1px solid #2c3a7333;
+}
+
+body[data-ds-dark-theme] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
+  background: #a0b9eb24;
+  border-color: #a0b4e633;
+}
+
+div:has( > div > [data-gitgraph-chip]) {
+  --dsw-alias-button-tool-bar-fill: #4a5fa814;
+  --dsw-alias-border-l2: #4a5fa861;
+  --dsw-alias-label-secondary: #2c3765;
+  --dsw-alias-label-tertiary: #647ebf;
+  --dsw-alias-interactive-bg-hover: #4a5fa824;
+  --dsw-alias-interactive-bg-active: #4a5fa833;
+}
+
+body[data-ds-dark-theme] div:has( > div > [data-gitgraph-chip]) {
+  --dsw-alias-button-tool-bar-fill: #a0b9eb14;
+  --dsw-alias-border-l2: #a0b4e661;
+  --dsw-alias-label-secondary: #c9d4ef;
+  --dsw-alias-label-tertiary: #8b9cbc;
+  --dsw-alias-interactive-bg-hover: #a0b9eb24;
+  --dsw-alias-interactive-bg-active: #a0b9eb38;
+}
+
+div:has( > div > [data-gitgraph-chip]) > button[aria-expanded="true"], [data-gitgraph-chip][aria-expanded="true"] {
+  background-color: #4a5fa829;
+}
+
+body[data-ds-dark-theme] div:has( > div > [data-gitgraph-chip]) > button[aria-expanded="true"], body[data-ds-dark-theme] [data-gitgraph-chip][aria-expanded="true"] {
+  background-color: #a0b9eb2e;
+}
+
+[data-phase="active"] [class*="composerSeat"] {
+  background: none !important;
+}
+
+[data-phase="active"] [class*="composerSeat"]:before {
+  content: "";
+  z-index: -1;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  background: linear-gradient(#0000 0, #e8ecf5db 36px);
+  position: absolute;
+  inset: 0;
+}
+
+body[data-ds-dark-theme] [data-phase="active"] [class*="composerSeat"]:before {
+  backdrop-filter: blur(6px);
+  background: linear-gradient(#0000 0, #101624d1 36px);
+}

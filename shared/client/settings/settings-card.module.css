@@ -353,6 +353,8 @@
 }
 
 .selectOption {
+  /* 弹层是 max-height 受限的 flex 列：选项必须保持自然行高，超出交给弹层滚动 */
+  flex-shrink: 0;
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 13px;

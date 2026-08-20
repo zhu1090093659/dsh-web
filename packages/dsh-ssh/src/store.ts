@@ -1,5 +1,5 @@
 /**
- * Host config store: one JSON file (`~/.dsh/dsh-ssh.json`) holding every
+ * Host config store: one JSON file (`<DSH_HOME>/dsh-ssh.json`) holding every
  * SSH host entry, written atomically (tmp + rename). Also parses the user's
  * standard `~/.ssh/config` for one-shot import. Secrets (passwords,
  * passphrases) live in this user-owned file in plaintext — same trust model
@@ -10,13 +10,14 @@ import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSyn
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import type { HostPayload, ImportResult, SshHostEntry, SshHostSummary } from './protocol.ts'
+import { resolveDshHome } from './dsh-home.ts'
 
 /** File format version. */
 const FORMAT_VERSION = 1
 
-/** Store file location: <home>/.dsh/dsh-ssh.json. */
-export function storePath(): string {
-  return join(homedir(), '.dsh', 'dsh-ssh.json')
+/** Store file location: <DSH_HOME>/dsh-ssh.json, falling back to ~/.dsh. */
+export function storePath(env: NodeJS.ProcessEnv = process.env, home: string = homedir()): string {
+  return join(resolveDshHome(env, home), 'dsh-ssh.json')
 }
 
 /** The user's standard OpenSSH config path. */

@@ -395,17 +395,29 @@ describe('WallpaperController', () => {
     expect(document.documentElement.dataset.dshWallpaperActive).toBeUndefined()
   })
 
-  it('removes the composer seat mask while a wallpaper is mounted (#734)', () => {
+  it('reports the unified backdrop-active marker and installs the shared composer-seat neutralizer (#777)', () => {
     const { scope } = fakeScope()
     const controller = new WallpaperController(scope)
+    expect(document.body.hasAttribute('data-dsh-backdrop-active')).toBe(false)
     controller.applySelection(video)
-    const style = document.head.querySelector('style[data-dsh-wallpaper-root]')
-    expect(style?.textContent).toContain('html[data-dsh-wallpaper-active] [data-composer-seat]')
-    expect(style?.textContent).toContain('background: none !important;')
-    // The rule exists only while a wallpaper is mounted: teardown removes it.
+    expect(document.body.getAttribute('data-dsh-backdrop-active')).toBe('true')
+    expect(document.documentElement.getAttribute('data-dsh-backdrop-active')).toBe('true')
+    const neutralizer = document.head.querySelector('style[data-dsh-scene-neutralizer]')
+    expect(neutralizer).not.toBeNull()
+    // The official seat mask ::before stays neutralized.
+    expect(neutralizer?.textContent).toContain('html[data-dsh-backdrop-active] [data-composer-seat]::before')
+    expect(neutralizer?.textContent).toContain('background: none !important;')
+    // The input card itself gets a fixed frosted blur (no slider yet); its
+    // own translucent tint keeps readability instead of a hardcoded color.
+    expect(neutralizer?.textContent).toContain('html[data-dsh-backdrop-active] [data-composer-card]')
+    expect(neutralizer?.textContent).toContain('backdrop-filter: blur(10px) !important;')
+    // The wallpaper-specific neutralizer no longer owns the composer seat rule.
+    const root = document.head.querySelector('style[data-dsh-wallpaper-root]')
+    expect(root?.textContent).not.toContain('[data-composer-seat]')
+    // Teardown clears the shared marker; the shared neutralizer style stays inert.
     controller.clearSelection()
-    expect(document.head.querySelector('style[data-dsh-wallpaper-root]')).toBeNull()
-    expect(document.documentElement.dataset.dshWallpaperActive).toBeUndefined()
+    expect(document.body.hasAttribute('data-dsh-backdrop-active')).toBe(false)
+    expect(document.documentElement.hasAttribute('data-dsh-backdrop-active')).toBe(false)
     controller.dispose()
   })
 

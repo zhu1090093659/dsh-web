@@ -34,6 +34,12 @@ function entryFor(id: string, extra: Record<string, unknown> = {}): ControllerSk
   } as ControllerSkinEntry
 }
 
+/** The skin background art currently painted in the background decoration layer. */
+function backgroundImgSrc(): string {
+  const layer = document.querySelector<HTMLElement>('[data-dsh-skin-layer="background"]')
+  return layer?.querySelector('img')?.getAttribute('src') ?? ''
+}
+
 describe('decoration layers', () => {
   it('ensures six non-interactive layers idempotently', () => {
     const layers = ensureDecorationLayers(document)
@@ -308,9 +314,9 @@ describe('skin controller', () => {
       suppressBackgroundMedia: () => false,
     })
     await controller.switchTo('media-skin', mediaEntry)
-    expect(document.body.style.getPropertyValue('background-image')).toContain('bg.jpg')
+    expect(backgroundImgSrc()).toContain('bg.jpg')
     await controller.refresh()
-    expect(document.body.style.getPropertyValue('background-image')).toContain('bg.jpg')
+    expect(backgroundImgSrc()).toContain('bg.jpg')
     expect(controller.active).toBe('media-skin')
   })
 
@@ -343,18 +349,21 @@ describe('skin controller', () => {
       suppressBackgroundMedia: () => suppressed,
     })
     await controller.switchTo('media-skin', mediaEntry)
-    expect(document.body.style.getPropertyValue('background-image')).toContain('bg.jpg')
+    expect(backgroundImgSrc()).toContain('bg.jpg')
+    expect(document.body.getAttribute('data-dsh-backdrop-active')).toBe('true')
 
     // The wallpaper bridge turns on: refresh drops the manifest media.
     suppressed = true
     await controller.refresh()
-    expect(document.body.style.getPropertyValue('background-image')).toBe('')
+    expect(backgroundImgSrc()).toBe('')
+    expect(document.body.hasAttribute('data-dsh-backdrop-active')).toBe(false)
     expect(controller.active).toBe('media-skin')
 
     // And back: refresh repaints it.
     suppressed = false
     await controller.refresh()
-    expect(document.body.style.getPropertyValue('background-image')).toContain('bg.jpg')
+    expect(backgroundImgSrc()).toContain('bg.jpg')
+    expect(document.body.getAttribute('data-dsh-backdrop-active')).toBe('true')
   })
 
   it('disposing an older activation never wipes a newer activation\'s layer content', async () => {
@@ -369,14 +378,14 @@ describe('skin controller', () => {
       },
     } as ControllerSkinEntry
     await controller.switchTo('media-skin', mediaEntry)
-    expect(document.body.style.getPropertyValue('background-image')).toContain('bg.jpg')
+    expect(backgroundImgSrc()).toContain('bg.jpg')
     // Re-activation (the refresh path): the OLD activation's dispose must
-    // restore only its own snapshot — the newer activation's body paint
-    // survives because it re-applies the same value after the restore.
+    // restore only its own snapshot — the newer activation's layer paint
+    // survives because it re-paints after the restore is skipped as stale.
     await controller.switchTo('media-skin', mediaEntry)
-    expect(document.body.style.getPropertyValue('background-image')).toContain('bg.jpg')
+    expect(backgroundImgSrc()).toContain('bg.jpg')
     await controller.switchTo(null, null)
-    expect(document.body.style.getPropertyValue('background-image')).toBe('')
+    expect(backgroundImgSrc()).toBe('')
   })
 
   it('drives --dsh-skin-scrim with the background media (whale-mom contract)', async () => {
@@ -412,6 +421,44 @@ describe('skin controller', () => {
     expect(document.body.style.getPropertyValue('--dsh-skin-scrim')).toBe('1')
     await controller.switchTo(null, null)
     expect(document.body.style.getPropertyValue('--dsh-skin-scrim')).toBe('0')
+  })
+
+  it('marks the unified backdrop-active marker and installs the shared composer-seat neutralizer while media is mounted (#777)', async () => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    document.documentElement.removeAttribute('data-dsh-skin')
+    const ledger = createEffectLedger()
+    const loadStylesheet = async (href: string) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = href
+      document.head.appendChild(link)
+    }
+    const mediaEntry = {
+      manifest: {
+        id: 'media-skin',
+        contributes: {
+          stylesheet: 'skin.css',
+          backgroundMedia: { light: { type: 'image' as const, src: 'assets/bg.jpg' } },
+        },
+      },
+    } as ControllerSkinEntry
+    const controller = createSkinController({
+      doc: document,
+      ledger,
+      loadStylesheet,
+      persist: async () => {},
+    })
+    await controller.switchTo('media-skin', mediaEntry)
+    expect(document.body.getAttribute('data-dsh-backdrop-active')).toBe('true')
+    expect(document.documentElement.getAttribute('data-dsh-backdrop-active')).toBe('true')
+    const neutralizer = document.head.querySelector('style[data-dsh-scene-neutralizer]')
+    expect(neutralizer).not.toBeNull()
+    expect(neutralizer?.textContent).toContain('html[data-dsh-backdrop-active] [data-composer-card]')
+    // A plain skin (no background media) must never mark a backdrop.
+    await controller.switchTo(null, null)
+    expect(document.body.hasAttribute('data-dsh-backdrop-active')).toBe(false)
+    expect(document.documentElement.hasAttribute('data-dsh-backdrop-active')).toBe(false)
   })
 
   it('shutdown disposes the activation and clears the attribute', async () => {

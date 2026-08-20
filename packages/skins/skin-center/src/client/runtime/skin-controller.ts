@@ -24,8 +24,9 @@
  */
 
 import type { EffectLedger } from './effect-ledger.ts'
-import { ensureDecorationLayers } from './decoration-layers.ts'
+import { buildBackgroundMedia, clearLayer, ensureDecorationLayers } from './decoration-layers.ts'
 import type { DecorationLayers } from './decoration-layers.ts'
+import { setSceneBackdropActive } from './backdrop-scene.ts'
 
 /** Catalog entry shape the controller needs (mirrors the v2 catalog route). */
 export interface ControllerSkinEntry {
@@ -189,39 +190,51 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
     ledger.record(activation, `style:${label}`, () => link?.remove())
   }
 
-  const BODY_BG_PROPS = ['background-image', 'background-position', 'background-size', 'background-attachment', 'background-repeat'] as const
-
   /**
-   * Write the skin background onto document.body with a snapshot for the
-   * activation ledger. Only the CURRENT activation may restore: when an
-   * older activation is disposed after a newer one already re-painted the
-   * body, restoring its snapshot would clobber the newer paint (the same
-   * value is written by both, so value comparison cannot arbitrate).
+   * Paint the skin background art into the `background` decoration layer
+   * (z-index:-2) with a snapshot for the activation ledger. Only the CURRENT
+   * activation may restore: when an older activation is disposed after a
+   * newer one already re-painted the layer, restoring its snapshot would
+   * clobber the newer paint.
+   *
+   * Two reasons the art lives in the layer, not on `document.body`:
+   *  - Chromium's backdrop-filter does not sample the canvas/body background,
+   *    so the skin-center blur layer (z-index:-1) could never blur body-painted
+   *    art (issue #732 defect A). A real fixed element IS sampled, so after
+   *    this change the same blur + scrim controls work on the skin backdrop
+   *    just like they already do on the Wallpaper Engine layers (issue #777).
+   *  - dragon-heir hooks expect the art in ctx.layers.background (they swap
+   *    the painted img and apply the v1 filter lift); the layer is the v2
+   *    contract and body painting was a leftover half-migration.
+   * The body's own opaque background is forced transparent while art is
+   * mounted, or the shell's static panels would cover the negative-z layer.
    */
-  function setBodyBackground(activation: number, values: Record<string, string> | null): void {
+  function setBackgroundLayer(activation: number, nodes: HTMLElement[]): void {
     const style = doc.body.style
-    const previous = new Map<string, string>()
+    const previousBackgroundColor = style.getPropertyValue('background-color')
+    const previousScrim = style.getPropertyValue('--dsh-skin-scrim')
     const restore = (): void => {
       if (currentActivation !== activation) return
-      for (const [prop, value] of previous) {
-        if (value === '') style.removeProperty(prop)
-        else style.setProperty(prop, value)
-      }
+      clearLayer(layers.background)
+      setSceneBackdropActive(doc, 'skin', false)
+      if (previousScrim === '') style.removeProperty('--dsh-skin-scrim')
+      else style.setProperty('--dsh-skin-scrim', previousScrim)
+      if (previousBackgroundColor === '') style.removeProperty('background-color')
+      else style.setProperty('background-color', previousBackgroundColor)
     }
-    for (const prop of BODY_BG_PROPS) {
-      previous.set(prop, style.getPropertyValue(prop))
-      const value = values?.[prop] ?? ''
-      if (value === '') style.removeProperty(prop)
-      else style.setProperty(prop, value)
+    clearLayer(layers.background)
+    if (nodes.length > 0) {
+      for (const node of nodes) layers.background.appendChild(node)
+      style.setProperty('background-color', 'transparent')
+      style.setProperty('--dsh-skin-scrim', '1')
+      setSceneBackdropActive(doc, 'skin', true)
+    } else {
+      setSceneBackdropActive(doc, 'skin', false)
+      style.setProperty('--dsh-skin-scrim', '0')
+      if (previousBackgroundColor === '') style.removeProperty('background-color')
+      else style.setProperty('background-color', previousBackgroundColor)
     }
-    // The skin-backdrop scrim contract: whale-mom (and any future skin)
-    // scales its panel translucency by --dsh-skin-scrim — 0 while no art is
-    // painted (fully opaque stock-ish panels), 1 while the skin's
-    // background media is mounted (art shows through the tinted panels).
-    // v1 drove this from the runtime; the v2 controller owns it.
-    previous.set('--dsh-skin-scrim', style.getPropertyValue('--dsh-skin-scrim'))
-    style.setProperty('--dsh-skin-scrim', values === null ? '0' : '1')
-    ledger.record(activation, 'background:body', restore)
+    ledger.record(activation, 'background:layer', restore)
   }
 
   function installBackground(
@@ -230,34 +243,21 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
   ): void {
     const media = entry.manifest.contributes.backgroundMedia
     if (!media) {
-      setBodyBackground(activation, null)
+      setBackgroundLayer(activation, [])
       return
     }
     // WE wallpaper > user manual background > skin manifest background.
     if (deps.suppressBackgroundMedia?.() === true) {
-      setBodyBackground(activation, null)
+      setBackgroundLayer(activation, [])
       return
     }
     const variant = themeGet() === 'dark' ? (media.dark ?? media.light) : (media.light ?? media.dark)
     if (!variant) {
-      setBodyBackground(activation, null)
+      setBackgroundLayer(activation, [])
       return
     }
     const assetBase = `${apiBase}/skins/${entry.manifest.id}`
-    // Paint on document.body, NOT the negative-z decoration layer: body
-    // backgrounds (the official shell paints its own) sit ABOVE negative-z
-    // stacking contexts in the CSS paint order, so a layer image would be
-    // invisible. This is the v1 mechanism (body background-image list) and
-    // keeps the shell's own body background-color underneath the art.
-    const image = `url(${assetBase}/${variant.src})`
-    const backgroundImage = variant.scrim ? `${variant.scrim}, ${image}` : image
-    setBodyBackground(activation, {
-      'background-image': backgroundImage,
-      'background-position': 'center',
-      'background-size': 'cover',
-      'background-attachment': 'fixed',
-      'background-repeat': 'no-repeat',
-    })
+    setBackgroundLayer(activation, buildBackgroundMedia(doc, variant, assetBase))
   }
 
   async function installHooks(activation: number, entry: ControllerSkinEntry): Promise<void> {
@@ -340,10 +340,10 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
         installBackground(activation, entry)
         await installHooks(activation, entry)
       } else {
-        // Stock / entryless switch owns the body background too: it must
+        // Stock / entryless switch owns the background layer too: it must
         // clear a previous skin's paint (the old activation's restore is
         // skipped as stale by the ownership gate).
-        setBodyBackground(activation, null)
+        setBackgroundLayer(activation, [])
       }
       if (seq !== latestRequest) throw new StaleSwitch()
 

@@ -23,6 +23,7 @@
  * @module @linxin666/dsh-client-ui-skin-center/wallpaper
  */
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import { setSceneBackdropActive } from './runtime/backdrop-scene.ts'
 
 /** The namespace string the Host registers (mirrors src/index.ts). */
 export const SKIN_WALLPAPER_NS = 'skin-wallpaper'
@@ -538,18 +539,6 @@ export class WallpaperController implements WallpaperHandle {
           background-color: transparent !important;
           background-image: none !important;
         }
-        /* The composer seat paints an opaque base fade under the input card
-           (rc.8: a linear gradient to --dsw-alias-bg-base, z-index 7; some
-           builds additionally use a ::before with backdrop-filter). Remove it
-           while the WE wallpaper is mounted so the backdrop shows behind the
-           input area (issue #734). It is anchored on the stable semantic
-           attribute data-composer-seat that the official shell outputs, so it
-           does not depend on hashed class names. */
-        html[data-dsh-wallpaper-active] [data-composer-seat],
-        html[data-dsh-wallpaper-active] [data-composer-seat]::before {
-          background: none !important;
-          backdrop-filter: none !important;
-        }
         /* Full-viewport shell surfaces (AppFrame frame, conversation root,
            details root) paint the opaque app base background via hashed
            CSS-module classes. While a WE wallpaper is mounted the controller
@@ -565,6 +554,9 @@ export class WallpaperController implements WallpaperHandle {
     }
     this.doc.body.dataset.dshWallpaperActive = 'true'
     this.doc.documentElement.dataset.dshWallpaperActive = 'true'
+    // Report the wallpaper into the unified "backdrop visible" marker so the
+    // shared composer-seat neutralizer applies here too (issue #777).
+    setSceneBackdropActive(this.doc, 'wallpaper', true)
     this.markSurfaces()
     if (this.mediaLayer === null) {
       this.mediaLayer = this.doc.createElement('div')
@@ -795,6 +787,7 @@ export class WallpaperController implements WallpaperHandle {
     this.untagSurfaces()
     delete this.doc.body.dataset.dshWallpaperActive
     delete this.doc.documentElement.dataset.dshWallpaperActive
+    setSceneBackdropActive(this.doc, 'wallpaper', false)
     if (this.rootNeutralizer !== null) {
       this.rootNeutralizer.remove()
       this.rootNeutralizer = null

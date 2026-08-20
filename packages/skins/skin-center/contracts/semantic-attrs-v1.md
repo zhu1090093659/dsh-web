@@ -33,13 +33,14 @@
 | `settings` | shell | 设置模态；`[role="dialog"]` 内含 `[data-slot="settings.section"]` 组合判定 |
 | `overlay` | shell | 帧级浮层；`[data-shell-overlay]` / `[data-slot="shell.overlay"]` |
 
-### WE 壁纸自有标记（owner: skin-center）
+### 背景自有标记（owner: skin-center）
 
-皮肤中心壁纸层（Wallpaper Engine）挂载期间的自有标记；`data-dsh-wallpaper-active`
-为 body/html 级属性（按上文纪律另行管理），`data-dsh-wallpaper-surface` 打在元素上：
+皮肤中心「有背景艺术可见」期间的自有标记；均为 body/html 级属性（按上文纪律
+另行管理），`data-dsh-wallpaper-surface` 打在元素上：
 
 | 属性 | 位置 | 含义 / 锚定方式 |
 | --- | --- | --- |
+| `data-dsh-backdrop-active` | html + body（body/html 级，另行管理） | 皮肤背景媒体（`backgroundMedia`）或 WE 壁纸任一挂载期间置 `true`（`backdrop-scene.ts` 汇总双侧来源），卸载 / 禁用清净；供 composer seat 遮罩统一中和与输入区前置磨砂面板规则锚定，皮肤与壁纸场景行为一致（#777） |
 | `data-dsh-wallpaper-active` | html + body（body/html 级，另行管理） | WE 壁纸挂载期间置 `true`，卸载 / 禁用清除；供皮肤 CSS 与壁纸中和规则锚定（#734） |
 | `data-dsh-wallpaper-surface` | 官方 shell 全视口背景元素 + 侧栏工作区淡化条（元素级） | `WallpaperController.markWallpaperSurfaces()` 在 WE 壁纸挂载期间打标（全视口 bg-base 背景 + `data-slot="sidebar.workspaces"` 内渐变淡化条），命中 `html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface]` 中和；卸载清除，不含哈希类依赖（#734） |
 

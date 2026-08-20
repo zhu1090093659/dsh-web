@@ -1,0 +1,269 @@
+/**
+ * Deep Current — oceanographic observatory palette for dsh web.
+ *
+ * L1 remaps official semantic tokens. The stylesheet contains no remote
+ * resources or executable hooks. Structural presentation lives in the small
+ * patches.css companion and uses stable data and ARIA anchors only.
+ */
+
+:root {
+  color-scheme: light;
+  color: #123139;
+
+  --deep-current-abyss: #0b2a33;
+  --deep-current-pearl: #f4f8f7;
+  --deep-current-sea-glass: #ddece9;
+  --deep-current-blue: #2d6cdf;
+  --deep-current-mint: #63e6be;
+  --deep-current-coral: #ff6b5e;
+  --deep-current-amber: #c88932;
+  --deep-current-composer: #fff;
+  --deep-current-contour-blue: #2d6cdf24;
+  --deep-current-contour-mint: #2c9f7d1c;
+  --deep-current-current-band: #63e6be14;
+  --deep-current-display-font: "Avenir Next", "DIN Alternate", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --dsw-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+
+  /* surfaces */
+  --dsw-alias-bg-base: #f4f8f7;
+  --dsw-alias-bg-layer-1: #fff;
+  --dsw-alias-bg-layer-2: #eaf2f0;
+  --dsw-alias-bg-layer-3: #ddece9;
+  --dsw-alias-bg-mask-1: #0b2a336b;
+  --dsw-alias-bg-mask-2: #0b2a3338;
+  --dsw-alias-bg-mask-3: #0b2a3385;
+  --dsw-alias-bg-mask-drop: #0b2a334d;
+  --dsw-alias-bg-mask-photo: #061a20db;
+  --dsw-alias-bg-module-platform: #edf5f3;
+  --dsw-alias-bg-multi-select: #dfeeea;
+  --dsw-alias-bg-overlay: #fffffff2;
+  --dsw-alias-bg-skeleton: #2d6cdf12;
+
+  /* borders */
+  --dsw-alias-border-inverted: #ffffff8f;
+  --dsw-alias-border-inverted2: #ffffffbd;
+  --dsw-alias-border-l1: #0b2a3314;
+  --dsw-alias-border-l2-darkmode-thin: #0b2a3321;
+  --dsw-alias-border-l2: #0b2a3329;
+  --dsw-alias-border-l3: #0b2a3340;
+  --dsw-alias-border-l4: #0b2a335c;
+
+  /* labels */
+  --dsw-alias-label-primary: #123139;
+  --dsw-alias-label-primary-bluish: #234f77;
+  --dsw-alias-label-primary-dimmed: #506b70;
+  --dsw-alias-label-primary-foreground: #f5fffc;
+  --dsw-alias-label-primary-inverted: #f5fffc;
+  --dsw-alias-label-secondary: #3e5b61;
+  --dsw-alias-label-tertiary: #6f898a;
+  --dsw-alias-label-dimmed: #91a7a5;
+  --dsw-alias-label-caption: #9eb2af;
+
+  /* brand and interaction */
+  --dsw-alias-brand-primary: #2d6cdf;
+  --dsw-alias-brand-primary-invert: #fff;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #2d6cdf;
+  --dsw-alias-brand-text: #2058bd;
+  --dsw-alias-interactive-bg-hover: #2d6cdf12;
+  --dsw-alias-interactive-bg-active: #2d6cdf21;
+  --dsw-alias-interactive-bg-hover-accent: #63e6be26;
+  --dsw-alias-interactive-bg-hover-danger: #ff6b5e17;
+  --dsw-alias-interactive-bg-hover-solid: #e1eeeb;
+
+  /* buttons */
+  --dsw-alias-button-contrast-fill: #0b2a33;
+  --dsw-alias-button-elevated-fill: #fff;
+  --dsw-alias-button-floating-fill: #fff;
+  --dsw-alias-button-floating-hover: #edf5f3;
+  --dsw-alias-button-ghost-active-border: #2d6cdf4d;
+  --dsw-alias-button-ghost-active-fill: #2d6cdf14;
+  --dsw-alias-button-ghost-active-hover: #2d6cdf21;
+  --dsw-alias-button-info-fill: #e2ecff;
+  --dsw-alias-button-info-hover: #d5e3ff;
+  --dsw-alias-button-primary-dimmed: #2d6cdf66;
+  --dsw-alias-button-primary-fill: #2d6cdf;
+  --dsw-alias-button-primary-hover: #245cc0;
+  --dsw-alias-button-tool-bar-fill-invisible: #ffffff99;
+  --dsw-alias-button-tool-bar-fill: #edf5f3;
+  --dsw-alias-button-tool-bar-hover: #dfece9;
+
+  /* state colors */
+  --dsw-alias-state-business-primary: #2d6cdf;
+  --dsw-alias-state-business-tertiary: #2d6cdf1f;
+  --dsw-alias-state-error-primary: #d94e45;
+  --dsw-alias-state-error-secondary: #ff6b5e;
+  --dsw-alias-state-success-primary: #218969;
+  --dsw-alias-state-success-secondary: #37a983;
+  --dsw-alias-state-success-tertiary: #63e6be26;
+  --dsw-alias-state-warn-label: #815218;
+  --dsw-alias-state-warn-primary: #b97825;
+  --dsw-alias-state-warn-secondary: #c88932;
+  --dsw-alias-state-warn-tertiary: #c8893226;
+
+  /* markdown */
+  --dsw-alias-markdown-citation: #dce9ff;
+  --dsw-alias-markdown-code-block: #e7efed;
+  --dsw-alias-markdown-code-block-banner: #dce8e5;
+  --dsw-alias-markdown-code-segment-selected: #fff;
+  --dsw-alias-markdown-code-segment-unselected: #e1ebe8;
+  --dsw-alias-markdown-inline-code: #dfe9f8;
+  --dsw-alias-markdown-placeholder: #eaf2f0;
+  --dsw-alias-markdown-tag: #dff5ed;
+
+  /* overlays, shadows, and scrollbars */
+  --dsw-alias-toast-bg: #0b2a33f2;
+  --dsw-alias-tooltip-bg: #0b2a33;
+  --dsw-hovercard-bg: #fffffff5;
+  --dsw-mask-blur: #f4f8f7b8;
+  --dsw-shadow-lv1: 0 1px 2px #0b2a3314;
+  --dsw-shadow-lv1-blur: 0 2px 8px #0b2a3317;
+  --dsw-shadow-lv2: 0 10px 28px #0b2a331c, 0 2px 6px #0b2a3312;
+  --dsw-shadow-lv3: 0 22px 56px #0b2a3326;
+  --dsw-alias-scrollbar-bg-l1: #0b2a331c;
+  --dsw-alias-scrollbar-bg-l2: #0b2a3326;
+  --dsw-alias-scrollbar-hover-l1: #2d6cdf52;
+  --dsw-alias-scrollbar-hover-l2: #2d6cdf66;
+
+  /* shell surfaces */
+  --dsw-specific-bubble: #f7fbfa;
+  --dsw-specific-bubble-highlight: #e6f2ef;
+  --dsw-specific-input-major: #fff;
+  --dsw-specific-login-input: #fff;
+  --dsw-specific-menu: #fffffff5;
+  --dsw-specific-selector: #e8f1ef;
+  --dsw-specific-sidebar-fill: #0b2a33;
+  --dsw-specific-sidebar-nav-item-active: #63e6be24;
+  --dsw-specific-sidebar-nav-item-active-accent: #63e6be;
+  --dsw-specific-sidebar-nav-item-hover: #ffffff0f;
+  --dsw-specific-tip: #fff;
+}
+
+body[data-ds-dark-theme] {
+  color-scheme: dark;
+  color: #e9f7f4;
+
+  --deep-current-abyss: #061820;
+  --deep-current-pearl: #071a21;
+  --deep-current-sea-glass: #123641;
+  --deep-current-blue: #72a2ff;
+  --deep-current-mint: #63e6be;
+  --deep-current-coral: #ff8278;
+  --deep-current-amber: #e4ad56;
+  --deep-current-composer: #0e2b35;
+  --deep-current-contour-blue: #72a2ff2b;
+  --deep-current-contour-mint: #63e6be20;
+  --deep-current-current-band: #2d6cdf17;
+
+  /* surfaces */
+  --dsw-alias-bg-base: #071a21;
+  --dsw-alias-bg-layer-1: #0c2731;
+  --dsw-alias-bg-layer-2: #123641;
+  --dsw-alias-bg-layer-3: #194650;
+  --dsw-alias-bg-mask-1: #00000094;
+  --dsw-alias-bg-mask-2: #00000052;
+  --dsw-alias-bg-mask-3: #000000ad;
+  --dsw-alias-bg-mask-drop: #00000070;
+  --dsw-alias-bg-mask-photo: #000000e0;
+  --dsw-alias-bg-module-platform: #123641;
+  --dsw-alias-bg-multi-select: #153d48;
+  --dsw-alias-bg-overlay: #0c2731f2;
+  --dsw-alias-bg-skeleton: #72a2ff14;
+
+  /* borders */
+  --dsw-alias-border-inverted: #061820a6;
+  --dsw-alias-border-inverted2: #061820d1;
+  --dsw-alias-border-l1: #bdece31a;
+  --dsw-alias-border-l2-darkmode-thin: #bdece324;
+  --dsw-alias-border-l2: #bdece32e;
+  --dsw-alias-border-l3: #bdece347;
+  --dsw-alias-border-l4: #bdece361;
+
+  /* labels */
+  --dsw-alias-label-primary: #e9f7f4;
+  --dsw-alias-label-primary-bluish: #cadcff;
+  --dsw-alias-label-primary-dimmed: #a0bcb7;
+  --dsw-alias-label-primary-foreground: #061820;
+  --dsw-alias-label-primary-inverted: #061820;
+  --dsw-alias-label-secondary: #b3cfca;
+  --dsw-alias-label-tertiary: #7fa49e;
+  --dsw-alias-label-dimmed: #5f8881;
+  --dsw-alias-label-caption: #4f766f;
+
+  /* brand and interaction */
+  --dsw-alias-brand-primary: #72a2ff;
+  --dsw-alias-brand-primary-invert: #071a21;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #72a2ff;
+  --dsw-alias-brand-text: #bdd1ff;
+  --dsw-alias-interactive-bg-hover: #72a2ff17;
+  --dsw-alias-interactive-bg-active: #72a2ff2b;
+  --dsw-alias-interactive-bg-hover-accent: #63e6be24;
+  --dsw-alias-interactive-bg-hover-danger: #ff827821;
+  --dsw-alias-interactive-bg-hover-solid: #194650;
+
+  /* buttons */
+  --dsw-alias-button-contrast-fill: #e9f7f4;
+  --dsw-alias-button-elevated-fill: #123641;
+  --dsw-alias-button-floating-fill: #0c2731;
+  --dsw-alias-button-floating-hover: #194650;
+  --dsw-alias-button-ghost-active-border: #72a2ff61;
+  --dsw-alias-button-ghost-active-fill: #72a2ff1f;
+  --dsw-alias-button-ghost-active-hover: #72a2ff30;
+  --dsw-alias-button-info-fill: #173e5e;
+  --dsw-alias-button-info-hover: #1c4b70;
+  --dsw-alias-button-primary-dimmed: #3e65aa;
+  --dsw-alias-button-primary-fill: #4d7fe0;
+  --dsw-alias-button-primary-hover: #6594ed;
+  --dsw-alias-button-tool-bar-fill-invisible: #1236418f;
+  --dsw-alias-button-tool-bar-fill: #123641;
+  --dsw-alias-button-tool-bar-hover: #194650;
+
+  /* state colors */
+  --dsw-alias-state-business-primary: #72a2ff;
+  --dsw-alias-state-business-tertiary: #72a2ff26;
+  --dsw-alias-state-error-primary: #ff8278;
+  --dsw-alias-state-error-secondary: #ff9b93;
+  --dsw-alias-state-success-primary: #63e6be;
+  --dsw-alias-state-success-secondary: #83edcb;
+  --dsw-alias-state-success-tertiary: #63e6be29;
+  --dsw-alias-state-warn-label: #f3ca87;
+  --dsw-alias-state-warn-primary: #e4ad56;
+  --dsw-alias-state-warn-secondary: #edbd73;
+  --dsw-alias-state-warn-tertiary: #e4ad5629;
+
+  /* markdown */
+  --dsw-alias-markdown-citation: #173e5e;
+  --dsw-alias-markdown-code-block: #06151b;
+  --dsw-alias-markdown-code-block-banner: #0e2b35;
+  --dsw-alias-markdown-code-segment-selected: #194650;
+  --dsw-alias-markdown-code-segment-unselected: #0a222b;
+  --dsw-alias-markdown-inline-code: #123850;
+  --dsw-alias-markdown-placeholder: #0c2731;
+  --dsw-alias-markdown-tag: #123d38;
+
+  /* overlays, shadows, and scrollbars */
+  --dsw-alias-toast-bg: #123641f5;
+  --dsw-alias-tooltip-bg: #e9f7f4;
+  --dsw-hovercard-bg: #0c2731f5;
+  --dsw-mask-blur: #071a21c2;
+  --dsw-shadow-lv1: 0 1px 2px #00000061;
+  --dsw-shadow-lv1-blur: 0 3px 10px #00000070;
+  --dsw-shadow-lv2: 0 12px 32px #00000075, 0 2px 8px #00000052;
+  --dsw-shadow-lv3: 0 24px 64px #00000094;
+  --dsw-alias-scrollbar-bg-l1: #bdece326;
+  --dsw-alias-scrollbar-bg-l2: #bdece333;
+  --dsw-alias-scrollbar-hover-l1: #72a2ff61;
+  --dsw-alias-scrollbar-hover-l2: #72a2ff75;
+
+  /* shell surfaces */
+  --dsw-specific-bubble: #0e2b35;
+  --dsw-specific-bubble-highlight: #153d48;
+  --dsw-specific-input-major: #0e2b35;
+  --dsw-specific-login-input: #0e2b35;
+  --dsw-specific-menu: #0c2731f5;
+  --dsw-specific-selector: #123641;
+  --dsw-specific-sidebar-fill: #061820;
+  --dsw-specific-sidebar-nav-item-active: #63e6be24;
+  --dsw-specific-sidebar-nav-item-active-accent: #63e6be;
+  --dsw-specific-sidebar-nav-item-hover: #ffffff0f;
+  --dsw-specific-tip: #0c2731;
+}

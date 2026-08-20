@@ -1,0 +1,307 @@
+/**
+ * Deep Current structural presentation.
+ *
+ * This L3 stylesheet intentionally stays small and uses structural data,
+ * semantic data, and ARIA anchors only. It contains no CSS-module hash
+ * selectors and no layout-changing rules.
+ */
+
+[data-pane="conversation"],
+[data-dsh-surface="conversation"] {
+  background-color: var(--deep-current-pearl);
+  background-image:
+    radial-gradient(ellipse 48% 30% at 58% 57%, var(--deep-current-current-band) 0%, transparent 68%),
+    linear-gradient(118deg, transparent 20%, var(--deep-current-current-band) 47%, transparent 74%);
+  background-attachment: local;
+}
+
+[data-composer-seat] {
+  isolation: isolate;
+  position: relative;
+}
+
+[data-composer-seat]::before {
+  content: "";
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("assets/contour-field.svg");
+  background-repeat: repeat-x;
+  background-size: 1440px 810px;
+  background-position: 0 50%;
+  position: absolute;
+  inset: -145% -62% -135%;
+  -webkit-mask-image: radial-gradient(ellipse 78% 76% at 58% 53%, #000 0 58%, transparent 93%);
+  mask-image: radial-gradient(ellipse 78% 76% at 58% 53%, #000 0 58%, transparent 93%);
+}
+
+[data-composer-seat]::after {
+  content: "";
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 44% 19% at 66% 57%, color-mix(in srgb, var(--deep-current-blue) 18%, transparent), transparent 72%),
+    linear-gradient(104deg, transparent 18%, var(--deep-current-current-band) 42%, color-mix(in srgb, var(--deep-current-blue) 11%, transparent) 56%, transparent 78%);
+  background-repeat: no-repeat;
+  background-size: 140% 100%, 180% 100%;
+  background-position: -25% 50%, 115% 50%;
+  position: absolute;
+  inset: -110% -44% -105%;
+  -webkit-mask-image: radial-gradient(ellipse 72% 68% at 60% 54%, #000 0 46%, transparent 88%);
+  mask-image: radial-gradient(ellipse 72% 68% at 60% 54%, #000 0 46%, transparent 88%);
+}
+
+@keyframes deep-current-contour-flow {
+  to {
+    background-position: 1440px 50%;
+  }
+}
+
+@keyframes deep-current-glow-flow {
+  to {
+    background-position: 125% 50%, -85% 50%;
+  }
+}
+
+[data-phase="hero"] [data-composer-seat]::before {
+  animation: deep-current-contour-flow 18s linear infinite;
+  will-change: background-position;
+}
+
+[data-phase="hero"] [data-composer-seat]::after {
+  animation: deep-current-glow-flow 11s linear infinite;
+  will-change: background-position;
+}
+
+[data-composer-seat] > * {
+  z-index: 1;
+  position: relative;
+}
+
+[data-pane="sidebar"],
+[data-dsh-surface="sidebar"] {
+  --dsw-alias-bg-base: #0b2a33;
+  --dsw-alias-bg-layer-1: #103640;
+  --dsw-alias-bg-layer-2: #143f49;
+  --dsw-alias-bg-layer-3: #194a54;
+  --dsw-alias-bg-overlay: #103640f5;
+  --dsw-alias-border-l1: #d8f5ee1a;
+  --dsw-alias-border-l2: #d8f5ee29;
+  --dsw-alias-border-l3: #d8f5ee42;
+  --dsw-alias-label-primary: #edf9f6;
+  --dsw-alias-label-primary-bluish: #d7f8ed;
+  --dsw-alias-label-secondary: #bdd8d2;
+  --dsw-alias-label-tertiary: #8cafaa;
+  --dsw-alias-label-dimmed: #6d938d;
+  --dsw-alias-label-caption: #5d837d;
+  --dsw-alias-label-primary-inverted: #0b2a33;
+  --dsw-alias-brand-primary: #63e6be;
+  --dsw-alias-brand-text: #baf7e3;
+  --dsw-alias-interactive-bg-hover: #ffffff0f;
+  --dsw-alias-interactive-bg-active: #63e6be24;
+  --dsw-alias-interactive-bg-hover-solid: #194a54;
+  --dsw-alias-button-elevated-fill: #143f49;
+  --dsw-alias-button-floating-fill: #103640;
+  --dsw-alias-button-floating-hover: #194a54;
+  --dsw-alias-button-info-fill: #143f49;
+  --dsw-alias-button-info-hover: #194a54;
+  --dsw-specific-sidebar-fill: #0b2a33;
+  --dsw-specific-sidebar-nav-item-active: #63e6be24;
+  --dsw-specific-sidebar-nav-item-active-accent: #63e6be;
+  --dsw-specific-sidebar-nav-item-hover: #ffffff0f;
+  color: #edf9f6;
+  background-color: #0b2a33;
+  border-inline-end: 1px solid #d8f5ee1f;
+}
+
+[data-pane="sidebar"] > div {
+  background:
+    radial-gradient(circle at 28px 18%, #63e6be12, transparent 32%),
+    linear-gradient(180deg, #0b2a33 0%, #08242c 100%);
+}
+
+body[data-ds-dark-theme] [data-pane="sidebar"],
+body[data-ds-dark-theme] [data-dsh-surface="sidebar"] {
+  --dsw-alias-bg-base: #061820;
+  --dsw-alias-bg-layer-1: #0a222b;
+  --dsw-alias-bg-layer-2: #0e2b35;
+  --dsw-alias-bg-layer-3: #123641;
+  --dsw-alias-label-primary-inverted: #061820;
+  --dsw-specific-sidebar-fill: #061820;
+  background-color: #061820;
+}
+
+body[data-ds-dark-theme] [data-pane="sidebar"] > div {
+  background:
+    radial-gradient(circle at 28px 18%, #63e6be0f, transparent 34%),
+    linear-gradient(180deg, #061820 0%, #041219 100%);
+}
+
+body[data-ds-dark-theme] [data-composer-seat]::before {
+  opacity: 0.9;
+  filter: brightness(1.3) saturate(1.12);
+}
+
+/*
+ * The official settings dialog portals through the sidebar subtree. Restore
+ * the main surface tokens at its semantic boundary so the dark sidebar's
+ * light labels never leak onto pearl controls.
+ */
+[data-dsh-surface="settings"] {
+  --dsw-alias-bg-base: #f4f8f7;
+  --dsw-alias-bg-layer-1: #fff;
+  --dsw-alias-bg-layer-2: #eaf2f0;
+  --dsw-alias-bg-layer-3: #ddece9;
+  --dsw-alias-bg-overlay: #fffffff2;
+  --dsw-alias-border-l1: #0b2a3314;
+  --dsw-alias-border-l2: #0b2a3329;
+  --dsw-alias-border-l3: #0b2a3340;
+  --dsw-alias-label-primary: #123139;
+  --dsw-alias-label-primary-bluish: #234f77;
+  --dsw-alias-label-secondary: #3e5b61;
+  --dsw-alias-label-tertiary: #6f898a;
+  --dsw-alias-label-dimmed: #91a7a5;
+  --dsw-alias-label-caption: #9eb2af;
+  --dsw-alias-brand-primary: #2d6cdf;
+  --dsw-alias-brand-text: #2058bd;
+  --dsw-alias-interactive-bg-hover: #2d6cdf12;
+  --dsw-alias-interactive-bg-active: #2d6cdf21;
+  --dsw-alias-interactive-bg-hover-solid: #e1eeeb;
+  --dsw-alias-button-elevated-fill: #fff;
+  --dsw-alias-button-floating-fill: #fff;
+  --dsw-alias-button-floating-hover: #edf5f3;
+  --dsw-alias-button-info-fill: #e2ecff;
+  --dsw-alias-button-info-hover: #d5e3ff;
+  color: #123139;
+}
+
+body[data-ds-dark-theme] [data-dsh-surface="settings"] {
+  --dsw-alias-bg-base: #071a21;
+  --dsw-alias-bg-layer-1: #0c2731;
+  --dsw-alias-bg-layer-2: #123641;
+  --dsw-alias-bg-layer-3: #194650;
+  --dsw-alias-bg-overlay: #0c2731f2;
+  --dsw-alias-border-l1: #bdece31a;
+  --dsw-alias-border-l2: #bdece32e;
+  --dsw-alias-border-l3: #bdece347;
+  --dsw-alias-label-primary: #e9f7f4;
+  --dsw-alias-label-primary-bluish: #cadcff;
+  --dsw-alias-label-secondary: #b3cfca;
+  --dsw-alias-label-tertiary: #7fa49e;
+  --dsw-alias-label-dimmed: #5f8881;
+  --dsw-alias-label-caption: #4f766f;
+  --dsw-alias-brand-primary: #72a2ff;
+  --dsw-alias-brand-text: #bdd1ff;
+  --dsw-alias-interactive-bg-hover: #72a2ff17;
+  --dsw-alias-interactive-bg-active: #72a2ff2b;
+  --dsw-alias-interactive-bg-hover-solid: #194650;
+  --dsw-alias-button-elevated-fill: #123641;
+  --dsw-alias-button-floating-fill: #0c2731;
+  --dsw-alias-button-floating-hover: #194650;
+  --dsw-alias-button-info-fill: #173e5e;
+  --dsw-alias-button-info-hover: #1c4b70;
+  color: #e9f7f4;
+}
+
+[data-pane="sidebar"] :is([aria-selected="true"], [aria-current="true"]):not([data-dsh-surface="settings"] *) {
+  color: #dffff5;
+  background-color: #63e6be24;
+  box-shadow: inset 3px 0 #63e6be;
+}
+
+[data-pane="sidebar"] :is([role="treeitem"], button, a):not([data-dsh-surface="settings"] *):focus-visible,
+[data-dsh-part="sidebar-entry"]:focus-visible {
+  outline: 2px solid #63e6be;
+  outline-offset: 2px;
+}
+
+[data-composer-card="true"],
+[data-dsh-surface="composer"] {
+  background: var(--deep-current-composer);
+  border: 1px solid color-mix(in srgb, var(--deep-current-blue) 20%, var(--deep-current-sea-glass));
+  box-shadow: var(--dsw-shadow-lv2);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+[data-composer-card="true"]:focus-within,
+[data-dsh-surface="composer"]:focus-within {
+  border-color: var(--deep-current-blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--deep-current-blue) 18%, transparent), var(--dsw-shadow-lv2);
+}
+
+textarea[data-phase],
+[data-dsh-part="composer-input"] {
+  color: var(--dsw-alias-label-primary);
+  caret-color: var(--deep-current-blue);
+}
+
+textarea[data-phase]::placeholder {
+  color: var(--dsw-alias-label-dimmed);
+}
+
+[data-dsh-surface="session-header"],
+[data-dsh-part="header"] {
+  font-family: var(--deep-current-display-font);
+  letter-spacing: 0.012em;
+}
+
+[data-dsh-part="column"],
+[data-dsh-part="detail"],
+[data-dsh-part="host-table"],
+[data-dsh-part="dialog"],
+[data-dsh-part="plugin-item"],
+[data-dsh-part="marketplace-card"] {
+  border-color: var(--dsw-alias-border-l2);
+  box-shadow: var(--dsw-shadow-lv1);
+}
+
+@media (max-width: 768px) {
+  [data-pane="conversation"],
+  [data-dsh-surface="conversation"] {
+    background-image:
+      radial-gradient(ellipse 70% 28% at 55% 70%, var(--deep-current-current-band) 0%, transparent 72%);
+  }
+
+  [data-composer-seat]::before {
+    opacity: 0.58;
+    background-size: 1080px 608px;
+    inset: -92% -52% -82%;
+  }
+
+  [data-composer-seat]::after {
+    display: none;
+  }
+
+  [data-phase="hero"] [data-composer-seat]::before {
+    animation-duration: 14s;
+  }
+
+  [data-composer-card="true"],
+  [data-dsh-surface="composer"] {
+    box-shadow: var(--dsw-shadow-lv1-blur);
+  }
+}
+
+@media (prefers-contrast: more) {
+  [data-composer-card="true"],
+  [data-dsh-surface="composer"] {
+    border-color: var(--dsw-alias-label-primary);
+  }
+
+  [data-pane="sidebar"],
+  [data-dsh-surface="sidebar"] {
+    border-inline-end-color: #edf9f66b;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-phase="hero"] [data-composer-seat]::before,
+  [data-phase="hero"] [data-composer-seat]::after {
+    animation: none;
+    will-change: auto;
+  }
+
+  [data-composer-card="true"],
+  [data-dsh-surface="composer"] {
+    transition: none;
+  }
+}

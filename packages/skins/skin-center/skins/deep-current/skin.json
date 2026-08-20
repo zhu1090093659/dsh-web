@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "deep-current",
+  "name": "深流",
+  "nameEn": "Deep Current",
+  "version": "0.1.0",
+  "author": "Twelveeee",
+  "tagline": "深海墨绿 · 珍珠画布 · 等深线洋流",
+  "description": "《深流》为长时间使用 dsh web 的工作界面引入海洋测绘语言：亮色模式以深海墨绿侧栏衬托珍珠主画布，暗色模式整体下潜为低亮度深海层级；空会话首页的有机等深线场与柔和洋流带以分层速度横向流过输入区，进入对话后恢复静止，蓝色负责主要操作，薄荷绿标记选中与成功状态，珊瑚色只用于错误提示。",
+  "tags": [
+    "ocean",
+    "bathymetry",
+    "current",
+    "calm",
+    "css-only",
+    "light",
+    "dark"
+  ],
+  "accent": "#2D6CDF",
+  "order": 101,
+  "preview": {
+    "light": "preview/light.png",
+    "dark": "preview/dark.png"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css"
+  }
+}

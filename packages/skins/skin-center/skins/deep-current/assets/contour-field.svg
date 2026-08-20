@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="deep-current-line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2d6cdf" stop-opacity="0.10"/>
+      <stop offset="0.32" stop-color="#2d6cdf" stop-opacity="0.28"/>
+      <stop offset="0.58" stop-color="#58cddd" stop-opacity="0.34"/>
+      <stop offset="0.82" stop-color="#63e6be" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#2d6cdf" stop-opacity="0.10"/>
+    </linearGradient>
+    <linearGradient id="deep-current-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="white" stop-opacity="0"/>
+      <stop offset="0.13" stop-color="white" stop-opacity="0.45"/>
+      <stop offset="0.30" stop-color="white"/>
+      <stop offset="0.73" stop-color="white"/>
+      <stop offset="0.90" stop-color="white" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="deep-current-field-fade">
+      <rect width="1600" height="900" fill="url(#deep-current-fade)"/>
+    </mask>
+    <filter id="deep-current-soft-glow" x="-20%" y="-40%" width="140%" height="180%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <path id="deep-current-river" d="M-80 505 C80 505 105 690 260 650 C412 611 362 356 542 390 C704 421 720 596 902 560 C1088 523 1042 246 1260 270 C1462 292 1450 505 1680 505"/>
+    <path id="deep-current-basin" d="M-268 0 C-240-96-125-146-18-126 C92-106 118-52 244-62 C330-70 350-8 278 54 C212 111 120 89 42 132 C-61 189-183 132-226 72 C-252 36-278 20-268 0Z"/>
+    <path id="deep-current-island" d="M-174 0 C-142-68-62-93 8-76 C82-58 108-24 166-8 C222 8 211 58 154 84 C86 115 35 74-28 98 C-96 124-173 75-174 0Z"/>
+  </defs>
+
+  <g mask="url(#deep-current-field-fade)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#deep-current-river" stroke="#4fbded" stroke-opacity="0.11" stroke-width="76" filter="url(#deep-current-soft-glow)"/>
+    <use href="#deep-current-river" transform="translate(0 42)" stroke="#63e6be" stroke-opacity="0.08" stroke-width="48" filter="url(#deep-current-soft-glow)"/>
+
+    <g stroke="url(#deep-current-line)" stroke-width="1.15">
+      <use href="#deep-current-river" transform="translate(0 -226)"/>
+      <use href="#deep-current-river" transform="translate(0 -204)"/>
+      <use href="#deep-current-river" transform="translate(0 -181)"/>
+      <use href="#deep-current-river" transform="translate(0 -158)"/>
+      <use href="#deep-current-river" transform="translate(0 -135)"/>
+      <use href="#deep-current-river" transform="translate(0 -112)"/>
+      <use href="#deep-current-river" transform="translate(0 -89)"/>
+      <use href="#deep-current-river" transform="translate(0 -66)"/>
+      <use href="#deep-current-river" transform="translate(0 -43)"/>
+      <use href="#deep-current-river" transform="translate(0 -20)"/>
+      <use href="#deep-current-river" transform="translate(0 3)"/>
+      <use href="#deep-current-river" transform="translate(0 26)"/>
+      <use href="#deep-current-river" transform="translate(0 49)"/>
+      <use href="#deep-current-river" transform="translate(0 72)"/>
+      <use href="#deep-current-river" transform="translate(0 95)"/>
+      <use href="#deep-current-river" transform="translate(0 118)"/>
+      <use href="#deep-current-river" transform="translate(0 141)"/>
+      <use href="#deep-current-river" transform="translate(0 164)"/>
+      <use href="#deep-current-river" transform="translate(0 187)"/>
+      <use href="#deep-current-river" transform="translate(0 210)"/>
+    </g>
+
+    <g stroke="url(#deep-current-line)" stroke-width="1" vector-effect="non-scaling-stroke">
+      <use href="#deep-current-basin" transform="translate(1208 320) scale(1.08)"/>
+      <use href="#deep-current-basin" transform="translate(1208 320) scale(.94)"/>
+      <use href="#deep-current-basin" transform="translate(1208 320) scale(.80)"/>
+      <use href="#deep-current-basin" transform="translate(1208 320) scale(.66)"/>
+      <use href="#deep-current-basin" transform="translate(1208 320) scale(.52)"/>
+      <use href="#deep-current-basin" transform="translate(1208 320) scale(.38)"/>
+      <use href="#deep-current-island" transform="translate(340 650) scale(1.18)"/>
+      <use href="#deep-current-island" transform="translate(340 650) scale(.98)"/>
+      <use href="#deep-current-island" transform="translate(340 650) scale(.78)"/>
+      <use href="#deep-current-island" transform="translate(340 650) scale(.58)"/>
+      <use href="#deep-current-island" transform="translate(340 650) scale(.38)"/>
+    </g>
+
+    <g stroke="#2d6cdf" stroke-opacity="0.16" stroke-width="1" stroke-dasharray="4 9">
+      <use href="#deep-current-river" transform="translate(0 -77)"/>
+      <use href="#deep-current-river" transform="translate(0 60)"/>
+      <use href="#deep-current-river" transform="translate(0 198)"/>
+      <use href="#deep-current-basin" transform="translate(1208 320) scale(.73)"/>
+      <use href="#deep-current-island" transform="translate(340 650) scale(.68)"/>
+    </g>
+  </g>
+</svg>

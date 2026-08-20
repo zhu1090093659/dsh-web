@@ -196,17 +196,28 @@ export async function readBoundedText(response: Response, cap: number): Promise<
   return text.length > cap ? text.slice(0, cap) : text
 }
 
-/** Extract the single text answer from an OpenAI-compatible chat-completions payload. */
+/**
+ * Extract the single text answer from an OpenAI-compatible chat-completions
+ * payload. Reasoning models (Kimi K2.x and friends) can spend the whole
+ * max_tokens budget on the thinking chain and leave `content` empty while the
+ * answer lives in `reasoning_content` (issue #637) — fall back to it instead
+ * of failing the call outright.
+ */
 export function extractChatCompletionsContent(payload: unknown): string {
   const root = asRecord(payload)
   const choices = root?.choices
   if (root === undefined || !Array.isArray(choices) || choices.length === 0) unexpectedShape()
   const message = asRecord(asRecord(choices[0])?.message)
   const content = message?.['content']
-  if (typeof content !== 'string' || content.trim().length === 0) {
-    throw new Error('describe-image: vision endpoint returned no text content')
+  if (typeof content === 'string' && content.trim().length > 0) return content
+
+  const reasoning = message?.['reasoning_content']
+  if (typeof reasoning === 'string' && reasoning.trim().length > 0) return reasoning
+  if (Array.isArray(reasoning)) {
+    const parts = reasoning.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    if (parts.length > 0) return parts.join('\n')
   }
-  return content
+  throw new Error('describe-image: vision endpoint returned no text content (the model may have spent the whole output budget on reasoning; raise the max output tokens or disable thinking for this model)')
 }
 
 /** Extract the text answer from an OpenAI Responses payload: every `output_text` part of assistant messages. */
@@ -233,6 +244,56 @@ export function extractResponsesContent(payload: unknown): string {
     throw new Error('describe-image: vision endpoint returned no text content')
   }
   return text
+}
+
+/**
+ * Extract the text answer from an SSE (`text/event-stream`) Responses payload.
+ * Relay endpoints that wrap the Responses wire API (codex-lb style backends) always
+ * stream — `codex.keepalive`, `response.output_text.delta`, `response.output_item.done`,
+ * `response.completed`, then `[DONE]` — even for a non-stream request. Delta events
+ * accumulate the final text; `output_item.done` carries the completed message content;
+ * `response.completed` may carry the standard non-stream `output` shape on endpoints
+ * that populate it. Deltas win when present so the text is never assembled twice.
+ */
+function extractResponsesStreamContent(payloadBytes: Buffer): string {
+  const deltas: string[] = []
+  const completedParts: string[] = []
+  let completedOutput: unknown
+  for (const line of payloadBytes.toString('utf8').split('\n')) {
+    if (!line.startsWith('data:')) continue
+    const data = line.slice(5).trim()
+    if (data.length === 0 || data === '[DONE]') continue
+    let ev: unknown
+    try {
+      ev = JSON.parse(data)
+    } catch {
+      continue
+    }
+    const record = asRecord(ev)
+    if (record === undefined) continue
+    if (record.type === 'response.output_text.delta' && typeof record.delta === 'string' && record.delta.length > 0) {
+      deltas.push(record.delta)
+    } else if (record.type === 'response.output_item.done') {
+      const item = asRecord(record.item)
+      if (item?.type === 'message' && Array.isArray(item.content)) {
+        for (const part of item.content) {
+          const block = asRecord(part)
+          if (block?.type === 'output_text' && typeof block.text === 'string' && block.text.trim().length > 0) {
+            completedParts.push(block.text)
+          }
+        }
+      }
+    } else if (record.type === 'response.completed' && record.response !== undefined) {
+      completedOutput = record.response
+    }
+  }
+  if (deltas.length > 0) {
+    const deltaText = deltas.join('')
+    if (deltaText.trim().length > 0) return deltaText
+  }
+  if (completedParts.length > 0) return completedParts.join('\n')
+  if (completedOutput !== undefined) return extractResponsesContent(completedOutput)
+  throw new Error('describe-image: vision endpoint returned no text content (SSE stream)')
 }
 
 /** Extract the text answer from an Anthropic Messages payload: every `text` content block of the top-level `content` array, skipping `thinking` and other non-text blocks. */
@@ -413,18 +474,37 @@ export async function callVision(
     const excerpt = await readBoundedText(response, 200)
     throw new Error(`describe-image: vision endpoint returned HTTP ${response.status}: ${excerpt}`)
   }
-  const payloadBytes = await readBoundedBody(response, spec.maxOutputTokens * 8 + 64 * 1024)
+  // SSE relay streams carry event-framing overhead plus reasoning traces; give the
+  // responses style a wider body bound than the JSON styles.
+  const bodyCap = spec.apiStyle === 'responses'
+    ? spec.maxOutputTokens * 16 + 256 * 1024
+    : spec.maxOutputTokens * 8 + 64 * 1024
+  const payloadBytes = await readBoundedBody(response, bodyCap)
   let payload: unknown
-  try {
-    payload = JSON.parse(payloadBytes.toString('utf8'))
-  } catch {
-    throw new Error('describe-image: vision endpoint returned invalid JSON')
+  let useStream = false
+  const contentType = response.headers.get('content-type') ?? ''
+  if (spec.apiStyle === 'responses' && contentType.includes('text/event-stream')) {
+    useStream = true
+  } else {
+    try {
+      payload = JSON.parse(payloadBytes.toString('utf8'))
+    } catch {
+      // Some relay endpoints always stream SSE regardless of the content-type or
+      // stream flag; fall back to stream parsing for the responses style.
+      if (spec.apiStyle === 'responses') {
+        useStream = true
+      } else {
+        throw new Error('describe-image: vision endpoint returned invalid JSON')
+      }
+    }
   }
-  const text = spec.apiStyle === 'responses'
-    ? extractResponsesContent(payload)
-    : spec.apiStyle === 'anthropic-messages'
-      ? extractAnthropicMessagesContent(payload)
-      : extractChatCompletionsContent(payload)
+  const text = useStream
+    ? extractResponsesStreamContent(payloadBytes)
+    : spec.apiStyle === 'responses'
+      ? extractResponsesContent(payload)
+      : spec.apiStyle === 'anthropic-messages'
+        ? extractAnthropicMessagesContent(payload)
+        : extractChatCompletionsContent(payload)
   if (cache !== undefined) cache.set(semanticRequestKey(spec, prompt, image), text)
   return text
 }

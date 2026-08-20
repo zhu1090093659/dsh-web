@@ -744,6 +744,73 @@ describe('extractSceneMainImageFromDir', () => {
     }
   })
 
+  it('crops a square texture to the scene projection ratio (16:9 cover)', () => {
+    const wide = 8
+    const tall = 8
+    const pixels = solidPixels(wide, tall, 40, 80, 120)
+    // Two distinct horizontal bands so a vertical crop is observable: top
+    // half stays opaque dark, bottom half stays opaque light; the center
+    // crop keeps both (an all-same solid would mask an off-center crop bug).
+    for (let y = 0; y < tall; y++) {
+      const band = y < tall / 2 ? 200 : 40
+      for (let x = 0; x < wide; x++) {
+        const i = (y * wide + x) * 4
+        pixels[i] = band
+        pixels[i + 1] = band
+        pixels[i + 2] = band
+        pixels[i + 3] = 255
+      }
+    }
+    const squareTex = buildTex({
+      width: wide,
+      height: tall,
+      containerVersion: 3,
+      mipmaps: [{ width: wide, height: tall, data: pixels }],
+    })
+    const dir = makeSceneDir({
+      // Scene declares a 16:9 viewport while the texture is square.
+      'scene.json': JSON.stringify({
+        general: { orthogonalprojection: { width: 1920, height: 1080 } },
+        objects: [{ id: 1, name: 'background', image: 'materials/bg.tex' }],
+      }),
+      'materials/bg.tex': squareTex,
+    })
+    try {
+      const result = extractSceneMainImageFromDir(dir)
+      // 8x8 square cropped to 16:9 cover keeps full width and floor(8 / (16/9)) height.
+      expect(result.width).toBe(8)
+      expect(result.height).toBe(Math.floor(8 / (1920 / 1080))) // 4
+      const out = decodePng(result.png)
+      expect(out.width).toBe(8)
+      expect(out.height).toBe(4)
+      // Vertical center crop: source rows 2..5 remain (startY = floor((8-4)/2) = 2).
+      const row = (y: number): number => out.rgba[(y * out.width) * 4]
+      expect(row(0)).toBe(200) // source row 2 (top half band)
+      expect(row(out.height - 1)).toBe(40) // source row 5 (bottom half band)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps the native ratio when the scene declares no projection', () => {
+    const dir = makeSceneDir({
+      'scene.json': sceneJson('materials/bg.tex'),
+      'materials/bg.tex': buildTex({
+        width: 4,
+        height: 4,
+        containerVersion: 3,
+        mipmaps: [{ width: 4, height: 4, data: solidPixels(4, 4, 7, 7, 7) }],
+      }),
+    })
+    try {
+      const result = extractSceneMainImageFromDir(dir)
+      expect(result.width).toBe(4)
+      expect(result.height).toBe(4)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('falls back to the largest .tex found in the directory tree', () => {
     const dir = makeSceneDir({
       'scene.json': sceneJson('materials/missing.json'),

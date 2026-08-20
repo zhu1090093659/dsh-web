@@ -3156,6 +3156,57 @@ function hasContent(rgba, width, height) {
 	}
 	return sampleCount === 0 || visibleCount / sampleCount >= .01;
 }
+/**
+* Read the scene's declared projection size (the viewport the author
+* designed the scene for). Scenes without an explicit projection default to
+* null so the extractor keeps the texture's native dimensions.
+*/
+function sceneProjectionSize(scene) {
+	const general = scene.general;
+	const rawW = general?.orthogonalprojection?.width;
+	const rawH = general?.orthogonalprojection?.height;
+	const width = typeof rawW === "number" && Number.isFinite(rawW) && rawW > 0 ? Math.floor(rawW) : 0;
+	const height = typeof rawH === "number" && Number.isFinite(rawH) && rawH > 0 ? Math.floor(rawH) : 0;
+	if (width <= 0 || height <= 0) return null;
+	return {
+		width,
+		height
+	};
+}
+/**
+* Center-crop RGBA pixels to the scene's projection aspect ratio (cover
+* semantics). Scene textures are authored at the full projection canvas
+* (e.g. 2048x2048) while the viewport is 16:9; returning the raw square
+* makes the wallpaper stretch or crop wrongly on a widescreen display.
+* Returns null when no projection is declared or the ratio already matches.
+*/
+function cropToProjection(rgba, width, height, projection) {
+	if (!projection) return null;
+	const sourceRatio = width / height;
+	const targetRatio = projection.width / projection.height;
+	if (Math.abs(sourceRatio - targetRatio) < .005) return null;
+	let outWidth = width;
+	let outHeight = height;
+	if (sourceRatio > targetRatio) {
+		outWidth = Math.floor(height * targetRatio);
+		if (outWidth >= width) return null;
+	} else {
+		outHeight = Math.floor(width / targetRatio);
+		if (outHeight >= height) return null;
+	}
+	const startX = Math.max(0, Math.floor((width - outWidth) / 2));
+	const startY = Math.max(0, Math.floor((height - outHeight) / 2));
+	const out = new Uint8Array(outWidth * outHeight * 4);
+	for (let y = 0; y < outHeight; y++) {
+		const srcStart = ((startY + y) * width + startX) * 4;
+		out.set(rgba.subarray(srcStart, srcStart + outWidth * 4), y * outWidth * 4);
+	}
+	return {
+		width: outWidth,
+		height: outHeight,
+		rgba: out
+	};
+}
 function getTextureScore(path) {
 	const lower = path.toLowerCase();
 	if (isLikelyMaskOrHelper(path)) return -100;
@@ -3260,6 +3311,7 @@ function extractSceneMainImageVia(access, label) {
 		if (project && typeof project.file === "string" && project.file.endsWith(".json")) scene = access.readJson(project.file);
 	}
 	if (!scene || !Array.isArray(scene.objects)) throw new Error(label + ": scene.json not found or invalid");
+	const projection = sceneProjectionSize(scene);
 	if (scene.objects.some((obj) => obj && typeof obj === "object" && typeof obj.model === "string" && obj.model.length > 0)) throw new Error(label + ": 3D scene cannot be extracted as 2D frame");
 	const composite = tryCompositeMultiLayerScene(scene, access);
 	if (composite !== null) return composite;
@@ -3305,17 +3357,37 @@ function extractSceneMainImageVia(access, label) {
 			const parsed = parseTexInternal(file.bytes);
 			if (parsed.isVideoMp4) throw new Error("tex: video mp4 textures cannot be decoded to a static frame");
 			const mip0 = parsed.mipmaps[0];
-			if (isPngBuffer(mip0.bytes)) return {
-				width: mip0.width,
-				height: mip0.height,
-				png: Buffer$1.from(mip0.bytes),
-				texturePath: file.path
-			};
+			if (isPngBuffer(mip0.bytes)) {
+				const png = Buffer$1.from(mip0.bytes);
+				if (projection) {
+					const decoded = decodePngToRgba(mip0.bytes);
+					const cropped = cropToProjection(decoded.rgba, decoded.width, decoded.height, projection);
+					if (cropped) return {
+						width: cropped.width,
+						height: cropped.height,
+						png: encodePng(cropped.width, cropped.height, cropped.rgba),
+						texturePath: file.path
+					};
+				}
+				return {
+					width: mip0.width,
+					height: mip0.height,
+					png,
+					texturePath: file.path
+				};
+			}
 			const { width, height, rgba } = decodeTex(file.bytes);
 			if (!hasContent(rgba, width, height)) {
 				lastError = /* @__PURE__ */ new Error(label + ": texture '" + path + "' is a shader mask or partial layer");
 				continue;
 			}
+			const cropped = cropToProjection(rgba, width, height, projection);
+			if (cropped) return {
+				width: cropped.width,
+				height: cropped.height,
+				png: encodePng(cropped.width, cropped.height, cropped.rgba),
+				texturePath: file.path
+			};
 			return {
 				width,
 				height,

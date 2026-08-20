@@ -1192,6 +1192,57 @@ function hasContent(rgba: Uint8Array, width: number, height: number): boolean {
   return sampleCount === 0 || (visibleCount / sampleCount) >= 0.01
 }
 
+/**
+ * Read the scene's declared projection size (the viewport the author
+ * designed the scene for). Scenes without an explicit projection default to
+ * null so the extractor keeps the texture's native dimensions.
+ */
+function sceneProjectionSize(scene: Record<string, unknown>): { width: number; height: number } | null {
+  const general = scene.general as { orthogonalprojection?: { width?: unknown; height?: unknown } } | undefined
+  const rawW = general?.orthogonalprojection?.width
+  const rawH = general?.orthogonalprojection?.height
+  const width = typeof rawW === 'number' && Number.isFinite(rawW) && rawW > 0 ? Math.floor(rawW) : 0
+  const height = typeof rawH === 'number' && Number.isFinite(rawH) && rawH > 0 ? Math.floor(rawH) : 0
+  if (width <= 0 || height <= 0) return null
+  return { width, height }
+}
+
+/**
+ * Center-crop RGBA pixels to the scene's projection aspect ratio (cover
+ * semantics). Scene textures are authored at the full projection canvas
+ * (e.g. 2048x2048) while the viewport is 16:9; returning the raw square
+ * makes the wallpaper stretch or crop wrongly on a widescreen display.
+ * Returns null when no projection is declared or the ratio already matches.
+ */
+function cropToProjection(
+  rgba: Uint8Array,
+  width: number,
+  height: number,
+  projection: { width: number; height: number } | null,
+): { width: number; height: number; rgba: Uint8Array } | null {
+  if (!projection) return null
+  const sourceRatio = width / height
+  const targetRatio = projection.width / projection.height
+  if (Math.abs(sourceRatio - targetRatio) < 0.005) return null
+  let outWidth = width
+  let outHeight = height
+  if (sourceRatio > targetRatio) {
+    outWidth = Math.floor(height * targetRatio)
+    if (outWidth >= width) return null
+  } else {
+    outHeight = Math.floor(width / targetRatio)
+    if (outHeight >= height) return null
+  }
+  const startX = Math.max(0, Math.floor((width - outWidth) / 2))
+  const startY = Math.max(0, Math.floor((height - outHeight) / 2))
+  const out = new Uint8Array(outWidth * outHeight * 4)
+  for (let y = 0; y < outHeight; y++) {
+    const srcStart = ((startY + y) * width + startX) * 4
+    out.set(rgba.subarray(srcStart, srcStart + outWidth * 4), y * outWidth * 4)
+  }
+  return { width: outWidth, height: outHeight, rgba: out }
+}
+
 function getTextureScore(path: string): number {
   const lower = path.toLowerCase()
   if (isLikelyMaskOrHelper(path)) return -100
@@ -1348,6 +1399,11 @@ function extractSceneMainImageVia(access: SceneAccess, label: string): SceneMain
     throw new Error(label + ': scene.json not found or invalid')
   }
 
+  // The scene's declared viewport (e.g. 1920x1080). Scene textures are often
+  // authored larger or square; the final frame must match the projection so
+  // the wallpaper keeps its aspect on widescreen displays.
+  const projection = sceneProjectionSize(scene)
+
   // 3D model scenes use UV maps on 3D meshes rather than 2D desktop backgrounds
   const has3dModels = (scene.objects as Array<{ model?: unknown }>).some(
     (obj) => obj && typeof obj === 'object' && typeof obj.model === 'string' && obj.model.length > 0,
@@ -1413,12 +1469,29 @@ function extractSceneMainImageVia(access: SceneAccess, label: string): SceneMain
       }
       const mip0 = parsed.mipmaps[0]
       if (isPngBuffer(mip0.bytes)) {
-        return { width: mip0.width, height: mip0.height, png: Buffer.from(mip0.bytes), texturePath: file.path }
+        const png = Buffer.from(mip0.bytes)
+        if (projection) {
+          const decoded = decodePngToRgba(mip0.bytes)
+          const cropped = cropToProjection(decoded.rgba, decoded.width, decoded.height, projection)
+          if (cropped) {
+            return {
+              width: cropped.width,
+              height: cropped.height,
+              png: encodePng(cropped.width, cropped.height, cropped.rgba),
+              texturePath: file.path,
+            }
+          }
+        }
+        return { width: mip0.width, height: mip0.height, png, texturePath: file.path }
       }
       const { width, height, rgba } = decodeTex(file.bytes)
       if (!hasContent(rgba, width, height)) {
         lastError = new Error(label + ": texture '" + path + "' is a shader mask or partial layer")
         continue
+      }
+      const cropped = cropToProjection(rgba, width, height, projection)
+      if (cropped) {
+        return { width: cropped.width, height: cropped.height, png: encodePng(cropped.width, cropped.height, cropped.rgba), texturePath: file.path }
       }
       return { width, height, png: encodePng(width, height, rgba), texturePath: file.path }
     } catch (err) {

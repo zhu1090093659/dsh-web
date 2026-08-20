@@ -282,14 +282,19 @@ export class BackgroundController implements SkinBackgroundHandle {
 
   /**
    * Write the input-card / message-bubble glass blur onto the root CSS
-   * variable. Wallpaper-exclusive surfaces read it; other skins ignore it.
+   * variables. The skin pipeline scopes `:root` into both the html and the
+   * body elements, so the value must be inlined on BOTH to override the body
+   * declaration for descendants. Other skins ignore the variable.
    */
   private applyCardBlur(): void {
+    const value = `blur(${this.cardBlurValue}px) saturate(130%)`
     if (!this.enabledValue) {
       document.documentElement.style.removeProperty(CARD_BLUR_VAR)
+      document.body.style.removeProperty(CARD_BLUR_VAR)
       return
     }
-    document.documentElement.style.setProperty(CARD_BLUR_VAR, `blur(${this.cardBlurValue}px) saturate(130%)`)
+    document.documentElement.style.setProperty(CARD_BLUR_VAR, value)
+    document.body.style.setProperty(CARD_BLUR_VAR, value)
   }
 
   /**

@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   enforce:
@@ -139,12 +139,17 @@ jobs:
             ].join('\n');
 
             if (context.payload.action !== 'synchronize') {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                body: comment,
-              });
+              try {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: comment,
+                });
+              } catch (error) {
+                // A comment failure must never mask the real checklist result.
+                core.warning('failed to post checklist comment: ' + String((error && error.message) || error));
+              }
             }
 
             core.setFailed(errors.join('\n'));

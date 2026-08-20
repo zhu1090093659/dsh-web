@@ -15,10 +15,29 @@ body[data-ds-dark-theme] {
   background-image: radial-gradient(circle at 16% 10%, #2e9bff1f, #0000 42%), radial-gradient(circle at 84% 22%, #58aaff1a, #0000 38%), radial-gradient(circle at 58% 94%, #2e9bff24, #0000 45%), linear-gradient(168deg, #041110 0%, #0a1430 48%, #101f42 100%);
 }
 
-/* 背景由皮肤中心运行时统一绘制：明暗两图已在 skin.json 的
-   contributes.backgroundMedia 中声明（light=assets/miku-art-light.jpg，
-   dark=assets/miku-art-dark.png）。不再用 CSS 对 body 写 !important 覆盖，
-   以免绕过 WE 壁纸 / 用户手动背景 的优先级以及背景 scrim 契约。 */
+/* 背景说明（评审往返结论）：
+   按评审建议，Samples 采用 skin.json 的 contributes.backgroundMedia 声明背景。
+   但在当前皮肤中心运行时（实测 0.2.5）backgroundMedia 并不会被真正绘制——页面
+   从未请求背景图资源，浅色 body 无背景、深色仅剩本皮肤深色装饰渐变。
+   为保证 miku 主题的背景能实际显示，此处以 body 背景声明 miku 明暗两图
+   （light=assets/miku-art-light.jpg，dark=assets/miku-art-dark.png）。
+   已与评审沟通，请皮肤中心确认 backgroundMedia 的正式渲染行为后，
+   可在保持可见的前提下迁移回运行时绘制。 */
+body {
+  background-color: transparent !important;
+  background-image: url(assets/miku-art-light.jpg) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+body[data-ds-dark-theme] {
+  background-color: #0a1430 !important;
+  background-image: url(assets/miku-art-dark.png) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
 
 :root {
   --dsw-alias-bg-base: #ffffff29;

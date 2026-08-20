@@ -28,6 +28,7 @@ import { createPetStore, type PetStoreInstance } from './pet-store.ts'
 import { PetDockEntry, type PetInjected } from './PetDockEntry.tsx'
 import { defaultPetRendererRegistry } from './renderers/registry.ts'
 import { live2dRenderer } from './renderers/live2d.ts'
+import { registerPetUiTeardown, takeoverPetUiTeardown } from './ui-teardown.ts'
 import { PetSettingsSection, PetSettingsCardController, type PetSettings } from './PetSettingsCard.tsx'
 import { NS, en, zh, t } from './locales.ts'
 
@@ -139,9 +140,22 @@ export function apply(ctx: ClientContext): void {
 
   // The global pet entry, its store, and the poll loop live while the plugin
   // is enabled; toggling the setting off hides the pet and stops polling.
+  // 'uiDead' marks a terminal teardown (takeover by a later bundle instance
+  // or fiber disposal): a taken-over or disposed instance must never remount
+  // from a late settings callback (issue #785).
   let disposeUi: (() => void) | undefined
+  let clearUiTeardown: (() => void) | undefined
+  let uiDead = false
+  const killUi = (): void => {
+    if (uiDead) return
+    uiDead = true
+    clearUiTeardown?.()
+    clearUiTeardown = undefined
+    disposeUi?.()
+    disposeUi = undefined
+  }
   const syncUi = (): void => {
-    if (enabled() && disposeUi === undefined) {
+    if (!uiDead && enabled() && disposeUi === undefined) {
       // ONE store instance for the whole app, owned by this apply body. The
       // pet is host-global (state/display/interactions are /api/pet/*
       // endpoints with no session dimension), so the slot system's per-session
@@ -296,6 +310,17 @@ export function apply(ctx: ClientContext): void {
       // The entry therefore mounts straight onto document.body via a single
       // React root for the page lifetime: PetSprite portals itself to body
       // when visible, and the hidden-state summon button is fixed-positioned.
+      //
+      // Cross-instance single-mount guard (issue #785): take over the
+      // page-global slot first — the previous bundle instance's fiber may
+      // still be draining during a client reload, so unmount its React root
+      // and remove its container — then sweep containers left behind by
+      // instances that predate the teardown registry, so this mount is the
+      // page's only [data-dsh-pet-root].
+      takeoverPetUiTeardown()
+      for (const stale of Array.from(document.querySelectorAll('div[data-dsh-pet-root]'))) {
+        stale.remove()
+      }
       const container = document.createElement('div')
       container.dataset.dshPetRoot = ''
       container.dataset.dshPlugin = 'pet'
@@ -303,17 +328,40 @@ export function apply(ctx: ClientContext): void {
       const petRoot = createRoot(container)
       petRoot.render(createElement(PetDockEntry, { ...injected(), t }))
 
+      let uiGone = false
       disposeUi = () => {
+        if (uiGone) return
+        uiGone = true
+        clearUiTeardown?.()
+        clearUiTeardown = undefined
         petRoot.unmount()
         container.remove()
         disposePoll()
         disposeUi = undefined
       }
-    } else if (!enabled() && disposeUi !== undefined) {
+      // The slot teardown is the takeover hook a later apply body runs; it
+      // marks this instance terminal so a late settings callback from the
+      // still-draining instance cannot remount a second pet.
+      clearUiTeardown = registerPetUiTeardown(() => {
+        uiDead = true
+        disposeUi?.()
+      })
+    } else if (!uiDead && !enabled() && disposeUi !== undefined) {
       disposeUi()
       disposeUi = undefined
     }
   }
-  settingsScope.subscribe(syncUi)
+  // The settings subscription and the pet UI lifetime follow the fiber
+  // (issue #785): disposal drops the subscription and tears the UI down
+  // (terminal), so a hot-reloaded or re-injected bundle never leaves the
+  // previous React root, container, or poll loop behind on document.body.
+  const unsubscribeSettings = settingsScope.subscribe(syncUi)
+  ctx.effect(
+    () => () => {
+      unsubscribeSettings()
+      killUi()
+    },
+    'pet: client lifecycle',
+  )
   syncUi()
 }

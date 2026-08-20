@@ -420,13 +420,15 @@ export class WallpaperController implements WallpaperHandle {
   }
 
   private ensureLayers(descriptor: WallpaperDescriptor): void {
-    // The stock shell paints an opaque background on the app root, which
-    // fully covers the negative-z wallpaper layers (issue #505). Neutralize
-    // it while a wallpaper is mounted — the same contract the v2 skin CSS
-    // pipeline appends for every skin (`[id="root"] { background:
-    // transparent }`). The id selector outranks the shell's class rule, and
-    // the token itself is left untouched so every other --dsw-alias-bg-base
-    // consumer keeps its color.
+    // The stock shell paints opaque backgrounds on the app root and on the
+    // composer seat, which fully cover the negative-z wallpaper layers
+    // (issue #505, #632). Neutralize them ONLY while the own marker
+    // data-dsh-wallpaper-active is present, so no skin or plugin style is
+    // affected outside a mounted wallpaper (#506). The app-root rules mirror
+    // the contract the v2 skin CSS pipeline appends for every skin
+    // (`[id="root"] { background: transparent }`); the id/attribute selectors
+    // outrank the shell's class rules, and the --dsw-alias-bg-base token
+    // itself is left untouched for every other consumer.
     if (this.rootNeutralizer === null) {
       this.rootNeutralizer = this.doc.createElement('style')
       this.rootNeutralizer.dataset.dshWallpaperRoot = ''
@@ -441,6 +443,15 @@ export class WallpaperController implements WallpaperHandle {
         html[data-dsh-wallpaper-active] [id="root"] {
           background-color: transparent !important;
           background-image: none !important;
+        }
+        /* The composer seat paints an opaque base fade under the input card
+           (rc.8: a linear gradient to --dsw-alias-bg-base, z-index 7).
+           Remove it while the WE wallpaper is mounted so the backdrop shows
+           behind the input area (issue #734). It is anchored on the stable
+           semantic attribute data-composer-seat that the official shell
+           outputs, so it does not depend on hashed class names. */
+        html[data-dsh-wallpaper-active] [data-composer-seat] {
+          background: none !important;
         }
       `
       this.doc.head.appendChild(this.rootNeutralizer)

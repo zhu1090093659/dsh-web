@@ -393,6 +393,20 @@ describe('WallpaperController', () => {
     expect(document.body.dataset.dshWallpaperActive).toBeUndefined()
     expect(document.documentElement.dataset.dshWallpaperActive).toBeUndefined()
   })
+
+  it('removes the composer seat mask while a wallpaper is mounted (#734)', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection(video)
+    const style = document.head.querySelector('style[data-dsh-wallpaper-root]')
+    expect(style?.textContent).toContain('html[data-dsh-wallpaper-active] [data-composer-seat]')
+    expect(style?.textContent).toContain('background: none !important;')
+    // The rule exists only while a wallpaper is mounted: teardown removes it.
+    controller.clearSelection()
+    expect(document.head.querySelector('style[data-dsh-wallpaper-root]')).toBeNull()
+    expect(document.documentElement.dataset.dshWallpaperActive).toBeUndefined()
+    controller.dispose()
+  })
 })
 
 /** A minimal fake WallpaperHandle recording every sync() call. */

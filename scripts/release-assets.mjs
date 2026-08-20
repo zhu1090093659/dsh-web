@@ -7,8 +7,10 @@
  *
  * Walks the same package set as verify-version.mjs (packages/* and
  * packages/skins/*, non-recursive), reads each package.json name + version,
- * waits for every version to become readable on the npm registry (fresh
- * publishes are eventually consistent and can 404 briefly), and runs
+ * skips private packages (pnpm -r publish never pushes them, so they would
+ * 404 forever — v0.2.4: dsh-chat-recovery), waits for every publishable
+ * version to become readable on the npm registry (fresh publishes are
+ * eventually consistent and can 404 briefly), and runs
  * `npm pack <name>@<version>` against the registry. Packing from the
  * registry (not the working tree) makes every uploaded tarball
  * byte-identical to what `pnpm -r publish` pushed moments earlier.
@@ -48,6 +50,15 @@ export function packOne(name, version, outDir, run = (file, args, options) => ex
 
 function defaultView(name, version) {
   execFileSync('npm', ['view', name + '@' + version, 'version'], { encoding: 'utf8' })
+}
+
+/**
+ * Family packages that actually reach the registry: private packages are
+ * bundled into a carrier (or referenced as a workspace dep) and `pnpm -r
+ * publish` skips them, so packing them from the registry can never succeed.
+ */
+export function publishablePackages(packages) {
+  return packages.filter(pkg => pkg.private !== true)
 }
 
 /**
@@ -100,9 +111,12 @@ function main() {
     }
     packages.push(pkg)
   }
-  waitForPublished(packages, version)
+  // Version parity above covers every family package; only publishable
+  // packages can ever be packed back from the registry.
+  const publishable = publishablePackages(packages)
+  waitForPublished(publishable, version)
   const packed = []
-  for (const pkg of packages) {
+  for (const pkg of publishable) {
     const tgz = packOne(pkg.name, version, outDir)
     packed.push(tgz)
     console.log(tgz)

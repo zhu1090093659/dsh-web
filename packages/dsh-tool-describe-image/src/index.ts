@@ -22,6 +22,7 @@ import { registerAttachRoute, registerModelRoutes } from './attach-routes.ts'
 import { DEFAULT_MAX_BYTES } from './media.ts'
 import { createCapabilityProbe, createRouteResolver } from './model-capability.ts'
 import { installToolVisibility } from './tool-visibility.ts'
+import { registerNativeImageRoutes } from './native-images.ts'
 import { Config, DESCRIBE_IMAGE_SETTINGS_NAMESPACE, resolveApiKey, resolveConfig, type ResolvedConfig } from './config-resolve.ts'
 import { callVision, createVisionCache, loadImage } from './vision-client.ts'
 import { mountOnce } from './mount-once.ts'
@@ -173,6 +174,14 @@ function applyImpl(ctx: Context, config: Config = {}): void {
   const probe = createCapabilityProbe(ctx, routeResolver)
   installToolVisibility(ctx, routeResolver)
   registerAttachRoute(ctx, () => current().maxBytes ?? DEFAULT_MAX_BYTES, probe)
+  // rc.8 native-image requests: report the default route's image-input state
+  // and toggle the llm-deepseek catalog entry for the current model. Exact
+  // routes win over the /describe-image prefix table, so the capability and
+  // attach handlers keep their paths.
+  const webserver = ctx.get('webServer')
+  if (webserver !== undefined) {
+    for (const route of registerNativeImageRoutes(ctx, routeResolver)) webserver.register(route)
+  }
   // The settings card's probe button: list the endpoint's models per request,
   // honoring unsaved drafts so the user can verify a new endpoint before
   // saving; the key resolves through the same seam a vision call uses.

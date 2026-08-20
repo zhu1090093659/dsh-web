@@ -73,6 +73,17 @@ describe('TerminalTab dispose and resize cleanup', () => {
     const source = readFileSync(join(process.cwd(), 'src', 'client', 'panel', 'TerminalTab.tsx'), 'utf8')
     expect(source).toContain('dataSubRef.current?.dispose()')
     expect(source).toContain('termRef.current?.dispose()')
-    expect(source).toContain('window.removeEventListener(\'resize\', onResize)')
+    expect(source).toContain('window.removeEventListener(\'resize\', sync)')
+  })
+
+  it('observes the terminal container so banner/panel resizes refit', () => {
+    // The connected banner shrinks the container after the initial fit;
+    // without a container-level observer the viewport keeps the old height
+    // and the last line is clipped. Guard the contract at source level
+    // (jsdom has no ResizeObserver to exercise at runtime).
+    const source = readFileSync(join(process.cwd(), 'src', 'client', 'panel', 'TerminalTab.tsx'), 'utf8')
+    expect(source).toContain('new ResizeObserver(')
+    expect(source).toContain('observer.observe(container)')
+    expect(source).toContain('observer.disconnect()')
   })
 })

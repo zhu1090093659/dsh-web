@@ -1,0 +1,281 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.linxin666.org/dsh-pet/pet-manifest-v2.schema.json",
+  "title": "DSH Pet Manifest v2",
+  "description": "Pet-center manifest v2 (issue #623). Pure-asset pet directory contract: renderer type declaration, license metadata, and renderer-specific blocks. Top level and renderer blocks are fail-closed; v1 manifests (no petManifestVersion) are compat-read as sprite2d by the registry.",
+  "type": "object",
+  "required": [
+    "petManifestVersion",
+    "id",
+    "displayName",
+    "license"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "petManifestVersion": {
+      "const": 2
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "maxLength": 64,
+      "description": "Globally unique lowercase kebab-case pet id."
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Asset license identifier (SPDX id or free text). Required so community pets always carry provenance."
+    },
+    "homepage": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Optional provenance URL for the pet assets."
+    },
+    "renderer": {
+      "enum": [
+        "sprite2d",
+        "live2d"
+      ],
+      "default": "sprite2d",
+      "description": "Renderer kind; omitted means sprite2d (v1 compatibility). Unknown values are rejected."
+    },
+    "sprite2d": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spritesheetPath"
+      ],
+      "description": "Spritesheet renderer block; required when renderer=sprite2d.",
+      "properties": {
+        "spritesheetPath": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Atlas path relative to the manifest directory (safe segments only)."
+        },
+        "cell": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Atlas cell size in px; defaults to the Codex contract 192x208.",
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
+            }
+          }
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32,
+          "default": 8
+        },
+        "atlasRows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32,
+          "description": "Total atlas rows; 9 for the classic contract, 11 for v2 look-row atlases."
+        },
+        "frames": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 32
+          },
+          "description": "Per-row used frame counts; omitted rows fall back to the hatch-pet contract table."
+        },
+        "tracks": {
+          "type": "object",
+          "description": "Per-track rhythm overrides (durations/loop/fallback), v1 structure unchanged."
+        }
+      }
+    },
+    "live2d": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "motions"
+      ],
+      "description": "Live2D renderer block; required when renderer=live2d. The Cubism Core runtime is always user-supplied; the plugin never bundles or downloads it.",
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\.model3\\.json$",
+          "description": "Path of the .model3.json relative to the manifest directory."
+        },
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "default": 1
+        },
+        "translate": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          }
+        },
+        "motions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "idle"
+          ],
+          "description": "ActivityPhase -> model motion group name. Unmapped phases fall back to the idle group; missing groups degrade to the first frame with a diagnostic.",
+          "properties": {
+            "idle": {
+              "type": "string",
+              "minLength": 1
+            },
+            "waiting": {
+              "type": "string",
+              "minLength": 1
+            },
+            "thinking": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "review": {
+              "type": "string",
+              "minLength": 1
+            },
+            "done": {
+              "type": "string",
+              "minLength": 1
+            },
+            "failed": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "expressions": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional ActivityPhase -> expression name (layered over the motion).",
+          "properties": {
+            "idle": {
+              "type": "string",
+              "minLength": 1
+            },
+            "waiting": {
+              "type": "string",
+              "minLength": 1
+            },
+            "thinking": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "review": {
+              "type": "string",
+              "minLength": 1
+            },
+            "done": {
+              "type": "string",
+              "minLength": 1
+            },
+            "failed": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "hitAreas": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Hit area names that trigger pet.interact; defaults to every HitArea the model declares."
+        },
+        "lipSync": {
+          "type": "boolean",
+          "default": false,
+          "description": "Optional whisper-paced lip sync (post-M3)."
+        }
+      }
+    },
+    "sequences": {
+      "type": "object",
+      "description": "Renderer-agnostic ActivityPhase sequence table (v1 structure; every declared sequence has at least 5 items)."
+    },
+    "remarks": {
+      "type": "object",
+      "description": "Per-slot witty-remark pools (v1 structure; a slot replaces the built-in pool for that slot only)."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "renderer": {
+            "const": "sprite2d"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "sprite2d"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "renderer": {
+            "const": "live2d"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "live2d"
+        ]
+      }
+    }
+  ]
+}

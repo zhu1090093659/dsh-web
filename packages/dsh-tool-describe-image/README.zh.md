@@ -24,6 +24,7 @@
 | 思考控制 | 模型 id 带可选后缀：`model:off` 禁用思考，`model:low` / `model:medium` / `model:high` 开启思考；不带后缀则不发送控制、沿用端点默认（MiMo-V2.5、DeepSeek V4 默认开启思考） |
 | 原图路由 | `GET /describe-image/raw/<id>` 回读已存字节（仅回环、内容寻址 id），让贴入的引用在会话中渲染 |
 | 能力探测路由 | `GET /describe-image/capability?session=<id>` 回答该会话模型是否声明图片输入（以会话自身的请求头路由确认生效模型——恢复的会话沿用其日志模型、无请求历史的新会话取当前默认模型选择；模态经 `resolveModelInfo` 精确解析）。无路由可解析、一切未知与失败都保守回答 false，保留改写行为 |
+| 原生图片开关 | rc.8：设置卡的「原生图片请求」区报告当前默认模型的图片输入状态，并经回环路由 `GET` / `POST /describe-image/native-images` 切换 DeepSeek 适配器模型目录条目（`llm-deepseek` 设置命名空间里的 `inputModalities`）。启用：发送的图片原生交给模型、`describe_image` 从该模型的工具集中隐藏；停用：沿用改写路径。未挂载适配器命名空间的宿主显示不支持提示 |
 | 每次调用解析密钥 | 内联 `apiKey` → 凭证服务（`apiKeyEnv`，默认 `VISION_API_KEY`）→ 启动环境，逐级回退 |
 | 安全与边界 | 所有请求拒绝重定向；`maxBytes` / `maxOutputTokens` / `timeoutMs` 上限；magic-byte 类型门；错误摘要有界（200 字符）；密钥不进日志 |
 | 返回规范值 | `{ text, model, image, mimeType, bytes }`——模型只看到 `text` |
@@ -42,6 +43,8 @@
   的最小补全，消耗一个输出 token。
 - 模型探测路由仅接受回环同源请求（共享 `host/loopback` 围栏，与 dsh-ssh 同款）：
   跨站页面无法把已存密钥引向攻击者控制的 URL。
+- 原生图片开关路由同受回环同源围栏：只经宿主设置服务写入官方 `llm-deepseek`
+  模型目录（revision 栅栏、适配器 schema 校验），绝不接触凭证。
 
 ## 安装
 
@@ -145,6 +148,15 @@ DSH 输入框对纯文本模型没有图片入口，因此在输入框里拖拽�
 改写是一个实时开关——设置卡的「发送时改写图片为 describe-image 引用」(`interceptImageSend`，
 默认开)。当其他视觉插件与当前会话共用、需要由它们接收原始图片块时请关闭；关闭后图片发送
 原样放行。
+
+### 原生图片请求（rc.8）
+
+DeepSeek chat-completions 适配器（rc.8）在模型目录条目的 `inputModalities` 包含 `image` 时
+把图片块原生发给模型，而官方模型设置界面未暴露该字段。设置卡的「原生图片请求」区补齐这个入口：
+它显示当前默认模型的图片输入判定，并提供开关经官方设置服务改写 `llm-deepseek` 设置命名空间
+（schema 校验、revision 栅栏与持久化仍由宿主负责）。启用后，默认模型原生接收发送的图片，
+`describe_image` 从该模型的工具集中隐藏；停用则沿用 describe-image 改写路径。两条路由仅限回环
+访问，同源围栏与附件路由一致；浏览器永远接触不到凭证。
 
 ## 已知限制
 

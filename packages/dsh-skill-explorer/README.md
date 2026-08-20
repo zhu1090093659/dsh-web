@@ -70,6 +70,18 @@ sidebar.
   64KB.
 - The panel renders skill descriptions with text nodes only (no HTML
   injection).
+- Scans follow symbolic links: symlinked skill directories and single `.md`
+  links inside a skill root are listed as ordinary skills. Because a link
+  expresses the user's intentional mount, the target is not constrained to
+  fall inside a skill root; a symlink inside a project root (which may come
+  from a cloned repository) is treated as part of that project, and a
+  `SKILL.md` in its target directory is read and shown — this is the intended
+  trust boundary. Linked skills can be listed and toggled (rewriting the
+  target's own frontmatter), but **cannot be deleted**: deletion would move the
+  target's `SKILL.md` out of place, escaping the current skill root, so the
+  delete button is hidden for linked skills and the delete route refuses them
+  (400). Write operations still sit behind the loopback fence and the "trust
+  only freshly scanned paths" rule.
 
 ## Known limitations
 
@@ -81,6 +93,11 @@ sidebar.
   (block scalars, booleans, input nested block); exotic YAML features are not
   supported — the official dsh-skill-filesystem provider remains the
   authoritative parser.
+- Linked skills cannot be deleted (see the security model); enable/disable works
+  normally on them (rewriting the target's `SKILL.md` frontmatter). Both
+  directory and single-file links list normally; a single-file link (pointing
+  at one `.md`) is replaced by a plain file during the atomic rewrite — the link
+  is not kept and the target file is left untouched.
 
 ## License
 

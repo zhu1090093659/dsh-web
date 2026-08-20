@@ -26,6 +26,7 @@ browser half, live settings, no dsh source changes.
 | Thinking control | The model id carries an optional suffix: `model:off` disables thinking, `model:low` / `model:medium` / `model:high` enable it, and a bare `model` sends no control so the endpoint default applies (MiMo-V2.5 and DeepSeek V4 think by default) |
 | Raw image route | `GET /describe-image/raw/<id>` serves the stored bytes (loopback-only, content-addressed id) so the pasted reference renders in the conversation |
 | Capability route | `GET /describe-image/capability?session=<id>` answers whether the session's model declares image input (the session's own logged request route decides the effective model — a resumed session keeps its logged model, a fresh session without requests takes the current default selection; modalities resolve through `resolveModelInfo`). Every unresolved route, unknown, and failure answers false, preserving the rewrite behavior |
+| Native image toggle | rc.8: the settings card's "Native image requests" section reports the current default model's image-input state and toggles the DeepSeek adapter catalog entry (`inputModalities` in the `llm-deepseek` settings namespace) through the loopback route pair `GET` / `POST /describe-image/native-images`. Enabled: sent images reach the model natively and `describe_image` hides from that model's toolset; disabled: the legacy rewrite applies. Hosts without the adapter namespace render the section with an unsupported hint |
 | Per-call key resolution | Inline `apiKey` → credential seam (`apiKeyEnv`, default `VISION_API_KEY`) → launch environment, tiered fallback |
 | Safety and bounds | All requests refuse redirects; `maxBytes` / `maxOutputTokens` / `timeoutMs` caps; magic-byte type gate; bounded error excerpts (200 chars); keys never logged |
 | Canonical return | `{ text, model, image, mimeType, bytes }` — the model only sees `text` |
@@ -46,6 +47,9 @@ browser half, live settings, no dsh source changes.
 - The model probe routes are loopback-only with same-origin checks (the shared
   `host/loopback` fence, same as dsh-ssh): a cross-site page can never steer the
   stored key at an attacker-controlled URL.
+- The native-image toggle routes are loopback-only with the same same-origin fence; they write
+  only the official `llm-deepseek` model catalog through the host settings seam (revision-fenced,
+  validated by the adapter schema) and never touch credentials.
 
 ## Installation
 
@@ -156,6 +160,17 @@ The rewrite is a live switch — the settings card's "Rewrite image sends into d
 references" toggle (`interceptImageSend`, on by default). Turn it off when another vision plugin
 shares the session and must receive the raw image blocks itself; sends then pass through
 untouched.
+
+### Native image requests (rc.8)
+
+The DeepSeek chat-completions adapter (rc.8) sends image blocks natively when the catalogued
+model's `inputModalities` includes `image`; the official model settings UI does not expose that
+field. The card's "Native image requests" section covers it: it shows the current default model's
+image-input verdict and a toggle that rewrites the `llm-deepseek` settings namespace through the
+official settings seam (schema validation, revision fencing, and persistence stay with the host).
+Enabled, the default model receives sent images directly and `describe_image` is masked from its
+toolset; disabled, the legacy describe-image rewrite applies. Both routes are loopback-only with
+the same same-origin fence as the attach routes; the browser never sees credentials.
 
 ## Known limitations
 

@@ -148,11 +148,11 @@ export class SshEngine {
 
   // ------------------------------------------------------------- misc
 
-  /** Probe connectivity: connect, run `true`, close. */
+  /** Probe connectivity with a cross-platform shell command. */
   async test(alias: string): Promise<TestResult> {
     const started = Date.now()
     try {
-      const result = await this.exec(alias, 'true', 10_000)
+      const result = await this.exec(alias, 'echo ok', 10_000)
       return result.success
         ? { ok: true, latencyMs: result.durationMs }
         : { ok: false, latencyMs: result.durationMs, error: 'remote exit code ' + result.exitCode }

@@ -32,6 +32,11 @@ describe('parsePorcelain', () => {
     const counts = parsePorcelain(' M a.ts\n?? new.txt\nUU conflict.txt\nA  staged.ts\n')
     expect(counts).toEqual({ dirtyFiles: 2, untrackedFiles: 1, conflicts: 1 })
   })
+
+  it('counts AA/DD unmerged entries as conflicts, not dirty files', () => {
+    const counts = parsePorcelain('AA addadd.txt\nDD deldel.txt\n M plain.ts\n')
+    expect(counts).toEqual({ dirtyFiles: 1, untrackedFiles: 0, conflicts: 2 })
+  })
 })
 
 describe('parseWorktreeBranches', () => {
@@ -57,6 +62,10 @@ describe('parseDecoration', () => {
 
   it('returns nothing for an empty decoration', () => {
     expect(parseDecoration('')).toEqual([])
+  })
+
+  it('keeps ref names that start with HEAD and drops a bare detached HEAD', () => {
+    expect(parseDecoration('HEAD -> HEADfoo, HEAD')).toEqual(['HEADfoo'])
   })
 })
 

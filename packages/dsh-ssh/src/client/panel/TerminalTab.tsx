@@ -124,17 +124,38 @@ export function TerminalTab({ api, presetAlias, requestId, terminalFont }: Termi
   // Unmount cleanup (never touches state on an unmounting component).
   useEffect(() => () => { teardown() }, [])
 
-  // Keep the terminal fitted to its container while connected.
+  // Keep the terminal fitted to its container. A window resize is only one
+  // trigger: the status banner appearing after connect, panel resizes, and
+  // sidebar toggles all change the container without a window resize, so the
+  // container itself is observed (otherwise the viewport keeps the pre-banner
+  // height and the last line is clipped below the fold). ResizeObserver may
+  // be absent (jsdom tests); the window listener then remains the only path.
   useEffect(() => {
-    const onResize = (): void => {
+    let lastCols = -1
+    let lastRows = -1
+    const sync = (): void => {
       const term = termRef.current
       const fit = fitRef.current
       if (term === null || fit === null) return
       fit.fit()
-      connRef.current?.resize(term.cols, term.rows)
+      const conn = connRef.current
+      if (conn !== null && (term.cols !== lastCols || term.rows !== lastRows)) {
+        lastCols = term.cols
+        lastRows = term.rows
+        conn.resize(term.cols, term.rows)
+      }
     }
-    window.addEventListener('resize', onResize)
-    return () => { window.removeEventListener('resize', onResize) }
+    window.addEventListener('resize', sync)
+    const container = containerRef.current
+    if (container === null || typeof ResizeObserver === 'undefined') {
+      return () => { window.removeEventListener('resize', sync) }
+    }
+    const observer = new ResizeObserver(() => { sync() })
+    observer.observe(container)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', sync)
+    }
   }, [])
 
   const connect = (): void => {

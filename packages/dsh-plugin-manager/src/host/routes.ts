@@ -176,25 +176,27 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
       sendJson(res, 400, { error: unsafeTarget })
       return
     }
-    const patchText = await readPatchText(facts.patchPath)
-    // Write and read the same id space: the entry ids the package's bundle
-    // patch claims (falling back to the package name), not the package name
-    // itself. Package-name rows never matched the loader entries. The row
-    // carries the entry's own name: the include semantics skip a bare row
-    // whose name mismatches the inserted entry.
-    const manifest = await readProfileManifest(facts.packageJsonPath)
-    const entries = manifest.dependencies[target] !== undefined
-      ? await claimedEntryRowsOf(facts, target)
-      : [{ id: target, name: target }]
-    let next = patchText
-    for (const entry of entries) {
-      next = setRowEnabled(next, facts.patchPath, entry.id, entry.name, enabled)
-    }
-    if (next !== patchText) {
-      await writePatchAtomic(facts.patchPath, next)
-    }
-    const snapshot = await snapshotGateway(facts, next)
-    const plugin = snapshot.plugins.find(item => item.id === target)
+    const plugin = await gateway.withMutationLock(async () => {
+      const patchText = await readPatchText(facts.patchPath)
+      // Write and read the same id space: the entry ids the package's bundle
+      // patch claims (falling back to the package name), not the package name
+      // itself. Package-name rows never matched the loader entries. The row
+      // carries the entry's own name: the include semantics skip a bare row
+      // whose name mismatches the inserted entry.
+      const manifest = await readProfileManifest(facts.packageJsonPath)
+      const entries = manifest.dependencies[target] !== undefined
+        ? await claimedEntryRowsOf(facts, target)
+        : [{ id: target, name: target }]
+      let next = patchText
+      for (const entry of entries) {
+        next = setRowEnabled(next, facts.patchPath, entry.id, entry.name, enabled)
+      }
+      if (next !== patchText) {
+        await writePatchAtomic(facts.patchPath, next)
+      }
+      const snapshot = await snapshotGateway(facts, next)
+      return snapshot.plugins.find(item => item.id === target)
+    })
     sendJson(res, 200, { plugin: plugin ?? {
       id: target, name: target, version: 'unknown',
       source: { kind: 'npm', spec: target }, installedAt: '', enabled,

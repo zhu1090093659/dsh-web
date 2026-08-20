@@ -33,8 +33,8 @@
   `shared/`，包内同名文件是 `scripts/sync-shared.mjs` 生成的同步副本
   （generated 头注释，禁止手改；改 shared 源后重跑同步，test:scripts 含 drift 门禁）。
 - **浏览器 bundle 纯度门**：`@deepseek-ai/*` 只能 type-only 导入；值导入只允许
-  平台种子表成员（react / cordis / ui-slots / web-react / ui-primitives /
-  schema-form，见 `shared/web-platform.ts`）。跨插件协作走 cordis 服务
+  平台种子表成员（react / cordis / ui-slots / ui-primitives，见
+  `shared/web-platform.ts`）。跨插件协作走 cordis 服务
   （`ctx.slots` / `ctx.sessions` / `ctx.workspaces`）或 slot，不走 value import。
 - **样式**：CSS Modules（`*.module.css`）经 lightningcss 编译进 bundle；不引入
   UI 框架样式库。

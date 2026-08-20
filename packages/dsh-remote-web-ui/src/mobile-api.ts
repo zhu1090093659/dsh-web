@@ -33,7 +33,8 @@ import { readCookie } from './gate.ts'
  * note the paired-device cookie also passes the global api/gate for the full
  * ApiProxy surface (gate.ts), so a paired phone is a full-control credential:
  * the allowlist only constrains this /m/api proxy, not the cookie's reach.
- * stop() revokes every device; there is no per-device revocation yet.
+ * stop() revokes every device; the loopback panel can also revoke one
+ * device at a time.
  */
 const MOBILE_ALLOWLIST = new Set([
   'workspace.list',

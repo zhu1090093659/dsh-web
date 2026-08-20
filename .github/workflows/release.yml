@@ -6,8 +6,7 @@ name: Release
 # all packages to npm in dependency order. A second job then re-runs the
 # aggregate mount smoke in strict npm mode (every dependency resolves from
 # the registry — the real consumer install path, verified after publish when
-# the assertion holds) and only then creates the GitHub Release with the npm
-# tarball assets.
+# the assertion holds) and only then creates the GitHub Release.
 #
 # Requires the repository secret NPM_TOKEN (npm automation token for the
 # @linxin666 scope) to publish.
@@ -201,13 +200,3 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --notes-file "$RUNNER_TEMP/release-notes.md" \
             --title "dsh-web-ui $GITHUB_REF_NAME"
-
-      # Pack the published tarballs back from the npm registry (byte-identical
-      # to what the publish job pushed) and attach them as real installable
-      # release artifacts.
-      - name: Upload npm tarballs to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          node scripts/release-assets.mjs "$GITHUB_REF_NAME" "$RUNNER_TEMP/release-assets"
-          gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP"/release-assets/*.tgz --clobber

@@ -63,15 +63,20 @@ export const MANAGED_START = '# --- dsh-skin managed (auto-generated; do not edi
 export const MANAGED_END = '# --- end dsh-skin managed ---'
 
 /**
- * Remove the managed skin section. Throws on an unterminated section (a
- * malformed boot patch must fail loudly, never be silently half-written).
+ * Remove every managed skin section (issue #676: a second stray section kept
+ * hasLegacyState true and re-ran the migration on each boot). Throws on an
+ * unterminated section (a malformed boot patch must fail loudly, never be
+ * silently half-written).
  */
 export function stripManaged(patch: string): string {
-  const start = patch.indexOf(MANAGED_START)
-  if (start === -1) return patch
-  const end = patch.indexOf(MANAGED_END, start)
-  if (end === -1) throw new Error('managed skin section is unterminated; fix the harness cordis.patch.yml')
-  return patch.slice(0, start) + patch.slice(end + MANAGED_END.length)
+  let out = patch
+  while (true) {
+    const start = out.indexOf(MANAGED_START)
+    if (start === -1) return out
+    const end = out.indexOf(MANAGED_END, start)
+    if (end === -1) throw new Error('managed skin section is unterminated; fix the harness cordis.patch.yml')
+    out = out.slice(0, start) + out.slice(end + MANAGED_END.length)
+  }
 }
 
 /** Remove - insert: items left with no - id: rows after legacy cleanup. */
@@ -82,7 +87,7 @@ function dropEmptyInserts(text: string): string {
   while (i < lines.length) {
     const line = lines[i]
     const trimmed = line.trim()
-    if (/^-\s*insert:\s*$/.exec(trimmed) === null) {
+    if (/^-\s*insert:\s*(?:\[\s*\])?\s*$/.exec(trimmed) === null) {
       out.push(line)
       i += 1
       continue
@@ -162,7 +167,7 @@ export function readLegacyActiveId(patch: string, knownIds: readonly string[]): 
   }
   if (!patch.includes(MANAGED_START)) return null
   const disabled = new Set<string>()
-  for (const m of patch.matchAll(/^- id: (ui-skin-[a-z0-9-]+)\n  disabled: true/gm)) {
+  for (const m of patch.matchAll(/^- id: (ui-skin-[a-z0-9-]+)\r?\n  disabled: true/gm)) {
     disabled.add(m[1].replace('ui-skin-', ''))
   }
   const candidates = knownIds.filter((id) => !disabled.has(id))

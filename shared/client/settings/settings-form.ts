@@ -332,9 +332,11 @@ export class CardForm<T> {
     const valid = plan.filter(item => item.run !== undefined)
     if (plan.length === 0 || this.saving || valid.length !== plan.length) return
     const plannedWrites = valid.map(item => item.op)
-    // Snapshot the fields this save writes, so edits staged while it is in
-    // flight survive: only the staged keys this save actually wrote are cleared.
-    const fields = new Set(plan.map(item => item.field))
+    // Snapshot the staged entries this save writes, so an edit staged while it
+    // is in flight (which replaces the same key) survives: only delete the key
+    // when the entry is still the one this save started from.
+    const pending = new Map<string, StagedEdit | undefined>()
+    for (const item of plan) pending.set(item.field, this.staged.get(item.field))
     this.saving = true
     this.failed = false
     this.failedReason = undefined
@@ -355,11 +357,11 @@ export class CardForm<T> {
         if (await item.run!()) landed.add(item.field)
       }
     }
-    for (const field of fields) {
-      if (landed.has(field)) this.staged.delete(field)
+    for (const [field, before] of pending) {
+      if (landed.has(field) && this.staged.get(field) === before) this.staged.delete(field)
     }
     this.saving = false
-    this.failed = landed.size !== fields.size
+    this.failed = landed.size !== pending.size
     this.publish()
   }
 

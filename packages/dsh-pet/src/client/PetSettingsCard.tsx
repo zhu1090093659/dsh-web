@@ -30,6 +30,8 @@ export interface PetSettings {
   bottom?: number
   /** Selected pet id (a registry entry). */
   petId?: string
+  /** Status-decoration master switch (pet-center M5, #567). */
+  decorationEnabled?: boolean
 }
 
 /** What the pet settings card renders. */
@@ -46,8 +48,12 @@ export interface PetSettingsCardState extends CardShell {
   bottom: CardFieldState
   /** Selected pet. */
   petId: CardFieldState
+  /** Status-decoration master switch. */
+  decorationEnabled: CardFieldState
   /** Pet choices (registry ids + display names), loaded from the host. */
   petChoices: readonly { value: string; label: string }[]
+  /** Registry diagnostics (v1 migration hints, invalid entries), host-served. */
+  petDiagnostics: readonly PetDiagnosticView[]
 }
 
 /** The registration-side face the card's slot entry injects. */
@@ -64,11 +70,25 @@ interface PetChoice {
   displayName: string
 }
 
+/** One registry diagnostic as served by '/api/pet/diagnostics' (#623). */
+export interface PetDiagnosticView {
+  level: 'error' | 'warning'
+  message: string
+}
+
 /** Fetch the registry list (the same data the sprite renders from). */
 async function fetchPetChoices(): Promise<PetChoice[]> {
   const response = await fetch('/api/pet/pets')
   if (!response.ok) throw new Error('pet pets failed: ' + response.status)
   return (await response.json()) as PetChoice[]
+}
+
+/** Fetch the registry diagnostics (v1 migration hints, invalid entries). */
+async function fetchPetDiagnostics(): Promise<PetDiagnosticView[]> {
+  const response = await fetch('/api/pet/diagnostics')
+  if (!response.ok) throw new Error('pet diagnostics failed: ' + response.status)
+  const body = (await response.json()) as { diagnostics?: PetDiagnosticView[] }
+  return body.diagnostics ?? []
 }
 
 /** Bridges the 'pet' scope onto the card's staged form. */
@@ -80,6 +100,7 @@ export class PetSettingsCardController {
   // without rebuilding the form.
   private readonly petChoices: string[] = []
   private readonly petLabels = new Map<string, string>()
+  private diagnostics: PetDiagnosticView[] = []
   private loaded = false
   private attempts = 0
 
@@ -87,6 +108,7 @@ export class PetSettingsCardController {
   constructor(scope: SettingsScope<PetSettings>) {
     this.form = new CardForm(scope, [
       booleanField('enabled'),
+      booleanField('decorationEnabled'),
       booleanField('visible'),
       numberField('size'),
       numberField('right'),
@@ -94,7 +116,24 @@ export class PetSettingsCardController {
       choiceField('petId', this.petChoices),
     ])
     this.store = this.form.bind(() => this.projection())
-    void this.loadPets()
+    // Client plugins are applied synchronously during shell startup. Defer
+    // the first registry request until that pass completes so transport
+    // plugins (notably remote-web-ui on a paired non-loopback origin) can
+    // install their fetch channel before /api/pet/pets is issued.
+    window.setTimeout(() => {
+      void this.loadPets()
+      void this.loadDiagnostics()
+    }, 0)
+  }
+
+  /** Fetch registry diagnostics once (soft-fail: an empty list on error). */
+  private async loadDiagnostics(): Promise<void> {
+    try {
+      this.diagnostics = await fetchPetDiagnostics()
+      this.store.set(this.projection())
+    } catch {
+      this.diagnostics = []
+    }
   }
 
   /** Resolve the registry choices once (retried a few times on failure). */
@@ -118,12 +157,14 @@ export class PetSettingsCardController {
     return {
       ...this.form.shell(),
       enabled: this.form.field('enabled'),
+      decorationEnabled: this.form.field('decorationEnabled'),
       visible: this.form.field('visible'),
       size: this.form.field('size'),
       right: this.form.field('right'),
       bottom: this.form.field('bottom'),
       petId: this.form.field('petId'),
       petChoices: this.petChoices.map(id => ({ value: id, label: this.petLabels.get(id) ?? id })),
+      petDiagnostics: this.diagnostics,
     }
   }
 
@@ -186,6 +227,18 @@ export function PetSettingsCard(props: PetSettingsCardProps) {
         onEdit={(text) => { props.edit('enabled', text) }}
         onReset={() => { props.resetField('enabled') }}
       />
+      <BooleanField
+        id="settings-pet-decoration"
+        label={t('settings.decoration')}
+        hint={t('settings.decorationHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...state.decorationEnabled}
+        onEdit={(text) => { props.edit('decorationEnabled', text) }}
+        onReset={() => { props.resetField('decorationEnabled') }}
+      />
       <ChoiceField
         id="settings-pet-pet"
         label={t('settings.pet')}
@@ -197,6 +250,16 @@ export function PetSettingsCard(props: PetSettingsCardProps) {
         onEdit={(text) => { props.edit('petId', text) }}
         onReset={() => { props.resetField('petId') }}
       />
+      {state.petDiagnostics.length === 0 ? null : (
+        <li className={sectionCss.diagnostics} data-dsh-part="diagnostics">
+          <span className={sectionCss.diagnosticsTitle}>{t('settings.diagnosticsTitle')}</span>
+          <ul>
+            {state.petDiagnostics.map((diagnostic, index) => (
+              <li key={index} data-level={diagnostic.level}>{diagnostic.message}</li>
+            ))}
+          </ul>
+        </li>
+      )}
       <BooleanField
         id="settings-pet-visible"
         label={t('settings.visible')}

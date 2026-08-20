@@ -102,6 +102,14 @@ function sectionProps(scope: SettingsScope<PetSettings>) {
 }
 
 describe('PetSettingsSection', () => {
+  it('defers the first registry request until client plugin startup completes', async () => {
+    const controller = new PetSettingsCardController(new FakeScope({}))
+
+    expect(fetch).not.toHaveBeenCalled()
+    await waitFor(() => { expect(fetch).toHaveBeenCalledWith('/api/pet/pets') })
+    controller.dispose()
+  })
+
   it('renders the pet settings card open as a first-level settings page', () => {
     render(<PetSettingsSection {...sectionProps(new FakeScope({}))} />)
     const enabled = screen.getByLabelText(/enable the pet/i)

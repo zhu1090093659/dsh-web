@@ -1,27 +1,176 @@
 {
+  "petManifestVersion": 2,
   "id": "whale-girl",
   "displayName": "鲸鱼娘（原版）",
-  "description": "一只软萌治愈的鲸鱼娘，来自深海的陪伴小伙伴。",
-  "spritesheetPath": "spritesheet.webp",
-  "frames": [6, 8, 8, 4, 5, 8, 6, 6, 6],
-  "tracks": {
-    "idle": { "durations": [400, 400, 500, 400, 400, 500] },
-    "running-right": { "durations": [225, 225, 225, 225, 225, 225, 225, 225] },
-    "running-left": { "durations": [225, 225, 225, 225, 225, 225, 225, 225] },
-    "waving": { "durations": [350, 350, 350, 350] },
-    "jumping": { "durations": [300, 300, 300, 350, 350] },
-    "failed": { "durations": [450, 450, 450, 500, 550, 600, 450, 450] },
-    "waiting": { "durations": [450, 450, 500, 450, 450, 500] },
-    "running": { "durations": [250, 250, 250, 250, 250, 250] },
-    "review": { "durations": [550, 550, 550, 550, 550, 550] }
+  "renderer": "sprite2d",
+  "sprite2d": {
+    "spritesheetPath": "spritesheet.webp",
+    "frames": [
+      6,
+      8,
+      8,
+      4,
+      5,
+      8,
+      6,
+      6,
+      6
+    ],
+    "tracks": {
+      "idle": {
+        "durations": [
+          400,
+          400,
+          500,
+          400,
+          400,
+          500
+        ]
+      },
+      "running-right": {
+        "durations": [
+          225,
+          225,
+          225,
+          225,
+          225,
+          225,
+          225,
+          225
+        ]
+      },
+      "running-left": {
+        "durations": [
+          225,
+          225,
+          225,
+          225,
+          225,
+          225,
+          225,
+          225
+        ]
+      },
+      "waving": {
+        "durations": [
+          350,
+          350,
+          350,
+          350
+        ]
+      },
+      "jumping": {
+        "durations": [
+          300,
+          300,
+          300,
+          350,
+          350
+        ]
+      },
+      "failed": {
+        "durations": [
+          450,
+          450,
+          450,
+          500,
+          550,
+          600,
+          450,
+          450
+        ]
+      },
+      "waiting": {
+        "durations": [
+          450,
+          450,
+          500,
+          450,
+          450,
+          500
+        ]
+      },
+      "running": {
+        "durations": [
+          250,
+          250,
+          250,
+          250,
+          250,
+          250
+        ]
+      },
+      "review": {
+        "durations": [
+          550,
+          550,
+          550,
+          550,
+          550,
+          550
+        ]
+      }
+    }
   },
+  "description": "一只软萌治愈的鲸鱼娘，来自深海的陪伴小伙伴。",
+  "license": "BSD-3-Clause",
   "sequences": {
-    "idle": ["idle", "waving", "idle", "waiting", "idle", "idle"],
-    "waiting": ["waiting", "idle", "waving", "waiting", "idle", "waiting"],
-    "thinking": ["running", "running-right", "running", "running-left", "running", "waiting", "running"],
-    "tool": ["running-right", "running", "running-left", "running", "running-right", "running"],
-    "review": ["review", "waiting", "review", "running", "review", "idle"],
-    "done": ["jumping", "waving", "jumping", "waving", "jumping", "idle"],
-    "failed": ["failed", "waiting", "failed", "idle", "waiting", "failed"]
+    "idle": [
+      "idle",
+      "waving",
+      "idle",
+      "waiting",
+      "idle",
+      "idle"
+    ],
+    "waiting": [
+      "waiting",
+      "idle",
+      "waving",
+      "waiting",
+      "idle",
+      "waiting"
+    ],
+    "thinking": [
+      "running",
+      "running-right",
+      "running",
+      "running-left",
+      "running",
+      "waiting",
+      "running"
+    ],
+    "tool": [
+      "running-right",
+      "running",
+      "running-left",
+      "running",
+      "running-right",
+      "running"
+    ],
+    "review": [
+      "review",
+      "waiting",
+      "review",
+      "running",
+      "review",
+      "idle"
+    ],
+    "done": [
+      "jumping",
+      "waving",
+      "jumping",
+      "waving",
+      "jumping",
+      "idle"
+    ],
+    "failed": [
+      "failed",
+      "waiting",
+      "failed",
+      "idle",
+      "waiting",
+      "failed"
+    ]
   }
 }

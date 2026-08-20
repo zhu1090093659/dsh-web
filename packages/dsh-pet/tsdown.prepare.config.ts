@@ -1,4 +1,5 @@
 import { clientBundle } from '../../shared/tsdown.client.ts'
+import { live2dVendorBundle } from './tsdown.live2d-vendor.ts'
 
 /**
  * Consumer-side build for git installs (the `prepare` script): transpile
@@ -13,4 +14,5 @@ export default clientBundle('@linxin666/dsh-pet', [
   'src/invariant.ts',
 ], {
   libExternal: ['@deepseek-ai/dsh-settings'],
+  companions: [live2dVendorBundle()],
 })

@@ -8,7 +8,7 @@
  */
 
 import { existsSync } from 'node:fs'
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, sep } from 'node:path'
 import { parseFrontmatter } from './frontmatter.ts'
 
@@ -55,6 +55,8 @@ export interface SkillEntry {
   provider?: string
   level: string
   path?: string
+  /** True when the skill was discovered through a symlink entry (deletion is not allowed). */
+  linked?: boolean
   modelInvocable: boolean
   userInvocable: boolean
 }
@@ -134,9 +136,35 @@ async function scanSkillRoot(root: string, level: string, into: Map<string, Skil
   for (const entry of entries) {
     const name = entry.name
     let file: string
-    if (entry.isDirectory()) file = join(root, name, 'SKILL.md')
-    else if (entry.isFile() && name.endsWith('.md')) file = join(root, name)
-    else continue
+    let linked = false
+    if (entry.isDirectory()) {
+      file = join(root, name, 'SKILL.md')
+    } else if (entry.isFile() && name.endsWith('.md')) {
+      file = join(root, name)
+    } else if (entry.isSymbolicLink()) {
+      // A symlink's dirent is neither a directory nor a file, so a plain
+      // readdir() skips it and linked-out skills never show up. Follow the
+      // target with stat() (cross-platform: Windows symlink/junction, Linux and
+      // macOS symlink all resolve the same way) to classify it, then resolve
+      // the file path like a real entry — the scan path stays on the link, so
+      // the write route (set-enabled) reaches the linked target via the normal
+      // fs follow semantics. Dangling or unreadable links are skipped.
+      // A linked skill is mount-of-intent content, not created under this root:
+      // it stays listable and toggleable, but deletion is refused (see routes).
+      linked = true
+      let linkedFile: string
+      try {
+        const target = await stat(join(root, name))
+        if (target.isDirectory()) linkedFile = join(root, name, 'SKILL.md')
+        else if (target.isFile() && name.endsWith('.md')) linkedFile = join(root, name)
+        else continue
+      } catch {
+        continue
+      }
+      file = linkedFile
+    } else {
+      continue
+    }
     if (!existsSync(file)) continue
     let content: string
     try {
@@ -157,6 +185,7 @@ async function scanSkillRoot(root: string, level: string, into: Map<string, Skil
       provider: 'filesystem',
       level,
       path: file,
+      linked,
       // Official frontmatter invocation policy.
       modelInvocable: parsed.disableModelInvocation !== true,
       userInvocable: parsed.userInvocable !== false,

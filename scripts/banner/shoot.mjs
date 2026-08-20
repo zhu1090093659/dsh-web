@@ -30,7 +30,7 @@ for (const img of report.imgs) {
   if (!img.ok) throw new Error('image failed to load: ' + img.src)
 }
 if (report.scrollW !== 1280 || report.scrollH !== 400) {
-  throw new Error(\`canvas overflow: \${report.scrollW}x\${report.scrollH}\`)
+  throw new Error(`canvas overflow: ${report.scrollW}x${report.scrollH}`)
 }
 
 await page.screenshot({ path: out })

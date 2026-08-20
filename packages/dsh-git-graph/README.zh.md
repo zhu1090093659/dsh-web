@@ -70,7 +70,7 @@ dsh plugin --profile web remove @linxin666/dsh-client-ui-git-graph
 ## 设计要点
 
 - 边界与加载链调研、关键决策见 [docs/ADR-001-plugin-boundary.md](docs/ADR-001-plugin-boundary.md)。
-- host half 的 `/git/*` 只接受已注册 workspace 的路径（realpath 校验）与 loopback 客户端（loopback socket + loopback Host，与 dsh-ssh 相同的 fence）；浏览器无法对任意目录执行 git，LAN 暴露的 dsh web 对非 loopback 客户端返回 403。
+- host half 的 `/git/*` 只接受已注册 workspace 的路径（realpath 校验）与受信任客户端（loopback socket + loopback Host，与 dsh-ssh 相同的 fence，同时装了 `dsh-remote-web-ui` 时有效的已配对设备 cookie 也是放行路径）；浏览器无法对任意目录执行 git，LAN 暴露的 dsh web 对未配对的非 loopback 客户端返回 403。
 - 切换语义是工作区级：`git switch --no-guess <branch>` 作用于 repoRoot 磁盘树，影响该工作区所有会话；项目切换 = 激活目标工作区并打开其（复用或新建的）空白会话，不给既有会话换 cwd。
 - 挂载 seam：`conversation.input.selector.context`（官方声明的 session-maybe list 槽位）是输入选择器行的 context 洞，与官方工作区胶囊并排。分支胶囊只在空白会话显示；无会话 cwd 或非 Git 工作区时自行隐藏。声明感知回退会等待该槽位声明 `CONTEXT_FALLBACK_MS`（npm SDK rc.6 的 shell 已删除此声明）；超时未声明时，改在 `conversation.input.dock` 的空白会话 hero 相位挂载。此时 chip 重新定位到官方 hero 行 agent-preset 座位右侧（官方 2px 行间距、垂直居中，胶囊尺寸与 token 对齐官方工作区/预设胶囊），弹层向下打开、对齐官方工作区菜单。active 会话没有分支选择控件。只挂一个座位，回退后迟到的 context 声明被忽略。
 - 工作区选择不在此插件内：官方工作区胶囊（`conversation.input.selector.workspace`）是唯一入口，本插件只提供 git 分支上下文。

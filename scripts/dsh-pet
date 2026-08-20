@@ -1,0 +1,169 @@
+#!/usr/bin/env node
+'use strict'
+
+/**
+ * dsh-pet — pet tooling for the DSH Web GUI pet center (issue #623).
+ *
+ * Pets are pure asset directories (pet.json + assets). This CLI validates a
+ * pet directory against the v2 contract (v1 manifests are compat-read with a
+ * migration hint) and installs it into $DSH_HOME/pets/<id>/. It never touches
+ * cordis.patch.yml and never downloads anything — Live2D pets additionally
+ * need the user-supplied Cubism Core (see the package README).
+ *
+ * Commands:
+ *   dsh-pet validate <dir>   validate manifest + declared assets + Live2D closure
+ *                            + optional voice.json (pet-center M4, issue #677)
+ *   dsh-pet install <dir>    validate, then copy into $DSH_HOME/pets/<id>/
+ *                            [--force overwrites an existing same-id install]
+ *
+ * The validator/parsers are imported from the dsh-pet package sources
+ * (erasable TS, node strip-only mode) — never re-implemented here.
+ */
+
+const fs = require('node:fs')
+const path = require('node:path')
+const { pathToFileURL } = require('node:url')
+
+const SRC = path.join(__dirname, '..', 'packages', 'dsh-pet', 'src')
+
+/** Load the package's contract surface (erasable TS via strip-only mode). */
+async function loadContracts() {
+  const manifest = await import(pathToFileURL(path.join(SRC, 'manifest-v2.ts')).href)
+  const model3 = await import(pathToFileURL(path.join(SRC, 'model3.ts')).href)
+  const dshHome = await import(pathToFileURL(path.join(SRC, 'dsh-home.ts')).href)
+  const voicePack = await import(pathToFileURL(path.join(SRC, 'voice-pack.ts')).href)
+  return { parsePetManifest: manifest.parsePetManifest, model3, dshHome: dshHome.dshHome, voicePack }
+}
+
+function printDiagnostics(diagnostics) {
+  let errors = 0
+  for (const d of diagnostics) {
+    if (d.level === 'error') errors += 1
+    console.log('  [' + d.level + '] ' + d.message)
+  }
+  return errors
+}
+
+/** Existence checks for the assets a manifest declares (and Live2D closure). */
+async function checkAssets(dir, manifest, contracts) {
+  const diagnostics = []
+  const error = (message) => diagnostics.push({ level: 'error', message })
+  const warn = (message) => diagnostics.push({ level: 'warning', message })
+  if (manifest.renderer === 'sprite2d') {
+    const atlas = path.join(dir, manifest.sprite2d.spritesheetPath)
+    if (!fs.existsSync(atlas)) error('atlas not found: ' + manifest.sprite2d.spritesheetPath)
+  } else if (manifest.renderer === 'live2d') {
+    const modelFile = path.join(dir, manifest.live2d.model)
+    if (!fs.existsSync(modelFile)) {
+      error('model not found: ' + manifest.live2d.model)
+      return diagnostics
+    }
+    let model3
+    try {
+      model3 = JSON.parse(fs.readFileSync(modelFile, 'utf8'))
+    } catch (e) {
+      error('model3.json is not valid JSON: ' + (e && e.message ? e.message : String(e)))
+      return diagnostics
+    }
+    const { references, errors } = contracts.model3.collectModel3References(model3)
+    for (const message of errors) error(message)
+    for (const reference of references) {
+      if (!fs.existsSync(path.join(dir, reference))) error('referenced asset missing: ' + reference)
+    }
+    const groups = contracts.model3.model3MotionGroups(model3)
+    const declared = Object.values(manifest.live2d.motions).filter(Boolean)
+    for (const group of declared) {
+      if (!groups.includes(group)) warn('motion group "' + group + '" is not declared by the model; it falls back to idle at runtime')
+    }
+    const modelAreas = contracts.model3.model3HitAreas(model3)
+    for (const area of manifest.live2d.hitAreas ?? []) {
+      if (!modelAreas.includes(area)) warn('hitArea "' + area + '" is not declared by the model')
+    }
+  }
+  return diagnostics
+}
+
+/** Validate an optional voice.json (M4, #677): structure fail-closed, content warn-only. */
+function checkVoicePack(dir, contracts) {
+  const diagnostics = []
+  const file = path.join(dir, 'voice.json')
+  if (!fs.existsSync(file)) return diagnostics
+  let raw
+  try {
+    raw = JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch (e) {
+    diagnostics.push({ level: 'error', message: 'voice.json is not valid JSON: ' + (e && e.message ? e.message : String(e)) })
+    return diagnostics
+  }
+  const warn = (message) => diagnostics.push({ level: 'warning', message: 'voice.json: ' + message })
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    diagnostics.push({ level: 'error', message: 'voice.json must be a JSON object' })
+    return diagnostics
+  }
+  contracts.voicePack.normalizeVoicePack(raw, warn)
+  return diagnostics
+}
+
+async function validate(dir, contracts) {
+  const manifestFile = path.join(dir, 'pet.json')
+  if (!fs.existsSync(manifestFile)) {
+    console.error('no pet.json in ' + dir)
+    return { ok: false, manifest: undefined }
+  }
+  let raw
+  try {
+    raw = JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
+  } catch (e) {
+    console.error('pet.json is not valid JSON: ' + (e && e.message ? e.message : String(e)))
+    return { ok: false, manifest: undefined }
+  }
+  const verdict = contracts.parsePetManifest(raw, dir)
+  const diagnostics = [...verdict.diagnostics]
+  let manifest
+  if (verdict.ok) {
+    manifest = verdict.manifest
+    diagnostics.push(...await checkAssets(dir, manifest, contracts))
+    diagnostics.push(...checkVoicePack(dir, contracts))
+    if (verdict.migrated === 'v1-compat') {
+      console.log('note: v1 manifest compat-read as sprite2d; run scripts/dsh-pet-migrate-v2.mjs to migrate')
+    }
+  }
+  const errors = printDiagnostics(diagnostics)
+  return { ok: verdict.ok && errors === 0, manifest }
+}
+
+async function main(argv) {
+  const args = [...argv]
+  const command = args.shift()
+  const target = args.find(a => !a.startsWith('--'))
+  if ((command !== 'validate' && command !== 'install') || target === undefined) {
+    console.log('usage: dsh-pet validate <dir> | dsh-pet install <dir> [--force]')
+    return 2
+  }
+  const dir = path.resolve(target)
+  const contracts = await loadContracts()
+  const { ok, manifest } = await validate(dir, contracts)
+  if (!ok) {
+    console.error('validation failed')
+    return 1
+  }
+  console.log('valid: ' + manifest.id + ' (renderer ' + manifest.renderer + ')')
+  if (command === 'validate') return 0
+  const destination = path.join(contracts.dshHome(), 'pets', manifest.id)
+  if (fs.existsSync(destination)) {
+    if (!args.includes('--force')) {
+      console.error(destination + ' already exists; pass --force to overwrite')
+      return 1
+    }
+    fs.rmSync(destination, { recursive: true, force: true })
+  }
+  fs.mkdirSync(path.dirname(destination), { recursive: true })
+  fs.cpSync(dir, destination, { recursive: true })
+  console.log('installed to ' + destination + ' — refresh the pet list in settings to use it')
+  return 0
+}
+
+main(process.argv.slice(2)).then(code => { process.exitCode = code }, error => {
+  console.error(error instanceof Error ? error.message : String(error))
+  process.exitCode = 1
+})

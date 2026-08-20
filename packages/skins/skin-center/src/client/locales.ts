@@ -46,6 +46,10 @@ export type SkinCenterKey =
   | 'wallpaperMode'
   | 'wallpaperModeLive'
   | 'wallpaperModeFrame'
+  | 'wallpaperFit'
+  | 'wallpaperFitCover'
+  | 'wallpaperFitContain'
+  | 'wallpaperFitFill'
   | 'wallpaperClear'
   | 'wallpaperDim'
   | 'wallpaperBlur'
@@ -103,7 +107,7 @@ export const en: Record<SkinCenterKey, string> = {
   backgroundHintInert: 'Only applies to skins that paint a backdrop (Blue Fantasy / Whale Song). Applies to the official default automatically once such a skin is active.',
   wallpaperTitle: 'Wallpaper Engine',
   wallpaperEnable: 'Enable wallpapers',
-  wallpaperHint: 'Use your local Wallpaper Engine library as the GUI backdrop: video and web wallpapers render live, scene wallpapers as a static frame.',
+  wallpaperHint: 'Use your local Wallpaper Engine library as the GUI backdrop: video, web, and scene wallpapers render live (scene wallpapers need WebGL).',
   wallpaperLoadError: 'Wallpaper library failed to load',
   wallpaperLibraryFound: 'Wallpaper Engine library detected',
   wallpaperLibraryManual: 'Manual folders only (no Wallpaper Engine install found; set folders in the skin-wallpaper settings)',
@@ -111,6 +115,10 @@ export const en: Record<SkinCenterKey, string> = {
   wallpaperMode: 'Render mode',
   wallpaperModeLive: 'Live',
   wallpaperModeFrame: 'Static frame',
+  wallpaperFit: 'Sizing mode',
+  wallpaperFitCover: 'Cover (fill)',
+  wallpaperFitContain: 'Fit (entire image)',
+  wallpaperFitFill: 'Stretch',
   wallpaperClear: 'Turn off wallpaper',
   wallpaperDim: 'Wallpaper dimming',
   wallpaperBlur: 'Wallpaper blur',
@@ -169,7 +177,7 @@ export const zh: Record<SkinCenterKey, string> = {
   backgroundHintInert: '仅对带背景图插画的皮肤（蓝色幻想 / 鲸吟）生效；官方默认无背景图，该滑块对这些皮肤自动生效。',
   wallpaperTitle: 'Wallpaper Engine',
   wallpaperEnable: '启用动态壁纸',
-  wallpaperHint: '把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频与网页壁纸动态渲染，场景壁纸以静态帧呈现。',
+  wallpaperHint: '把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频、网页与场景壁纸均动态渲染（场景壁纸需要 WebGL）。',
   wallpaperLoadError: '壁纸库加载失败',
   wallpaperLibraryFound: '已检测到 Wallpaper Engine 壁纸库',
   wallpaperLibraryManual: '仅手动目录（未检测到 Wallpaper Engine 安装，可在 skin-wallpaper 设置里添加目录）',
@@ -177,6 +185,10 @@ export const zh: Record<SkinCenterKey, string> = {
   wallpaperMode: '渲染模式',
   wallpaperModeLive: '动态',
   wallpaperModeFrame: '静态帧',
+  wallpaperFit: '适应方式',
+  wallpaperFitCover: '铺满裁剪',
+  wallpaperFitContain: '完整缩放',
+  wallpaperFitFill: '拉伸铺满',
   wallpaperClear: '关闭壁纸',
   wallpaperDim: '壁纸暗化',
   wallpaperBlur: '壁纸模糊',

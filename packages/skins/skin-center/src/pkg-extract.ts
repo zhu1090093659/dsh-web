@@ -36,9 +36,19 @@
  */
 
 import { Buffer } from 'node:buffer'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { join as joinPath, resolve as resolvePath, sep } from 'node:path'
-import { deflateSync } from 'node:zlib'
+import { deflateSync, inflateSync } from 'node:zlib'
+
+/**
+ * Hard ceilings for allocations driven by wallpaper file content. Workshop
+ * files are untrusted: a crafted pkg/tex/png must not be able to force
+ * multi-GB host allocations (PR #717 follow-up hardening).
+ */
+const MAX_PKG_ENTRY_BYTES = 512 * 1024 * 1024
+const MAX_DECOMPRESSED_BYTES = 256 * 1024 * 1024
+const MAX_TEX_DIMENSION = 16384
+const MAX_TEX_PIXELS = 64 * 1024 * 1024
 
 /** One file inside a PKG container. */
 export interface PkgEntry {
@@ -95,8 +105,9 @@ const TEX_FORMAT_NAMES: Record<number, string> = {
 /** TEXI0001 flags bit marking an animated (sprite-sheet / gif) texture. */
 const TEX_FLAG_IS_GIF = 4
 
-/** One animation frame from a TEXS container. */
+/** Animated texture frame descriptor. */
 export interface TexFrameInfo {
+  framenumber: number
   imageId: number
   /** Frame duration in seconds. */
   frametime: number
@@ -131,6 +142,98 @@ export interface DecodedImage {
   rgba: Uint8Array
 }
 
+/** Decode uncompressed or filtered PNG image bytes into raw RGBA8888. */
+export function decodePngToRgba(pngBuf: Uint8Array): DecodedImage {
+  let pos = 8
+  let width = 0
+  let height = 0
+  let colorType = 0
+  const idatChunks: Uint8Array[] = []
+  const view = new DataView(pngBuf.buffer, pngBuf.byteOffset, pngBuf.byteLength)
+  while (pos < pngBuf.length) {
+    const len = view.getUint32(pos, false)
+    const type = String.fromCharCode(pngBuf[pos + 4], pngBuf[pos + 5], pngBuf[pos + 6], pngBuf[pos + 7])
+    const data = pngBuf.subarray(pos + 8, pos + 8 + len)
+    if (type === 'IHDR') {
+      const ihdrView = new DataView(data.buffer, data.byteOffset, data.byteLength)
+      width = ihdrView.getUint32(0, false)
+      height = ihdrView.getUint32(4, false)
+      colorType = data[9]
+      if (width <= 0 || height <= 0 || width > MAX_TEX_DIMENSION || height > MAX_TEX_DIMENSION || width * height > MAX_TEX_PIXELS) {
+        throw new Error('png: invalid dimensions ' + width + 'x' + height)
+      }
+    } else if (type === 'IDAT') {
+      idatChunks.push(data)
+    } else if (type === 'IEND') {
+      break
+    }
+    pos += 12 + len
+  }
+  const totalIdat = idatChunks.reduce((acc, c) => acc + c.length, 0)
+  if (totalIdat > MAX_DECOMPRESSED_BYTES) {
+    throw new Error('png: idat stream too large (' + totalIdat + ' bytes)')
+  }
+  const combined = new Uint8Array(totalIdat)
+  let cur = 0
+  for (const c of idatChunks) {
+    combined.set(c, cur)
+    cur += c.length
+  }
+  const bytesPerPixel = colorType === 6 ? 4 : colorType === 2 ? 3 : 1
+  const stride = width * bytesPerPixel
+  const maxOutput = height * (1 + stride) + 64
+  const uncompressed = inflateSync(combined, { maxOutputLength: maxOutput })
+  const raw = new Uint8Array(width * height * 4)
+  let srcPos = 0
+  const rowBuf = new Uint8Array(stride)
+  const prevRowBuf = new Uint8Array(stride)
+  for (let y = 0; y < height; y++) {
+    const filterType = uncompressed[srcPos++]
+    for (let x = 0; x < stride; x++) {
+      const b = uncompressed[srcPos++]
+      const a = x >= bytesPerPixel ? rowBuf[x - bytesPerPixel] : 0
+      const c = x >= bytesPerPixel ? prevRowBuf[x - bytesPerPixel] : 0
+      const p_b = prevRowBuf[x]
+      let val = b
+      if (filterType === 1) val = (b + a) & 0xff
+      else if (filterType === 2) val = (b + p_b) & 0xff
+      else if (filterType === 3) val = (b + Math.floor((a + p_b) / 2)) & 0xff
+      else if (filterType === 4) {
+        const p = a + p_b - c
+        const pa = Math.abs(p - a)
+        const pb = Math.abs(p - p_b)
+        const pc = Math.abs(p - c)
+        let pr = a
+        if (pb < pa && pb < pc) pr = p_b
+        else if (pc < pa) pr = c
+        val = (b + pr) & 0xff
+      }
+      rowBuf[x] = val
+    }
+    prevRowBuf.set(rowBuf)
+    for (let x = 0; x < width; x++) {
+      const di = (y * width + x) * 4
+      if (colorType === 6) {
+        raw[di] = rowBuf[x * 4]
+        raw[di + 1] = rowBuf[x * 4 + 1]
+        raw[di + 2] = rowBuf[x * 4 + 2]
+        raw[di + 3] = rowBuf[x * 4 + 3]
+      } else if (colorType === 2) {
+        raw[di] = rowBuf[x * 3]
+        raw[di + 1] = rowBuf[x * 3 + 1]
+        raw[di + 2] = rowBuf[x * 3 + 2]
+        raw[di + 3] = 255
+      } else {
+        raw[di] = rowBuf[x]
+        raw[di + 1] = rowBuf[x]
+        raw[di + 2] = rowBuf[x]
+        raw[di + 3] = 255
+      }
+    }
+  }
+  return { width, height, rgba: raw }
+}
+
 /** Result of extractSceneMainImage. */
 export interface SceneMainImage {
   width: number
@@ -147,13 +250,14 @@ const textDecoder = new TextDecoder('utf-8')
  * Error prefixed with the reader label (e.g. 'pkg: unexpected end of data').
  */
 class Reader {
+  private data: Uint8Array
+  private label: string
   private view: DataView
   pos = 0
 
-  constructor(
-    private readonly data: Uint8Array,
-    private readonly label: string,
-  ) {
+  constructor(data: Uint8Array, label: string) {
+    this.data = data
+    this.label = label
     this.view = new DataView(data.buffer, data.byteOffset, data.byteLength)
   }
 
@@ -239,6 +343,9 @@ class Reader {
  * @param dstSize exact expected decompressed size
  */
 export function lz4DecompressBlock(src: Uint8Array, dstSize: number): Uint8Array {
+  if (dstSize < 0 || dstSize > MAX_DECOMPRESSED_BYTES) {
+    throw new Error('lz4: decompressed size out of bounds (' + String(dstSize) + ')')
+  }
   const dst = new Uint8Array(dstSize)
   let ip = 0
   let op = 0
@@ -355,6 +462,9 @@ export function readPkgEntry(data: Uint8Array, entry: PkgEntry): Uint8Array {
   }
   if ((entry.flags & PKG_ENTRY_FLAG_LZ4) === 0) {
     return data.slice(abs, abs + entry.compressedSize)
+  }
+  if (entry.size > MAX_PKG_ENTRY_BYTES) {
+    throw new Error("pkg: entry '" + entry.path + "' too large (" + entry.size + ' bytes)')
   }
   const r = new Reader(data.subarray(abs, abs + entry.compressedSize), 'pkg')
   const originalSize = r.u64()
@@ -507,7 +617,7 @@ function parseTexInternal(data: Uint8Array): TexParsed {
         r.i32() // widthY
         r.i32() // heightX
         const height = r.i32()
-        frames.push({ imageId, frametime, x, y, width, height })
+        frames.push({ framenumber: i, imageId, frametime, x, y, width, height })
       } else {
         const x = r.f32()
         const y = r.f32()
@@ -515,11 +625,18 @@ function parseTexInternal(data: Uint8Array): TexParsed {
         r.f32() // widthY
         r.f32() // heightX
         const height = r.f32()
-        frames.push({ imageId, frametime, x, y, width, height })
+        frames.push({ framenumber: i, imageId, frametime, x, y, width, height })
       }
     }
   }
   const mip0 = firstImage![0]
+  if (!isVideoMp4 && mip0 && mip0.bytes && mip0.bytes.length >= 8) {
+    const b = mip0.bytes
+    if ((b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70) ||
+        (b[0] === 0x00 && b[1] === 0x00 && b[2] === 0x00 && b[3] === 0x18 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70)) {
+      isVideoMp4 = true
+    }
+  }
   return {
     format,
     flags,
@@ -700,6 +817,9 @@ export function decodeTex(data: Uint8Array): DecodedImage {
     throw new Error('tex: video mp4 textures cannot be decoded to a static frame')
   }
   const mip = parsed.mipmaps[0]
+  if (isPngBuffer(mip.bytes)) {
+    return decodePngToRgba(mip.bytes)
+  }
   const { width, height, bytes } = mip
   switch (parsed.format) {
     case TexFormat.RGBA8888: {
@@ -815,24 +935,34 @@ function collectImageObjectTextures(
   const pushTextureList = (list: unknown): void => {
     if (!Array.isArray(list)) return
     for (const item of list) {
-      const name =
+      const rawName =
         typeof item === 'string'
           ? item
           : item && typeof item === 'object' && typeof (item as { name?: unknown }).name === 'string'
             ? (item as { name: string }).name
-            : null
-      if (name && name.toLowerCase().endsWith('.tex')) out.push(name)
+            : item && typeof item === 'object' && typeof (item as { file?: unknown }).file === 'string'
+              ? (item as { file: string }).file
+              : null
+      if (!rawName) continue
+      if (rawName.toLowerCase().endsWith('.tex')) {
+        out.push(rawName)
+      } else {
+        out.push(rawName + '.tex')
+        out.push('materials/' + rawName + '.tex')
+      }
     }
   }
   const ref = imageObject.image as string
   if (ref.toLowerCase().endsWith('.tex')) {
     out.push(ref)
   } else {
-    // the image reference normally points at a material json whose passes
-    // carry the actual texture paths (RePKG scene model)
-    const material = readJson(ref) as { passes?: { textures?: unknown }[] } | null
-    if (material && Array.isArray(material.passes)) {
-      for (const pass of material.passes) pushTextureList(pass?.textures)
+    let materialJson = readJson(ref) as { material?: string; passes?: { textures?: unknown }[] } | null
+    if (materialJson && typeof materialJson.material === 'string') {
+      const matRef = materialJson.material
+      materialJson = (readJson(matRef) ?? readJson('materials/' + matRef)) as { passes?: { textures?: unknown }[] } | null
+    }
+    if (materialJson && Array.isArray(materialJson.passes)) {
+      for (const pass of materialJson.passes) pushTextureList(pass?.textures)
     }
   }
   // per-instance texture overrides
@@ -900,12 +1030,19 @@ function pkgSceneAccess(pkgData: Uint8Array): SceneAccess {
  * directory; texture references escaping it resolve to null.
  */
 function dirSceneAccess(dir: string): SceneAccess {
+  const normDir = resolvePath(dir)
+  const realDir = (() => { try { return realpathSync(normDir) } catch { return normDir } })()
   const readFile = (path: string): SceneFile | null => {
-    const abs = resolvePath(dir, path)
-    if (abs !== dir && !abs.startsWith(dir + sep)) return null
+    const abs = resolvePath(normDir, path)
+    if (abs !== normDir && !abs.startsWith(normDir + sep)) return null
     try {
+      // Never follow symlinks: a project dir containing a link must not
+      // leak arbitrary file bytes into the extraction pipeline.
+      if (lstatSync(abs).isSymbolicLink()) return null
       if (!statSync(abs).isFile()) return null
-      return { path, bytes: new Uint8Array(readFileSync(abs)) }
+      const real = realpathSync(abs)
+      if (real !== realDir && !real.startsWith(realDir + sep)) return null
+      return { path, bytes: new Uint8Array(readFileSync(real)) }
     } catch {
       return null
     }
@@ -916,7 +1053,7 @@ function dirSceneAccess(dir: string): SceneAccess {
       if (depth > 4) return
       let names: string[] = []
       try {
-        names = readdirSync(sub === '' ? dir : joinPath(dir, sub))
+        names = readdirSync(sub === '' ? normDir : joinPath(normDir, sub))
       } catch {
         return
       }
@@ -925,9 +1062,10 @@ function dirSceneAccess(dir: string): SceneAccess {
         let isDir = false
         let isFile = false
         try {
-          const stat = statSync(joinPath(dir, rel))
-          isDir = stat.isDirectory()
-          isFile = stat.isFile()
+          const lst = lstatSync(joinPath(normDir, rel))
+          if (lst.isSymbolicLink()) continue
+          isDir = lst.isDirectory()
+          isFile = lst.isFile()
         } catch {
           continue
         }
@@ -953,45 +1091,335 @@ function dirSceneAccess(dir: string): SceneAccess {
   }
 }
 
+function isPngBuffer(buf: Uint8Array): boolean {
+  return buf.length >= 8 &&
+    buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
+    buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a
+}
+
+function isLikelyMaskOrHelper(path: string): boolean {
+  const lower = path.toLowerCase()
+  return (
+    lower.includes('/masks/') ||
+    lower.includes('_mask') ||
+    lower.includes('mask') ||
+    lower.includes('flow') ||
+    lower.includes('wave') ||
+    lower.includes('noise') ||
+    lower.includes('lut') ||
+    lower.includes('distort') ||
+    lower.includes('warp') ||
+    lower.includes('vortex') ||
+    lower.includes('glow') ||
+    lower.includes('neon') ||
+    lower.includes('strip') ||
+    lower.includes('bulb') ||
+    lower.includes('led') ||
+    lower.includes('combined') ||
+    lower.includes('isometric') ||
+    lower.includes('razer') ||
+    lower.includes('len') ||
+    lower.includes('lens') ||
+    lower.includes('flare') ||
+    lower.includes('prism') ||
+    lower.includes('diffract') ||
+    lower.includes('black') ||
+    lower.includes('overlay') ||
+    lower === 'sun' ||
+    lower.endsWith('/sun.tex') ||
+    lower.endsWith('/sun.json') ||
+    lower.endsWith('/sun') ||
+    lower.includes('waterripple') ||
+    lower.includes('waterflow') ||
+    lower.includes('phase') ||
+    lower.includes('normal') ||
+    lower.includes('foliagesway') ||
+    lower.includes('cursorripple') ||
+    lower.includes('赞助') ||
+    lower.includes('sponsor') ||
+    lower.includes('donate') ||
+    lower.includes('qrcode') ||
+    lower.includes('qr_code') ||
+    lower.includes('audio_bar') ||
+    lower.includes('audiobar') ||
+    lower.includes('simple_audio') ||
+    lower.includes('提示框') ||
+    lower.includes('tip') ||
+    lower.includes('watermark') ||
+    lower.includes('logo') ||
+    lower.includes('particle') ||
+    lower.includes('audio') ||
+    lower.includes('lightmap') ||
+    lower.includes('light_map') ||
+    lower.includes('visso') ||
+    lower.includes('font') ||
+    lower.includes('text_')
+  )
+}
+
+function isNaturalImageRgba(rgba: Uint8Array, width: number, height: number): boolean {
+  const totalPixels = width * height
+  const step = Math.max(1, Math.floor(totalPixels / 2000))
+  let opaqueCount = 0
+  let sampleCount = 0
+  for (let i = 0; i < totalPixels; i += step) {
+    sampleCount++
+    const idx = i * 4
+    const a = rgba[idx + 3]
+    if (a >= 240) {
+      opaqueCount++
+    }
+  }
+  return sampleCount > 0 && (opaqueCount / sampleCount) >= 0.85
+}
+
+function hasContent(rgba: Uint8Array, width: number, height: number): boolean {
+  const totalPixels = width * height
+  const step = Math.max(1, Math.floor(totalPixels / 1000))
+  let visibleCount = 0
+  let sampleCount = 0
+  for (let i = 0; i < totalPixels; i += step) {
+    sampleCount++
+    const idx = i * 4
+    const r = rgba[idx]
+    const g = rgba[idx + 1]
+    const b = rgba[idx + 2]
+    const a = rgba[idx + 3]
+    if (a > 10 && (r > 0 || g > 0 || b > 0)) {
+      visibleCount++
+    }
+  }
+  return sampleCount === 0 || (visibleCount / sampleCount) >= 0.01
+}
+
+function getTextureScore(path: string): number {
+  const lower = path.toLowerCase()
+  if (isLikelyMaskOrHelper(path)) return -100
+  let score = 0
+  if (lower.includes('白天') || lower.includes('day') || lower.includes('main') || lower.includes('background') || lower.includes('wallpaper')) {
+    score += 50
+  }
+  if (lower.includes('清晨') || lower.includes('morning') || lower.includes('黄昏') || lower.includes('dusk')) {
+    score += 20
+  }
+  if (lower.includes('昼夜变化') || lower.includes('mddn') || lower.includes('transition')) {
+    score -= 30
+  }
+  return score
+}
+
+/** Composite layered 2D sprite scenes into a single full-resolution frame. */
+function tryCompositeMultiLayerScene(scene: Record<string, unknown>, access: SceneAccess): SceneMainImage | null {
+  const objects = Array.isArray(scene.objects) ? (scene.objects as Array<Record<string, unknown>>) : []
+  const imageObjects = objects.filter(
+    (obj) =>
+      obj &&
+      typeof obj === 'object' &&
+      typeof obj.image === 'string' &&
+      !String(obj.image).startsWith('models/util/') &&
+      !isLikelyMaskOrHelper(String(obj.image)),
+  )
+  if (imageObjects.length <= 1) return null
+
+  let canvasWidth = 1920
+  let canvasHeight = 1080
+
+  const layers: { x: number; y: number; width: number; height: number; rgba: Uint8Array }[] = []
+  let hasLargeBase = false
+
+  for (const obj of objects) {
+    if (!obj.image || typeof obj.image !== 'string' || obj.image.startsWith('models/util/')) continue
+    if (obj.visible && typeof obj.visible === 'object' && (obj.visible as { value?: unknown }).value === false) continue
+    if (typeof obj.name === 'string') {
+      const nameLower = obj.name.toLowerCase()
+      if (
+        nameLower.includes('black') ||
+        nameLower.includes('len') ||
+        nameLower.includes('util') ||
+        nameLower.includes('flare') ||
+        nameLower.includes('blend') ||
+        nameLower === 'sun' ||
+        nameLower === 'sun2'
+      ) {
+        continue
+      }
+    }
+    if (isLikelyMaskOrHelper(obj.image)) continue
+
+    const modelJson = access.readJson(obj.image) as Record<string, unknown> | null
+    if (!modelJson || typeof modelJson.material !== 'string') continue
+    const matJson = access.readJson(modelJson.material) as Record<string, unknown> | null
+    if (!matJson || !Array.isArray(matJson.passes)) continue
+    const passes = matJson.passes as Array<{ textures?: string[] }>
+    const texName = passes[0]?.textures?.[0]
+    if (!texName || isLikelyMaskOrHelper(texName)) continue
+
+    const texPath = access.listTexPaths().find(
+      (p) =>
+        p.toLowerCase() === texName.toLowerCase() ||
+        p.toLowerCase() === ('materials/' + texName + '.tex').toLowerCase() ||
+        p.toLowerCase() === (texName + '.tex').toLowerCase() ||
+        p.toLowerCase().endsWith('/' + texName.toLowerCase() + '.tex') ||
+        p.toLowerCase().endsWith('/' + texName.toLowerCase()),
+    )
+    if (!texPath) continue
+    const file = access.readFile(texPath)
+    if (!file) continue
+
+    let decoded: DecodedImage | null = null
+    try {
+      decoded = decodeTex(file.bytes)
+    } catch {
+      continue
+    }
+    if (!decoded || decoded.width < 64 || decoded.height < 64) continue
+
+    if (decoded.width >= 1280 || decoded.height >= 720) {
+      hasLargeBase = true
+    }
+
+    if (decoded.width > canvasWidth || decoded.height > canvasHeight) {
+      canvasWidth = Math.max(canvasWidth, decoded.width)
+      canvasHeight = Math.max(canvasHeight, decoded.height)
+    }
+
+    let ox = 0
+    let oy = 0
+    if (typeof modelJson.cropoffset === 'string') {
+      const parts = modelJson.cropoffset.trim().split(/\s+/)
+      ox = parseFloat(parts[0]) || 0
+      oy = parseFloat(parts[1]) || 0
+    }
+
+    const centerX = canvasWidth / 2 + ox
+    const centerY = canvasHeight / 2 - oy
+    const startX = Math.round(centerX - decoded.width / 2)
+    const startY = Math.round(centerY - decoded.height / 2)
+
+    layers.push({ x: startX, y: startY, width: decoded.width, height: decoded.height, rgba: decoded.rgba })
+  }
+
+  if (imageObjects.length >= 3 && layers.length <= 1) {
+    throw new Error('pkg: multi-layer scene composition requires full preview render')
+  }
+  if (layers.length <= 1 || !hasLargeBase) return null
+
+  const canvas = new Uint8Array(canvasWidth * canvasHeight * 4)
+  for (const layer of layers) {
+    for (let y = 0; y < layer.height; y++) {
+      const cy = layer.y + y
+      if (cy < 0 || cy >= canvasHeight) continue
+      for (let x = 0; x < layer.width; x++) {
+        const cx = layer.x + x
+        if (cx < 0 || cx >= canvasWidth) continue
+        const si = (y * layer.width + x) * 4
+        const di = (cy * canvasWidth + cx) * 4
+        const sa = layer.rgba[si + 3] / 255
+        if (sa <= 0) continue
+        const da = canvas[di + 3] / 255
+        const outA = sa + da * (1 - sa)
+        if (outA <= 0) continue
+        canvas[di] = Math.round((layer.rgba[si] * sa + canvas[di] * da * (1 - sa)) / outA)
+        canvas[di + 1] = Math.round((layer.rgba[si + 1] * sa + canvas[di + 1] * da * (1 - sa)) / outA)
+        canvas[di + 2] = Math.round((layer.rgba[si + 2] * sa + canvas[di + 2] * da * (1 - sa)) / outA)
+        canvas[di + 3] = Math.round(outA * 255)
+      }
+    }
+  }
+
+  return {
+    width: canvasWidth,
+    height: canvasHeight,
+    png: Buffer.from(encodePng(canvasWidth, canvasHeight, canvas)),
+    texturePath: 'composite(' + String(layers.length) + ' layers)',
+  }
+}
+
 /** Shared scene pipeline over one access layer; label prefixes error text. */
 function extractSceneMainImageVia(access: SceneAccess, label: string): SceneMainImage {
-  const scene = access.readJson('scene.json') as { objects?: unknown } | null
+  let scene = access.readJson('scene.json') as Record<string, unknown> | null
+  if (!scene) {
+    const project = access.readJson('project.json') as { file?: string } | null
+    if (project && typeof project.file === 'string' && project.file.endsWith('.json')) {
+      scene = access.readJson(project.file) as Record<string, unknown> | null
+    }
+  }
   if (!scene || !Array.isArray(scene.objects)) {
     throw new Error(label + ': scene.json not found or invalid')
   }
-  const candidates: string[] = []
-  const imageObject = (scene.objects as unknown[]).find(
-    (o): o is Record<string, unknown> =>
-      !!o && typeof o === 'object' && typeof (o as { image?: unknown }).image === 'string',
+
+  // 3D model scenes use UV maps on 3D meshes rather than 2D desktop backgrounds
+  const has3dModels = (scene.objects as Array<{ model?: unknown }>).some(
+    (obj) => obj && typeof obj === 'object' && typeof obj.model === 'string' && obj.model.length > 0,
   )
-  if (imageObject) candidates.push(...collectImageObjectTextures(imageObject, access.readJson))
-  // fallback: every available .tex, largest pixel area first
-  const ranked: { path: string; area: number }[] = []
-  for (const path of access.listTexPaths()) {
+  if (has3dModels) {
+    throw new Error(label + ': 3D scene cannot be extracted as 2D frame')
+  }
+
+  const composite = tryCompositeMultiLayerScene(scene, access)
+  if (composite !== null) {
+    return composite
+  }
+
+  const rawCandidates: string[] = []
+  for (const obj of scene.objects as unknown[]) {
+    if (obj && typeof obj === 'object' && typeof (obj as { image?: unknown }).image === 'string') {
+      rawCandidates.push(...collectImageObjectTextures(obj as Record<string, unknown>, access.readJson))
+    }
+  }
+  const allCandidates: { path: string; fromObject: boolean }[] = []
+  for (const p of rawCandidates) {
+    if (!isLikelyMaskOrHelper(p) && !allCandidates.some((c) => c.path.toLowerCase() === p.toLowerCase())) {
+      allCandidates.push({ path: p, fromObject: true })
+    }
+  }
+  for (const p of access.listTexPaths()) {
+    if (!isLikelyMaskOrHelper(p) && !allCandidates.some((c) => c.path.toLowerCase() === p.toLowerCase())) {
+      allCandidates.push({ path: p, fromObject: false })
+    }
+  }
+  const ranked = allCandidates.map(({ path, fromObject }) => {
+    let area = 0
     try {
       const file = access.readFile(path)
       const info = file ? parseTex(file.bytes) : null
-      ranked.push({ path, area: info ? info.width * info.height : 0 })
+      if (info) area = info.width * info.height
     } catch {
-      ranked.push({ path, area: 0 })
+      // ignore
     }
-  }
-  ranked.sort((a, b) => b.area - a.area)
-  for (const { path } of ranked) {
-    if (!candidates.some((c) => c.toLowerCase() === path.toLowerCase())) candidates.push(path)
-  }
+    const score = getTextureScore(path) + (fromObject ? 100 : 0)
+    return { path, score, area }
+  })
+  ranked.sort((a, b) => {
+    if (a.score !== b.score) return b.score - a.score
+    return b.area - a.area
+  })
+  const candidates = ranked.map((r) => r.path)
   if (candidates.length === 0) {
     throw new Error(label + ': no texture candidates found')
   }
   let lastError: unknown = null
   for (const path of candidates) {
+    if (isLikelyMaskOrHelper(path)) continue
     const file = access.readFile(path)
     if (!file) {
       lastError = new Error(label + ": texture '" + path + "' not found in " + (label === 'pkg' ? 'package' : 'directory'))
       continue
     }
     try {
+      const parsed = parseTexInternal(file.bytes)
+      if (parsed.isVideoMp4) {
+        throw new Error('tex: video mp4 textures cannot be decoded to a static frame')
+      }
+      const mip0 = parsed.mipmaps[0]
+      if (isPngBuffer(mip0.bytes)) {
+        return { width: mip0.width, height: mip0.height, png: Buffer.from(mip0.bytes), texturePath: file.path }
+      }
       const { width, height, rgba } = decodeTex(file.bytes)
+      if (!hasContent(rgba, width, height)) {
+        lastError = new Error(label + ": texture '" + path + "' is a shader mask or partial layer")
+        continue
+      }
       return { width, height, png: encodePng(width, height, rgba), texturePath: file.path }
     } catch (err) {
       lastError = err
@@ -1012,3 +1440,1126 @@ export function extractSceneMainImage(pkgData: Uint8Array): SceneMainImage {
 export function extractSceneMainImageFromDir(dir: string): SceneMainImage {
   return extractSceneMainImageVia(dirSceneAccess(dir), 'scene')
 }
+
+/** Find and extract the primary MP4 video embedded inside a scene's .tex textures. */
+function extractSceneVideoVia(access: SceneAccess): Uint8Array | null {
+  const candidates: { path: string; score: number; bytes: Uint8Array }[] = []
+  for (const path of access.listTexPaths()) {
+    const file = access.readFile(path)
+    if (!file) continue
+    const raw = file.bytes
+    for (let i = 0; i < 200 && i + 8 <= raw.length; i++) {
+      if (raw[i] === 0x66 && raw[i + 1] === 0x74 && raw[i + 2] === 0x79 && raw[i + 3] === 0x70) {
+        const ftypOffset = i - 4
+        if (ftypOffset >= 0 && ftypOffset < raw.length) {
+          candidates.push({
+            path,
+            score: getTextureScore(path),
+            bytes: raw.slice(ftypOffset),
+          })
+          break
+        }
+      }
+    }
+  }
+  if (candidates.length === 0) return null
+  candidates.sort((a, b) => b.score - a.score)
+  return candidates[0].bytes
+}
+
+export function extractSceneVideo(pkgData: Uint8Array): Uint8Array | null {
+  return extractSceneVideoVia(pkgSceneAccess(pkgData))
+}
+
+export function extractSceneVideoFromDir(dir: string): Uint8Array | null {
+  return extractSceneVideoVia(dirSceneAccess(dir))
+}
+
+export function hasSceneVideo(pkgData: Uint8Array): boolean {
+  try {
+    return extractSceneVideo(pkgData) !== null
+  } catch {
+    return false
+  }
+}
+
+export function hasSceneVideoFromDir(dir: string): boolean {
+  try {
+    return extractSceneVideoFromDir(dir) !== null
+  } catch {
+    return false
+  }
+}
+
+export interface SceneManifestLayer {
+  name: string
+  texUrl: string
+  x: number
+  y: number
+  w: number
+  h: number
+  alpha?: number
+  /** Z rotation in radians (2D scene object angles). */
+  angle?: number
+  /** UV sub-rect [u0, v0, u1, v1] sampled from the (possibly padded) texture. */
+  uvCrop?: [number, number, number, number]
+  /** Material shader name (genericimage default; flowimage gets its own pass). */
+  shader?: string
+  /** All pass textures resolved (flowimage: mask + content layers). */
+  texUrls?: string[]
+  /** flowimage content-layer UV scale (mask/content texture size ratio). */
+  flowScale?: [number, number]
+  /** constantshadervalues numerics (flow Speed/Amount/Bright etc.). */
+  nums?: Record<string, number>
+  /** Resolved color user properties, keyed by shader uniform name. */
+  userColors?: Record<string, [number, number, number]>
+  isGround?: boolean
+  isReflection?: boolean
+  sway?: number
+  swaySpeed?: number
+}
+
+export interface DecodedMesh {
+  vCount: number
+  iCount: number
+  pos: Float32Array
+  norm: Float32Array
+  uv: Float32Array
+  /** u16 for meshes with <= 65535 vertices, u32 above that (mdlv >= 23). */
+  indices: Uint16Array | Uint32Array
+  materialPath?: string
+}
+
+export interface SceneManifestMesh {
+  vCount: number
+  iCount: number
+  posB64: string
+  normB64: string
+  uvB64: string
+  indicesB64: string
+  /** True when indicesB64 decodes to Uint32Array (mesh has > 65535 vertices). */
+  idx32?: boolean
+  texUrl?: string
+  materialPath?: string
+  /** WE material shader name (passes[0].shader), e.g. 'ricepodjet'. */
+  shader?: string
+  /** WE material blending: additive passes render into the glow queue. */
+  additive?: boolean
+  /** WE material depthtesting disabled (orbital glows, skybox passes). */
+  noDepthTest?: boolean
+  /** WE material depthwriting disabled. */
+  noDepthWrite?: boolean
+  /** Resolved user-property tint color (usershadervalues -> project property). */
+  tint?: [number, number, number]
+  /** Second tint (usershadervalues entry mapped to the 'tint2' uniform). */
+  tint2?: [number, number, number]
+  /** Second texture of the material pass (e.g. bg pattern overlay). */
+  texUrl2?: string
+  /** WE material blending 'translucent' (alpha-blended overlay). */
+  translucent?: boolean
+  /** GRADIENT_FADE combo: alpha fades towards the top/bottom edges. */
+  gradFade?: boolean
+  /** All resolved color user properties, keyed by shader uniform name. */
+  userColors?: Record<string, [number, number, number]>
+  /** All resolved numeric user properties, keyed by shader uniform name. */
+  userNums?: Record<string, number>
+  color?: [number, number, number]
+}
+
+/** A fullscreen image layer inside a 3D scene (model json with fullscreen: true). */
+export interface SceneManifestBgLayer {
+  name: string
+  shader?: string
+  texUrl?: string
+  userColors?: Record<string, [number, number, number]>
+  userNums?: Record<string, number>
+}
+
+/** A 3D scene sprite object (scene.json `sprite` key), rendered as a camera-facing additive billboard. */
+export interface SceneManifestSprite {
+  name: string
+  texUrl?: string
+  origin: [number, number, number]
+  scale: [number, number, number]
+}
+
+/** A 3D scene particle system (scene.json `particle` key), simplified to a sphere-shell emitter. */
+export interface SceneManifestParticles3d {
+  name: string
+  texUrl?: string
+  origin: [number, number, number]
+  rate: number
+  maxCount: number
+  lifeMin: number
+  lifeMax: number
+  sizeMin: number
+  sizeMax: number
+  distMin: number
+  distMax: number
+  velMin: [number, number, number]
+  velMax: [number, number, number]
+  colorMin: [number, number, number]
+  colorMax: [number, number, number]
+}
+
+export interface SceneManifestModel {
+  name: string
+  origin: [number, number, number]
+  angles: [number, number, number]
+  scale: [number, number, number]
+  meshes: SceneManifestMesh[]
+}
+
+export interface SceneManifestCamera {
+  eye: [number, number, number]
+  center: [number, number, number]
+  up: [number, number, number]
+  fov: number
+}
+
+export interface SceneManifest {
+  width: number
+  height: number
+  is3D?: boolean
+  clearColor?: [number, number, number]
+  carBodyColor?: [number, number, number]
+  carStripesColor?: [number, number, number]
+  camera?: SceneManifestCamera
+  /** Scene declares a camera but no animation paths: fixed viewpoint. */
+  cameraStatic?: boolean
+  cameraPaths?: Array<{
+    d: number
+    e0: [number, number, number]
+    c0: [number, number, number]
+    u0: [number, number, number]
+    e1: [number, number, number]
+    c1: [number, number, number]
+    u1: [number, number, number]
+  }>
+  models?: SceneManifestModel[]
+  sprites?: SceneManifestSprite[]
+  particles3d?: SceneManifestParticles3d[]
+  bgLayers?: SceneManifestBgLayer[]
+  hasMeteors?: boolean
+  hasFireflies?: boolean
+  meteorTex?: string
+  sparkleTex?: string
+  layers: SceneManifestLayer[]
+}
+
+/** Decompress LZ4 block format (no frame header, raw block). */
+function decompressLz4Block(src: Uint8Array, decompressedSize: number): Uint8Array {
+  if (decompressedSize < 0 || decompressedSize > MAX_DECOMPRESSED_BYTES) {
+    throw new Error('lz4: decompressed size out of bounds (' + String(decompressedSize) + ')')
+  }
+  const dst = new Uint8Array(decompressedSize)
+  let sp = 0, dp = 0
+  while (sp < src.length && dp < decompressedSize) {
+    const token = src[sp++]
+    let litLen = token >> 4
+    if (litLen === 15) { let b; do { b = src[sp++]; litLen += b } while (b === 255) }
+    for (let i = 0; i < litLen; i++) dst[dp++] = src[sp++]
+    if (sp >= src.length || dp >= decompressedSize) break
+    const offset = src[sp] | (src[sp + 1] << 8); sp += 2
+    let matchLen = (token & 0xf) + 4
+    if (matchLen === 19) { let b; do { b = src[sp++]; matchLen += b } while (b === 255) }
+    const matchStart = dp - offset
+    for (let i = 0; i < matchLen; i++) dst[dp++] = dst[matchStart + i]
+  }
+  return dst
+}
+
+/** Decode DXT1 (BC1) 4x4 block into RGBA pixels. */
+function decodeDXT1Block(block: Uint8Array, offset: number, out: Uint8Array, outOffset: number, outStride: number): void {
+  const c0 = block[offset] | (block[offset + 1] << 8)
+  const c1 = block[offset + 2] | (block[offset + 3] << 8)
+  const r0 = ((c0 >> 11) & 0x1f) * 255 / 31, g0 = ((c0 >> 5) & 0x3f) * 255 / 63, b0 = (c0 & 0x1f) * 255 / 31
+  const r1 = ((c1 >> 11) & 0x1f) * 255 / 31, g1 = ((c1 >> 5) & 0x3f) * 255 / 63, b1 = (c1 & 0x1f) * 255 / 31
+  const colors = [
+    [r0, g0, b0, 255], [r1, g1, b1, 255],
+    c0 > c1 ? [(2 * r0 + r1) / 3, (2 * g0 + g1) / 3, (2 * b0 + b1) / 3, 255] : [(r0 + r1) / 2, (g0 + g1) / 2, (b0 + b1) / 2, 255],
+    c0 > c1 ? [(r0 + 2 * r1) / 3, (g0 + 2 * g1) / 3, (b0 + 2 * b1) / 3, 255] : [0, 0, 0, 0],
+  ]
+  const bits = block[offset + 4] | (block[offset + 5] << 8) | (block[offset + 6] << 16) | (block[offset + 7] << 24)
+  for (let y = 0; y < 4; y++) {
+    for (let x = 0; x < 4; x++) {
+      const idx = (bits >> ((y * 4 + x) * 2)) & 3
+      const p = outOffset + y * outStride + x * 4
+      out[p] = colors[idx][0]; out[p + 1] = colors[idx][1]; out[p + 2] = colors[idx][2]; out[p + 3] = colors[idx][3]
+    }
+  }
+}
+
+/** Decode DXT5 (BC3) 4x4 block into RGBA pixels. */
+function decodeDXT5Block(block: Uint8Array, offset: number, out: Uint8Array, outOffset: number, outStride: number): void {
+  // Alpha block: 2 reference alphas + 6 bytes of 3-bit indices
+  const a0 = block[offset], a1 = block[offset + 1]
+  const alphaLUT = [a0, a1, 0, 0, 0, 0, 0, 0]
+  if (a0 > a1) {
+    for (let i = 1; i <= 6; i++) alphaLUT[i + 1] = ((7 - i) * a0 + i * a1) / 7
+  } else {
+    for (let i = 1; i <= 4; i++) alphaLUT[i + 1] = ((5 - i) * a0 + i * a1) / 5
+    alphaLUT[6] = 0; alphaLUT[7] = 255
+  }
+  // 48-bit alpha index block (6 bytes, 16 x 3-bit indices)
+  let alphaBits = 0n
+  for (let i = 0; i < 6; i++) alphaBits |= BigInt(block[offset + 2 + i]) << BigInt(i * 8)
+
+  // Color block at offset+8
+  decodeDXT1Block(block, offset + 8, out, outOffset, outStride)
+  // Override alpha with DXT5 alpha
+  for (let y = 0; y < 4; y++) {
+    for (let x = 0; x < 4; x++) {
+      const ai = Number((alphaBits >> BigInt((y * 4 + x) * 3)) & 7n)
+      out[outOffset + y * outStride + x * 4 + 3] = alphaLUT[ai]
+    }
+  }
+}
+
+/**
+ * Parse Wallpaper Engine TEXV0005 .tex file and return raw RGBA pixel data.
+ * Returns null if format is unsupported.
+ */
+export function parseTexToRGBA(buf: Uint8Array): { width: number; height: number; rgba: Uint8Array } | null {
+  if (buf.length < 55) return null
+  const magic = String.fromCharCode(...buf.slice(0, 8))
+  if (magic !== 'TEXV0005') return null
+  const texi = String.fromCharCode(...buf.slice(9, 17))
+  if (texi !== 'TEXI0001') return null
+
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
+  const fmt = dv.getUint32(18, true) // 0=ARGB8888, 4=DXT5, 6=DXT3, 7=DXT1
+  const texW = dv.getUint32(26, true)
+  const texH = dv.getUint32(30, true)
+
+  // Find TEXB section
+  let texbPos = -1
+  for (let i = 34; i < Math.min(buf.length, 100); i++) {
+    if (buf[i] === 0x54 && buf[i + 1] === 0x45 && buf[i + 2] === 0x58 && buf[i + 3] === 0x42) {
+      texbPos = i
+      break
+    }
+  }
+  if (texbPos < 0) return null
+
+  let p = texbPos + 9 // skip TEXB0003\0
+  const _containerFlag = dv.getUint32(p, true); p += 4
+  const _fmtRewrite = dv.getInt32(p, true); p += 4
+  const numMips = dv.getUint32(p, true); p += 4
+  if (numMips === 0 || numMips > 20) return null
+
+  // Read the first (largest) mip level
+  const mipW = dv.getUint32(p, true); p += 4
+  const mipH = dv.getUint32(p, true); p += 4
+  if (mipW <= 0 || mipH <= 0 || mipW > MAX_TEX_DIMENSION || mipH > MAX_TEX_DIMENSION || mipW * mipH > MAX_TEX_PIXELS) {
+    throw new Error('tex: invalid mipmap dimensions ' + mipW + 'x' + mipH)
+  }
+  const isLz4 = dv.getUint32(p, true); p += 4
+  const decompSize = dv.getUint32(p, true); p += 4
+  const compSize = dv.getUint32(p, true); p += 4
+
+  let texData: Uint8Array
+  if (isLz4) {
+    texData = decompressLz4Block(buf.slice(p, p + compSize), decompSize)
+  } else {
+    texData = buf.slice(p, p + compSize)
+  }
+
+  // Decompress based on format
+  const rgba = new Uint8Array(mipW * mipH * 4)
+  const stride = mipW * 4
+
+  if (fmt === 4) {
+    // DXT5 (BC3): 16 bytes per 4x4 block
+    const blocksX = mipW / 4, blocksY = mipH / 4
+    for (let by = 0; by < blocksY; by++) {
+      for (let bx = 0; bx < blocksX; bx++) {
+        const blockIdx = (by * blocksX + bx) * 16
+        decodeDXT5Block(texData, blockIdx, rgba, (by * 4) * stride + bx * 4 * 4, stride)
+      }
+    }
+  } else if (fmt === 7) {
+    // DXT1 (BC1): 8 bytes per 4x4 block
+    const blocksX = mipW / 4, blocksY = mipH / 4
+    for (let by = 0; by < blocksY; by++) {
+      for (let bx = 0; bx < blocksX; bx++) {
+        const blockIdx = (by * blocksX + bx) * 8
+        decodeDXT1Block(texData, blockIdx, rgba, (by * 4) * stride + bx * 4 * 4, stride)
+      }
+    }
+  } else if (fmt === 0) {
+    // ARGB8888 -> RGBA8888
+    for (let i = 0; i < mipW * mipH; i++) {
+      rgba[i * 4] = texData[i * 4 + 1]     // R
+      rgba[i * 4 + 1] = texData[i * 4 + 2] // G
+      rgba[i * 4 + 2] = texData[i * 4 + 3] // B
+      rgba[i * 4 + 3] = texData[i * 4]      // A
+    }
+  } else {
+    return null // Unsupported format
+  }
+
+  return { width: mipW, height: mipH, rgba }
+}
+
+// Vertex layout bits of the MDLV mesh flag (matches the open-source
+// open-wallpaper-engine MdlParser). Position (12 bytes) is always present;
+// every other attribute is gated by its bit. UV2 implies an extra UV slot
+// in addition to the regular one.
+const MDL_FLAG_NORMAL = 0x00000002
+const MDL_FLAG_TANGENT = 0x00000004
+const MDL_FLAG_UV = 0x00000008
+const MDL_FLAG_UV2 = 0x00000020
+const MDL_FLAG_EXTRA4 = 0x00010000
+const MDL_FLAG_SKIN_BLEND = 0x00800000
+const MDL_FLAG_SKIN_WEIGHT = 0x01000000
+
+/** Per-vertex byte stride for a mesh flag bitset; 0 when the flag is unusable. */
+function mdlVertexStride(flag: number): number {
+  let s = 12
+  if (flag & MDL_FLAG_NORMAL) s += 12
+  if (flag & MDL_FLAG_TANGENT) s += 16
+  if (flag & MDL_FLAG_EXTRA4) s += 4
+  if (flag & MDL_FLAG_SKIN_BLEND) s += 16
+  if (flag & MDL_FLAG_SKIN_WEIGHT) s += 16
+  if (flag & (MDL_FLAG_UV | MDL_FLAG_UV2)) s += 8
+  if (flag & MDL_FLAG_UV2) s += 8
+  return s
+}
+
+function readMdlCString(buf: Uint8Array, p: number): { str: string; next: number } | null {
+  let end = p
+  while (end < buf.length && buf[end] !== 0) end++
+  if (end >= buf.length) return null
+  let str = ''
+  for (let i = p; i < end; i++) str += String.fromCharCode(buf[i])
+  return { str, next: end + 1 }
+}
+
+/**
+ * Parse a Wallpaper Engine MDLV .mdl file into renderable meshes.
+ *
+ * Structured layout (verified against MDLV0014+ files and the
+ * open-wallpaper-engine parser):
+ *   "MDLV####\0" tag, u32 mdl_flag, u32 skin_count, u32 mesh_count
+ *   per mesh: skin_count x cstr material path, u32 flag_a (extra u32 when 2),
+ *     aabb (6 f32, mdlv >= 17), u32 mesh_flag (mdlv > 14, else header flag),
+ *     u32 vertex_bytes, vertices, u32 indices_bytes, triangle indices
+ *     (u16, or u32 when mdlv >= 23 and vertex_count > 65535)
+ * Trailing MDLS/MDAT/MDLA/MDMP/MDLE puppet/animation blocks are not needed
+ * for static rendering and are ignored; skinned meshes stay in bind pose.
+ */
+export function parseMdl(buf: Uint8Array): DecodedMesh[] {
+  if (buf.length < 21) return []
+  const magic = String.fromCharCode(...buf.slice(0, 4))
+  if (magic !== 'MDLV') return []
+  const mdlv = parseInt(String.fromCharCode(...buf.slice(4, 8)), 10)
+  if (!Number.isFinite(mdlv) || mdlv < 1) return []
+
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
+  let p = 9 // version tag is 8 chars + NUL
+  const mdlFlag = dv.getUint32(p, true); p += 4
+  const skinCount = dv.getUint32(p, true); p += 4
+  const meshCount = dv.getUint32(p, true); p += 4
+  if (skinCount < 1 || skinCount > 64 || meshCount < 1 || meshCount > 1024) return []
+
+  const meshes: DecodedMesh[] = []
+  for (let m = 0; m < meshCount; m++) {
+    const materials: string[] = []
+    for (let s = 0; s < skinCount; s++) {
+      const cstr = readMdlCString(buf, p)
+      if (!cstr) return meshes
+      materials.push(cstr.str)
+      p = cstr.next
+    }
+    if (p + 8 > buf.length) return meshes
+    const flagA = dv.getUint32(p, true); p += 4
+    if (flagA === 2) p += 4
+    if (mdlv >= 17) p += 24 // aabb min/max
+    let meshFlag = mdlFlag
+    if (mdlv > 14) {
+      if (p + 8 > buf.length) return meshes
+      meshFlag = dv.getUint32(p, true); p += 4
+    }
+    const vBytes = dv.getUint32(p, true); p += 4
+    const stride = mdlVertexStride(meshFlag)
+    if (vBytes < stride || vBytes > 100000000 || vBytes % stride !== 0 || p + vBytes + 4 > buf.length) return meshes
+    const vCount = vBytes / stride
+
+    const pos = new Float32Array(vCount * 3)
+    const norm = new Float32Array(vCount * 3)
+    const uv = new Float32Array(vCount * 2)
+    const hasNorm = (meshFlag & MDL_FLAG_NORMAL) !== 0
+    const hasUv = (meshFlag & (MDL_FLAG_UV | MDL_FLAG_UV2)) !== 0
+    for (let v = 0; v < vCount; v++) {
+      // Attribute order in the file: pos, normal, tangent, extra4,
+      // blend_indices (4 x u32), blend_weights (4 x f32), uv, uv2.
+      pos[v * 3] = dv.getFloat32(p, true)
+      pos[v * 3 + 1] = dv.getFloat32(p + 4, true)
+      pos[v * 3 + 2] = dv.getFloat32(p + 8, true)
+      p += 12
+      if (hasNorm) {
+        norm[v * 3] = dv.getFloat32(p, true)
+        norm[v * 3 + 1] = dv.getFloat32(p + 4, true)
+        norm[v * 3 + 2] = dv.getFloat32(p + 8, true)
+        p += 12
+      } else {
+        norm[v * 3 + 1] = 1
+      }
+      if (meshFlag & MDL_FLAG_TANGENT) p += 16
+      if (meshFlag & MDL_FLAG_EXTRA4) p += 4
+      if (meshFlag & MDL_FLAG_SKIN_BLEND) p += 16
+      if (meshFlag & MDL_FLAG_SKIN_WEIGHT) p += 16
+      if (hasUv) {
+        uv[v * 2] = dv.getFloat32(p, true)
+        uv[v * 2 + 1] = dv.getFloat32(p + 4, true)
+        p += 8
+      }
+      if (meshFlag & MDL_FLAG_UV2) p += 8
+    }
+
+    if (p + 4 > buf.length) return meshes
+    const iBytes = dv.getUint32(p, true); p += 4
+    if (iBytes < 2 || iBytes > 60000000 || p + iBytes > buf.length) return meshes
+    // mdlv >= 23 switches to u32 indices once a mesh passes 65535 vertices.
+    const useU32 = vCount > 0xffff && (mdlv >= 23 || iBytes % 12 === 0)
+    const iCount = Math.floor(iBytes / (useU32 ? 4 : 2))
+    let indices: Uint16Array | Uint32Array
+    if (useU32) {
+      const arr = new Uint32Array(iCount)
+      for (let i = 0; i < iCount; i++) arr[i] = dv.getUint32(p + i * 4, true)
+      indices = arr
+    } else {
+      const arr = new Uint16Array(iCount)
+      for (let i = 0; i < iCount; i++) arr[i] = dv.getUint16(p + i * 2, true)
+      indices = arr
+    }
+    p += iBytes
+
+    meshes.push({ vCount, iCount, pos, norm, uv, indices, materialPath: materials[0] })
+  }
+  return meshes
+}
+
+function buildSceneManifestVia(access: SceneAccess, token: string): SceneManifest | null {
+  let scene = access.readJson('scene.json') as Record<string, unknown> | null
+  const project = access.readJson('project.json') as Record<string, unknown> | null
+  if (!scene && project && typeof project.file === 'string' && project.file.endsWith('.json')) {
+    scene = access.readJson(project.file) as Record<string, unknown> | null
+  }
+  if (!scene || !Array.isArray(scene.objects)) return null
+
+  const general = scene.general as { orthogonalprojection?: { width?: number; height?: number } } | undefined
+  const projW = general?.orthogonalprojection?.width
+  const projH = general?.orthogonalprojection?.height
+  // Negative / NaN / non-numeric projection values must not leak into the
+  // player's viewport math (negative viewports render black).
+  const width = typeof projW === 'number' && Number.isFinite(projW) && projW > 0 ? Math.floor(projW) : 3840
+  const height = typeof projH === 'number' && Number.isFinite(projH) && projH > 0 ? Math.floor(projH) : 2160
+  const resourceBase = '/api/skin-center/we/scene-resource/' + token + '/'
+
+  const manifest: SceneManifest = {
+    width,
+    height,
+    hasMeteors: false,
+    hasFireflies: false,
+    layers: [],
+  }
+
+  const allTex = access.listTexPaths()
+  const parseVec3 = (val: unknown, def: [number, number, number]): [number, number, number] => {
+    if (typeof val === 'string') {
+      const parts = val.trim().split(/\s+/).map(parseFloat)
+      if (parts.length >= 3 && !parts.some(isNaN)) return [parts[0], parts[1], parts[2]]
+    }
+    return def
+  }
+
+  const props = (project?.general as Record<string, unknown> | undefined)?.properties as Record<string, Record<string, unknown>> | undefined
+  if (props?.schemecolor?.value && typeof props.schemecolor.value === 'string') {
+    manifest.clearColor = parseVec3(props.schemecolor.value, [0.57, 0.71, 0.81])
+  }
+  if (props?.carbodycolor?.value && typeof props.carbodycolor.value === 'string') {
+    manifest.carBodyColor = parseVec3(props.carbodycolor.value, [1, 0, 0])
+  }
+  if (props?.carstripescolor?.value && typeof props.carstripescolor.value === 'string') {
+    manifest.carStripesColor = parseVec3(props.carstripescolor.value, [0, 0, 0])
+  }
+
+  const is3D = Boolean(scene.camera) || (scene.objects as Array<Record<string, unknown>>).some((o) => typeof o.model === 'string' && o.model.endsWith('.mdl'))
+  if (is3D) {
+    manifest.is3D = true
+    const cam = scene.camera as Record<string, unknown> | undefined
+    let eye = parseVec3(cam?.eye, [0, 1.5, 4.0])
+    let center = parseVec3(cam?.center, [0, 0, 0])
+    let up = parseVec3(cam?.up, [0, 1, 0])
+    if (cam?.paths && Array.isArray(cam.paths) && typeof cam.paths[0] === 'string') {
+      const pathJson = access.readJson(cam.paths[0]) as { paths?: Array<{ duration?: number; transforms?: Array<{ eye?: string; center?: string; up?: string }> }> } | null
+      const firstTf = pathJson?.paths?.[0]?.transforms?.[0]
+      if (firstTf) {
+        if (firstTf.eye) eye = parseVec3(firstTf.eye, eye)
+        if (firstTf.center) center = parseVec3(firstTf.center, center)
+        if (firstTf.up) up = parseVec3(firstTf.up, up)
+      }
+      // Extract all camera path segments for animation
+      if (pathJson?.paths && pathJson.paths.length > 0) {
+        manifest.cameraPaths = []
+        for (const seg of pathJson.paths) {
+          if (!seg.transforms || seg.transforms.length < 2) continue
+          if (typeof seg.duration !== 'number' || !Number.isFinite(seg.duration) || seg.duration <= 0) continue
+          const t0 = seg.transforms[0]
+          const t1 = seg.transforms[seg.transforms.length - 1]
+          manifest.cameraPaths.push({
+            d: seg.duration,
+            e0: parseVec3(t0.eye, eye) as [number, number, number],
+            c0: parseVec3(t0.center, center) as [number, number, number],
+            u0: parseVec3(t0.up, up) as [number, number, number],
+            e1: parseVec3(t1.eye, eye) as [number, number, number],
+            c1: parseVec3(t1.center, center) as [number, number, number],
+            u1: parseVec3(t1.up, up) as [number, number, number],
+          })
+        }
+        if (manifest.cameraPaths.length === 0) delete manifest.cameraPaths
+      }
+    }
+    manifest.camera = {
+      eye,
+      center,
+      up,
+      fov: typeof cam?.fov === 'number' ? cam.fov : 45,
+    }
+    // A scene camera without usable paths is a fixed viewpoint, not an orbit.
+    if (cam && !(manifest.cameraPaths && manifest.cameraPaths.length > 0)) {
+      manifest.cameraStatic = true
+    }
+    manifest.models = []
+    for (const obj of scene.objects as Array<Record<string, unknown>>) {
+      if (typeof obj.model !== 'string' || !obj.model.endsWith('.mdl')) continue
+      const mdlFile = access.readFile(obj.model)
+      if (!mdlFile) continue
+      const decodedMeshes = parseMdl(mdlFile.bytes)
+      if (decodedMeshes.length === 0) continue
+
+      let texPath: string | undefined
+      const baseName = obj.model.split('/').pop()?.replace(/\.mdl$/i, '')
+      if (baseName) {
+        texPath = allTex.find((p) => p.toLowerCase().includes(baseName.toLowerCase()) && !p.toLowerCase().includes('normal') && !p.toLowerCase().includes('mask'))
+      }
+
+      // Resolve a WE material texture reference ('ricepod/jet') to a tex path.
+      const resolveTexRef = (ref: string): string | undefined => {
+        const want = ref.toLowerCase().replace(/\.tex$/i, '')
+        return allTex.find((p) => {
+          const lower = p.toLowerCase().replace(/\.tex$/i, '')
+          return lower === want || lower === 'materials/' + want || lower.endsWith('/' + want)
+        })
+      }
+
+      const meshes: SceneManifestMesh[] = decodedMeshes.map((m) => {
+        let subTex: string | undefined
+        let shader: string | undefined
+        let additive: boolean | undefined
+        let noDepthTest: boolean | undefined
+        let noDepthWrite: boolean | undefined
+        let tint: [number, number, number] | undefined
+        let tint2: [number, number, number] | undefined
+        let texPath2: string | undefined
+        let translucent: boolean | undefined
+        let gradFade: boolean | undefined
+        let userColors: Record<string, [number, number, number]> | undefined
+        let userNums: Record<string, number> | undefined
+        if (m.materialPath) {
+          // Material JSON is authoritative: shader, blending, depth flags and
+          // the exact texture of the first pass.
+          try {
+            const matJsonRaw = access.readJson(m.materialPath) as Record<string, unknown> | null
+            const pass0 = Array.isArray(matJsonRaw?.passes)
+              ? (matJsonRaw.passes as Array<Record<string, unknown>>)[0]
+              : undefined
+            if (pass0) {
+              if (typeof pass0.shader === 'string') shader = pass0.shader
+              if (pass0.blending === 'additive') additive = true
+              if (pass0.blending === 'translucent') translucent = true
+              const combos = pass0.combos as Record<string, unknown> | undefined
+              if (combos && combos.GRADIENT_FADE) gradFade = true
+              const dt = pass0.depthtesting ?? pass0.depthtest
+              const dw = pass0.depthwriting ?? pass0.depthwrite
+              if (dt === 'disabled') noDepthTest = true
+              if (dw === 'disabled') noDepthWrite = true
+              if (Array.isArray(pass0.textures) && pass0.textures.length > 0) {
+                subTex = resolveTexRef(String(pass0.textures[0]))
+                if (pass0.textures.length > 1) texPath2 = resolveTexRef(String(pass0.textures[1]))
+              }
+              // usershadervalues bind WE user properties (schemecolor etc.)
+              // to shader uniforms; resolve colors and numbers at build time.
+              const usv = pass0.usershadervalues as Record<string, unknown> | undefined
+              if (usv) {
+                for (const [key, uniformName] of Object.entries(usv)) {
+                  if (typeof uniformName !== 'string') continue
+                  const propDef = props?.[key]
+                  const pv = propDef?.value
+                  if (typeof pv === 'string') {
+                    const col = parseVec3(pv, [1, 1, 1])
+                    if (uniformName === 'tint') tint = col
+                    else if (uniformName === 'tint2') tint2 = col
+                    userColors = userColors ?? {}
+                    userColors[uniformName] = col
+                  } else if (typeof pv === 'number' && Number.isFinite(pv)) {
+                    userNums = userNums ?? {}
+                    userNums[uniformName] = pv
+                  }
+                }
+              }
+              // constantshadervalues carry literal numeric shader constants.
+              const csv = pass0.constantshadervalues as Record<string, unknown> | undefined
+              if (csv) {
+                for (const [key, val] of Object.entries(csv)) {
+                  if (typeof val === 'number' && Number.isFinite(val)) {
+                    userNums = userNums ?? {}
+                    userNums[key] = val
+                  }
+                }
+              }
+            }
+          } catch { /* material JSON not readable */ }
+          if (!subTex) {
+            // materialPath = 'materials/xxx/name.json' -> look for 'name.tex' in allTex
+            const matBaseName = m.materialPath.replace(/\.json$/i, '').split('/').pop()
+            if (matBaseName) {
+              subTex = allTex.find((p) => {
+                const lower = p.toLowerCase()
+                return lower.includes(matBaseName.toLowerCase()) && !lower.includes('normal') && !lower.includes('mask')
+              })
+            }
+          }
+        }
+        // Fallback: match by model baseName
+        if (!subTex && baseName) {
+          subTex = allTex.find((p) => p.toLowerCase().includes(baseName.toLowerCase()) && !p.toLowerCase().includes('normal') && !p.toLowerCase().includes('mask'))
+        }
+        return {
+          vCount: m.vCount,
+          iCount: m.iCount,
+          posB64: Buffer.from(m.pos.buffer, m.pos.byteOffset, m.pos.byteLength).toString('base64'),
+          normB64: Buffer.from(m.norm.buffer, m.norm.byteOffset, m.norm.byteLength).toString('base64'),
+          uvB64: Buffer.from(m.uv.buffer, m.uv.byteOffset, m.uv.byteLength).toString('base64'),
+          indicesB64: Buffer.from(m.indices.buffer, m.indices.byteOffset, m.indices.byteLength).toString('base64'),
+          idx32: m.indices instanceof Uint32Array || undefined,
+          texUrl: subTex ? resourceBase + subTex : undefined,
+          materialPath: m.materialPath,
+          shader,
+          additive,
+          noDepthTest,
+          noDepthWrite,
+          tint,
+          tint2,
+          texUrl2: texPath2 ? resourceBase + texPath2 : undefined,
+          translucent,
+          gradFade,
+          userColors,
+          userNums,
+        }
+      })
+
+      manifest.models.push({
+        name: typeof obj.name === 'string' ? obj.name : 'model',
+        origin: parseVec3(obj.origin, [0, 0, 0]),
+        angles: parseVec3(obj.angles, [0, 0, 0]),
+        scale: parseVec3(obj.scale, [1, 1, 1]),
+        meshes,
+      })
+    }
+
+    // Sprite objects (billboard glows like the sun) and 3D particle systems
+    // (starfield streaks) ride along with the 3D scene.
+    for (const obj of scene.objects as Array<Record<string, unknown>>) {
+      // Fullscreen image layers (cloudsbg etc.) render as clip-space quads
+      // with their material shader behind everything else.
+      if (typeof obj.image === 'string' && !obj.image.startsWith('models/util/')) {
+        const layerJson = access.readJson(obj.image) as Record<string, unknown> | null
+        if (layerJson?.fullscreen === true && typeof layerJson.material === 'string') {
+          const matJson = access.readJson(layerJson.material) as Record<string, unknown> | null
+          const pass0 = Array.isArray(matJson?.passes)
+            ? (matJson.passes as Array<Record<string, unknown>>)[0]
+            : undefined
+          if (pass0) {
+            let texPath: string | undefined
+            if (Array.isArray(pass0.textures)) {
+              for (const t of pass0.textures) {
+                const ref = String(t)
+                if (ref.startsWith('_rt_')) continue // render-target refs have no file
+                const want = ref.toLowerCase().replace(/\.tex$/i, '')
+                texPath = allTex.find((p) => {
+                  const lower = p.toLowerCase().replace(/\.tex$/i, '')
+                  return lower === want || lower === 'materials/' + want || lower.endsWith('/' + want)
+                })
+                if (texPath) break
+              }
+            }
+            const userColors: Record<string, [number, number, number]> = {}
+            const userNums: Record<string, number> = {}
+            const usv = pass0.usershadervalues as Record<string, unknown> | undefined
+            if (usv) {
+              for (const [key, uniformName] of Object.entries(usv)) {
+                if (typeof uniformName !== 'string') continue
+                const pv = props?.[key]?.value
+                if (typeof pv === 'string') userColors[uniformName] = parseVec3(pv, [1, 1, 1])
+                else if (typeof pv === 'number' && Number.isFinite(pv)) userNums[uniformName] = pv
+              }
+            }
+            manifest.bgLayers = manifest.bgLayers ?? []
+            manifest.bgLayers.push({
+              name: typeof obj.name === 'string' ? obj.name : 'fullscreen',
+              shader: typeof pass0.shader === 'string' ? pass0.shader : undefined,
+              texUrl: texPath ? resourceBase + texPath : undefined,
+              userColors: Object.keys(userColors).length > 0 ? userColors : undefined,
+              userNums: Object.keys(userNums).length > 0 ? userNums : undefined,
+            })
+          }
+          continue
+        }
+      }
+      if (typeof obj.sprite === 'string') {
+        const spriteJson = access.readJson(obj.sprite) as Record<string, unknown> | null
+        const pass0 = Array.isArray(spriteJson?.passes)
+          ? (spriteJson.passes as Array<Record<string, unknown>>)[0]
+          : undefined
+        let texPath: string | undefined
+        const texRef = Array.isArray(pass0?.textures) ? String(pass0.textures[0] ?? '') : ''
+        if (texRef) {
+          const want = texRef.toLowerCase().replace(/\.tex$/i, '')
+          texPath = allTex.find((p) => {
+            const lower = p.toLowerCase().replace(/\.tex$/i, '')
+            return lower === want || lower === 'materials/' + want || lower.endsWith('/' + want)
+          })
+        }
+        manifest.sprites = manifest.sprites ?? []
+        manifest.sprites.push({
+          name: typeof obj.name === 'string' ? obj.name : 'sprite',
+          texUrl: texPath ? resourceBase + texPath : undefined,
+          origin: parseVec3(obj.origin, [0, 0, 0]),
+          scale: parseVec3(obj.scale, [1, 1, 1]),
+        })
+      }
+      if (typeof obj.particle === 'string') {
+        const pj = access.readJson(obj.particle) as Record<string, unknown> | null
+        if (!pj) continue
+        const emitter = Array.isArray(pj.emitter) ? (pj.emitter as Array<Record<string, unknown>>)[0] : undefined
+        const init = Array.isArray(pj.initializer) ? (pj.initializer as Array<Record<string, unknown>>) : []
+        const byName = (n: string) => init.find((i) => i.name === n)
+        const life = byName('lifetimerandom')
+        const size = byName('sizerandom')
+        const vel = byName('velocityrandom')
+        const col = byName('colorrandom')
+        let texPath: string | undefined
+        if (typeof pj.material === 'string') {
+          const matJson = access.readJson(pj.material) as Record<string, unknown> | null
+          const pass0 = Array.isArray(matJson?.passes) ? (matJson.passes as Array<Record<string, unknown>>)[0] : undefined
+          const texRef = Array.isArray(pass0?.textures) ? String(pass0.textures[0] ?? '') : ''
+          if (texRef) {
+            const want = texRef.toLowerCase().replace(/\.tex$/i, '')
+            texPath = allTex.find((p) => {
+              const lower = p.toLowerCase().replace(/\.tex$/i, '')
+              return lower === want || lower === 'materials/' + want || lower.endsWith('/' + want)
+            })
+          }
+        }
+        const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
+        const objOrigin = parseVec3(obj.origin, [0, 0, 0])
+        const emitterOrigin = parseVec3(emitter?.origin, [0, 0, 0])
+        manifest.particles3d = manifest.particles3d ?? []
+        manifest.particles3d.push({
+          name: typeof obj.name === 'string' ? obj.name : 'particles',
+          texUrl: texPath ? resourceBase + texPath : undefined,
+          origin: [
+            objOrigin[0] + emitterOrigin[0],
+            objOrigin[1] + emitterOrigin[1],
+            objOrigin[2] + emitterOrigin[2],
+          ],
+          rate: num(emitter?.rate, 30),
+          maxCount: num(pj.maxcount, 128),
+          lifeMin: num(life?.min, 2),
+          lifeMax: num(life?.max, 4),
+          sizeMin: num(size?.min, 0.1),
+          sizeMax: num(size?.max, 0.15),
+          distMin: num(emitter?.distancemin, 2),
+          distMax: num(emitter?.distancemax, 10),
+          velMin: parseVec3(vel?.min, [0, 0, -10]),
+          velMax: parseVec3(vel?.max, [0, 0, -20]),
+          colorMin: parseVec3(col?.min, [200, 200, 200]).map((c) => c / 255) as [number, number, number],
+          colorMax: parseVec3(col?.max, [255, 255, 255]).map((c) => c / 255) as [number, number, number],
+        })
+      }
+    }
+    if (manifest.models.length > 0) {
+      return manifest
+    }
+  }
+
+  for (const obj of scene.objects as Array<Record<string, unknown>>) {
+    const nameLower = (typeof obj.name === 'string' ? obj.name : '').toLowerCase()
+    if (nameLower.includes('star') || nameLower.includes('meteor')) {
+      manifest.hasMeteors = true
+    }
+    if (nameLower.includes('fireflies') || nameLower.includes('motes') || nameLower.includes('dust')) {
+      manifest.hasFireflies = true
+    }
+  }
+
+  const meteorTexPath = allTex.find((p) => p.toLowerCase().includes('shootingstar') || p.toLowerCase().includes('meteor'))
+  if (meteorTexPath) manifest.meteorTex = resourceBase + meteorTexPath
+  const sparkleTexPath = allTex.find((p) => p.toLowerCase().includes('sparkle') || p.toLowerCase().includes('halo') || p.toLowerCase().includes('star'))
+  if (sparkleTexPath) manifest.sparkleTex = resourceBase + sparkleTexPath
+
+  for (const obj of scene.objects as Array<Record<string, unknown>>) {
+    if (!obj.image || typeof obj.image !== 'string' || obj.image.startsWith('models/util/')) {
+      if (typeof obj.name === 'string' && obj.name.toLowerCase() === 'reflection') {
+        const reflTex = allTex.find((p) => p.toLowerCase().includes('reflection_mask'))
+        if (reflTex) {
+          manifest.layers.push({
+            name: 'Reflection',
+            isReflection: true,
+            texUrl: resourceBase + reflTex,
+            x: width / 2,
+            y: height / 2,
+            w: width,
+            h: height,
+          })
+        }
+      }
+      continue
+    }
+
+    if (obj.visible === false) continue
+    if (obj.visible && typeof obj.visible === 'object' && (obj.visible as { value?: unknown }).value === false) continue
+    const nameLower = (typeof obj.name === 'string' ? obj.name : '').toLowerCase()
+    if (
+      nameLower.includes('black') ||
+      nameLower.includes('len') ||
+      nameLower.includes('util') ||
+      nameLower.includes('flare') ||
+      nameLower.includes('blend') ||
+      nameLower === 'sun' ||
+      nameLower === 'sun2'
+    ) {
+      continue
+    }
+
+    const modelJson = access.readJson(obj.image) as Record<string, unknown> | null
+    if (!modelJson || typeof modelJson.material !== 'string') continue
+    const matJson = access.readJson(modelJson.material) as Record<string, unknown> | null
+    if (!matJson || !Array.isArray(matJson.passes)) continue
+    const pass0 = (matJson.passes as Array<Record<string, unknown>>)[0]
+    const layerShader = typeof pass0?.shader === 'string' ? pass0.shader : undefined
+    const texRefs = (Array.isArray(pass0?.textures) ? pass0.textures : [])
+      .map((t) => String(t))
+      .filter((t) => !t.startsWith('_rt_'))
+    if (texRefs.length === 0) continue
+    const texName = texRefs[0]
+    // flowimage's first texture is the flow mask; the content layers follow.
+    if (layerShader !== 'flowimage' && isLikelyMaskOrHelper(texName)) continue
+
+    const resolveLayerTex = (ref: string) =>
+      allTex.find(
+        (p) =>
+          p.toLowerCase() === ref.toLowerCase() ||
+          p.toLowerCase() === ('materials/' + ref + '.tex').toLowerCase() ||
+          p.toLowerCase() === (ref + '.tex').toLowerCase() ||
+          p.toLowerCase().endsWith('/' + ref.toLowerCase() + '.tex') ||
+          p.toLowerCase().endsWith('/' + ref.toLowerCase()),
+      )
+    const texPath = resolveLayerTex(texName)
+    if (!texPath) continue
+    const file = access.readFile(texPath)
+    if (!file) continue
+    const texPaths = texRefs
+      .map((ref) => resolveLayerTex(ref))
+      .filter((p): p is string => Boolean(p))
+    const nums: Record<string, number> = {}
+    const csv = pass0?.constantshadervalues as Record<string, unknown> | undefined
+    if (csv) {
+      for (const [k, v] of Object.entries(csv)) {
+        if (typeof v === 'number' && Number.isFinite(v)) nums[k] = v
+      }
+    }
+    // flowimage content layers may sit in differently-padded textures than
+    // the flow mask; scale their UVs by the mask/content texture size ratio.
+    let flowScale: [number, number] | undefined
+    if (layerShader === 'flowimage' && texPaths.length >= 2) {
+      const dimsOf = (p: string) => {
+        const f = access.readFile(p)
+        if (!f) return null
+        try {
+          const info = parseTex(f.bytes)
+          return info.width > 0 && info.height > 0 ? ([info.width, info.height] as const) : null
+        } catch {
+          return null
+        }
+      }
+      const maskDims = dimsOf(texPaths[0])
+      const contentDims = dimsOf(texPaths[1])
+      if (maskDims && contentDims) {
+        const su = maskDims[0] / contentDims[0]
+        const sv = maskDims[1] / contentDims[1]
+        if (Math.abs(su - 1) > 0.001 || Math.abs(sv - 1) > 0.001) flowScale = [su, sv]
+      }
+    }
+    // Layer user colors (flag tint colors etc.), keyed by uniform name.
+    let layerUserColors: Record<string, [number, number, number]> | undefined
+    const lusv = pass0?.usershadervalues as Record<string, unknown> | undefined
+    if (lusv) {
+      for (const [key, uniformName] of Object.entries(lusv)) {
+        if (typeof uniformName !== 'string') continue
+        const pv = props?.[key]?.value
+        if (typeof pv === 'string') {
+          layerUserColors = layerUserColors ?? {}
+          layerUserColors[uniformName] = parseVec3(pv, [1, 1, 1])
+        }
+      }
+    }
+
+    let decoded: DecodedImage | null = null
+    try {
+      decoded = decodeTex(file.bytes)
+    } catch {
+      decoded = null
+    }
+
+    // Layer geometry follows the scene object (open-wallpaper-engine
+    // ImageObject::FromJson): size comes from the image json width/height,
+    // then the object size, then the decoded texture; the object origin is
+    // the quad center and scale/angles/alpha apply on top.
+    const objOrigin = parseVec3(obj.origin, [width / 2, height / 2, 0])
+    const objScale = parseVec3(obj.scale, [1, 1, 1])
+    const objAngles = parseVec3(obj.angles, [0, 0, 0])
+    let lw = 0
+    let lh = 0
+    if (typeof modelJson.width === 'number' && typeof modelJson.height === 'number') {
+      lw = modelJson.width
+      lh = modelJson.height
+    } else if (typeof obj.size === 'string') {
+      const parts = obj.size.trim().split(/\s+/).map(parseFloat)
+      if (parts.length >= 2 && !parts.some(isNaN)) {
+        lw = parts[0]
+        lh = parts[1]
+      }
+    }
+    if ((!lw || !lh) && decoded) {
+      lw = decoded.width
+      lh = decoded.height
+    }
+    if (!lw || !lh) continue
+    if (!decoded && !access.readFile(texPath)) continue
+    if (decoded && !modelJson.width && decoded.width < 64 && decoded.height < 64) continue
+    lw *= Math.abs(objScale[0]) || 1
+    lh *= Math.abs(objScale[1]) || 1
+    if (modelJson.fullscreen === true) {
+      lw = width
+      lh = height
+      objOrigin[0] = width / 2
+      objOrigin[1] = height / 2
+      objAngles[2] = 0
+    }
+
+    let ox = 0
+    let oy = 0
+    if (typeof modelJson.cropoffset === 'string') {
+      const parts = modelJson.cropoffset.trim().split(/\s+/)
+      ox = parseFloat(parts[0]) || 0
+      oy = parseFloat(parts[1]) || 0
+    }
+
+    const alpha = typeof obj.alpha === 'number' && Number.isFinite(obj.alpha)
+      ? Math.min(1, Math.max(0, obj.alpha))
+      : 1
+
+    // DXT textures are padded (e.g. 1536x1024 content in a 2048x1024 tex);
+    // the image json width/height + cropoffset define the sampled sub-rect.
+    // Verified by render probe: texture v=0 is the first uploaded PNG row
+    // (image top), matching WE's top-left crop convention.
+    let uvCrop: [number, number, number, number] | undefined
+    if (decoded && typeof modelJson.width === 'number' && typeof modelJson.height === 'number') {
+      const u0 = ox / decoded.width
+      const u1 = (ox + modelJson.width) / decoded.width
+      const v0 = oy / decoded.height
+      const v1 = (oy + modelJson.height) / decoded.height
+      if (u0 !== 0 || v0 !== 0 || u1 < 0.999 || v1 < 0.999) {
+        uvCrop = [u0, v0, u1, v1]
+      }
+    }
+
+    const isGround =
+      nameLower.includes('land') ||
+      nameLower.includes('grass') ||
+      nameLower.includes('railing') ||
+      nameLower.includes('betong') ||
+      nameLower.includes('sign') ||
+      nameLower.includes('cabinet') ||
+      nameLower.includes('bush') ||
+      nameLower.includes('fence')
+
+    manifest.layers.push({
+      name: typeof obj.name === 'string' ? obj.name : 'layer',
+      texUrl: resourceBase + texPath,
+      x: objOrigin[0] + ox,
+      y: objOrigin[1] + oy,
+      w: lw,
+      h: lh,
+      alpha,
+      angle: objAngles[2] || 0,
+      uvCrop,
+      shader: layerShader,
+      texUrls: texPaths.length > 1
+        ? texPaths.map((p) => resourceBase + p)
+        : undefined,
+      flowScale,
+      userColors: layerUserColors,
+      nums: Object.keys(nums).length > 0 ? nums : undefined,
+      isGround,
+      sway: 0,
+      swaySpeed: 1.5,
+    })
+  }
+
+  if (manifest.layers.length === 0) return null
+  return manifest
+}
+
+function extractSceneResourceVia(access: SceneAccess, subpath: string): Uint8Array | null {
+  const norm = subpath.replace(/\\/g, '/')
+  const file =
+    access.readFile(norm) ||
+    access.readFile('materials/' + norm) ||
+    access.readFile(norm + '.tex')
+  if (!file) return null
+  try {
+    const parsed = parseTexInternal(file.bytes)
+    const mip0 = parsed.mipmaps[0]
+    if (isPngBuffer(mip0.bytes)) {
+      return Buffer.from(mip0.bytes)
+    }
+    const dec = decodeTex(file.bytes)
+    return Buffer.from(encodePng(dec.width, dec.height, dec.rgba))
+  } catch {
+    return file.bytes
+  }
+}
+
+export function buildSceneManifest(pkgData: Uint8Array, token: string): SceneManifest | null {
+  return buildSceneManifestVia(pkgSceneAccess(pkgData), token)
+}
+
+export function buildSceneManifestFromDir(dir: string, token: string): SceneManifest | null {
+  return buildSceneManifestVia(dirSceneAccess(dir), token)
+}
+
+export function extractSceneResource(pkgData: Uint8Array, subpath: string): Uint8Array | null {
+  return extractSceneResourceVia(pkgSceneAccess(pkgData), subpath)
+}
+
+export function extractSceneResourceFromDir(dir: string, subpath: string): Uint8Array | null {
+  return extractSceneResourceVia(dirSceneAccess(dir), subpath)
+}
+
+
+

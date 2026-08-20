@@ -28,13 +28,14 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { pathToFileURL } = require('node:url')
 
 const LIB_PATH = path.join(__dirname, '..', 'packages', 'skins', 'skin-center', 'lib', 'index.js')
 
 /** Load the skin-center contract surface (ESM lib from this CJS CLI). */
 async function loadLib() {
   try {
-    return await import(LIB_PATH)
+    return await import(pathToFileURL(LIB_PATH).href)
   } catch (error) {
     console.error('dsh-skin: cannot load the skin-center lib — run "pnpm --filter @linxin666/dsh-client-ui-skin-center build" first.')
     console.error(String(error && error.message ? error.message : error))

@@ -1,13 +1,23 @@
 /**
  * Pet registry — the multi-pet contract. One pet is a directory holding a
  * 'pet.json' manifest plus an atlas image; nothing else is required, and no
- * host or client code changes when a pet is added. The registry scans three
+ * host or client code changes when a pet is added. The registry scans four
  * sources, later sources overriding earlier ones on an id collision:
  *
  *   1. the package's own 'assets' subdirectories (built-in pets);
- *   2. '${CODEX_HOME:-~/.codex}/pets' subdirectories (hatch-pet custom pets);
- *   3. 'PetConfig.pets' manifests composed by the embedding application
+ *   2. '${CODEX_HOME:-~/.codex}/pets' subdirectories (hatch-pet custom pets,
+ *      legacy source kept readable);
+ *   3. '$DSH_HOME/pets' subdirectories (the pet-center user directory);
+ *   4. 'PetConfig.pets' manifests composed by the embedding application
  *      (highest precedence).
+ *
+ * Manifests are parsed through manifest-v2 (pet-center M2, issue #623): v1
+ * manifests are compat-read as sprite2d, v2 manifests validate fail-closed,
+ * and structured diagnostics ride alongside the legacy warnings. Live2d
+ * entries (pet-center M3) list like any other pet: the entry carries the
+ * validated live2d block plus the model's reference closure (the servable
+ * set the asset route allows), and a model3.json that is unreadable or
+ * declares unsafe references rejects the entry with an error diagnostic.
  *
  * The manifest follows the Codex/hatch-pet contract (8 columns x 9 rows of
  * 192x208 cells, the 9-state row order below). Legacy whale-girl manifests
@@ -17,12 +27,18 @@
  * @module @linxin666/dsh-pet/registry
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { ActivityPhase, PetAnimation } from './state.ts'
 import { normalizePetRemarks, type PetRemarks, type PetRemarksManifest } from './remarks.ts'
+import { mergeVoicePacks, normalizeVoicePack, type PetPanelView, type VoicePack } from './voice-pack.ts'
+import { parseDecorationManifest } from './decoration.ts'
+import { PET_DECORATION_API_VERSION, type DecorationView } from './contracts/status-decoration.ts'
+import { dshHome } from './dsh-home.ts'
+import { parsePetManifest, type PetManifestLive2d, type PetManifestV2, type PetRendererKind } from './manifest-v2.ts'
+import { collectModel3References } from './model3.ts'
 
 /** Fixed row order of the 9-state animation contract. */
 export const PET_ROW_ORDER: readonly PetAnimation[] = [
@@ -156,11 +172,33 @@ export interface PetTrackOverride {
   fallback?: PetAnimation
 }
 
+/** The live2d renderer block as served to the browser half (pet-center M3). */
+export interface PetLive2dDefinition {
+  /** Browser URL of the .model3.json (served by the host asset route). */
+  modelUrl: string
+  /** Manifest-relative model path (host route allow-list key). */
+  modelPath: string
+  /** Scale multiplier over the canvas auto-fit, (0, 10]. */
+  scale?: number
+  /** Model offset in canvas px from the center-bottom anchor. */
+  translate?: { x?: number; y?: number }
+  /** ActivityPhase -> motion group; unmapped phases fall back to idle. */
+  motions: Partial<Record<ActivityPhase, string>> & { idle: string }
+  /** Optional ActivityPhase -> expression name layered over the motion. */
+  expressions?: Partial<Record<ActivityPhase, string>>
+  /** Hit area names triggering the tap motion; defaults to every model HitArea. */
+  hitAreas?: string[]
+}
+
 /** A normalized pet as served to the browser half. */
 export interface PetDefinition {
   id: string
   displayName: string
   description: string
+  /** The renderer this entry mounts with (pet-center M2). */
+  renderer: PetRendererKind
+  /** Live2d render block; present exactly when renderer is 'live2d' (M3). */
+  live2d?: PetLive2dDefinition
   /** Atlas cell size in px. */
   cell: PetCell
   /** Columns per row. */
@@ -177,6 +215,8 @@ export interface PetDefinition {
   atlasUrl: string
   /** Browser URL of the manifest (served by the host asset route). */
   manifestUrl: string
+  /** Hover-panel chrome overrides (voice.json 'panel'; pet-center M4). */
+  panel?: PetPanelView
 }
 
 /** A resolved pet plus its host-side file location. */
@@ -185,17 +225,64 @@ export interface PetEntry extends PetDefinition {
   dir: string
   /** Atlas path relative to 'dir' (declared by the manifest). */
   spritesheetPath: string
+  /**
+   * Manifest-relative files the asset route may serve beyond pet.json and
+   * 'previews/*' (pet-center M3): the sprite2d atlas, or the live2d model
+   * plus its model3.json reference closure.
+   */
+  servable: readonly string[]
   /** Normalized per-pet remark pools (manifest 'remarks'), when declared. */
   remarks?: PetRemarks
+  /**
+   * Normalized per-pet voice pack (the directory's voice.json; pet-center
+   * M4). Host-side only — the browser half receives its 'panel' slice.
+   */
+  voice?: VoicePack
 }
 
 /** Registry load result: resolved entries plus load warnings. */
 export interface PetRegistry {
   entries: PetEntry[]
   warnings: string[]
+  /** Structured diagnostics from the manifest-v2 parse (superset detail of warnings). */
+  diagnostics: PetRegistryDiagnostic[]
   byId(id: string): PetEntry | undefined
   /** The pet an installation falls back to when the selection is unknown. */
   defaultEntry(): PetEntry
+  /**
+   * The global voice override ('$DSH_HOME/pets/.voice.json'), when present —
+   * layers under every per-pet pack and over the built-in pools (M4, #677).
+   */
+  globalVoice?: VoicePack
+  /**
+   * Status decorations (pet-center M5, #567): built-in 'assets/decorations'
+   * entries overridden by same-id user entries under
+   * '$DSH_HOME/pets/decorations'. Independent of the pet entries. Optional
+   * so prebuilt test registries without decorations keep compiling.
+   */
+  decorations?: DecorationEntry[]
+  /** Look up one decoration by id. */
+  decorationById?(id: string): DecorationEntry | undefined
+}
+
+/** One resolved status decoration plus its host-side file location. */
+export interface DecorationEntry extends DecorationView {
+  /** Absolute directory holding the descriptor and strip. */
+  dir: string
+  /** Strip path relative to 'dir' (declared by the descriptor). */
+  entryPath: string
+  /** Descriptor-relative files the decoration asset route may serve. */
+  servable: readonly string[]
+  /** Asset license identifier (required by the descriptor). */
+  license: string
+}
+
+/** One structured registry diagnostic (manifest-v2 era). */
+export interface PetRegistryDiagnostic {
+  level: 'error' | 'warning'
+  /** Where the diagnostic originates (directory or file). */
+  source: string
+  message: string
 }
 
 /** Registry sources. */
@@ -206,6 +293,8 @@ export interface PetRegistryOptions {
   assetPrefix?: string
   /** Custom pet directory (defaults to '${CODEX_HOME:-~/.codex}/pets'). */
   petsDir?: string
+  /** Pet-center user directory (defaults to '$DSH_HOME/pets'; '' disables). */
+  dshPetsDir?: string
   /** Extra manifest entries composed by the embedding application. */
   extra?: readonly PetManifest[]
 }
@@ -247,6 +336,47 @@ function normalizeSequences(
     sequences[phase as ActivityPhase] = value as PetAnimation[]
   }
   return Object.keys(sequences).length === 0 ? undefined : sequences
+}
+
+/**
+ * Build the fully resolved animation tracks from the contract defaults plus
+ * optional per-track overrides. Shared by the sprite2d resolver and the
+ * live2d entry builder (which fills the sprite fields with contract
+ * defaults so the flat PetDefinition shape holds for every renderer).
+ */
+function buildTracks(
+  rows: readonly number[],
+  columns: number,
+  trackOverrides: Partial<Record<PetAnimation, PetTrackOverride>>,
+  warn: (message: string) => void,
+): Record<PetAnimation, PetTrackDef> | undefined {
+  const tracks = {} as Record<PetAnimation, PetTrackDef>
+  for (const [row, animation] of PET_ROW_ORDER.entries()) {
+    const pattern = DEFAULT_TRACK_PATTERNS[animation]
+    const override = trackOverrides[animation]
+    const durations = Array.isArray(override?.durations) && override.durations.length > 0
+      ? override.durations.filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0)
+      : pattern.durations
+    if (durations.length === 0) {
+      warn('track ' + animation + ' carries no usable durations')
+      return undefined
+    }
+    const frameCount = Math.max(1, Math.min(rows[row]!, columns))
+    const sized = durations.length >= frameCount
+      ? durations.slice(0, frameCount)
+      : Array.from({ length: frameCount }, (_, index) => durations[index % durations.length]!)
+    tracks[animation] = {
+      frames: Array.from({ length: frameCount }, (_, index) => index),
+      durations: sized,
+      loop: typeof override?.loop === 'boolean' ? override.loop : pattern.loop,
+      ...(override?.fallback === undefined
+        ? pattern.fallback === undefined ? {} : { fallback: pattern.fallback }
+        : PET_ROW_ORDER.includes(override.fallback)
+          ? { fallback: override.fallback }
+          : pattern.fallback === undefined ? {} : { fallback: pattern.fallback }),
+    }
+  }
+  return tracks
 }
 
 /**
@@ -304,36 +434,14 @@ export function resolvePetManifest(
   const remarks = normalizePetRemarks(source.remarks, message => warn('manifest ' + id + ': ' + message))
   const sequences = normalizeSequences(source.sequences, id, warn)
   const trackOverrides = (typeof source.tracks === 'object' && source.tracks !== null ? source.tracks : {}) as Partial<Record<PetAnimation, PetTrackOverride>>
-  const tracks = {} as Record<PetAnimation, PetTrackDef>
-  for (const [row, animation] of PET_ROW_ORDER.entries()) {
-    const pattern = DEFAULT_TRACK_PATTERNS[animation]
-    const override = trackOverrides[animation]
-    const durations = Array.isArray(override?.durations) && override.durations.length > 0
-      ? override.durations.filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0)
-      : pattern.durations
-    if (durations.length === 0) {
-      warn('manifest ' + id + ': track ' + animation + ' carries no usable durations')
-      return undefined
-    }
-    const frameCount = Math.max(1, Math.min(rows[row]!, columns))
-    const sized = durations.length >= frameCount
-      ? durations.slice(0, frameCount)
-      : Array.from({ length: frameCount }, (_, index) => durations[index % durations.length]!)
-    tracks[animation] = {
-      frames: Array.from({ length: frameCount }, (_, index) => index),
-      durations: sized,
-      loop: typeof override?.loop === 'boolean' ? override.loop : pattern.loop,
-      ...(override?.fallback === undefined
-        ? pattern.fallback === undefined ? {} : { fallback: pattern.fallback }
-        : PET_ROW_ORDER.includes(override.fallback)
-          ? { fallback: override.fallback }
-          : pattern.fallback === undefined ? {} : { fallback: pattern.fallback }),
-    }
-  }
+  const tracks = buildTracks(rows, columns, trackOverrides, message => warn('manifest ' + id + ': ' + message))
+  if (tracks === undefined) return undefined
+  const sheet = spritesheetPath.join('/')
   return {
     id,
     displayName,
     description,
+    renderer: 'sprite2d' as const,
     cell,
     columns,
     rows,
@@ -343,13 +451,121 @@ export function resolvePetManifest(
     atlasUrl: assetUrl(assetPrefix, id, spritesheet),
     manifestUrl: assetUrl(assetPrefix, id, 'pet.json'),
     dir,
-    spritesheetPath: spritesheetPath.join('/'),
+    spritesheetPath: sheet,
+    servable: [sheet],
+    ...(remarks === undefined ? {} : { remarks }),
+  }
+}
+
+/**
+ * Adapt a validated v2 manifest's sprite2d block onto the legacy flat shape
+ * the established resolver consumes (pet-center M2 P2). The legacy resolver
+ * only expresses 9-row (default) and 11-row (spriteVersionNumber 2) atlases,
+ * so other atlasRows values are rejected here with a diagnostic.
+ */
+function flattenV2Sprite2d(manifest: PetManifestV2): Record<string, unknown> | undefined {
+  const block = manifest.sprite2d
+  if (block === undefined) return undefined
+  const legacy: Record<string, unknown> = {
+    id: manifest.id,
+    displayName: manifest.displayName,
+    spritesheetPath: block.spritesheetPath,
+  }
+  if (manifest.description !== undefined) legacy.description = manifest.description
+  if (block.cell !== undefined) legacy.cell = block.cell
+  if (block.columns !== undefined) legacy.columns = block.columns
+  if (block.frames !== undefined) legacy.frames = block.frames
+  if (block.tracks !== undefined) legacy.tracks = block.tracks
+  if (block.atlasRows !== undefined) {
+    if (block.atlasRows === 11) legacy.spriteVersionNumber = 2
+    else if (block.atlasRows !== DEFAULT_PET_ROW_COUNT) return undefined
+  }
+  if (manifest.sequences !== undefined) legacy.sequences = manifest.sequences
+  if (manifest.remarks !== undefined) legacy.remarks = manifest.remarks
+  return legacy
+}
+
+/**
+ * Resolve a validated live2d manifest into a renderable entry (pet-center
+ * M3). The model3.json is read at scan time: its reference closure becomes
+ * the entry's servable set (the asset route's allow-list), and a model that
+ * is unreadable or declares unsafe references rejects the entry fail-closed
+ * with an error diagnostic. Closure files missing on disk warn but keep the
+ * entry listed — the client renderer's diagnostic card reports the broken
+ * render, matching the registry's never-throw philosophy (install-time
+ * strictness belongs to the CLI validator). The sprite fields carry contract
+ * defaults: the chrome sizes live2d pets off 'display.size', not the atlas.
+ */
+function resolveLive2dEntry(
+  manifest: PetManifestV2,
+  dir: string,
+  options: { assetPrefix?: string; warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] },
+): PetEntry | undefined {
+  const assetPrefix = options.assetPrefix ?? '/pet'
+  const record = (level: 'error' | 'warning', message: string): void => {
+    options.diagnostics?.push({ level, source: dir, message })
+    options.warnings?.push(message)
+  }
+  const block = manifest.live2d as PetManifestLive2d | undefined
+  if (block === undefined) {
+    record('error', 'pet ' + manifest.id + ': renderer live2d requires a live2d block')
+    return undefined
+  }
+  let model3: unknown
+  try {
+    model3 = JSON.parse(readFileSync(join(dir, block.model), 'utf8'))
+  } catch (error) {
+    record('error', 'pet ' + manifest.id + ': live2d model ' + block.model + ' is not readable: '
+      + (error instanceof Error ? error.message : String(error)))
+    return undefined
+  }
+  const { references, errors } = collectModel3References(model3)
+  if (errors.length > 0) {
+    for (const message of errors) {
+      record('error', 'pet ' + manifest.id + ': live2d model ' + block.model + ': ' + message)
+    }
+    return undefined
+  }
+  for (const reference of references) {
+    if (!existsSync(join(dir, reference))) {
+      record('warning', 'pet ' + manifest.id + ': live2d closure file missing: ' + reference)
+    }
+  }
+  const tracks = buildTracks(DEFAULT_FRAME_COUNTS, DEFAULT_PET_COLUMNS, {}, message => record('warning', 'pet ' + manifest.id + ': ' + message))
+  if (tracks === undefined) return undefined
+  const remarks = normalizePetRemarks(manifest.remarks, message => record('warning', 'pet ' + manifest.id + ': ' + message))
+  const modelUrl = assetUrl(assetPrefix, manifest.id, block.model)
+  const live2d: PetLive2dDefinition = {
+    modelUrl,
+    modelPath: block.model,
+    ...(block.scale === undefined ? {} : { scale: block.scale }),
+    ...(block.translate === undefined ? {} : { translate: block.translate }),
+    motions: block.motions,
+    ...(block.expressions === undefined ? {} : { expressions: block.expressions }),
+    ...(block.hitAreas === undefined ? {} : { hitAreas: block.hitAreas }),
+  }
+  return {
+    id: manifest.id,
+    displayName: manifest.displayName,
+    description: manifest.description ?? '',
+    renderer: 'live2d' as const,
+    live2d,
+    cell: { ...DEFAULT_PET_CELL },
+    columns: DEFAULT_PET_COLUMNS,
+    rows: [...DEFAULT_FRAME_COUNTS],
+    atlasRows: DEFAULT_PET_ROW_COUNT,
+    tracks,
+    atlasUrl: modelUrl,
+    manifestUrl: assetUrl(assetPrefix, manifest.id, 'pet.json'),
+    dir,
+    spritesheetPath: block.model,
+    servable: [block.model, ...references],
     ...(remarks === undefined ? {} : { remarks }),
   }
 }
 
 /** Scan one directory of pet folders; entries come back in name order. */
-function scanPetDir(dir: string, options: { assetPrefix?: string; warnings?: string[] }): PetEntry[] {
+function scanPetDir(dir: string, options: { assetPrefix?: string; warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] }): PetEntry[] {
   if (!existsSync(dir)) return []
   let names: string[] = []
   try {
@@ -364,8 +580,30 @@ function scanPetDir(dir: string, options: { assetPrefix?: string; warnings?: str
     if (!existsSync(manifestFile)) continue
     const parsed = readPetJson(manifestFile, options.warnings)
     if (parsed === undefined) continue
-    const entry = resolvePetManifest(parsed, join(dir, name), options)
-    if (entry !== undefined) entries.push(entry)
+    const entryDir = join(dir, name)
+    const verdict = parsePetManifest(parsed, entryDir)
+    for (const diagnostic of verdict.diagnostics) {
+      options.diagnostics?.push({ level: diagnostic.level, source: entryDir, message: diagnostic.message })
+      options.warnings?.push(diagnostic.message)
+    }
+    if (!verdict.ok) continue
+    let entry: PetEntry | undefined
+    if (verdict.manifest.renderer === 'live2d') {
+      entry = resolveLive2dEntry(verdict.manifest, entryDir, options)
+    } else {
+      const legacy = flattenV2Sprite2d(verdict.manifest)
+      if (legacy === undefined) {
+        const note = 'pet ' + verdict.manifest.id + ': sprite2d.atlasRows only supports 9 or 11 under the v1 compat resolver'
+        options.diagnostics?.push({ level: 'error', source: entryDir, message: note })
+        options.warnings?.push(note)
+        continue
+      }
+      entry = resolvePetManifest(legacy, entryDir, options)
+    }
+    if (entry === undefined) continue
+    // Optional voice pack (voice.json) — pure content, warn-and-drop (M4).
+    const voice = loadVoicePackFile(join(entryDir, 'voice.json'), options)
+    entries.push({ ...entry, ...(voice === undefined ? {} : { voice }) })
   }
   return entries
 }
@@ -381,6 +619,138 @@ function readPetJson(file: string, warnings: string[] | undefined): unknown {
 }
 
 /**
+ * Scan-time read ceiling for user-authored JSON descriptors (voice.json,
+ * .voice.json, decoration.json): the registry reads these synchronously at
+ * plugin startup, and a pathological file — multi-GB, or a FIFO/device
+ * symlink — must not hang or exhaust the host before the warn-and-drop
+ * discipline can apply (review-spd follow-up, pet-center M4/M5).
+ */
+export const PET_SCAN_JSON_CAP = 64 * 1024
+
+/**
+ * Stat one scanned JSON descriptor with a regular-file + size guard, so a
+ * pathological user file is skipped with a warning instead of stalling or
+ * OOM-ing the host at startup. Returns the Stats, or undefined when the
+ * caller must skip the file (a warning was recorded).
+ */
+function guardedScannedJsonStat(
+  file: string,
+  options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] },
+  what: string,
+): ReturnType<typeof statSync> | undefined {
+  let st: ReturnType<typeof statSync>
+  try {
+    st = statSync(file)
+  } catch {
+    return undefined
+  }
+  const warn = (message: string): void => {
+    options.warnings?.push(file + ': ' + message)
+    options.diagnostics?.push({ level: 'warning', source: file, message: file + ': ' + message })
+  }
+  if (!st.isFile()) {
+    warn(what + ' is not a regular file; ignored')
+    return undefined
+  }
+  if (st.size > PET_SCAN_JSON_CAP) {
+    warn(what + ' exceeds the ' + PET_SCAN_JSON_CAP + '-byte scan ceiling; ignored')
+    return undefined
+  }
+  return st
+}
+
+/**
+ * Load and normalize one optional voice.json (pet-center M4). A missing
+ * file is silent; a broken file warns and drops. The pack is pure content,
+ * so every issue stays a warning — a bad voice.json never rejects a pet.
+ */
+function loadVoicePackFile(
+  file: string,
+  options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] },
+): VoicePack | undefined {
+  if (!existsSync(file)) return undefined
+  if (guardedScannedJsonStat(file, options, 'voice pack') === undefined) return undefined
+  const warn = (message: string): void => {
+    options.warnings?.push(file + ': ' + message)
+    options.diagnostics?.push({ level: 'warning', source: file, message: file + ': ' + message })
+  }
+  let raw: unknown
+  try {
+    raw = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    warn('voice pack is not valid JSON; ignored: ' + (error instanceof Error ? error.message : String(error)))
+    return undefined
+  }
+  return normalizeVoicePack(raw, warn)
+}
+
+/** Decoration asset URL prefix (served by the decoration route, M5). */
+export const DECORATION_ASSET_PREFIX = '/api/pet/decoration'
+
+/**
+ * Scan one directory of decoration folders ('decoration.json' + strip).
+ * Later scans override earlier ones on id collision; a bad descriptor warns
+ * and skips — the never-throw philosophy holds for decorations too (M5).
+ */
+function scanDecorationDir(dir: string, options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] }): DecorationEntry[] {
+  if (!existsSync(dir)) return []
+  let names: string[] = []
+  try {
+    names = readdirSync(dir).filter(name => !name.startsWith('.'))
+  } catch {
+    return []
+  }
+  names.sort()
+  const entries: DecorationEntry[] = []
+  for (const name of names) {
+    const entryDir = join(dir, name)
+    const manifestFile = join(entryDir, 'decoration.json')
+    if (!existsSync(manifestFile)) continue
+    if (guardedScannedJsonStat(manifestFile, options, 'decoration descriptor') === undefined) continue
+    let raw: unknown
+    try {
+      raw = JSON.parse(readFileSync(manifestFile, 'utf8'))
+    } catch (error) {
+      const message = 'skipping ' + manifestFile + ': ' + (error instanceof Error ? error.message : String(error))
+      options.warnings?.push(message)
+      options.diagnostics?.push({ level: 'error', source: entryDir, message })
+      continue
+    }
+    const verdict = parseDecorationManifest(raw, manifestFile)
+    for (const diagnostic of verdict.diagnostics) {
+      options.diagnostics?.push({ level: diagnostic.level, source: entryDir, message: diagnostic.message })
+      options.warnings?.push(diagnostic.message)
+    }
+    if (!verdict.ok) continue
+    const manifest = verdict.manifest
+    // A missing strip keeps the entry listed (mirroring the live2d closure
+    // discipline) but earns a diagnostic: the ornament will silently render
+    // nothing, and the warning names the file to fix.
+    if (!existsSync(join(entryDir, manifest.entry))) {
+      const message = 'decoration ' + manifest.id + ': strip file missing: ' + manifest.entry
+      options.warnings?.push(message)
+      options.diagnostics?.push({ level: 'warning', source: entryDir, message })
+    }
+    entries.push({
+      apiVersion: PET_DECORATION_API_VERSION,
+      id: manifest.id,
+      dir: entryDir,
+      entryPath: manifest.entry,
+      servable: ['decoration.json', manifest.entry],
+      license: manifest.license,
+      assetBase: DECORATION_ASSET_PREFIX + '/' + encodeURIComponent(manifest.id),
+      entryUrl: DECORATION_ASSET_PREFIX + '/' + encodeURIComponent(manifest.id) + '/' + manifest.entry,
+      cell: manifest.cell,
+      columns: manifest.columns,
+      durations: manifest.durations,
+      loop: manifest.loop,
+      phases: manifest.phases,
+    })
+  }
+  return entries
+}
+
+/**
  * Load the pet registry: built-in 'assets/*' first, then the hatch-pet
  * custom pets directory, then composed 'extra' manifests (each later source
  * overrides an earlier one on id collision). The registry never throws on a
@@ -389,10 +759,11 @@ function readPetJson(file: string, warnings: string[] | undefined): unknown {
 export function loadPetRegistry(options: PetRegistryOptions): PetRegistry {
   const { packageRoot, assetPrefix = '/pet' } = options
   const warnings: string[] = []
+  const diagnostics: PetRegistryDiagnostic[] = []
   const byId = new Map<string, PetEntry>()
   const builtinIds = new Set<string>()
 
-  for (const entry of scanPetDir(join(packageRoot, 'assets'), { assetPrefix, warnings })) {
+  for (const entry of scanPetDir(join(packageRoot, 'assets'), { assetPrefix, warnings, diagnostics })) {
     if (byId.has(entry.id)) {
       warnings.push('duplicate built-in pet id ' + entry.id + '; the first one wins')
       continue
@@ -403,10 +774,22 @@ export function loadPetRegistry(options: PetRegistryOptions): PetRegistry {
 
   const petsDir = options.petsDir ?? codexPetsDir()
   if (petsDir !== '') {
-    for (const entry of scanPetDir(petsDir, { assetPrefix, warnings })) {
+    for (const entry of scanPetDir(petsDir, { assetPrefix, warnings, diagnostics })) {
       if (byId.has(entry.id)) warnings.push('custom pet ' + entry.id + ' overrides the built-in one')
       byId.set(entry.id, entry)
     }
+  }
+
+  // The pet-center user directory ranks above the legacy hatch-pet source.
+  const dshPetsDir = options.dshPetsDir ?? join(dshHome(), 'pets')
+  let globalVoice: VoicePack | undefined
+  if (dshPetsDir !== '') {
+    for (const entry of scanPetDir(dshPetsDir, { assetPrefix, warnings, diagnostics })) {
+      if (byId.has(entry.id)) warnings.push('user pet ' + entry.id + ' overrides an earlier registration')
+      byId.set(entry.id, entry)
+    }
+    // The global voice override layers under every per-pet pack (M4, #677).
+    globalVoice = loadVoicePackFile(join(dshPetsDir, '.voice.json'), { warnings, diagnostics })
   }
 
   for (const manifest of options.extra ?? []) {
@@ -427,21 +810,69 @@ export function loadPetRegistry(options: PetRegistryOptions): PetRegistry {
     byId.set(entry.id, entry)
   }
 
+  // Status decorations (pet-center M5, #567): built-in entries first,
+  // then same-id user entries under '$DSH_HOME/pets/decorations' override.
+  const decorationById = new Map<string, DecorationEntry>()
+  for (const entry of scanDecorationDir(join(packageRoot, 'assets', 'decorations'), { warnings, diagnostics })) {
+    decorationById.set(entry.id, entry)
+  }
+  if (dshPetsDir !== '') {
+    for (const entry of scanDecorationDir(join(dshPetsDir, 'decorations'), { warnings, diagnostics })) {
+      if (decorationById.has(entry.id)) {
+        warnings.push('user decoration ' + entry.id + ' overrides the built-in one')
+      }
+      decorationById.set(entry.id, entry)
+    }
+  }
+
   const entries = [...byId.values()]
+  const decorations = [...decorationById.values()]
   return {
     entries,
     warnings,
+    diagnostics,
     byId: (id: string) => byId.get(id),
     defaultEntry: () => entries.find(entry => builtinIds.has(entry.id)) ?? entries[0]!,
+    ...(globalVoice === undefined ? {} : { globalVoice }),
+    decorations,
+    decorationById: (id: string) => decorationById.get(id),
   }
 }
 
-/** Strip host-only fields, leaving the client-visible definition. */
-export function petEntryView(entry: PetEntry): PetDefinition {
+/** The built-in default decoration id (M5): the first reference ornament. */
+export const DEFAULT_DECORATION_ID = 'whale'
+
+/** Strip host-only fields, leaving the browser-visible decoration view. */
+export function decorationView(entry: DecorationEntry): DecorationView {
+  return {
+    apiVersion: PET_DECORATION_API_VERSION,
+    id: entry.id,
+    assetBase: entry.assetBase,
+    entryUrl: entry.entryUrl,
+    cell: entry.cell,
+    columns: entry.columns,
+    durations: entry.durations,
+    loop: entry.loop,
+    phases: entry.phases,
+  }
+}
+
+/**
+ * Strip host-only fields, leaving the client-visible definition. When the
+ * registry carries a global voice pack, its panel chrome layers under the
+ * entry's own pack (per-slot merge, pet > global), mirroring the voice-pool
+ * layering (pet-center M4, issue #677).
+ */
+export function petEntryView(entry: PetEntry, globalVoice?: VoicePack): PetDefinition {
+  const panel = globalVoice === undefined
+    ? entry.voice?.panel
+    : mergeVoicePacks(globalVoice, entry.voice)?.panel
   return {
     id: entry.id,
     displayName: entry.displayName,
     description: entry.description,
+    renderer: entry.renderer,
+    ...(entry.live2d === undefined ? {} : { live2d: entry.live2d }),
     cell: entry.cell,
     columns: entry.columns,
     rows: entry.rows,
@@ -450,6 +881,7 @@ export function petEntryView(entry: PetEntry): PetDefinition {
     ...(entry.sequences === undefined ? {} : { sequences: entry.sequences }),
     atlasUrl: entry.atlasUrl,
     manifestUrl: entry.manifestUrl,
+    ...(panel === undefined ? {} : { panel }),
   }
 }
 

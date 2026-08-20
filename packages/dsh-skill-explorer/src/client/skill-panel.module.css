@@ -58,7 +58,9 @@
   max-height: 84vh;
   display: flex;
   flex-direction: column;
-  background: var(--dsw-alias-bg-base, #fdfdfd);
+  /* Floating modal surface: bg-overlay stays opaque on translucent skins
+     (issue #659); bg-base is intentionally transparent there. */
+  background: var(--dsw-alias-bg-overlay, #fdfdfd);
   color: var(--dsw-alias-label-primary, #1c1e26);
   border-radius: 12px;
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);

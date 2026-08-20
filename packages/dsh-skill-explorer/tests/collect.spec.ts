@@ -1,7 +1,7 @@
 /**
  * collectSkills: filesystem scanning + registry merge + grouping tests.
  */
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, symlinkSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
@@ -25,6 +25,19 @@ write(join(PROJ, '.agents', 'skills', 'agent-proj', 'SKILL.md'), '---\nname: age
 write(join(HOME, 'skills', 'user-tool', 'SKILL.md'), '---\nname: user-tool\ndescription: 用户级技能\n---\n')
 write(join(AGENTS, 'skills', 'agent-user', 'SKILL.md'), '---\nname: agent-user\ndescription: 用户 agents 技能\n---\n')
 write(join(CUSTOM, 'my-custom', 'SKILL.md'), '---\nname: my-custom\ndescription: 自定义目录技能\n---\n')
+
+// Symlink support is environment-dependent: Windows needs Developer Mode and
+// some sandboxed Linux runners disallow symlinks, so probe once and skip the
+// linked-skill cases when creation fails instead of failing the suite.
+const LINK_PROBE = join(TMP, 'link-probe')
+let CAN_SYMLINK = false
+try {
+  write(join(LINK_PROBE, 'target', 'SKILL.md'), '---\nname: probe\ndescription: probe\n---\n')
+  symlinkSync(join(LINK_PROBE, 'target'), join(LINK_PROBE, 'linked'), 'dir')
+  CAN_SYMLINK = true
+} catch {
+  CAN_SYMLINK = false
+}
 write(
   join(AGENTS, 'skills', 'block-desc', 'SKILL.md'),
   ['---', 'name: block-desc', 'description: >-', '  块标量的', '  多行描述。', 'whenToUse: >', '  块标量', '  适用场景', '---', ''].join('\n'),
@@ -156,6 +169,92 @@ describe('cross-root precedence', () => {
     expect(byName['embedded-hello'].path).toBeUndefined()
     // Filesystem entries keep their scanned path even when the registry merges metadata.
     expect(byName['poc-first'].path).toBe(join(PROJ, '.dsh', 'skills', 'poc-first', 'SKILL.md'))
+  })
+})
+
+describe('linked skill roots (symlink directories/files)', () => {
+  const run = () =>
+    collectSkills({
+      cwd: PROJ,
+      projectRoots: [PROJ],
+      customSkillDirs: [CUSTOM],
+      dshHome: HOME,
+      agentsHome: AGENTS,
+      registry,
+    })
+
+  it('discovers skills behind symlinked directories and symlinked .md files', async () => {
+    if (!CAN_SYMLINK) return
+    const tmp = mkdtempSync(join(tmpdir(), 'skill-explorer-link-'))
+    // A real shared skill directory, linked into the user skills root.
+    const shared = join(tmp, 'shared', 'linked-skill')
+    mkdirSync(shared, { recursive: true })
+    writeFileSync(join(shared, 'SKILL.md'), '---\nname: linked-skill\ndescription: 通过符号链接挂进来的技能\n---\n', 'utf8')
+    // A real shared .md file, linked individually.
+    const sharedFile = join(tmp, 'shared', 'linked-file.md')
+    mkdirSync(join(tmp, 'shared'), { recursive: true })
+    writeFileSync(sharedFile, '---\nname: linked-file\ndescription: 单文件符号链接技能\n---\n', 'utf8')
+    const userSkills = join(HOME, 'skills')
+    mkdirSync(userSkills, { recursive: true })
+    symlinkSync(shared, join(userSkills, 'linked-skill'), 'dir')
+    symlinkSync(sharedFile, join(userSkills, 'linked-file.md'), 'file')
+
+    try {
+      const { skills } = await run()
+      const byName = Object.fromEntries(skills.map((s) => [s.name, s]))
+      expect(byName['linked-skill']).toBeDefined()
+      expect(byName['linked-skill'].level).toBe('user-dsh')
+      expect(byName['linked-skill'].path).toBe(join(userSkills, 'linked-skill', 'SKILL.md'))
+      expect(byName['linked-skill'].linked).toBe(true)
+      expect(byName['linked-file']).toBeDefined()
+      expect(byName['linked-file'].level).toBe('user-dsh')
+      expect(byName['linked-file'].path).toBe(join(userSkills, 'linked-file.md'))
+      expect(byName['linked-file'].linked).toBe(true)
+      // Non-linked skills stay unflagged (deletable).
+      expect(byName['poc-first'].linked).not.toBe(true)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+      rmSync(join(userSkills, 'linked-skill'), { recursive: true, force: true })
+      rmSync(join(userSkills, 'linked-file.md'), { recursive: true, force: true })
+    }
+  })
+
+  it('skips symlink loops without failing the scan', async () => {
+    if (!CAN_SYMLINK) return
+    const userSkills = join(HOME, 'skills')
+    mkdirSync(userSkills, { recursive: true })
+    const loopA = join(userSkills, 'loop-a')
+    const loopB = join(userSkills, 'loop-b')
+    symlinkSync(loopB, loopA, 'dir')
+    symlinkSync(loopA, loopB, 'dir')
+    try {
+      const { skills } = await run()
+      expect(skills.map((s) => s.name)).not.toContain('loop-a')
+      expect(skills.map((s) => s.name)).not.toContain('loop-b')
+    } finally {
+      rmSync(loopA, { recursive: true, force: true })
+      rmSync(loopB, { recursive: true, force: true })
+    }
+  })
+
+  it('skips dangling symlinks without failing the scan', async () => {
+    if (!CAN_SYMLINK) return
+    const userSkills = join(HOME, 'skills')
+    mkdirSync(userSkills, { recursive: true })
+    const danglingDir = join(userSkills, 'dangling-skill')
+    const danglingFile = join(userSkills, 'dangling-file.md')
+    symlinkSync(join(TMP, 'does-not-exist-dir'), danglingDir, 'dir')
+    symlinkSync(join(TMP, 'does-not-exist.md'), danglingFile, 'file')
+    try {
+      const { skills } = await run()
+      const names = skills.map((s) => s.name)
+      expect(names).not.toContain('dangling-skill')
+      expect(names).not.toContain('dangling-file')
+      expect(skills.some((s) => s.name === 'poc-first')).toBe(true)
+    } finally {
+      rmSync(danglingDir, { recursive: true, force: true })
+      rmSync(danglingFile, { recursive: true, force: true })
+    }
   })
 })
 

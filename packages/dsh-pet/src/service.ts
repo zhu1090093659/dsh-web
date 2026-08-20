@@ -36,14 +36,19 @@ import {
   type PetDisplayConfig,
 } from './persist.ts'
 import {
+  DEFAULT_DECORATION_ID,
+  decorationView,
   loadPetRegistry,
   petEntryView,
   petPackageRoot,
   type PetDefinition,
   type PetManifest,
   type PetRegistry,
+  type PetRegistryDiagnostic,
 } from './registry.ts'
-import { WHISPER_TTL_MS } from './chatter.ts'
+import { WHISPER_TTL_MS, type VoicePackOverrides, type VoicePoolsProvider } from './chatter.ts'
+import { mergeVoicePacks } from './voice-pack.ts'
+import type { DecorationView } from './contracts/status-decoration.ts'
 import {
   defaultPetStateConfig,
   PetStateMachine,
@@ -64,6 +69,8 @@ export interface PetConfig {
   persistDir?: string
   /** Master switch for the plugin (browser half + host routes). */
   enabled?: boolean
+  /** Status-decoration master switch (pet-center M5, #567); defaults to on. */
+  decorationEnabled?: boolean
   /** Prebuilt registry (tests); defaults to scanning the package + user dirs. */
   registry?: PetRegistry
   /** Extra manifest entries composed by the embedding application. */
@@ -90,6 +97,11 @@ export interface PetSettingsSection {
   bottom: number
   /** Master switch for the plugin (browser half + host routes). */
   enabled?: boolean
+  /**
+   * Status-decoration master switch (pet-center M5, #567). Defaults to on;
+   * the settings surface mirrors this field and can turn it off.
+   */
+  decorationEnabled?: boolean
 }
 
 /** Settings namespace of the pet capability. Spelled here rather than imported: the browser half spells the same value. */
@@ -158,6 +170,12 @@ export interface PetStateView {
    * rendered by the client as a distinct whisper bubble.
    */
   whisper?: string
+  /**
+   * The active status decoration (pet-center M5, #567), when the master
+   * switch is on and the default decoration entry exists. Absent means the
+   * browser half renders no ornament.
+   */
+  decoration?: DecorationView
 }
 
 /** Result of `pet.interact`. */
@@ -199,9 +217,17 @@ export class PetService extends Service {
   private readonly registry: PetRegistry
   private readonly persistDir: string
   private enabled: boolean
+  /** Status-decoration master switch (M5, #567); mirrored from settings. */
+  private decorationEnabled: boolean
   private disposeActivity: (() => void) | undefined
   /** Session whose most recent meaningful event currently drives the global pet. */
   private displaySession: Session | undefined
+  /**
+   * Effective voice-pack overrides for the currently selected pet (M4,
+   * #677). Cached per pet id; the registry is an immutable snapshot, so the
+   * global pack and each entry's pack cannot change behind the cache.
+   */
+  private voiceCache: { petId: string; overrides: VoicePackOverrides } | undefined
   /**
    * Per-session activity, most recent last (Map insertion order). Bounded by
    * MAX_SESSION_BUBBLES so a burst of sessions cannot grow it without bound;
@@ -236,8 +262,26 @@ export class PetService extends Service {
     this.stateConfig = { ...defaultPetStateConfig, ...(config.state ?? {}) }
     this.machine = new PetStateMachine(this.stateConfig)
     this.enabled = config.enabled ?? true
+    this.decorationEnabled = config.decorationEnabled ?? true
 
     this.syncActivity()
+  }
+
+  /**
+   * The draw-time voice-pool provider handed to every projection runtime.
+   * It re-resolves when the selected pet changes, so live engines re-voice
+   * on the next draw without being rebuilt (M4, #677).
+   */
+  private voicePools(): VoicePoolsProvider {
+    return () => {
+      const entry = this.activeEntry()
+      if (this.voiceCache !== undefined && this.voiceCache.petId === entry.id) {
+        return this.voiceCache.overrides
+      }
+      const overrides = mergeVoicePacks(this.registry.globalVoice, entry.voice)?.overrides ?? {}
+      this.voiceCache = { petId: entry.id, overrides }
+      return overrides
+    }
   }
 
   /** Whether the pet service consumes session activity while enabled. */
@@ -257,12 +301,27 @@ export class PetService extends Service {
 
   /** RPC: the registry entries the browser half renders and selects from. */
   async pets(): Promise<PetDefinition[]> {
-    return this.registry.entries.map(petEntryView)
+    return this.registry.entries.map(entry => petEntryView(entry, this.registry.globalVoice))
   }
 
   /** The loaded registry (the asset routes serve its entries). */
   registrySnapshot(): PetRegistry {
     return this.registry
+  }
+
+  /** RPC: structured registry diagnostics (pet-center M2, issue #623). */
+  async diagnostics(): Promise<{ diagnostics: PetRegistryDiagnostic[] }> {
+    return { diagnostics: this.registry.diagnostics }
+  }
+
+  /**
+   * The active status decoration view (M5, #567): the default 'whale' entry
+   * (user directories override built-ins by id), gated by the master switch.
+   */
+  private activeDecoration(): DecorationView | undefined {
+    if (!this.decorationEnabled) return undefined
+    const entry = this.registry.decorationById?.(DEFAULT_DECORATION_ID)
+    return entry === undefined ? undefined : decorationView(entry)
   }
 
   /** The selected pet's registry entry. */
@@ -364,7 +423,7 @@ export class PetService extends Service {
     let activity = this.sessionActivity.get(session)
     if (activity === undefined) {
       activity = {
-        runtime: emptyProjectionRuntime(),
+        runtime: emptyProjectionRuntime(this.voicePools()),
         machine: new PetStateMachine(this.stateConfig),
       }
       this.sessionActivity.set(session, activity)
@@ -443,6 +502,7 @@ export class PetService extends Service {
    * @param section - the resolved settings section.
    */
   applySettingsSection(section: PetSettingsSection): void {
+    this.decorationEnabled = section.decorationEnabled ?? true
     const selected = typeof section.petId === 'string' ? this.registry.byId(section.petId) : undefined
     if (selected !== undefined) {
       this.ledger.setPetId(selected.id)
@@ -518,6 +578,7 @@ export class PetService extends Service {
     const freshWhisper = whisper !== undefined && Date.now() - whisper.at < WHISPER_TTL_MS
       ? whisper.text
       : undefined
+    const decoration = this.activeDecoration()
     // Read-only: the ledger settles on economic events only, never on a read,
     // so polling the state cannot trigger pet.json writes.
     return {
@@ -527,6 +588,7 @@ export class PetService extends Service {
       sessionActive: snapshot.sessionActive,
       sessions,
       ...(freshWhisper === undefined ? {} : { whisper: freshWhisper }),
+      ...(decoration === undefined ? {} : { decoration }),
       affinity: this.ledger.affinityView(Date.now()),
       display: { ...this.ledger.snapshot.display },
       pet: {

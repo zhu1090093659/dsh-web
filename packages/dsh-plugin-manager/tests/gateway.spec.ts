@@ -52,6 +52,20 @@ describe('dshSpawnCommand', () => {
     expect(argsPrefix[0]).toBe('C:\\Program Files\\nodejs\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js')
     expect(command).toBe(process.execPath)
   })
+
+  it('resolves the npx layout when the package sits one level above the shim (issue #683)', () => {
+    const binary = 'C:\\Users\\u\\AppData\\Local\\npm-cache\\_npx\\abc123\\node_modules\\.bin\\dsh.cmd'
+    const { argsPrefix } = dshSpawnCommand(binary, 'win32', () => false, (path) => path.includes('_npx') && !path.includes('\\.bin'))
+    expect(argsPrefix).toEqual([
+      'C:\\Users\\u\\AppData\\Local\\npm-cache\\_npx\\abc123\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js',
+    ])
+  })
+
+  it('prefers the npm-global layout when both bin scripts exist', () => {
+    const binary = 'C:\\tools\\nodejs\\dsh.cmd'
+    const { argsPrefix } = dshSpawnCommand(binary, 'win32', () => false, () => true)
+    expect(argsPrefix[0]).toBe('C:\\tools\\nodejs\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js')
+  })
 })
 
 describe('detectOfficialChannels', () => {

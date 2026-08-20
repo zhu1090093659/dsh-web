@@ -53,7 +53,7 @@ const OFFICIAL = 'official'
  * @returns the plugin card.
  */
 export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCenterComponentProps) {
-  const snapshot = useSyncExternalStore(theme.subscribe, theme.getTheme)
+  const snapshot = useSyncExternalStore((listener) => theme.subscribe(listener), () => theme.getTheme())
   const enabled = useSyncExternalStore(background.subscribe, background.enabled)
   const opacity = useSyncExternalStore(background.subscribe, background.opacity)
   const blurEmpty = useSyncExternalStore(background.subscribe, background.blurEmpty)

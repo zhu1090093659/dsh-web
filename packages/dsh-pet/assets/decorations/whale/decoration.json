@@ -1,0 +1,20 @@
+{
+  "decorationManifestVersion": 1,
+  "id": "whale",
+  "displayName": "喷水鲸鱼",
+  "license": "MIT",
+  "entry": "whale-frames.png",
+  "cell": { "width": 64, "height": 48 },
+  "columns": 4,
+  "frameMs": 160,
+  "loop": true,
+  "phases": {
+    "idle": "hide",
+    "waiting": { "from": 0, "to": 1 },
+    "thinking": { "from": 0, "to": 3 },
+    "tool": { "from": 0, "to": 3 },
+    "review": { "from": 0, "to": 1 },
+    "done": { "from": 2, "to": 3 },
+    "failed": { "from": 3, "to": 3 }
+  }
+}

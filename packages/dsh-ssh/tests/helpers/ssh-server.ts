@@ -35,6 +35,7 @@ function handleCommand(command: string, stream: ClientChannel): void {
     stream.close()
   }
   if (command === 'echo hello') respond('hello\n', 0)
+  else if (command === 'echo ok') respond('ok\n', 0)
   else if (command === 'out-and-err') {
     stream.write('hello out\n')
     // Server-side stderr is writable at runtime; the client-facing types

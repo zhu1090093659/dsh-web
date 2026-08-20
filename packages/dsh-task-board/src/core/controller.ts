@@ -509,7 +509,15 @@ export class BoardController {
   /** Settle tasks left 'running' whose sessions already finished. */
   private async reconcileRunningTasks(): Promise<void> {
     if (this.deps.exec === undefined) return
-    if (this.reconcileInFlight) return
+    if (this.reconcileInFlight) {
+      // A session change arrived while a pass was in flight. The in-flight
+      // pass already captured the task list it iterates and will not revisit
+      // this task, so dropping the notification would leave it stuck
+      // 'running'. Re-arm the debounce so the change is reconciled once the
+      // current pass settles.
+      this.scheduleReconcile()
+      return
+    }
     this.reconcileInFlight = true
     try {
       type Settled = Extract<ExecutionEvent, { kind: 'settled' }>

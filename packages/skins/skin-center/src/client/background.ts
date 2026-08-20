@@ -138,7 +138,7 @@ export class BackgroundController implements SkinBackgroundHandle {
     })
   }
 
-  enabled(): boolean { return this.enabledValue }
+  enabled = (): boolean => this.enabledValue
 
   setEnabled(value: boolean): void {
     this.enabledValue = value
@@ -148,13 +148,13 @@ export class BackgroundController implements SkinBackgroundHandle {
     void this.scope.set('enabled', value)
   }
 
-  opacity(): number { return this.opacityValue }
+  opacity = (): number => this.opacityValue
 
-  blurEmpty(): number { return this.blurEmptyValue }
+  blurEmpty = (): number => this.blurEmptyValue
 
-  blurContent(): number { return this.blurContentValue }
+  blurContent = (): number => this.blurContentValue
 
-  subscribe(listener: () => void): () => void {
+  subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
   }

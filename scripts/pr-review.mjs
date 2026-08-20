@@ -232,7 +232,7 @@ export function addedLinesFromDiff(text) {
     } else if (line.startsWith(`+`) && !line.startsWith(`+++`)) {
       newLine += 1
       out.push({ path: file, line: newLine, text: line.slice(1) })
-    } else if (!line.startsWith(`-`)) {
+    } else if (!line.startsWith(`-`) && !line.startsWith(`\\`)) {
       newLine += 1
     }
   }

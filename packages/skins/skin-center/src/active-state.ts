@@ -6,8 +6,8 @@
  * @module @linxin666/dsh-client-ui-skin-center/active-state
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 
 import { userSkinsDir } from './skin-repo.ts'
 
@@ -28,6 +28,18 @@ export function readActiveSelection(path: string): string | null {
 
 /** Persist the active skin id (creates the parent directory). */
 export function writeActiveSelection(path: string, id: string | null): void {
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, JSON.stringify({ active: id }, null, 2) + '\n', 'utf8')
+  const dir = dirname(path)
+  mkdirSync(dir, { recursive: true })
+  // Atomic replace (issue #678): write a sibling temp file then rename over
+  // the target, so a crash mid-write can never leave a half-written JSON that
+  // readActiveSelection would silently discard. The temp dir is cleaned up on
+  // both success and failure.
+  const tmpDir = mkdtempSync(join(dir, `${basename(path)}.tmp-`))
+  const tmp = join(tmpDir, basename(path))
+  try {
+    writeFileSync(tmp, JSON.stringify({ active: id }, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' })
+    renameSync(tmp, path)
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true })
+  }
 }

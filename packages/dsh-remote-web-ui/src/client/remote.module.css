@@ -267,12 +267,62 @@
 }
 
 .link {
+  display: block;
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--dsw-alias-label-caption);
   font-family: var(--dsw-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+
+.pairLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pairLinkRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.pairLinkText {
+  min-width: 0;
+  flex: 1;
+}
+
+.pairLinkLabel {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.copyLink {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-button-elevated-fill);
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+}
+
+.oneTimeHint {
+  margin: 0;
+  color: var(--dsw-alias-label-caption);
   font-size: 12px;
 }
 
@@ -353,32 +403,110 @@
   font-size: 13px;
 }
 
-/* Failed-pair toast: fixed top-center diagnostic on the phone. */
-.notice {
+/* Unpaired remote desktop: opaque, blocking page above the shell. */
+.fencePage {
   position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
   z-index: 2000;
-  max-width: min(420px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
   box-sizing: border-box;
-  padding: 12px 16px;
+  padding: 40px 24px;
+  background: var(--dsw-alias-bg-base);
+  text-align: center;
+}
+
+.fenceCard {
+  width: min(520px, 100%);
+  margin-inline: auto;
+  box-sizing: border-box;
+  padding: 36px 40px;
   border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 20px;
+  background: var(--dsw-alias-bg-layer-1);
+  box-shadow: var(--dsw-shadow-lv3);
+  text-align: center;
+}
+
+.fenceMark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-inline: auto;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-error-secondary);
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.fenceEyebrow {
+  margin: 22px 0 8px;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fenceTitle {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 24px;
+  line-height: 1.35;
+}
+
+.fenceDetail {
+  margin: 12px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.fenceSteps {
+  margin: 24px auto 0;
+  padding: 20px 20px 20px 42px;
   border-radius: 12px;
   background: var(--dsw-alias-bg-layer-2);
-  box-shadow: var(--dsw-shadow-lv3);
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  line-height: 1.65;
+  text-align: left;
 }
 
-.noticeTitle {
-  margin: 0;
-  color: var(--dsw-alias-state-error-primary);
+.fenceSteps li + li {
+  margin-top: 8px;
+}
+
+.fenceRetry {
+  width: 100%;
+  margin-top: 24px;
+  padding: 11px 16px;
+  border: 1px solid var(--dsw-alias-brand-primary);
+  border-radius: 10px;
+  background: var(--dsw-alias-brand-primary);
+  color: #fff;
+  font: inherit;
   font-weight: 500;
+  cursor: pointer;
 }
 
-.noticeDetail {
-  margin: 4px 0 0;
-  color: var(--dsw-alias-label-secondary);
-  font-size: 13px;
+.fenceRetry:hover {
+  filter: brightness(0.96);
+}
+
+.fenceRetry:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 3px;
+}
+
+.fenceFootnote {
+  margin: 14px 0 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 /* Multi-homed address picker: one radio per constructible LAN literal. */
@@ -434,6 +562,101 @@
   font-size: 12px;
 }
 
+.devices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 16px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.devicesTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.devicesEmpty {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+}
+
+.deviceList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deviceRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.deviceMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.deviceName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.devicePresence {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.deviceOnline {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.deviceOffline {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.deviceSeen {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.deviceRevoke {
+  flex: none;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.deviceRevoke:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.deviceRevoke:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);
+}
+
 /* Accessibility: collapse the interaction transitions for reduced-motion
    users. The panel chrome is already static; this just disables the
    hover/active/focus cross-fades added above. */
@@ -441,7 +664,8 @@
   .trigger,
   .close,
   .action,
-  .address {
+  .address,
+  .deviceRevoke {
     transition: none;
   }
 }

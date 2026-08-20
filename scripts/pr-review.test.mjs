@@ -115,6 +115,20 @@ test(`diff 新增行提取：文件与行号正确`, () => {
   ])
 })
 
+test(`diff 新增行提取：忽略 '\\ No newline at end of file' 标记`, () => {
+  const diff = [
+    `diff --git a/f.txt b/f.txt`,
+    `--- a/f.txt`,
+    `+++ b/f.txt`,
+    `@@ -1 +1 @@`,
+    `-old`,
+    `\\ No newline at end of file`,
+    `+new`,
+  ].join(`\n`)
+  const out = addedLinesFromDiff(diff)
+  assert.deepEqual(out, [{ path: `f.txt`, line: 1, text: `new` }])
+})
+
 // ---------------------------------------------------------------- checkSecrets
 
 test(`密钥扫描：命中拒绝，测试目录降级警告`, () => {

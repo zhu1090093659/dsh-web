@@ -119,10 +119,12 @@ export function parsePorcelain(stdout: string): { dirtyFiles: number; untrackedF
   let dirtyFiles = 0
   let untrackedFiles = 0
   let conflicts = 0
+  // git's porcelain-v1 unmerged codes: DD, AU, UD, UA, DU, AA, UU.
+  const unmerged = new Set(['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU'])
   for (const line of stdout.split('\n')) {
     if (line === '') continue
     const xy = line.slice(0, 2)
-    if (xy.includes('U')) conflicts += 1
+    if (unmerged.has(xy)) conflicts += 1
     else if (xy.startsWith('??')) untrackedFiles += 1
     else dirtyFiles += 1
   }
@@ -154,12 +156,12 @@ export function parseGraph(stdout: string): GraphCommit[] {
   return commits
 }
 
-/** Decoration → ref names: split entries, drop the `HEAD -> ` handoff prefix, drop `tag: `. */
+/** Decoration → ref names: split entries, drop the `HEAD -> ` handoff prefix, drop a bare detached-`HEAD` entry, drop `tag: `. */
 export function parseDecoration(decoration: string): string[] {
   if (decoration === '') return []
   return decoration.split(', ').map(part => {
-    let name = part.replace(/^HEAD -> /, '').replace(/^HEAD,? ?/, '')
-    name = name.replace(/^tag: /, '')
+    if (part === 'HEAD') return ''
+    let name = part.replace(/^HEAD -> /, '').replace(/^tag: /, '')
     return name.trim()
   }).filter(name => name !== '')
 }

@@ -1,11 +1,25 @@
 import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import z from "schemastery";
-import { chmodSync, cpSync, createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, createReadStream, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { transform } from "lightningcss";
 import { execFileSync } from "node:child_process";
+import { Buffer as Buffer$1 } from "node:buffer";
+import { deflateSync, inflateSync } from "node:zlib";
+//#region \0rolldown/runtime.js
+var __defProp = Object.defineProperty;
+var __exportAll = (all, no_symbols) => {
+	let target = {};
+	for (var name in all) __defProp(target, name, {
+		get: all[name],
+		enumerable: true
+	});
+	if (!no_symbols) __defProp(target, Symbol.toStringTag, { value: "Module" });
+	return target;
+};
+//#endregion
 //#region src/http-utils.ts
 /** One JSON response. */
 function json(res, status, body) {
@@ -526,8 +540,22 @@ function readActiveSelection(path) {
 }
 /** Persist the active skin id (creates the parent directory). */
 function writeActiveSelection(path, id) {
-	mkdirSync(dirname(path), { recursive: true });
-	writeFileSync(path, JSON.stringify({ active: id }, null, 2) + "\n", "utf8");
+	const dir = dirname(path);
+	mkdirSync(dir, { recursive: true });
+	const tmpDir = mkdtempSync(join(dir, `${basename(path)}.tmp-`));
+	const tmp = join(tmpDir, basename(path));
+	try {
+		writeFileSync(tmp, JSON.stringify({ active: id }, null, 2) + "\n", {
+			encoding: "utf8",
+			flag: "wx"
+		});
+		renameSync(tmp, path);
+	} finally {
+		rmSync(tmpDir, {
+			recursive: true,
+			force: true
+		});
+	}
 }
 //#endregion
 //#region src/core/css-safety/official-tokens.generated.ts
@@ -1589,15 +1617,20 @@ function writePatchAtomic(filePath, next) {
 const MANAGED_START = "# --- dsh-skin managed (auto-generated; do not edit) ---";
 const MANAGED_END = "# --- end dsh-skin managed ---";
 /**
-* Remove the managed skin section. Throws on an unterminated section (a
-* malformed boot patch must fail loudly, never be silently half-written).
+* Remove every managed skin section (issue #676: a second stray section kept
+* hasLegacyState true and re-ran the migration on each boot). Throws on an
+* unterminated section (a malformed boot patch must fail loudly, never be
+* silently half-written).
 */
 function stripManaged(patch) {
-	const start = patch.indexOf(MANAGED_START);
-	if (start === -1) return patch;
-	const end = patch.indexOf(MANAGED_END, start);
-	if (end === -1) throw new Error("managed skin section is unterminated; fix the harness cordis.patch.yml");
-	return patch.slice(0, start) + patch.slice(end + 30);
+	let out = patch;
+	while (true) {
+		const start = out.indexOf(MANAGED_START);
+		if (start === -1) return out;
+		const end = out.indexOf(MANAGED_END, start);
+		if (end === -1) throw new Error("managed skin section is unterminated; fix the harness cordis.patch.yml");
+		out = out.slice(0, start) + out.slice(end + 30);
+	}
 }
 /** Remove - insert: items left with no - id: rows after legacy cleanup. */
 function dropEmptyInserts(text) {
@@ -1607,7 +1640,7 @@ function dropEmptyInserts(text) {
 	while (i < lines.length) {
 		const line = lines[i];
 		const trimmed = line.trim();
-		if (/^-\s*insert:\s*$/.exec(trimmed) === null) {
+		if (/^-\s*insert:\s*(?:\[\s*\])?\s*$/.exec(trimmed) === null) {
 			out.push(line);
 			i += 1;
 			continue;
@@ -1673,7 +1706,7 @@ function readLegacyActiveId(patch, knownIds) {
 	for (const m of patch.matchAll(/name:\s*['"]?@linxin666\/dsh-client-ui-skin-([a-z0-9-]+)['"]?/g)) if (m[1] !== "center") return m[1];
 	if (!patch.includes("# --- dsh-skin managed (auto-generated; do not edit) ---")) return null;
 	const disabled = /* @__PURE__ */ new Set();
-	for (const m of patch.matchAll(/^- id: (ui-skin-[a-z0-9-]+)\n  disabled: true/gm)) disabled.add(m[1].replace("ui-skin-", ""));
+	for (const m of patch.matchAll(/^- id: (ui-skin-[a-z0-9-]+)\r?\n  disabled: true/gm)) disabled.add(m[1].replace("ui-skin-", ""));
 	const candidates = knownIds.filter((id) => !disabled.has(id));
 	return candidates.length === 1 ? candidates[0] : null;
 }
@@ -2149,6 +2182,2098 @@ function buildInventory(opts = {}) {
 	};
 }
 //#endregion
+//#region src/pkg-extract.ts
+/**
+* Wallpaper Engine scene.pkg / .tex resource extraction, dependency-free.
+*
+* This module is the core of the skin center's "scene wallpaper static frame
+* extraction" feature: it unpacks a Wallpaper Engine scene package (PKG
+* container, magic PKGVxxxx), parses the nested TEX texture containers
+* (TEXV0005 header -> TEXI0001 image info -> TEXB0001..4 mipmap data ->
+* TEXS0001..3 frame animation metadata), decodes the main mipmap to RGBA8888
+* (raw RGBA8888/R8/RG88 plus hand-rolled BC1/BC2/BC3 block decompression for
+* DXT1/DXT3/DXT5), and re-encodes the result as a PNG using only node:zlib.
+*
+* Format facts were cross-checked against the two reference implementations:
+* RePKG (github.com/notscuffed/repkg, PackageReader / TexReader and friends)
+* and linux-wallpaperengine (github.com/Almamu/linux-wallpaperengine,
+* PackageParser / TextureParser):
+*
+* - PKG header: int32-length-prefixed magic string, int32 entry count, then
+*   per entry a length-prefixed path plus uint32 offset/length. Offsets are
+*   relative to the end of the index. Entry data is stored raw in practice;
+*   some packers emit LZ4-chained entries instead (int64 original size, then
+*   repeated [int32 decompressed size][int32 compressed size][LZ4 block]).
+*   parsePkg probes for a perfectly-fitting block chain and flags such
+*   entries; readPkgEntry decompresses them ("compressedSize != size" means
+*   LZ4), single-block chains included.
+* - TEX magics are NUL-terminated 8-character strings (9 bytes on disk).
+*   TEXB0002+ mipmaps carry an isLZ4Compressed flag and a decompressed byte
+*   count; the LZ4 payload is one whole block per mipmap. TEXB0004 with an
+*   unknown FreeImage format plus the video flag marks an embedded MP4, which
+*   is exposed via TexInfo.isVideoMp4 and rejected by decodeTex. GIF flags
+*   (bit 2) pull in a TEXS frame container exposed via TexInfo.frames.
+*
+* LZ4 block decoding follows the official lz4 block format specification;
+* BC1/BC2/BC3 follow the standard public algorithms. No npm dependencies.
+*
+* @module @linxin666/dsh-client-ui-skin-center/pkg-extract
+*/
+var pkg_extract_exports = /* @__PURE__ */ __exportAll({
+	PKG_ENTRY_FLAG_LZ4: () => 1,
+	TexFormat: () => TexFormat,
+	buildSceneManifest: () => buildSceneManifest,
+	buildSceneManifestFromDir: () => buildSceneManifestFromDir,
+	decodePngToRgba: () => decodePngToRgba,
+	decodeTex: () => decodeTex,
+	encodePng: () => encodePng,
+	extractSceneMainImage: () => extractSceneMainImage,
+	extractSceneMainImageFromDir: () => extractSceneMainImageFromDir,
+	extractSceneResource: () => extractSceneResource,
+	extractSceneResourceFromDir: () => extractSceneResourceFromDir,
+	extractSceneVideo: () => extractSceneVideo,
+	extractSceneVideoFromDir: () => extractSceneVideoFromDir,
+	hasSceneVideo: () => hasSceneVideo,
+	hasSceneVideoFromDir: () => hasSceneVideoFromDir,
+	lz4DecompressBlock: () => lz4DecompressBlock,
+	parseMdl: () => parseMdl,
+	parsePkg: () => parsePkg,
+	parseTex: () => parseTex,
+	parseTexToRGBA: () => parseTexToRGBA,
+	readPkgEntry: () => readPkgEntry
+});
+/**
+* Hard ceilings for allocations driven by wallpaper file content. Workshop
+* files are untrusted: a crafted pkg/tex/png must not be able to force
+* multi-GB host allocations (PR #717 follow-up hardening).
+*/
+const MAX_PKG_ENTRY_BYTES = 512 * 1024 * 1024;
+const MAX_DECOMPRESSED_BYTES = 256 * 1024 * 1024;
+const MAX_TEX_DIMENSION = 16384;
+const MAX_TEX_PIXELS = 64 * 1024 * 1024;
+/** Wallpaper Engine texture format ids (TEXI0001 header), per RePKG/lwe. */
+const TexFormat = {
+	RGBA8888: 0,
+	RGB888: 1,
+	RGB565: 2,
+	DXT5: 4,
+	DXT3: 6,
+	DXT1: 7,
+	RG88: 8,
+	R8: 9,
+	RG1616F: 10,
+	R16F: 11,
+	BC7: 12,
+	RGBA1010102: 13,
+	RGBA16161616F: 14,
+	RGB161616F: 15
+};
+const TEX_FORMAT_NAMES = {
+	0: "RGBA8888",
+	1: "RGB888",
+	2: "RGB565",
+	4: "DXT5",
+	6: "DXT3",
+	7: "DXT1",
+	8: "RG88",
+	9: "R8",
+	10: "RG1616F",
+	11: "R16F",
+	12: "BC7",
+	13: "RGBA1010102",
+	14: "RGBA16161616F",
+	15: "RGB161616F"
+};
+/** TEXI0001 flags bit marking an animated (sprite-sheet / gif) texture. */
+const TEX_FLAG_IS_GIF = 4;
+/** Decode uncompressed or filtered PNG image bytes into raw RGBA8888. */
+function decodePngToRgba(pngBuf) {
+	let pos = 8;
+	let width = 0;
+	let height = 0;
+	let colorType = 0;
+	const idatChunks = [];
+	const view = new DataView(pngBuf.buffer, pngBuf.byteOffset, pngBuf.byteLength);
+	while (pos < pngBuf.length) {
+		const len = view.getUint32(pos, false);
+		const type = String.fromCharCode(pngBuf[pos + 4], pngBuf[pos + 5], pngBuf[pos + 6], pngBuf[pos + 7]);
+		const data = pngBuf.subarray(pos + 8, pos + 8 + len);
+		if (type === "IHDR") {
+			const ihdrView = new DataView(data.buffer, data.byteOffset, data.byteLength);
+			width = ihdrView.getUint32(0, false);
+			height = ihdrView.getUint32(4, false);
+			colorType = data[9];
+			if (width <= 0 || height <= 0 || width > MAX_TEX_DIMENSION || height > MAX_TEX_DIMENSION || width * height > MAX_TEX_PIXELS) throw new Error("png: invalid dimensions " + width + "x" + height);
+		} else if (type === "IDAT") idatChunks.push(data);
+		else if (type === "IEND") break;
+		pos += 12 + len;
+	}
+	const totalIdat = idatChunks.reduce((acc, c) => acc + c.length, 0);
+	if (totalIdat > MAX_DECOMPRESSED_BYTES) throw new Error("png: idat stream too large (" + totalIdat + " bytes)");
+	const combined = new Uint8Array(totalIdat);
+	let cur = 0;
+	for (const c of idatChunks) {
+		combined.set(c, cur);
+		cur += c.length;
+	}
+	const bytesPerPixel = colorType === 6 ? 4 : colorType === 2 ? 3 : 1;
+	const stride = width * bytesPerPixel;
+	const uncompressed = inflateSync(combined, { maxOutputLength: height * (1 + stride) + 64 });
+	const raw = new Uint8Array(width * height * 4);
+	let srcPos = 0;
+	const rowBuf = new Uint8Array(stride);
+	const prevRowBuf = new Uint8Array(stride);
+	for (let y = 0; y < height; y++) {
+		const filterType = uncompressed[srcPos++];
+		for (let x = 0; x < stride; x++) {
+			const b = uncompressed[srcPos++];
+			const a = x >= bytesPerPixel ? rowBuf[x - bytesPerPixel] : 0;
+			const c = x >= bytesPerPixel ? prevRowBuf[x - bytesPerPixel] : 0;
+			const p_b = prevRowBuf[x];
+			let val = b;
+			if (filterType === 1) val = b + a & 255;
+			else if (filterType === 2) val = b + p_b & 255;
+			else if (filterType === 3) val = b + Math.floor((a + p_b) / 2) & 255;
+			else if (filterType === 4) {
+				const p = a + p_b - c;
+				const pa = Math.abs(p - a);
+				const pb = Math.abs(p - p_b);
+				const pc = Math.abs(p - c);
+				let pr = a;
+				if (pb < pa && pb < pc) pr = p_b;
+				else if (pc < pa) pr = c;
+				val = b + pr & 255;
+			}
+			rowBuf[x] = val;
+		}
+		prevRowBuf.set(rowBuf);
+		for (let x = 0; x < width; x++) {
+			const di = (y * width + x) * 4;
+			if (colorType === 6) {
+				raw[di] = rowBuf[x * 4];
+				raw[di + 1] = rowBuf[x * 4 + 1];
+				raw[di + 2] = rowBuf[x * 4 + 2];
+				raw[di + 3] = rowBuf[x * 4 + 3];
+			} else if (colorType === 2) {
+				raw[di] = rowBuf[x * 3];
+				raw[di + 1] = rowBuf[x * 3 + 1];
+				raw[di + 2] = rowBuf[x * 3 + 2];
+				raw[di + 3] = 255;
+			} else {
+				raw[di] = rowBuf[x];
+				raw[di + 1] = rowBuf[x];
+				raw[di + 2] = rowBuf[x];
+				raw[di + 3] = 255;
+			}
+		}
+	}
+	return {
+		width,
+		height,
+		rgba: raw
+	};
+}
+const textDecoder = new TextDecoder("utf-8");
+/**
+* Bounds-checked little-endian binary reader. Every failed read throws an
+* Error prefixed with the reader label (e.g. 'pkg: unexpected end of data').
+*/
+var Reader = class {
+	data;
+	label;
+	view;
+	pos = 0;
+	constructor(data, label) {
+		this.data = data;
+		this.label = label;
+		this.view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+	}
+	get remaining() {
+		return this.view.byteLength - this.pos;
+	}
+	need(n) {
+		if (n < 0 || this.pos + n > this.view.byteLength) throw new Error(this.label + ": unexpected end of data");
+	}
+	u8() {
+		this.need(1);
+		return this.view.getUint8(this.pos++);
+	}
+	i32() {
+		this.need(4);
+		const v = this.view.getInt32(this.pos, true);
+		this.pos += 4;
+		return v;
+	}
+	u32() {
+		this.need(4);
+		const v = this.view.getUint32(this.pos, true);
+		this.pos += 4;
+		return v;
+	}
+	/** Unsigned 64-bit integer; safe up to 2^53. */
+	u64() {
+		const lo = this.u32();
+		return this.u32() * 4294967296 + lo;
+	}
+	f32() {
+		this.need(4);
+		const v = this.view.getFloat32(this.pos, true);
+		this.pos += 4;
+		return v;
+	}
+	bytes(n) {
+		this.need(n);
+		const out = this.data.subarray(this.pos, this.pos + n);
+		this.pos += n;
+		return out;
+	}
+	/** int32-length-prefixed UTF-8 string (PKG magic and entry paths). */
+	sizedString(maxLength) {
+		const length = this.i32();
+		if (length < 0 || length > maxLength) throw new Error(this.label + ": invalid string length " + length);
+		return textDecoder.decode(this.bytes(length));
+	}
+	/** NUL-terminated string (all TEX magics and the TEXB0004 json blob). */
+	nstring(maxLength) {
+		const start = this.pos;
+		let end = start;
+		const limit = Math.min(this.view.byteLength, start + maxLength);
+		while (end < limit && this.view.getUint8(end) !== 0) end++;
+		if (end >= limit) throw new Error(this.label + ": unterminated string");
+		const out = textDecoder.decode(this.data.subarray(start, end));
+		this.pos = end + 1;
+		return out;
+	}
+};
+/**
+* Decompress one raw LZ4 block (the format inside PKG entry chains and TEXB
+* mipmaps) following the official lz4 block format specification.
+*
+* @param src compressed block bytes
+* @param dstSize exact expected decompressed size
+*/
+function lz4DecompressBlock(src, dstSize) {
+	if (dstSize < 0 || dstSize > MAX_DECOMPRESSED_BYTES) throw new Error("lz4: decompressed size out of bounds (" + String(dstSize) + ")");
+	const dst = new Uint8Array(dstSize);
+	let ip = 0;
+	let op = 0;
+	while (ip < src.length) {
+		const token = src[ip++];
+		let literalLength = token >> 4;
+		if (literalLength === 15) {
+			let s = 0;
+			do {
+				if (ip >= src.length) throw new Error("lz4: truncated literal length");
+				s = src[ip++];
+				literalLength += s;
+			} while (s === 255);
+		}
+		if (ip + literalLength > src.length || op + literalLength > dstSize) throw new Error("lz4: literal run out of bounds");
+		dst.set(src.subarray(ip, ip + literalLength), op);
+		ip += literalLength;
+		op += literalLength;
+		if (ip >= src.length) break;
+		if (ip + 2 > src.length) throw new Error("lz4: truncated match offset");
+		const offset = src[ip] | src[ip + 1] << 8;
+		ip += 2;
+		if (offset === 0 || offset > op) throw new Error("lz4: invalid match offset " + offset);
+		let matchLength = token & 15;
+		if (matchLength === 15) {
+			let s = 0;
+			do {
+				if (ip >= src.length) throw new Error("lz4: truncated match length");
+				s = src[ip++];
+				matchLength += s;
+			} while (s === 255);
+		}
+		matchLength += 4;
+		if (op + matchLength > dstSize) throw new Error("lz4: match run out of bounds");
+		for (let i = 0; i < matchLength; i++) {
+			dst[op] = dst[op - offset];
+			op++;
+		}
+	}
+	if (op !== dstSize) throw new Error("lz4: decompressed size mismatch (got " + op + ", expected " + dstSize + ")");
+	return dst;
+}
+/**
+* Probe whether the entry data at [abs, abs+length) is an LZ4 block chain:
+* int64 original size followed by [int32 uncomp][int32 comp][block] entries
+* that reconstruct exactly originalSize bytes while consuming the entry to
+* the byte. Returns the original size when the chain fits perfectly.
+*/
+function probeCompressedEntry(data, abs, length) {
+	if (length < 8) return null;
+	const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+	const originalSize = view.getUint32(abs, true) + view.getUint32(abs + 4, true) * 4294967296;
+	if (originalSize <= length || originalSize > 2147483647) return null;
+	let pos = abs + 8;
+	let total = 0;
+	while (total < originalSize) {
+		if (pos + 8 > abs + length) return null;
+		const uncomp = view.getInt32(pos, true);
+		const comp = view.getInt32(pos + 4, true);
+		if (uncomp <= 0 || comp <= 0 || pos + 8 + comp > abs + length) return null;
+		total += uncomp;
+		pos += 8 + comp;
+	}
+	return total === originalSize && pos === abs + length ? originalSize : null;
+}
+/**
+* Parse a PKG container (magic PKGVxxxx) and return its entry index.
+* Entry offsets in the returned list are absolute positions inside data.
+*/
+function parsePkg(data) {
+	const r = new Reader(data, "pkg");
+	const magic = r.sizedString(32);
+	if (!/^PKGV\d{4}$/.test(magic)) throw new Error("pkg: bad magic '" + magic + "'");
+	const count = r.i32();
+	if (count < 0 || count > 1048576) throw new Error("pkg: invalid entry count " + count);
+	const index = [];
+	for (let i = 0; i < count; i++) index.push({
+		path: r.sizedString(1024),
+		offset: r.u32(),
+		length: r.u32()
+	});
+	const dataStart = r.pos;
+	return index.map(({ path, offset, length }) => {
+		const abs = dataStart + offset;
+		if (abs + length > data.byteLength) throw new Error("pkg: entry '" + path + "' out of bounds");
+		const originalSize = probeCompressedEntry(data, abs, length);
+		return originalSize === null ? {
+			path,
+			offset: abs,
+			compressedSize: length,
+			size: length,
+			flags: 0
+		} : {
+			path,
+			offset: abs,
+			compressedSize: length,
+			size: originalSize,
+			flags: 1
+		};
+	});
+}
+/**
+* Extract (and decompress, when the entry uses LZ4 block-chain storage) one
+* package entry. Returns a fresh buffer of exactly entry.size bytes.
+*/
+function readPkgEntry(data, entry) {
+	const abs = entry.offset;
+	if (abs < 0 || abs + entry.compressedSize > data.byteLength) throw new Error("pkg: entry '" + entry.path + "' out of bounds");
+	if ((entry.flags & 1) === 0) return data.slice(abs, abs + entry.compressedSize);
+	if (entry.size > MAX_PKG_ENTRY_BYTES) throw new Error("pkg: entry '" + entry.path + "' too large (" + entry.size + " bytes)");
+	const r = new Reader(data.subarray(abs, abs + entry.compressedSize), "pkg");
+	if (r.u64() !== entry.size) throw new Error("pkg: entry '" + entry.path + "' size mismatch");
+	const out = new Uint8Array(entry.size);
+	let written = 0;
+	while (written < entry.size) {
+		const uncomp = r.i32();
+		const comp = r.i32();
+		if (uncomp <= 0 || comp <= 0 || written + uncomp > entry.size) throw new Error("pkg: corrupt compressed entry '" + entry.path + "'");
+		out.set(lz4DecompressBlock(r.bytes(comp), uncomp), written);
+		written += uncomp;
+	}
+	if (r.remaining !== 0) throw new Error("pkg: corrupt compressed entry '" + entry.path + "'");
+	return out;
+}
+function readMipmap(r, containerVersion) {
+	if (containerVersion === 4) {
+		const param1 = r.i32();
+		const param2 = r.i32();
+		r.nstring(1 << 20);
+		const param3 = r.i32();
+		if (param1 !== 1 || param2 !== 2 || param3 !== 1) throw new Error("tex: bad TEXB0004 mipmap params");
+	}
+	const width = r.i32();
+	const height = r.i32();
+	if (width <= 0 || height <= 0 || width > 16384 || height > 16384) throw new Error("tex: invalid mipmap dimensions " + width + "x" + height);
+	if (containerVersion === 1) return {
+		width,
+		height,
+		bytes: r.bytes(r.i32())
+	};
+	const isLz4 = r.i32() === 1;
+	const decompressedCount = r.i32();
+	const stored = r.bytes(r.i32());
+	if (isLz4) return {
+		width,
+		height,
+		bytes: lz4DecompressBlock(stored, decompressedCount)
+	};
+	return {
+		width,
+		height,
+		bytes: stored
+	};
+}
+/** Parse a TEX container into metadata plus the first image's mipmaps. */
+function parseTexInternal(data) {
+	const r = new Reader(data, "tex");
+	const magic1 = r.nstring(16);
+	if (magic1 !== "TEXV0005") throw new Error("tex: bad magic '" + magic1 + "'");
+	const magic2 = r.nstring(16);
+	if (magic2 !== "TEXI0001") throw new Error("tex: bad image-info magic '" + magic2 + "'");
+	const format = r.i32();
+	const flags = r.i32();
+	const textureWidth = r.i32();
+	const textureHeight = r.i32();
+	const imageWidth = r.i32();
+	const imageHeight = r.i32();
+	r.u32();
+	if (TEX_FORMAT_NAMES[format] === void 0) throw new Error("tex: unsupported format " + format);
+	const containerMagic = r.nstring(16);
+	const containerMatch = /^TEXB000([1-4])$/.exec(containerMagic);
+	if (!containerMatch) throw new Error("tex: bad mipmap container magic '" + containerMagic + "'");
+	let containerVersion = Number(containerMatch[1]);
+	const imageCount = r.i32();
+	if (imageCount <= 0 || imageCount > 256) throw new Error("tex: invalid image count " + imageCount);
+	let isVideoMp4 = false;
+	if (containerVersion === 3) r.i32();
+	else if (containerVersion === 4) {
+		const freeImageFormat = r.i32();
+		isVideoMp4 = r.i32() === 1;
+		if (!(freeImageFormat === -1 && isVideoMp4)) containerVersion = 3;
+	}
+	let firstImage = null;
+	for (let i = 0; i < imageCount; i++) {
+		const mipmapCount = r.i32();
+		if (mipmapCount <= 0 || mipmapCount > 32) throw new Error("tex: invalid mipmap count " + mipmapCount);
+		const mipmaps = [];
+		for (let j = 0; j < mipmapCount; j++) mipmaps.push(readMipmap(r, containerVersion));
+		if (firstImage === null) firstImage = mipmaps;
+	}
+	const isAnimatedGif = (flags & TEX_FLAG_IS_GIF) !== 0;
+	const frames = [];
+	if (isAnimatedGif) {
+		const frameMagic = r.nstring(16);
+		const frameMatch = /^TEXS000([1-3])$/.exec(frameMagic);
+		if (!frameMatch) throw new Error("tex: bad frame container magic '" + frameMagic + "'");
+		const frameVersion = Number(frameMatch[1]);
+		const frameCount = r.i32();
+		if (frameCount < 0 || frameCount > 4096) throw new Error("tex: invalid frame count " + frameCount);
+		if (frameVersion === 3) {
+			r.i32();
+			r.i32();
+		}
+		for (let i = 0; i < frameCount; i++) {
+			const imageId = r.i32();
+			const frametime = r.f32();
+			if (frameVersion === 1) {
+				const x = r.i32();
+				const y = r.i32();
+				const width = r.i32();
+				r.i32();
+				r.i32();
+				const height = r.i32();
+				frames.push({
+					framenumber: i,
+					imageId,
+					frametime,
+					x,
+					y,
+					width,
+					height
+				});
+			} else {
+				const x = r.f32();
+				const y = r.f32();
+				const width = r.f32();
+				r.f32();
+				r.f32();
+				const height = r.f32();
+				frames.push({
+					framenumber: i,
+					imageId,
+					frametime,
+					x,
+					y,
+					width,
+					height
+				});
+			}
+		}
+	}
+	const mip0 = firstImage[0];
+	if (!isVideoMp4 && mip0 && mip0.bytes && mip0.bytes.length >= 8) {
+		const b = mip0.bytes;
+		if (b[4] === 102 && b[5] === 116 && b[6] === 121 && b[7] === 112 || b[0] === 0 && b[1] === 0 && b[2] === 0 && b[3] === 24 && b[4] === 102 && b[5] === 116 && b[6] === 121 && b[7] === 112) isVideoMp4 = true;
+	}
+	return {
+		format,
+		flags,
+		width: imageWidth > 0 ? imageWidth : textureWidth > 0 ? textureWidth : mip0.width,
+		height: imageHeight > 0 ? imageHeight : textureHeight > 0 ? textureHeight : mip0.height,
+		isAnimatedGif,
+		isVideoMp4,
+		frames,
+		mipmaps: firstImage
+	};
+}
+/**
+* Parse a TEX container and return its metadata. Animated (gif) and embedded
+* MP4 textures are recognized and exposed, never silently dropped.
+*/
+function parseTex(data) {
+	const parsed = parseTexInternal(data);
+	const info = {
+		width: parsed.width,
+		height: parsed.height,
+		format: parsed.format,
+		formatName: TEX_FORMAT_NAMES[parsed.format] ?? "unknown(" + parsed.format + ")",
+		isAnimatedGif: parsed.isAnimatedGif,
+		isVideoMp4: parsed.isVideoMp4,
+		mipLevels: parsed.mipmaps.length
+	};
+	if (parsed.isAnimatedGif) info.frames = parsed.frames;
+	return info;
+}
+function rgb565(value) {
+	const r = value >> 11 & 31;
+	const g = value >> 5 & 63;
+	const b = value & 31;
+	return [
+		r << 3 | r >> 2,
+		g << 2 | g >> 4,
+		b << 3 | b >> 2
+	];
+}
+/** Build the 4-color BC palette; three-color + transparent when DXT1 c0 <= c1. */
+function buildColorPalette(c0, c1, fourColor) {
+	const palette = /* @__PURE__ */ new Uint8Array(16);
+	const [r0, g0, b0] = rgb565(c0);
+	const [r1, g1, b1] = rgb565(c1);
+	palette.set([
+		r0,
+		g0,
+		b0,
+		255
+	], 0);
+	palette.set([
+		r1,
+		g1,
+		b1,
+		255
+	], 4);
+	if (fourColor) {
+		palette.set([
+			(2 * r0 + r1) / 3 | 0,
+			(2 * g0 + g1) / 3 | 0,
+			(2 * b0 + b1) / 3 | 0,
+			255
+		], 8);
+		palette.set([
+			(r0 + 2 * r1) / 3 | 0,
+			(g0 + 2 * g1) / 3 | 0,
+			(b0 + 2 * b1) / 3 | 0,
+			255
+		], 12);
+	} else {
+		palette.set([
+			(r0 + r1) / 2 | 0,
+			(g0 + g1) / 2 | 0,
+			(b0 + b1) / 2 | 0,
+			255
+		], 8);
+		palette.set([
+			0,
+			0,
+			0,
+			0
+		], 12);
+	}
+	return palette;
+}
+/**
+* Shared BC1/BC2/BC3 block walker. Color data sits at block base +
+* colorOffset; blockStride is 8 (BC1) or 16 (BC2/BC3). dxt1Alpha enables the
+* three-color + transparent palette when c0 <= c1.
+*/
+function decodeColorBlocks(src, out, width, height, blockStride, colorOffset, dxt1Alpha) {
+	const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
+	const blocksX = Math.ceil(width / 4);
+	const blocksY = Math.ceil(height / 4);
+	for (let by = 0; by < blocksY; by++) for (let bx = 0; bx < blocksX; bx++) {
+		const base = (by * blocksX + bx) * blockStride;
+		const c0 = view.getUint16(base + colorOffset, true);
+		const c1 = view.getUint16(base + colorOffset + 2, true);
+		const palette = buildColorPalette(c0, c1, dxt1Alpha ? c0 > c1 : true);
+		const indices = view.getUint32(base + colorOffset + 4, true);
+		for (let py = 0; py < 4; py++) for (let px = 0; px < 4; px++) {
+			const x = bx * 4 + px;
+			const y = by * 4 + py;
+			if (x >= width || y >= height) continue;
+			const selector = indices >> 2 * (py * 4 + px) & 3;
+			const dst = (y * width + x) * 4;
+			out[dst] = palette[selector * 4];
+			out[dst + 1] = palette[selector * 4 + 1];
+			out[dst + 2] = palette[selector * 4 + 2];
+			out[dst + 3] = palette[selector * 4 + 3];
+		}
+	}
+}
+/** BC1 (DXT1): 8-byte blocks, 4x4 pixels, optional 1-bit alpha. */
+function decodeDxt1(src, width, height) {
+	const out = new Uint8Array(width * height * 4);
+	decodeColorBlocks(src, out, width, height, 8, 0, true);
+	return out;
+}
+/** BC2 (DXT3): 16-byte blocks, 4-bit explicit alpha + BC1-style color. */
+function decodeDxt3(src, width, height) {
+	const out = new Uint8Array(width * height * 4);
+	decodeColorBlocks(src, out, width, height, 16, 8, false);
+	const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
+	const blocksX = Math.ceil(width / 4);
+	const blocksY = Math.ceil(height / 4);
+	for (let by = 0; by < blocksY; by++) for (let bx = 0; bx < blocksX; bx++) {
+		const base = (by * blocksX + bx) * 16;
+		const alphaLo = view.getUint32(base, true);
+		const alphaHi = view.getUint32(base + 4, true);
+		for (let i = 0; i < 16; i++) {
+			const x = bx * 4 + i % 4;
+			const y = by * 4 + (i / 4 | 0);
+			if (x >= width || y >= height) continue;
+			const nibble = i < 8 ? alphaLo >> 4 * i & 15 : alphaHi >> 4 * (i - 8) & 15;
+			out[(y * width + x) * 4 + 3] = nibble * 17;
+		}
+	}
+	return out;
+}
+/** BC3 (DXT5): 16-byte blocks, interpolated 3-bit alpha + BC1-style color. */
+function decodeDxt5(src, width, height) {
+	const out = new Uint8Array(width * height * 4);
+	decodeColorBlocks(src, out, width, height, 16, 8, false);
+	const blocksX = Math.ceil(width / 4);
+	const blocksY = Math.ceil(height / 4);
+	for (let by = 0; by < blocksY; by++) for (let bx = 0; bx < blocksX; bx++) {
+		const base = (by * blocksX + bx) * 16;
+		const a0 = src[base];
+		const a1 = src[base + 1];
+		const alphas = /* @__PURE__ */ new Uint8Array(8);
+		alphas[0] = a0;
+		alphas[1] = a1;
+		if (a0 > a1) for (let k = 2; k < 8; k++) alphas[k] = ((8 - k) * a0 + (k - 1) * a1) / 7 | 0;
+		else {
+			for (let k = 2; k < 6; k++) alphas[k] = ((6 - k) * a0 + (k - 2) * a1) / 5 | 0;
+			alphas[6] = 0;
+			alphas[7] = 255;
+		}
+		let bits = src[base + 2] + src[base + 3] * 256 + src[base + 4] * 65536 + src[base + 5] * 16777216 + src[base + 6] * 4294967296 + src[base + 7] * 1099511627776;
+		for (let i = 0; i < 16; i++) {
+			const x = bx * 4 + i % 4;
+			const y = by * 4 + (i / 4 | 0);
+			const index = bits % 8;
+			bits = Math.floor(bits / 8);
+			if (x >= width || y >= height) continue;
+			out[(y * width + x) * 4 + 3] = alphas[index];
+		}
+	}
+	return out;
+}
+/**
+* Decode the first (largest) mipmap of a TEX container to RGBA8888.
+* Supports RGBA8888, R8, RG88 and DXT1/DXT3/DXT5; embedded MP4 textures and
+* unknown formats throw a descriptive error instead of failing silently.
+*/
+function decodeTex(data) {
+	const parsed = parseTexInternal(data);
+	if (parsed.isVideoMp4) throw new Error("tex: video mp4 textures cannot be decoded to a static frame");
+	const mip = parsed.mipmaps[0];
+	if (isPngBuffer(mip.bytes)) return decodePngToRgba(mip.bytes);
+	const { width, height, bytes } = mip;
+	switch (parsed.format) {
+		case TexFormat.RGBA8888:
+			if (bytes.length < width * height * 4) throw new Error("tex: mipmap size mismatch for RGBA8888");
+			return {
+				width,
+				height,
+				rgba: bytes.slice(0, width * height * 4)
+			};
+		case TexFormat.R8: {
+			if (bytes.length < width * height) throw new Error("tex: mipmap size mismatch for R8");
+			const rgba = new Uint8Array(width * height * 4);
+			for (let i = 0; i < width * height; i++) {
+				rgba[i * 4] = bytes[i];
+				rgba[i * 4 + 1] = bytes[i];
+				rgba[i * 4 + 2] = bytes[i];
+				rgba[i * 4 + 3] = 255;
+			}
+			return {
+				width,
+				height,
+				rgba
+			};
+		}
+		case TexFormat.RG88: {
+			if (bytes.length < width * height * 2) throw new Error("tex: mipmap size mismatch for RG88");
+			const rgba = new Uint8Array(width * height * 4);
+			for (let i = 0; i < width * height; i++) {
+				rgba[i * 4] = bytes[i * 2];
+				rgba[i * 4 + 1] = bytes[i * 2 + 1];
+				rgba[i * 4 + 2] = 0;
+				rgba[i * 4 + 3] = 255;
+			}
+			return {
+				width,
+				height,
+				rgba
+			};
+		}
+		case TexFormat.DXT1: {
+			const expected = Math.ceil(width / 4) * Math.ceil(height / 4) * 8;
+			if (bytes.length < expected) throw new Error("tex: mipmap size mismatch for DXT1");
+			return {
+				width,
+				height,
+				rgba: decodeDxt1(bytes, width, height)
+			};
+		}
+		case TexFormat.DXT3: {
+			const expected = Math.ceil(width / 4) * Math.ceil(height / 4) * 16;
+			if (bytes.length < expected) throw new Error("tex: mipmap size mismatch for DXT3");
+			return {
+				width,
+				height,
+				rgba: decodeDxt3(bytes, width, height)
+			};
+		}
+		case TexFormat.DXT5: {
+			const expected = Math.ceil(width / 4) * Math.ceil(height / 4) * 16;
+			if (bytes.length < expected) throw new Error("tex: mipmap size mismatch for DXT5");
+			return {
+				width,
+				height,
+				rgba: decodeDxt5(bytes, width, height)
+			};
+		}
+		default: throw new Error("tex: unsupported format " + parsed.format);
+	}
+}
+const CRC_TABLE = (() => {
+	const table = /* @__PURE__ */ new Uint32Array(256);
+	for (let n = 0; n < 256; n++) {
+		let c = n;
+		for (let k = 0; k < 8; k++) c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
+		table[n] = c >>> 0;
+	}
+	return table;
+})();
+function crc32(bytes) {
+	let c = 4294967295;
+	for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 255] ^ c >>> 8;
+	return (c ^ 4294967295) >>> 0;
+}
+function pngChunk(type, data) {
+	const out = Buffer$1.alloc(12 + data.length);
+	out.writeUInt32BE(data.length, 0);
+	out.write(type, 4, "ascii");
+	out.set(data, 8);
+	out.writeUInt32BE(crc32(out.subarray(4, 8 + data.length)), 8 + data.length);
+	return out;
+}
+/**
+* Encode RGBA8888 pixels as a minimal PNG (8-bit RGBA, filter type 0) using
+* node:zlib deflate and a hand-rolled CRC32. Zero dependencies.
+*/
+function encodePng(width, height, rgba) {
+	if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) throw new Error("png: invalid dimensions " + width + "x" + height);
+	if (rgba.length !== width * height * 4) throw new Error("png: rgba buffer size mismatch");
+	const stride = width * 4 + 1;
+	const raw = Buffer$1.alloc(stride * height);
+	for (let y = 0; y < height; y++) {
+		raw[y * stride] = 0;
+		raw.set(rgba.subarray(y * width * 4, (y + 1) * width * 4), y * stride + 1);
+	}
+	const ihdr = Buffer$1.alloc(13);
+	ihdr.writeUInt32BE(width, 0);
+	ihdr.writeUInt32BE(height, 4);
+	ihdr[8] = 8;
+	ihdr[9] = 6;
+	return Buffer$1.concat([
+		Buffer$1.from([
+			137,
+			80,
+			78,
+			71,
+			13,
+			10,
+			26,
+			10
+		]),
+		pngChunk("IHDR", ihdr),
+		pngChunk("IDAT", deflateSync(raw, { level: 9 })),
+		pngChunk("IEND", Buffer$1.alloc(0))
+	]);
+}
+/** Extract .tex candidate paths referenced by one scene.json image object. */
+function collectImageObjectTextures(imageObject, readJson) {
+	const out = [];
+	const pushTextureList = (list) => {
+		if (!Array.isArray(list)) return;
+		for (const item of list) {
+			const rawName = typeof item === "string" ? item : item && typeof item === "object" && typeof item.name === "string" ? item.name : item && typeof item === "object" && typeof item.file === "string" ? item.file : null;
+			if (!rawName) continue;
+			if (rawName.toLowerCase().endsWith(".tex")) out.push(rawName);
+			else {
+				out.push(rawName + ".tex");
+				out.push("materials/" + rawName + ".tex");
+			}
+		}
+	};
+	const ref = imageObject.image;
+	if (ref.toLowerCase().endsWith(".tex")) out.push(ref);
+	else {
+		let materialJson = readJson(ref);
+		if (materialJson && typeof materialJson.material === "string") {
+			const matRef = materialJson.material;
+			materialJson = readJson(matRef) ?? readJson("materials/" + matRef);
+		}
+		if (materialJson && Array.isArray(materialJson.passes)) for (const pass of materialJson.passes) pushTextureList(pass?.textures);
+	}
+	const instance = imageObject.instance;
+	if (instance && typeof instance === "object") pushTextureList(instance.textures);
+	return out;
+}
+/** SceneAccess over a packed scene.pkg container (case-insensitive paths). */
+function pkgSceneAccess(pkgData) {
+	const entries = parsePkg(pkgData);
+	const byPath = new Map(entries.map((entry) => [entry.path.toLowerCase(), entry]));
+	const readFile = (path) => {
+		const entry = byPath.get(path.toLowerCase());
+		if (!entry) return null;
+		return {
+			path: entry.path,
+			bytes: readPkgEntry(pkgData, entry)
+		};
+	};
+	return {
+		readJson: (path) => {
+			const file = readFile(path);
+			if (!file) return null;
+			try {
+				return JSON.parse(textDecoder.decode(file.bytes));
+			} catch {
+				return null;
+			}
+		},
+		readFile,
+		listTexPaths: () => entries.filter((entry) => entry.path.toLowerCase().endsWith(".tex")).map((entry) => entry.path)
+	};
+}
+/**
+* SceneAccess over a loose scene project directory (scene.json plus loose
+* .tex/.json files, e.g. WE defaultprojects). Reads are fenced inside the
+* directory; texture references escaping it resolve to null.
+*/
+function dirSceneAccess(dir) {
+	const normDir = resolve(dir);
+	const realDir = (() => {
+		try {
+			return realpathSync(normDir);
+		} catch {
+			return normDir;
+		}
+	})();
+	const readFile = (path) => {
+		const abs = resolve(normDir, path);
+		if (abs !== normDir && !abs.startsWith(normDir + sep)) return null;
+		try {
+			if (lstatSync(abs).isSymbolicLink()) return null;
+			if (!statSync(abs).isFile()) return null;
+			const real = realpathSync(abs);
+			if (real !== realDir && !real.startsWith(realDir + sep)) return null;
+			return {
+				path,
+				bytes: new Uint8Array(readFileSync(real))
+			};
+		} catch {
+			return null;
+		}
+	};
+	const listTexPaths = () => {
+		const out = [];
+		const walk = (sub, depth) => {
+			if (depth > 4) return;
+			let names = [];
+			try {
+				names = readdirSync(sub === "" ? normDir : join(normDir, sub));
+			} catch {
+				return;
+			}
+			for (const name of names) {
+				const rel = sub === "" ? name : sub + "/" + name;
+				let isDir = false;
+				let isFile = false;
+				try {
+					const lst = lstatSync(join(normDir, rel));
+					if (lst.isSymbolicLink()) continue;
+					isDir = lst.isDirectory();
+					isFile = lst.isFile();
+				} catch {
+					continue;
+				}
+				if (isDir) walk(rel, depth + 1);
+				else if (isFile && name.toLowerCase().endsWith(".tex")) out.push(rel);
+			}
+		};
+		walk("", 0);
+		return out;
+	};
+	return {
+		readJson: (path) => {
+			const file = readFile(path);
+			if (!file) return null;
+			try {
+				return JSON.parse(textDecoder.decode(file.bytes));
+			} catch {
+				return null;
+			}
+		},
+		readFile,
+		listTexPaths
+	};
+}
+function isPngBuffer(buf) {
+	return buf.length >= 8 && buf[0] === 137 && buf[1] === 80 && buf[2] === 78 && buf[3] === 71 && buf[4] === 13 && buf[5] === 10 && buf[6] === 26 && buf[7] === 10;
+}
+function isLikelyMaskOrHelper(path) {
+	const lower = path.toLowerCase();
+	return lower.includes("/masks/") || lower.includes("_mask") || lower.includes("mask") || lower.includes("flow") || lower.includes("wave") || lower.includes("noise") || lower.includes("lut") || lower.includes("distort") || lower.includes("warp") || lower.includes("vortex") || lower.includes("glow") || lower.includes("neon") || lower.includes("strip") || lower.includes("bulb") || lower.includes("led") || lower.includes("combined") || lower.includes("isometric") || lower.includes("razer") || lower.includes("len") || lower.includes("lens") || lower.includes("flare") || lower.includes("prism") || lower.includes("diffract") || lower.includes("black") || lower.includes("overlay") || lower === "sun" || lower.endsWith("/sun.tex") || lower.endsWith("/sun.json") || lower.endsWith("/sun") || lower.includes("waterripple") || lower.includes("waterflow") || lower.includes("phase") || lower.includes("normal") || lower.includes("foliagesway") || lower.includes("cursorripple") || lower.includes("赞助") || lower.includes("sponsor") || lower.includes("donate") || lower.includes("qrcode") || lower.includes("qr_code") || lower.includes("audio_bar") || lower.includes("audiobar") || lower.includes("simple_audio") || lower.includes("提示框") || lower.includes("tip") || lower.includes("watermark") || lower.includes("logo") || lower.includes("particle") || lower.includes("audio") || lower.includes("lightmap") || lower.includes("light_map") || lower.includes("visso") || lower.includes("font") || lower.includes("text_");
+}
+function hasContent(rgba, width, height) {
+	const totalPixels = width * height;
+	const step = Math.max(1, Math.floor(totalPixels / 1e3));
+	let visibleCount = 0;
+	let sampleCount = 0;
+	for (let i = 0; i < totalPixels; i += step) {
+		sampleCount++;
+		const idx = i * 4;
+		const r = rgba[idx];
+		const g = rgba[idx + 1];
+		const b = rgba[idx + 2];
+		if (rgba[idx + 3] > 10 && (r > 0 || g > 0 || b > 0)) visibleCount++;
+	}
+	return sampleCount === 0 || visibleCount / sampleCount >= .01;
+}
+function getTextureScore(path) {
+	const lower = path.toLowerCase();
+	if (isLikelyMaskOrHelper(path)) return -100;
+	let score = 0;
+	if (lower.includes("白天") || lower.includes("day") || lower.includes("main") || lower.includes("background") || lower.includes("wallpaper")) score += 50;
+	if (lower.includes("清晨") || lower.includes("morning") || lower.includes("黄昏") || lower.includes("dusk")) score += 20;
+	if (lower.includes("昼夜变化") || lower.includes("mddn") || lower.includes("transition")) score -= 30;
+	return score;
+}
+/** Composite layered 2D sprite scenes into a single full-resolution frame. */
+function tryCompositeMultiLayerScene(scene, access) {
+	const objects = Array.isArray(scene.objects) ? scene.objects : [];
+	const imageObjects = objects.filter((obj) => obj && typeof obj === "object" && typeof obj.image === "string" && !String(obj.image).startsWith("models/util/") && !isLikelyMaskOrHelper(String(obj.image)));
+	if (imageObjects.length <= 1) return null;
+	let canvasWidth = 1920;
+	let canvasHeight = 1080;
+	const layers = [];
+	let hasLargeBase = false;
+	for (const obj of objects) {
+		if (!obj.image || typeof obj.image !== "string" || obj.image.startsWith("models/util/")) continue;
+		if (obj.visible && typeof obj.visible === "object" && obj.visible.value === false) continue;
+		if (typeof obj.name === "string") {
+			const nameLower = obj.name.toLowerCase();
+			if (nameLower.includes("black") || nameLower.includes("len") || nameLower.includes("util") || nameLower.includes("flare") || nameLower.includes("blend") || nameLower === "sun" || nameLower === "sun2") continue;
+		}
+		if (isLikelyMaskOrHelper(obj.image)) continue;
+		const modelJson = access.readJson(obj.image);
+		if (!modelJson || typeof modelJson.material !== "string") continue;
+		const matJson = access.readJson(modelJson.material);
+		if (!matJson || !Array.isArray(matJson.passes)) continue;
+		const texName = matJson.passes[0]?.textures?.[0];
+		if (!texName || isLikelyMaskOrHelper(texName)) continue;
+		const texPath = access.listTexPaths().find((p) => p.toLowerCase() === texName.toLowerCase() || p.toLowerCase() === ("materials/" + texName + ".tex").toLowerCase() || p.toLowerCase() === (texName + ".tex").toLowerCase() || p.toLowerCase().endsWith("/" + texName.toLowerCase() + ".tex") || p.toLowerCase().endsWith("/" + texName.toLowerCase()));
+		if (!texPath) continue;
+		const file = access.readFile(texPath);
+		if (!file) continue;
+		let decoded = null;
+		try {
+			decoded = decodeTex(file.bytes);
+		} catch {
+			continue;
+		}
+		if (!decoded || decoded.width < 64 || decoded.height < 64) continue;
+		if (decoded.width >= 1280 || decoded.height >= 720) hasLargeBase = true;
+		if (decoded.width > canvasWidth || decoded.height > canvasHeight) {
+			canvasWidth = Math.max(canvasWidth, decoded.width);
+			canvasHeight = Math.max(canvasHeight, decoded.height);
+		}
+		let ox = 0;
+		let oy = 0;
+		if (typeof modelJson.cropoffset === "string") {
+			const parts = modelJson.cropoffset.trim().split(/\s+/);
+			ox = parseFloat(parts[0]) || 0;
+			oy = parseFloat(parts[1]) || 0;
+		}
+		const centerX = canvasWidth / 2 + ox;
+		const centerY = canvasHeight / 2 - oy;
+		const startX = Math.round(centerX - decoded.width / 2);
+		const startY = Math.round(centerY - decoded.height / 2);
+		layers.push({
+			x: startX,
+			y: startY,
+			width: decoded.width,
+			height: decoded.height,
+			rgba: decoded.rgba
+		});
+	}
+	if (imageObjects.length >= 3 && layers.length <= 1) throw new Error("pkg: multi-layer scene composition requires full preview render");
+	if (layers.length <= 1 || !hasLargeBase) return null;
+	const canvas = new Uint8Array(canvasWidth * canvasHeight * 4);
+	for (const layer of layers) for (let y = 0; y < layer.height; y++) {
+		const cy = layer.y + y;
+		if (cy < 0 || cy >= canvasHeight) continue;
+		for (let x = 0; x < layer.width; x++) {
+			const cx = layer.x + x;
+			if (cx < 0 || cx >= canvasWidth) continue;
+			const si = (y * layer.width + x) * 4;
+			const di = (cy * canvasWidth + cx) * 4;
+			const sa = layer.rgba[si + 3] / 255;
+			if (sa <= 0) continue;
+			const da = canvas[di + 3] / 255;
+			const outA = sa + da * (1 - sa);
+			if (outA <= 0) continue;
+			canvas[di] = Math.round((layer.rgba[si] * sa + canvas[di] * da * (1 - sa)) / outA);
+			canvas[di + 1] = Math.round((layer.rgba[si + 1] * sa + canvas[di + 1] * da * (1 - sa)) / outA);
+			canvas[di + 2] = Math.round((layer.rgba[si + 2] * sa + canvas[di + 2] * da * (1 - sa)) / outA);
+			canvas[di + 3] = Math.round(outA * 255);
+		}
+	}
+	return {
+		width: canvasWidth,
+		height: canvasHeight,
+		png: Buffer$1.from(encodePng(canvasWidth, canvasHeight, canvas)),
+		texturePath: "composite(" + String(layers.length) + " layers)"
+	};
+}
+/** Shared scene pipeline over one access layer; label prefixes error text. */
+function extractSceneMainImageVia(access, label) {
+	let scene = access.readJson("scene.json");
+	if (!scene) {
+		const project = access.readJson("project.json");
+		if (project && typeof project.file === "string" && project.file.endsWith(".json")) scene = access.readJson(project.file);
+	}
+	if (!scene || !Array.isArray(scene.objects)) throw new Error(label + ": scene.json not found or invalid");
+	if (scene.objects.some((obj) => obj && typeof obj === "object" && typeof obj.model === "string" && obj.model.length > 0)) throw new Error(label + ": 3D scene cannot be extracted as 2D frame");
+	const composite = tryCompositeMultiLayerScene(scene, access);
+	if (composite !== null) return composite;
+	const rawCandidates = [];
+	for (const obj of scene.objects) if (obj && typeof obj === "object" && typeof obj.image === "string") rawCandidates.push(...collectImageObjectTextures(obj, access.readJson));
+	const allCandidates = [];
+	for (const p of rawCandidates) if (!isLikelyMaskOrHelper(p) && !allCandidates.some((c) => c.path.toLowerCase() === p.toLowerCase())) allCandidates.push({
+		path: p,
+		fromObject: true
+	});
+	for (const p of access.listTexPaths()) if (!isLikelyMaskOrHelper(p) && !allCandidates.some((c) => c.path.toLowerCase() === p.toLowerCase())) allCandidates.push({
+		path: p,
+		fromObject: false
+	});
+	const ranked = allCandidates.map(({ path, fromObject }) => {
+		let area = 0;
+		try {
+			const file = access.readFile(path);
+			const info = file ? parseTex(file.bytes) : null;
+			if (info) area = info.width * info.height;
+		} catch {}
+		return {
+			path,
+			score: getTextureScore(path) + (fromObject ? 100 : 0),
+			area
+		};
+	});
+	ranked.sort((a, b) => {
+		if (a.score !== b.score) return b.score - a.score;
+		return b.area - a.area;
+	});
+	const candidates = ranked.map((r) => r.path);
+	if (candidates.length === 0) throw new Error(label + ": no texture candidates found");
+	let lastError = null;
+	for (const path of candidates) {
+		if (isLikelyMaskOrHelper(path)) continue;
+		const file = access.readFile(path);
+		if (!file) {
+			lastError = /* @__PURE__ */ new Error(label + ": texture '" + path + "' not found in " + (label === "pkg" ? "package" : "directory"));
+			continue;
+		}
+		try {
+			const parsed = parseTexInternal(file.bytes);
+			if (parsed.isVideoMp4) throw new Error("tex: video mp4 textures cannot be decoded to a static frame");
+			const mip0 = parsed.mipmaps[0];
+			if (isPngBuffer(mip0.bytes)) return {
+				width: mip0.width,
+				height: mip0.height,
+				png: Buffer$1.from(mip0.bytes),
+				texturePath: file.path
+			};
+			const { width, height, rgba } = decodeTex(file.bytes);
+			if (!hasContent(rgba, width, height)) {
+				lastError = /* @__PURE__ */ new Error(label + ": texture '" + path + "' is a shader mask or partial layer");
+				continue;
+			}
+			return {
+				width,
+				height,
+				png: encodePng(width, height, rgba),
+				texturePath: file.path
+			};
+		} catch (err) {
+			lastError = err;
+		}
+	}
+	throw lastError instanceof Error ? lastError : /* @__PURE__ */ new Error(label + ": no decodable texture found");
+}
+function extractSceneMainImage(pkgData) {
+	return extractSceneMainImageVia(pkgSceneAccess(pkgData), "pkg");
+}
+/**
+* Loose-scene variant of extractSceneMainImage: decode the main texture of a
+* scene project directory that ships scene.json and textures as plain files
+* instead of a packed scene.pkg (#521).
+*/
+function extractSceneMainImageFromDir(dir) {
+	return extractSceneMainImageVia(dirSceneAccess(dir), "scene");
+}
+/** Find and extract the primary MP4 video embedded inside a scene's .tex textures. */
+function extractSceneVideoVia(access) {
+	const candidates = [];
+	for (const path of access.listTexPaths()) {
+		const file = access.readFile(path);
+		if (!file) continue;
+		const raw = file.bytes;
+		for (let i = 0; i < 200 && i + 8 <= raw.length; i++) if (raw[i] === 102 && raw[i + 1] === 116 && raw[i + 2] === 121 && raw[i + 3] === 112) {
+			const ftypOffset = i - 4;
+			if (ftypOffset >= 0 && ftypOffset < raw.length) {
+				candidates.push({
+					path,
+					score: getTextureScore(path),
+					bytes: raw.slice(ftypOffset)
+				});
+				break;
+			}
+		}
+	}
+	if (candidates.length === 0) return null;
+	candidates.sort((a, b) => b.score - a.score);
+	return candidates[0].bytes;
+}
+function extractSceneVideo(pkgData) {
+	return extractSceneVideoVia(pkgSceneAccess(pkgData));
+}
+function extractSceneVideoFromDir(dir) {
+	return extractSceneVideoVia(dirSceneAccess(dir));
+}
+function hasSceneVideo(pkgData) {
+	try {
+		return extractSceneVideo(pkgData) !== null;
+	} catch {
+		return false;
+	}
+}
+function hasSceneVideoFromDir(dir) {
+	try {
+		return extractSceneVideoFromDir(dir) !== null;
+	} catch {
+		return false;
+	}
+}
+/** Decompress LZ4 block format (no frame header, raw block). */
+function decompressLz4Block(src, decompressedSize) {
+	if (decompressedSize < 0 || decompressedSize > MAX_DECOMPRESSED_BYTES) throw new Error("lz4: decompressed size out of bounds (" + String(decompressedSize) + ")");
+	const dst = new Uint8Array(decompressedSize);
+	let sp = 0, dp = 0;
+	while (sp < src.length && dp < decompressedSize) {
+		const token = src[sp++];
+		let litLen = token >> 4;
+		if (litLen === 15) {
+			let b;
+			do {
+				b = src[sp++];
+				litLen += b;
+			} while (b === 255);
+		}
+		for (let i = 0; i < litLen; i++) dst[dp++] = src[sp++];
+		if (sp >= src.length || dp >= decompressedSize) break;
+		const offset = src[sp] | src[sp + 1] << 8;
+		sp += 2;
+		let matchLen = (token & 15) + 4;
+		if (matchLen === 19) {
+			let b;
+			do {
+				b = src[sp++];
+				matchLen += b;
+			} while (b === 255);
+		}
+		const matchStart = dp - offset;
+		for (let i = 0; i < matchLen; i++) dst[dp++] = dst[matchStart + i];
+	}
+	return dst;
+}
+/** Decode DXT1 (BC1) 4x4 block into RGBA pixels. */
+function decodeDXT1Block(block, offset, out, outOffset, outStride) {
+	const c0 = block[offset] | block[offset + 1] << 8;
+	const c1 = block[offset + 2] | block[offset + 3] << 8;
+	const r0 = (c0 >> 11 & 31) * 255 / 31, g0 = (c0 >> 5 & 63) * 255 / 63, b0 = (c0 & 31) * 255 / 31;
+	const r1 = (c1 >> 11 & 31) * 255 / 31, g1 = (c1 >> 5 & 63) * 255 / 63, b1 = (c1 & 31) * 255 / 31;
+	const colors = [
+		[
+			r0,
+			g0,
+			b0,
+			255
+		],
+		[
+			r1,
+			g1,
+			b1,
+			255
+		],
+		c0 > c1 ? [
+			(2 * r0 + r1) / 3,
+			(2 * g0 + g1) / 3,
+			(2 * b0 + b1) / 3,
+			255
+		] : [
+			(r0 + r1) / 2,
+			(g0 + g1) / 2,
+			(b0 + b1) / 2,
+			255
+		],
+		c0 > c1 ? [
+			(r0 + 2 * r1) / 3,
+			(g0 + 2 * g1) / 3,
+			(b0 + 2 * b1) / 3,
+			255
+		] : [
+			0,
+			0,
+			0,
+			0
+		]
+	];
+	const bits = block[offset + 4] | block[offset + 5] << 8 | block[offset + 6] << 16 | block[offset + 7] << 24;
+	for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+		const idx = bits >> (y * 4 + x) * 2 & 3;
+		const p = outOffset + y * outStride + x * 4;
+		out[p] = colors[idx][0];
+		out[p + 1] = colors[idx][1];
+		out[p + 2] = colors[idx][2];
+		out[p + 3] = colors[idx][3];
+	}
+}
+/** Decode DXT5 (BC3) 4x4 block into RGBA pixels. */
+function decodeDXT5Block(block, offset, out, outOffset, outStride) {
+	const a0 = block[offset], a1 = block[offset + 1];
+	const alphaLUT = [
+		a0,
+		a1,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0
+	];
+	if (a0 > a1) for (let i = 1; i <= 6; i++) alphaLUT[i + 1] = ((7 - i) * a0 + i * a1) / 7;
+	else {
+		for (let i = 1; i <= 4; i++) alphaLUT[i + 1] = ((5 - i) * a0 + i * a1) / 5;
+		alphaLUT[6] = 0;
+		alphaLUT[7] = 255;
+	}
+	let alphaBits = 0n;
+	for (let i = 0; i < 6; i++) alphaBits |= BigInt(block[offset + 2 + i]) << BigInt(i * 8);
+	decodeDXT1Block(block, offset + 8, out, outOffset, outStride);
+	for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+		const ai = Number(alphaBits >> BigInt((y * 4 + x) * 3) & 7n);
+		out[outOffset + y * outStride + x * 4 + 3] = alphaLUT[ai];
+	}
+}
+/**
+* Parse Wallpaper Engine TEXV0005 .tex file and return raw RGBA pixel data.
+* Returns null if format is unsupported.
+*/
+function parseTexToRGBA(buf) {
+	if (buf.length < 55) return null;
+	if (String.fromCharCode(...buf.slice(0, 8)) !== "TEXV0005") return null;
+	if (String.fromCharCode(...buf.slice(9, 17)) !== "TEXI0001") return null;
+	const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+	const fmt = dv.getUint32(18, true);
+	dv.getUint32(26, true);
+	dv.getUint32(30, true);
+	let texbPos = -1;
+	for (let i = 34; i < Math.min(buf.length, 100); i++) if (buf[i] === 84 && buf[i + 1] === 69 && buf[i + 2] === 88 && buf[i + 3] === 66) {
+		texbPos = i;
+		break;
+	}
+	if (texbPos < 0) return null;
+	let p = texbPos + 9;
+	dv.getUint32(p, true);
+	p += 4;
+	dv.getInt32(p, true);
+	p += 4;
+	const numMips = dv.getUint32(p, true);
+	p += 4;
+	if (numMips === 0 || numMips > 20) return null;
+	const mipW = dv.getUint32(p, true);
+	p += 4;
+	const mipH = dv.getUint32(p, true);
+	p += 4;
+	if (mipW <= 0 || mipH <= 0 || mipW > MAX_TEX_DIMENSION || mipH > MAX_TEX_DIMENSION || mipW * mipH > MAX_TEX_PIXELS) throw new Error("tex: invalid mipmap dimensions " + mipW + "x" + mipH);
+	const isLz4 = dv.getUint32(p, true);
+	p += 4;
+	const decompSize = dv.getUint32(p, true);
+	p += 4;
+	const compSize = dv.getUint32(p, true);
+	p += 4;
+	let texData;
+	if (isLz4) texData = decompressLz4Block(buf.slice(p, p + compSize), decompSize);
+	else texData = buf.slice(p, p + compSize);
+	const rgba = new Uint8Array(mipW * mipH * 4);
+	const stride = mipW * 4;
+	if (fmt === 4) {
+		const blocksX = mipW / 4, blocksY = mipH / 4;
+		for (let by = 0; by < blocksY; by++) for (let bx = 0; bx < blocksX; bx++) {
+			const blockIdx = (by * blocksX + bx) * 16;
+			decodeDXT5Block(texData, blockIdx, rgba, by * 4 * stride + bx * 4 * 4, stride);
+		}
+	} else if (fmt === 7) {
+		const blocksX = mipW / 4, blocksY = mipH / 4;
+		for (let by = 0; by < blocksY; by++) for (let bx = 0; bx < blocksX; bx++) {
+			const blockIdx = (by * blocksX + bx) * 8;
+			decodeDXT1Block(texData, blockIdx, rgba, by * 4 * stride + bx * 4 * 4, stride);
+		}
+	} else if (fmt === 0) for (let i = 0; i < mipW * mipH; i++) {
+		rgba[i * 4] = texData[i * 4 + 1];
+		rgba[i * 4 + 1] = texData[i * 4 + 2];
+		rgba[i * 4 + 2] = texData[i * 4 + 3];
+		rgba[i * 4 + 3] = texData[i * 4];
+	}
+	else return null;
+	return {
+		width: mipW,
+		height: mipH,
+		rgba
+	};
+}
+const MDL_FLAG_NORMAL = 2;
+const MDL_FLAG_TANGENT = 4;
+const MDL_FLAG_UV2 = 32;
+const MDL_FLAG_EXTRA4 = 65536;
+const MDL_FLAG_SKIN_BLEND = 8388608;
+const MDL_FLAG_SKIN_WEIGHT = 16777216;
+/** Per-vertex byte stride for a mesh flag bitset; 0 when the flag is unusable. */
+function mdlVertexStride(flag) {
+	let s = 12;
+	if (flag & MDL_FLAG_NORMAL) s += 12;
+	if (flag & MDL_FLAG_TANGENT) s += 16;
+	if (flag & MDL_FLAG_EXTRA4) s += 4;
+	if (flag & MDL_FLAG_SKIN_BLEND) s += 16;
+	if (flag & MDL_FLAG_SKIN_WEIGHT) s += 16;
+	if (flag & 40) s += 8;
+	if (flag & MDL_FLAG_UV2) s += 8;
+	return s;
+}
+function readMdlCString(buf, p) {
+	let end = p;
+	while (end < buf.length && buf[end] !== 0) end++;
+	if (end >= buf.length) return null;
+	let str = "";
+	for (let i = p; i < end; i++) str += String.fromCharCode(buf[i]);
+	return {
+		str,
+		next: end + 1
+	};
+}
+/**
+* Parse a Wallpaper Engine MDLV .mdl file into renderable meshes.
+*
+* Structured layout (verified against MDLV0014+ files and the
+* open-wallpaper-engine parser):
+*   "MDLV####\0" tag, u32 mdl_flag, u32 skin_count, u32 mesh_count
+*   per mesh: skin_count x cstr material path, u32 flag_a (extra u32 when 2),
+*     aabb (6 f32, mdlv >= 17), u32 mesh_flag (mdlv > 14, else header flag),
+*     u32 vertex_bytes, vertices, u32 indices_bytes, triangle indices
+*     (u16, or u32 when mdlv >= 23 and vertex_count > 65535)
+* Trailing MDLS/MDAT/MDLA/MDMP/MDLE puppet/animation blocks are not needed
+* for static rendering and are ignored; skinned meshes stay in bind pose.
+*/
+function parseMdl(buf) {
+	if (buf.length < 21) return [];
+	if (String.fromCharCode(...buf.slice(0, 4)) !== "MDLV") return [];
+	const mdlv = parseInt(String.fromCharCode(...buf.slice(4, 8)), 10);
+	if (!Number.isFinite(mdlv) || mdlv < 1) return [];
+	const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+	let p = 9;
+	const mdlFlag = dv.getUint32(p, true);
+	p += 4;
+	const skinCount = dv.getUint32(p, true);
+	p += 4;
+	const meshCount = dv.getUint32(p, true);
+	p += 4;
+	if (skinCount < 1 || skinCount > 64 || meshCount < 1 || meshCount > 1024) return [];
+	const meshes = [];
+	for (let m = 0; m < meshCount; m++) {
+		const materials = [];
+		for (let s = 0; s < skinCount; s++) {
+			const cstr = readMdlCString(buf, p);
+			if (!cstr) return meshes;
+			materials.push(cstr.str);
+			p = cstr.next;
+		}
+		if (p + 8 > buf.length) return meshes;
+		const flagA = dv.getUint32(p, true);
+		p += 4;
+		if (flagA === 2) p += 4;
+		if (mdlv >= 17) p += 24;
+		let meshFlag = mdlFlag;
+		if (mdlv > 14) {
+			if (p + 8 > buf.length) return meshes;
+			meshFlag = dv.getUint32(p, true);
+			p += 4;
+		}
+		const vBytes = dv.getUint32(p, true);
+		p += 4;
+		const stride = mdlVertexStride(meshFlag);
+		if (vBytes < stride || vBytes > 1e8 || vBytes % stride !== 0 || p + vBytes + 4 > buf.length) return meshes;
+		const vCount = vBytes / stride;
+		const pos = new Float32Array(vCount * 3);
+		const norm = new Float32Array(vCount * 3);
+		const uv = new Float32Array(vCount * 2);
+		const hasNorm = (meshFlag & MDL_FLAG_NORMAL) !== 0;
+		const hasUv = (meshFlag & 40) !== 0;
+		for (let v = 0; v < vCount; v++) {
+			pos[v * 3] = dv.getFloat32(p, true);
+			pos[v * 3 + 1] = dv.getFloat32(p + 4, true);
+			pos[v * 3 + 2] = dv.getFloat32(p + 8, true);
+			p += 12;
+			if (hasNorm) {
+				norm[v * 3] = dv.getFloat32(p, true);
+				norm[v * 3 + 1] = dv.getFloat32(p + 4, true);
+				norm[v * 3 + 2] = dv.getFloat32(p + 8, true);
+				p += 12;
+			} else norm[v * 3 + 1] = 1;
+			if (meshFlag & MDL_FLAG_TANGENT) p += 16;
+			if (meshFlag & MDL_FLAG_EXTRA4) p += 4;
+			if (meshFlag & MDL_FLAG_SKIN_BLEND) p += 16;
+			if (meshFlag & MDL_FLAG_SKIN_WEIGHT) p += 16;
+			if (hasUv) {
+				uv[v * 2] = dv.getFloat32(p, true);
+				uv[v * 2 + 1] = dv.getFloat32(p + 4, true);
+				p += 8;
+			}
+			if (meshFlag & MDL_FLAG_UV2) p += 8;
+		}
+		if (p + 4 > buf.length) return meshes;
+		const iBytes = dv.getUint32(p, true);
+		p += 4;
+		if (iBytes < 2 || iBytes > 6e7 || p + iBytes > buf.length) return meshes;
+		const useU32 = vCount > 65535 && (mdlv >= 23 || iBytes % 12 === 0);
+		const iCount = Math.floor(iBytes / (useU32 ? 4 : 2));
+		let indices;
+		if (useU32) {
+			const arr = new Uint32Array(iCount);
+			for (let i = 0; i < iCount; i++) arr[i] = dv.getUint32(p + i * 4, true);
+			indices = arr;
+		} else {
+			const arr = new Uint16Array(iCount);
+			for (let i = 0; i < iCount; i++) arr[i] = dv.getUint16(p + i * 2, true);
+			indices = arr;
+		}
+		p += iBytes;
+		meshes.push({
+			vCount,
+			iCount,
+			pos,
+			norm,
+			uv,
+			indices,
+			materialPath: materials[0]
+		});
+	}
+	return meshes;
+}
+function buildSceneManifestVia(access, token) {
+	let scene = access.readJson("scene.json");
+	const project = access.readJson("project.json");
+	if (!scene && project && typeof project.file === "string" && project.file.endsWith(".json")) scene = access.readJson(project.file);
+	if (!scene || !Array.isArray(scene.objects)) return null;
+	const general = scene.general;
+	const projW = general?.orthogonalprojection?.width;
+	const projH = general?.orthogonalprojection?.height;
+	const width = typeof projW === "number" && Number.isFinite(projW) && projW > 0 ? Math.floor(projW) : 3840;
+	const height = typeof projH === "number" && Number.isFinite(projH) && projH > 0 ? Math.floor(projH) : 2160;
+	const resourceBase = "/api/skin-center/we/scene-resource/" + token + "/";
+	const manifest = {
+		width,
+		height,
+		hasMeteors: false,
+		hasFireflies: false,
+		layers: []
+	};
+	const allTex = access.listTexPaths();
+	const parseVec3 = (val, def) => {
+		if (typeof val === "string") {
+			const parts = val.trim().split(/\s+/).map(parseFloat);
+			if (parts.length >= 3 && !parts.some(isNaN)) return [
+				parts[0],
+				parts[1],
+				parts[2]
+			];
+		}
+		return def;
+	};
+	const props = (project?.general)?.properties;
+	if (props?.schemecolor?.value && typeof props.schemecolor.value === "string") manifest.clearColor = parseVec3(props.schemecolor.value, [
+		.57,
+		.71,
+		.81
+	]);
+	if (props?.carbodycolor?.value && typeof props.carbodycolor.value === "string") manifest.carBodyColor = parseVec3(props.carbodycolor.value, [
+		1,
+		0,
+		0
+	]);
+	if (props?.carstripescolor?.value && typeof props.carstripescolor.value === "string") manifest.carStripesColor = parseVec3(props.carstripescolor.value, [
+		0,
+		0,
+		0
+	]);
+	if (Boolean(scene.camera) || scene.objects.some((o) => typeof o.model === "string" && o.model.endsWith(".mdl"))) {
+		manifest.is3D = true;
+		const cam = scene.camera;
+		let eye = parseVec3(cam?.eye, [
+			0,
+			1.5,
+			4
+		]);
+		let center = parseVec3(cam?.center, [
+			0,
+			0,
+			0
+		]);
+		let up = parseVec3(cam?.up, [
+			0,
+			1,
+			0
+		]);
+		if (cam?.paths && Array.isArray(cam.paths) && typeof cam.paths[0] === "string") {
+			const pathJson = access.readJson(cam.paths[0]);
+			const firstTf = pathJson?.paths?.[0]?.transforms?.[0];
+			if (firstTf) {
+				if (firstTf.eye) eye = parseVec3(firstTf.eye, eye);
+				if (firstTf.center) center = parseVec3(firstTf.center, center);
+				if (firstTf.up) up = parseVec3(firstTf.up, up);
+			}
+			if (pathJson?.paths && pathJson.paths.length > 0) {
+				manifest.cameraPaths = [];
+				for (const seg of pathJson.paths) {
+					if (!seg.transforms || seg.transforms.length < 2) continue;
+					if (typeof seg.duration !== "number" || !Number.isFinite(seg.duration) || seg.duration <= 0) continue;
+					const t0 = seg.transforms[0];
+					const t1 = seg.transforms[seg.transforms.length - 1];
+					manifest.cameraPaths.push({
+						d: seg.duration,
+						e0: parseVec3(t0.eye, eye),
+						c0: parseVec3(t0.center, center),
+						u0: parseVec3(t0.up, up),
+						e1: parseVec3(t1.eye, eye),
+						c1: parseVec3(t1.center, center),
+						u1: parseVec3(t1.up, up)
+					});
+				}
+				if (manifest.cameraPaths.length === 0) delete manifest.cameraPaths;
+			}
+		}
+		manifest.camera = {
+			eye,
+			center,
+			up,
+			fov: typeof cam?.fov === "number" ? cam.fov : 45
+		};
+		if (cam && !(manifest.cameraPaths && manifest.cameraPaths.length > 0)) manifest.cameraStatic = true;
+		manifest.models = [];
+		for (const obj of scene.objects) {
+			if (typeof obj.model !== "string" || !obj.model.endsWith(".mdl")) continue;
+			const mdlFile = access.readFile(obj.model);
+			if (!mdlFile) continue;
+			const decodedMeshes = parseMdl(mdlFile.bytes);
+			if (decodedMeshes.length === 0) continue;
+			const baseName = obj.model.split("/").pop()?.replace(/\.mdl$/i, "");
+			if (baseName) allTex.find((p) => p.toLowerCase().includes(baseName.toLowerCase()) && !p.toLowerCase().includes("normal") && !p.toLowerCase().includes("mask"));
+			const resolveTexRef = (ref) => {
+				const want = ref.toLowerCase().replace(/\.tex$/i, "");
+				return allTex.find((p) => {
+					const lower = p.toLowerCase().replace(/\.tex$/i, "");
+					return lower === want || lower === "materials/" + want || lower.endsWith("/" + want);
+				});
+			};
+			const meshes = decodedMeshes.map((m) => {
+				let subTex;
+				let shader;
+				let additive;
+				let noDepthTest;
+				let noDepthWrite;
+				let tint;
+				let tint2;
+				let texPath2;
+				let translucent;
+				let gradFade;
+				let userColors;
+				let userNums;
+				if (m.materialPath) {
+					try {
+						const matJsonRaw = access.readJson(m.materialPath);
+						const pass0 = Array.isArray(matJsonRaw?.passes) ? matJsonRaw.passes[0] : void 0;
+						if (pass0) {
+							if (typeof pass0.shader === "string") shader = pass0.shader;
+							if (pass0.blending === "additive") additive = true;
+							if (pass0.blending === "translucent") translucent = true;
+							const combos = pass0.combos;
+							if (combos && combos.GRADIENT_FADE) gradFade = true;
+							const dt = pass0.depthtesting ?? pass0.depthtest;
+							const dw = pass0.depthwriting ?? pass0.depthwrite;
+							if (dt === "disabled") noDepthTest = true;
+							if (dw === "disabled") noDepthWrite = true;
+							if (Array.isArray(pass0.textures) && pass0.textures.length > 0) {
+								subTex = resolveTexRef(String(pass0.textures[0]));
+								if (pass0.textures.length > 1) texPath2 = resolveTexRef(String(pass0.textures[1]));
+							}
+							const usv = pass0.usershadervalues;
+							if (usv) for (const [key, uniformName] of Object.entries(usv)) {
+								if (typeof uniformName !== "string") continue;
+								const pv = (props?.[key])?.value;
+								if (typeof pv === "string") {
+									const col = parseVec3(pv, [
+										1,
+										1,
+										1
+									]);
+									if (uniformName === "tint") tint = col;
+									else if (uniformName === "tint2") tint2 = col;
+									userColors = userColors ?? {};
+									userColors[uniformName] = col;
+								} else if (typeof pv === "number" && Number.isFinite(pv)) {
+									userNums = userNums ?? {};
+									userNums[uniformName] = pv;
+								}
+							}
+							const csv = pass0.constantshadervalues;
+							if (csv) {
+								for (const [key, val] of Object.entries(csv)) if (typeof val === "number" && Number.isFinite(val)) {
+									userNums = userNums ?? {};
+									userNums[key] = val;
+								}
+							}
+						}
+					} catch {}
+					if (!subTex) {
+						const matBaseName = m.materialPath.replace(/\.json$/i, "").split("/").pop();
+						if (matBaseName) subTex = allTex.find((p) => {
+							const lower = p.toLowerCase();
+							return lower.includes(matBaseName.toLowerCase()) && !lower.includes("normal") && !lower.includes("mask");
+						});
+					}
+				}
+				if (!subTex && baseName) subTex = allTex.find((p) => p.toLowerCase().includes(baseName.toLowerCase()) && !p.toLowerCase().includes("normal") && !p.toLowerCase().includes("mask"));
+				return {
+					vCount: m.vCount,
+					iCount: m.iCount,
+					posB64: Buffer$1.from(m.pos.buffer, m.pos.byteOffset, m.pos.byteLength).toString("base64"),
+					normB64: Buffer$1.from(m.norm.buffer, m.norm.byteOffset, m.norm.byteLength).toString("base64"),
+					uvB64: Buffer$1.from(m.uv.buffer, m.uv.byteOffset, m.uv.byteLength).toString("base64"),
+					indicesB64: Buffer$1.from(m.indices.buffer, m.indices.byteOffset, m.indices.byteLength).toString("base64"),
+					idx32: m.indices instanceof Uint32Array || void 0,
+					texUrl: subTex ? resourceBase + subTex : void 0,
+					materialPath: m.materialPath,
+					shader,
+					additive,
+					noDepthTest,
+					noDepthWrite,
+					tint,
+					tint2,
+					texUrl2: texPath2 ? resourceBase + texPath2 : void 0,
+					translucent,
+					gradFade,
+					userColors,
+					userNums
+				};
+			});
+			manifest.models.push({
+				name: typeof obj.name === "string" ? obj.name : "model",
+				origin: parseVec3(obj.origin, [
+					0,
+					0,
+					0
+				]),
+				angles: parseVec3(obj.angles, [
+					0,
+					0,
+					0
+				]),
+				scale: parseVec3(obj.scale, [
+					1,
+					1,
+					1
+				]),
+				meshes
+			});
+		}
+		for (const obj of scene.objects) {
+			if (typeof obj.image === "string" && !obj.image.startsWith("models/util/")) {
+				const layerJson = access.readJson(obj.image);
+				if (layerJson?.fullscreen === true && typeof layerJson.material === "string") {
+					const matJson = access.readJson(layerJson.material);
+					const pass0 = Array.isArray(matJson?.passes) ? matJson.passes[0] : void 0;
+					if (pass0) {
+						let texPath;
+						if (Array.isArray(pass0.textures)) for (const t of pass0.textures) {
+							const ref = String(t);
+							if (ref.startsWith("_rt_")) continue;
+							const want = ref.toLowerCase().replace(/\.tex$/i, "");
+							texPath = allTex.find((p) => {
+								const lower = p.toLowerCase().replace(/\.tex$/i, "");
+								return lower === want || lower === "materials/" + want || lower.endsWith("/" + want);
+							});
+							if (texPath) break;
+						}
+						const userColors = {};
+						const userNums = {};
+						const usv = pass0.usershadervalues;
+						if (usv) for (const [key, uniformName] of Object.entries(usv)) {
+							if (typeof uniformName !== "string") continue;
+							const pv = props?.[key]?.value;
+							if (typeof pv === "string") userColors[uniformName] = parseVec3(pv, [
+								1,
+								1,
+								1
+							]);
+							else if (typeof pv === "number" && Number.isFinite(pv)) userNums[uniformName] = pv;
+						}
+						manifest.bgLayers = manifest.bgLayers ?? [];
+						manifest.bgLayers.push({
+							name: typeof obj.name === "string" ? obj.name : "fullscreen",
+							shader: typeof pass0.shader === "string" ? pass0.shader : void 0,
+							texUrl: texPath ? resourceBase + texPath : void 0,
+							userColors: Object.keys(userColors).length > 0 ? userColors : void 0,
+							userNums: Object.keys(userNums).length > 0 ? userNums : void 0
+						});
+					}
+					continue;
+				}
+			}
+			if (typeof obj.sprite === "string") {
+				const spriteJson = access.readJson(obj.sprite);
+				const pass0 = Array.isArray(spriteJson?.passes) ? spriteJson.passes[0] : void 0;
+				let texPath;
+				const texRef = Array.isArray(pass0?.textures) ? String(pass0.textures[0] ?? "") : "";
+				if (texRef) {
+					const want = texRef.toLowerCase().replace(/\.tex$/i, "");
+					texPath = allTex.find((p) => {
+						const lower = p.toLowerCase().replace(/\.tex$/i, "");
+						return lower === want || lower === "materials/" + want || lower.endsWith("/" + want);
+					});
+				}
+				manifest.sprites = manifest.sprites ?? [];
+				manifest.sprites.push({
+					name: typeof obj.name === "string" ? obj.name : "sprite",
+					texUrl: texPath ? resourceBase + texPath : void 0,
+					origin: parseVec3(obj.origin, [
+						0,
+						0,
+						0
+					]),
+					scale: parseVec3(obj.scale, [
+						1,
+						1,
+						1
+					])
+				});
+			}
+			if (typeof obj.particle === "string") {
+				const pj = access.readJson(obj.particle);
+				if (!pj) continue;
+				const emitter = Array.isArray(pj.emitter) ? pj.emitter[0] : void 0;
+				const init = Array.isArray(pj.initializer) ? pj.initializer : [];
+				const byName = (n) => init.find((i) => i.name === n);
+				const life = byName("lifetimerandom");
+				const size = byName("sizerandom");
+				const vel = byName("velocityrandom");
+				const col = byName("colorrandom");
+				let texPath;
+				if (typeof pj.material === "string") {
+					const matJson = access.readJson(pj.material);
+					const pass0 = Array.isArray(matJson?.passes) ? matJson.passes[0] : void 0;
+					const texRef = Array.isArray(pass0?.textures) ? String(pass0.textures[0] ?? "") : "";
+					if (texRef) {
+						const want = texRef.toLowerCase().replace(/\.tex$/i, "");
+						texPath = allTex.find((p) => {
+							const lower = p.toLowerCase().replace(/\.tex$/i, "");
+							return lower === want || lower === "materials/" + want || lower.endsWith("/" + want);
+						});
+					}
+				}
+				const num = (v, d) => typeof v === "number" && Number.isFinite(v) ? v : d;
+				const objOrigin = parseVec3(obj.origin, [
+					0,
+					0,
+					0
+				]);
+				const emitterOrigin = parseVec3(emitter?.origin, [
+					0,
+					0,
+					0
+				]);
+				manifest.particles3d = manifest.particles3d ?? [];
+				manifest.particles3d.push({
+					name: typeof obj.name === "string" ? obj.name : "particles",
+					texUrl: texPath ? resourceBase + texPath : void 0,
+					origin: [
+						objOrigin[0] + emitterOrigin[0],
+						objOrigin[1] + emitterOrigin[1],
+						objOrigin[2] + emitterOrigin[2]
+					],
+					rate: num(emitter?.rate, 30),
+					maxCount: num(pj.maxcount, 128),
+					lifeMin: num(life?.min, 2),
+					lifeMax: num(life?.max, 4),
+					sizeMin: num(size?.min, .1),
+					sizeMax: num(size?.max, .15),
+					distMin: num(emitter?.distancemin, 2),
+					distMax: num(emitter?.distancemax, 10),
+					velMin: parseVec3(vel?.min, [
+						0,
+						0,
+						-10
+					]),
+					velMax: parseVec3(vel?.max, [
+						0,
+						0,
+						-20
+					]),
+					colorMin: parseVec3(col?.min, [
+						200,
+						200,
+						200
+					]).map((c) => c / 255),
+					colorMax: parseVec3(col?.max, [
+						255,
+						255,
+						255
+					]).map((c) => c / 255)
+				});
+			}
+		}
+		if (manifest.models.length > 0) return manifest;
+	}
+	for (const obj of scene.objects) {
+		const nameLower = (typeof obj.name === "string" ? obj.name : "").toLowerCase();
+		if (nameLower.includes("star") || nameLower.includes("meteor")) manifest.hasMeteors = true;
+		if (nameLower.includes("fireflies") || nameLower.includes("motes") || nameLower.includes("dust")) manifest.hasFireflies = true;
+	}
+	const meteorTexPath = allTex.find((p) => p.toLowerCase().includes("shootingstar") || p.toLowerCase().includes("meteor"));
+	if (meteorTexPath) manifest.meteorTex = resourceBase + meteorTexPath;
+	const sparkleTexPath = allTex.find((p) => p.toLowerCase().includes("sparkle") || p.toLowerCase().includes("halo") || p.toLowerCase().includes("star"));
+	if (sparkleTexPath) manifest.sparkleTex = resourceBase + sparkleTexPath;
+	for (const obj of scene.objects) {
+		if (!obj.image || typeof obj.image !== "string" || obj.image.startsWith("models/util/")) {
+			if (typeof obj.name === "string" && obj.name.toLowerCase() === "reflection") {
+				const reflTex = allTex.find((p) => p.toLowerCase().includes("reflection_mask"));
+				if (reflTex) manifest.layers.push({
+					name: "Reflection",
+					isReflection: true,
+					texUrl: resourceBase + reflTex,
+					x: width / 2,
+					y: height / 2,
+					w: width,
+					h: height
+				});
+			}
+			continue;
+		}
+		if (obj.visible === false) continue;
+		if (obj.visible && typeof obj.visible === "object" && obj.visible.value === false) continue;
+		const nameLower = (typeof obj.name === "string" ? obj.name : "").toLowerCase();
+		if (nameLower.includes("black") || nameLower.includes("len") || nameLower.includes("util") || nameLower.includes("flare") || nameLower.includes("blend") || nameLower === "sun" || nameLower === "sun2") continue;
+		const modelJson = access.readJson(obj.image);
+		if (!modelJson || typeof modelJson.material !== "string") continue;
+		const matJson = access.readJson(modelJson.material);
+		if (!matJson || !Array.isArray(matJson.passes)) continue;
+		const pass0 = matJson.passes[0];
+		const layerShader = typeof pass0?.shader === "string" ? pass0.shader : void 0;
+		const texRefs = (Array.isArray(pass0?.textures) ? pass0.textures : []).map((t) => String(t)).filter((t) => !t.startsWith("_rt_"));
+		if (texRefs.length === 0) continue;
+		const texName = texRefs[0];
+		if (layerShader !== "flowimage" && isLikelyMaskOrHelper(texName)) continue;
+		const resolveLayerTex = (ref) => allTex.find((p) => p.toLowerCase() === ref.toLowerCase() || p.toLowerCase() === ("materials/" + ref + ".tex").toLowerCase() || p.toLowerCase() === (ref + ".tex").toLowerCase() || p.toLowerCase().endsWith("/" + ref.toLowerCase() + ".tex") || p.toLowerCase().endsWith("/" + ref.toLowerCase()));
+		const texPath = resolveLayerTex(texName);
+		if (!texPath) continue;
+		const file = access.readFile(texPath);
+		if (!file) continue;
+		const texPaths = texRefs.map((ref) => resolveLayerTex(ref)).filter((p) => Boolean(p));
+		const nums = {};
+		const csv = pass0?.constantshadervalues;
+		if (csv) {
+			for (const [k, v] of Object.entries(csv)) if (typeof v === "number" && Number.isFinite(v)) nums[k] = v;
+		}
+		let flowScale;
+		if (layerShader === "flowimage" && texPaths.length >= 2) {
+			const dimsOf = (p) => {
+				const f = access.readFile(p);
+				if (!f) return null;
+				try {
+					const info = parseTex(f.bytes);
+					return info.width > 0 && info.height > 0 ? [info.width, info.height] : null;
+				} catch {
+					return null;
+				}
+			};
+			const maskDims = dimsOf(texPaths[0]);
+			const contentDims = dimsOf(texPaths[1]);
+			if (maskDims && contentDims) {
+				const su = maskDims[0] / contentDims[0];
+				const sv = maskDims[1] / contentDims[1];
+				if (Math.abs(su - 1) > .001 || Math.abs(sv - 1) > .001) flowScale = [su, sv];
+			}
+		}
+		let layerUserColors;
+		const lusv = pass0?.usershadervalues;
+		if (lusv) for (const [key, uniformName] of Object.entries(lusv)) {
+			if (typeof uniformName !== "string") continue;
+			const pv = props?.[key]?.value;
+			if (typeof pv === "string") {
+				layerUserColors = layerUserColors ?? {};
+				layerUserColors[uniformName] = parseVec3(pv, [
+					1,
+					1,
+					1
+				]);
+			}
+		}
+		let decoded = null;
+		try {
+			decoded = decodeTex(file.bytes);
+		} catch {
+			decoded = null;
+		}
+		const objOrigin = parseVec3(obj.origin, [
+			width / 2,
+			height / 2,
+			0
+		]);
+		const objScale = parseVec3(obj.scale, [
+			1,
+			1,
+			1
+		]);
+		const objAngles = parseVec3(obj.angles, [
+			0,
+			0,
+			0
+		]);
+		let lw = 0;
+		let lh = 0;
+		if (typeof modelJson.width === "number" && typeof modelJson.height === "number") {
+			lw = modelJson.width;
+			lh = modelJson.height;
+		} else if (typeof obj.size === "string") {
+			const parts = obj.size.trim().split(/\s+/).map(parseFloat);
+			if (parts.length >= 2 && !parts.some(isNaN)) {
+				lw = parts[0];
+				lh = parts[1];
+			}
+		}
+		if ((!lw || !lh) && decoded) {
+			lw = decoded.width;
+			lh = decoded.height;
+		}
+		if (!lw || !lh) continue;
+		if (!decoded && !access.readFile(texPath)) continue;
+		if (decoded && !modelJson.width && decoded.width < 64 && decoded.height < 64) continue;
+		lw *= Math.abs(objScale[0]) || 1;
+		lh *= Math.abs(objScale[1]) || 1;
+		if (modelJson.fullscreen === true) {
+			lw = width;
+			lh = height;
+			objOrigin[0] = width / 2;
+			objOrigin[1] = height / 2;
+			objAngles[2] = 0;
+		}
+		let ox = 0;
+		let oy = 0;
+		if (typeof modelJson.cropoffset === "string") {
+			const parts = modelJson.cropoffset.trim().split(/\s+/);
+			ox = parseFloat(parts[0]) || 0;
+			oy = parseFloat(parts[1]) || 0;
+		}
+		const alpha = typeof obj.alpha === "number" && Number.isFinite(obj.alpha) ? Math.min(1, Math.max(0, obj.alpha)) : 1;
+		let uvCrop;
+		if (decoded && typeof modelJson.width === "number" && typeof modelJson.height === "number") {
+			const u0 = ox / decoded.width;
+			const u1 = (ox + modelJson.width) / decoded.width;
+			const v0 = oy / decoded.height;
+			const v1 = (oy + modelJson.height) / decoded.height;
+			if (u0 !== 0 || v0 !== 0 || u1 < .999 || v1 < .999) uvCrop = [
+				u0,
+				v0,
+				u1,
+				v1
+			];
+		}
+		const isGround = nameLower.includes("land") || nameLower.includes("grass") || nameLower.includes("railing") || nameLower.includes("betong") || nameLower.includes("sign") || nameLower.includes("cabinet") || nameLower.includes("bush") || nameLower.includes("fence");
+		manifest.layers.push({
+			name: typeof obj.name === "string" ? obj.name : "layer",
+			texUrl: resourceBase + texPath,
+			x: objOrigin[0] + ox,
+			y: objOrigin[1] + oy,
+			w: lw,
+			h: lh,
+			alpha,
+			angle: objAngles[2] || 0,
+			uvCrop,
+			shader: layerShader,
+			texUrls: texPaths.length > 1 ? texPaths.map((p) => resourceBase + p) : void 0,
+			flowScale,
+			userColors: layerUserColors,
+			nums: Object.keys(nums).length > 0 ? nums : void 0,
+			isGround,
+			sway: 0,
+			swaySpeed: 1.5
+		});
+	}
+	if (manifest.layers.length === 0) return null;
+	return manifest;
+}
+function extractSceneResourceVia(access, subpath) {
+	const norm = subpath.replace(/\\/g, "/");
+	const file = access.readFile(norm) || access.readFile("materials/" + norm) || access.readFile(norm + ".tex");
+	if (!file) return null;
+	try {
+		const mip0 = parseTexInternal(file.bytes).mipmaps[0];
+		if (isPngBuffer(mip0.bytes)) return Buffer$1.from(mip0.bytes);
+		const dec = decodeTex(file.bytes);
+		return Buffer$1.from(encodePng(dec.width, dec.height, dec.rgba));
+	} catch {
+		return file.bytes;
+	}
+}
+function buildSceneManifest(pkgData, token) {
+	return buildSceneManifestVia(pkgSceneAccess(pkgData), token);
+}
+function buildSceneManifestFromDir(dir, token) {
+	return buildSceneManifestVia(dirSceneAccess(dir), token);
+}
+function extractSceneResource(pkgData, subpath) {
+	return extractSceneResourceVia(pkgSceneAccess(pkgData), subpath);
+}
+function extractSceneResourceFromDir(dir, subpath) {
+	return extractSceneResourceVia(dirSceneAccess(dir), subpath);
+}
+//#endregion
 //#region src/we-shim-source.ts
 /**
 * The Wallpaper Engine Web API shim, served to web-type wallpaper iframes.
@@ -2157,11 +4282,12 @@ function buildInventory(opts = {}) {
 * into its CEF host before the page scripts run: property listeners (user
 * customization values), the audio-level listener (64 stereo bands), and
 * LED/RGB hardware hooks. Inside the skin center there is no editor session
-* and no hardware, so the shim installs benign defaults: properties resolve
-* to empty objects, the audio listener registers but is fed silence, and
-* hardware APIs become no-ops. Wallpapers that never touch these APIs are
-* unaffected; wallpapers that do degrade to their non-reactive visuals
-* instead of crashing on undefined globals.
+* and no hardware, so the shim installs benign defaults: user properties are
+* seeded from the wallpaper's project.json defaults and delivered once the
+* page registers its listener, the audio listener registers but is fed
+* silence, and hardware APIs become no-ops. Wallpapers that never touch these
+* APIs are unaffected; wallpapers that do degrade to their non-reactive
+* visuals instead of crashing on undefined globals.
 * @module @linxin666/dsh-client-ui-skin-center/we-shim-source
 */
 /** The shim source, injected ahead of every web wallpaper HTML document. */
@@ -2170,6 +4296,8 @@ const WE_SHIM_JS = [
 	"  if (window.__dshWeShim) return;",
 	"  window.__dshWeShim = true;",
 	"  var props = {};",
+	"  var defaults = window.__dshWeDefaultProps || {};",
+	"  for (var dk in defaults) { props[dk] = defaults[dk]; }",
 	"  window.wallpaperPropertyListener = {",
 	"    applyUserProperties: function (p) {",
 	"      if (p && typeof p === \"object\") { for (var k in p) { props[k] = p[k]; } }",
@@ -2178,6 +4306,27 @@ const WE_SHIM_JS = [
 	"    setUserProperty: function (k, v) { props[k] = v; },",
 	"    getUserProperty: function (k) { return props[k]; }",
 	"  };",
+	"  // WE delivers the property defaults once the page listener is in place.",
+	"  // Wallpapers typically replace wallpaperPropertyListener with their own",
+	"  // object; frameworks (Angular etc.) bootstrap asynchronously and may not",
+	"  // survive property delivery before their services are ready, so deliver",
+	"  // at a few staggered points after load.",
+	"  var deliver = function () {",
+	"    try {",
+	"      var l = window.wallpaperPropertyListener;",
+	"      if (l && typeof l.applyUserProperties === \"function\" && Object.keys(defaults).length) {",
+	"        l.applyUserProperties(defaults);",
+	"      }",
+	"    } catch (e) {}",
+	"  };",
+	"  var kick = function () {",
+	"    var delays = [800, 2000, 4000];",
+	"    for (var di = 0; di < delays.length; di++) {",
+	"      setTimeout(deliver, delays[di]);",
+	"    }",
+	"  };",
+	"  if (document.readyState === 'complete') { kick(); }",
+	"  else { window.addEventListener('load', kick); }",
 	"  var audioListener = null;",
 	"  window.wallpaperRegisterAudioListener = function (cb) {",
 	"    if (typeof cb === \"function\") audioListener = cb;",
@@ -2195,6 +4344,1890 @@ const WE_SHIM_JS = [
 	"})();",
 	""
 ].join("\n");
+//#endregion
+//#region src/we-player-source.ts
+/**
+* @license MIT
+* Self-contained WebGL Scene Player runtime page for Wallpaper Engine scenes.
+* Renders 2D layered scenes, post-processing shaders (reflection, waterwaves,
+* foliagesway, tint), and GPU/CPU particle systems (shooting stars, fireflies).
+*/
+const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Wallpaper Engine Scene Player</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+(function() {
+  'use strict';
+
+  const canvas = document.getElementById('canvas');
+  const gl = canvas.getContext('webgl', { alpha: true, depth: true, antialias: true, premultipliedAlpha: false }) ||
+             canvas.getContext('experimental-webgl', { alpha: true, depth: true });
+  if (!gl) return;
+
+  let sceneData = null;
+  let isPaused = false;
+  let fitMode = 'cover';
+  let startTime = performance.now();
+  let lastTime = performance.now();
+  let textureCache = new Map();
+  let activeParticles = [];
+  let mouseX = 0.5, mouseY = 0.5;
+  let curRotX = 0, curRotY = 0;
+
+  window.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX / window.innerWidth;
+    mouseY = e.clientY / window.innerHeight;
+  });
+
+  // 3D Shaders
+  const vs3D = \`
+    attribute vec3 a_pos;
+    attribute vec3 a_norm;
+    attribute vec2 a_uv;
+    uniform mat4 u_proj;
+    uniform mat4 u_view;
+    uniform mat4 u_model;
+    uniform mat3 u_normMat;
+    uniform float u_time;
+    uniform int u_isJet;
+    uniform int u_isAurora;
+    uniform int u_isThunder;
+    uniform int u_isBg;
+    uniform int u_isNeonSun;
+    varying vec3 v_norm;
+    varying vec3 v_worldPos;
+    varying vec2 v_uv;
+    varying vec4 v_uv4;
+    varying float v_alpha;
+    void main() {
+      v_uv = a_uv;
+      v_uv4 = a_uv.xyxy;
+      v_alpha = 1.0;
+      vec3 pos = a_pos;
+      // WE ricepodjet shader: flame pulse along the jet cone.
+      if (u_isJet == 1) {
+        float outside = step(0.5, a_uv.x);
+        float pulseSpeed = 5.0 + outside * 10.0;
+        float pulseAmount = 1.0 - a_uv.y;
+        float pulseStrong = sin(u_time * pulseSpeed);
+        pos.xy *= mix(1.0, pulseStrong * 0.05 + 1.0, pulseAmount);
+        pos.z += pulseAmount * (cos(u_time * pulseSpeed) * 0.02 + 0.02);
+        v_alpha = pulseStrong * 0.25 + 0.75;
+      }
+      // WE ricepodorbitalaurora: swaying curtain with scrolled multi-sample UVs.
+      if (u_isAurora == 1) {
+        pos.x += sin(0.1 * u_time + a_uv.x * 5.0) * 0.05;
+        pos.y += sin(0.1 * u_time + a_uv.x * 3.0) * 0.02;
+        v_uv4.xy = a_uv;
+        v_uv4.x *= 5.7;
+        v_uv4.x += fract(u_time * 0.05);
+        v_uv4.zw = a_uv.xx;
+        v_uv4.z *= 0.5;
+        v_uv4.w *= 8.3;
+        v_uv4.z += fract(u_time * 0.04);
+        v_uv4.w -= fract(u_time * 0.03);
+        v_alpha = smoothstep(0.0, 0.1, a_uv.x) * smoothstep(1.0, 0.9, a_uv.x) * 0.6;
+      }
+      // WE ricepodorbitalthunder: sparkle cells with drifting sample offsets.
+      if (u_isThunder == 1) {
+        v_uv4.xy = a_uv * 0.777;
+        v_uv4.wz = a_uv * 0.3; // wz swizzle: w = x*0.3, z = y*0.3
+        v_uv4.z += sin((1.7 + u_time) * 0.1);
+        v_uv4.w += cos(u_time * 0.22);
+      }
+      // WE bg.vert: fullscreen background quad, position from UV directly.
+      if (u_isBg == 1) {
+        v_uv4 = vec4(a_uv + u_time * 0.03, a_uv.x * 2.0 - u_time * 0.0111, a_uv.y * 2.0 - u_time * 0.0111);
+        gl_Position = vec4(a_uv * 2.0 - 1.0, 0.5, 1.0);
+        return;
+      }
+      // WE neonsun.vert: procedural sun, uv remapped to a small disc space.
+      if (u_isNeonSun == 1) {
+        v_uv = (a_uv * 2.0 - 1.0) * 0.3;
+      }
+      vec4 worldPos = u_model * vec4(pos, 1.0);
+      v_worldPos = worldPos.xyz;
+      v_norm = normalize(u_normMat * a_norm);
+      gl_Position = u_proj * u_view * worldPos;
+    }
+  \`;
+
+  const fs3D = \`
+    precision mediump float;
+    varying vec3 v_norm;
+    varying vec3 v_worldPos;
+    varying vec2 v_uv;
+    varying vec4 v_uv4;
+    varying float v_alpha;
+    uniform sampler2D u_tex;
+    uniform int u_hasTex;
+    uniform int u_isCarBody;
+    uniform int u_isGlass;
+    uniform int u_isDome;
+    uniform int u_isShadow;
+    uniform int u_isGrid;
+    uniform int u_isSkybox;
+    uniform int u_isSelfIllum;
+    uniform highp int u_isJet;
+    uniform highp int u_isAurora;
+    uniform highp int u_isThunder;
+    uniform highp int u_isBg;
+    uniform highp int u_isNeonSun;
+    uniform int u_gradFade;
+    uniform int u_sceneStd;
+    uniform vec3 u_jetPos[4];
+    uniform int u_jetCount;
+    uniform vec3 u_color;
+    uniform vec3 u_paintColor;
+    uniform vec3 u_stripeColor;
+    uniform vec3 u_ambientColor;
+    uniform vec3 u_cameraPos;
+    uniform vec3 u_lightDir;
+    uniform float u_specStrength;
+    uniform float u_specPower;
+    uniform highp float u_time;
+    uniform int u_hasTint;
+    uniform vec3 u_tint;
+    uniform vec3 u_tint2;
+    uniform sampler2D u_tex2;
+    uniform sampler2D u_reflTex;
+    uniform vec2 u_resolution;
+    uniform int u_hasReflTex;
+    void main() {
+      // Skybox: textured background sphere (no lighting)
+      if (u_isSkybox == 1) {
+        vec3 col = u_hasTex == 1 ? texture2D(u_tex, v_uv).rgb : u_ambientColor * 0.5;
+        gl_FragColor = vec4(col, 1.0);
+        return;
+      }
+      // Dome: gradient sphere background (car scenes)
+      if (u_isDome == 1) {
+        vec3 tint = u_ambientColor;
+        float h = normalize(v_worldPos).y * 0.5 + 0.5;
+        vec3 col = mix(tint * 0.35, tint, h);
+        gl_FragColor = vec4(col, 1.0);
+        return;
+      }
+      // Shadow: smooth radial gradient under car
+      if (u_isShadow == 1) {
+        float d = length(v_worldPos.xz);
+        float radial = 1.0 - smoothstep(0.0, 1.8, d);
+        float yFade = pow(clamp(1.0 - v_uv.y, 0.0, 1.0), 1.5);
+        float a = radial * yFade * 0.65;
+        gl_FragColor = vec4(0.0, 0.0, 0.0, a);
+        return;
+      }
+      // Grid floor: screen-space reflection from FBO
+      if (u_isGrid == 1) {
+        vec3 norm = normalize(v_norm);
+        vec3 lightDir = normalize(u_lightDir);
+        vec3 viewDir = normalize(u_cameraPos - v_worldPos);
+        // Base grid color
+        vec3 gridColor = u_ambientColor * 0.6;
+        // Screen-space reflection from the mirrored-camera FBO
+        vec3 reflColor = vec3(0.0);
+        if (u_hasReflTex == 1) {
+          vec2 screenUV = gl_FragCoord.xy / u_resolution;
+          reflColor = texture2D(u_reflTex, screenUV).rgb;
+        }
+        // Distance-based fade for reflection
+        float dist = length(v_worldPos.xz);
+        float fade = 1.0 - smoothstep(0.0, 3.5, dist);
+        // Fresnel for reflectivity at grazing angles
+        float fresnel = 1.0 - max(dot(norm, viewDir), 0.0);
+        fresnel = pow(fresnel, 2.0);
+        // Specular highlight
+        vec3 halfDir = normalize(lightDir + viewDir);
+        float gridSpec = pow(max(dot(norm, halfDir), 0.0), 100.0) * 0.2;
+        // Mix reflection with base color
+        float reflStrength = fade * 0.55 + fresnel * 0.3;
+        vec3 result = mix(gridColor, reflColor, reflStrength) + gridSpec;
+        float alpha = 0.9 * fade + 0.1;
+        gl_FragColor = vec4(result, alpha);
+        return;
+      }
+      // Self-illuminated: emissive glow (jet engines, taillights with selfillum combo)
+      if (u_isSelfIllum == 1) {
+        vec3 col = u_hasTex == 1 ? texture2D(u_tex, v_uv).rgb : u_color;
+        if (u_hasTint == 1) {
+          // WE tinted-glow shaders (technoglow): pow falloff, scheme-color
+          // tint, gentle pulse.
+          float pulse = sin(u_time) * 0.25 + 0.75;
+          col = col * col * u_tint * 3.0 * pulse;
+          gl_FragColor = vec4(col, u_hasTex == 1 ? texture2D(u_tex, v_uv).a : 1.0);
+        } else {
+          gl_FragColor = vec4(col * 1.5, 1.0);
+        }
+        return;
+      }
+      // WE neonsun fragment: procedural retrowave sun (gradient disc, scanline
+      // cutouts, glow halo). u_tint = colorsuntop, u_tint2 = colorsunbottom.
+      if (u_isNeonSun == 1) {
+        float sunSize = 0.05;
+        float sunSizeSqrt = sqrt(sunSize);
+        float blendSunColor = (v_uv.y + sunSize * 2.5) / sunSizeSqrt;
+        vec4 colorSun = vec4(mix(u_tint, u_tint2, blendSunColor), 0.0);
+        float sunRadius = dot(v_uv.xy, v_uv.xy);
+        colorSun.a = 1.0 - step(0.05, sunRadius);
+        float glowAlpha = pow(smoothstep(0.08, 0.045, sunRadius), 2.0);
+        float barPos = v_uv.y + 0.1;
+        float sunCutOut = 1.0 - clamp(smoothstep(0.0, 0.005, barPos) * smoothstep(1.0 - barPos * 9.0, 1.0 - barPos * 8.0, sin(barPos * 200.0 + u_time)), 0.0, 1.0);
+        float sunCutOutSmooth = 1.0 - clamp(smoothstep(0.0, 0.05, barPos) * smoothstep(-1.0 - barPos * 8.0, 1.0 - barPos * 8.0, sin(barPos * 200.0 + u_time)), 0.0, 1.0);
+        vec3 rgb = mix(u_tint2, colorSun.rgb, colorSun.a * sunCutOut);
+        float sunA = max(glowAlpha * sunCutOutSmooth, colorSun.a * sunCutOut);
+        gl_FragColor = vec4(rgb, sunA);
+        return;
+      }
+      // WE ricepodjet fragment: flame texture fades along uv.y with pulse alpha.
+      if (u_isJet == 1) {
+        vec3 col = u_hasTex == 1 ? texture2D(u_tex, v_uv).rgb : u_color;
+        col *= v_uv.y * v_alpha;
+        gl_FragColor = vec4(col, 1.0);
+        return;
+      }
+      // WE bg fragment: fullscreen tinted clouds + pattern background.
+      if (u_isBg == 1) {
+        float clouds = texture2D(u_tex, v_uv4.xy).a * texture2D(u_tex, v_uv4.zw).a * 1.4;
+        clouds = clouds * clouds;
+        float vignette = smoothstep(1.2, 0.0, length(v_uv - 0.5)) * 2.0;
+        float pattern = texture2D(u_tex2, v_uv * 50.0).a * 0.1;
+        pattern *= smoothstep(0.1, 0.7, length(v_uv - 0.5));
+        vec3 albedo = mix(u_tint, u_tint2, v_uv.y * v_uv.y) * (clouds + pattern) * vignette;
+        float bgAlpha = 1.0;
+        if (u_gradFade == 1) {
+          bgAlpha = smoothstep(0.2, 0.45, abs(v_uv.y - 0.5));
+        }
+        gl_FragColor = vec4(albedo, bgAlpha);
+        return;
+      }
+      // WE ricepodorbitalaurora fragment: layered scrolling aurora curtains.
+      if (u_isAurora == 1) {
+        vec3 color = texture2D(u_tex, v_uv4.xy).rgb;
+        vec3 color2 = texture2D(u_tex, v_uv4.wy).rgb;
+        vec3 blend = texture2D(u_tex, v_uv4.zy).rgb;
+        color = mix(color * color2, blend, blend.r);
+        gl_FragColor = vec4(color, v_alpha);
+        return;
+      }
+      // WE ricepodorbitalthunder fragment: sparkling blue cells.
+      if (u_isThunder == 1) {
+        float amt = texture2D(u_tex, v_uv4.xy).r;
+        amt *= texture2D(u_tex, v_uv4.zw).r;
+        vec3 color = mix(vec3(0.6, 0.5, 0.4), vec3(0.1, 0.3, 1.0), amt);
+        gl_FragColor = vec4(color, amt);
+        return;
+      }
+
+      vec4 baseColor = u_hasTex == 1 ? texture2D(u_tex, v_uv) : vec4(u_color, 1.0);
+      float alpha = 1.0;
+
+      // Car body paintwork: mix(paintColor, stripesColor, R) * G
+      if (u_isCarBody == 1 && u_hasTex == 1) {
+        vec3 bodyColor = mix(u_paintColor, u_stripeColor, baseColor.r) * baseColor.g;
+        baseColor = vec4(bodyColor, 1.0);
+      } else if (u_isGlass == 1) {
+        alpha = u_hasTex == 1 ? baseColor.a * 0.6 : 0.3;
+        baseColor.rgb = u_hasTex == 1 ? baseColor.rgb : vec3(0.15, 0.2, 0.28);
+      }
+
+      vec3 norm = normalize(v_norm);
+      vec3 lightDir = normalize(u_lightDir);
+      vec3 viewDir = normalize(u_cameraPos - v_worldPos);
+      vec3 halfDir = normalize(lightDir + viewDir);
+
+      if (u_sceneStd == 1) {
+        // WE standard scene shading (shaders/ricepod.frag): warm key light,
+        // strong planet sky-light from below, engine glow boost, gloss specular.
+        float NdotL = max(dot(norm, lightDir), 0.0);
+        vec3 lighting = NdotL * vec3(1.15, 1.1, 1.0);
+        lighting += max(dot(norm, vec3(0.0, -3.0, 0.0)), 0.0) * vec3(0.4, 0.45, 0.55);
+        float boostAmt = 0.0;
+        for (int i = 0; i < 4; i++) {
+          if (i < u_jetCount) {
+            boostAmt += 1.0 - min(1.0, 2.0 * length(u_jetPos[i] - v_worldPos));
+          }
+        }
+        vec3 boost = vec3(3.0, 1.2, 0.2) * boostAmt;
+        float specBase = max(dot(halfDir, norm), 0.0);
+        lighting += pow(specBase, 25.0 + 100.0 * smoothstep(0.3, 0.15, baseColor.r)) * 2.0;
+        gl_FragColor = vec4(baseColor.rgb * (lighting + boost), alpha);
+        return;
+      }
+
+      // Key light (squared falloff for car, linear for generic)
+      float NdotL = max(dot(norm, lightDir), 0.0);
+      float lighting = u_isCarBody == 1 ? NdotL * NdotL * 0.9 : NdotL * 1.1;
+
+      // Fill light from opposite side
+      vec3 fillDir = normalize(vec3(-lightDir.x, 0.3, -lightDir.z));
+      float fillNdotL = max(dot(norm, fillDir), 0.0);
+      lighting += fillNdotL * 0.25;
+
+      // Sky light from below for generic scenes
+      float skyLight = max(dot(norm, vec3(0.0, -1.0, 0.0)), 0.0);
+      lighting += skyLight * 0.15;
+
+      // Rim light
+      float rim = 1.0 - max(dot(norm, viewDir), 0.0);
+      rim = pow(rim, 3.0) * 0.3;
+
+      // Specular
+      float specBase = max(dot(halfDir, norm), 0.0);
+      float spec = pow(specBase, u_specPower);
+      if (u_isCarBody == 1) {
+        spec = spec * smoothstep(0.0, 0.1, sin(spec * 12.0));
+      }
+      float specular = spec * u_specStrength;
+
+      // Ricepod shader: specular += pow(specBase, 25 + 100 * smoothstep(0.3, 0.15, color.r)) * 2
+      // Generic scenes get extra specular for metallic look
+      if (u_isCarBody == 0 && u_isGlass == 0) {
+        float extraSpec = pow(specBase, 25.0 + 100.0 * smoothstep(0.3, 0.15, baseColor.r)) * 2.0;
+        specular += extraSpec * u_specStrength;
+      }
+
+      vec3 result = (u_ambientColor * 0.5 + lighting) * baseColor.rgb + specular + rim * u_ambientColor * 0.5;
+
+      gl_FragColor = vec4(result, alpha);
+    }
+  \`;
+
+  // Vertex shader for basic 2D quads
+  const vsBasic = \`
+    attribute vec2 a_pos;
+    attribute vec2 a_uv;
+    uniform mat4 u_proj;
+    uniform mat4 u_model;
+    uniform vec4 u_uvRect;
+    varying vec2 v_uv;
+    void main() {
+      v_uv = u_uvRect.xy + a_uv * (u_uvRect.zw - u_uvRect.xy);
+      gl_Position = u_proj * u_model * vec4(a_pos, 0.0, 1.0);
+    }
+  \`;
+
+  // Fragment shader for standard textures
+  const fsBasic = \`
+    precision mediump float;
+    varying vec2 v_uv;
+    uniform sampler2D u_tex;
+    uniform float u_alpha;
+    uniform vec3 u_tint;
+    uniform float u_bright;
+    uniform float u_power;
+    void main() {
+      vec4 col = texture2D(u_tex, v_uv);
+      col.rgb *= u_tint;
+      col.rgb *= u_bright;
+      col.rgb = pow(col.rgb, vec3(u_power));
+      col.a *= u_alpha;
+      gl_FragColor = col;
+    }
+  \`;
+
+  // Fragment shader for water reflection
+  const fsReflection = \`
+    precision mediump float;
+    varying vec2 v_uv;
+    uniform sampler2D u_fbo;
+    uniform sampler2D u_mask;
+    uniform float u_time;
+    uniform float u_alpha;
+    void main() {
+      float mask = texture2D(u_mask, v_uv).r;
+      if (mask < 0.05 || v_uv.y < 0.65) {
+        discard;
+      }
+      float puddleDepth = (v_uv.y - 0.65) / 0.35;
+      vec2 uvReflect = vec2(v_uv.x, 0.42 + puddleDepth * 0.38);
+      // water wave ripple perturbation
+      float wave = sin(v_uv.y * 120.0 + u_time * 2.8) * 0.002 +
+                   cos(v_uv.x * 90.0 + u_time * 1.9) * 0.0015;
+      uvReflect.x += wave * mask;
+      uvReflect.y += wave * mask;
+      vec4 reflected = texture2D(u_fbo, clamp(uvReflect, 0.0, 1.0));
+      reflected.rgb *= vec3(0.70, 0.75, 0.90);
+      gl_FragColor = vec4(reflected.rgb, mask * u_alpha * 0.28);
+    }
+  \`;
+
+  // WE flag shader (TINT combo): rippling cloth via two scrolling normal
+  // samples, region colors remapped through texture channels.
+  const fsFlag = \`
+    precision mediump float;
+    varying vec2 v_uv;
+    uniform sampler2D u_tex;
+    uniform sampler2D u_normal;
+    uniform sampler2D u_cloth;
+    uniform float u_time;
+    uniform float u_speed;
+    uniform float u_strength;
+    uniform vec3 u_color1;
+    uniform vec3 u_color2;
+    uniform vec3 u_color3;
+    void main() {
+      vec2 nc1 = v_uv * vec2(1.0, 0.3) * 0.7;
+      nc1.x -= u_time * u_speed;
+      nc1.x -= ((0.5 - v_uv.x) * (1.0 - v_uv.y)) * 3.0;
+      nc1.x += 2.0 * pow(v_uv.y - 0.1, 3.0) * pow(v_uv.x, 2.0);
+      vec2 nc2 = v_uv * vec2(1.0, 0.7) * 0.3;
+      nc2.x -= u_time * u_speed * 0.5;
+      nc2.x -= ((1.0 - v_uv.x) * (1.0 - v_uv.y)) * 2.0;
+      vec3 normal = texture2D(u_normal, nc1).rgb * 2.0 - 1.0;
+      normal *= texture2D(u_normal, nc2).rgb * 2.0 - 1.0;
+      normal = mix(vec3(0.0, 0.0, 1.0), normal, u_strength);
+      normal = normalize(normal);
+      vec2 baseCoords = v_uv + normal.xy * 0.02;
+      vec3 albedo = texture2D(u_tex, baseCoords).rgb;
+      float cloth = texture2D(u_cloth, baseCoords * 4.0).r;
+      vec3 color = mix(u_color1, u_color2, albedo.r);
+      color = mix(color, u_color3, albedo.g);
+      color *= albedo.b * cloth;
+      color += cloth * 0.1;
+      float light = 0.2 + dot(vec3(0.707, 0.707, 0.0), normal) * 0.5 + 0.5;
+      light += pow(light, 5.0) * 0.5;
+      color *= light + light * clamp(cloth * 2.0 - 1.0, 0.0, 1.0);
+      gl_FragColor = vec4(color, 1.0);
+    }
+  \`;
+
+  // Fragment shader for particles
+  const fsParticle = \`
+    precision mediump float;
+    varying vec2 v_uv;
+    uniform sampler2D u_tex;
+    uniform vec4 u_color;
+    void main() {
+      vec4 tex = texture2D(u_tex, v_uv);
+      gl_FragColor = tex * u_color;
+    }
+  \`;
+
+  // WE flowimage shader: 3 content layers cross-faded while their UVs drift
+  // along the flow mask (deep_space nebula background).
+  const fsFlow = \`
+    precision mediump float;
+    varying vec2 v_uv;
+    uniform sampler2D u_mask;
+    uniform sampler2D u_l1;
+    uniform sampler2D u_l2;
+    uniform sampler2D u_l3;
+    uniform float u_time;
+    uniform vec3 u_speeds;
+    uniform float u_amp;
+    uniform float u_bright;
+    uniform vec2 u_contentScale;
+    void main() {
+      vec3 flowColors = texture2D(u_mask, v_uv).rgb;
+      vec2 flowMask = (flowColors.rg - vec2(0.5, 0.5)) * 2.0;
+      float c0 = fract(u_time * u_speeds.x);
+      float c0b = fract(u_time * u_speeds.x + 0.5);
+      float c1 = fract(u_time * u_speeds.y);
+      float c1b = fract(u_time * u_speeds.y + 0.5);
+      float c2 = fract(u_time * u_speeds.z);
+      float c2b = fract(u_time * u_speeds.z + 0.5);
+      float b0 = 2.0 * abs(c0 - 0.5);
+      float b1 = 2.0 * abs(c1 - 0.5);
+      float b2 = 2.0 * abs(c2 - 0.5);
+      vec2 cuv = v_uv * u_contentScale;
+      vec4 albedo = mix(texture2D(u_l1, cuv + flowMask * u_amp * 0.1 * c0),
+                        texture2D(u_l1, cuv + flowMask * u_amp * 0.1 * c0b), b0);
+      vec4 s1 = mix(texture2D(u_l2, cuv + flowMask * u_amp * 0.1 * c1),
+                    texture2D(u_l2, cuv + flowMask * u_amp * 0.1 * c1b), b1);
+      albedo.rgb = mix(albedo.rgb, s1.rgb, s1.a);
+      albedo.a = max(albedo.a, s1.a);
+      vec4 s2 = mix(texture2D(u_l3, cuv + flowMask * u_amp * 0.1 * c2),
+                    texture2D(u_l3, cuv + flowMask * u_amp * 0.1 * c2b), b2);
+      albedo.rgb = mix(albedo.rgb, s2.rgb, s2.a);
+      albedo.a = max(albedo.a, s2.a);
+      albedo.rgb *= u_bright;
+      gl_FragColor = albedo;
+    }
+  \`;
+
+  function createShader(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.error('we-scene-player shader compile failed:', gl.getShaderInfoLog(s));
+    }
+    return s;
+  }
+
+  function createProgram(vsSrc, fsSrc) {
+    const p = gl.createProgram();
+    gl.attachShader(p, createShader(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(p, createShader(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      console.error('we-scene-player program link failed:', gl.getProgramInfoLog(p));
+    }
+    return p;
+  }
+
+  const progBasic = createProgram(vsBasic, fsBasic);
+  const progReflection = createProgram(vsBasic, fsReflection);
+  const progParticle = createProgram(vsBasic, fsParticle);
+  const progFlow = createProgram(vsBasic, fsFlow);
+  const progFlag = createProgram(vsBasic, fsFlag);
+  const prog3D = createProgram(vs3D, fs3D);
+
+  // Camera-facing 3D billboard (sun sprites, 3D particle streaks). The quad is
+  // offset in view space along two CPU-computed axes so streaks can stretch
+  // along the velocity direction (WE spritetrail renderer).
+  const vsSprite = \`
+    attribute vec2 a_corner;
+    attribute vec2 a_uv;
+    uniform mat4 u_proj;
+    uniform mat4 u_view;
+    uniform vec3 u_center;
+    uniform vec2 u_axisX;
+    uniform vec2 u_axisY;
+    varying vec2 v_uv;
+    void main() {
+      v_uv = a_uv;
+      vec4 centerView = u_view * vec4(u_center, 1.0);
+      gl_Position = u_proj * vec4(centerView.xy + a_corner.x * u_axisX + a_corner.y * u_axisY, centerView.zw);
+    }
+  \`;
+  const fsSprite = \`
+    precision mediump float;
+    varying vec2 v_uv;
+    uniform sampler2D u_tex;
+    uniform int u_hasTex;
+    uniform vec4 u_color;
+    void main() {
+      vec4 t = u_hasTex == 1 ? texture2D(u_tex, v_uv) : vec4(1.0);
+      gl_FragColor = vec4(t.rgb * u_color.rgb, t.a * u_color.a);
+    }
+  \`;
+  const progSprite = createProgram(vsSprite, fsSprite);
+
+  // WE neongrid shader: procedural scrolling retrowave grid with fbm mountains.
+  // Needs OES_standard_derivatives for the screen-space normal.
+  const derivExt = gl.getExtension('OES_standard_derivatives');
+  const vsNeonGrid = \`
+    attribute vec3 a_pos;
+    attribute vec2 a_uv;
+    uniform mat4 u_proj;
+    uniform mat4 u_view;
+    uniform mat4 u_model;
+    uniform float u_time;
+    uniform float u_mountainScale;
+    varying vec4 v_tc;
+    varying vec4 v_vars;
+    varying vec3 v_pos;
+    float rand2(vec2 n) { return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453); }
+    float noise2(vec2 p) {
+      vec2 ip = floor(p);
+      vec2 u = fract(p);
+      u = u * u * (3.0 - 2.0 * u);
+      float res = mix(mix(rand2(ip), rand2(ip + vec2(1.0, 0.0)), u.x), mix(rand2(ip + vec2(0.0, 1.0)), rand2(ip + vec2(1.0, 1.0)), u.x), u.y);
+      return res * res;
+    }
+    float fbm(vec2 x) {
+      float v = 0.0;
+      float a = 0.5;
+      vec2 shift = vec2(100.0);
+      mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
+      for (int i = 0; i < 5; ++i) {
+        v += a * noise2(x);
+        x = x * rot * 2.0 + shift;
+        a *= 0.5;
+      }
+      return v;
+    }
+    void main() {
+      v_vars = vec4(0.0);
+      float speed = u_time * 2.0;
+      vec3 localPos = a_pos;
+      vec2 gridPos = floor(a_uv * 50.0 + vec2(0.0, speed));
+      float dampenDistance = abs(a_uv.x * 2.0 - 1.0);
+      float fallOffSides = pow(1.05 - dampenDistance, 0.5);
+      float fallOffCenter = (0.2 + 0.8 * pow(dampenDistance, 2.0));
+      float speedFrac = fract(speed) / 50.0;
+      v_vars.x = a_uv.y - speedFrac;
+      float dampenY = a_uv.y - speedFrac;
+      float clipCenter = clamp(0.8 - dampenDistance, 0.0, 1.0);
+      float offsetY = max(0.0, fbm(gridPos * 0.1) * 2.0 - clipCenter) * fallOffCenter * u_mountainScale;
+      float maskUVSmoothing = step(0.005, offsetY);
+      offsetY = offsetY * fallOffSides * dampenY + pow(dampenDistance, 2.0) * 0.02;
+      localPos.z -= speedFrac * 2.0;
+      localPos.y += offsetY;
+      vec4 worldPos = u_model * vec4(localPos, 1.0);
+      v_pos = worldPos.xyz;
+      gl_Position = u_proj * u_view * worldPos;
+      v_tc.xy = a_uv;
+      v_tc.zw = a_uv * 50.0;
+      float dampenUVSmoothing = clamp(abs(a_uv.x - 0.5) * 2.0 + maskUVSmoothing, 0.0, 1.0);
+      v_vars.yz = vec2(0.45) - v_tc.y * vec2(0.05, 0.75 - dampenUVSmoothing * 0.7);
+    }
+  \`;
+  const fsNeonGrid = (derivExt ? '#extension GL_OES_standard_derivatives : enable\\n' : '') + \`
+    precision mediump float;
+    varying vec4 v_tc;
+    varying vec4 v_vars;
+    varying vec3 v_pos;
+    uniform vec3 u_gridNear;
+    uniform vec3 u_gridFar;
+    uniform vec3 u_gridBg;
+    void main() {
+      vec3 n = vec3(0.0, 1.0, 0.0);
+      #ifdef GL_OES_standard_derivatives
+      vec3 dx = dFdx(v_pos);
+      vec3 dy = dFdy(v_pos);
+      n = normalize(cross(dy, dx));
+      #endif
+      vec3 lightDir = normalize(vec3(0.0, -0.15, -2.0) - v_pos);
+      vec2 grid = abs(fract(v_tc.zw) - 0.5);
+      vec2 gridBlend = smoothstep(v_vars.yz, vec2(0.5), grid);
+      float gridAlpha = gridBlend.x + gridBlend.y;
+      gridBlend = smoothstep(vec2(0.0), vec2(1.0), grid);
+      gridAlpha += (gridBlend.x + gridBlend.y) * clamp(0.3 - v_tc.y, 0.0, 1.0);
+      float alphaDistanceFade = smoothstep(1.0, 0.9, v_vars.x);
+      float colorDistanceBlend = pow(v_tc.y, 0.8);
+      float shadingNear = dot(vec3(0.0, 0.0, 1.0), n);
+      float shadingFar = dot(lightDir, n);
+      vec3 shadingColor = clamp(shadingNear, 0.0, 1.0) * u_gridNear * (1.0 - colorDistanceBlend)
+                        + clamp(shadingFar, 0.0, 1.0) * u_gridFar;
+      vec3 colorGrid = u_gridBg + shadingColor;
+      vec3 resultColor = mix(colorGrid, mix(u_gridNear, u_gridFar, colorDistanceBlend), gridAlpha * alphaDistanceFade);
+      gl_FragColor = vec4(resultColor, alphaDistanceFade);
+    }
+  \`;
+  const progNeonGrid = createProgram(vsNeonGrid, fsNeonGrid);
+
+  function drawNeonGrid(model, mesh, proj, view, elapsed) {
+    const uc = mesh.userColors || {};
+    const un = mesh.userNums || {};
+    gl.useProgram(progNeonGrid);
+    gl.uniformMatrix4fv(gl.getUniformLocation(progNeonGrid, 'u_proj'), false, proj);
+    gl.uniformMatrix4fv(gl.getUniformLocation(progNeonGrid, 'u_view'), false, view);
+    gl.uniformMatrix4fv(gl.getUniformLocation(progNeonGrid, 'u_model'), false, mat4Transform3D(model.origin, model.angles, model.scale));
+    gl.uniform1f(gl.getUniformLocation(progNeonGrid, 'u_time'), elapsed);
+    gl.uniform1f(gl.getUniformLocation(progNeonGrid, 'u_mountainScale'), un.mountainscale != null ? un.mountainscale : 1);
+    const near = uc.gridnear || [1, 0, 0.2];
+    const far = uc.gridfar || [0, 0, 1];
+    const bgc = uc.gridbackground || [0.1, 0, 0.1];
+    gl.uniform3f(gl.getUniformLocation(progNeonGrid, 'u_gridNear'), near[0], near[1], near[2]);
+    gl.uniform3f(gl.getUniformLocation(progNeonGrid, 'u_gridFar'), far[0], far[1], far[2]);
+    gl.uniform3f(gl.getUniformLocation(progNeonGrid, 'u_gridBg'), bgc[0], bgc[1], bgc[2]);
+    const gpu = getGpuMesh(mesh);
+    const gPos = gl.getAttribLocation(progNeonGrid, 'a_pos');
+    const gUv = gl.getAttribLocation(progNeonGrid, 'a_uv');
+    gl.enableVertexAttribArray(gPos);
+    gl.enableVertexAttribArray(gUv);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gpu.posBuf);
+    gl.vertexAttribPointer(gPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gpu.uvBuf);
+    gl.vertexAttribPointer(gUv, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gpu.idxBuf);
+    gl.drawElements(gl.TRIANGLES, gpu.iCount, gpu.idxType, 0);
+  }
+
+  // WE cloudsbg shader: fullscreen scrolling clouds + horizon glow.
+  const vsCloudsBg = \`
+    attribute vec2 a_corner;
+    attribute vec2 a_uv;
+    uniform float u_time;
+    uniform float u_aspect;
+    varying vec2 v_uv;
+    varying vec4 v_tcClouds;
+    void main() {
+      gl_Position = vec4(a_corner * 2.0, 0.0, 1.0);
+      v_uv = a_uv;
+      v_tcClouds.xy = (a_uv + u_time * 0.0007) * vec2(1.1, 1.1);
+      v_tcClouds.zw = (a_uv - u_time * 0.0011) * vec2(0.7, 0.7);
+      v_tcClouds.xz *= u_aspect;
+      v_tcClouds.zw = vec2(-v_tcClouds.w, v_tcClouds.z);
+    }
+  \`;
+  const fsCloudsBg = \`
+    precision mediump float;
+    varying vec2 v_uv;
+    varying vec4 v_tcClouds;
+    uniform sampler2D u_tex;
+    uniform int u_hasTex;
+    uniform vec3 u_color1;
+    uniform vec3 u_colorHorizon;
+    void main() {
+      float cloud0 = u_hasTex == 1 ? texture2D(u_tex, v_tcClouds.xy).r : 0.0;
+      float cloud1 = u_hasTex == 1 ? texture2D(u_tex, v_tcClouds.zw).r : 0.0;
+      float cloudBlend = cloud0 * cloud1;
+      vec3 albedo = u_color1 * cloudBlend;
+      albedo += (u_color1 * 0.5 + albedo) * pow(smoothstep(0.5, 0.0, v_uv.y), 2.0) * 2.0;
+      float horizonBend = 1.0 - cos(clamp(v_uv.x * 2.0 - 0.5, 0.0, 1.0) * 2.0 * 3.14159265);
+      vec2 horizonDelta = (v_uv - vec2(0.5, 0.6)) * vec2(0.5, 1.5 - horizonBend * 0.3);
+      albedo += u_colorHorizon * pow(smoothstep(0.5, 0.0, length(horizonDelta)), 2.0) * 2.0;
+      gl_FragColor = vec4(albedo, 1.0);
+    }
+  \`;
+  const progCloudsBg = createProgram(vsCloudsBg, fsCloudsBg);
+
+  function drawCloudsBgLayer(layer, elapsed, width, height) {
+    gl.useProgram(progCloudsBg);
+    gl.bindBuffer(gl.ARRAY_BUFFER, spriteBuf);
+    const cPos = gl.getAttribLocation(progCloudsBg, 'a_corner');
+    const cUv = gl.getAttribLocation(progCloudsBg, 'a_uv');
+    gl.enableVertexAttribArray(cPos);
+    gl.enableVertexAttribArray(cUv);
+    gl.vertexAttribPointer(cPos, 2, gl.FLOAT, false, 16, 0);
+    gl.vertexAttribPointer(cUv, 2, gl.FLOAT, false, 16, 8);
+    gl.uniform1f(gl.getUniformLocation(progCloudsBg, 'u_time'), elapsed);
+    gl.uniform1f(gl.getUniformLocation(progCloudsBg, 'u_aspect'), width / Math.max(height, 1));
+    const uc = layer.userColors || {};
+    const c1 = uc.clouds || [0.05, 0.15, 0.4];
+    const ch = uc.horizon || [0.05, 0.15, 0.4];
+    gl.uniform3f(gl.getUniformLocation(progCloudsBg, 'u_color1'), c1[0], c1[1], c1[2]);
+    gl.uniform3f(gl.getUniformLocation(progCloudsBg, 'u_colorHorizon'), ch[0], ch[1], ch[2]);
+    if (layer.texUrl) {
+      const texRec = loadTexture(layer.texUrl, true);
+      if (texRec.loaded) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texRec.texture);
+        gl.uniform1i(gl.getUniformLocation(progCloudsBg, 'u_tex'), 0);
+        gl.uniform1i(gl.getUniformLocation(progCloudsBg, 'u_hasTex'), 1);
+      } else {
+        gl.uniform1i(gl.getUniformLocation(progCloudsBg, 'u_hasTex'), 0);
+      }
+    } else {
+      gl.uniform1i(gl.getUniformLocation(progCloudsBg, 'u_hasTex'), 0);
+    }
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  const spriteBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, spriteBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -0.5, -0.5, 0.0, 0.0,
+     0.5, -0.5, 1.0, 0.0,
+    -0.5,  0.5, 0.0, 1.0,
+     0.5,  0.5, 1.0, 1.0,
+  ]), gl.STATIC_DRAW);
+
+  function drawBillboard(center, axisX, axisY, texUrl, color, proj, view) {
+    gl.useProgram(progSprite);
+    gl.uniformMatrix4fv(gl.getUniformLocation(progSprite, 'u_proj'), false, proj);
+    gl.uniformMatrix4fv(gl.getUniformLocation(progSprite, 'u_view'), false, view);
+    gl.bindBuffer(gl.ARRAY_BUFFER, spriteBuf);
+    const cPos = gl.getAttribLocation(progSprite, 'a_corner');
+    const cUv = gl.getAttribLocation(progSprite, 'a_uv');
+    gl.enableVertexAttribArray(cPos);
+    gl.enableVertexAttribArray(cUv);
+    gl.vertexAttribPointer(cPos, 2, gl.FLOAT, false, 16, 0);
+    gl.vertexAttribPointer(cUv, 2, gl.FLOAT, false, 16, 8);
+    gl.uniform3f(gl.getUniformLocation(progSprite, 'u_center'), center[0], center[1], center[2]);
+    gl.uniform2f(gl.getUniformLocation(progSprite, 'u_axisX'), axisX[0], axisX[1]);
+    gl.uniform2f(gl.getUniformLocation(progSprite, 'u_axisY'), axisY[0], axisY[1]);
+    gl.uniform4f(gl.getUniformLocation(progSprite, 'u_color'), color[0], color[1], color[2], color[3]);
+    if (texUrl) {
+      const texRec = loadTexture(texUrl);
+      if (texRec.loaded) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texRec.texture);
+        gl.uniform1i(gl.getUniformLocation(progSprite, 'u_tex'), 0);
+        gl.uniform1i(gl.getUniformLocation(progSprite, 'u_hasTex'), 1);
+      } else {
+        gl.uniform1i(gl.getUniformLocation(progSprite, 'u_hasTex'), 0);
+      }
+    } else {
+      gl.uniform1i(gl.getUniformLocation(progSprite, 'u_hasTex'), 0);
+    }
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  // 3D particle system state, seeded from manifest.particles3d
+  const particles3dState = new Map();
+  function getParticles3d(sys) {
+    if (!particles3dState.has(sys)) particles3dState.set(sys, { list: [], acc: 0 });
+    return particles3dState.get(sys);
+  }
+  function updateParticles3d(sys, dt) {
+    const st = getParticles3d(sys);
+    st.acc += sys.rate * dt;
+    while (st.acc >= 1 && st.list.length < sys.maxCount) {
+      st.acc -= 1;
+      // Random point on a sphere shell around the emitter origin.
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.acos(2 * Math.random() - 1);
+      const r = sys.distMin + Math.random() * (sys.distMax - sys.distMin);
+      const lerp = (a, b) => a + Math.random() * (b - a);
+      st.list.push({
+        x: sys.origin[0] + r * Math.sin(ph) * Math.cos(th),
+        y: sys.origin[1] + r * Math.sin(ph) * Math.sin(th),
+        z: sys.origin[2] + r * Math.cos(ph),
+        vx: lerp(sys.velMin[0], sys.velMax[0]),
+        vy: lerp(sys.velMin[1], sys.velMax[1]),
+        vz: lerp(sys.velMin[2], sys.velMax[2]),
+        size: lerp(sys.sizeMin, sys.sizeMax),
+        life: 0,
+        maxLife: lerp(sys.lifeMin, sys.lifeMax),
+        color: [lerp(sys.colorMin[0], sys.colorMax[0]), lerp(sys.colorMin[1], sys.colorMax[1]), lerp(sys.colorMin[2], sys.colorMax[2])],
+      });
+    }
+    st.acc = Math.min(st.acc, 4);
+    for (let i = st.list.length - 1; i >= 0; i--) {
+      const p = st.list[i];
+      p.life += dt;
+      if (p.life >= p.maxLife) { st.list.splice(i, 1); continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+    }
+  }
+
+  // Shared unit quad geometry (-0.5 to 0.5)
+  const quadBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -0.5, -0.5, 0.0, 1.0,
+     0.5, -0.5, 1.0, 1.0,
+    -0.5,  0.5, 0.0, 0.0,
+     0.5,  0.5, 1.0, 0.0,
+  ]), gl.STATIC_DRAW);
+
+  function loadTexture(url, repeat) {
+    const key = repeat ? url + '|repeat' : url;
+    if (textureCache.has(key)) return textureCache.get(key);
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0]));
+    const record = { texture: tex, loaded: false, width: 1, height: 1 };
+    textureCache.set(key, record);
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      const wrap = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+      record.loaded = true;
+      record.width = img.width;
+      record.height = img.height;
+    };
+    img.src = url;
+    return record;
+  }
+
+  // FBO setup for reflection passes
+  let fbo = null, fboTex = null, fboWidth = 0, fboHeight = 0;
+  function ensureFbo(w, h) {
+    if (fbo && fboWidth === w && fboHeight === h) return;
+    fboWidth = w; fboHeight = h;
+    if (fbo) gl.deleteFramebuffer(fbo);
+    if (fboTex) gl.deleteTexture(fboTex);
+    fbo = gl.createFramebuffer();
+    fboTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, fboTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboTex, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  function mat4Ortho(left, right, bottom, top, near, far) {
+    const lr = 1 / (left - right);
+    const bt = 1 / (bottom - top);
+    const nf = 1 / (near - far);
+    return new Float32Array([
+      -2 * lr, 0, 0, 0,
+      0, -2 * bt, 0, 0,
+      0, 0, 2 * nf, 0,
+      (left + right) * lr, (top + bottom) * bt, (far + near) * nf, 1
+    ]);
+  }
+
+  function mat4Perspective(fovRad, aspect, near, far) {
+    const f = 1.0 / Math.tan(fovRad / 2);
+    const nf = 1.0 / (near - far);
+    return new Float32Array([
+      f / aspect, 0, 0, 0,
+      0, f, 0, 0,
+      0, 0, (far + near) * nf, -1,
+      0, 0, 2 * far * near * nf, 0
+    ]);
+  }
+
+  function mat4LookAt(eye, center, up) {
+    let zx = eye[0] - center[0], zy = eye[1] - center[1], zz = eye[2] - center[2];
+    let len = Math.hypot(zx, zy, zz) || 1;
+    zx /= len; zy /= len; zz /= len;
+
+    let xx = up[1] * zz - up[2] * zy, xy = up[2] * zx - up[0] * zz, xz = up[0] * zy - up[1] * zx;
+    len = Math.hypot(xx, xy, xz) || 1;
+    xx /= len; xy /= len; xz /= len;
+
+    let yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+
+    return new Float32Array([
+      xx, yx, zx, 0,
+      xy, yy, zy, 0,
+      xz, yz, zz, 0,
+      -(xx * eye[0] + xy * eye[1] + xz * eye[2]),
+      -(yx * eye[0] + yy * eye[1] + yz * eye[2]),
+      -(zx * eye[0] + zy * eye[1] + zz * eye[2]),
+      1
+    ]);
+  }
+
+  function mat4Transform3D(origin, angles, scale) {
+    const ox = origin[0] || 0, oy = origin[1] || 0, oz = origin[2] || 0;
+    const sx = scale[0] || 1, sy = scale[1] || 1, sz = scale[2] || 1;
+    const ax = (angles[0] || 0) * Math.PI / 180;
+    const ay = (angles[1] || 0) * Math.PI / 180;
+    const az = (angles[2] || 0) * Math.PI / 180;
+
+    const cx = Math.cos(ax), sxn = Math.sin(ax);
+    const cy = Math.cos(ay), syn = Math.sin(ay);
+    const cz = Math.cos(az), szn = Math.sin(az);
+
+    const m00 = (cy * cz) * sx;
+    const m01 = (cx * szn + sxn * syn * cz) * sx;
+    const m02 = (sxn * szn - cx * syn * cz) * sx;
+
+    const m10 = (-cy * szn) * sy;
+    const m11 = (cx * cz - sxn * syn * szn) * sy;
+    const m12 = (sxn * cz + cx * syn * szn) * sy;
+
+    const m20 = syn * sz;
+    const m21 = (-sxn * cy) * sz;
+    const m22 = (cx * cy) * sz;
+
+    return new Float32Array([
+      m00, m01, m02, 0,
+      m10, m11, m12, 0,
+      m20, m21, m22, 0,
+      ox,  oy,  oz,  1
+    ]);
+  }
+
+  function mat3NormalMatrix(m4) {
+    return new Float32Array([
+      m4[0], m4[1], m4[2],
+      m4[4], m4[5], m4[6],
+      m4[8], m4[9], m4[10]
+    ]);
+  }
+
+  const modelGpuCache = new Map();
+  function getGpuMesh(mesh) {
+    if (modelGpuCache.has(mesh)) return modelGpuCache.get(mesh);
+    
+    function b64ToF32(b64) {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Float32Array(bytes.buffer);
+    }
+    function b64ToU16(b64) {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Uint16Array(bytes.buffer);
+    }
+    function b64ToU32(b64) {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Uint32Array(bytes.buffer);
+    }
+    // Meshes above 65535 vertices carry u32 indices (mesh.idx32), which
+    // WebGL1 only exposes via OES_element_index_uint.
+    const uintIndexExt = gl.getExtension('OES_element_index_uint');
+
+    const posBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, b64ToF32(mesh.posB64), gl.STATIC_DRAW);
+
+    const normBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, normBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, b64ToF32(mesh.normB64), gl.STATIC_DRAW);
+
+    const uvBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, b64ToF32(mesh.uvB64), gl.STATIC_DRAW);
+
+    const idxBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+    const idx32 = Boolean(mesh.idx32) && uintIndexExt;
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx32 ? b64ToU32(mesh.indicesB64) : b64ToU16(mesh.indicesB64), gl.STATIC_DRAW);
+
+    const gpu = { posBuf, normBuf, uvBuf, idxBuf, iCount: mesh.iCount, idxType: idx32 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT };
+    modelGpuCache.set(mesh, gpu);
+    return gpu;
+  }
+
+  function mat4Transform2D(x, y, w, h, angleRad) {
+    const c = Math.cos(angleRad || 0);
+    const s = Math.sin(angleRad || 0);
+    return new Float32Array([
+      w * c,  w * s,  0, 0,
+     -h * s,  h * c,  0, 0,
+      0,      0,      1, 0,
+      x,      y,      0, 1
+    ]);
+  }
+
+  function spawnParticle(emitter, system) {
+    const lifeMin = system.lifeMin || 3;
+    const lifeMax = system.lifeMax || 5;
+    const lifetime = lifeMin + Math.random() * (lifeMax - lifeMin);
+    
+    // Position
+    let x = 0, y = 0, vx = 0, vy = 0;
+    if (system.type === 'meteor') {
+      x = 500 + Math.random() * 3000;
+      y = 1200 + Math.random() * 800;
+      const speed = 700 + Math.random() * 500;
+      vx = -speed * 0.85;
+      vy = -speed * 0.52;
+    } else { // fireflies / sparkles
+      x = 200 + Math.random() * 3440;
+      y = 100 + Math.random() * 900;
+      vx = (Math.random() - 0.5) * 25;
+      vy = 10 + Math.random() * 20;
+    }
+    
+    const size = system.size || (15 + Math.random() * 20);
+    activeParticles.push({
+      system,
+      x, y, vx, vy,
+      size,
+      life: 0,
+      maxLife: lifetime,
+      color: system.color || [1, 1, 0.8, 1],
+      trail: []
+    });
+  }
+
+  function updateParticles(dt) {
+    for (let i = activeParticles.length - 1; i >= 0; i--) {
+      const p = activeParticles[i];
+      p.life += dt;
+      if (p.life >= p.maxLife) {
+        activeParticles.splice(i, 1);
+        continue;
+      }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      if (p.system.type === 'meteor') {
+        p.trail.push({ x: p.x, y: p.y, life: p.life });
+        if (p.trail.length > 8) p.trail.shift();
+      } else {
+        // Floating wander
+        p.vx += (Math.random() - 0.5) * 15 * dt;
+        p.vy += (Math.random() - 0.5) * 15 * dt;
+      }
+    }
+  }
+  // FBO for screen-space reflection (grid floor)
+  let reflFbo = null;
+  let reflTex = null;
+  let reflDepth = null;
+  let reflW = 0, reflH = 0;
+  function ensureReflFbo(w, h) {
+    if (reflW === w && reflH === h && reflFbo) return;
+    if (reflFbo) { gl.deleteFramebuffer(reflFbo); gl.deleteTexture(reflTex); gl.deleteRenderbuffer(reflDepth); }
+    reflFbo = gl.createFramebuffer();
+    reflTex = gl.createTexture();
+    reflDepth = gl.createRenderbuffer();
+    gl.bindTexture(gl.TEXTURE_2D, reflTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, reflDepth);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, reflFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, reflTex, 0);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, reflDepth);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    reflW = w; reflH = h;
+  }
+
+  function renderFrame(now) {
+    if (!sceneData) {
+      requestAnimationFrame(render);
+      return;
+    }
+
+    const dt = Math.min((now - lastTime) / 1000, 0.1);
+    lastTime = now;
+    const elapsed = (now - startTime) / 1000;
+
+    if (!isPaused) {
+      // Spawn particles periodically
+      if (sceneData.hasMeteors && Math.random() < dt * 1.8) {
+        spawnParticle({}, { type: 'meteor', lifeMin: 1.2, lifeMax: 2.2, size: 28, color: [1, 0.95, 0.85, 1], texUrl: sceneData.meteorTex });
+      }
+      if (sceneData.hasFireflies && activeParticles.filter(p => p.system.type === 'firefly').length < 35) {
+        spawnParticle({}, { type: 'firefly', lifeMin: 4, lifeMax: 8, size: 14, color: [0.8, 1.0, 0.5, 0.85], texUrl: sceneData.sparkleTex });
+      }
+      updateParticles(dt);
+    }
+
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    if (sceneData.is3D && sceneData.models && sceneData.models.length > 0) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, width, height);
+      const bg = sceneData.clearColor || [0.1, 0.1, 0.15];
+      gl.clearColor(bg[0] * 0.4, bg[1] * 0.4, bg[2] * 0.4, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.enable(gl.DEPTH_TEST);
+      gl.disable(gl.CULL_FACE);
+
+      const isCarScene = Boolean(sceneData.carBodyColor);
+      const aspect = width / height;
+      const cam = sceneData.camera || { eye: [2.18, 1.98, 4.63], center: [0, 0.45, 0], up: [0, 1, 0], fov: 45 };
+      const proj3D = mat4Perspective((cam.fov || 45) * Math.PI / 180, aspect, 0.1, 1000.0);
+
+      // Camera animation: use scene-specific paths if available, otherwise slow orbit
+      const camPaths = sceneData.cameraPaths;
+      let eye, center, upVec;
+      if (camPaths && camPaths.length > 0) {
+        const totalDur = camPaths.reduce((s, p) => s + p.d, 0);
+        const cycleTime = elapsed % totalDur;
+        let accum = 0, seg = camPaths[0], segT = 0;
+        for (const p of camPaths) {
+          if (cycleTime < accum + p.d) { seg = p; segT = (cycleTime - accum) / p.d; break; }
+          accum += p.d;
+        }
+        segT = segT * segT * (3 - 2 * segT);
+        const lerp3 = (a, b, t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+        eye = lerp3(seg.e0, seg.e1, segT);
+        center = lerp3(seg.c0, seg.c1, segT);
+        upVec = lerp3(seg.u0, seg.u1, segT);
+      } else if (sceneData.cameraStatic) {
+        // Fixed scene camera (no animation paths)
+        eye = [cam.eye[0], cam.eye[1], cam.eye[2]];
+        center = [cam.center[0], cam.center[1], cam.center[2]];
+        upVec = [cam.up[0], cam.up[1], cam.up[2]];
+      } else {
+        const cx = cam.center[0], cy = cam.center[1], cz = cam.center[2];
+        const dx = cam.eye[0] - cx, dy = cam.eye[1] - cy, dz = cam.eye[2] - cz;
+        const radius = Math.hypot(dx, dy, dz) || 4.5;
+        const baseAngle = Math.atan2(dx, dz);
+        const pitchAngle = Math.atan2(dy, Math.hypot(dx, dz));
+        const yaw = baseAngle + elapsed * 0.05;
+        const pitch = pitchAngle;
+        eye = [cx + Math.sin(yaw) * Math.cos(pitch) * radius, cy + Math.sin(pitch) * radius, cz + Math.cos(yaw) * Math.cos(pitch) * radius];
+        center = [cx, cy, cz];
+        upVec = [0, 1, 0];
+      }
+      // Mouse parallax
+      const targetYaw = (mouseX - 0.5) * 0.6;
+      const targetPitch = (mouseY - 0.5) * 0.3;
+      curRotY += (targetYaw - curRotY) * 0.04;
+      curRotX += (targetPitch - curRotX) * 0.04;
+      eye[0] += curRotY * 0.5;
+      eye[1] += curRotX * 0.3;
+
+      const view3D = mat4LookAt(eye, center, upVec);
+      // Planar reflection: the FBO pass renders from a camera mirrored below
+      // the floor plane (y=0), so the grid can sample it 1:1 by screen UV.
+      const view3DRefl = mat4LookAt(
+        [eye[0], -eye[1], eye[2]],
+        [center[0], -center[1], center[2]],
+        [upVec[0], -upVec[1], upVec[2]]);
+      const bodyCol = sceneData.carBodyColor || [1, 0, 0];
+
+      // (Re-)bind prog3D with all scene uniforms. Must be re-invoked after any
+      // pass that switches to another program (bgLayers, billboards).
+      function bindProg3D(viewOverride) {
+        gl.useProgram(prog3D);
+        gl.uniformMatrix4fv(gl.getUniformLocation(prog3D, 'u_proj'), false, proj3D);
+        gl.uniformMatrix4fv(gl.getUniformLocation(prog3D, 'u_view'), false, viewOverride || view3D);
+        gl.uniform3f(gl.getUniformLocation(prog3D, 'u_cameraPos'), eye[0], eye[1], eye[2]);
+        gl.uniform1f(gl.getUniformLocation(prog3D, 'u_time'), elapsed);
+        // WE-standard scene shading for generic scenes; car scenes keep their
+        // dedicated paint/grid pipeline.
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_sceneStd'), isCarScene ? 0 : 1);
+        // Engine-glow boost positions: origins of jet models (ricepod.vert).
+        const jetPos = [];
+        for (const model of sceneData.models) {
+          const mName = (model.name || '').toLowerCase();
+          const jetLike = mName.includes('jet') || (model.meshes || []).some((mm) => (mm.shader || '').toLowerCase().includes('jet'));
+          if (jetLike && jetPos.length < 4) jetPos.push(model.origin || [0, 0, 0]);
+        }
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_jetCount'), jetPos.length);
+        for (let ji = 0; ji < 4; ji++) {
+          const jp = jetPos[ji] || [0, 0, 0];
+          gl.uniform3f(gl.getUniformLocation(prog3D, 'u_jetPos[' + ji + ']'), jp[0], jp[1], jp[2]);
+        }
+        // Ricepod uses lightDir (-0.577, 0.577, 0.577), car uses (0.577, 0.577, 0.577)
+        gl.uniform3f(gl.getUniformLocation(prog3D, 'u_lightDir'), isCarScene ? 0.577 : -0.577, 0.577, 0.577);
+        const amb = sceneData.clearColor || [0.1, 0.1, 0.15];
+        // For car scenes use schemecolor as ambient; for others use brighter neutral
+        const ambColor = isCarScene ? amb : [Math.max(amb[0], 0.3), Math.max(amb[1], 0.3), Math.max(amb[2], 0.35)];
+        gl.uniform3f(gl.getUniformLocation(prog3D, 'u_ambientColor'), ambColor[0], ambColor[1], ambColor[2]);
+        gl.uniform3f(gl.getUniformLocation(prog3D, 'u_paintColor'), bodyCol[0], bodyCol[1], bodyCol[2]);
+      }
+      bindProg3D();
+
+      const locPos = gl.getAttribLocation(prog3D, 'a_pos');
+      const locNorm = gl.getAttribLocation(prog3D, 'a_norm');
+      const locUv = gl.getAttribLocation(prog3D, 'a_uv');
+      gl.enableVertexAttribArray(locPos);
+      gl.enableVertexAttribArray(locNorm);
+      gl.enableVertexAttribArray(locUv);
+
+      // Per-submesh specular params (from WE material JSONs)
+      const specMap = {
+        body: [0.4, 6], glass: [5, 50], interior: [0.2, 15],
+        matte: [0.5, 10], taillights: [0.25, 10], wheel: [1, 10],
+      };
+      function getSpecParams(texUrl) {
+        if (!texUrl) return [0.3, 10];
+        for (const [k, v] of Object.entries(specMap)) {
+          if (texUrl.includes(k)) return v;
+        }
+        return [0.3, 10];
+      }
+
+      // Render in correct order: skybox/dome, opaque, shadow, grid, glass/additive
+      const skyboxModels = [];
+      const domeModels = [];
+      const opaqueModels = [];
+      const shadowModels = [];
+      const gridModels = [];
+      const glassQueue = [];
+      const additiveQueue = [];
+      const translucentQueue = [];
+      const neonGridQueue = [];
+
+      for (const model of sceneData.models) {
+        const mName = (model.name || '').toLowerCase();
+        if (mName === 'skybox') { skyboxModels.push(model); continue; }
+        if (mName === 'dome') { domeModels.push(model); continue; }
+        if (mName === 'shadow') { shadowModels.push(model); continue; }
+        if (mName === 'grid') { gridModels.push(model); continue; }
+        // Material blending flags decide the queue per mesh; the model name
+        // 'jet' heuristic stays as a fallback for legacy manifests.
+        const opaqueMeshes = [];
+        for (const mesh of model.meshes) {
+          const shName = (mesh.shader || '').toLowerCase();
+          if (shName === 'neongrid') neonGridQueue.push({ model, mesh });
+          else if (mesh.additive || mName.includes('jet')) additiveQueue.push({ model, mesh });
+          else if (mesh.translucent) translucentQueue.push({ model, mesh });
+          else opaqueMeshes.push(mesh);
+        }
+        if (opaqueMeshes.length > 0) opaqueModels.push({ ...model, meshes: opaqueMeshes });
+      }
+
+      // Helper to draw a mesh with given uniforms
+      function drawMesh(model, mesh, flags) {
+        let modelMat = mat4Transform3D(model.origin, model.angles, model.scale);
+        // Skybox/aurora/thunder follow the camera position (WE shaders add
+        // g_EyePosition to the vertex instead of a model transform).
+        if (flags.skybox || flags.followEye) {
+          modelMat = mat4Transform3D([eye[0], eye[1], eye[2]], model.angles, model.scale);
+        }
+        gl.uniformMatrix4fv(gl.getUniformLocation(prog3D, 'u_model'), false, modelMat);
+        const normMat = mat3NormalMatrix(modelMat);
+        gl.uniformMatrix3fv(gl.getUniformLocation(prog3D, 'u_normMat'), false, normMat);
+
+        const gpu = getGpuMesh(mesh);
+        gl.bindBuffer(gl.ARRAY_BUFFER, gpu.posBuf);
+        gl.vertexAttribPointer(locPos, 3, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, gpu.normBuf);
+        gl.vertexAttribPointer(locNorm, 3, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, gpu.uvBuf);
+        gl.vertexAttribPointer(locUv, 2, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gpu.idxBuf);
+
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isDome'), flags.dome ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isShadow'), flags.shadow ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isGrid'), flags.grid ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isSkybox'), flags.skybox ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isSelfIllum'), flags.selfIllum ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isCarBody'), flags.body ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isGlass'), flags.glass ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isJet'), flags.jet ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isAurora'), flags.aurora ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isThunder'), flags.thunder ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isBg'), flags.bg ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_isNeonSun'), flags.neonSun ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_gradFade'), mesh.gradFade ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_hasTint'), mesh.tint || flags.neonSun ? 1 : 0);
+        const uc = mesh.userColors || {};
+        let tintCol = mesh.tint || [1, 1, 1];
+        let tint2Col = mesh.tint2 || tintCol;
+        if (flags.neonSun) {
+          tintCol = uc.colorsuntop || tintCol;
+          tint2Col = uc.colorsunbottom || tint2Col;
+        }
+        gl.uniform3f(gl.getUniformLocation(prog3D, 'u_tint'), tintCol[0], tintCol[1], tintCol[2]);
+        gl.uniform3f(gl.getUniformLocation(prog3D, 'u_tint2'), tint2Col[0], tint2Col[1], tint2Col[2]);
+        // Second pass texture (bg pattern overlay), repeat-wrapped like the bg clouds.
+        if (mesh.texUrl2) {
+          const tex2Rec = loadTexture(mesh.texUrl2, true);
+          if (tex2Rec.loaded) {
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, tex2Rec.texture);
+            gl.uniform1i(gl.getUniformLocation(prog3D, 'u_tex2'), 1);
+            gl.activeTexture(gl.TEXTURE0);
+          }
+        }
+
+        // WE material depth flags (orbital glows disable both).
+        if (mesh.noDepthTest) gl.disable(gl.DEPTH_TEST);
+        if (mesh.noDepthWrite) gl.depthMask(false);
+
+        const sp = getSpecParams(mesh.texUrl);
+        gl.uniform1f(gl.getUniformLocation(prog3D, 'u_specStrength'), sp[0]);
+        gl.uniform1f(gl.getUniformLocation(prog3D, 'u_specPower'), sp[1]);
+
+        if (flags.body) {
+          const strCol = sceneData.carStripesColor || [0, 0, 0];
+          gl.uniform3f(gl.getUniformLocation(prog3D, 'u_paintColor'), bodyCol[0], bodyCol[1], bodyCol[2]);
+          gl.uniform3f(gl.getUniformLocation(prog3D, 'u_stripeColor'), strCol[0], strCol[1], strCol[2]);
+        }
+
+        // Load texture for all meshes that have one (including skybox)
+        if (mesh.texUrl && !flags.dome && !flags.shadow && !flags.grid) {
+          const texRec = loadTexture(mesh.texUrl, flags.aurora || flags.bg);
+          if (texRec.loaded) {
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, texRec.texture);
+            gl.uniform1i(gl.getUniformLocation(prog3D, 'u_tex'), 0);
+            gl.uniform1i(gl.getUniformLocation(prog3D, 'u_hasTex'), 1);
+          } else {
+            gl.uniform1i(gl.getUniformLocation(prog3D, 'u_hasTex'), 0);
+            gl.uniform3f(gl.getUniformLocation(prog3D, 'u_color'), 0.7, 0.7, 0.75);
+          }
+        } else {
+          gl.uniform1i(gl.getUniformLocation(prog3D, 'u_hasTex'), 0);
+          gl.uniform3f(gl.getUniformLocation(prog3D, 'u_color'), 0.65, 0.68, 0.72);
+        }
+
+        gl.drawElements(gl.TRIANGLES, gpu.iCount, gpu.idxType, 0);
+
+        if (mesh.noDepthTest) gl.enable(gl.DEPTH_TEST);
+        if (mesh.noDepthWrite) gl.depthMask(true);
+      }
+
+      // --- Pass 1: Render to FBO for reflection source (if car scene with grid) ---
+      const hasGrid = isCarScene && gridModels.length > 0;
+      if (hasGrid) {
+        bindProg3D(view3DRefl); // mirrored camera for the reflection pass
+        ensureReflFbo(width, height);
+        // Unbind the reflection texture before rendering into its own FBO
+        // (avoids a framebuffer/texture feedback loop from the last frame).
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, reflFbo);
+        gl.viewport(0, 0, width, height);
+        gl.clearColor(bg[0] * 0.4, bg[1] * 0.4, bg[2] * 0.4, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // Dome to FBO
+        gl.depthMask(false);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_hasReflTex'), 0);
+        for (const model of domeModels) {
+          for (const mesh of model.meshes) drawMesh(model, mesh, { dome: true });
+        }
+        gl.depthMask(true);
+
+        // Opaque car to FBO
+        gl.disable(gl.BLEND);
+        for (const model of opaqueModels) {
+          for (const mesh of model.meshes) {
+            const isBody = Boolean(isCarScene && mesh.texUrl && mesh.texUrl.includes('body'));
+            const isGlass = Boolean(mesh.texUrl && mesh.texUrl.includes('glass'));
+            if (!isGlass) drawMesh(model, mesh, { body: isBody });
+          }
+        }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      }
+
+      // --- Pass 2: Render to screen ---
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, width, height);
+      gl.clearColor(bg[0] * 0.4, bg[1] * 0.4, bg[2] * 0.4, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      bindProg3D(); // restore the real camera after the reflection pass
+
+      // 0. Fullscreen background layers (cloudsbg etc.), no depth
+      const bgLayers = sceneData.bgLayers || [];
+      if (bgLayers.length > 0) {
+        gl.disable(gl.DEPTH_TEST);
+        gl.disable(gl.BLEND);
+        for (const layer of bgLayers) {
+          if ((layer.shader || '') === 'cloudsbg') drawCloudsBgLayer(layer, elapsed, width, height);
+        }
+        gl.enable(gl.DEPTH_TEST);
+        bindProg3D(); // drawCloudsBgLayer switched the bound program
+      }
+
+      // 1. Skybox / Dome: render first, no depth write
+      gl.depthMask(false);
+      gl.uniform1i(gl.getUniformLocation(prog3D, 'u_hasReflTex'), 0);
+      for (const model of skyboxModels) {
+        for (const mesh of model.meshes) drawMesh(model, mesh, { skybox: true });
+      }
+      for (const model of domeModels) {
+        for (const mesh of model.meshes) drawMesh(model, mesh, { dome: true });
+      }
+      gl.depthMask(true);
+
+      // 2. Opaque parts (bg shader meshes render as fullscreen background)
+      gl.disable(gl.BLEND);
+      for (const model of opaqueModels) {
+        for (const mesh of model.meshes) {
+          const isBody = Boolean(isCarScene && mesh.texUrl && mesh.texUrl.includes('body'));
+          const isGlass = Boolean(mesh.texUrl && mesh.texUrl.includes('glass'));
+          if (isGlass) {
+            glassQueue.push({ model, mesh });
+            continue;
+          }
+          drawMesh(model, mesh, { body: isBody, bg: (mesh.shader || '') === 'bg' });
+        }
+      }
+
+      // 2b. Translucent overlays, far-to-near: neongrid floor first, then
+      // bgfade/neonsun on top. Translucent passes never write depth so their
+      // transparent pixels cannot occlude later geometry.
+      if (translucentQueue.length > 0 || neonGridQueue.length > 0) {
+        gl.enable(gl.BLEND);
+        gl.depthMask(false);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        for (const { model, mesh } of neonGridQueue) {
+          drawNeonGrid(model, mesh, proj3D, view3D, elapsed);
+        }
+        gl.useProgram(prog3D);
+        for (const { model, mesh } of translucentQueue) {
+          drawMesh(model, mesh, { bg: (mesh.shader || '') === 'bg', neonSun: (mesh.shader || '') === 'neonsun' });
+        }
+        gl.depthMask(true);
+        gl.disable(gl.BLEND);
+      }
+
+      // 3. Shadow (blended)
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      for (const model of shadowModels) {
+        for (const mesh of model.meshes) drawMesh(model, mesh, { shadow: true });
+      }
+
+      // 4. Grid floor with FBO reflection
+      if (hasGrid && reflTex) {
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, reflTex);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_reflTex'), 1);
+        gl.uniform1i(gl.getUniformLocation(prog3D, 'u_hasReflTex'), 1);
+        gl.uniform2f(gl.getUniformLocation(prog3D, 'u_resolution'), width, height);
+      }
+      for (const model of gridModels) {
+        for (const mesh of model.meshes) drawMesh(model, mesh, { grid: true });
+      }
+      gl.uniform1i(gl.getUniformLocation(prog3D, 'u_hasReflTex'), 0);
+
+      // 5. Glass (blended)
+      for (const { model, mesh } of glassQueue) {
+        drawMesh(model, mesh, { glass: true });
+      }
+
+      // 6. Additive glow queue (jets, orbital effects, self-illuminated)
+      // SRC_ALPHA, ONE: shaped by the shader's output alpha (aurora fade,
+      // thunder sparkle); jets output alpha 1 so they behave as pure additive.
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      for (const { model, mesh } of additiveQueue) {
+        const shaderName = (mesh.shader || '').toLowerCase();
+        const jetLike = shaderName.includes('jet') || (mesh.texUrl || '').toLowerCase().includes('jet');
+        const isAurora = !jetLike && shaderName.includes('aurora');
+        const isThunder = !jetLike && shaderName.includes('thunder');
+        drawMesh(model, mesh, {
+          jet: jetLike,
+          aurora: isAurora,
+          thunder: isThunder,
+          selfIllum: !jetLike && !isAurora && !isThunder,
+          followEye: isAurora || isThunder,
+        });
+      }
+
+      // 7. 3D sprites (sun glow billboards) and particle streaks (starfield)
+      const sprites3d = sceneData.sprites || [];
+      const systems3d = sceneData.particles3d || [];
+      if (sprites3d.length > 0 || systems3d.length > 0) {
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // additive, texture-alpha shaped
+        for (const sp of sprites3d) {
+          // View-space offset = camera-facing quad (WE sprite.vert semantics:
+          // right*(u-0.5) + up*(v-0.5), scaled by 0.5 * object scale).
+          const w = 0.5 * (sp.scale ? sp.scale[0] : 1);
+          const h = 0.5 * (sp.scale ? sp.scale[1] : 1);
+          drawBillboard(sp.origin, [w, 0], [0, h], sp.texUrl, [1, 1, 1, 1], proj3D, view3D);
+        }
+        for (const sys of systems3d) {
+          if (!isPaused) updateParticles3d(sys, dt);
+          const st = getParticles3d(sys);
+          for (const p of st.list) {
+            const fade = Math.min(1, Math.min(p.life, p.maxLife - p.life) / (0.2 * p.maxLife));
+            // Streak: stretch the quad along the view-space velocity.
+            const vv = [
+              view3D[0] * p.vx + view3D[4] * p.vy + view3D[8] * p.vz,
+              view3D[1] * p.vx + view3D[5] * p.vy + view3D[9] * p.vz,
+            ];
+            const speed = Math.hypot(vv[0], vv[1]);
+            const halfLen = p.size * 0.5 * (1 + Math.min(speed * 0.08, 4));
+            const halfWid = p.size * 0.5;
+            let px = 1, py = 0;
+            if (speed > 0.001) { px = vv[0] / speed; py = vv[1] / speed; }
+            const axisX = [px * halfLen * 2, py * halfLen * 2];
+            const axisY = [-py * halfWid * 2, px * halfWid * 2];
+            drawBillboard([p.x, p.y, p.z], axisX, axisY, sys.texUrl, [p.color[0], p.color[1], p.color[2], fade], proj3D, view3D);
+          }
+        }
+      }
+
+      gl.disable(gl.DEPTH_TEST);
+      gl.disable(gl.CULL_FACE);
+      gl.disable(gl.BLEND);
+      requestAnimationFrame(render);
+      return;
+    }
+
+    const sceneW = sceneData.width || 3840;
+    const sceneH = sceneData.height || 2160;
+
+    let scale = 1;
+    if (fitMode === 'cover') {
+      scale = Math.max(width / sceneW, height / sceneH);
+    } else if (fitMode === 'contain') {
+      scale = Math.min(width / sceneW, height / sceneH);
+    } // fill: viewport covers the whole canvas (non-uniform stretch)
+
+    const vpW = fitMode === 'fill' ? width : Math.round(sceneW * scale);
+    const vpH = fitMode === 'fill' ? height : Math.round(sceneH * scale);
+    const vpX = fitMode === 'fill' ? 0 : Math.round((width - vpW) / 2);
+    const vpY = fitMode === 'fill' ? 0 : Math.round((height - vpH) / 2);
+
+    ensureFbo(Math.min(sceneW, 2048), Math.min(sceneH, 1080));
+
+    // Projection matrix mapping scene coords (0..sceneW, 0..sceneH) to clip space (-1..1)
+    const proj = mat4Ortho(0, sceneW, 0, sceneH, -1000, 1000);
+
+    // Pass 1: Render background and sky layers into FBO for reflections
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.viewport(0, 0, fboWidth, fboHeight);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    gl.useProgram(progBasic);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+    const aPos = gl.getAttribLocation(progBasic, 'a_pos');
+    const aUv = gl.getAttribLocation(progBasic, 'a_uv');
+    gl.enableVertexAttribArray(aPos);
+    gl.enableVertexAttribArray(aUv);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+    gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 16, 8);
+
+    gl.uniformMatrix4fv(gl.getUniformLocation(progBasic, 'u_proj'), false, proj);
+    gl.uniform1f(gl.getUniformLocation(progBasic, 'u_time'), elapsed);
+    gl.uniform4f(gl.getUniformLocation(progBasic, 'u_uvRect'), 0, 0, 1, 1);
+    gl.uniform1f(gl.getUniformLocation(progBasic, 'u_bright'), 1);
+    gl.uniform1f(gl.getUniformLocation(progBasic, 'u_power'), 1);
+
+    // Render sky & upper layers into FBO
+    for (const layer of sceneData.layers) {
+      if (layer.isGround || layer.isReflection) continue;
+      const texRec = loadTexture(layer.texUrl);
+      if (!texRec.loaded) continue;
+
+      const model = mat4Transform2D(layer.x, layer.y, layer.w, layer.h, layer.angle || 0);
+      gl.uniformMatrix4fv(gl.getUniformLocation(progBasic, 'u_model'), false, model);
+      gl.uniform1f(gl.getUniformLocation(progBasic, 'u_alpha'), layer.alpha != null ? layer.alpha : 1.0);
+      gl.uniform3f(gl.getUniformLocation(progBasic, 'u_tint'), 1, 1, 1);
+      gl.uniform1f(gl.getUniformLocation(progBasic, 'u_sway'), layer.sway || 0);
+      gl.uniform1f(gl.getUniformLocation(progBasic, 'u_sway_speed'), layer.swaySpeed || 1.0);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, texRec.texture);
+      gl.uniform1i(gl.getUniformLocation(progBasic, 'u_tex'), 0);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    // Pass 2: Render to screen viewport
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(vpX, vpY, vpW, vpH);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Render all layers (Sky -> Ground -> Reflection -> Particles)
+    for (const layer of sceneData.layers) {
+      if (layer.isReflection) {
+        // Water Reflection Pass
+        const maskRec = loadTexture(layer.texUrl);
+        if (!maskRec.loaded) continue;
+
+        gl.useProgram(progReflection);
+        gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+        const rPos = gl.getAttribLocation(progReflection, 'a_pos');
+        const rUv = gl.getAttribLocation(progReflection, 'a_uv');
+        gl.enableVertexAttribArray(rPos);
+        gl.enableVertexAttribArray(rUv);
+        gl.vertexAttribPointer(rPos, 2, gl.FLOAT, false, 16, 0);
+        gl.vertexAttribPointer(rUv, 2, gl.FLOAT, false, 16, 8);
+
+        const model = mat4Transform2D(sceneW / 2, sceneH / 2, sceneW, sceneH, 0);
+        gl.uniformMatrix4fv(gl.getUniformLocation(progReflection, 'u_proj'), false, proj);
+        gl.uniformMatrix4fv(gl.getUniformLocation(progReflection, 'u_model'), false, model);
+        gl.uniform4f(gl.getUniformLocation(progReflection, 'u_uvRect'), 0, 0, 1, 1);
+        gl.uniform1f(gl.getUniformLocation(progReflection, 'u_time'), elapsed);
+        gl.uniform1f(gl.getUniformLocation(progReflection, 'u_alpha'), 0.85);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, fboTex);
+        gl.uniform1i(gl.getUniformLocation(progReflection, 'u_fbo'), 0);
+
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, maskRec.texture);
+        gl.uniform1i(gl.getUniformLocation(progReflection, 'u_mask'), 1);
+
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        continue;
+      }
+
+      // WE flowimage layer (flowing nebula): mask + 3 cross-fading layers
+      if (layer.shader === 'flowimage' && layer.texUrls && layer.texUrls.length >= 4) {
+        const recs = layer.texUrls.slice(0, 4).map((u) => loadTexture(u, true));
+        if (!recs.every((r) => r.loaded)) continue;
+        gl.useProgram(progFlow);
+        gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+        const fPos = gl.getAttribLocation(progFlow, 'a_pos');
+        const fUv = gl.getAttribLocation(progFlow, 'a_uv');
+        gl.enableVertexAttribArray(fPos);
+        gl.enableVertexAttribArray(fUv);
+        gl.vertexAttribPointer(fPos, 2, gl.FLOAT, false, 16, 0);
+        gl.vertexAttribPointer(fUv, 2, gl.FLOAT, false, 16, 8);
+        const model = mat4Transform2D(layer.x, layer.y, layer.w, layer.h, layer.angle || 0);
+        gl.uniformMatrix4fv(gl.getUniformLocation(progFlow, 'u_proj'), false, proj);
+        gl.uniformMatrix4fv(gl.getUniformLocation(progFlow, 'u_model'), false, model);
+        const fcrop = layer.uvCrop || [0, 0, 1, 1];
+        gl.uniform4f(gl.getUniformLocation(progFlow, 'u_uvRect'), fcrop[0], fcrop[1], fcrop[2], fcrop[3]);
+        gl.uniform1f(gl.getUniformLocation(progFlow, 'u_time'), elapsed);
+        const nums = layer.nums || {};
+        gl.uniform3f(gl.getUniformLocation(progFlow, 'u_speeds'),
+          nums.Speed0 ?? 0.01, nums.Speed1 ?? 0.01, nums.Speed2 ?? 0.01);
+        gl.uniform1f(gl.getUniformLocation(progFlow, 'u_amp'), nums.Amount ?? 1);
+        gl.uniform1f(gl.getUniformLocation(progFlow, 'u_bright'), nums.Bright ?? 1);
+        const fs2 = layer.flowScale || [1, 1];
+        gl.uniform2f(gl.getUniformLocation(progFlow, 'u_contentScale'), fs2[0], fs2[1]);
+        const units = ['u_mask', 'u_l1', 'u_l2', 'u_l3'];
+        for (let ui = 0; ui < 4; ui++) {
+          gl.activeTexture(gl.TEXTURE0 + ui);
+          gl.bindTexture(gl.TEXTURE_2D, recs[ui].texture);
+          gl.uniform1i(gl.getUniformLocation(progFlow, units[ui]), ui);
+        }
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.activeTexture(gl.TEXTURE0);
+        continue;
+      }
+
+      // WE flag layer (rippling tinted cloth): eagleflag
+      if (layer.shader === 'flag' && layer.texUrls && layer.texUrls.length >= 3) {
+        const recs = layer.texUrls.slice(0, 3).map((u) => loadTexture(u, true));
+        if (!recs.every((r) => r.loaded)) continue;
+        gl.useProgram(progFlag);
+        gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+        const flPos = gl.getAttribLocation(progFlag, 'a_pos');
+        const flUv = gl.getAttribLocation(progFlag, 'a_uv');
+        gl.enableVertexAttribArray(flPos);
+        gl.enableVertexAttribArray(flUv);
+        gl.vertexAttribPointer(flPos, 2, gl.FLOAT, false, 16, 0);
+        gl.vertexAttribPointer(flUv, 2, gl.FLOAT, false, 16, 8);
+        const model = mat4Transform2D(layer.x, layer.y, layer.w, layer.h, layer.angle || 0);
+        gl.uniformMatrix4fv(gl.getUniformLocation(progFlag, 'u_proj'), false, proj);
+        gl.uniformMatrix4fv(gl.getUniformLocation(progFlag, 'u_model'), false, model);
+        const flcrop = layer.uvCrop || [0, 0, 1, 1];
+        gl.uniform4f(gl.getUniformLocation(progFlag, 'u_uvRect'), flcrop[0], flcrop[1], flcrop[2], flcrop[3]);
+        gl.uniform1f(gl.getUniformLocation(progFlag, 'u_time'), elapsed);
+        const fnums = layer.nums || {};
+        gl.uniform1f(gl.getUniformLocation(progFlag, 'u_speed'), fnums.Speed ?? 0.4);
+        gl.uniform1f(gl.getUniformLocation(progFlag, 'u_strength'), fnums.Strength ?? 0.5);
+        const fcols = layer.userColors || {};
+        const fc1 = fcols.color1 || [0, 0, 0];
+        const fc2 = fcols.color2 || [0, 0, 0];
+        const fc3 = fcols.color3 || [1, 1, 1];
+        gl.uniform3f(gl.getUniformLocation(progFlag, 'u_color1'), fc1[0], fc1[1], fc1[2]);
+        gl.uniform3f(gl.getUniformLocation(progFlag, 'u_color2'), fc2[0], fc2[1], fc2[2]);
+        gl.uniform3f(gl.getUniformLocation(progFlag, 'u_color3'), fc3[0], fc3[1], fc3[2]);
+        const funits = ['u_tex', 'u_normal', 'u_cloth'];
+        for (let ui = 0; ui < 3; ui++) {
+          gl.activeTexture(gl.TEXTURE0 + ui);
+          gl.bindTexture(gl.TEXTURE_2D, recs[ui].texture);
+          gl.uniform1i(gl.getUniformLocation(progFlag, funits[ui]), ui);
+        }
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.activeTexture(gl.TEXTURE0);
+        continue;
+      }
+
+      // Standard Layer
+      const texRec = loadTexture(layer.texUrl);
+      if (!texRec.loaded) continue;
+
+      gl.useProgram(progBasic);
+      gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+      gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 16, 8);
+
+      const crop = layer.uvCrop || [0, 0, 1, 1];
+      gl.uniform4f(gl.getUniformLocation(progBasic, 'u_uvRect'), crop[0], crop[1], crop[2], crop[3]);
+      const lnums = layer.nums || {};
+      gl.uniform1f(gl.getUniformLocation(progBasic, 'u_bright'), lnums.Bright ?? 1);
+      gl.uniform1f(gl.getUniformLocation(progBasic, 'u_power'), lnums.Power ?? 1);
+
+      const model = mat4Transform2D(layer.x, layer.y, layer.w, layer.h, layer.angle || 0);
+      gl.uniformMatrix4fv(gl.getUniformLocation(progBasic, 'u_proj'), false, proj);
+      gl.uniformMatrix4fv(gl.getUniformLocation(progBasic, 'u_model'), false, model);
+      gl.uniform1f(gl.getUniformLocation(progBasic, 'u_time'), elapsed);
+      gl.uniform1f(gl.getUniformLocation(progBasic, 'u_alpha'), layer.alpha != null ? layer.alpha : 1.0);
+      gl.uniform3f(gl.getUniformLocation(progBasic, 'u_tint'), 1, 1, 1);
+      gl.uniform1f(gl.getUniformLocation(progBasic, 'u_sway'), layer.sway || 0);
+      gl.uniform1f(gl.getUniformLocation(progBasic, 'u_sway_speed'), layer.swaySpeed || 1.0);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, texRec.texture);
+      gl.uniform1i(gl.getUniformLocation(progBasic, 'u_tex'), 0);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    // Render Particles (Shooting Stars, Fireflies)
+    if (activeParticles.length > 0) {
+      gl.useProgram(progParticle);
+      gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+      const pPos = gl.getAttribLocation(progParticle, 'a_pos');
+      const pUv = gl.getAttribLocation(progParticle, 'a_uv');
+      gl.enableVertexAttribArray(pPos);
+      gl.enableVertexAttribArray(pUv);
+      gl.vertexAttribPointer(pPos, 2, gl.FLOAT, false, 16, 0);
+      gl.vertexAttribPointer(pUv, 2, gl.FLOAT, false, 16, 8);
+      gl.uniformMatrix4fv(gl.getUniformLocation(progParticle, 'u_proj'), false, proj);
+      gl.uniform4f(gl.getUniformLocation(progParticle, 'u_uvRect'), 0, 0, 1, 1);
+
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // Additive luminous particles
+
+      for (const p of activeParticles) {
+        const progress = p.life / p.maxLife;
+        const alpha = Math.sin(progress * Math.PI); // Fade in & out
+        const texRec = p.system.texUrl ? loadTexture(p.system.texUrl) : null;
+        if (texRec && texRec.loaded) {
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, texRec.texture);
+          gl.uniform1i(gl.getUniformLocation(progParticle, 'u_tex'), 0);
+        }
+
+        // Draw trail if meteor
+        if (p.trail && p.trail.length > 1) {
+          for (let ti = 0; ti < p.trail.length; ti++) {
+            const tp = p.trail[ti];
+            const tRatio = (ti + 1) / p.trail.length;
+            const tAlpha = alpha * tRatio * 0.6;
+            const tModel = mat4Transform2D(tp.x, tp.y, p.size * tRatio * 1.5, p.size * 0.4, Math.atan2(p.vy, p.vx));
+            gl.uniformMatrix4fv(gl.getUniformLocation(progParticle, 'u_model'), false, tModel);
+            gl.uniform4f(gl.getUniformLocation(progParticle, 'u_color'), p.color[0], p.color[1], p.color[2], tAlpha);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+          }
+        }
+
+        const model = mat4Transform2D(p.x, p.y, p.size * (p.system.type === 'meteor' ? 3 : 1), p.size, Math.atan2(p.vy, p.vx));
+        gl.uniformMatrix4fv(gl.getUniformLocation(progParticle, 'u_model'), false, model);
+        gl.uniform4f(gl.getUniformLocation(progParticle, 'u_color'), p.color[0], p.color[1], p.color[2], alpha * p.color[3]);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  // Crash guard: a render exception must not freeze the wallpaper silently.
+  function render(now) {
+    try {
+      renderFrame(now);
+    } catch (e) {
+      if (!window.__weRenderErr) {
+        window.__weRenderErr = 1;
+        console.error('we-scene-player render error:', e && e.stack || String(e));
+      }
+      requestAnimationFrame(render);
+    }
+  }
+
+  // Load manifest
+  const token = window.location.pathname.split('/').filter(Boolean).pop();
+  fetch('/api/skin-center/we/scene-manifest/' + token)
+    .then(res => res.json())
+    .then(data => {
+      if (data.ok && data.manifest) {
+        sceneData = data.manifest;
+      }
+    })
+    .catch(err => console.error('Failed to load scene manifest', err));
+
+  // Listen for controller messages; only the embedding parent on the same
+  // origin may steer the player.
+  window.addEventListener('message', (ev) => {
+    if (ev.source !== window.parent || ev.origin !== window.location.origin) return;
+    const msg = ev.data;
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'dsh-set-fit' && msg.fit) {
+      fitMode = msg.fit;
+    } else if (msg.type === 'dsh-set-pause') {
+      isPaused = !!msg.paused;
+    }
+  });
+
+  requestAnimationFrame(render);
+})();
+<\/script>
+</body>
+</html>
+`;
 //#endregion
 //#region src/we-routes.ts
 /**
@@ -2225,6 +6258,88 @@ const WE_SHIM_JS = [
 * it. Nothing is downloaded, uploaded, or redistributed.
 * @module @linxin666/dsh-client-ui-skin-center/we-routes
 */
+/**
+* Read a web wallpaper's project.json property defaults so the shim can
+* deliver them like WE does on startup. Values pass through raw: colors stay
+* 'r g b' strings, sliders numbers, checkboxes booleans — exactly what the
+* web API hands to applyUserProperties.
+*/
+function webPropertyDefaults(projectRoot) {
+	const out = {};
+	try {
+		const raw = readFileSync(join(projectRoot, "project.json"), "utf8");
+		const props = JSON.parse(raw).general?.properties;
+		if (props) {
+			for (const [key, def] of Object.entries(props)) if (def && typeof def === "object" && "value" in def) out[key] = { value: def.value };
+		}
+	} catch {}
+	return out;
+}
+/** Encode RGBA pixel data to PNG buffer using Node zlib for compression. */
+function encodeRGBAToPNG(width, height, rgba) {
+	const rowBytes = width * 4;
+	const raw = Buffer.alloc(height * (1 + rowBytes));
+	for (let y = 0; y < height; y++) {
+		raw[y * (1 + rowBytes)] = 0;
+		raw.set(rgba.slice(y * rowBytes, (y + 1) * rowBytes), y * (1 + rowBytes) + 1);
+	}
+	const compressed = deflateSync(raw, { level: 1 });
+	const crcTable = [];
+	for (let n = 0; n < 256; n++) {
+		let c = n;
+		for (let k = 0; k < 8; k++) c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
+		crcTable[n] = c;
+	}
+	const crc32 = (buf, start, len) => {
+		let c = 4294967295;
+		for (let i = start; i < start + len; i++) c = crcTable[(c ^ buf[i]) & 255] ^ c >>> 8;
+		return (c ^ 4294967295) >>> 0;
+	};
+	const pngSize = 33 + (12 + compressed.length) + 12;
+	const png = Buffer.alloc(pngSize);
+	let p = 0;
+	png.set([
+		137,
+		80,
+		78,
+		71,
+		13,
+		10,
+		26,
+		10
+	], 0);
+	p = 8;
+	png.writeUInt32BE(13, p);
+	p += 4;
+	png.write("IHDR", p);
+	p += 4;
+	png.writeUInt32BE(width, p);
+	p += 4;
+	png.writeUInt32BE(height, p);
+	p += 4;
+	png[p++] = 8;
+	png[p++] = 6;
+	png[p++] = 0;
+	png[p++] = 0;
+	png[p++] = 0;
+	png.writeUInt32BE(crc32(png, 12, 17), p);
+	p += 4;
+	png.writeUInt32BE(compressed.length, p);
+	p += 4;
+	png.write("IDAT", p);
+	p += 4;
+	compressed.copy(png, p);
+	p += compressed.length;
+	png.writeUInt32BE(crc32(png, p - compressed.length - 4, compressed.length + 4), p);
+	p += 4;
+	png.writeUInt32BE(0, p);
+	p += 4;
+	png.write("IEND", p);
+	p += 4;
+	png.writeUInt32BE(crc32(png, p - 4, 4), p);
+	p += 4;
+	return png;
+}
 /** Browser-facing base path of the wallpaper API. */
 const WE_API_PREFIX = "/api/skin-center/we";
 /** Sanitize a wallpaper id into a safe store directory name. */
@@ -2301,7 +6416,18 @@ function serveFile(absPath, req, res) {
 }
 /** Build the route family. */
 function makeWeRoutes(deps) {
-	const mediaMap = /* @__PURE__ */ new Map();
+	const tokenStorePath = join(deps.storeDir, ".cache", "we-tokens.json");
+	let mediaMap = /* @__PURE__ */ new Map();
+	try {
+		const saved = JSON.parse(readFileSync(tokenStorePath, "utf8"));
+		if (saved !== null && typeof saved === "object") mediaMap = new Map(Object.entries(saved));
+	} catch {}
+	const persistTokens = () => {
+		try {
+			mkdirSync(dirname(tokenStorePath), { recursive: true });
+			writeFileSync(tokenStorePath, JSON.stringify(Object.fromEntries(mediaMap)), "utf8");
+		} catch {}
+	};
 	const tokenFor = (absPath) => {
 		const token = Buffer.from(absPath, "utf8").toString("base64url");
 		mediaMap.set(token, absPath);
@@ -2309,10 +6435,49 @@ function makeWeRoutes(deps) {
 	};
 	const freshInventory = () => buildInventory({
 		manualDirs: deps.getConfig().weLibraryDirs ?? [],
-		storeDir: deps.storeDir
+		storeDir: deps.storeDir,
+		autoDetect: deps.autoDetect
 	});
+	const sceneProbeCache = /* @__PURE__ */ new Map();
+	const MAX_PROBE_CACHE = 256;
 	const entryToJson = (entry) => {
 		const hasFile = existsSync(entry.fileAbs);
+		let hasVideo = false;
+		let hasSceneWebGL = false;
+		if (entry.type === "scene" && hasFile) {
+			let mtimeMs = 0;
+			let size = 0;
+			try {
+				const st = statSync(entry.fileAbs);
+				mtimeMs = st.mtimeMs;
+				size = st.size;
+			} catch {}
+			const key = entry.fileAbs + ":" + mtimeMs + ":" + size;
+			let probe = mtimeMs > 0 ? sceneProbeCache.get(key) : void 0;
+			if (!probe) {
+				let hasVideoNow = false;
+				let hasSceneWebGLNow = false;
+				try {
+					hasVideoNow = entry.fileAbs.toLowerCase().endsWith(".json") ? hasSceneVideoFromDir(dirname(entry.fileAbs)) : hasSceneVideo(new Uint8Array(readFileSync(entry.fileAbs)));
+					if (!hasVideoNow) {
+						const manifest = entry.fileAbs.toLowerCase().endsWith(".json") ? buildSceneManifestFromDir(dirname(entry.fileAbs), "check") : buildSceneManifest(new Uint8Array(readFileSync(entry.fileAbs)), "check");
+						if (manifest && (manifest.layers && manifest.layers.length >= 1 || manifest.is3D && manifest.models && manifest.models.length > 0)) hasSceneWebGLNow = true;
+					}
+				} catch {
+					hasSceneWebGLNow = false;
+				}
+				probe = {
+					hasVideo: hasVideoNow,
+					hasSceneWebGL: hasSceneWebGLNow
+				};
+				if (mtimeMs > 0) {
+					if (sceneProbeCache.size >= MAX_PROBE_CACHE) sceneProbeCache.clear();
+					sceneProbeCache.set(key, probe);
+				}
+			}
+			hasVideo = probe.hasVideo;
+			hasSceneWebGL = probe.hasSceneWebGL;
+		}
 		return {
 			id: entry.id,
 			title: entry.title,
@@ -2320,16 +6485,25 @@ function makeWeRoutes(deps) {
 			source: entry.source,
 			playable: entry.playable,
 			updateAvailable: entry.updateAvailable,
-			videoUrl: entry.type === "video" && hasFile ? "/api/skin-center/we/media/" + tokenFor(entry.fileAbs) : null,
+			videoUrl: entry.type === "video" && hasFile ? "/api/skin-center/we/media/" + tokenFor(entry.fileAbs) : hasVideo ? "/api/skin-center/we/scene-video/" + tokenFor(entry.fileAbs) : null,
 			webUrl: entry.type === "web" && hasFile ? "/api/skin-center/we/web/" + tokenFor(entry.fileAbs) + "/" : null,
 			frameUrl: entry.type === "scene" && hasFile ? "/api/skin-center/we/scene-frame/" + tokenFor(entry.fileAbs) : null,
+			sceneUrl: hasSceneWebGL ? "/api/skin-center/we/scene-runtime/" + tokenFor(entry.fileAbs) : null,
 			previewUrl: entry.previewAbs ? "/api/skin-center/we/preview/" + tokenFor(entry.previewAbs) : null
 		};
 	};
-	/** Resolve a token from a prefix route, or answer 404. */
+	/**
+	* Resolve a token from a prefix route, or answer 404. Tokens resolve
+	* through the issued-token map only: a client-supplied path must never
+	* reach the filesystem, otherwise any wallpaper (web wallpapers run
+	* arbitrary JS same-origin) could read arbitrary local files.
+	*/
 	const resolveToken = (req, res, prefix) => {
-		const pathname = new URL(req.url || "/", "http://localhost").pathname;
-		const token = decodeURIComponent(pathname.slice(prefix.length).split("/")[0] ?? "");
+		let token = "";
+		try {
+			const pathname = new URL(req.url || "/", "http://localhost").pathname;
+			token = decodeURIComponent(pathname.slice(prefix.length).split("/")[0] ?? "");
+		} catch {}
 		const abs = mediaMap.get(token);
 		if (!abs) {
 			json(res, 404, {
@@ -2355,12 +6529,14 @@ function makeWeRoutes(deps) {
 			if (!requireSameOrigin(req, res)) return;
 			try {
 				const inventory = freshInventory();
+				const wallpapers = inventory.wallpapers.map(entryToJson);
+				persistTokens();
 				json(res, 200, {
 					ok: true,
 					installDir: inventory.installDir,
 					total: inventory.total,
 					portableCount: inventory.portableCount,
-					wallpapers: inventory.wallpapers.map(entryToJson)
+					wallpapers
 				});
 			} catch (error) {
 				json(res, 500, {
@@ -2381,6 +6557,7 @@ function makeWeRoutes(deps) {
 				});
 				return;
 			}
+			if (!requireSameOrigin(req, res)) return;
 			res.writeHead(200, {
 				"content-type": "text/javascript; charset=utf-8",
 				"cache-control": "no-store"
@@ -2401,11 +6578,71 @@ function makeWeRoutes(deps) {
 					});
 					return;
 				}
+				if (!requireSameOrigin(req, res)) return;
 				const abs = resolveToken(req, res, prefix);
-				if (abs) serveFile(abs, req, res);
+				if (!abs) return;
+				if (abs.toLowerCase().endsWith(".tex")) try {
+					const texBuf = readFileSync(abs);
+					const result = parseTexToRGBA(new Uint8Array(texBuf.buffer, texBuf.byteOffset, texBuf.byteLength));
+					if (result) {
+						const pngBuf = encodeRGBAToPNG(result.width, result.height, result.rgba);
+						res.writeHead(200, {
+							"Content-Type": "image/png",
+							"Content-Length": pngBuf.length,
+							"Cache-Control": "public, max-age=86400"
+						});
+						res.end(pngBuf);
+						return;
+					}
+				} catch {}
+				serveFile(abs, req, res);
 			}
 		});
 	}
+	const sceneVideoPrefix = "/api/skin-center/we/scene-video/";
+	routes.push({
+		kind: "prefix",
+		path: "/api/skin-center/we/scene-video",
+		handler: (req, res) => {
+			if (req.method !== "GET") {
+				json(res, 405, {
+					ok: false,
+					error: "method-not-allowed"
+				});
+				return;
+			}
+			if (!requireSameOrigin(req, res)) return;
+			const abs = resolveToken(req, res, sceneVideoPrefix);
+			if (!abs) return;
+			(async () => {
+				let mtime = 0;
+				try {
+					mtime = statSync(abs).mtimeMs;
+				} catch {}
+				const cacheDir = join(deps.storeDir, ".cache", "videos");
+				const cachePath = join(cacheDir, Buffer.from(abs, "utf8").toString("base64url") + "_" + String(Math.round(mtime)) + ".mp4");
+				if (!existsSync(cachePath)) {
+					const { extractSceneVideo, extractSceneVideoFromDir } = await Promise.resolve().then(() => pkg_extract_exports);
+					const videoBytes = abs.toLowerCase().endsWith(".json") ? extractSceneVideoFromDir(dirname(abs)) : extractSceneVideo(new Uint8Array(readFileSync(abs)));
+					if (!videoBytes) {
+						json(res, 404, {
+							ok: false,
+							error: "no-video-found"
+						});
+						return;
+					}
+					mkdirSync(cacheDir, { recursive: true });
+					writeFileSync(cachePath, videoBytes);
+				}
+				serveFile(cachePath, req, res);
+			})().catch((error) => {
+				json(res, 422, {
+					ok: false,
+					error: error instanceof Error ? error.message : String(error)
+				});
+			});
+		}
+	});
 	routes.push({
 		kind: "prefix",
 		path: "/api/skin-center/we/web",
@@ -2417,8 +6654,18 @@ function makeWeRoutes(deps) {
 				});
 				return;
 			}
+			if (!requireSameOrigin(req, res)) return;
 			const pathname = new URL(req.url || "/", "http://localhost").pathname;
-			const rest = decodeURIComponent(pathname.slice(24));
+			let rest = "";
+			try {
+				rest = decodeURIComponent(pathname.slice(24));
+			} catch {
+				json(res, 400, {
+					ok: false,
+					error: "bad-request"
+				});
+				return;
+			}
 			const token = rest.split("/")[0] ?? "";
 			const entryAbs = mediaMap.get(token);
 			if (!entryAbs) {
@@ -2446,7 +6693,7 @@ function makeWeRoutes(deps) {
 			}
 			if (/\.html?$/i.test(abs)) {
 				const html = readFileSync(abs, "utf8");
-				const tag = "<script src=\"/api/skin-center/we/shim.js\"><\/script>";
+				const tag = "<script>window.__dshWeDefaultProps = " + JSON.stringify(webPropertyDefaults(root)).replace(/</g, "\\u003c") + ";<\/script><script src=\"/api/skin-center/we/shim.js\"><\/script>";
 				const injected = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + tag) : tag + html;
 				res.writeHead(200, {
 					"content-type": "text/html; charset=utf-8",
@@ -2470,6 +6717,7 @@ function makeWeRoutes(deps) {
 				});
 				return;
 			}
+			if (!requireSameOrigin(req, res)) return;
 			const abs = resolveToken(req, res, framePrefix);
 			if (!abs) return;
 			(async () => {
@@ -2480,7 +6728,7 @@ function makeWeRoutes(deps) {
 				const cacheDir = join(deps.storeDir, ".cache", "frames");
 				const cachePath = join(cacheDir, Buffer.from(abs, "utf8").toString("base64url") + "_" + String(Math.round(mtime)) + ".png");
 				if (!existsSync(cachePath)) {
-					const { extractSceneMainImage, extractSceneMainImageFromDir } = await import("./pkg-extract-Dmt-pjwV.js");
+					const { extractSceneMainImage, extractSceneMainImageFromDir } = await Promise.resolve().then(() => pkg_extract_exports);
 					const frame = abs.toLowerCase().endsWith(".json") ? extractSceneMainImageFromDir(dirname(abs)) : extractSceneMainImage(new Uint8Array(readFileSync(abs)));
 					mkdirSync(cacheDir, { recursive: true });
 					writeFileSync(cachePath, frame.png);
@@ -2494,6 +6742,125 @@ function makeWeRoutes(deps) {
 					error: error instanceof Error ? error.message : String(error)
 				});
 			});
+		}
+	});
+	routes.push({
+		kind: "prefix",
+		path: "/api/skin-center/we/scene-runtime",
+		handler: (req, res) => {
+			if (req.method !== "GET") {
+				json(res, 405, {
+					ok: false,
+					error: "method-not-allowed"
+				});
+				return;
+			}
+			if (!requireSameOrigin(req, res)) return;
+			res.writeHead(200, {
+				"content-type": "text/html; charset=utf-8",
+				"cache-control": "no-store"
+			});
+			res.end(WE_SCENE_PLAYER_HTML);
+		}
+	});
+	const sceneManifestPrefix = "/api/skin-center/we/scene-manifest/";
+	routes.push({
+		kind: "prefix",
+		path: "/api/skin-center/we/scene-manifest",
+		handler: (req, res) => {
+			if (req.method !== "GET") {
+				json(res, 405, {
+					ok: false,
+					error: "method-not-allowed"
+				});
+				return;
+			}
+			if (!requireSameOrigin(req, res)) return;
+			const abs = resolveToken(req, res, sceneManifestPrefix);
+			if (!abs) return;
+			try {
+				const token = Buffer.from(abs, "utf8").toString("base64url");
+				const manifest = abs.toLowerCase().endsWith(".json") ? buildSceneManifestFromDir(dirname(abs), token) : buildSceneManifest(new Uint8Array(readFileSync(abs)), token);
+				if (!manifest) {
+					json(res, 404, {
+						ok: false,
+						error: "manifest-build-failed"
+					});
+					return;
+				}
+				json(res, 200, {
+					ok: true,
+					manifest
+				});
+			} catch (err) {
+				json(res, 500, {
+					ok: false,
+					error: err instanceof Error ? err.message : String(err)
+				});
+			}
+		}
+	});
+	routes.push({
+		kind: "prefix",
+		path: "/api/skin-center/we/scene-resource",
+		handler: (req, res) => {
+			if (req.method !== "GET") {
+				json(res, 405, {
+					ok: false,
+					error: "method-not-allowed"
+				});
+				return;
+			}
+			if (!requireSameOrigin(req, res)) return;
+			const pathname = new URL(req.url || "/", "http://localhost").pathname;
+			let rest = "";
+			try {
+				rest = decodeURIComponent(pathname.slice(35));
+			} catch {
+				json(res, 400, {
+					ok: false,
+					error: "bad-request"
+				});
+				return;
+			}
+			const token = rest.split("/")[0] ?? "";
+			const entryAbs = mediaMap.get(token);
+			if (!entryAbs) {
+				json(res, 404, {
+					ok: false,
+					error: "unknown-token"
+				});
+				return;
+			}
+			const subpath = rest.slice(token.length).replace(/^\/+/, "");
+			if (!subpath) {
+				json(res, 400, {
+					ok: false,
+					error: "missing-subpath"
+				});
+				return;
+			}
+			try {
+				const resBytes = entryAbs.toLowerCase().endsWith(".json") ? extractSceneResourceFromDir(dirname(entryAbs), subpath) : extractSceneResource(new Uint8Array(readFileSync(entryAbs)), subpath);
+				if (!resBytes) {
+					json(res, 404, {
+						ok: false,
+						error: "resource-not-found"
+					});
+					return;
+				}
+				const isPng = resBytes.length > 8 && resBytes[0] === 137 && resBytes[1] === 80 && resBytes[2] === 78 && resBytes[3] === 71;
+				res.writeHead(200, {
+					"content-type": isPng ? "image/png" : "application/octet-stream",
+					"cache-control": "no-store"
+				});
+				res.end(Buffer.from(resBytes));
+			} catch (err) {
+				json(res, 500, {
+					ok: false,
+					error: err instanceof Error ? err.message : String(err)
+				});
+			}
 		}
 	});
 	/** Read the {id} field of a wallpaper POST body. */
@@ -2708,7 +7075,12 @@ const SkinWallpaperConfigSchema = z.object({
 	mode: z.union(["live", "frame"]).default("live"),
 	pauseOnHidden: z.boolean().default(true),
 	dim: z.number().min(0).max(90).step(5).default(25),
-	wallpaperBlur: z.number().min(0).max(60).step(1).default(0)
+	wallpaperBlur: z.number().min(0).max(60).step(1).default(0),
+	fit: z.union([
+		"cover",
+		"contain",
+		"fill"
+	]).default("cover")
 });
 /**
 * Register the skin-center API routes.

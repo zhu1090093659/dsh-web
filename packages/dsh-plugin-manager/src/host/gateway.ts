@@ -107,22 +107,29 @@ function capture(chunk: Buffer, buffer: { value: string }): void {
  * @param binary - the dsh CLI path found by {@link findDshBinary}.
  * @param platform - process platform (test seam).
  * @param localNodeExists - existence probe (test seam).
+ * @param binJsExists - existence probe for the resolved bin script (test seam).
  * @returns the executable and the argument prefix to run the dsh bin script.
  */
 export function dshSpawnCommand(
   binary: string,
   platform: string = process.platform,
   localNodeExists: (path: string) => boolean = existsSync,
+  binJsExists: (path: string) => boolean = existsSync,
 ): { command: string; argsPrefix: string[] } {
   if (platform !== 'win32') return { command: binary, argsPrefix: [] }
   // Windows paths must be parsed with win32 semantics even when the probing
   // host is POSIX (unit tests, and any future cross-platform probing).
   const dir = win32.dirname(binary)
   const localNode = win32.join(dir, 'node.exe')
-  // The npm-global layout (dsh.cmd next to node_modules/@deepseek-ai/dsh):
-  // pnpm/yarn shims place bin.js elsewhere; extend the resolution there when
-  // such a layout is reported.
-  const binJs = win32.join(dir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+  // The npm-global layout keeps the package next to the dsh.cmd shim
+  // (node_modules/@deepseek-ai/dsh); the npx layout puts shims in
+  // node_modules/.bin with the package one level above (issue #683). Probe
+  // both and fall back to the npm-global shape when neither exists yet.
+  const binJsCandidates = [
+    win32.join(dir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
+    win32.join(dir, '..', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
+  ]
+  const binJs = binJsCandidates.find((candidate) => binJsExists(candidate)) ?? binJsCandidates[0]
   return { command: localNodeExists(localNode) ? localNode : process.execPath, argsPrefix: [binJs] }
 }
 
@@ -198,9 +205,22 @@ export class CliGateway {
     } = {},
   ) {}
 
-  /** Chain one mutation onto the queue; a settled job never blocks the next one. */
+  /**
+   * Run one profile mutation after every mutation already queued. The returned
+   * promise keeps the task's own result or rejection, while the queue tail is
+   * always recovered so one failed write cannot block later work. Routes that
+   * edit profile files directly must use this seam so they cannot overlap the
+   * CLI install/remove writer.
+   */
+  withMutationLock<T>(task: () => Promise<T>): Promise<T> {
+    const result = this.queue.then(task)
+    this.queue = result.then(() => undefined, () => undefined)
+    return result
+  }
+
+  /** Chain one fire-and-forget CLI mutation onto the shared queue. */
   private enqueue(task: () => Promise<void>): void {
-    this.queue = this.queue.then(task).catch(() => {})
+    void this.withMutationLock(task).catch(() => {})
   }
 
   /** The dsh CLI path, through the test seam when present. */

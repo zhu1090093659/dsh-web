@@ -5,7 +5,7 @@ import { Readable } from 'node:stream'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { makeGatewayRoutes } from '../src/host/routes.ts'
-import type { CliGateway } from '../src/host/gateway.ts'
+import { CliGateway } from '../src/host/gateway.ts'
 import type { ProfileFacts } from '../src/host/profile.ts'
 
 /** One temp profile with a dsh-memoir-shaped dependency (bundle patch claims id=memoir). */
@@ -21,6 +21,26 @@ function makeProfile(): { facts: ProfileFacts; dir: string } {
   writeFileSync(join(profileDir, 'cordis.patch.yml'), '# layer\n[]\n')
   writeFileSync(join(profileDir, 'node_modules', 'dsh-memoir', 'package.json'), JSON.stringify({ name: 'dsh-memoir', version: '0.4.3' }))
   writeFileSync(join(profileDir, 'node_modules', 'dsh-memoir', 'cordis.patch.yml'), '- insert:\n    - id: memoir\n      name: dsh-memoir\n')
+  const facts: ProfileFacts = {
+    profileName: 'web',
+    profileDir,
+    patchPath: join(profileDir, 'cordis.patch.yml'),
+    packageJsonPath: join(profileDir, 'package.json'),
+  }
+  return { facts, dir }
+}
+
+/** One temp profile with several plain plugins for concurrent row mutations. */
+function makePlainProfile(ids: readonly string[]): { facts: ProfileFacts; dir: string } {
+  const dir = mkdtempSync(join(tmpdir(), 'plugin-manager-set-enabled-concurrent-'))
+  const profileDir = join(dir, 'profiles', 'web')
+  mkdirSync(profileDir, { recursive: true })
+  writeFileSync(join(profileDir, 'package.json'), JSON.stringify({
+    name: 'dsh-profile-web', private: true,
+    dependencies: Object.fromEntries(ids.map(id => [id, `link:/${id}`])),
+    dsh: { profile: { bundles: [] } },
+  }))
+  writeFileSync(join(profileDir, 'cordis.patch.yml'), '# layer\n[]\n')
   const facts: ProfileFacts = {
     profileName: 'web',
     profileDir,
@@ -52,7 +72,7 @@ function captureResponse(): { res: ServerResponse; body: () => string; status: (
 
 /** The set-enabled route handler of a gateway route set. */
 function setEnabledHandler(facts: ProfileFacts) {
-  const gateway = {} as CliGateway
+  const gateway = new CliGateway(facts)
   const routes = makeGatewayRoutes({ facts, gateway, cliAvailable: () => true })
   return routes.find(route => route.path === '/api/plugin-manager/set-enabled')!.handler
 }
@@ -63,6 +83,21 @@ afterEach(() => {
 })
 
 describe('set-enabled id space', () => {
+  it('serializes concurrent toggles so every acknowledged row persists', async () => {
+    const ids = Array.from({ length: 16 }, (_, index) => `dsh-concurrent-${String(index)}`)
+    const { facts, dir } = makePlainProfile(ids)
+    tempDirs.push(dir)
+    const handler = setEnabledHandler(facts)
+    const responses = await Promise.all(ids.map(async id => {
+      const response = captureResponse()
+      await handler(loopbackRequest({ id, enabled: false }), response.res)
+      return response
+    }))
+    expect(responses.map(response => response.status())).toEqual(ids.map(() => 200))
+    const patch = readFileSync(facts.patchPath, 'utf8')
+    for (const id of ids) expect(patch).toContain(`id: ${id}`)
+  })
+
   it('writes the claimed entry id (memoir), not the package name, and the row reports disabled', async () => {
     const { facts, dir } = makeProfile()
     tempDirs.push(dir)

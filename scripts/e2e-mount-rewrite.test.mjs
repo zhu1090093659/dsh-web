@@ -11,7 +11,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { rewriteDependencies, findWorkspacePackage } from './e2e-mount-rewrite'
+import { rewriteDependencies, findWorkspacePackage, packWorkspace } from './e2e-mount-rewrite'
 
 function makeTmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-rewrite-test-'))
@@ -80,6 +80,67 @@ test('auto mode: published deps stay on npm, unpublished deps rewrite to file:',
   assert.ok(report.some(line => line.includes('npm 未发布')))
 })
 
+test('auto mode: two unpublished deps rewrite to distinct tarballs', async () => {
+  const tmp = makeTmp()
+  const root = path.join(tmp, 'repo')
+  makeWorkspace(root)
+  const pkgPath = makeTarballPkg(path.join(tmp, 'tarball'))
+  const packed = []
+  const report = await rewriteDependencies({
+    pkgPath,
+    root,
+    checkPublished: async () => false,
+    pack: (dir, outDir) => {
+      packed.push(dir)
+      const dest = fs.mkdtempSync(path.join(outDir, 'pack-'))
+      const tgz = path.join(dest, path.basename(dir) + '.tgz')
+      fs.writeFileSync(tgz, 'fake')
+      return tgz
+    },
+  })
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+  const tgzA = pkg.dependencies['@linxin666/dsh-a']
+  const tgzB = pkg.dependencies['@linxin666/dsh-b']
+  assert.match(tgzA, /^file:.*dsh-a\.tgz$/)
+  assert.match(tgzB, /^file:.*dsh-b\.tgz$/)
+  assert.notEqual(tgzA, tgzB)
+  assert.equal(packed.length, 2)
+  assert.ok(report.every(line => line.includes('npm 未发布')))
+})
+
+test('auto mode: pack returning the same tarball twice fails loudly', async () => {
+  const tmp = makeTmp()
+  const root = path.join(tmp, 'repo')
+  makeWorkspace(root)
+  const pkgPath = makeTarballPkg(path.join(tmp, 'tarball'))
+  await assert.rejects(
+    rewriteDependencies({
+      pkgPath,
+      root,
+      checkPublished: async () => false,
+      pack: () => '/tmp/same.tgz',
+    }),
+    /已占用的 tarball/,
+  )
+})
+
+test('packWorkspace: two packs into the same parent dir stay distinct', () => {
+  const tmp = makeTmp()
+  const a = path.join(tmp, 'dsh-a')
+  const b = path.join(tmp, 'dsh-b')
+  writePkg(a, { name: '@linxin666/dsh-a', version: '0.0.0-test' })
+  writePkg(b, { name: '@linxin666/dsh-b', version: '0.0.0-test' })
+  const outDir = path.join(tmp, 'out')
+  fs.mkdirSync(outDir)
+  const tgzA = packWorkspace(a, outDir)
+  const tgzB = packWorkspace(b, outDir)
+  assert.notEqual(tgzA, tgzB)
+  assert.match(tgzA, /dsh-a/)
+  assert.match(tgzB, /dsh-b/)
+  assert.equal(fs.readdirSync(path.dirname(tgzA)).filter(name => name.endsWith('.tgz')).length, 1)
+  assert.equal(fs.readdirSync(path.dirname(tgzB)).filter(name => name.endsWith('.tgz')).length, 1)
+})
+
 test('auto mode: unpublished dep missing from the workspace fails loudly', async () => {
   const tmp = makeTmp()
   const root = path.join(tmp, 'repo')
@@ -135,8 +196,8 @@ test('better-sidebar manual override rewrites only that dep', async () => {
 test('findWorkspacePackage scans packages/ and packages/skins/', () => {
   const tmp = makeTmp()
   makeWorkspace(tmp)
-  assert.match(findWorkspacePackage(tmp, '@linxin666/dsh-a'), /packages\/dsh-a$/)
-  assert.match(findWorkspacePackage(tmp, '@linxin666/dsh-skin-x'), /packages\/skins\/skin-x$/)
+  assert.match(findWorkspacePackage(tmp, '@linxin666/dsh-a'), /packages[/\\]dsh-a$/)
+  assert.match(findWorkspacePackage(tmp, '@linxin666/dsh-skin-x'), /packages[/\\]skins[/\\]skin-x$/)
   assert.equal(findWorkspacePackage(tmp, '@linxin666/nope'), null)
 })
 

@@ -41,12 +41,19 @@ async function checkPublished(name, version) {
   return Boolean(data.versions && data.versions[version])
 }
 
-/** Default packer: pnpm pack the workspace directory into outDir, return the tarball path. */
+/**
+ * Default packer: pnpm pack one workspace directory and return that tarball.
+ * Each call uses a unique subdirectory of outDir so a second unpublished
+ * family package cannot pick up the previous tarball via readdir + sort().pop().
+ */
 function packWorkspace(pkgDir, outDir) {
-  execFileSync('pnpm', ['pack', '--pack-destination', outDir], { cwd: pkgDir, stdio: 'pipe' })
-  const names = fs.readdirSync(outDir).filter(name => name.endsWith('.tgz'))
-  if (names.length === 0) throw new Error('pnpm pack 未产出 tarball（' + pkgDir + '）')
-  return path.join(outDir, names.sort().pop())
+  const dest = fs.mkdtempSync(path.join(outDir, 'pack-'))
+  execFileSync('pnpm', ['pack', '--pack-destination', dest], { cwd: pkgDir, stdio: 'pipe' })
+  const names = fs.readdirSync(dest).filter(name => name.endsWith('.tgz'))
+  if (names.length !== 1) {
+    throw new Error('pnpm pack 未产出唯一 tarball（' + pkgDir + '）: ' + names.join(', '))
+  }
+  return path.join(dest, names[0])
 }
 
 /** Locate a workspace package directory by its package name. */
@@ -113,6 +120,7 @@ async function rewriteDependencies(opts) {
     const check = opts.checkPublished ?? checkPublished
     const pack = opts.pack ?? packWorkspace
     const packOut = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-family-tgz-'))
+    const packedTgz = new Set()
     for (const name of familyNames) {
       const version = pkg.dependencies[name]
       if (await check(name, version)) {
@@ -122,6 +130,10 @@ async function rewriteDependencies(opts) {
       const dir = findWorkspacePackage(root, name)
       if (!dir) throw new Error('npm 未发布且仓库内找不到 workspace 包：' + name)
       const tgz = pack(dir, packOut)
+      if (packedTgz.has(tgz)) {
+        throw new Error('pack 给 ' + name + ' 返回了已占用的 tarball：' + tgz)
+      }
+      packedTgz.add(tgz)
       pkg.dependencies[name] = 'file:' + tgz
       report.push(name + '@' + version + ' npm 未发布 → file:' + tgz + '（发布窗口本地 tarball）')
     }

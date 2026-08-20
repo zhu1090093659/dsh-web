@@ -13,7 +13,7 @@
 
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { PetStateInput } from './state.ts'
-import { StatusVoice, toolArgHint, WhisperEngine } from './chatter.ts'
+import { StatusVoice, toolArgHint, WhisperEngine, type VoicePoolsProvider } from './chatter.ts'
 
 /** Runtime shape of the optional legacy activity event. */
 export interface ActivityStatusEventLike {
@@ -41,14 +41,19 @@ export interface PetActivityTransition {
   whisper?: string
 }
 
-/** Fresh projection runtime for a newly seen session. */
-export function emptyProjectionRuntime(): ProjectionRuntime {
+/**
+ * Fresh projection runtime for a newly seen session. The optional voice-pack
+ * provider (pet-center M4, issue #677) hands both chatter engines their
+ * pools; engines resolve overrides at draw time, so swapping the provider's
+ * pack re-voices live runtimes without rebuilding them.
+ */
+export function emptyProjectionRuntime(pools?: VoicePoolsProvider): ProjectionRuntime {
   return {
     activeTools: new Set(),
     officialEventsSeen: false,
     stepHadFailure: false,
-    voice: new StatusVoice(),
-    whispers: new WhisperEngine(),
+    voice: new StatusVoice(pools),
+    whispers: new WhisperEngine(pools),
   }
 }
 

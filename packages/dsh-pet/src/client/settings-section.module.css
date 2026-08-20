@@ -3,3 +3,26 @@
   margin: 0;
   padding: 0;
 }
+
+/* Registry diagnostics block (pet-center M2 P7, issue #623). */
+.diagnostics {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 1px dashed var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-dimmed);
+}
+.diagnosticsTitle {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--dsw-alias-label);
+}
+.diagnostics ul {
+  margin: 0;
+  padding-left: 16px;
+}
+.diagnostics li[data-level="error"] {
+  color: var(--dsw-alias-error, #c04848);
+}

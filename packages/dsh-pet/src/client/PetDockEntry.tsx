@@ -16,6 +16,7 @@ import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { PetDisplayConfig } from '../persist.ts'
 import type { PetStoreInstance } from './pet-store.ts'
 import { PetSprite } from './PetSprite.tsx'
+import { PetRendererSwitch } from './renderers/PetRendererSwitch.tsx'
 import { NS } from './locales.ts'
 import styles from './pet.module.css'
 
@@ -75,20 +76,27 @@ export function PetDockEntry(props: PetDockEntryProps): ReactElement {
         {snapshot === null || definition === null
           ? null
           : (
-            <PetSprite
-              snapshot={snapshot}
+            <PetRendererSwitch
               definition={definition}
-              display={snapshot.display}
-              feedback={feedback}
+              phase={snapshot?.phase ?? 'idle'}
               onPet={props.pet}
-              onFeed={props.feed}
-              onHide={props.hide}
-              onDragEnd={props.dragEnd}
-              onRename={props.rename}
-              onOpenSession={props.openSession}
-              onFeedbackDone={props.feedbackDone}
               t={props.t}
-            />
+            >
+              <PetSprite
+                snapshot={snapshot}
+                definition={definition}
+                display={snapshot.display}
+                feedback={feedback}
+                onPet={props.pet}
+                onFeed={props.feed}
+                onHide={props.hide}
+                onDragEnd={props.dragEnd}
+                onRename={props.rename}
+                onOpenSession={props.openSession}
+                onFeedbackDone={props.feedbackDone}
+                t={props.t}
+              />
+            </PetRendererSwitch>
           )}
       </span>
     )

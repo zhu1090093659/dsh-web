@@ -335,5 +335,25 @@
     "repo": "https://github.com/wingsky-1/dsh-plugin-hub/tree/main/packages/dsh-notifier",
     "npm": "@wingsky-1/dsh-notifier",
     "category": "utility"
+  },
+  {
+    "id": "dsh-logicprobe",
+    "name": "逻辑探针",
+    "nameEn": "Logic Probe",
+    "author": "AmethystLuna",
+    "description": "AI 智能体声明核查技能：枚举设计文档与重构计划中的每个可验证声明，对照代码库事实逐条核验；行为类声明升级为逻辑原语验证（7 项结构检查 + 7 项对抗探针），重构前后模型对比做回归检测，输出 file:line 证据。",
+    "descriptionEn": "Claim verification for AI coding agents: enumerate every verifiable claim in design docs and refactoring plans, verify against codebase facts, then escalate behavioral claims to logic-primitive verification (7 structural checks + 7 adversarial probes), with before/after model comparison for refactoring regression detection.",
+    "repo": "https://github.com/AmethystLuna/logicprobe",
+    "category": "tools"
+  },
+  {
+    "id": "dsh-session-delete",
+    "name": "会话删除",
+    "nameEn": "Session Delete",
+    "author": "xohmai",
+    "description": "真正删除会话磁盘日志：归档清理、批量删除、回收站还原；官方归档只隐藏不删盘。",
+    "descriptionEn": "Real session deletion with trash and restore, archived cleanup and batch delete. Official archive only hides sessions.",
+    "repo": "https://github.com/xohmai/dsh-session-delete",
+    "category": "utility"
   }
 ]

@@ -1,15 +1,56 @@
 #!/usr/bin/env node
-/**
- * dsh-skins build — retired no-op carrier (issue #506).
- *
- * Skins are pure asset directories built into the skin-center package
- * (packages/skins/skin-center/skins/<id>/); this aggregate no longer copies
- * skin assets. The package is kept for one release cycle as a dependency
- * carrier: users who upgrade @linxin666/dsh-skins automatically pull in
- * @linxin666/dsh-client-ui-skin-center, which ships every built-in skin.
- *
- * The script stays on the package's build/prepare hooks so existing
- * automation keeps working; it intentionally does nothing.
- */
+/** Generate no-op leaf packages for paths used by retired v1 skin junctions. */
 
-console.log('dsh-skins build: no-op (skins are built into @linxin666/dsh-client-ui-skin-center; see issue #506)')
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const here = dirname(fileURLToPath(import.meta.url))
+const carrierVersion = JSON.parse(readFileSync(join(here, 'package.json'), 'utf8')).version
+
+export const LEGACY_SKIN_IDS = [
+  'blue-fantasy',
+  'dragon-heir',
+  'harbor',
+  'maid-atelier',
+  'matrix',
+  'miku',
+  'minecraft',
+  'trading',
+  'whale-mom',
+  'whale-song',
+  'xp',
+]
+
+export function renderPackageJson(id) {
+  return JSON.stringify({
+    name: `@linxin666/dsh-client-ui-skin-${id}`,
+    version: carrierVersion,
+    description: `No-op compatibility shim for the retired ${id} skin package.`,
+    type: 'module',
+    main: 'lib/index.js',
+    exports: {
+      '.': './lib/index.js',
+      './client': './lib/client.js',
+      './package.json': './package.json',
+    },
+    dsh: { client: { inject: [], platform: 'web' } },
+    license: 'Apache-2.0',
+  }, null, 2) + '\n'
+}
+
+export function buildCompatibilityShims(outDir = join(here, 'skins')) {
+  rmSync(outDir, { recursive: true, force: true })
+  for (const id of LEGACY_SKIN_IDS) {
+    const dir = join(outDir, id)
+    mkdirSync(join(dir, 'lib'), { recursive: true })
+    writeFileSync(join(dir, 'package.json'), renderPackageJson(id))
+    writeFileSync(join(dir, 'lib', 'index.js'), '/** Retired v1 skin compatibility shim. */\nexport function apply() {}\n')
+    writeFileSync(join(dir, 'lib', 'client.js'), `window.__ModuleLoader__.load({\n  id: "@linxin666/dsh-client-ui-skin-${id}",\n  factory: () => ({ apply() {} }),\n});\n`)
+  }
+}
+
+if (process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1]) {
+  buildCompatibilityShims()
+  console.log(`dsh-skins build: generated ${LEGACY_SKIN_IDS.length} legacy compatibility shims`)
+}

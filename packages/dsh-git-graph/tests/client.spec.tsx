@@ -450,4 +450,45 @@ describe('GraphDialog', () => {
     expect(dialog.getAttribute('data-dsh-part')).toBe('dialog')
     expect(await screen.findByText('root commit')).toBeTruthy()
   })
+
+  it('does not re-run the initial load when the graph prop identity changes', async () => {
+    const calls: number[] = []
+    const graph = async (limit?: number) => {
+      calls.push(limit ?? 0)
+      return {
+        root: '/ws/proj', branch: 'main',
+        commits: [
+          { oid: 'aabbcc', parents: [], subject: 'root commit', author: 'Bob', authorTime: 1690000000, refs: [] },
+        ],
+        hasMore: false,
+      }
+    }
+    const { rerender } = render(
+      <GraphDialog graph={graph} onClose={() => {}} t={makeTranslate()} />,
+    )
+    await screen.findByText('root commit')
+    const callsAfterMount = calls.length
+    // The initial load ran with the page size.
+    expect(calls).toEqual([200])
+
+    // A parent re-render passes a fresh inline arrow → graph identity changes.
+    rerender(
+      <GraphDialog
+        graph={async (limit?: number) => {
+          calls.push(limit ?? 0)
+          return {
+            root: '/ws/proj', branch: 'main',
+            commits: [
+              { oid: 'aabbcc', parents: [], subject: 'root commit', author: 'Bob', authorTime: 1690000000, refs: [] },
+            ],
+            hasMore: false,
+          }
+        }}
+        onClose={() => {}}
+        t={makeTranslate()}
+      />,
+    )
+    // No new initial fetch: the effect is mount-only.
+    expect(calls.length).toBe(callsAfterMount)
+  })
 })

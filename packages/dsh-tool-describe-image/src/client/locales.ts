@@ -63,6 +63,16 @@ export const zh = {
   'probe.error': '失败：{error}',
   'preview.expand': '点击查看大图',
   'preview.close': '关闭大图',
+  'native.title': '原生图片请求',
+  'native.loading': '读取中…',
+  'native.enable': '启用',
+  'native.disable': '停用',
+  'native.busy': '写入中…',
+  'native.enabled': '当前默认模型「{model}」已启用原生图片输入；发送的图片直接交给模型，describe_image 会从该模型的工具集中隐藏。',
+  'native.disabled': '当前默认模型「{model}」未启用原生图片输入；发送的图片会被改写为 describe-image 引用。',
+  'native.unknownModel': '当前没有可用的默认模型选择。',
+  'native.unsupported': '当前宿主未挂载 llm-deepseek 设置命名空间，无法在此配置。',
+  'native.failed': '写入失败：{error}',
 } satisfies Record<string, string>
 
 /** The describe-image client namespace key union. */
@@ -131,6 +141,16 @@ export const en = {
   'probe.error': 'Failed: {error}',
   'preview.expand': 'Click to view full size',
   'preview.close': 'Close full image',
+  'native.title': 'Native image requests',
+  'native.loading': 'Loading…',
+  'native.enable': 'Enable',
+  'native.disable': 'Disable',
+  'native.busy': 'Saving…',
+  'native.enabled': 'Native image input is enabled for the default model "{model}"; sent images reach the model directly and describe_image is hidden from its toolset.',
+  'native.disabled': 'Native image input is disabled for the default model "{model}"; sent images are rewritten into describe-image references.',
+  'native.unknownModel': 'No default model selection is available.',
+  'native.unsupported': 'This host does not expose the llm-deepseek settings namespace; configuration is unavailable here.',
+  'native.failed': 'Write failed: {error}',
 } satisfies Record<string, string>
 
 /** The two dictionaries, keyed by language. */

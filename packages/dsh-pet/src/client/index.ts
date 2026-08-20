@@ -26,6 +26,8 @@ import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createPetStore, type PetStoreInstance } from './pet-store.ts'
 import { PetDockEntry, type PetInjected } from './PetDockEntry.tsx'
+import { defaultPetRendererRegistry } from './renderers/registry.ts'
+import { live2dRenderer } from './renderers/live2d.ts'
 import { PetSettingsSection, PetSettingsCardController, type PetSettings } from './PetSettingsCard.tsx'
 import { NS, en, zh, t } from './locales.ts'
 
@@ -102,6 +104,10 @@ declare module '@deepseek-ai/cordis' {
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'pet: dictionaries')
+
+  // Built-in renderers dispatch through the plugin-wide registry (pet-center
+  // M3). Registration is idempotent (id wins), so re-applies stay clean.
+  defaultPetRendererRegistry.register(live2dRenderer)
 
   const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
   const settingsScope = binder.bind<PetSettings>({ namespace: PET_SETTINGS_NS })

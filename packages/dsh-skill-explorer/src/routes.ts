@@ -254,6 +254,13 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
             writeJson(res, 404, { error: `skill ${name} has no deletable file (bundled/runtime skills cannot be deleted)` })
             return
           }
+          // A linked skill lives behind a symlink (mount-of-intent content, not
+          // created under this root). Deleting it would move the target's real
+          // SKILL.md out of place, escaping this skill root — refuse deletion.
+          if (skill.linked === true) {
+            writeJson(res, 400, { error: `skill ${name} is a linked skill and cannot be deleted` })
+            return
+          }
           const moved = await trashSkillFile(skill.path)
           writeJson(res, 200, { ok: true, name, moved })
         } catch (error) {

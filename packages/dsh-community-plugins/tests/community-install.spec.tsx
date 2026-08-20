@@ -9,7 +9,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import React, { useSyncExternalStore, type ComponentProps } from 'react'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 // The npm SDK's client half is a closure-factory bundle for the GUI's
@@ -190,6 +190,65 @@ describe('CommunityPluginsCard install states', () => {
     expect(screen.getByRole('button', { name: 'Copy install command' })).toBeTruthy()
   })
 
+  it('keeps a mutation refresh newer than an earlier list request', async () => {
+    const initialList = deferred<InstalledPluginItem[]>()
+    const list = vi.fn()
+      .mockImplementationOnce(() => initialList.promise)
+      .mockResolvedValue([INSTALLED_ROW])
+    const face = fakeFace({ list })
+    render(<CommunityPluginsCard {...cardProps(new FakeScope({}), [NPM_ENTRY], face)} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Install' }))
+    expect(await screen.findByText('Installed · restart to take effect')).toBeTruthy()
+
+    await act(async () => {
+      initialList.resolve([])
+      await initialList.promise
+    })
+    expect(screen.getByText('Installed · restart to take effect')).toBeTruthy()
+  })
+
+  it('ignores an install completion from a replaced plugin-manager face', async () => {
+    const pending = deferred<InstalledPluginItem>()
+    const previousFace = fakeFace({
+      install: vi.fn(() => pending.promise),
+      list: vi.fn(async () => []),
+    })
+    const currentFace = fakeFace({ list: vi.fn(async () => [INSTALLED_ROW]) })
+    const scope = new FakeScope({})
+    const view = render(<CommunityPluginsCard {...cardProps(scope, [NPM_ENTRY], previousFace)} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Install' }))
+    view.rerender(<CommunityPluginsCard {...cardProps(scope, [NPM_ENTRY], currentFace)} />)
+    expect(await screen.findByText('Installed · restart to take effect')).toBeTruthy()
+
+    await act(async () => {
+      pending.resolve(INSTALLED_ROW)
+      await pending.promise
+    })
+    expect(screen.getByText('Installed · restart to take effect')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Uninstall' })).toHaveProperty('disabled', false)
+  })
+
+  it('ignores an install failure from a replaced plugin-manager face', async () => {
+    const pending = deferred<InstalledPluginItem>()
+    const previousFace = fakeFace({ install: vi.fn(() => pending.promise) })
+    const currentFace = fakeFace()
+    const scope = new FakeScope({})
+    const view = render(<CommunityPluginsCard {...cardProps(scope, [NPM_ENTRY], previousFace)} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Install' }))
+    view.rerender(<CommunityPluginsCard {...cardProps(scope, [NPM_ENTRY], currentFace)} />)
+    await screen.findByRole('button', { name: 'Install' })
+
+    await act(async () => {
+      pending.reject(new Error('old connection failed'))
+      await pending.promise.catch(() => undefined)
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Install' })).toHaveProperty('disabled', false)
+  })
+
   it('shows the polled stage while installing and locks other cards', async () => {
     const pending = deferred<InstalledPluginItem>()
     const face = fakeFace({
@@ -221,6 +280,29 @@ describe('CommunityPluginsCard install states', () => {
     // The fresh snapshot has no row: the card returns to the install state.
     await screen.findByRole('button', { name: 'Install' })
     expect(screen.queryByText('Installed · restart to take effect')).toBeNull()
+  })
+
+  it('ignores an uninstall completion from a replaced plugin-manager face', async () => {
+    const pending = deferred<InstalledPluginItem[]>()
+    const previousFace = fakeFace({
+      list: vi.fn(async () => [INSTALLED_ROW]),
+      uninstall: vi.fn(() => pending.promise),
+    })
+    const currentFace = fakeFace({ list: vi.fn(async () => [INSTALLED_ROW]) })
+    const scope = new FakeScope({})
+    const view = render(<CommunityPluginsCard {...cardProps(scope, [NPM_ENTRY], previousFace)} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Uninstall' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm uninstall' }))
+    view.rerender(<CommunityPluginsCard {...cardProps(scope, [NPM_ENTRY], currentFace)} />)
+    expect(await screen.findByText('Installed · restart to take effect')).toBeTruthy()
+
+    await act(async () => {
+      pending.resolve([])
+      await pending.promise
+    })
+    expect(screen.getByText('Installed · restart to take effect')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Uninstall' })).toHaveProperty('disabled', false)
   })
 
   it('shows a bilingual-keyed inline error when install fails', async () => {

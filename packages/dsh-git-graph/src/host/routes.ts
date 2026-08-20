@@ -2,7 +2,9 @@
  * /git/* route layer: JSON envelope (ok/error with stable codes) for the
  * query/mutation operations and an SSE stream for external branch changes.
  * The service itself owns workspace gating and the git guards; this layer
- * owns HTTP shape and the SSE subscriber bookkeeping.
+ * owns HTTP shape and the SSE subscriber bookkeeping. Routes are loopback-only
+ * by default; a live paired-device cookie is an extra allow path when
+ * remote-web-ui is loaded.
  * @module dsh-git-graph/host/routes
  */
 
@@ -14,7 +16,7 @@ import {
   type GitError,
 } from '../core/types.ts'
 import { PollGuard } from './poll-guard.ts'
-import { isLoopbackRequest } from './loopback.ts'
+import { isGitAllowed } from './access.ts'
 import type { GitService } from './git-service.ts'
 
 /** Envelope every /git JSON response carries. */
@@ -204,9 +206,9 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
   }
 
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-    // Loopback fence first: never let a LAN client reach any /git operation,
-    // regardless of method or content-type.
-    if (!isLoopbackRequest(req)) {
+    // Trust fence first: never let an unpaired LAN client reach any /git
+    // operation, regardless of method or content-type.
+    if (!isGitAllowed(ctx, req)) {
       forbidden(res)
       return
     }
@@ -248,7 +250,9 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
         const rawLimit = typeof payload === 'object' && payload !== null
           ? (payload as Record<string, unknown>).limit
           : undefined
-        const limit = typeof rawLimit === 'number' && rawLimit > 0 && rawLimit <= 1000 ? rawLimit : undefined
+        // Clamp rather than reset: a limit above 1000 must not silently fall
+        // back to the 200 default (the client's load-more grows past 1000).
+        const limit = typeof rawLimit === 'number' && rawLimit > 0 ? Math.min(rawLimit, 1000) : undefined
         okView(res, await service.graph(path, limit), isGraphView)
         return
       }
@@ -283,9 +287,8 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
   }
 
   const sse = (req: IncomingMessage, res: ServerResponse): void => {
-    // Reject non-loopback clients before the stream opens: subscribing must
-    // never work for a LAN-exposed deployment.
-    if (!isLoopbackRequest(req)) {
+    // Reject unpaired non-loopback clients before the stream opens.
+    if (!isGitAllowed(ctx, req)) {
       forbidden(res)
       return
     }

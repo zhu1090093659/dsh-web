@@ -19,6 +19,8 @@ export interface SkillEntry {
   provider?: string
   level: string
   path?: string
+  /** True for skills discovered through a symlink entry (deletion not allowed). */
+  linked?: boolean
   modelInvocable: boolean
   userInvocable: boolean
 }

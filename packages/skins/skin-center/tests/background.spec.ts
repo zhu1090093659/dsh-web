@@ -81,8 +81,15 @@ function addConversationRow(): void {
   document.body.appendChild(pane)
 }
 
+function addOfficialConversationRow(): void {
+  const row = document.createElement('div')
+  row.setAttribute('data-chat-anchor-key', 'turn-1')
+  document.body.appendChild(row)
+}
+
 function removeConversationRow(): void {
   document.body.querySelectorAll('[data-pane="conversation"]').forEach(node => node.remove())
+  document.body.querySelectorAll('[data-chat-anchor-key]').forEach(node => node.remove())
 }
 
 describe('BackgroundController', () => {
@@ -126,6 +133,16 @@ describe('BackgroundController', () => {
     removeConversationRow()
     await flush()
     expect(blurElement()!.style.backdropFilter).toContain('blur(2px)')
+    controller.dispose()
+  })
+
+  it('detects official shell message rows without the compat data-pane shim', async () => {
+    const { scope } = fakeScope({ backgroundBlurEmpty: 2, backgroundBlurContent: 10 })
+    const controller = new BackgroundController(scope)
+    expect(blurElement()!.style.backdropFilter).toContain('blur(2px)')
+    addOfficialConversationRow()
+    await flush()
+    expect(blurElement()!.style.backdropFilter).toContain('blur(10px)')
     controller.dispose()
   })
 

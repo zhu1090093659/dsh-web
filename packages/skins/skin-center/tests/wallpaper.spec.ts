@@ -395,7 +395,7 @@ describe('WallpaperController', () => {
     expect(document.documentElement.dataset.dshWallpaperActive).toBeUndefined()
   })
 
-  it('reports the unified backdrop-active marker and installs the shared composer-seat neutralizer (#777)', () => {
+  it('reports the unified backdrop-active marker and installs the shared composer-seat neutralizer (#777)', async () => {
     const { scope } = fakeScope()
     const controller = new WallpaperController(scope)
     expect(document.body.hasAttribute('data-dsh-backdrop-active')).toBe(false)
@@ -407,10 +407,24 @@ describe('WallpaperController', () => {
     // The official seat mask ::before stays neutralized.
     expect(neutralizer?.textContent).toContain('html[data-dsh-backdrop-active] [data-composer-seat]::before')
     expect(neutralizer?.textContent).toContain('background: none !important;')
-    // The input card itself gets a fixed frosted blur (no slider yet); its
-    // own translucent tint keeps readability instead of a hardcoded color.
-    expect(neutralizer?.textContent).toContain('html[data-dsh-backdrop-active] [data-composer-card]')
+    // The input card only gets frosted blur while the conversation has
+    // content (data-dsh-conversation-content); its own translucent tint
+    // keeps readability instead of a hardcoded color.
+    expect(neutralizer?.textContent).toContain('html[data-dsh-backdrop-active][data-dsh-conversation-content] [data-composer-card]')
     expect(neutralizer?.textContent).toContain('backdrop-filter: blur(10px) !important;')
+    // Empty conversation: the content marker is absent, so the frost is off.
+    expect(document.body.hasAttribute('data-dsh-conversation-content')).toBe(false)
+    // Adding a message row flips the marker on (observer-driven).
+    const row = document.createElement('div')
+    row.setAttribute('data-chat-anchor-key', '')
+    document.body.appendChild(row)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(document.body.getAttribute('data-dsh-conversation-content')).toBe('true')
+    expect(document.documentElement.getAttribute('data-dsh-conversation-content')).toBe('true')
+    // Removing the row flips it back off.
+    row.remove()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(document.body.hasAttribute('data-dsh-conversation-content')).toBe(false)
     // The wallpaper-specific neutralizer no longer owns the composer seat rule.
     const root = document.head.querySelector('style[data-dsh-wallpaper-root]')
     expect(root?.textContent).not.toContain('[data-composer-seat]')

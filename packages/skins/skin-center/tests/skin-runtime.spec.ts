@@ -454,7 +454,7 @@ describe('skin controller', () => {
     expect(document.documentElement.getAttribute('data-dsh-backdrop-active')).toBe('true')
     const neutralizer = document.head.querySelector('style[data-dsh-scene-neutralizer]')
     expect(neutralizer).not.toBeNull()
-    expect(neutralizer?.textContent).toContain('html[data-dsh-backdrop-active] [data-composer-card]')
+    expect(neutralizer?.textContent).toContain('html[data-dsh-backdrop-active][data-dsh-conversation-content] [data-composer-card]')
     // A plain skin (no background media) must never mark a backdrop.
     await controller.switchTo(null, null)
     expect(document.body.hasAttribute('data-dsh-backdrop-active')).toBe(false)

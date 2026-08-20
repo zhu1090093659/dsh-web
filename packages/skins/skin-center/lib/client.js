@@ -29,8 +29,12 @@ window.__ModuleLoader__.load({
 		* opacity) and gains a fixed backdrop blur (INPUT_FROST_BLUR_PX). The blur
 		* occludes the backdrop art and any message content scrolling under the
 		* input, so typed text never overlaps — a frosted pane instead of the older
-		* flat mask. The strength is a baked constant (not a slider) until the
-		* unified dialog-blur control lands.
+		* flat mask. The frost is only enabled while the conversation actually has
+		* message content (data-dsh-conversation-content): an empty conversation has
+		* no正文 to occlude, so the input card keeps only its own translucent tint
+		* and does not flash an extra blur patch (issue #777 follow-up).
+		* The strength is a baked constant (not a slider) until the unified
+		* dialog-blur control lands.
 		*
 		* The marker is body/html level (managed outside the surface/part/plugin
 		* enum, see contracts/semantic-attrs-v1.md) and survives a neutralizer
@@ -41,7 +45,10 @@ window.__ModuleLoader__.load({
 		const BACKDROP_ACTIVE_ATTR = "data-dsh-backdrop-active";
 		/** The shared composer-seat neutralizer style's own attribute. */
 		const SCENE_NEUTRALIZER_ATTR = "data-dsh-scene-neutralizer";
+		/** Conversation-content marker: set while the active conversation has rows. */
+		const CONVERSATION_CONTENT_ATTR = "data-dsh-conversation-content";
 		const sourceSets = /* @__PURE__ */ new WeakMap();
+		const contentObservers = /* @__PURE__ */ new WeakMap();
 		/**
 		* Report one source's backdrop-art presence. The marker stays on while any
 		* source is active, so the skin and wallpaper controllers never clobber each
@@ -63,10 +70,45 @@ window.__ModuleLoader__.load({
 				doc.body?.setAttribute(BACKDROP_ACTIVE_ATTR, "true");
 				doc.documentElement?.setAttribute(BACKDROP_ACTIVE_ATTR, "true");
 				ensureSceneNeutralizer(doc);
+				startContentObserver(doc);
 			} else {
 				doc.body?.removeAttribute(BACKDROP_ACTIVE_ATTR);
 				doc.documentElement?.removeAttribute(BACKDROP_ACTIVE_ATTR);
+				stopContentObserver(doc);
 			}
+		}
+		/** Track whether the active conversation has message rows for the frost gate. */
+		function updateConversationContent(doc) {
+			if (doc.body !== null && doc.body.querySelector("[data-chat-anchor-key]") !== null) {
+				doc.body?.setAttribute(CONVERSATION_CONTENT_ATTR, "true");
+				doc.documentElement?.setAttribute(CONVERSATION_CONTENT_ATTR, "true");
+			} else {
+				doc.body?.removeAttribute(CONVERSATION_CONTENT_ATTR);
+				doc.documentElement?.removeAttribute(CONVERSATION_CONTENT_ATTR);
+			}
+		}
+		/** Observe the conversation tree while a backdrop is visible. */
+		function startContentObserver(doc) {
+			if (contentObservers.has(doc)) return;
+			updateConversationContent(doc);
+			const win = doc.defaultView;
+			if (win === null || typeof win.MutationObserver !== "function") return;
+			const observer = new win.MutationObserver(() => updateConversationContent(doc));
+			observer.observe(doc.body ?? doc.documentElement, {
+				childList: true,
+				subtree: true
+			});
+			contentObservers.set(doc, observer);
+		}
+		/** Stop the content observer and drop the content marker. */
+		function stopContentObserver(doc) {
+			const observer = contentObservers.get(doc);
+			if (observer !== void 0) {
+				observer.disconnect();
+				contentObservers.delete(doc);
+			}
+			doc.body?.removeAttribute(CONVERSATION_CONTENT_ATTR);
+			doc.documentElement?.removeAttribute(CONVERSATION_CONTENT_ATTR);
 		}
 		/**
 		* Install the shared composer-seat neutralizer, keyed by head presence so a
@@ -84,7 +126,7 @@ window.__ModuleLoader__.load({
       background: none !important;
       backdrop-filter: none !important;
     }
-    html[data-dsh-backdrop-active] [data-composer-card] {
+    html[data-dsh-backdrop-active][data-dsh-conversation-content] [data-composer-card] {
       backdrop-filter: blur(10px) !important;
       -webkit-backdrop-filter: blur(10px) !important;
     }

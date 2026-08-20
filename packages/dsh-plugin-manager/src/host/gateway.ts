@@ -50,8 +50,12 @@ export function unsafeSpecReason(spec: string): string | undefined {
 /** One CLI-backed operation in flight or settled. */
 export interface GatewayJob {
   id: string
-  action: 'install' | 'remove'
+  action: 'install' | 'update' | 'remove'
   spec: string
+  /** Installed package ID for an in-place npm update. */
+  targetId?: string
+  /** Exact registry version the update must land on. */
+  targetVersion?: string
   phase: 'running' | 'done' | 'error'
   /** The installed row on success (install) or the removed row (remove). */
   plugin?: InstalledPluginItem
@@ -247,6 +251,28 @@ export class CliGateway {
     return { jobId: job.id }
   }
 
+  /** Start an in-place npm update; the caller polls {@link status}. */
+  update(id: string, version: string): { jobId: string } {
+    const spec = `${id}@${version}`
+    const job: GatewayJob = {
+      id: `job-${++this.counter}`,
+      action: 'update',
+      spec,
+      targetId: id,
+      targetVersion: version,
+      phase: 'running',
+    }
+    this.jobs.set(job.id, job)
+    const unsafe = unsafeSpecReason(spec)
+    if (unsafe !== undefined) {
+      job.phase = 'error'
+      job.error = unsafe
+      return { jobId: job.id }
+    }
+    this.enqueue(() => this.run(job, ['plugin', '--profile', this.facts.profileName, 'add', spec], ADD_TIMEOUT_MS))
+    return { jobId: job.id }
+  }
+
   /** Start a removal; the caller polls {@link status}. */
   remove(id: string): { jobId: string } {
     const job: GatewayJob = { id: `job-${++this.counter}`, action: 'remove', spec: id, phase: 'running' }
@@ -392,6 +418,24 @@ export class CliGateway {
       }
       await this.verifyBoot(job, before, after, conflicts)
       if (job.phase === 'error') return
+    } else if (job.action === 'update') {
+      const targetId = job.targetId
+      const targetVersion = job.targetVersion
+      if (targetId === undefined || targetVersion === undefined || !after.dependencies.includes(targetId)) {
+        job.phase = 'error'
+        job.error = 'plugin-manager: dsh plugin add 报告成功，但目标插件未保留在 profile 中（更新未生效）'
+        return
+      }
+      const manifest = await readProfileManifest(this.facts.packageJsonPath)
+      const updated = await buildPluginRow(this.facts, targetId, manifest.dependencies[targetId] ?? job.spec, after.layer.rows)
+      if (updated.version !== targetVersion) {
+        job.phase = 'error'
+        job.error = `plugin-manager: dsh plugin add 报告成功，但 ${targetId} 仍为 ${updated.version}，预期 ${targetVersion}（更新未生效）`
+        return
+      }
+      job.plugin = updated
+      await this.verifyBoot(job, before, after, conflicts)
+      if (job.phase === 'error') return
     } else {
       // B8 (remove): a success exit code must mean the dependency is gone.
       const removed = before.dependencies.find(candidate => !after.dependencies.includes(candidate))
@@ -407,7 +451,9 @@ export class CliGateway {
       from: change.from,
       to: change.to,
     }))
-    job.plugin = await this.rowFor(job.action, job.spec, before, after)
+    if (job.action !== 'update') {
+      job.plugin = await this.rowFor(job.action, job.spec, before, after)
+    }
     job.phase = 'done'
   }
 

@@ -181,10 +181,19 @@ export function createPluginManagerFace(ctx: ClientContext): PluginManagerFace {
       }
     },
     update: async (id: string): Promise<InstalledPluginItem> => {
-      const rows = await gateway.list()
-      const row = rows.find(item => item.id === id)
-      if (row === undefined) throw new Error(`plugin-manager: plugin ${id} is not installed`)
-      return gateway.install(row.source.spec)
+      gatewayInflight = true
+      try {
+        const started = await gatewayJson(`${GATEWAY_PREFIX}/update`, {
+          method: 'POST',
+          body: JSON.stringify({ id }),
+        }) as { jobId?: string }
+        if (started.jobId === undefined) throw new Error('plugin-manager: gateway update returned no job')
+        const job = await waitJob(started.jobId)
+        lastInstallConflicts = Array.isArray(job.conflicts) ? job.conflicts as ControlChange[] : []
+        return parseInstalledPlugin({ plugin: job.plugin })
+      } finally {
+        gatewayInflight = false
+      }
     },
     uninstall: async (id: string): Promise<InstalledPluginItem[]> => {
       gatewayInflight = true

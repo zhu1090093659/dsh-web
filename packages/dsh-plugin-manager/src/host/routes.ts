@@ -79,6 +79,11 @@ async function fetchLatestFromRegistry(name: string): Promise<string | undefined
   return typeof body.version === 'string' ? body.version : undefined
 }
 
+/** Whether a dependency spec is a direct npm-registry selector, not an alias or external source. */
+function isDirectRegistrySpec(spec: string): boolean {
+  return !/^(?:link:|file:|git:|github:|git\+|https?:\/\/|npm:|workspace:|catalog:)/.test(spec)
+}
+
 /**
  * Build the gateway routes.
  * @param deps - profile facts, the CLI gateway, and seams.
@@ -126,6 +131,44 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
       return
     }
     sendJson(res, 200, gateway.install(spec.trim()))
+  }
+
+  const updateHandler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    const body = await readJsonBody(req)
+    const id = body['id']
+    if (typeof id !== 'string' || id.trim() === '') {
+      sendJson(res, 400, { error: 'plugin-manager: update needs an id' })
+      return
+    }
+    const target = id.trim()
+    const unsafe = unsafeSpecReason(target)
+    if (unsafe !== undefined) {
+      sendJson(res, 400, { error: unsafe })
+      return
+    }
+    if (!deps.cliAvailable()) {
+      sendJson(res, 500, { error: 'plugin-manager: dsh CLI not found on PATH' })
+      return
+    }
+    const outcome = await gateway.withMutationLock(async () => {
+      const patchText = await readPatchText(facts.patchPath)
+      const row = (await snapshotGateway(facts, patchText)).plugins.find(plugin => plugin.id === target)
+      if (row === undefined) return { status: 404, error: `plugin-manager: plugin ${target} is not installed` }
+      if (row.source.kind !== 'npm' || !isDirectRegistrySpec(row.source.spec)) {
+        return { status: 400, error: `plugin-manager: ${target} is not a direct npm registry plugin` }
+      }
+      const latest = await fetchLatest(target).catch(() => undefined)
+      if (latest === undefined || latest === '') return { status: 502, error: `plugin-manager: cannot resolve the latest version for ${target}` }
+      const unsafeLatest = unsafeSpecReason(`${target}@${latest}`)
+      if (unsafeLatest !== undefined) return { status: 502, error: unsafeLatest }
+      if (row.version === latest) return { status: 409, error: `plugin-manager: ${target} is already at ${latest}` }
+      return { status: 200, job: gateway.update(target, latest) }
+    })
+    if ('error' in outcome) {
+      sendJson(res, outcome.status, { error: outcome.error })
+      return
+    }
+    sendJson(res, outcome.status, outcome.job)
   }
 
   const removeHandler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -230,7 +273,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
     const snapshot = await snapshotGateway(facts, patchText)
     const updates: Array<{ id: string; current: string; latest: string }> = []
     for (const plugin of snapshot.plugins) {
-      if (plugin.source.kind !== 'npm') continue
+      if (plugin.source.kind !== 'npm' || !isDirectRegistrySpec(plugin.source.spec)) continue
       const latest = await fetchLatest(plugin.id).catch(() => undefined)
       if (latest !== undefined && latest !== plugin.version) {
         updates.push({ id: plugin.id, current: plugin.version, latest })
@@ -242,6 +285,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
   return [
     { kind: 'exact', path: `${GATEWAY_PREFIX}/list`, handler: guard(listHandler) },
     { kind: 'exact', path: `${GATEWAY_PREFIX}/install`, handler: guard(installHandler) },
+    { kind: 'exact', path: `${GATEWAY_PREFIX}/update`, handler: guard(updateHandler) },
     { kind: 'exact', path: `${GATEWAY_PREFIX}/remove`, handler: guard(removeHandler) },
     { kind: 'exact', path: `${GATEWAY_PREFIX}/status`, handler: guard(statusHandler) },
     { kind: 'exact', path: `${GATEWAY_PREFIX}/set-enabled`, handler: guard(setEnabledHandler) },

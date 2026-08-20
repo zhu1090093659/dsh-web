@@ -443,3 +443,41 @@ describe('CliGateway duplicate-mount safeguard (B9)', () => {
     expect(job.notices).toEqual([{ id: 'dsh-better-sidebar', name: 'dsh-better-sidebar', from: 'enabled', to: 'uninstalled' }])
   })
 })
+
+describe('CliGateway update verification', () => {
+  it('updates the existing package with an exact id@latest spec and returns the same row', async () => {
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] === 'plugin' && args[3] === 'add') {
+        expect(args[4]).toBe('dsh-memoir@1.1.0')
+        installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
+      }
+      return { code: 0 }
+    }, calls)
+
+    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
+    const job = await settle(gateway, jobId)
+
+    expect(job.phase).toBe('done')
+    expect(job.plugin).toMatchObject({ id: 'dsh-memoir', version: '1.1.0' })
+    // An update is in-place: it must not create a second dependency entry.
+    expect(Object.keys(readManifest(facts.profileDir).dependencies)).toEqual(['dsh-memoir'])
+    expect(calls[0]).toEqual(['plugin', '--profile', 'web', 'add', 'dsh-memoir@1.1.0'])
+  })
+
+  it('rejects a green update command when the installed target version did not change', async () => {
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, () => ({ code: 0 }), calls)
+
+    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
+    const job = await settle(gateway, jobId)
+
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('更新未生效')
+    expect(calls[0]).toEqual(['plugin', '--profile', 'web', 'add', 'dsh-memoir@1.1.0'])
+  })
+})

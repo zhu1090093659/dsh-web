@@ -38,7 +38,7 @@
       "light": {
         "type": "image",
         "src": "assets/miku-art-light.jpg",
-        "scrim": "linear-gradient(rgba(244, 250, 255, 0.5) 0%, rgba(235, 244, 255, 0.55) 55%, rgba(226, 238, 255, 0.62) 100%)"
+        "scrim": "rgba(0, 0, 0, 0)"
       },
       "dark": {
         "type": "image",

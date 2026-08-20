@@ -141,6 +141,32 @@ export default function defineSkinHooks() {
   return {
     apply(ctx) {
       const body = document.body
+      const html = document.documentElement
+      const originalHtmlTranslate = html.getAttribute('translate')
+      const originalBodyTranslate = body.getAttribute('translate')
+      const originalHtmlClass = html.getAttribute('class')
+      const originalBodyClass = body.getAttribute('class')
+      html.setAttribute('translate', 'no')
+      body.setAttribute('translate', 'no')
+      // Use an explicit class-attribute append (not classList.add) so teardown
+      // can restore the exact original class attribute (jsdom keeps an empty
+      // `class=""` after classList.remove, which the lifecycle test flags).
+      const appendClass = (el, token) => {
+        const current = el.getAttribute('class') ?? ''
+        const tokens = current.split(/\s+/).filter(Boolean)
+        if (!tokens.includes(token)) tokens.push(token)
+        el.setAttribute('class', tokens.join(' '))
+      }
+      appendClass(html, 'notranslate')
+      appendClass(body, 'notranslate')
+      let translateMeta = document.querySelector('meta[name="google"][content="notranslate"]')
+      const ownsTranslateMeta = translateMeta === null
+      if (translateMeta === null) {
+        translateMeta = document.createElement('meta')
+        translateMeta.name = 'google'
+        translateMeta.content = 'notranslate'
+        document.head.prepend(translateMeta)
+      }
 
       // Port of the v1 custom Miku cursors: a scoped style block injected for
       // this skin's active-skin scoping html[data-dsh-skin="miku"] (see
@@ -165,6 +191,65 @@ export default function defineSkinHooks() {
       }
       syncPanelCollapsed()
       const panelTimer = setInterval(syncPanelCollapsed, 500)
+
+      // The rc.8 shell deliberately hides the composer while a just-submitted
+      // session settles. On this image-backed skin that transition reads as a
+      // disappearing input, and remounted nodes can briefly miss stylesheet
+      // guards. Reassert the stable composer surface after phase/DOM/input
+      // transitions with inline important declarations.
+      const composerStyles = new Map()
+      const setComposerStyle = (element, property, value) => {
+        if (!(element instanceof HTMLElement)) return
+        let saved = composerStyles.get(element)
+        if (saved === undefined) {
+          saved = new Map()
+          composerStyles.set(element, saved)
+        }
+        if (!saved.has(property)) {
+          saved.set(property, [element.style.getPropertyValue(property), element.style.getPropertyPriority(property)])
+        }
+        element.style.setProperty(property, value, 'important')
+      }
+      const syncComposer = () => {
+        const seat = document.querySelector('[data-composer-seat]')
+        const card = document.querySelector('[data-composer-card]')
+        const scroll = card?.querySelector('[data-input-scroll]')
+        const input = card?.querySelector('textarea[data-dsh-part="composer-input"]')
+        const backdrop = card?.querySelector('[data-input-backdrop]')
+        for (const [property, value] of [['display', 'flex'], ['visibility', 'visible'], ['opacity', '1'], ['min-height', '92px']]) {
+          setComposerStyle(seat, property, value)
+          setComposerStyle(card, property, value)
+        }
+        const dark = body.hasAttribute('data-ds-dark-theme')
+        setComposerStyle(card, 'background', dark ? 'rgba(13, 26, 58, 0.72)' : 'rgba(250, 253, 255, 0.96)')
+        setComposerStyle(card, 'border', dark ? '1px solid rgba(88, 169, 255, 0.42)' : '1px solid rgba(30, 111, 217, 0.5)')
+        setComposerStyle(card, 'box-shadow', dark ? '0 8px 28px rgba(0, 8, 28, 0.38)' : '0 8px 24px rgba(8, 35, 75, 0.16)')
+        setComposerStyle(scroll, 'display', 'block')
+        setComposerStyle(scroll, 'visibility', 'visible')
+        setComposerStyle(scroll, 'opacity', '1')
+        setComposerStyle(scroll, 'min-height', '28px')
+        setComposerStyle(input, 'display', 'block')
+        setComposerStyle(input, 'visibility', 'visible')
+        setComposerStyle(input, 'opacity', '1')
+        setComposerStyle(input, 'color', dark ? '#e7f5ff' : '#000')
+        setComposerStyle(input, '-webkit-text-fill-color', dark ? '#e7f5ff' : '#000')
+        setComposerStyle(input, 'background', 'transparent')
+        setComposerStyle(backdrop, 'visibility', 'hidden')
+        setComposerStyle(backdrop, 'opacity', '0')
+      }
+      let composerFrame = 0
+      const scheduleComposerSync = () => {
+        cancelAnimationFrame(composerFrame)
+        composerFrame = requestAnimationFrame(syncComposer)
+      }
+      syncComposer()
+      const composerObserver = new MutationObserver(scheduleComposerSync)
+      composerObserver.observe(body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-phase', 'data-ds-dark-theme'] })
+      const themeObserver = new MutationObserver(scheduleComposerSync)
+      themeObserver.observe(body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
+      document.addEventListener('input', scheduleComposerSync, true)
+      document.addEventListener('click', scheduleComposerSync, true)
+
       const originalTitle = document.title
       // Resolve the pinned title once up front so the title-bar text and the
       // document title always agree, and the dispose check compares against the
@@ -224,6 +309,28 @@ export default function defineSkinHooks() {
       ctx.onCleanup(() => {
         cursorStyle.remove()
         clearInterval(panelTimer)
+        cancelAnimationFrame(composerFrame)
+        composerObserver.disconnect()
+        themeObserver.disconnect()
+        document.removeEventListener('input', scheduleComposerSync, true)
+        document.removeEventListener('click', scheduleComposerSync, true)
+        for (const [element, saved] of composerStyles) {
+          for (const [property, [value, priority]] of saved) {
+            if (value === '') element.style.removeProperty(property)
+            else element.style.setProperty(property, value, priority)
+          }
+        }
+        if (originalHtmlTranslate === null) html.removeAttribute('translate')
+        else html.setAttribute('translate', originalHtmlTranslate)
+        if (originalBodyTranslate === null) body.removeAttribute('translate')
+        else body.setAttribute('translate', originalBodyTranslate)
+        // Restore the exact original class attribute (or remove it when it did
+        // not exist) so no empty class="" survives in jsdom/real DOM.
+        if (originalHtmlClass === null) html.removeAttribute('class')
+        else html.setAttribute('class', originalHtmlClass)
+        if (originalBodyClass === null) body.removeAttribute('class')
+        else body.setAttribute('class', originalBodyClass)
+        if (ownsTranslateMeta) translateMeta.remove()
         delete body.dataset.dshAionuiCollapsed
         titlebar.remove()
         statusbar.remove()

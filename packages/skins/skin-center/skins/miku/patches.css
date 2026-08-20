@@ -1,14 +1,19 @@
 [id="root"] {
   box-sizing: border-box;
   background: none;
-  border: 1px solid #9cc6ff;
-  box-shadow: 0 8px 28px #102a5a47;
+  border: none;
+  box-shadow: none;
+  /* Reserve room for the floating title bar (30px) and status bar (26px)
+     so content never sits under them, while the page background still fills
+     edge to edge (no light border). */
+  padding-top: 32px;
+  padding-bottom: 30px;
 }
 
 body[data-ds-dark-theme] [id="root"] {
   background: none;
-  border-color: #24447c;
-  box-shadow: 0 8px 28px #0000008c;
+  border: none;
+  box-shadow: none;
 }
 
 * {
@@ -68,21 +73,43 @@ body[data-ds-dark-theme] input:not([type="checkbox"]):not([type="radio"]), body[
 }
 
 ::-webkit-scrollbar-track {
-  background: #e9f2ff;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #b4d4ff;
-  border: 2px solid #e9f2ff;
+  background: transparent;
+  border: 2px solid transparent;
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #7ab8ff;
+  background: rgba(122, 184, 255, 0.3);
+  border-color: transparent;
 }
 
 ::-webkit-scrollbar-corner {
-  background: #e9f2ff;
+  background: transparent;
+}
+
+/* Transparent scrollbar in the dark theme (skin.css painted the dark-blue
+   thumb/track, which shows as an opaque vertical bar on the right). */
+body[data-ds-dark-theme] ::-webkit-scrollbar-track,
+body[data-ds-dark-theme] ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+body[data-ds-dark-theme] ::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-color: transparent;
+}
+
+body[data-ds-dark-theme] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(122, 184, 255, 0.3);
+  border-color: transparent;
+}
+
+body[data-ds-dark-theme] ::-webkit-scrollbar-thumb:active {
+  background: rgba(88, 169, 255, 0.4);
 }
 
 ::selection {
@@ -126,7 +153,11 @@ body[data-ds-dark-theme] a:visited {
   color: #fff;
   text-shadow: 0 1px 1px #06163066;
   user-select: none;
-  background: linear-gradient(#ffffff38, #ffffff0f 60%), linear-gradient(90deg, #1e6fd98c 0%, #2e9bff73 40%, #9b5dff6b 68%, #ff4da66b 100%);
+  /* 明亮主题：海色清新渐变（天空蓝→海蓝→海青，半透明透出海景背景），白字仍可读。 */
+  background: linear-gradient(90deg, rgba(110, 198, 255, 0.8) 0%, rgba(46, 155, 255, 0.88) 18%, rgba(64, 190, 220, 0.9) 40%, rgba(57, 197, 187, 0.92) 50%, rgba(64, 190, 220, 0.9) 60%, rgba(46, 155, 255, 0.88) 82%, rgba(110, 198, 255, 0.8) 100%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: mikuTitleGradient 6s ease-in-out infinite alternate;
   border-bottom: none;
   align-items: center;
   gap: 8px;
@@ -139,11 +170,14 @@ body[data-ds-dark-theme] a:visited {
   left: 0;
   right: 0;
   box-shadow: inset 0 1px #ffffff59;
+  border-radius: 0 !important;
 }
 
 body[data-ds-dark-theme] .NPtzYa_mikuTitlebar {
   -webkit-backdrop-filter: blur(10px);
-  background: linear-gradient(#ffffff1a, #ffffff05 60%), linear-gradient(90deg, #0d2b5699 0%, #1e4f9e80 45%, #7a3fd075 72%, #d0298a75 100%);
+  background: linear-gradient(90deg, #0d2b56 0%, #1e4f9e 20%, #7a3fd0 40%, #d0298a 50%, #7a3fd0 60%, #1e4f9e 80%, #0d2b56 100%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
   border-bottom: none;
   box-shadow: inset 0 1px #ffffff1a;
 }
@@ -201,7 +235,11 @@ body[data-ds-dark-theme] .NPtzYa_mikuTitlebar {
   color: #fff;
   text-shadow: 0 1px 1px #06163066;
   user-select: none;
-  background: linear-gradient(#ffffff38, #ffffff0f 60%), linear-gradient(90deg, #1e6fd98c 0%, #2e9bff73 40%, #9b5dff6b 68%, #ff4da66b 100%);
+  /* 明亮主题：状态栏使用与标题栏一致的海色清新半透明渐变，和背景相符。 */
+  background: linear-gradient(90deg, rgba(110, 198, 255, 0.8) 0%, rgba(46, 155, 255, 0.88) 18%, rgba(64, 190, 220, 0.9) 40%, rgba(57, 197, 187, 0.92) 50%, rgba(64, 190, 220, 0.9) 60%, rgba(46, 155, 255, 0.88) 82%, rgba(110, 198, 255, 0.8) 100%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: mikuStatusGradient 6s ease-in-out infinite alternate;
   border-top: none;
   align-items: center;
   gap: 6px;
@@ -214,13 +252,16 @@ body[data-ds-dark-theme] .NPtzYa_mikuTitlebar {
   left: 0;
   right: 0;
   box-shadow: inset 0 1px #ffffff59;
+  border-radius: 0 !important;
 }
 
 body[data-ds-dark-theme] .NPtzYa_mikuStatusbar {
   -webkit-backdrop-filter: blur(10px);
   color: #fff;
   text-shadow: 0 1px 1px #00000059;
-  background: linear-gradient(#ffffff1a, #ffffff05 60%), linear-gradient(90deg, #0d2b5699 0%, #1e4f9e80 45%, #7a3fd075 72%, #d0298a75 100%);
+  background: linear-gradient(90deg, #0d2b56 0%, #1e4f9e 20%, #7a3fd0 40%, #d0298a 50%, #7a3fd0 60%, #1e4f9e 80%, #0d2b56 100%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
   border-top: none;
   box-shadow: inset 0 1px #ffffff1a;
 }
@@ -247,7 +288,7 @@ body[data-ds-dark-theme] .NPtzYa_mikuStatusbarWave {
   padding: 0 8px;
   line-height: 17px;
   box-shadow: inset 0 1px #fffffff2;
-  border-radius: 3px !important;
+  border-radius: 0 !important;
 }
 
 body[data-ds-dark-theme] .NPtzYa_mikuStatusbarCell {
@@ -261,9 +302,75 @@ body[data-ds-dark-theme] .NPtzYa_mikuStatusbarCell {
   flex: 1;
 }
 
+/* Animated status-bar gradients (6s loop):
+   top bar sweeps right -> left, bottom bar sweeps left -> right. The
+   repeating gradient is periodic over 270px, so a 270px background-position
+   swing loops seamlessly. */
+@keyframes mikuTitleGradient {
+  from { background-position: 0% 0; }
+  to { background-position: 100% 0; }
+}
+
+@keyframes mikuStatusGradient {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+
+/* SSH 面板 与 任务看板（暗色）：实底深蓝 -> 半透明毛玻璃。
+   这两块插件主表面用 --dsw-alias-bg-base（暗色为不透明深蓝 #0d1a3a），
+   这里用语义属性定位，改成半透明 + 背景模糊。 */
+/* 明亮主题：SSH 与任务看板 也改成透明+毛玻璃（暗色专属规则优先级更高，暗色保持原样）。
+   同时盖住内层被全局 [class*="panel"] 强制的深色面板，并重置为明亮可读文字。 */
+body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"] [class*="panel"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [class*="panel"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"] [class*="view"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [class*="view"] {
+  background: transparent !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+  color: #14263f !important;
+  --dsw-alias-label-primary: #14263f;
+  --dsw-alias-label-secondary: #3a5070;
+  --dsw-alias-label-tertiary: #4a5f80;
+  --dsw-alias-label-caption: #3a5070;
+  --dsw-alias-label-dimmed: #5f7a9e;
+  --aion-text-primary: #14263f;
+  --aion-text-secondary: #3a5070;
+  --aion-text-tertiary: #4a5f80;
+}
+
+body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"] [data-dsh-part="terminal"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"] [data-dsh-part="host-table"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"] [data-dsh-part="host-row"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [data-dsh-part="header"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [data-dsh-part="column"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [data-dsh-part="card"],
+body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [data-dsh-part="detail"] {
+  background: transparent !important;
+}
+
+body[data-ds-dark-theme] [data-dsh-plugin="ssh"],
+body[data-ds-dark-theme] [data-dsh-plugin="task-board"] {
+  background: rgba(13, 26, 58, 0.45) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+body[data-ds-dark-theme] [data-dsh-plugin="ssh"] [data-dsh-part="terminal"],
+body[data-ds-dark-theme] [data-dsh-plugin="ssh"] [data-dsh-part="host-table"],
+body[data-ds-dark-theme] [data-dsh-plugin="ssh"] [data-dsh-part="host-row"],
+body[data-ds-dark-theme] [data-dsh-plugin="task-board"] [data-dsh-part="header"],
+body[data-ds-dark-theme] [data-dsh-plugin="task-board"] [data-dsh-part="column"],
+body[data-ds-dark-theme] [data-dsh-plugin="task-board"] [data-dsh-part="card"],
+body[data-ds-dark-theme] [data-dsh-plugin="task-board"] [data-dsh-part="detail"] {
+  background: rgba(18, 36, 74, 0.35) !important;
+}
+
 [data-pane="sidebar"] > div {
-  -webkit-backdrop-filter: blur(8px);
-  background: #ffffff14;
+  -webkit-backdrop-filter: blur(10px);
+  background: transparent;
 }
 
 body[data-ds-dark-theme] [data-pane="sidebar"] > div {
@@ -290,9 +397,12 @@ body[data-ds-dark-theme] [data-pane="sidebar"] > div {
 }
 
 [data-pane="sidebar"] [class*="logoRow"] {
-  background: linear-gradient(#ffffff3d, #fff0 60%), linear-gradient(90deg, #1e6fd9 0%, #2e9bff 45%, #9b5dff 72%, #ff4da6 100%);
-  border-bottom: 1px solid #0d2e66;
-  box-shadow: inset 0 1px #ffffff61;
+  /* 明亮主题：与状态栏一致的海色清新半透明渐变，匹配海景背景。 */
+  background: linear-gradient(90deg, rgba(110, 198, 255, 0.8) 0%, rgba(46, 155, 255, 0.88) 18%, rgba(64, 190, 220, 0.9) 40%, rgba(57, 197, 187, 0.92) 50%, rgba(64, 190, 220, 0.9) 60%, rgba(46, 155, 255, 0.88) 82%, rgba(110, 198, 255, 0.8) 100%);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(46, 155, 255, 0.5);
+  box-shadow: inset 0 1px #ffffff40;
 }
 
 body[data-ds-dark-theme] [data-pane="sidebar"] [class*="logoRow"] {
@@ -321,7 +431,7 @@ body[data-ds-dark-theme] [data-pane="sidebar"] [class*="logoRow"] {
 
 [data-pane="conversation"] {
   -webkit-backdrop-filter: blur(6px);
-  background: #ffffff73;
+  background: transparent;
 }
 
 body[data-ds-dark-theme] [data-pane="conversation"] {
@@ -341,12 +451,12 @@ body[data-ds-dark-theme] [data-pane="conversation"] > div > header {
 
 [data-pane="details"] {
   -webkit-backdrop-filter: blur(6px);
-  background: #ffffff6b;
+  background: transparent;
 }
 
 body[data-ds-dark-theme] [data-pane="details"] {
   -webkit-backdrop-filter: blur(8px);
-  background: #0c1a3a94;
+  background: transparent;
 }
 
 [role="tooltip"] {
@@ -816,9 +926,37 @@ body[data-ds-dark-theme] [data-gitgraph-current-branch] {
   background: none !important;
 }
 
+/* 明亮主题：左侧栏（工作区/会话树，根类 HObgUG_root）也改成透明+毛玻璃。
+   用 body:not([data-ds-dark-theme]) 限定，确保暗色主题不被改动。 */
+body:not([data-ds-dark-theme]) [class*="HObgUG_root"] {
+  background: transparent !important;
+  /* 根上不放 backdrop-filter：它会成为 fixed 后代（设置菜单/浮层）的包含块，
+     导致设置菜单被拽进/裁剪进左侧栏。模糊改放到不含设置菜单的树区域上。 */
+}
+
+/* 明亮主题：左侧栏中部的毛玻璃放到树区域（不含设置菜单/弹层），避免包含块问题 */
+body:not([data-ds-dark-theme]) [class*="HObgUG_regionArea"] {
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* 明亮主题：设置菜单/对话框 透明毛玻璃 + 深色可读文字 */
+body:not([data-ds-dark-theme]) [role="dialog"],
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] {
+  background: rgba(248, 251, 255, 0.55) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  backdrop-filter: blur(14px) !important;
+  color: #14263f !important;
+  --dsw-alias-label-primary: #14263f;
+  --dsw-alias-label-secondary: #3a5070;
+  --dsw-alias-label-tertiary: #4a5f80;
+  --aion-text-primary: #14263f;
+  --aion-text-secondary: #3a5070;
+}
+
 [class*="sidebarCol"] {
-  -webkit-backdrop-filter: blur(8px);
-  background: #ffffff8c !important;
+  -webkit-backdrop-filter: blur(10px);
+  background: transparent !important;
   border-left: none !important;
 }
 
@@ -834,7 +972,7 @@ body[data-ds-dark-theme] [class*="sidebarCol"] {
 
 [class*="centerCol"] {
   -webkit-backdrop-filter: blur(6px);
-  background: #ffffff73 !important;
+  background: transparent !important;
   border-left: none !important;
 }
 
@@ -846,14 +984,84 @@ body[data-ds-dark-theme] [class*="centerCol"] {
 
 [class*="detailsCol"] {
   -webkit-backdrop-filter: blur(6px);
-  background: #ffffff6b !important;
+  background: transparent !important;
   border-left: none !important;
 }
 
 body[data-ds-dark-theme] [class*="detailsCol"] {
   -webkit-backdrop-filter: blur(6px);
-  background: #0a142c2e !important;
+  background: transparent !important;
   border-left: none !important;
+}
+
+/* DSH-better-sidebar "side board" (右侧看板) — a SEPARATE plugin, fully
+   token-driven: its .panel/.pane/.tabBar use the generic --dsw-alias-bg-layer-1
+   / --dsw-alias-bg-base tokens, which miku's dark theme sets to a translucent
+   dark blue — that is why it reads "not transparent". To make the whole board
+   FULLY transparent in dark WITHOUT touching those global tokens / other
+   surfaces, blank the plugin's own CSS-Modules classes (all from its
+   sidebar.module.css, same hash prefix, e.g. nArs4W_panel / nArs4W_pane /
+   nArs4W_tabBar / _tabList / _paneEmptyCards). Dark-only + scoped: the outer
+   _panel is limited with :has([class*="_tabBar"]) so only THIS sidebar panel's
+   background is killed, not unrelated "_panel" classes. */
+/* 明亮主题：better-sidebar 右侧看板 也改成透明+毛玻璃模糊。
+   暗色规则优先级更高，暗色主题仍保持其原样。 */
+[class*="_panel"]:has([class*="_tabBar"]),
+[class*="_pane"],
+[class*="_tabBar"],
+[class*="_tabList"],
+[class*="_paneEmptyCards"] {
+  background: transparent !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+body[data-ds-dark-theme] [class*="_panel"]:has([class*="_tabBar"]),
+body[data-ds-dark-theme] [class*="_pane"],
+body[data-ds-dark-theme] [class*="_tabBar"],
+body[data-ds-dark-theme] [class*="_tabList"],
+body[data-ds-dark-theme] [class*="_paneEmptyCards"] {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* DSH-better-sidebar width-resize strip (nArs4W_panelResize / .panelResize):
+   the plugin stretches it full-height (top:0; bottom:0) + 8px wide, so it
+   reads as a full-height vertical bar on the board's left edge. Cap it to a
+   short centered grip (still draggable) so it no longer spans top-to-bottom.
+   Geometric fix — applies to both light/dark. */
+[class*="_panelResize"] {
+  top: 50% !important;
+  bottom: auto !important;
+  height: 96px !important;
+  transform: translateY(-50%) !important;
+}
+
+/* DARK THEME ONLY: blank every card / panel / container / empty-state
+   background inside the right details pane, so the translucent theme shows
+   straight through. Scoped to the right-panel anchors; light theme stays
+   untouched. Substring class matches stay stable across hash renames. */
+body[data-ds-dark-theme] [data-pane="details"],
+body[data-ds-dark-theme] [data-pane="details"] [class*="card"],
+body[data-ds-dark-theme] [data-pane="details"] [class*="panel"],
+body[data-ds-dark-theme] [data-pane="details"] [class*="content"],
+body[data-ds-dark-theme] [data-pane="details"] [class*="body"],
+body[data-ds-dark-theme] [data-pane="details"] [class*="item"],
+body[data-ds-dark-theme] [data-pane="details"] [class*="row"],
+body[data-ds-dark-theme] [data-pane="details"] [class*="cell"],
+body[data-ds-dark-theme] [data-pane="details"] [class*="section"],
+body[data-ds-dark-theme] [data-pane="details"] [class*="empty"],
+body[data-ds-dark-theme] [class*="detailsCol"] [class*="card"],
+body[data-ds-dark-theme] [class*="detailsCol"] [class*="panel"],
+body[data-ds-dark-theme] [class*="detailsCol"] [class*="content"],
+body[data-ds-dark-theme] [class*="detailsCol"] [class*="body"],
+body[data-ds-dark-theme] [class*="detailsCol"] [class*="item"],
+body[data-ds-dark-theme] [class*="detailsCol"] [class*="row"],
+body[data-ds-dark-theme] [class*="detailsCol"] [class*="cell"],
+body[data-ds-dark-theme] [class*="detailsCol"] [class*="section"],
+body[data-ds-dark-theme] [class*="detailsCol"] [class*="empty"] {
+  background: transparent !important;
 }
 
 [class*="centerCol"] > div > div, body[data-ds-dark-theme] [class*="centerCol"] > div > div, [class*="composerSeat"], [class*="scrollBody"] {
@@ -934,6 +1142,59 @@ body[data-ds-dark-theme] textarea, body[data-ds-dark-theme] [contenteditable="tr
   border-color: #58a9ff47 !important;
 }
 
+/* The rc.8 composer paints visible glyphs in a backdrop while the textarea
+   owns only selection and caret. Keep those layers separate so an empty draft
+   cannot flash or collapse while deleting. */
+[data-composer-card] [data-input-backdrop] {
+  color: #000 !important;
+}
+
+[data-composer-card] textarea {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+[data-composer-card] [data-input-scroll] {
+  min-height: 24px;
+}
+
+/* Keep the complete composer footprint mounted while the draft transitions
+   through empty. These stable attributes avoid CSS-module class churn and
+   outrank broad skin rules such as [class*="seat"]. */
+[data-composer-seat] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 92px;
+  content-visibility: visible !important;
+}
+
+[data-composer-card] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 92px;
+  content-visibility: visible !important;
+  color: #000 !important;
+  --dsw-alias-label-primary: #000;
+  --dsw-alias-label-secondary: #000;
+  --dsw-alias-label-tertiary: #000;
+  --dsw-alias-label-caption: #000;
+}
+
+/* The no-workspace and post-submit states replace draft glyphs with native
+   placeholder/control text. Keep that entire foreground visible on the light
+   Miku composer surface. */
+[data-composer-card] textarea::placeholder {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  opacity: 1 !important;
+}
+
+[data-composer-card] :is(button, [role="button"], button *, [role="button"] *) {
+  color: #000 !important;
+}
+
 [class*="composer"] [class*="toolbar"], [class*="composer"] [class*="actions"] {
   background: none !important;
 }
@@ -1011,6 +1272,11 @@ button, [role="button"] {
   border: none !important;
 }
 
+/* 明亮主题：“新会话”文字从蓝色改成黑色（仅 non-[class*=primary] 的 newSession；暗色不动） */
+body:not([data-ds-dark-theme]) [class*="newSession"] {
+  color: #000 !important;
+}
+
 body[data-ds-dark-theme] [class*="newSession"] {
   -webkit-backdrop-filter: blur(8px);
   box-shadow: none !important;
@@ -1029,6 +1295,153 @@ body[data-ds-dark-theme] [class*="primary"] {
 
 [class*="newSession"]:hover, [class*="primary"]:hover {
   background: #2e9bff33 !important;
+}
+
+/* 明亮主题：设置菜单/设置对话框 专属覆盖 —— 覆盖通用深色 [class*=panel]/settingsRoot 规则。
+   浅蓝白半透明毛玻璃背景、#14263f 主文字、#3a5070 次文字；section/card 半透明白底；
+   菜单 hover/active 用浅蓝半透明背景、文字保持 #14263f。只影响明亮主题，暗色不动。 */
+body:not([data-ds-dark-theme]) [class*="settingsRoot"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"],
+body:not([data-ds-dark-theme]) [role="dialog"] [class*="panel"],
+body:not([data-ds-dark-theme]) [role="dialog"] [class*="drawer"],
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="panel"],
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="drawer"] {
+  background: linear-gradient(rgba(232, 242, 255, 0.72), rgba(244, 250, 255, 0.78)) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  backdrop-filter: blur(16px) !important;
+  color: #14263f !important;
+  border-color: rgba(88, 169, 255, 0.35) !important;
+  --dsw-alias-label-primary: #14263f;
+  --dsw-alias-label-secondary: #3a5070;
+  --dsw-alias-label-tertiary: #4a5f80;
+  --dsw-alias-label-caption: #3a5070;
+  --dsw-alias-label-dimmed: #6b80a0;
+  --dsw-alias-label-primary-dimmed: #3a5070;
+  --dsw-alias-label-primary-foreground: #14263f;
+  --dsw-alias-label-primary-inverted: #14263f;
+  --aion-text-primary: #14263f;
+  --aion-text-secondary: #3a5070;
+  --aion-text-tertiary: #4a5f80;
+  --aion-text-disabled: #6b80a0;
+}
+
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="section"],
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="card"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="section"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="card"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="section"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="card"] {
+  background: rgba(255, 255, 255, 0.46) !important;
+  border-color: rgba(88, 169, 255, 0.3) !important;
+  color: #14263f !important;
+}
+
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="menu"] [class*="item"],
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="nav"] [class*="item"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="menu"] [class*="item"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="nav"] [class*="item"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="menu"] [class*="item"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="nav"] [class*="item"] {
+  color: #14263f !important;
+  background: transparent !important;
+}
+
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="menu"] [class*="item"]:hover,
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="nav"] [class*="item"]:hover,
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="menu"] [class*="item"]:hover,
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="nav"] [class*="item"]:hover,
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="menu"] [class*="item"]:hover,
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="nav"] [class*="item"]:hover {
+  color: #14263f !important;
+  background: rgba(88, 169, 255, 0.22) !important;
+}
+
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="menu"] [class*="item"][aria-current="true"],
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="menu"] [class*="item"][aria-selected="true"],
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="nav"] [class*="item"][aria-current="true"],
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="nav"] [class*="item"][aria-selected="true"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="menu"] [class*="item"][aria-current="true"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="menu"] [class*="item"][aria-selected="true"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="nav"] [class*="item"][aria-current="true"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="nav"] [class*="item"][aria-selected="true"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="menu"] [class*="item"][aria-current="true"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="menu"] [class*="item"][aria-selected="true"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="nav"] [class*="item"][aria-current="true"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="nav"] [class*="item"][aria-selected="true"] {
+  color: #14263f !important;
+  background: rgba(88, 169, 255, 0.28) !important;
+}
+
+/* 明亮主题：设置二级菜单/导航项/链接文字由品牌蓝改黑（覆盖悬停蓝，暗色不动） */
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="menu"] [class*="item"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="nav"] [class*="item"],
+body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="item"],
+body:not([data-ds-dark-theme]) [role="dialog"] [class*="menu"] [class*="item"],
+body:not([data-ds-dark-theme]) [role="dialog"] [class*="nav"] [class*="item"],
+body:not([data-ds-dark-theme]) [class*="settings"] a,
+body:not([data-ds-dark-theme]) [role="dialog"] a {
+  color: #14263f !important;
+}
+
+/* 明亮主题：设置/对话框里 选择器、按钮、箭头、图标、触发器 等蓝色元素统一改黑 */
+body:not([data-ds-dark-theme]) [class*="settings"] button,
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="selector"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="chevron"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="icon"],
+body:not([data-ds-dark-theme]) [class*="settings"] [class*="trigger"],
+body:not([data-ds-dark-theme]) [role="dialog"] button,
+body:not([data-ds-dark-theme]) [role="dialog"] [class*="selector"],
+body:not([data-ds-dark-theme]) [role="dialog"] [class*="chevron"],
+body:not([data-ds-dark-theme]) [role="dialog"] [class*="icon"],
+body:not([data-ds-dark-theme]) [role="dialog"] [class*="trigger"] {
+  color: #14263f !important;
+}
+
+/* 明亮主题：皮肤筛选胶囊与安装按钮使用浅色 Miku 青绿强调，覆盖组件自带深色样式。 */
+body:not([data-ds-dark-theme]) [class*="_pill"] {
+  color: #3a5070 !important;
+  background: rgba(248, 251, 255, 0.72) !important;
+  border: 1px solid rgba(156, 198, 255, 0.62) !important;
+  box-shadow: 0 1px 4px rgba(10, 30, 66, 0.08) !important;
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease !important;
+}
+
+body:not([data-ds-dark-theme]) [class*="_pill"]:hover {
+  color: #174f4b !important;
+  background: rgba(57, 197, 187, 0.12) !important;
+  border-color: rgba(57, 197, 187, 0.48) !important;
+}
+
+body:not([data-ds-dark-theme]) [class*="_pillActive"],
+body:not([data-ds-dark-theme]) [class*="_pill"][aria-pressed="true"] {
+  color: #0f4f4a !important;
+  background: rgba(57, 197, 187, 0.2) !important;
+  border-color: rgba(35, 158, 149, 0.58) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 2px 7px rgba(35, 158, 149, 0.14) !important;
+}
+
+body:not([data-ds-dark-theme]) [class*="_installButton"] {
+  color: #0f4f4a !important;
+  background: rgba(57, 197, 187, 0.22) !important;
+  border: 1px solid rgba(35, 158, 149, 0.55) !important;
+  box-shadow: 0 2px 7px rgba(35, 158, 149, 0.14) !important;
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease !important;
+}
+
+body:not([data-ds-dark-theme]) [class*="_installButton"]:hover:not(:disabled) {
+  background: rgba(57, 197, 187, 0.3) !important;
+  border-color: rgba(35, 158, 149, 0.68) !important;
+  box-shadow: 0 3px 9px rgba(35, 158, 149, 0.18) !important;
+}
+
+body:not([data-ds-dark-theme]) [class*="_installButton"]:active:not(:disabled) {
+  background: rgba(57, 197, 187, 0.38) !important;
+  box-shadow: inset 0 1px 3px rgba(15, 79, 74, 0.13) !important;
+}
+
+body:not([data-ds-dark-theme]) [class*="_installButton"]:disabled {
+  opacity: 0.52 !important;
 }
 
 body[data-ds-dark-theme] [class*="newSession"]:hover, body[data-ds-dark-theme] [class*="primary"]:hover {
@@ -1081,6 +1494,88 @@ body[data-ds-dark-theme] [class*="composer"] [class$="_card"], body[data-ds-dark
 
 button, [role="button"], .aionui-btn, .aionui-btn-primary, .aionui-btn-danger, .aionui-menu-item, [class*="newSession"], [class*="primary"], [class*="trigger"], [class*="ghost"], [class*="quiet"], [class*="seat"], input:not([type="checkbox"]):not([type="radio"]), textarea, [contenteditable="true"], select {
   border: none !important;
+}
+
+/* Final rc.8 composer guard. Keep this after every generic Miku component
+   override: the live composer uses stable data attributes, while CSS-module
+   class names and workspace/session states change after clear and submit. */
+[data-composer-seat] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 92px !important;
+}
+
+[data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 92px !important;
+  color: #000 !important;
+  background: rgba(250, 253, 255, 0.96) !important;
+  border: 1px solid rgba(30, 111, 217, 0.5) !important;
+  box-shadow: 0 8px 24px rgba(8, 35, 75, 0.16) !important;
+  --dsw-alias-label-primary: #000;
+  --dsw-alias-label-secondary: #000;
+  --dsw-alias-label-tertiary: #000;
+  --dsw-alias-label-caption: #000;
+}
+
+[data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] [data-input-scroll="true"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 28px !important;
+}
+
+[data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] [data-input-backdrop="true"] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+[data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] textarea[data-dsh-part="composer-input"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  background: transparent !important;
+}
+
+[data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] textarea[data-dsh-part="composer-input"]::placeholder {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  opacity: 1 !important;
+}
+
+[data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] :is(button, button *, [role="button"], [role="button"] *) {
+  color: #000 !important;
+  opacity: 1 !important;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] {
+  color: #e7f5ff !important;
+  background: rgba(13, 26, 58, 0.72) !important;
+  border-color: rgba(88, 169, 255, 0.42) !important;
+  box-shadow: 0 8px 28px rgba(0, 8, 28, 0.38) !important;
+  --dsw-alias-label-primary: #e7f5ff;
+  --dsw-alias-label-secondary: #b8cae8;
+  --dsw-alias-label-tertiary: #8ba0c4;
+  --dsw-alias-label-caption: #b8cae8;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] textarea[data-dsh-part="composer-input"] {
+  color: #e7f5ff !important;
+  -webkit-text-fill-color: #e7f5ff !important;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] textarea[data-dsh-part="composer-input"]::placeholder {
+  color: #b8cae8 !important;
+  -webkit-text-fill-color: #b8cae8 !important;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] :is(button, button *, [role="button"], [role="button"] *) {
+  color: #e7f5ff !important;
 }
 
 /* --- Miku custom node cursors (ported from the v1 miku skin; art by Moos柚眠, used with permission) --- */

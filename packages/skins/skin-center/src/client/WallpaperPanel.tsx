@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import { resolveSelection, type WallpaperDescriptor, type WallpaperHandle } from './wallpaper.ts'
+import type { SkinBackgroundHandle } from './background.ts'
 import css from './skin-center.module.css'
 
 /** Host base path of the wallpaper API (mirrors src/we-routes.ts). */
@@ -61,13 +62,14 @@ function typeKey(item: WallpaperItem): 'wallpaperTypeVideo' | 'wallpaperTypeWeb'
 }
 
 /** Render the Wallpaper Engine section of the skin-center card. */
-export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>['t']; wallpaper: WallpaperHandle }): ReactNode {
+export function WallpaperPanel({ t, wallpaper, background }: { t: PropsLocale<'skinCenter'>['t']; wallpaper: WallpaperHandle; background: SkinBackgroundHandle }): ReactNode {
   const enabled = useSyncExternalStore(wallpaper.subscribe, wallpaper.enabled)
   const selection = useSyncExternalStore(wallpaper.subscribe, wallpaper.selection)
   const mode = useSyncExternalStore(wallpaper.subscribe, wallpaper.mode)
   const fit = useSyncExternalStore(wallpaper.subscribe, wallpaper.fit)
   const dim = useSyncExternalStore(wallpaper.subscribe, wallpaper.dim)
   const blur = useSyncExternalStore(wallpaper.subscribe, wallpaper.wallpaperBlur)
+  const cardBlur = useSyncExternalStore(background.subscribe, background.cardBlur)
   const pauseOnHidden = useSyncExternalStore(wallpaper.subscribe, wallpaper.pauseOnHidden)
   const sound = useSyncExternalStore(wallpaper.subscribe, wallpaper.sound)
   const volume = useSyncExternalStore(wallpaper.subscribe, wallpaper.volume)
@@ -253,6 +255,22 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                   value={blur}
                   aria-label={t('wallpaperBlur')}
                   onChange={(event) => { wallpaper.setBlur(Number(event.target.value)) }}
+                />
+                <div className={css.backgroundHead}>
+                  <span className={css.backgroundLabel}>{t('cardBlur')}</span>
+                  <span className={css.backgroundValue} aria-hidden="true">{cardBlur}px</span>
+                </div>
+                <input
+                  id="skin-center-card-blur"
+                  className={css.backgroundRange}
+                  type="range"
+                  min="0"
+                  max="20"
+                  step="1"
+                  value={cardBlur}
+                  aria-valuetext={`${cardBlur}px`}
+                  aria-label={t('cardBlur')}
+                  onChange={(event) => { background.setCardBlur(Number(event.target.value)) }}
                 />
               </div>
               <div className={css.enableRow}>

@@ -623,11 +623,9 @@ describe('WallpaperController', () => {
     // The official seat mask ::before stays neutralized.
     expect(neutralizer?.textContent).toContain('html[data-dsh-backdrop-active] [data-composer-seat]::before')
     expect(neutralizer?.textContent).toContain('background: none !important;')
-    // The input card only gets frosted blur while the conversation has
-    // content (data-dsh-conversation-content); its own translucent tint
-    // keeps readability instead of a hardcoded color.
-    expect(neutralizer?.textContent).toContain('html[data-dsh-backdrop-active][data-dsh-conversation-content] [data-composer-card]')
-    expect(neutralizer?.textContent).toContain('backdrop-filter: blur(10px) !important;')
+    // The input-card glass placeholder is removed from the shared neutralizer
+    // — it is now driven by the card blur slider (--dsw-wallpaper-glass-blur).
+    expect(neutralizer?.textContent).not.toContain('[data-composer-card]')
     // Empty conversation: the content marker is absent, so the frost is off.
     expect(document.body.hasAttribute('data-dsh-conversation-content')).toBe(false)
     // Adding a message row flips the marker on (observer-driven).
@@ -678,6 +676,67 @@ describe('WallpaperController', () => {
     expect(style?.textContent).toContain('background-color: transparent !important;')
     controller.dispose()
     expect(shellSurface.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
+  })
+
+  it('re-appends the surviving layer after navigation tears the body subtree (#805)', async () => {
+    const { scope } = fakeScope()
+    document.body.innerHTML = ''
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+    const controller = new WallpaperController(scope, { doc: document })
+    controller.applySelection(video)
+    const [media] = layers()
+    expect(media).toBeDefined()
+    const videoEl = media.querySelector('video')
+    expect(videoEl).not.toBeNull()
+    // Simulate navigation: the layer is torn out of the body subtree while
+    // the controller reference survives.
+    media.remove()
+    expect(document.body.contains(media)).toBe(false)
+    // A body childList mutation (the shell re-render) triggers the mount
+    // observer, which re-appends the surviving layer.
+    const probe = document.createElement('div')
+    document.body.appendChild(probe)
+    probe.remove()
+    await new Promise((r) => setTimeout(r, 20))
+    expect(document.body.contains(media)).toBe(true)
+    // Re-appended, not recreated: the video element (and its mediaKey) survive,
+    // so playback is not restarted mid-navigation.
+    expect(media.querySelector('video')).toBe(videoEl)
+    controller.dispose()
+  })
+
+  it('re-tags full-viewport surfaces after navigation rebuilds #root (#805)', async () => {
+    const { scope } = fakeScope()
+    document.body.innerHTML = ''
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+    const controller = new WallpaperController(scope, {
+      doc: document,
+      declareSurface: (el) => el.dataset.testSurface === 'true',
+      // Flush the re-scan trailing debounce immediately (production default 150ms).
+      surfaceTrailMs: 0,
+    })
+    controller.applySelection(video)
+    const original = document.createElement('div')
+    original.dataset.testSurface = 'true'
+    original.style.height = '100%'
+    root.appendChild(original)
+    await new Promise((r) => setTimeout(r, 40))
+    expect(original.getAttribute('data-dsh-wallpaper-surface')).toBe('')
+    // Navigation replaces #root's interior with a fresh, untagged surface.
+    root.replaceChildren()
+    const fresh = document.createElement('div')
+    fresh.dataset.testSurface = 'true'
+    fresh.style.height = '100%'
+    root.appendChild(fresh)
+    // The body-subtree observer fires the debounced re-scan.
+    await new Promise((r) => setTimeout(r, 40))
+    expect(fresh.getAttribute('data-dsh-wallpaper-surface')).toBe('')
+    expect(original.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
+    controller.dispose()
   })
 
   it('defaultWallpaperSurface matches full-height bg-base surfaces', () => {

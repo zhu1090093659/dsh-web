@@ -132,10 +132,9 @@ export function ensureSceneNeutralizer(doc: Document): void {
       background: none !important;
       backdrop-filter: none !important;
     }
-    html[data-dsh-backdrop-active][data-dsh-conversation-content] [data-composer-card] {
-      backdrop-filter: blur(${INPUT_FROST_BLUR_PX}px) !important;
-      -webkit-backdrop-filter: blur(${INPUT_FROST_BLUR_PX}px) !important;
-    }
+    /* The input-card / bubble / code-block glass is now driven by the
+       skin-center card blur slider (--dsw-wallpaper-glass-blur); the fixed
+       10px placeholder is removed. */
   `
   doc.head.appendChild(style)
 }

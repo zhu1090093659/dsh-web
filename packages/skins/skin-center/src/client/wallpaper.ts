@@ -148,6 +148,17 @@ const FRAME_MAX_EDGE = 1920
  * false when the token cannot be resolved.
  */
 export function defaultWallpaperSurface(el: HTMLElement, doc: Document): boolean {
+  return defaultWallpaperSurfaceWithBase(el, doc, resolveCssColor(doc, '--dsw-alias-bg-base'))
+}
+
+/**
+ * Same full-viewport-surface check with the opaque base color precomputed.
+ * Used by WallpaperController.markSurfaces to resolve `--dsw-alias-bg-base`
+ * exactly once per sweep instead of creating/reading/removing a probe element
+ * for every scanned node (avoid: streaming chat mutations trigger full-tree
+ * rescans, each with per-element layout reads).
+ */
+function defaultWallpaperSurfaceWithBase(el: HTMLElement, doc: Document, base: string | null): boolean {
   const win = doc.defaultView
   if (win === null) return false
   let rectHeight = 0
@@ -171,7 +182,6 @@ export function defaultWallpaperSurface(el: HTMLElement, doc: Document): boolean
     ? Math.abs(rectHeight - viewportHeight) <= 2
     : heightStyle === '100%' || heightStyle === '100vh'
   if (!isFullHeight) return false
-  const base = resolveCssColor(doc, '--dsw-alias-bg-base')
   return base !== null && background === base
 }
 
@@ -227,6 +237,10 @@ export interface WallpaperControllerOptions {
   /** Override the sidebar workspaces end-fade detector (tests); defaults to
    * defaultWorkspaceFade. */
   declareWorkspaceFade?: (el: HTMLElement, doc: Document) => boolean
+  /** Trailing debounce for the surface re-scan (ms). Coalesces burst DOM
+   * mutations (chat streaming) into one settled sweep; tests pass 0 to flush
+   * right after rAF. Defaults to 150. */
+  surfaceTrailMs?: number
 }
 
 /**
@@ -258,6 +272,16 @@ export class WallpaperController implements WallpaperHandle {
   private scrimLayer: HTMLDivElement | null = null
   private videoElement: HTMLVideoElement | null = null
   private rootNeutralizer: HTMLStyleElement | null = null
+  /** Re-asserts the wallpaper layers if the shell tears the body subtree down. */
+  private mountObserver: MutationObserver | null = null
+  /** Re-tags full-viewport surfaces after navigation rebuilds #root (#805). */
+  private surfaceObserver: MutationObserver | null = null
+  /** Pending rAF id for a coalesced surface re-scan. */
+  private surfaceRafId: number | null = null
+  /** Pending trailing timer id that absorbs burst mutations into one scan. */
+  private surfaceTrailId: ReturnType<typeof setTimeout> | null = null
+  /** Trailing debounce window for the surface re-scan (options.surfaceTrailMs ?? 150). */
+  private readonly surfaceTrailMs: number
   /** Shell surfaces tagged with data-dsh-wallpaper-surface during this mount. */
   private taggedSurfaces: HTMLElement[] = []
   private disposed = false
@@ -273,6 +297,7 @@ export class WallpaperController implements WallpaperHandle {
     this.scope = scope
     this.options = options
     this.doc = options.doc ?? document
+    this.surfaceTrailMs = options.surfaceTrailMs ?? 150
     this.readAll()
     scope.subscribe(() => {
       this.readAll()
@@ -290,6 +315,20 @@ export class WallpaperController implements WallpaperHandle {
     // play() on that gesture so an unmuted live wallpaper starts (#580).
     this.doc.addEventListener('pointerdown', this.onFirstGesture)
     this.doc.addEventListener('keydown', this.onFirstGesture)
+    // Some DSH navigation (e.g. switching conversations) tears down the body
+    // subtree, which removes the wallpaper layers while the selection is
+    // still active. Re-mount them so the wallpaper does not disappear (#805).
+    const win = this.doc.defaultView
+    if (win !== null && typeof win.MutationObserver === 'function') {
+      this.mountObserver = new win.MutationObserver(() => {
+        if (this.disposed) return
+        if ((this.previewing ?? this.applied) === null) return
+        if (this.mediaLayer === null || !this.mediaLayer.isConnected) {
+          this.render()
+        }
+      })
+      this.mountObserver.observe(this.doc.body, { childList: true })
+    }
     if (this.enabledValue && this.selectionValue) {
       this.fetchAndSync()
     }
@@ -519,6 +558,8 @@ export class WallpaperController implements WallpaperHandle {
 
   dispose(): void {
     this.disposed = true
+    this.mountObserver?.disconnect()
+    this.mountObserver = null
     this.doc.removeEventListener('visibilitychange', this.onVisibility)
     this.doc.removeEventListener('pointerdown', this.onFirstGesture)
     this.doc.removeEventListener('keydown', this.onFirstGesture)
@@ -641,10 +682,22 @@ export class WallpaperController implements WallpaperHandle {
     // shared composer-seat neutralizer applies here too (issue #777).
     setSceneBackdropActive(this.doc, 'wallpaper', true)
     this.markSurfaces()
+    this.ensureSurfaceObserver()
+    // Connect-aware: navigation (e.g. switching conversations) can tear the
+    // wallpaper layers out of the body subtree while the references survive.
+    // Re-append the surviving layer instead of recreating it, so the media
+    // child and its mediaKey survive and the video is not rebuilt / restarted
+    // (#805). Only build a fresh layer when there is none at all.
+    if (this.mediaLayer !== null && !this.mediaLayer.isConnected) {
+      this.doc.body.appendChild(this.mediaLayer)
+    }
     if (this.mediaLayer === null) {
       this.mediaLayer = this.doc.createElement('div')
       styleLayer(this.mediaLayer, -3)
       this.doc.body.appendChild(this.mediaLayer)
+    }
+    if (this.scrimLayer !== null && !this.scrimLayer.isConnected) {
+      this.doc.body.appendChild(this.scrimLayer)
     }
     if (this.scrimLayer === null) {
       this.scrimLayer = this.doc.createElement('div')
@@ -673,6 +726,17 @@ export class WallpaperController implements WallpaperHandle {
         if (child instanceof HTMLVideoElement && child.paused) {
           void child.play()?.catch(() => { /* retried on first gesture */ })
         }
+      }
+    } else {
+      // Kept the surviving layer (mediaKey matched): some browsers pause a
+      // <video> when it is torn out of the DOM, and the rebuild path above is
+      // skipped, so its play retry never ran — resume playback explicitly.
+      // Using the window-local constructor: jsdom (and isolated test envs)
+      // may not surface the global HTMLVideoElement binding in every context.
+      const child = this.mediaLayer.firstElementChild
+      const VideoCtor = this.doc.defaultView?.HTMLVideoElement
+      if (VideoCtor !== undefined && child instanceof VideoCtor && child.paused) {
+        void child.play()?.catch(() => { /* autoplay policy: stays paused until gesture */ })
       }
     }
     // Sizing mode changes apply in place: rebuilding would restart video
@@ -868,12 +932,19 @@ export class WallpaperController implements WallpaperHandle {
   private markSurfaces(): void {
     const root = this.doc.getElementById('root')
     if (root !== null) {
-      const isSurface = this.options.declareSurface ?? defaultWallpaperSurface
+      const custom = this.options.declareSurface
+      // Resolve the opaque base color once per sweep — it is constant across
+      // the whole #root scan — instead of probing one div per node. Custom
+      // detectors keep their own (el, doc) signature.
+      const base = custom === undefined ? resolveCssColor(this.doc, '--dsw-alias-bg-base') : null
+      const isSurface = custom !== undefined
+        ? (el: HTMLElement): boolean => custom(el, this.doc)
+        : (el: HTMLElement): boolean => defaultWallpaperSurfaceWithBase(el, this.doc, base)
       const stack: Element[] = [root]
       while (stack.length > 0) {
         const node = stack.pop()
         if (node === undefined) continue
-        if (node instanceof HTMLElement && !node.hasAttribute('data-dsh-wallpaper-surface') && isSurface(node, this.doc)) {
+        if (node instanceof HTMLElement && !node.hasAttribute('data-dsh-wallpaper-surface') && isSurface(node)) {
           node.setAttribute('data-dsh-wallpaper-surface', '')
           this.taggedSurfaces.push(node)
         }
@@ -900,6 +971,64 @@ export class WallpaperController implements WallpaperHandle {
     }
   }
 
+  /**
+   * Watch document.body (subtree) while a wallpaper is active and re-tag the
+   * full-viewport surfaces after navigation rebuilds #root. Navigation
+   * replaces #root's interior with fresh, untagged surfaces that paint the
+   * opaque app base background over the negative-z wallpaper, so the tags
+   * must be re-asserted after the rebuild (#805). Attaching once on the
+   * persistent body element (not on #root) survives #root swaps.
+   */
+  private ensureSurfaceObserver(): void {
+    if (this.disposed || this.surfaceObserver !== null) return
+    const win = this.doc.defaultView
+    if (win === null || typeof win.MutationObserver !== 'function') return
+    this.surfaceObserver = new win.MutationObserver(() => this.scheduleSurfaceRescan())
+    this.surfaceObserver.observe(this.doc.body, { childList: true, subtree: true })
+  }
+
+  /**
+   * Re-tag full-viewport surfaces after a surface-changing DOM mutation.
+   * Leading edge: the first rAF tags the new surfaces within one frame
+   * (before paint), so a navigation that rebuilds #root does not paint opaque
+   * solids for the whole debounce window (the round-1 regression: a 150ms
+   * trailing debounce left ~10 solid frames on every conversation switch).
+   * A trailing timer then drains the rest of the burst into one settled
+   * re-tag; while it is pending the guards coalesce follow-up mutations.
+   */
+  private scheduleSurfaceRescan(): void {
+    if (this.disposed || this.surfaceRafId !== null || this.surfaceTrailId !== null) return
+    const win = this.doc.defaultView
+    if (win === null) return
+    const flush = (): void => {
+      this.surfaceRafId = null
+      this.surfaceTrailId = null
+      if (this.disposed) return
+      if ((this.previewing ?? this.applied) === null) return
+      // Re-tag from scratch: stale entries from the torn-down subtree are
+      // dropped, current surfaces are re-asserted idempotently.
+      this.untagSurfaces()
+      this.markSurfaces()
+    }
+    const armTrail = (): void => {
+      if (this.surfaceTrailId !== null) return
+      this.surfaceTrailId = setTimeout(flush, this.surfaceTrailMs)
+    }
+    if (typeof win.requestAnimationFrame === 'function') {
+      this.surfaceRafId = win.requestAnimationFrame(() => {
+        this.surfaceRafId = null
+        // Tag immediately on this frame (before paint).
+        flush()
+        if (this.surfaceTrailId === null) armTrail()
+      })
+    } else {
+      // jsdom (and synthetic test envs) may not implement rAF; flush now and
+      // drain through the trailing timer.
+      flush()
+      armTrail()
+    }
+  }
+
   private untagSurfaces(): void {
     for (const el of this.taggedSurfaces) el.removeAttribute('data-dsh-wallpaper-surface')
     this.taggedSurfaces = []
@@ -907,6 +1036,16 @@ export class WallpaperController implements WallpaperHandle {
 
   private teardownLayers(): void {
     this.releaseCaptureVideo()
+    if (this.surfaceRafId !== null) {
+      this.doc.defaultView?.cancelAnimationFrame(this.surfaceRafId)
+      this.surfaceRafId = null
+    }
+    if (this.surfaceTrailId !== null) {
+      clearTimeout(this.surfaceTrailId)
+      this.surfaceTrailId = null
+    }
+    this.surfaceObserver?.disconnect()
+    this.surfaceObserver = null
     this.untagSurfaces()
     delete this.doc.body.dataset.dshWallpaperActive
     delete this.doc.documentElement.dataset.dshWallpaperActive

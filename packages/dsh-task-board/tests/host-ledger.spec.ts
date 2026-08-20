@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -139,6 +139,44 @@ describe('HostTaskLedger', () => {
     const successor = new HostTaskLedger(root, () => NOW)
     expect(successor.state().scheduler.ledgerId).toBeDefined()
     successor.dispose()
+  })
+
+  it('takes over a stale legacy lock whose pid was reused by a newer process', () => {
+    const root = tempRoot()
+    const lockFile = join(root, 'ledger-v2.lock')
+    // Legacy lock from a crashed owner: no recorded start time, old mtime.
+    writeFileSync(lockFile, JSON.stringify({ pid: process.pid, token: 'stale-owner' }), { encoding: 'utf8' })
+    const past = Date.now() - 60 * 60 * 1000
+    utimesSync(lockFile, past / 1000, past / 1000)
+    const ledger = new HostTaskLedger(root, () => NOW)
+    expect(ledger.state().scheduler.ledgerId).toBeDefined()
+    ledger.dispose()
+  })
+
+  it('takes over a lock whose recorded start time does not match the live pid', () => {
+    const root = tempRoot()
+    const lockFile = join(root, 'ledger-v2.lock')
+    writeFileSync(lockFile, JSON.stringify({ pid: process.pid, startedAt: Date.now() + 86_400_000 }), { encoding: 'utf8' })
+    const ledger = new HostTaskLedger(root, () => NOW)
+    expect(ledger.state().scheduler.ledgerId).toBeDefined()
+    ledger.dispose()
+  })
+
+  it('fails closed with a recovery hint when a fresh legacy lock cannot be disproved', () => {
+    const root = tempRoot()
+    const lockFile = join(root, 'ledger-v2.lock')
+    // A legacy lock with a fresh mtime cannot be proven stale by ordering,
+    // so the ledger must refuse to start and explain how to recover.
+    writeFileSync(lockFile, JSON.stringify({ pid: process.pid }), { encoding: 'utf8' })
+    let message = ''
+    try {
+      new HostTaskLedger(root, () => NOW)
+    } catch (error) {
+      message = (error as Error).message
+    }
+    expect(message).toContain('already owned by process')
+    expect(message).toContain('remove')
+    expect(message).toContain(lockFile)
   })
 
   it('rejects moving or deleting a task while any execution remains open', () => {

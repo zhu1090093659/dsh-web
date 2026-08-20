@@ -1,5 +1,6 @@
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { dshHome } from './dsh-home.ts'
 import { isValidCron, nextRunAtMs } from './core/schedule.ts'
@@ -66,6 +67,70 @@ function processIsAlive(pid: number): boolean {
   } catch (error) {
     return (error as NodeJS.ErrnoException).code !== 'ESRCH'
   }
+}
+
+const PROCESS_PROBE_TIMEOUT_MS = 3000
+
+let ownStartTime: number | undefined
+let ownStartTimeResolved = false
+
+/**
+ * Best-effort start time (Unix epoch ms) of a live process. Used to prove
+ * whether the ledger lock really belongs to the PID recorded in it, so a
+ * crash leftover whose PID was reused by an unrelated process (issue #786)
+ * is detected as stale instead of blocking startup forever. Returns
+ * undefined when the platform probe is unavailable; callers fail closed.
+ */
+function processStartTimeMs(pid: number): number | undefined {
+  if (process.platform === 'win32') {
+    const probe = spawnSync(
+      'powershell',
+      ['-NoProfile', '-NonInteractive', '-Command',
+        '[DateTimeOffset]::FromFileTime((Get-Process -Id ' + String(pid) + ' -ErrorAction SilentlyContinue).StartTime.ToUniversalTime().ToFileTime()).ToUnixTimeMilliseconds()'],
+      { timeout: PROCESS_PROBE_TIMEOUT_MS, windowsHide: true },
+    )
+    if (probe.status !== 0 || probe.stdout.length === 0) return undefined
+    const started = Number(probe.stdout.toString('utf8').trim())
+    return Number.isFinite(started) ? started : undefined
+  }
+  if (process.platform === 'linux') {
+    // Locale- and spawn-free: /proc/<pid>/stat field 22 (starttime in clock
+    // ticks since boot) combined with the boot time from /proc/stat.
+    try {
+      const stat = readFileSync('/proc/' + String(pid) + '/stat', 'utf8')
+      const closeParen = stat.lastIndexOf(')')
+      const fields = stat.slice(closeParen + 2).split(' ')
+      const startTicks = Number(fields[19])
+      const procStat = readFileSync('/proc/stat', 'utf8')
+      const btimeMatch = /btimes+(d+)/.exec(procStat)
+      const btime = Number(btimeMatch?.[1])
+      if (!Number.isFinite(startTicks) || !Number.isFinite(btime)) return undefined
+      return btime * 1000 + Math.round((startTicks / 100) * 1000)
+    } catch {
+      return undefined
+    }
+  }
+  // macOS / other POSIX: ps lstart with a forced English locale, falling back
+  // to the elapsed-seconds column when lstart cannot be parsed.
+  const env = { ...process.env, LC_ALL: 'C' }
+  const probe = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { timeout: PROCESS_PROBE_TIMEOUT_MS, env })
+  if (probe.status === 0 && probe.stdout.length > 0) {
+    const started = Date.parse(probe.stdout.toString('utf8').trim())
+    if (Number.isFinite(started)) return started
+  }
+  const elapsed = spawnSync('ps', ['-o', 'etimes=', '-p', String(pid)], { timeout: PROCESS_PROBE_TIMEOUT_MS, env })
+  if (elapsed.status !== 0 || elapsed.stdout.length === 0) return undefined
+  const seconds = Number(elapsed.stdout.toString('utf8').trim())
+  if (!Number.isFinite(seconds)) return undefined
+  return Date.now() - seconds * 1000
+}
+
+function ownProcessStartTimeMs(): number | undefined {
+  if (!ownStartTimeResolved) {
+    ownStartTimeResolved = true
+    ownStartTime = processStartTimeMs(process.pid)
+  }
+  return ownStartTime
 }
 
 function betterExecution(a: ExecutionRecord, b: ExecutionRecord): ExecutionRecord {
@@ -512,7 +577,7 @@ export class HostTaskLedger {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         const fd = openSync(this.lockFile, 'wx', 0o600)
-        writeFileSync(fd, JSON.stringify({ pid: process.pid, token: this.lockToken }), { encoding: 'utf8' })
+        writeFileSync(fd, JSON.stringify({ pid: process.pid, token: this.lockToken, startedAt: ownProcessStartTimeMs() }), { encoding: 'utf8' })
         fsyncSync(fd)
         try { chmodSync(this.lockFile, 0o600) } catch { /* Windows ACLs own access */ }
         return fd
@@ -520,14 +585,35 @@ export class HostTaskLedger {
         const code = (error as NodeJS.ErrnoException).code
         if (code !== 'EEXIST') throw error
         let pid: number | undefined
+        let ownerStartedAt: number | undefined
         try {
-          const owner = JSON.parse(readFileSync(this.lockFile, 'utf8')) as { pid?: unknown }
+          const owner = JSON.parse(readFileSync(this.lockFile, 'utf8')) as { pid?: unknown; startedAt?: unknown }
           if (typeof owner.pid === 'number') pid = owner.pid
+          if (typeof owner.startedAt === 'number') ownerStartedAt = owner.startedAt
         } catch {
           throw new Error(`task-board ledger lock is unreadable: ${this.lockFile}`)
         }
         if (pid !== undefined && processIsAlive(pid)) {
-          throw new Error(`task-board ledger is already owned by process ${pid}`)
+          const actualStartedAt = pid === process.pid ? ownProcessStartTimeMs() : processStartTimeMs(pid)
+          // A reused PID is exposed when the live process identity no longer
+          // matches the recorded one: either the recorded start time differs,
+          // or (legacy locks without one) the lock file predates the live
+          // process and therefore cannot have been written by it. Takeover is
+          // safe in both cases — the original owner is gone.
+          const staleReuse = actualStartedAt !== undefined && (
+            ownerStartedAt !== undefined
+              ? actualStartedAt !== ownerStartedAt
+              : (() => {
+                try { return statSync(this.lockFile).mtimeMs < actualStartedAt } catch { return true }
+              })()
+          )
+          if (!staleReuse) {
+            const confirmedOwner = ownerStartedAt !== undefined && actualStartedAt === ownerStartedAt
+            const hint = confirmedOwner
+              ? ''
+              : `; if this PID was reused after a crash and no other DSH host is running, remove ${this.lockFile} manually and retry`
+            throw new Error(`task-board ledger is already owned by process ${pid}${hint}`)
+          }
         }
         try { unlinkSync(this.lockFile) } catch (unlinkError) {
           if ((unlinkError as NodeJS.ErrnoException).code !== 'ENOENT') throw unlinkError

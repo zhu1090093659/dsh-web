@@ -331,13 +331,16 @@ window.__ModuleLoader__.load({
           background-image: none !important;
         }
         /* The composer seat paints an opaque base fade under the input card
-           (rc.8: a linear gradient to --dsw-alias-bg-base, z-index 7).
-           Remove it while the WE wallpaper is mounted so the backdrop shows
-           behind the input area (issue #734). It is anchored on the stable
-           semantic attribute data-composer-seat that the official shell
-           outputs, so it does not depend on hashed class names. */
-        html[data-dsh-wallpaper-active] [data-composer-seat] {
+           (rc.8: a linear gradient to --dsw-alias-bg-base, z-index 7; some
+           builds additionally use a ::before with backdrop-filter). Remove it
+           while the WE wallpaper is mounted so the backdrop shows behind the
+           input area (issue #734). It is anchored on the stable semantic
+           attribute data-composer-seat that the official shell outputs, so it
+           does not depend on hashed class names. */
+        html[data-dsh-wallpaper-active] [data-composer-seat],
+        html[data-dsh-wallpaper-active] [data-composer-seat]::before {
           background: none !important;
+          backdrop-filter: none !important;
         }
         /* Full-viewport shell surfaces (AppFrame frame, conversation root,
            details root) paint the opaque app base background via hashed

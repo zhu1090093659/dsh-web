@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "wallpaper-exclusive",
+  "name": "壁纸专属",
+  "nameEn": "Wallpaper Exclusive",
+  "version": "0.1.0",
+  "author": "dsh-web-ui",
+  "tagline": "壁纸优先 · 液态玻璃面板",
+  "description": "官方默认底座 + 输入卡/气泡/代码块/任务清单/插件面板液态玻璃，壁纸从背后透出，不画自己的背景；面板毛玻璃随「卡片背景模糊」滑杆一起变化。",
+  "tags": [
+    "wallpaper",
+    "glass",
+    "translucent"
+  ],
+  "accent": "#0d1627",
+  "order": 999,
+  "preview": {
+    "light": "preview/light.png",
+    "dark": "preview/dark.png"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css"
+  }
+}

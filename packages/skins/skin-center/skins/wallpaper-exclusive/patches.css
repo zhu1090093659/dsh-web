@@ -1,0 +1,218 @@
+/* wallpaper-exclusive patches — wallpaper-first polish for the web-ui plugin
+   family. The skin-center owns this file's injection: it is added when the
+   skin is active and removed on switch, so every selector here is global.
+
+   The app root is made transparent so the WE wallpaper is visible. The input
+   card and the message bubbles share one glass blur variable; plugin panels
+   get a light frosted fill without touching the conversation area. No
+   composer seat glass is painted here (that approach caused the wallpaper
+   blur issue for summer-liquid-glass). */
+
+[id="root"] {
+  background: none;
+}
+
+[data-composer-card] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur) !important;
+  backdrop-filter: var(--dsw-wallpaper-glass-blur) !important;
+}
+
+/* User-sent message bubble only: same glass treatment as the input card, so
+   the frosted rectangle is the bubble itself, not the whole row. The slider
+   drives it through --dsw-wallpaper-glass-blur. */
+[data-chat-anchor-key] [class*="bubble"] {
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* Markdown code blocks: the fourth slider-controlled glass surface. */
+[class*="md-code-block"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* Web-ui plugin panels: frosted over the wallpaper, without touching the
+   conversation/dialog area. Driven by the card-blur slider variables, so the
+   whole panel family (task-board / ssh / git-graph / skill-explorer / ... )
+   follows the slider together instead of hardcoded px. */
+[data-dsh-plugin="task-board"],
+[data-dsh-plugin="ssh"],
+[data-dsh-plugin="git-graph"],
+[data-dsh-plugin="pet"],
+[data-dsh-plugin="remote-web-ui"],
+[data-dsh-plugin="community-plugins"],
+[data-dsh-plugin="web-ui-settings"],
+.aionui-root,
+[data-aionui-explorer-col],
+[data-aionui-preview-col] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+.aionui-dialog,
+.aionui-menu,
+.aionui-toast {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* Task list (任务清单): the task-board columns and the task cards each get
+   the slider-driven glass so the whole list frosted over the wallpaper.
+   Anchored on the stable mount attribute + the L2 parts (issue #506). The
+   board frame / wrapper are already covered by the plugin-panel rule above. */
+[data-dsh-taskboard-view] [data-dsh-part="column"],
+[data-dsh-taskboard-view] [data-dsh-part="card"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* git-graph composer chips (bottom dock row of the composer): frosted glass
+   following the slider. */
+[data-dsh-plugin="git-graph"] [data-dsh-part="chip"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* Skill center (skill-explorer): the modal card and each skill row follow the
+   slider; the head / tab-bar / tab strips drop their opaque fills so the card
+   glass shows through them. */
+[data-dsh-plugin="skill-explorer"] [data-dsh-part="card"],
+[data-dsh-plugin="skill-explorer"] [data-dsh-part="skill-row"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+[data-dsh-plugin="skill-explorer"] [data-dsh-part="head"],
+[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab-bar"] {
+  background-color: transparent !important;
+}
+
+/* Inactive tabs drop their fill; the active tab (data-active, set by the
+   panel) keeps a glass fill so the selected state stays distinguishable. */
+[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab"] {
+  background-color: transparent !important;
+}
+
+[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab"][data-active] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* Settings surface and its cards: fully frosted glass, driven by the card
+   blur slider. The layer tokens are remapped here so every nested card
+   becomes translucent instead of the official opaque fill. */
+[data-dsh-surface="settings"] {
+  --dsw-alias-bg-layer-1: rgba(13, 22, 39, 0.5);
+  --dsw-alias-bg-layer-2: rgba(13, 22, 39, 0.42);
+  --dsw-alias-bg-layer-3: rgba(13, 22, 39, 0.36);
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* Conversation area keeps the PR #782 global design; the skin does not force
+   it solid or glass. */
+
+/* Generic floating surfaces (dialogs, menus, poppers): frosted glass. */
+[role="dialog"],
+[role="menu"],
+[role="listbox"],
+[data-radix-popper-content-wrapper] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* Composer "+" and "/" popups: kept explicitly in the slider glass set even
+   when a shell version stops wrapping them in the generic role/popper group.
+   Popups rendered in a portal outside the composer subtree are still caught
+   by the generic floating-surface rule above. Fill-in point: if a popup still
+   paints an opaque background during acceptance, append its stable data/class
+   suffix here. */
+[data-slot="conversation.composer"] [role="dialog"],
+[data-slot="conversation.composer"] [role="menu"],
+[data-slot="conversation.composer"] [role="listbox"],
+[data-slot="conversation.composer"] [data-radix-popper-content-wrapper],
+[data-composer-card] [role="dialog"],
+[data-composer-card] [role="menu"],
+[data-composer-card] [role="listbox"],
+[data-composer-card] [data-radix-popper-content-wrapper] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* Inline code (filenames, commands, class names) mirrors the code block
+   glass treatment. */
+code {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* The composer "+" popup trigger (scoped to the composer slot so sibling
+   plugins' "add" buttons are not caught) and the bottom-right quit button:
+   translucent glass. */
+[data-slot="conversation.composer"] button[class*="add"],
+button[class*="triggerFloating"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* Sidebar plugin entry buttons: transparent resting state so nothing looks
+   selected by default; hover and the real selected/active states keep subtle
+   fills. Scoped to the injected family rows — not every sidebar button — so
+   the shell's native nav buttons keep their own fills. */
+[data-dsh-part="sidebar-entry"],
+[data-dsh-taskboard-entry],
+[data-dsh-ssh-entry],
+[data-dsh-skill-explorer-entry] {
+  background-color: rgba(0, 0, 0, 0) !important;
+}
+
+[data-dsh-part="sidebar-entry"]:hover,
+[data-dsh-taskboard-entry]:hover,
+[data-dsh-ssh-entry]:hover,
+[data-dsh-skill-explorer-entry]:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-dsh-part="sidebar-entry"][aria-current="true"],
+[data-dsh-part="sidebar-entry"][data-active],
+[data-dsh-taskboard-entry][aria-current="true"],
+[data-dsh-taskboard-entry][data-active],
+[data-dsh-ssh-entry][aria-current="true"],
+[data-dsh-ssh-entry][data-active],
+[data-dsh-skill-explorer-entry][aria-current="true"],
+[data-dsh-skill-explorer-entry][data-active] {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Sidebar plugin entries share one label + icon color so task-board, ssh and
+   skill-explorer rows match the official nav items (icons inherit currentColor).
+   Anchored on the L2 family part (issue #506) plus the row attributes that the
+   shared sidebar-entry-core always outputs — the most reliable existence
+   anchors even if a family build ever drops the part attribute. */
+[data-slot="sidebar"] [class*="entry"],
+[data-dsh-part="sidebar-entry"],
+[data-dsh-taskboard-entry],
+[data-dsh-ssh-entry],
+[data-dsh-skill-explorer-entry] {
+  color: var(--dsw-alias-label-primary, #f9fafb) !important;
+}
+
+[data-dsh-part="sidebar-entry"] svg,
+[data-dsh-taskboard-entry] svg,
+[data-dsh-ssh-entry] svg,
+[data-dsh-skill-explorer-entry] svg {
+  color: var(--dsw-alias-label-primary, #f9fafb) !important;
+}

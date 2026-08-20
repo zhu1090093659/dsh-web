@@ -30,6 +30,9 @@ export function mountSidebarEntry(onClick: () => void): () => void {
   return mountSharedSidebarEntry({
     rowAttribute: 'data-dsh-skill-explorer-entry',
     rowSelector: ENTRY_SELECTOR,
+    // L2 plugin id (issue #506): makes the row carry data-dsh-plugin +
+    // data-dsh-part="sidebar-entry" like the task-board / ssh entries.
+    plugin: 'skill-explorer',
     icon: ICON,
     css,
     label: () => tt('entry.label'),

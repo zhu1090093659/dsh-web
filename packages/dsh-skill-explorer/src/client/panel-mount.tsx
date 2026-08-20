@@ -39,6 +39,9 @@ export function mountPanel(api: SkillApi): SkillPanelMount {
     if (root !== undefined) return
     container = document.createElement('div')
     container.dataset.dshSkillExplorerView = ''
+    // L2 semantic attributes (issue #506): the plugin id lets skins anchor this
+    // overlay root; see contracts/semantic-attrs-v1.md.
+    container.dataset.dshPlugin = 'skill-explorer'
     document.body.appendChild(container)
     root = createRoot(container)
     root.render(<SkillPanel api={api} onClose={close} />)

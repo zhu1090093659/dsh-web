@@ -45,7 +45,7 @@
 | `data-dsh-wallpaper-active` | html + body（body/html 级，另行管理） | WE 壁纸挂载期间置 `true`，卸载 / 禁用清除；供皮肤 CSS 与壁纸中和规则锚定（#734） |
 | `data-dsh-wallpaper-surface` | 官方 shell 全视口背景元素 + 侧栏工作区淡化条（元素级） | `WallpaperController.markWallpaperSurfaces()` 在 WE 壁纸挂载期间打标（全视口 bg-base 背景 + `data-slot="sidebar.workspaces"` 内渐变淡化条），命中 `html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface]` 中和；卸载清除，不含哈希类依赖（#734） |
 
-## part 组（24 个）
+## part 组（31 行，含各 owner 行）
 
 shell 区域（owner: shell）：
 
@@ -83,8 +83,12 @@ family / 插件区域：
 | `summon-button` | pet | 召唤钮；`[data-testid="pet-summon"]` |
 | `plugin-item` | web-ui-settings | 家族插件设置卡；`[data-slot="web-ui.plugin.item"]` 内 entry |
 | `marketplace-card` | community-plugins | 社区插件卡；section 内 grid 项 |
+| `head` | skill-explorer | 技能中心模态卡头部；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="card"] > header` |
+| `card` | skill-explorer | 技能中心模态卡；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="card"]` |
+| `tab-bar` / `tab` | skill-explorer | 技能中心页签条/页签；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab-bar"]` / `[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab"]` |
+| `skill-row` | skill-explorer | 技能卡行；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="skill-row"]` |
 
-## plugin 组（9 个）
+## plugin 组（10 个，含停更 aionui-panel）
 
 | data-dsh-plugin | owner | 锚定方式 |
 | --- | --- | --- |
@@ -95,6 +99,7 @@ family / 插件区域：
 | `remote-web-ui` | dsh-remote-web-ui | slot entry id `remote-web-ui` |
 | `web-ui-settings` | dsh-web-ui-settings | settings.section id `web-ui-plugins` |
 | `community-plugins` | dsh-community-plugins | settings.section id `community-plugins` |
+| `skill-explorer` | dsh-skill-explorer | `[data-dsh-skill-explorer-view]` / `[data-dsh-skill-explorer-entry]` |
 | `aionui-panel` | dsh-aionui-panel（停更） | dock entry id `aionui-*` |
 | `skin-center` | skins/skin-center | settings.section 一级页 |
 

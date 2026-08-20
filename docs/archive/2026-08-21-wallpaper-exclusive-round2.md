@@ -43,12 +43,20 @@ Round 1 之后用户实机验收的三条反馈（其中一条确认 Round 1 首
   加固（可选）：把色规则再加 **row 属性族**锚点（`[data-dsh-ssh-entry]` 等），防未来某家族
   entry 丢 part 时再漏。回归点：三入口静止色一致、选中态一致。
 
+### 1.4 滑杆适用范围（重要说明）
+- **「卡片背景模糊」滑杆只适配 wallpaper-exclusive 皮肤**。全仓仅
+  `skins/wallpaper-exclusive/skin.css + patches.css` 消费 `--dsw-wallpaper-glass-blur /
+  --dsw-wallpaper-glass-fill`；`background.ts` 无条件把 blur 变量写 html+body，但其它皮肤
+  不读它们，故拖动滑杆在非本皮肤下无可见效果。
+- 已补正式说明：皮肤目录新增双语 `README.md / README.zh.md`（含「卡片背景模糊滑杆（适用
+  范围）」一节 + 已知限制）；`src/index.ts` 早已注明变量 read by wallpaper-exclusive。
+
 ## 2. 剩余未完成内容（承接 Round 1 清单）
 
-### 2.1 本轮三条反馈的收尾
-- [ ] `+`/`/` 弹窗真实选择器回填（见 1.2）
-- [ ] 侧栏入口色规则改 row 属性族锚点 + ssh 状态复核（见 1.3）
-- [ ] surface 重扫改领先沿去抖，消除切换实心闪烁（见 1.1）
+### 2.1 本轮三条反馈的收尾（已完成，见 §1.1-§1.3 + §3）
+- [x] `+`/`/` 弹窗：webbridge 实机确认同一 `[class*="_menu"][role="listbox"]` portal，被通用组捕获并随滑杆；无需回填新选择器
+- [x] 侧栏入口色：实机一致 + row 属性族锚点加固（`[data-dsh-*-entry]`）；侧栏按钮透明收窄到插件 entry 族
+- [x] surface 重扫改领先沿去抖（rAF 绘制前即打标 + 短尾随），消除切换实心闪烁；lib 已同步（P0-1 处置）
 
 ### 2.2 Round 1 遗留（未动项，按优先级）
 - **pet 代码层玻璃**：`.panel`/`.summon`/`.bubble*` 是写死的品牌 rgba
@@ -95,7 +103,28 @@ Round 1 之后用户实机验收的三条反馈（其中一条确认 Round 1 首
 - `+` 点开与 `/` 弹出菜单：随「卡片背景模糊」滑杆一起模糊（漏则按回填选择器再验）；
 - 上轮已达成项不回退：输入卡/气泡/代码块/设置卡片/任务清单/插件面板随滑杆；壁纸不消失。
 
-## 5. 部署状态
+## 5. 部署与提交状态
 
-- profile/web 已同步：skin-center lib（client.js 138762 / index.js 271757）+ skins/contracts；
-  skill-explorer lib（client.js 39942）。本轮修复落地后需再次构建同步，等待用户重启验收。
+### 5.1 已部署（profile/web，用户重启 `dsh web` 即可验收）
+- skin-center lib（client.js 139414 / index.js 271757）+ skins/contracts 整包同步；
+- skill-explorer lib（client.js 40008）。
+- 包含本轮全部修复：领先沿表面重扫（消除切换实心闪烁）、+// 弹窗确认随滑杆、
+  侧栏三入口颜色统一（row 属性族加固）、侧栏按钮透明收窄到插件 entry 族、
+  skill-explorer tablist 语义。
+
+### 5.2 提交状态
+- **PR #782（fix/skin-backdrop-layer-dev）已推送**：commit `14efd486`
+  「fix(skin-center): keep wallpaper mounted and re-tag shell surfaces on navigation (#805)」，
+  fork `1e80535a..14efd486`。含 wallpaper.ts 收尾、滑杆移入 WallpaperPanel、backdrop 占位删除、
+  测试、build 产物 lib 同步、两份 dev 文档。
+- **PR #807（feat/skin-wallpaper-exclusive）待推**（留工作区，未动 git）：
+  `skins/wallpaper-exclusive/*`（skin.json/preview/patches/skin.css，含 P0-2 要求的新文件）、
+  `dsh-skill-explorer/` 语义属性（3 文件）、`contracts/semantic-attrs-v1.md`、`gallery/*` 重生成。
+  需在 #807 分支上提交（跨分支 + stash 手术，留主 agent 在场操作），并 `git add`
+  skin.json + preview/ 后重新生成 gallery 产物使 `gallery:check` 绿。
+- 本轮审查 P0/P1/P2 处置：P0-1（lib 未同步）→ 已重新 build 同步并确认编译产物含双 guard +
+  领先沿；P0-2（skin.json/preview 未跟踪）→ 记录在 #807 提交清单；P1-1（`[data-slot="sidebar"]
+  button` 全量透明）→ 收窄到插件 entry 族；P2-1/5/6/7 → 已修（add 按钮收窄 composer、注释英文化、
+  tablist role、play 重试挪到 mediaKey 保留分支）。P2-2/3/4（code/通用浮层/entry 子串全局）判为
+  既定设计保留；P2-8（滑杆 UI 单测）非阻断未做。
+- `agent.md` 未跟踪（子代理身份/规则），不入库。

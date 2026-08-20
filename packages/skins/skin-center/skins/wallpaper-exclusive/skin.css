@@ -1,0 +1,44 @@
+/**
+ * wallpaper-exclusive (壁纸专属) — v2 skin stylesheet (issue #506 contract).
+ *
+ * Base stays the official default look. Global surface tokens are remapped to
+ * translucent dark fills (Blue Fantasy style) so every web-ui plugin panel
+ * shows the WE wallpaper through it; the input card, sidebar and right panel
+ * get glass fills too. No backgroundMedia is declared — the wallpaper is the
+ * backdrop. No composer seat glass is painted here (that approach caused the
+ * wallpaper blur issue).
+ */
+
+:root {
+  /* Left sidebar glass. */
+  --dsw-specific-sidebar-fill: rgba(17, 25, 39, 0.16);
+  --dsw-specific-sidebar-nav-item-active: rgba(29, 51, 79, 0.45);
+  --dsw-specific-sidebar-nav-item-hover: rgba(23, 42, 67, 0.35);
+
+  /* Input card and message bubble glass: same fill and blur, driven by one
+     variable so a future slider can control them together. */
+  --dsw-wallpaper-glass-blur: blur(10px) saturate(130%);
+  --dsw-wallpaper-glass-fill: rgba(13, 22, 39, 0.22);
+  --dsw-specific-input-major: var(--dsw-wallpaper-glass-fill);
+  --dsw-specific-login-input: var(--dsw-wallpaper-glass-fill);
+  --dsw-specific-bubble: var(--dsw-wallpaper-glass-fill);
+  --dsw-specific-bubble-highlight: rgba(29, 51, 79, 0.4);
+  --dsw-alias-markdown-code-block: var(--dsw-wallpaper-glass-fill);
+  --dsw-alias-markdown-inline-code: var(--dsw-wallpaper-glass-fill);
+
+  /* Buttons: resting state is transparent so nothing looks selected by
+     default; hover keeps a subtle fill. */
+  --dsw-alias-button-tool-bar-fill: rgba(0, 0, 0, 0);
+  --dsw-alias-button-tool-bar-hover: rgba(255, 255, 255, 0.08);
+  --dsw-alias-button-floating-fill: rgba(0, 0, 0, 0);
+  --dsw-alias-button-floating-hover: rgba(255, 255, 255, 0.08);
+
+  /* Right panel glass (aionui token suite). */
+  --aion-bg-base: rgba(17, 25, 39, 0.22);
+  --aion-bg-1: rgba(17, 25, 39, 0.18);
+  --aion-bg-2: rgba(24, 31, 46, 0.22);
+  --aion-bg-3: rgba(103, 220, 231, 0.07);
+  --aion-bg-4: rgba(103, 220, 231, 0.2);
+  --aion-bg-hover: rgba(103, 220, 231, 0.08);
+  --aion-bg-active: rgba(221, 143, 172, 0.16);
+}

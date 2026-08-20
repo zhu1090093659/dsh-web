@@ -52,8 +52,8 @@ export class SkillApi {
   }
 
   /** Enable or disable a skill (rewrites disable-model-invocation). */
-  async setEnabled(name: string, enabled: boolean): Promise<{ name: string; enabled: boolean; modelInvocable: boolean; path?: string }> {
-    return this.request(API.setEnabled, { method: 'POST', body: { name, enabled } })
+  async setEnabled(name: string, path: string, enabled: boolean): Promise<{ name: string; enabled: boolean; modelInvocable: boolean; path?: string }> {
+    return this.request(API.setEnabled, { method: 'POST', body: { name, path, enabled } })
   }
 
   /** Create a skill file under the user or project root. */
@@ -62,8 +62,8 @@ export class SkillApi {
   }
 
   /** Delete a skill (moves it into .trash). */
-  async remove(name: string): Promise<{ ok: true; name: string; moved: string }> {
-    return this.request(API.delete, { method: 'POST', body: { name } })
+  async remove(name: string, path: string): Promise<{ ok: true; name: string; moved: string }> {
+    return this.request(API.delete, { method: 'POST', body: { name, path } })
   }
 
   private async request<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {

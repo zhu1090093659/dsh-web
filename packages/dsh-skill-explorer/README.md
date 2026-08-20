@@ -64,8 +64,11 @@ sidebar.
   paired-device cookie is an additional allow path (the same cookie `api/gate`
   already checks); unpaired and revoked devices stay 403. The skill center does
   not depend on the remote plugin.
-- Write routes only touch paths produced by a fresh filesystem scan — a
-  request cannot name an arbitrary path.
+- Write routes accept the path displayed by the panel only as an identity claim;
+  before mutating, a fresh filesystem scan must resolve the same skill name and
+  exact path. Arbitrary paths and stale same-name fallbacks are rejected, so a
+  disappeared project skill cannot redirect a pending action to a user or
+  custom skill with the same name.
 - Skill content is user-authored markdown; the create form caps content at
   64KB.
 - The panel renders skill descriptions with text nodes only (no HTML

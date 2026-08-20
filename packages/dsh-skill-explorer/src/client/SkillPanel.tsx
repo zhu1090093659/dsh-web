@@ -36,11 +36,13 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
 
   const toggle = async (): Promise<void> => {
     if (busyRef.current) return
+    const path = skill.path
+    if (path === undefined) return
     busyRef.current = true
     setBusy(true)
     setError(undefined)
     try {
-      await api.setEnabled(skill.name, !skill.modelInvocable)
+      await api.setEnabled(skill.name, path, !skill.modelInvocable)
       onChanged()
     } catch (err) {
       setError(tt('list.toggleFailed', { error: err instanceof Error ? err.message : String(err) }))
@@ -51,13 +53,15 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
   }
 
   const remove = async (): Promise<void> => {
+    const path = skill.path
+    if (path === undefined) return
     if (!window.confirm(tt('list.deleteConfirm', { name: skill.name }))) return
     if (busyRef.current) return
     busyRef.current = true
     setBusy(true)
     setError(undefined)
     try {
-      await api.remove(skill.name)
+      await api.remove(skill.name, path)
       onChanged()
     } catch (err) {
       setError(tt('list.deleteFailed', { error: err instanceof Error ? err.message : String(err) }))

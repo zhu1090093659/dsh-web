@@ -4,7 +4,7 @@
  */
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SkillPanel } from '../src/client/SkillPanel.tsx'
 import type { ListPayload } from '../src/client/api.ts'
 
@@ -128,6 +128,44 @@ describe('SkillPanel last-good list policy', () => {
     const text = mount_.container.textContent ?? ''
     expect(text).toContain('demo-skill')
     expect(text).toContain('boom')
+    mount_.dispose()
+  })
+})
+
+describe('SkillPanel mutation identity', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    document.body.innerHTML = ''
+  })
+
+  it('forwards the displayed skill path when toggling', async () => {
+    const api = fakeApi([async () => payload(['demo-skill'])])
+    const setEnabled = vi.fn(async () => ({ name: 'demo-skill', enabled: false }))
+    api.setEnabled = setEnabled
+    const mount_ = mount(api, () => {})
+    await flush()
+    const toggle = mount_.container.querySelector('[role="switch"]') as HTMLButtonElement
+    await act(async () => {
+      toggle.click()
+    })
+    await flush()
+    expect(setEnabled).toHaveBeenCalledWith('demo-skill', '/work/demo-skill/SKILL.md', false)
+    mount_.dispose()
+  })
+
+  it('forwards the displayed skill path when deleting', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const api = fakeApi([async () => payload(['demo-skill'])])
+    const remove = vi.fn(async () => ({ ok: true as const, name: 'demo-skill', moved: '/trash/SKILL.md' }))
+    api.remove = remove
+    const mount_ = mount(api, () => {})
+    await flush()
+    const deleteButton = Array.from(mount_.container.querySelectorAll('button')).find(button => button.textContent?.trim() === '删除')
+    await act(async () => {
+      deleteButton?.click()
+    })
+    await flush()
+    expect(remove).toHaveBeenCalledWith('demo-skill', '/work/demo-skill/SKILL.md')
     mount_.dispose()
   })
 })

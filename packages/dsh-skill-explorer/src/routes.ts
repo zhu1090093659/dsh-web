@@ -126,6 +126,25 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
     return skills.find((candidate) => candidate.name === name)
   }
 
+  /** Resolve the exact editable file shown by the client, rejecting stale same-name fallbacks. */
+  const resolveMutationSkill = async (
+    name: string,
+    expectedPath: string,
+    cwd: string,
+    res: ServerResponse,
+  ): Promise<(SkillEntry & { path: string }) | undefined> => {
+    const skill = await findSkill(name, cwd)
+    if (skill?.path === undefined) {
+      writeJson(res, 404, { error: `skill ${name} has no editable file` })
+      return undefined
+    }
+    if (skill.path !== expectedPath) {
+      writeJson(res, 409, { error: `skill ${name} changed since the panel loaded; refresh and retry` })
+      return undefined
+    }
+    return skill as SkillEntry & { path: string }
+  }
+
   const routes: WebRoute[] = [
     {
       kind: 'exact',
@@ -157,17 +176,15 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
             writeJson(res, 400, { error: 'invalid JSON body' })
             return
           }
-          const { name, enabled } = body
-          if (typeof name !== 'string' || !NAME_PATTERN.test(name) || typeof enabled !== 'boolean') {
-            writeJson(res, 400, { error: 'expected { name, enabled }' })
+          const { name, path, enabled } = body
+          if (typeof name !== 'string' || !NAME_PATTERN.test(name) || typeof path !== 'string' || path.trim() === '' || typeof enabled !== 'boolean') {
+            writeJson(res, 400, { error: 'expected { name, path, enabled }' })
             return
           }
-          // Only trust paths from a fresh scan (no arbitrary path writes).
-          const skill = await findSkill(name, DEFAULT_CWD())
-          if (skill === undefined || skill.path === undefined) {
-            writeJson(res, 404, { error: `skill ${name} has no editable file (bundled/runtime skills cannot be toggled)` })
-            return
-          }
+          // The client path is only an identity claim: a fresh scan must
+          // resolve the same effective skill before any file is touched.
+          const skill = await resolveMutationSkill(name, path, DEFAULT_CWD(), res)
+          if (skill === undefined) return
           // Disabled = disable-model-invocation: true; enabled = false.
           const frontmatter = setFrontmatterField(skill.path, 'disable-model-invocation', enabled ? false : true)
           writeJson(res, 200, {
@@ -244,16 +261,13 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
             writeJson(res, 400, { error: 'invalid JSON body' })
             return
           }
-          const { name } = body
-          if (typeof name !== 'string' || !NAME_PATTERN.test(name)) {
-            writeJson(res, 400, { error: 'expected { name }' })
+          const { name, path } = body
+          if (typeof name !== 'string' || !NAME_PATTERN.test(name) || typeof path !== 'string' || path.trim() === '') {
+            writeJson(res, 400, { error: 'expected { name, path }' })
             return
           }
-          const skill = await findSkill(name, DEFAULT_CWD())
-          if (skill === undefined || skill.path === undefined) {
-            writeJson(res, 404, { error: `skill ${name} has no deletable file (bundled/runtime skills cannot be deleted)` })
-            return
-          }
+          const skill = await resolveMutationSkill(name, path, DEFAULT_CWD(), res)
+          if (skill === undefined) return
           // A linked skill lives behind a symlink (mount-of-intent content, not
           // created under this root). Deleting it would move the target's real
           // SKILL.md out of place, escaping this skill root — refuse deletion.

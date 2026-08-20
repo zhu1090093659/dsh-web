@@ -13,12 +13,14 @@ import { ROUTES, makeRoutes } from '../src/routes.ts'
 const TMP = mkdtempSync(join(tmpdir(), 'skill-explorer-routes-'))
 const HOME = join(TMP, 'home')
 const PROJ = join(TMP, 'proj')
+const PROJECT_SKILL = join(PROJ, '.dsh', 'skills', 'poc-first', 'SKILL.md')
+const USER_SKILL = join(HOME, 'skills', 'user-tool', 'SKILL.md')
 mkdirSync(join(HOME, 'skills'), { recursive: true })
 mkdirSync(join(PROJ, '.git'), { recursive: true })
 mkdirSync(join(PROJ, '.dsh', 'skills', 'poc-first'), { recursive: true })
 mkdirSync(join(HOME, 'skills', 'user-tool'), { recursive: true })
-writeFileSync(join(PROJ, '.dsh', 'skills', 'poc-first', 'SKILL.md'), '---\nname: poc-first\ndescription: 快速 POC\n---\n# 正文\n', 'utf8')
-writeFileSync(join(HOME, 'skills', 'user-tool', 'SKILL.md'), '---\nname: user-tool\ndescription: 用户级技能\n---\n', 'utf8')
+writeFileSync(PROJECT_SKILL, '---\nname: poc-first\ndescription: 快速 POC\n---\n# 正文\n', 'utf8')
+writeFileSync(USER_SKILL, '---\nname: user-tool\ndescription: 用户级技能\n---\n', 'utf8')
 
 // Symlink support is environment-dependent (Windows needs Developer Mode,
 // some sandboxed Linux runners disallow it) — probe once and skip linked cases.
@@ -78,6 +80,37 @@ function response(): { res: ServerResponse; status: () => number; body: () => st
   return { res, status: () => state.status, body: () => state.body }
 }
 
+/** Isolated project/user pair with the same skill name for stale identity tests. */
+function staleIdentityFixture(): {
+  root: string
+  projectFile: string
+  userFile: string
+  find(path: string): ReturnType<typeof makeRoutes>[number] | undefined
+} {
+  const root = mkdtempSync(join(tmpdir(), 'skill-explorer-stale-'))
+  const project = join(root, 'project')
+  const home = join(root, 'home')
+  const projectFile = join(project, '.dsh', 'skills', 'shared-skill', 'SKILL.md')
+  const userFile = join(home, 'skills', 'shared-skill', 'SKILL.md')
+  mkdirSync(join(project, '.git'), { recursive: true })
+  mkdirSync(join(project, '.dsh', 'skills', 'shared-skill'), { recursive: true })
+  mkdirSync(join(home, 'skills', 'shared-skill'), { recursive: true })
+  writeFileSync(projectFile, '---\nname: shared-skill\ndescription: project copy\n---\n', 'utf8')
+  writeFileSync(userFile, '---\nname: shared-skill\ndescription: user copy\n---\n', 'utf8')
+  const isolatedRoutes = makeRoutes(emptyCtx, {
+    ...deps,
+    dshHome: home,
+    agentsHome: join(root, 'agents'),
+    activeSessionCwds: () => [project],
+  })
+  return {
+    root,
+    projectFile,
+    userFile,
+    find: path => isolatedRoutes.find(route => route.path === path),
+  }
+}
+
 describe('/api/dsh-skill-explorer trust fence', () => {
   it('rejects non-loopback requests with 403 before touching the service', async () => {
     for (const route of routes) {
@@ -112,7 +145,7 @@ describe('/api/dsh-skill-explorer trust fence', () => {
       remoteAddress: '192.168.1.20',
       host: 'dsh.example:443',
       cookie: 'dsh_pair=dev-1',
-      body: { name: 'poc-first', enabled: true },
+      body: { name: 'poc-first', path: PROJECT_SKILL, enabled: true },
     }), res)
     expect(status()).toBe(200)
   })
@@ -160,26 +193,32 @@ describe('/api/dsh-skill-explorer trust fence', () => {
 
 describe('set-enabled', () => {
   it('disables a skill by rewriting frontmatter', async () => {
-    const file = join(PROJ, '.dsh', 'skills', 'poc-first', 'SKILL.md')
+    const file = PROJECT_SKILL
     const { res, status, body } = response()
-    await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', { body: { name: 'poc-first', enabled: false } }), res)
+    await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', { body: { name: 'poc-first', path: file, enabled: false } }), res)
     expect(status()).toBe(200)
     expect(JSON.parse(body()).enabled).toBe(false)
     expect(readFileSync(file, 'utf8')).toContain('disable-model-invocation: true')
     // re-enable to restore the fixture
     const res2 = response()
-    await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', { body: { name: 'poc-first', enabled: true } }), res2.res)
+    await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', { body: { name: 'poc-first', path: file, enabled: true } }), res2.res)
     expect(res2.status()).toBe(200)
   })
 
   it('rejects invalid payloads with 400', async () => {
     const { res, status } = response()
-    await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', { body: { name: 'bad name!', enabled: true } }), res)
+    await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', { body: { name: 'bad name!', path: PROJECT_SKILL, enabled: true } }), res)
+    expect(status()).toBe(400)
+  })
+
+  it('requires the displayed file path', async () => {
+    const { res, status } = response()
+    await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', { body: { name: 'poc-first', enabled: true } }), res)
     expect(status()).toBe(400)
   })
 
   it('rejects GET with 405 and never rewrites files', async () => {
-    const file = join(PROJ, '.dsh', 'skills', 'poc-first', 'SKILL.md')
+    const file = PROJECT_SKILL
     const before = readFileSync(file, 'utf8')
     const { res, status } = response()
     await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'GET'), res)
@@ -189,8 +228,25 @@ describe('set-enabled', () => {
 
   it('returns 404 for skills without an editable file', async () => {
     const { res, status } = response()
-    await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', { body: { name: 'not-exist', enabled: true } }), res)
+    await find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', { body: { name: 'not-exist', path: join(TMP, 'missing', 'SKILL.md'), enabled: true } }), res)
     expect(status()).toBe(404)
+  })
+
+  it('does not rewrite a same-name fallback when the displayed file disappears', async () => {
+    const fixture = staleIdentityFixture()
+    try {
+      rmSync(join(fixture.projectFile, '..'), { recursive: true })
+      const before = readFileSync(fixture.userFile, 'utf8')
+      const { res, status, body } = response()
+      await fixture.find(ROUTES.setEnabled)!.handler(request(ROUTES.setEnabled, 'POST', {
+        body: { name: 'shared-skill', path: fixture.projectFile, enabled: false },
+      }), res)
+      expect(status()).toBe(409)
+      expect(JSON.parse(body()).error).toContain('refresh and retry')
+      expect(readFileSync(fixture.userFile, 'utf8')).toBe(before)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
   })
 })
 
@@ -242,7 +298,8 @@ describe('create', () => {
 describe('delete', () => {
   it('moves a skill into .trash', async () => {
     const { res, status } = response()
-    await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'new-skill' } }), res)
+    const path = join(HOME, 'skills', 'new-skill', 'SKILL.md')
+    await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'new-skill', path } }), res)
     expect(status()).toBe(200)
     expect(existsSync(join(HOME, 'skills', 'new-skill', 'SKILL.md'))).toBe(false)
   })
@@ -255,7 +312,7 @@ describe('delete', () => {
     symlinkSync(shared, join(HOME, 'skills', 'linked-skill'), 'dir')
     try {
       const { res, status } = response()
-      await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'linked-skill' } }), res)
+      await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'linked-skill', path: join(HOME, 'skills', 'linked-skill', 'SKILL.md') } }), res)
       expect(status()).toBe(400)
       expect(existsSync(join(shared, 'SKILL.md'))).toBe(true)
     } finally {
@@ -266,14 +323,36 @@ describe('delete', () => {
 
   it('returns 404 for unknown skills', async () => {
     const { res, status } = response()
-    await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'not-exist' } }), res)
+    await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'not-exist', path: join(TMP, 'missing', 'SKILL.md') } }), res)
     expect(status()).toBe(404)
+  })
+
+  it('requires the displayed file path', async () => {
+    const { res, status } = response()
+    await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'user-tool' } }), res)
+    expect(status()).toBe(400)
   })
 
   it('rejects invalid names with 400', async () => {
     const { res, status } = response()
-    await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'Bad Name' } }), res)
+    await find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', { body: { name: 'Bad Name', path: USER_SKILL } }), res)
     expect(status()).toBe(400)
+  })
+
+  it('does not delete a same-name fallback when the displayed file disappears', async () => {
+    const fixture = staleIdentityFixture()
+    try {
+      rmSync(join(fixture.projectFile, '..'), { recursive: true })
+      const { res, status, body } = response()
+      await fixture.find(ROUTES.delete)!.handler(request(ROUTES.delete, 'POST', {
+        body: { name: 'shared-skill', path: fixture.projectFile },
+      }), res)
+      expect(status()).toBe(409)
+      expect(JSON.parse(body()).error).toContain('refresh and retry')
+      expect(existsSync(fixture.userFile)).toBe(true)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
   })
 })
 

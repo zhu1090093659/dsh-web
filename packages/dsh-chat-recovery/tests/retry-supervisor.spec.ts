@@ -12,6 +12,23 @@ function failedSource(over: Record<string, unknown> = {}): ConversationSnapshot 
   })
 }
 
+interface Deferred<T> {
+  promise: Promise<T>
+  resolve(value: T): void
+  reject(error: unknown): void
+}
+
+/** A controllable async result for lifecycle race tests. */
+function deferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void
+  let reject!: (error: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
+
 class FakePorts implements RetryPorts {
   current: SessionId | undefined = SRC
   snaps = new Map<string, ConversationSnapshot>()
@@ -21,7 +38,9 @@ class FakePorts implements RetryPorts {
   opened: string[] = []
   prompts: Array<{ id: SessionId; text: string }> = []
   promptResult: PromptOutcome = { ok: true }
-  timers: Array<{ fn: () => void; ms: number }> = []
+  promptDeferred: Deferred<PromptOutcome> | undefined
+  forkDeferred: Deferred<SessionId> | undefined
+  timers: Array<{ fn: () => void; ms: number; cancelled: boolean }> = []
   failFork = false
 
   currentId = (): SessionId | undefined => this.current
@@ -30,6 +49,7 @@ class FakePorts implements RetryPorts {
   fork = async (opts: { sessionId: SessionId; atSeq?: number; increaseTitle?: boolean }): Promise<SessionId> => {
     if (this.failFork) throw new Error('fork failed')
     this.forked.push({ sessionId: opts.sessionId, atSeq: opts.atSeq })
+    if (this.forkDeferred !== undefined) return this.forkDeferred.promise
     return (`child${this.forked.length}`) as SessionId
   }
   connectBlank = async (cwd: string | undefined): Promise<SessionId> => {
@@ -42,15 +62,25 @@ class FakePorts implements RetryPorts {
   }
   prompt = async (id: SessionId, text: string): Promise<PromptOutcome> => {
     this.prompts.push({ id, text })
+    if (this.promptDeferred !== undefined) return this.promptDeferred.promise
     return this.promptResult
   }
   schedule = (fn: () => void, ms: number): (() => void) => {
-    this.timers.push({ fn, ms })
-    return () => {}
+    const timer = { fn, ms, cancelled: false }
+    this.timers.push(timer)
+    return () => { timer.cancelled = true }
   }
 
   fireTimers(): void {
-    for (const timer of this.timers.splice(0)) timer.fn()
+    for (const timer of this.timers.splice(0)) {
+      if (timer.cancelled) continue
+      timer.cancelled = true
+      timer.fn()
+    }
+  }
+
+  activeTimerCount(): number {
+    return this.timers.filter((timer) => !timer.cancelled).length
   }
 
   /** The retry child: turn 2 = the replayed prompt, still failing recoverably. */
@@ -134,6 +164,33 @@ describe('auto retry cycle', () => {
     expect(ports.opened[ports.opened.length - 1]).toBe(SRC)
   })
 
+  it('starts the next attempt when the child settles before the previous prompt call returns', async () => {
+    const { supervisor, ports } = make(new FakePorts())
+    ports.snaps.set(SRC, failedSource())
+    const firstPrompt = deferred<PromptOutcome>()
+    ports.promptDeferred = firstPrompt
+    supervisor.review()
+    ports.fireTimers()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    ports.setChildFailing('child1' as SessionId)
+    supervisor.review()
+    expect(supervisor.getSnapshot().phase).toBe('waiting')
+
+    ports.promptDeferred = undefined
+    ports.fireTimers()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'running', targetId: 'child2' })
+
+    firstPrompt.resolve({ ok: false, code: 'timeout', message: 'late result' })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'running', targetId: 'child2' })
+    expect(ports.activeTimerCount()).toBe(0)
+  })
+
   it('finishes done once the child turn settles with a finalized assistant message', async () => {
     const { supervisor, ports } = make(new FakePorts())
     ports.snaps.set(SRC, failedSource())
@@ -205,6 +262,147 @@ describe('cancel semantics', () => {
     supervisor.review()
     expect(supervisor.getSnapshot().phase).toBe('cancelled')
   })
+
+  it('does not re-arm the same failed turn after subscription reviews a cancelled wait', () => {
+    const { supervisor, ports } = make(new FakePorts())
+    ports.snaps.set(SRC, failedSource())
+    supervisor.review()
+
+    supervisor.cancel()
+    supervisor.review()
+    supervisor.review()
+
+    expect(supervisor.getSnapshot().phase).toBe('idle')
+    expect(ports.activeTimerCount()).toBe(0)
+
+    // A genuinely newer failed turn remains eligible for automatic recovery.
+    ports.snaps.set(SRC, failedSource({
+      nodes: [
+        userMsg(1, 'a'),
+        assistantMsg(3, 1),
+        userMsg(5, 'b'),
+        turnErr(9, 2, 'request timed out', 'timeout'),
+        userMsg(11, 'new turn'),
+        turnErr(14, 3, 'request timed out', 'timeout'),
+      ],
+      turnEnds: new Map([[1, 3], [2, 9], [3, 14]]),
+    }))
+    supervisor.review()
+    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'waiting', sourceId: SRC, attempt: 1 })
+    expect(ports.activeTimerCount()).toBe(1)
+  })
+
+  it('ignores a retryable prompt result that arrives after cancel', async () => {
+    const { supervisor, ports } = make(new FakePorts())
+    ports.snaps.set(SRC, failedSource())
+    ports.promptDeferred = deferred<PromptOutcome>()
+    supervisor.review()
+    ports.fireTimers()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(supervisor.getSnapshot().phase).toBe('running')
+
+    supervisor.cancel()
+    ports.promptDeferred.resolve({ ok: false, code: 'timeout', message: 'request timed out' })
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(supervisor.getSnapshot().phase).toBe('cancelled')
+    expect(ports.activeTimerCount()).toBe(0)
+  })
+
+  it('absorbs a prompt rejection that arrives after cancel', async () => {
+    const { supervisor, ports } = make(new FakePorts())
+    ports.snaps.set(SRC, failedSource())
+    ports.promptDeferred = deferred<PromptOutcome>()
+    supervisor.review()
+    ports.fireTimers()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    supervisor.cancel()
+    ports.promptDeferred.reject(new Error('prompt transport failed'))
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(supervisor.getSnapshot().phase).toBe('cancelled')
+    expect(ports.activeTimerCount()).toBe(0)
+  })
+
+  it('keeps a late fork failure from overwriting cancel', async () => {
+    const { supervisor, ports } = make(new FakePorts())
+    ports.snaps.set(SRC, failedSource())
+    ports.forkDeferred = deferred<SessionId>()
+    supervisor.review()
+    ports.fireTimers()
+    await Promise.resolve()
+
+    supervisor.cancel()
+    ports.forkDeferred.reject(new Error('fork transport failed'))
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(supervisor.getSnapshot().phase).toBe('cancelled')
+    expect(ports.opened).toHaveLength(0)
+    expect(ports.activeTimerCount()).toBe(0)
+  })
+
+  it('quarantines the running retry child until its cancelled attempt settles', async () => {
+    const { supervisor, ports } = make(new FakePorts())
+    ports.snaps.set(SRC, failedSource())
+    supervisor.review()
+    ports.fireTimers()
+    await Promise.resolve()
+    await Promise.resolve()
+    const child = 'child1' as SessionId
+    ports.setChildRunning(child)
+    supervisor.review()
+
+    supervisor.cancel()
+    supervisor.review()
+    expect(supervisor.getSnapshot().phase).toBe('cancelled')
+
+    ports.setChildFailing(child)
+    supervisor.review()
+    supervisor.review()
+    expect(supervisor.getSnapshot().phase).toBe('idle')
+    expect(ports.activeTimerCount()).toBe(0)
+
+    ports.snaps.set(child, snapshot({
+      sessionId: child,
+      nodes: [
+        userMsg(1, 'a'),
+        assistantMsg(3, 1),
+        userMsg(5, 'b'),
+        turnErr(9, 2, 'request timed out', 'timeout'),
+        userMsg(11, 'new turn'),
+        turnErr(14, 3, 'request timed out', 'timeout'),
+      ],
+      turnEnds: new Map([[1, 3], [2, 9], [3, 14]]),
+    }))
+    supervisor.review()
+    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'waiting', sourceId: child, attempt: 1 })
+  })
+
+  it('does not schedule work when a prompt settles after dispose', async () => {
+    const { supervisor, ports } = make(new FakePorts())
+    ports.snaps.set(SRC, failedSource())
+    ports.promptDeferred = deferred<PromptOutcome>()
+    supervisor.review()
+    ports.fireTimers()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(supervisor.getSnapshot().phase).toBe('running')
+
+    supervisor.dispose()
+    ports.promptDeferred.resolve({ ok: false, code: 'timeout', message: 'request timed out' })
+    await Promise.resolve()
+    await Promise.resolve()
+    supervisor.review()
+
+    expect(ports.activeTimerCount()).toBe(0)
+    expect(ports.opened).toEqual(['child1'])
+  })
 })
 
 describe('non-retryable and manual paths', () => {
@@ -253,6 +451,24 @@ describe('non-retryable and manual paths', () => {
     await Promise.resolve()
     expect(supervisor.getSnapshot().phase).toBe('failed')
     expect(ports.opened[ports.opened.length - 1]).toBe(SRC)
+  })
+
+  it('settles an exceptional prompt rejection as a failed cycle', async () => {
+    const { supervisor, ports } = make(new FakePorts())
+    ports.snaps.set(SRC, failedSource())
+    ports.promptDeferred = deferred<PromptOutcome>()
+    supervisor.review()
+    ports.fireTimers()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    ports.promptDeferred.reject(new Error('prompt transport failed'))
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'failed', reason: 'prompt transport failed' })
+    expect(ports.opened[ports.opened.length - 1]).toBe(SRC)
+    expect(ports.activeTimerCount()).toBe(0)
   })
 
   it('a fork failure ends the cycle without touching the original session', async () => {

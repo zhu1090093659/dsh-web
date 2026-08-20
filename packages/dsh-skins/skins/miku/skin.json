@@ -1,0 +1,56 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "miku",
+  "name": "初音未来 · 电子歌姬",
+  "nameEn": "Hatsune Miku",
+  "author": "涂山苏苏",
+  "tagline": "蓝紫双马尾 · 01 编号 · 音符波形 · 电子歌姬主题",
+  "description": "以世界第一的虚拟歌姬初音未来为灵感的主题皮肤：蓝紫洋红渐变贯穿全局，音符与声波曲线点缀在半透明面板之间，标题栏与状态栏带有 01 编号徽标与音乐波形，半透明毛玻璃面板透出背景图——沉浸式电子歌姬氛围。",
+  "tags": [
+    "miku",
+    "vocaloid",
+    "blue",
+    "music",
+    "idol",
+    "waveform"
+  ],
+  "accent": "#2e9bff",
+  "order": 10,
+  "version": "0.2.0",
+  "preview": {
+    "light": "preview/light.png",
+    "dark": "preview/dark.png"
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+        "kind": "SkinHooks",
+        "optional": true
+      }
+    ]
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/miku-art-light.jpg",
+        "scrim": "rgba(0, 0, 0, 0)"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/miku-art-dark.png",
+        "scrim": "linear-gradient(rgba(4, 10, 28, 0.12) 0%, rgba(6, 14, 36, 0.16) 60%, rgba(8, 18, 42, 0.18) 100%)"
+      }
+    }
+  },
+  "facets": {
+    "client": {
+      "entry": "hooks.mjs",
+      "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+    }
+  }
+}

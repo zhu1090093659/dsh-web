@@ -1,0 +1,343 @@
+:root {
+  --dsw-font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Helvetica Neue", "Segoe UI", sans-serif;
+  --ds-font-family-code: "JetBrains Mono", "Cascadia Code", "Consolas", "Courier New", monospace;
+  color: #14263f;
+  box-sizing: border-box;
+  /* No white/light base: the bright background is the photo on <body>. */
+  background-color: transparent;
+  background-image: none;
+  padding: 0;
+}
+
+body[data-ds-dark-theme] {
+  color: #c2d4f0;
+  background-color: #0a1430;
+  background-image: radial-gradient(circle at 16% 10%, #2e9bff1f, #0000 42%), radial-gradient(circle at 84% 22%, #58aaff1a, #0000 38%), radial-gradient(circle at 58% 94%, #2e9bff24, #0000 45%), linear-gradient(168deg, #041110 0%, #0a1430 48%, #101f42 100%);
+}
+
+/* 明/暗背景用 CSS 直接在 body 上画（锚定 body / body[data-ds-dark-theme]），
+   theme 属性翻转时即时换图，不再依赖皮肤中心的“激活时一次性安装”。
+   图片为皮肤目录内相对路径 url(assets/...)，换设备不坏；
+   !important 用于盖过皮肤中心按激活时间写入的 body 背景。 */
+body {
+  background-color: transparent !important;
+  background-image: url(assets/miku-art-light.jpg) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+body[data-ds-dark-theme] {
+  background-color: #0a1430 !important;
+  background-image: linear-gradient(rgba(4, 10, 28, 0.12) 0%, rgba(6, 14, 36, 0.16) 60%, rgba(8, 18, 42, 0.18) 100%), url(assets/miku-art-dark.png) !important;
+  background-size: cover, cover !important;
+  background-position: center, center !important;
+  background-repeat: no-repeat, no-repeat !important;
+}
+
+:root {
+  --dsw-alias-bg-base: #ffffff29;
+  --dsw-alias-bg-layer-1: #f3f8ff2e;
+  --dsw-alias-bg-layer-2: #e4f0ff33;
+  --dsw-alias-bg-layer-3: #dfeaff38;
+  --dsw-alias-bg-mask-1: #0a1e4266;
+  --dsw-alias-bg-mask-2: #0a1e4233;
+  --dsw-alias-bg-mask-3: #0a1e4280;
+  --dsw-alias-bg-mask-photo: #06162ee0;
+  --dsw-alias-bg-module-platform: #e4f7f259;
+  --dsw-alias-bg-multi-select: #e4f0ff59;
+  --dsw-alias-bg-overlay: #eefaf766;
+  --dsw-alias-bg-skeleton: #0a1e420f;
+  --dsw-alias-border-inverted2: #fff9;
+  --dsw-alias-border-inverted: #fff6;
+  --dsw-alias-border-l1: #14376e26;
+  --dsw-alias-border-l2-darkmode-thin: #14376e33;
+  --dsw-alias-border-l2: #14376e38;
+  --dsw-alias-border-l3: #14376e52;
+  --dsw-alias-border-l4: #14376e6b;
+  --dsw-alias-brand-primary-invert: #fff;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #2e9bff;
+  --dsw-alias-brand-primary: #2e9bff;
+  --dsw-alias-brand-text: #124a8f;
+  --dsw-alias-button-contrast-fill: #1457b3;
+  --dsw-alias-button-elevated-fill: #fff;
+  --dsw-alias-button-floating-fill: #fff;
+  --dsw-alias-button-floating-hover: #e4f7f2;
+  --dsw-alias-button-ghost-active-border: #8ce4da;
+  --dsw-alias-button-ghost-active-fill: #e4f0ff;
+  --dsw-alias-button-ghost-active-hover: #dcebff;
+  --dsw-alias-button-info-fill: #1457b3;
+  --dsw-alias-button-info-hover: #2a75cf;
+  --dsw-alias-button-primary-dimmed: #dcebff;
+  --dsw-alias-button-primary-fill: #1e6fd9;
+  --dsw-alias-button-primary-hover: #2a75cf;
+  --dsw-alias-button-tool-bar-fill-invisible: #2e9bff5c;
+  --dsw-alias-button-tool-bar-fill: #2e9bff80;
+  --dsw-alias-button-tool-bar-hover: #2e9bff99;
+  --dsw-alias-interactive-bg-active: #2e9bff24;
+  --dsw-alias-interactive-bg-hover-accent: #2e9bff2e;
+  --dsw-alias-interactive-bg-hover-danger: #c226260f;
+  --dsw-alias-interactive-bg-hover-solid: #eaf4ff;
+  --dsw-alias-interactive-bg-hover: #2e9bff14;
+  --dsw-alias-label-caption: #3a5070;
+  --dsw-alias-label-dimmed: #5f7a9e;
+  --dsw-alias-label-primary-dimmed: #4a5f80;
+  --dsw-alias-label-primary-foreground: #fff;
+  --dsw-alias-label-primary-inverted: #fff;
+  --dsw-alias-label-primary: #14263f;
+  --dsw-alias-label-secondary: #3a5070;
+  --dsw-alias-label-tertiary: #4a5f80;
+  --dsw-alias-markdown-citation: #e4f7f2;
+  --dsw-alias-markdown-code-block-banner: #f3f8ff;
+  --dsw-alias-markdown-code-block: #f3f8ff;
+  --dsw-alias-markdown-code-segment-selected: #fff;
+  --dsw-alias-markdown-code-segment-unselected: #eefaf7;
+  --dsw-alias-markdown-inline-code: #e4f7f2;
+  --dsw-alias-markdown-placeholder: #f3f8ff;
+  --dsw-alias-markdown-tag: #e4f7f2;
+  --dsw-alias-scrollbar-bg-l1: #d9e8fa;
+  --dsw-alias-scrollbar-bg-l2: #d9e8fa;
+  --dsw-alias-scrollbar-hover-l1: #b4d4ff;
+  --dsw-alias-scrollbar-hover-l2: #b4d4ff;
+  --dsw-alias-state-business-primary: #2e9bff;
+  --dsw-alias-state-business-tertiary: #dcebff;
+  --dsw-alias-state-error-primary: #c22626;
+  --dsw-alias-state-error-secondary: #e06060;
+  --dsw-alias-state-success-primary: #24924a;
+  --dsw-alias-state-success-secondary: #4fb86f;
+  --dsw-alias-state-success-tertiary: #ddf3e3;
+  --dsw-alias-state-warn-label: #a87c1e;
+  --dsw-alias-state-warn-primary: #c99a2e;
+  --dsw-alias-state-warn-secondary: #e5b94f;
+  --dsw-alias-state-warn-tertiary: #fdf3dd;
+  --dsw-alias-toast-bg: #1e6fd9;
+  --dsw-alias-tooltip-bg: #fff;
+  --dsw-alias-tooltip-fg: #17302c;
+  --dsw-specific-bubble-highlight: #cfe3ff;
+  --dsw-specific-bubble: #e4f0ff;
+  --dsw-specific-input-major: #fff;
+  --dsw-specific-login-input: #fff;
+  --dsw-specific-menu: #f3f8ff;
+  --dsw-specific-selector: #eaf4ff;
+  --dsw-specific-sidebar-fill: #2e9bff;
+  --dsw-specific-sidebar-nav-item-active-accent: #b3d6ff;
+  --dsw-specific-sidebar-nav-item-active: #dcebff;
+  --dsw-specific-sidebar-nav-item-hover: #eaf4ff;
+  --dsw-specific-tip: #f3f8ff;
+}
+
+body[data-ds-dark-theme] {
+  --dsw-alias-bg-base: #0d1a3a;
+  --dsw-alias-bg-layer-1: #12244a;
+  --dsw-alias-bg-layer-2: #182e5c;
+  --dsw-alias-bg-layer-3: #1d3668;
+  --dsw-alias-bg-mask-1: #0000008c;
+  --dsw-alias-bg-mask-2: #0000004d;
+  --dsw-alias-bg-mask-3: #0009;
+  --dsw-alias-bg-mask-photo: #000000e0;
+  --dsw-alias-bg-module-platform: #182e5c;
+  --dsw-alias-bg-multi-select: #162a52;
+  --dsw-alias-bg-overlay: #12244a;
+  --dsw-alias-bg-skeleton: #ffffff0f;
+  --dsw-alias-border-inverted2: #fff9;
+  --dsw-alias-border-inverted: #fff6;
+  --dsw-alias-border-l1: #96beff1f;
+  --dsw-alias-border-l2-darkmode-thin: #96beff26;
+  --dsw-alias-border-l2: #96beff2e;
+  --dsw-alias-border-l3: #96beff42;
+  --dsw-alias-border-l4: #96beff57;
+  --dsw-alias-brand-primary-invert: #0a0a0a;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #58a9ff;
+  --dsw-alias-brand-primary: #58a9ff;
+  --dsw-alias-brand-text: #a2c8f5;
+  --dsw-alias-button-contrast-fill: #1e6fd9;
+  --dsw-alias-button-elevated-fill: #182e5c;
+  --dsw-alias-button-floating-fill: #12244a;
+  --dsw-alias-button-floating-hover: #1c3468;
+  --dsw-alias-button-ghost-active-border: #3560ac;
+  --dsw-alias-button-ghost-active-fill: #162a52;
+  --dsw-alias-button-ghost-active-hover: #1c3468;
+  --dsw-alias-button-info-fill: #1e6fd9;
+  --dsw-alias-button-info-hover: #2e9bff;
+  --dsw-alias-button-primary-dimmed: #22407a;
+  --dsw-alias-button-primary-fill: #1e6fd9;
+  --dsw-alias-button-primary-hover: #2e9bff;
+  --dsw-alias-button-tool-bar-fill-invisible: #96beff5c;
+  --dsw-alias-button-tool-bar-fill: #96beff80;
+  --dsw-alias-button-tool-bar-hover: #96beff99;
+  --dsw-alias-interactive-bg-active: #96beff24;
+  --dsw-alias-interactive-bg-hover-accent: #96beff33;
+  --dsw-alias-interactive-bg-hover-danger: #d050501f;
+  --dsw-alias-interactive-bg-hover-solid: #1c3468;
+  --dsw-alias-interactive-bg-hover: #ffffff12;
+  --dsw-alias-label-caption: #61779f;
+  --dsw-alias-label-dimmed: #4c6390;
+  --dsw-alias-label-primary-dimmed: #b0c4e2;
+  --dsw-alias-label-primary-foreground: #fff;
+  --dsw-alias-label-primary-inverted: #0a1a17;
+  --dsw-alias-label-primary: #d6f1ec;
+  --dsw-alias-label-secondary: #b8cae8;
+  --dsw-alias-label-tertiary: #8ba0c4;
+  --dsw-alias-markdown-citation: #182e5c;
+  --dsw-alias-markdown-code-block-banner: #0e1c3c;
+  --dsw-alias-markdown-code-block: #0e1c3c;
+  --dsw-alias-markdown-code-segment-selected: #1d3668;
+  --dsw-alias-markdown-code-segment-unselected: #12244a;
+  --dsw-alias-markdown-inline-code: #152a52;
+  --dsw-alias-markdown-placeholder: #12244a;
+  --dsw-alias-markdown-tag: #152a52;
+  --dsw-alias-scrollbar-bg-l1: #274568;
+  --dsw-alias-scrollbar-bg-l2: #274568;
+  --dsw-alias-scrollbar-hover-l1: #35537c;
+  --dsw-alias-scrollbar-hover-l2: #35537c;
+  --dsw-alias-state-business-primary: #2e9bff;
+  --dsw-alias-state-business-tertiary: #162a52;
+  --dsw-alias-state-error-primary: #e06060;
+  --dsw-alias-state-error-secondary: #e07070;
+  --dsw-alias-state-success-primary: #4fb86f;
+  --dsw-alias-state-success-secondary: #4fb86f;
+  --dsw-alias-state-success-tertiary: #1c3d26;
+  --dsw-alias-state-warn-label: #e5b94f;
+  --dsw-alias-state-warn-primary: #e5b94f;
+  --dsw-alias-state-warn-secondary: #e5b94f;
+  --dsw-alias-state-warn-tertiary: #3a3015;
+  --dsw-alias-toast-bg: #1c3468;
+  --dsw-alias-tooltip-bg: #213856;
+  --dsw-alias-tooltip-fg: #d6f1ec;
+  --dsw-specific-bubble-highlight: #22407a;
+  --dsw-specific-bubble: #162a52;
+  --dsw-specific-input-major: #12244a;
+  --dsw-specific-login-input: #12244a;
+  --dsw-specific-menu: #182e5c;
+  --dsw-specific-selector: #152a52;
+  --dsw-specific-sidebar-fill: #1e4f9e;
+  --dsw-specific-sidebar-nav-item-active-accent: #22407a;
+  --dsw-specific-sidebar-nav-item-active: #162a52;
+  --dsw-specific-sidebar-nav-item-hover: #1c3468;
+  --dsw-specific-tip: #12244a;
+}
+
+body[data-ds-dark-theme] :focus-visible {
+  outline-color: #58a9ff;
+}
+
+:root {
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+body[data-ds-dark-theme] ::-webkit-scrollbar-track, body[data-ds-dark-theme] ::-webkit-scrollbar-corner {
+  background: #0e1c3c;
+}
+
+body[data-ds-dark-theme] ::-webkit-scrollbar-thumb {
+  background: #274568;
+  border-color: #0e1c3c;
+}
+
+body[data-ds-dark-theme] ::-webkit-scrollbar-thumb:hover {
+  background: #35537c;
+}
+
+:root {
+  --aion-bg-base: #f4f9ffd1;
+  --aion-bg-1: #f0f7ffcc;
+  --aion-bg-2: #e9f2ffd1;
+  --aion-bg-3: #b4d4ff80;
+  --aion-bg-4: #7ab8ff8c;
+  --aion-bg-hover: #2e9bff1a;
+  --aion-bg-active: #2e9bff29;
+  --aion-text-primary: #14263f;
+  --aion-text-secondary: #3a5070;
+  --aion-text-tertiary: #4a5f80;
+  --aion-text-disabled: #5f7a9e;
+  --aion-primary: #1e6fd9;
+  --aion-primary-hover: #2a7fd9;
+  --aion-success: #24924a;
+  --aion-success-soft: #ddf3e3d9;
+  --aion-warning: #a87c1e;
+  --aion-warning-soft: #fdf3ddd9;
+  --aion-danger: #c22626;
+  --aion-danger-soft: #fceeeed9;
+  --aion-brand: #1e6fd9;
+  --aion-aou-1: #f5faffeb;
+  --aion-aou-2: #e4f0ffeb;
+  --aion-aou-3: #b4d4ffe6;
+  --aion-aou-4: #7ab8ffe6;
+  --aion-aou-5: #1e6fd9;
+  --aion-aou-6: #0d2b56;
+  --aion-fill-2: #2e9bff1a;
+  --aion-fill-3: #2e9bff29;
+  --aion-border-base: #b4d4ff8c;
+  --aion-overlay-shadow: 0 8px 28px #0a1e424d, 0 2px 8px #0a1e4229;
+  --aion-font-sans: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Helvetica Neue", "Segoe UI", sans-serif;
+  --aion-font-mono: "JetBrains Mono", "Cascadia Code", "Consolas", "Courier New", monospace;
+}
+
+body[data-ds-dark-theme] {
+  --aion-bg-base: #0d1a3a;
+  --aion-bg-1: #12244a;
+  --aion-bg-2: #162a54;
+  --aion-bg-3: #1d3668;
+  --aion-bg-4: #22407a;
+  --aion-bg-hover: #1c3468;
+  --aion-bg-active: #1c3468;
+  --aion-text-primary: #d6f1ec;
+  --aion-text-secondary: #b8cae8;
+  --aion-text-tertiary: #8ba0c4;
+  --aion-text-disabled: #4c6390;
+  --aion-primary: #2e9bff;
+  --aion-primary-hover: #58a9ff;
+  --aion-success: #4fb86f;
+  --aion-success-soft: #1c3d26;
+  --aion-warning: #e5b94f;
+  --aion-warning-soft: #3a3015;
+  --aion-danger: #e06060;
+  --aion-danger-soft: #3a1c1c;
+  --aion-brand: #58a9ff;
+  --aion-aou-1: #102244;
+  --aion-aou-2: #1c3468;
+  --aion-aou-3: #22407a;
+  --aion-aou-4: #2a4e94;
+  --aion-aou-5: #2e9bff;
+  --aion-aou-6: #0d2b56;
+  --aion-fill-2: #1c3468;
+  --aion-fill-3: #162a52;
+  --aion-border-base: #22407a;
+  --aion-overlay-shadow: 0 8px 28px #0009, 0 2px 8px #00000059;
+  --aion-font-sans: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Helvetica Neue", "Segoe UI", sans-serif;
+  --aion-font-mono: "JetBrains Mono", "Cascadia Code", "Consolas", "Courier New", monospace;
+}
+
+body[data-ds-dark-theme] ::-webkit-scrollbar-thumb:active {
+  background: #58a9ff;
+}
+
+[data-dsh-part="dialog"] {
+  background: linear-gradient(#f6fbff, #fff);
+  border: 1px solid #9cc6ff;
+  box-shadow: 0 8px 28px #0a1e424d;
+}
+
+body[data-ds-dark-theme] [data-dsh-part="dialog"] {
+  background: linear-gradient(#162a54, #12244a);
+  border-color: #22407a;
+  box-shadow: 0 8px 28px #0000008c;
+}
+
+/* Right-panel collapse handling (ported from the v1 miku skin). The hooks
+   poll toggles body[data-dsh-aionui-collapsed] when the aionui panel
+   collapses to a thin rail: hide the collapse chevron and show the floating
+   expand button (and the reverse when expanded) so the two floating buttons
+   never overlap. dsh-aionui-panel is deprecated upstream, kept defensively. */
+body[data-dsh-aionui-collapsed] .aionui-collapse-chevron {
+  display: none !important;
+}
+
+body[data-dsh-aionui-collapsed] .aionui-floating-expand {
+  display: flex !important;
+}
+
+body:not([data-dsh-aionui-collapsed]) .aionui-floating-expand {
+  display: none !important;
+}

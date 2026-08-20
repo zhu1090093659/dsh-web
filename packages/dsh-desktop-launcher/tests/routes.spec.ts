@@ -44,6 +44,7 @@ describe('createDesktopShortcut', () => {
       expect(result.ok).toBe(true)
       expect(result.path).toBe(join(dir, 'Desktop', 'DeepSeek-Harness.lnk'))
       expect(existsSync(join(dir, '.dsh', 'desktop-launcher', 'launcher.ps1'))).toBe(true)
+      expect(existsSync(join(dir, '.dsh', 'desktop-launcher', 'launcher.vbs'))).toBe(true)
       expect(existsSync(join(dir, '.dsh', 'desktop-launcher', 'install-shortcut.ps1'))).toBe(true)
       // the bundled dsh icon is copied next to the launcher and wired into the .lnk
       expect(existsSync(join(dir, '.dsh', 'desktop-launcher', 'dsh.ico'))).toBe(true)
@@ -52,6 +53,9 @@ describe('createDesktopShortcut', () => {
       expect(installer?.args).toContain('-File')
       const installerScript = existsSync(join(dir, '.dsh', 'desktop-launcher', 'install-shortcut.ps1'))
         ? readFileSync(join(dir, '.dsh', 'desktop-launcher', 'install-shortcut.ps1'), 'utf8') : ''
+      expect(installerScript).toContain("$shortcut.TargetPath = 'wscript.exe'")
+      expect(installerScript).not.toContain('-WindowStyle Hidden')
+      expect(installerScript).not.toContain('-ExecutionPolicy Bypass')
       expect(installerScript).toContain("$shortcut.IconLocation = '" + join(dir, '.dsh', 'desktop-launcher', 'dsh.ico') + "'")
     } finally {
       rmSync(dir, { recursive: true, force: true })

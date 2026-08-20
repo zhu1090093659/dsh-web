@@ -15,7 +15,7 @@ import { isAbsolute, join } from 'node:path'
 import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
-import { desktopFileName, renderDesktopEntry, renderLauncherScript, renderShortcutInstaller, scriptFileName, type LauncherPlatform, type LauncherSpec } from './core/launcher.ts'
+import { desktopFileName, renderDesktopEntry, renderLauncherScript, renderShortcutInstaller, renderVbsWrapper, scriptFileName, vbsFileName, type LauncherPlatform, type LauncherSpec } from './core/launcher.ts'
 import { LAUNCHER_API, type CreateResult } from './protocol.ts'
 import { isLoopbackRequest } from './loopback.ts'
 
@@ -173,8 +173,10 @@ export async function createDesktopShortcut(deps: LauncherRoutesDeps): Promise<C
   const dshFound = await probeDsh(platform, run, spec.dshCommand)
   if (!dshFound) warning = `dsh command "${spec.dshCommand}" was not found on PATH; the launcher shows a message when run`
   if (platform === 'win32') {
+    const vbsPath = join(scriptsDir, vbsFileName())
+    await writeFile(vbsPath, renderVbsWrapper(launcherPath))
     const installerPath = join(scriptsDir, 'install-shortcut.ps1')
-    await writeFile(installerPath, renderShortcutInstaller({ launcherPath, desktopPath: iconPath, homeDir: home, iconLocation: iconIco ?? 'powershell.exe,0' }))
+    await writeFile(installerPath, renderShortcutInstaller({ vbsPath, desktopPath: iconPath, homeDir: home, iconLocation: iconIco ?? 'wscript.exe,0' }))
     const result = await run('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', installerPath])
     if (result.code !== 0) throw new Error(`shortcut creation failed: ${result.stderr}`)
   } else if (platform === 'darwin') {

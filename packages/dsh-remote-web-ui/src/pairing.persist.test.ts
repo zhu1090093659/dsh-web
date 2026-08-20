@@ -54,7 +54,11 @@ describe('PairingService device persistence', () => {
     const deviceId = pairDevice(first)
     expect(readFileSync(file, 'utf8')).toContain(deviceId)
     // Device ids are session credentials: the persisted file is 0600.
-    expect(statSync(file).mode & 0o777).toBe(0o600)
+    // win32: NTFS has no POSIX mode bits and Node ignores the writeFileSync
+    // mode option there, so the mode assertion only applies on POSIX (#772).
+    if (process.platform !== 'win32') {
+      expect(statSync(file).mode & 0o777).toBe(0o600)
+    }
 
     // Simulated restart: a brand-new service instance reading the same file.
     const second = new PairingService({ ...BASE_CONFIG, devicesFile: file }, makeClock())

@@ -539,6 +539,16 @@ export class WallpaperController implements WallpaperHandle {
           background-color: transparent !important;
           background-image: none !important;
         }
+        /* Some skins (e.g. summer-liquid-glass) paint a frosted ::before on
+           the composer seat that backdrop-blurs the area behind the input.
+           While a WE wallpaper is mounted the wallpaper must stay sharp under
+           its own blur control, so neutralize the seat pseudo independently
+           of the shared scene marker (issue #777 / summer-liquid-glass). */
+        html[data-dsh-wallpaper-active] [data-composer-seat],
+        html[data-dsh-wallpaper-active] [data-composer-seat]::before {
+          background: none !important;
+          backdrop-filter: none !important;
+        }
         /* Full-viewport shell surfaces (AppFrame frame, conversation root,
            details root) paint the opaque app base background via hashed
            CSS-module classes. While a WE wallpaper is mounted the controller

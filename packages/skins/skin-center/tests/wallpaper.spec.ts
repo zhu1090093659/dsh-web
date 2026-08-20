@@ -425,9 +425,12 @@ describe('WallpaperController', () => {
     row.remove()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(document.body.hasAttribute('data-dsh-conversation-content')).toBe(false)
-    // The wallpaper-specific neutralizer no longer owns the composer seat rule.
+    // The wallpaper-specific neutralizer also owns the composer seat rule as
+    // hardening: some skins (summer-liquid-glass) paint a frosted ::before on
+    // the seat that would blur the wallpaper if the shared marker were absent.
     const root = document.head.querySelector('style[data-dsh-wallpaper-root]')
-    expect(root?.textContent).not.toContain('[data-composer-seat]')
+    expect(root?.textContent).toContain('html[data-dsh-wallpaper-active] [data-composer-seat]::before')
+    expect(root?.textContent).toContain('backdrop-filter: none !important;')
     // Teardown clears the shared marker; the shared neutralizer style stays inert.
     controller.clearSelection()
     expect(document.body.hasAttribute('data-dsh-backdrop-active')).toBe(false)

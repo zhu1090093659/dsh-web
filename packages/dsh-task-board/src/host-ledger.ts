@@ -93,25 +93,8 @@ function processStartTimeMs(pid: number): number | undefined {
     const started = Number(probe.stdout.toString('utf8').trim())
     return Number.isFinite(started) ? started : undefined
   }
-  if (process.platform === 'linux') {
-    // Locale- and spawn-free: /proc/<pid>/stat field 22 (starttime in clock
-    // ticks since boot) combined with the boot time from /proc/stat.
-    try {
-      const stat = readFileSync('/proc/' + String(pid) + '/stat', 'utf8')
-      const closeParen = stat.lastIndexOf(')')
-      const fields = stat.slice(closeParen + 2).split(' ')
-      const startTicks = Number(fields[19])
-      const procStat = readFileSync('/proc/stat', 'utf8')
-      const btimeMatch = /btimes+(d+)/.exec(procStat)
-      const btime = Number(btimeMatch?.[1])
-      if (!Number.isFinite(startTicks) || !Number.isFinite(btime)) return undefined
-      return btime * 1000 + Math.round((startTicks / 100) * 1000)
-    } catch {
-      return undefined
-    }
-  }
-  // macOS / other POSIX: ps lstart with a forced English locale, falling back
-  // to the elapsed-seconds column when lstart cannot be parsed.
+  // POSIX: ps lstart with a forced English locale, falling back to the
+  // elapsed-seconds column when lstart cannot be parsed.
   const env = { ...process.env, LC_ALL: 'C' }
   const probe = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { timeout: PROCESS_PROBE_TIMEOUT_MS, env })
   if (probe.status === 0 && probe.stdout.length > 0) {

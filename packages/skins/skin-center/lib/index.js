@@ -7248,7 +7248,8 @@ const SkinBackgroundConfigSchema = z.object({
 	enabled: z.boolean().default(true),
 	backgroundOpacity: z.number().min(0).max(100).step(5).default(0),
 	backgroundBlurEmpty: z.number().min(0).max(20).step(1).default(0),
-	backgroundBlurContent: z.number().min(0).max(20).step(1).default(0)
+	backgroundBlurContent: z.number().min(0).max(20).step(1).default(0),
+	backgroundBlurCard: z.number().min(0).max(20).step(1).default(10)
 });
 /**
 * Settings namespace for the Wallpaper Engine bridge, owned by the skin

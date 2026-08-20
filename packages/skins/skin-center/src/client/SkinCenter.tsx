@@ -58,6 +58,7 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCen
   const opacity = useSyncExternalStore(background.subscribe, background.opacity)
   const blurEmpty = useSyncExternalStore(background.subscribe, background.blurEmpty)
   const blurContent = useSyncExternalStore(background.subscribe, background.blurContent)
+  const cardBlur = useSyncExternalStore(background.subscribe, background.cardBlur)
   const catalog = useSyncExternalStore(runtime.subscribe, runtime.catalog)
   const state = useSyncExternalStore(runtime.subscribe, runtime.controller.getState)
   const activeId = state.active
@@ -267,6 +268,22 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCen
                       aria-valuetext={`${blurContent}px`}
                       aria-label={t('backgroundBlurContent')}
                       onChange={(event) => { background.setBlurContent(Number(event.target.value)) }}
+                    />
+                    <div className={css.backgroundHead}>
+                      <span className={css.backgroundLabel}>{t('cardBlur')}</span>
+                      <span className={css.backgroundValue} aria-hidden="true">{cardBlur}px</span>
+                    </div>
+                    <input
+                      id="skin-center-background-blur-card"
+                      className={css.backgroundRange}
+                      type="range"
+                      min="0"
+                      max="20"
+                      step="1"
+                      value={cardBlur}
+                      aria-valuetext={`${cardBlur}px`}
+                      aria-label={t('cardBlur')}
+                      onChange={(event) => { background.setCardBlur(Number(event.target.value)) }}
                     />
                     <p className={backdropActive ? css.backgroundHint : css.backgroundHintMuted}>
                       {backdropActive ? t('backgroundBlurHint') : t('backgroundBlurInert')}

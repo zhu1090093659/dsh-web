@@ -1374,6 +1374,7 @@ window.__ModuleLoader__.load({
 			const opacity = (0, react.useSyncExternalStore)(background.subscribe, background.opacity);
 			const blurEmpty = (0, react.useSyncExternalStore)(background.subscribe, background.blurEmpty);
 			const blurContent = (0, react.useSyncExternalStore)(background.subscribe, background.blurContent);
+			const cardBlur = (0, react.useSyncExternalStore)(background.subscribe, background.cardBlur);
 			const catalog = (0, react.useSyncExternalStore)(runtime.subscribe, runtime.catalog);
 			const state = (0, react.useSyncExternalStore)(runtime.subscribe, runtime.controller.getState);
 			const activeId = state.active;
@@ -1623,6 +1624,31 @@ window.__ModuleLoader__.load({
 										background.setBlurContent(Number(event.target.value));
 									}
 								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: skin_center_module_css_default.backgroundHead,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.backgroundLabel,
+										children: t("cardBlur")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: skin_center_module_css_default.backgroundValue,
+										"aria-hidden": "true",
+										children: [cardBlur, "px"]
+									})]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									id: "skin-center-background-blur-card",
+									className: skin_center_module_css_default.backgroundRange,
+									type: "range",
+									min: "0",
+									max: "20",
+									step: "1",
+									value: cardBlur,
+									"aria-valuetext": `${cardBlur}px`,
+									"aria-label": t("cardBlur"),
+									onChange: (event) => {
+										background.setCardBlur(Number(event.target.value));
+									}
+								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 									className: backdropActive ? skin_center_module_css_default.backgroundHint : skin_center_module_css_default.backgroundHintMuted,
 									children: backdropActive ? t("backgroundBlurHint") : t("backgroundBlurInert")
@@ -1756,8 +1782,12 @@ window.__ModuleLoader__.load({
 		const BLUR_EMPTY_FIELD = "backgroundBlurEmpty";
 		/** Field of the with-content backdrop blur inside the namespace section. */
 		const BLUR_CONTENT_FIELD = "backgroundBlurContent";
+		/** Field of the input-card / message-bubble glass blur inside the namespace. */
+		const BLUR_CARD_FIELD = "backgroundBlurCard";
 		/** CSS custom property written to document.body and read by backdrop skins. */
 		const SCRIM_VAR = "--dsw-skin-scrim";
+		/** CSS custom property read by wallpaper-exclusive glass surfaces (input card + bubbles). */
+		const CARD_BLUR_VAR = "--dsw-wallpaper-glass-blur";
 		/**
 		* Selector for a conversation message row inside the shell's center column.
 		* Official shell message rows carry `data-chat-anchor-key`; the
@@ -1783,6 +1813,7 @@ window.__ModuleLoader__.load({
 			opacityValue = 0;
 			blurEmptyValue = 0;
 			blurContentValue = 0;
+			cardBlurValue = 10;
 			listeners = /* @__PURE__ */ new Set();
 			scope;
 			/** The fixed backdrop-filter element, present only while active blur > 0. */
@@ -1802,14 +1833,18 @@ window.__ModuleLoader__.load({
 				this.opacityValue = this.readOpacity();
 				this.blurEmptyValue = this.readBlur(BLUR_EMPTY_FIELD);
 				this.blurContentValue = this.readBlur(BLUR_CONTENT_FIELD);
+				this.cardBlurValue = this.readCardBlur();
 				this.applyOcclusion();
+				this.applyCardBlur();
 				this.syncBlur();
 				scope.subscribe(() => {
 					this.enabledValue = this.readEnabled();
 					this.opacityValue = this.readOpacity();
 					this.blurEmptyValue = this.readBlur(BLUR_EMPTY_FIELD);
 					this.blurContentValue = this.readBlur(BLUR_CONTENT_FIELD);
+					this.cardBlurValue = this.readCardBlur();
 					this.applyOcclusion();
+					this.applyCardBlur();
 					this.syncBlur();
 					this.publish();
 				});
@@ -1818,6 +1853,7 @@ window.__ModuleLoader__.load({
 			setEnabled(value) {
 				this.enabledValue = value;
 				this.applyOcclusion();
+				this.applyCardBlur();
 				this.syncBlur();
 				this.publish();
 				this.scope.set("enabled", value);
@@ -1825,6 +1861,7 @@ window.__ModuleLoader__.load({
 			opacity = () => this.opacityValue;
 			blurEmpty = () => this.blurEmptyValue;
 			blurContent = () => this.blurContentValue;
+			cardBlur = () => this.cardBlurValue;
 			subscribe = (listener) => {
 				this.listeners.add(listener);
 				return () => {
@@ -1854,8 +1891,16 @@ window.__ModuleLoader__.load({
 				this.publish();
 				this.scope.set(BLUR_CONTENT_FIELD, clamped);
 			}
+			setCardBlur(value) {
+				const clamped = this.clampBlur(value);
+				this.cardBlurValue = clamped;
+				this.applyCardBlur();
+				this.publish();
+				this.scope.set(BLUR_CARD_FIELD, clamped);
+			}
 			dispose() {
 				this.disposed = true;
+				document.documentElement.style.removeProperty(CARD_BLUR_VAR);
 				if (this.rafId !== null) {
 					cancelAnimationFrame(this.rafId);
 					this.rafId = null;
@@ -1883,6 +1928,12 @@ window.__ModuleLoader__.load({
 				if (typeof raw !== "number" || !Number.isFinite(raw)) return 0;
 				return this.clampBlur(raw);
 			}
+			/** The effective card glass blur, clamped 0-20, defaulting to 10. */
+			readCardBlur() {
+				const raw = this.scope.getSnapshot().value?.backgroundBlurCard;
+				if (typeof raw !== "number" || !Number.isFinite(raw)) return 10;
+				return this.clampBlur(raw);
+			}
 			clampBlur(value) {
 				return Math.max(0, Math.min(20, Math.round(value)));
 			}
@@ -1893,6 +1944,17 @@ window.__ModuleLoader__.load({
 					return;
 				}
 				document.body.style.setProperty(SCRIM_VAR, String(this.opacityValue / 100));
+			}
+			/**
+			* Write the input-card / message-bubble glass blur onto the root CSS
+			* variable. Wallpaper-exclusive surfaces read it; other skins ignore it.
+			*/
+			applyCardBlur() {
+				if (!this.enabledValue) {
+					document.documentElement.style.removeProperty(CARD_BLUR_VAR);
+					return;
+				}
+				document.documentElement.style.setProperty(CARD_BLUR_VAR, `blur(${this.cardBlurValue}px) saturate(130%)`);
 			}
 			/**
 			* Apply the active blur: empty or with-content strength depending on the
@@ -2006,6 +2068,7 @@ window.__ModuleLoader__.load({
 			backgroundOpacity: "Background occlusion",
 			backgroundBlurEmpty: "Blur when empty",
 			backgroundBlurContent: "Blur with content",
+			cardBlur: "Card background blur",
 			backgroundBlurHint: "Applies a separate Gaussian blur to the backdrop for the empty conversation and the conversation with content; 0 disables.",
 			backgroundBlurInert: "Visible only with skins that paint a backdrop; the official default has none.",
 			backgroundHint: "Instantly veils the backdrop behind the panels — higher values obscure the art to help you focus.",
@@ -2075,6 +2138,7 @@ window.__ModuleLoader__.load({
 			backgroundOpacity: "背景遮挡",
 			backgroundBlurEmpty: "空对话背景模糊",
 			backgroundBlurContent: "有对话背景模糊",
+			cardBlur: "卡片背景模糊",
 			backgroundBlurHint: "对话为空与有内容时分别应用不同的背景高斯模糊强度，0 为关闭。",
 			backgroundBlurInert: "仅对带背景图插画的皮肤可见；官方默认无背景图。",
 			backgroundHint: "即时为面板背后的背景加遮罩——数值越高越能弱化插画，帮你集中注意力。",
@@ -2926,10 +2990,12 @@ window.__ModuleLoader__.load({
 					opacity: () => background.opacity(),
 					blurEmpty: () => background.blurEmpty(),
 					blurContent: () => background.blurContent(),
+					cardBlur: () => background.cardBlur(),
 					subscribe: (listener) => background.subscribe(listener),
 					set: (opacity) => background.set(opacity),
 					setBlurEmpty: (value) => background.setBlurEmpty(value),
 					setBlurContent: (value) => background.setBlurContent(value),
+					setCardBlur: (value) => background.setCardBlur(value),
 					dispose: () => background.dispose()
 				},
 				wallpaper: {

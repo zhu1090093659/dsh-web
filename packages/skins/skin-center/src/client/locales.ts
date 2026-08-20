@@ -32,6 +32,7 @@ export type SkinCenterKey =
   | 'backgroundOpacity'
   | 'backgroundBlurEmpty'
   | 'backgroundBlurContent'
+  | 'cardBlur'
   | 'backgroundBlurHint'
   | 'backgroundBlurInert'
   | 'backgroundHint'
@@ -101,6 +102,7 @@ export const en: Record<SkinCenterKey, string> = {
   backgroundOpacity: 'Background occlusion',
   backgroundBlurEmpty: 'Blur when empty',
   backgroundBlurContent: 'Blur with content',
+  cardBlur: 'Card background blur',
   backgroundBlurHint: 'Applies a separate Gaussian blur to the backdrop for the empty conversation and the conversation with content; 0 disables.',
   backgroundBlurInert: 'Visible only with skins that paint a backdrop; the official default has none.',
   backgroundHint: 'Instantly veils the backdrop behind the panels — higher values obscure the art to help you focus.',
@@ -171,6 +173,7 @@ export const zh: Record<SkinCenterKey, string> = {
   backgroundOpacity: '背景遮挡',
   backgroundBlurEmpty: '空对话背景模糊',
   backgroundBlurContent: '有对话背景模糊',
+  cardBlur: '卡片背景模糊',
   backgroundBlurHint: '对话为空与有内容时分别应用不同的背景高斯模糊强度，0 为关闭。',
   backgroundBlurInert: '仅对带背景图插画的皮肤可见；官方默认无背景图。',
   backgroundHint: '即时为面板背后的背景加遮罩——数值越高越能弱化插画，帮你集中注意力。',

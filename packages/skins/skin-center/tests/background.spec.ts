@@ -9,8 +9,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import {
   BackgroundController,
+  BLUR_CARD_FIELD,
   BLUR_CONTENT_FIELD,
   BLUR_EMPTY_FIELD,
+  CARD_BLUR_VAR,
   SCRIM_VAR,
 } from '../src/client/background.ts'
 
@@ -20,6 +22,7 @@ interface Section {
   backgroundOpacity?: number
   backgroundBlurEmpty?: number
   backgroundBlurContent?: number
+  backgroundBlurCard?: number
 }
 
 /** A fake SettingsScope recording every set() call. */
@@ -96,6 +99,7 @@ describe('BackgroundController', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
     document.documentElement.removeAttribute('data-dsh-wallpaper-active')
+    document.documentElement.style.removeProperty(CARD_BLUR_VAR)
   })
 
   it('defaults: no blur element and the occlusion var is still set', () => {
@@ -204,6 +208,17 @@ describe('BackgroundController', () => {
     expect(blurElement()).not.toBeNull()
     expect(blurElement()!.style.backdropFilter).toContain('blur(10px)')
     controller.dispose()
+  })
+
+  it('applies and persists the card glass blur variable (#805 slider)', () => {
+    const { scope, calls } = fakeScope({ backgroundBlurCard: 8 })
+    const controller = new BackgroundController(scope)
+    expect(document.documentElement.style.getPropertyValue(CARD_BLUR_VAR)).toContain('blur(8px)')
+    controller.setCardBlur(16)
+    expect(document.documentElement.style.getPropertyValue(CARD_BLUR_VAR)).toContain('blur(16px)')
+    expect(calls).toContainEqual({ field: BLUR_CARD_FIELD, value: 16 })
+    controller.dispose()
+    expect(document.documentElement.style.getPropertyValue(CARD_BLUR_VAR)).toBe('')
   })
 
   it('setEnabled(true) restores occlusion application', () => {

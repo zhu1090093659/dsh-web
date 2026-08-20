@@ -117,10 +117,12 @@ export function apply(ctx: ClientContext): void {
       opacity: () => background.opacity(),
       blurEmpty: () => background.blurEmpty(),
       blurContent: () => background.blurContent(),
+      cardBlur: () => background.cardBlur(),
       subscribe: listener => background.subscribe(listener),
       set: opacity => background.set(opacity),
       setBlurEmpty: value => background.setBlurEmpty(value),
       setBlurContent: value => background.setBlurContent(value),
+      setCardBlur: value => background.setCardBlur(value),
       dispose: () => background.dispose(),
     },
     wallpaper: {

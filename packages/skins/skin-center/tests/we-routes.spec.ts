@@ -6,14 +6,14 @@
  * same-origin fence on POST routes.
  */
 import { createServer, request as httpRequest, type Server } from 'node:http'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { AddressInfo } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { TexFormat } from '../src/pkg-extract.ts'
-import { makeWeRoutes, WE_API_PREFIX } from '../src/we-routes.ts'
+import { makeWeRoutes, SCENE_EXTRACTOR_VERSION, WE_API_PREFIX } from '../src/we-routes.ts'
 
 /** Minimal 1x1 RGBA8888 TEX (container v2, uncompressed) for scene decode tests. */
 const tex1x1Red = ((): Buffer => {
@@ -296,6 +296,50 @@ describe('scene container resolution (#521)', () => {
     expect(String(res.headers['content-type'])).toContain('image/png')
     // PNG signature survives the utf8 decode except the 0x89 lead byte.
     expect(res.raw.slice(1, 4)).toBe('PNG')
+  })
+
+  it('keys the frame cache by extractor version and prunes stale entries (#792)', async () => {
+    makeProject(join(library, '888'), { title: 'Cache', type: 'scene', file: 'scene.json' }, {
+      'scene.json': JSON.stringify({ objects: [{ image: 'materials/red.tex' }] }),
+    })
+    mkdirSync(join(library, '888', 'materials'), { recursive: true })
+    writeFileSync(join(library, '888', 'materials', 'red.tex'), tex1x1Red)
+
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const scene = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '888')
+    const frameUrl = String(scene?.frameUrl)
+
+    // Pre-seed the cache the way older builds wrote it (path + mtime, no
+    // version segment), plus an older-version entry and a stale-mtime entry.
+    const sceneAbs = join(library, '888', 'scene.json')
+    const mtime = Math.round(statSync(sceneAbs).mtimeMs)
+    const base = Buffer.from(sceneAbs, 'utf8').toString('base64url')
+    const cacheDir = join(store, '.cache', 'frames')
+    mkdirSync(cacheDir, { recursive: true })
+    const versionless = base + '_' + String(mtime) + '.png'
+    const oldVersion = base + '_v1_' + String(mtime) + '.png'
+    const oldMtime = base + '_v' + String(SCENE_EXTRACTOR_VERSION) + '_111111.png'
+    writeFileSync(join(cacheDir, versionless), 'STALE-VERSIONLESS')
+    writeFileSync(join(cacheDir, oldVersion), 'STALE-V1')
+    writeFileSync(join(cacheDir, oldMtime), 'STALE-MTIME')
+
+    const res = await call('GET', frameUrl)
+    expect(res.status).toBe(200)
+
+    // The regenerated entry carries the current extractor version and every
+    // stale entry for this wallpaper (versionless, old version, old mtime)
+    // has been pruned instead of piling up.
+    const entries = readdirSync(cacheDir)
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toBe(base + '_v' + String(SCENE_EXTRACTOR_VERSION) + '_' + String(mtime) + '.png')
+    expect(existsSync(join(cacheDir, versionless))).toBe(false)
+    expect(existsSync(join(cacheDir, oldVersion))).toBe(false)
+    expect(existsSync(join(cacheDir, oldMtime))).toBe(false)
+
+    // A second request is served from the regenerated cache entry.
+    const again = await call('GET', frameUrl)
+    expect(again.status).toBe(200)
+    expect(again.raw).toBe(res.raw)
   })
 
   it('serves scene-runtime, scene-manifest, and scene-resource for WebGL playback', async () => {

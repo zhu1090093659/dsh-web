@@ -6402,36 +6402,27 @@ const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
 </body>
 </html>
 `;
-//#endregion
-//#region src/we-routes.ts
 /**
-* Wallpaper Engine HTTP routes for the skin center — the browser half talks
-* to the host through same-origin endpoints under /api/skin-center/we:
-*
-*   GET  /inventory           → JSON wallpaper list (library + import store)
-*   GET  /media/<token>       → video stream (Range supported)
-*   GET  /preview/<token>     → preview image
-*   GET  /web/<token>/<path>  → web-wallpaper project files (HTML is served
-*                               with the WE API shim injected)
-*   GET  /shim.js             → the WE API shim source (we-shim-source.ts)
-*   GET  /scene-frame/<token> → PNG of a scene wallpaper's main texture,
-*                               decoded in-process (pkg-extract.ts), cached
-*                               under the import store's .cache directory
-*   POST /import              → copy a library wallpaper into the import
-*                               store (<harnessHome>/skin-center/wallpapers)
-*   POST /reimport            → refresh an imported copy from its source
-*   POST /remove              → delete an imported copy
-*
-* Tokens are base64url of an absolute path, issued only by the inventory
-* handler, so a crafted token can never reach a path the library scan did
-* not already expose. Every route rides the skin-center same-origin fence
-* (routes.ts) — wallpaper imports must not be triggerable cross-site.
-*
-* Compliance note: this module only ever reads files already present on the
-* user's machine (their own Wallpaper Engine library) or copies them within
-* it. Nothing is downloaded, uploaded, or redistributed.
-* @module @linxin666/dsh-client-ui-skin-center/we-routes
+* Delete same-wallpaper cache files left by earlier extractor versions or
+* older mtimes, so a version bump does not leave stale debris growing the
+* cache directory forever. The stem comparison is exact: the trailing
+* `[_vN_]<mtime>.<ext>` suffix is stripped first, so one base64url path
+* never prunes another (base64url output can itself contain underscores).
 */
+function pruneStaleSceneCache(cacheDir, base, keep) {
+	let entries;
+	try {
+		entries = readdirSync(cacheDir);
+	} catch {
+		return;
+	}
+	for (const name of entries) {
+		if (name === keep) continue;
+		if (name.replace(/_(?:v\d+_)?\d+\.[a-z0-9]+$/i, "") === base) try {
+			rmSync(join(cacheDir, name), { force: true });
+		} catch {}
+	}
+}
 /**
 * Read a web wallpaper's project.json property defaults so the shim can
 * deliver them like WE does on startup. Values pass through raw: colors stay
@@ -6794,7 +6785,9 @@ function makeWeRoutes(deps) {
 					mtime = statSync(abs).mtimeMs;
 				} catch {}
 				const cacheDir = join(deps.storeDir, ".cache", "videos");
-				const cachePath = join(cacheDir, Buffer.from(abs, "utf8").toString("base64url") + "_" + String(Math.round(mtime)) + ".mp4");
+				const base = Buffer.from(abs, "utf8").toString("base64url");
+				const key = base + "_v" + String(2) + "_" + String(Math.round(mtime)) + ".mp4";
+				const cachePath = join(cacheDir, key);
 				if (!existsSync(cachePath)) {
 					const { extractSceneVideo, extractSceneVideoFromDir } = await Promise.resolve().then(() => pkg_extract_exports);
 					const videoBytes = abs.toLowerCase().endsWith(".json") ? extractSceneVideoFromDir(dirname(abs)) : extractSceneVideo(new Uint8Array(readFileSync(abs)));
@@ -6807,6 +6800,7 @@ function makeWeRoutes(deps) {
 					}
 					mkdirSync(cacheDir, { recursive: true });
 					writeFileSync(cachePath, videoBytes);
+					pruneStaleSceneCache(cacheDir, base, key);
 				}
 				serveFile(cachePath, req, res);
 			})().catch((error) => {
@@ -6900,12 +6894,15 @@ function makeWeRoutes(deps) {
 					mtime = statSync(abs).mtimeMs;
 				} catch {}
 				const cacheDir = join(deps.storeDir, ".cache", "frames");
-				const cachePath = join(cacheDir, Buffer.from(abs, "utf8").toString("base64url") + "_" + String(Math.round(mtime)) + ".png");
+				const base = Buffer.from(abs, "utf8").toString("base64url");
+				const key = base + "_v" + String(2) + "_" + String(Math.round(mtime)) + ".png";
+				const cachePath = join(cacheDir, key);
 				if (!existsSync(cachePath)) {
 					const { extractSceneMainImage, extractSceneMainImageFromDir } = await Promise.resolve().then(() => pkg_extract_exports);
 					const frame = abs.toLowerCase().endsWith(".json") ? extractSceneMainImageFromDir(dirname(abs)) : extractSceneMainImage(new Uint8Array(readFileSync(abs)));
 					mkdirSync(cacheDir, { recursive: true });
 					writeFileSync(cachePath, frame.png);
+					pruneStaleSceneCache(cacheDir, base, key);
 				}
 				res.setHeader("Content-Type", "image/png");
 				res.setHeader("Cache-Control", "no-store");

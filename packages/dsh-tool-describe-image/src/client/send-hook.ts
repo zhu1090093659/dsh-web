@@ -113,13 +113,14 @@ export function installSendHook(conversation: unknown, isEnabled?: () => boolean
       return original.call(face, session, text, imageIds, mode, signal)
     }
     const fullText = [text.trim(), ...refs].filter(part => part !== '').join('\n')
-    for (const id of imageIds) face.releaseDraftImage(id)
-    // Delegate to the original sendSession with the rewritten text and no
-    // image IDs so the conversation service manages its state (clears the
-    // input, updates the transcript, etc.) exactly as it would for a normal
-    // text-only send.  Calling session.prompt directly would bypass that
-    // state management and leave the input uncleared.
-    return original.call(face, session, fullText, [], mode, signal)
+    // Delegate to the original sendSession with the rewritten text and no image
+    // IDs so the conversation service manages its state (clears the input, updates
+    // the transcript, etc.) exactly as it would for a normal text-only send.
+    // Only release draft images after a successful send so a failure preserves
+    // the user's pasted images for retry.
+    const outcome = await original.call(face, session, fullText, [], mode, signal)
+    if (outcome.kind === 'success') for (const id of imageIds) face.releaseDraftImage(id)
+    return outcome
   }
   ;(face as unknown as Record<string, unknown>)[HOOK_MARKER] = true
 }

@@ -356,4 +356,15 @@
     "repo": "https://github.com/xohmai/dsh-session-delete",
     "category": "utility"
   }
+,
+  {
+    "id": "dsh-llm-wiki",
+    "name": "LLM Wiki 自生长知识库",
+    "nameEn": "LLM Wiki Self-Growing Knowledge Base",
+    "author": "wdannw",
+    "description": "基于 Karpathy LLM Wiki 三层架构（Raw/Wiki/Schema）的自生长知识库：llm_wiki_init/ingest/retrieve/check/update_index/log 六工具，增量维护概念/实体/主题双链网络，Obsidian 兼容，纯 Markdown 存储。",
+    "descriptionEn": "A self-growing LLM Wiki knowledge base (Karpathy's Raw/Wiki/Schema architecture): six tools (init/ingest/retrieve/check/update_index/log) that incrementally maintain a dual-linked network of concepts/entities/topics over plain Markdown, Obsidian-compatible.",
+    "repo": "https://github.com/wdannw/dsh-llm-wiki",
+    "category": "knowledge"
+  }
 ]

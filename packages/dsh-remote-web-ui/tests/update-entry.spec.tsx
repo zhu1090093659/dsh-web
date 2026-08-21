@@ -107,8 +107,10 @@ describe("UpdateEntry", () => {
 
   it("opens the panel and reports up to date", async () => {
     const { fetch } = mount(upToDateStatus())
-    fireEvent.click(screen.getByRole('button', { name: /Check for updates$/ }))
+    const trigger = screen.getByRole('button', { name: /Check for updates$/ })
+    fireEvent.click(trigger)
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/update/status"))
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
     await waitFor(() => expect(screen.getByText('Everything is up to date')).toBeTruthy())
     expect(screen.getByText('@linxin666/dsh-web-ui-all')).toBeTruthy()
     // No update run for an up-to-date install.

@@ -262,14 +262,8 @@ export class WallpaperController implements WallpaperHandle {
   private mountObserver: MutationObserver | null = null
   /** Re-tags full-viewport surfaces after navigation rebuilds #root (#805). */
   private surfaceObserver: MutationObserver | null = null
-  /** Pending rAF id for a coalesced surface re-scan. */
-  private surfaceRafId: number | null = null
-  /** Pending trailing timer id that absorbs burst mutations into one scan. */
-  private surfaceTrailId: ReturnType<typeof setTimeout> | null = null
-  /** Trailing debounce window for the surface re-scan (options.surfaceTrailMs ?? 150). */
-  private readonly surfaceTrailMs: number
   /** Shell surfaces tagged with data-dsh-wallpaper-surface during this mount. */
-  private taggedSurfaces: HTMLElement[] = []
+  private taggedSurfaces = new Set<HTMLElement>()
   private disposed = false
   /** In-flight scene probes by wallpaper id; overlapping entry points
    *  (applySelection / tryOn / sync / fetchAndSync) must not re-read the
@@ -283,7 +277,6 @@ export class WallpaperController implements WallpaperHandle {
     this.scope = scope
     this.options = options
     this.doc = options.doc ?? document
-    this.surfaceTrailMs = options.surfaceTrailMs ?? 150
     this.readAll()
     scope.subscribe(() => {
       this.readAll()
@@ -954,7 +947,7 @@ export class WallpaperController implements WallpaperHandle {
         if (node === undefined) continue
         if (node instanceof HTMLElement && !node.hasAttribute('data-dsh-wallpaper-surface') && isSurface(node)) {
           node.setAttribute('data-dsh-wallpaper-surface', '')
-          this.taggedSurfaces.push(node)
+          this.taggedSurfaces.add(node)
         }
         for (const child of Array.from(node.children)) stack.push(child)
       }
@@ -973,85 +966,86 @@ export class WallpaperController implements WallpaperHandle {
       if (node === undefined) continue
       if (node instanceof HTMLElement && !node.hasAttribute('data-dsh-wallpaper-surface') && isFade(node, this.doc)) {
         node.setAttribute('data-dsh-wallpaper-surface', '')
-        this.taggedSurfaces.push(node)
+        this.taggedSurfaces.add(node)
       }
       for (const child of Array.from(node.children)) stack.push(child)
     }
   }
 
   /**
-   * Watch document.body (subtree) while a wallpaper is active and re-tag the
-   * full-viewport surfaces after navigation rebuilds #root. Navigation
-   * replaces #root's interior with fresh, untagged surfaces that paint the
-   * opaque app base background over the negative-z wallpaper, so the tags
-   * must be re-asserted after the rebuild (#805). Attaching once on the
-   * persistent body element (not on #root) survives #root swaps.
+   * Watch document.body (subtree) while a wallpaper is active and re-tag only
+   * the surfaces affected by each mutation. Navigation rebuilds #root by
+   * replacing its children, so the added subtrees are scanned instead of the
+   * whole tree; removed nodes are untagged immediately. This avoids repeated
+   * full-tree scans and forced layout during chat streaming (#review).
    */
   private ensureSurfaceObserver(): void {
     if (this.disposed || this.surfaceObserver !== null) return
     const win = this.doc.defaultView
     if (win === null || typeof win.MutationObserver !== 'function') return
-    this.surfaceObserver = new win.MutationObserver(() => this.scheduleSurfaceRescan())
+    this.surfaceObserver = new win.MutationObserver((records) => this.handleSurfaceMutations(records))
     this.surfaceObserver.observe(this.doc.body, { childList: true, subtree: true })
   }
 
-  /**
-   * Re-tag full-viewport surfaces after a surface-changing DOM mutation.
-   * Leading edge: the first rAF tags the new surfaces within one frame
-   * (before paint), so a navigation that rebuilds #root does not paint opaque
-   * solids for the whole debounce window (the round-1 regression: a 150ms
-   * trailing debounce left ~10 solid frames on every conversation switch).
-   * A trailing timer then drains the rest of the burst into one settled
-   * re-tag; while it is pending the guards coalesce follow-up mutations.
-   */
-  private scheduleSurfaceRescan(): void {
-    if (this.disposed || this.surfaceRafId !== null || this.surfaceTrailId !== null) return
-    const win = this.doc.defaultView
-    if (win === null) return
-    const flush = (): void => {
-      this.surfaceRafId = null
-      this.surfaceTrailId = null
-      if (this.disposed) return
-      if ((this.previewing ?? this.applied) === null) return
-      // Re-tag from scratch: stale entries from the torn-down subtree are
-      // dropped, current surfaces are re-asserted idempotently.
-      this.untagSurfaces()
-      this.markSurfaces()
+  /** Incrementally tag added subtrees and untag removed subtrees. */
+  private handleSurfaceMutations(records: MutationRecord[]): void {
+    if (this.disposed || (this.previewing ?? this.applied) === null) return
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (node instanceof HTMLElement) this.tagAddedSubtree(node)
+      }
+      for (const node of record.removedNodes) {
+        if (node instanceof HTMLElement) this.untagRemovedSubtree(node)
+      }
     }
-    const armTrail = (): void => {
-      if (this.surfaceTrailId !== null) return
-      this.surfaceTrailId = setTimeout(flush, this.surfaceTrailMs)
+  }
+
+  /** Tag newly added elements that qualify as full-viewport surfaces or workspace fades. */
+  private tagAddedSubtree(root: HTMLElement): void {
+    const isSurface = this.options.declareSurface !== undefined
+      ? (el: HTMLElement): boolean => this.options.declareSurface!(el, this.doc)
+      : (el: HTMLElement): boolean => defaultWallpaperSurface(el, this.doc)
+    const isFade = this.options.declareWorkspaceFade ?? defaultWorkspaceFade
+    const stack: HTMLElement[] = [root]
+    while (stack.length > 0) {
+      const node = stack.pop()
+      if (node === undefined) continue
+      if (!node.hasAttribute('data-dsh-wallpaper-surface')) {
+        const inWorkspaces = node.closest('[data-slot="sidebar.workspaces"]') !== null
+        if (isSurface(node) || (inWorkspaces && isFade(node, this.doc))) {
+          node.setAttribute('data-dsh-wallpaper-surface', '')
+          this.taggedSurfaces.add(node)
+        }
+      }
+      for (const child of Array.from(node.children)) {
+        if (child instanceof HTMLElement) stack.push(child)
+      }
     }
-    if (typeof win.requestAnimationFrame === 'function') {
-      this.surfaceRafId = win.requestAnimationFrame(() => {
-        this.surfaceRafId = null
-        // Tag immediately on this frame (before paint).
-        flush()
-        if (this.surfaceTrailId === null) armTrail()
-      })
-    } else {
-      // jsdom (and synthetic test envs) may not implement rAF; flush now and
-      // drain through the trailing timer.
-      flush()
-      armTrail()
+  }
+
+  /** Remove tags from a removed subtree and drop its references. */
+  private untagRemovedSubtree(root: HTMLElement): void {
+    const stack: HTMLElement[] = [root]
+    while (stack.length > 0) {
+      const node = stack.pop()
+      if (node === undefined) continue
+      if (node.hasAttribute('data-dsh-wallpaper-surface')) {
+        node.removeAttribute('data-dsh-wallpaper-surface')
+        this.taggedSurfaces.delete(node)
+      }
+      for (const child of Array.from(node.children)) {
+        if (child instanceof HTMLElement) stack.push(child)
+      }
     }
   }
 
   private untagSurfaces(): void {
-    for (const el of this.taggedSurfaces) el.removeAttribute('data-dsh-wallpaper-surface')
-    this.taggedSurfaces = []
+    for (const el of Array.from(this.taggedSurfaces)) el.removeAttribute('data-dsh-wallpaper-surface')
+    this.taggedSurfaces.clear()
   }
 
   private teardownLayers(): void {
     this.releaseCaptureVideo()
-    if (this.surfaceRafId !== null) {
-      this.doc.defaultView?.cancelAnimationFrame(this.surfaceRafId)
-      this.surfaceRafId = null
-    }
-    if (this.surfaceTrailId !== null) {
-      clearTimeout(this.surfaceTrailId)
-      this.surfaceTrailId = null
-    }
     this.surfaceObserver?.disconnect()
     this.surfaceObserver = null
     this.untagSurfaces()

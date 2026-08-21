@@ -219,7 +219,7 @@ export function RemoteEntry({ wide, useWorkspaces, t }: RemoteEntryProps) {
     <>
       <div className={css.entryRow} data-rail={wide ? undefined : 'rail'}>
         <UpdateEntry wide={wide} t={t} />
-        <TooltipAnchor wide={wide} label={t('entry.label')} onClick={openPanel} />
+        <TooltipAnchor wide={wide} label={t('entry.label')} onClick={openPanel} expanded={open} />
       </div>
       {open && createPortal((
         <div className={css.overlay} role="presentation">
@@ -243,13 +243,14 @@ export function RemoteEntry({ wide, useWorkspaces, t }: RemoteEntryProps) {
 }
 
 /** The trigger: an icon-only control with a persistent accessible label. */
-function TooltipAnchor({ wide, label, onClick }: { wide: boolean; label: string; onClick: () => void }) {
+function TooltipAnchor({ wide, label, onClick, expanded }: { wide: boolean; label: string; onClick: () => void; expanded: boolean }) {
   return (
     <button
       type="button"
       className={css.trigger}
       data-wide={wide ? 'wide' : 'rail'}
       aria-label={label}
+      aria-expanded={expanded}
       title={label}
       onClick={onClick}
     >

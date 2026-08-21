@@ -112,9 +112,11 @@ describe('RemoteEntry', () => {
 
   it('opens the panel on trigger click: title, subtitle, QR card, hint, actions', async () => {
     const { fetch } = mount()
-    fireEvent.click(screen.getByRole('button', { name: 'Remote access' }))
+    const trigger = screen.getByRole('button', { name: 'Remote access' })
+    fireEvent.click(trigger)
     expect(fetch).toHaveBeenCalledWith('/api/pair/issue', expect.objectContaining({ method: 'POST' }))
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Remote access' })).toBeTruthy())
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByText('Pair a phone or another computer to access this workspace remotely')).toBeTruthy()
     expect(screen.getByText('Pair a device')).toBeTruthy()
     expect(screen.getByText('Waiting for a device')).toBeTruthy()

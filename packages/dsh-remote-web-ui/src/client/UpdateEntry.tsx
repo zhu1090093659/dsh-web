@@ -124,6 +124,7 @@ export function UpdateEntry({ wide, t }: UpdateEntryProps) {
         data-wide={wide ? undefined : "rail"}
         data-update-available={updateAvailable ? "true" : undefined}
         aria-label={updateLabel}
+        aria-expanded={open}
         title={updateLabel}
         onClick={openPanel}
       >

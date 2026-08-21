@@ -1,6 +1,6 @@
-English | [中文](README.zh.md)
-
 # Wallpaper Exclusive
+
+English | [中文](README.zh.md)
 
 A wallpaper-first skin for the DeepSeek Harness web GUI. The default official
 base is kept, and the surfaces that float over the wallpaper — the input card,

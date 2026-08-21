@@ -471,7 +471,9 @@ body[data-dsh-wallpaper-active] [class*="centerCol"] {
 
 /* Footer action triggers (检查更新 / 远程访问 / 连接手机): keep the shell
    hover/active behavior and add a visible open-state highlight while their
-   dialog is mounted, matching the example skin. */
+   dialog is mounted. The trigger buttons expose language-independent
+   aria-expanded from their owner plugins, so no build-hash or localized
+   aria-label is used here. */
 [data-slot="sidebar"] button[class*="trigger"] {
   background-color: rgba(0, 0, 0, 0) !important;
 }
@@ -480,9 +482,7 @@ body[data-dsh-wallpaper-active] [class*="centerCol"] {
   background-color: var(--dsw-wallpaper-glass-hover-strong) !important;
 }
 
-body:has(.fThDlq_panel[aria-label="检查更新"]) [data-slot="sidebar"] button[aria-label="检查更新"],
-body:has(.fThDlq_panel[aria-label="远程访问"]) [data-slot="sidebar"] button[aria-label="远程访问"],
-body:has(.fThDlq_panel[aria-label="连接手机"]) [data-slot="sidebar"] button[aria-label="连接手机"] {
+[data-slot="sidebar"] button[aria-expanded="true"] {
   background-color: var(--dsw-wallpaper-glass-active-strong) !important;
   color: var(--dsw-alias-label-primary, #f9fafb) !important;
 }

@@ -568,14 +568,8 @@ window.__ModuleLoader__.load({
 			mountObserver = null;
 			/** Re-tags full-viewport surfaces after navigation rebuilds #root (#805). */
 			surfaceObserver = null;
-			/** Pending rAF id for a coalesced surface re-scan. */
-			surfaceRafId = null;
-			/** Pending trailing timer id that absorbs burst mutations into one scan. */
-			surfaceTrailId = null;
-			/** Trailing debounce window for the surface re-scan (options.surfaceTrailMs ?? 150). */
-			surfaceTrailMs;
 			/** Shell surfaces tagged with data-dsh-wallpaper-surface during this mount. */
-			taggedSurfaces = [];
+			taggedSurfaces = /* @__PURE__ */ new Set();
 			disposed = false;
 			/** In-flight scene probes by wallpaper id; overlapping entry points
 			*  (applySelection / tryOn / sync / fetchAndSync) must not re-read the
@@ -588,7 +582,6 @@ window.__ModuleLoader__.load({
 				this.scope = scope;
 				this.options = options;
 				this.doc = options.doc ?? document;
-				this.surfaceTrailMs = options.surfaceTrailMs ?? 150;
 				this.readAll();
 				scope.subscribe(() => {
 					this.readAll();
@@ -1086,7 +1079,7 @@ window.__ModuleLoader__.load({
 						if (node === void 0) continue;
 						if (node instanceof HTMLElement && !node.hasAttribute("data-dsh-wallpaper-surface") && isSurface(node)) {
 							node.setAttribute("data-dsh-wallpaper-surface", "");
-							this.taggedSurfaces.push(node);
+							this.taggedSurfaces.add(node);
 						}
 						for (const child of Array.from(node.children)) stack.push(child);
 					}
@@ -1104,78 +1097,73 @@ window.__ModuleLoader__.load({
 					if (node === void 0) continue;
 					if (node instanceof HTMLElement && !node.hasAttribute("data-dsh-wallpaper-surface") && isFade(node, this.doc)) {
 						node.setAttribute("data-dsh-wallpaper-surface", "");
-						this.taggedSurfaces.push(node);
+						this.taggedSurfaces.add(node);
 					}
 					for (const child of Array.from(node.children)) stack.push(child);
 				}
 			}
 			/**
-			* Watch document.body (subtree) while a wallpaper is active and re-tag the
-			* full-viewport surfaces after navigation rebuilds #root. Navigation
-			* replaces #root's interior with fresh, untagged surfaces that paint the
-			* opaque app base background over the negative-z wallpaper, so the tags
-			* must be re-asserted after the rebuild (#805). Attaching once on the
-			* persistent body element (not on #root) survives #root swaps.
+			* Watch document.body (subtree) while a wallpaper is active and re-tag only
+			* the surfaces affected by each mutation. Navigation rebuilds #root by
+			* replacing its children, so the added subtrees are scanned instead of the
+			* whole tree; removed nodes are untagged immediately. This avoids repeated
+			* full-tree scans and forced layout during chat streaming (#review).
 			*/
 			ensureSurfaceObserver() {
 				if (this.disposed || this.surfaceObserver !== null) return;
 				const win = this.doc.defaultView;
 				if (win === null || typeof win.MutationObserver !== "function") return;
-				this.surfaceObserver = new win.MutationObserver(() => this.scheduleSurfaceRescan());
+				this.surfaceObserver = new win.MutationObserver((records) => this.handleSurfaceMutations(records));
 				this.surfaceObserver.observe(this.doc.body, {
 					childList: true,
 					subtree: true
 				});
 			}
-			/**
-			* Re-tag full-viewport surfaces after a surface-changing DOM mutation.
-			* Leading edge: the first rAF tags the new surfaces within one frame
-			* (before paint), so a navigation that rebuilds #root does not paint opaque
-			* solids for the whole debounce window (the round-1 regression: a 150ms
-			* trailing debounce left ~10 solid frames on every conversation switch).
-			* A trailing timer then drains the rest of the burst into one settled
-			* re-tag; while it is pending the guards coalesce follow-up mutations.
-			*/
-			scheduleSurfaceRescan() {
-				if (this.disposed || this.surfaceRafId !== null || this.surfaceTrailId !== null) return;
-				const win = this.doc.defaultView;
-				if (win === null) return;
-				const flush = () => {
-					this.surfaceRafId = null;
-					this.surfaceTrailId = null;
-					if (this.disposed) return;
-					if ((this.previewing ?? this.applied) === null) return;
-					this.untagSurfaces();
-					this.markSurfaces();
-				};
-				const armTrail = () => {
-					if (this.surfaceTrailId !== null) return;
-					this.surfaceTrailId = setTimeout(flush, this.surfaceTrailMs);
-				};
-				if (typeof win.requestAnimationFrame === "function") this.surfaceRafId = win.requestAnimationFrame(() => {
-					this.surfaceRafId = null;
-					flush();
-					if (this.surfaceTrailId === null) armTrail();
-				});
-				else {
-					flush();
-					armTrail();
+			/** Incrementally tag added subtrees and untag removed subtrees. */
+			handleSurfaceMutations(records) {
+				if (this.disposed || (this.previewing ?? this.applied) === null) return;
+				for (const record of records) {
+					for (const node of record.addedNodes) if (node instanceof HTMLElement) this.tagAddedSubtree(node);
+					for (const node of record.removedNodes) if (node instanceof HTMLElement) this.untagRemovedSubtree(node);
+				}
+			}
+			/** Tag newly added elements that qualify as full-viewport surfaces or workspace fades. */
+			tagAddedSubtree(root) {
+				const isSurface = this.options.declareSurface !== void 0 ? (el) => this.options.declareSurface(el, this.doc) : (el) => defaultWallpaperSurface(el, this.doc);
+				const isFade = this.options.declareWorkspaceFade ?? defaultWorkspaceFade;
+				const stack = [root];
+				while (stack.length > 0) {
+					const node = stack.pop();
+					if (node === void 0) continue;
+					if (!node.hasAttribute("data-dsh-wallpaper-surface")) {
+						const inWorkspaces = node.closest("[data-slot=\"sidebar.workspaces\"]") !== null;
+						if (isSurface(node) || inWorkspaces && isFade(node, this.doc)) {
+							node.setAttribute("data-dsh-wallpaper-surface", "");
+							this.taggedSurfaces.add(node);
+						}
+					}
+					for (const child of Array.from(node.children)) if (child instanceof HTMLElement) stack.push(child);
+				}
+			}
+			/** Remove tags from a removed subtree and drop its references. */
+			untagRemovedSubtree(root) {
+				const stack = [root];
+				while (stack.length > 0) {
+					const node = stack.pop();
+					if (node === void 0) continue;
+					if (node.hasAttribute("data-dsh-wallpaper-surface")) {
+						node.removeAttribute("data-dsh-wallpaper-surface");
+						this.taggedSurfaces.delete(node);
+					}
+					for (const child of Array.from(node.children)) if (child instanceof HTMLElement) stack.push(child);
 				}
 			}
 			untagSurfaces() {
-				for (const el of this.taggedSurfaces) el.removeAttribute("data-dsh-wallpaper-surface");
-				this.taggedSurfaces = [];
+				for (const el of Array.from(this.taggedSurfaces)) el.removeAttribute("data-dsh-wallpaper-surface");
+				this.taggedSurfaces.clear();
 			}
 			teardownLayers() {
 				this.releaseCaptureVideo();
-				if (this.surfaceRafId !== null) {
-					this.doc.defaultView?.cancelAnimationFrame(this.surfaceRafId);
-					this.surfaceRafId = null;
-				}
-				if (this.surfaceTrailId !== null) {
-					clearTimeout(this.surfaceTrailId);
-					this.surfaceTrailId = null;
-				}
 				this.surfaceObserver?.disconnect();
 				this.surfaceObserver = null;
 				this.untagSurfaces();

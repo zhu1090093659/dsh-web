@@ -1,6 +1,6 @@
-[English](README.md) | 中文
-
 # 壁纸专属 Wallpaper Exclusive
+
+[English](README.md) | 中文
 
 面向 DeepSeek Harness Web GUI 的壁纸优先皮肤。保留官方默认底座，把浮在壁纸之上的
 表面——输入卡、消息气泡、代码块、行内代码、设置卡片、插件面板、技能中心与任务清单——

@@ -786,6 +786,92 @@ describe('WallpaperController', () => {
     controller.dispose()
     expect(fade.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
   })
+
+  it('tags only added subtrees without rescanning the existing tree (incremental observer)', async () => {
+    const { scope } = fakeScope()
+    document.body.innerHTML = ''
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+    const existing = document.createElement('div')
+    existing.setAttribute('data-surface', '')
+    root.appendChild(existing)
+    for (let i = 0; i < 40; i++) root.appendChild(document.createElement('div'))
+    let detectorCalls = 0
+    const controller = new WallpaperController(scope, {
+      doc: document,
+      declareSurface: (el) => {
+        detectorCalls++
+        return el.hasAttribute('data-surface')
+      },
+    })
+    controller.applySelection(video)
+    expect(existing.getAttribute('data-dsh-wallpaper-surface')).toBe('')
+    // Drain observer callbacks queued by applySelection's own media-layer
+    // mutations before counting the incremental scan.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    detectorCalls = 0
+    const added = document.createElement('div')
+    const addedSurface = document.createElement('div')
+    addedSurface.setAttribute('data-surface', '')
+    added.appendChild(addedSurface)
+    root.appendChild(added)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(addedSurface.getAttribute('data-dsh-wallpaper-surface')).toBe('')
+    expect(added.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
+    expect(detectorCalls).toBeLessThanOrEqual(3)
+    controller.dispose()
+  })
+
+  it('untags removed subtrees and drops their references', async () => {
+    const { scope } = fakeScope()
+    document.body.innerHTML = ''
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+    const surface = document.createElement('div')
+    surface.setAttribute('data-surface', '')
+    root.appendChild(surface)
+    const controller = new WallpaperController(scope, {
+      doc: document,
+      declareSurface: (el) => el.hasAttribute('data-surface'),
+    })
+    controller.applySelection(video)
+    expect(surface.getAttribute('data-dsh-wallpaper-surface')).toBe('')
+    surface.remove()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(surface.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
+    const internal = controller as unknown as { taggedSurfaces: Set<HTMLElement> }
+    expect(internal.taggedSurfaces.size).toBe(0)
+    controller.dispose()
+  })
+
+  it('re-tags only the new subtree after a navigation-style #root rebuild', async () => {
+    const { scope } = fakeScope()
+    document.body.innerHTML = ''
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+    const oldSurface = document.createElement('div')
+    oldSurface.setAttribute('data-surface', '')
+    root.appendChild(oldSurface)
+    const controller = new WallpaperController(scope, {
+      doc: document,
+      declareSurface: (el) => el.hasAttribute('data-surface'),
+    })
+    controller.applySelection(video)
+    expect(oldSurface.getAttribute('data-dsh-wallpaper-surface')).toBe('')
+    const newSurface = document.createElement('div')
+    newSurface.setAttribute('data-surface', '')
+    root.replaceChildren(newSurface)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(oldSurface.getAttribute('data-dsh-wallpaper-surface')).toBeNull()
+    expect(newSurface.getAttribute('data-dsh-wallpaper-surface')).toBe('')
+    const internal = controller as unknown as { taggedSurfaces: Set<HTMLElement> }
+    expect(internal.taggedSurfaces.size).toBe(1)
+    controller.dispose()
+  })
+
 })
 
 /** A minimal fake WallpaperHandle recording every sync() call. */

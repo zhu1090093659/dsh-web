@@ -1762,6 +1762,15 @@ export interface SceneManifest {
   hasFireflies?: boolean
   meteorTex?: string
   sparkleTex?: string
+  /**
+   * Some object properties are driven by embedded WE scripts
+   * (`{"script": "..."}` value objects calling engine.registerAsset /
+   * thisScene.getLayer etc). The WebGL player has no script engine, so a
+   * scripted scene renders exactly its initial static composition under it
+   * (dino_run: hidden characters, frozen scroll effects). Callers use this
+   * flag to withhold the live sceneUrl and keep the static frame instead.
+   */
+  scripted?: boolean
   layers: SceneManifestLayer[]
 }
 
@@ -2076,6 +2085,17 @@ function buildSceneManifestVia(access: SceneAccess, token: string): SceneManifes
   const height = typeof projH === 'number' && Number.isFinite(projH) && projH > 0 ? Math.floor(projH) : 2160
   const resourceBase = '/api/skin-center/we/scene-resource/' + token + '/'
 
+  // Scripted detection: WE lets any object property carry an embedded script
+  // as a `{"script": "..."}` value object (dino_run drives visible/origin/
+  // scale and spawns particles that way). The WebGL player cannot execute
+  // them, so flag the manifest and let callers withhold the live runtime.
+  const isScripted = (scene.objects as Array<Record<string, unknown>>).some(
+    (o) => Object.values(o).some(
+      (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
+        && typeof (v as Record<string, unknown>).script === 'string',
+    ),
+  )
+
   const manifest: SceneManifest = {
     width,
     height,
@@ -2083,6 +2103,7 @@ function buildSceneManifestVia(access: SceneAccess, token: string): SceneManifes
     hasFireflies: false,
     layers: [],
   }
+  if (isScripted) manifest.scripted = true
 
   const allTex = access.listTexPaths()
   const parseVec3 = (val: unknown, def: [number, number, number]): [number, number, number] => {

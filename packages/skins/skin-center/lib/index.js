@@ -5,8 +5,10 @@ import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { transform } from "lightningcss";
+import { readFile, stat } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { Buffer as Buffer$1 } from "node:buffer";
+import { decode } from "jpeg-js";
 import { deflateSync, inflateSync } from "node:zlib";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
@@ -2203,15 +2205,16 @@ function buildInventory(opts = {}) {
 //#endregion
 //#region src/pkg-extract.ts
 /**
-* Wallpaper Engine scene.pkg / .tex resource extraction, dependency-free.
+* Wallpaper Engine scene.pkg / .tex resource extraction.
 *
 * This module is the core of the skin center's "scene wallpaper static frame
 * extraction" feature: it unpacks a Wallpaper Engine scene package (PKG
 * container, magic PKGVxxxx), parses the nested TEX texture containers
 * (TEXV0005 header -> TEXI0001 image info -> TEXB0001..4 mipmap data ->
 * TEXS0001..3 frame animation metadata), decodes the main mipmap to RGBA8888
-* (raw RGBA8888/R8/RG88 plus hand-rolled BC1/BC2/BC3 block decompression for
-* DXT1/DXT3/DXT5), and re-encodes the result as a PNG using only node:zlib.
+* (raw RGBA8888/R8/RG88, FreeImage-embedded JPEG via jpeg-js, plus hand-rolled
+* BC1/BC2/BC3 block decompression for DXT1/DXT3/DXT5), and re-encodes the
+* result as a PNG using only node:zlib.
 *
 * Format facts were cross-checked against the two reference implementations:
 * RePKG (github.com/notscuffed/repkg, PackageReader / TexReader and friends)
@@ -2234,7 +2237,8 @@ function buildInventory(opts = {}) {
 *   (bit 2) pull in a TEXS frame container exposed via TexInfo.frames.
 *
 * LZ4 block decoding follows the official lz4 block format specification;
-* BC1/BC2/BC3 follow the standard public algorithms. No npm dependencies.
+* BC1/BC2/BC3 follow the standard public algorithms. One npm dependency:
+* jpeg-js (pure JavaScript, no native builds) for FreeImage JPEG mipmaps.
 *
 * @module @linxin666/dsh-client-ui-skin-center/pkg-extract
 */
@@ -2898,11 +2902,36 @@ function decodeDxt5(src, width, height) {
 * 2048x2048 mip); the TEXI header's image rect is the real content, anchored
 * top-left, so the result is cropped to it before returning.
 */
+/** Crop the power-of-two padding: the TEXI image rect sits at the top-left of
+* the stored mip (verified by render probe), anything beyond it is filler. */
+function cropToImageRect(decoded, imageWidth, imageHeight) {
+	const cropW = Math.min(imageWidth, decoded.width);
+	const cropH = Math.min(imageHeight, decoded.height);
+	if (cropW > 0 && cropH > 0 && (cropW < decoded.width || cropH < decoded.height)) {
+		const cropped = new Uint8Array(cropW * cropH * 4);
+		for (let y = 0; y < cropH; y++) cropped.set(decoded.rgba.subarray(y * decoded.width * 4, (y * decoded.width + cropW) * 4), y * cropW * 4);
+		return {
+			width: cropW,
+			height: cropH,
+			rgba: cropped
+		};
+	}
+	return decoded;
+}
 function decodeTex(data) {
 	const parsed = parseTexInternal(data);
 	if (parsed.isVideoMp4) throw new Error("tex: video mp4 textures cannot be decoded to a static frame");
 	const mip = parsed.mipmaps[0];
 	if (isPngBuffer(mip.bytes)) return decodePngToRgba(mip.bytes);
+	if (mip.bytes[0] === 255 && mip.bytes[1] === 216) {
+		const jpeg = decode(Buffer$1.from(mip.bytes), { useTArray: true });
+		const rgba = jpeg.data;
+		return cropToImageRect({
+			width: jpeg.width,
+			height: jpeg.height,
+			rgba
+		}, parsed.width, parsed.height);
+	}
 	const { width, height, bytes } = mip;
 	let decoded;
 	switch (parsed.format) {
@@ -2978,18 +3007,7 @@ function decodeTex(data) {
 		}
 		default: throw new Error("tex: unsupported format " + parsed.format);
 	}
-	const cropW = Math.min(parsed.width, width);
-	const cropH = Math.min(parsed.height, height);
-	if (cropW > 0 && cropH > 0 && (cropW < width || cropH < height)) {
-		const cropped = new Uint8Array(cropW * cropH * 4);
-		for (let y = 0; y < cropH; y++) cropped.set(decoded.rgba.subarray(y * width * 4, (y * width + cropW) * 4), y * cropW * 4);
-		return {
-			width: cropW,
-			height: cropH,
-			rgba: cropped
-		};
-	}
-	return decoded;
+	return cropToImageRect(decoded, parsed.width, parsed.height);
 }
 const CRC_TABLE = (() => {
 	const table = /* @__PURE__ */ new Uint32Array(256);
@@ -3821,6 +3839,7 @@ function buildSceneManifestVia(access, token) {
 	const width = typeof projW === "number" && Number.isFinite(projW) && projW > 0 ? Math.floor(projW) : 3840;
 	const height = typeof projH === "number" && Number.isFinite(projH) && projH > 0 ? Math.floor(projH) : 2160;
 	const resourceBase = "/api/skin-center/we/scene-resource/" + token + "/";
+	const isScripted = scene.objects.some((o) => Object.values(o).some((v) => v !== null && typeof v === "object" && !Array.isArray(v) && typeof v.script === "string"));
 	const manifest = {
 		width,
 		height,
@@ -3828,6 +3847,7 @@ function buildSceneManifestVia(access, token) {
 		hasFireflies: false,
 		layers: []
 	};
+	if (isScripted) manifest.scripted = true;
 	const allTex = access.listTexPaths();
 	const parseVec3 = (val, def) => {
 		if (typeof val === "string") {
@@ -6598,6 +6618,18 @@ function serveFile(absPath, req, res) {
 	res.setHeader("Content-Length", String(size));
 	createReadStream(absPath).pipe(res);
 }
+/**
+* Probe logic version, stamped into every persisted probe entry (#817 cache).
+* Bumped when the detection rules change so entries written by an older
+* build are ignored instead of serving stale capabilities - the scripted-
+* scene withholding (v2) would otherwise stay invisible to installs whose
+* probe cache already says hasSceneWebGL=true for dino_run-style scenes.
+*/
+const SCENE_PROBE_VERSION = 2;
+/** Shape-check an entry loaded from the persisted probe cache. */
+function isSceneProbe(value) {
+	return value !== null && typeof value === "object" && typeof value.hasVideo === "boolean" && typeof value.hasSceneWebGL === "boolean" && value.v === SCENE_PROBE_VERSION;
+}
 /** Build the route family. */
 function makeWeRoutes(deps) {
 	const tokenStorePath = join(deps.storeDir, ".cache", "we-tokens.json");
@@ -6622,46 +6654,23 @@ function makeWeRoutes(deps) {
 		storeDir: deps.storeDir,
 		autoDetect: deps.autoDetect
 	});
-	const sceneProbeCache = /* @__PURE__ */ new Map();
+	const probeCachePath = join(deps.storeDir, ".cache", "we-scene-probes.json");
+	let sceneProbeCache = /* @__PURE__ */ new Map();
+	try {
+		const saved = JSON.parse(readFileSync(probeCachePath, "utf8"));
+		if (saved !== null && typeof saved === "object") {
+			for (const [key, value] of Object.entries(saved)) if (isSceneProbe(value)) sceneProbeCache.set(key, value);
+		}
+	} catch {}
 	const MAX_PROBE_CACHE = 256;
+	const persistProbes = () => {
+		try {
+			mkdirSync(dirname(probeCachePath), { recursive: true });
+			writeFileSync(probeCachePath, JSON.stringify(Object.fromEntries(sceneProbeCache)), "utf8");
+		} catch {}
+	};
 	const entryToJson = (entry) => {
 		const hasFile = existsSync(entry.fileAbs);
-		let hasVideo = false;
-		let hasSceneWebGL = false;
-		if (entry.type === "scene" && hasFile) {
-			let mtimeMs = 0;
-			let size = 0;
-			try {
-				const st = statSync(entry.fileAbs);
-				mtimeMs = st.mtimeMs;
-				size = st.size;
-			} catch {}
-			const key = entry.fileAbs + ":" + mtimeMs + ":" + size;
-			let probe = mtimeMs > 0 ? sceneProbeCache.get(key) : void 0;
-			if (!probe) {
-				let hasVideoNow = false;
-				let hasSceneWebGLNow = false;
-				try {
-					hasVideoNow = entry.fileAbs.toLowerCase().endsWith(".json") ? hasSceneVideoFromDir(dirname(entry.fileAbs)) : hasSceneVideo(new Uint8Array(readFileSync(entry.fileAbs)));
-					if (!hasVideoNow) {
-						const manifest = entry.fileAbs.toLowerCase().endsWith(".json") ? buildSceneManifestFromDir(dirname(entry.fileAbs), "check") : buildSceneManifest(new Uint8Array(readFileSync(entry.fileAbs)), "check");
-						if (manifest && (manifest.layers && manifest.layers.length >= 1 || manifest.is3D && manifest.models && manifest.models.length > 0)) hasSceneWebGLNow = true;
-					}
-				} catch {
-					hasSceneWebGLNow = false;
-				}
-				probe = {
-					hasVideo: hasVideoNow,
-					hasSceneWebGL: hasSceneWebGLNow
-				};
-				if (mtimeMs > 0) {
-					if (sceneProbeCache.size >= MAX_PROBE_CACHE) sceneProbeCache.clear();
-					sceneProbeCache.set(key, probe);
-				}
-			}
-			hasVideo = probe.hasVideo;
-			hasSceneWebGL = probe.hasSceneWebGL;
-		}
 		return {
 			id: entry.id,
 			title: entry.title,
@@ -6669,10 +6678,10 @@ function makeWeRoutes(deps) {
 			source: entry.source,
 			playable: entry.playable,
 			updateAvailable: entry.updateAvailable,
-			videoUrl: entry.type === "video" && hasFile ? "/api/skin-center/we/media/" + tokenFor(entry.fileAbs) : hasVideo ? "/api/skin-center/we/scene-video/" + tokenFor(entry.fileAbs) : null,
+			videoUrl: entry.type === "video" && hasFile ? "/api/skin-center/we/media/" + tokenFor(entry.fileAbs) : null,
 			webUrl: entry.type === "web" && hasFile ? "/api/skin-center/we/web/" + tokenFor(entry.fileAbs) + "/" : null,
 			frameUrl: entry.type === "scene" && hasFile ? "/api/skin-center/we/scene-frame/" + tokenFor(entry.fileAbs) : null,
-			sceneUrl: hasSceneWebGL ? "/api/skin-center/we/scene-runtime/" + tokenFor(entry.fileAbs) : null,
+			sceneUrl: null,
 			previewUrl: entry.previewAbs ? "/api/skin-center/we/preview/" + tokenFor(entry.previewAbs) : null
 		};
 	};
@@ -6721,6 +6730,87 @@ function makeWeRoutes(deps) {
 					total: inventory.total,
 					portableCount: inventory.portableCount,
 					wallpapers
+				});
+			} catch (error) {
+				json(res, 500, {
+					ok: false,
+					error: error instanceof Error ? error.message : String(error)
+				});
+			}
+		}
+	});
+	routes.push({
+		kind: "exact",
+		path: "/api/skin-center/we/scene-probe",
+		handler: async (req, res) => {
+			if (req.method !== "GET") {
+				json(res, 405, {
+					ok: false,
+					error: "method-not-allowed"
+				});
+				return;
+			}
+			if (!requireSameOrigin(req, res)) return;
+			try {
+				const id = new URL(req.url ?? "", "http://localhost").searchParams.get("id");
+				if (!id) {
+					json(res, 400, {
+						ok: false,
+						error: "missing-id"
+					});
+					return;
+				}
+				const entry = freshInventory().wallpapers.find((w) => w.id === id && w.type === "scene");
+				if (!entry || !existsSync(entry.fileAbs)) {
+					json(res, 404, {
+						ok: false,
+						error: "not-found"
+					});
+					return;
+				}
+				let mtimeMs = 0;
+				let size = 0;
+				try {
+					const st = await stat(entry.fileAbs);
+					mtimeMs = st.mtimeMs;
+					size = st.size;
+				} catch {}
+				if (entry.fileAbs.toLowerCase().endsWith(".json")) mtimeMs = 0;
+				const key = entry.fileAbs + ":" + mtimeMs + ":" + size;
+				let probe = mtimeMs > 0 ? sceneProbeCache.get(key) : void 0;
+				if (!probe) {
+					let hasVideo = false;
+					let hasSceneWebGL = false;
+					try {
+						const pkgData = await readFile(entry.fileAbs);
+						hasVideo = entry.fileAbs.toLowerCase().endsWith(".json") ? hasSceneVideoFromDir(dirname(entry.fileAbs)) : hasSceneVideo(pkgData);
+						if (!hasVideo) {
+							const manifest = entry.fileAbs.toLowerCase().endsWith(".json") ? buildSceneManifestFromDir(dirname(entry.fileAbs), "check") : buildSceneManifest(pkgData, "check");
+							hasSceneWebGL = Boolean(manifest && !manifest.scripted && (manifest.layers && manifest.layers.length >= 1 || manifest.is3D && manifest.models && manifest.models.length > 0));
+						}
+					} catch {}
+					probe = {
+						hasVideo,
+						hasSceneWebGL,
+						v: SCENE_PROBE_VERSION
+					};
+					if (mtimeMs > 0) {
+						sceneProbeCache.set(key, probe);
+						while (sceneProbeCache.size > MAX_PROBE_CACHE) {
+							const oldest = sceneProbeCache.keys().next().value;
+							if (oldest === void 0) break;
+							sceneProbeCache.delete(oldest);
+						}
+						persistProbes();
+					}
+				}
+				const videoToken = probe.hasVideo ? tokenFor(entry.fileAbs) : null;
+				const sceneToken = probe.hasSceneWebGL ? tokenFor(entry.fileAbs) : null;
+				persistTokens();
+				json(res, 200, {
+					ok: true,
+					videoUrl: videoToken !== null ? "/api/skin-center/we/scene-video/" + videoToken : null,
+					sceneUrl: sceneToken !== null ? "/api/skin-center/we/scene-runtime/" + sceneToken : null
 				});
 			} catch (error) {
 				json(res, 500, {

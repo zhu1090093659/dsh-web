@@ -238,14 +238,24 @@ interface WallpaperJson {
   previewUrl: string | null
 }
 
+/**
+ * Probe logic version, stamped into every persisted probe entry (#817 cache).
+ * Bumped when the detection rules change so entries written by an older
+ * build are ignored instead of serving stale capabilities - the scripted-
+ * scene withholding (v2) would otherwise stay invisible to installs whose
+ * probe cache already says hasSceneWebGL=true for dino_run-style scenes.
+ */
+const SCENE_PROBE_VERSION = 2
+
 /** Cached per-scene capability probe result. */
-interface SceneProbe { hasVideo: boolean; hasSceneWebGL: boolean }
+interface SceneProbe { hasVideo: boolean; hasSceneWebGL: boolean; v: number }
 
 /** Shape-check an entry loaded from the persisted probe cache. */
 function isSceneProbe(value: unknown): value is SceneProbe {
   return value !== null && typeof value === 'object'
     && typeof (value as SceneProbe).hasVideo === 'boolean'
     && typeof (value as SceneProbe).hasSceneWebGL === 'boolean'
+    && (value as SceneProbe).v === SCENE_PROBE_VERSION
 }
 
 /** Build the route family. */
@@ -408,12 +418,17 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
               const manifest = entry.fileAbs.toLowerCase().endsWith('.json')
                 ? buildSceneManifestFromDir(dirname(entry.fileAbs), 'check')
                 : buildSceneManifest(pkgData, 'check')
-              hasSceneWebGL = Boolean(manifest && ((manifest.layers && manifest.layers.length >= 1) || (manifest.is3D && manifest.models && manifest.models.length > 0)))
+              // Scripted scenes (embedded `{"script": ...}` value objects,
+              // e.g. dino_run's game logic) render only their initial
+              // static composition under the player - no script engine -
+              // so they must not advertise a live sceneUrl.
+              hasSceneWebGL = Boolean(manifest && !manifest.scripted
+                && ((manifest.layers && manifest.layers.length >= 1) || (manifest.is3D && manifest.models && manifest.models.length > 0)))
             }
           } catch {
             // probe failure: capabilities stay negative
           }
-          probe = { hasVideo, hasSceneWebGL }
+          probe = { hasVideo, hasSceneWebGL, v: SCENE_PROBE_VERSION }
           if (mtimeMs > 0) {
             // Bound the cache by evicting the oldest entries instead of
             // clearing everything at once: the whole-map clear would make a

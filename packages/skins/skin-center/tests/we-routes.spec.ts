@@ -411,6 +411,45 @@ describe('scene container resolution (#521)', () => {
     expect(resRes.status).toBe(200)
     expect(String(resRes.headers['content-type'])).toContain('image/png')
   })
+
+  it('withholds the live scene runtime from scripted scenes (dino_run pattern)', async () => {
+    // dino_run drives everything through embedded WE scripts - a property
+    // value object like visible: { script: 'engine.registerAsset(...)' }
+    // playing the whole game (hidden characters, scrolling, particles).
+    // The WebGL player has no script engine: it would render exactly the
+    // initial static composition while burning GPU, so the probe must not
+    // advertise a sceneUrl for such scenes; the static frame stays.
+    makeProject(join(library, '999'), { title: 'Scripted', type: 'scene', file: 'scene.json' }, {
+      'scene.json': JSON.stringify({
+        objects: [
+          { name: 'sky', image: 'models/sky.json' },
+          {
+            name: 'hero',
+            image: 'models/hero.json',
+            visible: { script: "'use strict';\nengine.registerAsset('particles/spark.json');" },
+          },
+        ],
+      }),
+      'models/sky.json': JSON.stringify({ material: 'materials/sky.json' }),
+      'models/hero.json': JSON.stringify({ material: 'materials/hero.json' }),
+      'materials/sky.json': JSON.stringify({ passes: [{ textures: ['materials/sky.tex'] }] }),
+      'materials/hero.json': JSON.stringify({ passes: [{ textures: ['materials/hero.tex'] }] }),
+    })
+    mkdirSync(join(library, '999', 'materials'), { recursive: true })
+    writeFileSync(join(library, '999', 'materials', 'sky.tex'), tex64Red)
+    writeFileSync(join(library, '999', 'materials', 'hero.tex'), tex64Red)
+
+    const probe = await call('GET', WE_API_PREFIX + '/scene-probe?id=999')
+    expect(probe.status).toBe(200)
+    expect(probe.body.ok).toBe(true)
+    expect(probe.body.videoUrl).toBe(null)
+    // The live runtime is withheld; the static frame URL from the inventory
+    // stays the only render path for this scene.
+    expect(probe.body.sceneUrl).toBe(null)
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const entry = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '999')
+    expect(String(entry?.frameUrl)).toContain(WE_API_PREFIX + '/scene-frame/')
+  })
 })
 
 describe('import lifecycle', () => {
@@ -476,13 +515,14 @@ describe('scene-probe cache (#817)', () => {
     expect(first.body.ok).toBe(true)
     expect(probeReads()).toBeGreaterThanOrEqual(1)
 
-    // The probe result landed in the persisted cache.
+    // The probe result landed in the persisted cache, stamped with the
+    // current probe-logic version.
     const persistedPath = join(store, '.cache', 'we-scene-probes.json')
     expect(existsSync(persistedPath)).toBe(true)
     const persisted = JSON.parse(readFileSync(persistedPath, 'utf8')) as Record<string, unknown>
     const key = Object.keys(persisted)[0] ?? ''
     expect(key).toContain('scene.pkg')
-    expect(persisted[key]).toEqual({ hasVideo: false, hasSceneWebGL: false })
+    expect(persisted[key]).toEqual({ hasVideo: false, hasSceneWebGL: false, v: 2 })
 
     // Simulate a host restart: a fresh route family must serve the same
     // result from the persisted cache without re-reading the payload.
@@ -493,6 +533,20 @@ describe('scene-probe cache (#817)', () => {
     expect(second.status).toBe(200)
     expect(second.body).toEqual(first.body)
     expect(probeReads()).toBe(0)
+
+    // Entries persisted by an older build (no probe-logic version stamp)
+    // must be ignored, not trusted: a probe-rules change (the scripted-
+    // scene withholding) has to reach installs that already cached
+    // hasSceneWebGL=true under the old rules.
+    const cached = JSON.parse(readFileSync(persistedPath, 'utf8')) as Record<string, unknown>
+    cached[key] = { hasVideo: false, hasSceneWebGL: true }
+    writeFileSync(persistedPath, JSON.stringify(cached), 'utf8')
+    await new Promise<void>((resolve, reject) => server.close(e => (e ? reject(e) : resolve())))
+    await serve(makeWeRoutes({ getConfig: () => ({ weLibraryDirs: [library] }), storeDir: store, autoDetect: false }))
+    const third = await call('GET', WE_API_PREFIX + '/scene-probe?id=444')
+    expect(third.status).toBe(200)
+    expect(third.body).toEqual(first.body)
+    expect(probeReads()).toBeGreaterThanOrEqual(1)
   })
 
   it('re-probes when the pkg changes (mtime+size key invalidation)', async () => {

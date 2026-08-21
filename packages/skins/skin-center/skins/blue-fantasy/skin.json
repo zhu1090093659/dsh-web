@@ -6,7 +6,7 @@
   "nameEn": "Blue Fantasy",
   "author": "powerdog996（DreamSkin 社区）· dsh-web-ui 适配",
   "tagline": "鲸鱼插画背景 · periwinkle 靛蓝调色板 · 半透明面板",
-  "description": "DreamSkin「DeepSeek-鲸鱼娘」Codex 桌面主题的 dsh 适配：鲸鱼插画背景垫在半透明面板之下，遮罩随亮/暗主题实时切换，periwinkle 靛蓝色调重映射到全部 dsh token。",
+  "description": "DreamSkin「DeepSeek-鲸鱼娘」Codex 桌面主题的 dsh 适配：鲸鱼插画背景垫在半透明面板之下，遮罩随亮/暗主题实时切换，periwinkle 靛蓝色调重映射到全部 dsh token。修复背景遮挡滑杆：亮色下原白色纱帘反而提亮、暗色下面板随遮挡变透明透出插画；现统一为直接压暗插画，面板保持不透明。",
   "tags": [
     "dreamskin",
     "whale",
@@ -16,7 +16,7 @@
   ],
   "accent": "#4a5fa8",
   "order": 1,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "preview": {
     "light": "preview/light.png",
     "dark": "preview/dark.png"

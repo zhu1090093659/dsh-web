@@ -9,14 +9,15 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+import { dshHome } from './dsh-home.ts'
 import type { HostPayload, ImportResult, SshHostEntry, SshHostSummary } from './protocol.ts'
 
 /** File format version. */
 const FORMAT_VERSION = 1
 
-/** Store file location: <home>/.dsh/dsh-ssh.json. */
+/** Store file location: $DSH_HOME/dsh-ssh.json. */
 export function storePath(): string {
-  return join(homedir(), '.dsh', 'dsh-ssh.json')
+  return join(dshHome(), 'dsh-ssh.json')
 }
 
 /** The user's standard OpenSSH config path. */

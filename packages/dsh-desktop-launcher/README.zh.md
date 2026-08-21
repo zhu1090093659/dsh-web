@@ -9,7 +9,7 @@
 ## 是什么
 
 - 设置 → 插件配置 → Web UI 插件 卡片内有「创建桌面图标」按钮；host 把启动脚本
-  写到 `~/.dsh/desktop-launcher/`，并把图标放到桌面。
+  写到 `$DSH_HOME/desktop-launcher/`，并把图标放到桌面。
 - 双击行为：先探测 GUI 地址；已在响应则直接打开浏览器；否则后台启动
   `dsh web`（Windows 隐藏窗口），最多轮询 30 秒后打开浏览器。找不到 `dsh`
   命令时弹提示，而不是静默失败。
@@ -53,7 +53,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-desktop-launcher
 ## 安全模型
 
 - host API 仅限 loopback：非本机地址、伪造 Host 头与跨源请求一律 403。
-- 插件只写两处：`~/.dsh/desktop-launcher/`（启动脚本）与用户桌面目录（图标）。
+- 插件只写两处：`$DSH_HOME/desktop-launcher/`（启动脚本）与用户桌面目录（图标）。
 - Linux 下创建图标时尽力用 `gio` 把 `.desktop` 标记为可信；没有 `gio` 的桌面
   环境图标仍会出现，但可能需要手动「允许启动」。
 

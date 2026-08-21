@@ -11,7 +11,7 @@ and Linux (.desktop).
 
 - Settings → Plugin configuration → Web UI plugins card with a "Create desktop
   icon" button; the host writes the launcher script under
-  `~/.dsh/desktop-launcher/` and places the icon on the Desktop.
+  `$DSH_HOME/desktop-launcher/` and places the icon on the Desktop.
 - Double-click behavior: probe the GUI URL; if it responds, open the browser.
   Otherwise start `dsh web` (hidden on Windows), poll for up to 30 seconds,
   then open the browser. If the `dsh` command is missing, the launcher shows a
@@ -62,7 +62,7 @@ All fields live in the plugin settings card (or in the composition entry):
 
 - The host API is loopback-only: requests from non-local addresses, foreign
   Host headers and cross-site origins are rejected with 403.
-- The plugin writes only two places: `~/.dsh/desktop-launcher/` (launcher
+- The plugin writes only two places: `$DSH_HOME/desktop-launcher/` (launcher
   scripts) and the user's Desktop directory (the icon).
 - On Linux the icon creation best-effort marks the `.desktop` file as trusted
   with `gio`; on desktop environments without `gio` the file still appears but

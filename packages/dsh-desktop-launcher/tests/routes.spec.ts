@@ -9,9 +9,19 @@ import type { AddressInfo } from 'node:net'
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createDesktopShortcut, makeRoutes, type CommandRunner } from '../src/routes.ts'
 import { LAUNCHER_API } from '../src/protocol.ts'
+
+/** Save/restore DSH_HOME so tests can redirect the launcher script directory. */
+let savedDshHome: string | undefined
+beforeEach(() => {
+  savedDshHome = process.env.DSH_HOME
+})
+afterEach(() => {
+  if (savedDshHome === undefined) delete process.env.DSH_HOME
+  else process.env.DSH_HOME = savedDshHome
+})
 
 /** One recorded invocation of the fake runner. */
 interface Call {
@@ -36,6 +46,7 @@ const spec = () => ({ dshCommand: 'dsh', url: 'http://127.0.0.1:3080' })
 describe('createDesktopShortcut', () => {
   it('writes the PowerShell launcher and runs the .lnk installer on win32', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-win-'))
+    process.env.DSH_HOME = join(dir, '.dsh')
     try {
       const calls: Call[] = []
       const iconFile = join(dir, 'dsh.ico')
@@ -60,6 +71,7 @@ describe('createDesktopShortcut', () => {
 
   it('writes an executable .command on macOS', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-mac-'))
+    process.env.DSH_HOME = join(dir, '.dsh')
     try {
       const calls: Call[] = []
       const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'darwin', run: recordingRunner(calls) })
@@ -75,6 +87,7 @@ describe('createDesktopShortcut', () => {
 
   it('writes a .desktop entry and best-effort trust marker on linux', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-linux-'))
+    process.env.DSH_HOME = join(dir, '.dsh')
     try {
       const calls: Call[] = []
       const result = await createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'linux', run: recordingRunner(calls) })
@@ -90,6 +103,7 @@ describe('createDesktopShortcut', () => {
 
   it('accepts an absolute dshCommand without a PATH probe', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-abs-'))
+    process.env.DSH_HOME = join(dir, '.dsh')
     try {
       const fakeDsh = join(dir, 'dsh.cmd')
       writeFileSync(fakeDsh, '@echo off\r\n', 'utf8')
@@ -109,6 +123,7 @@ describe('createDesktopShortcut', () => {
 
   it('warns when dsh is missing from PATH', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-warn-'))
+    process.env.DSH_HOME = join(dir, '.dsh')
     try {
       const calls: Call[] = []
       const run = async (file: string, args: string[]) => {
@@ -130,6 +145,7 @@ describe('createDesktopShortcut', () => {
 
   it('fails when the PowerShell installer exits non-zero', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-fail-'))
+    process.env.DSH_HOME = join(dir, '.dsh')
     try {
       const run = async (file: string) => file === 'powershell' ? { code: 1, stderr: 'com failed' } : { code: 0, stderr: '' }
       await expect(createDesktopShortcut({ resolveSpec: spec, homeDir: dir, platform: 'win32', run }))
@@ -146,6 +162,7 @@ describe('route fence', () => {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-desktop-launcher-route-'))
 
   beforeAll(async () => {
+    process.env.DSH_HOME = join(dir, '.dsh')
     const { routes } = makeRoutes({ resolveSpec: spec, homeDir: dir, platform: 'linux', run: recordingRunner([]) })
     server = createServer((req, res) => {
       const rawPath = new URL(req.url ?? '/', 'http://x').pathname

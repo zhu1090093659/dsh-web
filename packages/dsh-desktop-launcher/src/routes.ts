@@ -16,6 +16,7 @@ import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { desktopFileName, renderDesktopEntry, renderLauncherScript, renderShortcutInstaller, scriptFileName, type LauncherPlatform, type LauncherSpec } from './core/launcher.ts'
+import { dshHome } from './dsh-home.ts'
 import { LAUNCHER_API, type CreateResult } from './protocol.ts'
 import { isLoopbackRequest } from './loopback.ts'
 
@@ -144,7 +145,7 @@ export async function createDesktopShortcut(deps: LauncherRoutesDeps): Promise<C
   const platform = toLauncherPlatform(deps.platform ?? process.platform)
   const home = deps.homeDir ?? homedir()
   const run = deps.run ?? defaultRunner
-  const scriptsDir = join(home, '.dsh', 'desktop-launcher')
+  const scriptsDir = join(dshHome(), 'desktop-launcher')
   await mkdir(scriptsDir, { recursive: true })
   const launcherPath = join(scriptsDir, scriptFileName(platform))
   // UTF-8 BOM: Windows PowerShell 5.1 misreads the Chinese popup text without it.

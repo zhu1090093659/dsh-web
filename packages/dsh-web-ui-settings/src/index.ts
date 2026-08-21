@@ -11,8 +11,8 @@
  */
 
 import { readFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { dshHome } from './dsh-home.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
@@ -63,7 +63,7 @@ export const apply = mountOnce('@linxin666/dsh-client-ui-web-ui-settings', apply
 function applyImpl(ctx: Context, config?: Config): void {
   const access = resolveProxyAccess(config)
   ctx.inject(['settings'], (sctx) => {
-    const settingsYamlPath = sctx.settings.documentPath ?? join(homedir(), '.dsh', 'settings.yaml')
+    const settingsYamlPath = sctx.settings.documentPath ?? join(dshHome(), 'settings.yaml')
     sctx.effect(() => {
       const disposers = makeBridgeRoutes({
         settings: sctx.settings,

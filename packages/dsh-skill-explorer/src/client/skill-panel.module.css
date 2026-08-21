@@ -310,14 +310,26 @@
 }
 
 .formButton {
-  border: 1px solid var(--dsw-alias-border-l1, #d7dae0);
-  background: var(--dsw-alias-bg-base, #fff);
-  color: var(--dsw-alias-label-primary, #3a3f4b);
+  /* Primary action: inverted surface in both themes (black on light,
+     white on dark) so the submit action reads at a glance. */
+  border: 1px solid transparent;
+  background: #111;
+  color: #fff;
   border-radius: 6px;
   padding: 6px 14px;
   font-size: 12px;
   cursor: pointer;
   align-self: flex-start;
+}
+.formButton:hover {
+  background: #2a2a2c;
+}
+body[data-ds-dark-theme] .formButton {
+  background: #fff;
+  color: #111;
+}
+body[data-ds-dark-theme] .formButton:hover {
+  background: #e5e5e7;
 }
 
 .note {
@@ -334,18 +346,20 @@
  * into dark mode.  Pin explicit dark values for the affected surfaces.
  * Hierarchy: panel (darkest) < head/tabs < cards/inputs < active tab. */
 body[data-ds-dark-theme] .card {
-  background: #151517;
+  /* Elevation matches the settings panel: app #0a0a0b < modal #2c2c2e
+     < head #3a3a3c < cards #48484a < active controls #636366. */
+  background: #2c2c2e;
 }
 body[data-ds-dark-theme] .head {
-  background: #1b1b1d;
-  border-bottom-color: rgba(255, 255, 255, 0.06);
+  background: #3a3a3c;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 body[data-ds-dark-theme] .tabs {
-  background: #1b1b1d;
+  background: #3a3a3c;
 }
 body[data-ds-dark-theme] .skill {
-  background: #262628;
-  border-color: rgba(255, 255, 255, 0.06);
+  background: #48484a;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 body[data-ds-dark-theme] .badge {
   background: rgba(99, 120, 220, 0.22);
@@ -360,11 +374,15 @@ body[data-ds-dark-theme] .badgeInvokable {
 body[data-ds-dark-theme] .switchThumb {
   background: #fff;
 }
+body[data-ds-dark-theme] .tab {
+  color: #8e8e93;
+}
 body[data-ds-dark-theme] .tabActive {
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: none;
+  background: #636366;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 body[data-ds-dark-theme] .formInput {
-  background: #262628;
-  border-color: rgba(255, 255, 255, 0.08);
+  background: #1c1c1e;
+  border-color: rgba(255, 255, 255, 0.06);
 }

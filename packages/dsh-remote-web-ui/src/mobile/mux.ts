@@ -246,8 +246,13 @@ export class MuxClient {
     }
     try {
       const page = await this.pollLatest(sessionId)
+      const ordered = [...page.events].sort((a, b) => {
+        const aSeq = typeof a.event?.seq === 'number' ? a.event.seq : -1
+        const bSeq = typeof b.event?.seq === 'number' ? b.event.seq : -1
+        return aSeq - bSeq
+      })
       let maxSeq = this.pollWatermark.get(sessionId) ?? -1
-      for (const entry of page.events) {
+      for (const entry of ordered) {
         const event = entry.event
         const seq = typeof event?.seq === 'number' ? event.seq : -1
         if (seq <= maxSeq) continue

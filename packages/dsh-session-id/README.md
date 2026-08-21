@@ -13,6 +13,8 @@ changes, nothing runs on the host.
   56px rail, labeled row in the wide sidebar).
 - Opens a centered panel listing every session: display title, full session id
   (monospace), and a per-row "Copy" button. The current session is marked.
+- A search box filters the list locally by title or id substring (read-only,
+  no host query), so finding a session among hundreds stays fast.
 - Sessions are read from the official `ctx.sessions.list` feed, so the panel
   stays live as sessions start, finish, or get archived — no refresh needed.
 - Clicking "Copy" writes the id through the official clipboard helper

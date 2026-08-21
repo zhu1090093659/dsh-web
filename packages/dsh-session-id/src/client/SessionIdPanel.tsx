@@ -10,7 +10,7 @@ import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
 import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SessionIdIcon, CheckIcon, CopyIcon, CloseIcon } from './icons.tsx'
-import { SESSION_ID_PART_COPY, SESSION_ID_PART_PANEL, SESSION_ID_PART_ROW, SESSION_ID_PLUGIN_ATTR } from './semantic.ts'
+import { SESSION_ID_PART_COPY, SESSION_ID_PART_PANEL, SESSION_ID_PART_ROW, SESSION_ID_PART_SEARCH, SESSION_ID_PLUGIN_ATTR } from './semantic.ts'
 import css from './session-id.module.css'
 
 /** The sessions-list read face injected by the plugin (ObservableSnapshot). */
@@ -107,7 +107,15 @@ function SessionRow({ session, current, t }: {
  */
 export function SessionIdPanel({ list, onClose, t }: SessionIdPanelProps) {
   const snapshot = useSyncExternalStore(list.subscribe, list.getSnapshot)
-  const rows = sortSessions(snapshot)
+  const sorted = sortSessions(snapshot)
+  const [search, setSearch] = useState('')
+
+  // Local, read-only filter over the already-visible list (title or id
+  // substring, case-insensitive) — no host API, no disk, no other profile.
+  const query = search.trim().toLowerCase()
+  const rows = query === ''
+    ? sorted
+    : sorted.filter(row => row.displayTitle.toLowerCase().includes(query) || row.id.toLowerCase().includes(query))
 
   return (
     <div className={css.overlay} role="presentation" data-dsh-plugin={SESSION_ID_PLUGIN_ATTR}>
@@ -126,8 +134,17 @@ export function SessionIdPanel({ list, onClose, t }: SessionIdPanelProps) {
             <CloseIcon className={css.icon} />
           </button>
         </div>
+        <input
+          type="search"
+          className={css.search}
+          data-dsh-part={SESSION_ID_PART_SEARCH}
+          placeholder={t('panel.search.placeholder')}
+          aria-label={t('panel.search.aria')}
+          value={search}
+          onChange={(event) => { setSearch(event.target.value) }}
+        />
         {rows.length === 0 ? (
-          <div className={css.empty}>{t('panel.empty')}</div>
+          <div className={css.empty}>{query === '' ? t('panel.empty') : t('panel.noMatches')}</div>
         ) : (
           <div className={css.list}>
             {rows.map(row => (

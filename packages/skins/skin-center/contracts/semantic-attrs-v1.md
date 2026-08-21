@@ -99,6 +99,7 @@ family / 插件区域：
 | `panel` | session-id | 会话 ID 模态面板；`[role="dialog"]` 根（`[data-dsh-part="panel"]`） |
 | `row` | session-id | 会话列表行；面板内行容器（`[data-dsh-part="row"]`） |
 | `copy` | session-id | 每行复制按钮；`button[data-dsh-part="copy"]` |
+| `search` | session-id | 面板搜索输入框；`input[type="search"][data-dsh-part="search"]` |
 
 ## plugin 组（12 个，含停更 aionui-panel）
 

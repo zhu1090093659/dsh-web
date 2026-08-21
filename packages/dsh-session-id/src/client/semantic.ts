@@ -19,3 +19,6 @@ export const SESSION_ID_PART_ROW = 'row'
 
 /** The per-row copy button. */
 export const SESSION_ID_PART_COPY = 'copy'
+
+/** The panel search input. */
+export const SESSION_ID_PART_SEARCH = 'search'

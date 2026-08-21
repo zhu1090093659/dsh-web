@@ -159,4 +159,45 @@ describe('SessionIdPanel', () => {
     const copy = document.querySelector('[data-dsh-part="copy"]')
     expect(copy).toBeTruthy()
   })
+
+  it('filters rows by title or id substring when searching', () => {
+    const list = sourceOf(makeList([
+      { id: 'session-aaa', displayTitle: 'Alpha', updatedAt: 1_700_000_000_000 },
+      { id: 'session-bbb', displayTitle: 'Beta', updatedAt: 1_700_000_100_000 },
+      { id: 'session-ccc', displayTitle: 'Gamma', updatedAt: 1_700_000_200_000 },
+    ]))
+
+    render(<SessionIdPanel list={list} onClose={() => {}} t={makeTranslate()} />)
+    const input = screen.getByRole('searchbox')
+
+    // Filter by title substring.
+    fireEvent.change(input, { target: { value: 'eta' } })
+    expect(screen.getByText('Beta')).toBeTruthy()
+    expect(screen.queryByText('Alpha')).toBeNull()
+    expect(screen.queryByText('Gamma')).toBeNull()
+
+    // Filter by id substring.
+    fireEvent.change(input, { target: { value: 'session-aaa' } })
+    expect(screen.getByText('Alpha')).toBeTruthy()
+    expect(screen.queryByText('Beta')).toBeNull()
+
+    // Empty query restores the full list.
+    fireEvent.change(input, { target: { value: '' } })
+    expect(screen.getByText('Alpha')).toBeTruthy()
+    expect(screen.getByText('Beta')).toBeTruthy()
+    expect(screen.getByText('Gamma')).toBeTruthy()
+  })
+
+  it('shows the no-match state when the query matches nothing', () => {
+    const list = sourceOf(makeList([
+      { id: 'session-aaa', displayTitle: 'Alpha', updatedAt: 1_700_000_000_000 },
+    ]))
+
+    render(<SessionIdPanel list={list} onClose={() => {}} t={makeTranslate()} />)
+    const input = screen.getByRole('searchbox')
+    fireEvent.change(input, { target: { value: 'zzz-no-such' } })
+
+    expect(screen.getByText('无匹配会话')).toBeTruthy()
+    expect(screen.queryByText('Alpha')).toBeNull()
+  })
 })

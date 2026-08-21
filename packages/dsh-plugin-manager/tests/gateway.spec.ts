@@ -13,6 +13,36 @@ describe('findDshBinary', () => {
     expect(findDshBinary({ PATH: 'C:\\tools' }, 'win32', exists(['C:\\tools\\dsh.cmd']))).toBe('C:\\tools\\dsh.cmd')
   })
 
+  it('falls back to a local wrapper installation outside PATH on Windows', () => {
+    const binary = 'D:\\APP\\DSH\\node_modules\\.bin\\dsh.cmd'
+    expect(findDshBinary(
+      { PATH: 'C:\\Windows\\System32' },
+      'win32',
+      exists([binary]),
+      'D:\\APP\\DSH\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js',
+    )).toBe(binary)
+  })
+
+  it('keeps PATH precedence over the host installation fallback', () => {
+    const pathBinary = 'C:\\tools\\dsh.cmd'
+    const localBinary = 'D:\\APP\\DSH\\node_modules\\.bin\\dsh.cmd'
+    expect(findDshBinary(
+      { PATH: 'C:\\tools' },
+      'win32',
+      exists([pathBinary, localBinary]),
+      'D:\\APP\\DSH\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js',
+    )).toBe(pathBinary)
+  })
+
+  it('finds the nearest POSIX project shim from the host entry', () => {
+    expect(findDshBinary(
+      { PATH: '/nothing' },
+      'linux',
+      exists(['/opt/dsh/node_modules/.bin/dsh']),
+      '/opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js',
+    )).toBe('/opt/dsh/node_modules/.bin/dsh')
+  })
+
   it('falls back to the darwin homebrew location', () => {
     expect(findDshBinary({ PATH: '/nothing' }, 'darwin', exists(['/opt/homebrew/bin/dsh']))).toBe('/opt/homebrew/bin/dsh')
   })

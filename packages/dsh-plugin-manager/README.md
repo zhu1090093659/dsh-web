@@ -55,7 +55,7 @@ The contract source of truth is `src/core/service.ts` (`PluginManagerService`). 
 ## Known limitations
 
 - Loopback-only: on a LAN or remote browser the tab renders a local-only notice (the same boundary the official installer tab enforces; the gateway refuses non-loopback requests with 403).
-- On the npm-published web runtime, gateway writes go through the official CLI, so the `dsh` binary must be on the host process PATH; installs of git sources can take minutes and run as background jobs. Gateway updates apply only to npm registry sources, resolve the latest version on the host, and succeed only after the same installed package reports that exact version.
+- On the npm-published web runtime, gateway writes go through the official CLI. The gateway resolves `dsh` from the host process PATH first and then from `node_modules/.bin` project roots above the running host entry, which covers local-wrapper and npx launches. If neither source contains the CLI, writes remain unavailable. Installs of git sources can take minutes and run as background jobs. Gateway updates apply only to npm registry sources, resolve the latest version on the host, and succeed only after the same installed package reports that exact version.
 - On the npm-published web runtime there is no boot-failure ring and no safe mode: those surfaces degrade to empty, and only install errors offer the repair handoff.
 - Enablement on the npm runtime writes bare `disabled` override rows into the profile's cordis.patch.yml; the runtime's loader honors them at the next start, but this path is less exercised than the official desktop writer's.
 - The web build has no in-place restart: changes apply at the next manual restart.

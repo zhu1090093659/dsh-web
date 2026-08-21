@@ -12,7 +12,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { join, win32 } from 'node:path'
+import { join, posix, win32 } from 'node:path'
 import type { InstalledPluginItem } from '../core/protocol.ts'
 import type { ControlChange } from '../core/conflict.ts'
 import { diffLayer, overlappingIds, significantChanges, type LayerChange, type LayerSnapshot } from '../core/patch-diff.ts'
@@ -78,15 +78,31 @@ export function findDshBinary(
   env: NodeJS.ProcessEnv = process.env,
   platform: string = process.platform,
   exists: (path: string) => boolean = existsSync,
+  hostEntryPath: string | undefined = process.argv[1],
 ): string | null {
   const candidates: string[] = []
   const separator = platform === 'win32' ? ';' : ':'
+  const pathApi = platform === 'win32' ? win32 : posix
   for (const dir of (env.PATH ?? '').split(separator)) {
     if (dir === '') continue
     if (platform === 'win32') {
       candidates.push(`${dir}\\dsh.cmd`, `${dir}\\dsh.exe`)
     } else {
       candidates.push(`${dir}/dsh`)
+    }
+  }
+  // A local wrapper or npx launch may omit its node_modules/.bin directory
+  // from PATH. Walk up from the actual host entry script and probe each npm
+  // project root without guessing from the DSH_HOME profile location.
+  if (hostEntryPath !== undefined && hostEntryPath !== '') {
+    let current = pathApi.dirname(hostEntryPath)
+    for (let depth = 0; depth < 10; depth += 1) {
+      const binDir = pathApi.join(current, 'node_modules', '.bin')
+      if (platform === 'win32') candidates.push(pathApi.join(binDir, 'dsh.cmd'), pathApi.join(binDir, 'dsh.exe'))
+      else candidates.push(pathApi.join(binDir, 'dsh'))
+      const parent = pathApi.dirname(current)
+      if (parent === current) break
+      current = parent
     }
   }
   if (platform === 'darwin') {

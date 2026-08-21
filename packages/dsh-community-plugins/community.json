@@ -355,5 +355,16 @@
     "descriptionEn": "Real session deletion with trash and restore, archived cleanup and batch delete. Official archive only hides sessions.",
     "repo": "https://github.com/xohmai/dsh-session-delete",
     "category": "utility"
+  },
+  {
+    "id": "dsh-chatgpt-subscription",
+    "name": "ChatGPT 订阅 Codex",
+    "nameEn": "ChatGPT Subscription Codex",
+    "author": "Aa728848",
+    "description": "让 DSH 通过 ChatGPT 订阅使用 GPT 系列模型：PKCE OAuth 登录、DPAPI/钥匙串/0600 凭据存储、流式 Responses、图片生成、Codex 搜索与额度展示。",
+    "descriptionEn": "Use GPT models in DSH through your ChatGPT subscription: PKCE OAuth login, DPAPI/keychain/0600 credential storage, streaming Responses, image generation, Codex search and quota display.",
+    "repo": "https://github.com/Aa728848/dsh-chatgpt-subscription",
+    "npm": "@eddyskywalker/dsh-chatgpt-subscription",
+    "category": "integration"
   }
 ]

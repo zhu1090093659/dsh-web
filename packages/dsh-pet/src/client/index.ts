@@ -73,6 +73,9 @@ const POLL_MS = 2000
 
 /** Settings namespace the pet settings card edits (the Host plugin registers it). */
 const PET_SETTINGS_NS = 'pet'
+const PET_ROOT_DISPOSE = '__dshPetDispose'
+
+type PetRootContainer = HTMLDivElement & { [PET_ROOT_DISPOSE]?: () => void }
 
 /** Required services (sessions powers bubble-to-session navigation). */
 export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote', 'sessions']
@@ -296,7 +299,12 @@ export function apply(ctx: ClientContext): void {
       // The entry therefore mounts straight onto document.body via a single
       // React root for the page lifetime: PetSprite portals itself to body
       // when visible, and the hidden-state summon button is fixed-positioned.
-      const container = document.createElement('div')
+      for (const stale of document.body.querySelectorAll('[data-dsh-pet-root]')) {
+        const dispose = (stale as PetRootContainer)[PET_ROOT_DISPOSE]
+        if (dispose !== undefined) dispose()
+        else stale.remove()
+      }
+      const container = document.createElement('div') as PetRootContainer
       container.dataset.dshPetRoot = ''
       container.dataset.dshPlugin = 'pet'
       document.body.appendChild(container)
@@ -305,15 +313,23 @@ export function apply(ctx: ClientContext): void {
 
       disposeUi = () => {
         petRoot.unmount()
+        delete container[PET_ROOT_DISPOSE]
         container.remove()
         disposePoll()
         disposeUi = undefined
       }
+      container[PET_ROOT_DISPOSE] = disposeUi
     } else if (!enabled() && disposeUi !== undefined) {
       disposeUi()
       disposeUi = undefined
     }
   }
-  settingsScope.subscribe(syncUi)
-  syncUi()
+  ctx.effect(() => {
+    const unsubscribe = settingsScope.subscribe(syncUi)
+    syncUi()
+    return () => {
+      unsubscribe()
+      if (disposeUi !== undefined) disposeUi()
+    }
+  }, 'pet: global ui')
 }

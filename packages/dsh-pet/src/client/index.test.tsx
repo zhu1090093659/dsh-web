@@ -55,8 +55,14 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
+interface FakeContextHandle {
+  ctx: ClientContext
+  disposeAll: () => void
+}
+
 /** A minimal client root context: ready settings scope, no-op slot system. */
-function fakeContext(): ClientContext {
+function fakeContext(): FakeContextHandle {
+  const disposers: Array<() => void> = []
   const scope = {
     getSnapshot: () => ({
       status: 'ready',
@@ -69,10 +75,12 @@ function fakeContext(): ClientContext {
     }),
     subscribe: () => () => {},
   }
-  return {
+  const ctx = {
     effect: (fn: () => unknown) => {
       const dispose = fn()
-      return typeof dispose === 'function' ? dispose : () => {}
+      const normalized = typeof dispose === 'function' ? dispose as () => void : () => {}
+      disposers.push(normalized)
+      return normalized
     },
     locale: { register: () => () => {} },
     get: () => undefined,
@@ -83,13 +91,34 @@ function fakeContext(): ClientContext {
     },
     sessions: undefined,
   } as unknown as ClientContext
+  return {
+    ctx,
+    disposeAll: () => {
+      for (const dispose of disposers.toReversed()) dispose()
+    },
+  }
 }
 
 describe('pet client apply L2 semantic attributes (#506)', () => {
   it('mounts the pet root container with data-dsh-plugin="pet"', () => {
-    apply(fakeContext())
+    const { ctx } = fakeContext()
+    apply(ctx)
     const root = document.body.querySelector('[data-dsh-pet-root]')
     expect(root).not.toBeNull()
     expect(root!.getAttribute('data-dsh-plugin')).toBe('pet')
+  })
+
+  it('keeps a single global pet root across repeated client applies', () => {
+    apply(fakeContext().ctx)
+    apply(fakeContext().ctx)
+    expect(document.body.querySelectorAll('[data-dsh-pet-root]')).toHaveLength(1)
+  })
+
+  it('removes the pet root when the client fiber is disposed', () => {
+    const handle = fakeContext()
+    apply(handle.ctx)
+    expect(document.body.querySelectorAll('[data-dsh-pet-root]')).toHaveLength(1)
+    handle.disposeAll()
+    expect(document.body.querySelectorAll('[data-dsh-pet-root]')).toHaveLength(0)
   })
 })

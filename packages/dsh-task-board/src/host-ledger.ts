@@ -59,8 +59,47 @@ function hasOpenExecution(task: TaskRecord): boolean {
   return task.executions.some(execution => execution.endedAt === undefined)
 }
 
-function processIsAlive(pid: number): boolean {
+/**
+ * Process states that are dead but still occupy the PID table: `Z` (zombie)
+ * and `X` (dead, being reaped). `process.kill(pid, 0)` reports such PIDs as
+ * alive, so a crash leftover whose child was never reaped would otherwise be
+ * mistaken for a live owner and block ledger startup forever.
+ */
+const DEAD_STATES = new Set(['Z', 'X'])
+
+/**
+ * Best-effort single-letter process state ('R','S','D','Z',...) or undefined
+ * when no probe is available on this platform. Linux reads /proc/<pid>/stat
+ * directly (no subprocess); other POSIX shells out to `ps -o stat=`; Windows
+ * has no zombie state, so it returns undefined and the kill(0) probe alone
+ * is authoritative there.
+ */
+export function processState(pid: number): string | undefined {
+  if (process.platform === 'linux') {
+    try {
+      const stat = readFileSync(`/proc/${pid}/stat`, 'utf8')
+      const end = stat.lastIndexOf(')')
+      if (end === -1) return undefined
+      return stat.slice(end + 2).split(' ')[0] || undefined
+    } catch {
+      return undefined // no such process (or unreadable)
+    }
+  }
+  if (process.platform === 'win32') return undefined
+  try {
+    const probe = spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { timeout: PROCESS_PROBE_TIMEOUT_MS })
+    if (probe.status !== 0 || probe.stdout.length === 0) return undefined
+    const state = probe.stdout.toString('utf8').trim()
+    return state.length > 0 ? state[0] : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function processIsAlive(pid: number): boolean {
   if (!Number.isSafeInteger(pid) || pid <= 0) return false
+  const state = processState(pid)
+  if (state !== undefined && DEAD_STATES.has(state)) return false
   try {
     process.kill(pid, 0)
     return true
@@ -75,6 +114,29 @@ let ownStartTime: number | undefined
 let ownStartTimeResolved = false
 
 /**
+ * Exact process start time (Unix epoch ms) on Linux, read straight from
+ * /proc (field 22 = start ticks since boot, btime = boot epoch seconds).
+ * No subprocess and no rounding, so the recorded `startedAt` from a previous
+ * boot compares exactly against the live process identity.
+ */
+function linuxStartTimeMs(pid: number): number | undefined {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, 'utf8')
+    const end = stat.lastIndexOf(')')
+    if (end === -1) return undefined
+    const ticks = Number(stat.slice(end + 2).split(' ')[19])
+    if (!Number.isFinite(ticks)) return undefined
+    const bootMatch = /^btime\s+(\d+)/m.exec(readFileSync('/proc/stat', 'utf8'))
+    if (bootMatch === null) return undefined
+    const btime = Number(bootMatch[1])
+    if (!Number.isFinite(btime)) return undefined
+    return btime * 1000 + (ticks * 1000) / 100 // USER_HZ is 100 on Linux
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Best-effort start time (Unix epoch ms) of a live process. Used to prove
  * whether the ledger lock really belongs to the PID recorded in it, so a
  * crash leftover whose PID was reused by an unrelated process (issue #786)
@@ -82,6 +144,7 @@ let ownStartTimeResolved = false
  * undefined when the platform probe is unavailable; callers fail closed.
  */
 function processStartTimeMs(pid: number): number | undefined {
+  if (process.platform === 'linux') return linuxStartTimeMs(pid)
   if (process.platform === 'win32') {
     const probe = spawnSync(
       'powershell',
@@ -93,8 +156,8 @@ function processStartTimeMs(pid: number): number | undefined {
     const started = Number(probe.stdout.toString('utf8').trim())
     return Number.isFinite(started) ? started : undefined
   }
-  // POSIX: ps lstart with a forced English locale, falling back to the
-  // elapsed-seconds column when lstart cannot be parsed.
+  // Other POSIX (macOS...): ps lstart with a forced English locale, falling
+  // back to the elapsed-seconds column when lstart cannot be parsed.
   const env = { ...process.env, LC_ALL: 'C' }
   const probe = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { timeout: PROCESS_PROBE_TIMEOUT_MS, env })
   if (probe.status === 0 && probe.stdout.length > 0) {

@@ -1,9 +1,10 @@
+import { spawn } from 'node:child_process'
 import { mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createTask, startExecution, withSchedule, type TaskRecord } from '../src/core/tasks.ts'
-import { HostTaskLedger } from '../src/host-ledger.ts'
+import { HostTaskLedger, processIsAlive, processState } from '../src/host-ledger.ts'
 
 const roots: string[] = []
 const NOW = new Date(2026, 7, 16, 10, 0, 30).getTime()
@@ -16,6 +17,48 @@ function tempRoot(): string {
 
 function task(id: string, updatedAt = NOW): TaskRecord {
   return { ...createTask({ title: id, description: '', prompt: id }, NOW - 1000, id), updatedAt }
+}
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
+/**
+ * Try to leave a short-lived orphan behind whose exit is not reaped, so it
+ * occupies the PID table as a zombie (`process.kill(pid, 0)` then reports it
+ * alive). Works on Linux where PID 1 does not reap promptly (containers, some
+ * CI inits); returns undefined where init reaps orphans immediately, so
+ * callers skip rather than flake.
+ */
+function spawnZombie(): number | undefined {
+  if (process.platform !== 'linux') return undefined
+  try {
+    const probeFile = join(tmpdir(), `dsh-task-board-zombie-${process.pid}-${Math.random().toString(36).slice(2)}`)
+    const shell = spawn('sh', ['-c', `sleep 0.2 & echo $! > "${probeFile}"`], { stdio: 'ignore' })
+    shell.unref()
+    const deadline = Date.now() + 3000
+    let pid: number | undefined
+    while (Date.now() < deadline) {
+      try {
+        const raw = readFileSync(probeFile, 'utf8').trim()
+        if (raw !== '') {
+          const parsed = Number(raw)
+          if (Number.isSafeInteger(parsed)) pid = parsed
+          break
+        }
+      } catch { /* shell still starting */ }
+      sleepSync(50)
+    }
+    if (pid === undefined) return undefined
+    const zombieDeadline = Date.now() + 2500
+    while (Date.now() < zombieDeadline) {
+      if (processState(pid) === 'Z') return pid
+      sleepSync(50)
+    }
+    return undefined // init reaped it before we could observe the zombie
+  } catch {
+    return undefined
+  }
 }
 
 afterEach(() => {
@@ -177,6 +220,41 @@ describe('HostTaskLedger', () => {
     expect(message).toContain('already owned by process')
     expect(message).toContain('remove')
     expect(message).toContain(lockFile)
+  })
+
+  it('takes over a lock owned by an unreaped zombie process', () => {
+    const zombie = spawnZombie()
+    if (zombie === undefined) return // environment reaps orphans; cannot exercise
+    const root = tempRoot()
+    // A zombie owner passes process.kill(pid, 0) (it still occupies the PID
+    // table), so the liveness probe alone would treat it as a live owner and
+    // block startup forever. The zombie-state check must classify it as dead.
+    writeFileSync(join(root, 'ledger-v2.lock'), JSON.stringify({ pid: zombie, token: 'zombie-owner', startedAt: Date.now() - 120_000 }), 'utf8')
+    const ledger = new HostTaskLedger(root, () => NOW)
+    expect(ledger.state().scheduler.ledgerId).toBeDefined()
+    ledger.dispose()
+  })
+
+  it('treats an unreaped zombie as dead even though kill(0) reports it alive', () => {
+    const zombie = spawnZombie()
+    if (zombie === undefined) return // environment reaps orphans; cannot exercise
+    expect(processState(zombie)).toBe('Z')
+    let killSaysAlive = false
+    try { process.kill(zombie, 0); killSaysAlive = true } catch { /* absent */ }
+    expect(killSaysAlive).toBe(true) // the lie the old probe fell for
+    expect(processIsAlive(zombie)).toBe(false)
+  })
+
+  it('reports live and absent processes correctly for the liveness probe', () => {
+    const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 2000)'], { stdio: 'ignore' })
+    try {
+      if (child.pid === undefined) throw new Error('spawn did not yield a pid')
+      expect(processIsAlive(child.pid)).toBe(true)
+    } finally {
+      child.kill('SIGKILL')
+    }
+    expect(processIsAlive(process.pid)).toBe(true)
+    expect(processIsAlive(2_000_000_000)).toBe(false)
   })
 
   it('rejects moving or deleting a task while any execution remains open', () => {

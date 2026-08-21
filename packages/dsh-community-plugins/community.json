@@ -86,8 +86,8 @@
     "name": "Mnemon 记忆系统",
     "nameEn": "Mnemon Memory",
     "author": "Grivn",
-    "description": "与 Mnemon CLI 集成的跨 Agent、本地优先持久记忆插件：用户画像 / 工作记忆 / 项目档案与长期 Memory Spaces，支持导入导出。",
-    "descriptionEn": "A cross-agent, local-first persistent memory plugin integrating the Mnemon CLI: profiles, working memory, project documents and long-term Memory Spaces, with import and export.",
+    "description": "本地优先的三层 Agent 记忆系统：运行时上下文 / 项目档案 / 可插拔的长期记忆，支持跨 Agent 共享和智能 Provider 路由。",
+    "descriptionEn": "A local-first, three-tier Agent memory system: runtime context / project documents / pluggable long-term memory, with cross-Agent sharing and smart Provider routing.",
     "repo": "https://github.com/Grivn/dsh-mnemon",
     "npm": "dsh-mnemon",
     "category": "knowledge"

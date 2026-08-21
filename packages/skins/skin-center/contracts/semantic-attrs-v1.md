@@ -95,8 +95,12 @@ family / 插件区域：
 | `probe` | doctor | 客户端故障探针列表 |
 | `actions` | doctor | 诊断/修复动作组 |
 | `boundary` | doctor | 错误边界回退提示；`role="alert"` |
+| `entry` | session-id | 侧栏 footer 触发器；`button[data-dsh-part="entry"]`（`[data-dsh-plugin="session-id"]` 容器内） |
+| `panel` | session-id | 会话 ID 模态面板；`[role="dialog"]` 根（`[data-dsh-part="panel"]`） |
+| `row` | session-id | 会话列表行；面板内行容器（`[data-dsh-part="row"]`） |
+| `copy` | session-id | 每行复制按钮；`button[data-dsh-part="copy"]` |
 
-## plugin 组（11 个，含停更 aionui-panel）
+## plugin 组（12 个，含停更 aionui-panel）
 
 | data-dsh-plugin | owner | 锚定方式 |
 | --- | --- | --- |
@@ -111,6 +115,7 @@ family / 插件区域：
 | `doctor` | dsh-doctor | web-ui.plugin.item 槽 entry id `doctor`（设置 → Web UI 插件 → Doctor 卡片）；卡片内 `[data-dsh-plugin="doctor"]` |
 | `aionui-panel` | dsh-aionui-panel（停更） | dock entry id `aionui-*` |
 | `skin-center` | skins/skin-center | settings.section 一级页 |
+| `session-id` | dsh-session-id | footer action slot entry id `session-id`；`[data-dsh-plugin="session-id"]`（面板 overlay 根 + 入口触发器） |
 
 ## 已知脆弱点（上游主题缝 PR 诉求）
 

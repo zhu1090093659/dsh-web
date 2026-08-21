@@ -151,6 +151,53 @@ describe('WallpaperController', () => {
     controller.dispose()
   })
 
+  it('auto-switches to the static frame with a notice when live cannot render (#854-style)', async () => {
+    // Live mode + a scene whose settled probe says no scene-video and no
+    // WebGL runtime (dino_run pattern): the old behavior silently built the
+    // static frame under the live mode - the user clicked apply and got no
+    // reaction. Now the mode flips to frame and a notice is reported.
+    const fetchImpl = vi.fn(async (url: unknown) => {
+      const target = String(url)
+      if (target.includes('/scene-probe')) {
+        return { ok: true, status: 200, json: async () => ({ ok: true, videoUrl: null, sceneUrl: null }) }
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true, wallpapers: [] }) }
+    })
+    const { scope, calls } = fakeScope({ mode: 'live' })
+    const controller = new WallpaperController(scope, { doc: document, fetchImpl: fetchImpl as never })
+    controller.applySelection(scene)
+    // The probe is in flight on apply: no premature judgment before it lands.
+    expect(controller.mode()).toBe('live')
+    expect(controller.liveFallbackNotice()).toBeNull()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(controller.mode()).toBe('frame')
+    expect(controller.liveFallbackNotice()).toBe('Neon')
+    expect(calls.some(c => c.field === 'mode' && c.value === 'frame')).toBe(true)
+    // Re-selecting live explicitly retires the notice.
+    controller.setMode('live')
+    expect(controller.liveFallbackNotice()).toBeNull()
+    expect(controller.mode()).toBe('live')
+    controller.dispose()
+  })
+
+  it('keeps the live mode when the probe lands WebGL capabilities', async () => {
+    const fetchImpl = vi.fn(async (url: unknown) => {
+      const target = String(url)
+      if (target.includes('/scene-probe')) {
+        return { ok: true, status: 200, json: async () => ({ ok: true, videoUrl: null, sceneUrl: '/api/skin-center/we/scene-runtime/xyz' }) }
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true, wallpapers: [] }) }
+    })
+    const { scope, calls } = fakeScope({ mode: 'live' })
+    const controller = new WallpaperController(scope, { doc: document, fetchImpl: fetchImpl as never })
+    controller.applySelection(scene)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(controller.mode()).toBe('live')
+    expect(controller.liveFallbackNotice()).toBeNull()
+    expect(calls.some(c => c.field === 'mode')).toBe(false)
+    controller.dispose()
+  })
+
   it('falls back to the preview when the scene frame fails to load (#521)', () => {
     const { scope } = fakeScope()
     const controller = new WallpaperController(scope)

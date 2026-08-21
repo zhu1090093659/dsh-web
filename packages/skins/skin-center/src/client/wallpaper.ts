@@ -80,6 +80,13 @@ export interface WallpaperHandle {
   activeId(): string | null
   /** True while a try-on mount is up. */
   trying(): boolean
+  /**
+   * Title of the wallpaper whose live render fell back to the static frame
+   * most recently (the mode was auto-switched to 'frame' with a notice);
+   * null while no such fallback is being reported. Cleared when the user
+   * explicitly re-selects the live mode or picks another wallpaper.
+   */
+  liveFallbackNotice(): string | null
   subscribe(listener: () => void): () => void
   setEnabled(value: boolean): void
   setMode(mode: 'live' | 'frame'): void
@@ -257,6 +264,18 @@ export class WallpaperController implements WallpaperHandle {
    *  (applySelection / tryOn / sync / fetchAndSync) must not re-read the
    *  same packed scene concurrently. */
   private probePending = new Map<string, Promise<void>>()
+  /** Title of the wallpaper whose live render most recently fell back to the
+   *  static frame (mode auto-switched to 'frame'); null = nothing to report. */
+  private liveFallbackNoticeValue: string | null = null
+  /** Scene ids whose capability probe has SETTLED (answer or failure). The
+   *  live-fallback evaluation treats a scene with null videoUrl/sceneUrl as
+   *  "capabilities unknown" until its id lands here, so boot-time renders
+   *  that race the probe never judge on missing data. */
+  private probedSceneIds = new Set<string>()
+  /** The wallpaper id whose live-mode fallback the user has acknowledged by
+   *  explicitly re-selecting the live mode: do not auto-switch (or re-notice)
+   *  for that wallpaper again until another one is picked. */
+  private liveFallbackAckId: string | null = null
   /** Detached frame-capture video; released on error/abort/loadeddata and on
    *  teardown so it never keeps buffering the source file. */
   private captureVideo: HTMLVideoElement | null = null
@@ -337,34 +356,33 @@ export class WallpaperController implements WallpaperHandle {
           sceneUrl?: string | null
         } | null
         if (!payload || payload.ok !== true) return
+        // Settle the probe BEFORE merging: the live-fallback evaluation reads
+        // probePending to tell "capabilities unknown" from "confirmed none",
+        // so it must see this id as settled even when the payload changes
+        // nothing (videoUrl/sceneUrl both null on a dino_run-style scene).
+        this.probePending.delete(targetId)
+        this.probedSceneIds.add(targetId)
         // Merge the capabilities into every slot holding the id: a probe
         // issued by try-on may land while sync/apply has already installed
         // the same wallpaper as applied, and exiting the try-on must not
         // fall back to a static frame without capabilities.
-        let changed = false
         if (this.previewing?.id === targetId) {
-          const merged: WallpaperDescriptor = {
+          this.previewing = {
             ...this.previewing,
             videoUrl: payload.videoUrl ?? this.previewing.videoUrl,
             sceneUrl: payload.sceneUrl ?? this.previewing.sceneUrl,
           }
-          if (merged.videoUrl !== this.previewing.videoUrl || merged.sceneUrl !== this.previewing.sceneUrl) {
-            this.previewing = merged
-            changed = true
-          }
         }
         if (this.applied?.id === targetId) {
-          const merged: WallpaperDescriptor = {
+          this.applied = {
             ...this.applied,
             videoUrl: payload.videoUrl ?? this.applied.videoUrl,
             sceneUrl: payload.sceneUrl ?? this.applied.sceneUrl,
           }
-          if (merged.videoUrl !== this.applied.videoUrl || merged.sceneUrl !== this.applied.sceneUrl) {
-            this.applied = merged
-            changed = true
-          }
         }
-        if (!changed) return
+        // Re-render even on an unchanged merge: the probe settling alone can
+        // flip the live-fallback verdict (a null/null answer means the live
+        // mode cannot render this wallpaper after all).
         this.render()
         this.publish()
       })
@@ -409,6 +427,7 @@ export class WallpaperController implements WallpaperHandle {
     return this.mediaLayer !== null && current !== null ? current.id : null
   }
   trying = (): boolean => this.previewing !== null
+  liveFallbackNotice = (): string | null => this.liveFallbackNoticeValue
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
@@ -424,6 +443,15 @@ export class WallpaperController implements WallpaperHandle {
 
   setMode(mode: 'live' | 'frame'): void {
     this.modeValue = mode
+    // Re-selecting the live mode explicitly acknowledges the fallback for
+    // the CURRENT wallpaper: retire the notice and stop auto-switching for
+    // it (the user owns the mode decision again; the static render under
+    // live is understood). Picking another wallpaper resets the ack.
+    if (mode === 'live') {
+      if (this.liveFallbackNoticeValue !== null) this.liveFallbackNoticeValue = null
+      const current = this.previewing ?? this.applied
+      this.liveFallbackAckId = current !== null ? current.id : null
+    }
     this.render()
     this.publish()
     void this.scope.set('mode', mode)
@@ -474,6 +502,8 @@ export class WallpaperController implements WallpaperHandle {
     this.applied = descriptor
     this.previewing = null
     this.selectionValue = descriptor.id
+    this.liveFallbackNoticeValue = null
+    this.liveFallbackAckId = null
     this.render()
     this.publish()
     void this.scope.set('selection', descriptor.id)
@@ -484,6 +514,8 @@ export class WallpaperController implements WallpaperHandle {
     this.applied = null
     this.previewing = null
     this.selectionValue = ''
+    this.liveFallbackNoticeValue = null
+    this.liveFallbackAckId = null
     this.render()
     this.publish()
     void this.scope.set('selection', '')
@@ -497,6 +529,8 @@ export class WallpaperController implements WallpaperHandle {
 
   tryOn(descriptor: WallpaperDescriptor): void {
     this.previewing = descriptor
+    this.liveFallbackNoticeValue = null
+    this.liveFallbackAckId = null
     this.render()
     this.publish()
     this.probeSceneCapabilitiesIfNeeded(descriptor)
@@ -576,7 +610,42 @@ export class WallpaperController implements WallpaperHandle {
       this.teardownLayers()
       return
     }
+    this.evaluateLiveFallback(current)
     this.ensureLayers(current)
+  }
+
+  /**
+   * Live-mode fallback detection: applying a wallpaper that cannot render
+   * live (a scene without scene-video/WebGL capabilities once its probe has
+   * settled, e.g. the scripted dino_run, or a video whose file is gone)
+   * under mode 'live' used to silently build the static frame - the user
+   * clicked a card in the "wrong" mode and got no reaction beyond a static
+   * image. Instead, auto-switch to the mode that actually renders and
+   * surface a notice; picking the live mode again (or another wallpaper)
+   * clears it.
+   */
+  private evaluateLiveFallback(descriptor: WallpaperDescriptor): void {
+    if (this.modeValue !== 'live') return
+    // The user explicitly re-selected live for this wallpaper after a
+    // fallback notice: their choice stands for it.
+    if (this.liveFallbackAckId === descriptor.id) return
+    // Scene capabilities come from the lazy probe: before it has settled for
+    // this id, null videoUrl/sceneUrl means "unknown", not "none" - never
+    // judge on missing data (boot sync races the probe this way).
+    const sceneSettled = descriptor.type !== 'scene' || this.probedSceneIds.has(descriptor.id)
+    if (!sceneSettled) return
+    // Loose null checks: the descriptor fields are optional, so an absent
+    // field (undefined) means "no capability" exactly like null.
+    const liveCapable = descriptor.type === 'video'
+      ? descriptor.videoUrl != null
+      : descriptor.type === 'web'
+        ? descriptor.webUrl != null
+        : descriptor.videoUrl != null || descriptor.sceneUrl != null
+    const hasStaticAsset = descriptor.frameUrl != null || descriptor.previewUrl != null
+    if (liveCapable || !hasStaticAsset) return
+    this.liveFallbackNoticeValue = descriptor.title
+    this.modeValue = 'frame'
+    void this.scope.set('mode', 'frame')
   }
 
   private ensureLayers(descriptor: WallpaperDescriptor): void {

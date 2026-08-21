@@ -35,6 +35,7 @@ const stubWallpaper = (): WallpaperHandle => ({
   removeDir: () => {},
   activeId: () => null,
   trying: () => false,
+  liveFallbackNotice: () => null,
   subscribe: () => () => {},
   setEnabled: () => {},
   setMode: () => {},
@@ -124,5 +125,22 @@ describe('WallpaperPanel thumbs', () => {
     const img = host.querySelector('img')
     expect(img?.getAttribute('src')).toBe('/api/skin-center/we/preview/CCC')
     expect(host.querySelector('video')).toBeNull()
+  })
+
+  it('shows the live-fallback notice line when the controller reports one', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => inventory([]),
+    })))
+    const handle = { ...stubWallpaper(), liveFallbackNotice: () => 'Dino Run' }
+    root = createRoot(host)
+    await act(async () => {
+      root.render(<WallpaperPanel t={t as never} wallpaper={handle} />)
+    })
+    const status = host.querySelector('p[role="status"]')
+    expect(status).not.toBeNull()
+    expect(status?.textContent).toContain(zh.wallpaperLiveFallback)
+    expect(status?.textContent).toContain('Dino Run')
   })
 })

@@ -255,6 +255,18 @@ window.__ModuleLoader__.load({
 			*  (applySelection / tryOn / sync / fetchAndSync) must not re-read the
 			*  same packed scene concurrently. */
 			probePending = /* @__PURE__ */ new Map();
+			/** Title of the wallpaper whose live render most recently fell back to the
+			*  static frame (mode auto-switched to 'frame'); null = nothing to report. */
+			liveFallbackNoticeValue = null;
+			/** Scene ids whose capability probe has SETTLED (answer or failure). The
+			*  live-fallback evaluation treats a scene with null videoUrl/sceneUrl as
+			*  "capabilities unknown" until its id lands here, so boot-time renders
+			*  that race the probe never judge on missing data. */
+			probedSceneIds = /* @__PURE__ */ new Set();
+			/** The wallpaper id whose live-mode fallback the user has acknowledged by
+			*  explicitly re-selecting the live mode: do not auto-switch (or re-notice)
+			*  for that wallpaper again until another one is picked. */
+			liveFallbackAckId = null;
 			/** Detached frame-capture video; released on error/abort/loadeddata and on
 			*  teardown so it never keeps buffering the source file. */
 			captureVideo = null;
@@ -311,30 +323,18 @@ window.__ModuleLoader__.load({
 					if (this.disposed || !response.ok) return;
 					const payload = await response.json().catch(() => null);
 					if (!payload || payload.ok !== true) return;
-					let changed = false;
-					if (this.previewing?.id === targetId) {
-						const merged = {
-							...this.previewing,
-							videoUrl: payload.videoUrl ?? this.previewing.videoUrl,
-							sceneUrl: payload.sceneUrl ?? this.previewing.sceneUrl
-						};
-						if (merged.videoUrl !== this.previewing.videoUrl || merged.sceneUrl !== this.previewing.sceneUrl) {
-							this.previewing = merged;
-							changed = true;
-						}
-					}
-					if (this.applied?.id === targetId) {
-						const merged = {
-							...this.applied,
-							videoUrl: payload.videoUrl ?? this.applied.videoUrl,
-							sceneUrl: payload.sceneUrl ?? this.applied.sceneUrl
-						};
-						if (merged.videoUrl !== this.applied.videoUrl || merged.sceneUrl !== this.applied.sceneUrl) {
-							this.applied = merged;
-							changed = true;
-						}
-					}
-					if (!changed) return;
+					this.probePending.delete(targetId);
+					this.probedSceneIds.add(targetId);
+					if (this.previewing?.id === targetId) this.previewing = {
+						...this.previewing,
+						videoUrl: payload.videoUrl ?? this.previewing.videoUrl,
+						sceneUrl: payload.sceneUrl ?? this.previewing.sceneUrl
+					};
+					if (this.applied?.id === targetId) this.applied = {
+						...this.applied,
+						videoUrl: payload.videoUrl ?? this.applied.videoUrl,
+						sceneUrl: payload.sceneUrl ?? this.applied.sceneUrl
+					};
 					this.render();
 					this.publish();
 				}).catch(() => {}).finally(() => {
@@ -371,6 +371,7 @@ window.__ModuleLoader__.load({
 				return this.mediaLayer !== null && current !== null ? current.id : null;
 			};
 			trying = () => this.previewing !== null;
+			liveFallbackNotice = () => this.liveFallbackNoticeValue;
 			subscribe = (listener) => {
 				this.listeners.add(listener);
 				return () => {
@@ -385,6 +386,11 @@ window.__ModuleLoader__.load({
 			}
 			setMode(mode) {
 				this.modeValue = mode;
+				if (mode === "live") {
+					if (this.liveFallbackNoticeValue !== null) this.liveFallbackNoticeValue = null;
+					const current = this.previewing ?? this.applied;
+					this.liveFallbackAckId = current !== null ? current.id : null;
+				}
 				this.render();
 				this.publish();
 				this.scope.set("mode", mode);
@@ -428,6 +434,8 @@ window.__ModuleLoader__.load({
 				this.applied = descriptor;
 				this.previewing = null;
 				this.selectionValue = descriptor.id;
+				this.liveFallbackNoticeValue = null;
+				this.liveFallbackAckId = null;
 				this.render();
 				this.publish();
 				this.scope.set("selection", descriptor.id);
@@ -437,6 +445,8 @@ window.__ModuleLoader__.load({
 				this.applied = null;
 				this.previewing = null;
 				this.selectionValue = "";
+				this.liveFallbackNoticeValue = null;
+				this.liveFallbackAckId = null;
 				this.render();
 				this.publish();
 				this.scope.set("selection", "");
@@ -448,6 +458,8 @@ window.__ModuleLoader__.load({
 			}
 			tryOn(descriptor) {
 				this.previewing = descriptor;
+				this.liveFallbackNoticeValue = null;
+				this.liveFallbackAckId = null;
 				this.render();
 				this.publish();
 				this.probeSceneCapabilitiesIfNeeded(descriptor);
@@ -504,7 +516,29 @@ window.__ModuleLoader__.load({
 					this.teardownLayers();
 					return;
 				}
+				this.evaluateLiveFallback(current);
 				this.ensureLayers(current);
+			}
+			/**
+			* Live-mode fallback detection: applying a wallpaper that cannot render
+			* live (a scene without scene-video/WebGL capabilities once its probe has
+			* settled, e.g. the scripted dino_run, or a video whose file is gone)
+			* under mode 'live' used to silently build the static frame - the user
+			* clicked a card in the "wrong" mode and got no reaction beyond a static
+			* image. Instead, auto-switch to the mode that actually renders and
+			* surface a notice; picking the live mode again (or another wallpaper)
+			* clears it.
+			*/
+			evaluateLiveFallback(descriptor) {
+				if (this.modeValue !== "live") return;
+				if (this.liveFallbackAckId === descriptor.id) return;
+				if (!(descriptor.type !== "scene" || this.probedSceneIds.has(descriptor.id))) return;
+				const liveCapable = descriptor.type === "video" ? descriptor.videoUrl != null : descriptor.type === "web" ? descriptor.webUrl != null : descriptor.videoUrl != null || descriptor.sceneUrl != null;
+				const hasStaticAsset = descriptor.frameUrl != null || descriptor.previewUrl != null;
+				if (liveCapable || !hasStaticAsset) return;
+				this.liveFallbackNoticeValue = descriptor.title;
+				this.modeValue = "frame";
+				this.scope.set("mode", "frame");
 			}
 			ensureLayers(descriptor) {
 				if (this.rootNeutralizer === null) {
@@ -930,6 +964,7 @@ window.__ModuleLoader__.load({
 			const volume = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.volume);
 			const activeId = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.activeId);
 			const trying = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.trying);
+			const liveFallbackNotice = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.liveFallbackNotice);
 			const dirs = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.dirs);
 			const [dirInput, setDirInput] = (0, react.useState)("");
 			const [items, setItems] = (0, react.useState)(null);
@@ -1044,6 +1079,16 @@ window.__ModuleLoader__.load({
 							onClick: load,
 							children: t("wallpaperRefresh")
 						})]
+					}),
+					liveFallbackNotice !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+						className: skin_center_module_css_default.backgroundHintMuted,
+						role: "status",
+						children: [
+							t("wallpaperLiveFallback"),
+							"（",
+							liveFallbackNotice,
+							"）"
+						]
 					}),
 					activeSelection !== "" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: skin_center_module_css_default.wallpaperControls,
@@ -2090,6 +2135,7 @@ window.__ModuleLoader__.load({
 			wallpaperMode: "Render mode",
 			wallpaperModeLive: "Live",
 			wallpaperModeFrame: "Static frame",
+			wallpaperLiveFallback: "This wallpaper cannot render live; switched to the static frame",
 			wallpaperFit: "Sizing mode",
 			wallpaperFitCover: "Cover (fill)",
 			wallpaperFitContain: "Fit (entire image)",
@@ -2159,6 +2205,7 @@ window.__ModuleLoader__.load({
 			wallpaperMode: "渲染模式",
 			wallpaperModeLive: "动态",
 			wallpaperModeFrame: "静态帧",
+			wallpaperLiveFallback: "当前壁纸不支持动态播放，已切换为静态帧",
 			wallpaperFit: "适应方式",
 			wallpaperFitCover: "铺满裁剪",
 			wallpaperFitContain: "完整缩放",
@@ -3017,6 +3064,7 @@ window.__ModuleLoader__.load({
 					removeDir: (dir) => wallpaper.removeDir(dir),
 					activeId: () => wallpaper.activeId(),
 					trying: () => wallpaper.trying(),
+					liveFallbackNotice: () => wallpaper.liveFallbackNotice(),
 					subscribe: (listener) => wallpaper.subscribe(listener),
 					setEnabled: (value) => wallpaper.setEnabled(value),
 					setMode: (value) => wallpaper.setMode(value),

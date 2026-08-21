@@ -73,6 +73,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
   const volume = useSyncExternalStore(wallpaper.subscribe, wallpaper.volume)
   const activeId = useSyncExternalStore(wallpaper.subscribe, wallpaper.activeId)
   const trying = useSyncExternalStore(wallpaper.subscribe, wallpaper.trying)
+  const liveFallbackNotice = useSyncExternalStore(wallpaper.subscribe, wallpaper.liveFallbackNotice)
   const dirs = useSyncExternalStore(wallpaper.subscribe, wallpaper.dirs)
   const [dirInput, setDirInput] = useState('')
 
@@ -174,6 +175,12 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                   : <span>{t('wallpaperLibraryManual')} · {items.length}</span>}
             <button type="button" className={css.button} onClick={load}>{t('wallpaperRefresh')}</button>
           </div>
+
+          {liveFallbackNotice !== null && (
+            <p className={css.backgroundHintMuted} role="status">
+              {t('wallpaperLiveFallback')}（{liveFallbackNotice}）
+            </p>
+          )}
 
           {activeSelection !== '' && (
             <div className={css.wallpaperControls}>

@@ -138,6 +138,7 @@ export function apply(ctx: ClientContext): void {
       removeDir: dir => wallpaper.removeDir(dir),
       activeId: () => wallpaper.activeId(),
       trying: () => wallpaper.trying(),
+      liveFallbackNotice: () => wallpaper.liveFallbackNotice(),
       subscribe: listener => wallpaper.subscribe(listener),
       setEnabled: value => wallpaper.setEnabled(value),
       setMode: value => wallpaper.setMode(value),

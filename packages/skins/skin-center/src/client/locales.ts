@@ -46,6 +46,7 @@ export type SkinCenterKey =
   | 'wallpaperMode'
   | 'wallpaperModeLive'
   | 'wallpaperModeFrame'
+  | 'wallpaperLiveFallback'
   | 'wallpaperFit'
   | 'wallpaperFitCover'
   | 'wallpaperFitContain'
@@ -115,6 +116,7 @@ export const en: Record<SkinCenterKey, string> = {
   wallpaperMode: 'Render mode',
   wallpaperModeLive: 'Live',
   wallpaperModeFrame: 'Static frame',
+  wallpaperLiveFallback: 'This wallpaper cannot render live; switched to the static frame',
   wallpaperFit: 'Sizing mode',
   wallpaperFitCover: 'Cover (fill)',
   wallpaperFitContain: 'Fit (entire image)',
@@ -185,6 +187,7 @@ export const zh: Record<SkinCenterKey, string> = {
   wallpaperMode: '渲染模式',
   wallpaperModeLive: '动态',
   wallpaperModeFrame: '静态帧',
+  wallpaperLiveFallback: '当前壁纸不支持动态播放，已切换为静态帧',
   wallpaperFit: '适应方式',
   wallpaperFitCover: '铺满裁剪',
   wallpaperFitContain: '完整缩放',

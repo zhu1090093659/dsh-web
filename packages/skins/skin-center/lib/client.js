@@ -3350,6 +3350,23 @@ window.__ModuleLoader__.load({
 				});
 				return () => observer.disconnect();
 			});
+			/**
+			* Re-paint the current activation's background media for the live
+			* light/dark theme (the controller owns the layer, so a theme flip must
+			* swap the variant the same way an activation does). No-op when there is
+			* nothing painted or the manifest carries no backgroundMedia.
+			*/
+			function repaintBackgroundForTheme() {
+				if (active === null || currentActivation === null || lastEntry === null) return;
+				const media = lastEntry.manifest.contributes.backgroundMedia;
+				if (!media) return;
+				if (deps.suppressBackgroundMedia?.() === true) return;
+				const variant = themeGet() === "dark" ? media.dark ?? media.light : media.light ?? media.dark;
+				if (!variant) return;
+				const assetBase = `${apiBase}/skins/${lastEntry.manifest.id}`;
+				setBackgroundLayer(currentActivation, buildBackgroundMedia(doc, variant, assetBase));
+			}
+			const unsubscribeTheme = themeSubscribe(() => repaintBackgroundForTheme());
 			const loadStylesheet = deps.loadStylesheet ?? ((href) => new Promise((resolveLink, rejectLink) => {
 				const link = doc.createElement("link");
 				link.rel = "stylesheet";
@@ -3609,6 +3626,7 @@ window.__ModuleLoader__.load({
 				},
 				shutdown() {
 					latestRequest += 1;
+					unsubscribeTheme();
 					if (currentActivation !== null) {
 						ledger.disposeActivation(currentActivation);
 						currentActivation = null;

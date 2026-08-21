@@ -388,6 +388,106 @@ describe('skin controller', () => {
     expect(backgroundImgSrc()).toBe('')
   })
 
+  it('theme flips repaint the background media with the matching variant', async () => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    document.documentElement.removeAttribute('data-dsh-skin')
+    const ledger = createEffectLedger()
+    const loadStylesheet = async (href: string) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = href
+      document.head.appendChild(link)
+    }
+    let theme: 'light' | 'dark' = 'light'
+    let themeListener: ((theme: 'light' | 'dark') => void) | null = null
+    const mediaEntry = {
+      manifest: {
+        id: 'media-skin',
+        contributes: {
+          stylesheet: 'skin.css',
+          backgroundMedia: {
+            light: { type: 'image' as const, src: 'assets/light.jpg' },
+            dark: { type: 'image' as const, src: 'assets/dark.png' },
+          },
+        },
+      },
+    } as ControllerSkinEntry
+    const controller = createSkinController({
+      doc: document,
+      ledger,
+      loadStylesheet,
+      persist: async () => {},
+      themeGet: () => theme,
+      themeSubscribe: (listener) => {
+        themeListener = listener
+        return () => { themeListener = null }
+      },
+    })
+    await controller.switchTo('media-skin', mediaEntry)
+    expect(backgroundImgSrc()).toContain('light.jpg')
+
+    // Flip to dark: the controller must swap the painted variant live.
+    theme = 'dark'
+    themeListener?.('dark')
+    expect(backgroundImgSrc()).toContain('dark.png')
+    expect(document.body.getAttribute('data-dsh-backdrop-active')).toBe('true')
+
+    // Flip back to light.
+    theme = 'light'
+    themeListener?.('light')
+    expect(backgroundImgSrc()).toContain('light.jpg')
+  })
+
+  it('theme repaint is a no-op when no skin or no backgroundMedia is active', async () => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    document.documentElement.removeAttribute('data-dsh-skin')
+    const ledger = createEffectLedger()
+    const loadStylesheet = async (href: string) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = href
+      document.head.appendChild(link)
+    }
+    let themeListener: ((theme: 'light' | 'dark') => void) | null = null
+    const plainEntry = entryFor('plain', {})
+    const mediaEntry = {
+      manifest: {
+        id: 'media-skin',
+        contributes: {
+          stylesheet: 'skin.css',
+          backgroundMedia: { light: { type: 'image' as const, src: 'assets/bg.jpg' } },
+        },
+      },
+    } as ControllerSkinEntry
+    const controller = createSkinController({
+      doc: document,
+      ledger,
+      loadStylesheet,
+      persist: async () => {},
+      themeSubscribe: (listener) => {
+        themeListener = listener
+        return () => { themeListener = null }
+      },
+    })
+    // No skin yet: a theme flip must not throw or paint anything.
+    expect(() => themeListener?.('dark')).not.toThrow()
+    expect(backgroundImgSrc()).toBe('')
+
+    // A skin without backgroundMedia: theme flip stays a no-op.
+    await controller.switchTo('plain', plainEntry)
+    themeListener?.('dark')
+    expect(backgroundImgSrc()).toBe('')
+
+    // With media, then back to stock: flip again stays a no-op.
+    await controller.switchTo('media-skin', mediaEntry)
+    expect(backgroundImgSrc()).toContain('bg.jpg')
+    await controller.switchTo(null, null)
+    themeListener?.('dark')
+    expect(backgroundImgSrc()).toBe('')
+  })
+
   it('drives --dsh-skin-scrim with the background media (whale-mom contract)', async () => {
     document.head.innerHTML = ''
     document.body.innerHTML = ''

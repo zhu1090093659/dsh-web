@@ -147,6 +147,23 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
     if (doc.body) observer.observe(doc.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
     return () => observer.disconnect()
   })
+  /**
+   * Re-paint the current activation's background media for the live
+   * light/dark theme (the controller owns the layer, so a theme flip must
+   * swap the variant the same way an activation does). No-op when there is
+   * nothing painted or the manifest carries no backgroundMedia.
+   */
+  function repaintBackgroundForTheme(): void {
+    if (active === null || currentActivation === null || lastEntry === null) return
+    const media = lastEntry.manifest.contributes.backgroundMedia
+    if (!media) return
+    if (deps.suppressBackgroundMedia?.() === true) return
+    const variant = themeGet() === 'dark' ? (media.dark ?? media.light) : (media.light ?? media.dark)
+    if (!variant) return
+    const assetBase = `${apiBase}/skins/${lastEntry.manifest.id}`
+    setBackgroundLayer(currentActivation, buildBackgroundMedia(doc, variant, assetBase))
+  }
+  const unsubscribeTheme = themeSubscribe(() => repaintBackgroundForTheme())
   const loadStylesheet = deps.loadStylesheet ?? ((href: string) => new Promise<void>((resolveLink, rejectLink) => {
     const link = doc.createElement('link')
     link.rel = 'stylesheet'
@@ -425,6 +442,7 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
 
     shutdown() {
       latestRequest += 1
+      unsubscribeTheme()
       if (currentActivation !== null) {
         ledger.disposeActivation(currentActivation)
         currentActivation = null

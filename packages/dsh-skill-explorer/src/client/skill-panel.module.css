@@ -290,11 +290,18 @@
 }
 
 .formLabel {
+  /* Stack label above the control so long labels and full-width inputs
+     align cleanly (was inline: label and control shared one row). */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   font-size: 12px;
   color: var(--dsw-alias-label-secondary, #5f6672);
 }
 
 .formInput {
+  width: 100%;
+  box-sizing: border-box;
   background: var(--dsw-alias-bg-layer-1, #f7f8fa);
   color: var(--dsw-alias-label-primary, #1c1e26);
   border: 1px solid transparent;

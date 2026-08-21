@@ -113,6 +113,39 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper, preview, 
     run(tryingId ?? OFFICIAL, () => preview.runSkin(() => runtime.controller.exitTryOn()))
   }
 
+  const restoreCommittedSkin = async (state: { active: string | null }): Promise<void> => {
+    const entry = state.active === null ? null : runtime.find(state.active)
+    if (state.active !== null && entry === null) {
+      throw new Error(`cannot restore skin ${state.active}`)
+    }
+    const restored = await runtime.controller.switchTo(state.active, entry)
+    if (restored !== state.active) {
+      throw new Error(`skin ${state.active ?? 'stock'} did not restore`)
+    }
+  }
+
+  const switchAndDeactivateCustomTheme = async (
+    target: string | null,
+    entry: CatalogSkin | null,
+  ): Promise<string | null> => {
+    const previous = { ...runtime.controller.getState() }
+    const active = await runtime.controller.switchTo(target, entry)
+    if (active !== target) {
+      throw new Error(`${target === null ? 'stock theme' : `skin ${target}`} did not activate`)
+    }
+    try {
+      await customTheme.deactivate()
+      return active
+    } catch (error) {
+      try {
+        await restoreCommittedSkin(previous)
+      } catch (rollbackError) {
+        throw new AggregateError([error, rollbackError], 'skin switch cleanup and rollback failed')
+      }
+      throw error
+    }
+  }
+
   /**
    * One-click apply: atomic client-side switch + persisted selection. No
    * reload, no boot-graph wait — the tapIndex adapter makes the next page
@@ -121,12 +154,7 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper, preview, 
    */
   const applySkin = (target: string): void => {
     if (target === OFFICIAL) {
-      run(OFFICIAL, () => preview.runSkin(async () => {
-        const active = await runtime.controller.switchTo(null, null)
-        if (active !== null) throw new Error('stock theme did not activate')
-        await customTheme.deactivate()
-        return active
-      }))
+      run(OFFICIAL, () => preview.runSkin(() => switchAndDeactivateCustomTheme(null, null)))
       return
     }
     const entry = runtime.find(target)
@@ -134,12 +162,7 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper, preview, 
       setError(t('applyFailed'))
       return
     }
-    run(target, () => preview.runSkin(async () => {
-      const active = await runtime.controller.switchTo(target, entry)
-      if (active !== target) throw new Error(`skin ${target} did not activate`)
-      await customTheme.deactivate()
-      return active
-    }))
+    run(target, () => preview.runSkin(() => switchAndDeactivateCustomTheme(target, entry)))
   }
 
   const tryOnCustomTheme = (): void => {

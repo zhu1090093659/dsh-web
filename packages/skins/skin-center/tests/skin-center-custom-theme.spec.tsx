@@ -16,7 +16,7 @@ const t = (key: SkinCenterKey): string => zh[key] ?? key
 
 function customScope(
   initial: Partial<CustomThemeConfig> = CUSTOM_THEME_DEFAULTS,
-  acceptWrites = true,
+  acceptWrites: boolean | ((field: string, next: unknown) => boolean) = true,
 ): SettingsScope<CustomThemeConfig> {
   let value = { ...initial } as CustomThemeConfig
   const listeners = new Set<() => void>()
@@ -27,7 +27,11 @@ function customScope(
     getSnapshot: () => ({ ...snapshot, value }),
     subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener) } },
     set: async (field, next) => {
-      if (acceptWrites) value = { ...value, [field]: next }
+      const accepted = typeof acceptWrites === 'function'
+        ? acceptWrites(field, next)
+        : acceptWrites
+      if (!accepted) throw new Error('settings write rejected')
+      value = { ...value, [field]: next }
       for (const listener of listeners) listener()
     },
     unset: async () => {},
@@ -50,7 +54,7 @@ const mint = {
 
 async function renderSkinCenter(options: {
   active?: string | null
-  switchTo?: (id: string | null) => Promise<string | null>
+  switchTo?: (id: string | null, state: { active: string | null }) => Promise<string | null>
 } = {}): Promise<void> {
   const active = options.active ?? null
   const controllerState = { active, trying: null, previewing: false }
@@ -64,7 +68,9 @@ async function renderSkinCenter(options: {
       subscribe: () => () => {},
       tryOn: async () => null,
       exitTryOn: async () => null,
-      switchTo: options.switchTo ?? (async id => id),
+      switchTo: options.switchTo === undefined
+        ? async id => id
+        : id => options.switchTo!(id, controllerState),
       refresh: async () => null,
       shutdown: () => {},
     },
@@ -163,6 +169,46 @@ describe('SkinCenter custom theme transactions', () => {
 
     await click(buttonNamed(cardNamed('Mint'), t('apply')))
 
+    expect(customTheme.getState().applied).toBe(true)
+    expect(host.textContent).toContain(t('applyFailed'))
+  })
+
+  it('rolls back a third-party switch when custom-theme deactivation fails', async () => {
+    customTheme.dispose()
+    customTheme = new CustomThemeController(
+      customScope({ ...CUSTOM_THEME_DEFAULTS, applied: true }, (field, next) => field !== 'applied' || next === true),
+      { doc: document },
+    )
+    const calls: Array<string | null> = []
+    await renderSkinCenter({ switchTo: async (id, state) => {
+      calls.push(id)
+      state.active = id
+      return id
+    } })
+
+    await click(buttonNamed(cardNamed('Mint'), t('apply')))
+
+    expect(calls).toEqual(['mint', null])
+    expect(customTheme.getState().applied).toBe(true)
+    expect(host.textContent).toContain(t('applyFailed'))
+  })
+
+  it('rolls back the stock switch when custom-theme deactivation fails', async () => {
+    customTheme.dispose()
+    customTheme = new CustomThemeController(
+      customScope({ ...CUSTOM_THEME_DEFAULTS, applied: true }, (field, next) => field !== 'applied' || next === true),
+      { doc: document },
+    )
+    const calls: Array<string | null> = []
+    await renderSkinCenter({ active: 'mint', switchTo: async (id, state) => {
+      calls.push(id)
+      state.active = id
+      return id
+    } })
+
+    await click(buttonNamed(cardNamed('官方默认'), t('restore')))
+
+    expect(calls).toEqual([null, 'mint'])
     expect(customTheme.getState().applied).toBe(true)
     expect(host.textContent).toContain(t('applyFailed'))
   })

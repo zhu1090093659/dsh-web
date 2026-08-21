@@ -15,7 +15,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { SkinCenterSection, type SkinCenterInjected } from './SkinCenter.tsx'
 import { BackgroundController, SKIN_BACKGROUND_NS } from './background.ts'
-import { SKIN_WALLPAPER_NS, WallpaperController, installBootRestore } from './wallpaper.ts'
+import { SKIN_WALLPAPER_NS, WallpaperController, installBootRestore, type WallpaperDescriptor } from './wallpaper.ts'
 import { en, zh, type SkinCenterKey } from './locales.ts'
 import { bootSkinRuntime } from './runtime/boot.ts'
 
@@ -104,6 +104,22 @@ export function apply(ctx: ClientContext): void {
     () => wallpaper.subscribe(() => { void runtime.controller.refresh() }),
     'ui-skin-center: wallpaper priority refresh',
   )
+  // Cross-dimension try-on exclusivity: the skin and wallpaper try-on
+  // sessions used to be fully independent state machines, so trying on a
+  // wallpaper while a skin preview was live left TWO exit-try-on buttons on
+  // screen, and applying a wallpaper kept a skin try-on dangling (the card
+  // stayed "trying" even though the user had clearly moved on). Starting a
+  // wallpaper try-on or apply now ends a live skin preview; the skin card
+  // symmetrically retires a wallpaper try-on (SkinCenter.tsx). Committed
+  // selections are untouched - only the preview session is retired.
+  const wallpaperTryOn = (descriptor: WallpaperDescriptor): void => {
+    if (runtime.controller.getState().previewing) void runtime.controller.exitTryOn()
+    wallpaper.tryOn(descriptor)
+  }
+  const wallpaperApply = (descriptor: WallpaperDescriptor): void => {
+    if (runtime.controller.getState().previewing) void runtime.controller.exitTryOn()
+    wallpaper.applySelection(descriptor)
+  }
   const injected = (): SkinCenterInjected => ({
     runtime,
     theme: {
@@ -147,10 +163,10 @@ export function apply(ctx: ClientContext): void {
       setPauseOnHidden: value => wallpaper.setPauseOnHidden(value),
       setSound: value => wallpaper.setSound(value),
       setVolume: value => wallpaper.setVolume(value),
-      applySelection: descriptor => wallpaper.applySelection(descriptor),
+      applySelection: descriptor => wallpaperApply(descriptor),
       clearSelection: () => wallpaper.clearSelection(),
       sync: descriptor => wallpaper.sync(descriptor),
-      tryOn: descriptor => wallpaper.tryOn(descriptor),
+      tryOn: descriptor => wallpaperTryOn(descriptor),
       exitTryOn: () => wallpaper.exitTryOn(),
       dispose: () => wallpaper.dispose(),
     },

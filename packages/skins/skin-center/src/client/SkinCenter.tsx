@@ -93,10 +93,15 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper }: SkinCen
   }
 
   const tryOn = (entry: CatalogSkin): void => {
+    // Cross-dimension exclusivity (#792 follow-up): starting a skin preview
+    // retires a live wallpaper try-on so two exit-try-on rows can never show
+    // at once. The wallpaper's committed selection is untouched.
+    if (wallpaper.trying()) wallpaper.exitTryOn()
     run(entry.manifest.id, () => runtime.controller.tryOn(entry.manifest.id, entry))
   }
 
   const tryOnOfficial = (): void => {
+    if (wallpaper.trying()) wallpaper.exitTryOn()
     run(OFFICIAL, () => runtime.controller.tryOn(null, null))
   }
 

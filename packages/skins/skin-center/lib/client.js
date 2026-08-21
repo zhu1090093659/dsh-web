@@ -256,6 +256,13 @@ window.__ModuleLoader__.load({
 			/** Shell surfaces tagged with data-dsh-wallpaper-surface during this mount. */
 			taggedSurfaces = [];
 			disposed = false;
+			/** In-flight scene probes by wallpaper id; overlapping entry points
+			*  (applySelection / tryOn / sync / fetchAndSync) must not re-read the
+			*  same packed scene concurrently. */
+			probePending = /* @__PURE__ */ new Map();
+			/** Detached frame-capture video; released on error/abort/loadeddata and on
+			*  teardown so it never keeps buffering the source file. */
+			captureVideo = null;
 			constructor(scope, options = {}) {
 				this.scope = scope;
 				this.options = options;
@@ -288,9 +295,57 @@ window.__ModuleLoader__.load({
 							this.applied = item;
 							this.render();
 							this.publish();
+							this.probeSceneCapabilitiesIfNeeded(item);
 						}
 					}
 				}).catch(() => {});
+			}
+			/**
+			* Lazily probe a scene's video/WebGL capabilities: the inventory never
+			* reads packed scene payloads, so only the wallpaper the user actually
+			* selects (apply, try-on or boot sync) asks the probe route. The response
+			* is merged into every slot (previewing and applied) that holds the id.
+			*/
+			probeSceneCapabilitiesIfNeeded(descriptor) {
+				if (this.disposed || descriptor.type !== "scene" || descriptor.videoUrl !== null || descriptor.sceneUrl != null) return;
+				const targetId = descriptor.id;
+				if (this.probePending.has(targetId)) return;
+				const fetchFn = this.options.fetchImpl ?? (typeof fetch !== "undefined" ? fetch.bind(this.doc.defaultView ?? globalThis) : void 0);
+				if (!fetchFn) return;
+				const pending = fetchFn((this.options.apiBase ?? "/api/skin-center/we") + "/scene-probe?id=" + encodeURIComponent(targetId)).then(async (response) => {
+					if (this.disposed || !response.ok) return;
+					const payload = await response.json().catch(() => null);
+					if (!payload || payload.ok !== true) return;
+					let changed = false;
+					if (this.previewing?.id === targetId) {
+						const merged = {
+							...this.previewing,
+							videoUrl: payload.videoUrl ?? this.previewing.videoUrl,
+							sceneUrl: payload.sceneUrl ?? this.previewing.sceneUrl
+						};
+						if (merged.videoUrl !== this.previewing.videoUrl || merged.sceneUrl !== this.previewing.sceneUrl) {
+							this.previewing = merged;
+							changed = true;
+						}
+					}
+					if (this.applied?.id === targetId) {
+						const merged = {
+							...this.applied,
+							videoUrl: payload.videoUrl ?? this.applied.videoUrl,
+							sceneUrl: payload.sceneUrl ?? this.applied.sceneUrl
+						};
+						if (merged.videoUrl !== this.applied.videoUrl || merged.sceneUrl !== this.applied.sceneUrl) {
+							this.applied = merged;
+							changed = true;
+						}
+					}
+					if (!changed) return;
+					this.render();
+					this.publish();
+				}).catch(() => {}).finally(() => {
+					this.probePending.delete(targetId);
+				});
+				this.probePending.set(targetId, pending);
 			}
 			enabled = () => this.enabledValue;
 			selection = () => this.selectionValue;
@@ -381,6 +436,7 @@ window.__ModuleLoader__.load({
 				this.render();
 				this.publish();
 				this.scope.set("selection", descriptor.id);
+				this.probeSceneCapabilitiesIfNeeded(descriptor);
 			}
 			clearSelection() {
 				this.applied = null;
@@ -393,11 +449,13 @@ window.__ModuleLoader__.load({
 			sync(descriptor) {
 				this.applied = descriptor;
 				this.render();
+				if (descriptor !== null) this.probeSceneCapabilitiesIfNeeded(descriptor);
 			}
 			tryOn(descriptor) {
 				this.previewing = descriptor;
 				this.render();
 				this.publish();
+				this.probeSceneCapabilitiesIfNeeded(descriptor);
 			}
 			exitTryOn() {
 				if (this.previewing === null) return;
@@ -506,9 +564,10 @@ window.__ModuleLoader__.load({
 					styleLayer(this.scrimLayer, -2);
 					this.doc.body.appendChild(this.scrimLayer);
 				}
-				const mediaKey = descriptor.id + ":" + this.modeValue;
+				const mediaKey = descriptor.id + ":" + this.modeValue + ":" + (descriptor.videoUrl ?? "") + ":" + (descriptor.sceneUrl ?? "");
 				if (this.mediaLayer.dataset.mediaKey !== mediaKey) {
 					this.mediaLayer.dataset.mediaKey = mediaKey;
+					this.releaseCaptureVideo();
 					this.mediaLayer.replaceChildren();
 					this.videoElement = null;
 					const child = this.buildMedia(descriptor);
@@ -613,6 +672,14 @@ window.__ModuleLoader__.load({
 				video.playsInline = true;
 				video.preload = "auto";
 				video.src = url;
+				this.releaseCaptureVideo();
+				this.captureVideo = video;
+				const release = () => {
+					video.removeAttribute("src");
+					video.load();
+				};
+				video.addEventListener("error", release, { once: true });
+				video.addEventListener("abort", release, { once: true });
 				video.addEventListener("loadeddata", () => {
 					try {
 						const scale = Math.min(1, FRAME_MAX_EDGE / Math.max(video.videoWidth, video.videoHeight));
@@ -620,14 +687,21 @@ window.__ModuleLoader__.load({
 						canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
 						canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
 						const context = canvas.getContext("2d");
-						if (context === null) return;
-						context.drawImage(video, 0, 0, canvas.width, canvas.height);
-						image.src = canvas.toDataURL("image/jpeg", .85);
-						video.removeAttribute("src");
-						video.load();
-					} catch {}
+						if (context !== null) {
+							context.drawImage(video, 0, 0, canvas.width, canvas.height);
+							image.src = canvas.toDataURL("image/jpeg", .85);
+						}
+					} catch {} finally {
+						release();
+					}
 				}, { once: true });
 				return image;
+			}
+			releaseCaptureVideo() {
+				if (this.captureVideo === null) return;
+				this.captureVideo.removeAttribute("src");
+				this.captureVideo.load();
+				this.captureVideo = null;
 			}
 			buildImage(url, fallbackUrl = null) {
 				if (url === null) return null;
@@ -683,6 +757,7 @@ window.__ModuleLoader__.load({
 				this.taggedSurfaces = [];
 			}
 			teardownLayers() {
+				this.releaseCaptureVideo();
 				this.untagSurfaces();
 				delete this.doc.body.dataset.dshWallpaperActive;
 				delete this.doc.documentElement.dataset.dshWallpaperActive;
@@ -1403,9 +1478,11 @@ window.__ModuleLoader__.load({
 				});
 			};
 			const tryOn = (entry) => {
+				if (wallpaper.trying()) wallpaper.exitTryOn();
 				run(entry.manifest.id, () => runtime.controller.tryOn(entry.manifest.id, entry));
 			};
 			const tryOnOfficial = () => {
+				if (wallpaper.trying()) wallpaper.exitTryOn();
 				run(OFFICIAL, () => runtime.controller.tryOn(null, null));
 			};
 			const exitTryOn = () => {
@@ -2913,6 +2990,14 @@ window.__ModuleLoader__.load({
 			ctx.effect(() => wallpaper.subscribe(() => {
 				runtime.controller.refresh();
 			}), "ui-skin-center: wallpaper priority refresh");
+			const wallpaperTryOn = (descriptor) => {
+				if (runtime.controller.getState().previewing) runtime.controller.exitTryOn();
+				wallpaper.tryOn(descriptor);
+			};
+			const wallpaperApply = (descriptor) => {
+				if (runtime.controller.getState().previewing) runtime.controller.exitTryOn();
+				wallpaper.applySelection(descriptor);
+			};
 			const injected = () => ({
 				runtime,
 				theme: {
@@ -2956,10 +3041,10 @@ window.__ModuleLoader__.load({
 					setPauseOnHidden: (value) => wallpaper.setPauseOnHidden(value),
 					setSound: (value) => wallpaper.setSound(value),
 					setVolume: (value) => wallpaper.setVolume(value),
-					applySelection: (descriptor) => wallpaper.applySelection(descriptor),
+					applySelection: (descriptor) => wallpaperApply(descriptor),
 					clearSelection: () => wallpaper.clearSelection(),
 					sync: (descriptor) => wallpaper.sync(descriptor),
-					tryOn: (descriptor) => wallpaper.tryOn(descriptor),
+					tryOn: (descriptor) => wallpaperTryOn(descriptor),
 					exitTryOn: () => wallpaper.exitTryOn(),
 					dispose: () => wallpaper.dispose()
 				}

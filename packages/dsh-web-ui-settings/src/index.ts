@@ -13,6 +13,7 @@
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { resolveDshHome } from './dsh-home.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
@@ -58,12 +59,21 @@ export const inject = ['webServer'] as const
  * @param ctx - host plugin context.
  * @param config - loopback-default bridge and authenticated-proxy config.
  */
+/**
+ * Resolve the settings YAML fallback path when the host settings seam does
+ * not report a documentPath: $DSH_HOME/settings.yaml (defaulting to
+ * ~/.dsh/settings.yaml). Test seam: env and home are injectable.
+ */
+export function settingsYamlFallbackPath(env: NodeJS.ProcessEnv = process.env, home: string = homedir()): string {
+  return join(resolveDshHome(env, home), 'settings.yaml')
+}
+
 export const apply = mountOnce('@linxin666/dsh-client-ui-web-ui-settings', applyImpl)
 
 function applyImpl(ctx: Context, config?: Config): void {
   const access = resolveProxyAccess(config)
   ctx.inject(['settings'], (sctx) => {
-    const settingsYamlPath = sctx.settings.documentPath ?? join(homedir(), '.dsh', 'settings.yaml')
+    const settingsYamlPath = sctx.settings.documentPath ?? settingsYamlFallbackPath()
     sctx.effect(() => {
       const disposers = makeBridgeRoutes({
         settings: sctx.settings,

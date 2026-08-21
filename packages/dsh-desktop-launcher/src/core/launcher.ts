@@ -46,7 +46,7 @@ export function resolveLauncherSpec(config: {
   }
 }
 
-/** File name of the launcher script under ~/.dsh/desktop-launcher/. */
+/** File name of the launcher script under $DSH_HOME/desktop-launcher/. */
 export function scriptFileName(platform: LauncherPlatform): string {
   switch (platform) {
     case 'win32': return 'launcher.ps1'

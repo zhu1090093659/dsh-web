@@ -6,7 +6,7 @@ import { mkdtempSync, writeFileSync, rmSync, statSync, readdirSync, readFileSync
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { HostStore, validateAlias, validateHostPayload } from '../src/store.ts'
+import { HostStore, sshConfigPath, storePath, validateAlias, validateHostPayload } from '../src/store.ts'
 import type { HostPayload } from '../src/protocol.ts'
 
 const dirs: string[] = []
@@ -319,5 +319,36 @@ describe('partial updates', () => {
     store.create({ ...basePayload, auth: { kind: 'key', keyPath: '~/keys/same', passphrase: 'secret' } })
     const touched = store.update('web-01', { auth: { kind: 'key', keyPath: '~/keys/same' } })
     expect(touched.auth.passphrase).toBe('secret')
+  })
+})
+
+describe('DSH_HOME wiring', () => {
+  const prior = process.env.DSH_HOME
+  afterEach(() => {
+    if (prior === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = prior
+  })
+
+  it('resolves the store under DSH_HOME when configured', () => {
+    const dir = join(tmpdir(), 'dsh-home-store')
+    process.env.DSH_HOME = dir
+    expect(storePath()).toBe(join(dir, 'dsh-ssh.json'))
+  })
+
+  it('expands a leading tilde in DSH_HOME', () => {
+    process.env.DSH_HOME = '~/dsh-data'
+    expect(storePath()).toBe(join(homedir(), 'dsh-data', 'dsh-ssh.json'))
+  })
+
+  it('falls back to ~/.dsh when DSH_HOME is unset or blank', () => {
+    delete process.env.DSH_HOME
+    expect(storePath()).toBe(join(homedir(), '.dsh', 'dsh-ssh.json'))
+    process.env.DSH_HOME = '   '
+    expect(storePath()).toBe(join(homedir(), '.dsh', 'dsh-ssh.json'))
+  })
+
+  it('keeps the OpenSSH config under ~/.ssh regardless of DSH_HOME', () => {
+    process.env.DSH_HOME = join(tmpdir(), 'dsh-home-store')
+    expect(sshConfigPath()).toBe(join(homedir(), '.ssh', 'config'))
   })
 })

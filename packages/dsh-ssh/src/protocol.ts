@@ -7,7 +7,7 @@
 /** Authentication flavors a host entry may carry. */
 export type SshAuthKind = 'key' | 'password' | 'agent'
 
-/** One stored host entry (the ~/.dsh/dsh-ssh.json store shape). */
+/** One stored host entry (the $DSH_HOME/dsh-ssh.json store shape). */
 export interface SshHostEntry {
   /** Stable, user-chosen identifier used by every operation. */
   alias: string

@@ -387,5 +387,16 @@
     "descriptionEn": "Postman-style API debug panel: host-side HTTP requests without browser CORS limits, plus WebSocket / raw TCP / gRPC, auth helpers, env variables, cURL import/export, request collections and history.",
     "repo": "https://github.com/lemonmmice/dsh-postman",
     "category": "tools"
+  },
+  {
+    "id": "dsh-workspace-api",
+    "name": "企业信息查询 Agent",
+    "nameEn": "Workspace API",
+    "author": "liaoyonghong",
+    "description": "把企业文档变成可对话的聊天机器人：员工或应用系统用自然语言提问，AI 代理查阅文档后带出处回答；同时提供 workspace 内容 HTTP API。",
+    "descriptionEn": "Turn enterprise documents into a conversational Q&A bot: employees or apps ask in natural language and an AI agent answers with cited sources; also exposes a workspace content HTTP API.",
+    "repo": "https://github.com/liaoyonghong/dsh-workspace-api",
+    "npm": "dsh-workspace-api",
+    "category": "knowledge"
   }
 ]

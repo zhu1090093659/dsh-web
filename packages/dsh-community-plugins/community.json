@@ -85,10 +85,10 @@
     "id": "dsh-mnemon",
     "name": "Mnemon 记忆系统",
     "nameEn": "Mnemon Memory",
-    "author": "omdsh-dev",
+    "author": "Grivn",
     "description": "与 Mnemon CLI 集成的跨 Agent、本地优先持久记忆插件：用户画像 / 工作记忆 / 项目档案与长期 Memory Spaces，支持导入导出。",
     "descriptionEn": "A cross-agent, local-first persistent memory plugin integrating the Mnemon CLI: profiles, working memory, project documents and long-term Memory Spaces, with import and export.",
-    "repo": "https://github.com/omdsh-dev/dsh-mnemon",
+    "repo": "https://github.com/Grivn/dsh-mnemon",
     "npm": "dsh-mnemon",
     "category": "knowledge"
   },

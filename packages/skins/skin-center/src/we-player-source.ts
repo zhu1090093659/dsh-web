@@ -40,6 +40,12 @@ export const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
              canvas.getContext('experimental-webgl', { alpha: true, depth: true });
   if (!gl) return;
 
+  // A lost WebGL context (driver or compositor churn, e.g. theme switches)
+  // would otherwise leave the canvas blank forever. Allow restoration and
+  // reload to rebuild all shader/geometry state cleanly.
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault() })
+  canvas.addEventListener('webglcontextrestored', () => { window.location.reload() })
+
   let sceneData = null;
   let isPaused = false;
   let fitMode = 'cover';

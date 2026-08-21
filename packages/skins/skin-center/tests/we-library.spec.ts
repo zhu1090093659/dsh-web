@@ -4,15 +4,19 @@
  * synthesis), the import store, and inventory update detection — all against
  * synthetic fixture trees in a temp dir; nothing real is ever touched.
  */
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
+  allLibrariesFromVdf,
   buildInventory,
   expandUser,
   inferType,
   librariesFromVdf,
+  libraryOwnsAppFromManifest,
+  locateWallpaperEngine,
+  owningLibraries,
   readImportedManifest,
   readProjectJson,
   scanImportStore,
@@ -62,6 +66,124 @@ describe('librariesFromVdf', () => {
       '}',
     ].join('\n')
     expect(librariesFromVdf(vdf)).toEqual(['C:\\Steam'])
+  })
+})
+
+describe('allLibrariesFromVdf', () => {
+  it('collects every library root, ignoring the per-app apps cache', () => {
+    const vdf = [
+      '"libraryfolders"',
+      '{',
+      '  "0"',
+      '  {',
+      '    "path"    "C:\\\\Steam"',
+      '    "apps"',
+      '    {',
+      '      "431960"    "123"',
+      '    }',
+      '  }',
+      '  "1"',
+      '  {',
+      '    "path"    "D:\\\\SteamLibrary"',
+      '    "apps"',
+      '    {',
+      '      "570"    "456"',
+      '    }',
+      '  }',
+      '}',
+    ].join('\n')
+    expect(allLibrariesFromVdf(vdf)).toEqual(['C:\\Steam', 'D:\\SteamLibrary'])
+  })
+
+  it('dedupes repeated roots', () => {
+    const vdf = '"path" "C:\\\\Steam"\n"path" "C:\\\\Steam"\n'.replace(/\\\\/g, '\\')
+    expect(allLibrariesFromVdf(vdf)).toEqual(['C:\\Steam'])
+  })
+})
+
+describe('libraryOwnsAppFromManifest', () => {
+  it('decides ownership from the durable appmanifest instead of the vdf cache', () => {
+    const library = join(root, 'lib')
+    mkdirSync(join(library, 'steamapps'), { recursive: true })
+    writeFileSync(join(library, 'steamapps', 'appmanifest_431960.acf'), '"appid" "431960"', 'utf8')
+    expect(libraryOwnsAppFromManifest(library, '431960')).toBe(true)
+    expect(libraryOwnsAppFromManifest(join(root, 'other'), '431960')).toBe(false)
+  })
+})
+
+describe('owningLibraries', () => {
+  it('adds a library whose appmanifest exists even when the vdf apps cache omits 431960', () => {
+    const steam = join(root, 'steam')
+    const library = join(root, 'G', 'SteamLibrary')
+    mkdirSync(join(steam, 'steamapps'), { recursive: true })
+    mkdirSync(join(library, 'steamapps'), { recursive: true })
+    writeFileSync(join(steam, 'steamapps', 'libraryfolders.vdf'), [
+      '"libraryfolders"',
+      '{',
+      '  "0"',
+      '  {',
+      '    "path"    "' + library.replace(/\\/g, '\\\\') + '"',
+      '    "apps"',
+      '    {',
+      '    }',
+      '  }',
+      '}',
+    ].join('\n'), 'utf8')
+    // The durable manifest exists, but the vdf apps block does not name it.
+    writeFileSync(join(library, 'steamapps', 'appmanifest_431960.acf'), '"appid" "431960"', 'utf8')
+    expect(owningLibraries({ exists: existsSync, registry: () => steam })).toEqual([library])
+  })
+
+  it('keeps the vdf cache match without an appmanifest', () => {
+    const steam = join(root, 'steam2')
+    const library = join(root, 'lib2')
+    mkdirSync(join(steam, 'steamapps'), { recursive: true })
+    mkdirSync(join(library, 'steamapps'), { recursive: true })
+    writeFileSync(join(steam, 'steamapps', 'libraryfolders.vdf'), [
+      '"libraryfolders"',
+      '{',
+      '  "0"',
+      '  {',
+      '    "path"    "' + library.replace(/\\/g, '\\\\') + '"',
+      '    "apps"',
+      '    {',
+      '      "431960"    "123"',
+      '    }',
+      '  }',
+      '}',
+    ].join('\n'), 'utf8')
+    expect(owningLibraries({ exists: existsSync, registry: () => steam })).toEqual([library])
+  })
+})
+
+describe('locateWallpaperEngine', () => {
+  it('finds the install in a library whose vdf apps cache omits 431960', () => {
+    const steam = join(root, 'steam3')
+    const library = join(root, 'lib3')
+    const install = join(library, 'steamapps', 'common', 'wallpaper_engine')
+    mkdirSync(join(steam, 'steamapps'), { recursive: true })
+    mkdirSync(install, { recursive: true })
+    writeFileSync(join(install, 'wallpaper32.exe'), 'x', 'utf8')
+    writeFileSync(join(steam, 'steamapps', 'libraryfolders.vdf'), [
+      '"libraryfolders"',
+      '{',
+      '  "0"',
+      '  {',
+      '    "path"    "' + library.replace(/\\/g, '\\\\') + '"',
+      '    "apps"',
+      '    {',
+      '    }',
+      '  }',
+      '}',
+    ].join('\n'), 'utf8')
+    expect(locateWallpaperEngine({ env: { OS: 'Windows_NT' }, exists: existsSync, registry: () => steam })).toBe(install)
+  })
+
+  it('returns null when nothing is found', () => {
+    const steam = join(root, 'steam4')
+    mkdirSync(join(steam, 'steamapps'), { recursive: true })
+    writeFileSync(join(steam, 'steamapps', 'libraryfolders.vdf'), '"libraryfolders"\n{\n}\n', 'utf8')
+    expect(locateWallpaperEngine({ env: { OS: 'Windows_NT' }, exists: existsSync, registry: () => steam })).toBeNull()
   })
 })
 

@@ -151,7 +151,15 @@ export function steamPathFromRegistry(
   }
 }
 
-/** Parse libraryfolders.vdf for library roots that own app 431960. */
+/**
+ * Parse libraryfolders.vdf for library roots that own app 431960.
+ *
+ * The vdf's per-library `apps` block is a Steam-maintained cache and can lag
+ * reality (a library that owns app 431960 — its `steamapps/appmanifest_431960.acf`
+ * exists — is not always listed there, e.g. when Steam has not rewritten the
+ * file since the install). So this parser alone is not the authority; the
+ * app-manifest probe (libraryOwnsAppFromManifest) is the fallback.
+ */
 export function librariesFromVdf(vdfText: string): string[] {
   const libraries: string[] = []
   let current: string | null = null
@@ -169,10 +177,41 @@ export function librariesFromVdf(vdfText: string): string[] {
 }
 
 /**
+ * Parse every library root listed in libraryfolders.vdf, regardless of
+ * whether its `apps` block names app 431960. The vdf is the authoritative
+ * list of Steam library locations; the per-app cache is not.
+ */
+export function allLibrariesFromVdf(vdfText: string): string[] {
+  const libraries: string[] = []
+  for (const line of vdfText.split(/\r?\n/)) {
+    const match = /^\s*"path"\s+"([^"]+)"\s*$/.exec(line)
+    if (match) {
+      const root = match[1].replace(/\\\\/g, '\\')
+      if (!libraries.includes(root)) libraries.push(root)
+    }
+  }
+  return libraries
+}
+
+/**
+ * Whether a Steam library root owns app `appid`, decided by the durable
+ * install manifest (`steamapps/appmanifest_<appid>.acf`) rather than the
+ * vdf's apps cache. Injectable for tests.
+ */
+export function libraryOwnsAppFromManifest(
+  library: string,
+  appid: string,
+  exists: (path: string) => boolean = existsSync,
+): boolean {
+  return exists(joinPath(library, 'steamapps', `appmanifest_${appid}.acf`))
+}
+
+/**
  * Locate the Wallpaper Engine install directory (holds wallpaper32.exe).
- * Probes: registry Steam root, well-known paths, then every library that
- * owns the app. Non-Windows platforms return null (WE ships Windows-only;
- * manual library folders are the fallback there).
+ * Probes: registry Steam root, well-known paths, then every library listed
+ * in any libraryfolders.vdf (whether or not its apps cache names 431960 —
+ * the exe itself is the authority). Non-Windows platforms return null (WE
+ * ships Windows-only; manual library folders are the fallback there).
  * @param opts.env - environment (tests inject).
  * @param opts.exists - existence probe (tests inject).
  */
@@ -191,7 +230,7 @@ export function locateWallpaperEngine(opts: {
       const vdf = joinPath(probe, 'steamapps', 'libraryfolders.vdf')
       if (exists(vdf)) {
         try {
-          libraries.push(...librariesFromVdf(readFileSync(vdf, 'utf8')))
+          libraries.push(...allLibrariesFromVdf(readFileSync(vdf, 'utf8')))
         } catch {
           // Unreadable vdf: skip this probe.
         }
@@ -212,6 +251,11 @@ export function locateWallpaperEngine(opts: {
 /**
  * Steam library roots that own app 431960 (for the workshop content dir).
  * Empty on non-Windows or when nothing is found.
+ *
+ * Two sources are merged and deduped:
+ *   - libraries whose vdf `apps` block names 431960 (fast cache hit), and
+ *   - every library whose `steamapps/appmanifest_431960.acf` exists (the
+ *     durable fact, covering stale vdf caches that omit the app).
  */
 export function owningLibraries(opts: {
   exists?: (path: string) => boolean
@@ -221,18 +265,23 @@ export function owningLibraries(opts: {
   if (process.platform !== 'win32' && !opts.exists) return []
   const registry = opts.registry ?? (() => steamPathFromRegistry())
   const probes = [...new Set([registry(), ...STEAM_PROBE_DIRS].filter((d): d is string => !!d))]
-  const libraries: string[] = []
+  const owning = new Set<string>()
   for (const probe of probes) {
     const vdf = joinPath(probe, 'steamapps', 'libraryfolders.vdf')
-    if (exists(vdf)) {
-      try {
-        libraries.push(...librariesFromVdf(readFileSync(vdf, 'utf8')))
-      } catch {
-        // Skip.
-      }
+    if (!exists(vdf)) continue
+    let vdfText: string
+    try {
+      vdfText = readFileSync(vdf, 'utf8')
+    } catch {
+      // Skip unreadable vdf.
+      continue
+    }
+    for (const root of librariesFromVdf(vdfText)) owning.add(root)
+    for (const root of allLibrariesFromVdf(vdfText)) {
+      if (libraryOwnsAppFromManifest(root, WE_APPID, exists)) owning.add(root)
     }
   }
-  return [...new Set(libraries)]
+  return [...owning]
 }
 
 /** Infer the wallpaper type from the main file extension (project.json fallback). */

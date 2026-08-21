@@ -239,6 +239,38 @@ describe('HostTaskLedger', () => {
     expect(message).toContain(lockFile)
   })
 
+  it('takes over a legacy lock whose recorded pid is dead (power-loss leftover)', () => {
+    const root = tempRoot()
+    const lockFile = join(root, 'ledger-v2.lock')
+    // Issue #886: an unclean shutdown (power loss) leaves a lock whose pid
+    // is no longer alive after the next boot. The dead pid must not block
+    // startup: the lock is stale by liveness alone.
+    const dead = spawnSync(process.execPath, ['-e', ''], { timeout: 5000 })
+    expect(dead.pid).toBeDefined()
+    writeFileSync(lockFile, JSON.stringify({ pid: dead.pid, token: 'power-loss-owner' }), { encoding: 'utf8' })
+    const ledger = new HostTaskLedger(root, () => NOW)
+    expect(ledger.state().scheduler.ledgerId).toBeDefined()
+    ledger.dispose()
+  })
+
+  it('names the lock file and a recovery hint when the lock is unreadable', () => {
+    const root = tempRoot()
+    const lockFile = join(root, 'ledger-v2.lock')
+    // A power-loss mid-write can leave a truncated lock. The same event
+    // killed the writer, so the next start must fail closed but explain
+    // exactly how to recover instead of a bare "unreadable" error.
+    writeFileSync(lockFile, '{not-json', { encoding: 'utf8' })
+    let message = ''
+    try {
+      new HostTaskLedger(root, () => NOW)
+    } catch (error) {
+      message = (error as Error).message
+    }
+    expect(message).toContain('unreadable')
+    expect(message).toContain('remove')
+    expect(message).toContain(lockFile)
+  })
+
   it('takes over a lock owned by an unreaped zombie process', () => {
     const zombie = spawnZombie()
     if (zombie === undefined) return // environment reaps orphans; cannot exercise

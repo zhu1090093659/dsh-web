@@ -662,7 +662,9 @@ export class HostTaskLedger {
           if (typeof owner.startedAt === 'number') ownerStartedAt = owner.startedAt
           ownerExact = owner.probe === 'exact'
         } catch {
-          throw new Error(`task-board ledger lock is unreadable: ${this.lockFile}`)
+          // A power-loss mid-write can leave a truncated lock; the same event
+          // killed the writer, so fail closed but explain the recovery.
+          throw new Error(`task-board ledger lock is unreadable: ${this.lockFile}; if this is a leftover from an unclean shutdown and no other DSH host is running, remove it manually and retry`)
         }
         if (pid !== undefined && processIsAlive(pid)) {
           const actualStartedAt = pid === process.pid ? ownProcessStartTimeMs() : processStartTimeMs(pid)

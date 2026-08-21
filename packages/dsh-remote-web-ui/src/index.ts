@@ -353,7 +353,7 @@ function applyImpl(ctx: Context, config?: Config): void {
     },
   })
   const routes = [
-    ...makeRoutes({ service, lanAddresses }),
+    ...makeRoutes({ service, lanAddresses, requirePairingForLan: () => resolve().requirePairingForLan }),
     ...makeMobileRoutes(),
     ...(apiProxy !== undefined
       ? makeMobileApiRoutes({ service, apiProxy, mobileEnterToSend: () => resolve().mobileEnterToSend })

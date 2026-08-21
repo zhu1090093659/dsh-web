@@ -36,6 +36,22 @@ export interface IssueLoopbackRequired {
 
 export type IssueResponse = IssueResult | IssueLanRequired | IssueUnknownAddress | IssueLoopbackRequired
 
+/** Public policy fields returned by the pairing status endpoint. */
+export interface PairGatePolicy {
+  requirePairingForLan: boolean
+}
+
+/** Read the host-authoritative desktop pairing policy. */
+export async function readPairGatePolicy(): Promise<PairGatePolicy> {
+  const response = await fetch('/api/pair/status')
+  if (!response.ok) throw new Error(`remote-web-ui: status failed with ${String(response.status)}`)
+  const value = await response.json() as { requirePairingForLan?: unknown }
+  if (typeof value.requirePairingForLan !== 'boolean') {
+    throw new Error('remote-web-ui: status omitted requirePairingForLan')
+  }
+  return { requirePairingForLan: value.requirePairingForLan }
+}
+
 /** accept() refusal codes. */
 export type AcceptFailure = { ok: false; code: 'invalid' | 'used' | 'forbidden' }
 

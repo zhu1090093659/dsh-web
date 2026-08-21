@@ -266,6 +266,26 @@ describe('/api/pair routes', () => {
     }
   })
 
+  it('publishes the live desktop gate policy without exposing sensitive state', async () => {
+    const service = makeService()
+    let requirePairingForLan = false
+    const { port, close } = await serve(makeRoutes({
+      service,
+      lanAddresses: ['192.168.1.5'],
+      requirePairingForLan: () => requirePairingForLan,
+    }))
+    try {
+      const disabled = await call(port, 'GET', '/api/pair/status', { host: '192.168.1.5:3080' })
+      expect(disabled.body).toMatchObject({ ok: true, paired: false, requirePairingForLan: false })
+      requirePairingForLan = true
+      const enabled = await call(port, 'GET', '/api/pair/status', { host: '192.168.1.5:3080' })
+      expect(enabled.body).toMatchObject({ ok: true, paired: false, requirePairingForLan: true })
+      expect(enabled.body).not.toHaveProperty('deviceCount')
+    } finally {
+      await close()
+    }
+  })
+
   it('redacts the pairing oracle fields from unpaired status callers', async () => {
     const service = makeService()
     service.setPublicBaseUrl('https://phone.example.com')
@@ -276,7 +296,7 @@ describe('/api/pair routes', () => {
       // No cookie: only pairing-relevant fields, no token/device/tunnel oracle.
       const unpaired = await call(port, 'GET', '/api/pair/status', { host: '192.168.1.5:3080' })
       expect(unpaired.status).toBe(200)
-      expect(unpaired.body).toMatchObject({ ok: true, paired: false, phase: 'waiting', lanAvailable: true })
+      expect(unpaired.body).toMatchObject({ ok: true, paired: false, requirePairingForLan: true, phase: 'waiting', lanAvailable: true })
       expect(unpaired.body).not.toHaveProperty('tokenId')
       expect(unpaired.body).not.toHaveProperty('tokenExpiresAt')
       expect(unpaired.body).not.toHaveProperty('deviceCount')

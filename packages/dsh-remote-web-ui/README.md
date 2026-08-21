@@ -476,6 +476,10 @@ opens at `http://127.0.0.1`.
   unpair one at a time. Credential-bearing device ids and raw User-Agent
   values are not rendered. `/api/pair/status` never returns the device id
   list, even to a paired phone.
+- **The desktop gate policy is public**: `/api/pair/status` exposes only the
+  boolean `requirePairingForLan` policy so a remote desktop can choose the
+  correct transport before its settings scope is available. This field is
+  not a credential and does not expose tokens, devices, counts, or tunnel URLs.
 - **Quick-tunnel hostnames change per run**: a `trycloudflare.com` URL is
   random on every `cloudflared` start, so `publicBaseUrl` must be updated
   whenever the tunnel restarts. A named tunnel (fixed hostname) avoids the

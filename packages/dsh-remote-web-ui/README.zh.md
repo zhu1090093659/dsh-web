@@ -173,6 +173,7 @@ pnpm run build
 - **撤销是逐请求的**：已配对手机请求已在 停止 落地时在途，完成该请求；下一个 403。
 - **已配对设备会话默认落盘**：设备会话（不含一次性二维码 token）写入 `$DSH_HOME/remote-web-ui-devices.json`（0600，临时文件加原子 rename）。已配对 cookie 在重启 `dsh web` 后仍然有效。刷新二维码仍会签发新 token；重启不会恢复当前二维码。点「停止」或单台「取消配对」会立即撤销并同步落盘。超过 `idleExpireMs`（默认 7 天，无心跳或门控请求）的会话会被删除，必须重新扫码。设备 id 即会话凭证（网关凭 cookie 中的设备 id 放行请求）。需要时可用 `devicesFile` 覆盖为其他绝对路径。变更 `cookieName` 会使旧设备失效（预期行为）。
 - **设备名单仅本机可见**：配对面板根据 User-Agent 显示精简设备名称（例如 `Windows · Chrome`）、在线/离线状态与最近活动时间，并可单台取消配对。界面不渲染作为会话凭据的设备 id 或原始 User-Agent。`/api/pair/status` 即使对已配对手机也不返回设备 id 名单。
+- **桌面门控策略是公开字段**：`/api/pair/status` 只公开布尔值 `requirePairingForLan`，让远程桌面在设置作用域不可用前选择正确传输通道。该字段不是凭据，也不暴露令牌、设备、计数或隧道 URL。
 - **Quick-tunnel hostname 每次运行变化**：`trycloudflare.com` URL 每次 `cloudflared` 启动随机，所以隧道重启时 `publicBaseUrl` 必须随之更新。named tunnel（固定 hostname）避免这种抖动，也是持久安装 PWA 地址所必需的。
 - **PWA 为在线优先**：只缓存静态壳和离线页。全部移动端远程控制能力仍要求运行中的 DSH host；离线时不提供会话、API 响应或命令。
 - **开发 HMR**：`dsh web --dev` 按路径轮询每个 roster bundle，因此重建本包（其自己的 `tsdown --watch`）会热重载 client bundle；无 harness 侧 watcher。

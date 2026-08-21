@@ -316,6 +316,13 @@
   font-size: 12px;
 }
 
+select.formInput {
+  /* Match the input controls exactly: the native select renders shorter
+     than the padded inputs, breaking the form's vertical rhythm. */
+  height: 30px;
+  padding: 0 8px;
+}
+
 .formTextarea {
   min-height: 120px;
   resize: vertical;

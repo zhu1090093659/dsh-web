@@ -239,9 +239,10 @@ export function createPluginManagerFace(ctx: ClientContext): PluginManagerFace {
         // Prefer the host verdict: the gateway's /mode route reports whether
         // the official installer channels exist, so the direct channel probe
         // below (which 405s into the browser console on the npm web runtime)
-        // only runs when the host half is absent.
+        // only runs when the host half is absent or explicitly returns null
+        // for a desktop runtime whose services are registered in-process.
         try {
-          const mode = await gatewayJson(`${GATEWAY_PREFIX}/mode`) as { official?: boolean }
+          const mode = await gatewayJson(`${GATEWAY_PREFIX}/mode`) as { official?: boolean | null }
           if (mode.official === true) return 'official' as const
           if (mode.official === false) return 'gateway' as const
         } catch {

@@ -23,8 +23,8 @@ function captureResponse(): { res: ServerResponse; body: () => string; status: (
   return { res, body: () => text, status: () => status }
 }
 
-function modeHandler(official: () => Promise<boolean>) {
-  const facts = { profileName: 'web', profileDir: '', patchPath: '', packageJsonPath: '' } as ProfileFacts
+function modeHandler(official: () => Promise<boolean>, desktop = false) {
+  const facts = { profileName: 'web', profileDir: '', patchPath: '', packageJsonPath: '', desktop } as ProfileFacts
   const gateway = {} as CliGateway
   const routes = makeGatewayRoutes({ facts, gateway, cliAvailable: () => true, officialChannels: official })
   return routes.find(route => route.path === '/api/plugin-manager/mode')!.handler
@@ -42,5 +42,11 @@ describe('/mode route', () => {
     const { res, body } = captureResponse()
     await modeHandler(async () => false)(loopbackGet(), res)
     expect(JSON.parse(body())).toEqual({ official: false })
+  })
+
+  it('defers to the browser capability probe on desktop runtimes', async () => {
+    const { res, body } = captureResponse()
+    await modeHandler(async () => false, true)(loopbackGet(), res)
+    expect(JSON.parse(body())).toEqual({ official: null })
   })
 })

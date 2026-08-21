@@ -259,7 +259,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
 
   // One verdict per host process: the browser half reads it instead of
   // probing the official channel, whose route 405s on the npm web runtime.
-  let modePromise: Promise<{ official: boolean }> | undefined
+  let modePromise: Promise<{ official: boolean | null }> | undefined
   const probeOfficialChannels = (): Promise<boolean> => {
     const binary = findDshBinary()
     if (binary === null) return Promise.resolve(false)
@@ -267,8 +267,15 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
   }
   const modeHandler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     if (modePromise === undefined) {
-      const probe = deps.officialChannels ?? probeOfficialChannels
-      modePromise = probe().then(official => ({ official })).catch(() => ({ official: false }))
+      if (facts.desktop) {
+        // Desktop registers installer services programmatically, so the CLI
+        // dump cannot see them. Null tells the browser to perform its existing
+        // direct RPC capability probe before falling back to this gateway.
+        modePromise = Promise.resolve({ official: null })
+      } else {
+        const probe = deps.officialChannels ?? probeOfficialChannels
+        modePromise = probe().then(official => ({ official })).catch(() => ({ official: false }))
+      }
     }
     sendJson(res, 200, await modePromise)
   }

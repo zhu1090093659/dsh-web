@@ -69,7 +69,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-plugin-manager
 
 - 信任边界是 loopback 门禁：每条网关路由都要求 loopback socket 地址、loopback Host 头与非跨站来源（socket + Host + Origin + `sec-fetch-site` 四重），与官方安装器通道同一权威。远程来源的浏览器没有可达路径。
 - 变更类路由（install / update / remove / set-enabled）不带 token：loopback 权威即本机用户，与官方通道同模型。因此任何本机进程都能驱动插件安装与卸载，且 npm 安装会执行包的 install 脚本——请将本网关视为「设计上即本机代码执行」，绝不暴露到 loopback 之外。
-- 安装 spec 与包 id 含 shell 元字符（`& | < >`、引号、反引号、控制字符）时一律拒绝。网关在所有平台无 shell spawn 官方 CLI；Windows 下把 npm 生成的 `dsh.cmd` 解析为 `node.exe` + 包内 `bin.js`，含空格路径不被截断、`cmd.exe` 不再二次解析参数。上游残留说明：官方 CLI 内部向 pnpm 转发时在 Windows 上仍走 `cmd.exe` shell，本仓库无法改变——元字符校验即本仓库内的缓解。
+- 安装 spec 与包 id 含命令行展开字符或控制字符时一律拒绝。Windows 下，npm shim 会解析为 `node.exe` 加包内 `bin.js`；DSH Desktop 打包 shim 附近没有 npm 布局，因此通过带完整预引用、逐字参数封套的 `cmd.exe /d /s /c` 执行。桌面 profile 从打包启动器环境值或持久化的 profile 选择中读取，进程内官方安装器则由浏览器 RPC 能力探测确认。
 - 变更经同一队列串行，并发任务的 before/after profile 快照绝不交错。安装只有在依赖真实落入 profile 后才判 done（卸载以依赖消失为准），绝不轻信成功退出码。
 - 启停操作会在该变更队列内重新读取最新 profile 清单，并在写入前以 `404` 拒绝过期或未知的包 id，因此卸载后遗留在面板里的旧行不会制造孤儿 `disabled` 覆盖。
 - 冲突处置是 owner-aware 的：重复入口 id 或引用不可解析包的 insert 行会经官方 remove 路径回滚**新**包；网关绝不对共享 id 写 `disabled` 行（那既阻止不了 loader 的重复检查，又会误伤现有插件）。

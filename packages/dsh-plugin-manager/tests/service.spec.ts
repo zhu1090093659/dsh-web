@@ -98,6 +98,14 @@ describe('pluginManager cordis service', () => {
     expect(cb).toHaveBeenCalledTimes(2)
   })
 
+  it('probes the in-process official channel when desktop mode is indeterminate', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ official: null }), { status: 200 })))
+    const { face, rpcCall } = setup()
+
+    await expect(face.list()).resolves.toEqual([plugin])
+    expect(rpcCall).toHaveBeenCalledWith('/plugin-installer', 'list', {})
+  })
+
   it('does not notify when a mutation fails, and a throwing listener never breaks the others', async () => {
     stubOfficialMode()
     const { face, rpcCall } = setup()

@@ -7,7 +7,7 @@
  * @module @linxin666/dsh-client-ui-plugin-manager/host
  */
 
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { copyFile, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { resolveDshHome } from './dsh-home.ts'
@@ -22,6 +22,29 @@ export interface ProfileFacts {
   patchPath: string
   /** Absolute path of the profile's package.json. */
   packageJsonPath: string
+  /** True when the profile was inferred from the packaged desktop host. */
+  desktop?: boolean
+}
+
+/** Read the packaged desktop app's persisted active profile, when present. */
+export function desktopSelectedProfile(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const explicit = env.DSH_DESKTOP_DEFAULT_PROFILE?.trim()
+  if (explicit) return explicit
+  const appRoots = [
+    env.APPDATA && join(env.APPDATA, 'DSH Desktop'),
+    env.XDG_CONFIG_HOME && join(env.XDG_CONFIG_HOME, 'DSH Desktop'),
+    env.HOME && join(env.HOME, 'Library', 'Application Support', 'DSH Desktop'),
+    env.HOME && join(env.HOME, '.config', 'DSH Desktop'),
+  ].filter((value): value is string => typeof value === 'string')
+  for (const root of appRoots) {
+    try {
+      const parsed = JSON.parse(readFileSync(join(root, 'profile-selection', 'state.json'), 'utf8')) as { active?: unknown }
+      if (typeof parsed.active === 'string' && parsed.active.trim() !== '') return parsed.active.trim()
+    } catch {
+      // Missing or malformed desktop state: try the next platform location.
+    }
+  }
+  return undefined
 }
 
 /**
@@ -36,12 +59,20 @@ export interface ProfileFacts {
 export function resolveProfile(argv: readonly string[] = process.argv, env: NodeJS.ProcessEnv = process.env): ProfileFacts {
   const flagIndex = argv.indexOf('--profile')
   let name: string | undefined
+  let desktop = false
   if (flagIndex !== -1 && argv[flagIndex + 1] !== undefined && argv[flagIndex + 1] !== '') {
     name = argv[flagIndex + 1]
   } else if (env.DSH_PROFILE !== undefined && env.DSH_PROFILE.trim() !== '') {
     name = env.DSH_PROFILE.trim()
+    // A Desktop workaround may set DSH_PROFILE globally. Its in-process boot
+    // still has only the executable in argv; keep desktop channel probing in
+    // that shape, while ordinary CLI invocations remain non-desktop.
+    desktop = argv.length <= 1 && desktopSelectedProfile(env) === name
   } else if (argv.includes('web')) {
     name = 'web'
+  } else {
+    name = desktopSelectedProfile(env)
+    desktop = name !== undefined
   }
   if (name === undefined) {
     throw new Error('plugin-manager: cannot determine the boot profile; pass --profile <name> or set DSH_PROFILE')
@@ -56,6 +87,7 @@ export function resolveProfile(argv: readonly string[] = process.argv, env: Node
     profileDir,
     patchPath: join(profileDir, 'cordis.patch.yml'),
     packageJsonPath: join(profileDir, 'package.json'),
+    desktop,
   }
 }
 

@@ -46,6 +46,27 @@ const WS_PATHS = new Set([
   '/api/dsh-ssh/terminal',
 ])
 
+/** Minimal settings snapshot used by the remote channel decision. */
+export interface RemoteChannelSettingsSnapshot {
+  status: 'ready' | 'loading' | 'unavailable' | string
+  value?: { enabled?: boolean; requirePairingForLan?: boolean }
+}
+
+/** Decide whether a remote desktop channel is required from local or host policy. */
+export function remoteChannelRequired(
+  hostname: string,
+  snapshot: RemoteChannelSettingsSnapshot,
+  hostPairingPolicy: boolean | undefined,
+): boolean {
+  if (isLoopbackHostname(hostname)) return false
+  if (snapshot.status === 'ready') {
+    return (snapshot.value?.enabled ?? true) && (snapshot.value?.requirePairingForLan ?? true)
+  }
+  // Install provisionally while the host probe is pending so early SDK calls
+  // cannot escape onto the plain remote origin. A confirmed false retires it.
+  return hostPairingPolicy !== false
+}
+
 /**
  * Browser-safe loopback classification for the page origin (the SDK client
  * exports its own; this copy keeps the module dependency-free).

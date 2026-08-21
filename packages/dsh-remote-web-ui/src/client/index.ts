@@ -23,8 +23,8 @@ import { PairFailedNotice } from './PairFailedNotice.tsx'
 import { RemoteSettingsCard, RemoteSettingsCardController, type RemoteSettings } from './RemoteSettingsCard.tsx'
 import { en, zh, type RemoteKey } from './locales.ts'
 import { PAIR_FAILED_MARKER, runPairBootFlow } from './deep-link.ts'
-import { sendHeartbeat } from './pair-api.ts'
-import { channelTransition, installRemoteChannel, isLoopbackHostname } from './remote-channel.ts'
+import { readPairGatePolicy, sendHeartbeat } from './pair-api.ts'
+import { channelTransition, installRemoteChannel, isLoopbackHostname, remoteChannelRequired } from './remote-channel.ts'
 import { FenceNotice } from './FenceNotice.tsx'
 
 export type { RemoteEntryProps } from './RemoteEntry.tsx'
@@ -201,6 +201,8 @@ export function apply(ctx: ClientContext): void {
   // rewritten onto this plugin's gated /remote/api prefix (remote-channel.ts)
   // while the fence setting demands it. Loopback origins are untouched.
   let disposeChannel: (() => void) | undefined
+  let hostPairingPolicy: boolean | undefined
+  let unpairedWhilePolicyPending = false
   let fenceNotice: { unmount: () => void; node: HTMLElement } | undefined
   const showFenceNotice = (): void => {
     if (fenceNotice !== undefined) return
@@ -214,22 +216,23 @@ export function apply(ctx: ClientContext): void {
     fenceNotice?.unmount()
     fenceNotice = undefined
   }
-  const channelActive = (): boolean => {
-    if (isLoopbackHostname(window.location.hostname)) return false
-    // A not-yet-loaded (or unavailable) settings snapshot falls back to the
-    // schema defaults — enabled and requirePairingForLan are both true, and
-    // on a remote origin the snapshot may never load (its own transport is
-    // what the channel gates), so waiting for 'ready' here would deadlock
-    // the channel off exactly where it is needed most.
-    const snapshot = settingsScope.getSnapshot()
-    const value = snapshot.status === 'ready' ? snapshot.value : undefined
-    return (value?.enabled ?? true) && (value?.requirePairingForLan ?? true)
+  const handleUnpaired = (): void => {
+    if (settingsScope.getSnapshot().status !== 'ready' && hostPairingPolicy === undefined) {
+      unpairedWhilePolicyPending = true
+      return
+    }
+    showFenceNotice()
   }
+  const channelActive = (): boolean => remoteChannelRequired(
+    window.location.hostname,
+    settingsScope.getSnapshot(),
+    hostPairingPolicy,
+  )
   const syncChannel = (): void => {
     const transition = channelTransition(channelActive(), disposeChannel !== undefined)
     if (transition === 'install') {
       disposeChannel = ctx.effect(() => {
-        const restore = installRemoteChannel(window, { onUnpaired: showFenceNotice, onPaired: hideFenceNotice })
+        const restore = installRemoteChannel(window, { onUnpaired: handleUnpaired, onPaired: hideFenceNotice })
         return restore
       }, 'remote-web-ui: remote desktop channel')
     } else if (transition === 'retire' && disposeChannel !== undefined) {
@@ -246,6 +249,20 @@ export function apply(ctx: ClientContext): void {
   }
   settingsScope.subscribe(syncChannel)
   syncChannel()
+  if (!isLoopbackHostname(window.location.hostname) && settingsScope.getSnapshot().status !== 'ready') {
+    void readPairGatePolicy().then((policy) => {
+      hostPairingPolicy = policy.requirePairingForLan
+      syncChannel()
+      if (hostPairingPolicy && unpairedWhilePolicyPending) showFenceNotice()
+      unpairedWhilePolicyPending = false
+    }).catch(() => {
+      // Fail closed when the policy endpoint is unavailable or malformed.
+      hostPairingPolicy = true
+      syncChannel()
+      if (unpairedWhilePolicyPending) showFenceNotice()
+      unpairedWhilePolicyPending = false
+    })
+  }
 
   // One-time failed-pair toast. The accept result lands asynchronously, so
   // the marker check is deferred past the accept round trip.

@@ -6,7 +6,7 @@ import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-clie
 import { CustomThemeController } from '../src/client/custom-theme-controller.ts'
 import { CUSTOM_THEME_DEFAULTS, type CustomThemeConfig } from '../src/core/custom-theme.ts'
 
-function fakeScope(initial: Partial<CustomThemeConfig> = {}): {
+function fakeScope(initial: Partial<CustomThemeConfig> = {}, rejectWrites = false): {
   scope: SettingsScope<CustomThemeConfig>
   calls: Array<{ field: string; value: unknown }>
 } {
@@ -29,6 +29,7 @@ function fakeScope(initial: Partial<CustomThemeConfig> = {}): {
       return () => { listeners.delete(listener) }
     },
     set: async (field, next) => {
+      if (rejectWrites) throw new Error('settings write rejected')
       calls.push({ field, value: next })
       value = { ...value, [field]: next }
       for (const listener of listeners) listener()
@@ -187,6 +188,35 @@ describe('CustomThemeController', () => {
       accent: '#123456',
       contrast: 80,
     })
+    controller.dispose()
+  })
+
+  it('surfaces rejected profile writes and restores the persisted value', async () => {
+    const { scope } = fakeScope(CUSTOM_THEME_DEFAULTS, true)
+    const controller = new CustomThemeController(scope, { doc: document })
+
+    controller.setProfileValue('light', 'accent', '#123456')
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(controller.profile('light').accent).toBe(CUSTOM_THEME_DEFAULTS.light.accent)
+    expect(controller.getState().writeError).toBe('settings write rejected')
+    controller.dispose()
+  })
+
+  it('surfaces rejected reset writes and restores the persisted profile', async () => {
+    const { scope } = fakeScope({
+      ...CUSTOM_THEME_DEFAULTS,
+      light: { ...CUSTOM_THEME_DEFAULTS.light, accent: '#123456' },
+    }, true)
+    const controller = new CustomThemeController(scope, { doc: document })
+
+    controller.reset('light')
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(controller.profile('light').accent).toBe('#123456')
+    expect(controller.getState().writeError).toBe('settings write rejected')
     controller.dispose()
   })
 

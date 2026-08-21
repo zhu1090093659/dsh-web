@@ -65,6 +65,7 @@ function render(scheme: 'light' | 'dark' = 'light'): void {
       isActive={false}
       isTrying={false}
       busy={false}
+      disabled={false}
       onTryOn={() => {}}
       onExitTryOn={() => {}}
       onApply={() => {}}
@@ -117,6 +118,7 @@ describe('CustomThemeCard', () => {
         isActive={false}
         isTrying={false}
         busy={false}
+        disabled={false}
         onTryOn={onTryOn}
         onExitTryOn={() => {}}
         onApply={onApply}

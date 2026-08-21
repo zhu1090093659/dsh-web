@@ -88,6 +88,7 @@ export type SkinCenterKey =
   | 'customThemeContrast'
   | 'customThemeReset'
   | 'customThemeResetHint'
+  | 'customThemeSaveFailed'
 
 export const en: Record<SkinCenterKey, string> = {
   title: 'Skin Center',
@@ -172,6 +173,7 @@ export const en: Record<SkinCenterKey, string> = {
   customThemeContrast: 'Contrast',
   customThemeReset: 'Restore current mode default',
   customThemeResetHint: 'Only resets the selected light or dark profile.',
+  customThemeSaveFailed: 'Could not save custom theme changes.',
 }
 
 export const zh: Record<SkinCenterKey, string> = {
@@ -257,4 +259,5 @@ export const zh: Record<SkinCenterKey, string> = {
   customThemeContrast: '对比度',
   customThemeReset: '恢复当前模式默认',
   customThemeResetHint: '只重置当前选择的浅色或深色配置。',
+  customThemeSaveFailed: '自定义主题修改保存失败。',
 }

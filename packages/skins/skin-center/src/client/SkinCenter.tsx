@@ -209,14 +209,14 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper, preview, 
           {t('tryOn')}
         </button>
       ) : opts.isTrying ? (
-        <button type="button" className={`${css.button} ${css.buttonPrimary}`} onClick={exitTryOn}>
+        <button type="button" className={`${css.button} ${css.buttonPrimary}`} disabled={busyId !== null} onClick={exitTryOn}>
           {t('exitTryOn')}
         </button>
       ) : (
         <button
           type="button"
           className={`${css.button} ${css.buttonPrimary}`}
-          disabled={busyId === opts.key}
+          disabled={busyId !== null}
           onClick={opts.onTryOn}
         >
           {busyId === opts.key ? t('loading') : t('tryOn')}
@@ -438,6 +438,7 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper, preview, 
                       isActive={customThemeState.applied && activeId === null && !previewing}
                       isTrying={customThemeState.previewing}
                       busy={busyId === 'custom-theme'}
+                      disabled={busyId !== null}
                       onTryOn={tryOnCustomTheme}
                       onExitTryOn={exitCustomThemeTryOn}
                       onApply={applyCustomTheme}

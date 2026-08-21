@@ -14,6 +14,7 @@ export interface CustomThemeState {
   applied: boolean
   previewing: boolean
   visible: boolean
+  writeError: string | null
 }
 
 export interface CustomThemeControllerOptions {
@@ -52,7 +53,7 @@ export class CustomThemeController {
     this.style = this.doc.createElement('style')
     this.style.dataset.dshCustomThemeStyle = ''
     this.doc.head.appendChild(this.style)
-    this.state = { applied: this.config.applied, previewing: false, visible: false }
+    this.state = { applied: this.config.applied, previewing: false, visible: false, writeError: null }
     this.syncDom()
     this.unsubscribe = scope.subscribe(() => {
       if (this.disposed || this.pendingWrites > 0) return
@@ -81,17 +82,19 @@ export class CustomThemeController {
       [scheme]: { ...this.config[scheme], [key]: value },
     })
     this.config = next
+    this.clearWriteError()
     this.syncDom()
     this.publish()
-    void this.queueWrite(scheme, { ...next[scheme] }).catch(() => {})
+    void this.queueWrite(scheme, { ...next[scheme] }).catch(error => { this.setWriteError(error) })
   }
 
   reset(scheme: CustomThemeScheme): void {
     const profile = { ...CUSTOM_THEME_DEFAULTS[scheme] }
     this.config = { ...this.config, [scheme]: profile }
+    this.clearWriteError()
     this.syncDom()
     this.publish()
-    void this.queueWrite(scheme, profile).catch(() => {})
+    void this.queueWrite(scheme, profile).catch(error => { this.setWriteError(error) })
   }
 
   tryOn(): void {
@@ -160,6 +163,7 @@ export class CustomThemeController {
       applied: this.config.applied,
       previewing: this.previewingValue,
       visible,
+      writeError: this.state.writeError,
     }
   }
 
@@ -170,6 +174,19 @@ export class CustomThemeController {
   private syncFromScope(): void {
     this.config = normalizeCustomThemeConfig(this.scope.getSnapshot().value)
     this.syncDom()
+    this.publish()
+  }
+
+  private clearWriteError(): void {
+    if (this.state.writeError === null) return
+    this.state = { ...this.state, writeError: null }
+  }
+
+  private setWriteError(error: unknown): void {
+    this.state = {
+      ...this.state,
+      writeError: error instanceof Error ? error.message : String(error),
+    }
     this.publish()
   }
 
@@ -209,6 +226,10 @@ export class CustomThemeController {
     }
     this.drainingWrites = false
     if (!this.disposed) this.syncFromScope()
+    const failure = settled.find(result => !result.ok)
+    if (!this.disposed && failure !== undefined && !failure.ok) {
+      this.setWriteError(failure.error)
+    }
     for (const result of settled) {
       if (result.ok) result.write.resolve()
       else result.write.reject(result.error)

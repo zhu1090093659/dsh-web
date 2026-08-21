@@ -86,8 +86,8 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region src/client/CustomThemePanel.tsx
 		function CustomThemeCard(props) {
-			const { t, customTheme, scheme, setScheme, isActive, isTrying, busy, onTryOn, onExitTryOn, onApply } = props;
-			(0, react.useSyncExternalStore)(customTheme.subscribe, customTheme.getState);
+			const { t, customTheme, scheme, setScheme, isActive, isTrying, busy, disabled, onTryOn, onExitTryOn, onApply } = props;
+			const customThemeState = (0, react.useSyncExternalStore)(customTheme.subscribe, customTheme.getState);
 			const profile = customTheme.profile(scheme);
 			const [expanded, setExpanded] = (0, react.useState)(false);
 			const [draftColors, setDraftColors] = (0, react.useState)({
@@ -133,6 +133,7 @@ window.__ModuleLoader__.load({
 							type: "color",
 							value: pickerValue,
 							"aria-label": label,
+							disabled,
 							onChange: (event) => {
 								const value = event.target.value;
 								setDraft(key, value);
@@ -146,6 +147,7 @@ window.__ModuleLoader__.load({
 							maxLength: 7,
 							spellCheck: false,
 							"aria-label": `${label} hex`,
+							disabled,
 							onChange: (event) => {
 								setDraft(key, event.target.value);
 							},
@@ -196,19 +198,20 @@ window.__ModuleLoader__.load({
 							}) : isTrying ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonPrimary}`,
+								disabled,
 								onClick: onExitTryOn,
 								children: t("exitTryOn")
 							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonPrimary}`,
-								disabled: busy,
+								disabled,
 								onClick: onTryOn,
 								children: busy ? t("loading") : t("tryOn")
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: skin_center_module_css_default.button,
-								disabled: busy,
+								disabled,
 								onClick: onApply,
 								children: busy ? t("applying") : t("apply")
 							}),
@@ -216,6 +219,7 @@ window.__ModuleLoader__.load({
 								type: "button",
 								className: skin_center_module_css_default.button,
 								"aria-expanded": expanded,
+								disabled,
 								onClick: () => {
 									setExpanded((value) => !value);
 								},
@@ -226,6 +230,11 @@ window.__ModuleLoader__.load({
 					expanded && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: skin_center_module_css_default.customThemeEditor,
 						children: [
+							customThemeState.writeError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: skin_center_module_css_default.error,
+								role: "alert",
+								children: t("customThemeSaveFailed")
+							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: skin_center_module_css_default.customThemeScheme,
 								role: "group",
@@ -239,6 +248,7 @@ window.__ModuleLoader__.load({
 										type: "button",
 										"aria-pressed": scheme === "light",
 										className: `${skin_center_module_css_default.themeButton} ${scheme === "light" ? skin_center_module_css_default.themeButtonActive : ""}`,
+										disabled,
 										onClick: () => {
 											setScheme("light");
 										},
@@ -248,6 +258,7 @@ window.__ModuleLoader__.load({
 										type: "button",
 										"aria-pressed": scheme === "dark",
 										className: `${skin_center_module_css_default.themeButton} ${scheme === "dark" ? skin_center_module_css_default.themeButtonActive : ""}`,
+										disabled,
 										onClick: () => {
 											setScheme("dark");
 										},
@@ -284,6 +295,7 @@ window.__ModuleLoader__.load({
 									value: profile.contrast,
 									"aria-label": t("customThemeContrast"),
 									"aria-valuetext": String(profile.contrast),
+									disabled,
 									onChange: (event) => {
 										customTheme.setProfileValue(scheme, "contrast", Number(event.target.value));
 									}
@@ -297,6 +309,7 @@ window.__ModuleLoader__.load({
 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
 									className: skin_center_module_css_default.button,
+									disabled,
 									onClick: () => {
 										customTheme.reset(scheme);
 									},
@@ -1811,12 +1824,13 @@ window.__ModuleLoader__.load({
 				}) : opts.isTrying ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 					type: "button",
 					className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonPrimary}`,
+					disabled: busyId !== null,
 					onClick: exitTryOn,
 					children: t("exitTryOn")
 				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 					type: "button",
 					className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonPrimary}`,
-					disabled: busyId === opts.key,
+					disabled: busyId !== null,
 					onClick: opts.onTryOn,
 					children: busyId === opts.key ? t("loading") : t("tryOn")
 				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
@@ -2139,6 +2153,7 @@ window.__ModuleLoader__.load({
 									isActive: customThemeState.applied && activeId === null && !previewing,
 									isTrying: customThemeState.previewing,
 									busy: busyId === "custom-theme",
+									disabled: busyId !== null,
 									onTryOn: tryOnCustomTheme,
 									onExitTryOn: exitCustomThemeTryOn,
 									onApply: applyCustomTheme
@@ -2515,7 +2530,8 @@ window.__ModuleLoader__.load({
 			customThemeForeground: "Foreground",
 			customThemeContrast: "Contrast",
 			customThemeReset: "Restore current mode default",
-			customThemeResetHint: "Only resets the selected light or dark profile."
+			customThemeResetHint: "Only resets the selected light or dark profile.",
+			customThemeSaveFailed: "Could not save custom theme changes."
 		};
 		const zh = {
 			title: "皮肤中心",
@@ -2599,7 +2615,8 @@ window.__ModuleLoader__.load({
 			customThemeForeground: "前景色",
 			customThemeContrast: "对比度",
 			customThemeReset: "恢复当前模式默认",
-			customThemeResetHint: "只重置当前选择的浅色或深色配置。"
+			customThemeResetHint: "只重置当前选择的浅色或深色配置。",
+			customThemeSaveFailed: "自定义主题修改保存失败。"
 		};
 		//#endregion
 		//#region src/client/runtime/effect-ledger.ts
@@ -3546,7 +3563,8 @@ window.__ModuleLoader__.load({
 				this.state = {
 					applied: this.config.applied,
 					previewing: false,
-					visible: false
+					visible: false,
+					writeError: null
 				};
 				this.syncDom();
 				this.unsubscribe = scope.subscribe(() => {
@@ -3573,9 +3591,12 @@ window.__ModuleLoader__.load({
 					}
 				});
 				this.config = next;
+				this.clearWriteError();
 				this.syncDom();
 				this.publish();
-				this.queueWrite(scheme, { ...next[scheme] }).catch(() => {});
+				this.queueWrite(scheme, { ...next[scheme] }).catch((error) => {
+					this.setWriteError(error);
+				});
 			}
 			reset(scheme) {
 				const profile = { ...CUSTOM_THEME_DEFAULTS[scheme] };
@@ -3583,9 +3604,12 @@ window.__ModuleLoader__.load({
 					...this.config,
 					[scheme]: profile
 				};
+				this.clearWriteError();
 				this.syncDom();
 				this.publish();
-				this.queueWrite(scheme, profile).catch(() => {});
+				this.queueWrite(scheme, profile).catch((error) => {
+					this.setWriteError(error);
+				});
 			}
 			tryOn() {
 				this.previewingValue = true;
@@ -3651,7 +3675,8 @@ window.__ModuleLoader__.load({
 				this.state = {
 					applied: this.config.applied,
 					previewing: this.previewingValue,
-					visible
+					visible,
+					writeError: this.state.writeError
 				};
 			}
 			publish() {
@@ -3660,6 +3685,20 @@ window.__ModuleLoader__.load({
 			syncFromScope() {
 				this.config = normalizeCustomThemeConfig(this.scope.getSnapshot().value);
 				this.syncDom();
+				this.publish();
+			}
+			clearWriteError() {
+				if (this.state.writeError === null) return;
+				this.state = {
+					...this.state,
+					writeError: null
+				};
+			}
+			setWriteError(error) {
+				this.state = {
+					...this.state,
+					writeError: error instanceof Error ? error.message : String(error)
+				};
 				this.publish();
 			}
 			queueWrite(field, value) {
@@ -3701,6 +3740,8 @@ window.__ModuleLoader__.load({
 				}
 				this.drainingWrites = false;
 				if (!this.disposed) this.syncFromScope();
+				const failure = settled.find((result) => !result.ok);
+				if (!this.disposed && failure !== void 0 && !failure.ok) this.setWriteError(failure.error);
 				for (const result of settled) if (result.ok) result.write.resolve();
 				else result.write.reject(result.error);
 			}

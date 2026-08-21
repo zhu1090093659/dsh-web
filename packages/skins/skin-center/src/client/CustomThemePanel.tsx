@@ -15,6 +15,7 @@ export interface CustomThemeCardProps {
   isActive: boolean
   isTrying: boolean
   busy: boolean
+  disabled: boolean
   onTryOn(): void
   onExitTryOn(): void
   onApply(): void
@@ -22,10 +23,10 @@ export interface CustomThemeCardProps {
 
 export function CustomThemeCard(props: CustomThemeCardProps): ReactNode {
   const {
-    t, customTheme, scheme, setScheme, isActive, isTrying, busy,
+    t, customTheme, scheme, setScheme, isActive, isTrying, busy, disabled,
     onTryOn, onExitTryOn, onApply,
   } = props
-  useSyncExternalStore(customTheme.subscribe, customTheme.getState)
+  const customThemeState = useSyncExternalStore(customTheme.subscribe, customTheme.getState)
   const profile = customTheme.profile(scheme)
   const [expanded, setExpanded] = useState(false)
   const [draftColors, setDraftColors] = useState<Record<ColorKey, string>>({
@@ -62,6 +63,7 @@ export function CustomThemeCard(props: CustomThemeCardProps): ReactNode {
             type="color"
             value={pickerValue}
             aria-label={label}
+            disabled={disabled}
             onChange={(event) => {
               const value = event.target.value
               setDraft(key, value)
@@ -76,6 +78,7 @@ export function CustomThemeCard(props: CustomThemeCardProps): ReactNode {
             maxLength={7}
             spellCheck={false}
             aria-label={`${label} hex`}
+            disabled={disabled}
             onChange={(event) => { setDraft(key, event.target.value) }}
             onBlur={() => { commitColor(key) }}
             onKeyDown={(event) => {
@@ -103,21 +106,22 @@ export function CustomThemeCard(props: CustomThemeCardProps): ReactNode {
         {isActive && !isTrying ? (
           <button type="button" className={`${css.button} ${css.buttonGhost}`} disabled>{t('tryOn')}</button>
         ) : isTrying ? (
-          <button type="button" className={`${css.button} ${css.buttonPrimary}`} onClick={onExitTryOn}>
+          <button type="button" className={`${css.button} ${css.buttonPrimary}`} disabled={disabled} onClick={onExitTryOn}>
             {t('exitTryOn')}
           </button>
         ) : (
-          <button type="button" className={`${css.button} ${css.buttonPrimary}`} disabled={busy} onClick={onTryOn}>
+          <button type="button" className={`${css.button} ${css.buttonPrimary}`} disabled={disabled} onClick={onTryOn}>
             {busy ? t('loading') : t('tryOn')}
           </button>
         )}
-        <button type="button" className={css.button} disabled={busy} onClick={onApply}>
+        <button type="button" className={css.button} disabled={disabled} onClick={onApply}>
           {busy ? t('applying') : t('apply')}
         </button>
         <button
           type="button"
           className={css.button}
           aria-expanded={expanded}
+          disabled={disabled}
           onClick={() => { setExpanded(value => !value) }}
         >
           {expanded ? t('customThemeCloseEdit') : t('customThemeEdit')}
@@ -126,12 +130,18 @@ export function CustomThemeCard(props: CustomThemeCardProps): ReactNode {
 
       {expanded && (
         <div className={css.customThemeEditor}>
+          {customThemeState.writeError !== null && (
+            <div className={css.error} role="alert">
+              {t('customThemeSaveFailed')}
+            </div>
+          )}
           <div className={css.customThemeScheme} role="group" aria-label={t('customThemeMode')}>
             <span className={css.themeLabel}>{t('customThemeMode')}</span>
             <button
               type="button"
               aria-pressed={scheme === 'light'}
               className={`${css.themeButton} ${scheme === 'light' ? css.themeButtonActive : ''}`}
+              disabled={disabled}
               onClick={() => { setScheme('light') }}
             >
               {t('customThemeLight')}
@@ -140,6 +150,7 @@ export function CustomThemeCard(props: CustomThemeCardProps): ReactNode {
               type="button"
               aria-pressed={scheme === 'dark'}
               className={`${css.themeButton} ${scheme === 'dark' ? css.themeButtonActive : ''}`}
+              disabled={disabled}
               onClick={() => { setScheme('dark') }}
             >
               {t('customThemeDark')}
@@ -166,13 +177,14 @@ export function CustomThemeCard(props: CustomThemeCardProps): ReactNode {
               value={profile.contrast}
               aria-label={t('customThemeContrast')}
               aria-valuetext={String(profile.contrast)}
+              disabled={disabled}
               onChange={(event) => { customTheme.setProfileValue(scheme, 'contrast', Number(event.target.value)) }}
             />
           </label>
 
           <div className={css.customThemeFooter}>
             <span className={css.backgroundHintMuted}>{t('customThemeResetHint')}</span>
-            <button type="button" className={css.button} onClick={() => { customTheme.reset(scheme) }}>
+            <button type="button" className={css.button} disabled={disabled} onClick={() => { customTheme.reset(scheme) }}>
               {t('customThemeReset')}
             </button>
           </div>

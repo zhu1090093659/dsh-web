@@ -55,6 +55,8 @@ const mint = {
 async function renderSkinCenter(options: {
   active?: string | null
   switchTo?: (id: string | null, state: { active: string | null }) => Promise<string | null>
+  runSkin?: (action: () => Promise<string | null>) => Promise<string | null>
+  runCustomTheme?: (action: () => Promise<string | null>) => Promise<string | null>
 } = {}): Promise<void> {
   const active = options.active ?? null
   const controllerState = { active, trying: null, previewing: false }
@@ -94,7 +96,11 @@ async function renderSkinCenter(options: {
     root.render(<SkinCenter
       t={t as never}
       runtime={runtime as never}
-      preview={{ runSkin: async action => await action(), runWallpaper: async action => { action() }, runCustomTheme: async action => await action() } as never}
+      preview={{
+        runSkin: options.runSkin ?? (async action => await action()),
+        runWallpaper: async action => { action() },
+        runCustomTheme: options.runCustomTheme ?? (async action => await action()),
+      } as never}
       customTheme={customTheme}
       theme={{
         getTheme: () => themeSnapshot as never,
@@ -242,5 +248,28 @@ describe('SkinCenter custom theme transactions', () => {
     expect(appliedWhenSwitching).toBe(true)
     expect(customTheme.getState().applied).toBe(false)
     expect(host.textContent).toContain(t('applyFailed'))
+  })
+
+  it('disables the custom-theme entry while another theme transaction is pending', async () => {
+    let release!: () => void
+    const transaction = new Promise<string | null>(resolve => { release = () => { resolve(null) } })
+    const runSkin = vi.fn(async () => await transaction)
+    await renderSkinCenter({ runSkin })
+
+    const customCard = host.querySelector('[data-dsh-custom-theme-card]')
+    if (customCard === null) throw new Error('missing custom theme card')
+    const apply = buttonNamed(customCard, t('apply'))
+
+    const mintCard = cardNamed('Mint')
+    await act(async () => {
+      buttonNamed(mintCard, t('apply')).click()
+      await new Promise(resolve => setTimeout(resolve, 0))
+    })
+    expect(apply.disabled).toBe(true)
+
+    await act(async () => { apply.click() })
+    expect(runSkin).toHaveBeenCalledTimes(1)
+    release()
+    await act(async () => { await transaction })
   })
 })

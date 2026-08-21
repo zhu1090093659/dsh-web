@@ -49,9 +49,13 @@ async function checkPublished(name, version) {
 function packWorkspace(pkgDir, outDir) {
   const dest = fs.mkdtempSync(path.join(outDir, 'pack-'))
   // win32: CreateProcess only appends .exe to bare names, so the pnpm.cmd
-  // shim must be named explicitly (libuv runs .cmd via cmd.exe).
-  const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
-  execFileSync(pnpm, ['pack', '--pack-destination', dest], { cwd: pkgDir, stdio: 'pipe' })
+  // shim must run through cmd.exe on Windows.
+  if (process.platform === 'win32') {
+    const quotedDest = dest.includes(' ') ? `"${dest.replaceAll('"', '""')}"` : dest
+    execFileSync('cmd.exe', ['/d', '/s', '/c', `pnpm.cmd pack --pack-destination ${quotedDest}`], { cwd: pkgDir, stdio: 'pipe' })
+  } else {
+    execFileSync('pnpm', ['pack', '--pack-destination', dest], { cwd: pkgDir, stdio: 'pipe' })
+  }
   const names = fs.readdirSync(dest).filter(name => name.endsWith('.tgz'))
   if (names.length !== 1) {
     throw new Error('pnpm pack 未产出唯一 tarball（' + pkgDir + '）: ' + names.join(', '))
@@ -177,4 +181,3 @@ async function main() {
 if (require.main === module) main()
 
 module.exports = { rewriteDependencies, findWorkspacePackage, checkPublished, packWorkspace, FAMILY_SCOPE }
-

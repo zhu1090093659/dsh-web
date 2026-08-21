@@ -15,6 +15,7 @@
   命令时弹提示，而不是静默失败。
 - 每次点按钮都会按当前设置重新生成启动脚本，因此 `dshCommand` / `url` /
   `profile` 修改后重新创建即生效，无需手动改图标目标。
+- Windows 启动器与快捷方式安装脚本使用带 BOM 的 UTF-8 写出，兼容 Windows PowerShell 5.1 和非 ASCII 用户路径。命令解析优先选择 npm 的 `dsh.cmd`/可执行 shim，而不是 `dsh.ps1`；仅剩 PowerShell 脚本时会显式经 `powershell.exe` 调用，不触发系统文件关联。
 - Windows 快捷方式使用 DeepSeek Harness 鲸鱼图标（白底），启动时弹出深色风格的「启动中」小窗代替黑窗：实时显示进度（启动 dsh、等待 GUI 就绪），失败时（找不到命令 / 超时）红字提示并提供「确定」按钮。
 
 ## 安装

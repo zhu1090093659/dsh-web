@@ -177,7 +177,9 @@ export async function createDesktopShortcut(deps: LauncherRoutesDeps): Promise<C
   if (!dshFound) warning = `dsh command "${spec.dshCommand}" was not found on PATH; the launcher shows a message when run`
   if (platform === 'win32') {
     const installerPath = join(scriptsDir, 'install-shortcut.ps1')
-    await writeFile(installerPath, renderShortcutInstaller({ launcherPath, desktopPath: iconPath, homeDir: home, iconLocation: iconIco ?? 'powershell.exe,0' }))
+    // The installer embeds user paths and may contain non-ASCII characters;
+    // Windows PowerShell 5.1 requires a BOM to decode it as UTF-8.
+    await writeFile(installerPath, '\uFEFF' + renderShortcutInstaller({ launcherPath, desktopPath: iconPath, homeDir: home, iconLocation: iconIco ?? 'powershell.exe,0' }))
     const result = await run('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', installerPath])
     if (result.code !== 0) throw new Error(`shortcut creation failed: ${result.stderr}`)
   } else if (platform === 'darwin') {

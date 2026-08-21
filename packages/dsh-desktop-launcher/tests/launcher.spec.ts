@@ -40,6 +40,11 @@ describe('launcher script rendering', () => {
     expect(script).toContain('DeepSeek Harness')
     expect(script).toContain('正在启动')
     expect(script).toContain('XamlReader')
+    expect(script).toContain('Get-Command $dshCommand -All')
+    expect(script).toContain("CommandType -eq 'Application'")
+    expect(script).toContain("-match '\\.(?:cmd|exe|bat|com)$'")
+    expect(script).toContain("Start-Process -FilePath 'powershell.exe'")
+    expect(script).toContain("@('-NoProfile', '-File', $command.Source)")
   })
 
   it('omits the profile flag when no profile is set', () => {

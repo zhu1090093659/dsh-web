@@ -68,6 +68,35 @@ Round 1 之后用户实机验收的三条反馈（其中一条确认 Round 1 首
   建议按产品意图决定玻璃化或保持实底（否则被通用 dialog 规则误伤，需显式排除）。
 - **plugin-manager 行**：settings.plugins 分区内行已随 `[data-dsh-surface="settings"]`
   token remap 半透明（复核即可）。
+
+### 2.3 #734 surface 检测放宽 —— 0.2.5 实测反馈（待拍板，先记录不改）【新增】
+- 实测（Windows 11 + Chrome、DSH 0.1.0-rc.8、skin-center 0.2.5）：`defaultWallpaperSurface`
+  两个判定**过窄导致漏标**——外壳表面未打 `data-dsh-wallpaper-surface` → 保持不透明 → 壁纸
+  被盖（`data-dsh-wallpaper-active` 与媒体层正常挂载；官方默认皮肤同样复现，与皮肤重着色无关）。
+  1. `Math.abs(rectHeight - viewportHeight) <= 2`：亚像素/边框/内边距差 >2px 即漏；
+  2. `background === resolveCssColor(doc,'--dsw-alias-bg-base')`：颜色字符串须精确相等，
+     `color-mix`/近似色/透明度层/`rgb()` 字符串不一致即漏。
+- 可用修复方向（实测有效）：**颜色无关兜底**——扫描铺满视口（高度 ≥70-90%）的不透明元素，
+  直接清 `background-color`；跳过插件自身层与 z>100 浮层。
+- 决策点：高度阈值放宽到 ≥70%/90%，颜色改为近似匹配或「大面积不透明即清」；待拍板后作为
+  #807 后续/独立 fix 落地（放 defaultWallpaperSurfaceWithBase 与 markSurfaces 分支，补测试）。
+
+### 2.4 渲染优化批（已完成，并入 #807，commit 0b774b8f）
+- webbridge 实机锚点 + 已入 patches.css（全部随 `--dsw-wallpaper-glass-*` 滑杆一起变）：
+  1. **侧栏三键统一玻璃**：新会话 `[data-slot="sidebar"] button[class*="newSession"]`；任务看板/ssh 入口走
+     `[data-dsh-part="sidebar-entry"]` + row 属性族（已有）。
+  2. **侧边卡片入滑杆**：`[data-slot="sidebar"] [class*="_sessionRow/_workspaceRow/_projectRow"]`。
+  3. **顶栏子代理看板**（即轨迹板）：触发钮 `button[class*="_trigger"]` + 下拉 `[class*="_menu"]`（role=tree，
+     通用 listbox 组不覆盖，实机实色是被盖根因）+ 板体 `[class*="_subagent*"]`，全玻璃化；活跃行保留
+     `rgba(255,255,255,.14)`。
+  4. **底部面板入滑杆**：`[class*="_bottomPanel"]` 及其内 `_pane/_tabBar/_tab/_terminalWrap` 玻璃；终端画布
+     `.xterm-viewport` 用滑杆 blur + 深底 `rgba(13,22,39,.62)` 保可读。
+  5. **ssh 看板 chrome**：契约 part `[data-dsh-plugin="ssh"] [data-dsh-part="tab-bar/tab/host-table/host-row"]`。
+  6. **排队发送卡片**：`[data-queue-dock] / [data-dsh-part="queue-dock"]` 玻璃。
+  7. 技能中心（卡片/行/tab）此前已玻璃，本批无新增。
+- 用户补充（已记入验收）：**底部面板展开后主对话框壁纸消失、收起自动复原**——即底层面板不透明覆盖，
+  本批玻璃化面板 chrome 后应透出 wallpaper；**排队发送卡片也要渲染**（已加）。
+- 门禁：builtin-skins transform / gallery:build+check / skin-center:check 全绿；已同步 profile。
 - **皮肤自身**：`--dsw-wallpaper-glass-fill` 为静态（仅 blur 随滑杆），维持 Round 1 设计；
   若后续要「随滑杆连透明度一起动」需在 `background.ts` 增加 fill 变量写入（当前未做）。
 - **文档**：本文件即为 Round 2 记录；Round 1 文档保留为历史。

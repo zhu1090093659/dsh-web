@@ -2,23 +2,113 @@
  * wallpaper-exclusive (壁纸专属) — v2 skin stylesheet (issue #506 contract).
  *
  * Base stays the official default look. Global surface tokens are remapped to
- * translucent dark fills (Blue Fantasy style) so every web-ui plugin panel
- * shows the WE wallpaper through it; the input card, sidebar and right panel
- * get glass fills too. No backgroundMedia is declared — the wallpaper is the
- * backdrop. No composer seat glass is painted here (that approach caused the
- * wallpaper blur issue).
+ * translucent frosted values so every web-ui plugin panel shows the wallpaper
+ * through it; the input card, sidebar and right panel get glass fills too.
+ * The built-in default wallpaper is declared in skin.json backgroundMedia.
+ * Light values live on :root; dark overrides live under body[data-ds-dark-theme].
  */
 
 :root {
-  /* Left sidebar glass. */
-  --dsw-specific-sidebar-fill: rgba(17, 25, 39, 0.16);
-  --dsw-specific-sidebar-nav-item-active: rgba(29, 51, 79, 0.45);
-  --dsw-specific-sidebar-nav-item-hover: rgba(23, 42, 67, 0.35);
+  color-scheme: light;
 
-  /* Input card and message bubble glass: same fill and blur, driven by one
-     variable so a future slider can control them together. */
-  --dsw-wallpaper-glass-blur: blur(10px) saturate(130%);
+  /* Glass tiers (light) */
+  --dsw-wallpaper-glass-blur: 10px;
+  --dsw-wallpaper-glass-fill: rgba(255, 255, 255, 0.42);
+  --dsw-wallpaper-glass-float: rgba(255, 255, 255, 0.78);
+  --dsw-wallpaper-glass-tooltip: rgba(255, 255, 255, 0.9);
+  --dsw-wallpaper-glass-hover: rgba(0, 0, 0, 0.06);
+  --dsw-wallpaper-glass-hover-strong: rgba(0, 0, 0, 0.08);
+  --dsw-wallpaper-glass-active: rgba(0, 0, 0, 0.1);
+  --dsw-wallpaper-glass-active-strong: rgba(0, 0, 0, 0.12);
+  --dsw-wallpaper-glass-layer-1: rgba(255, 255, 255, 0.55);
+  --dsw-wallpaper-glass-layer-2: rgba(255, 255, 255, 0.48);
+  --dsw-wallpaper-glass-layer-3: rgba(255, 255, 255, 0.42);
+
+  /* Left sidebar glass (light) */
+  --dsw-specific-sidebar-fill: rgba(255, 255, 255, 0.34);
+  --dsw-specific-sidebar-nav-item-active: rgba(0, 0, 0, 0.1);
+  --dsw-specific-sidebar-nav-item-hover: rgba(0, 0, 0, 0.06);
+
+  /* Shared translucent surfaces (light) */
+  --dsw-alias-bg-layer-1: rgba(255, 255, 255, 0.5);
+  --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.45);
+  --dsw-alias-bg-layer-3: rgba(255, 255, 255, 0.4);
+  --dsw-alias-bg-overlay: rgba(255, 255, 255, 0.82);
+
+  /* Labels (light) */
+  --dsw-alias-label-primary: #16233a;
+  --dsw-alias-label-secondary: #3d4c63;
+  --dsw-alias-label-tertiary: #64748b;
+  --dsw-alias-label-dimmed: #94a3b8;
+  --dsw-alias-label-caption: #a8b6c8;
+
+  /* Interactive (light) */
+  --dsw-alias-interactive-bg-hover: rgba(0, 0, 0, 0.06);
+  --dsw-alias-interactive-bg-active: rgba(0, 0, 0, 0.1);
+
+  /* Input / bubble / markdown glass (light) */
+  --dsw-specific-input-major: rgba(255, 255, 255, 0.5);
+  --dsw-specific-login-input: rgba(255, 255, 255, 0.5);
+  --dsw-specific-bubble: rgba(255, 255, 255, 0.5);
+  --dsw-specific-bubble-highlight: rgba(0, 0, 0, 0.06);
+  --dsw-alias-markdown-code-block: rgba(255, 255, 255, 0.55);
+  --dsw-alias-markdown-inline-code: rgba(255, 255, 255, 0.55);
+
+  /* Buttons (light) */
+  --dsw-alias-button-tool-bar-fill: rgba(0, 0, 0, 0.04);
+  --dsw-alias-button-tool-bar-hover: rgba(0, 0, 0, 0.08);
+  --dsw-alias-button-floating-fill: rgba(255, 255, 255, 0.6);
+  --dsw-alias-button-floating-hover: rgba(255, 255, 255, 0.8);
+
+  /* Right panel glass (aionui, light) */
+  --aion-bg-base: rgba(255, 255, 255, 0.4);
+  --aion-bg-1: rgba(255, 255, 255, 0.36);
+  --aion-bg-2: rgba(255, 255, 255, 0.42);
+  --aion-bg-3: rgba(0, 0, 0, 0.06);
+  --aion-bg-4: rgba(0, 0, 0, 0.12);
+  --aion-bg-hover: rgba(0, 0, 0, 0.06);
+  --aion-bg-active: rgba(0, 0, 0, 0.1);
+}
+
+body[data-ds-dark-theme] {
+  color-scheme: dark;
+
+  /* Glass tiers (dark) */
+  --dsw-wallpaper-glass-blur: 10px;
   --dsw-wallpaper-glass-fill: rgba(13, 22, 39, 0.22);
+  --dsw-wallpaper-glass-float: rgba(13, 22, 39, 0.62);
+  --dsw-wallpaper-glass-tooltip: rgba(13, 22, 39, 0.72);
+  --dsw-wallpaper-glass-hover: rgba(255, 255, 255, 0.06);
+  --dsw-wallpaper-glass-hover-strong: rgba(255, 255, 255, 0.08);
+  --dsw-wallpaper-glass-active: rgba(255, 255, 255, 0.1);
+  --dsw-wallpaper-glass-active-strong: rgba(255, 255, 255, 0.14);
+  --dsw-wallpaper-glass-layer-1: rgba(13, 22, 39, 0.5);
+  --dsw-wallpaper-glass-layer-2: rgba(13, 22, 39, 0.42);
+  --dsw-wallpaper-glass-layer-3: rgba(13, 22, 39, 0.36);
+
+  /* Left sidebar glass (dark) */
+  --dsw-specific-sidebar-fill: rgba(17, 25, 39, 0.16);
+  --dsw-specific-sidebar-nav-item-active: rgba(255, 255, 255, 0.12);
+  --dsw-specific-sidebar-nav-item-hover: rgba(255, 255, 255, 0.08);
+
+  /* Shared translucent surfaces (dark) */
+  --dsw-alias-bg-layer-1: rgba(17, 25, 39, 0.42);
+  --dsw-alias-bg-layer-2: rgba(24, 31, 46, 0.45);
+  --dsw-alias-bg-layer-3: rgba(30, 28, 44, 0.46);
+  --dsw-alias-bg-overlay: rgba(20, 26, 42, 0.72);
+
+  /* Labels (dark) */
+  --dsw-alias-label-primary: #f9fafb;
+  --dsw-alias-label-secondary: #d1d5db;
+  --dsw-alias-label-tertiary: #9ca3af;
+  --dsw-alias-label-dimmed: #6b7280;
+  --dsw-alias-label-caption: #4b5563;
+
+  /* Interactive (dark) */
+  --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.07);
+  --dsw-alias-interactive-bg-active: rgba(255, 255, 255, 0.1);
+
+  /* Input / bubble / markdown glass (dark) */
   --dsw-specific-input-major: var(--dsw-wallpaper-glass-fill);
   --dsw-specific-login-input: var(--dsw-wallpaper-glass-fill);
   --dsw-specific-bubble: var(--dsw-wallpaper-glass-fill);
@@ -26,14 +116,13 @@
   --dsw-alias-markdown-code-block: var(--dsw-wallpaper-glass-fill);
   --dsw-alias-markdown-inline-code: var(--dsw-wallpaper-glass-fill);
 
-  /* Buttons: resting state is transparent so nothing looks selected by
-     default; hover keeps a subtle fill. */
+  /* Buttons (dark) */
   --dsw-alias-button-tool-bar-fill: rgba(0, 0, 0, 0);
   --dsw-alias-button-tool-bar-hover: rgba(255, 255, 255, 0.08);
   --dsw-alias-button-floating-fill: rgba(0, 0, 0, 0);
   --dsw-alias-button-floating-hover: rgba(255, 255, 255, 0.08);
 
-  /* Right panel glass (aionui token suite). */
+  /* Right panel glass (aionui, dark) */
   --aion-bg-base: rgba(17, 25, 39, 0.22);
   --aion-bg-1: rgba(17, 25, 39, 0.18);
   --aion-bg-2: rgba(24, 31, 46, 0.22);

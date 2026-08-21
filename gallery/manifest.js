@@ -797,7 +797,19 @@ window.SKIN_MANIFEST = {
       },
       "contributes": {
         "stylesheet": "skin.css",
-        "patches": "patches.css"
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/whale-art-v2.png",
+            "scrim": "linear-gradient(rgba(7, 19, 33, 0.18) 0%, rgba(7, 19, 33, 0.12) 45%, rgba(7, 19, 33, 0.22) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/whale-art-v2.png",
+            "scrim": "linear-gradient(rgba(7, 19, 33, 0.34) 0%, rgba(7, 19, 33, 0.28) 45%, rgba(7, 19, 33, 0.38) 100%)"
+          }
+        }
       }
     }
   ]

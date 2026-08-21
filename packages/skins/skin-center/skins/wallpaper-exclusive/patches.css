@@ -12,33 +12,27 @@
   background: none;
 }
 
-[data-composer-card] {
-  background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur) !important;
-  backdrop-filter: var(--dsw-wallpaper-glass-blur) !important;
-}
-
-/* User-sent message bubble only: same glass treatment as the input card, so
-   the frosted rectangle is the bubble itself, not the whole row. The slider
-   drives it through --dsw-wallpaper-glass-blur. */
+/* User-sent message bubble only: the frosted rectangle is the bubble itself,
+   not the whole row. The fixed glass blur variable keeps it semi-transparent
+   frosted without following the web-ui input-card slider. */
 [data-chat-anchor-key] [class*="bubble"] {
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
-/* Markdown code blocks: the fourth slider-controlled glass surface. */
+/* Markdown code blocks: the fourth fixed-glass glass surface. */
 [class*="md-code-block"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
 /* Web-ui plugin panels: frosted over the wallpaper, without touching the
-   conversation/dialog area. Driven by the card-blur slider variables, so the
+   conversation/dialog area. Driven by the fixed glass variables, so the
    whole panel family (task-board / ssh / git-graph / skill-explorer / ... )
-   follows the slider together instead of hardcoded px. */
-[data-dsh-plugin="task-board"],
-[data-dsh-plugin="ssh"],
+   uses fixed glass instead of a runtime slider. */
+[data-dsh-plugin="task-board"]:not([data-dsh-part="sidebar-entry"]),
+[data-dsh-plugin="ssh"]:not([data-dsh-part="sidebar-entry"]),
 [data-dsh-plugin="git-graph"],
 [data-dsh-plugin="pet"],
 [data-dsh-plugin="remote-web-ui"],
@@ -48,90 +42,99 @@
 [data-aionui-explorer-col],
 [data-aionui-preview-col] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
 .aionui-dialog,
 .aionui-menu,
 .aionui-toast {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
 /* Task list (任务清单): the task-board columns and the task cards each get
-   the slider-driven glass so the whole list frosted over the wallpaper.
+   the fixed glass so the whole list frosted over the wallpaper.
    Anchored on the stable mount attribute + the L2 parts (issue #506). The
    board frame / wrapper are already covered by the plugin-panel rule above. */
 [data-dsh-taskboard-view] [data-dsh-part="column"],
 [data-dsh-taskboard-view] [data-dsh-part="card"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
 /* git-graph composer chips (bottom dock row of the composer): frosted glass
-   following the slider. */
+   using fixed glass. */
 [data-dsh-plugin="git-graph"] [data-dsh-part="chip"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
-/* Skill center (skill-explorer): the modal card and each skill row follow the
-   slider; the head / tab-bar / tab strips drop their opaque fills so the card
-   glass shows through them. */
+/* Skill center (skill-explorer) board: in the fixed-glass set (direction:
+   the input-card related expanded boards — + / command, access, model, context,
+   skill center — all use fixed glass; the four role-based ones are already
+   covered by the generic dialog/menu/listbox group). head / tab-bar / inactive
+   tab stay transparent; the active tab keeps a visible tint. */
 [data-dsh-plugin="skill-explorer"] [data-dsh-part="card"],
 [data-dsh-plugin="skill-explorer"] [data-dsh-part="skill-row"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
 [data-dsh-plugin="skill-explorer"] [data-dsh-part="head"],
-[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab-bar"] {
-  background-color: transparent !important;
-}
-
-/* Inactive tabs drop their fill; the active tab (data-active, set by the
-   panel) keeps a glass fill so the selected state stays distinguishable. */
+[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab-bar"],
 [data-dsh-plugin="skill-explorer"] [data-dsh-part="tab"] {
   background-color: transparent !important;
 }
 
 [data-dsh-plugin="skill-explorer"] [data-dsh-part="tab"][data-active] {
-  background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  background-color: var(--dsw-wallpaper-glass-active-strong) !important;
 }
 
-/* Settings surface and its cards: fully frosted glass, driven by the card
-   blur slider. The layer tokens are remapped here so every nested card
-   becomes translucent instead of the official opaque fill. */
+/* Settings surface and its cards: fully frosted glass with a fixed blur.
+   The layer tokens are remapped here so every nested card becomes translucent
+   instead of the official opaque fill. */
 [data-dsh-surface="settings"] {
-  --dsw-alias-bg-layer-1: rgba(13, 22, 39, 0.5);
-  --dsw-alias-bg-layer-2: rgba(13, 22, 39, 0.42);
-  --dsw-alias-bg-layer-3: rgba(13, 22, 39, 0.36);
+  --dsw-alias-bg-layer-1: var(--dsw-wallpaper-glass-layer-1);
+  --dsw-alias-bg-layer-2: var(--dsw-wallpaper-glass-layer-2);
+  --dsw-alias-bg-layer-3: var(--dsw-wallpaper-glass-layer-3);
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
 /* Conversation area keeps the PR #782 global design; the skin does not force
    it solid or glass. */
 
-/* Generic floating surfaces (dialogs, menus, poppers): frosted glass. */
+/* Generic floating surfaces (dialogs, menus, poppers): frosted glass that
+   follows the fixed glass. FILL is a readable opaque glass (Summer-Liquid
+   Glass float tier) — the card fill (0.22) is too see-through for dense
+   menu/dialog text and let the wallpaper + busy underlying icons bleed through,
+   reading as overlapping text. Blur stays fixed. */
 [role="dialog"],
 [role="menu"],
 [role="listbox"],
 [data-radix-popper-content-wrapper] {
-  background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  background-color: var(--dsw-wallpaper-glass-float) !important;
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.015) 18%,
+    rgba(255, 255, 255, 0) 42%
+  ) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 10px 30px rgba(0, 7, 18, 0.25) !important;
 }
 
-/* Composer "+" and "/" popups: kept explicitly in the slider glass set even
+/* Composer "+" and "/" popups: kept explicitly in the fixed-glass set even
    when a shell version stops wrapping them in the generic role/popper group.
    Popups rendered in a portal outside the composer subtree are still caught
    by the generic floating-surface rule above. Fill-in point: if a popup still
@@ -145,17 +148,55 @@
 [data-composer-card] [role="menu"],
 [data-composer-card] [role="listbox"],
 [data-composer-card] [data-radix-popper-content-wrapper] {
-  background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  background-color: var(--dsw-wallpaper-glass-float) !important;
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.015) 18%,
+    rgba(255, 255, 255, 0) 42%
+  ) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 10px 30px rgba(0, 7, 18, 0.25) !important;
+}
+
+/* Tooltips: light frosted glass with an inner edge, matching Summer. */
+[role="tooltip"] {
+  background-color: var(--dsw-wallpaper-glass-tooltip) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) saturate(135%);
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) saturate(135%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 28px rgba(0, 7, 18, 0.3);
+}
+
+/* Accessible focus ring in the example skin's accent color. */
+:focus-visible {
+  outline: 2px solid rgba(103, 220, 231, 0.7);
+  outline-offset: 2px;
+}
+
+/* Smooth hover/active transitions like the example skin. */
+button,
+a {
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  a {
+    transition: none;
+  }
 }
 
 /* Inline code (filenames, commands, class names) mirrors the code block
    glass treatment. */
 code {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
 /* The composer "+" popup trigger (scoped to the composer slot so sibling
@@ -164,14 +205,13 @@ code {
 [data-slot="conversation.composer"] button[class*="add"],
 button[class*="triggerFloating"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
-/* Sidebar plugin entry buttons: transparent resting state so nothing looks
-   selected by default; hover and the real selected/active states keep subtle
-   fills. Scoped to the injected family rows — not every sidebar button — so
-   the shell's native nav buttons keep their own fills. */
+/* Sidebar keys (任务看板 / ssh / 技能中心 injected rows): fully transparent at
+   rest, hover keeps a subtle tint — NOT in the fixed-glass set (direction:
+   keys are transparent, only their surfaces' backgrounds use fixed glass). */
 [data-dsh-part="sidebar-entry"],
 [data-dsh-taskboard-entry],
 [data-dsh-ssh-entry],
@@ -183,7 +223,7 @@ button[class*="triggerFloating"] {
 [data-dsh-taskboard-entry]:hover,
 [data-dsh-ssh-entry]:hover,
 [data-dsh-skill-explorer-entry]:hover {
-  background-color: rgba(255, 255, 255, 0.06) !important;
+  background-color: var(--dsw-wallpaper-glass-hover) !important;
 }
 
 [data-dsh-part="sidebar-entry"][aria-current="true"],
@@ -194,7 +234,7 @@ button[class*="triggerFloating"] {
 [data-dsh-ssh-entry][data-active],
 [data-dsh-skill-explorer-entry][aria-current="true"],
 [data-dsh-skill-explorer-entry][data-active] {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: var(--dsw-wallpaper-glass-active) !important;
 }
 
 /* Sidebar plugin entries share one label + icon color so task-board, ssh and
@@ -217,83 +257,232 @@ button[class*="triggerFloating"] {
   color: var(--dsw-alias-label-primary, #f9fafb) !important;
 }
 
+/* The injected entry rows must read uniformly transparent at rest regardless of
+   which attributes they carry in a given shell build — without this, the
+   shell's own per-plugin nav-item hover/active fills (task-board blue, ssh
+   purple) leak through and the three keys look inconsistent. The class-suffix
+   family covers task-board / ssh / skill-explorer rows even where the
+   data-dsh-part attribute is absent. */
+[data-slot="sidebar"] [class*="entry"] {
+  background-color: rgba(0, 0, 0, 0) !important;
+}
+
+[data-slot="sidebar"] [class*="entry"]:hover {
+  background-color: var(--dsw-wallpaper-glass-hover) !important;
+}
+
+[data-slot="sidebar"] [class*="entry"][data-active],
+[data-slot="sidebar"] [class*="entry"][aria-current="true"],
+[data-slot="sidebar"] [class*="entry"][aria-selected="true"] {
+  background-color: var(--dsw-wallpaper-glass-active) !important;
+}
+
 /* --- Top-bar subagent board (trajectory) --------------------------------------
-   The header "N 个子代理" trigger and the expanded status tree: frosted via the
-   card-blur slider so the wallpaper shows through the board. The wrapper is a
-   role=tree dropdown inside the header actions (the generic role=listbox group
-   does not cover it), so the whole subtree is glassified here. */
-[data-slot="conversation.session.header.actions"] button[class*="_trigger"],
+   The "N 个子代理" trigger button itself stays fully transparent; only the
+   expanded status tree (a role=tree dropdown inside the header actions — the
+   generic role=listbox group does not cover it) is frosted via fixed glass so
+   the wallpaper shows through the board. */
+[data-slot="conversation.session.header.actions"] button[class*="_trigger"] {
+  background-color: rgba(0, 0, 0, 0) !important;
+}
+
 [data-slot="conversation.session.header.actions"] [class*="_menu"],
 [data-slot="conversation.session.header.actions"] [class*="_subagent"],
 [data-slot="conversation.session.header.actions"] [class*="_subagentBody"],
 [data-slot="conversation.session.header.actions"] [class*="_subagentRow"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
 [data-slot="conversation.session.header.actions"] [class*="_subagentRowActive"] {
-  background-color: rgba(255, 255, 255, 0.14) !important;
+  background-color: var(--dsw-wallpaper-glass-active-strong) !important;
 }
 
-/* --- Bottom panel / terminal dock (slider set) --------------------------------
+/* --- Bottom panel / terminal dock (fixed-glass set) --------------------------------
    Expanding the bottom panel used to paint an opaque overlay that hid the
    wallpaper; the panel chrome (container + panes + tabs) is now frosted so the
    wallpaper stays visible while expanded. The terminal canvas keeps a dark,
-   slider-blurred fill for text legibility. */
+   frosted fill for text legibility. */
 [class*="_bottomPanel"],
 [class*="_bottomPanel"] [class*="_pane"],
 [class*="_bottomPanel"] [class*="_tabBar"],
 [class*="_bottomPanel"] [class*="_tab"],
 [class*="_bottomPanel"] [class*="_terminalWrap"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
 [class*="_bottomPanel"] .xterm-viewport {
   background-color: rgba(13, 22, 39, 0.62) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
-/* --- Sidebar keys + cards (slider set) ---------------------------------------
-   The 新会话 primary button and the session/workspace cards get the same glass
-   so the three keys (新会话 / 任务看板 / ssh) and the side cards read uniformly
-   and follow the slider. */
-[data-slot="sidebar"] button[class*="newSession"],
-[data-slot="sidebar"] [class*="_sessionRow"],
-[data-slot="sidebar"] [class*="_workspaceRow"],
-[data-slot="sidebar"] [class*="_projectRow"] {
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+/* Expanding the bottom panel (dsh-better-sidebar) presses the conversation
+   column shorter (margin-bottom: var(--dsh-sidebar-height)), which drops it
+   below the full-viewport threshold the wallpaper surface detector requires —
+   so the column stops being tagged and reverts to an opaque app base that
+   hides the wallpaper. Keep the middle column transparent while a wallpaper is
+   mounted. Two paths: the compat-stamped [data-dsh-frame] [data-pane=...] chain
+   (no ">" — the pane is not always a direct child) plus the CSS-module
+   [class*="centerCol"] fallback. Uses body[...] — a selector here may not
+   START with html, because the pipeline already wraps every patch under
+   html[data-dsh-skin=...] and a second html element never matches. */
+body[data-dsh-wallpaper-active] [data-dsh-frame] [data-pane="conversation"],
+body[data-dsh-wallpaper-active] [class*="centerCol"] {
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
+/* --- Sidebar keys + cards -----------------------------------------------
+   Keys (新会话 / 任务看板 / ssh / 技能中心) are fully transparent at rest —
+   NOT driven by any slider. Only the sidebar BACKGROUND
+   ([data-slot="sidebar"]) uses fixed glass. */
 [data-slot="sidebar"] button[class*="newSession"] {
-  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  background-color: rgba(0, 0, 0, 0) !important;
   color: var(--dsw-alias-label-primary, #f9fafb) !important;
 }
 
+[data-slot="sidebar"] button[class*="newSession"]:hover {
+  background-color: var(--dsw-wallpaper-glass-hover) !important;
+}
+
+/* Sidebar background: the left sidebar column's own fill uses fixed glass;
+   the keys inside stay transparent (only this background blurs). */
+[data-slot="sidebar"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+}
+
 [data-slot="sidebar"] [class*="_sessionRow"],
 [data-slot="sidebar"] [class*="_workspaceRow"],
 [data-slot="sidebar"] [class*="_projectRow"] {
-  background-color: rgba(255, 255, 255, 0.06) !important;
+  /* Transparent at rest — a constant resting fill read as an always-selected
+     bubble. Only hover and the real selected state get a tint. */
+  background-color: rgba(0, 0, 0, 0) !important;
 }
 
-/* --- ssh panel chrome + queued-send card (slider set) ------------------------ */
-[data-dsh-plugin="ssh"] [data-dsh-part="tab-bar"],
-[data-dsh-plugin="ssh"] [data-dsh-part="tab"],
-[data-dsh-plugin="ssh"] [data-dsh-part="host-table"],
-[data-dsh-plugin="ssh"] [data-dsh-part="host-row"] {
-  background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+[data-slot="sidebar"] [class*="_sessionRow"]:hover,
+[data-slot="sidebar"] [class*="_workspaceRow"]:hover,
+[data-slot="sidebar"] [class*="_projectRow"]:hover {
+  background-color: var(--dsw-wallpaper-glass-hover) !important;
 }
 
-/* Queued-send card in the composer dock. */
-[data-queue-dock],
-[data-dsh-part="queue-dock"] {
+[data-slot="sidebar"] [class*="_selected"],
+[data-slot="sidebar"] [class*="_sessionRow"][aria-current="true"],
+[data-slot="sidebar"] [class*="_sessionRow"][aria-selected="true"],
+[data-slot="sidebar"] [class*="_workspaceRow"][aria-current="true"],
+[data-slot="sidebar"] [class*="_projectRow"][aria-current="true"] {
+  background-color: var(--dsw-wallpaper-glass-active) !important;
+}
+
+/* --- ssh panel chrome + queued-send card (fixed-glass set) ------------------------ */
+[data-dsh-plugin="ssh"] [data-dsh-part="tab-bar"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
-  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+}
+
+/* The deployed dsh-ssh only emits tab-bar / terminal parts, so the panel, host
+   table rows and banners need stable class-suffix fallbacks scoped under the
+   stable mount attribute. The terminal canvas is intentionally left dark for
+   legibility. */
+[data-dsh-ssh-view] [class*="_panel"],
+[data-dsh-ssh-view] [role="tab"],
+[data-dsh-ssh-view] table tbody tr,
+[data-dsh-ssh-view] [class*="_banner"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+}
+
+[data-dsh-ssh-view] [role="tab"]:hover {
+  background-color: var(--dsw-wallpaper-glass-hover-strong) !important;
+}
+
+[data-dsh-ssh-view] [role="tab"][data-active],
+[data-dsh-ssh-view] [role="tab"][aria-selected="true"] {
+  background-color: var(--dsw-wallpaper-glass-active-strong) !important;
+}
+
+/* Queued-send / retry dock in the composer: dsh-chat-recovery's RetryDockView
+   renders into the conversation.input.dock slot and does NOT emit the
+   data-queue-dock / data-dsh-part="queue-dock" anchors, so those selectors
+   never hit. Glass the slot container (and its dock/row descendants) — precise,
+   scoped, no plugin change needed. */
+[data-slot="conversation.input.dock"],
+[data-slot="conversation.input.dock"] [class*="_dock"],
+[data-slot="conversation.input.dock"] [class*="_row"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+}
+
+/* --- dsh-better-sidebar side cards + panel chrome (fixed-glass set) ---------------
+   The "侧边卡片" are better-sidebar's empty-panel welcome cards (.paneCard) plus
+   its panel chrome. The host is a document.body portal ([data-dsh-better-sidebar]
+   / [data-dsh-panel-host]) carrying no data-dsh-part, so anchor on the stable
+   host attributes + class suffixes. */
+[data-dsh-better-sidebar] [class*="_paneCard"],
+[data-dsh-better-sidebar] [class*="_tabBar"],
+[data-dsh-better-sidebar] [class*="_panel"]:not([class*="_panelHidden"]):not([class*="_panelBody"]):not([class*="_panelResize"]),
+[data-dsh-better-sidebar] [class*="_bottomPanel"]:not([class*="_bottomPanelHidden"]),
+[data-dsh-panel-host] [class*="_paneCard"] {
+  /* background shorthand (not background-color): better-sidebar paints with the
+     shorthand, so a color-only override still leaves its other layers active. */
+  background: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+}
+
+[data-dsh-better-sidebar] [class*="_paneCard"]:hover:not(:disabled) {
+  background-color: var(--dsw-wallpaper-glass-active-strong) !important;
+}
+
+[data-dsh-better-sidebar] [class*="_bottomPanel"] .xterm-viewport {
+  background-color: rgba(13, 22, 39, 0.62) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+}
+
+/* --- Sidebar workspace-entry buttons: no lingering "selected" bubble ---------
+   Non-key, non-plugin sidebar buttons are transparent at rest; hover gets a
+   micro-tint and the real aria/active selection stays visible. The
+   :not([data-dsh-part]) guard keeps the plugin three keys' glass fill (they
+   carry data-dsh-part), :not([class*="newSession"]) keeps 新会话's fill, and
+   :not([class*="trigger"]) keeps footer/settings triggers on the shell's own
+   hover/active states. */
+[data-slot="sidebar"] button:not([class*="newSession"]):not([data-dsh-part]):not([class*="trigger"]) {
+  background-color: rgba(0, 0, 0, 0) !important;
+}
+
+[data-slot="sidebar"] button:not([class*="newSession"]):not([data-dsh-part]):not([class*="trigger"]):hover {
+  background-color: var(--dsw-wallpaper-glass-hover) !important;
+}
+
+[data-slot="sidebar"] button:not([class*="newSession"]):not([data-dsh-part]):not([class*="trigger"])[aria-current="true"],
+[data-slot="sidebar"] button:not([class*="newSession"]):not([data-dsh-part]):not([class*="trigger"])[aria-selected="true"],
+[data-slot="sidebar"] button:not([class*="newSession"]):not([data-dsh-part]):not([class*="trigger"])[data-active] {
+  background-color: var(--dsw-wallpaper-glass-active) !important;
+}
+
+/* Footer action triggers (检查更新 / 远程访问 / 连接手机): keep the shell
+   hover/active behavior and add a visible open-state highlight while their
+   dialog is mounted, matching the example skin. */
+[data-slot="sidebar"] button[class*="trigger"] {
+  background-color: rgba(0, 0, 0, 0) !important;
+}
+
+[data-slot="sidebar"] button[class*="trigger"]:hover:not(:disabled) {
+  background-color: var(--dsw-wallpaper-glass-hover-strong) !important;
+}
+
+body:has(.fThDlq_panel[aria-label="检查更新"]) [data-slot="sidebar"] button[aria-label="检查更新"],
+body:has(.fThDlq_panel[aria-label="远程访问"]) [data-slot="sidebar"] button[aria-label="远程访问"],
+body:has(.fThDlq_panel[aria-label="连接手机"]) [data-slot="sidebar"] button[aria-label="连接手机"] {
+  background-color: var(--dsw-wallpaper-glass-active-strong) !important;
+  color: var(--dsw-alias-label-primary, #f9fafb) !important;
 }

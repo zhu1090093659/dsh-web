@@ -564,6 +564,16 @@ window.__ModuleLoader__.load({
 			scrimLayer = null;
 			videoElement = null;
 			rootNeutralizer = null;
+			/** Re-asserts the wallpaper layers if the shell tears the body subtree down. */
+			mountObserver = null;
+			/** Re-tags full-viewport surfaces after navigation rebuilds #root (#805). */
+			surfaceObserver = null;
+			/** Pending rAF id for a coalesced surface re-scan. */
+			surfaceRafId = null;
+			/** Pending trailing timer id that absorbs burst mutations into one scan. */
+			surfaceTrailId = null;
+			/** Trailing debounce window for the surface re-scan (options.surfaceTrailMs ?? 150). */
+			surfaceTrailMs;
 			/** Shell surfaces tagged with data-dsh-wallpaper-surface during this mount. */
 			taggedSurfaces = [];
 			disposed = false;
@@ -578,6 +588,7 @@ window.__ModuleLoader__.load({
 				this.scope = scope;
 				this.options = options;
 				this.doc = options.doc ?? document;
+				this.surfaceTrailMs = options.surfaceTrailMs ?? 150;
 				this.readAll();
 				scope.subscribe(() => {
 					this.readAll();
@@ -591,6 +602,15 @@ window.__ModuleLoader__.load({
 				this.doc.defaultView?.addEventListener("message", this.onSceneMessage);
 				this.doc.addEventListener("pointerdown", this.onFirstGesture);
 				this.doc.addEventListener("keydown", this.onFirstGesture);
+				const win = this.doc.defaultView;
+				if (win !== null && typeof win.MutationObserver === "function") {
+					this.mountObserver = new win.MutationObserver(() => {
+						if (this.disposed) return;
+						if ((this.previewing ?? this.applied) === null) return;
+						if (this.mediaLayer === null || !this.mediaLayer.isConnected) this.render();
+					});
+					this.mountObserver.observe(this.doc.body, { childList: true });
+				}
 				if (this.enabledValue && this.selectionValue) this.fetchAndSync();
 			}
 			fetchAndSync() {
@@ -784,6 +804,8 @@ window.__ModuleLoader__.load({
 			}
 			dispose() {
 				this.disposed = true;
+				this.mountObserver?.disconnect();
+				this.mountObserver = null;
 				this.doc.removeEventListener("visibilitychange", this.onVisibility);
 				this.doc.defaultView?.removeEventListener("message", this.onSceneMessage);
 				this.doc.removeEventListener("pointerdown", this.onFirstGesture);
@@ -881,11 +903,14 @@ window.__ModuleLoader__.load({
 				this.doc.documentElement.dataset.dshWallpaperActive = "true";
 				setSceneBackdropActive(this.doc, "wallpaper", true);
 				this.markSurfaces();
+				this.ensureSurfaceObserver();
+				if (this.mediaLayer !== null && !this.mediaLayer.isConnected) this.doc.body.appendChild(this.mediaLayer);
 				if (this.mediaLayer === null) {
 					this.mediaLayer = this.doc.createElement("div");
 					styleLayer(this.mediaLayer, -3);
 					this.doc.body.appendChild(this.mediaLayer);
 				}
+				if (this.scrimLayer !== null && !this.scrimLayer.isConnected) this.doc.body.appendChild(this.scrimLayer);
 				if (this.scrimLayer === null) {
 					this.scrimLayer = this.doc.createElement("div");
 					styleLayer(this.scrimLayer, -2);
@@ -902,6 +927,10 @@ window.__ModuleLoader__.load({
 						this.mediaLayer.appendChild(child);
 						if (child instanceof HTMLVideoElement && child.paused) child.play()?.catch(() => {});
 					}
+				} else {
+					const child = this.mediaLayer.firstElementChild;
+					const VideoCtor = this.doc.defaultView?.HTMLVideoElement;
+					if (VideoCtor !== void 0 && child instanceof VideoCtor && child.paused) child.play()?.catch(() => {});
 				}
 				this.applyFit();
 				const blur = this.blurValue > 0 ? "blur(" + String(this.blurValue) + "px)" : "";
@@ -1049,12 +1078,13 @@ window.__ModuleLoader__.load({
 			markSurfaces() {
 				const root = this.doc.getElementById("root");
 				if (root !== null) {
-					const isSurface = this.options.declareSurface ?? defaultWallpaperSurface;
+					const custom = this.options.declareSurface;
+					const isSurface = custom !== void 0 ? (el) => custom(el, this.doc) : (el) => defaultWallpaperSurface(el, this.doc);
 					const stack = [root];
 					while (stack.length > 0) {
 						const node = stack.pop();
 						if (node === void 0) continue;
-						if (node instanceof HTMLElement && !node.hasAttribute("data-dsh-wallpaper-surface") && isSurface(node, this.doc)) {
+						if (node instanceof HTMLElement && !node.hasAttribute("data-dsh-wallpaper-surface") && isSurface(node)) {
 							node.setAttribute("data-dsh-wallpaper-surface", "");
 							this.taggedSurfaces.push(node);
 						}
@@ -1079,12 +1109,75 @@ window.__ModuleLoader__.load({
 					for (const child of Array.from(node.children)) stack.push(child);
 				}
 			}
+			/**
+			* Watch document.body (subtree) while a wallpaper is active and re-tag the
+			* full-viewport surfaces after navigation rebuilds #root. Navigation
+			* replaces #root's interior with fresh, untagged surfaces that paint the
+			* opaque app base background over the negative-z wallpaper, so the tags
+			* must be re-asserted after the rebuild (#805). Attaching once on the
+			* persistent body element (not on #root) survives #root swaps.
+			*/
+			ensureSurfaceObserver() {
+				if (this.disposed || this.surfaceObserver !== null) return;
+				const win = this.doc.defaultView;
+				if (win === null || typeof win.MutationObserver !== "function") return;
+				this.surfaceObserver = new win.MutationObserver(() => this.scheduleSurfaceRescan());
+				this.surfaceObserver.observe(this.doc.body, {
+					childList: true,
+					subtree: true
+				});
+			}
+			/**
+			* Re-tag full-viewport surfaces after a surface-changing DOM mutation.
+			* Leading edge: the first rAF tags the new surfaces within one frame
+			* (before paint), so a navigation that rebuilds #root does not paint opaque
+			* solids for the whole debounce window (the round-1 regression: a 150ms
+			* trailing debounce left ~10 solid frames on every conversation switch).
+			* A trailing timer then drains the rest of the burst into one settled
+			* re-tag; while it is pending the guards coalesce follow-up mutations.
+			*/
+			scheduleSurfaceRescan() {
+				if (this.disposed || this.surfaceRafId !== null || this.surfaceTrailId !== null) return;
+				const win = this.doc.defaultView;
+				if (win === null) return;
+				const flush = () => {
+					this.surfaceRafId = null;
+					this.surfaceTrailId = null;
+					if (this.disposed) return;
+					if ((this.previewing ?? this.applied) === null) return;
+					this.untagSurfaces();
+					this.markSurfaces();
+				};
+				const armTrail = () => {
+					if (this.surfaceTrailId !== null) return;
+					this.surfaceTrailId = setTimeout(flush, this.surfaceTrailMs);
+				};
+				if (typeof win.requestAnimationFrame === "function") this.surfaceRafId = win.requestAnimationFrame(() => {
+					this.surfaceRafId = null;
+					flush();
+					if (this.surfaceTrailId === null) armTrail();
+				});
+				else {
+					flush();
+					armTrail();
+				}
+			}
 			untagSurfaces() {
 				for (const el of this.taggedSurfaces) el.removeAttribute("data-dsh-wallpaper-surface");
 				this.taggedSurfaces = [];
 			}
 			teardownLayers() {
 				this.releaseCaptureVideo();
+				if (this.surfaceRafId !== null) {
+					this.doc.defaultView?.cancelAnimationFrame(this.surfaceRafId);
+					this.surfaceRafId = null;
+				}
+				if (this.surfaceTrailId !== null) {
+					clearTimeout(this.surfaceTrailId);
+					this.surfaceTrailId = null;
+				}
+				this.surfaceObserver?.disconnect();
+				this.surfaceObserver = null;
 				this.untagSurfaces();
 				delete this.doc.body.dataset.dshWallpaperActive;
 				delete this.doc.documentElement.dataset.dshWallpaperActive;

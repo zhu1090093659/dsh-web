@@ -10,7 +10,6 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { WallpaperPanel } from '../src/client/WallpaperPanel.tsx'
 import { zh, type SkinCenterKey } from '../src/client/locales.ts'
-import type { SkinBackgroundHandle } from '../src/client/background.ts'
 import type { WallpaperHandle } from '../src/client/wallpaper.ts'
 
 ;((globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT) = true
@@ -53,23 +52,6 @@ const stubWallpaper = (): WallpaperHandle => ({
   dispose: () => {},
 })
 
-// The WallpaperPanel card-blur slider requires the background handle; these
-// tests only exercise the thumb fallback, so a static stub is enough.
-const stubBackground = (): SkinBackgroundHandle => ({
-  enabled: () => true,
-  setEnabled: () => {},
-  opacity: () => 0,
-  blurEmpty: () => 0,
-  blurContent: () => 0,
-  cardBlur: () => 10,
-  subscribe: () => () => {},
-  set: () => {},
-  setBlurEmpty: () => {},
-  setBlurContent: () => {},
-  setCardBlur: () => {},
-  dispose: () => {},
-})
-
 const inventory = (wallpapers: unknown[]) => ({
   ok: true,
   installDir: null,
@@ -100,7 +82,7 @@ async function render(wallpapers: unknown[]): Promise<void> {
   })))
   root = createRoot(host)
   await act(async () => {
-    root.render(<WallpaperPanel t={t as never} wallpaper={stubWallpaper()} background={stubBackground()} />)
+    root.render(<WallpaperPanel t={t as never} wallpaper={stubWallpaper()} />)
   })
 }
 

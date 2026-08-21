@@ -37,18 +37,20 @@ text is re-submitted there, and the original conversation is never touched.
     it is retrying, this plugin stands down.
   - The dock and the Retry button show a visible hint that retrying forks a
     new session branch: the original session stays untouched, and failed
-    forks remain in the session list.
+    forks remain in the session list. One failed turn forks at most one
+    child: later attempts of the same retry chain continue inside it.
 
 ## Safety model
 
-- **No duplicate user messages**: every retry attempt forks a fresh child
-  from the prefix BEFORE the failed turn and prompts the original text once.
-  No session ever accumulates the same message twice, and the failed turn's
-  stream fragments never enter the next model request.
+- **No duplicate user messages in the source**: the first attempt forks a
+  child from the prefix BEFORE the failed turn; later attempts of the same
+  chain continue in that child (one replay per attempt, visible as retry
+  history). The source session never accumulates the same message twice, and
+  the failed turn's stream fragments never enter the source's next request.
 - **Original sessions stay untouched**: edit and retry only create child
   sessions. A fork or resubmit failure leaves the source session exactly as
   it was.
-- **Failed forks stay in the list**: every attempt is its own child session,
+- **Failed forks stay in the list**: a failed turn leaves one retry child,
   and abandoned attempts (cancelled, exhausted or failed) are kept for
   inspection. The client runtime exposes no session-removal API, so stale
   retry forks must be cleaned up manually from the session list.

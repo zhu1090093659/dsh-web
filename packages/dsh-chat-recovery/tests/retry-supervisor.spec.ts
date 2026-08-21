@@ -142,7 +142,7 @@ describe('auto retry cycle', () => {
       await Promise.resolve()
       expect(supervisor.getSnapshot().phase).toBe('running')
       const child = ports.opened[ports.opened.length - 1]
-      expect(ports.prompts.filter((p) => p.id === child)).toHaveLength(1)
+      expect(ports.prompts.filter((p) => p.id === child)).toHaveLength(attempt)
       ports.setChildFailing(child as SessionId)
       supervisor.review()
       if (attempt < 5) {
@@ -154,12 +154,11 @@ describe('auto retry cycle', () => {
 
     expect(delays).toEqual([2000, 4000, 8000, 16000])
     expect(supervisor.getSnapshot()).toMatchObject({ phase: 'exhausted', maxAttempts: 5 })
-    // Every attempt forked from the ORIGINAL source at the same pre-turn anchor
-    // and every child received exactly one prompt: no session ever accumulates
-    // a duplicate user message.
-    expect(ports.forked).toHaveLength(5)
-    for (const fork of ports.forked) expect(fork).toEqual({ sessionId: SRC, atSeq: 3 })
-    expect(new Set(ports.prompts.map((p) => p.id)).size).toBe(5)
+    // One child per cycle (issues #797, #880): the first attempt forks the
+    // child at the pre-turn anchor, and every later attempt continues inside
+    // it — a failed turn must never spawn more than one extra session.
+    expect(ports.forked).toEqual([{ sessionId: SRC, atSeq: 3 }])
+    expect(new Set(ports.prompts.map((p) => p.id)).size).toBe(1)
     // The user is returned to the original failed turn.
     expect(ports.opened[ports.opened.length - 1]).toBe(SRC)
   })
@@ -182,12 +181,13 @@ describe('auto retry cycle', () => {
     ports.fireTimers()
     await Promise.resolve()
     await Promise.resolve()
-    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'running', targetId: 'child2' })
+    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'running', targetId: 'child1' })
 
     firstPrompt.resolve({ ok: false, code: 'timeout', message: 'late result' })
     await Promise.resolve()
     await Promise.resolve()
-    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'running', targetId: 'child2' })
+    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'running', targetId: 'child1' })
+    expect(ports.forked).toHaveLength(1)
     expect(ports.activeTimerCount()).toBe(0)
   })
 
@@ -382,6 +382,50 @@ describe('cancel semantics', () => {
     }))
     supervisor.review()
     expect(supervisor.getSnapshot()).toMatchObject({ phase: 'waiting', sourceId: child, attempt: 1 })
+  })
+
+  it('manual retry inside the retry child continues the child instead of forking again', async () => {
+    const { supervisor, ports } = make(new FakePorts())
+    ports.snaps.set(SRC, failedSource())
+    supervisor.review()
+    ports.fireTimers()
+    await Promise.resolve()
+    await Promise.resolve()
+    const child = 'child1' as SessionId
+    ports.setChildFailing(child)
+    supervisor.review() // running -> retryable -> waiting (attempt 2 armed)
+    supervisor.cancel()
+    supervisor.review() // cancelled -> child settled -> reset to idle
+    expect(supervisor.getSnapshot().phase).toBe('idle')
+
+    supervisor.manualRetry(child)
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'running', targetId: child, kind: 'manual' })
+    expect(ports.forked).toHaveLength(1)
+    expect(ports.prompts.map((p) => p.id)).toEqual([child, child])
+  })
+
+  it('a new cycle on the source forks a fresh child instead of reusing the old one', async () => {
+    const { supervisor, ports } = make(new FakePorts())
+    ports.snaps.set(SRC, failedSource())
+    supervisor.review()
+    ports.fireTimers()
+    await Promise.resolve()
+    await Promise.resolve()
+    const child = 'child1' as SessionId
+    ports.setChildFailing(child)
+    supervisor.review() // running -> waiting (attempt 2 armed)
+    supervisor.cancel()
+    supervisor.review() // reset to idle
+    expect(supervisor.getSnapshot().phase).toBe('idle')
+
+    supervisor.manualRetry(SRC)
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(supervisor.getSnapshot()).toMatchObject({ phase: 'running', targetId: 'child2', kind: 'manual' })
+    expect(ports.forked).toEqual([{ sessionId: SRC, atSeq: 3 }, { sessionId: SRC, atSeq: 3 }])
+    expect(ports.prompts.map((p) => p.id)).toEqual([child, 'child2'])
   })
 
   it('does not schedule work when a prompt settles after dispose', async () => {

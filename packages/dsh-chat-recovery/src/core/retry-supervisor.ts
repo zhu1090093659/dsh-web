@@ -1,14 +1,20 @@
 /**
  * Retry supervisor: a framework-free state machine that re-runs a failed
- * turn by forking a child session from the history prefix BEFORE the failed
- * turn and prompting the original user text once per attempt.
+ * turn by forking one child session from the history prefix BEFORE the
+ * failed turn and replaying the original user text there.
  *
- * Why fork-per-attempt: the host has no in-place "retry turn" RPC. Re-prompting
- * the same session would append a duplicate user message on every attempt, and
- * the failed turn's stream fragments would stay in the next request's history.
- * Forking from the prefix before the failed turn guarantees that (a) no session
- * ever accumulates a duplicate user message, (b) failed fragments never enter
- * the next model request, and (c) the original session stays untouched.
+ * Why fork: the host has no in-place "retry turn" RPC, so re-prompting the
+ * source session would append a duplicate user message and the failed
+ * turn's stream fragments would stay in the next request's history. Forking
+ * from the prefix before the failed turn guarantees the original session
+ * stays untouched.
+ *
+ * One child per cycle (issues #797, #880): the first attempt forks the
+ * child; every later attempt of the same cycle — and any retry re-armed
+ * inside that child — continues IN the child instead of forking another
+ * session, so one failed turn never spawns more than one extra session.
+ * The child therefore accumulates one replayed message per attempt, which
+ * is the retry history the user sees; the source stays pristine.
  *
  * The supervisor only watches the CURRENT session; the client wiring feeds it
  * through review() on every session/list change and cancels on navigation,
@@ -101,6 +107,12 @@ export class RetrySupervisor {
   private disposed = false
   /** Last completed event inherited by the current retry child before its replayed turn. */
   private attemptStartEndSeq = 0
+  /**
+   * The retry child created by the current (or most recent) cycle. Later
+   * attempts of the same cycle, and retries re-armed inside that child,
+   * continue in this session instead of forking another one.
+   */
+  private cycleTargetId: SessionId | null = null
 
   constructor(private readonly ports: RetryPorts) {}
 
@@ -236,6 +248,7 @@ export class RetrySupervisor {
     const plan = verdict.action === 'auto' ? verdict.plan : planForTurn(snapshot, verdict.failure.turn)
     if (plan === null) return
     this.invalidateAttempt()
+    this.resolveCycleTarget(sourceId)
     this.plan = plan
     this.userBaseline = userNodeCount(snapshot)
     this.publish({ phase: 'waiting', kind: 'manual', attempt: 0, maxAttempts: 1, delayMs: 0, sourceId, targetId: null, reason: null })
@@ -273,8 +286,18 @@ export class RetrySupervisor {
     this.listeners.clear()
   }
 
+  /**
+   * A new cycle reuses the previous cycle's retry child only when its source
+   * IS that child (the user retried inside it); any other source means a
+   * different failed turn and needs a fresh child.
+   */
+  private resolveCycleTarget(sourceId: SessionId): void {
+    if (this.cycleTargetId !== null && sourceId !== this.cycleTargetId) this.cycleTargetId = null
+  }
+
   private startAuto(sourceId: SessionId, plan: RetryPlan): void {
     this.invalidateAttempt()
+    this.resolveCycleTarget(sourceId)
     const snapshot = this.ports.snapshot(sourceId)
     this.plan = plan
     this.userBaseline = snapshot === undefined ? 0 : userNodeCount(snapshot)
@@ -321,11 +344,21 @@ export class RetrySupervisor {
       this.reset()
       return
     }
+    const reused = this.cycleTargetId !== null
     let targetId: SessionId
     try {
-      targetId = plan.forkAtSeq === null
-        ? await this.ports.connectBlank(this.ports.cwdOf(sourceId))
-        : await this.ports.fork({ sessionId: sourceId, atSeq: plan.forkAtSeq, increaseTitle: false })
+      if (reused) {
+        // A later attempt of the same cycle — or a retry re-armed inside the
+        // cycle's child — continues in that child instead of forking another
+        // session: one failed turn must never spawn more than one extra
+        // session (issues #797, #880).
+        targetId = this.cycleTargetId as SessionId
+      } else {
+        targetId = plan.forkAtSeq === null
+          ? await this.ports.connectBlank(this.ports.cwdOf(sourceId))
+          : await this.ports.fork({ sessionId: sourceId, atSeq: plan.forkAtSeq, increaseTitle: false })
+        this.cycleTargetId = targetId
+      }
     } catch (error) {
       if (!this.ownsAttempt(generation)) return
       this.finish('failed', messageOf(error))
@@ -333,13 +366,18 @@ export class RetrySupervisor {
     }
     // Cancel raced a slow fork: do not open or prompt a cancelled cycle.
     if (!this.ownsAttempt(generation) || this.state.phase !== 'waiting') return
-    // The child carries the source's history prefix (user messages at or
-    // before the fork anchor) plus exactly one replayed message. Takeover
-    // detection compares against this expected count, never an absolute one.
+    // A fresh child carries the source's history prefix (user messages at or
+    // before the fork anchor) plus exactly one replayed message. A reused
+    // child already carries one replayed message per finished attempt and is
+    // about to gain one more. Takeover detection compares against this
+    // expected count, never an absolute one.
     const sourceSnapshot = this.ports.snapshot(sourceId)
-    this.expectedUserCount = plan.forkAtSeq === null
-      ? 1
-      : (sourceSnapshot === undefined ? 0 : userNodeCountBefore(sourceSnapshot, plan.forkAtSeq)) + 1
+    const childSnapshot = reused ? this.ports.snapshot(targetId) : undefined
+    this.expectedUserCount = reused
+      ? (childSnapshot === undefined ? 0 : userNodeCount(childSnapshot)) + 1
+      : plan.forkAtSeq === null
+        ? 1
+        : (sourceSnapshot === undefined ? 0 : userNodeCountBefore(sourceSnapshot, plan.forkAtSeq)) + 1
     this.attemptStartEndSeq = latestTurnEnd(this.ports.snapshot(targetId))
     if (this.attemptStartEndSeq === 0) this.attemptStartEndSeq = plan.forkAtSeq ?? 0
     this.publish({ phase: 'running', targetId })

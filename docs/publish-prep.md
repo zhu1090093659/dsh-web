@@ -26,6 +26,7 @@
 | packages/dsh-plugin-manager | @linxin666/dsh-client-ui-plugin-manager | 0.1.0 | true |
 | packages/dsh-chat-recovery | @linxin666/dsh-chat-recovery | 0.2.4 | false |
 | packages/dsh-desktop-launcher | @linxin666/dsh-desktop-launcher | 0.2.3 | false |
+| packages/session-id | @linxin666/dsh-client-ui-session-id | 0.1.0 | true |
 | packages/dsh-skins | @linxin666/dsh-skins（聚合） | 0.1.1 | true |
 | packages/dsh-web-ui-all | @linxin666/dsh-web-ui-all（聚合） | 0.1.1 | true |
 | packages/skins/skin-center | @linxin666/dsh-client-ui-skin-center | 0.1.1 | true |

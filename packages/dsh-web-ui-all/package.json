@@ -46,6 +46,7 @@
     "@linxin666/dsh-liangshen": "workspace:*",
     "@linxin666/dsh-client-ui-skill-explorer": "workspace:*",
     "@linxin666/dsh-desktop-launcher": "workspace:*",
+    "@linxin666/dsh-client-ui-session-id": "workspace:*",
     "@linxin666/dsh-client-ui-web-ui-settings": "workspace:*",
     "@linxin666/dsh-skins": "workspace:*",
     "@linxin666/dsh-client-ui-skin-center": "workspace:*",

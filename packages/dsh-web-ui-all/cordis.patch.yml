@@ -78,6 +78,11 @@
     - id: web-ui-desktop-launcher
       name: '@linxin666/dsh-desktop-launcher'
 
+# from ../session-id
+- insert:
+    - id: web-ui-session-id
+      name: '@linxin666/dsh-client-ui-session-id'
+
 # from ../skins/skin-center (via ../dsh-skins)
 - insert:
     - id: web-ui-skin-center

@@ -355,5 +355,15 @@
     "descriptionEn": "Real session deletion with trash and restore, archived cleanup and batch delete. Official archive only hides sessions.",
     "repo": "https://github.com/xohmai/dsh-session-delete",
     "category": "utility"
+  },
+  {
+    "id": "dsh-asuna-pet",
+    "name": "亚丝娜桌宠",
+    "nameEn": "Asuna Pet",
+    "author": "zhangz59",
+    "description": "刀剑神域·结城明日奈（亚丝娜）的桌面宠物：点击、思考中、出结果时用亚丝娜风格的原创台词回应，支持拖拽摆放与自定义立绘，无图时用内置占位头像。",
+    "descriptionEn": "A floating Asuna (SAO) desktop pet for the DSH web GUI: reacts with original persona lines on click, while thinking, and when results arrive; draggable placement, user-supplied art with built-in placeholder fallback.",
+    "repo": "https://github.com/zhangz59/dsh-asuna-pet",
+    "category": "ui"
   }
 ]

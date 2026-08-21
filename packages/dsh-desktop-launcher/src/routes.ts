@@ -220,4 +220,3 @@ export function makeRoutes(deps: LauncherRoutesDeps): { routes: WebRoute[] } {
   }]
   return { routes }
 }
-

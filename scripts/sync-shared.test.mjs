@@ -74,4 +74,3 @@ test('the live tree is in sync', async () => {
   const drift = await checkSync()
   assert.deepEqual(drift, [])
 })
-

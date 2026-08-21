@@ -207,4 +207,3 @@ describe('route fence', () => {
     expect(response.status).toBe(405)
   })
 })
-

@@ -219,7 +219,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
       sendJson(res, 400, { error: unsafeTarget })
       return
     }
-    const plugin = await gateway.withMutationLock(async () => {
+    const outcome = await gateway.withMutationLock(async () => {
       const patchText = await readPatchText(facts.patchPath)
       // Write and read the same id space: the entry ids the package's bundle
       // patch claims (falling back to the package name), not the package name
@@ -227,9 +227,10 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
       // carries the entry's own name: the include semantics skip a bare row
       // whose name mismatches the inserted entry.
       const manifest = await readProfileManifest(facts.packageJsonPath)
-      const entries = manifest.dependencies[target] !== undefined
-        ? await claimedEntryRowsOf(facts, target)
-        : [{ id: target, name: target }]
+      if (manifest.dependencies[target] === undefined) {
+        return { error: `plugin-manager: plugin ${target} is not installed` } as const
+      }
+      const entries = await claimedEntryRowsOf(facts, target)
       let next = patchText
       for (const entry of entries) {
         next = setRowEnabled(next, facts.patchPath, entry.id, entry.name, enabled)
@@ -238,12 +239,16 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
         await writePatchAtomic(facts.patchPath, next)
       }
       const snapshot = await snapshotGateway(facts, next)
-      return snapshot.plugins.find(item => item.id === target)
+      const plugin = snapshot.plugins.find(item => item.id === target)
+      return plugin === undefined
+        ? { error: `plugin-manager: plugin ${target} is not installed` } as const
+        : { plugin } as const
     })
-    sendJson(res, 200, { plugin: plugin ?? {
-      id: target, name: target, version: 'unknown',
-      source: { kind: 'npm', spec: target }, installedAt: '', enabled,
-    } })
+    if ('error' in outcome) {
+      sendJson(res, 404, { error: outcome.error })
+      return
+    }
+    sendJson(res, 200, { plugin: outcome.plugin })
   }
 
   const failuresHandler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {

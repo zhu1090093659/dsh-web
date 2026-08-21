@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -83,6 +83,26 @@ afterEach(() => {
 })
 
 describe('set-enabled id space', () => {
+  it('rejects a stale toggle after the plugin disappears without writing an orphan row', async () => {
+    const { facts, dir } = makePlainProfile(['dsh-removed'])
+    tempDirs.push(dir)
+    // The panel can still hold this row after another writer removes the
+    // dependency. A stale toggle must not manufacture a patch override for a
+    // plugin that the fresh profile manifest no longer contains.
+    writeFileSync(facts.packageJsonPath, JSON.stringify({
+      name: 'dsh-profile-web', private: true,
+      dependencies: {},
+      dsh: { profile: { bundles: [] } },
+    }))
+    const before = readFileSync(facts.patchPath, 'utf8')
+    const { res, body, status } = captureResponse()
+    await setEnabledHandler(facts)(loopbackRequest({ id: 'dsh-removed', enabled: false }), res)
+    expect(status()).toBe(404)
+    expect(JSON.parse(body()).error).toContain('not installed')
+    expect(readFileSync(facts.patchPath, 'utf8')).toBe(before)
+    expect(existsSync(`${facts.patchPath}.bak-plugin-manager`)).toBe(false)
+  })
+
   it('serializes concurrent toggles so every acknowledged row persists', async () => {
     const ids = Array.from({ length: 16 }, (_, index) => `dsh-concurrent-${String(index)}`)
     const { facts, dir } = makePlainProfile(ids)

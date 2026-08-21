@@ -71,6 +71,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-plugin-manager
 - 变更类路由（install / update / remove / set-enabled）不带 token：loopback 权威即本机用户，与官方通道同模型。因此任何本机进程都能驱动插件安装与卸载，且 npm 安装会执行包的 install 脚本——请将本网关视为「设计上即本机代码执行」，绝不暴露到 loopback 之外。
 - 安装 spec 与包 id 含 shell 元字符（`& | < >`、引号、反引号、控制字符）时一律拒绝。网关在所有平台无 shell spawn 官方 CLI；Windows 下把 npm 生成的 `dsh.cmd` 解析为 `node.exe` + 包内 `bin.js`，含空格路径不被截断、`cmd.exe` 不再二次解析参数。上游残留说明：官方 CLI 内部向 pnpm 转发时在 Windows 上仍走 `cmd.exe` shell，本仓库无法改变——元字符校验即本仓库内的缓解。
 - 变更经同一队列串行，并发任务的 before/after profile 快照绝不交错。安装只有在依赖真实落入 profile 后才判 done（卸载以依赖消失为准），绝不轻信成功退出码。
+- 启停操作会在该变更队列内重新读取最新 profile 清单，并在写入前以 `404` 拒绝过期或未知的包 id，因此卸载后遗留在面板里的旧行不会制造孤儿 `disabled` 覆盖。
 - 冲突处置是 owner-aware 的：重复入口 id 或引用不可解析包的 insert 行会经官方 remove 路径回滚**新**包；网关绝不对共享 id 写 `disabled` 行（那既阻止不了 loader 的重复检查，又会误伤现有插件）。
 - 启动预检（`--dump-config`）只组合 patch 层、不 import 条目：能抓组合失败，抓不到 import 期失败——后者仍在首次真实启动时暴露。
 - profile 名（来自 `--profile` / `DSH_PROFILE`）在任何文件读写前做路径穿越校验；patch 写入走备份 + tmp + 原子 rename（`cordis.patch.yml.bak-plugin-manager`）。

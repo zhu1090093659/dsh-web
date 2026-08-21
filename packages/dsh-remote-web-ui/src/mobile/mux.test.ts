@@ -95,6 +95,20 @@ describe('MuxClient polling fallback', () => {
     client.stop()
   })
 
+  it('sorts an out-of-order poll page before advancing the watermark', async () => {
+    const { factory } = makeSources()
+    const pollLatest = vi.fn(async (_sessionId: string) => pageOf([2, 1, 3]))
+    const client = new MuxClient('/m/api/events.mux', baseOptions(pollLatest, factory))
+    const frames: Array<{ type: string; event?: { seq: number } }> = []
+    client.onFrame(frame => { frames.push(frame as never) })
+    client.start()
+    client.observe('s1')
+
+    await vi.advanceTimersByTimeAsync(1200)
+    expect(frames.map(frame => frame.event?.seq)).toEqual([1, 2, 3])
+    client.stop()
+  })
+
   it('keeps the watermark so a repeated page never re-emits old events', async () => {
     const { factory } = makeSources()
     // Two calls return the same page: the second must emit nothing.

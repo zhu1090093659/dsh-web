@@ -53,6 +53,10 @@ describe('createDesktopShortcut', () => {
       const installerScript = existsSync(join(dir, 'desktop-launcher', 'install-shortcut.ps1'))
         ? readFileSync(join(dir, 'desktop-launcher', 'install-shortcut.ps1'), 'utf8') : ''
       expect(installerScript).toContain("$shortcut.IconLocation = '" + join(dir, 'desktop-launcher', 'dsh.ico') + "'")
+      const launcherBytes = readFileSync(join(dir, 'desktop-launcher', 'launcher.ps1'))
+      const installerBytes = readFileSync(join(dir, 'desktop-launcher', 'install-shortcut.ps1'))
+      expect([...launcherBytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+      expect([...installerBytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

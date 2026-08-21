@@ -19,6 +19,7 @@ and Linux (.desktop).
 - The launcher is regenerated from the live settings each time you click the
   button, so `dshCommand`, `url` and `profile` changes apply on the next
   creation without editing the icon target.
+- Windows launcher and shortcut-installer scripts are written as UTF-8 with a BOM for Windows PowerShell 5.1 and non-ASCII user paths. Command lookup prefers the npm `dsh.cmd`/executable shim over `dsh.ps1`; a PowerShell-script-only fallback is invoked explicitly through `powershell.exe` rather than through file association.
 - The Windows shortcut uses the DeepSeek Harness whale icon (white background)
   and shows a styled "starting" popup instead of a console window: it reports
   progress (starting dsh, waiting for the GUI) and surfaces failures (missing

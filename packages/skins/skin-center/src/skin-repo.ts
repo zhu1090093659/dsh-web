@@ -60,10 +60,18 @@ export function builtinSkinsDir(fromUrl: string = import.meta.url): string {
   return join(dirname(fileURLToPath(fromUrl)), '..', 'skins')
 }
 
-/** User skins live in $DSH_HOME/skins/. DSH_SKINS_HOME overrides (tests). */
+/**
+ * User skins live in $DSH_HOME/skins/. DSH_SKINS_HOME overrides (tests).
+ *
+ * DSH_SKINS_DIR is also honored (after DSH_SKINS_HOME) for deployments that
+ * set the legacy variable: earlier skin tooling used DSH_SKINS_DIR, and
+ * existing launcher scripts still export it.
+ */
 export function userSkinsDir(env: NodeJS.ProcessEnv = process.env): string {
-  const override = env.DSH_SKINS_HOME
-  if (override && override.trim() !== '') return resolvePath(override)
+  const home = env.DSH_SKINS_HOME
+  if (home && home.trim() !== '') return resolvePath(home)
+  const dir = env.DSH_SKINS_DIR
+  if (dir && dir.trim() !== '') return resolvePath(dir)
   return join(resolveHarnessHome(), 'skins')
 }
 

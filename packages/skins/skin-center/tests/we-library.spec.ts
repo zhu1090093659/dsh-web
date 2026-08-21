@@ -4,18 +4,23 @@
  * synthesis), the import store, and inventory update detection — all against
  * synthetic fixture trees in a temp dir; nothing real is ever touched.
  */
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
+  allLibrariesFromVdf,
   buildInventory,
   expandUser,
   inferType,
   librariesFromVdf,
+  libraryOwnsAppFromManifest,
+  locateWallpaperEngine,
+  owningLibraries,
   readImportedManifest,
   readProjectJson,
   scanImportStore,
+  scanManualWallpaperRoot,
   scanProjectsRoot,
 } from '../src/we-library.ts'
 
@@ -62,6 +67,44 @@ describe('librariesFromVdf', () => {
       '}',
     ].join('\n')
     expect(librariesFromVdf(vdf)).toEqual(['C:\\Steam'])
+  })
+})
+
+describe('Steam library discovery', () => {
+  it('reads every VDF library and confirms stale-cache ownership from appmanifest', () => {
+    const fixtureExists = (path: string): boolean => path.startsWith(root) && existsSync(path)
+    const steam = join(root, 'steam')
+    const library = join(root, 'other-library')
+    mkdirSync(join(steam, 'steamapps'), { recursive: true })
+    mkdirSync(join(library, 'steamapps'), { recursive: true })
+    const vdf = [
+      '"libraryfolders"', '{', '  "1"', '  {',
+      `    "path" "${library.replace(/\\/g, '\\\\')}"`,
+      '    "apps"', '    {', '      "570" "1"', '    }', '  }', '}',
+    ].join('\n')
+    writeFileSync(join(steam, 'steamapps', 'libraryfolders.vdf'), vdf, 'utf8')
+    writeFileSync(join(library, 'steamapps', 'appmanifest_431960.acf'), '"appid" "431960"', 'utf8')
+
+    expect(allLibrariesFromVdf(vdf)).toEqual([library])
+    expect(libraryOwnsAppFromManifest(library, '431960')).toBe(true)
+    expect(owningLibraries({ exists: fixtureExists, registry: () => steam })).toEqual([library])
+  })
+
+  it('locates an install even when the VDF apps cache omits Wallpaper Engine', () => {
+    const fixtureExists = (path: string): boolean => path.startsWith(root) && existsSync(path)
+    const steam = join(root, 'steam')
+    const library = join(root, 'other-library')
+    const install = join(library, 'steamapps', 'common', 'wallpaper_engine')
+    mkdirSync(join(steam, 'steamapps'), { recursive: true })
+    mkdirSync(install, { recursive: true })
+    writeFileSync(join(install, 'wallpaper32.exe'), 'x', 'utf8')
+    writeFileSync(join(steam, 'steamapps', 'libraryfolders.vdf'), [
+      '"libraryfolders"', '{', '  "1"', '  {',
+      `    "path" "${library.replace(/\\/g, '\\\\')}"`,
+      '    "apps"', '    {', '    }', '  }', '}',
+    ].join('\n'), 'utf8')
+
+    expect(locateWallpaperEngine({ env: { OS: 'Windows_NT' }, exists: fixtureExists, registry: () => steam })).toBe(install)
   })
 })
 
@@ -145,6 +188,24 @@ describe('scanProjectsRoot', () => {
     mkdirSync(dir, { recursive: true })
     writeFileSync(join(dir, 'loop.mp4'), 'x', 'utf8')
     expect(scanProjectsRoot(ws, 'workshop')).toHaveLength(0)
+  })
+})
+
+describe('scanManualWallpaperRoot', () => {
+  it('descends from a Wallpaper Engine install root into local and workshop projects', () => {
+    const library = join(root, 'SteamLibrary')
+    const install = join(library, 'steamapps', 'common', 'wallpaper_engine')
+    makeProject(join(install, 'projects', 'defaultprojects', 'local-one'), { title: 'Local', file: 'local.mp4' }, ['local.mp4'])
+    makeProject(join(library, 'steamapps', 'workshop', 'content', '431960', '123'), { title: 'Workshop', file: 'workshop.mp4' }, ['workshop.mp4'])
+
+    const entries = scanManualWallpaperRoot(install)
+    expect(entries.map(entry => entry.title).sort()).toEqual(['Local', 'Workshop'])
+  })
+
+  it('descends from a Steam library root into workshop content', () => {
+    const library = join(root, 'SteamLibrary')
+    makeProject(join(library, 'steamapps', 'workshop', 'content', '431960', '456'), { title: 'Library workshop', file: 'wall.mp4' }, ['wall.mp4'])
+    expect(scanManualWallpaperRoot(library).map(entry => entry.title)).toEqual(['Library workshop'])
   })
 })
 

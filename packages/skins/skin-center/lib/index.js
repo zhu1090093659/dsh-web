@@ -401,11 +401,13 @@ function resolveHarnessPaths(home, profile, fromUrl = import.meta.url) {
 function builtinSkinsDir(fromUrl = import.meta.url) {
 	return join(dirname(fileURLToPath(fromUrl)), "..", "skins");
 }
-/** User skins live in $DSH_HOME/skins/. DSH_SKINS_HOME overrides (tests). */
+/** User skins live in $DSH_HOME/skins with explicit directory overrides. */
 function userSkinsDir(env = process.env) {
-	const override = env.DSH_SKINS_HOME;
-	if (override && override.trim() !== "") return resolve(override);
-	return join(resolveHarnessHome(), "skins");
+	const home = env.DSH_SKINS_HOME;
+	if (home && home.trim() !== "") return resolve(home);
+	const dir = env.DSH_SKINS_DIR;
+	if (dir && dir.trim() !== "") return resolve(dir);
+	return join(resolveHarnessHome(void 0, env), "skins");
 }
 function readManifest(dir) {
 	const manifestPath = join(dir, "skin.json");
@@ -1935,6 +1937,21 @@ function librariesFromVdf(vdfText) {
 	}
 	return libraries;
 }
+/** Every Steam library root listed in libraryfolders.vdf, independent of its stale apps cache. */
+function allLibrariesFromVdf(vdfText) {
+	const libraries = [];
+	for (const line of vdfText.split(/\r?\n/)) {
+		const match = /^\s*"path"\s+"([^"]+)"\s*$/.exec(line);
+		if (match === null) continue;
+		const root = match[1].replace(/\\\\/g, "\\");
+		if (!libraries.includes(root)) libraries.push(root);
+	}
+	return libraries;
+}
+/** Durable ownership fact used when libraryfolders.vdf has not refreshed its apps block. */
+function libraryOwnsAppFromManifest(library, appid, exists = existsSync) {
+	return exists(join(library, "steamapps", `appmanifest_${appid}.acf`));
+}
 /**
 * Locate the Wallpaper Engine install directory (holds wallpaper32.exe).
 * Probes: registry Steam root, well-known paths, then every library that
@@ -1952,7 +1969,7 @@ function locateWallpaperEngine(opts = {}) {
 		for (const probe of probes) {
 			const vdf = join(probe, "steamapps", "libraryfolders.vdf");
 			if (exists(vdf)) try {
-				libraries.push(...librariesFromVdf(readFileSync(vdf, "utf8")));
+				libraries.push(...allLibrariesFromVdf(readFileSync(vdf, "utf8")));
 			} catch {}
 		}
 		const candidates = [];
@@ -1971,14 +1988,20 @@ function owningLibraries(opts = {}) {
 	if (process.platform !== "win32" && !opts.exists) return [];
 	const registry = opts.registry ?? (() => steamPathFromRegistry());
 	const probes = [...new Set([registry(), ...STEAM_PROBE_DIRS].filter((d) => !!d))];
-	const libraries = [];
+	const libraries = /* @__PURE__ */ new Set();
 	for (const probe of probes) {
 		const vdf = join(probe, "steamapps", "libraryfolders.vdf");
-		if (exists(vdf)) try {
-			libraries.push(...librariesFromVdf(readFileSync(vdf, "utf8")));
-		} catch {}
+		if (!exists(vdf)) continue;
+		let vdfText;
+		try {
+			vdfText = readFileSync(vdf, "utf8");
+		} catch {
+			continue;
+		}
+		for (const root of librariesFromVdf(vdfText)) libraries.add(root);
+		for (const root of allLibrariesFromVdf(vdfText)) if (libraryOwnsAppFromManifest(root, "431960", exists)) libraries.add(root);
 	}
-	return [...new Set(libraries)];
+	return [...libraries];
 }
 /** Infer the wallpaper type from the main file extension (project.json fallback). */
 function inferType(file) {
@@ -2139,6 +2162,45 @@ function scanProjectsRoot(root, source) {
 	}
 	return entries;
 }
+/**
+* Scan a user-supplied path at any supported Wallpaper Engine level: a
+* project folder, project collection, WE install root, Steam library root,
+* steamapps folder, or workshop content root.
+*/
+function scanManualWallpaperRoot(root) {
+	const candidates = [
+		{
+			root,
+			source: "local"
+		},
+		{
+			root: join(root, "projects", "defaultprojects"),
+			source: "local"
+		},
+		{
+			root: join(root, "projects", "myprojects"),
+			source: "local"
+		},
+		{
+			root: join(root, "steamapps", "workshop", "content", WE_APPID),
+			source: "workshop"
+		},
+		{
+			root: join(root, "workshop", "content", WE_APPID),
+			source: "workshop"
+		}
+	];
+	if (basename(root).toLowerCase() === "wallpaper_engine") candidates.push({
+		root: join(dirname(dirname(root)), "workshop", "content", WE_APPID),
+		source: "workshop"
+	});
+	const found = /* @__PURE__ */ new Map();
+	for (const candidate of candidates) {
+		if (!existsSync(candidate.root)) continue;
+		for (const entry of scanProjectsRoot(candidate.root, candidate.source)) if (!found.has(entry.id)) found.set(entry.id, entry);
+	}
+	return [...found.values()];
+}
 /** Read one import-store entry's manifest.json; null when absent/invalid. */
 function readImportedManifest(entryDir) {
 	const path = join(entryDir, "manifest.json");
@@ -2246,7 +2308,7 @@ function buildInventory(opts = {}) {
 	for (const manual of opts.manualDirs ?? []) {
 		const trimmed = firstNonBlank(manual);
 		const dir = trimmed !== void 0 ? expandUser(trimmed) : void 0;
-		if (dir !== void 0 && existsSync(dir)) for (const entry of scanProjectsRoot(dir, "local")) add(entry);
+		if (dir !== void 0 && existsSync(dir)) for (const entry of scanManualWallpaperRoot(dir)) add(entry);
 	}
 	const imported = opts.storeDir ? scanImportStore(opts.storeDir) : [];
 	for (const entry of imported) {

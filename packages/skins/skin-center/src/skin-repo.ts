@@ -60,11 +60,13 @@ export function builtinSkinsDir(fromUrl: string = import.meta.url): string {
   return join(dirname(fileURLToPath(fromUrl)), '..', 'skins')
 }
 
-/** User skins live in $DSH_HOME/skins/. DSH_SKINS_HOME overrides (tests). */
+/** User skins live in $DSH_HOME/skins with explicit directory overrides. */
 export function userSkinsDir(env: NodeJS.ProcessEnv = process.env): string {
-  const override = env.DSH_SKINS_HOME
-  if (override && override.trim() !== '') return resolvePath(override)
-  return join(resolveHarnessHome(), 'skins')
+  const home = env.DSH_SKINS_HOME
+  if (home && home.trim() !== '') return resolvePath(home)
+  const dir = env.DSH_SKINS_DIR
+  if (dir && dir.trim() !== '') return resolvePath(dir)
+  return join(resolveHarnessHome(undefined, env), 'skins')
 }
 
 function readManifest(dir: string): unknown | null {

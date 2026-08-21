@@ -9,7 +9,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { findSkin, loadSkinCatalog, resolveInsideSkin } from '../src/skin-repo.ts'
+import { findSkin, loadSkinCatalog, resolveInsideSkin, userSkinsDir } from '../src/skin-repo.ts'
 import type { SkinCatalogEntry } from '../src/skin-repo.ts'
 
 let root: string
@@ -93,6 +93,14 @@ describe('loadSkinCatalog', () => {
     const catalog = loadSkinCatalog({ builtinDir: join(root, 'nope'), userDir: join(root, 'nada') })
     expect(catalog.skins).toEqual([])
     expect(catalog.diagnostics).toEqual([])
+  })
+})
+
+describe('userSkinsDir', () => {
+  it('uses DSH_SKINS_HOME, then DSH_SKINS_DIR, then DSH_HOME/skins', () => {
+    expect(userSkinsDir({ DSH_SKINS_HOME: join(root, 'home'), DSH_SKINS_DIR: join(root, 'dir') })).toBe(join(root, 'home'))
+    expect(userSkinsDir({ DSH_SKINS_DIR: join(root, 'dir') })).toBe(join(root, 'dir'))
+    expect(userSkinsDir({ DSH_HOME: join(root, 'dsh') })).toBe(join(root, 'dsh', 'skins'))
   })
 })
 

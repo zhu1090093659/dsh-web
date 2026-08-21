@@ -358,11 +358,11 @@
   },
   {
     "id": "dsh-chatgpt-subscription",
-    "name": "ChatGPT 订阅 Codex",
-    "nameEn": "ChatGPT Subscription Codex",
+    "name": "子代理管理",
+    "nameEn": "Subagent Management",
     "author": "Aa728848",
-    "description": "让 DSH 通过 ChatGPT 订阅使用 GPT 系列模型：PKCE OAuth 登录、DPAPI/钥匙串/0600 凭据存储、流式 Responses、图片生成、Codex 搜索与额度展示。",
-    "descriptionEn": "Use GPT models in DSH through your ChatGPT subscription: PKCE OAuth login, DPAPI/keychain/0600 credential storage, streaming Responses, image generation, Codex search and quota display.",
+    "description": "让 DSH 通过 ChatGPT 订阅使用 GPT 系列模型：PKCE OAuth 登录、DPAPI/钥匙串/0600 凭据存储、流式 Responses、图片生成、Codex 搜索、额度展示与子代理管理。",
+    "descriptionEn": "Use GPT models in DSH through your ChatGPT subscription: PKCE OAuth login, DPAPI/keychain/0600 credential storage, streaming Responses, image generation, Codex search, quota display and subagent management.",
     "repo": "https://github.com/Aa728848/dsh-chatgpt-subscription",
     "npm": "@eddyskywalker/dsh-chatgpt-subscription",
     "category": "integration"

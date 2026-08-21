@@ -377,5 +377,15 @@
     "repo": "https://github.com/dickpy/dsh-imagegen",
     "npm": "@dickpy/dsh-imagegen",
     "category": "tools"
+  },
+  {
+    "id": "math-research-dsh",
+    "name": "数学研究 DSH",
+    "nameEn": "Math Research DSH",
+    "author": "xsoc1",
+    "description": "DeepSeek Harness 数学研究技能套件：rigorous-open-math-research、manage-math-research-program、math-research-workflow、lean-verify 四个严格数学研究技能，附 CI 验证、上游同步与 DSH 环境自检。",
+    "descriptionEn": "DeepSeek Harness mathematics research skill suite: rigorous-open-math-research, manage-math-research-program, math-research-workflow, and lean-verify as native DSH skills, with CI verification, mechanical upstream sync and an environment doctor.",
+    "repo": "https://github.com/xsoc1/math-research-dsh",
+    "category": "tools"
   }
 ]

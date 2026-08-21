@@ -531,15 +531,15 @@ window.SKIN_MANIFEST = {
       ],
       "accent": "#c5a468",
       "order": 13,
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "CC BY-NC-SA 4.0",
       "licenseUrl": "https://github.com/Small-tailqwq/dsh-deep-whale/blob/main/maid-atelier/LICENSE",
       "noticeUrl": "https://github.com/Small-tailqwq/dsh-deep-whale/blob/main/maid-atelier/NOTICE",
       "sourceUrl": "https://github.com/Small-tailqwq/dsh-deep-whale/tree/main/maid-atelier",
       "attribution": "上善 → zipzip → Small-tailqwq",
       "preview": {
-        "light": "packages/skins/skin-center/skins/maid-atelier/preview/light.png",
-        "dark": "packages/skins/skin-center/skins/maid-atelier/preview/dark.png"
+        "light": "packages/skins/skin-center/skins/maid-atelier/preview/light.webp",
+        "dark": "packages/skins/skin-center/skins/maid-atelier/preview/dark.webp"
       },
       "requires": {
         "contracts": [

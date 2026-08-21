@@ -107,8 +107,8 @@
     "name": "选中批注",
     "nameEn": "Selection Annotation",
     "author": "omdsh-dev",
-    "description": "选中助手文字即可批注，回车随消息发送；自己的气泡只显示问题与「批注 ×N」标签，模型按 Annotation N 逐条对照回复（悬浮芯片）。",
-    "descriptionEn": "Select text in an assistant reply to annotate it; annotations are sent with your next message, hidden from your own bubble behind an Annotations xN chip, and the model replies per Annotation N with hoverable chips.",
+    "description": "选中助手文字即可批注，回车随消息发送；自己的气泡只显示问题与「批注 ×N」标签，模型按 Annotation N 逐条对照回复（悬浮芯片）；UI 与批注块跟随 DSH 语言切换 zh/en，Cmd/Ctrl+Enter 可直发纯批注，斜杠命令原样放行。",
+    "descriptionEn": "Select text in an assistant reply to annotate it; annotations ride along with your next message, hidden in your own bubble behind an Annotations xN chip, and the model replies per Annotation N with hoverable chips. UI and annotation block follow the DSH locale (zh/en); Cmd/Ctrl+Enter sends annotations alone; slash commands pass through.",
     "repo": "https://github.com/omdsh-dev/dsh-annotation",
     "category": "ui"
   },

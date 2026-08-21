@@ -19,6 +19,8 @@ import { SKIN_WALLPAPER_NS, WallpaperController, installBootRestore } from './wa
 import { en, zh, type SkinCenterKey } from './locales.ts'
 import { bootSkinRuntime } from './runtime/boot.ts'
 import { PreviewCoordinator } from './preview-coordinator.ts'
+import { CustomThemeController } from './custom-theme-controller.ts'
+import { SKIN_CUSTOM_THEME_NS, type CustomThemeConfig } from '../core/custom-theme.ts'
 
 export type { SkinCenterComponentProps, SkinCenterInjected } from './SkinCenter.tsx'
 export { bootSkinRuntime } from './runtime/boot.ts'
@@ -77,6 +79,9 @@ export function apply(ctx: ClientContext): void {
   const background = new BackgroundController(backgroundScope)
   // Tear the blur element + observer down when this plugin's fiber goes away.
   ctx.effect(() => () => background.dispose(), 'ui-skin-center: background dispose')
+  const customThemeScope = binder.bind<CustomThemeConfig>({ namespace: SKIN_CUSTOM_THEME_NS })
+  const customTheme = new CustomThemeController(customThemeScope)
+  ctx.effect(() => () => customTheme.dispose(), 'ui-skin-center: custom theme dispose')
   // The Wallpaper Engine bridge over the skin-wallpaper namespace.
   const wallpaperScope = binder.bind<{
     enabled?: boolean
@@ -106,7 +111,7 @@ export function apply(ctx: ClientContext): void {
     () => wallpaper.subscribe(() => { void runtime.controller.refresh() }),
     'ui-skin-center: wallpaper priority refresh',
   )
-  const preview = new PreviewCoordinator(runtime.controller, wallpaper)
+  const preview = new PreviewCoordinator(runtime.controller, wallpaper, customTheme)
   ctx.effect(
     () => ctx.on('theme/change', () => wallpaper.recoverScenePlayer()),
     'ui-skin-center: scene recovery after theme change',
@@ -114,6 +119,7 @@ export function apply(ctx: ClientContext): void {
   const injected = (): SkinCenterInjected => ({
     runtime,
     preview,
+    customTheme,
     theme: {
       getTheme: () => theme.getTheme(),
       subscribe: listener => ctx.on('theme/change', listener),

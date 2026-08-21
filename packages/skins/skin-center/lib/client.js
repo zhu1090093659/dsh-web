@@ -6,6 +6,309 @@ window.__ModuleLoader__.load({
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		let react = require("react");
 		let react_jsx_runtime = require("react/jsx-runtime");
+		//#region \0dsh-css:packages/skins/skin-center/src/client/skin-center.module.css.mjs
+		const css = "body[data-dsh-skin-center] .eDzMgW_sectionList{margin:0;padding:0;list-style:none}body[data-dsh-skin-center] .eDzMgW_pluginCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}body[data-dsh-skin-center] .eDzMgW_pluginCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_cardHeaderStatic{align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}body[data-dsh-skin-center] .eDzMgW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_pluginName{color:var(--dsw-alias-label-primary);align-items:baseline;gap:8px;font-size:15px;font-weight:600;line-height:1.4;display:flex}body[data-dsh-skin-center] .eDzMgW_cardDescription{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_cardBody{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:12px;margin:0 16px;padding:12px 0 8px;display:flex}body[data-dsh-skin-center] .eDzMgW_head{flex-direction:column;gap:6px;display:flex}body[data-dsh-skin-center] .eDzMgW_titleBadge{color:var(--dsw-alias-label-secondary,#6b7280);font-size:11px;font-weight:500}body[data-dsh-skin-center] .eDzMgW_intro{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12.5px;line-height:1.55}body[data-dsh-skin-center] .eDzMgW_themeRow{align-items:center;gap:8px;margin-top:2px;display:flex}body[data-dsh-skin-center] .eDzMgW_themeLabel{color:var(--dsw-alias-label-secondary,#6b7280);margin-right:2px;font-size:12px}body[data-dsh-skin-center] .eDzMgW_themeButton{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_themeButton:hover{border-color:var(--dsw-alias-border-l4,#94a3b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:active{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_themeButtonActive{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_list{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_card{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:8px;padding:12px 14px;display:flex}body[data-dsh-skin-center] .eDzMgW_cardHead{align-items:center;gap:10px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_swatch{width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;flex:none}body[data-dsh-skin-center] .eDzMgW_cardName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_cardTagline{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.45}body[data-dsh-skin-center] .eDzMgW_badge{letter-spacing:.02em;border-radius:999px;flex:none;min-width:0;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_badgeActive{color:var(--dsw-alias-state-success-primary,#0f6b3a);background:var(--dsw-alias-state-success-tertiary,#dcf3e5)}body[data-dsh-skin-center] .eDzMgW_badgeTrying{color:var(--dsw-alias-brand-primary,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e2edfc)}body[data-dsh-skin-center] .eDzMgW_actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_button{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:7px;padding:6px 12px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_button:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary,#2b7cd9);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:active:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_buttonPrimary{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-fill,#2b7cd9);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:active:not(:disabled),body[data-dsh-skin-center] .eDzMgW_buttonPrimary:focus-visible:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_buttonGhost{background:0 0;border-color:#0000}body[data-dsh-skin-center] .eDzMgW_button:disabled{opacity:.55;cursor:default}body[data-dsh-skin-center] .eDzMgW_error{color:var(--dsw-alias-state-error-primary,#b42318);font-size:12px}body[data-dsh-skin-center] .eDzMgW_enableRow{flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_enableLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_enableHint{min-width:100%;color:var(--dsw-alias-label-secondary,#6b7280);flex:1;margin:0;font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_switch{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-3,#e2e8f0);cursor:pointer;border-radius:999px;flex:none;align-items:center;width:40px;height:22px;padding:2px;transition:background .12s,border-color .12s;display:inline-flex;position:relative}body[data-dsh-skin-center] .eDzMgW_switchOn{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-brand-primary,#2b7cd9)}body[data-dsh-skin-center] .eDzMgW_switch:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_switchThumb{background:var(--dsw-alias-label-primary-foreground,#fff);width:18px;height:18px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;transition:transform .12s;display:block;transform:translate(0)}body[data-dsh-skin-center] .eDzMgW_switchOn .eDzMgW_switchThumb{transform:translate(18px)}body[data-dsh-skin-center] .eDzMgW_offNote{color:var(--dsw-alias-label-secondary,#6b7280);margin:0;font-size:12.5px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundRow{flex-direction:column;gap:6px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundHead{align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_backgroundValue{font-variant-numeric:tabular-nums;color:var(--dsw-alias-brand-primary,#2b7cd9);flex:none;margin-left:auto;font-size:12px}body[data-dsh-skin-center] .eDzMgW_backgroundRange{background:var(--dsw-alias-label-tertiary,#9aa4b5);background:color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent);width:100%;height:4px;box-shadow:0 0 0 1px var(--dsw-alias-border-l3,#cbd5e1);-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:999px;margin:0}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-runnable-track{background:var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-track{background:var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:14px;height:14px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-thumb{border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:12px;height:12px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_backgroundHint{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundHintMuted{color:var(--dsw-alias-label-tertiary,#9aa4b5);font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){body[data-dsh-skin-center] .eDzMgW_pluginCard,body[data-dsh-skin-center] .eDzMgW_themeButton,body[data-dsh-skin-center] .eDzMgW_button,body[data-dsh-skin-center] .eDzMgW_switch,body[data-dsh-skin-center] .eDzMgW_switchThumb{transition:none}}body[data-dsh-skin-center] .eDzMgW_wallpaperSection{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:10px;padding-top:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatus{color:var(--dsw-alias-label-secondary,#6b7280);align-items:center;gap:8px;font-size:12px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatusError{color:var(--dsw-alias-state-danger,#c53030)}body[data-dsh-skin-center] .eDzMgW_wallpaperControls{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperGrid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;display:grid}body[data-dsh-skin-center] .eDzMgW_wallpaperCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:6px;padding:8px;transition:border-color .16s;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap{aspect-ratio:16/9;background:var(--dsw-alias-bg-layer-1,#f1f5f9);border-radius:6px;position:relative;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperThumb{object-fit:cover;width:100%;height:100%;display:block}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbEmpty{width:100%;height:100%}body[data-dsh-skin-center] .eDzMgW_wallpaperType{color:var(--dsw-alias-label-primary,#172a45);background:var(--dsw-alias-bg-layer-2,#ffffffd9);border-radius:4px;padding:3px 6px;font-size:10.5px;line-height:1;position:absolute;top:6px;left:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap .eDzMgW_badge{position:absolute;top:6px;right:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:1.35;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperActions{flex-wrap:wrap;gap:6px;display:flex}body[data-dsh-skin-center] .eDzMgW_customThemeCard{overflow:hidden}body[data-dsh-skin-center] .eDzMgW_customThemeEditor{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:9px;flex-direction:column;gap:14px;margin:2px -2px -2px;padding:14px;display:flex}body[data-dsh-skin-center] .eDzMgW_customThemeScheme{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_customThemeFields{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;display:grid}body[data-dsh-skin-center] .eDzMgW_customThemeField,body[data-dsh-skin-center] .eDzMgW_customThemeContrast{flex-direction:column;gap:7px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_customThemeFieldLabel{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500}body[data-dsh-skin-center] .eDzMgW_customThemeInputRow{align-items:center;gap:7px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_customThemeColor{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);cursor:pointer;border-radius:7px;flex:none;width:34px;height:30px;padding:2px}body[data-dsh-skin-center] .eDzMgW_customThemeHex{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-specific-input-major);width:100%;min-width:0;height:30px;color:var(--dsw-alias-label-primary);font:inherit;border-radius:7px;outline:none;padding:0 9px;font-size:12px}body[data-dsh-skin-center] .eDzMgW_customThemeHex:focus,body[data-dsh-skin-center] .eDzMgW_customThemeColor:focus-visible{border-color:var(--dsw-alias-brand-primary);box-shadow:0 0 0 2px var(--dsw-alias-button-primary-dimmed)}body[data-dsh-skin-center] .eDzMgW_customThemeFooter{justify-content:space-between;align-items:center;gap:12px;padding-top:2px;display:flex}@media (width<=680px){body[data-dsh-skin-center] .eDzMgW_customThemeFields{grid-template-columns:1fr}body[data-dsh-skin-center] .eDzMgW_customThemeFooter{flex-direction:column;align-items:flex-start}}";
+		const tagId = "@linxin666/dsh-client-ui-skin-center/skin-center.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@linxin666/dsh-client-ui-skin-center";
+			tag.dataset.pluginCss = tagId;
+			tag.textContent = css;
+			document.head.appendChild(tag);
+		}
+		var skin_center_module_css_default = {
+			"actions": "eDzMgW_actions",
+			"backgroundHead": "eDzMgW_backgroundHead",
+			"backgroundHint": "eDzMgW_backgroundHint",
+			"backgroundHintMuted": "eDzMgW_backgroundHintMuted",
+			"backgroundLabel": "eDzMgW_backgroundLabel",
+			"backgroundRange": "eDzMgW_backgroundRange",
+			"backgroundRow": "eDzMgW_backgroundRow",
+			"backgroundValue": "eDzMgW_backgroundValue",
+			"badge": "eDzMgW_badge",
+			"badgeActive": "eDzMgW_badgeActive",
+			"badgeTrying": "eDzMgW_badgeTrying",
+			"button": "eDzMgW_button",
+			"buttonGhost": "eDzMgW_buttonGhost",
+			"buttonPrimary": "eDzMgW_buttonPrimary",
+			"card": "eDzMgW_card",
+			"cardBody": "eDzMgW_cardBody",
+			"cardDescription": "eDzMgW_cardDescription",
+			"cardHead": "eDzMgW_cardHead",
+			"cardHeaderStatic": "eDzMgW_cardHeaderStatic",
+			"cardName": "eDzMgW_cardName",
+			"cardTagline": "eDzMgW_cardTagline",
+			"customThemeCard": "eDzMgW_customThemeCard",
+			"customThemeColor": "eDzMgW_customThemeColor",
+			"customThemeContrast": "eDzMgW_customThemeContrast",
+			"customThemeEditor": "eDzMgW_customThemeEditor",
+			"customThemeField": "eDzMgW_customThemeField",
+			"customThemeFieldLabel": "eDzMgW_customThemeFieldLabel",
+			"customThemeFields": "eDzMgW_customThemeFields",
+			"customThemeFooter": "eDzMgW_customThemeFooter",
+			"customThemeHex": "eDzMgW_customThemeHex",
+			"customThemeInputRow": "eDzMgW_customThemeInputRow",
+			"customThemeScheme": "eDzMgW_customThemeScheme",
+			"enableHint": "eDzMgW_enableHint",
+			"enableLabel": "eDzMgW_enableLabel",
+			"enableRow": "eDzMgW_enableRow",
+			"error": "eDzMgW_error",
+			"head": "eDzMgW_head",
+			"headText": "eDzMgW_headText",
+			"intro": "eDzMgW_intro",
+			"list": "eDzMgW_list",
+			"offNote": "eDzMgW_offNote",
+			"pluginCard": "eDzMgW_pluginCard",
+			"pluginName": "eDzMgW_pluginName",
+			"sectionList": "eDzMgW_sectionList",
+			"swatch": "eDzMgW_swatch",
+			"switch": "eDzMgW_switch",
+			"switchOn": "eDzMgW_switchOn",
+			"switchThumb": "eDzMgW_switchThumb",
+			"themeButton": "eDzMgW_themeButton",
+			"themeButtonActive": "eDzMgW_themeButtonActive",
+			"themeLabel": "eDzMgW_themeLabel",
+			"themeRow": "eDzMgW_themeRow",
+			"titleBadge": "eDzMgW_titleBadge",
+			"wallpaperActions": "eDzMgW_wallpaperActions",
+			"wallpaperCard": "eDzMgW_wallpaperCard",
+			"wallpaperControls": "eDzMgW_wallpaperControls",
+			"wallpaperGrid": "eDzMgW_wallpaperGrid",
+			"wallpaperName": "eDzMgW_wallpaperName",
+			"wallpaperSection": "eDzMgW_wallpaperSection",
+			"wallpaperStatus": "eDzMgW_wallpaperStatus",
+			"wallpaperStatusError": "eDzMgW_wallpaperStatusError",
+			"wallpaperThumb": "eDzMgW_wallpaperThumb",
+			"wallpaperThumbEmpty": "eDzMgW_wallpaperThumbEmpty",
+			"wallpaperThumbWrap": "eDzMgW_wallpaperThumbWrap",
+			"wallpaperType": "eDzMgW_wallpaperType"
+		};
+		//#endregion
+		//#region src/client/CustomThemePanel.tsx
+		function CustomThemeCard(props) {
+			const { t, customTheme, scheme, setScheme, isActive, isTrying, busy, onTryOn, onExitTryOn, onApply } = props;
+			(0, react.useSyncExternalStore)(customTheme.subscribe, customTheme.getState);
+			const profile = customTheme.profile(scheme);
+			const [expanded, setExpanded] = (0, react.useState)(false);
+			const [draftColors, setDraftColors] = (0, react.useState)({
+				accent: profile.accent,
+				background: profile.background,
+				foreground: profile.foreground
+			});
+			(0, react.useEffect)(() => {
+				setDraftColors({
+					accent: profile.accent,
+					background: profile.background,
+					foreground: profile.foreground
+				});
+			}, [
+				scheme,
+				profile.accent,
+				profile.background,
+				profile.foreground
+			]);
+			const setDraft = (key, value) => {
+				setDraftColors((current) => ({
+					...current,
+					[key]: value
+				}));
+			};
+			const commitColor = (key) => {
+				const value = draftColors[key];
+				if (/^#[0-9a-f]{6}$/i.test(value)) customTheme.setProfileValue(scheme, key, value);
+				else setDraft(key, profile[key]);
+			};
+			const colorField = (key, label) => {
+				const draft = draftColors[key];
+				const pickerValue = /^#[0-9a-f]{6}$/i.test(draft) ? draft : profile[key];
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+					className: skin_center_module_css_default.customThemeField,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: skin_center_module_css_default.customThemeFieldLabel,
+						children: label
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+						className: skin_center_module_css_default.customThemeInputRow,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+							className: skin_center_module_css_default.customThemeColor,
+							type: "color",
+							value: pickerValue,
+							"aria-label": label,
+							onChange: (event) => {
+								const value = event.target.value;
+								setDraft(key, value);
+								customTheme.setProfileValue(scheme, key, value);
+							}
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+							className: skin_center_module_css_default.customThemeHex,
+							type: "text",
+							value: draft,
+							inputMode: "text",
+							maxLength: 7,
+							spellCheck: false,
+							"aria-label": `${label} hex`,
+							onChange: (event) => {
+								setDraft(key, event.target.value);
+							},
+							onBlur: () => {
+								commitColor(key);
+							},
+							onKeyDown: (event) => {
+								if (event.key === "Enter") event.currentTarget.blur();
+							}
+						})]
+					})]
+				}, key);
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: `${skin_center_module_css_default.card} ${skin_center_module_css_default.customThemeCard}`,
+				"data-dsh-custom-theme-card": "",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: skin_center_module_css_default.cardHead,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: skin_center_module_css_default.swatch,
+								style: { background: profile.accent },
+								"aria-hidden": "true"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: skin_center_module_css_default.cardName,
+								children: t("customThemeTitle")
+							}),
+							(isActive || isTrying) && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: `${skin_center_module_css_default.badge} ${isActive ? skin_center_module_css_default.badgeActive : skin_center_module_css_default.badgeTrying}`,
+								children: isActive ? t("active") : t("tryingOn")
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: skin_center_module_css_default.cardTagline,
+						children: t("customThemeTagline")
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: skin_center_module_css_default.actions,
+						children: [
+							isActive && !isTrying ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonGhost}`,
+								disabled: true,
+								children: t("tryOn")
+							}) : isTrying ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonPrimary}`,
+								onClick: onExitTryOn,
+								children: t("exitTryOn")
+							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: `${skin_center_module_css_default.button} ${skin_center_module_css_default.buttonPrimary}`,
+								disabled: busy,
+								onClick: onTryOn,
+								children: busy ? t("loading") : t("tryOn")
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: skin_center_module_css_default.button,
+								disabled: busy,
+								onClick: onApply,
+								children: busy ? t("applying") : t("apply")
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: skin_center_module_css_default.button,
+								"aria-expanded": expanded,
+								onClick: () => {
+									setExpanded((value) => !value);
+								},
+								children: expanded ? t("customThemeCloseEdit") : t("customThemeEdit")
+							})
+						]
+					}),
+					expanded && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: skin_center_module_css_default.customThemeEditor,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: skin_center_module_css_default.customThemeScheme,
+								role: "group",
+								"aria-label": t("customThemeMode"),
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.themeLabel,
+										children: t("customThemeMode")
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										"aria-pressed": scheme === "light",
+										className: `${skin_center_module_css_default.themeButton} ${scheme === "light" ? skin_center_module_css_default.themeButtonActive : ""}`,
+										onClick: () => {
+											setScheme("light");
+										},
+										children: t("customThemeLight")
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										"aria-pressed": scheme === "dark",
+										className: `${skin_center_module_css_default.themeButton} ${scheme === "dark" ? skin_center_module_css_default.themeButtonActive : ""}`,
+										onClick: () => {
+											setScheme("dark");
+										},
+										children: t("customThemeDark")
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: skin_center_module_css_default.customThemeFields,
+								children: [
+									colorField("accent", t("customThemeAccent")),
+									colorField("background", t("customThemeBackground")),
+									colorField("foreground", t("customThemeForeground"))
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								className: skin_center_module_css_default.customThemeContrast,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									className: skin_center_module_css_default.backgroundHead,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.customThemeFieldLabel,
+										children: t("customThemeContrast")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.backgroundValue,
+										"aria-hidden": "true",
+										children: profile.contrast
+									})]
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									className: skin_center_module_css_default.backgroundRange,
+									type: "range",
+									min: "0",
+									max: "100",
+									step: "1",
+									value: profile.contrast,
+									"aria-label": t("customThemeContrast"),
+									"aria-valuetext": String(profile.contrast),
+									onChange: (event) => {
+										customTheme.setProfileValue(scheme, "contrast", Number(event.target.value));
+									}
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: skin_center_module_css_default.customThemeFooter,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: skin_center_module_css_default.backgroundHintMuted,
+									children: t("customThemeResetHint")
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									className: skin_center_module_css_default.button,
+									onClick: () => {
+										customTheme.reset(scheme);
+									},
+									children: t("customThemeReset")
+								})]
+							})
+						]
+					})
+				]
+			});
+		}
+		//#endregion
 		//#region src/client/runtime/backdrop-scene.ts
 		/**
 		* Unified "backdrop visible" scene marker (issue #777).
@@ -828,73 +1131,6 @@ window.__ModuleLoader__.load({
 			wallpaper.subscribe(restore);
 		}
 		//#endregion
-		//#region \0dsh-css:packages/skins/skin-center/src/client/skin-center.module.css.mjs
-		const css = "body[data-dsh-skin-center] .eDzMgW_sectionList{margin:0;padding:0;list-style:none}body[data-dsh-skin-center] .eDzMgW_pluginCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}body[data-dsh-skin-center] .eDzMgW_pluginCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_cardHeaderStatic{align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}body[data-dsh-skin-center] .eDzMgW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_pluginName{color:var(--dsw-alias-label-primary);align-items:baseline;gap:8px;font-size:15px;font-weight:600;line-height:1.4;display:flex}body[data-dsh-skin-center] .eDzMgW_cardDescription{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_cardBody{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:12px;margin:0 16px;padding:12px 0 8px;display:flex}body[data-dsh-skin-center] .eDzMgW_head{flex-direction:column;gap:6px;display:flex}body[data-dsh-skin-center] .eDzMgW_titleBadge{color:var(--dsw-alias-label-secondary,#6b7280);font-size:11px;font-weight:500}body[data-dsh-skin-center] .eDzMgW_intro{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12.5px;line-height:1.55}body[data-dsh-skin-center] .eDzMgW_themeRow{align-items:center;gap:8px;margin-top:2px;display:flex}body[data-dsh-skin-center] .eDzMgW_themeLabel{color:var(--dsw-alias-label-secondary,#6b7280);margin-right:2px;font-size:12px}body[data-dsh-skin-center] .eDzMgW_themeButton{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_themeButton:hover{border-color:var(--dsw-alias-border-l4,#94a3b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:active{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_themeButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_themeButtonActive{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_list{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_card{border:1px solid var(--dsw-alias-border-l1,#e2e8f0);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:8px;padding:12px 14px;display:flex}body[data-dsh-skin-center] .eDzMgW_cardHead{align-items:center;gap:10px;min-width:0;display:flex}body[data-dsh-skin-center] .eDzMgW_swatch{width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;flex:none}body[data-dsh-skin-center] .eDzMgW_cardName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_cardTagline{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.45}body[data-dsh-skin-center] .eDzMgW_badge{letter-spacing:.02em;border-radius:999px;flex:none;min-width:0;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_badgeActive{color:var(--dsw-alias-state-success-primary,#0f6b3a);background:var(--dsw-alias-state-success-tertiary,#dcf3e5)}body[data-dsh-skin-center] .eDzMgW_badgeTrying{color:var(--dsw-alias-brand-primary,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e2edfc)}body[data-dsh-skin-center] .eDzMgW_actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_button{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#172a45);cursor:pointer;border-radius:7px;padding:6px 12px;font-size:12px;line-height:1;transition:background .12s,border-color .12s,color .12s}body[data-dsh-skin-center] .eDzMgW_button:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary,#2b7cd9);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:active:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-dimmed,#e8f1fc);color:var(--dsw-alias-brand-primary,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_buttonPrimary{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-button-primary-fill,#2b7cd9);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8);color:var(--dsw-alias-label-primary-foreground,#fff)}body[data-dsh-skin-center] .eDzMgW_buttonPrimary:active:not(:disabled),body[data-dsh-skin-center] .eDzMgW_buttonPrimary:focus-visible:not(:disabled){border-color:var(--dsw-alias-button-primary-hover,#1e63b8);background:var(--dsw-alias-button-primary-hover,#1e63b8)}body[data-dsh-skin-center] .eDzMgW_buttonGhost{background:0 0;border-color:#0000}body[data-dsh-skin-center] .eDzMgW_button:disabled{opacity:.55;cursor:default}body[data-dsh-skin-center] .eDzMgW_error{color:var(--dsw-alias-state-error-primary,#b42318);font-size:12px}body[data-dsh-skin-center] .eDzMgW_enableRow{flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_enableLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_enableHint{min-width:100%;color:var(--dsw-alias-label-secondary,#6b7280);flex:1;margin:0;font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_switch{border:1px solid var(--dsw-alias-border-l3,#cbd5e1);background:var(--dsw-alias-bg-layer-3,#e2e8f0);cursor:pointer;border-radius:999px;flex:none;align-items:center;width:40px;height:22px;padding:2px;transition:background .12s,border-color .12s;display:inline-flex;position:relative}body[data-dsh-skin-center] .eDzMgW_switchOn{border-color:var(--dsw-alias-brand-primary,#2b7cd9);background:var(--dsw-alias-brand-primary,#2b7cd9)}body[data-dsh-skin-center] .eDzMgW_switch:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_switchThumb{background:var(--dsw-alias-label-primary-foreground,#fff);width:18px;height:18px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);border-radius:50%;transition:transform .12s;display:block;transform:translate(0)}body[data-dsh-skin-center] .eDzMgW_switchOn .eDzMgW_switchThumb{transform:translate(18px)}body[data-dsh-skin-center] .eDzMgW_offNote{color:var(--dsw-alias-label-secondary,#6b7280);margin:0;font-size:12.5px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundRow{flex-direction:column;gap:6px;padding:8px 0;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundHead{align-items:center;gap:8px;display:flex}body[data-dsh-skin-center] .eDzMgW_backgroundLabel{color:var(--dsw-alias-label-primary,#172a45);font-size:12.5px;font-weight:600}body[data-dsh-skin-center] .eDzMgW_backgroundValue{font-variant-numeric:tabular-nums;color:var(--dsw-alias-brand-primary,#2b7cd9);flex:none;margin-left:auto;font-size:12px}body[data-dsh-skin-center] .eDzMgW_backgroundRange{background:var(--dsw-alias-label-tertiary,#9aa4b5);background:color-mix(in srgb, var(--dsw-alias-label-tertiary,#9aa4b5) 45%, transparent);width:100%;height:4px;box-shadow:0 0 0 1px var(--dsw-alias-border-l3,#cbd5e1);-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:999px;margin:0}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-runnable-track{background:var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-track{background:var(--dsw-alias-bg-layer-3,#e2e8f0);border-radius:999px;height:4px}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:14px;height:14px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange::-moz-range-thumb{border:2px solid var(--dsw-alias-label-primary-foreground,#fff);background:var(--dsw-alias-brand-primary,#2b7cd9);width:12px;height:12px;box-shadow:0 0 0 1px var(--dsw-alias-border-l4,#0f172a1f);cursor:pointer;border-radius:50%}body[data-dsh-skin-center] .eDzMgW_backgroundRange:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2b7cd9);outline-offset:2px}body[data-dsh-skin-center] .eDzMgW_backgroundHint{color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px;line-height:1.5}body[data-dsh-skin-center] .eDzMgW_backgroundHintMuted{color:var(--dsw-alias-label-tertiary,#9aa4b5);font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){body[data-dsh-skin-center] .eDzMgW_pluginCard,body[data-dsh-skin-center] .eDzMgW_themeButton,body[data-dsh-skin-center] .eDzMgW_button,body[data-dsh-skin-center] .eDzMgW_switch,body[data-dsh-skin-center] .eDzMgW_switchThumb{transition:none}}body[data-dsh-skin-center] .eDzMgW_wallpaperSection{border-top:1px solid var(--dsw-alias-border-l2);flex-direction:column;gap:10px;padding-top:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatus{color:var(--dsw-alias-label-secondary,#6b7280);align-items:center;gap:8px;font-size:12px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperStatusError{color:var(--dsw-alias-state-danger,#c53030)}body[data-dsh-skin-center] .eDzMgW_wallpaperControls{flex-direction:column;gap:10px;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperGrid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;display:grid}body[data-dsh-skin-center] .eDzMgW_wallpaperCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2,#fff);border-radius:10px;flex-direction:column;gap:6px;padding:8px;transition:border-color .16s;display:flex}body[data-dsh-skin-center] .eDzMgW_wallpaperCard:hover{border-color:var(--dsw-alias-label-dimmed)}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap{aspect-ratio:16/9;background:var(--dsw-alias-bg-layer-1,#f1f5f9);border-radius:6px;position:relative;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperThumb{object-fit:cover;width:100%;height:100%;display:block}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbEmpty{width:100%;height:100%}body[data-dsh-skin-center] .eDzMgW_wallpaperType{color:var(--dsw-alias-label-primary,#172a45);background:var(--dsw-alias-bg-layer-2,#ffffffd9);border-radius:4px;padding:3px 6px;font-size:10.5px;line-height:1;position:absolute;top:6px;left:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperThumbWrap .eDzMgW_badge{position:absolute;top:6px;right:6px}body[data-dsh-skin-center] .eDzMgW_wallpaperName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:1.35;overflow:hidden}body[data-dsh-skin-center] .eDzMgW_wallpaperActions{flex-wrap:wrap;gap:6px;display:flex}";
-		const tagId = "@linxin666/dsh-client-ui-skin-center/skin-center.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
-			const tag = document.createElement("style");
-			tag.dataset.plugin = "@linxin666/dsh-client-ui-skin-center";
-			tag.dataset.pluginCss = tagId;
-			tag.textContent = css;
-			document.head.appendChild(tag);
-		}
-		var skin_center_module_css_default = {
-			"actions": "eDzMgW_actions",
-			"backgroundHead": "eDzMgW_backgroundHead",
-			"backgroundHint": "eDzMgW_backgroundHint",
-			"backgroundHintMuted": "eDzMgW_backgroundHintMuted",
-			"backgroundLabel": "eDzMgW_backgroundLabel",
-			"backgroundRange": "eDzMgW_backgroundRange",
-			"backgroundRow": "eDzMgW_backgroundRow",
-			"backgroundValue": "eDzMgW_backgroundValue",
-			"badge": "eDzMgW_badge",
-			"badgeActive": "eDzMgW_badgeActive",
-			"badgeTrying": "eDzMgW_badgeTrying",
-			"button": "eDzMgW_button",
-			"buttonGhost": "eDzMgW_buttonGhost",
-			"buttonPrimary": "eDzMgW_buttonPrimary",
-			"card": "eDzMgW_card",
-			"cardBody": "eDzMgW_cardBody",
-			"cardDescription": "eDzMgW_cardDescription",
-			"cardHead": "eDzMgW_cardHead",
-			"cardHeaderStatic": "eDzMgW_cardHeaderStatic",
-			"cardName": "eDzMgW_cardName",
-			"cardTagline": "eDzMgW_cardTagline",
-			"enableHint": "eDzMgW_enableHint",
-			"enableLabel": "eDzMgW_enableLabel",
-			"enableRow": "eDzMgW_enableRow",
-			"error": "eDzMgW_error",
-			"head": "eDzMgW_head",
-			"headText": "eDzMgW_headText",
-			"intro": "eDzMgW_intro",
-			"list": "eDzMgW_list",
-			"offNote": "eDzMgW_offNote",
-			"pluginCard": "eDzMgW_pluginCard",
-			"pluginName": "eDzMgW_pluginName",
-			"sectionList": "eDzMgW_sectionList",
-			"swatch": "eDzMgW_swatch",
-			"switch": "eDzMgW_switch",
-			"switchOn": "eDzMgW_switchOn",
-			"switchThumb": "eDzMgW_switchThumb",
-			"themeButton": "eDzMgW_themeButton",
-			"themeButtonActive": "eDzMgW_themeButtonActive",
-			"themeLabel": "eDzMgW_themeLabel",
-			"themeRow": "eDzMgW_themeRow",
-			"titleBadge": "eDzMgW_titleBadge",
-			"wallpaperActions": "eDzMgW_wallpaperActions",
-			"wallpaperCard": "eDzMgW_wallpaperCard",
-			"wallpaperControls": "eDzMgW_wallpaperControls",
-			"wallpaperGrid": "eDzMgW_wallpaperGrid",
-			"wallpaperName": "eDzMgW_wallpaperName",
-			"wallpaperSection": "eDzMgW_wallpaperSection",
-			"wallpaperStatus": "eDzMgW_wallpaperStatus",
-			"wallpaperStatusError": "eDzMgW_wallpaperStatusError",
-			"wallpaperThumb": "eDzMgW_wallpaperThumb",
-			"wallpaperThumbEmpty": "eDzMgW_wallpaperThumbEmpty",
-			"wallpaperThumbWrap": "eDzMgW_wallpaperThumbWrap",
-			"wallpaperType": "eDzMgW_wallpaperType"
-		};
-		//#endregion
 		//#region src/client/WallpaperPanel.tsx
 		/**
 		* The wallpaper panel of the skin-center card: lists the user's local
@@ -1454,7 +1690,7 @@ window.__ModuleLoader__.load({
 		* @param props - card props.
 		* @returns the plugin card.
 		*/
-		function SkinCenter({ t, runtime, theme, background, wallpaper, preview }) {
+		function SkinCenter({ t, runtime, theme, background, wallpaper, preview, customTheme }) {
 			const snapshot = (0, react.useSyncExternalStore)((listener) => theme.subscribe(listener), () => theme.getTheme());
 			const enabled = (0, react.useSyncExternalStore)(background.subscribe, background.enabled);
 			const opacity = (0, react.useSyncExternalStore)(background.subscribe, background.opacity);
@@ -1463,6 +1699,7 @@ window.__ModuleLoader__.load({
 			const inputCardBlur = (0, react.useSyncExternalStore)(background.subscribe, background.inputCardBlur);
 			const catalog = (0, react.useSyncExternalStore)(runtime.subscribe, runtime.catalog);
 			const state = (0, react.useSyncExternalStore)(runtime.subscribe, runtime.controller.getState);
+			const customThemeState = (0, react.useSyncExternalStore)(customTheme.subscribe, customTheme.getState);
 			const activeId = state.active;
 			const previewing = state.previewing;
 			const tryingId = state.trying;
@@ -1496,7 +1733,7 @@ window.__ModuleLoader__.load({
 				run(OFFICIAL, () => preview.runSkin(() => runtime.controller.tryOn(null, null)));
 			};
 			const exitTryOn = () => {
-				run(tryingId ?? OFFICIAL, () => runtime.controller.exitTryOn());
+				run(tryingId ?? OFFICIAL, () => preview.runSkin(() => runtime.controller.exitTryOn()));
 			};
 			/**
 			* One-click apply: atomic client-side switch + persisted selection. No
@@ -1506,7 +1743,12 @@ window.__ModuleLoader__.load({
 			*/
 			const applySkin = (target) => {
 				if (target === OFFICIAL) {
-					run(OFFICIAL, () => preview.runSkin(() => runtime.controller.switchTo(null, null)));
+					run(OFFICIAL, () => preview.runSkin(async () => {
+						const active = await runtime.controller.switchTo(null, null);
+						if (active !== null) throw new Error("stock theme did not activate");
+						await customTheme.deactivate();
+						return active;
+					}));
 					return;
 				}
 				const entry = runtime.find(target);
@@ -1514,7 +1756,37 @@ window.__ModuleLoader__.load({
 					setError(t("applyFailed"));
 					return;
 				}
-				run(target, () => preview.runSkin(() => runtime.controller.switchTo(target, entry)));
+				run(target, () => preview.runSkin(async () => {
+					const active = await runtime.controller.switchTo(target, entry);
+					if (active !== target) throw new Error(`skin ${target} did not activate`);
+					await customTheme.deactivate();
+					return active;
+				}));
+			};
+			const tryOnCustomTheme = () => {
+				run("custom-theme", () => preview.runCustomTheme(async () => {
+					const active = await runtime.controller.tryOn(null, null);
+					if (active !== null) throw new Error("stock preview did not activate");
+					customTheme.tryOn();
+					return active;
+				}));
+			};
+			const exitCustomThemeTryOn = () => {
+				run("custom-theme", () => preview.runCustomTheme(async () => {
+					customTheme.exitTryOn();
+					return await runtime.controller.exitTryOn();
+				}));
+			};
+			const applyCustomTheme = () => {
+				run("custom-theme", () => preview.runCustomTheme(async () => {
+					await customTheme.apply();
+					const active = await runtime.controller.switchTo(null, null);
+					if (active !== null) {
+						await customTheme.deactivate();
+						throw new Error("stock theme did not activate");
+					}
+					return active;
+				}));
 			};
 			const dark = snapshot.active.colorScheme === "dark";
 			/** One row: try-on control + apply button. Shared by the official card and every skin card. */
@@ -1760,90 +2032,107 @@ window.__ModuleLoader__.load({
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: skin_center_module_css_default.list,
-							children: [(() => {
-								const isActive = activeId === null && !previewing;
-								const isTrying = previewing && tryingId === null;
-								const badge = isActive ? t("active") : isTrying ? t("tryingOn") : null;
-								return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: skin_center_module_css_default.card,
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-											className: skin_center_module_css_default.cardHead,
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: skin_center_module_css_default.swatch,
-													style: { background: "#98a1ab" },
-													"aria-hidden": "true"
-												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: skin_center_module_css_default.cardName,
-													title: t("official"),
-													children: t("official")
-												}),
-												badge !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: `${skin_center_module_css_default.badge} ${isActive ? skin_center_module_css_default.badgeActive : skin_center_module_css_default.badgeTrying}`,
-													children: badge
-												})
-											]
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											className: skin_center_module_css_default.cardTagline,
-											title: t("officialTagline"),
-											children: t("officialTagline")
-										}),
-										actionButtons({
-											key: OFFICIAL,
-											isActive,
-											isTrying,
-											onTryOn: tryOnOfficial,
-											applyLabel: t("restore")
-										})
-									]
-								}, OFFICIAL);
-							})(), (catalog ?? []).map((entry) => {
-								const id = entry.manifest.id;
-								const isActive = id === activeId && !previewing;
-								const isTrying = previewing && id === tryingId;
-								const badge = isActive ? t("active") : isTrying ? t("tryingOn") : null;
-								return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: skin_center_module_css_default.card,
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-											className: skin_center_module_css_default.cardHead,
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: skin_center_module_css_default.swatch,
-													style: { background: entry.manifest.accent ?? "#98a1ab" },
-													"aria-hidden": "true"
-												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: skin_center_module_css_default.cardName,
-													title: entry.manifest.nameEn,
-													children: entry.manifest.nameEn
-												}),
-												badge !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: `${skin_center_module_css_default.badge} ${isActive ? skin_center_module_css_default.badgeActive : skin_center_module_css_default.badgeTrying}`,
-													children: badge
-												})
-											]
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											className: skin_center_module_css_default.cardTagline,
-											title: entry.manifest.tagline ?? "",
-											children: entry.manifest.tagline ?? ""
-										}),
-										actionButtons({
-											key: id,
-											isActive,
-											isTrying,
-											onTryOn: () => {
-												tryOn(entry);
-											},
-											applyLabel: t("apply")
-										})
-									]
-								}, id);
-							})]
+							children: [
+								(() => {
+									const isActive = activeId === null && !previewing && !customThemeState.applied;
+									const isTrying = previewing && tryingId === null && !customThemeState.previewing;
+									const badge = isActive ? t("active") : isTrying ? t("tryingOn") : null;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: skin_center_module_css_default.card,
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+												className: skin_center_module_css_default.cardHead,
+												children: [
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: skin_center_module_css_default.swatch,
+														style: { background: "#98a1ab" },
+														"aria-hidden": "true"
+													}),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: skin_center_module_css_default.cardName,
+														title: t("official"),
+														children: t("official")
+													}),
+													badge !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: `${skin_center_module_css_default.badge} ${isActive ? skin_center_module_css_default.badgeActive : skin_center_module_css_default.badgeTrying}`,
+														children: badge
+													})
+												]
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+												className: skin_center_module_css_default.cardTagline,
+												title: t("officialTagline"),
+												children: t("officialTagline")
+											}),
+											actionButtons({
+												key: OFFICIAL,
+												isActive,
+												isTrying,
+												onTryOn: tryOnOfficial,
+												applyLabel: t("restore")
+											})
+										]
+									}, OFFICIAL);
+								})(),
+								(catalog ?? []).map((entry) => {
+									const id = entry.manifest.id;
+									const isActive = id === activeId && !previewing;
+									const isTrying = previewing && id === tryingId;
+									const badge = isActive ? t("active") : isTrying ? t("tryingOn") : null;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: skin_center_module_css_default.card,
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+												className: skin_center_module_css_default.cardHead,
+												children: [
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: skin_center_module_css_default.swatch,
+														style: { background: entry.manifest.accent ?? "#98a1ab" },
+														"aria-hidden": "true"
+													}),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: skin_center_module_css_default.cardName,
+														title: entry.manifest.nameEn,
+														children: entry.manifest.nameEn
+													}),
+													badge !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: `${skin_center_module_css_default.badge} ${isActive ? skin_center_module_css_default.badgeActive : skin_center_module_css_default.badgeTrying}`,
+														children: badge
+													})
+												]
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+												className: skin_center_module_css_default.cardTagline,
+												title: entry.manifest.tagline ?? "",
+												children: entry.manifest.tagline ?? ""
+											}),
+											actionButtons({
+												key: id,
+												isActive,
+												isTrying,
+												onTryOn: () => {
+													tryOn(entry);
+												},
+												applyLabel: t("apply")
+											})
+										]
+									}, id);
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(CustomThemeCard, {
+									t,
+									customTheme,
+									scheme: dark ? "dark" : "light",
+									setScheme: (scheme) => {
+										theme.setTheme(scheme);
+									},
+									isActive: customThemeState.applied && activeId === null && !previewing,
+									isTrying: customThemeState.previewing,
+									busy: busyId === "custom-theme",
+									onTryOn: tryOnCustomTheme,
+									onExitTryOn: exitCustomThemeTryOn,
+									onApply: applyCustomTheme
+								})
+							]
 						})
 					] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 						className: skin_center_module_css_default.offNote,
@@ -1855,7 +2144,7 @@ window.__ModuleLoader__.load({
 		}
 		/** Render the skin-center card as a first-level settings page. */
 		function SkinCenterSection(props) {
-			const { t, runtime, theme, background, wallpaper, preview } = props;
+			const { t, runtime, theme, background, wallpaper, preview, customTheme } = props;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
 				className: skin_center_module_css_default.sectionList,
 				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SkinCenter, {
@@ -1864,7 +2153,8 @@ window.__ModuleLoader__.load({
 					theme,
 					background,
 					wallpaper,
-					preview
+					preview,
+					customTheme
 				})
 			});
 		}
@@ -2201,7 +2491,20 @@ window.__ModuleLoader__.load({
 			wallpaperDirsEmpty: "No manual folders yet.",
 			wallpaperDirsHint: "No Wallpaper Engine (e.g. macOS)? Point a folder at any .mp4/.webm files, a wallpaper project folder, or a folder of projects — they become your wallpaper library.",
 			wallpaperDirPlaceholder: "/path/to/wallpapers or ~/Movies/wallpapers",
-			wallpaperDirAdd: "Add"
+			wallpaperDirAdd: "Add",
+			customThemeTitle: "Custom theme",
+			customThemeTagline: "A separately saved palette derived from the official default theme.",
+			customThemeEdit: "Edit",
+			customThemeCloseEdit: "Collapse",
+			customThemeMode: "Editing mode",
+			customThemeLight: "Light",
+			customThemeDark: "Dark",
+			customThemeAccent: "Accent",
+			customThemeBackground: "Background",
+			customThemeForeground: "Foreground",
+			customThemeContrast: "Contrast",
+			customThemeReset: "Restore current mode default",
+			customThemeResetHint: "Only resets the selected light or dark profile."
 		};
 		const zh = {
 			title: "皮肤中心",
@@ -2272,7 +2575,20 @@ window.__ModuleLoader__.load({
 			wallpaperDirsEmpty: "还没有手动目录。",
 			wallpaperDirsHint: "没有 Wallpaper Engine（如 macOS）？把任意 .mp4/.webm 视频、单个壁纸项目文件夹或项目合集文件夹加进来，就是你的壁纸库。",
 			wallpaperDirPlaceholder: "/path/to/wallpapers 或 ~/Movies/wallpapers",
-			wallpaperDirAdd: "添加"
+			wallpaperDirAdd: "添加",
+			customThemeTitle: "自定义主题",
+			customThemeTagline: "基于官方默认主题生成并独立保存的配色方案。",
+			customThemeEdit: "编辑",
+			customThemeCloseEdit: "收起",
+			customThemeMode: "编辑模式",
+			customThemeLight: "浅色",
+			customThemeDark: "深色",
+			customThemeAccent: "强调色",
+			customThemeBackground: "背景色",
+			customThemeForeground: "前景色",
+			customThemeContrast: "对比度",
+			customThemeReset: "恢复当前模式默认",
+			customThemeResetHint: "只重置当前选择的浅色或深色配置。"
 		};
 		//#endregion
 		//#region src/client/runtime/effect-ledger.ts
@@ -3034,27 +3350,348 @@ window.__ModuleLoader__.load({
 		var PreviewCoordinator = class {
 			skin;
 			wallpaper;
+			customTheme;
 			tail = Promise.resolve();
-			constructor(skin, wallpaper) {
+			constructor(skin, wallpaper, customTheme) {
 				this.skin = skin;
 				this.wallpaper = wallpaper;
+				this.customTheme = customTheme;
 			}
 			runSkin(action) {
 				return this.enqueue(async () => {
 					if (this.wallpaper.trying()) this.wallpaper.exitTryOn();
-					return await action();
+					if (this.customTheme?.getState().previewing === true) this.customTheme.exitTryOn();
+					this.customTheme?.suspend();
+					try {
+						return await action();
+					} finally {
+						if (!this.skin.getState().previewing) this.customTheme?.resume();
+					}
 				});
 			}
 			runWallpaper(action) {
 				return this.enqueue(async () => {
+					if (this.customTheme?.getState().previewing === true) this.customTheme.exitTryOn();
 					if (this.skin.getState().previewing) await this.skin.exitTryOn();
+					this.customTheme?.resume();
 					action();
+				});
+			}
+			runCustomTheme(action) {
+				return this.enqueue(async () => {
+					if (this.wallpaper.trying()) this.wallpaper.exitTryOn();
+					if (!(this.customTheme?.getState().previewing === true) && this.skin.getState().previewing) await this.skin.exitTryOn();
+					this.customTheme?.resume();
+					return await action();
 				});
 			}
 			enqueue(action) {
 				const run = this.tail.then(action, action);
 				this.tail = run.then(() => void 0, () => void 0);
 				return run;
+			}
+		};
+		//#endregion
+		//#region src/core/custom-theme.ts
+		/** Versioned user theme derived from the official stock theme. */
+		const SKIN_CUSTOM_THEME_NS = "skin-custom-theme";
+		const CUSTOM_THEME_DEFAULTS = {
+			version: 1,
+			applied: false,
+			light: {
+				accent: "#4d6bfe",
+				background: "#f7f8fa",
+				foreground: "#262626",
+				contrast: 50
+			},
+			dark: {
+				accent: "#7c91ff",
+				background: "#171719",
+				foreground: "#f3f3f3",
+				contrast: 50
+			}
+		};
+		function record(value) {
+			return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+		}
+		function color(value, fallback) {
+			return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : fallback;
+		}
+		function contrast(value, fallback) {
+			if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+			return Math.max(0, Math.min(100, Math.round(value)));
+		}
+		function normalizeProfile(value, fallback) {
+			const source = record(value);
+			return {
+				accent: color(source.accent, fallback.accent),
+				background: color(source.background, fallback.background),
+				foreground: color(source.foreground, fallback.foreground),
+				contrast: contrast(source.contrast, fallback.contrast)
+			};
+		}
+		/** Normalize untrusted settings data into the current contract version. */
+		function normalizeCustomThemeConfig(value) {
+			const source = record(value);
+			if (source.version !== void 0 && source.version !== 1) return {
+				version: 1,
+				applied: false,
+				light: { ...CUSTOM_THEME_DEFAULTS.light },
+				dark: { ...CUSTOM_THEME_DEFAULTS.dark }
+			};
+			return {
+				version: 1,
+				applied: source.applied === true,
+				light: normalizeProfile(source.light, CUSTOM_THEME_DEFAULTS.light),
+				dark: normalizeProfile(source.dark, CUSTOM_THEME_DEFAULTS.dark)
+			};
+		}
+		function mix(a, aPercent, b) {
+			return `color-mix(in srgb, ${a} ${aPercent}%, ${b})`;
+		}
+		function declarations(profile) {
+			const { accent, background, foreground } = profile;
+			const depth1 = 2 + Math.round(profile.contrast * .12);
+			const depth2 = depth1 + 4;
+			const depth3 = depth2 + 4;
+			const border = 12 + Math.round(profile.contrast * .18);
+			const mutedText = 60 + Math.round(profile.contrast * .2);
+			return [
+				["--dsw-alias-bg-base", background],
+				["--dsw-alias-bg-layer-1", mix(background, 100 - depth1, foreground)],
+				["--dsw-alias-bg-layer-2", mix(background, 100 - depth2, foreground)],
+				["--dsw-alias-bg-layer-3", mix(background, 100 - depth3, foreground)],
+				["--dsw-alias-bg-multi-select", mix(background, 84, accent)],
+				["--dsw-alias-bg-overlay", mix(background, 90 - Math.round(profile.contrast * .08), foreground)],
+				["--dsw-alias-bg-skeleton", mix(background, 82, foreground)],
+				["--dsw-alias-border-l1", mix(background, 100 - border, foreground)],
+				["--dsw-alias-border-l2", mix(background, 100 - Math.max(8, border - 5), foreground)],
+				["--dsw-alias-border-l3", mix(background, 100 - Math.max(5, border - 9), foreground)],
+				["--dsw-alias-border-l4", mix(background, 96, foreground)],
+				["--dsw-alias-brand-primary", accent],
+				["--dsw-alias-brand-primary-invert", background],
+				["--dsw-alias-brand-text", accent],
+				["--dsw-alias-button-primary-dimmed", mix(accent, 48, background)],
+				["--dsw-alias-button-primary-fill", accent],
+				["--dsw-alias-button-primary-hover", mix(accent, 82, foreground)],
+				["--dsw-alias-interactive-bg-active", mix(background, 78, accent)],
+				["--dsw-alias-interactive-bg-hover", mix(background, 100 - depth2, foreground)],
+				["--dsw-alias-interactive-bg-hover-accent", mix(background, 84, accent)],
+				["--dsw-alias-label-dimmed", mix(foreground, 42, background)],
+				["--dsw-alias-label-primary", foreground],
+				["--dsw-alias-label-primary-foreground", foreground],
+				["--dsw-alias-label-secondary", mix(foreground, mutedText, background)],
+				["--dsw-alias-label-tertiary", mix(foreground, Math.max(45, mutedText - 18), background)],
+				["--dsw-alias-markdown-code-block", mix(background, 100 - depth2, foreground)],
+				["--dsw-alias-markdown-code-block-banner", mix(background, 100 - depth3, foreground)],
+				["--dsw-alias-markdown-inline-code", mix(background, 86, accent)],
+				["--dsw-alias-scrollbar-bg-l1", mix(background, 94, foreground)],
+				["--dsw-alias-scrollbar-hover-l1", mix(background, 76, foreground)],
+				["--dsw-alias-toast-bg", mix(background, 100 - depth3, foreground)],
+				["--dsw-alias-tooltip-bg", mix(background, 28, foreground)],
+				["--dsw-specific-bubble", mix(background, 92, accent)],
+				["--dsw-specific-bubble-highlight", mix(background, 82, accent)],
+				["--dsw-specific-input-major", mix(background, 100 - depth1, foreground)],
+				["--dsw-specific-menu", mix(background, 100 - depth1, foreground)],
+				["--dsw-specific-selector", mix(background, 100 - depth2, foreground)],
+				["--dsw-specific-sidebar-fill", mix(background, 100 - depth1, foreground)],
+				["--dsw-specific-sidebar-nav-item-active", mix(background, 86, accent)],
+				["--dsw-specific-sidebar-nav-item-active-accent", accent],
+				["--dsw-specific-sidebar-nav-item-hover", mix(background, 100 - depth2, foreground)]
+			];
+		}
+		function block(selector, profile) {
+			return `${selector} {\n${declarations(profile).map(([name, value]) => `  ${name}: ${value};`).join("\n")}\n}`;
+		}
+		/** Build stock-only CSS from normalized, fixed token declarations. */
+		function buildCustomThemeCss(value) {
+			const config = normalizeCustomThemeConfig(value);
+			return [block("html[data-dsh-custom-theme]:not([data-dsh-skin]) body", config.light), block("html[data-dsh-custom-theme]:not([data-dsh-skin]) body[data-ds-dark-theme]", config.dark)].join("\n\n");
+		}
+		//#endregion
+		//#region src/client/custom-theme-controller.ts
+		/** Owns the custom-theme settings snapshot and its inert-by-default style. */
+		var CustomThemeController = class {
+			scope;
+			doc;
+			style;
+			unsubscribe;
+			listeners = /* @__PURE__ */ new Set();
+			config;
+			previewingValue = false;
+			suspended = false;
+			state;
+			disposed = false;
+			writeQueue = [];
+			pendingWrites = 0;
+			drainingWrites = false;
+			constructor(scope, options = {}) {
+				this.scope = scope;
+				this.doc = options.doc ?? document;
+				this.config = normalizeCustomThemeConfig(scope.getSnapshot().value);
+				this.style = this.doc.createElement("style");
+				this.style.dataset.dshCustomThemeStyle = "";
+				this.doc.head.appendChild(this.style);
+				this.state = {
+					applied: this.config.applied,
+					previewing: false,
+					visible: false
+				};
+				this.syncDom();
+				this.unsubscribe = scope.subscribe(() => {
+					if (this.disposed || this.pendingWrites > 0) return;
+					this.syncFromScope();
+				});
+			}
+			subscribe = (listener) => {
+				this.listeners.add(listener);
+				return () => {
+					this.listeners.delete(listener);
+				};
+			};
+			getState = () => this.state;
+			profile(scheme) {
+				return { ...this.config[scheme] };
+			}
+			setProfileValue(scheme, key, value) {
+				const next = normalizeCustomThemeConfig({
+					...this.config,
+					[scheme]: {
+						...this.config[scheme],
+						[key]: value
+					}
+				});
+				this.config = next;
+				this.syncDom();
+				this.publish();
+				this.queueWrite(scheme, { ...next[scheme] }).catch(() => {});
+			}
+			reset(scheme) {
+				const profile = { ...CUSTOM_THEME_DEFAULTS[scheme] };
+				this.config = {
+					...this.config,
+					[scheme]: profile
+				};
+				this.syncDom();
+				this.publish();
+				this.queueWrite(scheme, profile).catch(() => {});
+			}
+			tryOn() {
+				this.previewingValue = true;
+				this.suspended = false;
+				this.syncDom();
+				this.publish();
+			}
+			exitTryOn() {
+				this.previewingValue = false;
+				this.suspended = false;
+				this.syncDom();
+				this.publish();
+			}
+			async apply() {
+				this.config = {
+					...this.config,
+					applied: true
+				};
+				this.previewingValue = false;
+				this.suspended = false;
+				this.syncDom();
+				this.publish();
+				await this.queueWrite("applied", true);
+				if (!this.config.applied) throw new Error("custom theme activation was not persisted");
+			}
+			async deactivate() {
+				this.config = {
+					...this.config,
+					applied: false
+				};
+				this.previewingValue = false;
+				this.suspended = false;
+				this.syncDom();
+				this.publish();
+				await this.queueWrite("applied", false);
+				if (this.config.applied) throw new Error("custom theme deactivation was not persisted");
+			}
+			suspend() {
+				if (this.suspended) return;
+				this.suspended = true;
+				this.syncDom();
+				this.publish();
+			}
+			resume() {
+				if (!this.suspended) return;
+				this.suspended = false;
+				this.syncDom();
+				this.publish();
+			}
+			dispose() {
+				if (this.disposed) return;
+				this.disposed = true;
+				this.unsubscribe();
+				this.listeners.clear();
+				this.style.remove();
+				this.doc.documentElement.removeAttribute("data-dsh-custom-theme");
+			}
+			syncDom() {
+				this.style.textContent = buildCustomThemeCss(this.config);
+				const visible = (this.config.applied || this.previewingValue) && !this.suspended;
+				if (visible) this.doc.documentElement.setAttribute("data-dsh-custom-theme", "true");
+				else this.doc.documentElement.removeAttribute("data-dsh-custom-theme");
+				this.state = {
+					applied: this.config.applied,
+					previewing: this.previewingValue,
+					visible
+				};
+			}
+			publish() {
+				for (const listener of this.listeners) listener();
+			}
+			syncFromScope() {
+				this.config = normalizeCustomThemeConfig(this.scope.getSnapshot().value);
+				this.syncDom();
+				this.publish();
+			}
+			queueWrite(field, value) {
+				this.pendingWrites += 1;
+				const pending = new Promise((resolve, reject) => {
+					this.writeQueue.push({
+						field,
+						value,
+						resolve,
+						reject
+					});
+				});
+				this.drainWrites();
+				return pending;
+			}
+			async drainWrites() {
+				if (this.drainingWrites) return;
+				this.drainingWrites = true;
+				const settled = [];
+				while (this.writeQueue.length > 0) {
+					const write = this.writeQueue.shift();
+					if (write === void 0) break;
+					try {
+						await this.scope.set(write.field, write.value);
+					} catch (error) {
+						settled.push({
+							write,
+							ok: false,
+							error
+						});
+						continue;
+					} finally {
+						this.pendingWrites -= 1;
+					}
+					settled.push({
+						write,
+						ok: true
+					});
+				}
+				this.drainingWrites = false;
+				if (!this.disposed) this.syncFromScope();
+				for (const result of settled) if (result.ok) result.write.resolve();
+				else result.write.reject(result.error);
 			}
 		};
 		//#endregion
@@ -3090,6 +3727,8 @@ window.__ModuleLoader__.load({
 			const binder = ctx.get("webUiSettings") ?? ctx.settingsScope;
 			const background = new BackgroundController(binder.bind({ namespace: SKIN_BACKGROUND_NS }));
 			ctx.effect(() => () => background.dispose(), "ui-skin-center: background dispose");
+			const customTheme = new CustomThemeController(binder.bind({ namespace: SKIN_CUSTOM_THEME_NS }));
+			ctx.effect(() => () => customTheme.dispose(), "ui-skin-center: custom theme dispose");
 			const wallpaper = new WallpaperController(binder.bind({ namespace: SKIN_WALLPAPER_NS }));
 			ctx.effect(() => () => wallpaper.dispose(), "ui-skin-center: wallpaper dispose");
 			installBootRestore(wallpaper);
@@ -3098,11 +3737,12 @@ window.__ModuleLoader__.load({
 			ctx.effect(() => wallpaper.subscribe(() => {
 				runtime.controller.refresh();
 			}), "ui-skin-center: wallpaper priority refresh");
-			const preview = new PreviewCoordinator(runtime.controller, wallpaper);
+			const preview = new PreviewCoordinator(runtime.controller, wallpaper, customTheme);
 			ctx.effect(() => ctx.on("theme/change", () => wallpaper.recoverScenePlayer()), "ui-skin-center: scene recovery after theme change");
 			const injected = () => ({
 				runtime,
 				preview,
+				customTheme,
 				theme: {
 					getTheme: () => theme.getTheme(),
 					subscribe: (listener) => ctx.on("theme/change", listener),

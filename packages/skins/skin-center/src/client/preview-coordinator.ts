@@ -13,25 +13,51 @@ export interface PreviewWallpaperController {
   exitTryOn(): void
 }
 
+export interface PreviewCustomThemeController {
+  getState(): { previewing: boolean }
+  exitTryOn(): void
+  suspend(): void
+  resume(): void
+}
+
 export class PreviewCoordinator {
   private tail: Promise<void> = Promise.resolve()
 
   constructor(
     private readonly skin: PreviewSkinController,
     private readonly wallpaper: PreviewWallpaperController,
+    private readonly customTheme?: PreviewCustomThemeController,
   ) {}
 
   runSkin<T>(action: () => Promise<T>): Promise<T> {
     return this.enqueue(async () => {
       if (this.wallpaper.trying()) this.wallpaper.exitTryOn()
-      return await action()
+      if (this.customTheme?.getState().previewing === true) this.customTheme.exitTryOn()
+      this.customTheme?.suspend()
+      try {
+        return await action()
+      } finally {
+        if (!this.skin.getState().previewing) this.customTheme?.resume()
+      }
     })
   }
 
   runWallpaper(action: () => void): Promise<void> {
     return this.enqueue(async () => {
+      if (this.customTheme?.getState().previewing === true) this.customTheme.exitTryOn()
       if (this.skin.getState().previewing) await this.skin.exitTryOn()
+      this.customTheme?.resume()
       action()
+    })
+  }
+
+  runCustomTheme<T>(action: () => Promise<T>): Promise<T> {
+    return this.enqueue(async () => {
+      if (this.wallpaper.trying()) this.wallpaper.exitTryOn()
+      const continuingCustomPreview = this.customTheme?.getState().previewing === true
+      if (!continuingCustomPreview && this.skin.getState().previewing) await this.skin.exitTryOn()
+      this.customTheme?.resume()
+      return await action()
     })
   }
 

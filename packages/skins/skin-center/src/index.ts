@@ -22,6 +22,12 @@ import { makeWeRoutes } from './we-routes.ts'
 import { defaultWallpapersStoreDir } from './we-library.ts'
 import { resolveHarnessHome } from './harness-home.ts'
 import { mountOnce } from './mount-once.ts'
+import {
+  CUSTOM_THEME_DEFAULTS,
+  CUSTOM_THEME_VERSION,
+  SKIN_CUSTOM_THEME_NS,
+  type CustomThemeConfig,
+} from './core/custom-theme.ts'
 
 export { makeSkinCenterV2Routes, SKIN_CENTER_V2_PREFIX } from './routes-v2.ts'
 export { makeWeRoutes, WE_API_PREFIX } from './we-routes.ts'
@@ -46,6 +52,31 @@ export const inject = ['webServer']
  * scope without depending on this Host package.
  */
 export const SKIN_BACKGROUND_NAMESPACE = settingsNamespace('skin-background')
+
+/** Versioned settings namespace for the official-theme palette editor. */
+export const SKIN_CUSTOM_THEME_NAMESPACE = settingsNamespace(SKIN_CUSTOM_THEME_NS)
+
+export type SkinCustomThemeConfig = CustomThemeConfig
+
+const CustomThemeProfileSchema = z.object({
+  accent: z.string().default(CUSTOM_THEME_DEFAULTS.light.accent),
+  background: z.string().default(CUSTOM_THEME_DEFAULTS.light.background),
+  foreground: z.string().default(CUSTOM_THEME_DEFAULTS.light.foreground),
+  contrast: z.number().min(0).max(100).step(1).default(50),
+})
+
+/** Host-side persistence schema; browser normalization remains fail-closed. */
+export const SkinCustomThemeConfigSchema: z<SkinCustomThemeConfig> = z.object({
+  version: z.number().min(CUSTOM_THEME_VERSION).max(CUSTOM_THEME_VERSION).step(1).default(CUSTOM_THEME_VERSION),
+  applied: z.boolean().default(false),
+  light: CustomThemeProfileSchema.default(CUSTOM_THEME_DEFAULTS.light),
+  dark: z.object({
+    accent: z.string().default(CUSTOM_THEME_DEFAULTS.dark.accent),
+    background: z.string().default(CUSTOM_THEME_DEFAULTS.dark.background),
+    foreground: z.string().default(CUSTOM_THEME_DEFAULTS.dark.foreground),
+    contrast: z.number().min(0).max(100).step(1).default(50),
+  }).default(CUSTOM_THEME_DEFAULTS.dark),
+})
 
 /**
  * Plugin-configuration fields for the main-interface background, plus the
@@ -150,6 +181,15 @@ function applyImpl(ctx: Context): void {
   // re-resolves across reloads. installSettingsSection is a no-op when no
   // settings service is mounted (pure skin-center installs skip it).
   installSettingsSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
+    setSource: () => { /* application is browser-side; value is read from the scope */ },
+    onChange: () => { /* browser half re-applies on scope publish */ },
+  })
+
+  installSettingsSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, {
+    ...CUSTOM_THEME_DEFAULTS,
+    light: { ...CUSTOM_THEME_DEFAULTS.light },
+    dark: { ...CUSTOM_THEME_DEFAULTS.dark },
+  }, {
     setSource: () => { /* application is browser-side; value is read from the scope */ },
     onChange: () => { /* browser half re-applies on scope publish */ },
   })

@@ -549,3 +549,101 @@ body[data-dsh-skin-center] .wallpaperActions {
   gap: 6px;
 }
 
+body[data-dsh-skin-center] .customThemeCard {
+  overflow: hidden;
+}
+
+body[data-dsh-skin-center] .customThemeEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 2px -2px -2px;
+  padding: 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 9px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+body[data-dsh-skin-center] .customThemeScheme {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+body[data-dsh-skin-center] .customThemeFields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+body[data-dsh-skin-center] .customThemeField,
+body[data-dsh-skin-center] .customThemeContrast {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+body[data-dsh-skin-center] .customThemeFieldLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-secondary);
+}
+
+body[data-dsh-skin-center] .customThemeInputRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+body[data-dsh-skin-center] .customThemeColor {
+  flex: none;
+  width: 34px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 7px;
+  background: var(--dsw-alias-bg-layer-2);
+  cursor: pointer;
+}
+
+body[data-dsh-skin-center] .customThemeHex {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 7px;
+  background: var(--dsw-specific-input-major);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+body[data-dsh-skin-center] .customThemeHex:focus,
+body[data-dsh-skin-center] .customThemeColor:focus-visible {
+  border-color: var(--dsw-alias-brand-primary);
+  box-shadow: 0 0 0 2px var(--dsw-alias-button-primary-dimmed);
+}
+
+body[data-dsh-skin-center] .customThemeFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+@media (max-width: 680px) {
+  body[data-dsh-skin-center] .customThemeFields {
+    grid-template-columns: 1fr;
+  }
+
+  body[data-dsh-skin-center] .customThemeFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

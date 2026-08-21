@@ -7498,6 +7498,26 @@ function mountOnce(packageName, fn) {
 	});
 }
 //#endregion
+//#region src/core/custom-theme.ts
+/** Versioned user theme derived from the official stock theme. */
+const SKIN_CUSTOM_THEME_NS = "skin-custom-theme";
+const CUSTOM_THEME_DEFAULTS = {
+	version: 1,
+	applied: false,
+	light: {
+		accent: "#4d6bfe",
+		background: "#f7f8fa",
+		foreground: "#262626",
+		contrast: 50
+	},
+	dark: {
+		accent: "#7c91ff",
+		background: "#171719",
+		foreground: "#f3f3f3",
+		contrast: 50
+	}
+};
+//#endregion
 //#region src/index.ts
 /** Stable cordis plugin name (matches cordis.patch.yml insert id). */
 const name = "ui-skin-center";
@@ -7509,6 +7529,26 @@ const inject = ["webServer"];
 * scope without depending on this Host package.
 */
 const SKIN_BACKGROUND_NAMESPACE = settingsNamespace("skin-background");
+/** Versioned settings namespace for the official-theme palette editor. */
+const SKIN_CUSTOM_THEME_NAMESPACE = settingsNamespace(SKIN_CUSTOM_THEME_NS);
+const CustomThemeProfileSchema = z.object({
+	accent: z.string().default(CUSTOM_THEME_DEFAULTS.light.accent),
+	background: z.string().default(CUSTOM_THEME_DEFAULTS.light.background),
+	foreground: z.string().default(CUSTOM_THEME_DEFAULTS.light.foreground),
+	contrast: z.number().min(0).max(100).step(1).default(50)
+});
+/** Host-side persistence schema; browser normalization remains fail-closed. */
+const SkinCustomThemeConfigSchema = z.object({
+	version: z.number().min(1).max(1).step(1).default(1),
+	applied: z.boolean().default(false),
+	light: CustomThemeProfileSchema.default(CUSTOM_THEME_DEFAULTS.light),
+	dark: z.object({
+		accent: z.string().default(CUSTOM_THEME_DEFAULTS.dark.accent),
+		background: z.string().default(CUSTOM_THEME_DEFAULTS.dark.background),
+		foreground: z.string().default(CUSTOM_THEME_DEFAULTS.dark.foreground),
+		contrast: z.number().min(0).max(100).step(1).default(50)
+	}).default(CUSTOM_THEME_DEFAULTS.dark)
+});
 /**
 * Runtime schema for SkinBackgroundConfig. Persists the master switch
 * (`enabled`) alongside the background strength fields.
@@ -7553,6 +7593,14 @@ const SkinWallpaperConfigSchema = z.object({
 const apply = mountOnce("@linxin666/dsh-client-ui-skin-center", applyImpl);
 function applyImpl(ctx) {
 	installSettingsSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
+		setSource: () => {},
+		onChange: () => {}
+	});
+	installSettingsSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, {
+		...CUSTOM_THEME_DEFAULTS,
+		light: { ...CUSTOM_THEME_DEFAULTS.light },
+		dark: { ...CUSTOM_THEME_DEFAULTS.dark }
+	}, {
 		setSource: () => {},
 		onChange: () => {}
 	});
@@ -7603,4 +7651,4 @@ function applyImpl(ctx) {
 	}
 }
 //#endregion
-export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_V2_PREFIX, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinCssSafetyError, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, builtinSkinsDir, defaultActiveStatePath, findSkin, inject, loadSkinCatalog, makeSkinCenterV2Routes, makeWeRoutes, name, readActiveSelection, resolveInsideSkin, transformSkinCss, userSkinsDir, validateSkinManifestV2, writeActiveSelection };
+export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_V2_PREFIX, SKIN_CUSTOM_THEME_NAMESPACE, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinCssSafetyError, SkinCustomThemeConfigSchema, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, builtinSkinsDir, defaultActiveStatePath, findSkin, inject, loadSkinCatalog, makeSkinCenterV2Routes, makeWeRoutes, name, readActiveSelection, resolveInsideSkin, transformSkinCss, userSkinsDir, validateSkinManifestV2, writeActiveSelection };

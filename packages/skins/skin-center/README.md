@@ -5,6 +5,7 @@ English | [中文](README.zh.md)
 `@linxin666/dsh-client-ui-skin-center` (cordis plugin id `ui-skin-center`) is the single skin package of the dsh Web GUI: it puts the skin list / try-on / apply into the real GUI as a first-level settings section (settings → 皮肤中心 / Skin Center), and it is the only loader and renderer for skins. A skin is a pure asset directory — no package.json, no npm publish, no cordis wiring — that couples only to the skin-center contract (`contracts/`); the skin center absorbs every official-DSH coupling behind that contract. The card carries its own enable switch (off disables try-on, apply and the background controls).
 
 - List: shows "官方默认" (official default) plus every skin in the catalog with its name, tagline and accent color; the currently active target carries the Active marker. The catalog merges two sources: built-in skins shipped inside this package (`skins/<id>/`) and user skins dropped into `$DSH_HOME/skins/<id>/` (a user skin with the same id shadows the built-in one). Skins whose `skin.json` fails validation are excluded fail-closed and reported as catalog diagnostics.
+- Custom theme: the final card is a user-level theme derived from the official stock look, separate from both the official-default card and catalog skins. Light and dark profiles independently edit accent, background, foreground and contrast (0–100), with live try-on, apply, current-mode reset and reload persistence. Its generated CSS is limited to an audited official-token allowlist; it cannot accept selectors, arbitrary CSS or asset URLs. Catalog skin definitions are never modified, and an active catalog skin automatically suppresses the custom-theme layer.
 - Try-on / Apply: both go through the same atomic switch engine (`src/client/runtime/skin-controller.ts`). One switch is one new activation identity: fetch the scoped stylesheet, install it plus the background media and optional hooks, flip `html[data-dsh-skin="<id>"]`, then dispose the previous activation (append-only effect ledger, idempotent teardown). The latest request always wins; a failed or superseded switch leaves the previous skin fully intact. Try-on is the same switch without persistence — "Exit try-on" restores the committed skin. Apply persists the selection (`POST /api/skin-center/v2/active`). No page reload, no `cordis.patch.yml` rewrite, no boot-graph regeneration.
 - First paint: the host half registers one index.html transform (`webServer.tapIndex`, single adapter module `src/tap-index-adapter.ts`) that stamps `html[data-dsh-skin]` and inserts the stylesheet links into every served document, so a reload boots straight into the active skin with no flash of the stock look. The tap fails closed to the stock look on any problem.
 - Skin format (v2): `skin.json` (validated fail-closed, v1 fields `package`/`wiring`/`bodyAttr` ignored with migration warnings), `skin.css` (L1 token remaps + L2 semantic selectors), optional `patches.css` (L3 free selectors, high sensitivity), optional `hooks.mjs` (trusted escape hatch, high sensitivity), `assets/`, `preview/`. All CSS passes the safety pipeline (`src/core/css-safety/transform.ts`): every selector is force-scoped under `html[data-dsh-skin]`, `@import` / remote or protocol-relative URLs / escaping paths are hard errors. See `contracts/README.md`.
@@ -30,12 +31,14 @@ skin-center is a self-contained bundle meeting the official DSH plugin standard 
 - **Enable switch**: turns the whole card (try-on / apply / background controls) on or off; persisted in the `skin-background` settings namespace.
 - **Background sliders**: occlusion (0–100%), two backdrop blur radii, and input-card blur (0–20 px); persisted in the same namespace.
 - **Wallpaper panel**: library folders, selection, render mode (live / static frame), dim, blur, pause-on-hidden, sound toggle and volume; persisted in the `skin-wallpaper` namespace.
+- **Custom theme**: light/dark accent, background, foreground and contrast profiles plus the applied marker; persisted as a versioned contract in the independent `skin-custom-theme` namespace. Wallpaper selection and rendering remain owned by `skin-wallpaper`.
 - **User skin directory**: `$DSH_HOME/skins/<id>/`; override precedence is `DSH_SKINS_HOME`, then `DSH_SKINS_DIR`, then `$DSH_HOME/skins`.
 
 ## Security model
 
 - All `/api/skin-center/*` routes are same-origin only: writes reject cross-site requests (Sec-Fetch-Site / Origin fence), and asset reads are contained inside each skin directory (path escapes fail closed).
 - Skin CSS is sanitized (whitelist) before serving; `patches.css` (L3) is arbitrary CSS by design and disclosed as such — it runs with full page styling power and is not a security boundary.
+- The custom-theme editor emits only fixed declarations from `CUSTOM_THEME_ALLOWED_TOKENS`, each verified against the official token registry. User input is normalized color/contrast data and never becomes a selector, URL or free-form CSS payload.
 - `hooks.mjs` is trusted code that shares this repository's review and release; it is served same-origin only and its import/apply errors can never take the static skin down.
 
 ## Known limitations
@@ -61,6 +64,8 @@ skins/skin-center/
   src/we-library.ts / we-routes.ts / we-shim-source.ts / pkg-extract.ts   # Wallpaper Engine bridge
   src/client/runtime/                       # effect ledger, decoration layers, semantic adapter, switch controller, boot store
   src/client/SkinCenter.tsx                 # the settings card
+  src/core/custom-theme.ts                  # versioned palette contract + audited token-only CSS generator
+  src/client/custom-theme-controller.ts / CustomThemePanel.tsx            # persistence/runtime owner + editor card
   src/client/background.ts / wallpaper.ts / WallpaperPanel.tsx            # scrim + blur / WE bridge UI
   skins/<id>/                               # built-in skins (pure asset directories)
 ```
@@ -71,5 +76,6 @@ skins/skin-center/
 - [x] The list shows the official default plus every catalog skin; the active one is marked; invalid skins surface as diagnostics
 - [x] Try-on takes effect immediately and Exit restores the committed skin; only one skin is ever on the page
 - [x] One-click apply switches atomically with no reload; a later page load boots straight into the skin (no FOUC)
+- [x] The custom theme keeps independent light/dark profiles, survives reload, and never overrides an active catalog skin
 - [x] The Wallpaper Engine bridge, background scrim and blur controls are unaffected by skin switches
 - [x] e2e screenshots live in `docs/e2e/skin-center/`

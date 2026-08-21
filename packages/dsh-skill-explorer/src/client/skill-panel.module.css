@@ -325,11 +325,11 @@
   background: #2a2a2c;
 }
 body[data-ds-dark-theme] .formButton {
-  background: #fff;
-  color: #111;
+  background: #e5e5ea;
+  color: #111827;
 }
 body[data-ds-dark-theme] .formButton:hover {
-  background: #e5e5e7;
+  background: #d1d5db;
 }
 
 .note {
@@ -351,11 +351,12 @@ body[data-ds-dark-theme] .card {
   background: #2c2c2e;
 }
 body[data-ds-dark-theme] .head {
-  background: #3a3a3c;
+  background: rgba(255, 255, 255, 0.04);
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 body[data-ds-dark-theme] .tabs {
-  background: #3a3a3c;
+  /* Recessed track: darker than the modal, thumb pops above it. */
+  background: #151515;
 }
 body[data-ds-dark-theme] .skill {
   background: #48484a;
@@ -367,22 +368,44 @@ body[data-ds-dark-theme] .badge {
   border-color: rgba(99, 120, 220, 0.4);
 }
 body[data-ds-dark-theme] .badgeInvokable {
-  background: rgba(15, 122, 80, 0.25);
-  color: #6ee7b7;
-  border-color: rgba(15, 122, 80, 0.45);
+  background: rgba(48, 209, 88, 0.15);
+  color: #30d158;
+  border-color: rgba(48, 209, 88, 0.3);
 }
 body[data-ds-dark-theme] .switchThumb {
   background: #fff;
 }
 body[data-ds-dark-theme] .tab {
-  color: #8e8e93;
+  color: #888;
 }
 body[data-ds-dark-theme] .tabActive {
-  background: #636366;
+  background: #3a3a3c;
   color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 body[data-ds-dark-theme] .formInput {
   background: #1c1c1e;
   border-color: rgba(255, 255, 255, 0.06);
+}
+
+body[data-ds-dark-theme] .headButton {
+  /* Raised secondary control: translucent white overlay so it floats
+     above the header instead of reading darker than its background. */
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+}
+body[data-ds-dark-theme] .headButton:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+body[data-ds-dark-theme] .headButton:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+body[data-ds-dark-theme] .deleteButton {
+  background: rgba(255, 59, 48, 0.1);
+  border-color: rgba(255, 59, 48, 0.25);
+  color: #ff453a;
+}
+body[data-ds-dark-theme] .deleteButton:hover {
+  background: rgba(255, 59, 48, 0.2);
 }

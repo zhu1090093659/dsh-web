@@ -72,8 +72,8 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
-  background: var(--dsw-alias-bg-layer-1, #f7f8fa);
+  /* No divider: the header blends with the modal surface. */
+  background: var(--dsw-alias-bg-base, #fff);
 }
 
 .headTitle {
@@ -364,12 +364,11 @@ body[data-ds-dark-theme] .card {
   background: #2c2c2e;
 }
 body[data-ds-dark-theme] .head {
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+  background: #2c2c2e;
 }
 body[data-ds-dark-theme] .tabs {
-  /* Recessed track: darker than the modal, thumb pops above it. */
-  background: #151515;
+  /* Recessed track: a step darker than the modal (not pure black). */
+  background: #1e1e1e;
 }
 body[data-ds-dark-theme] .skill {
   background: #48484a;
@@ -389,12 +388,13 @@ body[data-ds-dark-theme] .switchThumb {
   background: #fff;
 }
 body[data-ds-dark-theme] .tab {
-  color: #888;
+  color: rgba(255, 255, 255, 0.5);
 }
 body[data-ds-dark-theme] .tabActive {
   background: #3a3a3c;
   color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 body[data-ds-dark-theme] .formInput {
   background: #1c1c1e;

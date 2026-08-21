@@ -2,11 +2,11 @@
  * HostStore unit tests: CRUD, validation, ssh-config import. No network.
  */
 
-import { mkdtempSync, writeFileSync, rmSync, statSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, writeFileSync, rmSync, statSync, readdirSync, readFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { HostStore, validateAlias, validateHostPayload } from '../src/store.ts'
+import { HostStore, storePath, validateAlias, validateHostPayload } from '../src/store.ts'
 import type { HostPayload } from '../src/protocol.ts'
 
 const dirs: string[] = []
@@ -134,7 +134,7 @@ describe('CRUD', () => {
     const store = makeStore()
     const entry = store.create({ ...basePayload, auth: { kind: 'key', keyPath: '~/keys/id' } })
     expect(entry.auth.keyPath).not.toContain('~')
-    expect(entry.auth.keyPath).toContain('keys/id')
+    expect(entry.auth.keyPath).toContain(join('keys', 'id'))
   })
 
   it('serves repeated reads consistently and notices external rewrites', () => {
@@ -241,11 +241,25 @@ describe('import from ssh config', () => {
 })
 
 describe('file safety', () => {
+  it('stores host config under DSH_HOME when the environment override is set', () => {
+    const previous = process.env.DSH_HOME
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-ssh-home-'))
+    dirs.push(dir)
+    try {
+      process.env.DSH_HOME = dir
+      expect(storePath()).toBe(join(dir, 'dsh-ssh.json'))
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = previous
+    }
+  })
+
   it('writes the store with owner-only permissions', () => {
     const store = makeStore()
     store.create(basePayload)
     const mode = statSync(store.path).mode & 0o777
-    expect(mode).toBe(0o600)
+    if (process.platform === 'win32') expect(existsSync(store.path)).toBe(true)
+    else expect(mode).toBe(0o600)
   })
 
   it('renames a corrupt store aside instead of silently overwriting it', () => {
@@ -310,7 +324,7 @@ describe('partial updates', () => {
     const store = makeStore()
     store.create({ ...basePayload, auth: { kind: 'key', keyPath: '~/keys/old', passphrase: 'secret' } })
     const switched = store.update('web-01', { auth: { kind: 'key', keyPath: '~/keys/new' } })
-    expect(switched.auth.keyPath).toContain('keys/new')
+    expect(switched.auth.keyPath).toContain(join('keys', 'new'))
     expect(switched.auth.passphrase).toBeUndefined()
   })
 

@@ -8,7 +8,7 @@
 
 | 能力 | 说明 |
 | --- | --- |
-| 主机管理 | 增删改查、搜索、连接测试；支持按环境 / 标签分组折叠与组内批量测试；配置存 `~/.dsh/dsh-ssh.json`；支持密钥 / 密码 / ssh-agent 认证（OpenSSH agent / Pageant）、passphrase 密钥、ProxyJump 跳板机（多级） |
+| 主机管理 | 增删改查、搜索、连接测试；支持按环境 / 标签分组折叠与组内批量测试；配置存 `$DSH_HOME/dsh-ssh.json`（默认 `~/.dsh/dsh-ssh.json`）；支持密钥 / 密码 / ssh-agent 认证（OpenSSH agent / Pageant）、passphrase 密钥、ProxyJump 跳板机（多级） |
 | 配置导入 | 一键解析标准 `~/.ssh/config`（Host/HostName/User/Port/IdentityFile/IdentityAgent/ProxyJump 等），已有别名自动跳过 |
 | 持久连接池 | 每台主机复用长连接（对应 ssh-skill 的守护进程），空闲 30 分钟自动断开，断线自动重连（最多 3 次） |
 | 命令执行 | exec 带超时（默认 60s），stdout/stderr 分离，输出截断保护（2MB） |
@@ -21,7 +21,7 @@
 ## 安全模型
 
 - 所有 `/api/dsh-ssh/*` 路由仅限 loopback 访问（含同源校验）——对远程服务器执行命令的接口不会暴露给局域网。
-- 密码 / 密钥口令以明文保存在 `~/.dsh/dsh-ssh.json`，文件权限 0600、目录 0700（与 ssh-skill 把密码写进 ssh-config 注释同一信任模型）。
+- 密码 / 密钥口令以明文保存在 `$DSH_HOME/dsh-ssh.json`（默认 `~/.dsh/dsh-ssh.json`），文件权限 0600、目录 0700（与 ssh-skill 把密码写进 ssh-config 注释同一信任模型）。
 - ssh-agent 认证仅保存 agent socket 路径（或 `pageant` 特殊值），不读取也不保存任何私钥材料。
 - 隧道只监听 `127.0.0.1`。
 - 删除主机或修改其连接字段（host / port / user / auth / proxyJump）会立即断开该别名的池化连接与隧道，后续操作按新配置重新建连，不会复用旧凭据的已认证连接。
@@ -53,7 +53,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-ssh
 
 ## 数据
 
-- 主机配置：`~/.dsh/dsh-ssh.json`（版本化 JSON，原子写入）
+- 主机配置：`$DSH_HOME/dsh-ssh.json`（默认 `~/.dsh/dsh-ssh.json`；版本化 JSON，原子写入）
 - 传输暂存：`os.tmpdir()/dsh-ssh-uploads/`（目录 0700，传输中的文件 0600）
 
 ## 开发

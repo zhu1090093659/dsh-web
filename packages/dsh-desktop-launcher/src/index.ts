@@ -1,7 +1,7 @@
 /**
  * dsh-desktop-launcher — host half. Serves the loopback-only
  * /api/dsh-desktop-launcher/create route that writes the launcher script
- * under ~/.dsh/desktop-launcher/ and places a double-click icon on the
+ * under $DSH_HOME/desktop-launcher/ and places a double-click icon on the
  * Desktop (Windows .lnk, macOS .command, Linux .desktop), and the
  * loopback-only /api/dsh-desktop-launcher/shutdown route that requests the
  * host process to exit gracefully. Also provides a system-prompt

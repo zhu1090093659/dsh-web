@@ -39,6 +39,7 @@
   --dsw-alias-state-business-tertiary: #e1e7f5;
   --dsw-shadow-lv2: var(--maid-shadow);
   --dsw-specific-input-major: #fffdf8d1;
+  --dsw-specific-menu: var(--dsw-alias-bg-layer-3);
   --dsw-specific-selector: #e2e8f6e6;
   --dsw-specific-sidebar-fill: #0b1942e0;
   background-color: #dce6f5;
@@ -75,7 +76,10 @@ body[data-ds-dark-theme] {
   --dsw-alias-state-business-primary: #9bb0e1;
   --dsw-alias-state-business-tertiary: #293d73;
   --dsw-specific-input-major: #111e42e0;
+  --dsw-specific-menu: var(--dsw-alias-bg-layer-3);
   --dsw-specific-selector: #2d406fe6;
   --dsw-specific-sidebar-fill: #050d28e6;
+  --shiki-foreground: var(--dsw-alias-label-primary);
+  --shiki-background: var(--dsw-alias-markdown-code-block);
   background-color: #080f27;
 }

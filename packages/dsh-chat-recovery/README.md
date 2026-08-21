@@ -2,8 +2,8 @@
 
 English | [中文](README.zh.md)
 
-Chat recovery for DSH Web: edit the last completed user message and supervise
-turn retries. Both actions work through the official session fork contract -
+Chat recovery for DSH Web: edit the last completed user message and explicitly
+retry failed turns. Both actions work through the official session fork contract -
 a child branch is cut from the history prefix BEFORE the affected message, the
 text is re-submitted there, and the original conversation is never touched.
 
@@ -20,16 +20,13 @@ text is re-submitted there, and the original conversation is never touched.
   - First-turn edits fall back to a fresh blank session in the same
     workspace (a fork cannot cut history before the very first turn).
 - **Retry**:
-  - **Auto retry**: a failed turn whose last attempt is cleanly replayable
-    (recoverable model/API error - timeout, network, server error, rate
-    limit, empty response - and no tool activity) is retried up to 5 extra
-    times with exponential backoff (1s, 2s, 4s, 8s, 16s). A crashed
-    (host-errored) interrupted turn without tools is also retried; a turn the
-    user stopped on purpose is not.
-  - **Manual retry**: every other failed turn (non-recoverable errors,
-    tool-involved turns, user stops, max-token caps) shows a Retry button in
-    the transcript. One re-run per click - the user confirms the side
-    effects of replaying tools.
+  - **Explicit retry by default**: a failed turn shows a Retry button in the
+    transcript. One re-run is created per click, so no background retry can
+    silently grow the session tree. Tool side effects are replayed only after
+    this explicit confirmation.
+  - The supervisor still supports opt-in fork-per-attempt automation for
+    controlled integrations, but the shipped UI leaves it disabled because
+    the current Host API has no in-place turn retry operation.
   - The composer dock shows a status row with the current attempt count,
     wait state and the final failure reason, plus Cancel / Retry-now
     controls. Cancel stops all further attempts.
@@ -52,10 +49,9 @@ text is re-submitted there, and the original conversation is never touched.
   and abandoned attempts (cancelled, exhausted or failed) are kept for
   inspection. The client runtime exposes no session-removal API, so stale
   retry forks must be cleaned up manually from the session list.
-- **Conservative auto retry**: auth failures, permission errors, invalid
-  arguments, quotas, cancellations and any turn that ran tools or commands
-  are never auto-retried. Tool side effects replay only on explicit user
-  action.
+- **No background session growth by default**: the shipped UI never starts
+  fork-per-attempt automation. Each Retry click creates exactly one branch;
+  tool side effects replay only on explicit user action.
 - **Browser-side supervision**: retry state lives in the GUI tab. Closing
   the tab cancels supervision; the failed turn and its history remain
   durable on the host.
@@ -81,6 +77,10 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-chat-recovery
 Restart dsh web; the Edit affordance appears on the last completed turn
 and the retry status row on the composer dock.
 
+## Config
+
+The shipped UI keeps fork-per-attempt automatic retry disabled. Retry is an explicit transcript action and needs no configuration; controlled integrations that construct `RetrySupervisor` directly may opt in with `{ autoRetry: true }` while accepting visible child sessions for every attempt.
+
 ## Known limitations
 
 - The Edit / Retry affordances render in each completed turn's tail row; the
@@ -88,9 +88,8 @@ and the retry status row on the composer dock.
   entry matches every completed turn and gates internally.
 - Editing only covers text-only user messages; attachment messages are not
   editable because they cannot be safely copied into a re-submitted prompt.
-- Auto retry requires the GUI tab to stay open (browser-side scheduling,
-  like the task board's cron). Reopening the session after a failure shows
-  the manual Retry button instead.
+- The Host API does not provide an in-place turn retry operation. Retry must
+  therefore create a branch, which remains visible in the session list.
 
 ## License
 

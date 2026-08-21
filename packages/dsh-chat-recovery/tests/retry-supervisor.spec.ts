@@ -111,8 +111,22 @@ class FakePorts implements RetryPorts {
 }
 
 function make(ports: FakePorts): { supervisor: RetrySupervisor; ports: FakePorts } {
-  return { supervisor: new RetrySupervisor(ports), ports }
+  return { supervisor: new RetrySupervisor(ports, { autoRetry: true }), ports }
 }
+
+describe('default retry policy', () => {
+  it('does not create retry forks automatically unless fork-per-attempt automation is enabled', () => {
+    const ports = new FakePorts()
+    ports.snaps.set(SRC, failedSource())
+    const supervisor = new RetrySupervisor(ports)
+
+    supervisor.review()
+
+    expect(supervisor.getSnapshot().phase).toBe('idle')
+    expect(ports.timers).toHaveLength(0)
+    expect(ports.forked).toHaveLength(0)
+  })
+})
 
 describe('auto retry cycle', () => {
   it('arms on a recoverable failure, forks the prefix before the failed turn, and prompts once per child', async () => {

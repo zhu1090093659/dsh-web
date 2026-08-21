@@ -71,6 +71,11 @@ export interface RetryPorts {
   schedule(fn: () => void, ms: number): () => void
 }
 
+export interface RetrySupervisorOptions {
+  /** Fork-per-attempt automation is opt-in because every attempt creates a visible session. */
+  autoRetry?: boolean
+}
+
 const IDLE: RetryState = {
   phase: 'idle',
   kind: null,
@@ -102,7 +107,10 @@ export class RetrySupervisor {
   /** Last completed event inherited by the current retry child before its replayed turn. */
   private attemptStartEndSeq = 0
 
-  constructor(private readonly ports: RetryPorts) {}
+  constructor(
+    private readonly ports: RetryPorts,
+    private readonly options: RetrySupervisorOptions = {},
+  ) {}
 
   getSnapshot = (): RetryState => this.state
 
@@ -128,7 +136,7 @@ export class RetrySupervisor {
         const snapshot = this.ports.snapshot(current)
         if (snapshot === undefined) return
         const verdict = verdictFor(snapshot)
-        if (verdict.action === 'auto') {
+        if (verdict.action === 'auto' && this.options.autoRetry === true) {
           const suppressedEnd = this.suppressedFailureEnds.get(current) ?? -1
           if (verdict.failure.turnEndSeq <= suppressedEnd) return
           this.suppressedFailureEnds.delete(current)

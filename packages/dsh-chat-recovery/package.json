@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-chat-recovery",
-  "description": "Chat recovery for the dsh web GUI: edit the last completed user message (fork-based, original history preserved) and supervised turn retry (auto retry of recoverable model/API failures with exponential backoff, user cancel, and a manual retry path for tool-involved turns)",
+  "description": "Chat recovery for the dsh web GUI: fork-based editing and explicit retry of the last failed turn while preserving the original session",
   "version": "0.2.7",
   "type": "module",
   "packageManager": "pnpm@11.7.0",

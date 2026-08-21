@@ -187,6 +187,11 @@ window.__ModuleLoader__.load({
 						className: skin_center_module_css_default.cardTagline,
 						children: t("customThemeTagline")
 					}),
+					customThemeState.writeError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: skin_center_module_css_default.error,
+						role: "alert",
+						children: t("customThemeSaveFailed")
+					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: skin_center_module_css_default.actions,
 						children: [
@@ -230,11 +235,6 @@ window.__ModuleLoader__.load({
 					expanded && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: skin_center_module_css_default.customThemeEditor,
 						children: [
-							customThemeState.writeError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: skin_center_module_css_default.error,
-								role: "alert",
-								children: t("customThemeSaveFailed")
-							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: skin_center_module_css_default.customThemeScheme,
 								role: "group",

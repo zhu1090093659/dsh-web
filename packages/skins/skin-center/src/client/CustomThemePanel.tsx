@@ -102,6 +102,11 @@ export function CustomThemeCard(props: CustomThemeCardProps): ReactNode {
         )}
       </div>
       <div className={css.cardTagline}>{t('customThemeTagline')}</div>
+      {customThemeState.writeError !== null && (
+        <div className={css.error} role="alert">
+          {t('customThemeSaveFailed')}
+        </div>
+      )}
       <div className={css.actions}>
         {isActive && !isTrying ? (
           <button type="button" className={`${css.button} ${css.buttonGhost}`} disabled>{t('tryOn')}</button>
@@ -130,11 +135,6 @@ export function CustomThemeCard(props: CustomThemeCardProps): ReactNode {
 
       {expanded && (
         <div className={css.customThemeEditor}>
-          {customThemeState.writeError !== null && (
-            <div className={css.error} role="alert">
-              {t('customThemeSaveFailed')}
-            </div>
-          )}
           <div className={css.customThemeScheme} role="group" aria-label={t('customThemeMode')}>
             <span className={css.themeLabel}>{t('customThemeMode')}</span>
             <button

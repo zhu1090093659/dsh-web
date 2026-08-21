@@ -16,8 +16,8 @@ import { mountSidebarEntry as mountSharedSidebarEntry } from './sidebar-entry-co
 /** Stable data attribute identifying the injected entry row. */
 export const ENTRY_SELECTOR = '[data-dsh-ssh-entry]'
 
-/** Inline icon (matches the shell's 16px nav-icon look): a terminal prompt glyph. */
-const ICON = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M4.5 5.5l2.5 2.5-2.5 2.5"/><path d="M8.5 10.5h3"/></svg>'
+/** Inline terminal glyph sized to the shell's current sidebar navigation icons. */
+const ICON = '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.75" y="2.25" width="12.5" height="11.5" rx="1.75"/><path d="M4.25 5.25l2.75 2.75-2.75 2.75"/><path d="M8.5 10.75h3.25"/></svg>'
 
 /**
  * Mount the sidebar entry, waiting for the shell to render and self-healing

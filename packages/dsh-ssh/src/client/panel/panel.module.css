@@ -49,12 +49,13 @@ html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [class*='centerCol'] 
 /* --- sidebar entry row ------------------------------------------------------- */
 
 .entry {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  height: 32px;
-  padding: 0 12px;
+  min-height: 36px;
+  padding: 0 10px;
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -79,7 +80,15 @@ html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [class*='centerCol'] 
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 24px;
+  height: 24px;
   flex: none;
+}
+
+.entryIcon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .entryLabel {
@@ -91,7 +100,9 @@ html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [class*='centerCol'] 
 [data-dsh-frame][data-sidebar-collapsed] .entry {
   justify-content: center;
   padding: 0;
-  width: 100%;
+  width: 40px;
+  min-height: 40px;
+  margin-inline: auto;
 }
 
 [data-dsh-frame][data-sidebar-collapsed] .entryLabel {

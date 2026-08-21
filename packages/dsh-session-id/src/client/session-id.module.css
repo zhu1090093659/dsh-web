@@ -194,6 +194,7 @@
 }
 
 .rowTitle {
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -206,6 +207,7 @@
 }
 
 .rowId {
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -213,6 +215,7 @@
   font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   font-size: 12px;
   line-height: 18px;
+  margin-top: 2px;
 }
 
 .rowMeta {

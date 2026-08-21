@@ -216,3 +216,84 @@ button[class*="triggerFloating"] {
 [data-dsh-skill-explorer-entry] svg {
   color: var(--dsw-alias-label-primary, #f9fafb) !important;
 }
+
+/* --- Top-bar subagent board (trajectory) --------------------------------------
+   The header "N 个子代理" trigger and the expanded status tree: frosted via the
+   card-blur slider so the wallpaper shows through the board. The wrapper is a
+   role=tree dropdown inside the header actions (the generic role=listbox group
+   does not cover it), so the whole subtree is glassified here. */
+[data-slot="conversation.session.header.actions"] button[class*="_trigger"],
+[data-slot="conversation.session.header.actions"] [class*="_menu"],
+[data-slot="conversation.session.header.actions"] [class*="_subagent"],
+[data-slot="conversation.session.header.actions"] [class*="_subagentBody"],
+[data-slot="conversation.session.header.actions"] [class*="_subagentRow"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+[data-slot="conversation.session.header.actions"] [class*="_subagentRowActive"] {
+  background-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* --- Bottom panel / terminal dock (slider set) --------------------------------
+   Expanding the bottom panel used to paint an opaque overlay that hid the
+   wallpaper; the panel chrome (container + panes + tabs) is now frosted so the
+   wallpaper stays visible while expanded. The terminal canvas keeps a dark,
+   slider-blurred fill for text legibility. */
+[class*="_bottomPanel"],
+[class*="_bottomPanel"] [class*="_pane"],
+[class*="_bottomPanel"] [class*="_tabBar"],
+[class*="_bottomPanel"] [class*="_tab"],
+[class*="_bottomPanel"] [class*="_terminalWrap"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+[class*="_bottomPanel"] .xterm-viewport {
+  background-color: rgba(13, 22, 39, 0.62) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* --- Sidebar keys + cards (slider set) ---------------------------------------
+   The 新会话 primary button and the session/workspace cards get the same glass
+   so the three keys (新会话 / 任务看板 / ssh) and the side cards read uniformly
+   and follow the slider. */
+[data-slot="sidebar"] button[class*="newSession"],
+[data-slot="sidebar"] [class*="_sessionRow"],
+[data-slot="sidebar"] [class*="_workspaceRow"],
+[data-slot="sidebar"] [class*="_projectRow"] {
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+[data-slot="sidebar"] button[class*="newSession"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  color: var(--dsw-alias-label-primary, #f9fafb) !important;
+}
+
+[data-slot="sidebar"] [class*="_sessionRow"],
+[data-slot="sidebar"] [class*="_workspaceRow"],
+[data-slot="sidebar"] [class*="_projectRow"] {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* --- ssh panel chrome + queued-send card (slider set) ------------------------ */
+[data-dsh-plugin="ssh"] [data-dsh-part="tab-bar"],
+[data-dsh-plugin="ssh"] [data-dsh-part="tab"],
+[data-dsh-plugin="ssh"] [data-dsh-part="host-table"],
+[data-dsh-plugin="ssh"] [data-dsh-part="host-row"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}
+
+/* Queued-send card in the composer dock. */
+[data-queue-dock],
+[data-dsh-part="queue-dock"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: var(--dsw-wallpaper-glass-blur);
+  backdrop-filter: var(--dsw-wallpaper-glass-blur);
+}

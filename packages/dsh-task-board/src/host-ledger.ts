@@ -179,6 +179,23 @@ function ownProcessStartTimeMs(): number | undefined {
   return ownStartTime
 }
 
+/**
+ * Bounded tolerance for legacy lock records. Locks written before the
+ * ms-precise probe recorded `startedAt` from `ps -o lstart=` at whole-second
+ * resolution; probing the SAME live process exactly (via /proc) then differs
+ * in the sub-second remainder. Treating that as PID reuse would steal a live
+ * owner's lock during a rolling upgrade and start a second ledger writer.
+ * Records written by the ms-precise probe carry `probe: 'exact'` and are
+ * compared strictly; anything else (older locks, second-granularity probes)
+ * falls back to this bounded tolerance.
+ */
+const LEGACY_START_TOLERANCE_MS = 2000
+
+/** Whether the recorded start time proves the recorded PID is another process. */
+function startTimeMismatch(recorded: number, actual: number, exact: boolean): boolean {
+  return exact ? recorded !== actual : Math.abs(recorded - actual) > LEGACY_START_TOLERANCE_MS
+}
+
 function betterExecution(a: ExecutionRecord, b: ExecutionRecord): ExecutionRecord {
   if (a.endedAt === undefined && b.endedAt !== undefined) return b
   if (b.endedAt === undefined && a.endedAt !== undefined) return a
@@ -623,7 +640,13 @@ export class HostTaskLedger {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         const fd = openSync(this.lockFile, 'wx', 0o600)
-        writeFileSync(fd, JSON.stringify({ pid: process.pid, token: this.lockToken, startedAt: ownProcessStartTimeMs() }), { encoding: 'utf8' })
+        const startedAt = ownProcessStartTimeMs()
+        // Linux /proc and Windows PowerShell probes are ms-precise; locks they
+        // write are compared strictly. Other POSIX probes (ps) stay
+        // second-granularity, so their records are compared with the bounded
+        // legacy tolerance.
+        const probe = process.platform === 'linux' || process.platform === 'win32' ? 'exact' : 'legacy'
+        writeFileSync(fd, JSON.stringify({ pid: process.pid, token: this.lockToken, startedAt, probe }), { encoding: 'utf8' })
         fsyncSync(fd)
         try { chmodSync(this.lockFile, 0o600) } catch { /* Windows ACLs own access */ }
         return fd
@@ -632,29 +655,34 @@ export class HostTaskLedger {
         if (code !== 'EEXIST') throw error
         let pid: number | undefined
         let ownerStartedAt: number | undefined
+        let ownerExact = false
         try {
-          const owner = JSON.parse(readFileSync(this.lockFile, 'utf8')) as { pid?: unknown; startedAt?: unknown }
+          const owner = JSON.parse(readFileSync(this.lockFile, 'utf8')) as { pid?: unknown; startedAt?: unknown; probe?: unknown }
           if (typeof owner.pid === 'number') pid = owner.pid
           if (typeof owner.startedAt === 'number') ownerStartedAt = owner.startedAt
+          ownerExact = owner.probe === 'exact'
         } catch {
           throw new Error(`task-board ledger lock is unreadable: ${this.lockFile}`)
         }
         if (pid !== undefined && processIsAlive(pid)) {
           const actualStartedAt = pid === process.pid ? ownProcessStartTimeMs() : processStartTimeMs(pid)
           // A reused PID is exposed when the live process identity no longer
-          // matches the recorded one: either the recorded start time differs,
-          // or (legacy locks without one) the lock file predates the live
-          // process and therefore cannot have been written by it. Takeover is
-          // safe in both cases — the original owner is gone.
+          // matches the recorded one: either the recorded start time differs
+          // beyond the probe's resolution (strict for ms-precise 'exact'
+          // records, a bounded legacy tolerance for old second-granularity
+          // records written by ps), or (legacy locks without a start time)
+          // the lock file predates the live process and therefore cannot
+          // have been written by it. Takeover is safe in both cases — the
+          // original owner is gone.
           const staleReuse = actualStartedAt !== undefined && (
             ownerStartedAt !== undefined
-              ? actualStartedAt !== ownerStartedAt
+              ? startTimeMismatch(ownerStartedAt, actualStartedAt, ownerExact)
               : (() => {
                 try { return statSync(this.lockFile).mtimeMs < actualStartedAt } catch { return true }
               })()
           )
           if (!staleReuse) {
-            const confirmedOwner = ownerStartedAt !== undefined && actualStartedAt === ownerStartedAt
+            const confirmedOwner = ownerStartedAt !== undefined && actualStartedAt !== undefined && !startTimeMismatch(ownerStartedAt, actualStartedAt, ownerExact)
             const hint = confirmedOwner
               ? ''
               : `; if this PID was reused after a crash and no other DSH host is running, remove ${this.lockFile} manually and retry`

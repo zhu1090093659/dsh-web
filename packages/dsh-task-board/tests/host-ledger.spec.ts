@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -21,6 +21,23 @@ function task(id: string, updatedAt = NOW): TaskRecord {
 
 function sleepSync(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
+/**
+ * The start time of a live process exactly as the legacy `ps -o lstart=`
+ * probe recorded it: whole-second resolution. Used to simulate locks written
+ * by the pre-ms-probe implementation during a rolling upgrade.
+ */
+function secondGranularStartMs(pid: number): number | undefined {
+  if (process.platform === 'win32') return undefined
+  try {
+    const probe = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { timeout: 3000, env: { ...process.env, LC_ALL: 'C' } })
+    if (probe.status !== 0 || probe.stdout.length === 0) return undefined
+    const started = Date.parse(probe.stdout.toString('utf8').trim())
+    return Number.isFinite(started) ? started : undefined
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -226,13 +243,41 @@ describe('HostTaskLedger', () => {
     const zombie = spawnZombie()
     if (zombie === undefined) return // environment reaps orphans; cannot exercise
     const root = tempRoot()
-    // A zombie owner passes process.kill(pid, 0) (it still occupies the PID
-    // table), so the liveness probe alone would treat it as a live owner and
-    // block startup forever. The zombie-state check must classify it as dead.
-    writeFileSync(join(root, 'ledger-v2.lock'), JSON.stringify({ pid: zombie, token: 'zombie-owner', startedAt: Date.now() - 120_000 }), 'utf8')
+    // Record the zombie's REAL (legacy second-granularity) start time, so the
+    // identity comparison alone would look like a live owner. Only the
+    // zombie-state check (processIsAlive === false) lets this lock be taken
+    // over — the test fails without it.
+    const startedAt = secondGranularStartMs(zombie)
+    if (startedAt === undefined) return // cannot simulate the legacy record
+    writeFileSync(join(root, 'ledger-v2.lock'), JSON.stringify({ pid: zombie, token: 'zombie-owner', startedAt }), 'utf8')
     const ledger = new HostTaskLedger(root, () => NOW)
     expect(ledger.state().scheduler.ledgerId).toBeDefined()
     ledger.dispose()
+  })
+
+  it('fails closed on a live owner whose lock records a second-granularity (legacy ps) start time', () => {
+    const root = tempRoot()
+    // A live old-version owner wrote its own start time through `ps -o
+    // lstart=` (whole-second resolution). The new ms-precise /proc probe
+    // reports the same process with a sub-second remainder; strict equality
+    // would read that as PID reuse, unlink the live owner's lock and start a
+    // second ledger writer during a rolling upgrade. The bounded legacy
+    // tolerance must keep this owner protected (fail closed).
+    const startedAt = secondGranularStartMs(process.pid)
+    if (startedAt === undefined) return // ps unavailable — cannot exercise
+    const lockFile = join(root, 'ledger-v2.lock')
+    writeFileSync(lockFile, JSON.stringify({ pid: process.pid, token: 'legacy-live-owner', startedAt }), 'utf8')
+    let message = ''
+    try {
+      new HostTaskLedger(root, () => NOW)
+    } catch (error) {
+      message = (error as Error).message
+    }
+    expect(message).toContain('already owned by process')
+    // The tolerance classifies the owner as confirmed (sub-second probe
+    // difference), so no misleading "PID was reused — remove the lock"
+    // recovery hint is appended.
+    expect(message).not.toContain('remove')
   })
 
   it('treats an unreaped zombie as dead even though kill(0) reports it alive', () => {

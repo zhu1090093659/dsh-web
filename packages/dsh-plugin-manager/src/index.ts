@@ -29,12 +29,15 @@ export const inject = ['webServer']
 export const apply = mountOnce('@linxin666/dsh-client-ui-plugin-manager', applyImpl)
 
 function applyImpl(ctx: Context): void {
-  // Gateway mode needs the boot profile; on hosts without one (desktop
-  // launches that do not pass --profile) the official channels serve the
-  // browser half, so this half stays dormant.
+  // Gateway mode needs the boot profile. CLI-launched hosts carry
+  // --profile / DSH_PROFILE / the web subcommand in argv; the packaged
+  // Desktop shell (deepseek-harness-desktop) boots the harness in-process
+  // with none of those, so its desktopProfiles service reports the active
+  // profile and this half must serve the browser tab there as well.
   let facts
   try {
-    facts = resolveProfile()
+    const desktop = ctx.get('desktopProfiles') as { current?: { name?: string } } | undefined
+    facts = resolveProfile(undefined, undefined, desktop?.current?.name)
   } catch (error) {
     console.error('[plugin-manager]', error instanceof Error ? error.message : String(error))
     return

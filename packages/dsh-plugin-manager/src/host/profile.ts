@@ -25,15 +25,24 @@ export interface ProfileFacts {
 }
 
 /**
- * Resolve the boot profile name from the host argv: an explicit `--profile`
- * flag wins, then the DSH_PROFILE environment override, then the `web`
- * subcommand alias. The launcher hands the app its own args verbatim, so the
- * web app's argv is the reliable source on every CLI-launched host.
+ * Resolve the boot profile name: an explicit `--profile` flag wins, then the
+ * DSH_PROFILE environment override, then the `web` subcommand alias, then the
+ * desktop app's active profile. The launcher hands the app its own args
+ * verbatim, so the web app's argv is the reliable source on every
+ * CLI-launched host; the packaged Desktop shell (deepseek-harness-desktop)
+ * boots the harness in-process with none of those facts, so its
+ * `desktopProfiles` service name is the final fallback.
  * @param argv - process argv (test seam).
  * @param env - process environment (test seam).
+ * @param desktopProfileName - active profile reported by the desktop shell's
+ * `desktopProfiles` service, when this runtime provides one.
  * @returns the resolved profile facts.
  */
-export function resolveProfile(argv: readonly string[] = process.argv, env: NodeJS.ProcessEnv = process.env): ProfileFacts {
+export function resolveProfile(
+  argv: readonly string[] = process.argv,
+  env: NodeJS.ProcessEnv = process.env,
+  desktopProfileName?: string,
+): ProfileFacts {
   const flagIndex = argv.indexOf('--profile')
   let name: string | undefined
   if (flagIndex !== -1 && argv[flagIndex + 1] !== undefined && argv[flagIndex + 1] !== '') {
@@ -42,6 +51,9 @@ export function resolveProfile(argv: readonly string[] = process.argv, env: Node
     name = env.DSH_PROFILE.trim()
   } else if (argv.includes('web')) {
     name = 'web'
+  }
+  if (name === undefined && desktopProfileName !== undefined && desktopProfileName.trim() !== '') {
+    name = desktopProfileName.trim()
   }
   if (name === undefined) {
     throw new Error('plugin-manager: cannot determine the boot profile; pass --profile <name> or set DSH_PROFILE')

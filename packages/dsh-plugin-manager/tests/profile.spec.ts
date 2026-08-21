@@ -22,6 +22,25 @@ describe('resolveProfile', () => {
     expect(facts.profileName).toBe('web')
   })
 
+  it('falls back to the desktop profile name when no launcher fact names one', () => {
+    const facts = resolveProfile(['node', 'bin.js'], env, 'web')
+    expect(facts.profileName).toBe('web')
+    expect(facts.profileDir).toBe(join('/tmp/dsh-home', 'profiles', 'web'))
+  })
+
+  it('prefers launcher facts over the desktop profile name', () => {
+    const facts = resolveProfile(['node', 'bin.js', '--profile', 'headless'], env, 'web')
+    expect(facts.profileName).toBe('headless')
+  })
+
+  it('ignores a blank desktop profile name', () => {
+    expect(() => resolveProfile(['node', 'bin.js'], env, '   ')).toThrow(/cannot determine the boot profile/)
+  })
+
+  it('rejects traversal in the desktop profile name', () => {
+    expect(() => resolveProfile(['node', 'bin.js'], env, '../etc')).toThrow(/invalid profile name/)
+  })
+
   it('throws when nothing names a profile', () => {
     expect(() => resolveProfile(['node', 'bin.js'], env)).toThrow(/cannot determine the boot profile/)
   })

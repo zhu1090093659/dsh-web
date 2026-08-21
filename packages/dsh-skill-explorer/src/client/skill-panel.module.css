@@ -297,7 +297,7 @@
 .formInput {
   background: var(--dsw-alias-bg-layer-1, #f7f8fa);
   color: var(--dsw-alias-label-primary, #1c1e26);
-  border: 1px solid var(--dsw-alias-border-l1, #d7dae0);
+  border: 1px solid transparent;
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 12px;
@@ -325,4 +325,46 @@
   color: var(--dsw-alias-label-tertiary, #a0a5b1);
   line-height: 1.7;
   margin-top: 10px;
+}
+
+/* ---- Dark theme overrides ----
+ * The --dsw-alias-* fallbacks above are light-palette values; several of
+ * the semantic tokens they fall back to (state-business/success-*,
+ * bg-layer-1) are absent from the dark palette, so the light colors leak
+ * into dark mode.  Pin explicit dark values for the affected surfaces.
+ * Hierarchy: panel (darkest) < head/tabs < cards/inputs < active tab. */
+body[data-ds-dark-theme] .card {
+  background: #151517;
+}
+body[data-ds-dark-theme] .head {
+  background: #1b1b1d;
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+body[data-ds-dark-theme] .tabs {
+  background: #1b1b1d;
+}
+body[data-ds-dark-theme] .skill {
+  background: #262628;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+body[data-ds-dark-theme] .badge {
+  background: rgba(99, 120, 220, 0.22);
+  color: #a5b4fc;
+  border-color: rgba(99, 120, 220, 0.4);
+}
+body[data-ds-dark-theme] .badgeInvokable {
+  background: rgba(15, 122, 80, 0.25);
+  color: #6ee7b7;
+  border-color: rgba(15, 122, 80, 0.45);
+}
+body[data-ds-dark-theme] .switchThumb {
+  background: #fff;
+}
+body[data-ds-dark-theme] .tabActive {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+body[data-ds-dark-theme] .formInput {
+  background: #262628;
+  border-color: rgba(255, 255, 255, 0.08);
 }

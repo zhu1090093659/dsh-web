@@ -13,7 +13,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HostsTab, groupHosts } from '../src/client/panel/HostsTab.tsx'
 import type { SshApi } from '../src/client/api.ts'
-import type { SshHostSummary } from '../src/protocol.ts'
+import type { SshHostSummary, TestResult } from '../src/protocol.ts'
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -33,7 +33,15 @@ function makeHost(alias: string, extra: Partial<SshHostSummary> = {}): SshHostSu
   }
 }
 
+// Every rendered root is unmounted in cleanup: a late-settling promise then
+// hits the mounted guard instead of setState-ing against the torn-down jsdom
+// environment (main-CI flake: window is not defined from HostsTab setError).
+const mountedRoots: { root: ReturnType<typeof createRoot> }[] = []
+
 afterEach(() => {
+  for (const { root } of mountedRoots.splice(0)) {
+    act(() => { root.unmount() })
+  }
   document.body.replaceChildren()
 })
 
@@ -85,6 +93,26 @@ describe('HostsTab unmount race (main-CI flake)', () => {
     expect(api.listHosts).toHaveBeenCalled()
   })
 
+  it('a testHost promise settling after unmount never reaches setState', async () => {
+    // Same race as the listHosts case, on the runTest path (setTestResults /
+    // setTestingAlias were unguarded before the mounted ref was applied).
+    let rejectLate: ((error: Error) => void) | undefined
+    const api = {
+      listHosts: vi.fn(async () => [makeHost('web-1')]),
+      testHost: vi.fn(() => new Promise<TestResult>((_resolve, reject) => { rejectLate = reject })),
+    } as unknown as SshApi
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    await act(async () => { root.render(<HostsTab api={api} onConnect={() => undefined} />) })
+    const testButton = [...container.querySelectorAll('button')].find(button => button.textContent === '测试') as HTMLButtonElement
+    await act(async () => { testButton.click() })
+    await act(async () => { root.unmount() })
+    rejectLate!(new Error('late test failure'))
+    await act(async () => { await Promise.resolve() })
+    expect(api.testHost).toHaveBeenCalled()
+  })
+
   it('guards every load-path setState with the mounted ref', () => {
     const source = readFileSync(join(process.cwd(), 'src', 'client', 'panel', 'HostsTab.tsx'), 'utf8')
     expect(source).toContain('mountedRef')
@@ -109,6 +137,7 @@ describe('HostsTab grouped view', () => {
     const container = document.createElement('div')
     document.body.appendChild(container)
     const root = createRoot(container)
+    mountedRoots.push({ root })
     await act(async () => { root.render(<HostsTab api={api} onConnect={() => {}} />) })
     await act(async () => { await Promise.resolve() })
     return container

@@ -105,15 +105,21 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
     return () => { clearTimeout(timer) }
   }, [search, load])
 
+  // Every async setState path guards with mountedRef, not just load(): a
+  // promise settling after unmount would setState against the torn-down
+  // environment (window is not defined, main-CI flake).
   const runTest = async (alias: string): Promise<void> => {
+    if (!mountedRef.current) return
     setTestingAlias(alias)
     try {
       const result = await api.testHost(alias)
+      if (!mountedRef.current) return
       setTestResults(prev => ({ ...prev, [alias]: result }))
     } catch (cause) {
+      if (!mountedRef.current) return
       setTestResults(prev => ({ ...prev, [alias]: { ok: false, error: errorMessage(cause) } }))
     } finally {
-      setTestingAlias(null)
+      if (mountedRef.current) setTestingAlias(null)
     }
   }
 
@@ -121,32 +127,38 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
     if (!window.confirm(tt('hosts.deleteConfirm', { alias }))) return
     try {
       await api.deleteHost(alias)
+      if (!mountedRef.current) return
       void load()
     } catch (cause) {
+      if (!mountedRef.current) return
       setError(errorMessage(cause))
     }
   }
 
   // Group-header batch action (#379): test every host in the group.
   const testGroup = async (group: HostGroup): Promise<void> => {
+    if (!mountedRef.current) return
     setTestingGroup(group.key)
     try {
       await Promise.all(group.hosts.map(host => runTest(host.alias)))
     } finally {
-      setTestingGroup(null)
+      if (mountedRef.current) setTestingGroup(null)
     }
   }
 
   const importConfig = async (): Promise<void> => {
+    if (!mountedRef.current) return
     setImporting(true)
     try {
       const result = await api.importSshConfig()
+      if (!mountedRef.current) return
       setNotice(tt('hosts.imported', { parsed: result.parsed, added: result.added, skipped: result.skipped }))
       void load()
     } catch (cause) {
+      if (!mountedRef.current) return
       setError(errorMessage(cause))
     } finally {
-      setImporting(false)
+      if (mountedRef.current) setImporting(false)
     }
   }
 

@@ -92,8 +92,10 @@
 }
 
 .headButton {
-  border: 1px solid var(--dsw-alias-border-l1, #d7dae0);
-  background: var(--dsw-alias-bg-base, #fff);
+  /* Background-based distinction (no border), consistent with the
+     inputs and the dark treatment. */
+  border: none;
+  background: #f2f3f5;
   color: var(--dsw-alias-label-primary, #3a3f4b);
   border-radius: 6px;
   padding: 4px 10px;
@@ -102,7 +104,7 @@
 }
 
 .headButton:hover {
-  background: var(--dsw-alias-interactive-bg-hover, #eef1f5);
+  background: #e7e8ea;
 }
 
 .tabs {
@@ -243,13 +245,17 @@
 }
 
 .deleteButton {
-  border: 1px solid var(--dsw-alias-border-l1, #d7dae0);
-  background: var(--dsw-alias-bg-base, #fff);
-  color: var(--dsw-alias-state-error-primary, #b42318);
+  border: none;
+  background: #feeceb;
+  color: #d92d20;
   border-radius: 6px;
   padding: 3px 9px;
   font-size: 11px;
   cursor: pointer;
+}
+
+.deleteButton:hover {
+  background: #fbdcd9;
 }
 
 .skillDesc {
@@ -396,10 +402,8 @@ body[data-ds-dark-theme] .formInput {
 }
 
 body[data-ds-dark-theme] .headButton {
-  /* Raised secondary control: translucent white overlay so it floats
-     above the header instead of reading darker than its background. */
   background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: transparent;
   color: rgba(255, 255, 255, 0.85);
 }
 body[data-ds-dark-theme] .headButton:hover {
@@ -409,10 +413,10 @@ body[data-ds-dark-theme] .headButton:active {
   background: rgba(255, 255, 255, 0.05);
 }
 body[data-ds-dark-theme] .deleteButton {
-  background: rgba(255, 59, 48, 0.1);
-  border-color: rgba(255, 59, 48, 0.25);
-  color: #ff453a;
+  background: rgba(255, 59, 48, 0.16);
+  border-color: transparent;
+  color: #ff6b61;
 }
 body[data-ds-dark-theme] .deleteButton:hover {
-  background: rgba(255, 59, 48, 0.2);
+  background: rgba(255, 59, 48, 0.26);
 }

@@ -367,5 +367,25 @@
     "repo": "https://github.com/dickpy/dsh-imagegen",
     "npm": "@dickpy/dsh-imagegen",
     "category": "tools"
+  },
+  {
+    "id": "dsh-api-visualizer",
+    "name": "接口捕获",
+    "nameEn": "API Capture",
+    "author": "lemonmmice",
+    "description": "Fiddler 式实时抓包面板：tail 客户端 System.Net 跟踪日志自动解析 HTTP 请求/响应（gzip 自动解包）并实时入库，内置本地 MITM 代理可抓任意进程，支持筛选 / 详情 / 导出 / 重放 / 标记。",
+    "descriptionEn": "Fiddler-style realtime capture panel: tails the client's System.Net trace log into live HTTP request/response records (gzip auto-decompressed), plus a built-in local MITM proxy for arbitrary processes, with filters, detail view, export, replay and flags.",
+    "repo": "https://github.com/lemonmmice/dsh-api-visualizer",
+    "category": "tools"
+  },
+  {
+    "id": "dsh-postman",
+    "name": "接口调试",
+    "nameEn": "API Debugger",
+    "author": "lemonmmice",
+    "description": "类 Postman 接口调试面板：由宿主服务端发起 HTTP 请求（绕过浏览器 CORS），支持 WebSocket / 原始 TCP / gRPC、鉴权助手、环境变量、cURL 导入导出、请求集合与历史。",
+    "descriptionEn": "Postman-style API debug panel: host-side HTTP requests without browser CORS limits, plus WebSocket / raw TCP / gRPC, auth helpers, env variables, cURL import/export, request collections and history.",
+    "repo": "https://github.com/lemonmmice/dsh-postman",
+    "category": "tools"
   }
 ]

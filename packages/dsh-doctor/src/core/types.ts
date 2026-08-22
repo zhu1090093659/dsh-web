@@ -191,6 +191,8 @@ export interface LockToken {
   startedAt: string
   heartbeatAt: number
   nonce: string
+  /** A released lease is immediately reclaimable but remains atomic on disk. */
+  released?: boolean
 }
 
 export interface LockState {
@@ -292,4 +294,3 @@ export interface HttpResult {
   status: number
   body: string
 }
-

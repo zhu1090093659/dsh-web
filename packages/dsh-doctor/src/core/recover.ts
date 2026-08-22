@@ -14,11 +14,11 @@ import { createRequire } from 'node:module'
 import { join, resolve } from 'node:path'
 import { createYamlEngine, type YamlEngine } from './yaml.ts'
 import { createLockManager } from './lock.ts'
-import { createJournal } from './journal.ts'
+import { createJournal, type Journal } from './journal.ts'
 import { captureSnapshot, listProfileFiles } from './snapshot.ts'
 import { diagnoseProfile, diagnoseFallback } from './diagnose.ts'
 import { planRepair } from './plan.ts'
-import { createCandidateTransaction, type CandidateTransactionDeps } from './transaction.ts'
+import { createCandidateTransaction, type CandidateTransaction, type CandidateTransactionDeps } from './transaction.ts'
 import { redactText } from './redact.ts'
 import { readProfileManifest } from './manifest.ts'
 import { parsePatchList } from './patch.ts'
@@ -299,20 +299,32 @@ export async function repairProfile(request: RecoveryRequest, gateOptions: RealG
       await journal.append({ op: 'repair:gates-failed', ok: false, detail: { txn: txn.txnId, report: gateReports } })
       return { ok: false, phase: 'aborted', diagnostics: diagnosis.diagnostics, actions: diagnosis.actions, manualActions: diagnosis.manualActions, snapshotId: snapshotResult.snapshotId, gates: gateReports, txnId: txn.txnId, message: 'candidate failed the isolated health gates' }
     }
-    await txn.promote()
-    await journal.append({ op: 'repair:promote', ok: true, detail: { txn: txn.txnId } })
-    await writeTransactionRecord(fs, home, txn.record)
-    const liveEnv = gateEnvironmentOf(request, gateOptions, home)
-    const liveDump = await runDumpDefaultGateSafe(gates, request.dshPath, home, request.profile, liveEnv, gateOptions.timeoutMs)
-    if (!liveDump.ok) {
-      await txn.rollback()
+    try {
+      await txn.promote()
+      await journal.append({ op: 'repair:promote', ok: true, detail: { txn: txn.txnId } })
       await writeTransactionRecord(fs, home, txn.record)
-      await journal.append({ op: 'repair:live-verify-failed', ok: false, detail: { txn: txn.txnId } })
-      return { ok: false, phase: 'rolled-back', diagnostics: diagnosis.diagnostics, actions: diagnosis.actions, manualActions: diagnosis.manualActions, snapshotId: snapshotResult.snapshotId, gates: gateReports, txnId: txn.txnId, message: 'live verification failed after promote; rolled back' }
+      const liveEnv = gateEnvironmentOf(request, gateOptions, home)
+      const liveDump = await runDumpDefaultGateSafe(gates, request.dshPath, home, request.profile, liveEnv, gateOptions.timeoutMs)
+      if (!liveDump.ok) {
+        await rollbackPromotedFailure(fs, home, journal, txn, 'live verification failed')
+        await journal.append({ op: 'repair:live-verify-failed', ok: false, detail: { txn: txn.txnId } })
+        return { ok: false, phase: 'rolled-back', diagnostics: diagnosis.diagnostics, actions: diagnosis.actions, manualActions: diagnosis.manualActions, snapshotId: snapshotResult.snapshotId, gates: gateReports, txnId: txn.txnId, message: 'live verification failed after promote; rolled back' }
+      }
+      // Keep the transaction rollback-capable until every fallible recovery
+      // side effect has completed. commit() is deliberately the final await.
+      await journal.append({ op: 'repair:commit', ok: true, detail: { txn: txn.txnId } })
+      await txn.commit()
+      return { ok: true, phase: 'promoted', diagnostics: diagnosis.diagnostics, actions: diagnosis.actions, manualActions: diagnosis.manualActions, snapshotId: snapshotResult.snapshotId, gates: gateReports, txnId: txn.txnId }
+    } catch (error) {
+      if (txn.phase() === 'promoted') {
+        try {
+          await rollbackPromotedFailure(fs, home, journal, txn, error instanceof Error ? error.message : String(error))
+        } catch (rollbackError) {
+          throw new Error('post-promote failure: ' + String(error) + '; automatic rollback failed: ' + String(rollbackError))
+        }
+      }
+      throw error
     }
-    await txn.commit()
-    await journal.append({ op: 'repair:commit', ok: true, detail: { txn: txn.txnId } })
-    return { ok: true, phase: 'promoted', diagnostics: diagnosis.diagnostics, actions: diagnosis.actions, manualActions: diagnosis.manualActions, snapshotId: snapshotResult.snapshotId, gates: gateReports, txnId: txn.txnId }
   } catch (error) {
     await journal.append({ op: 'repair:error', ok: false, detail: { error: error instanceof Error ? error.message : String(error) } }).catch(() => undefined)
     return { ok: false, phase: 'failed', diagnostics: [], actions: [], manualActions: [], message: error instanceof Error ? error.message : String(error) }
@@ -320,6 +332,24 @@ export async function repairProfile(request: RecoveryRequest, gateOptions: RealG
     await profileLock?.release().catch(() => undefined)
     await globalLock.release().catch(() => undefined)
   }
+}
+
+async function rollbackPromotedFailure(fs: FsLike, home: string, journal: Journal, txn: CandidateTransaction, cause: string): Promise<void> {
+  let rollbackWarning: string | undefined
+  try {
+    await txn.rollback()
+  } catch (error) {
+    rollbackWarning = error instanceof Error ? error.message : String(error)
+  }
+  if (txn.phase() !== 'rolled-back') {
+    throw new Error(rollbackWarning ?? 'transaction remained in phase ' + txn.phase())
+  }
+  await writeTransactionRecord(fs, home, txn.record)
+  await journal.append({
+    op: 'repair:post-promote-rollback',
+    ok: false,
+    detail: { txn: txn.txnId, cause, ...(rollbackWarning === undefined ? {} : { rollbackWarning }) },
+  }).catch(() => undefined)
 }
 
 /** Restore a promoted transaction by moving the quarantine back. */

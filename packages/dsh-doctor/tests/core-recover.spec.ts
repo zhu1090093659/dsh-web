@@ -38,6 +38,26 @@ function request(fs: FsLike, home: string, extra: Partial<RecoveryRequest> = {})
   return { home, profile: 'web', dshPath: '/fake/dsh', fs, allowLive: true, now: () => '2026-01-01T00:00:00Z', clock: () => 1_700_000_000_000, pidAlive: () => true, ...extra }
 }
 
+function withPortablePaths(fs: FsLike): FsLike {
+  const path = (value: string): string => value.replaceAll('\\', '/')
+  return {
+    readText: async (value) => await fs.readText(path(value)),
+    readBytes: async (value) => await fs.readBytes(path(value)),
+    writeText: async (value, text) => await fs.writeText(path(value), text),
+    writeBytes: async (value, data) => await fs.writeBytes(path(value), data),
+    exists: async (value) => await fs.exists(path(value)),
+    stat: async (value) => await fs.stat(path(value)),
+    lstat: async (value) => await fs.lstat(path(value)),
+    readlink: async (value) => await fs.readlink(path(value)),
+    symlink: async (target, value) => await fs.symlink(target, path(value)),
+    mkdir: async (value, opts) => await fs.mkdir(path(value), opts),
+    readdir: async (value) => await fs.readdir(path(value)),
+    rename: async (from, to) => await fs.rename(path(from), path(to)),
+    unlink: async (value) => await fs.unlink(path(value)),
+    remove: async (value, opts) => await fs.remove(path(value), opts),
+  }
+}
+
 async function withRealHome(run: (fs: FsLike, home: string) => Promise<void>): Promise<void> {
   const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-rollback-'))
   try {
@@ -443,6 +463,44 @@ describe('recovery orchestration', () => {
     const recordPath = home + '/.dsh-doctor/transactions/' + outcome.txnId + '.json'
     expect(JSON.parse(await fs.readText(recordPath))).toMatchObject({ phase: 'rolled-back' })
     expect(await fs.readText(home + '/profiles/web/cordis.patch.yml')).toBe('bad: [unclosed\n')
+  })
+
+  it('rolls back when the first transaction record write fails after promote', async () => {
+    const fs = withPortablePaths(createMemoryFs())
+    const home = '/h'
+    const txnId = 'web-20260101000000'
+    const livePath = join(home, 'profiles', 'web')
+    const recordPath = join(home, '.dsh-doctor', 'transactions', txnId + '.json')
+    const quarantinePath = join(home, '.dsh-doctor', 'quarantine', 'web', txnId, 'original')
+    const discardedPath = join(home, 'profiles', '.doctor-staging', 'web', txnId + '.discarded')
+    await fs.mkdir(livePath, { recursive: true })
+    await fs.writeText(join(livePath, 'package.json'), JSON.stringify({ dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } }, name: 'web' }))
+    await fs.writeText(join(livePath, 'cordis.patch.yml'), 'bad: [unclosed\n')
+
+    const originalRename = fs.rename.bind(fs)
+    let interrupted = false
+    const interruptedFs: FsLike = {
+      ...fs,
+      async rename(from, to) {
+        if (!interrupted && to === recordPath && from.startsWith(recordPath + '.tmp-')) {
+          interrupted = true
+          throw new Error('injected post-promote transaction write failure')
+        }
+        await originalRename(from, to)
+      },
+    }
+
+    const outcome = await repairProfile({ ...request(interruptedFs, home), gate: fakeGates({}).gates })
+
+    expect(interrupted, outcome.message).toBe(true)
+    expect(outcome).toMatchObject({ ok: false, phase: 'failed' })
+    expect(outcome.message).toContain('injected post-promote transaction write failure')
+    expect(await fs.readText(join(livePath, 'cordis.patch.yml'))).toBe('bad: [unclosed\n')
+    expect(JSON.parse(await fs.readText(recordPath))).toMatchObject({ phase: 'rolled-back' })
+    expect(await fs.exists(quarantinePath)).toBe(false)
+    expect(await fs.exists(discardedPath)).toBe(false)
+    const journal = createJournal({ fs, file: join(home, '.dsh-doctor', 'journal.jsonl'), now: () => '2026-01-01T00:00:00Z' })
+    expect((await journal.replay()).entries.some((entry) => entry.op === 'repair:post-promote-rollback')).toBe(true)
   })
 })
 

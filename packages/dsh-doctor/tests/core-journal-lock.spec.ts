@@ -55,6 +55,9 @@ describe('lock manager', () => {
     const state = await manager.status('profile', 'web')
     expect(state.held).toBe(true)
     expect(state.token?.pid).toBe(10)
+    await handle.touch(2000)
+    expect((await manager.status('profile', 'web')).token?.heartbeatAt).toBe(2000)
+    await handle.release()
     await handle.release()
     expect((await manager.status('profile', 'web')).held).toBe(false)
   })
@@ -151,6 +154,142 @@ describe('lock manager', () => {
     const state = await manager.status('profile', 'web')
     expect(state.token?.pid).toBe(3)
     await gained.release()
+  })
+
+  it('prevents a stale owner from touching or releasing a replacement lock', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-lock-owner-'))
+    try {
+      let clock = 1000
+      const firstManager = createLockManager({ fs: nodeFs, home, pid: 11, clock: () => clock, iso: () => 'first', pidAlive: () => true })
+      const first = await firstManager.acquire('profile', 'web', { intent: 'first' })
+      clock = 20_000
+      const secondManager = createLockManager({ fs: nodeFs, home, pid: 12, clock: () => clock, iso: () => 'second', pidAlive: (pid) => pid === 12 })
+      const second = await secondManager.acquire('profile', 'web', { intent: 'second' })
+      const replacement = (await secondManager.status('profile', 'web')).token
+      expect(replacement).toMatchObject({ pid: 12, intent: 'second' })
+
+      await expect(first.touch(clock + 1)).rejects.toMatchObject({ code: 'LOCK_LOST' })
+      expect((await secondManager.status('profile', 'web')).token).toEqual(replacement)
+      await expect(first.release()).rejects.toMatchObject({ code: 'LOCK_LOST' })
+      expect((await secondManager.status('profile', 'web')).token).toEqual(replacement)
+
+      await second.release()
+      expect((await secondManager.status('profile', 'web')).held).toBe(false)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it('does not delete a replacement that takes over during release', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-lock-release-race-'))
+    const releasePublishReady = deferred()
+    const continueRelease = deferred()
+    try {
+      const lockPath = join(home, '.dsh-doctor', 'locks', 'profile__web')
+      const tokenPath = join(lockPath, 'token.json')
+      const originalRename = nodeFs.rename.bind(nodeFs)
+      const releasingFs: FsLike = {
+        ...nodeFs,
+        async rename(from, to) {
+          if (to === tokenPath && from.includes('.release-')) {
+            releasePublishReady.resolve()
+            await continueRelease.promise
+          }
+          await originalRename(from, to)
+        },
+      }
+      let clock = 1000
+      const firstManager = createLockManager({ fs: releasingFs, home, pid: 31, clock: () => clock, iso: () => 'first', pidAlive: () => true })
+      const first = await firstManager.acquire('profile', 'web', { intent: 'first' })
+      const releasing = first.release()
+      await releasePublishReady.promise
+
+      clock = 20_000
+      const secondManager = createLockManager({ fs: nodeFs, home, pid: 32, clock: () => clock, iso: () => 'second', pidAlive: (pid) => pid === 32 })
+      const second = await secondManager.acquire('profile', 'web', { intent: 'second' })
+      const replacement = (await secondManager.status('profile', 'web')).token
+      expect(replacement).toMatchObject({ pid: 32, intent: 'second' })
+
+      continueRelease.resolve()
+      await expect(releasing).rejects.toMatchObject({ code: 'LOCK_LOST' })
+      expect((await secondManager.status('profile', 'web')).token).toEqual(replacement)
+      await second.release()
+    } finally {
+      continueRelease.resolve()
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it('does not steal when the observed owner refreshes before takeover', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-lock-refresh-'))
+    try {
+      const lockPath = join(home, '.dsh-doctor', 'locks', 'profile__web')
+      const tokenPath = join(lockPath, 'token.json')
+      const staleToken = { pid: 21, host: 'local', intent: 'first', startedAt: 'first', heartbeatAt: 1000, nonce: 'same-owner' }
+      await nodeFs.mkdir(lockPath, { recursive: true })
+      await nodeFs.writeText(tokenPath, JSON.stringify(staleToken) + '\n')
+
+      const originalReadText = nodeFs.readText.bind(nodeFs)
+      const originalRename = nodeFs.rename.bind(nodeFs)
+      let tokenReads = 0
+      let takeoverRenames = 0
+      const refreshedHeartbeat = 20_000
+      const refreshingFs: FsLike = {
+        ...nodeFs,
+        async readText(path) {
+          if (path === tokenPath) {
+            tokenReads += 1
+            if (tokenReads === 2) {
+              await nodeFs.writeText(tokenPath, JSON.stringify({ ...staleToken, heartbeatAt: refreshedHeartbeat }) + '\n')
+            }
+          }
+          return await originalReadText(path)
+        },
+        async rename(from, to) {
+          if (from === lockPath && to.startsWith(lockPath + '.stale-')) takeoverRenames += 1
+          await originalRename(from, to)
+        },
+      }
+      const manager = createLockManager({ fs: refreshingFs, home, pid: 22, clock: () => refreshedHeartbeat, iso: () => 'second', pidAlive: () => true })
+
+      await expect(manager.acquire('profile', 'web', { intent: 'second', staleMs: 1000, timeoutMs: 0 })).rejects.toMatchObject({ code: 'LOCK_HELD' })
+      expect(takeoverRenames).toBe(0)
+      expect((await manager.status('profile', 'web')).token).toEqual({ ...staleToken, heartbeatAt: refreshedHeartbeat })
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it('restores an owner that refreshes after the final stale check', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-lock-refresh-race-'))
+    try {
+      const lockPath = join(home, '.dsh-doctor', 'locks', 'profile__web')
+      const tokenPath = join(lockPath, 'token.json')
+      const staleToken = { pid: 41, host: 'local', intent: 'first', startedAt: 'first', heartbeatAt: 1000, nonce: 'same-owner' }
+      const refreshedHeartbeat = 20_000
+      await nodeFs.mkdir(lockPath, { recursive: true })
+      await nodeFs.writeText(tokenPath, JSON.stringify(staleToken) + '\n')
+
+      const originalRename = nodeFs.rename.bind(nodeFs)
+      let refreshedDuringRename = false
+      const refreshingFs: FsLike = {
+        ...nodeFs,
+        async rename(from, to) {
+          if (!refreshedDuringRename && from === lockPath && to.startsWith(lockPath + '.stale-')) {
+            refreshedDuringRename = true
+            await nodeFs.writeText(tokenPath, JSON.stringify({ ...staleToken, heartbeatAt: refreshedHeartbeat }) + '\n')
+          }
+          await originalRename(from, to)
+        },
+      }
+      const manager = createLockManager({ fs: refreshingFs, home, pid: 42, clock: () => refreshedHeartbeat, iso: () => 'second', pidAlive: () => true })
+
+      await expect(manager.acquire('profile', 'web', { intent: 'second', staleMs: 1000, timeoutMs: 0 })).rejects.toMatchObject({ code: 'LOCK_HELD' })
+      expect(refreshedDuringRename).toBe(true)
+      expect((await manager.status('profile', 'web')).token).toEqual({ ...staleToken, heartbeatAt: refreshedHeartbeat })
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
   })
 
   it('reports a clean status for absent locks', async () => {

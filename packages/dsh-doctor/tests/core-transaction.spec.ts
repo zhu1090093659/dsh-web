@@ -61,6 +61,39 @@ describe('candidate transaction', () => {
 `)
   })
 
+  it.each(['promote-quarantine', 'promote-activate'] as const)('restores the original when %s journaling fails', async (failedStep) => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-promote-journal-'))
+    try {
+      const live = join(home, 'profiles', 'web')
+      await nodeFs.mkdir(live, { recursive: true })
+      await nodeFs.writeText(join(live, 'package.json'), '{"name":"web"}')
+      const txn = createCandidateTransaction({
+        fs: nodeFs,
+        home,
+        profile: 'web',
+        now: () => '2026-08-21T23:00:00.000Z',
+        txnId: () => 'web-20260821230000',
+        journal: {
+          async append(entry) {
+            if (entry.op.endsWith(':' + failedStep)) throw new Error('injected ' + failedStep + ' journal failure')
+            return undefined
+          },
+        },
+      })
+      await txn.stage()
+      await nodeFs.writeText(join(txn.record.stagingPath, 'package.json'), '{"name":"web","version":2}')
+
+      await expect(txn.promote()).rejects.toThrow('injected ' + failedStep + ' journal failure')
+      expect(txn.phase()).toBe('rolled-back')
+      expect(await nodeFs.readText(join(live, 'package.json'))).toBe('{"name":"web"}')
+      expect(await nodeFs.exists(txn.record.quarantinePath)).toBe(false)
+      expect(await nodeFs.exists(txn.record.stagingPath)).toBe(false)
+      expect(await nodeFs.exists(txn.record.stagingPath + '.discarded')).toBe(false)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
   it('rollback restores the quarantined original', async () => {
     const fs = createMemoryFs()
     await seedLive(fs)
@@ -166,5 +199,37 @@ describe('candidate transaction', () => {
     await seedLive(fs)
     const { txn } = makeTxn(fs)
     await expect(txn.commit()).rejects.toMatchObject({ code: 'TXN_STATE' })
+  })
+
+  it('remains rollback-capable when commit journaling fails', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-commit-'))
+    try {
+      const live = join(home, 'profiles', 'web')
+      await nodeFs.mkdir(live, { recursive: true })
+      await nodeFs.writeText(join(live, 'package.json'), '{"name":"web"}')
+      const txn = createCandidateTransaction({
+        fs: nodeFs,
+        home,
+        profile: 'web',
+        now: () => '2026-08-21T23:00:00.000Z',
+        txnId: () => 'web-20260821230000',
+        journal: {
+          async append(entry) {
+            if (entry.op.endsWith(':commit')) throw new Error('injected commit journal failure')
+            return undefined
+          },
+        },
+      })
+      await txn.stage()
+      await txn.promote()
+
+      await expect(txn.commit()).rejects.toThrow('injected commit journal failure')
+      expect(txn.phase()).toBe('promoted')
+      await txn.rollback()
+      expect(txn.phase()).toBe('rolled-back')
+      expect(await nodeFs.readText(join(live, 'package.json'))).toBe('{"name":"web"}')
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
   })
 })

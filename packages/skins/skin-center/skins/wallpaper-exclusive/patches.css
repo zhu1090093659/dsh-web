@@ -12,29 +12,6 @@
   background: none;
 }
 
-/* Composer seat mask: this skin is wallpaper-first and intentionally paints no
-   seat glass. The official shell and several skins add a frosted/opaque
-   ::before on the composer seat; while a Wallpaper Engine layer is mounted the
-   runtime neutralizer clears it, but without WE the official mask still shows.
-   Neutralize it unconditionally so the seat stays clean in both modes. */
-[data-composer-seat],
-[data-phase="active"] [class*="composerSeat"] {
-  background: none !important;
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-[data-composer-seat]::before,
-[data-composer-seat]::after,
-[data-phase="active"] [class*="composerSeat"]::before,
-[data-phase="active"] [class*="composerSeat"]::after {
-  content: none !important;
-  background: none !important;
-  background-image: none !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
-
 /* User-sent message bubble only: the frosted rectangle is the bubble itself,
    not the whole row. The fixed glass blur variable keeps it semi-transparent
    frosted without following the web-ui input-card slider. */

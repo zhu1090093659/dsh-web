@@ -50,8 +50,9 @@ body:not([data-ds-dark-theme]) {
   --dsw-specific-menu: #fff8fb;
   --dsw-specific-selector: #fae9f1;
   --dsw-specific-sidebar-fill: #f8e4ed;
-  --dsw-specific-sidebar-nav-item-hover: #e95c9112;
-  --dsw-specific-sidebar-nav-item-active: #e95c9121;
+  --dsw-specific-sidebar-nav-item-hover: #e95c9126;
+  --dsw-specific-sidebar-nav-item-active: #e95c9138;
+  --dsw-specific-sidebar-nav-item-active-accent: #e95c91;
   --dsw-alias-tooltip-bg: #4a3944;
   --dsw-shadow-lv1: 0 1px 2px #3b2e3614;
   --dsw-shadow-lv2: 0 6px 18px #8d496c1f;
@@ -100,8 +101,9 @@ body[data-ds-dark-theme] {
   --dsw-specific-menu: #251e27;
   --dsw-specific-selector: #211a23;
   --dsw-specific-sidebar-fill: #181318;
-  --dsw-specific-sidebar-nav-item-hover: #ff7fae1a;
-  --dsw-specific-sidebar-nav-item-active: #ff7fae29;
+  --dsw-specific-sidebar-nav-item-hover: #ff7fae2e;
+  --dsw-specific-sidebar-nav-item-active: #ff7fae47;
+  --dsw-specific-sidebar-nav-item-active-accent: #ff7fae;
   --dsw-alias-tooltip-bg: #332a36;
   --dsw-shadow-lv1: 0 1px 2px #00000066;
   --dsw-shadow-lv2: 0 6px 18px #00000080;

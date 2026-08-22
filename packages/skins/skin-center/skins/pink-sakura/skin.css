@@ -110,7 +110,11 @@ body[data-ds-dark-theme] {
   --dsw-alias-scrollbar-hover-l2: #ff7fae66;
 }
 
-body[data-dsh-wallpaper-active] {
+/* Translucent glass state, only while a backdrop is visible (Wallpaper Engine
+ * wallpaper via data-dsh-wallpaper-active, or any backdrop source via the
+ * unified data-dsh-backdrop-active marker: manual backgrounds included).
+ * Opaque by default; the glass treatment below rides on these tokens. */
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) {
   --dsw-alias-bg-base: #faf4f78a;
   --dsw-alias-bg-layer-1: #fffafcb8;
   --dsw-alias-bg-layer-2: #fdf1f6ad;
@@ -118,12 +122,61 @@ body[data-dsh-wallpaper-active] {
   --dsw-specific-sidebar-fill: #f4e9efb3;
 }
 
-body[data-ds-dark-theme][data-dsh-wallpaper-active] {
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) {
   --dsw-alias-bg-base: #1512178f;
   --dsw-alias-bg-layer-1: #1d181ebd;
   --dsw-alias-bg-layer-2: #221b23b3;
   --dsw-alias-bg-layer-3: #2a222bad;
   --dsw-specific-sidebar-fill: #181318bd;
+}
+
+/* Frosted-glass surfaces while a backdrop is visible: frosted blur with a
+ * saturated lift, inner top highlight, hairline ring. Surfaces stay fully
+ * opaque and flat when no backdrop is active (the restrained default). */
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-surface="composer"],
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-surface="settings"],
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-part="dialog"],
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-part="panel"],
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-plugin="pet"] [data-dsh-part="bubble"] {
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    var(--dsw-shadow-lv2);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.02) 24%, rgba(255, 255, 255, 0) 48%);
+}
+
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-surface="composer"],
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-surface="settings"],
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-part="dialog"],
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-part="panel"],
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-plugin="pet"] [data-dsh-part="bubble"] {
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+  backdrop-filter: blur(24px) saturate(130%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 159, 190, 0.16),
+    inset 0 0 0 1px rgba(255, 159, 190, 0.05),
+    var(--dsw-shadow-lv2);
+  background-image: linear-gradient(180deg, rgba(255, 159, 190, 0.07) 0%, rgba(255, 159, 190, 0.02) 24%, rgba(255, 159, 190, 0) 48%);
+}
+
+/* Fallback when backdrop-filter is unsupported: lean on the translucent
+ * token fills only, with a slightly stronger veil for readability. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) {
+    --dsw-alias-bg-base: #faf4f7c4;
+    --dsw-alias-bg-layer-1: #fffafcd9;
+    --dsw-alias-bg-layer-2: #fdf1f6d0;
+    --dsw-alias-bg-layer-3: #f7e7efc4;
+  }
+
+  body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) {
+    --dsw-alias-bg-base: #151217bd;
+    --dsw-alias-bg-layer-1: #1d181ed6;
+    --dsw-alias-bg-layer-2: #221b23d0;
+    --dsw-alias-bg-layer-3: #2a222bc4;
+  }
 }
 
 [data-dsh-surface="composer"],

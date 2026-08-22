@@ -16,6 +16,12 @@ shipped as a pure asset directory inside the Skin Center package.
   SSH, settings cards, community marketplace, and pet bubble.
 - **Wallpaper-ready**: panels become translucent while the built-in Wallpaper
   Engine bridge is active, without shipping or redistributing wallpaper media.
+- **Frosted glass**: whenever a backdrop is visible (Wallpaper Engine wallpaper
+  or a user manual background, via the unified `data-dsh-backdrop-active`
+  marker), the composer, settings, dialogs, panels, and pet bubble get a
+  frosted-glass treatment (backdrop blur + saturation lift + inner highlight);
+  environments without `backdrop-filter` fall back to a stronger translucent
+  veil, and with no backdrop the skin stays opaque and restrained.
 
 ## Preview
 

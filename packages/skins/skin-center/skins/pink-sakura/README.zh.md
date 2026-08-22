@@ -14,6 +14,7 @@
   `html[data-dsh-skin="pink-sakura"]`。
 - **插件覆盖**：使用稳定语义属性适配任务看板、Git 图谱、SSH、设置卡、社区插件市场与鲸鱼娘气泡。
 - **壁纸兼容**：内置 Wallpaper Engine 桥接启用时，面板自动转为半透明，但不携带或再分发任何壁纸资源。
+- **玻璃态**：任何背景可见时（Wallpaper Engine 壁纸或用户手动背景，经统一 `data-dsh-backdrop-active` 标记），编写器、设置、对话框、面板与宠物气泡呈现磨砂玻璃效果（`backdrop-filter` 模糊 + 饱和提升 + 内侧高光）；不支持 `backdrop-filter` 的环境自动回退为更实的半透明遮罩，无背景时保持不透明的克制默认。
 
 ## 预览
 

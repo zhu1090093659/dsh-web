@@ -204,8 +204,34 @@ describe('PetService (rc.6 session events)', () => {
 
       service.setEnabled(false)
       ctx.emit('session/event', session, turnEnd(2, { kind: 'completed' }, 3))
-      expect((await service.state()).animation).toBe('jumping')
+      expect(await service.state()).toMatchObject({ animation: 'idle', phase: 'idle', sessionActive: false })
       expect((await service.state()).affinity.turns).toBe(1)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('does not restore in-flight activity whose terminal event was missed while disabled', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('stale')
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      ctx.emit('session/event', session, toolCall(1, 1, 'call-stale', 'shell', 1))
+      expect(await service.state()).toMatchObject({
+        animation: 'running-right',
+        bubble: '正在使用 shell',
+        sessionActive: true,
+      })
+
+      service.setEnabled(false)
+      ctx.emit('session/event', session, turnEnd(1, { kind: 'completed' }, 2))
+      service.setEnabled(true)
+
+      const reopened = await service.state()
+      expect(reopened).toMatchObject({ animation: 'idle', phase: 'idle', sessionActive: false })
+      expect(reopened.bubble).toBeUndefined()
+      expect(reopened.sessions).toEqual([])
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -719,6 +745,25 @@ describe('PetService (rc.6 session events)', () => {
       ctx.emit('session/event', officialSession, turnEnd(1, { kind: 'completed' }, 2))
       ctx.emit('session/event', officialSession, activity('done', 3, '完成啦'))
       expect((await service.state()).affinity.turns).toBe(2)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps official reward deduplication across an enable toggle', async () => {
+    const ctx = new Context()
+    const dir = tempDir()
+    const session = makeSession('toggle-dedup')
+    try {
+      const service = new PetService(ctx, { persistDir: dir })
+      ctx.emit('session/event', session, turnEnd(1, { kind: 'completed' }, 1))
+      expect((await service.state()).affinity.turns).toBe(1)
+
+      service.setEnabled(false)
+      service.setEnabled(true)
+      ctx.emit('session/event', session, activity('done', 2, '完成啦'))
+
+      expect((await service.state()).affinity.turns).toBe(1)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

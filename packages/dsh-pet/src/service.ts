@@ -234,6 +234,12 @@ export class PetService extends Service {
    * disposed sessions are removed by the 'session/disposed' listener.
    */
   private readonly sessionActivity = new Map<Session, SessionActivity>()
+  /**
+   * Sessions whose reward source is the official event stream. This metadata
+   * outlives transient visual resets so a derived legacy `done` cannot reward
+   * the same turn again after the pet is disabled and re-enabled.
+   */
+  private readonly officialEventSessions = new WeakSet<Session>()
 
   constructor(ctx: Context, config: PetConfig = {}) {
     super(ctx, 'pet')
@@ -356,6 +362,7 @@ export class PetService extends Service {
   setEnabled(enabled: boolean): void {
     this.enabled = enabled
     this.syncActivity()
+    if (!enabled) this.resetActivity()
   }
 
   private syncActivity(): void {
@@ -391,6 +398,7 @@ export class PetService extends Service {
           const transition = projectOfficialEvent(event, runtime)
           if (transition === undefined) return
           runtime.officialEventsSeen = true
+          this.officialEventSessions.add(session)
           this.applyActivity(session, transition.input, transition.whisper)
           if (transition.completedTurn !== undefined) {
             this.rewardTurn(String(session.id), transition.completedTurn)
@@ -398,6 +406,7 @@ export class PetService extends Service {
         }),
         this.ctx.on('session/disposed', (session: Session) => {
           this.ledger.forgetSession(String(session.id))
+          this.officialEventSessions.delete(session)
           this.sessionActivity.delete(session)
           if (session !== this.displaySession) return
           // The display session is gone: fall back to the most recent
@@ -418,12 +427,21 @@ export class PetService extends Service {
     })()
   }
 
+  /** Drop transient activity because terminal events missed while disabled cannot be replayed safely. */
+  private resetActivity(): void {
+    this.displaySession = undefined
+    this.sessionActivity.clear()
+    this.machine.onSessionDisposed()
+  }
+
   /** Return the per-session activity record, creating it on first sight. */
   private activityOf(session: Session): SessionActivity {
     let activity = this.sessionActivity.get(session)
     if (activity === undefined) {
+      const runtime = emptyProjectionRuntime(this.voicePools())
+      runtime.officialEventsSeen = this.officialEventSessions.has(session)
       activity = {
-        runtime: emptyProjectionRuntime(this.voicePools()),
+        runtime,
         machine: new PetStateMachine(this.stateConfig),
       }
       this.sessionActivity.set(session, activity)

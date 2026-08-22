@@ -1,10 +1,19 @@
 /**
  * Journal append/replay and lock manager behavior.
  */
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { createMemoryFs } from '../src/core/fs.ts'
+import { createMemoryFs, nodeFs, type FsLike } from '../src/core/fs.ts'
 import { createJournal } from '../src/core/journal.ts'
 import { createLockManager, LockError } from '../src/core/lock.ts'
+
+function deferred(): { promise: Promise<void>; resolve(): void } {
+  let resolve!: () => void
+  const promise = new Promise<void>((done) => { resolve = done })
+  return { promise, resolve }
+}
 
 async function makeJournal() {
   const fs = createMemoryFs()
@@ -61,6 +70,58 @@ describe('lock manager', () => {
     await b.release()
   })
 
+  it('publishes a fully initialized lock atomically when two acquirers race', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-lock-'))
+    try {
+      const lockPath = join(home, '.dsh-doctor', 'locks', 'global')
+      const firstClaimReady = deferred()
+      const releaseFirstClaim = deferred()
+      const firstObservedWinner = deferred()
+      const originalExists = nodeFs.exists.bind(nodeFs)
+      const originalRename = nodeFs.rename.bind(nodeFs)
+      let firstRenameBlocked = false
+      let firstRenameReleased = false
+      const racingFs: FsLike = {
+        ...nodeFs,
+        async exists(path) {
+          const exists = await originalExists(path)
+          if (firstRenameReleased && path === lockPath && exists) firstObservedWinner.resolve()
+          return exists
+        },
+        async rename(from, to) {
+          if (!firstRenameBlocked && to === lockPath && from.startsWith(lockPath + '.claim-')) {
+            firstRenameBlocked = true
+            firstClaimReady.resolve()
+            await releaseFirstClaim.promise
+            firstRenameReleased = true
+          }
+          await originalRename(from, to)
+        },
+      }
+      const firstManager = createLockManager({ fs: racingFs, home, pid: 11, clock: Date.now, iso: () => 'first', pidAlive: () => true })
+      const secondManager = createLockManager({ fs: racingFs, home, pid: 12, clock: Date.now, iso: () => 'second', pidAlive: () => true })
+      let firstSettled = false
+      const first = firstManager.acquire('global', undefined, { intent: 'first' }).then((handle) => {
+        firstSettled = true
+        return handle
+      })
+      await firstClaimReady.promise
+
+      const second = await secondManager.acquire('global', undefined, { intent: 'second' })
+      expect((await secondManager.status('global', undefined)).token).toMatchObject({ pid: 12, intent: 'second' })
+      releaseFirstClaim.resolve()
+      await firstObservedWinner.promise
+      expect(firstSettled).toBe(false)
+
+      await second.release()
+      const firstHandle = await first
+      expect((await firstManager.status('global', undefined)).token).toMatchObject({ pid: 11, intent: 'first' })
+      await firstHandle.release()
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
   it('times out with LOCK_HELD when a live pid holds the lock', async () => {
     const fs = createMemoryFs()
     await fs.mkdir('/h', { recursive: true })
@@ -112,4 +173,3 @@ describe('lock manager', () => {
     expect(() => { throw new LockError('LOCK_HELD', 'profile', 'web', 'held') }).toThrowError(/held/)
   })
 })
-

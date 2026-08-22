@@ -1,8 +1,11 @@
 /**
  * Candidate transaction: stage, promote, rollback, abort.
  */
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { createMemoryFs, FsError } from '../src/core/fs.ts'
+import { createMemoryFs, FsError, nodeFs, type FsLike } from '../src/core/fs.ts'
 import { createCandidateTransaction } from '../src/core/transaction.ts'
 
 const HOME = '/h'
@@ -70,6 +73,41 @@ describe('candidate transaction', () => {
     expect(await fs.exists('/h/.dsh-doctor/quarantine/web/web-20260821230000/original')).toBe(false)
   })
 
+  it('puts the promoted profile back when restoring quarantine fails', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-transaction-'))
+    try {
+      const live = join(home, 'profiles', 'web')
+      await nodeFs.mkdir(live, { recursive: true })
+      await nodeFs.writeText(join(live, 'package.json'), '{"name":"web"}')
+      const originalRename = nodeFs.rename.bind(nodeFs)
+      let failRestore = false
+      let quarantine = ''
+      let livePath = ''
+      const failingFs: FsLike = {
+        ...nodeFs,
+        async rename(from, to) {
+          if (failRestore && from === quarantine && to === livePath) throw new FsError('EBUSY', to, 'injected')
+          await originalRename(from, to)
+        },
+      }
+      const txn = createCandidateTransaction({ fs: failingFs, home, profile: 'web', now: () => '2026-08-21T23:00:00.000Z', txnId: () => 'web-20260821230000' })
+      quarantine = txn.record.quarantinePath
+      livePath = txn.record.livePath
+      await txn.stage()
+      await nodeFs.writeText(join(txn.record.stagingPath, 'package.json'), '{"name":"web","version":2}')
+      await txn.promote()
+      failRestore = true
+
+      await expect(txn.rollback()).rejects.toThrow('injected')
+      expect(txn.phase()).toBe('promoted')
+      expect(await nodeFs.readText(join(live, 'package.json'))).toBe('{"name":"web","version":2}')
+      expect(await nodeFs.exists(join(quarantine, 'package.json'))).toBe(true)
+      expect(await nodeFs.exists(txn.record.stagingPath + '.discarded')).toBe(false)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
   it('abort before promote discards staging and touches nothing else', async () => {
     const fs = createMemoryFs()
     await seedLive(fs)
@@ -130,4 +168,3 @@ describe('candidate transaction', () => {
     await expect(txn.commit()).rejects.toMatchObject({ code: 'TXN_STATE' })
   })
 })
-

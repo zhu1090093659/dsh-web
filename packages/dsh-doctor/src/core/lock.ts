@@ -84,27 +84,18 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
     const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
     const deadline = now() + timeoutMs
     for (;;) {
-      const exists = await fs.exists(path)
+      let exists: boolean
+      try {
+        exists = await fs.exists(path)
+      } catch (error) {
+        throw new LockError('LOCK_ERROR', scope, key, String(error))
+      }
       if (!exists) {
         try {
-          await fs.mkdir(root, { recursive: true })
-          await fs.mkdir(path)
-          const token: LockToken = {
-            pid,
-            host,
-            intent: options.intent,
-            startedAt: iso(),
-            heartbeatAt: now(),
-            nonce: Math.random().toString(36).slice(2, 10),
-          }
-          await fs.writeText(join(path, 'token.json'), JSON.stringify(token, undefined, 2) + String.fromCharCode(10))
-          return makeHandle(scope, key, path)
+          const claimed = await claim(scope, key, path, options.intent)
+          if (claimed !== undefined) return claimed
         } catch (error) {
-          if (isExistsError(error)) {
-            // Lost the race; treat as held and continue polling.
-          } else {
-            throw new LockError('LOCK_ERROR', scope, key, String(error))
-          }
+          throw new LockError('LOCK_ERROR', scope, key, String(error))
         }
       } else {
         const stale = await isStale(path, staleMs)
@@ -112,15 +103,20 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
           const stealTo = path + '.stale-' + String(now())
           try {
             await fs.rename(path, stealTo)
-            await fs.mkdir(path)
-            await fs.writeText(join(path, 'token.json'), JSON.stringify(buildToken(), undefined, 2) + String.fromCharCode(10))
-            return makeHandle(scope, key, path, true)
           } catch (error) {
-            if (isExistsError(error)) {
-              // Another acquirer stole or created; continue polling.
+            const released = isMissingError(error) || await fs.exists(path).then((exists) => !exists, () => false)
+            if (isExistsError(error) || released) {
+              // Another acquirer stole, created, or released; continue polling.
+              continue
             } else {
               throw new LockError('LOCK_STALE', scope, key, 'stale lock could not be displaced: ' + String(error))
             }
+          }
+          try {
+            const claimed = await claim(scope, key, path, options.intent)
+            if (claimed !== undefined) return claimed
+          } catch (error) {
+            throw new LockError('LOCK_STALE', scope, key, 'stale lock was displaced but replacement failed: ' + String(error))
           }
         }
       }
@@ -133,14 +129,34 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
     }
   }
 
-  const buildToken = (): LockToken => ({
+  const buildToken = (intent: string): LockToken => ({
     pid,
     host,
-    intent: 'unknown',
+    intent,
     startedAt: iso(),
     heartbeatAt: now(),
     nonce: Math.random().toString(36).slice(2, 10),
   })
+
+  const claim = async (scope: LockScope, key: string, path: string, intent: string): Promise<LockHandle | undefined> => {
+    const token = buildToken(intent)
+    const temporary = path + '.claim-' + String(pid) + '-' + token.nonce
+    let temporaryCreated = false
+    try {
+      await fs.mkdir(root, { recursive: true })
+      await fs.mkdir(temporary)
+      temporaryCreated = true
+      await fs.writeText(join(temporary, 'token.json'), JSON.stringify(token, undefined, 2) + String.fromCharCode(10))
+      await fs.rename(temporary, path)
+      temporaryCreated = false
+      return makeHandle(scope, key, path)
+    } catch (error) {
+      if (temporaryCreated) await fs.remove(temporary, { recursive: true }).catch(() => undefined)
+      const targetExists = await fs.exists(path).catch(() => false)
+      if (isExistsError(error) || targetExists) return undefined
+      throw error
+    }
+  }
 
   const isStale = async (path: string, staleMs: number): Promise<boolean> => {
     const token = await readTokenOrNull(path)
@@ -149,7 +165,7 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
     return now() - token.heartbeatAt > staleMs
   }
 
-  const makeHandle = (scope: LockScope, key: string, path: string, stolen = false): LockHandle => {
+  const makeHandle = (scope: LockScope, key: string, path: string): LockHandle => {
     return {
       scope,
       key,

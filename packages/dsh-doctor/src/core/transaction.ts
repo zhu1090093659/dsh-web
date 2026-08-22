@@ -132,12 +132,32 @@ export function createCandidateTransaction(deps: CandidateTransactionDeps): Cand
       }
       if (phase !== 'promoted') throw txnError(txnId, phase, 'rollback requires state staged or promoted')
       const discarded = stagingBase + '/' + profile + '/' + txnId + '.discarded'
+      if (!(await fs.exists(quarantinePath))) {
+        throw txnError(txnId, phase, 'quarantine path missing at ' + quarantinePath + '; live profile left untouched')
+      }
+      if (await fs.exists(discarded)) {
+        throw txnError(txnId, phase, 'discarded path already exists at ' + discarded + '; live profile left untouched')
+      }
       await movePath(fs, livePath, discarded)
-      await movePath(fs, quarantinePath, livePath)
-      await fs.remove(discarded, { recursive: true })
+      try {
+        await movePath(fs, quarantinePath, livePath)
+      } catch (error) {
+        try {
+          await movePath(fs, discarded, livePath)
+        } catch (restoreError) {
+          setPhase('failed')
+          record.error = 'rollback failed and restoring the live profile failed: ' + String(error) + ' / ' + String(restoreError)
+          throw txnError(txnId, phase, record.error)
+        }
+        record.error = String(error)
+        await journal('rollback-failed', { error: String(error) })
+        throw txnError(txnId, phase, 'rollback failed: ' + String(error))
+      }
       setPhase('rolled-back')
+      delete record.error
       steps.push({ step: 'rollback-restore', from: quarantinePath, to: livePath })
       await journal('rollback-restore')
+      await fs.remove(discarded, { recursive: true }).catch(() => undefined)
     },
     async abort() {
       if (phase === 'created') return
@@ -169,4 +189,3 @@ function txnError(txnId: string, phase: CandidatePhase, detail: string): Error {
   error.phase = phase
   return error
 }
-

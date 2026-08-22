@@ -28,8 +28,8 @@ skin-center is a self-contained bundle meeting the official DSH plugin standard 
 
 ## Configuration
 
-- **Enable switch**: turns the whole card (try-on / apply / background controls) on or off; persisted in the `skin-background` settings namespace.
-- **Background sliders**: occlusion (0–100%), two backdrop blur radii, input-card blur (0–20 px), and bubble opacity (0–100%); persisted in the same namespace.
+- **Enable switch**: turns the whole card (try-on / apply / background controls) on or off; persisted with the background preferences in the v2 state store (`skin-center-active.json` under `$DSH_HOME`), served by `GET/POST /api/skin-center/v2/active`.
+- **Background sliders**: occlusion (0–100%), two backdrop blur radii, input-card blur (0–20 px), and bubble opacity (0–100%); persisted in the same v2 state store. The `skin-background` settings namespace remains the legacy input surface: the host migrates its customized value into the store once, and later edits from the official settings page keep flowing into the store. Edits made inside the Skin Center card do not write back to `settings.yaml` (see Known limitations).
 - **Wallpaper panel**: library folders, selection, render mode (live / static frame), dim, blur, pause-on-hidden, sound toggle and volume; persisted in the `skin-wallpaper` namespace.
 - **Custom theme**: light/dark accent, background, foreground and contrast profiles plus the applied marker; persisted as a versioned contract in the independent `skin-custom-theme` namespace. Wallpaper selection and rendering remain owned by `skin-wallpaper`.
 - **User skin directory**: `$DSH_HOME/skins/<id>/`; override precedence is `DSH_SKINS_HOME`, then `DSH_SKINS_DIR`, then `$DSH_HOME/skins`.
@@ -46,6 +46,7 @@ skin-center is a self-contained bundle meeting the official DSH plugin standard 
 - Inline styles written by plugins at runtime can only be overridden by L3 `!important` patches.
 - Plugins that do not output semantic attributes (and have no stable DOM anchors) receive L1 token coverage only.
 - A skin video background keeps playing regardless of the wallpaper pause-on-hidden setting; pause-on-hidden applies to the Wallpaper Engine bridge only.
+- The background preferences live in the v2 state store; edits made inside the Skin Center card do not write back to the `skin-background` section of `settings.yaml`. Both surfaces feed the same store, but an edit on one surface is not mirrored onto the other until the other surface changes again (the store value wins for rendering).
 
 ## Directory structure
 

@@ -28,8 +28,8 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-skin-center
 
 ## 配置
 
-- **总开关**：开关整张卡片（试穿 / 应用 / 背景控制）；持久化在 `skin-background` 设置命名空间。
-- **背景滑杆**：遮蔽（0–100%）、两个背景模糊半径、输入卡模糊（0–20 px）与气泡不透明度（0–100%），持久化在同一命名空间。
+- **总开关**：开关整张卡片（试穿 / 应用 / 背景控制）；与背景偏好一起持久化在 v2 状态存储（`$DSH_HOME` 下的 `skin-center-active.json`，经 `GET/POST /api/skin-center/v2/active` 读写）。
+- **背景滑杆**：遮蔽（0–100%）、两个背景模糊半径、输入卡模糊（0–20 px）与气泡不透明度（0–100%），持久化在同一 v2 状态存储。`skin-background` 设置命名空间保留为旧输入面：host 半区会把其定制值一次性迁移进状态存储，之后官方设置页的修改仍持续流入状态存储；皮肤中心卡片内的修改不会回写 `settings.yaml`（见已知限制）。
 - **壁纸面板**：媒体库文件夹、选择、渲染模式（实时 / 静态帧）、压暗、模糊、隐藏时暂停、声音开关与音量；持久化在 `skin-wallpaper` 命名空间。
 - **自定义主题**：浅色/深色的强调色、背景色、前景色、对比度配置及应用标记，以版本化契约独立持久化在 `skin-custom-theme` 命名空间；壁纸选择与渲染仍完全由 `skin-wallpaper` 负责。
 - **用户皮肤目录**：`$DSH_HOME/skins/<id>/`；覆盖优先级为 `DSH_SKINS_HOME`、`DSH_SKINS_DIR`、`$DSH_HOME/skins`。
@@ -46,6 +46,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-skin-center
 - 插件运行时写入的内联样式只能经 L3 `!important` 补丁覆盖。
 - 不输出语义属性（且无稳定 DOM 锚点）的插件只享受 L1 token 覆盖。
 - 皮肤视频背景不受壁纸「隐藏时暂停」设置影响；该设置仅作用于 Wallpaper Engine 桥。
+- 背景偏好持久化在 v2 状态存储：皮肤中心卡片内的修改不会回写 `settings.yaml` 的 `skin-background` 段。两个输入面最终汇入同一状态存储，但其中一面的修改不会镜像到另一面，直到另一面再次变更（渲染以状态存储为准）。
 
 ## 目录结构
 

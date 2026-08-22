@@ -1,7 +1,10 @@
 /**
- * Background-scrim handle for the skin center: binds the `skin-background`
- * settings namespace and applies the chosen occlusion to the page's backdrop,
- * plus an optional per-state Gaussian blur of that backdrop.
+ * Background-scrim handle for the skin center: applies the chosen occlusion
+ * to the page's backdrop, plus an optional per-state Gaussian blur of that
+ * backdrop. Values seed from the v2 state store (persisted server-side so
+ * paired remote devices read and write the same preferences — the settings
+ * scope is loopback-only there) and every change persists back through a
+ * caller-provided transport.
  *
  * Occlusion is a CSS variable on `document.body` (--dsw-skin-scrim), which
  * backdrop-painting skins (blue-fantasy / whale-song) read inside their
@@ -21,29 +24,30 @@
  * Occlusion values are 0-100 (0 = no extra veil, 100 = fully obscured); they
  * are written through as a 0..1 alpha for the CSS variable. Blur values are
  * 0-20 px. Dragging the controls applies instantly (live) and persists
- * through the settings scope.
+ * through the transport callback.
  */
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+
+import { BACKGROUND_DEFAULTS, type SkinBackgroundConfig } from '../core/background.ts'
 
 /** The namespace string the Host registers (mirrors src/index.ts). */
 export const SKIN_BACKGROUND_NS = 'skin-background'
 
-/** Field of the background value inside the namespace section. */
+/** Field of the background value inside the config. */
 export const OPACITY_FIELD = 'backgroundOpacity'
 
-/** Field of the empty-conversation backdrop blur inside the namespace section. */
+/** Field of the empty-conversation backdrop blur inside the config. */
 export const BLUR_EMPTY_FIELD = 'backgroundBlurEmpty'
 
-/** Field of the with-content backdrop blur inside the namespace section. */
+/** Field of the with-content backdrop blur inside the config. */
 export const BLUR_CONTENT_FIELD = 'backgroundBlurContent'
 
-/** Field of the composer card backdrop blur inside the namespace section. */
+/** Field of the composer card backdrop blur inside the config. */
 export const INPUT_CARD_BLUR_FIELD = 'inputCardBlur'
 
 /** CSS custom property written to document.body and read by backdrop skins. */
 export const SCRIM_VAR = '--dsw-skin-scrim'
 
-/** Field of the message bubble opacity inside the namespace section. */
+/** Field of the message bubble opacity inside the config. */
 export const BUBBLE_OPACITY_FIELD = 'bubbleOpacity'
 
 /** CSS custom property consumed by skins that expose translucent bubbles. */
@@ -52,14 +56,17 @@ export const BUBBLE_ALPHA_VAR = '--dsh-skin-bubble-alpha'
 /** CSS custom property consumed by the shared composer neutralizer. */
 export const INPUT_CARD_BLUR_VAR = '--dsh-input-card-blur'
 
-/** Default occlusion (0 = no extra veil) when the section carries none. */
-export const DEFAULT_OPACITY = 0
+/** Default occlusion (0 = no extra veil). */
+export const DEFAULT_OPACITY = BACKGROUND_DEFAULTS.backgroundOpacity
 
 /** Default message bubble opacity percentage. */
-export const DEFAULT_BUBBLE_OPACITY = 50
+export const DEFAULT_BUBBLE_OPACITY = BACKGROUND_DEFAULTS.bubbleOpacity
 
-/** Default blur (0 = disabled) when the section carries none. */
-export const DEFAULT_BLUR = 0
+/** Default blur (0 = disabled). */
+export const DEFAULT_BLUR = BACKGROUND_DEFAULTS.backgroundBlurEmpty
+
+/** Default input-card backdrop blur (10 px). */
+export const DEFAULT_INPUT_CARD_BLUR = BACKGROUND_DEFAULTS.inputCardBlur
 
 /** The face the skin-center card injects for the background control. */
 export interface SkinBackgroundHandle {
@@ -110,26 +117,20 @@ const CONVERSATION_CONTENT_SELECTOR = [
 ].join(', ')
 
 /**
- * Own the skin-background scope: read the latest occlusion + blur strengths,
- * apply them to the body instantly, and persist changes through the settings
- * scope.
+ * Own the background scrim state: clamp + apply the occlusion and blur
+ * strengths instantly, and persist the complete snapshot through the
+ * caller-provided transport (no settings-scope dependency — the scope is
+ * loopback-only for paired remote devices).
  */
 export class BackgroundController implements SkinBackgroundHandle {
-  private enabledValue = true
-  private opacityValue = DEFAULT_OPACITY
-  private blurEmptyValue = DEFAULT_BLUR
-  private blurContentValue = DEFAULT_BLUR
-  private inputCardBlurValue = 10
-  private bubbleOpacityValue = DEFAULT_BUBBLE_OPACITY
+  private enabledValue = BACKGROUND_DEFAULTS.enabled
+  private opacityValue = BACKGROUND_DEFAULTS.backgroundOpacity
+  private blurEmptyValue = BACKGROUND_DEFAULTS.backgroundBlurEmpty
+  private blurContentValue = BACKGROUND_DEFAULTS.backgroundBlurContent
+  private inputCardBlurValue = BACKGROUND_DEFAULTS.inputCardBlur
+  private bubbleOpacityValue = BACKGROUND_DEFAULTS.bubbleOpacity
   private readonly listeners = new Set<() => void>()
-  private readonly scope: SettingsScope<{
-    enabled?: boolean
-    backgroundOpacity?: number
-    backgroundBlurEmpty?: number
-    backgroundBlurContent?: number
-    inputCardBlur?: number
-    bubbleOpacity?: number
-  }>
+  private readonly persist: (next: SkinBackgroundConfig) => void
   /** The fixed backdrop-filter element, present only while active blur > 0. */
   private blurElement: HTMLDivElement | null = null
   /** The body MutationObserver, installed lazily once a blur is active. */
@@ -140,40 +141,34 @@ export class BackgroundController implements SkinBackgroundHandle {
   private disposed = false
 
   /**
-   * @param scope - the bound skin-background settings scope.
+   * @param initial - seed value from the persisted state store; null starts
+   * from the schema defaults.
+   * @param persist - transport called with the complete snapshot after every
+   * change (the caller owns debounce + delivery; failures stay silent here).
    */
-  constructor(scope: SettingsScope<{
-    enabled?: boolean
-    backgroundOpacity?: number
-    backgroundBlurEmpty?: number
-    backgroundBlurContent?: number
-    inputCardBlur?: number
-    bubbleOpacity?: number
-  }>) {
-    this.scope = scope
-    this.enabledValue = this.readEnabled()
-    this.opacityValue = this.readOpacity()
-    this.blurEmptyValue = this.readBlur(BLUR_EMPTY_FIELD)
-    this.blurContentValue = this.readBlur(BLUR_CONTENT_FIELD)
-    this.inputCardBlurValue = this.readInputCardBlur()
-    this.bubbleOpacityValue = this.readBubbleOpacity()
+  constructor(initial: SkinBackgroundConfig | null, persist: (next: SkinBackgroundConfig) => void) {
+    this.persist = persist
+    this.init(initial)
+  }
+
+  /**
+   * Re-seed every field from an external value (clamped per field); a null
+   * value restores the schema defaults. Re-applies and publishes once, so a
+   * late-arriving boot payload lands without an extra persist.
+   */
+  init(next: SkinBackgroundConfig | null): void {
+    const value = next ?? BACKGROUND_DEFAULTS
+    this.enabledValue = typeof value.enabled === 'boolean' ? value.enabled : BACKGROUND_DEFAULTS.enabled
+    this.opacityValue = this.clampPercent(this.numberOr(value.backgroundOpacity, BACKGROUND_DEFAULTS.backgroundOpacity))
+    this.blurEmptyValue = this.clampBlur(this.numberOr(value.backgroundBlurEmpty, BACKGROUND_DEFAULTS.backgroundBlurEmpty))
+    this.blurContentValue = this.clampBlur(this.numberOr(value.backgroundBlurContent, BACKGROUND_DEFAULTS.backgroundBlurContent))
+    this.inputCardBlurValue = this.clampBlur(this.numberOr(value.inputCardBlur, BACKGROUND_DEFAULTS.inputCardBlur))
+    this.bubbleOpacityValue = this.clampPercent(this.numberOr(value.bubbleOpacity, BACKGROUND_DEFAULTS.bubbleOpacity))
     this.applyOcclusion()
     this.applyInputCardBlur()
     this.applyBubbleOpacity()
     this.syncBlur()
-    scope.subscribe(() => {
-      this.enabledValue = this.readEnabled()
-      this.opacityValue = this.readOpacity()
-      this.blurEmptyValue = this.readBlur(BLUR_EMPTY_FIELD)
-      this.blurContentValue = this.readBlur(BLUR_CONTENT_FIELD)
-      this.inputCardBlurValue = this.readInputCardBlur()
-      this.bubbleOpacityValue = this.readBubbleOpacity()
-      this.applyOcclusion()
-      this.applyInputCardBlur()
-      this.applyBubbleOpacity()
-      this.syncBlur()
-      this.publish()
-    })
+    this.publish()
   }
 
   enabled = (): boolean => this.enabledValue
@@ -184,7 +179,7 @@ export class BackgroundController implements SkinBackgroundHandle {
     this.applyInputCardBlur()
     this.syncBlur()
     this.publish()
-    void this.scope.set('enabled', value)
+    this.persist(this.snapshot())
   }
 
   opacity = (): number => this.opacityValue
@@ -203,47 +198,52 @@ export class BackgroundController implements SkinBackgroundHandle {
   }
 
   set(opacity: number): void {
-    const clamped = Math.max(0, Math.min(100, Math.round(opacity)))
-    this.opacityValue = clamped
+    this.opacityValue = this.clampPercent(opacity)
     this.applyOcclusion()
     this.publish()
-    // Persist: queue the write on the settings scope. Failures are silent —
-    // the live value is already applied, and the write drains on reconnect.
-    void this.scope.set(OPACITY_FIELD, clamped)
+    this.persist(this.snapshot())
   }
 
   setBlurEmpty(value: number): void {
-    const clamped = this.clampBlur(value)
-    this.blurEmptyValue = clamped
+    this.blurEmptyValue = this.clampBlur(value)
     this.ensureObserver()
     this.syncBlur()
     this.publish()
-    void this.scope.set(BLUR_EMPTY_FIELD, clamped)
+    this.persist(this.snapshot())
   }
 
   setBlurContent(value: number): void {
-    const clamped = this.clampBlur(value)
-    this.blurContentValue = clamped
+    this.blurContentValue = this.clampBlur(value)
     this.ensureObserver()
     this.syncBlur()
     this.publish()
-    void this.scope.set(BLUR_CONTENT_FIELD, clamped)
+    this.persist(this.snapshot())
   }
 
   setInputCardBlur(value: number): void {
-    const clamped = this.clampBlur(value)
-    this.inputCardBlurValue = clamped
+    this.inputCardBlurValue = this.clampBlur(value)
     this.applyInputCardBlur()
     this.publish()
-    void this.scope.set(INPUT_CARD_BLUR_FIELD, clamped)
+    this.persist(this.snapshot())
   }
 
   setBubbleOpacity(value: number): void {
-    const clamped = this.clampPercent(value)
-    this.bubbleOpacityValue = clamped
+    this.bubbleOpacityValue = this.clampPercent(value)
     this.applyBubbleOpacity()
     this.publish()
-    void this.scope.set(BUBBLE_OPACITY_FIELD, clamped)
+    this.persist(this.snapshot())
+  }
+
+  /** The complete current config — exactly what the transport must store. */
+  snapshot(): SkinBackgroundConfig {
+    return {
+      enabled: this.enabledValue,
+      backgroundOpacity: this.opacityValue,
+      backgroundBlurEmpty: this.blurEmptyValue,
+      backgroundBlurContent: this.blurContentValue,
+      inputCardBlur: this.inputCardBlurValue,
+      bubbleOpacity: this.bubbleOpacityValue,
+    }
   }
 
   dispose(): void {
@@ -261,44 +261,8 @@ export class BackgroundController implements SkinBackgroundHandle {
     }
   }
 
-  /** The effective master-switch section value, defaulting to true when absent. */
-  private readEnabled(): boolean {
-    const snapshot: SettingsScopeSnapshot<{ enabled?: boolean }> = this.scope.getSnapshot()
-    const raw = snapshot.value?.enabled
-    return typeof raw !== 'boolean' ? true : raw
-  }
-
-  /** The effective occlusion section value, clamped 0-100, defaulting to 0. */
-  private readOpacity(): number {
-    const snapshot: SettingsScopeSnapshot<{ backgroundOpacity?: number }> = this.scope.getSnapshot()
-    const raw = snapshot.value?.backgroundOpacity
-    if (typeof raw !== 'number' || !Number.isFinite(raw)) return DEFAULT_OPACITY
-    return Math.max(0, Math.min(100, raw))
-  }
-
-  private readInputCardBlur(): number {
-    const snapshot: SettingsScopeSnapshot<{ inputCardBlur?: number }> = this.scope.getSnapshot()
-    const raw = snapshot.value?.inputCardBlur
-    if (typeof raw !== 'number' || !Number.isFinite(raw)) return 10
-    return this.clampBlur(raw)
-  }
-
-  private readBubbleOpacity(): number {
-    const snapshot: SettingsScopeSnapshot<{ bubbleOpacity?: number }> = this.scope.getSnapshot()
-    const raw = snapshot.value?.bubbleOpacity
-    if (typeof raw !== 'number' || !Number.isFinite(raw)) return DEFAULT_BUBBLE_OPACITY
-    return this.clampPercent(raw)
-  }
-
-  /** The effective blur section value for one field, clamped 0-20, defaulting to 0. */
-  private readBlur(field: 'backgroundBlurEmpty' | 'backgroundBlurContent'): number {
-    const snapshot: SettingsScopeSnapshot<{
-      backgroundBlurEmpty?: number
-      backgroundBlurContent?: number
-    }> = this.scope.getSnapshot()
-    const raw = snapshot.value?.[field]
-    if (typeof raw !== 'number' || !Number.isFinite(raw)) return DEFAULT_BLUR
-    return this.clampBlur(raw)
+  private numberOr(value: number | undefined, fallback: number): number {
+    return typeof value === 'number' && Number.isFinite(value) ? value : fallback
   }
 
   private clampBlur(value: number): number {

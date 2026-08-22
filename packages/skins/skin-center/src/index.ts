@@ -28,6 +28,11 @@ import {
   SKIN_CUSTOM_THEME_NS,
   type CustomThemeConfig,
 } from './core/custom-theme.ts'
+import {
+  SkinBackgroundConfigSchema,
+  type SkinBackgroundConfig,
+} from './core/background.ts'
+import { migrateBackgroundState, syncBackgroundState } from './background-migration.ts'
 
 export { makeSkinCenterV2Routes, SKIN_CENTER_V2_PREFIX } from './routes-v2.ts'
 export { makeWeRoutes, WE_API_PREFIX } from './we-routes.ts'
@@ -39,6 +44,9 @@ export { transformSkinCss, SkinCssSafetyError } from './core/css-safety/transfor
 export { loadSkinCatalog, findSkin, resolveInsideSkin, userSkinsDir, builtinSkinsDir } from './skin-repo.ts'
 export type { SkinCatalog, SkinCatalogEntry } from './skin-repo.ts'
 export { defaultActiveStatePath, readActiveSelection, writeActiveSelection } from './active-state.ts'
+// The background contract surface, shared with the browser half and the v2 routes.
+export { SkinBackgroundConfigSchema, BACKGROUND_DEFAULTS } from './core/background.ts'
+export type { SkinBackgroundConfig } from './core/background.ts'
 
 /** Stable cordis plugin name (matches cordis.patch.yml insert id). */
 export const name = 'ui-skin-center'
@@ -76,51 +84,6 @@ export const SkinCustomThemeConfigSchema: z<SkinCustomThemeConfig> = z.object({
     foreground: z.string().default(CUSTOM_THEME_DEFAULTS.dark.foreground),
     contrast: z.number().min(0).max(100).step(1).default(50),
   }).default(CUSTOM_THEME_DEFAULTS.dark),
-})
-
-/**
- * Plugin-configuration fields for the main-interface background, plus the
- * master switch that turns the whole skin center on or off.
- */
-export interface SkinBackgroundConfig {
-  /** Master switch for the skin center. */
-  enabled?: boolean
-  /**
-   * Background occlusion 0-100 (0 = no extra veil, 100 = fully obscured).
-   * Skins that paint a backdrop image (blue-fantasy / whale-song) read the
-   * equivalent CSS variable value and raise their scrim; the official stock
-   * look has no backdrop and is unaffected.
-   */
-  backgroundOpacity?: number
-  /**
-   * Gaussian blur (px, 0-20) applied to the backdrop while the conversation
-   * pane has no content (empty state). Painted only by skins that draw a
-   * backdrop; 0 disables the empty-state blur.
-   */
-  backgroundBlurEmpty?: number
-  /**
-   * Gaussian blur (px, 0-20) applied to the backdrop once the conversation
-   * pane has content. Painted only by skins that draw a backdrop; 0 disables
-   * the with-content blur.
-   */
-  backgroundBlurContent?: number
-  /** Backdrop blur on the composer card while backdrop art is visible. */
-  inputCardBlur?: number
-  /** Message bubble opacity 0-100, consumed by skins that expose bubble alpha. */
-  bubbleOpacity?: number
-}
-
-/**
- * Runtime schema for SkinBackgroundConfig. Persists the master switch
- * (`enabled`) alongside the background strength fields.
- */
-export const SkinBackgroundConfigSchema: z<SkinBackgroundConfig> = z.object({
-  enabled: z.boolean().default(true),
-  backgroundOpacity: z.number().min(0).max(100).step(5).default(0),
-  backgroundBlurEmpty: z.number().min(0).max(20).step(1).default(0),
-  backgroundBlurContent: z.number().min(0).max(20).step(1).default(0),
-  inputCardBlur: z.number().min(0).max(20).step(1).default(10),
-  bubbleOpacity: z.number().min(0).max(100).step(5).default(50),
 })
 
 /**
@@ -178,14 +141,40 @@ export const SkinWallpaperConfigSchema: z<SkinWallpaperConfig> = z.object({
 export const apply = mountOnce('@linxin666/dsh-client-ui-skin-center', applyImpl)
 
 function applyImpl(ctx: Context): void {
-  // Optional-settings wiring for the background scrim namespace. The browser
-  // half binds the scope and applies the value to the body CSS variable;
-  // this side just declares the namespace + schema so the value persists and
-  // re-resolves across reloads. installSettingsSection is a no-op when no
-  // settings service is mounted (pure skin-center installs skip it).
+  // Background scrim settings wiring. The settings.yaml section stays the
+  // legacy input surface (the official settings page edits it); the v2 state
+  // store is the persistence the paired remote desktop can read and write
+  // (the settings scope is loopback-only there), so the host half flows the
+  // section value into the store — one-shot on attach, then on every change.
+  // installSettingsSection is a no-op when no settings service is mounted
+  // (pure skin-center installs skip it).
+  let backgroundSource: () => SkinBackgroundConfig = () => ({})
   installSettingsSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
-    setSource: () => { /* application is browser-side; value is read from the scope */ },
-    onChange: () => { /* browser half re-applies on scope publish */ },
+    setSource: (source) => {
+      backgroundSource = source
+      try {
+        const statePath = defaultActiveStatePath()
+        const result = migrateBackgroundState({ activeStatePath: statePath, source })
+        if (result.failed) {
+          for (const note of result.notes) console.error(`[ui-skin-center] background migration: ${note}`)
+        } else if (result.migrated) {
+          for (const note of result.notes) console.info(`[ui-skin-center] background migration: ${note}`)
+        }
+      } catch (error) {
+        console.error('[ui-skin-center] background migration failed:', error)
+      }
+    },
+    onChange: () => {
+      try {
+        const statePath = defaultActiveStatePath()
+        const result = syncBackgroundState({ activeStatePath: statePath, source: backgroundSource })
+        if (result.failed) {
+          for (const note of result.notes) console.error(`[ui-skin-center] background state sync: ${note}`)
+        }
+      } catch (error) {
+        console.error('[ui-skin-center] background state sync failed:', error)
+      }
+    },
   })
 
   installSettingsSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, {

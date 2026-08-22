@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 /**
- * BackgroundController regression tests for the skin-background namespace:
+ * BackgroundController regression tests for the v2 transport-based controller:
  * the occlusion veil and the per-state backdrop blur (empty vs. with-content
- * conversation). A fake SettingsScope drives reads / writes so no real
- * settings surface is ever touched.
+ * conversation). A recording persist callback stands in for the POST
+ * transport, so no network and no settings surface is ever touched.
  */
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SkinBackgroundConfig } from '../src/core/background.ts'
 import {
   BackgroundController,
   BLUR_CONTENT_FIELD,
@@ -18,52 +18,22 @@ import {
   INPUT_CARD_BLUR_VAR,
 } from '../src/client/background.ts'
 
-/** Shape of the fake scope's section. */
-interface Section {
-  enabled?: boolean
-  backgroundOpacity?: number
-  backgroundBlurEmpty?: number
-  backgroundBlurContent?: number
-  inputCardBlur?: number
-  bubbleOpacity?: number
+/** A persist recorder: captures every full snapshot handed to the transport. */
+function makePersist(): { calls: SkinBackgroundConfig[], fn: (next: SkinBackgroundConfig) => void } {
+  const calls: SkinBackgroundConfig[] = []
+  return { calls, fn: next => { calls.push(next) } }
 }
 
-/** A fake SettingsScope recording every set() call. */
-function fakeScope(initial: Partial<Section> = {}): {
-  scope: SettingsScope<Section>
-  calls: Array<{ field: string; value: unknown }>
-  setValue: (value: Section) => void
-} {
-  let value = { ...initial } as Section
-  const calls: Array<{ field: string; value: unknown }> = []
-  const listeners = new Set<() => void>()
-  const snapshot: SettingsScopeSnapshot<Section> = {
-    status: 'ready',
-    value,
-    base: undefined,
-    user: undefined,
-    revision: 1,
-    writable: true,
-    mode: 'host',
+/** The complete snapshot for the schema-default state. */
+function defaultSnapshot(): SkinBackgroundConfig {
+  return {
+    enabled: true,
+    backgroundOpacity: 0,
+    backgroundBlurEmpty: 0,
+    backgroundBlurContent: 0,
+    inputCardBlur: 10,
+    bubbleOpacity: 50,
   }
-  const scope: SettingsScope<Section> = {
-    getSnapshot: () => ({ ...snapshot, value }),
-    subscribe: (listener: () => void) => {
-      listeners.add(listener)
-      return () => { listeners.delete(listener) }
-    },
-    set: async (field, val) => {
-      calls.push({ field, value: val })
-      value = { ...value, [field]: val as never }
-      for (const listener of listeners) listener()
-    },
-    unset: async field => {
-      value = { ...value }
-      delete value[field as keyof Section]
-      for (const listener of listeners) listener()
-    },
-  }
-  return { scope, calls, setValue: next => { value = next } }
 }
 
 /** Find the injected fixed backdrop-filter element, if present. */
@@ -105,17 +75,17 @@ describe('BackgroundController', () => {
   })
 
   it('defaults: no blur element and the occlusion var is still set', () => {
-    const { scope } = fakeScope()
-    const controller = new BackgroundController(scope)
+    const persist = makePersist()
+    const controller = new BackgroundController(null, persist.fn)
     expect(blurElement()).toBeNull()
-    // Occlusion is unchanged: the veil variable is written on a default-0 scope.
+    // Occlusion is unchanged: the veil variable is written on a default-0 state.
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('0')
     controller.dispose()
   })
 
-  it('setBlurEmpty(6) creates a fixed element and persists via scope.set', () => {
-    const { scope, calls } = fakeScope()
-    const controller = new BackgroundController(scope)
+  it('setBlurEmpty(6) creates a fixed element and persists the full snapshot', () => {
+    const persist = makePersist()
+    const controller = new BackgroundController(null, persist.fn)
     controller.setBlurEmpty(6)
     const element = blurElement()
     expect(element).not.toBeNull()
@@ -123,13 +93,17 @@ describe('BackgroundController', () => {
     // The Safari vendor prefix is set via setProperty; jsdom drops it, so
     // only the standard property is observable here.
     expect(element!.style.pointerEvents).toBe('none')
-    expect(calls).toContainEqual({ field: BLUR_EMPTY_FIELD, value: 6 })
+    expect(persist.calls).toHaveLength(1)
+    expect(persist.calls[0]).toEqual({ ...defaultSnapshot(), [BLUR_EMPTY_FIELD]: 6 })
     controller.dispose()
   })
 
   it('switches blur strength between empty and content states', async () => {
-    const { scope } = fakeScope({ backgroundBlurEmpty: 2, backgroundBlurContent: 10 })
-    const controller = new BackgroundController(scope)
+    const persist = makePersist()
+    const controller = new BackgroundController(
+      { backgroundBlurEmpty: 2, backgroundBlurContent: 10 },
+      persist.fn,
+    )
     // Empty conversation -> empty blur.
     expect(blurElement()!.style.backdropFilter).toContain('blur(2px)')
     // A hash-prefixed message row flips the state to with-content.
@@ -144,8 +118,11 @@ describe('BackgroundController', () => {
   })
 
   it('detects official shell message rows without the compat data-pane shim', async () => {
-    const { scope } = fakeScope({ backgroundBlurEmpty: 2, backgroundBlurContent: 10 })
-    const controller = new BackgroundController(scope)
+    const persist = makePersist()
+    const controller = new BackgroundController(
+      { backgroundBlurEmpty: 2, backgroundBlurContent: 10 },
+      persist.fn,
+    )
     expect(blurElement()!.style.backdropFilter).toContain('blur(2px)')
     addOfficialConversationRow()
     await flush()
@@ -154,8 +131,8 @@ describe('BackgroundController', () => {
   })
 
   it('removes the element when the active value becomes 0, and dispose leaves nothing', () => {
-    const { scope } = fakeScope({ backgroundBlurEmpty: 4 })
-    const controller = new BackgroundController(scope)
+    const persist = makePersist()
+    const controller = new BackgroundController({ backgroundBlurEmpty: 4 }, persist.fn)
     expect(blurElement()).not.toBeNull()
     controller.setBlurEmpty(0)
     expect(blurElement()).toBeNull()
@@ -166,18 +143,18 @@ describe('BackgroundController', () => {
   })
 
   it('clamps setBlurEmpty(99) to 20', () => {
-    const { scope, calls } = fakeScope()
-    const controller = new BackgroundController(scope)
+    const persist = makePersist()
+    const controller = new BackgroundController(null, persist.fn)
     controller.setBlurEmpty(99)
     expect(controller.blurEmpty()).toBe(20)
     expect(blurElement()!.style.backdropFilter).toContain('blur(20px)')
-    expect(calls).toContainEqual({ field: BLUR_EMPTY_FIELD, value: 20 })
+    expect(persist.calls[0]).toEqual({ ...defaultSnapshot(), [BLUR_EMPTY_FIELD]: 20 })
     controller.dispose()
   })
 
-  it('getSnapshot with absent blur fields behaves as 0', () => {
-    const { scope } = fakeScope({ backgroundOpacity: 42 })
-    const controller = new BackgroundController(scope)
+  it('absent blur fields behave as 0', () => {
+    const persist = makePersist()
+    const controller = new BackgroundController({ backgroundOpacity: 42 }, persist.fn)
     expect(controller.blurEmpty()).toBe(0)
     expect(controller.blurContent()).toBe(0)
     expect(blurElement()).toBeNull()
@@ -187,8 +164,11 @@ describe('BackgroundController', () => {
   })
 
   it('disabled section (enabled=false) applies no scrim var and no blur element even with nonzero values', () => {
-    const { scope } = fakeScope({ enabled: false, backgroundOpacity: 60, backgroundBlurEmpty: 8 })
-    const controller = new BackgroundController(scope)
+    const persist = makePersist()
+    const controller = new BackgroundController(
+      { enabled: false, backgroundOpacity: 60, backgroundBlurEmpty: 8 },
+      persist.fn,
+    )
     expect(controller.enabled()).toBe(false)
     // Occlusion is gated: the veil variable is removed, not written.
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('')
@@ -199,8 +179,8 @@ describe('BackgroundController', () => {
 
   it('wallpaper active suppresses the background blur layer even with nonzero blur (#777 decouple)', () => {
     document.documentElement.setAttribute('data-dsh-wallpaper-active', 'true')
-    const { scope } = fakeScope({ backgroundBlurEmpty: 6 })
-    const controller = new BackgroundController(scope)
+    const persist = makePersist()
+    const controller = new BackgroundController({ backgroundBlurEmpty: 6 }, persist.fn)
     expect(blurElement()).toBeNull()
     controller.setBlurEmpty(10)
     expect(blurElement()).toBeNull()
@@ -213,46 +193,86 @@ describe('BackgroundController', () => {
   })
 
   it('setEnabled(true) restores occlusion application', () => {
-    const { scope } = fakeScope({ enabled: false, backgroundOpacity: 60 })
-    const controller = new BackgroundController(scope)
+    const persist = makePersist()
+    const controller = new BackgroundController({ enabled: false, backgroundOpacity: 60 }, persist.fn)
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('')
     controller.setEnabled(true)
     expect(controller.enabled()).toBe(true)
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('0.6')
+    expect(persist.calls).toHaveLength(1)
+    expect(persist.calls[0].enabled).toBe(true)
     controller.dispose()
   })
 
   it('applies, persists, and cleans up input-card blur', () => {
-    const { scope, calls } = fakeScope({ inputCardBlur: 6 })
-    const controller = new BackgroundController(scope)
+    const persist = makePersist()
+    const controller = new BackgroundController({ inputCardBlur: 6 }, persist.fn)
     expect(controller.inputCardBlur()).toBe(6)
     expect(document.body.style.getPropertyValue(INPUT_CARD_BLUR_VAR)).toBe('6px')
     controller.setInputCardBlur(99)
     expect(controller.inputCardBlur()).toBe(20)
-    expect(calls).toContainEqual({ field: INPUT_CARD_BLUR_FIELD, value: 20 })
+    expect(persist.calls[0]).toEqual({ ...defaultSnapshot(), [INPUT_CARD_BLUR_FIELD]: 20 })
     controller.dispose()
     expect(document.body.style.getPropertyValue(INPUT_CARD_BLUR_VAR)).toBe('')
   })
 
   it('applies, persists, and cleans up message bubble opacity', () => {
-    const { scope, calls } = fakeScope({ bubbleOpacity: 35 })
-    const controller = new BackgroundController(scope)
+    const persist = makePersist()
+    const controller = new BackgroundController({ bubbleOpacity: 35 }, persist.fn)
     expect(controller.bubbleOpacity()).toBe(35)
     expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('0.35')
     controller.setBubbleOpacity(105)
     expect(controller.bubbleOpacity()).toBe(100)
     expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('1')
-    expect(calls).toContainEqual({ field: BUBBLE_OPACITY_FIELD, value: 100 })
+    expect(persist.calls[0]).toEqual({ ...defaultSnapshot(), [BUBBLE_OPACITY_FIELD]: 100 })
     controller.dispose()
     expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('')
   })
 
-  it('setEnabled persists via scope.set', () => {
-    const { scope, calls } = fakeScope()
-    const controller = new BackgroundController(scope)
+  it('setEnabled persists the complete snapshot', () => {
+    const persist = makePersist()
+    const controller = new BackgroundController(null, persist.fn)
     controller.setEnabled(false)
     expect(controller.enabled()).toBe(false)
-    expect(calls).toContainEqual({ field: 'enabled', value: false })
+    expect(persist.calls).toEqual([{ ...defaultSnapshot(), enabled: false }])
+    controller.dispose()
+  })
+
+  it('init backfills every field from a late-arriving payload without persisting', async () => {
+    const persist = makePersist()
+    const controller = new BackgroundController(null, persist.fn)
+    controller.init({
+      enabled: true,
+      backgroundOpacity: 100,
+      backgroundBlurEmpty: 4,
+      backgroundBlurContent: 5,
+      inputCardBlur: 12,
+      bubbleOpacity: 60,
+    })
+    expect(controller.opacity()).toBe(100)
+    expect(controller.blurEmpty()).toBe(4)
+    expect(controller.blurContent()).toBe(5)
+    expect(controller.inputCardBlur()).toBe(12)
+    expect(controller.bubbleOpacity()).toBe(60)
+    expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('1')
+    expect(blurElement()!.style.backdropFilter).toContain('blur(4px)')
+    // init is a read path: nothing is persisted.
+    expect(persist.calls).toHaveLength(0)
+    controller.dispose()
+  })
+
+  it('init clamps out-of-range values and null restores the defaults', () => {
+    const persist = makePersist()
+    const controller = new BackgroundController(null, persist.fn)
+    controller.init({ backgroundOpacity: 250, backgroundBlurEmpty: 99, bubbleOpacity: -5 })
+    expect(controller.opacity()).toBe(100)
+    expect(controller.blurEmpty()).toBe(20)
+    expect(controller.bubbleOpacity()).toBe(0)
+    controller.init(null)
+    expect(controller.opacity()).toBe(0)
+    expect(controller.blurEmpty()).toBe(0)
+    expect(controller.bubbleOpacity()).toBe(50)
+    expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('0')
     controller.dispose()
   })
 })

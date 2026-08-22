@@ -10,8 +10,10 @@
  *  - GET  /skins/<id>/patches          transformed + scoped patches.css (404 when absent)
  *  - GET  /skins/<id>/hooks.mjs        the escape-hatch entry (404 when absent)
  *  - GET  /skins/<id>/assets/<path>    static in-directory assets (incl. preview/)
- *  - GET  /active                      the persisted active skin id (or null)
- *  - POST /active                      persist the active skin id (same-origin fenced)
+ *  - GET  /active                      the persisted active skin id + background preferences
+ *  - POST /active                      persist the active skin id and/or the
+ *                                      background preferences (same-origin fenced;
+ *                                      omitted fields preserve the stored value)
  *
  * The stylesheet/patches responses pass through the CSS safety pipeline
  * (force-scoped under html[data-dsh-skin="<id>"], whitelist fail-closed), so
@@ -27,7 +29,8 @@ import { extname } from 'node:path'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 
 import { json, requireSameOrigin } from './http-utils.ts'
-import { defaultActiveStatePath, readActiveSelection, writeActiveSelection } from './active-state.ts'
+import { defaultActiveStatePath, readActiveState, writeActiveState } from './active-state.ts'
+import { parseBackgroundConfig, type SkinBackgroundConfig } from './core/background.ts'
 import { transformSkinCss, SkinCssSafetyError } from './core/css-safety/transform.ts'
 import { findSkin, loadSkinCatalog, resolveInsideSkin } from './skin-repo.ts'
 import type { SkinCatalog, SkinCatalogEntry } from './skin-repo.ts'
@@ -214,7 +217,8 @@ export function makeSkinCenterV2Routes(deps: RoutesV2Deps = {}): WebRoute[] {
   }
 
   const activeGetHandler: WebRoute['handler'] = (_req, res) => {
-    json(res, 200, { ok: true, active: readActiveSelection(activeStatePath) })
+    const state = readActiveState(activeStatePath)
+    json(res, 200, { ok: true, active: state.active, background: state.background })
   }
 
   const activePostHandler: WebRoute['handler'] = async (req, res) => {
@@ -226,17 +230,52 @@ export function makeSkinCenterV2Routes(deps: RoutesV2Deps = {}): WebRoute[] {
       json(res, 400, { ok: false, error: 'invalid-body' })
       return
     }
-    const active = (body as { active?: unknown }).active
-    if (active !== null && typeof active !== 'string') {
-      json(res, 400, { ok: false, error: 'active-must-be-string-or-null' })
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      json(res, 400, { ok: false, error: 'invalid-body' })
       return
     }
-    if (typeof active === 'string' && !findSkin(loadCatalog(), active)) {
-      json(res, 404, { ok: false, error: 'skin-not-found' })
+    const record = body as Record<string, unknown>
+    const hasActive = 'active' in record
+    const hasBackground = 'background' in record
+    if (!hasActive && !hasBackground) {
+      json(res, 400, { ok: false, error: 'invalid-body' })
       return
     }
-    writeActiveSelection(activeStatePath, active)
-    json(res, 200, { ok: true, active })
+    // Both fields merge over the stored state: an omitted field preserves
+    // the current value, an explicit null clears it.
+    const state = readActiveState(activeStatePath)
+    let nextActive = state.active
+    if (hasActive) {
+      const active = record.active
+      if (active !== null && typeof active !== 'string') {
+        json(res, 400, { ok: false, error: 'active-must-be-string-or-null' })
+        return
+      }
+      if (typeof active === 'string' && !findSkin(loadCatalog(), active)) {
+        json(res, 404, { ok: false, error: 'skin-not-found' })
+        return
+      }
+      nextActive = active as string | null
+    }
+    let nextBackground: SkinBackgroundConfig | null | undefined
+    if (hasBackground) {
+      const background = record.background
+      if (background === null) {
+        nextBackground = null
+      } else {
+        // Clamp-then-validate: out-of-range numbers narrow into range, wrong
+        // types or shapes stay invalid and reject the request.
+        const parsed = parseBackgroundConfig(background)
+        if (parsed === null) {
+          json(res, 400, { ok: false, error: 'invalid-background' })
+          return
+        }
+        nextBackground = parsed
+      }
+    }
+    writeActiveState(activeStatePath, nextActive, nextBackground)
+    const after = readActiveState(activeStatePath)
+    json(res, 200, { ok: true, active: after.active, background: after.background })
   }
 
   return [

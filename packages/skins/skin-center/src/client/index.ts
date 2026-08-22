@@ -14,13 +14,14 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { SkinCenterSection, type SkinCenterInjected } from './SkinCenter.tsx'
-import { BackgroundController, SKIN_BACKGROUND_NS } from './background.ts'
+import { BackgroundController } from './background.ts'
 import { SKIN_WALLPAPER_NS, WallpaperController, installBootRestore } from './wallpaper.ts'
 import { en, zh, type SkinCenterKey } from './locales.ts'
 import { bootSkinRuntime } from './runtime/boot.ts'
 import { PreviewCoordinator } from './preview-coordinator.ts'
 import { CustomThemeController } from './custom-theme-controller.ts'
 import { SKIN_CUSTOM_THEME_NS, type CustomThemeConfig } from '../core/custom-theme.ts'
+import type { SkinBackgroundConfig } from '../core/background.ts'
 
 export type { SkinCenterComponentProps, SkinCenterInjected } from './SkinCenter.tsx'
 export { bootSkinRuntime } from './runtime/boot.ts'
@@ -47,8 +48,32 @@ declare module '@deepseek-ai/cordis' {
 }
 
 
-/** Required services: slots + locale (plugin card), theme (preview toggle), and settingsScope + its transport (background scrim). */
+/** Required services: slots + locale (plugin card), theme (preview toggle), and settingsScope (custom-theme / wallpaper scopes). */
 export const inject = ['slots', 'locale', 'theme', 'settingsScope', 'connection', 'remote']
+
+/** Debounced persist for the background snapshot: one POST per slider burst. */
+function debouncedBackgroundPersist(): (next: SkinBackgroundConfig) => void {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let pending: SkinBackgroundConfig | null = null
+  const flush = (): void => {
+    timer = null
+    const payload = pending
+    pending = null
+    if (payload === null) return
+    void fetch('/api/skin-center/v2/active', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ background: payload }),
+    }).catch(() => {
+      // Silent: the live value stays applied locally; the next edit retries.
+    })
+  }
+  return (next) => {
+    pending = next
+    if (timer !== null) clearTimeout(timer)
+    timer = setTimeout(flush, 250)
+  }
+}
 
 /**
  * Register the skin-center dictionaries, the body scope attribute, and the
@@ -66,20 +91,26 @@ export function apply(ctx: ClientContext): void {
   }, 'ui-skin-center: body scope')
 
   const theme = ctx.get('theme') as ThemeRuntime
-  // Background occluder over the shared skin-background namespace. The scope
-  // is bound to this plugin's fiber, so it is torn down with the card.
-  const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
-  const backgroundScope = binder.bind<{
-    enabled?: boolean
-    backgroundOpacity?: number
-    backgroundBlurEmpty?: number
-    backgroundBlurContent?: number
-    inputCardBlur?: number
-    bubbleOpacity?: number
-  }>({ namespace: SKIN_BACKGROUND_NS })
-  const background = new BackgroundController(backgroundScope)
+  // Background occluder over the v2 state store. The settings scope is
+  // loopback-only for paired remote devices, so background preferences read
+  // their initial value from GET /active and persist through POST /active —
+  // both ride the remote channel like the rest of the skin-center v2 API.
+  const background = new BackgroundController(null, debouncedBackgroundPersist())
   // Tear the blur element + observer down when this plugin's fiber goes away.
   ctx.effect(() => () => background.dispose(), 'ui-skin-center: background dispose')
+  // Seed from the persisted store once at boot; failures keep the defaults.
+  void (async () => {
+    try {
+      const res = await fetch('/api/skin-center/v2/active')
+      if (!res.ok) return
+      const payload = (await res.json()) as { ok?: boolean, background?: SkinBackgroundConfig | null }
+      if (payload.ok === true) background.init(payload.background ?? null)
+    } catch {
+      // Fail-closed: defaults stay applied; the next local edit still persists.
+    }
+  })()
+  // Custom theme and wallpaper still live on their settings scopes.
+  const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
   const customThemeScope = binder.bind<CustomThemeConfig>({ namespace: SKIN_CUSTOM_THEME_NS })
   const customTheme = new CustomThemeController(customThemeScope)
   ctx.effect(() => () => customTheme.dispose(), 'ui-skin-center: custom theme dispose')

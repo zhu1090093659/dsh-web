@@ -200,4 +200,47 @@ describe('SessionIdPanel', () => {
     expect(screen.getByText('无匹配会话')).toBeTruthy()
     expect(screen.queryByText('Alpha')).toBeNull()
   })
+
+  it('falls back to the id as the title when the display title is empty', () => {
+    const list = sourceOf(makeList([
+      { id: 'session-aaa', displayTitle: '', updatedAt: 1_700_000_000_000 },
+    ]))
+
+    render(<SessionIdPanel list={list} onClose={() => {}} t={makeTranslate()} />)
+    // The row renders the id as its visible title when displayTitle is blank:
+    // the id text appears at least twice (title span + id span).
+    expect(screen.getAllByText('session-aaa').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('keeps very long ids inside the row (title attribute carries the full id)', () => {
+    const longId = `session-${'a'.repeat(80)}`
+    const list = sourceOf(makeList([
+      { id: longId, displayTitle: 'Long', updatedAt: 1_700_000_000_000 },
+    ]))
+
+    render(<SessionIdPanel list={list} onClose={() => {}} t={makeTranslate()} />)
+    const row = document.querySelector('[data-dsh-part="row"]')
+    expect(row).toBeTruthy()
+    const idEl = row?.querySelector('[class*="rowId"]') as HTMLElement | null
+    expect(idEl).toBeTruthy()
+    // The full id stays reachable (row title / id tooltip) even when clipped.
+    expect(idEl?.getAttribute('title')).toBe(longId)
+  })
+
+  it('flips to the failed state when writeClipboard rejects', async () => {
+    const primitives = await import('@deepseek-ai/dsh-client-ui-primitives')
+    vi.mocked(primitives.writeClipboard).mockRejectedValueOnce(new Error('clipboard unavailable'))
+
+    const list = sourceOf(makeList([
+      { id: 'session-zzz', displayTitle: 'Zulu', updatedAt: 1_700_000_000_000 },
+    ]))
+
+    render(<SessionIdPanel list={list} onClose={() => {}} t={makeTranslate()} />)
+    const button = screen.getByRole('button', { name: /复制|copy/i })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(screen.getByText('复制失败，请重试')).toBeTruthy()
+    })
+  })
 })

@@ -69,6 +69,9 @@ function SessionRow({ session, current, t }: {
       } else {
         setStatus('failed')
       }
+    }).catch(() => {
+      // A rejected write is the same actionable failure as ok === false.
+      setStatus('failed')
     })
   }
 

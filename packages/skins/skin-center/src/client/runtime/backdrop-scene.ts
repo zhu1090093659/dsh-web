@@ -14,16 +14,15 @@
  * fade would hide it behind the input area, so the official mask is
  * neutralized uniformly for skins and wallpapers alike (issue #747 direction).
  *
- * Readability after the mask is gone comes from the input card itself
- * ([data-composer-card], the official shell's stable card anchor): the card
- * keeps its own translucent tint (--dsw-specific-* tokens, not a hardcoded
- * opacity) and gains a configurable backdrop blur (default INPUT_FROST_BLUR_PX). The blur
- * occludes the backdrop art and any message content scrolling under the
- * input, so typed text never overlaps — a frosted pane instead of the older
- * flat mask. The frost is only enabled while the conversation actually has
- * message content (data-dsh-conversation-content): an empty conversation has
- * no正文 to occlude, so the input card keeps only its own translucent tint
- * and does not flash an extra blur patch (issue #777 follow-up).
+ * Readability after the mask is gone comes from a shared frost on the whole
+ * composer seat plus the input card itself ([data-composer-card], the official
+ * shell's stable card anchor). The seat uses the overlay surface token so the
+ * strip below the card occludes message text scrolling underneath without
+ * flattening backdrop art, while the card keeps its own translucent tint and
+ * gains the same configurable backdrop blur (default INPUT_FROST_BLUR_PX).
+ * Both rules are enabled only while the conversation actually has message
+ * content (data-dsh-conversation-content): an empty conversation has no正文 to
+ * occlude, so the input keeps its normal hero appearance without a frost flash.
  * The strength is provided by --dsh-input-card-blur and falls back to the
  * compatibility default when the setting has not loaded yet.
  *
@@ -149,6 +148,15 @@ export function ensureSceneNeutralizer(doc: Document): void {
     html[data-dsh-backdrop-active] [data-composer-seat]::before {
       background: none !important;
       backdrop-filter: none !important;
+    }
+    html[data-dsh-backdrop-active][data-dsh-conversation-content] [data-composer-seat] {
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--dsw-alias-bg-overlay) 0%, transparent) 0px,
+        var(--dsw-alias-bg-overlay) 36px
+      ) !important;
+      backdrop-filter: blur(var(--dsh-input-card-blur, ${INPUT_FROST_BLUR_PX}px)) !important;
+      -webkit-backdrop-filter: blur(var(--dsh-input-card-blur, ${INPUT_FROST_BLUR_PX}px)) !important;
     }
     html[data-dsh-backdrop-active][data-dsh-conversation-content] [data-composer-card] {
       backdrop-filter: blur(var(--dsh-input-card-blur, ${INPUT_FROST_BLUR_PX}px)) !important;

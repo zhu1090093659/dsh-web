@@ -7,8 +7,10 @@
  * and no per-plugin pairing consult.
  *
  * Security model:
- * - Every request must carry a live paired-device cookie, enforced before
- *   any bytes are forwarded and before any host call.
+ * - While `requirePairingForLan` is on (default), every request must carry a
+ *   live paired-device cookie, enforced before any bytes are forwarded and
+ *   before any host call. With the policy off, the cookie gate is skipped
+ *   (the loopback-only denials below still apply).
  * - The SDK's loopback-only privileged methods (native dialogs, the settings
  *   plane, credentials — the `PRIVILEGED_METHODS` set of client-connection)
  *   are denied here. The set is pinned by tests/remote-contract.spec.ts.
@@ -68,6 +70,13 @@ export interface RemoteApiDeps {
   service: PairingService
   /** The local webServer port the loopback proxy connects to. */
   port: number
+  /**
+   * Live policy: whether the paired-device cookie gates the /remote channel.
+   * When false, requests are proxied without a cookie (the loopback-only
+   * denials still apply). A function is re-read per request, so a settings
+   * edit takes effect without a restart. Defaults to true.
+   */
+  requirePairingForLan?: boolean | (() => boolean)
 }
 
 /** One SDK-shaped error envelope (keeps the desktop client's parse path intact). */
@@ -125,20 +134,25 @@ export function loopbackOnlyDenial(innerPath: string): string | undefined {
 
 /**
  * Build the remote desktop channel HTTP routes.
- * @param deps - pairing service + local port.
+ * @param deps - pairing service + local port + live pairing policy.
  * @returns the routes to register on webServer.
  */
 export function makeRemoteApiRoutes(deps: RemoteApiDeps): WebRoute[] {
-  const { service, port } = deps
+  const { service, port, requirePairingForLan = true } = deps
 
   const handler = (req: IncomingMessage, res: ServerResponse): void => {
     // Cookie gate first — same order as /m/api. Do not buffer an unpaired body.
-    const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
-    const paired = deviceId !== undefined && service.touchDevice(deviceId)
-    if (!paired) {
-      req.resume()
-      envelopeError(res, 403, 'invalid-request', 'unpaired', 'this device is not paired with the desktop')
-      return
+    // With the live policy off, untrusted-but-policy-open callers are proxied
+    // (a stale client rewrite must not 403); loopback-only denials stay below.
+    const require = typeof requirePairingForLan === 'function' ? requirePairingForLan() : requirePairingForLan
+    if (require) {
+      const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
+      const paired = deviceId !== undefined && service.touchDevice(deviceId)
+      if (!paired) {
+        req.resume()
+        envelopeError(res, 403, 'invalid-request', 'unpaired', 'this device is not paired with the desktop')
+        return
+      }
     }
 
     const method = req.method ?? 'GET'
@@ -187,18 +201,21 @@ export function upgradeInnerPath(reqUrl: string | undefined, fallbackPath: strin
 /**
  * Build the WebSocket upgrade routes for the event streams and known plugin
  * sockets. webServer matches upgrades by exact path.
- * @param deps - pairing service + local port.
+ * @param deps - pairing service + local port + live pairing policy.
  * @returns the upgrade routes to register on webServer.
  */
 export function makeRemoteApiUpgradeRoutes(deps: RemoteApiDeps): WebUpgradeRoute[] {
-  const { service, port } = deps
+  const { service, port, requirePairingForLan = true } = deps
 
   const handlerFor = (fallbackPath: string) => (req: IncomingMessage, socket: Duplex, head: Buffer): void => {
-    const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
-    if (deviceId === undefined || !service.touchDevice(deviceId)) {
-      socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
-      socket.destroy()
-      return
+    const require = typeof requirePairingForLan === 'function' ? requirePairingForLan() : requirePairingForLan
+    if (require) {
+      const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
+      if (deviceId === undefined || !service.touchDevice(deviceId)) {
+        socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
+        socket.destroy()
+        return
+      }
     }
     const inner = upgradeInnerPath(req.url, fallbackPath)
     const denied = loopbackOnlyDenial(inner.split('?')[0] ?? inner)

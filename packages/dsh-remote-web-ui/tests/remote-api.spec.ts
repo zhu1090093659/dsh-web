@@ -239,6 +239,78 @@ describe('remote desktop channel (/remote)', () => {
     }
   })
 
+  it('proxies an unpaired request when the pairing policy is off', async () => {
+    const service = makeService()
+    const upstream = await startUpstream((req) => {
+      if (req.url === '/api/session.list' && req.method === 'POST') {
+        return { status: 200, body: JSON.stringify({ type: 'server-response', rpcId: 'rpc-open', result: { ok: true } }) }
+      }
+      return { status: 404, body: 'no' }
+    })
+    const { port, close } = await serve(makeRemoteApiRoutes({ service, port: upstream.port, requirePairingForLan: false }))
+    try {
+      const result = await call(port, 'POST', '/remote/api/session.list', { body: ENVELOPE('rpc-open', 'session.list', {}) })
+      expect(result.status).toBe(200)
+      expect(JSON.parse(result.body).result.ok).toBe(true)
+      expect(upstream.hits).toHaveLength(1)
+      expect(upstream.hits[0].url).toBe('/api/session.list')
+      expect(upstream.hits[0].host).toBe('127.0.0.1:' + String(upstream.port))
+    } finally {
+      await close()
+      await upstream.close()
+    }
+  })
+
+  it('re-reads the live pairing policy per request', async () => {
+    const service = makeService()
+    let policy = false
+    const upstream = await startUpstream((req) => {
+      if (req.url === '/api/session.list' && req.method === 'POST') {
+        return { status: 200, body: JSON.stringify({ type: 'server-response', rpcId: 'rpc-' + String(upstream.hits.length), result: { ok: true } }) }
+      }
+      return { status: 404, body: 'no' }
+    })
+    const { port, close } = await serve(makeRemoteApiRoutes({ service, port: upstream.port, requirePairingForLan: () => policy }))
+    try {
+      const open = await call(port, 'POST', '/remote/api/session.list', { body: ENVELOPE('rpc-a', 'session.list', {}) })
+      expect(open.status).toBe(200)
+      policy = true
+      const locked = await call(port, 'POST', '/remote/api/session.list', { body: ENVELOPE('rpc-b', 'session.list', {}) })
+      expect(locked.status).toBe(403)
+      const body = JSON.parse(locked.body) as { result: { ok: boolean; error: { code: string } } }
+      expect(body.result.ok).toBe(false)
+      expect(body.result.error.code).toBe('unpaired')
+      policy = false
+      const openAgain = await call(port, 'POST', '/remote/api/session.list', { body: ENVELOPE('rpc-c', 'session.list', {}) })
+      expect(openAgain.status).toBe(200)
+      expect(upstream.hits.map(hit => hit.url)).toEqual(['/api/session.list', '/api/session.list'])
+    } finally {
+      await close()
+      await upstream.close()
+    }
+  })
+
+  it('still denies loopback-only paths when the pairing policy is off', async () => {
+    const service = makeService()
+    const upstream = await startUpstream(() => ({ status: 200, body: '{"leaked":true}' }))
+    const { port, close } = await serve(makeRemoteApiRoutes({ service, port: upstream.port, requirePairingForLan: false }))
+    try {
+      const pair = await call(port, 'POST', '/remote/api/pair/status', { body: '{}' })
+      expect(pair.status).toBe(403)
+      const pairBody = JSON.parse(pair.body) as { result: { ok: boolean; error: { code: string } } }
+      expect(pairBody.result.ok).toBe(false)
+      expect(pairBody.result.error.code).toBe('forbidden')
+      const privileged = await call(port, 'POST', '/remote/api/settings.update', { body: '{}' })
+      expect(privileged.status).toBe(403)
+      const privilegedBody = JSON.parse(privileged.body) as { result: { error: { code: string } } }
+      expect(privilegedBody.result.error.code).toBe('forbidden')
+      expect(upstream.hits).toHaveLength(0)
+    } finally {
+      await close()
+      await upstream.close()
+    }
+  })
+
   it('proxies plugin namespaces and sidebar paths the same way', async () => {
     const service = makeService()
     const cookie = pairedCookie(service)

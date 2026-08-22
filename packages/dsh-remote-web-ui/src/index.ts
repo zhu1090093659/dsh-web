@@ -358,12 +358,23 @@ function applyImpl(ctx: Context, config?: Config): void {
     ...(apiProxy !== undefined
       ? makeMobileApiRoutes({ service, apiProxy, mobileEnterToSend: () => resolve().mobileEnterToSend })
       : []),
-    // The remote desktop channel: paired-cookie-gated `/remote` prefix that
-    // re-issues fenced paths to loopback (see remote-api.ts).
-    ...makeRemoteApiRoutes({ service, port: ctx.webServer.port }),
+    // The remote desktop channel: policy-gated `/remote` prefix that
+    // re-issues fenced paths to loopback (see remote-api.ts). The live
+    // requirePairingForLan is re-read per request, same as the gate listener
+    // and routes above, so a stale client rewrite on an open-LAN deployment
+    // proxies instead of 403ing.
+    ...makeRemoteApiRoutes({
+      service,
+      port: ctx.webServer.port,
+      requirePairingForLan: () => resolve().requirePairingForLan,
+    }),
     ...updateRoutes,
   ]
-  const upgrades = makeRemoteApiUpgradeRoutes({ service, port: ctx.webServer.port })
+  const upgrades = makeRemoteApiUpgradeRoutes({
+    service,
+    port: ctx.webServer.port,
+    requirePairingForLan: () => resolve().requirePairingForLan,
+  })
   const gate = makeGateListener(service, () => resolve().requirePairingForLan, () => resolve().enabled)
   ctx.effect(() => ctx.on('api/gate', gate), 'remote-web-ui: api gate')
 

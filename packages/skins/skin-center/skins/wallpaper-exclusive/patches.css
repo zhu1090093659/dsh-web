@@ -12,6 +12,29 @@
   background: none;
 }
 
+/* Composer seat mask: this skin is wallpaper-first and intentionally paints no
+   seat glass. The official shell and several skins add a frosted/opaque
+   ::before on the composer seat; while a Wallpaper Engine layer is mounted the
+   runtime neutralizer clears it, but without WE the official mask still shows.
+   Neutralize it unconditionally so the seat stays clean in both modes. */
+[data-composer-seat],
+[data-phase="active"] [class*="composerSeat"] {
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+[data-composer-seat]::before,
+[data-composer-seat]::after,
+[data-phase="active"] [class*="composerSeat"]::before,
+[data-phase="active"] [class*="composerSeat"]::after {
+  content: none !important;
+  background: none !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
 /* User-sent message bubble only: the frosted rectangle is the bubble itself,
    not the whole row. The fixed glass blur variable keeps it semi-transparent
    frosted without following the web-ui input-card slider. */
@@ -192,11 +215,19 @@ a {
 }
 
 /* Inline code (filenames, commands, class names) mirrors the code block
-   glass treatment. */
+   glass treatment. Code inside a code-block card must NOT get its own blur or
+   fill: the block already paints the frosted card, so a second layer overlaps
+   and looks muddy. */
 code {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+}
+
+[class*="md-code-block"] code {
+  background-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* The composer "+" popup trigger (scoped to the composer slot so sibling

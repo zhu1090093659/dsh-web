@@ -189,6 +189,75 @@ describe('recovery orchestration', () => {
     })
   })
 
+  it('finalizes a rollback interrupted after restoring quarantine to live', async () => {
+    await withRealHome(async (fs, home) => {
+      const txnId = 'web-20260101000000'
+      const { livePath, quarantinePath, recordPath } = await seedPromotedTransaction(fs, home, txnId)
+      const discardedPath = livePath + '.doctor-discarded-' + txnId
+      await fs.rename(livePath, discardedPath)
+      await fs.rename(quarantinePath, livePath)
+
+      const outcome = await rollbackTransaction({ ...request(fs, home) }, txnId)
+
+      expect(outcome).toMatchObject({ ok: true, phase: 'rolled-back' })
+      expect(outcome.message).toContain('interrupted rollback')
+      expect(JSON.parse(await fs.readText(recordPath))).toMatchObject({ phase: 'rolled-back' })
+      expect(await fs.readText(join(livePath, 'cordis.patch.yml'))).toBe('bad: [unclosed\n')
+      expect(await fs.exists(quarantinePath)).toBe(false)
+      expect(await fs.exists(discardedPath)).toBe(false)
+    })
+  })
+
+  it('retries finalization when the interrupted rollback record write fails', async () => {
+    await withRealHome(async (fs, home) => {
+      const txnId = 'web-20260101000000'
+      const { livePath, quarantinePath, recordPath } = await seedPromotedTransaction(fs, home, txnId)
+      const discardedPath = livePath + '.doctor-discarded-' + txnId
+      await fs.rename(livePath, discardedPath)
+      await fs.rename(quarantinePath, livePath)
+      const originalRename = fs.rename.bind(fs)
+      let interrupted = false
+      const interruptedFs: FsLike = {
+        ...fs,
+        async rename(from, to) {
+          if (!interrupted && to === recordPath && from.startsWith(recordPath + '.tmp-')) {
+            interrupted = true
+            throw new Error('injected interrupted-finalize record failure')
+          }
+          await originalRename(from, to)
+        },
+      }
+
+      const failed = await rollbackTransaction({ ...request(interruptedFs, home) }, txnId)
+      expect(failed).toMatchObject({ ok: false, phase: 'failed' })
+      expect(JSON.parse(await fs.readText(recordPath))).toMatchObject({ phase: 'promoted' })
+      expect(await fs.readText(join(livePath, 'cordis.patch.yml'))).toBe('bad: [unclosed\n')
+      expect(await fs.exists(discardedPath)).toBe(true)
+
+      const retried = await rollbackTransaction({ ...request(fs, home) }, txnId)
+      expect(retried).toMatchObject({ ok: true, phase: 'rolled-back' })
+      expect(JSON.parse(await fs.readText(recordPath))).toMatchObject({ phase: 'rolled-back' })
+      expect(await fs.exists(discardedPath)).toBe(false)
+    })
+  })
+
+  it('resumes a rollback interrupted after displacing the promoted profile', async () => {
+    await withRealHome(async (fs, home) => {
+      const txnId = 'web-20260101000000'
+      const { livePath, quarantinePath, recordPath } = await seedPromotedTransaction(fs, home, txnId)
+      const discardedPath = livePath + '.doctor-discarded-' + txnId
+      await fs.rename(livePath, discardedPath)
+
+      const outcome = await rollbackTransaction({ ...request(fs, home) }, txnId)
+
+      expect(outcome).toMatchObject({ ok: true, phase: 'rolled-back' })
+      expect(JSON.parse(await fs.readText(recordPath))).toMatchObject({ phase: 'rolled-back' })
+      expect(await fs.readText(join(livePath, 'cordis.patch.yml'))).toBe('bad: [unclosed\n')
+      expect(await fs.exists(quarantinePath)).toBe(false)
+      expect(await fs.exists(discardedPath)).toBe(false)
+    })
+  })
+
   it('serializes concurrent rollbacks and rereads the record after locking', async () => {
     await withRealHome(async (fs, home) => {
       const txnId = 'web-20260101000000'
@@ -463,6 +532,53 @@ describe('recovery orchestration', () => {
     const recordPath = home + '/.dsh-doctor/transactions/' + outcome.txnId + '.json'
     expect(JSON.parse(await fs.readText(recordPath))).toMatchObject({ phase: 'rolled-back' })
     expect(await fs.readText(home + '/profiles/web/cordis.patch.yml')).toBe('bad: [unclosed\n')
+  })
+
+  it('does not compensate a promoted profile after both lock generations are replaced', async () => {
+    const fs = withPortablePaths(createMemoryFs())
+    const home = '/h'
+    const livePath = join(home, 'profiles', 'web')
+    const txnId = 'web-20260101000000'
+    const recordPath = join(home, '.dsh-doctor', 'transactions', txnId + '.json')
+    const quarantinePath = join(home, '.dsh-doctor', 'quarantine', 'web', txnId, 'original')
+    await fs.mkdir(livePath, { recursive: true })
+    await fs.writeText(join(livePath, 'package.json'), JSON.stringify({ name: 'web', dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } } }))
+    await fs.writeText(join(livePath, 'cordis.patch.yml'), 'bad: [unclosed\n')
+    const { gates: baseGates } = fakeGates({})
+    const originalSpawn = baseGates.client.spawn.bind(baseGates.client)
+    let spawnCalls = 0
+    const gates: GateDeps = {
+      ...baseGates,
+      client: {
+        spawn(command, options) {
+          spawnCalls += 1
+          if (spawnCalls === 3) {
+            const replacement = JSON.stringify({
+              pid: 999,
+              host: 'replacement',
+              intent: 'replacement repair',
+              startedAt: 'replacement',
+              heartbeatAt: 1_700_000_000_000,
+              nonce: 'replacement',
+            }) + '\n'
+            // MemoryFs applies the write synchronously before its resolved
+            // promise is observed, matching a competing owner publication.
+            void fs.writeText(join(home, '.dsh-doctor', 'locks', 'global', 'token.json'), replacement)
+            void fs.writeText(join(home, '.dsh-doctor', 'locks', 'profile__web', 'token.json'), replacement)
+            throw new Error('injected live gate failure after lock replacement')
+          }
+          return originalSpawn(command, options)
+        },
+      },
+    }
+
+    const outcome = await repairProfile({ ...request(fs, home), gate: gates })
+
+    expect(outcome).toMatchObject({ ok: false, phase: 'failed' })
+    expect(outcome.message).toContain('ownership moved to a different nonce')
+    expect(JSON.parse(await fs.readText(recordPath))).toMatchObject({ phase: 'promoted' })
+    expect(await fs.readText(join(livePath, 'cordis.patch.yml'))).toContain('quarantined a broken patch')
+    expect(await fs.readText(join(quarantinePath, 'cordis.patch.yml'))).toBe('bad: [unclosed\n')
   })
 
   it('rolls back when the first transaction record write fails after promote', async () => {

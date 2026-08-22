@@ -143,6 +143,75 @@ describe('lock manager', () => {
     await held.release()
   })
 
+  it('heartbeats a lock held longer than its stale lease', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-lock-heartbeat-'))
+    try {
+      let clock = 1_000
+      const firstManager = createLockManager({ fs: nodeFs, home, pid: 51, clock: () => clock, iso: () => 'first', pidAlive: () => true })
+      const first = await firstManager.acquire('global', undefined, { intent: 'long repair', staleMs: 150 })
+      const initialHeartbeat = (await firstManager.status('global', undefined)).token?.heartbeatAt
+
+      clock = 20_000
+      let refreshedHeartbeat = initialHeartbeat
+      for (let attempt = 0; attempt < 100 && refreshedHeartbeat !== clock; attempt += 1) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 10))
+        refreshedHeartbeat = (await firstManager.status('global', undefined)).token?.heartbeatAt
+      }
+      expect(refreshedHeartbeat).toBe(clock)
+
+      const secondManager = createLockManager({ fs: nodeFs, home, pid: 52, clock: () => clock, iso: () => 'second', pidAlive: () => true })
+      await expect(secondManager.acquire('global', undefined, {
+        intent: 'second repair',
+        staleMs: 150,
+        timeoutMs: 0,
+      })).rejects.toMatchObject({ code: 'LOCK_HELD' })
+
+      await first.release()
+      const releasedTokenPath = join(home, '.dsh-doctor', 'locks', 'global', 'token.json')
+      const releasedToken = await nodeFs.readText(releasedTokenPath)
+      await new Promise<void>((resolve) => setTimeout(resolve, 80))
+      expect(await nodeFs.readText(releasedTokenPath)).toBe(releasedToken)
+      const second = await secondManager.acquire('global', undefined, { intent: 'second repair', staleMs: 150 })
+      expect((await secondManager.status('global', undefined)).token).toMatchObject({ pid: 52 })
+      await second.release()
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it('fails closed after an automatic heartbeat cannot be persisted', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-lock-heartbeat-failure-'))
+    const heartbeatAttempted = deferred()
+    try {
+      const originalWriteText = nodeFs.writeText.bind(nodeFs)
+      const failingFs: FsLike = {
+        ...nodeFs,
+        async writeText(path, text) {
+          if (path.includes('.touch-')) {
+            heartbeatAttempted.resolve()
+            const error = new Error('injected heartbeat write failure') as Error & { code: string }
+            error.code = 'EACCES'
+            throw error
+          }
+          await originalWriteText(path, text)
+        },
+      }
+      const manager = createLockManager({ fs: failingFs, home, pid: 61, clock: Date.now, iso: () => 'owner', pidAlive: () => true })
+      const handle = await manager.acquire('global', undefined, { intent: 'repair', staleMs: 150 })
+
+      await Promise.race([
+        heartbeatAttempted.promise,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('heartbeat did not run')), 1_000)),
+      ])
+      await new Promise<void>((resolve) => setTimeout(resolve, 10))
+
+      await expect(handle.touch(Date.now())).rejects.toMatchObject({ code: 'LOCK_ERROR' })
+      await expect(handle.release()).rejects.toMatchObject({ code: 'LOCK_ERROR' })
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
   it('steals a stale lock left by a dead pid', async () => {
     const fs = createMemoryFs()
     await fs.mkdir('/h/.dsh-doctor/locks', { recursive: true })
@@ -167,6 +236,7 @@ describe('lock manager', () => {
       const second = await secondManager.acquire('profile', 'web', { intent: 'second' })
       const replacement = (await secondManager.status('profile', 'web')).token
       expect(replacement).toMatchObject({ pid: 12, intent: 'second' })
+      expect((await nodeFs.readdir(join(home, '.dsh-doctor', 'locks'))).some((entry) => entry.name.includes('.stale-'))).toBe(false)
 
       await expect(first.touch(clock + 1)).rejects.toMatchObject({ code: 'LOCK_LOST' })
       expect((await secondManager.status('profile', 'web')).token).toEqual(replacement)
@@ -175,6 +245,24 @@ describe('lock manager', () => {
 
       await second.release()
       expect((await secondManager.status('profile', 'web')).held).toBe(false)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it('does not treat a malformed owner token as a missing stale lease', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-lock-malformed-'))
+    try {
+      const lockPath = join(home, '.dsh-doctor', 'locks', 'profile__web')
+      const tokenPath = join(lockPath, 'token.json')
+      await nodeFs.mkdir(lockPath, { recursive: true })
+      await nodeFs.writeText(tokenPath, '{broken')
+      const manager = createLockManager({ fs: nodeFs, home, pid: 62, clock: () => 20_000, iso: () => 'second', pidAlive: () => false })
+
+      await expect(manager.acquire('profile', 'web', { intent: 'second', timeoutMs: 0 })).rejects.toMatchObject({ code: 'LOCK_ERROR' })
+
+      expect(await nodeFs.readText(tokenPath)).toBe('{broken')
+      expect((await nodeFs.readdir(join(home, '.dsh-doctor', 'locks'))).some((entry) => entry.name.includes('.stale-'))).toBe(false)
     } finally {
       await rm(home, { recursive: true, force: true })
     }
@@ -292,12 +380,53 @@ describe('lock manager', () => {
     }
   })
 
+  it('restores a displaced owner when its token cannot be revalidated', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-lock-displaced-read-'))
+    try {
+      const lockPath = join(home, '.dsh-doctor', 'locks', 'profile__web')
+      const tokenPath = join(lockPath, 'token.json')
+      const staleToken = { pid: 71, host: 'local', intent: 'first', startedAt: 'first', heartbeatAt: 1_000, nonce: 'first-owner' }
+      await nodeFs.mkdir(lockPath, { recursive: true })
+      await nodeFs.writeText(tokenPath, JSON.stringify(staleToken) + '\n')
+      const originalReadText = nodeFs.readText.bind(nodeFs)
+      const originalRename = nodeFs.rename.bind(nodeFs)
+      let replacementClaims = 0
+      const unreadableFs: FsLike = {
+        ...nodeFs,
+        async readText(path) {
+          if (path.startsWith(lockPath + '.stale-') && path.endsWith('token.json')) {
+            const error = new Error('injected displaced token read failure') as Error & { code: string }
+            error.code = 'EIO'
+            throw error
+          }
+          return await originalReadText(path)
+        },
+        async rename(from, to) {
+          if (to === lockPath && from.startsWith(lockPath + '.claim-')) replacementClaims += 1
+          await originalRename(from, to)
+        },
+      }
+      const manager = createLockManager({ fs: unreadableFs, home, pid: 72, clock: () => 20_000, iso: () => 'second', pidAlive: () => false })
+
+      await expect(manager.acquire('profile', 'web', { intent: 'second', staleMs: 1_000, timeoutMs: 0 })).rejects.toMatchObject({ code: 'LOCK_STALE' })
+
+      expect(replacementClaims).toBe(0)
+      expect(JSON.parse(await nodeFs.readText(tokenPath))).toEqual(staleToken)
+      expect((await nodeFs.readdir(join(home, '.dsh-doctor', 'locks'))).some((entry) => entry.name.includes('.stale-'))).toBe(false)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
   it('reports a clean status for absent locks', async () => {
-    const fs = createMemoryFs()
-    await fs.mkdir('/h', { recursive: true })
-    const manager = createLockManager({ fs, home: '/h', pid: 1, clock: () => 1, iso: () => 'x' })
-    const state = await manager.status('profile', 'web')
-    expect(state.held).toBe(false)
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-lock-status-'))
+    try {
+      const manager = createLockManager({ fs: nodeFs, home, pid: 1, clock: () => 1, iso: () => 'x' })
+      const state = await manager.status('profile', 'web')
+      expect(state.held).toBe(false)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
   })
 
   it('wraps unrecoverable acquire failures in LOCK_ERROR', async () => {

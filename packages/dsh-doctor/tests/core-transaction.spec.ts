@@ -94,6 +94,52 @@ describe('candidate transaction', () => {
     }
   })
 
+  it.each(['promote-quarantine', 'promote-activate'] as const)('does not compensate %s failure after ownership is lost', async (failedStep) => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-doctor-promote-owner-'))
+    try {
+      const live = join(home, 'profiles', 'web')
+      await nodeFs.mkdir(live, { recursive: true })
+      await nodeFs.writeText(join(live, 'package.json'), '{"name":"web"}')
+      let compensationChecks = 0
+      const txn = createCandidateTransaction({
+        fs: nodeFs,
+        home,
+        profile: 'web',
+        now: () => '2026-08-21T23:00:00.000Z',
+        txnId: () => 'web-20260821230000',
+        beforeCompensation: async () => {
+          compensationChecks += 1
+          throw new Error('injected lost ownership')
+        },
+        journal: {
+          async append(entry) {
+            if (entry.op.endsWith(':' + failedStep)) throw new Error('injected ' + failedStep + ' journal failure')
+            return undefined
+          },
+        },
+      })
+      await txn.stage()
+      await nodeFs.writeText(join(txn.record.stagingPath, 'package.json'), '{"name":"web","version":2}')
+
+      await expect(txn.promote()).rejects.toThrow('injected lost ownership')
+
+      expect(compensationChecks).toBe(1)
+      expect(await nodeFs.readText(join(txn.record.quarantinePath, 'package.json'))).toBe('{"name":"web"}')
+      expect(await nodeFs.exists(txn.record.stagingPath + '.discarded')).toBe(false)
+      if (failedStep === 'promote-quarantine') {
+        expect(txn.phase()).toBe('failed')
+        expect(await nodeFs.exists(live)).toBe(false)
+        expect(await nodeFs.readText(join(txn.record.stagingPath, 'package.json'))).toBe('{"name":"web","version":2}')
+      } else {
+        expect(txn.phase()).toBe('promoted')
+        expect(await nodeFs.readText(join(live, 'package.json'))).toBe('{"name":"web","version":2}')
+        expect(await nodeFs.exists(txn.record.stagingPath)).toBe(false)
+      }
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
   it('rollback restores the quarantined original', async () => {
     const fs = createMemoryFs()
     await seedLive(fs)

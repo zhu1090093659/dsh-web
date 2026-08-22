@@ -83,6 +83,7 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
     const key = lockKey(scope, profile)
     const path = join(root, key.replace(/\//g, '__'))
     const staleMs = options.staleMs ?? DEFAULT_STALE_MS
+    const heartbeatMs = options.heartbeatMs ?? Math.max(1, Math.floor(staleMs / 3))
     const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
     const deadline = now() + timeoutMs
     for (;;) {
@@ -94,17 +95,17 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
       }
       if (!exists) {
         try {
-          const claimed = await claim(scope, key, path, options.intent)
+          const claimed = await claim(scope, key, path, options.intent, heartbeatMs)
           if (claimed !== undefined) return claimed
         } catch (error) {
           throw new LockError('LOCK_ERROR', scope, key, String(error))
         }
       } else {
-        const observed = await readTokenOrNull(path)
+        const observed = await readTokenForLock(scope, key, path, 'reading owner token')
         if (isTokenStale(observed, staleMs)) {
           // The owner may refresh or be replaced after the first observation.
           // Revalidate the same lease immediately before moving the directory.
-          const confirmed = await readTokenOrNull(path)
+          const confirmed = await readTokenForLock(scope, key, path, 'revalidating stale owner')
           if (!isSameStaleLease(observed, confirmed, staleMs)) {
             if (now() >= deadline) {
               if (confirmed !== undefined) throw new LockError('LOCK_HELD', scope, key, 'held by pid ' + confirmed.pid + ' (intent ' + confirmed.intent + ')')
@@ -125,7 +126,21 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
               throw new LockError('LOCK_STALE', scope, key, 'stale lock could not be displaced: ' + String(error))
             }
           }
-          const displaced = await readTokenOrNull(stealTo)
+          let displaced: LockToken | undefined
+          try {
+            displaced = await readTokenForLock(scope, key, stealTo, 'verifying displaced owner')
+          } catch (error) {
+            const occupied = await fs.exists(path).catch(() => true)
+            if (!occupied) {
+              try {
+                await fs.rename(stealTo, path)
+              } catch (restoreError) {
+                throw new LockError('LOCK_STALE', scope, key, 'displaced owner could not be verified or restored: ' + String(error) + ' / ' + String(restoreError))
+              }
+              throw new LockError('LOCK_STALE', scope, key, 'displaced owner could not be verified; original lock restored: ' + String(error))
+            }
+            throw new LockError('LOCK_STALE', scope, key, 'displaced owner could not be verified after the canonical path was reclaimed: ' + String(error))
+          }
           if (!isSameStaleLease(confirmed, displaced, staleMs)) {
             const occupied = await fs.exists(path).catch(() => true)
             if (!occupied) {
@@ -142,15 +157,18 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
           }
           if (displaced?.released === true) await fs.remove(stealTo, { recursive: true }).catch(() => undefined)
           try {
-            const claimed = await claim(scope, key, path, options.intent)
-            if (claimed !== undefined) return claimed
+            const claimed = await claim(scope, key, path, options.intent, heartbeatMs)
+            if (claimed !== undefined) {
+              await fs.remove(stealTo, { recursive: true }).catch(() => undefined)
+              return claimed
+            }
           } catch (error) {
             throw new LockError('LOCK_STALE', scope, key, 'stale lock was displaced but replacement failed: ' + String(error))
           }
         }
       }
       if (now() >= deadline) {
-        const state = await readTokenOrNull(path)
+        const state = await readTokenForLock(scope, key, path, 'reading owner at timeout')
         if (state !== undefined) throw new LockError('LOCK_HELD', scope, key, 'held by pid ' + state.pid + ' (intent ' + state.intent + ')')
         throw new LockError('LOCK_STALE', scope, key, 'lock present without a readable token')
       }
@@ -167,7 +185,7 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
     nonce: Math.random().toString(36).slice(2, 10),
   })
 
-  const claim = async (scope: LockScope, key: string, path: string, intent: string): Promise<LockHandle | undefined> => {
+  const claim = async (scope: LockScope, key: string, path: string, intent: string, heartbeatMs: number): Promise<LockHandle | undefined> => {
     const token = buildToken(intent)
     const temporary = path + '.claim-' + String(pid) + '-' + token.nonce
     let temporaryCreated = false
@@ -178,7 +196,7 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
       await fs.writeText(join(temporary, 'token.json'), JSON.stringify(token, undefined, 2) + String.fromCharCode(10))
       await fs.rename(temporary, path)
       temporaryCreated = false
-      return makeHandle(scope, key, path, token.nonce)
+      return makeHandle(scope, key, path, token.nonce, heartbeatMs)
     } catch (error) {
       if (temporaryCreated) await fs.remove(temporary, { recursive: true }).catch(() => undefined)
       const targetExists = await fs.exists(path).catch(() => false)
@@ -201,13 +219,22 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
 
   let touchSequence = 0
 
-  const makeHandle = (scope: LockScope, key: string, path: string, nonce: string): LockHandle => {
+  const makeHandle = (scope: LockScope, key: string, path: string, nonce: string, heartbeatMs: number): LockHandle => {
     let released = false
     let operationQueue = Promise.resolve()
+    let heartbeatStopped = heartbeatMs <= 0
+    let heartbeatTimer: ReturnType<typeof setTimeout> | undefined
+    let leaseFailure: LockError | undefined
 
     const ownedToken = async (): Promise<LockToken> => {
       if (released) throw new LockError('LOCK_LOST', scope, key, 'lock handle has already been released')
-      const token = await readTokenOrNull(path)
+      if (leaseFailure !== undefined) throw leaseFailure
+      let token: LockToken | undefined
+      try {
+        token = await readTokenOrNull(path)
+      } catch (error) {
+        throw new LockError('LOCK_ERROR', scope, key, 'lock ownership could not be verified: ' + String(error))
+      }
       if (token === undefined) throw new LockError('LOCK_LOST', scope, key, 'lock dir or token vanished')
       if (token.nonce !== nonce) throw new LockError('LOCK_LOST', scope, key, 'lock ownership moved to a different nonce')
       if (token.released === true) throw new LockError('LOCK_LOST', scope, key, 'lock lease has already been released')
@@ -235,7 +262,12 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
         await ownedToken()
         await fs.rename(temporary, join(path, 'token.json'))
       } catch (error) {
-        const current = await readTokenOrNull(path)
+        let current: LockToken | undefined
+        try {
+          current = await readTokenOrNull(path)
+        } catch (readError) {
+          throw new LockError('LOCK_ERROR', scope, key, 'lock ownership could not be verified after publishing ' + kind + ': ' + String(readError))
+        }
         if (current === undefined || current.nonce !== nonce || current.released === true) {
           throw new LockError('LOCK_LOST', scope, key, 'lock ownership changed while publishing ' + kind)
         }
@@ -245,17 +277,56 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
       }
     }
 
-    return {
+    const touchOwnedLease = async (at: number): Promise<void> => {
+      try {
+        const token = await ownedToken()
+        await publishOwnedToken({ ...token, heartbeatAt: at }, 'touch')
+      } catch (error) {
+        if (error instanceof LockError) throw error
+        throw new LockError('LOCK_ERROR', scope, key, 'heartbeat failed: ' + String(error))
+      }
+    }
+
+    const stopHeartbeat = (): void => {
+      heartbeatStopped = true
+      if (heartbeatTimer !== undefined) {
+        clearTimeout(heartbeatTimer)
+        heartbeatTimer = undefined
+      }
+    }
+
+    const scheduleHeartbeat = (): void => {
+      if (heartbeatStopped || released) return
+      heartbeatTimer = setTimeout(async () => {
+        heartbeatTimer = undefined
+        try {
+          await runExclusive(async () => {
+            if (heartbeatStopped || released) return
+            await touchOwnedLease(now())
+          })
+        } catch (error) {
+          leaseFailure = error instanceof LockError
+            ? error
+            : new LockError('LOCK_ERROR', scope, key, 'heartbeat failed: ' + String(error))
+          heartbeatStopped = true
+        } finally {
+          scheduleHeartbeat()
+        }
+      }, heartbeatMs)
+      ;(heartbeatTimer as unknown as { unref?: () => void }).unref?.()
+    }
+
+    const handle: LockHandle = {
       scope,
       key,
       path,
       async touch(at: number) {
         await runExclusive(async () => {
-          const token = await ownedToken()
-          await publishOwnedToken({ ...token, heartbeatAt: at }, 'touch')
+          await touchOwnedLease(at)
         })
       },
       async release() {
+        stopHeartbeat()
         await runExclusive(async () => {
           if (released) return
           const token = await ownedToken()
@@ -267,12 +338,14 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
         })
       },
     }
+    scheduleHeartbeat()
+    return handle
   }
 
   const status = async (scope: LockScope, profile: string | undefined): Promise<LockState> => {
     const key = lockKey(scope, profile)
     const path = join(root, key.replace(/\//g, '__'))
-    const token = await readTokenOrNull(path)
+    const token = await readTokenForLock(scope, key, path, 'reading lock status')
     if (token === undefined || token.released === true) return { scope, key, path, held: false }
     return { scope, key, path, held: true, token }
   }
@@ -287,7 +360,15 @@ export function createLockManager(deps: LockManagerDeps): LockManager {
       return JSON.parse(text) as LockToken
     } catch (error) {
       if (isMissingError(error)) return undefined
-      return undefined
+      throw error
+    }
+  }
+
+  async function readTokenForLock(scope: LockScope, key: string, path: string, action: string): Promise<LockToken | undefined> {
+    try {
+      return await readTokenOrNull(path)
+    } catch (error) {
+      throw new LockError('LOCK_ERROR', scope, key, action + ' failed: ' + String(error))
     }
   }
 

@@ -23,6 +23,8 @@ export interface CandidateTransactionDeps {
   journal?: { append(entry: { op: string; ok: boolean; detail?: Record<string, unknown> }): Promise<unknown> }
   /** Optional same-device assertion; when provided and false, promote refuses. */
   sameDevice?(a: string, b: string): Promise<boolean>
+  /** Revalidate the caller's ownership before any compensating live move. */
+  beforeCompensation?(): Promise<void>
 }
 
 export interface CandidateTransaction {
@@ -80,6 +82,7 @@ export function createCandidateTransaction(deps: CandidateTransactionDeps): Cand
   }
 
   const rollbackPromoted = async (): Promise<void> => {
+    await deps.beforeCompensation?.()
     const discarded = stagingBase + '/' + profile + '/' + txnId + '.discarded'
     if (!(await fs.exists(quarantinePath))) {
       throw txnError(txnId, phase, 'quarantine path missing at ' + quarantinePath + '; live profile left untouched')
@@ -92,6 +95,7 @@ export function createCandidateTransaction(deps: CandidateTransactionDeps): Cand
       await movePath(fs, quarantinePath, livePath)
     } catch (error) {
       try {
+        await deps.beforeCompensation?.()
         await movePath(fs, discarded, livePath)
       } catch (restoreError) {
         setPhase('failed')
@@ -153,6 +157,7 @@ export function createCandidateTransaction(deps: CandidateTransactionDeps): Cand
           if (candidateActivated) {
             await rollbackPromoted()
           } else if (originalQuarantined) {
+            await deps.beforeCompensation?.()
             await movePath(fs, quarantinePath, livePath)
             steps.push({ step: 'promote-rollback', from: quarantinePath, to: livePath })
             await fs.remove(stagingPath, { recursive: true })

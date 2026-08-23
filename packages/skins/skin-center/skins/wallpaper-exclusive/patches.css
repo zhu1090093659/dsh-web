@@ -73,6 +73,14 @@
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
 
+/* P7: git branch / project chip (BranchChip/Chip, stable data-gitgraph-chip
+   anchor): remove the default block background at rest, keep the shell's own
+   hover / active / open tints. The :not(:hover/:active/[aria-expanded])
+   guard keeps the !important rest override from killing interactive states. */
+[data-gitgraph-chip]:not(:hover):not(:active):not([aria-expanded="true"]) {
+  background: transparent !important;
+}
+
 /* Skill center (skill-explorer) board: in the fixed-glass set (direction:
    the input-card related expanded boards — + / command, access, model, context,
    skill center — all use fixed glass; the four role-based ones are already

@@ -225,19 +225,19 @@ body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-acti
 }
 
 /* Cat-paw selected marker on sidebar tree rows (workspaces and sessions):
- * the shell's marker slot carries an original code-drawn asset (pink fill,
- * deep pink outline; see assets/paw.svg) with a soft pink-white glow and a
- * gentle heartbeat. The CSS-gradient paw beneath the url() keeps the marker
- * visible where skin-dir assets are not served (the static gallery preview
- * embeds stylesheets inline, so the relative url cannot resolve there).
- * Static selectors only - stable data-pane / treeitem / aria-selected hooks,
- * no hashed class names. */
+ * the shell's marker slot carries the paw icon (assets/paw.png, from
+ * iconfont.cn with the icon author's authorization; see README provenance)
+ * with a soft pink-white glow and a gentle heartbeat. The CSS-gradient paw
+ * beneath the url() keeps the marker visible where skin-dir assets are not
+ * served (the static gallery preview embeds stylesheets inline, so the
+ * relative url cannot resolve there). Static selectors only - stable
+ * data-pane / treeitem / aria-selected hooks, no hashed class names. */
 [data-pane="sidebar"] [role="treeitem"][aria-selected="true"] > span:first-of-type {
   display: inline-block;
   width: 26px;
   height: 26px;
   background-image:
-    url("assets/paw.svg"),
+    url("assets/paw.png"),
     radial-gradient(circle at 50% 70%, #ff9ec4 0 25%, #ffffff 27% 36%, transparent 38%),
     radial-gradient(circle at 18% 28%, #ff9ec4 0 12%, #ffffff 14% 22%, transparent 24%),
     radial-gradient(circle at 50% 12%, #ff9ec4 0 12%, #ffffff 14% 22%, transparent 24%),

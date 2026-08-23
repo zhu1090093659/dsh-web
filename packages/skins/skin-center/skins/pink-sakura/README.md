@@ -16,7 +16,7 @@ shipped as a pure asset directory inside the Skin Center package.
   SSH, settings cards, community marketplace, and pet bubble.
 - **Wallpaper-ready**: panels become translucent while the built-in Wallpaper
   Engine bridge is active, without shipping or redistributing wallpaper media.
-- **Cat-paw selected marker**: selected sidebar workspace / session rows carry an original code-drawn paw icon (`assets/paw.svg`, pink fill with a deep pink outline, soft glow, heartbeat animation; static under `prefers-reduced-motion`).
+- **Cat-paw selected marker**: selected sidebar workspace / session rows carry a paw icon (`assets/paw.png`, from iconfont.cn, used with the icon author's authorization) with a soft glow and a heartbeat animation; static under `prefers-reduced-motion`.
 - **Frosted glass**: whenever a backdrop is visible (Wallpaper Engine wallpaper
   or a user manual background, via the unified `data-dsh-backdrop-active`
   marker), the composer, settings, dialogs, panels, and pet bubble get a

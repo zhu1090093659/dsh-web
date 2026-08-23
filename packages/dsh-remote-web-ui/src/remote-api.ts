@@ -15,7 +15,8 @@
  *   plane, credentials — the `PRIVILEGED_METHODS` set of client-connection)
  *   are denied here. The set is pinned by tests/remote-contract.spec.ts.
  * - `/api/pair/*`, `/api/update/*`, `/api/plugin-manager/*`,
- *   `/api/dsh-desktop-launcher/*` and `/api/dsh-web-ui-settings/*` stay physically local.
+ *   `/api/dsh-desktop-launcher/*`, `/api/dsh-web-ui-settings/*`, and
+ *   `/api/remote-setup/*` stay physically local.
  * - Everything else is HTTP- or WebSocket-proxied to the local port with
  *   Host rewritten, Origin and cookies dropped, and a synthetic same-origin
  *   browser marker added after authentication. Plugin loopback fences then
@@ -34,6 +35,7 @@ import {
   LOOPBACK_ONLY_METHODS,
   PLUGIN_MANAGER_PATH,
   REMOTE_PREFIX,
+  REMOTE_SETUP_PATH,
   REMOTE_UPGRADE_PATHS,
   WEB_UI_SETTINGS_BRIDGE_PATH,
 } from './remote-methods.ts'
@@ -44,6 +46,7 @@ export {
   PLUGIN_MANAGER_PATH,
   REMOTE_API_PATHS,
   REMOTE_PREFIX,
+  REMOTE_SETUP_PATH,
   REMOTE_UPGRADE_PATHS,
   WEB_UI_SETTINGS_BRIDGE_PATH,
 } from './remote-methods.ts'
@@ -122,6 +125,9 @@ export function loopbackOnlyDenial(innerPath: string): string | undefined {
   }
   if (innerPath === WEB_UI_SETTINGS_BRIDGE_PATH || innerPath.startsWith(`${WEB_UI_SETTINGS_BRIDGE_PATH}/`)) {
     return 'settings-bridge endpoints stay loopback-only and stay unreachable from a paired remote desktop'
+  }
+  if (innerPath === REMOTE_SETUP_PATH || innerPath.startsWith(`${REMOTE_SETUP_PATH}/`)) {
+    return 'remote-setup endpoints stay loopback-only and stay unreachable from a paired remote desktop'
   }
   if (!innerPath.startsWith('/api/')) return undefined
   const method = innerPath.slice('/api/'.length)

@@ -93,6 +93,13 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-remote-web-ui
 
 二维码在隧道报告其 URL 前保持仅局域网，且隧道重启会铸一枚**新的** hostname——插件清除旧链接并铸一枚新的，用户永远不必触碰配置。注意 quick tunnel 是公网的：任何拿到 URL 的人都能加载静态页；已配对设备 cookie 门才是真正的围栏（手机的 `/m/api` 带方法白名单、远程桌面的 `/remote/api`）。连接插件的 `/api` 围栏则直接拒绝隧道化主机——被隧道化的 Host 永远不进入连接信任围栏——因此 **auto tunnel 工作无需任何 profile 或 harness 定制**。`--trusted-host` 不属于这条路径：已配对 PC 走 `/remote/api`。
 
+### 用户自有 HTTPS 配置规划（只读）
+
+可选的用户自有 Cloudflare 命名隧道与 Access 路径当前只提供 loopback 预检与计划预览。其契约返回 `executionAvailable: false`，不存在 apply 或 rollback 操作。这条路径独立于现有 `autoTunnel` quick tunnel，也不会改变后者。
+
+- 入口预览默认启用 `/m`，只有用户显式选择后才包含 `/remote`，并以最终 404 规则拒绝其他所有路径。当前 `/m` 配对接受流程和 `/remote` 启动流程仍有兼容性阻断，因此计划不可执行。
+- macOS launchd 自动化与 Windows 手工配置目前都只是预览动作，不会安装或启动任何服务。
+
 ### 手动隧道（自带）
 
 二维码链接通常是局域网 URL，所以家外的手机无法使用。把隧道指向 dsh web 端口，并告知插件其公网地址——二维码随后由隧道 URL 构建。涉及一个钮；`--trusted-host` 是独立的 SDK flag，不属于这条配对流：
@@ -172,6 +179,9 @@ pnpm run build
 ## 安全模型
 
 - 移动端普通接口与 mux 事件流都要求有效的已配对设备会话。会话缺失或已撤销时返回 HTTP 403，并使用带 `error.code: "unpaired"` 的 JSON 拒绝信封；浏览器 `EventSource` API 只暴露事件流失败，不暴露该响应体。
+- **本机规划围栏**：用户自有 HTTPS 预检与计划控制面只接受 loopback 本机同源请求，且不经 `/remote` 暴露。这一阶段只向 Cloudflare 发出 GET/只读请求；读取成功不等于写权限已验证。
+- **凭据生命周期**：通过请求提供的 Cloudflare API token 只在当前本机同源请求的内存中使用，既不持久化，也不在响应中回显；这不表示通过请求提供的 token 完全不会进入浏览器。选择 Keychain 凭据来源时，仅由 host 读取凭据值。
+- **规划无副作用**：预检与计划不会创建、更新或删除 Cloudflare 资源，不会写本地文件，不会安装或管理 launchd，也不会写入 `publicBaseUrl`。
 
 ## 已知限制与待办
 

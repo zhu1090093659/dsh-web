@@ -26,6 +26,8 @@ import { makeMobileApiRoutes } from './mobile-api.ts'
 import { PendingTracker } from './mobile-pending.ts'
 import { makePairedModelCatalogRoutes } from './paired-model-catalog.ts'
 import { makeRemoteApiRoutes, makeRemoteApiUpgradeRoutes } from './remote-api.ts'
+import { createCloudflareSetupPlanner } from './cloudflare-plan.ts'
+import { makeSetupRoutes } from './setup-routes.ts'
 import { claimPostureKey, postureTargets, probePosture, releasePostureKey } from './posture.ts'
 import { lanIPv4Addresses } from './lan.ts'
 import { TunnelManager, type TunnelInfo } from './tunnel.ts'
@@ -293,6 +295,14 @@ function applyImpl(ctx: Context, config?: Config): void {
   if (apiProxy === undefined) {
     console.warn('remote-web-ui: apiProxy service unavailable — the mobile data channel is disabled')
   }
+  const setupPlanner = createCloudflareSetupPlanner({
+    host: ctx.webServer.host,
+    port: ctx.webServer.port,
+    config: () => {
+      const value = resolve()
+      return { autoTunnel: value.autoTunnel, publicBaseUrl: value.publicBaseUrl }
+    },
+  })
   // ── remote update ────────────────────────────────────────────────────────
   // The dsh-web-ui self-update surface: probe the npm registry for family
   // releases and run `pnpm update --latest` in the owning profile. Resolutions
@@ -373,6 +383,7 @@ function applyImpl(ctx: Context, config?: Config): void {
       port: ctx.webServer.port,
       requirePairingForLan: () => resolve().requirePairingForLan,
     }),
+    ...makeSetupRoutes({ service: setupPlanner }),
     ...updateRoutes,
   ]
   const upgrades = makeRemoteApiUpgradeRoutes({

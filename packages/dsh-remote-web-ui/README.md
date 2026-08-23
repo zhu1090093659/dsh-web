@@ -329,6 +329,13 @@ enters the connection trust fence — so **no profile or harness
 customization is required for the auto tunnel to work**. `--trusted-host`
 is not part of this path: a paired PC uses `/remote/api`.
 
+### User-owned HTTPS setup planning (read-only)
+
+The opt-in user-owned Cloudflare named-tunnel and Access path currently provides only loopback preflight and plan preview. Its contract reports `executionAvailable: false`, and no apply or rollback operation exists. This path is independent of and does not change the existing `autoTunnel` quick-tunnel path.
+
+- The ingress preview enables `/m` by default, includes `/remote` only after explicit opt-in, and ends with a final 404 rule for every other path. Current compatibility blockers in `/m` pairing acceptance and `/remote` boot keep the plan non-executable.
+- macOS launchd automation and Windows manual setup are preview-only actions. No service is installed or started.
+
 ### Manual tunnels (bring your own)
 
 The QR link is normally a LAN URL, so a phone outside the house cannot use
@@ -495,6 +502,9 @@ opens at `http://127.0.0.1`.
 ## Security model
 
 - Mobile unary routes and the mux event stream require a live paired-device session. A missing or revoked session receives HTTP 403 with a JSON rejection carrying `error.code: "unpaired"`; the browser's `EventSource` API exposes only the stream failure, not that response body.
+- **Local planning fence**: the user-owned HTTPS preflight and plan control plane accepts only loopback, same-origin requests and is not exposed through `/remote`. This phase sends only GET/read requests to Cloudflare; successful reads do not prove mutation permissions.
+- **Credential lifetime**: a request-supplied Cloudflare API token is used only in memory for the current local same-origin request; it is never persisted or reflected in a response. This does not claim that a request-supplied token never enters the browser. When Keychain is selected as the credential source, only the host reads the credential value.
+- **No planning side effects**: preflight and plan do not create, update, or delete Cloudflare resources; write local files; install or manage launchd; or write `publicBaseUrl`.
 
 ## Known Limitations and Deferred Work
 

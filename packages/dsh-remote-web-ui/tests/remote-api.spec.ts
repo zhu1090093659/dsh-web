@@ -169,6 +169,9 @@ describe('innerPathOf / loopbackOnlyDenial', () => {
     expect(loopbackOnlyDenial('/api/dsh-web-ui-settings')).toBeDefined()
     expect(loopbackOnlyDenial('/api/dsh-web-ui-settings/describe')).toBeDefined()
     expect(loopbackOnlyDenial('/api/dsh-web-ui-settings/mutate')).toBeDefined()
+    expect(loopbackOnlyDenial('/api/remote-setup')).toBeDefined()
+    expect(loopbackOnlyDenial('/api/remote-setup/preflight')).toBeDefined()
+    expect(loopbackOnlyDenial('/api/remote-setup/plan')).toBeDefined()
     expect(loopbackOnlyDenial('/api/session.list')).toBeUndefined()
     expect(loopbackOnlyDenial('/api/pet/state')).toBeUndefined()
     expect(loopbackOnlyDenial('/sidebar/api/fs.tree')).toBeUndefined()
@@ -304,6 +307,13 @@ describe('remote desktop channel (/remote)', () => {
       expect(privileged.status).toBe(403)
       const privilegedBody = JSON.parse(privileged.body) as { result: { error: { code: string } } }
       expect(privilegedBody.result.error.code).toBe('forbidden')
+      for (const setupPath of ['/remote/api/remote-setup/preflight', '/remote/api/remote-setup/plan']) {
+        const setup = await call(port, setupPath.endsWith('/plan') ? 'POST' : 'GET', setupPath, {
+          body: setupPath.endsWith('/plan') ? '{"credential":{"source":"request","token":"must-not-be-forwarded"}}' : undefined,
+        })
+        expect(setup.status, setupPath).toBe(403)
+        expect(JSON.parse(setup.body).result.error.code, setupPath).toBe('forbidden')
+      }
       expect(upstream.hits).toHaveLength(0)
     } finally {
       await close()

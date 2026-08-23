@@ -36,6 +36,9 @@ export const DESKTOP_LAUNCHER_PATH = '/api/dsh-desktop-launcher'
 /** Family settings-bridge HTTP prefix: describe/mutate stay physically local. */
 export const WEB_UI_SETTINGS_BRIDGE_PATH = '/api/dsh-web-ui-settings'
 
+/** Read-only setup planner HTTP prefix: local machine facts and credentials stay local. */
+export const REMOTE_SETUP_PATH = '/api/remote-setup'
+
 /**
  * Loopback-only methods of the host API surface, mirrored from
  * client-connection's `PRIVILEGED_METHODS` (pinned by

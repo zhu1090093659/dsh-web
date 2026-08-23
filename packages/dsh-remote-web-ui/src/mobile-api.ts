@@ -104,9 +104,49 @@ function mobileAncestryCrumbs(target: string): MobileDirectoryEntry[] {
  * binds — the mobile workspace browser (#977) therefore failed there. This
  * plugin-side listing replicates the browse backend's shape and works on
  * every platform.
+ *
+ * Windows drive switching: at a drive root (e.g. `C:\`) the listing prepends a
+ * "此电脑" crumb; clicking it lists the available drives (A:-Z:), and clicking
+ * a drive enters that drive's root. The upstream browse backend has no drive
+ * picker, so only the starting drive was reachable.
  */
+
+/** Sentinel path for the "This PC" drive picker (never a real filesystem path). */
+const THIS_PC = 'this-pc'
+
+/** Windows drive letters that exist (A:-Z:), rendered as the This-PC drive picker. */
+async function windowsDrives(): Promise<MobileDirectoryEntry[]> {
+  const drives: MobileDirectoryEntry[] = []
+  for (let code = 65; code <= 90; code++) {
+    const letter = String.fromCharCode(code)
+    const root = `${letter}:\\`
+    try {
+      await stat(root)
+      drives.push({ name: root, path: root, hidden: false })
+    } catch {
+      // drive absent
+    }
+  }
+  return drives
+}
+
+/** True when the resolved path is a Windows drive root (e.g. `C:\`). */
+function isWindowsDriveRoot(target: string): boolean {
+  return /^[A-Za-z]:[\\/]$/.test(target)
+}
+
 async function mobileListDirectory(path: string | undefined): Promise<MobileDirectoryListing> {
   const home = homedir()
+  // This-PC drive picker (Windows): list available drives instead of a level.
+  if (path === THIS_PC) {
+    return {
+      path: THIS_PC,
+      home,
+      crumbs: [{ name: '此电脑', path: THIS_PC, hidden: false }],
+      entries: await windowsDrives(),
+      truncated: false,
+    }
+  }
   const target = resolve(path ?? home)
   const maxEntries = 1000
   const keep = maxEntries + 1
@@ -162,7 +202,12 @@ async function mobileListDirectory(path: string | undefined): Promise<MobileDire
     }
     entries.push({ name: candidate.name, path: entryPath, hidden: candidate.name.startsWith('.') })
   }
-  return { path: target, home, crumbs: mobileAncestryCrumbs(target), entries, truncated }
+  const crumbs = mobileAncestryCrumbs(target)
+  // Windows: at a drive root, prepend a "此电脑" crumb so the user can switch drives.
+  if (isWindowsDriveRoot(target)) {
+    crumbs.unshift({ name: '此电脑', path: THIS_PC, hidden: false })
+  }
+  return { path: target, home, crumbs, entries, truncated }
 }
 
 /** One session.list page (thin phones load incrementally). */

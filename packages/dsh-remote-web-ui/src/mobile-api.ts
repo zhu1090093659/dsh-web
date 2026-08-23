@@ -53,6 +53,7 @@ const MOBILE_ALLOWLIST = new Set([
   'session.models',
   'session.selectModel',
   'session.rename',
+  'session.cancel',
 ])
 
 /**
@@ -516,5 +517,6 @@ async function dispatch(apiProxy: ApiProxy, method: string, payload: unknown, rp
   if (method === 'session.models') return wrap(await apiProxy.sessions.models(request as never))
   if (method === 'session.selectModel') return wrap(await apiProxy.sessions.selectModel(request as never))
   if (method === 'session.rename') return wrap(await apiProxy.sessions.rename(request as never))
+  if (method === 'session.cancel') return wrap(await apiProxy.sessions.cancel(request as never))
   throw new Error(`unhandled allowlisted method ${method}`)
 }

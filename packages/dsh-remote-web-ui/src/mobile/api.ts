@@ -112,6 +112,11 @@ export async function sendCommand(sessionId: string, line: string): Promise<unkn
   })
 }
 
+/** Stop the session's active turn (the mobile "停止" button). */
+export async function cancelSession(sessionId: string): Promise<{ accepted: true }> {
+  return await callUnary<{ accepted: true }>('session.cancel', { sessionId })
+}
+
 /** Fresh advisory model directory for one session (current + groups + failures). */
 export async function models(sessionId: string): Promise<SessionModels> {
   return await callUnary<SessionModels>('session.models', { sessionId })

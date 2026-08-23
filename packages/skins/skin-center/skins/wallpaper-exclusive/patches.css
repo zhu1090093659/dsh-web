@@ -472,6 +472,16 @@ body[data-dsh-wallpaper-active] [class*="centerCol"] {
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
 }
 
+/* Task0: when a queued dock card is mounted directly above the composer bar,
+   the composer card's own border/background/shadow reads as an extra outer
+   rectangle around the pair. Hide that chrome only while the dock card is
+   present (structural sibling + data-composer-card anchors, no hashes). */
+[data-slot="conversation.input.dock"] > [class*="_dock"] + [data-slot="conversation.composer.bar"] [data-composer-card] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
 /* --- dsh-better-sidebar side cards + panel chrome (fixed-glass set) ---------------
    The "侧边卡片" are better-sidebar's empty-panel welcome cards (.paneCard) plus
    its panel chrome. The host is a document.body portal ([data-dsh-better-sidebar]

@@ -456,8 +456,9 @@ body[data-dsh-wallpaper-active] [class*="centerCol"] {
   backdrop-filter: none !important;
 }
 
-[data-slot="conversation.input.dock"] > *:not([data-gitgraph-chip-anchor]) {
+[data-slot="conversation.input.dock"] > [class*="_dock"]:not([data-gitgraph-chip-anchor]) {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
+  border-radius: 8px !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
 }

@@ -325,6 +325,7 @@ body:not([data-ds-dark-theme]) button[class*="_primary"]:not([data-dsh-plugin] *
 }
 
 [data-slot="conversation.session.header.actions"] [class*="_menu"],
+[data-slot="conversation.session.header.actions"] [role="tree"],
 [data-slot="conversation.session.header.actions"] [class*="_subagent"],
 [data-slot="conversation.session.header.actions"] [class*="_subagentBody"],
 [data-slot="conversation.session.header.actions"] [class*="_subagentRow"] {

@@ -7,6 +7,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import { gzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
@@ -147,7 +148,8 @@ export function makeMobileRoutes(): WebRoute[] {
   // The bundle is immutable for the process lifetime (a rebuild requires a
   // host restart), so the body is read from disk once, not per phone.
   let bundleBody: string | undefined
-  const handleBundle = async (_req: IncomingMessage, res: ServerResponse): Promise<void> => {
+  let bundleGzip: Buffer | undefined
+  const handleBundle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     if (bundleBody === undefined) {
       const path = mobileBundlePath()
       if (!existsSync(path)) {
@@ -160,6 +162,21 @@ export function makeMobileRoutes(): WebRoute[] {
         writeStatic(res, 500, 'text/plain', 'failed to read the mobile bundle')
         return
       }
+    }
+    // Local patch (2026-08-23): gzip the mobile bundle (493KB -> ~116KB) so
+    // phones on weak links load /m/ reliably instead of timing out.
+    const accept = (req.headers['accept-encoding'] || '').toString()
+    if (accept.includes('gzip')) {
+      if (bundleGzip === undefined) bundleGzip = gzipSync(Buffer.from(bundleBody, 'utf8'))
+      res.writeHead(200, {
+        'content-type': 'text/javascript; charset=utf-8',
+        'content-encoding': 'gzip',
+        'cache-control': 'no-store',
+        'referrer-policy': 'no-referrer',
+        'vary': 'Accept-Encoding',
+      })
+      res.end(bundleGzip)
+      return
     }
     writeStatic(res, 200, 'text/javascript', bundleBody)
   }

@@ -213,7 +213,10 @@ export interface WorkspaceCreateResult {
 
 /** Browse one directory level on the host (defaults to home directory). */
 export async function listDirectory(path?: string): Promise<DirectoryListing> {
-  return await callUnary<DirectoryListing>('host.listDirectory', path === undefined ? {} : { path })
+  // Local patch (2026-08-23): host.listDirectory is gated on the composed
+  // directory-picker capability (native on Windows loopback binds), so the
+  // mobile browser uses the plugin's own fs listing instead.
+  return await callUnary<DirectoryListing>('mobile.listDirectory', path === undefined ? {} : { path })
 }
 
 /** Create a workspace from an existing host directory (does not mkdir). */

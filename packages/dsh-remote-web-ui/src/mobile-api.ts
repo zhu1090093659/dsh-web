@@ -28,6 +28,9 @@ import type { PendingTracker } from './mobile-pending.ts'
 import type { PairingService } from './pairing.ts'
 import { readBoundedJson, writeJson } from './http.ts'
 import { readCookie } from './gate.ts'
+import { opendir, stat } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { basename, dirname, join, resolve } from 'node:path'
 
 /**
  * Methods the phone surface may call. Everything else is refused HERE — but
@@ -38,7 +41,7 @@ import { readCookie } from './gate.ts'
  * device at a time.
  */
 const MOBILE_ALLOWLIST = new Set([
-  'host.listDirectory',
+  'mobile.listDirectory',
   'workspace.create',
   'workspace.list',
   'agentPreset.list',
@@ -60,6 +63,104 @@ const MOBILE_ALLOWLIST = new Set([
 const MOBILE_PREFERENCES_METHOD = 'mobile.preferences'
 const MOBILE_PENDING_METHOD = 'mobile.pending'
 const MOBILE_RESPOND_METHOD = 'mobile.respond'
+const MOBILE_LIST_DIRECTORY_METHOD = 'mobile.listDirectory'
+
+/** One directory row the mobile browser can enter (directories + symlinks to dirs). */
+interface MobileDirectoryEntry {
+  name: string
+  path: string
+  hidden: boolean
+}
+
+/** One-level directory listing with ancestor breadcrumbs (host.listDirectory shape). */
+interface MobileDirectoryListing {
+  path: string
+  home: string
+  crumbs: MobileDirectoryEntry[]
+  entries: MobileDirectoryEntry[]
+  truncated: boolean
+}
+
+/** Ancestor chain from the filesystem root to `target` inclusive (breadcrumb rows). */
+function mobileAncestryCrumbs(target: string): MobileDirectoryEntry[] {
+  const crumbs: MobileDirectoryEntry[] = []
+  let current = target
+  for (;;) {
+    const parent = dirname(current)
+    crumbs.unshift({ name: parent === current ? current : basename(current), path: current, hidden: false })
+    if (parent === current) return crumbs
+    current = parent
+  }
+}
+
+/**
+ * List one directory level over the host filesystem (directories + symlinks
+ * to directories, name-sorted, bounded at 1000 rows with `truncated`).
+ * Local patch (2026-08-23): host.listDirectory is gated on the composed
+ * directory-picker capability, which resolves to `native` on Windows loopback
+ * binds — the mobile workspace browser (#977) therefore failed there. This
+ * plugin-side listing replicates the browse backend's shape and works on
+ * every platform.
+ */
+async function mobileListDirectory(path: string | undefined): Promise<MobileDirectoryListing> {
+  const home = homedir()
+  const target = resolve(path ?? home)
+  const maxEntries = 1000
+  const keep = maxEntries + 1
+  const window: Array<{ name: string; isDirectory: boolean; isSymbolicLink: boolean }> = []
+  let evicted = false
+  try {
+    const dir = await opendir(target)
+    try {
+      for (;;) {
+        const dirent = await dir.read()
+        if (dirent === null) break
+        if (!dirent.isDirectory() && !dirent.isSymbolicLink()) continue
+        const candidate = { name: dirent.name, isDirectory: dirent.isDirectory(), isSymbolicLink: dirent.isSymbolicLink() }
+        if (window.length === keep && candidate.name.localeCompare(window[window.length - 1]!.name) >= 0) {
+          evicted = true
+          continue
+        }
+        let lo = 0
+        let hi = window.length
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1
+          if (candidate.name.localeCompare(window[mid]!.name) < 0) hi = mid
+          else lo = mid + 1
+        }
+        window.splice(lo, 0, candidate)
+        if (window.length > keep) {
+          window.pop()
+          evicted = true
+        }
+      }
+    } finally {
+      await dir.close()
+    }
+  } catch (error: unknown) {
+    throw new Error(`cannot list ${target}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  const entries: MobileDirectoryEntry[] = []
+  let truncated = evicted
+  for (const candidate of window) {
+    const entryPath = join(target, candidate.name)
+    let enterable = candidate.isDirectory
+    if (!enterable && candidate.isSymbolicLink) {
+      try {
+        enterable = (await stat(entryPath)).isDirectory()
+      } catch {
+        continue // broken/cyclic symlink: not enterable
+      }
+    }
+    if (!enterable) continue
+    if (entries.length === maxEntries) {
+      truncated = true
+      break
+    }
+    entries.push({ name: candidate.name, path: entryPath, hidden: candidate.name.startsWith('.') })
+  }
+  return { path: target, home, crumbs: mobileAncestryCrumbs(target), entries, truncated }
+}
 
 /** One session.list page (thin phones load incrementally). */
 const SESSION_PAGE_SIZE = 20
@@ -157,6 +258,7 @@ export function makeMobileApiRoutes(deps: MobileApiDeps): WebRoute[] {
     const local = method === MOBILE_PREFERENCES_METHOD 
       || method === MOBILE_PENDING_METHOD 
       || method === MOBILE_RESPOND_METHOD
+      || method === MOBILE_LIST_DIRECTORY_METHOD
     if (!MOBILE_ALLOWLIST.has(method) && !local) {
       writeJson(res, 403, { ok: false, error: { code: 'forbidden', message: `method ${method} is not exposed to the mobile surface` } })
       return
@@ -207,6 +309,23 @@ export function makeMobileApiRoutes(deps: MobileApiDeps): WebRoute[] {
             type: 'server-response',
             rpcId,
             result: { ok: false, error: { code: 'internal', message } },
+          })
+        }
+      } else if (method === MOBILE_LIST_DIRECTORY_METHOD) {
+        const payload = parsed.payload as { path?: unknown } | undefined
+        try {
+          const listing = await mobileListDirectory(typeof payload?.path === 'string' ? payload.path : undefined)
+          writeJson(res, 200, {
+            type: 'server-response',
+            rpcId,
+            result: { ok: true, value: listing },
+          })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          writeJson(res, 200, {
+            type: 'server-response',
+            rpcId,
+            result: { ok: false, error: { code: 'directory-unreadable', message } },
           })
         }
       }
@@ -344,7 +463,6 @@ async function dispatch(apiProxy: ApiProxy, method: string, payload: unknown, rp
   })
   if (method === 'workspace.list') return wrap(await apiProxy.workspace.list(request as never))
   if (method === 'workspace.create') return wrap(await apiProxy.workspace.create(request as never))
-  if (method === 'host.listDirectory') return wrap(await apiProxy.host.listDirectory(request as never, signal ?? new AbortController().signal))
   if (method === 'agentPreset.list') return wrap(await apiProxy.agentPresets.list(request as never))
   if (method === 'session.create') return wrap(await apiProxy.sessions.create(request as never))
   if (method === 'session.history') return wrap(await apiProxy.sessions.history(request as never))

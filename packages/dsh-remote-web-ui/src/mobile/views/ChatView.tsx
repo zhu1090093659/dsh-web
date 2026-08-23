@@ -602,6 +602,12 @@ const MessageRow = memo(function MessageRow({ message, showToolCalls, showSystem
     && !showSystemMessages) {
     return null
   }
+  // 关闭"工具调用"显示后，仅含工具调用、无正文/思维链的消息不再渲染空气泡
+  // （只显示时间）。有正文/思维链/可见工具/失败标记才渲染。
+  const hasReasoning = message.kind === 'assistant' && message.reasoning !== undefined && message.reasoning !== ''
+  const hasTools = showToolCalls && message.kind === 'assistant' && message.tools !== undefined && message.tools.length > 0
+  const hasText = message.text !== undefined && message.text !== ''
+  if (!hasReasoning && !hasTools && !hasText && message.failed !== true) return null
   return (
     <div className={`chat-msg chat-msg-${message.kind}${message.pending === true ? ' chat-msg-pending' : ''}${message.failed === true ? ' chat-msg-failed' : ''}`}>
       {message.kind === 'assistant' && message.reasoning !== undefined && message.reasoning !== '' && (
@@ -750,7 +756,9 @@ function MarkdownText({ text, pending }: { text: string; pending: boolean }) {
       if (timerRef.current !== undefined) clearTimeout(timerRef.current)
     }
   }, [])
-  const long = text.length > LONG_TEXT_LIMIT
+  // 流式输出期间不折叠（45vh + overflow:hidden 会把新内容藏起来且不可滚动，
+  // 手机上看不到"输出中"的长自然段/表格）；结束后超过 LONG_TEXT_LIMIT 才折叠。
+  const long = !pending && text.length > LONG_TEXT_LIMIT
   const collapsed = long && !open
   return (
     <div className={'chat-msg-text chat-md' + (collapsed ? ' chat-md-collapsed' : '')}>
@@ -781,7 +789,8 @@ function CollapsibleText({ text }: { text: string }) {
   )
 }
 
-const LONG_TEXT_LIMIT = 1600
+// 阈值 1600 -> 6000：常规表格/段落回复完整显示；超大消息结束后才折叠。
+const LONG_TEXT_LIMIT = 6000
 const LONG_TEXT_PREVIEW = 800
 
 /** Latest non-empty line of a streaming reasoning buffer. */

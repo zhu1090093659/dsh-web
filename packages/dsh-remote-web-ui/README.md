@@ -65,7 +65,12 @@ that probes and runs the update.
   `/api/pair` endpoints: loopback, the advertised LAN literals, or the
   configured public base URL. Through the `/remote` desktop channel all
   `/api/pair/*` paths stay loopback-only. Adoption is refused while the
-  provider's live model catalog is unavailable or unknown. Stop or device
+  provider's live model catalog is unavailable or unknown. A provider whose
+  resolved `models` list is absent or empty keeps inheriting its installed
+  catalog until an unknown custom model must materialize that catalog;
+  existing model overrides are preserved and translated into the resulting
+  entries. Malformed or conflicting model profiles are refused instead of
+  being destructively rewritten. Stop or device
   revocation disables it immediately; the
   generic `settings.*`, `credentials.*`, and `llm.discoverModels` RPC methods
   remain loopback-only.

@@ -51,7 +51,7 @@ Skins follow the same philosophy: a v2 skin is no longer an npm package coupled 
 | File preview & changes | None | Right panel: explorer / editor / terminal / git / browser |
 | Companion pet | None | Whale girl: reacts to agent state, feeding and bonding |
 | Git visualization | None | Branch picker + commit history graph |
-| Themes & skins | Default theme | Skin center with 18 skins + a custom-theme editor, try-on before apply |
+| Themes & skins | Default theme | Skin center with 19 skins + a custom-theme editor, try-on before apply |
 
 ## Workshop (dsh-market.com)
 
@@ -142,7 +142,7 @@ The mechanics, stabilization controls and limits live in [dsh-liangshen README](
 
 ## Skins
 
-The skin center is the single skin loader: 18 theme skins try on before apply — previews apply instantly and revert fully on exit, apply with one click once happy; the list ends with a custom-theme editor previewing accent, background, foreground and contrast live. Blue Fantasy ships with the skin center; every other skin downloads on demand from the [Workshop](#workshop-dsh-marketcom).
+The skin center is the single skin loader: 19 theme skins try on before apply — previews apply instantly and revert fully on exit, apply with one click once happy; the list ends with a custom-theme editor previewing accent, background, foreground and contrast live. Blue Fantasy ships with the skin center; every other skin downloads on demand from the [Workshop](#workshop-dsh-marketcom).
 
 ![Skin center](docs/screenshots/03-settings-skin-center.png)
 

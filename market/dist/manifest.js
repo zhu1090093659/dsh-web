@@ -398,6 +398,35 @@ window.SKIN_MANIFEST = {
       }
     },
     {
+      "id": "war-thunder",
+      "name": "战争雷霆 · 钢铁前线",
+      "nameEn": "War Thunder Frontline",
+      "author": "dsh-web-ui",
+      "tagline": "游戏登录背景 · 橄榄军绿玻璃面板 · 星徽标题栏与陆海空模式条",
+      "description": "以战争雷霆（War Thunder）游戏美术为灵感的军事主题皮肤：亮暗主题各配一幅游戏内登录背景（取自本机游戏客户端素材，只读解包后重新编码），橄榄军绿半透明面板透出战场景，标题栏带官方星徽，底部是 TANKS / AVIATION / FLEET 三段模式条，琥珀金强调色贯穿按钮与选区。",
+      "accent": "#d9a441",
+      "preview": {
+        "light": "assets/skins/war-thunder/preview/light.png",
+        "dark": "assets/skins/war-thunder/preview/dark.png"
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/war-thunder/assets/light-art.webp",
+            "scrim": "linear-gradient(rgba(239, 234, 218, 0.04) 0%, rgba(233, 227, 209, 0.06) 55%, rgba(222, 214, 192, 0.09) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/war-thunder/assets/dark-art.webp",
+            "scrim": "linear-gradient(rgba(9, 11, 8, 0.1) 0%, rgba(11, 13, 10, 0.14) 60%, rgba(8, 10, 8, 0.18) 100%)"
+          }
+        }
+      }
+    },
+    {
       "id": "wallpaper-exclusive",
       "name": "壁纸专属",
       "nameEn": "Wallpaper Exclusive",

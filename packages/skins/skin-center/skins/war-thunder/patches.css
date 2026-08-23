@@ -1,0 +1,351 @@
+/**
+ * War Thunder (战争雷霆 · 钢铁前线) — L3 component patches.
+ *
+ * Readability first: the three app columns wear near-opaque olive surfaces
+ * (backdrop-filter on the [data-pane] roots only — they have no fixed
+ * descendants; dialogs/overlays stay above the decorations), so the
+ * conversation text never fights the artwork. The battlefield breathes
+ * through the frame edges (the root/frame wrappers stay transparent) and
+ * the theme scrim. Interaction chrome (buttons, inputs, scrollbars,
+ * selection, links, focus) is olive/amber.
+ *
+ * The loader force-scopes every selector under
+ * html[data-dsh-skin="war-thunder"]; write body / #root heads exactly as
+ * you would for the official shell.
+ */
+
+/* --- AppFrame 骨架透明：战场背景在列间与边缘透出 ----------------------
+   Only the outer wrappers go transparent. The surface roots below get
+   their own near-opaque paint; the picture stays visible around them. */
+
+[id="root"] > div > div {
+  background: transparent !important;
+}
+
+body[data-ds-dark-theme] [id="root"] > div > div {
+  background: transparent !important;
+}
+
+/* --- 列表面：可读橄榄玻璃（token 驱动） -------------------------------
+   The painted columns consume the --dsw-alias-bg-layer-* tokens (now
+   near-opaque in skin.css), so conversation text never fights the
+   artwork. Deliberately NO backdrop-filter on panes: a filter ancestor
+   becomes the containing block for fixed-position descendants, which
+   would trap overlays like the settings dialog inside a column (the v1
+   lesson). The battlefield breathes through the transparent frame edges
+   and the theme scrim. */
+
+/* 列内子包装不再透出图片（保持与 pane 一致的近不透明感）。 */
+[data-pane="sidebar"] > div,
+[data-pane="conversation"] > div,
+[data-pane="details"] > div {
+  background: transparent;
+}
+
+body[data-ds-dark-theme] [data-pane="sidebar"] > div,
+body[data-ds-dark-theme] [data-pane="conversation"] > div,
+body[data-ds-dark-theme] [data-pane="details"] > div {
+  background: transparent;
+}
+
+/* --- 输入区（composer）：与列表面同色的浅描边玻璃 ---------------------- */
+
+[data-dsh-surface="composer"],
+[data-slot="conversation.input.dock"] {
+  background: transparent !important;
+}
+
+/* 输入座自身（strip / composerStack）保留官方 token 底色（近不透明），
+   只为最外层的 dock 做透明，让输入卡稳定浮在列面上。 */
+[data-dsh-surface="composer"] > div,
+[data-slot="conversation.input.dock"] > * > * {
+  background: transparent;
+}
+
+body[data-ds-dark-theme] [data-dsh-surface="composer"] > div,
+body[data-ds-dark-theme] [data-slot="conversation.input.dock"] > * > * {
+  background: transparent;
+}
+
+/* --- 背景视差：画作放大一点，随指针轻微漂移 --------------------------
+   The hooks tag the background layer .wt-parallax and drive its transform
+   by the pointer; the artwork is oversized so the drift never exposes an
+   edge. The scrim travels with the layer. The transform transition
+   (0.5s cubic-bezier) is what makes the drift glide: hooks only set the
+   target, the browser eases each step and eases back to center when the
+   Alt peek releases. */
+
+html body [data-dsh-skin-layer="background"].wt-parallax {
+  /* 108% overscan: ±4% of the viewport stays covered while drifting. */
+  inset: -4% !important;
+  transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
+}
+
+html body [data-dsh-skin-layer="background"].wt-parallax img,
+html body [data-dsh-skin-layer="background"].wt-parallax video {
+  width: 108% !important;
+  height: 108% !important;
+  left: -4% !important;
+  top: -4% !important;
+  position: absolute !important;
+}
+
+/* --- Hold-to-peek（按住 Alt）：前景玻璃整层淡出，战场显现 --------------
+   html / body [data-dsh-wt-peek] is set by the hooks. Instead of picking
+   individual surfaces (which missed the inner token-painted layers), the
+   peek state OVERRIDES THE LAYER TOKENS themselves: every official surface
+   consuming --dsw-alias-bg-* / --dsw-specific-* collapses toward
+   transparent, so the whole frosted stack — sidebar, conversation,
+   details, composer, menus — fades as one and the artwork shows through.
+   Text keeps its own color (labels are not background-bound), and the
+   frame scrim still softens the art. Transitions are gentle. */
+
+html body[data-dsh-wt-peek] {
+  --dsw-alias-bg-base: rgba(243, 239, 225, 0.08);
+  --dsw-alias-bg-layer-1: rgba(244, 240, 226, 0.1);
+  --dsw-alias-bg-layer-2: rgba(238, 232, 214, 0.12);
+  --dsw-alias-bg-layer-3: rgba(231, 224, 203, 0.14);
+  --dsw-alias-bg-overlay: rgba(248, 244, 232, 0.12);
+  --dsw-alias-bg-mask-photo: rgba(24, 26, 17, 0.14);
+  --dsw-alias-bg-module-platform: rgba(233, 226, 206, 0.1);
+  --dsw-specific-bubble: rgba(245, 230, 189, 0.12);
+  --dsw-specific-bubble-highlight: rgba(241, 220, 159, 0.16);
+  --dsw-specific-input-major: rgba(255, 255, 255, 0.1);
+  --dsw-specific-menu: rgba(248, 244, 232, 0.12);
+  --dsw-specific-selector: rgba(243, 236, 218, 0.12);
+  --dsw-specific-sidebar-fill: rgba(244, 240, 227, 0.08);
+  --dsw-specific-sidebar-nav-item-active: rgba(228, 214, 170, 0.2);
+  --dsw-specific-sidebar-nav-item-hover: rgba(226, 218, 192, 0.14);
+}
+
+html body[data-ds-dark-theme][data-dsh-wt-peek] {
+  --dsw-alias-bg-base: rgba(22, 27, 18, 0.1);
+  --dsw-alias-bg-layer-1: rgba(26, 32, 22, 0.12);
+  --dsw-alias-bg-layer-2: rgba(33, 40, 28, 0.14);
+  --dsw-alias-bg-layer-3: rgba(40, 48, 34, 0.16);
+  --dsw-alias-bg-overlay: rgba(22, 27, 18, 0.14);
+  --dsw-alias-bg-mask-photo: rgba(8, 10, 6, 0.2);
+  --dsw-alias-bg-module-platform: rgba(33, 40, 28, 0.1);
+  --dsw-specific-bubble: rgba(43, 52, 35, 0.14);
+  --dsw-specific-bubble-highlight: rgba(58, 68, 46, 0.18);
+  --dsw-specific-input-major: rgba(20, 24, 16, 0.12);
+  --dsw-specific-menu: rgba(22, 27, 18, 0.14);
+  --dsw-specific-selector: rgba(26, 32, 22, 0.14);
+  --dsw-specific-sidebar-fill: rgba(21, 26, 17, 0.1);
+  --dsw-specific-sidebar-nav-item-active: rgba(43, 52, 35, 0.22);
+  --dsw-specific-sidebar-nav-item-hover: rgba(31, 38, 24, 0.16);
+}
+
+/* The token override cascades into every consumer; the column roots still
+   carry their own near-opaque paint committed above, so re-assert the
+   transparent state here too (the body clone in skin.css runs at lower
+   specificity than these scope-scoped rules). */
+html body[data-dsh-wt-peek] [data-pane="sidebar"] > div,
+html body[data-dsh-wt-peek] [data-pane="conversation"] > div,
+html body[data-dsh-wt-peek] [data-pane="details"] > div {
+  background: transparent;
+}
+
+html body[data-dsh-wt-peek] [role="dialog"],
+html body[data-dsh-wt-peek] [class*="overlay"] {
+  background: rgba(243, 239, 225, 0.12);
+}
+
+html body[data-ds-dark-theme][data-dsh-wt-peek] [role="dialog"],
+html body[data-ds-dark-theme][data-dsh-wt-peek] [class*="overlay"] {
+  background: rgba(22, 27, 18, 0.14);
+}
+
+/* --- 渐变：按下/松开时玻璃淡入淡出不突兀 ------------------------------
+   The peek token swap changes --dsw-alias-bg-* values consumed by surfaces
+   at many depths (official component roots sit two+ levels under the
+   panes). The transition stays ON all the time (both directions need it —
+   fade-out on press, fade-back on release would snap otherwise) and applies
+   ONLY to background-color/background on the surface layers that paint the
+   glass: pane roots, their direct wrapper, the composer dock and dialogs.
+   The official per-component transitions (0.12s buttons/inputs) are
+   component-level selectors and are NOT matched here, so their property
+   lists and timing stay intact — only the big surfaces ease. 0.4s ease. */
+
+[data-pane="sidebar"],
+[data-pane="conversation"],
+[data-pane="details"],
+[data-pane="sidebar"] > div,
+[data-pane="conversation"] > div,
+[data-pane="details"] > div,
+[data-pane="sidebar"] > div > div,
+[data-pane="conversation"] > div > div,
+[data-pane="details"] > div > div,
+[data-slot="conversation.input.dock"],
+[data-slot="conversation.input.dock"] > *,
+[role="dialog"] {
+  transition: background-color 0.4s ease, background 0.4s ease;
+}
+
+/* --- 浮层（对话框 / 菜单 / 工具提示）：近不透明，可读优先 --------------- */
+
+[data-dsh-surface="settings"],
+[role="dialog"] {
+  background: rgba(243, 238, 222, 0.97);
+}
+
+[role="dialog"] [class*="content"],
+[role="dialog"] [class*="panel"] {
+  background: transparent;
+}
+
+body[data-ds-dark-theme] [data-dsh-surface="settings"],
+body[data-ds-dark-theme] [role="dialog"] {
+  background: rgba(22, 27, 18, 0.97);
+}
+
+[role="tooltip"] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
+}
+
+/* --- Interaction chrome：滚动条 / 选区 / 链接 / 焦点 ----------------------- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(233, 226, 206, 0.55);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c9bfa0;
+  border: 2px solid rgba(233, 226, 206, 0.55);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9a8f6e;
+}
+
+::-webkit-scrollbar-corner {
+  background: rgba(233, 226, 206, 0.55);
+}
+
+body[data-ds-dark-theme] ::-webkit-scrollbar-track,
+body[data-ds-dark-theme] ::-webkit-scrollbar-corner {
+  background: rgba(26, 32, 22, 0.65);
+}
+
+body[data-ds-dark-theme] ::-webkit-scrollbar-thumb {
+  background: #313c29;
+  border-color: rgba(26, 32, 22, 0.65);
+}
+
+body[data-ds-dark-theme] ::-webkit-scrollbar-thumb:hover {
+  background: #5c6b4c;
+}
+
+::selection {
+  background: #b8892f;
+  color: #ffffff;
+}
+
+body[data-ds-dark-theme] ::selection {
+  background: #d9a441;
+  color: #141812;
+}
+
+a {
+  color: #9a7222;
+  transition: color 150ms ease;
+}
+
+a:visited {
+  color: #7d6a3c;
+}
+
+a:hover {
+  color: #b8892f;
+}
+
+a:active {
+  color: #7a5a1a;
+}
+
+body[data-ds-dark-theme] a {
+  color: #e0b255;
+  transition: color 150ms ease;
+}
+
+body[data-ds-dark-theme] a:visited {
+  color: #e8c06a;
+}
+
+body[data-ds-dark-theme] a:hover {
+  color: #f5de9e;
+}
+
+body[data-ds-dark-theme] a:active {
+  color: #b08a36;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(184, 137, 47, 0.55);
+  outline-offset: 2px;
+}
+
+body[data-ds-dark-theme] :focus-visible {
+  outline: 2px solid rgba(217, 164, 65, 0.6);
+  outline-offset: 2px;
+}
+
+/* Text tabs are labels, not chrome plates. */
+button[role="tab"],
+button[role="tab"]:hover,
+button[role="tab"]:active,
+button[role="tab"]:disabled,
+button[role="tab"]:hover:not(:disabled),
+button[role="tab"]:active:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+button[role="tab"][aria-selected="true"] {
+  color: var(--dsh-accent);
+}
+
+/* --- git-graph 提交图配色（dsh-git-graph） --------------------------------- */
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1),
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2) {
+  fill: #b8892f;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3) {
+  fill: #557e3f;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4) {
+  fill: #6c6450;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5),
+[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+6) {
+  fill: #a3732a;
+}
+
+[data-gitgraph-lanes] > [data-gitgraph-glyph="lane"] {
+  stroke: rgba(184, 137, 47, 0.45);
+}
+
+/* --- Motion: reduced -------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

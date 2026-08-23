@@ -1990,7 +1990,7 @@ window.__ModuleLoader__.load({
 		* @returns the plugin card.
 		*/
 		function SkinCenter({ t, runtime, theme, background, wallpaper, preview, customTheme }) {
-			const snapshot = (0, react.useSyncExternalStore)((listener) => theme.subscribe(listener), () => theme.getTheme());
+			(0, react.useSyncExternalStore)((listener) => theme.subscribe(listener), () => theme.getTheme());
 			const enabled = (0, react.useSyncExternalStore)(background.subscribe, background.enabled);
 			const opacity = (0, react.useSyncExternalStore)(background.subscribe, background.opacity);
 			const blurEmpty = (0, react.useSyncExternalStore)(background.subscribe, background.blurEmpty);
@@ -2109,7 +2109,7 @@ window.__ModuleLoader__.load({
 					return active;
 				}));
 			};
-			const dark = snapshot.active.colorScheme === "dark";
+			const dark = document.body.hasAttribute("data-ds-dark-theme");
 			/** One row: try-on control + apply button. Shared by the official card and every skin card. */
 			const actionButtons = (opts) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: skin_center_module_css_default.actions,

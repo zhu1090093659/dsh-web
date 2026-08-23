@@ -1,0 +1,59 @@
+{
+  "name": "miku-pet",
+  "version": "0.1.7",
+  "description": "A floating desktop pet for the DeepSeek Harness Web UI (PNG frame-animation version, adapted from dsh-pet).",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./src/*": "./src/*",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "assets/thumb",
+    "assets/config.jsonc",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "bundle": "esbuild src/client/index.ts --bundle --platform=neutral --format=esm --external:react --external:react/jsx-runtime --external:@deepseek-ai/* --outfile=lib/client.js && esbuild src/host/index.ts --bundle --platform=node --format=esm --external:@deepseek-ai/* --external:node:* --outfile=lib/index.js",
+    "watch:client": "esbuild src/client/index.ts --bundle --platform=neutral --format=esm --external:react --external:react/jsx-runtime --external:@deepseek-ai/* --outfile=lib/client.js --watch",
+    "prepare": "npm run bundle",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.1-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.1-rc.1",
+    "@deepseek-ai/dsh-home-paths": "^0.1.1-rc.1",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.1-rc.1",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "^18.2.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.5.0"
+  }
+}

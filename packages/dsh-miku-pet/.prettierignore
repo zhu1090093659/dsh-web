@@ -1,0 +1,5 @@
+lib
+node_modules
+assets
+cordis.patch.yml
+package-lock.json

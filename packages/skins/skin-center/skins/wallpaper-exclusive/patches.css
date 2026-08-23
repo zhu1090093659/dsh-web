@@ -114,7 +114,8 @@
    follows the fixed glass. FILL is a readable opaque glass (Summer-Liquid
    Glass float tier) — the card fill (0.22) is too see-through for dense
    menu/dialog text and let the wallpaper + busy underlying icons bleed through,
-   reading as overlapping text. Blur stays fixed. */
+   reading as overlapping text. Blur stays fixed. Composer-mounted boards are
+   given their own no-tint fill in the composer-scoped block below. */
 [role="dialog"],
 [role="menu"],
 [role="listbox"],
@@ -134,12 +135,13 @@
     0 10px 30px rgba(0, 7, 18, 0.25) !important;
 }
 
-/* Composer "+" and "/" popups: kept explicitly in the fixed-glass set even
-   when a shell version stops wrapping them in the generic role/popper group.
-   Popups rendered in a portal outside the composer subtree are still caught
-   by the generic floating-surface rule above. Fill-in point: if a popup still
-   paints an opaque background during acceptance, append its stable data/class
-   suffix here. */
+/* Composer "+" / "/" popups, access-permission and context boards: plain
+   frosted glass with NO TINT GRADIENT (the inset edge highlight is kept).
+   Fill mirrors the input card family (glass-fill) and blur stays the fixed
+   10px input-card value, so the composer board family reads as one material.
+   Boards that mount through a body portal are still caught by the generic
+   float rule above; if acceptance shows a tinted portal board here, append
+   its stable data/class suffix below to pull it into this no-tint set. */
 [data-slot="conversation.composer"] [role="dialog"],
 [data-slot="conversation.composer"] [role="menu"],
 [data-slot="conversation.composer"] [role="listbox"],
@@ -148,13 +150,7 @@
 [data-composer-card] [role="menu"],
 [data-composer-card] [role="listbox"],
 [data-composer-card] [data-radix-popper-content-wrapper] {
-  background-color: var(--dsw-wallpaper-glass-float) !important;
-  background-image: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.07) 0%,
-    rgba(255, 255, 255, 0.015) 18%,
-    rgba(255, 255, 255, 0) 42%
-  ) !important;
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
   box-shadow:
@@ -215,6 +211,32 @@ button[class*="triggerFloating"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+}
+
+/* P1: lighter presence for the composer "+" trigger ONLY (the command
+   palette key, module suffix *_add). A subtle hover-tier tint replaces the
+   full glass card, the icon drops to the secondary label tone, and the
+   backdrop layer is dropped - nothing behind it needs blurring at 6% alpha.
+   The other three composer keys keep their current rendering. */
+[data-slot="conversation.composer"] button[class*="_add"]:not([class*="triggerFloating"]) {
+  background-color: var(--dsw-wallpaper-glass-hover) !important;
+  color: var(--dsw-alias-label-secondary) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* P2: send / stop primary adapts to both themes. The shell hardcodes one
+   blue for light AND dark (verified via computed style), so the skin owns
+   the pair: keep the familiar blue on dark, deepen it for the light card.
+   Scoped to shell primaries OUTSIDE plugin panels and the settings surface,
+   matching the exclusion pattern the sidebar keys already use. */
+button[class*="_primary"]:not([data-dsh-plugin] *):not([data-dsh-surface="settings"] *) {
+  background-color: rgb(103, 158, 254) !important;
+  color: #ffffff !important;
+}
+
+body:not([data-ds-dark-theme]) button[class*="_primary"]:not([data-dsh-plugin] *):not([data-dsh-surface="settings"] *) {
+  background-color: #2563eb !important;
 }
 
 /* Sidebar keys (任务看板 / ssh / 技能中心 injected rows): fully transparent at
@@ -416,17 +438,28 @@ body[data-dsh-wallpaper-active] [class*="centerCol"] {
   background-color: var(--dsw-wallpaper-glass-active-strong) !important;
 }
 
-/* Queued-send / retry dock in the composer: dsh-chat-recovery's RetryDockView
-   renders into the conversation.input.dock slot and does NOT emit the
-   data-queue-dock / data-dsh-part="queue-dock" anchors, so those selectors
-   never hit. Glass the slot container (and its dock/row descendants) — precise,
-   scoped, no plugin change needed. */
+/* Queued-send / retry dock in the composer: several plugins mount a card as
+   the conversation.input.dock slot's DIRECT CHILD (chat-recovery's *_dock
+   root paints no background of its own, so transcript text bleeds through;
+   aionui's drag inlay uses *_strip; git-graph mounts a floating chip anchor).
+   Paint EXACTLY ONE layer per child - the direct child itself - with the
+   input-card material (glass-fill + fixed 10px blur); the git-graph chip is
+   excluded (it must float bare), and *_dock / *_row wrappers NESTED below a
+   direct child stay transparent so layers can never stack into an extra
+   outer rectangle. */
 [data-slot="conversation.input.dock"],
-[data-slot="conversation.input.dock"] [class*="_dock"],
-[data-slot="conversation.input.dock"] [class*="_row"] {
+[data-slot="conversation.input.dock"] * [class*="_dock"],
+[data-slot="conversation.input.dock"] * [class*="_row"] {
+  background-color: rgba(0, 0, 0, 0) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-slot="conversation.input.dock"] > *:not([data-gitgraph-chip-anchor]) {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
-  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
 }
 
 /* --- dsh-better-sidebar side cards + panel chrome (fixed-glass set) ---------------
@@ -477,20 +510,47 @@ body[data-dsh-wallpaper-active] [class*="centerCol"] {
   background-color: var(--dsw-wallpaper-glass-active) !important;
 }
 
-/* Footer action triggers (检查更新 / 远程访问 / 连接手机): keep the shell
-   hover/active behavior and add a visible open-state highlight while their
-   dialog is mounted. The trigger buttons expose language-independent
-   aria-expanded from their owner plugins, so no build-hash or localized
-   aria-label is used here. */
-[data-slot="sidebar"] button[class*="trigger"] {
+/* Footer action triggers (检查更新 / 远程访问): one circular bubble, nothing
+   else. Scope EVERY button-level rule to the sidebar.footer.action plugin
+   slot: the settings trigger also carries aria-expanded (true while its
+   dialog is open) and must keep its native rounded-rect shell styling, so
+   slot scoping is the only safe boundary (no build hashes, no localized
+   labels). The remote trigger paints itself square via [data-wide='wide']
+   while the update trigger stays round; unify both to 50%. Boundary note:
+   the session-id entry mounts in this slot too but carries no aria-expanded
+   today, so it cannot match; if it ever gains one, exclude it explicitly. */
+[data-slot="sidebar.footer.action"] button[class*="trigger"][aria-expanded] {
   background-color: rgba(0, 0, 0, 0) !important;
+  border-radius: 50% !important;
 }
 
-[data-slot="sidebar"] button[class*="trigger"]:hover:not(:disabled) {
+[data-slot="sidebar.footer.action"] button[class*="trigger"][aria-expanded]:hover:not(:disabled) {
   background-color: var(--dsw-wallpaper-glass-hover-strong) !important;
 }
 
-[data-slot="sidebar"] button[aria-expanded="true"] {
+[data-slot="sidebar.footer.action"] button[class*="trigger"][aria-expanded]:active:not(:disabled) {
   background-color: var(--dsw-wallpaper-glass-active-strong) !important;
+}
+
+[data-slot="sidebar.footer.action"] button[aria-expanded="true"] {
+  background-color: var(--dsw-wallpaper-glass-active-strong) !important;
+  border-radius: 50% !important;
   color: var(--dsw-alias-label-primary, #f9fafb) !important;
+}
+
+/* Seat-level double bubble: the shell ui-sidebar paints its own square
+   translucent highlight on the SHARED wrapper around both plugin triggers
+   (one rect covering the whole pair) - on hover AND while a trigger is
+   expanded. The wrapper is a direct child of the footer.action slot mount,
+   so the slot-attribute boundary is provably scoped; wrappers are
+   transparent at rest, so clear unconditionally. */
+[data-slot="sidebar.footer.action"] > *:has(button[class*="trigger"][aria-expanded]) {
+  background-color: rgba(0, 0, 0, 0) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+[data-slot="sidebar.footer.action"] > *:has(button[class*="trigger"][aria-expanded])::before,
+[data-slot="sidebar.footer.action"] > *:has(button[class*="trigger"][aria-expanded])::after {
+  background: none !important;
 }

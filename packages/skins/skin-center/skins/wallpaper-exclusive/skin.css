@@ -49,7 +49,10 @@
   /* Input / bubble / markdown glass (light) */
   --dsw-specific-input-major: rgba(255, 255, 255, 0.5);
   --dsw-specific-login-input: rgba(255, 255, 255, 0.5);
-  --dsw-specific-bubble: rgba(255, 255, 255, 0.5);
+  /* Message bubbles consume the skin-center bubble-opacity contract (#937):
+     --dsh-skin-bubble-alpha (0-1, written live to body) drives translucency;
+     fallbacks preserve the pre-slider look when the runtime has not set it. */
+  --dsw-specific-bubble: rgb(255 255 255 / var(--dsh-skin-bubble-alpha, 0.5));
   --dsw-specific-bubble-highlight: rgba(0, 0, 0, 0.06);
   --dsw-alias-markdown-code-block: rgba(255, 255, 255, 0.55);
   --dsw-alias-markdown-inline-code: rgba(255, 255, 255, 0.55);
@@ -111,7 +114,9 @@ body[data-ds-dark-theme] {
   /* Input / bubble / markdown glass (dark) */
   --dsw-specific-input-major: var(--dsw-wallpaper-glass-fill);
   --dsw-specific-login-input: var(--dsw-wallpaper-glass-fill);
-  --dsw-specific-bubble: var(--dsw-wallpaper-glass-fill);
+  /* Dark fallback keeps the previous 0.22 glass tone until the slider (#937)
+     writes --dsh-skin-bubble-alpha on body. */
+  --dsw-specific-bubble: rgb(13 22 39 / var(--dsh-skin-bubble-alpha, 0.22));
   --dsw-specific-bubble-highlight: rgba(29, 51, 79, 0.4);
   --dsw-alias-markdown-code-block: var(--dsw-wallpaper-glass-fill);
   --dsw-alias-markdown-inline-code: var(--dsw-wallpaper-glass-fill);

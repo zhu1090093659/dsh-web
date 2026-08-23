@@ -418,6 +418,18 @@
       "descriptionEn": "A floating pet exclusively for Miku: hand-drawn frame animations, 5s random idle with a pity timer, a continuous work loop earning coins, a shop restoring hunger, stat bars and a two-level hover menu; coexists with the built-in dsh-pet under the /miku-pet namespace.",
       "repo": "https://github.com/stushansusu/miku-pet",
       "category": "ui"
+    },
+    {
+      "id": "dsh-specify-subagent-suite",
+      "name": "子代理模板工具套件",
+      "rank": 37,
+      "nameEn": "Subagent Template Suite",
+      "author": "zach_tao",
+      "description": "把 5 个子代理/工具模板合并为一个 Cordis 插件：右侧栏 Agent 列表 + 子代理模板面板 + 一次性 record 徽章 + subagent_pro/subagent_pro_audit。",
+      "descriptionEn": "Five resident DSH plugins merged into one Cordis bundle: right Agent list, subagent template panel, one-shot subagent record badge, and the subagent_pro / subagent_pro_presets / subagent_pro_audit tools.",
+      "repo": "https://github.com/Cho-Geer/dsh-specify-subagent-suite",
+      "npm": "@zach-tao/dsh-specify-subagent-suite",
+      "category": "tools"
     }
   ]
 }

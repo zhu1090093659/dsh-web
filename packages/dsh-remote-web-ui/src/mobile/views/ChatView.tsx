@@ -16,7 +16,7 @@ import type { MuxFrame } from '@deepseek-ai/dsh-host-apiproxy/api/events'
 import type { SessionModels } from '@deepseek-ai/dsh-host-apiproxy/api/sessions'
 import { loadHistory, prompt, type SessionView } from './App.tsx'
 import { errorText, formatTime, staleHostHint } from './App.tsx'
-import { fetchMobilePreferences, models, selectModel, sendCommand, fetchPending, respondApproval, respondQuestion } from '../api.ts'
+import { fetchMobilePreferences, models, selectModel, sendCommand, cancelSession, fetchPending, respondApproval, respondQuestion } from '../api.ts'
 import type { PendingApproval, PendingQuestionItem } from '../api.ts'
 import { EventFolder, foldEvents, type RenderMessage, type ToolCallInfo, type WireEvent } from '../messages.ts'
 import { renderMarkdown } from '../markdown.ts'
@@ -167,6 +167,8 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
   const [mobileEnterToSend, setMobileEnterToSend] = useState(true)
   /** Whether the assistant is currently generating (turn/start..turn/end). */
   const [running, setRunning] = useState(false)
+  /** Whether a stop request is in flight (the "停止" button). */
+  const [stopping, setStopping] = useState(false)
   /** Pending tool approvals awaiting user decision (#1025). */
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([])
   /** Pending questions awaiting user answer (#1025). */
@@ -441,6 +443,19 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
     )
   }, [input, sending, session.sessionId])
 
+  /** Stop the session's active turn (the "停止" button next to the output indicator). */
+  const stopTurn = useCallback(() => {
+    if (stopping) return
+    setStopping(true)
+    void cancelSession(session.sessionId).then(
+      () => { setStopping(false) },
+      (reason: unknown) => {
+        setStopping(false)
+        setError(errorText(reason))
+      },
+    )
+  }, [stopping, session.sessionId])
+
   const modelLabel = currentModel?.model ?? '模型'
   const permissionLabel = permissions === undefined
     ? undefined
@@ -547,8 +562,17 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
             }
           }}
         />
-        <button type="button" className="chat-send" disabled={sending || input.trim() === ''} onClick={() => { void send() }}>
-          {sending ? '发送中…' : '发送'}
+        <button
+          type="button"
+          className="chat-send"
+          disabled={running ? stopping : sending || input.trim() === ''}
+          onClick={() => { if (running) void stopTurn(); else void send() }}
+        >
+          {running ? (
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+              <rect x="3" y="3" width="10" height="10" rx="3" fill="currentColor" />
+            </svg>
+          ) : sending ? '发送中…' : '发送'}
         </button>
       </div>
       {sheet === 'model' && (

@@ -110,8 +110,11 @@ describe('SessionListView creation', () => {
     })
     expect(picked?.sessionId).toBe('s-new')
     expect(picked?.blank).toBe(true)
-    // The fresh row is prepended without waiting for a refetch.
-    expect(await screen.findByText('新会话')).toBeTruthy()
+    // Blank sessions are filtered from the list (desktop parity): the fresh
+    // row is not rendered until the session has content.
+    await waitFor(() => {
+      expect(screen.queryByText('新会话')).toBeNull()
+    })
   })
 
   it('creates the session with the selected agent preset', async () => {

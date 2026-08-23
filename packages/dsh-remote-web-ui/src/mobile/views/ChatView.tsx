@@ -602,6 +602,12 @@ const MessageRow = memo(function MessageRow({ message, showToolCalls, showSystem
     && !showSystemMessages) {
     return null
   }
+  // Local patch (2026-08-23): 关闭"工具调用"显示后，仅含工具调用、无正文/思维链的
+  // 消息不再渲染空气泡（只显示时间）。有正文/思维链/可见工具/失败标记才渲染。
+  const hasReasoning = message.kind === 'assistant' && message.reasoning !== undefined && message.reasoning !== ''
+  const hasTools = showToolCalls && message.kind === 'assistant' && message.tools !== undefined && message.tools.length > 0
+  const hasText = message.text !== undefined && message.text !== ''
+  if (!hasReasoning && !hasTools && !hasText && message.failed !== true) return null
   return (
     <div className={`chat-msg chat-msg-${message.kind}${message.pending === true ? ' chat-msg-pending' : ''}${message.failed === true ? ' chat-msg-failed' : ''}`}>
       {message.kind === 'assistant' && message.reasoning !== undefined && message.reasoning !== '' && (
@@ -611,7 +617,7 @@ const MessageRow = memo(function MessageRow({ message, showToolCalls, showSystem
         <ToolDisclosure tools={message.tools} />
       )}
       {message.kind === 'assistant'
-        ? <MarkdownText text={message.text} />
+        ? <MarkdownText text={message.text} pending={message.pending === true} />
         : <CollapsibleText text={message.text} />}
       {message.failed === true && <span className="chat-msg-failtag">本次回复失败</span>}
       <span className="chat-msg-time">{formatTime(message.time)}</span>
@@ -622,7 +628,32 @@ const MessageRow = memo(function MessageRow({ message, showToolCalls, showSystem
 /** Collapsed-by-default reasoning disclosure (web-UI Think-row parity). */
 function ReasoningDisclosure({ text, pending }: { text: string; pending: boolean }) {
   const [open, setOpen] = useState(false)
+  const [displayed, setDisplayed] = useState(0)
+  const bodyRef = useRef<HTMLDivElement | null>(null)
   const summary = pending ? lastLine(text) : firstMeaningfulLine(text)
+  // Local patch (2026-08-23): 打字机动画——pending 时 10ms/4 字符推进显示，
+  // 已完成消息直接全显；展开时自动滚动跟随最新内容。
+  useEffect(() => {
+    if (!pending) {
+      setDisplayed(text.length)
+      return
+    }
+    if (!open) return
+    const timer = setInterval(() => {
+      setDisplayed(prev => {
+        if (prev >= text.length) {
+          clearInterval(timer)
+          return prev
+        }
+        return Math.min(text.length, prev + 4)
+      })
+    }, 10)
+    return () => clearInterval(timer)
+  }, [text, open, pending])
+  useEffect(() => {
+    const el = bodyRef.current
+    if (open && el) el.scrollTop = el.scrollHeight
+  }, [displayed, open, text])
   return (
     <div className={`chat-disclosure chat-reasoning${open ? ' chat-disclosure-open' : ''}`} data-pending={pending || undefined}>
       <button
@@ -635,7 +666,7 @@ function ReasoningDisclosure({ text, pending }: { text: string; pending: boolean
         <span className="chat-disclosure-label">{pending ? '思考中…' : '深度思考'}</span>
         {!open && <span className="chat-disclosure-summary">{summary}</span>}
       </button>
-      {open && <div className="chat-disclosure-body">{text}</div>}
+      {open && <div className="chat-disclosure-body" ref={bodyRef}>{text.slice(0, displayed)}</div>}
     </div>
   )
 }
@@ -686,14 +717,21 @@ function ToolDisclosure({ tools }: { tools: ToolCallInfo[] }) {
  * fences or tables never leak malformed markup into the DOM. User
  * messages stay plain text (CollapsibleText).
  */
-function MarkdownText({ text }: { text: string }) {
+function MarkdownText({ text, pending }: { text: string; pending: boolean }) {
   const [open, setOpen] = useState(false)
-  const html = useMemo(() => renderMarkdown(text), [text])
-  const long = text.length > LONG_TEXT_LIMIT
+  const html = useMemo(() => (pending ? '' : renderMarkdown(text)), [pending, text])
+  // Local patch (2026-08-23): 折叠只看 finalize 后的长消息。流式输出期间不折叠
+  // （45vh + overflow:hidden 会把新内容藏起来且不可滚动，手机上看不到"输出中"
+  // 的自然段/表格）；结束后超过 LONG_TEXT_LIMIT 才折叠，附"展开全文"按钮。
+  const long = !pending && text.length > LONG_TEXT_LIMIT
   const collapsed = long && !open
   return (
     <div className={'chat-msg-text chat-md' + (collapsed ? ' chat-md-collapsed' : '')}>
-      <div className="chat-md-body" dangerouslySetInnerHTML={{ __html: html }} />
+      <div className="chat-md-body">
+        {pending
+          ? <span className="chat-msg-plain">{text}</span>
+          : <div dangerouslySetInnerHTML={{ __html: html }} />}
+      </div>
       {long && (
         <button type="button" className="chat-msg-toggle" onClick={() => { setOpen(value => !value) }}>
           {open ? '收起' : '展开全文（' + text.length + ' 字）'}
@@ -720,7 +758,9 @@ function CollapsibleText({ text }: { text: string }) {
   )
 }
 
-const LONG_TEXT_LIMIT = 1600
+// Local patch (2026-08-23): 阈值 1600 -> 6000，常规表格/段落回复完整显示；
+// 超大消息（>6000 字）结束后才折叠。
+const LONG_TEXT_LIMIT = 6000
 const LONG_TEXT_PREVIEW = 800
 
 /** Latest non-empty line of a streaming reasoning buffer. */

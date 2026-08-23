@@ -207,7 +207,7 @@ export function SessionListView({ workspace, onBack, onPick }: SessionListViewPr
         </p>
       )}
       <ul className="mobile-list">
-        {rows.map(row => (
+        {rows.filter(row => !row.blank).map(row => (
           <li key={row.sessionId}>
             <button type="button" className="mobile-row" onClick={() => { onPick(row) }}>
               <span className="mobile-rowMain">

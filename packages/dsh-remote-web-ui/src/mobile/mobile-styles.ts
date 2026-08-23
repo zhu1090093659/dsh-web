@@ -434,6 +434,11 @@ body {
 .chat-md {
   white-space: normal;
 }
+/* Local patch (2026-08-23): 流式中纯文本（不做 markdown 渲染，减少 CPU） */
+.chat-msg-plain {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
 .chat-md-collapsed {
   max-height: 45vh;
   overflow: hidden;
@@ -578,7 +583,8 @@ body {
   line-height: 1.6;
   overflow-wrap: break-word;
   white-space: pre-wrap;
-  max-height: 40vh;
+  /* Local patch (2026-08-23): 40vh -> 50vh（用户确认 40 太小、60 太长） */
+  max-height: 50vh;
   overflow-y: auto;
 }
 

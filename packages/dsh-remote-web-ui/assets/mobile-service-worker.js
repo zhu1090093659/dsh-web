@@ -1,9 +1,12 @@
 /* PWA worker for the standalone /m mobile shell. */
-const CACHE_NAME = 'dsh-remote-mobile-shell-v1'
+/* Local patch (2026-08-23): never cache /m/mobile.js — on weak phone links the
+   network-first fallback served a stale bundle (poll:A0Q0, no question panel).
+   The bundle must always come from the network. Bumped the cache name so old
+   cached bundles are purged on activate. */
+const CACHE_NAME = 'dsh-remote-mobile-shell-v2'
 const OFFLINE_URL = '/m/offline.html'
 const SHELL_PATHS = new Set([
   '/m/',
-  '/m/mobile.js',
   '/m/manifest.webmanifest',
   '/m/apple-touch-icon.png',
   '/m/icon-192.png',

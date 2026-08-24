@@ -150,3 +150,29 @@ export function buildBackgroundMedia(
   }
   return nodes
 }
+
+/**
+ * The universal scrim veil (issue #1000): a plain color layer stacked after
+ * the manifest media inside the same background decoration layer, so the
+ * occlusion slider darkens ANY skin's painted backdrop without each skin
+ * having to consume --dsw-skin-scrim in its own token math.
+ *
+ * Strength rides a dedicated variable (--dsh-skin-veil, written by the
+ * BackgroundController next to the legacy scrim var) instead of
+ * --dsw-skin-scrim itself: that var doubles as the art-presence marker the
+ * controller flips to '1' on every media mount, which would flash the veil
+ * fully opaque before the user's value lands. Skins already handling occlusion
+ * themselves declare contributes.backgroundSelfScrim and simply never get a
+ * veil node — no double darkening.
+ */
+export function buildUniversalScrimVeil(doc: Document): HTMLElement {
+  const veil = doc.createElement('div')
+  veil.setAttribute('aria-hidden', 'true')
+  veil.setAttribute('data-dsh-universal-veil', '')
+  // Explicit longhands only (see LAYER_STYLE above). opacity (not alpha in
+  // background) keeps the color constant while the slider only ever touches
+  // one number; the var falls back to 0 so an absent writer paints nothing.
+  veil.style.cssText =
+    'position:absolute;top:0;right:0;bottom:0;left:0;background:#000;opacity:var(--dsh-skin-veil, 0);'
+  return veil
+}

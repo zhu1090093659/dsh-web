@@ -12,6 +12,7 @@ import {
   BackgroundController,
   BUBBLE_ALPHA_VAR,
   SCRIM_VAR,
+  VEIL_VAR,
   INPUT_CARD_BLUR_VAR,
 } from '../src/client/background.ts'
 
@@ -68,6 +69,30 @@ describe('BackgroundController', () => {
     expect(blurElement()).toBeNull()
     // Occlusion is unchanged: the veil variable is written on a default-0 config.
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('0')
+    controller.dispose()
+  })
+
+  it('mirrors every occlusion value onto the universal veil var (#1000)', () => {
+    const { controller } = rig({ backgroundOpacity: 40 })
+    expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('0.4')
+    expect(document.body.style.getPropertyValue(VEIL_VAR)).toBe('0.4')
+    // Live slider drags update both variables through one write path.
+    controller.set(75)
+    expect(document.body.style.getPropertyValue(VEIL_VAR)).toBe('0.75')
+    // dispose cleans up the veil var it introduced (the legacy scrim var
+    // keeps its pre-existing dispose semantics).
+    controller.dispose()
+    expect(document.body.style.getPropertyValue(VEIL_VAR)).toBe('')
+    expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('0.75')
+  })
+
+  it('disabled config removes the veil var; re-enabling restores it', () => {
+    const { controller } = rig({ enabled: false, backgroundOpacity: 60 })
+    expect(document.body.style.getPropertyValue(VEIL_VAR)).toBe('')
+    controller.setEnabled(true)
+    expect(document.body.style.getPropertyValue(VEIL_VAR)).toBe('0.6')
+    controller.setEnabled(false)
+    expect(document.body.style.getPropertyValue(VEIL_VAR)).toBe('')
     controller.dispose()
   })
 

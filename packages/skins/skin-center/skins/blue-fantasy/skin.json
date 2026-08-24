@@ -44,7 +44,8 @@
         "src": "assets/whale-art.jpg",
         "scrim": "linear-gradient(rgba(10, 14, 28, 0.35) 0%, rgba(13, 18, 34, 0.45) 60%, rgba(16, 22, 42, 0.5) 100%)"
       }
-    }
+    },
+    "backgroundSelfScrim": true
   },
   "facets": {
     "client": {

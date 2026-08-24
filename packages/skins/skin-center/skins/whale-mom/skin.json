@@ -44,7 +44,8 @@
         "src": "assets/whale-mom-art.jpg",
         "scrim": "linear-gradient(rgba(6, 10, 22, 0.42) 0%, rgba(8, 12, 26, 0.52) 60%, rgba(10, 15, 32, 0.62) 100%)"
       }
-    }
+    },
+    "backgroundSelfScrim": true
   },
   "facets": {
     "client": {

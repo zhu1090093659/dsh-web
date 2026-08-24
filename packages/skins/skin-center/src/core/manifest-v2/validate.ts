@@ -176,10 +176,13 @@ export function validateSkinManifestV2(input: unknown): SkinManifestValidation {
     errors.push('manifest.contributes: required object with at least "stylesheet"')
   } else {
     const contributes = input.contributes
-    checkKeys(contributes, new Set(['stylesheet', 'patches', 'backgroundMedia']), 'manifest.contributes', errors)
+    checkKeys(contributes, new Set(['stylesheet', 'patches', 'backgroundMedia', 'backgroundSelfScrim']), 'manifest.contributes', errors)
     checkRelPath(contributes.stylesheet, 'manifest.contributes.stylesheet', errors)
     if (contributes.patches !== undefined) {
       checkRelPath(contributes.patches, 'manifest.contributes.patches', errors)
+    }
+    if (contributes.backgroundSelfScrim !== undefined && typeof contributes.backgroundSelfScrim !== 'boolean') {
+      errors.push('manifest.contributes.backgroundSelfScrim: must be a boolean')
     }
     if (contributes.backgroundMedia !== undefined) {
       if (!isRecord(contributes.backgroundMedia)) {

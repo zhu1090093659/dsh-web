@@ -356,10 +356,12 @@ function validateSkinManifestV2(input) {
 		checkKeys(contributes, /* @__PURE__ */ new Set([
 			"stylesheet",
 			"patches",
-			"backgroundMedia"
+			"backgroundMedia",
+			"backgroundSelfScrim"
 		]), "manifest.contributes", errors);
 		checkRelPath(contributes.stylesheet, "manifest.contributes.stylesheet", errors);
 		if (contributes.patches !== void 0) checkRelPath(contributes.patches, "manifest.contributes.patches", errors);
+		if (contributes.backgroundSelfScrim !== void 0 && typeof contributes.backgroundSelfScrim !== "boolean") errors.push("manifest.contributes.backgroundSelfScrim: must be a boolean");
 		if (contributes.backgroundMedia !== void 0) if (!isRecord(contributes.backgroundMedia)) errors.push("manifest.contributes.backgroundMedia: must be an object");
 		else {
 			checkKeys(contributes.backgroundMedia, /* @__PURE__ */ new Set(["light", "dark"]), "manifest.contributes.backgroundMedia", errors);

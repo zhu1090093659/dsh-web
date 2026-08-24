@@ -70,6 +70,25 @@ describe('validateSkinManifestV2', () => {
     expect(result.ok).toBe(true)
   })
 
+  it('accepts contributes.backgroundSelfScrim as an optional boolean (#1000)', () => {
+    const flagged = {
+      ...validV2,
+      contributes: { ...validV2.contributes, backgroundSelfScrim: true },
+    }
+    const result = validateSkinManifestV2(flagged)
+    expect(result.errors).toEqual([])
+    expect(result.ok).toBe(true)
+  })
+
+  it('rejects a non-boolean backgroundSelfScrim', () => {
+    const result = validateSkinManifestV2({
+      ...validV2,
+      contributes: { ...validV2.contributes, backgroundSelfScrim: 'yes' },
+    })
+    expect(result.ok).toBe(false)
+    expect(result.errors).toContain('manifest.contributes.backgroundSelfScrim: must be a boolean')
+  })
+
   it('fails closed on unknown top-level fields', () => {
     const result = validateSkinManifestV2({ ...validV2, telemetry: true })
     expect(result.ok).toBe(false)

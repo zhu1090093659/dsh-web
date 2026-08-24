@@ -104,7 +104,8 @@ window.SKIN_MANIFEST = {
             "src": "packages/skins/skin-center/skins/blue-fantasy/assets/whale-art.jpg",
             "scrim": "linear-gradient(rgba(10, 14, 28, 0.35) 0%, rgba(13, 18, 34, 0.45) 60%, rgba(16, 22, 42, 0.5) 100%)"
           }
-        }
+        },
+        "backgroundSelfScrim": true
       },
       "facets": {
         "client": {
@@ -459,7 +460,8 @@ window.SKIN_MANIFEST = {
             "src": "packages/skins/skin-center/skins/whale-mom/assets/whale-mom-art.jpg",
             "scrim": "linear-gradient(rgba(6, 10, 22, 0.42) 0%, rgba(8, 12, 26, 0.52) 60%, rgba(10, 15, 32, 0.62) 100%)"
           }
-        }
+        },
+        "backgroundSelfScrim": true
       },
       "facets": {
         "client": {
@@ -612,7 +614,8 @@ window.SKIN_MANIFEST = {
             "src": "packages/skins/skin-center/skins/summer-liquid-glass/assets/summer-liquid-glass-art.jpg",
             "scrim": "linear-gradient(rgba(7, 19, 33, 0.34) 0%, rgba(7, 19, 33, 0.28) 45%, rgba(7, 19, 33, 0.38) 100%)"
           }
-        }
+        },
+        "backgroundSelfScrim": true
       }
     },
     {

@@ -46,6 +46,11 @@ function backgroundImgSrc(): string {
   return layer?.querySelector('img')?.getAttribute('src') ?? ''
 }
 
+/** The universal scrim veil (#1000), when one is painted. */
+function universalVeil(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('[data-dsh-universal-veil]')
+}
+
 describe('decoration layers', () => {
   it('ensures six non-interactive layers idempotently', () => {
     const layers = ensureDecorationLayers(document)
@@ -622,6 +627,162 @@ describe('skin controller', () => {
     expect(document.body.style.getPropertyValue('--dsh-skin-scrim')).toBe('1')
     await controller.switchTo(null, null)
     expect(document.body.style.getPropertyValue('--dsh-skin-scrim')).toBe('0')
+  })
+
+  it('stacks the universal scrim veil over manifest media, but never over a self-scrimming skin (#1000)', async () => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    document.documentElement.removeAttribute('data-dsh-skin')
+    const ledger = createEffectLedger()
+    const loadStylesheet = async (href: string) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = href
+      document.head.appendChild(link)
+    }
+    const mediaEntry = {
+      manifest: {
+        id: 'media-skin',
+        contributes: {
+          stylesheet: 'skin.css',
+          backgroundMedia: { light: { type: 'image' as const, src: 'assets/bg.jpg' } },
+        },
+      },
+    } as ControllerSkinEntry
+    const selfScrimEntry = {
+      manifest: {
+        id: 'legacy-skin',
+        contributes: {
+          stylesheet: 'skin.css',
+          backgroundMedia: { light: { type: 'image' as const, src: 'assets/legacy.jpg' } },
+          backgroundSelfScrim: true,
+        },
+      },
+    } as ControllerSkinEntry
+    const controller = createSkinController({
+      doc: document,
+      ledger,
+      loadStylesheet,
+      persist: async () => {},
+      suppressBackgroundMedia: () => false,
+    })
+
+    // A plain media skin gets the veil as the layer's topmost child.
+    await controller.switchTo('media-skin', mediaEntry)
+    const veil = universalVeil()
+    expect(veil).not.toBeNull()
+    expect(veil!.getAttribute('style')).toContain('--dsh-skin-veil')
+    const layer = document.querySelector<HTMLElement>('[data-dsh-skin-layer="background"]')!
+    expect(layer.lastElementChild).toBe(veil)
+
+    // A skin that consumes --dsw-skin-scrim in its own token math opts out:
+    // its art still paints, no second darkening layer stacks on top.
+    await controller.switchTo('legacy-skin', selfScrimEntry)
+    expect(backgroundImgSrc()).toContain('legacy.jpg')
+    expect(universalVeil()).toBeNull()
+
+    // Back to the plain media skin: the veil returns with the activation.
+    await controller.switchTo('media-skin', mediaEntry)
+    expect(universalVeil()).not.toBeNull()
+
+    // Stock look clears the whole layer, veil included.
+    await controller.switchTo(null, null)
+    expect(universalVeil()).toBeNull()
+  })
+
+  it('drops and restores the universal veil together with the media on suppression refresh (#1000)', async () => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    document.documentElement.removeAttribute('data-dsh-skin')
+    const ledger = createEffectLedger()
+    let suppressed = false
+    const loadStylesheet = async (href: string) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = href
+      document.head.appendChild(link)
+    }
+    const mediaEntry = {
+      manifest: {
+        id: 'media-skin',
+        contributes: {
+          stylesheet: 'skin.css',
+          backgroundMedia: { light: { type: 'image' as const, src: 'assets/bg.jpg' } },
+        },
+      },
+    } as ControllerSkinEntry
+    const controller = createSkinController({
+      doc: document,
+      ledger,
+      loadStylesheet,
+      persist: async () => {},
+      suppressBackgroundMedia: () => suppressed,
+    })
+    await controller.switchTo('media-skin', mediaEntry)
+    expect(universalVeil()).not.toBeNull()
+
+    // Wallpaper/manual background wins: media drops, the veil must not linger.
+    suppressed = true
+    await controller.refresh()
+    expect(backgroundImgSrc()).toBe('')
+    expect(universalVeil()).toBeNull()
+
+    suppressed = false
+    await controller.refresh()
+    expect(backgroundImgSrc()).toContain('bg.jpg')
+    expect(universalVeil()).not.toBeNull()
+  })
+
+  it('keeps the universal veil across live theme repaints (#1000)', async () => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    document.documentElement.removeAttribute('data-dsh-skin')
+    const ledger = createEffectLedger()
+    const loadStylesheet = async (href: string) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = href
+      document.head.appendChild(link)
+    }
+    let theme: 'light' | 'dark' = 'light'
+    let themeListener: ((theme: 'light' | 'dark') => void) | null = null
+    const mediaEntry = {
+      manifest: {
+        id: 'media-skin',
+        contributes: {
+          stylesheet: 'skin.css',
+          backgroundMedia: {
+            light: { type: 'image' as const, src: 'assets/light.jpg' },
+            dark: { type: 'image' as const, src: 'assets/dark.png' },
+          },
+        },
+      },
+    } as ControllerSkinEntry
+    const controller = createSkinController({
+      doc: document,
+      ledger,
+      loadStylesheet,
+      persist: async () => {},
+      themeGet: () => theme,
+      themeSubscribe: (listener) => {
+        themeListener = listener
+        return () => { themeListener = null }
+      },
+    })
+    await controller.switchTo('media-skin', mediaEntry)
+    expect(universalVeil()).not.toBeNull()
+
+    // The theme flip re-paints the variant through the same node builder;
+    // the veil must survive with exactly one instance per activation.
+    theme = 'dark'
+    themeListener?.('dark')
+    expect(backgroundImgSrc()).toContain('dark.png')
+    expect(document.querySelectorAll('[data-dsh-universal-veil]')).toHaveLength(1)
+
+    theme = 'light'
+    themeListener?.('light')
+    expect(backgroundImgSrc()).toContain('light.jpg')
+    expect(document.querySelectorAll('[data-dsh-universal-veil]')).toHaveLength(1)
   })
 
   it('marks the unified backdrop-active marker and installs the shared composer-seat neutralizer while media is mounted (#777)', async () => {

@@ -63,6 +63,14 @@ export interface SkinManifestV2 {
     /** Fills the fixed 'background' decoration layer; WE wallpaper and the
      *  user's manual background both take precedence over it. */
     backgroundMedia?: { light?: SkinBackgroundLayer; dark?: SkinBackgroundLayer }
+    /**
+     * True when the skin's own stylesheet already consumes
+     * --dsw-skin-scrim inside its token math (the occlusion slider then
+     * reshapes the skin's panel alphas directly). The skin-center must not
+     * stack the universal scrim veil on top (#1000): the two mechanisms
+     * would darken the same backdrop twice.
+     */
+    backgroundSelfScrim?: boolean
   }
   facets?: {
     client?: {

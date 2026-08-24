@@ -37,6 +37,7 @@
         "src": "assets/summer-liquid-glass-art.jpg",
         "scrim": "linear-gradient(rgba(7, 19, 33, 0.34) 0%, rgba(7, 19, 33, 0.28) 45%, rgba(7, 19, 33, 0.38) 100%)"
       }
-    }
+    },
+    "backgroundSelfScrim": true
   }
 }

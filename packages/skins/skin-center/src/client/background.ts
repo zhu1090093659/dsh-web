@@ -10,6 +10,13 @@
  * inert there — the value still persists so it is ready for the next backdrop
  * skin.
  *
+ * The same value is mirrored onto --dsh-skin-veil, consumed by the universal
+ * scrim veil the skin controller stacks over any manifest-painted backdrop
+ * whose skin does NOT handle occlusion itself (#1000): one slider therefore
+ * drives every backdrop skin, legacy token-math skins included, while skins
+ * declaring contributes.backgroundSelfScrim keep their direct contract and
+ * never get a second darkening layer.
+ *
  * The Gaussian blur targets the same painted backdrop through a fixed child
  * of `document.body` using backdrop-filter: it samples the body's own
  * background painted behind it. Separate strengths apply to the empty
@@ -52,6 +59,14 @@ export const INPUT_CARD_BLUR_FIELD = 'inputCardBlur'
 
 /** CSS custom property written to document.body and read by backdrop skins. */
 export const SCRIM_VAR = '--dsw-skin-scrim'
+
+/**
+ * CSS custom property driving the universal scrim veil (#1000): mirrored
+ * from the occlusion value by applyOcclusion, consumed as the veil element's
+ * opacity inside the background decoration layer. Never used as an
+ * art-presence marker — that is the legacy scrim var's second job.
+ */
+export const VEIL_VAR = '--dsh-skin-veil'
 
 /** Field of the message bubble opacity inside the namespace section. */
 export const BUBBLE_OPACITY_FIELD = 'bubbleOpacity'
@@ -256,6 +271,7 @@ export class BackgroundController implements SkinBackgroundHandle {
     this.removeBlurElement()
     document.body.style.removeProperty(INPUT_CARD_BLUR_VAR)
     document.body.style.removeProperty(BUBBLE_ALPHA_VAR)
+    document.body.style.removeProperty(VEIL_VAR)
     if (this.observer !== null) {
       this.observer.disconnect()
       this.observer = null
@@ -297,13 +313,16 @@ export class BackgroundController implements SkinBackgroundHandle {
     document.body.style.setProperty(BUBBLE_ALPHA_VAR, String(this.bubbleOpacityValue / 100))
   }
 
-  /** Write the current occlusion onto the body CSS variable (0..1 alpha). */
+  /** Write the current occlusion onto the body CSS variables (0..1 alpha). */
   private applyOcclusion(): void {
     if (!this.enabledValue) {
       document.body.style.removeProperty(SCRIM_VAR)
+      document.body.style.removeProperty(VEIL_VAR)
       return
     }
-    document.body.style.setProperty(SCRIM_VAR, String(this.opacityValue / 100))
+    const alpha = String(this.opacityValue / 100)
+    document.body.style.setProperty(SCRIM_VAR, alpha)
+    document.body.style.setProperty(VEIL_VAR, alpha)
   }
 
   /**

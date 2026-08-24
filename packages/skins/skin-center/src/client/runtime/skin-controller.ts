@@ -24,7 +24,7 @@
  */
 
 import type { EffectLedger } from './effect-ledger.ts'
-import { buildBackgroundMedia, clearLayer, ensureDecorationLayers } from './decoration-layers.ts'
+import { buildBackgroundMedia, buildUniversalScrimVeil, clearLayer, ensureDecorationLayers } from './decoration-layers.ts'
 import type { DecorationLayers } from './decoration-layers.ts'
 import { setSceneBackdropActive } from './backdrop-scene.ts'
 
@@ -39,6 +39,12 @@ export interface ControllerSkinEntry {
         light?: { type: 'image' | 'video'; src: string; scrim?: string }
         dark?: { type: 'image' | 'video'; src: string; scrim?: string }
       }
+      /**
+       * The skin's own stylesheet consumes --dsw-skin-scrim in its token
+       * math, so the occlusion slider already works through the legacy
+       * contract; the universal veil must not stack on top (#1000).
+       */
+      backgroundSelfScrim?: boolean
     }
     facets?: { client?: { entry: string; apiVersion: string } }
   }
@@ -153,6 +159,23 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
    * swap the variant the same way an activation does). No-op when there is
    * nothing painted or the manifest carries no backgroundMedia.
    */
+  /**
+   * The activation's background-layer content: the manifest media for the
+   * active theme, plus the universal scrim veil (#1000) unless the skin
+   * declares that its own stylesheet already handles occlusion.
+   */
+  function backdropNodes(
+    entry: ControllerSkinEntry,
+    variant: { type: 'image' | 'video'; src: string; scrim?: string },
+    assetBase: string,
+  ): HTMLElement[] {
+    const nodes = buildBackgroundMedia(doc, variant, assetBase)
+    if (entry.manifest.contributes.backgroundSelfScrim !== true) {
+      nodes.push(buildUniversalScrimVeil(doc))
+    }
+    return nodes
+  }
+
   function repaintBackgroundForTheme(): void {
     if (active === null || currentActivation === null || lastEntry === null) return
     const media = lastEntry.manifest.contributes.backgroundMedia
@@ -161,7 +184,7 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
     const variant = themeGet() === 'dark' ? (media.dark ?? media.light) : (media.light ?? media.dark)
     if (!variant) return
     const assetBase = `${apiBase}/skins/${lastEntry.manifest.id}`
-    setBackgroundLayer(currentActivation, buildBackgroundMedia(doc, variant, assetBase))
+    setBackgroundLayer(currentActivation, backdropNodes(lastEntry, variant, assetBase))
   }
   const unsubscribeTheme = themeSubscribe(() => repaintBackgroundForTheme())
   const loadStylesheet = deps.loadStylesheet ?? ((href: string) => new Promise<void>((resolveLink, rejectLink) => {
@@ -274,7 +297,7 @@ export function createSkinController(deps: SkinControllerDeps): SkinController {
       return
     }
     const assetBase = `${apiBase}/skins/${entry.manifest.id}`
-    setBackgroundLayer(activation, buildBackgroundMedia(doc, variant, assetBase))
+    setBackgroundLayer(activation, backdropNodes(entry, variant, assetBase))
   }
 
   async function installHooks(activation: number, entry: ControllerSkinEntry): Promise<void> {

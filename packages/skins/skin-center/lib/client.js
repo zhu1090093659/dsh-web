@@ -2697,6 +2697,13 @@ window.__ModuleLoader__.load({
 		* inert there — the value still persists so it is ready for the next backdrop
 		* skin.
 		*
+		* The same value is mirrored onto --dsh-skin-veil, consumed by the universal
+		* scrim veil the skin controller stacks over any manifest-painted backdrop
+		* whose skin does NOT handle occlusion itself (#1000): one slider therefore
+		* drives every backdrop skin, legacy token-math skins included, while skins
+		* declaring contributes.backgroundSelfScrim keep their direct contract and
+		* never get a second darkening layer.
+		*
 		* The Gaussian blur targets the same painted backdrop through a fixed child
 		* of `document.body` using backdrop-filter: it samples the body's own
 		* background painted behind it. Separate strengths apply to the empty
@@ -2720,6 +2727,13 @@ window.__ModuleLoader__.load({
 		const SKIN_BACKGROUND_NS = "skin-background";
 		/** CSS custom property written to document.body and read by backdrop skins. */
 		const SCRIM_VAR = "--dsw-skin-scrim";
+		/**
+		* CSS custom property driving the universal scrim veil (#1000): mirrored
+		* from the occlusion value by applyOcclusion, consumed as the veil element's
+		* opacity inside the background decoration layer. Never used as an
+		* art-presence marker — that is the legacy scrim var's second job.
+		*/
+		const VEIL_VAR = "--dsh-skin-veil";
 		/** CSS custom property consumed by skins that expose translucent bubbles. */
 		const BUBBLE_ALPHA_VAR = "--dsh-skin-bubble-alpha";
 		/** CSS custom property consumed by the shared composer neutralizer. */
@@ -2864,6 +2878,7 @@ window.__ModuleLoader__.load({
 				this.removeBlurElement();
 				document.body.style.removeProperty(INPUT_CARD_BLUR_VAR);
 				document.body.style.removeProperty(BUBBLE_ALPHA_VAR);
+				document.body.style.removeProperty(VEIL_VAR);
 				if (this.observer !== null) {
 					this.observer.disconnect();
 					this.observer = null;
@@ -2899,13 +2914,16 @@ window.__ModuleLoader__.load({
 				}
 				document.body.style.setProperty(BUBBLE_ALPHA_VAR, String(this.bubbleOpacityValue / 100));
 			}
-			/** Write the current occlusion onto the body CSS variable (0..1 alpha). */
+			/** Write the current occlusion onto the body CSS variables (0..1 alpha). */
 			applyOcclusion() {
 				if (!this.enabledValue) {
 					document.body.style.removeProperty(SCRIM_VAR);
+					document.body.style.removeProperty(VEIL_VAR);
 					return;
 				}
-				document.body.style.setProperty(SCRIM_VAR, String(this.opacityValue / 100));
+				const alpha = String(this.opacityValue / 100);
+				document.body.style.setProperty(SCRIM_VAR, alpha);
+				document.body.style.setProperty(VEIL_VAR, alpha);
 			}
 			/**
 			* Apply the active blur: empty or with-content strength depending on the
@@ -3672,6 +3690,27 @@ window.__ModuleLoader__.load({
 			}
 			return nodes;
 		}
+		/**
+		* The universal scrim veil (issue #1000): a plain color layer stacked after
+		* the manifest media inside the same background decoration layer, so the
+		* occlusion slider darkens ANY skin's painted backdrop without each skin
+		* having to consume --dsw-skin-scrim in its own token math.
+		*
+		* Strength rides a dedicated variable (--dsh-skin-veil, written by the
+		* BackgroundController next to the legacy scrim var) instead of
+		* --dsw-skin-scrim itself: that var doubles as the art-presence marker the
+		* controller flips to '1' on every media mount, which would flash the veil
+		* fully opaque before the user's value lands. Skins already handling occlusion
+		* themselves declare contributes.backgroundSelfScrim and simply never get a
+		* veil node — no double darkening.
+		*/
+		function buildUniversalScrimVeil(doc) {
+			const veil = doc.createElement("div");
+			veil.setAttribute("aria-hidden", "true");
+			veil.setAttribute("data-dsh-universal-veil", "");
+			veil.style.cssText = "position:absolute;top:0;right:0;bottom:0;left:0;background:#000;opacity:var(--dsh-skin-veil, 0);";
+			return veil;
+		}
 		//#endregion
 		//#region src/client/runtime/skin-controller.ts
 		function createSkinController(deps) {
@@ -3703,6 +3742,16 @@ window.__ModuleLoader__.load({
 			* swap the variant the same way an activation does). No-op when there is
 			* nothing painted or the manifest carries no backgroundMedia.
 			*/
+			/**
+			* The activation's background-layer content: the manifest media for the
+			* active theme, plus the universal scrim veil (#1000) unless the skin
+			* declares that its own stylesheet already handles occlusion.
+			*/
+			function backdropNodes(entry, variant, assetBase) {
+				const nodes = buildBackgroundMedia(doc, variant, assetBase);
+				if (entry.manifest.contributes.backgroundSelfScrim !== true) nodes.push(buildUniversalScrimVeil(doc));
+				return nodes;
+			}
 			function repaintBackgroundForTheme() {
 				if (active === null || currentActivation === null || lastEntry === null) return;
 				const media = lastEntry.manifest.contributes.backgroundMedia;
@@ -3711,7 +3760,7 @@ window.__ModuleLoader__.load({
 				const variant = themeGet() === "dark" ? media.dark ?? media.light : media.light ?? media.dark;
 				if (!variant) return;
 				const assetBase = `${apiBase}/skins/${lastEntry.manifest.id}`;
-				setBackgroundLayer(currentActivation, buildBackgroundMedia(doc, variant, assetBase));
+				setBackgroundLayer(currentActivation, backdropNodes(lastEntry, variant, assetBase));
 			}
 			const unsubscribeTheme = themeSubscribe(() => repaintBackgroundForTheme());
 			const loadStylesheet = deps.loadStylesheet ?? ((href) => new Promise((resolveLink, rejectLink) => {
@@ -3829,8 +3878,7 @@ window.__ModuleLoader__.load({
 					setBackgroundLayer(activation, []);
 					return;
 				}
-				const assetBase = `${apiBase}/skins/${entry.manifest.id}`;
-				setBackgroundLayer(activation, buildBackgroundMedia(doc, variant, assetBase));
+				setBackgroundLayer(activation, backdropNodes(entry, variant, `${apiBase}/skins/${entry.manifest.id}`));
 			}
 			async function installHooks(activation, entry) {
 				if (!entry.manifest.facets?.client) return;

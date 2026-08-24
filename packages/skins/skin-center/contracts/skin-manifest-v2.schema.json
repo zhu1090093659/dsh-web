@@ -158,6 +158,10 @@
             }
           },
           "description": "Fills the fixed decoration layer 'background'. Wallpaper-Engine wallpaper always wins over this; user manual background wins over it too."
+        },
+        "backgroundSelfScrim": {
+          "type": "boolean",
+          "description": "True when the skin's own stylesheet already consumes --dsw-skin-scrim inside its token math, so the occlusion slider reshapes the panel alphas directly. The skin-center must not stack the universal scrim veil on top of such skins (issue #1000): the two mechanisms would darken the same backdrop twice."
         }
       }
     },

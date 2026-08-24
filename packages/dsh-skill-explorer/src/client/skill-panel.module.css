@@ -52,8 +52,13 @@
   text-overflow: ellipsis;
 }
 
-/* Collapsed rail: icon-only, centered, matching the shell's 56px rail. */
-:global([data-dsh-frame][data-sidebar-collapsed]) .entry {
+/* Collapsed rail: icon-only, centered, matching the shell's 56px rail.
+   Anchored on the frame's own [data-sidebar-collapsed] attribute (set by the
+   shell's AppFrame). It deliberately does NOT require [data-dsh-frame]: that
+   attribute is only stamped by the dsh-web-ui-all shim, which is not present
+   in every profile, so depending on it would leave the entry stuck in its
+   expanded style inside the collapsed rail. */
+:global([data-sidebar-collapsed]) .entry {
   justify-content: center;
   width: 36px;
   height: 36px;
@@ -62,7 +67,7 @@
   border-radius: 50%;
 }
 
-:global([data-dsh-frame][data-sidebar-collapsed]) .entryLabel {
+:global([data-sidebar-collapsed]) .entryLabel {
   display: none;
 }
 

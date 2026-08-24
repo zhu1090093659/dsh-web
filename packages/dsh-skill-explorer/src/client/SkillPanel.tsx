@@ -2,9 +2,12 @@
  * Skill center panel (browser half): an overlay modal with two tabs — the
  * grouped skill list (enable/disable switch, delete) and a create form.
  * Talks to the host route family through SkillApi.
+ *
+ * The panel uses a fixed light theme (see skill-panel.module.css): it does
+ * NOT follow the DSH shell skin, so its look is identical in light and dark.
  */
 
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { SkillApi, type ListPayload, type SkillEntry } from './api.ts'
 import { zh } from './locales.ts'
 import { tt } from './panel-helpers.ts'
@@ -26,7 +29,51 @@ function invokableMarks(skill: SkillEntry): string {
   return marks.join(' / ')
 }
 
-/** One skill card: name, badges, toggle switch, delete button. */
+/** Deterministic hue (0..359) from a skill name, for its icon colour. */
+function skillHue(name: string): number {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  return h % 360
+}
+
+/** Orange lightning bolt for the header logo. */
+function LogoIcon(): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" />
+    </svg>
+  )
+}
+
+/** Circular-arrow refresh icon. */
+function RefreshIcon(): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <polyline points="21 3 21 9 15 9" />
+    </svg>
+  )
+}
+
+/** Close (×) icon. */
+function CloseIcon(): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  )
+}
+
+/** Folder icon shown before a skill's file path. */
+function FolderIcon(): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z" />
+    </svg>
+  )
+}
+
+/** One skill card: icon, name, badges, toggle switch, delete button. */
 function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi; onChanged: () => void }): React.JSX.Element {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | undefined>(undefined)
@@ -71,15 +118,38 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
     }
   }
 
+  const hue = skillHue(skill.name)
+  const iconStyle: CSSProperties = {
+    background: `linear-gradient(135deg, hsl(${hue} 70% 60%), hsl(${(hue + 38) % 360} 62% 48%))`,
+  }
+
   return (
     <article className={css.skill} data-dsh-part="skill-row">
-      <header className={css.skillHeader}>
-        <span className={css.skillName}>{skill.name}</span>
-        {skill.provider !== undefined && <span className={css.badge}>{skill.provider}</span>}
-        {skill.linked === true && <span className={css.badge}>{tt('list.linked')}</span>}
-        {(skill.modelInvocable || skill.userInvocable) && (
-          <span className={`${css.badge} ${css.badgeInvokable}`}>{tt('list.invokable', { marks: invokableMarks(skill) })}</span>
+      <div className={css.skillIcon} style={iconStyle} aria-hidden="true">
+        {skill.name.slice(0, 1).toUpperCase()}
+      </div>
+      <div className={css.skillBody}>
+        <header className={css.skillHeader}>
+          <span className={css.skillName}>{skill.name}</span>
+          {skill.provider !== undefined && <span className={css.badge}>{skill.provider}</span>}
+          {skill.linked === true && <span className={`${css.badge} ${css.badgeLinked}`}>{tt('list.linked')}</span>}
+          {(skill.modelInvocable || skill.userInvocable) && (
+            <span className={`${css.badge} ${css.badgeInvokable}`}>{tt('list.invokable', { marks: invokableMarks(skill) })}</span>
+          )}
+        </header>
+        <p className={css.skillDesc}>{skill.description}</p>
+        {skill.whenToUse !== undefined && skill.whenToUse !== '' && (
+          <p className={css.skillWhen}>{tt('list.when', { when: skill.whenToUse })}</p>
         )}
+        {skill.path !== undefined && (
+          <div className={css.skillPath}>
+            <FolderIcon />
+            {skill.path}
+          </div>
+        )}
+        {error !== undefined && <p className={css.feedback}>{error}</p>}
+      </div>
+      <div className={css.skillActions}>
         {skill.path !== undefined && (
           <button
             type="button"
@@ -98,13 +168,7 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
             {tt('list.delete')}
           </button>
         )}
-      </header>
-      <p className={css.skillDesc}>{skill.description}</p>
-      {skill.whenToUse !== undefined && skill.whenToUse !== '' && (
-        <p className={css.skillWhen}>{tt('list.when', { when: skill.whenToUse })}</p>
-      )}
-      {skill.path !== undefined && <div className={css.skillPath}>{skill.path}</div>}
-      {error !== undefined && <p className={css.feedback}>{error}</p>}
+      </div>
     </article>
   )
 }
@@ -149,11 +213,11 @@ function ListTab({ api, refreshTick, onCwd }: { api: SkillApi; refreshTick: numb
         const hint = hintKey in zh ? tt(hintKey) : group.hint
         return (
           <section key={group.key} className={css.group}>
-            <h3 className={css.groupTitle}>
-              {title}
+            <div className={css.groupHeader}>
+              <h3 className={css.groupTitle}>{title}</h3>
               <span className={css.count}>{tt('list.count', { count: String(group.skills.length) })}</span>
-            </h3>
-            {hint !== '' && <p className={css.groupHint}>{hint}</p>}
+              {hint !== '' && <span className={css.groupHint}>{hint}</span>}
+            </div>
             {group.skills.map((skill) => (
               <SkillCard key={skill.name} skill={skill} api={api} onChanged={() => { void load() }} />
             ))}
@@ -257,12 +321,19 @@ export function SkillPanel({ api, onClose }: SkillPanelProps): React.JSX.Element
     >
       <div className={css.card} data-dsh-part="card">
         <header className={css.head} data-dsh-part="head">
-          <h2 className={css.headTitle}>{tt('panel.title')}</h2>
-          {cwd !== undefined && <span className={css.headCwd}>{tt('cwd', { cwd })}</span>}
-          <button type="button" className={css.headButton} onClick={() => { setRefreshTick((tick) => tick + 1) }}>
-            {tt('refresh')}
+          <div className={css.headLogo}><LogoIcon /></div>
+          <div className={css.headText}>
+            <h2 className={css.headTitle}>{tt('panel.title')}</h2>
+            {cwd !== undefined && <span className={css.headCwd}>{tt('cwd', { cwd })}</span>}
+          </div>
+          <button type="button" className={css.headButton} title={tt('refresh')} aria-label={tt('refresh')} onClick={() => { setRefreshTick((tick) => tick + 1) }}>
+            <RefreshIcon />
+            <span className={css.srOnly}>{tt('refresh')}</span>
           </button>
-          <button type="button" className={css.headButton} onClick={onClose}>{tt('close')}</button>
+          <button type="button" className={css.headButtonClose} onClick={onClose}>
+            <CloseIcon />
+            {tt('close')}
+          </button>
         </header>
         <div className={css.tabs} data-dsh-part="tab-bar" role="tablist">
           <button type="button" role="tab" className={`${css.tab} ${tab === 'list' ? css.tabActive : ''}`} data-dsh-part="tab" aria-selected={tab === 'list'} data-active={tab === 'list' ? '' : undefined} onClick={() => { setTab('list') }}>

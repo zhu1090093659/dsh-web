@@ -1,3 +1,15 @@
+/* ============================================================================
+ * Skill center panel — fixed light theme (Apple "Settings"-inspired).
+ *
+ * This panel deliberately does NOT follow the DSH shell theme: every color is
+ * pinned here as an immutable light palette, so the panel looks identical in
+ * light and dark skins. No --dsw-alias-* token is referenced and no
+ * body[data-ds-dark-theme] override exists.
+ * ==========================================================================*/
+
+/* ========================================================================== */
+
+/* ---- Sidebar entry (blends with the shell; NOT part of the fixed panel) ---- */
 .entry {
   box-sizing: border-box;
   display: flex;
@@ -54,136 +66,270 @@
   display: none;
 }
 
+/* ---- Overlay mask (fixed neutral scrim) ---- */
 .overlay {
   position: fixed;
   inset: 0;
-  background: var(--dsw-alias-bg-mask-2, rgba(8, 10, 16, 0.45));
+  background: rgba(13, 15, 24, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
+/* ---- Modal card ---- */
 .card {
-  width: min(780px, 92vw);
-  max-height: 84vh;
+  width: min(800px, 94vw);
+  max-height: 86vh;
   display: flex;
   flex-direction: column;
-  /* Floating modal surface: bg-overlay stays opaque on translucent skins
-     (issue #659); bg-base is intentionally transparent there. */
-  background: var(--dsw-alias-bg-overlay, #fdfdfd);
-  color: var(--dsw-alias-label-primary, #1c1e26);
-  border-radius: 12px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+  background: #f5f5f7;
+  color: #1a1a2e;
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28), 0 4px 18px rgba(0, 0, 0, 0.12);
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
+/* ---- Header: logo + title/cwd on the left, actions on the right ---- */
 .head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  /* No divider: the header blends with the modal surface. */
-  background: var(--dsw-alias-bg-base, #fff);
+  gap: 12px;
+  padding: 16px 20px 12px;
+  background: #f5f5f7;
+  border-bottom: 1px solid #e8eaef;
+}
+
+.headLogo {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #8a7bff 0%, #6c5ce7 60%, #5b4bd6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffb020;
+  box-shadow: 0 4px 10px rgba(108, 92, 231, 0.4);
+}
+
+.headLogo svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.headText {
+  flex: 1;
+  min-width: 0;
 }
 
 .headTitle {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a2e;
+  letter-spacing: 0.2px;
 }
 
 .headCwd {
+  display: block;
+  margin-top: 3px;
   font-size: 11px;
-  color: var(--dsw-alias-label-secondary, #8a8f9c);
+  color: #6b7280;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
 }
 
+/* Visually hidden but accessible text (used on icon-only buttons). */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Refresh: round icon button. Close: dark pill button. */
 .headButton {
-  /* Background-based distinction (no border), consistent with the
-     inputs and the dark treatment. */
+  flex: none;
   border: none;
-  background: #f2f3f5;
-  color: var(--dsw-alias-label-primary, #3a3f4b);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
+  background: #ffffff;
+  color: #3a3f4b;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.headButton svg {
+  width: 16px;
+  height: 16px;
 }
 
 .headButton:hover {
-  background: #e7e8ea;
+  background: #f0f1f4;
 }
 
+.headButton:active {
+  transform: scale(0.94);
+}
+
+.headButtonClose {
+  border: none;
+  background: #111111;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: background 0.15s ease;
+}
+
+.headButtonClose:hover {
+  background: #2a2a2c;
+}
+
+.headButtonClose svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---- Tabs (segmented control on recessed track) ---- */
 .tabs {
   display: flex;
   gap: 4px;
-  padding: 8px 16px 0;
-  background: var(--dsw-alias-bg-layer-1, #f7f8fa);
+  padding: 12px 20px 0;
+  background: #f5f5f7;
 }
 
 .tab {
-  border: 1px solid var(--dsw-alias-border-l1, #d7dae0);
-  border-bottom: none;
+  border: none;
   background: transparent;
-  color: var(--dsw-alias-label-secondary, #8a8f9c);
-  border-radius: 8px 8px 0 0;
-  padding: 6px 14px;
-  font-size: 12px;
+  color: #6b7280;
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab:hover {
+  color: #1a1a2e;
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .tabActive {
-  background: var(--dsw-alias-bg-base, #fdfdfd);
-  color: var(--dsw-alias-label-primary, #1c1e26);
+  background: #ffffff;
+  color: #6c5ce7;
   font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* ---- Body ---- */
 .body {
-  padding: 12px 16px;
+  padding: 14px 20px 22px;
   overflow: auto;
 }
 
 .status {
-  padding: 18px;
-  color: var(--dsw-alias-label-secondary, #6b7280);
+  padding: 28px 18px;
+  color: #6b7280;
   font-size: 13px;
   text-align: center;
 }
 
+/* ---- Group sections ---- */
 .group {
-  margin-bottom: 18px;
+  margin-bottom: 22px;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 2px;
 }
 
 .groupTitle {
-  margin: 0 0 2px;
+  margin: 0;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--dsw-alias-label-primary, #2f3542);
-}
-
-.groupHint {
-  font-size: 11px;
-  color: var(--dsw-alias-label-secondary, #8a8f9c);
-  margin: 0 0 8px;
+  font-weight: 700;
+  color: #1a1a2e;
 }
 
 .count {
-  font-weight: 400;
-  color: var(--dsw-alias-label-secondary, #8a8f9c);
-  margin-left: 6px;
+  flex: none;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  background: #e9ecf1;
+  border-radius: 999px;
+  padding: 1px 9px;
 }
 
+.groupHint {
+  margin: 0 0 0 auto;
+  font-size: 11px;
+  color: #a0a5b1;
+}
+
+/* ---- Skill card ---- */
 .skill {
-  border: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  background: var(--dsw-alias-bg-base, #fff);
+  display: flex;
+  gap: 14px;
+  background: #ffffff;
+  border: 1px solid #eef0f4;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.skill:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.11);
+  transform: translateY(-1px);
+}
+
+.skillIcon {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 20px;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  user-select: none;
+}
+
+.skillBody {
+  flex: 1;
+  min-width: 0;
 }
 
 .skillHeader {
@@ -194,248 +340,230 @@
 }
 
 .skillName {
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--dsw-alias-label-primary, #111827);
-  font-family: ui-monospace, Consolas, monospace;
+  font-weight: 700;
+  font-size: 15px;
+  color: #1a1a2e;
+  letter-spacing: 0.2px;
 }
 
 .badge {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 99px;
-  background: var(--dsw-alias-state-business-secondary, #eef2ff);
-  color: var(--dsw-alias-state-business-primary, #4353a3);
-  border: 1px solid var(--dsw-alias-state-business-tertiary, #dde3f8);
+  font-size: 11px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4353a3;
+  border: 1px solid #e0e6fb;
+  font-weight: 500;
 }
 
 .badgeInvokable {
-  background: var(--dsw-alias-state-success-secondary, #ecfdf5);
-  color: var(--dsw-alias-state-success-primary, #0f7a50);
-  border-color: var(--dsw-alias-state-success-tertiary, #c9f0dd);
+  background: #ecfdf5;
+  color: #0f7a50;
+  border-color: #c8f3de;
 }
 
+.badgeLinked {
+  background: #fff4e6;
+  color: #c2680a;
+  border-color: #ffdfb3;
+}
+
+.skillDesc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.55;
+}
+
+.skillWhen {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.skillPath {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: ui-monospace, Consolas, monospace;
+  word-break: break-all;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.skillPath svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: #a0a5b1;
+}
+
+.skillActions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Toggle switch (green when on) */
 .switch {
   display: inline-flex;
   align-items: center;
   background: none;
   border: none;
-  padding: 2px;
-  margin-left: auto;
+  padding: 0;
   cursor: pointer;
   border-radius: 99px;
 }
 
 .switchTrack {
-  width: 30px;
-  height: 16px;
+  width: 38px;
+  height: 22px;
   border-radius: 99px;
-  background: var(--dsw-alias-border-l2, #d1d5db);
+  background: #dfe3e9;
   position: relative;
   transition: background 0.18s ease;
   flex: none;
+  display: block;
 }
 
 .switchThumb {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--dsw-alias-bg-base, #fff);
+  background: #ffffff;
   transition: left 0.18s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
 }
 
 .switch[aria-checked='true'] .switchTrack {
-  background: var(--dsw-alias-state-success-primary, #10b981);
+  background: #4ade80;
 }
 
 .switch[aria-checked='true'] .switchThumb {
-  left: 16px;
+  left: 19px;
 }
 
+.switch[aria-disabled='true'] .switchTrack {
+  opacity: 0.5;
+}
+
+/* Delete: plain red text button */
 .deleteButton {
   border: none;
-  background: #feeceb;
-  color: #d92d20;
-  border-radius: 6px;
-  padding: 3px 9px;
-  font-size: 11px;
+  background: transparent;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 7px;
+  transition: background 0.15s ease;
 }
 
 .deleteButton:hover {
-  background: #fbdcd9;
+  background: #fee2e2;
 }
 
-.skillDesc {
-  margin: 6px 0 0;
-  font-size: 12px;
-  color: var(--dsw-alias-label-primary, #3a3f4b);
-  line-height: 1.5;
+.deleteButton:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
-.skillWhen {
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: var(--dsw-alias-label-secondary, #8a8f9c);
-}
-
-.skillPath {
-  margin: 6px 0 0;
-  font-size: 10px;
-  color: var(--dsw-alias-label-tertiary, #a2a7b3);
-  font-family: ui-monospace, Consolas, monospace;
-  word-break: break-all;
-}
-
+/* ---- Feedback ---- */
 .feedback {
   font-size: 11px;
-  color: var(--dsw-alias-state-error-primary, #b42318);
+  color: #d92d20;
+  margin: 4px 0 0;
 }
 
 .feedbackOk {
-  color: var(--dsw-alias-state-success-primary, #0f9d6e);
+  color: #0f9d6e;
 }
 
+/* ---- Create form ---- */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   max-width: 640px;
 }
 
 .formLabel {
-  /* Stack label above the control so long labels and full-width inputs
-     align cleanly (was inline: label and control shared one row). */
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   font-size: 12px;
-  color: var(--dsw-alias-label-secondary, #5f6672);
+  font-weight: 500;
+  color: #4b5563;
 }
 
 .formInput {
   width: 100%;
   box-sizing: border-box;
-  background: var(--dsw-alias-bg-layer-1, #f7f8fa);
-  color: var(--dsw-alias-label-primary, #1c1e26);
-  border: 1px solid transparent;
-  border-radius: 6px;
-  padding: 6px 8px;
-  font-size: 12px;
+  background: #ffffff;
+  color: #1a1a2e;
+  border: 1px solid #e0e3e9;
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 400;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.formInput:focus {
+  border-color: #8a7bff;
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.16);
 }
 
 select.formInput {
-  /* Match the input controls exactly: the native select renders shorter
-     than the padded inputs, breaking the form's vertical rhythm. */
-  height: 30px;
-  padding: 0 8px;
+  height: 36px;
+  padding: 0 10px;
 }
 
 .formTextarea {
-  min-height: 120px;
+  min-height: 130px;
   resize: vertical;
   font-family: ui-monospace, monospace;
 }
 
 .formButton {
-  /* Primary action: inverted surface in both themes (black on light,
-     white on dark) so the submit action reads at a glance. */
-  border: 1px solid transparent;
-  background: #111;
-  color: #fff;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 12px;
+  border: none;
+  background: linear-gradient(135deg, #8a7bff 0%, #6c5ce7 100%);
+  color: #ffffff;
+  border-radius: 9px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   align-self: flex-start;
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.35);
+  transition: filter 0.15s ease, transform 0.1s ease;
 }
+
 .formButton:hover {
-  background: #2a2a2c;
+  filter: brightness(1.06);
 }
-body[data-ds-dark-theme] .formButton {
-  background: #e5e5ea;
-  color: #111827;
+
+.formButton:active {
+  transform: scale(0.97);
 }
-body[data-ds-dark-theme] .formButton:hover {
-  background: #d1d5db;
+
+.formButton:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .note {
   font-size: 11px;
-  color: var(--dsw-alias-label-tertiary, #a0a5b1);
+  color: #9ca3af;
   line-height: 1.7;
-  margin-top: 10px;
-}
-
-/* ---- Dark theme overrides ----
- * The --dsw-alias-* fallbacks above are light-palette values; several of
- * the semantic tokens they fall back to (state-business/success-*,
- * bg-layer-1) are absent from the dark palette, so the light colors leak
- * into dark mode.  Pin explicit dark values for the affected surfaces.
- * Hierarchy: panel (darkest) < head/tabs < cards/inputs < active tab. */
-body[data-ds-dark-theme] .card {
-  /* Elevation matches the settings panel: app #0a0a0b < modal #2c2c2e
-     < head #3a3a3c < cards #48484a < active controls #636366. */
-  background: #2c2c2e;
-}
-body[data-ds-dark-theme] .head {
-  background: #2c2c2e;
-}
-body[data-ds-dark-theme] .tabs {
-  /* Recessed track: a step darker than the modal (not pure black). */
-  background: #1e1e1e;
-}
-body[data-ds-dark-theme] .skill {
-  background: #48484a;
-  border-color: rgba(255, 255, 255, 0.08);
-}
-body[data-ds-dark-theme] .badge {
-  background: rgba(99, 120, 220, 0.22);
-  color: #a5b4fc;
-  border-color: rgba(99, 120, 220, 0.4);
-}
-body[data-ds-dark-theme] .badgeInvokable {
-  background: rgba(48, 209, 88, 0.15);
-  color: #30d158;
-  border-color: rgba(48, 209, 88, 0.3);
-}
-body[data-ds-dark-theme] .switchThumb {
-  background: #fff;
-}
-body[data-ds-dark-theme] .tab {
-  color: rgba(255, 255, 255, 0.5);
-}
-body[data-ds-dark-theme] .tabActive {
-  background: #3a3a3c;
-  color: #fff;
-  border: 0.5px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-body[data-ds-dark-theme] .formInput {
-  background: #1c1c1e;
-  border-color: rgba(255, 255, 255, 0.06);
-}
-
-body[data-ds-dark-theme] .headButton {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: transparent;
-  color: rgba(255, 255, 255, 0.85);
-}
-body[data-ds-dark-theme] .headButton:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-body[data-ds-dark-theme] .headButton:active {
-  background: rgba(255, 255, 255, 0.05);
-}
-body[data-ds-dark-theme] .deleteButton {
-  background: rgba(255, 59, 48, 0.16);
-  border-color: transparent;
-  color: #ff6b61;
-}
-body[data-ds-dark-theme] .deleteButton:hover {
-  background: rgba(255, 59, 48, 0.26);
+  margin-top: 6px;
 }

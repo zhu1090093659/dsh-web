@@ -1,9 +1,9 @@
 {
-  "name": "dsh-web-ui-shared",
+  "name": "dsh-web-shared",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Shared runtime modules for the dsh-web-ui plugin family (inlined into each consumer bundle; never published).",
+  "description": "Shared runtime modules for the dsh-web plugin family (inlined into each consumer bundle; never published).",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

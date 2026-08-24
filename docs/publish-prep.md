@@ -1,4 +1,4 @@
-# dsh-web-ui 插件包发布准备（内测已结束）
+# dsh-web 插件包发布准备（内测已结束）
 
 > **快照说明（重要）**：本文档是**当前时点（2026-08-13）**的发布前检查快照。
 > 插件全家桶已结束内测，但**清单与版本仍可能调整**：包可能增删、版本可能调整、
@@ -20,7 +20,7 @@
 | packages/dsh-ssh | @linxin666/dsh-ssh | 0.1.1 | true |
 | packages/dsh-liangshen | @linxin666/dsh-liangshen | 0.1.12 | false |
 | packages/dsh-aionui-panel | @linxin666/dsh-client-ui-aionui-panel | 0.1.1 | true |
-| packages/dsh-web-ui-settings | @linxin666/dsh-client-ui-web-ui-settings | 0.1.1 | true |
+| packages/dsh-web-settings | @linxin666/dsh-client-ui-web-ui-settings | 0.1.1 | true |
 | packages/dsh-skill-explorer | @linxin666/dsh-client-ui-skill-explorer | 0.1.20 | true |
 | packages/dsh-community-plugins | @linxin666/dsh-client-ui-community-plugins | 0.1.17 | false |
 | packages/dsh-market | @linxin666/dsh-client-ui-market | 0.2.9 | false |
@@ -28,7 +28,7 @@
 | packages/dsh-chat-recovery | @linxin666/dsh-chat-recovery | 0.2.4 | false |
 | packages/dsh-desktop-launcher | @linxin666/dsh-desktop-launcher | 0.2.3 | false |
 | packages/dsh-doctor | @linxin666/dsh-doctor | 0.2.7 | false |
-| packages/dsh-web-ui-all | @linxin666/dsh-web-ui-all（聚合） | 0.1.1 | true |
+| packages/dsh-web-all | @linxin666/dsh-web-all（聚合） | 0.1.1 | true |
 | packages/skins/skin-center | @linxin666/dsh-client-ui-skin-center | 0.1.1 | true |
 
 
@@ -39,14 +39,14 @@
 1. **11 包 `private: true`** — npm 直接拒绝发布 private 包
    （`This package has been marked as private`）。发布前需逐个移除。
    **（发布前需按流程移除，当前仍保留）**
-2. **聚合包 `workspace:*` 依赖原样进 tarball**（dsh-web-ui-all 17 处）—
+2. **聚合包 `workspace:*` 依赖原样进 tarball**（dsh-web-all 17 处）—
    [已确认] **已确认修复方式**：实测 `pnpm pack` 会把 `workspace:*` 改写为真实版本号
    （无残留）。
    发布时必须用 **`pnpm publish`**（不要用 `npm publish`），`npm pack` 不改写。
 3. **类型产物缺失（1 包）** — [已确认] **已修复**：
    - dsh-task-board：新增 `tsconfig.build.json`（emitDeclarationOnly → lib/types），
      build 脚本改为 `tsc -p tsconfig.build.json && tsdown`；已产出 18 个 .d.ts；
-4. **`@deepseek-ai/dsh-code-kline` 未发布** — 原为 ui-code-kline 与 dsh-web-ui-all
+4. **`@deepseek-ai/dsh-code-kline` 未发布** — 原为 ui-code-kline 与 dsh-web-all
    的依赖方（peerDeps/deps 引用），需在依赖它的包之前发布。
    **（发布动作本身，无法提前修复；发布顺序已排定）**
    [已确认] **已失效**：2026-08-12 调整移除 code-kline / ui-code-kline 包后，

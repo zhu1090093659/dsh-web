@@ -1,6 +1,6 @@
 # AGENTS.md — 文档标准
 
-本文件定义 dsh-web-ui 的文档结构、写作规则与 i18n 配对契约。
+本文件定义 dsh-web 的文档结构、写作规则与 i18n 配对契约。
 pnpm docs:check（scripts/verify-docs.mjs）强制执行本文件的可机械检查部分。
 
 ## 文档分层：一个事实只有一个家

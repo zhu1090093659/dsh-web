@@ -1,6 +1,6 @@
 # ISSUE_TRIAGE — Issue 分类标准与处理流程
 
-本文件定义 dsh-web-ui 仓库的 Issue 标签体系、分类标准与处理流程，供维护者
+本文件定义 dsh-web 仓库的 Issue 标签体系、分类标准与处理流程，供维护者
 与贡献者共同使用。目标是让每个 Open Issue 可检索、可认领、可追溯。
 
 ## 标签体系
@@ -54,15 +54,15 @@
 
 ```sh
 # 打标签（多个逗号分隔）
-gh issue edit <n> -R zhu1090093659/dsh-web-ui --add-label "bug,good first issue"
+gh issue edit <n> -R zhu1090093659/dsh-web --add-label "bug,good first issue"
 
 # 关闭并说明（completed / not_planned）
-gh api -X PATCH repos/zhu1090093659/dsh-web-ui/issues/<n> \
+gh api -X PATCH repos/zhu1090093659/dsh-web/issues/<n> \
   -f state=closed -f state_reason=completed
-gh issue comment <n> -R zhu1090093659/dsh-web-ui --body "说明"
+gh issue comment <n> -R zhu1090093659/dsh-web --body "说明"
 
 # 列出待分类的 Open Issue
-gh issue list -R zhu1090093659/dsh-web-ui --state open \
+gh issue list -R zhu1090093659/dsh-web --state open \
   --json number,title,labels --jq '.[] | select(.labels|length==0)'
 ```
 

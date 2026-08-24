@@ -1,0 +1,1 @@
+import{S as c}from"./index-Cp438i9e.js";import"./git-DJDr4heb.js";var i=class extends Error{code;path;constructor(r,e,t){super(t),this.code=r,this.path=e,this.name="DirectoryPickerError"}},a=class extends c{constructor(r){super(r,"directoryPicker")}};export{a as DirectoryPicker,i as DirectoryPickerError,a as default};

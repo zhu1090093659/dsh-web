@@ -57,7 +57,7 @@
 - 每个包必须有 `vitest run` 可通过的测试（`pnpm test` 全仓门禁）。行为变化必须
   带测试；纯 UI 展示层的冒烟测试可放宽为轻量挂载断言。
 - `tests/` 放测试，测试文件不得依赖 DSH 源码 checkout 的 fixture。
-- 聚合载具包（dsh-web-ui-all）可无单测，但聚合生成脚本必须有
+- 聚合载具包（dsh-web-all）可无单测，但聚合生成脚本必须有
   `--check` 一致性门禁（`aggregate.mjs` 的 check 模式）。
 - 例外：dsh-aionui-panel 已停止支持——不再保留测试、typecheck 门禁与 e2e 断言
   （右侧面板由 dsh-better-sidebar 接管），后续版本将从聚合包移除。

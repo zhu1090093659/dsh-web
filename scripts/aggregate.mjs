@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Aggregate plugin generator for the dsh-web-ui monorepo.
+ * Aggregate plugin generator for the dsh-web monorepo.
  *
  * An aggregate bundle is a plain carrier package whose cordis.patch.yml is the
  * concatenation of its child plugins' insert rows and whose package.json

@@ -1,12 +1,12 @@
 ---
 name: skin-developer
-description: Build a new skin for the dsh-web-ui skin collection (DSH Web GUI) and publish it into the Skin Center — the first-level settings section — scaffold with scripts/dsh-skin-new, author the v2 skin.json manifest plus skin.css token remap (pure asset directory, no package.json, no build step), validate with scripts/dsh-skin, regenerate the gallery, and submit the PR. Use when the user asks to create, add, develop, scaffold, or publish a new skin for the dsh web GUI skin collection.
-whenToUse: The user wants a new skin (新建/新增/开发一个皮肤), or wants to publish/发 skin-center, or asks how skins are built and shipped in the dsh-web-ui repo. Not for the act of applying a skin (scripts/dsh-skin use) or gallery-only edits.
+description: Build a new skin for the dsh-web skin collection (DSH Web GUI) and publish it into the Skin Center — the first-level settings section — scaffold with scripts/dsh-skin-new, author the v2 skin.json manifest plus skin.css token remap (pure asset directory, no package.json, no build step), validate with scripts/dsh-skin, regenerate the gallery, and submit the PR. Use when the user asks to create, add, develop, scaffold, or publish a new skin for the dsh web GUI skin collection.
+whenToUse: The user wants a new skin (新建/新增/开发一个皮肤), or wants to publish/发 skin-center, or asks how skins are built and shipped in the dsh-web repo. Not for the act of applying a skin (scripts/dsh-skin use) or gallery-only edits.
 ---
 
-# 皮肤开发者（dsh-web-ui 皮肤集合）
+# 皮肤开发者（dsh-web 皮肤集合）
 
-本技能指导在 dsh-web-ui 克隆里从零构建一个新皮肤，并把它发布进**皮肤中心**（GUI 设置页一级菜单）
+本技能指导在 dsh-web 克隆里从零构建一个新皮肤，并把它发布进**皮肤中心**（GUI 设置页一级菜单）
 与 gallery。v2 架构（issue #506）：皮肤是纯资产目录，skin-center 包是唯一加载器，皮肤不再是
 独立插件包、不参与构建。
 
@@ -27,7 +27,7 @@ whenToUse: The user wants a new skin (新建/新增/开发一个皮肤), or want
 ## 0. 前置
 
 ```sh
-cd <dsh-web-ui 克隆根>
+cd <dsh-web 克隆根>
 pnpm install
 ```
 

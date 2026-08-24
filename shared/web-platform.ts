@@ -5,7 +5,7 @@
  * verified against the 0.1.1-rc.2 dist: react, react/jsx-runtime, react-dom,
  * react-dom/client, cordis, dsh-client-ui-slots, dsh-client-ui-primitives;
  * the rc.2 dist carries the same set with no new frozen modules).
- * @module dsh-web-ui/shared/web-platform
+ * @module dsh-web/shared/web-platform
  */
 
 /** The module specifiers the shell shares into the frozen module table. */

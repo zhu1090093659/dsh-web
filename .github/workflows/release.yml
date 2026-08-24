@@ -132,6 +132,17 @@ jobs:
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
           pnpm -r publish --no-git-checks --access public --registry=https://registry.npmjs.org/ --tag latest
 
+      # Dual-publish the final legacy aggregate name for the transition
+      # window. The legacy tarball is derived from the fresh current package,
+      # carries the old browser loader id, and announces dsh.migrate so the
+      # plugin-manager and Doctor can migrate existing profiles automatically.
+      - name: Publish legacy aggregate package
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
+          node scripts/publish-legacy-aggregate.mjs "${{ steps.tag.outputs.version }}"
+
       # The GitHub Release is created by the verify-release job only after
       # the post-publish mount smoke passes; a failed publish cannot be
       # re-run for an already-published version, but a failed smoke leaves
@@ -200,4 +211,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --notes-file "$RUNNER_TEMP/release-notes.md" \
-            --title "dsh-web-ui $GITHUB_REF_NAME"
+            --title "dsh-web $GITHUB_REF_NAME"

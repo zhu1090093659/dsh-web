@@ -8,7 +8,7 @@
  * Semantics: RFC 5735 IPv4 127/8, ::1, IPv4-mapped ::ffff:127/8 (matching the
  * remote-web-ui gate), localhost hostnames, plus the browser same-origin
  * markers (sec-fetch-site and Origin) for the request-level fence.
- * @module dsh-web-ui-shared/host/loopback
+ * @module dsh-web-shared/host/loopback
  */
 
 import type { IncomingMessage } from 'node:http'

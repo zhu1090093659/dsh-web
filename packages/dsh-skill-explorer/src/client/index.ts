@@ -19,6 +19,7 @@ import { SkillApi } from './api.ts'
 import { en, zh, type SkillExplorerKey } from './locales.ts'
 import { mountPanel } from './panel-mount.tsx'
 import { mountSidebarEntry } from './sidebar-entry.ts'
+import { reportDailyHeartbeat } from './telemetry.ts'
 
 /** Locale namespace this plugin owns. */
 const NS = 'dsh-skill-explorer'
@@ -43,6 +44,10 @@ export type { SkillApi } from './api.ts'
  * @param ctx - client root context (locale service).
  */
 export function apply(ctx: ClientContext): void {
+  // Anonymous install heartbeat (docs/telemetry.md): one beat per browser per
+  // UTC day, package name only, silent failure.
+  reportDailyHeartbeat([{ name: '@linxin666/dsh-client-ui-skill-explorer' }])
+
   ctx.effect(() => {
     try {
       return ctx.locale.register(NS, { zh, en })

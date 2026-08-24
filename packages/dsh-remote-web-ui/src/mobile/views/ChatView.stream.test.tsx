@@ -7,8 +7,8 @@
  * to the plain renderMarkdown output) the moment the turn closes.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, render } from '@testing-library/react'
-import { ChatView, STREAM_RENDER_INTERVAL_MS } from './ChatView.tsx'
+import { act, cleanup, render, screen } from '@testing-library/react'
+import { ChatView, STREAM_RENDER_INTERVAL_MS, LONG_TEXT_LIMIT } from './ChatView.tsx'
 import { type SessionView } from './App.tsx'
 import { renderMarkdown } from '../markdown.ts'
 import type { SessionModels } from '@deepseek-ai/dsh-host-apiproxy/api/sessions'
@@ -229,5 +229,35 @@ describe('ChatView streaming markdown throttle', () => {
     await act(async () => { finalMessage(mux, full, 9) })
     expect(renderMarkdownMock.mock.calls.length - beforeFinal).toBe(0)
     expect(normalize(body().innerHTML)).toBe(normalize(renderMarkdown(full)))
+  })
+
+  it('does not collapse long text while streaming (pending) and collapses once turn finishes', async () => {
+    const mux = new FakeMux()
+    let container: HTMLElement
+    await act(async () => {
+      const rendered = render(<ChatView session={session} mux={mux as never} onBack={() => {}} />)
+      container = rendered.container
+    })
+
+    const hugeChunk = 'C'.repeat(LONG_TEXT_LIMIT + 200)
+
+    // Stream a chunk exceeding LONG_TEXT_LIMIT
+    await act(async () => {
+      chunk(mux, hugeChunk, 6)
+      vi.advanceTimersByTime(STREAM_RENDER_INTERVAL_MS + 5)
+    })
+
+    // During streaming (pending), message is not collapsed
+    expect(container!.querySelector('.chat-md-collapsed')).toBeNull()
+    expect(screen.queryByRole('button', { name: /展开全文/ })).toBeNull()
+
+    // Turn closes
+    await act(async () => {
+      finalMessage(mux, hugeChunk, 7)
+    })
+
+    // Once turn ends (not pending), message is collapsed and has expand button
+    expect(container!.querySelector('.chat-md-collapsed')).not.toBeNull()
+    expect(screen.getByRole('button', { name: new RegExp(`展开全文（${LONG_TEXT_LIMIT + 200} 字）`) })).toBeTruthy()
   })
 })

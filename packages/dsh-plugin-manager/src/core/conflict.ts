@@ -1,6 +1,6 @@
 /**
  * Conflict-ledger diffing. The official host applies structural conflict
- * rules at install time (disableControlsOnInstall: installing the dsh-web-ui
+ * rules at install time (disableControlsOnInstall: installing the dsh-web
  * family disables the built-in web-ui product rows so the two never
  * double-mount), but no UI surfaces what the rules just did. This module
  * diffs the plugin-control snapshots taken before and after an install and

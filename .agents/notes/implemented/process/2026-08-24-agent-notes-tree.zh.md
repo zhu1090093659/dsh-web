@@ -8,7 +8,7 @@ Status: implemented
 
 ## Decision
 
-本仓库采用 deepseek-harness 风格的 Agent Notes 树，位于 `.agents/notes/`：生命周期目录 `proposed/`、`implemented/`、`rejected/` 与冻结的 `archived/` 树，每条记录路径编码为 `{lifecycle}/{class}/yyyy-mm-dd-topic-title.md`，类别为封闭集合 feature / bug-fix / simplification / architecture / process / testing。每个非平凡变更在同一变更中记录或更新一条 Agent Note；记录按仓库 i18n 契约以英文/中文/sidecar 三件套交付；根 AGENTS.md 的 Development Workflow 与 Instruction Layers 路由到 [.agents/notes/README.md](../../README.md)，dsh-web-ui-agent-coding skill 携带同一规则。
+本仓库采用 deepseek-harness 风格的 Agent Notes 树，位于 `.agents/notes/`：生命周期目录 `proposed/`、`implemented/`、`rejected/` 与冻结的 `archived/` 树，每条记录路径编码为 `{lifecycle}/{class}/yyyy-mm-dd-topic-title.md`，类别为封闭集合 feature / bug-fix / simplification / architecture / process / testing。每个非平凡变更在同一变更中记录或更新一条 Agent Note；记录按仓库 i18n 契约以英文/中文/sidecar 三件套交付；根 AGENTS.md 的 Development Workflow 与 Instruction Layers 路由到 [.agents/notes/README.md](../../README.md)，dsh-web-agent-coding skill 携带同一规则。
 
 本次采用以纪律执行为主：尚无专门的格式门禁脚本。
 

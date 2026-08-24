@@ -364,7 +364,7 @@
     "author": "yufengnigel",
     "description": "侧边栏底部会话 ID 面板：列出全部会话的完整 ID 并一键复制（纯浏览器、只读，不修改会话状态）。",
     "descriptionEn": "Sidebar-foot Session ID panel: lists every session with its full id and one-click copy (browser-only and read-only, never mutates sessions).",
-    "repo": "https://github.com/zhu1090093659/dsh-web-ui/tree/main/packages/dsh-session-id",
+    "repo": "https://github.com/zhu1090093659/dsh-web/tree/main/packages/dsh-session-id",
     "npm": "@linxin666/dsh-client-ui-session-id",
     "category": "ui"
   },

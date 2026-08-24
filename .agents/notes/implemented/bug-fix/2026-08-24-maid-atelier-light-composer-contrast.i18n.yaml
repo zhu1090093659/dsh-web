@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-08-24-maid-atelier-light-composer-contrast.md: 91b04a44cffdd97ccefe756fe260b7b6b4930b8f
+2026-08-24-maid-atelier-light-composer-contrast.zh.md: ebd11d38d82b7ab741babad20ad494cc90d7e7e4

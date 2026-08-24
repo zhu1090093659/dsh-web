@@ -27,6 +27,7 @@ import type {
 import { GitApi, subscribeChanges } from './api.ts'
 import { BranchChip } from './chips/BranchChip.tsx'
 import { en, zh, type GitGraphKey } from './locales.ts'
+import { reportDailyHeartbeat } from './telemetry.ts'
 
 export type { GitGraphKey } from './locales.ts'
 export { BranchChip } from './chips/BranchChip.tsx'
@@ -99,6 +100,10 @@ export const CONTEXT_FALLBACK_MS = 2000
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  // Anonymous install heartbeat (docs/telemetry.md): one beat per browser per
+  // UTC day, package name only, silent failure.
+  reportDailyHeartbeat([{ name: '@linxin666/dsh-client-ui-git-graph' }])
+
   ctx.effect(() => {
     try {
       return ctx.locale.register(NS, { zh, en })

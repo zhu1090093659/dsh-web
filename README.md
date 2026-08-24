@@ -1,28 +1,28 @@
-# dsh-web-ui · DSH Web UI
+# dsh-web · DSH Web 插件聚合生态包
 
 中文 | [English](README.en.md)
 
 <p align="center">
-  <img src="docs/dsh-web-ui-banner.png" alt="dsh-web-ui" width="100%">
+  <img src="docs/dsh-web-banner.png" alt="dsh-web" width="100%">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/zhu1090093659/dsh-web-ui?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/github/v/release/zhu1090093659/dsh-web?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/github/stars/zhu1090093659/dsh-web-ui?style=flat-square" alt="Stars">
+  <img src="https://img.shields.io/github/stars/zhu1090093659/dsh-web?style=flat-square" alt="Stars">
   &nbsp;
-  <img src="https://img.shields.io/github/forks/zhu1090093659/dsh-web-ui?style=flat-square" alt="Forks">
+  <img src="https://img.shields.io/github/forks/zhu1090093659/dsh-web?style=flat-square" alt="Forks">
   &nbsp;
-  <a href="https://www.npmjs.com/package/@linxin666/dsh-web-ui-all"><img src="https://img.shields.io/npm/v/@linxin666%2Fdsh-web-ui-all?style=flat-square&label=npm" alt="npm"></a>
+  <a href="https://www.npmjs.com/package/@linxin666/dsh-web-all"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fdsh-market.com%2Fapi%2Fnpm-badge%2Fversion&style=flat-square&label=npm" alt="npm"></a>
   &nbsp;
-  <a href="https://www.npmjs.com/package/@linxin666/dsh-web-ui-all"><img src="https://img.shields.io/npm/dm/@linxin666%2Fdsh-web-ui-all?style=flat-square&label=downloads" alt="npm downloads"></a>
+  <a href="https://www.npmjs.com/package/@linxin666/dsh-web-all"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fdsh-market.com%2Fapi%2Fnpm-badge%2Fdownloads&style=flat-square&label=downloads" alt="npm downloads"></a>
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
 
 <p align="center">
-  <strong>DeepSeek Harness（DSH）Web GUI 的插件与皮肤生态 · 一切皆插件</strong><br>
-  <em>梁神模式 · 任务看板 · 移动端远程 · SSH 运维 · 图像理解 · 鲸鱼娘宠物 · 皮肤中心 · 创意工坊</em>
+  <strong>DeepSeek Harness（DSH）Web 的插件聚合生态包 · 一切皆插件</strong><br>
+  <em>梁神模式 · 任务看板 · 移动端远程 · SSH 运维 · 图像理解 · 鲸鱼娘宠物 · 皮肤 · 创意工坊</em>
 </p>
 
 <div align="center">
@@ -33,13 +33,13 @@
 
 ## 是什么
 
-dsh-web-ui 是 DeepSeek Harness（DSH）Web GUI 的插件与皮肤生态，也是「一切皆开发、一切皆插件」理念在 Web 端最完整的落地：梁神模式、任务看板、移动端远程、SSH 运维、图像理解、右侧面板、鲸鱼娘宠物与皮肤中心，每一样都是独立成包的插件，可插拔、可替换、可再开发——一次装齐便是完整的开发工作台，只挑一两个也能安静融入原生界面。所有插件都经官方 profile 机制挂载到 `dsh web`，不改 DSH 源码；聚合包还能把外部插件（如 `dsh-better-sidebar`）拼进全家桶，详见 [dsh-web-ui-all README](packages/dsh-web-ui-all/README.zh.md)。
+dsh-web 是 DeepSeek Harness（DSH）Web 的插件聚合生态包，也是「一切皆开发、一切皆插件」理念在 Web 端最完整的落地：梁神模式、任务看板、移动端远程、SSH 运维、图像理解、右侧面板、鲸鱼娘宠物与皮肤，每一样都是独立成包的插件，可插拔、可替换、可再开发——一次装齐便是完整的开发工作台，只挑一两个也能安静融入原生界面。所有插件都经官方 profile 机制挂载到 `dsh web`，不改 DSH 源码；聚合包还能把外部插件（如 `dsh-better-sidebar`）拼进全家桶，详见 [dsh-web-all README](packages/dsh-web-all/README.zh.md)。
 
-皮肤贯彻同一理念：v2 皮肤不再是耦合官方的 npm 包，而是一份纯资产目录（skin.json 清单 + 样式、贴图与可选特效脚本），由皮肤中心这一唯一加载器即时加载，与官方彻底解耦——官方升级不再牵动皮肤，新增皮肤也只需落一个目录，无需发布、无需安装。插件负责逻辑，皮肤负责外观；皮肤、宠物与插件的分发统一走 [创意工坊](#创意工坊dsh-marketcom)（dsh-market.com）。
+皮肤同样长在插件体系里：v2 皮肤不是独立产品，而是「皮肤」插件的纯资产包（skin.json 清单 + 样式、贴图与可选特效脚本），由该插件这一唯一加载器即时加载，与官方彻底解耦——官方升级不再牵动皮肤，新增皮肤也只需落一个目录，无需发布、无需安装。插件负责逻辑，皮肤资产负责外观；插件与皮肤、宠物资产的分发统一走 [创意工坊](#创意工坊dsh-marketcom)（dsh-market.com）。
 
 ![DSH Web UI 主界面](docs/screenshots/13-hero-main.png)
 
-| 能力 | 原生 dsh web | dsh-web-ui 全家桶 |
+| 能力 | 原生 dsh web | dsh-web 全家桶 |
 | --- | --- | --- |
 | Agent 预设 | 官方预设（Standard / Minimal 等） | 梁神模式：面向 V4 Pro 的两阶段锚定预设 |
 | 任务看板 | 无 | 多列看板 + cron 定时真实执行 |
@@ -49,11 +49,11 @@ dsh-web-ui 是 DeepSeek Harness（DSH）Web GUI 的插件与皮肤生态，也�
 | 文件预览与变更 | 无 | 右侧面板：资源管理器 / 编辑器 / 终端 / Git / 浏览器 |
 | 陪伴宠物 | 无 | 鲸鱼娘：跟随智能体状态互动、喂养养成 |
 | Git 可视化 | 无 | 分支选择器 + 提交历史图谱 |
-| 主题皮肤 | 默认主题 | 皮肤中心 19 款主题皮肤 + 自定义主题编辑器，先试穿再应用 |
+| 主题皮肤 | 默认主题 | 皮肤插件 19 款主题皮肤 + 自定义主题编辑器，先试穿再应用 |
 
 ## 创意工坊（dsh-market.com）
 
-[创意工坊](https://dsh-market.com)（dsh-market.com）是 DSH 的一站式创作空间：皮肤、宠物、插件三位一体，每类按设备点赞热度排序、前三名登上首页颁奖台；皮肤支持实时试穿预览，插件提供一键复制的安装命令。Web GUI 里的「创意工坊」设置卡直接浏览工坊清单——皮肤与宠物一键装进 DSH 主目录，插件经插件管理器安装，装完即可在皮肤中心与宠物面板中使用。
+[创意工坊](https://dsh-market.com)（dsh-market.com）是 DSH 的一站式创作空间：皮肤、宠物、插件三位一体，每类按设备点赞热度排序、前三名登上首页颁奖台；皮肤支持实时试穿预览，插件提供一键复制的安装命令。Web GUI 里的「创意工坊」设置卡直接浏览工坊清单——皮肤与宠物一键装进 DSH 主目录，插件经插件管理器安装，装完即可在皮肤与宠物面板中使用。
 
 ![创意工坊首页](docs/screenshots/31-market-home.png)
 
@@ -138,47 +138,47 @@ DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standa
 - **救助模式**（`dsh-doctor`）：事务式修复损坏的 DSH profile——受监管启动器、隔离恢复舱与本地 Web 恢复控制台；默认关闭，在设置中启用。
 - **归档管理**（外部插件 [@mlgbnb/dsh-archive-manager](https://github.com/z953218350/dsh-archive-manager)，聚合包内置）：按项目分组、搜索筛选、预览对话、一键恢复与删除。
 
-## 皮肤
+### 皮肤
 
-皮肤中心是皮肤的唯一加载器：19 款主题皮肤先试穿再应用——试穿即时生效、退出完全还原，满意再一键应用；列表末尾还有自定义主题编辑器，强调色、背景、前景与对比度即时预览。除 Blue Fantasy 随包自带外，其余皮肤按需从 [创意工坊](#创意工坊dsh-marketcom) 下载安装。
+「皮肤」插件是全部皮肤的唯一加载器：19 款主题皮肤先试穿再应用——试穿即时生效、退出完全还原，满意再一键应用；列表末尾还有自定义主题编辑器，强调色、背景、前景与对比度即时预览。除 Blue Fantasy 随包自带外，其余皮肤按需从 [创意工坊](#创意工坊dsh-marketcom) 下载安装。
 
-![皮肤中心](docs/screenshots/03-settings-skin-center.png)
+![皮肤](docs/screenshots/03-settings-skin-center.png)
 
 主题皮肤一览：
 
 ![主题皮肤一览](docs/images/skins-montage.png)
 
-### Wallpaper Engine 壁纸
+#### Wallpaper Engine 壁纸
 
-皮肤中心可直接把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频、网页与场景壁纸均动态渲染——场景壁纸由内置 WebGL 播放器驱动；任意类型也可切到「静态帧」模式，钉成零动画开销的图片。单张壁纸可导入 `skin-center/wallpapers/`，脱离 Steam 库也能用，并检测创意工坊原作更新；没有 Wallpaper Engine（如 macOS）时，手动目录可把任意 `.mp4`/`.webm` 视频文件夹或壁纸项目文件夹加为壁纸库。壁纸都是本机文件，从不上传或再分发。
+皮肤插件可直接把本机 Wallpaper Engine 壁纸库用作 GUI 背景：视频、网页与场景壁纸均动态渲染——场景壁纸由内置 WebGL 播放器驱动；任意类型也可切到「静态帧」模式，钉成零动画开销的图片。单张壁纸可导入 `skin-center/wallpapers/`，脱离 Steam 库也能用，并检测创意工坊原作更新；没有 Wallpaper Engine（如 macOS）时，手动目录可把任意 `.mp4`/`.webm` 视频文件夹或壁纸项目文件夹加为壁纸库。壁纸都是本机文件，从不上传或再分发。
 
 ![Wallpaper Engine 壁纸](docs/screenshots/30-skin-wallpaper-engine.png)
 
-### Windows XP（Luna）
+#### Windows XP（Luna）
 
 还原 Luna 经典界面：蓝色渐变窗口条、绿色「开始」按钮、Bliss 蓝天桌面，全局直角风格。
 
 ![Windows XP 皮肤](docs/screenshots/16-skin-xp-light.png)
 
-### Blue Fantasy 蓝色幻想
+#### Blue Fantasy 蓝色幻想
 
-鲸鱼插画垫在半透明面板下面，靛蓝色调贯穿全局，暗色主题下更明显。随皮肤中心自带，开箱即用。
+鲸鱼插画垫在半透明面板下面，靛蓝色调贯穿全局，暗色主题下更明显。随皮肤插件自带，开箱即用。
 
 ![Blue Fantasy 暗色](docs/screenshots/17-skin-blue-fantasy-dark.png)
 
-### 鲸吟（Whale Song）
+#### 鲸吟（Whale Song）
 
 深海鲸语女神主题：纯氛围背景画垫在半透明面板下，冰蓝冷色系贯穿全局，暗色变体是深海夜航调。
 
 ![鲸吟 亮色](docs/screenshots/24-skin-whale-song-light.png) · ![鲸吟 暗色](docs/screenshots/25-skin-whale-song-dark.png)
 
-### 夕港（Harbor）
+#### 夕港（Harbor）
 
 黄昏港口主题：暮光蓝天空渐入日落橙的港口背景垫在半透明面板下，深暮蓝底与日落橙主色贯穿全局。
 
 ![夕港 亮色](docs/screenshots/26-skin-harbor-light.png) · ![夕港 暗色](docs/screenshots/27-skin-harbor-dark.png)
 
-### 深海女仆工坊（Maid Atelier）
+#### 深海女仆工坊（Maid Atelier）
 
 深海蓝工坊主题，包含双角色图层与响应式侧边栏装饰。本皮肤单独采用 CC BY-NC-SA 4.0，仅限非商业使用。
 
@@ -193,9 +193,9 @@ DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standa
 
 ### 三步上手（npm 安装，推荐）
 
-1. 安装聚合包：`dsh plugin --profile web add @linxin666/dsh-web-ui-all@latest`
+1. 安装聚合包：`dsh plugin --profile web add @linxin666/dsh-web-all@latest`
 2. 重启 `dsh web`，侧边栏出现全部插件入口
-3. 打开「设置 > 插件配置」按需开关插件，或在皮肤中心试穿皮肤
+3. 打开「设置 > 插件配置」按需开关插件，或在皮肤面板试穿皮肤
 
 > 只要皮肤就装 `@linxin666/dsh-client-ui-skin-center`。若装到了旧版本（pnpm 11 的发布年龄门禁），见下方「安装排障」。
 
@@ -205,8 +205,8 @@ DeepSeek V4 Pro 对首轮工具目录很敏感。社区评测里，官方 Standa
 
 ```sh
 # 1. 克隆仓库
-git clone https://github.com/zhu1090093659/dsh-web-ui.git
-cd dsh-web-ui
+git clone https://github.com/zhu1090093659/dsh-web.git
+cd dsh-web
 
 # 2. 安装依赖并构建
 pnpm install
@@ -214,7 +214,7 @@ pnpm -r build
 
 # 3. 把全家桶链接进 web profile（推荐，先链接全部子包再注册聚合包）
 node scripts/link-profile.mjs
-dsh plugin --profile web add link:$(pwd)/packages/dsh-web-ui-all
+dsh plugin --profile web add link:$(pwd)/packages/dsh-web-all
 
 # 4. 重启 dsh web，侧边栏即可看到全部插件入口
 dsh web
@@ -225,6 +225,10 @@ dsh web
 > 注意：profile 目录不是 pnpm workspace，聚合包里的 `workspace:*` 依赖会回退拉取 npm 已发布版本；
 > 若 npm 版本滞后或损坏会出现「宿主已挂载但 UI 不显示」，此时先用 `node scripts/link-profile.mjs`
 > 让全部子包走仓库构建产物。
+
+### 从旧聚合包升级
+
+已有 profile 如果仍挂在 `@linxin666/dsh-web-ui-all`，不需要手动先删旧包再装新包。启用 Doctor 后，Doctor Launcher 会在启动 DSH 前检测该旧聚合包并自动执行事务迁移：先安装 `@linxin666/dsh-web-all`，再移除旧包，保留原有 `web-ui-*` 行和 bundle 顺序，并通过 `--dump-config` 预检后才继续启动。用户通过 `dsh-doctor launch` 或 Doctor 服务启动即可；裸 `dsh web` 不经过该 preflight。
 
 ### 单独安装某个插件
 
@@ -248,7 +252,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel@latest  # 旧
 
 | npm 包 | 说明 |
 | --- | --- |
-| [@linxin666/dsh-web-ui-all](https://www.npmjs.com/package/@linxin666/dsh-web-ui-all) | 全家桶聚合包：一个包装齐全部功能插件与皮肤 |
+| [@linxin666/dsh-web-all](https://www.npmjs.com/package/@linxin666/dsh-web-all) | 全家桶聚合包：一个包装齐全部功能插件（含皮肤插件及其皮肤资产） |
 | [@linxin666/dsh-liangshen](https://www.npmjs.com/package/@linxin666/dsh-liangshen) | 梁神模式：面向 V4 Pro 的两阶段锚定预设 |
 | [@linxin666/dsh-client-ui-task-board](https://www.npmjs.com/package/@linxin666/dsh-client-ui-task-board) | 任务看板：真实会话执行 + cron 定时 |
 | [@linxin666/dsh-remote-web-ui](https://www.npmjs.com/package/@linxin666/dsh-remote-web-ui) | 扫码配对，移动端 / PC 远程使用 Web GUI |
@@ -256,7 +260,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel@latest  # 旧
 | [@linxin666/dsh-tool-describe-image](https://www.npmjs.com/package/@linxin666/dsh-tool-describe-image) | `describe_image` 视觉工具 |
 | [@linxin666/dsh-pet](https://www.npmjs.com/package/@linxin666/dsh-pet) | 注册表驱动的悬浮宠物 |
 | [@linxin666/dsh-client-ui-git-graph](https://www.npmjs.com/package/@linxin666/dsh-client-ui-git-graph) | Git 分支选择器与提交历史图谱 |
-| [@linxin666/dsh-client-ui-skin-center](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skin-center) | 皮肤中心：皮肤的唯一加载器，皮肤按需从创意工坊安装 |
+| [@linxin666/dsh-client-ui-skin-center](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skin-center) | 皮肤：全部皮肤的唯一加载器，皮肤资产按需从创意工坊安装 |
 | [@linxin666/dsh-client-ui-market](https://www.npmjs.com/package/@linxin666/dsh-client-ui-market) | 创意工坊商店卡：浏览 dsh-market.com 的皮肤 / 宠物 / 插件并一键安装 |
 | [@linxin666/dsh-client-ui-plugin-manager](https://www.npmjs.com/package/@linxin666/dsh-client-ui-plugin-manager) | 插件管理器：从 npm / git 安装、启停与配置 |
 | [@linxin666/dsh-client-ui-skill-explorer](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skill-explorer) | Skill 中心：浏览 / 启停 / 管理 |
@@ -264,7 +268,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel@latest  # 旧
 | [@linxin666/dsh-desktop-launcher](https://www.npmjs.com/package/@linxin666/dsh-desktop-launcher) | 桌面启动器：一键启动与关闭 dsh |
 | [@linxin666/dsh-doctor](https://www.npmjs.com/package/@linxin666/dsh-doctor) | 事务式救助模式：修复 DSH profile |
 | [@linxin666/dsh-client-ui-community-plugins](https://www.npmjs.com/package/@linxin666/dsh-client-ui-community-plugins) | 社区插件数据源：市场插件清单由它生成 |
-| [@linxin666/dsh-client-ui-web-ui-settings](https://www.npmjs.com/package/@linxin666/dsh-client-ui-web-ui-settings) | dsh-web-ui 插件组设置区 |
+| [@linxin666/dsh-client-ui-web-ui-settings](https://www.npmjs.com/package/@linxin666/dsh-client-ui-web-ui-settings) | dsh-web 插件组设置区 |
 | [@linxin666/dsh-client-ui-aionui-panel](https://www.npmjs.com/package/@linxin666/dsh-client-ui-aionui-panel) | 旧右侧面板（已停止支持，默认关闭） |
 
 </details>
@@ -273,7 +277,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel@latest  # 旧
 
 装好重启 `dsh web`，侧边栏出现对应入口就是生效了；也可以用 `dsh --profile web --dump-config` 确认插件配置层已挂载。侧边栏没新入口，多半是装完没重启 `dsh web`。
 
-卸载：`dsh plugin --profile web remove @linxin666/dsh-web-ui-all`，然后重启 `dsh web`。
+卸载：`dsh plugin --profile web remove @linxin666/dsh-web-all`，然后重启 `dsh web`。
 
 技术细节见 [docs/plugins.md](docs/plugins.md)。
 
@@ -288,7 +292,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-aionui-panel@latest  # 旧
 
 > 首次安装若提示 `ERR_PNPM_IGNORED_BUILDS`（pnpm 拒绝依赖的构建脚本），按提示把 `cloudflared` / `cpu-features` / `ssh2` 加入 profile 的 `pnpm-workspace.yaml` `allowBuilds` 后重新执行即可。
 
-> **pnpm 11 发布年龄门禁**：新版本发布后 24 小时内（`minimumReleaseAge` 内置默认值），pnpm 11 会静默装回更旧的 `@linxin666/*` 版本（如 `dsh-web-ui-all@0.1.20` 配旧版皮肤中心），显式写 `@latest` 同样被隔离。旧版皮肤中心 Apply 皮肤时会写入独立皮肤包引用，导致 `dsh web` 启动崩溃（`ERR_MODULE_NOT_FOUND ... dsh-client-ui-skin-*`）。在 profile 的 `pnpm-workspace.yaml` 中排除全部 `@linxin666/*` 包后再安装或更新：
+> **pnpm 11 发布年龄门禁**：新版本发布后 24 小时内（`minimumReleaseAge` 内置默认值），pnpm 11 会静默装回更旧的 `@linxin666/*` 版本（如 `dsh-web-all@0.1.20` 配旧版皮肤插件），显式写 `@latest` 同样被隔离。旧版皮肤插件 Apply 皮肤时会写入独立皮肤包引用，导致 `dsh web` 启动崩溃（`ERR_MODULE_NOT_FOUND ... dsh-client-ui-skin-*`）。在 profile 的 `pnpm-workspace.yaml` 中排除全部 `@linxin666/*` 包后再安装或更新：
 >
 > ```yaml
 > minimumReleaseAgeExclude:
@@ -354,7 +358,7 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
 
 ![DSH Web UI 交流群](docs/community-center.jpg)
 
-也可以加 [Discord 社区](https://discord.gg/6v4gm9u4S)，或直接到 [GitHub Issues](https://github.com/zhu1090093659/dsh-web-ui/issues) 报 Bug / 提需求。
+也可以加 [Discord 社区](https://discord.gg/6v4gm9u4S)，或直接到 [GitHub Issues](https://github.com/zhu1090093659/dsh-web/issues) 报 Bug / 提需求。
 
 <details>
 <summary>友情链接</summary>
@@ -386,7 +390,7 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
 
 | 包 | 来源 | 版权 |
 | --- | --- | --- |
-| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-web-ui-settings / dsh-liangshen / dsh-doctor / dsh-ssh / dsh-chat-recovery / dsh-skill-explorer / dsh-desktop-launcher / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-ui-all / skins | 作者 zhu1090093659 个人开发 | Apache-2.0（zhu1090093659） |
+| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-web-settings / dsh-liangshen / dsh-doctor / dsh-ssh / dsh-chat-recovery / dsh-skill-explorer / dsh-desktop-launcher / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / skins | 作者 zhu1090093659 个人开发 | Apache-2.0（zhu1090093659） |
 | dsh-client-ui-skin-matrix | 贡献者原创（Matrix 深夜护眼暗色皮肤） | Apache-2.0（贡献者 seanchen 声明） |
 | dsh-tool-describe-image | 移植自 [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)（deepseek-harness `packages/vision/tool-describe-image`） | Apache-2.0（zhu1090093659） |
 | dsh-better-sidebar | 外部集成插件 [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)（右侧面板，npm 依赖引用） | MIT（omdsh-dev） |
@@ -501,7 +505,7 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
   <a href="https://github.com/Lem0nTea2002"><img src="https://github.com/Lem0nTea2002.png?size=64" width="48" height="48" alt="Lem0nTea2002" title="Lem0nTea2002" /></a>
 </p>
 <p align="center">
-  <sub><a href="https://github.com/zhu1090093659/dsh-web-ui/graphs/contributors">查看全部贡献者</a></sub>
+  <sub><a href="https://github.com/zhu1090093659/dsh-web/graphs/contributors">查看全部贡献者</a></sub>
 </p>
 <!-- CONTRIBUTORS:END -->
 
@@ -509,6 +513,6 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
 
 **喜欢这个项目？点个 Star。**
 
-[报告 Bug](https://github.com/zhu1090093659/dsh-web-ui/issues) · [请求功能](https://github.com/zhu1090093659/dsh-web-ui/issues) · [查看 Releases](https://github.com/zhu1090093659/dsh-web-ui/releases)
+[报告 Bug](https://github.com/zhu1090093659/dsh-web/issues) · [请求功能](https://github.com/zhu1090093659/dsh-web/issues) · [查看 Releases](https://github.com/zhu1090093659/dsh-web/releases)
 
 </div>

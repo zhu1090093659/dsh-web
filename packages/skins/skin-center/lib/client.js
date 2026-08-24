@@ -2679,6 +2679,10 @@ window.__ModuleLoader__.load({
 				...value ?? {}
 			};
 		}
+		/** True when at least one field departs from its default (customized data). */
+		function hasCustomSkinBackground(value) {
+			return SKIN_BACKGROUND_FIELDS.some((field) => value[field] !== void 0 && value[field] !== SKIN_BACKGROUND_DEFAULTS[field]);
+		}
 		//#endregion
 		//#region src/client/background.ts
 		/**
@@ -2726,7 +2730,7 @@ window.__ModuleLoader__.load({
 		/**
 		* Selector for a conversation message row inside the shell's center column.
 		* Official shell message rows carry `data-chat-anchor-key`; the
-		* `data-pane="conversation"` attribute is stamped by the dsh-web-ui-all compat
+		* `data-pane="conversation"` attribute is stamped by the dsh-web-all compat
 		* shim on the center column, where the _userRow / _compactionRow /
 		* _contextRow / _turnErrorRow suffixes are CSS-module message-row classes
 		* (hash prefix varies, suffix is stable).
@@ -4459,6 +4463,75 @@ window.__ModuleLoader__.load({
 			}
 		};
 		//#endregion
+		//#region src/client/telemetry.ts
+		const VISITOR_KEY = "dsh-web-ui-telemetry-visitor";
+		const DAY_KEY_PREFIX = "dsh-web-ui-telemetry-day:";
+		const ENDPOINT = "https://dsh-market.com/api/telemetry/event";
+		/** The building package's version, when the bundle carries it. */
+		function bakedVersion() {
+			try {
+				return "0.3.2";
+			} catch {
+				return;
+			}
+		}
+		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
+		function visitorId() {
+			try {
+				const existing = localStorage.getItem(VISITOR_KEY);
+				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
+				const fresh = crypto.randomUUID().replaceAll("-", "");
+				localStorage.setItem(VISITOR_KEY, fresh);
+				return fresh;
+			} catch {
+				return null;
+			}
+		}
+		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
+		function pruneDayKeys(today) {
+			try {
+				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+					const key = localStorage.key(index);
+					if (key !== null && key.startsWith(DAY_KEY_PREFIX) && key !== DAY_KEY_PREFIX + today) localStorage.removeItem(key);
+				}
+			} catch {}
+		}
+		/**
+		* Fire the daily heartbeat for the given items at most once per UTC day per
+		* browser. Never throws and never blocks the caller. Items without an explicit
+		* version inherit the bundle's baked build version.
+		*/
+		function reportDailyHeartbeat(items) {
+			try {
+				if (items.length === 0) return;
+				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+				if (localStorage.getItem(DAY_KEY_PREFIX + today) !== null) return;
+				const visitor = visitorId();
+				if (visitor === null) return;
+				pruneDayKeys(today);
+				const payloadItems = items.map((item) => {
+					const out = { name: item.name };
+					const version = item.version ?? bakedVersion();
+					if (version !== void 0) out.version = version;
+					if (item.channel !== void 0) out.channel = item.channel;
+					return out;
+				});
+				const body = JSON.stringify({
+					kind: "heartbeat",
+					visitor,
+					items: payloadItems
+				});
+				fetch(ENDPOINT, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body,
+					keepalive: true
+				}).then((response) => {
+					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX + today, "1");
+				}).catch(() => {});
+			} catch {}
+		}
+		//#endregion
 		//#region src/client/index.ts
 		/** Locale namespace owned by this plugin. */
 		const NS = "skinCenter";
@@ -4472,12 +4545,36 @@ window.__ModuleLoader__.load({
 			"remote",
 			"workspaces"
 		];
+		/** Self-report item for the install heartbeat. */
+		const SELF_ITEM = [{ name: "@linxin666/dsh-client-ui-skin-center" }];
+		/**
+		* Beat the install heartbeat (docs/telemetry.md), enriching it with the
+		* installed skin inventory (skin:<id> + version + channel) once the v2
+		* catalog answers. Offline or pre-boot the beat stays package-only.
+		*/
+		function beatHeartbeat() {
+			reportDailyHeartbeat(SELF_ITEM);
+			fetch("/api/skin-center/v2/catalog").then((res) => res.ok ? res.json() : null).then((catalog) => {
+				if (!catalog || !Array.isArray(catalog.skins)) return;
+				const items = [...SELF_ITEM];
+				for (const skin of catalog.skins) {
+					const id = skin && skin.manifest && typeof skin.manifest.id === "string" ? skin.manifest.id : "";
+					if (!id) continue;
+					const item = { name: "skin:" + id };
+					if (typeof skin.manifest.version === "string") item.version = skin.manifest.version;
+					if (typeof skin.channel === "string") item.channel = skin.channel;
+					items.push(item);
+				}
+				reportDailyHeartbeat(items.slice(0, 64));
+			}).catch(() => {});
+		}
 		/**
 		* Register the skin-center dictionaries, the body scope attribute, and the
 		* Skin Center as a first-level settings section.
 		* @param ctx - client root context.
 		*/
 		function apply(ctx) {
+			beatHeartbeat();
 			ctx.effect(() => {
 				try {
 					return ctx.locale.register(NS, {
@@ -4526,13 +4623,21 @@ window.__ModuleLoader__.load({
 				if (!SKIN_BACKGROUND_FIELDS.some((field) => value[field] !== void 0)) return null;
 				return value;
 			};
+			let v2Loaded = false;
 			const background = new BackgroundController(scopeConfig(), persistBackground);
 			fetch(V2_ACTIVE_URL).then((res) => res.ok ? res.json() : null).then((body) => {
-				if (body) background.init(body.background ?? null);
-			}).catch(() => {});
+				v2Loaded = true;
+				if (body?.background) background.init(body.background);
+			}).catch(() => {
+				v2Loaded = true;
+			});
 			ctx.effect(() => backgroundScope.subscribe(() => {
+				if (!v2Loaded) return;
 				const next = scopeConfig();
 				if (next === null) return;
+				const current = background.snapshot();
+				if (!Object.keys(next).some((key) => next[key] !== void 0 && next[key] !== current[key])) return;
+				if (!hasCustomSkinBackground(next) && hasCustomSkinBackground(current)) return;
 				background.init(next);
 				persistBackground(background.snapshot());
 			}), "ui-skin-center: background scope sync");

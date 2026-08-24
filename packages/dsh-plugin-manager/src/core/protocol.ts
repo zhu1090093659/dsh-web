@@ -30,11 +30,20 @@ export interface InstallProgressItem {
   percent?: number
 }
 
+/** Whether an update row is a normal same-name update or a legacy package migration. */
+export type PluginUpdateKind = 'update' | 'migrate'
+
 /** One plugin with a newer version available. */
 export interface PluginUpdateItem {
   id: string
   current: string
   latest: string
+  /** Normal same-name update or legacy aggregate migration. Defaults to update. */
+  kind?: PluginUpdateKind
+  /** Target package name when kind is migrate. */
+  target?: string
+  /** Exact target package version when kind is migrate. */
+  targetVersion?: string
   /** Declared DSH minimum the update needs (package manifest's `dsh.engines.dsh`). */
   requiresDsh?: string
   /** Whether the running DSH host satisfies requiresDsh; absent when unknown. */
@@ -183,7 +192,19 @@ export function parseUpdateList(value: unknown): PluginUpdateItem[] {
     if (!isRecord(update) || !isString(update.id) || !isString(update.current) || !isString(update.latest)) {
       throw new Error(`plugin-manager: update row ${String(index)} is invalid`)
     }
+    const kind = update.kind === undefined ? 'update' : update.kind
+    if (kind !== 'update' && kind !== 'migrate') {
+      throw new Error(`plugin-manager: update row ${String(index)} is invalid`)
+    }
     const row: PluginUpdateItem = { id: update.id, current: update.current, latest: update.latest }
+    if (kind === 'migrate') {
+      if (!isString(update.target) || !isString(update.targetVersion)) {
+        throw new Error(`plugin-manager: update row ${String(index)} is invalid`)
+      }
+      row.kind = 'migrate'
+      row.target = update.target
+      row.targetVersion = update.targetVersion
+    }
     if (update.requiresDsh !== undefined) {
       if (!isString(update.requiresDsh)) {
         throw new Error(`plugin-manager: update row ${String(index)} is invalid`)

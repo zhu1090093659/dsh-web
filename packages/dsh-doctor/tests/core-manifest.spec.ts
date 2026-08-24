@@ -15,8 +15,8 @@ const GOOD = JSON.stringify(
   {
     name: 'dsh-profile-web',
     private: true,
-    dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@linxin666/dsh-web-ui-all'] } },
-    dependencies: { '@linxin666/dsh-web-ui-all': '0.2.7' },
+    dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@linxin666/dsh-web-all'] } },
+    dependencies: { '@linxin666/dsh-web-all': '0.2.7' },
   },
   null,
   2,
@@ -26,8 +26,8 @@ describe('parseProfileManifest', () => {
   it('parses a valid manifest', () => {
     const { facts, error } = parseProfileManifest(GOOD, '/p/package.json')
     expect(error).toBeUndefined()
-    expect(facts.bundles).toEqual(['@deepseek-ai/dsh-base', '@linxin666/dsh-web-ui-all'])
-    expect(facts.dependencies).toEqual({ '@linxin666/dsh-web-ui-all': '0.2.7' })
+    expect(facts.bundles).toEqual(['@deepseek-ai/dsh-base', '@linxin666/dsh-web-all'])
+    expect(facts.dependencies).toEqual({ '@linxin666/dsh-web-all': '0.2.7' })
     expect(facts.hasDshProfile).toBe(true)
     expect(facts.private).toBe(true)
   })
@@ -59,7 +59,7 @@ describe('readProfileManifest', () => {
     await fs.writeText('/h/profiles/web/package.json', GOOD)
     const result = await readProfileManifest(fs, '/h/profiles/web')
     expect(result.error).toBeUndefined()
-    expect(result.facts.bundles).toContain('@linxin666/dsh-web-ui-all')
+    expect(result.facts.bundles).toContain('@linxin666/dsh-web-all')
   })
 
   it('reports a missing manifest instead of throwing', async () => {
@@ -77,11 +77,11 @@ describe('editManifestJson', () => {
     expect(edited.changed).toBe(true)
     const parsed = JSON.parse(edited.text)
     expect(parsed.dsh.profile.bundles).toEqual(['@deepseek-ai/dsh-base'])
-    expect(parsed.dependencies['@linxin666/dsh-web-ui-all']).toBe('0.2.7')
+    expect(parsed.dependencies['@linxin666/dsh-web-all']).toBe('0.2.7')
   })
 
   it('reports no change when the value already matches', () => {
-    const edited = editManifestJson(GOOD, { set: { 'dsh.profile.bundles': ['@deepseek-ai/dsh-base', '@linxin666/dsh-web-ui-all'] } })
+    const edited = editManifestJson(GOOD, { set: { 'dsh.profile.bundles': ['@deepseek-ai/dsh-base', '@linxin666/dsh-web-all'] } })
     expect(edited.changed).toBe(false)
   })
 

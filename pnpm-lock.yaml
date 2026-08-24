@@ -1100,7 +1100,7 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jsdom@29.1.1)(lightningcss@1.33.0)(yaml@2.9.0)
 
-  packages/dsh-web-ui-all:
+  packages/dsh-web-all:
     dependencies:
       '@linxin666/dsh-chat-recovery':
         specifier: workspace:*
@@ -1131,7 +1131,7 @@ importers:
         version: link:../dsh-task-board
       '@linxin666/dsh-client-ui-web-ui-settings':
         specifier: workspace:*
-        version: link:../dsh-web-ui-settings
+        version: link:../dsh-web-settings
       '@linxin666/dsh-desktop-launcher':
         specifier: workspace:*
         version: link:../dsh-desktop-launcher
@@ -1167,7 +1167,7 @@ importers:
         specifier: ^4.1.8
         version: 4.1.11(@types/node@22.20.1)(esbuild@0.28.2)(jsdom@29.1.1)(yaml@2.9.0)
 
-  packages/dsh-web-ui-settings:
+  packages/dsh-web-settings:
     dependencies:
       schemastery:
         specifier: ^3.18.0

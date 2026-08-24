@@ -106,7 +106,7 @@ export interface SkinBackgroundHandle {
 /**
  * Selector for a conversation message row inside the shell's center column.
  * Official shell message rows carry `data-chat-anchor-key`; the
- * `data-pane="conversation"` attribute is stamped by the dsh-web-ui-all compat
+ * `data-pane="conversation"` attribute is stamped by the dsh-web-all compat
  * shim on the center column, where the _userRow / _compactionRow /
  * _contextRow / _turnErrorRow suffixes are CSS-module message-row classes
  * (hash prefix varies, suffix is stable).

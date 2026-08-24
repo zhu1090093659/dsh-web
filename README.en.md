@@ -1,28 +1,28 @@
-# dsh-web-ui · DSH Web UI
+# dsh-web · Aggregate Plugin Ecosystem for DSH Web
 
 [中文](README.md) | English
 
 <p align="center">
-  <img src="docs/dsh-web-ui-banner.png" alt="dsh-web-ui" width="100%">
+  <img src="docs/dsh-web-banner.png" alt="dsh-web" width="100%">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/zhu1090093659/dsh-web-ui?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/github/v/release/zhu1090093659/dsh-web?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/github/stars/zhu1090093659/dsh-web-ui?style=flat-square" alt="Stars">
+  <img src="https://img.shields.io/github/stars/zhu1090093659/dsh-web?style=flat-square" alt="Stars">
   &nbsp;
-  <img src="https://img.shields.io/github/forks/zhu1090093659/dsh-web-ui?style=flat-square" alt="Forks">
+  <img src="https://img.shields.io/github/forks/zhu1090093659/dsh-web?style=flat-square" alt="Forks">
   &nbsp;
-  <a href="https://www.npmjs.com/package/@linxin666/dsh-web-ui-all"><img src="https://img.shields.io/npm/v/@linxin666%2Fdsh-web-ui-all?style=flat-square&label=npm" alt="npm"></a>
+  <a href="https://www.npmjs.com/package/@linxin666/dsh-web-all"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fdsh-market.com%2Fapi%2Fnpm-badge%2Fversion&style=flat-square&label=npm" alt="npm"></a>
   &nbsp;
-  <a href="https://www.npmjs.com/package/@linxin666/dsh-web-ui-all"><img src="https://img.shields.io/npm/dm/@linxin666%2Fdsh-web-ui-all?style=flat-square&label=downloads" alt="npm downloads"></a>
+  <a href="https://www.npmjs.com/package/@linxin666/dsh-web-all"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fdsh-market.com%2Fapi%2Fnpm-badge%2Fdownloads&style=flat-square&label=downloads" alt="npm downloads"></a>
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
 
 <p align="center">
-  <strong>The plugin and skin ecosystem for the DeepSeek Harness (DSH) Web GUI · Everything is a plugin</strong><br>
-  <em>Liang Shen Mode · Task Board · Mobile Remote · SSH Ops · Image Understanding · Whale-Girl Pet · Skin Center · Workshop</em>
+  <strong>The aggregate plugin ecosystem for DeepSeek Harness (DSH) Web · Everything is a plugin</strong><br>
+  <em>Liang Shen Mode · Task Board · Mobile Remote · SSH Ops · Image Understanding · Whale-Girl Pet · Skins · Workshop</em>
 </p>
 
 <div align="center">
@@ -33,13 +33,13 @@
 
 ## What It Is
 
-dsh-web-ui is the plugin and skin ecosystem for the DeepSeek Harness (DSH) Web GUI — the most complete realization of "everything is development, everything is a plugin" on the web: Liang Shen Mode, the task board, mobile remote, SSH ops, image understanding, the right panel, the whale-girl pet and the skin center each ship as an independent, self-contained plugin — pluggable, swappable, re-developable. Install the whole family to assemble a complete dev workbench, or pick one or two and they melt quietly into the stock UI. Everything mounts into `dsh web` through the official profile mechanism, no DSH source changes; the aggregate can even bolt on external plugins like `dsh-better-sidebar` — see the [dsh-web-ui-all README](packages/dsh-web-ui-all/README.md).
+dsh-web is the aggregate plugin ecosystem for DeepSeek Harness (DSH) Web — the most complete realization of "everything is development, everything is a plugin" on the web: Liang Shen Mode, the task board, mobile remote, SSH ops, image understanding, the right panel, the whale-girl pet and skins each ship as an independent, self-contained plugin — pluggable, swappable, re-developable. Install the whole family to assemble a complete dev workbench, or pick one or two and they melt quietly into the stock UI. Everything mounts into `dsh web` through the official profile mechanism, no DSH source changes; the aggregate can even bolt on external plugins like `dsh-better-sidebar` — see the [dsh-web-all README](packages/dsh-web-all/README.md).
 
-Skins follow the same philosophy: a v2 skin is no longer an npm package coupled to the official core, but a pure asset directory (a skin.json manifest plus styles, art and optional effect scripts) loaded on demand by the skin center, the single loader — official upgrades no longer touch any skin, and adding one means dropping in a directory: no publish, no install. Plugins own the logic, skins own the look; skins, pets and plugins are all distributed through the [Workshop](#workshop-dsh-marketcom) (dsh-market.com).
+Skins live inside the same plugin system: a v2 skin is not a standalone product but a pure asset pack of the skins plugin (a skin.json manifest plus styles, art and optional effect scripts), loaded on demand by that plugin, the single loader — official upgrades no longer touch any skin, and adding one means dropping in a directory: no publish, no install. Plugins own the logic, skin assets own the look; plugins and skin or pet assets are all distributed through the [Workshop](#workshop-dsh-marketcom) (dsh-market.com).
 
 ![DSH Web UI main screen](docs/screenshots/13-hero-main.png)
 
-| Capability | Stock dsh web | dsh-web-ui family |
+| Capability | Stock dsh web | dsh-web family |
 | --- | --- | --- |
 | Agent presets | Official presets (Standard / Minimal…) | Liang Shen Mode: two-phase anchoring tuned for V4 Pro |
 | Task board | None | Multi-column board + cron-scheduled real runs |
@@ -49,11 +49,11 @@ Skins follow the same philosophy: a v2 skin is no longer an npm package coupled 
 | File preview & changes | None | Right panel: explorer / editor / terminal / git / browser |
 | Companion pet | None | Whale girl: reacts to agent state, feeding and bonding |
 | Git visualization | None | Branch picker + commit history graph |
-| Themes & skins | Default theme | Skin center with 19 skins + a custom-theme editor, try-on before apply |
+| Themes & skins | Default theme | Skins plugin with 19 skins + a custom-theme editor, try-on before apply |
 
 ## Workshop (dsh-market.com)
 
-The [Workshop](https://dsh-market.com) (dsh-market.com) is DSH's one-stop home for creations: skins, pets and plugins in one place, each category ranked by device-backed likes with the top three on the landing-page podium; skins preview in a live try-on, plugins expose one-copy install commands. The Workshop settings card inside the Web GUI browses the catalog directly — skins and pets install into the DSH home directories in one click, plugins go through the plugin manager, and everything shows up in the skin center and pet panel afterwards.
+The [Workshop](https://dsh-market.com) (dsh-market.com) is DSH's one-stop home for creations: skins, pets and plugins in one place, each category ranked by device-backed likes with the top three on the landing-page podium; skins preview in a live try-on, plugins expose one-copy install commands. The Workshop settings card inside the Web GUI browses the catalog directly — skins and pets install into the DSH home directories in one click, plugins go through the plugin manager, and everything shows up in the skins and pet panels afterwards.
 
 ![Workshop home](docs/screenshots/31-market-home.png)
 
@@ -138,47 +138,47 @@ The mechanics, stabilization controls and limits live in [dsh-liangshen README](
 - **Rescue mode** (`dsh-doctor`): transactionally repairs a broken DSH profile — supervised launcher, isolated recovery capsule and a local web recovery console; off by default, enable it in settings.
 - **Archive manager** (external plugin [@mlgbnb/dsh-archive-manager](https://github.com/z953218350/dsh-archive-manager), bundled in the aggregate): group sessions by project, search and filter, preview conversations, restore or delete in one click.
 
-## Skins
+### Skins
 
-The skin center is the single skin loader: 19 theme skins try on before apply — previews apply instantly and revert fully on exit, apply with one click once happy; the list ends with a custom-theme editor previewing accent, background, foreground and contrast live. Blue Fantasy ships with the skin center; every other skin downloads on demand from the [Workshop](#workshop-dsh-marketcom).
+The skins plugin is the single loader for every skin: 19 theme skins try on before apply — previews apply instantly and revert fully on exit, apply with one click once happy; the list ends with a custom-theme editor previewing accent, background, foreground and contrast live. Blue Fantasy ships with the skins plugin; every other skin downloads on demand from the [Workshop](#workshop-dsh-marketcom).
 
-![Skin center](docs/screenshots/03-settings-skin-center.png)
+![Skins](docs/screenshots/03-settings-skin-center.png)
 
 All theme skins at a glance:
 
 ![All theme skins](docs/images/skins-montage.png)
 
-### Wallpaper Engine Wallpapers
+#### Wallpaper Engine Wallpapers
 
-The skin center can use your local Wallpaper Engine library as the GUI backdrop: video, web and scene wallpapers all render live — scene wallpapers are driven by a built-in WebGL player — and any type can be pinned to a zero-animation "static frame" image. Import a single wallpaper into `skin-center/wallpapers/` to keep it working outside the Steam library, with update detection against the workshop original; without a Wallpaper Engine install (e.g. macOS), manual folders can add any `.mp4`/`.webm` folder or wallpaper project folder as the library. Wallpapers are your own local files and are never uploaded or redistributed.
+The skins plugin can use your local Wallpaper Engine library as the GUI backdrop: video, web and scene wallpapers all render live — scene wallpapers are driven by a built-in WebGL player — and any type can be pinned to a zero-animation "static frame" image. Import a single wallpaper into `skin-center/wallpapers/` to keep it working outside the Steam library, with update detection against the workshop original; without a Wallpaper Engine install (e.g. macOS), manual folders can add any `.mp4`/`.webm` folder or wallpaper project folder as the library. Wallpapers are your own local files and are never uploaded or redistributed.
 
 ![Wallpaper Engine wallpapers](docs/screenshots/30-skin-wallpaper-engine.png)
 
-### Windows XP (Luna)
+#### Windows XP (Luna)
 
 A faithful recreation of the classic Luna interface: blue gradient window chrome, a green Start button, the Bliss blue-sky desktop, and square corners throughout.
 
 ![Windows XP skin](docs/screenshots/16-skin-xp-light.png)
 
-### Blue Fantasy
+#### Blue Fantasy
 
-Whale artwork sits beneath translucent panes in a periwinkle-indigo palette. It reads best in dark mode. Ships with the skin center, ready out of the box.
+Whale artwork sits beneath translucent panes in a periwinkle-indigo palette. It reads best in dark mode. Ships with the skins plugin, ready out of the box.
 
 ![Blue Fantasy dark](docs/screenshots/17-skin-blue-fantasy-dark.png)
 
-### Whale Song
+#### Whale Song
 
 The deep-sea whale-goddess theme: a text-free ambience painting sits beneath translucent panes in an ice-blue palette, with a night-cruise dark variant.
 
 ![Whale Song light](docs/screenshots/24-skin-whale-song-light.png) · ![Whale Song dark](docs/screenshots/25-skin-whale-song-dark.png)
 
-### Harbor
+#### Harbor
 
 A dusk-harbor theme: a twilight-blue sky melting into sunset orange sits beneath translucent panes, wrapped in a deep-navy base with amber-orange accents.
 
 ![Harbor light](docs/screenshots/26-skin-harbor-light.png) · ![Harbor dark](docs/screenshots/27-skin-harbor-dark.png)
 
-### Maid Atelier
+#### Maid Atelier
 
 An ornate navy workshop skin with two character layers and responsive sidebar decoration. This skin is licensed separately under CC BY-NC-SA 4.0 and is restricted to non-commercial use.
 
@@ -193,9 +193,9 @@ An ornate navy workshop skin with two character layers and responsive sidebar de
 
 ### Get Started in 3 Steps (npm, Recommended)
 
-1. Install the aggregate package: `dsh plugin --profile web add @linxin666/dsh-web-ui-all@latest`
+1. Install the aggregate package: `dsh plugin --profile web add @linxin666/dsh-web-all@latest`
 2. Restart `dsh web`, every plugin entry appears in the sidebar
-3. Open "Settings > Plugin config" to toggle plugins, or try on skins in the skin center
+3. Open "Settings > Plugin config" to toggle plugins, or try on skins in the skins panel
 
 > Skins only? Install `@linxin666/dsh-client-ui-skin-center`. If you ended up with an old version (pnpm 11's release-age gate), see "Install Troubleshooting" below.
 
@@ -205,8 +205,8 @@ The packages are already on npm; installing from this repository is only for dev
 
 ```sh
 # 1. Clone the repository
-git clone https://github.com/zhu1090093659/dsh-web-ui.git
-cd dsh-web-ui
+git clone https://github.com/zhu1090093659/dsh-web.git
+cd dsh-web
 
 # 2. Install dependencies and build
 pnpm install
@@ -214,7 +214,7 @@ pnpm -r build
 
 # 3. Link the family into the web profile (recommended: link all children first, then the aggregate)
 node scripts/link-profile.mjs
-dsh plugin --profile web add link:$(pwd)/packages/dsh-web-ui-all
+dsh plugin --profile web add link:$(pwd)/packages/dsh-web-all
 
 # 4. Restart dsh web, all plugin entries appear in the sidebar
 dsh web
@@ -226,6 +226,10 @@ dsh web
 > fall back to the published npm versions; if the npm versions lag or break you may see "host mounted but UI
 > missing". In that case run `node scripts/link-profile.mjs` first so every child package uses the
 > repository build output.
+
+### Upgrade from the legacy aggregate
+
+Profiles still mounted on `@linxin666/dsh-web-ui-all` do not need a manual remove-then-add step. With Doctor enabled, the Doctor Launcher detects the legacy aggregate before starting DSH and runs a transactional migration: installs `@linxin666/dsh-web-all`, removes the legacy package, preserves the existing `web-ui-*` rows and bundle order, and passes a `--dump-config` preflight before continuing. Launch through `dsh-doctor launch` or the Doctor service; a bare `dsh web` does not pass through this preflight.
 
 ### Install a Single Plugin
 
@@ -249,7 +253,7 @@ Every plugin is published on npm under the `@linxin666/dsh-*` scope and can be v
 
 | npm package | What it is |
 | --- | --- |
-| [@linxin666/dsh-web-ui-all](https://www.npmjs.com/package/@linxin666/dsh-web-ui-all) | All-in-one aggregate: every feature plugin plus the skin set in one install |
+| [@linxin666/dsh-web-all](https://www.npmjs.com/package/@linxin666/dsh-web-all) | All-in-one aggregate: every feature plugin in one install, including the skins plugin and its skin assets |
 | [@linxin666/dsh-liangshen](https://www.npmjs.com/package/@linxin666/dsh-liangshen) | Liang Shen Mode: two-phase anchoring agent preset for V4 Pro |
 | [@linxin666/dsh-client-ui-task-board](https://www.npmjs.com/package/@linxin666/dsh-client-ui-task-board) | Task board: real session execution plus cron scheduling |
 | [@linxin666/dsh-remote-web-ui](https://www.npmjs.com/package/@linxin666/dsh-remote-web-ui) | Scan-to-pair remote control of the Web GUI from mobile or PC |
@@ -257,7 +261,7 @@ Every plugin is published on npm under the `@linxin666/dsh-*` scope and can be v
 | [@linxin666/dsh-tool-describe-image](https://www.npmjs.com/package/@linxin666/dsh-tool-describe-image) | `describe_image` vision tool |
 | [@linxin666/dsh-pet](https://www.npmjs.com/package/@linxin666/dsh-pet) | Registry-driven floating pet companion |
 | [@linxin666/dsh-client-ui-git-graph](https://www.npmjs.com/package/@linxin666/dsh-client-ui-git-graph) | Git branch selector and commit history graph |
-| [@linxin666/dsh-client-ui-skin-center](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skin-center) | Skin center: the single skin loader, with skins installed on demand from the Workshop |
+| [@linxin666/dsh-client-ui-skin-center](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skin-center) | Skins: the single loader for every skin, with skin assets installed on demand from the Workshop |
 | [@linxin666/dsh-client-ui-market](https://www.npmjs.com/package/@linxin666/dsh-client-ui-market) | Workshop card: browse skins / pets / plugins from dsh-market.com and install with one click |
 | [@linxin666/dsh-client-ui-plugin-manager](https://www.npmjs.com/package/@linxin666/dsh-client-ui-plugin-manager) | Plugin manager: install from npm or git, enable, disable and configure |
 | [@linxin666/dsh-client-ui-skill-explorer](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skill-explorer) | Skill center: browse, toggle and manage skills |
@@ -265,7 +269,7 @@ Every plugin is published on npm under the `@linxin666/dsh-*` scope and can be v
 | [@linxin666/dsh-desktop-launcher](https://www.npmjs.com/package/@linxin666/dsh-desktop-launcher) | Desktop launcher: one-click start and shutdown for dsh |
 | [@linxin666/dsh-doctor](https://www.npmjs.com/package/@linxin666/dsh-doctor) | Transactional rescue mode: repairs DSH profiles |
 | [@linxin666/dsh-client-ui-community-plugins](https://www.npmjs.com/package/@linxin666/dsh-client-ui-community-plugins) | Community plugin data source: the market plugin list is generated from it |
-| [@linxin666/dsh-client-ui-web-ui-settings](https://www.npmjs.com/package/@linxin666/dsh-client-ui-web-ui-settings) | Settings section for the dsh-web-ui plugin group |
+| [@linxin666/dsh-client-ui-web-ui-settings](https://www.npmjs.com/package/@linxin666/dsh-client-ui-web-ui-settings) | Settings section for the dsh-web plugin group |
 | [@linxin666/dsh-client-ui-aionui-panel](https://www.npmjs.com/package/@linxin666/dsh-client-ui-aionui-panel) | Legacy right panel (no longer supported, off by default) |
 
 </details>
@@ -274,7 +278,7 @@ Every plugin is published on npm under the `@linxin666/dsh-*` scope and can be v
 
 After installing, restart `dsh web`; a working plugin shows up in the sidebar. `dsh --profile web --dump-config` also confirms the mounted config layers. If the sidebar shows nothing, you most likely forgot to restart `dsh web`.
 
-Uninstall: `dsh plugin --profile web remove @linxin666/dsh-web-ui-all`, then restart `dsh web`.
+Uninstall: `dsh plugin --profile web remove @linxin666/dsh-web-all`, then restart `dsh web`.
 
 Technical details live in [docs/plugins.md](docs/plugins.md).
 
@@ -289,7 +293,7 @@ Technical details live in [docs/plugins.md](docs/plugins.md).
 
 > First install may stop on `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency build scripts): copy the printed keys (`cloudflared` / `cpu-features` / `ssh2`) into the profile's `pnpm-workspace.yaml` `allowBuilds` list and re-run.
 
-> **pnpm 11 release-age gate**: within 24 hours of a new release (the built-in `minimumReleaseAge` default), pnpm 11 can silently resolve to older `@linxin666/*` versions (e.g. `dsh-web-ui-all@0.1.20` with the old skin center); an explicit `@latest` is gated the same way. The old skin center writes references to standalone skin packages when a skin is applied, which crashes `dsh web` at boot (`ERR_MODULE_NOT_FOUND ... dsh-client-ui-skin-*`). Exclude every `@linxin666/*` package in the profile's `pnpm-workspace.yaml` before installing or updating:
+> **pnpm 11 release-age gate**: within 24 hours of a new release (the built-in `minimumReleaseAge` default), pnpm 11 can silently resolve to older `@linxin666/*` versions (e.g. `dsh-web-all@0.1.20` with the old skins plugin); an explicit `@latest` is gated the same way. The old skins plugin writes references to standalone skin packages when a skin is applied, which crashes `dsh web` at boot (`ERR_MODULE_NOT_FOUND ... dsh-client-ui-skin-*`). Exclude every `@linxin666/*` package in the profile's `pnpm-workspace.yaml` before installing or updating:
 >
 > ```yaml
 > minimumReleaseAgeExclude:
@@ -355,7 +359,7 @@ The community chat is here: talk usage, report issues and discuss ideas with the
 
 ![DSH Web UI community](docs/community-center.jpg)
 
-You can also join the [Discord community](https://discord.gg/6v4gm9u4S), or head straight to [GitHub Issues](https://github.com/zhu1090093659/dsh-web-ui/issues) to report bugs / request features.
+You can also join the [Discord community](https://discord.gg/6v4gm9u4S), or head straight to [GitHub Issues](https://github.com/zhu1090093659/dsh-web/issues) to report bugs / request features.
 
 <details>
 <summary>Friend links</summary>
@@ -387,7 +391,7 @@ This repository is licensed under [Apache-2.0](LICENSE). Third-party code merged
 
 | Package | Origin | License |
 | --- | --- | --- |
-| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-web-ui-settings / dsh-liangshen / dsh-doctor / dsh-ssh / dsh-chat-recovery / dsh-skill-explorer / dsh-desktop-launcher / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-ui-all / skins | Authored by zhu1090093659 | Apache-2.0 (zhu1090093659) |
+| dsh-task-board / dsh-git-graph / dsh-aionui-panel / dsh-pet / dsh-remote-web-ui / dsh-web-settings / dsh-liangshen / dsh-doctor / dsh-ssh / dsh-chat-recovery / dsh-skill-explorer / dsh-desktop-launcher / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / skins | Authored by zhu1090093659 | Apache-2.0 (zhu1090093659) |
 | dsh-client-ui-skin-matrix | Contributor original (Matrix dark eye-care skin) | Apache-2.0 (declared by contributor seanchen) |
 | dsh-tool-describe-image | Ported from [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image) (deepseek-harness `packages/vision/tool-describe-image`) | Apache-2.0 (zhu1090093659) |
 | dsh-better-sidebar | External integrated plugin [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) (right panel, npm dependency reference) | MIT (omdsh-dev) |
@@ -502,7 +506,7 @@ This repository is licensed under [Apache-2.0](LICENSE). Third-party code merged
   <a href="https://github.com/Lem0nTea2002"><img src="https://github.com/Lem0nTea2002.png?size=64" width="48" height="48" alt="Lem0nTea2002" title="Lem0nTea2002" /></a>
 </p>
 <p align="center">
-  <sub><a href="https://github.com/zhu1090093659/dsh-web-ui/graphs/contributors">View all contributors</a></sub>
+  <sub><a href="https://github.com/zhu1090093659/dsh-web/graphs/contributors">View all contributors</a></sub>
 </p>
 <!-- CONTRIBUTORS:END -->
 
@@ -510,6 +514,6 @@ This repository is licensed under [Apache-2.0](LICENSE). Third-party code merged
 
 **If you like it, give us a star.**
 
-[Report Bug](https://github.com/zhu1090093659/dsh-web-ui/issues) · [Request Feature](https://github.com/zhu1090093659/dsh-web-ui/issues) · [View Releases](https://github.com/zhu1090093659/dsh-web-ui/releases)
+[Report Bug](https://github.com/zhu1090093659/dsh-web/issues) · [Request Feature](https://github.com/zhu1090093659/dsh-web/issues) · [View Releases](https://github.com/zhu1090093659/dsh-web/releases)
 
 </div>

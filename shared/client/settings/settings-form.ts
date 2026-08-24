@@ -319,7 +319,7 @@ export class CardForm<T> {
   /**
    * Write every staged edit, then re-seed from what the Host accepted.
    *
-   * When the scope carries the optional batch surface (the dsh-web-ui
+   * When the scope carries the optional batch surface (the dsh-web
    * bridge scope), every planned write rides one mutation so cross-field
    * validate hooks (baseURL+model) judge the batch as a unit instead of
    * deadlocking on per-field writes. Otherwise the per-field loop runs.

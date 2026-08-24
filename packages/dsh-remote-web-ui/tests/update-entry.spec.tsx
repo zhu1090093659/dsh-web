@@ -29,8 +29,8 @@ function upToDateStatus(): UpdateStatus {
   return {
     mode: "npm",
     profileName: "web",
-    anchor: "@linxin666/dsh-web-ui-all",
-    packages: [{ name: "@linxin666/dsh-web-ui-all", current: "0.1.10", latest: "0.1.10", outdated: false }],
+    anchor: "@linxin666/dsh-web-all",
+    packages: [{ name: "@linxin666/dsh-web-all", current: "0.1.10", latest: "0.1.10", outdated: false }],
     outdated: false,
   }
 }
@@ -40,8 +40,8 @@ function outdatedStatus(): UpdateStatus {
   return {
     mode: "npm",
     profileName: "web",
-    anchor: "@linxin666/dsh-web-ui-all",
-    packages: [{ name: "@linxin666/dsh-web-ui-all", current: "0.1.10", latest: "0.1.11", outdated: true }],
+    anchor: "@linxin666/dsh-web-all",
+    packages: [{ name: "@linxin666/dsh-web-all", current: "0.1.10", latest: "0.1.11", outdated: true }],
     outdated: true,
   }
 }
@@ -112,9 +112,31 @@ describe("UpdateEntry", () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/update/status"))
     expect(trigger.getAttribute('aria-expanded')).toBe('true')
     await waitFor(() => expect(screen.getByText('Everything is up to date')).toBeTruthy())
-    expect(screen.getByText('@linxin666/dsh-web-ui-all')).toBeTruthy()
+    expect(screen.getByText('@linxin666/dsh-web-all')).toBeTruthy()
     // No update run for an up-to-date install.
     expect(fetch).not.toHaveBeenCalledWith("/api/update/run", expect.anything())
+  })
+
+  it("shows release-note sections and keeps component versions collapsible", async () => {
+    const status: UpdateStatus = {
+      ...outdatedStatus(),
+      notes: {
+        version: "0.1.11",
+        features: ["Add a new catalog page"],
+        fixes: ["Fix policy sync"],
+        other: ["Update documentation"],
+      },
+    }
+    mount(status)
+    fireEvent.click(screen.getByRole('button', { name: /Check for updates$/ }))
+    await waitFor(() => expect(screen.getByText('v0.1.11 release notes')).toBeTruthy())
+    expect(screen.getByText('New Features')).toBeTruthy()
+    expect(screen.getByText('Bug Fixes')).toBeTruthy()
+    expect(screen.getByText('Other Changes')).toBeTruthy()
+    expect(screen.getByText('Add a new catalog page')).toBeTruthy()
+    expect(screen.getByText('Fix policy sync')).toBeTruthy()
+    expect(screen.getByText('Update documentation')).toBeTruthy()
+    expect(screen.getByText('View component versions')).toBeTruthy()
   })
 
   it("never starts the update from the check alone and runs it on confirmation (#507)", async () => {
@@ -167,8 +189,8 @@ describe("UpdateEntry", () => {
   it("shows the dev-mode banner for link installs", async () => {
     const status: UpdateStatus = {
       mode: "link",
-      anchor: "@linxin666/dsh-web-ui-all",
-      packages: [{ name: "@linxin666/dsh-web-ui-all", current: "0.1.10", latest: "0.1.11", outdated: true }],
+      anchor: "@linxin666/dsh-web-all",
+      packages: [{ name: "@linxin666/dsh-web-all", current: "0.1.10", latest: "0.1.11", outdated: true }],
       outdated: true,
     }
     const { fetch } = mount(status)

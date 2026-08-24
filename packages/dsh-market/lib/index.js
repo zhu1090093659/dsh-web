@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 //#region src/mount-once.ts
 /**
 * Host single-instance guard shared by the plugin family. The family bundle
-* (dsh-web-ui-all / dsh-skins) namespaces every child row id (web-ui-*), so
+* (dsh-web-all / dsh-skins) namespaces every child row id (web-ui-*), so
 * the loader accepts a standalone install of the same package side by side;
 * without this guard the second instance would still re-register the same
 * webserver routes, tools, settings namespaces, and system-prompt sections
@@ -20,7 +20,7 @@ import { createHash } from "node:crypto";
 * `ctx.effect` runs its callback immediately and treats the callback's
 * return value as the fiber disposer, so the unmarker is returned, not run.
 */
-const MOUNTED = Symbol.for("dsh-web-ui.mounted-plugins");
+const MOUNTED = Symbol.for("dsh-web.mounted-plugins");
 function mountedSet() {
 	const registry = globalThis;
 	return registry[MOUNTED] ??= /* @__PURE__ */ new Set();
@@ -143,7 +143,7 @@ function isLoopbackRequest(request) {
 *  - every install records dsh-market.provenance.json (sha256 of each
 *    installed file, pinned to MARKET_ORIGIN), so consumers like the skin
 *    center can tell official-market content — same-review code built from
-*    the dsh-web-ui repository — apart from hand-dropped directories
+*    the dsh-web repository — apart from hand-dropped directories
 *    (issue #1073).
 * @module @linxin666/dsh-client-ui-market/core
 */
@@ -295,14 +295,24 @@ async function installAsset(kind, id, options) {
 		writeFileSync(join(tmp, PROVENANCE_FILENAME), JSON.stringify(provenance, null, 2) + "\n");
 		if (exists) rmSync(dest, {
 			recursive: true,
-			force: true
+			force: true,
+			maxRetries: 3,
+			retryDelay: 50
 		});
-		renameSync(tmp, dest);
+		try {
+			renameSync(tmp, dest);
+		} catch {
+			const start = Date.now();
+			while (Date.now() - start < 50);
+			renameSync(tmp, dest);
+		}
 	} catch (err) {
 		try {
 			rmSync(tmp, {
 				recursive: true,
-				force: true
+				force: true,
+				maxRetries: 3,
+				retryDelay: 50
 			});
 		} catch {}
 		if (err instanceof MarketInstallError) throw err;

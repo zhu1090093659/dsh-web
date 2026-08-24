@@ -43,7 +43,6 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.1-rc.2",
     "react": "^18.2.0"
   },
   "devDependencies": {

@@ -35,8 +35,8 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest
 ### From the repository (development)
 
 ```sh
-git clone https://github.com/zhu1090093659/dsh-web-ui.git
-cd dsh-web-ui
+git clone https://github.com/zhu1090093659/dsh-web.git
+cd dsh-web
 pnpm install
 pnpm -r build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
@@ -101,6 +101,10 @@ sidebar.
   directory and single-file links list normally; a single-file link (pointing
   at one `.md`) is replaced by a plain file during the atomic rewrite — the link
   is not kept and the target file is left untouched.
+
+## Telemetry
+
+The browser half sends one anonymous install heartbeat per UTC day to dsh-market.com: a random localStorage id plus this package's name, nothing else. The server stores only a salted hash of that id, never IP addresses, and exposes aggregate counts only. See [docs/telemetry.md](../../docs/telemetry.md) for the full contract.
 
 ## License
 

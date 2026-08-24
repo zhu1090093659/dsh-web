@@ -5,6 +5,8 @@
  * described by /openapi.json and documented at /api-docs.html.
  */
 
+import { handleTelemetryPost, handleTelemetrySummary } from './telemetry.js'
+import { handleNpmBadge } from './npm-badge.js'
 import API_CATALOG from './api-catalog.js'
 import OPENAPI_SPEC from './openapi.js'
 import API_DOCS_HTML from './api-doc.js'
@@ -206,12 +208,22 @@ export default {
     const url = new URL(request.url)
     const path = url.pathname
 
-    if (request.method === 'OPTIONS' && (path === '/api/like' || path === '/api/stats')) return preflight(request)
+    if (request.method === 'OPTIONS' && (path === '/api/like' || path === '/api/stats' || path === '/api/telemetry/event')) return preflight(request)
     if (path === '/api/health') return json({ ok: true })
+    if (path === '/api/npm-badge/downloads' && request.method === 'GET') return handleNpmBadge('downloads', json)
+    if (path === '/api/npm-badge/version' && request.method === 'GET') return handleNpmBadge('version', json)
     if (path === '/api/turnstile/challenge' && request.method === 'GET') return challengePage()
 
     if (path === '/api/stats' && request.method === 'GET') {
       return json(await readStats(env), 200, { 'cache-control': 'no-store' })
+    }
+
+    if (path === '/api/telemetry/event' && request.method === 'POST') {
+      return handleTelemetryPost(request, env, json)
+    }
+
+    if (path === '/api/telemetry/summary' && request.method === 'GET') {
+      return handleTelemetrySummary(request, url, env, json)
     }
 
     if (path === '/api/like' && request.method === 'POST') {

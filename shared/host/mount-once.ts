@@ -1,6 +1,6 @@
 /**
  * Host single-instance guard shared by the plugin family. The family bundle
- * (dsh-web-ui-all / dsh-skins) namespaces every child row id (web-ui-*), so
+ * (dsh-web-all / dsh-skins) namespaces every child row id (web-ui-*), so
  * the loader accepts a standalone install of the same package side by side;
  * without this guard the second instance would still re-register the same
  * webserver routes, tools, settings namespaces, and system-prompt sections
@@ -14,7 +14,7 @@
  * return value as the fiber disposer, so the unmarker is returned, not run.
  */
 
-const MOUNTED = Symbol.for('dsh-web-ui.mounted-plugins')
+const MOUNTED = Symbol.for('dsh-web.mounted-plugins')
 
 interface MountRegistry {
   [MOUNTED]?: Set<string>

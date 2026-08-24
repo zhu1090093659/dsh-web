@@ -137,7 +137,7 @@ describe('dsh-web-ui-market client store registration', () => {
     expect(registeredLocales.get('dsh-web-ui-market')?.has('zh')).toBe(true)
     expect(registeredSlotIds.has('dsh-web-ui-market')).toBe(true)
 
-    // Second apply (e.g. aggregate dsh-web-ui-all loading dsh-market)
+    // Second apply (e.g. aggregate dsh-web-all loading dsh-market)
     expect(() => apply(fakeCtx as never)).not.toThrow()
   })
 })

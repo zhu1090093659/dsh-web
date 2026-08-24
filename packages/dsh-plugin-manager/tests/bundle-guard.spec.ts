@@ -50,7 +50,7 @@ describe('newlyAddedBundles', () => {
 describe('rowMountedPackageNames', () => {
   it('collects insert-entry names from every before-state dependency patch', async () => {
     const { facts } = profileWith({
-      '@linxin666/dsh-web-ui-all': [
+      '@linxin666/dsh-web-all': [
         '- insert:',
         "    - id: web-ui-task-board",
         "      name: '@linxin666/dsh-client-ui-task-board'",
@@ -62,7 +62,7 @@ describe('rowMountedPackageNames', () => {
       'dsh-plain': '[]\n',
     })
     const mounted = await rowMountedPackageNames(facts, snapshot({
-      dependencies: ['@linxin666/dsh-web-ui-all', 'dsh-plain'],
+      dependencies: ['@linxin666/dsh-web-all', 'dsh-plain'],
     }))
     expect(mounted.has('@linxin666/dsh-client-ui-task-board')).toBe(true)
     expect(mounted.has('dsh-better-sidebar')).toBe(true)
@@ -89,10 +89,10 @@ describe('rowMountedPackageNames', () => {
 
   it('skips dependency insert entries the profile layer disables by id', async () => {
     const { facts } = profileWith({
-      '@linxin666/dsh-web-ui-all': '- insert:\n    - id: better-sidebar\n      name: dsh-better-sidebar\n',
+      '@linxin666/dsh-web-all': '- insert:\n    - id: better-sidebar\n      name: dsh-better-sidebar\n',
     })
     const mounted = await rowMountedPackageNames(facts, snapshot({
-      dependencies: ['@linxin666/dsh-web-ui-all'],
+      dependencies: ['@linxin666/dsh-web-all'],
       rowEnabled: new Map([['better-sidebar', false]]),
     }))
     expect(mounted.has('dsh-better-sidebar')).toBe(false)
@@ -102,13 +102,13 @@ describe('rowMountedPackageNames', () => {
 describe('duplicateMountBundles', () => {
   it('selects exactly the newly added, already row-mounted entries', async () => {
     const { facts } = profileWith({
-      '@linxin666/dsh-web-ui-all': '- insert:\n    - id: better-sidebar\n      name: dsh-better-sidebar\n',
+      '@linxin666/dsh-web-all': '- insert:\n    - id: better-sidebar\n      name: dsh-better-sidebar\n',
     })
     const strip = await duplicateMountBundles(
       facts,
-      snapshot({ dependencies: ['@linxin666/dsh-web-ui-all'] }),
-      ['@linxin666/dsh-web-ui-all'],
-      ['@linxin666/dsh-web-ui-all', 'dsh-better-sidebar', 'dsh-memoir'],
+      snapshot({ dependencies: ['@linxin666/dsh-web-all'] }),
+      ['@linxin666/dsh-web-all'],
+      ['@linxin666/dsh-web-all', 'dsh-better-sidebar', 'dsh-memoir'],
     )
     expect(strip).toEqual(['dsh-better-sidebar'])
   })

@@ -44,6 +44,7 @@ const cardState: DoctorSettingsCardState = {
   enabled: { text: 'false', overridden: false, invalid: false },
   fullProtection: { text: 'true', overridden: false, invalid: false },
   autoRepair: { text: 'true', overridden: false, invalid: false },
+  autoMigrate: { text: 'true', overridden: false, invalid: false },
 }
 
 function makeController(): DoctorController {
@@ -81,6 +82,7 @@ describe('DoctorSettingsCard', () => {
     expect(screen.getByLabelText('Enable rescue mode')).toBeTruthy()
     expect(screen.getByLabelText('Full protection')).toBeTruthy()
     expect(screen.getByLabelText('Auto repair')).toBeTruthy()
+    expect(screen.getByLabelText('Auto migrate legacy aggregate')).toBeTruthy()
     // Embedded console: status + incident cards render inside the card.
     expect(screen.getByText('Host status')).toBeTruthy()
     expect(container.querySelector('[data-dsh-plugin="doctor"]')).toBeTruthy()

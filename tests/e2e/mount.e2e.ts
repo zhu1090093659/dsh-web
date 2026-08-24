@@ -1,5 +1,5 @@
 /**
- * Aggregate-bundle mount lane: prove the packed `@linxin666/dsh-web-ui-all`
+ * Aggregate-bundle mount lane: prove the packed `@linxin666/dsh-web-all`
  * tarball mounts into a real `dsh web` instance and that the right panel is
  * served by the external `dsh-better-sidebar` plugin:
  *

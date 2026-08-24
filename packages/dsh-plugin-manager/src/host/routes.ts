@@ -15,6 +15,7 @@ import { isLoopbackRequest } from './loopback.ts'
 import { detectOfficialChannels, findDshBinary, spawnDsh, unsafeSpecReason, type CliGateway } from './gateway.ts'
 import { dshRequirementOf, meetsMinimumDsh, parseDshVersion } from '../core/version.ts'
 import { readPatchText, readProfileManifest, type ProfileFacts } from './profile.ts'
+import { legacyMigrationFor, targetSpecForLegacy } from './legacy-migration.ts'
 import { setRowEnabled, writePatchAtomic } from './rows.ts'
 import { buildPluginRow, claimedEntryRowsOf, snapshotGateway } from './state.ts'
 
@@ -251,6 +252,32 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
       const patchText = await readPatchText(facts.patchPath)
       const row = (await snapshotGateway(facts, patchText)).plugins.find(plugin => plugin.id === target)
       if (row === undefined) return { status: 404, error: `plugin-manager: plugin ${target} is not installed` }
+      const migration = legacyMigrationFor(target)
+      if (migration !== undefined) {
+        const targetManifest = await fetchManifest(migration.to).catch(() => undefined)
+        if (targetManifest === undefined || targetManifest.version === '') {
+          return { status: 502, error: `plugin-manager: cannot resolve the migration target ${migration.to}` }
+        }
+        const targetSpec = targetSpecForLegacy(row.source.spec, targetManifest.version)
+        if (targetSpec === undefined) {
+          return { status: 400, error: `plugin-manager: cannot derive the migration target spec for ${target}` }
+        }
+        const unsafeTarget = unsafeSpecReason(targetSpec)
+        if (unsafeTarget !== undefined) return { status: 400, error: unsafeTarget }
+        const requiresDsh = dshRequirementOf(targetManifest)
+        if (requiresDsh !== undefined) {
+          const { hostVersion, compatible } = await compatibleVerdict(requiresDsh)
+          if (!compatible) {
+            return {
+              status: 412,
+              error: hostVersion === undefined
+                ? `plugin-manager: cannot verify the DSH version for ${migration.to} (dsh --version failed); upgrade DSH before migrating`
+                : `plugin-manager: ${migration.to} requires DSH ${requiresDsh} (current DSH ${hostVersion}); upgrade DSH before migrating`,
+            }
+          }
+        }
+        return { status: 200, job: gateway.migrate(target, migration.to, targetManifest.version, targetSpec) }
+      }
       if (row.source.kind !== 'npm' || !isDirectRegistrySpec(row.source.spec)) {
         return { status: 400, error: `plugin-manager: ${target} is not a direct npm registry plugin` }
       }
@@ -398,8 +425,37 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
   const checkUpdatesHandler = async (_req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const patchText = await readPatchText(facts.patchPath)
     const snapshot = await snapshotGateway(facts, patchText)
-    const updates: Array<{ id: string; current: string; latest: string; requiresDsh?: string; compatible?: boolean }> = []
+    const updates: Array<{ id: string; current: string; latest: string; kind?: 'update' | 'migrate'; target?: string; targetVersion?: string; requiresDsh?: string; compatible?: boolean }> = []
     for (const plugin of snapshot.plugins) {
+      const migration = legacyMigrationFor(plugin.id)
+      if (migration !== undefined) {
+        const targetManifest = await fetchManifest(migration.to).catch(() => undefined)
+        if (targetManifest === undefined || targetManifest.version === '') continue
+        const update: {
+          id: string
+          current: string
+          latest: string
+          kind: 'migrate'
+          target: string
+          targetVersion: string
+          requiresDsh?: string
+          compatible?: boolean
+        } = {
+          id: plugin.id,
+          current: plugin.version,
+          latest: targetManifest.version,
+          kind: 'migrate',
+          target: migration.to,
+          targetVersion: targetManifest.version,
+        }
+        const requiresDsh = dshRequirementOf(targetManifest)
+        if (requiresDsh !== undefined) {
+          update.requiresDsh = requiresDsh
+          update.compatible = (await compatibleVerdict(requiresDsh)).compatible
+        }
+        updates.push(update)
+        continue
+      }
       if (plugin.source.kind !== 'npm' || !isDirectRegistrySpec(plugin.source.spec)) continue
       const manifest = await fetchManifest(plugin.id).catch(() => undefined)
       if (manifest === undefined || manifest.version === plugin.version) continue

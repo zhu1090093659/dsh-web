@@ -1,0 +1,7 @@
+# dsh-client-ui-web-ui-settings bundle patch: inserts the Web UI plugin group
+# row into the web profile roster. The browser half registers the group card
+# in the plugin-configuration section and declares the child slot the
+# dsh-web family plugins contribute their cards to.
+- insert:
+    - id: ui-web-ui-settings
+      name: '@linxin666/dsh-client-ui-web-ui-settings'

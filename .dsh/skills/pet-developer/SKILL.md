@@ -53,7 +53,7 @@ renderer、缺失条件块与不安全路径都会拒绝该条目并给出结构
 ## 1. 美术与打包
 
 图集制作与视觉 QA（8×9 拼图、逐行校验、QA contact sheet、pet.json 打包）走 **hatch-pet** skill
-（Codex/hatch-pet 契约的生成流水线）；本技能只覆盖 dsh-web-ui 侧的接入与验证。
+（Codex/hatch-pet 契约的生成流水线）；本技能只覆盖 dsh-web 侧的接入与验证。
 手工制作时按第 0 节几何逐行对齐；做 11 行 v2 图集时后两行留给 look 行。
 
 ## 2. 接入方式（四来源；后注册的来源在同 id 冲突时覆盖前者）

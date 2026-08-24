@@ -3,7 +3,7 @@
 
 /**
  * gallery-build — regenerate the gallery static assets for the dsh skin
- * collection (dsh-web-ui, v2 skin layout, issue #506).
+ * collection (dsh-web, v2 skin layout, issue #506).
  *
  * Scans each packages/skins/skin-center/skins/<name>/skin.json (the v2 pure
  * asset directory contract; the skin-center package is the only loader) and

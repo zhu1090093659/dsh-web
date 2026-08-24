@@ -23,6 +23,7 @@ import { RetrySupervisor } from '../core/retry-supervisor.ts'
 import { TurnActionsView } from './TurnActionsView.tsx'
 import { RetryDockView } from './RetryDock.tsx'
 import { en, zh, type ChatRecoveryKey } from './locales.ts'
+import { reportDailyHeartbeat } from './telemetry.ts'
 
 /** Locale namespace this plugin owns. */
 const NS = 'chat-recovery'
@@ -42,6 +43,10 @@ export const inject = ['slots', 'locale', 'sessions', 'workspaces']
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  // Anonymous install heartbeat (docs/telemetry.md): one beat per browser per
+  // UTC day, package name only, silent failure.
+  reportDailyHeartbeat([{ name: '@linxin666/dsh-chat-recovery' }])
+
   // A duplicated client injection (module factory executed twice in one page
   // lifetime) would otherwise mount a second set of rows.
   if (!claimChatRecoveryApply()) return

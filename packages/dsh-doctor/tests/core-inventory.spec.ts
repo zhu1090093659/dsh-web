@@ -16,9 +16,9 @@ importers:
       '@deepseek-ai/dsh-mcp-client':
         specifier: 0.1.1-rc.2
         version: 0.1.1-rc.2
-      '@linxin666/dsh-web-ui-all':
-        specifier: link:../packages/dsh-web-ui-all
-        version: link:../packages/dsh-web-ui-all
+      '@linxin666/dsh-web-all':
+        specifier: link:../packages/dsh-web-all
+        version: link:../packages/dsh-web-all
       dsh-better-sidebar:
         specifier: ^0.14.0
         version: 0.14.0
@@ -29,7 +29,7 @@ describe('parseLockfileImporter', () => {
     const parsed = parseLockfileImporter(LOCK, engine)
     expect(parsed.status).toBe('ok')
     expect(parsed.lockfileVersion).toBe('9.0')
-    expect(parsed.importer?.get('@linxin666/dsh-web-ui-all')?.version).toBe('link:../packages/dsh-web-ui-all')
+    expect(parsed.importer?.get('@linxin666/dsh-web-all')?.version).toBe('link:../packages/dsh-web-all')
     expect(parsed.importer?.get('dsh-better-sidebar')?.version).toBe('0.14.0')
   })
 

@@ -1,13 +1,13 @@
 ---
 name: dsh-sdk-upgrade
-description: Safely select and install a compatible official @deepseek-ai SDK release for dsh-web-ui from npm using an isolated worktree, explicit cohort review, CI-equivalent validation, and controlled DSH Web rollout. Use for SDK dependency upgrades, official version checks, release-channel decisions, and runtime/repository cohort alignment. After the target is approved and installed, use dsh-web-ui-sdk-compatibility for consumer adaptation, durable contracts, fixes, or new-feature adoption.
-whenToUse: The user asks to choose, upgrade, update, or check the official DeepSeek Harness SDK packages used by dsh-web-ui, including @deepseek-ai/dsh-*, @deepseek-ai/cordis, @deepseek-ai/cosmokit, or @deepseek-ai/schemastery. Use dsh-web-ui-sdk-compatibility when versions are already approved and the task is to repair source/runtime compatibility or adopt target-SDK capabilities. Do not use for upgrading the DSH application/source checkout itself, releasing @linxin666 packages, or ordinary plugin feature work.
+description: Safely select and install a compatible official @deepseek-ai SDK release for dsh-web from npm using an isolated worktree, explicit cohort review, CI-equivalent validation, and controlled DSH Web rollout. Use for SDK dependency upgrades, official version checks, release-channel decisions, and runtime/repository cohort alignment. After the target is approved and installed, use dsh-web-sdk-compatibility for consumer adaptation, durable contracts, fixes, or new-feature adoption.
+whenToUse: The user asks to choose, upgrade, update, or check the official DeepSeek Harness SDK packages used by dsh-web, including @deepseek-ai/dsh-*, @deepseek-ai/cordis, @deepseek-ai/cosmokit, or @deepseek-ai/schemastery. Use dsh-web-sdk-compatibility when versions are already approved and the task is to repair source/runtime compatibility or adopt target-SDK capabilities. Do not use for upgrading the DSH application/source checkout itself, releasing @linxin666 packages, or ordinary plugin feature work.
 user-invocable: true
 ---
 
-# dsh-web-ui Official SDK Upgrade
+# dsh-web Official SDK Upgrade
 
-Use this Skill only for the dsh-web-ui monorepo. It selects and upgrades the repository's official npm SDK dependency cohort; it never modifies a DeepSeek Harness source checkout. After the target cohort is approved and installed, hand consumer analysis, source repair, compatibility contracts, and deliberate new-feature adoption to `dsh-web-ui-sdk-compatibility`. For upgrading the DSH application itself, use dsh-upgrade instead. For publishing this monorepo, use dsh-web-ui-release instead.
+Use this Skill only for the dsh-web monorepo. It selects and upgrades the repository's official npm SDK dependency cohort; it never modifies a DeepSeek Harness source checkout. After the target cohort is approved and installed, hand consumer analysis, source repair, compatibility contracts, and deliberate new-feature adoption to `dsh-web-sdk-compatibility`. For upgrading the DSH application itself, use dsh-upgrade instead. For publishing this monorepo, use dsh-web-release instead.
 
 ## Non-Negotiable Boundaries
 
@@ -49,7 +49,7 @@ Latest means the latest official stable release on the requested channel, not si
 3. Reconcile pnpm-workspace.yaml minimumReleaseAgeExclude entries with the approved exact SDK versions. Do not retain stale exclusions by habit, remove unrelated entries, or bypass release-age policy without recording the official version evidence.
 4. Regenerate the lockfile through pnpm, inspect the full manifest and lockfile diff, and run pnpm install --frozen-lockfile --ignore-scripts in the isolated worktree to prove CI can resolve it.
 5. Inspect every peer-dependency warning and duplicated SDK resolution. Resolve the cause with the approved version set; do not suppress warnings or accept a partial install as success.
-6. If the approved cohort may change consumed types, APIs, imports, services, Cordis composition, client-platform boundaries, protocols, behavior, or generated bundles, record the compatibility handoff below and continue with `dsh-web-ui-sdk-compatibility` in the same approved worktree. This skill remains the owner of manifests, release-age policy, and lockfile changes; the compatibility skill owns source, test, contract, and managed-GUI adaptation. Do not merge until both phases close.
+6. If the approved cohort may change consumed types, APIs, imports, services, Cordis composition, client-platform boundaries, protocols, behavior, or generated bundles, record the compatibility handoff below and continue with `dsh-web-sdk-compatibility` in the same approved worktree. This skill remains the owner of manifests, release-age policy, and lockfile changes; the compatibility skill owns source, test, contract, and managed-GUI adaptation. Do not merge until both phases close.
 
 ### Compatibility Handoff
 
@@ -69,7 +69,7 @@ The compatibility phase must preserve this approved target. Any newly discovered
 
 ## 4. Validate at CI Strength
 
-If no compatibility handoff is required, run the CI-equivalent gate sequence directly. When a handoff is active, `dsh-web-ui-sdk-compatibility` runs focused adaptation checks and returns one ledger; this skill verifies the final combined manifest, lockfile, repair, and generated-artifact commit with the sequence below. Reuse valid results from the same commit and environment rather than rerunning commands only because both skills mention the gate. Record the actual command and result for every gate:
+If no compatibility handoff is required, run the CI-equivalent gate sequence directly. When a handoff is active, `dsh-web-sdk-compatibility` runs focused adaptation checks and returns one ledger; this skill verifies the final combined manifest, lockfile, repair, and generated-artifact commit with the sequence below. Reuse valid results from the same commit and environment rather than rerunning commands only because both skills mention the gate. Record the actual command and result for every gate:
 
 ~~~sh
 pnpm typecheck
@@ -90,7 +90,7 @@ Treat a failed, skipped, or environment-blocked gate as unverified. Report the e
 
 ## 5. Verify the Actual DSH Web Integration
 
-Local compilation is necessary but not sufficient. When a compatibility handoff is active, `dsh-web-ui-sdk-compatibility` owns the affected-workflow GUI evidence and returns it to this rollout; this skill confirms that evidence belongs to the final combined commit and profile. After the isolated worktree passes the static gates:
+Local compilation is necessary but not sufficient. When a compatibility handoff is active, `dsh-web-sdk-compatibility` owns the affected-workflow GUI evidence and returns it to this rollout; this skill confirms that evidence belongs to the final combined commit and profile. After the isolated worktree passes the static gates:
 
 1. Confirm the intended DSH web profile resolves this repository's built artifacts and does not contain duplicate child-plugin entries. After the accepted change is on target main, run node scripts/link-profile.mjs when the local profile link needs refreshing. Do not hand-edit profile patch files or add aggregate-owned child plugins individually.
 2. Do not start a replacement Vite server or an independent dsh web instance. The apps/web entry is not a standalone application.

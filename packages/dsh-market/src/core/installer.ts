@@ -19,7 +19,7 @@
  *  - every install records dsh-market.provenance.json (sha256 of each
  *    installed file, pinned to MARKET_ORIGIN), so consumers like the skin
  *    center can tell official-market content — same-review code built from
- *    the dsh-web-ui repository — apart from hand-dropped directories
+ *    the dsh-web repository — apart from hand-dropped directories
  *    (issue #1073).
  * @module @linxin666/dsh-client-ui-market/core
  */

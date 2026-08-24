@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Rewrite the packed dsh-web-ui-all tarball's dependency table for the
+ * Rewrite the packed dsh-web-all tarball's dependency table for the
  * e2e mount smoke (scripts/e2e-mount.sh).
  *
  * Modes:

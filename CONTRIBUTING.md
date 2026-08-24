@@ -1,6 +1,6 @@
 # 贡献指南（Contributing）
 
-欢迎为 dsh-web-ui（DSH Web GUI 插件与皮肤全家桶）贡献代码。本文件是贡献者的
+欢迎为 dsh-web（DSH Web GUI 插件与皮肤全家桶）贡献代码。本文件是贡献者的
 入口；仓库的全部规则与机制以 [AGENTS.md](AGENTS.md)（及其分层指令）为准，
 冲突时以 AGENTS.md 为准。
 
@@ -39,7 +39,7 @@
 
 除上述三类外的所有改动（bug 修复、功能增强、全新功能、文档、测试、
 维护等）**不接受直接 PR**，请先在
-[Issues](https://github.com/zhu1090093659/dsh-web-ui/issues) 提 issue
+[Issues](https://github.com/zhu1090093659/dsh-web/issues) 提 issue
 讨论，确认后由维护者处理。非三类范围的 PR 会被
 `.github/workflows/reject-non-content-pr.yml` 自动关闭（仅文档类 PR 由
 `reject-docs-pr.yml` 处理）；仓库所有者、机器人与拥有写权限的协作者
@@ -56,8 +56,8 @@
 ## 快速开始
 
 ```sh
-git clone https://github.com/zhu1090093659/dsh-web-ui.git
-cd dsh-web-ui
+git clone https://github.com/zhu1090093659/dsh-web.git
+cd dsh-web
 git checkout dev                                 # 开发基线：dev 分支
 git fetch origin && git rebase origin/dev        # 提交 / 提 PR 前同步最新 dev
 pnpm install

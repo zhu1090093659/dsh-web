@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate the release-notes draft for the dsh-web-ui GitHub Release.
+ * Generate the release-notes draft for the dsh-web GitHub Release.
  *
  * Collects conventional-commit subjects across the whole previous-tag..
  * release-tag range (including work merged in on side branches), groups them
@@ -34,7 +34,7 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '..')
 
 /** The GitHub owner/repo used for issue links. */
-export const DEFAULT_REPO = 'zhu1090093659/dsh-web-ui'
+export const DEFAULT_REPO = 'zhu1090093659/dsh-web'
 
 /** Conventional-commit prefixes grouped into the three note sections. */
 const FEAT_TYPES = new Set(['feat'])

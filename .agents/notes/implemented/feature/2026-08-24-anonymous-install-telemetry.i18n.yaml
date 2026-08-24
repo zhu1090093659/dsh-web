@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-08-24-anonymous-install-telemetry.md: 745bef4a8b2bf8dcfdfd3aec3612f68f1790267c
+2026-08-24-anonymous-install-telemetry.zh.md: 1549060109cab296fc794d60118fcc01b4ecfe52

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Link every dsh-web-ui family plugin into the dsh profile's global
+ * Link every dsh-web family plugin into the dsh profile's global
  * @linxin666 namespace (~/.dsh/profiles/node_modules/@linxin666).
  *
  * The dsh loader resolves plugin rows (cordis.patch.yml `name:` entries) by
@@ -74,7 +74,7 @@ function familyPackages() {
 
 /** External non-family dependencies required by aggregate packages (e.g. dsh-better-sidebar, @mlgbnb/dsh-archive-manager). */
 function externalPackages() {
-  const dshWebUiAllDir = join(REPO_ROOT, 'packages', 'dsh-web-ui-all')
+  const dshWebUiAllDir = join(REPO_ROOT, 'packages', 'dsh-web-all')
   const pkgJsonPath = join(dshWebUiAllDir, 'package.json')
   if (!existsSync(pkgJsonPath)) return []
   const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'))
@@ -180,10 +180,10 @@ function main() {
 
   report(changed === 0 ? 'nothing to do' : `${changed} link(s) ${DRY ? 'would be ' : ''}updated`)
 
-  // Also link external dependencies required by dsh-web-ui-all (e.g. @mlgbnb/dsh-archive-manager, dsh-better-sidebar)
+  // Also link external dependencies required by dsh-web-all (e.g. @mlgbnb/dsh-archive-manager, dsh-better-sidebar)
   const extPkgs = externalPackages()
   if (extPkgs.length) {
-    report(`found ${extPkgs.length} external package(s) from dsh-web-ui-all`)
+    report(`found ${extPkgs.length} external package(s) from dsh-web-all`)
     let extChanged = 0
     for (const { fullName, dir } of extPkgs) {
       const linkPath = join(PROFILES_NM, fullName)

@@ -23,7 +23,7 @@ function idsOf(relPath) {
     .map((line) => line.trim().replace(/^- id: /, ''))
 }
 
-const AGGREGATES = ['packages/dsh-web-ui-all/cordis.patch.yml']
+const AGGREGATES = ['packages/dsh-web-all/cordis.patch.yml']
 
 test('aggregate rows are web-ui-* namespaced and unique', () => {
   for (const rel of AGGREGATES) {
@@ -50,7 +50,7 @@ test('aggregate ids never collide with standalone package ids', () => {
         continue
       }
       const normPatch = patch.replaceAll('\\', '/')
-      if (normPatch === 'packages/dsh-web-ui-all/cordis.patch.yml') continue
+      if (normPatch === 'packages/dsh-web-all/cordis.patch.yml') continue
       standalonePatches.push(patch)
     }
   }
@@ -92,7 +92,7 @@ test('no aggregate deps entry resolves to a private workspace package', () => {
 })
 
 test('web-ui-all mounts dsh-better-sidebar as an external row', () => {
-  const patch = readFileSync(join(ROOT, 'packages/dsh-web-ui-all/cordis.patch.yml'), 'utf8')
+  const patch = readFileSync(join(ROOT, 'packages/dsh-web-all/cordis.patch.yml'), 'utf8')
   const lines = patch.split(/\r?\n/)
   const idx = lines.findIndex((line) => /^ {4}- id: web-ui-better-sidebar$/.test(line))
   assert.ok(idx >= 0, 'web-ui-better-sidebar row is missing from the aggregate patch')
@@ -101,7 +101,7 @@ test('web-ui-all mounts dsh-better-sidebar as an external row', () => {
 })
 
 test('web-ui-all mounts @mlgbnb/dsh-archive-manager as an external row', () => {
-  const patch = readFileSync(join(ROOT, 'packages/dsh-web-ui-all/cordis.patch.yml'), 'utf8')
+  const patch = readFileSync(join(ROOT, 'packages/dsh-web-all/cordis.patch.yml'), 'utf8')
   const lines = patch.split(/\r?\n/)
   const idx = lines.findIndex((line) => /^ {4}- id: web-ui-archive-manager$/.test(line))
   assert.ok(idx >= 0, 'web-ui-archive-manager row is missing from the aggregate patch')

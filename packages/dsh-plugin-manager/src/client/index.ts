@@ -36,6 +36,7 @@ import {
 } from '../core/protocol.ts'
 import { PLUGIN_MANAGER_SERVICE, type PluginManagerService } from '../core/service.ts'
 import type { ControlChange } from '../core/conflict.ts'
+import { reportDailyHeartbeat } from './telemetry.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -337,6 +338,10 @@ export function createPluginManagerFace(ctx: ClientContext): PluginManagerFace {
 
 /** Contribute the family plugin-manager tab and provide the shared face. */
 export function apply(ctx: ClientContext): void {
+  // Anonymous install heartbeat (docs/telemetry.md): one beat per browser per
+  // UTC day, package name only, silent failure.
+  reportDailyHeartbeat([{ name: '@linxin666/dsh-client-ui-plugin-manager' }])
+
   ctx.effect(() => {
     try {
       return ctx.locale.register(NS, { zh, en })

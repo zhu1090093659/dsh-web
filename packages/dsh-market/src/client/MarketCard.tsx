@@ -323,17 +323,27 @@ export function MarketCard(props: MarketCardProps): ReactNode {
 
   const copyCommand = (id: string, command: string): void => {
     const done = (): void => { setCopiedId(id); window.setTimeout(() => setCopiedId(null), 1200) }
-    const fallback = (): void => {
+    const fallback = (): boolean => {
       const ta = document.createElement('textarea')
       ta.value = command
       document.body.appendChild(ta)
       ta.select()
-      try { document.execCommand('copy') } catch { /* ignore */ }
+      let ok = false
+      try {
+        ok = document.execCommand('copy')
+      } catch {
+        ok = false
+      }
       ta.remove()
+      return ok
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(command).then(done, () => { fallback(); done() })
-    } else { fallback(); done() }
+      navigator.clipboard.writeText(command).then(done, () => {
+        if (fallback()) done()
+      })
+    } else {
+      if (fallback()) done()
+    }
   }
 
   const installAssetKind = async (kind: Kind, id: string, force: boolean): Promise<void> => {

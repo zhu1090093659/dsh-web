@@ -10,7 +10,7 @@
  * official-style bundle (dsh.bundle.patch + dsh.client declaration) ready for
  * `dsh plugin --profile web add link:<repo>/packages/<name>`.
  *
- * Afterwards, register the new package in packages/dsh-web-ui-all/aggregate.yml
+ * Afterwards, register the new package in packages/dsh-web-all/aggregate.yml
  * (both patchFrom and deps) and rerun `node scripts/aggregate.mjs` so the
  * aggregate bundle picks it up.
  */
@@ -82,7 +82,7 @@ copyTree(TEMPLATE_DIR, dest)
 console.log(`[dsh-plugin-new] scaffolded plugin "${name}" at packages/${name}/`)
 console.log('')
 console.log('Next steps:')
-console.log(`  1. Add "- ../${name}" to packages/dsh-web-ui-all/aggregate.yml (both patchFrom and deps).`)
+console.log(`  1. Add "- ../${name}" to packages/dsh-web-all/aggregate.yml (both patchFrom and deps).`)
 console.log('  2. Rerun `node scripts/aggregate.mjs` to regenerate the aggregate patch and dependencies.')
 console.log('  3. Install locally with `dsh plugin --profile web add link:<this repo>/packages/' + name + '`.')
 console.log('  4. Replace the template placeholders in src/ and README.md with real behavior.')

@@ -187,3 +187,175 @@ test('challenge page renders the explicit Turnstile widget', async () => {
   assert.match(html, /challenges\.cloudflare\.com\/turnstile\/v0\/api\.js\?render=explicit/)
   assert.match(html, /size:&quot;invisible&quot;|size:\"invisible\"/)
 })
+
+function telemetryDb(options = {}) {
+  const batches = []
+  const runs = []
+  const db = {
+    batches,
+    runs,
+    prepare(sql) {
+      return {
+        bind: (...args) => ({
+          sql,
+          args,
+          async run() { runs.push({ sql, args }); return {} },
+        }),
+      }
+    },
+    async batch(statements) {
+      batches.push(statements)
+      if (statements.length === 7 && options.summary) return options.summary.map((results) => ({ results }))
+      return statements.map(() => ({ results: [] }))
+    },
+  }
+  return db
+}
+
+const VISITOR_OK = 'a'.repeat(32)
+
+async function postEvent(env, body) {
+  return worker.fetch(new Request('https://dsh-market.com/api/telemetry/event', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  }), env, context())
+}
+
+test('telemetry event answers preflight with CORS for browser clients', async () => {
+  const response = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/event', {
+    method: 'OPTIONS',
+    headers: { origin: 'http://127.0.0.1:3080', 'access-control-request-headers': 'content-type' },
+  }), {}, context())
+  assert.equal(response.status, 204)
+  assert.equal(response.headers.get('access-control-allow-origin'), '*')
+})
+
+test('telemetry stores only the salted visitor hash, never the raw id', async () => {
+  const db = telemetryDb()
+  const response = await postEvent({ TELEMETRY_SALT: 'pepper', DB: db }, {
+    kind: 'pageview', path: '/tryon/?skin=harbor', visitor: VISITOR_OK,
+  })
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).ok, true)
+  const batch = db.batches[0]
+  assert.equal(batch.length, 1)
+  const args = batch[0].args
+  assert.equal(args[2], 'pv')
+  assert.match(args[3], /^[0-9a-f]{64}$/)
+  assert.ok(!JSON.stringify(db.batches).includes(VISITOR_OK), 'raw visitor must not reach storage')
+})
+
+test('telemetry drops honest-bot pageviews without tipping them off', async () => {
+  const db = telemetryDb()
+  const bot = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/event', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' },
+    body: JSON.stringify({ kind: 'pageview', path: '/', visitor: VISITOR_OK }),
+  }), { DB: db }, context())
+  assert.equal(bot.status, 200)
+  const human = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/event', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/126 Safari/537.36' },
+    body: JSON.stringify({ kind: 'pageview', path: '/', visitor: VISITOR_OK }),
+  }), { DB: db }, context())
+  assert.equal(human.status, 200)
+  assert.equal(db.batches.length, 1, 'only the human pageview reaches storage')
+})
+
+test('telemetry heartbeat expands items into one idempotent row each', async () => {
+  const db = telemetryDb()
+  const response = await postEvent({ DB: db }, {
+    kind: 'heartbeat',
+    visitor: VISITOR_OK,
+    items: [
+      { name: '@linxin666/dsh-client-ui-market' },
+      { name: '@linxin666/dsh-pet', version: '1.2.3', channel: 'market' },
+    ],
+  })
+  assert.equal(response.status, 200)
+  const batch = db.batches[0]
+  assert.equal(batch.length, 2)
+  assert.equal(batch[0].args[2], 'hb')
+  assert.equal(batch[0].args[5], '')
+  assert.equal(batch[0].args[6], '')
+  assert.equal(batch[1].args[5], '1.2.3')
+  assert.equal(batch[1].args[6], 'market')
+  // Same-day replay (same channel) collapses to identical ids; a channel
+  // flip is a deliberate re-count, so replays must echo the channel.
+  await postEvent({ DB: db }, {
+    kind: 'heartbeat',
+    visitor: VISITOR_OK,
+    items: [{ name: '@linxin666/dsh-pet', version: '1.2.3', channel: 'market' }],
+  })
+  assert.equal(db.batches[1][0].args[0], batch[1].args[0])
+})
+
+test('telemetry rejects malformed submissions', async () => {
+  const db = telemetryDb()
+  const cases = [
+    { kind: 'nope', visitor: VISITOR_OK },
+    { kind: 'pageview', path: 'not-a-path', visitor: VISITOR_OK },
+    { kind: 'pageview', path: '/', visitor: 'short' },
+    { kind: 'heartbeat', visitor: VISITOR_OK, items: [] },
+    { kind: 'heartbeat', visitor: VISITOR_OK, items: [{ name: 'bad name with spaces' }] },
+    { kind: 'heartbeat', visitor: VISITOR_OK, items: [{ name: 'pkg', version: 'bad version!' }] },
+    { kind: 'heartbeat', visitor: VISITOR_OK, items: [{ name: 'pkg', channel: 'hacker' }] },
+  ]
+  for (const body of cases) {
+    const response = await postEvent({ DB: db }, body)
+    assert.equal(response.status, 400, JSON.stringify(body))
+  }
+  assert.equal(db.batches.length, 0)
+})
+
+test('telemetry summary returns aggregates only and prunes old events', async () => {
+  const db = telemetryDb({
+    summary: [
+      [{ day: '2026-05-01', pv: 12, uv: 5 }],
+      [{ day: '2026-05-01', pv: 3, uv: 2 }],
+      [{ subject: '/', pv: 9 }],
+      [{ subject: '@linxin666/dsh-pet', visitors: 2 }],
+      [{ subject: '@linxin666/dsh-pet', visitors: 1 }],
+      [{ subject: '@linxin666/dsh-pet', channel: 'market', visitors: 1 }],
+      [{ subject: '@linxin666/dsh-pet', version: '1.2.3', visitors: 2 }],
+    ],
+  })
+  const response = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary?days=7'), { DB: db }, context())
+  assert.equal(response.status, 200)
+  const payload = await response.json()
+  assert.equal(payload.site.totals.pv, 12)
+  assert.equal(payload.site.daily[0].uv, 5)
+  assert.equal(payload.plugins.items[0].item, '@linxin666/dsh-pet')
+  assert.equal(payload.plugins.items[0].instances, 2)
+  assert.equal(payload.plugins.items[0].active_today, 1)
+  assert.equal(payload.plugins.items[0].channels.market, 1)
+  assert.equal(payload.plugins.items[0].versions[0].version, '1.2.3')
+  assert.equal(db.runs.length, 1)
+  assert.match(db.runs[0].sql, /DELETE FROM telemetry_events/)
+})
+
+test('telemetry summary enforces the read key only when configured', async () => {
+  const db = telemetryDb()
+  const open = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary'), { DB: db }, context())
+  assert.equal(open.status, 200)
+
+  const lockedEnv = { TELEMETRY_READ_KEY: 's3cret', DB: telemetryDb() }
+  const denied = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary'), lockedEnv, context())
+  assert.equal(denied.status, 403)
+  const wrongKey = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary?key=nope'), lockedEnv, context())
+  assert.equal(wrongKey.status, 403)
+  const queryOk = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary?key=s3cret'), lockedEnv, context())
+  assert.equal(queryOk.status, 200)
+  const headerOk = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary', {
+    headers: { 'x-telemetry-key': 's3cret' },
+  }), lockedEnv, context())
+  assert.equal(headerOk.status, 200)
+})
+
+test('telemetry endpoints degrade cleanly without D1', async () => {
+  const post = await postEvent({}, { kind: 'pageview', path: '/', visitor: VISITOR_OK })
+  assert.equal(post.status, 503)
+  const summary = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary'), {}, context())
+  assert.equal(summary.status, 503)
+})

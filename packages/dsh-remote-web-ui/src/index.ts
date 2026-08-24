@@ -31,10 +31,13 @@ import { lanIPv4Addresses } from './lan.ts'
 import { TunnelManager, type TunnelInfo } from './tunnel.ts'
 import {
   checkUpdates,
+  fetchGitHubReleaseNotes,
   fetchLatestVersion,
+  RELEASE_NOTES_CACHE_TTL_MS,
   resolveAnchorManifest,
   resolveUpdateTarget,
   runUpdateVerified,
+  type UpdateReleaseNotes,
   type UpdateRunResult,
 } from './update.ts'
 import { makeUpdateRoutes } from './update-routes.ts'
@@ -294,7 +297,7 @@ function applyImpl(ctx: Context, config?: Config): void {
     console.warn('remote-web-ui: apiProxy service unavailable — the mobile data channel is disabled')
   }
   // ── remote update ────────────────────────────────────────────────────────
-  // The dsh-web-ui self-update surface: probe the npm registry for family
+  // The dsh-web self-update surface: probe the npm registry for family
   // releases and run `pnpm update --latest` in the owning profile. Resolutions
   // anchor on the host process's own module graph, so the update always
   // targets the profile the running web GUI was booted from. The anchor path
@@ -309,6 +312,15 @@ function applyImpl(ctx: Context, config?: Config): void {
       return undefined
     }
   })
+
+  const releaseNotesCache = new Map<string, { at: number; notes?: UpdateReleaseNotes }>()
+  const fetchReleaseNotesCached = async (version: string): Promise<UpdateReleaseNotes | undefined> => {
+    const cached = releaseNotesCache.get(version)
+    if (cached !== undefined && Date.now() - cached.at < RELEASE_NOTES_CACHE_TTL_MS) return cached.notes
+    const notes = await fetchGitHubReleaseNotes(version, fetch)
+    releaseNotesCache.set(version, { at: Date.now(), notes })
+    return notes
+  }
   const updateRoutes = makeUpdateRoutes({
     // Control endpoints are host-surface only: a LAN/phone origin must never
     // trigger a real install on this machine.
@@ -323,6 +335,7 @@ function applyImpl(ctx: Context, config?: Config): void {
         }
       },
       fetchLatest: name => fetchLatestVersion(name, fetch),
+      fetchReleaseNotes: fetchReleaseNotesCached,
     }),
     run: async (): Promise<UpdateRunResult> => {
       const target = resolveUpdateTarget({ anchorManifestPath: resolveAnchorPath() })
@@ -332,7 +345,7 @@ function applyImpl(ctx: Context, config?: Config): void {
           ok: false,
           exitCode: null,
           output: '',
-          error: code === 'not-found' ? 'dsh-web-ui aggregate not installed' : 'local link install — update unavailable',
+          error: code === 'not-found' ? 'dsh-web aggregate not installed' : 'local link install — update unavailable',
           errorCode: code,
         }
       }
@@ -352,6 +365,7 @@ function applyImpl(ctx: Context, config?: Config): void {
             }
           },
           fetchLatest: name => fetchLatestVersion(name, fetch),
+          fetchReleaseNotes: fetchReleaseNotesCached,
         },
       })
     },

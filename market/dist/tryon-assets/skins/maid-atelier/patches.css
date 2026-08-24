@@ -1520,22 +1520,27 @@ html[data-dsh-skin="maid-atelier"] [data-composer-card] > * {
   position: relative;
 }
 
+/* The composer card keeps its deep-navy fill in BOTH schemes (the abyssal
+   lace card is scheme-invariant), so the composer text must stay on the
+   light porcelain scale in light mode too. The shell paints the typed text
+   through a highlight backdrop div (the textarea overlays it with a
+   transparent -webkit-text-fill-color and only contributes caret and
+   selection; [data-input-mirror] is a visibility:hidden measuring copy),
+   and the backdrop inherits the light-scheme ink (#172347) — dark-on-navy
+   and unreadable (issue #1085). Pin the backdrop, caret, and placeholder
+   colors explicitly. */
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [class*="backdrop"],
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [data-input-mirror] {
+  color: #eef3fc;
+}
+
 html[data-dsh-skin="maid-atelier"] [data-composer-card] textarea {
-  caret-color: #405a99;
+  caret-color: #bcd2ff;
 }
 
 html[data-dsh-skin="maid-atelier"] [data-composer-card] textarea::placeholder {
-  color: #4d5d7f;
+  color: #b6c2e0;
   opacity: 1;
-}
-
-html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-composer-card] textarea::placeholder {
-  color: #d5dff3;
-  opacity: 1;
-}
-
-html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-composer-card] textarea {
-  caret-color: #bcd2ff;
 }
 
 html[data-dsh-skin="maid-atelier"] [data-phase="active"] [data-composer-card]:has( + *) {

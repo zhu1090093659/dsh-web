@@ -1,6 +1,6 @@
 # 开发流程（development）
 
-dsh-web-ui 是 DeepSeek Harness Web GUI 的插件与皮肤 monorepo。本文定义
+dsh-web 是 DeepSeek Harness Web 的插件 monorepo（皮肤以「皮肤」插件的资产包形式存在）。本文定义
 贡献者日常流程；仓库规则见根 [AGENTS.md](../AGENTS.md)，包级规则见
 [packages/AGENTS.md](../packages/AGENTS.md)，文档标准见 [AGENTS.md](AGENTS.md)。
 
@@ -93,7 +93,7 @@ node scripts/skins-montage.mjs    # 重排根 README 皮肤一览图（docs/imag
 
 ```sh
 node scripts/link-profile.mjs      # 把全家桶链接进 web profile
-dsh plugin --profile web add link:<仓库绝对路径>/packages/dsh-web-ui-all
+dsh plugin --profile web add link:<仓库绝对路径>/packages/dsh-web-all
 dsh web                            # 重启后侧边栏出现插件入口
 ```
 

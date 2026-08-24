@@ -6,7 +6,7 @@
  */
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import { IconCloseOutline16, IconRefreshOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { UpdateRunResult, UpdateStatus } from '../update.ts'
+import type { UpdateReleaseNotes, UpdateRunResult, UpdateStatus } from '../update.ts'
 import css from "./remote.module.css"
 
 /** The panel view state, owned by the entry component. */
@@ -73,7 +73,7 @@ export function UpdatePanel({ t, view, onClose, onRecheck, onStartUpdate }: Upda
             {t("update.updating", { name: anchorName(status) ?? "", version: anchorLatest(status) ?? "" })}
           </p>
           <p className={css.updateDetail}>{t("update.cooldownNotice")}</p>
-          <PackageList status={status} />
+          <PackageSummary t={t} status={status} />
         </div>
       )}
       {view.kind === "done" && <DoneBody t={t} result={view.result} />}
@@ -147,6 +147,7 @@ function ResultBody({ t, status }: { t: TranslateNS<"remote">; status: UpdateSta
           {anchor !== undefined ? t("update.foundDetail", { name: anchor, version: latest ?? "" }) : ""}
         </p>
         <p className={css.updateDetail}>{t("update.cooldownNotice")}</p>
+        <PackageSummary t={t} status={status} />
       </div>
     )
   }
@@ -156,7 +157,46 @@ function ResultBody({ t, status }: { t: TranslateNS<"remote">; status: UpdateSta
       {anchor !== undefined && latest !== undefined && (
         <p className={css.updateDetail}>{t("update.upToDateDetail", { name: anchor, version: latest })}</p>
       )}
-      <PackageList status={status} />
+      <PackageSummary t={t} status={status} />
+    </div>
+  )
+}
+
+/** Release-note summary when available; otherwise fall back to the package list. */
+function PackageSummary({ t, status }: { t: TranslateNS<'remote'>; status: UpdateStatus }) {
+  if (status.notes === undefined) return <PackageList status={status} />
+  return (
+    <div>
+      <ReleaseNotes t={t} notes={status.notes} />
+      <details className={css.updateVersions}>
+        <summary className={css.updateVersionsSummary}>{t("update.componentVersions")}</summary>
+        <PackageList status={status} />
+      </details>
+    </div>
+  )
+}
+
+/** Render GitHub Release sections as a compact three-group list. */
+function ReleaseNotes({ t, notes }: { t: TranslateNS<'remote'>; notes: UpdateReleaseNotes }) {
+  const sections = [
+    { key: 'features', title: t("update.releaseFeatures"), items: notes.features },
+    { key: 'fixes', title: t("update.releaseFixes"), items: notes.fixes },
+    { key: 'other', title: t("update.releaseOther"), items: notes.other },
+  ].filter(section => section.items.length > 0)
+  if (sections.length === 0) return <p className={css.updateDetail}>{t("update.releaseUnavailable")}</p>
+  return (
+    <div className={css.updateNotes}>
+      <h3 className={css.updateNotesTitle}>{t("update.releaseNotes", { version: notes.version })}</h3>
+      {sections.map(section => (
+        <section key={section.key} className={css.updateNoteSection}>
+          <h4 className={css.updateNoteHeading}>{section.title}</h4>
+          <ul className={css.updateNoteList}>
+            {section.items.map((item, index) => (
+              <li key={index} className={css.updateNoteItem}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   )
 }

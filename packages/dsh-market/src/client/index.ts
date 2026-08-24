@@ -15,6 +15,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import { MarketCardController, MarketSection, type MarketSettings } from './MarketCard.tsx'
 import { en, zh, type MarketKey } from './locales.ts'
 import { bridgePluginManager } from './plugin-manager-bridge.ts'
+import { reportDailyHeartbeat } from './telemetry.ts'
 
 export type { MarketCardProps, MarketSectionProps } from './MarketCard.tsx'
 export type { InstalledPluginItem, InstallProgressItem, PluginManagerService } from './plugin-manager-bridge.ts'
@@ -30,7 +31,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
-    /** Optional rc.6 compatibility binder provided by dsh-web-ui-settings. */
+    /** Optional rc.6 compatibility binder provided by dsh-web-settings. */
     webUiSettings?: { bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S> }
   }
 }
@@ -39,6 +40,10 @@ export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote
 
 /** Register the market section and the plugin-manager bridge. */
 export function apply(ctx: ClientContext): void {
+  // Anonymous install heartbeat (docs/telemetry.md): one beat per browser per
+  // UTC day, package name only, silent failure.
+  reportDailyHeartbeat([{ name: '@linxin666/dsh-client-ui-market' }])
+
   ctx.effect(() => {
     try {
       return ctx.locale.register(MARKET_NS, { zh, en })

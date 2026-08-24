@@ -34,19 +34,19 @@ This package is a dsh profile bundle (`package.json` declares `"dsh": { "bundle"
 
 ### Generic install (any machine)
 
-This plugin is merged into the dsh-web-ui family monorepo (`github.com/zhu1090093659/dsh-web-ui`). The plugin is published to npm; one-line install recommended:
+This plugin is merged into the dsh-web family monorepo (`github.com/zhu1090093659/dsh-web`). The plugin is published to npm; one-line install recommended:
 
 ```sh
 dsh plugin --profile web add @linxin666/dsh-client-ui-git-graph@latest
 ```
 
-Or install the family aggregate package `@linxin666/dsh-web-ui-all` all at once (same one-line `dsh plugin --profile web add @linxin666/dsh-web-ui-all@latest`).
+Or install the family aggregate package `@linxin666/dsh-web-all` all at once (same one-line `dsh plugin --profile web add @linxin666/dsh-web-all@latest`).
 
 Install from the repository when you need to debug code:
 
 ```sh
-git clone https://github.com/zhu1090093659/dsh-web-ui.git
-cd dsh-web-ui
+git clone https://github.com/zhu1090093659/dsh-web.git
+cd dsh-web
 pnpm install && pnpm -r build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-git-graph
 ```
@@ -83,3 +83,7 @@ pnpm run typecheck
 pnpm test
 pnpm run build
 ```
+
+## Telemetry
+
+The browser half sends one anonymous install heartbeat per UTC day to dsh-market.com: a random localStorage id plus this package's name, nothing else. The server stores only a salted hash of that id, never IP addresses, and exposes aggregate counts only. See [docs/telemetry.md](../../docs/telemetry.md) for the full contract.

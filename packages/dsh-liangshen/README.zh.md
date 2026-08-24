@@ -35,7 +35,7 @@ preset 在参考机制之上内置了额外保护，全部在 `agent.cordis.yml`
 
 ```sh
 # 方式一：全家桶（推荐）
-dsh plugin --profile web add @linxin666/dsh-web-ui-all@latest
+dsh plugin --profile web add @linxin666/dsh-web-all@latest
 
 # 方式二：单独安装
 dsh plugin --profile web add @linxin666/dsh-liangshen@latest

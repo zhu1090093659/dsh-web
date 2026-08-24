@@ -1,6 +1,6 @@
 /**
  * Shared tsdown preset for UI plugin client bundles — the single source of
- * truth for every dsh-web-ui plugin's build (previously copied per-package
+ * truth for every dsh-web plugin's build (previously copied per-package
  * from the DSH checkout's `packages/client/tsdown.client.ts`). Emits a
  * closure-factory artifact: the bundle calls window.__ModuleLoader__.load
  * ({id, factory}) and resolves externals through the injected require
@@ -13,7 +13,7 @@
  * shell's seed table in `./web-platform.ts`.
  */
 import { readFile } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { basename, dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -62,6 +62,20 @@ const RUNTIME_STORE_EXEMPTION = '@deepseek-ai/dsh-client-runtime/client'
 const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES, RUNTIME_STORE_EXEMPTION]
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('..', import.meta.url))
+
+/**
+ * The building package's own package.json version, baked into the client
+ * bundle as __DSH_PKG_VERSION__ so the anonymous install heartbeat can report
+ * which release is actually running. Empty when the manifest is unreadable.
+ */
+function buildPackageVersion(): string {
+  try {
+    const manifest = JSON.parse(readFileSync(resolvePath(process.cwd(), 'package.json'), 'utf8'))
+    return typeof manifest.version === 'string' ? manifest.version : ''
+  } catch {
+    return ''
+  }
+}
 
 /** Rebase a physical path onto a repository-relative id when it lives under the repo. */
 function repositoryRelativePath(physical: string): string {
@@ -240,6 +254,7 @@ function clientConfig(id: string, entry: string): UserConfig {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
       'import.meta.env.MODE': JSON.stringify(process.env.NODE_ENV ?? 'production'),
       'import.meta.env': JSON.stringify({ MODE: process.env.NODE_ENV ?? 'production' }),
+      __DSH_PKG_VERSION__: JSON.stringify(buildPackageVersion()),
     },
     // tsdown auto-externalizes package dependencies; anything NOT in the
     // loader module table must inline instead (wire/type layers, zod, clsx —

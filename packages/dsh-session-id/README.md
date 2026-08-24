@@ -37,8 +37,8 @@ at the bottom of the sidebar.
 ### From the repository (development)
 
 ```sh
-git clone https://github.com/zhu1090093659/dsh-web-ui.git
-cd dsh-web-ui
+git clone https://github.com/zhu1090093659/dsh-web.git
+cd dsh-web
 pnpm install
 pnpm -r build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-session-id
@@ -63,6 +63,10 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-session-id
   newer shells). On older shells the entry does not render.
 - Read-only viewer: it shows and copies ids, it does not open or manage
   sessions.
+
+## Telemetry
+
+The browser half sends one anonymous install heartbeat per UTC day to dsh-market.com: a random localStorage id plus this package's name, nothing else. The server stores only a salted hash of that id, never IP addresses, and exposes aggregate counts only. See [docs/telemetry.md](../../docs/telemetry.md) for the full contract.
 
 ## License
 

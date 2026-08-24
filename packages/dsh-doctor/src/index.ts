@@ -18,12 +18,12 @@ import { mountOnce } from './mount-once.ts'
 
 export const name = 'doctor'
 export const inject = ['webServer']
-export interface Config { enabled?: boolean; fullProtection?: boolean; autoRepair?: boolean; heartbeatIntervalMs?: number }
-export const Config: z<Config> = z.object({ enabled: z.boolean().default(true), fullProtection: z.boolean().default(true), autoRepair: z.boolean().default(false), heartbeatIntervalMs: z.number().min(1000).default(5000) })
+export interface Config { enabled?: boolean; fullProtection?: boolean; autoRepair?: boolean; autoMigrate?: boolean; heartbeatIntervalMs?: number }
+export const Config: z<Config> = z.object({ enabled: z.boolean().default(true), fullProtection: z.boolean().default(true), autoRepair: z.boolean().default(false), autoMigrate: z.boolean().default(true), heartbeatIntervalMs: z.number().min(1000).default(5000) })
 export const DOCTOR_SETTINGS_NAMESPACE = settingsNamespace('doctor')
 
 export function effectiveConfig(config?: Config): Required<Config> {
-  return { enabled: config?.enabled ?? true, fullProtection: config?.fullProtection ?? DEFAULT_DOCTOR_POLICY.fullProtection, autoRepair: config?.autoRepair ?? DEFAULT_DOCTOR_POLICY.autoRepair, heartbeatIntervalMs: config?.heartbeatIntervalMs ?? 5000 }
+  return { enabled: config?.enabled ?? true, fullProtection: config?.fullProtection ?? DEFAULT_DOCTOR_POLICY.fullProtection, autoRepair: config?.autoRepair ?? DEFAULT_DOCTOR_POLICY.autoRepair, autoMigrate: config?.autoMigrate ?? DEFAULT_DOCTOR_POLICY.autoMigrate, heartbeatIntervalMs: config?.heartbeatIntervalMs ?? 5000 }
 }
 
 export const apply = mountOnce('@linxin666/dsh-doctor', (ctx: Context, config?: Config): void => {
@@ -48,7 +48,7 @@ export const apply = mountOnce('@linxin666/dsh-doctor', (ctx: Context, config?: 
   const sync = (): void => {
     disposeRuntime?.(); disposeRuntime = undefined
     const value = effectiveConfig(current())
-    const policy = { fullProtection: value.fullProtection, autoRepair: value.autoRepair }
+    const policy = { fullProtection: value.fullProtection, autoRepair: value.autoRepair, autoMigrate: value.autoMigrate }
     // A policy sync must never take the host down: a failed atomic write or
     // IPC round-trip is a warning, not a fatal load failure.
     void syncPolicy(policy).catch((error) => console.warn('[dsh-doctor] policy sync failed:', error))

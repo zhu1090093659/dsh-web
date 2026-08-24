@@ -8,8 +8,8 @@ describe('splitPackageSpec', () => {
   it('handles scoped and unscoped names', () => {
     expect(splitPackageSpec('dsh-better-sidebar')).toEqual({ name: 'dsh-better-sidebar' })
     expect(splitPackageSpec('dsh-better-sidebar@0.14.0')).toEqual({ name: 'dsh-better-sidebar', sub: '0.14.0' })
-    expect(splitPackageSpec('@linxin666/dsh-web-ui-all')).toEqual({ name: '@linxin666/dsh-web-ui-all' })
-    expect(splitPackageSpec('@linxin666/dsh-web-ui-all@0.2.7')).toEqual({ name: '@linxin666/dsh-web-ui-all', sub: '0.2.7' })
+    expect(splitPackageSpec('@linxin666/dsh-web-all')).toEqual({ name: '@linxin666/dsh-web-all' })
+    expect(splitPackageSpec('@linxin666/dsh-web-all@0.2.7')).toEqual({ name: '@linxin666/dsh-web-all', sub: '0.2.7' })
   })
 })
 
@@ -27,9 +27,9 @@ describe('classifySpec', () => {
   })
 
   it('classifies link and file specs', () => {
-    const link = classifySpec('link:../packages/dsh-web-ui-all')
+    const link = classifySpec('link:../packages/dsh-web-all')
     expect(link.kind).toBe('link')
-    expect(link.target).toBe('../packages/dsh-web-ui-all')
+    expect(link.target).toBe('../packages/dsh-web-all')
     const file = classifySpec('file:./x.tgz')
     expect(file.kind).toBe('file')
   })

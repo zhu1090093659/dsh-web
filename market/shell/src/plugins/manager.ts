@@ -181,7 +181,7 @@ export interface PluginManager {
 /**
  * Every package present under the plugin module root, direct or transitive.
  *
- * A meta-package's dependencies are loader rows too — `@linxin666/dsh-web-ui-all`
+ * A meta-package's dependencies are loader rows too — `@linxin666/dsh-web-all`
  * mounts thirteen of them — so resolution has to cover the whole installed tree,
  * not just the roster's top-level entries.
  * @returns package names, including scoped ones.

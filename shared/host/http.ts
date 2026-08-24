@@ -10,7 +10,7 @@
  * edit this shared source and re-run the sync instead of editing a copy.
  * Consumer code is migrated onto it in follow-up waves; no call site changes
  * belong in the same change as its introduction.
- * @module dsh-web-ui-shared/host/http
+ * @module dsh-web-shared/host/http
  */
 
 import type { IncomingMessage, OutgoingHttpHeaders, ServerResponse } from 'node:http'

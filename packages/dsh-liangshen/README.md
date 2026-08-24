@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Ships the "Anchored Standard" preset as a one-command plugin of the dsh-web-ui family: on host startup it syncs the bundled preset into `~/.dsh/.agent-presets`, so new sessions can pick "梁神模式" from the preset picker. The first model request sees only the builtin Minimal preset's exact two tools — persistent `bash` plus `str_replace_editor` — only the one-line persona prompt section, no runtime contexts, and no injected instructions; after the anchor is established the wire switches to PTC Mode and the ordinary injections open. Built entirely on the official NPM SDK — no dsh source changes.
+Ships the "Anchored Standard" preset as a one-command plugin of the dsh-web family: on host startup it syncs the bundled preset into `~/.dsh/.agent-presets`, so new sessions can pick "梁神模式" from the preset picker. The first model request sees only the builtin Minimal preset's exact two tools — persistent `bash` plus `str_replace_editor` — only the one-line persona prompt section, no runtime contexts, and no injected instructions; after the anchor is established the wire switches to PTC Mode and the ordinary injections open. Built entirely on the official NPM SDK — no dsh source changes.
 
 ## Why
 
@@ -35,7 +35,7 @@ Plan mode is supported: phase 1 filters the assembled prompt sections down to th
 
 ```sh
 # Option 1: family bundle (recommended)
-dsh plugin --profile web add @linxin666/dsh-web-ui-all@latest
+dsh plugin --profile web add @linxin666/dsh-web-all@latest
 
 # Option 2: standalone
 dsh plugin --profile web add @linxin666/dsh-liangshen@latest

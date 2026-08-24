@@ -6,7 +6,7 @@
  * the package assets, the hatch-pet custom pets directory, and composed
  * config entries; adding a pet means dropping a manifest + atlas into one of
  * those sources, never touching host or client code. Install via
- * 'dsh plugin --profile web add link:<dsh-web-ui>/packages/dsh-pet'; the
+ * 'dsh plugin --profile web add link:<dsh-web>/packages/dsh-pet'; the
  * cordis.patch.yml inserts this plugin row.
  * @module @linxin666/dsh-pet
  */

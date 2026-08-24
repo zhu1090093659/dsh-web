@@ -34,6 +34,7 @@ installation.
 - The Doctor Supervisor runs as a per-user background service. It classifies
   exits into user stops, task completion and real failures, applies the
   crash-loop circuit breaker, and owns rescue scheduling.
+- The Doctor Launcher detects the legacy aggregate package before starting DSH and automatically migrates `@linxin666/dsh-web-ui-all` to `@linxin666/dsh-web-all` when `autoMigrate` is enabled (default true) and the target package is available; migration goes through the official `dsh plugin` CLI with manifest/lockfile backups and a `--dump-config` gate.
 - The Doctor Launcher relays `dsh` arguments verbatim to the real DSH
   executable, forwards stdin, stdout, stderr and signals, records startup
   intent and exit facts, and only then reports an incident.
@@ -59,7 +60,7 @@ Profile package.json and cordis.patch.yml are only touched through the official
 ### From npm (family first)
 
 ```sh
-dsh plugin --profile web add @linxin666/dsh-web-ui-all@latest
+dsh plugin --profile web add @linxin666/dsh-web-all@latest
 ```
 
 ### As a standalone bundle
@@ -71,8 +72,8 @@ dsh plugin --profile web add @linxin666/dsh-doctor@latest
 ### From the repository (development)
 
 ```sh
-git clone https://github.com/zhu1090093659/dsh-web-ui.git
-cd dsh-web-ui
+git clone https://github.com/zhu1090093659/dsh-web.git
+cd dsh-web
 pnpm install
 pnpm -r build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-doctor
@@ -108,6 +109,7 @@ The `dsh-doctor` binary exposes the operational commands:
 | --- | --- |
 | `dsh-doctor supervisor` | run the Supervisor in the foreground |
 | `dsh-doctor launch [dsh args...]` | relay one `dsh` invocation under supervision |
+| `dsh-doctor migrate [profile]` | run the deterministic legacy aggregate migration directly |
 | `dsh-doctor status` | print the Supervisor snapshot as JSON |
 | `dsh-doctor provision [profile] [--no-credentials]` | provision or refresh the rescue capsule (mirrors provider config and credentials with 0600; pinned to the current package version by default; `DSH_DOCTOR_PACKAGE`, `--no-credentials` and `DSH_DOCTOR_CREDENTIALS=off` adjust it) |
 | `dsh-doctor snapshot [profile]` | capture one profile snapshot |
@@ -130,6 +132,7 @@ The host settings namespace is `doctor`:
 | `enabled` | `true` | master switch; mounts routes and reconciles deployment when enabled, pauses without uninstalling when disabled |
 | `fullProtection` | `true` | managed protection: heartbeat, incident recording and circuit breaking; off is observation mode |
 | `autoRepair` | `false` | promote after isolated gates; off keeps a staged candidate pending explicit confirmation |
+| `autoMigrate` | `true` | migrates the legacy aggregate before startup; only the known `dsh-web-ui-all` -> `dsh-web-all` mapping is active |
 | `heartbeatIntervalMs` | `5000` | host heartbeat cadence |
 
 Environment:
@@ -209,3 +212,7 @@ recoverable across crashes.
 - Windows support is best-effort for junctions, PowerShell 5.1 Unicode and
   per-user scheduled-task registration; several internals assume POSIX file
   semantics.
+
+## Telemetry
+
+The browser half sends one anonymous install heartbeat per UTC day to dsh-market.com: a random localStorage id plus this package's name, nothing else. The server stores only a salted hash of that id, never IP addresses, and exposes aggregate counts only. See [docs/telemetry.md](../../docs/telemetry.md) for the full contract.

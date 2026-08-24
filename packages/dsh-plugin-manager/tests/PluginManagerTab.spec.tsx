@@ -43,7 +43,7 @@ const plugin: InstalledPluginItem = {
 }
 
 const product = (state: PluginControlItem['state']): PluginControlItem => ({
-  id: 'web-ui', name: 'dsh-web-ui', repository: 'https://github.com/zhu1090093659/dsh-web-ui', state,
+  id: 'web-ui', name: 'dsh-web', repository: 'https://github.com/zhu1090093659/dsh-web', state,
 })
 
 /** Minimal injected-face harness; every member is a spy the test overrides. */
@@ -126,7 +126,7 @@ describe('PluginManagerTab', () => {
     fireEvent.change(screen.getByPlaceholderText(t('installPlaceholder')), { target: { value: '@scope/new' } })
     fireEvent.click(screen.getByRole('button', { name: t('install') }))
 
-    expect(await screen.findByText(t('conflictDisabled', { name: 'dsh-web-ui' }))).toBeTruthy()
+    expect(await screen.findByText(t('conflictDisabled', { name: 'dsh-web' }))).toBeTruthy()
 
     // Every conflict row offers the repair handoff with a seeded conflict message.
     fireEvent.click(screen.getByRole('button', { name: t('repair') }))
@@ -134,7 +134,7 @@ describe('PluginManagerTab', () => {
       expect(injected.repairPlugin).toHaveBeenCalledTimes(1)
     })
     const [, conflictMessage] = vi.mocked(injected.repairPlugin).mock.calls[0] as [string, string]
-    expect(conflictMessage).toContain('dsh-web-ui (web-ui)')
+    expect(conflictMessage).toContain('dsh-web (web-ui)')
     expect(conflictMessage).toContain(t('repairConflictTitle'))
 
     fireEvent.click(screen.getByRole('button', { name: t('undoConflict') }))
@@ -142,7 +142,7 @@ describe('PluginManagerTab', () => {
       expect(injected.controlsSetEnabled).toHaveBeenCalledWith('web-ui', true)
     })
     await waitFor(() => {
-      expect(screen.queryByText(t('conflictDisabled', { name: 'dsh-web-ui' }))).toBeNull()
+      expect(screen.queryByText(t('conflictDisabled', { name: 'dsh-web' }))).toBeNull()
     })
   })
 

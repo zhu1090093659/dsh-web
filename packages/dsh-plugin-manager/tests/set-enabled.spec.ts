@@ -34,8 +34,8 @@ function makeProfile(): { facts: ProfileFacts; dir: string } {
 function makeAggregateProfile(): { facts: ProfileFacts; dir: string } {
   const dir = mkdtempSync(join(tmpdir(), 'plugin-manager-set-enabled-aggregate-'))
   const profileDir = join(dir, 'profiles', 'web')
-  const packageName = '@linxin666/dsh-web-ui-all'
-  const moduleDir = join(profileDir, 'node_modules', '@linxin666', 'dsh-web-ui-all')
+  const packageName = '@linxin666/dsh-web-all'
+  const moduleDir = join(profileDir, 'node_modules', '@linxin666', 'dsh-web-all')
   mkdirSync(moduleDir, { recursive: true })
   writeFileSync(join(profileDir, 'package.json'), JSON.stringify({
     name: 'dsh-profile-web', private: true,
@@ -47,7 +47,7 @@ function makeAggregateProfile(): { facts: ProfileFacts; dir: string } {
   writeFileSync(join(moduleDir, 'cordis.patch.yml'), [
     '- insert:',
     '    - id: web-ui-compat',
-    "      name: '@linxin666/dsh-web-ui-all'",
+    "      name: '@linxin666/dsh-web-all'",
     '- insert:',
     '    - id: web-ui-plugin-manager',
     "      name: '@linxin666/dsh-client-ui-plugin-manager'",
@@ -186,7 +186,7 @@ describe('set-enabled id space', () => {
     const { facts, dir } = makeAggregateProfile()
     tempDirs.push(dir)
     const { res, body, status } = captureResponse()
-    await setEnabledHandler(facts)(loopbackRequest({ id: '@linxin666/dsh-web-ui-all', enabled: false }), res)
+    await setEnabledHandler(facts)(loopbackRequest({ id: '@linxin666/dsh-web-all', enabled: false }), res)
     expect(status()).toBe(200)
     const patch = readFileSync(facts.patchPath, 'utf8')
     expect(patch).toContain('id: web-ui-compat')

@@ -81,7 +81,7 @@ export class DoctorSupervisor {
     const at = this.now()
     if (request.type === 'status') return { ok: true, snapshot: snapshotOf(this.state, this.version, at) }
     if (request.type === 'policy') {
-      this.state.policy = { fullProtection: request.policy.fullProtection, autoRepair: request.policy.autoRepair }
+      this.state.policy = { fullProtection: request.policy.fullProtection, autoRepair: request.policy.autoRepair, autoMigrate: request.policy.autoMigrate }
       for (const profile of Object.values(this.state.profiles)) profile.managed = request.policy.fullProtection
     } else if (request.type === 'launcher-start') {
       if (request.profile.role === 'rescue') return { ok: true, snapshot: snapshotOf(this.state, this.version, at) }

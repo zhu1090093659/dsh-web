@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.linxin666.org/dsh-skin/v2.json",
   "title": "DSH Skin Manifest v2",
-  "description": "Declarative manifest for a dsh-web-ui skin asset directory. Skins are pure assets; the skin-center package is the only loader/renderer. Validators must use this local schema copy and never fetch the $id URL.",
+  "description": "Declarative manifest for a dsh-web skin asset directory. Skins are pure assets; the skin-center package is the only loader/renderer. Validators must use this local schema copy and never fetch the $id URL.",
   "type": "object",
   "additionalProperties": false,
   "required": [

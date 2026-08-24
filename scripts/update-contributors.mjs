@@ -16,7 +16,7 @@ import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const repo = process.env.GITHUB_REPOSITORY || 'zhu1090093659/dsh-web-ui'
+const repo = process.env.GITHUB_REPOSITORY || 'zhu1090093659/dsh-web'
 const token = process.env.GITHUB_TOKEN || ''
 const files = [
   { rel: 'README.md', viewAllLabel: '查看全部贡献者' },
@@ -62,7 +62,7 @@ function buildContributors(githubContributors) {
 async function fetchContributors() {
   let page = 1
   const all = []
-  const headers = { accept: 'application/vnd.github+json', 'user-agent': 'dsh-web-ui-update-contributors' }
+  const headers = { accept: 'application/vnd.github+json', 'user-agent': 'dsh-web-update-contributors' }
   if (token) headers.authorization = `token ${token}`
   for (;;) {
     const url = `https://api.github.com/repos/${repo}/contributors?per_page=100&anon=0&page=${page}`

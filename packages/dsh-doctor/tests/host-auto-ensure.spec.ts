@@ -24,7 +24,7 @@ describe('automatic Doctor deployment reconciliation', () => {
     try {
       await writeFile(join(dir, 'deployed.json'), JSON.stringify({ ok: true, version: '1.2.3', cliPath: '/pkg/cli.mjs', profileId: 'web', at: 'x' }))
       const ensure = vi.fn(async () => ok)
-      const controller = createAutoEnsure({ stateDir: dir, version: '1.2.3', cliPath: '/pkg/cli.mjs', profileId: 'web', lifecycle: { ensure, uninstall: async () => ok }, status: async () => ({ ok: true, snapshot: { protocol: 1, phase: 'armed', version: '1.2.3', profiles: [], incidents: [], updatedAt: 'x', policy: { fullProtection: true, autoRepair: false } } }), enabled: () => true })
+      const controller = createAutoEnsure({ stateDir: dir, version: '1.2.3', cliPath: '/pkg/cli.mjs', profileId: 'web', lifecycle: { ensure, uninstall: async () => ok }, status: async () => ({ ok: true, snapshot: { protocol: 1, phase: 'armed', version: '1.2.3', profiles: [], incidents: [], updatedAt: 'x', policy: { fullProtection: true, autoRepair: false, autoMigrate: true } } }), enabled: () => true })
       await controller.kick()
       expect(ensure).not.toHaveBeenCalled()
     } finally { await rm(dir, { recursive: true, force: true }) }

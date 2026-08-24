@@ -19,7 +19,7 @@ import type { Context } from '@deepseek-ai/cordis'
 // visitor should star is the plugin family this market sells, not the
 // vendored upstream shell.
 /** The repository the button points at. */
-const REPO = 'zhu1090093659/dsh-web-ui'
+const REPO = 'zhu1090093659/dsh-web'
 
 /** Where the button sends the visitor. */
 const REPO_URL = `https://github.com/${REPO}`

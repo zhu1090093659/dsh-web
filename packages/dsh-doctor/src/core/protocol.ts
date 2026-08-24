@@ -10,9 +10,10 @@ export type IncidentKind = 'boot-failure' | 'process-crash' | 'heartbeat-timeout
 export interface DoctorPolicy {
   fullProtection: boolean
   autoRepair: boolean
+  autoMigrate: boolean
 }
 
-export const DEFAULT_DOCTOR_POLICY: DoctorPolicy = { fullProtection: true, autoRepair: false }
+export const DEFAULT_DOCTOR_POLICY: DoctorPolicy = { fullProtection: true, autoRepair: false, autoMigrate: true }
 
 export interface ProfileIdentity {
   id: string

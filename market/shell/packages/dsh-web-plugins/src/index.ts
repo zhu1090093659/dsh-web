@@ -49,7 +49,7 @@ function renderList(): string {
   const installed = manager?.list() ?? []
   if (installed.length === 0) {
     return 'No plugins installed.\n\nInstall one with `/plugin add <package>` — for example '
-      + '`/plugin add @linxin666/dsh-web-ui-all`. Packages carrying the `dsh-plugin` topic on GitHub '
+      + '`/plugin add @linxin666/dsh-web-all`. Packages carrying the `dsh-plugin` topic on GitHub '
       + 'are published to npm and install the same way they would with `dsh plugin add`.'
   }
   const rows = installed.map((plugin) => {

@@ -754,6 +754,55 @@
   font-variant-numeric: tabular-nums;
 }
 
+.updateNotes {
+  margin-top: 14px;
+}
+
+.updateNotesTitle {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.updateNoteSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.updateNoteHeading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.updateNoteList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.updateNoteItem {
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+}
+
+.updateVersions {
+  margin-top: 12px;
+}
+
+.updateVersionsSummary {
+  cursor: pointer;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  user-select: none;
+}
+
 .updateActions {
   display: flex;
   justify-content: flex-end;

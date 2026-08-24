@@ -2,7 +2,7 @@
 
 English | [中文]((README.zh.md))
 
-A Furina theme for dsh-web-ui.
+A Furina theme for dsh-web.
 
 ## Installation (official bundle method)
 
@@ -21,7 +21,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-skin-furina
 
 Before installing via local link, you need to build the artifacts inside the monorepo (`lib/` is ignored by git and not committed):
 run `pnpm install && pnpm -r build` before linking.
-When installing via git (`dsh plugin --profile web add github:<org>/dsh-web-ui#<sha>`), the
+When installing via git (`dsh plugin --profile web add github:<org>/dsh-web#<sha>`), the
 `prepare` script automatically builds `lib/` self‑containedly, so no separate build is needed;
 for pnpm ≥10, when installing a git dependency for the first time, you must first add the package key printed by pnpm to the `allowBuilds` list in the corresponding profile’s `pnpm-workspace.yaml`, then retry.
 

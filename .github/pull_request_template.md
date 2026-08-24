@@ -17,7 +17,7 @@
 - [ ] SSH 远程运维 `packages/dsh-ssh`
 - [ ] 宠物 `packages/dsh-pet`
 - [ ] 皮肤 / 皮肤中心 `packages/dsh-skins` / `packages/skins`
-- [ ] 聚合包 / 设置 `packages/dsh-web-ui-all` / `packages/dsh-web-ui-settings`
+- [ ] 聚合包 / 设置 `packages/dsh-web-all` / `packages/dsh-web-settings`
 - [ ] 其他（请说明）
 
 ## PR 类别（PR Category）
@@ -132,8 +132,8 @@
 <!-- 必填。提供插件的功能、用途、依赖、已知限制等详细说明，供协作者评审参考。 -->
 
 - [ ] 已按 [docs/plugins.md](../docs/plugins.md) 的登记说明在 `packages/dsh-community-plugins/community.json` 追加条目，并运行 `node scripts/community-index` 重新生成注册表（提交生成的 `packages/dsh-community-plugins/src/client/generated/community.ts`）。
-- [ ] 已确认插件与 dsh-web-ui 插件体系兼容：遵循官方 cordis bundle 独立标准（package.json 声明 `dsh.bundle.patch` 指向 `cordis.patch.yml`、`dsh.client` 浏览器半区），类型仅基于官方 `@deepseek-ai/*` NPM SDK，未修改 DSH 源码；已在本仓库最新代码上验证插件可被 `dsh web` 挂载并正常运行。
-- [ ] 承诺负责后续更新跟进：插件与 DSH / dsh-web-ui 生态保持同步，生态升级导致不兼容时主动跟进修复；条目信息（description / npm 等）变动或插件停更时，及时更新索引登记或提交移除。
+- [ ] 已确认插件与 dsh-web 插件体系兼容：遵循官方 cordis bundle 独立标准（package.json 声明 `dsh.bundle.patch` 指向 `cordis.patch.yml`、`dsh.client` 浏览器半区），类型仅基于官方 `@deepseek-ai/*` NPM SDK，未修改 DSH 源码；已在本仓库最新代码上验证插件可被 `dsh web` 挂载并正常运行。
+- [ ] 承诺负责后续更新跟进：插件与 DSH / dsh-web 生态保持同步，生态升级导致不兼容时主动跟进修复；条目信息（description / npm 等）变动或插件停更时，及时更新索引登记或提交移除。
 
 ## 本地验证（Local Validation）
 

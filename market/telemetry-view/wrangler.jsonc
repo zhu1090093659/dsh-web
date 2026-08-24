@@ -1,0 +1,8 @@
+{
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  "name": "dsh-market-telemetry-view",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "routes": [{ "pattern": "tv.dsh-market.com", "custom_domain": true }],
+  "observability": { "enabled": true }
+}

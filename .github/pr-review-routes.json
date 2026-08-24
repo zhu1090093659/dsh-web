@@ -79,7 +79,7 @@
         "远程 Web UI (dsh-remote-web-ui)",
         "SSH 远程运维 (dsh-ssh)",
         "宠物 (dsh-pet)",
-        "聚合包 / 安装 (dsh-web-ui-all / dsh-web-ui-settings)"
+        "聚合包 / 安装 (dsh-web-all / dsh-web-settings)"
       ]
     },
     {

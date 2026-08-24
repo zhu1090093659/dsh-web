@@ -8,7 +8,7 @@ Design decisions and their rejected alternatives lived only in commit messages, 
 
 ## Decision
 
-The repository adopts the deepseek-harness-style Agent Notes tree under `.agents/notes/`: lifecycle folders `proposed/`, `implemented/`, `rejected/`, and the frozen `archived/` tree, each note path-encoded as `{lifecycle}/{class}/yyyy-mm-dd-topic-title.md` over the closed class set feature / bug-fix / simplification / architecture / process / testing. Every non-trivial change records or updates one Agent Note in the same change; notes ship as English/Chinese/sidecar triplets under the repository i18n contract; the root AGENTS.md Development Workflow and Instruction Layers route to [.agents/notes/README.md](../../README.md), and the dsh-web-ui-agent-coding skill carries the same rule.
+The repository adopts the deepseek-harness-style Agent Notes tree under `.agents/notes/`: lifecycle folders `proposed/`, `implemented/`, `rejected/`, and the frozen `archived/` tree, each note path-encoded as `{lifecycle}/{class}/yyyy-mm-dd-topic-title.md` over the closed class set feature / bug-fix / simplification / architecture / process / testing. Every non-trivial change records or updates one Agent Note in the same change; notes ship as English/Chinese/sidecar triplets under the repository i18n contract; the root AGENTS.md Development Workflow and Instruction Layers route to [.agents/notes/README.md](../../README.md), and the dsh-web-agent-coding skill carries the same rule.
 
 Enforcement is discipline-based in this adoption: no dedicated format gate script exists yet.
 

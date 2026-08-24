@@ -10,7 +10,7 @@ reached `active` and the page booted without console errors.
 
 | | Package | Source | What it adds | Version | Rows | Browser half | Notes |
 |---|---|---|---|---|---|---|---|
-| ❌ | `@linxin666/dsh-web-ui-all` | [zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) | Web UI suite (task board, git graph, pet, skins, live stats) | 0.2.4 | 17 | 12 bundle(s) | console errors: [plugin-manager] plugin-manager: cannot determine the boot profile; pass --profile <name> or set DSH_PROFILE \| [plugin-manager] plugin-manager: |
+| ❌ | `@linxin666/dsh-web-all` | [zhu1090093659/dsh-web](https://github.com/zhu1090093659/dsh-web) | Web UI suite (task board, git graph, pet, skins, live stats) | 0.2.4 | 17 | 12 bundle(s) | console errors: [plugin-manager] plugin-manager: cannot determine the boot profile; pass --profile <name> or set DSH_PROFILE \| [plugin-manager] plugin-manager: |
 | ✅ | `dsh-better-sidebar` | [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | sidebar workbench: file editor, terminal, git, subagents | 0.14.0 | 1 | 1 bundle(s) |  |
 | ✅ | `@anionex/dsh-vision-toolkit` | [Anionex/dsh-vision-toolkit](https://github.com/Anionex/dsh-vision-toolkit) | vision tools for text-only models | 0.1.35 | 1 | — | no browser half materialized |
 | ✅ | `@liustack/modlens` | [liustack/modlens](https://github.com/liustack/modlens) | vision bridge plugin | 3.22.0 | 1 | 1 bundle(s) |  |
@@ -18,13 +18,13 @@ reached `active` and the page booted without console errors.
 | ✅ | `@nanmicoder/dsh-agent-teams` | [NanmiCoder/dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) | agent teams | 0.1.8 | 1 | 1 bundle(s) |  |
 | ✅ | `dsh-working-activity` | [ccch1mneyyy/working-activity](https://github.com/ccch1mneyyy/working-activity) | working-line activity indicator | 0.3.2 | 1 | 1 bundle(s) |  |
 | ✅ | `@agentrq/dsh-plugin-agentrq` | [agentrq/agentrq](https://github.com/agentrq/agentrq) | human-in-the-loop task manager (host only) | 0.2.5 | 1 | — |  |
-| ✅ | `@linxin666/dsh-client-ui-task-board` | [zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) | task board panel | 0.2.4 | 1 | 1 bundle(s) |  |
-| ✅ | `@linxin666/dsh-client-ui-git-graph` | [zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) | git graph panel | 0.2.4 | 1 | 1 bundle(s) |  |
-| ✅ | `@linxin666/dsh-pet` | [zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) | desktop pet | 0.2.4 | 1 | 1 bundle(s) |  |
-| ✅ | `@linxin666/dsh-live-stats` | [zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) | live session stats | 0.1.20 | 1 | 1 bundle(s) |  |
-| ✅ | `@linxin666/dsh-client-ui-skin-center` | [zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) | skin centre | 0.2.4 | 1 | — | no browser half materialized |
-| ✅ | `@linxin666/dsh-client-ui-skin-miku` | [zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) | Miku skin | 0.2.0 | 0 | — | installed; its bundle patch added no rows to this composition |
-| ✅ | `@linxin666/dsh-client-ui-skin-xp` | [zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) | Windows XP skin | 0.2.0 | 0 | — | installed; its bundle patch added no rows to this composition |
+| ✅ | `@linxin666/dsh-client-ui-task-board` | [zhu1090093659/dsh-web](https://github.com/zhu1090093659/dsh-web) | task board panel | 0.2.4 | 1 | 1 bundle(s) |  |
+| ✅ | `@linxin666/dsh-client-ui-git-graph` | [zhu1090093659/dsh-web](https://github.com/zhu1090093659/dsh-web) | git graph panel | 0.2.4 | 1 | 1 bundle(s) |  |
+| ✅ | `@linxin666/dsh-pet` | [zhu1090093659/dsh-web](https://github.com/zhu1090093659/dsh-web) | desktop pet | 0.2.4 | 1 | 1 bundle(s) |  |
+| ✅ | `@linxin666/dsh-live-stats` | [zhu1090093659/dsh-web](https://github.com/zhu1090093659/dsh-web) | live session stats | 0.1.20 | 1 | 1 bundle(s) |  |
+| ✅ | `@linxin666/dsh-client-ui-skin-center` | [zhu1090093659/dsh-web](https://github.com/zhu1090093659/dsh-web) | skin centre | 0.2.4 | 1 | — | no browser half materialized |
+| ✅ | `@linxin666/dsh-client-ui-skin-miku` | [zhu1090093659/dsh-web](https://github.com/zhu1090093659/dsh-web) | Miku skin | 0.2.0 | 0 | — | installed; its bundle patch added no rows to this composition |
+| ✅ | `@linxin666/dsh-client-ui-skin-xp` | [zhu1090093659/dsh-web](https://github.com/zhu1090093659/dsh-web) | Windows XP skin | 0.2.0 | 0 | — | installed; its bundle patch added no rows to this composition |
 | ❌ | `@deepseek-harness-tui/dsh-tui` | [ccch1mneyyy/dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) | terminal UI surface, written for the headless profile | 0.8.5 | 0 | — | boot failed: Error: failed to apply loader entry include (cordis:include): duplicate loader entry id: storage Recovery from the failure screen restored the app. |
 
 ## Reading the results
@@ -48,7 +48,7 @@ roster:
   which means downloading and running the `cloudflared` binary.
 - **`@linxin666/dsh-ssh`** needs raw TCP and Node's cipher suite for SSH.
 
-Both are part of the `@linxin666/dsh-web-ui-all` bundle; the other twelve
+Both are part of the `@linxin666/dsh-web-all` bundle; the other twelve
 plugins in it compose normally.
 
 `@deepseek-harness-tui/dsh-tui` fails for a different reason, and not a

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * verify-docs - documentation consistency gate for dsh-web-ui.
+ * verify-docs - documentation consistency gate for dsh-web.
  *
  * Enforces the rules in docs/AGENTS.md as one executable gate:
  *   1. README triplets - every package has README.md + README.zh.md + README.i18n.yaml.

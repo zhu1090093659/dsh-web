@@ -3,7 +3,7 @@
  * trigger beside the settings button, and the pairing panel modal. Owns the
  * panel behavior — token minting on open, the status SSE subscription,
  * stop/refresh/copy — and renders the pure {@link RemotePanel} body. The
- * update seat (the dsh-web-ui self-update flow) rides the same footer row,
+ * update seat (the dsh-web self-update flow) rides the same footer row,
  * rendered by {@link UpdateEntry}. Component-local state per the client
  * stack rules: nothing here survives remounts or crosses entries.
  */

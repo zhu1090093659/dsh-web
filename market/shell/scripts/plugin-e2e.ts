@@ -36,7 +36,7 @@ interface Candidate {
  * manifest, drawn from the `dsh-plugin` topic on GitHub.
  */
 const CANDIDATES: Candidate[] = [
-  { spec: '@linxin666/dsh-web-ui-all', repo: 'zhu1090093659/dsh-web-ui', what: 'Web UI suite (task board, git graph, pet, skins, live stats)', client: true },
+  { spec: '@linxin666/dsh-web-all', repo: 'zhu1090093659/dsh-web', what: 'Web UI suite (task board, git graph, pet, skins, live stats)', client: true },
   { spec: 'dsh-better-sidebar', repo: 'omdsh-dev/DSH-better-sidebar', what: 'sidebar workbench: file editor, terminal, git, subagents', client: true },
   { spec: '@anionex/dsh-vision-toolkit', repo: 'Anionex/dsh-vision-toolkit', what: 'vision tools for text-only models', client: true },
   { spec: '@liustack/modlens', repo: 'liustack/modlens', what: 'vision bridge plugin', client: true },
@@ -44,13 +44,13 @@ const CANDIDATES: Candidate[] = [
   { spec: '@nanmicoder/dsh-agent-teams', repo: 'NanmiCoder/dsh-agent-teams', what: 'agent teams', client: true },
   { spec: 'dsh-working-activity', repo: 'ccch1mneyyy/working-activity', what: 'working-line activity indicator', client: true },
   { spec: '@agentrq/dsh-plugin-agentrq', repo: 'agentrq/agentrq', what: 'human-in-the-loop task manager (host only)', client: false },
-  { spec: '@linxin666/dsh-client-ui-task-board', repo: 'zhu1090093659/dsh-web-ui', what: 'task board panel', client: true },
-  { spec: '@linxin666/dsh-client-ui-git-graph', repo: 'zhu1090093659/dsh-web-ui', what: 'git graph panel', client: true },
-  { spec: '@linxin666/dsh-pet', repo: 'zhu1090093659/dsh-web-ui', what: 'desktop pet', client: true },
-  { spec: '@linxin666/dsh-live-stats', repo: 'zhu1090093659/dsh-web-ui', what: 'live session stats', client: true },
-  { spec: '@linxin666/dsh-client-ui-skin-center', repo: 'zhu1090093659/dsh-web-ui', what: 'skin centre', client: true },
-  { spec: '@linxin666/dsh-client-ui-skin-miku', repo: 'zhu1090093659/dsh-web-ui', what: 'Miku skin', client: true },
-  { spec: '@linxin666/dsh-client-ui-skin-xp', repo: 'zhu1090093659/dsh-web-ui', what: 'Windows XP skin', client: true },
+  { spec: '@linxin666/dsh-client-ui-task-board', repo: 'zhu1090093659/dsh-web', what: 'task board panel', client: true },
+  { spec: '@linxin666/dsh-client-ui-git-graph', repo: 'zhu1090093659/dsh-web', what: 'git graph panel', client: true },
+  { spec: '@linxin666/dsh-pet', repo: 'zhu1090093659/dsh-web', what: 'desktop pet', client: true },
+  { spec: '@linxin666/dsh-live-stats', repo: 'zhu1090093659/dsh-web', what: 'live session stats', client: true },
+  { spec: '@linxin666/dsh-client-ui-skin-center', repo: 'zhu1090093659/dsh-web', what: 'skin centre', client: true },
+  { spec: '@linxin666/dsh-client-ui-skin-miku', repo: 'zhu1090093659/dsh-web', what: 'Miku skin', client: true },
+  { spec: '@linxin666/dsh-client-ui-skin-xp', repo: 'zhu1090093659/dsh-web', what: 'Windows XP skin', client: true },
   { spec: '@deepseek-harness-tui/dsh-tui', repo: 'ccch1mneyyy/dsh-TUI', what: 'terminal UI surface, written for the headless profile', client: false },
 ]
 
@@ -299,7 +299,7 @@ roster:
   which means downloading and running the \`cloudflared\` binary.
 - **\`@linxin666/dsh-ssh\`** needs raw TCP and Node's cipher suite for SSH.
 
-Both are part of the \`@linxin666/dsh-web-ui-all\` bundle; the other twelve
+Both are part of the \`@linxin666/dsh-web-all\` bundle; the other twelve
 plugins in it compose normally.
 
 \`@deepseek-harness-tui/dsh-tui\` fails for a different reason, and not a

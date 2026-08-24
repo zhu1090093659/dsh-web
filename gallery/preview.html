@@ -204,7 +204,7 @@
     fill(document.querySelector('[class*="sectionLabel"]'), 'Workspaces')
 
     // 工作区树（项目行）
-    var projects = ['dsh-web-ui', 'deepseek-harness', 'codex-dream-skin', 'demo', 'CITKABE']
+    var projects = ['dsh-web', 'deepseek-harness', 'codex-dream-skin', 'demo', 'CITKABE']
     var metas = ['4 sessions', '2 sessions', '1 session', '0 sessions', '9 sessions']
     document.querySelectorAll('[class*="projectRow"]').forEach(function (row, i) {
       fill(row.querySelector('[class*="title"]'), projects[i % projects.length])
@@ -222,7 +222,7 @@
     // 起始页 hero
     fill(document.querySelector('[class*="headlineText"]'), "Let's start building")
     fill(document.querySelector('[class*="previewBadge"]'), 'Preview')
-    fill(document.querySelector('[class*="workspaceLabel"]'), 'dsh-web-ui')
+    fill(document.querySelector('[class*="workspaceLabel"]'), 'dsh-web')
     fill(document.querySelector('[class*="triggerLabel"]'), 'Plan')
   }
 

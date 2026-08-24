@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# dsh-web-ui 聚合包挂载冒烟编排（CI + 本地）：
+# dsh-web 聚合包挂载冒烟编排（CI + 本地）：
 #
 #   1. `pnpm pack` 打出聚合包 tarball（workspace:* 依赖被 pnpm 改写为真实
 #      版本号，与发布产物一致）；
@@ -22,7 +22,7 @@
 #
 # 环境变量（均可省略）：
 #   DSH_CMD             dsh 命令；缺省 PATH 上的 `dsh`，回退 npx 拉官方包
-#   WEB_UI_ALL_DIR      聚合包目录；缺省 packages/dsh-web-ui-all
+#   WEB_UI_ALL_DIR      聚合包目录；缺省 packages/dsh-web-all
 #   BETTER_SIDEBAR_TGZ  本地 better-sidebar tarball；给出时把聚合包 tarball
 #                       里的 dsh-better-sidebar 依赖改写为 file:<该 tarball>
 #                       （用于 dsh-better-sidebar@0.13.0 尚未发版前的本地
@@ -44,7 +44,7 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 DSH_CMD="${DSH_CMD:-dsh}"
 PORT="${PORT:-0}"
-WEB_UI_ALL_DIR="${WEB_UI_ALL_DIR:-$ROOT/packages/dsh-web-ui-all}"
+WEB_UI_ALL_DIR="${WEB_UI_ALL_DIR:-$ROOT/packages/dsh-web-all}"
 BETTER_SIDEBAR_TGZ="${BETTER_SIDEBAR_TGZ:-}"
 FAMILY_TGZS_DIR="${FAMILY_TGZS_DIR:-}"
 
@@ -123,7 +123,7 @@ if [ -n "$BETTER_SIDEBAR_TGZ" ]; then
   REWRITE_ARGS+=(--better-sidebar-tgz "$BETTER_SIDEBAR_TGZ")
 fi
 node "$ROOT/scripts/e2e-mount-rewrite" "$PACKAGE_JSON" "${REWRITE_ARGS[@]}"
-TARBALL="$SCRATCH/dsh-web-ui-all-rewritten.tgz"
+TARBALL="$SCRATCH/dsh-web-all-rewritten.tgz"
 tar -czf "$TARBALL" -C "$REWRITE_DIR" package
 say "改写后 tarball: $TARBALL"
 
@@ -172,13 +172,13 @@ if ! node -e '
   const fs = require("fs");
   const p = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
   const bundles = p.dsh?.profile?.bundles ?? [];
-  process.exit(bundles.some(b => b === "@linxin666/dsh-web-ui-all") ? 0 : 1);
+  process.exit(bundles.some(b => b === "@linxin666/dsh-web-all") ? 0 : 1);
 ' "$PROFILE_DIR/package.json"; then
-  warn "dsh-web-ui-all 未出现在 dsh.profile.bundles 中——挂载未注册"
+  warn "dsh-web-all 未出现在 dsh.profile.bundles 中——挂载未注册"
   cat "$PROFILE_DIR/package.json"
   exit 1
 fi
-say "挂载已注册：dsh.profile.bundles 包含 @linxin666/dsh-web-ui-all"
+say "挂载已注册：dsh.profile.bundles 包含 @linxin666/dsh-web-all"
 
 # 步骤 5：启动 dsh web（--port 0 = OS 分配；keyless 可起）
 say "启动 dsh web（port=${PORT}）..."

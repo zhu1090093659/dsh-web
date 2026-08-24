@@ -24,7 +24,7 @@
 
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { extname } from 'node:path'
+import { extname, join } from 'node:path'
 
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 
@@ -34,6 +34,7 @@ import { defaultActiveStatePath, readActiveState, writeActiveState } from './act
 import { sanitizeSkinBackground, type SkinBackgroundConfig } from './core/background.ts'
 import { transformSkinCss, SkinCssSafetyError } from './core/css-safety/transform.ts'
 import { findSkin, loadSkinCatalog, resolveInsideSkin, shippedSkinIds } from './skin-repo.ts'
+import { MARKET_PROVENANCE_FILENAME } from './provenance.ts'
 import type { SkinCatalog, SkinCatalogEntry } from './skin-repo.ts'
 
 export const SKIN_CENTER_V2_PREFIX = '/api/skin-center/v2'
@@ -139,6 +140,12 @@ export function makeSkinCenterV2Routes(deps: RoutesV2Deps = {}): WebRoute[] {
           origin: s.origin,
           warnings: s.warnings,
           manifest: s.manifest,
+          // Anonymous install-channel hint for telemetry (docs/telemetry.md):
+          // Workshop installs carry a provenance file, registry installs do
+          // not. This is a statistical hint only, never a security signal.
+          channel: s.origin === 'user'
+            ? (existsSync(join(s.dir, MARKET_PROVENANCE_FILENAME)) ? 'market' : 'unknown')
+            : 'npm',
         })),
       diagnostics: catalog.diagnostics,
     })

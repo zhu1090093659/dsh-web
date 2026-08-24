@@ -5,7 +5,7 @@
   "name": "壁纸专属",
   "nameEn": "Wallpaper Exclusive",
   "version": "0.1.0",
-  "author": "dsh-web-ui",
+  "author": "dsh-web",
   "tagline": "壁纸优先 · 液态玻璃面板",
   "description": "官方默认底座 + 气泡/代码块/任务清单/插件面板等浮层液态玻璃，壁纸从背后透出，不画自己的背景；输入卡由 web-ui 统一设计，面板固定半透明磨砂，不随滑杆驱动。",
   "tags": [

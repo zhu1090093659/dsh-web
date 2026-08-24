@@ -10,7 +10,7 @@ protocol; **only the returned text enters the conversation, the image itself nev
 
 Ported from deepseek-harness `packages/vision/tool-describe-image` (mirrored at
 [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)),
-adapted to the dsh-web-ui family conventions: official NPM SDK only, host-side plugin with a
+adapted to the dsh-web family conventions: official NPM SDK only, host-side plugin with a
 browser half, live settings, no dsh source changes.
 
 ## Capabilities
@@ -63,7 +63,7 @@ browser half, live settings, no dsh source changes.
 
 ## Installation
 
-Install the family aggregate `@linxin666/dsh-web-ui-all` (all plugins and skins in one package), or this plugin alone:
+Install the family aggregate `@linxin666/dsh-web-all` (all plugins and skins in one package), or this plugin alone:
 
 ```sh
 # Recommended: install directly from npm
@@ -210,3 +210,7 @@ the same same-origin fence as the attach routes; the browser never sees credenti
   contributor under the family license.
 - **License**: the family is licensed under [Apache-2.0](../../LICENSE) (repository root LICENSE); this
   package's `license` field is `Apache-2.0`.
+
+## Telemetry
+
+The browser half sends one anonymous install heartbeat per UTC day to dsh-market.com: a random localStorage id plus this package's name, nothing else. The server stores only a salted hash of that id, never IP addresses, and exposes aggregate counts only. See [docs/telemetry.md](../../docs/telemetry.md) for the full contract.

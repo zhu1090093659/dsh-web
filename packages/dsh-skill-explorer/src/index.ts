@@ -95,7 +95,7 @@ function applyImpl(ctx: Context, config?: Config): void {
 
 /**
  * Single-instance guard shared by the plugin family: the aggregate bundle
- * (dsh-web-ui-all) and a standalone install of this package can coexist in
+ * (dsh-web-all) and a standalone install of this package can coexist in
  * one profile, so the second host apply must be a no-op instead of
  * re-registering the same routes and failing the boot.
  */

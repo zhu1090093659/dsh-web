@@ -8,114 +8,44 @@
   body {
     position: relative;
     font-family: -apple-system, "PingFang SC", "Segoe UI", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(115deg, #17123a 0%, #1d1b4e 34%, #2a2470 62%, #3b2f8f 100%);
+    background:
+      linear-gradient(100deg, rgba(58, 68, 138, .82) 0%, rgba(96, 108, 178, .68) 42%, rgba(128, 140, 198, .55) 100%),
+      url("../../packages/skins/skin-center/skins/blue-fantasy/assets/whale-art.jpg") 62% 58% / cover no-repeat;
     color: #fff;
   }
-  /* ambient glows */
-  .glow { position: absolute; border-radius: 50%; filter: blur(70px); pointer-events: none; }
-  .glow.a { width: 520px; height: 520px; right: 40px; top: -190px; background: rgba(139, 122, 255, .38); }
-  .glow.b { width: 420px; height: 420px; left: -140px; bottom: -230px; background: rgba(56, 189, 248, .22); }
-  .glow.c { width: 300px; height: 300px; left: 430px; top: -160px; background: rgba(96, 80, 220, .35); }
-  /* dotted texture */
-  .dots {
-    position: absolute; inset: 0; opacity: .5; pointer-events: none;
-    background-image: radial-gradient(rgba(255,255,255,.10) 1px, transparent 1px);
-    background-size: 26px 26px;
-    -webkit-mask-image: linear-gradient(100deg, rgba(0,0,0,.7), transparent 55%);
-    mask-image: linear-gradient(100deg, rgba(0,0,0,.7), transparent 55%);
-  }
-  /* waves */
-  .waves { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; opacity: .35; pointer-events: none; }
-  /* bubbles */
-  .bubble { position: absolute; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.22); pointer-events: none; }
+  /* soft focus: keep the girl readable, wash out the speech bubble corner */
+  .veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(120,130,195,.35), transparent 30%, transparent 70%, rgba(96,106,175,.28)); pointer-events: none; }
 
-  /* ---------- left: brand ---------- */
-  .brand { position: absolute; left: 64px; top: 64px; width: 600px; }
+  .brand { position: absolute; left: 68px; top: 66px; width: 640px; }
   .eyebrow {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-size: 13px; font-weight: 600; letter-spacing: .22em;
-    color: rgba(196, 188, 255, .95); text-transform: uppercase;
+    font-size: 14px; font-weight: 600; letter-spacing: .34em;
+    color: rgba(235, 236, 252, .85); text-transform: uppercase;
   }
-  .eyebrow::before { content: ""; width: 22px; height: 2px; background: #8b7aff; border-radius: 2px; }
   h1 {
-    margin-top: 14px; font-size: 62px; line-height: 1.05; font-weight: 800; letter-spacing: -.01em;
-    background: linear-gradient(92deg, #ffffff 30%, #cabdff 75%, #8fd8ff 100%);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-top: 16px; font-size: 74px; line-height: 1.04; font-weight: 800; letter-spacing: .01em;
+    color: #ffffff; text-shadow: 0 4px 26px rgba(40, 48, 110, .45);
   }
-  .tag { margin-top: 14px; font-size: 18px; font-weight: 500; color: rgba(233, 230, 255, .82); }
-  .chips { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 10px; width: 560px; }
+  .tag { margin-top: 14px; font-size: 21px; font-weight: 500; letter-spacing: .06em; color: rgba(240, 241, 255, .92); text-shadow: 0 2px 12px rgba(40, 48, 110, .4); }
+  .chips { margin-top: 28px; display: flex; flex-wrap: nowrap; gap: 9px; }
   .chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 13px; font-weight: 500; color: rgba(240, 238, 255, .92);
-    padding: 7px 13px; border-radius: 999px;
-    background: rgba(255, 255, 255, .09); border: 1px solid rgba(255, 255, 255, .16);
+    font-size: 13px; font-weight: 500; color: rgba(246, 247, 255, .95);
+    padding: 6px 13px; white-space: nowrap; border-radius: 999px;
+    background: rgba(255, 255, 255, .16); border: 1px solid rgba(255, 255, 255, .38);
     backdrop-filter: blur(4px);
   }
-  .chip.hot { background: rgba(139, 122, 255, .22); border-color: rgba(164, 150, 255, .5); }
-  .new {
-    font-size: 10px; font-weight: 700; letter-spacing: .04em; line-height: 1;
-    color: #1d1b4e; background: linear-gradient(90deg, #a5f3d0, #7ee2f5);
-    padding: 3px 6px; border-radius: 999px;
-  }
+  
 
-  /* ---------- right: visuals ---------- */
-  .stage { position: absolute; left: 630px; top: 0; width: 650px; height: 400px; }
-
-  .browser {
-    position: absolute; left: 6px; top: 78px; width: 452px;
-    border-radius: 12px; overflow: hidden;
-    background: #12102e;
-    border: 1px solid rgba(255, 255, 255, .22);
-    box-shadow: 0 24px 60px rgba(8, 6, 30, .55), 0 4px 14px rgba(8, 6, 30, .4);
-    transform: rotate(-2.5deg);
+  /* chibi whale-girl pet sticker, one idle cell from the dsh-pet atlas */
+  .pet {
+    position: absolute; right: 64px; bottom: 6px; width: 134px; height: 146px; overflow: visible;
+    filter:
+      drop-shadow(1px 0 0 #ff57c8) drop-shadow(-1px 0 0 #ff57c8)
+      drop-shadow(0 1px 0 #ff57c8) drop-shadow(0 -1px 0 #ff57c8)
+      drop-shadow(0.8px 0.8px 0 #ff57c8) drop-shadow(-0.8px 0.8px 0 #ff57c8)
+      drop-shadow(0.8px -0.8px 0 #ff57c8) drop-shadow(-0.8px -0.8px 0 #ff57c8)
+      drop-shadow(0 8px 18px rgba(190, 40, 140, .5));
   }
-  .browser .bar {
-    height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 12px;
-    background: rgba(255, 255, 255, .07); border-bottom: 1px solid rgba(255, 255, 255, .1);
-  }
-  .browser .dot { width: 8px; height: 8px; border-radius: 50%; }
-  .browser .dot.r { background: #ff5f57; } .browser .dot.y { background: #febc2e; } .browser .dot.g { background: #28c840; }
-  .browser .url {
-    margin-left: 8px; flex: 1; height: 14px; border-radius: 7px;
-    background: rgba(255, 255, 255, .08);
-    font-size: 9px; color: rgba(255,255,255,.45); line-height: 14px; padding: 0 10px;
-  }
-  .browser .shot { height: 262px; overflow: hidden; }
-  .browser .shot img { width: 100%; display: block; }
-
-  .phone {
-    position: absolute; right: 96px; top: 46px; width: 148px;
-    padding: 7px; border-radius: 26px;
-    background: linear-gradient(160deg, #232050, #141232);
-    border: 1px solid rgba(255, 255, 255, .3);
-    box-shadow: 0 24px 54px rgba(8, 6, 30, .6), 0 4px 12px rgba(8, 6, 30, .4);
-    transform: rotate(2.5deg);
-  }
-  .phone .notch {
-    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-    width: 52px; height: 8px; border-radius: 4px; background: rgba(6, 5, 22, .9); z-index: 2;
-  }
-  .phone .screen { border-radius: 20px; overflow: hidden; height: 296px; }
-  .phone .screen img { width: 100%; display: block; }
-
-  .pill {
-    position: absolute; z-index: 5;
-    font-size: 12px; font-weight: 600; color: #f3f1ff;
-    padding: 6px 12px; border-radius: 999px;
-    background: rgba(28, 24, 72, .88); border: 1px solid rgba(164, 150, 255, .55);
-    box-shadow: 0 8px 22px rgba(8, 6, 30, .45);
-    backdrop-filter: blur(4px);
-    white-space: nowrap;
-  }
-  .pill.panel { left: 22px; top: 44px; transform: rotate(-2.5deg); }
-  .pill.mobile { right: 86px; top: 14px; transform: rotate(2.5deg); }
-
-  .whale {
-    position: absolute; right: 2px; bottom: 2px; width: 134px; height: 145px; z-index: 6;
-    overflow: hidden;
-    filter: drop-shadow(0 10px 22px rgba(8, 6, 30, .55));
-  }
-  .whale .frame {
+  .pet .frame {
     width: 192px; height: 208px;
     background-image: url("../../packages/dsh-pet/assets/whale/spritesheet.webp");
     background-position: 0 0;
@@ -124,46 +54,21 @@
 </style>
 </head>
 <body>
-  <div class="glow a"></div><div class="glow b"></div><div class="glow c"></div>
-  <div class="dots"></div>
-  <svg class="waves" viewBox="0 0 1280 120" preserveAspectRatio="none">
-    <path d="M0 70 Q 160 30 320 62 T 640 58 T 960 66 T 1280 44 V 120 H 0 Z" fill="rgba(139,122,255,.16)"/>
-    <path d="M0 92 Q 200 58 400 84 T 800 80 T 1280 72 V 120 H 0 Z" fill="rgba(125,211,252,.12)"/>
-  </svg>
-  <div class="bubble" style="left:586px; top:48px; width:14px; height:14px;"></div>
-  <div class="bubble" style="left:612px; top:96px; width:8px; height:8px;"></div>
-  <div class="bubble" style="left:560px; top:330px; width:10px; height:10px;"></div>
-
+  <div class="veil"></div>
   <div class="brand">
-    <div class="eyebrow">DeepSeek Harness</div>
-    <h1>DSH Web UI</h1>
-    <div class="tag">插件与皮肤集合，一站装齐桌面与移动端体验</div>
+    <div class="eyebrow">The Plugin Ecosystem for DeepSeek Harness</div>
+    <h1>dsh-web</h1>
+    <div class="tag">DSH Web 插件聚合生态包</div>
     <div class="chips">
       <span class="chip">任务看板</span>
       <span class="chip">Git 图谱</span>
+      <span class="chip">右侧面板</span>
+      <span class="chip">移动端远程</span>
       <span class="chip">鲸鱼娘宠物</span>
-      <span class="chip">实时统计</span>
-      <span class="chip">皮肤中心</span>
-      <span class="chip hot">右侧面板 <span class="new">NEW</span></span>
-      <span class="chip hot">移动端远程 <span class="new">NEW</span></span>
+      <span class="chip">皮肤</span>
+      <span class="chip">创意工坊</span>
     </div>
   </div>
-
-  <div class="stage">
-    <div class="pill panel">右侧面板 · 预览 / 文件 / 变更</div>
-    <div class="pill mobile">移动端远程控制</div>
-    <div class="browser">
-      <div class="bar">
-        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-        <span class="url">127.0.0.1:3080</span>
-      </div>
-      <div class="shot"><img src="../../docs/screenshots/19-right-panel.png" alt=""></div>
-    </div>
-    <div class="phone">
-      <div class="notch"></div>
-      <div class="screen"><img src="../../docs/screenshots/22-mobile-chat.png" alt=""></div>
-    </div>
-    <div class="whale"><div class="frame"></div></div>
-  </div>
+  <div class="pet"><div class="frame"></div></div>
 </body>
 </html>

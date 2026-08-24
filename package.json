@@ -1,5 +1,5 @@
 {
-  "name": "dsh-web-ui",
+  "name": "dsh-web",
   "version": "0.1.1",
   "private": true,
   "description": "DeepSeek Harness Web GUI 插件全家桶 + 皮肤集合 + Gallery 预览页。皮肤是纯资产目录（packages/skins/skin-center/skins/<id>），由皮肤中心包统一加载。",

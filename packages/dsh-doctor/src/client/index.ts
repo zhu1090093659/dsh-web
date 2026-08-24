@@ -35,6 +35,7 @@ import {
   type DoctorSettingsCardFace,
 } from './DoctorSettingsCard.tsx'
 import { en, zh, type DoctorKey } from './locales.ts'
+import { reportDailyHeartbeat } from './telemetry.ts'
 
 /** Locale namespace owned by this plugin. */
 export const NS = 'doctor'
@@ -62,7 +63,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
-    /** Optional rc.6 compatibility binder provided by dsh-web-ui-settings. */
+    /** Optional rc.6 compatibility binder provided by dsh-web-settings. */
     webUiSettings?: { bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S> }
   }
 }
@@ -75,6 +76,10 @@ let claimed = false
 
 /** Apply the browser half; never throws. */
 export function apply(ctx: ClientContext): void {
+  // Anonymous install heartbeat (docs/telemetry.md): one beat per browser per
+  // UTC day, package name only, silent failure.
+  reportDailyHeartbeat([{ name: '@linxin666/dsh-doctor' }])
+
   if (claimed) return
   claimed = true
 

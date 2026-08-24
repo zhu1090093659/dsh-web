@@ -74,20 +74,20 @@ describe('readProfileManifest and stripBom', () => {
       const pkgPath = join(dir, 'package.json')
       const patchPath = join(dir, 'cordis.patch.yml')
       writeFileSync(pkgPath, '\uFEFF' + JSON.stringify({
-        dsh: { profile: { bundles: ['@linxin666/dsh-web-ui-all'] } },
+        dsh: { profile: { bundles: ['@linxin666/dsh-web-all'] } },
         dependencies: { 'dsh-context': '^0.25.3' },
       }), 'utf8')
       writeFileSync(patchPath, '\uFEFF- id: test\n  name: test\n', 'utf8')
 
       const manifest = await readProfileManifest(pkgPath)
-      expect(manifest.bundles).toEqual(['@linxin666/dsh-web-ui-all'])
+      expect(manifest.bundles).toEqual(['@linxin666/dsh-web-all'])
       expect(manifest.dependencies).toEqual({ 'dsh-context': '^0.25.3' })
 
       const patchText = await readPatchText(patchPath)
       expect(patchText.startsWith('\uFEFF')).toBe(false)
       expect(patchText).toContain('id: test')
 
-      await stripProfileBundles(pkgPath, ['@linxin666/dsh-web-ui-all'])
+      await stripProfileBundles(pkgPath, ['@linxin666/dsh-web-all'])
       const after = await readProfileManifest(pkgPath)
       expect(after.bundles).toEqual([])
     } finally {

@@ -2,7 +2,7 @@
 /**
  * pr-review - 本地批量审核远程 PR 的 CLI 工具。
  *
- * 针对 dsh-web-ui（及同类仓库）的外部 PR 审核：硬性规则 + worktree 构建验证。
+ * 针对 dsh-web（及同类仓库）的外部 PR 审核：硬性规则 + worktree 构建验证。
  * 规则来源：PR 模板（.github/pull_request_template.md）、AGENTS.md、ci.yml、
  * pr-contribution-rules.yml。规则与仓库文档冲突时以文档为准。
  *

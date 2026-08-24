@@ -38,8 +38,8 @@ test('sectionOf: groups feat / fix / everything else', () => {
 
 test('linkIssues: links (#123) and (#12 #34) references, leaves the rest alone', () => {
   assert.equal(
-    linkIssues('fixes (#184) and (#12)', 'zhu1090093659/dsh-web-ui'),
-    'fixes ([#184](https://github.com/zhu1090093659/dsh-web-ui/issues/184)) and ([#12](https://github.com/zhu1090093659/dsh-web-ui/issues/12))',
+    linkIssues('fixes (#184) and (#12)', 'zhu1090093659/dsh-web'),
+    'fixes ([#184](https://github.com/zhu1090093659/dsh-web/issues/184)) and ([#12](https://github.com/zhu1090093659/dsh-web/issues/12))',
   )
   assert.equal(
     linkIssues('hide composer (#76 #87)', 'o/r'),
@@ -54,7 +54,7 @@ test('renderNotes: Chinese default view with English behind a details toggle; em
     { type: 'feat', scope: 'skin', subject: 'add theme (#11)' },
     { type: 'docs', scope: 'readme', subject: 'trim sections' },
   ]
-  const notes = renderNotes('0.1.14', rows, 'zhu1090093659/dsh-web-ui')
+  const notes = renderNotes('0.1.14', rows, 'zhu1090093659/dsh-web')
   // The default view is Chinese; the English version sits behind the toggle.
   assert.ok(notes.startsWith('本次发布包含 1 项新功能、1 项修复、1 项其他改动。'))
   assert.ok(notes.includes('### 新功能'))
@@ -68,7 +68,7 @@ test('renderNotes: Chinese default view with English behind a details toggle; em
   assert.ok(notes.includes('### Other Changes'))
   // Each bullet keeps its authored subject in both views (the translations
   // are the maintainer's job in the committed notes file).
-  assert.ok(notes.includes('- [git-graph] single-spawn markers ([#184](https://github.com/zhu1090093659/dsh-web-ui/issues/184))'))
+  assert.ok(notes.includes('- [git-graph] single-spawn markers ([#184](https://github.com/zhu1090093659/dsh-web/issues/184))'))
   // Chinese sections precede the toggle; English sections live inside it.
   assert.ok(notes.indexOf('### 新功能') < notes.indexOf('<summary>English</summary>'))
   assert.ok(notes.indexOf('<summary>English</summary>') < notes.indexOf('### New Features'))
@@ -105,7 +105,7 @@ test('collectNotes: renders the commits between two tags of a real temp repo', (
     commit('Merge main into fix/branch')
     git('tag', 'v0.1.1')
 
-    const notes = collectNotes(dir, 'v0.1.1', 'zhu1090093659/dsh-web-ui')
+    const notes = collectNotes(dir, 'v0.1.1', 'zhu1090093659/dsh-web')
     // Only commits after v0.1.0 appear; the bump and the merge are skipped.
     assert.ok(notes.includes('1 项修复、1 项其他改动'))
     assert.ok(notes.includes('- [aionui-panel] scope z-index to tab bars'))
@@ -139,7 +139,7 @@ test('collectNotes: includes commits merged in on a side branch (v0.1.15 regress
     git('merge', '--no-ff', '-q', '-m', 'merge: plugin suite performance refactor', 'feature')
     git('tag', 'v0.1.1')
 
-    const notes = collectNotes(dir, 'v0.1.1', 'zhu1090093659/dsh-web-ui')
+    const notes = collectNotes(dir, 'v0.1.1', 'zhu1090093659/dsh-web')
     // The side-branch work rides the merge commit's second parent; a
     // first-parent walk would lose it entirely.
     assert.ok(notes.includes('perf(skins)') === false, 'subjects render without the type prefix')

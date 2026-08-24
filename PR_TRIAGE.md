@@ -1,6 +1,6 @@
 # PR_TRIAGE — PR 分类与审批路由
 
-本文件定义 dsh-web-ui 仓库 PR 的自动分类与分派路由机制：PR 打开后由
+本文件定义 dsh-web 仓库 PR 的自动分类与分派路由机制：PR 打开后由
 `.github/workflows/auto-assign-pr-reviewers.yml` 按 PR 描述勾选的类别（`PR 类别（PR Category）`）、
 变更文件与标题匹配分类，自动把对应协作者设为负责人（assignee）并请求其审查，
 与 [ISSUE_TRIAGE.md](ISSUE_TRIAGE.md) 中 Issue 的自动分派对应。
@@ -59,8 +59,8 @@
 
 ```sh
 # 手动请求审查
-gh pr edit <n> -R zhu1090093659/dsh-web-ui --add-reviewer Aa728848
+gh pr edit <n> -R zhu1090093659/dsh-web --add-reviewer Aa728848
 
 # 查看某 PR 的变更文件
-gh api repos/zhu1090093659/dsh-web-ui/pulls/<n>/files --jq '.[].filename'
+gh api repos/zhu1090093659/dsh-web/pulls/<n>/files --jq '.[].filename'
 ```

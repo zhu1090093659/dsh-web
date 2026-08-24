@@ -749,7 +749,7 @@
   }
 
   // ---------- 右上角 GitHub 仓库按钮（仓库 + Star 数） ----------
-  var GITHUB_REPO = 'zhu1090093659/dsh-web-ui'
+  var GITHUB_REPO = 'zhu1090093659/dsh-web'
   function formatStars(n) {
     if (n >= 10000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
     if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
@@ -770,12 +770,45 @@
       .catch(function () { host.textContent = '' })
   }
 
+  // ---------- 匿名访问统计（PV） ----------
+  // 仅上报随机访客 ID（localStorage 持久化）与当前路径，不含任何内容或身份信息。
+  var VID_KEY = 'dsh-market-vid'
+  function visitorId() {
+    try {
+      var vid = localStorage.getItem(VID_KEY)
+      if (vid && /^[A-Za-z0-9_-]{16,64}$/.test(vid)) return vid
+      vid = crypto.randomUUID().replace(/-/g, '')
+      localStorage.setItem(VID_KEY, vid)
+      return vid
+    } catch (e) { return '' }
+  }
+  function sendPageview() {
+    // Automated browsers (headless QA, webdriver-driven crawlers) never count.
+    if (navigator.webdriver) return
+    var vid = visitorId()
+    if (!vid) return
+    var payload = JSON.stringify({ kind: 'pageview', path: location.pathname + location.search, visitor: vid })
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/telemetry/event', new Blob([payload], { type: 'application/json' }))
+        return
+      }
+    } catch (e) { }
+    fetch('/api/telemetry/event', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: payload,
+      keepalive: true,
+    }).catch(function () { })
+  }
+
   function boot() {
     bind()
     renderAll()
     renderTurnstile()
     load()
     loadGitHubStars()
+    sendPageview()
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot)
   else boot()

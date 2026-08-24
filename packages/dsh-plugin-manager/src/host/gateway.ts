@@ -17,7 +17,7 @@ import type { InstalledPluginItem } from '../core/protocol.ts'
 import type { ControlChange } from '../core/conflict.ts'
 import { diffLayer, overlappingIds, significantChanges, type LayerChange, type LayerSnapshot } from '../core/patch-diff.ts'
 import { duplicateMountBundles } from './bundle-guard.ts'
-import { readProfileManifest, stripProfileBundles, type ProfileFacts } from './profile.ts'
+import { readProfileManifest, reorderProfileBundle, stripProfileBundles, type ProfileFacts } from './profile.ts'
 import { insertRowsOf, parsePatch, bareRowEnabled, bareRowId } from './rows.ts'
 import { buildPluginRow, claimedEntryIdsOf } from './state.ts'
 
@@ -52,12 +52,16 @@ export function unsafeSpecReason(spec: string): string | undefined {
 /** One CLI-backed operation in flight or settled. */
 export interface GatewayJob {
   id: string
-  action: 'install' | 'update' | 'remove'
+  action: 'install' | 'update' | 'migrate' | 'remove'
   spec: string
   /** Installed package ID for an in-place npm update. */
   targetId?: string
   /** Exact registry version the update must land on. */
   targetVersion?: string
+  /** Legacy package being migrated away from. */
+  sourceId?: string
+  /** Exact install spec for the target package. */
+  targetSpec?: string
   phase: 'running' | 'done' | 'error'
   /** The installed row on success (install) or the removed row (remove). */
   plugin?: InstalledPluginItem
@@ -219,6 +223,7 @@ export async function detectOfficialChannels(
 /** One layer snapshot plus the profile patch text and dependency list. */
 interface CapturedState {
   layer: LayerSnapshot
+  bundles: string[]
   /** Raw profile patch text (the duplicate-mount guard reads row names from it). */
   patchText: string
   dependencies: string[]
@@ -279,6 +284,185 @@ export class CliGateway {
     return this.deps.findBinary !== undefined ? this.deps.findBinary(this.env) : findDshBinary(this.env)
   }
 
+  /** Run one CLI command to completion and return the bounded output. */
+  private async runCli(binary: string, args: string[], timeoutMs: number): Promise<{ code: number | null; output: string }> {
+    const output = { value: '' }
+    const child = this.spawnCli(binary, args)
+    child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, output) })
+    child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, output) })
+    const timer = setTimeout(() => { child.kill() }, timeoutMs)
+    const code = await new Promise<number | null>(resolve => { child.on('close', resolve) })
+    clearTimeout(timer)
+    return { code, output: output.value.trim() }
+  }
+
+  /** Full package spec used when restoring a legacy dependency. */
+  private restoreSpec(name: string, spec: string): string {
+    if (/^(?:link:|file:|git:|git\+|github:|https?:\/\/|npm:)/.test(spec)) return spec
+    if (spec === '') return name
+    return `${name}@${spec}`
+  }
+
+  /** Execute the legacy aggregate migration and settle the job. */
+  private async runMigration(job: GatewayJob): Promise<void> {
+    const binary = this.binary()
+    if (binary === null) {
+      job.phase = 'error'
+      job.error = 'plugin-manager: dsh CLI not found on PATH'
+      return
+    }
+    const sourceId = job.sourceId
+    const targetId = job.targetId
+    const targetVersion = job.targetVersion
+    const targetSpec = job.targetSpec
+    if (sourceId === undefined || targetId === undefined || targetVersion === undefined || targetSpec === undefined) {
+      job.phase = 'error'
+      job.error = 'plugin-manager: migration job is missing source/target identity'
+      return
+    }
+    const before = await this.capture()
+    if (!before.dependencies.includes(sourceId)) {
+      job.phase = 'error'
+      job.error = `plugin-manager: legacy aggregate ${sourceId} is not installed`
+      return
+    }
+    const beforeManifest = await readProfileManifest(this.facts.packageJsonPath)
+    const oldSpec = beforeManifest.dependencies[sourceId] ?? ''
+    const oldIndex = before.bundles.indexOf(sourceId)
+    const targetPreviouslyInstalled = before.dependencies.includes(targetId)
+
+    const remove = await this.runCli(
+      binary,
+      ['plugin', '--profile', this.facts.profileName, 'remove', sourceId],
+      REMOVE_TIMEOUT_MS,
+    )
+    if (remove.code !== 0) {
+      job.phase = 'error'
+      job.error = remove.output === ''
+        ? `plugin-manager: dsh plugin remove ${sourceId} failed with code ${String(remove.code)}`
+        : remove.output
+      return
+    }
+    let after = await this.capture()
+    if (after.dependencies.includes(sourceId)) {
+      job.phase = 'error'
+      job.error = `plugin-manager: dsh plugin remove 报告成功，但 ${sourceId} 仍在 profile 中`
+      return
+    }
+    const targetIsLocal = /^(?:link:|file:)/.test(targetSpec)
+    const shouldAddTarget = targetPreviouslyInstalled
+      ? !targetIsLocal
+      : !after.dependencies.includes(targetId)
+    if (shouldAddTarget) {
+      const add = await this.runCli(
+        binary,
+        ['plugin', '--profile', this.facts.profileName, 'add', targetSpec],
+        ADD_TIMEOUT_MS,
+      )
+      if (add.code !== 0) {
+        await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
+        job.error = `plugin-manager: 迁移安装 ${targetSpec} 失败${add.output === '' ? '' : `：\n${add.output}`}`
+        return
+      }
+      after = await this.capture()
+    }
+    if (!after.dependencies.includes(targetId)) {
+      await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
+      job.error = `plugin-manager: dsh plugin add 报告成功，但 ${targetId} 未出现在 profile 中`
+      return
+    }
+    const stripped = await this.stripDuplicateMounts(job, before, after)
+    if (stripped === undefined) {
+      await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
+      return
+    }
+    if (stripped.length > 0) {
+      job.notices = stripped.map(name => ({ id: name, name, from: 'enabled', to: 'uninstalled' }))
+      after = await this.capture()
+    }
+    if (oldIndex >= 0) await reorderProfileBundle(this.facts.packageJsonPath, targetId, oldIndex)
+    after = await this.capture()
+
+    const verify = await this.runCli(
+      binary,
+      ['--profile', this.facts.profileName, '--dump-config'],
+      90_000,
+    )
+    if (verify.code !== 0) {
+      await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
+      job.error = `plugin-manager: 迁移后的启动预检失败${verify.output === '' ? '' : `：\n${verify.output}`}`
+      return
+    }
+    const manifest = await readProfileManifest(this.facts.packageJsonPath)
+    const updated = await buildPluginRow(
+      this.facts,
+      targetId,
+      manifest.dependencies[targetId] ?? targetSpec,
+      after.layer.rows,
+    )
+    // A local repository link is the developer checkout source: its version is
+    // whatever the checked-out tree contains, not the registry release, so the
+    // exact-version gate applies only to npm registry migrations.
+    if (!/^(?:link:|file:)/.test(targetSpec) && updated.version !== targetVersion) {
+      await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
+      job.error = `plugin-manager: 迁移后 ${targetId} 版本为 ${updated.version}，预期 ${targetVersion}`
+      return
+    }
+    job.plugin = updated
+    job.conflicts = significantChanges(diffLayer(before.layer, after.layer)).map(change => ({
+      id: change.id,
+      name: change.id,
+      from: change.from,
+      to: change.to,
+    }))
+    job.phase = 'done'
+  }
+
+  /** Restore the original legacy package after a failed migration. */
+  private async rollbackMigration(
+    job: GatewayJob,
+    sourceId: string,
+    targetId: string,
+    oldSpec: string,
+    oldIndex: number,
+    targetPreviouslyInstalled: boolean,
+  ): Promise<void> {
+    const binary = this.binary()
+    if (binary === null) {
+      job.phase = 'error'
+      job.error = 'plugin-manager: 迁移失败且无法回滚：dsh CLI not found on PATH'
+      return
+    }
+    const current = await this.capture()
+    if (!targetPreviouslyInstalled && current.dependencies.includes(targetId)) {
+      await this.runCli(binary, ['plugin', '--profile', this.facts.profileName, 'remove', targetId], REMOVE_TIMEOUT_MS)
+    }
+    // If the current aggregate already existed before this migration, the
+    // profile already had both bundles and was unusable. Keep the single
+    // current aggregate on rollback instead of re-adding the legacy duplicate.
+    if (targetPreviouslyInstalled) {
+      job.phase = 'error'
+      job.error = 'plugin-manager: 聚合包迁移失败，已保留当前聚合包并移除旧包'
+      return
+    }
+    const restoreOld = this.restoreSpec(sourceId, oldSpec)
+    const restored = await this.runCli(
+      binary,
+      ['plugin', '--profile', this.facts.profileName, 'add', restoreOld],
+      ADD_TIMEOUT_MS,
+    )
+    if (restored.code !== 0) {
+      job.phase = 'error'
+      job.error = `plugin-manager: 迁移失败且回滚到 ${restoreOld} 失败${restored.output === '' ? '' : `：\n${restored.output}`}`
+      return
+    }
+    if (oldIndex >= 0) {
+      await reorderProfileBundle(this.facts.packageJsonPath, sourceId, oldIndex).catch(() => undefined)
+    }
+    job.phase = 'error'
+    job.error = 'plugin-manager: 聚合包迁移失败，已回滚到旧包'
+  }
+
   /** Spawn the CLI, through the test seam when present. */
   private spawnCli(binary: string, args: string[]) {
     return (this.deps.spawnImpl ?? spawnDsh)(binary, args, this.env)
@@ -319,6 +503,40 @@ export class CliGateway {
       return { jobId: job.id }
     }
     this.enqueue(() => this.run(job, ['plugin', '--profile', this.facts.profileName, 'add', spec], ADD_TIMEOUT_MS))
+    return { jobId: job.id }
+  }
+
+  /** Start a deterministic legacy aggregate migration. */
+  migrate(sourceId: string, targetId: string, targetVersion: string, targetSpec: string): { jobId: string } {
+    const job: GatewayJob = {
+      id: `job-${++this.counter}`,
+      action: 'migrate',
+      spec: targetSpec,
+      sourceId,
+      targetId,
+      targetVersion,
+      targetSpec,
+      phase: 'running',
+    }
+    this.jobs.set(job.id, job)
+    const unsafe = unsafeSpecReason(sourceId) ?? unsafeSpecReason(targetId) ?? unsafeSpecReason(targetSpec)
+    if (unsafe !== undefined) {
+      job.phase = 'error'
+      job.error = unsafe
+      this.retainFinished(job.id)
+      return { jobId: job.id }
+    }
+    this.enqueue(async () => {
+      try {
+        await this.runMigration(job)
+      } catch (error) {
+        if (job.phase !== 'error') {
+          job.phase = 'error'
+          job.error = `plugin-manager: unexpected migration failure: ${error instanceof Error ? error.message : String(error)}`
+        }
+      }
+      this.retainFinished(job.id)
+    })
     return { jobId: job.id }
   }
 
@@ -381,7 +599,7 @@ export class CliGateway {
       bundles = []
       dependencies = []
     }
-    return { layer: { rows, bundles }, patchText, dependencies }
+    return { layer: { rows, bundles }, bundles, patchText, dependencies }
   }
 
   /** The plugin row a finished operation produced (installed or removed). */
@@ -506,7 +724,7 @@ export class CliGateway {
       from: change.from,
       to: change.to,
     }))
-    if (job.action !== 'update') {
+    if (job.action === 'install' || job.action === 'remove') {
       job.plugin = await this.rowFor(job.action, job.spec, before, after)
     }
     job.phase = 'done'

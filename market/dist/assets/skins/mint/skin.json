@@ -5,7 +5,7 @@
   "name": "薄荷",
   "nameEn": "Mint",
   "version": "1.0.0",
-  "author": "dsh-web-ui",
+  "author": "dsh-web",
   "tagline": "纯 token 范例皮肤 · 零补丁零脚本 · 社区作者的起点模板",
   "description": "薄荷是官方锚定的范例皮肤：只重映射官方 --dsw-alias-* 语义 token（L1），不含 patches.css、hooks.mjs 与背景媒体，展示一个新皮肤所需的全部最小要素。社区作者复制本目录、改颜色、改 id 即可发布一个永远安全的皮肤。",
   "tags": [

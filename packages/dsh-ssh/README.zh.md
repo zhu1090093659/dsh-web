@@ -32,15 +32,15 @@
 
 ## 安装
 
-推荐直接安装全家桶聚合包 `@linxin666/dsh-web-ui-all`（一个包装齐全部功能插件与皮肤），或单独安装本插件：
+推荐直接安装全家桶聚合包 `@linxin666/dsh-web-all`（一个包装齐全部功能插件与皮肤），或单独安装本插件：
 
 ```sh
 ### 从 npm 安装（推荐）
 dsh plugin --profile web add @linxin666/dsh-ssh@latest
 
 ### 从仓库安装（开发调试）
-git clone https://github.com/zhu1090093659/dsh-web-ui.git
-cd dsh-web-ui
+git clone https://github.com/zhu1090093659/dsh-web.git
+cd dsh-web
 pnpm install && pnpm -r build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-ssh
 
@@ -73,3 +73,7 @@ pnpm --filter @linxin666/dsh-ssh build   # tsc 类型 + tsdown 双半区产物
 - 跳板机 ProxyJump 的每一跳必须是本插件已配置的主机别名。
 - 断点续传（resume）暂未实现。
 - Agent 工具的传输为宿主机器本地路径（与 ssh-skill 相同的语义）。
+
+## 数据遥测
+
+浏览器半区每个 UTC 日向 dsh-market.com 发送一次匿名安装心跳：仅含一个 localStorage 随机 ID 与本包名，无其他数据。服务端只存储该 ID 的加盐哈希，不存 IP，且只暴露聚合计数。完整契约见 [docs/telemetry.md](../../docs/telemetry.md)。

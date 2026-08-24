@@ -31,6 +31,10 @@ th { background: #f9fafb; }
 <tr><td>GET</td><td><code>/api/stats</code></td><td>每类（skin / pet / plugin）每个资产的投票数</td><td>200</td></tr>
 <tr><td>POST</td><td><code>/api/like</code></td><td>点赞 / 取消点赞（每设备一票，Turnstile 校验），字段：<code>kind</code>、<code>asset_id</code>、<code>device_fp</code>、<code>turnstile_token</code>、<code>unlike</code></td><td>200 / 400 / 403</td></tr>
 <tr><td>GET</td><td><code>/api/turnstile/challenge</code></td><td>供市场卡片使用的 Turnstile 挑战页面</td><td>200</td></tr>
+<tr><td>POST</td><td><code>/api/telemetry/event</code></td><td>匿名使用统计上报（站点 pageview / 插件心跳，条目含 name/version/channel））。仅存储客户端随机 ID 的加盐哈希、UTC 日期与条目名，不存 IP</td><td>200 / 400</td></tr>
+<tr><td>GET</td><td><code>/api/telemetry/summary?days=N</code></td><td>UV/PV 聚合摘要（仅计数，永不暴露原始事件）。配置 <code>TELEMETRY_READ_KEY</code> 后需携带 <code>x-telemetry-key</code> 头或 <code>?key=</code> 参数</td><td>200 / 403</td></tr>
+<tr><td>GET</td><td><code>/api/npm-badge/downloads</code></td><td>Shields 端点徽章：聚合包新旧两个 npm 名的月下载量合计</td><td>200</td></tr>
+<tr><td>GET</td><td><code>/api/npm-badge/version</code></td><td>Shields 端点徽章：聚合包新旧两个 npm 名中的最新版本</td><td>200</td></tr>
 <tr><td>GET</td><td><code>/api/skin-center/v2/skins/{skinId}/{asset}</code></td><td>皮肤资产：<code>stylesheet</code>、<code>patches</code>、<code>hooks.mjs</code>、<code>assets/*</code>、<code>preview/*</code></td><td>200 / 404</td></tr>
 </tbody>
 </table>

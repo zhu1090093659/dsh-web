@@ -1,6 +1,6 @@
 /**
- * Remote update support for the dsh-web-ui family — host half. Detects the
- * installed aggregate package (@linxin666/dsh-web-ui-all), or the directly
+ * Remote update support for the dsh-web family — host half. Detects the
+ * installed aggregate package (@linxin666/dsh-web-all), or the directly
  * installed family packages when the aggregate is absent, probes npm for newer
  * releases, and runs `pnpm update --latest` inside the owning dsh profile.
  *
@@ -16,14 +16,20 @@ import { spawn } from 'node:child_process'
 /** npm registry base used for version probes. */
 export const NPM_REGISTRY = 'https://registry.npmjs.org'
 
-/** The family scope every dsh-web-ui package is published under. */
+/** The family scope every dsh-web package is published under. */
 export const FAMILY_SCOPE = '@linxin666/'
 
 /** The aggregate package that is the canonical update entry point. */
-export const AGGREGATE_PACKAGE = '@linxin666/dsh-web-ui-all'
+export const AGGREGATE_PACKAGE = '@linxin666/dsh-web-all'
 
 /** Fallback anchor: this plugin's own package when the aggregate is absent. */
 export const SELF_PACKAGE = '@linxin666/dsh-remote-web-ui'
+
+/** GitHub repository used to surface human-readable release notes. */
+export const UPDATE_RELEASE_REPO = 'zhu1090093659/dsh-web'
+
+/** Release-notes cache freshness window (host process). */
+export const RELEASE_NOTES_CACHE_TTL_MS = 10 * 60_000
 
 /** A profile manifest `name` prefix (e.g. `dsh-profile-web`). */
 const PROFILE_NAME_PREFIX = 'dsh-profile-'
@@ -168,6 +174,18 @@ export interface UpdatePackageStatus {
   outdated: boolean
 }
 
+/** Structured release-note sections shown in the update panel. */
+export interface UpdateReleaseNotes {
+  /** Version the notes describe. */
+  version: string
+  /** New feature bullets. */
+  features: string[]
+  /** Bug-fix bullets. */
+  fixes: string[]
+  /** Other-change bullets. */
+  other: string[]
+}
+
 /** The full update-status snapshot served to the browser half. */
 export interface UpdateStatus {
   /** npm = registry-managed (updatable); link = local dev install; missing = no anchor package. */
@@ -180,6 +198,8 @@ export interface UpdateStatus {
   packages: UpdatePackageStatus[]
   /** True when any package has a newer npm release. */
   outdated: boolean
+  /** Human-readable release notes for the target release, when available. */
+  notes?: UpdateReleaseNotes
   /** Whole-check failure (e.g. registry unreachable). */
   error?: string
 }
@@ -192,6 +212,8 @@ export interface UpdateCheckDeps {
   resolve(specifier: string): string | undefined
   /** Probe one package's latest npm version; undefined on failure. */
   fetchLatest(name: string): Promise<string | undefined>
+  /** Fetch structured release notes for one target version, when available. */
+  fetchReleaseNotes?(version: string): Promise<UpdateReleaseNotes | undefined>
 }
 
 /**
@@ -313,6 +335,92 @@ export async function fetchLatestVersion(
   }
 }
 
+/** Normalize one release-note bullet. */
+function cleanNoteItem(text: string): string {
+  // Keep the visible label and drop Markdown link targets; issue references
+  // become plain #123 because the panel has no Markdown renderer.
+  return text.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/^[-*]\s+/, '').trim()
+}
+
+/** Determine the section kind for a Markdown heading line. */
+function noteSectionOf(line: string): keyof Pick<UpdateReleaseNotes, 'features' | 'fixes' | 'other'> | undefined {
+  const heading = /^#{1,6}\s+(.+)$/.exec(line.trim())
+  if (heading === null) return undefined
+  const title = heading[1].replace(/[:：].*$/, '').trim().toLowerCase()
+  if (title === '新功能' || title === 'new features') return 'features'
+  if (title === '修复' || title === 'bug fixes' || title === 'bugfixes') return 'fixes'
+  if (title === '其他改动' || title === 'other changes') return 'other'
+  return undefined
+}
+
+/**
+ * Parse the GitHub Release body into the three conventional sections.
+ *
+ * The committed release notes are bilingual: Chinese is the default view and
+ * English lives inside a `<details>` block. Prefer the Chinese sections when
+ * present and fall back to the whole body for English-only releases. Bullets
+ * are escaped as plain text for the panel (no Markdown renderer).
+ */
+function parseReleaseNotesSource(version: string, source: string): UpdateReleaseNotes | undefined {
+  const notes: UpdateReleaseNotes = { version, features: [], fixes: [], other: [] }
+  let current: keyof Pick<UpdateReleaseNotes, 'features' | 'fixes' | 'other'> | undefined
+  for (const rawLine of source.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    const section = noteSectionOf(line)
+    if (section !== undefined) {
+      current = section
+      continue
+    }
+    if (current === undefined || !/^-\s+/.test(line)) continue
+    const item = cleanNoteItem(line)
+    if (item !== '') notes[current].push(item)
+  }
+  if (notes.features.length === 0 && notes.fixes.length === 0 && notes.other.length === 0) return undefined
+  return notes
+}
+
+export function parseReleaseNotesBody(version: string, body: string): UpdateReleaseNotes | undefined {
+  // The committed release notes put Chinese in the default view and English in
+  // a <details> block. Parse only the default view first, then fall back to
+  // the full body for English-only releases.
+  return parseReleaseNotesSource(version, body.split('<details>')[0] ?? body)
+    ?? parseReleaseNotesSource(version, body)
+}
+
+/**
+ * Fetch and parse the GitHub Release for one `dsh-web` version.
+ * @param version - the npm release version (without the `v` prefix).
+ * @param fetchImpl - injected fetch; global `fetch` in the host.
+ * @param timeoutMs - hard timeout for the GitHub API probe.
+ * @returns structured notes, or undefined when unavailable.
+ */
+export async function fetchGitHubReleaseNotes(
+  version: string,
+  fetchImpl: (url: string, init?: RequestInit) => Promise<{ ok: boolean; json(): Promise<unknown> }> = fetch,
+  timeoutMs = 10_000,
+): Promise<UpdateReleaseNotes | undefined> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => { controller.abort() }, timeoutMs)
+  try {
+    const response = await fetchImpl(
+      `https://api.github.com/repos/${UPDATE_RELEASE_REPO}/releases/tags/v${version}`,
+      {
+        headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-web-update' },
+        signal: controller.signal,
+      },
+    )
+    if (!response.ok) return undefined
+    const body = await response.json()
+    if (typeof body !== 'object' || body === null) return undefined
+    const text = (body as Record<string, unknown>).body
+    return typeof text === 'string' ? parseReleaseNotesBody(version, text) : undefined
+  } catch {
+    return undefined
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /**
  * Sentinel for an installed version that could not be read (missing manifest
  * or resolve failure). It is a real-looking version so `checkUpdates` can
@@ -392,12 +500,17 @@ export async function checkUpdates(deps: UpdateCheckDeps): Promise<UpdateStatus>
   // Registry unreachable: every probe failed — report the outage distinctly
   // instead of a misleading "all up to date" (the panel needs the reason).
   const error = probeFailures === names.length && names.length > 0 ? 'registry-unreachable' : undefined
+  const targetVersion = packages.find(packageStatus => packageStatus.latest !== undefined)?.latest
+  const notes = targetVersion !== undefined && deps.fetchReleaseNotes !== undefined
+    ? await deps.fetchReleaseNotes(targetVersion).catch(() => undefined)
+    : undefined
   return {
     mode: linked ? 'link' : 'npm',
     profileName: profile.name,
     anchor,
     packages,
     outdated: packages.some(packageStatus => packageStatus.outdated),
+    ...(notes !== undefined ? { notes } : {}),
     ...(error !== undefined ? { error } : {}),
   }
 }

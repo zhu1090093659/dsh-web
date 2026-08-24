@@ -3,7 +3,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { SessionModels } from '@deepseek-ai/dsh-host-apiproxy/api/sessions'
-import { ChatView, MAX_TAIL_BUFFER_EVENTS } from './ChatView.tsx'
+import { ChatView, MAX_TAIL_BUFFER_EVENTS, LONG_TEXT_LIMIT } from './ChatView.tsx'
 import { type SessionView } from './App.tsx'
 import type { HistoryPage } from '../api.ts'
 import type { WireEvent } from '../messages.ts'
@@ -725,3 +725,92 @@ describe('ChatView stop button (#1041)', () => {
     expect(await screen.findByText(/cancel exploded/)).toBeTruthy()
   })
 })
+
+describe('ChatView message visibility and long text folding (#1065)', () => {
+  const toolOnlyEvents = (): Array<{ event: WireEvent }> => [
+    makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: '查询文件' }] }, 0),
+    makeEntry('assistant/message', {
+      turn: 0,
+      step: 0,
+      message: { id: 'a-1', role: 'assistant', content: [] },
+    }, 1),
+    makeEntry('tool/call', { turn: 0, step: 0, callId: 'c1', name: 'read_file', arguments: '{"path":"/a"}' }, 2),
+  ]
+
+  it('hides assistant message completely (no air bubble) when only tool calls exist and tool toggle is off', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage(toolOnlyEvents()))
+    const { container } = render(<ChatView session={session} onBack={() => {}} />)
+
+    expect(await screen.findByText('查询文件')).toBeTruthy()
+    // By default showToolCalls is true, tool disclosure is visible
+    expect(await screen.findByRole('button', { name: /工具/ })).toBeTruthy()
+
+    // Turn off tool-calls toggle
+    fireEvent.click(screen.getByRole('button', { name: /显示/ }))
+    const toolSwitch = await screen.findByRole('switch', { name: '工具调用' })
+    fireEvent.click(toolSwitch)
+
+    // The tool disclosure is gone, and the entire assistant message bubble is not rendered (no air bubble)
+    expect(screen.queryByRole('button', { name: /工具/ })).toBeNull()
+    const msgElements = container.querySelectorAll('.chat-msg')
+    expect(msgElements.length).toBe(1)
+    expect(msgElements[0]?.classList.contains('chat-msg-user')).toBe(true)
+  })
+
+  it('renders failed tag even if assistant message has no text or reasoning', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage([
+      makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: '测试失败' }] }, 0),
+      makeEntry('assistant/message', {
+        turn: 0,
+        step: 0,
+        message: { id: 'a-1', role: 'assistant', content: [] },
+      }, 1),
+      makeEntry('turn/end', { turn: 0, reason: { kind: 'error', message: 'timeout' } }, 2),
+    ]))
+    render(<ChatView session={session} onBack={() => {}} />)
+
+    expect(await screen.findByText('测试失败')).toBeTruthy()
+    expect(await screen.findByText('本次回复失败')).toBeTruthy()
+  })
+
+  it('collapses terminal assistant text exceeding LONG_TEXT_LIMIT and toggles open/close', async () => {
+    const longText = 'A'.repeat(LONG_TEXT_LIMIT + 100)
+    loadHistoryMock.mockResolvedValue(historyPage([
+      makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: '生成长文本' }] }, 0),
+      makeEntry('assistant/message', {
+        turn: 0,
+        step: 0,
+        message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: longText }] },
+      }, 1),
+    ]))
+    const { container } = render(<ChatView session={session} onBack={() => {}} />)
+
+    expect(await screen.findByText('生成长文本')).toBeTruthy()
+    const toggleButton = await screen.findByRole('button', { name: new RegExp(`展开全文（${LONG_TEXT_LIMIT + 100} 字）`) })
+    expect(toggleButton).toBeTruthy()
+    expect(container.querySelector('.chat-md-collapsed')).not.toBeNull()
+
+    // Expand
+    fireEvent.click(toggleButton)
+    expect(await screen.findByRole('button', { name: '收起' })).toBeTruthy()
+    expect(container.querySelector('.chat-md-collapsed')).toBeNull()
+  })
+
+  it('does not collapse terminal assistant text within LONG_TEXT_LIMIT', async () => {
+    const shortText = 'B'.repeat(LONG_TEXT_LIMIT)
+    loadHistoryMock.mockResolvedValue(historyPage([
+      makeEntry('user/message', { id: 'u-1', role: 'user', content: [{ type: 'text', text: '生成中等文本' }] }, 0),
+      makeEntry('assistant/message', {
+        turn: 0,
+        step: 0,
+        message: { id: 'a-1', role: 'assistant', content: [{ type: 'text', text: shortText }] },
+      }, 1),
+    ]))
+    const { container } = render(<ChatView session={session} onBack={() => {}} />)
+
+    expect(await screen.findByText('生成中等文本')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /展开全文/ })).toBeNull()
+    expect(container.querySelector('.chat-md-collapsed')).toBeNull()
+  })
+})
+

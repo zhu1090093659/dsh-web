@@ -30,6 +30,7 @@ import { bootSkinRuntime } from './runtime/boot.ts'
 import { PreviewCoordinator } from './preview-coordinator.ts'
 import { CustomThemeController } from './custom-theme-controller.ts'
 import { SKIN_CUSTOM_THEME_NS, type CustomThemeConfig } from '../core/custom-theme.ts'
+import { reportDailyHeartbeat } from './telemetry.ts'
 
 export type { SkinCenterComponentProps, SkinCenterInjected } from './SkinCenter.tsx'
 export { bootSkinRuntime } from './runtime/boot.ts'
@@ -47,7 +48,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 declare module '@deepseek-ai/cordis' {
   interface Context {
     /**
-     * Optional rc.6 compatibility binder provided by dsh-web-ui-settings;
+     * Optional rc.6 compatibility binder provided by dsh-web-settings;
      * absent when that group plugin is not installed, so callers fall back to
      * the official settings scope.
      */
@@ -59,12 +60,44 @@ declare module '@deepseek-ai/cordis' {
 /** Required services: slots + locale (plugin card), theme (preview toggle), settingsScope + its transport (background scrim), and workspaces (native directory picker for wallpaper folders). */
 export const inject = ['slots', 'locale', 'theme', 'settingsScope', 'connection', 'remote', 'workspaces']
 
+/** Self-report item for the install heartbeat. */
+const SELF_ITEM = [{ name: '@linxin666/dsh-client-ui-skin-center' }]
+
+/**
+ * Beat the install heartbeat (docs/telemetry.md), enriching it with the
+ * installed skin inventory (skin:<id> + version + channel) once the v2
+ * catalog answers. Offline or pre-boot the beat stays package-only.
+ */
+function beatHeartbeat(): void {
+  reportDailyHeartbeat(SELF_ITEM)
+  void fetch('/api/skin-center/v2/catalog')
+    .then((res) => (res.ok ? res.json() : null))
+    .then((catalog) => {
+      if (!catalog || !Array.isArray(catalog.skins)) return
+      const items = [...SELF_ITEM]
+      for (const skin of catalog.skins) {
+        const id = skin && skin.manifest && typeof skin.manifest.id === 'string' ? skin.manifest.id : ''
+        if (!id) continue
+        const item: { name: string; version?: string; channel?: 'market' | 'npm' | 'unknown' } = { name: 'skin:' + id }
+        if (typeof skin.manifest.version === 'string') item.version = skin.manifest.version
+        if (typeof skin.channel === 'string') item.channel = skin.channel
+        items.push(item)
+      }
+      reportDailyHeartbeat(items.slice(0, 64))
+    })
+    .catch(() => { /* offline or fenced: the package-only beat already went out */ })
+}
+
 /**
  * Register the skin-center dictionaries, the body scope attribute, and the
  * Skin Center as a first-level settings section.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  // Anonymous install heartbeat (docs/telemetry.md): one beat per browser per
+  // UTC day, package name plus installed-skin inventory, silent failure.
+  beatHeartbeat()
+
   ctx.effect(() => {
     try {
       return ctx.locale.register(NS, { zh, en })

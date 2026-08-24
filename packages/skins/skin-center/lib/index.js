@@ -1063,18 +1063,21 @@ const DEFAULT_SKIN_ID = "blue-fantasy";
 function defaultActiveStatePath() {
 	return join(userSkinsDir(), "..", "skin-center-active.json");
 }
-/** Read the whole state document; unreadable data yields all-null fields. */
+/** Read the whole state document; unreadable data yields all-null fields and initialized=false. */
 function readActiveState(path) {
 	try {
 		const parsed = JSON.parse(readFileSync(path, "utf8"));
+		const hasInitialized = typeof parsed.initialized === "boolean" ? parsed.initialized : typeof parsed === "object" && parsed !== null && ("active" in parsed || "background" in parsed);
 		return {
 			active: typeof parsed.active === "string" ? parsed.active : null,
-			background: parsed.background === void 0 || parsed.background === null ? null : normalizeSkinBackground(parsed.background)
+			background: parsed.background === void 0 || parsed.background === null ? null : normalizeSkinBackground(parsed.background),
+			initialized: hasInitialized
 		};
 	} catch {
 		return {
 			active: null,
-			background: null
+			background: null,
+			initialized: false
 		};
 	}
 }
@@ -1096,7 +1099,10 @@ function writeActiveState(path, update) {
 	mkdirSync(dir, { recursive: true });
 	const tmpDir = mkdtempSync(join(dir, `${basename(path)}.tmp-`));
 	const tmp = join(tmpDir, basename(path));
-	const document = { active };
+	const document = {
+		active,
+		initialized: true
+	};
 	if (background !== null) document.background = background;
 	try {
 		writeFileSync(tmp, JSON.stringify(document, null, 2) + "\n", {
@@ -1126,7 +1132,8 @@ function writeActiveSelection(path, id) {
 * @returns whether the seed wrote the selection.
 */
 function seedDefaultActiveSkin(path, find) {
-	if (readActiveSelection(path) !== null) return false;
+	const state = readActiveState(path);
+	if (state.initialized || state.active !== null) return false;
 	if (!find("blue-fantasy")) return false;
 	writeActiveSelection(path, DEFAULT_SKIN_ID);
 	return true;
@@ -1988,7 +1995,8 @@ function makeSkinCenterV2Routes(deps = {}) {
 			skins: catalog.skins.filter((s) => s.origin === "user" || shippedSet.has(s.manifest.id)).map((s) => ({
 				origin: s.origin,
 				warnings: s.warnings,
-				manifest: s.manifest
+				manifest: s.manifest,
+				channel: s.origin === "user" ? existsSync(join(s.dir, "dsh-market.provenance.json")) ? "market" : "unknown" : "npm"
 			})),
 			diagnostics: catalog.diagnostics
 		});
@@ -8680,7 +8688,7 @@ function makeWeRoutes(deps) {
 //#region src/mount-once.ts
 /**
 * Host single-instance guard shared by the plugin family. The family bundle
-* (dsh-web-ui-all / dsh-skins) namespaces every child row id (web-ui-*), so
+* (dsh-web-all / dsh-skins) namespaces every child row id (web-ui-*), so
 * the loader accepts a standalone install of the same package side by side;
 * without this guard the second instance would still re-register the same
 * webserver routes, tools, settings namespaces, and system-prompt sections
@@ -8693,7 +8701,7 @@ function makeWeRoutes(deps) {
 * `ctx.effect` runs its callback immediately and treats the callback's
 * return value as the fiber disposer, so the unmarker is returned, not run.
 */
-const MOUNTED = Symbol.for("dsh-web-ui.mounted-plugins");
+const MOUNTED = Symbol.for("dsh-web.mounted-plugins");
 function mountedSet() {
 	const registry = globalThis;
 	return registry[MOUNTED] ??= /* @__PURE__ */ new Set();

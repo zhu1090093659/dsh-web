@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Verify every family package version matches the release tag. The tag is
- * the single version source of truth for the dsh-web-ui release pipeline:
+ * the single version source of truth for the dsh-web release pipeline:
  * a mismatch (e.g. a package bumped out of band, or a forgotten bump) fails
  * the publish before anything reaches npm.
  *

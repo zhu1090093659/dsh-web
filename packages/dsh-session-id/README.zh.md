@@ -34,8 +34,8 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-session-id@latest
 ### 从仓库安装（开发调试）
 
 ```sh
-git clone https://github.com/zhu1090093659/dsh-web-ui.git
-cd dsh-web-ui
+git clone https://github.com/zhu1090093659/dsh-web.git
+cd dsh-web
 pnpm install
 pnpm -r build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-session-id
@@ -56,6 +56,10 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-session-id
 - 需要声明了 `sidebar.footer.action` 席位的 DSH Web 外壳（0.1.0-rc.8 及更新版本）；
   旧版外壳上入口不会渲染。
 - 只读查看器：只展示与复制 ID，不打开或管理会话。
+
+## 数据遥测
+
+浏览器半区每个 UTC 日向 dsh-market.com 发送一次匿名安装心跳：仅含一个 localStorage 随机 ID 与本包名，无其他数据。服务端只存储该 ID 的加盐哈希，不存 IP，且只暴露聚合计数。完整契约见 [docs/telemetry.md](../../docs/telemetry.md)。
 
 ## 许可证
 

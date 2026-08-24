@@ -111,7 +111,7 @@ family / 插件区域：
 | `git-graph` | dsh-git-graph | slot entry id `git-graph`；`[data-gitgraph-chip-anchor]` / `[data-gitgraph-dialog]` |
 | `pet` | dsh-pet | `[data-dsh-pet-root]`；一级设置分区 settings.section id `pet`（只列内置与已安装宠物） |
 | `remote-web-ui` | dsh-remote-web-ui | slot entry id `remote-web-ui` |
-| `web-ui-settings` | dsh-web-ui-settings | settings.section id `web-ui-plugins` |
+| `web-ui-settings` | dsh-web-settings | settings.section id `web-ui-plugins` |
 | `skill-explorer` | dsh-skill-explorer | `[data-dsh-skill-explorer-view]` / `[data-dsh-skill-explorer-entry]` |
 | `doctor` | dsh-doctor | web-ui.plugin.item 槽 entry id `doctor`（设置 → Web UI 插件 → Doctor 卡片）；卡片内 `[data-dsh-plugin="doctor"]` |
 | `aionui-panel` | dsh-aionui-panel（停更） | dock entry id `aionui-*` |

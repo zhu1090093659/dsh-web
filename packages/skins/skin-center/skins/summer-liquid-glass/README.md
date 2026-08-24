@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-A dsh-web-ui v2 skin: a Japanese summer-festival backdrop under an iOS 26
+A dsh-web v2 skin: a Japanese summer-festival backdrop under an iOS 26
 liquid-glass surface. Ice-cyan interaction, rose selection, amber running, and
 yellow-green success over a deep-night palette.
 

@@ -23,10 +23,10 @@ describe('diffLayer', () => {
   })
 
   it('treats a removed bundle like a removed entry', () => {
-    const before = snap({}, ['@linxin666/dsh-web-ui-all'])
+    const before = snap({}, ['@linxin666/dsh-web-all'])
     const after = snap({}, [])
     expect(diffLayer(before, after)).toEqual([
-      { id: '@linxin666/dsh-web-ui-all', from: 'enabled', to: 'uninstalled' },
+      { id: '@linxin666/dsh-web-all', from: 'enabled', to: 'uninstalled' },
     ])
   })
 

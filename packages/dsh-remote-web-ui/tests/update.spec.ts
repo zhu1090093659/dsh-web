@@ -11,9 +11,11 @@ import {
   checkUpdates,
   compareVersions,
   familyChildren,
+  fetchGitHubReleaseNotes,
   fetchLatestVersion,
   findProfile,
   isLinkedSpec,
+  parseReleaseNotesBody,
   parseSemver,
   resolveAnchorManifest,
   resolveUpdateTarget,
@@ -52,7 +54,7 @@ function npmFixture(anchorVersion = "0.1.10", childVersion = "0.1.10"): string {
     private: true,
     dependencies: { [AGGREGATE_PACKAGE]: "^0.1.10" },
   })
-  const anchorDir = join(profileDir, 'node_modules', '@linxin666', 'dsh-web-ui-all')
+  const anchorDir = join(profileDir, 'node_modules', '@linxin666', 'dsh-web-all')
   writeManifest(anchorDir, {
     name: AGGREGATE_PACKAGE,
     version: anchorVersion,
@@ -158,7 +160,7 @@ describe("findProfile", () => {
   })
   it("returns undefined outside a profile", () => {
     const root = makeFixture()
-    const dir = join(root, 'checkout', 'packages', 'dsh-web-ui-all')
+    const dir = join(root, 'checkout', 'packages', 'dsh-web-all')
     writeManifest(dir, { name: AGGREGATE_PACKAGE, version: "0.1.10" })
     expect(findProfile(join(dir, "package.json"))).toBeUndefined()
   })
@@ -194,6 +196,53 @@ describe("resolveAnchorManifest", () => {
   })
 })
 
+describe("release notes", () => {
+  it("parses the Chinese release body into features, fixes, and other changes", () => {
+    const notes = parseReleaseNotesBody("0.1.11", `本次发布包含 1 项新功能、1 项修复、1 项其他改动。
+
+### 新功能
+
+- [market] add a new catalog page ([#123](https://github.com/zhu1090093659/dsh-web/issues/123))
+
+### 修复
+
+- [doctor] fix policy sync
+
+### 其他改动
+
+- [docs] update release notes
+
+<details>
+<summary>English</summary>
+
+### New Features
+
+- ignored English feature
+
+</details>`)
+    expect(notes).toEqual({
+      version: "0.1.11",
+      features: ["[market] add a new catalog page (#123)"],
+      fixes: ["[doctor] fix policy sync"],
+      other: ["[docs] update release notes"],
+    })
+  })
+
+  it("fetches and parses the GitHub Release body", async () => {
+    let requested = ""
+    const notes = await fetchGitHubReleaseNotes("0.1.11", async (url, init) => {
+      requested = url
+      expect(init?.headers).toMatchObject({ accept: "application/vnd.github+json" })
+      return {
+        ok: true,
+        json: async () => ({ body: "### 新功能\n- Add feature\n" }),
+      }
+    })
+    expect(requested).toBe("https://api.github.com/repos/zhu1090093659/dsh-web/releases/tags/v0.1.11")
+    expect(notes).toEqual({ version: "0.1.11", features: ["Add feature"], fixes: [], other: [] })
+  })
+})
+
 describe("checkUpdates", () => {
   it("checks every directly installed family package when the aggregate is absent", async () => {
     const { anchor } = standaloneFixture()
@@ -222,7 +271,7 @@ describe("checkUpdates", () => {
         if (specifier === "@linxin666/dsh-ssh/package.json") {
           return join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-ssh", "package.json")
         }
-        return join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-ui-all", "package.json")
+        return join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-all", "package.json")
       },
       fetchLatest: async (name) => name === AGGREGATE_PACKAGE ? "0.1.11" : "0.1.10",
     })
@@ -235,11 +284,35 @@ describe("checkUpdates", () => {
       { name: "@linxin666/dsh-ssh", current: "0.1.9", latest: "0.1.10", outdated: true },
     ])
   })
+  it("includes structured release notes when the seam returns them", async () => {
+    const anchor = npmFixture("0.1.10", "0.1.10")
+    const status = await checkUpdates({
+      anchorManifestPath: anchor,
+      resolve: () => join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-all", "package.json"),
+      fetchLatest: async () => "0.1.11",
+      fetchReleaseNotes: async version => ({ version, features: ["new"], fixes: ["fix"], other: ["other"] }),
+    })
+    expect(status.outdated).toBe(true)
+    expect(status.notes).toEqual({ version: "0.1.11", features: ["new"], fixes: ["fix"], other: ["other"] })
+  })
+
+  it("keeps the status usable when release-note fetching fails", async () => {
+    const anchor = npmFixture("0.1.10", "0.1.10")
+    const status = await checkUpdates({
+      anchorManifestPath: anchor,
+      resolve: () => join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-all", "package.json"),
+      fetchLatest: async () => "0.1.11",
+      fetchReleaseNotes: async () => { throw new Error("github unavailable") },
+    })
+    expect(status.outdated).toBe(true)
+    expect(status.notes).toBeUndefined()
+  })
+
   it("reports up-to-date when versions match", async () => {
     const anchor = npmFixture("0.1.10", "0.1.10")
     const status = await checkUpdates({
       anchorManifestPath: anchor,
-      resolve: () => join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-ui-all", "package.json"),
+      resolve: () => join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-all", "package.json"),
       fetchLatest: async () => "0.1.10",
     })
     expect(status.mode).toBe("npm")
@@ -250,9 +323,9 @@ describe("checkUpdates", () => {
     const profileDir = join(root, 'profiles', 'web')
     writeManifest(join(profileDir), {
       name: "dsh-profile-web",
-      dependencies: { [AGGREGATE_PACKAGE]: "link:../../../code/dsh-web-ui/packages/dsh-web-ui-all" },
+      dependencies: { [AGGREGATE_PACKAGE]: "link:../../../code/dsh-web-ui/packages/dsh-web-all" },
     })
-    const anchorDir = join(profileDir, 'node_modules', '@linxin666', 'dsh-web-ui-all')
+    const anchorDir = join(profileDir, 'node_modules', '@linxin666', 'dsh-web-all')
     writeManifest(anchorDir, { name: AGGREGATE_PACKAGE, version: "0.1.10", dependencies: {} })
     const status = await checkUpdates({
       anchorManifestPath: join(anchorDir, "package.json"),
@@ -285,7 +358,7 @@ describe("checkUpdates", () => {
     const anchor = npmFixture()
     const status = await checkUpdates({
       anchorManifestPath: anchor,
-      resolve: () => join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-ui-all", "package.json"),
+      resolve: () => join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-all", "package.json"),
       fetchLatest: async () => undefined,
     })
     expect(status.error).toBe("registry-unreachable")
@@ -331,7 +404,7 @@ describe("resolveUpdateTarget", () => {
       name: "dsh-profile-web",
       dependencies: { [AGGREGATE_PACKAGE]: "link:../x" },
     })
-    const anchorDir = join(profileDir, 'node_modules', '@linxin666', 'dsh-web-ui-all')
+    const anchorDir = join(profileDir, 'node_modules', '@linxin666', 'dsh-web-all')
     writeManifest(anchorDir, { name: AGGREGATE_PACKAGE, version: "0.1.10" })
     expect(resolveUpdateTarget({ anchorManifestPath: join(anchorDir, "package.json") })).toEqual({ error: "link" })
   })
@@ -607,7 +680,7 @@ describe("runUpdateVerified", () => {
         if (specifier === "@linxin666/dsh-ssh/package.json") {
           return join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-ssh", "package.json")
         }
-        return join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-ui-all", "package.json")
+        return join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-all", "package.json")
       },
       fetchLatest,
     }
@@ -732,7 +805,7 @@ describe("runUpdateVerified", () => {
     })
     // pnpm actually updates the installed anchor on disk (the gate allowed a
     // partial move to 0.1.13) before it exits 0.
-    writeManifest(join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-ui-all"), {
+    writeManifest(join(fixture!, "profiles", "web", "node_modules", "@linxin666", "dsh-web-all"), {
       name: AGGREGATE_PACKAGE,
       version: "0.1.13",
       dependencies: { "@linxin666/dsh-ssh": "^0.1.10" },
@@ -748,7 +821,7 @@ describe("runUpdateVerified", () => {
     // there is no registry comparison to trust, so the run must not claim
     // success.
     const root = makeFixture()
-    const anchorDir = join(root, 'checkout', 'node_modules', '@linxin666', 'dsh-web-ui-all')
+    const anchorDir = join(root, 'checkout', 'node_modules', '@linxin666', 'dsh-web-all')
     writeManifest(anchorDir, { name: AGGREGATE_PACKAGE, version: "0.1.10", dependencies: {} })
     const child = new FakeChild(0)
     const spawnImpl = (() => child) as never

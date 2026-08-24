@@ -1,15 +1,15 @@
 ---
 name: community-plugin-developer
-description: Develop a DSH community plugin and register it in the dsh-web-ui Community Plugins index — author the plugin in the contributor's own repository following the official cordis bundle standard, add its entry to packages/dsh-community-plugins/community.json, regenerate the index with scripts/community-index, rebuild and test the community-plugins package, and submit the PR. Use when the user asks to develop a community plugin (社区插件), register/index/接入 a community plugin into the dsh web GUI, update community.json, or asks how community plugins get listed in the settings page.
-whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/接入社区插件索引、更新 community.json，或询问社区插件如何进入 dsh web GUI 的「社区插件」列表。不适用于：皮肤（skin-developer skill）、宠物（pet-developer skill）、dsh-web-ui 家族插件本身的开发（走 packages/AGENTS.md 与 scripts/dsh-plugin-new 的常规插件流程）。
+description: Develop a DSH community plugin and register it in the dsh-web Community Plugins index — author the plugin in the contributor's own repository following the official cordis bundle standard, add its entry to packages/dsh-community-plugins/community.json, regenerate the index with scripts/community-index, rebuild and test the community-plugins package, and submit the PR. Use when the user asks to develop a community plugin (社区插件), register/index/接入 a community plugin into the dsh web GUI, update community.json, or asks how community plugins get listed in the settings page.
+whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/接入社区插件索引、更新 community.json，或询问社区插件如何进入 dsh web GUI 的「社区插件」列表。不适用于：皮肤（skin-developer skill）、宠物（pet-developer skill）、dsh-web 家族插件本身的开发（走 packages/AGENTS.md 与 scripts/dsh-plugin-new 的常规插件流程）。
 ---
 
-# 社区插件开发者（dsh-web-ui 社区插件索引）
+# 社区插件开发者（dsh-web 社区插件索引）
 
 本技能覆盖两条路径：
 
 - **路径 A**：社区贡献者在**自己的仓库**里开发一个 DSH 插件（官方 cordis bundle 标准）；
-- **路径 B**：把插件**登记进 dsh-web-ui 的社区插件索引**（`packages/dsh-community-plugins/community.json`），
+- **路径 B**：把插件**登记进 dsh-web 的社区插件索引**（`packages/dsh-community-plugins/community.json`），
   出现在 GUI 设置页的「社区插件」分区。
 
 ## 0. 事实速览（先读）
@@ -30,7 +30,7 @@ whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/�
 
 ## 1. 路径 A：在自己的仓库开发社区插件
 
-社区插件的实现完全在贡献者自己的仓库完成，dsh-web-ui 只链接它。形态与皮肤包一致的
+社区插件的实现完全在贡献者自己的仓库完成，dsh-web 只链接它。形态与皮肤包一致的
 官方独立 bundle 标准（对照 DSH `docs/user/develop/basic/publish.md`，turtle-ui 为范例）：
 
 1. `package.json` 声明 `dsh.bundle.patch` → `cordis.patch.yml`，以及 `dsh.client`
@@ -47,8 +47,8 @@ whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/�
 `docs/plugins.md`「设置页插件配置」；发布到 npm 用自己的 scope（参考社区条目里的
 `npm` 字段写法），用户即可 `dsh plugin add` 安装。
 
-> 若插件要做进 dsh-web-ui 家族（成为官方聚合成员而非社区索引条目），走
-> `node scripts/dsh-plugin-new <name>` 脚手架 + `packages/dsh-web-ui-all/aggregate.yml`
+> 若插件要做进 dsh-web 家族（成为官方聚合成员而非社区索引条目），走
+> `node scripts/dsh-plugin-new <name>` 脚手架 + `packages/dsh-web-all/aggregate.yml`
 > 注册（patchFrom + deps）+ `node scripts/aggregate.mjs` 重生成，门禁
 > `pnpm typecheck && pnpm test && pnpm docs:check`。
 

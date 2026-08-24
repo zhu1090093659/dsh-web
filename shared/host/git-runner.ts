@@ -9,7 +9,7 @@
  * self-contained (shared/ has no cordis dependency): any context whose
  * `subprocess` satisfies SubprocessServiceLike works, which the plugin
  * contexts do.
- * @module dsh-web-ui-shared/host/git-runner
+ * @module dsh-web-shared/host/git-runner
  */
 
 /** One finished git invocation. */

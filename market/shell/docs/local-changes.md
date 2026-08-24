@@ -6,7 +6,7 @@ Every local change is marked with a `market/tryon:` comment in the file it touch
 ## 1. Dependency cohort: official @deepseek-ai/* -> 0.1.1-rc.2
 
 `package.json` pins every `@deepseek-ai/dsh*` dependency to the version the
-dsh-web-ui monorepo (and this machine's dsh) runs: `0.1.1-rc.2`. Two packages
+dsh-web monorepo (and this machine's dsh) runs: `0.1.1-rc.2`. Two packages
 have no such release and stay at `0.1.0-rc.7` (`dsh-client-schema-form`,
 `dsh-client-web-react`); the landlock native addons moved to
 `optionalDependencies` so macOS installs succeed (CI on Linux still gets them).

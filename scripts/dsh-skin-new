@@ -2,7 +2,7 @@
 'use strict'
 
 /**
- * dsh-skin-new — scaffold a new skin for the dsh-web-ui skin collection
+ * dsh-skin-new — scaffold a new skin for the dsh-web skin collection
  * (v2 pure asset directories, issue #506).
  *
  * Generates packages/skins/skin-center/skins/<name>/: a v2 skin.json
@@ -43,7 +43,7 @@ function skinJson(name, order) {
     name: '<编辑：中文名>',
     nameEn: displayName(name),
     version: '0.1.0',
-    author: 'dsh-web-ui',
+    author: 'dsh-web',
     tagline: '<编辑：一句话卖点>',
     description: '<编辑：长一点的介绍>',
     tags: [name, 'new'],

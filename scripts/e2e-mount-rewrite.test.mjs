@@ -32,7 +32,7 @@ function makeWorkspace(root) {
 
 function makeTarballPkg(dir) {
   return writePkg(dir, {
-    name: '@linxin666/dsh-web-ui-all',
+    name: '@linxin666/dsh-web-all',
     version: '9.9.9',
     dependencies: {
       '@linxin666/dsh-a': '0.1.0',
@@ -188,7 +188,7 @@ test('auto mode: unpublished private workspace dep fails loudly (never publishab
     private: true,
   })
   const pkgPath = writePkg(path.join(tmp, 'tarball'), {
-    name: '@linxin666/dsh-web-ui-all',
+    name: '@linxin666/dsh-web-all',
     version: '9.9.9',
     dependencies: { '@linxin666/dsh-private': '0.1.0' },
   })
@@ -257,7 +257,7 @@ test('auto mode: nested unpublished family deps rewrite inside the packed tarbal
     dependencies: { '@linxin666/dsh-skin-x': '0.1.0' },
   })
   const pkgPath = writePkg(path.join(tmp, 'tarball'), {
-    name: '@linxin666/dsh-web-ui-all',
+    name: '@linxin666/dsh-web-all',
     version: '9.9.9',
     dependencies: {
       '@linxin666/dsh-a': '0.1.0',

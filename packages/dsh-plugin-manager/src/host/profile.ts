@@ -152,6 +152,32 @@ export async function stripProfileBundles(packageJsonPath: string, names: readon
 }
 
 /**
+ * Move one bundle entry to a position in `dsh.profile.bundles`, preserving
+ * every unrelated entry. The plugin-manager migration uses this to keep the
+ * renamed aggregate at the same layer position it occupied before the
+ * remove/update cycle instead of leaving the CLI append at the end.
+ * @param packageJsonPath - absolute path of the profile manifest.
+ * @param name - bundle entry to move.
+ * @param index - desired zero-based position.
+ */
+export async function reorderProfileBundle(packageJsonPath: string, name: string, index: number): Promise<void> {
+  const text = await readFile(packageJsonPath, 'utf8')
+  const parsed = JSON.parse(stripBom(text)) as { dsh?: { profile?: { bundles?: unknown } } }
+  const profile = parsed.dsh?.profile
+  if (profile === undefined || !Array.isArray(profile.bundles)) return
+  const bundles = profile.bundles.filter((entry): entry is string => typeof entry === 'string')
+  const current = bundles.indexOf(name)
+  if (current >= 0) bundles.splice(current, 1)
+  const target = Math.max(0, Math.min(index, bundles.length))
+  bundles.splice(target, 0, name)
+  profile.bundles = bundles
+  await copyFile(packageJsonPath, `${packageJsonPath}.bak-plugin-manager`).catch(() => {})
+  await writeFile(`${packageJsonPath}.tmp`, `${JSON.stringify(parsed, null, 2)}
+`, { mode: 0o600 })
+  await rename(`${packageJsonPath}.tmp`, packageJsonPath)
+}
+
+/**
  * Read the profile patch text; a missing file is an empty layer.
  * @param patchPath - absolute path of cordis.patch.yml.
  * @returns the file text, or `[]` when absent.

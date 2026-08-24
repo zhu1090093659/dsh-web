@@ -106,7 +106,7 @@ export interface DoctorSnapshot {
   incidents?: DoctorIncident[]
   updatedAt?: string
   degradedReason?: string
-  policy?: { fullProtection?: boolean; autoRepair?: boolean }
+  policy?: { fullProtection?: boolean; autoRepair?: boolean; autoMigrate?: boolean }
 }
 
 /** Wire body of every /api/doctor endpoint (SupervisorResponse plus the host envelope). */
@@ -139,4 +139,5 @@ export interface DoctorSettings {
   enabled?: boolean
   fullProtection?: boolean
   autoRepair?: boolean
+  autoMigrate?: boolean
 }

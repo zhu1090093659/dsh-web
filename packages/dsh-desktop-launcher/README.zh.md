@@ -27,8 +27,8 @@ dsh plugin --profile web add @linxin666/dsh-desktop-launcher
 ### 从仓库安装（开发调试）
 
 ```sh
-git clone https://github.com/zhu1090093659/dsh-web-ui.git
-cd dsh-web-ui
+git clone https://github.com/zhu1090093659/dsh-web.git
+cd dsh-web
 pnpm install
 pnpm -r build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-desktop-launcher
@@ -63,6 +63,10 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-desktop-launcher
 - 30 秒就绪轮询是固定值；首次启动特别慢可能超时（启动器会弹提示）。
 - 创建图标需要桌面目录；Windows 的 OneDrive 重定向桌面会被识别，其他重定向
   可能需要手动放置图标。
+
+## 数据遥测
+
+浏览器半区每个 UTC 日向 dsh-market.com 发送一次匿名安装心跳：仅含一个 localStorage 随机 ID 与本包名，无其他数据。服务端只存储该 ID 的加盐哈希，不存 IP，且只暴露聚合计数。完整契约见 [docs/telemetry.md](../../docs/telemetry.md)。
 
 ## 许可证
 

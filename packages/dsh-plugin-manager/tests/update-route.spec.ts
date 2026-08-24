@@ -8,16 +8,16 @@ import { makeGatewayRoutes, type RegistryVersionManifest } from '../src/host/rou
 import { CliGateway } from '../src/host/gateway.ts'
 import type { ProfileFacts } from '../src/host/profile.ts'
 
-function profile(spec: string): { facts: ProfileFacts; dir: string } {
+function profile(spec: string, name = 'dsh-memoir', version = '1.0.0'): { facts: ProfileFacts; dir: string } {
   const dir = mkdtempSync(join(tmpdir(), 'plugin-manager-update-route-'))
   const profileDir = join(dir, 'profiles', 'web')
-  const moduleDir = join(profileDir, 'node_modules', 'dsh-memoir')
+  const moduleDir = join(profileDir, 'node_modules', ...name.split('/'))
   mkdirSync(moduleDir, { recursive: true })
   writeFileSync(join(profileDir, 'package.json'), JSON.stringify({
-    name: 'dsh-profile-web', private: true, dependencies: { 'dsh-memoir': spec }, dsh: { profile: { bundles: [] } },
+    name: 'dsh-profile-web', private: true, dependencies: { [name]: spec }, dsh: { profile: { bundles: [] } },
   }))
   writeFileSync(join(profileDir, 'cordis.patch.yml'), '[]\n')
-  writeFileSync(join(moduleDir, 'package.json'), JSON.stringify({ name: 'dsh-memoir', version: '1.0.0' }))
+  writeFileSync(join(moduleDir, 'package.json'), JSON.stringify({ name, version }))
   return { facts: { profileName: 'web', profileDir, patchPath: join(profileDir, 'cordis.patch.yml'), packageJsonPath: join(profileDir, 'package.json') }, dir }
 }
 
@@ -52,11 +52,12 @@ function updateHandler(
   fetchManifest: (name: string) => Promise<RegistryVersionManifest | undefined>,
   dshVersion: () => Promise<string | undefined> = async () => undefined,
   update = vi.fn(() => ({ jobId: 'job-1' })),
+  migrate = vi.fn(() => ({ jobId: 'job-1' })),
 ) {
-  const gateway = { update, withMutationLock: async <T>(task: () => Promise<T>) => await task() } as unknown as CliGateway
+  const gateway = { update, migrate, withMutationLock: async <T>(task: () => Promise<T>) => await task() } as unknown as CliGateway
   const handler = makeGatewayRoutes({ facts, gateway, cliAvailable: () => true, fetchManifest, dshVersion })
     .find(route => route.path === '/api/plugin-manager/update')!.handler
-  return { handler, update }
+  return { handler, update, migrate }
 }
 
 function checkUpdatesHandler(
@@ -81,6 +82,46 @@ describe('gateway update route', () => {
     expect(captured.status()).toBe(200)
     expect(captured.body()).toEqual({ jobId: 'job-1' })
     expect(update).toHaveBeenCalledWith('dsh-memoir', '1.1.0')
+  })
+
+  it('starts a migration job for the legacy aggregate', async () => {
+    const { facts, dir } = profile('^0.3.2', '@linxin666/dsh-web-ui-all', '0.3.2')
+    tempDirs.push(dir)
+    const { handler, update, migrate } = updateHandler(
+      facts,
+      async name => name === '@linxin666/dsh-web-all' ? manifest('0.3.3') : undefined,
+      async () => '0.1.1-rc.2',
+    )
+    const captured = response()
+    await handler(request({ id: '@linxin666/dsh-web-ui-all' }), captured.res)
+    expect(captured.status()).toBe(200)
+    expect(captured.body()).toEqual({ jobId: 'job-1' })
+    expect(update).not.toHaveBeenCalled()
+    expect(migrate).toHaveBeenCalledWith(
+      '@linxin666/dsh-web-ui-all',
+      '@linxin666/dsh-web-all',
+      '0.3.3',
+      '@linxin666/dsh-web-all@0.3.3',
+    )
+  })
+
+  it('rewrites a local repository link for the legacy migration route', async () => {
+    const { facts, dir } = profile('link:/Users/zcl/code/dsh-web-ui/packages/dsh-web-ui-all', '@linxin666/dsh-web-ui-all', '0.3.2')
+    tempDirs.push(dir)
+    const { handler, migrate } = updateHandler(
+      facts,
+      async name => name === '@linxin666/dsh-web-all' ? manifest('0.3.3') : undefined,
+      async () => '0.1.1-rc.2',
+    )
+    const captured = response()
+    await handler(request({ id: '@linxin666/dsh-web-ui-all' }), captured.res)
+    expect(captured.status()).toBe(200)
+    expect(migrate).toHaveBeenCalledWith(
+      '@linxin666/dsh-web-ui-all',
+      '@linxin666/dsh-web-all',
+      '0.3.3',
+      'link:/Users/zcl/code/dsh-web-ui/packages/dsh-web-all',
+    )
   })
 
   it('rejects a git source before requesting npm latest or starting a job', async () => {
@@ -228,6 +269,25 @@ describe('gateway check-updates route', () => {
     expect(captured.body()).toEqual({
       updates: [{
         id: 'dsh-memoir', current: '1.0.0', latest: '1.1.0', requiresDsh: '>=0.1.0-rc.8', compatible: false,
+      }],
+    })
+  })
+
+  it('reports a migration update for the legacy aggregate', async () => {
+    const { facts, dir } = profile('^0.3.2', '@linxin666/dsh-web-ui-all', '0.3.2')
+    tempDirs.push(dir)
+    const handler = checkUpdatesHandler(
+      facts,
+      async name => name === '@linxin666/dsh-web-all' ? manifest('0.3.3', { dsh: { engines: { dsh: '>=0.1.1-rc.1' } } }) : undefined,
+      async () => '0.1.1-rc.2',
+    )
+    const captured = response()
+    await handler(request({}), captured.res)
+    expect(captured.body()).toEqual({
+      updates: [{
+        id: '@linxin666/dsh-web-ui-all', current: '0.3.2', latest: '0.3.3',
+        kind: 'migrate', target: '@linxin666/dsh-web-all', targetVersion: '0.3.3',
+        requiresDsh: '>=0.1.1-rc.1', compatible: true,
       }],
     })
   })

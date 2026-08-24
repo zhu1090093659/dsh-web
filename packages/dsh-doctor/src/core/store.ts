@@ -1,8 +1,29 @@
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { setTimeout as delay } from 'node:timers/promises'
 import { dirname } from 'node:path'
 import type { FsLike } from './fs.ts'
 
 let atomicWriteSequence = 0
+
+const RETRY_CODES = new Set(['EPERM', 'EACCES'])
+const RENAME_RETRIES = 3
+const RENAME_RETRY_DELAY_MS = 50
+
+async function renameWithRetry(from: string, to: string): Promise<void> {
+  for (let attempt = 0; attempt < RENAME_RETRIES; attempt++) {
+    try {
+      await rename(from, to)
+      return
+    } catch (error) {
+      if (!RETRY_CODES.has((error as NodeJS.ErrnoException).code ?? '')) throw error
+      if (attempt < RENAME_RETRIES - 1) {
+        await delay(RENAME_RETRY_DELAY_MS)
+      } else {
+        throw error
+      }
+    }
+  }
+}
 
 export async function readJson<T>(path: string, fallback: T): Promise<T> {
   try { return JSON.parse(await readFile(path, 'utf8')) as T } catch (error) {
@@ -18,10 +39,22 @@ export async function writeJsonAtomic(path: string, value: unknown, mode = 0o600
   // pid + Date.now() alone they would share a temp file and the second rename
   // would fail with ENOENT, aborting the whole load.
   const temporary = `${path}.tmp-${process.pid}-${Date.now()}-${atomicWriteSequence += 1}`
+  const content = `${JSON.stringify(value, null, 2)}\n`
   try {
-    await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode })
-    await rename(temporary, path)
+    await writeFile(temporary, content, { mode })
+    await renameWithRetry(temporary, path)
   } catch (error) {
+    // Rename exhausted all retries (Windows EPERM / EACCES when the target is
+    // held by another handle) -- fall back to a direct overwrite so the
+    // policy / state update is not lost.  The write is no longer atomic with
+    // respect to a crash, but that is strictly better than losing the update.
+    if (RETRY_CODES.has((error as NodeJS.ErrnoException).code ?? '')) {
+      try {
+        await writeFile(path, content, { mode })
+        await rm(temporary, { force: true }).catch(() => undefined)
+        return
+      } catch { /* fall through to original cleanup + rethrow */ }
+    }
     await rm(temporary, { force: true }).catch(() => undefined)
     throw error
   }

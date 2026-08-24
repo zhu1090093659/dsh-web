@@ -817,11 +817,7 @@ function MarkdownText({ text, pending }: { text: string; pending: boolean }) {
   const collapsed = long && !open
   return (
     <div className={'chat-msg-text chat-md' + (collapsed ? ' chat-md-collapsed' : '')}>
-      <div className="chat-md-body">
-        {pending
-          ? <span className="chat-msg-plain">{text}</span>
-          : <div dangerouslySetInnerHTML={{ __html: html }} />}
-      </div>
+      <div className="chat-md-body" dangerouslySetInnerHTML={{ __html: html }} />
       {long && (
         <button type="button" className="chat-msg-toggle" onClick={() => { setOpen(value => !value) }}>
           {open ? '收起' : '展开全文（' + text.length + ' 字）'}

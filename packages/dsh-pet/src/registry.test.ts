@@ -153,7 +153,7 @@ describe('resolvePetManifest', () => {
 })
 
 describe('loadPetRegistry', () => {
-  it('ships the original and refined whale variants while keeping the original default', () => {
+  it('ships every built-in pet while keeping the original whale as default', () => {
     const registry = loadPetRegistry({
       packageRoot: petPackageRoot(import.meta.url),
       petsDir: '',
@@ -161,9 +161,17 @@ describe('loadPetRegistry', () => {
     })
 
     expect(registry.entries.map(entry => entry.id)).toEqual([
+      'ouo-neko',
       'whale-girl',
       'whale-girl-refined',
     ])
+    expect(registry.byId('ouo-neko')).toMatchObject({
+      displayName: 'OUO Neko',
+      atlasRows: 11,
+      columns: 8,
+      rows: [6, 8, 8, 4, 5, 8, 6, 6, 6],
+    })
+    expect(existsSync(petAtlasFile(registry.byId('ouo-neko')!))).toBe(true)
     expect(registry.byId('whale-girl')?.displayName).toBe('鲸鱼娘（原版）')
     expect(registry.byId('whale-girl-refined')?.displayName).toBe('鲸鱼娘（精致版）')
     expect(existsSync(petAtlasFile(registry.byId('whale-girl-refined')!))).toBe(true)

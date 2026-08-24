@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-pet/pet-manifest-v2.schema.json",
+  "petManifestVersion": 2,
+  "id": "ouo-neko",
+  "displayName": "OUO Neko",
+  "author": "Pessimist0906",
+  "version": "1.0.0",
+  "description": "A warm pink-sakura companion with cat ears and a lively chibi personality.",
+  "license": "MIT",
+  "renderer": "sprite2d",
+  "sprite2d": {
+    "spritesheetPath": "spritesheet.webp",
+    "cell": {
+      "width": 192,
+      "height": 208
+    },
+    "columns": 8,
+    "atlasRows": 11,
+    "frames": [
+      6,
+      8,
+      8,
+      4,
+      5,
+      8,
+      6,
+      6,
+      6
+    ]
+  }
+}

@@ -40,6 +40,7 @@ import { PET_DECORATION_API_VERSION, type DecorationView } from './contracts/sta
 import { dshHome } from './dsh-home.ts'
 import { parsePetManifest, type PetManifestLive2d, type PetManifestV2, type PetRendererKind } from './manifest-v2.ts'
 import { collectModel3References } from './model3.ts'
+import { DEFAULT_PET_ID } from './defaults.ts'
 
 /** Fixed row order of the 9-state animation contract. */
 export const PET_ROW_ORDER: readonly PetAnimation[] = [
@@ -907,7 +908,9 @@ export function loadPetRegistry(options: PetRegistryOptions): PetRegistry {
     warnings,
     diagnostics,
     byId: (id: string) => byId.get(id),
-    defaultEntry: () => entries.find(entry => builtinIds.has(entry.id)) ?? entries[0]!,
+    defaultEntry: () => entries.find(entry => (
+      entry.id === DEFAULT_PET_ID && builtinIds.has(entry.id)
+    )) ?? entries.find(entry => builtinIds.has(entry.id)) ?? entries[0]!,
     ...(globalVoice === undefined ? {} : { globalVoice }),
     decorations,
     decorationById: (id: string) => decorationById.get(id),

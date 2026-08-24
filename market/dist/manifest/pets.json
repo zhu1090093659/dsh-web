@@ -2,9 +2,51 @@
   "generated": "2026-08-25",
   "items": [
     {
+      "id": "ouo-neko",
+      "displayName": "OUO Neko",
+      "rank": 1,
+      "renderer": "sprite2d",
+      "spritesheet": "assets/pets/ouo-neko/spritesheet.webp",
+      "previews": [
+        "assets/pets/ouo-neko/previews/failed.gif",
+        "assets/pets/ouo-neko/previews/idle.gif",
+        "assets/pets/ouo-neko/previews/jumping.gif",
+        "assets/pets/ouo-neko/previews/review.gif",
+        "assets/pets/ouo-neko/previews/running-left.gif",
+        "assets/pets/ouo-neko/previews/running-right.gif",
+        "assets/pets/ouo-neko/previews/running.gif",
+        "assets/pets/ouo-neko/previews/waiting.gif",
+        "assets/pets/ouo-neko/previews/waving.gif"
+      ],
+      "frames": [
+        6,
+        8,
+        8,
+        4,
+        5,
+        8,
+        6,
+        6,
+        6
+      ],
+      "files": [
+        "pet.json",
+        "previews/failed.gif",
+        "previews/idle.gif",
+        "previews/jumping.gif",
+        "previews/review.gif",
+        "previews/running-left.gif",
+        "previews/running-right.gif",
+        "previews/running.gif",
+        "previews/waiting.gif",
+        "previews/waving.gif",
+        "spritesheet.webp"
+      ]
+    },
+    {
       "id": "whale-girl",
       "displayName": "鲸鱼娘（原版）",
-      "rank": 1,
+      "rank": 2,
       "renderer": "sprite2d",
       "spritesheet": "assets/pets/whale/spritesheet.webp",
       "previews": [
@@ -57,7 +99,7 @@
     {
       "id": "whale-girl-refined",
       "displayName": "鲸鱼娘（精致版）",
-      "rank": 2,
+      "rank": 3,
       "renderer": "sprite2d",
       "spritesheet": "assets/pets/whale-refined/spritesheet.webp",
       "previews": [

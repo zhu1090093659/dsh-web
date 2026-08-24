@@ -189,6 +189,7 @@ Live2D 清单把七个活动相位映射到模型的动作组：
 
 | 注册表 id | 选择器名称 | 来源 |
 |---|---|---|
+| `ouo-neko` | OUO Neko | `Pessimist0906` 以 MIT 许可证贡献的粉色樱花猫耳伙伴 |
 | `whale-girl` | 鲸鱼娘（原版） | 仓库原有的鲸鱼娘图集 |
 | `whale-girl-refined` | 鲸鱼娘（精致版） | 以鲸鱼娘设计方向为基础，经 AI 辅助二次创作、修复和细节精修的衍生版本 |
 
@@ -196,7 +197,7 @@ Live2D 清单把七个活动相位映射到模型的动作组：
 
 ## 动画预览
 
-精灵图是由 [hatch-pet](https://github.com/dsh2026) 流水线生成的 8 列 × 9 行图集（192×208 单元格）；各状态预览：
+精灵宠物使用由 [hatch-pet](https://github.com/dsh2026) 流水线生成的 8 列图集，单元格为 192×208。经典图集包含 9 行动画；v2 图集额外增加 2 行，共提供 16 个观察方向。以下为标准动画状态预览：
 
 | idle | waiting | running | jumping |
 |---|---|---|---|
@@ -230,6 +231,7 @@ dsh-pet/
 |       `-- pet.module.css
 |-- assets/whale/            # 内置原版鲸鱼娘（manifest + 图集 + 预览）
 |-- assets/whale-refined/    # 内置精致版鲸鱼娘注册表变体
+|-- assets/ouo-neko/         # 内置 OUO Neko v2 宠物（11 行图集 + 预览）
 `-- cordis.patch.yml         # bundle 补丁：插入宠物插件行
 ```
 
@@ -285,6 +287,8 @@ pnpm typecheck    # 仅类型检查
 ## 精灵图与动画轨道校准
 
 两套内置鲸鱼娘图集使用同一份 9 态 × 8 列契约：`assets/whale/` 是原版，`assets/whale-refined/` 是精致版。每张图集均为 1536×1872（8 列 × 9 行，192×208 单元格）。每行帧数、节奏与场景轮换写在各目录的 `pet.json` 中；未覆盖的宠物沿用 hatch-pet 契约节奏和标准单轨场景映射（行序：0 idle / 1 running-right / 2 running-left / 3 waving / 4 jumping / 5 failed / 6 waiting / 7 running / 8 review）。
+
+OUO Neko 使用扩展 v2 契约：图集为 1536×2288，在相同 9 行动画之后增加 2 行、共 16 帧观察方向。其清单声明 `sprite2d.atlasRows: 11`，渲染器把最后 16 个单元格作为顺时针观察方向循环。
 
 ## 安全模型
 

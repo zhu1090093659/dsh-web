@@ -10,6 +10,9 @@ import { join } from 'node:path'
 import { dshHome } from './dsh-home.ts'
 import { AFFINITY_MAX, emptyAffinity, type AffinityState } from './affinity.ts'
 import { defaultTreatConfig, emptyTreatLedger, type TreatLedger } from './treats.ts'
+import { DEFAULT_PET_ID, DEFAULT_PET_NAME } from './defaults.ts'
+
+export { DEFAULT_PET_ID, DEFAULT_PET_NAME } from './defaults.ts'
 
 /** Display configuration the user can tweak. */
 export interface PetDisplayConfig {
@@ -49,12 +52,6 @@ export interface PetPersist {
   treats: TreatLedger
   display: PetDisplayConfig
 }
-
-/** Pet id the legacy single-pet installs resolve to on migration. */
-export const DEFAULT_PET_ID = 'whale-girl'
-
-/** Default pet name (used only when a manifest carries no displayName). */
-export const DEFAULT_PET_NAME = '鲸鱼娘'
 
 /** Name constraints. */
 export const PET_NAME_MAX_LENGTH = 20

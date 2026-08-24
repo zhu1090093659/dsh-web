@@ -558,6 +558,19 @@
       "npm": "dsh-free-search",
       "category": "tools",
       "subcategory": "dev"
+    },
+    {
+      "id": "dsh-agent-plugins-market",
+      "name": "Agent Plugins市场（兼容Claude Code Plugin）",
+      "rank": 45,
+      "nameEn": "Agent Plugins Market",
+      "author": "Sivan757",
+      "description": "把 Claude Code 插件市场生态接入 DSH：任意 Claude Code / Codex / Cursor / Kimi 市场 git 仓库加为源，即可一键安装 suite，skills、MCP 服务器、hooks 与斜杠命令在运行时注入会话；Web GUI 内置市场页面，零转换零拷贝，Claude Code 技能原样可用。",
+      "descriptionEn": "Brings the Claude Code plugin-marketplace ecosystem into DSH: add any Claude Code / Codex / Cursor / Kimi marketplace git repo as a source and install suites with one click - skills, MCP servers, hooks and slash commands are injected into sessions at runtime, with a market page right inside the Web GUI; zero conversion, zero copying, Claude Code skills work verbatim.",
+      "repo": "https://github.com/Sivan757/dsh-agent-plugins-market",
+      "npm": "dsh-agent-plugins-market",
+      "category": "tools",
+      "subcategory": "dev"
     }
   ]
 }

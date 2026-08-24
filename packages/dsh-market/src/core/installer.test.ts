@@ -4,11 +4,16 @@
  */
 
 import { afterEach, describe, expect, it } from 'vitest'
+import { createHash } from 'node:crypto'
 import { mkdtempSync, existsSync, readFileSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
+  FILE_MAX_BYTES,
+  MANIFEST_MAX_BYTES,
   MARKET_ORIGIN,
+  PROVENANCE_FILENAME,
+  MAX_FILES_PER_ASSET,
   MarketInstallError,
   installAsset,
   isSafeRel,
@@ -110,6 +115,33 @@ describe('installAsset', () => {
     expect(readFileSync(join(home, 'skins', 'whale-song', 'assets', 'whale-art.webp'), 'utf8')).toBe('data-whale-art.webp')
   })
 
+  it('records sha256 install provenance for every installed file (issue #1073)', async () => {
+    const home = tmpHome()
+    await installAsset('skin', 'whale-song', { dshHome: home, fetchImpl: mockFetch() })
+    const provenance = JSON.parse(readFileSync(join(home, 'skins', 'whale-song', PROVENANCE_FILENAME), 'utf8'))
+    expect(provenance.version).toBe(1)
+    expect(provenance.source).toBe(MARKET_ORIGIN)
+    expect(provenance.kind).toBe('skin')
+    expect(provenance.id).toBe('whale-song')
+    expect(typeof provenance.installedAt).toBe('string')
+    const sha = (body: string) => createHash('sha256').update(body).digest('hex')
+    expect(provenance.files).toEqual({
+      'skin.json': sha('data-skin.json'),
+      'skin.css': sha('data-skin.css'),
+      'assets/whale-art.webp': sha('data-whale-art.webp'),
+    })
+  })
+
+  it('refreshes provenance on a force reinstall', async () => {
+    const home = tmpHome()
+    await installAsset('skin', 'whale-song', { dshHome: home, fetchImpl: mockFetch() })
+    const first = JSON.parse(readFileSync(join(home, 'skins', 'whale-song', PROVENANCE_FILENAME), 'utf8'))
+    await installAsset('skin', 'whale-song', { dshHome: home, fetchImpl: mockFetch(), force: true })
+    const second = JSON.parse(readFileSync(join(home, 'skins', 'whale-song', PROVENANCE_FILENAME), 'utf8'))
+    expect(second.files['skin.json']).toBe(first.files['skin.json'])
+    expect(second.id).toBe('whale-song')
+  })
+
   it('refuses to overwrite without force and replaces with force', async () => {
     const home = tmpHome()
     const dest = targetDir(home, 'pet', 'whale-girl')
@@ -146,5 +178,100 @@ describe('installAsset', () => {
   it('exposes MarketInstallError with typed code', () => {
     const err = new MarketInstallError('conflict', 'x')
     expect(err.code).toBe('conflict')
+  })
+})
+describe('installAsset limits', () => {
+  const manifest = { items: [{ id: 'whale-song', files: ['skin.json', 'skin.css', 'assets/whale-art.webp'] }] }
+
+  it('rejects a manifest larger than the cap via content-length pre-check', async () => {
+    const home = tmpHome()
+    const fetchImpl = (async () => new Response(JSON.stringify({ items: [] }), {
+      status: 200,
+      headers: { 'content-length': String(MANIFEST_MAX_BYTES + 1) },
+    })) as typeof fetch
+    await expect(installAsset('skin', 'whale-song', { dshHome: home, fetchImpl }))
+      .rejects.toMatchObject({ code: 'manifest', message: expect.stringMatching(/exceeds/) })
+    expect(existsSync(targetDir(home, 'skin', 'whale-song'))).toBe(false)
+  })
+
+  it('rejects a streaming manifest larger than the cap without content-length', async () => {
+    const home = tmpHome()
+    const big = JSON.stringify({ items: [], pad: 'x'.repeat(4096) })
+    const fetchImpl = (async () => new Response(big, { status: 200 })) as typeof fetch
+    await expect(installAsset('skin', 'whale-song', { dshHome: home, fetchImpl, manifestMaxBytes: 1024 }))
+      .rejects.toMatchObject({ code: 'manifest', message: expect.stringMatching(/exceeds/) })
+  })
+
+  it('rejects an asset declaring more files than the cap', async () => {
+    const home = tmpHome()
+    const files = Array.from({ length: MAX_FILES_PER_ASSET + 1 }, (_, i) => `f${i}.png`)
+    const fetchImpl = (async () => new Response(
+      JSON.stringify({ items: [{ id: 'whale-song', files }] }),
+      { status: 200 },
+    )) as typeof fetch
+    await expect(installAsset('skin', 'whale-song', { dshHome: home, fetchImpl }))
+      .rejects.toThrow(/too many files/)
+  })
+
+  it('rejects a file larger than the cap via content-length pre-check', async () => {
+    const home = tmpHome()
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/manifest/skins.json')) return new Response(JSON.stringify(manifest), { status: 200 })
+      return new Response('x', { status: 200, headers: { 'content-length': String(FILE_MAX_BYTES + 1) } })
+    }) as typeof fetch
+    await expect(installAsset('skin', 'whale-song', { dshHome: home, fetchImpl }))
+      .rejects.toMatchObject({ code: 'download', message: expect.stringMatching(/exceeds/) })
+  })
+
+  it('aborts a streaming file that crosses the cap without content-length', async () => {
+    const home = tmpHome()
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new Uint8Array(1024))
+        controller.enqueue(new Uint8Array(1024))
+        controller.close()
+      },
+    })
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/manifest/skins.json')) return new Response(JSON.stringify(manifest), { status: 200 })
+      return new Response(body, { status: 200 })
+    }) as typeof fetch
+    await expect(installAsset('skin', 'whale-song', { dshHome: home, fetchImpl, fileMaxBytes: 1024 }))
+      .rejects.toMatchObject({ code: 'download', message: expect.stringMatching(/exceeds/) })
+    expect(existsSync(targetDir(home, 'skin', 'whale-song'))).toBe(false)
+  })
+
+  it('times out a manifest fetch after the configured timeout', async () => {
+    const home = tmpHome()
+    const fetchImpl = ((_input: RequestInfo | URL, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal
+        if (signal === null || signal === undefined) return
+        if (signal.aborted) { reject(signal.reason); return }
+        signal.addEventListener('abort', () => reject(signal.reason))
+      })
+    }) as typeof fetch
+    await expect(installAsset('skin', 'whale-song', { dshHome: home, fetchImpl, fetchTimeoutMs: 50 }))
+      .rejects.toMatchObject({ code: 'manifest', message: expect.stringMatching(/timed out/) })
+  })
+
+  it('times out a file download after the configured timeout', async () => {
+    const home = tmpHome()
+    const fetchImpl = ((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/manifest/skins.json')) {
+        return Promise.resolve(new Response(JSON.stringify(manifest), { status: 200 }))
+      }
+      return new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal
+        if (signal === null || signal === undefined) return
+        if (signal.aborted) { reject(signal.reason); return }
+        signal.addEventListener('abort', () => reject(signal.reason))
+      })
+    }) as typeof fetch
+    await expect(installAsset('skin', 'whale-song', { dshHome: home, fetchImpl, fetchTimeoutMs: 50 }))
+      .rejects.toMatchObject({ code: 'download', message: expect.stringMatching(/timed out/) })
   })
 })

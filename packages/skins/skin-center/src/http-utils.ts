@@ -8,10 +8,21 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
-/** One JSON response. */
-export function json(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify(body))
+import { writeJson } from './http.ts'
+
+/** True when an `Origin` header names a host other than the request Host.
+ *  Browsers send Origin on CORS requests and on all POSTs; opaque origins
+ *  (sandboxed iframes) serialize as the literal string "null". */
+function hasForeignOrigin(req: IncomingMessage): boolean {
+  const origin = req.headers.origin
+  if (typeof origin !== 'string' || origin === '' || origin === 'null') return false
+  const host = req.headers.host
+  if (typeof host !== 'string' || host === '') return true
+  try {
+    return new URL(origin).host !== host
+  } catch {
+    return true
+  }
 }
 
 /**
@@ -24,51 +35,35 @@ export function json(res: ServerResponse, status: number, body: unknown): void {
 function isSameOriginRequest(req: IncomingMessage): boolean {
   const site = req.headers['sec-fetch-site']
   if (typeof site === 'string' && site === 'cross-site') return false
-  const origin = req.headers.origin
-  if (typeof origin === 'string' && origin !== '' && origin !== 'null') {
-    const host = req.headers.host
-    if (typeof host !== 'string' || host === '') return false
-    try {
-      if (new URL(origin).host !== host) return false
-    } catch {
-      return false
-    }
-  }
-  return true
+  return !hasForeignOrigin(req)
 }
 
 /** Reject cross-site requests with 403. */
 export function requireSameOrigin(req: IncomingMessage, res: ServerResponse): boolean {
   if (isSameOriginRequest(req)) return true
-  json(res, 403, { ok: false, error: 'cross-site-request-rejected' })
+  writeJson(res, 403, { ok: false, error: 'cross-site-request-rejected' })
   return false
 }
 
-/** Read a JSON request body (bounded to 64KB). */
-export function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    let size = 0
-    const chunks: Buffer[] = []
-    req.on('data', (chunk: Buffer) => {
-      size += chunk.length
-      if (size > 64 * 1024) {
-        reject(new Error('body-too-large'))
-        queueMicrotask(() => req.destroy())
-        return
-      }
-      chunks.push(chunk)
-    })
-    req.on('end', () => {
-      if (chunks.length === 0) {
-        resolve({})
-        return
-      }
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')))
-      } catch {
-        reject(new Error('invalid-json'))
-      }
-    })
-    req.on('error', reject)
-  })
+/**
+ * Fence for the read-only wallpaper-content serving routes (/web/,
+ * /shim.js, /scene-manifest/, /scene-resource/). The wallpaper iframes are
+ * sandboxed without allow-same-origin, so their documents carry an opaque
+ * origin and every load they make (scripts, images, fetches) arrives as
+ * Sec-Fetch-Site: cross-site — the strict fence would 403 the wallpaper's
+ * own assets. These GETs are token-gated and side-effect free, so the
+ * Sec-Fetch-Site check is dropped while the foreign-origin rejection stays.
+ */
+export function requireContentOrigin(req: IncomingMessage, res: ServerResponse): boolean {
+  if (hasForeignOrigin(req)) {
+    writeJson(res, 403, { ok: false, error: 'cross-site-request-rejected' })
+    return false
+  }
+  return true
 }
+
+/** Lenient bounded body reader (64 KiB default cap), re-exported from the shared helper copy. */
+export { readJsonBody } from './http.ts'
+
+/** Shared family JSON writer (default headers plus caller overrides), re-exported from the shared helper copy. */
+export { writeJson }

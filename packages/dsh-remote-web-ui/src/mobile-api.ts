@@ -9,9 +9,12 @@
  * Security model:
  * - Every request must carry a live paired-device cookie (the same gate
  *   semantic as the LAN fence), enforced before any host call.
- * - Only an explicit allowlist of methods is proxied; privileged domains
- *   (settings, credentials, host actions, goals, subagents, …) are never
- *   reachable from the phone.
+ * - Only an explicit allowlist of methods is proxied ON THIS PREFIX. The
+ *   allowlist constrains the /m/api proxy alone: the same paired-device
+ *   cookie also passes the global api/gate, so a paired device is a
+ *   full-control credential for the host /api surface outside the SDK's
+ *   loopback-pinned privileged set (settings/credentials/agentPreset/host
+ *   actions/llm.discoverModels). Pairing is full device trust.
  * - `session.list` is paged here (the host API returns everything; this
  *   layer slices stable pages) so the phone never transfers the whole list.
  * - The live mux stream is bridged over Server-Sent Events on the same
@@ -311,7 +314,7 @@ export function makeMobileApiRoutes(deps: MobileApiDeps): WebRoute[] {
     }
     let envelope: unknown
     try {
-      envelope = await readJsonBody(req)
+      envelope = await readBoundedJson(req, 64 * 1024)
     } catch {
       writeJson(res, 400, { ok: false, error: { code: 'bad-request', message: 'invalid json body' } })
       return
@@ -402,8 +405,10 @@ export function makeMobileApiRoutes(deps: MobileApiDeps): WebRoute[] {
       return
     }
     if (!gateOk(req)) {
-      res.writeHead(403)
-      res.end('forbidden')
+      writeJson(res, 403, {
+        ok: false,
+        error: { code: 'unpaired', message: 'mobile session is not paired' },
+      })
       return
     }
     res.writeHead(200, {
@@ -453,11 +458,6 @@ export function makeMobileApiRoutes(deps: MobileApiDeps): WebRoute[] {
     { kind: 'prefix', path: MOBILE_API_PREFIX, handler: handleMethod },
     { kind: 'exact', path: MOBILE_API_PATHS.events, handler: handleEvents },
   ]
-}
-
-/** Read a request body as JSON (bounded). */
-async function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  return readBoundedJson(req, 64 * 1024)
 }
 
 /** Dispatch one allowlisted method through the host ApiProxy. */

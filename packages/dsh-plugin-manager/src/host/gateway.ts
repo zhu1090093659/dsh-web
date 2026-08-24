@@ -27,6 +27,8 @@ const ADD_TIMEOUT_MS = 6 * 60_000
 const REMOVE_TIMEOUT_MS = 2 * 60_000
 /** Bounded capture of the CLI output (the tail survives). */
 const MAX_OUTPUT_CHARS = 32_000
+/** Ring cap on finished jobs: the newest 100 settled jobs stay queryable; the oldest finished job is evicted beyond the cap so the job table cannot grow without bound. In-progress jobs are never evicted. */
+const MAX_FINISHED_JOBS = 100
 
 /**
  * Shell command-chaining metacharacters that must never reach a spawned CLI
@@ -225,6 +227,8 @@ interface CapturedState {
 /** The gateway: serializes CLI operations through one job table and one mutation queue. */
 export class CliGateway {
   private readonly jobs = new Map<string, GatewayJob>()
+  /** Settlement order of finished jobs: the eviction ring keeps the newest {@link MAX_FINISHED_JOBS}. */
+  private readonly finishedOrder: string[] = []
   private counter = 0
   /** Mutation queue: two CLI runs must never interleave their before/after captures. */
   private queue: Promise<void> = Promise.resolve()
@@ -261,6 +265,15 @@ export class CliGateway {
     void this.withMutationLock(task).catch(() => {})
   }
 
+  /** Register a settled job and evict the oldest finished one beyond the ring cap. */
+  private retainFinished(jobId: string): void {
+    this.finishedOrder.push(jobId)
+    while (this.finishedOrder.length > MAX_FINISHED_JOBS) {
+      const evicted = this.finishedOrder.shift()
+      if (evicted !== undefined) this.jobs.delete(evicted)
+    }
+  }
+
   /** The dsh CLI path, through the test seam when present. */
   private binary(): string | null {
     return this.deps.findBinary !== undefined ? this.deps.findBinary(this.env) : findDshBinary(this.env)
@@ -279,6 +292,7 @@ export class CliGateway {
     if (unsafe !== undefined) {
       job.phase = 'error'
       job.error = unsafe
+      this.retainFinished(job.id)
       return { jobId: job.id }
     }
     this.enqueue(() => this.run(job, ['plugin', '--profile', this.facts.profileName, 'add', spec], ADD_TIMEOUT_MS))
@@ -301,6 +315,7 @@ export class CliGateway {
     if (unsafe !== undefined) {
       job.phase = 'error'
       job.error = unsafe
+      this.retainFinished(job.id)
       return { jobId: job.id }
     }
     this.enqueue(() => this.run(job, ['plugin', '--profile', this.facts.profileName, 'add', spec], ADD_TIMEOUT_MS))
@@ -315,13 +330,18 @@ export class CliGateway {
     if (unsafe !== undefined) {
       job.phase = 'error'
       job.error = unsafe
+      this.retainFinished(job.id)
       return { jobId: job.id }
     }
     this.enqueue(() => this.run(job, ['plugin', '--profile', this.facts.profileName, 'remove', id], REMOVE_TIMEOUT_MS))
     return { jobId: job.id }
   }
 
-  /** Read one job's current state (a shallow copy). */
+  /**
+   * Read one job's current state (a shallow copy). Finished jobs beyond the
+   * ring cap are evicted and read as not-found, the same as an id that never
+   * existed.
+   */
   status(jobId: string): GatewayJob | undefined {
     const job = this.jobs.get(jobId)
     if (job === undefined) return undefined
@@ -387,6 +407,7 @@ export class CliGateway {
       job.phase = 'error'
       job.error = `plugin-manager: unexpected gateway failure: ${error instanceof Error ? error.message : String(error)}`
     }
+    this.retainFinished(job.id)
   }
 
   /** The mutation body of {@link run}. */

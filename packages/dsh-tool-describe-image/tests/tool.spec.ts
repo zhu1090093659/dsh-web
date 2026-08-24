@@ -1,8 +1,9 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { basename, join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import { AttachmentError, AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
@@ -22,6 +23,27 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as tool from '../src/index.ts'
 import { attachmentMarkdown, attachmentRefById, handleAttach, registerAttachmentRef, safeDecodeUriComponent } from '../src/attach-routes.ts'
 import { anthropicReply, chatReply, FakeWebServer, jsonReply, PNG_BYTES, rawReply, responsesReply, sentAnthropicContent, sentContent, sentInputContent, startMockServer } from './mock-server.ts'
+
+/** DNS answers the image-URL guard sees; tests pin public/private answers per hostname. */
+const { DNS_ANSWERS } = vi.hoisted(() => ({
+  DNS_ANSWERS: new Map<string, Array<{ address: string; family: 4 | 6 }>>(),
+}))
+
+// The vision endpoint still resolves through the real stack (the 127.0.0.1 mock server);
+// only the model-supplied image hostname is resolved deterministically so a public domain
+// can be exercised against the local fixture without touching the network.
+vi.mock('node:dns/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:dns/promises')>()
+  return {
+    ...actual,
+    lookup: async (hostname: string) => {
+      const pinned = DNS_ANSWERS.get(hostname.toLowerCase())
+      if (pinned !== undefined) return pinned
+      if (hostname === 'unresolvable.example.test') throw new Error('ENOTFOUND')
+      return [{ address: '93.184.216.34', family: 4 }]
+    },
+  }
+})
 
 /** In-memory attachment store so the attachment-reference input path is observable. */
 class FakeAttachments extends AttachmentStore {
@@ -143,21 +165,42 @@ async function setup(
   return ctx
 }
 
-async function tempPng(): Promise<string> {
+async function tempPng(): Promise<{ path: string; workspace: string }> {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-describe-image-'))
   cleanup.push(() => rm(dir, { recursive: true, force: true }))
   const path = join(dir, 'pixel.png')
   await writeFile(path, PNG_BYTES)
-  return path
+  return { path, workspace: dir }
 }
 
-function callDescribe(ctx: Context, args: unknown, signal?: AbortSignal) {
+/** Minimum agent facade the tool reads: only the session header cwd is used. */
+function agentForWorkspace(workspace: string | undefined): Agent | undefined {
+  if (workspace === undefined) return undefined
+  return { session: { header: { cwd: workspace } } } as unknown as Agent
+}
+
+function callDescribe(ctx: Context, args: unknown, signal?: AbortSignal, workspace?: string) {
+  const agent = agentForWorkspace(workspace)
   return ctx.tools.execute({
     signal: signal ?? new AbortController().signal,
     callId: CallId('vision-call'),
     name: 'describe_image',
     arguments: args,
+    ...(agent === undefined ? {} : { agent }),
   })
+}
+
+/** Swallow the real fetch for one image host while the vision endpoint stays real. */
+type ImageFetchHandler = (url: string, init?: RequestInit) => Promise<Response> | undefined
+function stubImageFetch(handler: ImageFetchHandler): void {
+  const previous = globalThis.fetch
+  globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    const replaced = handler(url, init)
+    if (replaced !== undefined) return replaced
+    return previous(input as RequestInfo, init)
+  }) as typeof fetch
+  cleanup.push(async () => { globalThis.fetch = previous })
 }
 
 /** Dispose one mounted context early so the mountOnce guard releases the package for the next setup. */
@@ -217,9 +260,9 @@ describe('successful descriptions', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('A red square.')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toEqual({
@@ -245,9 +288,9 @@ describe('successful descriptions', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('Yes.')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, maxOutputTokens: 7 })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path, prompt: 'Is there text in this image?' })
+    const result = await callDescribe(ctx, { image: path, prompt: 'Is there text in this image?' }, undefined, workspace)
     expect(result.isError).toBe(false)
     const body = server.request(0).body as { max_tokens?: unknown }
     expect(body.max_tokens).toBe(7)
@@ -258,24 +301,24 @@ describe('successful descriptions', () => {
   it('strips the model thinking suffix and maps it to thinking.type', async () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
     const inheritCtx = await setup({ baseURL: server.url })
-    const inheritResult = await callDescribe(inheritCtx, { image: path })
+    const inheritResult = await callDescribe(inheritCtx, { image: path }, undefined, workspace)
     expect(inheritResult.isError).toBe(false)
     expect((server.request(0).body as { model?: unknown; thinking?: unknown }).model).toBe('vision-1')
     expect((server.request(0).body as { thinking?: unknown }).thinking).toBeUndefined()
     await teardown(inheritCtx)
 
     const offCtx = await setup({ baseURL: server.url, model: 'vision-1:off' })
-    const offResult = await callDescribe(offCtx, { image: path })
+    const offResult = await callDescribe(offCtx, { image: path }, undefined, workspace)
     expect(offResult.isError).toBe(false)
     expect((server.request(1).body as { model?: unknown; thinking?: unknown }).model).toBe('vision-1')
     expect((server.request(1).body as { thinking?: unknown }).thinking).toEqual({ type: 'disabled' })
     await teardown(offCtx)
 
     const highCtx = await setup({ baseURL: server.url, model: 'vision-1:high' })
-    const highResult = await callDescribe(highCtx, { image: path })
+    const highResult = await callDescribe(highCtx, { image: path }, undefined, workspace)
     expect(highResult.isError).toBe(false)
     if (!highResult.isError) expect(highResult.value).toMatchObject({ model: 'vision-1' })
     expect((server.request(2).body as { model?: unknown; thinking?: unknown }).model).toBe('vision-1')
@@ -283,18 +326,19 @@ describe('successful descriptions', () => {
   })
 
   it('downloads an http(s) image when given a URL', async () => {
-    const server = await startMockServer((request, res) => {
-      if (request.path === '/img.png') rawReply(res, 200, PNG_BYTES, 'image/png')
-      else jsonReply(res, 200, chatReply('Downloaded.'))
-    })
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('Downloaded.')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url })
+    const imageUrl = `http://img.example.test:${new URL(server.url).port}/img.png`
+    stubImageFetch((url) => url === imageUrl
+      ? Promise.resolve(new Response(PNG_BYTES, { headers: { 'content-type': 'image/png' } }))
+      : undefined)
 
-    const result = await callDescribe(ctx, { image: `${server.url}/img.png` })
+    const result = await callDescribe(ctx, { image: imageUrl })
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
-    expect(result.value).toMatchObject({ text: 'Downloaded.', image: `${server.url}/img.png`, mimeType: 'image/png' })
-    const [, imagePart] = sentContent(server.request(1)) as Array<{ image_url?: { url?: string } }>
+    expect(result.value).toMatchObject({ text: 'Downloaded.', image: imageUrl, mimeType: 'image/png' })
+    const [, imagePart] = sentContent(server.request(0)) as Array<{ image_url?: { url?: string } }>
     expect(imagePart?.image_url?.url).toMatch(/^data:image\/png;base64,/)
   })
 })
@@ -304,9 +348,9 @@ describe('Responses API style', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, responsesReply('Via responses.')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, apiStyle: 'responses' })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toMatchObject({ text: 'Via responses.', model: 'vision-1', mimeType: 'image/png' })
@@ -328,9 +372,9 @@ describe('Responses API style', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, responsesReply('Yes.')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, apiStyle: 'responses', maxOutputTokens: 7 })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path, prompt: 'Is there text in this image?' })
+    const result = await callDescribe(ctx, { image: path, prompt: 'Is there text in this image?' }, undefined, workspace)
     expect(result.isError).toBe(false)
     const body = server.request(0).body as { max_output_tokens?: unknown }
     expect(body.max_output_tokens).toBe(7)
@@ -341,20 +385,20 @@ describe('Responses API style', () => {
   it('maps the model thinking suffix to reasoning.effort in the responses body', async () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, responsesReply('ok')) })
     cleanup.push(server.close)
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
     const inheritCtx = await setup({ baseURL: server.url, apiStyle: 'responses' })
-    await callDescribe(inheritCtx, { image: path })
+    await callDescribe(inheritCtx, { image: path }, undefined, workspace)
     expect((server.request(0).body as { reasoning?: unknown }).reasoning).toBeUndefined()
     await teardown(inheritCtx)
 
     const offCtx = await setup({ baseURL: server.url, apiStyle: 'responses', model: 'vision-1:off' })
-    await callDescribe(offCtx, { image: path })
+    await callDescribe(offCtx, { image: path }, undefined, workspace)
     expect((server.request(1).body as { reasoning?: unknown }).reasoning).toEqual({ effort: 'none' })
     await teardown(offCtx)
 
     const highCtx = await setup({ baseURL: server.url, apiStyle: 'responses', model: 'vision-1:high' })
-    await callDescribe(highCtx, { image: path })
+    await callDescribe(highCtx, { image: path }, undefined, workspace)
     expect((server.request(2).body as { reasoning?: unknown }).reasoning).toEqual({ effort: 'high' })
   })
 
@@ -369,9 +413,9 @@ describe('Responses API style', () => {
     })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, apiStyle: 'responses' })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toMatchObject({ text: 'Part one.\nPart two.' })
@@ -388,9 +432,9 @@ describe('Responses API style', () => {
       const server = await startMockServer((_request, res) => { rawReply(res, 200, typeof reply === 'string' ? reply : JSON.stringify(reply), 'application/json') })
       cleanup.push(server.close)
       const ctx = await setup({ baseURL: server.url, apiStyle: 'responses' })
-      const path = await tempPng()
+      const { path, workspace } = await tempPng()
 
-      const result = await callDescribe(ctx, { image: path })
+      const result = await callDescribe(ctx, { image: path }, undefined, workspace)
       expect(result.isError, `expected rejection for ${label}`).toBe(true)
     }
   })
@@ -404,9 +448,9 @@ describe('Responses API style', () => {
     })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, apiStyle: 'responses' })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(true)
     expect(target.requests).toHaveLength(0)
   })
@@ -417,9 +461,9 @@ describe('Anthropic Messages API style', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, anthropicReply('Via anthropic.')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toMatchObject({ text: 'Via anthropic.', model: 'vision-1', mimeType: 'image/png' })
@@ -444,18 +488,18 @@ describe('Anthropic Messages API style', () => {
   it('preserves provider paths and normalizes /v1 roots and complete endpoints', async () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, anthropicReply('normalized')) })
     cleanup.push(server.close)
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
     const providerCtx = await setup({ baseURL: `${server.url}/zen/go`, apiStyle: 'anthropic-messages' })
-    expect((await callDescribe(providerCtx, { image: path })).isError).toBe(false)
+    expect((await callDescribe(providerCtx, { image: path }, undefined, workspace)).isError).toBe(false)
     await teardown(providerCtx)
 
     const apiRootCtx = await setup({ baseURL: `${server.url}/v1`, apiStyle: 'anthropic-messages' })
-    expect((await callDescribe(apiRootCtx, { image: path })).isError).toBe(false)
+    expect((await callDescribe(apiRootCtx, { image: path }, undefined, workspace)).isError).toBe(false)
     await teardown(apiRootCtx)
 
     const endpointCtx = await setup({ baseURL: `${server.url}/v1/messages`, apiStyle: 'anthropic-messages' })
-    expect((await callDescribe(endpointCtx, { image: path })).isError).toBe(false)
+    expect((await callDescribe(endpointCtx, { image: path }, undefined, workspace)).isError).toBe(false)
 
     expect(server.requests.map(request => request.path)).toEqual([
       '/zen/go/v1/messages',
@@ -468,9 +512,9 @@ describe('Anthropic Messages API style', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, anthropicReply('Yes.')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages', maxOutputTokens: 7 })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path, prompt: 'Is there text in this image?' })
+    const result = await callDescribe(ctx, { image: path, prompt: 'Is there text in this image?' }, undefined, workspace)
     expect(result.isError).toBe(false)
     const body = server.request(0).body as { max_tokens?: unknown }
     expect(body.max_tokens).toBe(7)
@@ -493,9 +537,9 @@ describe('Anthropic Messages API style', () => {
     })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toMatchObject({ text: 'Part one.\nPart two.' })
@@ -512,9 +556,9 @@ describe('Anthropic Messages API style', () => {
       const server = await startMockServer((_request, res) => { rawReply(res, 200, typeof reply === 'string' ? reply : JSON.stringify(reply), 'application/json') })
       cleanup.push(server.close)
       const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
-      const path = await tempPng()
+      const { path, workspace } = await tempPng()
 
-      const result = await callDescribe(ctx, { image: path })
+      const result = await callDescribe(ctx, { image: path }, undefined, workspace)
       expect(result.isError, `expected rejection for ${label}`).toBe(true)
     }
   })
@@ -528,9 +572,9 @@ describe('Anthropic Messages API style', () => {
     })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, apiStyle: 'anthropic-messages' })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(true)
     expect(target.requests).toHaveLength(0)
   })
@@ -541,9 +585,9 @@ describe('API key resolution', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url }, { noInlineKey: true, seed: { VISION_API_KEY: 'sk-seam' } })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    await callDescribe(ctx, { image: path })
+    await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(server.request(0).authorization).toBe('Bearer sk-seam')
   })
 
@@ -552,9 +596,9 @@ describe('API key resolution', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url }, { noInlineKey: true })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    await callDescribe(ctx, { image: path })
+    await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(server.request(0).authorization).toBe('Bearer sk-env')
   })
 
@@ -562,9 +606,9 @@ describe('API key resolution', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url }, { noInlineKey: true })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(true)
     expect(errorText(result)).toContain('describe-image: no API key')
     expect(server.requests).toHaveLength(0)
@@ -591,45 +635,39 @@ describe('input bounds', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, maxBytes: 4 })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(true)
     expect(errorText(result)).toContain('above the 4-byte bound')
     expect(server.requests).toHaveLength(0)
   })
 
   it('rejects a downloaded image above the byte bound mid-stream', async () => {
-    const server = await startMockServer((request, res) => {
-      if (request.path === '/big.png') {
-        res.writeHead(200, { 'content-type': 'image/png' })
-        res.end(Buffer.alloc(200, 0x89))
-      } else {
-        jsonReply(res, 200, chatReply('ok'))
-      }
-    })
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, maxBytes: 100 })
+    const imageUrl = `http://img.example.test:${new URL(server.url).port}/big.png`
+    stubImageFetch((url) => url === imageUrl
+      ? Promise.resolve(new Response(Buffer.alloc(200, 0x89), { headers: { 'content-type': 'image/png' } }))
+      : undefined)
 
-    const result = await callDescribe(ctx, { image: `${server.url}/big.png` })
+    const result = await callDescribe(ctx, { image: imageUrl })
     expect(result.isError).toBe(true)
     expect(errorText(result)).toContain('exceeds the 100-byte bound')
-    expect(server.requests).toHaveLength(1)
+    expect(server.requests).toHaveLength(0)
   })
 
   it('rejects a downloaded image whose declared content length exceeds the bound', async () => {
-    const server = await startMockServer((request, res) => {
-      if (request.path === '/big.png') {
-        res.writeHead(200, { 'content-type': 'image/png', 'content-length': '99999' })
-        res.end(PNG_BYTES)
-      } else {
-        jsonReply(res, 200, chatReply('ok'))
-      }
-    })
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, maxBytes: 100 })
+    const imageUrl = `http://img.example.test:${new URL(server.url).port}/big.png`
+    stubImageFetch((url) => url === imageUrl
+      ? Promise.resolve(new Response(PNG_BYTES, { headers: { 'content-type': 'image/png', 'content-length': '99999' } }))
+      : undefined)
 
-    const result = await callDescribe(ctx, { image: `${server.url}/big.png` })
+    const result = await callDescribe(ctx, { image: imageUrl })
     expect(result.isError).toBe(true)
     expect(errorText(result)).toContain('image is 99999 bytes, above the 100-byte bound')
   })
@@ -643,7 +681,7 @@ describe('input bounds', () => {
     const path = join(dir, 'empty.png')
     await writeFile(path, '')
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, dir)
     expect(result.isError).toBe(true)
     expect(errorText(result)).toContain('image is empty')
     expect(server.requests).toHaveLength(0)
@@ -658,7 +696,7 @@ describe('input bounds', () => {
     const path = join(dir, 'notes.txt')
     await writeFile(path, 'plain text, not an image')
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, dir)
     expect(result.isError).toBe(true)
     expect(errorText(result)).toContain('unsupported image type')
     expect(server.requests).toHaveLength(0)
@@ -675,14 +713,135 @@ describe('input bounds', () => {
     }
   })
 
-  it('reports a failed image download with the HTTP status', async () => {
-    const server = await startMockServer((_request, res) => { res.writeHead(404).end() })
+  it('reports a failed image download without echoing the HTTP status', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url })
+    const imageUrl = `http://img.example.test:${new URL(server.url).port}/missing.png`
+    stubImageFetch((url) => url === imageUrl ? Promise.resolve(new Response(null, { status: 404 })) : undefined)
 
-    const result = await callDescribe(ctx, { image: `${server.url}/missing.png` })
+    const result = await callDescribe(ctx, { image: imageUrl })
     expect(result.isError).toBe(true)
-    expect(errorText(result)).toContain('image fetch returned HTTP 404')
+    expect(errorText(result)).toContain('image URL could not be fetched')
+    expect(errorText(result)).not.toContain('HTTP')
+    expect(server.requests).toHaveLength(0)
+  })
+})
+
+describe('model-controlled image URL guard', () => {
+  const BLOCKED_IMAGE_URLS = [
+    'http://127.0.0.1/x.png',
+    'http://localhost/x.png',
+    'http://localhost.localdomain/x.png',
+    'http://foo.localhost/x.png',
+    'http://10.0.0.5/x.png',
+    'http://172.16.1.1/x.png',
+    'http://172.31.255.255/x.png',
+    'http://192.168.1.1/x.png',
+    'http://169.254.169.254/latest/meta-data/ami-id',
+    'http://0.0.0.0/x.png',
+    'http://[::1]/x.png',
+    'http://[::]/x.png',
+    'http://[fc00::1]/x.png',
+    'http://[fe80::1]/x.png',
+    'http://[::ffff:127.0.0.1]/x.png',
+    'http://[::ffff:10.0.0.1]/x.png',
+    'http://2130706433/x.png',
+    'http://0x7f000001/x.png',
+  ]
+
+  it('rejects private, loopback, link-local, and reserved image URLs before any fetch', async () => {
+    const ctx = await setup()
+    for (const image of BLOCKED_IMAGE_URLS) {
+      const result = await callDescribe(ctx, { image })
+      expect(result.isError, `expected rejection for ${image}`).toBe(true)
+      expect(errorText(result)).toContain('image URL target is not allowed')
+      expect(errorText(result)).not.toContain('HTTP')
+    }
+  })
+
+  it('rejects a domain that resolves to a private address', async () => {
+    DNS_ANSWERS.set('private.example.test', [{ address: '10.1.2.3', family: 4 }])
+    DNS_ANSWERS.set('metadata.example.test', [{ address: '169.254.169.254', family: 4 }])
+    const ctx = await setup()
+    for (const image of ['http://private.example.test/x.png', 'http://metadata.example.test/x.png']) {
+      const result = await callDescribe(ctx, { image })
+      expect(result.isError, `expected rejection for ${image}`).toBe(true)
+      expect(errorText(result)).toContain('image URL target is not allowed')
+    }
+  })
+
+  it('rejects an unresolvable domain, failing closed', async () => {
+    const ctx = await setup()
+    const result = await callDescribe(ctx, { image: 'http://unresolvable.example.test/x.png' })
+    expect(result.isError).toBe(true)
+    expect(errorText(result)).toContain('image URL target could not be resolved')
+  })
+})
+
+describe('local image path boundary', () => {
+  it('rejects a file outside the session workspace', async () => {
+    const outside = await tempPng()
+    const workspace = (await tempPng()).workspace
+    const ctx = await setup()
+    const result = await callDescribe(ctx, { image: outside.path }, undefined, workspace)
+    expect(result.isError).toBe(true)
+    expect(errorText(result)).toContain('image path is outside the session workspace')
+  })
+
+  it('rejects a parent-directory traversal out of the workspace', async () => {
+    const outside = await tempPng()
+    const workspace = (await tempPng()).workspace
+    const traversal = join(workspace, '..', basename(outside.workspace), basename(outside.path))
+    const ctx = await setup()
+    const result = await callDescribe(ctx, { image: traversal }, undefined, workspace)
+    expect(result.isError).toBe(true)
+    expect(errorText(result)).toContain('image path is outside the session workspace')
+  })
+
+  it('rejects a symlink that escapes the workspace', async () => {
+    const outside = await tempPng()
+    const workspace = (await tempPng()).workspace
+    const link = join(workspace, 'linked.png')
+    await symlink(outside.path, link)
+    const ctx = await setup()
+    const result = await callDescribe(ctx, { image: link }, undefined, workspace)
+    expect(result.isError).toBe(true)
+    expect(errorText(result)).toContain('image path is outside the session workspace')
+  })
+
+  it('rejects a relative local path', async () => {
+    const workspace = (await tempPng()).workspace
+    const ctx = await setup()
+    const result = await callDescribe(ctx, { image: 'pixel.png' }, undefined, workspace)
+    expect(result.isError).toBe(true)
+    expect(errorText(result)).toContain('must be an absolute path')
+  })
+
+  it('rejects local paths when no session workspace is attached', async () => {
+    const { path } = await tempPng()
+    const ctx = await setup()
+    const result = await callDescribe(ctx, { image: path })
+    expect(result.isError).toBe(true)
+    expect(errorText(result)).toContain('require a session workspace')
+  })
+
+  it('rejects an inaccessible session workspace', async () => {
+    const ctx = await setup()
+    const result = await callDescribe(ctx, { image: '/whatever/does-not-matter.png' }, undefined, join(tmpdir(), 'no-such-dsh-workspace-dir'))
+    expect(result.isError).toBe(true)
+    expect(errorText(result)).toContain('session workspace is not accessible')
+  })
+
+  it('accepts a local file inside the session workspace', async () => {
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('Inside.')) })
+    cleanup.push(server.close)
+    const ctx = await setup({ baseURL: server.url })
+    const { path, workspace } = await tempPng()
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected workspace file success')
+    expect(result.value).toMatchObject({ text: 'Inside.', mimeType: 'image/png' })
   })
 })
 
@@ -880,9 +1039,9 @@ describe('endpoint failures', () => {
     const server = await startMockServer((_request, res) => { jsonReply(res, 401, { error: { message: 'bad key' } }) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(true)
     expect(errorText(result)).toContain('vision endpoint returned HTTP 401')
     expect(errorText(result)).toContain('bad key')
@@ -898,9 +1057,9 @@ describe('endpoint failures', () => {
       const server = await startMockServer((_request, res) => { rawReply(res, 200, typeof reply === 'string' ? reply : JSON.stringify(reply), 'application/json') })
       cleanup.push(server.close)
       const ctx = await setup({ baseURL: server.url })
-      const path = await tempPng()
+      const { path, workspace } = await tempPng()
 
-      const result = await callDescribe(ctx, { image: path })
+      const result = await callDescribe(ctx, { image: path }, undefined, workspace)
       expect(result.isError, `expected rejection for ${label}`).toBe(true)
     }
   })
@@ -914,36 +1073,39 @@ describe('endpoint failures', () => {
     })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(true)
     expect(target.requests).toHaveLength(0)
   })
 
   it('never follows a redirect on the image download', async () => {
-    const target = await startMockServer((_request, res) => { rawReply(res, 200, PNG_BYTES, 'image/png') })
-    cleanup.push(target.close)
-    const server = await startMockServer((_request, res) => {
-      res.writeHead(302, { location: `${target.url}/img.png` })
-      res.end()
-    })
+    const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url })
+    const imageUrl = `http://img.example.test:${new URL(server.url).port}/img.png`
+    const location = `http://img.example.test:${new URL(server.url).port}/redirected.png`
+    const visited: string[] = []
+    stubImageFetch((url) => {
+      visited.push(url)
+      if (url === location) return Promise.resolve(new Response(PNG_BYTES, { headers: { 'content-type': 'image/png' } }))
+      return Promise.resolve(new Response(null, { status: 302, headers: { location } }))
+    })
 
-    const result = await callDescribe(ctx, { image: `${server.url}/img.png` })
+    const result = await callDescribe(ctx, { image: imageUrl })
     expect(result.isError).toBe(true)
-    expect(target.requests).toHaveLength(0)
+    expect(visited).toEqual([imageUrl])
   })
 
   it('aborts an in-flight vision request when the caller signal fires', async () => {
     const server = await startMockServer(() => {})
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, timeoutMs: 60_000 })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
     const controller = new AbortController()
-    const pending = callDescribe(ctx, { image: path }, controller.signal)
+    const pending = callDescribe(ctx, { image: path }, controller.signal, workspace)
     setTimeout(() => { controller.abort() }, 20)
     const result = await pending
     expect(result.isError).toBe(true)
@@ -953,9 +1115,9 @@ describe('endpoint failures', () => {
     const server = await startMockServer(() => {})
     cleanup.push(server.close)
     const ctx = await setup({ baseURL: server.url, timeoutMs: 50 })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path })
+    const result = await callDescribe(ctx, { image: path }, undefined, workspace)
     expect(result.isError).toBe(true)
   })
 })

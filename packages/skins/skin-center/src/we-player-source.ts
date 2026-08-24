@@ -942,6 +942,12 @@ export const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0]));
       const video = document.createElement('video');
+      // The player iframe is sandboxed without allow-same-origin, so every
+      // texture load is a cross-origin fetch from an opaque origin. Without
+      // CORS mode the video taints the WebGL texture and texImage2D throws a
+      // SecurityError, leaving the canvas blank (the scene-resource route
+      // answers Origin: null with access-control-allow-origin: null).
+      video.crossOrigin = 'anonymous';
       video.src = layer.videoUrl;
       video.loop = true;
       video.muted = true;
@@ -1231,8 +1237,12 @@ export const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
       updateParticles(dt);
     }
 
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    // Size the backing store in device pixels: on HiDPI displays a CSS-pixel
+    // canvas is upscaled by the compositor and the wallpaper looks soft
+    // (capped at 2x to bound GPU cost on very high DPR screens).
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.max(1, Math.round(window.innerWidth * dpr));
+    const height = Math.max(1, Math.round(window.innerHeight * dpr));
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width;
       canvas.height = height;
@@ -1998,8 +2008,10 @@ export const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
   canvas.addEventListener('webglcontextrestored', () => {
     // WebGL objects are invalid after restoration. Ask the embedding
     // controller to rebuild this isolated renderer instead of drawing with
-    // stale programs/textures.
-    window.parent.postMessage({ type: 'dsh-scene-needs-reload' }, window.location.origin);
+    // stale programs/textures. The player frame is sandboxed without
+    // allow-same-origin, so the embedding page's origin is unknown here;
+    // '*' delivers to the window the event source check identifies.
+    window.parent.postMessage({ type: 'dsh-scene-needs-reload' }, '*');
   });
 
   // Load manifest
@@ -2013,10 +2025,13 @@ export const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
     })
     .catch(err => console.error('Failed to load scene manifest', err));
 
-  // Listen for controller messages; only the embedding parent on the same
-  // origin may steer the player.
+  // Listen for controller messages; only the embedding parent may steer the
+  // player. Origin cannot filter here: the player runs sandboxed without
+  // allow-same-origin, so an origin compare would be browser-dependent and
+  // the parent's messages carry its real origin. Only the identity of the
+  // sender (the exact embedding window) is trustworthy.
   window.addEventListener('message', (ev) => {
-    if (ev.source !== window.parent || ev.origin !== window.location.origin) return;
+    if (ev.source !== window.parent) return;
     const msg = ev.data;
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'dsh-set-fit' && msg.fit) {
@@ -2027,7 +2042,7 @@ export const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
       if (gl.isContextLost()) {
         const ext = gl.getExtension('WEBGL_lose_context');
         if (ext) ext.restoreContext();
-        else window.parent.postMessage({ type: 'dsh-scene-needs-reload' }, window.location.origin);
+        else window.parent.postMessage({ type: 'dsh-scene-needs-reload' }, '*');
       } else {
         // Force an immediate fresh frame after compositor/theme changes.
         renderFrame(performance.now());

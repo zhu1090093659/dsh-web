@@ -38,6 +38,8 @@ export { makeWeRoutes, WE_API_PREFIX } from './we-routes.ts'
 export { validateSkinManifestV2 } from './core/manifest-v2/validate.ts'
 export type { SkinManifestV2, SkinManifestValidation } from './core/manifest-v2/types.ts'
 export { transformSkinCss, SkinCssSafetyError } from './core/css-safety/transform.ts'
+export { auditTokenContract } from './core/css-safety/token-audit.ts'
+export type { TokenAuditStylesheet, TokenAuditResult } from './core/css-safety/token-audit.ts'
 export { loadSkinCatalog, findSkin, resolveInsideSkin, userSkinsDir, builtinSkinsDir } from './skin-repo.ts'
 export type { SkinCatalog, SkinCatalogEntry } from './skin-repo.ts'
 export { defaultActiveStatePath, readActiveSelection, writeActiveSelection } from './active-state.ts'
@@ -126,6 +128,8 @@ export interface SkinWallpaperConfig {
   dim?: number
   /** Blur radius applied to the wallpaper itself, 0-60 px. */
   wallpaperBlur?: number
+  /** Opacity of the wallpaper media layer itself, 0-100 percent. */
+  wallpaperOpacity?: number
   /** Sizing mode for live wallpapers: cover | contain | fill (stretch). */
   fit?: 'cover' | 'contain' | 'fill'
 }
@@ -139,6 +143,7 @@ export const SkinWallpaperConfigSchema: z<SkinWallpaperConfig> = z.object({
   pauseOnHidden: z.boolean().default(true),
   dim: z.number().min(0).max(90).step(5).default(25),
   wallpaperBlur: z.number().min(0).max(60).step(1).default(0),
+  wallpaperOpacity: z.number().min(0).max(100).step(5).default(100),
   fit: z.union(['cover', 'contain', 'fill'] as const).default('cover'),
 })
 

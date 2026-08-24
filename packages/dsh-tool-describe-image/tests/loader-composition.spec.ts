@@ -17,6 +17,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as DescribeImage from '../src/index.ts'
 
 import { chatReply, FakeWebServer, jsonReply, PNG_BYTES, responsesReply, startMockServer } from './mock-server.ts'
+import { agentForWorkspace } from './test-agent.ts'
 import type { MockServer } from './mock-server.ts'
 
 let root: string | undefined
@@ -72,20 +73,22 @@ async function boot(configLines: readonly string[]): Promise<Context> {
   return ctx
 }
 
-async function tempPng(): Promise<string> {
+async function tempPng(): Promise<{ path: string; workspace: string }> {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-describe-image-loader-file-'))
   cleanup.push(() => rm(dir, { recursive: true, force: true }))
   const path = join(dir, 'pixel.png')
   await writeFile(path, PNG_BYTES)
-  return path
+  return { path, workspace: dir }
 }
 
-function callDescribe(ctx: Context, image: string) {
+function callDescribe(ctx: Context, image: string, workspace?: string) {
+  const agent = agentForWorkspace(workspace)
   return ctx.tools.execute({
     signal: new AbortController().signal,
     callId: CallId('loader-vision-call'),
     name: 'describe_image',
     arguments: { image },
+    ...(agent === undefined ? {} : { agent }),
   })
 }
 
@@ -101,8 +104,8 @@ describe('describe-image real Loader composition through cordis.yml', () => {
     const schema = ctx.tools.schemas().find(s => s.name === 'describe_image')
     expect(schema).toBeDefined()
 
-    const path = await tempPng()
-    const result = await callDescribe(ctx, path)
+    const { path, workspace } = await tempPng()
+    const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toMatchObject({ text: 'Composed.', model: 'loader-vision-1' })
@@ -119,8 +122,8 @@ describe('describe-image real Loader composition through cordis.yml', () => {
       "    apiStyle: responses",
     ])
 
-    const path = await tempPng()
-    const result = await callDescribe(ctx, path)
+    const { path, workspace } = await tempPng()
+    const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toMatchObject({ text: 'Composed responses.', model: 'loader-vision-1' })
@@ -140,8 +143,8 @@ describe('describe-image real Loader composition through cordis.yml', () => {
         '    apiKey: !!js process.env.DSH_DESCRIBE_E2E_KEY',
       ])
 
-      const path = await tempPng()
-      await callDescribe(ctx, path)
+      const { path, workspace } = await tempPng()
+      await callDescribe(ctx, path, workspace)
       expect(server.request(0).authorization).toBe('Bearer sk-from-env')
     } finally {
       delete process.env.DSH_DESCRIBE_E2E_KEY

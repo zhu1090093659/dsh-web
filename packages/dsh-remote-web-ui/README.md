@@ -65,7 +65,12 @@ that probes and runs the update.
   `/api/pair` endpoints: loopback, the advertised LAN literals, or the
   configured public base URL. Through the `/remote` desktop channel all
   `/api/pair/*` paths stay loopback-only. Adoption is refused while the
-  provider's live model catalog is unavailable or unknown. Stop or device
+  provider's live model catalog is unavailable or unknown. A provider whose
+  resolved `models` list is absent or empty keeps inheriting its installed
+  catalog until an unknown custom model must materialize that catalog;
+  existing model overrides are preserved and translated into the resulting
+  entries. Malformed or conflicting model profiles are refused instead of
+  being destructively rewritten. Stop or device
   revocation disables it immediately; the
   generic `settings.*`, `credentials.*`, and `llm.discoverModels` RPC methods
   remain loopback-only.
@@ -245,10 +250,16 @@ need **no harness source changes** — the phone's RPC calls ride the
 plugin's `/m/api` proxy (which delegates to the host ApiProxy service and
 pages `session.list` itself), so the tunneled Host never has to enter the
 connection plugin's trust fence. The phone is gated by its paired-device
-cookie and an explicit method allowlist (settings/credentials/host-action
-domains are never reachable from the phone; the `/m/api` proxy's model
+cookie and an explicit method allowlist. The allowlist constrains the
+`/m/api` proxy alone: the paired-device cookie itself also passes the global
+api/gate, so a paired device is a full-control credential for the host `/api`
+surface — settings/credentials/host-action domains stay unreachable only
+because the SDK pins those privileged methods to loopback. Pairing is full
+device trust; the `/m/api` proxy's model
 reads/writes are limited to the advisory `session.models` /
-`session.selectModel` pair. Separately, the exact paired-only model-catalog
+`session.selectModel` pair, and session control is limited to
+`session.cancel` (stops the active turn while preserving pending queued
+work — the phone has no queue management). Separately, the exact paired-only model-catalog
 routes may adopt models for an existing eligible `llm-pi-ai` provider; they
 cannot create providers or access credentials or general settings. Agent preset
 access to read-only `agentPreset.list`, creation to `session.create`
@@ -260,6 +271,12 @@ over Server-Sent Events on `/m/api/events.mux`. The canonical `/m/` page owns a 
 
 ### Behavior notes
 
+- While a turn runs (between its turn/start and turn/end frames), the
+  composer's primary button switches from 发送 to a stop button — the same
+  Send/Stop switch as the desktop input bar. Tapping it calls
+  `session.cancel` to stop the active turn (pending queued prompts resume
+  afterwards); the button is disabled while the stop request is in flight
+  and flips back to 发送 when the turn ends.
 - The mobile composer sends on Enter by default (Shift+Enter inserts a
   newline). Set `mobileEnterToSend: false` in the plugin settings card (or
   the profile patch) to make plain Enter insert a newline instead; sending
@@ -482,6 +499,10 @@ over the internet"): loopback mint → phone or PC opens the public QR URL →
 accept → UI. Only `publicBaseUrl` (plugin config) names the tunneled host;
 `--trusted-host` is not part of this pairing flow. The desktop panel still
 opens at `http://127.0.0.1`.
+
+## Security model
+
+- Mobile unary routes and the mux event stream require a live paired-device session. A missing or revoked session receives HTTP 403 with a JSON rejection carrying `error.code: "unpaired"`; the browser's `EventSource` API exposes only the stream failure, not that response body.
 
 ## Known Limitations and Deferred Work
 

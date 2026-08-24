@@ -10,7 +10,7 @@ import { Config } from '../src/index.ts'
 
 describe('doctor host config defaults', () => {
   it('enables rescue mode by default', () => {
-    expect(Config({})).toMatchObject({ enabled: true, fullProtection: true, autoRepair: true })
+    expect(Config({})).toMatchObject({ enabled: true, fullProtection: true, autoRepair: false })
   })
 
   it('preserves an explicit off choice', () => {

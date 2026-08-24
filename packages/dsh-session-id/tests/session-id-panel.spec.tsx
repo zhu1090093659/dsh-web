@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Session-id panel: lists every session id, exposes a copy button per row. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { SessionId, SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
 import { SessionIdPanel, type SessionIdPanelProps } from '../src/client/SessionIdPanel.tsx'
 import { zh, type SessionIdKey } from '../src/client/locales.ts'
@@ -74,6 +74,7 @@ function sourceOf(snapshot: SessionListState): SessionIdPanelProps['list'] {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
@@ -242,5 +243,56 @@ describe('SessionIdPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('复制失败，请重试')).toBeTruthy()
     })
+  })
+
+  it('keeps a single pending status-reset timer across rapid repeated copies', async () => {
+    const primitives = await import('@deepseek-ai/dsh-client-ui-primitives')
+    vi.mocked(primitives.writeClipboard).mockResolvedValue(true)
+    vi.useFakeTimers()
+
+    const list = sourceOf(makeList([
+      { id: 'session-zzz', displayTitle: 'Zulu', updatedAt: 1_700_000_000_000 },
+    ]))
+
+    render(<SessionIdPanel list={list} onClose={() => {}} t={makeTranslate()} />)
+    const button = screen.getByRole('button', { name: /复制|copy/i })
+
+    fireEvent.click(button)
+    await act(async () => {}) // flush the clipboard write
+    expect(screen.getByText('已复制')).toBeTruthy()
+    expect(vi.getTimerCount()).toBe(1)
+
+    // A second click must cancel the previous reset before scheduling a new
+    // one; without the clear there would be two stacked timers.
+    fireEvent.click(button)
+    await act(async () => {})
+    expect(vi.getTimerCount()).toBe(1)
+
+    // The single pending timer resets the button exactly once to idle.
+    act(() => { vi.advanceTimersByTime(1200) })
+    expect(screen.queryByText('已复制')).toBeNull()
+    expect(screen.getByText('复制')).toBeTruthy()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('clears the pending status-reset timer when the row unmounts', async () => {
+    const primitives = await import('@deepseek-ai/dsh-client-ui-primitives')
+    vi.mocked(primitives.writeClipboard).mockResolvedValue(true)
+    vi.useFakeTimers()
+
+    const list = sourceOf(makeList([
+      { id: 'session-zzz', displayTitle: 'Zulu', updatedAt: 1_700_000_000_000 },
+    ]))
+
+    const { unmount } = render(<SessionIdPanel list={list} onClose={() => {}} t={makeTranslate()} />)
+    const button = screen.getByRole('button', { name: /复制|copy/i })
+
+    fireEvent.click(button)
+    await act(async () => {})
+    expect(vi.getTimerCount()).toBe(1)
+
+    // Unmount cleanup must clear the handle; no timer may stay registered.
+    unmount()
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

@@ -2,22 +2,17 @@
  * Board controller: the single owner of task-ledger state and view state.
  *
  * In production it projects the Host ledger and submits confirmed actions;
- * the legacy store/execution seams remain for v1 migration tests. It also
- * closes the board whenever the user navigates to a session.
+ * the legacy store seam remains for v1 migration tests. It also closes the
+ * board whenever the user navigates to a session.
  * Framework-free (structural runtime faces) so the whole orchestration is
  * unit-testable with fakes.
  *
  * The per use-case domain transitions (create/update/delete/schedule) live in
  * dedicated modules under core/use-cases and are applied here; the controller
- * owns only the orchestration seam (state, persistence, notify, execution,
- * navigation, reconciliation).
+ * owns only the orchestration seam (state, persistence, notify, navigation).
  */
-import type { ExecutionEvent, ExecutionService } from './execution.ts'
 import type { TaskStore } from './store.ts'
-import {
-  settleExecution, startExecution, withStatus,
-  type NewTaskInput, type TaskRecord, type TaskStatus,
-} from './tasks.ts'
+import { withStatus, type NewTaskInput, type TaskRecord, type TaskStatus } from './tasks.ts'
 import { applyArchiveTask, applyRestoreTask } from './use-cases/task-archive.ts'
 import { applyCreateTask } from './use-cases/task-create.ts'
 import { applyDeleteTask } from './use-cases/task-delete.ts'
@@ -45,15 +40,11 @@ export interface SessionsControllerFace {
 /** Controller dependencies (all swappable in tests). */
 export interface ControllerDeps {
   store: TaskStore
-  /** Legacy browser execution seam used only by isolated v1 tests. */
-  exec?: ExecutionService
   sessions: SessionsControllerFace
   /** Clock; defaults to Date.now. */
   now?: () => number
   /** Id minting; defaults to a random-uuid. */
   uuid?: () => string
-  /** Debounce (ms) for session-list-changed reconciles; defaults to 350. */
-  reconcileDebounceMs?: number
   /** Host-authoritative transport; absent keeps the legacy in-memory test path. */
   transport?: TaskBoardTransport
 }
@@ -147,7 +138,7 @@ export class BoardController {
   private remoteSubscribed = false
   private remoteInitialization: Promise<boolean> | undefined
 
-  /** @param deps - store, execution service, and the sessions navigation face. */
+  /** @param deps - store and the sessions navigation face. */
   constructor(private readonly deps: ControllerDeps) {
     this.now = deps.now ?? (() => Date.now())
     this.uuid = deps.uuid ?? randomUuid
@@ -158,11 +149,7 @@ export class BoardController {
   /** Load the persisted ledger and start the navigation/status subscriptions. */
   start(): void {
     this.tasks = this.deps.store.load()
-    if (this.deps.transport !== undefined) {
-      void this.initializeRemote()
-    } else {
-      void this.reconcileRunningTasks()
-    }
+    if (this.deps.transport !== undefined) void this.initializeRemote()
     // A sibling tab may have edited or deleted the ledger (same origin,
     // storage events). Reload on external change so a task deleted in
     // another tab stops firing here — and is never written back by this
@@ -182,8 +169,6 @@ export class BoardController {
   dispose(): void {
     for (const dispose of this.disposers.splice(0)) dispose()
     this.listeners.clear()
-    if (this.reconcileTimer !== undefined) clearTimeout(this.reconcileTimer)
-    this.reconcileTimer = undefined
   }
 
   // --- snapshot / subscription ------------------------------------------------
@@ -413,68 +398,30 @@ export class BoardController {
   // --- execution ---------------------------------------------------------------
 
   /**
-   * Execute a task for real: move it to 'running', open an execution record,
-   * and hand off to the ExecutionService. A second call while the task is
-   * already running is ignored.
+   * Request a Host execution for a task: the Host ledger owns the running
+   * transition, the execution record, and the settlement. A second call
+   * while the task is already running is ignored; without a Host transport
+   * the run is refused (returns false).
    */
   async runTask(id: string): Promise<boolean> {
     const task = this.tasks.find(candidate => candidate.id === id)
     if (task === undefined || task.archivedAt !== undefined || task.status === 'running') return false
-    if (this.deps.transport !== undefined) {
-      return await this.commitRemote({ kind: 'run', taskId: id }, id)
-    }
-    const { task: next, execution } = startExecution(task, this.now(), this.uuid())
-    this.tasks = this.tasks.map(candidate => candidate.id === id ? next : candidate)
-    this.persistAndNotify()
-    // This page owns the settlement of its own launches: the live watch
-    // (ExecutionService.run) settles on the turn boundary, and list
-    // reconciliation must not pre-empt it with a session that has not
-    // started a turn yet (its list row is idle, not completed).
-    this.activeExecutionIds.add(execution.id)
-    if (this.deps.exec === undefined) throw new Error('legacy execution service is unavailable')
-    await this.deps.exec.run(next, execution, (event) => { this.handleExecutionEvent(event) })
-    return true
+    if (this.deps.transport === undefined) return false
+    return await this.commitRemote({ kind: 'run', taskId: id }, id)
   }
 
-  /** Re-run a settled task: move it back to 'todo' first, then execute. */
+  /** Re-run a settled task through the Host (the Host replans and executes). */
   async rerunTask(id: string): Promise<void> {
     const task = this.tasks.find(candidate => candidate.id === id)
     if (task === undefined || task.archivedAt !== undefined) return
-    if (this.deps.transport !== undefined) {
-      await this.commitRemote({ kind: 'rerun', taskId: id }, id)
-      return
-    }
-    if (task.status !== 'running') {
-      this.tasks = this.tasks.map(candidate => candidate.id === id ? withStatus(candidate, 'todo', this.now()) : candidate)
-      this.persistAndNotify()
-    }
-    await this.runTask(id)
-  }
-
-  private handleExecutionEvent(event: ExecutionEvent): void {
-    if (event.kind === 'started') {
-      this.tasks = this.tasks.map(task => task.id === event.taskId
-        ? attachSessionId(task, event.executionId, event.sessionId, this.now())
-        : task)
-      this.persistAndNotify()
-      return
-    }
-    this.activeExecutionIds.delete(event.executionId)
-    this.tasks = this.tasks.map(task => task.id === event.taskId
-      ? settleExecution(task, event.executionId, event.outcome, this.now(), event.error)
-      : task)
-    this.persistAndNotify()
+    if (this.deps.transport === undefined) return
+    await this.commitRemote({ kind: 'rerun', taskId: id }, id)
   }
 
   // --- internals ---------------------------------------------------------------
 
-  /** Reconcile running tasks and close the board when the user navigates. */
+  /** Close the board when the user navigates to another session. */
   private onSessionsChanged(): void {
-    // Background/leftover executions settle through the session list (their
-    // conversation snapshots stay cold until opened). Coalesce the burst of
-    // list notifications into one reconcile pass instead of fanning out a
-    // history read per notification; see scheduleReconcile.
-    if (this.deps.transport === undefined) this.scheduleReconcile()
     if (!this.boardOpen) return
     const current = currentOf(this.deps.sessions)
     if (current !== this.lastCurrent) this.closeBoard()
@@ -482,74 +429,6 @@ export class BoardController {
   }
 
   private lastCurrent: string | undefined = undefined
-
-  /** Execution ids launched on this page; they settle via their live watch, never list reconciliation. */
-  private readonly activeExecutionIds = new Set<string>()
-
-  /** Debounce timer for {@link reconcileRunningTasks}. */
-  private reconcileTimer: ReturnType<typeof setTimeout> | undefined = undefined
-
-  /** Whether a reconcile pass is underway (single-flight guard). */
-  private reconcileInFlight = false
-
-  /**
-   * Debounce + single-flight trigger for the running-task reconciliation.
-   * Session-list notifications arrive in bursts (one per session status
-   * change); both guards together keep a burst from reading the history API
-   * once per running task.
-   */
-  private scheduleReconcile(): void {
-    if (this.reconcileTimer !== undefined) return
-    this.reconcileTimer = setTimeout(() => {
-      this.reconcileTimer = undefined
-      void this.reconcileRunningTasks()
-    }, this.deps.reconcileDebounceMs ?? 350)
-  }
-
-  /** Settle tasks left 'running' whose sessions already finished. */
-  private async reconcileRunningTasks(): Promise<void> {
-    if (this.deps.exec === undefined) return
-    if (this.reconcileInFlight) {
-      // A session change arrived while a pass was in flight. The in-flight
-      // pass already captured the task list it iterates and will not revisit
-      // this task, so dropping the notification would leave it stuck
-      // 'running'. Re-arm the debounce so the change is reconciled once the
-      // current pass settles.
-      this.scheduleReconcile()
-      return
-    }
-    this.reconcileInFlight = true
-    try {
-      type Settled = Extract<ExecutionEvent, { kind: 'settled' }>
-      const events: Array<{ taskId: string; event: Settled }> = []
-      for (const task of this.tasks) {
-        if (task.status !== 'running') continue
-        const execution = task.executions[task.executions.length - 1]
-        // Runs launched on this page settle through their live watch (turn
-        // boundary); reconciliation exists for background/leftover runs.
-        if (execution !== undefined && this.activeExecutionIds.has(execution.id)) continue
-        const event = await this.deps.exec.reconcile(task)
-        if (event !== undefined && event.kind === 'settled') events.push({ taskId: task.id, event })
-      }
-      if (events.length === 0) return
-      let changed = false
-      for (const { taskId, event } of events) {
-        // The reconcile call above awaited: a sibling tab may have rewritten
-        // the ledger (storage event reload) meanwhile. Re-read the freshest
-        // record now so the stale task captured before the await can never
-        // overwrite fields the sibling wrote.
-        const task = this.tasks.find(candidate => candidate.id === taskId)
-        if (task === undefined) continue
-        const next = settleExecution(task, event.executionId, event.outcome, this.now(), event.error)
-        if (next === task) continue
-        this.tasks = this.tasks.map(candidate => candidate.id === taskId ? next : candidate)
-        changed = true
-      }
-      if (changed) this.persistAndNotify()
-    } finally {
-      this.reconcileInFlight = false
-    }
-  }
 
   private persistAndNotify(): void {
     if (this.deps.transport === undefined) this.deps.store.save(this.tasks)
@@ -674,20 +553,5 @@ export class BoardController {
 
   private notify(): void {
     for (const fn of [...this.listeners]) fn()
-  }
-}
-
-/** Record which session ran an execution (once the execution service reports it). */
-function attachSessionId(
-  task: TaskRecord,
-  executionId: string,
-  sessionId: string,
-  now: number,
-): TaskRecord {
-  return {
-    ...task,
-    updatedAt: now,
-    executions: task.executions.map(execution =>
-      execution.id === executionId ? { ...execution, sessionId } : execution),
   }
 }

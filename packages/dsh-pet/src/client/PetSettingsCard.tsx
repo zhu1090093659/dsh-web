@@ -103,6 +103,9 @@ export class PetSettingsCardController {
   private diagnostics: PetDiagnosticView[] = []
   private loaded = false
   private attempts = 0
+  private disposed = false
+  /** Pending deferred-load or retry timer; cancelled by dispose(). */
+  private pendingTimer: number | undefined
 
   /** @param scope - the bound settings scope for the 'pet' namespace. */
   constructor(scope: SettingsScope<PetSettings>) {
@@ -120,7 +123,9 @@ export class PetSettingsCardController {
     // the first registry request until that pass completes so transport
     // plugins (notably remote-web-ui on a paired non-loopback origin) can
     // install their fetch channel before /api/pet/pets is issued.
-    window.setTimeout(() => {
+    this.pendingTimer = window.setTimeout(() => {
+      this.pendingTimer = undefined
+      if (this.disposed) return
       void this.loadPets()
       void this.loadDiagnostics()
     }, 0)
@@ -130,6 +135,7 @@ export class PetSettingsCardController {
   private async loadDiagnostics(): Promise<void> {
     try {
       this.diagnostics = await fetchPetDiagnostics()
+      if (this.disposed) return
       this.store.set(this.projection())
     } catch {
       this.diagnostics = []
@@ -138,17 +144,23 @@ export class PetSettingsCardController {
 
   /** Resolve the registry choices once (retried a few times on failure). */
   private async loadPets(): Promise<void> {
-    if (this.loaded) return
+    if (this.loaded || this.disposed) return
     try {
       const list = await fetchPetChoices()
+      if (this.disposed) return
       this.petChoices.splice(0, this.petChoices.length, ...list.map(choice => choice.id))
       for (const choice of list) this.petLabels.set(choice.id, choice.displayName)
       this.loaded = true
       this.store.set(this.projection())
     } catch {
+      if (this.disposed) return
       this.attempts += 1
       if (this.attempts < 3) {
-        window.setTimeout(() => { void this.loadPets() }, 3000)
+        this.pendingTimer = window.setTimeout(() => {
+          this.pendingTimer = undefined
+          if (this.disposed) return
+          void this.loadPets()
+        }, 3000)
       }
     }
   }
@@ -177,10 +189,16 @@ export class PetSettingsCardController {
   }
 
   /**
-   * Release the card's scope subscription and bound stores; the slot
-   * disposer calls this on teardown.
+   * Release the card's scope subscription, bound stores and pending load
+   * timers; the slot disposer calls this on teardown.
    */
   dispose(): void {
+    if (this.disposed) return
+    this.disposed = true
+    if (this.pendingTimer !== undefined) {
+      window.clearTimeout(this.pendingTimer)
+      this.pendingTimer = undefined
+    }
     this.form.dispose()
   }
 }

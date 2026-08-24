@@ -552,7 +552,19 @@ window.SKIN_MANIFEST = {
       },
       "contributes": {
         "stylesheet": "skin.css",
-        "patches": "patches.css"
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "packages/skins/skin-center/skins/maid-atelier/assets/maid-atelier-palace-day-v4.webp",
+            "scrim": "linear-gradient(rgba(248, 250, 255, 0.12) 0%, rgba(235, 240, 250, 0.18) 55%, rgba(220, 230, 245, 0.25) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "packages/skins/skin-center/skins/maid-atelier/assets/maid-atelier-palace-night-v4.webp",
+            "scrim": "linear-gradient(rgba(9, 19, 51, 0.15) 0%, rgba(16, 32, 77, 0.25) 60%, rgba(8, 15, 39, 0.35) 100%)"
+          }
+        }
       },
       "facets": {
         "client": {

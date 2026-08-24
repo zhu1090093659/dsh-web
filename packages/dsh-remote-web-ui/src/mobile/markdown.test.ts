@@ -79,4 +79,13 @@ describe('escapeHtml', () => {
   it('escapes all five HTML-significant characters', () => {
     expect(escapeHtml('<&>"\'')).toBe('&lt;&amp;&gt;&quot;&#39;')
   })
+
+  it('equals the five sequential passes on mixed, pre-escaped and plain input', () => {
+    // Single-pass map replacement must never diverge from the sequential
+    // five-pass escape (including double-escaping of literal entities).
+    expect(escapeHtml('a & b < c > d " e \' f')).toBe('a &amp; b &lt; c &gt; d &quot; e &#39; f')
+    expect(escapeHtml('&amp; &lt; &gt;')).toBe('&amp;amp; &amp;lt; &amp;gt;')
+    expect(escapeHtml('plain text 123')).toBe('plain text 123')
+    expect(escapeHtml('')).toBe('')
+  })
 })

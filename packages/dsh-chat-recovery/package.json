@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-chat-recovery",
   "description": "Chat recovery for the dsh web GUI: fork-based editing and explicit retry of the last failed turn while preserving the original session",
-  "version": "0.2.9",
+  "version": "0.3.2",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {

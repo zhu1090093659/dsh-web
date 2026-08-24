@@ -9,7 +9,6 @@
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { chmod, copyFile, mkdir, writeFile } from 'node:fs/promises'
-import type { ServerResponse } from 'node:http'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { dshHome } from './dsh-home.ts'
@@ -19,6 +18,7 @@ import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { desktopFileName, renderDesktopEntry, renderLauncherScript, renderShortcutInstaller, scriptFileName, type LauncherPlatform, type LauncherSpec } from './core/launcher.ts'
 import { LAUNCHER_API, type CreateResult } from './protocol.ts'
 import { isLoopbackRequest } from './loopback.ts'
+import { writeJson } from './http.ts'
 
 const execFileAsync = promisify(execFile)
 
@@ -47,13 +47,6 @@ export interface LauncherRoutesDeps {
   run?: CommandRunner
   /** Test seam: explicit icon source file (overrides discovery). */
   iconSource?: string
-}
-
-/** One JSON response. */
-function writeJson(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body)
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'referrer-policy': 'no-referrer' })
-  res.end(payload)
 }
 
 /**

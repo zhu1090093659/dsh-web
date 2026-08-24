@@ -4,10 +4,11 @@
  * and the active-skin selection roundtrip with the same-origin fence.
  */
 
+import { createHash } from 'node:crypto'
 import { createServer, request as httpRequest } from 'node:http'
 import type { Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -129,6 +130,16 @@ describe('v2 catalog route', () => {
     expect(res.jsonBody.diagnostics).toHaveLength(1)
     await server.close()
   })
+
+  it('writes family JSON headers through the shared writer', async () => {
+    writeFixtureSkin('harbor')
+    const server = await serve(makeRoutes())
+    const res = await call(server.port, 'GET', `${SKIN_CENTER_V2_PREFIX}/catalog`)
+    expect(res.status).toBe(200)
+    expect(String(res.headers['content-type'])).toBe('application/json; charset=utf-8')
+    expect(String(res.headers['referrer-policy'])).toBe('no-referrer')
+    await server.close()
+  })
 })
 
 describe('v2 catalog installed-only filter', () => {
@@ -236,6 +247,66 @@ describe('v2 hooks trust gate', () => {
     expect(css.status).toBe(200)
     await server.close()
   })
+
+  function writeMarketInstalledSkin(id: string): string {
+    const dir = join(root, 'user', id)
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'skin.json'), JSON.stringify({
+      skinManifestVersion: 2,
+      id,
+      name: id,
+      nameEn: id,
+      version: '1.0.0',
+      author: 'contributed',
+      contributes: { stylesheet: 'skin.css' },
+      facets: { client: { entry: 'hooks.mjs', apiVersion: 'x-org.linxin666.skin-center/v1alpha1' } },
+    }, null, 2))
+    writeFileSync(join(dir, 'skin.css'), '.a { color: red; }')
+    writeFileSync(join(dir, 'hooks.mjs'), 'export default function defineSkinHooks() { return { apply() {} } }\n')
+    const files: Record<string, string> = {}
+    for (const rel of ['skin.json', 'skin.css', 'hooks.mjs']) {
+      files[rel] = createHash('sha256').update(readFileSync(join(dir, rel))).digest('hex')
+    }
+    writeFileSync(join(dir, 'dsh-market.provenance.json'), JSON.stringify({
+      version: 1,
+      source: 'https://dsh-market.com',
+      kind: 'skin',
+      id,
+      installedAt: new Date().toISOString(),
+      files,
+    }))
+    return dir
+  }
+
+  it('serves hooks for user skins whose bytes hash-match official-market provenance (issue #1073)', async () => {
+    writeMarketInstalledSkin('matrix')
+    const routes = makeSkinCenterV2Routes({
+      loadCatalog: () => loadSkinCatalog({ builtinDir: builtin, userDir: join(root, 'user') }),
+      activeStatePath: statePath,
+    })
+    const server = await serve(routes)
+    const res = await call(server.port, 'GET', `${SKIN_CENTER_V2_PREFIX}/skins/matrix/hooks.mjs`)
+    expect(res.status).toBe(200)
+    expect(res.text).toContain('defineSkinHooks')
+    const catalog = await call(server.port, 'GET', `${SKIN_CENTER_V2_PREFIX}/catalog`)
+    const row = catalog.jsonBody.skins.find((s: any) => s.manifest.id === 'matrix')
+    expect(row.warnings.join(' ')).not.toContain('refused')
+    await server.close()
+  })
+
+  it('refuses hooks again when the on-disk bytes no longer match the provenance', async () => {
+    const dir = writeMarketInstalledSkin('matrix')
+    writeFileSync(join(dir, 'hooks.mjs'), 'export default () => ({ apply() {} }) // tampered\n')
+    const routes = makeSkinCenterV2Routes({
+      loadCatalog: () => loadSkinCatalog({ builtinDir: builtin, userDir: join(root, 'user') }),
+      activeStatePath: statePath,
+    })
+    const server = await serve(routes)
+    const res = await call(server.port, 'GET', `${SKIN_CENTER_V2_PREFIX}/skins/matrix/hooks.mjs`)
+    expect(res.status).toBe(403)
+    expect(res.jsonBody.error).toBe('hooks-require-review')
+    await server.close()
+  })
 })
 
 describe('v2 asset route', () => {
@@ -336,6 +407,66 @@ describe('v2 active selection', () => {
       headers: { 'sec-fetch-site': 'cross-site', origin: 'https://evil.example' },
     })
     expect(res.status).toBe(403)
+    await server.close()
+  })
+})
+/** Raw-string POST for body-contract cases (call() serializes JSON objects). */
+async function postRaw(
+  port: number,
+  path: string,
+  payload: string,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  return await new Promise((resolve, reject) => {
+    const req = httpRequest(
+      {
+        host: '127.0.0.1',
+        port,
+        path,
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'content-length': String(Buffer.byteLength(payload)),
+        },
+      },
+      (response) => {
+        const chunks: Buffer[] = []
+        response.on('data', (chunk) => { chunks.push(chunk as Buffer) })
+        response.on('end', () => {
+          const raw = Buffer.concat(chunks).toString('utf8')
+          let body: Record<string, unknown> = {}
+          try { body = JSON.parse(raw) as Record<string, unknown> } catch { /* non-JSON */ }
+          resolve({ status: response.statusCode ?? 0, body })
+        })
+      },
+    )
+    req.on('error', reject)
+    if (payload !== '') req.write(payload)
+    req.end()
+  })
+}
+
+describe('v2 active POST body contract (shared readJsonBody migration)', () => {
+  it('answers 400 invalid-body when the POST body is not JSON', async () => {
+    const server = await serve(makeRoutes())
+    const res = await postRaw(server.port, SKIN_CENTER_V2_PREFIX + '/active', 'not-json')
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ ok: false, error: 'invalid-body' })
+    await server.close()
+  })
+
+  it('answers 400 invalid-body to an empty POST body (was nothing-to-update)', async () => {
+    const server = await serve(makeRoutes())
+    const res = await postRaw(server.port, SKIN_CENTER_V2_PREFIX + '/active', '')
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ ok: false, error: 'invalid-body' })
+    await server.close()
+  })
+
+  it('destroys the connection on an over-limit body instead of answering JSON', async () => {
+    const server = await serve(makeRoutes())
+    await expect(
+      postRaw(server.port, SKIN_CENTER_V2_PREFIX + '/active', '{"p":"' + 'x'.repeat(16 * 1024) + '"}'),
+    ).rejects.toThrow()
     await server.close()
   })
 })

@@ -103,6 +103,17 @@ describe('built-in v2 skins: catalog and stylesheets', () => {
     expect(catalog.skins.map((s) => s.manifest.id).sort()).toEqual(skinIds)
   })
 
+  it('every built-in skin satisfies the primary-action token contract', () => {
+    const catalog = loadSkinCatalog({ builtinDir: SKINS_DIR, userDir: NO_USER_SKINS })
+    const offenders = catalog.skins
+      .map((skin) => ({
+        id: skin.manifest.id,
+        warnings: skin.warnings.filter((warning) => warning.startsWith('primary action')),
+      }))
+      .filter((skin) => skin.warnings.length > 0)
+    expect(offenders, JSON.stringify(offenders, null, 2)).toEqual([])
+  })
+
   for (const id of skinIds) {
     it(id + ': manifest validates and stylesheets transform', () => {
       const dir = join(SKINS_DIR, id)

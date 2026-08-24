@@ -11,6 +11,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 import * as tool from '../src/index.ts'
 import { chatReply, FakeWebServer, jsonReply, PNG_BYTES, startMockServer } from './mock-server.ts'
+import { agentForWorkspace } from './test-agent.ts'
 
 const cleanup: Array<() => Promise<void>> = []
 const contexts: Context[] = []
@@ -40,12 +41,12 @@ const SPEC: tool.ResolvedConfig = {
   interceptImageSend: tool.DEFAULT_INTERCEPT_IMAGE_SEND,
 }
 
-async function tempPng(): Promise<string> {
+async function tempPng(): Promise<{ path: string; workspace: string }> {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-describe-cache-'))
   cleanup.push(() => rm(dir, { recursive: true, force: true }))
   const path = join(dir, 'pixel.png')
   await writeFile(path, PNG_BYTES)
-  return path
+  return { path, workspace: dir }
 }
 
 async function boot(ctx: Context, baseURL: string): Promise<void> {
@@ -55,12 +56,14 @@ async function boot(ctx: Context, baseURL: string): Promise<void> {
   await ctx.plugin(tool, { baseURL, model: 'vision-1', apiKey: 'sk-inline' })
 }
 
-function callDescribe(ctx: Context, args: unknown) {
+function callDescribe(ctx: Context, args: unknown, workspace?: string) {
+  const agent = agentForWorkspace(workspace)
   return ctx.tools.execute({
     signal: new AbortController().signal,
     callId: CallId('cache-vision-call'),
     name: 'describe_image',
     arguments: args,
+    ...(agent === undefined ? {} : { agent }),
   })
 }
 
@@ -71,13 +74,13 @@ describe('semantic vision cache', () => {
     const ctx = new Context()
   contexts.push(ctx)
     await boot(ctx, server.url)
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const first = await callDescribe(ctx, { image: path, prompt: 'what is here?' })
+    const first = await callDescribe(ctx, { image: path, prompt: 'what is here?' }, workspace)
     expect(first.isError).toBe(false)
     expect(server.requests).toHaveLength(1)
 
-    const second = await callDescribe(ctx, { image: path, prompt: 'what is here?' })
+    const second = await callDescribe(ctx, { image: path, prompt: 'what is here?' }, workspace)
     expect(second.isError).toBe(false)
     if (!first.isError && !second.isError) {
       expect(second.value).toEqual(first.value)
@@ -92,10 +95,10 @@ describe('semantic vision cache', () => {
     const ctx = new Context()
   contexts.push(ctx)
     await boot(ctx, server.url)
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    await callDescribe(ctx, { image: path, prompt: 'first prompt' })
-    await callDescribe(ctx, { image: path, prompt: 'second prompt' })
+    await callDescribe(ctx, { image: path, prompt: 'first prompt' }, workspace)
+    await callDescribe(ctx, { image: path, prompt: 'second prompt' }, workspace)
     expect(server.requests).toHaveLength(2)
   })
 

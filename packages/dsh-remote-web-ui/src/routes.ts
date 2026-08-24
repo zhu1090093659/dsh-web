@@ -13,7 +13,7 @@ import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { z, type ZodType } from 'zod'
 import { UnknownLanAddressError, type PairingService, type PairingSnapshot } from './pairing.ts'
 import { isLoopbackClient, readCookie } from './gate.ts'
-import { readBoundedJson, writeJson } from './http.ts'
+import { readJsonBody, writeJson } from './http.ts'
 
 /**
  * Browser-trust fence for the /api/pair routes, mirroring the connection
@@ -115,24 +115,15 @@ export const revokePayloadSchema = z.object({
 export const pairActionPayloadSchema = z.object({}).passthrough()
 
 /**
- * Parse a pair request body through schema. A missing/empty or non-object
- * body is treated as an empty object (the same way the previous manual reads
- * yielded absent fields), and a value that fails the schema returns
- * `undefined` so the caller can answer with the existing error shape.
+ * Parse a pair request body through schema. A missing/empty, unparseable
+ * or non-object body (shared readJsonBody with objectOnly yields null for
+ * all of them) is treated as an empty object — the desktop stop/heartbeat
+ * send no body — and a value that fails the schema returns `undefined` so
+ * the caller can answer with the existing error shape.
  */
-function parsePairPayload<T>(schema: ZodType<T>, body: Record<string, unknown> | undefined): T | undefined {
+function parsePairPayload<T>(schema: ZodType<T>, body: unknown | null): T | undefined {
   const result = schema.safeParse(body ?? {})
   return result.success ? result.data : undefined
-}
-
-/** Read a request body up to MAX_BODY_BYTES and parse it as JSON (undefined on failure). */
-async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown> | undefined> {
-  try {
-    const parsed: unknown = await readBoundedJson(req, MAX_BODY_BYTES)
-    return typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : undefined
-  } catch {
-    return undefined
-  }
 }
 
 /** One open desktop status stream. */
@@ -265,7 +256,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       writeJson(res, 403, { ok: false, code: 'forbidden' })
       return
     }
-    const body = await readJsonBody(req)
+    const body = await readJsonBody(req, { maxBytes: MAX_BODY_BYTES, objectOnly: true })
     const payload = parsePairPayload(issuePayloadSchema, body)
     if (payload === undefined) {
       writeJson(res, 400, { ok: false, code: 'bad-payload' })
@@ -313,7 +304,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       writeJson(res, 429, { ok: false, code: 'rate-limited' })
       return
     }
-    const body = await readJsonBody(req)
+    const body = await readJsonBody(req, { maxBytes: MAX_BODY_BYTES, objectOnly: true })
     const payload = parsePairPayload(acceptPayloadSchema, body)
     if (payload === undefined) {
       writeJson(res, 400, { ok: false, code: 'bad-payload' })
@@ -328,13 +319,11 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
     // No Secure attribute: LAN pairing runs over plain HTTP (the cookie must
     // work there), and the same cookie rides HTTPS on the tunnel. Lax keeps
     // top-level navigations working while blocking cross-site subrequests.
-    res.writeHead(200, {
-      'content-type': 'application/json; charset=utf-8',
+    writeJson(res, 200, { ok: true, deviceId: result.deviceId }, {
       'set-cookie': [
         `${service.config.cookieName}=${result.deviceId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${String(COOKIE_MAX_AGE_SEC)}`,
       ],
     })
-    res.end(JSON.stringify({ ok: true, deviceId: result.deviceId }))
   }
 
   const handleStop = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -343,7 +332,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       writeJson(res, 403, { ok: false, code: 'forbidden' })
       return
     }
-    const body = await readJsonBody(req)
+    const body = await readJsonBody(req, { maxBytes: MAX_BODY_BYTES, objectOnly: true })
     if (parsePairPayload(pairActionPayloadSchema, body) === undefined) {
       writeJson(res, 400, { ok: false, code: 'bad-payload' })
       return
@@ -358,7 +347,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       writeJson(res, 403, { ok: false, code: 'forbidden' })
       return
     }
-    const body = await readJsonBody(req)
+    const body = await readJsonBody(req, { maxBytes: MAX_BODY_BYTES, objectOnly: true })
     const payload = parsePairPayload(revokePayloadSchema, body)
     if (payload === undefined) {
       writeJson(res, 400, { ok: false, code: 'bad-payload' })
@@ -378,7 +367,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       writeJson(res, 403, { ok: false, code: 'forbidden' })
       return
     }
-    const body = await readJsonBody(req)
+    const body = await readJsonBody(req, { maxBytes: MAX_BODY_BYTES, objectOnly: true })
     if (parsePairPayload(pairActionPayloadSchema, body) === undefined) {
       writeJson(res, 400, { ok: false, code: 'bad-payload' })
       return

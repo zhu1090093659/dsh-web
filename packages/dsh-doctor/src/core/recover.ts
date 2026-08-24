@@ -64,6 +64,8 @@ export interface RecoveryRequest {
    * currently running; the CLI defaults to blocked (fail-closed).
    */
   allowLive?: boolean
+  /** Promote immediately after gates. False leaves a durable staged candidate for confirmRepair. */
+  autoPromote?: boolean
 }
 
 export interface RecoveryOutcome {
@@ -321,6 +323,11 @@ export async function repairProfile(request: RecoveryRequest, gateOptions: RealG
       await journal.append({ op: 'repair:gates-failed', ok: false, detail: { txn: txn.txnId, report: gateReports } })
       return { ok: false, phase: 'aborted', diagnostics: diagnosis.diagnostics, actions: diagnosis.actions, manualActions: diagnosis.manualActions, snapshotId: snapshotResult.snapshotId, gates: gateReports, txnId: txn.txnId, message: 'candidate failed the isolated health gates' }
     }
+    await writeTransactionRecord(fs, home, txn.record)
+    if (request.autoPromote === false) {
+      await journal.append({ op: 'repair:awaiting-confirm', ok: true, detail: { txn: txn.txnId } })
+      return { ok: true, phase: 'staged', diagnostics: diagnosis.diagnostics, actions: diagnosis.actions, manualActions: diagnosis.manualActions, snapshotId: snapshotResult.snapshotId, gates: gateReports, txnId: txn.txnId, message: 'candidate passed isolated gates and awaits confirmation' }
+    }
     // Surface a lost background lease before the first live-profile mutation.
     await globalLock.touch(clock())
     await profileLock.touch(clock())
@@ -393,6 +400,59 @@ async function rollbackPromotedFailure(fs: FsLike, home: string, journal: Journa
     ok: false,
     detail: { txn: txn.txnId, cause, ...(rollbackWarning === undefined ? {} : { rollbackWarning }) },
   }).catch(() => undefined)
+}
+
+/** Promote a durable staged candidate after explicit confirmation. */
+export async function confirmRepair(request: RecoveryRequest, txnId: string, gateOptions: RealGateOptions = {}): Promise<RecoveryOutcome> {
+  if (request.allowLive !== true) return rollbackFailure(txnId, 'confirm blocked: profile may still be running')
+  const fs = request.fs ?? nodeFs
+  const now = request.now ?? (() => new Date().toISOString())
+  const clock = request.clock ?? Date.now
+  const gates = request.gate ?? realGateDeps({ clock, engine: createYamlEngine() })
+  const home = request.home
+  const journal = createJournal({ fs, file: journalPath(home), now })
+  const locks = createLockManager({ fs, home, pid: request.pid ?? process.pid, host: 'local', clock, iso: now, pidAlive: request.pidAlive ?? ((pid) => pid !== 0) })
+  let globalLock: Awaited<ReturnType<typeof locks.acquire>> | undefined
+  let profileLock: Awaited<ReturnType<typeof locks.acquire>> | undefined
+  try {
+    validateSegment(txnId, 'transaction id')
+    globalLock = await locks.acquire('global', undefined, { intent: 'confirm ' + request.profile + '/' + txnId })
+    profileLock = await locks.acquire('profile', request.profile, { intent: 'confirm ' + txnId })
+    const parsed = JSON.parse(await fs.readText(transactionRecordPath(home, txnId))) as unknown
+    const { record, stagingPath } = validateRollbackRecord(parsed, home, request.profile, txnId)
+    if (record.phase === 'committed') return { ok: true, phase: 'promoted', diagnostics: [], actions: [], manualActions: [], txnId, message: 'candidate is already promoted' }
+    if (record.phase !== 'staged') throw new Error('transaction ' + txnId + ' is ' + record.phase + '; confirm requires staged')
+    if (!(await fs.exists(stagingPath))) throw new Error('staged candidate is missing at ' + stagingPath)
+    const isolated = workDir(home) + '/confirm-' + txnId
+    await fs.remove(isolated, { recursive: true }).catch(() => undefined)
+    const isolatedProfileDir = isolated + '/profiles/' + request.profile
+    await fs.mkdir(isolatedProfileDir, { recursive: true })
+    await copyProfileFiles(fs, stagingPath, isolatedProfileDir)
+    const env = gateEnvironmentOf(request, gateOptions, isolated)
+    const dump = await runDumpDefaultGateSafe(gates, request.dshPath, isolated, request.profile, env, gateOptions.timeoutMs)
+    const start = dump.ok ? await runStartGateSafe(gates, request.dshPath, isolated, request.profile, env, gateOptions.timeoutMs) : undefined
+    const gateReports = [dump, ...(start === undefined ? [] : [start])]
+    if (!dump.ok || start === undefined || !start.ok) return { ok: false, phase: 'staged', diagnostics: [], actions: [], manualActions: [], txnId, gates: gateReports, message: 'candidate failed confirmation health gates and remains staged' }
+    const txn = createCandidateTransaction({ fs, home, profile: request.profile, now, journal, initialRecord: record, beforePromote: async current => { await globalLock!.touch(clock()); await profileLock!.touch(clock()); await writeTransactionRecord(fs, home, current) }, beforeCompensation: async () => { await globalLock!.touch(clock()); await profileLock!.touch(clock()) } })
+    await txn.promote()
+    await writeTransactionRecord(fs, home, txn.record)
+    const liveDump = await runDumpDefaultGateSafe(gates, request.dshPath, home, request.profile, gateEnvironmentOf(request, gateOptions, home), gateOptions.timeoutMs)
+    await globalLock.touch(clock()); await profileLock.touch(clock())
+    if (!liveDump.ok) {
+      await rollbackPromotedFailure(fs, home, journal, txn, 'confirmation live verification failed')
+      return { ok: false, phase: 'rolled-back', diagnostics: [], actions: [], manualActions: [], txnId, gates: gateReports, message: 'live verification failed after confirmation; rolled back' }
+    }
+    await txn.commit()
+    await writeTransactionRecord(fs, home, txn.record)
+    await journal.append({ op: 'repair:confirm', ok: true, detail: { txn: txnId } })
+    return { ok: true, phase: 'promoted', diagnostics: [], actions: [], manualActions: [], txnId, gates: gateReports }
+  } catch (error) {
+    await journal.append({ op: 'repair:confirm-error', ok: false, detail: { txn: txnId, error: String(error) } }).catch(() => undefined)
+    return rollbackFailure(txnId, error instanceof Error ? error.message : String(error))
+  } finally {
+    await profileLock?.release().catch(() => undefined)
+    await globalLock?.release().catch(() => undefined)
+  }
 }
 
 /** Restore a promoted transaction by moving the quarantine back. */

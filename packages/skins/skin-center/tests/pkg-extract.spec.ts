@@ -29,7 +29,6 @@ import {
   parseMdl,
   parsePkg,
   parseTex,
-  parseTexToRGBA,
   readPkgEntry,
   extractSceneResourceFromDir,
   TexUnsupportedError,
@@ -1569,7 +1568,7 @@ describe('untrusted input allocation caps (#717 hardening)', () => {
       i32le(20000), i32le(20000),
       i32le(0), i32le(0), i32le(0),
     )
-    expect(() => parseTexToRGBA(tex)).toThrow(/invalid mipmap dimensions/)
+    expect(() => decodeTex(tex)).toThrow(/invalid mipmap dimensions/)
   })
 
   it('rejects png headers with oversized dimensions', () => {

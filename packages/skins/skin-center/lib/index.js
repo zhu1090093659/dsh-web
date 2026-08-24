@@ -1,13 +1,14 @@
 import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import z from "schemastery";
-import { chmodSync, cpSync, createReadStream, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, closeSync, cpSync, createReadStream, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
+import { createHash } from "node:crypto";
 import { transform } from "lightningcss";
+import { execFile, execFileSync } from "node:child_process";
 import { readFile, stat } from "node:fs/promises";
 import { pipeline } from "node:stream";
-import { execFileSync } from "node:child_process";
 import { Buffer as Buffer$1 } from "node:buffer";
 import { decode } from "jpeg-js";
 import { deflateSync, inflateSync } from "node:zlib";
@@ -23,11 +24,77 @@ var __exportAll = (all, no_symbols) => {
 	return target;
 };
 //#endregion
+//#region src/http.ts
+/** Default body cap for readJsonBody: 64 KiB. */
+const DEFAULT_JSON_BODY_MAX_BYTES = 64 * 1024;
+/** Family-default JSON response headers; callers may append or override. */
+const JSON_HEADERS = {
+	"content-type": "application/json; charset=utf-8",
+	"referrer-policy": "no-referrer"
+};
+/**
+* Lenient bounded body reader: parse a request body as JSON, or null on an
+* empty body, invalid JSON, or a body past maxBytes (default 64 KiB).
+* Overflow destroys the request instead of draining the remainder (no drain
+* call, matching the current repo-wide behavior); callers must not keep
+* reading the request afterwards. With objectOnly, non-JSON-object payloads
+* also yield null.
+*/
+async function readJsonBody(req, opts = {}) {
+	const maxBytes = opts.maxBytes ?? DEFAULT_JSON_BODY_MAX_BYTES;
+	const chunks = [];
+	let size = 0;
+	for await (const chunk of req) {
+		const buffer = chunk;
+		size += buffer.length;
+		if (size > maxBytes) {
+			req.destroy();
+			return null;
+		}
+		chunks.push(buffer);
+	}
+	const text = Buffer.concat(chunks).toString("utf8");
+	if (text === "") return null;
+	try {
+		const parsed = JSON.parse(text);
+		if (opts.objectOnly && !isJsonObject(parsed)) return null;
+		return parsed;
+	} catch {
+		return null;
+	}
+}
+/** Whether a value is a JSON object: typeof object, not null, not an array. */
+function isJsonObject(value) {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+/**
+* Write one JSON response. Default headers are the family defaults
+* (content-type and referrer-policy); caller headers are appended or
+* override them.
+*/
+function writeJson(res, status, body, headers = {}) {
+	const payload = JSON.stringify(body);
+	res.writeHead(status, {
+		...JSON_HEADERS,
+		...headers
+	});
+	res.end(payload);
+}
+//#endregion
 //#region src/http-utils.ts
-/** One JSON response. */
-function json(res, status, body) {
-	res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
-	res.end(JSON.stringify(body));
+/** True when an `Origin` header names a host other than the request Host.
+*  Browsers send Origin on CORS requests and on all POSTs; opaque origins
+*  (sandboxed iframes) serialize as the literal string "null". */
+function hasForeignOrigin(req) {
+	const origin = req.headers.origin;
+	if (typeof origin !== "string" || origin === "" || origin === "null") return false;
+	const host = req.headers.host;
+	if (typeof host !== "string" || host === "") return true;
+	try {
+		return new URL(origin).host !== host;
+	} catch {
+		return true;
+	}
 }
 /**
 * Same-origin fence. Browsers send Sec-Fetch-Site on every fetch: a
@@ -39,54 +106,35 @@ function json(res, status, body) {
 function isSameOriginRequest(req) {
 	const site = req.headers["sec-fetch-site"];
 	if (typeof site === "string" && site === "cross-site") return false;
-	const origin = req.headers.origin;
-	if (typeof origin === "string" && origin !== "" && origin !== "null") {
-		const host = req.headers.host;
-		if (typeof host !== "string" || host === "") return false;
-		try {
-			if (new URL(origin).host !== host) return false;
-		} catch {
-			return false;
-		}
-	}
-	return true;
+	return !hasForeignOrigin(req);
 }
 /** Reject cross-site requests with 403. */
 function requireSameOrigin(req, res) {
 	if (isSameOriginRequest(req)) return true;
-	json(res, 403, {
+	writeJson(res, 403, {
 		ok: false,
 		error: "cross-site-request-rejected"
 	});
 	return false;
 }
-/** Read a JSON request body (bounded to 64KB). */
-function readJsonBody(req) {
-	return new Promise((resolve, reject) => {
-		let size = 0;
-		const chunks = [];
-		req.on("data", (chunk) => {
-			size += chunk.length;
-			if (size > 64 * 1024) {
-				reject(/* @__PURE__ */ new Error("body-too-large"));
-				queueMicrotask(() => req.destroy());
-				return;
-			}
-			chunks.push(chunk);
+/**
+* Fence for the read-only wallpaper-content serving routes (/web/,
+* /shim.js, /scene-manifest/, /scene-resource/). The wallpaper iframes are
+* sandboxed without allow-same-origin, so their documents carry an opaque
+* origin and every load they make (scripts, images, fetches) arrives as
+* Sec-Fetch-Site: cross-site — the strict fence would 403 the wallpaper's
+* own assets. These GETs are token-gated and side-effect free, so the
+* Sec-Fetch-Site check is dropped while the foreign-origin rejection stays.
+*/
+function requireContentOrigin(req, res) {
+	if (hasForeignOrigin(req)) {
+		writeJson(res, 403, {
+			ok: false,
+			error: "cross-site-request-rejected"
 		});
-		req.on("end", () => {
-			if (chunks.length === 0) {
-				resolve({});
-				return;
-			}
-			try {
-				resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
-			} catch {
-				reject(/* @__PURE__ */ new Error("invalid-json"));
-			}
-		});
-		req.on("error", reject);
-	});
+		return false;
+	}
+	return true;
 }
 //#endregion
 //#region src/core/background.ts
@@ -341,6 +389,226 @@ function validateSkinManifestV2(input) {
 	};
 }
 //#endregion
+//#region src/core/css-safety/token-audit.ts
+const PRIMARY_ACTION_FILL$1 = "--dsw-alias-button-primary-fill";
+const PRIMARY_ACTION_HOVER$1 = "--dsw-alias-button-primary-hover";
+const PRIMARY_ACTION_DIMMED$1 = "--dsw-alias-button-primary-dimmed";
+const PRIMARY_ACTION_FOREGROUND$1 = "--dsw-alias-label-primary-foreground";
+const BRAND_PRIMARY = "--dsw-alias-brand-primary";
+const BRAND_PRIMARY_INVERT = "--dsw-alias-brand-primary-invert";
+/** Shell fill/foreground defaults per theme (both resolve to the official
+* theme's own matched CTA: #0f1115 on #ffffff light, #f9fafb on #0f1115 dark). */
+const SHELL_CTA = {
+	light: {
+		fill: "#0f1115",
+		foreground: "#ffffff"
+	},
+	dark: {
+		fill: "#f9fafb",
+		foreground: "#0f1115"
+	}
+};
+/**
+* Official static palette values referenced through var() by skinned tokens
+* (the subset the built-in skins actually use; mirrors the official
+* dsh-client-ui-theme static table). If a value ever drifts, contrast
+* resolution degrades to "skip", never to a wrong verdict.
+*/
+const STATIC_PALETTE = {
+	"--dsw-static-amber-400": "#f7ad31",
+	"--dsw-static-amber-500": "#f59e0b",
+	"--dsw-static-blue-100": "#dbeafe",
+	"--dsw-static-blue-300": "#93c5fd",
+	"--dsw-static-blue-400": "#60a5fa",
+	"--dsw-static-blue-450": "#4d93f8",
+	"--dsw-static-blue-500": "#3b82f6",
+	"--dsw-static-blue-600": "#2563eb",
+	"--dsw-static-blue-800": "#1e40af",
+	"--dsw-static-green-400": "#4ed17e",
+	"--dsw-static-green-500": "#22c55e",
+	"--dsw-static-neutral-bluish-00": "#fff",
+	"--dsw-static-neutral-bluish-1000": "#0f1115",
+	"--dsw-static-neutral-bluish-200": "#e1e5ee",
+	"--dsw-static-neutral-bluish-300": "#cfd3d6",
+	"--dsw-static-neutral-bluish-400": "#adb2b8",
+	"--dsw-static-neutral-bluish-500": "#979da6",
+	"--dsw-static-neutral-bluish-600": "#81858c",
+	"--dsw-static-neutral-bluish-700": "#61666b",
+	"--dsw-static-neutral-bluish-750": "#43454a",
+	"--dsw-static-neutral-bluish-800": "#353638",
+	"--dsw-static-neutral-bluish-950": "#151517"
+};
+/** Index of the brace that closes the one opened at `open`. */
+function matchClose(css, open) {
+	let depth = 0;
+	for (let i = open; i < css.length; i += 1) {
+		const ch = css[i];
+		if (ch === "{") depth += 1;
+		else if (ch === "}") {
+			depth -= 1;
+			if (depth === 0) return i;
+		}
+	}
+	return -1;
+}
+/** Recursive scan: map every custom-property declaration to a theme bucket. */
+function parseDefinitions(css) {
+	const defined = /* @__PURE__ */ new Set();
+	const light = /* @__PURE__ */ new Map();
+	const dark = /* @__PURE__ */ new Map();
+	const source = withoutComments(css);
+	const visit = (start, parentDark) => {
+		let i = start;
+		for (;;) {
+			const open = source.indexOf("{", i);
+			if (open === -1) return;
+			const close = matchClose(source, open);
+			const head = source.slice(i, open);
+			const atRule = head.trimStart().startsWith("@");
+			const darkHere = parentDark || /data-ds-dark-theme/.test(head) || /prefers-color-scheme\s*:\s*dark/i.test(head);
+			if (atRule) {
+				visit(open + 1, darkHere);
+				i = close === -1 ? source.length : close + 1;
+			} else {
+				const end = close === -1 ? source.length : close;
+				const body = source.slice(open + 1, end);
+				const target = darkHere ? dark : light;
+				for (const match of body.matchAll(/(--[\w-]+)\s*:\s*([^;}]+)/g)) {
+					const name = match[1];
+					const value = match[2];
+					if (name === void 0 || value === void 0) continue;
+					defined.add(name);
+					target.set(name, value.trim());
+				}
+				i = end + 1;
+			}
+		}
+	};
+	visit(0, false);
+	return {
+		defined,
+		byTheme: {
+			light,
+			dark
+		}
+	};
+}
+function withoutComments(css) {
+	return css.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+/** Normalize #rgb / #rrggbb / #rrggbbaa to #rrggbb (alpha ignored). */
+function normalizeHex(v) {
+	const m = /^#([0-9a-f]{3,8})$/i.exec(v);
+	if (m === null) return null;
+	const h = m[1] ?? "";
+	if (h.length === 3) return "#" + h.split("").map((c) => c + c).join("");
+	if (h.length >= 6) return "#" + h.slice(0, 6);
+	return null;
+}
+/** Resolve one declaration value to a #rrggbb color (one theme map). */
+function resolveColor(value, theme, parsed, depth = 0) {
+	const v = value.trim();
+	const hex = normalizeHex(v);
+	if (hex !== null) return hex;
+	const viaVar = /^var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\s*\)$/.exec(v);
+	if (viaVar === null || depth >= 4) return null;
+	const name = viaVar[1];
+	if (name !== void 0 && STATIC_PALETTE[name] !== void 0) return STATIC_PALETTE[name];
+	const own = name !== void 0 ? parsed.byTheme[theme].get(name) ?? parsed.byTheme[theme === "light" ? "dark" : "light"].get(name) : void 0;
+	if (own !== void 0) return resolveColor(own, theme, parsed, depth + 1);
+	const fallback = viaVar[2];
+	return fallback !== void 0 ? resolveColor(fallback, theme, parsed, depth + 1) : null;
+}
+function rgbOf(hex) {
+	const m = /^#([0-9a-f]{6})$/i.exec(hex);
+	if (m === null) return null;
+	const h = m[1] ?? "";
+	return [
+		parseInt(h.slice(0, 2), 16),
+		parseInt(h.slice(2, 4), 16),
+		parseInt(h.slice(4, 6), 16)
+	];
+}
+/** WCAG 2.x relative luminance of a #rrggbb/#rgb color. */
+function luminance(hex) {
+	const rgb = rgbOf(hex);
+	if (rgb === null) return null;
+	const [r, g, b] = rgb;
+	const linear = (c) => {
+		const s = c / 255;
+		return s <= .04045 ? s / 12.92 : Math.pow((s + .055) / 1.055, 2.4);
+	};
+	return .2126 * linear(r) + .7152 * linear(g) + .0722 * linear(b);
+}
+/** WCAG contrast ratio between two colors (foreground over background). */
+function contrastRatio(fg, bg) {
+	const l1 = luminance(fg);
+	const l2 = luminance(bg);
+	if (l1 === null || l2 === null) return null;
+	const high = Math.max(l1, l2);
+	const low = Math.min(l1, l2);
+	return (high + .05) / (low + .05);
+}
+function anchorDefined(defined) {
+	return [...ANCHOR_TOKENS].some((token) => defined.has(token));
+}
+const ANCHOR_TOKENS = [
+	PRIMARY_ACTION_FILL$1,
+	PRIMARY_ACTION_HOVER$1,
+	PRIMARY_ACTION_DIMMED$1,
+	PRIMARY_ACTION_FOREGROUND$1,
+	BRAND_PRIMARY,
+	BRAND_PRIMARY_INVERT
+];
+/**
+* Audit one skin's stylesheets (in application order) against the
+* primary-action token contract. Warning-only: the loader's completion
+* rules keep every outcome legible, so this never fails a skin.
+*/
+function auditTokenContract(stylesheets) {
+	const warnings = [];
+	if (stylesheets.length === 0) return { warnings };
+	const parsed = mergeTokens(stylesheets);
+	const { defined, byTheme } = parsed;
+	if (!anchorDefined(defined)) return { warnings };
+	const fillDefined = defined.has("--dsw-alias-button-primary-fill") || defined.has("--dsw-alias-brand-primary");
+	const hoverDefined = defined.has("--dsw-alias-button-primary-hover") || fillDefined;
+	const foregroundDefined = defined.has("--dsw-alias-label-primary-foreground") || defined.has("--dsw-alias-brand-primary") && defined.has("--dsw-alias-brand-primary-invert");
+	if (!fillDefined) warnings.push("primary action contract: \"button-primary-fill\" is not defined and \"brand-primary\" is not an anchor; buttons render the official shell CTA — define button-primary-fill (with button-primary-hover and label-primary-foreground) to adopt the skin palette");
+	if (!hoverDefined) warnings.push("primary action contract: \"button-primary-hover\" is not defined; the loader derives it from the button fill (color-mix toward the surface) — define it explicitly for the exact hover look");
+	if (!foregroundDefined) warnings.push("primary action contract: \"label-primary-foreground\" is not defined; the loader keeps the official shell foreground (#fff light / #0f1115 dark) — pair it with the fill, or declare the matched pair brand-primary + brand-primary-invert (legacy convention)");
+	for (const theme of ["light", "dark"]) {
+		const map = byTheme[theme];
+		const fill = map.get("--dsw-alias-button-primary-fill") ?? map.get("--dsw-alias-brand-primary") ?? SHELL_CTA[theme].fill;
+		const brandInvert = map.get(BRAND_PRIMARY_INVERT);
+		const foreground = map.get("--dsw-alias-label-primary-foreground") ?? (map.get("--dsw-alias-brand-primary") !== void 0 && brandInvert !== void 0 ? brandInvert : SHELL_CTA[theme].foreground);
+		const fillResolved = resolveColor(fill, theme, parsed);
+		const foregroundResolved = resolveColor(foreground, theme, parsed);
+		if (fillResolved === null || foregroundResolved === null) continue;
+		const ratio = contrastRatio(foregroundResolved, fillResolved);
+		if (ratio !== null && ratio < 3) warnings.push(`primary action contrast: ${foregroundResolved} on ${fillResolved} is ${ratio.toFixed(2)}:1 (${theme} theme) — below the 3:1 UI gate; pick a foreground that pairs with the fill`);
+	}
+	return { warnings };
+}
+function mergeTokens(stylesheets) {
+	const defined = /* @__PURE__ */ new Set();
+	const light = /* @__PURE__ */ new Map();
+	const dark = /* @__PURE__ */ new Map();
+	for (const sheet of stylesheets) {
+		const parsed = parseDefinitions(sheet.css);
+		for (const name of parsed.defined) defined.add(name);
+		for (const [name, value] of parsed.byTheme.light) light.set(name, value);
+		for (const [name, value] of parsed.byTheme.dark) dark.set(name, value);
+	}
+	return {
+		defined,
+		byTheme: {
+			light,
+			dark
+		}
+	};
+}
+//#endregion
 //#region src/harness-home.ts
 /**
 * DSH harness-home / profile path resolution. Extracted from the retired
@@ -436,6 +704,65 @@ function resolveHarnessPaths(home, profile, fromUrl = import.meta.url) {
 	};
 }
 //#endregion
+//#region src/provenance.ts
+/**
+* Official-market provenance verification (issue #1073).
+*
+* Skins installed one-click from the DSH Market carry a
+* dsh-market.provenance.json written by the market installer at install
+* time, pinning every installed file to its sha256 and to the market
+* origin. The market's skin content is built from THIS repository (same
+* review, same release), so when the on-disk skin.json and hooks entry
+* hash-match the provenance, the hooks bytes are exactly the reviewed
+* bytes and may run like a built-in skin's.
+*
+* Fail-closed: a missing/unparseable provenance, a foreign source, or any
+* hash mismatch (post-install tampering, partial copy) keeps the
+* hooks-refused behavior for user-directory skins. Forging the provenance
+* requires write access to $DSH_HOME itself — an attacker with that access
+* can already install full plugins, so the file is a provenance record,
+* not a capability guard against the local user.
+* @module @linxin666/dsh-client-ui-skin-center/provenance
+*/
+/** Provenance filename written by the market installer (mirrors PROVENANCE_FILENAME in @linxin666/dsh-client-ui-market; no cross-package runtime import). */
+const MARKET_PROVENANCE_FILENAME = "dsh-market.provenance.json";
+function sha256Hex(abs) {
+	try {
+		return createHash("sha256").update(readFileSync(abs)).digest("hex");
+	} catch {
+		return null;
+	}
+}
+/**
+* Whether the skin directory at dir carries valid official-market
+* provenance for skinId whose declared hooks entry (already validated as a
+* safe relative path by the manifest validator) hash-matches the recorded
+* bytes — skin.json included, so the facet entry path itself is pinned.
+*/
+function verifyMarketProvenance(dir, skinId, hooksEntry) {
+	let raw;
+	try {
+		raw = JSON.parse(readFileSync(join(dir, MARKET_PROVENANCE_FILENAME), "utf8"));
+	} catch {
+		return false;
+	}
+	if (typeof raw !== "object" || raw === null) return false;
+	const prov = raw;
+	if (prov.version !== 1) return false;
+	if (prov.source !== "https://dsh-market.com") return false;
+	if (prov.id !== skinId) return false;
+	const files = prov.files;
+	if (typeof files !== "object" || files === null) return false;
+	const hashes = files;
+	for (const rel of ["skin.json", hooksEntry]) {
+		const expected = hashes[rel];
+		if (typeof expected !== "string" || !/^[0-9a-f]{64}$/.test(expected)) return false;
+		const actual = sha256Hex(join(dir, ...rel.split("/")));
+		if (actual === null || actual !== expected) return false;
+	}
+	return true;
+}
+//#endregion
 //#region src/skin-repo.ts
 /**
 * Skin repository (issue #506, M2): dual-source discovery of v2 skin asset
@@ -456,8 +783,28 @@ function resolveHarnessPaths(home, profile, fromUrl = import.meta.url) {
 * The catalog is an immutable snapshot: callers keep the object they got and
 * an activation never sees the catalog change underneath it (contract
 * section 8, "catalog immutable snapshot per activation").
+*
+* Scans are memoized per (builtinDir, userDir): a snapshot is reused until a
+* cheap fingerprint of both roots (skin-dir names plus skin.json stat)
+* changes, so client requests never rescan the same sources. The fingerprint
+* covers add/remove/change of any skin directory, while writes outside the
+* sources (POST /active state) never invalidate it.
 * @module @linxin666/dsh-client-ui-skin-center/skin-repo
 */
+/** Read the manifest-referenced stylesheets for one skin directory. */
+function stylesheetEntries(manifest, dir) {
+	const entries = [];
+	const rels = [manifest.contributes.stylesheet, manifest.contributes.patches ?? null];
+	for (const rel of rels) {
+		if (!rel) continue;
+		const abs = join(dir, rel);
+		if (existsSync(abs)) entries.push({
+			filename: rel,
+			css: readFileSync(abs, "utf8")
+		});
+	}
+	return entries;
+}
 /** Built-in skins ship inside the skin-center package under skins/. */
 function builtinSkinsDir(fromUrl = import.meta.url) {
 	return join(dirname(fileURLToPath(fromUrl)), "..", "skins");
@@ -502,6 +849,28 @@ function readManifest(dir) {
 		return null;
 	}
 }
+/**
+* Hooks trust for one user-directory skin: official-market installs
+* whose skin.json and hooks entry hash-match the recorded provenance
+* run their hooks (same-review content); anything else keeps the
+* refusal warning. Built-in skins never reach this — their origin
+* is the trust signal.
+*/
+function marketHooksTrust(manifest, dir) {
+	const facet = manifest.facets?.client;
+	if (!facet) return {
+		trusted: false,
+		warning: null
+	};
+	if (verifyMarketProvenance(dir, manifest.id, facet.entry)) return {
+		trusted: true,
+		warning: null
+	};
+	return {
+		trusted: false,
+		warning: "declares hooks.mjs, but hooks only run for built-in or verified official-market (same-review) skins; the hooks facet will be refused"
+	};
+}
 function collectSource(spec, catalog, claimed) {
 	if (!existsSync(spec.root)) return;
 	let dirNames;
@@ -544,12 +913,14 @@ function collectSource(spec, catalog, claimed) {
 			if (spec.origin === "user" && existing.origin === "builtin") {
 				catalog.skins = catalog.skins.filter((s) => s !== existing);
 				const winnerWarnings = [...result.warnings, `shadows the built-in "${manifest.id}" skin`];
-				if (manifest.facets?.client) winnerWarnings.push("declares hooks.mjs, but hooks only run for built-in (same-review) skins; the hooks facet will be refused");
+				const trust = marketHooksTrust(manifest, dir);
+				if (trust.warning !== null) winnerWarnings.push(trust.warning);
 				const winner = {
 					manifest,
 					origin: "user",
 					dir,
-					warnings: winnerWarnings
+					warnings: winnerWarnings,
+					...trust.trusted ? { hooksTrusted: true } : {}
 				};
 				claimed.set(manifest.id, winner);
 				catalog.skins.push(winner);
@@ -557,22 +928,82 @@ function collectSource(spec, catalog, claimed) {
 			continue;
 		}
 		const warnings = [...result.warnings];
-		if (spec.origin === "user" && manifest.facets?.client) warnings.push("declares hooks.mjs, but hooks only run for built-in (same-review) skins; the hooks facet will be refused");
+		const trust = spec.origin === "user" ? marketHooksTrust(manifest, dir) : {
+			trusted: false,
+			warning: null
+		};
+		if (trust.warning !== null) warnings.push(trust.warning);
+		const contractWarnings = auditTokenContract(stylesheetEntries(manifest, dir));
+		warnings.push(...contractWarnings.warnings);
 		const entry = {
 			manifest,
 			origin: spec.origin,
 			dir,
-			warnings
+			warnings,
+			...trust.trusted ? { hooksTrusted: true } : {}
 		};
 		claimed.set(manifest.id, entry);
 		catalog.skins.push(entry);
 	}
 }
 /**
+* Process-wide cache: (builtinDir, userDir) -> latest snapshot. Shared by
+* every loadSkinCatalog caller in the host process (index tap, v2 routes,
+* seed). Tests inject their own Map through the catalogCache option.
+*/
+const DEFAULT_CATALOG_CACHE = /* @__PURE__ */ new Map();
+/** Bound the process cache so a long-lived process can never accumulate. */
+const CATALOG_CACHE_MAX_ENTRIES = 16;
+/**
+* Cheap invalidation fingerprint of one catalog root: the sorted skin-dir
+* names plus the stat of each skin.json. The catalog content depends only on
+* skin.json, so this is the exact change signal — a new or removed skin dir
+* changes the name set, an in-place manifest change changes the stat. A
+* missing or unreadable root yields the same marker as an empty source,
+* mirroring collectSource's silent empty result.
+*/
+function rootFingerprint(root) {
+	let dirNames;
+	try {
+		dirNames = readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
+	} catch {
+		return "";
+	}
+	const lines = [];
+	for (const dirName of dirNames) {
+		const manifestPath = join(root, dirName, "skin.json");
+		try {
+			const st = statSync(manifestPath);
+			lines.push(JSON.stringify([
+				dirName,
+				st.mtimeMs,
+				st.size,
+				st.mode
+			]));
+		} catch {
+			lines.push(JSON.stringify([dirName]));
+		}
+	}
+	return lines.join("\n");
+}
+/**
 * Snapshot the skin catalog from both sources. Never throws: unreadable
-* roots and invalid skins land in diagnostics instead.
+* roots and invalid skins land in diagnostics instead. When the source
+* fingerprint matches the last scan the memoized snapshot is returned as-is
+* (capturedAt re-stamped to the observation time); a changed fingerprint
+* triggers a fresh scan and updates the cache.
 */
 function loadSkinCatalog(options = {}) {
+	const builtinDir = options.builtinDir ?? builtinSkinsDir();
+	const userDir = options.userDir ?? userSkinsDir();
+	const cache = options.catalogCache ?? DEFAULT_CATALOG_CACHE;
+	const cacheKey = builtinDir + "\0" + userDir;
+	const fingerprint = JSON.stringify([rootFingerprint(builtinDir), rootFingerprint(userDir)]);
+	const hit = cache.get(cacheKey);
+	if (hit && hit.fingerprint === fingerprint) return {
+		...hit.catalog,
+		capturedAt: (options.now ?? Date.now)()
+	};
 	const catalog = {
 		skins: [],
 		diagnostics: [],
@@ -581,13 +1012,18 @@ function loadSkinCatalog(options = {}) {
 	const claimed = /* @__PURE__ */ new Map();
 	collectSource({
 		origin: "builtin",
-		root: options.builtinDir ?? builtinSkinsDir()
+		root: builtinDir
 	}, catalog, claimed);
 	collectSource({
 		origin: "user",
-		root: options.userDir ?? userSkinsDir()
+		root: userDir
 	}, catalog, claimed);
 	catalog.skins.sort((a, b) => (a.manifest.order ?? Number.MAX_SAFE_INTEGER) - (b.manifest.order ?? Number.MAX_SAFE_INTEGER) || a.manifest.id.localeCompare(b.manifest.id));
+	cache.set(cacheKey, {
+		fingerprint,
+		catalog
+	});
+	if (cache.size > CATALOG_CACHE_MAX_ENTRIES) cache.clear();
 	return catalog;
 }
 /** Find one skin in a snapshot by id. */
@@ -1061,6 +1497,49 @@ function deriveFallbackTokens(defined) {
 	}
 	return out;
 }
+/**
+* Primary-action completion (issue #506 follow-up): filled primary buttons
+* render from one matched set — button-primary-fill, button-primary-hover,
+* label-primary-foreground. The official theme itself wires
+* button-primary-fill to brand-primary, so a skin that remaps the brand
+* already colors the fill; hover and foreground do NOT follow the brand and
+* would snap to the shell's static values. To keep a partially-declared or
+* legacy (brand-primary + brand-primary-invert) skin coherent, the loader
+* completes the set here:
+*
+*  - fill: derive from brand-primary when the skin declares its brand but
+*    no explicit fill (the shell chain does this anyway; the derivation
+*    makes the intent explicit and keeps the textual derivation table
+*    self-contained);
+*  - hover / dimmed: blend the fill toward the surface (color-mix) — a
+*    direction-agnostic press/disabled tint that works in both themes;
+*  - foreground: inherit the skin's own brand-primary-invert ONLY when the
+*    skin declares both brand tokens (the legacy matched convention); the
+*    shell foreground stands in otherwise.
+*
+* Never overrides a token the skin defines, and never derives without an
+* anchor: a skin with no brand and no button tokens keeps the official
+* shell's own matched CTA.
+*/
+/** The primary-action token family (see ./token-audit.ts for the audit). */
+const PRIMARY_ACTION_FILL = "--dsw-alias-button-primary-fill";
+const PRIMARY_ACTION_HOVER = "--dsw-alias-button-primary-hover";
+const PRIMARY_ACTION_DIMMED = "--dsw-alias-button-primary-dimmed";
+const PRIMARY_ACTION_FOREGROUND = "--dsw-alias-label-primary-foreground";
+const PRIMARY_ACTION_BRAND = "--dsw-alias-brand-primary";
+const PRIMARY_ACTION_BRAND_INVERT = "--dsw-alias-brand-primary-invert";
+/** Derive the primary-action tokens the skin did not define. */
+function derivePrimaryActionFallbacks(defined) {
+	const out = [];
+	const hasBrand = defined.has(PRIMARY_ACTION_BRAND);
+	const branded = hasBrand || defined.has("--dsw-alias-button-primary-fill");
+	if (!hasBrand && !defined.has("--dsw-alias-button-primary-fill")) return out;
+	if (!defined.has("--dsw-alias-button-primary-fill") && hasBrand) out.push(`${PRIMARY_ACTION_FILL}: var(${PRIMARY_ACTION_BRAND});`);
+	if (branded && !defined.has("--dsw-alias-button-primary-hover")) out.push(`${PRIMARY_ACTION_HOVER}: color-mix(in srgb, var(${PRIMARY_ACTION_FILL}) 82%, var(--dsw-alias-bg-layer-1));`);
+	if (branded && !defined.has("--dsw-alias-button-primary-dimmed")) out.push(`${PRIMARY_ACTION_DIMMED}: color-mix(in srgb, var(${PRIMARY_ACTION_FILL}) 60%, var(--dsw-alias-bg-layer-1));`);
+	if (!defined.has("--dsw-alias-label-primary-foreground") && hasBrand && defined.has("--dsw-alias-brand-primary-invert")) out.push(`${PRIMARY_ACTION_FOREGROUND}: var(${PRIMARY_ACTION_BRAND_INVERT});`);
+	return out;
+}
 //#endregion
 //#region src/core/css-safety/transform.ts
 /**
@@ -1343,7 +1822,7 @@ function transformSkinCss(css, options) {
 	out += `\n${scope} [id="root"] { background: transparent; }\n`;
 	out += `\n${scope} body { --shiki-background: var(--dsw-alias-markdown-code-block); }\n`;
 	if (options.deriveFallbacks === true) {
-		const fallbacks = deriveFallbackTokens(defined);
+		const fallbacks = [...deriveFallbackTokens(defined), ...derivePrimaryActionFallbacks(defined)];
 		if (fallbacks.length > 0) out += `\n${scope} body {\n  ${fallbacks.join("\n  ")}\n}\n`;
 	}
 	return {
@@ -1413,7 +1892,9 @@ function findCloseBrace(css, openBrace) {
 * The stylesheet/patches responses pass through the CSS safety pipeline
 * (force-scoped under html[data-dsh-skin="<id>"], whitelist fail-closed), so
 * the browser can inject them blindly. hooks.mjs is served verbatim — it is
-* trusted, same-review same-release code (high sensitivity, see contracts/).
+* trusted, same-review same-release code (high sensitivity, see contracts/),
+* served for built-in skins and for user-directory skins whose install
+* provenance pins the bytes to the official DSH Market (issue #1073).
 * @module @linxin666/dsh-client-ui-skin-center/routes-v2
 */
 const SKIN_CENTER_V2_PREFIX = "/api/skin-center/v2";
@@ -1445,7 +1926,7 @@ function sendCss(res, status, code) {
 function serveStylesheet(res, entry, relPath, filename) {
 	const abs = resolveInsideSkin(entry, relPath);
 	if (!abs || !existsSync(abs)) {
-		json(res, 404, {
+		writeJson(res, 404, {
 			ok: false,
 			error: "stylesheet-not-found"
 		});
@@ -1460,14 +1941,14 @@ function serveStylesheet(res, entry, relPath, filename) {
 		sendCss(res, 200, code);
 	} catch (error) {
 		if (error instanceof SkinCssSafetyError) {
-			json(res, 422, {
+			writeJson(res, 422, {
 				ok: false,
 				error: "css-whitelist-violation",
 				violations: error.violations
 			});
 			return;
 		}
-		json(res, 500, {
+		writeJson(res, 500, {
 			ok: false,
 			error: "css-transform-failed",
 			detail: error?.message ?? String(error)
@@ -1478,7 +1959,7 @@ function serveStylesheet(res, entry, relPath, filename) {
 function serveAsset(res, entry, relPath) {
 	const abs = resolveInsideSkin(entry, relPath);
 	if (!abs || !existsSync(abs) || !statSync(abs).isFile()) {
-		json(res, 404, {
+		writeJson(res, 404, {
 			ok: false,
 			error: "asset-not-found"
 		});
@@ -1491,29 +1972,6 @@ function serveAsset(res, entry, relPath) {
 	});
 	res.end(readFileSync(abs));
 }
-function readBody(req) {
-	return new Promise((resolveBody, reject) => {
-		const chunks = [];
-		let size = 0;
-		req.on("data", (chunk) => {
-			size += chunk.length;
-			if (size > 16 * 1024) {
-				reject(/* @__PURE__ */ new Error("body-too-large"));
-				req.destroy();
-				return;
-			}
-			chunks.push(chunk);
-		});
-		req.on("end", () => {
-			try {
-				resolveBody(chunks.length === 0 ? {} : JSON.parse(Buffer.concat(chunks).toString("utf8")));
-			} catch {
-				reject(/* @__PURE__ */ new Error("invalid-json"));
-			}
-		});
-		req.on("error", reject);
-	});
-}
 /**
 * Build the v2 route set. Registration is the caller's job (the host entry
 * keeps the mount-once discipline).
@@ -1524,7 +1982,7 @@ function makeSkinCenterV2Routes(deps = {}) {
 	const shippedSet = (deps.shippedSkinIds ?? shippedSkinIds)();
 	const catalogHandler = (_req, res) => {
 		const catalog = loadCatalog();
-		json(res, 200, {
+		writeJson(res, 200, {
 			ok: true,
 			capturedAt: catalog.capturedAt,
 			skins: catalog.skins.filter((s) => s.origin === "user" || shippedSet.has(s.manifest.id)).map((s) => ({
@@ -1542,7 +2000,7 @@ function makeSkinCenterV2Routes(deps = {}) {
 		const catalog = loadCatalog();
 		const entry = id ? findSkin(catalog, id) : null;
 		if (!entry) {
-			json(res, 404, {
+			writeJson(res, 404, {
 				ok: false,
 				error: "skin-not-found"
 			});
@@ -1555,7 +2013,7 @@ function makeSkinCenterV2Routes(deps = {}) {
 		if (sub === "patches") {
 			const patches = entry.manifest.contributes.patches;
 			if (!patches) {
-				json(res, 404, {
+				writeJson(res, 404, {
 					ok: false,
 					error: "no-patches"
 				});
@@ -1567,14 +2025,14 @@ function makeSkinCenterV2Routes(deps = {}) {
 		if (sub === "hooks.mjs") {
 			const facet = entry.manifest.facets?.client;
 			if (!facet) {
-				json(res, 404, {
+				writeJson(res, 404, {
 					ok: false,
 					error: "no-hooks"
 				});
 				return;
 			}
-			if (entry.origin !== "builtin") {
-				json(res, 403, {
+			if (entry.origin !== "builtin" && entry.hooksTrusted !== true) {
+				writeJson(res, 403, {
 					ok: false,
 					error: "hooks-require-review",
 					origin: entry.origin
@@ -1583,7 +2041,7 @@ function makeSkinCenterV2Routes(deps = {}) {
 			}
 			const abs = resolveInsideSkin(entry, facet.entry);
 			if (!abs || !existsSync(abs)) {
-				json(res, 404, {
+				writeJson(res, 404, {
 					ok: false,
 					error: "hooks-not-found"
 				});
@@ -1600,14 +2058,14 @@ function makeSkinCenterV2Routes(deps = {}) {
 			serveAsset(res, entry, sub);
 			return;
 		}
-		json(res, 404, {
+		writeJson(res, 404, {
 			ok: false,
 			error: "unknown-skin-resource"
 		});
 	};
 	const activeGetHandler = (_req, res) => {
 		const state = readActiveState(activeStatePath);
-		json(res, 200, {
+		writeJson(res, 200, {
 			ok: true,
 			active: state.active,
 			background: state.background
@@ -1617,9 +2075,16 @@ function makeSkinCenterV2Routes(deps = {}) {
 		if (!requireSameOrigin(req, res)) return;
 		let body;
 		try {
-			body = await readBody(req);
+			body = await readJsonBody(req, { maxBytes: 16 * 1024 });
 		} catch {
-			json(res, 400, {
+			writeJson(res, 400, {
+				ok: false,
+				error: "invalid-body"
+			});
+			return;
+		}
+		if (body === null) {
+			writeJson(res, 400, {
 				ok: false,
 				error: "invalid-body"
 			});
@@ -1628,7 +2093,7 @@ function makeSkinCenterV2Routes(deps = {}) {
 		const hasActive = typeof body === "object" && body !== null && "active" in body;
 		const hasBackground = typeof body === "object" && body !== null && "background" in body;
 		if (!hasActive && !hasBackground) {
-			json(res, 400, {
+			writeJson(res, 400, {
 				ok: false,
 				error: "nothing-to-update"
 			});
@@ -1636,14 +2101,14 @@ function makeSkinCenterV2Routes(deps = {}) {
 		}
 		const active = body.active;
 		if (hasActive && active !== null && typeof active !== "string") {
-			json(res, 400, {
+			writeJson(res, 400, {
 				ok: false,
 				error: "active-must-be-string-or-null"
 			});
 			return;
 		}
 		if (typeof active === "string" && !findSkin(loadCatalog(), active)) {
-			json(res, 404, {
+			writeJson(res, 404, {
 				ok: false,
 				error: "skin-not-found"
 			});
@@ -1654,7 +2119,7 @@ function makeSkinCenterV2Routes(deps = {}) {
 		if (hasBackground) {
 			const background = sanitizeSkinBackground(body.background);
 			if (background === null) {
-				json(res, 400, {
+				writeJson(res, 400, {
 					ok: false,
 					error: "invalid-background"
 				});
@@ -1664,7 +2129,7 @@ function makeSkinCenterV2Routes(deps = {}) {
 		}
 		writeActiveState(activeStatePath, update);
 		const state = readActiveState(activeStatePath);
-		json(res, 200, {
+		writeJson(res, 200, {
 			ok: true,
 			active: state.active,
 			background: state.background
@@ -1687,7 +2152,7 @@ function makeSkinCenterV2Routes(deps = {}) {
 			handler: (req, res) => {
 				if (req.method === "GET") return activeGetHandler(req, res);
 				if (req.method === "POST") return activePostHandler(req, res);
-				json(res, 405, {
+				writeJson(res, 405, {
 					ok: false,
 					error: "method-not-allowed"
 				});
@@ -2049,6 +2514,292 @@ function migrateLegacySelection(options) {
 	}
 }
 //#endregion
+//#region src/macos-library.ts
+/**
+* macOS wallpaper auto-discovery for the skin center (host half).
+*
+* Wallpaper Engine ships Windows-only, so on macOS the inventory falls back
+* to the wallpapers macOS itself manages:
+*
+*   1. Aerial (dynamic) wallpapers the user downloaded in System Settings:
+*      - modern layout  ~/Library/Application Support/com.apple.wallpaper/
+*        aerials/videos/<asset-id>.mov with same-stem previews under
+*        aerials/thumbnails/<asset-id>.png and display names in
+*        aerials/manifest/entries.json (the official Apple manifest);
+*      - legacy layout  /Library/Application Support/com.apple.idleassetsd/
+*        Customer/<quality>/<asset-id>.mov (Sonoma and earlier).
+*      Entries become 'video' wallpapers; browsers without HEVC decode fall
+*      back to the thumbnail through the panel's existing video error path.
+*   2. Desktop Pictures (image formats only — .heic/.heif converted through
+*      sips, .jpg/.jpeg/.png/.webp served directly; static and Apple dynamic
+*      wallpapers alike render their first frame): /System/Library/Desktop
+*      Pictures (built-in) and /Library/Desktop Pictures (legacy downloads).
+*
+* Every candidate is validated by extension AND magic bytes (ISO BMFF ftyp
+* for .mov/.heic, JPEG/PNG/WebP signatures for the rest); anything else is
+* skipped even inside a known wallpaper directory.
+*
+* Everything is injectable for tests: roots, platform and filesystem probes
+* are parameters, never hard reads. Scanning is synchronous like the rest
+* of we-library (directory listings only; no file payload is read except
+* the small entries.json manifest).
+* @module @linxin666/dsh-client-ui-skin-center/macos-library
+*/
+/** Default roots for the current user (both modern and legacy layouts). */
+function defaultMacosWallpaperRoots(home = homedir()) {
+	return {
+		aerials: [join(home, "Library", "Application Support", "com.apple.wallpaper", "aerials"), join("/Library", "Application Support", "com.apple.idleassetsd", "Customer")],
+		pictures: [join("/System", "Library", "Desktop Pictures"), join("/Library", "Desktop Pictures")]
+	};
+}
+/** Default head reader: opens the file and reads at most `bytes` (never whole files — aerials are gigabytes). */
+function defaultReadHead(path, bytes) {
+	const fd = openSync(path, "r");
+	try {
+		const buffer = Buffer.alloc(bytes);
+		const read = readSync(fd, buffer, 0, bytes, 0);
+		return buffer.subarray(0, read);
+	} finally {
+		closeSync(fd);
+	}
+}
+function resolveFs(inject) {
+	return {
+		exists: inject.exists ?? existsSync,
+		readdir: inject.readdir ?? readdirSync,
+		readFile: inject.readFile ?? ((path) => readFileSync(path, "utf8")),
+		stat: inject.stat ?? statSync,
+		readHead: inject.readHead ?? defaultReadHead
+	};
+}
+const bytes = (head, at, text) => [...text].every((ch, i) => head[at + i] === ch.charCodeAt(0));
+/** ISO BMFF container sniff (size + 'ftyp' + brand): covers .mov and .heic/.heif. */
+function hasBmffHeader(head) {
+	return head.length >= 12 && bytes(head, 4, "ftyp");
+}
+function hasJpegHeader(head) {
+	return head.length >= 3 && head[0] === 255 && head[1] === 216 && head[2] === 255;
+}
+function hasPngHeader(head) {
+	return head.length >= 8 && head[0] === 137 && bytes(head, 1, "PNG");
+}
+function hasWebpHeader(head) {
+	return head.length >= 12 && bytes(head, 0, "RIFF") && bytes(head, 8, "WEBP");
+}
+const HEAD_BYTES = 12;
+/** Content check for aerial videos: extension AND ISO BMFF magic must agree. */
+function isMovVideo(name, head) {
+	return MOV_RE.test(name) && hasBmffHeader(head);
+}
+/** Content check for desktop pictures: only image formats, magic verified. */
+function isSupportedImage(name, head) {
+	if (HEIC_RE.test(name)) return hasBmffHeader(head);
+	if (/\.jpe?g$/i.test(name)) return hasJpegHeader(head);
+	if (/\.png$/i.test(name)) return hasPngHeader(head);
+	if (/\.webp$/i.test(name)) return hasWebpHeader(head);
+	return false;
+}
+/** Read a file head for validation; null when unreadable. */
+function readHeadOrNull(fs, path) {
+	try {
+		return fs.readHead(path, HEAD_BYTES);
+	} catch {
+		return null;
+	}
+}
+/**
+* Read asset-id -> display name out of an aerial entries.json. Missing or
+* malformed manifests yield an empty map (titles then fall back to the file
+* stem). Only accessibilityLabel is trusted: it is the user-visible name in
+* System Settings across locales.
+*/
+function readAerialManifest(text) {
+	const titles = /* @__PURE__ */ new Map();
+	try {
+		const raw = JSON.parse(text);
+		if (typeof raw !== "object" || raw === null) return titles;
+		const assets = raw.assets;
+		if (!Array.isArray(assets)) return titles;
+		for (const asset of assets) {
+			if (typeof asset !== "object" || asset === null) continue;
+			if (typeof asset.id === "string" && typeof asset.accessibilityLabel === "string" && asset.accessibilityLabel !== "") titles.set(asset.id, asset.accessibilityLabel);
+		}
+	} catch {}
+	return titles;
+}
+const MOV_RE = /\.mov$/i;
+const HEIC_RE = /\.hei[cf]$/i;
+function statOrZero(fs, path) {
+	try {
+		const stat = fs.stat(path);
+		return {
+			mtimeMs: stat.mtimeMs,
+			size: stat.size,
+			isFile: stat.isFile()
+		};
+	} catch {
+		return {
+			mtimeMs: 0,
+			size: 0,
+			isFile: false
+		};
+	}
+}
+/** Build one aerial entry; the preview is the same-stem thumbnail when downloaded. */
+function aerialEntry(id, title, videoAbs, previewAbs, fs) {
+	const stat = statOrZero(fs, videoAbs);
+	return {
+		id: "macos-aerial/" + id,
+		title,
+		type: "video",
+		file: videoAbs,
+		preview: previewAbs,
+		dir: dirname(videoAbs),
+		fileAbs: videoAbs,
+		previewAbs: previewAbs !== null && fs.exists(previewAbs) ? previewAbs : null,
+		source: "system",
+		playable: stat.isFile,
+		srcMtime: stat.mtimeMs,
+		srcSize: stat.size,
+		updateAvailable: false
+	};
+}
+/**
+* Scan the modern per-user aerial layout: <root>/videos/*.mov with titles
+* from <root>/manifest/entries.json and previews from <root>/thumbnails.
+*/
+function scanAerialsModern(root, fs) {
+	const videosDir = join(root, "videos");
+	if (!fs.exists(videosDir)) return [];
+	let names = [];
+	try {
+		names = fs.readdir(videosDir);
+	} catch {
+		return [];
+	}
+	let titles = /* @__PURE__ */ new Map();
+	const manifestPath = join(root, "manifest", "entries.json");
+	if (fs.exists(manifestPath)) try {
+		titles = readAerialManifest(fs.readFile(manifestPath));
+	} catch {}
+	const thumbnailsDir = join(root, "thumbnails");
+	const entries = [];
+	for (const name of names) {
+		if (!MOV_RE.test(name)) continue;
+		const videoAbs = join(videosDir, name);
+		const head = readHeadOrNull(fs, videoAbs);
+		if (head === null || !isMovVideo(name, head)) continue;
+		const id = name.replace(MOV_RE, "");
+		const thumbnail = join(thumbnailsDir, id + ".png");
+		entries.push(aerialEntry(id, titles.get(id) ?? id, videoAbs, thumbnail, fs));
+	}
+	return entries;
+}
+/**
+* Scan the legacy system-wide aerial layout: <root>/<quality>/<id>.mov
+* (2KSDR / 4KHDR / …). Titles come from <root>/entries.json when present.
+*/
+function scanAerialsLegacy(root, fs) {
+	if (!fs.exists(root)) return [];
+	let names = [];
+	try {
+		names = fs.readdir(root);
+	} catch {
+		return [];
+	}
+	let titles = /* @__PURE__ */ new Map();
+	const manifestPath = join(root, "entries.json");
+	if (fs.exists(manifestPath)) try {
+		titles = readAerialManifest(fs.readFile(manifestPath));
+	} catch {}
+	const entries = [];
+	for (const name of names) {
+		const sub = join(root, name);
+		try {
+			if (!fs.stat(sub).isDirectory()) continue;
+		} catch {
+			continue;
+		}
+		let videos = [];
+		try {
+			videos = fs.readdir(sub);
+		} catch {
+			continue;
+		}
+		for (const video of videos) {
+			if (!MOV_RE.test(video)) continue;
+			const videoAbs = join(sub, video);
+			const head = readHeadOrNull(fs, videoAbs);
+			if (head === null || !isMovVideo(video, head)) continue;
+			const id = video.replace(MOV_RE, "");
+			entries.push(aerialEntry(id, titles.get(id) ?? id, videoAbs, null, fs));
+		}
+	}
+	return entries;
+}
+/**
+* Scan every configured aerial root. A root holding a videos/ subdirectory
+* is treated as the modern layout; otherwise as the legacy quality-folder
+* layout. Entries de-dupe by asset id (first root wins).
+*/
+function scanMacAerials(roots, inject = {}) {
+	const fs = resolveFs(inject);
+	const found = /* @__PURE__ */ new Map();
+	for (const root of roots) {
+		const entries = fs.exists(join(root, "videos")) ? scanAerialsModern(root, fs) : scanAerialsLegacy(root, fs);
+		for (const entry of entries) if (!found.has(entry.id)) found.set(entry.id, entry);
+	}
+	return [...found.values()];
+}
+/**
+* Scan Desktop Pictures roots for *.heic wallpapers (static + Apple dynamic;
+* only the first frame is rendered). .madesktop records are data files, not
+* folders, and are skipped. Entries de-dupe by stem (first root wins).
+*/
+function scanMacDesktopPictures(roots, inject = {}) {
+	const fs = resolveFs(inject);
+	const found = /* @__PURE__ */ new Map();
+	for (const root of roots) {
+		if (!fs.exists(root)) continue;
+		let names = [];
+		try {
+			names = fs.readdir(root);
+		} catch {
+			continue;
+		}
+		for (const name of names) {
+			const fileAbs = join(root, name);
+			const head = readHeadOrNull(fs, fileAbs);
+			if (head === null || !isSupportedImage(name, head)) continue;
+			const stem = name.replace(/\.[a-z0-9]+$/i, "");
+			const id = "macos-image/" + stem;
+			if (found.has(id)) continue;
+			const stat = statOrZero(fs, fileAbs);
+			found.set(id, {
+				id,
+				title: stem,
+				type: "image",
+				file: name,
+				preview: null,
+				dir: root,
+				fileAbs,
+				previewAbs: null,
+				source: "system",
+				playable: false,
+				srcMtime: stat.mtimeMs,
+				srcSize: stat.size,
+				updateAvailable: false
+			});
+		}
+	}
+	return [...found.values()];
+}
+/** Scan every macOS wallpaper source; empty off darwin. */
+function scanMacosWallpapers(roots, inject = {}) {
+	if ((inject.platform ?? process.platform) !== "darwin") return [];
+	return [...scanMacAerials(roots.aerials, inject), ...scanMacDesktopPictures(roots.pictures, inject)];
+}
+//#endregion
 //#region src/we-library.ts
 /**
 * Wallpaper Engine library discovery for the skin center (host half).
@@ -2067,7 +2818,11 @@ function migrateLegacySelection(options) {
 *      a workshop content dir) or a single project folder. A folder without
 *      a project.json is accepted when it directly contains a playable media
 *      file (e.g. a lone .mp4), which is the no-Steam fallback path.
-*   3. The import store (<harnessHome>/skin-center/wallpapers/<id>/): copies
+*   3. macOS wallpaper stores (darwin only, src/macos-library.ts): the
+*      user's downloaded aerial .mov wallpapers (com.apple.wallpaper /
+*      idleassetsd) and Desktop Pictures *.heic — source 'system', never
+*      importable.
+*   4. The import store (<harnessHome>/skin-center/wallpapers/<id>/): copies
 *      made by the import route. Each holds a manifest.json recording the
 *      source identity and the source file mtime/size at import time, so a
 *      later workshop update can be flagged as updateAvailable.
@@ -2128,6 +2883,23 @@ function steamPathFromRegistry(run = () => execFileSync(join(process.env.SystemR
 		return null;
 	}
 }
+/**
+* Memoize a zero-argument probe so it runs at most once per process.
+* The default Windows registry probe is wrapped in this: reg.exe is a
+* synchronous child process with a 5s timeout on the request path, and a
+* Steam install path is stable for the life of the host process, so one
+* probe per process is enough. Injected probes (tests) bypass the memo —
+* only the default runner is wrapped.
+*/
+function memoizedProbe(probe) {
+	let cached;
+	return () => {
+		if (cached === void 0) cached = probe();
+		return cached;
+	};
+}
+/** Default registry probe, process-memoized (see memoizedProbe). */
+const defaultRegistryProbe = memoizedProbe(() => steamPathFromRegistry());
 /** Parse libraryfolders.vdf for library roots that own app 431960. */
 function librariesFromVdf(vdfText) {
 	const libraries = [];
@@ -2168,7 +2940,7 @@ function libraryOwnsAppFromManifest(library, appid, exists = existsSync) {
 function locateWallpaperEngine(opts = {}) {
 	const exists = opts.exists ?? existsSync;
 	if (((opts.env ?? process.env).OS ?? "") !== "" || process.platform === "win32") {
-		const registry = opts.registry ?? (() => steamPathFromRegistry());
+		const registry = opts.registry ?? defaultRegistryProbe;
 		const probes = [...new Set([registry(), ...STEAM_PROBE_DIRS].filter((d) => !!d))];
 		const libraries = [];
 		for (const probe of probes) {
@@ -2191,7 +2963,7 @@ function locateWallpaperEngine(opts = {}) {
 function owningLibraries(opts = {}) {
 	const exists = opts.exists ?? existsSync;
 	if (process.platform !== "win32" && !opts.exists) return [];
-	const registry = opts.registry ?? (() => steamPathFromRegistry());
+	const registry = opts.registry ?? defaultRegistryProbe;
 	const probes = [...new Set([registry(), ...STEAM_PROBE_DIRS].filter((d) => !!d))];
 	const libraries = /* @__PURE__ */ new Set();
 	for (const probe of probes) {
@@ -2498,6 +3270,7 @@ function buildInventory(opts = {}) {
 	const autoDetect = opts.autoDetect ?? true;
 	const installDir = opts.installDir !== void 0 ? opts.installDir : autoDetect ? locateWallpaperEngine() : null;
 	const libraryDirs = opts.libraryDirs ?? (autoDetect ? owningLibraries() : []);
+	const macos = opts.macos !== void 0 ? opts.macos : autoDetect && process.platform === "darwin" ? defaultMacosWallpaperRoots() : null;
 	const found = /* @__PURE__ */ new Map();
 	const add = (entry) => {
 		if (!found.has(entry.id)) found.set(entry.id, entry);
@@ -2515,6 +3288,7 @@ function buildInventory(opts = {}) {
 		const dir = trimmed !== void 0 ? expandUser(trimmed) : void 0;
 		if (dir !== void 0 && existsSync(dir)) for (const entry of scanManualWallpaperRoot(dir)) add(entry);
 	}
+	if (macos !== null) for (const entry of scanMacosWallpapers(macos, { platform: opts.platform })) add(entry);
 	const imported = opts.storeDir ? scanImportStore(opts.storeDir) : [];
 	for (const entry of imported) {
 		const source = found.get(entry.id.replace(/^imported\//, ""));
@@ -2529,6 +3303,80 @@ function buildInventory(opts = {}) {
 		portableCount: wallpapers.filter((w) => w.playable).length,
 		wallpapers
 	};
+}
+/**
+* Staleness fingerprint of everything buildInventory reads, so callers can
+* cache the assembled inventory and re-scan only when this changes.
+*
+* Signed inputs, in order:
+*   - every scan root's existence + directory mtime, including roots that
+*     do not exist yet (a project added or removed under a root changes its
+*     mtime; a root that appears later flips 'missing' into an mtime);
+*   - per previously scanned entry: the project dir mtime, the
+*     project.json / manifest.json mtime and the main + preview file
+*     mtime/size. A root mtime alone cannot see a file rewritten in place
+*     (workshop updates replace files inside an existing project dir
+*     without touching the root), and update detection compares source
+*     mtimes, so entries are signed individually.
+*
+* The caller supplies the current detection result (installDir and
+* libraryDirs) — detection itself is cheap because the default registry
+* probe is process-memoized — and the config (manualDirs), so a changed
+* Steam layout or a settings edit also invalidates. The key for a freshly
+* scanned value must be computed from that value's own entries (the
+* previous entry set described the previous scan, not this one).
+*/
+function inventoryFingerprint(opts = {}) {
+	const parts = [];
+	const statSig = (path) => {
+		try {
+			const stats = statSync(path);
+			return String(stats.mtimeMs) + ":" + (stats.isDirectory() ? "d" : String(stats.size));
+		} catch {
+			return "missing";
+		}
+	};
+	const signDir = (dir) => {
+		parts.push("d:" + dir + "\0" + statSig(dir));
+	};
+	const signFile = (file) => {
+		parts.push("f:" + file + "\0" + statSig(file));
+	};
+	const installDir = opts.installDir ?? null;
+	if (installDir) {
+		signDir(join(installDir, "projects", "defaultprojects"));
+		signDir(join(installDir, "projects", "myprojects"));
+	}
+	for (const library of opts.libraryDirs ?? []) signDir(join(library, "steamapps", "workshop", "content", WE_APPID));
+	for (const manual of opts.manualDirs ?? []) {
+		const trimmed = firstNonBlank(manual);
+		if (trimmed === void 0) continue;
+		const dir = expandUser(trimmed);
+		signDir(dir);
+		signDir(join(dir, "projects", "defaultprojects"));
+		signDir(join(dir, "projects", "myprojects"));
+		signDir(join(dir, "steamapps", "workshop", "content", WE_APPID));
+		signDir(join(dir, "workshop", "content", WE_APPID));
+		if (basename(dir).toLowerCase() === "wallpaper_engine") signDir(join(dirname(dirname(dir)), "workshop", "content", WE_APPID));
+	}
+	if (opts.storeDir) signDir(opts.storeDir);
+	if (opts.macos) {
+		for (const root of opts.macos.aerials) {
+			signDir(join(root, "videos"));
+			signDir(join(root, "thumbnails"));
+			signFile(join(root, "manifest", "entries.json"));
+			signDir(root);
+		}
+		for (const root of opts.macos.pictures) signDir(root);
+	}
+	for (const entry of opts.entries ?? []) {
+		const manifest = entry.source === "imported" ? join(dirname(entry.dir), "manifest.json") : join(entry.dir, "project.json");
+		signDir(entry.dir);
+		signFile(manifest);
+		signFile(entry.fileAbs);
+		if (entry.previewAbs) signFile(entry.previewAbs);
+	}
+	return parts.join(";");
 }
 //#endregion
 //#region src/pkg-extract.ts
@@ -2591,7 +3439,6 @@ var pkg_extract_exports = /* @__PURE__ */ __exportAll({
 	parseMdl: () => parseMdl,
 	parsePkg: () => parsePkg,
 	parseTex: () => parseTex,
-	parseTexToRGBA: () => parseTexToRGBA,
 	readPkgEntry: () => readPkgEntry
 });
 /**
@@ -3875,178 +4722,6 @@ function hasSceneVideoFromDir(dir) {
 	} catch {
 		return false;
 	}
-}
-/** Decompress LZ4 block format (no frame header, raw block). */
-function decompressLz4Block(src, decompressedSize) {
-	if (decompressedSize < 0 || decompressedSize > MAX_DECOMPRESSED_BYTES) throw new Error("lz4: decompressed size out of bounds (" + String(decompressedSize) + ")");
-	const dst = new Uint8Array(decompressedSize);
-	let sp = 0, dp = 0;
-	while (sp < src.length && dp < decompressedSize) {
-		const token = src[sp++];
-		let litLen = token >> 4;
-		if (litLen === 15) {
-			let b;
-			do {
-				b = src[sp++];
-				litLen += b;
-			} while (b === 255);
-		}
-		for (let i = 0; i < litLen; i++) dst[dp++] = src[sp++];
-		if (sp >= src.length || dp >= decompressedSize) break;
-		const offset = src[sp] | src[sp + 1] << 8;
-		sp += 2;
-		let matchLen = (token & 15) + 4;
-		if (matchLen === 19) {
-			let b;
-			do {
-				b = src[sp++];
-				matchLen += b;
-			} while (b === 255);
-		}
-		const matchStart = dp - offset;
-		for (let i = 0; i < matchLen; i++) dst[dp++] = dst[matchStart + i];
-	}
-	return dst;
-}
-/** Decode DXT1 (BC1) 4x4 block into RGBA pixels. */
-function decodeDXT1Block(block, offset, out, outOffset, outStride) {
-	const c0 = block[offset] | block[offset + 1] << 8;
-	const c1 = block[offset + 2] | block[offset + 3] << 8;
-	const r0 = (c0 >> 11 & 31) * 255 / 31, g0 = (c0 >> 5 & 63) * 255 / 63, b0 = (c0 & 31) * 255 / 31;
-	const r1 = (c1 >> 11 & 31) * 255 / 31, g1 = (c1 >> 5 & 63) * 255 / 63, b1 = (c1 & 31) * 255 / 31;
-	const colors = [
-		[
-			r0,
-			g0,
-			b0,
-			255
-		],
-		[
-			r1,
-			g1,
-			b1,
-			255
-		],
-		c0 > c1 ? [
-			(2 * r0 + r1) / 3,
-			(2 * g0 + g1) / 3,
-			(2 * b0 + b1) / 3,
-			255
-		] : [
-			(r0 + r1) / 2,
-			(g0 + g1) / 2,
-			(b0 + b1) / 2,
-			255
-		],
-		c0 > c1 ? [
-			(r0 + 2 * r1) / 3,
-			(g0 + 2 * g1) / 3,
-			(b0 + 2 * b1) / 3,
-			255
-		] : [
-			0,
-			0,
-			0,
-			0
-		]
-	];
-	const bits = block[offset + 4] | block[offset + 5] << 8 | block[offset + 6] << 16 | block[offset + 7] << 24;
-	for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
-		const idx = bits >> (y * 4 + x) * 2 & 3;
-		const p = outOffset + y * outStride + x * 4;
-		out[p] = colors[idx][0];
-		out[p + 1] = colors[idx][1];
-		out[p + 2] = colors[idx][2];
-		out[p + 3] = colors[idx][3];
-	}
-}
-/** Decode DXT5 (BC3) 4x4 block into RGBA pixels. */
-function decodeDXT5Block(block, offset, out, outOffset, outStride) {
-	const a0 = block[offset], a1 = block[offset + 1];
-	const alphaLUT = [
-		a0,
-		a1,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0
-	];
-	if (a0 > a1) for (let i = 1; i <= 6; i++) alphaLUT[i + 1] = ((7 - i) * a0 + i * a1) / 7;
-	else {
-		for (let i = 1; i <= 4; i++) alphaLUT[i + 1] = ((5 - i) * a0 + i * a1) / 5;
-		alphaLUT[6] = 0;
-		alphaLUT[7] = 255;
-	}
-	let alphaBits = 0n;
-	for (let i = 0; i < 6; i++) alphaBits |= BigInt(block[offset + 2 + i]) << BigInt(i * 8);
-	decodeDXT1Block(block, offset + 8, out, outOffset, outStride);
-	for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
-		const ai = Number(alphaBits >> BigInt((y * 4 + x) * 3) & 7n);
-		out[outOffset + y * outStride + x * 4 + 3] = alphaLUT[ai];
-	}
-}
-/**
-* Parse Wallpaper Engine TEXV0005 .tex file and return raw RGBA pixel data.
-* Returns null if format is unsupported.
-*/
-function parseTexToRGBA(buf) {
-	if (buf.length < 55) return null;
-	if (String.fromCharCode(...buf.slice(0, 8)) !== "TEXV0005") return null;
-	if (String.fromCharCode(...buf.slice(9, 17)) !== "TEXI0001") return null;
-	const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-	const fmt = dv.getUint32(18, true);
-	let texbPos = -1;
-	for (let i = 34; i < Math.min(buf.length, 100); i++) if (buf[i] === 84 && buf[i + 1] === 69 && buf[i + 2] === 88 && buf[i + 3] === 66) {
-		texbPos = i;
-		break;
-	}
-	if (texbPos < 0) return null;
-	let p = texbPos + 9 + 8;
-	const numMips = dv.getUint32(p, true);
-	p += 4;
-	if (numMips === 0 || numMips > 20) return null;
-	const mipW = dv.getUint32(p, true);
-	p += 4;
-	const mipH = dv.getUint32(p, true);
-	p += 4;
-	if (mipW <= 0 || mipH <= 0 || mipW > MAX_TEX_DIMENSION || mipH > MAX_TEX_DIMENSION || mipW * mipH > MAX_TEX_PIXELS) throw new Error("tex: invalid mipmap dimensions " + mipW + "x" + mipH);
-	const isLz4 = dv.getUint32(p, true);
-	p += 4;
-	const decompSize = dv.getUint32(p, true);
-	p += 4;
-	const compSize = dv.getUint32(p, true);
-	p += 4;
-	let texData;
-	if (isLz4) texData = decompressLz4Block(buf.slice(p, p + compSize), decompSize);
-	else texData = buf.slice(p, p + compSize);
-	const rgba = new Uint8Array(mipW * mipH * 4);
-	const stride = mipW * 4;
-	if (fmt === 4) {
-		const blocksX = mipW / 4, blocksY = mipH / 4;
-		for (let by = 0; by < blocksY; by++) for (let bx = 0; bx < blocksX; bx++) {
-			const blockIdx = (by * blocksX + bx) * 16;
-			decodeDXT5Block(texData, blockIdx, rgba, by * 4 * stride + bx * 4 * 4, stride);
-		}
-	} else if (fmt === 7) {
-		const blocksX = mipW / 4, blocksY = mipH / 4;
-		for (let by = 0; by < blocksY; by++) for (let bx = 0; bx < blocksX; bx++) {
-			const blockIdx = (by * blocksX + bx) * 8;
-			decodeDXT1Block(texData, blockIdx, rgba, by * 4 * stride + bx * 4 * 4, stride);
-		}
-	} else if (fmt === 0) for (let i = 0; i < mipW * mipH; i++) {
-		rgba[i * 4] = texData[i * 4 + 1];
-		rgba[i * 4 + 1] = texData[i * 4 + 2];
-		rgba[i * 4 + 2] = texData[i * 4 + 3];
-		rgba[i * 4 + 3] = texData[i * 4];
-	}
-	else return null;
-	return {
-		width: mipW,
-		height: mipH,
-		rgba
-	};
 }
 const MDL_FLAG_NORMAL = 2;
 const MDL_FLAG_TANGENT = 4;
@@ -5921,6 +6596,12 @@ const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0]));
       const video = document.createElement('video');
+      // The player iframe is sandboxed without allow-same-origin, so every
+      // texture load is a cross-origin fetch from an opaque origin. Without
+      // CORS mode the video taints the WebGL texture and texImage2D throws a
+      // SecurityError, leaving the canvas blank (the scene-resource route
+      // answers Origin: null with access-control-allow-origin: null).
+      video.crossOrigin = 'anonymous';
       video.src = layer.videoUrl;
       video.loop = true;
       video.muted = true;
@@ -6210,8 +6891,12 @@ const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
       updateParticles(dt);
     }
 
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    // Size the backing store in device pixels: on HiDPI displays a CSS-pixel
+    // canvas is upscaled by the compositor and the wallpaper looks soft
+    // (capped at 2x to bound GPU cost on very high DPR screens).
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.max(1, Math.round(window.innerWidth * dpr));
+    const height = Math.max(1, Math.round(window.innerHeight * dpr));
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width;
       canvas.height = height;
@@ -6977,8 +7662,10 @@ const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
   canvas.addEventListener('webglcontextrestored', () => {
     // WebGL objects are invalid after restoration. Ask the embedding
     // controller to rebuild this isolated renderer instead of drawing with
-    // stale programs/textures.
-    window.parent.postMessage({ type: 'dsh-scene-needs-reload' }, window.location.origin);
+    // stale programs/textures. The player frame is sandboxed without
+    // allow-same-origin, so the embedding page's origin is unknown here;
+    // '*' delivers to the window the event source check identifies.
+    window.parent.postMessage({ type: 'dsh-scene-needs-reload' }, '*');
   });
 
   // Load manifest
@@ -6992,10 +7679,13 @@ const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
     })
     .catch(err => console.error('Failed to load scene manifest', err));
 
-  // Listen for controller messages; only the embedding parent on the same
-  // origin may steer the player.
+  // Listen for controller messages; only the embedding parent may steer the
+  // player. Origin cannot filter here: the player runs sandboxed without
+  // allow-same-origin, so an origin compare would be browser-dependent and
+  // the parent's messages carry its real origin. Only the identity of the
+  // sender (the exact embedding window) is trustworthy.
   window.addEventListener('message', (ev) => {
-    if (ev.source !== window.parent || ev.origin !== window.location.origin) return;
+    if (ev.source !== window.parent) return;
     const msg = ev.data;
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'dsh-set-fit' && msg.fit) {
@@ -7006,7 +7696,7 @@ const WE_SCENE_PLAYER_HTML = `<!DOCTYPE html>
       if (gl.isContextLost()) {
         const ext = gl.getExtension('WEBGL_lose_context');
         if (ext) ext.restoreContext();
-        else window.parent.postMessage({ type: 'dsh-scene-needs-reload' }, window.location.origin);
+        else window.parent.postMessage({ type: 'dsh-scene-needs-reload' }, '*');
       } else {
         // Force an immediate fresh frame after compositor/theme changes.
         renderFrame(performance.now());
@@ -7057,71 +7747,6 @@ function webPropertyDefaults(projectRoot) {
 		}
 	} catch {}
 	return out;
-}
-/** Encode RGBA pixel data to PNG buffer using Node zlib for compression. */
-function encodeRGBAToPNG(width, height, rgba) {
-	const rowBytes = width * 4;
-	const raw = Buffer.alloc(height * (1 + rowBytes));
-	for (let y = 0; y < height; y++) {
-		raw[y * (1 + rowBytes)] = 0;
-		raw.set(rgba.slice(y * rowBytes, (y + 1) * rowBytes), y * (1 + rowBytes) + 1);
-	}
-	const compressed = deflateSync(raw, { level: 1 });
-	const crcTable = [];
-	for (let n = 0; n < 256; n++) {
-		let c = n;
-		for (let k = 0; k < 8; k++) c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
-		crcTable[n] = c;
-	}
-	const crc32 = (buf, start, len) => {
-		let c = 4294967295;
-		for (let i = start; i < start + len; i++) c = crcTable[(c ^ buf[i]) & 255] ^ c >>> 8;
-		return (c ^ 4294967295) >>> 0;
-	};
-	const pngSize = 33 + (12 + compressed.length) + 12;
-	const png = Buffer.alloc(pngSize);
-	let p = 0;
-	png.set([
-		137,
-		80,
-		78,
-		71,
-		13,
-		10,
-		26,
-		10
-	], 0);
-	p = 8;
-	png.writeUInt32BE(13, p);
-	p += 4;
-	png.write("IHDR", p);
-	p += 4;
-	png.writeUInt32BE(width, p);
-	p += 4;
-	png.writeUInt32BE(height, p);
-	p += 4;
-	png[p++] = 8;
-	png[p++] = 6;
-	png[p++] = 0;
-	png[p++] = 0;
-	png[p++] = 0;
-	png.writeUInt32BE(crc32(png, 12, 17), p);
-	p += 4;
-	png.writeUInt32BE(compressed.length, p);
-	p += 4;
-	png.write("IDAT", p);
-	p += 4;
-	compressed.copy(png, p);
-	p += compressed.length;
-	png.writeUInt32BE(crc32(png, p - compressed.length - 4, compressed.length + 4), p);
-	p += 4;
-	png.writeUInt32BE(0, p);
-	p += 4;
-	png.write("IEND", p);
-	p += 4;
-	png.writeUInt32BE(crc32(png, p - 4, 4), p);
-	p += 4;
-	return png;
 }
 /** Browser-facing base path of the wallpaper API. */
 const WE_API_PREFIX = "/api/skin-center/we";
@@ -7181,9 +7806,9 @@ function pipeFile(absPath, res, openReadStream, options) {
 	}
 }
 /** Stream one file with Range support (video seeking needs 206). */
-function serveFile(absPath, req, res, openReadStream) {
+function serveFile(absPath, req, res, openReadStream, extraHeaders = {}) {
 	if (!existsSync(absPath) || !statSync(absPath).isFile()) {
-		json(res, 404, {
+		writeJson(res, 404, {
 			ok: false,
 			error: "not-found"
 		});
@@ -7192,6 +7817,7 @@ function serveFile(absPath, req, res, openReadStream) {
 	const size = statSync(absPath).size;
 	res.setHeader("Content-Type", mimeFor(absPath));
 	res.setHeader("Accept-Ranges", "bytes");
+	for (const [key, value] of Object.entries(extraHeaders)) res.setHeader(key, value);
 	const range = req.headers.range;
 	if (range) {
 		const match = /bytes=(\d*)-(\d*)/.exec(range);
@@ -7243,11 +7869,47 @@ function makeWeRoutes(deps) {
 		mediaMap.set(token, absPath);
 		return token;
 	};
-	const freshInventory = () => buildInventory({
-		manualDirs: deps.getConfig().weLibraryDirs ?? [],
-		storeDir: deps.storeDir,
-		autoDetect: deps.autoDetect
-	});
+	let inventoryCache = null;
+	const invalidateInventory = () => {
+		inventoryCache = null;
+	};
+	const freshInventory = () => {
+		const manualDirs = deps.getConfig().weLibraryDirs ?? [];
+		const autoDetect = deps.autoDetect ?? true;
+		const installDir = autoDetect ? locateWallpaperEngine() : null;
+		const libraryDirs = autoDetect ? owningLibraries() : [];
+		const macos = deps.macosRoots !== void 0 ? deps.macosRoots : autoDetect && process.platform === "darwin" ? defaultMacosWallpaperRoots() : null;
+		const key = inventoryFingerprint({
+			installDir,
+			libraryDirs,
+			manualDirs,
+			storeDir: deps.storeDir,
+			entries: inventoryCache?.value.wallpapers,
+			macos
+		});
+		if (inventoryCache && inventoryCache.key === key) return inventoryCache.value;
+		const value = buildInventory({
+			manualDirs,
+			storeDir: deps.storeDir,
+			autoDetect: false,
+			installDir,
+			libraryDirs,
+			macos,
+			platform: deps.platform
+		});
+		inventoryCache = {
+			key: inventoryFingerprint({
+				installDir,
+				libraryDirs,
+				manualDirs,
+				storeDir: deps.storeDir,
+				entries: value.wallpapers,
+				macos
+			}),
+			value
+		};
+		return value;
+	};
 	const probeCachePath = join(deps.storeDir, ".cache", "we-scene-probes.json");
 	let sceneProbeCache = /* @__PURE__ */ new Map();
 	try {
@@ -7265,6 +7927,19 @@ function makeWeRoutes(deps) {
 	};
 	const entryToJson = (entry) => {
 		const hasFile = existsSync(entry.fileAbs);
+		if (entry.type === "image") return {
+			id: entry.id,
+			title: entry.title,
+			type: entry.type,
+			source: entry.source,
+			playable: false,
+			updateAvailable: false,
+			videoUrl: null,
+			webUrl: null,
+			frameUrl: null,
+			sceneUrl: null,
+			previewUrl: hasFile ? "/api/skin-center/we/image/" + tokenFor(entry.fileAbs) : null
+		};
 		return {
 			id: entry.id,
 			title: entry.title,
@@ -7293,7 +7968,7 @@ function makeWeRoutes(deps) {
 		} catch {}
 		const abs = mediaMap.get(token);
 		if (!abs) {
-			json(res, 404, {
+			writeJson(res, 404, {
 				ok: false,
 				error: "unknown-token"
 			});
@@ -7307,7 +7982,7 @@ function makeWeRoutes(deps) {
 		path: "/api/skin-center/we/inventory",
 		handler: (req, res) => {
 			if (req.method !== "GET") {
-				json(res, 405, {
+				writeJson(res, 405, {
 					ok: false,
 					error: "method-not-allowed"
 				});
@@ -7318,15 +7993,16 @@ function makeWeRoutes(deps) {
 				const inventory = freshInventory();
 				const wallpapers = inventory.wallpapers.map(entryToJson);
 				persistTokens();
-				json(res, 200, {
+				writeJson(res, 200, {
 					ok: true,
 					installDir: inventory.installDir,
 					total: inventory.total,
 					portableCount: inventory.portableCount,
+					systemCount: inventory.wallpapers.filter((w) => w.source === "system").length,
 					wallpapers
 				});
 			} catch (error) {
-				json(res, 500, {
+				writeJson(res, 500, {
 					ok: false,
 					error: error instanceof Error ? error.message : String(error)
 				});
@@ -7338,7 +8014,7 @@ function makeWeRoutes(deps) {
 		path: "/api/skin-center/we/scene-probe",
 		handler: async (req, res) => {
 			if (req.method !== "GET") {
-				json(res, 405, {
+				writeJson(res, 405, {
 					ok: false,
 					error: "method-not-allowed"
 				});
@@ -7348,7 +8024,7 @@ function makeWeRoutes(deps) {
 			try {
 				const id = new URL(req.url ?? "", "http://localhost").searchParams.get("id");
 				if (!id) {
-					json(res, 400, {
+					writeJson(res, 400, {
 						ok: false,
 						error: "missing-id"
 					});
@@ -7356,7 +8032,7 @@ function makeWeRoutes(deps) {
 				}
 				const entry = freshInventory().wallpapers.find((w) => w.id === id && w.type === "scene");
 				if (!entry || !existsSync(entry.fileAbs)) {
-					json(res, 404, {
+					writeJson(res, 404, {
 						ok: false,
 						error: "not-found"
 					});
@@ -7415,7 +8091,7 @@ function makeWeRoutes(deps) {
 				const videoToken = probe.hasVideo && !probe.hasSceneWebGL ? tokenFor(entry.fileAbs) : null;
 				const sceneToken = probe.hasSceneWebGL ? tokenFor(entry.fileAbs) : null;
 				persistTokens();
-				json(res, 200, {
+				writeJson(res, 200, {
 					ok: true,
 					videoUrl: videoToken !== null ? "/api/skin-center/we/scene-video/" + videoToken : null,
 					sceneUrl: sceneToken !== null ? "/api/skin-center/we/scene-runtime/" + sceneToken : null,
@@ -7423,7 +8099,7 @@ function makeWeRoutes(deps) {
 					unsupportedFeatures: probe.unsupportedFeatures
 				});
 			} catch (error) {
-				json(res, 500, {
+				writeJson(res, 500, {
 					ok: false,
 					error: error instanceof Error ? error.message : String(error)
 				});
@@ -7435,16 +8111,17 @@ function makeWeRoutes(deps) {
 		path: "/api/skin-center/we/shim.js",
 		handler: (req, res) => {
 			if (req.method !== "GET") {
-				json(res, 405, {
+				writeJson(res, 405, {
 					ok: false,
 					error: "method-not-allowed"
 				});
 				return;
 			}
-			if (!requireSameOrigin(req, res)) return;
+			if (!requireContentOrigin(req, res)) return;
 			res.writeHead(200, {
 				"content-type": "text/javascript; charset=utf-8",
-				"cache-control": "no-store"
+				"cache-control": "no-store",
+				"access-control-allow-origin": "null"
 			});
 			res.end(WE_SHIM_JS);
 		}
@@ -7456,7 +8133,7 @@ function makeWeRoutes(deps) {
 			path: "/api/skin-center/we/" + seg,
 			handler: (req, res) => {
 				if (req.method !== "GET") {
-					json(res, 405, {
+					writeJson(res, 405, {
 						ok: false,
 						error: "method-not-allowed"
 					});
@@ -7467,29 +8144,103 @@ function makeWeRoutes(deps) {
 				if (!abs) return;
 				if (abs.toLowerCase().endsWith(".tex")) try {
 					const texBuf = readFileSync(abs);
-					const result = parseTexToRGBA(new Uint8Array(texBuf.buffer, texBuf.byteOffset, texBuf.byteLength));
-					if (result) {
-						const pngBuf = encodeRGBAToPNG(result.width, result.height, result.rgba);
-						res.writeHead(200, {
-							"Content-Type": "image/png",
-							"Content-Length": pngBuf.length,
-							"Cache-Control": "public, max-age=86400"
-						});
-						res.end(pngBuf);
-						return;
-					}
+					const decoded = decodeTex(new Uint8Array(texBuf.buffer, texBuf.byteOffset, texBuf.byteLength));
+					const pngBuf = encodePng(decoded.width, decoded.height, decoded.rgba);
+					res.writeHead(200, {
+						"Content-Type": "image/png",
+						"Content-Length": pngBuf.length,
+						"Cache-Control": "public, max-age=86400"
+					});
+					res.end(pngBuf);
+					return;
 				} catch {}
 				serveFile(abs, req, res, openReadStream);
 			}
 		});
 	}
+	/**
+	* Convert one HEIC wallpaper into a <=2560px JPEG with the macOS-native
+	* sips tool (no extra dependency). Darwin-only: Desktop Pictures scanning
+	* only runs there, and the token map only ever holds scanned paths.
+	*/
+	const defaultConvertImage = (src, dest) => new Promise((resolvePromise, reject) => {
+		if (process.platform !== "darwin") {
+			reject(/* @__PURE__ */ new Error("heic conversion requires macOS"));
+			return;
+		}
+		execFile("/usr/bin/sips", [
+			"-s",
+			"format",
+			"jpeg",
+			"-s",
+			"formatOptions",
+			"85",
+			"-Z",
+			"2560",
+			src,
+			"--out",
+			dest
+		], { timeout: 6e4 }, (error) => {
+			if (error !== null) reject(error);
+			else resolvePromise();
+		});
+	});
+	const imagePrefix = "/api/skin-center/we/image/";
+	routes.push({
+		kind: "prefix",
+		path: "/api/skin-center/we/image",
+		handler: (req, res) => {
+			if (req.method !== "GET") {
+				writeJson(res, 405, {
+					ok: false,
+					error: "method-not-allowed"
+				});
+				return;
+			}
+			if (!requireSameOrigin(req, res)) return;
+			const abs = resolveToken(req, res, imagePrefix);
+			if (!abs) return;
+			if (/\.(jpe?g|png|webp)$/i.test(abs)) {
+				serveFile(abs, req, res, openReadStream);
+				return;
+			}
+			if (!/\.hei[cf]$/i.test(abs)) {
+				writeJson(res, 400, {
+					ok: false,
+					error: "not-an-image"
+				});
+				return;
+			}
+			(async () => {
+				let mtime = 0;
+				try {
+					mtime = statSync(abs).mtimeMs;
+				} catch {}
+				const cacheDir = join(deps.storeDir, ".cache", "images");
+				const base = Buffer.from(abs, "utf8").toString("base64url");
+				const key = base + "_v1_" + String(Math.round(mtime)) + ".jpg";
+				const cachePath = join(cacheDir, key);
+				if (!existsSync(cachePath)) {
+					mkdirSync(cacheDir, { recursive: true });
+					await (deps.convertImage ?? defaultConvertImage)(abs, cachePath);
+					pruneStaleSceneCache(cacheDir, base, key);
+				}
+				serveFile(cachePath, req, res, openReadStream);
+			})().catch((error) => {
+				writeJson(res, 422, {
+					ok: false,
+					error: error instanceof Error ? error.message : String(error)
+				});
+			});
+		}
+	});
 	const sceneVideoPrefix = "/api/skin-center/we/scene-video/";
 	routes.push({
 		kind: "prefix",
 		path: "/api/skin-center/we/scene-video",
 		handler: (req, res) => {
 			if (req.method !== "GET") {
-				json(res, 405, {
+				writeJson(res, 405, {
 					ok: false,
 					error: "method-not-allowed"
 				});
@@ -7511,7 +8262,7 @@ function makeWeRoutes(deps) {
 					const { extractSceneVideo, extractSceneVideoFromDir } = await Promise.resolve().then(() => pkg_extract_exports);
 					const videoBytes = abs.toLowerCase().endsWith(".json") ? extractSceneVideoFromDir(dirname(abs)) : extractSceneVideo(new Uint8Array(readFileSync(abs)));
 					if (!videoBytes) {
-						json(res, 404, {
+						writeJson(res, 404, {
 							ok: false,
 							error: "no-video-found"
 						});
@@ -7523,7 +8274,7 @@ function makeWeRoutes(deps) {
 				}
 				serveFile(cachePath, req, res, openReadStream);
 			})().catch((error) => {
-				json(res, 422, {
+				writeJson(res, 422, {
 					ok: false,
 					error: error instanceof Error ? error.message : String(error)
 				});
@@ -7535,19 +8286,19 @@ function makeWeRoutes(deps) {
 		path: "/api/skin-center/we/web",
 		handler: (req, res) => {
 			if (req.method !== "GET") {
-				json(res, 405, {
+				writeJson(res, 405, {
 					ok: false,
 					error: "method-not-allowed"
 				});
 				return;
 			}
-			if (!requireSameOrigin(req, res)) return;
+			if (!requireContentOrigin(req, res)) return;
 			const pathname = new URL(req.url || "/", "http://localhost").pathname;
 			let rest = "";
 			try {
 				rest = decodeURIComponent(pathname.slice(24));
 			} catch {
-				json(res, 400, {
+				writeJson(res, 400, {
 					ok: false,
 					error: "bad-request"
 				});
@@ -7556,7 +8307,7 @@ function makeWeRoutes(deps) {
 			const token = rest.split("/")[0] ?? "";
 			const entryAbs = mediaMap.get(token);
 			if (!entryAbs) {
-				json(res, 404, {
+				writeJson(res, 404, {
 					ok: false,
 					error: "unknown-token"
 				});
@@ -7565,14 +8316,14 @@ function makeWeRoutes(deps) {
 			const root = dirname(entryAbs);
 			const abs = resolve(root, rest.slice(token.length).replace(/^\/+/, "") || basename(entryAbs));
 			if (abs !== root && !abs.startsWith(root + sep)) {
-				json(res, 403, {
+				writeJson(res, 403, {
 					ok: false,
 					error: "path-escape-rejected"
 				});
 				return;
 			}
 			if (!existsSync(abs) || !statSync(abs).isFile()) {
-				json(res, 404, {
+				writeJson(res, 404, {
 					ok: false,
 					error: "not-found"
 				});
@@ -7584,12 +8335,13 @@ function makeWeRoutes(deps) {
 				const injected = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + tag) : tag + html;
 				res.writeHead(200, {
 					"content-type": "text/html; charset=utf-8",
-					"cache-control": "no-store"
+					"cache-control": "no-store",
+					"access-control-allow-origin": "null"
 				});
 				res.end(injected);
 				return;
 			}
-			serveFile(abs, req, res, openReadStream);
+			serveFile(abs, req, res, openReadStream, { "Access-Control-Allow-Origin": "null" });
 		}
 	});
 	const framePrefix = "/api/skin-center/we/scene-frame/";
@@ -7598,7 +8350,7 @@ function makeWeRoutes(deps) {
 		path: "/api/skin-center/we/scene-frame",
 		handler: (req, res) => {
 			if (req.method !== "GET") {
-				json(res, 405, {
+				writeJson(res, 405, {
 					ok: false,
 					error: "method-not-allowed"
 				});
@@ -7628,7 +8380,7 @@ function makeWeRoutes(deps) {
 				pipeFile(cachePath, res, openReadStream);
 			})().catch((error) => {
 				if (error instanceof TexUnsupportedError) {
-					json(res, 422, {
+					writeJson(res, 422, {
 						ok: false,
 						error: "unsupported-tex-format",
 						format: error.format,
@@ -7637,7 +8389,7 @@ function makeWeRoutes(deps) {
 					});
 					return;
 				}
-				json(res, 422, {
+				writeJson(res, 422, {
 					ok: false,
 					error: error instanceof Error ? error.message : String(error)
 				});
@@ -7649,7 +8401,7 @@ function makeWeRoutes(deps) {
 		path: "/api/skin-center/we/scene-runtime",
 		handler: (req, res) => {
 			if (req.method !== "GET") {
-				json(res, 405, {
+				writeJson(res, 405, {
 					ok: false,
 					error: "method-not-allowed"
 				});
@@ -7669,13 +8421,13 @@ function makeWeRoutes(deps) {
 		path: "/api/skin-center/we/scene-manifest",
 		handler: (req, res) => {
 			if (req.method !== "GET") {
-				json(res, 405, {
+				writeJson(res, 405, {
 					ok: false,
 					error: "method-not-allowed"
 				});
 				return;
 			}
-			if (!requireSameOrigin(req, res)) return;
+			if (!requireContentOrigin(req, res)) return;
 			const abs = resolveToken(req, res, sceneManifestPrefix);
 			if (!abs) return;
 			try {
@@ -7688,18 +8440,18 @@ function makeWeRoutes(deps) {
 					}
 				})());
 				if (!manifest) {
-					json(res, 404, {
+					writeJson(res, 404, {
 						ok: false,
 						error: "manifest-build-failed"
 					});
 					return;
 				}
-				json(res, 200, {
+				writeJson(res, 200, {
 					ok: true,
 					manifest
-				});
+				}, { "access-control-allow-origin": "null" });
 			} catch (err) {
-				json(res, 500, {
+				writeJson(res, 500, {
 					ok: false,
 					error: err instanceof Error ? err.message : String(err)
 				});
@@ -7711,19 +8463,19 @@ function makeWeRoutes(deps) {
 		path: "/api/skin-center/we/scene-resource",
 		handler: (req, res) => {
 			if (req.method !== "GET") {
-				json(res, 405, {
+				writeJson(res, 405, {
 					ok: false,
 					error: "method-not-allowed"
 				});
 				return;
 			}
-			if (!requireSameOrigin(req, res)) return;
+			if (!requireContentOrigin(req, res)) return;
 			const pathname = new URL(req.url || "/", "http://localhost").pathname;
 			let rest = "";
 			try {
 				rest = decodeURIComponent(pathname.slice(35));
 			} catch {
-				json(res, 400, {
+				writeJson(res, 400, {
 					ok: false,
 					error: "bad-request"
 				});
@@ -7732,7 +8484,7 @@ function makeWeRoutes(deps) {
 			const token = rest.split("/")[0] ?? "";
 			const entryAbs = mediaMap.get(token);
 			if (!entryAbs) {
-				json(res, 404, {
+				writeJson(res, 404, {
 					ok: false,
 					error: "unknown-token"
 				});
@@ -7740,7 +8492,7 @@ function makeWeRoutes(deps) {
 			}
 			const subpath = rest.slice(token.length).replace(/^\/+/, "");
 			if (!subpath) {
-				json(res, 400, {
+				writeJson(res, 400, {
 					ok: false,
 					error: "missing-subpath"
 				});
@@ -7749,7 +8501,7 @@ function makeWeRoutes(deps) {
 			try {
 				const resBytes = entryAbs.toLowerCase().endsWith(".json") ? extractSceneResourceFromDir(dirname(entryAbs), subpath) : extractSceneResource(new Uint8Array(readFileSync(entryAbs)), subpath);
 				if (!resBytes) {
-					json(res, 404, {
+					writeJson(res, 404, {
 						ok: false,
 						error: "resource-not-found"
 					});
@@ -7759,11 +8511,12 @@ function makeWeRoutes(deps) {
 				const isMp4 = resBytes.length > 12 && resBytes[4] === 102 && resBytes[5] === 116 && resBytes[6] === 121 && resBytes[7] === 112;
 				res.writeHead(200, {
 					"content-type": isPng ? "image/png" : isMp4 ? "video/mp4" : "application/octet-stream",
-					"cache-control": "no-store"
+					"cache-control": "no-store",
+					"access-control-allow-origin": "null"
 				});
 				res.end(Buffer.from(resBytes));
 			} catch (err) {
-				json(res, 500, {
+				writeJson(res, 500, {
 					ok: false,
 					error: err instanceof Error ? err.message : String(err)
 				});
@@ -7799,15 +8552,24 @@ function makeWeRoutes(deps) {
 			path,
 			handler: (req, res) => {
 				if (req.method !== "POST") {
-					json(res, 405, {
+					writeJson(res, 405, {
 						ok: false,
 						error: "method-not-allowed"
 					});
 					return;
 				}
 				if (!requireSameOrigin(req, res)) return;
-				readJsonBody(req).then((body) => run(readId(body), res)).catch((error) => {
-					json(res, 500, {
+				readJsonBody(req).then((body) => {
+					if (body === null) {
+						writeJson(res, 400, {
+							ok: false,
+							error: "invalid-body"
+						});
+						return;
+					}
+					run(readId(body), res);
+				}).catch((error) => {
+					writeJson(res, 500, {
 						ok: false,
 						error: error instanceof Error ? error.message : String(error)
 					});
@@ -7817,7 +8579,7 @@ function makeWeRoutes(deps) {
 	};
 	postJson("/api/skin-center/we/import", (id, res) => {
 		if (id === "" || id.startsWith("imported/")) {
-			json(res, 400, {
+			writeJson(res, 400, {
 				ok: false,
 				error: "bad-id"
 			});
@@ -7825,29 +8587,37 @@ function makeWeRoutes(deps) {
 		}
 		const entry = freshInventory().wallpapers.find((w) => w.id === id);
 		if (!entry) {
-			json(res, 404, {
+			writeJson(res, 404, {
 				ok: false,
 				error: "wallpaper-not-found"
 			});
 			return;
 		}
+		if (entry.source === "system") {
+			writeJson(res, 400, {
+				ok: false,
+				error: "not-importable"
+			});
+			return;
+		}
 		const dest = join(deps.storeDir, safeStoreId(id));
 		if (existsSync(dest)) {
-			json(res, 409, {
+			writeJson(res, 409, {
 				ok: false,
 				error: "already-imported"
 			});
 			return;
 		}
 		copyIntoStore(entry, dest);
-		json(res, 200, {
+		invalidateInventory();
+		writeJson(res, 200, {
 			ok: true,
 			id: "imported/" + entry.id
 		});
 	});
 	postJson("/api/skin-center/we/reimport", (id, res) => {
 		if (!id.startsWith("imported/")) {
-			json(res, 400, {
+			writeJson(res, 400, {
 				ok: false,
 				error: "bad-id"
 			});
@@ -7856,7 +8626,7 @@ function makeWeRoutes(deps) {
 		const sourceId = id.slice(9);
 		const dest = join(deps.storeDir, safeStoreId(sourceId));
 		if (!existsSync(dest)) {
-			json(res, 404, {
+			writeJson(res, 404, {
 				ok: false,
 				error: "import-not-found"
 			});
@@ -7864,7 +8634,7 @@ function makeWeRoutes(deps) {
 		}
 		const source = freshInventory().wallpapers.find((w) => w.id === sourceId && w.source !== "imported");
 		if (!source) {
-			json(res, 410, {
+			writeJson(res, 410, {
 				ok: false,
 				error: "source-gone"
 			});
@@ -7875,14 +8645,15 @@ function makeWeRoutes(deps) {
 			force: true
 		});
 		copyIntoStore(source, dest);
-		json(res, 200, {
+		invalidateInventory();
+		writeJson(res, 200, {
 			ok: true,
 			id
 		});
 	});
 	postJson("/api/skin-center/we/remove", (id, res) => {
 		if (!id.startsWith("imported/")) {
-			json(res, 400, {
+			writeJson(res, 400, {
 				ok: false,
 				error: "bad-id"
 			});
@@ -7890,7 +8661,7 @@ function makeWeRoutes(deps) {
 		}
 		const dest = join(deps.storeDir, safeStoreId(id.slice(9)));
 		if (!existsSync(dest)) {
-			json(res, 404, {
+			writeJson(res, 404, {
 				ok: false,
 				error: "import-not-found"
 			});
@@ -7900,7 +8671,8 @@ function makeWeRoutes(deps) {
 			recursive: true,
 			force: true
 		});
-		json(res, 200, { ok: true });
+		invalidateInventory();
+		writeJson(res, 200, { ok: true });
 	});
 	return routes;
 }
@@ -8025,6 +8797,7 @@ const SkinWallpaperConfigSchema = z.object({
 	pauseOnHidden: z.boolean().default(true),
 	dim: z.number().min(0).max(90).step(5).default(25),
 	wallpaperBlur: z.number().min(0).max(60).step(1).default(0),
+	wallpaperOpacity: z.number().min(0).max(100).step(5).default(100),
 	fit: z.union([
 		"cover",
 		"contain",
@@ -8112,4 +8885,4 @@ function applyImpl(ctx) {
 	}
 }
 //#endregion
-export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_V2_PREFIX, SKIN_CUSTOM_THEME_NAMESPACE, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinCssSafetyError, SkinCustomThemeConfigSchema, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, builtinSkinsDir, defaultActiveStatePath, findSkin, inject, loadSkinCatalog, makeSkinCenterV2Routes, makeWeRoutes, name, readActiveSelection, resolveInsideSkin, transformSkinCss, userSkinsDir, validateSkinManifestV2, writeActiveSelection };
+export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_V2_PREFIX, SKIN_CUSTOM_THEME_NAMESPACE, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinCssSafetyError, SkinCustomThemeConfigSchema, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, auditTokenContract, builtinSkinsDir, defaultActiveStatePath, findSkin, inject, loadSkinCatalog, makeSkinCenterV2Routes, makeWeRoutes, name, readActiveSelection, resolveInsideSkin, transformSkinCss, userSkinsDir, validateSkinManifestV2, writeActiveSelection };

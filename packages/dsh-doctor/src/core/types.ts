@@ -134,9 +134,11 @@ export type SnapshotFileKind = 'text' | 'binary'
 export interface SnapshotFileEntry {
   /** Profile-relative POSIX path. */
   path: string
-  hash: string
+  /** SHA-256 of the stored original; absent on omitted entries. */
+  hash?: string
   size: number
-  kind: SnapshotFileKind
+  /** text/binary classification; absent on omitted entries. */
+  kind?: SnapshotFileKind
   /** Hash of the redacted copy; present for text files. */
   redactedHash?: string
   /** Large files are recorded but not stored. */

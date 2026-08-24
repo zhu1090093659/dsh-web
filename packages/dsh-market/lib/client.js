@@ -15,6 +15,15 @@ window.__ModuleLoader__.load({
 		const TIMEOUT_MS = 1e4;
 		let ready = null;
 		let chain = Promise.resolve();
+		/** Create a UUID v4 even when randomUUID is unavailable on an HTTP LAN origin. */
+		function turnstileRequestId(source = crypto) {
+			if (typeof source.randomUUID === "function") return source.randomUUID();
+			const bytes = source.getRandomValues(/* @__PURE__ */ new Uint8Array(16));
+			bytes[6] = bytes[6] & 15 | 64;
+			bytes[8] = bytes[8] & 63 | 128;
+			const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+			return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+		}
 		function challengeFrame() {
 			if (ready !== null) return ready;
 			ready = new Promise((resolve, reject) => {
@@ -27,6 +36,7 @@ window.__ModuleLoader__.load({
 					resolve(iframe);
 				};
 				iframe.onerror = () => {
+					iframe.remove();
 					ready = null;
 					reject(/* @__PURE__ */ new Error("turnstile-frame-failed"));
 				};
@@ -36,7 +46,7 @@ window.__ModuleLoader__.load({
 		}
 		async function requestOne() {
 			const iframe = await challengeFrame();
-			const id = crypto.randomUUID();
+			const id = turnstileRequestId();
 			return new Promise((resolve, reject) => {
 				const timer = window.setTimeout(() => finish(/* @__PURE__ */ new Error("turnstile-timeout")), TIMEOUT_MS);
 				const onMessage = (event) => {
@@ -48,8 +58,11 @@ window.__ModuleLoader__.load({
 				const finish = (error, token = "") => {
 					window.clearTimeout(timer);
 					window.removeEventListener("message", onMessage);
-					if (error !== null) reject(error);
-					else resolve(token);
+					if (error !== null) {
+						iframe.remove();
+						ready = null;
+						reject(error);
+					} else resolve(token);
 				};
 				window.addEventListener("message", onMessage);
 				iframe.contentWindow?.postMessage({
@@ -767,11 +780,18 @@ window.__ModuleLoader__.load({
 					return () => {
 						setFace(null);
 					};
-				}, "dsh-market: pluginManager bridge");
+				}, "dsh-web-ui-market: pluginManager bridge");
 			});
 		}
 		//#endregion
 		//#region src/client/install-source.ts
+		/**
+		* npm package name (optionally scoped, lowercase) as the store manifest
+		* uses it, plus the optional concrete version/tag suffix npm accepts
+		* (e.g. pkg@1.2.3, @scope/pkg@next). Range operators are not part of the
+		* store convention, so `^1.0.0`-style specs stay rejected.
+		*/
+		const NPM_SPEC = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*(?:@[0-9A-Za-z][0-9A-Za-z._-]*)?$/;
 		/** The command to install a plugin entry (npm package when published, else its repository URL). */
 		function installCommand(entry) {
 			return `dsh plugin --profile web add ${entry.npm ?? entry.repo ?? entry.id}`;
@@ -780,13 +800,35 @@ window.__ModuleLoader__.load({
 		function installSpec(entry) {
 			return entry.npm ?? entry.repo ?? entry.id;
 		}
+		/**
+		* Whether an install spec may be handed to the plugin manager. Acceptable
+		* shapes are an npm package name (optionally pkg@version) or a plain
+		* https:// git URL; ssh://, git@-style, file://, http://, relative paths and
+		* bare repo names are rejected, so the remote manifest can never drive a
+		* non-https or local install.
+		*/
+		function isInstallSpecValid(spec) {
+			if (spec.startsWith("https://")) return isHttpsGitUrl(spec);
+			return NPM_SPEC.test(spec);
+		}
+		/** Whether a spec is a well-formed https:// URL with a host. */
+		function isHttpsGitUrl(spec) {
+			if (!/^https:\/\/[A-Za-z0-9]/.test(spec)) return false;
+			if (/[\s\u0000-\u001F\u007F]/.test(spec)) return false;
+			try {
+				const url = new URL(spec);
+				return url.protocol === "https:" && url.hostname !== "";
+			} catch {
+				return false;
+			}
+		}
 		/** Find the installed row for an entry (null when not installed or no snapshot). */
 		function entryInstalled(entry, installed) {
 			return installed.find((item) => item.id === entry.id) ?? null;
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-market/src/client/market.module.css.mjs
-		const css = ".bkhjFa_market{flex-direction:column;gap:10px;display:flex}.bkhjFa_tabs{flex-wrap:wrap;gap:6px;display:flex}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab{font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;border-radius:999px;padding:2px 10px;font-size:12px;line-height:1.6}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab:hover:enabled{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive{color:var(--dsw-alias-bg-layer-3);background:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-primary);font-weight:600}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive:hover:enabled{color:var(--dsw-alias-bg-layer-3);border-color:var(--dsw-alias-label-primary)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab:active:enabled{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive:active:enabled{color:var(--dsw-alias-bg-layer-3);background:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-label-primary)}.bkhjFa_tabCount{opacity:.72;margin-left:6px;font-size:12px}.bkhjFa_search{width:100%;max-width:460px;font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:6px;padding:6px 10px;font-size:13px;line-height:1.5}.bkhjFa_search::placeholder{color:var(--dsw-alias-label-tertiary)}.bkhjFa_search:focus{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.bkhjFa_grid{grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:10px;margin:4px 0 0;padding:0;list-style:none;display:grid}.bkhjFa_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:8px;gap:10px;min-width:0;padding:12px;display:flex}.bkhjFa_card:hover{border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_thumb{object-fit:cover;background:var(--dsw-alias-bg-layer-2);border-radius:6px;flex:none;place-items:center;width:72px;height:72px;display:grid}.bkhjFa_thumbPlaceholder{color:var(--dsw-alias-label-tertiary);font-size:22px;font-weight:700}.bkhjFa_cardBody{flex-direction:column;flex:1;gap:6px;min-width:0;display:flex}.bkhjFa_cardName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-weight:600;overflow:hidden}.bkhjFa_cardVersion{color:var(--dsw-alias-label-tertiary);margin-left:6px;font-size:11px;font-weight:400}.bkhjFa_cardMeta{color:var(--dsw-alias-label-tertiary);white-space:nowrap;align-items:center;gap:6px;font-size:12px;line-height:1.4;display:flex;overflow:hidden}.bkhjFa_badge{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l2);white-space:nowrap;border-radius:999px;flex:none;padding:0 8px;font-size:11px;line-height:1.6}.bkhjFa_badgeInstalled{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed);background:var(--dsw-alias-bg-layer-2)}.bkhjFa_cardDesc{color:var(--dsw-alias-label-secondary);-webkit-line-clamp:2;overflow-wrap:anywhere;-webkit-box-orient:vertical;margin:0;font-size:13px;line-height:1.45;display:-webkit-box;overflow:hidden}.bkhjFa_cardFooter{flex-direction:column;gap:8px;margin-top:auto;padding-top:8px;display:flex}.bkhjFa_actionRow{flex-wrap:wrap;align-items:center;gap:6px;display:flex}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like,.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_previewLink{font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;border-radius:999px;align-items:center;padding:1px 10px;font-size:12px;line-height:1.5;text-decoration:none;display:inline-flex}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like{font-variant-numeric:tabular-nums}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like:hover:enabled,.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_previewLink:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_actionRowPrimary{align-items:stretch;gap:8px;display:flex}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_install{min-width:0;font:inherit;color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;background:0 0;border-radius:6px;flex:1 1 0;justify-content:center;align-items:center;min-height:30px;padding:4px 14px;font-size:12px;font-weight:600;line-height:1.5;display:inline-flex}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_install:hover:enabled{border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary{color:var(--dsw-alias-brand-primary-invert);background:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary);flex-grow:2}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary:hover:enabled{background:var(--dsw-alias-button-primary-hover);border-color:var(--dsw-alias-button-primary-hover)}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary:disabled{opacity:.55;cursor:default}.bkhjFa_error{color:var(--dsw-alias-label-error,#c53030);margin:0;font-size:12px;line-height:1.4}.bkhjFa_callout{color:var(--dsw-alias-state-success-primary);margin:0;font-size:12px;line-height:1.4}.bkhjFa_empty{color:var(--dsw-alias-label-tertiary);align-items:center;gap:8px;font-size:13px;display:flex}.bkhjFa_retry{padding:3px 10px;font-size:12px}.bkhjFa_remoteNote{color:var(--dsw-alias-label-tertiary);margin:6px 0 0;font-size:12px;line-height:1.4}.bkhjFa_modalActions{justify-content:flex-end;gap:8px;margin-top:10px;display:flex}";
+		const css = ".bkhjFa_market{flex-direction:column;gap:10px;display:flex}.bkhjFa_tabs{flex-wrap:wrap;gap:6px;display:flex}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab{font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;border-radius:999px;padding:2px 10px;font-size:12px;line-height:1.6}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab:hover:enabled{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive{color:var(--dsw-alias-bg-layer-3);background:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-primary);font-weight:600}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive:hover:enabled{color:var(--dsw-alias-bg-layer-3);border-color:var(--dsw-alias-label-primary)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab:active:enabled{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive:active:enabled{color:var(--dsw-alias-bg-layer-3);background:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-label-primary)}.bkhjFa_tabCount{opacity:.72;margin-left:6px;font-size:12px}.bkhjFa_search{width:100%;max-width:460px;font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:6px;padding:6px 10px;font-size:13px;line-height:1.5}.bkhjFa_search::placeholder{color:var(--dsw-alias-label-tertiary)}.bkhjFa_search:focus{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.bkhjFa_grid{grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:10px;margin:4px 0 0;padding:0;list-style:none;display:grid}.bkhjFa_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:8px;gap:10px;min-width:0;padding:12px;display:flex}.bkhjFa_card:hover{border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_thumb{object-fit:cover;background:var(--dsw-alias-bg-layer-2);border-radius:6px;flex:none;place-items:center;width:72px;height:72px;display:grid}.bkhjFa_thumbPlaceholder{color:var(--dsw-alias-label-tertiary);font-size:22px;font-weight:700}.bkhjFa_cardBody{flex-direction:column;flex:1;gap:6px;min-width:0;display:flex}.bkhjFa_cardName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-weight:600;overflow:hidden}.bkhjFa_cardVersion{color:var(--dsw-alias-label-tertiary);margin-left:6px;font-size:11px;font-weight:400}.bkhjFa_cardMeta{color:var(--dsw-alias-label-tertiary);white-space:nowrap;align-items:center;gap:6px;font-size:12px;line-height:1.4;display:flex;overflow:hidden}.bkhjFa_badge{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l2);white-space:nowrap;border-radius:999px;flex:none;padding:0 8px;font-size:11px;line-height:1.6}.bkhjFa_badgeInstalled{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed);background:var(--dsw-alias-bg-layer-2)}.bkhjFa_cardDesc{color:var(--dsw-alias-label-secondary);-webkit-line-clamp:2;overflow-wrap:anywhere;-webkit-box-orient:vertical;margin:0;font-size:13px;line-height:1.45;display:-webkit-box;overflow:hidden}.bkhjFa_cardFooter{flex-direction:column;gap:8px;margin-top:auto;padding-top:8px;display:flex}.bkhjFa_actionRow{flex-wrap:wrap;align-items:center;gap:6px;display:flex}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like,.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_previewLink{font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;border-radius:999px;align-items:center;padding:1px 10px;font-size:12px;line-height:1.5;text-decoration:none;display:inline-flex}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like{font-variant-numeric:tabular-nums}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like:hover:enabled,.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_previewLink:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_actionRowPrimary{align-items:stretch;gap:8px;display:flex}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_install{min-width:0;font:inherit;color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;background:0 0;border-radius:6px;flex:1 1 0;justify-content:center;align-items:center;min-height:30px;padding:4px 14px;font-size:12px;font-weight:600;line-height:1.5;display:inline-flex}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_install:hover:enabled{border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary{color:var(--dsw-alias-label-primary-foreground);background:var(--dsw-alias-button-primary-fill);border-color:var(--dsw-alias-button-primary-fill);flex-grow:2}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary:hover:enabled{background:var(--dsw-alias-button-primary-hover);border-color:var(--dsw-alias-button-primary-hover)}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary:disabled{opacity:.55;cursor:default}.bkhjFa_error{color:var(--dsw-alias-label-error,#c53030);margin:0;font-size:12px;line-height:1.4}.bkhjFa_callout{color:var(--dsw-alias-state-success-primary);margin:0;font-size:12px;line-height:1.4}.bkhjFa_empty{color:var(--dsw-alias-label-tertiary);align-items:center;gap:8px;font-size:13px;display:flex}.bkhjFa_retry{padding:3px 10px;font-size:12px}.bkhjFa_remoteNote{color:var(--dsw-alias-label-tertiary);margin:6px 0 0;font-size:12px;line-height:1.4}.bkhjFa_modalActions{justify-content:flex-end;gap:8px;margin-top:10px;display:flex}";
 		const tagId = "@linxin666/dsh-client-ui-market/market.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -840,7 +882,7 @@ window.__ModuleLoader__.load({
 		var MarketCardController = class {
 			form;
 			store;
-			/** @param scope - the bound settings scope for the dsh-market namespace. */
+			/** @param scope - the bound settings scope for the dsh-web-ui-market namespace. */
 			constructor(scope) {
 				this.form = new CardForm(scope, [booleanField("enabled")]);
 				this.store = this.form.bind(() => this.projection());
@@ -1122,8 +1164,16 @@ window.__ModuleLoader__.load({
 			const onInstallPlugin = (item) => {
 				if (face === null || !face.isLoopback || installing !== null) return;
 				const id = item.id;
+				const spec = installSpec(item);
+				if (!isInstallSpecValid(spec)) {
+					setPluginErrors((prev) => ({
+						...prev,
+						[id]: t("installFailed", { reason: t("installSpecInvalid") })
+					}));
+					return;
+				}
 				setInstalling("plugin:" + id);
-				face.install(installSpec(item)).then(() => face.list()).then((list) => {
+				face.install(spec).then(() => face.list()).then((list) => {
 					setPluginList(list);
 					callout(id, t("installed", {}));
 				}).catch((reason) => {
@@ -1473,6 +1523,7 @@ window.__ModuleLoader__.load({
 			"installing": "安装中…",
 			"installed": "已安装",
 			"installFailed": "安装失败：{reason}",
+			"installSpecInvalid": "安装来源无效，仅支持 npm 包名或 https:// git 地址",
 			"copied": "已复制",
 			"copyCommand": "复制安装命令",
 			"command.title": "复制下方命令到 dsh host 终端执行",
@@ -1528,6 +1579,7 @@ window.__ModuleLoader__.load({
 			"installing": "Installing…",
 			"installed": "Installed",
 			"installFailed": "Install failed: {reason}",
+			"installSpecInvalid": "Invalid install source; only npm package names and https:// git URLs are supported",
 			"copied": "Copied",
 			"copyCommand": "Copy install command",
 			"command.title": "Copy this command into a dsh host terminal",
@@ -1550,7 +1602,7 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region src/client/index.ts
-		const MARKET_NS = "dsh-market";
+		const MARKET_NS = "dsh-web-ui-market";
 		const inject = [
 			"slots",
 			"locale",
@@ -1560,25 +1612,35 @@ window.__ModuleLoader__.load({
 		];
 		/** Register the market section and the plugin-manager bridge. */
 		function apply(ctx) {
-			ctx.effect(() => ctx.locale.register("dsh-market", {
-				zh,
-				en
-			}), "dsh-market: dictionaries");
+			ctx.effect(() => {
+				try {
+					return ctx.locale.register(MARKET_NS, {
+						zh,
+						en
+					});
+				} catch {
+					return () => {};
+				}
+			}, "dsh-web-ui-market: dictionaries");
 			bridgePluginManager(ctx);
 			const controller = new MarketCardController((ctx.get("webUiSettings") ?? ctx.settingsScope).bind({ namespace: MARKET_NS }));
 			ctx.slots.inject("settings.section", () => {
-				const unregister = ctx.slots.register({
-					name: "settings.section",
-					id: "dsh-market",
-					order: 150,
-					label: () => ctx.locale.bind("dsh-market")("settings.title"),
-					locale: "dsh-market",
-					inject: () => controller.inject()
-				}, MarketSection);
-				return () => {
-					unregister();
-					controller.dispose();
-				};
+				try {
+					const unregister = ctx.slots.register({
+						name: "settings.section",
+						id: MARKET_NS,
+						order: 150,
+						label: () => ctx.locale.bind(MARKET_NS)("settings.title"),
+						locale: MARKET_NS,
+						inject: () => controller.inject()
+					}, MarketSection);
+					return () => {
+						unregister();
+						controller.dispose();
+					};
+				} catch {
+					return () => {};
+				}
 			});
 		}
 		//#endregion

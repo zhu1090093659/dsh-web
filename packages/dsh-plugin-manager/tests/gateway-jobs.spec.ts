@@ -481,3 +481,60 @@ describe('CliGateway update verification', () => {
     expect(calls[0]).toEqual(['plugin', '--profile', 'web', 'add', 'dsh-memoir@1.1.0'])
   })
 })
+describe('CliGateway finished-job retention', () => {
+  /** Fill the finished-job ring with `count` settled jobs of one repeated spec. */
+  async function fillRing(gateway: CliGateway, count: number): Promise<void> {
+    for (let index = 0; index < count; index += 1) {
+      const { jobId } = gateway.install('dsh-retention')
+      await settle(gateway, jobId)
+    }
+  }
+
+  it('keeps only the newest 100 finished jobs and evicts the oldest settled one', async () => {
+    const { facts, dir } = makeProfile({})
+    tempDirs.push(dir)
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] === 'plugin' && args[3] === 'add') installPackage(facts.profileDir, args[4] ?? '', {})
+      return { code: 0 }
+    }, [])
+    await fillRing(gateway, 101)
+    // The first settled job is evicted as the 101st finishes; the ring keeps
+    // job-2..job-101 and reads the evicted id as not-found.
+    expect(gateway.status('job-1')).toBeUndefined()
+    expect(gateway.status('job-2')).toMatchObject({ id: 'job-2', phase: 'error' })
+    expect(gateway.status('job-101')).toMatchObject({ id: 'job-101', phase: 'error' })
+  })
+
+  it('never evicts in-progress jobs and keeps the ring on the newest finished ones', async () => {
+    const { facts, dir } = makeProfile({})
+    tempDirs.push(dir)
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] === 'plugin' && args[3] === 'add') installPackage(facts.profileDir, args[4] ?? '', {})
+      return { code: 0 }
+    }, [])
+    await fillRing(gateway, 101)
+    // Hold the mutation queue so two jobs are in flight while the ring is
+    // already full: they must stay queryable while running.
+    let release!: () => void
+    const blocker = new Promise<void>(resolve => { release = resolve })
+    const direct = gateway.withMutationLock(() => blocker)
+    const hold = gateway.install('dsh-hold')
+    const queued = gateway.install('dsh-queued')
+    expect(gateway.status(hold.jobId)).toMatchObject({ id: hold.jobId, phase: 'running' })
+    expect(gateway.status(queued.jobId)).toMatchObject({ id: queued.jobId, phase: 'running' })
+    release()
+    await direct
+    const holdJob = await settle(gateway, hold.jobId)
+    const queuedJob = await settle(gateway, queued.jobId)
+    expect(holdJob.phase).toBe('done')
+    expect(queuedJob.phase).toBe('done')
+    // The two new finished jobs evict the two oldest finished ones; the jobs
+    // that were in flight settle and stay queryable themselves.
+    expect(gateway.status('job-1')).toBeUndefined()
+    expect(gateway.status('job-2')).toBeUndefined()
+    expect(gateway.status('job-3')).toBeUndefined()
+    expect(gateway.status('job-4')).toBeDefined()
+    expect(gateway.status(hold.jobId)).toMatchObject({ phase: 'done' })
+    expect(gateway.status(queued.jobId)).toMatchObject({ phase: 'done' })
+  })
+})

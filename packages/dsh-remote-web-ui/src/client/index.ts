@@ -106,7 +106,13 @@ export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'remote-web-ui: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'remote-web-ui: dictionaries')
 
   const t = ctx.locale.bind(NS)
   const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
@@ -127,7 +133,11 @@ export function apply(ctx: ClientContext): void {
     let disposeEntry: (() => void) | undefined
     const syncEntry = (): void => {
       if (enabled() && disposeEntry === undefined) {
-        disposeEntry = ctx.slots.register({ name: 'sidebar.remote', locale: NS }, RemoteEntry)
+        try {
+          disposeEntry = ctx.slots.register({ name: 'sidebar.remote', locale: NS }, RemoteEntry)
+        } catch {
+          // ignore registration collision
+        }
       } else if (!enabled() && disposeEntry !== undefined) {
         disposeEntry()
         disposeEntry = undefined
@@ -149,7 +159,11 @@ export function apply(ctx: ClientContext): void {
     let disposeEntry: (() => void) | undefined
     const syncEntry = (): void => {
       if (enabled() && disposeEntry === undefined) {
-        disposeEntry = ctx.slots.register({ name: 'sidebar.footer.action', id: 'remote-web-ui', locale: NS }, FooterRemoteEntry)
+        try {
+          disposeEntry = ctx.slots.register({ name: 'sidebar.footer.action', id: 'remote-web-ui', locale: NS }, FooterRemoteEntry)
+        } catch {
+          // ignore registration collision
+        }
       } else if (!enabled() && disposeEntry !== undefined) {
         disposeEntry()
         disposeEntry = undefined
@@ -167,16 +181,20 @@ export function apply(ctx: ClientContext): void {
   // settings namespace, contributed to the Web UI plugin group.
   const remoteSettings = new RemoteSettingsCardController(settingsScope)
   ctx.slots.inject('web-ui.plugin.item', () => {
-    const unregister = ctx.slots.register({
-      name: 'web-ui.plugin.item',
-      id: 'remote-web-ui',
-      order: 90,
-      locale: NS,
-      inject: () => remoteSettings.inject(),
-    }, RemoteSettingsCard)
-    return () => {
-      remoteSettings.dispose()
-      unregister()
+    try {
+      const unregister = ctx.slots.register({
+        name: 'web-ui.plugin.item',
+        id: 'remote-web-ui',
+        order: 90,
+        locale: NS,
+        inject: () => remoteSettings.inject(),
+      }, RemoteSettingsCard)
+      return () => {
+        remoteSettings.dispose()
+        unregister()
+      }
+    } catch {
+      return () => {}
     }
   })
 

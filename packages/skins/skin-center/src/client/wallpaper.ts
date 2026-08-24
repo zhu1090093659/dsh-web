@@ -32,7 +32,8 @@ export const SKIN_WALLPAPER_NS = 'skin-wallpaper'
 export interface WallpaperDescriptor {
   id: string
   title: string
-  type: 'video' | 'web' | 'scene' | 'application'
+  /** 'image' is the macOS Desktop Pictures kind: a static host-converted JPEG. */
+  type: 'video' | 'web' | 'scene' | 'application' | 'image'
   videoUrl: string | null
   webUrl: string | null
   frameUrl: string | null
@@ -57,6 +58,8 @@ interface WallpaperSection {
   pauseOnHidden?: boolean
   dim?: number
   wallpaperBlur?: number
+  /** Opacity of the wallpaper media layer itself, 0-100 percent. */
+  wallpaperOpacity?: number
   /** Audible video wallpaper playback (default off = muted, #580). */
   sound?: boolean
   /** Wallpaper audio volume 0-100 (default 100). */
@@ -73,6 +76,8 @@ export interface WallpaperHandle {
   fit(): 'cover' | 'contain' | 'fill'
   dim(): number
   wallpaperBlur(): number
+  /** Opacity of the wallpaper media layer itself, 0-100. */
+  wallpaperOpacity(): number
   pauseOnHidden(): boolean
   /** Audible playback for video wallpapers (default false = muted). */
   sound(): boolean
@@ -84,6 +89,15 @@ export interface WallpaperHandle {
   addDir(dir: string): void
   /** Remove a manual library folder and persist. */
   removeDir(dir: string): void
+  /**
+   * Open the host's native directory picker (the SDK's loopback-only
+   * host.pickDirectory: Finder on macOS, Explorer on Windows). Resolves to
+   * the chosen absolute path, or null when the user cancelled. Rejects when
+   * the native capability is unavailable (e.g. a paired remote client), in
+   * which case the manual input remains the fallback. Optional: faces
+   * without host access omit it and the panel hides the browse button.
+   */
+  pickDir?(): Promise<string | null>
   /** The currently mounted wallpaper id (try-on included), or null. */
   activeId(): string | null
   /** True while a try-on mount is up. */
@@ -94,6 +108,7 @@ export interface WallpaperHandle {
   setFit(fit: 'cover' | 'contain' | 'fill'): void
   setDim(value: number): void
   setBlur(value: number): void
+  setOpacity(value: number): void
   setPauseOnHidden(value: boolean): void
   setSound(value: boolean): void
   setVolume(value: number): void
@@ -236,6 +251,9 @@ export interface WallpaperControllerOptions {
    * mutations (chat streaming) into one settled sweep; tests pass 0 to flush
    * right after rAF. Defaults to 150. */
   surfaceTrailMs?: number
+  /** Override the light/dark theme detector (tests); defaults to
+   * body[data-ds-dark-theme] presence. */
+  themeGet?: () => 'light' | 'dark'
 }
 
 /**
@@ -252,9 +270,11 @@ export class WallpaperController implements WallpaperHandle {
   private volumeValue = 100
   private dimValue = 25
   private blurValue = 0
+  private opacityValue = 100
   private dirsValue: string[] = []
   private readonly listeners = new Set<() => void>()
   private readonly scope: SettingsScope<WallpaperSection>
+  private readonly unsubscribe: () => void
   private readonly options: WallpaperControllerOptions
   private readonly doc: Document
 
@@ -281,13 +301,17 @@ export class WallpaperController implements WallpaperHandle {
   /** Detached frame-capture video; released on error/abort/loadeddata and on
    *  teardown so it never keeps buffering the source file. */
   private captureVideo: HTMLVideoElement | null = null
+  /** Guard flag: suppresses readAll during applyThemeDefaults scope writes
+   *  to prevent mid-write listener cascades from resetting values. */
+  private seeding = false
 
   constructor(scope: SettingsScope<WallpaperSection>, options: WallpaperControllerOptions = {}) {
     this.scope = scope
     this.options = options
     this.doc = options.doc ?? document
     this.readAll()
-    scope.subscribe(() => {
+    this.unsubscribe = scope.subscribe(() => {
+      if (this.disposed || this.seeding) return
       this.readAll()
       if (this.enabledValue && this.selectionValue && (!this.applied || this.applied.id !== this.selectionValue)) {
         this.fetchAndSync()
@@ -318,6 +342,10 @@ export class WallpaperController implements WallpaperHandle {
       })
       this.mountObserver.observe(this.doc.body, { childList: true })
     }
+    // Theme-aware defaults (#1051): when the scope has no explicit dim or
+    // opacity (both sit at schema defaults), seed values tuned for the
+    // current light/dark theme so text is readable out of the box.
+    this.applyThemeDefaults()
     if (this.enabledValue && this.selectionValue) {
       this.fetchAndSync()
     }
@@ -387,14 +415,21 @@ export class WallpaperController implements WallpaperHandle {
                 manifest?: {
                   width?: number
                   height?: number
-                  layers?: Array<{ x?: number; y?: number; w?: number; h?: number; texUrl?: string }>
+                  timeSchedule?: unknown
+                  layers?: Array<{ x?: number; y?: number; w?: number; h?: number; texUrl?: string; videoUrl?: string }>
                 }
               } | null
               : null
             const manifest = manifestPayload?.ok === true ? manifestPayload.manifest : undefined
-            if (manifest && typeof manifest.width === 'number' && typeof manifest.height === 'number') {
+            // The renderer implements author-configured real-time switching;
+            // do not replace that live player with one static base merely because
+            // unrelated embedded scripts remain unsupported.
+            if (manifest && manifest.timeSchedule === undefined && typeof manifest.width === 'number' && typeof manifest.height === 'number') {
+              // Video-backed layers serve MP4 bytes: a CSS background cannot
+              // paint them, so only still-image layers qualify as the base.
               const fullscreenIndex = manifest.layers?.findIndex(layer =>
                 typeof layer.texUrl === 'string'
+                && typeof layer.videoUrl !== 'string'
                 && Math.abs((layer.w ?? 0) - manifest.width!) <= 1
                 && Math.abs((layer.h ?? 0) - manifest.height!) <= 1
                 && Math.abs((layer.x ?? 0) - manifest.width! / 2) <= 1
@@ -483,6 +518,7 @@ export class WallpaperController implements WallpaperHandle {
   fit = (): 'cover' | 'contain' | 'fill' => this.fitValue
   dim = (): number => this.dimValue
   wallpaperBlur = (): number => this.blurValue
+  wallpaperOpacity = (): number => this.opacityValue
   pauseOnHidden = (): boolean => this.pauseOnHiddenValue
   sound = (): boolean => this.soundValue
   volume = (): number => this.volumeValue
@@ -548,6 +584,13 @@ export class WallpaperController implements WallpaperHandle {
     this.render()
     this.publish()
     void this.scope.set('wallpaperBlur', this.blurValue)
+  }
+
+  setOpacity(value: number): void {
+    this.opacityValue = clamp(value, 0, 100)
+    this.render()
+    this.publish()
+    void this.scope.set('wallpaperOpacity', this.opacityValue)
   }
 
   setPauseOnHidden(value: boolean): void {
@@ -630,14 +673,18 @@ export class WallpaperController implements WallpaperHandle {
     const scenePlayer = this.mediaLayer?.firstElementChild ?? null
     if (!(scenePlayer instanceof HTMLIFrameElement) || scenePlayer.dataset.dshScenePlayer !== '') return
     try {
-      scenePlayer.contentWindow?.postMessage({ type: 'dsh-recover-renderer' }, window.location.origin)
+      // The sandboxed player has an opaque origin, so a same-origin target
+      // would never match it; '*' delivers to the single identified window.
+      scenePlayer.contentWindow?.postMessage({ type: 'dsh-recover-renderer' }, '*')
     } catch {
       // A failed recovery message is harmless; the next render keeps the current frame.
     }
   }
 
   dispose(): void {
+    if (this.disposed) return
     this.disposed = true
+    this.unsubscribe()
     this.mountObserver?.disconnect()
     this.mountObserver = null
     this.doc.removeEventListener('visibilitychange', this.onVisibility)
@@ -648,6 +695,41 @@ export class WallpaperController implements WallpaperHandle {
   }
 
   // --- internals -----------------------------------------------------------
+
+  /**
+   * Seed dim and opacity with theme-tuned values when neither has been
+   * explicitly set (both are at schema defaults: dim=25, opacity=100).
+   * This runs once at construction so a fresh wallpaper install gets
+   * readable defaults for the active theme. Users who have already
+   * adjusted either slider keep their values (#1051).
+   */
+  private applyThemeDefaults(): void {
+    const snapshot = this.scope.getSnapshot()
+    const value = snapshot.value ?? {}
+    // Detect whether dim and opacity have never been written to the scope.
+    // A value of undefined means the field was never persisted; any number
+    // (even the schema default 25 for dim) means the user or a prior seed
+    // already set it, so we must not overwrite.
+    if (value.dim !== undefined || value.wallpaperOpacity !== undefined) return
+    // The scope may not yet be writable during early initialization.
+    if (snapshot.writable === false) return
+    const theme = this.options.themeGet !== undefined
+      ? this.options.themeGet()
+      : (this.doc.body?.hasAttribute('data-ds-dark-theme') ? 'dark' : 'light')
+    if (theme === 'light') {
+      this.dimValue = 0
+      this.opacityValue = 40
+    } else {
+      this.dimValue = 40
+      this.opacityValue = 100
+    }
+    this.seeding = true
+    try {
+      void this.scope.set('dim', this.dimValue)
+      void this.scope.set('wallpaperOpacity', this.opacityValue)
+    } catch { /* scope not ready — values stay local until next readAll */ }
+    this.seeding = false
+  }
 
   private readAll(): void {
     const snapshot: SettingsScopeSnapshot<WallpaperSection> = this.scope.getSnapshot()
@@ -666,6 +748,9 @@ export class WallpaperController implements WallpaperHandle {
     this.blurValue = typeof value.wallpaperBlur === 'number' && Number.isFinite(value.wallpaperBlur)
       ? clamp(value.wallpaperBlur, 0, 60)
       : 0
+    this.opacityValue = typeof value.wallpaperOpacity === 'number' && Number.isFinite(value.wallpaperOpacity)
+      ? clamp(value.wallpaperOpacity, 0, 100)
+      : 100
     this.dirsValue = Array.isArray(value.weLibraryDirs)
       ? value.weLibraryDirs.filter((d): d is string => typeof d === 'string' && d.trim() !== '')
       : []
@@ -681,7 +766,10 @@ export class WallpaperController implements WallpaperHandle {
   private readonly onSceneMessage = (event: MessageEvent): void => {
     const scenePlayer = this.mediaLayer?.firstElementChild ?? null
     if (!(scenePlayer instanceof HTMLIFrameElement) || scenePlayer.dataset.dshScenePlayer !== '') return
-    if (event.source !== scenePlayer.contentWindow || event.origin !== this.doc.location?.origin) return
+    // The player is sandboxed without allow-same-origin, so its opaque origin
+    // arrives as Origin "null"; only the identity of the sender (this exact
+    // iframe window) proves the message came from the mounted player.
+    if (event.source !== scenePlayer.contentWindow) return
     const message = event.data as { type?: unknown } | null
     if (message?.type !== 'dsh-scene-needs-reload') return
     // Context restoration invalidates every WebGL object. Reloading only the
@@ -702,7 +790,8 @@ export class WallpaperController implements WallpaperHandle {
     const scenePlayer = this.mediaLayer?.firstElementChild ?? null
     if (scenePlayer instanceof HTMLIFrameElement && scenePlayer.dataset.dshScenePlayer === '') {
       try {
-        scenePlayer.contentWindow?.postMessage({ type: 'dsh-set-pause', paused: this.doc.hidden }, window.location.origin)
+        // '*' reaches the opaque-origin sandboxed player (see applyFit).
+        scenePlayer.contentWindow?.postMessage({ type: 'dsh-set-pause', paused: this.doc.hidden }, '*')
       } catch {
         // ignore
       }
@@ -735,9 +824,16 @@ export class WallpaperController implements WallpaperHandle {
       this.rootNeutralizer.dataset.dshWallpaperRoot = ''
       this.rootNeutralizer.textContent = `
         [id="root"] { background: transparent; }
-        html[data-dsh-wallpaper-active],
+        /* Wallpaper opacity backdrop (#1051): light-mode fades to white,
+           dark-mode fades to black.  :has() tracks theme switches live. */
+        html[data-dsh-wallpaper-active] {
+          background-color: white !important;
+          background-image: none !important;
+        }
+        html[data-dsh-wallpaper-active]:has(body[data-ds-dark-theme]) {
+          background-color: black !important;
+        }
         body[data-dsh-wallpaper-active],
-        html[data-dsh-skin][data-dsh-wallpaper-active],
         html[data-dsh-skin][data-dsh-wallpaper-active] body,
         html[data-dsh-skin] body[data-dsh-wallpaper-active],
         body[data-dsh-wallpaper-active][data-ds-dark-theme],
@@ -853,6 +949,9 @@ export class WallpaperController implements WallpaperHandle {
     const blur = this.blurValue > 0 ? 'blur(' + String(this.blurValue) + 'px)' : ''
     this.mediaLayer.style.filter = blur
     this.mediaLayer.style.transform = this.blurValue > 0 ? 'scale(1.05)' : ''
+    // Wallpaper opacity (#1051): the html element's neutralizer background is
+    // now black (not transparent) so reducing opacity fades toward black.
+    this.mediaLayer.style.opacity = this.opacityValue < 100 ? String(this.opacityValue / 100) : ''
     this.scrimLayer.style.background = 'rgba(0, 0, 0, ' + String(this.dimValue / 100) + ')'
   }
 
@@ -864,7 +963,10 @@ export class WallpaperController implements WallpaperHandle {
     }
     if (child instanceof HTMLIFrameElement && child.dataset.dshScenePlayer === '') {
       try {
-        child.contentWindow?.postMessage({ type: 'dsh-set-fit', fit: this.fitValue }, window.location.origin)
+        // The player frame is sandboxed without allow-same-origin, so its
+        // origin is opaque and a real-origin targetOrigin would drop the
+        // message; '*' delivers to the identified contentWindow.
+        child.contentWindow?.postMessage({ type: 'dsh-set-fit', fit: this.fitValue }, '*')
       } catch {
         // ignore: the player also receives the fit on its own load handler
       }
@@ -886,11 +988,12 @@ export class WallpaperController implements WallpaperHandle {
       if (this.modeValue === 'live' && descriptor.webUrl !== null) {
         const iframe = this.doc.createElement('iframe')
         iframe.src = descriptor.webUrl
-        // Web wallpapers are the user's own installed local content (the
-        // same trust Wallpaper Engine extends to them); scripts + same-origin
-        // are required for textures/canvas/WebGL. Navigation, popups and
-        // downloads stay blocked.
-        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin')
+        // Web wallpapers are third-party HTML downloaded from the Workshop /
+        // user directories and run with the host same-origin, so they must be
+        // isolated: allow-scripts only gives an opaque origin (no parent DOM,
+        // no host storage, no same-origin /api access). Script-only sandboxing
+        // keeps textures/canvas/WebGL working; localStorage / cookies degrade.
+        iframe.setAttribute('sandbox', 'allow-scripts')
         iframe.setAttribute('tabindex', '-1')
         styleCover(iframe, this.fitValue)
         return iframe
@@ -904,14 +1007,16 @@ export class WallpaperController implements WallpaperHandle {
       if (this.modeValue === 'live' && descriptor.sceneUrl) {
         const iframe = this.doc.createElement('iframe')
         iframe.src = descriptor.sceneUrl
-        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin')
+        // The scene player renders third-party scene data; same isolation as
+        // web wallpapers (opaque origin, steering via postMessage).
+        iframe.setAttribute('sandbox', 'allow-scripts')
         iframe.setAttribute('tabindex', '-1')
         iframe.dataset.dshScenePlayer = ''
         if (descriptor.preferSceneBase === true && descriptor.sceneBaseUrl) iframe.style.opacity = '0'
         styleCover(iframe, this.fitValue)
         iframe.addEventListener('load', () => {
           try {
-            iframe.contentWindow?.postMessage({ type: 'dsh-set-fit', fit: this.fitValue }, window.location.origin)
+            iframe.contentWindow?.postMessage({ type: 'dsh-set-fit', fit: this.fitValue }, '*')
           } catch {
             // ignore
           }

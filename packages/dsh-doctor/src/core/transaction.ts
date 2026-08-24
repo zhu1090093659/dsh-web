@@ -21,6 +21,8 @@ export interface CandidateTransactionDeps {
   txnId?(profile: string): string
   /** Optional journal to record every step. */
   journal?: { append(entry: { op: string; ok: boolean; detail?: Record<string, unknown> }): Promise<unknown> }
+  /** Restore a previously staged transaction for explicit confirmation. */
+  initialRecord?: CandidateRecord
   /** Optional same-device assertion; when provided and false, promote refuses. */
   sameDevice?(a: string, b: string): Promise<boolean>
   /** Persist recovery intent while the candidate is still staged. */
@@ -51,7 +53,7 @@ export function createCandidateTransaction(deps: CandidateTransactionDeps): Cand
   const home = deps.home
   const profile = deps.profile
   validateSegment(profile, 'profile')
-  const txnId = deps.txnId === undefined ? makeTxnId(profile, deps.now()) : deps.txnId(profile)
+  const txnId = deps.initialRecord?.txnId ?? (deps.txnId === undefined ? makeTxnId(profile, deps.now()) : deps.txnId(profile))
   validateSegment(txnId, 'txn id')
 
   const livePath = home + '/profiles/' + profile
@@ -60,9 +62,12 @@ export function createCandidateTransaction(deps: CandidateTransactionDeps): Cand
   const quarantineBase = quarantineDir(home)
   const quarantinePath = quarantineBase + '/' + profile + '/' + txnId + '/original'
 
-  let phase: CandidatePhase = 'created'
-  const steps: CandidateRecord['steps'] = []
-  const record: CandidateRecord = { txnId, profile, phase, livePath, stagingPath, quarantinePath, steps }
+  if (deps.initialRecord !== undefined && (deps.initialRecord.profile !== profile || deps.initialRecord.livePath !== livePath || deps.initialRecord.stagingPath !== stagingPath || deps.initialRecord.quarantinePath !== quarantinePath)) {
+    throw new Error('txn ' + txnId + ': restored transaction paths do not match profile ' + profile)
+  }
+  let phase: CandidatePhase = deps.initialRecord?.phase ?? 'created'
+  const steps: CandidateRecord['steps'] = deps.initialRecord?.steps ?? []
+  const record: CandidateRecord = deps.initialRecord ?? { txnId, profile, phase, livePath, stagingPath, quarantinePath, steps }
 
   const setPhase = (next: CandidatePhase): void => {
     phase = next

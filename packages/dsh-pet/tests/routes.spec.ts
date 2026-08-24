@@ -340,3 +340,48 @@ describe('decoration routes (pet-center M5, #567)', () => {
     }
   })
 })
+describe('post body failure contract (shared readJsonBody migration)', () => {
+  it('accepts a valid JSON object body through the shared reader', async () => {
+    const res = await fetch(url('/api/pet/interact'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kind: 'pet' }),
+    })
+    expect(res.status).toBe(200)
+  })
+
+  it('answers 400 with the endpoint validator for a body that is not JSON', async () => {
+    const res = await fetch(url('/api/pet/interact'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: 'not-json',
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ ok: false, error: 'invalid-kind' })
+  })
+
+  it('writes family JSON headers through the shared writer', async () => {
+    const res = await fetch(url('/api/pet/interact'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: 'not-json',
+    })
+    expect(res.status).toBe(400)
+    expect(res.headers.get('content-type')).toBe('application/json; charset=utf-8')
+    expect(res.headers.get('referrer-policy')).toBe('no-referrer')
+  })
+
+  it('preserves the empty-body {} pipeline through the call site', async () => {
+    const res = await fetch(url('/api/pet/set-config'), { method: 'POST' })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true })
+  })
+
+  it('destroys the connection on an over-limit body instead of answering JSON', async () => {
+    await expect(fetch(url('/api/pet/interact'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{"pad":"' + 'x'.repeat(64 * 1024) + '"}',
+    })).rejects.toThrow()
+  })
+})

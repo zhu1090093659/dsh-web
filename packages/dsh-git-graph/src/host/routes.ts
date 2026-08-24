@@ -17,6 +17,7 @@ import {
 } from '../core/types.ts'
 import { PollGuard } from './poll-guard.ts'
 import { isGitAllowed } from './access.ts'
+import { readJsonBody, writeJson } from './http.ts'
 import type { GitService } from './git-service.ts'
 
 /** Envelope every /git JSON response carries. */
@@ -71,51 +72,11 @@ const POLL_LIFETIME_MS = Number.MAX_SAFE_INTEGER
 /** Git operation error for a structurally invalid service view (never a workspace fault). */
 const MALFORMED_VIEW: GitError = { code: 'internal', message: 'malformed git response' }
 
-/** Request body size cap; larger bodies are destroyed rather than drained. */
-const BODY_CAP_BYTES = 1 << 20
-
-/** Write the shared non-loopback rejection (same body as dsh-ssh). */
-function forbidden(res: ServerResponse): void {
-  res.writeHead(403, { 'content-type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify({ error: 'forbidden: loopback-only' }))
-}
-
-/** Read a JSON request body into an unknown value; null when unparseable. */
-async function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = []
-  let total = 0
-  for await (const chunk of req) {
-    const part = chunk as Buffer
-    total += part.length
-    if (total > BODY_CAP_BYTES) {
-      // Stop reading (no drain) and tear the connection down; the oversized
-      // body is never parsed.
-      req.destroy()
-      chunks.length = 0
-      return null
-    }
-    chunks.push(part)
-  }
-  const text = Buffer.concat(chunks).toString('utf8')
-  if (text === '') return null
-  try {
-    return JSON.parse(text) as unknown
-  } catch {
-    return null
-  }
-}
-
 /** Extract the required string field from a JSON object payload. */
 function pathOf(payload: unknown): string | null {
   if (typeof payload !== 'object' || payload === null) return null
   const path = (payload as Record<string, unknown>).path
   return typeof path === 'string' && path !== '' ? path : null
-}
-
-/** Write one JSON envelope response. */
-function json(res: ServerResponse, envelope: GitEnvelope<unknown>, status = 200): void {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify(envelope))
 }
 
 /**
@@ -128,10 +89,10 @@ function json(res: ServerResponse, envelope: GitEnvelope<unknown>, status = 200)
  */
 function okView(res: ServerResponse, value: unknown, guard: (view: unknown) => boolean): void {
   if (value !== null && !guard(value)) {
-    json(res, FAIL(MALFORMED_VIEW))
+    writeJson(res, 200, FAIL(MALFORMED_VIEW))
     return
   }
-  json(res, OK(value))
+  writeJson(res, 200, OK(value))
 }
 
 /**
@@ -209,7 +170,7 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
     // Trust fence first: never let an unpaired LAN client reach any /git
     // operation, regardless of method or content-type.
     if (!isGitAllowed(ctx, req)) {
-      forbidden(res)
+      writeJson(res, 403, { error: 'forbidden: loopback-only' })
       return
     }
     if (req.method !== 'POST') {
@@ -228,10 +189,10 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
       return
     }
     const pathname = new URL(req.url ?? '/', 'http://x').pathname
-    const payload = await readJsonBody(req)
+    const payload = await readJsonBody(req, { maxBytes: 1024 * 1024 })
     const path = pathOf(payload)
     if (path === null) {
-      json(res, FAIL(BAD_REQUEST))
+      writeJson(res, 200, FAIL(BAD_REQUEST))
       return
     }
     switch (pathname) {
@@ -240,7 +201,7 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
           okView(res, await statusWithDeadline(path), isRepoStatus)
         } catch (error: unknown) {
           ctx.logger.warn(`dsh-git-graph: status request failed for ${path}: ${String(error)}`)
-          json(res, FAIL({ code: 'internal', message: STATUS_TIMEOUT_MESSAGE }))
+          writeJson(res, 200, FAIL({ code: 'internal', message: STATUS_TIMEOUT_MESSAGE }))
         }
         return
       case '/git/branches':
@@ -261,11 +222,11 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
           ? (payload as Record<string, unknown>).branch
           : undefined
         if (typeof branch !== 'string' || branch === '') {
-          json(res, FAIL(BAD_REQUEST))
+          writeJson(res, 200, FAIL(BAD_REQUEST))
           return
         }
         const result = await service.switchBranch(path, branch)
-        json(res, result.ok ? OK({ branch: result.branch }) : FAIL(isGitError(result.error) ? result.error : MALFORMED_VIEW))
+        writeJson(res, 200, result.ok ? OK({ branch: result.branch }) : FAIL(isGitError(result.error) ? result.error : MALFORMED_VIEW))
         return
       }
       case '/git/create-branch': {
@@ -273,11 +234,11 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
           ? (payload as Record<string, unknown>).name
           : undefined
         if (typeof name !== 'string' || name === '') {
-          json(res, FAIL(BAD_REQUEST))
+          writeJson(res, 200, FAIL(BAD_REQUEST))
           return
         }
         const result = await service.createBranch(path, name)
-        json(res, result.ok ? OK({ branch: result.branch }) : FAIL(isGitError(result.error) ? result.error : MALFORMED_VIEW))
+        writeJson(res, 200, result.ok ? OK({ branch: result.branch }) : FAIL(isGitError(result.error) ? result.error : MALFORMED_VIEW))
         return
       }
       default:
@@ -289,7 +250,7 @@ export function registerGitRoutes(ctx: Context, service: GitService): () => void
   const sse = (req: IncomingMessage, res: ServerResponse): void => {
     // Reject unpaired non-loopback clients before the stream opens.
     if (!isGitAllowed(ctx, req)) {
-      forbidden(res)
+      writeJson(res, 403, { error: 'forbidden: loopback-only' })
       return
     }
     const url = new URL(req.url ?? '/', 'http://x')

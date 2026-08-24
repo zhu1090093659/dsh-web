@@ -70,12 +70,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-doctor
 
 ## 启用
 
-在 Doctor 卡片打开「启用救助模式」后，宿主半区挂载 `/api/doctor/*` 端点并开始上报
-心跳。若本机尚未安装 Doctor Supervisor 服务，控制台「宿主状态」显示「Doctor 离线」，
-「服务与胶囊」卡片给出「一键安装」：按当前包重新生成并注册用户级服务（先注销旧注册，
-再部署并重启，幂等），等待 Supervisor 应答，若救援胶囊缺失或其 Doctor 版本与当前包
-不一致则按当前包版本刷新胶囊。安装期间按钮进入「安装/修复中…」；失败时展示具体错误码
-与 stderr。
+在 Doctor 卡片打开「启用救助模式」后，宿主半区挂载 `/api/doctor/*` 端点，写入当前保护策略，并在后台自动核对 Supervisor 服务、包版本、安装路径和救援胶囊；缺失或失配时执行幂等部署，不阻塞 Web 启动。关闭时宿主停止心跳并暂停 Supervisor 自动干预，但保留服务和胶囊。显式卸载会写入抑制标记，后续启动不会偷偷复活服务；用户点击「一键安装」才清除该标记。控制台按钮保留为手动重试与强制修复入口。
 
 ## 更新
 
@@ -112,9 +107,9 @@ host 设置命名空间为 `doctor`：
 
 | 键 | 默认值 | 含义 |
 | --- | --- | --- |
-| `enabled` | `true` | 总开关；仅开启时挂载路由 |
-| `fullProtection` | `true` | 启用时安装 Supervisor 与 launcher |
-| `autoRepair` | `true` | 允许确定性修复在验证后自动提升 |
+| `enabled` | `true` | 总开关；开启时挂载路由并自动核对部署，关闭时暂停 Supervisor 且不卸载 |
+| `fullProtection` | `true` | 托管保护；发送心跳、记录故障事件并执行熔断；关闭后进入观察模式 |
+| `autoRepair` | `false` | 隔离门禁通过后自动提升；关闭时保留候选并等待明确确认 |
 | `heartbeatIntervalMs` | `5000` | host 心跳周期 |
 
 环境变量：
@@ -157,7 +152,7 @@ host 设置命名空间为 `doctor`：
 - 全部以当前用户权限运行；不使用 root 或管理员提权。
 - Supervisor 只监听本地 Unix socket（Windows 命名管道）；请求带按实例生成的
   bearer token，文件权限 0600。
-- Web API 仅限 loopback，绝不把 token 交给浏览器。
+- Web API 仅限 loopback，绝不把 token 交给浏览器；被拒请求返回 HTTP 403 与 `{ ok: false, error: "forbidden: loopback-only" }`。
 - launcher 与 Supervisor 从不运行 shell；DSH 参数原样转发。
 - 状态、日志与事件记录不写密钥；快照对凭据脱敏，脱敏层不可能恢复它们。
 - 救援胶囊只绑定 loopback，除显式检查外不读取 profile home overlay。

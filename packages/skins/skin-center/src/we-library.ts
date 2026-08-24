@@ -15,7 +15,11 @@
  *      a workshop content dir) or a single project folder. A folder without
  *      a project.json is accepted when it directly contains a playable media
  *      file (e.g. a lone .mp4), which is the no-Steam fallback path.
- *   3. The import store (<harnessHome>/skin-center/wallpapers/<id>/): copies
+ *   3. macOS wallpaper stores (darwin only, src/macos-library.ts): the
+ *      user's downloaded aerial .mov wallpapers (com.apple.wallpaper /
+ *      idleassetsd) and Desktop Pictures *.heic — source 'system', never
+ *      importable.
+ *   4. The import store (<harnessHome>/skin-center/wallpapers/<id>/): copies
  *      made by the import route. Each holds a manifest.json recording the
  *      source identity and the source file mtime/size at import time, so a
  *      later workshop update can be flagged as updateAvailable.
@@ -30,15 +34,18 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join as joinPath, resolve as resolvePath } from 'node:path'
+import { defaultMacosWallpaperRoots, scanMacosWallpapers, type MacosWallpaperRoots } from './macos-library.ts'
+
+export type { MacosWallpaperRoots } from './macos-library.ts'
 
 /** Steam appid of Wallpaper Engine. */
 export const WE_APPID = '431960'
 
-/** Wallpaper Engine wallpaper kinds, as declared by project.json. */
-export type WallpaperType = 'video' | 'web' | 'scene' | 'application'
+/** Wallpaper Engine wallpaper kinds, as declared by project.json. 'image' is the macOS Desktop Pictures extension (HEIC rendered via host conversion). */
+export type WallpaperType = 'video' | 'web' | 'scene' | 'application' | 'image'
 
-/** Where one wallpaper entry came from. */
-export type WallpaperSource = 'workshop' | 'local' | 'imported'
+/** Where one wallpaper entry came from. 'system' entries are macOS-managed and never importable. */
+export type WallpaperSource = 'workshop' | 'local' | 'imported' | 'system'
 
 /** One discovered wallpaper project (plain data; routes assign tokens). */
 export interface WallpaperEntry {
@@ -151,6 +158,25 @@ export function steamPathFromRegistry(
   }
 }
 
+/**
+ * Memoize a zero-argument probe so it runs at most once per process.
+ * The default Windows registry probe is wrapped in this: reg.exe is a
+ * synchronous child process with a 5s timeout on the request path, and a
+ * Steam install path is stable for the life of the host process, so one
+ * probe per process is enough. Injected probes (tests) bypass the memo —
+ * only the default runner is wrapped.
+ */
+export function memoizedProbe(probe: () => string | null): () => string | null {
+  let cached: string | null | undefined
+  return () => {
+    if (cached === undefined) cached = probe()
+    return cached
+  }
+}
+
+/** Default registry probe, process-memoized (see memoizedProbe). */
+const defaultRegistryProbe = memoizedProbe(() => steamPathFromRegistry())
+
 /** Parse libraryfolders.vdf for library roots that own app 431960. */
 export function librariesFromVdf(vdfText: string): string[] {
   const libraries: string[] = []
@@ -205,7 +231,7 @@ export function locateWallpaperEngine(opts: {
   const exists = opts.exists ?? existsSync
   const env = opts.env ?? process.env
   if ((env.OS ?? '') !== '' || process.platform === 'win32') {
-    const registry = opts.registry ?? (() => steamPathFromRegistry())
+    const registry = opts.registry ?? defaultRegistryProbe
     const probes = [...new Set([registry(), ...STEAM_PROBE_DIRS].filter((d): d is string => !!d))]
     const libraries: string[] = []
     for (const probe of probes) {
@@ -240,7 +266,7 @@ export function owningLibraries(opts: {
 } = {}): string[] {
   const exists = opts.exists ?? existsSync
   if (process.platform !== 'win32' && !opts.exists) return []
-  const registry = opts.registry ?? (() => steamPathFromRegistry())
+  const registry = opts.registry ?? defaultRegistryProbe
   const probes = [...new Set([registry(), ...STEAM_PROBE_DIRS].filter((d): d is string => !!d))]
   const libraries = new Set<string>()
   for (const probe of probes) {
@@ -267,6 +293,9 @@ export function inferType(file: string): WallpaperType {
   return 'scene'
 }
 
+// Only the four project.json kinds: 'image' is reserved for the macOS
+// scanner (it builds entries directly) and must never become parseable from
+// a workshop project.json, keeping WE parsing behavior identical.
 const KNOWN_TYPES: readonly WallpaperType[] = ['scene', 'video', 'web', 'application']
 
 /** Media file extensions playable through the video element. */
@@ -563,10 +592,20 @@ export function buildInventory(opts: {
   manualDirs?: string[]
   storeDir?: string
   autoDetect?: boolean
+  /**
+   * macOS wallpaper roots. Undefined + autoDetect scans the default roots on
+   * darwin; null disables the macOS sources explicitly.
+   */
+  macos?: MacosWallpaperRoots | null
+  /** Platform override for tests (the macOS scanner gates on darwin). */
+  platform?: NodeJS.Platform
 } = {}): WeInventory {
   const autoDetect = opts.autoDetect ?? true
   const installDir = opts.installDir !== undefined ? opts.installDir : (autoDetect ? locateWallpaperEngine() : null)
   const libraryDirs = opts.libraryDirs ?? (autoDetect ? owningLibraries() : [])
+  const macos = opts.macos !== undefined
+    ? opts.macos
+    : (autoDetect && process.platform === 'darwin' ? defaultMacosWallpaperRoots() : null)
   const found = new Map<string, WallpaperEntry>()
   const add = (entry: WallpaperEntry): void => {
     if (!found.has(entry.id)) found.set(entry.id, entry)
@@ -586,6 +625,9 @@ export function buildInventory(opts: {
     const trimmed = firstNonBlank(manual)
     const dir = trimmed !== undefined ? expandUser(trimmed) : undefined
     if (dir !== undefined && existsSync(dir)) for (const entry of scanManualWallpaperRoot(dir)) add(entry)
+  }
+  if (macos !== null) {
+    for (const entry of scanMacosWallpapers(macos, { platform: opts.platform })) add(entry)
   }
 
   const imported = opts.storeDir ? scanImportStore(opts.storeDir) : []
@@ -608,4 +650,98 @@ export function buildInventory(opts: {
     portableCount: wallpapers.filter((w) => w.playable).length,
     wallpapers,
   }
+}
+
+/**
+ * Staleness fingerprint of everything buildInventory reads, so callers can
+ * cache the assembled inventory and re-scan only when this changes.
+ *
+ * Signed inputs, in order:
+ *   - every scan root's existence + directory mtime, including roots that
+ *     do not exist yet (a project added or removed under a root changes its
+ *     mtime; a root that appears later flips 'missing' into an mtime);
+ *   - per previously scanned entry: the project dir mtime, the
+ *     project.json / manifest.json mtime and the main + preview file
+ *     mtime/size. A root mtime alone cannot see a file rewritten in place
+ *     (workshop updates replace files inside an existing project dir
+ *     without touching the root), and update detection compares source
+ *     mtimes, so entries are signed individually.
+ *
+ * The caller supplies the current detection result (installDir and
+ * libraryDirs) — detection itself is cheap because the default registry
+ * probe is process-memoized — and the config (manualDirs), so a changed
+ * Steam layout or a settings edit also invalidates. The key for a freshly
+ * scanned value must be computed from that value's own entries (the
+ * previous entry set described the previous scan, not this one).
+ */
+export function inventoryFingerprint(opts: {
+  installDir?: string | null
+  libraryDirs?: string[]
+  manualDirs?: string[]
+  storeDir?: string
+  entries?: WallpaperEntry[]
+  /** macOS roots in effect; their sub-layout dirs are signed too. */
+  macos?: MacosWallpaperRoots | null
+} = {}): string {
+  const parts: string[] = []
+  const statSig = (path: string): string => {
+    try {
+      const stats = statSync(path)
+      return String(stats.mtimeMs) + ':' + (stats.isDirectory() ? 'd' : String(stats.size))
+    } catch {
+      return 'missing'
+    }
+  }
+  const signDir = (dir: string): void => { parts.push('d:' + dir + '\u0000' + statSig(dir)) }
+  const signFile = (file: string): void => { parts.push('f:' + file + '\u0000' + statSig(file)) }
+
+  const installDir = opts.installDir ?? null
+  if (installDir) {
+    signDir(joinPath(installDir, 'projects', 'defaultprojects'))
+    signDir(joinPath(installDir, 'projects', 'myprojects'))
+  }
+  for (const library of opts.libraryDirs ?? []) {
+    signDir(joinPath(library, 'steamapps', 'workshop', 'content', WE_APPID))
+  }
+  for (const manual of opts.manualDirs ?? []) {
+    const trimmed = firstNonBlank(manual)
+    if (trimmed === undefined) continue
+    const dir = expandUser(trimmed)
+    signDir(dir)
+    signDir(joinPath(dir, 'projects', 'defaultprojects'))
+    signDir(joinPath(dir, 'projects', 'myprojects'))
+    signDir(joinPath(dir, 'steamapps', 'workshop', 'content', WE_APPID))
+    signDir(joinPath(dir, 'workshop', 'content', WE_APPID))
+    if (basename(dir).toLowerCase() === 'wallpaper_engine') {
+      signDir(joinPath(dirname(dirname(dir)), 'workshop', 'content', WE_APPID))
+    }
+  }
+  if (opts.storeDir) signDir(opts.storeDir)
+  if (opts.macos) {
+    for (const root of opts.macos.aerials) {
+      signDir(joinPath(root, 'videos'))
+      signDir(joinPath(root, 'thumbnails'))
+      signFile(joinPath(root, 'manifest', 'entries.json'))
+      // Legacy layout fingerprints its quality folders via the videos they
+      // hold; the root dir mtime covers folders appearing or disappearing.
+      signDir(root)
+    }
+    for (const root of opts.macos.pictures) {
+      signDir(root)
+    }
+  }
+  for (const entry of opts.entries ?? []) {
+    // Imported projects keep their manifest one level above the copied
+    // project dir; scanned projects keep project.json inside the dir.
+    const manifest = entry.source === 'imported'
+      ? joinPath(dirname(entry.dir), 'manifest.json')
+      : joinPath(entry.dir, 'project.json')
+    signDir(entry.dir)
+    signFile(manifest)
+    signFile(entry.fileAbs)
+    // A preview appearing or disappearing changes the project dir mtime
+    // (already signed); only an in-place rewrite needs its own signature.
+    if (entry.previewAbs) signFile(entry.previewAbs)
+  }
+  return parts.join(';')
 }

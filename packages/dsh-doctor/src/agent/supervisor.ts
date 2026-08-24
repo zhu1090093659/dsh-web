@@ -1,7 +1,7 @@
 import { mkdir, rm } from 'node:fs/promises'
 import { createServer, type Server } from 'node:net'
 import { join } from 'node:path'
-import { isSupervisorRequest, type SupervisorRequest, type SupervisorResponse } from '../core/protocol.ts'
+import { DEFAULT_DOCTOR_POLICY, isSupervisorRequest, type DoctorPolicy, type SupervisorRequest, type SupervisorResponse } from '../core/protocol.ts'
 import { appendJsonLine, readJson, writeJsonAtomic } from '../core/store.ts'
 import { ensureToken, tokensEqual, type WireEnvelope } from './ipc.ts'
 import { doctorPaths, type DoctorPaths } from './paths.ts'
@@ -44,6 +44,7 @@ export class DoctorSupervisor {
     await mkdir(this.paths.state, { recursive: true, mode: 0o700 })
     this.token = await ensureToken(this.paths.token)
     this.state = await readJson(join(this.paths.state, 'supervisor.json'), emptyState())
+    this.state.policy = await readJson<DoctorPolicy>(join(this.paths.state, 'policy.json'), this.state.policy ?? DEFAULT_DOCTOR_POLICY)
     this.state.phase = this.state.paused ? 'disabled' : 'armed'
     if (process.platform !== 'win32') await rm(this.paths.socket, { force: true })
     this.server = createServer({ allowHalfOpen: true }, socket => {
@@ -79,19 +80,22 @@ export class DoctorSupervisor {
   async handle(request: SupervisorRequest): Promise<SupervisorResponse> {
     const at = this.now()
     if (request.type === 'status') return { ok: true, snapshot: snapshotOf(this.state, this.version, at) }
-    if (request.type === 'launcher-start') {
+    if (request.type === 'policy') {
+      this.state.policy = { fullProtection: request.policy.fullProtection, autoRepair: request.policy.autoRepair }
+      for (const profile of Object.values(this.state.profiles)) profile.managed = request.policy.fullProtection
+    } else if (request.type === 'launcher-start') {
       if (request.profile.role === 'rescue') return { ok: true, snapshot: snapshotOf(this.state, this.version, at) }
-      const profile = upsertProfile(this.state, request.profile); Object.assign(profile, { phase: 'starting', pid: request.pid, runId: request.runId, command: request.argv, startedAt: request.at, managed: true })
+      const profile = upsertProfile(this.state, request.profile); Object.assign(profile, { phase: 'starting', pid: request.pid, runId: request.runId, command: request.argv, startedAt: request.at, managed: this.state.policy.fullProtection })
     } else if (request.type === 'heartbeat') {
       const profile = this.state.profiles[request.profileId]
       if (profile) Object.assign(profile, { phase: request.phase === 'ready' ? 'healthy' : request.phase === 'degraded' ? 'degraded' : 'starting', pid: request.pid, runId: request.runId, lastHealthyAt: request.at })
     } else if (request.type === 'launcher-exit') {
       const profile = this.state.profiles[request.profileId]
       if (profile) { profile.pid = undefined; profile.phase = request.intentional || request.exitCode === 0 ? 'exited' : 'failed'
-        if (!request.intentional && request.exitCode !== 0) { const failures = recordFailure(this.state, request.profileId, request.at); profile.restartCount = failures; if (failures >= 2) profile.phase = 'quarantined'; openIncident(this.state, request.profileId, request.started ? 'process-crash' : 'boot-failure', request.started ? 'DSH process crashed after startup' : 'DSH profile failed during startup', [request.stderrTail ?? ''].filter(Boolean), request.at) }
+        if (this.state.policy.fullProtection && !this.state.paused && !request.intentional && request.exitCode !== 0) { const failures = recordFailure(this.state, request.profileId, request.at); profile.restartCount = failures; if (failures >= 2) profile.phase = 'quarantined'; openIncident(this.state, request.profileId, request.started ? 'process-crash' : 'boot-failure', request.started ? 'DSH process crashed after startup' : 'DSH profile failed during startup', [request.stderrTail ?? ''].filter(Boolean), request.at) }
       }
     } else if (request.type === 'client-failure') {
-      openIncident(this.state, request.profileId, 'client-failure', request.message, [request.stack ?? '', request.phase ?? ''].filter(Boolean), request.at)
+      if (this.state.policy.fullProtection && !this.state.paused) openIncident(this.state, request.profileId, 'client-failure', request.message, [request.stack ?? '', request.phase ?? ''].filter(Boolean), request.at)
     } else if (request.type === 'action') {
       if (request.action === 'pause') { this.state.paused = true; this.state.phase = 'disabled' }
       else if (request.action === 'resume') { this.state.paused = false; this.state.phase = 'armed' }
@@ -113,7 +117,7 @@ export class DoctorSupervisor {
     if (incident === undefined || profile === undefined) return
     try {
       const request = { home: profile.identity.dshHome, profile: profile.identity.name, dshPath: profile.identity.dshExecutable }
-      const { diagnoseAndPlan, repairProfile, rollbackTransaction } = await import('../core/recover.ts')
+      const { confirmRepair, diagnoseAndPlan, repairProfile, rollbackTransaction } = await import('../core/recover.ts')
       let outcome
       if (action === 'diagnose') outcome = await diagnoseAndPlan(request)
       else if (action === 'rollback') {
@@ -124,13 +128,18 @@ export class DoctorSupervisor {
         try { latest = (await readdir(dir)).filter(name => name.endsWith('.json')).sort().reverse()[0] } catch { latest = undefined }
         outcome = latest === undefined ? undefined : await rollbackTransaction(request, latest.slice(0, -5))
       } else {
-        const running = profile.phase === 'starting' || profile.phase === 'healthy' || profile.phase === 'degraded'
-        outcome = await repairProfile({ ...request, allowLive: !running, dshPath: profile.identity.dshExecutable })
+        const running = profile.pid !== undefined && profile.pid > 0
+        if (action === 'confirm') {
+          outcome = incident.candidateId === undefined ? undefined : await confirmRepair({ ...request, allowLive: !running }, incident.candidateId)
+        } else {
+          outcome = await repairProfile({ ...request, allowLive: !running, autoPromote: this.state.policy.autoRepair })
+        }
       }
       if (outcome === undefined) return
       incident.updatedAt = at
       incident.evidence = [...new Set([...incident.evidence, 'recovery: ' + outcome.phase + (outcome.message !== undefined ? ' - ' + outcome.message : '')])]
-      if (outcome.ok) incident.phase = action === 'rollback' ? 'rolled-back' : 'recovered'
+      if (outcome.phase === 'staged') { incident.phase = 'awaiting-confirmation'; if (outcome.txnId !== undefined) incident.candidateId = outcome.txnId }
+      else if (outcome.ok) incident.phase = action === 'rollback' ? 'rolled-back' : 'recovered'
       else if (outcome.phase === 'failed' || outcome.phase === 'blocked' || outcome.phase === 'aborted') incident.phase = 'unresolved'
     } catch (error) {
       incident.updatedAt = at
@@ -200,6 +209,7 @@ export class DoctorSupervisor {
 
   private async sweepHeartbeats(): Promise<void> {
     const at = this.now(); const now = Date.parse(at)
+    if (this.state.paused || !this.state.policy.fullProtection) return
     for (const profile of Object.values(this.state.profiles)) {
       if (profile.phase === 'healthy' && profile.lastHealthyAt && now - Date.parse(profile.lastHealthyAt) > this.heartbeatTimeoutMs) {
         profile.phase = 'suspected'

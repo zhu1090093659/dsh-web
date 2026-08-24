@@ -29,6 +29,27 @@ export interface ExecutionRecord {
 }
 
 /**
+ * Maximum number of execution records retained per task. Older settled runs
+ * are trimmed when a new execution starts so per-action ledger cost stays
+ * bounded regardless of how often a task ran before.
+ */
+export const EXECUTION_HISTORY_LIMIT = 20
+
+/**
+ * Trim an execution list to at most {@link EXECUTION_HISTORY_LIMIT} records,
+ * most recent last. A running (unsettled) execution is never trimmed: the
+ * Host monitor and restart recovery depend on the active record, and a task
+ * cannot start a new run while one is still open.
+ */
+export function retainRecentExecutions(executions: readonly ExecutionRecord[]): ExecutionRecord[] {
+  if (executions.length <= EXECUTION_HISTORY_LIMIT) return [...executions]
+  const open = executions.filter(execution => execution.endedAt === undefined)
+  const settled = executions.filter(execution => execution.endedAt !== undefined)
+  const keepSettled = Math.max(EXECUTION_HISTORY_LIMIT - open.length, 0)
+  return [...settled.slice(Math.max(settled.length - keepSettled, 0)), ...open]
+}
+
+/**
  * A scheduled-run rule attached to a task. The Host scheduler triggers the
  * task when `nextRunAt` is due and persists the rule in the Host ledger.
  */
@@ -59,7 +80,10 @@ export interface TaskRecord {
   createdAt: number
   /** Last mutation instant (ms epoch). */
   updatedAt: number
-  /** Every execution attempt, most recent last. */
+  /**
+   * Execution history retained on the task, most recent last: the latest
+   * {@link EXECUTION_HISTORY_LIMIT} attempts, oldest trimmed on append.
+   */
   executions: ExecutionRecord[]
   /** Optional scheduled-run rule (absent on tasks without a schedule). */
   schedule?: ScheduleRule
@@ -221,7 +245,12 @@ export function startExecution(
     error: undefined,
   }
   return {
-    task: { ...task, status: 'running', updatedAt: now, executions: [...task.executions, execution] },
+    task: {
+      ...task,
+      status: 'running',
+      updatedAt: now,
+      executions: retainRecentExecutions([...task.executions, execution]),
+    },
     execution,
   }
 }

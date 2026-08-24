@@ -576,6 +576,37 @@ describe('PetSprite definition-driven render', () => {
     act(() => { nextFrame?.(1_500) })
     expect(sprite.style.backgroundPosition).toBe('0px -960px')
   })
+
+  it('skips redundant backgroundPosition style assignments when frame coordinates do not change (issue #1013)', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })
+    vi.spyOn(performance, 'now').mockReturnValue(0)
+    let nextFrame: FrameRequestCallback | undefined
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      nextFrame = callback
+      return 1
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    renderPet({
+      snapshot: { ...snapshot, animation: 'idle', phase: 'idle' },
+    })
+    const sprite = screen.getByRole('button', { name: '鲸鱼娘' })
+    const styleSetterSpy = vi.spyOn(sprite.style, 'backgroundPosition', 'set')
+    // Idle frame 0 duration is 400ms. An intermediate tick at 16ms does not advance the frame.
+    act(() => { nextFrame?.(16) })
+    expect(styleSetterSpy).not.toHaveBeenCalled()
+    // A tick past 400ms advances to frame 1 and should set backgroundPosition once.
+    act(() => { nextFrame?.(410) })
+    expect(styleSetterSpy).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('PetSprite panel chrome from the voice pack (pet-center M4)', () => {

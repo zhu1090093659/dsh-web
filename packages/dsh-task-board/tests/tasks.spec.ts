@@ -3,7 +3,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  canMoveManually, createTask, executionLabel, settleExecution, startExecution, withSchedule, withStatus,
+  canMoveManually, createTask, EXECUTION_HISTORY_LIMIT, executionLabel, retainRecentExecutions,
+  settleExecution, startExecution, withSchedule, withStatus,
 } from '../src/core/tasks.ts'
 
 const NOW = 1_700_000_000_000
@@ -138,6 +139,55 @@ describe('settleExecution', () => {
     expect(settled.executions).toHaveLength(2)
     expect(settled.executions[0].result).toBeUndefined()
     expect(settled.executions[1].result).toBe('succeeded')
+  })
+})
+
+describe('execution history retention', () => {
+  it('trims the oldest run when a 21st execution starts', () => {
+    let task = sampleTask()
+    for (let i = 1; i <= EXECUTION_HISTORY_LIMIT; i += 1) {
+      const started = startExecution(task, NOW + i, `exec-${i}`)
+      task = settleExecution(started.task, `exec-${i}`, 'succeeded', NOW + i + 1, undefined)
+    }
+    const opened = startExecution(task, NOW + EXECUTION_HISTORY_LIMIT + 1, `exec-${EXECUTION_HISTORY_LIMIT + 1}`)
+    expect(opened.task.executions).toHaveLength(EXECUTION_HISTORY_LIMIT)
+    expect(opened.task.executions[0].id).toBe('exec-2')
+    expect(opened.task.executions.at(-1)?.id).toBe(`exec-${EXECUTION_HISTORY_LIMIT + 1}`)
+    expect(opened.task.executions.at(-1)?.endedAt).toBeUndefined()
+  })
+
+  it('trims only settled history, never the running execution', () => {
+    const settled = Array.from({ length: EXECUTION_HISTORY_LIMIT + 5 }, (_, index) => ({
+      id: `settled-${index}`,
+      sessionId: `session-${index}`,
+      startedAt: index,
+      endedAt: index + 1,
+      result: 'succeeded' as const,
+      error: undefined,
+    }))
+    const running = {
+      id: 'running',
+      sessionId: 'session-open',
+      startedAt: EXECUTION_HISTORY_LIMIT + 10,
+      endedAt: undefined,
+      result: undefined,
+      error: undefined,
+    }
+    const kept = retainRecentExecutions([...settled, running])
+    expect(kept).toHaveLength(EXECUTION_HISTORY_LIMIT)
+    expect(kept.at(-1)?.id).toBe('running')
+    expect(kept.at(-1)?.endedAt).toBeUndefined()
+    expect(kept.slice(0, -1).map(entry => entry.id)).toEqual(
+      Array.from({ length: EXECUTION_HISTORY_LIMIT - 1 }, (_, index) => `settled-${index + 6}`),
+    )
+  })
+
+  it('copies lists within the limit without reordering', () => {
+    const { task } = startExecution(sampleTask(), NOW, 'exec-1')
+    const kept = retainRecentExecutions(task.executions)
+    expect(kept).toHaveLength(1)
+    expect(kept[0].id).toBe('exec-1')
+    expect(kept).not.toBe(task.executions)
   })
 })
 

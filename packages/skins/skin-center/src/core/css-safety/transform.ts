@@ -37,7 +37,7 @@
 
 import { transform } from 'lightningcss'
 
-import { deriveFallbackTokens } from './fallback.ts'
+import { deriveFallbackTokens, derivePrimaryActionFallbacks } from './fallback.ts'
 
 export interface SkinCssTransformOptions {
   /** Manifest id; becomes the html[data-dsh-skin="<id>"] scope value. */
@@ -383,7 +383,7 @@ export function transformSkinCss(css: string, options: SkinCssTransformOptions):
   // the highlight layer follows the skin in both themes (issue #826).
   out += `\n${scope} body { --shiki-background: var(--dsw-alias-markdown-code-block); }\n`
   if (options.deriveFallbacks === true) {
-    const fallbacks = deriveFallbackTokens(defined)
+    const fallbacks = [...deriveFallbackTokens(defined), ...derivePrimaryActionFallbacks(defined)]
     if (fallbacks.length > 0) {
       out += `\n${scope} body {\n  ${fallbacks.join('\n  ')}\n}\n`
     }

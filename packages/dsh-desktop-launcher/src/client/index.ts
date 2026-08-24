@@ -63,7 +63,13 @@ export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'desktop-launcher: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'desktop-launcher: dictionaries')
 
   const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
   const settingsScope = binder.bind<DesktopLauncherSettings>({ namespace: DESKTOP_LAUNCHER_NS })
@@ -102,11 +108,17 @@ export function apply(ctx: ClientContext): void {
   // Plugin configuration card: one staged form over the `desktop-launcher`
   // settings namespace, contributed to the Web UI plugin group.
   const controller = new DesktopLauncherSettingsCardController(settingsScope)
-  ctx.slots.inject('web-ui.plugin.item', () => ctx.slots.register({
-    name: 'web-ui.plugin.item',
-    id: 'desktop-launcher',
-    order: 130,
-    locale: NS,
-    inject: () => controller.inject(),
-  }, DesktopLauncherSettingsCard))
+  ctx.slots.inject('web-ui.plugin.item', () => {
+    try {
+      return ctx.slots.register({
+        name: 'web-ui.plugin.item',
+        id: 'desktop-launcher',
+        order: 130,
+        locale: NS,
+        inject: () => controller.inject(),
+      }, DesktopLauncherSettingsCard)
+    } catch {
+      return () => {}
+    }
+  })
 }

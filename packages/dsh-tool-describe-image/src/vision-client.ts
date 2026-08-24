@@ -9,11 +9,13 @@
  */
 
 import { createHash } from 'node:crypto'
-import { readFile, stat } from 'node:fs/promises'
+import { readFile, realpath, stat } from 'node:fs/promises'
+import { isAbsolute, relative, resolve, sep } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { ATTACHMENT_REF_GUIDANCE, parseImageAttachmentRef, parseMarkdownAttachmentReference } from './attachment-reference.ts'
 import { attachmentRefById } from './attach-routes.ts'
 import { sniffMimeType, type ImageMimeType } from './media.ts'
+import { assertImageUrlAllowed } from './url-guard.ts'
 import type { ResolvedConfig } from './config-resolve.ts'
 
 export { parseImageAttachmentRef } from './attachment-reference.ts'
@@ -90,9 +92,10 @@ function finishLoad(bytes: Buffer, source: string, maxBytes: number): LoadedImag
  * @param input - the model-supplied image reference.
  * @param signal - caller cancellation.
  * @param maxBytes - image byte bound.
+ * @param workspace - absolute session workspace root; local file paths must resolve inside it.
  * @returns the loaded bytes and sniffed media type.
  */
-export async function loadImage(ctx: Context, input: string, signal: AbortSignal, maxBytes: number): Promise<LoadedImage> {
+export async function loadImage(ctx: Context, input: string, signal: AbortSignal, maxBytes: number, workspace?: string): Promise<LoadedImage> {
   const trimmed = input.trim()
   if (trimmed.length === 0) throw new Error('describe-image: image must be a non-empty path, URL, or attachment reference')
   const markdownReference = parseMarkdownAttachmentReference(trimmed)
@@ -110,9 +113,13 @@ export async function loadImage(ctx: Context, input: string, signal: AbortSignal
     return finishLoad(bytes, trimmed.slice(0, 96), maxBytes)
   }
   if (/^https?:\/\//i.test(trimmed)) {
+    // The URL is model-controlled: private, loopback, link-local, and reserved
+    // hosts are refused before any connection, including through DNS answers.
+    await assertImageUrlAllowed(trimmed)
     const response = await fetch(trimmed, { signal, redirect: 'error' })
     if (!response.ok) {
-      throw new Error(`describe-image: image fetch returned HTTP ${response.status}`)
+      // Never echo the status: a failure must not answer an internal-network probe.
+      throw new Error('describe-image: image URL could not be fetched')
     }
     const declared = Number(response.headers.get('content-length'))
     if (Number.isSafeInteger(declared) && declared > maxBytes) {
@@ -129,13 +136,54 @@ export async function loadImage(ctx: Context, input: string, signal: AbortSignal
     const bytes = await readAttachment(ctx, JSON.stringify(registered), signal)
     return finishLoad(bytes, trimmed, maxBytes)
   }
-  const info = await stat(trimmed, { bigint: false })
+  // A raw local path is readable only inside the session workspace: the path is
+  // model-controlled, so without a boundary the model could read any file this
+  // host may read and forward its (magic-byte-passing) contents to the vision
+  // endpoint. Both the workspace and the file are canonicalized with realpath,
+  // which collapses ../ segments and resolves symlinks, then the file must be
+  // equal to or below the workspace root. The path must also be absolute: a relative
+  // one would resolve against the host process cwd, not the session workspace.
+  if (!isAbsolute(trimmed)) {
+    throw new Error('describe-image: image path must be an absolute path within the session workspace')
+  }
+  const absolute = resolve(trimmed)
+  if (workspace === undefined || workspace.trim().length === 0) {
+    throw new Error('describe-image: local image paths require a session workspace; use an attachment reference or an http(s) URL instead')
+  }
+  let root: string
+  try {
+    root = await realpath(workspace)
+  } catch {
+    throw new Error('describe-image: session workspace is not accessible')
+  }
+  let realPath: string
+  try {
+    realPath = await realpath(absolute)
+  } catch {
+    throw new Error(`describe-image: image path not found: ${trimmed}`)
+  }
+  if (!isInsideWorkspace(root, realPath)) {
+    throw new Error(`describe-image: image path is outside the session workspace: ${trimmed}`)
+  }
+  const info = await stat(realPath, { bigint: false })
   if (!info.isFile()) throw new Error(`describe-image: image path is not a file: ${trimmed}`)
   if (info.size > maxBytes) {
     throw new Error(`describe-image: image is ${info.size} bytes, above the ${maxBytes}-byte bound`)
   }
-  const bytes = await readFile(trimmed, { signal })
+  const bytes = await readFile(realPath, { signal })
   return finishLoad(bytes, trimmed, maxBytes)
+}
+
+/**
+ * Whether one canonical path is equal to or below another canonical root. Both inputs must be
+ * realpath outputs, so no symlink or `..` traversal can remain and the comparison is exact.
+ * @param root - canonical allowed root.
+ * @param candidate - canonical candidate path.
+ * @returns whether `candidate` is `root` itself or a descendant.
+ */
+function isInsideWorkspace(root: string, candidate: string): boolean {
+  const rel = relative(root, candidate)
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
 }
 
 /**

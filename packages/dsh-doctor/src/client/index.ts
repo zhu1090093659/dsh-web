@@ -80,7 +80,13 @@ export function apply(ctx: ClientContext): void {
 
   // Dictionaries.
   safe(() => {
-    ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'doctor: dictionaries')
+    ctx.effect(() => {
+      try {
+        return ctx.locale.register(NS, { zh, en })
+      } catch {
+        return () => {}
+      }
+    }, 'doctor: dictionaries')
   })
 
   // Controller: passive probe + poll loop, both fail-open. Feeds the card's

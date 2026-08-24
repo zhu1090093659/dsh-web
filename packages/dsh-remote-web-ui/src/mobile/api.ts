@@ -112,7 +112,10 @@ export async function sendCommand(sessionId: string, line: string): Promise<unkn
   })
 }
 
-/** Stop the session's active turn (the mobile "停止" button). */
+/**
+ * Stop the session's active turn (the mobile stop button). Pending queued
+ * work is preserved and resumes in FIFO order once cancellation settles.
+ */
 export async function cancelSession(sessionId: string): Promise<{ accepted: true }> {
   return await callUnary<{ accepted: true }>('session.cancel', { sessionId })
 }

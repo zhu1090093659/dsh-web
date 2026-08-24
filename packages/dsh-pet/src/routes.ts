@@ -23,6 +23,7 @@ import type { PetInteraction } from './affinity.ts'
 import { DECORATION_ASSET_PREFIX, petEntryView, petPackageRoot, type PetEntry, type PetRegistry } from './registry.ts'
 import { isPetAllowed } from './access.ts'
 import { dshHome } from './dsh-home.ts'
+import { readJsonBody, writeJson } from './http.ts'
 
 /** Browser-facing base path of the pet API. */
 export const PET_API_PREFIX = '/api/pet'
@@ -97,52 +98,17 @@ function mimeFor(file: string): string {
   return MIME_BY_EXT[file.slice(dot).toLowerCase()] ?? 'application/octet-stream'
 }
 
-/** Write one JSON response. */
-function json(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify(body))
-}
-
 /** Require the method or answer 405. */
 function requireMethod(req: IncomingMessage, res: ServerResponse, method: string): boolean {
   if (req.method === method) return true
-  json(res, 405, { ok: false, error: 'method-not-allowed' })
+  writeJson(res, 405, { ok: false, error: 'method-not-allowed' })
   return false
-}
-
-/** Read a JSON request body (bounded). */
-function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    let size = 0
-    const chunks: Buffer[] = []
-    req.on('data', (chunk: Buffer) => {
-      size += chunk.length
-      if (size > 64 * 1024) {
-        reject(new Error('body-too-large'))
-        queueMicrotask(() => req.destroy())
-        return
-      }
-      chunks.push(chunk)
-    })
-    req.on('end', () => {
-      if (chunks.length === 0) {
-        resolve({})
-        return
-      }
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')))
-      } catch {
-        reject(new Error('invalid-json'))
-      }
-    })
-    req.on('error', reject)
-  })
 }
 
 /** Shared route fence: loopback always passes; a live paired-device cookie is an extra allow path. */
 function guard(ctx: Context, req: IncomingMessage, res: ServerResponse): boolean {
   if (isPetAllowed(ctx, req)) return true
-  json(res, 403, { ok: false, error: 'forbidden: loopback-only' })
+  writeJson(res, 403, { ok: false, error: 'forbidden: loopback-only' })
   return false
 }
 
@@ -154,8 +120,8 @@ function getRoute(ctx: Context, path: string, run: () => Promise<unknown>): WebR
     handler: (req: IncomingMessage, res: ServerResponse): void => {
       if (!guard(ctx, req, res)) return
       if (!requireMethod(req, res, 'GET')) return
-      run().then((value) => json(res, 200, value), (error) => {
-        json(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
+      run().then((value) => writeJson(res, 200, value), (error) => {
+        writeJson(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
       })
     },
   }
@@ -169,16 +135,21 @@ function postRoute(ctx: Context, path: string, run: (body: Record<string, unknow
     handler: (req: IncomingMessage, res: ServerResponse): Promise<void> => {
       if (!guard(ctx, req, res)) return Promise.resolve()
       if (!requireMethod(req, res, 'POST')) return Promise.resolve()
-      return readJsonBody(req).then((body) => {
-        const record = (typeof body === 'object' && body !== null) ? body as Record<string, unknown> : {}
+      // Shared lenient reader (64 KiB cap): an empty body yields null and is
+      // restored to {} at the call site (legacy empty-body semantics); invalid
+      // JSON and over-limit bodies also yield null, so the endpoint validators
+      // below keep answering 400 with the same { ok: false, error } envelope.
+      return readJsonBody(req, { maxBytes: 64 * 1024 }).then((parsed) => {
+        const payload = parsed ?? {}
+        const record = (typeof payload === 'object' && payload !== null) ? payload as Record<string, unknown> : {}
         return run(record).then(
-          (value) => json(res, 200, value),
+          (value) => writeJson(res, 200, value),
           (error) => {
-            json(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) })
+            writeJson(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) })
           },
         )
       }, (error) => {
-        json(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) })
+        writeJson(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) })
       })
     },
   }
@@ -393,7 +364,7 @@ function runtimeHandler(ctx: Context, roots: { runtimeDir: string; vendorDir: st
     const base = spec.root === 'runtimeDir' ? roots.runtimeDir : roots.vendorDir
     const file = join(base, name)
     if (!existsSync(file)) {
-      json(res, 404, { ok: false, error: 'runtime-file-missing', file: name })
+      writeJson(res, 404, { ok: false, error: 'runtime-file-missing', file: name })
       return
     }
     const resolved = containedRealpath(base, file)

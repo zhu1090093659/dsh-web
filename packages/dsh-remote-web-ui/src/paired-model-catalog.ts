@@ -1,6 +1,6 @@
 /** Paired-only model discovery and adoption routes; generic privileged RPCs stay loopback-only. */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { ApiProxy, ModelProviderGroup, RpcId, RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { ApiProxy, ModelProviderGroup, RpcId, RpcResponse, SettingsNamespaceView, SettingsPathOpView } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { z } from 'zod'
 import type { PairingService } from './pairing.ts'
@@ -90,7 +90,10 @@ function fieldsOf(model: ModelProfile, includeId: boolean): Record<string, unkno
   if (model.reasoningEfforts !== undefined) fields.reasoningEfforts = Object.fromEntries(model.reasoningEfforts.map(effort => [effort, effort === 'off' ? null : effort]))
   return fields
 }
-function groupFor(catalog: CatalogValue, provider: string): ModelProviderGroup | undefined { return catalog.groups.find(group => group.id === provider) }
+function groupFor(catalog: CatalogValue, provider: string): ModelProviderGroup | undefined {
+  if (catalog.failures.some(failure => failure.id === provider)) return undefined
+  return catalog.groups.find(group => group.id === provider)
+}
 async function readCatalog(apiProxy: ApiProxy): Promise<CatalogValue | undefined> {
   try { return valueOf(await apiProxy.llm.models(request({}))) } catch { return undefined }
 }
@@ -117,25 +120,70 @@ async function eligibleProvider(apiProxy: ApiProxy, requested: string): Promise<
   if (namespace === undefined || profile === undefined) return { status: 403, error: `provider ${requested} is not eligible for the paired model catalog` }
   return { provider: { provider: requested, displayName: route.displayName, namespace, profile } }
 }
-function updatedModels(existing: unknown[], model: ModelProfile): unknown[] {
-  const next = existing.map(entry => isRecord(entry) ? { ...entry } : entry)
-  const index = next.findIndex(entry => isRecord(entry) && entry.id === model.id)
+function validIdentifier(value: unknown): value is string {
+  const parsed = stringField(MAX_IDENTIFIER_LENGTH).safeParse(value)
+  return parsed.success && parsed.data === value
+}
+function configuredModels(profile: Record<string, unknown>): { inherited: true } | { inherited: false, values: Record<string, unknown>[] } | undefined {
+  if (!Object.hasOwn(profile, 'models')) return { inherited: true }
+  if (!Array.isArray(profile.models)) return undefined
+  if (profile.models.length === 0) return { inherited: true }
+  const values: Record<string, unknown>[] = []
+  for (const entry of profile.models) {
+    if (!isRecord(entry) || !validIdentifier(entry.id)) return undefined
+    values.push({ ...entry })
+  }
+  return { inherited: false, values }
+}
+function configuredOverrides(profile: Record<string, unknown>): { present: boolean, values: Map<string, Record<string, unknown>> } | undefined {
+  if (!Object.hasOwn(profile, 'modelOverrides')) return { present: false, values: new Map() }
+  if (!isRecord(profile.modelOverrides)) return undefined
+  const values = new Map<string, Record<string, unknown>>()
+  for (const [id, value] of Object.entries(profile.modelOverrides)) {
+    if (!validIdentifier(id) || !isRecord(value)) return undefined
+    values.set(id, { ...value })
+  }
+  return { present: true, values }
+}
+function updatedModels(existing: Record<string, unknown>[], model: ModelProfile): Record<string, unknown>[] {
+  const next = existing.map(entry => ({ ...entry }))
+  const index = next.findIndex(entry => entry.id === model.id)
   const patch = fieldsOf(model, true)
-  if (index >= 0 && isRecord(next[index])) next[index] = { ...next[index], ...patch }
+  if (index >= 0) next[index] = { ...next[index], ...patch }
   else next.push(patch)
   return next
 }
-function mutationPlan(profile: Record<string, unknown>, provider: string, model: ModelProfile, catalog: CatalogValue): { path: string[], value: unknown } | undefined {
-  if (Array.isArray(profile.models)) return { path: ['providers', provider, 'models'], value: updatedModels(profile.models, model) }
+function mutationPlan(profile: Record<string, unknown>, provider: string, model: ModelProfile, catalog: CatalogValue): { ops: SettingsPathOpView[] } | undefined {
+  const configured = configuredModels(profile)
+  const overrides = configuredOverrides(profile)
+  if (configured === undefined || overrides === undefined) return undefined
+  const modelsPath = ['providers', provider, 'models']
+  const overridesPath = ['providers', provider, 'modelOverrides']
+  if (!configured.inherited) {
+    if (overrides.values.size > 0) return undefined
+    const ops: SettingsPathOpView[] = [{ op: 'set', path: modelsPath, value: updatedModels(configured.values, model) }]
+    if (overrides.present) ops.push({ op: 'unset', path: overridesPath })
+    return { ops }
+  }
+
   const group = groupFor(catalog, provider)
   if (group?.models.some(entry => entry.id === model.id) === true) {
-    const overrides = isRecord(profile.modelOverrides) ? profile.modelOverrides : undefined
-    const current = overrides?.[model.id]
-    const existing: Record<string, unknown> = isRecord(current) ? current : {}
-    return { path: ['providers', provider, 'modelOverrides', model.id], value: { ...existing, ...fieldsOf(model, false) } }
+    const existing = overrides.values.get(model.id) ?? {}
+    return { ops: [{ op: 'set', path: [...overridesPath, model.id], value: { ...existing, ...fieldsOf(model, false) } }] }
   }
-  if (group === undefined || catalog.failures.some(failure => failure.id === provider)) return undefined
-  return { path: ['providers', provider, 'models'], value: [...group.models.map(entry => ({ id: entry.id })), fieldsOf(model, true)] }
+  if (group === undefined) return undefined
+  const materialized: Record<string, unknown>[] = []
+  const materializedIds = new Set<string>()
+  for (const installed of group.models) {
+    materialized.push({ ...overrides.values.get(installed.id), id: installed.id })
+    materializedIds.add(installed.id)
+  }
+  for (const [id, override] of overrides.values) {
+    if (!materializedIds.has(id)) materialized.push({ ...override, id })
+  }
+  const ops: SettingsPathOpView[] = [{ op: 'set', path: modelsPath, value: updatedModels(materialized, model) }]
+  if (overrides.present) ops.push({ op: 'unset', path: overridesPath })
+  return { ops }
 }
 function paired(req: IncomingMessage, service: PairingService): boolean {
   const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
@@ -207,7 +255,7 @@ export function makePairedModelCatalogRoutes(deps: PairedModelCatalogDeps): WebR
     const plan = mutationPlan(eligible.provider.profile, body.provider, body.model, before)
     if (plan === undefined) return reject(res, 502, `model catalog is unavailable for provider ${body.provider}`)
     let mutation: Awaited<ReturnType<ApiProxy['settings']['mutate']>>
-    try { mutation = await apiProxy.settings.mutate(request({ ns: 'llm-pi-ai', expectedRevision: eligible.provider.namespace.revision, ops: [{ op: 'set', path: plan.path, value: plan.value }] })) } catch { return reject(res, 502, `model update failed for provider ${body.provider}`) }
+    try { mutation = await apiProxy.settings.mutate(request({ ns: 'llm-pi-ai', expectedRevision: eligible.provider.namespace.revision, ops: plan.ops })) } catch { return reject(res, 502, `model update failed for provider ${body.provider}`) }
     const code = errorCode(mutation)
     if (code === 'settings-conflict') return reject(res, 409, `model update conflicted for provider ${body.provider}`)
     if (code === 'settings-rejected') return reject(res, 422, `model update was rejected for provider ${body.provider}`)

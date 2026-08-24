@@ -15,6 +15,8 @@ vi.mock('../api.ts', () => ({
   models: vi.fn(),
   selectModel: vi.fn(),
   sendCommand: vi.fn(),
+  cancelSession: vi.fn(),
+  fetchPending: vi.fn(),
 }))
 vi.mock('./App.tsx', async importOriginal => {
   const actual = await importOriginal<typeof import('./App.tsx')>()
@@ -24,7 +26,7 @@ vi.mock('./App.tsx', async importOriginal => {
     prompt: vi.fn(async () => {}),
   }
 })
-import { fetchMobilePreferences, models, selectModel, sendCommand } from '../api.ts'
+import { fetchMobilePreferences, models, selectModel, sendCommand, cancelSession, fetchPending } from '../api.ts'
 import { loadHistory, prompt } from './App.tsx'
 
 const session: SessionView = {
@@ -43,6 +45,18 @@ function makeEntry(type: string, data: unknown, seq: number): { event: WireEvent
 /** Build a history page from loose wire events (the host union is strict). */
 function historyPage(events: Array<{ event: WireEvent }>, extra: Record<string, unknown> = {}): HistoryPage {
   return { events: events as never, hasMore: false, ...extra } as HistoryPage
+}
+
+/** Minimal mux stand-in: captures the ChatView's frame listener for hand-off. */
+class FakeMux {
+  listeners = new Set<(frame: unknown) => void>()
+  onFrame(listener: (frame: unknown) => void): () => void {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+  emit(frame: unknown): void {
+    for (const listener of this.listeners) listener(frame)
+  }
 }
 
 /** A full turn: user message, reasoning + text chunks, tool calls, final message. */
@@ -72,6 +86,8 @@ const fetchMobilePreferencesMock = vi.mocked(fetchMobilePreferences)
 const modelsMock = vi.mocked(models)
 const selectModelMock = vi.mocked(selectModel)
 const sendCommandMock = vi.mocked(sendCommand)
+const cancelSessionMock = vi.mocked(cancelSession)
+const fetchPendingMock = vi.mocked(fetchPending)
 const loadHistoryMock = vi.mocked(loadHistory)
 const promptMock = vi.mocked(prompt)
 
@@ -95,6 +111,8 @@ beforeEach(() => {
   } satisfies SessionModels)
   selectModelMock.mockResolvedValue({ selected: { provider: 'fx', model: 'fx-2', reasoningEffort: 'high' } })
   sendCommandMock.mockResolvedValue({})
+  cancelSessionMock.mockResolvedValue({ accepted: true })
+  fetchPendingMock.mockResolvedValue({ approvals: [], questions: [] })
 })
 
 afterEach(() => {
@@ -637,5 +655,73 @@ describe('ChatView display toggles and context usage', () => {
     render(<ChatView session={session} onBack={() => {}} />)
     await screen.findByText('已完成修改')
     expect(screen.queryByText(/上下文/)).toBeNull()
+  })
+})
+
+describe('ChatView stop button (#1041)', () => {
+  /** Emit one session lifecycle frame for the chat's session. */
+  function emitSessionEvent(mux: FakeMux, type: string, seq: number): void {
+    act(() => {
+      mux.emit({ type: 'session/event', sessionId: 's-1', event: makeEntry(type, {}, seq).event })
+    })
+  }
+
+  it('switches the composer primary to a stop button while running and cancels the turn', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage([]))
+    const mux = new FakeMux()
+    render(<ChatView session={session} mux={mux as never} onBack={() => {}} />)
+
+    // Idle: the primary button is the (empty-draft disabled) send button.
+    const sendButton = await screen.findByRole('button', { name: '发送' })
+    expect((sendButton as HTMLButtonElement).disabled).toBe(true)
+
+    // Turn starts: the primary becomes an enabled stop button (square icon).
+    emitSessionEvent(mux, 'turn/start', 1)
+    const stopButton = (await screen.findByRole('button', { name: '停止' })) as HTMLButtonElement
+    expect(stopButton.disabled).toBe(false)
+
+    fireEvent.click(stopButton)
+    await waitFor(() => expect(cancelSessionMock).toHaveBeenCalledWith('s-1'))
+
+    // Turn ends: the primary flips back to send.
+    emitSessionEvent(mux, 'turn/end', 2)
+    expect(await screen.findByRole('button', { name: '发送' })).toBeTruthy()
+  })
+
+  it('disables the stop button while the cancel request is in flight', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage([]))
+    let resolveCancel: (() => void) | undefined
+    cancelSessionMock.mockReturnValue(new Promise<{ accepted: true }>((resolve) => {
+      resolveCancel = () => { resolve({ accepted: true }) }
+    }))
+    const mux = new FakeMux()
+    render(<ChatView session={session} mux={mux as never} onBack={() => {}} />)
+    await screen.findByRole('button', { name: '发送' })
+
+    emitSessionEvent(mux, 'turn/start', 1)
+    const stopButton = (await screen.findByRole('button', { name: '停止' })) as HTMLButtonElement
+    fireEvent.click(stopButton)
+
+    // In flight: disabled and re-labeled; a second tap cannot double-submit.
+    const inflight = (await screen.findByRole('button', { name: '停止中' })) as HTMLButtonElement
+    expect(inflight.disabled).toBe(true)
+    fireEvent.click(inflight)
+    expect(cancelSessionMock).toHaveBeenCalledTimes(1)
+
+    await act(async () => { resolveCancel?.() })
+    emitSessionEvent(mux, 'turn/end', 2)
+    expect(await screen.findByRole('button', { name: '发送' })).toBeTruthy()
+  })
+
+  it('surfaces a cancel failure through the chat error line', async () => {
+    loadHistoryMock.mockResolvedValue(historyPage([]))
+    cancelSessionMock.mockRejectedValue(new Error('cancel exploded'))
+    const mux = new FakeMux()
+    render(<ChatView session={session} mux={mux as never} onBack={() => {}} />)
+    await screen.findByRole('button', { name: '发送' })
+
+    emitSessionEvent(mux, 'turn/start', 1)
+    fireEvent.click(await screen.findByRole('button', { name: '停止' }))
+    expect(await screen.findByText(/cancel exploded/)).toBeTruthy()
   })
 })

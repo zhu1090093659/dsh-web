@@ -84,7 +84,13 @@ export function apply(ctx: ClientContext): void {
   // page instead of being silently dropped.
   ctx.effect(() => releaseTaskboardApply, 'task-board: apply claim')
 
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'task-board: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'task-board: dictionaries')
 
   // Plugin configuration card: one staged form over the `task-board` settings
   // namespace, contributed to the Web UI plugin group.
@@ -92,16 +98,20 @@ export function apply(ctx: ClientContext): void {
   const settingsScope = binder.bind<TaskBoardSettings>({ namespace: TASK_BOARD_NS })
   const settingsCard = new TaskBoardSettingsCardController(settingsScope)
   ctx.slots.inject('web-ui.plugin.item', () => {
-    const unregister = ctx.slots.register({
-      name: 'web-ui.plugin.item',
-      id: 'task-board',
-      order: 110,
-      locale: NS,
-      inject: () => settingsCard.inject(),
-    }, TaskBoardSettingsCard)
-    return () => {
-      settingsCard.dispose()
-      unregister()
+    try {
+      const unregister = ctx.slots.register({
+        name: 'web-ui.plugin.item',
+        id: 'task-board',
+        order: 110,
+        locale: NS,
+        inject: () => settingsCard.inject(),
+      }, TaskBoardSettingsCard)
+      return () => {
+        settingsCard.dispose()
+        unregister()
+      }
+    } catch {
+      return () => {}
     }
   })
 

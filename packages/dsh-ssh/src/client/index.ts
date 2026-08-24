@@ -73,7 +73,13 @@ export type { SshKey } from './locales.ts'
  * @param ctx - client root context (locale service).
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-ssh: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'dsh-ssh: dictionaries')
 
   const controller = new PanelController()
   const api = new SshApi()

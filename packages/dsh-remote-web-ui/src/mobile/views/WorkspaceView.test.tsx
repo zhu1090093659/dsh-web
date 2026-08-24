@@ -100,8 +100,8 @@ describe('mobile workspace creation', () => {
     expect(await screen.findByText('user')).toBeTruthy()
     
     // Verify entries
-    expect(await screen.findByText('📁 projects')).toBeTruthy()
-    expect(await screen.findByText('📁 .config')).toBeTruthy()
+    expect(await screen.findByText('projects')).toBeTruthy()
+    expect(await screen.findByText('.config')).toBeTruthy()
   })
 
   it('navigates into directory and allows breadcrumb navigation', async () => {
@@ -123,7 +123,7 @@ describe('mobile workspace creation', () => {
     fireEvent.click(await screen.findByText('+ 新建工作区'))
     
     // Wait for first dir listing
-    const projBtn = await screen.findByText('📁 projects')
+    const projBtn = await screen.findByText('projects')
 
     // Prepare next listing
     listDirectoryMock.mockResolvedValueOnce({
@@ -143,7 +143,7 @@ describe('mobile workspace creation', () => {
     fireEvent.click(projBtn)
 
     // Verify new contents load
-    expect(await screen.findByText('📁 foo')).toBeTruthy()
+    expect(await screen.findByText('foo')).toBeTruthy()
     
     // Check breadcrumb
     const homeCrumb = screen.getByText('home')
@@ -159,7 +159,7 @@ describe('mobile workspace creation', () => {
     })
     
     fireEvent.click(homeCrumb)
-    expect(await screen.findByText('📁 user')).toBeTruthy()
+    expect(await screen.findByText('user')).toBeTruthy()
   })
 
   it('creates workspace successfully', async () => {

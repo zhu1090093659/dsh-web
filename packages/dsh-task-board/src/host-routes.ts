@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { TaskBoardHostService } from './host-service.ts'
+import { writeJson } from './http.ts'
 import { isLoopbackAddress, isLoopbackRequest } from './loopback.ts'
 import { parseActionEnvelope, TASK_BOARD_API_PREFIX } from './protocol.ts'
 
@@ -21,11 +22,6 @@ export interface TaskBoardRouteAccess {
 interface ResolvedRouteAccess {
   trustedProxyHosts: ReadonlySet<string>
   proxyToken?: string
-}
-
-function json(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-  res.end(JSON.stringify(body))
 }
 
 function parseAuthority(authority: string): { canonical: string; url: URL } | undefined {
@@ -127,38 +123,38 @@ export function makeTaskBoardRoutes(service: TaskBoardHostService, access: TaskB
   const resolvedAccess = resolveAccess(access)
   const guard = (req: IncomingMessage, res: ServerResponse): boolean => {
     if (isTrustedTaskBoardRequest(req, resolvedAccess)) return true
-    json(res, 403, { ok: false, error: 'forbidden' })
+    writeJson(res, 403, { ok: false, error: 'forbidden' }, { 'cache-control': 'no-store' })
     return false
   }
   const state: WebRoute = {
     kind: 'exact',
     path: `${TASK_BOARD_API_PREFIX}/state`,
     handler: (req, res): void => {
-      if (req.method !== 'GET') return json(res, 405, { ok: false, error: 'method-not-allowed' })
+      if (req.method !== 'GET') return writeJson(res, 405, { ok: false, error: 'method-not-allowed' }, { 'cache-control': 'no-store' })
       if (!guard(req, res)) return
-      json(res, 200, service.snapshot())
+      writeJson(res, 200, service.snapshot(), { 'cache-control': 'no-store' })
     },
   }
   const action: WebRoute = {
     kind: 'exact',
     path: `${TASK_BOARD_API_PREFIX}/action`,
     handler: async (req, res): Promise<void> => {
-      if (req.method !== 'POST') return json(res, 405, { ok: false, error: 'method-not-allowed' })
+      if (req.method !== 'POST') return writeJson(res, 405, { ok: false, error: 'method-not-allowed' }, { 'cache-control': 'no-store' })
       if (!guard(req, res)) return
       if (!(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) {
-        return json(res, 415, { ok: false, error: 'json-required' })
+        return writeJson(res, 415, { ok: false, error: 'json-required' }, { 'cache-control': 'no-store' })
       }
       try {
         const body = await readBody(req)
         const parsed = parseActionEnvelope(body.value)
-        if (parsed === undefined) return json(res, 400, { ok: false, error: 'invalid-action' })
+        if (parsed === undefined) return writeJson(res, 400, { ok: false, error: 'invalid-action' }, { 'cache-control': 'no-store' })
         if (parsed.action.kind !== 'import' && Buffer.byteLength(body.raw) > ACTION_LIMIT) {
-          return json(res, 413, { ok: false, error: 'body-too-large' })
+          return writeJson(res, 413, { ok: false, error: 'body-too-large' }, { 'cache-control': 'no-store' })
         }
-        json(res, 200, service.apply(parsed.requestId, parsed.action))
+        writeJson(res, 200, service.apply(parsed.requestId, parsed.action), { 'cache-control': 'no-store' })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        json(res, message === 'body-too-large' ? 413 : 400, { ok: false, error: message })
+        writeJson(res, message === 'body-too-large' ? 413 : 400, { ok: false, error: message }, { 'cache-control': 'no-store' })
       }
     },
   }

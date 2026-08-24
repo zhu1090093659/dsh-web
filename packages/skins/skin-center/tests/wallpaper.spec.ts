@@ -24,6 +24,7 @@ interface Section {
   pauseOnHidden?: boolean
   dim?: number
   wallpaperBlur?: number
+  wallpaperOpacity?: number
   sound?: boolean
   volume?: number
   weLibraryDirs?: string[]
@@ -295,7 +296,20 @@ describe('WallpaperController', () => {
     const fetchImpl = vi.fn(async (input: string) => ({
       ok: true,
       json: async () => input.includes('/scene-manifest/')
-        ? ({ ok: true, manifest: { width: 3840, height: 2160, timeSchedule: { morning: 4, day: 9, dusk: 17, night: 20 }, layers: [] } })
+        ? ({
+          ok: true,
+          manifest: {
+            width: 3840,
+            height: 2160,
+            timeSchedule: { morning: 4, day: 9, dusk: 17, night: 20 },
+            // Time-varying scenes carry one fullscreen layer per period; none of
+            // them may replace the live player as a static base.
+            layers: [
+              { x: 1920, y: 1080, w: 3840, h: 2160, texUrl: '/api/skin-center/we/scene-resource/timed/day.tex' },
+              { x: 1920, y: 1080, w: 3840, h: 2160, texUrl: '/api/skin-center/we/scene-resource/timed/night.tex' },
+            ],
+          },
+        })
         : ({ ok: true, videoUrl: null, sceneUrl: '/api/skin-center/we/scene-runtime/timed', compatibility: 'partial', unsupportedFeatures: ['embedded-script'] }),
     })) as unknown as typeof fetch
     const { scope } = fakeScope()
@@ -303,9 +317,42 @@ describe('WallpaperController', () => {
     controller.applySelection({ ...scene, id: 'timed' })
     await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2))
     await new Promise(resolve => setTimeout(resolve, 0))
-    const player = layers()[0].querySelector('iframe')
+    const [media] = layers()
+    const player = media.querySelector('iframe')
     expect(player?.src).toContain('/scene-runtime/timed')
     expect(player?.style.opacity).not.toBe('0')
+    // The backdrop stays the host-decoded frame; a single period layer would
+    // freeze the wallpaper to one time of day while the player loads.
+    expect(media.style.backgroundImage).toContain('/scene-frame/ccc')
+    controller.dispose()
+  })
+
+  it('never picks a video-backed layer as the static scene base', async () => {
+    const fetchImpl = vi.fn(async (input: string) => ({
+      ok: true,
+      json: async () => input.includes('/scene-manifest/')
+        ? ({
+          ok: true,
+          manifest: {
+            width: 3840,
+            height: 2160,
+            layers: [
+              // Video layers serve MP4 bytes that a CSS background cannot paint.
+              { x: 1920, y: 1080, w: 3840, h: 2160, texUrl: '/api/skin-center/we/scene-resource/vid/backdrop.tex', videoUrl: '/api/skin-center/we/scene-resource/vid/backdrop.tex' },
+              { x: 1920, y: 1080, w: 3840, h: 2160, texUrl: '/api/skin-center/we/scene-resource/vid/still.tex' },
+            ],
+          },
+        })
+        : ({ ok: true, videoUrl: null, sceneUrl: '/api/skin-center/we/scene-runtime/vid', compatibility: 'partial', unsupportedFeatures: ['embedded-script'] }),
+    })) as unknown as typeof fetch
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope, { fetchImpl, doc: document })
+    controller.applySelection({ ...scene, id: 'vid' })
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const [media] = layers()
+    expect(media.style.backgroundImage).toContain('/scene-resource/vid/still.tex')
+    expect(media.style.backgroundImage).not.toContain('backdrop.tex')
     controller.dispose()
   })
 
@@ -721,6 +768,27 @@ describe('WallpaperController', () => {
     controller.dispose()
   })
 
+  it('stops reacting to settings publishes after dispose (unsubscribe)', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ ok: true, wallpapers: [video, scene] }),
+    })) as unknown as typeof fetch
+    const { scope } = fakeScope({ enabled: true, selection: '111' })
+    const controller = new WallpaperController(scope, { fetchImpl, doc: document })
+    await vi.waitFor(() => expect(controller.activeId()).toBe('111'))
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    controller.dispose()
+    expect(layers()).toHaveLength(0)
+    const fetchesBefore = fetchImpl.mock.calls.length
+    // A later settings publish (e.g. the card or another session) must not
+    // wake the disposed controller or issue another /inventory request.
+    await scope.set('selection', '333')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(fetchImpl).toHaveBeenCalledTimes(fetchesBefore)
+    expect(document.body.hasAttribute('data-dsh-wallpaper-active')).toBe(false)
+    expect(controller.activeId()).toBeNull()
+  })
+
   it('neutralizer CSS contains background-image none and removes on teardown', () => {
     const { scope } = fakeScope()
     const controller = new WallpaperController(scope)
@@ -1027,6 +1095,83 @@ describe('WallpaperController', () => {
     controller.dispose()
   })
 
+  it('defaults wallpaperOpacity to 100 and applies setOpacity', () => {
+    // Provide dim to prevent applyThemeDefaults from overriding the default.
+    const { scope, calls } = fakeScope({ dim: 25 })
+    const controller = new WallpaperController(scope)
+    expect(controller.wallpaperOpacity()).toBe(100)
+    controller.applySelection(video)
+    controller.setOpacity(60)
+    expect(controller.wallpaperOpacity()).toBe(60)
+    expect(calls.some(c => c.field === 'wallpaperOpacity' && c.value === 60)).toBe(true)
+    controller.dispose()
+  })
+
+  it('clamps wallpaperOpacity to 0-100', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection(video)
+    controller.setOpacity(-10)
+    expect(controller.wallpaperOpacity()).toBe(0)
+    controller.setOpacity(150)
+    expect(controller.wallpaperOpacity()).toBe(100)
+    controller.dispose()
+  })
+
+  it('applies opacity to mediaLayer.style.opacity', () => {
+    const { scope } = fakeScope()
+    // Dark theme seeds opacity=100, so the initial state has no explicit style.
+    const controller = new WallpaperController(scope, { themeGet: () => 'dark' })
+    controller.applySelection(video)
+    const [media] = layers()
+    // Default 100 means no explicit opacity style (avoid compositing overhead).
+    expect(media.style.opacity).toBe('')
+    controller.setOpacity(40)
+    expect(media.style.opacity).toBe('0.4')
+    controller.setOpacity(0)
+    expect(media.style.opacity).toBe('0')
+    controller.setOpacity(100)
+    expect(media.style.opacity).toBe('')
+    controller.dispose()
+  })
+
+  it('reads persisted wallpaperOpacity from the scope', () => {
+    const { scope } = fakeScope({ wallpaperOpacity: 55 })
+    const controller = new WallpaperController(scope)
+    expect(controller.wallpaperOpacity()).toBe(55)
+    controller.dispose()
+  })
+
+  it('applies light-theme defaults (dim=0, opacity=40) when both are untouched', () => {
+    const { scope, calls } = fakeScope()
+    const controller = new WallpaperController(scope, { themeGet: () => 'light' })
+    expect(controller.dim()).toBe(0)
+    expect(controller.wallpaperOpacity()).toBe(40)
+    expect(calls.some(c => c.field === 'dim' && c.value === 0)).toBe(true)
+    expect(calls.some(c => c.field === 'wallpaperOpacity' && c.value === 40)).toBe(true)
+    controller.dispose()
+  })
+
+  it('applies dark-theme defaults (dim=40, opacity=100) when both are untouched', () => {
+    const { scope, calls } = fakeScope()
+    const controller = new WallpaperController(scope, { themeGet: () => 'dark' })
+    expect(controller.dim()).toBe(40)
+    expect(controller.wallpaperOpacity()).toBe(100)
+    expect(calls.some(c => c.field === 'dim' && c.value === 40)).toBe(true)
+    expect(calls.some(c => c.field === 'wallpaperOpacity' && c.value === 100)).toBe(true)
+    controller.dispose()
+  })
+
+  it('does not override user-set dim/opacity with theme defaults', () => {
+    const { scope, calls } = fakeScope({ dim: 50 })
+    const controller = new WallpaperController(scope, { themeGet: () => 'light' })
+    // User explicitly set dim=50, so theme defaults must not fire.
+    expect(controller.dim()).toBe(50)
+    expect(controller.wallpaperOpacity()).toBe(100)
+    expect(calls.every(c => c.field !== 'wallpaperOpacity')).toBe(true)
+    controller.dispose()
+  })
+
 })
 
 /** A minimal fake WallpaperHandle recording every sync() call. */
@@ -1043,6 +1188,7 @@ function fakeHandle(selection: string): {
     mode: () => 'live',
     dim: () => 25,
     wallpaperBlur: () => 0,
+    wallpaperOpacity: () => 100,
     pauseOnHidden: () => true,
     sound: () => false,
     volume: () => 100,
@@ -1057,8 +1203,10 @@ function fakeHandle(selection: string): {
     },
     setEnabled: () => {},
     setMode: () => {},
+    setFit: () => {},
     setDim: () => {},
     setBlur: () => {},
+    setOpacity: () => {},
     setPauseOnHidden: () => {},
     setSound: () => {},
     setVolume: () => {},
@@ -1067,6 +1215,7 @@ function fakeHandle(selection: string): {
     sync: descriptor => { synced.push(descriptor) },
     tryOn: () => {},
     exitTryOn: () => {},
+    recoverScenePlayer: () => {},
     dispose: () => {},
   }
   return { handle, synced, listeners }
@@ -1164,5 +1313,102 @@ describe('installBootRestore', () => {
     for (const listener of listeners) listener()
     await vi.waitFor(() => expect(synced).toHaveLength(1))
     expect(synced[0]).toEqual(scene)
+  })
+})
+
+describe('wallpaper iframe sandbox (T1-1)', () => {
+  const web: WallpaperDescriptor = {
+    id: 'web-sandbox',
+    title: 'Web wallpaper',
+    type: 'web',
+    videoUrl: null,
+    webUrl: '/api/skin-center/we/web/sandbox/',
+    frameUrl: null,
+    sceneUrl: null,
+    previewUrl: '/api/skin-center/we/preview/sandbox',
+  }
+
+  it('mounts live web wallpapers in a script-only sandbox (no same-origin)', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection(web)
+    const [media] = layers()
+    const iframe = media.querySelector('iframe')
+    expect(iframe).not.toBeNull()
+    expect(iframe?.getAttribute('sandbox')).toBe('allow-scripts')
+    controller.dispose()
+  })
+
+  it('mounts live scene players in a script-only sandbox (no same-origin)', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection({
+      ...scene,
+      id: 'scene-sandbox',
+      sceneUrl: '/api/skin-center/we/scene-runtime/sandbox',
+    })
+    const [media] = layers()
+    const iframe = media.querySelector('iframe')
+    expect(iframe).not.toBeNull()
+    expect(iframe?.getAttribute('sandbox')).toBe('allow-scripts')
+    expect(iframe?.dataset.dshScenePlayer).toBe('')
+    controller.dispose()
+  })
+
+  it('steers the sandboxed scene player through a wildcard target origin', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection({
+      ...scene,
+      id: 'steer',
+      sceneUrl: '/api/skin-center/we/scene-runtime/steer',
+    })
+    const player = layers()[0].querySelector('iframe')
+    const contentWindow = player?.contentWindow ?? null
+    expect(contentWindow).not.toBeNull()
+    if (contentWindow === null) { controller.dispose(); return }
+    const spy = vi.spyOn(contentWindow, 'postMessage')
+    controller.setFit('fill')
+    expect(spy).toHaveBeenCalledWith({ type: 'dsh-set-fit', fit: 'fill' }, '*')
+    controller.dispose()
+  })
+
+  it('validates scene reload messages by sender identity instead of origin', () => {
+    const { scope } = fakeScope()
+    const controller = new WallpaperController(scope)
+    controller.applySelection({
+      ...scene,
+      id: 'identity',
+      sceneUrl: '/api/skin-center/we/scene-runtime/identity',
+    })
+    const player = layers()[0].querySelector('iframe')
+    const contentWindow = player?.contentWindow ?? null
+    expect(contentWindow).not.toBeNull()
+    const win = document.defaultView
+    expect(win).not.toBeNull()
+    if (contentWindow === null || win === null) { controller.dispose(); return }
+    // Record src writes so the reload branch is observable (jsdom reloads
+    // nothing for an unchanged src).
+    const srcDescriptor = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'src')
+    expect(srcDescriptor).toBeDefined()
+    const writes: string[] = []
+    Object.defineProperty(player, 'src', {
+      configurable: true,
+      get() { return (srcDescriptor!.get as () => string).call(player) },
+      set(value: string) { writes.push(String(value)) },
+    })
+    const fire = (source: unknown, origin: string): void => {
+      const event = new win.MessageEvent('message', { data: { type: 'dsh-scene-needs-reload' }, origin })
+      Object.defineProperty(event, 'source', { value: source, configurable: true })
+      win.dispatchEvent(event)
+    }
+    // A message from any other window is ignored even with matching data.
+    fire(win, win.location.origin)
+    expect(writes).toHaveLength(0)
+    // The mounted player's message is honored even though its opaque origin
+    // surfaces as the literal string "null".
+    fire(contentWindow, 'null')
+    expect(writes.length).toBeGreaterThanOrEqual(1)
+    controller.dispose()
   })
 })

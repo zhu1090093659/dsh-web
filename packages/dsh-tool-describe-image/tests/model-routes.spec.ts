@@ -134,6 +134,24 @@ describe('registerModelRoutes', () => {
     expect(status()).toBe(200)
   })
 
+
+  it('tears down an oversized body and probes the stored settings', async () => {
+    const upstream = await mock((_request, response) => jsonReply(response, 200, modelsReply(['m1'])))
+    const registrations = capture(() => ({ baseURL: upstream.url, model: 'x', apiKey: 'k' }), async (spec) => spec.apiKey ?? '')
+    const { res, status } = makeRes()
+    let destroys = 0
+    const req = {
+      method: 'POST',
+      url: '/describe-image/models',
+      socket: { remoteAddress: '127.0.0.1' },
+      headers: { host: '127.0.0.1:3081', 'sec-fetch-site': 'same-origin' },
+      [Symbol.asyncIterator]: async function* () { yield Buffer.from(JSON.stringify({ pad: 'x'.repeat(5000) })) },
+      destroy() { destroys += 1 },
+    } as unknown as IncomingMessage
+    await registrations[0].handler(req, res)
+    expect(status()).toBe(200)
+    expect(destroys).toBe(1)
+  })
   it('answers 422 when the merged configuration is invalid', async () => {
     const registrations = capture(() => ({}), async () => 'k')
     const { res, status, body } = makeRes()

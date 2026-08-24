@@ -85,15 +85,7 @@ and the user-level service adapters.
 
 ## Enable
 
-After the Doctor card switches enable rescue mode on, the host half mounts the
-`/api/doctor/*` endpoints and starts reporting heartbeats. When the per-user
-Doctor Supervisor service is not installed yet, the host status shows Doctor
-offline and the Service and capsule card offers Install now: it regenerates and
-registers the user-level service from the current package (previous
-registration dropped first, then deploy and restart, idempotent), waits for
-the Supervisor to answer, and refreshes the rescue capsule when it is missing
-or pinned to a different Doctor version. The button shows Installing/repairing
-while the verb runs; failures surface the error code and stderr.
+When rescue mode is enabled, the host mounts `/api/doctor/*`, persists the effective protection policy, and reconciles the Supervisor service, package version, install path, and rescue capsule in the background without blocking Web startup. Disabling stops heartbeats and pauses automatic Supervisor intervention while retaining the service and capsule. An explicit uninstall writes a suppression marker, so later host starts never resurrect the service; Install now clears that marker. The console button remains available as a manual retry and repair entry point.
 
 ## Update
 
@@ -135,9 +127,9 @@ The host settings namespace is `doctor`:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `enabled` | `true` | master switch; routes mount only when enabled |
-| `fullProtection` | `true` | install the Supervisor and launcher on enable |
-| `autoRepair` | `true` | allow deterministic repairs to promote after verification |
+| `enabled` | `true` | master switch; mounts routes and reconciles deployment when enabled, pauses without uninstalling when disabled |
+| `fullProtection` | `true` | managed protection: heartbeat, incident recording and circuit breaking; off is observation mode |
+| `autoRepair` | `false` | promote after isolated gates; off keeps a staged candidate pending explicit confirmation |
 | `heartbeatIntervalMs` | `5000` | host heartbeat cadence |
 
 Environment:
@@ -185,7 +177,7 @@ recoverable across crashes.
 - Everything runs as the current user; no root or admin elevation.
 - The Supervisor listens only on a local Unix socket (named pipe on Windows);
   requests carry a per-install bearer token stored with mode 0600.
-- The Web API is loopback-only and never hands the browser the token.
+- The Web API is loopback-only and never hands the browser the token; rejected requests receive HTTP 403 with `{ ok: false, error: "forbidden: loopback-only" }`.
 - The launcher and Supervisor never run a shell; DSH argv is relayed verbatim.
 - No secrets are written to state, logs or incident records; snapshots redact
   credentials and the redacted tier can never restore them.

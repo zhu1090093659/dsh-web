@@ -570,9 +570,11 @@ window.__ModuleLoader__.load({
 			volumeValue = 100;
 			dimValue = 25;
 			blurValue = 0;
+			opacityValue = 100;
 			dirsValue = [];
 			listeners = /* @__PURE__ */ new Set();
 			scope;
+			unsubscribe;
 			options;
 			doc;
 			/** The descriptor of the applied selection, resolved by the card. */
@@ -597,12 +599,16 @@ window.__ModuleLoader__.load({
 			/** Detached frame-capture video; released on error/abort/loadeddata and on
 			*  teardown so it never keeps buffering the source file. */
 			captureVideo = null;
+			/** Guard flag: suppresses readAll during applyThemeDefaults scope writes
+			*  to prevent mid-write listener cascades from resetting values. */
+			seeding = false;
 			constructor(scope, options = {}) {
 				this.scope = scope;
 				this.options = options;
 				this.doc = options.doc ?? document;
 				this.readAll();
-				scope.subscribe(() => {
+				this.unsubscribe = scope.subscribe(() => {
+					if (this.disposed || this.seeding) return;
 					this.readAll();
 					if (this.enabledValue && this.selectionValue && (!this.applied || this.applied.id !== this.selectionValue)) this.fetchAndSync();
 					else {
@@ -623,6 +629,7 @@ window.__ModuleLoader__.load({
 					});
 					this.mountObserver.observe(this.doc.body, { childList: true });
 				}
+				this.applyThemeDefaults();
 				if (this.enabledValue && this.selectionValue) this.fetchAndSync();
 			}
 			fetchAndSync() {
@@ -666,8 +673,8 @@ window.__ModuleLoader__.load({
 						const manifestResponse = await fetchFn(payload.sceneUrl.replace("/scene-runtime/", "/scene-manifest/"));
 						const manifestPayload = manifestResponse.ok ? await manifestResponse.json().catch(() => null) : null;
 						const manifest = manifestPayload?.ok === true ? manifestPayload.manifest : void 0;
-						if (manifest && typeof manifest.width === "number" && typeof manifest.height === "number") {
-							const fullscreenIndex = manifest.layers?.findIndex((layer) => typeof layer.texUrl === "string" && Math.abs((layer.w ?? 0) - manifest.width) <= 1 && Math.abs((layer.h ?? 0) - manifest.height) <= 1 && Math.abs((layer.x ?? 0) - manifest.width / 2) <= 1 && Math.abs((layer.y ?? 0) - manifest.height / 2) <= 1) ?? -1;
+						if (manifest && manifest.timeSchedule === void 0 && typeof manifest.width === "number" && typeof manifest.height === "number") {
+							const fullscreenIndex = manifest.layers?.findIndex((layer) => typeof layer.texUrl === "string" && typeof layer.videoUrl !== "string" && Math.abs((layer.w ?? 0) - manifest.width) <= 1 && Math.abs((layer.h ?? 0) - manifest.height) <= 1 && Math.abs((layer.x ?? 0) - manifest.width / 2) <= 1 && Math.abs((layer.y ?? 0) - manifest.height / 2) <= 1) ?? -1;
 							if (fullscreenIndex >= 0) {
 								sceneBaseUrl = manifest.layers?.[fullscreenIndex]?.texUrl ?? null;
 								preferSceneBase = manifest.layers?.slice(fullscreenIndex + 1).some((layer) => (layer.w ?? 0) > manifest.width * 1.25 || (layer.h ?? 0) > manifest.height * 1.25) === true;
@@ -720,6 +727,7 @@ window.__ModuleLoader__.load({
 			fit = () => this.fitValue;
 			dim = () => this.dimValue;
 			wallpaperBlur = () => this.blurValue;
+			wallpaperOpacity = () => this.opacityValue;
 			pauseOnHidden = () => this.pauseOnHiddenValue;
 			sound = () => this.soundValue;
 			volume = () => this.volumeValue;
@@ -778,6 +786,12 @@ window.__ModuleLoader__.load({
 				this.render();
 				this.publish();
 				this.scope.set("wallpaperBlur", this.blurValue);
+			}
+			setOpacity(value) {
+				this.opacityValue = clamp(value, 0, 100);
+				this.render();
+				this.publish();
+				this.scope.set("wallpaperOpacity", this.opacityValue);
 			}
 			setPauseOnHidden(value) {
 				this.pauseOnHiddenValue = value;
@@ -843,11 +857,13 @@ window.__ModuleLoader__.load({
 				const scenePlayer = this.mediaLayer?.firstElementChild ?? null;
 				if (!(scenePlayer instanceof HTMLIFrameElement) || scenePlayer.dataset.dshScenePlayer !== "") return;
 				try {
-					scenePlayer.contentWindow?.postMessage({ type: "dsh-recover-renderer" }, window.location.origin);
+					scenePlayer.contentWindow?.postMessage({ type: "dsh-recover-renderer" }, "*");
 				} catch {}
 			}
 			dispose() {
+				if (this.disposed) return;
 				this.disposed = true;
+				this.unsubscribe();
 				this.mountObserver?.disconnect();
 				this.mountObserver = null;
 				this.doc.removeEventListener("visibilitychange", this.onVisibility);
@@ -855,6 +871,32 @@ window.__ModuleLoader__.load({
 				this.doc.removeEventListener("pointerdown", this.onFirstGesture);
 				this.doc.removeEventListener("keydown", this.onFirstGesture);
 				this.teardownLayers();
+			}
+			/**
+			* Seed dim and opacity with theme-tuned values when neither has been
+			* explicitly set (both are at schema defaults: dim=25, opacity=100).
+			* This runs once at construction so a fresh wallpaper install gets
+			* readable defaults for the active theme. Users who have already
+			* adjusted either slider keep their values (#1051).
+			*/
+			applyThemeDefaults() {
+				const snapshot = this.scope.getSnapshot();
+				const value = snapshot.value ?? {};
+				if (value.dim !== void 0 || value.wallpaperOpacity !== void 0) return;
+				if (snapshot.writable === false) return;
+				if ((this.options.themeGet !== void 0 ? this.options.themeGet() : this.doc.body?.hasAttribute("data-ds-dark-theme") ? "dark" : "light") === "light") {
+					this.dimValue = 0;
+					this.opacityValue = 40;
+				} else {
+					this.dimValue = 40;
+					this.opacityValue = 100;
+				}
+				this.seeding = true;
+				try {
+					this.scope.set("dim", this.dimValue);
+					this.scope.set("wallpaperOpacity", this.opacityValue);
+				} catch {}
+				this.seeding = false;
 			}
 			readAll() {
 				const value = this.scope.getSnapshot().value ?? {};
@@ -868,6 +910,7 @@ window.__ModuleLoader__.load({
 				this.volumeValue = typeof value.volume === "number" && Number.isFinite(value.volume) ? clamp(value.volume, 0, 100) : 100;
 				this.dimValue = typeof value.dim === "number" && Number.isFinite(value.dim) ? clamp(value.dim, 0, 90) : 25;
 				this.blurValue = typeof value.wallpaperBlur === "number" && Number.isFinite(value.wallpaperBlur) ? clamp(value.wallpaperBlur, 0, 60) : 0;
+				this.opacityValue = typeof value.wallpaperOpacity === "number" && Number.isFinite(value.wallpaperOpacity) ? clamp(value.wallpaperOpacity, 0, 100) : 100;
 				this.dirsValue = Array.isArray(value.weLibraryDirs) ? value.weLibraryDirs.filter((d) => typeof d === "string" && d.trim() !== "") : [];
 			}
 			/** Resume a policy-blocked video on the first user gesture (#580). */
@@ -878,7 +921,7 @@ window.__ModuleLoader__.load({
 			onSceneMessage = (event) => {
 				const scenePlayer = this.mediaLayer?.firstElementChild ?? null;
 				if (!(scenePlayer instanceof HTMLIFrameElement) || scenePlayer.dataset.dshScenePlayer !== "") return;
-				if (event.source !== scenePlayer.contentWindow || event.origin !== this.doc.location?.origin) return;
+				if (event.source !== scenePlayer.contentWindow) return;
 				if (event.data?.type !== "dsh-scene-needs-reload") return;
 				scenePlayer.src = scenePlayer.src;
 			};
@@ -891,7 +934,7 @@ window.__ModuleLoader__.load({
 					scenePlayer.contentWindow?.postMessage({
 						type: "dsh-set-pause",
 						paused: this.doc.hidden
-					}, window.location.origin);
+					}, "*");
 				} catch {}
 			};
 			/** Reconcile the DOM with (enabled, previewing ?? applied, mode, dim, blur). */
@@ -910,9 +953,16 @@ window.__ModuleLoader__.load({
 					this.rootNeutralizer.dataset.dshWallpaperRoot = "";
 					this.rootNeutralizer.textContent = `
         [id="root"] { background: transparent; }
-        html[data-dsh-wallpaper-active],
+        /* Wallpaper opacity backdrop (#1051): light-mode fades to white,
+           dark-mode fades to black.  :has() tracks theme switches live. */
+        html[data-dsh-wallpaper-active] {
+          background-color: white !important;
+          background-image: none !important;
+        }
+        html[data-dsh-wallpaper-active]:has(body[data-ds-dark-theme]) {
+          background-color: black !important;
+        }
         body[data-dsh-wallpaper-active],
-        html[data-dsh-skin][data-dsh-wallpaper-active],
         html[data-dsh-skin][data-dsh-wallpaper-active] body,
         html[data-dsh-skin] body[data-dsh-wallpaper-active],
         body[data-dsh-wallpaper-active][data-ds-dark-theme],
@@ -981,6 +1031,7 @@ window.__ModuleLoader__.load({
 				const blur = this.blurValue > 0 ? "blur(" + String(this.blurValue) + "px)" : "";
 				this.mediaLayer.style.filter = blur;
 				this.mediaLayer.style.transform = this.blurValue > 0 ? "scale(1.05)" : "";
+				this.mediaLayer.style.opacity = this.opacityValue < 100 ? String(this.opacityValue / 100) : "";
 				this.scrimLayer.style.background = "rgba(0, 0, 0, " + String(this.dimValue / 100) + ")";
 			}
 			/** Push the current sizing mode onto the mounted media element. */
@@ -991,7 +1042,7 @@ window.__ModuleLoader__.load({
 					child.contentWindow?.postMessage({
 						type: "dsh-set-fit",
 						fit: this.fitValue
-					}, window.location.origin);
+					}, "*");
 				} catch {}
 			}
 			/** Build the cover child for one descriptor + mode; null when unrenderable. */
@@ -1005,7 +1056,7 @@ window.__ModuleLoader__.load({
 					if (this.modeValue === "live" && descriptor.webUrl !== null) {
 						const iframe = this.doc.createElement("iframe");
 						iframe.src = descriptor.webUrl;
-						iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+						iframe.setAttribute("sandbox", "allow-scripts");
 						iframe.setAttribute("tabindex", "-1");
 						styleCover(iframe, this.fitValue);
 						return iframe;
@@ -1017,7 +1068,7 @@ window.__ModuleLoader__.load({
 					if (this.modeValue === "live" && descriptor.sceneUrl) {
 						const iframe = this.doc.createElement("iframe");
 						iframe.src = descriptor.sceneUrl;
-						iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+						iframe.setAttribute("sandbox", "allow-scripts");
 						iframe.setAttribute("tabindex", "-1");
 						iframe.dataset.dshScenePlayer = "";
 						if (descriptor.preferSceneBase === true && descriptor.sceneBaseUrl) iframe.style.opacity = "0";
@@ -1027,7 +1078,7 @@ window.__ModuleLoader__.load({
 								iframe.contentWindow?.postMessage({
 									type: "dsh-set-fit",
 									fit: this.fitValue
-								}, window.location.origin);
+								}, "*");
 							} catch {}
 						});
 						return iframe;
@@ -1458,9 +1509,13 @@ window.__ModuleLoader__.load({
 				case "video": return "wallpaperTypeVideo";
 				case "web": return "wallpaperTypeWeb";
 				case "scene": return "wallpaperTypeScene";
+				case "image": return "wallpaperTypeImage";
 				default: return "wallpaperTypeApp";
 			}
 		}
+		/** Wallpaper grid page size: the grid grows one page per Load-more click
+		* instead of mounting every thumbnail at once. */
+		const PAGE_SIZE = 12;
 		/** Render the Wallpaper Engine section of the skin-center card. */
 		function WallpaperPanel({ t, wallpaper }) {
 			const enabled = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.enabled);
@@ -1469,6 +1524,7 @@ window.__ModuleLoader__.load({
 			const fit = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.fit);
 			const dim = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.dim);
 			const blur = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.wallpaperBlur);
+			const opacity = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.wallpaperOpacity);
 			const pauseOnHidden = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.pauseOnHidden);
 			const sound = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.sound);
 			const volume = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.volume);
@@ -1477,10 +1533,14 @@ window.__ModuleLoader__.load({
 			const dirs = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.dirs);
 			const [shownDim, setShownDim] = useLiveValue$1(dim);
 			const [shownBlur, setShownBlur] = useLiveValue$1(blur);
+			const [shownOpacity, setShownOpacity] = useLiveValue$1(opacity);
 			const [shownVolume, setShownVolume] = useLiveValue$1(volume);
 			const [dirInput, setDirInput] = (0, react.useState)("");
+			const [picking, setPicking] = (0, react.useState)(false);
+			const [pageCount, setPageCount] = (0, react.useState)(1);
 			const [items, setItems] = (0, react.useState)(null);
 			const [installDir, setInstallDir] = (0, react.useState)(null);
+			const [systemCount, setSystemCount] = (0, react.useState)(0);
 			const [loadError, setLoadError] = (0, react.useState)(null);
 			const [actionError, setActionError] = (0, react.useState)(null);
 			const [workingId, setWorkingId] = (0, react.useState)(null);
@@ -1503,7 +1563,9 @@ window.__ModuleLoader__.load({
 					}
 					setLoadError(null);
 					setItems(payload.wallpapers);
+					setPageCount(1);
 					setInstallDir(typeof payload.installDir === "string" ? payload.installDir : null);
+					setSystemCount(typeof payload.systemCount === "number" ? payload.systemCount : 0);
 					const selected = wallpaper.selection();
 					wallpaper.sync(resolveSelection(payload.wallpapers, selected) ?? null);
 				}).catch((error) => {
@@ -1526,6 +1588,24 @@ window.__ModuleLoader__.load({
 					}
 					after?.();
 					load();
+				});
+			};
+			/** Open the host's native folder picker and add the chosen directory. */
+			const browseDir = () => {
+				const pick = wallpaper.pickDir;
+				if (pick === void 0) return;
+				setActionError(null);
+				setPicking(true);
+				pick().then((path) => {
+					if (!mounted.current) return;
+					setPicking(false);
+					if (path === null || path.trim() === "") return;
+					wallpaper.addDir(path);
+					load();
+				}).catch((error) => {
+					if (!mounted.current) return;
+					setPicking(false);
+					setActionError(t("wallpaperDirBrowseFailed") + ": " + (error instanceof Error ? error.message : String(error)));
 				});
 			};
 			const descriptorOf = (item) => ({
@@ -1579,6 +1659,10 @@ window.__ModuleLoader__.load({
 							]
 						}) : items === null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("loading") }) : installDir !== null ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
 							t("wallpaperLibraryFound"),
+							" · ",
+							items.length
+						] }) : systemCount > 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+							t("wallpaperLibrarySystem"),
 							" · ",
 							items.length
 						] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
@@ -1686,6 +1770,30 @@ window.__ModuleLoader__.load({
 										onChanging: setShownDim,
 										onChange: (value) => {
 											wallpaper.setDim(value);
+										}
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: skin_center_module_css_default.backgroundHead,
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											className: skin_center_module_css_default.backgroundLabel,
+											children: t("wallpaperOpacity")
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+											className: skin_center_module_css_default.backgroundValue,
+											"aria-hidden": "true",
+											children: [shownOpacity, "%"]
+										})]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SliderControl, {
+										className: skin_center_module_css_default.backgroundRange,
+										min: 0,
+										max: 100,
+										step: 5,
+										value: opacity,
+										ariaValuetext: shownOpacity + "%",
+										ariaLabel: t("wallpaperOpacity"),
+										onChanging: setShownOpacity,
+										onChange: (value) => {
+											wallpaper.setOpacity(value);
 										}
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -1807,32 +1915,43 @@ window.__ModuleLoader__.load({
 							}, dir)),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 								className: skin_center_module_css_default.wallpaperDirAdd,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-									className: skin_center_module_css_default.wallpaperDirInput,
-									type: "text",
-									value: dirInput,
-									placeholder: t("wallpaperDirPlaceholder"),
-									onChange: (event) => {
-										setDirInput(event.target.value);
-									},
-									onKeyDown: (event) => {
-										if (event.key === "Enter" && dirInput.trim() !== "") {
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+										className: skin_center_module_css_default.wallpaperDirInput,
+										type: "text",
+										value: dirInput,
+										placeholder: t("wallpaperDirPlaceholder"),
+										onChange: (event) => {
+											setDirInput(event.target.value);
+										},
+										onKeyDown: (event) => {
+											if (event.key === "Enter" && dirInput.trim() !== "") {
+												wallpaper.addDir(dirInput);
+												setDirInput("");
+												load();
+											}
+										}
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: skin_center_module_css_default.button,
+										disabled: dirInput.trim() === "",
+										onClick: () => {
 											wallpaper.addDir(dirInput);
 											setDirInput("");
 											load();
-										}
-									}
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: skin_center_module_css_default.button,
-									disabled: dirInput.trim() === "",
-									onClick: () => {
-										wallpaper.addDir(dirInput);
-										setDirInput("");
-										load();
-									},
-									children: t("wallpaperDirAdd")
-								})]
+										},
+										children: t("wallpaperDirAdd")
+									}),
+									wallpaper.pickDir !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: skin_center_module_css_default.button,
+										disabled: picking,
+										title: t("wallpaperDirBrowseHint"),
+										onClick: browseDir,
+										children: picking ? t("loading") : t("wallpaperDirBrowse")
+									})
+								]
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 								className: skin_center_module_css_default.backgroundHintMuted,
@@ -1846,7 +1965,7 @@ window.__ModuleLoader__.load({
 					}),
 					items !== null && items.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: skin_center_module_css_default.wallpaperGrid,
-						children: items.map((item) => {
+						children: items.slice(0, pageCount * PAGE_SIZE).map((item) => {
 							const isApplied = item.id === activeSelection;
 							const isMounted = item.id === activeId;
 							const busy = workingId === item.id;
@@ -1934,7 +2053,7 @@ window.__ModuleLoader__.load({
 													});
 												},
 												children: t("wallpaperRemove")
-											})] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+											})] }) : item.source === "system" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(react_jsx_runtime.Fragment, {}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 												type: "button",
 												className: skin_center_module_css_default.button,
 												disabled: busy,
@@ -1950,13 +2069,25 @@ window.__ModuleLoader__.load({
 							}, item.id);
 						})
 					}),
+					items !== null && items.length > pageCount * PAGE_SIZE && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: skin_center_module_css_default.wallpaperStatus,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							className: skin_center_module_css_default.button,
+							onClick: () => {
+								setPageCount((count) => count + 1);
+							},
+							children: [
+								t("wallpaperLoadMore"),
+								" (",
+								items.length - pageCount * PAGE_SIZE,
+								")"
+							]
+						})
+					}),
 					items !== null && items.length === 0 && loadError === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 						className: skin_center_module_css_default.backgroundHintMuted,
 						children: t("wallpaperEmpty")
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: skin_center_module_css_default.backgroundHintMuted,
-						children: t("wallpaperLegal")
 					})
 				] })]
 			});
@@ -2091,7 +2222,11 @@ window.__ModuleLoader__.load({
 					setError(t("applyFailed"));
 					return;
 				}
-				run(target, () => preview.runSkin(() => switchAndDeactivateCustomTheme(target, entry)));
+				run(target, () => preview.runSkin(async () => {
+					const active = await switchAndDeactivateCustomTheme(target, entry);
+					if (wallpaper.selection() !== "") wallpaper.clearSelection();
+					return active;
+				}));
 			};
 			const tryOnCustomTheme = () => {
 				run("custom-theme", () => preview.runCustomTheme(async () => {
@@ -2894,6 +3029,7 @@ window.__ModuleLoader__.load({
 			wallpaperLoadError: "Wallpaper library failed to load",
 			wallpaperLibraryFound: "Wallpaper Engine library detected",
 			wallpaperLibraryManual: "Manual folders only (no Wallpaper Engine install found; set folders in the skin-wallpaper settings)",
+			wallpaperLibrarySystem: "macOS wallpapers detected (aerials and Desktop Pictures)",
 			wallpaperRefresh: "Refresh",
 			wallpaperMode: "Render mode",
 			wallpaperModeLive: "Live",
@@ -2904,6 +3040,7 @@ window.__ModuleLoader__.load({
 			wallpaperFitFill: "Stretch",
 			wallpaperClear: "Turn off wallpaper",
 			wallpaperDim: "Wallpaper dimming",
+			wallpaperOpacity: "Wallpaper opacity",
 			wallpaperBlur: "Wallpaper blur",
 			wallpaperPauseHidden: "Pause when window hidden",
 			wallpaperSound: "Wallpaper sound",
@@ -2915,16 +3052,20 @@ window.__ModuleLoader__.load({
 			wallpaperRemove: "Remove",
 			wallpaperUpdateAvailable: "The workshop original changed since import — update the local copy",
 			wallpaperEmpty: "No wallpapers found. Subscribe in the Wallpaper Engine workshop, or add manual folders to the skin-wallpaper settings.",
-			wallpaperLegal: "Wallpapers belong to their Workshop authors. Everything stays on this machine for personal use; nothing is uploaded or shared.",
 			wallpaperTypeVideo: "Video",
 			wallpaperTypeWeb: "Web",
 			wallpaperTypeScene: "Scene (static)",
 			wallpaperTypeApp: "Unsupported",
+			wallpaperTypeImage: "Image",
+			wallpaperLoadMore: "Load more",
 			wallpaperDirs: "Manual folders",
 			wallpaperDirsEmpty: "No manual folders yet.",
 			wallpaperDirsHint: "No Wallpaper Engine (e.g. macOS)? Point a folder at any .mp4/.webm files, a wallpaper project folder, or a folder of projects — they become your wallpaper library.",
 			wallpaperDirPlaceholder: "/path/to/wallpapers or ~/Movies/wallpapers",
 			wallpaperDirAdd: "Add",
+			wallpaperDirBrowse: "Browse…",
+			wallpaperDirBrowseHint: "Pick a folder with the system file manager (Finder / Explorer)",
+			wallpaperDirBrowseFailed: "Could not open the system folder picker — type the path manually instead",
 			customThemeTitle: "Custom theme",
 			customThemeTagline: "A separately saved palette derived from the official default theme.",
 			customThemeEdit: "Edit",
@@ -2981,6 +3122,7 @@ window.__ModuleLoader__.load({
 			wallpaperLoadError: "壁纸库加载失败",
 			wallpaperLibraryFound: "已检测到 Wallpaper Engine 壁纸库",
 			wallpaperLibraryManual: "仅手动目录（未检测到 Wallpaper Engine 安装，可在 skin-wallpaper 设置里添加目录）",
+			wallpaperLibrarySystem: "已检测到 macOS 系统壁纸（航拍与桌面图片）",
 			wallpaperRefresh: "刷新",
 			wallpaperMode: "渲染模式",
 			wallpaperModeLive: "动态",
@@ -2991,6 +3133,7 @@ window.__ModuleLoader__.load({
 			wallpaperFitFill: "拉伸铺满",
 			wallpaperClear: "关闭壁纸",
 			wallpaperDim: "壁纸暗化",
+			wallpaperOpacity: "壁纸不透明度",
 			wallpaperBlur: "壁纸模糊",
 			wallpaperPauseHidden: "窗口隐藏时暂停",
 			wallpaperSound: "壁纸声音",
@@ -3002,16 +3145,20 @@ window.__ModuleLoader__.load({
 			wallpaperRemove: "移除",
 			wallpaperUpdateAvailable: "工坊原件在导入后有更新——同步更新本地副本",
 			wallpaperEmpty: "未发现壁纸。可先在 Wallpaper Engine 创意工坊订阅，或在 skin-wallpaper 设置里添加手动目录。",
-			wallpaperLegal: "壁纸素材版权归创意工坊作者所有，仅供本机个人使用，不上传、不分享。",
 			wallpaperTypeVideo: "视频",
 			wallpaperTypeWeb: "网页",
 			wallpaperTypeScene: "场景(静态)",
 			wallpaperTypeApp: "不支持",
+			wallpaperTypeImage: "静态图片",
+			wallpaperLoadMore: "加载更多",
 			wallpaperDirs: "手动目录",
 			wallpaperDirsEmpty: "还没有手动目录。",
 			wallpaperDirsHint: "没有 Wallpaper Engine（如 macOS）？把任意 .mp4/.webm 视频、单个壁纸项目文件夹或项目合集文件夹加进来，就是你的壁纸库。",
 			wallpaperDirPlaceholder: "/path/to/wallpapers 或 ~/Movies/wallpapers",
 			wallpaperDirAdd: "添加",
+			wallpaperDirBrowse: "浏览…",
+			wallpaperDirBrowseHint: "通过系统文件管理器（访达 / 资源管理器）选择文件夹",
+			wallpaperDirBrowseFailed: "无法打开系统目录选择框——请手动输入路径",
 			customThemeTitle: "自定义主题",
 			customThemeTagline: "基于官方默认主题生成并独立保存的配色方案。",
 			customThemeEdit: "编辑",
@@ -4315,14 +4462,15 @@ window.__ModuleLoader__.load({
 		//#region src/client/index.ts
 		/** Locale namespace owned by this plugin. */
 		const NS = "skinCenter";
-		/** Required services: slots + locale (plugin card), theme (preview toggle), and settingsScope + its transport (background scrim). */
+		/** Required services: slots + locale (plugin card), theme (preview toggle), settingsScope + its transport (background scrim), and workspaces (native directory picker for wallpaper folders). */
 		const inject = [
 			"slots",
 			"locale",
 			"theme",
 			"settingsScope",
 			"connection",
-			"remote"
+			"remote",
+			"workspaces"
 		];
 		/**
 		* Register the skin-center dictionaries, the body scope attribute, and the
@@ -4330,10 +4478,16 @@ window.__ModuleLoader__.load({
 		* @param ctx - client root context.
 		*/
 		function apply(ctx) {
-			ctx.effect(() => ctx.locale.register(NS, {
-				zh,
-				en
-			}), "ui-skin-center: dictionaries");
+			ctx.effect(() => {
+				try {
+					return ctx.locale.register(NS, {
+						zh,
+						en
+					});
+				} catch {
+					return () => {};
+				}
+			}, "ui-skin-center: dictionaries");
 			ctx.effect(() => {
 				document.body.dataset.dshSkinCenter = "";
 				return () => {
@@ -4430,12 +4584,14 @@ window.__ModuleLoader__.load({
 					fit: () => wallpaper.fit(),
 					dim: () => wallpaper.dim(),
 					wallpaperBlur: () => wallpaper.wallpaperBlur(),
+					wallpaperOpacity: () => wallpaper.wallpaperOpacity(),
 					pauseOnHidden: () => wallpaper.pauseOnHidden(),
 					sound: () => wallpaper.sound(),
 					volume: () => wallpaper.volume(),
 					dirs: () => wallpaper.dirs(),
 					addDir: (dir) => wallpaper.addDir(dir),
 					removeDir: (dir) => wallpaper.removeDir(dir),
+					pickDir: () => ctx.workspaces.pickDirectory(),
 					activeId: () => wallpaper.activeId(),
 					trying: () => wallpaper.trying(),
 					subscribe: (listener) => wallpaper.subscribe(listener),
@@ -4444,6 +4600,7 @@ window.__ModuleLoader__.load({
 					setFit: (fit) => wallpaper.setFit(fit),
 					setDim: (value) => wallpaper.setDim(value),
 					setBlur: (value) => wallpaper.setBlur(value),
+					setOpacity: (value) => wallpaper.setOpacity(value),
 					setPauseOnHidden: (value) => wallpaper.setPauseOnHidden(value),
 					setSound: (value) => wallpaper.setSound(value),
 					setVolume: (value) => wallpaper.setVolume(value),
@@ -4460,14 +4617,20 @@ window.__ModuleLoader__.load({
 					dispose: () => wallpaper.dispose()
 				}
 			});
-			ctx.slots.inject("settings.section", () => ctx.slots.register({
-				name: "settings.section",
-				id: "skin-center",
-				order: 120,
-				label: () => ctx.locale.bind("skinCenter")("title"),
-				locale: "skinCenter",
-				inject: injected
-			}, SkinCenterSection));
+			ctx.slots.inject("settings.section", () => {
+				try {
+					return ctx.slots.register({
+						name: "settings.section",
+						id: "skin-center",
+						order: 120,
+						label: () => ctx.locale.bind("skinCenter")("title"),
+						locale: "skinCenter",
+						inject: injected
+					}, SkinCenterSection);
+				} catch {
+					return () => {};
+				}
+			});
 		}
 		//#endregion
 		exports.NS = NS;

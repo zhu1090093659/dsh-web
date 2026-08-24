@@ -37,7 +37,13 @@ export const inject = ['slots', 'locale', 'sessions']
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'session-id: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'session-id: dictionaries')
 
   // Sidebar foot entry. The shell declares 'sidebar.footer.action' (list kind:
   // multiple occupants may share the seat); registration is declaration-aware
@@ -51,12 +57,16 @@ export function apply(ctx: ClientContext): void {
       getSnapshot: () => sessions.list.getSnapshot(),
       subscribe: (fn: () => void) => sessions.list.subscribe(fn),
     }
-    return ctx.slots.register({
-      name: 'sidebar.footer.action',
-      id: ENTRY_ID,
-      locale: NS,
-      inject: () => ({ list }),
-    }, SessionIdEntry)
+    try {
+      return ctx.slots.register({
+        name: 'sidebar.footer.action',
+        id: ENTRY_ID,
+        locale: NS,
+        inject: () => ({ list }),
+      }, SessionIdEntry)
+    } catch {
+      return () => {}
+    }
   })
 }
 

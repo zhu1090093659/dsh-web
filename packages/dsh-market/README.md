@@ -34,7 +34,7 @@ official Plugins section are separate first-level settings entries.
 ## Config
 
 - Enable switch: the card carries its own master switch in the plugin configuration section (persisted
-  in the `dsh-market` settings namespace). Turning it off hides the catalog and keeps the switch only.
+  in the `dsh-web-ui-market` settings namespace). Turning it off hides the catalog and keeps the switch only.
 - No other configuration; the catalog data always comes from dsh-market.com.
 
 ## Known limitations
@@ -47,7 +47,7 @@ official Plugins section are separate first-level settings entries.
 
 ## Architecture
 
-- The host half (`src/index.ts`) registers the `dsh-market` settings namespace and mounts the
+- The host half (`src/index.ts`) registers the `dsh-web-ui-market` settings namespace and mounts the
   loopback-only gateway (`/api/market/installed`, `/api/market/install-skin`, `/api/market/install-pet`).
 - The installer core (`src/core/installer.ts`) fetches the manifest from `dsh-market.com` itself,
   validates every path against a conservative allowlist, and writes atomically (temp dir then rename),
@@ -62,4 +62,14 @@ official Plugins section are separate first-level settings entries.
   cannot drive them.
 - All downloaded content comes from `https://dsh-market.com` (asset URLs are rebuilt from the
   validated manifest); skin CSS is sanitized by the Skin Center runtime before it is applied.
+- The manifest (1 MiB), the per-asset file count (200) and the per-file size (200 MiB) are capped and
+  every fetch has a 30 s timeout; a manifest or download exceeding a cap or timing out fails cleanly
+  and leaves the existing asset directory untouched.
+- Every install writes `dsh-market.provenance.json` into the asset directory: the sha256 of each
+  installed file, pinned to `https://dsh-market.com`. The Skin Center uses it to run a market
+  skin's hooks only when the on-disk bytes hash-match what the market served (issue #1073);
+  hand-dropped or tampered directories keep hooks refused.
 - Plugin installs go through the same confirmation and CLI path as the Plugin manager tab.
+- The card validates manifest install sources before calling the plugin manager: only npm package
+  names (optionally pinned with a version tag) and plain https:// git URLs are accepted; ssh://,
+  file://, http:// and relative or bare-repo forms are rejected with an error and no install call.

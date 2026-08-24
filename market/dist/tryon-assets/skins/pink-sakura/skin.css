@@ -41,6 +41,7 @@ html[data-dsh-skin="pink-sakura"] body:not([data-ds-dark-theme]) {
   --dsw-alias-state-business-primary: #c23e6f;
   --dsw-alias-button-primary-fill: #e95c91;
   --dsw-alias-button-primary-hover: #d64b80;
+  --dsw-alias-label-primary-foreground: #ffffff;
   --dsw-alias-button-contrast-fill: #3b2a35;
   --dsw-alias-button-elevated-fill: #fff7fa;
   --dsw-alias-button-floating-fill: #f9e7ef;
@@ -86,6 +87,7 @@ html[data-dsh-skin="pink-sakura"] {
   --dsw-alias-state-business-primary: initial;
   --dsw-alias-button-primary-fill: initial;
   --dsw-alias-button-primary-hover: initial;
+  --dsw-alias-label-primary-foreground: initial;
   --dsw-alias-button-contrast-fill: initial;
   --dsw-alias-button-elevated-fill: initial;
   --dsw-alias-button-floating-fill: initial;
@@ -133,6 +135,7 @@ html[data-dsh-skin="pink-sakura"] body {
   --dsw-alias-state-business-primary: #c23e6f;
   --dsw-alias-button-primary-fill: #e95c91;
   --dsw-alias-button-primary-hover: #d64b80;
+  --dsw-alias-label-primary-foreground: #ffffff;
   --dsw-alias-button-contrast-fill: #3b2a35;
   --dsw-alias-button-elevated-fill: #fff7fa;
   --dsw-alias-button-floating-fill: #f9e7ef;
@@ -185,6 +188,7 @@ html[data-dsh-skin="pink-sakura"] body[data-ds-dark-theme] {
   --dsw-alias-state-business-primary: #ff7fae;
   --dsw-alias-button-primary-fill: #ff4f91;
   --dsw-alias-button-primary-hover: #ff7fae;
+  --dsw-alias-label-primary-foreground: #ffffff;
   --dsw-alias-button-contrast-fill: #f5ecf1;
   --dsw-alias-button-elevated-fill: #2a222b;
   --dsw-alias-button-floating-fill: #2a222b;

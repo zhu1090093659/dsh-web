@@ -177,6 +177,29 @@ describe('MarketCard', () => {
     await waitFor(() => expect(install).toHaveBeenCalledWith('dsh-tui'))
   })
 
+  it('refuses an invalid manifest spec: shows an error and never calls pluginManager.install', async () => {
+    const install = vi.fn(async () => ({ id: 'evil-plugin', name: 'evil', version: '1.0.0', source: { kind: 'git' as const, spec: '' }, installedAt: '', enabled: true }))
+    const list = vi.fn(async () => [])
+    const face = { isLoopback: true, install, list, uninstall: vi.fn(), status: vi.fn(), onChange: vi.fn((): (() => void) => () => {}), failures: vi.fn(), setEnabled: vi.fn() }
+    const poisoned = {
+      items: {
+        skin: [],
+        pet: [],
+        plugin: [{ id: 'evil-plugin', name: 'evil', rank: 1, repo: 'ssh://git@evil.example/repo.git' }],
+      },
+      stats: { skin: {}, pet: {}, plugin: {} },
+    }
+    render(<MarketCard {...cardProps(new FakeScope({}), {
+      remote: poisoned,
+      gateway: null,
+      pluginManager: face as unknown as import('../src/client/plugin-manager-bridge.ts').PluginManagerService,
+    })} />)
+    fireEvent.click(screen.getByRole('tab', { name: /插件/ }))
+    fireEvent.click(screen.getByRole('button', { name: /一键安装/ }))
+    await waitFor(() => expect(screen.getByText(/安装来源无效/)).toBeTruthy())
+    expect(install).not.toHaveBeenCalled()
+  })
+
   it('hides the install buttons for remote browsers (gateway null, face not loopback)', () => {
     render(<MarketCard {...cardProps(new FakeScope({}), { remote: REMOTE, gateway: null, pluginManager: null })} />)
     expect(screen.queryByRole('button', { name: /一键安装/ })).toBeNull()

@@ -30,7 +30,7 @@ const WE_API = '/api/skin-center/we'
 
 /** One wallpaper entry as served by the inventory route. */
 interface WallpaperItem extends WallpaperDescriptor {
-  source: 'workshop' | 'local' | 'imported'
+  source: 'workshop' | 'local' | 'imported' | 'system'
   playable: boolean
   updateAvailable: boolean
 }
@@ -41,6 +41,8 @@ interface InventoryPayload {
   installDir?: string | null
   total?: number
   portableCount?: number
+  /** macOS-managed wallpapers (aerials + Desktop Pictures) in the list. */
+  systemCount?: number
   wallpapers?: WallpaperItem[]
   error?: string
 }
@@ -62,14 +64,19 @@ async function postWe(path: string, id: string): Promise<string | null> {
 }
 
 /** The type badge copy key of one wallpaper. */
-function typeKey(item: WallpaperItem): 'wallpaperTypeVideo' | 'wallpaperTypeWeb' | 'wallpaperTypeScene' | 'wallpaperTypeApp' {
+function typeKey(item: WallpaperItem): 'wallpaperTypeVideo' | 'wallpaperTypeWeb' | 'wallpaperTypeScene' | 'wallpaperTypeApp' | 'wallpaperTypeImage' {
   switch (item.type) {
     case 'video': return 'wallpaperTypeVideo'
     case 'web': return 'wallpaperTypeWeb'
     case 'scene': return 'wallpaperTypeScene'
+    case 'image': return 'wallpaperTypeImage'
     default: return 'wallpaperTypeApp'
   }
 }
+
+/** Wallpaper grid page size: the grid grows one page per Load-more click
+ * instead of mounting every thumbnail at once. */
+const PAGE_SIZE = 12
 
 /** Render the Wallpaper Engine section of the skin-center card. */
 export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>['t']; wallpaper: WallpaperHandle }): ReactNode {
@@ -79,6 +86,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
   const fit = useSyncExternalStore(wallpaper.subscribe, wallpaper.fit)
   const dim = useSyncExternalStore(wallpaper.subscribe, wallpaper.dim)
   const blur = useSyncExternalStore(wallpaper.subscribe, wallpaper.wallpaperBlur)
+  const opacity = useSyncExternalStore(wallpaper.subscribe, wallpaper.wallpaperOpacity)
   const pauseOnHidden = useSyncExternalStore(wallpaper.subscribe, wallpaper.pauseOnHidden)
   const sound = useSyncExternalStore(wallpaper.subscribe, wallpaper.sound)
   const volume = useSyncExternalStore(wallpaper.subscribe, wallpaper.volume)
@@ -87,11 +95,15 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
   const dirs = useSyncExternalStore(wallpaper.subscribe, wallpaper.dirs)
   const [shownDim, setShownDim] = useLiveValue(dim)
   const [shownBlur, setShownBlur] = useLiveValue(blur)
+  const [shownOpacity, setShownOpacity] = useLiveValue(opacity)
   const [shownVolume, setShownVolume] = useLiveValue(volume)
   const [dirInput, setDirInput] = useState('')
+  const [picking, setPicking] = useState(false)
+  const [pageCount, setPageCount] = useState(1)
 
   const [items, setItems] = useState<WallpaperItem[] | null>(null)
   const [installDir, setInstallDir] = useState<string | null>(null)
+  const [systemCount, setSystemCount] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [workingId, setWorkingId] = useState<string | null>(null)
@@ -114,7 +126,10 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
         }
         setLoadError(null)
         setItems(payload.wallpapers)
+        // A fresh inventory restarts the paged grid from the first page.
+        setPageCount(1)
         setInstallDir(typeof payload.installDir === 'string' ? payload.installDir : null)
+        setSystemCount(typeof payload.systemCount === 'number' ? payload.systemCount : 0)
         const selected = wallpaper.selection()
         wallpaper.sync(resolveSelection(payload.wallpapers, selected) ?? null)
       })
@@ -141,6 +156,29 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
       after?.()
       load()
     })
+  }
+
+  /** Open the host's native folder picker and add the chosen directory. */
+  const browseDir = (): void => {
+    const pick = wallpaper.pickDir
+    if (pick === undefined) return
+    setActionError(null)
+    setPicking(true)
+    void pick()
+      .then(path => {
+        if (!mounted.current) return
+        setPicking(false)
+        if (path === null || path.trim() === '') return // cancelled
+        wallpaper.addDir(path)
+        load()
+      })
+      .catch((error: unknown) => {
+        // Non-loopback (paired remote) or a host without the native
+        // capability: the manual input stays the fallback.
+        if (!mounted.current) return
+        setPicking(false)
+        setActionError(t('wallpaperDirBrowseFailed') + ': ' + (error instanceof Error ? error.message : String(error)))
+      })
   }
 
   const descriptorOf = (item: WallpaperItem): WallpaperDescriptor => ({
@@ -185,7 +223,9 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                 ? <span>{t('loading')}</span>
                 : installDir !== null
                   ? <span>{t('wallpaperLibraryFound')} · {items.length}</span>
-                  : <span>{t('wallpaperLibraryManual')} · {items.length}</span>}
+                  : systemCount > 0
+                    ? <span>{t('wallpaperLibrarySystem')} · {items.length}</span>
+                    : <span>{t('wallpaperLibraryManual')} · {items.length}</span>}
             <button type="button" className={css.button} onClick={load}>{t('wallpaperRefresh')}</button>
           </div>
 
@@ -254,6 +294,21 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                   ariaLabel={t('wallpaperDim')}
                   onChanging={setShownDim}
                   onChange={(value) => { wallpaper.setDim(value) }}
+                />
+                <div className={css.backgroundHead}>
+                  <span className={css.backgroundLabel}>{t('wallpaperOpacity')}</span>
+                  <span className={css.backgroundValue} aria-hidden="true">{shownOpacity}%</span>
+                </div>
+                <SliderControl
+                  className={css.backgroundRange}
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={opacity}
+                  ariaValuetext={shownOpacity + '%'}
+                  ariaLabel={t('wallpaperOpacity')}
+                  onChanging={setShownOpacity}
+                  onChange={(value) => { wallpaper.setOpacity(value) }}
                 />
                 <div className={css.backgroundHead}>
                   <span className={css.backgroundLabel}>{t('wallpaperBlur')}</span>
@@ -358,6 +413,17 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
               >
                 {t('wallpaperDirAdd')}
               </button>
+              {wallpaper.pickDir !== undefined && (
+                <button
+                  type="button"
+                  className={css.button}
+                  disabled={picking}
+                  title={t('wallpaperDirBrowseHint')}
+                  onClick={browseDir}
+                >
+                  {picking ? t('loading') : t('wallpaperDirBrowse')}
+                </button>
+              )}
             </span>
             <p className={css.backgroundHintMuted}>{t('wallpaperDirsHint')}</p>
           </div>
@@ -366,7 +432,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
 
           {items !== null && items.length > 0 && (
             <div className={css.wallpaperGrid}>
-              {items.map(item => {
+              {items.slice(0, pageCount * PAGE_SIZE).map(item => {
                 const isApplied = item.id === activeSelection
                 const isMounted = item.id === activeId
                 const busy = workingId === item.id
@@ -437,6 +503,10 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
                             {t('wallpaperRemove')}
                           </button>
                         </>
+                      ) : item.source === 'system' ? (
+                        // macOS-managed wallpapers are already local and
+                        // their folder is shared — nothing to import.
+                        <></>
                       ) : (
                         <button
                           type="button"
@@ -454,10 +524,20 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
               })}
             </div>
           )}
+          {items !== null && items.length > pageCount * PAGE_SIZE && (
+            <div className={css.wallpaperStatus}>
+              <button
+                type="button"
+                className={css.button}
+                onClick={() => { setPageCount((count) => count + 1) }}
+              >
+                {t('wallpaperLoadMore')} ({items.length - pageCount * PAGE_SIZE})
+              </button>
+            </div>
+          )}
           {items !== null && items.length === 0 && loadError === null && (
             <p className={css.backgroundHintMuted}>{t('wallpaperEmpty')}</p>
           )}
-          <p className={css.backgroundHintMuted}>{t('wallpaperLegal')}</p>
         </>
       )}
     </div>

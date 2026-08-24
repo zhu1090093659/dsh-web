@@ -6,7 +6,7 @@
  * same-origin fence on POST routes.
  */
 import { createServer, request as httpRequest, type Server } from 'node:http'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { AddressInfo } from 'node:net'
@@ -14,7 +14,7 @@ import { Readable } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFile } from 'node:fs/promises'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
-import { TexFormat } from '../src/pkg-extract.ts'
+import { TexFormat, decodePngToRgba } from '../src/pkg-extract.ts'
 import { makeWeRoutes, SCENE_EXTRACTOR_VERSION, WE_API_PREFIX } from '../src/we-routes.ts'
 
 // The probe path reads scene payloads through node:fs/promises; spy on it so
@@ -22,6 +22,18 @@ import { makeWeRoutes, SCENE_EXTRACTOR_VERSION, WE_API_PREFIX } from '../src/we-
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>()
   return { ...actual, readFile: vi.fn(actual.readFile) }
+})
+
+// The inventory cache must serve repeated /inventory calls without re-reading
+// project.json or re-listing roots; wrap the sync fs readers so the cache
+// tests can assert exactly when a full scan happens.
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>()
+  return {
+    ...actual,
+    readFileSync: vi.fn(actual.readFileSync),
+    readdirSync: vi.fn(actual.readdirSync),
+  }
 })
 
 /** Minimal 1x1 RGBA8888 TEX (container v2, uncompressed) for scene decode tests. */
@@ -62,6 +74,27 @@ const tex64Red = ((): Buffer => {
     ...nstr('TEXB0002'), ...i32(1),
     ...i32(1), ...i32(64), ...i32(64),
     ...i32(0), ...i32(px), ...i32(px), ...pixels,
+  ])
+})()
+
+/** Minimal 4x4 DXT1 TEX (one all-red block) for the /media .tex -> PNG path. */
+const texDxt1Red = ((): Buffer => {
+  const enc = new TextEncoder()
+  const nstr = (s: string): number[] => [...enc.encode(s), 0]
+  const i32 = (v: number): number[] => {
+    const b = new DataView(new ArrayBuffer(4))
+    b.setInt32(0, v, true)
+    return [...new Uint8Array(b.buffer)]
+  }
+  return Buffer.from([
+    ...nstr('TEXV0005'), ...nstr('TEXI0001'),
+    ...i32(TexFormat.DXT1), ...i32(0),
+    ...i32(4), ...i32(4), ...i32(4), ...i32(4), ...i32(0),
+    ...nstr('TEXB0002'), ...i32(1),
+    ...i32(1), ...i32(4), ...i32(4),
+    ...i32(0), ...i32(8), ...i32(8),
+    // c0 = 0xF800 (red), c1 = 0x07E0 (green), all 16 indices select c0
+    0x00, 0xf8, 0xe0, 0x07, 0x00, 0x00, 0x00, 0x00,
   ])
 })()
 
@@ -145,6 +178,26 @@ async function call(
     })
     req.on('error', reject)
     if (payload !== undefined) req.write(payload)
+    req.end()
+  })
+}
+
+/** Binary-safe HTTP GET for PNG payload assertions (call() decodes utf8). */
+async function callRaw(
+  method: string,
+  path: string,
+  headers: Record<string, string> = {},
+): Promise<{ status: number; body: Buffer; headers: Record<string, unknown> }> {
+  return await new Promise((resolve, reject) => {
+    const req = httpRequest(
+      { host: '127.0.0.1', port, path, method, headers: { connection: 'close', ...headers } },
+      (response) => {
+        const chunks: Buffer[] = []
+        response.on('data', (chunk) => { chunks.push(chunk as Buffer) })
+        response.on('end', () => resolve({ status: response.statusCode ?? 0, body: Buffer.concat(chunks), headers: response.headers }))
+      },
+    )
+    req.on('error', reject)
     req.end()
   })
 }
@@ -395,6 +448,32 @@ describe('media and preview', () => {
     const res = await call('GET', url)
     expect(res.status).toBe(200)
     expect(res.raw).toBe('FAKE-VIDEO-BYTES')
+  })
+
+  it('converts .tex wallpapers to PNG through /media (decodeTex path)', async () => {
+    makeProject(join(library, '444'), { title: 'TexArt', type: 'video', file: 'art.tex' }, { 'art.tex': texDxt1Red })
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const tex = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '444')
+    expect(String(tex?.videoUrl)).toContain(WE_API_PREFIX + '/media/')
+    const res = await callRaw('GET', String(tex?.videoUrl))
+    expect(res.status).toBe(200)
+    expect(String(res.headers['content-type'])).toBe('image/png')
+    expect(String(res.headers['cache-control'])).toContain('max-age=86400')
+    const decoded = decodePngToRgba(new Uint8Array(res.body))
+    expect(decoded.width).toBe(4)
+    expect(decoded.height).toBe(4)
+    expect([...decoded.rgba.slice(0, 4)]).toEqual([255, 0, 0, 255])
+  })
+
+  it('serves raw .tex bytes when decodeTex cannot decode the format (fallback preserved)', async () => {
+    makeProject(join(library, '445'), { title: 'TexBc7', type: 'video', file: 'art.tex' }, { 'art.tex': texBc7 })
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const tex = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '445')
+    expect(String(tex?.videoUrl)).toContain(WE_API_PREFIX + '/media/')
+    const res = await callRaw('GET', String(tex?.videoUrl))
+    expect(res.status).toBe(200)
+    expect(String(res.headers['content-type'])).toBe('application/octet-stream')
+    expect(res.body.equals(texBc7)).toBe(true)
   })
 })
 
@@ -739,5 +818,303 @@ describe('scene-probe cache (#817)', () => {
     expect(keys.length).toBe(256)
     expect(keys.filter(k => k.includes('/s000/') || k.includes('/s001/'))).toHaveLength(0)
     expect(keys.some(k => k.includes('/s257/'))).toBe(true)
+  })
+})
+
+describe('sandboxed wallpaper loads (T1-1)', () => {
+  it('serves web assets and the shim to sandboxed frames (cross-site Sec-Fetch-Site, Origin null)', async () => {
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const web = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '222')
+    const headers = { 'sec-fetch-site': 'cross-site', origin: 'null' }
+    const html = await call('GET', String(web?.webUrl), { headers })
+    expect(html.status).toBe(200)
+    expect(String(html.headers['access-control-allow-origin'])).toBe('null')
+    expect(html.raw).toContain(WE_API_PREFIX + '/shim.js')
+    const js = await call('GET', String(web?.webUrl) + 'app.js', { headers })
+    expect(js.status).toBe(200)
+    expect(String(js.headers['access-control-allow-origin'])).toBe('null')
+    expect(js.raw).toBe('console.log(1)')
+    const shim = await call('GET', WE_API_PREFIX + '/shim.js', { headers })
+    expect(shim.status).toBe(200)
+    expect(String(shim.headers['access-control-allow-origin'])).toBe('null')
+  })
+
+  it('serves scene manifest and resources to the sandboxed player (Origin null, ACAO null)', async () => {
+    makeProject(join(library, 'sbox'), { title: 'Sbox Scene', type: 'scene', file: 'scene.json' }, {
+      'scene.json': JSON.stringify({ objects: [{ name: 'sky', image: 'models/sky.json' }] }),
+      'models/sky.json': JSON.stringify({ material: 'materials/sky.json' }),
+      'materials/sky.json': JSON.stringify({ passes: [{ textures: ['materials/sky.tex'] }] }),
+    })
+    mkdirSync(join(library, 'sbox', 'materials'), { recursive: true })
+    writeFileSync(join(library, 'sbox', 'materials', 'sky.tex'), tex64Red)
+    const probe = await call('GET', WE_API_PREFIX + '/scene-probe?id=sbox')
+    expect(probe.status).toBe(200)
+    const sceneUrl = String(probe.body.sceneUrl)
+    expect(sceneUrl).toContain(WE_API_PREFIX + '/scene-runtime/')
+    const token = sceneUrl.split('/').pop()
+    const headers = { 'sec-fetch-site': 'cross-site', origin: 'null' }
+    const manifest = await call('GET', WE_API_PREFIX + '/scene-manifest/' + token, { headers })
+    expect(manifest.status).toBe(200)
+    expect(manifest.body.ok).toBe(true)
+    expect(String(manifest.headers['access-control-allow-origin'])).toBe('null')
+    expect(String(manifest.headers['referrer-policy'])).toBe('no-referrer')
+    const resource = await call('GET', WE_API_PREFIX + '/scene-resource/' + token + '/materials/sky.tex', { headers })
+    expect(resource.status).toBe(200)
+    expect(String(resource.headers['access-control-allow-origin'])).toBe('null')
+  })
+
+  it('still rejects foreign real origins on the content routes', async () => {
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const web = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '222')
+    const foreign = { origin: 'http://evil.example' }
+    expect((await call('GET', String(web?.webUrl), { headers: foreign })).status).toBe(403)
+    expect((await call('GET', WE_API_PREFIX + '/shim.js', { headers: foreign })).status).toBe(403)
+  })
+
+  it('keeps the strict same-origin fence on GUI-side routes', async () => {
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const video = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '111')
+    const cross = { 'sec-fetch-site': 'cross-site' }
+    expect((await call('GET', String(video?.videoUrl), { headers: cross })).status).toBe(403)
+    expect((await call('GET', WE_API_PREFIX + '/inventory', { headers: cross })).status).toBe(403)
+    expect((await call('GET', WE_API_PREFIX + '/scene-probe?id=111', { headers: cross })).status).toBe(403)
+  })
+})
+
+describe('inventory cache (#T2-10)', () => {
+  const readsEnding = (name: string): number =>
+    (vi.mocked(readFileSync) as unknown as { mock: { calls: unknown[][] } }).mock.calls
+      .filter((call) => String(call[0]).endsWith(name)).length
+
+  it('serves repeated inventories from the cache and re-scans when the library changes', async () => {
+    // Steady state: the store .cache dir exists (the routes create it on
+    // first use and it persists; a fresh store would see one extra scan
+    // while the .cache dir appears).
+    mkdirSync(join(store, '.cache'), { recursive: true })
+    ;(vi.mocked(readFileSync) as unknown as { mockClear: () => void }).mockClear()
+    ;(vi.mocked(readdirSync) as unknown as { mockClear: () => void }).mockClear()
+    const first = await call('GET', WE_API_PREFIX + '/inventory')
+    expect(first.status).toBe(200)
+    expect(first.body.wallpapers as Array<Record<string, unknown>>).toHaveLength(3)
+    // The first request performs the full scan: one project.json per project.
+    expect(readsEnding('project.json')).toBeGreaterThanOrEqual(3)
+
+    ;(vi.mocked(readFileSync) as unknown as { mockClear: () => void }).mockClear()
+    ;(vi.mocked(readdirSync) as unknown as { mockClear: () => void }).mockClear()
+    const second = await call('GET', WE_API_PREFIX + '/inventory')
+    expect(second.status).toBe(200)
+    expect(second.body).toEqual(first.body)
+    // Cache hit: no project.json read and no root listing.
+    expect(readsEnding('project.json')).toBe(0)
+    expect((vi.mocked(readdirSync) as unknown as { mock: { calls: unknown[][] } }).mock.calls).toHaveLength(0)
+
+    // A new project under the library root changes the root mtime: re-scan.
+    makeProject(join(library, '444'), { title: 'New', type: 'video', file: 'v.mp4' }, { 'v.mp4': 'x' })
+    ;(vi.mocked(readFileSync) as unknown as { mockClear: () => void }).mockClear()
+    const third = await call('GET', WE_API_PREFIX + '/inventory')
+    expect(third.status).toBe(200)
+    expect((third.body.wallpapers as Array<Record<string, unknown>>).some(w => w.id === '444')).toBe(true)
+    expect(readsEnding('project.json')).toBeGreaterThanOrEqual(4)
+  })
+
+  it('makes an import visible even when the store mtime does not advance (write-through invalidation)', async () => {
+    // Prime the cache with an inventory made before the import.
+    mkdirSync(store, { recursive: true })
+    const storeMtime = Math.round(statSync(store).mtimeMs)
+    utimesSync(store, new Date(storeMtime), new Date(storeMtime))
+    const before = await call('GET', WE_API_PREFIX + '/inventory')
+    expect(before.status).toBe(200)
+    expect((before.body.wallpapers as Array<Record<string, unknown>>)).toHaveLength(3)
+
+    const imported = await call('POST', WE_API_PREFIX + '/import', { body: { id: '111' } })
+    expect(imported.status).toBe(200)
+    // Roll the store directory mtime back to the pre-import value: only the
+    // explicit write-through invalidation (not the mtime fingerprint) can
+    // make the next inventory see the imported copy.
+    utimesSync(store, new Date(storeMtime), new Date(storeMtime))
+    const after = await call('GET', WE_API_PREFIX + '/inventory')
+    expect((after.body.wallpapers as Array<Record<string, unknown>>).map(w => w.id)).toContain('imported/111')
+  })
+
+  it('invalidates the cache after reimport and remove', async () => {
+    await call('POST', WE_API_PREFIX + '/import', { body: { id: '111' } })
+    const reimported = await call('POST', WE_API_PREFIX + '/reimport', { body: { id: 'imported/111' } })
+    expect(reimported.status).toBe(200)
+    const afterReimport = await call('GET', WE_API_PREFIX + '/inventory')
+    expect((afterReimport.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === 'imported/111')).toBeDefined()
+
+    const removed = await call('POST', WE_API_PREFIX + '/remove', { body: { id: 'imported/111' } })
+    expect(removed.status).toBe(200)
+    const afterRemove = await call('GET', WE_API_PREFIX + '/inventory')
+    expect((afterRemove.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === 'imported/111')).toBeUndefined()
+  })
+
+  it('re-scans when the manual library dirs setting changes', async () => {
+    await new Promise<void>((resolve, reject) => server.close(e => (e ? reject(e) : resolve())))
+    const second = join(root, 'second')
+    makeProject(join(second, '777'), { title: 'Second', type: 'video', file: 's.mp4' }, { 's.mp4': 'x' })
+    let dirs = [library]
+    const routes = makeWeRoutes({ getConfig: () => ({ weLibraryDirs: dirs }), storeDir: store, autoDetect: false })
+    await serve(routes)
+    const before = await call('GET', WE_API_PREFIX + '/inventory')
+    expect((before.body.wallpapers as Array<Record<string, unknown>>)).toHaveLength(3)
+    dirs = [second]
+    const after = await call('GET', WE_API_PREFIX + '/inventory')
+    expect((after.body.wallpapers as Array<Record<string, unknown>>).map(w => w.id)).toEqual(['777'])
+  })
+})
+
+/** Raw-string POST for body-contract cases (call() serializes JSON objects). */
+async function postRawText(
+  path: string,
+  payload: string,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  return await new Promise((resolve, reject) => {
+    const req = httpRequest(
+      {
+        host: '127.0.0.1',
+        port,
+        path,
+        method: 'POST',
+        headers: {
+          connection: 'close',
+          'content-type': 'application/json',
+          'content-length': String(Buffer.byteLength(payload)),
+        },
+      },
+      (response) => {
+        const chunks: Buffer[] = []
+        response.on('data', (chunk) => { chunks.push(chunk as Buffer) })
+        response.on('end', () => {
+          const raw = Buffer.concat(chunks).toString('utf8')
+          let body: Record<string, unknown> = {}
+          try { body = JSON.parse(raw) as Record<string, unknown> } catch { /* non-JSON */ }
+          resolve({ status: response.statusCode ?? 0, body })
+        })
+      },
+    )
+    req.on('error', reject)
+    if (payload !== '') req.write(payload)
+    req.end()
+  })
+}
+
+describe('import POST body contract (shared readJsonBody migration)', () => {
+  it('answers 400 invalid-body to a body that is not JSON (was 500)', async () => {
+    const res = await postRawText(WE_API_PREFIX + '/import', 'not-json')
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ ok: false, error: 'invalid-body' })
+  })
+
+  it('answers 400 invalid-body to an empty POST body (was 400 bad-id)', async () => {
+    const res = await postRawText(WE_API_PREFIX + '/import', '')
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ ok: false, error: 'invalid-body' })
+  })
+
+  it('destroys the connection on an over-limit body instead of answering JSON', async () => {
+    await expect(
+      postRawText(WE_API_PREFIX + '/import', '{"id":"' + 'x'.repeat(64 * 1024) + '"}'),
+    ).rejects.toThrow()
+  })
+})
+
+
+describe('macOS system wallpapers', () => {
+  /** Build temp aerial + Desktop Pictures roots and serve routes over them. */
+  async function serveMacos(convertImage?: (src: string, dest: string) => Promise<void>): Promise<{ aerialRoot: string; pictureRoot: string }> {
+    const aerialRoot = join(root, 'com.apple.wallpaper', 'aerials')
+    const pictureRoot = join(root, 'Desktop Pictures')
+    mkdirSync(join(aerialRoot, 'videos'), { recursive: true })
+    mkdirSync(join(aerialRoot, 'thumbnails'), { recursive: true })
+    mkdirSync(join(aerialRoot, 'manifest'), { recursive: true })
+    // Magic bytes must pass the scanner's format validation.
+    writeFileSync(join(aerialRoot, 'videos', 'AAAA-1.mov'), Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypqt  '), Buffer.from('FAKE-AERIAL')]))
+    writeFileSync(join(aerialRoot, 'thumbnails', 'AAAA-1.png'), 'FAKE-THUMB', 'utf8')
+    writeFileSync(join(aerialRoot, 'manifest', 'entries.json'), JSON.stringify({
+      assets: [{ id: 'AAAA-1', accessibilityLabel: 'Sonoma from Above' }],
+    }), 'utf8')
+    mkdirSync(pictureRoot, { recursive: true })
+    writeFileSync(join(pictureRoot, 'Tahoe Day.heic'), Buffer.concat([Buffer.from([0, 0, 0, 0x1c]), Buffer.from('ftypheic'), Buffer.from('FAKE-HEIC')]))
+    writeFileSync(join(pictureRoot, 'Plain Photo.jpg'), Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from('FAKE-JPEG')]))
+    await new Promise<void>((resolve, reject) => server.close(e => (e ? reject(e) : resolve())))
+    await serve(makeWeRoutes({
+      getConfig: () => ({}),
+      storeDir: store,
+      autoDetect: false,
+      macosRoots: { aerials: [aerialRoot], pictures: [pictureRoot] },
+      convertImage,
+      platform: 'darwin',
+    }))
+    return { aerialRoot, pictureRoot }
+  }
+
+  it('lists aerials and Desktop Pictures as system entries with titles and count', async () => {
+    await serveMacos()
+    const res = await call('GET', WE_API_PREFIX + '/inventory')
+    expect(res.status).toBe(200)
+    expect(res.body.systemCount).toBe(3)
+    const wallpapers = res.body.wallpapers as Array<Record<string, unknown>>
+    const aerial = wallpapers.find(w => w.id === 'macos-aerial/AAAA-1')
+    expect(aerial?.title).toBe('Sonoma from Above')
+    expect(aerial?.type).toBe('video')
+    expect(aerial?.source).toBe('system')
+    expect(String(aerial?.videoUrl)).toContain(WE_API_PREFIX + '/media/')
+    expect(String(aerial?.previewUrl)).toContain(WE_API_PREFIX + '/preview/')
+    const heic = wallpapers.find(w => w.id === 'macos-image/Tahoe Day')
+    expect(heic?.type).toBe('image')
+    expect(heic?.source).toBe('system')
+    expect(heic?.playable).toBe(false)
+    expect(String(heic?.previewUrl)).toContain(WE_API_PREFIX + '/image/')
+    const jpg = wallpapers.find(w => w.id === 'macos-image/Plain Photo')
+    expect(jpg?.type).toBe('image')
+    expect(String(jpg?.previewUrl)).toContain(WE_API_PREFIX + '/image/')
+  })
+
+  it('converts heic through the injected converter once and serves the cache', async () => {
+    let conversions = 0
+    await serveMacos(async (_src, dest) => {
+      conversions++
+      writeFileSync(dest, 'JPEG-BYTES', 'utf8')
+    })
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const heic = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === 'macos-image/Tahoe Day')
+    const first = await callRaw('GET', String(heic?.previewUrl))
+    expect(first.status).toBe(200)
+    expect(first.headers['content-type']).toBe('image/jpeg')
+    expect(first.body.toString('utf8')).toBe('JPEG-BYTES')
+    const second = await callRaw('GET', String(heic?.previewUrl))
+    expect(second.status).toBe(200)
+    expect(conversions).toBe(1)
+  })
+
+  it('rejects import of macOS-managed entries', async () => {
+    await serveMacos()
+    const res = await call('POST', WE_API_PREFIX + '/import', { body: { id: 'macos-aerial/AAAA-1' } })
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ ok: false, error: 'not-importable' })
+  })
+
+  it('serves jpg directly without invoking the converter', async () => {
+    let conversions = 0
+    await serveMacos(async () => { conversions++ })
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const jpg = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === 'macos-image/Plain Photo')
+    const res = await callRaw('GET', String(jpg?.previewUrl))
+    expect(res.status).toBe(200)
+    expect(res.headers['content-type']).toBe('image/jpeg')
+    expect(res.body.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]))
+    expect(conversions).toBe(0)
+  })
+
+  it('answers 400 for a non-image token on the image route', async () => {
+    // The default beforeEach library holds sea.mp4: its media token exists
+    // but the image route only serves or converts image formats.
+    const inventory = await call('GET', WE_API_PREFIX + '/inventory')
+    const video = (inventory.body.wallpapers as Array<Record<string, unknown>>).find(w => w.id === '111')
+    const token = String(video?.videoUrl).split('/media/')[1]
+    const res = await call('GET', WE_API_PREFIX + '/image/' + token)
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ ok: false, error: 'not-an-image' })
   })
 })

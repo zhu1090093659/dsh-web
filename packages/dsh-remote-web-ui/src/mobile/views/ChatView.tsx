@@ -167,7 +167,7 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
   const [mobileEnterToSend, setMobileEnterToSend] = useState(true)
   /** Whether the assistant is currently generating (turn/start..turn/end). */
   const [running, setRunning] = useState(false)
-  /** Whether a stop request is in flight (the "停止" button). */
+  /** Whether a stop request is in flight (guards the composer's stop button). */
   const [stopping, setStopping] = useState(false)
   /** Pending tool approvals awaiting user decision (#1025). */
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([])
@@ -443,7 +443,12 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
     )
   }, [input, sending, session.sessionId])
 
-  /** Stop the session's active turn (the "停止" button next to the output indicator). */
+  /**
+   * Stop the active turn (desktop parity: the composer's primary button
+   * becomes a stop button while running). The turn/end frame arriving over
+   * mux flips the button back; a failed request surfaces through the chat
+   * error line.
+   */
   const stopTurn = useCallback(() => {
     if (stopping) return
     setStopping(true)
@@ -564,12 +569,13 @@ export function ChatView({ session, mux, onBack }: ChatViewProps) {
         />
         <button
           type="button"
-          className="chat-send"
+          className={running ? 'chat-send chat-send-stop' : 'chat-send'}
+          {...(running ? { 'aria-label': stopping ? '停止中' : '停止' } : {})}
           disabled={running ? stopping : sending || input.trim() === ''}
           onClick={() => { if (running) void stopTurn(); else void send() }}
         >
           {running ? (
-            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
               <rect x="3" y="3" width="10" height="10" rx="3" fill="currentColor" />
             </svg>
           ) : sending ? '发送中…' : '发送'}
@@ -735,6 +741,17 @@ function ToolDisclosure({ tools }: { tools: ToolCallInfo[] }) {
 }
 
 /**
+ * Minimum interval between full markdown re-parses of a live (pending)
+ * assistant message. Every streamed chunk replaces the message object, and
+ * re-parsing the whole accumulated text per chunk turns a long reply into
+ * O(n^2) work on mobile. Pending text keeps the last parsed result visible
+ * and re-parses at most once per interval; the moment the turn closes the
+ * final text parses immediately, so terminal messages render exactly as
+ * before.
+ */
+export const STREAM_RENDER_INTERVAL_MS = 120
+
+/**
  * Assistant text rendered as GFM markdown (escape-first, protocol
  * allow-list — see markdown.ts). Long replies collapse by clamping the
  * rendered block height instead of slicing the source, so half-cut code
@@ -743,10 +760,59 @@ function ToolDisclosure({ tools }: { tools: ToolCallInfo[] }) {
  */
 function MarkdownText({ text, pending }: { text: string; pending: boolean }) {
   const [open, setOpen] = useState(false)
-  const html = useMemo(() => (pending ? '' : renderMarkdown(text)), [pending, text])
-  // Local patch (2026-08-23): 折叠只看 finalize 后的长消息。流式输出期间不折叠
-  // （45vh + overflow:hidden 会把新内容藏起来且不可滚动，手机上看不到"输出中"
-  // 的自然段/表格）；结束后超过 LONG_TEXT_LIMIT 才折叠，附"展开全文"按钮。
+  const [html, setHtml] = useState<string>(() => renderMarkdown(text))
+  /** Text of the last render actually applied to `html`. */
+  const renderedTextRef = useRef(text)
+  /** Newest streamed text, read by the trailing render at fire time. */
+  const latestTextRef = useRef(text)
+  /** Timestamp of the last applied parse (throttle window start). */
+  const lastRenderAtRef = useRef(performance.now())
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  // Throttled parse for a live stream: skip parses while the newest text is
+  // already rendered, parse immediately once the throttle window elapsed,
+  // otherwise schedule one trailing render that picks up the newest text.
+  useEffect(() => {
+    latestTextRef.current = text
+    if (!pending) {
+      // Turn closed: terminal messages are never throttled, so cancel any
+      // scheduled stream render and parse the final text immediately.
+      if (timerRef.current !== undefined) {
+        clearTimeout(timerRef.current)
+        timerRef.current = undefined
+      }
+      if (text === renderedTextRef.current) return
+      lastRenderAtRef.current = performance.now()
+      renderedTextRef.current = text
+      setHtml(renderMarkdown(text))
+      return
+    }
+    if (text === renderedTextRef.current) return
+    const elapsed = performance.now() - lastRenderAtRef.current
+    if (elapsed >= STREAM_RENDER_INTERVAL_MS) {
+      lastRenderAtRef.current = performance.now()
+      renderedTextRef.current = text
+      setHtml(renderMarkdown(text))
+      return
+    }
+    if (timerRef.current === undefined) {
+      timerRef.current = setTimeout(() => {
+        timerRef.current = undefined
+        lastRenderAtRef.current = performance.now()
+        renderedTextRef.current = latestTextRef.current
+        setHtml(renderMarkdown(latestTextRef.current))
+      }, STREAM_RENDER_INTERVAL_MS - elapsed)
+    }
+  }, [text, pending])
+
+  // Cancel the trailing stream render if the row unmounts mid-stream.
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== undefined) clearTimeout(timerRef.current)
+    }
+  }, [])
+  // Local patch (2026-08-23): 流式输出期间不折叠（45vh + overflow:hidden 会把
+  // 新内容藏起来且不可滚动）；结束后超过 LONG_TEXT_LIMIT 才折叠。
   const long = !pending && text.length > LONG_TEXT_LIMIT
   const collapsed = long && !open
   return (

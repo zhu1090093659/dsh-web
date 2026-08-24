@@ -6,6 +6,14 @@ export type ProfilePhase = 'idle' | 'starting' | 'healthy' | 'degraded' | 'stopp
 export type IncidentPhase = 'opened' | 'collecting' | 'rescue-starting' | 'rescue-active' | 'diagnosing' | 'plan-ready' | 'repairing' | 'candidate-testing' | 'awaiting-confirmation' | 'promoting' | 'recovered' | 'rolled-back' | 'unresolved'
 export type IncidentKind = 'boot-failure' | 'process-crash' | 'heartbeat-timeout' | 'http-failure' | 'client-failure' | 'dependency-failure' | 'configuration-failure'
 
+/** Effective Supervisor policy written by the host and enforced out of process. */
+export interface DoctorPolicy {
+  fullProtection: boolean
+  autoRepair: boolean
+}
+
+export const DEFAULT_DOCTOR_POLICY: DoctorPolicy = { fullProtection: true, autoRepair: false }
+
 export interface ProfileIdentity {
   id: string
   dshHome: string
@@ -48,10 +56,13 @@ export interface SupervisorSnapshot {
   incidents: IncidentRecord[]
   updatedAt: string
   degradedReason?: string
+  /** Present when this Supervisor version enforces host policy. */
+  policy?: DoctorPolicy
 }
 
 export type SupervisorRequest =
   | { protocol: typeof DOCTOR_PROTOCOL_VERSION; type: 'status' }
+  | { protocol: typeof DOCTOR_PROTOCOL_VERSION; type: 'policy'; policy: DoctorPolicy }
   | { protocol: typeof DOCTOR_PROTOCOL_VERSION; type: 'heartbeat'; profileId: string; runId: string; pid: number; phase: 'booting' | 'ready' | 'degraded'; at: string; webUrl?: string; configFingerprint?: string }
   | { protocol: typeof DOCTOR_PROTOCOL_VERSION; type: 'client-failure'; profileId: string; runId?: string; at: string; message: string; stack?: string; phase?: string }
   | { protocol: typeof DOCTOR_PROTOCOL_VERSION; type: 'launcher-start'; profile: ProfileIdentity; runId: string; pid: number; argv: string[]; at: string }

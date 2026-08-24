@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto'
-import type { IncidentRecord, ProfileIdentity, ProfileRuntime, SupervisorSnapshot } from '../core/protocol.ts'
-import { DOCTOR_PROTOCOL_VERSION } from '../core/protocol.ts'
+import type { DoctorPolicy, IncidentRecord, ProfileIdentity, ProfileRuntime, SupervisorSnapshot } from '../core/protocol.ts'
+import { DEFAULT_DOCTOR_POLICY, DOCTOR_PROTOCOL_VERSION } from '../core/protocol.ts'
 
-export interface PersistedState { phase: SupervisorSnapshot['phase']; profiles: Record<string, ProfileRuntime>; incidents: Record<string, IncidentRecord>; recentFailures: Record<string, string[]>; paused: boolean; capsuleVersion?: string; degradedReason?: string }
-export function emptyState(): PersistedState { return { phase: 'disabled', profiles: {}, incidents: {}, recentFailures: {}, paused: false } }
+export interface PersistedState { phase: SupervisorSnapshot['phase']; profiles: Record<string, ProfileRuntime>; incidents: Record<string, IncidentRecord>; recentFailures: Record<string, string[]>; paused: boolean; policy: DoctorPolicy; capsuleVersion?: string; degradedReason?: string }
+export function emptyState(): PersistedState { return { phase: 'disabled', profiles: {}, incidents: {}, recentFailures: {}, paused: false, policy: { ...DEFAULT_DOCTOR_POLICY } } }
 export function snapshotOf(state: PersistedState, version: string, now = new Date().toISOString()): SupervisorSnapshot {
-  return { protocol: DOCTOR_PROTOCOL_VERSION, phase: state.phase, version, capsuleVersion: state.capsuleVersion, degradedReason: state.degradedReason, profiles: Object.values(state.profiles), incidents: Object.values(state.incidents).sort((a, b) => b.openedAt.localeCompare(a.openedAt)), updatedAt: now }
+  return { protocol: DOCTOR_PROTOCOL_VERSION, phase: state.phase, version, capsuleVersion: state.capsuleVersion, degradedReason: state.degradedReason, policy: { ...(state.policy ?? DEFAULT_DOCTOR_POLICY) }, profiles: Object.values(state.profiles), incidents: Object.values(state.incidents).sort((a, b) => b.openedAt.localeCompare(a.openedAt)), updatedAt: now }
 }
 export function upsertProfile(state: PersistedState, identity: ProfileIdentity): ProfileRuntime {
   const current = state.profiles[identity.id] ?? { identity, phase: 'idle', restartCount: 0, managed: true }

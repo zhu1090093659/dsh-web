@@ -5,7 +5,6 @@
  */
 import { describe, expect, it } from 'vitest'
 import { BoardController, type ControllerDeps } from '../src/core/controller.ts'
-import { ExecutionService, type ExecutionEvent } from '../src/core/execution.ts'
 import { InMemoryTaskStore } from '../src/core/store.ts'
 import { createTask, type TaskRecord } from '../src/core/tasks.ts'
 
@@ -23,17 +22,11 @@ class FakeSessions {
   open(id: string): void { this.current = id }
 }
 
-class StubExec {
-  async run(_task: { id: string }, _execution: { id: string }, _onEvent: (event: ExecutionEvent) => void): Promise<void> {}
-  reconcile(): ExecutionEvent | undefined { return undefined }
-}
-
 function makeController(seed: TaskRecord[] = []) {
   const store = new InMemoryTaskStore()
   store.save(seed)
   const deps: ControllerDeps = {
     store,
-    exec: new StubExec() as unknown as ExecutionService,
     sessions: new FakeSessions() as never,
     now: () => NOW,
     uuid,

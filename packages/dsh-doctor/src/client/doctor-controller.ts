@@ -431,6 +431,13 @@ export class DoctorController {
     await this.invokeAction('repair', { incidentId: incident.id, profileId: incident.profileId })
   }
 
+  /** Confirm the first isolated candidate waiting for promotion. */
+  async runConfirm(): Promise<void> {
+    const incident = this.store.getSnapshot().incidents.find(item => item.phase === 'awaiting-confirmation' && item.candidateId !== undefined)
+    if (incident === undefined) { this.store.set({ action: { ok: false, message: 'no candidate awaiting confirmation' } }); return }
+    await this.invokeAction('confirm', { incidentId: incident.id, profileId: incident.profileId })
+  }
+
   /** Report the newest passive incident to the supervisor (best effort). */
   async reportProbe(): Promise<void> {
     const incident = this.store.getSnapshot().probe[this.store.getSnapshot().probe.length - 1]

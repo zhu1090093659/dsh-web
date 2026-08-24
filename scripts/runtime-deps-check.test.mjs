@@ -51,3 +51,28 @@ test('flags dynamic import() of a devDependencies-only package', () => {
   assert.equal(violations.length, 1)
   assert.equal(violations[0].specifier, 'some-optional-runtime-dep')
 })
+
+test('ignores prose that looks like an import inside comments', () => {
+  const source = '/**\n * mtime; a root that appears later flips from \'missing\' to an mtime);\n */\nexport const x = 1\n'
+  const violations = checkRuntimeImports({ dependencies: {} }, { 'lib/index.js': source })
+  assert.equal(violations.length, 0)
+})
+
+test('ignores prose that looks like an import inside string and template literals', () => {
+  const source = "export const a = \"flips from 'missing' to an mtime\"\nexport const b = `flips from 'missing' to an mtime`\nexport const c = 'flips from \"missing\" to an mtime'\n"
+  const violations = checkRuntimeImports({ dependencies: {} }, { 'lib/index.js': source })
+  assert.equal(violations.length, 0)
+})
+
+test('ignores property lookups named from or import', () => {
+  const source = "const a = x.from('pkg-from')\nconst b = y.import('pkg-import')\n"
+  const violations = checkRuntimeImports({ dependencies: {} }, { 'lib/index.js': source })
+  assert.equal(violations.length, 0)
+})
+
+test('keeps flagging real imports next to comment prose', () => {
+  const source = "// flips from 'missing' to an mtime\nimport { join } from 'node:path'\nimport x from 'missing-dep'\n"
+  const violations = checkRuntimeImports({ dependencies: {} }, { 'lib/index.js': source })
+  assert.equal(violations.length, 1)
+  assert.equal(violations[0].specifier, 'missing-dep')
+})

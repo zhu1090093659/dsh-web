@@ -20,19 +20,21 @@ const t = (key: SkinCenterKey): string => zh[key] ?? key
 // fresh object on every call.
 const NO_DIRS: string[] = []
 
-const stubWallpaper = (): WallpaperHandle => ({
+const stubWallpaper = (overrides: Partial<WallpaperHandle> = {}): WallpaperHandle => ({
   enabled: () => true,
   selection: () => '',
   mode: () => 'live',
   fit: () => 'cover',
   dim: () => 0,
   wallpaperBlur: () => 0,
+  wallpaperOpacity: () => 100,
   pauseOnHidden: () => false,
   sound: () => false,
   volume: () => 100,
   dirs: () => NO_DIRS,
   addDir: () => {},
   removeDir: () => {},
+  pickDir: async () => null,
   activeId: () => null,
   trying: () => false,
   subscribe: () => () => {},
@@ -41,6 +43,7 @@ const stubWallpaper = (): WallpaperHandle => ({
   setFit: () => {},
   setDim: () => {},
   setBlur: () => {},
+  setOpacity: () => {},
   setPauseOnHidden: () => {},
   setSound: () => {},
   setVolume: () => {},
@@ -49,7 +52,9 @@ const stubWallpaper = (): WallpaperHandle => ({
   sync: () => {},
   tryOn: () => {},
   exitTryOn: () => {},
+  recoverScenePlayer: () => {},
   dispose: () => {},
+  ...overrides,
 })
 
 const inventory = (wallpapers: unknown[]) => ({
@@ -74,7 +79,7 @@ afterEach(() => {
 })
 
 /** Render the panel against one stubbed inventory payload. */
-async function render(wallpapers: unknown[]): Promise<void> {
+async function render(wallpapers: unknown[], wallpaper: WallpaperHandle = stubWallpaper()): Promise<void> {
   vi.stubGlobal('fetch', vi.fn(async () => ({
     ok: true,
     status: 200,
@@ -82,8 +87,14 @@ async function render(wallpapers: unknown[]): Promise<void> {
   })))
   root = createRoot(host)
   await act(async () => {
-    root.render(<WallpaperPanel t={t as never} wallpaper={stubWallpaper()} />)
+    root.render(<WallpaperPanel t={t as never} wallpaper={wallpaper} />)
   })
+}
+
+/** The browse button of the manual-folder row. */
+function browseButton(): HTMLButtonElement | null {
+  const buttons = Array.from(host.querySelectorAll('button'))
+  return (buttons.find((button) => button.textContent === zh.wallpaperDirBrowse) ?? null) as HTMLButtonElement | null
 }
 
 describe('WallpaperPanel thumbs', () => {
@@ -124,5 +135,117 @@ describe('WallpaperPanel thumbs', () => {
     const img = host.querySelector('img')
     expect(img?.getAttribute('src')).toBe('/api/skin-center/we/preview/CCC')
     expect(host.querySelector('video')).toBeNull()
+  })
+})
+
+describe('WallpaperPanel directory picker', () => {
+  it('adds the picked folder directly through the native picker', async () => {
+    const added: string[] = []
+    await render([], stubWallpaper({
+      pickDir: async () => '/Users/demo/Pictures/wallpapers',
+      addDir: (dir) => { added.push(dir) },
+    }))
+    const button = browseButton()
+    expect(button).not.toBeNull()
+    await act(async () => { button!.click() })
+    expect(added).toEqual(['/Users/demo/Pictures/wallpapers'])
+  })
+
+  it('does nothing when the picker is cancelled', async () => {
+    const added: string[] = []
+    await render([], stubWallpaper({
+      pickDir: async () => null,
+      addDir: (dir) => { added.push(dir) },
+    }))
+    await act(async () => { browseButton()!.click() })
+    expect(added).toEqual([])
+    expect(host.textContent).not.toContain(zh.wallpaperDirBrowseFailed)
+  })
+
+  it('shows the fallback error when the native picker is unavailable', async () => {
+    await render([], stubWallpaper({
+      pickDir: async () => { throw new Error('directory picker failed: no native capability') },
+    }))
+    await act(async () => { browseButton()!.click() })
+    expect(host.textContent).toContain(zh.wallpaperDirBrowseFailed)
+    // The manual input remains usable as the fallback.
+    expect(host.querySelector('input')).not.toBeNull()
+  })
+
+  it('hides the browse button when the face provides no picker', async () => {
+    const stub = stubWallpaper()
+    delete (stub as { pickDir?: unknown }).pickDir
+    await render([], stub)
+    expect(browseButton()).toBeNull()
+  })
+})
+
+describe('WallpaperPanel macOS system wallpapers', () => {
+  const item = (id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id,
+    title: id,
+    type: 'video',
+    source: 'local',
+    playable: true,
+    updateAvailable: false,
+    videoUrl: '/api/skin-center/we/media/' + id,
+    webUrl: null,
+    frameUrl: null,
+    previewUrl: '/api/skin-center/we/preview/' + id,
+    ...overrides,
+  })
+
+  it('pages the grid instead of mounting every thumbnail at once', async () => {
+    const many = Array.from({ length: 25 }, (_, i) => item('w' + String(i)))
+    await render(many)
+    // Every item carries a previewUrl, so mounted cards are countable via
+    // their thumbnail images.
+    const cards = (): number => host.querySelectorAll('img').length
+    expect(cards()).toBe(12)
+    const more = Array.from(host.querySelectorAll('button'))
+      .find((button) => button.textContent?.startsWith(zh.wallpaperLoadMore)) as HTMLButtonElement
+    expect(more.textContent).toContain('13')
+    await act(async () => { more.click() })
+    expect(cards()).toBe(24)
+    const moreAgain = Array.from(host.querySelectorAll('button'))
+      .find((button) => button.textContent?.startsWith(zh.wallpaperLoadMore)) as HTMLButtonElement
+    await act(async () => { moreAgain.click() })
+    expect(cards()).toBe(25)
+    expect(Array.from(host.querySelectorAll('button'))
+      .some((button) => button.textContent?.startsWith(zh.wallpaperLoadMore))).toBe(false)
+  })
+
+  it('shows the static-image badge and no import button for macOS system entries', async () => {
+    await render([item('macos-image/Tahoe Day', {
+      type: 'image',
+      source: 'system',
+      playable: false,
+      videoUrl: null,
+      previewUrl: '/api/skin-center/we/image/AAA',
+    })])
+    expect(host.textContent).toContain(zh.wallpaperTypeImage)
+    expect(host.querySelector('img')?.getAttribute('src')).toBe('/api/skin-center/we/image/AAA')
+    const labels = Array.from(host.querySelectorAll('button')).map((button) => button.textContent)
+    expect(labels).not.toContain(zh.wallpaperImport)
+  })
+
+  it('reports the macOS library status line when system wallpapers exist', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        installDir: null,
+        total: 1,
+        portableCount: 1,
+        systemCount: 1,
+        wallpapers: [item('macos-aerial/AAAA-1', { source: 'system' })],
+      }),
+    })))
+    root = createRoot(host)
+    await act(async () => {
+      root.render(<WallpaperPanel t={t as never} wallpaper={stubWallpaper()} />)
+    })
+    expect(host.textContent).toContain(zh.wallpaperLibrarySystem)
   })
 })

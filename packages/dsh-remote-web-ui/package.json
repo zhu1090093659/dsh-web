@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-remote-web-ui",
   "description": "Scan-to-pair mobile and PC remote control for the dsh web GUI: QR entry beside the settings button, one-time pairing tokens, a gated /remote/api desktop channel, live device status, and revocable sessions",
-  "version": "0.2.9",
+  "version": "0.3.2",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {

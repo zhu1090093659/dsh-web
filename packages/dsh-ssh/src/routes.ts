@@ -16,12 +16,10 @@ import { randomBytes } from 'node:crypto'
 import { WebSocket, WebSocketServer } from 'ws'
 import type { WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { SshEngine, ShellSession } from './engine.ts'
+import { readJsonBody, writeJson } from './http.ts'
 import { isLoopbackRequest } from './loopback.ts'
 import { SSH_API, type HostPayload, type TerminalClientFrame, type TerminalServerFrame } from './protocol.ts'
 import type { HostStore } from './store.ts'
-
-/** Cap on JSON request bodies (host entries and exec payloads are small). */
-const MAX_JSON_BODY_BYTES = 64 * 1024
 
 /** Cap on declared upload bodies (staged to disk before SFTP). */
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024 * 1024
@@ -38,31 +36,6 @@ const BACKPRESSURE_HIGH_WATER = 1024 * 1024
 
 /** …and resume once it drains below this. */
 const BACKPRESSURE_LOW_WATER = 512 * 1024
-
-/** One JSON response. */
-function writeJson(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body)
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'referrer-policy': 'no-referrer' })
-  res.end(payload)
-}
-
-/** Read a JSON request body (undefined when too large or unparseable). */
-async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown> | undefined> {
-  const chunks: Buffer[] = []
-  let size = 0
-  for await (const chunk of req) {
-    const buffer = chunk as Buffer
-    size += buffer.length
-    if (size > MAX_JSON_BODY_BYTES) return undefined
-    chunks.push(buffer)
-  }
-  try {
-    const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'))
-    return typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : undefined
-  } catch {
-    return undefined
-  }
-}
 
 /** URL query helper (first value, decoded). */
 function queryParam(url: URL, name: string): string | undefined {
@@ -129,8 +102,8 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
           return
         }
         if (method === 'POST') {
-          const body = await readJsonBody(req)
-          if (body === undefined) {
+          const body = (await readJsonBody(req)) as Record<string, unknown> | null
+          if (body === null) {
             writeJson(res, 400, { error: 'invalid JSON body' })
             return
           }
@@ -152,8 +125,8 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
           return
         }
         if (method === 'PATCH') {
-          const body = await readJsonBody(req)
-          if (body === undefined) {
+          const body = (await readJsonBody(req)) as Record<string, unknown> | null
+          if (body === null) {
             writeJson(res, 400, { error: 'invalid JSON body' })
             return
           }
@@ -203,7 +176,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
       path: SSH_API.test,
       handler: async (req, res) => {
         if (!guard(req, res, 'POST')) return
-        const body = await readJsonBody(req)
+        const body = (await readJsonBody(req)) as Record<string, unknown> | null
         const alias = typeof body?.alias === 'string' ? body.alias : ''
         if (alias === '') {
           writeJson(res, 400, { error: 'alias is required' })
@@ -221,7 +194,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
       path: SSH_API.exec,
       handler: async (req, res) => {
         if (!guard(req, res, 'POST')) return
-        const body = await readJsonBody(req)
+        const body = (await readJsonBody(req)) as Record<string, unknown> | null
         const alias = typeof body?.alias === 'string' ? body.alias : ''
         const command = typeof body?.command === 'string' ? body.command : ''
         if (alias === '' || command === '') {
@@ -241,7 +214,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
       path: SSH_API.cluster,
       handler: async (req, res) => {
         if (!guard(req, res, 'POST')) return
-        const body = await readJsonBody(req)
+        const body = (await readJsonBody(req)) as Record<string, unknown> | null
         const command = typeof body?.command === 'string' ? body.command : ''
         if (command === '') {
           writeJson(res, 400, { error: 'command is required' })
@@ -285,7 +258,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
       path: SSH_API.tunnel,
       handler: async (req, res) => {
         if (!guard(req, res, 'POST')) return
-        const body = await readJsonBody(req)
+        const body = (await readJsonBody(req)) as Record<string, unknown> | null
         const action = typeof body?.action === 'string' ? body.action : ''
         if (action === 'list') {
           writeJson(res, 200, { tunnels: engine.listTunnels() })

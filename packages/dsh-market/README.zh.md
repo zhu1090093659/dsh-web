@@ -21,7 +21,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-market
 
 ## 配置
 
-- 启用开关：卡片在插件配置区带自己的总开关（持久化于 `dsh-market` 设置命名空间）；关闭后隐藏目录内容、仅保留开关本身。
+- 启用开关：卡片在插件配置区带自己的总开关（持久化于 `dsh-web-ui-market` 设置命名空间）；关闭后隐藏目录内容、仅保留开关本身。
 - 无其他配置项；目录数据始终来自 dsh-market.com。
 
 ## 已知限制
@@ -32,7 +32,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-market
 
 ## 架构
 
-- host 半区（`src/index.ts`）注册 `dsh-market` 设置命名空间并挂载仅回环的网关（`/api/market/installed`、`/api/market/install-skin`、`/api/market/install-pet`）。
+- host 半区（`src/index.ts`）注册 `dsh-web-ui-market` 设置命名空间并挂载仅回环的网关（`/api/market/installed`、`/api/market/install-skin`、`/api/market/install-pet`）。
 - 安装器核心（`src/core/installer.ts`）自行从 `dsh-market.com` 拉取清单、按保守白名单校验每个路径、原子写入（临时目录后 rename）——失败下载不会留下半成品目录；客户端从不提供 URL 或文件列表。
 - 创意工坊每项资产带明确的文件清单，`scripts/market-build` 重新生成 `market/dist` 后，新皮肤包即自动可装。
 
@@ -40,4 +40,8 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-market
 
 - 安装路由仅回环可访问（与插件管理器同一门禁）；远程浏览器无法驱动。
 - 下载内容全部来自 `https://dsh-market.com`（URL 由验证后的清单重建）；皮肤 CSS 由皮肤中心运行时净化后才应用。
+- 清单（1 MiB）、单项资产文件数（200）与单文件大小（200 MiB）均设上限，每次请求带 30 秒超时；超限或超时的清单/下载会明确失败，已存在的资产目录保持原样。
+- 每次安装都会向资产目录写入 `dsh-market.provenance.json`：每个已安装文件的 sha256，钉住 `https://dsh-market.com` 来源。皮肤中心据此仅在市场皮肤的磁盘字节与市场所服务的内容哈希一致时运行其 hooks（issue #1073）；手工投放或被篡改的目录保持拒绝 hooks。
 - 插件安装走与插件管理器页相同的确认与 CLI 路径。
+- 卡片在调用插件管理器前校验清单安装来源：仅接受 npm 包名（可带版本标签）与纯 https:// git
+  地址；ssh://、file://、http:// 及相对路径、裸仓库名一律拒绝并报错，不发起安装。

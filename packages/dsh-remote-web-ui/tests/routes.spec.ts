@@ -59,7 +59,7 @@ async function call(
   method: 'GET' | 'POST',
   path: string,
   opts: { host?: string; body?: unknown; cookie?: string; headers?: Record<string, string> } = {},
-): Promise<{ status: number; body: Record<string, unknown>; cookies: string[] }> {
+): Promise<{ status: number; body: Record<string, unknown>; cookies: string[]; referrerPolicy: string | undefined }> {
   return await new Promise((resolve, reject) => {
     const payload = opts.body === undefined ? undefined : JSON.stringify(opts.body)
     const headers: Record<string, string> = { host: opts.host ?? `127.0.0.1:${String(port)}` }
@@ -78,7 +78,12 @@ async function call(
           const raw = Buffer.concat(chunks).toString('utf8')
           let body: Record<string, unknown> = {}
           try { body = JSON.parse(raw) as Record<string, unknown> } catch { /* empty body */ }
-          resolve({ status: response.statusCode ?? 0, body, cookies: setCookie })
+          resolve({
+            status: response.statusCode ?? 0,
+            body,
+            cookies: setCookie,
+            referrerPolicy: response.headers['referrer-policy'],
+          })
         })
       },
     )
@@ -134,7 +139,11 @@ describe('/api/pair routes', () => {
       // A LAN phone accepts: sets the HttpOnly device cookie.
       const accepted = await call(port, 'POST', '/api/pair/accept', { host: '192.168.1.5:3080', body: { token: 'tok-1' } })
       expect(accepted.status).toBe(200)
-      expect(accepted.cookies[0]).toMatch(/^dsh_pair=tok-1; Path=\/; HttpOnly; SameSite=Lax/)
+      expect(accepted.body).toEqual({ ok: true, deviceId: 'tok-1' })
+      expect(accepted.referrerPolicy).toBe('no-referrer')
+      expect(accepted.cookies).toEqual([
+        'dsh_pair=tok-1; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000',
+      ])
       // The same token is one-time: reuse is refused.
       const reused = await call(port, 'POST', '/api/pair/accept', { host: '192.168.1.5:3080', body: { token: 'tok-1' } })
       expect(reused.status).toBe(409)
@@ -425,6 +434,69 @@ describe('/api/pair routes', () => {
       expect(service.hasDevice('tok-1')).toBe(false)
       const missing = await call(port, 'POST', '/api/pair/revoke', { body: { deviceId: 'tok-1' } })
       expect(missing.status).toBe(404)
+    } finally {
+      await close()
+    }
+  })
+})
+describe('/api/pair body failure contract (shared readJsonBody)', () => {
+  /** Raw POST with no JSON encoding: malformed text, or no payload at all. */
+  async function rawPost(
+    port: number,
+    path: string,
+    payload: string | undefined,
+  ): Promise<{ status: number | null; body: string; error: string | null }> {
+    return await new Promise((resolve) => {
+      const headers: Record<string, string> = { host: '127.0.0.1:' + String(port), connection: 'close' }
+      if (payload !== undefined) {
+        headers['content-type'] = 'application/json'
+        headers['content-length'] = String(Buffer.byteLength(payload))
+      }
+      const req = httpRequest({ host: '127.0.0.1', port, path, method: 'POST', headers }, (response) => {
+        const chunks: Buffer[] = []
+        response.on('data', (chunk) => { chunks.push(chunk as Buffer) })
+        response.on('end', () => {
+          resolve({ status: response.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8'), error: null })
+        })
+      })
+      req.on('error', (error: Error) => resolve({ status: null, body: '', error: error.message }))
+      if (payload !== undefined) req.write(payload)
+      req.end()
+    })
+  }
+
+  it('locks the lenient absent-body contract: empty or unparseable bodies act as an empty object', async () => {
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({ service, lanAddresses: ['192.168.1.5'] }))
+    try {
+      // stopPair() and sendHeartbeat() post with no body at all.
+      const stop = await call(port, 'POST', '/api/pair/stop', {})
+      expect(stop.status).toBe(200)
+      expect(stop.body).toEqual({ ok: true })
+      const heartbeat = await call(port, 'POST', '/api/pair/heartbeat', {})
+      expect(heartbeat.status).toBe(401)
+      // An unparseable body is treated the same as an absent one.
+      const issue = await rawPost(port, '/api/pair/issue', '{not json')
+      expect(issue.status).toBe(200)
+      expect(issue.body).toContain('"token":"tok-1"')
+      const revoke = await rawPost(port, '/api/pair/revoke', '{not json')
+      expect(revoke.status).toBe(400)
+      expect(JSON.parse(revoke.body)).toEqual({ ok: false, code: 'bad-payload' })
+      // objectOnly: a JSON array is read as null and therefore absent.
+      const array = await call(port, 'POST', '/api/pair/issue', { body: [1, 2] })
+      expect(array.status).toBe(200)
+    } finally {
+      await close()
+    }
+  })
+
+  it('locks the oversize contract: the shared reader destroys the request instead of answering', async () => {
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({ service, lanAddresses: ['192.168.1.5'] }))
+    try {
+      const outcome = await rawPost(port, '/api/pair/issue', JSON.stringify({ workspaceId: 'x'.repeat(5000) }))
+      expect(outcome.status).toBeNull()
+      expect(outcome.error).toMatch(/socket hang up|ECONNRESET/)
     } finally {
       await close()
     }

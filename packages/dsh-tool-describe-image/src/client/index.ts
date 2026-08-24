@@ -70,7 +70,13 @@ export const inject = ['slots', 'conversation', 'settingsScope', 'locale']
 
 /** Apply the browser half. */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, dictionaries), 'dsh-tool-describe-image: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, dictionaries)
+    } catch {
+      return () => {}
+    }
+  }, 'dsh-tool-describe-image: dictionaries')
   ctx.effect(() => {
     // Mirror the shell language into the module-level dictionary switch.
     const sync = (): void => {
@@ -131,16 +137,20 @@ export function apply(ctx: ClientContext): void {
       unsubscribeSettings = settingsScope.subscribe(() => previewRef?.refresh())
       const settingsCard = new DescribeImageSettingsCardController(settingsScope)
       slots.inject('web-ui.plugin.item', () => {
-        const unregister = slots.register({
-          name: 'web-ui.plugin.item',
-          id: 'describe-image',
-          order: 115,
-          locale: NS,
-          inject: () => settingsCard.inject(),
-        }, DescribeImageSettingsCard)
-        return () => {
-          settingsCard.dispose()
-          unregister()
+        try {
+          const unregister = slots.register({
+            name: 'web-ui.plugin.item',
+            id: 'describe-image',
+            order: 115,
+            locale: NS,
+            inject: () => settingsCard.inject(),
+          }, DescribeImageSettingsCard)
+          return () => {
+            settingsCard.dispose()
+            unregister()
+          }
+        } catch {
+          return () => {}
         }
       })
     })

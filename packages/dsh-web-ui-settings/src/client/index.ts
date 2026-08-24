@@ -51,19 +51,31 @@ export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register('web-ui-plugins', { zh, en }), 'web-ui-settings: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register('web-ui-plugins', { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'web-ui-settings: dictionaries')
 
   // The rc.6 compatibility binder: family plugins read ctx.get('webUiSettings')
   // and fall back to the official settings scope on hosts that expose their
   // namespaces natively.
   new WebUiSettingsBinder(ctx)
 
-  ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section',
-    id: 'web-ui-plugins',
-    order: 110,
-    label: () => ctx.locale.bind('web-ui-plugins')('title'),
-    locale: 'web-ui-plugins',
-    children: { 'web-ui.plugin.item': { kind: 'list', scope: 'root' } },
-  }, WebUIPluginsSection))
+  ctx.slots.inject('settings.section', () => {
+    try {
+      return ctx.slots.register({
+        name: 'settings.section',
+        id: 'web-ui-plugins',
+        order: 110,
+        label: () => ctx.locale.bind('web-ui-plugins')('title'),
+        locale: 'web-ui-plugins',
+        children: { 'web-ui.plugin.item': { kind: 'list', scope: 'root' } },
+      }, WebUIPluginsSection)
+    } catch {
+      return () => {}
+    }
+  })
 }

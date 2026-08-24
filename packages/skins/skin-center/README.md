@@ -40,7 +40,7 @@ skin-center is a self-contained bundle meeting the official DSH plugin standard 
 - All `/api/skin-center/*` routes are same-origin only: writes reject cross-site requests (Sec-Fetch-Site / Origin fence), and asset reads are contained inside each skin directory (path escapes fail closed).
 - Skin CSS is sanitized (whitelist) before serving; `patches.css` (L3) is arbitrary CSS by design and disclosed as such — it runs with full page styling power and is not a security boundary.
 - The custom-theme editor emits only fixed declarations from `CUSTOM_THEME_ALLOWED_TOKENS`, each verified against the official token registry. User input is normalized color/contrast data and never becomes a selector, URL or free-form CSS payload.
-- `hooks.mjs` is trusted code that shares this repository's review and release; it is served same-origin only and its import/apply errors can never take the static skin down.
+- `hooks.mjs` is trusted code that shares this repository's review and release; it is served same-origin only and its import/apply errors can never take the static skin down. Hooks run for built-in skins, and for user-directory skins installed from the official DSH Market whose `dsh-market.provenance.json` sha256-pins the on-disk `skin.json` and hooks entry to the market-served bytes (verified by `src/provenance.ts`, issue #1073); a missing or mismatched provenance — hand-dropped or tampered directories — keeps the hooks facet refused while the declarative parts still load.
 
 ## Known limitations
 
@@ -57,6 +57,7 @@ skins/skin-center/
   src/core/css-safety/                      # lightningcss scoping + whitelist pipeline
   src/index.ts                              # host entry: routes, tapIndex adapter, legacy bridge
   src/skin-repo.ts                          # dual-source skin catalog (built-in + $DSH_HOME/skins)
+  src/provenance.ts                         # official-market install provenance verification (hooks trust)
   src/routes-v2.ts                          # /api/skin-center/v2/* routes
   src/tap-index-adapter.ts                  # the single tapIndex adapter (anti-FOUC)
   src/active-state.ts                       # active-skin selection persistence

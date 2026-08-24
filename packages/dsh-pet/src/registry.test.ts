@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, ftruncateSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -8,6 +8,7 @@ import {
   DEFAULT_TRACK_PATTERNS,
   PET_ROW_ORDER,
   PET_SCAN_JSON_CAP,
+  PET_SCAN_LIVE2D_MODEL_CAP,
   codexPetsDir,
   loadPetRegistry,
   petAtlasFile,
@@ -261,6 +262,41 @@ describe('loadPetRegistry', () => {
       rmSync(root, { recursive: true, force: true })
     }
   })
+
+  it('skips an oversized pet.json with a warning instead of reading it', () => {
+    const root = tempDir()
+    try {
+      const petsDir = join(root, 'pets')
+      mkdirSync(join(petsDir, 'loud'), { recursive: true })
+      writeFileSync(join(petsDir, 'loud', 'pet.json'), '{ ' + 'x'.repeat(PET_SCAN_JSON_CAP) + ' }', 'utf8')
+      // A healthy neighbor keeps listing while the pathological one is skipped.
+      mkdirSync(join(petsDir, 'plain'), { recursive: true })
+      writeFileSync(join(petsDir, 'plain', 'pet.json'), JSON.stringify({
+        id: 'plain', displayName: 'Plain', spritesheetPath: 'spritesheet.webp',
+      }), 'utf8')
+      writeFileSync(join(petsDir, 'plain', 'spritesheet.webp'), 'webp', 'utf8')
+      const registry = loadPetRegistry({ packageRoot: join(root, 'none'), petsDir, dshPetsDir: '' })
+      expect(registry.byId('loud')).toBeUndefined()
+      expect(registry.byId('plain')).toBeDefined()
+      expect(registry.warnings.some(w => w.includes('scan ceiling'))).toBe(true)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('skips a non-regular pet.json with a warning', () => {
+    const root = tempDir()
+    try {
+      const petsDir = join(root, 'pets')
+      mkdirSync(join(petsDir, 'odd', 'pet.json'), { recursive: true })
+      const registry = loadPetRegistry({ packageRoot: join(root, 'none'), petsDir, dshPetsDir: '' })
+      expect(registry.entries.map(entry => entry.id)).toEqual([])
+      expect(registry.warnings.some(w => w.includes('not a regular file'))).toBe(true)
+      expect(registry.diagnostics.some(d => d.level === 'warning' && d.message.includes('pet manifest is not a regular file'))).toBe(true)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
 })
 
 describe('codexPetsDir', () => {
@@ -475,6 +511,52 @@ describe('loadPetRegistry pet-center v2 (issue #623)', () => {
       // '' disables the source entirely.
       const disabled = loadPetRegistry({ packageRoot: join(root, 'none'), petsDir: '', dshPetsDir: dsh })
       expect(disabled.entries.map(e => e.id)).toEqual(['cat'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('skips a live2d pet whose model3.json exceeds the model scan ceiling with a warning', () => {
+    const root = tempDir()
+    try {
+      const petsDir = join(root, 'pets')
+      mkdirSync(join(petsDir, 'haru'), { recursive: true })
+      writeFileSync(join(petsDir, 'haru', 'pet.json'), JSON.stringify({
+        petManifestVersion: 2, id: 'haru', displayName: 'Haru', license: 'Live2D-Sample',
+        renderer: 'live2d', live2d: { model: 'haru.model3.json', motions: { idle: 'Idle' } },
+      }), 'utf8')
+      // A sparse file one byte past the ceiling: stat reports the size
+      // without materializing 32 MB of bytes on disk.
+      const fd = openSync(join(petsDir, 'haru', 'haru.model3.json'), 'w')
+      try {
+        ftruncateSync(fd, PET_SCAN_LIVE2D_MODEL_CAP + 1)
+      } finally {
+        closeSync(fd)
+      }
+      const registry = loadPetRegistry({ packageRoot: join(root, 'none'), petsDir, dshPetsDir: '' })
+      expect(registry.byId('haru')).toBeUndefined()
+      expect(registry.warnings.some(w => w.includes('scan ceiling'))).toBe(true)
+      expect(registry.diagnostics.some(d => d.level === 'warning'
+        && d.message.includes('exceeds the ' + PET_SCAN_LIVE2D_MODEL_CAP + '-byte scan ceiling'))).toBe(true)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('skips a live2d pet whose model3.json is not a regular file with a warning', () => {
+    const root = tempDir()
+    try {
+      const petsDir = join(root, 'pets')
+      mkdirSync(join(petsDir, 'haru', 'haru.model3.json'), { recursive: true })
+      writeFileSync(join(petsDir, 'haru', 'pet.json'), JSON.stringify({
+        petManifestVersion: 2, id: 'haru', displayName: 'Haru', license: 'Live2D-Sample',
+        renderer: 'live2d', live2d: { model: 'haru.model3.json', motions: { idle: 'Idle' } },
+      }), 'utf8')
+      const registry = loadPetRegistry({ packageRoot: join(root, 'none'), petsDir, dshPetsDir: '' })
+      expect(registry.byId('haru')).toBeUndefined()
+      expect(registry.warnings.some(w => w.includes('not a regular file'))).toBe(true)
+      expect(registry.diagnostics.some(d => d.level === 'warning'
+        && d.message.includes('live2d model haru.model3.json is not a regular file'))).toBe(true)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

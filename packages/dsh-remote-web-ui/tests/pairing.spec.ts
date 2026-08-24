@@ -181,6 +181,48 @@ describe('PairingService', () => {
     expect(seen).toEqual(['waiting', 'waiting', 'connected'])
   })
 
+  it('throttles presence broadcasts: touch/heartbeat stay quiet until the sweep', () => {
+    const service = makeService()
+    const { token } = service.issue()
+    const accepted = service.accept(token)
+    const deviceId = accepted.ok ? accepted.deviceId : ''
+    const seen: { phase: string; lastSeenAt?: number }[] = []
+    service.onState(snapshot => { seen.push({ phase: snapshot.phase, lastSeenAt: snapshot.devices[0]?.lastSeenAt }) })
+    // A gated request refreshes presence but must not fan a snapshot out to
+    // the status listeners on the hot path.
+    const base = now
+    now += 3_000
+    expect(service.touchDevice(deviceId)).toBe(true)
+    expect(seen).toEqual([])
+    // The next sweep coalesces the refresh into exactly one broadcast.
+    service.sweep()
+    expect(seen).toEqual([{ phase: 'connected', lastSeenAt: base + 3_000 }])
+    // A heartbeat before the next sweep coalesces too, and a no-op sweep stays quiet.
+    now += 1_000
+    expect(service.heartbeat(deviceId)).toBe(true)
+    now += 1_000
+    service.sweep()
+    expect(seen).toEqual([
+      { phase: 'connected', lastSeenAt: base + 3_000 },
+      { phase: 'connected', lastSeenAt: base + 4_000 },
+    ])
+    service.sweep()
+    expect(seen).toHaveLength(2)
+  })
+
+  it('keeps structural notifications immediate (accept and revoke broadcast without a sweep)', () => {
+    const service = makeService()
+    const { token } = service.issue()
+    const seen: number[] = []
+    service.onState(snapshot => { seen.push(snapshot.deviceCount) })
+    const accepted = service.accept(token)
+    expect(accepted.ok).toBe(true)
+    expect(seen).toEqual([1])
+    const deviceId = accepted.ok ? accepted.deviceId : ''
+    expect(service.revoke(deviceId)).toBe(true)
+    expect(seen).toEqual([1, 0])
+  })
+
   it('evicts the oldest device at the session cap', () => {
     const service = makeService({ maxDevices: 2 })
     const first = service.issue()

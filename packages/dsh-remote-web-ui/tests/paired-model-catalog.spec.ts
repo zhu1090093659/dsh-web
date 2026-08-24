@@ -200,11 +200,11 @@ describe('paired model catalog API', () => {
     } finally { await server.close() }
   })
 
-  it('updates a configured models array without dropping untouched fields and maps effort values', async () => {
+  it('updates an explicit models array without dropping fields or leaving modelOverrides beside it', async () => {
     const { apiProxy, calls } = makeApiProxy({ namespace: namespace({ providers: { acme: { models: [
       { id: 'keep', name: 'Keep', input: ['text'], compat: { preserved: true } },
       { id: 'change', name: 'Old', custom: 'kept' },
-    ] } } }) })
+    ], modelOverrides: {} } } }) })
     const server = await serve(makeRoutes(apiProxy))
     try {
       const result = await call(server.port, PAIRED_MODEL_CATALOG_PATHS.upsert, { body: { provider: 'acme', model: { id: 'change', name: ' New ', contextWindow: 32_000, reasoningEfforts: ['off', 'low', 'high'] } } })
@@ -214,13 +214,13 @@ describe('paired model catalog API', () => {
         ns: 'llm-pi-ai', expectedRevision: 7, ops: [{ op: 'set', path: ['providers', 'acme', 'models'], value: [
           { id: 'keep', name: 'Keep', input: ['text'], compat: { preserved: true } },
           { id: 'change', name: 'New', custom: 'kept', contextWindow: 32_000, reasoningEfforts: { off: null, low: 'low', high: 'high' } },
-        ] }],
+        ] }, { op: 'unset', path: ['providers', 'acme', 'modelOverrides'] }],
       } })
     } finally { await server.close() }
   })
 
-  it('uses modelOverrides for an installed catalog model when models is absent', async () => {
-    const { apiProxy, calls } = makeApiProxy({ namespace: namespace({ providers: { acme: { displayName: 'Acme' } } }) })
+  it('uses modelOverrides for an installed catalog model when the resolved model list is empty', async () => {
+    const { apiProxy, calls } = makeApiProxy({ namespace: namespace({ providers: { acme: { models: [], modelOverrides: {} } } }) })
     const server = await serve(makeRoutes(apiProxy))
     try {
       const result = await call(server.port, PAIRED_MODEL_CATALOG_PATHS.upsert, { body: { provider: 'acme', model: { id: 'installed', maxTokens: 4096 } } })
@@ -231,17 +231,68 @@ describe('paired model catalog API', () => {
     } finally { await server.close() }
   })
 
-  it('materializes live model ids plus a new profile when models is absent', async () => {
-    const { apiProxy, calls } = makeApiProxy({ namespace: namespace({ providers: { acme: {} } }), groups: [{ id: 'acme', name: 'Acme', models: [{ id: 'existing-a', name: 'A' }, { id: 'existing-b', name: 'B' }] }] })
+  it('preserves installed model override fields when updating an inherited catalog entry', async () => {
+    const { apiProxy, calls } = makeApiProxy({ namespace: namespace({ providers: { acme: {
+      models: [],
+      modelOverrides: { installed: { maxTokens: 2048, custom: 'preserved' } },
+    } } }) })
+    const server = await serve(makeRoutes(apiProxy))
+    try {
+      const result = await call(server.port, PAIRED_MODEL_CATALOG_PATHS.upsert, { body: { provider: 'acme', model: { id: 'installed', maxTokens: 4096 } } })
+      expect(result.status).toBe(200)
+      expect(calls.find(call => call.method === 'settings.mutate')?.payload).toEqual({
+        ns: 'llm-pi-ai', expectedRevision: 7, ops: [{
+          op: 'set', path: ['providers', 'acme', 'modelOverrides', 'installed'], value: { maxTokens: 4096, custom: 'preserved' },
+        }],
+      })
+    } finally { await server.close() }
+  })
+
+  it('materializes every live id and translates overrides before adding an unknown inherited model', async () => {
+    const { apiProxy, calls } = makeApiProxy({ namespace: namespace({ providers: { acme: {
+      models: [],
+      modelOverrides: { 'existing-a': { maxTokens: 2048, custom: 'preserved' } },
+    } } }), groups: [{ id: 'acme', name: 'Acme', models: [{ id: 'existing-a', name: 'A' }, { id: 'existing-b', name: 'B' }] }] })
     const server = await serve(makeRoutes(apiProxy))
     try {
       const result = await call(server.port, PAIRED_MODEL_CATALOG_PATHS.upsert, { body: { provider: 'acme', model: { id: 'new-model', name: 'New model' } } })
       expect(result.status).toBe(200)
       expect(calls.find(call => call.method === 'settings.mutate')?.payload).toEqual({
-        ns: 'llm-pi-ai', expectedRevision: 7, ops: [{ op: 'set', path: ['providers', 'acme', 'models'], value: [
-          { id: 'existing-a' }, { id: 'existing-b' }, { id: 'new-model', name: 'New model' },
-        ] }],
+        ns: 'llm-pi-ai', expectedRevision: 7, ops: [
+          { op: 'set', path: ['providers', 'acme', 'models'], value: [
+            { id: 'existing-a', maxTokens: 2048, custom: 'preserved' },
+            { id: 'existing-b' },
+            { id: 'new-model', name: 'New model' },
+          ] },
+          { op: 'unset', path: ['providers', 'acme', 'modelOverrides'] },
+        ],
       })
+    } finally { await server.close() }
+  })
+
+  it('refuses a malformed entry in an explicit configured model list without mutating settings', async () => {
+    const { apiProxy, calls } = makeApiProxy({ namespace: namespace({ providers: { acme: {
+      models: [42, { id: 'valid' }],
+      modelOverrides: {},
+    } } }) })
+    const server = await serve(makeRoutes(apiProxy))
+    try {
+      const result = await call(server.port, PAIRED_MODEL_CATALOG_PATHS.upsert, { body: { provider: 'acme', model: { id: 'new-model' } } })
+      expect(result.status).toBe(502)
+      expect(calls.filter(call => call.method === 'settings.mutate')).toEqual([])
+    } finally { await server.close() }
+  })
+
+  it('refuses conflicting explicit models and non-empty modelOverrides without mutating settings', async () => {
+    const { apiProxy, calls } = makeApiProxy({ namespace: namespace({ providers: { acme: {
+      models: [{ id: 'valid', custom: 'preserved' }],
+      modelOverrides: { valid: { maxTokens: 2048 } },
+    } } }) })
+    const server = await serve(makeRoutes(apiProxy))
+    try {
+      const result = await call(server.port, PAIRED_MODEL_CATALOG_PATHS.upsert, { body: { provider: 'acme', model: { id: 'valid', maxTokens: 4096 } } })
+      expect(result.status).toBe(502)
+      expect(calls.filter(call => call.method === 'settings.mutate')).toEqual([])
     } finally { await server.close() }
   })
 

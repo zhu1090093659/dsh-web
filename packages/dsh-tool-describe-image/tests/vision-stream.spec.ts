@@ -11,6 +11,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 import * as tool from '../src/index.ts'
 import { FakeWebServer, PNG_BYTES, rawReply, startMockServer } from './mock-server.ts'
+import { agentForWorkspace } from './test-agent.ts'
 
 const cleanup: Array<() => Promise<void>> = []
 const contexts: Context[] = []
@@ -49,21 +50,23 @@ async function boot(ctx: Context, baseURL: string): Promise<void> {
   await ctx.plugin(tool, { baseURL, model: 'vision-1', apiKey: 'sk-inline', apiStyle: 'responses' })
 }
 
-function callDescribe(ctx: Context, args: unknown) {
+function callDescribe(ctx: Context, args: unknown, workspace?: string) {
+  const agent = agentForWorkspace(workspace)
   return ctx.tools.execute({
     signal: new AbortController().signal,
     callId: CallId('stream-vision-call'),
     name: 'describe_image',
     arguments: args,
+    ...(agent === undefined ? {} : { agent }),
   })
 }
 
-async function tempPng(): Promise<string> {
+async function tempPng(): Promise<{ path: string; workspace: string }> {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-describe-stream-'))
   cleanup.push(() => rm(dir, { recursive: true, force: true }))
   const path = join(dir, 'pixel.png')
   await writeFile(path, PNG_BYTES)
-  return path
+  return { path, workspace: dir }
 }
 
 describe('responses SSE streaming endpoint', () => {
@@ -73,9 +76,9 @@ describe('responses SSE streaming endpoint', () => {
     const ctx = new Context()
     contexts.push(ctx)
     await boot(ctx, server.url)
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path, prompt: 'what color is this?' })
+    const result = await callDescribe(ctx, { image: path, prompt: 'what color is this?' }, workspace)
     expect(result.isError).toBe(false)
     expect(server.request(0).path).toBe('/responses')
     const value = result.value as { text?: string }
@@ -88,9 +91,9 @@ describe('responses SSE streaming endpoint', () => {
     const ctx = new Context()
     contexts.push(ctx)
     await boot(ctx, server.url)
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path, prompt: 'what color is this?' })
+    const result = await callDescribe(ctx, { image: path, prompt: 'what color is this?' }, workspace)
     expect(result.isError).toBe(false)
     const value = result.value as { text?: string }
     expect(value.text).toBe('Cyan')
@@ -102,9 +105,9 @@ describe('responses SSE streaming endpoint', () => {
     const ctx = new Context()
     contexts.push(ctx)
     await boot(ctx, server.url)
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, { image: path, prompt: 'what color is this?' })
+    const result = await callDescribe(ctx, { image: path, prompt: 'what color is this?' }, workspace)
     expect(result.isError).toBe(true)
   })
 })

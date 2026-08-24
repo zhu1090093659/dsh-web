@@ -22,3 +22,9 @@
 
 /preview.html
 	Cache-Control: public, max-age=0, must-revalidate
+
+/robots.txt
+	Cache-Control: public, max-age=300
+
+/sitemap.xml
+	Cache-Control: public, max-age=300

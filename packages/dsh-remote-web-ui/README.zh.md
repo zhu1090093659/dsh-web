@@ -13,7 +13,7 @@
 - **手机侧**：扫码将手机与一次性、限时令牌绑定，并落地到 **`/m/` 独立移动端界面**——一款专为小屏设计的轻客户端（见[截图](#截图)），而不是把桌面 UI 塞进手机。该页面可安装为 PWA；每个已安装应用使用自己的已配对设备 cookie，存储隔离的移动端 Web App 需要在该上下文打开新的二维码链接，或粘贴桌面端新复制的链接完成配对。链接携带 `workspace` 参数，手机落地到桌面正在查看的同一工作区。
 - **PC 侧（远程桌面配对）**：同一份二维码链接和配对令牌也能配对 PC 浏览器——把手机侧配对流扩展到桌面 Web GUI。从面板复制链接，在另一台电脑的浏览器打开（局域网 URL 或隧道 URL 均可）；接受往返后，完整 Web GUI 在那台设备上运行——工作区、会话、聊天、切模型——受围栏保护的同源流量走门控的 `/remote` 通道，而不是直接调用仅 loopback 的 host 路由。手机进 `/m/`，PC 进桌面 UI：一枚令牌、一套配对流、两种界面。未配对的 PC 只看到不渲染底层数据的完整阻断页，其中提供电脑配对步骤与「重新检测」操作。
 - **安全**：一个有效的一次性令牌（刷新会使旧链接失效；已接受的令牌不可复用；令牌会过期）。停止会撤销每一台已配对设备与当前令牌——已配对设备在下一次请求时被切断。配对是本插件对自己远程通道的访问控制：手机走 `/m/api`，非 loopback origin 打开的桌面浏览器走 `/remote`。未配对调用方在 `requirePairingForLan` 开启（默认）时会在读取请求体之前就被 `/remote` 拒绝。loopback（127.0.0.1）继续直接使用 `/api`。默认的远程桌面路径不使用 `--trusted-host`：连接插件的 `/api` 围栏对公网和局域网主机保持关闭，已配对 PC 改走 `/remote`。`--trusted-host` 是 SDK 的另一种用法，会让该主机被信任访问 `/api` 本身——配对不门控 `/api`（任何插件都无法做到；围栏是 SDK 自己的接缝）。当 `/api` 无需配对即可到达时，下方姿态探测会报告该姿态。
-- **已配对模型目录**：已认证的已配对设备可使用 `GET /api/pair/model-catalog`、`POST /api/pair/model-catalog/discover` 和 `POST /api/pair/model-catalog/upsert`，仅查看并采纳一个现有、活跃的 `llm-pi-ai` provider 的模型。该能力在内部固定 provider 的 settings 地址，不能创建 provider，也不能读取或修改凭据、通用 settings、端点、header 或任意配置。这三条精确路由在 connection 插件的 `/api` 前缀之前匹配，已配对的局域网或隧道客户端可直接调用，并套用与 `/api/pair` 兄弟端点相同的 Host/Origin 信任围栏：仅接受 loopback、广告的局域网字面量或配置的公网 base URL。经 `/remote` 桌面通道访问时，所有 `/api/pair/*` 路径仍保持仅 loopback。当 provider 的实时模型目录不可用或未知时，采纳会被拒绝。停止或撤销设备会立即禁用它；通用 `settings.*`、`credentials.*` 和 `llm.discoverModels` RPC 方法仍然仅限 loopback。
+- **已配对模型目录**：已认证的已配对设备可使用 `GET /api/pair/model-catalog`、`POST /api/pair/model-catalog/discover` 和 `POST /api/pair/model-catalog/upsert`，仅查看并采纳一个现有、活跃的 `llm-pi-ai` provider 的模型。该能力在内部固定 provider 的 settings 地址，不能创建 provider，也不能读取或修改凭据、通用 settings、端点、header 或任意配置。这三条精确路由在 connection 插件的 `/api` 前缀之前匹配，已配对的局域网或隧道客户端可直接调用，并套用与 `/api/pair` 兄弟端点相同的 Host/Origin 信任围栏：仅接受 loopback、广告的局域网字面量或配置的公网 base URL。经 `/remote` 桌面通道访问时，所有 `/api/pair/*` 路径仍保持仅 loopback。当 provider 的实时模型目录不可用或未知时，采纳会被拒绝。解析后的 `models` 列表缺失或为空时，provider 会继续继承已安装目录；只有加入未知的自定义模型时才会实体化完整目录，现有模型 override 会保留并转换到对应条目。格式错误或相互冲突的模型配置会被拒绝，不会被破坏性重写。停止或撤销设备会立即禁用它；通用 `settings.*`、`credentials.*` 和 `llm.discoverModels` RPC 方法仍然仅限 loopback。
 - **远程桌面通道**：`requirePairingForLan` 开启（默认）时，经局域网 URL 或隧道打开的桌面 Web GUI 透明地改走 `/remote`——同一套 UI，同一枚配对 cookie 门控。改写补丁在解析期即生效：宿主把一段内联 classic script 注入到 `<head>` 开标签之后（`webserver/index-inject`），使 fetch/WebSocket/EventSource 与资源 `src` 改写在任何启动条目执行前就绪（连接插件最先打开事件流）；浏览器半边随后接管已安装的 seat 而非重复打补丁。loopback 来源完全跳过该补丁。浏览器中 `/api`、`/sidebar`、`/git`、`/pet` 下的请求，以及已知的事件、终端与 SSH WebSocket，会在不转发远程 Origin 或配对 cookie 的前提下重新发给本机 Web Server；认证反代会为兄弟路由围栏提供自己生成的同源浏览器标记。SDK 的 loopback 专属特权方法（原生对话框、settings 与 credentials 面）对已配对远程桌面保持不可达；`/api/pair/*`（包括三条模型目录路由）、`/api/update/*`、`/api/plugin-manager/*`、`/api/dsh-desktop-launcher/*` 与 `/api/dsh-web-ui-settings/*` 控制端点保持仅 loopback。未配对的桌面浏览器看到持久的全页阻断界面而不是数据（阻断页按错误码 `unpaired` 触发，不是任意 403）。阻断页在任一门控调用成功后，或通道本身被拆除时退出——把 `requirePairingForLan` 关掉（或关闭插件）也会清掉通道短暂激活期间弹出的提示。
 - **姿态探测**：插件用伪造 Host 头（公网 base 与每个 LAN base）探测 SDK 的 `/api` 围栏。403 是默认姿态（围栏关闭，远程访问走配对）。任何非 403 结果——`--trusted-host`，或 `--host 0.0.0.0` 下 SDK 的局域网自动信任——都会以 CRITICAL 日志与配对面板红色横幅呈现，因此 SDK 的 `/api` 信任姿态是被看见的，而不是被假设的。探测失败会丢掉进行中的目标缓存，相同 origin 会在下次触发时重试。
 - **实时状态**：桌面面板经 SSE 流实时镜像配对状态（等待 → 已连接 → 已断开），并展示已授权设备名单。
@@ -72,10 +72,11 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-remote-web-ui
  6. 桌面徽标实时翻到 已连接；手机离开时回落到离线/断开。
  7. 刷新二维码 使旧链接失效并铸一枚新的。停止 撤销移动端访问：已配对设备下一次请求 403，包括其实时流。
 
-该移动端界面完全自包含在本插件内：`/m/` 页面及其数据通道（`/m/api`）由插件自己的路由伺服，**无需任何 harness 源码改动**——手机的 RPC 调用走插件的 `/m/api` 代理（它委托给 host 的 ApiProxy 服务并自己分页 `session.list`），因此被隧道化的 Host 永远不必进入连接插件的信任围栏。手机受其已配对设备 cookie 与显式方法白名单门控（settings/credentials/host-action 域手机永远不可达；`/m/api` 代理的模型读写限制于建议性的 `session.models` / `session.selectModel` 对；另外，精确的已配对模型目录路由可为一个现有、合格的 `llm-pi-ai` provider 采纳模型，但不能创建 provider，也不能访问凭据或通用 settings；Agent 预设访问限制于只读 `agentPreset.list`，创建限制于 `session.create`（工作区 id 加清单中的可选 id——手机绝不自命名工作目录），权限选择器只通过已放行的 `session.prompt` 发送模式无关的 `/permission` 命令）；实时流在 `/m/api/events.mux` 上经 Server-Sent Events 送达。规范的 `/m/` 页面拥有同 scope 的 manifest 与 Service Worker；其缓存仅包含静态壳和离线页，绝不包含移动端 API 响应、会话数据或命令。
+该移动端界面完全自包含在本插件内：`/m/` 页面及其数据通道（`/m/api`）由插件自己的路由伺服，**无需任何 harness 源码改动**——手机的 RPC 调用走插件的 `/m/api` 代理（它委托给 host 的 ApiProxy 服务并自己分页 `session.list`），因此被隧道化的 Host 永远不必进入连接插件的信任围栏。手机受其已配对设备 cookie 与 `/m/api` 显式方法白名单门控（白名单只约束 `/m/api` 代理本身：该 cookie 同时通过全局 api/gate，对宿主 `/api` 面是全量控制凭证——settings/credentials/host-action 域仅因 SDK 把这些特权方法钉为仅 loopback 才不可达。配对即对设备的完全信任；`/m/api` 代理的模型读写限制于建议性的 `session.models` / `session.selectModel` 对；另外，精确的已配对模型目录路由可为一个现有、合格的 `llm-pi-ai` provider 采纳模型，但不能创建 provider，也不能访问凭据或通用 settings；Agent 预设访问限制于只读 `agentPreset.list`，创建限制于 `session.create`（工作区 id 加清单中的可选 id——手机绝不自命名工作目录），权限选择器只通过已放行的 `session.prompt` 发送模式无关的 `/permission` 命令；会话控制只放行 `session.cancel`——停止当前回合并保留 pending 队列工作，手机端不做队列管理）；实时流在 `/m/api/events.mux` 上经 Server-Sent Events 送达。规范的 `/m/` 页面拥有同 scope 的 manifest 与 Service Worker；其缓存仅包含静态壳和离线页，绝不包含移动端 API 响应、会话数据或命令。
 
 ### 行为说明
 
+- 会话运行中（turn/start 至 turn/end 之间），输入栏主按钮由「发送」切换为「停止」（与桌面端输入栏的 Send/Stop 切换一致）：点击调用 `session.cancel` 停止当前回合（pending 的排队消息在取消后按序恢复）；停止请求进行中按钮禁用，回合结束后恢复为「发送」。
 - 移动端输入框默认 Enter 发送（Shift+Enter 换行）。在插件设置卡片（或 profile patch）把 `mobileEnterToSend` 设为 false 后，普通 Enter 改为插入换行，只有「发送」按钮会发送；手机打开聊天时经自己的 `/m/api` 偏好方法读取该开关。在支持 `field-sizing: content` 的浏览器上，输入框随草稿自动增高，最高 120px 封顶（两种模式一致）。
 - `/m/` Worker 对静态壳使用 network-first 回退，并等待当前页面关闭后才激活更新。它旁路 `/m/api`、`/api`、SSE 与所有写请求。
 - 安装本插件后，非 loopback 桌面中受围栏保护的流量会改走门控的 `/remote` 通道（见 `src/index.ts` 的 `requirePairingForLan`）。在该开关开启（默认）时，经局域网 URL 或隧道打开的桌面浏览器必须像任何远程设备一样配对——未配对状态显示完整阻断页而不是数据；loopback（127.0.0.1）不受影响，继续使用原始路径。把 profile patch 里 `requirePairingForLan` 设为 false 可让桌面继续走普通 `/api`，残留的 `/remote` 改写也会放行未配对调用（仅在开放局域网姿态下有意义；loopback-only 路径仍被拒绝），同时保留令牌/状态/撤销。注意 `/api` 路由本体属于 SDK：`--host 0.0.0.0` 绑定时 SDK 自动信任局域网字面量，绕过 UI 的局域网客户端仍能直接访问 `/api`——姿态探测会在面板上报告该姿态。
@@ -168,6 +169,10 @@ pnpm run build
 5. 桌面 停止 切断手机：其下一个 `/api` 请求 403（重连循环重试直到新二维码重新配对）。
 
 公网路径是经隧道的同一往返（见「通过互联网远程访问」）：loopback mint → 手机或 PC 打开公网二维码 URL → accept → UI。只有 `publicBaseUrl`（插件配置）命名隧道主机；`--trusted-host` 不属于这条配对流。桌面面板仍在 `http://127.0.0.1` 打开。
+
+## 安全模型
+
+- 移动端普通接口与 mux 事件流都要求有效的已配对设备会话。会话缺失或已撤销时返回 HTTP 403，并使用带 `error.code: "unpaired"` 的 JSON 拒绝信封；浏览器 `EventSource` API 只暴露事件流失败，不暴露该响应体。
 
 ## 已知限制与待办
 

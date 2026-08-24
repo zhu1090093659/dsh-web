@@ -11,6 +11,10 @@
  *   GET  /scene-frame/<token> → PNG of a scene wallpaper's main texture,
  *                               decoded in-process (pkg-extract.ts), cached
  *                               under the import store's .cache directory
+ *   GET  /image/<token>       → macOS Desktop Pictures: jpg/png/webp served
+ *                               directly, HEIC converted to JPEG through
+ *                               sips, cached under the import store's
+ *                               .cache directory (darwin only)
  *   POST /import              → copy a library wallpaper into the import
  *                               store (<harnessHome>/skin-center/wallpapers)
  *   POST /reimport            → refresh an imported copy from its source
@@ -19,7 +23,12 @@
  * Tokens are base64url of an absolute path, issued only by the inventory
  * handler, so a crafted token can never reach a path the library scan did
  * not already expose. Every route rides the skin-center same-origin fence
- * (routes.ts) — wallpaper imports must not be triggerable cross-site.
+ * (routes.ts) — wallpaper imports must not be triggerable cross-site. The
+ * read-only content routes consumed by the wallpaper iframes themselves
+ * (/web/, /shim.js, /scene-manifest/, /scene-resource/) use the relaxed
+ * content-origin fence instead: those frames are sandboxed without
+ * allow-same-origin, so their own asset loads arrive as Sec-Fetch-Site:
+ * cross-site by design.
  *
  * Compliance note: this module only ever reads files already present on the
  * user's machine (their own Wallpaper Engine library) or copies them within
@@ -27,31 +36,38 @@
  * @module @linxin666/dsh-client-ui-skin-center/we-routes
  */
 
+import { execFile } from 'node:child_process'
 import { cpSync, createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { pipeline, type Readable } from 'node:stream'
 import { basename, dirname, extname, join as joinPath, resolve as resolvePath, sep } from 'node:path'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
-import { json, readJsonBody, requireSameOrigin } from './http-utils.ts'
+import { writeJson, readJsonBody, requireContentOrigin, requireSameOrigin } from './http-utils.ts'
 import {
   buildInventory,
+  inventoryFingerprint,
+  locateWallpaperEngine,
+  owningLibraries,
+  type MacosWallpaperRoots,
   type WallpaperEntry,
   type WallpaperType,
+  type WeInventory,
 } from './we-library.ts'
+import { defaultMacosWallpaperRoots } from './macos-library.ts'
 import {
   buildSceneManifest,
   buildSceneManifestFromDir,
+  decodeTex,
+  encodePng,
   extractSceneResource,
   extractSceneResourceFromDir,
   hasSceneVideo,
   hasSceneVideoFromDir,
-  parseTexToRGBA,
   TexUnsupportedError,
 } from './pkg-extract.ts'
 import { WE_SHIM_JS } from './we-shim-source.ts'
 import { WE_SCENE_PLAYER_HTML } from './we-player-source.ts'
-import { deflateSync } from 'node:zlib'
 
 /**
  * Scene extraction cache format version, embedded in every frames/videos
@@ -104,54 +120,6 @@ function webPropertyDefaults(projectRoot: string): Record<string, { value: unkno
   return out
 }
 
-/** Encode RGBA pixel data to PNG buffer using Node zlib for compression. */
-function encodeRGBAToPNG(width: number, height: number, rgba: Uint8Array): Buffer {
-  // Build raw scanlines: each row prefixed by filter byte 0 (None)
-  const rowBytes = width * 4
-  const raw = Buffer.alloc(height * (1 + rowBytes))
-  for (let y = 0; y < height; y++) {
-    raw[y * (1 + rowBytes)] = 0 // filter: None
-    raw.set(rgba.slice(y * rowBytes, (y + 1) * rowBytes), y * (1 + rowBytes) + 1)
-  }
-  const compressed = deflateSync(raw, { level: 1 }) // fast compression
-
-  // PNG CRC32
-  const crcTable: number[] = []
-  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; crcTable[n] = c }
-  const crc32 = (buf: Buffer, start: number, len: number): number => {
-    let c = 0xffffffff
-    for (let i = start; i < start + len; i++) c = crcTable[(c ^ buf[i]) & 0xff] ^ (c >>> 8)
-    return (c ^ 0xffffffff) >>> 0
-  }
-
-  // Assemble PNG
-  const pngSize = 8 + 25 + (12 + compressed.length) + 12 // signature + IHDR + IDAT + IEND
-  const png = Buffer.alloc(pngSize)
-  let p = 0
-  // Signature
-  png.set([137, 80, 78, 71, 13, 10, 26, 10], 0); p = 8
-  // IHDR
-  png.writeUInt32BE(13, p); p += 4
-  png.write('IHDR', p); p += 4
-  png.writeUInt32BE(width, p); p += 4
-  png.writeUInt32BE(height, p); p += 4
-  png[p++] = 8 // bit depth
-  png[p++] = 6 // RGBA
-  png[p++] = 0; png[p++] = 0; png[p++] = 0 // compression, filter, interlace
-  png.writeUInt32BE(crc32(png, 12, 17), p); p += 4
-  // IDAT
-  png.writeUInt32BE(compressed.length, p); p += 4
-  png.write('IDAT', p); p += 4
-  compressed.copy(png, p); p += compressed.length
-  png.writeUInt32BE(crc32(png, p - compressed.length - 4, compressed.length + 4), p); p += 4
-  // IEND
-  png.writeUInt32BE(0, p); p += 4
-  png.write('IEND', p); p += 4
-  png.writeUInt32BE(crc32(png, p - 4, 4), p); p += 4
-
-  return png
-}
-
 /** Browser-facing base path of the wallpaper API. */
 export const WE_API_PREFIX = '/api/skin-center/we'
 
@@ -169,6 +137,12 @@ export interface WeRouteDeps {
   storeDir: string
   /** Auto-detect Steam / Wallpaper Engine installation (default true). */
   autoDetect?: boolean
+  /** macOS wallpaper roots override (tests); undefined uses the darwin defaults. */
+  macosRoots?: MacosWallpaperRoots | null
+  /** Platform override for tests (the macOS scan gates on darwin). */
+  platform?: NodeJS.Platform
+  /** HEIC converter override for tests (default: sips on darwin). */
+  convertImage?: (src: string, dest: string) => Promise<void>
   /** Internal stream factory override used by route-level lifecycle tests. */
   openReadStream?: (path: string, options?: { start?: number; end?: number }) => Readable
 }
@@ -230,14 +204,16 @@ function serveFile(
   req: IncomingMessage,
   res: ServerResponse,
   openReadStream: NonNullable<WeRouteDeps['openReadStream']>,
+  extraHeaders: Record<string, string> = {},
 ): void {
   if (!existsSync(absPath) || !statSync(absPath).isFile()) {
-    json(res, 404, { ok: false, error: 'not-found' })
+    writeJson(res, 404, { ok: false, error: 'not-found' })
     return
   }
   const size = statSync(absPath).size
   res.setHeader('Content-Type', mimeFor(absPath))
   res.setHeader('Accept-Ranges', 'bytes')
+  for (const [key, value] of Object.entries(extraHeaders)) res.setHeader(key, value)
   const range = req.headers.range
   if (range) {
     const match = /bytes=(\d*)-(\d*)/.exec(range)
@@ -324,11 +300,63 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     return token
   }
 
-  const freshInventory = () => buildInventory({
-    manualDirs: deps.getConfig().weLibraryDirs ?? [],
-    storeDir: deps.storeDir,
-    autoDetect: deps.autoDetect,
-  })
+  // In-process inventory cache (#T2-10): the full library scan (per-project
+  // readdir + project.json parse + stats, plus the registry probe under
+  // auto-detect) used to run on every inventory / scene-probe / import
+  // request. The scan is now cached and re-run only when the fingerprint of
+  // everything it reads changes; import / reimport / remove writes
+  // invalidate proactively (a write inside the same mtime tick or a brand
+  // new entry the previous scan never saw must not be hidden). The reg.exe
+  // registry probe is process-memoized in we-library.ts.
+  let inventoryCache: { key: string; value: WeInventory } | null = null
+  const invalidateInventory = (): void => { inventoryCache = null }
+  const freshInventory = (): WeInventory => {
+    const manualDirs = deps.getConfig().weLibraryDirs ?? []
+    const autoDetect = deps.autoDetect ?? true
+    // Detection runs before every fingerprint: a Steam library added or
+    // removed mid-session must invalidate the cache, and detection itself
+    // only re-runs reg.exe once per process (memoized).
+    const installDir = autoDetect ? locateWallpaperEngine() : null
+    const libraryDirs = autoDetect ? owningLibraries() : []
+    // macOS wallpaper stores (aerials + Desktop Pictures) ride the same
+    // auto-detect switch; off-darwin they are empty by construction.
+    const macos = deps.macosRoots !== undefined
+      ? deps.macosRoots
+      : (autoDetect && process.platform === 'darwin' ? defaultMacosWallpaperRoots() : null)
+    const key = inventoryFingerprint({
+      installDir,
+      libraryDirs,
+      manualDirs,
+      storeDir: deps.storeDir,
+      entries: inventoryCache?.value.wallpapers,
+      macos,
+    })
+    if (inventoryCache && inventoryCache.key === key) return inventoryCache.value
+    const value = buildInventory({
+      manualDirs,
+      storeDir: deps.storeDir,
+      autoDetect: false,
+      installDir,
+      libraryDirs,
+      macos,
+      platform: deps.platform,
+    })
+    // Store a key computed from the entries this scan produced; the
+    // previous entry set described the previous scan and would invalidate
+    // the cache on every request.
+    inventoryCache = {
+      key: inventoryFingerprint({
+        installDir,
+        libraryDirs,
+        manualDirs,
+        storeDir: deps.storeDir,
+        entries: value.wallpapers,
+        macos,
+      }),
+      value,
+    }
+    return value
+  }
 
   // hasVideo / hasSceneWebGL probes parse whole pkgs (LZ4 decompress, tex
   // decode), so cache them by path+mtime+size: the probe route would
@@ -355,6 +383,24 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
 
   const entryToJson = (entry: WallpaperEntry): WallpaperJson => {
     const hasFile = existsSync(entry.fileAbs)
+    // macOS Desktop Pictures (HEIC): the browser cannot decode HEIC, so the
+    // thumbnail and the mounted backdrop both come from the converting
+    // /image route rather than a raw file preview.
+    if (entry.type === 'image') {
+      return {
+        id: entry.id,
+        title: entry.title,
+        type: entry.type,
+        source: entry.source,
+        playable: false,
+        updateAvailable: false,
+        videoUrl: null,
+        webUrl: null,
+        frameUrl: null,
+        sceneUrl: null,
+        previewUrl: hasFile ? WE_API_PREFIX + '/image/' + tokenFor(entry.fileAbs) : null,
+      }
+    }
     // Scene video/WebGL capabilities are probed lazily by the scene-probe
     // route for the selected wallpaper only; probing every scene here would
     // read the whole packed payload of a large library on every inventory.
@@ -387,7 +433,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     } catch { /* malformed escape sequence: no such token */ }
     const abs = mediaMap.get(token)
     if (!abs) {
-      json(res, 404, { ok: false, error: 'unknown-token' })
+      writeJson(res, 404, { ok: false, error: 'unknown-token' })
       return null
     }
     return abs
@@ -400,21 +446,22 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     kind: 'exact',
     path: WE_API_PREFIX + '/inventory',
     handler: (req, res) => {
-      if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
       if (!requireSameOrigin(req, res)) return
       try {
         const inventory = freshInventory()
         const wallpapers = inventory.wallpapers.map(entryToJson)
         persistTokens()
-        json(res, 200, {
+        writeJson(res, 200, {
           ok: true,
           installDir: inventory.installDir,
           total: inventory.total,
           portableCount: inventory.portableCount,
+          systemCount: inventory.wallpapers.filter((w) => w.source === 'system').length,
           wallpapers,
         })
       } catch (error) {
-        json(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
+        writeJson(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
       }
     },
   })
@@ -429,14 +476,14 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     kind: 'exact',
     path: WE_API_PREFIX + '/scene-probe',
     handler: async (req, res) => {
-      if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
       if (!requireSameOrigin(req, res)) return
       try {
         const url = new URL(req.url ?? '', 'http://localhost')
         const id = url.searchParams.get('id')
-        if (!id) { json(res, 400, { ok: false, error: 'missing-id' }); return }
+        if (!id) { writeJson(res, 400, { ok: false, error: 'missing-id' }); return }
         const entry = freshInventory().wallpapers.find((w) => w.id === id && w.type === 'scene')
-        if (!entry || !existsSync(entry.fileAbs)) { json(res, 404, { ok: false, error: 'not-found' }); return }
+        if (!entry || !existsSync(entry.fileAbs)) { writeJson(res, 404, { ok: false, error: 'not-found' }); return }
         let mtimeMs = 0
         let size = 0
         try { const st = await stat(entry.fileAbs); mtimeMs = st.mtimeMs; size = st.size } catch { /* probe once without a key */ }
@@ -495,7 +542,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
         const sceneToken = probe.hasSceneWebGL ? tokenFor(entry.fileAbs) : null
         // Persist after issuing so freshly minted tokens survive a restart.
         persistTokens()
-        json(res, 200, {
+        writeJson(res, 200, {
           ok: true,
           videoUrl: videoToken !== null ? WE_API_PREFIX + '/scene-video/' + videoToken : null,
           sceneUrl: sceneToken !== null ? WE_API_PREFIX + '/scene-runtime/' + sceneToken : null,
@@ -503,7 +550,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
           unsupportedFeatures: probe.unsupportedFeatures,
         })
       } catch (error) {
-        json(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
+        writeJson(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
       }
     },
   })
@@ -513,9 +560,13 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     kind: 'exact',
     path: WE_API_PREFIX + '/shim.js',
     handler: (req, res) => {
-      if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
-      if (!requireSameOrigin(req, res)) return
-      res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store' })
+      if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (!requireContentOrigin(req, res)) return
+      res.writeHead(200, {
+        'content-type': 'text/javascript; charset=utf-8',
+        'cache-control': 'no-store',
+        'access-control-allow-origin': 'null',
+      })
       res.end(WE_SHIM_JS)
     },
   })
@@ -527,7 +578,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
       kind: 'prefix',
       path: WE_API_PREFIX + '/' + seg,
       handler: (req, res) => {
-        if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+        if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
         if (!requireSameOrigin(req, res)) return
         const abs = resolveToken(req, res, prefix)
         if (!abs) return
@@ -535,13 +586,11 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
         if (abs.toLowerCase().endsWith('.tex')) {
           try {
             const texBuf = readFileSync(abs)
-            const result = parseTexToRGBA(new Uint8Array(texBuf.buffer, texBuf.byteOffset, texBuf.byteLength))
-            if (result) {
-              const pngBuf = encodeRGBAToPNG(result.width, result.height, result.rgba)
-              res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': pngBuf.length, 'Cache-Control': 'public, max-age=86400' })
-              res.end(pngBuf)
-              return
-            }
+            const decoded = decodeTex(new Uint8Array(texBuf.buffer, texBuf.byteOffset, texBuf.byteLength))
+            const pngBuf = encodePng(decoded.width, decoded.height, decoded.rgba)
+            res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': pngBuf.length, 'Cache-Control': 'public, max-age=86400' })
+            res.end(pngBuf)
+            return
           } catch { /* fall through to serveFile */ }
         }
         serveFile(abs, req, res, openReadStream)
@@ -549,13 +598,67 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     })
   }
 
+  /**
+   * Convert one HEIC wallpaper into a <=2560px JPEG with the macOS-native
+   * sips tool (no extra dependency). Darwin-only: Desktop Pictures scanning
+   * only runs there, and the token map only ever holds scanned paths.
+   */
+  const defaultConvertImage = (src: string, dest: string): Promise<void> =>
+    new Promise((resolvePromise, reject) => {
+      if (process.platform !== 'darwin') {
+        reject(new Error('heic conversion requires macOS'))
+        return
+      }
+      execFile('/usr/bin/sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '85', '-Z', '2560', src, '--out', dest], { timeout: 60000 }, (error) => {
+        if (error !== null) reject(error)
+        else resolvePromise()
+      })
+    })
+
+  // GET /image/<token> — macOS Desktop Pictures: .jpg/.jpeg/.png/.webp are
+  // served directly; HEIC/HEIF converts to JPEG, cached under
+  // <store>/.cache/images keyed by path + mtime (stale keys pruned like the
+  // scene caches). Anything else is rejected: only image formats leave here.
+  const imagePrefix = WE_API_PREFIX + '/image/'
+  routes.push({
+    kind: 'prefix',
+    path: WE_API_PREFIX + '/image',
+    handler: (req, res) => {
+      if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (!requireSameOrigin(req, res)) return
+      const abs = resolveToken(req, res, imagePrefix)
+      if (!abs) return
+      if (/\.(jpe?g|png|webp)$/i.test(abs)) {
+        serveFile(abs, req, res, openReadStream)
+        return
+      }
+      if (!/\.hei[cf]$/i.test(abs)) { writeJson(res, 400, { ok: false, error: 'not-an-image' }); return }
+      void (async () => {
+        let mtime = 0
+        try { mtime = statSync(abs).mtimeMs } catch { /* stays 0 */ }
+        const cacheDir = joinPath(deps.storeDir, '.cache', 'images')
+        const base = Buffer.from(abs, 'utf8').toString('base64url')
+        const key = base + '_v1_' + String(Math.round(mtime)) + '.jpg'
+        const cachePath = joinPath(cacheDir, key)
+        if (!existsSync(cachePath)) {
+          mkdirSync(cacheDir, { recursive: true })
+          await (deps.convertImage ?? defaultConvertImage)(abs, cachePath)
+          pruneStaleSceneCache(cacheDir, base, key)
+        }
+        serveFile(cachePath, req, res, openReadStream)
+      })().catch((error: unknown) => {
+        writeJson(res, 422, { ok: false, error: error instanceof Error ? error.message : String(error) })
+      })
+    },
+  })
+
   // GET /scene-video/<token> — stream extracted MP4 video from scene pkg textures.
   const sceneVideoPrefix = WE_API_PREFIX + '/scene-video/'
   routes.push({
     kind: 'prefix',
     path: WE_API_PREFIX + '/scene-video',
     handler: (req, res) => {
-      if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
       if (!requireSameOrigin(req, res)) return
       const abs = resolveToken(req, res, sceneVideoPrefix)
       if (!abs) return
@@ -572,7 +675,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
             ? extractSceneVideoFromDir(dirname(abs))
             : extractSceneVideo(new Uint8Array(readFileSync(abs)))
           if (!videoBytes) {
-            json(res, 404, { ok: false, error: 'no-video-found' })
+            writeJson(res, 404, { ok: false, error: 'no-video-found' })
             return
           }
           mkdirSync(cacheDir, { recursive: true })
@@ -581,7 +684,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
         }
         serveFile(cachePath, req, res, openReadStream)
       })().catch((error: unknown) => {
-        json(res, 422, { ok: false, error: error instanceof Error ? error.message : String(error) })
+        writeJson(res, 422, { ok: false, error: error instanceof Error ? error.message : String(error) })
       })
     },
   })
@@ -594,24 +697,24 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     kind: 'prefix',
     path: WE_API_PREFIX + '/web',
     handler: (req, res) => {
-      if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
-      if (!requireSameOrigin(req, res)) return
+      if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (!requireContentOrigin(req, res)) return
       const pathname = new URL(req.url || '/', 'http://localhost').pathname
       let rest = ''
       try {
         rest = decodeURIComponent(pathname.slice(webPrefix.length))
-      } catch { json(res, 400, { ok: false, error: 'bad-request' }); return }
+      } catch { writeJson(res, 400, { ok: false, error: 'bad-request' }); return }
       const token = rest.split('/')[0] ?? ''
       const entryAbs = mediaMap.get(token)
-      if (!entryAbs) { json(res, 404, { ok: false, error: 'unknown-token' }); return }
+      if (!entryAbs) { writeJson(res, 404, { ok: false, error: 'unknown-token' }); return }
       const root = dirname(entryAbs)
       const sub = rest.slice(token.length).replace(/^\/+/, '') || basename(entryAbs)
       const abs = resolvePath(root, sub)
       if (abs !== root && !abs.startsWith(root + sep)) {
-        json(res, 403, { ok: false, error: 'path-escape-rejected' })
+        writeJson(res, 403, { ok: false, error: 'path-escape-rejected' })
         return
       }
-      if (!existsSync(abs) || !statSync(abs).isFile()) { json(res, 404, { ok: false, error: 'not-found' }); return }
+      if (!existsSync(abs) || !statSync(abs).isFile()) { writeJson(res, 404, { ok: false, error: 'not-found' }); return }
       if (/\.html?$/i.test(abs)) {
         const html = readFileSync(abs, 'utf8')
         const defaultsTag = '<script>window.__dshWeDefaultProps = ' + JSON.stringify(webPropertyDefaults(root)).replace(/</g, '\\u003c') + ';</script>'
@@ -619,11 +722,18 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
         const injected = /<head[^>]*>/i.test(html)
           ? html.replace(/<head[^>]*>/i, (m) => m + tag)
           : tag + html
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+        res.writeHead(200, {
+          'content-type': 'text/html; charset=utf-8',
+          'cache-control': 'no-store',
+          // The sandboxed wallpaper frame loads its own project files with an
+          // opaque origin, so module scripts and fetch() arrive as
+          // cross-origin CORS requests with Origin: null.
+          'access-control-allow-origin': 'null',
+        })
         res.end(injected)
         return
       }
-      serveFile(abs, req, res, openReadStream)
+      serveFile(abs, req, res, openReadStream, { 'Access-Control-Allow-Origin': 'null' })
     },
   })
 
@@ -635,7 +745,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     kind: 'prefix',
     path: WE_API_PREFIX + '/scene-frame',
     handler: (req, res) => {
-      if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
       if (!requireSameOrigin(req, res)) return
       const abs = resolveToken(req, res, framePrefix)
       if (!abs) return
@@ -667,7 +777,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
           // a format this build cannot decode, so the frame route reports it
           // and the wallpaper controller falls back to the author preview
           // (#906).
-          json(res, 422, {
+          writeJson(res, 422, {
             ok: false,
             error: 'unsupported-tex-format',
             format: error.format,
@@ -676,7 +786,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
           })
           return
         }
-        json(res, 422, { ok: false, error: error instanceof Error ? error.message : String(error) })
+        writeJson(res, 422, { ok: false, error: error instanceof Error ? error.message : String(error) })
       })
     },
   })
@@ -686,7 +796,7 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     kind: 'prefix',
     path: WE_API_PREFIX + '/scene-runtime',
     handler: (req, res) => {
-      if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
       if (!requireSameOrigin(req, res)) return
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
       res.end(WE_SCENE_PLAYER_HTML)
@@ -699,8 +809,8 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     kind: 'prefix',
     path: WE_API_PREFIX + '/scene-manifest',
     handler: (req, res) => {
-      if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
-      if (!requireSameOrigin(req, res)) return
+      if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (!requireContentOrigin(req, res)) return
       const abs = resolveToken(req, res, sceneManifestPrefix)
       if (!abs) return
       try {
@@ -709,12 +819,14 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
           ? buildSceneManifestFromDir(dirname(abs), token)
           : buildSceneManifest(new Uint8Array(readFileSync(abs)), token, (() => { try { return JSON.parse(readFileSync(joinPath(dirname(abs), 'project.json'), 'utf8')) as unknown } catch { return null } })())
         if (!manifest) {
-          json(res, 404, { ok: false, error: 'manifest-build-failed' })
+          writeJson(res, 404, { ok: false, error: 'manifest-build-failed' })
           return
         }
-        json(res, 200, { ok: true, manifest })
+        // The sandboxed scene player fetches the manifest with an opaque
+        // origin (Origin: null), so the CORS response must allow exactly it.
+        writeJson(res, 200, { ok: true, manifest }, { 'access-control-allow-origin': 'null' })
       } catch (err) {
-        json(res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) })
+        writeJson(res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) })
       }
     },
   })
@@ -725,34 +837,40 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     kind: 'prefix',
     path: WE_API_PREFIX + '/scene-resource',
     handler: (req, res) => {
-      if (req.method !== 'GET') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
-      if (!requireSameOrigin(req, res)) return
+      if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+      if (!requireContentOrigin(req, res)) return
       const pathname = new URL(req.url || '/', 'http://localhost').pathname
       let rest = ''
       try {
         rest = decodeURIComponent(pathname.slice(sceneResourcePrefix.length))
-      } catch { json(res, 400, { ok: false, error: 'bad-request' }); return }
+      } catch { writeJson(res, 400, { ok: false, error: 'bad-request' }); return }
       const token = rest.split('/')[0] ?? ''
       const entryAbs = mediaMap.get(token)
-      if (!entryAbs) { json(res, 404, { ok: false, error: 'unknown-token' }); return }
+      if (!entryAbs) { writeJson(res, 404, { ok: false, error: 'unknown-token' }); return }
       const subpath = rest.slice(token.length).replace(/^\/+/, '')
-      if (!subpath) { json(res, 400, { ok: false, error: 'missing-subpath' }); return }
+      if (!subpath) { writeJson(res, 400, { ok: false, error: 'missing-subpath' }); return }
       try {
         const resBytes = entryAbs.toLowerCase().endsWith('.json')
           ? extractSceneResourceFromDir(dirname(entryAbs), subpath)
           : extractSceneResource(new Uint8Array(readFileSync(entryAbs)), subpath)
         if (!resBytes) {
-          json(res, 404, { ok: false, error: 'resource-not-found' })
+          writeJson(res, 404, { ok: false, error: 'resource-not-found' })
           return
         }
         // The extractor falls back to raw file bytes when a texture cannot
         // be decoded: label by payload, not by route name.
         const isPng = resBytes.length > 8 && resBytes[0] === 0x89 && resBytes[1] === 0x50 && resBytes[2] === 0x4e && resBytes[3] === 0x47
         const isMp4 = resBytes.length > 12 && resBytes[4] === 0x66 && resBytes[5] === 0x74 && resBytes[6] === 0x79 && resBytes[7] === 0x70
-        res.writeHead(200, { 'content-type': isPng ? 'image/png' : isMp4 ? 'video/mp4' : 'application/octet-stream', 'cache-control': 'no-store' })
+        // The sandboxed scene player textures load with crossOrigin, which
+        // makes them CORS requests with Origin: null.
+        res.writeHead(200, {
+          'content-type': isPng ? 'image/png' : isMp4 ? 'video/mp4' : 'application/octet-stream',
+          'cache-control': 'no-store',
+          'access-control-allow-origin': 'null',
+        })
         res.end(Buffer.from(resBytes))
       } catch (err) {
-        json(res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) })
+        writeJson(res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) })
       }
     },
   })
@@ -787,10 +905,16 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
       kind: 'exact',
       path,
       handler: (req, res) => {
-        if (req.method !== 'POST') { json(res, 405, { ok: false, error: 'method-not-allowed' }); return }
+        if (req.method !== 'POST') { writeJson(res, 405, { ok: false, error: 'method-not-allowed' }); return }
         if (!requireSameOrigin(req, res)) return
-        readJsonBody(req).then((body) => run(readId(body), res)).catch((error: unknown) => {
-          json(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
+        readJsonBody(req).then((body) => {
+          if (body === null) {
+            writeJson(res, 400, { ok: false, error: 'invalid-body' })
+            return
+          }
+          run(readId(body), res)
+        }).catch((error: unknown) => {
+          writeJson(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
         })
       },
     })
@@ -798,35 +922,41 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
 
   // POST /import — copy a library wallpaper project into the import store.
   postJson(WE_API_PREFIX + '/import', (id, res) => {
-    if (id === '' || id.startsWith('imported/')) { json(res, 400, { ok: false, error: 'bad-id' }); return }
+    if (id === '' || id.startsWith('imported/')) { writeJson(res, 400, { ok: false, error: 'bad-id' }); return }
     const entry = freshInventory().wallpapers.find((w) => w.id === id)
-    if (!entry) { json(res, 404, { ok: false, error: 'wallpaper-not-found' }); return }
+    if (!entry) { writeJson(res, 404, { ok: false, error: 'wallpaper-not-found' }); return }
+    // macOS-managed entries (aerials / Desktop Pictures) are already local
+    // and their dir is a shared system folder — never copy it wholesale.
+    if (entry.source === 'system') { writeJson(res, 400, { ok: false, error: 'not-importable' }); return }
     const dest = joinPath(deps.storeDir, safeStoreId(id))
-    if (existsSync(dest)) { json(res, 409, { ok: false, error: 'already-imported' }); return }
+    if (existsSync(dest)) { writeJson(res, 409, { ok: false, error: 'already-imported' }); return }
     copyIntoStore(entry, dest)
-    json(res, 200, { ok: true, id: 'imported/' + entry.id })
+    invalidateInventory()
+    writeJson(res, 200, { ok: true, id: 'imported/' + entry.id })
   })
 
   // POST /reimport — refresh an imported copy from its (still present) source.
   postJson(WE_API_PREFIX + '/reimport', (id, res) => {
-    if (!id.startsWith('imported/')) { json(res, 400, { ok: false, error: 'bad-id' }); return }
+    if (!id.startsWith('imported/')) { writeJson(res, 400, { ok: false, error: 'bad-id' }); return }
     const sourceId = id.slice('imported/'.length)
     const dest = joinPath(deps.storeDir, safeStoreId(sourceId))
-    if (!existsSync(dest)) { json(res, 404, { ok: false, error: 'import-not-found' }); return }
+    if (!existsSync(dest)) { writeJson(res, 404, { ok: false, error: 'import-not-found' }); return }
     const source = freshInventory().wallpapers.find((w) => w.id === sourceId && w.source !== 'imported')
-    if (!source) { json(res, 410, { ok: false, error: 'source-gone' }); return }
+    if (!source) { writeJson(res, 410, { ok: false, error: 'source-gone' }); return }
     rmSync(dest, { recursive: true, force: true })
     copyIntoStore(source, dest)
-    json(res, 200, { ok: true, id })
+    invalidateInventory()
+    writeJson(res, 200, { ok: true, id })
   })
 
   // POST /remove — delete an imported copy (never touches the library).
   postJson(WE_API_PREFIX + '/remove', (id, res) => {
-    if (!id.startsWith('imported/')) { json(res, 400, { ok: false, error: 'bad-id' }); return }
+    if (!id.startsWith('imported/')) { writeJson(res, 400, { ok: false, error: 'bad-id' }); return }
     const dest = joinPath(deps.storeDir, safeStoreId(id.slice('imported/'.length)))
-    if (!existsSync(dest)) { json(res, 404, { ok: false, error: 'import-not-found' }); return }
+    if (!existsSync(dest)) { writeJson(res, 404, { ok: false, error: 'import-not-found' }); return }
     rmSync(dest, { recursive: true, force: true })
-    json(res, 200, { ok: true })
+    invalidateInventory()
+    writeJson(res, 200, { ok: true })
   })
 
   return routes

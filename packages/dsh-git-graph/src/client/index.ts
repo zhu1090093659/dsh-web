@@ -99,7 +99,13 @@ export const CONTEXT_FALLBACK_MS = 2000
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-git-graph: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'dsh-git-graph: dictionaries')
 
   const git = new GitApi()
 
@@ -184,17 +190,26 @@ export function apply(ctx: ClientContext): void {
     let mounted = false
     const disposeContextWait = scope.slots.inject('conversation.input.selector.context', () => {
       mounted = true
-      return scope.slots.register(
-        { name: 'conversation.input.selector.context', ...chipEntry },
-        BranchChip)
+      try {
+        return scope.slots.register(
+          { name: 'conversation.input.selector.context', ...chipEntry },
+          BranchChip)
+      } catch {
+        return () => {}
+      }
     })
     fallbackTimer = setTimeout(() => {
       if (mounted) return
       disposeContextWait()
-      scope.slots.inject('conversation.input.dock', () =>
-        scope.slots.register(
-          { name: 'conversation.input.dock', ...chipEntry },
-          BranchChip))
+      scope.slots.inject('conversation.input.dock', () => {
+        try {
+          return scope.slots.register(
+            { name: 'conversation.input.dock', ...chipEntry },
+            BranchChip)
+        } catch {
+          return () => {}
+        }
+      })
     }, CONTEXT_FALLBACK_MS)
   })
 }

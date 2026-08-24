@@ -47,7 +47,13 @@ export function apply(ctx: ClientContext): void {
   if (!claimChatRecoveryApply()) return
   ctx.effect(() => releaseChatRecoveryApply, 'chat-recovery: apply claim')
 
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'chat-recovery: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'chat-recovery: dictionaries')
 
   const sessions = ctx.sessions
   const workspaces = ctx.workspaces
@@ -81,21 +87,33 @@ export function apply(ctx: ClientContext): void {
   rewire()
   ctx.effect(() => () => supervisor.dispose(), 'chat-recovery: dispose supervisor')
 
-  ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
-    name: 'conversation.chat.turnTail',
-    // The chain owner share carries only turn/seq/openFile - a pure selector
-    // cannot see the snapshot, so this entry matches every completed turn and
-    // the component gates on the snapshot itself.
-    select: (owner) => owner,
-    locale: NS,
-    inject: () => ({ supervisor, submitEdit, manualRetry }),
-  }, TurnActionsView))
+  ctx.slots.inject('conversation.chat.turnTail', () => {
+    try {
+      return ctx.slots.register({
+        name: 'conversation.chat.turnTail',
+        // The chain owner share carries only turn/seq/openFile - a pure selector
+        // cannot see the snapshot, so this entry matches every completed turn and
+        // the component gates on the snapshot itself.
+        select: (owner) => owner,
+        locale: NS,
+        inject: () => ({ supervisor, submitEdit, manualRetry }),
+      }, TurnActionsView)
+    } catch {
+      return () => {}
+    }
+  })
 
-  ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
-    name: 'conversation.input.dock',
-    id: 'chat-recovery',
-    order: 500,
-    locale: NS,
-    inject: () => ({ supervisor, manualRetry }),
-  }, RetryDockView))
+  ctx.slots.inject('conversation.input.dock', () => {
+    try {
+      return ctx.slots.register({
+        name: 'conversation.input.dock',
+        id: 'chat-recovery',
+        order: 500,
+        locale: NS,
+        inject: () => ({ supervisor, manualRetry }),
+      }, RetryDockView)
+    } catch {
+      return () => {}
+    }
+  })
 }

@@ -104,7 +104,7 @@ function DirectoryBrowser({ onCancel, onPick }: DirectoryBrowserProps) {
                   className={`mobile-row dir-entry ${entry.hidden ? 'dir-entry-hidden' : ''}`}
                   onClick={() => setPath(entry.path)}
                 >
-                  <span className="mobile-rowTitle">📁 {entry.name}</span>
+                  <span className="mobile-rowTitle">{entry.name}</span>
                 </button>
               </li>
             ))

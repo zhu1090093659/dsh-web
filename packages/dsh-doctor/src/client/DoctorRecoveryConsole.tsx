@@ -194,6 +194,7 @@ export function DoctorRecoveryConsole(props: DoctorConsoleProps): ReactNode {
               view={view}
               onDiagnose={() => { void controller.runDiagnose() }}
               onRepair={() => { void controller.runRepair() }}
+              onConfirm={() => { void controller.runConfirm() }}
               onReport={() => { void controller.reportProbe() }}
               onSendToHarness={openHarness}
               onRefresh={() => { void controller.refresh() }}
@@ -457,11 +458,12 @@ function failureStackFor(incident: PassiveIncident, view: DoctorView): string {
 }
 
 /** Actions card. */
-function ActionsCard({ t, view, onDiagnose, onRepair, onReport, onSendToHarness, onRefresh, onClear, hasFailures }: {
+function ActionsCard({ t, view, onDiagnose, onRepair, onConfirm, onReport, onSendToHarness, onRefresh, onClear, hasFailures }: {
   t: TranslateNS<'doctor'>
   view: DoctorView
   onDiagnose: () => void
   onRepair: () => void
+  onConfirm: () => void
   onReport: () => void
   onSendToHarness: () => void
   onRefresh: () => void
@@ -471,7 +473,8 @@ function ActionsCard({ t, view, onDiagnose, onRepair, onReport, onSendToHarness,
 }): ReactNode {
   const busy = view.actionRunning
   const offline = view.host === 'unavailable'
-  const repairId = view.incidents.some(incident => incident.repairable === true && incident.phase !== 'recovered' && incident.phase !== 'rolled-back' && incident.phase !== 'unresolved')
+  const awaitingConfirm = view.incidents.some(incident => incident.phase === 'awaiting-confirmation' && incident.candidateId !== undefined)
+  const repairId = view.incidents.some(incident => incident.repairable === true && incident.phase !== 'awaiting-confirmation' && incident.phase !== 'recovered' && incident.phase !== 'rolled-back' && incident.phase !== 'unresolved')
   return (
     <div className={css.card} data-dsh-part="actions">
       <h3 className={css.cardTitle}>{t('actions.title')}</h3>
@@ -481,6 +484,9 @@ function ActionsCard({ t, view, onDiagnose, onRepair, onReport, onSendToHarness,
         </button>
         <button type="button" className={css.button} disabled={busy || offline || !repairId} onClick={onRepair}>
           {t('actions.repair')}
+        </button>
+        <button type="button" className={css.button} data-variant="primary" disabled={busy || offline || !awaitingConfirm} onClick={onConfirm}>
+          {t('actions.confirm')}
         </button>
         <button type="button" className={css.button} disabled={busy || offline || view.probe.length === 0} onClick={onReport}>
           {t('actions.report')}

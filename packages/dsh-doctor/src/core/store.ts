@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { FsLike } from './fs.ts'
 
@@ -13,9 +13,18 @@ export async function readJson<T>(path: string, fallback: T): Promise<T> {
 
 export async function writeJsonAtomic(path: string, value: unknown, mode = 0o600): Promise<void> {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 })
-  const temporary = `${path}.tmp-${process.pid}-${Date.now()}`
-  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode })
-  await rename(temporary, path)
+  // In-process-unique staging name: the host may run two writes for the same
+  // document concurrently (e.g. startup policy sync racing another one); with
+  // pid + Date.now() alone they would share a temp file and the second rename
+  // would fail with ENOENT, aborting the whole load.
+  const temporary = `${path}.tmp-${process.pid}-${Date.now()}-${atomicWriteSequence += 1}`
+  try {
+    await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode })
+    await rename(temporary, path)
+  } catch (error) {
+    await rm(temporary, { force: true }).catch(() => undefined)
+    throw error
+  }
 }
 
 /** Atomically replace a JSON document through an injected filesystem. */

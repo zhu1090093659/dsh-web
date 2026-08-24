@@ -264,9 +264,14 @@ describe('handleAttach', () => {
 
 describe('registerAttachRoute', () => {
   /** One async-iterable fake request carrying an optional body. */
-  const makeReq = (method: string, body?: string, url = '/describe-image/attach'): IncomingMessage => ({
+  const makeReq = (method: string, body?: string, url = '/describe-image/attach', overrides?: {
+    remoteAddress?: string
+    headers?: Record<string, string>
+  }): IncomingMessage => ({
     method,
     url,
+    socket: { remoteAddress: overrides?.remoteAddress ?? '127.0.0.1' },
+    headers: { host: '127.0.0.1:3081', ...(overrides?.headers ?? {}) },
     [Symbol.asyncIterator]: async function* () {
       if (body !== undefined) yield Buffer.from(body)
     },
@@ -317,6 +322,60 @@ describe('registerAttachRoute', () => {
     expect(capture(undefined, false)).toHaveLength(0)
   })
 
+  describe('loopback fence', () => {
+    it('answers 403 for a LAN socket on POST attach without touching the store', async () => {
+      const { store } = await makeCtx(true)
+      const registrations = capture(store, true)
+      const { res, status, body } = makeRes()
+      await registrations[0].handler(makeReq('POST', '{}', '/describe-image/attach', { remoteAddress: '192.168.1.5' }), res)
+      expect(status()).toBe(403)
+      expect(body()).toContain('forbidden: loopback-only')
+      expect(store?.saved).toHaveLength(0)
+    })
+
+    it('answers 403 for a LAN socket on the raw-image GET', async () => {
+      const { store } = await makeCtx(true)
+      const ref: ImageAttachmentRef = {
+        attachmentId: `sha256:${'a'.repeat(64)}` as ImageAttachmentRef['attachmentId'],
+        mediaType: 'image/png',
+        bytes: PNG_BYTES.length,
+        width: 1,
+        height: 1,
+      }
+      store?.stored.set(String(ref.attachmentId), PNG_BYTES)
+      const registrations = capture(store, true)
+      const { res, status, body } = makeRes()
+      const markdown = attachmentMarkdown(ref)
+      const path = /\(([^)]+)\)$/.exec(markdown)?.[1]
+      await registrations[0].handler(makeReq('GET', undefined, path, { remoteAddress: '10.0.0.7' }), res)
+      expect(status()).toBe(403)
+      expect(body()).toContain('forbidden: loopback-only')
+    })
+
+    it('answers 403 for a cross-site browser marker on a loopback socket', async () => {
+      const registrations = capture(undefined, true)
+      const { res, status } = makeRes()
+      await registrations[0].handler(makeReq('POST', '{}', '/describe-image/attach', { headers: { 'sec-fetch-site': 'cross-site' } }), res)
+      expect(status()).toBe(403)
+    })
+
+    it('answers 403 for a cross-origin Origin header', async () => {
+      const registrations = capture(undefined, true)
+      const { res, status } = makeRes()
+      await registrations[0].handler(makeReq('POST', '{}', '/describe-image/attach', { headers: { origin: 'http://evil.example' } }), res)
+      expect(status()).toBe(403)
+    })
+
+    it('still attaches a same-origin loopback request carrying an Origin header', async () => {
+      const { store } = await makeCtx(true)
+      const registrations = capture(store, true)
+      const { res, status } = makeRes()
+      await registrations[0].handler(makeReq('POST', JSON.stringify({ data: PNG_BASE64, mediaType: 'image/png' }), '/describe-image/attach', { headers: { origin: 'http://127.0.0.1:3081' } }), res)
+      expect(status()).toBe(200)
+      expect(store?.saved).toHaveLength(1)
+    })
+  })
+
   it('answers non-GET/non-POST requests with 405', async () => {
     const registrations = capture(undefined, true)
     const { res, status } = makeRes()
@@ -346,9 +405,11 @@ describe('registerAttachRoute', () => {
   it('stores a valid upload and returns the note with 200', async () => {
     const { store } = await makeCtx(true)
     const registrations = capture(store, true)
-    const { res, status, body } = makeRes()
+    const { res, status, body, headers } = makeRes()
     await registrations[0].handler(makeReq('POST', JSON.stringify({ data: PNG_BASE64, mediaType: 'image/png' })), res)
     expect(status()).toBe(200)
+    expect(headers()?.['content-type']).toBe('application/json; charset=utf-8')
+    expect(headers()?.['referrer-policy']).toBe('no-referrer')
     const envelope = JSON.parse(body()) as { ok: boolean; value?: { note: string } }
     expect(envelope.ok).toBe(true)
     expect(envelope.value?.note.startsWith('[image attachment {')).toBe(true)
@@ -432,9 +493,11 @@ describe('registerAttachRoute', () => {
 
 describe('registerAttachRoute capability route', () => {
   /** One fake GET request at the given URL. */
-  const makeGet = (url: string): IncomingMessage => ({
+  const makeGet = (url: string, overrides?: { remoteAddress?: string; headers?: Record<string, string> }): IncomingMessage => ({
     method: 'GET',
     url,
+    socket: { remoteAddress: overrides?.remoteAddress ?? '127.0.0.1' },
+    headers: { host: '127.0.0.1:3081', ...(overrides?.headers ?? {}) },
     [Symbol.asyncIterator]: async function* () {},
   } as unknown as IncomingMessage)
 
@@ -492,5 +555,76 @@ describe('registerAttachRoute capability route', () => {
     const { res, status } = makeRes()
     await registrations[0].handler(makeGet('/describe-image/raw/sha256:missing'), res)
     expect(status()).toBe(404)
+  })
+
+  it('answers 403 for a LAN socket before the probe runs', async () => {
+    const probe = vi.fn(async () => ({ acceptsImages: true, known: true }))
+    const registrations = captureWithProbe(probe)
+    const { res, status } = makeRes()
+    await registrations[0].handler(makeGet('/describe-image/capability?session=vision-session', { remoteAddress: '192.168.1.5' }), res)
+    expect(status()).toBe(403)
+    expect(probe).not.toHaveBeenCalled()
+  })
+})
+
+describe('attach route body failure contract (shared readJsonBody)', () => {
+  /** Async-iterable fake request with an exact destroy counter. */
+  function makeReq(body: string | undefined, destroySpy?: { calls: number }): IncomingMessage {
+    return {
+      method: 'POST',
+      url: '/describe-image/attach',
+      socket: { remoteAddress: '127.0.0.1' },
+      headers: { host: '127.0.0.1:3081', 'sec-fetch-site': 'same-origin' },
+      [Symbol.asyncIterator]: async function* () {
+        if (body !== undefined) yield Buffer.from(body)
+      },
+      destroy() {
+        if (destroySpy !== undefined) destroySpy.calls += 1
+        return this as never
+      },
+    } as unknown as IncomingMessage
+  }
+
+  /** Register the route against a fake webserver and return the handler. */
+  function capture(readMaxBytes?: () => number): { handler: (req: unknown, res: unknown) => Promise<void> } {
+    const registrations: Array<{ kind: string; path: string; handler: (req: unknown, res: unknown) => Promise<void> }> = []
+    const ctx = {
+      get: (key: string) => key === 'webServer'
+        ? { register: (row: { kind: string; path: string; handler: (req: unknown, res: unknown) => Promise<void> }) => { registrations.push(row); return () => {} } }
+        : undefined,
+    }
+    registerAttachRoute(ctx as unknown as Context, readMaxBytes)
+    return registrations[0]
+  }
+
+  /** One fake response collecting status/body. */
+  function makeRes(): { res: ServerResponse; status: () => number; body: () => string } {
+    let status = 0
+    let body = ''
+    const res = {
+      writeHead: (code: number) => { status = code },
+      end: (chunk?: unknown) => { if (chunk !== undefined && chunk !== null) body += String(chunk) },
+    } as unknown as ServerResponse
+    return { res, status: () => status, body: () => body }
+  }
+
+  it('answers an empty body with 400 without destroying the request', async () => {
+    const { handler } = capture()
+    const destroySpy = { calls: 0 }
+    const { res, status } = makeRes()
+    await handler(makeReq(undefined, destroySpy), res)
+    expect(status()).toBe(400)
+    expect(destroySpy.calls).toBe(0)
+  })
+
+  it('answers an oversized body with 400 and destroys the request', async () => {
+    // Zero image bound -> attachBodyCap(0) is 1024 bytes; a ~2 KiB body is past it.
+    const { handler } = capture(() => 0)
+    const destroySpy = { calls: 0 }
+    const { res, status } = makeRes()
+    const body = JSON.stringify({ data: 'x'.repeat(2048), mediaType: 'image/png' })
+    await handler(makeReq(body, destroySpy), res)
+    expect(status()).toBe(400)
+    expect(destroySpy.calls).toBe(1)
   })
 })

@@ -3,7 +3,8 @@
  * user-shadows-builtin, immutable snapshots, path containment.
  */
 
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -111,6 +112,74 @@ describe('loadSkinCatalog', () => {
     const catalog = loadSkinCatalog({ builtinDir: builtin, userDir: user })
     expect(catalog.skins).toHaveLength(1)
     expect(catalog.skins[0].warnings).toHaveLength(2)
+  })
+
+  describe('market hooks provenance (issue #1073)', () => {
+    const HOOKS = 'export default function defineSkinHooks() { return { apply() {} } }'
+
+    function writeMarketSkin(id: string, provenance: Record<string, unknown> | null): string {
+      const dir = join(user, id)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(join(dir, 'skin.json'), JSON.stringify(v2(id, {
+        facets: { client: { entry: 'hooks.mjs', apiVersion: 'x-org.linxin666.skin-center/v1alpha1' } },
+      }), null, 2))
+      writeFileSync(join(dir, 'skin.css'), '.a { color: red; }')
+      writeFileSync(join(dir, 'hooks.mjs'), HOOKS)
+      if (provenance !== null) {
+        writeFileSync(join(dir, 'dsh-market.provenance.json'), JSON.stringify(provenance, null, 2))
+      }
+      return dir
+    }
+
+    function provenanceFor(dir: string, id: string, rels: string[]): Record<string, unknown> {
+      const files: Record<string, string> = {}
+      for (const rel of rels) {
+        files[rel] = createHash('sha256').update(readFileSync(join(dir, rel))).digest('hex')
+      }
+      return { version: 1, source: 'https://dsh-market.com', kind: 'skin', id, installedAt: new Date().toISOString(), files }
+    }
+
+    it('trusts hooks when skin.json and hooks hash-match market provenance', () => {
+      const dir = writeMarketSkin('matrix', null)
+      writeFileSync(join(dir, 'dsh-market.provenance.json'), JSON.stringify(provenanceFor(dir, 'matrix', ['skin.json', 'hooks.mjs', 'skin.css'])))
+      const catalog = loadSkinCatalog({ builtinDir: builtin, userDir: user })
+      const entry = catalog.skins.find((s) => s.manifest.id === 'matrix')
+      expect(entry?.hooksTrusted).toBe(true)
+      expect(entry?.warnings.join(' ')).not.toContain('refused')
+    })
+
+    it('refuses hooks without provenance or after tampering', () => {
+      // no provenance at all
+      writeMarketSkin('noprovenance', null)
+      // provenance, then the hooks bytes were replaced afterwards
+      const tampered = writeMarketSkin('tampered', null)
+      writeFileSync(join(tampered, 'dsh-market.provenance.json'), JSON.stringify(provenanceFor(tampered, 'tampered', ['skin.json', 'hooks.mjs'])))
+      writeFileSync(join(tampered, 'hooks.mjs'), 'export default () => ({ apply() { return 1 } }) // tampered')
+      // provenance from a foreign source
+      const foreign = writeMarketSkin('foreign', null)
+      const prov = provenanceFor(foreign, 'foreign', ['skin.json', 'hooks.mjs']) as { source: string }
+      prov.source = 'https://example.com'
+      writeFileSync(join(foreign, 'dsh-market.provenance.json'), JSON.stringify(prov))
+      const catalog = loadSkinCatalog({ builtinDir: builtin, userDir: user })
+      for (const id of ['noprovenance', 'tampered', 'foreign']) {
+        const entry = catalog.skins.find((s) => s.manifest.id === id)
+        expect(entry?.hooksTrusted).toBeUndefined()
+        expect(entry?.warnings.join(' ')).toContain('hooks facet will be refused')
+      }
+    })
+
+    it('pins the facet entry path through the skin.json hash', () => {
+      const dir = writeMarketSkin('repinned', null)
+      writeFileSync(join(dir, 'dsh-market.provenance.json'), JSON.stringify(provenanceFor(dir, 'repinned', ['skin.json', 'hooks.mjs'])))
+      // post-install manifest rewrite pointing the facet at another file
+      writeFileSync(join(dir, 'skin.json'), JSON.stringify(v2('repinned', {
+        facets: { client: { entry: 'other.mjs', apiVersion: 'x-org.linxin666.skin-center/v1alpha1' } },
+      }), null, 2))
+      writeFileSync(join(dir, 'other.mjs'), HOOKS)
+      const catalog = loadSkinCatalog({ builtinDir: builtin, userDir: user })
+      const entry = catalog.skins.find((s) => s.manifest.id === 'repinned')
+      expect(entry?.hooksTrusted).toBeUndefined()
+    })
   })
 
   it('tolerates missing roots', () => {

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HostTaskLedger } from '../src/host-ledger.ts'
 import { TaskBoardHostService } from '../src/host-service.ts'
 import { PowerInhibitor } from '../src/power-inhibitor.ts'
-import { createTask, startExecution, withSchedule } from '../src/core/tasks.ts'
+import { createTask, EXECUTION_HISTORY_LIMIT, startExecution, withSchedule } from '../src/core/tasks.ts'
 
 const roots: string[] = []
 
@@ -265,7 +265,7 @@ describe('TaskBoardHostService poll heartbeat', () => {
     service.dispose()
   })
 
-  it('keeps hot polling and scheduling off the full-state clone with long histories', async () => {
+  it('keeps hot polling and scheduling off the full-state clone', async () => {
     const now = new Date(2026, 7, 16, 10, 0, 30).getTime()
     const ledger = new HostTaskLedger(root(), () => now)
     const base = createTask({ title: 'A', description: '', prompt: '' }, now - 10_000, 'task-a')
@@ -309,7 +309,11 @@ describe('TaskBoardHostService poll heartbeat', () => {
 
     expect(state).not.toHaveBeenCalled()
     expect(runtimeView).toHaveBeenCalledOnce()
-    expect(service.snapshot().tasks[0].executions).toHaveLength(2_001)
+    // The 2,000-entry fixture is trimmed to the retention limit on append and
+    // import, keeping snapshot and ledger size bounded.
+    const snapshot = service.snapshot()
+    expect(snapshot.tasks[0].executions).toHaveLength(EXECUTION_HISTORY_LIMIT)
+    expect(snapshot.tasks[0].executions.at(-1)?.id).toBe('execution-open')
     expect(state).toHaveBeenCalledOnce()
     service.dispose()
   })

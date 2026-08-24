@@ -21,6 +21,7 @@ import { UNKNOWN_CAPABILITY, type CapabilityProbe } from './model-capability.ts'
 import { handleModelProbe, handleModelTest, type ProbeKeyResolver } from './model-probe.ts'
 import { isLoopbackRequest } from './loopback.ts'
 import type { Config } from './config-resolve.ts'
+import { readJsonBody, writeJson } from './http.ts'
 
 export { renderAttachmentMarkdown as attachmentMarkdown }
 
@@ -62,16 +63,6 @@ export type AttachOutcome =
 
 /** The failure envelope used when a non-POST request hits the route. */
 export const METHOD_NOT_ALLOWED: AttachError = { code: 'internal', message: 'only POST is allowed' }
-
-/**
- * Write the shared non-loopback rejection (same body as dsh-ssh and
- * dsh-git-graph): the probe routes spend the stored credential on a
- * user-steered URL, so a cross-site simple request must never reach them.
- */
-function forbidden(res: ServerResponse): void {
-  res.writeHead(403, { 'content-type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify({ error: 'forbidden: loopback-only' }))
-}
 
 /**
  * In-memory fallback for callers that copied only a bare attachment id instead
@@ -181,31 +172,6 @@ export async function handleAttach(ctx: Context, maxBytes: number, payload: unkn
   }
 }
 
-/** Read a JSON request body up to a byte cap; null when unparseable or oversized. */
-async function readJsonBody(req: IncomingMessage, cap: number): Promise<unknown> {
-  const chunks: Buffer[] = []
-  let total = 0
-  for await (const chunk of req) {
-    const buffer = chunk as Buffer
-    chunks.push(buffer)
-    total += buffer.length
-    if (total > cap) return null
-  }
-  const text = Buffer.concat(chunks).toString('utf8')
-  if (text === '') return null
-  try {
-    return JSON.parse(text) as unknown
-  } catch {
-    return null
-  }
-}
-
-/** Write one JSON envelope response. */
-function json(res: ServerResponse, envelope: unknown, status = 200): void {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify(envelope))
-}
-
 /**
  * Answer one capability probe (GET /describe-image/capability?session=<id>):
  * whether the session's effective model positively declares image input.
@@ -218,7 +184,7 @@ function json(res: ServerResponse, envelope: unknown, status = 200): void {
 async function serveCapability(probe: CapabilityProbe | undefined, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const sessionId = new URL(req.url ?? '/', 'http://x').searchParams.get('session') ?? ''
   const capability = probe === undefined || sessionId === '' ? UNKNOWN_CAPABILITY : await probe(sessionId)
-  json(res, { ok: true, value: capability })
+  writeJson(res, 200, { ok: true, value: capability })
 }
 
 /**
@@ -298,6 +264,14 @@ export function registerAttachRoute(ctx: Context, readMaxBytes: () => number = (
     kind: 'prefix',
     path: '/describe-image',
     handler: async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+      // Loopback fence first: the raw read serves stored image bytes and the
+      // attach POST writes them into the local attachment store, so a LAN or
+      // cross-site caller must be turned away regardless of method or
+      // content-type (same fence as the model probe routes below).
+      if (!isLoopbackRequest(req)) {
+        writeJson(res, 403, { error: 'forbidden: loopback-only' })
+        return
+      }
       // GET /describe-image/raw/<id>: serve the stored bytes so the
       // markdown image reference inserted into the draft renders. The id is
       // content-addressed and loopback-only, so a bare read carries no
@@ -314,21 +288,21 @@ export function registerAttachRoute(ctx: Context, readMaxBytes: () => number = (
         return
       }
       if (req.method !== 'POST') {
-        json(res, { ok: false, error: METHOD_NOT_ALLOWED }, 405)
+        writeJson(res, 405, { ok: false, error: METHOD_NOT_ALLOWED })
         return
       }
       const maxBytes = readMaxBytes()
-      const body = await readJsonBody(req, attachBodyCap(maxBytes))
+      const body = await readJsonBody(req, { maxBytes: attachBodyCap(maxBytes) })
       if (body === null) {
-        json(res, { ok: false, error: { code: 'internal', message: 'request body must be JSON within the configured image bound' } }, 400)
+        writeJson(res, 400, { ok: false, error: { code: 'internal', message: 'request body must be JSON within the configured image bound' } })
         return
       }
       const outcome = await handleAttach(ctx, maxBytes, body)
       if (outcome.ok) {
-        json(res, { ok: true, value: { note: outcome.note, markdown: outcome.markdown, ref: outcome.ref } })
+        writeJson(res, 200, { ok: true, value: { note: outcome.note, markdown: outcome.markdown, ref: outcome.ref } })
         return
       }
-      json(res, { ok: false, error: outcome.error }, outcome.error.code === 'rejected' ? 422 : 500)
+      writeJson(res, outcome.error.code === 'rejected' ? 422 : 500, { ok: false, error: outcome.error })
     },
   })
 }
@@ -361,14 +335,14 @@ export function registerModelRoutes(ctx: Context, readConfig: () => Config, reso
       // endpoint named in the settings or drafts, so a LAN or cross-site
       // caller must be turned away regardless of method or content-type.
       if (!isLoopbackRequest(req)) {
-        forbidden(res)
+        writeJson(res, 403, { error: 'forbidden: loopback-only' })
         return
       }
       if (req.method !== 'POST') {
-        json(res, { ok: false, error: METHOD_NOT_ALLOWED }, 405)
+        writeJson(res, 405, { ok: false, error: METHOD_NOT_ALLOWED })
         return
       }
-      const body = await readJsonBody(req, MAX_MODEL_PROBE_BODY_BYTES)
+      const body = await readJsonBody(req, { maxBytes: MAX_MODEL_PROBE_BODY_BYTES })
       const overrides = body !== null && typeof body === 'object' && !Array.isArray(body)
         ? body as Record<string, unknown>
         : {}
@@ -376,18 +350,18 @@ export function registerModelRoutes(ctx: Context, readConfig: () => Config, reso
       if (pathname === '/describe-image/models/test') {
         const test = await handleModelTest(readConfig(), overrides, resolveKey)
         if (test.ok) {
-          json(res, { ok: true, value: { latencyMs: test.latencyMs } })
+          writeJson(res, 200, { ok: true, value: { latencyMs: test.latencyMs } })
           return
         }
-        json(res, { ok: false, error: test.error }, test.error.code === 'rejected' ? 422 : 502)
+        writeJson(res, test.error.code === 'rejected' ? 422 : 502, { ok: false, error: test.error })
         return
       }
       const outcome = await handleModelProbe(readConfig(), overrides, resolveKey)
       if (outcome.ok) {
-        json(res, { ok: true, value: { models: outcome.models } })
+        writeJson(res, 200, { ok: true, value: { models: outcome.models } })
         return
       }
-      json(res, { ok: false, error: outcome.error }, outcome.error.code === 'rejected' ? 422 : 502)
+      writeJson(res, outcome.error.code === 'rejected' ? 422 : 502, { ok: false, error: outcome.error })
     },
   })
 }

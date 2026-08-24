@@ -1176,6 +1176,16 @@ body {
   opacity: 0.5;
 }
 
+/* Running state: the primary button carries only the square stop icon, so
+   it centers the glyph instead of sizing to text. */
+.chat-send-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 0 12px;
+}
+
 .chat-load-older {
   align-self: center;
   margin: 4px 0;

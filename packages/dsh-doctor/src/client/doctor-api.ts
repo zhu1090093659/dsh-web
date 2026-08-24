@@ -153,6 +153,7 @@ function parseSnapshot(value: unknown): Record<string, unknown> | undefined {
     incidents,
     updatedAt: typeof record['updatedAt'] === 'string' ? record['updatedAt'] : undefined,
     degradedReason: typeof record['degradedReason'] === 'string' ? record['degradedReason'] : undefined,
+    policy: (() => { const policy = asRecord(record['policy']); return policy === undefined ? undefined : { fullProtection: typeof policy['fullProtection'] === 'boolean' ? policy['fullProtection'] : undefined, autoRepair: typeof policy['autoRepair'] === 'boolean' ? policy['autoRepair'] : undefined } })(),
   }
 }
 

@@ -516,9 +516,20 @@ function resolveLive2dEntry(
     record('error', 'pet ' + manifest.id + ': renderer live2d requires a live2d block')
     return undefined
   }
+  const modelFile = join(dir, block.model)
   let model3: unknown
   try {
-    model3 = JSON.parse(readFileSync(join(dir, block.model), 'utf8'))
+    // Stat guard before the read: a pathological model file — huge, or a
+    // FIFO/device — is skipped with a warning instead of stalling the host
+    // at scan time, mirroring the voice/decoration descriptor discipline.
+    // The guard stays silent on stat errors, so a missing or unreadable
+    // path is re-stat'ed here to fall through to the original fail-closed
+    // 'not readable' diagnostic below.
+    if (guardedScannedJsonStat(modelFile, options, 'live2d model ' + block.model, PET_SCAN_LIVE2D_MODEL_CAP) === undefined) {
+      statSync(modelFile)
+      return undefined
+    }
+    model3 = JSON.parse(readFileSync(modelFile, 'utf8'))
   } catch (error) {
     record('error', 'pet ' + manifest.id + ': live2d model ' + block.model + ' is not readable: '
       + (error instanceof Error ? error.message : String(error)))
@@ -583,7 +594,7 @@ function scanPetDir(dir: string, options: { assetPrefix?: string; warnings?: str
   for (const name of names) {
     const manifestFile = join(dir, name, 'pet.json')
     if (!existsSync(manifestFile)) continue
-    const parsed = readPetJson(manifestFile, options.warnings)
+    const parsed = readPetJson(manifestFile, options)
     if (parsed === undefined) continue
     const entryDir = join(dir, name)
     const verdict = parsePetManifest(parsed, entryDir)
@@ -613,12 +624,21 @@ function scanPetDir(dir: string, options: { assetPrefix?: string; warnings?: str
   return entries
 }
 
-/** Read and parse one manifest file; undefined (warning recorded) on failure. */
-function readPetJson(file: string, warnings: string[] | undefined): unknown {
+/**
+ * Read and parse one pet.json manifest; undefined (warning recorded) on
+ * failure. The descriptor stat guard applies first: a pathological file —
+ * huge, or a FIFO/device — is skipped with a warning instead of stalling
+ * or OOM-ing the host at scan time (same discipline as voice/decoration).
+ */
+function readPetJson(
+  file: string,
+  options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] },
+): unknown {
+  if (guardedScannedJsonStat(file, options, 'pet manifest') === undefined) return undefined
   try {
     return JSON.parse(readFileSync(file, 'utf8'))
   } catch (error) {
-    warnings?.push('skipping ' + file + ': ' + (error instanceof Error ? error.message : String(error)))
+    options.warnings?.push('skipping ' + file + ': ' + (error instanceof Error ? error.message : String(error)))
     return undefined
   }
 }
@@ -633,15 +653,27 @@ function readPetJson(file: string, warnings: string[] | undefined): unknown {
 export const PET_SCAN_JSON_CAP = 64 * 1024
 
 /**
+ * Scan-time read ceiling for a live2d model3.json, matching the asset
+ * route's model cap (PET_ASSET_CAPS.model). Model descriptors are far
+ * larger than the other scanned JSON, but a pathological file — huge, or a
+ * FIFO/device — must still be skipped with a warning instead of stalling
+ * or OOM-ing the host at plugin startup (same review-spd follow-up).
+ */
+export const PET_SCAN_LIVE2D_MODEL_CAP = 32 * 1024 * 1024
+
+/**
  * Stat one scanned JSON descriptor with a regular-file + size guard, so a
  * pathological user file is skipped with a warning instead of stalling or
  * OOM-ing the host at startup. Returns the Stats, or undefined when the
- * caller must skip the file (a warning was recorded).
+ * caller must skip the file (a warning was recorded). 'cap' defaults to
+ * the descriptor ceiling (PET_SCAN_JSON_CAP); model descriptors pass the
+ * larger live2d ceiling.
  */
 function guardedScannedJsonStat(
   file: string,
   options: { warnings?: string[]; diagnostics?: PetRegistryDiagnostic[] },
   what: string,
+  cap: number = PET_SCAN_JSON_CAP,
 ): ReturnType<typeof statSync> | undefined {
   let st: ReturnType<typeof statSync>
   try {
@@ -657,8 +689,8 @@ function guardedScannedJsonStat(
     warn(what + ' is not a regular file; ignored')
     return undefined
   }
-  if (st.size > PET_SCAN_JSON_CAP) {
-    warn(what + ' exceeds the ' + PET_SCAN_JSON_CAP + '-byte scan ceiling; ignored')
+  if (st.size > cap) {
+    warn(what + ' exceeds the ' + cap + '-byte scan ceiling; ignored')
     return undefined
   }
   return st

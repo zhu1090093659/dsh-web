@@ -18,8 +18,10 @@
   backdrop-filter: var(--dsw-mask-blur);
 }
 
-/* Trigger: settings row height beside the trigger row (wide), or the 36px
-   rail circle; the seat's owner (ui-sidebar) lays out the geometry. */
+/* Trigger: the 36px rail circle, or a fully rounded (pill) full-row button
+   in wide mode — both maximally rounded so the footer action pair shares one
+   shape family (#1035); the seat's owner (ui-sidebar) lays out the
+   geometry. */
 .trigger {
   position: relative;
   flex: none;
@@ -57,7 +59,9 @@
   justify-content: flex-start;
   width: auto;
   min-width: 0;
-  border-radius: 8px;
+  /* Pill: maximal rounding, same shape family as the 36px rail circle next
+     to it (the update trigger) — one consistent footer-action look (#1035). */
+  border-radius: 999px;
   gap: 8px;
   padding: 0 10px;
 }

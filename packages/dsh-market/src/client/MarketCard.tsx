@@ -19,7 +19,7 @@ import {
   type InstalledPluginItem,
   type PluginManagerService,
 } from './plugin-manager-bridge.ts'
-import { entryInstalled, installCommand, installSpec } from './install-source.ts'
+import { entryInstalled, installCommand, installSpec, isInstallSpecValid } from './install-source.ts'
 import type { MarketKey } from './locales.ts'
 import css from './market.module.css'
 
@@ -48,7 +48,7 @@ export class MarketCardController {
   private readonly form: CardForm<MarketSettings>
   private readonly store: SnapshotStore<MarketCardState>
 
-  /** @param scope - the bound settings scope for the dsh-market namespace. */
+  /** @param scope - the bound settings scope for the dsh-web-ui-market namespace. */
   constructor(scope: SettingsScope<MarketSettings>) {
     this.form = new CardForm(scope, [
       booleanField('enabled'),
@@ -143,7 +143,7 @@ async function fetchJson(url: string): Promise<unknown> {
 
 /** Props the renderer binds for the market card. */
 export type MarketCardProps =
-  PropsLocale<'dsh-market'>
+  PropsLocale<'dsh-web-ui-market'>
   & InjectFace<MarketCardFace>
   & {
     /** Remote data override (injected for tests). */
@@ -363,8 +363,13 @@ export function MarketCard(props: MarketCardProps): ReactNode {
   const onInstallPlugin = (item: MarketRecord): void => {
     if (face === null || !face.isLoopback || installing !== null) return
     const id = item.id
+    const spec = installSpec(item)
+    if (!isInstallSpecValid(spec)) {
+      setPluginErrors((prev) => ({ ...prev, [id]: t('installFailed', { reason: t('installSpecInvalid') }) }))
+      return
+    }
     setInstalling('plugin:' + id)
-    face.install(installSpec(item)).then(() => face.list()).then((list) => {
+    face.install(spec).then(() => face.list()).then((list) => {
       setPluginList(list)
       callout(id, t('installed', {}))
     }).catch((reason: unknown) => {

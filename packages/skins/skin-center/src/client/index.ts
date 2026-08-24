@@ -56,8 +56,8 @@ declare module '@deepseek-ai/cordis' {
 }
 
 
-/** Required services: slots + locale (plugin card), theme (preview toggle), and settingsScope + its transport (background scrim). */
-export const inject = ['slots', 'locale', 'theme', 'settingsScope', 'connection', 'remote']
+/** Required services: slots + locale (plugin card), theme (preview toggle), settingsScope + its transport (background scrim), and workspaces (native directory picker for wallpaper folders). */
+export const inject = ['slots', 'locale', 'theme', 'settingsScope', 'connection', 'remote', 'workspaces']
 
 /**
  * Register the skin-center dictionaries, the body scope attribute, and the
@@ -65,7 +65,13 @@ export const inject = ['slots', 'locale', 'theme', 'settingsScope', 'connection'
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-skin-center: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'ui-skin-center: dictionaries')
 
   // The card's own styles scope under this attribute so they keep applying
   // during try-on (when the active skin's attribute is retracted).
@@ -147,6 +153,7 @@ export function apply(ctx: ClientContext): void {
     pauseOnHidden?: boolean
     dim?: number
     wallpaperBlur?: number
+    wallpaperOpacity?: number
     fit?: 'cover' | 'contain' | 'fill'
   }>({ namespace: SKIN_WALLPAPER_NS })
   const wallpaper = new WallpaperController(wallpaperScope)
@@ -205,12 +212,14 @@ export function apply(ctx: ClientContext): void {
       fit: () => wallpaper.fit(),
       dim: () => wallpaper.dim(),
       wallpaperBlur: () => wallpaper.wallpaperBlur(),
+      wallpaperOpacity: () => wallpaper.wallpaperOpacity(),
       pauseOnHidden: () => wallpaper.pauseOnHidden(),
       sound: () => wallpaper.sound(),
       volume: () => wallpaper.volume(),
       dirs: () => wallpaper.dirs(),
       addDir: dir => wallpaper.addDir(dir),
       removeDir: dir => wallpaper.removeDir(dir),
+      pickDir: () => ctx.workspaces.pickDirectory(),
       activeId: () => wallpaper.activeId(),
       trying: () => wallpaper.trying(),
       subscribe: listener => wallpaper.subscribe(listener),
@@ -219,6 +228,7 @@ export function apply(ctx: ClientContext): void {
       setFit: fit => wallpaper.setFit(fit),
       setDim: value => wallpaper.setDim(value),
       setBlur: value => wallpaper.setBlur(value),
+      setOpacity: value => wallpaper.setOpacity(value),
       setPauseOnHidden: value => wallpaper.setPauseOnHidden(value),
       setSound: value => wallpaper.setSound(value),
       setVolume: value => wallpaper.setVolume(value),
@@ -236,12 +246,18 @@ export function apply(ctx: ClientContext): void {
   // settings page. Browsing and installing new skins happens in the DSH
   // Market store; this section manages the installed ones (try-on, apply,
   // wallpaper, custom theme).
-  ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section',
-    id: 'skin-center',
-    order: 120,
-    label: () => ctx.locale.bind('skinCenter')('title'),
-    locale: 'skinCenter',
-    inject: injected,
-  }, SkinCenterSection))
+  ctx.slots.inject('settings.section', () => {
+    try {
+      return ctx.slots.register({
+        name: 'settings.section',
+        id: 'skin-center',
+        order: 120,
+        label: () => ctx.locale.bind('skinCenter')('title'),
+        locale: 'skinCenter',
+        inject: injected,
+      }, SkinCenterSection)
+    } catch {
+      return () => {}
+    }
+  })
 }

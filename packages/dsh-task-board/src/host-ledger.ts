@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import { dshHome } from './dsh-home.ts'
 import { isValidCron, nextRunAtMs } from './core/schedule.ts'
 import { parseLedger } from './core/store.ts'
-import { canMoveManually, settleExecution, startExecution, withStatus, type ExecutionRecord, type TaskRecord } from './core/tasks.ts'
+import { canMoveManually, retainRecentExecutions, settleExecution, startExecution, withStatus, type ExecutionRecord, type TaskRecord } from './core/tasks.ts'
 import { applyArchiveTask, applyRestoreTask } from './core/use-cases/task-archive.ts'
 import { applyCreateTask } from './core/use-cases/task-create.ts'
 import { applyDeleteTask } from './core/use-cases/task-delete.ts'
@@ -232,7 +232,8 @@ function mergeTask(a: TaskRecord, b: TaskRecord): TaskRecord {
     const previous = byId.get(entry.id)
     byId.set(entry.id, previous === undefined ? entry : betterExecution(previous, entry))
   }
-  return { ...newer, executions: [...byId.values()].sort((x, y) => x.startedAt - y.startedAt) }
+  const executions = [...byId.values()].sort((x, y) => x.startedAt - y.startedAt)
+  return { ...newer, executions: retainRecentExecutions(executions) }
 }
 
 function parseHostTasks(values: readonly unknown[]): TaskRecord[] {
@@ -574,7 +575,7 @@ export class HostTaskLedger {
     try {
       const parsed = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<LedgerDocument>
       if (parsed.schemaVersion !== TASK_BOARD_SCHEMA_VERSION || !Array.isArray(parsed.tasks)) throw new Error('unsupported ledger schema')
-      const tasks = parseHostTasks(parsed.tasks)
+      const tasks = parseHostTasks(parsed.tasks).map(task => ({ ...task, executions: retainRecentExecutions(task.executions) }))
       const invalidScheduleIds = (parsed.tasks as unknown[]).flatMap(value => {
         if (typeof value !== 'object' || value === null) return []
         const row = value as { id?: unknown; schedule?: unknown }

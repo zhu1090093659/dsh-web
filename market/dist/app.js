@@ -370,6 +370,7 @@
         img.loading = 'lazy'
         media.appendChild(img)
       }
+      if (kind === 'pet') media.classList.add('mk-card-media-pet')
       if (kind === 'skin') {
         media.classList.add('mk-card-media-skin')
         if (item.accent) {

@@ -337,19 +337,37 @@ export function createPluginManagerFace(ctx: ClientContext): PluginManagerFace {
 
 /** Contribute the family plugin-manager tab and provide the shared face. */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'plugin-manager: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'plugin-manager: dictionaries')
 
   // Built once: the tab and the 'pluginManager' cordis service share one
   // face, so consumers observe exactly the mutations the tab performs.
   const face = createPluginManagerFace(ctx)
-  ctx.provide(PLUGIN_MANAGER_SERVICE, face)
+  try {
+    if (!ctx.get(PLUGIN_MANAGER_SERVICE)) {
+      ctx.provide(PLUGIN_MANAGER_SERVICE, face)
+    }
+  } catch {
+    // ignore duplicate provide
+  }
 
-  ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({
-    name: 'settings.plugins.tab',
-    id: 'family-plugins',
-    order: 20,
-    label: () => ctx.locale.bind(NS)('tab'),
-    locale: NS,
-    inject: () => face,
-  }, PluginManagerTab))
+  ctx.slots.inject('settings.plugins.tab', () => {
+    try {
+      return ctx.slots.register({
+        name: 'settings.plugins.tab',
+        id: 'family-plugins',
+        order: 20,
+        label: () => ctx.locale.bind(NS)('tab'),
+        locale: NS,
+        inject: () => face,
+      }, PluginManagerTab)
+    } catch {
+      return () => {}
+    }
+  })
 }

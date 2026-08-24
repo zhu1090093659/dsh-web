@@ -109,13 +109,15 @@ const PROJECTED_STATE_SELECTOR = [
   "[data-slot='sidebar.settings']",
 ].join(', ')
 
+// Every dynamic property apply() writes to body.style must be registered
+// here: cleanup restores the pre-apply value (an empty string removes the
+// property) and the hooks-lifecycle test fails when a write leaks past
+// teardown.
 const BACKDROP_PROPERTIES = [
-  'background-image',
-  'background-position',
-  'background-size',
-  'background-attachment',
-  'background-repeat',
   '--maid-sidebar-width',
+  '--maid-sidebar-swag-height',
+  '--maid-sidebar-mascot-width',
+  '--maid-titlebar-height',
   '--maid-top-trim-art',
   '--maid-bottom-trim-art',
   '--maid-bottom-crest-art',
@@ -305,88 +307,133 @@ export default function defineSkinHooks() {
       body.style.setProperty('--maid-workspace-crest-art', `url(${asset('maid-workspace-shield-v2.webp')})`)
       body.style.setProperty('--maid-workspace-ribbon-art', `url(${asset('maid-workspace-ribbon-v2.webp')})`)
 
-      const syncBackdrop = () => {
-        const source = ctx.theme.get() === 'dark'
-          ? asset('maid-atelier-palace-night-v4.webp')
-          : asset('maid-atelier-palace-day-v4.webp')
-        body.style.setProperty('background-image', `url(${source})`)
-      }
-      syncBackdrop()
-      body.style.setProperty('background-position', 'center top')
-      body.style.setProperty('background-size', 'cover')
-      body.style.setProperty('background-attachment', 'scroll')
-      body.style.setProperty('background-repeat', 'no-repeat')
+      function createCharacterStage() {
+        const stage = document.createElement('div')
+        stage.dataset.skinChrome = 'character-stage'
+        stage.dataset.skinOwner = SKIN_OWNER
+        stage.setAttribute('aria-hidden', 'true')
 
-      // 宽度联动写入独立的 <style> 规则而非 body style：CSSOM 修改不产生
-      // attribute mutation，Chrome autofill 的 MutationObserver 不会逐帧触发，
-      // 因此可以每帧跟随侧边栏宽度（幕布瞬移跟手）而无需防抖节流。
+        const left = document.createElement('img')
+        left.dataset.maidCharacter = 'left'
+        left.alt = ''
+        left.src = asset('maid-atelier-maid-left-v5.webp')
+
+        const right = document.createElement('img')
+        right.dataset.maidCharacter = 'right'
+        right.alt = ''
+        right.src = asset('maid-atelier-maid-right-v6.webp')
+
+        stage.append(left, right)
+        return stage
+      }
+
+      // 先挂载立绘与边框装饰，确保核心视觉层绝不因后续逻辑被阻断
+      try {
+        const characterStage = createCharacterStage()
+        ownedNodes.add(characterStage)
+        body.prepend(characterStage)
+      } catch (err) {
+        console.warn('[maid-atelier] stage mount error:', err)
+      }
+
+      try {
+        const topTrim = document.createElement('div')
+        topTrim.dataset.skinChrome = 'top-trim'
+        topTrim.dataset.skinOwner = SKIN_OWNER
+        topTrim.setAttribute('aria-hidden', 'true')
+        const landingTrimLayer = document.createElement('div')
+        landingTrimLayer.dataset.skinTrimLayer = 'landing'
+        const workspaceTrimLayer = document.createElement('div')
+        workspaceTrimLayer.dataset.skinTrimLayer = 'workspace'
+        topTrim.append(landingTrimLayer, workspaceTrimLayer)
+        ownedNodes.add(topTrim)
+        body.append(topTrim)
+
+        const bottomTrim = document.createElement('div')
+        bottomTrim.dataset.skinChrome = 'bottom-trim'
+        bottomTrim.dataset.skinOwner = SKIN_OWNER
+        bottomTrim.setAttribute('aria-hidden', 'true')
+        ownedNodes.add(bottomTrim)
+        body.append(bottomTrim)
+
+        const favicon = document.createElement('link')
+        favicon.rel = 'icon'
+        favicon.href = asset('maid-atelier-icon.webp')
+        favicon.dataset.skinChrome = 'favicon'
+        favicon.dataset.skinOwner = SKIN_OWNER
+        ownedNodes.add(favicon)
+        document.head.append(favicon)
+
+        document.title = SKIN_TITLE
+      } catch (err) {
+        console.warn('[maid-atelier] trims mount error:', err)
+      }
+
+      // 宽度联动写入独立的 <style> 规则并通过 body style 双写
       const widthSheet = document.createElement('style')
       widthSheet.dataset.skinChrome = 'sidebar-width-rule'
       widthSheet.dataset.skinOwner = SKIN_OWNER
       ownedNodes.add(widthSheet)
-      document.head.append(widthSheet)
       const scope = `html[data-dsh-skin="${ctx.scopeAttr}"]`
-      widthSheet.sheet.insertRule(`${scope} body { --maid-sidebar-width: 280px; --maid-sidebar-swag-height: 72.1px; --maid-sidebar-mascot-width: 229.6px; --maid-titlebar-height: 0px; }`)
-      // The official frame rules reference env(titlebar-area-height), but the
-      // CSS-modules pipeline rewrites the env() identifier there too, so the
-      // title-bar row silently falls back to an auto row: expanding the sidebar
-      // is fine, but collapsing it lets the content row's max-content grow and
-      // stretches the title-bar row to hundreds of pixels. Re-assert the rows
-      // here through CSSOM, where env() survives verbatim (fallback 40px keeps
-      // the headless/plain-tab mock sane), and pin the drag handles to the same
-      // boundary. The v1 body[data-dsh-maid-atelier] anchor is the loader-owned
-      // html[data-dsh-skin] scope in v2.
-      // insertRule defaults to index 0, which would push the body rule aside and
-      // orphan the widthRule reference; append explicitly so cssRules[0] stays
-      // the body variable rule.
-      const appendRule = (rule) => {
-        widthSheet.sheet.insertRule(rule, widthSheet.sheet.cssRules.length)
-      }
-      appendRule(`${scope} [class*="frame"][data-wco] { grid-template-rows: env(titlebar-area-height, 40px) 1fr; }`)
-      appendRule(`${scope} [class*="frame"][data-desktop] { grid-template-rows: 32px 1fr; }`)
-      appendRule(`${scope} [class*="frame"] [class*="handle"] { top: var(--maid-titlebar-height, 0px); }`)
+      widthSheet.textContent = `
+        ${scope} body { --maid-sidebar-width: 280px; --maid-sidebar-swag-height: 72.1px; --maid-sidebar-mascot-width: 229.6px; --maid-titlebar-height: 0px; }
+        ${scope} [class*="frame"][data-wco] { grid-template-rows: env(titlebar-area-height, 40px) 1fr; }
+        ${scope} [class*="frame"][data-desktop] { grid-template-rows: 32px 1fr; }
+        ${scope} [class*="frame"] [class*="handle"] { top: var(--maid-titlebar-height, 0px); }
+      `
+      document.head.append(widthSheet)
 
-      const widthRule = widthSheet.sheet.cssRules[0]
-      // The curtain is position:fixed, so it needs the viewport-space top of
-      // the frame's title-bar row. Measuring the sidebar column (the row below
-      // it) is authoritative: whatever the title-bar height is — WCO env(), the
-      // desktop 32px row, or a scaled window — the curtain lands exactly on the
-      // rendered boundary, never a pixel off.
+      let widthRule
+      try {
+        widthRule = widthSheet.sheet?.cssRules?.[0]
+      } catch {}
+
       syncTitlebarHeight = () => {
+        let topPx = '0px'
         const columns = document.querySelector(SIDEBAR_COLUMN_SELECTOR)
         if (columns !== null) {
           const top = columns.getBoundingClientRect().top
-          if (top > 0) {
-            widthRule.style.setProperty('--maid-titlebar-height', `${top}px`)
-            return
-          }
+          if (top > 0) topPx = `${top}px`
+        } else if (document.querySelector("[class*='frame'][data-desktop]") !== null) {
+          topPx = '32px'
         }
-        // Desktop shell: fixed 32px row (columns not laid out yet).
-        if (document.querySelector("[class*='frame'][data-desktop]") !== null) {
-          widthRule.style.setProperty('--maid-titlebar-height', '32px')
-          return
-        }
-        widthRule.style.setProperty('--maid-titlebar-height', '0px')
+        try {
+          widthRule?.style?.setProperty('--maid-titlebar-height', topPx)
+        } catch {}
+        body.style.setProperty('--maid-titlebar-height', topPx)
       }
       titlebarOverlay = navigator.windowControlsOverlay
       titlebarOverlay?.addEventListener('geometrychange', syncTitlebarHeight)
-      syncTitlebarHeight()
+      try { syncTitlebarHeight() } catch {}
 
       const applySidebarWidth = (width) => {
         if (width <= 0) return
         const roundPx = (value) => `${Math.round(value * 100) / 100}px`
-        widthRule.style.setProperty('--maid-sidebar-width', roundPx(width))
-        widthRule.style.setProperty('--maid-sidebar-swag-height', roundPx(Math.min(94, Math.max(54, width * 0.2575))))
-        widthRule.style.setProperty('--maid-sidebar-mascot-width', roundPx(Math.min(320, width * 0.82)))
+        const widthVal = roundPx(width)
+        const swagVal = roundPx(Math.min(94, Math.max(54, width * 0.2575)))
+        const mascotVal = roundPx(Math.min(320, width * 0.82))
+        try {
+          widthRule?.style?.setProperty('--maid-sidebar-width', widthVal)
+          widthRule?.style?.setProperty('--maid-sidebar-swag-height', swagVal)
+          widthRule?.style?.setProperty('--maid-sidebar-mascot-width', mascotVal)
+        } catch {}
+        body.style.setProperty('--maid-sidebar-width', widthVal)
+        body.style.setProperty('--maid-sidebar-swag-height', swagVal)
+        body.style.setProperty('--maid-sidebar-mascot-width', mascotVal)
         body.dataset.maidSidebarSize = width <= 120 ? 'rail' : width <= 220 ? 'narrow' : 'wide'
         if (width <= 104) body.dataset.maidSidebarCompact = ''
         else delete body.dataset.maidSidebarCompact
       }
 
       const clearSidebarWidth = () => {
-        widthRule.style.setProperty('--maid-sidebar-width', '0px')
-        widthRule.style.setProperty('--maid-sidebar-swag-height', '54px')
-        widthRule.style.setProperty('--maid-sidebar-mascot-width', '0px')
+        try {
+          widthRule?.style?.setProperty('--maid-sidebar-width', '0px')
+          widthRule?.style?.setProperty('--maid-sidebar-swag-height', '54px')
+          widthRule?.style?.setProperty('--maid-sidebar-mascot-width', '0px')
+        } catch {}
+        body.style.setProperty('--maid-sidebar-width', '0px')
+        body.style.setProperty('--maid-sidebar-swag-height', '54px')
+        body.style.setProperty('--maid-sidebar-mascot-width', '0px')
         body.dataset.maidSidebarSize = 'rail'
         body.dataset.maidSidebarCompact = ''
       }
@@ -518,26 +565,6 @@ export default function defineSkinHooks() {
         }
       }
 
-      const createCharacterStage = () => {
-        const stage = document.createElement('div')
-        stage.dataset.skinChrome = 'character-stage'
-        stage.dataset.skinOwner = SKIN_OWNER
-        stage.setAttribute('aria-hidden', 'true')
-
-        const left = document.createElement('img')
-        left.dataset.maidCharacter = 'left'
-        left.alt = ''
-        left.src = asset('maid-atelier-maid-left-v5.webp')
-
-        const right = document.createElement('img')
-        right.dataset.maidCharacter = 'right'
-        right.alt = ''
-        right.src = asset('maid-atelier-maid-right-v6.webp')
-
-        stage.append(left, right)
-        return stage
-      }
-
       const decorateSidebar = (owned, decorated) => {
         const sidebar = document.querySelector(SIDEBAR_COLUMN_SELECTOR)
         const sidebarRoot = sidebar?.querySelector(':scope > div')
@@ -650,10 +677,6 @@ export default function defineSkinHooks() {
       syncSettingsBackdropFrame()
       syncProjectedState()
 
-      const characterStage = createCharacterStage()
-      ownedNodes.add(characterStage)
-      body.prepend(characterStage)
-
       const syncSidebarDecorations = () => {
         syncTitlebarHeight?.()
         decorateTitlebarBrand(ownedNodes)
@@ -683,7 +706,6 @@ export default function defineSkinHooks() {
       observer = new MutationObserver((records) => {
         let sidebarStructureChanged = false
         let workspaceStateChanged = false
-        let backdropChanged = false
         let composerChanged = false
         let settingsStateChanged = false
         let projectedStateChanged = false
@@ -700,8 +722,6 @@ export default function defineSkinHooks() {
             } else if ((record.attributeName === 'aria-expanded' || record.attributeName === 'aria-selected')
               && target !== undefined && target.closest(SIDEBAR_COLUMN_SELECTOR) !== null) {
               workspaceStateChanged = true
-            } else if (record.attributeName === 'data-ds-dark-theme' && record.target === body) {
-              backdropChanged = true
             } else if (record.attributeName === 'data-phase') {
               composerChanged = true
             }
@@ -737,7 +757,6 @@ export default function defineSkinHooks() {
         if (projectedStateChanged) syncProjectedState()
         if (sidebarStructureChanged) syncSidebarDecorations()
         else if (workspaceStateChanged) decorateWorkspaceTree(decoratedElements)
-        if (backdropChanged) syncBackdrop()
         if (composerChanged) {
           syncComposerMotion()
         }
@@ -760,38 +779,6 @@ export default function defineSkinHooks() {
         childList: true,
         subtree: true,
       })
-
-      const topTrim = document.createElement('div')
-      topTrim.dataset.skinChrome = 'top-trim'
-      topTrim.dataset.skinOwner = SKIN_OWNER
-      topTrim.setAttribute('aria-hidden', 'true')
-      const landingTrimLayer = document.createElement('div')
-      landingTrimLayer.dataset.skinTrimLayer = 'landing'
-      const workspaceTrimLayer = document.createElement('div')
-      workspaceTrimLayer.dataset.skinTrimLayer = 'workspace'
-      topTrim.append(landingTrimLayer, workspaceTrimLayer)
-      ownedNodes.add(topTrim)
-      body.append(topTrim)
-
-      const bottomTrim = document.createElement('div')
-      bottomTrim.dataset.skinChrome = 'bottom-trim'
-      bottomTrim.dataset.skinOwner = SKIN_OWNER
-      bottomTrim.setAttribute('aria-hidden', 'true')
-      ownedNodes.add(bottomTrim)
-      body.append(bottomTrim)
-
-      const favicon = document.createElement('link')
-      favicon.rel = 'icon'
-      // v1 declared type="image/png" while the icon was always WebP; the
-      // type attribute is simply omitted here (the official favicon
-      // convention) so it cannot disagree with the asset again.
-      favicon.href = asset('maid-atelier-icon.webp')
-      favicon.dataset.skinChrome = 'favicon'
-      favicon.dataset.skinOwner = SKIN_OWNER
-      ownedNodes.add(favicon)
-      document.head.append(favicon)
-
-      document.title = SKIN_TITLE
     },
   }
 }

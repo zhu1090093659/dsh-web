@@ -186,7 +186,11 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper, preview, 
       setError(t('applyFailed'))
       return
     }
-    run(target, () => preview.runSkin(() => switchAndDeactivateCustomTheme(target, entry)))
+    run(target, () => preview.runSkin(async () => {
+      const active = await switchAndDeactivateCustomTheme(target, entry)
+      if (wallpaper.selection() !== '') wallpaper.clearSelection()
+      return active
+    }))
   }
 
   const tryOnCustomTheme = (): void => {

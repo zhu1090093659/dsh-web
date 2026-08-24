@@ -84,7 +84,7 @@ export {
 export type { ModelProbeOutcome, ModelTestOutcome, ProbeKeyResolver } from './model-probe.ts'
 
 const DESCRIPTION_HEAD =
-  'Inspect one image — a local absolute path, an http(s) URL, a complete `[image attachment ...]` note, '
+  'Inspect one image — a local absolute path inside the session workspace, an http(s) URL, a complete `[image attachment ...]` note, '
   + 'or a self-contained Markdown attachment reference — and return the text the user needs. Use when the user references an image file or URL, '
   + 'or when a task needs OCR, chart or diagram reading, screenshot or UI analysis, translation of '
   + 'image text, or photo understanding. '
@@ -200,7 +200,7 @@ function applyImpl(ctx: Context, config: Config = {}): void {
       image: {
         type: 'string',
         required: true,
-        description: 'Absolute local image path, http(s) URL, complete [image attachment ...] note, or complete Markdown reference ![图片](/describe-image/raw/<id>?ref=...) from the input box. The complete Markdown reference is durable across host restarts and PTC nested tool calls; a bare attachment id is only a current-process fallback.',
+        description: 'Absolute local image path inside the session workspace, http(s) URL, complete [image attachment ...] note, or complete Markdown reference ![图片](/describe-image/raw/<id>?ref=...) from the input box. The complete Markdown reference is durable across host restarts and PTC nested tool calls; a bare attachment id is only a current-process fallback.',
       },
       prompt: {
         type: 'string',
@@ -224,7 +224,10 @@ function applyImpl(ctx: Context, config: Config = {}): void {
     async execute(args, exec) {
       const active = spec()
       const apiKey = await resolveApiKey(ctx, active)
-      const image = await loadImage(ctx, args.image, exec.signal, active.maxBytes)
+      // Local file paths are bounded to the session workspace (exec.agent), so a
+      // prompt-injected path cannot read arbitrary host files; URL hosts are
+      // bounded by the URL guard inside loadImage.
+      const image = await loadImage(ctx, args.image, exec.signal, active.maxBytes, exec.agent?.session.header.cwd)
       const text = await callVision(active, apiKey, args.prompt ?? active.defaultPrompt, image, exec.signal, visionCache)
       return { text, model: active.model, image: args.image, mimeType: image.mimeType, bytes: image.bytes.length }
     },

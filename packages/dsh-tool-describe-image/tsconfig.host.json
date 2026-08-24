@@ -33,9 +33,11 @@
     "src/model-capability.ts",
     "src/model-probe.ts",
     "src/loopback.ts",
+    "src/url-guard.ts",
     "src/tool-visibility.ts",
     "src/native-images.ts",
     "src/config-resolve.ts",
+    "src/http.ts",
     "src/vision-client.ts"
   ]
 }

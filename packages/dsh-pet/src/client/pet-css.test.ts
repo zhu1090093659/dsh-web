@@ -51,4 +51,13 @@ describe('pet hover panel css', () => {
     expect(bridge).toContain('top: 100%')
     expect(bridge).toContain('bottom: auto')
   })
+
+  it('isolates the pet float container and sprite on their own compositor layer (issue #1013)', () => {
+    const float = css.match(/\.float\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(float).toContain('will-change: transform')
+    expect(float).toContain('contain: layout style')
+
+    const sprite = css.match(/\.sprite\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(sprite).toContain('contain: paint')
+  })
 })

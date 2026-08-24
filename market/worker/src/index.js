@@ -1,12 +1,112 @@
 /**
  * dsh-market — edge API for the DSH marketplace.
  * Anonymous likes are Turnstile-gated when configured and stored in D1.
+ * The API surface is advertised via /.well-known/api-catalog (RFC 9727),
+ * described by /openapi.json and documented at /api-docs.html.
  */
 
-import { PETDEX_ASSETS } from './petdex-map.generated.js'
+import API_CATALOG from './api-catalog.js'
+import OPENAPI_SPEC from './openapi.js'
+import API_DOCS_HTML from './api-doc.js'
 
 const KINDS = new Set(['skin', 'pet', 'plugin'])
+const HOMEPAGE_PATHS = new Set(['/', '/index.html'])
+const HOME_LINK = '</.well-known/api-catalog>; rel="api-catalog", </openapi.json>; rel="service-desc", </api-docs.html>; rel="service-doc", </api-docs.html>; rel="describedby"'
 const ASSET_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+const MARKDOWN_TTL_MS = 5 * 60 * 1000
+
+/** True when the Accept header prefers text/markdown with q > 0. */
+function acceptsMarkdown(accept) {
+  if (!accept) return false
+  for (const part of accept.split(',')) {
+    const [type, ...params] = part.trim().split(';')
+    if (type.trim().toLowerCase() !== 'text/markdown') continue
+    const q = params.map((p) => p.trim()).find((p) => p.startsWith('q='))
+    const qv = q ? Number.parseFloat(q.slice(2)) : 1
+    if (!Number.isFinite(qv) || qv > 0) return true
+  }
+  return false
+}
+
+/** Approximate token count for x-markdown-tokens (chars per token heuristic). */
+function estimateTokens(text) {
+  return Math.max(1, Math.ceil(text.length / 4))
+}
+
+let markdownCache = { at: 0, body: '', tokens: 0 }
+
+/**
+ * Markdown representation of the homepage, generated from the same public
+ * manifests the site renders. Cached briefly; returns null when the data
+ * cannot be read, so the caller can fall back to the HTML representation.
+ */
+async function homeMarkdown(env) {
+  const now = Date.now()
+  if (now - markdownCache.at < MARKDOWN_TTL_MS && markdownCache.body) return markdownCache
+  const read = async (path) => {
+    const res = await env.ASSETS.fetch(new URL(path, 'https://dsh-market.com/'))
+    if (!res || res.status !== 200) return { items: [] }
+    return res.json().catch(() => ({ items: [] }))
+  }
+  try {
+    const [skins, pets, plugins] = await Promise.all([
+      read('/manifest/skins.json'),
+      read('/manifest/pets.json'),
+      read('/manifest/plugins.json'),
+    ])
+    const lines = [
+      '# DSH Web UI 创意工坊',
+      '',
+      'dsh-market.com — DSH Web UI 社区皮肤、宠物与插件的一站式创意工坊。',
+      '本文件是站点的 Markdown 表示，通过内容协商（Accept: text/markdown）提供给智能体。',
+      '',
+      '- API 目录: https://dsh-market.com/.well-known/api-catalog',
+      '- OpenAPI 描述: https://dsh-market.com/openapi.json',
+      '- API 文档: https://dsh-market.com/api-docs.html',
+      '- 网站地图: https://dsh-market.com/sitemap.xml',
+      '',
+      '## 皮肤 (Skins)',
+      '',
+    ]
+    const skinsItems = Array.isArray(skins.items) ? skins.items : []
+    if (!skinsItems.length) lines.push('暂无皮肤。')
+    for (const s of skinsItems.sort((a, b) => (a.rank - b.rank) || String(a.id).localeCompare(String(b.id)))) {
+      lines.push('### ' + (s.name || s.id) + ' (' + s.id + ')')
+      if (s.nameEn) lines.push('- 英文名: ' + s.nameEn)
+      lines.push('- 作者: ' + (s.author || '未知'))
+      if (s.version) lines.push('- 版本: ' + s.version)
+      if (Array.isArray(s.tags) && s.tags.length) lines.push('- 标签: ' + s.tags.join(', '))
+      if (s.tagline) lines.push('- 简介: ' + s.tagline)
+      if (s.description) lines.push('- 说明: ' + s.description)
+      lines.push('- 实时试穿: https://dsh-market.com/tryon/?skin=' + encodeURIComponent(s.id))
+      lines.push('')
+    }
+    lines.push('## 宠物 (Pets)', '')
+    const petsItems = Array.isArray(pets.items) ? pets.items : []
+    if (!petsItems.length) lines.push('暂无宠物。')
+    for (const p of petsItems.sort((a, b) => (a.rank - b.rank) || String(a.id).localeCompare(String(b.id)))) {
+      lines.push('### ' + (p.displayName || p.id) + ' (' + p.id + ')')
+      if (p.description) lines.push('- 说明: ' + p.description)
+      lines.push('')
+    }
+    lines.push('## 插件 (Plugins)', '')
+    const pluginItems = Array.isArray(plugins.items) ? plugins.items : []
+    if (!pluginItems.length) lines.push('暂无插件。')
+    for (const p of pluginItems.sort((a, b) => (a.rank - b.rank) || String(a.id).localeCompare(String(b.id)))) {
+      lines.push('### ' + (p.name || p.id) + ' (' + p.id + ')')
+      lines.push('- 分类: ' + (p.category || 'other'))
+      if (p.description) lines.push('- 说明: ' + p.description)
+      if (p.repo) lines.push('- 仓库: ' + p.repo)
+      if (p.npm) lines.push('- npm: ' + p.npm)
+      lines.push('')
+    }
+    const body = lines.join('\n')
+    markdownCache = { at: now, body, tokens: estimateTokens(body) }
+    return markdownCache
+  } catch {
+    return null
+  }
+}
 const FP_RE = /^[A-Za-z0-9_-]{16,64}$/
 const SKIN_RE = /^[a-z][a-z0-9-]{0,31}$/
 const TURNSTILE_ACTION = 'market-like'
@@ -161,15 +261,73 @@ export default {
       return json({ ok: false, error: 'skin-asset-not-found' }, 404)
     }
 
-    // Petdex community index: metadata-only catalog. Asset bytes never touch
-    // this origin — requests for petdex-* assets miss the static dist and fall
-    // through to here, then redirect to the upstream R2 bucket.
-    const petdexAsset = path.match(/^\/assets\/pets\/(petdex-[a-z0-9][a-z0-9-]{0,63})\/(pet\.json|spritesheet\.webp)$/)
-    if ((request.method === 'GET' || request.method === 'HEAD') && petdexAsset) {
-      const entry = PETDEX_ASSETS[petdexAsset[1]]
-      if (entry) {
-        return Response.redirect(petdexAsset[2] === 'pet.json' ? entry.petJson : entry.sprite, 302)
+    if (HOMEPAGE_PATHS.has(path) && (request.method === 'GET' || request.method === 'HEAD')) {
+      if (acceptsMarkdown(request.headers.get('accept'))) {
+        const md = await homeMarkdown(env)
+        if (md) {
+          return new Response(md.body, {
+            status: 200,
+            headers: {
+              'content-type': 'text/markdown; charset=utf-8',
+              'cache-control': 'public, max-age=300',
+              'access-control-allow-origin': '*',
+              'x-markdown-tokens': String(md.tokens),
+            },
+          })
+        }
       }
+      const asset = await env.ASSETS.fetch(new URL(path === '/' ? '/' : '/index.html', url))
+      if (asset && asset.status === 200) {
+        // RFC 8288 / RFC 9727 Section 3: advertise machine-readable resources.
+        const headers = new Headers()
+        headers.set('content-type', asset.headers.get('content-type') || 'text/html; charset=utf-8')
+        headers.set('cache-control', asset.headers.get('cache-control') || 'public, max-age=0, must-revalidate')
+        for (const name of ['etag', 'last-modified']) {
+          const value = asset.headers.get(name)
+          if (value) headers.set(name, value)
+        }
+        headers.set('link', HOME_LINK)
+        return new Response(asset.body, { status: asset.status, headers })
+      }
+      return json({ ok: false, error: 'not-found' }, 404)
+    }
+
+    if (path === '/.well-known/api-catalog' && (request.method === 'GET' || request.method === 'HEAD')) {
+      return new Response(JSON.stringify(API_CATALOG, null, 2) + '\n', {
+        status: 200,
+        headers: {
+          'content-type': 'application/linkset+json',
+          'cache-control': 'public, max-age=300',
+          'access-control-allow-origin': '*',
+          'link': '</.well-known/api-catalog>; rel="api-catalog", <https://www.rfc-editor.org/info/rfc9727>; rel="profile"',
+        },
+      })
+    }
+
+    if (path === '/api' && request.method === 'GET') {
+      return json({ ok: true, title: 'DSH Web UI Marketplace API', catalog: 'https://dsh-market.com/.well-known/api-catalog' }, 200, { 'cache-control': 'public, max-age=300' })
+    }
+
+    if (path === '/openapi.json' && (request.method === 'GET' || request.method === 'HEAD')) {
+      return new Response(JSON.stringify(OPENAPI_SPEC, null, 2) + '\n', {
+        status: 200,
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'cache-control': 'public, max-age=300',
+          'access-control-allow-origin': '*',
+        },
+      })
+    }
+
+    if (path === '/api-docs.html' && (request.method === 'GET' || request.method === 'HEAD')) {
+      return new Response(API_DOCS_HTML, {
+        status: 200,
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+          'cache-control': 'public, max-age=300',
+          'access-control-allow-origin': '*',
+        },
+      })
     }
 
     return json({ ok: false, error: 'not-found' }, 404)

@@ -40,7 +40,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-skin-center
 - 所有 `/api/skin-center/*` 路由仅接受同源请求：写操作拒绝跨站请求（Sec-Fetch-Site / Origin 围栏），资产读取限定在各皮肤目录之内（路径逃逸 fail-closed）。
 - 皮肤 CSS 在服务前经白名单净化；`patches.css`（L3）按设计就是任意 CSS 并如实公示——它拥有完整页面样式能力，不构成安全边界。
 - 自定义主题编辑器只会从 `CUSTOM_THEME_ALLOWED_TOKENS` 生成固定声明，且每个 token 都对照官方 token 注册表校验。用户输入只作为规范化后的颜色/对比度数据，不会成为选择器、URL 或自由 CSS 载荷。
-- `hooks.mjs` 是与本仓库同审同发的受信代码，仅同源 serve，其 import/apply 错误永远不会拖垮静态皮肤。
+- `hooks.mjs` 是与本仓库同审同发的受信代码，仅同源 serve，其 import/apply 错误永远不会拖垮静态皮肤。hooks 对内置皮肤放行；对用户目录皮肤，仅当其从官方 DSH 市场安装且 `dsh-market.provenance.json` 以 sha256 钉住磁盘上的 `skin.json` 与 hooks 入口字节时放行（由 `src/provenance.ts` 校验，issue #1073）；provenance 缺失或不匹配——手工投放或被篡改的目录——hooks facet 保持拒绝，声明式部分仍正常加载。
 
 ## 已知限制
 
@@ -57,6 +57,7 @@ skins/skin-center/
   src/core/css-safety/                      # lightningcss 作用域限定 + 白名单管线
   src/index.ts                              # host 入口：路由、tapIndex 适配器、旧版迁移桥
   src/skin-repo.ts                          # 双来源皮肤目录册（内置 + $DSH_HOME/skins）
+  src/provenance.ts                         # 官方市场安装 provenance 校验（hooks 信任）
   src/routes-v2.ts                          # /api/skin-center/v2/* 路由
   src/tap-index-adapter.ts                  # 单一 tapIndex 适配器（防 FOUC）
   src/active-state.ts                       # 活动皮肤选择持久化

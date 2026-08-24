@@ -13,9 +13,11 @@ import {
   buildInventory,
   expandUser,
   inferType,
+  inventoryFingerprint,
   librariesFromVdf,
   libraryOwnsAppFromManifest,
   locateWallpaperEngine,
+  memoizedProbe,
   owningLibraries,
   readImportedManifest,
   readProjectJson,
@@ -309,5 +311,74 @@ describe('buildInventory', () => {
   it('ignores blank manual dirs and missing roots', () => {
     const inventory = buildInventory({ manualDirs: ['', join(root, 'missing')], autoDetect: false })
     expect(inventory.total).toBe(0)
+  })
+})
+
+describe('memoizedProbe', () => {
+  it('probes once per process and memoizes a null result too', () => {
+    let calls = 0
+    const probe = memoizedProbe(() => { calls++; return null })
+    expect(probe()).toBeNull()
+    expect(probe()).toBeNull()
+    expect(calls).toBe(1)
+  })
+
+  it('memoizes a concrete result', () => {
+    let calls = 0
+    const probe = memoizedProbe(() => { calls++; return 'C:\\Steam' })
+    expect(probe()).toBe('C:\\Steam')
+    expect(probe()).toBe('C:\\Steam')
+    expect(calls).toBe(1)
+  })
+})
+
+describe('inventoryFingerprint', () => {
+  it('is stable for unchanged inputs and changes with the entry set', () => {
+    const manual = join(root, 'manual')
+    makeProject(join(manual, '111'), { title: 'A', file: 'a.mp4' }, ['a.mp4'])
+    const entries = scanProjectsRoot(manual, 'local')
+    const before = inventoryFingerprint({ manualDirs: [manual], entries })
+    expect(inventoryFingerprint({ manualDirs: [manual], entries })).toBe(before)
+    expect(inventoryFingerprint({ manualDirs: [manual] })).not.toBe(before)
+  })
+
+  it('invalidates when a root gains a project (root mtime moves)', () => {
+    const manual = join(root, 'manual')
+    makeProject(join(manual, '111'), { title: 'A', file: 'a.mp4' }, ['a.mp4'])
+    const entries = scanProjectsRoot(manual, 'local')
+    const before = inventoryFingerprint({ manualDirs: [manual], entries })
+    makeProject(join(manual, '222'), { title: 'B', file: 'b.mp4' }, ['b.mp4'])
+    // The previous entry set is reused on purpose: the root mtime alone
+    // must flip the fingerprint.
+    expect(inventoryFingerprint({ manualDirs: [manual], entries })).not.toBe(before)
+  })
+
+  it('invalidates when a main file or project.json is rewritten in place', () => {
+    const manual = join(root, 'manual')
+    makeProject(join(manual, '111'), { title: 'A', file: 'a.mp4' }, ['a.mp4'])
+    const entries = scanProjectsRoot(manual, 'local')
+    const before = inventoryFingerprint({ manualDirs: [manual], entries })
+    // In-place rewrite: the containing root mtime never changes.
+    const main = join(manual, '111', 'a.mp4')
+    utimesSync(main, new Date(Date.now() + 60_000), new Date(Date.now() + 60_000))
+    expect(inventoryFingerprint({ manualDirs: [manual], entries })).not.toBe(before)
+    const projectJson = join(manual, '111', 'project.json')
+    utimesSync(projectJson, new Date(Date.now() + 120_000), new Date(Date.now() + 120_000))
+    expect(inventoryFingerprint({ manualDirs: [manual], entries })).not.toBe(before)
+  })
+
+  it('invalidates when the store appears or the manual dir list changes', () => {
+    const manual = join(root, 'manual')
+    makeProject(join(manual, '111'), { title: 'A', file: 'a.mp4' }, ['a.mp4'])
+    const entries = scanProjectsRoot(manual, 'local')
+    const store = join(root, 'store')
+    const before = inventoryFingerprint({ manualDirs: [manual], storeDir: store, entries })
+    mkdirSync(store, { recursive: true })
+    expect(inventoryFingerprint({ manualDirs: [manual], storeDir: store, entries })).not.toBe(before)
+
+    const later = join(root, 'later')
+    const beforeLater = inventoryFingerprint({ manualDirs: [manual, later], storeDir: store, entries })
+    mkdirSync(later, { recursive: true })
+    expect(inventoryFingerprint({ manualDirs: [manual, later], storeDir: store, entries })).not.toBe(beforeLater)
   })
 })

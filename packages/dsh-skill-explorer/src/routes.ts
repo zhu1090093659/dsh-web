@@ -13,9 +13,7 @@ import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { isSkillExplorerAllowed } from './access.ts'
 import { buildPayload, collectSkills, findProjectRoot, projectSkillRoot, trashSkillFile, userSkillRoot, writeSkillFile, type CollectOptions, type SkillEntry } from './collect.ts'
 import { setFrontmatterField } from './frontmatter.ts'
-
-/** Cap on JSON request bodies (create payloads are small). */
-const MAX_JSON_BODY_BYTES = 128 * 1024
+import { readJsonBody, writeJson } from './http.ts'
 
 /** Route paths (client bundle mirrors these literals; tests assert both sides). */
 export const ROUTES = {
@@ -25,31 +23,6 @@ export const ROUTES = {
   delete: '/api/dsh-skill-explorer/delete',
   health: '/api/dsh-skill-explorer/health',
 } as const
-
-/** One JSON response. */
-function writeJson(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body)
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'referrer-policy': 'no-referrer' })
-  res.end(payload)
-}
-
-/** Read a JSON request body (undefined when too large or unparseable). */
-async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown> | undefined> {
-  const chunks: Buffer[] = []
-  let size = 0
-  for await (const chunk of req) {
-    const buffer = chunk as Buffer
-    size += buffer.length
-    if (size > MAX_JSON_BODY_BYTES) return undefined
-    chunks.push(buffer)
-  }
-  try {
-    const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'))
-    return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : undefined
-  } catch {
-    return undefined
-  }
-}
 
 /** URL query helper (first value, decoded). */
 function queryParam(url: URL, name: string): string | undefined {
@@ -171,12 +144,13 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
       handler: async (req: IncomingMessage, res: ServerResponse) => {
         if (!guard(req, res, 'POST')) return
         try {
-          const body = await readJsonBody(req)
-          if (body === undefined) {
+          const body = await readJsonBody(req, { maxBytes: 128 * 1024, objectOnly: true })
+          if (body === null) {
             writeJson(res, 400, { error: 'invalid JSON body' })
             return
           }
-          const { name, path, enabled } = body
+          const payload = body as Record<string, unknown>
+          const { name, path, enabled } = payload
           if (typeof name !== 'string' || !NAME_PATTERN.test(name) || typeof path !== 'string' || path.trim() === '' || typeof enabled !== 'boolean') {
             writeJson(res, 400, { error: 'expected { name, path, enabled }' })
             return
@@ -205,12 +179,13 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
       handler: async (req: IncomingMessage, res: ServerResponse) => {
         if (!guard(req, res, 'POST')) return
         try {
-          const body = await readJsonBody(req)
-          if (body === undefined) {
+          const body = await readJsonBody(req, { maxBytes: 128 * 1024, objectOnly: true })
+          if (body === null) {
             writeJson(res, 400, { error: 'invalid JSON body' })
             return
           }
-          const { root, name, description, whenToUse, content, cwd } = body
+          const payload = body as Record<string, unknown>
+          const { root, name, description, whenToUse, content, cwd } = payload
           if (root !== 'user' && root !== 'project') {
             writeJson(res, 400, { error: 'root must be user (~/.dsh/skills) or project (project .dsh/skills)' })
             return
@@ -256,12 +231,13 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
       handler: async (req: IncomingMessage, res: ServerResponse) => {
         if (!guard(req, res, 'POST')) return
         try {
-          const body = await readJsonBody(req)
-          if (body === undefined) {
+          const body = await readJsonBody(req, { maxBytes: 128 * 1024, objectOnly: true })
+          if (body === null) {
             writeJson(res, 400, { error: 'invalid JSON body' })
             return
           }
-          const { name, path } = body
+          const payload = body as Record<string, unknown>
+          const { name, path } = payload
           if (typeof name !== 'string' || !NAME_PATTERN.test(name) || typeof path !== 'string' || path.trim() === '') {
             writeJson(res, 400, { error: 'expected { name, path }' })
             return

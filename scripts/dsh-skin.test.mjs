@@ -117,3 +117,18 @@ test('list shows builtin skins and diagnostics', () => {
   assert.match(r.out, /harbor \[builtin\]/)
   assert.match(r.out, /active:/)
 })
+test('validate warns (not fails) on a partial primary-action token set', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-skin-fixture-'))
+  const dir = fixtureSkin(root, 'halftone')
+  writeFileSync(join(dir, 'skin.css'), [
+    ':root {',
+    '  --dsw-alias-button-primary-fill: #2fbf8f;',
+    '  --dsw-alias-button-primary-hover: #45cba0;',
+    '}',
+  ].join('\n'))
+  const r = run(['validate', dir])
+  assert.equal(r.code, 0, r.out)
+  assert.match(r.out, /warning: primary action contract: "label-primary-foreground" is not defined/)
+  assert.match(r.out, /warning: primary action contrast/)
+  rmSync(root, { recursive: true, force: true })
+})

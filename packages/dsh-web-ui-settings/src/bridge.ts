@@ -20,9 +20,7 @@ import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { composeAllowlist, extractWebSettingsNamespaces } from './allowlist.ts'
 import { WEB_UI_SETTINGS_BRIDGE_PREFIX } from './protocol.ts'
 import type { BridgeDescribeResult, BridgeMutateRequest, BridgeMutateResult, BridgeNamespaceView } from './protocol.ts'
-
-/** Cap on JSON request bodies (a single mutate is tiny). */
-const MAX_JSON_BODY_BYTES = 64 * 1024
+import { readJsonBody, writeJson } from './http.ts'
 
 /** Header an authenticated same-host reverse proxy replaces before forwarding. */
 export const WEB_UI_SETTINGS_PROXY_TOKEN_HEADER = 'x-dsh-web-ui-settings-proxy-token'
@@ -131,30 +129,6 @@ function isTrustedBridgeRequestResolved(request: IncomingMessage, access: Resolv
   if (isLoopbackHostname(parsedHost.url.hostname)) return true
   if (!access.trustedProxyHosts.has(parsedHost.canonical)) return false
   return matchesProxyToken(request.headers[WEB_UI_SETTINGS_PROXY_TOKEN_HEADER], access.proxyToken)
-}
-
-/** One JSON response. */
-function writeJson(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body)
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'referrer-policy': 'no-referrer' })
-  res.end(payload)
-}
-
-/** Read a JSON request body (undefined when too large or unparseable). */
-async function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = []
-  let size = 0
-  for await (const chunk of req) {
-    const buffer = chunk as Buffer
-    size += buffer.length
-    if (size > MAX_JSON_BODY_BYTES) return undefined
-    chunks.push(buffer)
-  }
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
-  } catch {
-    return undefined
-  }
 }
 
 /** Project one settings descriptor onto the bridge wire view. */
@@ -286,7 +260,7 @@ export function makeBridgeRoutes(deps: BridgeDeps, access?: BridgeAccess): WebRo
       handler: async (req, res) => {
         if (!guard(req, res)) return
         const body = await readJsonBody(req)
-        if (body === undefined) {
+        if (body === null) {
           writeJson(res, 400, { ok: false, code: 'settings-rejected', message: 'unreadable JSON body' })
           return
         }

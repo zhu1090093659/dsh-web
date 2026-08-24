@@ -268,8 +268,9 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
     // blank while the loop heat-up runs.
     const leadCol = track.frames[0]!
     const lead = framePosition(cell, row, leadCol, scaleRef.current)
+    let lastPosStr = lead.x + 'px ' + lead.y + 'px'
     if (spriteRef.current !== null) {
-      spriteRef.current.style.backgroundPosition = lead.x + 'px ' + lead.y + 'px'
+      spriteRef.current.style.backgroundPosition = lastPosStr
     }
     if (reduceMotion) return
     let raf = 0
@@ -288,8 +289,12 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
         )
         const col = currentTrack.frames[current.frameIndex]!
         const pos = framePosition(cell, currentRow, col, scaleRef.current)
-        if (spriteRef.current !== null) {
-          spriteRef.current.style.backgroundPosition = pos.x + 'px ' + pos.y + 'px'
+        const posStr = pos.x + 'px ' + pos.y + 'px'
+        if (posStr !== lastPosStr) {
+          lastPosStr = posStr
+          if (spriteRef.current !== null) {
+            spriteRef.current.style.backgroundPosition = posStr
+          }
         }
         raf = requestAnimationFrame(tick)
         return
@@ -319,8 +324,12 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
       }
       const col = track.frames[st.index]!
       const pos = framePosition(cell, row, col, scaleRef.current)
-      if (spriteRef.current !== null) {
-        spriteRef.current.style.backgroundPosition = pos.x + 'px ' + pos.y + 'px'
+      const posStr = pos.x + 'px ' + pos.y + 'px'
+      if (posStr !== lastPosStr) {
+        lastPosStr = posStr
+        if (spriteRef.current !== null) {
+          spriteRef.current.style.backgroundPosition = posStr
+        }
       }
       raf = requestAnimationFrame(tick)
     }

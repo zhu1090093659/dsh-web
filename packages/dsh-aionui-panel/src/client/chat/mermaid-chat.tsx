@@ -58,6 +58,20 @@ export function isPanelOwnedPre(pre: HTMLPreElement): boolean {
   return pre.closest(`[${DATA_MD_SCOPE}], [data-aionui-preview-col]`) !== null
 }
 
+/**
+ * Claim the buffered observer batch for one run. The buffer is drained
+ * unconditionally: while the panel is absent, streaming mutations would
+ * otherwise keep appending to pendingRecords without bound and pin DOM
+ * nodes. The claimed batch is returned for scanning while the panel is
+ * mounted, and discarded while it is absent — the next panel mount re-runs
+ * the first full-document pass. Pure, so tests can drive it with plain
+ * arrays.
+ */
+export function drainObserverBatch(pendingRecords: MutationRecord[], panelMounted: boolean): MutationRecord[] {
+  const batch = pendingRecords.splice(0)
+  return panelMounted ? batch : []
+}
+
 /** Hidden sentinel: renders nothing, owns the transcript observer. */
 export function MermaidChatEnhancer(): JSX.Element | null {
   useEffect(() => {
@@ -67,16 +81,21 @@ export function MermaidChatEnhancer(): JSX.Element | null {
     let pendingRecords: MutationRecord[] = []
     const run = (): void => {
       scheduled = false
+      // Drain the observer buffer before the panel-absence bail: while the
+      // panel is off, streaming mutations would otherwise keep appending to
+      // pendingRecords without bound and pin DOM nodes. A panel-absent run
+      // discards the claimed batch — nothing is re-scanned, because the bail
+      // below leaves the observer armed and the firstPass flag true, so a
+      // later panel mount re-runs the full-document scan.
+      const panelMounted = document.querySelector('[data-aionui-preview-col]') !== null
+      const records = drainObserverBatch(pendingRecords, panelMounted)
       // The chat mermaid enhancement is a right-panel feature: while the
       // panel is disabled (provider = dsh-better-sidebar), the host does not
       // register the /aionui-panel/* routes, so the vendor script fetch would
       // receive the SPA fallback HTML and throw a parse error. The panel
       // columns only exist while the panel is mounted — bail on their
-      // absence (the observer stays armed and the firstPass flag stays true,
-      // so a later panel mount triggers the full-document scan).
-      if (document.querySelector('[data-aionui-preview-col]') === null) return
-      const records = pendingRecords
-      pendingRecords = []
+      // absence.
+      if (!panelMounted) return
       const scopes = enhanceScopesFor(records)
       if (firstPass) {
         // First scheduled pass only: scan the whole document exactly once.

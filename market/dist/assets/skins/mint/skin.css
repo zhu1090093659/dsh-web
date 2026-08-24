@@ -49,6 +49,7 @@
   /* buttons */
   --dsw-alias-button-primary-fill: #2fbf8f;
   --dsw-alias-button-primary-hover: #45cba0;
+  --dsw-alias-label-primary-foreground: #0d3b2a;
   --dsw-alias-button-contrast-fill: #0d3b2a;
 
   /* shell anchors */
@@ -105,6 +106,7 @@ body[data-ds-dark-theme] {
   /* buttons */
   --dsw-alias-button-primary-fill: #2fbf8f;
   --dsw-alias-button-primary-hover: #3dd6a2;
+  --dsw-alias-label-primary-foreground: #0d3b2a;
   --dsw-alias-button-contrast-fill: #06231a;
 
   /* shell anchors */

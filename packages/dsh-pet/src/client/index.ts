@@ -104,7 +104,13 @@ declare module '@deepseek-ai/cordis' {
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'pet: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'pet: dictionaries')
 
   // Built-in renderers dispatch through the plugin-wide registry (pet-center
   // M3). Registration is idempotent (id wins), so re-applies stay clean.
@@ -129,17 +135,21 @@ export function apply(ctx: ClientContext): void {
   // The section entry owns the controller: unregistering it (fiber disposal,
   // hot reload) releases the scope subscription through petSettings.dispose.
   ctx.slots.inject('settings.section', () => {
-    const unregister = ctx.slots.register({
-      name: 'settings.section',
-      id: 'pet',
-      order: 130,
-      label: () => ctx.locale.bind('pet')('settings.title'),
-      locale: 'pet',
-      inject: () => petSettings.inject(),
-    }, PetSettingsSection)
-    return () => {
-      unregister()
-      petSettings.dispose()
+    try {
+      const unregister = ctx.slots.register({
+        name: 'settings.section',
+        id: 'pet',
+        order: 130,
+        label: () => ctx.locale.bind('pet')('settings.title'),
+        locale: 'pet',
+        inject: () => petSettings.inject(),
+      }, PetSettingsSection)
+      return () => {
+        unregister()
+        petSettings.dispose()
+      }
+    } catch {
+      return () => {}
     }
   })
 

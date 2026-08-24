@@ -106,6 +106,25 @@ const MANIFEST = [
     targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-git-graph/src/host/loopback.ts', 'packages/dsh-remote-web-ui/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-pet/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-tool-describe-image/src/loopback.ts', 'packages/dsh-desktop-launcher/src/loopback.ts', 'packages/dsh-doctor/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts'],
   },
   {
+    file: 'http.ts',
+    source: 'shared/host/http.ts',
+    targets: [
+      'packages/dsh-pet/src/http.ts',
+      'packages/dsh-market/src/http.ts',
+      'packages/dsh-skill-explorer/src/http.ts',
+      'packages/dsh-desktop-launcher/src/http.ts',
+      'packages/dsh-web-ui-settings/src/http.ts',
+      'packages/dsh-tool-describe-image/src/http.ts',
+      'packages/dsh-doctor/src/host/http.ts',
+      'packages/dsh-git-graph/src/host/http.ts',
+      'packages/dsh-ssh/src/http.ts',
+      'packages/dsh-plugin-manager/src/host/http.ts',
+      'packages/skins/skin-center/src/http.ts',
+      'packages/dsh-remote-web-ui/src/http.ts',
+      'packages/dsh-task-board/src/http.ts',
+    ],
+  },
+  {
     file: 'sidebar-entry-core.ts',
     source: 'shared/client/sidebar-entry-core.ts',
     targets: [

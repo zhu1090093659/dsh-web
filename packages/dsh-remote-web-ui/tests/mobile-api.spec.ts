@@ -45,6 +45,7 @@ const apiProxy = {
     models: async () => ({ rpcId: 'r', result: { ok: true, value: { current: { provider: 'fx', model: 'fx-1' } } } }),
     selectModel: async () => ({ rpcId: 'r', result: { ok: true, value: { ok: true } } }),
     rename: async () => ({ rpcId: 'r', result: { ok: true, value: { ok: true } } }),
+    cancel: async () => ({ rpcId: 'r', result: { ok: true, value: { accepted: true } } }),
   },
   events: { mux: () => (async function* () {})() },
 } as unknown as ApiProxy
@@ -111,6 +112,30 @@ async function callNoCookie(port: number, method: string): Promise<{ status: num
 }
 
 describe('mobile api envelope', () => {
+  it('writes the unpaired SSE rejection as JSON with family headers', async () => {
+    const server = await serve(makeMobileApiRoutes({ service, apiProxy, mobileEnterToSend }))
+    try {
+      const result = await new Promise<{ status: number; body: string; headers: typeof import('node:http').IncomingHttpHeaders }>((resolve, reject) => {
+        const req = httpRequest({ host: '127.0.0.1', port: server.port, path: '/m/api/events.mux', method: 'GET' }, (response) => {
+          const chunks: Buffer[] = []
+          response.on('data', chunk => { chunks.push(chunk as Buffer) })
+          response.on('end', () => resolve({ status: response.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8'), headers: response.headers }))
+        })
+        req.on('error', reject)
+        req.end()
+      })
+      expect(result.status).toBe(403)
+      expect(JSON.parse(result.body)).toEqual({
+        ok: false,
+        error: { code: 'unpaired', message: 'mobile session is not paired' },
+      })
+      expect(result.headers['content-type']).toBe('application/json; charset=utf-8')
+      expect(result.headers['referrer-policy']).toBe('no-referrer')
+    } finally {
+      await server.close()
+    }
+  })
+
   it('wraps every allowlisted unary method in the server-response envelope', async () => {
     const server = await serve(makeMobileApiRoutes({ service, apiProxy, mobileEnterToSend }))
     try {
@@ -125,6 +150,7 @@ describe('mobile api envelope', () => {
         'session.models',
         'session.selectModel',
         'session.rename',
+        'session.cancel',
       ]) {
         const { status, body } = await call(server.port, method)
         expect(status).toBe(200)
@@ -331,6 +357,67 @@ describe('mobile api envelope', () => {
       const { status } = await callNoCookie(server.port, 'session.list')
       expect(status).toBe(403)
       expect(touchDevice).not.toHaveBeenCalled()
+    } finally {
+      await server.close()
+    }
+  })
+})
+describe('mobile api body failure contract (shared readBoundedJson)', () => {
+  /** Raw POST at /m/api/: raw text payload or no payload at all. */
+  async function rawPost(
+    port: number,
+    path: string,
+    payload: string | undefined,
+  ): Promise<{ status: number | null; body: string; error: string | null }> {
+    return await new Promise((resolve) => {
+      const headers: Record<string, string> = {
+        cookie: cookieName + '=device-1',
+        host: '127.0.0.1:' + String(port),
+        connection: 'close',
+      }
+      if (payload !== undefined) {
+        headers['content-type'] = 'application/json'
+        headers['content-length'] = String(Buffer.byteLength(payload))
+      }
+      const req = httpRequest({ host: '127.0.0.1', port, path, method: 'POST', headers }, (response) => {
+        const chunks: Buffer[] = []
+        response.on('data', (chunk) => { chunks.push(chunk as Buffer) })
+        response.on('end', () => {
+          resolve({ status: response.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8'), error: null })
+        })
+      })
+      req.on('error', (error: Error) => resolve({ status: null, body: '', error: error.message }))
+      if (payload !== undefined) req.write(payload)
+      req.end()
+    })
+  }
+
+  it('answers 400 for an unparseable, empty or oversized body', async () => {
+    const server = await serve(makeMobileApiRoutes({ service, apiProxy, mobileEnterToSend }))
+    try {
+      // Unparseable and explicit empty (content-length 0) bodies answer the
+      // full envelope; a body-less POST is a client-side transport nuance and
+      // is not part of the reader contract.
+      for (const payload of ['{not json', '']) {
+        const outcome = await rawPost(server.port, '/m/api/mobile.preferences', payload)
+        expect(outcome.error).toBeNull()
+        expect(outcome.status).toBe(400)
+        expect(JSON.parse(outcome.body)).toEqual({
+          ok: false,
+          error: { code: 'bad-request', message: 'invalid json body' },
+        })
+      }
+      // Oversize: readBoundedJson throws while the body is still in flight,
+      // so the strict reader keeps the socket-alive 400 contract (no destroy);
+      // the response body may be cut by the connection teardown, only the
+      // status is part of the contract.
+      const oversize = await rawPost(
+        server.port,
+        '/m/api/mobile.preferences',
+        JSON.stringify({ type: 'client-request', rpcId: 'p', payload: { blob: 'x'.repeat(70 * 1024) } }),
+      )
+      expect(oversize.error).toBeNull()
+      expect(oversize.status).toBe(400)
     } finally {
       await server.close()
     }

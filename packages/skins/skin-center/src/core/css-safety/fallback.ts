@@ -73,3 +73,60 @@ export function deriveFallbackTokens(defined: ReadonlySet<string>): string[] {
   }
   return out
 }
+/**
+ * Primary-action completion (issue #506 follow-up): filled primary buttons
+ * render from one matched set — button-primary-fill, button-primary-hover,
+ * label-primary-foreground. The official theme itself wires
+ * button-primary-fill to brand-primary, so a skin that remaps the brand
+ * already colors the fill; hover and foreground do NOT follow the brand and
+ * would snap to the shell's static values. To keep a partially-declared or
+ * legacy (brand-primary + brand-primary-invert) skin coherent, the loader
+ * completes the set here:
+ *
+ *  - fill: derive from brand-primary when the skin declares its brand but
+ *    no explicit fill (the shell chain does this anyway; the derivation
+ *    makes the intent explicit and keeps the textual derivation table
+ *    self-contained);
+ *  - hover / dimmed: blend the fill toward the surface (color-mix) — a
+ *    direction-agnostic press/disabled tint that works in both themes;
+ *  - foreground: inherit the skin's own brand-primary-invert ONLY when the
+ *    skin declares both brand tokens (the legacy matched convention); the
+ *    shell foreground stands in otherwise.
+ *
+ * Never overrides a token the skin defines, and never derives without an
+ * anchor: a skin with no brand and no button tokens keeps the official
+ * shell's own matched CTA.
+ */
+
+/** The primary-action token family (see ./token-audit.ts for the audit). */
+export const PRIMARY_ACTION_FILL = '--dsw-alias-button-primary-fill'
+export const PRIMARY_ACTION_HOVER = '--dsw-alias-button-primary-hover'
+export const PRIMARY_ACTION_DIMMED = '--dsw-alias-button-primary-dimmed'
+export const PRIMARY_ACTION_FOREGROUND = '--dsw-alias-label-primary-foreground'
+export const PRIMARY_ACTION_BRAND = '--dsw-alias-brand-primary'
+export const PRIMARY_ACTION_BRAND_INVERT = '--dsw-alias-brand-primary-invert'
+
+/** Derive the primary-action tokens the skin did not define. */
+export function derivePrimaryActionFallbacks(defined: ReadonlySet<string>): string[] {
+  const out: string[] = []
+  const hasBrand = defined.has(PRIMARY_ACTION_BRAND)
+  const branded = hasBrand || defined.has(PRIMARY_ACTION_FILL)
+  if (!hasBrand && !defined.has(PRIMARY_ACTION_FILL)) return out
+  if (!defined.has(PRIMARY_ACTION_FILL) && hasBrand) {
+    out.push(`${PRIMARY_ACTION_FILL}: var(${PRIMARY_ACTION_BRAND});`)
+  }
+  if (branded && !defined.has(PRIMARY_ACTION_HOVER)) {
+    out.push(
+      `${PRIMARY_ACTION_HOVER}: color-mix(in srgb, var(${PRIMARY_ACTION_FILL}) 82%, var(--dsw-alias-bg-layer-1));`,
+    )
+  }
+  if (branded && !defined.has(PRIMARY_ACTION_DIMMED)) {
+    out.push(
+      `${PRIMARY_ACTION_DIMMED}: color-mix(in srgb, var(${PRIMARY_ACTION_FILL}) 60%, var(--dsw-alias-bg-layer-1));`,
+    )
+  }
+  if (!defined.has(PRIMARY_ACTION_FOREGROUND) && hasBrand && defined.has(PRIMARY_ACTION_BRAND_INVERT)) {
+    out.push(`${PRIMARY_ACTION_FOREGROUND}: var(${PRIMARY_ACTION_BRAND_INVERT});`)
+  }
+  return out
+}

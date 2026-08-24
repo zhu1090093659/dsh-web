@@ -76,6 +76,7 @@ async function validateDir(lib, dir) {
     ['stylesheet', result.manifest.contributes.stylesheet],
     ['patches', result.manifest.contributes.patches],
   ]
+  const auditEntries = []
   for (const [label, rel] of stylesheets) {
     if (!rel) continue
     const abs = path.join(dir, rel)
@@ -84,8 +85,10 @@ async function validateDir(lib, dir) {
       report.errors.push(`${label}: ${rel} not found`)
       continue
     }
+    const css = fs.readFileSync(abs, 'utf8')
+    auditEntries.push({ filename: rel, css })
     try {
-      const { warnings } = lib.transformSkinCss(fs.readFileSync(abs, 'utf8'), {
+      const { warnings } = lib.transformSkinCss(css, {
         skinId: result.manifest.id,
         filename: rel,
       })
@@ -95,6 +98,11 @@ async function validateDir(lib, dir) {
       if (error && Array.isArray(error.violations)) report.errors.push(...error.violations)
       else report.errors.push(`${label}: ${error.message}`)
     }
+  }
+  // Primary-action token contract audit (warning-only; the loader completes
+  // partial sets, so gaps never block an install).
+  if (auditEntries.length > 0) {
+    report.warnings.push(...lib.auditTokenContract(auditEntries).warnings)
   }
   return report
 }

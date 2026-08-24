@@ -104,6 +104,6 @@ export function bridgePluginManager(ctx: Context): void {
     inner.effect(() => {
       setFace(inner.pluginManager ?? null)
       return () => { setFace(null) }
-    }, 'dsh-market: pluginManager bridge')
+    }, 'dsh-web-ui-market: pluginManager bridge')
   })
 }

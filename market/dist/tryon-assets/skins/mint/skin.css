@@ -49,6 +49,7 @@ html[data-dsh-skin="mint"] {
   /* buttons */
   --dsw-alias-button-primary-fill: #2fbf8f;
   --dsw-alias-button-primary-hover: #45cba0;
+  --dsw-alias-label-primary-foreground: #0d3b2a;
   --dsw-alias-button-contrast-fill: #0d3b2a;
 
   /* shell anchors */
@@ -93,6 +94,7 @@ html[data-dsh-skin="mint"] {
   --dsw-alias-state-business-primary: initial;
   --dsw-alias-button-primary-fill: initial;
   --dsw-alias-button-primary-hover: initial;
+  --dsw-alias-label-primary-foreground: initial;
   --dsw-alias-button-contrast-fill: initial;
   --dsw-specific-sidebar-fill: initial;
   --dsw-specific-sidebar-nav-item-hover: initial;
@@ -129,6 +131,7 @@ html[data-dsh-skin="mint"] body {
   --dsw-alias-state-business-primary: #2fbf8f;
   --dsw-alias-button-primary-fill: #2fbf8f;
   --dsw-alias-button-primary-hover: #45cba0;
+  --dsw-alias-label-primary-foreground: #0d3b2a;
   --dsw-alias-button-contrast-fill: #0d3b2a;
   --dsw-specific-sidebar-fill: #eef6f2;
   --dsw-specific-sidebar-nav-item-hover: #2fbf8f14;
@@ -180,6 +183,7 @@ html[data-dsh-skin="mint"] body[data-ds-dark-theme] {
   /* buttons */
   --dsw-alias-button-primary-fill: #2fbf8f;
   --dsw-alias-button-primary-hover: #3dd6a2;
+  --dsw-alias-label-primary-foreground: #0d3b2a;
   --dsw-alias-button-contrast-fill: #06231a;
 
   /* shell anchors */

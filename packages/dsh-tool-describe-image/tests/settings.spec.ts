@@ -14,6 +14,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 import * as tool from '../src/index.ts'
 import { anthropicReply, chatReply, FakeWebServer, jsonReply, PNG_BYTES, responsesReply, startMockServer } from './mock-server.ts'
+import { agentForWorkspace } from './test-agent.ts'
 import type { MockServer, RecordedRequest } from './mock-server.ts'
 
 /** A provider implementing only the three primitives, backed by an in-memory document. */
@@ -59,20 +60,22 @@ async function boot(
   return { ctx, server }
 }
 
-async function tempPng(): Promise<string> {
+async function tempPng(): Promise<{ path: string; workspace: string }> {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-describe-image-settings-'))
   cleanup.push(() => rm(dir, { recursive: true, force: true }))
   const path = join(dir, 'pixel.png')
   await writeFile(path, PNG_BYTES)
-  return path
+  return { path, workspace: dir }
 }
 
-function callDescribe(ctx: Context, image: string) {
+function callDescribe(ctx: Context, image: string, workspace?: string) {
+  const agent = agentForWorkspace(workspace)
   return ctx.tools.execute({
     signal: new AbortController().signal,
     callId: CallId('settings-vision-call'),
     name: 'describe_image',
     arguments: { image },
+    ...(agent === undefined ? {} : { agent }),
   })
 }
 
@@ -84,9 +87,9 @@ afterEach(async () => {
 describe('describe-image settings section', () => {
   it('overlays the composition entry from the stored section', async () => {
     const { ctx, server } = await boot({ 'describe-image': { model: 'settings-model', maxOutputTokens: 7 } })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    const result = await callDescribe(ctx, path)
+    const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toMatchObject({ model: 'settings-model' })
@@ -97,22 +100,22 @@ describe('describe-image settings section', () => {
 
   it('reaches the next call after a committed update, without re-registration', async () => {
     const { ctx, server } = await boot()
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
     await ctx.settings.update(tool.DESCRIBE_IMAGE_SETTINGS_NAMESPACE, { model: 'live-model' })
 
-    const result = await callDescribe(ctx, path)
+    const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     expect((server.request(0).body as { model?: unknown }).model).toBe('live-model')
   })
 
   it('an apiStyle committed through the section switches the next call to /responses', async () => {
     const { ctx, server } = await boot({}, (_request, res) => { jsonReply(res, 200, responsesReply('switched')) })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
     await ctx.settings.update(tool.DESCRIBE_IMAGE_SETTINGS_NAMESPACE, { apiStyle: 'responses' })
 
-    const result = await callDescribe(ctx, path)
+    const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toMatchObject({ text: 'switched' })
@@ -121,11 +124,11 @@ describe('describe-image settings section', () => {
 
   it('an anthropic-messages setting drives the next call headers, endpoint, and parser', async () => {
     const { ctx, server } = await boot({}, (_request, res) => { jsonReply(res, 200, anthropicReply('anthropic switched')) })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
     await ctx.settings.update(tool.DESCRIBE_IMAGE_SETTINGS_NAMESPACE, { apiStyle: 'anthropic-messages' })
 
-    const result = await callDescribe(ctx, path)
+    const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toMatchObject({ text: 'anthropic switched' })
@@ -138,11 +141,11 @@ describe('describe-image settings section', () => {
 
   it('a model thinking suffix committed through the section drives the next call body', async () => {
     const { ctx, server } = await boot()
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
     await ctx.settings.update(tool.DESCRIBE_IMAGE_SETTINGS_NAMESPACE, { model: 'entry-model:off' })
 
-    const result = await callDescribe(ctx, path)
+    const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
     expect(result.value).toMatchObject({ model: 'entry-model' })
@@ -153,9 +156,9 @@ describe('describe-image settings section', () => {
 
   it('an inline apiKey committed through the section drives the next call', async () => {
     const { ctx, server } = await boot({ 'describe-image': { apiKey: 'sk-settings' } })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    await callDescribe(ctx, path)
+    await callDescribe(ctx, path, workspace)
     expect(server.request(0).authorization).toBe('Bearer sk-settings')
   })
 
@@ -174,9 +177,9 @@ describe('describe-image settings section', () => {
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(tool, { baseURL: server.url, model: 'entry-only', apiKey: 'sk-entry' })
-    const path = await tempPng()
+    const { path, workspace } = await tempPng()
 
-    await callDescribe(ctx, path)
+    await callDescribe(ctx, path, workspace)
     expect((server.request(0).body as { model?: unknown }).model).toBe('entry-only')
   })
 })

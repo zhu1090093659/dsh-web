@@ -56,19 +56,28 @@ describe('task-board HTTP routes', () => {
 
   it('accepts loopback JSON mutations and rejects cross-origin, non-JSON, and unknown fields', async () => {
     const valid = { requestId: 'request-a', action: { kind: 'create', id: 'task-a', input: { title: 'A', description: '', prompt: '' } } }
-    expect((await fetch(`${base}/api/task-board/action`, {
+    const actionResponse = await fetch(`${base}/api/task-board/action`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'sec-fetch-site': 'same-origin' }, body: JSON.stringify(valid),
-    })).status).toBe(200)
+    })
+    expect(actionResponse.status).toBe(200)
+    expect(actionResponse.headers.get('referrer-policy')).toBe('no-referrer')
+    expect(actionResponse.headers.get('cache-control')).toBe('no-store')
     expect(apply).toHaveBeenCalledOnce()
 
     expect((await fetch(`${base}/api/task-board/action`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(valid),
     })).status).toBe(403)
-    expect((await fetch(`${base}/api/task-board/state`)).status).toBe(403)
+    const forbiddenState = await fetch(`${base}/api/task-board/state`)
+    expect(forbiddenState.status).toBe(403)
+    expect(forbiddenState.headers.get('referrer-policy')).toBe('no-referrer')
+    expect(forbiddenState.headers.get('cache-control')).toBe('no-store')
     expect((await fetch(`${base}/api/task-board/events`)).status).toBe(403)
-    expect((await fetch(`${base}/api/task-board/state`, {
+    const stateResponse = await fetch(`${base}/api/task-board/state`, {
       headers: { 'sec-fetch-site': 'same-origin' },
-    })).status).toBe(200)
+    })
+    expect(stateResponse.status).toBe(200)
+    expect(stateResponse.headers.get('referrer-policy')).toBe('no-referrer')
+    expect(stateResponse.headers.get('cache-control')).toBe('no-store')
 
     expect((await fetch(`${base}/api/task-board/action`, {
       method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://example.invalid' }, body: JSON.stringify(valid),
@@ -131,6 +140,8 @@ describe('task-board HTTP routes', () => {
       }),
     })
     expect(response.status).toBe(413)
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer')
+    expect(response.headers.get('cache-control')).toBe('no-store')
     expect(apply).not.toHaveBeenCalled()
   })
 

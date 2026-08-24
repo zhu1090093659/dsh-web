@@ -74,7 +74,13 @@ export const inject = ['sessions', 'locale', 'settingsScope']
 
 /** Apply the browser half. */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, dictionaries), 'dsh-aionui-panel: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, dictionaries)
+    } catch {
+      return () => {}
+    }
+  }, 'dsh-aionui-panel: dictionaries')
 
   // The composer drop target for explorer file drags: mounted in the
   // official `conversation.input.dock` band (declared by the shipped
@@ -84,26 +90,31 @@ export function apply(ctx: ClientContext): void {
   ctx.inject(['slots', 'conversation', 'sessions'], (scope: ClientContext) => {
     const sessions = scope.sessions
     const conversation = scope.conversation
-    scope.slots.inject('conversation.input.dock', () =>
-      scope.slots.register({
-        name: 'conversation.input.dock',
-        id: 'aionui-drag-file',
-        order: 90,
-        locale: NS,
-        inject: (sessionId: SessionId | undefined): DragFileInjected => ({
-          insertPath: (path: string): boolean => {
-            if (sessionId === undefined) return false
-            const actx = sessions.scope(sessionId)
-            if (actx === undefined) return false
-            const input = conversation.input
-            if (input === undefined) return false
-            const shell = input.for(actx)
-            const draft = shell.state.getSnapshot().draft
-            shell.setDraft(insertPathIntoDraft(draft, path))
-            return true
-          },
-        }),
-      }, DragFileInlay))
+    scope.slots.inject('conversation.input.dock', () => {
+      try {
+        return scope.slots.register({
+          name: 'conversation.input.dock',
+          id: 'aionui-drag-file',
+          order: 90,
+          locale: NS,
+          inject: (sessionId: SessionId | undefined): DragFileInjected => ({
+            insertPath: (path: string): boolean => {
+              if (sessionId === undefined) return false
+              const actx = sessions.scope(sessionId)
+              if (actx === undefined) return false
+              const input = conversation.input
+              if (input === undefined) return false
+              const shell = input.for(actx)
+              const draft = shell.state.getSnapshot().draft
+              shell.setDraft(insertPathIntoDraft(draft, path))
+              return true
+            },
+          }),
+        }, DragFileInlay)
+      } catch {
+        return () => {}
+      }
+    })
   })
 
   // Transcript mermaid enhancement rides the same dock as a zero-render
@@ -111,12 +122,17 @@ export function apply(ctx: ClientContext): void {
   // the document for the chat renderer's mermaid blocks (shell shape:
   // div.md-code-block with the language in its banner infostring).
   ctx.inject(['slots'], (scope: ClientContext) => {
-    scope.slots.inject('conversation.input.dock', () =>
-      scope.slots.register({
-        name: 'conversation.input.dock',
-        id: 'aionui-mermaid-chat',
-        order: 91,
-      }, MermaidChatEnhancer))
+    scope.slots.inject('conversation.input.dock', () => {
+      try {
+        return scope.slots.register({
+          name: 'conversation.input.dock',
+          id: 'aionui-mermaid-chat',
+          order: 91,
+        }, MermaidChatEnhancer)
+      } catch {
+        return () => {}
+      }
+    })
   })
 
   // The side-card settings card in the Web UI Plugins group: it declares
@@ -130,19 +146,23 @@ export function apply(ctx: ClientContext): void {
     const panelScope = binder.bind<AionUiPanelSettings>({ namespace: NS })
     const settingsCard = new AionUiSettingsCardController(panelScope)
     settingsCtx.slots.inject('web-ui.plugin.item', () => {
-      const unregister = settingsCtx.slots.register({
-        name: 'web-ui.plugin.item',
-        id: 'aionui-panel',
-        order: 110,
-        locale: NS,
-        inject: () => ({
-          ...settingsCard.inject(),
-          sidebar: settingsCtx.get('betterSidebar'),
-        }),
-      }, AionUiSettingsCard)
-      return () => {
-        settingsCard.dispose()
-        unregister()
+      try {
+        const unregister = settingsCtx.slots.register({
+          name: 'web-ui.plugin.item',
+          id: 'aionui-panel',
+          order: 110,
+          locale: NS,
+          inject: () => ({
+            ...settingsCard.inject(),
+            sidebar: settingsCtx.get('betterSidebar'),
+          }),
+        }, AionUiSettingsCard)
+        return () => {
+          settingsCard.dispose()
+          unregister()
+        }
+      } catch {
+        return () => {}
       }
     })
   })

@@ -3,6 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createMemoryFs } from '../src/core/fs.ts'
+import type { FsLike } from '../src/core/fs.ts'
 import { captureSnapshot, listProfileFiles, restoreSnapshot, verifySnapshot } from '../src/core/snapshot.ts'
 import { defaultRules, redactText } from '../src/core/redact.ts'
 import type { SnapshotDeps } from '../src/core/snapshot.ts'
@@ -47,6 +48,8 @@ describe('captureSnapshot', () => {
     expect(manifest.files.map((f) => f.path)).toEqual(['cordis.patch.yml', 'cordis.yml', 'dir/notes.txt', 'package.json'])
     const patch = manifest.files.find((f) => f.path === 'cordis.patch.yml')
     expect(patch?.redactedHash).toBeDefined()
+    expect(patch?.hash).toMatch(/^[0-9a-f]{64}$/)
+    expect(patch?.kind).toBe('text')
     const redacted = await fs.readText('/h/.dsh-doctor/snapshots/web/redacted/cordis.patch.yml')
     expect(redacted).not.toContain('sk-abcdefghijklmnop')
     expect(redacted).toContain('REDACTION')
@@ -64,15 +67,42 @@ describe('captureSnapshot', () => {
     expect(a.snapshotId).toBe(b.snapshotId)
   })
 
-  it('records large files as omitted', async () => {
+  it('records large files as omitted without reading or hashing them', async () => {
     const fs = createMemoryFs()
     await seedProfile(fs)
     await fs.writeText('/h/profiles/web/big.bin', 'x'.repeat(2048))
-    const deps = makeDeps(fs)
+    const reads: string[] = []
+    const countingFs: FsLike = {
+      ...fs,
+      async readBytes(path) {
+        reads.push(path)
+        return fs.readBytes(path)
+      },
+    }
+    const deps = makeDeps(countingFs)
     deps.maxFileBytes = 1024
     const manifest = await captureSnapshot(deps)
     const big = manifest.files.find((f) => f.path === 'big.bin')
-    expect(big?.omitted).toBe(true)
+    expect(big).toEqual({ path: 'big.bin', size: 2048, omitted: true })
+    expect(reads).not.toContain('/h/profiles/web/big.bin')
+    const verify = await verifySnapshot(countingFs, '/h/.dsh-doctor/snapshots/web')
+    expect(verify.ok).toBe(true)
+    const restored = await restoreSnapshot(countingFs, '/h/.dsh-doctor/snapshots/web', '/restore/web')
+    expect(restored.restored).toBe(4)
+    expect(restored.skipped).toContain('big.bin (omitted large file)')
+  })
+
+  it('stores files exactly at the size limit', async () => {
+    const fs = createMemoryFs()
+    await seedProfile(fs)
+    await fs.writeText('/h/profiles/web/boundary.bin', 'x'.repeat(1024))
+    const deps = makeDeps(fs)
+    deps.maxFileBytes = 1024
+    const manifest = await captureSnapshot(deps)
+    const entry = manifest.files.find((f) => f.path === 'boundary.bin')
+    expect(entry?.size).toBe(1024)
+    expect(entry?.omitted).toBeUndefined()
+    expect(entry?.hash).toMatch(/^[0-9a-f]{64}$/)
   })
 })
 

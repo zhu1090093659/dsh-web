@@ -418,6 +418,18 @@
       "descriptionEn": "A floating pet exclusively for Miku: hand-drawn frame animations, 5s random idle with a pity timer, a continuous work loop earning coins, a shop restoring hunger, stat bars and a two-level hover menu; coexists with the built-in dsh-pet under the /miku-pet namespace.",
       "repo": "https://github.com/stushansusu/miku-pet",
       "category": "ui"
+    },
+    {
+      "id": "dsh-session-insights",
+      "name": "会话复盘",
+      "rank": 37,
+      "nameEn": "Session Insights",
+      "author": "GreenLv",
+      "description": "通过 /session-insights 把 DSH 会话历史生成为本地、基于证据的工作流复盘：自包含 HTML Dashboard 与配套 JSON，支持确定性分析与可选的模型辅助分析。",
+      "descriptionEn": "Generates local, evidence-backed workflow retrospectives from DSH session history through /session-insights: a self-contained HTML dashboard plus companion JSON, with deterministic and optional model-assisted analysis.",
+      "repo": "https://github.com/GreenLv/dsh-session-insights",
+      "npm": "dsh-session-insights",
+      "category": "tools"
     }
   ]
 }

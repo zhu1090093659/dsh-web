@@ -181,16 +181,23 @@
   justify-content: center;
 }
 .market .actionRowPrimary > .install:hover:enabled { border-color: var(--dsw-alias-label-dimmed); }
-/* Filled primary: the brand-primary / brand-primary-invert pairing every
- * skin declares as a matched set (the shell's own primary buttons use it).
- * info-fill was rejected: it is a light tint under deep-current light where
- * a white label would vanish, and bg-layer-3 is translucent under the glass
- * skins, rendering the label washed out. */
+/* Filled primary: the shell's own CTA recipe (button-primary-fill /
+ * label-primary-foreground / button-primary-hover) — the token set the
+ * official theme pairs for filled primary buttons and every skin remaps
+ * together with its palette. The brand-primary / brand-primary-invert pair
+ * was rejected: in the current official theme it resolves both sides to the
+ * same theme-neutral (#0f1115 light, #f9fafb dark), so the button went
+ * black-on-black in light mode and white-on-white in dark mode; skins also
+ * re-scope brand-primary per surface (deep-current patches.css) while the
+ * button-primary set stays matched globally. info-fill was rejected too: it
+ * is a light tint under deep-current light where a white label would
+ * vanish, and bg-layer-3 is translucent under the glass skins, rendering
+ * the label washed out. */
 .market .actionRowPrimary > .installPrimary {
   flex-grow: 2;
-  color: var(--dsw-alias-brand-primary-invert);
-  background: var(--dsw-alias-brand-primary);
-  border-color: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-label-primary-foreground);
+  background: var(--dsw-alias-button-primary-fill);
+  border-color: var(--dsw-alias-button-primary-fill);
 }
 .market .actionRowPrimary > .installPrimary:hover:enabled {
   background: var(--dsw-alias-button-primary-hover);

@@ -37,7 +37,12 @@
   `shared/web-platform.ts`）。跨插件协作走 cordis 服务
   （`ctx.slots` / `ctx.sessions` / `ctx.workspaces`）或 slot，不走 value import。
 - **样式**：CSS Modules（`*.module.css`）经 lightningcss 编译进 bundle；不引入
-  UI 框架样式库。
+  UI 框架样式库。填充主按钮一律用主按钮三件套
+  （`--dsw-alias-button-primary-fill` / `--dsw-alias-button-primary-hover` /
+  `--dsw-alias-label-primary-foreground`，明暗两组），不得把
+  `--dsw-alias-brand-primary` 当填充色（官方主题下它与前景同值，会出现
+  黑底黑字/白底白字），契约见
+  [skins/skin-center/contracts/primary-action-tokens-v1.md](skins/skin-center/contracts/primary-action-tokens-v1.md)。
 
 ## Agent 公告约定（issue #839）
 

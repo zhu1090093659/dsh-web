@@ -169,10 +169,13 @@ export const defaultClock: PairingClock = {
 }
 
 /**
- * The pairing state machine. All mutations notify state listeners after the
- * commit point that makes them true, and notification dedupes against the
- * last emitted snapshot — time-driven transitions (a device aging offline)
- * surface on the next sweep without any mutation.
+ * The pairing state machine. Structural mutations issue/accept/stop/revoke
+ * and config updates (LAN bases, tunnel, posture) notify state listeners
+ * after the commit point that makes them true, and notification dedupes
+ * against the last emitted snapshot. Presence-only updates (touchDevice /
+ * heartbeat) just mark the store dirty and broadcast on the next sweep,
+ * which also surfaces time-driven transitions (a device aging offline)
+ * without any mutation.
  */
 export class PairingService {
   private readonly tokens = new Map<string, TokenRecord>()
@@ -432,6 +435,12 @@ export class PairingService {
    * The api/gate path: record activity for a device id and report whether
    * the request may proceed. Unknown or revoked ids (including any device
    * after stop() or idle expiry) are refused.
+   *
+   * Presence refreshes are throttled on purpose: every gated request (and
+   * the mobile SSE keepalive) lands here, so a broadcast per call would fan
+   * a full snapshot out to every status stream on the hot path. The refresh
+   * only updates lastSeenAt and marks the store dirty; the snapshot reaches
+   * listeners at the next sweep() (structural changes notify immediately).
    * @param deviceId - the cookie value of the requesting device.
    * @returns true when the device session is live and was refreshed.
    */
@@ -440,7 +449,6 @@ export class PairingService {
     if (session === undefined) return false
     session.lastSeenAt = this.clock.now()
     this.dirty = true
-    this.notify()
     return true
   }
 

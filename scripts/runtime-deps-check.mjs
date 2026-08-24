@@ -31,7 +31,110 @@ import { pathToFileURL, fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 
-const BARE_IMPORT = /(?:from\s+|import\s*\()\s*['"]([^'".][^'"]*)['"]/g
+/**
+ * Bare import specifiers in source text.
+ *
+ * A state-machine scan, not a regex over raw text: comments and string or
+ * template literals are skipped, so prose like a JSDoc line "flips from
+ * 'missing' to an mtime" cannot be misread as an import statement (the old
+ * regex did exactly that and tripped the whole tree).
+ *
+ * @param {string} source
+ * @returns {string[]} bare specifiers of `from 'x'`, `from "x"` and
+ *   `import('x')` forms (relative specs and node:/@deepseek-ai/ prefixes are
+ *   kept; callers filter them).
+ */
+export function importSpecifiers(source) {
+  const specifiers = []
+  const n = source.length
+  let i = 0
+  let state = 'code' // code | line | block | single | double | template
+
+  /** Read the quoted specifier that starts at `start`; [text, end] or null. */
+  const readSpecifier = (start) => {
+    let end = start + 1
+    while (end < n) {
+      const ch = source[end]
+      if (ch === '\\') { end += 2; continue }
+      if (ch === source[start]) return [source.slice(start + 1, end), end + 1]
+      if (ch === '\n') return null
+      end += 1
+    }
+    return null
+  }
+
+  // Only words at a non-identifier boundary count as keywords; this keeps
+  // `x.from` / `y.import(...)` property lookups out of the gate.
+  const isKeywordAt = (word) => {
+    if (!source.startsWith(word, i)) return false
+    const prev = i > 0 ? source[i - 1] : ' '
+    return !/[A-Za-z0-9_$.]/.test(prev)
+  }
+
+  while (i < n) {
+    const ch = source[i]
+    const next = i + 1 < n ? source[i + 1] : ''
+    switch (state) {
+      case 'code': {
+        if (ch === '/' && next === '/') { state = 'line'; i += 2; break }
+        if (ch === '/' && next === '*') { state = 'block'; i += 2; break }
+        if (ch === '"') { state = 'double'; i += 1; break }
+        if (ch === "'") { state = 'single'; i += 1; break }
+        if (ch === '`') { state = 'template'; i += 1; break }
+        if (ch === 'f' && isKeywordAt('from')) {
+          let j = i + 4
+          while (j < n && /\s/.test(source[j])) j += 1
+          const quote = source[j]
+          if (quote === "'" || quote === '"') {
+            const got = readSpecifier(j)
+            if (got !== null) { specifiers.push(got[0]); i = got[1]; break }
+            i = j + 1; break
+          }
+        }
+        if (ch === 'i' && isKeywordAt('import')) {
+          let j = i + 6
+          while (j < n && /\s/.test(source[j])) j += 1
+          if (source[j] === '(') {
+            j += 1
+            while (j < n && /\s/.test(source[j])) j += 1
+            const quote = source[j]
+            if (quote === "'" || quote === '"') {
+              const got = readSpecifier(j)
+              if (got !== null) { specifiers.push(got[0]); i = got[1]; break }
+              i = j + 1; break
+            }
+          }
+        }
+        i += 1
+        break
+      }
+      case 'line':
+        if (ch === '\n') state = 'code'
+        i += 1
+        break
+      case 'block':
+        if (ch === '*' && next === '/') { state = 'code'; i += 2; break }
+        i += 1
+        break
+      case 'single':
+        if (ch === '\\') { i += 2; break }
+        if (ch === "'" || ch === '\n') state = 'code'
+        i += 1
+        break
+      case 'double':
+        if (ch === '\\') { i += 2; break }
+        if (ch === '"' || ch === '\n') state = 'code'
+        i += 1
+        break
+      case 'template':
+        if (ch === '\\') { i += 2; break }
+        if (ch === '`') state = 'code'
+        i += 1
+        break
+    }
+  }
+  return specifiers
+}
 
 /**
  * Check a single package's lib sources against its declared dependencies.
@@ -47,8 +150,8 @@ export function checkRuntimeImports(pkgJson, files) {
   const deps = new Set(Object.keys(pkgJson.dependencies ?? {}))
   const violations = []
   for (const [file, source] of Object.entries(files)) {
-    for (const match of source.matchAll(BARE_IMPORT)) {
-      const specifier = match[1]
+    for (const specifier of importSpecifiers(source)) {
+      if (specifier === '' || /^['".]/.test(specifier)) continue
       if (specifier.startsWith('node:')) continue
       if (specifier.startsWith('@deepseek-ai/')) continue
       // Support subpath imports ('pkg/sub/path' or '@scope/pkg/sub').

@@ -2,7 +2,7 @@
 
 /**
  * Workshop client registration: apply() contributes ONE first-level
- * settings section (id `dsh-market`) that renders the store card directly —
+ * settings section (id `dsh-web-ui-market`) that renders the store card directly —
  * no tab slot, no hub wrapper. The old hub-based registrations (the
  * `dsh-market.tab` child slot and the Store tab entry) must be gone.
  */
@@ -72,18 +72,18 @@ function makeCtx() {
   return { fakeCtx, injected, registered }
 }
 
-describe('dsh-market client store registration', () => {
-  it('registers the single dsh-market section rendering the store card', () => {
+describe('dsh-web-ui-market client store registration', () => {
+  it('registers the single dsh-web-ui-market section rendering the store card', () => {
     const { fakeCtx, injected, registered } = makeCtx()
     apply(fakeCtx as never)
 
     expect(injected).toEqual(['settings.section'])
 
-    const section = registered.find((entry) => entry.name === 'settings.section' && entry.id === 'dsh-market') as RegisteredEntry | undefined
+    const section = registered.find((entry) => entry.name === 'settings.section' && entry.id === 'dsh-web-ui-market') as RegisteredEntry | undefined
     expect(section).toBeDefined()
     expect(section?.children).toBeUndefined()
     expect(section?.order).toBe(150)
-    expect(section?.locale).toBe('dsh-market')
+    expect(section?.locale).toBe('dsh-web-ui-market')
     expect(labelOf(section)).toBe('settings.title')
   })
 
@@ -92,5 +92,52 @@ describe('dsh-market client store registration', () => {
     apply(fakeCtx as never)
 
     expect(registered.some((entry) => entry.name === 'dsh-market.tab')).toBe(false)
+  })
+
+  it('handles duplicate apply gracefully when locale.register or slots.register throws (Issue #1030)', () => {
+    const registeredLocales = new Map<string, Set<string>>()
+    const registeredSlotIds = new Set<string>()
+
+    const fakeCtx = {
+      effect: (fn: () => unknown) => { fn(); return () => {} },
+      locale: {
+        register: (ns: string, dicts: Record<string, unknown>) => {
+          let set = registeredLocales.get(ns)
+          if (!set) {
+            set = new Set()
+            registeredLocales.set(ns, set)
+          }
+          for (const loc of Object.keys(dicts)) {
+            if (set.has(loc)) {
+              throw new Error(`locale namespace "${ns}" already has locale "${loc}"`)
+            }
+            set.add(loc)
+          }
+          return () => {}
+        },
+        bind: () => (key: string) => key,
+      },
+      get: () => undefined,
+      settingsScope: emptyScope as never,
+      slots: {
+        inject: (_name: string, fn: () => unknown) => { fn(); return () => {} },
+        register: (options: Record<string, unknown>) => {
+          const id = options.id as string
+          if (registeredSlotIds.has(id)) {
+            throw new Error(`list slot "${options.name}" already has an entry with id "${id}"`)
+          }
+          registeredSlotIds.add(id)
+          return () => {}
+        },
+      },
+    }
+
+    // First apply (e.g. standalone dsh-market)
+    expect(() => apply(fakeCtx as never)).not.toThrow()
+    expect(registeredLocales.get('dsh-web-ui-market')?.has('zh')).toBe(true)
+    expect(registeredSlotIds.has('dsh-web-ui-market')).toBe(true)
+
+    // Second apply (e.g. aggregate dsh-web-ui-all loading dsh-market)
+    expect(() => apply(fakeCtx as never)).not.toThrow()
   })
 })

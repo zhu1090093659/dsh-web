@@ -30,6 +30,41 @@ function makeProfile(): { facts: ProfileFacts; dir: string } {
   return { facts, dir }
 }
 
+/** One aggregate package whose bundle contains the plugin manager escape hatch. */
+function makeAggregateProfile(): { facts: ProfileFacts; dir: string } {
+  const dir = mkdtempSync(join(tmpdir(), 'plugin-manager-set-enabled-aggregate-'))
+  const profileDir = join(dir, 'profiles', 'web')
+  const packageName = '@linxin666/dsh-web-ui-all'
+  const moduleDir = join(profileDir, 'node_modules', '@linxin666', 'dsh-web-ui-all')
+  mkdirSync(moduleDir, { recursive: true })
+  writeFileSync(join(profileDir, 'package.json'), JSON.stringify({
+    name: 'dsh-profile-web', private: true,
+    dependencies: { [packageName]: '0.3.2' },
+    dsh: { profile: { bundles: [packageName] } },
+  }))
+  writeFileSync(join(profileDir, 'cordis.patch.yml'), '# layer\n[]\n')
+  writeFileSync(join(moduleDir, 'package.json'), JSON.stringify({ name: packageName, version: '0.3.2' }))
+  writeFileSync(join(moduleDir, 'cordis.patch.yml'), [
+    '- insert:',
+    '    - id: web-ui-compat',
+    "      name: '@linxin666/dsh-web-ui-all'",
+    '- insert:',
+    '    - id: web-ui-plugin-manager',
+    "      name: '@linxin666/dsh-client-ui-plugin-manager'",
+    '- insert:',
+    '    - id: web-ui-task-board',
+    "      name: '@linxin666/dsh-client-ui-task-board'",
+    '',
+  ].join('\n'))
+  const facts: ProfileFacts = {
+    profileName: 'web',
+    profileDir,
+    patchPath: join(profileDir, 'cordis.patch.yml'),
+    packageJsonPath: join(profileDir, 'package.json'),
+  }
+  return { facts, dir }
+}
+
 /** One temp profile with several plain plugins for concurrent row mutations. */
 function makePlainProfile(ids: readonly string[]): { facts: ProfileFacts; dir: string } {
   const dir = mkdtempSync(join(tmpdir(), 'plugin-manager-set-enabled-concurrent-'))
@@ -145,6 +180,43 @@ describe('set-enabled id space', () => {
     expect(patch).toContain('id: memoir')
     expect(patch).toContain('name: memoir-display')
     expect(patch).not.toContain('name: dsh-memoir')
+  })
+
+  it('keeps the plugin manager mounted when disabling an aggregate package', async () => {
+    const { facts, dir } = makeAggregateProfile()
+    tempDirs.push(dir)
+    const { res, body, status } = captureResponse()
+    await setEnabledHandler(facts)(loopbackRequest({ id: '@linxin666/dsh-web-ui-all', enabled: false }), res)
+    expect(status()).toBe(200)
+    const patch = readFileSync(facts.patchPath, 'utf8')
+    expect(patch).toContain('id: web-ui-compat')
+    expect(patch).toContain('id: web-ui-task-board')
+    expect(patch).not.toContain('id: web-ui-plugin-manager')
+    const parsed = JSON.parse(body()) as { plugin: { enabled: boolean } }
+    expect(parsed.plugin.enabled).toBe(false)
+  })
+
+  it('refuses to disable the standalone plugin manager entry', async () => {
+    const { facts, dir } = makePlainProfile(['@linxin666/dsh-client-ui-plugin-manager'])
+    tempDirs.push(dir)
+    const moduleDir = join(facts.profileDir, 'node_modules', '@linxin666', 'dsh-client-ui-plugin-manager')
+    mkdirSync(moduleDir, { recursive: true })
+    writeFileSync(join(moduleDir, 'package.json'), JSON.stringify({
+      name: '@linxin666/dsh-client-ui-plugin-manager', version: '0.3.2',
+    }))
+    writeFileSync(join(moduleDir, 'cordis.patch.yml'), [
+      '- insert:',
+      '    - id: ui-plugin-manager',
+      "      name: '@linxin666/dsh-client-ui-plugin-manager'",
+      '',
+    ].join('\n'))
+    const { res, body, status } = captureResponse()
+    await setEnabledHandler(facts)(loopbackRequest({ id: '@linxin666/dsh-client-ui-plugin-manager', enabled: false }), res)
+    expect(status()).toBe(200)
+    expect(readFileSync(facts.patchPath, 'utf8')).toBe('# layer\n[]\n')
+    expect(existsSync(`${facts.patchPath}.bak-plugin-manager`)).toBe(false)
+    const parsed = JSON.parse(body()) as { plugin: { enabled: boolean } }
+    expect(parsed.plugin.enabled).toBe(true)
   })
 
   it('re-enabling removes the override and reports enabled', async () => {

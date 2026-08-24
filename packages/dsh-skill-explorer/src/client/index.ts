@@ -43,7 +43,13 @@ export type { SkillApi } from './api.ts'
  * @param ctx - client root context (locale service).
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'skill-explorer: dictionaries')
+  ctx.effect(() => {
+    try {
+      return ctx.locale.register(NS, { zh, en })
+    } catch {
+      return () => {}
+    }
+  }, 'skill-explorer: dictionaries')
 
   const api = new SkillApi()
   const panel = mountPanel(api)

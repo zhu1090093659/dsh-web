@@ -178,3 +178,63 @@ describe('registerNativeImageRoutes', () => {
     expect(envelope.value.capability.acceptsImages).toBe(true)
   })
 })
+describe('native-images body failure contract (shared readJsonBody)', () => {
+  /** POST request face with a destroy counter and an optional body chunk. */
+  function postRequest(body?: string): { req: Record<string, unknown>; destroyCalls: () => number } {
+    const chunks: Buffer[] = []
+    let destroys = 0
+    const req = {
+      method: 'POST',
+      url: '/describe-image/native-images',
+      socket: { remoteAddress: '127.0.0.1' },
+      headers: { host: 'localhost:3080', 'sec-fetch-site': 'same-origin' },
+      destroy() { destroys += 1 },
+      async *[Symbol.asyncIterator]() {
+        for (const chunk of chunks) yield chunk
+      },
+    }
+    if (body !== undefined) chunks.push(Buffer.from(body))
+    return { req, destroyCalls: () => destroys }
+  }
+
+  /** One fake response recording the envelope. */
+  function makeResponse(): { res: never; status: () => number; body: () => string } {
+    let status = 0
+    let body = ''
+    const res = {
+      writeHead(code: number, _headers?: unknown) { status = code },
+      end(payload: string) { body = payload },
+    }
+    return { res: res as never, status: () => status, body: () => body }
+  }
+
+  it('rejects an invalid JSON body with 400 without destroying the request', async () => {
+    const ctx = new Context()
+    const [route] = registerNativeImageRoutes(ctx, ALWAYS_ACCEPTS)
+    const { req, destroyCalls } = postRequest('{not json')
+    const { res, status } = makeResponse()
+    await route.handler(req as never, res as never)
+    expect(status()).toBe(400)
+    expect(destroyCalls()).toBe(0)
+  })
+
+  it('rejects an empty body with 400 without destroying the request', async () => {
+    const ctx = new Context()
+    const [route] = registerNativeImageRoutes(ctx, ALWAYS_ACCEPTS)
+    const { req, destroyCalls } = postRequest()
+    const { res, status } = makeResponse()
+    await route.handler(req as never, res as never)
+    expect(status()).toBe(400)
+    expect(destroyCalls()).toBe(0)
+  })
+
+  it('rejects an oversized body with 400 and destroys the request', async () => {
+    const ctx = new Context()
+    const [route] = registerNativeImageRoutes(ctx, ALWAYS_ACCEPTS)
+    const { req, destroyCalls } = postRequest(JSON.stringify({ enabled: true, pad: 'x'.repeat(5000) }))
+    const { res, status } = makeResponse()
+    await route.handler(req as never, res as never)
+    expect(status()).toBe(400)
+    expect(destroyCalls()).toBe(1)
+  })
+})

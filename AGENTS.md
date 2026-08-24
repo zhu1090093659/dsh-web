@@ -48,6 +48,7 @@ Market build order: build `market/shell` first (`npm run build` in `market/shell
 ## Development Workflow
 
 - For implementation and maintenance tasks, load [dsh-web-ui-agent-coding](.agents/skills/dsh-web-ui-agent-coding/SKILL.md) and the focused skill it selects.
+- Record every non-trivial change as an Agent Note under [.agents/notes/](.agents/notes/README.md) in the same change; lifecycle, classes, and format rules live in the [Agent Note rules](.agents/notes/README.md).
 - Prefer CodeGraph for code navigation, symbol lookup, dependency analysis, review, and impact analysis. Use `query`, `explore`, `node`, `impact`, and `affected`; initialize with `codegraph init <project-root>` when needed.
 - After all code changes in a session, before final validation, run `codegraph sync <project-root>` and `codegraph status <project-root>`. If the index is missing or sync fails, run `codegraph index <project-root>`.
 - Keep changes focused, preserve existing work, and verify real behavior. User-visible changes require appropriate runtime evidence; visual changes require screenshots and multimodal validation.
@@ -83,6 +84,7 @@ Releases are tag-driven by [.github/workflows/release.yml](.github/workflows/rel
 - [dsh-web-ui-agent-coding](.agents/skills/dsh-web-ui-agent-coding/SKILL.md): implementation workflow and task-specific skill routing.
 - [packages/AGENTS.md](packages/AGENTS.md): package-level SDK, bundle, and testing rules.
 - [docs/AGENTS.md](docs/AGENTS.md): documentation structure, writing, and i18n rules.
+- [.agents/notes/](.agents/notes/README.md): Agent Note decision records — where proposals and shipped decisions are written down.
 - Package-level `AGENTS.md` files: package-specific behavior and constraints.
 
 Keep each rule in its owning file. Prefer short rules and links over duplicated explanations.

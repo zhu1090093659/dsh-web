@@ -31,6 +31,7 @@ export function defaultActiveStatePath(): string {
 export interface ActiveStateFile {
   active: string | null
   background: SkinBackgroundConfig | null
+  initialized: boolean
 }
 
 /** Fields a write may set; absent keys keep their stored value (merge). */
@@ -39,18 +40,22 @@ export interface ActiveStateUpdate {
   background?: SkinBackgroundConfig | null
 }
 
-/** Read the whole state document; unreadable data yields all-null fields. */
+/** Read the whole state document; unreadable data yields all-null fields and initialized=false. */
 export function readActiveState(path: string): ActiveStateFile {
   try {
-    const parsed = JSON.parse(readFileSync(path, 'utf8')) as { active?: unknown; background?: unknown }
+    const parsed = JSON.parse(readFileSync(path, 'utf8')) as { active?: unknown; background?: unknown; initialized?: unknown }
+    const hasInitialized = typeof parsed.initialized === 'boolean'
+      ? parsed.initialized
+      : (typeof parsed === 'object' && parsed !== null && ('active' in parsed || 'background' in parsed))
     return {
       active: typeof parsed.active === 'string' ? parsed.active : null,
       background: parsed.background === undefined || parsed.background === null
         ? null
         : normalizeSkinBackground(parsed.background),
+      initialized: hasInitialized,
     }
   } catch {
-    return { active: null, background: null }
+    return { active: null, background: null, initialized: false }
   }
 }
 
@@ -77,7 +82,10 @@ export function writeActiveState(path: string, update: ActiveStateUpdate): void 
   // both success and failure.
   const tmpDir = mkdtempSync(join(dir, `${basename(path)}.tmp-`))
   const tmp = join(tmpDir, basename(path))
-  const document: { active: string | null; background?: SkinBackgroundConfig } = { active }
+  const document: { active: string | null; background?: SkinBackgroundConfig; initialized: boolean } = {
+    active,
+    initialized: true,
+  }
   if (background !== null) document.background = background
   try {
     writeFileSync(tmp, JSON.stringify(document, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' })
@@ -103,7 +111,8 @@ export function writeActiveSelection(path: string, id: string | null): void {
  * @returns whether the seed wrote the selection.
  */
 export function seedDefaultActiveSkin(path: string, find: (id: string) => boolean): boolean {
-  if (readActiveSelection(path) !== null) return false
+  const state = readActiveState(path)
+  if (state.initialized || state.active !== null) return false
   if (!find(DEFAULT_SKIN_ID)) return false
   writeActiveSelection(path, DEFAULT_SKIN_ID)
   return true

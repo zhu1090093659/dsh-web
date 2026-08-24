@@ -1439,6 +1439,8 @@ body[data-maid-settings-open] :is([data-pane="sidebar"], [class*="sidebarCol"]) 
 }
 
 [data-maid-settings-backdrop-frame] {
+  position: absolute;
+  pointer-events: none;
   width: var(--maid-sidebar-width);
   z-index: 0;
   height: 100%;
@@ -2198,7 +2200,10 @@ body[data-ds-dark-theme] :is([role="dialog"], [role="menu"], [data-radix-popper-
 [data-slot="sidebar.settings"] [role="presentation"] > [role="dialog"][aria-modal="true"] {
   --dsw-alias-bg-layer-2: #ebf0faad;
   background: var(--dsw-alias-bg-layer-2);
+  -webkit-backdrop-filter: blur(6px) saturate(.9);
   backdrop-filter: blur(6px) saturate(.9);
+  position: relative;
+  z-index: 1;
 }
 
 body[data-ds-dark-theme] [data-slot="sidebar.settings"] [role="presentation"] > [role="dialog"][aria-modal="true"] {

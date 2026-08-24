@@ -21,6 +21,7 @@ This skill is guidance, not a replacement for repository instructions. [AGENTS.m
 - Keep host, client, and shared logic in their respective package areas. Browser bundles must retain the platform-import and type-only SDK constraints in [packages/AGENTS.md](../../../packages/AGENTS.md).
 - Edit a generated shared copy only through its source in `shared/`, then run the documented synchronization command.
 - Add a package or change aggregate membership through the repository generators and update required documentation. Do not hand-edit generated output.
+- Record every non-trivial change as an Agent Note under [.agents/notes/](../../notes/README.md) in the same change: proposals start in `proposed/`, shipped decisions in `implemented/`, declined proposals in `rejected/`. Follow the lifecycle, class, and format rules there.
 - Build and exercise the affected behavior before declaring it complete. A commit alone is not delivery.
 
 ## Route focused work

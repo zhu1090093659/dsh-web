@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-08-19-refined-whale-registry.md: e170985db83c274f484cf505ed9b390636cada9b
+2026-08-19-refined-whale-registry.zh.md: ee9fc72545a929f45af045bbdc76ee7cc1c77b5c

@@ -291,10 +291,19 @@ export async function installAsset(
       files: hashes,
     }
     writeFileSync(join(tmp, PROVENANCE_FILENAME), JSON.stringify(provenance, null, 2) + '\n')
-    if (exists) rmSync(dest, { recursive: true, force: true })
-    renameSync(tmp, dest)
+    if (exists) {
+      rmSync(dest, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 })
+    }
+    try {
+      renameSync(tmp, dest)
+    } catch {
+      // Brief fallback retry for Windows filesystem handle release
+      const start = Date.now()
+      while (Date.now() - start < 50) { /* spin */ }
+      renameSync(tmp, dest)
+    }
   } catch (err) {
-    try { rmSync(tmp, { recursive: true, force: true }) } catch { /* best effort */ }
+    try { rmSync(tmp, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 }) } catch { /* best effort */ }
     if (err instanceof MarketInstallError) throw err
     throw new MarketInstallError('write', err instanceof Error ? err.message : String(err))
   }

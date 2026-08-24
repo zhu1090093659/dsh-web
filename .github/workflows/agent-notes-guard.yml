@@ -1,0 +1,36 @@
+name: agent-notes-guard
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+jobs:
+  guard-agent-notes:
+    name: guard-agent-notes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject non-collaborator changes to .agents/notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+        run: |
+          files="$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' | grep '^\.agents/notes/' || true)"
+          if [ -z "$files" ]; then
+            echo "Agent Notes tree untouched; guard passed."
+            exit 0
+          fi
+          printf 'This PR modifies the protected Agent Notes path:\n%s\n' "$files"
+          case "$AUTHOR_ASSOCIATION" in
+            OWNER|COLLABORATOR|MEMBER)
+              echo "Author association '$AUTHOR_ASSOCIATION' may modify .agents/notes; guard passed."
+              ;;
+            *)
+              echo "::error::Only the repository owner and collaborators may modify .agents/notes/. Open an issue proposing the change instead."
+              exit 1
+              ;;
+          esac

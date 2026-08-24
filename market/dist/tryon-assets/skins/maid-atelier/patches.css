@@ -1439,6 +1439,8 @@ html[data-dsh-skin="maid-atelier"] body[data-maid-settings-open] :is([data-pane=
 }
 
 html[data-dsh-skin="maid-atelier"] [data-maid-settings-backdrop-frame] {
+  position: absolute;
+  pointer-events: none;
   width: var(--maid-sidebar-width);
   z-index: 0;
   height: 100%;
@@ -2198,7 +2200,10 @@ html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] :is([role="dialog"],
 html[data-dsh-skin="maid-atelier"] [data-slot="sidebar.settings"] [role="presentation"] > [role="dialog"][aria-modal="true"] {
   --dsw-alias-bg-layer-2: #ebf0faad;
   background: var(--dsw-alias-bg-layer-2);
+  -webkit-backdrop-filter: blur(6px) saturate(.9);
   backdrop-filter: blur(6px) saturate(.9);
+  position: relative;
+  z-index: 1;
 }
 
 html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-slot="sidebar.settings"] [role="presentation"] > [role="dialog"][aria-modal="true"] {

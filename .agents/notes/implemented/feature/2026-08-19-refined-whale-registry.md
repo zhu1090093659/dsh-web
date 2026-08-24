@@ -1,4 +1,10 @@
-# Refined whale registry integration
+# Agent Note: Refined whale registry integration
+
+Status: implemented
+
+## Problem
+
+The pet registry exposed a single whale-girl artwork variant, so the refined artwork had no reachable entry in the pet settings selector.
 
 ## Decision
 
@@ -10,6 +16,8 @@ Ship the refined whale-girl artwork as the `whale-girl-refined` built-in entry o
 - The contribution adds no second host service, browser mount, persistence file, API family, or profile patch writer.
 - Existing loopback route fencing and `mountOnce` ownership remain the only security and lifecycle paths.
 - Installing `@linxin666/dsh-pet` alone provides both variants; the settings selector is populated from `/api/pet/pets`.
+
+<!-- agent-note-format: alternatives-not-recorded (pre-format Agent Note) -->
 
 ## Source record
 

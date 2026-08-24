@@ -243,10 +243,12 @@ export function MarketCard(props: MarketCardProps): ReactNode {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ id, force }),
         })
-        const data = await res.json().catch(() => ({})) as { ok?: boolean; dest?: string; error?: string }
+        const data = await res.json().catch(() => ({})) as { ok?: boolean; dest?: string; error?: string; message?: string }
         if (!res.ok || data.ok !== true) {
-          const err = new Error(data.error ?? 'HTTP ' + res.status) as Error & { code?: string }
+          const errMsg = data.message ?? data.error ?? ('HTTP ' + res.status)
+          const err = new Error(errMsg) as Error & { code?: string; dest?: string }
           err.code = data.error ?? 'write'
+          err.dest = data.dest
           throw err
         }
         return { dest: data.dest ?? id }

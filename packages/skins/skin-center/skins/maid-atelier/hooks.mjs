@@ -558,6 +558,7 @@ export default function defineSkinHooks() {
         if (settingsBackdropFrame === undefined) {
           settingsBackdropFrame = createSidebarCorners()
           settingsBackdropFrame.dataset.maidSettingsBackdropFrame = ''
+          settingsBackdropFrame.style.pointerEvents = 'none'
           ownedNodes.add(settingsBackdropFrame)
         }
         if (settingsBackdropFrame.parentElement !== overlay) {

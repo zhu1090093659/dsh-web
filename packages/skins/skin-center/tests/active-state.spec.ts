@@ -31,13 +31,15 @@ describe('active-state persistence (issue #678: atomic write)', () => {
   it('writes a valid JSON document and reads it back', () => {
     writeActiveSelection(path, 'skin-a')
     expect(readActiveSelection(path)).toBe('skin-a')
-    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ active: 'skin-a' })
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ active: 'skin-a', initialized: true })
   })
 
-  it('persists null (stock look)', () => {
+  it('persists null (stock look) and never overwrites it with seed', () => {
     writeActiveSelection(path, null)
     expect(readActiveSelection(path)).toBeNull()
-    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ active: null })
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ active: null, initialized: true })
+    expect(seedDefaultActiveSkin(path, () => true)).toBe(false)
+    expect(readActiveSelection(path)).toBeNull()
   })
 
   it('creates the parent directory on demand', () => {
@@ -72,6 +74,7 @@ describe('active-state persistence (issue #678: atomic write)', () => {
     expect(readActiveState(path)).toEqual({
       active: 'skin-a',
       background: { backgroundOpacity: 100, backgroundBlurEmpty: 4 },
+      initialized: true,
     })
   })
 
@@ -81,11 +84,13 @@ describe('active-state persistence (issue #678: atomic write)', () => {
     expect(readActiveState(path)).toEqual({
       active: 'skin-a',
       background: { backgroundOpacity: 60, backgroundBlurContent: 5 },
+      initialized: true,
     })
     writeActiveSelection(path, 'skin-b')
     expect(readActiveState(path)).toEqual({
       active: 'skin-b',
       background: { backgroundOpacity: 60, backgroundBlurContent: 5 },
+      initialized: true,
     })
   })
 
@@ -96,8 +101,8 @@ describe('active-state persistence (issue #678: atomic write)', () => {
 
   it('reads legacy files without a background key as null', () => {
     writeActiveSelection(path, 'skin-a')
-    expect(readActiveState(path)).toEqual({ active: 'skin-a', background: null })
-    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ active: 'skin-a' })
+    expect(readActiveState(path)).toEqual({ active: 'skin-a', background: null, initialized: true })
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ active: 'skin-a', initialized: true })
   })
 
   it('keeps the previous content when the rename fails mid-write', () => {

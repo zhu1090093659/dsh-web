@@ -44,7 +44,7 @@ describe('migrateBackgroundFromSettings', () => {
       readSettings: () => ({ backgroundOpacity: 80 }),
     })
     expect(result.migrated).toBe(true)
-    expect(readActiveState(statePath)).toEqual({ active: 'harbor', background: { backgroundOpacity: 80 } })
+    expect(readActiveState(statePath)).toEqual({ active: 'harbor', background: { backgroundOpacity: 80 }, initialized: true })
   })
 
   it('skips when the state document already carries a background section', () => {

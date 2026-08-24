@@ -93,3 +93,398 @@
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5.5' cy='5.5' r='3'/%3E%3Ccircle cx='11' cy='5.5' r='3'/%3E%3Cpath d='M2.5 13.5c0-3 2-4.2 3-4.2H11c1.5 0 3 1.2 3 4.2z'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5.5' cy='5.5' r='3'/%3E%3Ccircle cx='11' cy='5.5' r='3'/%3E%3Cpath d='M2.5 13.5c0-3 2-4.2 3-4.2H11c1.5 0 3 1.2 3 4.2z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+
+/* ---------- Version notes entry row (inside the Web UI plugins group) ----------
+ * Chrome mirrors the shared family PluginSettingsCard (same border, radius,
+ * header row and chevron) so the row reads as a sibling of the plugin cards;
+ * clicking it opens the release page in the primitives Modal below. */
+
+.releaseCard {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-3);
+  border-radius: 12px;
+  transition: border-color 0.16s, background 0.16s;
+}
+
+.releaseCard:hover {
+  border-color: var(--dsw-alias-label-dimmed);
+}
+
+.releaseHeader {
+  appearance: none;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  display: flex;
+}
+
+.releaseHeader:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
+}
+
+.releaseHeadText {
+  flex-direction: column;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+  display: flex;
+}
+
+.releaseName {
+  color: var(--dsw-alias-label-primary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.releaseDescription {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.releasePills {
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  display: flex;
+}
+
+.releaseVersion {
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: var(--dsw-alias-accent-soft, var(--dsw-alias-soft));
+  color: var(--dsw-alias-label-accent, var(--dsw-alias-brand));
+}
+
+.releaseChevron {
+  color: var(--dsw-alias-label-tertiary);
+  flex: none;
+}
+
+/* The row opens a page, not a fold: point the chevron right. */
+.releaseChevronRight {
+  transform: rotate(-90deg);
+}
+
+/* ---------- Release-page modal (primitives Modal, headless) ----------
+ * className lands on the dialog card: widen it past the primitives default
+ * (min(380px, 100%)) and let the page scroll inside the rounded card. The
+ * primitives stylesheet loads before plugin bundles, so this single-class
+ * override wins the cascade. */
+
+.releaseModal {
+  width: min(640px, 100%);
+}
+
+.releasePage {
+  overflow-y: auto;
+  max-height: min(72vh, 640px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Chrome-style title bar (macOS window chrome) --- */
+
+.releaseChromeBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--dsw-alias-bg-layer-2);
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+}
+
+.releaseChromeDot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.releaseChromeDot-r {
+  background: #ff5f57;
+}
+
+.releaseChromeDot-y {
+  background: #febc2e;
+}
+
+.releaseChromeDot-g {
+  background: #28c840;
+}
+
+.releaseChromeTitle {
+  margin-left: 10px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.releaseChromeSpacer {
+  flex: 1;
+}
+
+.releaseChromePill {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-accent, var(--dsw-alias-brand));
+  background: var(--dsw-alias-accent-soft, var(--dsw-alias-soft));
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+
+/* --- Panel header (version + title + date) --- */
+
+.releaseHero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+}
+
+.releaseHeroKicker {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  color: var(--dsw-alias-label-accent, var(--dsw-alias-brand));
+}
+
+.releaseHeroTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.releaseHeroVersion {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--dsw-alias-label-primary);
+}
+
+.releaseHeroDate {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* --- Page body --- */
+
+.releasePageBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 24px 8px;
+}
+
+/* --- Horizontal highlight cards (HTML-prototype style) --- */
+
+.releaseHighlights {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.releaseHighlight {
+  display: flex;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px dashed var(--dsw-alias-border-l2);
+}
+
+.releaseHighlight:last-child {
+  border-bottom: none;
+}
+
+.releaseBadgeSquare {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .3px;
+}
+
+.releaseHighlightBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.releaseHighlightIndex {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+
+.releaseHighlightTitle {
+  margin: 4px 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--dsw-alias-label-primary);
+}
+
+.releaseHighlightDesc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.releaseRefs {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.releaseRef {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 8px;
+  text-decoration: none;
+  background: var(--dsw-alias-accent-soft, var(--dsw-alias-soft));
+  color: var(--dsw-alias-label-accent, var(--dsw-alias-brand));
+}
+
+/* --- Footer (primary + ghost buttons) --- */
+
+.releaseFooter {
+  padding: 14px 24px 8px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.releaseBtnPrimary {
+  flex: 1;
+  border: none;
+  border-radius: 11px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--dsw-alias-label-primary-foreground, #fff);
+  background: var(--dsw-alias-button-primary-fill, var(--dsw-alias-brand));
+}
+
+.releaseBtnPrimaryHover:hover {
+  background: var(--dsw-alias-button-primary-hover, var(--dsw-alias-brand));
+}
+
+/* --- "Don't auto-popup" checkbox --- */
+
+.releaseDontShow {
+  padding: 0 24px 16px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+  text-align: center;
+}
+
+.releaseDontShowLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.releaseDontShowInput {
+  accent-color: var(--dsw-alias-label-accent, var(--dsw-alias-brand));
+}
+
+/* --- Modal content styles (category lists, bullets) --- */
+
+.whatsNewBadge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: var(--dsw-alias-accent-soft, var(--dsw-alias-soft));
+  color: var(--dsw-alias-label-accent, var(--dsw-alias-brand));
+  letter-spacing: .3px;
+}
+
+.whatsNewLede {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.whatsNewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.whatsNewSectionHead {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--dsw-alias-label-primary);
+}
+
+.badge-new {
+  background: var(--dsw-alias-success-soft, var(--dsw-alias-soft));
+  color: var(--dsw-alias-success, var(--dsw-alias-label-primary));
+}
+
+.badge-improved {
+  background: var(--dsw-alias-accent-soft, var(--dsw-alias-soft));
+  color: var(--dsw-alias-label-accent, var(--dsw-alias-brand));
+}
+
+.badge-fixed {
+  background: var(--dsw-alias-warning-soft, var(--dsw-alias-soft));
+  color: var(--dsw-alias-warning, var(--dsw-alias-label-primary));
+}
+
+.whatsNewBullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.whatsNewBullet {
+  position: relative;
+  padding-left: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.whatsNewBullet::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-tertiary);
+}
+

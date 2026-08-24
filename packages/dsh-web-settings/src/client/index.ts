@@ -2,17 +2,17 @@
  * Web UI plugin group, browser half. Registers the `web-ui-plugins`
  * dictionaries and one first-level settings section that renders the family
  * plugin cards (task-board, remote-web-ui, describe-image)
- * directly under a static heading. The section declares the
+ * directly under a static heading, plus the built-in version-notes card.
+ * The section declares the
  * `web-ui.plugin.item` child slot; the dsh-web family plugins register
  * their per-plugin cards there. Skin Center, Community Plugins and Desktop
  * Pet are sibling plugins that register their own first-level sections.
  */
 
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-// Type-only: pulls the locale plugin's Context merge (ctx.locale).
+// Type-only: pulls in the locale plugin's context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-// Type-only: pulls the settings-surface SlotMap merge (the 'settings.section'
-// entry) and the ctx.settingsScope Context merge.
+// Type-only: pulls the settings-surface SlotMap merge (ctx.settingsScope).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { WebUiSettingsBinder } from './compat-settings-scope.ts'
 import { WebUIPluginsSection } from './WebUIPluginsCard.tsx'
@@ -20,6 +20,7 @@ import { en, zh, type WebUIPluginsKey } from './locales.ts'
 import { reportDailyHeartbeat } from './telemetry.ts'
 
 export type { WebUIPluginsSectionProps } from './WebUIPluginsCard.tsx'
+export type { ReleaseNotesCardProps } from './ReleaseNotesCard.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {

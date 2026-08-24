@@ -1,0 +1,24 @@
+FROM node:22-bookworm
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /repo
+
+# Install root dependencies first (layer cache)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY shared ./shared
+COPY packages/dsh-web-settings/package.json packages/dsh-web-settings/package.json
+
+RUN pnpm install --frozen-lockfile 2>&1 || pnpm install 2>&1
+
+WORKDIR /repo/packages/dsh-web-settings
+
+CMD ["sh", "-c", "\
+  echo '========== typecheck ==========' && \
+  pnpm typecheck && \
+  echo '========== build ==========' && \
+  pnpm build && \
+  echo '========== test ==========' && \
+  pnpm test && \
+  echo '========== ALL PASSED =========='\
+"]

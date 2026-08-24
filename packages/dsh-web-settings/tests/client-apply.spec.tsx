@@ -18,6 +18,10 @@ vi.mock('../src/client/compat-settings-scope.ts', () => ({
   },
 }))
 
+vi.mock('../src/client/telemetry.ts', () => ({
+  reportDailyHeartbeat: () => {},
+}))
+
 import { apply } from '../src/client/index.ts'
 
 describe('web-ui-settings client registration', () => {
@@ -49,13 +53,19 @@ describe('web-ui-settings client registration', () => {
 
     apply(fakeCtx as never)
 
-    expect(injected).toEqual(['settings.section'])
+    // The group section registers into the list slot settings.section; the
+    // keyed settings.plugin.item slot stays untouched.
+    expect(injected.filter(name => name === 'settings.section')).toHaveLength(1)
     expect(injected).not.toContain('settings.plugin.item')
 
-    const section = registered.find((entry) => entry.name === 'settings.section')
+    const section = registered.find((entry) => entry.name === 'settings.section' && entry.id === 'web-ui-plugins')
     expect(section).toBeDefined()
     expect(section?.id).toBe('web-ui-plugins')
     expect(section?.children).toEqual({ 'web-ui.plugin.item': { kind: 'list', scope: 'root' } })
+
+    // The version-notes display lives inside the group section as a sub-card;
+    // no standalone changelog section is registered anymore.
+    expect(registered.some((entry) => entry.name === 'settings.section' && entry.id === 'web-ui-whats-new')).toBe(false)
 
     // The keyed slot must stay untouched: the host rejects entries without
     // options.key and the group has no reason to contribute one there.

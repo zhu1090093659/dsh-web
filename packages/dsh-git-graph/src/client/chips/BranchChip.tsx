@@ -65,19 +65,30 @@ function useStockLightTheme(): boolean {
 }
 
 /**
- * The right edge of the rightmost painted descendant of `root`, excluding
- * `root` itself. The hero row's direct children can be display:contents
- * slot outlets, so the visible chip boundary must be found by walking.
+ * The right edge of the rightmost painted chip of `root`, excluding `root`
+ * itself. The hero row's direct children can be display:contents slot
+ * outlets, so the visible chip boundary must be found by walking. Only
+ * interactive chips (button / role=button / role=switch) are measured by
+ * default: the official seats' outlet wrappers and label spans can be laid
+ * out wider than what they actually paint (invisible measurement padding),
+ * which used to push this chip past the agent-preset seat instead of hugging
+ * it with the official row gap. Falls back to the full walk for shells that
+ * render non-button chips.
  */
 function paintedRight(root: Element): number | null {
   let right: number | null = null
-  const visit = (node: Element): void => {
-    if (node !== root) {
-      const rect = node.getBoundingClientRect()
-      if (rect.width > 0 && rect.height > 0) {
-        right = right === null ? rect.right : Math.max(right, rect.right)
-      }
+  const consider = (node: Element): void => {
+    const rect = node.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      right = right === null ? rect.right : Math.max(right, rect.right)
     }
+  }
+  root.querySelectorAll('button, [role="button"], [role="switch"]').forEach((el) => {
+    if (el !== root) consider(el)
+  })
+  if (right !== null) return right
+  const visit = (node: Element): void => {
+    if (node !== root) consider(node)
     for (const child of Array.from(node.children)) visit(child)
   }
   visit(root)

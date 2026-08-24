@@ -388,5 +388,15 @@
     "repo": "https://github.com/GreenLv/dsh-session-insights",
     "npm": "dsh-session-insights",
     "category": "tools"
+  },
+  {
+    "id": "dsh-archive-button",
+    "name": "归档按钮",
+    "nameEn": "Archive Button",
+    "author": "FFWITHCC",
+    "description": "在左侧会话列表每一行加一个一点即归档的「归档」按钮：悬停会话行即可看到（「…」菜单旁），点击立即归档。纯 host 插件、不改磁盘源码、升级 App 自动恢复、幂等不重复注入。",
+    "descriptionEn": "Adds a one-click Archive button on every row of the left sidebar session list: hover a session row and it appears next to the ellipsis menu; click to archive instantly. A pure host plugin that never modifies files on disk, survives app upgrades and never double-injects.",
+    "repo": "https://github.com/FFWITHCC/dsh-archive-button",
+    "category": "ui"
   }
 ]

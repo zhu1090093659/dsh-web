@@ -1,0 +1,233 @@
+/* Skin-center-owned decoration layers and stable sidebar semantics only. */
+/* Future cabin control rail. Layout and behavior remain application-owned. */
+[data-pane="sidebar"] {
+  --fw-sidebar-accent: #2c86c6;
+  --fw-sidebar-edge: #246f9f3d;
+  --fw-sidebar-node: #246f9f70;
+  position: relative;
+  background: linear-gradient(180deg, #f7fcfff2 0%, #e8f3fae8 100%);
+  border-right: 1px solid var(--fw-sidebar-edge);
+  box-shadow: 8px 0 24px #244b6914;
+}
+
+/* Keep glass blur off the settings overlay's containing block. */
+[data-pane="sidebar"]::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(14px) saturate(118%);
+  backdrop-filter: blur(14px) saturate(118%);
+}
+
+[data-pane="sidebar"] > [data-slot="sidebar"] > * {
+  position: relative;
+}
+
+[data-pane="sidebar"]::after {
+  position: absolute;
+  z-index: 3;
+  top: 68px;
+  right: -1px;
+  width: 1px;
+  height: 162px;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--fw-sidebar-accent) 16%, var(--fw-sidebar-accent) 78%, transparent);
+  opacity: 0.56;
+}
+
+[data-slot="sidebar.brand.mark"] svg {
+  color: var(--fw-sidebar-accent);
+  filter: drop-shadow(0 2px 5px #246f9f38);
+}
+
+[data-slot="sidebar.brand.name"] svg {
+  filter: drop-shadow(0 1px 2px #244b691f);
+}
+
+[data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])) {
+  color: #174f77;
+  background: linear-gradient(180deg, #ffffffeb, #edf7fde8);
+  border: 1px solid #246f9f38;
+  border-radius: 12px;
+  box-shadow: inset 0 1px #ffffff, 0 4px 12px #244b6917;
+}
+
+[data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])):hover {
+  color: #123f60;
+  background: linear-gradient(180deg, #ffffff, #e4f3fceb);
+  border-color: #246f9f61;
+  box-shadow: inset 0 1px #ffffff, 0 6px 16px #244b6921;
+  transform: translateY(-1px);
+}
+
+[data-pane="sidebar"] :is(
+  [data-dsh-taskboard-entry],
+  [data-dsh-ssh-entry],
+  [data-dsh-skill-explorer-entry]
+) {
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition: color 150ms ease, transform 150ms ease;
+}
+
+[data-pane="sidebar"] :is(
+  [data-dsh-taskboard-entry],
+  [data-dsh-ssh-entry],
+  [data-dsh-skill-explorer-entry]
+)::after {
+  position: absolute;
+  right: 11px;
+  width: 4px;
+  height: 4px;
+  content: "";
+  background: transparent;
+  border: 1px solid var(--fw-sidebar-node);
+  border-radius: 50%;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+[data-pane="sidebar"] :is(
+  [data-dsh-taskboard-entry],
+  [data-dsh-ssh-entry],
+  [data-dsh-skill-explorer-entry]
+):hover {
+  color: #174f77;
+  background: transparent;
+  border-color: transparent;
+  transform: translateX(2px);
+}
+
+[data-pane="sidebar"] :is(
+  [data-dsh-taskboard-entry],
+  [data-dsh-ssh-entry],
+  [data-dsh-skill-explorer-entry]
+):hover::after {
+  background: var(--fw-sidebar-accent);
+  border-color: var(--fw-sidebar-accent);
+  box-shadow: 0 0 0 3px #2c86c61f;
+}
+
+/* One continuous cushion sits behind the three launchers; their layout stays application-owned. */
+[data-pane="sidebar"] > [data-slot="sidebar"] > * {
+  --fw-launcher-pillow-top: 107px;
+  --fw-launcher-pillow-height: 121px;
+}
+
+[data-pane="sidebar"] > [data-slot="sidebar"] > *::before {
+  position: absolute;
+  z-index: 0;
+  top: var(--fw-launcher-pillow-top);
+  left: 12px;
+  width: 256px;
+  height: var(--fw-launcher-pillow-height);
+  content: "";
+  pointer-events: none;
+  background: url("assets/pillow-light.webp") center / 100% 100% no-repeat;
+}
+
+[data-pane="sidebar"] :is(
+  [data-dsh-taskboard-entry],
+  [data-dsh-ssh-entry],
+  [data-dsh-skill-explorer-entry]
+) {
+  z-index: 1;
+}
+
+[data-pane="sidebar"] :is(
+  [data-dsh-taskboard-entry],
+  [data-dsh-ssh-entry],
+  [data-dsh-skill-explorer-entry]
+):not(:hover) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+[data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])):focus-visible,
+[data-pane="sidebar"] :is(
+  [data-dsh-taskboard-entry],
+  [data-dsh-ssh-entry],
+  [data-dsh-skill-explorer-entry]
+):focus-visible {
+  outline: 2px solid var(--fw-sidebar-accent);
+  outline-offset: 1px;
+}
+
+body[data-ds-dark-theme] [data-pane="sidebar"] {
+  --fw-sidebar-accent: #75c6f7;
+  --fw-sidebar-edge: #75c6f738;
+  --fw-sidebar-node: #91adc570;
+  background: linear-gradient(180deg, #071b31f2 0%, #09243de8 100%);
+  border-right-color: var(--fw-sidebar-edge);
+  box-shadow: 8px 0 28px #00000038;
+}
+
+body[data-ds-dark-theme] [data-slot="sidebar.brand.mark"] svg {
+  filter: drop-shadow(0 2px 6px #75c6f745);
+}
+
+body[data-ds-dark-theme] [data-slot="sidebar.brand.name"] svg {
+  filter: drop-shadow(0 1px 3px #00000066);
+}
+
+body[data-ds-dark-theme] [data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])) {
+  color: #dff4ff;
+  background: linear-gradient(180deg, #173b5ae0, #102d49db);
+  border-color: #75c6f738;
+  box-shadow: inset 0 1px #ffffff1f, 0 5px 14px #00000033;
+}
+
+body[data-ds-dark-theme] [data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])):hover {
+  color: #ffffff;
+  background: linear-gradient(180deg, #1b486de6, #123653e0);
+  border-color: #75c6f766;
+  box-shadow: inset 0 1px #ffffff29, 0 7px 18px #00000047;
+}
+
+body[data-ds-dark-theme] [data-pane="sidebar"] :is(
+  [data-dsh-taskboard-entry],
+  [data-dsh-ssh-entry],
+  [data-dsh-skill-explorer-entry]
+):hover {
+  color: #dff4ff;
+}
+
+body[data-ds-dark-theme] [data-pane="sidebar"] > [data-slot="sidebar"] > *::before {
+  background-image: url("assets/pillow-dark.webp");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])),
+  [data-pane="sidebar"] :is(
+    [data-dsh-taskboard-entry],
+    [data-dsh-ssh-entry],
+    [data-dsh-skill-explorer-entry]
+  ),
+  [data-pane="sidebar"] :is(
+    [data-dsh-taskboard-entry],
+    [data-dsh-ssh-entry],
+    [data-dsh-skill-explorer-entry]
+  )::after {
+    transition: none;
+  }
+}
+
+@media (max-width: 768px) {
+  [data-pane="sidebar"] > [data-slot="sidebar"] > * {
+    --fw-launcher-pillow-height: 129px;
+  }
+
+  [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"] > *::before {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  [data-dsh-skin-layer="background"] > img {
+    object-position: 82% center !important;
+  }
+}

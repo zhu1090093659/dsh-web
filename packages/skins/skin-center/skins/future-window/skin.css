@@ -1,0 +1,106 @@
+/**
+ * Skyrail Cabin — DSH skin-center v2 user skin.
+ * L1 remaps official tokens. The loader scopes every selector to this skin.
+ */
+
+:root {
+  /* Ice-blue daylight surfaces: opaque enough for long working sessions. */
+  --dsw-alias-bg-base: #edf6ff38;
+  --dsw-alias-bg-layer-1: #f8fbffe8;
+  --dsw-alias-bg-layer-2: #edf5fce0;
+  --dsw-alias-bg-layer-3: #dfeaf5d9;
+  --dsw-alias-bg-overlay: #f8fbfff2;
+  --dsw-alias-bg-skeleton: #315c7f14;
+
+  --dsw-alias-border-l1: #315c7f1f;
+  --dsw-alias-border-l2: #315c7f33;
+  --dsw-alias-border-l3: #315c7f52;
+  --dsw-alias-border-l4: #284c6b70;
+
+  --dsw-alias-label-primary: #13283b;
+  --dsw-alias-label-secondary: #405b73;
+  --dsw-alias-label-tertiary: #4b667c;
+  --dsw-alias-label-dimmed: #526b80;
+  --dsw-alias-label-caption: #567087;
+  --dsw-alias-label-primary-foreground: #ffffff;
+
+  --dsw-alias-brand-primary: #246f9f;
+  --dsw-alias-brand-text: #174f77;
+  --dsw-alias-interactive-bg-hover: #2c86c61a;
+  --dsw-alias-interactive-bg-active: #2c86c62e;
+
+  --dsw-alias-state-error-primary: #b93d48;
+  --dsw-alias-state-warn-primary: #a96816;
+  --dsw-alias-state-success-primary: #237858;
+  --dsw-alias-state-business-primary: #246f9f;
+
+  --dsw-alias-button-primary-fill: #246f9f;
+  --dsw-alias-button-primary-hover: #195d88;
+  --dsw-alias-button-primary-dimmed: #d8ebf8;
+  --dsw-alias-button-contrast-fill: #18344b;
+
+  --dsw-specific-sidebar-fill: #eef6fbe8;
+  --dsw-specific-sidebar-nav-item-hover: #2c86c618;
+  --dsw-specific-sidebar-nav-item-active: #2c86c62b;
+  --dsw-specific-input-major: #fbfdfff0;
+
+  --dsw-alias-tooltip-bg: #173047;
+  --dsw-shadow-lv1: 0 2px 7px #244b6924;
+  --dsw-shadow-lv2: 0 8px 22px #244b6930;
+  --dsw-shadow-lv3: 0 24px 64px #244b6942;
+
+  --dsw-alias-scrollbar-bg-l2: #315c7f24;
+  --dsw-alias-scrollbar-hover-l2: #315c7f45;
+  --dsw-alias-markdown-code-block: #e5eff8ed;
+}
+
+body[data-ds-dark-theme] {
+  /* Deep navy night surfaces with cyan city-light accents. */
+  --dsw-alias-bg-base: #06172c38;
+  --dsw-alias-bg-layer-1: #0c2038e8;
+  --dsw-alias-bg-layer-2: #102b48e0;
+  --dsw-alias-bg-layer-3: #173958d9;
+  --dsw-alias-bg-overlay: #0a1c32f2;
+  --dsw-alias-bg-skeleton: #8bd2ff17;
+
+  --dsw-alias-border-l1: #a6dcff1f;
+  --dsw-alias-border-l2: #a6dcff33;
+  --dsw-alias-border-l3: #a6dcff52;
+  --dsw-alias-border-l4: #bce6ff70;
+
+  --dsw-alias-label-primary: #eef7ff;
+  --dsw-alias-label-secondary: #bed2e4;
+  --dsw-alias-label-tertiary: #91adc5;
+  --dsw-alias-label-dimmed: #89a8c2;
+  --dsw-alias-label-caption: #82a3bd;
+  --dsw-alias-label-primary-foreground: #ffffff;
+
+  --dsw-alias-brand-primary: #75c6f7;
+  --dsw-alias-brand-text: #dff4ff;
+  --dsw-alias-interactive-bg-hover: #75c6f71f;
+  --dsw-alias-interactive-bg-active: #75c6f738;
+
+  --dsw-alias-state-error-primary: #ff7b86;
+  --dsw-alias-state-warn-primary: #ffc071;
+  --dsw-alias-state-success-primary: #6fd0a5;
+  --dsw-alias-state-business-primary: #75c6f7;
+
+  --dsw-alias-button-primary-fill: #176b9e;
+  --dsw-alias-button-primary-hover: #0f5885;
+  --dsw-alias-button-primary-dimmed: #163c5a;
+  --dsw-alias-button-contrast-fill: #e8f6ff;
+
+  --dsw-specific-sidebar-fill: #0b2037e8;
+  --dsw-specific-sidebar-nav-item-hover: #75c6f71f;
+  --dsw-specific-sidebar-nav-item-active: #75c6f738;
+  --dsw-specific-input-major: #102b48f0;
+
+  --dsw-alias-tooltip-bg: #e5f4ff;
+  --dsw-shadow-lv1: 0 2px 8px #00000052;
+  --dsw-shadow-lv2: 0 10px 22px #00000070;
+  --dsw-shadow-lv3: 0 26px 72px #0000008f;
+
+  --dsw-alias-scrollbar-bg-l2: #b7e4ff24;
+  --dsw-alias-scrollbar-hover-l2: #b7e4ff4a;
+  --dsw-alias-markdown-code-block: #081b31ed;
+}

@@ -466,6 +466,35 @@ window.SKIN_MANIFEST = {
           }
         }
       }
+    },
+    {
+      "id": "future-window",
+      "name": "云轨舱窗",
+      "nameEn": "Skyrail Cabin",
+      "author": "zhuqin",
+      "tagline": "一扇窗，两座城：晨光通透，夜色沉静",
+      "description": "以未来城市舱窗为背景的昼夜双主题皮肤，使用冰蓝玻璃表面、深海军蓝夜景和猫耳软枕入口组营造安静的工作舱体验。",
+      "accent": "#2c86c6",
+      "preview": {
+        "light": "assets/skins/future-window/preview/light.jpg",
+        "dark": "assets/skins/future-window/preview/dark.jpg"
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/future-window/assets/light.webp",
+            "scrim": "radial-gradient(ellipse at 54% 48%, rgba(244, 249, 255, 0.34) 0%, rgba(238, 247, 255, 0.18) 38%, rgba(233, 244, 255, 0.08) 68%, rgba(247, 250, 255, 0.16) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/future-window/assets/night.webp",
+            "scrim": "linear-gradient(100deg, rgba(2, 13, 31, 0.18) 0%, rgba(4, 22, 48, 0.05) 52%, rgba(3, 11, 25, 0.22) 100%)"
+          }
+        }
+      }
     }
   ]
 }

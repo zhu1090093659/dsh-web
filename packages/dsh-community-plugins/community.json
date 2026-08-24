@@ -388,5 +388,15 @@
     "repo": "https://github.com/GreenLv/dsh-session-insights",
     "npm": "dsh-session-insights",
     "category": "tools"
+  },
+  {
+    "id": "dsh-fulltext-search",
+    "name": "全文搜索",
+    "nameEn": "Fulltext Search",
+    "author": "termanli",
+    "description": "侧边栏按文件内容全文搜索当前会话工作目录（ripgrep 优先、纯 JS 引擎回退），支持正则、大小写与整词匹配，点击结果行在编辑器中打开文件。",
+    "descriptionEn": "Full-text content search over the session working directory in the sidebar (ripgrep-first with a pure-JS engine fallback), with regex, case and whole-word matching; click a result row to open the file in the editor.",
+    "repo": "https://github.com/termanli/dsh-fulltext-search",
+    "category": "tools"
   }
 ]

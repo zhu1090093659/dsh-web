@@ -488,5 +488,28 @@
     "repo": "https://github.com/Zhiyi-Zhao/dsh-notion-skill",
     "category": "integration",
     "subcategory": "sync"
+  },
+  {
+    "id": "dsh-fulltext-search",
+    "name": "全文搜索",
+    "nameEn": "Fulltext Search",
+    "author": "termanli",
+    "description": "侧边栏按文件内容全文搜索当前会话工作目录（ripgrep 优先、纯 JS 引擎回退），支持正则、大小写与整词匹配，点击结果行在编辑器中打开文件。需先安装 dsh-better-sidebar（npm 包）；商店一键安装不会自动带上该依赖。",
+    "descriptionEn": "Full-text content search over the session working directory in the sidebar (ripgrep-first with a pure-JS engine fallback), with regex, case and whole-word matching; click a result row to open the file in the editor. Requires dsh-better-sidebar (npm package); the store's one-click install does not pull it in.",
+    "repo": "https://github.com/termanli/dsh-fulltext-search",
+    "category": "tools",
+    "subcategory": "dev"
+
+
+
+
+
+
+
+
+
+
+
+
   }
 ]

@@ -3442,6 +3442,11 @@ window.__ModuleLoader__.load({
 				note: "column resize handle"
 			},
 			{
+				selector: "button[class*=\"newSession\"]",
+				attrs: [["data-dsh-part", "new-session"]],
+				note: "sidebar new-session action (compat seam shields skins from localized labels)"
+			},
+			{
 				selector: "[data-dsh-taskboard-view], [data-dsh-taskboard-board], [data-dsh-taskboard-entry]",
 				attrs: [["data-dsh-plugin", "task-board"]],
 				note: "task-board panel/board/sidebar entry"

@@ -61,6 +61,11 @@ export const SEMANTIC_RULES_V1: readonly SemanticRule[] = [
   { selector: '[data-queue-dock]', attrs: [['data-dsh-part', 'queue-dock']], note: 'queued turns dock' },
   { selector: '[data-turn-tail]', attrs: [['data-dsh-part', 'turn-tail']], note: 'turn tail row' },
   { selector: '[data-side]', attrs: [['data-dsh-part', 'resize-handle']], note: 'column resize handle' },
+  {
+    selector: 'button[class*="newSession"]',
+    attrs: [['data-dsh-part', 'new-session']],
+    note: 'sidebar new-session action (compat seam shields skins from localized labels)',
+  },
   // ---- plugin roots (plugins without stable anchors opt in via AGENTS.md) ----
   {
     selector: '[data-dsh-taskboard-view], [data-dsh-taskboard-board], [data-dsh-taskboard-entry]',

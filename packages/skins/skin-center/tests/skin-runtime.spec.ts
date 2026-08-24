@@ -88,11 +88,13 @@ describe('semantic adapter', () => {
   it('stamps surfaces and parts on existing and added nodes', async () => {
     document.body.innerHTML = `
       <div data-slot="sidebar"></div>
+      <button class="shell_newSession_hash" aria-label="新会话"></button>
       <div data-chat-flow-kind="message"></div>
     `
     const adapter = createSemanticAdapter(document)
     adapter.start()
     expect(document.querySelector('[data-slot="sidebar"]')!.getAttribute('data-dsh-surface')).toBe('sidebar')
+    expect(document.querySelector('button[aria-label="新会话"]')!.getAttribute('data-dsh-part')).toBe('new-session')
     expect(document.querySelector('[data-chat-flow-kind]')!.getAttribute('data-dsh-part')).toBe('message-row')
 
     const added = document.createElement('div')

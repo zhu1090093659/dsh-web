@@ -45,7 +45,7 @@
 | `data-dsh-wallpaper-active` | html + body（body/html 级，另行管理） | WE 壁纸挂载期间置 `true`，卸载 / 禁用清除；供皮肤 CSS 与壁纸中和规则锚定（#734） |
 | `data-dsh-wallpaper-surface` | 官方 shell 全视口背景元素 + 侧栏工作区淡化条（元素级） | `WallpaperController.markWallpaperSurfaces()` 在 WE 壁纸挂载期间打标（全视口 bg-base 背景 + `data-slot="sidebar.workspaces"` 内渐变淡化条），命中 `html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface]` 中和；卸载清除，不含哈希类依赖（#734） |
 
-## part 组（31 行，含各 owner 行）
+## part 组（32 行，含各 owner 行）
 
 shell 区域（owner: shell）：
 
@@ -59,6 +59,7 @@ shell 区域（owner: shell）：
 | `queue-dock` | 排队条；`[data-queue-dock]` |
 | `turn-tail` | turn 尾行；`[data-turn-tail]` |
 | `resize-handle` | 列宽手柄；`[data-side]` |
+| `new-session` | 侧栏新会话按钮；官方稳定属性落地前由兼容适配器从 `button[class*="newSession"]` 补打，皮肤不得依赖本地化文案 |
 
 family / 插件区域：
 

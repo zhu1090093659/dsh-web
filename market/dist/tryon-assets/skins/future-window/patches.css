@@ -13,7 +13,7 @@ html[data-dsh-skin="future-window"] [data-pane="sidebar"] {
 /* Keep glass blur off the settings overlay's containing block. */
 html[data-dsh-skin="future-window"] [data-pane="sidebar"]::before {
   position: absolute;
-  z-index: 0;
+  z-index: -1;
   inset: 0;
   content: "";
   pointer-events: none;
@@ -47,7 +47,7 @@ html[data-dsh-skin="future-window"] [data-slot="sidebar.brand.name"] svg {
   filter: drop-shadow(0 1px 2px #244b691f);
 }
 
-html[data-dsh-skin="future-window"] [data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])) {
+html[data-dsh-skin="future-window"] [data-pane="sidebar"] [data-dsh-part="new-session"] {
   color: #174f77;
   background: linear-gradient(180deg, #ffffffeb, #edf7fde8);
   border: 1px solid #246f9f38;
@@ -55,7 +55,7 @@ html[data-dsh-skin="future-window"] [data-pane="sidebar"] button[aria-label="New
   box-shadow: inset 0 1px #ffffff, 0 4px 12px #244b6917;
 }
 
-html[data-dsh-skin="future-window"] [data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])):hover {
+html[data-dsh-skin="future-window"] [data-pane="sidebar"] [data-dsh-part="new-session"]:hover {
   color: #123f60;
   background: linear-gradient(180deg, #ffffff, #e4f3fceb);
   border-color: #246f9f61;
@@ -111,22 +111,26 @@ html[data-dsh-skin="future-window"] [data-pane="sidebar"] :is(
   box-shadow: 0 0 0 3px #2c86c61f;
 }
 
-/* One continuous cushion sits behind the three launchers; their layout stays application-owned. */
-html[data-dsh-skin="future-window"] [data-pane="sidebar"] > [data-slot="sidebar"] > * {
-  --fw-launcher-pillow-top: 107px;
+/* One continuous cushion follows the first stable launcher row; workspace layout stays application-owned. */
+html[data-dsh-skin="future-window"] [data-pane="sidebar"] {
   --fw-launcher-pillow-height: 121px;
 }
 
-html[data-dsh-skin="future-window"] [data-pane="sidebar"] > [data-slot="sidebar"] > *::before {
+html[data-dsh-skin="future-window"] [data-pane="sidebar"] [data-dsh-taskboard-entry]::before {
   position: absolute;
   z-index: 0;
-  top: var(--fw-launcher-pillow-top);
-  left: 12px;
-  width: 256px;
+  top: -10px;
+  right: 0;
+  left: 0;
   height: var(--fw-launcher-pillow-height);
   content: "";
   pointer-events: none;
   background: url("assets/pillow-light.webp") center / 100% 100% no-repeat;
+}
+
+html[data-dsh-skin="future-window"] [data-pane="sidebar"] [data-dsh-taskboard-entry] > * {
+  position: relative;
+  z-index: 1;
 }
 
 html[data-dsh-skin="future-window"] [data-pane="sidebar"] :is(
@@ -135,6 +139,11 @@ html[data-dsh-skin="future-window"] [data-pane="sidebar"] :is(
   [data-dsh-skill-explorer-entry]
 ) {
   z-index: 1;
+}
+
+/* Reserve the cushion's lower seam without styling the Workspace section itself. */
+html[data-dsh-skin="future-window"] [data-pane="sidebar"] [data-dsh-skill-explorer-entry] {
+  margin-bottom: 8px;
 }
 
 html[data-dsh-skin="future-window"] [data-pane="sidebar"] :is(
@@ -147,7 +156,7 @@ html[data-dsh-skin="future-window"] [data-pane="sidebar"] :is(
   box-shadow: none;
 }
 
-html[data-dsh-skin="future-window"] [data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])):focus-visible,
+html[data-dsh-skin="future-window"] [data-pane="sidebar"] [data-dsh-part="new-session"]:focus-visible,
 html[data-dsh-skin="future-window"] [data-pane="sidebar"] :is(
   [data-dsh-taskboard-entry],
   [data-dsh-ssh-entry],
@@ -174,14 +183,14 @@ html[data-dsh-skin="future-window"] body[data-ds-dark-theme] [data-slot="sidebar
   filter: drop-shadow(0 1px 3px #00000066);
 }
 
-html[data-dsh-skin="future-window"] body[data-ds-dark-theme] [data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])) {
+html[data-dsh-skin="future-window"] body[data-ds-dark-theme] [data-pane="sidebar"] [data-dsh-part="new-session"] {
   color: #dff4ff;
   background: linear-gradient(180deg, #173b5ae0, #102d49db);
   border-color: #75c6f738;
   box-shadow: inset 0 1px #ffffff1f, 0 5px 14px #00000033;
 }
 
-html[data-dsh-skin="future-window"] body[data-ds-dark-theme] [data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])):hover {
+html[data-dsh-skin="future-window"] body[data-ds-dark-theme] [data-pane="sidebar"] [data-dsh-part="new-session"]:hover {
   color: #ffffff;
   background: linear-gradient(180deg, #1b486de6, #123653e0);
   border-color: #75c6f766;
@@ -196,12 +205,12 @@ html[data-dsh-skin="future-window"] body[data-ds-dark-theme] [data-pane="sidebar
   color: #dff4ff;
 }
 
-html[data-dsh-skin="future-window"] body[data-ds-dark-theme] [data-pane="sidebar"] > [data-slot="sidebar"] > *::before {
+html[data-dsh-skin="future-window"] body[data-ds-dark-theme] [data-pane="sidebar"] [data-dsh-taskboard-entry]::before {
   background-image: url("assets/pillow-dark.webp");
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-dsh-skin="future-window"] [data-pane="sidebar"] button[aria-label="New session"]:not(:has([data-slot="sidebar.brand.mark"])),
+  html[data-dsh-skin="future-window"] [data-pane="sidebar"] [data-dsh-part="new-session"],
   html[data-dsh-skin="future-window"] [data-pane="sidebar"] :is(
     [data-dsh-taskboard-entry],
     [data-dsh-ssh-entry],
@@ -214,15 +223,28 @@ html[data-dsh-skin="future-window"] body[data-ds-dark-theme] [data-pane="sidebar
   )::after {
     transition: none;
   }
+
+  html[data-dsh-skin="future-window"] [data-pane="sidebar"] [data-dsh-part="new-session"]:hover,
+  html[data-dsh-skin="future-window"] [data-pane="sidebar"] :is(
+    [data-dsh-taskboard-entry],
+    [data-dsh-ssh-entry],
+    [data-dsh-skill-explorer-entry]
+  ):hover {
+    transform: none;
+  }
+}
+
+html[data-dsh-skin="future-window"] [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] [data-dsh-taskboard-entry]::before {
+  display: none;
 }
 
 @media (max-width: 768px) {
-  html[data-dsh-skin="future-window"] [data-pane="sidebar"] > [data-slot="sidebar"] > * {
+  html[data-dsh-skin="future-window"] [data-pane="sidebar"] {
     --fw-launcher-pillow-height: 129px;
   }
 
-  html[data-dsh-skin="future-window"] [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"] > *::before {
-    display: none;
+  html[data-dsh-skin="future-window"] [data-pane="sidebar"] [data-dsh-skill-explorer-entry] {
+    margin-bottom: 16px;
   }
 }
 

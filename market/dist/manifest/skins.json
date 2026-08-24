@@ -1126,6 +1126,7 @@
         "skin.css",
         "skin.json"
       ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/future-window",
       "contributes": {
         "stylesheet": "skin.css",
         "patches": "patches.css",

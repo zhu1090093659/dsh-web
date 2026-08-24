@@ -190,6 +190,8 @@
     style.textContent = window.OFFICIAL_FACADE.css
     document.head.appendChild(style)
     document.getElementById('root').innerHTML = window.OFFICIAL_FACADE.skeleton
+    var newSession = document.querySelector('button[class*="newSession"]')
+    if (newSession) newSession.setAttribute('data-dsh-part', 'new-session')
   }
 
   /** 给官方骨架填模拟数据（真实 GUI 快照是脱敏的：无文本/无用户数据）。

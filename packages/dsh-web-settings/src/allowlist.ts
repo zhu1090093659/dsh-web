@@ -22,8 +22,11 @@ export const FAMILY_NAMESPACES = [
   'aionui-panel',
   'describe-image',
   'skin-background',
+  'skin-custom-theme',
+  'skin-wallpaper',
   'community-plugins',
   'desktop-launcher',
+  'dsh-web-ui-market',
 ] as const
 
 /**
@@ -45,6 +48,8 @@ const NAMESPACE_ALIASES: Readonly<Record<string, string | null>> = {
   'dsh-client-ui-skin-center': 'skin-background',
   'skin-center': 'skin-background',
   'skin-background': 'skin-background',
+  'skin-custom-theme': 'skin-custom-theme',
+  'skin-wallpaper': 'skin-wallpaper',
   'describe-image': 'describe-image',
   'dsh-tool-describe-image': 'describe-image',
   'community-plugins': 'community-plugins',
@@ -55,6 +60,10 @@ const NAMESPACE_ALIASES: Readonly<Record<string, string | null>> = {
   'dsh-client-ui-aionui-panel': 'aionui-panel',
   'desktop-launcher': 'desktop-launcher',
   'dsh-desktop-launcher': 'desktop-launcher',
+  'dsh-web-ui-market': 'dsh-web-ui-market',
+  'dsh-client-ui-market': 'dsh-web-ui-market',
+  'dsh-market': 'dsh-web-ui-market',
+  'market': 'dsh-web-ui-market',
   'dsh-git-graph': null,
   'dsh-client-ui-git-graph': null,
   'dsh-web': null,

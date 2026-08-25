@@ -164,7 +164,15 @@ describe('shared shell rendering adapter (#954)', () => {
     expect(css).toContain('[data-dsh-part="scrollport"]')
     expect(css).toContain('padding-bottom: 0 !important;')
     expect(css).toMatch(new RegExp(`\\[data-dsh-part=\"scrollport\"\\][^{]*\\{[^}]*padding-bottom: 0 !important;`, 's'))
-    expect(css).toContain(`scroll-padding-bottom: var(--dsh-composer-height, ${DEFAULT_COMPOSER_CLEARANCE_PX}px) !important;`)
+    expect(css).toContain(`scroll-margin-bottom: var(--dsh-composer-height, ${DEFAULT_COMPOSER_CLEARANCE_PX}px)`)
+  })
+
+  it('never paints scroll-padding on the scrollport: it creeps the sticky composer caret-reveal on every keystroke', () => {
+    const css = shellRenderingCss()
+    expect(css).not.toContain('scroll-padding-bottom')
+    // Clearance must be row-level scroll-margin scoped under the scrollport.
+    expect(css).toMatch(/\[data-conversation-scroll\][^{]*\[data-chat-anchor-key\][^{]*\{[^}]*scroll-margin-bottom: var\(--dsh-composer-height/)
+    expect(css).toMatch(/\[data-dsh-part="scrollport"\][^{]*\[data-chat-anchor-key\][^{]*\{[^}]*scroll-margin-bottom: var\(--dsh-composer-height/)
   })
 
   it('measures composer height and cleans up custom property on teardown (#978)', () => {

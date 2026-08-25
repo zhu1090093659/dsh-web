@@ -1,0 +1,5 @@
+﻿# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-08-25-composer-keystroke-scroll-creep.md: cde8d2cc150f1499df6e427e59951a40f0b65752
+2026-08-25-composer-keystroke-scroll-creep.zh.md: 1c9e409885e14099d8222ff1c2f52c1b2148e30c

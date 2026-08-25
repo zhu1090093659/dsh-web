@@ -29,6 +29,19 @@ const COMPOSER_SEAT_SELECTORS = [
   '[data-dsh-surface="composer"]',
 ]
 
+/**
+ * Stable shell scrollport row selectors (mirrors backdrop-scene's content
+ * probe): the flow rows a scrollIntoView() may target inside the
+ * conversation scrollport.
+ */
+const SCROLL_CLEARANCE_ROW_SELECTORS = [
+  '[data-chat-anchor-key]',
+  '[class*="_userRow"]',
+  '[class*="_compactionRow"]',
+  '[class*="_contextRow"]',
+  '[class*="_turnErrorRow"]',
+].join(', ')
+
 /** Build the inert-by-default public rendering corrections. */
 export function shellRenderingCss(): string {
   const scopes = ACTIVE_VISUAL_SELECTOR.split(', ')
@@ -81,10 +94,20 @@ export function shellRenderingCss(): string {
     ${scoped('[data-dsh-part="scrollport"]')} {
       /* The composer is the scrollport's final in-flow child. Reserving physical
          padding after it lifts the active dock by one composer height and also
-         shifts the hero above center. Scroll padding keeps scrollIntoView()
-         clearance without changing either layout's geometry. */
+         shifts the hero above center, so physical padding stays zero. */
       padding-bottom: 0 !important;
-      scroll-padding-bottom: var(--dsh-composer-height, ${DEFAULT_COMPOSER_CLEARANCE_PX}px) !important;
+    }
+    ${scoped(`[data-conversation-scroll] ${SCROLL_CLEARANCE_ROW_SELECTORS}`)},
+    ${scoped(`[data-dsh-part="scrollport"] ${SCROLL_CLEARANCE_ROW_SELECTORS}`)} {
+      /* Clearance for scrollIntoView() must live on the flow ROWS as
+         scroll-margin-bottom, never as port-level scroll padding. The composer
+         is sticky at the scrollport bottom, so its caret always renders inside
+         the bottom band; with scroll padding reserved on the port the browser
+         judges the caret "not revealed" after every keystroke and creeps the
+         scroll position downward while the user reads history. Row-level
+         scroll-margin keeps rows readable above the sticky composer (the #978
+         goal) without touching caret-reveal geometry. */
+      scroll-margin-bottom: var(--dsh-composer-height, ${DEFAULT_COMPOSER_CLEARANCE_PX}px);
     }
   `
 }

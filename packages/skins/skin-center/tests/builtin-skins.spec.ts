@@ -145,6 +145,23 @@ describe('built-in v2 skins: catalog and stylesheets', () => {
       expect(contrastRatio(fg!, bg!), `${selector}: tooltip contrast`).toBeGreaterThanOrEqual(4.5)
     }
   })
+
+  it('maid-atelier: rc.8 compatibility stays slot-scoped and within the overlay scale', () => {
+    const css = readFileSync(join(SKINS_DIR, 'maid-atelier', 'patches.css'), 'utf8')
+
+    expect(css).toContain('[data-slot="conversation.input.attachments"]')
+    expect(css).toMatch(
+      /\[data-slot="conversation\.input\.attachments"\]\s*\n\s*:is\(button\.JVDQca_thumbnail, button\[class\*="_thumbnail"\]\)/,
+    )
+    expect(css).not.toMatch(/(?:^|\n):is\(button\.JVDQca_thumbnail/m)
+
+    expect(css).toMatch(
+      /\[data-slot="sidebar\.settings"\] > \[role="presentation"\]\s*\{[\s\S]*?z-index: 1000 !important;/,
+    )
+    const numericZIndexes = [...css.matchAll(/z-index:\s*(-?\d+)/g)].map((match) => Number(match[1]))
+    expect(Math.max(...numericZIndexes)).toBeLessThanOrEqual(1000)
+    expect(css).not.toContain('214748')
+  })
 })
 
 describe('built-in v2 skins: hooks lifecycle', () => {

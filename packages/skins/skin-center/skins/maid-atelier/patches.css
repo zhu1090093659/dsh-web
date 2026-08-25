@@ -784,6 +784,33 @@ body[data-ds-dark-theme] [data-cordis-panel] :is([data-cordis-approve], [data-co
   border-color: #8fa3d357;
 }
 
+/* Keep Cordis above the ornate sidebar chrome without escaping DSH's global
+   overlay scale: menus use 100/1100 and modals use 1000. */
+body:has([data-cordis-panel]) :is([data-pane="sidebar"], [class*="sidebarCol"]) {
+  z-index: 80 !important;
+  overflow: visible !important;
+}
+
+body:has([data-cordis-panel]) :is([data-pane="sidebar"], [class*="sidebarCol"]) > div,
+body:has([data-cordis-panel]) :has(> [data-cordis-panel]) {
+  overflow: visible !important;
+}
+
+[data-cordis-panel] {
+  z-index: 100 !important;
+  pointer-events: auto !important;
+  isolation: isolate !important;
+}
+
+[data-cordis-panel] :is([data-cordis-approve], [data-cordis-approve-plugin], [data-cordis-decline]) {
+  pointer-events: auto !important;
+  position: relative !important;
+}
+
+[data-cordis-panel] :is([data-cordis-approve], [data-cordis-approve-plugin], [data-cordis-decline]) > * {
+  pointer-events: none !important;
+}
+
 [data-dsh-better-sidebar] {
   --dsw-specific-sidebar-fill: #e6edfaf5;
   --dsw-alias-bg-base: #f8fafff5;
@@ -2394,4 +2421,106 @@ body[data-ds-dark-theme] [class*="titlebar"] {
     opacity: 0;
     transform: translate(calc(100vw + 240px));
   }
+}
+
+/* DSH rc.8 draft-image rail compatibility. Promote the complete attachment
+   Slot above the ornate composer frame; a nested image cannot escape a parent
+   stacking context on its own. Every fallback stays inside the attachment
+   Slot so unrelated CSS-module classes are not affected. */
+[data-slot="conversation.input.attachments"],
+[data-slot="conversation.input.attachments"] > *,
+[data-slot="conversation.input.attachments"] :is(.JVDQca_root, .JVDQca_rail, .JVDQca_item) {
+  z-index: 6 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  position: relative !important;
+}
+
+[data-slot="conversation.input.attachments"]
+  :is(button.JVDQca_thumbnail, button[class*="_thumbnail"]) {
+  box-sizing: border-box;
+  isolation: isolate;
+  width: 64px !important;
+  min-width: 64px !important;
+  height: 64px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  transform: none !important;
+  background: #f6f0e4 !important;
+  border: 2px solid #e2c57f !important;
+  border-radius: 14px !important;
+  box-shadow: 0 3px 10px #02081c8f, inset 0 0 0 1px #fff9 !important;
+  position: relative !important;
+}
+
+[data-slot="conversation.input.attachments"]
+  :is(button.JVDQca_thumbnail, button[class*="_thumbnail"])::before,
+[data-slot="conversation.input.attachments"]
+  :is(button.JVDQca_thumbnail, button[class*="_thumbnail"])::after {
+  content: none !important;
+  display: none !important;
+}
+
+[data-slot="conversation.input.attachments"]
+  :is(button.JVDQca_thumbnail, button[class*="_thumbnail"]) > img {
+  z-index: 10 !important;
+  object-fit: cover !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: brightness(1.16) contrast(1.1) saturate(1.1) !important;
+  mix-blend-mode: normal !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+[data-slot="conversation.input.attachments"]
+  :is(button.JVDQca_thumbnail, button[class*="_thumbnail"]):hover {
+  transform: translateY(-1px) !important;
+  border-color: #f4d899 !important;
+  box-shadow: 0 5px 14px #02081cb3, 0 0 0 2px #e2c57f4d !important;
+}
+
+/* Preserve DSH's global overlay contract instead of using unbounded values:
+   ordinary chrome < modal 1000 < portaled Menu 1100. Settings is mounted
+   below the sidebar slot, so only its necessary ancestry enters that scale. */
+body:has([data-slot="sidebar.settings"] [role="dialog"][aria-modal="true"])
+  :is([data-pane="sidebar"], [class*="sidebarCol"]) {
+  z-index: 900 !important;
+  overflow: visible !important;
+  isolation: isolate !important;
+}
+
+body:has([data-slot="sidebar.settings"] [role="dialog"][aria-modal="true"])
+  :is([data-pane="sidebar"], [class*="sidebarCol"]) > div {
+  overflow: visible !important;
+  isolation: auto !important;
+}
+
+body:has([data-slot="sidebar.settings"] [role="dialog"][aria-modal="true"])
+  [data-slot="sidebar.settings"] {
+  overflow: visible !important;
+}
+
+body:has([data-slot="sidebar.settings"] [role="dialog"][aria-modal="true"])
+  [data-slot="sidebar.settings"] > [role="presentation"] {
+  z-index: 1000 !important;
+  overflow: visible !important;
+  position: fixed !important;
+  inset: 0 !important;
+}
+
+body:has([data-slot="sidebar.settings"] [role="dialog"][aria-modal="true"])
+  [data-slot="sidebar.settings"] [role="dialog"][aria-modal="true"] {
+  z-index: 1 !important;
+  position: relative !important;
 }

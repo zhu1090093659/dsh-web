@@ -159,16 +159,20 @@ describe('PetSprite custom visual (pet-center M3)', () => {
   })
 })
 
-describe('PetSprite always-visible close control', () => {
-  it('renders a corner close button and hides without petting', () => {
+describe('PetSprite hide action', () => {
+  it('does not render the redundant always-visible close button', () => {
+    renderPet()
+
+    expect(screen.queryByTestId('pet-close')).toBeNull()
+  })
+
+  it('keeps hide available from the hover panel without petting', () => {
     const onHide = vi.fn()
     const onPet = vi.fn()
     renderPet({ onHide, onPet })
 
-    const close = screen.getByTestId('pet-close')
-    expect(close.getAttribute('aria-label')).toBe('隐藏')
-    expect(close.getAttribute('title')).toBe('隐藏')
-    fireEvent.click(close)
+    fireEvent.pointerOver(screen.getByRole('button', { name: '鲸鱼娘' }))
+    fireEvent.click(screen.getByText('隐藏'))
 
     expect(onHide).toHaveBeenCalledTimes(1)
     expect(onPet).not.toHaveBeenCalled()

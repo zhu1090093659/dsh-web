@@ -21,33 +21,6 @@
   flex: 0 0 auto;
 }
 
-.closeButton {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 2;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid rgba(226, 232, 255, 0.72);
-  border-radius: 999px;
-  color: #f8fafc;
-  background: rgba(7, 11, 26, 0.78);
-  font: 600 18px/20px sans-serif;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: background 120ms ease, box-shadow 120ms ease;
-}
-
-.closeButton:hover {
-  background: rgba(44, 62, 126, 0.95);
-}
-
-.closeButton:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(126, 152, 255, 0.95);
-}
-
 .bubble {
   position: absolute;
   bottom: 100%;

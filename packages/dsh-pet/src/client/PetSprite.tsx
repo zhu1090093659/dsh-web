@@ -508,25 +508,6 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
         >
           {props.visual}
         </div>
-        <button
-          type="button"
-          className={styles.closeButton}
-          aria-label={panelLabel('hide', props.t('pet.hide'))}
-          title={panelLabel('hide', props.t('pet.hide'))}
-          data-testid="pet-close"
-          onPointerDown={(e) => {
-            // Keep the close control from starting a drag on the sprite.
-            e.stopPropagation()
-          }}
-          onClick={(e) => {
-            // The close control sits beside the pet button; do not pet as a
-            // side effect of closing the overlay.
-            e.stopPropagation()
-            props.onHide()
-          }}
-        >
-          ×
-        </button>
       </div>
       {feedback !== null && (
         <div key={feedback.at} ref={bubbleRef} className={clsx(styles.bubble, feedback.kind === 'feed' ? styles.bubbleFeed : styles.bubblePet)}>

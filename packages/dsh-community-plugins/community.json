@@ -113,6 +113,7 @@
     "description": "给模型输出配交互式 UI：助手回复内联渲染 dsh-ui 围栏（布局、图表、表格、表单、Mermaid、3D、原生音视频），双通道渲染兼容原版 DSH 与新构建，支持流式渲染、面板停靠与组件交互回传模型。",
     "descriptionEn": "Interactive UI inside assistant replies via the dsh-ui fence: layouts, charts, tables, forms, quizzes, Mermaid, 3D and native audio/video. Dual-channel rendering covers stock DSH and newer builds, with streaming render, panel docking and component actions that loop back to the model.",
     "repo": "https://github.com/omdsh-dev/dsh-genui",
+    "npm": "@changfenhuang/dsh-genui",
     "category": "ui"
   },
   {

@@ -442,9 +442,9 @@ window.SKIN_MANIFEST = {
       "id": "wallpaper-exclusive",
       "name": "壁纸专属",
       "nameEn": "Wallpaper Exclusive",
-      "author": "dsh-web",
+      "author": "chemmy-11",
       "tagline": "壁纸优先 · 液态玻璃面板",
-      "description": "官方默认底座 + 气泡/代码块/任务清单/插件面板等浮层液态玻璃，壁纸从背后透出，不画自己的背景；输入卡由 web-ui 统一设计，面板固定半透明磨砂，不随滑杆驱动。",
+      "description": "作者 chemmy-11。默认背景为深海鲸语女神 v2，壁纸从面板背后透出，不画自己的背景；气泡 / 代码块 / 任务清单 / 插件面板及命令、权限、模型、上下文四看板展开层为液态玻璃，气泡模糊强度由皮肤中心滑杆驱动；排队消息以单层玻璃裸浮呈现，排队期间输入卡自动隐去铬层。",
       "accent": "#0d1627",
       "preview": {
         "light": "assets/skins/wallpaper-exclusive/preview/light.jpg",

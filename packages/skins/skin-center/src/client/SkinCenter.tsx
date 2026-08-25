@@ -221,7 +221,7 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper, preview, 
     }))
   }
 
-  const dark = snapshot.active.colorScheme === 'dark'
+  const dark = document.body.hasAttribute('data-ds-dark-theme')
 
   /** One row: try-on control + apply button. Shared by the official card and every skin card. */
   const actionButtons = (opts: {

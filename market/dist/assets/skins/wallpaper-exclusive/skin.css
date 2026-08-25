@@ -11,6 +11,16 @@
 :root {
   color-scheme: light;
 
+  /* Composer dock accessory override (shell-rendering.ts contract):
+     pure frosted glass — no fill, no border, no shadow. */
+  --dsh-composer-accessory-bg: transparent;
+  --dsh-composer-accessory-color: var(--dsw-alias-label-secondary);
+  --dsh-composer-accessory-border: none;
+  --dsh-composer-accessory-radius: 0px;
+  --dsh-composer-accessory-shadow: none;
+  --dsh-composer-accessory-blur: var(--dsw-wallpaper-glass-blur, 10px);
+  --dsh-composer-accessory-gap: 0px;
+
   /* Glass tiers (light) */
   --dsw-wallpaper-glass-blur: 10px;
   --dsw-wallpaper-glass-fill: rgba(255, 255, 255, 0.42);
@@ -49,6 +59,8 @@
   /* Input / bubble / markdown glass (light) */
   --dsw-specific-input-major: rgba(255, 255, 255, 0.5);
   --dsw-specific-login-input: rgba(255, 255, 255, 0.5);
+  /* Message bubble fills stay fixed; the #937 slider drives frost blur in
+     patches.css instead of fill color. */
   --dsw-specific-bubble: rgba(255, 255, 255, 0.5);
   --dsw-specific-bubble-highlight: rgba(0, 0, 0, 0.06);
   --dsw-alias-markdown-code-block: rgba(255, 255, 255, 0.55);
@@ -59,6 +71,11 @@
   --dsw-alias-button-tool-bar-hover: rgba(0, 0, 0, 0.08);
   --dsw-alias-button-floating-fill: rgba(255, 255, 255, 0.6);
   --dsw-alias-button-floating-hover: rgba(255, 255, 255, 0.8);
+
+  /* Primary action tokens (primary-action-tokens-v1 contract) */
+  --dsw-alias-button-primary-fill: rgba(13, 22, 39, 0.72);
+  --dsw-alias-button-primary-hover: rgba(13, 22, 39, 0.82);
+  --dsw-alias-label-primary-foreground: #f9fafb;
 
   /* Right panel glass (aionui, light) */
   --aion-bg-base: rgba(255, 255, 255, 0.4);
@@ -121,6 +138,11 @@ body[data-ds-dark-theme] {
   --dsw-alias-button-tool-bar-hover: rgba(255, 255, 255, 0.08);
   --dsw-alias-button-floating-fill: rgba(0, 0, 0, 0);
   --dsw-alias-button-floating-hover: rgba(255, 255, 255, 0.08);
+
+  /* Primary action tokens (primary-action-tokens-v1 contract) */
+  --dsw-alias-button-primary-fill: rgba(249, 250, 251, 0.14);
+  --dsw-alias-button-primary-hover: rgba(249, 250, 251, 0.22);
+  --dsw-alias-label-primary-foreground: #f9fafb;
 
   /* Right panel glass (aionui, dark) */
   --aion-bg-base: rgba(17, 25, 39, 0.22);

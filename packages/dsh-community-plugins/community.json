@@ -389,5 +389,16 @@
     "repo": "https://github.com/GreenLv/dsh-session-insights",
     "npm": "dsh-session-insights",
     "category": "tools"
+  },
+  {
+    "id": "dsh-deepsea",
+    "name": "深海摸鱼",
+    "nameEn": "Deep-Sea Moyu",
+    "author": "imkingjh999",
+    "description": "把会话 context 变成浮窗深海摸鱼小游戏：context 越长手沉得越深，摸到鱼后服务端掷骰定胜负，中卡铸造镭射收藏卡；五大洋、鱼池养成、GitHub 全球排行榜。",
+    "descriptionEn": "Turns session context into a deep-sea moyu (slack-off) game in a floating window: your hand sinks as context grows, server-rolled dice decide the mint of holographic collectible cards; five oceans, a fish pond, and a GitHub-linked leaderboard.",
+    "repo": "https://github.com/imkingjh999/dsh-deepsea",
+    "npm": "dsh-deepsea",
+    "category": "ui"
   }
 ]

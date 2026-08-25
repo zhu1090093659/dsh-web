@@ -14,7 +14,10 @@ export function servicePlan(spec: ServiceSpec, env: NodeJS.ProcessEnv = process.
   if (spec.platform === 'darwin') {
     const path = join(home, 'Library', 'LaunchAgents', `${spec.label}.plist`)
     const args = [executable, ...spec.args].map(value => `<string>${quoteXml(value)}</string>`).join('')
-    const content = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>Label</key><string>${quoteXml(spec.label)}</string><key>ProgramArguments</key><array>${args}</array><key>EnvironmentVariables</key><dict><key>DSH_DOCTOR_HOME</key><string>${quoteXml(spec.doctorHome)}</string></dict><key>RunAtLoad</key><true/><key>KeepAlive</key><true/><key>ProcessType</key><string>Background</string></dict></plist>
+    const electronNodeMode = env.ELECTRON_RUN_AS_NODE === '1'
+      ? '<key>ELECTRON_RUN_AS_NODE</key><string>1</string>'
+      : ''
+    const content = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>Label</key><string>${quoteXml(spec.label)}</string><key>ProgramArguments</key><array>${args}</array><key>EnvironmentVariables</key><dict><key>DSH_DOCTOR_HOME</key><string>${quoteXml(spec.doctorHome)}</string>${electronNodeMode}</dict><key>RunAtLoad</key><true/><key>KeepAlive</key><true/><key>ProcessType</key><string>Background</string></dict></plist>
 `
     const user = `gui/${process.getuid?.() ?? 0}`
     return { files: [{ path, content, mode: 0o600 }], install: ['launchctl', 'bootstrap', user, path], uninstall: ['launchctl', 'bootout', user, path], restart: ['launchctl', 'kickstart', '-k', `${user}/${spec.label}`] }

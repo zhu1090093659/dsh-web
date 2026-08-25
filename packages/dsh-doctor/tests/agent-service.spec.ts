@@ -22,6 +22,19 @@ describe('service adapters', () => {
     expect(plan.files[0]!.content).toContain('Anders &amp; Co')
   })
 
+  it('preserves Electron Node mode in a macOS LaunchAgent', () => {
+    const plan = servicePlan(
+      { ...base, executable: '/Applications/DSH Desktop.app/Contents/Frameworks/DSH Desktop Helper.app/Contents/MacOS/DSH Desktop Helper', platform: 'darwin' },
+      { HOME: '/Users/u', ELECTRON_RUN_AS_NODE: '1' },
+    )
+    expect(plan.files[0]!.content).toContain('<key>ELECTRON_RUN_AS_NODE</key><string>1</string>')
+  })
+
+  it('does not force Electron Node mode for a real Node executable', () => {
+    const plan = servicePlan({ ...base, platform: 'darwin' }, { HOME: '/Users/u' })
+    expect(plan.files[0]!.content).not.toContain('ELECTRON_RUN_AS_NODE')
+  })
+
   it('renders a systemd user unit with restart policy', () => {
     const plan = servicePlan({ ...base, platform: 'linux' }, { XDG_CONFIG_HOME: '/home/u/.config' })
     expect(plan.files[0]!.path).toBe('/home/u/.config/systemd/user/com.dsh.doctor.service')

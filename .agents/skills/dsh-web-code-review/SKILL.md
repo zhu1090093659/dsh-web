@@ -25,7 +25,7 @@ This skill is guidance, not a checklist substitute. Review the requested diff an
 
 - Trace host, client, and shared changes through their actual consumers. Flag incompatible service assumptions, missing disposal, stale subscriptions, HMR regressions, and changed user-visible behavior without coverage.
 - Enforce the SDK boundary: packages must not import or reference a DSH source checkout; browser bundles must preserve type-only SDK imports and allowed runtime dependencies.
-- Check generated ownership. Changes to `shared/`, aggregate manifests, skin registries, community indexes, or gallery assets need their corresponding generator and consistency check.
+- Check generated ownership. Changes to `shared/`, aggregate manifests, skin registries, community indexes, or market assets need their corresponding generator and consistency check.
 - Treat credentials, remote execution, local filesystem access, profile writes, and token handling as security-sensitive. Confirm authorization, error behavior, cleanup, and documentation where the affected package requires them.
 - For UI changes, inspect responsive layout, loading and error states, keyboard behavior where applicable, and actual rendered output. A component-only test does not prove the linked GUI integration works.
 - Verify README pairs and documentation claims when public behavior, configuration, or safety semantics change.

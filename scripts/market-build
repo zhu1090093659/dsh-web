@@ -13,7 +13,7 @@
  *   index.html, app.js, preview.html    copied from market/src/
  *   _headers                            copied from market/src/_headers
  *   robots.txt                          copied from market/src/
- *   official-facade.js                  copied from gallery/official-facade.js
+ *   official-facade.js                  copied from market/src/official-facade.js
  *   styles.js   window.SKIN_STYLES = { "<id>": { stylesheet, patches } }
  *   manifest.js window.SKIN_MANIFEST = { skins: [...] }  (preview.html compat)
  *   sitemap.xml                         generated from the skin catalog
@@ -39,7 +39,6 @@ const PETS_DIR = path.join(ROOT, 'packages', 'dsh-pet', 'assets')
 const PLUGINS_FILE = path.join(ROOT, 'packages', 'dsh-community-plugins', 'community.json')
 const SRC_DIR = path.join(ROOT, 'market', 'src')
 const DIST_DIR = path.join(ROOT, 'market', 'dist')
-const GALLERY_DIR = path.join(ROOT, 'gallery')
 const CHECK = process.argv.includes('--check')
 const committedManifest = path.join(DIST_DIR, 'manifest', 'skins.json')
 const GENERATED_DATE = CHECK && fs.existsSync(committedManifest)
@@ -566,14 +565,11 @@ async function main() {
 
   // static sources
   const files = new Map()
-  for (const f of ['index.html', 'app.js', 'preview.html', '_headers', 'robots.txt']) {
+  for (const f of ['index.html', 'app.js', 'preview.html', 'official-facade.js', '_headers', 'robots.txt']) {
     const abs = path.join(SRC_DIR, f)
     if (!fs.existsSync(abs)) throw new Error(`market/src missing: ${f}`)
     files.set(f, fs.readFileSync(abs, 'utf8').replace(/\r\n?/g, '\n'))
   }
-  const facade = path.join(GALLERY_DIR, 'official-facade.js')
-  if (!fs.existsSync(facade)) throw new Error('gallery/official-facade.js missing (run scripts/export-official-facade)')
-  files.set('official-facade.js', fs.readFileSync(facade, 'utf8').replace(/\r\n?/g, '\n'))
   files.set('sitemap.xml', buildSitemap(skins))
 
   // binary assets — full tree copy per skin/pet so a consumer can install

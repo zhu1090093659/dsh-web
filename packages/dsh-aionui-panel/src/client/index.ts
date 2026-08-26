@@ -4,7 +4,7 @@
  * dsh-better-sidebar side card, so the explorer/preview columns never mount.
  * What remains active here: the composer drop target and transcript mermaid
  * sentinels (both inert without the panel columns), and the side-card
- * settings card in the Web UI Plugins group, which embeds the side card's
+ * settings card in the Web Plugins group, which embeds the side card's
  * own settings section inline.
  *
  * Failure policy: every DOM/runtime wiring failure is logged, never thrown —
@@ -38,7 +38,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
   interface SlotMap {
     /**
-     * One family plugin card inside the Web UI Plugins group. Spelled here
+     * One family plugin card inside the Web Plugins group. Spelled here
      * with the same shape so this package can register without depending on
      * the sibling web-ui-settings package.
      */
@@ -135,7 +135,7 @@ export function apply(ctx: ClientContext): void {
     })
   })
 
-  // The side-card settings card in the Web UI Plugins group: it declares
+  // The side-card settings card in the Web Plugins group: it declares
   // the side card's origin and edits its everyday preferences inline through
   // the external plugin's own settings transport. The 'aionui-panel'
   // namespace binding is only the card's availability anchor — no editable

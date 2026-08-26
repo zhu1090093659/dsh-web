@@ -20,8 +20,8 @@
 ## 预览
 
 ```sh
-node scripts/gallery-build                   # 注册进 gallery/manifest.js + styles.js
-open gallery/preview.html?skin=pink-sakura&theme=light
+pnpm market:build                              # 刷新市场产物（market/dist）
+open market/dist/preview.html?skin=pink-sakura&theme=light
 node scripts/capture-previews pink-sakura       # 重拍 preview/{light,dark}.png
 ```
 

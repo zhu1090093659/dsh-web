@@ -25,9 +25,9 @@ The skin follows the GUI light/dark setting automatically and has no skin-specif
 ## Preview
 
 ~~~sh
-node scripts/gallery-build
-open gallery/preview.html?skin=deep-current&theme=light
-open gallery/preview.html?skin=deep-current&theme=dark
+pnpm market:build
+open market/dist/preview.html?skin=deep-current&theme=light
+open market/dist/preview.html?skin=deep-current&theme=dark
 node scripts/capture-previews deep-current
 ~~~
 

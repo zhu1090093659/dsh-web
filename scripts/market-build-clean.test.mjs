@@ -20,7 +20,6 @@ function fixture() {
     [join(ROOT, 'scripts', 'market-build'), join(dir, 'scripts', 'market-build')],
     [join(ROOT, 'market', 'src'), join(dir, 'market', 'src')],
     [join(ROOT, 'market', 'dist'), join(dir, 'market', 'dist')],
-    [join(ROOT, 'gallery', 'official-facade.js'), join(dir, 'gallery', 'official-facade.js')],
     [join(ROOT, 'packages', 'skins', 'skin-center', 'skins'), join(dir, 'packages', 'skins', 'skin-center', 'skins')],
     [join(ROOT, 'packages', 'skins', 'skin-center', 'lib', 'index.js'), join(dir, 'packages', 'skins', 'skin-center', 'lib', 'index.js')],
     [join(ROOT, 'packages', 'dsh-pet', 'assets'), join(dir, 'packages', 'dsh-pet', 'assets')],

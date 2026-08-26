@@ -40,7 +40,7 @@ export type { SkinManifestV2, SkinManifestValidation } from './core/manifest-v2/
 export { transformSkinCss, SkinCssSafetyError } from './core/css-safety/transform.ts'
 export { auditTokenContract } from './core/css-safety/token-audit.ts'
 export type { TokenAuditStylesheet, TokenAuditResult } from './core/css-safety/token-audit.ts'
-export { loadSkinCatalog, findSkin, resolveInsideSkin, userSkinsDir, builtinSkinsDir } from './skin-repo.ts'
+export { loadSkinCatalog, findSkin, resolveInsideSkin, userSkinsDir, builtinSkinsDir, canServeSkinHooks } from './skin-repo.ts'
 export type { SkinCatalog, SkinCatalogEntry } from './skin-repo.ts'
 export { defaultActiveStatePath, readActiveSelection, writeActiveSelection } from './active-state.ts'
 

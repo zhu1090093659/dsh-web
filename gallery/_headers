@@ -1,8 +1,0 @@
-/official-facade.js
-	Cache-Control: public, max-age=0, must-revalidate
-
-/manifest.js
-	Cache-Control: public, max-age=0, must-revalidate
-
-/styles.js
-	Cache-Control: public, max-age=0, must-revalidate

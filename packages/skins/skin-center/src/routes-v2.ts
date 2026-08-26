@@ -17,8 +17,8 @@
  * (force-scoped under html[data-dsh-skin="<id>"], whitelist fail-closed), so
  * the browser can inject them blindly. hooks.mjs is served verbatim — it is
  * trusted, same-review same-release code (high sensitivity, see contracts/),
- * served for built-in skins and for user-directory skins whose install
- * provenance pins the bytes to the official DSH Market (issue #1073).
+ * served for built-in skins and for byte-verified official-market user
+ * installs, including exact reviewed legacy installs (issue #1073).
  * @module @linxin666/dsh-client-ui-skin-center/routes-v2
  */
 
@@ -33,7 +33,7 @@ import { readJsonBody } from './http.ts'
 import { defaultActiveStatePath, readActiveState, writeActiveState } from './active-state.ts'
 import { sanitizeSkinBackground, type SkinBackgroundConfig } from './core/background.ts'
 import { transformSkinCss, SkinCssSafetyError } from './core/css-safety/transform.ts'
-import { findSkin, loadSkinCatalog, resolveInsideSkin, shippedSkinIds } from './skin-repo.ts'
+import { canServeSkinHooks, findSkin, loadSkinCatalog, resolveInsideSkin, shippedSkinIds } from './skin-repo.ts'
 import { MARKET_PROVENANCE_FILENAME } from './provenance.ts'
 import type { SkinCatalog, SkinCatalogEntry } from './skin-repo.ts'
 
@@ -183,14 +183,12 @@ export function makeSkinCenterV2Routes(deps: RoutesV2Deps = {}): WebRoute[] {
         writeJson(res, 404, { ok: false, error: 'no-hooks' })
         return
       }
-      // Trust model (contracts/README.md): hooks are trusted code that shares
-      // THIS repository's review and release. A user-directory skin never
-      // went through that review, so its hooks are refused even though its
-      // declarative parts load fine — UNLESS it was installed from the
-      // official DSH Market and its skin.json + hooks bytes hash-match the
-      // recorded install provenance, which proves they are exactly the
-      // same-review content this repository published (issue #1073).
-      if (entry.origin !== 'builtin' && entry.hooksTrusted !== true) {
+      // Trust model (contracts/README.md): hooks are executable same-review
+      // content. Re-verify the CURRENT bytes at serve time so a cached catalog
+      // snapshot cannot keep serving hooks after post-scan tampering. Current
+      // Workshop installs use provenance; exact reviewed pre-provenance
+      // installs use the generated legacy identity (issue #1073).
+      if (!canServeSkinHooks(entry)) {
         writeJson(res, 403, { ok: false, error: 'hooks-require-review', origin: entry.origin })
         return
       }

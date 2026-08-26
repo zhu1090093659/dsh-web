@@ -1,7 +1,7 @@
 /**
  * The describe-image settings card: the vision endpoint (base URL, model,
  * key reference), the default instruction, and the call bounds. Registers
- * into the `web-ui.plugin.item` slot the Web UI Plugins group renders,
+ * into the `web-ui.plugin.item` slot the Web Plugins group renders,
  * bound to the `describe-image` settings namespace through the family
  * settings bridge (or the official settings scope when the deployment
  * exposes the namespace directly).

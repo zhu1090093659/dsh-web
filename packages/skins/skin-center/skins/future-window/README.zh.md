@@ -25,7 +25,7 @@ Wallpaper Engine 和用户手动选择的背景优先于皮肤背景；皮肤中
 
 ## 预览
 
-提交的 `preview/light.jpg` 和 `preview/dark.jpg` 使用仓库画廊界面及 `node scripts/capture-previews future-window` 生成。
+提交的 `preview/light.jpg` 和 `preview/dark.jpg` 使用仓库市场试穿模拟器及 `node scripts/capture-previews future-window` 生成。
 
 ## 安全与隐私
 

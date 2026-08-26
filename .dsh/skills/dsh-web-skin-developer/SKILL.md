@@ -1,13 +1,14 @@
 ---
-name: skin-developer
-description: Build a new skin for the dsh-web skin collection (DSH Web GUI) and publish it into the Skin Center — the first-level settings section — scaffold with scripts/dsh-skin-new, author the v2 skin.json manifest plus skin.css token remap (pure asset directory, no package.json, no build step), validate with scripts/dsh-skin, regenerate the gallery, and submit the PR. Use when the user asks to create, add, develop, scaffold, or publish a new skin for the dsh web GUI skin collection.
-whenToUse: The user wants a new skin (新建/新增/开发一个皮肤), or wants to publish/发 skin-center, or asks how skins are built and shipped in the dsh-web repo. Not for the act of applying a skin (scripts/dsh-skin use) or gallery-only edits.
+name: dsh-web-skin-developer
+description: Build a new skin for the dsh-web skin collection (DSH Web GUI) and publish it into the Skin Center — the first-level settings section — scaffold with scripts/dsh-skin-new, author the v2 skin.json manifest plus skin.css token remap (pure asset directory, no package.json, no build step), validate with scripts/dsh-skin, regenerate the market assets, and submit the PR. Use when the user asks to create, add, develop, scaffold, or publish a new skin for the dsh web GUI skin collection.
+whenToUse: The user wants a new skin (新建/新增/开发一个皮肤), or wants to publish/发 skin-center, or asks how skins are built and shipped in the dsh-web repo. Not for the act of applying a skin (scripts/dsh-skin use) or market-only edits.
+disable-model-invocation: true
 ---
 
 # 皮肤开发者（dsh-web 皮肤集合）
 
 本技能指导在 dsh-web 克隆里从零构建一个新皮肤，并把它发布进**皮肤中心**（GUI 设置页一级菜单）
-与 gallery。v2 架构（issue #506）：皮肤是纯资产目录，skin-center 包是唯一加载器，皮肤不再是
+与市场（dsh-market.com Workshop）。v2 架构（issue #506）：皮肤是纯资产目录，skin-center 包是唯一加载器，皮肤不再是
 独立插件包、不参与构建。
 
 ## 仓库与标准速览
@@ -50,7 +51,7 @@ skin.css（:root 亮色 + body[data-ds-dark-theme] 暗色双套 --dsw-alias-* �
   只重映射官方 `--dsw-alias-*` 语义 token（L1），mint 是可复制的全集样例。插件侧按
   `packages/skins/skin-center/contracts/semantic-attrs-v1.md` 输出 `data-dsh-plugin` /
   `data-dsh-part` 语义属性（L2），patches.css 里按这些锚点写补丁比裸选择器稳。
-- **patches.css 是高敏感逃生舱**：自由选择器补丁会在 UI 与 gallery 披露；能 token 解决就不写补丁。
+- **patches.css 是高敏感逃生舱**：自由选择器补丁会在 UI 与皮肤中心披露；能 token 解决就不写补丁。
 - **hooks.mjs 是受信逃生舱**：与 skin-center 同评审同发布的 JS（`facets.client` 声明
   `entry` + `apiVersion`，hooks 运行时契约与 skinManifestVersion 相互独立）；社区皮肤默认不含 hooks。
 - 媒体资产放 `assets/` 并在 `contributes.backgroundMedia` 声明（亮/暗各一层：type image|video、
@@ -73,33 +74,33 @@ pnpm skin-center:check                                                 # 全量�
 ## 4. 试穿与截图
 
 ```sh
-node scripts/gallery-build                              # 注册进 gallery/manifest.js + styles.js
-open 'gallery/preview.html?skin=<name>&theme=light'     # 静态注入 skin.css 的模拟器（不执行 hooks）
-open 'gallery/preview.html?skin=<name>&theme=dark'
+pnpm market:build                                     # 刷新市场产物（market/dist）
+open 'market/dist/preview.html?skin=<name>&theme=light'  # 静态注入 skin.css 的模拟器（不执行 hooks）
+open 'market/dist/preview.html?skin=<name>&theme=dark'
 node scripts/capture-previews <name>                    # 重拍 preview/{light,dark}.png（可列多个皮肤名过滤）
 ```
 
 - 模拟器把 skin.css（+patches.css）静态注入官方 facade 快照；hooks.mjs 不执行、backgroundMedia 不渲染。
 - 截图需要 playwright + chromium；preview/README.md 占位在拍完照后删除。
 
-## 5. 发布到皮肤中心与 gallery
+## 5. 发布到皮肤中心与市场
 
 - 皮肤中心的目录就是注册表：资产目录进了 `skins/` 即被加载，无需再生成注册表。
 - 用户级安装/切换走 `scripts/dsh-skin`：`dsh-skin install <dir>` 复制进 `$DSH_HOME/skins/<id>/`
   （--force 覆盖；hooks 皮肤需 --allow-hooks 且只跑其声明部分）、`dsh-skin use <id>` /
   `dsh-skin use official` 选择、`dsh-skin list` / `dsh-skin current` 查看、`dsh-skin uninstall <id>`
   卸载（内置皮肤拒绝）。切换是客户端原子交换，下次页面加载生效（tapIndex adapter）。
-- gallery：`node scripts/gallery-build` 重新生成 `gallery/manifest.js`（window.SKIN_MANIFEST）
-  + `gallery/styles.js`（window.SKIN_STYLES）并提交；CI 的 `pnpm gallery:check` 校验产物新鲜度。
+- 市场：`pnpm market:build` 重新生成 `market/dist`（manifest.js/styles.js 内嵌产物内容）并提交；
+  CI 的 `pnpm market:check` 校验产物新鲜度。
 - 若皮肤要出现在仓库 README 的推荐位，同步更新 README.md（中文）与 README.en.md（英文）。
-- 提交全部产物（preview/、gallery 产物、README），开 PR；PR 描述附 gallery 试穿截图（亮/暗）。
+- 提交全部产物（preview/、market/dist、README），开 PR；PR 描述附市场试穿截图（亮/暗）。
 
 ## 6. 验收清单（全部满足才算完成）
 
 - [ ] `node scripts/dsh-skin validate` 通过，`pnpm skin-center:check` 通过
-- [ ] gallery 模拟器亮/暗两态渲染正常（`preview.html?skin=<name>&theme=light|dark`）
+- [ ] 市场模拟器亮/暗两态渲染正常（`market/dist/preview.html?skin=<name>&theme=light|dark`）
 - [ ] `preview/{light,dark}.png` 已用 capture-previews 重拍并提交
-- [ ] `scripts/gallery-build` 已重跑，gallery 产物已提交，`pnpm gallery:check` 通过
+- [ ] `pnpm market:build` 已重跑，market/dist 产物已提交，`pnpm market:check` 通过
 - [ ] 纯呈现层约束未违反（无服务注入/事件/模型请求）
 - [ ] README 双语、第三方素材的 license/licenseUrl/attribution 齐全
 - [ ] 提交信息清晰，PR 附试穿截图
@@ -110,5 +111,5 @@ node scripts/capture-previews <name>                    # 重拍 preview/{light,
 - **暗色没写**：`body[data-ds-dark-theme]` 一套值是必须的，缺了暗色模式直接用亮色 token。
 - **自由选择器泄露**：patches.css 每条规则都会被作用域化并披露，能 token 解决就别写补丁。
 - **hooks 未与 skin-center 同评审**：hooks.mjs 是受信代码，直接提交会挂评审。
-- **预览图过期**：改完外观必须重跑 capture-previews，否则 gallery/皮肤中心显示旧图。
+- **预览图过期**：改完外观必须重跑 capture-previews，否则市场/皮肤中心显示旧图。
 - **一级菜单「皮肤中心」不显示新皮肤**：确认资产目录在 `skins/` 下（目录即注册表），再刷新页面。

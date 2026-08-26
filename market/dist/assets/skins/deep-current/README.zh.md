@@ -25,9 +25,9 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-skin-center
 ## 预览
 
 ~~~sh
-node scripts/gallery-build
-open gallery/preview.html?skin=deep-current&theme=light
-open gallery/preview.html?skin=deep-current&theme=dark
+pnpm market:build
+open market/dist/preview.html?skin=deep-current&theme=light
+open market/dist/preview.html?skin=deep-current&theme=dark
 node scripts/capture-previews deep-current
 ~~~
 

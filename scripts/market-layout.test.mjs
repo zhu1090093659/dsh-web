@@ -1,7 +1,7 @@
 /**
  * market 产物结构回归：验证 market-build 生成的三类清单可解析、字段契约完整、
  * 所有被引用的资产路径都真实存在于 dist（避免预览图/精灵表 404）。
- * 与 gallery-layout（浏览器渲染断言）不同，这里做纯结构断言，任何环境可跑。
+ * 纯结构断言（不渲染页面），任何环境可跑。
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'

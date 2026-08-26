@@ -120,7 +120,7 @@ family / 插件区域：
 | `remote-web-ui` | dsh-remote-web-ui | slot entry id `remote-web-ui` |
 | `web-ui-settings` | dsh-web-settings | settings.section id `web-ui-plugins` |
 | `skill-explorer` | dsh-skill-explorer | `[data-dsh-skill-explorer-view]` / `[data-dsh-skill-explorer-entry]` |
-| `doctor` | dsh-doctor | web-ui.plugin.item 槽 entry id `doctor`（设置 → Web UI 插件 → Doctor 卡片）；卡片内 `[data-dsh-plugin="doctor"]` |
+| `doctor` | dsh-doctor | web-ui.plugin.item 槽 entry id `doctor`（设置 → Web 插件 → Doctor 卡片）；卡片内 `[data-dsh-plugin="doctor"]` |
 | `aionui-panel` | dsh-aionui-panel（停更） | dock entry id `aionui-*` |
 | `dsh-web-ui-market` | dsh-market | 创意工坊商店一级页（settings.section id `dsh-web-ui-market`），商店卡与目录条目容器 |
 | `skin-center` | skins/skin-center | 一级设置分区 settings.section id `skin-center`（列已安装皮肤，属内置源时显式标记） |

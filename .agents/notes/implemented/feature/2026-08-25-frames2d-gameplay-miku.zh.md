@@ -23,4 +23,4 @@ dsh-pet 的两项契约扩展 + 工坊优先分发路径：
 
 ## Consequences
 
-今后任何宠物 = 一个资产目录 + 一份 manifest（契约 + 玩法），下一次 dev 推送即进工坊；pet-developer skill 已记录两项扩展与工坊路径。dsh-miku-pet 包已移除（aggregate 18 行 / 17 依赖；sync-shared 96 项 / 44 host 副本）；移除与重加两条记保留为历史。玩法设计记（design note）被本实现契约部分取代（上方交叉链接）。
+今后任何宠物 = 一个资产目录 + 一份 manifest（契约 + 玩法），下一次 dev 推送即进工坊；dsh-web-pet-developer skill 已记录两项扩展与工坊路径。dsh-miku-pet 包已移除（aggregate 18 行 / 17 依赖；sync-shared 96 项 / 44 host 副本）；移除与重加两条记保留为历史。玩法设计记（design note）被本实现契约部分取代（上方交叉链接）。

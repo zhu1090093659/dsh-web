@@ -23,9 +23,9 @@
  * e2e 验证产物同区存放；定期用 --cleanup 或手动 rm -rf ~/remote-e2e 清理
  * （工具启动时会自动 prune 已失效的 worktree 记录）。
  *
- * 皮肤 PR 额外：生成亮/暗预览与画廊页截图（~/remote-e2e/e2e-<pr>/previews/），
+ * 皮肤 PR 额外：生成亮/暗预览截图（~/remote-e2e/e2e-<pr>/previews/），
  * 像素指标自动判定过曝（太闪）与对比度不足（看不清），截图供视觉模型复核；
- * 提醒作者声明贡献者版权，并检查新皮肤 gallery 适配（注册 + 截图）。
+ * 提醒作者声明贡献者版权，并检查新皮肤是否提供 preview/{light,dark}.jpg 预览图。
  *   --concurrency N        并行审核数（默认 2）
  *   --max-added N          新增行上限，超过即拒绝（默认 10000）
  *   --max-deleted N        删除行上限，超过即拒绝（默认 10000）
@@ -136,11 +136,10 @@ export const SECRET_RES = [
 
 const TEST_PATH_RE = /(^|\/)(test|tests|__tests__|fixtures?)(\/|$)|(\.test|\.spec)\.[a-z0-9]+$/i
 
-/** CI 门禁序列（对齐 ci.yml，顺序不可调：gallery:check 必须在 build 前，避免本机路径嵌入 bundle）。 */
+/** CI 门禁序列（对齐 ci.yml，一致性检查在 build 前跑，避免本机路径嵌入 bundle）。 */
 const BUILD_STEPS = [
   [`install`, `pnpm`, [`install`, `--frozen-lockfile`, `--ignore-scripts`], 20 * 60 * 1000],
   [`typecheck`, `pnpm`, [`typecheck`], 10 * 60 * 1000],
-  [`gallery:check`, `pnpm`, [`gallery:check`], 10 * 60 * 1000],
   [`skin-center:check`, `pnpm`, [`skin-center:check`], 10 * 60 * 1000],
   [`community:check`, `pnpm`, [`community:check`], 10 * 60 * 1000],
   [`build`, `pnpm`, [`build`], 20 * 60 * 1000],
@@ -330,21 +329,20 @@ export function checkCopyright(prInfo, isSkin, repoOwner) {
     message: `皮肤 PR 请提醒作者在 PR 模板「贡献者版权声明（Contributor Copyright）」节声明贡献者版权（在 README 版权表追加一行）`,
   }]
 }
-/** 新皮肤 gallery 适配检查：注册（manifest.js/styles.js）与预览截图（docs/screenshots）。 */
-export function checkGalleryAdaptation(changes, skinIds) {
+/** 新皮肤市场预览检查：缺 preview/{light,dark}.jpg 即警告（市场清单由 market-build 自动派生，无需手改产物）。 */
+export function checkSkinPreviews(changes, skinIds) {
   if (!skinIds.length) return []
   const findings = []
-  const touchedGallery = changes.some((c) => c.path === `gallery/styles.js` || c.path === `gallery/manifest.js`)
-  const touchedScreenshots = changes.some((c) => c.path.startsWith(`docs/screenshots/`))
   for (const id of skinIds) {
     const isNew = changes.some((c) => c.status === `A` &&
       c.path.startsWith(`packages/skins/skin-center/skins/` + id + `/`))
     if (!isNew) continue
-    if (!touchedGallery) {
-      findings.push({ severity: `warn`, rule: `gallery`, message: `新皮肤 ` + id + ` 未适配画廊预览：请同步更新 gallery/manifest.js 与 gallery/styles.js 注册` })
-    }
-    if (!touchedScreenshots) {
-      findings.push({ severity: `warn`, rule: `gallery`, message: `新皮肤 ` + id + ` 未提供画廊预览截图：请提交 docs/screenshots/ 截图（light/dark）` })
+    for (const mode of [`light`, `dark`]) {
+      const hasPreview = changes.some((c) =>
+        c.path === `packages/skins/skin-center/skins/` + id + `/preview/` + mode + `.jpg`)
+      if (!hasPreview) {
+        findings.push({ severity: `warn`, rule: `preview`, message: `新皮肤 ` + id + ` 未提供 ` + mode + ` 预览图：请运行 node scripts/capture-previews ` + id + ` 并提交 preview/` + mode + `.jpg` })
+      }
     }
   }
   return findings
@@ -354,12 +352,6 @@ export function judgeVisualMetrics(metrics) {
   const findings = []
   for (const m of metrics || []) {
     const name = m.file || `?`
-    if (name === `gallery.png`) {
-      if (m.avgLuma > 242 && m.hiPct > 92) {
-        findings.push({ severity: `warn`, rule: `visual`, message: `画廊页整体过曝（avgLuma ` + m.avgLuma + `，` + m.hiPct + `% 接近纯白），页面可能刺眼` })
-      }
-      continue
-    }
     if (m.avgLuma > 215) {
       findings.push({ severity: `warn`, rule: `visual`, message: name + ` 亮度过高（avgLuma ` + m.avgLuma + `），可能太闪` })
     }
@@ -722,7 +714,7 @@ export function staticReview(prInfo, diff, opts, repoOwner) {
     ...checkTemplate(prInfo, repoOwner),
     ...checkCommits(prInfo.commits),
     ...checkCopyright(prInfo, skin.isSkin, repoOwner),
-    ...checkGalleryAdaptation(diff.allChanges, skin.skinIds),
+    ...checkSkinPreviews(diff.allChanges, skin.skinIds),
   ]
 }
 
@@ -783,7 +775,7 @@ export function skinVisualVerify(repoRoot, number, skinIds, worktreeRoot, workdi
     }
     for (const id of skinIds) {
       for (const mode of [`light`, `dark`]) {
-        const src = join(workdir, `packages`, `skins`, id, `preview`, mode + `.png`)
+        const src = join(workdir, `packages`, `skins`, `skin-center`, `skins`, id, `preview`, mode + `.jpg`)
         if (existsSync(src)) {
           const dst = join(outDir, id + `-` + mode + `.png`)
           copyFileSync(src, dst)
@@ -791,29 +783,6 @@ export function skinVisualVerify(repoRoot, number, skinIds, worktreeRoot, workdi
         }
       }
     }
-    // 画廊页整体截图（验证新皮肤在画廊中正常展示，不错位）
-    const script = [
-      "const { chromium } = require('playwright');",
-      "(async () => {",
-      "  const b = await chromium.launch()",
-      "  const page = await b.newPage({ viewport: { width: 1440, height: 900 } })",
-      "  await page.goto('file://' + process.cwd() + '/gallery/index.html', { waitUntil: 'networkidle' }).catch(() => {})",
-      "  await page.waitForTimeout(1500)",
-      "  await page.screenshot({ path: process.argv[2], fullPage: true })",
-      "  await b.close()",
-      "})()",
-    ].join(`\n`)
-    const galleryPng = join(outDir, `gallery.png`)
-    try {
-      const shotFile = join(workdir, `.pr-review-gallery-shot.cjs`)
-      writeFileSync(shotFile, script)
-      try {
-        const gres = run(`node`, [shotFile, galleryPng], { cwd: workdir, timeout: 120 * 1000, maxBuffer: 16 * 1024 * 1024 })
-        if (gres.status === 0 && existsSync(galleryPng)) previews.push(galleryPng)
-      } finally {
-        rmSync(shotFile, { force: true })
-      }
-    } catch { /* 画廊截图失败不阻塞 */ }
     if (!previews.length) return { error: `未找到预览截图（确认皮肤包已构建且含 lib/client.js）`, previews }
     // 像素指标分析：亮度（太闪）/ 对比度（看不清），结果写 metrics.json
     const metrics = analyzePixels(workdir, previews)
@@ -1038,7 +1007,7 @@ function formatHuman(results, opts) {
     }
     if (r.build && r.build.workdir && !r.build.skipped) lines.push(`  worktree: ` + r.build.workdir + (r.build.reused ? `（复用）` : ``))
     if (r.visual && r.visual.previews.length) {
-      lines.push(`  [视觉] 皮肤预览截图 ` + r.visual.previews.length + ` 张（light/dark + gallery），像素指标与截图见 ` + (r.visual.metrics ? `metrics.json` : ``))
+      lines.push(`  [视觉] 皮肤预览截图 ` + r.visual.previews.length + ` 张（light/dark），像素指标与截图见 ` + (r.visual.metrics ? `metrics.json` : ``))
       if (r.visual.metrics && r.visual.metrics.length) {
         for (const m of r.visual.metrics) {
           lines.push(`         ` + m.file + `  avg=` + m.avgLuma + `  std=` + m.stdLuma + `  过曝=` + m.hiPct + `%  饱和度=` + m.satAvg)

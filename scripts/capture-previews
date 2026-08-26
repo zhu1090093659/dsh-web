@@ -4,9 +4,9 @@
 /**
  * capture-previews — regenerate every skin's light/dark preview screenshots.
  *
- * Opens gallery/preview.html (the v2 static renderer: the simulator injects
- * the skin's stylesheets into the official-facade snapshot and paints
- * declarative backgroundMedia; skin hooks JS is never executed) in headless Chromium and
+ * Opens market/dist/preview.html (the v2 static renderer: the simulator
+ * injects the skin's stylesheets into the official-facade snapshot and
+ * paints declarative backgroundMedia; skin hooks JS is never executed) in headless Chromium and
  * screenshots each skin × {light, dark} into
  * packages/skins/skin-center/skins/<id>/preview/{light,dark}.png.
  *
@@ -19,7 +19,7 @@
  *   node scripts/capture-previews xp miku      # only named skins
  *   node scripts/capture-previews --serve      # serve via http instead of file://
  *
- * Outputs 1440×900 JPEGs (quality 85) at device scale 1; the gallery cards
+ * Outputs 1440×900 JPEGs (quality 85) at device scale 1; the market cards
  * downscale them, so they stay crisp while the published package stays
  * small (the old 2880×1800 PNGs made dsh-client-ui-skin-center ~78MB).
  * Re-run after any skin change and commit the JPEGs with the skin source.
@@ -31,7 +31,7 @@ const http = require('node:http')
 const path = require('node:path')
 
 const ROOT = path.resolve(__dirname, '..')
-const GALLERY = path.join(ROOT, 'gallery')
+const MARKET_DIST = path.join(ROOT, 'market', 'dist')
 
 // --- tiny static server (fallback for environments where file:// screenshots
 // --- misbehave) -------------------------------------------------------------
@@ -47,8 +47,8 @@ function serve() {
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' }
   server = http.createServer((req, res) => {
     const url = decodeURIComponent((req.url || '/').split('?')[0])
-    const file = path.normalize(path.join(ROOT, url === '/' ? 'gallery/preview.html' : url))
-    if (!isInside(ROOT, file)) { res.writeHead(403); return res.end('forbidden') }
+    const file = path.normalize(path.join(MARKET_DIST, url === '/' ? 'preview.html' : url))
+    if (!isInside(MARKET_DIST, file)) { res.writeHead(403); return res.end('forbidden') }
     fs.readFile(file, (err, buf) => {
       if (err) { res.writeHead(404); return res.end('not found') }
       res.writeHead(200, { 'content-type': types[path.extname(file)] || 'application/octet-stream' })
@@ -76,7 +76,7 @@ async function main() {
   const want = args.filter((a) => !a.startsWith('--'))
   const useServer = args.includes('--serve')
 
-  const manifest = JSON.parse(fs.readFileSync(path.join(GALLERY, 'manifest.js'), 'utf8')
+  const manifest = JSON.parse(fs.readFileSync(path.join(MARKET_DIST, 'manifest.js'), 'utf8')
     .replace(/^\/\*[\s\S]*?\*\/\s*/, '')   // 头部生成注释
     .replace(/^window\.SKIN_MANIFEST = /, '')
     .replace(/;\s*$/, ''))
@@ -86,7 +86,7 @@ async function main() {
     skins = skins.filter((s) => set.has(s.id))
   }
 
-  const base = useServer ? await serve() + '/gallery' : 'file://' + GALLERY
+  const base = useServer ? await serve() : 'file://' + MARKET_DIST
   console.log(`capture-previews: ${skins.length} skins × {light,dark} @ ${base}`)
 
   // hooks 动态场景皮肤清单（作用于 capture 渲染，不影响模拟器默认行为）

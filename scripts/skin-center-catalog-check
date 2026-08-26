@@ -18,6 +18,8 @@ const SKINS_DIR = path.join(__dirname, '..', 'packages', 'skins', 'skin-center',
 
 async function main() {
   const checkMode = process.argv.includes('--check')
+  const { execFileSync } = require('node:child_process')
+  execFileSync(process.execPath, [path.join(__dirname, 'skin-hooks-registry.mjs'), '--check'], { stdio: 'inherit' })
   const lib = await import(pathToFileURL(LIB_PATH).href)
   const catalog = lib.loadSkinCatalog({ builtinDir: SKINS_DIR, userDir: path.join(SKINS_DIR, '.nonexistent-user-root') })
   let failed = false
@@ -55,8 +57,8 @@ async function main() {
   }
   if (failed) process.exit(1)
   // The package ships only the default skin (market on-demand plan); this
-  // check validates the whole repo catalog that market-build and the gallery
-  // serve. Keep both facts visible in the report.
+  // check validates the whole repo catalog that market-build serves. Keep
+  // both facts visible in the report.
   const shipped = 'blue-fantasy'
   if (!checkMode) {
     console.log(`skin-center:check: ${catalog.skins.length} repo catalog skins valid (package ships ${shipped} only)`)

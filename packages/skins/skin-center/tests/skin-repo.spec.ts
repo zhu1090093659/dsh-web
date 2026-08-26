@@ -148,6 +148,46 @@ describe('loadSkinCatalog', () => {
       expect(entry?.warnings.join(' ')).not.toContain('refused')
     })
 
+    it('recovers a legacy Workshop install only when reviewed manifest and hooks bytes match', () => {
+      const reviewed = join(import.meta.dirname, '..', 'skins', 'matrix')
+      const dir = join(user, 'matrix')
+      mkdirSync(dir, { recursive: true })
+      for (const rel of ['skin.json', 'skin.css', 'hooks.mjs']) {
+        writeFileSync(join(dir, rel), readFileSync(join(reviewed, rel)))
+      }
+      // Declarative files that are outside the executable identity may differ;
+      // recovery trusts only the complete manifest plus declared hook bytes.
+      writeFileSync(join(dir, 'skin.css'), '.customized { color: lime; }')
+
+      const catalog = loadSkinCatalog({ builtinDir: builtin, userDir: user })
+      const entry = catalog.skins.find((skin) => skin.manifest.id === 'matrix')
+      expect(entry?.origin).toBe('user')
+      expect(entry?.hooksTrusted).toBe(true)
+      expect(entry?.warnings.join(' ')).not.toContain('refused')
+      expect(() => readFileSync(join(dir, 'dsh-market.provenance.json'))).toThrow()
+    })
+
+    it('keeps a legacy Workshop-shaped skin refused after manifest or hooks tampering', () => {
+      const reviewed = join(import.meta.dirname, '..', 'skins', 'matrix')
+      for (const id of ['matrix', 'matrix-copy']) {
+        const dir = join(user, id)
+        mkdirSync(dir, { recursive: true })
+        writeFileSync(join(dir, 'skin.css'), readFileSync(join(reviewed, 'skin.css')))
+        writeFileSync(join(dir, 'hooks.mjs'), readFileSync(join(reviewed, 'hooks.mjs')))
+        const manifest = JSON.parse(readFileSync(join(reviewed, 'skin.json'), 'utf8'))
+        manifest.id = id
+        writeFileSync(join(dir, 'skin.json'), JSON.stringify(manifest, null, 2))
+      }
+      writeFileSync(join(user, 'matrix', 'hooks.mjs'), 'export default () => ({ apply() {} }) // tampered')
+
+      const catalog = loadSkinCatalog({ builtinDir: builtin, userDir: user })
+      for (const id of ['matrix', 'matrix-copy']) {
+        const entry = catalog.skins.find((skin) => skin.manifest.id === id)
+        expect(entry?.hooksTrusted).toBeUndefined()
+        expect(entry?.warnings.join(' ')).toContain('hooks facet will be refused')
+      }
+    })
+
     it('refuses hooks without provenance or after tampering', () => {
       // no provenance at all
       writeMarketSkin('noprovenance', null)

@@ -294,6 +294,25 @@ describe('v2 hooks trust gate', () => {
     await server.close()
   })
 
+  it('serves hooks for an exact reviewed legacy Workshop install without provenance', async () => {
+    const userDir = join(root, 'user')
+    const reviewed = join(import.meta.dirname, '..', 'skins', 'matrix')
+    const dir = join(userDir, 'matrix')
+    mkdirSync(dir, { recursive: true })
+    for (const rel of ['skin.json', 'skin.css', 'hooks.mjs']) {
+      writeFileSync(join(dir, rel), readFileSync(join(reviewed, rel)))
+    }
+    const routes = makeSkinCenterV2Routes({
+      loadCatalog: () => loadSkinCatalog({ builtinDir: builtin, userDir }),
+      activeStatePath: statePath,
+    })
+    const server = await serve(routes)
+    const res = await call(server.port, 'GET', `${SKIN_CENTER_V2_PREFIX}/skins/matrix/hooks.mjs`)
+    expect(res.status).toBe(200)
+    expect(res.text).toContain('mountRain')
+    await server.close()
+  })
+
   it('refuses hooks again when the on-disk bytes no longer match the provenance', async () => {
     const dir = writeMarketInstalledSkin('matrix')
     writeFileSync(join(dir, 'hooks.mjs'), 'export default () => ({ apply() {} }) // tampered\n')
@@ -305,6 +324,26 @@ describe('v2 hooks trust gate', () => {
     const res = await call(server.port, 'GET', `${SKIN_CENTER_V2_PREFIX}/skins/matrix/hooks.mjs`)
     expect(res.status).toBe(403)
     expect(res.jsonBody.error).toBe('hooks-require-review')
+    await server.close()
+  })
+
+  it('re-verifies hook bytes on every serve even when the catalog snapshot is cached', async () => {
+    const userDir = join(root, 'user')
+    const reviewed = join(import.meta.dirname, '..', 'skins', 'matrix')
+    const dir = join(userDir, 'matrix')
+    mkdirSync(dir, { recursive: true })
+    for (const rel of ['skin.json', 'skin.css', 'hooks.mjs']) {
+      writeFileSync(join(dir, rel), readFileSync(join(reviewed, rel)))
+    }
+    const snapshot = loadSkinCatalog({ builtinDir: builtin, userDir })
+    const routes = makeSkinCenterV2Routes({ loadCatalog: () => snapshot, activeStatePath: statePath })
+    const server = await serve(routes)
+    expect((await call(server.port, 'GET', `${SKIN_CENTER_V2_PREFIX}/skins/matrix/hooks.mjs`)).status).toBe(200)
+
+    writeFileSync(join(dir, 'hooks.mjs'), 'export default () => ({ apply() {} }) // tampered after scan\n')
+    const refused = await call(server.port, 'GET', `${SKIN_CENTER_V2_PREFIX}/skins/matrix/hooks.mjs`)
+    expect(refused.status).toBe(403)
+    expect(refused.jsonBody.error).toBe('hooks-require-review')
     await server.close()
   })
 })

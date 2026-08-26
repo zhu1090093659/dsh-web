@@ -15,7 +15,7 @@
  * Usage:
  *   node scripts/dsh-skin-new <kebab-case-name>
  *
- * See .dsh/skills/skin-developer/SKILL.md for the full workflow.
+ * See .dsh/skills/dsh-web-skin-developer/SKILL.md for the full workflow.
  */
 
 const fs = require('node:fs')
@@ -129,9 +129,9 @@ function skinCss(name) {
 
 function previewReadme() {
   return [
-    '# preview/ — 画廊预览图占位',
+    '# preview/ — 预览图占位',
     '',
-    '本目录需要两张真实截图，gallery 门禁（scripts/gallery-build）会校验它们存在：',
+    '本目录需要两张真实截图，市场门禁（scripts/market-build）会校验它们存在：',
     '',
     '- ' + BT + 'light.jpg' + BT + ' — 亮色主题预览',
     '- ' + BT + 'dark.jpg' + BT + ' — 暗色主题预览',
@@ -139,7 +139,7 @@ function previewReadme() {
     '拍完照后删除本 README。截图流程（需要 playwright + chromium）：',
     '',
     BT + BT + BT + 'sh',
-    'node scripts/gallery-build          # 先把皮肤注册进 gallery/manifest.js + styles.js',
+    'pnpm market:build                  # 先把皮肤注册进市场产物（market/dist）',
     'node scripts/capture-previews <id>  # 静态渲染皮肤样式表并重拍本目录的两张图',
     BT + BT + BT,
     '',
@@ -170,8 +170,8 @@ function readmeEn(name) {
     '## Preview',
     '',
     BT + BT + BT + 'sh',
-    'node scripts/gallery-build                   # register into gallery/manifest.js + styles.js',
-    'open gallery/preview.html?skin=' + name + '&theme=light',
+    'pnpm market:build                            # refresh market/dist',
+    'open market/dist/preview.html?skin=' + name + '&theme=light',
     'node scripts/capture-previews ' + name + '       # re-shoot preview/{light,dark}.jpg',
     BT + BT + BT,
     '',
@@ -203,8 +203,8 @@ function readmeZh(name) {
     '## 预览',
     '',
     BT + BT + BT + 'sh',
-    'node scripts/gallery-build                   # 注册进 gallery/manifest.js + styles.js',
-    'open gallery/preview.html?skin=' + name + '&theme=light',
+    'pnpm market:build                            # 刷新市场产物（market/dist）',
+    'open market/dist/preview.html?skin=' + name + '&theme=light',
     'node scripts/capture-previews ' + name + '       # 重拍 preview/{light,dark}.jpg',
     BT + BT + BT,
     '',
@@ -255,12 +255,12 @@ function main() {
   console.log('  1. edit packages/skins/skin-center/skins/' + name + '/skin.json  — 名称 / tagline / 描述 / tags / accent')
   console.log('  2. edit packages/skins/skin-center/skins/' + name + '/skin.css   — 你的调色板（:root 亮色 + body[data-ds-dark-theme] 暗色）')
   console.log('  3. node scripts/dsh-skin validate packages/skins/skin-center/skins/' + name + '  — v2 契约校验')
-  console.log('  4. node scripts/gallery-build && open gallery/preview.html?skin=' + name + '&theme=light  — 画廊试穿（静态样式渲染）')
+  console.log('  4. pnpm market:build && open market/dist/preview.html?skin=' + name + '&theme=light  — 市场试穿（静态样式渲染）')
   console.log('  5. node scripts/capture-previews ' + name + '  — 重拍 preview/{light,dark}.png 并删除 preview/README.md')
-  console.log('  6. pnpm skin-center:check && pnpm gallery:check  — 门禁')
-  console.log('  7. 提交（含 preview/ 与重新生成的 gallery 产物）并发 PR')
+  console.log('  6. pnpm skin-center:check && pnpm market:check  — 门禁')
+  console.log('  7. 提交（含 preview/ 与重新生成的 market/dist 产物）并发 PR')
   console.log('')
-  console.log('完整流程见 .dsh/skills/skin-developer/SKILL.md')
+  console.log('完整流程见 .dsh/skills/dsh-web-skin-developer/SKILL.md')
 }
 
 main()

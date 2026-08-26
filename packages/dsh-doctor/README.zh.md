@@ -6,14 +6,14 @@ DeepSeek Harness profile 的事务式救助模式：用户级 Doctor Supervisor 
 Doctor Launcher 维持一份隔离救援胶囊，检测启动失败、进程崩溃、心跳丢失、Web
 故障与浏览器白屏，并通过快照、确定性修复、隔离健康门禁与原子提升或回滚恢复
 profile。插件默认开启：初次安装或 WebUI 版本更新后救援模式自动生效，用户在 Doctor
-卡片中显式关闭的选择会被保留；可在「设置 → 插件配置 → Web UI 插件」的 Doctor 卡片
+卡片中显式关闭的选择会被保留；可在「设置 → 插件配置 → Web 插件」的 Doctor 卡片
 中切换。本插件不修改 DSH 安装。
 
 ## 能力
 
 - Doctor Host 插件运行在每个受保护 DSH host 内：暴露 loopback 恢复 API，向
   Supervisor 上报心跳与启动阶段事实，并收集浏览器故障上报。
-- Doctor Web 控制台（「设置 → 插件配置 → Web UI 插件」内的家族插件卡片）展示系统
+- Doctor Web 控制台（「设置 → 插件配置 → Web 插件」内的家族插件卡片）展示系统
   阶段、受保护 profile、故障事件与客户端故障探针，并记录已启用但从未启动的 Web UI
   插件；在启用开关旁提供诊断、修复、回滚、暂停与恢复动作以及「服务与胶囊」卡片：
   一键安装、重启升级与卸载用户级服务。
@@ -66,7 +66,7 @@ pnpm -r build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-doctor
 ```
 
-重启 `dsh web`，打开「设置 → 插件配置 → Web UI 插件」，展开 Doctor 卡片确认「启用救助模式」已开启（新安装默认开启）。
+重启 `dsh web`，打开「设置 → 插件配置 → Web 插件」，展开 Doctor 卡片确认「启用救助模式」已开启（新安装默认开启）。
 包内同时提供 `dsh-doctor` CLI：Supervisor、Launcher、胶囊配置与用户级服务适配。
 
 ## 启用

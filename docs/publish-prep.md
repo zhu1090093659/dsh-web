@@ -36,7 +36,7 @@
 
 ## Compatibility boundary
 
-All `web-ui-*` bundle ids, `dsh-web-ui-market`, `/api/dsh-web-ui-settings`, and the `dsh-web-ui-settings-proxy-token` header remain frozen. Doctor migration and plugin-manager migration use the shared legacy mapping; Doctor invokes Windows `.cmd` shims through constrained `cmd.exe` arguments. Direct `dsh web` bypasses Doctor migration.
+All `web-ui-*` bundle ids, `dsh-web-ui-market`, `/api/dsh-web-ui-settings`, and the `dsh-web-ui-settings-proxy-token` header remain frozen. Doctor migration and plugin-manager migration use the shared legacy mapping; Doctor invokes Windows `.cmd` shims through constrained `cmd.exe` arguments. Direct `dsh web` bypasses Doctor migration. Skin Center preserves the provenance-only path for current Workshop installs and additionally restores pre-provenance hook effects only when the installed manifest and hook bytes match the generated reviewed identity; `pnpm skin-center:check` rejects identity-registry drift.
 
 This release has fresh-install, unit migration, and Linux CI mount evidence. It does not claim real previous-version upgrade drills, failure-injection drills against published tarballs, or a macOS / Windows upgrade matrix. Manual recovery is documented in `docs/release-notes/v0.3.3.md`.
 
@@ -50,7 +50,6 @@ pnpm test:scripts
 pnpm aggregate:check
 pnpm runtime-deps:check
 pnpm docs:check
-pnpm gallery:check
 pnpm skin-center:check
 pnpm community:check
 pnpm market:check

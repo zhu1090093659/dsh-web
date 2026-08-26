@@ -27,7 +27,7 @@ describe('WebUIPluginsSection', () => {
     render(<WebUIPluginsSection {...props} />)
 
     const heading = screen.getByRole('heading', { level: 2 })
-    expect(heading.textContent).toBe('Web UI Plugins')
+    expect(heading.textContent).toBe('Web Plugins')
 
     expect(screen.getByText('Enable and configure the dsh-web family plugins from one place.')).toBeTruthy()
 

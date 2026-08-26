@@ -113,7 +113,7 @@ The right panel is provided by the external plugin [dsh-better-sidebar](https://
 
 ![Right panel](docs/screenshots/19-right-panel.png)
 
-> The previous aionui-panel right panel is **no longer supported**: it is off by default, receives no maintenance, tests, or fixes, and will be removed from the family bundle in a future release; Settings → Web UI Plugins → Side Card edits its everyday settings inline.
+> The previous aionui-panel right panel is **no longer supported**: it is off by default, receives no maintenance, tests, or fixes, and will be removed from the family bundle in a future release; Settings → Web Plugins → Side Card edits its everyday settings inline.
 
 ### Git Graph（Git 图谱）
 
@@ -127,7 +127,7 @@ LiangShen Mode (`dsh-liangshen`) is a two-phase anchored agent preset that insta
 
 ### Rescue Mode（救助模式）
 
-Rescue mode (`dsh-doctor`) is a transactional rescue system for DSH profiles, **on by default**: a user-level Doctor Supervisor service and a transparent Doctor Launcher maintain an isolated rescue capsule, detecting boot failures, process crashes, heartbeat loss, web faults and browser white-screens. Every repair is a transaction: snapshot the current profile, apply deterministic rules in a candidate environment, pass isolated dump-config and web health gates, then promote atomically — or roll back byte-for-byte. Profiles change only through the official `dsh plugin` command, and no unverified `latest` is ever installed. The web console (the Doctor card under Settings → Plugin config → Web UI Plugins) shows fault events with diagnose, repair and rollback actions; "Send to Harness" composes the latest fault's summary and error stack into a troubleshooting prompt delivered back into the current session so your agent can diagnose in place. The Supervisor listens only on a local socket (0600 token) and the web API is loopback-only; see the [dsh-doctor README](packages/dsh-doctor/README.md) for the security model and the `dsh-doctor` CLI.
+Rescue mode (`dsh-doctor`) is a transactional rescue system for DSH profiles, **on by default**: a user-level Doctor Supervisor service and a transparent Doctor Launcher maintain an isolated rescue capsule, detecting boot failures, process crashes, heartbeat loss, web faults and browser white-screens. Every repair is a transaction: snapshot the current profile, apply deterministic rules in a candidate environment, pass isolated dump-config and web health gates, then promote atomically — or roll back byte-for-byte. Profiles change only through the official `dsh plugin` command, and no unverified `latest` is ever installed. The web console (the Doctor card under Settings → Plugin config → Web Plugins) shows fault events with diagnose, repair and rollback actions; "Send to Harness" composes the latest fault's summary and error stack into a troubleshooting prompt delivered back into the current session so your agent can diagnose in place. The Supervisor listens only on a local socket (0600 token) and the web API is loopback-only; see the [dsh-doctor README](packages/dsh-doctor/README.md) for the security model and the `dsh-doctor` CLI.
 
 ### More Plugins（更多插件）
 

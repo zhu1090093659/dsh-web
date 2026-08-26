@@ -50,7 +50,7 @@
   display: none;
 }
 
-/* Web UI Plugins: a 2x2 plugin grid. */
+/* Web Plugins: a 2x2 plugin grid. */
 [class*="_navList"]:has(> [class*="_navCell"]:nth-child(8)):not(:has(> [class*="_navCell"]:nth-child(9))) > [class*="_navCell"]:nth-child(5)::before {
   content: "";
   width: 16px;

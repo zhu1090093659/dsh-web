@@ -706,6 +706,85 @@ function resolveHarnessPaths(home, profile, fromUrl = import.meta.url) {
 	};
 }
 //#endregion
+//#region src/reviewed-hooks.generated.ts
+const REVIEWED_SKIN_HOOKS = {
+	"blue-fantasy": {
+		entry: "hooks.mjs",
+		manifestSha256: "b22cc82145e1f90f4257af1411724e34a99513761290980fb5f8d25727809808",
+		hooksSha256: "21ac2ad4d4423acf31e3391bfba18ce2d9eec7b192f7a0ba47e8a0c843ff15a5"
+	},
+	"cyber-night": {
+		entry: "hooks.mjs",
+		manifestSha256: "38de22962a80602c22910324e7c5fec171342363760972b7421debeb628d8508",
+		hooksSha256: "199f37fe6969e3dfae4891708604b6b639f011068c10356f774145512fd3be69"
+	},
+	"dragon-heir": {
+		entry: "hooks.mjs",
+		manifestSha256: "e963197ef3d7b0b444c5976b4dd42cb9e30ce79880bfcb4a076da3426ff60056",
+		hooksSha256: "ccc644148fd71cc32723891e97ed586b86fe2f86e0f36362133de7d66d08f5bd"
+	},
+	"furina": {
+		entry: "hooks.mjs",
+		manifestSha256: "eaac87525cf305e6a7d78b5257705301fa3818e696c3ccbba205bd72a135f108",
+		hooksSha256: "713668d3a50da8878337feb4553f953eea781734934610af37a58dea37112ec9"
+	},
+	"harbor": {
+		entry: "hooks.mjs",
+		manifestSha256: "a09949fdf5217ac2f6d5d37603df525e56713385ad799cf4c496fbd71cc5861d",
+		hooksSha256: "7981a2f98d1ade2815f7e33e2d79672c280334001a00406bb11b5362ce8182bf"
+	},
+	"maid-atelier": {
+		entry: "hooks.mjs",
+		manifestSha256: "f36e854f52f24939dfe6318ed6b1ff6fe33d0564e63255a22aaca459af1a84d9",
+		hooksSha256: "8a50922c970337ab07b0843e61b9a771f3a57baf54d18a24e906f13dbb39b4ff"
+	},
+	"matrix": {
+		entry: "hooks.mjs",
+		manifestSha256: "6bcadb4f3da51a12838e002c8956baac2326bf67d7c1cf1f6108d93f1a7a6485",
+		hooksSha256: "2e13e495adabe900df797cdbe930b8cb7fdb2ce721c1ba021e6eb2e74326e551"
+	},
+	"miku": {
+		entry: "hooks.mjs",
+		manifestSha256: "9022628fd39e8ee48aef3b311c12f8411b4cc99d62764e84aa65fb4a5a3631ab",
+		hooksSha256: "1c4052d328ac6e1ede3115395e8823c4f6acecd3b4508b85615006a88f7cbdd1"
+	},
+	"minecraft": {
+		entry: "hooks.mjs",
+		manifestSha256: "08d4a527db2281e84d919b04392b9101e2c4445dd06746fd8514ac8e0dd3d8c3",
+		hooksSha256: "deb4abe5e9dc64b075cb6ab1cfbdb153534a6cf837e3558cc0daee7b1bc6eb1a"
+	},
+	"orca-link": {
+		entry: "hooks.mjs",
+		manifestSha256: "48b9c76b6f8fc4fad1473d987c0ebd8c10f4734e2eff2091bbb9040c9a5ce089",
+		hooksSha256: "6b0d2c29c5e40840d36a169996113e8b08adfeb83ef882f2248128df7ebe932f"
+	},
+	"trading": {
+		entry: "hooks.mjs",
+		manifestSha256: "945b5c1f6ef387060a9b7dbb4451a261ecbffedf7949890925cf2b97c6b0c3a8",
+		hooksSha256: "76954acbe0925f470fdfc79d60c5402fd11f617342df719382265b70e3f5a36a"
+	},
+	"war-thunder": {
+		entry: "hooks.mjs",
+		manifestSha256: "3779eeb27f441deed0be277a5d67342c254305683214bda68fc814565dadab89",
+		hooksSha256: "c44435d89e1de3713a2e46da031acc8a1de0cc6502067ba1e1ca2aa3a1d9d88e"
+	},
+	"whale-mom": {
+		entry: "hooks.mjs",
+		manifestSha256: "310d99a3f66b8d085830295d2ec5bd979f384d3ea0f785feb01578d5e8e0364f",
+		hooksSha256: "be8921f66e7ef6d73a0c12686f9b0134fb1f4d47e38d1dedc09f4a74c1533b83"
+	},
+	"whale-song": {
+		entry: "hooks.mjs",
+		manifestSha256: "fa53ef0c536e672fad0448b199f784d22ee7f1a2dd4da6a06c45836800d33331",
+		hooksSha256: "beb0f140dab1abb40bda52ad2ae1970feb761e2184e64e1d5810fab7c32dfff3"
+	},
+	"xp": {
+		entry: "hooks.mjs",
+		manifestSha256: "8bceb95c45b400b67ceb80a7f063b6c2086c0e9f9907a7b72a592d33017623eb",
+		hooksSha256: "823f25fd5f969feb8e51d8ff1577c1cbecbad847b2abac6e5020fc9ef543663f"
+	}
+};
+//#endregion
 //#region src/provenance.ts
 /**
 * Official-market provenance verification (issue #1073).
@@ -718,9 +797,10 @@ function resolveHarnessPaths(home, profile, fromUrl = import.meta.url) {
 * hash-match the provenance, the hooks bytes are exactly the reviewed
 * bytes and may run like a built-in skin's.
 *
-* Fail-closed: a missing/unparseable provenance, a foreign source, or any
-* hash mismatch (post-install tampering, partial copy) keeps the
-* hooks-refused behavior for user-directory skins. Forging the provenance
+* Fail-closed: invalid provenance and any post-install byte mismatch keep the
+* hooks-refused behavior for user-directory skins. A pre-provenance install
+* recovers only by matching this release's generated reviewed identity.
+* Forging the provenance
 * requires write access to $DSH_HOME itself — an attacker with that access
 * can already install full plugins, so the file is a provenance record,
 * not a capability guard against the local user.
@@ -763,6 +843,18 @@ function verifyMarketProvenance(dir, skinId, hooksEntry) {
 		if (actual === null || actual !== expected) return false;
 	}
 	return true;
+}
+/**
+* Recover a pre-provenance Workshop install only when its executable identity
+* is byte-for-byte one of this release's reviewed market skins. This is a
+* read-only fallback: no provenance is minted and no user file is replaced.
+*/
+function verifyReviewedLegacyHooks(dir, skinId, hooksEntry) {
+	const reviewed = REVIEWED_SKIN_HOOKS[skinId];
+	if (reviewed === void 0 || reviewed.entry !== hooksEntry) return false;
+	const manifestHash = sha256Hex(join(dir, "skin.json"));
+	const hooksHash = sha256Hex(join(dir, ...hooksEntry.split("/")));
+	return manifestHash === reviewed.manifestSha256 && hooksHash === reviewed.hooksSha256;
 }
 //#endregion
 //#region src/skin-repo.ts
@@ -852,11 +944,12 @@ function readManifest(dir) {
 	}
 }
 /**
-* Hooks trust for one user-directory skin: official-market installs
-* whose skin.json and hooks entry hash-match the recorded provenance
-* run their hooks (same-review content); anything else keeps the
-* refusal warning. Built-in skins never reach this — their origin
-* is the trust signal.
+* Hooks trust for one user-directory skin: official-market installs whose
+* skin.json and hooks entry hash-match recorded provenance run their hooks.
+* Historical Workshop installs from before provenance existed recover only
+* when both files match this release's generated reviewed identity. Anything
+* else keeps the refusal warning. Built-in skins never reach this — their
+* origin is the trust signal.
 */
 function marketHooksTrust(manifest, dir) {
 	const facet = manifest.facets?.client;
@@ -864,14 +957,19 @@ function marketHooksTrust(manifest, dir) {
 		trusted: false,
 		warning: null
 	};
-	if (verifyMarketProvenance(dir, manifest.id, facet.entry)) return {
+	if (verifyMarketProvenance(dir, manifest.id, facet.entry) || verifyReviewedLegacyHooks(dir, manifest.id, facet.entry)) return {
 		trusted: true,
 		warning: null
 	};
 	return {
 		trusted: false,
-		warning: "declares hooks.mjs, but hooks only run for built-in or verified official-market (same-review) skins; the hooks facet will be refused"
+		warning: "declares hooks.mjs, but hooks only run for built-in or byte-verified official-market (same-review) skins; the hooks facet will be refused"
 	};
+}
+/** Re-evaluate the executable trust gate against the current on-disk bytes. */
+function canServeSkinHooks(entry) {
+	if (entry.manifest.facets?.client === void 0) return false;
+	return entry.origin === "builtin" || marketHooksTrust(entry.manifest, entry.dir).trusted;
 }
 function collectSource(spec, catalog, claimed) {
 	if (!existsSync(spec.root)) return;
@@ -1902,8 +2000,8 @@ function findCloseBrace(css, openBrace) {
 * (force-scoped under html[data-dsh-skin="<id>"], whitelist fail-closed), so
 * the browser can inject them blindly. hooks.mjs is served verbatim — it is
 * trusted, same-review same-release code (high sensitivity, see contracts/),
-* served for built-in skins and for user-directory skins whose install
-* provenance pins the bytes to the official DSH Market (issue #1073).
+* served for built-in skins and for byte-verified official-market user
+* installs, including exact reviewed legacy installs (issue #1073).
 * @module @linxin666/dsh-client-ui-skin-center/routes-v2
 */
 const SKIN_CENTER_V2_PREFIX = "/api/skin-center/v2";
@@ -2041,7 +2139,7 @@ function makeSkinCenterV2Routes(deps = {}) {
 				});
 				return;
 			}
-			if (entry.origin !== "builtin" && entry.hooksTrusted !== true) {
+			if (!canServeSkinHooks(entry)) {
 				writeJson(res, 403, {
 					ok: false,
 					error: "hooks-require-review",
@@ -8896,4 +8994,4 @@ function applyImpl(ctx) {
 	}
 }
 //#endregion
-export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_V2_PREFIX, SKIN_CUSTOM_THEME_NAMESPACE, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinCssSafetyError, SkinCustomThemeConfigSchema, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, auditTokenContract, builtinSkinsDir, defaultActiveStatePath, findSkin, inject, loadSkinCatalog, makeSkinCenterV2Routes, makeWeRoutes, name, readActiveSelection, resolveInsideSkin, transformSkinCss, userSkinsDir, validateSkinManifestV2, writeActiveSelection };
+export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_V2_PREFIX, SKIN_CUSTOM_THEME_NAMESPACE, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinCssSafetyError, SkinCustomThemeConfigSchema, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, auditTokenContract, builtinSkinsDir, canServeSkinHooks, defaultActiveStatePath, findSkin, inject, loadSkinCatalog, makeSkinCenterV2Routes, makeWeRoutes, name, readActiveSelection, resolveInsideSkin, transformSkinCss, userSkinsDir, validateSkinManifestV2, writeActiveSelection };

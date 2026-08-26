@@ -75,8 +75,8 @@ active panel (#76 #87)`。提交信息禁止 emoji（全仓规则）。
 ## 提 PR 前检查清单
 
 1. **门禁全绿**：`pnpm typecheck` / `pnpm test` / `pnpm test:scripts` /
-   `pnpm docs:check`；涉及聚合包、画廊、皮肤中心时另跑
-   `pnpm aggregate:check` / `pnpm gallery:check` / `pnpm skin-center:check`。
+   `pnpm docs:check`；涉及聚合包、市场、皮肤中心时另跑
+   `pnpm aggregate:check` / `pnpm market:check` / `pnpm skin-center:check`。
 2. **文档同步**：改包 README 必须同 PR 维护中英双语三件套（`README.md` +
    `README.zh.md` + `README.i18n.yaml`），改完任一侧后重录配对记录：
 
@@ -116,7 +116,7 @@ pnpm docs:write-pair <包目录名>   # 如 dsh-ssh 或 xp
 `node scripts/dsh-skin validate` 校验后按皮肤契约完善（skin.json v2、
 skin.css token 重映射，可选 patches.css / hooks.mjs / assets/），用
 `node scripts/capture-previews <id>` 重拍 `preview/{light,dark}.png`，
-`pnpm gallery:build` 与 `pnpm skin-center:check` 通过后随 PR 提交，
+`pnpm market:build` 与 `pnpm skin-center:check` 通过后随 PR 提交，
 PR 类别勾选「皮肤 / 皮肤中心」。皮肤收录到我们部署的 dsh-market.com
 服务器（Workshop）供用户按需安装，默认安装不带（见上文 PR 范围）。
 

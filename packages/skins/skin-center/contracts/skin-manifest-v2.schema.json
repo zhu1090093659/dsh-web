@@ -80,7 +80,7 @@
     },
     "attribution": {
       "type": "string",
-      "description": "Optional attribution line shown in the gallery."
+      "description": "Optional attribution line shown in the shop."
     },
     "preview": {
       "type": "object",
@@ -144,7 +144,7 @@
         },
         "patches": {
           "$ref": "#/$defs/relPath",
-          "description": "Optional L3 free-selector patches. High sensitivity; disclosed in UI and gallery."
+          "description": "Optional L3 free-selector patches. High sensitivity; disclosed in the Skin Center UI and the shop."
         },
         "backgroundMedia": {
           "type": "object",

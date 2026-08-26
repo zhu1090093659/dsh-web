@@ -6,8 +6,8 @@
  */
 
 /* Light tokens ride both :root and a body-scoped light head: the skin-center
- * loader clones :root theme tokens onto body, but the static gallery preview
- * (gallery/preview.html) injects this stylesheet without that transform, and
+ * loader clones :root theme tokens onto body, but the static market preview
+ * (market/src/preview.html) injects this stylesheet without that transform, and
  * the official facade defines its light token sheet on body. */
 html[data-dsh-skin="pink-sakura"],
 html[data-dsh-skin="pink-sakura"] body:not([data-ds-dark-theme]) {
@@ -326,7 +326,7 @@ html[data-dsh-skin="pink-sakura"] [data-dsh-plugin="pet"] [data-dsh-part="bubble
  * iconfont.cn with the icon author's authorization; see README provenance)
  * with a soft pink-white glow and a gentle heartbeat. The CSS-gradient paw
  * beneath the url() keeps the marker visible where skin-dir assets are not
- * served (the static gallery preview embeds stylesheets inline, so the
+ * served (the static market preview embeds stylesheets inline, so the
  * relative url cannot resolve there). Static selectors only - stable
  * data-pane / treeitem / aria-selected hooks, no hashed class names. */
 html[data-dsh-skin="pink-sakura"] [data-pane="sidebar"] [role="treeitem"][aria-selected="true"] > span:first-of-type {

@@ -27,8 +27,8 @@ shipped as a pure asset directory inside the Skin Center package.
 ## Preview
 
 ```sh
-node scripts/gallery-build                   # register into gallery/manifest.js + styles.js
-open gallery/preview.html?skin=pink-sakura&theme=light
+pnpm market:build                              # refresh market/dist
+open market/dist/preview.html?skin=pink-sakura&theme=light
 node scripts/capture-previews pink-sakura       # re-shoot preview/{light,dark}.png
 ```
 

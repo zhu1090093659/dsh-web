@@ -51,19 +51,16 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      # --ignore-scripts: the gallery consistency check compares COMMITTED
-      # bundle artifacts against committed gallery assets; a fresh build
-      # embeds the checkout's absolute path into every bundle (CSS-module
-      # hashes and \0dsh-css region markers), so rebuilt bytes differ per
-      # machine. The explicit Build step still verifies everything builds.
+      # --ignore-scripts: the consistency checks compare COMMITTED bundle
+      # artifacts against the committed sources; a fresh build embeds the
+      # checkout's absolute path into every bundle (CSS-module hashes and
+      # \0dsh-css region markers), so rebuilt bytes differ per machine. The
+      # explicit Build step still verifies everything builds.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Typecheck
         run: pnpm typecheck
-
-      - name: Gallery consistency
-        run: pnpm gallery:check
 
       - name: Skin center consistency
         run: pnpm skin-center:check

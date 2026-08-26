@@ -73,7 +73,6 @@ If no compatibility handoff is required, run the CI-equivalent gate sequence dir
 
 ~~~sh
 pnpm typecheck
-pnpm gallery:check
 pnpm skin-center:check
 pnpm community:check
 pnpm build
@@ -84,7 +83,7 @@ pnpm aggregate:check
 pnpm docs:check
 ~~~
 
-Run any package-specific tests required by affected packages. For a client-facing SDK candidate, enumerate every workspace package's dsh.client.inject services and compare the result with the candidate runtime/module table before profile smoke testing. Treat a renamed or missing service as a compatibility blocker. Use an existing contract check when available; if none exists, report the explicit matrix as preflight evidence rather than quietly assuming the host will supply every service. When client bundles, skin assets, gallery assets, aggregate files, or shared-runtime copies change, regenerate the required tracked artifacts in the same worktree and rerun their corresponding consistency checks. Do not normalize or discard generated diffs merely because their source files appear unchanged.
+Run any package-specific tests required by affected packages. For a client-facing SDK candidate, enumerate every workspace package's dsh.client.inject services and compare the result with the candidate runtime/module table before profile smoke testing. Treat a renamed or missing service as a compatibility blocker. Use an existing contract check when available; if none exists, report the explicit matrix as preflight evidence rather than quietly assuming the host will supply every service. When client bundles, skin assets, market assets, aggregate files, or shared-runtime copies change, regenerate the required tracked artifacts in the same worktree and rerun their corresponding consistency checks. Do not normalize or discard generated diffs merely because their source files appear unchanged.
 
 Treat a failed, skipped, or environment-blocked gate as unverified. Report the exact blocker and the affected risk; do not call the upgrade safe or merge-ready.
 

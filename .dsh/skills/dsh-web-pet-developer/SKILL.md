@@ -1,7 +1,8 @@
 ---
-name: pet-developer
+name: dsh-web-pet-developer
 description: Create a pet for the dsh-pet plugin and integrate it into the dsh web GUI — author a v2 pet.json manifest plus an 8-column x 9-row atlas per the Codex/hatch-pet contract (live2d pets, voice packs and status decorations included), drop it into the pet-center user directory or contribute it as a built-in asset under packages/dsh-pet/assets, rebuild and test dsh-pet, verify the pet in the first-level Pet settings section, and submit the PR. Use when the user asks to create/add/develop/接入 a pet (宠物), build or calibrate a pet spritesheet, register a custom pet, author a status decoration, or asks how pets are discovered and rendered.
-whenToUse: 用户要新建/开发/接入一只宠物（桌面宠物、dsh-pet）、制作或校准宠物图集与 pet.json、把宠物放进自定义目录或贡献为内置宠物、做状态装饰（decoration），或询问宠物如何被发现与渲染。美术与图集生成参考 hatch-pet skill；皮肤走 skin-developer skill。
+whenToUse: 用户要新建/开发/接入一只宠物（桌面宠物、dsh-pet）、制作或校准宠物图集与 pet.json、把宠物放进自定义目录或贡献为内置宠物、做状态装饰（decoration），或询问宠物如何被发现与渲染。美术与图集生成参考 hatch-pet skill；皮肤走 dsh-web-skin-developer skill。
+disable-model-invocation: true
 ---
 
 # 宠物开发者（dsh-pet 多宠物注册表）

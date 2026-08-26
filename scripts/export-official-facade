@@ -3,9 +3,9 @@
 
 /**
  * export-official-facade — 从「正在运行的官方 dsh web GUI」导出官方界面骨架，
- * 供 gallery 试穿模拟器使用（基于官方 UI，而非手写示意）。
+ * 供市场站皮肤试穿模拟器使用（基于官方 UI，而非手写示意）。
  *
- * 产物 gallery/official-facade.js：
+ * 产物 market/src/official-facade.js：
  *   window.OFFICIAL_FACADE = {
  *     meta:    导出时间 / 来源 URL / 标题 / 体积
  *     css:     官方全部样式（去重，排除皮肤样式；暗色经 body[data-ds-dark-theme] 生效）
@@ -28,7 +28,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const ROOT = path.resolve(__dirname, '..')
-const OUT = path.join(ROOT, 'gallery', 'official-facade.js')
+const OUT = path.join(ROOT, 'market', 'src', 'official-facade.js')
 const DEFAULT_URL = 'http://127.0.0.1:3080/'
 
 const args = process.argv.slice(2)
@@ -149,7 +149,7 @@ async function main() {
   if (check) {
     const prev = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : null
     if (!prev) {
-      console.error('gallery/official-facade.js 不存在（先运行 export-official-facade）')
+      console.error('market/src/official-facade.js 不存在（先运行 export-official-facade）')
       process.exit(1)
     }
     const prevFacade = JSON.parse(prev
@@ -159,7 +159,7 @@ async function main() {
     // CSS 规则集合变了才说明 checkout 升级过（HMR 可能改变注入顺序，故按集合比对）。
     const ruleSet = (css) => css.split('\n').filter(Boolean).sort().join('\n')
     if (ruleSet(prevFacade.css) !== ruleSet(data.css)) {
-      console.error('gallery/official-facade.js 的 CSS 与当前 GUI 不一致（checkout 升级了？重新运行 export-official-facade）')
+      console.error('market/src/official-facade.js 的 CSS 与当前 GUI 不一致（checkout 升级了？重新运行 export-official-facade）')
       process.exit(1)
     }
     const drift = Math.abs(prevFacade.skeleton.length - data.skeleton.length)

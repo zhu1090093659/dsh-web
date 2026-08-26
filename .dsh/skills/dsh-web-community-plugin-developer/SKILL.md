@@ -1,7 +1,8 @@
 ---
-name: community-plugin-developer
+name: dsh-web-community-plugin-developer
 description: Develop a DSH community plugin and register it in the dsh-web Community Plugins index — author the plugin in the contributor's own repository following the official cordis bundle standard, add its entry to packages/dsh-community-plugins/community.json, regenerate the index with scripts/community-index, rebuild and test the community-plugins package, and submit the PR. Use when the user asks to develop a community plugin (社区插件), register/index/接入 a community plugin into the dsh web GUI, update community.json, or asks how community plugins get listed in the settings page.
-whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/接入社区插件索引、更新 community.json，或询问社区插件如何进入 dsh web GUI 的「社区插件」列表。不适用于：皮肤（skin-developer skill）、宠物（pet-developer skill）、dsh-web 家族插件本身的开发（走 packages/AGENTS.md 与 scripts/dsh-plugin-new 的常规插件流程）。
+whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/接入社区插件索引、更新 community.json，或询问社区插件如何进入 dsh web GUI 的「社区插件」列表。不适用于：皮肤（dsh-web-skin-developer skill）、宠物（dsh-web-pet-developer skill）、dsh-web 家族插件本身的开发（走 packages/AGENTS.md 与 scripts/dsh-plugin-new 的常规插件流程）。
+disable-model-invocation: true
 ---
 
 # 社区插件开发者（dsh-web 社区插件索引）
@@ -17,7 +18,7 @@ whenToUse: 用户要开发/新建一个社区插件、把第三方插件登记/�
 - **只索引、不内嵌**：`packages/dsh-community-plugins`（npm `@linxin666/dsh-client-ui-community-plugins`）
   只登记条目，每个条目链到贡献者自己的仓库；本仓库**绝不打包第三方代码**。
 - **GUI 形态**：社区插件是设置页**一级菜单**（`settings.section` id `community-plugins`，order 140），
-  与通用设置/模式/插件/Agent 预设及 Web UI 插件、皮肤中心、宠物并列，内容**直接展开**
+  与通用设置/模式/插件/Agent 预设及 Web 插件、皮肤中心、宠物并列，内容**直接展开**
   （`alwaysOpen`，无折叠），自带启用开关（`community-plugins` 设置命名空间，开关就在分区卡片内）。
 - **插件管理器联动**：卡片桥接同家族 sibling `dsh-plugin-manager`（cordis 服务
   `pluginManager`，可选）——在场时展示已安装状态并可发起安装/卸载/看进度；缺席时

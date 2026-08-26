@@ -1,7 +1,7 @@
 /**
  * Side-card settings card chrome (package-local, not shared).
  *
- * The side-card settings live inside the Web UI Plugins page card (embedded
+ * The side-card settings live inside the Web Plugins page card (embedded
  * through renderSlot): the external dsh-better-sidebar plugin's first-level
  * settings nav row — marked by that plugin itself (settings-nav-icon.ts) —
  * stays registered so its section page keeps working, but leaves the

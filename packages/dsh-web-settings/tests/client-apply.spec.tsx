@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Client-half registration test for the web-ui-settings browser bundle:
- * asserts that apply() contributes the Web UI Plugins group as a first-level
+ * asserts that apply() contributes the Web Plugins group as a first-level
  * settings section ("settings.section", a list slot keyed by id) rather than
  * as a plugin-configuration card ("settings.plugin.item", a keyed slot).
  *

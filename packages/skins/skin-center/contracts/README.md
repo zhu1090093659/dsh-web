@@ -44,16 +44,9 @@ and release. It is served verbatim over `GET /skins/<id>/hooks.mjs` only for:
 
 - **built-in skins** — shipped inside the skin-center npm package, same
   review and release by definition;
-- **official-market installs** — user-directory skins carrying a
-  `dsh-market.provenance.json` whose sha256 pins the on-disk `skin.json`
-  and hooks entry to the bytes the official DSH Market served (the market
-  content is built from this repository, so a hash match means the bytes
-  are the reviewed ones). Verification lives in `src/provenance.ts` and
-  fails closed: any missing, foreign-source or mismatched provenance keeps
-  the hooks facet refused with a catalog warning while the declarative
-  parts (skin.css / patches.css / assets) still load (issue #1073).
+- **official-market installs** — user-directory skins whose executable identity is byte-verified as reviewed content. Current Workshop installs carry a `dsh-market.provenance.json` whose sha256 pins the on-disk `skin.json` and hooks entry to the bytes the official DSH Market served. Historical installs created before provenance existed may recover only when id, declared entry, complete `skin.json`, and hooks bytes match one identity in generated `src/reviewed-hooks.generated.ts`. The registry is generated from this repository's market skin sources by `scripts/skin-hooks-registry.mjs`; `--check` is part of `skin-center:check`, so any reviewed manifest or hook change must regenerate it. Verification lives in `src/provenance.ts`, is read-only and offline, and fails closed: a foreign source, unknown identity, renamed skin, or an executable-identity mismatch keeps the hooks facet refused with a catalog warning while the declarative parts (skin.css / patches.css / assets) still load (issue #1073).
 
-Locally dropped or third-party skin directories never run hooks.
+Locally dropped or third-party skin directories never run hooks unless their executable identity is byte-identical to a reviewed official-market skin. Declarative files outside that identity may be customized without granting additional executable capability.
 
 ## Loader-side rules (pinned here, enforced in M2)
 

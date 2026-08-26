@@ -33,7 +33,7 @@ Run the narrowest owning test first for a behavior change. Add an affected-packa
 
 - `shared/` changes: run `pnpm sync-shared` followed by `pnpm sync-shared:check`.
 - Aggregate membership or package additions/removals: regenerate with `node scripts/aggregate.mjs`, then run `pnpm aggregate:check`.
-- Skin assets, skin registry, or gallery changes: run `pnpm gallery:check` and `pnpm skin-center:check`.
+- Skin assets, skin registry, or market asset changes: run `pnpm market:check` and `pnpm skin-center:check`.
 - Community plugin index changes: regenerate with `node scripts/community-index`, then run `pnpm community:check`.
 - Browser runtime imports, dependency manifests, or client bundle changes: run `pnpm runtime-deps:check` and the affected package build.
 - Changed package README files: update the paired language and record the pair through `pnpm docs:write-pair` before `pnpm docs:check`.

@@ -23,4 +23,4 @@ Two contract extensions in dsh-pet plus a Workshop-first delivery path:
 
 ## Consequences
 
-Any future pet is one assets directory plus a manifest (contract + gameplay), delivered through the Workshop on the next dev push; the pet-developer skill documents both extensions and the Workshop path. The dsh-miku-pet package is gone (aggregate 18 rows / 17 deps; sync-shared 96 entries / 44 host copies); the removal and re-add notes remain as history. The gameplay design note is superseded in part by this implemented contract (cross-linked above).
+Any future pet is one assets directory plus a manifest (contract + gameplay), delivered through the Workshop on the next dev push; the dsh-web-pet-developer skill documents both extensions and the Workshop path. The dsh-miku-pet package is gone (aggregate 18 rows / 17 deps; sync-shared 96 entries / 44 host copies); the removal and re-add notes remain as history. The gameplay design note is superseded in part by this implemented contract (cross-linked above).

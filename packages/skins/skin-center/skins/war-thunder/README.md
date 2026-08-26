@@ -15,7 +15,7 @@ and the theme scrim.
   light values on `:root`, dark values under `body[data-ds-dark-theme]`),
   `patches.css` (L3 component patches), `hooks.mjs` (favicon, pinned title,
   live background-variant swap, parallax, hold-to-peek), `assets/`
-  (backgrounds + launcher badge) and `preview/` (gallery screenshots).
+  (backgrounds + launcher badge) and `preview/` (market screenshots).
   No package.json, no build step; the skin-center package is the only
   loader.
 - **Dual artwork**: light theme rides the bright day battle login
@@ -44,8 +44,8 @@ and the theme scrim.
 ## Preview
 
 ```sh
-node scripts/gallery-build                   # register into gallery/manifest.js + styles.js
-open gallery/preview.html?skin=war-thunder&theme=light
+pnpm market:build                              # refresh market/dist
+open market/dist/preview.html?skin=war-thunder&theme=light
 node scripts/capture-previews war-thunder    # re-shoot preview/{light,dark}.png
 ```
 

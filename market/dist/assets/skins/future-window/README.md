@@ -25,7 +25,7 @@ Wallpaper Engine and a user-selected manual background take priority over the sk
 
 ## Preview
 
-The committed `preview/light.jpg` and `preview/dark.jpg` files are generated from the repository gallery facade with `node scripts/capture-previews future-window`.
+The committed `preview/light.jpg` and `preview/dark.jpg` files are generated from the repository market simulator with `node scripts/capture-previews future-window`.
 
 ## Security and privacy
 

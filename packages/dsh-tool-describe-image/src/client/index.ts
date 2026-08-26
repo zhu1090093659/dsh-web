@@ -38,7 +38,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
   interface SlotMap {
     /**
-     * One family plugin card inside the Web UI Plugins group. Spelled here
+     * One family plugin card inside the Web Plugins group. Spelled here
      * with the same shape so this package can register without depending on
      * the sibling web-ui-settings package.
      */

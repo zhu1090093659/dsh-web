@@ -17,7 +17,7 @@ dsh-web v2 皮肤：日系夏祭背景 + iOS 26 液态玻璃表面。冰青作�
 - `skin.css` — token 重映射（`--dsw-*` + `--aion-*`）。
 - `patches.css` — 玻璃质感（背景模糊、内缘高光、输入区渐隐）。
 - `assets/` — 背景插画。
-- `preview/` — 亮/暗画廊预览图。
+- `preview/` — 亮/暗市场预览图。
 
 ## 许可证
 

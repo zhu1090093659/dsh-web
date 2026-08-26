@@ -18,7 +18,7 @@ secondary `#C0CAD5`, dim `#8997A7`; ice cyan `#67DCE7`, rose `#DD8FAC`, amber
 - `skin.css` — token remap (`--dsw-*` + `--aion-*`).
 - `patches.css` — glass polish (backdrop blur, inner highlights, composer fade).
 - `assets/` — the backdrop art.
-- `preview/` — light/dark gallery previews.
+- `preview/` — light/dark market previews.
 
 ## License
 

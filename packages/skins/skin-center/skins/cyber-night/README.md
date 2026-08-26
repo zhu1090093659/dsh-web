@@ -24,8 +24,8 @@ shipped as a pure asset directory inside the skin-center package.
 ## Preview
 
 ```sh
-node scripts/gallery-build                   # register into gallery assets
-open gallery/preview.html?skin=cyber-night&theme=light
+pnpm market:build                              # refresh market/dist
+open market/dist/preview.html?skin=cyber-night&theme=light
 ```
 
 ## License

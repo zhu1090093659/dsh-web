@@ -2,17 +2,17 @@ name: Deploy Market
 
 # Push 到 dev 且市场相关文件变化时，把已提交的 market/dist 产物部署到
 # Cloudflare Workers（Worker dsh-market，自定义域名 dsh-market.com），
-# 同时幂等应用 D1 migration，并维护 gallery.dsh-market.com -> 根域的 301。
+# 同时幂等应用 D1 migration。
 #
 # 以 dev 为唯一自动部署来源：新皮肤 / 宠物 / 社区插件合并进 dev 即上架
 # 创意工坊，不等发版集成；main 只通过维护者集成接收 dev 内容，不再触发
 # 部署（避免集成瞬间用较旧产物回滚商店）。workflow_dispatch 保留手动兜底。
 #
 # 只部署「已提交」的产物，不在 CI 里重建（market-build --check 校验一致性）：
-# 与本仓库 gallery 部署纪律一致，避免构建机绝对路径/不确定性进入产物。
+# 与本仓库产物部署纪律一致，避免构建机绝对路径/不确定性进入产物。
 #
 # 需要的仓库 secrets：
-#   CLOUDFLARE_API_TOKEN   — Workers Scripts / D1 / Redirect Rules / Zone · Edit
+#   CLOUDFLARE_API_TOKEN   — Workers Scripts / D1 / Zone · Edit
 #   CLOUDFLARE_ACCOUNT_ID  — Cloudflare 账号 ID
 
 on:

@@ -47,7 +47,7 @@ export interface SkinManifestV2 {
   tags?: string[]
   accent?: string
   order?: number
-  /** Optional legal metadata for third-party artwork (gallery display). */
+  /** Optional legal metadata for third-party artwork (shop display). */
   license?: string
   licenseUrl?: string
   noticeUrl?: string

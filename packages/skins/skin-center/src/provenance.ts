@@ -9,9 +9,10 @@
  * hash-match the provenance, the hooks bytes are exactly the reviewed
  * bytes and may run like a built-in skin's.
  *
- * Fail-closed: a missing/unparseable provenance, a foreign source, or any
- * hash mismatch (post-install tampering, partial copy) keeps the
- * hooks-refused behavior for user-directory skins. Forging the provenance
+ * Fail-closed: invalid provenance and any post-install byte mismatch keep the
+ * hooks-refused behavior for user-directory skins. A pre-provenance install
+ * recovers only by matching this release's generated reviewed identity.
+ * Forging the provenance
  * requires write access to $DSH_HOME itself — an attacker with that access
  * can already install full plugins, so the file is a provenance record,
  * not a capability guard against the local user.
@@ -21,6 +22,8 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+import { REVIEWED_SKIN_HOOKS } from './reviewed-hooks.generated.ts'
 
 /** Provenance filename written by the market installer (mirrors PROVENANCE_FILENAME in @linxin666/dsh-client-ui-market; no cross-package runtime import). */
 export const MARKET_PROVENANCE_FILENAME = 'dsh-market.provenance.json'
@@ -64,4 +67,17 @@ export function verifyMarketProvenance(dir: string, skinId: string, hooksEntry: 
     if (actual === null || actual !== expected) return false
   }
   return true
+}
+
+/**
+ * Recover a pre-provenance Workshop install only when its executable identity
+ * is byte-for-byte one of this release's reviewed market skins. This is a
+ * read-only fallback: no provenance is minted and no user file is replaced.
+ */
+export function verifyReviewedLegacyHooks(dir: string, skinId: string, hooksEntry: string): boolean {
+  const reviewed = REVIEWED_SKIN_HOOKS[skinId]
+  if (reviewed === undefined || reviewed.entry !== hooksEntry) return false
+  const manifestHash = sha256Hex(join(dir, 'skin.json'))
+  const hooksHash = sha256Hex(join(dir, ...hooksEntry.split('/')))
+  return manifestHash === reviewed.manifestSha256 && hooksHash === reviewed.hooksSha256
 }

@@ -40,7 +40,7 @@ test('skin-center stays a real bundle; skin asset directories stay package-free'
 test('the published package ships only the default skin; every other skin stays repo-side as the market source', () => {
   // Market on-demand plan: the skin-center npm package bundles exactly the
   // default skin (blue-fantasy). The remaining skins stay under the repo's
-  // skins/ directory — the single source for market-build, the gallery and
+  // skins/ directory — the single source for market-build and
   // the preview tooling — and users install them on demand from the market
   // into $DSH_HOME/skins, where the same skin center manages them.
   const center = readJson(join(skinsRoot, 'skin-center', 'package.json'))

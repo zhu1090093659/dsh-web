@@ -34,7 +34,7 @@ import { validateSkinManifestV2 } from './core/manifest-v2/validate.ts'
 import { auditTokenContract, type TokenAuditStylesheet } from './core/css-safety/token-audit.ts'
 import type { SkinManifestV2 } from './core/manifest-v2/types.ts'
 import { resolveHarnessHome } from './harness-home.ts'
-import { verifyMarketProvenance } from './provenance.ts'
+import { verifyMarketProvenance, verifyReviewedLegacyHooks } from './provenance.ts'
 
 export type SkinOrigin = 'builtin' | 'user'
 
@@ -47,11 +47,10 @@ export interface SkinCatalogEntry {
   /** Non-fatal notes (deprecated v1 fields ignored, shadowing, etc). */
   warnings: string[]
   /**
-   * True only for a user-directory skin whose declared hooks entry
-   * hash-matches official dsh-market.com install provenance — i.e. the
-   * on-disk hooks bytes are the same-review content this repository
-   * published to the market (issue #1073). Built-in skins are trusted
-   * by origin and never carry this flag.
+   * True when a user-directory skin's declared hooks identity matched
+   * official-market provenance or the generated reviewed legacy identity at
+   * snapshot time. The HTTP serving gate re-verifies current bytes. Built-in
+   * skins are trusted by origin and never carry this flag.
    */
   hooksTrusted?: boolean
 }
@@ -137,22 +136,30 @@ interface SourceSpec {
 }
 
 /**
- * Hooks trust for one user-directory skin: official-market installs
- * whose skin.json and hooks entry hash-match the recorded provenance
- * run their hooks (same-review content); anything else keeps the
- * refusal warning. Built-in skins never reach this — their origin
- * is the trust signal.
+ * Hooks trust for one user-directory skin: official-market installs whose
+ * skin.json and hooks entry hash-match recorded provenance run their hooks.
+ * Historical Workshop installs from before provenance existed recover only
+ * when both files match this release's generated reviewed identity. Anything
+ * else keeps the refusal warning. Built-in skins never reach this — their
+ * origin is the trust signal.
  */
 function marketHooksTrust(manifest: SkinManifestV2, dir: string): { trusted: boolean; warning: string | null } {
   const facet = manifest.facets?.client
   if (!facet) return { trusted: false, warning: null }
-  if (verifyMarketProvenance(dir, manifest.id, facet.entry)) {
+  if (verifyMarketProvenance(dir, manifest.id, facet.entry)
+    || verifyReviewedLegacyHooks(dir, manifest.id, facet.entry)) {
     return { trusted: true, warning: null }
   }
   return {
     trusted: false,
-    warning: 'declares hooks.mjs, but hooks only run for built-in or verified official-market (same-review) skins; the hooks facet will be refused',
+    warning: 'declares hooks.mjs, but hooks only run for built-in or byte-verified official-market (same-review) skins; the hooks facet will be refused',
   }
+}
+
+/** Re-evaluate the executable trust gate against the current on-disk bytes. */
+export function canServeSkinHooks(entry: SkinCatalogEntry): boolean {
+  if (entry.manifest.facets?.client === undefined) return false
+  return entry.origin === 'builtin' || marketHooksTrust(entry.manifest, entry.dir).trusted
 }
 
 function collectSource(spec: SourceSpec, catalog: SkinCatalog, claimed: Map<string, SkinCatalogEntry>): void {

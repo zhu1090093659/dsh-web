@@ -12,7 +12,7 @@ dsh web 并打开 Web GUI；界面右下角浮动关机按钮，确认后请求�
   提供 loopback 专用路由 -- /api/dsh-desktop-launcher/create（写
   ~/.dsh/desktop-launcher/ 与桌面图标）和
   /api/dsh-desktop-launcher/shutdown（请求宿主进程退出，限 loopback）；
-  browser 半区（src/client/）在「Web UI 插件」组注册设置卡片（创建按钮 +
+  browser 半区（src/client/）在「Web 插件」组注册设置卡片（创建按钮 +
   enabled / announceToAgent / dshCommand / url / profile / iconPath /
   confirmShutdown 字段），并挂载右下角浮动关机按钮。
 - Windows 启动器是 WPF「启动中」弹窗（launcher.ps1 内嵌 XAML），图标为内置白底

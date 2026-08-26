@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   node scripts/verify-docs.mjs --write <dir>
 README.md: d97a5ffbcb8306c6ee4e04fe9789053f929a5684
-README.zh.md: 3b798c449e06e1b0b04c24ce2f58c73e04b4e77d
+README.zh.md: 390e6da37c28e1b942f84dbeebfeae51c0d63bb9

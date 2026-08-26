@@ -20,8 +20,8 @@
 ## 预览
 
 ```sh
-node scripts/gallery-build                   # 注册进 gallery 资产
-open gallery/preview.html?skin=cyber-night&theme=light
+pnpm market:build                              # 刷新市场产物（market/dist）
+open market/dist/preview.html?skin=cyber-night&theme=light
 ```
 
 ## 许可与素材来源

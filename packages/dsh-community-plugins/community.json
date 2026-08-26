@@ -429,5 +429,28 @@
     "npm": "dsh-session-insights",
     "category": "tools",
     "subcategory": "dev"
+  },
+  {
+    "id": "dsh-mcp-manager",
+    "name": "MCP 管理器",
+    "nameEn": "MCP Manager",
+    "author": "wingsky-1",
+    "description": "MCP 服务器管理插件：分工作目录维护项目级 / 全局两级 MCP 配置（项目级随仓库走、可提交 git），模型面经中间层恒定两个原子工具（ws_mcp_search / ws_mcp_call）按会话 cwd 路由、不同仓库互不串台；支持 stdio / streamable-http 双传输、JSON 导入与浮窗状态面板。",
+    "descriptionEn": "MCP server management plugin: per-working-directory project/global config tiers (project-level travels with the repo, committable to git); the model surface stays at two middleware atomic tools (ws_mcp_search / ws_mcp_call) routed by session cwd, so different repos never clash; stdio / streamable-http transports, JSON import and a floating status panel.",
+    "repo": "https://github.com/wingsky-1/dsh-plugin-hub",
+    "npm": "@wingsky-1/dsh-mcp-manager",
+    "category": "tools",
+    "subcategory": "dev"
+  },
+  {
+    "id": "dsh-provider-usage",
+    "name": "用量统计悬浮框",
+    "nameEn": "Provider Usage",
+    "author": "wingsky-1",
+    "description": "多 provider 通用用量统计框架：内置 DeepSeek 官方（余额 + 峰谷倒计时徽标 + 每日用量推算）与 OpenCode Go 开箱即用，自写一个 mjs 适配器文件即可接入任意数据源并在设置页热插拔；渲染在宿主端完成，密钥不进浏览器。",
+    "descriptionEn": "A generic multi-provider usage statistics framework: DeepSeek official (balance + peak/valley countdown badge + daily usage estimation) and OpenCode Go adapters built in out of the box; plug in any data source with one mjs adapter file, hot-swappable from the settings page. Rendering happens host-side - keys never reach the browser.",
+    "repo": "https://github.com/wingsky-1/dsh-plugin-hub",
+    "npm": "@wingsky-1/dsh-provider-usage",
+    "category": "tools"
   }
 ]

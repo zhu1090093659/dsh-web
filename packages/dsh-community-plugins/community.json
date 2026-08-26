@@ -441,5 +441,17 @@
     "npm": "dsh-session-enhance",
     "category": "utility",
     "subcategory": "cleanup"
+  },
+  {
+    "id": "dsh-archive-manager",
+    "name": "归档管理",
+    "nameEn": "Archive Manager",
+    "author": "z953218350",
+    "description": "社区版归档管理插件：按项目分组、搜索筛选、预览对话、一键恢复与删除。",
+    "descriptionEn": "Community archive manager plugin: group sessions by project, search and filter, preview conversations, restore and delete in one click.",
+    "repo": "https://github.com/z953218350/dsh-archive-manager",
+    "npm": "@mlgbnb/dsh-archive-manager",
+    "category": "utility",
+    "subcategory": "cleanup"
   }
 ]

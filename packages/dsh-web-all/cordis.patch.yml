@@ -98,7 +98,22 @@
     - id: web-ui-better-sidebar
       name: 'dsh-better-sidebar'
 
-# external: @mlgbnb/dsh-archive-manager
+# external patch: dsh-session-enhance
+- id: workspace
+  disabled: true
+- id: session-projection-cache
+  disabled: true
+- id: ui-workspace
+  disabled: true
 - insert:
-    - id: web-ui-archive-manager
-      name: '@mlgbnb/dsh-archive-manager'
+    - id: web-ui-workspace-dsh-session-enhance
+      name: 'dsh-session-enhance/workspace'
+    - id: web-ui-session-projection-cache-dsh-session-enhance
+      name: 'dsh-session-enhance/projcache'
+      config:
+        writeEveryEvents: 200
+        writeIntervalMs: 5000
+    - id: web-ui-message-edit-dsh-session-enhance
+      name: 'dsh-session-enhance/message-edit'
+    - id: web-ui-ui-workspace-dsh-session-enhance
+      name: 'dsh-session-enhance'

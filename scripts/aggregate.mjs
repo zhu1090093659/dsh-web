@@ -105,7 +105,7 @@ function findAggregates() {
  * while the generator can JSON.parse each entry).
  */
 function parseManifest(ymlPath, errors) {
-  const manifest = { patchFrom: [], deps: [], self: null, rows: [] }
+  const manifest = { patchFrom: [], deps: [], self: null, rows: [], patchFromNpm: [] }
   let section = null
   for (const raw of readFileSync(ymlPath, 'utf8').split(/\r?\n/)) {
     const line = raw.trim()
@@ -120,6 +120,7 @@ function parseManifest(ymlPath, errors) {
     const entry = entryMatch[1].trim().replace(/\s+#.*$/, '')
     if (section === 'patchFrom') manifest.patchFrom.push(entry)
     else if (section === 'deps') manifest.deps.push(entry)
+    else if (section === 'patchFromNpm') manifest.patchFromNpm.push(entry)
     else if (section === 'rows') {
       let parsed
       try {
@@ -210,8 +211,76 @@ function collectRows(pkgDir, entry, via, visited, errors, blocks) {
   blocks.push({ entry, via, rows })
 }
 
+/** Namespace an external patch insert row id (prefix-only; unlike child rows,
+ * the leading ui-/web-ui- prefixes are NOT stripped, so ids such as
+ * `ui-workspace-<pkg>` stay distinct from the aggregate's own row ids). */
+function namespaceExternalId(id) {
+  return id.startsWith('web-ui-') ? id : `web-ui-${id}`
+}
+
+/**
+ * Parse an external npm package's cordis.patch.yml (read from the hoisted
+ * node_modules directory) into embeddable entries. Two shapes are supported:
+ * top-level `- id: X` + `disabled: true` pairs (kept verbatim) and
+ * `- insert:` blocks whose rows carry `name:` and an optional `config:` block
+ * (re-emitted with namespaced ids so standalone and aggregate installs can
+ * coexist). Comment and blank lines are ignored.
+ */
+function parseExternalPatch(patchPath, errors) {
+  const significant = []
+  for (const [i, raw] of readFileSync(patchPath, 'utf8').split(/\r?\n/).entries()) {
+    const text = raw.trim()
+    if (text && !text.startsWith('#')) significant.push({ text, raw, line: i + 1 })
+  }
+  const disables = []
+  const insertRows = []
+  for (let i = 0; i < significant.length; i++) {
+    const { text } = significant[i]
+    const idMatch = text.match(/^-\s*id:\s*(\S+)\s*$/)
+    if (idMatch) {
+      const next = significant[i + 1]
+      if (next && /^disabled:\s*true\s*$/.test(next.text)) {
+        disables.push(idMatch[1])
+        i++
+        continue
+      }
+    }
+    if (text === '- insert:') {
+      let j = i + 1
+      while (j < significant.length) {
+        const row = significant[j]
+        const rowId = row.text.match(/^-\s*id:\s*(\S+)\s*$/)
+        if (!rowId) {
+          j++
+          continue
+        }
+        const nameLine = significant[j + 1]
+        const nameMatch = nameLine && (nameLine.text.match(/^name:\s*(['"])([^'"]+)\1\s*$/) || nameLine.text.match(/^name:\s*(\S+)\s*$/))
+        if (!nameMatch) {
+          errors.push(`${patchPath}:${row.line}: expected a "name:" line after "- id: ${rowId[1]}"`)
+          j++
+          continue
+        }
+        const name = nameMatch[2] ?? nameMatch[1]
+        const nameIndent = (nameLine.raw.match(/^ */)[0] ?? '').length
+        const configLines = []
+        let k = j + 2
+        while (k < significant.length && !/^-\s*id:\s*\S+\s*$/.test(significant[k].text)) {
+          const indent = (significant[k].raw.match(/^ */)[0] ?? '').length - nameIndent
+          configLines.push(`${' '.repeat(Math.max(0, indent))}${significant[k].text}`)
+          k++
+        }
+        insertRows.push({ id: rowId[1], name, configLines })
+        j = k
+      }
+      i = j - 1
+    }
+  }
+  return { disables, insertRows }
+}
+
 /** Render the aggregate cordis.patch.yml: header + per-source insert blocks. */
-function renderPatch(blocks, externalRows, errors, rel) {
+function renderPatch(blocks, externalRows, externalPatches, errors, rel) {
   const lines = [...PATCH_HEADER]
   const seen = new Set()
   for (const block of blocks) {
@@ -241,6 +310,25 @@ function renderPatch(blocks, externalRows, errors, rel) {
     lines.push('', `# external: ${row.name}`, '- insert:')
     lines.push(`    - id: ${id}`)
     lines.push(`      name: '${row.name}'`)
+  }
+  // External patches: npm packages whose own cordis.patch.yml is embedded
+  // (disables kept verbatim, insert row ids namespaced web-ui-*).
+  for (const ext of externalPatches) {
+    lines.push('', `# external patch: ${ext.name}`)
+    for (const id of ext.parsed.disables) {
+      lines.push(`- id: ${id}`, '  disabled: true')
+    }
+    if (ext.parsed.insertRows.length) {
+      lines.push('- insert:')
+      for (const row of ext.parsed.insertRows) {
+        const id = namespaceExternalId(row.id)
+        if (seen.has(id)) errors.push(`${rel}: duplicate aggregate row id after namespacing: ${id} (${row.name})`)
+        seen.add(id)
+        lines.push(`    - id: ${id}`)
+        lines.push(`      name: '${row.name}'`)
+        for (const config of row.configLines) lines.push(`      ${config}`)
+      }
+    }
   }
   return lines.join('\n') + '\n'
 }
@@ -338,7 +426,16 @@ for (const { pkgDir, ymlPath } of aggregates) {
   if (manifest.patchFrom.length === 0 && !manifest.self) {
     console.log(`[aggregate] WARN ${rel}: aggregate.yml has no patchFrom entries (patch would be empty)`)
   }
-  const patch = renderPatch(blocks, manifest.rows, errors, rel)
+  const externalPatches = []
+  for (const name of manifest.patchFromNpm) {
+    const extPatchPath = join(REPO_ROOT, 'node_modules', name, 'cordis.patch.yml')
+    if (!existsSync(extPatchPath)) {
+      errors.push(`patchFromNpm package not installed: ${ymlPath} -> ${name} (expected ${relative(REPO_ROOT, extPatchPath)}; run pnpm install)`)
+      continue
+    }
+    externalPatches.push({ name, parsed: parseExternalPatch(extPatchPath, errors) })
+  }
+  const patch = renderPatch(blocks, manifest.rows, externalPatches, errors, rel)
   const resolvedDeps = resolveEntries(pkgDir, manifest.deps, 'deps', errors)
   const pkgJson = renderPackageJson(join(pkgDir, 'package.json'), resolvedDeps)
   results.push({ rel, blocks, patch, resolvedDeps, pkgJson })

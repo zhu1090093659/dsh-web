@@ -32,7 +32,7 @@
 - `@linxin666/dsh-web-ui-all@0.3.2` is the previous release; `0.3.3` is unoccupied and is the first dual-published legacy transition version.
 - `scripts/publish-legacy-aggregate.mjs` limits the legacy transition to two versions and writes `dsh.migrate.to` / `dsh.migrate.since` into the legacy tarball.
 - After the second transition version, deprecate `@linxin666/dsh-web-ui-all` with the migration instruction instead of publishing another version.
-- External aggregate dependencies `dsh-better-sidebar@0.15.2` and `@mlgbnb/dsh-archive-manager@1.0.7` are registry-readable.
+- External aggregate dependencies `dsh-better-sidebar@0.15.2` and `dsh-session-enhance@0.2.0` are registry-readable.
 
 ## Compatibility boundary
 

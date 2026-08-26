@@ -2,12 +2,12 @@
 
 English | [中文](README.zh.md)
 
-The one-click aggregate package for the whole dsh web UI family: installing it brings every functional plugin (task-board / git-graph / pet / remote-web-ui / web-ui-settings / skin-center / community-plugins / aionui-panel) plus the external plugins `dsh-better-sidebar` (right panel) and `@mlgbnb/dsh-archive-manager` (settings-page archive manager) and the skin family (`dsh-skins`, skin assets bundled inside). The compat bridge layer is folded into this package (`src/client`), so no separate compat npm package is needed.
+The one-click aggregate package for the whole dsh web UI family: installing it brings every functional plugin (task-board / git-graph / pet / remote-web-ui / web-ui-settings / skin-center / community-plugins / aionui-panel) plus the external plugins `dsh-better-sidebar` (right panel) and `dsh-session-enhance` (session enhancement / archive manager) and the skin family (`dsh-skins`, skin assets bundled inside). The compat bridge layer is folded into this package (`src/client`), so no separate compat npm package is needed.
 
 ## What it is
 
-- **One install, everything on**: its dependencies pull in all sub-plugin packages (dsh-client-ui-aionui-panel / dsh-client-ui-task-board / dsh-client-ui-git-graph / dsh-pet / dsh-remote-web-ui / dsh-ssh / dsh-client-ui-web-ui-settings / dsh-client-ui-skin-center / dsh-client-ui-community-plugins / dsh-skins) plus the external npm plugins `dsh-better-sidebar` (the default right sidebar: explorer / editor / terminal / git / browser) and `@mlgbnb/dsh-archive-manager` (the default settings-page archive manager: group by project, search and filter, preview conversations, restore and delete).
-- **Aggregation carrier**: `cordis.patch.yml` aggregates the `insert` lines of each sub-plugin plus the external `dsh-better-sidebar` and `@mlgbnb/dsh-archive-manager` rows, mounted through the dsh plugin profile mechanism.
+- **One install, everything on**: its dependencies pull in all sub-plugin packages (dsh-client-ui-aionui-panel / dsh-client-ui-task-board / dsh-client-ui-git-graph / dsh-pet / dsh-remote-web-ui / dsh-ssh / dsh-client-ui-web-ui-settings / dsh-client-ui-skin-center / dsh-client-ui-community-plugins / dsh-skins) plus the external npm plugins `dsh-better-sidebar` (the default right sidebar: explorer / editor / terminal / git / browser) and `dsh-session-enhance` (the default session enhancement & archive manager: archive management with search/filter, true physical deletion, cross-workspace drag-and-drop migration, message editing, and physical-file to storages JSON reconciliation).
+- **Aggregation carrier**: `cordis.patch.yml` aggregates the `insert` lines of each sub-plugin plus the external `dsh-better-sidebar` and `dsh-session-enhance` rows, mounted through the dsh plugin profile mechanism.
 - **Right panel**: the right panel is always `dsh-better-sidebar` (the aionui panel can no longer be enabled). Settings → Web UI Plugins → Side Card declares the right panel comes from [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) and edits its everyday settings inline; the provider choice was removed.
 
 ## Install
@@ -63,5 +63,5 @@ See [issue #513](https://github.com/zhu1090093659/dsh-web/issues/513).
 
 - Every sub-plugin activates together. For only a subset, install that sub-plugin package directly.
 - Aggregate rows are namespaced `web-ui-*`, so the bundle can coexist with a standalone install of the same plugin: the loader no longer rejects the duplicate id, the host half runs once (the second source is a no-op), and the browser half is deduped by package name. Keeping both sources has no benefit; prefer one. When the bundle is the source, profile patch config rows must use the `web-ui-*` id (e.g. `web-ui-remote-web-ui` for the remote-web-ui `autoTunnel` row); standalone installs keep the plugin's own id.
-- `dsh-better-sidebar` and `@mlgbnb/dsh-archive-manager` are external npm dependencies (not authored in this repo); they must be published before this package's release (see `docs/publish-prep.md` for the release order).
+- `dsh-better-sidebar` and `dsh-session-enhance` are external npm dependencies (not authored in this repo); they must be published before this package's release (see `docs/publish-prep.md` for the release order).
 - Dependencies on the `@deepseek-ai/*` SDK are pinned; compatibility follows the repository's release cadence.

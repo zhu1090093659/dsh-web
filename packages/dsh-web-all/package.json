@@ -58,7 +58,7 @@
     "@linxin666/dsh-doctor": "workspace:*",
     "@linxin666/dsh-client-ui-web-ui-settings": "workspace:*",
     "@linxin666/dsh-client-ui-skin-center": "workspace:*",
-    "@mlgbnb/dsh-archive-manager": "1.0.7",
-    "dsh-better-sidebar": "0.15.2"
+    "dsh-better-sidebar": "0.15.2",
+    "dsh-session-enhance": "0.2.0"
   }
 }

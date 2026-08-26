@@ -58,8 +58,12 @@ deps:
 # （即将弃用）/ 使用 DSH-better-sidebar」，默认后者），无需行级 config patch。
 rows:
   - {"id": "better-sidebar", "name": "dsh-better-sidebar"}
-  # 外部 npm 插件：dsh-archive-manager（社区版「归档管理」）在设置页提供
-  # Codex 风格会话归档管理（按项目分组、搜索筛选、预览、恢复、物理删除）。
-  # 依赖引用 @mlgbnb/dsh-archive-manager@1.0.7（见 package.json，生成器保留
-  # 非 workspace 依赖），行排在 better-sidebar 之后统一应用。
-  - {"id": "archive-manager", "name": "@mlgbnb/dsh-archive-manager"}
+# 外部 npm 插件 patch 嵌入：dsh-session-enhance（会话管理增强插件，替代原
+# @mlgbnb/dsh-archive-manager「归档管理」，功能升级：真实物理删除、跨工作区
+# 拖拽搬移会话、物理文件与 storages JSON 对账、墓碑防复活）。
+# 生成器读取 node_modules/dsh-session-enhance/cordis.patch.yml，嵌入其禁用
+# 行与三行自身服务（insert 行 id 统一加 web-ui- 前缀与独立安装共存）；
+# 依赖引用 dsh-session-enhance@0.1.1（见 package.json，生成器保留非 workspace
+# 依赖），行排在 better-sidebar 之后统一应用。
+patchFromNpm:
+  - dsh-session-enhance

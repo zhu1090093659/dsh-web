@@ -100,11 +100,31 @@ test('web-ui-all mounts dsh-better-sidebar as an external row', () => {
   assert.match(lines[idx + 1] ?? '', /^ {6}name: 'dsh-better-sidebar'$/)
 })
 
-test('web-ui-all mounts @mlgbnb/dsh-archive-manager as an external row', () => {
+test('web-ui-all embeds dsh-session-enhance as an external patch (replacing dsh-archive-manager)', () => {
   const patch = readFileSync(join(ROOT, 'packages/dsh-web-all/cordis.patch.yml'), 'utf8')
   const lines = patch.split(/\r?\n/)
-  const idx = lines.findIndex((line) => /^ {4}- id: web-ui-archive-manager$/.test(line))
-  assert.ok(idx >= 0, 'web-ui-archive-manager row is missing from the aggregate patch')
-  // The paired name line resolves the scoped npm package from the profile root.
-  assert.match(lines[idx + 1] ?? '', /^ {6}name: '@mlgbnb\/dsh-archive-manager'$/)
+  // The superseded @mlgbnb/dsh-archive-manager row is gone.
+  assert.equal(lines.some((line) => /^ {4}- id: web-ui-archive-manager$/.test(line)), false, 'web-ui-archive-manager row must be removed')
+  // External patch header.
+  const headerIdx = lines.findIndex((line) => line === '# external patch: dsh-session-enhance')
+  assert.ok(headerIdx >= 0, 'dsh-session-enhance external patch block is missing')
+  // Default service rows are disabled verbatim.
+  const patchTail = lines.slice(headerIdx).join('\n')
+  assert.match(patchTail, /- id: workspace\n  disabled: true/)
+  assert.match(patchTail, /- id: session-projection-cache\n  disabled: true/)
+  assert.match(patchTail, /- id: ui-workspace\n  disabled: true/)
+  // The four replacement rows are namespaced web-ui-* and resolve the package subpaths.
+  for (const row of [
+    ['web-ui-workspace-dsh-session-enhance', 'dsh-session-enhance/workspace'],
+    ['web-ui-session-projection-cache-dsh-session-enhance', 'dsh-session-enhance/projcache'],
+    ['web-ui-message-edit-dsh-session-enhance', 'dsh-session-enhance/message-edit'],
+    ['web-ui-ui-workspace-dsh-session-enhance', 'dsh-session-enhance'],
+  ]) {
+    const idx = lines.findIndex((line) => line === `    - id: ${row[0]}`)
+    assert.ok(idx >= 0, `${row[0]} row is missing from the aggregate patch`)
+    assert.match(lines[idx + 1] ?? '', new RegExp(`^ {6}name: '${row[1].replace(/'/g, "\\'")}'$`))
+  }
+  // The projcache row keeps its config block.
+  const projIdx = lines.findIndex((line) => line === '    - id: web-ui-session-projection-cache-dsh-session-enhance')
+  assert.match(lines[projIdx + 3] ?? '', /^ {8}writeEveryEvents: 200$/)
 })

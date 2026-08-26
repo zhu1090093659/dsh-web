@@ -430,6 +430,6 @@
     "category": "tools",
     "subcategory": "dev"
   },
-  { "id": "dsh-bg-image", "name": "背景图插件", "nameEn": "Background Image", "author": "lyh9712", "description": "为 DSH Web 自定义背景壁纸：图片链接 / 本地图片 / 面板不透明度 / 磨砂模糊，侧边栏与聊天区半透明磨砂，设置保存在浏览器（localStorage），卸载零残留。", "descriptionEn": "Custom wallpaper for the DSH Web GUI: image URL / local image / panel opacity / frosted blur; translucent frosted sidebar and chat; settings persist in the browser (localStorage); zero-residue uninstall.", "repo": "https://github.com/lyh9712/dsh-bg-image", "category": "ui", "subcategory": "theme" }
+  { "id": "dsh-bg-image", "name": "背景图插件", "nameEn": "Background Image", "author": "lyh9712", "description": "为 DSH Web 自定义背景壁纸：图片链接 / 本地图片 / 面板不透明度 / 磨砂模糊，侧边栏与聊天区半透明磨砂，设置保存在浏览器（localStorage），卸载零残留。", "descriptionEn": "Custom wallpaper for the DSH Web GUI: image URL / local image / panel opacity / frosted blur; translucent frosted sidebar and chat; settings persist in the browser (localStorage); zero-residue uninstall.", "repo": "https://github.com/lyh9712/dsh-bg-image", "category": "ui", "subcategory": "panel" }
 
 ]

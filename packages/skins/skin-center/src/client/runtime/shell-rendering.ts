@@ -47,7 +47,7 @@ export function shellRenderingCss(): string {
     ${scoped('[id="root"]')} {
       box-sizing: border-box !important;
       height: 100% !important;
-      width: 100% !important;
+      width: calc(100% - var(--dsh-sidebar-width, 0px)) !important;
       max-height: 100% !important;
       overflow: hidden !important;
     }

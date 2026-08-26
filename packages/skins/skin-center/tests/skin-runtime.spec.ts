@@ -132,6 +132,7 @@ describe('shared shell rendering adapter (#954)', () => {
     expect(css).toContain('overflow: hidden !important;')
     expect(css).toContain('height: 100% !important;')
     expect(css).toContain('box-sizing: border-box !important;')
+    expect(css).toContain('width: calc(100% - var(--dsh-sidebar-width, 0px)) !important;')
   })
 
   it('scopes the workspace fade correction to active skin-center visual modes', () => {

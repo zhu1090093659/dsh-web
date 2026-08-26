@@ -451,6 +451,7 @@
     "descriptionEn": "A generic multi-provider usage statistics framework: DeepSeek official (balance + peak/valley countdown badge + daily usage estimation) and OpenCode Go adapters built in out of the box; plug in any data source with one mjs adapter file, hot-swappable from the settings page. Rendering happens host-side - keys never reach the browser.",
     "repo": "https://github.com/wingsky-1/dsh-plugin-hub",
     "npm": "@wingsky-1/dsh-provider-usage",
-    "category": "tools"
+    "category": "tools",
+    "subcategory": "model"
   }
 ]

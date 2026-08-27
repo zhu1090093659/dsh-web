@@ -1,0 +1,82 @@
+/* tokyo-night (东京夜行) skin — component-level patches: translucent panes,
+   links, aionui panel frosted glass, and transition polish. Loaded together
+   with skin.css by the skin-center. */
+
+#root {
+  background: transparent !important;
+}
+
+a {
+  color: #2265c4;
+}
+
+a:visited {
+  color: #9854f1;
+}
+
+body[data-ds-dark-theme] a {
+  color: #7aa2f7;
+}
+
+body[data-ds-dark-theme] a:visited {
+  color: #bb9af7;
+}
+
+a:hover {
+  color: #16458a;
+  text-decoration: underline;
+}
+
+a:active {
+  color: #123a75;
+}
+
+body[data-ds-dark-theme] a:hover {
+  color: #a9c1fa;
+}
+
+body[data-ds-dark-theme] a:active {
+  color: #cfdcfb;
+}
+
+[data-aionui-explorer-col],
+[data-aionui-preview-col] {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.aionui-root {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.aionui-dialog,
+.aionui-menu,
+.aionui-toast {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.aionui-overlay {
+  background: rgba(26, 27, 38, 0.42);
+}
+
+body[data-ds-dark-theme] .aionui-overlay {
+  background: rgba(9, 10, 17, 0.6);
+}
+
+button,
+a,
+.aionui-btn,
+.aionui-menu-item,
+.aionui-explorer-handle,
+.aionui-preview-handle {
+  transition: background-color 0.13s ease, border-color 0.13s ease,
+    box-shadow 0.13s ease, color 0.13s ease, opacity 0.13s ease;
+}
+
+button:disabled,
+.aionui-btn:disabled,
+.aionui-menu-item-disabled {
+  opacity: 0.45;
+}

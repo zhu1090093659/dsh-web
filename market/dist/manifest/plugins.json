@@ -520,6 +520,18 @@
       "npm": "dsh-delete-message",
       "category": "ui",
       "subcategory": "chat"
+    },
+    {
+      "id": "dsh-notion-skill",
+      "name": "Notion 集成",
+      "rank": 42,
+      "nameEn": "Notion Skill",
+      "author": "Zhiyi-Zhao",
+      "description": "DSH Notion 技能：通过官方 REST API 读写 Notion 工作区——搜索/读取页面（转 markdown）、创建/更新页面、查询/新增/更新数据库条目；纯 Python 标准库、零依赖、Windows / macOS / Linux 通用。",
+      "descriptionEn": "A DSH Notion skill: read and write your Notion workspace via the official REST API - search/read pages as markdown, create/update pages, query/add/update database entries; pure Python stdlib, zero dependencies, cross-platform.",
+      "repo": "https://github.com/Zhiyi-Zhao/dsh-notion-skill",
+      "category": "integration",
+      "subcategory": "sync"
     }
   ]
 }

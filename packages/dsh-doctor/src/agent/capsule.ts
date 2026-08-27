@@ -107,7 +107,7 @@ export async function removeCapsuleCredentialFiles(paths: DoctorPaths): Promise<
 
 async function run(command: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs = 6 * 60_000): Promise<{ code: number; stdout: string; stderr: string }> {
   return await new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, { env, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(command, args, { env, shell: process.platform === 'win32', stdio: ['ignore', 'pipe', 'pipe'] })
     let stdout = '', stderr = ''
     child.stdout.on('data', b => { stdout += b })
     child.stderr.on('data', b => { stderr += b })
@@ -156,9 +156,9 @@ export async function provisionCapsule(options: CapsuleOptions): Promise<Capsule
   }
   await writeFile(join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', { mode: 0o600 })
   await rm(previous, { recursive: true, force: true })
-  try { await cp(current, previous, { recursive: true }) } catch {}
+  try { await cp(current, previous, { recursive: true, dereference: true }) } catch {}
   await rm(current, { recursive: true, force: true })
-  await cp(staging, current, { recursive: true })
+  await cp(staging, current, { recursive: true, dereference: true })
   await rm(staging, { recursive: true, force: true })
   manifest.rescueHome = join(current, 'rescue-home')
   await writeFile(join(current, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', { mode: 0o600 })

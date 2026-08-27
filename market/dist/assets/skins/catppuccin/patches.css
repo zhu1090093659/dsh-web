@@ -1,0 +1,73 @@
+/* Catppuccin dsh 皮肤 — L3 自由 selector 补丁 (高敏感度,已向皮肤中心披露)
+ * 仅供 Catppuccin 系精确配色;此处仅覆盖 skin.css 无法表达的自由选择器。
+ */
+
+[id="root"] {
+  background: none;
+}
+
+a {
+  color: #8839ef;
+}
+
+a:visited {
+  color: #6c6f85;
+}
+
+body[data-ds-dark-theme] a {
+  color: #cba6f7;
+}
+
+body[data-ds-dark-theme] a:visited {
+  color: #9399b2;
+}
+
+a:hover {
+  color: #6c6f85;
+  text-decoration: underline;
+}
+
+a:active {
+  color: #5c5f77;
+}
+
+body[data-ds-dark-theme] a:hover {
+  color: #b4befe;
+  text-decoration: underline;
+}
+
+body[data-ds-dark-theme] a:active {
+  color: #cdd6f4;
+}
+
+:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+button, a, .aionui-btn, .aionui-menu-item {
+  transition: background-color .13s, border-color .13s, box-shadow .13s, color .13s, opacity .13s;
+}
+
+::-webkit-scrollbar-thumb {
+  transition: background-color .13s;
+}
+
+[data-pane="sidebar"] {
+  color: var(--dsw-alias-label-primary);
+}
+
+[role="tooltip"] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
+}
+
+[role="dialog"] {
+  color: var(--dsw-alias-label-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button, a, .aionui-btn, .aionui-menu-item, ::-webkit-scrollbar-thumb {
+    transition: none;
+  }
+}

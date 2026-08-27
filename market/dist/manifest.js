@@ -512,6 +512,23 @@ window.SKIN_MANIFEST = {
         "stylesheet": "skin.css",
         "patches": "patches.css"
       }
+    },
+    {
+      "id": "catppuccin",
+      "name": "Catppuccin",
+      "nameEn": "Catppuccin",
+      "author": "Catppuccin 社区配色 · dsh-web 适配",
+      "tagline": "柔和色彩主题 · Latte 浅色 / Mocha 深色 · 平铺纯色面板",
+      "description": "将知名 Catppuccin 配色移植为 dsh 皮肤：浅色方案使用 Latte 调色板，深色方案使用 Mocha 调色板，全部 dsh 设计令牌重映射，整套以纯色平铺面板呈现，柔和低饱和，适合长时间阅读。",
+      "accent": "#8839ef",
+      "preview": {
+        "light": "assets/skins/catppuccin/preview/light.jpg",
+        "dark": "assets/skins/catppuccin/preview/dark.jpg"
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css"
+      }
     }
   ]
 }

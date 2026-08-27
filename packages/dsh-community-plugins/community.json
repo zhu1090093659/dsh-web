@@ -488,5 +488,17 @@
     "repo": "https://github.com/Zhiyi-Zhao/dsh-notion-skill",
     "category": "integration",
     "subcategory": "sync"
+  },
+  {
+    "id": "dsh-passwords",
+    "name": "远程访问网关",
+    "nameEn": "Access Gateway",
+    "author": "slywalker2006",
+    "description": "为 DSH Web 公网部署增加登录与多租户控制的网关插件：自动 HTTPS、多账号权限/配额/沙箱、会话级访问控制、登录限流与审计日志、SQLite 静态加密（内置于 dsh web 前端，中英双语 UI）。",
+    "descriptionEn": "Server-grade gateway that turns DeepSeek Harness into a multi-tenant platform: remote access + automatic HTTPS, per-subuser permissions and quotas, sandbox enforcement, first-run setup, SQLite auth with at-rest encryption, rate-limit and audit log (bilingual UI).",
+    "repo": "https://github.com/slywalker2006/dsh-passwords",
+    "npm": "dsh-passwords",
+    "category": "security",
+    "subcategory": "access"
   }
 ]

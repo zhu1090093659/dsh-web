@@ -6,7 +6,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { decideLinkAction } from './link-profile.mjs'
+import { decideLinkAction, bundlePatchChildNames } from './link-profile.mjs'
 
 const TARGET = '../../dsh-web-ui/packages/dsh-web-ui'
 
@@ -32,4 +32,23 @@ test('real file -> skip', () => {
 
 test('real dir -> skip', () => {
   assert.equal(decideLinkAction('dir', TARGET, null), 'skip-report')
+})
+
+test('bundle patch child names include scoped and plain plugin rows', () => {
+  const patch = `- id: session-persistence-jsonl
+  disabled: true
+
+- insert:
+    - id: session-rdb
+      name: '@morlay/session-rdb'
+    - id: ui-conversation-message-actions
+      name: '@morlay/ui-conversation-message-actions'
+    - id: better-sidebar
+      name: 'dsh-better-sidebar'
+`
+  assert.deepEqual(bundlePatchChildNames(patch), [
+    '@morlay/session-rdb',
+    '@morlay/ui-conversation-message-actions',
+    'dsh-better-sidebar',
+  ])
 })

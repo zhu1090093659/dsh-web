@@ -1,7 +1,0 @@
-# dsh-chat-recovery bundle patch: inserts its plugin row into the web profile
-# roster. Applied as a profile bundle layer (the `dsh.bundle.patch` manifest
-# field); install with
-# `dsh plugin --profile web add link:<repo>/packages/dsh-chat-recovery`.
-- insert:
-    - id: ui-chat-recovery
-      name: '@linxin666/dsh-chat-recovery'

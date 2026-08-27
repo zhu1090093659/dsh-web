@@ -8,6 +8,7 @@ node_modules/
 *.log
 .DS_Store
 .codegraph/
+.zcode/
 
 # GUI 测试截图
 gui-test-screenshots/

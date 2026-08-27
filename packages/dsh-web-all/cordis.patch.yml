@@ -84,11 +84,6 @@
     - id: web-ui-describe-image
       name: '@linxin666/dsh-tool-describe-image'
 
-# from ../dsh-chat-recovery
-- insert:
-    - id: web-ui-chat-recovery
-      name: '@linxin666/dsh-chat-recovery'
-
 # from ../dsh-liangshen
 - insert:
     - id: web-ui-liangshen
@@ -118,12 +113,46 @@
 - id: web-ui-ssh
   config: {"enabled":false}
 
-# external: dsh-better-sidebar
+# external bundle: dsh-better-sidebar
+
+# from external bundle dsh-better-sidebar (insert row web-ui-better-sidebar)
 - insert:
     - id: web-ui-better-sidebar
       name: 'dsh-better-sidebar'
 
-# external: @mlgbnb/dsh-archive-manager
+# external bundle: @mlgbnb/dsh-archive-manager
+
+# from external bundle @mlgbnb/dsh-archive-manager (insert row web-ui-archive-manager)
 - insert:
     - id: web-ui-archive-manager
       name: '@mlgbnb/dsh-archive-manager'
+
+# external bundle: @morlay/better-session
+
+# from external bundle @morlay/better-session (insert row web-ui-session-branch)
+- insert:
+    - id: web-ui-session-branch
+      name: '@morlay/session-branch'
+
+# from external bundle @morlay/better-session (insert row web-ui-session-rdb)
+- insert:
+    - id: web-ui-session-rdb
+      name: '@morlay/session-rdb'
+      config:
+        type: sqlite
+        path: !!js dshHomePath('sessions', 'sessions.sqlite')
+
+# from external bundle @morlay/better-session (insert row web-ui-conversation-message-actions)
+- insert:
+    - id: web-ui-conversation-message-actions
+      name: '@morlay/ui-conversation-message-actions'
+
+# inactive by default: the rows above ship disabled, so the stock persistence
+# backend keeps serving sessions until you opt in. Enable with profile-level
+# `disabled: false` overrides (or run scripts/dsh-better-session.mjs enable).
+- id: web-ui-session-branch
+  disabled: true
+- id: web-ui-session-rdb
+  disabled: true
+- id: web-ui-conversation-message-actions
+  disabled: true

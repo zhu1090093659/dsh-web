@@ -73,3 +73,11 @@ minimumReleaseAgeExclude:
   # pnpm 11's minimum-release-age guard must not reject the fresh version.
   # Scoped to that exact version so later upstream publishes get no cooldown bypass.
   - '@mlgbnb/dsh-archive-manager@1.0.7'
+  # The aggregate ships the @morlay/better-session family (inactive by
+  # default; see packages/dsh-web-all README). 0.0.11 was republished shortly
+  # after 0.0.10, so pnpm 11's minimum-release-age guard needs these exact
+  # pins exempted; scoped so later upstream publishes get no cooldown bypass.
+  - '@morlay/better-session@0.0.11'
+  - '@morlay/session-branch@0.0.11'
+  - '@morlay/session-rdb@0.0.11'
+  - '@morlay/ui-conversation-message-actions@0.0.11'

@@ -2,12 +2,12 @@
 
 English | [中文](README.zh.md)
 
-The one-click aggregate package for the whole dsh web UI family: installing it brings every functional plugin (task-board / git-graph / pet / remote-web-ui / web-ui-settings / skin-center / community-plugins / aionui-panel) plus the external plugins `dsh-better-sidebar` (right panel) and `@mlgbnb/dsh-archive-manager` (settings-page archive manager) and the skin family (`dsh-skins`, skin assets bundled inside). The compat bridge layer is folded into this package (`src/client`), so no separate compat npm package is needed.
+The one-click aggregate package for the whole dsh web UI family: installing it brings every functional plugin (task-board / git-graph / pet / remote-web-ui / web-ui-settings / skin-center / community-plugins / aionui-panel) plus the external plugins `dsh-better-sidebar` (right panel), `@mlgbnb/dsh-archive-manager` (settings-page archive manager), `@morlay/better-session` (branching session editing; ships inactive by default) and the skin family (`dsh-skins`, skin assets bundled inside). The compat bridge layer is folded into this package (`src/client`), so no separate compat npm package is needed.
 
 ## What it is
 
-- **One install, everything on**: its dependencies pull in all sub-plugin packages (dsh-client-ui-aionui-panel / dsh-client-ui-task-board / dsh-client-ui-git-graph / dsh-pet / dsh-remote-web-ui / dsh-ssh / dsh-client-ui-web-ui-settings / dsh-client-ui-skin-center / dsh-client-ui-community-plugins / dsh-skins) plus the external npm plugins `dsh-better-sidebar` (the default right sidebar: explorer / editor / terminal / git / browser) and `@mlgbnb/dsh-archive-manager` (the default settings-page archive manager: group by project, search and filter, preview conversations, restore and delete).
-- **Aggregation carrier**: `cordis.patch.yml` aggregates the `insert` lines of each sub-plugin plus the external `dsh-better-sidebar` and `@mlgbnb/dsh-archive-manager` rows, mounted through the dsh plugin profile mechanism.
+- **One install, everything on**: its dependencies pull in all sub-plugin packages (dsh-client-ui-aionui-panel / dsh-client-ui-task-board / dsh-client-ui-git-graph / dsh-pet / dsh-remote-web-ui / dsh-ssh / dsh-client-ui-web-ui-settings / dsh-client-ui-skin-center / dsh-client-ui-community-plugins / dsh-skins) plus the external npm plugins `dsh-better-sidebar` (the default right sidebar: explorer / editor / terminal / git / browser), `@mlgbnb/dsh-archive-manager` (the default settings-page archive manager: group by project, search and filter, preview conversations, restore and delete) and `@morlay/better-session` (branching session editing: in-place edit / retry / rewind / fork on RDB persistence; ships inactive by default — see [Opting into better-session](#opting-into-better-session)).
+- **Aggregation carrier**: `cordis.patch.yml` aggregates the `insert` lines of each sub-plugin plus the external plugin rows, mounted through the dsh plugin profile mechanism. External profile bundles such as `@morlay/better-session` are expanded by the generator: their patch rows become importable aggregate rows, the bundle's own harness-row patches are preserved, and an external row marked `"inactive": true` gains trailing `disabled: true` overrides so nothing mounts until you opt in.
 - **Selective defaults**: bundle rows can ship a seed config that differs from the standalone package's default. `@linxin666/dsh-ssh` ships disabled in the aggregate (low usage for most users): flip it on once under Settings → Web Plugins → SSH; the switch persists like any settings edit. The standalone package is unaffected.
 - **Right panel**: the right panel is always `dsh-better-sidebar` (the aionui panel can no longer be enabled). Settings → Web Plugins → Side Card declares the right panel comes from [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) and edits its everyday settings inline; the provider choice was removed.
 
@@ -60,9 +60,36 @@ The group moved to a first-level `settings.section` registration in 0.1.18 and s
 
 See [issue #513](https://github.com/zhu1090093659/dsh-web/issues/513).
 
+## Opting into better-session
+
+`@morlay/better-session` ships with the aggregate but stays **inactive by default**: every expanded row (including its "disable stock jsonl persistence" patch) carries a trailing `disabled: true` override, so session storage keeps running on the stock jsonl backend until you explicitly opt in. The npm bits are installed either way.
+
+Why to enable (from [morlay/better-session](https://github.com/morlay/better-session)):
+
+- True in-place session editing on an RDB (SQLite) store: edit / retry / reroll rewrite history without forking; only explicit forks create new session ids; live sessions support rewind.
+- One canonical log per session — no stale-branch accumulation from repeated retries — with single-writer integrity enforced by SQLite transactions.
+
+What you give up / must accept:
+
+- Persistence moves to `$DSH_HOME/sessions/sessions.sqlite`. **Legacy jsonl sessions do not migrate automatically**; without importing, the conversation list starts empty.
+- The switch is one-way per point in time: sessions created while enabled exist only in SQLite (new jsonl writes stop once enabled). Run the importer right before enabling.
+- The stock jsonl persistence row stays disabled for as long as you stay opted in, and two hosts cannot write one store at the same time.
+
+The recommended path is the **Better Session** section inside the 性能引擎 (dsh-perf) card under Settings → Web 插件 (better-session itself is session-performance governance, so its management surface nests there): it shows both stores, runs the migration with an automatic backup on confirm, and flips the managed block live — no restart needed beyond refreshing open tabs. Repository-checkout alternative:
+
+Enablement steps from a repository checkout (`dsh web` stopped):
+
+```sh
+node scripts/dsh-better-session.mjs status           # inspect both stores and the current posture
+node scripts/dsh-better-session.mjs migrate --apply  # import legacy session.jsonl.zstd logs (idempotent, auto-backup)
+node scripts/dsh-better-session.mjs enable --yes     # write the managed profile overrides, then start dsh web
+```
+
+`node scripts/dsh-better-session.mjs disable` removes the managed block and returns the aggregate to its shipped inactive state on next restart. npm-only installs can append equivalent `disabled: false` overrides for `web-ui-session-branch`, `web-ui-session-rdb` and `web-ui-conversation-message-actions` in the profile patch manually; migrating existing sessions currently requires a repository checkout.
+
 ## Known limitations
 
 - Every sub-plugin activates together. For only a subset, install that sub-plugin package directly.
 - Aggregate rows are namespaced `web-ui-*`, so the bundle can coexist with a standalone install of the same plugin: the loader no longer rejects the duplicate id, the host half runs once (the second source is a no-op), and the browser half is deduped by package name. Keeping both sources has no benefit; prefer one. When the bundle is the source, profile patch config rows must use the `web-ui-*` id (e.g. `web-ui-remote-web-ui` for the remote-web-ui `autoTunnel` row); standalone installs keep the plugin's own id.
-- `dsh-better-sidebar` and `@mlgbnb/dsh-archive-manager` are external npm dependencies (not authored in this repo); they must be published before this package's release (see `docs/publish-prep.md` for the release order).
+- `dsh-better-sidebar`, `@mlgbnb/dsh-archive-manager` and `@morlay/better-session` are external npm dependencies (not authored in this repo); they must be published before this package's release (see `docs/publish-prep.md` for the release order). better-session additionally ships inactive by default — see [Opting into better-session](#opting-into-better-session) for the trade-offs and switch.
 - Dependencies on the `@deepseek-ai/*` SDK are pinned; compatibility follows the repository's release cadence.

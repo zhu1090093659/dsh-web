@@ -52,7 +52,6 @@
     "@linxin666/dsh-remote-web-ui": "workspace:*",
     "@linxin666/dsh-ssh": "workspace:*",
     "@linxin666/dsh-tool-describe-image": "workspace:*",
-    "@linxin666/dsh-chat-recovery": "workspace:*",
     "@linxin666/dsh-liangshen": "workspace:*",
     "@linxin666/dsh-client-ui-skill-explorer": "workspace:*",
     "@linxin666/dsh-desktop-launcher": "workspace:*",
@@ -60,6 +59,7 @@
     "@linxin666/dsh-client-ui-web-ui-settings": "workspace:*",
     "@linxin666/dsh-client-ui-skin-center": "workspace:*",
     "@mlgbnb/dsh-archive-manager": "1.0.7",
+    "@morlay/better-session": "0.0.11",
     "dsh-better-sidebar": "0.15.2"
   }
 }

@@ -5,6 +5,7 @@ import z from 'schemastery'
 import { mountOnce } from './mount-once.ts'
 import { PerfMeter, type PerfMode, type PerfMeterOptions } from './host/perf-meter.ts'
 import { makePerfStatsRoute } from './host/routes.ts'
+import { makeBetterSessionRoutes } from './bsm/host-routes.ts'
 
 export const name = 'dsh-perf'
 export const inject = ['webServer']
@@ -117,11 +118,23 @@ export const apply = mountOnce('@linxin666/dsh-perf', (ctx: Context, config?: Co
     onChange: rearm,
   })
 
+  // Better Session 管理面（第三方外部集成）：路由独立于 perf 自身开关，
+  // 注册失败只降级日志，绝不影响宿主启动。
+  const bsmDisposers: Array<() => void> = []
+  try {
+    for (const route of makeBetterSessionRoutes()) bsmDisposers.push(ctx.webServer.register(route))
+  } catch (error) {
+    console.debug('[dsh-perf] better-session routes degraded:', error)
+  }
+
   ctx.effect(() => {
     rearm()
     return () => {
       disposeRoutes?.()
       meter?.stop()
+      for (const dispose of bsmDisposers) {
+        try { dispose() } catch { /* route fiber already gone */ }
+      }
     }
   }, 'dsh-perf: runtime')
 })

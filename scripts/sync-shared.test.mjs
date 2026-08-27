@@ -17,13 +17,13 @@ test('header/strip round-trips every file kind', () => {
   }
 })
 
-test('copies cover the settings trio for eight consumers plus host and http helpers', () => {
+test('copies cover the settings trio for all consumers plus host and http helpers', () => {
   // Normalize separators: node:path join yields backslashes on Windows, and
   // the copy-count buckets below match on forward slashes.
   const entries = copyEntries().map(entry => ({ ...entry, target: entry.target.replaceAll('\\', '/') }))
-  assert.equal(entries.length, 103)
+  assert.equal(entries.length, 102)
   const clientTrio = entries.filter(entry => entry.target.includes('/src/client/'))
-  assert.equal(clientTrio.length, 43)
+  assert.equal(clientTrio.length, 42)
   const hostCopies = entries.filter(entry => entry.target.includes('/src/host/')
     || entry.target.includes('/src/dsh-home.ts')
     || entry.target.includes('/src/mount-once.ts')

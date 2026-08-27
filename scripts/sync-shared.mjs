@@ -111,7 +111,6 @@ const MANIFEST = [
       'packages/dsh-market/src/client/telemetry.ts',
       'packages/dsh-pet/src/client/telemetry.ts',
       'packages/skins/skin-center/src/client/telemetry.ts',
-      'packages/dsh-chat-recovery/src/client/telemetry.ts',
       'packages/dsh-desktop-launcher/src/client/telemetry.ts',
       'packages/dsh-doctor/src/client/telemetry.ts',
       'packages/dsh-git-graph/src/client/telemetry.ts',

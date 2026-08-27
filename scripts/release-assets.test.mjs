@@ -58,7 +58,7 @@ test('packOne: rejects when npm pack reports no filename', () => {
 test('publishablePackages: drops private family packages', () => {
   const out = publishablePackages([
     { name: '@linxin666/dsh-ssh', version: '0.2.4' },
-    { name: '@linxin666/dsh-chat-recovery', version: '0.2.4', private: true },
+    { name: '@linxin666/dsh-pet', version: '0.2.4', private: true },
   ])
   assert.deepEqual(out, [{ name: '@linxin666/dsh-ssh', version: '0.2.4' }])
 })

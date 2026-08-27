@@ -86,10 +86,39 @@ function externalPackages() {
       const entryPkg = resolvePath(dirname(require.resolve(`${name}/package.json`, { paths: [dshWebUiAllDir] })))
       const realDir = realpathSync(entryPkg)
       externals.push({ fullName: name, dir: realDir })
+      // Aggregate patch rows can come from a bundle's cordis.patch.yml. A
+      // bundle-only package (dsh.bundle.patch, no importable entry) cannot be
+      // loaded by the loader itself, but the rows it inserts name its child
+      // packages, so those children must also resolve from the profile root.
+      const bundleManifest = JSON.parse(readFileSync(join(realDir, 'package.json'), 'utf8'))
+      const bundlePatch = bundleManifest.dsh?.bundle?.patch
+      if (typeof bundlePatch !== 'string') continue
+      const patchPath = join(realDir, bundlePatch)
+      if (!existsSync(patchPath)) continue
+      for (const line of readFileSync(patchPath, 'utf8').split(/\r?\n/)) {
+        const match = line.match(/^\s*name:\s*['"]([^'"]+)['"]\s*$/) || line.match(/^\s*name:\s*(\S+)\s*$/)
+        if (!match) continue
+        const childName = match[1]
+        if (childName.startsWith(FAMILY_SCOPE) || externals.some((e) => e.fullName === childName)) continue
+        try {
+          const childPkg = resolvePath(dirname(require.resolve(`${childName}/package.json`, { paths: [realDir] })))
+          externals.push({ fullName: childName, dir: realpathSync(childPkg) })
+        } catch {}
+      }
     } catch {}
   }
   return externals
-} 
+}
+
+/** Parse package names referenced by an external bundle's patch rows. */
+export function bundlePatchChildNames(patchText) {
+  const names = []
+  for (const line of patchText.split(/\r?\n/)) {
+    const match = line.match(/^\s*name:\s*['"]([^'"]+)['"]\s*$/) || line.match(/^\s*name:\s*(\S+)\s*$/)
+    if (match) names.push(match[1])
+  }
+  return names
+}
 
 function main() {
   const DRY = process.argv.includes('--dry-run')

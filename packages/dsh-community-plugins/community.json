@@ -465,5 +465,17 @@
     "npm": "dsh-milestone",
     "category": "ui",
     "subcategory": "chat"
+  },
+  {
+    "id": "dsh-delete-message",
+    "name": "消息删除",
+    "nameEn": "Delete Message",
+    "author": "viplocco",
+    "description": "每条消息操作区的垃圾桶按钮：确认后经官方 surface-replace 契约将消息从模型上下文移除并从转录隐藏，原始日志不动、随时可恢复；覆盖用户/助手/注入行/工具调用/Think 卡，失败回合整窗清理与步骤级删除，删除前预检置灰、过渡动画，中英双语界面。",
+    "descriptionEn": "A trash icon in every message action bar: confirmed deletes remove the message from model context via the official surface-replace contract and hide it from the transcript, while raw logs stay intact and recoverable. Covers user/assistant/injected rows, tool calls and Think cards; whole-window cleanup of failed turns, step-level deletion, preflight graying, transition animations, bilingual zh/en UI.",
+    "repo": "https://github.com/viplocco/dsh-delete-message",
+    "npm": "dsh-delete-message",
+    "category": "ui",
+    "subcategory": "chat"
   }
 ]

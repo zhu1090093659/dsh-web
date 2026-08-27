@@ -29,10 +29,14 @@
  *     patchFrom order, with per-source comment headers);
  *   - deps entries are resolved to each child's package.json "name" and
  *     written into the aggregate's dependencies as "workspace:*";
- *   - rows entries (single-line JSON flow mappings) are EXTERNAL insert rows
+ *   - rows entries (single-line JSON flow mappings) are EXTERNAL plugin rows
  *     for npm packages outside this repo (the row's `name` resolves from the
  *     profile root like any child); they are emitted after the patchFrom
- *     blocks, with their id namespaced like every other row.
+ *     blocks, with their id namespaced like every other row. A row whose
+ *     package declares `dsh.bundle` is expanded: its cordis.patch.yml is
+ *     parsed with the same row rules, insert rows are emitted under their
+ *     namespaced aggregate id (their `name` is a real importable plugin
+ *     package), and bundle-level bare rows stay verbatim patches.
  *   - patches entries (single-line JSON flow mappings) are CONFIG-OVERRIDE
  *     patches for this aggregate's OWN inserted rows (single-object form:
  *     {"id", "config"}; id must be a namespaced aggregate row id, config is
@@ -50,12 +54,14 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join, relative, resolve as resolvePath } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolvePath(SCRIPT_DIR, '..')
 const CHECK = process.argv.includes('--check')
+const require = createRequire(join(REPO_ROOT, 'package.json'))
 
 /**
  * Namespace one child row id for the aggregate patch. The bundle prefix
@@ -171,12 +177,15 @@ function parseManifest(ymlPath, errors) {
 /**
  * Parse a child's cordis.patch.yml into row blocks. Two kinds are supported:
  * - insert rows under a "- insert:" block (own plugin rows; id is namespaced
- *   later, config preserved when present);
+ *   later, config preserved when present); these must carry a "name:" line.
  * - top-level bare rows ("- id:" directly, no insert wrapper): patches to an
  *   already-mounted harness/plugin row by id (config replaced as a whole), so
- *   their id and config survive verbatim into the aggregate patch.
+ *   their id and config survive verbatim into the aggregate patch. A bare
+ *   patch may omit "name:" because a harness patch can disable/override a row
+ *   it does not own (for example `- id: session-persistence-jsonl` plus
+ *   `disabled: true`); "name:" is still parsed when present.
  * The file format is the repo's fixed YAML subset: "- id:" followed by
- * "name:", then optional "config:" with deeper-indented key lines.
+ * optional "name:", then optional "config:" with deeper-indented key lines.
  */
 function parsePatchBlocks(patchPath, errors) {
   const significant = []
@@ -200,9 +209,11 @@ function parsePatchBlocks(patchPath, errors) {
       errors.push(`${patchPath}:${line.line}: expected a "- insert:" block before indented "- id:${idMatch[1]}"`)
       continue
     }
+    // An indented "- id:" line closes the current insert block when the
+    // previous insert row is complete; a top-level bare row is always a patch.
     if (idIndent === 0) inInsert = false
+    const block = { kind: inInsert ? 'insert' : 'patch', id: idMatch[2], name: '', extraLines: [], configLines: [] }
     const subIndent = idIndent + 2
-    const block = { kind: inInsert ? 'insert' : 'patch', id: idMatch[2], name: '', configLines: [] }
     let j = i + 1
     const nameLine = significant[j]
     if (nameLine && nameLine.text.startsWith(' '.repeat(subIndent)) && /^name:/.test(nameLine.text.slice(subIndent))) {
@@ -211,20 +222,36 @@ function parsePatchBlocks(patchPath, errors) {
       if (nameMatch) {
         block.name = nameMatch[2] ?? nameMatch[1]
         j++
-        const configLine = significant[j]
-        if (configLine && configLine.text.startsWith(' '.repeat(subIndent)) && /^config:/.test(configLine.text.slice(subIndent))) {
-          j++
-          while (j < significant.length) {
-            const candidate = significant[j]
-            const indent = candidate.text.length - candidate.text.trimStart().length
-            if (indent <= subIndent) break
-            block.configLines.push(candidate.text)
-            j++
-          }
-        }
       }
     }
-    if (!block.name) {
+    // Top-level patch rows may carry scalar keys besides name/config (for
+    // example `disabled: true`); preserve them verbatim.
+    while (j < significant.length) {
+      const candidate = significant[j]
+      const indent = candidate.text.length - candidate.text.trimStart().length
+      if (indent <= idIndent) break
+      if (indent <= subIndent) {
+        const payload = candidate.text.slice(subIndent)
+        if (/^config:/.test(payload)) {
+          j++
+          while (j < significant.length) {
+            const nested = significant[j]
+            const nestedIndent = nested.text.length - nested.text.trimStart().length
+            if (nestedIndent <= subIndent) break
+            block.configLines.push(nested.text)
+            j++
+          }
+          continue
+        }
+        if (block.kind === 'patch' && !/^name:/.test(payload)) {
+          block.extraLines.push(candidate.text)
+          j++
+          continue
+        }
+      }
+      break
+    }
+    if (block.kind === 'insert' && !block.name) {
       errors.push(`${patchPath}:${line.line}: expected a "name:" line after "- id: ${block.id}"`)
       i = j - 1
       continue
@@ -281,8 +308,51 @@ function pushConfig(lines, configLines, keyIndent) {
   for (const configLine of configLines) lines.push(configLine)
 }
 
+/**
+ * Resolve one external row package to its directory. npm resolution anchors
+ * at the aggregate package, mirroring the pnpm-hoisted profile layout that
+ * the generated patch rows rely on.
+ */
+function resolveExternalPackage(name, aggregateDir, errors, rel) {
+  try {
+    const pkgPath = require.resolve(`${name}/package.json`, { paths: [aggregateDir] })
+    return dirname(pkgPath)
+  } catch (e) {
+    errors.push(`${rel}: cannot resolve external package ${name}: ${e.message}`)
+    return null
+  }
+}
+
+/**
+ * Expand one external row. A plain plugin package stays a single insert row;
+ * a `dsh.bundle` package contributes its patch rows directly, because the
+ * loader resolves row `name:` values as importable plugins and cannot import
+ * a bundle-only package (such packages ship only `dsh.bundle.patch`).
+ */
+function expandExternalRow(row, aggregateDir, errors, rel) {
+  const dir = resolveExternalPackage(row.name, aggregateDir, errors, rel)
+  if (!dir) return null
+  let manifest
+  try {
+    manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
+  } catch (e) {
+    errors.push(`${rel}: cannot read external package manifest for ${row.name}: ${e.message}`)
+    return null
+  }
+  const bundlePatch = manifest.dsh?.bundle?.patch
+  if (typeof bundlePatch !== 'string') {
+    return { kind: 'row', row }
+  }
+  const patchPath = join(dir, bundlePatch)
+  if (!existsSync(patchPath)) {
+    errors.push(`${rel}: external bundle ${row.name} declares dsh.bundle.patch ${bundlePatch} but the file is missing`)
+    return null
+  }
+  return { kind: 'bundle', name: row.name, dir, rows: parsePatchBlocks(patchPath, errors) }
+}
+
 /** Render the aggregate cordis.patch.yml: header + per-source insert blocks, plus verbatim harness-row patches and own-row config overrides. */
-function renderPatch(blocks, externalRows, ownPatches, errors, rel) {
+function renderPatch(blocks, externalRows, ownPatches, errors, rel, aggregateDir) {
   const lines = [...PATCH_HEADER]
   const seen = new Set()
   const patchedIds = new Set()
@@ -333,7 +403,15 @@ function renderPatch(blocks, externalRows, ownPatches, errors, rel) {
     lines.push('', `# config override for ${targetId} (seed default; settings wins once the user edits it)`, `- id: ${targetId}`)
     lines.push(`  config: ${JSON.stringify(patch.config)}`)
   }
-  // External rows: npm packages outside this repo, mounted like any child.
+  // External rows: npm packages outside this repo. Plain plugins mount like
+  // any child; external bundles expand their own patch rows here so their
+  // importable plugin rows land in the composed tree (bundle-only packages
+  // cannot be imported by the loader themselves). A row may declare
+  // `"inactive": true` (for example better-session, which would otherwise
+  // swap the session persistence backend on upgrade): bundle patch rows are
+  // omitted entirely and every emitted insert row gets a trailing
+  // `disabled: true` override, so the bits stay installed while nothing
+  // mounts until the user opts in.
   for (const row of externalRows) {
     if (typeof row.id !== 'string' || !row.id) {
       errors.push(`${rel}: external row is missing a string "id": ${JSON.stringify(row)}`)
@@ -343,12 +421,65 @@ function renderPatch(blocks, externalRows, ownPatches, errors, rel) {
       errors.push(`${rel}: external row "${row.id}" is missing a string "name"`)
       continue
     }
-    const id = namespaceId(row.id)
-    if (seen.has(id)) errors.push(`${rel}: duplicate aggregate row id after namespacing: ${id} (${row.name})`)
-    seen.add(id)
-    lines.push('', `# external: ${row.name}`, '- insert:')
-    lines.push(`    - id: ${id}`)
-    lines.push(`      name: '${row.name}'`)
+    if (row.inactive !== undefined && typeof row.inactive !== 'boolean') {
+      errors.push(`${rel}: external row "${row.id}" declares non-boolean "inactive": ${JSON.stringify(row.inactive)}`)
+      continue
+    }
+    const inactiveIds = []
+    const expanded = expandExternalRow(row, aggregateDir, errors, rel)
+    if (!expanded) continue
+    if (expanded.kind === 'row') {
+      const id = namespaceId(row.id)
+      if (seen.has(id)) errors.push(`${rel}: duplicate aggregate row id after namespacing: ${id} (${row.name})`)
+      seen.add(id)
+      lines.push('', `# external: ${row.name}`, '- insert:')
+      lines.push(`    - id: ${id}`)
+      lines.push(`      name: '${row.name}'`)
+      if (row.inactive === true) inactiveIds.push(id)
+    } else {
+      lines.push('', `# external bundle: ${expanded.name}`)
+      for (const patchRow of expanded.rows) {
+        if (patchRow.kind === 'patch') {
+          // An inactive external contributes NO patch rows: they retune other
+          // entries (for example better-session's own "disable stock jsonl"
+          // harness row), and re-patching those ids with `disabled: true`
+          // would flip the TARGET off too — bare rows merge into the entry
+          // they name, they are not self-inert. Skipping leaves the upstream
+          // row exactly as other sources tuned it.
+          if (row.inactive === true) continue
+          // The dsh-perf child intentionally patches session-persistence-jsonl,
+          // and better-session's bundle disables that same harness row. Emit
+          // the bundle patch after the child's row so its override wins.
+          if (patchedIds.has(patchRow.id)) {
+            lines.push('', `# from external bundle ${expanded.name} (patch row ${patchRow.id}; overrides earlier source patch)`)
+          } else {
+            lines.push('', `# from external bundle ${expanded.name} (patch row ${patchRow.id})`)
+          }
+          patchedIds.add(patchRow.id)
+          lines.push(`- id: ${patchRow.id}`)
+          for (const extra of patchRow.extraLines ?? []) lines.push(extra)
+          pushConfig(lines, patchRow.configLines ?? [], 2)
+          continue
+        }
+        const id = namespaceId(patchRow.id)
+        if (seen.has(id)) errors.push(`${rel}: duplicate aggregate row id after external bundle expansion: ${id} (${patchRow.name})`)
+        seen.add(id)
+        lines.push('', `# from external bundle ${expanded.name} (insert row ${id})`)
+        lines.push('- insert:')
+        lines.push(`    - id: ${id}`)
+        lines.push(`      name: '${patchRow.name}'`)
+        pushConfig(lines, patchRow.configLines ?? [], 6)
+        if (row.inactive === true) inactiveIds.push(id)
+      }
+    }
+    if (inactiveIds.length > 0) {
+      lines.push('', '# inactive by default: the rows above ship disabled, so the stock persistence',
+        '# backend keeps serving sessions until you opt in. Enable with profile-level',
+        "# `disabled: false` overrides (or run scripts/dsh-better-session.mjs enable).")
+      for (const id of inactiveIds) {
+        lines.push(`- id: ${id}`, '  disabled: true')
+      }
+    }
   }
   return lines.join('\n') + '\n'
 }
@@ -446,7 +577,7 @@ for (const { pkgDir, ymlPath } of aggregates) {
   if (manifest.patchFrom.length === 0 && !manifest.self) {
     console.log(`[aggregate] WARN ${rel}: aggregate.yml has no patchFrom entries (patch would be empty)`)
   }
-  const patch = renderPatch(blocks, manifest.rows, manifest.patches ?? [], errors, rel)
+  const patch = renderPatch(blocks, manifest.rows, manifest.patches ?? [], errors, rel, pkgDir)
   const resolvedDeps = resolveEntries(pkgDir, manifest.deps, 'deps', errors)
   const pkgJson = renderPackageJson(join(pkgDir, 'package.json'), resolvedDeps)
   results.push({ rel, blocks, patch, resolvedDeps, pkgJson })

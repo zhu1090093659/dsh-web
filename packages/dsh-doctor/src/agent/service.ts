@@ -33,13 +33,21 @@ export function servicePlan(spec: ServiceSpec, env: NodeJS.ProcessEnv = process.
   if (spec.platform === 'win32') {
     const localAppData = env.LOCALAPPDATA?.trim() || win32.join(home, 'AppData', 'Local')
     const path = win32.join(localAppData, 'DSH Doctor', 'supervisor.cmd')
-    const content = `@echo off\r\nset "DSH_DOCTOR_HOME=${spec.doctorHome}"\r\n"${executable}" ${spec.args.map(quoteExec).join(' ')}\r\n`
+    // cmd.exe does not unescape `\\`; JSON.stringify would produce "C:\\Users\\..." which cmd cannot resolve.
+    // Wrap each argument in plain double quotes instead.
+    const cmdQuote = (value: string): string => `"${value}"`
+    const content = `@echo off\r\nset "DSH_DOCTOR_HOME=${spec.doctorHome}"\r\n"${executable}" ${spec.args.map(cmdQuote).join(' ')}\r\n`
     const task = 'DSH Doctor Supervisor'
+    // `schtasks /SC ONLOGON` requires elevation on many Windows setups ("Access is denied").
+    // The TaskScheduler COM API (via PowerShell) lets a standard user register a logon-trigger
+    // task for the current user, so prefer Register-ScheduledTask over schtasks /Create.
+    const ps = ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command']
+    const escapedPath = path.replace(/'/g, "''")
     return {
       files: [{ path, content, mode: 0o600 }],
-      install: ['schtasks', '/Create', '/F', '/SC', 'ONLOGON', '/TN', task, '/TR', `"${path}"`],
-      uninstall: ['schtasks', '/Delete', '/F', '/TN', task],
-      restart: ['schtasks', '/Run', '/TN', task],
+      install: [...ps, `Register-ScheduledTask -TaskName '${task}' -Action (New-ScheduledTaskAction -Execute '${escapedPath}') -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME) -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)) -Force | Out-Null`],
+      uninstall: [...ps, `Unregister-ScheduledTask -TaskName '${task}' -Confirm:$false -ErrorAction SilentlyContinue`],
+      restart: [...ps, `Start-ScheduledTask -TaskName '${task}'`],
     }
   }
   throw new Error(`doctor: unsupported service platform ${spec.platform}`)

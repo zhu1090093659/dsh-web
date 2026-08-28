@@ -331,6 +331,7 @@ A: 可以。聚合包的行 id 统一带 `web-ui-` 前缀（如 `web-ui-describe
 <details>
 <summary>友情链接</summary>
 
+- [DeepSeek Harness Handbook](https://github.com/sandbaseai/deepseek-harness-handbook) —— 从 Agent/runtime 视角维护的源码验证手册，覆盖插件、MCP、工具、Session、沙箱、审批与故障排查，并提供多语言文档。
 - [DeepSeek Harness Desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) —— 为 DeepSeek Harness (DSH) 生态打造的现代化桌面端体验。
 - [LINUX DO](https://linux.do) —— 有理想的新社区。
 - [dshfind](https://dshfind.com) —— 面向 DeepSeek Harness 的学习与分享社区，聚合论文精读、插件超市与用户排名。

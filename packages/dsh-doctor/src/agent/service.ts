@@ -1,7 +1,7 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { posix, win32 } from 'node:path'
-import { spawn } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 
 export interface ServiceSpec { platform: NodeJS.Platform; label: string; executable: string; args: string[]; doctorHome: string }
 export interface ServicePlan { files: Array<{ path: string; content: string; mode?: number }>; install: string[]; uninstall: string[]; restart: string[] }
@@ -59,14 +59,22 @@ export type ServiceRunner = (command: string[]) => Promise<void>
 
 /**
  * Idempotent service redeploy: drop any previous registration (a first
- * install fails harmlessly), write the definition, bootstrap it, then restart
- * it so the running process picks up the current package code.
+ * install fails harmlessly), write the definition, then bootstrap it.
+ * The service is only (re)started when no supervisor is already alive —
+ * unconditional restarts spawn a visible cmd.exe window on Windows and
+ * fail with EADDRINUSE when an instance is already running.
  */
-export async function ensureServiceInstalled(plan: ServicePlan, run: ServiceRunner = runCommand): Promise<void> {
+export async function ensureServiceInstalled(plan: ServicePlan, run: ServiceRunner = runCommand, platform: NodeJS.Platform = process.platform): Promise<void> {
   await run(plan.uninstall).catch(() => undefined)
   await writeServiceFiles(plan)
   await run(plan.install)
-  await run(plan.restart).catch(() => undefined)
+  // Only (re)start the supervisor when it is not already alive. Running
+  // `schtasks /Run` unconditionally on every invocation spawns a visible
+  // cmd.exe window (captured by the default terminal app) and the fresh
+  // instance dies with EADDRINUSE because the named pipe is already owned.
+  if (!(await supervisorAlive(platform))) {
+    await run(plan.restart).catch(() => undefined)
+  }
 }
 
 /** Unregister the service and remove its definition files (tolerates absence). */
@@ -77,9 +85,28 @@ export async function removeService(plan: ServicePlan, run: ServiceRunner = runC
 
 export async function runCommand(command: string[], timeoutMs = 30_000): Promise<void> {
   await new Promise<void>((resolvePromise, reject) => {
-    const child = spawn(command[0]!, command.slice(1), { stdio: 'inherit' })
+    const child = spawn(command[0]!, command.slice(1), { stdio: 'inherit', windowsHide: true })
     const timer = setTimeout(() => child.kill(), timeoutMs)
     child.once('close', code => { clearTimeout(timer); code === 0 ? resolvePromise() : reject(new Error(`doctor: command failed (${code ?? 'signal'}): ${command.join(' ')}`)) })
     child.once('error', reject)
+  })
+}
+
+/** True when at least one supervisor process is currently alive. */
+function supervisorAlive(platform: NodeJS.Platform): Promise<boolean> {
+  return new Promise(resolve => {
+    if (platform === 'win32') {
+      execFile(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command',
+          "(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -match 'dsh-doctor' -and $_.CommandLine -match 'supervisor' } | Measure-Object).Count"],
+        { windowsHide: true },
+        (err, stdout) => { resolve(err ? false : Number.parseInt(stdout.trim(), 10) > 0) },
+      )
+    } else {
+      execFile('ps', ['-eo', 'command'], (err, stdout) => {
+        resolve(err ? false : stdout.split('\n').some(line => /dsh-doctor[^\n]*supervisor/.test(line)))
+      })
+    }
   })
 }

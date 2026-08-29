@@ -558,6 +558,19 @@
       "npm": "dsh-free-search",
       "category": "tools",
       "subcategory": "dev"
+    },
+    {
+      "id": "dsh-reasoning-effort",
+      "name": "思考强度配置器",
+      "rank": 44,
+      "nameEn": "Reasoning Effort",
+      "author": "Jamsharden",
+      "description": "为第三方 API 的模型提供可视化思考强度配置：支持自定义 reasoning effort 档位、Provider 默认强度、思考协议与参数开关，让 DSH 用户使用第三方 API 时也能调节思考强度。",
+      "descriptionEn": "Adds a visual reasoning-effort editor for models served by third-party APIs, with custom levels, provider defaults, thinking-format and parameter controls, so DSH users can tune thinking strength when using external endpoints.",
+      "repo": "https://github.com/Jamsharden/dsh-reasoning-effort",
+      "npm": "@megen-lebar/dsh-reasoning-effort",
+      "category": "tools",
+      "subcategory": "model"
     }
   ]
 }

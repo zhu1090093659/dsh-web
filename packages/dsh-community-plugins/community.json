@@ -514,5 +514,16 @@
     "npm": "dsh-free-search",
     "category": "tools",
     "subcategory": "dev"
+  },
+  {
+    "id": "dsh-codekin",
+    "name": "码灵",
+    "nameEn": "Codekin",
+    "author": "Nath-Vikky",
+    "description": "把 DSH 使用事件转化为码灵遭遇、收集与三消战斗的 Web 游戏插件：包含 25 只码灵、五类计算属性、编队养成、捕捉、挂机补给和无尽塔；状态保存在 DSH 主目录的 tracewild/state.json，卸载后保留，不修改提示词、工具或模型请求。",
+    "descriptionEn": "A Web creature-collection and match-three RPG driven by DSH activity events, with 25 Codekin, five computing attributes, squads, growth, capture, idle supplies and an endless tower. State is stored in tracewild/state.json under the DSH home directory and remains after uninstall; prompts, tools and model requests are unchanged.",
+    "repo": "https://github.com/Nath-Vikky/dsh-codekin",
+    "category": "ui",
+    "subcategory": "panel"
   }
 ]

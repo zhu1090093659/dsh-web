@@ -8,7 +8,7 @@ Status: implemented
 
 ## Decision
 
-社区目录继续以只收录链接的方式登记 `dsh-reasoning-effort`，并将其放在 `dsh-free-search` 之后，因此生成的创意工坊清单为它分配 rank 45。中英文条目描述都写明运行时下限 `DSH >=0.1.1-rc.2`、已验证的 DSH CLI `0.1.1-rc.2` 与 `0.1.2-alpha.1` cohort store 组合，以及卸载不会自动删除 `llm-pi-ai` 中思考配置的事实。
+社区目录继续以只收录链接的方式登记 `dsh-reasoning-effort`，并将其放在 `dsh-free-search` 之后，因此生成的创意工坊清单为它分配 rank 45。中英文条目描述都明确标注 DSH 核验支持版本为 `0.1.1-rc.2` 与 `0.1.2-alpha.1`，说明插件在两个版本下均可正常运行，并披露卸载不会自动删除 `llm-pi-ai` 中思考配置的事实。
 
 独立插件以 `dsh.engines.dsh` 声明相同的版本下限。配套 README 说明共享的 `llm-pi-ai` 命名空间、带 revision 的 `settings.mutate` 写入、卸载后可能保留的字段、手动清理与重启步骤，并记录 `0.2.4` 迁移到独立仓库前提供 npm `0.2.0` 与 `0.2.3` 的 `dsh-plugins` 提交。
 

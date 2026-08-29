@@ -8,7 +8,7 @@ The community catalog entry for `dsh-reasoning-effort` did not state which DSH r
 
 ## Decision
 
-The catalog keeps `dsh-reasoning-effort` as an index-only entry after `dsh-free-search`, so the generated Workshop manifest assigns it rank 45. Its Chinese and English descriptions state the runtime floor `DSH >=0.1.1-rc.2`, the verified DSH CLI `0.1.1-rc.2` plus `0.1.2-alpha.1` cohort-store environment, and the fact that uninstalling does not automatically remove reasoning settings from `llm-pi-ai`.
+The catalog keeps `dsh-reasoning-effort` as an index-only entry after `dsh-free-search`, so the generated Workshop manifest assigns it rank 45. Its Chinese and English descriptions explicitly label the DSH verified support versions as `0.1.1-rc.2` and `0.1.2-alpha.1`, state that the plugin runs normally on both, and disclose that uninstalling does not automatically remove reasoning settings from `llm-pi-ai`.
 
 The standalone plugin declares the same floor as `dsh.engines.dsh`. Its paired README files document the shared `llm-pi-ai` namespace, revision-aware `settings.mutate` writes, the fields that may remain after uninstall, manual cleanup and restart guidance, and the `dsh-plugins` commits that supplied npm `0.2.0` and `0.2.3` before `0.2.4` moved to the standalone repository.
 

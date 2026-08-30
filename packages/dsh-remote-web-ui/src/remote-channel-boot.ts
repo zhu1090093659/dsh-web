@@ -45,6 +45,17 @@ export function buildRemoteChannelBootScript(rules: RemoteChannelRules = REMOTE_
     // all branch on connection.isLoopback). Must run before any boot entry.
     'try{if(w.__DSH_TRANSPORT__===undefined)w.__DSH_TRANSPORT__={};w.__DSH_TRANSPORT__.ownsHost=true}catch(e){}' +
     'var R=' + json + ';' +
+    // The cookieless device credential: read lazily per call - the
+    // /pair-app capture script sets it in head AFTER this boot script ran,
+    // so a parse-time read would always see null.
+    'function rdv(){try{return w.sessionStorage.getItem(R.deviceKey)}catch(e){return null}}' +
+    'function att(init){' +
+    'var dv=rdv();' +
+    'if(dv===null)return init;' +
+    'var h=init&&init.headers;' +
+    'if(typeof Headers!=="undefined"&&h instanceof Headers){try{h.set(R.deviceHeader,dv)}catch(e){}return init}' +
+    'if(typeof h==="object"&&h!==null){var o={};for(var k in h)o[k]=h[k];o[R.deviceHeader]=dv;return Object.assign({},init,{headers:o})}' +
+    'return init}' +
     'function sf(p){' +
     'if(p.indexOf(R.pairPrefix)===0)return false;' +
     'if(p.indexOf(R.updatePrefix)===0)return false;' +
@@ -92,7 +103,7 @@ export function buildRemoteChannelBootScript(rules: RemoteChannelRules = REMOTE_
     'var next=new URL(url);' +
     'next.pathname=rp(url.pathname);' +
     'var target=typeof input==="string"||input instanceof URL?next.toString():new Request(next,input);' +
-    'return Promise.resolve(of.call(w,target,init)).then(function(res){' +
+    'return Promise.resolve(of.call(w,target,att(init))).then(function(res){' +
     // denied() is sync-false for non-403 and a promise otherwise.
     'void Promise.resolve(denied(res)).then(signal);' +
     'return res})}' +
@@ -104,6 +115,8 @@ export function buildRemoteChannelBootScript(rules: RemoteChannelRules = REMOTE_
     'if(o!==""&&o===loc.origin&&sw(p.pathname)){' +
     'var nx=new URL(p);' +
     'nx.pathname=rp(p.pathname);' +
+    'var dvv=rdv();' +
+    'if(dvv!==null)nx.searchParams.set(R.deviceQuery,dvv);' +
     'return protocols!==undefined?new OW(nx,protocols):new OW(nx)}' +
     'return protocols!==undefined?new OW(url,protocols):new OW(url)};' +
     'w.WebSocket.prototype=OW.prototype;' +
@@ -115,6 +128,8 @@ export function buildRemoteChannelBootScript(rules: RemoteChannelRules = REMOTE_
     'if(so(p)&&sf(p.pathname)){' +
     'var nx=new URL(p);' +
     'nx.pathname=rp(p.pathname);' +
+    'var dvv=rdv();' +
+    'if(dvv!==null)nx.searchParams.set(R.deviceQuery,dvv);' +
     'return new OE(nx,cfg)}' +
     'return new OE(url,cfg)};' +
     'w.EventSource.prototype=OE.prototype}' +
@@ -135,8 +150,48 @@ export function buildRemoteChannelBootScript(rules: RemoteChannelRules = REMOTE_
     'for(var i=0;i<restores.length;i++)restores[i]();' +
     'try{delete w[' + seat + ']}catch(e){w[' + seat + ']=undefined}};' +
     'w[' + seat + ']=seat' +
+    // The boot watchdog rides the same IIFE and skip conditions: it needs
+    // the non-loopback gate above (the desktop boots over loopback without
+    // a tunnel in the path) and the try/catch fail-closed envelope.
+    buildBootWatchdogScript() +
     '}catch(e){}' +
     '})();'
+}
+
+/** Boot-watchdog latch: one self-reload per session while the boot is broken. */
+export const BOOT_WATCHDOG_KEY = 'dsh-remote-boot-reload'
+
+/** Total wait for the app's first conversation surface before the reload. */
+const BOOT_WATCHDOG_WAIT_MS = 15_000
+
+/** Watchdog poll cadence. */
+const BOOT_WATCHDOG_POLL_MS = 1_000
+
+/**
+ * Build the boot-watchdog script fragment. A remote boot has no recovery
+ * path of its own: the SPA mounts nothing when a boot-critical request dies
+ * (a tunnel-edge 429 under burst, a dropped stream, a boot-order race), and
+ * the phone then shows a permanently blank shell. The watchdog polls for the
+ * app's conversation surface and reloads once when it never appears; the
+ * sessionStorage latch keeps a genuinely broken deployment from looping,
+ * and a successful boot clears the latch so a later failure can recover.
+ */
+export function buildBootWatchdogScript(waitMs = BOOT_WATCHDOG_WAIT_MS, pollMs = BOOT_WATCHDOG_POLL_MS): string {
+  const key = JSON.stringify(BOOT_WATCHDOG_KEY)
+  return (
+    // Leading semicolon: the preceding seat assignment ends without one,
+    // and the fragment must parse when spliced into the IIFE.
+    ';function wBoot(){try{return !!(w.document&&w.document.querySelector&&(w.document.querySelector("[data-conversation-scroll]")||w.document.querySelector("[data-slot=\\"conversation\\"]")))}catch(e){return false}}' +
+    'function wTick(n){try{' +
+    'if(wBoot()){try{w.sessionStorage.removeItem(' + key + ')}catch(e){}return}' +
+    'if(n<' + waitMs + '){w.setTimeout(function(){wTick(n+' + pollMs + ')},' + pollMs + ');return}' +
+    'var done=false;try{done=w.sessionStorage.getItem(' + key + ')==="1"}catch(e){}' +
+    'if(done)return;' +
+    'try{w.sessionStorage.setItem(' + key + ',"1")}catch(e){}' +
+    'w.location.reload()' +
+    '}catch(e){}}' +
+    'if(typeof w.setTimeout==="function")w.setTimeout(function(){wTick(0)},' + pollMs + ');'
+  )
 }
 
 /** The script this plugin contributes; built once from the live rules. */

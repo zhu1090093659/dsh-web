@@ -189,11 +189,15 @@ export function removeFirewallRule(port: number): boolean {
   return backend.removeRule(port)
 }
 
-/** Human-readable firewall state for the status endpoint. */
+/**
+ * Human-readable firewall state for the status endpoint. A missing backend
+ * means the platform has nothing to manage; detection stays at the call site
+ * so an explicit undefined cannot silently re-probe the real OS mid-test.
+ */
 export function computeFirewallSummary(
   port: number,
   lanEnabled: boolean,
-  backend: FirewallBackend | undefined = firewallBackend(),
+  backend: FirewallBackend | undefined,
 ): FirewallSummary {
   if (backend === undefined) return { ok: true, managed: false }
   return { ok: lanEnabled ? backend.ruleExists(port) : !backend.ruleExists(port), managed: true, note: backend.label }
@@ -220,7 +224,7 @@ export function firewallSummary(port: number, lanEnabled: boolean): FirewallSumm
   if (summaryCache !== undefined && summaryCache.key === key && now - summaryCache.at < FIREWALL_SUMMARY_TTL_MS) {
     return summaryCache.value
   }
-  const value = computeFirewallSummary(port, lanEnabled)
+  const value = computeFirewallSummary(port, lanEnabled, firewallBackend())
   summaryCache = { key, at: now, value }
   return value
 }

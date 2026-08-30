@@ -12,6 +12,8 @@ import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { UsageStoreInstance } from './usage-store.ts'
 import { t } from './locales.ts'
 import styles from './usage.module.css'
+import { isDeepSeekProviderRoute } from '../core/adapters.ts'
+import { deepseekPeriodAt } from '../core/pricing.ts'
 import type { ProviderSnapshotView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals } from '../core/types.ts'
 
 /** The settings fields this section edits (immediate-apply semantics). */
@@ -60,6 +62,19 @@ function formatTime(ms: number): string {
   } catch {
     return ''
   }
+}
+
+function formatClock(ms: number): string {
+  try {
+    return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return ''
+  }
+}
+
+/** Formatted CNY spend estimate (the only priced currency today). */
+function formatCost(cost: number): string {
+  return '¥' + cost.toFixed(2)
 }
 
 function toneClass(percent: number): string {
@@ -179,6 +194,11 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
 
   const current = snapshot.current
   const currentProvider = snapshot.providers.find((provider) => provider.provider === current.provider)
+  // Peak-period line: only when the official DeepSeek family is in play this
+  // session (the current route, or spend recorded under one today).
+  const deepseekPeriod = deepseekPeriodAt(Date.now())
+  const deepseekVisible = (current.provider !== undefined && isDeepSeekProviderRoute(current.provider))
+    || snapshot.usage.today.providers.some((row) => isDeepSeekProviderRoute(row.provider))
   // Plans tab: only routes with a real coding-plan/subscription adapter
   // (planSupported; an older host without the flag falls back to "has a plan
   // fact"). Balance-only providers (DeepSeek, ZenMux, ...) never appear here.
@@ -213,9 +233,20 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
         <>
           <div className={styles.card} data-dsh-part="today-card">
             <span className={styles.cardTitle}>{t('usage.today')}</span>
+            {deepseekVisible && (
+              <span className={styles.muted} data-dsh-part="peak-status">
+                {t(deepseekPeriod.peak ? 'usage.peak.on' : 'usage.peak.off', { time: formatClock(deepseekPeriod.boundaryMs) })}
+              </span>
+            )}
             {snapshot.usage.today.totals.calls === 0
               ? <span className={styles.muted}>{t('usage.noData')}</span>
               : <TotalsRow totals={snapshot.usage.today.totals} />}
+            {snapshot.usage.today.totals.cost > 0 && (
+              <div className={styles.providerRow} data-dsh-part="today-cost">
+                <span className={styles.providerName}>{t('usage.today.cost')}</span>
+                <span className={styles.providerTokens}>{formatCost(snapshot.usage.today.totals.cost)}</span>
+              </div>
+            )}
             {snapshot.usage.today.providers.length > 0 && (
               <div data-dsh-part="provider-list">
                 {snapshot.usage.today.providers.map((row) => (
@@ -224,7 +255,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
                       {snapshot.providers.find((provider) => provider.provider === row.provider)?.displayName ?? row.provider}
                       {current.provider === row.provider && <span className={styles.currentBadge}>{t('usage.current')}</span>}
                     </span>
-                    <span className={styles.providerTokens}>{formatTokens(row.totals.inputTokens + row.totals.cacheReadTokens + row.totals.cacheWriteTokens + row.totals.outputTokens)} · {t('usage.calls', { n: row.totals.calls })}</span>
+                    <span className={styles.providerTokens}>{formatTokens(row.totals.inputTokens + row.totals.cacheReadTokens + row.totals.cacheWriteTokens + row.totals.outputTokens)} · {t('usage.calls', { n: row.totals.calls })}{row.totals.cost > 0 ? ` · ${formatCost(row.totals.cost)}` : ''}</span>
                   </div>
                 ))}
               </div>

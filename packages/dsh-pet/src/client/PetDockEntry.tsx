@@ -4,10 +4,11 @@
  * it must not ride a session-scoped slot — on the new-conversation screen no
  * session exists to scope a slot by, and the pet would vanish (issue #48).
  * The client half therefore mounts this entry straight onto 'document.body'
- * (see index.ts): while visible it renders the floating PetSprite (a
- * portal), while hidden it renders a fixed-position summon button. Which
- * sprite renders is decided by the host snapshot's pet id resolved against
- * the registry list — no per-pet component exists.
+ * (see index.ts): while visible it renders the floating PetSprite (a portal
+ * into the plugin root, so the root owns the whole surface), while hidden it
+ * renders a fixed-position summon button. Which sprite renders is decided by
+ * the host snapshot's pet id resolved against the registry list — no per-pet
+ * component exists.
  * @module @linxin666/dsh-pet/client/PetDockEntry
  */
 
@@ -52,6 +53,15 @@ export interface PetInjected {
 export type PetDockEntryProps =
   PetInjected
   & PropsLocale<typeof NS>
+  & {
+    /**
+     * DOM node the floating sprite chrome portals into. Defaults to
+     * document.body; the plugin apply passes its [data-dsh-plugin="pet"]
+     * root so root-keyed suppressors (the portrait mobile layer) and skins
+     * own the whole pet surface as one unit.
+     */
+    portalTarget?: Element
+  }
 
 const DEFAULT_DISPLAY: PetDisplayConfig = { visible: true, size: 160, right: 24, bottom: 20 }
 
@@ -108,6 +118,7 @@ export function PetDockEntry(props: PetDockEntryProps): ReactElement {
                 onRename={props.rename}
                 onOpenSession={props.openSession}
                 onFeedbackDone={props.feedbackDone}
+                portalTarget={props.portalTarget}
                 dragDisabled={snapshot.gameplay?.mode === 'work'}
                 {...(gameplay === undefined || aux === null
                   ? {}

@@ -13,17 +13,17 @@
 export interface PetAnnouncement {
   /** Authoring plugin's source tag (`dsh-usage` for the usage statistics). */
   source: string
-  /** Bubble content kind: an account balance or a plan-quota status. */
-  kind: 'balance' | 'plan'
+  /** Bubble content kind: a spend estimate, an account balance, or a plan-quota status. */
+  kind: 'balance' | 'cost' | 'plan'
   /** Lead text (usually the provider display name). */
   title: string
-  /** Balance amount, formatted for display (kind `balance`). */
+  /** Balance or today-spend amount, formatted for display (kinds `balance` and `cost`). */
   amount?: string
   /** Plan usage percent 0-100 (kind `plan`). */
   percent?: number
   /** ISO 8601 reset instant (kind `plan`). */
   resetAt?: string
-  /** Short trailing note (plan tier name, currency code, ...). */
+  /** Short trailing note (plan tier name, peak-period status, currency code, ...). */
   note?: string
   /** Visual tone; drives the bubble's accent color. */
   tone: 'ok' | 'warn' | 'low'
@@ -35,6 +35,14 @@ export interface PetAnnouncement {
 
 /** Default freshness window. */
 export const ANNOUNCE_DEFAULT_TTL_MS = 10_000
+
+/**
+ * Hard TTL ceiling. A repeating announcer (dsh-usage) declares its poll
+ * cadence as the TTL, so an `always`-mode bubble stays continuous across
+ * polls; the ceiling means a source that dies unmounts its bubble within at
+ * most one missed refresh cycle rather than lingering forever.
+ */
+export const ANNOUNCE_MAX_TTL_MS = 7_200_000
 
 /** Hard bounds: lengths and the TTL range (1 s .. 60 s). */
 const TITLE_MAX = 80
@@ -61,7 +69,7 @@ export function parseAnnouncement(input: unknown, now: number): PetAnnouncement 
   const source = boundedString(data.source, SOURCE_MAX)
   const title = boundedString(data.title, TITLE_MAX)
   if (source === undefined || title === undefined) return undefined
-  const kind = data.kind === 'balance' || data.kind === 'plan' ? data.kind : undefined
+  const kind = data.kind === 'balance' || data.kind === 'cost' || data.kind === 'plan' ? data.kind : undefined
   if (kind === undefined) return undefined
   const amount = boundedString(data.amount, TEXT_MAX)
   const resetAt = boundedString(data.resetAt, TEXT_MAX)
@@ -69,11 +77,11 @@ export function parseAnnouncement(input: unknown, now: number): PetAnnouncement 
   const percent = typeof data.percent === 'number' && Number.isFinite(data.percent)
     ? Math.max(0, Math.min(100, data.percent))
     : undefined
-  if (kind === 'balance' && amount === undefined) return undefined
+  if ((kind === 'balance' || kind === 'cost') && amount === undefined) return undefined
   if (kind === 'plan' && percent === undefined) return undefined
   const tone = data.tone === 'warn' || data.tone === 'low' ? data.tone : 'ok'
   const ttlMs = typeof data.ttlMs === 'number' && Number.isFinite(data.ttlMs)
-    ? Math.max(1000, Math.min(60_000, data.ttlMs))
+    ? Math.max(1000, Math.min(ANNOUNCE_MAX_TTL_MS, data.ttlMs))
     : ANNOUNCE_DEFAULT_TTL_MS
   return {
     source,

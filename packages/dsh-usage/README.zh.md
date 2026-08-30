@@ -8,12 +8,16 @@ dsh Web GUI 的使用统计插件：多 provider 余额与编程套餐用量检�
 
 插件由宿主侧服务与设置页一级分区（使用统计，位于创意工坊下方）组成：
 
-- **用量页签**：今日 token 分桶合计（输入 / 输出 / 缓存读 / 缓存写，按 provider 上报口径互不相加），分 provider 与模型细分，近 30 天以「提供方-模型」水平条形图展示，以及所有已配置 provider 的余额。台账从 `session/event` 实时流折叠（`request/header` 归因路由 + `assistant/message` 用量），持久化到 `$DSH_HOME/dsh-usage/usage-ledger.json`，按本地日保留；统计自插件首次启用起计。
+- **用量页签**：今日 token 分桶合计（输入 / 输出 / 缓存读 / 缓存写，按 provider 上报口径互不相加），分 provider 与模型细分，近 30 天以「提供方-模型」水平条形图展示，以及所有已配置 provider 的余额。对 DeepSeek 官方路由，页签还展示当前峰谷计价时段（北京时间工作日 09:00-12:00、14:00-18:00 为高峰，按双倍计费）与今日消费估算（CNY）。台账从 `session/event` 实时流折叠（`request/header` 归因路由 + `assistant/message` 用量），持久化到 `$DSH_HOME/dsh-usage/usage-ledger.json`，按本地日保留；统计自插件首次启用起计。
 - **个人套餐页签**：每个已配置且暴露套餐端点的 provider 的配额窗口——已用百分比与重置时间（Kimi For Coding 5 小时/每周、GLM 编程计划 5 小时/每周、OpenCode Go 滚动/每周/每月、MiniMax 5 小时/每周、Codex / ChatGPT 订阅 5 小时/每周）。没有真实套餐/订阅体系的厂商（DeepSeek、ZenMux、Moonshot、OpenRouter、SiliconFlow）不出现在此页签，其余额显示在用量页签。
-- **宠物联动**：宠物渲染一只专用公告气泡（独立玻璃样式、色调描边、微型配额计量条），展示当前提供方的余额或最紧的套餐窗口。`bubbleMode` 控制行为：常驻 / 仅变化时 / 关闭。
+- **宠物联动**：宠物渲染一只专用公告气泡（独立玻璃样式、色调描边、微型配额计量条），跟随当前会话提供方。套餐类 provider（Kimi、GLM、Codex 订阅等）展示最紧的百分比窗口；DeepSeek 官方路由展示今日消费估算、当前峰谷时段与账户余额。`bubbleMode` 控制行为：常驻（每次轮询即刷新，TTL 随轮询周期走，气泡保持可见）/ 仅变化时 / 关闭。
 - 探测完全在宿主侧按轮询周期执行（默认 60 秒，可手动刷新）；API key 经宿主凭据缝解析（`llm-pi-ai` 记录、`apiKeyEnv` 引用），永不进入浏览器。
 
-支持的余额端点：DeepSeek、Moonshot（国内/国际）、OpenRouter、SiliconFlow（国内/国际）、ZenMux。支持的套餐端点：Kimi For Coding、GLM 编程计划（国内 open.bigmodel.cn、国际 api.z.ai）、OpenCode Go、MiniMax、Codex / ChatGPT 订阅（OAuth access token 取自 pi-ai grant；token 过期时显示错误行，宿主下次跑 Codex 请求自动刷新后恢复）。没有程序化端点的 provider（Qwen token 套餐、OpenCode Zen 按量、Anthropic、OpenAI）仅列出，不展示数据。
+支持的余额端点：DeepSeek（官方运行时路由 `deepseek-official` 与目录别名 `deepseek` 均可解析）、Moonshot（国内/国际）、OpenRouter、SiliconFlow（国内/国际）、ZenMux。支持的套餐端点：Kimi For Coding、GLM 编程计划（国内 open.bigmodel.cn、国际 api.z.ai）、OpenCode Go、MiniMax、Codex / ChatGPT 订阅（OAuth access token 取自 pi-ai grant；token 过期时显示错误行，宿主下次跑 Codex 请求自动刷新后恢复）。没有程序化端点的 provider（Qwen token 套餐、OpenCode Zen 按量、Anthropic、OpenAI）仅列出，不展示数据。
+
+### 消费估算口径
+
+今日消费是折叠时刻按 DeepSeek V4 公布的峰谷价目表（CNY / 百万 tokens；高峰即上表时段，空闲为高峰一半）做出的估算，仅覆盖 DeepSeek 官方路由——其他渠道转发的流量（ZenMux、SiliconFlow 等）不计价；未识别的 DeepSeek 模型 id 按 flash 档估算。价目表调整前记录的桶保留旧价，因此调价从发布时点起生效，不追溯历史数据。
 
 ## 安装
 

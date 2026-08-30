@@ -8,13 +8,13 @@ import { describe, expect, it } from 'vitest'
 
 import { renderIndexInjections } from '@deepseek-ai/dsh-host-webserver'
 
-import { buildRemoteChannelBootScript, REMOTE_CHANNEL_BOOT_SCRIPT } from '../src/remote-channel-boot.ts'
+import { BOOT_WATCHDOG_KEY, buildBootWatchdogScript, buildRemoteChannelBootScript, REMOTE_CHANNEL_BOOT_SCRIPT } from '../src/remote-channel-boot.ts'
 import { REMOTE_CHANNEL_BOOT_GLOBAL, type RemoteChannelBootSeat } from '../src/remote-channel-rules.ts'
 import { shouldRewriteFetchPath, shouldRewriteWsPath } from '../src/client/remote-channel.ts'
 
 const PATH_MATRIX = [
   '/api/session.list',
-  '/api/events.mux',
+  '/api/remote.mux',
   '/api/pair/accept',
   '/api/update/status',
   '/api/dsh-desktop-launcher/shutdown',
@@ -29,11 +29,11 @@ const PATH_MATRIX = [
 ]
 
 const WS_MATRIX = [
-  '/api/events.mux',
-  '/api/events.host',
+  '/api/remote.mux',
   '/sidebar/ws/terminal',
   '/sidebar/ws/agent-terminals',
   '/api/dsh-ssh/terminal',
+  '/api/events.mux',
   '/api/session.list',
 ]
 
@@ -42,8 +42,10 @@ interface FakeWindow {
   WebSocket: unknown
   EventSource?: unknown
   location: { origin: string; href: string; hostname: string }
+  sessionStorage: { getItem(key: string): string | null }
   [REMOTE_CHANNEL_BOOT_GLOBAL]?: RemoteChannelBootSeat
   calls: string[]
+  initSeen: Array<Record<string, any> | undefined>
   wsUrls: string[]
   response: () => Response
 }
@@ -53,11 +55,14 @@ function makeWindow(hostname = '192.168.1.20', port = '3080'): FakeWindow {
   const win: FakeWindow = {
     location: { origin, href: `${origin}/`, hostname },
     calls: [],
+    initSeen: [],
     wsUrls: [],
+    sessionStorage: { getItem: () => null },
     response: () => new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }),
-    fetch(input: unknown) {
+    fetch(input: unknown, init?: unknown) {
       const raw = typeof input === 'string' || input instanceof URL ? input.toString() : (input as Request).url
       win.calls.push(new URL(raw, win.location.href).href)
+      win.initSeen.push((init ?? undefined) as Record<string, any> | undefined)
       return Promise.resolve(win.response())
     },
     WebSocket: class {
@@ -83,7 +88,9 @@ describe('remote channel boot patch (issue #987)', () => {
     const script = buildRemoteChannelBootScript()
     expect(script).not.toContain('</script')
     expect(script).toContain('/api/pair/')
-    expect(script).toContain('/api/events.mux')
+    // The gateway stream mux must be embedded: the workspace/session streams
+    // ride that one socket.
+    expect(script).toContain('/api/remote.mux')
   })
 
   it('renders into the head ahead of the module scripts (parse-time install)', () => {
@@ -93,6 +100,19 @@ describe('remote channel boot patch (issue #987)', () => {
     const moduleAt = rendered.indexOf('type="module"')
     expect(bootAt).toBeGreaterThan(-1)
     expect(bootAt).toBeLessThan(moduleAt)
+  })
+
+  it('attaches the cookieless device credential to gated fetches and ws handshakes', async () => {
+    const win = makeWindow()
+    win.sessionStorage = { getItem: () => 'dev-42' }
+    boot(win)
+    await win.fetch('/api/session.list', { headers: { accept: 'application/json' } })
+    expect(win.calls[0]).toContain('/remote/api/session.list')
+    const headers = win.initSeen[0]?.headers ?? {}
+    expect(headers['x-dsh-remote-device']).toBe('dev-42')
+    expect(headers.accept).toBe('application/json')
+    new (win.WebSocket as unknown as new (url: string) => void)('ws://192.168.1.20:3080/api/remote.mux')
+    expect(win.wsUrls[0]).toContain('/remote/api/remote.mux?device=dev-42')
   })
 
   it('does nothing on loopback origins', () => {
@@ -198,5 +218,107 @@ describe('remote channel boot patch (issue #987)', () => {
     expect(win.__DSH_TRANSPORT__).toBeUndefined()
     // And nothing else was patched either.
     expect(win[REMOTE_CHANNEL_BOOT_GLOBAL]).toBeUndefined()
+  })
+})
+
+/**
+ * The boot watchdog: a remote boot whose critical requests die (tunnel-edge
+ * 429, dropped stream, boot-order race) leaves a permanently blank shell.
+ * The watchdog rides the parse-time script, polls for the app conversation
+ * surface, and reloads once when it never appears.
+ */
+interface WatchWindow {
+  location: { hostname: string; href: string; origin: string; reload: () => void }
+  document: { querySelector: (selector: string) => unknown }
+  sessionStorage: {
+    store: Map<string, string>
+    getItem(key: string): string | null
+    setItem(key: string, value: string): void
+    removeItem(key: string): void
+  }
+  setTimeout(fn: () => void, ms: number): void
+  /** Minimal surfaces the channel patch wraps before the watchdog runs. */
+  fetch: () => Promise<unknown>
+  WebSocket: new () => unknown
+  ticks: Array<() => void>
+  reloads: number
+}
+
+function makeWatchWindow(appMounted: () => boolean, hostname = 'claire-grain-desire-relief.trycloudflare.com'): WatchWindow {
+  const win: WatchWindow = {
+    fetch: () => Promise.resolve({}),
+    WebSocket: class {},
+    location: {
+      hostname,
+      href: `https://${hostname}/`,
+      origin: `https://${hostname}`,
+      reload: () => { win.reloads += 1 },
+    },
+    document: { querySelector: (selector) => (appMounted() ? { marker: selector } : null) },
+    sessionStorage: {
+      store: new Map<string, string>(),
+      getItem(key) { return win.sessionStorage.store.get(key) ?? null },
+      setItem(key, value) { win.sessionStorage.store.set(key, value) },
+      removeItem(key) { win.sessionStorage.store.delete(key) },
+    },
+    setTimeout(fn) { win.ticks.push(fn) },
+    ticks: [],
+    reloads: 0,
+  }
+  return win
+}
+
+function bootWatch(win: WatchWindow): void {
+  // The served script already carries the watchdog (spliced into the IIFE).
+  new Function('window', REMOTE_CHANNEL_BOOT_SCRIPT)(win)
+}
+
+/** Drive scheduled ticks until the watchdog reloads (or the queue drains). */
+function driveTicks(win: WatchWindow, max = 40): void {
+  for (let i = 0; i < max && win.reloads === 0 && win.ticks.length > 0; i++) {
+    win.ticks.shift()?.()
+  }
+}
+
+describe('boot watchdog', () => {
+  it('is embedded in the served boot script', () => {
+    const script = buildRemoteChannelBootScript()
+    expect(script).toContain(BOOT_WATCHDOG_KEY)
+    expect(script).toContain('location.reload()')
+    // The probe matches the official conversation surface markers.
+    expect(script).toContain('[data-conversation-scroll]')
+  })
+
+  it('stays unscheduled on loopback origins', () => {
+    const win = makeWatchWindow(() => false, '127.0.0.1')
+    bootWatch(win)
+    expect(win.ticks).toHaveLength(0)
+    expect(win.reloads).toBe(0)
+  })
+
+  it('reloads once when the app surface never mounts, then latches', () => {
+    const win = makeWatchWindow(() => false)
+    bootWatch(win)
+    expect(win.ticks).toHaveLength(1)
+    driveTicks(win)
+    expect(win.reloads).toBe(1)
+    expect(win.sessionStorage.store.get(BOOT_WATCHDOG_KEY)).toBe('1')
+    // The latch holds: a second boot on the same session never reloads.
+    win.ticks.length = 0
+    const second = makeWatchWindow(() => false)
+    second.sessionStorage.store.set(BOOT_WATCHDOG_KEY, '1')
+    bootWatch(second)
+    driveTicks(second)
+    expect(second.reloads).toBe(0)
+  })
+
+  it('clears the latch and never reloads when the app surface mounts', () => {
+    const win = makeWatchWindow(() => true)
+    // A stale latch from a previous failed boot must not survive a success.
+    win.sessionStorage.store.set(BOOT_WATCHDOG_KEY, '1')
+    bootWatch(win)
+    driveTicks(win)
+    expect(win.reloads).toBe(0)
+    expect(win.sessionStorage.store.has(BOOT_WATCHDOG_KEY)).toBe(false)
   })
 })

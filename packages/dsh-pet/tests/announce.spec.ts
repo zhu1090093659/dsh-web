@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ANNOUNCE_DEFAULT_TTL_MS, announcementFresh, parseAnnouncement } from '../src/announce.ts'
+import { ANNOUNCE_DEFAULT_TTL_MS, ANNOUNCE_MAX_TTL_MS, announcementFresh, parseAnnouncement } from '../src/announce.ts'
 
 const NOW = 1_788_000_000_000
 
@@ -13,10 +13,21 @@ describe('parseAnnouncement', () => {
     expect(parsed && 'unknownField' in parsed).toBe(false)
   })
 
-  it('accepts a plan payload and clamps percent and ttl', () => {
+  it('accepts a cost payload with its period note', () => {
+    const parsed = parseAnnouncement({
+      source: 'dsh-usage', kind: 'cost', title: 'DeepSeek', amount: '今日 ¥12.35', note: '高峰时段 计价×2 · 余额 ¥1109.95', tone: 'warn',
+    }, NOW)
+    expect(parsed).toMatchObject({ kind: 'cost', title: 'DeepSeek', amount: '今日 ¥12.35', tone: 'warn' })
+    expect(parseAnnouncement({ source: 's', kind: 'cost', title: 'missing amount' }, NOW)).toBeUndefined()
+  })
+
+  it('accepts a plan payload and clamps percent, keeping an in-range poll-cadence ttl', () => {
     const parsed = parseAnnouncement({ source: 'dsh-usage', kind: 'plan', title: 'Kimi', percent: 150, resetAt: '2026-08-31T00:00:00Z', ttlMs: 999_999 }, NOW)
     expect(parsed?.percent).toBe(100)
-    expect(parsed?.ttlMs).toBe(60_000)
+    expect(parsed?.ttlMs).toBe(999_999)
+    // An always-mode announcer declares its poll cadence; only the hard
+    // ceiling (one missed refresh cycle at most) clamps.
+    expect(parseAnnouncement({ source: 's', kind: 'plan', title: 't', percent: 5, ttlMs: ANNOUNCE_MAX_TTL_MS + 1 }, NOW)?.ttlMs).toBe(ANNOUNCE_MAX_TTL_MS)
     const tiny = parseAnnouncement({ source: 's', kind: 'plan', title: 't', percent: 5, ttlMs: 1 }, NOW)
     expect(tiny?.ttlMs).toBe(1000)
   })

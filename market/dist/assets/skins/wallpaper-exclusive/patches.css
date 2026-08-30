@@ -42,6 +42,10 @@ body:not([data-ds-dark-theme]) [class*="md-code-block"] {
 [data-dsh-plugin="remote-web-ui"],
 [data-dsh-plugin="community-plugins"],
 [data-dsh-plugin="web-ui-settings"],
+[data-slot="details"],
+[data-dsh-surface="details"],
+[data-pane="details"],
+[class*="detailsCol"],
 .aionui-root,
 [data-aionui-explorer-col],
 [data-aionui-preview-col] {
@@ -602,19 +606,43 @@ body:has([data-slot="conversation.input.dock"] > [class*="_dock"]) [data-compose
    its panel chrome. The host is a document.body portal ([data-dsh-better-sidebar]
    / [data-dsh-panel-host]) carrying no data-dsh-part, so anchor on the stable
    host attributes + class suffixes. */
-[data-dsh-better-sidebar] [class*="_paneCard"],
-[data-dsh-better-sidebar] [class*="_tabBar"],
+[data-dsh-better-sidebar],
+[data-dsh-panel-host],
 [data-dsh-better-sidebar] [class*="_panel"]:not([class*="_panelHidden"]):not([class*="_panelResize"]),
 [data-dsh-better-sidebar] [class*="_bottomPanel"]:not([class*="_bottomPanelHidden"]),
 [data-dsh-better-sidebar] [class*="_panelBody"],
+[data-dsh-better-sidebar] [class*="_sidePanel"],
+[data-dsh-better-sidebar] [class*="_sideBoard"],
+[data-dsh-better-sidebar] [class*="_pane"],
+[data-dsh-panel-host] [class*="_panel"],
+[data-dsh-panel-host] [class*="_pane"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+}
+
+[data-dsh-better-sidebar] [class*="_tabBar"] {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+}
+
+[data-dsh-better-sidebar] [class*="_paneCard"],
 [data-dsh-panel-host] [class*="_paneCard"] {
-  background: transparent !important;
+  background-color: transparent !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
 }
 
 [data-dsh-better-sidebar] [class*="_paneCard"]:hover:not(:disabled) {
   background-color: var(--dsw-wallpaper-glass-active-strong) !important;
+}
+
+[data-dsh-better-sidebar] input,
+[data-pane="details"] input,
+[class*="detailsCol"] input {
+  background-color: var(--dsw-specific-input-major, rgba(255, 255, 255, 0.1)) !important;
+  color: var(--dsw-alias-label-primary) !important;
 }
 
 [data-dsh-better-sidebar] [class*="_bottomPanel"] .xterm-viewport {

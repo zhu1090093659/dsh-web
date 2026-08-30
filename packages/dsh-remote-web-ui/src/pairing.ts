@@ -7,8 +7,12 @@
  * Security invariants:
  * - One active token at a time; `issue()` replaces it, so a refreshed QR
  *   immediately invalidates the previous link.
- * - A token is consumed by the first successful `accept()` — reuse is
- *   refused with `'used'`.
+ * - A token stays re-usable until it expires or is replaced: the first
+ *   successful `accept()` marks it consumed, but the same link may pair
+ *   again within the window (each re-accept mints a fresh device session).
+ *   Mobile flows routinely split across cookie contexts (camera preview to
+ *   in-app browser to the system browser), and the later context must be
+ *   able to complete its own pairing from the same link.
  * - Tokens expire; `accept()` on an expired token is refused like an
  *   unknown one (no oracle for validity).
  * - `stop()` revokes every device session and clears the token, so paired
@@ -379,8 +383,10 @@ export class PairingService {
    */
   accept(token: string, userAgent?: string): AcceptResult {
     const record = this.tokens.get(token)
-    if (record === undefined || record.consumed || this.stopped || this.clock.now() > record.expiresAt) {
-      return { ok: false, code: record?.consumed === true ? 'used' : 'invalid' }
+    // A consumed token stays a valid bearer credential until expiry or
+    // replacement (see the module doc): re-accept mints a fresh device.
+    if (record === undefined || this.stopped || this.clock.now() > record.expiresAt) {
+      return { ok: false, code: 'invalid' }
     }
     record.consumed = true
     const deviceId = this.clock.randomToken()

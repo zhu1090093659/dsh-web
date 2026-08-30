@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-remote-web-ui",
   "description": "Scan-to-pair remote access for the dsh web GUI that shares one official interface: a QR beside the settings button pairs phones and PCs into the same Web GUI (a portrait-touch adaptation layer for phones, full desktop on PCs) through one-time tokens and revocable device sessions, with a LAN bind toggle, optional Cloudflare tunnel, and one-click family self-update",
-  "version": "0.4.0",
+  "version": "0.3.8",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {

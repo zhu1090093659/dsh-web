@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-usage",
   "description": "Usage statistics plugin for the dsh web GUI: per-provider balance and coding-plan quota detection plus a live token usage ledger, with a dedicated pet bubble for the current provider",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {

@@ -60,9 +60,13 @@ const wr = (args, env, opts) => sh(cmdExec, [...cmdArgs, ...args], env, opts)
 // a missing secret must fail the deploy loudly, not ship an ungated (old
 // code) or write-dead (new code) production API.
 function ensureTurnstileSecret() {
-  if (process.env.TURNSTILE_SECRET) {
+  // Trim before putting: a repo secret pasted with a trailing newline once
+  // shipped a value siteverify rejected (invalid-input-secret) and took the
+  // like/install gate down site-wide while every deploy re-put the same bytes.
+  const secret = (process.env.TURNSTILE_SECRET || '').trim()
+  if (secret) {
     console.log('deploy-market: refreshing TURNSTILE_SECRET binding')
-    wr(['secret', 'put', 'TURNSTILE_SECRET'], undefined, { input: process.env.TURNSTILE_SECRET })
+    wr(['secret', 'put', 'TURNSTILE_SECRET'], undefined, { input: secret })
   }
   const list = wr(['secret', 'list'], undefined, { capture: true })
   const out = String(list.stdout || '') + String(list.stderr || '')

@@ -12,8 +12,10 @@ import { LOCAL_ONLY_PREFIXES, REMOTE_API_PATHS, REMOTE_UPGRADE_PATHS, localOnlyD
 
 describe('remote channel contract pins (0.1.2 line)', () => {
   it('the channel rewrite surface keeps its own fixed path constants', () => {
-    expect(REMOTE_API_PATHS.mux).toBe('/remote/api/events.mux')
-    expect(REMOTE_API_PATHS.host).toBe('/remote/api/events.host')
+    // The official client opens the Typert gateway mux at /api/remote.mux;
+    // its gated mirror is the one stream socket a paired device must reach.
+    expect(REMOTE_API_PATHS.mux).toBe('/remote/api/remote.mux')
+    expect(REMOTE_UPGRADE_PATHS).toContain('/remote/api/remote.mux')
     expect(REMOTE_UPGRADE_PATHS).toContain('/remote/api/dsh-ssh/terminal')
   })
 

@@ -80,6 +80,7 @@ async function startUpstream(): Promise<Upstream> {
 async function driveUpgrade(
   handler: (req: IncomingMessage, socket: Socket, head: Buffer) => void,
   requestHeaders: Record<string, string | string[] | undefined>,
+  url?: string,
 ): Promise<{ client: Socket; close(): Promise<void> }> {
   const tcp = createTcpServer()
   await new Promise<void>(resolve => tcp.listen(0, '127.0.0.1', resolve))
@@ -89,6 +90,7 @@ async function driveUpgrade(
     sockets.add(socket)
     socket.on('close', () => { sockets.delete(socket) })
     const req = { headers: requestHeaders } as IncomingMessage
+    if (url !== undefined) req.url = url
     handler(req, socket, Buffer.alloc(0))
   })
   const client = connect(port, '127.0.0.1')
@@ -160,7 +162,7 @@ describe('remote desktop event-stream upgrades', () => {
     const received = await waiter
     try {
       expect(upstream.seen.length).toBe(1)
-      expect(upstream.seen[0].path).toBe('/api/events.mux')
+      expect(upstream.seen[0].path).toBe('/api/remote.mux')
       expect(received).toContain('101 Switching Protocols')
       expect(received).toContain('echo:ping-from-client')
     } finally {
@@ -190,7 +192,7 @@ describe('remote desktop event-stream upgrades', () => {
       // The upstream saw the rewritten path, a loopback Host, the forwarded
       // WS headers, and no Origin.
       expect(upstream.seen.length).toBe(1)
-      expect(upstream.seen[0].path).toBe('/api/events.mux')
+      expect(upstream.seen[0].path).toBe('/api/remote.mux')
       expect(upstream.seen[0].headers.host).toBe(`127.0.0.1:${String(upstream.port)}`)
       expect(upstream.seen[0].headers.origin).toBeUndefined()
       expect(upstream.seen[0].headers['sec-websocket-key']).toBe('client-key')
@@ -204,20 +206,27 @@ describe('remote desktop event-stream upgrades', () => {
     }
   })
 
-  it('serves the host stream on its own path', async () => {
+  it('maps the gated mux onto the inner /api/remote.mux and preserves the device query', async () => {
+    // The official client opens wss://…/api/remote.mux; the boot patch rewrites
+    // it to /remote/api/remote.mux?device=<id>, and the upgrade route must
+    // forward the mux path plus the query to the loopback gateway.
     const service = makeService()
     const cookie = pairedCookie(service)
     const upstream = await startUpstream()
     const routes = makeRemoteApiUpgradeRoutes({ service, port: upstream.port })
-    const hostRoute = routes.find(route => route.path === REMOTE_API_PATHS.host)
-    expect(hostRoute).toBeDefined()
-    const driven = await driveUpgrade(hostRoute!.handler, { cookie, 'sec-websocket-key': 'k', 'sec-websocket-version': '13' })
+    const muxRoute = routes.find(route => route.path === REMOTE_API_PATHS.mux)
+    expect(muxRoute).toBeDefined()
+    const driven = await driveUpgrade(
+      muxRoute!.handler,
+      { cookie, 'sec-websocket-key': 'k', 'sec-websocket-version': '13' },
+      '/remote/api/remote.mux?device=dev-42',
+    )
     const waiter = readAll(driven.client)
     await waitFor101(driven.client)
     driven.client.write('hi')
     await waiter
     try {
-      expect(upstream.seen[0].path).toBe('/api/events.host')
+      expect(upstream.seen[0].path).toBe('/api/remote.mux?device=dev-42')
     } finally {
       await driven.close()
       await upstream.close()

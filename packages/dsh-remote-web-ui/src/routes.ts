@@ -103,6 +103,53 @@ export function publicHostOf(url: string | undefined): string | undefined {
 /** Cookie lifetime: one year; revoked sessions die at the gate regardless. */
 const COOKIE_MAX_AGE_SEC = 365 * 24 * 60 * 60
 
+/**
+ * The cookieless device credential: pass the device id from the /pair-app
+ * URL into sessionStorage (and localStorage for tab reloads) before any app
+ * script runs - same key the boot patch and the channel gate read. The
+ * replaceState to '/' hides the credential URL from the address bar and
+ * leaves the SPA at its canonical root path.
+ */
+export const APP_DEVICE_STORAGE_KEY = 'dsh-remote-device'
+
+export function appShellCaptureScript(deviceId: string): string {
+  const safeId = JSON.stringify(deviceId)
+  return `<script>(function(){try{sessionStorage.setItem(${JSON.stringify(APP_DEVICE_STORAGE_KEY)},${safeId});localStorage.setItem(${JSON.stringify(APP_DEVICE_STORAGE_KEY)},${safeId});}catch(e){}try{history.replaceState(null,'','/')}catch(e){}})()</script>`
+}
+
+/** Patch the official index document with the device-capture script. */
+export function patchAppShell(html: string, deviceId: string): string {
+  const script = appShellCaptureScript(deviceId)
+  const marker = '</head>'
+  const at = html.indexOf(marker)
+  if (at === -1) return script + html
+  return html.slice(0, at) + script + html.slice(at)
+}
+
+/**
+ * The dead-end guard for a failed /pair-accept: an unauthenticated device
+ * redirected to bare `/` would land on the harness browser-auth 401 page
+ * ("authentication required"), which reads like a broken server. Serve a
+ * plain bilingual explanation instead; an already-paired device (live
+ * device cookie, browser credential redeemed during its first scan) keeps
+ * the old behavior and is sent on to the app.
+ */
+function pairingFailurePage(): string {
+  return [
+    '<!doctype html><html><head><meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width,initial-scale=1">',
+    '<meta name="referrer" content="no-referrer">',
+    '<title>Pairing link invalid</title></head>',
+    '<body style="font-family:system-ui,sans-serif;padding:24px;max-width:32em;margin:0 auto;line-height:1.6">',
+    '<p><strong>配对链接已失效或已被使用。</strong></p>',
+    '<p>请在桌面端打开远程控制面板，刷新二维码后重新扫码。</p>',
+    '<hr style="border:none;border-top:1px solid #ccc;margin:16px 0">',
+    '<p><strong>This pairing link is invalid or has already been used.</strong></p>',
+    '<p>Open the remote panel on the desktop, refresh the QR code, and scan again.</p>',
+    '</body></html>',
+  ].join('')
+}
+
 /** Route paths (exact matches under /api). */
 export const PAIR_PATHS = {
   issue: '/api/pair/issue',
@@ -115,6 +162,8 @@ export const PAIR_PATHS = {
   lanBind: '/api/pair/lan-bind',
   /** Top-level accept-and-redirect entry the QR link points at. */
   acceptPage: '/pair-accept',
+  /** The cookieless app landing: serves the official shell for a paired device. */
+  appPage: '/pair-app',
 } as const
 
 /**
@@ -218,13 +267,14 @@ export interface PairRoutesDeps {
    */
   lanBindStatus?: () => Record<string, unknown>
   /**
-   * The authenticated home URL (the connection service's launch-token URL)
-   * for the given request origin. The /pair-accept entry redirects there
-   * after setting the device cookie, so a LAN device clears BOTH the
-   * browser-auth gate and the pairing gate in one navigation. Undefined
-   * falls back to '/'.
+   * The official index document to serve on the /pair-app landing. The
+   * plugin fetches it from the inner loopback with its own credential and
+   * patches it with the device-capture script, so a paired device loads
+   * the app shell WITHOUT passing the harness index gate - the mobile flow
+   * then needs no browser cookie at all (the channel gate accepts the
+   * cookieless header/query credential). Undefined drops the route (tests).
    */
-  authenticatedHome?: (origin: string) => string
+  indexDocument?: (deviceId: string) => Promise<string | undefined>
 }
 
 /**
@@ -493,18 +543,31 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
     const ua = req.headers['user-agent']
     const result = token === '' ? { ok: false as const, code: 'invalid' as const } : service.accept(token, typeof ua === 'string' ? ua : undefined)
     if (!result.ok) {
-      res.writeHead(303, { location: '/', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
-      res.end()
+      // accept() now refuses only expired/unknown/stopped tokens: a consumed
+      // token stays re-usable until its expiry or replacement, so a mobile
+      // flow that split across cookie contexts (camera preview, in-app
+      // browser, system browser) can re-pair from the same link. A failure
+      // here means the link is truly dead: an already-paired device is sent
+      // on to the app, everyone else gets the bilingual explanation page
+      // instead of the harness 401 dead end.
+      const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
+      if (deviceId !== undefined && service.hasDevice(deviceId)) {
+        // An already-paired device re-opening a dead link goes straight to
+        // the cookieless app landing with its live device credential.
+        res.writeHead(303, { location: `${appOrigin(req)}/pair-app?device=${encodeURIComponent(deviceId)}`, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
+        res.end()
+        return
+      }
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
+      res.end(pairingFailurePage())
       return
     }
-    // Same origin the device navigated (x-forwarded-proto honors a tunnel's
-    // https edge); authenticatedUrl rewrites it into the launch-token URL.
-    const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
-    const origin = `http://${req.headers.host ?? '127.0.0.1'}`
-    const originUrl = proto === 'https' ? origin.replace('http://', 'https://') : origin
-    const home = deps.authenticatedHome?.(originUrl) ?? '/'
+    // Land the paired device on the cookieless app page: the official shell
+    // served by this plugin, with the device id in the URL. No harness index
+    // gate, no browser-auth cookie hop - the channel gate accepts the device
+    // credential whether or not the browser stores cookies.
     res.writeHead(303, {
-      location: home,
+      location: `${appOrigin(req)}/pair-app?device=${encodeURIComponent(result.deviceId)}`,
       'cache-control': 'no-store',
       'referrer-policy': 'no-referrer',
       'set-cookie': [
@@ -512,6 +575,54 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       ],
     })
     res.end()
+  }
+
+  /**
+   * The cookieless app landing. A paired device (device query or live
+   * pairing cookie) receives the official index shell patched with the
+   * device-capture script; the shell itself is the official document and
+   * carries no data, so serving it needs only the device credential.
+   */
+  const handleAppPage = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    if (!requireMethod(req, res, 'GET')) return
+    if (!lanFence(req)) {
+      res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' })
+      res.end('forbidden')
+      return
+    }
+    if (rateLimitAccept(req, 'page')) {
+      res.writeHead(429, { 'content-type': 'text/plain; charset=utf-8' })
+      res.end('rate limited')
+      return
+    }
+    const url = new URL(req.url ?? '/', 'http://pair.invalid')
+    const device = url.searchParams.get('device') ?? ''
+    const cookieDevice = readCookie(req.headers.cookie, service.config.cookieName)
+    const id = (device !== '' && service.touchDevice(device))
+      ? device
+      : (cookieDevice !== undefined && service.touchDevice(cookieDevice))
+        ? cookieDevice
+        : undefined
+    if (id === undefined) {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
+      res.end(pairingFailurePage())
+      return
+    }
+    const html = await deps.indexDocument?.(id).catch(() => undefined)
+    if (html === undefined) {
+      res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })
+      res.end('remote device app unavailable')
+      return
+    }
+    res.writeHead(200, {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'referrer-policy': 'no-referrer',
+      'set-cookie': [
+        `${service.config.cookieName}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${String(COOKIE_MAX_AGE_SEC)}`,
+      ],
+    })
+    res.end(patchAppShell(html, id))
   }
 
   const routes: WebRoute[] = [
@@ -527,5 +638,15 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
     routes.push({ kind: 'exact', path: PAIR_PATHS.lanBind, handler: handleLanBind })
   }
   routes.push({ kind: 'exact', path: PAIR_PATHS.acceptPage, handler: handleAcceptPage })
+  if (deps.indexDocument !== undefined) {
+    routes.push({ kind: 'exact', path: PAIR_PATHS.appPage, handler: handleAppPage })
+  }
   return routes
+}
+
+/** The request origin (https when a tunnel edge says so). */
+function appOrigin(req: IncomingMessage): string {
+  const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
+  const origin = `http://${req.headers.host ?? '127.0.0.1'}`
+  return proto === 'https' ? origin.replace('http://', 'https://') : origin
 }

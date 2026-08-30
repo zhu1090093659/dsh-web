@@ -29,6 +29,12 @@ const LLM_DEEPSEEK = {
   listConfigurableProviders: () => [],
 }
 
+/** The live route id the llm-deepseek adapter registers (sessions carry it). */
+const LLM_DEEPSEEK_OFFICIAL = {
+  listProviders: () => [{ id: 'deepseek-official', name: 'DeepSeek' }],
+  listConfigurableProviders: () => [],
+}
+
 const LLM_KIMI = {
   listProviders: () => [{ id: 'kimi-coding', name: 'Kimi For Coding' }],
   listConfigurableProviders: () => [],
@@ -211,6 +217,51 @@ describe('pet announce linkage', () => {
     expect(pet.announced).toHaveLength(1)
     expect(pet.announced[0]).toMatchObject({ source: USAGE_ANNOUNCE_SOURCE, kind: 'balance', title: 'DeepSeek', amount: '¥110.00', tone: 'ok' })
     expect(parseAnnouncement(pet.announced[0], Date.now())).toBeDefined()
+    service.stop()
+  })
+
+  it('announces the live deepseek-official route as a cost bubble with the peak period and a poll-cadence ttl', async () => {
+    stubFetch(() => jsonResponse(BALANCE_BODY))
+    const pet = makeRecorderPet()
+    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_DEEPSEEK_OFFICIAL, credentials: CREDENTIALS_ENV, pet })
+    const service = new UsageService(ctx, OPTIONS)
+    service.start()
+    const session = {}
+    fireSessionEvent(session, requestHeaderEvent('deepseek-official', 'deepseek-v4-flash-vision-exp'))
+    fireSessionEvent(session, usageEvent(1_000_000, 100_000))
+    await service.refresh()
+
+    // The session route folds with a fold-time spend estimate, and the
+    // announce resolves the deepseek-official snapshot (adapter alias + env
+    // fallback) instead of dying on the id mismatch.
+    expect(service.overview().usage.today.totals.cost).toBeGreaterThan(0)
+    expect(pet.announced).toHaveLength(1)
+    const payload = pet.announced[0] as Record<string, unknown>
+    expect(payload).toMatchObject({ source: USAGE_ANNOUNCE_SOURCE, kind: 'cost', title: 'DeepSeek', tone: expect.stringMatching(/ok|warn/) })
+    expect(String(payload.amount)).toMatch(/^今日 ¥\d/)
+    expect(String(payload.note)).toMatch(/高峰时段|空闲时段/)
+    expect(payload.ttlMs).toBe(7_200_000)
+    expect(parseAnnouncement(payload, Date.now())).toBeDefined()
+    service.stop()
+  })
+
+  it('falls back to the adapter-family snapshot when the current route id has none of its own', async () => {
+    stubFetch((url) => url.includes('api.deepseek.com') ? jsonResponse(BALANCE_BODY) : jsonResponse({}, 404))
+    const pet = makeRecorderPet()
+    // Only the catalog alias `deepseek` is enumerated, but the session runs
+    // under the live `deepseek-official` route id.
+    const { ctx, fireSessionEvent } = makeCtx({ llm: {
+      listProviders: () => [],
+      listConfigurableProviders: () => [{ provider: 'deepseek', displayName: 'deepseek' }],
+    }, credentials: CREDENTIALS_ENV, pet })
+    const service = new UsageService(ctx, OPTIONS)
+    service.start()
+    fireSessionEvent({}, requestHeaderEvent('deepseek-official', 'deepseek-v4-flash-vision-exp'))
+    await service.refresh()
+    // The deepseek-official snapshot is absent, but the family fallback finds
+    // the catalog alias's balance and announces it for the live route.
+    expect(pet.announced).toHaveLength(1)
+    expect(pet.announced[0]).toMatchObject({ kind: 'balance', title: 'deepseek', amount: '¥110.00' })
     service.stop()
   })
 
@@ -405,6 +456,26 @@ describe('buildAnnouncement contract', () => {
     const planWithNote = buildAnnouncement({ displayName: 'Kimi', plan: { planName: 'Pro', windows: [{ key: 'week', percent: 95, resetsAt: '2026-08-31T00:00:00.000Z' }], updatedAt: 1 } })
     expect(planWithNote).toMatchObject({ percent: 95, tone: 'low', note: 'Pro', resetAt: '2026-08-31T00:00:00.000Z' })
     expect(parseAnnouncement({ source: USAGE_ANNOUNCE_SOURCE, ...planWithNote! }, 1)).toBeDefined()
+  })
+
+  it('announces today spend first for a priced family, with the peak period and the balance in the note', () => {
+    const snapshot = { displayName: 'DeepSeek', balance: { currency: 'CNY', totalBalance: '1109.95', updatedAt: 1 } }
+    const cost = buildAnnouncement(snapshot, { todayCost: 12.3456, peak: true })
+    expect(cost).toMatchObject({ kind: 'cost', title: 'DeepSeek', amount: '今日 ¥12.35', tone: 'warn', note: '高峰时段 计价×2 · 余额 ¥1109.95' })
+    expect(parseAnnouncement({ source: USAGE_ANNOUNCE_SOURCE, ...cost! }, 1)).toBeDefined()
+
+    const offPeak = buildAnnouncement(snapshot, { todayCost: 0.5, peak: false })
+    expect(offPeak).toMatchObject({ kind: 'cost', amount: '今日 ¥0.50', tone: 'ok', note: '空闲时段 计价减半 · 余额 ¥1109.95' })
+
+    // No readable balance: the note carries the period alone.
+    const noBalance = buildAnnouncement({ displayName: 'DeepSeek' }, { todayCost: 1, peak: false })
+    expect(noBalance).toMatchObject({ kind: 'cost', note: '空闲时段 计价减半' })
+    expect(parseAnnouncement({ source: USAGE_ANNOUNCE_SOURCE, ...noBalance! }, 1)).toBeDefined()
+  })
+
+  it('falls back to the balance bubble when the family has no spend today', () => {
+    const balance = buildAnnouncement({ displayName: 'DeepSeek', balance: { currency: 'CNY', totalBalance: '110.00', updatedAt: 1 } }, { todayCost: 0, peak: true })
+    expect(balance).toMatchObject({ kind: 'balance', amount: '¥110.00' })
   })
 
   it('returns undefined when nothing satisfies the pet contract', () => {

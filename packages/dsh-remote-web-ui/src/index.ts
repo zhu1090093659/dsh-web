@@ -27,6 +27,7 @@ import { isPairedDeviceRequest, makeGateListener } from './gate.ts'
 import { RemoteWebUiPairing } from './pairing-access.ts'
 import { isTrustedApiRequest, makeRoutes } from './routes.ts'
 import { makeRemoteApiRoutes, makeRemoteApiUpgradeRoutes } from './remote-api.ts'
+import { startRemotePresencePet, type PresencePetSeam } from './remote-presence-pet.ts'
 import { claimPostureKey, postureTargets, probePosture, releasePostureKey } from './posture.ts'
 import { lanIPv4Addresses } from './lan.ts'
 import { ensureFirewallRule, firewallSummary, removeFirewallRule } from './firewall.ts'
@@ -463,21 +464,34 @@ function applyImpl(ctx: Context, config?: Config): void {
       return undefined
     }
   })
+  // The official index document for the /pair-app landing, fetched from the
+  // inner loopback with the process credential and cached briefly (the shell
+  // is static; skins/injections settle right after boot).
+  const APP_SHELL_TTL_MS = 30_000
+  let appShellCache: { at: number; html: string } | undefined
+  const fetchAppShell = async (): Promise<string | undefined> => {
+    if (!Number.isFinite(ctx.webServer.port)) return undefined
+    if (appShellCache !== undefined && Date.now() - appShellCache.at < APP_SHELL_TTL_MS) return appShellCache.html
+    const cookie = await innerAuth.ready()
+    try {
+      const response = await fetch(`http://127.0.0.1:${String(ctx.webServer.port)}/`, {
+        headers: cookie !== undefined ? { cookie } : undefined,
+      })
+      if (!response.ok) return undefined
+      const html = await response.text()
+      appShellCache = { at: Date.now(), html }
+      return html
+    } catch {
+      return undefined
+    }
+  }
   const routes = [
     ...makeRoutes({
       service,
       lanAddresses: service.lanAddresses,
       requirePairingForLan: () => resolve().requirePairingForLan,
       lanBindStatus,
-      // The QR entry redirects the pairing device through the connection
-      // service's launch-token URL so it clears the browser-auth gate.
-      authenticatedHome: (origin: string) => {
-        try {
-          return (ctx.connection as { authenticatedUrl?: (base: string) => string }).authenticatedUrl?.(origin) ?? '/'
-        } catch {
-          return '/'
-        }
-      },
+      indexDocument: fetchAppShell,
     }),
     // The remote desktop channel: policy-gated `/remote` prefix that
     // re-issues fenced paths to loopback (see remote-api.ts). The live
@@ -548,6 +562,23 @@ function applyImpl(ctx: Context, config?: Config): void {
     if (!resolve().enabled) return false
     return isPairedDeviceRequest(service, request)
   })
+
+  // Remote-presence to pet-visibility link: while a paired device is online
+  // (an active phone mirror), hide the host-global pet through the pet's OWN
+  // hide switch; when the last device has been offline for a grace window,
+  // show it again (user design; the pet plugin is optional, so the seam is
+  // resolved per transition and every failure degrades to a no-op).
+  const presencePet = startRemotePresencePet({
+    onState: listener => service.onState(listener),
+    pet: (): PresencePetSeam | undefined => {
+      try {
+        return ctx.get('pet') as unknown as PresencePetSeam | undefined
+      } catch {
+        return undefined
+      }
+    },
+  })
+  ctx.effect(() => presencePet, 'remote-web-ui: remote-presence pet visibility')
 
   if (service.lanAddresses.length > 0) {
     const urls = service.lanAddresses.map(ip => `http://${ip}:${String(ctx.webServer.port)}`).join(' , ')

@@ -137,6 +137,12 @@ export function proxyLoopbackUpgrade(
   const handshake = `${lines.join('\r\n')}\r\n\r\n`
 
   const upstream = connect(port, '127.0.0.1')
+  // A half-open tunnel path (dead-but-alive edge connection) would otherwise
+  // let the phone's mux socket sit stale for minutes: keepalive probes the
+  // pipe periodically and destroys both legs on the first real gap, so the
+  // client's reconnect + stream re-baseline re-syncs the feed in seconds.
+  ;(socket as unknown as import('node:net').Socket).setKeepAlive(true, 20_000)
+  upstream.setKeepAlive(true, 20_000)
   const tearDown = (): void => {
     upstream.destroy()
     socket.destroy()

@@ -137,6 +137,7 @@ function reviveTotals(value: unknown): UsageTokenTotals | undefined {
     cacheWriteTokens: num('cacheWriteTokens'),
     reasoningTokens: num('reasoningTokens'),
     calls: num('calls'),
+    cost: num('cost'),
   }
 }
 

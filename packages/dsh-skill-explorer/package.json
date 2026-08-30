@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skill-explorer",
   "description": "DSH skill center: browse loaded skills by source (bundled / project / user / custom / runtime), enable or disable, create and delete, in a web GUI panel.",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

@@ -15,8 +15,9 @@ import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { TokenUsage } from '@deepseek-ai/dsh-llm'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { dshHome } from '../dsh-home.ts'
-import { adapterFor, providerErrorMessage } from '../core/adapters.ts'
+import { adapterFor, isDeepSeekProviderRoute, providerErrorMessage } from '../core/adapters.ts'
 import type { BalanceParse, PlanParse } from '../core/adapters.ts'
+import { deepseekModelSpend, deepseekPeriodAt } from '../core/pricing.ts'
 import { createLedgerDocument, deserializeLedger, foldUsage, ledgerDayKeys, localDateKey, pruneLedger, summarizeDays } from '../core/ledger.ts'
 import type { BalanceView, CredentialKind, PlanView, ProviderSnapshotState, ProviderSnapshotView, UsageLedgerDocument, UsageOverviewView, UsageTokenTotals } from '../core/types.ts'
 import { emptyTotals } from '../core/types.ts'
@@ -72,16 +73,43 @@ export function planTone(percent: number): 'ok' | 'warn' | 'low' {
   return 'ok'
 }
 
+/** Announcement context the service computes per poll: today's family spend and the DeepSeek period. */
+export interface AnnounceContext {
+  /** Today's ledger spend for the announced provider's family (CNY; 0 = unpriced). */
+  todayCost?: number
+  /** Whether DeepSeek peak pricing is in effect right now. */
+  peak?: boolean
+}
+
 /**
  * Build the raw pet announce payload for one provider snapshot, or
  * undefined when nothing worth announcing exists. Pure: every payload this
  * returns satisfies the pet's `parseAnnouncement` contract — plan
  * announcements require a numeric percent, so percent-less windows never
- * announce (the pet validator would silently drop them).
+ * announce (the pet validator would silently drop them). A priced family
+ * (DeepSeek) with spend today announces a cost bubble first; balance-only
+ * families announce the balance; plan families announce their tightest
+ * percent window.
  */
 export function buildAnnouncement(
   snapshot: Pick<ProviderSnapshotView, 'displayName' | 'balance' | 'plan'>,
+  context?: AnnounceContext,
 ): Record<string, unknown> | undefined {
+  const todayCost = context?.todayCost ?? 0
+  if (todayCost > 0) {
+    const peak = context?.peak ?? false
+    const noteParts = [
+      peak ? '高峰时段 计价×2' : '空闲时段 计价减半',
+      ...(snapshot.balance !== undefined ? [`余额 ${formatMoney(snapshot.balance.currency, snapshot.balance.totalBalance)}`] : []),
+    ]
+    return {
+      kind: 'cost',
+      title: snapshot.displayName,
+      amount: `今日 ${formatMoney('CNY', todayCost.toFixed(2))}`,
+      ...(noteParts.length > 0 ? { note: noteParts.join(' · ') } : {}),
+      tone: peak ? 'warn' : 'ok',
+    }
+  }
   if (snapshot.balance !== undefined) {
     return {
       kind: 'balance',
@@ -272,6 +300,17 @@ export class UsageService {
     return { date: dateKey, totals, providers }
   }
 
+  /** Today's ledger spend for one provider's adapter family (0 when unpriced). */
+  private familyCostToday(provider: string): number {
+    const family = adapterFor(provider)
+    if (family === undefined) return 0
+    let cost = 0
+    for (const row of this.daySummary(localDateKey(Date.now())).providers) {
+      if (adapterFor(row.provider) === family) cost += row.totals.cost
+    }
+    return cost
+  }
+
   // ------------------------------------------------------------------
   // Session usage fold
   // ------------------------------------------------------------------
@@ -295,7 +334,7 @@ export class UsageService {
         if (usage === undefined) return
         const route = this.sessionRoutes.get(session)
         if (route === undefined || route.provider === '') return
-        foldUsage(this.ledger, Date.now(), route.provider, route.model || 'unknown', this.totalsFrom(usage))
+        foldUsage(this.ledger, Date.now(), route.provider, route.model || 'unknown', this.totalsFrom(usage, route.provider, route.model || 'unknown', Date.now()))
         this.scheduleFlush()
       }
     } catch {
@@ -303,8 +342,12 @@ export class UsageService {
     }
   }
 
-  /** Normalize a provider TokenUsage into the ledger bucket (one call). */
-  private totalsFrom(usage: TokenUsage): UsageTokenTotals {
+  /**
+   * Normalize a provider TokenUsage into the ledger bucket (one call). The
+   * DeepSeek official family is priced at the fold instant (its billing
+   * period is time-of-day); other families stay unpriced (cost 0).
+   */
+  private totalsFrom(usage: TokenUsage, provider: string, model: string, atMs: number): UsageTokenTotals {
     const totals = emptyTotals()
     totals.inputTokens = usage.inputTokens
     totals.outputTokens = usage.outputTokens
@@ -312,6 +355,7 @@ export class UsageService {
     totals.cacheWriteTokens = usage.cacheWriteTokens ?? 0
     totals.reasoningTokens = usage.reasoningTokens ?? 0
     totals.calls = 1
+    if (isDeepSeekProviderRoute(provider)) totals.cost = deepseekModelSpend(model, totals, atMs)
     return totals
   }
 
@@ -574,7 +618,7 @@ export class UsageService {
     }
     try {
       const profile = this.piAiProfile(provider)
-      const envName = profile?.apiKeyEnv ?? (provider === 'deepseek' ? this.deepseekApiKeyEnv() : undefined)
+      const envName = profile?.apiKeyEnv ?? (isDeepSeekProviderRoute(provider) ? this.deepseekApiKeyEnv() : undefined)
       if (typeof envName === 'string' && envName !== '') {
         const resolved = await credentials.resolve(credentialRef(envName))
         if (resolved?.value !== undefined && resolved.value !== '') return { kind: 'env', key: resolved.value }
@@ -602,10 +646,15 @@ export class UsageService {
   // ------------------------------------------------------------------
 
   /**
-   * Announce the current provider's balance or plan usage to the pet. In
-   * `change` mode only meaningful value changes re-announce; `off` skips.
-   * Fully guarded: a malformed snapshot or a failing pet service must never
-   * break the poll loop, and a disposed service never announces.
+   * Announce the current provider's spend, balance, or plan usage to the pet.
+   * In `change` mode only meaningful value changes re-announce; `off` skips.
+   * The TTL rides the poll interval (bubble_mode `always` re-announces every
+   * cycle, so a TTL of two cycles + margin keeps the bubble continuous
+   * across polls; the pet contract caps the ceiling). A route id the
+   * catalogs spell differently than the snapshot keys falls back to its
+   * adapter family's snapshot. Fully guarded: a malformed snapshot or a
+   * failing pet service must never break the poll loop, and a disposed
+   * service never announces.
    */
   private announceCurrent(): void {
     if (this.disposed || this.options.bubbleMode === 'off') return
@@ -620,15 +669,30 @@ export class UsageService {
           return
         }
       }
-      const snapshot = this.snapshots.get(provider)
+      let snapshot = this.snapshots.get(provider)
+      if (snapshot === undefined) {
+        const family = adapterFor(provider)
+        if (family !== undefined) {
+          for (const [id, candidate] of this.snapshots) {
+            if (adapterFor(id) === family) {
+              snapshot = candidate
+              break
+            }
+          }
+        }
+      }
       if (snapshot === undefined) return
-      const announcement = buildAnnouncement(snapshot)
+      const announcement = buildAnnouncement(snapshot, {
+        todayCost: this.familyCostToday(provider),
+        peak: deepseekPeriodAt(Date.now()).peak,
+      })
       if (announcement === undefined) return
       const signature = JSON.stringify(announcement)
       if (this.options.bubbleMode === 'change' && signature === this.lastSignature) return
       this.lastSignature = signature
+      const ttlMs = Math.min(7_200_000, this.options.pollIntervalSec * 2_000 + 30_000)
       const pet = service<{ announce(input: Record<string, unknown>): void }>(this.ctx, 'pet')
-      pet?.announce({ source: USAGE_ANNOUNCE_SOURCE, ttlMs: undefined, ...announcement })
+      pet?.announce({ source: USAGE_ANNOUNCE_SOURCE, ttlMs, ...announcement })
     } catch {
       // A missing or failing pet service must never break the poll loop.
     }

@@ -102,8 +102,14 @@ function bearer(apiKey: string): Record<string, string> {
   return { authorization: `Bearer ${apiKey}` }
 }
 
+/**
+ * The official pay-as-you-go balance. `deepseek` is the configurable-catalog
+ * route key; `deepseek-official` is the live provider route the llm-deepseek
+ * adapter registers (sessions and agent-default-model carry it), so both ids
+ * must resolve here or the current provider would never be probed.
+ */
 const DEEPSEEK: ProviderAdapter = {
-  ids: ['deepseek'],
+  ids: ['deepseek', 'deepseek-official'],
   displayName: 'DeepSeek',
   balance: {
     build: ({ apiKey }) => ({ url: 'https://api.deepseek.com/user/balance', headers: bearer(apiKey) }),
@@ -417,6 +423,16 @@ export const PROVIDER_ADAPTERS: readonly ProviderAdapter[] = [
 /** Find the adapter serving a provider route key, if any. */
 export function adapterFor(provider: string): ProviderAdapter | undefined {
   return PROVIDER_ADAPTERS.find((adapter) => adapter.ids.includes(provider))
+}
+
+/**
+ * Whether a provider route belongs to the official DeepSeek family: the only
+ * family with a spend price book and a settings-section-owned env credential
+ * (llm-deepseek) rather than a pi-ai profile. Drives the env fallback in
+ * credential resolution and the fold-time cost stamping.
+ */
+export function isDeepSeekProviderRoute(provider: string): boolean {
+  return adapterFor(provider) === DEEPSEEK
 }
 
 /**

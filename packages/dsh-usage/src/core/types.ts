@@ -20,11 +20,18 @@ export interface UsageTokenTotals {
   reasoningTokens: number
   /** Provider calls that reported usage. */
   calls: number
+  /**
+   * Spend estimate stamped at fold time, in the priced provider's billing
+   * currency (currently DeepSeek official only, CNY); every other provider
+   * stays 0 = unpriced, so the sum is never a mixed-currency total. Persisted
+   * buckets recorded before a price-book change keep the old pricing.
+   */
+  cost: number
 }
 
 /** A zeroed totals bucket. */
 export function emptyTotals(): UsageTokenTotals {
-  return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0, calls: 0 }
+  return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0, calls: 0, cost: 0 }
 }
 
 /** Add `right` into `left` in place. */
@@ -35,6 +42,7 @@ export function addTotals(left: UsageTokenTotals, right: Readonly<UsageTokenTota
   left.cacheWriteTokens += right.cacheWriteTokens
   left.reasoningTokens += right.reasoningTokens
   left.calls += right.calls
+  left.cost += right.cost
   return left
 }
 

@@ -1,0 +1,87 @@
+From: DSH web investigation (model-selection lockup)
+Subject: [PATCH] ui-model-selection: never strand a session directory in 'selecting'
+
+The composer model trigger locks up (every option disabled) when
+sessions.selectModel rejects before the host returns a Result: the
+official ModelDirectory.select() leaves the store at status='selecting'
+(it has no try/finally) and ModelSelect.choose() calls select() with no
+.catch. Any transport rejection therefore freezes the picker and the
+composer's model binding on every surface (desktop and phone).
+
+Apply:
+    git -C /Users/zcl/code/deepseek-harness apply <this-file>
+Then rebuild the web client and restart the DSH host.
+
+--- a/packages/client/ui-model-selection/src/client/directory.ts
++++ b/packages/client/ui-model-selection/src/client/directory.ts
+@@ -89,24 +89,33 @@
+     this.assertAvailable()
+     const generation = ++this.generation
+     this.store.update((s) => { s.status = 'selecting'; s.error = null })
+-    const result = await this.sessions.selectModel({
+-      sessionId: this.sessionId,
+-      provider: selection.provider,
+-      model: selection.model,
+-      ...selection.reasoningEffort === undefined
+-        ? {}
+-        : { reasoningEffort: selection.reasoningEffort },
+-    })
+-    if (this.disposed || generation !== this.generation) {
+-      if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
+-      return
++    try {
++      const result = await this.sessions.selectModel({
++        sessionId: this.sessionId,
++        provider: selection.provider,
++        model: selection.model,
++        ...selection.reasoningEffort === undefined
++          ? {}
++          : { reasoningEffort: selection.reasoningEffort },
++      })
++      if (this.disposed || generation !== this.generation) {
++        if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
++        return
++      }
++      if (!result.ok) {
++        this.store.update((s) => { s.status = 'error'; s.error = `${result.error.code}: ${result.error.message}` })
++        throw new Error(`session.selectModel failed: ${result.error.code}: ${result.error.message}`)
++      }
++      this.store.update((s) => { s.status = 'ready'; s.error = null })
++      this.syncInputs()
++    } catch (error) {
++      // A transport rejection before the Host returns a Result must not
++      // strand the directory in 'selecting' (every option stays disabled).
++      // Surface the error on the store and rethrow so the seat's error path
++      // engages instead of leaving the picker permanently locked.
++      this.store.update((s) => { s.status = 'error'; s.error = error instanceof Error ? error.message : String(error) })
++      throw error
+     }
+-    if (!result.ok) {
+-      this.store.update((s) => { s.status = 'error'; s.error = `${result.error.code}: ${result.error.message}` })
+-      throw new Error(`session.selectModel failed: ${result.error.code}: ${result.error.message}`)
+-    }
+-    this.store.update((s) => { s.status = 'ready'; s.error = null })
+-    this.syncInputs()
+   }
+ 
+   /**
+--- a/packages/client/ui-model-selection/src/client/ModelSelect.tsx
++++ b/packages/client/ui-model-selection/src/client/ModelSelect.tsx
+@@ -174,7 +174,7 @@
+       return
+     }
+     lastActionRef.current = 'select'
+-    void select(selection).then(settleSelection)
++    void select(selection).then(settleSelection).catch(() => settleSelection(false))
+   }
+ 
+   const chooseEffort = (effort: string | undefined): void => {
+@@ -189,7 +189,7 @@
+       ...effort === undefined ? {} : { reasoningEffort: effort },
+     }
+     lastActionRef.current = 'select'
+-    void select(selection).then(settleSelection)
++    void select(selection).then(settleSelection).catch(() => settleSelection(false))
+   }
+ 
+   const waiting = state.current === null && state.status === 'loading'

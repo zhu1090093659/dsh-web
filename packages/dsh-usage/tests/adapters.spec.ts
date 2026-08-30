@@ -1,12 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { adapterFor, providerErrorMessage, PROVIDER_ADAPTERS } from '../src/core/adapters.ts'
+import { adapterFor, isDeepSeekProviderRoute, providerErrorMessage, PROVIDER_ADAPTERS } from '../src/core/adapters.ts'
 
 describe('adapterFor', () => {
   it('serves every documented route id', () => {
-    for (const id of ['deepseek', 'moonshotai-cn', 'moonshotai', 'kimi-coding', 'zai-coding-cn', 'zai-coding', 'opencode-go', 'minimax-cn', 'minimax', 'openai-codex', 'openrouter', 'siliconflow', 'siliconflow-intl', 'zenmux']) {
+    for (const id of ['deepseek', 'deepseek-official', 'moonshotai-cn', 'moonshotai', 'kimi-coding', 'zai-coding-cn', 'zai-coding', 'opencode-go', 'minimax-cn', 'minimax', 'openai-codex', 'openrouter', 'siliconflow', 'siliconflow-intl', 'zenmux']) {
       expect(adapterFor(id), id).toBeDefined()
     }
     expect(adapterFor('unknown-provider')).toBeUndefined()
+  })
+
+  it('serves the official DeepSeek live route and the catalog alias with one adapter', () => {
+    // `deepseek-official` is the llm-deepseek route sessions carry; `deepseek`
+    // is the configurable-catalog key. The announce fallback keys on family
+    // identity, so both ids must land on the same adapter object.
+    expect(adapterFor('deepseek-official')).toBe(adapterFor('deepseek'))
+    expect(isDeepSeekProviderRoute('deepseek-official')).toBe(true)
+    expect(isDeepSeekProviderRoute('deepseek')).toBe(true)
+    expect(isDeepSeekProviderRoute('kimi-coding')).toBe(false)
+    expect(isDeepSeekProviderRoute('zenmux')).toBe(false)
+    expect(isDeepSeekProviderRoute('unknown-provider')).toBe(false)
   })
 
   it('keeps route ids unique across adapters', () => {

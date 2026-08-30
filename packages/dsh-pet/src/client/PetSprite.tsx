@@ -79,6 +79,14 @@ export interface PetSpriteProps {
   onGameplayMenu?: () => void
   /** Disable the drag gesture (gameplay work mode blocks dragging). */
   dragDisabled?: boolean
+  /**
+   * DOM node the floating chrome portals into. Defaults to document.body
+   * (the legacy behavior); the plugin apply passes its owning root (the
+   * [data-dsh-plugin="pet"] container) so the root owns the whole surface
+   * and a root-keyed suppressor (the portrait mobile layer) hides the pet
+   * as one unit instead of missing the portaled sprite.
+   */
+  portalTarget?: Element
   /** Locale translate seat (namespace-bound). */
   t: TranslateNS<typeof NS>
 }
@@ -179,11 +187,11 @@ function StatusOrnament(props: { decoration: DecorationView; phase: ActivityPhas
 
 /**
  * The announcement bubble (dsh-usage linkage): a dedicated, specially
- * designed surface for sibling-plugin facts — a balance pill or a plan-quota
- * card with a tone-tinted accent, a mini meter for percent windows, and the
- * reset instant. It rides the top of the session bubble stack (column-reverse
- * puts the DOM-last child farthest from the sprite) and persists for its TTL
- * instead of the short feedback pop.
+ * designed surface for sibling-plugin facts — a balance or today-spend pill,
+ * or a plan-quota card with a tone-tinted accent, a mini meter for percent
+ * windows, and the reset instant. It rides the top of the session bubble
+ * stack (column-reverse puts the DOM-last child farthest from the sprite)
+ * and persists for its TTL instead of the short feedback pop.
  */
 function UsageAnnouncementBubble(props: { announcement: PetAnnouncement }): ReactNode {
   const { announcement } = props
@@ -201,7 +209,7 @@ function UsageAnnouncementBubble(props: { announcement: PetAnnouncement }): Reac
     >
       <span className={styles.bubbleUsageHead}>
         <span className={styles.bubbleUsageTitle}>{announcement.title}</span>
-        {announcement.kind === 'balance' && announcement.amount !== undefined && (
+        {(announcement.kind === 'balance' || announcement.kind === 'cost') && announcement.amount !== undefined && (
           <span className={styles.bubbleUsageValue}>{announcement.amount}</span>
         )}
         {announcement.kind === 'plan' && announcement.percent !== undefined && (
@@ -793,5 +801,5 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
     </div>
   )
 
-  return createPortal(float, document.body)
+  return createPortal(float, props.portalTarget ?? document.body)
 }

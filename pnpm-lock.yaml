@@ -1974,299 +1974,299 @@ packages:
     resolution: {integrity: sha512-muBOKtSrUKU5m/xpq8ZXWL6hQ/jgd4PhU2PqH97bcxIiLEJfNwZOGQEx4t/aS/GgxRAR+ra9pMHPMtTHU4sqqA==}
 
   '@deepseek-ai/dsh-agent-default-model@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-agent-default-model-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-hYGHGnyaC9+CVyhKL8KADO2XwfxT4qRBTp1OlNN+Jf3MOLQLUw7xAyikzlFqcYI/4QPT7p3Q+qULxxntKzxx8Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-agent-default-model-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-RPdBVWWjsyL92AbnnrKQ/yZYgcFB7oc2RdGFhlmh7cc/K5Lci+n68ONEMKxNfB86TOotFeit5pKfvnSXmCuK/w==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-agent-default-model-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-agent-presets@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-agent-presets-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-gpwg0UWu/dQcKX+K5bMMpvcU78F7SQa7QmqdZ9sAQaQ3cW9aN0NSx6wahJI5qf21rKmO2tLGaDuWIgyegtQIDg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-agent-presets-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-xTetAyZ5vz9dH1tMW5QwKhHoOhR5fkt2ZPX5FKtECApkG/BTlTMgvCuEGilfl+iXAsOj7CruTw814rFBVGFIdQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-agent-presets-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-agent@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-agent-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-h9QWYd4w0AgVadvbvdAPbO3TcDs5z3WKs0HGzWiIiUUxh3iH9MYPYzx4B2qeO8nF6bMG4TeQOck0cJJNEG72hQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-agent-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-VuV+WBQOblUj1GGosPOXKkktLv3TYh2iA+Y2MVgLJkqxBAyA/xd0T1NJCBtwSP7T7MRqrGQMnPbDn32h8QZqKQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-agent-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-api-gateway@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-gateway-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-rJr5oQLWCkmpxC6OG9OfDOTV1Tc4H5QRBQjTZR82KL5UXNC7GCt5/gJqTGDjPHBdx5KoCWdvLmpKhhxH/k1PGg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-gateway-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-LLVE6tpotJ3EnQ6n/SNklPJQEOWDUbote8qG7Ko01MWd12ApOlsK0U/biWpfhMMND6a9T/nwrSBCNykgkavI2g==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-gateway-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-api-remotes@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-remotes-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-rJ4mC0kkEYwBwjMFThpqXLE7A5Zsv2vh4Saf5F7qIfy5SywqAeGgMu4e0G1L9Lv+d9By5MeJN9ReaIW3WWqYqg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-remotes-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-Hf+vXgBiCQVPuk+fE9kaDhlSBujTx2thdfE1UHcp3tfgUlNpSKagcB+Q6FQirq0Pw8StoSLjICPnZJjw3IipeA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-remotes-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-api-session-controller@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-session-controller-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-8QZ8aZMof0MaWrZBBZQsOIG8NxrLNtmA6PWTdx5VD7nzTuUnzOxougusGVtPfJ7CiVf42mYmwdbAkEnl60GBwQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-session-controller-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-rtxa/6qzv3efL8YocwZ4zIXOES00MxBaecYBqRHTcz/xbHvgCV1nLzrvqqDQbOUg9NIfluwtrPwq4jzRJfbyYg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-session-controller-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-api-settings-controller@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-settings-controller-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-oSp4qVdWusYxZBJHc9UP40ZEBPg5MBkKmxVdHZpUsSJD0bPK4B0VXDVtJrYyuNSB+BJWnsS1W2wrldgFwqa0hQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-settings-controller-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-Sx02Lc0fTqJdUg7ouC66i+AXDyYrF6sl7Ixs4kKKfD3+5WgZ7YwMMXT/VLGTgqVUtMzJsUznk2jJnwJVVwCpvg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-settings-controller-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-api-workspace-controller@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-workspace-controller-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-r649eZ9ncFSATMqZWl0ijzWw3C067VNc2RAyqPC6N4sB2vVNjkX1lbDnu/nM81622b1fYYzE7IR1MmwOlcKdSA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-workspace-controller-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-AFRcQWZoiPv0RaWDxdNOpDd52eD4yUALyOyjxT/i+a/95Gdne1J8FD4hMNFm4OvduBANW5BGwbvXKzDLGtqq9w==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-api-workspace-controller-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-atomic-write@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-atomic-write-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-Wd68ppoK4YcPPwMNszHpb4gEzMSQfPWsDZEh7IUa93MZQk2efpC9E5FchOnL+i2wYJ1Gwp3xU3jpvcGcrmOCTw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-atomic-write-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-HxLct/tFTJ/44p1HtYyxbe5SIvUoksjXDTBVp9NLn0Fg7+Zu9oD+PKtbeLH6+/aAmQw6vGRSZTPFngOy2lBTTA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-atomic-write-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-attachment@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-attachment-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-zJlTtr4Fl9jt/I5oeqpPSEOYQF/FXqS2Mv7ILxYg3NaRYCfnBWRul0Yhvb7kIYb6S3vNmxsAx4eSKOGvQVq9Cg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-attachment-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-tkTWDXYm1Z8QHrpPqwTt0o3aT0nQv3IZ25OQGCjSRTBVejGj29Q86s+WAFf9VmKWZb4zhx28RHXtuVbSMRCYGA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-attachment-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-brand@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-brand-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-tkfvDQmzLr3sTvGXtryyTBKq2TJQb1i7oid25s5pAYdzSnqkSgsqeFAAoa204/4SsEr5mqApvzYZwHHn+sFa+Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-brand-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-QTc5q8Mfe7w3qO0xpiRlUntBoil553NGRBAyhq5MidGA9xBK0C4Zl3le22p0tfcemCz1RNDm57ruLzbO3Dvlrw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-brand-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-connection@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-connection-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-Ov7yw2wKvim9jZ1CwC6QfomEPMIBYBopWVcS6QCQ4VY86iJ/FMNzRAz7F9Y12aSLaKZH9TUbxbENGm1no+VoPg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-connection-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-JZy41+WQJV9tv3gljfvs0LBBaalQBZOghCFn5sZZcH75hbzrN/pESWraur2fmnlGbnHmAVS31yvF+AOw0I3+7Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-connection-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-locale@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-locale-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-p8spAOMBxTSptq9jJOzXQywgyi8wx79TZtCUXyZC5+C3ElU5G8Y3S28K+V6Veg/Z3SC2wSmY08KdHZh4MR/bvA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-locale-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-sTidfmQ1aa00FxPmKNEXM7YATfePUJaaZmUnFSWRMWTVdSX06uAkp2vKOEQFNDm4snxGF+WdVE/EHccQfiStnQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-locale-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-store@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-store-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-HtCBhTAFe1eAE7mrP99twoX2ZwCQsjcDVFLWSw7G783DCkozhI08BpxwVcTb0+gwWkWPuogQJ65XAyoBkZI/Hg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-store-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-Y6FS1atFDse4LU/fMkYeSBeJacKfu8oyrTow8+v01dSgpQertrs4N9TRQOpsNVN6cX8lBGdHcgG7mskXXAmg4w==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-store-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-ui-conversation@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-conversation-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-dBEBtX2b9Tye+NvtFq8hHS3l9aaxXtL059bJfjtup5kcGtjPlAOFnPxBWizeyEKdH563ZPcFuAiHCBpJx9I8HQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-conversation-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-XW/H7aFEdG6WLQl9uiFvVSEDCe5LToErVyL+CkuFWyst7ObFmg2eV1PoRwBmtw+p3CcwpFI09jHP84fi/U/fww==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-conversation-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-ui-layout@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-layout-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-UhCxTZC/OfKwwvuCyms/d7qJHvAxCk0dVuppDxnWdFxvBTn+kQHRNjfwsVf2pvuc/tdMpD2e9cUm9WcmslNTlQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-layout-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-7pHK3VkRVB/A/93sxPk6Lj1U0Xo2I6kikXVlI6oZXAyKLAnlAUmjWzFWmIhBidSFZHS3+p5QS6ZbXqFzYm0Jcg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-layout-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-ui-primitives@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-primitives-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-ZWa6HH0OM4aHnYZgQeqW+B/dTtzpgKLBD/rSdbyeLJDn19TxUJgfhQGOtdxkD0do12N6HTWFsDUiFQJXEvhIFQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-primitives-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-7dkvDCy6ZiCodAFug1+t8D8oG2Se6JLzEkvB/elLMxSaht54KBjIACDA3rf8TSNn2iCVoQ/Gj1dM8JV1FktVqA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-primitives-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-ui-renderer@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-renderer-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-90Mk9TfhygFpREip/24mA7exM0rziw/ZI8X9PdM/C7cwtppxjSoG58ppe1Tt6r0PJpoHCNziY0BISHWMASZExA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-renderer-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-zhty3xLaN7vgElu4QxUFIgvkjui4i6hrpC+c2/FwiIWnUmX6GgF0RlV0ST34CEe09JqMkZycB0NLEklTZrL9FA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-renderer-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-ui-session@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-session-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-lQaIBFNNncqwHo+1GC2ELi0sUEs5FNOMt/VBJ/j5fz07A1cTYhXxUdQ50+t68vunfryx/lCifCwfOCkGGYKXSg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-session-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-voGHjJAQ3X8gbEyvQddS5Ti4QLe6fdLNaPSxETPRdmAyOEBdlbmGrBaEkBovyC7nAsYt+Ut8wIQ7h9lNqoHZ3w==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-session-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-ui-settings@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-settings-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-p+6qYkrMMNkHyNmJ4TDd01Ltry6ekJEpuUjWz09/FqWv0oMoeJoEDlosVKE1EecTP4mUdTiumUEAbpR7aKKw7w==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-settings-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-pyHCDJNwMiKo7l4iM3jvRUxw3ADtckip37+hQnKiDxmYurXLORo4GmmpLMrNouDUDR9Ab/4/vaJrthDhIOxg6Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-settings-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-ui-sidebar@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-sidebar-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-FwWmH3SIxmrSKORV/VIz0TXNVMQ4JkzoHLHDZcJN16jDFW1BzIUaITl7T75Jm63qtngJORDc6wL45KyUO706pQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-sidebar-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-VVMmPA28k6w5xlHaD3BEb90MwdQP8oVVKZ+EnIsKqq94XQ9ySPw6lxYHYkIBEAdqebJ0U+HFWU48PEaapihS5A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-sidebar-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-ui-slots@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-slots-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-gmoVHMOEtsKKYCSEBnEVqqOvOUVVMJynWybCHDXQZsohSXLH4ShctwXa3nh0ebngFivnyPBairO8nblEj+jP2A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-slots-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-2Ga6MJFDeSykCHWkrx7e1dMnHmMDkv5R3ybeC9RM7WlMD2PxeR/YfmvjbnbTlsOexyRbl2Ouk+MeVIQZ8/G/4g==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-slots-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-ui-theme@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-theme-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-D4djod3PaQz/R2Ax0BSAiEWK5Fr1Z3dR1u+9fTi6bDkKt4qiYbvc/WvB8ZEsojVSNlfj6PP0oGrhiMhhlwfc2Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-theme-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-2shYNKIxlRVm9UBmhEgyQy72DgkIxzY92TTYahbwm4V8yw31IyLxib2sfdmBOGynW4cTw2jMUHthKioZUaEGTg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-theme-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-client-ui-workspace@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-workspace-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-CHWMs2WLssvX/r42o3dvrAN7UQD0VWwYayPQOEIk9Hi6pxpF9EzRvuEgZJlC9Z2WeXdrIYjzcFXFjqUAZk4MLA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-workspace-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-wwdRMbO67z9IGj8nVvloXRmfzNSyACq2XdLC0mMgbiTErH9WWto1UOp1d3xFU9mKoqdheql3THO1GN4wAadvnA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-client-ui-workspace-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-code-runtime@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-code-runtime-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-MP98ActI1kLQZKffTa+76vRo0bFJNdP0SllyW2Hq7+HB0JqJJUXasi14YNOxFEjb9RfEFw8vBc5mF29XmYdaBQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-code-runtime-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-ZJuycqDBWXiUp5YuWfuO/dsl1KnS9n6avSdGz2rhVZoiWzSYQT8ZGelyizs+XBu3UK3M9bq1Jt4iUJkfczxf8A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-code-runtime-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-commands@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-commands-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-fl6gAjpvxXMQCKo1IwHr/H2sdYGXU1p9vXR79thETAyp3CsSv4N81Mo6Py7dYnmhUllGdGDvYPbHM15dp825fg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-commands-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-96afT+WQ2LOoxfta17bQPQspUB+uXSTeX/+p5pq1OpyRsBS5N3JLOTGEEvwF0qeUTcCCKenqNRMEq1i9nYVIBQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-commands-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-compaction@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-compaction-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-GEA1vwkTmgHS+ynBYYsa3aTTI557w5msZMMYEvQFnN9j/3h2f+mCurS0w2t9IT6Jme4L5J6qyIsortZUqWEOQA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-compaction-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-0agPPuGtkuTD0nvwj3Qkq7pjScTn5QxPc/+apcHbFFDWxhDZnhrsWlRl0ZFBFkDcwY6xPmynUy/FBreEoIJcVQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-compaction-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-cordis-host-runner@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-cordis-host-runner-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-bNkm9Gnq4S/HJDbybwQeY54XnepxzciL+h6S+6c0dxXx9SOhb+KvXv9YQjRSloAVeWmnu2hnnxrDOgX5qFr0Qg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-cordis-host-runner-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-7dgoldsO5Iy9GqA/4Zh7ExK02xCzKjvIbUXsUiDFaHDEhIVpGmcCwbE2Hhrn1ZwnJ+cjj/OQxnaX6Gqp3FNKvg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-cordis-host-runner-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-credentials@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-credentials-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-xm//5ZJZNZ1Yth86OyW4Dm+nSlpI2Nyj9K5o5D0nuuQCEMdYzdULbvg7ouesMFN+Jp7gIWd44EKc3qVB4vCs6w==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-credentials-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-q/6hVbcFuHHIhMbDYqIm05xbOUn2eUL70Xwo8mrDdcbw/7j0VtCwoKztO09J0XHlADGsgM3M7jNe0Oe5qD7MMg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-credentials-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-file-reference@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-file-reference-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-QwV6MJuOjZC1ASAuEQtNHhQS3vTpIbOdROaoSZxqD+GjX8Z61cMOQZ5c3JDCXZBYiOR2dG0IflNkxsM5ijrzxg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-file-reference-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-V6nYigXd7STYn9aL8JHhFsrQu+owtaukBEN8rFqJkjHXdIebT0az5yBPtmPM1l+pk3QBzbdsVrxLK1H/Yf9vYQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-file-reference-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-goal@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-goal-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-w7XDUzFkDXei/lt1lmnwkgD1+opWu3fW+iFwRqhx3zLGQQB4nx7SN4gcSdWP7GlSwgsSDJ59tRQ8h7kymdfvNA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-goal-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-vYCdykd+DMZXC/RyVP4eRO/tNobKkMhv2kG2XvgMyjJa6RRFWoWeOpujBk+y6fI7Pvw8pgcmf1WKYqCJ4D90Lg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-goal-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-home-paths@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-home-paths-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-anS3Ou1e975y36yFpbuxAb1SaloO+LGStVnJvmH5hf/C8Z/T29DCDWh+nfif73NlHeOxocf9XdYa7VWAGew1nA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-home-paths-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-NTgSnxegAiXTT4rDXEcQPASkiU2zM98ayZDGnT65My3G8QlBC+sUcFC1ifwkiOB3iZIOGyJixeJhnNQK91Yocw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-home-paths-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-host-directory-picker@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-host-directory-picker-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-uK7qWbWMOI222tYHqgdwtke9VTC1ouPz++i+dKPbhuwIxs8lpJPVjqVS5BW3aRNihc4yQHlHcHeFVdLSk05GjA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-host-directory-picker-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-Izkzp5GyVqK5Bs6j76DVB1expX5uW/jiRw1oJQEdv6855xN9QqmDb7YkSDT1vTAVT37AihH8V7dz392h0XzjQA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-host-directory-picker-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-host-plugin-inventory@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-host-plugin-inventory-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-VIqh2d+MWLhvqbgiCwXKZX2LdvMBW0HDut59fVXCvY+ZGCFhiNiF2p9MnwQzfXA7fLuW+A1QP3XYMISTyAXPvA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-host-plugin-inventory-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-CMCUy1YmlilfQa/7CvmD6ECVoV1RryI05J1DTZQtlPldeqwcHS2I1ldIE6gj41RyktbXLPZsNKDOElpXyxu7Vw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-host-plugin-inventory-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-host-webserver@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-host-webserver-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-sEC4T5zXQ5vycPhxtBsu21FeEFfC3XLUuzR1KnOdZJBzR/uo4X23Zk5Iv4Ylq3yKMZAXm12+AQiZwgihco2NAQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-host-webserver-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-sWa0lmfjcuczWvnte675IqM+fmOSYuc70UAmrciFjllFynFX1s3l3l9DvvXS2qbSn9PPc2Aq3DWGIe4QQE7u5Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-host-webserver-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-invariants@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-invariants-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-n382Ef1UJuKav1uIDwftQBkvmWlEaP83B3krMNXoVYofpAvdjW8uTG0RbQM7SF8ma5rdmocaPvso5PW1XiGc5w==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-invariants-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-4EG9m3Xqr3idBbKGZWUVCrrbg9M8TswMuJ1fgKqft+JACm3IBO2lpnJmCKEbyNopvVqSUpDAOnAQcxvG2P+EJA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-invariants-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-jobs@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-jobs-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-3Rf4AlMZezBOeYgOKigxU8HMXftyq2ZljofYjoaSBkG++NMio0iCC+QUMKPQUdXNszqy/yqMnD/gMl33SugqPA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-jobs-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-8wYz6PRiMUO2MwpQoNaIsxkuY+kTGA5m0MfYN4dVGLST5JJUxpV0XqCWUHUGeuLAv1rNdIAnZjZ1fYHDv3j7dQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-jobs-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-launch-environment@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-launch-environment-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-RT0oqTUDW5zzPZsLiDzcdQrqLjAYzGAEcqJsa+iDSGIajtrdzgvI0N6SVBwpNp9m7SI94VJsKXmBYCuMgWpEOQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-launch-environment-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-rBp9dtsGb/s+3aV3nteirLzqz+axl/YQarlaYGi9Q+18iidQYqNWBwJZ2nhyyIVs3MFvjGNI3MfVbAFKZv0AoQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-launch-environment-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-llm-retry@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-llm-retry-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-nCOhoQBkulJMK4TwUjAdDYkhCJcW58MEndOsiMdAlR2WqFC4tZLszx9mQftrecTzycndkyxUXPHCFcOReBNyFA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-llm-retry-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-p342k7Fy1m1gQPvQ2yQzaAyFmr3nNjDm/fbSWygnzVnHgXcRhWfo2smGfzLXNz8agmd27bwL3pp5ZJtxhQ5TrQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-llm-retry-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-llm@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-llm-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-TxEu/tzORhjLaTXpgvt3m/aX41qFlIdpf1gM2bOnj0nZPVGFUUIHJq/VRzTU+ZfiTcBSfC8+GxfNgqedczJPbw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-llm-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-E2cpXpBdXZ5TBeyJz5/HeUm/ED+7to6GKjtkKqk6/YD4iYBfZqJraxhaefeiievaWRaaffkr/TRt9QQ+/HlOnQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-llm-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-message-feedback@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-message-feedback-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-UbwTKkTByYSjs4TEGiM9blw+oW/R5NSz9a1wgcLTL5tMsbFUaRQDKiJ5DiEYnBP/XngMuYD0ofbzGqIO2gRu5A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-message-feedback-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-zkuRMYZ89+jN6s9yt2N1Y7velQffbb73jqw+mTPsNDrEJgbE3XgUrZ1mS5V/CsHj7k2HbIC/CiFIl6m7CEAF3Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-message-feedback-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-native-command@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-native-command-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-diTAfJ2SrwHTKKFN4NjQsq8w39lTFoVVm0rUZFNVQgI+yty7ne6HXWK6tIpEx3llA+VducblqIoO0U2mBVXv5A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-native-command-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-A4nyDyTlyFZJzJTUQNK3SClgxiDQsjwYv/nSVEzV3blr23QUZ8RXQ9dn45YG92p673thLZ6i7jL18BWAy/VN+g==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-native-command-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-output-retention@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-output-retention-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-uQwNqYkC8wxKO6NRzPbICF9k7DGwWF9VcYZI6iEUqZDiDUk6v/Gmdja++kIe4OcBl/t7C9glIuD2LHcGYMcgsw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-output-retention-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-2pQrYlae3tcY9FXpynk8x+oA8NKQ7kVT5vRJ/BLoBWnX7Mkoba1mejVwfgk35sokS2+JetfcgzvL8RK14QXlvA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-output-retention-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-permission-presets@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-permission-presets-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-foyW1pRwfBRl865kFLrlyK3nwseW7wC1dyjXGA1+T42sNNZDpq8yGPcJ2HLM1xat1CPRN4qGQslNPjknLlGpuA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-permission-presets-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-uCatcbkW2CLCUx5teifxfesVGaXlV9xKiOPvWFfsGXnP1XGD3tCilitx0LpxSwUeuPAySOI99/jZVjMC2X6h0g==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-permission-presets-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-plan-mode@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-plan-mode-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-/pCsTWOOALeLBTz208Slomn/Tqx/be3PB3pRJxk3AZrdiuDcr7LZ688MTK8K1VRR3LHi2fzpU3ZpI1xa58jI9Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-plan-mode-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-TChIRNQoKW7x1nWeXOOJVArGkC/Ger15HCULPBmI7ycamfbvLNEaXJYvfOu/BUcHdxJOQychqyLZnJP48M9Olw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-plan-mode-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-sandbox-policy@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-sandbox-policy-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-Ds02lxaxWSX8CrfMV/uMLlfc/1Q6bO1Rg+g5kXGSOBXxYfiC0n+lAcydUdMUDMFQ93wY9PD/oh6tyWG5lJ8I3A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-sandbox-policy-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-bOrkezhPU1nvwy3rsMOOWYj2MhtP/jUvhOBNWvK5TRKV+CfOBfoJn6p8ju+2zmCRIleKjZuzdKaSWNhPf+rpyA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-sandbox-policy-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-sandbox@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-sandbox-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-nC0XmOiaXSebpaYgrc0Ykl/r3eEyW/sRvSiWyQhmeY/NmG0XVGyNli+EMjNsu+nfTibTAQ+VPiYQE01Y47rK7A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-sandbox-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-QJFYSaswOMmd9eDUpSWZ25MfJfQou8MgtpLNX70FKAQeRr+R2FHtOcP24SuCLknq/h5/0JWrHvZr0WZROQsA2Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-sandbox-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-scope@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-scope-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-kWrKChmA1LSpC6ymHXl7fSm8h5N+zNL5TpRG1KYz+L4gZQKHC7ON7KOSVaKATEiSzuM64rShutqgf5r6cIIsIQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-scope-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-peHLeYKTlbAckEqT5539L5/HctZ/D6+7xnRQFKYvbgiBo2WrEgj9Zu10iWyun+itiuL4wIhYgLkuACXwpVDpKw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-scope-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-session-persistence@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-persistence-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-ab/TREj6MLahqWmsnps1xrYKacO3D5rR9HIan/0MPSjHJITrXkvmcBMll1EN19AjtTSr4iF9xZizhU1vcvB1sA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-persistence-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-twIRFyMwDF5I0cR/tpPUl9L93QvcqLX99f7+Nnngott5JMPVP48UTMn9sTyH9RgVtQf9mzDc+aqmE5mtPU5kfA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-persistence-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-session-projection-cache@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-projection-cache-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-bGCzTfHt2tFG4iJyyND6VML5cCNRIQvQ37WaHqZ//A7eX09LM0IpMgFPCprLZiSfq0Ey3Q2JIV2e7wqZwAZj3Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-projection-cache-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-8KYDWIxSIe4EK5dzj+OjMDDfpGrWbZtYT1KRBr5dVqXXqNek/ugE7zZzxVV7d1CsavRPgiEjQGqZJ9tkcR3nqw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-projection-cache-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-session-projection@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-projection-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-pC4+s1hPPJU4kg0CXpfjK13y9EO7fXeAIwVUPlXV1PpO6dmgzj3vjXdybqq86FCFnW5952TEa7Xsmf/aYEpFmA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-projection-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-3em3S/6swkgcgEzFQdQYQDdmMvU15+IXqyw9bB9wwITWbZCYrreLeScYr8gxm+9LqBIVJSsFOffYVeZ5yxxWIA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-projection-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-session-query@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-query-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-KsgQVYMUWub8FzHOv9gUtw7J4Cn3CwJklAqE/iL79xpUEJGoz5KCf1ZVYcxXnJpXfNt31p+RvjLYWN0aIFx7/Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-query-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-+AOpTjK4y6N2D1iUDuekdaQcCe562MC4wC3xG3ZzHVn3egHXo6/yo5bGgUr2fOicykjnm9Vb0hJCsAZpQ1UZaA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-query-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-session-reference@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-reference-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-AhpPiO6A3HUbGdcM0TSTmPylZcxVqM/hdeW5c2Zki8ghJDiv4XGTbhov7ZgKfgK3wVsPSjXqjRyRiIDQJ/hJ/A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-reference-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-yMX5ZA0VlGEww34sFovfV23WpiGTiZGsswruVHa6+fbSa5hXCjHbi39d/NpxxwhhlS+0F5vEinunBsLZI4ONiw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-reference-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-session-title@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-title-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-BE5OjxI0JzYznRhNF0Tb0lKFC2DhfA7SDvTVn4VycwEp9KrzlYXLvf0e7g2bSsKQY6KULrvAtsgPPk6auUxpNA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-title-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-bb39UUBZjqAGJC87YnznKUJz9AhH90YQvAKkZ0W8gn1WAOUYZFtHUL7JuBTFDuS/oEbjLbzoTm75hW6T/XEt0A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-title-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-session@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-ihR8rGyzk11xHE5kUY8wAKsesuDfqO1HcFrLIOr8sHJoOPxe9NHt4MeLVaVfhBrrsS3gs9ae4dC484FxYDIUmQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-up5rzhiSuufI2PKccy5ALIe8L0/VfF4yERwvChEMgdDSJKti9brVp3hXPXQOu9ejofI6O3RVv1kYdWyp5t6YlQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-session-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-settings@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-settings-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-CzjZKhiiO5ZYSDngdsqjffWbMHMwP/sRVZ+sw0ArnsaXtJkNwxDqm8GrGsuwEPUrdpkjZtF9zUqIorwg/71RGg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-settings-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-VTg2x8IBkKjKAAIl0zbyLO+jrzplaWYHSFmuvxCAkth10tMSVnkWW82ZvIpiYXf45YlxN9XizOjzR3xeMGHOKA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-settings-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-shell@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-shell-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-m0aKOb81ZOFDziig3eFHHX9y5tCQDTa/4faLGFsdnmkZfAvnta5v1Ezi7ytyc1oAnosHNXyVv4mWKvwN1GiQ7g==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-shell-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-wQ8nlI9e3A15Bz5r9eoJQvLHN0gQaHjzLSxWHNX7T18DOSmTJcdSfgwi+SK/iqjrvQyjwXM1KhCWxSoc9CvDGg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-shell-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-skill@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-skill-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-WPsMHIRb5oCsHNMvCM20+kwBMbbGdUEmR0Dmeb8AuS5k6yioIsvWTlWSl5EpmXdnbmYEuDIq7iYh468GeSpLTA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-skill-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-NyfJWFtm5RxbNjr7QXeP3YCi3j2+btK/yOwL92Fbl63JOFhDpd2dlfp1cgBzozo370mFDCs9h2UVjF9ldnxm5A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-skill-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-storage-domain@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-storage-domain-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-ndnVn1lJJJW9dhk3pBM6HlYTNebgpCFG+2M97dIFcVMn2/qnwjeaa7OpoW79viVG7giDLDsyGFZxoieYTI7yng==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-storage-domain-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-EoYE8mm+5Qvzxa6HgzYht/3gzYkkODy31d+dOWHJWVTCxC+9rRaS2DnlHrffm21KfBSrnZTYTTqPx5cWXVetbQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-storage-domain-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-storage@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-storage-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-zxbeED17PTMLZkN0IqmmEzRtcD6gAWUT3Ncm+rwtbXENgGZZ1GS9p3GYI66rR3rpFU0ptT8vYzkGiSBwhbANWA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-storage-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-86RnO0BVE71V++rqf8ZAD4Aj3eBI8OpwIeFhk74eZBzpT7QPd6oT7EgsWTU7I9NzDpEnqyh/rgwX3LQjxBgn9A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-storage-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-subagent@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-subagent-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-tAS8kvIUbZjTJcmE4wMcJ0PFZnLbBpoGB9WnbMLrEx8lUuU8hpVcuBdMqupA6Wr45iqZ/7lL9v1sUzgnRf6PAQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-subagent-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-nZbEsdQpXp2AQr8cJujGl6ZjKec1VmlDW6cY7GLOv2sFhcSABsWBVJPgg1WqblGnFYMuS2TOSksJY2YRtNJJjw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-subagent-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-subprocess@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-subprocess-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-PRqakVbsI0wrr+GxF6a9qc/x5sEVktUvDa9GS+WYwzXadjmibvNzfQLEPnaIqP32ziOSdVfQbsIcrIPjhvXWfA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-subprocess-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-EUPOGJsBWwhnwoedcGXDzhkjayFfMAM1UOHlkl7cRUU4cYCFyCJOgGja7iySs5gjNOGzBi3ZRBRmqAi+N3i39A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-subprocess-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-system-prompt@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-system-prompt-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-S7wNUy9HOr7klwISSeNbXoT6echFS5ff/DNoSndbezhTQ0oFQjiFSjo2jN3/0g2YMTZII28RBU6l5qjovRTbxA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-system-prompt-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-dCYW65W+jQlBtVtCr1fF+laGpcxFbExZzU6IP8ndmaaqZNYy3LatbSzxKLmetvyMQiu1IJT+C9POEZvhLSMSVw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-system-prompt-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-timeout@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-timeout-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-ek3J33VDiZj4H1Si379Yr6ukytA0NQm9m2088vk4vM2LAL4Vl1ThNacMifxbPC9EbPGdmbmZ5XG0hW1bj8lDNw==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-timeout-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-FG0XRTJ5aolXpdKYoMhjtgykGHbr6+TdByTdhcPI0p3vnE0D+wIpbqOaHxTooqHEh1lYpAXz53+1GDOtUbMEeg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-timeout-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-token-meter@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-token-meter-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-t08iaYoYxtlI4QL/QsqD5dV2+NcSm8KfyWZaKKCz+0pxUa3I2uzRdPhZXAF/Y1zyp5QolUJvkcxAoMpwTBVw3A==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-token-meter-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-ZNTqogM2TYTIGAj9/aj55Z1Vot4Pgg0GMatND5I5TJhxYgMmVrPYOuUy+OfmFn0y6qmg4s0x9hyL975+irPrGQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-token-meter-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-tool-todo@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-tool-todo-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-m/iwlVoZWvUTd/Vfccz/M3utf3J9q/UPc/hMXDkyfGoI8rScLyDJLY8rlxLhSmjvviqmOWIgRUUhDFlwD3EHvQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-tool-todo-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-sfkqcy4AA0tINfz03ITDTrQjY4hgcUVawnQh2e2iLRkwWbNpSq8E3ul6Ur4dlkff78nL2fFFzcWfzaY1cgGprA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-tool-todo-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-tools@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-tools-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-amOvJCBZxf3zOVuIBiFy2lXUpWzvUCt/CiBO0lZrkU4jaa+vB3pt0bfNgbysW76c+8gFQRR0QV6NhvLDCuZByQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-tools-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-5QSqJstyWOSbFaWTLRQc47snAKor01QClLMs1Z6aZg7LiUxwZppHRFjfyUW3oBCSHPUqR2q30yzEK/q/xRVXgQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-tools-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-typert-protocol@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-typert-protocol-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-vAn+rKuxfEohhmSr8ZsY7VDEG0zggj+rTszK+QcpqMpkouGDQsii+mo1m+Q/AnTq7wvbDag/jtUfimkknpjFXg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-typert-protocol-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-cQUZLHH+7sc2xzBah4RigeQustzW7VlUj2r0zzP7Gf5lfC3pC4ZqgKyQ3sLxTHQCt/fhMjdUIlSSSUwB9LbKCQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-typert-protocol-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-typert-registry@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-typert-registry-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-iRFK2EoeFVufeutyXrrILPsjrAXuho0B5M5vNS4KqsZEGUDWh5GCH1E4mabJPIam0yNLOycVKVHBgjE1Dxl3Fg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-typert-registry-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-ZmYc0cw0v0jlyx5cYs6biGUXWdvhSx0ZJP2u4j1C++zVKPNi3IJwqT3NSwLCg5Y3vc6y3klICQBW6wC6bDQMSQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-typert-registry-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-user-approval@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-user-approval-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-brJbsO1ucywV13pLU1TjZXy0DeQctU5xR/U0gtwxKk1JvTz/Mo+Gx50oY07eAV1BGrOO3vjeUWgU+M4pAErLQQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-user-approval-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-2jNW6nbX0Rp8bafwczB4oe0CskxdFz9A5n1gArZGosybwZTH8mW8BFp5dag6Gg+aZtysdwyNss7wEnWb5anmnA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-user-approval-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-user-questions@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-user-questions-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-zHn0DBBq90fGvxjweDWFzi6F3IFkRStZOpwsFJvIN1mfR+C/pf4Wclzk4Qi76DWufJ3dmbmmj7Y3kG3LULZGcQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-user-questions-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-DafK/y0crROSULV0UtUpzo3cLBRusoqnru09EsA7NlAg6gwVYCXCYK0oUzkq5EBytFFnRKK5eLMal2s07rsaPQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-user-questions-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-util-crypto@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-util-crypto-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-sFtwHRZ7enTUXgcobN/SF5cFYeV3zb7fsaedOy4A18eilWE38PIh1/DabOMiRYeJ9NW2O7470hpwSoIYSyiaJg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-util-crypto-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-sloXKqZj1/OeMHVzCzBMkljTzqPinV4ZWwU4mqiHu6g6Z8qqNPaCisRVJtTU8nH/BXho8pLtIwiatZcyCGCdBA==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-util-crypto-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-util-workspace-path@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-util-workspace-path-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-LJtJEB1UkgXrTUXN2wgk1ksRdU+viVzr8xv8V4Xfh3TOxV/H0cSNVHieL+aSu0XM2FEPgph9dRh95efmBsjH0Q==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-util-workspace-path-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-myIkV1vbeMQjq2vJqgMHgOmMzFmHZzJB2h5PFn5I7Q28e74GBUIuWM3O3S/FPaUPG8J07ifyiu/So+FnmPkKZQ==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-util-workspace-path-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/dsh-workspace@file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-workspace-0.1.2-alpha.1.tgz':
-    resolution: {integrity: sha512-IHrNdqu0s2Aj+llH2kwxnaXJkav8QrjrB31lMJxnFzEU35EyaZStjYVfMZ9qBVvHMQ+4n1eNeuwScAKDPr85hg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-workspace-0.1.2-alpha.1.tgz}
+    resolution: {integrity: sha512-VcfBmj1gxb6fyquCIhsvyW+aAbtrurlGQ76RWkG1waRIfhOW26pDpK8guxTKlMAy6LNWOSREruUTpyzq16ZcSg==, tarball: file:../../.dsh-cohorts/0.1.2-alpha.1/deepseek-ai-dsh-workspace-0.1.2-alpha.1.tgz}
     version: 0.1.2-alpha.1
 
   '@deepseek-ai/schemastery@3.18.1':

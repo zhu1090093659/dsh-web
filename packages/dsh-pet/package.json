@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-pet",
   "description": "Multi-pet companion plugin for the dsh web GUI: a registry-driven floating pet that reacts to model activity, with per-pet naming, petting/feeding interactions and an affinity score",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {

@@ -123,6 +123,7 @@
     "description": "给模型输出配交互式 UI：助手回复内联渲染 dsh-ui 围栏（布局、图表、表格、表单、Mermaid、3D、原生音视频），双通道渲染兼容原版 DSH 与新构建，支持流式渲染、面板停靠与组件交互回传模型。",
     "descriptionEn": "Interactive UI inside assistant replies via the dsh-ui fence: layouts, charts, tables, forms, quizzes, Mermaid, 3D and native audio/video. Dual-channel rendering covers stock DSH and newer builds, with streaming render, panel docking and component actions that loop back to the model.",
     "repo": "https://github.com/omdsh-dev/dsh-genui",
+    "npm": "@omdsh-dev/dsh-genui",
     "category": "ui",
     "subcategory": "render"
   },
@@ -134,6 +135,7 @@
     "description": "选中助手文字即可批注，回车随消息发送；自己的气泡只显示问题与「批注 ×N」标签，模型按 Annotation N 逐条对照回复（悬浮芯片）；UI 与批注块跟随 DSH 语言切换 zh/en，Cmd/Ctrl+Enter 可直发纯批注，斜杠命令原样放行。",
     "descriptionEn": "Select text in an assistant reply to annotate it; annotations ride along with your next message, hidden in your own bubble behind an Annotations xN chip, and the model replies per Annotation N with hoverable chips. UI and annotation block follow the DSH locale (zh/en); Cmd/Ctrl+Enter sends annotations alone; slash commands pass through.",
     "repo": "https://github.com/omdsh-dev/dsh-annotation",
+    "npm": "@omdsh-dev/dsh-annotation",
     "category": "ui",
     "subcategory": "chat"
   },

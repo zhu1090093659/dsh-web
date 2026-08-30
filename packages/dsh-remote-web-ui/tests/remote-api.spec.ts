@@ -14,6 +14,7 @@ import {
   innerPathOf,
   loopbackOnlyDenial,
   makeRemoteApiRoutes,
+  pairedDeviceIdOf,
 } from '../src/remote-api.ts'
 
 function makeService(): PairingService {
@@ -121,6 +122,7 @@ async function call(
     if (opts.body !== undefined) headers['content-type'] = 'application/json'
     if (opts.cookie !== undefined) headers.cookie = opts.cookie
     if (opts.origin !== undefined) headers.origin = opts.origin
+    for (const [name, value] of Object.entries(opts.headers ?? {})) headers[name] = value
     const req = httpRequest(
       { host: '127.0.0.1', port, path, method, headers },
       (response) => {
@@ -558,5 +560,53 @@ describe('remote desktop channel (/remote)', () => {
       await close()
       await upstream.close()
     }
+  })
+
+  it('accepts the cookieless header credential with no device cookie at all', async () => {
+    const service = makeService()
+    const upstream = await startUpstream(() => ({ status: 200, body: JSON.stringify({ type: 'server-response', rpcId: 'rpc-h', result: { ok: true } }) }))
+    const { port, close } = await serve(makeRemoteApiRoutes({ service, port: upstream.port }))
+    try {
+      service.issue()
+      const device = service.accept('tok-1')
+      if (!device.ok) throw new Error('accept failed')
+      // No cookie: ONLY the x-dsh-remote-device header.
+      const withHeader = await call(port, 'POST', '/remote/api/session.list', {
+        headers: { 'x-dsh-remote-device': device.deviceId },
+        body: ENVELOPE('rpc-h', 'session.list', {}),
+      })
+      expect(withHeader.status).toBe(200)
+      expect(JSON.parse(withHeader.body).result.ok).toBe(true)
+      // A bogus header is refused exactly like a bogus cookie.
+      const bogus = await call(port, 'POST', '/remote/api/session.list', {
+        headers: { 'x-dsh-remote-device': 'not-a-device' },
+        body: ENVELOPE('rpc-b', 'session.list', {}),
+      })
+      expect(bogus.status).toBe(403)
+      expect(bogus.body).toContain('unpaired')
+    } finally {
+      await close()
+      await upstream.close()
+    }
+  })
+
+  it('resolves the device credential: cookie wins, header covers the cookie-less case', () => {
+    const service = makeService()
+    service.issue()
+    const ok = service.accept('tok-1')
+    if (!ok.ok) throw new Error('accept failed')
+    const device = ok.deviceId
+    const request = (headers: Record<string, string>): IncomingMessage => {
+      return { headers } as unknown as IncomingMessage
+    }
+    expect(pairedDeviceIdOf(request({ host: 'x' }), service)).toBeUndefined()
+    expect(pairedDeviceIdOf(request({ host: 'x', 'x-dsh-remote-device': device }), service)).toBe(device)
+    expect(pairedDeviceIdOf(request({ host: 'x', cookie: `dsh_pair=${device}` }), service)).toBe(device)
+    // The cookie wins over the header when both are present.
+    const other = service.accept('tok-1')
+    if (other.ok) {
+      expect(pairedDeviceIdOf(request({ host: 'x', cookie: `dsh_pair=${other.deviceId}`, 'x-dsh-remote-device': device }), service)).toBe(other.deviceId)
+    }
+    expect(pairedDeviceIdOf(request({ host: 'x', 'x-dsh-remote-device': 'revoked' }), service)).toBeUndefined()
   })
 })

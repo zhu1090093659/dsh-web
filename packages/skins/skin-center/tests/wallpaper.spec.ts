@@ -927,7 +927,18 @@ describe('WallpaperController', () => {
     slotOverlay.setAttribute('data-slot', 'shell.overlay')
     const pluginSurface = document.createElement('div')
     pluginSurface.setAttribute('data-dsh-plugin', 'skin-center')
-    const excluded = [modal, ariaModal, shellOverlay, slotOverlay, pluginSurface]
+    const sidebarSlot = document.createElement('div')
+    sidebarSlot.setAttribute('data-slot', 'sidebar')
+    const sidebarSurface = document.createElement('div')
+    sidebarSurface.setAttribute('data-dsh-surface', 'sidebar')
+    const sidebarAside = document.createElement('aside')
+    const detailsSlot = document.createElement('div')
+    detailsSlot.setAttribute('data-slot', 'details')
+    const detailsSurface = document.createElement('div')
+    detailsSurface.setAttribute('data-dsh-surface', 'details')
+    const detailsPane = document.createElement('div')
+    detailsPane.setAttribute('data-pane', 'details')
+    const excluded = [modal, ariaModal, shellOverlay, slotOverlay, pluginSurface, sidebarSlot, sidebarSurface, sidebarAside, detailsSlot, detailsSurface, detailsPane]
     for (const element of excluded) element.style.backgroundColor = '#101010'
     const hidden = document.createElement('div')
     hidden.style.display = 'none'

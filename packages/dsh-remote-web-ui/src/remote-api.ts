@@ -31,6 +31,8 @@ import { writeJson } from './http.ts'
 import type { InnerAuth } from './inner-auth.ts'
 import { proxyLoopbackHttp, proxyLoopbackUpgrade } from './loopback-proxy.ts'
 import {
+  REMOTE_DEVICE_HEADER,
+  REMOTE_DEVICE_QUERY,
   REMOTE_PREFIX,
   REMOTE_UPGRADE_PATHS,
   localOnlyDenial,
@@ -41,6 +43,8 @@ export {
   LOCAL_ONLY_PREFIXES,
   PLUGIN_MANAGER_PATH,
   REMOTE_API_PATHS,
+  REMOTE_DEVICE_HEADER,
+  REMOTE_DEVICE_QUERY,
   REMOTE_PREFIX,
   REMOTE_UPGRADE_PATHS,
   WEB_UI_SETTINGS_BRIDGE_PATH,
@@ -119,6 +123,22 @@ export function loopbackOnlyDenial(innerPath: string): string | undefined {
 }
 
 /**
+ * Resolve a live device credential for a gated HTTP request: the pairing
+ * cookie first, then the cookieless header the boot patch attaches. Unknown
+ * or revoked ids are a no-op - a stale id never re-arms a device.
+ * @returns the touched device id, or undefined when neither credential is live.
+ */
+export function pairedDeviceIdOf(req: IncomingMessage, service: PairingService): string | undefined {
+  const cookieDevice = readCookie(req.headers.cookie, service.config.cookieName)
+  const headerDevice = typeof req.headers[REMOTE_DEVICE_HEADER] === 'string'
+    ? (req.headers[REMOTE_DEVICE_HEADER] as string)
+    : undefined
+  const id = cookieDevice ?? headerDevice
+  if (id === undefined) return undefined
+  return service.touchDevice(id) ? id : undefined
+}
+
+/**
  * Build the remote desktop channel HTTP routes.
  * @param deps - pairing service + local port + live pairing policy.
  * @returns the routes to register on webServer.
@@ -132,9 +152,8 @@ export function makeRemoteApiRoutes(deps: RemoteApiDeps): WebRoute[] {
     // (a stale client rewrite must not 403); loopback-only denials stay below.
     const require = typeof requirePairingForLan === 'function' ? requirePairingForLan() : requirePairingForLan
     if (require) {
-      const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
-      const paired = deviceId !== undefined && service.touchDevice(deviceId)
-      if (!paired) {
+      const paired = pairedDeviceIdOf(req, service)
+      if (paired === undefined) {
         req.resume()
         envelopeError(res, 403, 'invalid-request', 'unpaired', 'this device is not paired with the desktop')
         return
@@ -196,8 +215,15 @@ export function makeRemoteApiUpgradeRoutes(deps: RemoteApiDeps): WebUpgradeRoute
   const handlerFor = (fallbackPath: string) => (req: IncomingMessage, socket: Duplex, head: Buffer): void => {
     const require = typeof requirePairingForLan === 'function' ? requirePairingForLan() : requirePairingForLan
     if (require) {
-      const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
-      if (deviceId === undefined || !service.touchDevice(deviceId)) {
+      // WebSocket handshakes cannot carry headers from the Web API, so the
+      // cookieless credential rides the query; the cookie stays the primary.
+      let queryDevice: string | undefined
+      try {
+        queryDevice = new URL(req.url ?? '/', 'http://127.0.0.1').searchParams.get(REMOTE_DEVICE_QUERY) ?? undefined
+      } catch { /* fall through to the cookie */ }
+      const deviceId = pairedDeviceIdOf(req, service)
+      const paired = deviceId ?? (queryDevice !== undefined && service.touchDevice(queryDevice) ? queryDevice : undefined)
+      if (paired === undefined) {
         socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
         socket.destroy()
         return

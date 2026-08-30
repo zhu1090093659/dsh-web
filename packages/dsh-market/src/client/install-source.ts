@@ -55,7 +55,67 @@ function isHttpsGitUrl(spec: string): boolean {
   }
 }
 
+/** Strips an npm scope prefix (e.g. '@scope/pkg' -> 'pkg'). */
+function unscoped(name: string): string {
+  return name.replace(/^@[^/]+\//, '')
+}
+
+/** Strips version/tag suffix from an npm spec (e.g. 'pkg@1.2.3' -> 'pkg', '@scope/pkg@1.2.3' -> '@scope/pkg'). */
+function stripVersion(spec: string): string {
+  const atIdx = spec.lastIndexOf('@')
+  return atIdx > 0 ? spec.slice(0, atIdx) : spec
+}
+
+/** Normalizes a git URL or spec to a canonical owner/repo path. */
+function normalizeRepo(spec: string): string {
+  let s = spec.trim().toLowerCase()
+  const hashIdx = s.indexOf('#')
+  if (hashIdx !== -1) s = s.slice(0, hashIdx)
+  s = s.replace(/^(?:git\+)?https?:\/\/(?:www\.)?github\.com\//, '')
+    .replace(/^github:/, '')
+    .replace(/^git@github\.com:/, '')
+    .replace(/\.git$/, '')
+    .replace(/\/+$/, '')
+  return s
+}
+
+/** Whether an installed plugin row corresponds to a market plugin entry. */
+function isRowMatch(entry: PluginEntryLike, item: InstalledPluginItem): boolean {
+  // 1. Direct ID / name match
+  if (item.id === entry.id || item.name === entry.id) return true
+
+  // 2. Direct npm match (with or without version tags)
+  if (entry.npm) {
+    const entryNpmBase = stripVersion(entry.npm)
+    if (item.id === entry.npm || item.id === entryNpmBase) return true
+    if (item.name === entry.npm || item.name === entryNpmBase) return true
+    if (stripVersion(item.source.spec) === entryNpmBase) return true
+  }
+
+  // 3. Unscoped match (e.g. '@omdsh-dev/dsh-annotation' matches 'dsh-annotation')
+  const itemUnscoped = unscoped(item.id)
+  const nameUnscoped = unscoped(item.name)
+  if (itemUnscoped === entry.id || nameUnscoped === entry.id) return true
+  if (entry.npm) {
+    const entryUnscoped = unscoped(stripVersion(entry.npm))
+    if (itemUnscoped === entryUnscoped || nameUnscoped === entryUnscoped) return true
+    if (entryUnscoped === item.id || entryUnscoped === item.name) return true
+  }
+
+  // 4. Git repository / spec match
+  if (entry.repo) {
+    const entryCanon = normalizeRepo(entry.repo)
+    if (entryCanon) {
+      if (normalizeRepo(item.id) === entryCanon) return true
+      if (normalizeRepo(item.name) === entryCanon) return true
+      if (normalizeRepo(item.source.spec) === entryCanon) return true
+    }
+  }
+
+  return false
+}
+
 /** Find the installed row for an entry (null when not installed or no snapshot). */
 export function entryInstalled(entry: PluginEntryLike, installed: readonly InstalledPluginItem[]): InstalledPluginItem | null {
-  return installed.find((item) => item.id === entry.id) ?? null
+  return installed.find((item) => isRowMatch(entry, item)) ?? null
 }

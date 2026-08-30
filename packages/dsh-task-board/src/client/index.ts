@@ -104,7 +104,17 @@ async function readPresetRoster(
   ctx: ClientContext,
   remote: ClientRemote,
 ): Promise<{ ok: boolean; presets: readonly PresetRosterRow[] } | undefined> {
-  const remotes = (remote as Partial<ClientRemote>).agentPresets
+  // The cordis `remote` proxy throws on a property that was never injected
+  // ("cannot get property X without inject") rather than returning undefined,
+  // so the probe must guard the access — a hard read would abort mounting on
+  // hosts below the 0.1.2-alpha.1 cohort instead of degrading to the legacy
+  // connection RPC face below.
+  let remotes: ClientRemote['agentPresets'] | undefined
+  try {
+    remotes = (remote as Partial<ClientRemote>).agentPresets
+  } catch {
+    remotes = undefined
+  }
   if (remotes !== undefined) {
     const response = await remotes.list()
     if (!response.ok) return { ok: false, presets: [] }

@@ -560,5 +560,17 @@
     "repo": "https://github.com/Nath-Vikky/dsh-codekin",
     "category": "ui",
     "subcategory": "panel"
+  },
+  {
+    "id": "dsh-archived-chats",
+    "name": "会话档案",
+    "nameEn": "Session Archive",
+    "author": "Ultronen",
+    "description": "本地优先的归档聊天管理插件：按工作区浏览和全文搜索，原生只读预览对话、工具活动与图片，支持标签备注、ZIP 备份恢复、历史版本恢复为副本、可撤销回收站、空间分账、保留策略和来源分支视图。",
+    "descriptionEn": "Local-first archived chat management with workspace browsing and full-text search, native read-only previews of conversations, tool activity and images, tags and notes, ZIP backup restore, History restore-as-copy, an undoable Recycle Bin, storage accounting, retention policies, and lineage views.",
+    "repo": "https://github.com/Ultronen/dsh-archived-chats",
+    "npm": "dsh-archived-chats",
+    "category": "ui",
+    "subcategory": "panel"
   }
 ]

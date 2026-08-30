@@ -567,8 +567,8 @@
       "rank": 45,
       "nameEn": "Codekin",
       "author": "Nath-Vikky",
-      "description": "把 DSH 使用事件转化为码灵遭遇、收集与三消战斗的 Web 游戏插件：包含 25 只码灵、五类计算属性、编队养成、捕捉、挂机补给和无尽塔；状态保存在 DSH 主目录的 codekinsave/state.json，首次启动会无损迁移旧的 tracewild/state.json，卸载后默认保留，不修改提示词、工具或模型请求。",
-      "descriptionEn": "A Web creature-collection and match-three RPG driven by DSH activity events, with 25 Codekin, five computing attributes, squads, growth, capture, idle supplies and an endless tower. State is stored in codekinsave/state.json under the DSH home directory; the former tracewild/state.json is migrated losslessly on first launch, and progress remains after uninstall by default. Prompts, tools and model requests are unchanged.",
+      "description": "把 DSH 使用事件转化为码灵遭遇、收集与战斗的 Web 游戏插件：包含 25 只码灵、五类计算属性、8×8 指令三消、三只编队共享运行值、阶段伤害与防护、Boss 机制、捕捉养成、挂机补给和无尽塔；状态保存在 DSH 主目录的 codekinsave/state.json，首次启动会无损迁移旧的 tracewild/state.json，卸载后默认保留，不修改提示词、工具或模型请求。",
+      "descriptionEn": "A Web creature-collection RPG driven by DSH activity events, with 25 Codekin, five computing attributes, an 8×8 command-match battle system, shared squad runtime, phase damage and defense, Boss mechanics, capture, growth, idle supplies and an endless tower. State is stored in codekinsave/state.json under the DSH home directory; the former tracewild/state.json is migrated losslessly on first launch, and progress remains after uninstall by default. Prompts, tools and model requests are unchanged.",
       "repo": "https://github.com/Nath-Vikky/dsh-codekin",
       "category": "ui",
       "subcategory": "panel"

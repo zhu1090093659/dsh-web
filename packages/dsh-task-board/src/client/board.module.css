@@ -98,8 +98,8 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   text-overflow: ellipsis;
 }
 
-/* Collapsed rail: icon-only, centered, matching the shell's 56px rail. */
-[data-dsh-frame][data-sidebar-collapsed] .entry {
+/* Use the native collapsed marker even without the aggregate compat frame. */
+[data-sidebar-collapsed] .entry {
   justify-content: center;
   padding: 0;
   width: 36px;
@@ -108,7 +108,7 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   border-radius: 50%;
 }
 
-[data-dsh-frame][data-sidebar-collapsed] .entryLabel {
+[data-sidebar-collapsed] .entryLabel {
   display: none;
 }
 

@@ -48,6 +48,8 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-ssh
 
 After installing, **restart `dsh web`**: a "SSH" entry appears in the sidebar; the plugin description is injected into the Agent prompt automatically.
 
+On the official default skin, the sidebar entry shows icon and text when expanded and a centered icon when collapsed, including standalone installation without the aggregate package.
+
 ## Configuration
 
 The settings panel (plugin config) toggles `announceToAgent` (whether to announce the plugin to the Agent; off by default so system prompts stay clean) and `enabled` (master switch), and sets `terminalFontFamily` (the web terminal font; empty defers to the CSS chain: `--dsh-ssh-terminal-font` → the official `--ds-font-family-code` token → the built-in monospace stack). The terminal font is fixed in the xterm constructor, so a plain stylesheet cannot override it; to render powerline / Nerd Font glyphs, enter a Nerd Font stack here (e.g. `"SauceCodePro Nerd Font", monospace`). Changes re-apply to open terminals live, no reconnect needed.

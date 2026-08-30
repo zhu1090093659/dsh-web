@@ -48,6 +48,8 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-ssh
 
 安装后**重启 `dsh web`**：侧边栏出现「SSH」入口；Agent 提示词中自动出现插件说明。
 
+使用官方默认皮肤时，侧边栏入口在展开态显示图标和文字，在折叠态居中显示图标；不安装全家桶、单独安装本插件时同样适用。
+
 ## 配置
 
 设置面板（插件配置）可开关 `announceToAgent`（是否向 Agent 宣告插件；默认关闭，保持系统提示词干净）与 `enabled`（总开关），并可设置 `terminalFontFamily`（Web 终端字体，留空则按 CSS 链解析：`--dsh-ssh-terminal-font` → 官方 `--ds-font-family-code` token → 内置 monospace 栈）。终端字体写死在 xterm 构造参数里，CSS 无法直接覆盖；要渲染 powerline / Nerd Font 图标，请在此填入对应 Nerd Font 栈（如 `"SauceCodePro Nerd Font", monospace`），修改对已打开的终端即时生效，无需重连。

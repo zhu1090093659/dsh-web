@@ -623,6 +623,18 @@
       "npm": "dsh-archived-chats",
       "category": "ui",
       "subcategory": "panel"
+    },
+    {
+      "id": "dsh-session-enhance",
+      "name": "会话增强（dsh-session-enhance）",
+      "rank": 50,
+      "nameEn": "Session Enhance",
+      "author": "Tinger-X",
+      "description": "会话管理增强插件：支持真实物理删除、跨工作区分组拖拽搬移会话、一键物理文件与 storages JSON 对账及墓碑防复活机制。",
+      "descriptionEn": "Enhanced session management plugin: physical transcript deletion, cross-workspace drag-and-drop migration, physical file reconciliation, and tombstone anti-resurrection.",
+      "repo": "https://github.com/Tinger-X/dsh-session-enhance",
+      "npm": "dsh-session-enhance",
+      "category": "utility"
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-i18n",
   "description": "DSH web GUI language pack plugin: registers the Русский language into the locale catalog and centrally carries the ru dictionaries for every family plugin namespace (missing keys fall back to English through the SDK chain).",
-  "version": "0.1.0",
+  "version": "0.3.10",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

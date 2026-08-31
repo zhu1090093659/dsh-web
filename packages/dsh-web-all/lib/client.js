@@ -203,6 +203,19 @@ window.__ModuleLoader__.load({
 }
 @media (prefers-reduced-motion: reduce) {
   [data-dsh-frame] [data-pane="sidebar"] { transition: none; }
+  [data-dsh-boot-splash] { transition: none; }
+}
+[data-dsh-boot-splash] {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--dsw-alias-bg-base, #1e1e20);
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+[data-dsh-boot-splash][data-ready] {
+  opacity: 0;
 }
 `;
 		function ensureResponsiveStyle() {
@@ -316,6 +329,37 @@ window.__ModuleLoader__.load({
 		/** True while a coalesced pass is pending. */
 		let shimScheduled = false;
 		let shimAfterPass;
+		function installBootShield() {
+			if (typeof document === "undefined") return {
+				dismiss: () => {},
+				remove: () => {}
+			};
+			let splash = document.querySelector("div[data-dsh-boot-splash]");
+			if (splash === null) {
+				splash = document.createElement("div");
+				splash.setAttribute("data-dsh-boot-splash", "");
+				document.body.appendChild(splash);
+			}
+			let dismissed = false;
+			let fadeTimer = 0;
+			const dismiss = () => {
+				if (dismissed) return;
+				dismissed = true;
+				splash?.setAttribute("data-ready", "");
+				fadeTimer = window.setTimeout(() => {
+					splash?.remove();
+				}, 180);
+			};
+			const timeout = window.setTimeout(dismiss, 1e3);
+			return {
+				dismiss,
+				remove: () => {
+					window.clearTimeout(timeout);
+					window.clearTimeout(fadeTimer);
+					splash?.remove();
+				}
+			};
+		}
 		/** Required services: none — the shim must run before any DOM mount waits. */
 		const inject = [];
 		/**
@@ -325,11 +369,13 @@ window.__ModuleLoader__.load({
 		function apply(ctx) {
 			ctx.effect(() => {
 				const responsiveStyle = ensureResponsiveStyle();
+				const bootShield = installBootShield();
 				applyShims();
 				let removeMobileDismiss = () => {};
 				let dismissFrame = null;
 				const ensureMobileDismiss = () => {
 					const frame = document.querySelector("[data-dsh-frame]");
+					if (frame !== null) bootShield.dismiss();
 					if (frame === null || frame === dismissFrame) return;
 					removeMobileDismiss();
 					removeMobileDismiss = installMobileSidebarDismiss(frame);
@@ -347,6 +393,7 @@ window.__ModuleLoader__.load({
 				});
 				return () => {
 					observer.disconnect();
+					bootShield.remove();
 					responsiveStyle.remove();
 					removeMobileDismiss();
 					shimAfterPass = void 0;

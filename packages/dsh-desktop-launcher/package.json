@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-desktop-launcher",
   "description": "Desktop launcher + one-click shutdown for dsh: create a double-click desktop icon that starts dsh web and opens the Web GUI, plus a floating power button that exits the host process gracefully. Hot-pluggable — mounted via ~/.dsh/cordis.patch.yml + a profile node_modules symlink, no dsh source changes.",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "type": "module",
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

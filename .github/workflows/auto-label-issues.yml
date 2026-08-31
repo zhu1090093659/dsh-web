@@ -1,0 +1,114 @@
+name: Auto-label issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  label:
+    name: Apply labels based on issue fields
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Parse issue template and add labels
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const issue = context.payload.issue;
+            if (!issue || issue.pull_request) {
+              return;
+            }
+
+            const body = issue.body || '';
+            const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const readSection = (label) => {
+              const heading = escapeRegExp(label);
+              const pattern = new RegExp(`(?:^|\\n)###\\s+${heading}\\s*\\n+([\\s\\S]*?)(?=\\n###\\s+|$)`, 'i');
+              const match = body.match(pattern);
+              return match ? match[1].replace(/<!--[\s\S]*?-->/g, '').trim() : '';
+            };
+
+            const pluginField = readSection('涉及插件').toLowerCase();
+            const issueTypeField = readSection('Issue 类型').toLowerCase();
+
+            const labelsToAdd = new Set();
+
+            // 1. Issue type mapping
+            if (issueTypeField.includes('bug') || issueTypeField.includes('缺陷')) {
+              labelsToAdd.add('bug');
+            } else if (issueTypeField.includes('功能') || issueTypeField.includes('feature') || issueTypeField.includes('request')) {
+              labelsToAdd.add('enhancement');
+            } else if (issueTypeField.includes('文档') || issueTypeField.includes('doc')) {
+              labelsToAdd.add('documentation');
+            } else if (issueTypeField.includes('问题') || issueTypeField.includes('question')) {
+              labelsToAdd.add('question');
+            }
+
+            // 2. Plugin / Area mapping
+            if (pluginField.includes('skin') || pluginField.includes('皮肤') || pluginField.includes('壁纸') || pluginField.includes('渲染器') || pluginField.includes('wallpaper')) {
+              labelsToAdd.add('area/skins');
+            }
+            if (pluginField.includes('market') || pluginField.includes('工坊') || pluginField.includes('市场') || pluginField.includes('store') || pluginField.includes('workshop')) {
+              labelsToAdd.add('area/market');
+            }
+            if (pluginField.includes('pet') || pluginField.includes('宠物')) {
+              labelsToAdd.add('area/pet');
+            }
+            if (pluginField.includes('i18n') || pluginField.includes('国际化') || pluginField.includes('语言') || pluginField.includes('翻译')) {
+              labelsToAdd.add('area/i18n');
+            }
+            if (pluginField.includes('perf') || pluginField.includes('性能')) {
+              labelsToAdd.add('area/perf');
+            }
+            if (pluginField.includes('setting') || pluginField.includes('设置')) {
+              labelsToAdd.add('area/settings');
+            }
+            if (pluginField.includes('session') || pluginField.includes('会话')) {
+              labelsToAdd.add('area/session');
+            }
+            if (pluginField.includes('skill') || pluginField.includes('技能')) {
+              labelsToAdd.add('area/skills');
+            }
+            if (pluginField.includes('image') || pluginField.includes('describe') || pluginField.includes('tool')) {
+              labelsToAdd.add('area/tools');
+            }
+            if (pluginField.includes('remote') || pluginField.includes('远程') || pluginField.includes('web')) {
+              labelsToAdd.add('area/web');
+            }
+            if (pluginField.includes('all') || pluginField.includes('聚合包') || pluginField.includes('安装') || pluginField.includes('ci') || pluginField.includes('build')) {
+              labelsToAdd.add('area/infra');
+            }
+            if (
+              pluginField.includes('task-board') ||
+              pluginField.includes('git-graph') ||
+              pluginField.includes('aionui') ||
+              pluginField.includes('ssh') ||
+              pluginField.includes('doctor') ||
+              pluginField.includes('usage') ||
+              pluginField.includes('liangshen') ||
+              pluginField.includes('launcher') ||
+              pluginField.includes('plugin-manager') ||
+              pluginField.includes('community')
+            ) {
+              labelsToAdd.add('area/plugin');
+            }
+
+            // Filter out labels already present on the issue
+            const currentLabels = new Set((issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name)));
+            const newLabels = Array.from(labelsToAdd).filter((l) => !currentLabels.has(l));
+
+            if (newLabels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: newLabels,
+              });
+              console.log(`Issue #${issue.number}: added labels [${newLabels.join(', ')}]`);
+            } else {
+              console.log(`Issue #${issue.number}: no new labels to add.`);
+            }

@@ -574,6 +574,30 @@
     "subcategory": "panel"
   },
   {
+    "id": "dsh-prompt-enhance",
+    "name": "提示词增强",
+    "nameEn": "Prompt Enhance",
+    "author": "rongxingda",
+    "description": "输入框一键提示词增强：把草稿改写为结构化提示词（角色与目标、可执行步骤、输出格式、验收标准、边界条件），支持前后对比、回填与一键撤销；不改变原意、不凭空编造需求。",
+    "descriptionEn": "One-click prompt enhancement in the composer: rewrites the draft into a structured prompt (role and goal, executable steps, output format, acceptance criteria, edge cases) with before/after preview, fill-back, and undo. Never changes intent, never fabricates requirements.",
+    "repo": "https://github.com/rongxingda/dsh-prompt-enhance",
+    "npm": "dsh-prompt-enhance",
+    "category": "ui",
+    "subcategory": "chat"
+  },
+  {
+    "id": "dsh-completion-guard",
+    "name": "完成守卫",
+    "nameEn": "Completion Guard",
+    "author": "GreenLv",
+    "description": "任务合同与完成认证层：八个生命周期 hook 维护不可变需求账本，/compact 或会话恢复后重建有界合同，完成声明必须通过 checkpoint 绑定匹配证据，否则 fail-closed 阻止 Goal 与整任务完成。",
+    "descriptionEn": "Task-contract and completion-certification layer for DeepSeek Harness: eight lifecycle hooks keep an immutable requirement ledger, restore the bounded contract after /compact or resume, and block unsupported completion claims with fail-closed evidence binding.",
+    "repo": "https://github.com/GreenLv/dsh-completion-guard",
+    "npm": "dsh-completion-guard",
+    "category": "tools",
+    "subcategory": "dev"
+  },
+  {
     "id": "dsh-session-enhance",
     "name": "会话增强（dsh-session-enhance）",
     "nameEn": "Session Enhance",
@@ -582,6 +606,7 @@
     "descriptionEn": "Enhanced session management plugin: physical transcript deletion, cross-workspace drag-and-drop migration, physical file reconciliation, and tombstone anti-resurrection.",
     "repo": "https://github.com/Tinger-X/dsh-session-enhance",
     "npm": "dsh-session-enhance",
-    "category": "utility"
+    "category": "utility",
+    "subcategory": "cleanup"
   }
 ]

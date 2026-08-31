@@ -315,6 +315,33 @@ describe('HostExecutionRunner', () => {
     }
   })
 
+  it('warns once and does not error on invocation-unavailable (DSH < 0.1.2-alpha.2) (#1313)', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const gateway = {
+        invoke: fakeInvoke(async () => {
+          throw Object.assign(new Error('typert gateway: session/list: no active Remote method exports this endpoint'), { code: 'invocation-unavailable' })
+        }),
+      }
+      const runner = new HostExecutionRunner(gateway)
+      await expect(runner.listRunning()).resolves.toEqual({ known: false })
+      expect(errorSpy).not.toHaveBeenCalled()
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('DSH runtime session endpoint unavailable (requires DSH >= 0.1.2-alpha.2)'),
+        expect.any(Error),
+      )
+      // Second call should not warn again
+      await expect(runner.listRunning()).resolves.toEqual({ known: false })
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      expect(errorSpy).not.toHaveBeenCalled()
+    } finally {
+      errorSpy.mockRestore()
+      warnSpy.mockRestore()
+    }
+  })
+
   it('retries a boot-race service-unavailable roster error until the controller activates', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {

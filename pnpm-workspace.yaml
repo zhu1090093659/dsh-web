@@ -56,6 +56,12 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-subprocess@0.1.2-alpha.2'
   - '@deepseek-ai/dsh-token-meter@0.1.2-alpha.2'
   - '@deepseek-ai/dsh-tools@0.1.2-alpha.2'
+  # The repo root carries the host faces in better-sidebar's static import
+  # closure (see package.json) so the linked web profile resolves them from
+  # the repo top level; the util faces joined the closure at 0.1.2-alpha.2.
+  - '@deepseek-ai/dsh-util-crypto@0.1.2-alpha.2'
+  - '@deepseek-ai/dsh-util-time@0.1.2-alpha.2'
+  - '@deepseek-ai/dsh-util-values@0.1.2-alpha.2'
   - '@deepseek-ai/dsh-user-approval@0.1.2-alpha.2'
   - '@deepseek-ai/dsh-workspace@0.1.2-alpha.2'
   - '@deepseek-ai/dsh-system-prompt@0.1.2-alpha.2'
@@ -94,6 +100,7 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-client-ui-session@0.1.2-alpha.2'
   - '@deepseek-ai/dsh-deque@0.1.2-alpha.2'
   - '@deepseek-ai/dsh-util-crypto@0.1.2-alpha.2'
+  - '@deepseek-ai/dsh-util-time@0.1.2-alpha.2'
   - '@deepseek-ai/dsh-util-values@0.1.2-alpha.2'
 
 patchedDependencies:

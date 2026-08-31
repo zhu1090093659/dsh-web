@@ -117,6 +117,7 @@ export const ru: Record<string, string> = {
   'tunnel.starting': 'Публичный туннель запускается; QR-код скоро переключится на публичную ссылку…',
   'tunnel.unknownError': 'неизвестная ошибка',
   'update.availableLabel': 'Доступна новая версия. Проверить обновления',
+  'update.badge': 'Есть обновление',
   'update.checking': 'Проверка новых версий в удалённом репозитории…',
   'update.close': 'Закрыть панель обновлений',
   'update.componentVersions': 'Показать версии компонентов',

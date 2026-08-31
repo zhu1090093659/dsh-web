@@ -4,11 +4,13 @@ node_modules/
 # npm 认证配置（含令牌引用，禁止提交）
 .npmrc
 
-# 本地工具缓存
+# 本地工具缓存与环境残留
 *.log
 .DS_Store
 .codegraph/
 .zcode/
+/main.js
+/preload.js
 
 # GUI 测试截图
 gui-test-screenshots/

@@ -12,13 +12,10 @@
   display: inline-flex;
 }
 
-/* Hero phase: leave the dock row and join the official hero chip row. The
-   inline left/top offsets are measured against the composer stack; the row
-   gap and the seat metrics mirror the official WorkspaceChip /
-   AgentPresetSeat recipe. */
+/* Hero phase: leave the dock row and join the official hero chip row. */
 .anchorHero {
-  position: absolute;
-  z-index: 10;
+  display: inline-flex;
+  align-items: center;
   padding-left: 0;
 }
 

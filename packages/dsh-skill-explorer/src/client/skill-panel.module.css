@@ -204,9 +204,9 @@
 }
 
 .badgeInvokable {
-  background: var(--dsw-alias-state-success-secondary, #ecfdf5);
-  color: var(--dsw-alias-state-success-primary, #0f7a50);
-  border-color: var(--dsw-alias-state-success-tertiary, #c9f0dd);
+  background: var(--dsw-alias-state-success-secondary, #e6f4ea);
+  color: var(--dsw-alias-state-success-primary, #0d6832);
+  border-color: var(--dsw-alias-state-success-tertiary, #b7e1cd);
 }
 
 .switch {

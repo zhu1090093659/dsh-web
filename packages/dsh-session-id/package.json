@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-session-id",
   "description": "DSH web GUI plugin: sidebar-foot Session ID panel listing every session with its full id and one-click copy (browser-only; no source changes).",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

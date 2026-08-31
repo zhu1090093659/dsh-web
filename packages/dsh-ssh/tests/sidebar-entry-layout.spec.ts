@@ -14,7 +14,9 @@ describe('SSH sidebar entry layout (#872)', () => {
   })
 
   it('centers a fixed-size target in the collapsed sidebar rail', () => {
-    const collapsed = css.match(/\[data-dsh-frame\]\[data-sidebar-collapsed\] \.entry\s*\{([^}]*)\}/s)?.[1] ?? ''
+    expect(css).toContain(':global([data-sidebar-collapsed]) .entry')
+    expect(css).toContain(':global([data-dsh-frame][data-sidebar-collapsed]) .entry')
+    const collapsed = css.match(/:global\([^)]*\[data-sidebar-collapsed\][^)]*\) \.entry\s*\{([^}]*)\}/s)?.[1] ?? ''
     expect(collapsed).toContain('width: 36px')
     expect(collapsed).toContain('min-height: 36px')
     expect(collapsed).toContain('margin: 0 auto 12px')

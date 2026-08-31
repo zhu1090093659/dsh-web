@@ -266,7 +266,7 @@ describe('BranchChip', () => {
     expect(branchChip.className).toContain('chipHero')
   })
 
-  it('positions the hero dock chip after the rightmost hero-row chip', async () => {
+  it('positions the hero dock chip in the hero workspace row', async () => {
     const stack = document.createElement('div')
     const heroRow = document.createElement('div')
     heroRow.className = 'heroWorkspaceRow'
@@ -278,26 +278,16 @@ describe('BranchChip', () => {
     document.body.append(stack)
     try {
       bench({ blank: true, openState: 'open', container: outlet }, 'dock')
-      const chip = await screen.findByRole('button', { name: '分支' })
-      const anchor = anchorOf(chip)
+      await waitFor(() => {
+        const chip = screen.getByRole('button', { name: '分支' })
+        const anchor = anchorOf(chip)
 
-      const rect = (left: number, top: number, width: number, height: number): DOMRect => ({
-        left, top, right: left + width, bottom: top + height, width, height, x: left, y: top, toJSON: () => ({}),
-      }) as DOMRect
-      stack.getBoundingClientRect = () => rect(320, 313, 812, 274)
-      heroRow.getBoundingClientRect = () => rect(320, 369, 812, 28)
-      preset.getBoundingClientRect = () => rect(467, 369, 106, 28)
-      anchor.getBoundingClientRect = () => rect(320, 405, 812, 28)
-
-      await act(async () => {
-        window.dispatchEvent(new Event('resize'))
-        await nextFrame()
+        expect(heroRow.contains(anchor)).toBe(true)
+        expect(anchor.parentElement).toBe(heroRow)
+        expect(preset.nextElementSibling).toBe(anchor)
+        expect(anchor.className).toContain('anchorHero')
+        expect(chip.className).toContain('chipHero')
       })
-      // Right edge of the preset (573) + the official 2px hero-row gap,
-      // relative to the stack; vertically centered in the 28px row.
-      expect(anchor.style.left).toBe('255px')
-      expect(anchor.style.top).toBe('56px')
-      expect(anchor.style.paddingLeft).toBe('0px')
     } finally {
       stack.remove()
     }

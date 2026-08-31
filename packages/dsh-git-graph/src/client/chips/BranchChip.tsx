@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { IconBranchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { BranchesView, RepoStatus } from '../../core/types.ts'
@@ -26,9 +27,6 @@ export type BranchChipProps =
   (PropsRuntime<'conversation.input.selector.context'> | PropsRuntime<'conversation.input.dock'>)
   & GitGraphInjected
   & PropsLocale<'git-graph'>
-
-/** Horizontal gap between the official hero-row chips (WorkspaceChip / AgentPresetSeat). */
-const HERO_CHIP_GAP = 2
 
 /** Minimum gap between window-focus git refetches (ms). */
 export const FOCUS_REFRESH_MIN_MS = 5_000
@@ -66,55 +64,34 @@ function useStockLightTheme(): boolean {
   return stockLightTheme
 }
 
-/**
- * The right edge of the rightmost painted descendant of `root`, excluding
- * `root` itself. The hero row's direct children can be display:contents
- * slot outlets, so the visible chip boundary must be found by walking.
- */
-function paintedRight(root: Element): number | null {
-  let right: number | null = null
-  const visit = (node: Element): void => {
-    if (node !== root) {
-      const rect = node.getBoundingClientRect()
-      if (rect.width > 0 && rect.height > 0) {
-        right = right === null ? rect.right : Math.max(right, rect.right)
-      }
-    }
-    for (const child of Array.from(node.children)) visit(child)
-  }
-  visit(root)
-  return right
+function isConnectedElement(node: unknown): node is HTMLElement {
+  return node instanceof HTMLElement && node.isConnected
 }
 
 /**
- * Coalesce repeated placement updates into one animation-frame callback so
- * observer bursts in the same frame measure only once. When the environment
- * provides no requestAnimationFrame, updates run synchronously instead.
+ * Resolve the hero workspace row element that the branch chip should join
+ * during the blank-session hero phase.
  */
-function frameScheduler(update: () => void): { schedule: () => void, cancel: () => void } {
-  let pending = false
-  let frame: number | null = null
-  const flush = (): void => {
-    pending = false
-    frame = null
-    update()
+function findHeroRow(anchor: HTMLElement | null): HTMLElement | null {
+  if (anchor === null || !anchor.isConnected) return null
+  const outlet = anchor.parentElement
+  if (outlet === null) return null
+  // 1. Direct previous sibling (the official hero row in ConversationRoot)
+  const prev = outlet.previousElementSibling as HTMLElement | null
+  if (prev !== null && isConnectedElement(prev) && prev.className.includes('heroWorkspaceRow')) {
+    return prev
   }
-  return {
-    schedule: () => {
-      if (pending) return
-      pending = true
-      if (typeof requestAnimationFrame === 'function') {
-        frame = requestAnimationFrame(flush)
-      } else {
-        flush()
-      }
-    },
-    cancel: () => {
-      pending = false
-      if (frame !== null) cancelAnimationFrame(frame)
-      frame = null
-    },
+  // 2. Query inside the composerStack parent
+  const stack = outlet.closest('[class*="composerStack"], [class*="composerHero"]')
+  const rowInStack = stack?.querySelector('[class*="heroWorkspaceRow"]') as HTMLElement | null
+  if (rowInStack !== null && isConnectedElement(rowInStack)) return rowInStack
+
+  // 3. Fallback to any heroWorkspaceRow in the document
+  if (typeof document !== 'undefined') {
+    const docRow = document.querySelector('[class*="heroWorkspaceRow"]') as HTMLElement | null
+    if (docRow !== null && isConnectedElement(docRow)) return docRow
   }
+  return null
 }
 
 /**
@@ -151,48 +128,29 @@ export function BranchChip(props: BranchChipProps) {
   const [graphOpen, setGraphOpen] = useState(false)
   const [worktreeCreateOpen, setWorktreeCreateOpen] = useState(false)
   const [worktreeManageOpen, setWorktreeManageOpen] = useState(false)
-  /** Measured hero-row placement (relative to the composer stack); null until measured. */
-  const [heroPlacement, setHeroPlacement] = useState<{ left: number, top: number } | null>(null)
+  const [heroRow, setHeroRow] = useState<HTMLElement | null>(null)
   const anchorRef = useRef<HTMLDivElement | null>(null)
 
   // Hero-phase placement: the rc.6 shell renders the dock as its own row
-  // between the official hero chip row and the composer card. The chip is
-  // instead lifted into that hero row, immediately after its rightmost
-  // painted chip (the agent-preset seat — "梁神模式"), by anchoring to the
-  // composer stack and matching the official row gap. The slot outlet uses
-  // display:contents, so the anchor's outlet parent is the boundary between
-  // the hero row (previous element sibling) and the composer card below.
+  // between the official hero chip row and the composer card. In the blank
+  // hero phase, the chip portals directly into that hero row to sit
+  // immediately after the agent-preset seat, matching the official row gap,
+  // tokens, and alignment without manual pixel measurement.
   useLayoutEffect(() => {
-    if (!heroSeat) return
-    const anchor = anchorRef.current
-    const outlet = anchor?.parentElement ?? null
-    const stack = outlet?.parentElement ?? null
-    const heroRow = outlet?.previousElementSibling ?? null
-    if (anchor === null || outlet === null || stack === null || heroRow === null) return
-    const measure = (): void => {
-      const stackRect = stack.getBoundingClientRect()
-      const rowRect = heroRow.getBoundingClientRect()
-      const anchorRect = anchor.getBoundingClientRect()
-      if (stackRect.width <= 0 || rowRect.width <= 0 || anchorRect.width <= 0) return
-      const right = paintedRight(heroRow)
-      if (right === null) return
-      const left = Math.max(0, right - stackRect.left + HERO_CHIP_GAP)
-      const top = Math.max(0, rowRect.top - stackRect.top + (rowRect.height - anchorRect.height) / 2)
-      setHeroPlacement(previous => {
-        if (previous !== null && Math.abs(previous.left - left) < 0.5 && Math.abs(previous.top - top) < 0.5) return previous
-        return { left, top }
-      })
+    if (!heroSeat || repo === undefined || repo === null) {
+      setHeroRow(null)
+      return undefined
     }
-    const scheduler = frameScheduler(measure)
-    scheduler.schedule()
-    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(scheduler.schedule)
-    for (const target of [anchor, outlet, stack, heroRow]) observer?.observe(target)
-    window.addEventListener('resize', scheduler.schedule)
-    return () => {
-      scheduler.cancel()
-      observer?.disconnect()
-      window.removeEventListener('resize', scheduler.schedule)
+    const update = (): void => {
+      const found = findHeroRow(anchorRef.current)
+      setHeroRow(prev => (prev === found ? prev : found))
     }
+    update()
+    const parent = anchorRef.current?.parentElement
+    if (parent === null || parent === undefined || typeof MutationObserver === 'undefined') return undefined
+    const observer = new MutationObserver(update)
+    observer.observe(parent.parentElement ?? parent, { childList: true, subtree: true })
+    return () => { observer.disconnect() }
   }, [heroSeat, repo !== undefined && repo !== null])
 
   const refetch = useCallback(() => {
@@ -251,17 +209,13 @@ export function BranchChip(props: BranchChipProps) {
     setBranchOpen(open => !open)
   }
 
-  return (
+  const chipNode = (
     <div
-      ref={anchorRef}
       data-gitgraph-chip-anchor
       data-dsh-plugin="git-graph"
       data-dsh-part="chip"
       data-gitgraph-stock-light={stockLightTheme || undefined}
       className={cx(css.anchor, heroSeat && css.anchorHero)}
-      style={heroSeat && heroPlacement !== null
-        ? { left: `${heroPlacement.left}px`, top: `${heroPlacement.top}px`, paddingLeft: 0 }
-        : undefined}
     >
       <div className={css.chipWrap}>
         <Chip
@@ -333,6 +287,21 @@ export function BranchChip(props: BranchChipProps) {
           t={props.t}
         />
       )}
+    </div>
+  )
+
+  if (heroSeat) {
+    return (
+      <>
+        <div ref={anchorRef} style={{ display: 'none' }} />
+        {heroRow !== null && isConnectedElement(heroRow) ? createPortal(chipNode, heroRow) : chipNode}
+      </>
+    )
+  }
+
+  return (
+    <div ref={anchorRef} style={{ display: 'contents' }}>
+      {chipNode}
     </div>
   )
 }

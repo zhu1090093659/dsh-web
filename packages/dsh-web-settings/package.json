@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-web-ui-settings",
   "description": "Web UI plugin group for the dsh settings page: one first-level settings section that hosts the dsh-web family plugins' enable switches and configuration forms.",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

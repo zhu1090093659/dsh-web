@@ -40,6 +40,11 @@ function isServiceUnavailable(error: unknown): boolean {
   return code === 'service-unavailable' || code === 'gateway/service-unavailable'
 }
 
+function isInvocationUnavailable(error: unknown): boolean {
+  const code = (error as { code?: unknown }).code
+  return code === 'invocation-unavailable' || code === 'gateway/invocation-unavailable'
+}
+
 const SERVICE_UNAVAILABLE_ATTEMPTS = 5
 const SERVICE_UNAVAILABLE_BACKOFF_MS = 2_000
 
@@ -145,6 +150,7 @@ export class HostExecutionRunner {
   private readonly scanMemos = new Map<string, number>()
   private readonly unavailableAttempts: number
   private readonly unavailableBackoffMs: number
+  private unsupportedSessionListWarned = false
 
   constructor(
     private readonly gateway: SessionGateway | TypertGateway,
@@ -214,6 +220,13 @@ export class HostExecutionRunner {
         const response = await this.invoke('session', 'list', {}) as SessionListValue
         return { known: true, count: response.items.filter(item => item.running).length, items: response.items as SessionSummary[] }
       } catch (error) {
+        if (isInvocationUnavailable(error)) {
+          if (!this.unsupportedSessionListWarned) {
+            this.unsupportedSessionListWarned = true
+            console.warn('[dsh-task-board] DSH runtime session endpoint unavailable (requires DSH >= 0.1.2-alpha.2); task board roster auto-discovery is disabled', error)
+          }
+          return { known: false }
+        }
         if (!isServiceUnavailable(error) || attempt >= this.unavailableAttempts) {
           console.error('[dsh-task-board] session/list failed; treating the host session roster as unknown', error)
           return { known: false }
@@ -233,6 +246,13 @@ export class HostExecutionRunner {
       try {
         response = await this.invoke('session', 'list', {}) as SessionListValue
       } catch (error) {
+        if (isInvocationUnavailable(error)) {
+          if (!this.unsupportedSessionListWarned) {
+            this.unsupportedSessionListWarned = true
+            console.warn('[dsh-task-board] DSH runtime session endpoint unavailable (requires DSH >= 0.1.2-alpha.2); task board roster auto-discovery is disabled', error)
+          }
+          return { outcome: 'pending' }
+        }
         console.warn('[dsh-task-board] session/list failed during execution inspection; keeping the outcome pending', error)
         return { outcome: 'pending' }
       }

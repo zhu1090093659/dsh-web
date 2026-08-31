@@ -30,7 +30,11 @@ body:
         - SSH 远程运维 (dsh-ssh)
         - 宠物 (dsh-pet)
         - 皮肤 / 皮肤中心 (dsh-skins)
+        - 创意工坊 / 市场 (dsh-market)
         - 壁纸 / 渲染器（Wallpaper Engine / WebGL / 背景场景）
+        - 技能浏览器 (dsh-skill-explorer)
+        - 性能监控 (dsh-perf)
+        - 国际化多语言 (dsh-i18n)
         - 聚合包 / 安装 (dsh-web-all / dsh-web-settings)
         - 其他 / 不确定
     validations:

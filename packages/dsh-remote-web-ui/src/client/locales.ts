@@ -115,6 +115,7 @@ export const zh = {
   'settings.invalidNumber': '请输入数字，留空则使用默认值。',
   // 更新面板（侧边栏更新按钮）。
   'update.label': '检查更新',
+  'update.badge': '有更新',
   'update.availableLabel': '发现新版本，检查更新',
   'update.title': '检查更新',
   'update.checking': '正在检查远程仓库中的新版本…',
@@ -278,6 +279,7 @@ export const en = {
   'settings.invalidNumber': 'Enter a number, or leave blank to use the default.',
   // Update panel (the sidebar update trigger).
   'update.label': 'Check for updates',
+  'update.badge': 'Update available',
   'update.availableLabel': 'New version available. Check for updates',
   'update.title': 'Check for updates',
   'update.checking': 'Checking the remote repository for newer releases…',

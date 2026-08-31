@@ -22,6 +22,7 @@ This skill is guidance, not a replacement for repository instructions. [AGENTS.m
 - Edit a generated shared copy only through its source in `shared/`, then run the documented synchronization command.
 - Add a package or change aggregate membership through the repository generators and update required documentation. Do not hand-edit generated output.
 - Record every non-trivial change as an Agent Note under [.agents/notes/](../../notes/README.md) in the same change: proposals start in `proposed/`, shipped decisions in `implemented/`, declined proposals in `rejected/`. Follow the lifecycle, class, and format rules there.
+- Adhere to the Software Factory governance baseline: maintain prompt prefix stability (Layer 1/2), route lightweight subagents (`flash`/`flash_lite`) for routine research/search/i18n, trigger the anti-thrashing circuit breaker after 3 failed attempts, and follow the 4-step CI self-healing protocol (Log Isolation -> Local Repro -> Minimal Diff -> Gate Check) when resolving errors.
 - Build and exercise the affected behavior before declaring it complete. A commit alone is not delivery.
 
 ## Route focused work

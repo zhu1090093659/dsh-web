@@ -24,3 +24,5 @@ alpha.2 cohort 迁移（2026-08-30）把 `dsh-better-sidebar` 与 `@mlgbnb/dsh-a
 ## 验证
 
 `node scripts/aggregate.mjs` 重新生成 `cordis.patch.yml`，包含 `web-ui-better-sidebar` insert 行；`scripts/aggregate.test.mjs` 断言其在场、`web-ui-archive-manager` 缺席；`pnpm test:scripts`、`docs:check` 与 `aggregate:check` 通过。`bash scripts/e2e-mount.sh` 从打包后的聚合 tarball 启动 scratch `dsh web`，Playwright lane 在帧挂载后等待 `[data-dsh-better-sidebar]`（count 1）——运行通过。
+
+后续（2026-08-31）：scratch 冒烟看不到 link profile 的依赖缺口。本地 `web` profile 把 `dsh-web-all` link 进本仓库，better-sidebar 宿主半部因此从仓库 `node_modules` 顶层做物理解析，而其必需 peer 不在（`autoInstallPeers: false`、根包无任何 `@deepseek-ai/*` 依赖）——`dsh web` 因 `ERR_MODULE_NOT_FOUND` 中止于 `@deepseek-ai/dsh-subagent`，再于是 `@deepseek-ai/dsh-util-time`。修复把 better-sidebar 的宿主静态 import 闭包（从 `lib/index.js` 沿 harness 源码走查：15 个面）镜像进根 `devDependencies`，按 cohort 版本区间（`^0.1.2-alpha.2`、`@deepseek-ai/cordis@^4.0.2`、`schemastery@^3.18.1`），让 link profile 能解析 bundle 引用到的每个宿主面。scratch 冒烟是 hoisted 安装、宿主闭包与聚合包同树，所以 CI 无论哪边都绿。

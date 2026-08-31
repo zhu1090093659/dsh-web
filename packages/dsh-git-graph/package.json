@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-git-graph",
   "description": "External dsh web GUI plugin: a blank-session git branch selector + Git graph, with real host-side git operations and guards, as a dsh profile bundle",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {

@@ -85,24 +85,40 @@ afterEach(() => {
 })
 
 describe("UpdateEntry", () => {
-  it("marks the trigger when the background probe finds a newer release", async () => {
+  it("marks the trigger and renders badge text when the background probe finds a newer release in wide mode", async () => {
     const { fetch } = mount(outdatedStatus())
 
     await waitFor(() => {
       const trigger = screen.getByRole('button', { name: 'New version available. Check for updates' })
       expect(trigger.getAttribute('data-update-available')).toBe('true')
+      expect(trigger.getAttribute('data-wide')).toBe('wide')
       expect(trigger.getAttribute('title')).toBe('New version available. Check for updates')
+      expect(screen.getByText('Update available')).toBeTruthy()
     })
     expect(fetch).toHaveBeenCalledWith('/api/update/status')
     expect(fetch).not.toHaveBeenCalledWith('/api/update/run', expect.anything())
   })
 
-  it("keeps the trigger unmarked when the background probe finds no update", async () => {
+  it("omits badge text in rail mode even when an update is available", async () => {
+    const fetch = mockFetch(outdatedStatus())
+    vi.stubGlobal('fetch', fetch)
+    render(<UpdateEntry wide={false} t={t} />)
+
+    await waitFor(() => {
+      const trigger = screen.getByRole('button', { name: 'New version available. Check for updates' })
+      expect(trigger.getAttribute('data-update-available')).toBe('true')
+      expect(trigger.getAttribute('data-wide')).toBe('rail')
+      expect(screen.queryByText('Update available')).toBeNull()
+    })
+  })
+
+  it("keeps the trigger unmarked and text-free when the background probe finds no update", async () => {
     const { fetch } = mount(upToDateStatus())
 
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/update/status'))
     const trigger = screen.getByRole('button', { name: /Check for updates$/ })
     expect(trigger.getAttribute('data-update-available')).toBeNull()
+    expect(screen.queryByText('Update available')).toBeNull()
   })
 
   it("opens the panel and reports up to date", async () => {

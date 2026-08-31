@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-tool-describe-image",
   "description": "Model-facing describe_image tool for the dsh web GUI: gives a text-only model image understanding by asking a vision-language model at an OpenAI-compatible endpoint to describe one image (local path, http(s) URL, or attachment reference). Hot-pluggable — mounted via ~/.dsh/cordis.patch.yml + a profile node_modules symlink, no dsh source changes.",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {

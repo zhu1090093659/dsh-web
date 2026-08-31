@@ -215,6 +215,19 @@ export const RESPONSIVE_CSS = `
 }
 @media (prefers-reduced-motion: reduce) {
   [data-dsh-frame] [data-pane="sidebar"] { transition: none; }
+  [data-dsh-boot-splash] { transition: none; }
+}
+[data-dsh-boot-splash] {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--dsw-alias-bg-base, #1e1e20);
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+[data-dsh-boot-splash][data-ready] {
+  opacity: 0;
 }
 `
 
@@ -343,6 +356,35 @@ function schedulePass(): void {
 let shimScheduled = false
 let shimAfterPass: (() => void) | undefined
 
+function installBootShield(): { dismiss: () => void; remove: () => void } {
+  if (typeof document === 'undefined') return { dismiss: () => {}, remove: () => {} }
+  let splash = document.querySelector<HTMLElement>('div[data-dsh-boot-splash]')
+  if (splash === null) {
+    splash = document.createElement('div')
+    splash.setAttribute('data-dsh-boot-splash', '')
+    document.body.appendChild(splash)
+  }
+  let dismissed = false
+  let fadeTimer = 0
+  const dismiss = (): void => {
+    if (dismissed) return
+    dismissed = true
+    splash?.setAttribute('data-ready', '')
+    fadeTimer = window.setTimeout(() => {
+      splash?.remove()
+    }, 180)
+  }
+  const timeout = window.setTimeout(dismiss, 1000)
+  return {
+    dismiss,
+    remove: () => {
+      window.clearTimeout(timeout)
+      window.clearTimeout(fadeTimer)
+      splash?.remove()
+    },
+  }
+}
+
 /** Required services: none — the shim must run before any DOM mount waits. */
 export const inject = [] as const
 
@@ -353,11 +395,15 @@ export const inject = [] as const
 export function apply(ctx: Context): void {
   ctx.effect(() => {
     const responsiveStyle = ensureResponsiveStyle()
+    const bootShield = installBootShield()
     applyShims()
     let removeMobileDismiss = (): void => {}
     let dismissFrame: HTMLElement | null = null
     const ensureMobileDismiss = (): void => {
       const frame = document.querySelector<HTMLElement>('[data-dsh-frame]')
+      if (frame !== null) {
+        bootShield.dismiss()
+      }
       if (frame === null || frame === dismissFrame) return
       removeMobileDismiss()
       removeMobileDismiss = installMobileSidebarDismiss(frame)
@@ -377,6 +423,7 @@ export function apply(ctx: Context): void {
     observer.observe(document.body, { childList: true, subtree: true })
     return () => {
       observer.disconnect()
+      bootShield.remove()
       responsiveStyle.remove()
       removeMobileDismiss()
       shimAfterPass = undefined

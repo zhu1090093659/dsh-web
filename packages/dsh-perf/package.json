@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-perf",
   "description": "DSH Web 性能观测与治理插件: 事件/写盘/渲染指标 + HUD + 写批频控",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {

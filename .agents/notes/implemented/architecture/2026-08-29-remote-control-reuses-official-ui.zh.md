@@ -23,7 +23,7 @@ dsh-remote-web-ui 此前自带一套移动端界面：独立的 `/m/` 界面（�
 - 仿照 dsh-LAN 的 `/lanapi` 特权代理：源码核查后否决——本线的特权行为锁在客户端，ownsHost 钩子即可拿到完全对等，且不必跨 SDK 升级维护端点表。
 - 向受管绑定块写入动态 `!!js ctx.webStartup.*` 表达式（dsh-LAN 的形态）：以实测证据否决——用户补丁层中表达式在 webStartup 服务挂载前解析（热加载时端口 undefined、冷启动拒绝配置），故块内落静态值，由启动重断言保证旗标优先。
 - 为远程设备影子化官方工作区目录选择器（dsh-LAN 的应用内对话框）：本线不需要——选择器后端是组合选择（ui-directory-picker-native 与 -browse 填 ui-workspace 的槽位洞），没有 isLoopback 分支。
-- 本重构中未变的关联机制：栅栏页的手动配对令牌输入（[remote fence manual pair token](../enhancement/2026-08-26-remote-fence-manual-pair-token.zh.md)）与控制台局域网可达性指引（[desktop profile and LAN guidance](../enhancement/2026-08-26-desktop-profile-and-lan-guidance.zh.md)）——局域网日志行现在宣传的是配对后的官方 GUI，而非已删除的 `/m/` 界面。
+- 本重构中未变的关联机制：栅栏页的手动配对令牌输入（[remote fence manual pair token](../feature/2026-08-26-remote-fence-manual-pair-token.zh.md)）与控制台局域网可达性指引（[desktop profile and LAN guidance](../feature/2026-08-26-desktop-profile-and-lan-guidance.zh.md)）——局域网日志行现在宣传的是配对后的官方 GUI，而非已删除的 `/m/` 界面。
 
 ## 后果
 

@@ -1,0 +1,95 @@
+area/skins:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'packages/skins/**'
+          - 'packages/dsh-skins/**'
+
+area/market:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'market/**'
+          - 'packages/dsh-market/**'
+
+area/pet:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'packages/dsh-pet/**'
+
+area/i18n:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'packages/dsh-i18n/**'
+          - '**/README.i18n.yaml'
+          - '**/README.zh-CN.md'
+          - '**/locales/**'
+
+area/perf:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'packages/dsh-perf/**'
+
+area/settings:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'packages/dsh-web-settings/**'
+
+area/session:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'packages/dsh-session-id/**'
+
+area/skills:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'packages/dsh-skill-explorer/**'
+
+area/tools:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'packages/dsh-tool-describe-image/**'
+
+area/plugin:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'packages/dsh-community-plugins/**'
+          - 'packages/dsh-desktop-launcher/**'
+          - 'packages/dsh-doctor/**'
+          - 'packages/dsh-git-graph/**'
+          - 'packages/dsh-liangshen/**'
+          - 'packages/dsh-plugin-manager/**'
+          - 'packages/dsh-remote-web-ui/**'
+          - 'packages/dsh-ssh/**'
+          - 'packages/dsh-task-board/**'
+          - 'packages/dsh-usage/**'
+
+area/cordis:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'cordis.patch.yml'
+          - 'packages/**/cordis.patch.yml'
+
+area/web:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'shared/web-platform.ts'
+          - 'shared/host/client/**'
+          - 'packages/**/src/client/**'
+
+area/infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'scripts/**'
+          - 'shared/tsdown.client.ts'
+          - 'packages/dsh-web-all/**'
+          - 'package.json'
+          - 'pnpm-lock.yaml'
+          - 'pnpm-workspace.yaml'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - '**/*.md'
+          - '**/*.mdx'
+          - '!packages/**/src/**'

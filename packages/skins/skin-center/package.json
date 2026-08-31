@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-skin-center",
   "description": "In-GUI skin center for the dsh web GUI — the single skin package: skins are pure asset directories (built-in plus $DSH_HOME/skins) loaded and rendered only by the skin center; live try-on and one-click apply switch atomically in the page (no reload, no cordis.patch.yml rewrite, no restart)",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-web-all",
   "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / remote-web-ui / web-ui-settings / skin-center / community-plugins / compat shim）。compat 桥接层已并入本包（src/client），无需独立 compat npm 包。",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -37,6 +37,20 @@
     "url": "https://github.com/zhu1090093659/dsh-web.git"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-agent": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-attachment": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-llm": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-scope": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-session": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-subagent": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-tools": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-util-time": "^0.1.2-alpha.2",
     "jsdom": "29.1.1",
     "vitest": "^4.1.8"
   },

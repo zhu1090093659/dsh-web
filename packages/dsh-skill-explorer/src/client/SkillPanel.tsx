@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { SkillApi, type ListPayload, type SkillEntry } from './api.ts'
-import { zh } from './locales.ts'
+import { zh, type SkillExplorerKey } from './locales.ts'
 import { tt } from './panel-helpers.ts'
 import css from './skill-panel.module.css'
 
@@ -24,6 +24,13 @@ function invokableMarks(skill: SkillEntry): string {
   if (skill.modelInvocable) marks.push(tt('list.mark.model'))
   if (skill.userInvocable) marks.push(tt('list.mark.user'))
   return marks.join(' / ')
+}
+
+/** Localized provider label with fallback. */
+function providerLabel(provider: string): string {
+  const key = `provider.${provider}` as SkillExplorerKey
+  const translated = tt(key)
+  return translated === key ? provider : translated
 }
 
 /** One skill card: name, badges, toggle switch, delete button. */
@@ -75,10 +82,22 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
     <article className={css.skill} data-dsh-part="skill-row">
       <header className={css.skillHeader}>
         <span className={css.skillName}>{skill.name}</span>
-        {skill.provider !== undefined && <span className={css.badge}>{skill.provider}</span>}
+        {skill.provider !== undefined && (
+          <span
+            className={css.badge}
+            title={tt('provider.tooltip', { provider: providerLabel(skill.provider) })}
+          >
+            {providerLabel(skill.provider)}
+          </span>
+        )}
         {skill.linked === true && <span className={css.badge}>{tt('list.linked')}</span>}
         {(skill.modelInvocable || skill.userInvocable) && (
-          <span className={`${css.badge} ${css.badgeInvokable}`}>{tt('list.invokable', { marks: invokableMarks(skill) })}</span>
+          <span
+            className={`${css.badge} ${css.badgeInvokable}`}
+            title={tt('list.invokableTooltip')}
+          >
+            {tt('list.invokable', { marks: invokableMarks(skill) })}
+          </span>
         )}
         {skill.path !== undefined && (
           <button

@@ -32,12 +32,17 @@ export function servicePlan(spec: ServiceSpec, env: NodeJS.ProcessEnv = process.
   }
   if (spec.platform === 'win32') {
     const localAppData = env.LOCALAPPDATA?.trim() || win32.join(home, 'AppData', 'Local')
-    const path = win32.join(localAppData, 'DSH Doctor', 'supervisor.cmd')
-    const content = `@echo off\r\nset "DSH_DOCTOR_HOME=${spec.doctorHome}"\r\n"${executable}" ${spec.args.map(quoteExec).join(' ')}\r\n`
+    const cmdPath = win32.join(localAppData, 'DSH Doctor', 'supervisor.cmd')
+    const vbsPath = win32.join(localAppData, 'DSH Doctor', 'supervisor.vbs')
+    const cmdContent = `@echo off\r\nset "DSH_DOCTOR_HOME=${spec.doctorHome}"\r\n"${executable}" ${spec.args.map(quoteExec).join(' ')}\r\n`
+    const vbsContent = `Set WshShell = CreateObject("WScript.Shell")\r\nWshShell.Run Chr(34) & "${cmdPath}" & Chr(34), 0, False\r\n`
     const task = 'DSH Doctor Supervisor'
     return {
-      files: [{ path, content, mode: 0o600 }],
-      install: ['schtasks', '/Create', '/F', '/SC', 'ONLOGON', '/TN', task, '/TR', `"${path}"`],
+      files: [
+        { path: cmdPath, content: cmdContent, mode: 0o600 },
+        { path: vbsPath, content: vbsContent, mode: 0o600 },
+      ],
+      install: ['schtasks', '/Create', '/F', '/SC', 'ONLOGON', '/TN', task, '/TR', `wscript.exe "${vbsPath}"`],
       uninstall: ['schtasks', '/Delete', '/F', '/TN', task],
       restart: ['schtasks', '/Run', '/TN', task],
     }

@@ -6,8 +6,8 @@
  * @module @linxin666/dsh-pet/client/pet-store
  */
 
-import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { EngineStoreHandle, EngineStoreInstance } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore } from '@deepseek-ai/dsh-client-store'
+import type { EngineStoreHandle, EngineStoreInstance } from '@deepseek-ai/dsh-client-store'
 import type { PetGameplayStateView, PetStateView } from '../service.ts'
 import type { PetInteraction } from '../affinity.ts'
 import type { PetDefinition } from '../registry.ts'

@@ -26,6 +26,9 @@ import { fileURLToPath } from 'node:url'
 const RUNNER_URL = new URL('../packages/dsh-perf/lib/better-session-import.mjs', import.meta.url)
 let cachedCore
 async function loadCore() {
+  if (!existsSync(RUNNER_URL)) {
+    throw new Error(`${TAG}packages/dsh-perf/lib/better-session-import.mjs is missing; it is a build artifact of the dsh-perf package — run \`pnpm build\` first`)
+  }
   cachedCore ??= await import(RUNNER_URL.href)
   return cachedCore
 }

@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { PairingService } from '../src/pairing.ts'
-import { makeRoutes } from '../src/routes.ts'
+import { acceptLimitKey, makeRoutes, PAIR_PATHS } from '../src/routes.ts'
 
 function makeService(): PairingService {
   const service = new PairingService({
@@ -59,7 +59,7 @@ async function call(
   method: 'GET' | 'POST',
   path: string,
   opts: { host?: string; body?: unknown; cookie?: string; headers?: Record<string, string> } = {},
-): Promise<{ status: number; body: Record<string, unknown>; cookies: string[]; referrerPolicy: string | undefined }> {
+): Promise<{ status: number; body: Record<string, unknown>; raw: string; cookies: string[]; referrerPolicy: string | undefined; location: string | undefined; contentType: string | undefined; cacheControl: string | undefined; serviceWorkerAllowed: string | undefined }> {
   return await new Promise((resolve, reject) => {
     const payload = opts.body === undefined ? undefined : JSON.stringify(opts.body)
     const headers: Record<string, string> = { host: opts.host ?? `127.0.0.1:${String(port)}` }
@@ -81,8 +81,13 @@ async function call(
           resolve({
             status: response.statusCode ?? 0,
             body,
+            raw,
             cookies: setCookie,
             referrerPolicy: response.headers['referrer-policy'],
+            location: response.headers['location'],
+            contentType: response.headers['content-type'],
+            cacheControl: response.headers['cache-control'],
+            serviceWorkerAllowed: response.headers['service-worker-allowed'],
           })
         })
       },
@@ -131,10 +136,10 @@ describe('/api/pair routes', () => {
       // The LAN authority cannot issue (loopback-only control plane).
       const lanIssue = await call(port, 'POST', '/api/pair/issue', { host: '192.168.1.5:3080' })
       expect(lanIssue.status).toBe(403)
-      // Loopback issues; the URL embeds the token and workspace target.
+      // Loopback issues; the URL is the official Web GUI with the token.
       const issued = await call(port, 'POST', '/api/pair/issue', { body: { workspaceId: 'ws-7' } })
       expect(issued.status).toBe(200)
-      expect(issued.body.url).toMatch(/^http:\/\/192\.168\.1\.5:3080\/m\/\?pair=tok-1&workspace=ws-7$/)
+      expect(issued.body.url).toMatch(/^http:\/\/192\.168\.1\.5:3080\/pair-accept\?pair=tok-1$/)
       expect(issued.body.lanAddresses).toEqual(['192.168.1.5'])
       // A LAN phone accepts: sets the HttpOnly device cookie.
       const accepted = await call(port, 'POST', '/api/pair/accept', { host: '192.168.1.5:3080', body: { token: 'tok-1' } })
@@ -144,15 +149,165 @@ describe('/api/pair routes', () => {
       expect(accepted.cookies).toEqual([
         'dsh_pair=tok-1; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000',
       ])
-      // The same token is one-time: reuse is refused.
+      // The same token stays usable within its window (mobile flows split
+      // across cookie contexts): a second accept re-pairs and re-issues the
+      // device cookie.
       const reused = await call(port, 'POST', '/api/pair/accept', { host: '192.168.1.5:3080', body: { token: 'tok-1' } })
-      expect(reused.status).toBe(409)
-      expect(reused.body.code).toBe('used')
+      expect(reused.status).toBe(200)
+      expect(reused.body).toEqual({ ok: true, deviceId: 'tok-1' })
+      expect(reused.cookies[0]).toMatch(/^dsh_pair=tok-1; Path=\//)
       // The paired cookie heartbeats and reports status.
       const heartbeat = await call(port, 'POST', '/api/pair/heartbeat', { host: '192.168.1.5:3080', cookie: 'dsh_pair=tok-1' })
       expect(heartbeat.status).toBe(200)
       const status = await call(port, 'GET', '/api/pair/status', { host: '192.168.1.5:3080', cookie: 'dsh_pair=tok-1' })
       expect(status.body).toMatchObject({ ok: true, paired: true, phase: 'connected' })
+    } finally {
+      await close()
+    }
+  })
+
+  it('/pair-accept lands the paired device on the cookieless app page', async () => {
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({
+      service,
+      lanAddresses: ['192.168.1.5'],
+      indexDocument: async () => '<html><head><title>shell</title></head><body>official</body></html>',
+    }))
+    try {
+      // The QR link is the /pair-accept entry: mint issues it directly.
+      const issued = await call(port, 'POST', '/api/pair/issue', {})
+      expect(issued.body.url).toBe('http://192.168.1.5:3080/pair-accept?pair=tok-1')
+      const accept = await call(port, 'GET', '/pair-accept?pair=tok-1', { host: '192.168.1.5:3080' })
+      expect(accept.status).toBe(303)
+      expect(accept.location).toBe('http://192.168.1.5:3080/pair-app?device=tok-1')
+      expect(accept.cookies).toEqual([
+        'dsh_pair=tok-1; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000',
+      ])
+      // The paired cookie then passes the heartbeat (device is live).
+      const heartbeat = await call(port, 'POST', '/api/pair/heartbeat', { host: '192.168.1.5:3080', cookie: 'dsh_pair=tok-1' })
+      expect(heartbeat.status).toBe(200)
+      // The app page serves the patched official shell for a live device -
+      // no browser cookie needed, the device id rides the URL.
+      const app = await call(port, 'GET', '/pair-app?device=tok-1', { host: '192.168.1.5:3080' })
+      expect(app.status).toBe(200)
+      expect(app.raw).toContain('dsh-remote-device')
+      expect(app.raw).toContain('"tok-1"')
+      expect(app.raw).toContain('official')
+      expect(app.cookies[0]).toMatch(/^dsh_pair=tok-1;/)
+      // An unknown device cannot reach the shell.
+      const stranger = await call(port, 'GET', '/pair-app?device=unknown', { host: '192.168.1.5:3080' })
+      expect(stranger.status).toBe(200)
+      expect(stranger.raw).toContain('refresh the QR code')
+      // An invalid token serves the explanation page to an unauthenticated
+      // device (a bare `/` redirect would dead-end on the harness 401).
+      const bad = await call(port, 'GET', '/pair-accept?pair=dead', { host: '192.168.1.5:3080' })
+      expect(bad.status).toBe(200)
+      expect(bad.raw).toContain('配对已失效，或配对链接已过期')
+      expect(bad.raw).toContain('refresh the QR code')
+      expect(bad.cookies ?? []).toEqual([])
+      // An already-paired device re-opening a stale (invalid) link goes
+      // straight to the app landing with its live device credential.
+      const reOpen = await call(port, 'GET', '/pair-accept?pair=dead', { host: '192.168.1.5:3080', cookie: 'dsh_pair=tok-1' })
+      expect(reOpen.status).toBe(303)
+      expect(reOpen.location).toBe('http://192.168.1.5:3080/pair-app?device=tok-1')
+      expect(reOpen.cookies ?? []).toEqual([])
+    } finally {
+      await close()
+    }
+  })
+
+  it('re-pairs from the same link in a second context (consumed token stays valid within the window)', async () => {
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({
+      service,
+      lanAddresses: ['192.168.1.5'],
+      indexDocument: async () => '<html><head></head><body>official</body></html>',
+    }))
+    try {
+      service.issue()
+      // First context (camera preview / in-app browser): consumes the
+      // token and sets its device cookie.
+      const first = await call(port, 'GET', '/pair-accept?pair=tok-1', { host: '192.168.1.5:3080' })
+      expect(first.status).toBe(303)
+      expect(first.location).toBe('http://192.168.1.5:3080/pair-app?device=tok-1')
+      expect(first.cookies[0]).toMatch(/^dsh_pair=tok-1;/)
+      // Second context (system browser): the same link within the window
+      // completes its own pairing and auth chain - no device cookie needed.
+      const second = await call(port, 'GET', '/pair-accept?pair=tok-1', { host: '192.168.1.5:3080' })
+      expect(second.status).toBe(303)
+      expect(second.location).toBe('http://192.168.1.5:3080/pair-app?device=tok-1')
+      expect(second.cookies[0]).toMatch(/^dsh_pair=tok-1;/)
+      expect(service.snapshot().deviceCount).toBe(1)
+      // The cookieless app landing works with NO cookie at all - only the
+      // device id from the URL (the phone case that started all of this).
+      const app = await call(port, 'GET', '/pair-app?device=tok-1', { host: '192.168.1.5:3080' })
+      expect(app.status).toBe(200)
+      expect(app.raw).toContain('official')
+      // An expired/unknown link is truly dead: explanation page, no cookie.
+      const dead = await call(port, 'GET', '/pair-accept?pair=never-was', { host: '192.168.1.5:3080' })
+      expect(dead.status).toBe(200)
+      expect(dead.raw).toContain('refresh the QR code')
+    } finally {
+      await close()
+    }
+  })
+
+  it('does not register /pair-app without an index provider', async () => {
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({ service, lanAddresses: ['192.168.1.5'] }))
+    try {
+      service.issue()
+      await call(port, 'GET', '/pair-accept?pair=tok-1', { host: '192.168.1.5:3080' })
+      const app = await call(port, 'GET', '/pair-app?device=tok-1', { host: '192.168.1.5:3080' })
+      expect(app.status).toBe(404)
+    } finally {
+      await close()
+    }
+  })
+
+  it('serves the reopen service worker and registers it from the app shell', async () => {
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({
+      service,
+      lanAddresses: ['192.168.1.5'],
+      indexDocument: async () => '<html><head><title>shell</title></head><body>official</body></html>',
+    }))
+    try {
+      // The worker script: inert logic served to the phone-facing fence.
+      const sw = await call(port, 'GET', PAIR_PATHS.appServiceWorker, {})
+      expect(sw.status).toBe(200)
+      expect(sw.contentType).toContain('text/javascript')
+      expect(sw.cacheControl).toBe('no-store')
+      expect(sw.serviceWorkerAllowed).toBe('/')
+      // The worker owns navigations to `/` only, network-first through the
+      // cookie-authenticated app landing, cached shell as the offline
+      // fallback, pass-through when the plugin no longer answers.
+      expect(sw.raw).toContain("var APP_URL = '/pair-app'")
+      expect(sw.raw).toContain("path !== '/'")
+      expect(sw.raw).toContain('caches.open')
+      expect(sw.raw).toContain('caches.match')
+      expect(sw.raw).toContain('skipWaiting')
+      expect(sw.raw).toContain('clients.claim')
+      // The app shell registers the worker while the page is open (a live
+      // device gets the patched shell; a stranger gets the failure page).
+      service.issue()
+      await call(port, 'GET', '/pair-accept?pair=tok-1', { host: '192.168.1.5:3080' })
+      const app = await call(port, 'GET', '/pair-app?device=tok-1', { host: '192.168.1.5:3080' })
+      expect(app.raw).toContain('serviceWorker')
+      expect(app.raw).toContain(PAIR_PATHS.appServiceWorker)
+      // A foreign authority is refused like any phone-facing surface.
+      const foreign = await call(port, 'GET', PAIR_PATHS.appServiceWorker, { host: 'evil.example.com' })
+      expect(foreign.status).toBe(403)
+    } finally {
+      await close()
+    }
+  })
+
+  it('does not register the reopen worker without an app landing', async () => {
+    const { port, close } = await serve(makeRoutes({ service: makeService(), lanAddresses: ['192.168.1.5'] }))
+    try {
+      const missing = await call(port, 'GET', PAIR_PATHS.appServiceWorker, {})
+      expect(missing.status).toBe(404)
     } finally {
       await close()
     }
@@ -181,7 +336,7 @@ describe('/api/pair routes', () => {
     try {
       const chosen = await call(port, 'POST', '/api/pair/issue', { body: { address: '10.0.0.3' } })
       expect(chosen.status).toBe(200)
-      expect(chosen.body.url).toMatch(/^http:\/\/10\.0\.0\.3:3080\/m\/\?pair=tok-1$/)
+      expect(chosen.body.url).toMatch(/^http:\/\/10\.0\.0\.3:3080\/pair-accept\?pair=tok-1$/)
       expect(chosen.body.lanAddresses).toEqual(['192.168.1.5', '10.0.0.3'])
       const unknown = await call(port, 'POST', '/api/pair/issue', { body: { address: '192.0.2.1' } })
       expect(unknown.status).toBe(400)
@@ -232,12 +387,12 @@ describe('/api/pair routes', () => {
       // Loopback issues; the default URL is now built from the public base.
       const issued = await call(port, 'POST', '/api/pair/issue', {})
       expect(issued.status).toBe(200)
-      expect(issued.body.url).toMatch(/^https:\/\/phone\.example\.com\/m\/\?pair=tok-1$/)
+      expect(issued.body.url).toMatch(/^https:\/\/phone\.example\.com\/pair-accept\?pair=tok-1$/)
       expect(issued.body.publicBaseUrl).toBe('https://phone.example.com')
       expect(issued.body.lanAddresses).toEqual(['192.168.1.5'])
       // An explicit LAN address still mints a LAN URL (in-network fallback).
       const lan = await call(port, 'POST', '/api/pair/issue', { body: { address: '192.168.1.5' } })
-      expect(lan.body.url).toMatch(/^http:\/\/192\.168\.1\.5:3080\/m\/\?pair=tok-1$/)
+      expect(lan.body.url).toMatch(/^http:\/\/192\.168\.1\.5:3080\/pair-accept\?pair=tok-1$/)
       // The tunneled host passes the phone-facing fence: accept + status work.
       const accepted = await call(port, 'POST', '/api/pair/accept', { host: 'phone.example.com', body: { token: 'tok-1' } })
       expect(accepted.status).toBe(200)
@@ -264,7 +419,7 @@ describe('/api/pair routes', () => {
     try {
       const issued = await call(port, 'POST', '/api/pair/issue', {})
       expect(issued.status).toBe(200)
-      expect(issued.body.url).toMatch(/^https:\/\/phone\.example\.com:8443\/m\/\?pair=tok-1$/)
+      expect(issued.body.url).toMatch(/^https:\/\/phone\.example\.com:8443\/pair-accept\?pair=tok-1$/)
       // The fence matches the authority verbatim, port included.
       const accepted = await call(port, 'POST', '/api/pair/accept', { host: 'phone.example.com:8443', body: { token: 'tok-1' } })
       expect(accepted.status).toBe(200)
@@ -417,6 +572,80 @@ describe('/api/pair routes', () => {
     }
   })
 
+  it('serves the loopback-only lan-bind status endpoint and hides it without a provider', async () => {
+    const service = makeService()
+    const calls: string[] = []
+    const { port, close } = await serve(makeRoutes({
+      service,
+      lanAddresses: ['192.168.1.5'],
+      lanBindStatus: () => {
+        calls.push('read')
+        return { profile: 'web', setting: true, blockHost: '0.0.0.0', bindHost: '0.0.0.0', port, lanUrls: [], firewall: { ok: true, managed: false }, platform: 'darwin', pendingRestart: false }
+      },
+    }))
+    try {
+      // Loopback reads the live facts; the read count pins the per-request
+      // (uncached) contract the card's 10s poll relies on.
+      const ok = await call(port, 'GET', PAIR_PATHS.lanBind, {})
+      expect(ok.status).toBe(200)
+      expect(ok.body).toMatchObject({ ok: true, profile: 'web', blockHost: '0.0.0.0', bindHost: '0.0.0.0' })
+      expect(calls).toHaveLength(1)
+      // A LAN origin is refused: the endpoint exposes host/network facts.
+      const lan = await call(port, 'GET', PAIR_PATHS.lanBind, { host: '192.168.1.5:3080' })
+      expect(lan.status).toBe(403)
+      // POST is not the contract.
+      const wrongMethod = await call(port, 'POST', PAIR_PATHS.lanBind, { body: {} })
+      expect(wrongMethod.status).toBe(405)
+    } finally {
+      await close()
+    }
+    // Without the provider the route is not registered at all.
+    const bare = await serve(makeRoutes({ service: makeService(), lanAddresses: ['192.168.1.5'] }))
+    try {
+      const missing = await call(bare.port, 'GET', PAIR_PATHS.lanBind, {})
+      expect(missing.status).toBe(404)
+    } finally {
+      await bare.close()
+    }
+  })
+
+  it('counts the accept page and the accept API in separate rate-limit buckets', async () => {
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({ service, lanAddresses: ['192.168.1.5'] }))
+    try {
+      // Exhaust the API bucket with token-guessing POSTs.
+      for (let index = 0; index < 11; index += 1) {
+        await call(port, 'POST', '/api/pair/accept', { host: '192.168.1.5:3080', body: { token: 'nope' } })
+      }
+      const apiLimited = await call(port, 'POST', '/api/pair/accept', { host: '192.168.1.5:3080', body: { token: 'nope' } })
+      expect(apiLimited.status).toBe(429)
+      // The page bucket is untouched: QR navigations still answer.
+      const page = await call(port, 'GET', '/pair-accept?pair=dead', { host: '192.168.1.5:3080' })
+      expect(page.status).toBe(200)
+      // Exhausting the page bucket afterwards does not un-limit the API.
+      for (let index = 0; index < 12; index += 1) {
+        await call(port, 'GET', '/pair-accept?pair=dead', { host: '192.168.1.5:3080' })
+      }
+      const pageLimited = await call(port, 'GET', '/pair-accept?pair=dead', { host: '192.168.1.5:3080' })
+      expect(pageLimited.status).toBe(429)
+      const apiStillLimited = await call(port, 'POST', '/api/pair/accept', { host: '192.168.1.5:3080', body: { token: 'nope' } })
+      expect(apiStillLimited.status).toBe(429)
+    } finally {
+      await close()
+    }
+  })
+
+  it('keys the rate limiter: XFF partitions only for loopback peers', () => {
+    // Tunnel edge (loopback peer): the XFF hop separates buckets.
+    expect(acceptLimitKey('127.0.0.1', '203.0.113.9', 'api')).toBe('api|127.0.0.1|203.0.113.9')
+    expect(acceptLimitKey('::ffff:127.0.0.1', '203.0.113.9', 'page')).toBe('page|::ffff:127.0.0.1|203.0.113.9')
+    // Direct LAN peer: a rotatable header must not mint fresh buckets.
+    expect(acceptLimitKey('192.168.1.50', '203.0.113.9', 'api')).toBe('api|192.168.1.50')
+    expect(acceptLimitKey('192.168.1.50', undefined, 'api')).toBe('api|192.168.1.50')
+    // Missing/blank XFF collapses onto the socket bucket.
+    expect(acceptLimitKey('127.0.0.1', '', 'api')).toBe('api|127.0.0.1')
+  })
+
   it('revokes one device from loopback and refuses LAN revoke', async () => {
     const service = makeService()
     const { port, close } = await serve(makeRoutes({ service, lanAddresses: ['192.168.1.5'] }))
@@ -494,7 +723,7 @@ describe('/api/pair body failure contract (shared readJsonBody)', () => {
     const service = makeService()
     const { port, close } = await serve(makeRoutes({ service, lanAddresses: ['192.168.1.5'] }))
     try {
-      const outcome = await rawPost(port, '/api/pair/issue', JSON.stringify({ workspaceId: 'x'.repeat(5000) }))
+      const outcome = await rawPost(port, '/api/pair/issue', JSON.stringify({ address: 'x'.repeat(5000) }))
       expect(outcome.status).toBeNull()
       expect(outcome.error).toMatch(/socket hang up|ECONNRESET/)
     } finally {

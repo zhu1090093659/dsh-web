@@ -13,11 +13,13 @@ import { STATUS_KEY } from './status-key.ts'
 import { TaskCard } from './TaskCard.tsx'
 import { TaskDetail } from './TaskDetail.tsx'
 
-/** Case-insensitive title/description match. */
-function matchesFilter(task: TaskRecord, filter: string): boolean {
+/** Case-insensitive title/description/freeze-snapshot match. */
+export function matchesFilter(task: TaskRecord, filter: string): boolean {
   if (filter.trim() === '') return true
   const needle = filter.trim().toLowerCase()
-  return task.title.toLowerCase().includes(needle) || task.description.toLowerCase().includes(needle)
+  const haystacks = [task.title, task.description]
+  if (task.freeze !== undefined) haystacks.push(task.freeze.goal, task.freeze.progress, task.freeze.next)
+  return haystacks.some(text => text.toLowerCase().includes(needle))
 }
 
 /**

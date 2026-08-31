@@ -45,7 +45,7 @@
 | `data-dsh-wallpaper-active` | html + body（body/html 级，另行管理） | WE 壁纸挂载期间置 `true`，卸载 / 禁用清除；供皮肤 CSS 与壁纸中和规则锚定（#734） |
 | `data-dsh-wallpaper-surface` | 官方 shell 全视口背景元素 + 侧栏工作区淡化条（元素级） | `WallpaperController.markWallpaperSurfaces()` 在 WE 壁纸挂载期间打标（全视口 bg-base 背景 + `data-slot="sidebar.workspaces"` 内渐变淡化条），命中 `html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface]` 中和；卸载清除，不含哈希类依赖（#734） |
 
-## part 组（38 行，含各 owner 行）
+## part 组（49 行，含各 owner 行）
 
 shell 区域（owner: shell）：
 
@@ -81,6 +81,7 @@ family / 插件区域：
 | `worktree-create` / `worktree-manage` | git-graph | worktree 创建/管理入口按钮；分支弹层 footer 内裸值按钮 |
 | `sprite` | pet | 精灵；`[data-dsh-pet-root]` 子树 float 容器 |
 | `bubble` | pet | 气泡容器 |
+| `announcement` | pet | 插件公告气泡（dsh-usage 联动）；`[data-dsh-pet-announcement]`，值来源插件标签 |
 | `panel` | pet | 交互面板；`[data-placement]` |
 | `summon-button` | pet | 召唤钮；`[data-testid="pet-summon"]` |
 | `plugin-item` | web-ui-settings | 家族插件设置卡；`[data-slot="web-ui.plugin.item"]` 内 entry |
@@ -109,8 +110,16 @@ family / 插件区域：
 | `shop` | miku-pet | 商店居中窗口；`[data-dsh-part="shop"]` |
 | `bubble` | miku-pet | 对话气泡；`[data-dsh-part="bubble"]` |
 | `float` | miku-pet | 互动飘字；`[data-dsh-part="float"]` |
+| `header` | usage | 使用统计分区头部（当前提供方 + 刷新钮）；`[data-dsh-plugin="usage"] [data-dsh-part="header"]` |
+| `tabs` / `tab` | usage | 用量/个人套餐页签；`[role="tablist"]` / `[role="tab"]` |
+| `today-card` | usage | 今日用量统计卡；`[data-dsh-part="today-card"]` |
+| `provider-list` / `provider-row` | usage | 今日分 provider 用量列表 / 余额行；卡片内行容器 |
+| `balance-card` | usage | 各 provider 余额卡；`[data-dsh-part="balance-card"]` |
+| `trend-card` / `usage-chart` | usage | 近 30 天卡 / 其中的提供方-模型条形图；`[data-dsh-part="trend-card"]` 内 `[data-dsh-part="usage-chart"]` |
+| `settings-row` | usage | 插件设置行；`[data-dsh-part="settings-row"]` |
+| `plan-card` / `plan-window` | usage | 套餐卡 / 套餐窗口行（个人套餐页签）；`[data-dsh-part="plan-card"]` 内窗口行 |
 
-## plugin 组（13 个，含停更 aionui-panel）
+## plugin 组（14 个，含停更 aionui-panel）
 
 | data-dsh-plugin | owner | 锚定方式 |
 | --- | --- | --- |
@@ -127,6 +136,7 @@ family / 插件区域：
 | `skin-center` | skins/skin-center | 一级设置分区 settings.section id `skin-center`（列已安装皮肤，属内置源时显式标记） |
 | `session-id` | dsh-session-id | footer action slot entry id `session-id`；`[data-dsh-plugin="session-id"]`（面板 overlay 根 + 入口触发器） |
 | `miku-pet` | dsh-miku-pet | 宠物浮层根 `[data-dsh-plugin="miku-pet"]`；host 路由前缀 `/miku-pet/*`；设置页 settings.section id `miku-pet-config` |
+| `usage` | dsh-usage | 一级设置分区 settings.section id `dsh-usage`（创意工坊下方）；`[data-dsh-plugin="usage"]` |
 
 ## 已知脆弱点（上游主题缝 PR 诉求）
 

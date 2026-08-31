@@ -36,6 +36,9 @@ describe('service adapters', () => {
     expect(plan.files[0]!.path).toBe('C:\\Users\\u\\AppData\\Local\\DSH Doctor\\supervisor.cmd')
     expect(plan.files[0]!.content).toContain('@echo off')
     expect(plan.files[0]!.content).toContain('"C:\\Program Files\\nodejs\\node.exe"')
+    expect(plan.files[1]!.path).toBe('C:\\Users\\u\\AppData\\Local\\DSH Doctor\\supervisor.vbs')
+    expect(plan.files[1]!.content).toContain('WScript.Shell')
+    expect(plan.files[1]!.content).toContain('supervisor.cmd')
     expect(plan.install).toEqual([
       'schtasks',
       '/Create',
@@ -45,7 +48,7 @@ describe('service adapters', () => {
       '/TN',
       'DSH Doctor Supervisor',
       '/TR',
-      '"C:\\Users\\u\\AppData\\Local\\DSH Doctor\\supervisor.cmd"',
+      'wscript.exe "C:\\Users\\u\\AppData\\Local\\DSH Doctor\\supervisor.vbs"',
     ])
     expect(plan.uninstall).toEqual(['schtasks', '/Delete', '/F', '/TN', 'DSH Doctor Supervisor'])
     expect(plan.restart).toEqual(['schtasks', '/Run', '/TN', 'DSH Doctor Supervisor'])

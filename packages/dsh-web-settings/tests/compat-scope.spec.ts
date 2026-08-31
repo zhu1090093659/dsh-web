@@ -8,42 +8,11 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { createCompatScope } from '../src/client/compat-settings-scope.ts'
 import { WEB_UI_SETTINGS_BRIDGE_PREFIX } from '../src/protocol.ts'
 
-// The rc.6 runtime client bundle registers itself through the GUI module
-// loader, so importing its value under vitest yields no exports. Provide a
-// minimal snapshot store with the same contract (getSnapshot / subscribe /
-// set / draft-style update) for the bridge controller and the fake primary.
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
-  createSnapshotStore: <T>(initial: T) => {
-    let snapshot = { ...initial }
-    const listeners = new Set<() => void>()
-    const publish = (): void => {
-      for (const listener of listeners) listener()
-    }
-    return {
-      getSnapshot: (): T => snapshot,
-      subscribe: (listener: () => void): (() => void) => {
-        listeners.add(listener)
-        return () => { listeners.delete(listener) }
-      },
-      set: (next: T): void => {
-        snapshot = { ...next }
-        publish()
-      },
-      update: (mutator: (draft: T) => void): void => {
-        const draft = { ...snapshot }
-        mutator(draft)
-        snapshot = { ...draft }
-        publish()
-      },
-    }
-  },
-}))
-
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 
 /** A manual primary scope: a snapshot store plus recorded writes and loads. */
 function fakePrimary<T>(initial: SettingsScopeSnapshot<T>) {
@@ -56,6 +25,7 @@ function fakePrimary<T>(initial: SettingsScopeSnapshot<T>) {
       subscribe: (listener: () => void) => store.subscribe(listener),
       set: async (field: string, value: unknown) => { sets.push([field, value]) },
       unset: async () => {},
+      mutate: async () => {},
       load: async () => { loads.push(1) },
     } satisfies SettingsScope<T> & { load(): Promise<void> },
     update: (patch: Partial<SettingsScopeSnapshot<T>>) => { store.set({ ...store.getSnapshot(), ...patch }) },
@@ -188,12 +158,12 @@ function batchView(ns: string, value: unknown, revision: number, extra: { user?:
 }
 
 describe('createCompatScope batch mutate', () => {
-  it('exposes no mutate while the official scope serves the namespace without an official wire face', async () => {
+  it('exposes no batch result surface while the official scope serves the namespace without an official wire face', async () => {
     const primary = fakePrimary<{ enabled: boolean }>(ready({ enabled: true }))
     const { fetchFn } = fakeFetch(async () => describeResult([]))
     const scope = createCompatScope<{ enabled: boolean }>({ namespace: 'task-board', primary: primary.scope, fetchFn })
     expect(scope.getSnapshot().status).toBe('ready')
-    expect(typeof (scope as unknown as { mutate?: unknown }).mutate).not.toBe('function')
+    expect(typeof (scope as unknown as { mutateBatch?: unknown }).mutateBatch).not.toBe('function')
   })
 
   it('batches through the official wire while the official scope serves the namespace', async () => {
@@ -212,9 +182,9 @@ describe('createCompatScope batch mutate', () => {
     }
     const scope = createCompatScope<{ baseURL: string; model: string }>({ namespace: 'describe-image', primary: primary.scope, official })
     expect(scope.getSnapshot().status).toBe('ready')
-    const mutate = (scope as unknown as { mutate?: (writes: unknown[]) => Promise<unknown> }).mutate
-    expect(typeof mutate).toBe('function')
-    const result = await (mutate as (writes: { field: string; op: 'set'; value: unknown }[]) => Promise<{ ok: boolean; fields: { field: string; landed: boolean }[] }>)([
+    const mutateBatch = (scope as unknown as { mutateBatch?: (writes: unknown[]) => Promise<unknown> }).mutateBatch
+    expect(typeof mutateBatch).toBe('function')
+    const result = await (mutateBatch as (writes: { field: string; op: 'set'; value: unknown }[]) => Promise<{ ok: boolean; fields: { field: string; landed: boolean }[] }>)([
       { field: 'baseURL', op: 'set', value: 'https://a/v1' },
       { field: 'model', op: 'set', value: 'm' },
     ])
@@ -244,8 +214,8 @@ describe('createCompatScope batch mutate', () => {
       }),
     }
     const scope = createCompatScope<{ baseURL: string; apiKey?: string }>({ namespace: 'describe-image', primary: primary.scope, official })
-    const mutate = (scope as unknown as { mutate?: (writes: unknown[]) => Promise<{ ok: boolean; fields: { field: string; landed: boolean }[] }> }).mutate
-    const result = await mutate!([{ field: 'apiKey', op: 'set', value: 'sk-x' }])
+    const mutateBatch = (scope as unknown as { mutateBatch?: (writes: unknown[]) => Promise<{ ok: boolean; fields: { field: string; landed: boolean }[] }> }).mutateBatch
+    const result = await mutateBatch!([{ field: 'apiKey', op: 'set', value: 'sk-x' }])
     expect(result.ok).toBe(true)
     expect(result.fields).toEqual([{ field: 'apiKey', landed: true }])
   })
@@ -261,8 +231,8 @@ describe('createCompatScope batch mutate', () => {
       }),
     }
     const scope = createCompatScope<{ baseURL: string; model: string }>({ namespace: 'describe-image', primary: primary.scope, official })
-    const mutate = (scope as unknown as { mutate?: (writes: unknown[]) => Promise<{ ok: boolean; code?: string; message?: string; fields: { field: string; landed: boolean }[] }> }).mutate
-    const result = await mutate!([{ field: 'baseURL', op: 'set', value: 'ftp://x' }])
+    const mutateBatch = (scope as unknown as { mutateBatch?: (writes: unknown[]) => Promise<{ ok: boolean; code?: string; message?: string; fields: { field: string; landed: boolean }[] }> }).mutateBatch
+    const result = await mutateBatch!([{ field: 'baseURL', op: 'set', value: 'ftp://x' }])
     expect(result.ok).toBe(false)
     expect(result.code).toBe('settings-rejected')
     expect(result.message).toBe('describe-image: baseURL must be an absolute http(s) URL')
@@ -281,9 +251,9 @@ describe('createCompatScope batch mutate', () => {
     })
     const scope = createCompatScope<{ baseURL: string; model: string }>({ namespace: 'describe-image', primary: primary.scope, fetchFn })
     await vi.waitFor(() => { expect(scope.getSnapshot().status).toBe('ready') })
-    const mutate = (scope as unknown as { mutate?: (writes: unknown[]) => Promise<unknown> }).mutate
-    expect(typeof mutate).toBe('function')
-    const result = await (mutate as (writes: { field: string; op: 'set'; value: unknown }[]) => Promise<{ ok: boolean; fields: { field: string; landed: boolean }[] }>)([
+    const mutateBatch = (scope as unknown as { mutateBatch?: (writes: unknown[]) => Promise<unknown> }).mutateBatch
+    expect(typeof mutateBatch).toBe('function')
+    const result = await (mutateBatch as (writes: { field: string; op: 'set'; value: unknown }[]) => Promise<{ ok: boolean; fields: { field: string; landed: boolean }[] }>)([
       { field: 'baseURL', op: 'set', value: 'https://a/v1' },
       { field: 'model', op: 'set', value: 'm' },
     ])
@@ -314,8 +284,8 @@ describe('createCompatScope batch mutate', () => {
     })
     const scope = createCompatScope<{ baseURL: string; apiKey: string }>({ namespace: 'describe-image', primary: primary.scope, fetchFn })
     await vi.waitFor(() => { expect(scope.getSnapshot().status).toBe('ready') })
-    const mutate = (scope as unknown as { mutate?: (writes: unknown[]) => Promise<{ ok: boolean; fields: { field: string; landed: boolean }[] }> }).mutate
-    const result = await mutate!([{ field: 'apiKey', op: 'set', value: 'sk-x' }])
+    const mutateBatch = (scope as unknown as { mutateBatch?: (writes: unknown[]) => Promise<{ ok: boolean; fields: { field: string; landed: boolean }[] }> }).mutateBatch
+    const result = await mutateBatch!([{ field: 'apiKey', op: 'set', value: 'sk-x' }])
     expect(result.ok).toBe(true)
     expect(result.fields).toEqual([{ field: 'apiKey', landed: true }])
   })
@@ -330,8 +300,8 @@ describe('createCompatScope batch mutate', () => {
     })
     const scope = createCompatScope<{ baseURL: string; model: string }>({ namespace: 'describe-image', primary: primary.scope, fetchFn })
     await vi.waitFor(() => { expect(scope.getSnapshot().status).toBe('ready') })
-    const mutate = (scope as unknown as { mutate?: (writes: unknown[]) => Promise<{ ok: boolean; code?: string; message?: string; fields: { field: string; landed: boolean }[] }> }).mutate
-    const result = await mutate!([{ field: 'baseURL', op: 'set', value: 'ftp://x' }])
+    const mutateBatch = (scope as unknown as { mutateBatch?: (writes: unknown[]) => Promise<{ ok: boolean; code?: string; message?: string; fields: { field: string; landed: boolean }[] }> }).mutateBatch
+    const result = await mutateBatch!([{ field: 'baseURL', op: 'set', value: 'ftp://x' }])
     expect(result.ok).toBe(false)
     expect(result.code).toBe('settings-rejected')
     expect(result.message).toBe('describe-image: incoherent baseURL/model pair')

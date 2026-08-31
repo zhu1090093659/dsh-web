@@ -28,7 +28,9 @@ Use this Skill only for the dsh-web monorepo. It selects and upgrades the reposi
 
 ## 2. Inventory Before Changing Anything
 
-Build an explicit upgrade matrix from every workspace package.json and the root configuration. Include direct dependencies, devDependencies, peerDependencies, optionalDependencies, pnpm-lock.yaml, and pnpm-workspace.yaml.
+Build an explicit upgrade matrix from every workspace package.json and the root configuration. Include direct dependencies, devDependencies, peerDependencies, optionalDependencies, pnpm-lock.yaml, and pnpm-workspace.yaml. Also inventory the external npm plugins an aggregate pulls in (e.g. `packages/dsh-web-all`) and every `@deepseek-ai/*` peer they carry — they are easy to miss.
+
+A cohort `overrides:` block in `pnpm-workspace.yaml` (used to pin a not-yet-published cohort to source-built tarballs) does double duty: it also force-resolves the `@deepseek-ai/*` peers of those external aggregate plugins. Deleting the block when the cohort reaches npm therefore unmasks external plugins hard-importing a now-removed SDK face, which fail the host loader's strict import resolution and abort `dsh web` boot. Inventory externals and their peers before dropping the block, so the compatibility phase can decide exclusion (drop the aggregate row + dep + generator/mount assertions together) instead of discovering the abort at release time.
 
 For each relevant official package, record:
 
@@ -85,7 +87,7 @@ pnpm docs:check
 
 Run any package-specific tests required by affected packages. For a client-facing SDK candidate, enumerate every workspace package's dsh.client.inject services and compare the result with the candidate runtime/module table before profile smoke testing. Treat a renamed or missing service as a compatibility blocker. Use an existing contract check when available; if none exists, report the explicit matrix as preflight evidence rather than quietly assuming the host will supply every service. When client bundles, skin assets, market assets, aggregate files, or shared-runtime copies change, regenerate the required tracked artifacts in the same worktree and rerun their corresponding consistency checks. Do not normalize or discard generated diffs merely because their source files appear unchanged.
 
-Treat a failed, skipped, or environment-blocked gate as unverified. Report the exact blocker and the affected risk; do not call the upgrade safe or merge-ready.
+Treat a failed, skipped, or environment-blocked gate as unverified. Report the exact blocker and the affected risk; do not call the upgrade safe or merge-ready. In particular, an upgraded CLI/host can change the printed `dsh web` URL shape (e.g. alpha.2 adds `?token=` and gates `/` behind browser auth): when a lane like the e2e mount smoke still passes its script's URL parse, verify the captured URL is the full printed line, token included — a port-only parse silently hands Playwright the auth page and the smoke times out on a marker that never mounts. Fix the parse in the same change; do not let the smoke report a false red for days.
 
 ## 5. Verify the Actual DSH Web Integration
 

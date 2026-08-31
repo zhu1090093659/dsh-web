@@ -40,6 +40,10 @@
   transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
 
+.trigger[data-update-available] {
+  color: var(--dsw-alias-brand-primary);
+}
+
 .trigger[data-update-available]::after {
   position: absolute;
   top: 4px;
@@ -64,6 +68,22 @@
   border-radius: 999px;
   gap: 8px;
   padding: 0 10px;
+}
+
+.trigger[data-update-available][data-wide='wide'] {
+  flex: none;
+  gap: 6px;
+}
+
+.trigger[data-update-available][data-wide='wide']::after {
+  display: none;
+}
+
+.updateBadgeText {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .trigger:hover:not(:disabled) {

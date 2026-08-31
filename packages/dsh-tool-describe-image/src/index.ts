@@ -15,7 +15,6 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { installSettingsSection } from '@deepseek-ai/dsh-settings'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView } from '@deepseek-ai/dsh-tools'
 import { registerAttachRoute, registerModelRoutes } from './attach-routes.ts'
@@ -147,20 +146,22 @@ function applyImpl(ctx: Context, config: Config = {}): void {
     resolveConfig(config)
   }
   let current: () => Config = () => config
-  installSettingsSection(ctx, DESCRIBE_IMAGE_SETTINGS_NAMESPACE, Config, config, {
-    setSource: (source) => {
-      current = source
-    },
-    onChange: () => {},
-    validate: (value) => {
-      // The Host applies a batched edit op by op, so each intermediate state
-      // is judged too: a connection is only validated once both halves
-      // exist, otherwise baseURL alone (model not landed yet) or model alone
-      // would each refuse the other's op and strand the save. A partial
-      // config still fails loud at the first describe_image call.
-      if (value.baseURL !== undefined && value.model !== undefined) resolveConfig(value)
-      else if (Array.isArray(value.endpoints) && value.endpoints.length > 0) resolveConfig(value)
-    },
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, DESCRIBE_IMAGE_SETTINGS_NAMESPACE, Config, config, {
+      setSource: (source) => {
+        current = source
+      },
+      onChange: () => {},
+      validate: (value) => {
+        // The Host applies a batched edit op by op, so each intermediate state
+        // is judged too: a connection is only validated once both halves
+        // exist, otherwise baseURL alone (model not landed yet) or model alone
+        // would each refuse the other's op and strand the save. A partial
+        // config still fails loud at the first describe_image call.
+        if (value.baseURL !== undefined && value.model !== undefined) resolveConfig(value)
+        else if (Array.isArray(value.endpoints) && value.endpoints.length > 0) resolveConfig(value)
+      },
+    })
   })
   const spec = (): ResolvedConfig => resolveConfig(current())
   let rotationCursor = 0

@@ -12,6 +12,7 @@ import { request as httpRequest } from 'node:http'
 import { connect } from 'node:net'
 import type { Duplex } from 'node:stream'
 import { writeJson } from './http.ts'
+import type { InnerAuth } from './inner-auth.ts'
 
 /** WebSocket handshake headers forwarded to the loopback upstream. */
 const WS_FORWARD_HEADERS = [
@@ -37,12 +38,30 @@ const HTTP_FORWARD_RESPONSE_HEADERS = [
  * @param res - the outer response.
  * @param port - local webServer port.
  * @param upstreamPath - path + query on 127.0.0.1 (must start with `/`).
+ * @param auth - when given, the process's inner browser-auth credential is
+ *   attached so the connection plugin's /api route (fence + browser auth,
+ *   authority-bound cookie, no loopback exemption on this cohort) accepts
+ *   the re-issued request; a 401 answer invalidates the cached credential.
  */
 export function proxyLoopbackHttp(
   req: IncomingMessage,
   res: ServerResponse,
   port: number,
   upstreamPath: string,
+  auth?: InnerAuth,
+): void {
+  void Promise.resolve(auth?.ready())
+    .catch(() => undefined)
+    .then((cookie) => { pipeLoopbackHttp(req, res, port, upstreamPath, auth, typeof cookie === 'string' ? cookie : undefined) })
+}
+
+function pipeLoopbackHttp(
+  req: IncomingMessage,
+  res: ServerResponse,
+  port: number,
+  upstreamPath: string,
+  auth: InnerAuth | undefined,
+  cookie: string | undefined,
 ): void {
   const headers: Record<string, string> = {
     host: `127.0.0.1:${String(port)}`,
@@ -54,6 +73,7 @@ export function proxyLoopbackHttp(
   if (typeof contentLength === 'string') headers['content-length'] = contentLength
   const accept = req.headers.accept
   if (typeof accept === 'string') headers.accept = accept
+  if (cookie !== undefined) headers.cookie = cookie
 
   const upstream = httpRequest({
     host: '127.0.0.1',
@@ -62,6 +82,10 @@ export function proxyLoopbackHttp(
     method: req.method,
     headers,
   }, (upstreamRes) => {
+    // The cached credential went stale (secret rotation, credential store
+    // reset): drop it so the next request re-redeems. The in-flight response
+    // still pipes through untouched.
+    if (upstreamRes.statusCode === 401 && cookie !== undefined) auth?.invalidate()
     const out: OutgoingHttpHeaders = {}
     for (const name of HTTP_FORWARD_RESPONSE_HEADERS) {
       const value = upstreamRes.headers[name]
@@ -87,6 +111,8 @@ export function proxyLoopbackHttp(
  * @param head - bytes already read past the handshake.
  * @param port - local webServer port.
  * @param upstreamPath - path + query on 127.0.0.1.
+ * @param cookie - the inner browser-auth credential for the handshake, when
+ *   the upstream route enforces it (the gateway event-stream mux does).
  */
 export function proxyLoopbackUpgrade(
   req: IncomingMessage,
@@ -94,6 +120,7 @@ export function proxyLoopbackUpgrade(
   head: Buffer,
   port: number,
   upstreamPath: string,
+  cookie?: string,
 ): void {
   const lines = [
     `GET ${upstreamPath} HTTP/1.1`,
@@ -101,6 +128,7 @@ export function proxyLoopbackUpgrade(
     'Upgrade: websocket',
     'Connection: Upgrade',
   ]
+  if (cookie !== undefined) lines.push(`Cookie: ${cookie}`)
   for (const name of WS_FORWARD_HEADERS) {
     const value = req.headers[name]
     if (value === undefined) continue
@@ -109,6 +137,12 @@ export function proxyLoopbackUpgrade(
   const handshake = `${lines.join('\r\n')}\r\n\r\n`
 
   const upstream = connect(port, '127.0.0.1')
+  // A half-open tunnel path (dead-but-alive edge connection) would otherwise
+  // let the phone's mux socket sit stale for minutes: keepalive probes the
+  // pipe periodically and destroys both legs on the first real gap, so the
+  // client's reconnect + stream re-baseline re-syncs the feed in seconds.
+  ;(socket as unknown as import('node:net').Socket).setKeepAlive(true, 20_000)
+  upstream.setKeepAlive(true, 20_000)
   const tearDown = (): void => {
     upstream.destroy()
     socket.destroy()

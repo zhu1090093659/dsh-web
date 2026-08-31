@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "catppuccin",
+  "name": "Catppuccin",
+  "nameEn": "Catppuccin",
+  "author": "Catppuccin 社区配色 · dsh-web 适配",
+  "tagline": "柔和色彩主题 · Latte 浅色 / Mocha 深色 · 平铺纯色面板",
+  "description": "将知名 Catppuccin 配色移植为 dsh 皮肤：浅色方案使用 Latte 调色板，深色方案使用 Mocha 调色板，全部 dsh 设计令牌重映射，整套以纯色平铺面板呈现，柔和低饱和，适合长时间阅读。",
+  "tags": [
+    "catppuccin",
+    "latte",
+    "mocha",
+    "pastel",
+    "flat"
+  ],
+  "accent": "#8839ef",
+  "order": 1002,
+  "version": "1.0.0",
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css"
+  }
+}

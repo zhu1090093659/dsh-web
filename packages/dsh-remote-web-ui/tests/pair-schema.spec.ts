@@ -3,18 +3,16 @@ import { describe, expect, it } from 'vitest'
 import { acceptPayloadSchema, issuePayloadSchema, pairActionPayloadSchema } from '../src/routes.ts'
 
 describe('/api/pair payload schemas', () => {
-  it('issue: both optional workspaceId and address are accepted and typed', () => {
+  it('issue: the optional address is accepted; unknown keys are stripped', () => {
     expect(issuePayloadSchema.safeParse({}).success).toBe(true)
-    expect(issuePayloadSchema.safeParse({ workspaceId: 'ws-7' }).success).toBe(true)
     expect(issuePayloadSchema.safeParse({ address: '10.0.0.3' }).success).toBe(true)
-    const both = issuePayloadSchema.parse({ workspaceId: 'ws-7', address: '10.0.0.3' })
-    expect(both).toEqual({ workspaceId: 'ws-7', address: '10.0.0.3' })
+    expect(issuePayloadSchema.parse({ workspaceId: 'ws-7', address: '10.0.0.3' })).toEqual({ address: '10.0.0.3' })
+    expect(issuePayloadSchema.parse({ workspaceId: 'ws-7' })).toEqual({})
   })
 
-  it('issue: rejects empty or non-string targets instead of silently dropping them', () => {
-    expect(issuePayloadSchema.safeParse({ workspaceId: '' }).success).toBe(false)
+  it('issue: rejects non-string targets instead of silently dropping them', () => {
     expect(issuePayloadSchema.safeParse({ address: 42 }).success).toBe(false)
-    expect(issuePayloadSchema.safeParse({ workspaceId: null }).success).toBe(false)
+    expect(issuePayloadSchema.safeParse({ address: null }).success).toBe(false)
   })
 
   it('accept: requires a string token and defaults a missing token to an empty string', () => {

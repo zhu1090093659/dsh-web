@@ -14,7 +14,9 @@ describe('task-board sidebar entry layout', () => {
   })
 
   it('uses a centered circular target in the collapsed rail', () => {
-    const collapsed = css.match(/\[data-dsh-frame\]\[data-sidebar-collapsed\] \.entry\s*\{([^}]*)\}/s)?.[1] ?? ''
+    expect(css).toContain(':global([data-sidebar-collapsed]) .entry')
+    expect(css).toContain(':global([data-dsh-frame][data-sidebar-collapsed]) .entry')
+    const collapsed = css.match(/:global\([^)]*\[data-sidebar-collapsed\][^)]*\) \.entry\s*\{([^}]*)\}/s)?.[1] ?? ''
     expect(collapsed).toContain('width: 36px')
     expect(collapsed).toContain('height: 36px')
     expect(collapsed).toContain('margin: 0 auto 12px')

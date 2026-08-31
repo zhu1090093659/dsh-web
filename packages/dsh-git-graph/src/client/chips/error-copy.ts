@@ -11,7 +11,7 @@ import type { GitGraphKey } from '../locales.ts'
 
 /** The blocked-file sentence tail: quoted paths plus the overflow count. */
 function pathsText(error: GitError, t: Translate<GitGraphKey>): string {
-  const listed = (error.paths ?? []).map(path => `"${path}"`).join('、')
+  const listed = (error.paths ?? []).map(path => `"${path}"`).join(t('error.pathsSeparator'))
   const more = error.moreFiles !== undefined && error.moreFiles > 0
     ? ` ${t('error.moreFiles', { count: error.moreFiles })}`
     : ''

@@ -2,7 +2,7 @@
 
 Status: implemented
 
-Supersession check：没有活跃 Note 拥有聚合清单段或按捆绑包的默认策略；aionui 默认关闭先例只写在 [aggregate.yml 注释](../../../packages/dsh-web-all/aggregate.yml) 里，compat shim 与家族扇出机制归 web-all 包文档。
+Supersession check：没有活跃 Note 拥有聚合清单段或按捆绑包的默认策略；aionui 默认关闭先例原本只写在 aggregate.yml 注释里，随该包移除而消失（见[移除 dsh-aionui-panel](../simplification/2026-08-28-remove-dsh-aionui-panel.zh.md)）；compat shim 与家族扇出机制归 web-all 包文档。
 
 ## Problem
 

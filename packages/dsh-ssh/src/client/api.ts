@@ -18,6 +18,7 @@ import {
   type TransferStreamLine,
   type TunnelInfo,
 } from '../protocol.ts'
+import { tt } from './panel/helpers.ts'
 
 /** Minimal File System Access API surface (not in all lib.dom versions). */
 interface WindowWithFileSystemAccess {
@@ -51,12 +52,15 @@ async function readJson<T>(response: Response): Promise<T> {
   try {
     body = await response.json()
   } catch {
+    if (response.status === 404) {
+      throw new SshApiError(tt('error.disabled'))
+    }
     throw new SshApiError(`HTTP ${response.status}: invalid JSON response`)
   }
   if (!response.ok) {
     const message = typeof body === 'object' && body !== null && typeof (body as { error?: unknown }).error === 'string'
       ? (body as { error: string }).error
-      : `HTTP ${response.status}`
+      : (response.status === 404 ? tt('error.disabled') : `HTTP ${response.status}`)
     throw new SshApiError(message)
   }
   return body as T

@@ -5,7 +5,7 @@ import type { TaskBoardHostService } from '../src/host-service.ts'
 import type { TaskBoardSnapshot } from '../src/protocol.ts'
 
 const snapshot: TaskBoardSnapshot = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   revision: 0,
   tasks: [],
   scheduler: { timeZone: 'UTC' },

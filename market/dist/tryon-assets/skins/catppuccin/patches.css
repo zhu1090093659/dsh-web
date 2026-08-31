@@ -1,0 +1,77 @@
+/* Catppuccin dsh 皮肤 — L3 自由 selector 补丁 (高敏感度,已向皮肤中心披露)
+ * 仅供 Catppuccin 系精确配色;此处仅覆盖 skin.css 无法表达的自由选择器。
+ */
+
+html[data-dsh-skin="catppuccin"] [id="root"] {
+  background: none;
+}
+
+html[data-dsh-skin="catppuccin"] a {
+  color: #8839ef;
+}
+
+html[data-dsh-skin="catppuccin"] a:visited {
+  color: #6c6f85;
+}
+
+html[data-dsh-skin="catppuccin"] body[data-ds-dark-theme] a {
+  color: #cba6f7;
+}
+
+html[data-dsh-skin="catppuccin"] body[data-ds-dark-theme] a:visited {
+  color: #9399b2;
+}
+
+html[data-dsh-skin="catppuccin"] a:hover {
+  color: #6c6f85;
+  text-decoration: underline;
+}
+
+html[data-dsh-skin="catppuccin"] a:active {
+  color: #5c5f77;
+}
+
+html[data-dsh-skin="catppuccin"] body[data-ds-dark-theme] a:hover {
+  color: #b4befe;
+  text-decoration: underline;
+}
+
+html[data-dsh-skin="catppuccin"] body[data-ds-dark-theme] a:active {
+  color: #cdd6f4;
+}
+
+html[data-dsh-skin="catppuccin"] :focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+html[data-dsh-skin="catppuccin"] button, html[data-dsh-skin="catppuccin"] a, html[data-dsh-skin="catppuccin"] .aionui-btn, html[data-dsh-skin="catppuccin"] .aionui-menu-item {
+  transition: background-color .13s, border-color .13s, box-shadow .13s, color .13s, opacity .13s;
+}
+
+html[data-dsh-skin="catppuccin"] ::-webkit-scrollbar-thumb {
+  transition: background-color .13s;
+}
+
+html[data-dsh-skin="catppuccin"] [data-pane="sidebar"] {
+  color: var(--dsw-alias-label-primary);
+}
+
+html[data-dsh-skin="catppuccin"] [role="tooltip"] {
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-alias-tooltip-fg);
+}
+
+html[data-dsh-skin="catppuccin"] [role="dialog"] {
+  color: var(--dsw-alias-label-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-dsh-skin="catppuccin"] button, html[data-dsh-skin="catppuccin"] a, html[data-dsh-skin="catppuccin"] .aionui-btn, html[data-dsh-skin="catppuccin"] .aionui-menu-item, html[data-dsh-skin="catppuccin"] ::-webkit-scrollbar-thumb {
+    transition: none;
+  }
+}
+
+html[data-dsh-skin="catppuccin"] [id="root"] { background: transparent; }
+
+html[data-dsh-skin="catppuccin"] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

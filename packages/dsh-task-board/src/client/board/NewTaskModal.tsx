@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import type { BoardController } from '../../core/controller.ts'
 import { isValidCron, nextRunAtMs } from '../../core/schedule.ts'
+import { parseFreezeRequest } from '../../core/freeze-snapshot.ts'
 import { TASK_PERMISSIONS, type TaskPermission } from '../../core/tasks.ts'
 import { t, type TaskBoardKey } from '../locales.ts'
 import { SCHEDULE_PRESETS } from '../schedule-presets.ts'
@@ -22,6 +23,9 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
   const [scheduleEnabled, setScheduleEnabled] = useState(false)
   const [scheduleCron, setScheduleCron] = useState('')
   const [scheduleError, setScheduleError] = useState<string | undefined>(undefined)
+  const [freezeText, setFreezeText] = useState('')
+  const [freezeError, setFreezeError] = useState<string | undefined>(undefined)
+  const [handoverText, setHandoverText] = useState('')
   const [error, setError] = useState<string | undefined>(undefined)
   const [pending, setPending] = useState(false)
   const [options, setOptions] = useState(controller.getSnapshot().executionOptions)
@@ -41,11 +45,34 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
         return
       }
     }
+    // Optional continuation-card snapshot: parse the freeze block through the
+    // T2 gate (structure + redaction + taint + size); a malformed block stops
+    // submission with the parser's error instead of creating a plain task.
+    let freeze: Parameters<typeof controller.createTaskConfirmed>[0]['freeze'] = undefined
+    if (freezeText.trim() !== '') {
+      const parsed = parseFreezeRequest(freezeText)
+      if (!parsed.ok) {
+        setFreezeError(parsed.error.message)
+        return
+      }
+      freeze = { ...parsed.snapshot, ...(parsed.warnings.includes('redacted') ? { redacted: true } : {}) }
+    }
+    // Optional handover bundle: non-empty reference lines attach the picked
+    // triplet (workspace/mode/permission above) plus the references.
+    const references = handoverText.split('\n').map(line => line.trim()).filter(line => line !== '')
+    const handover = references.length === 0 ? undefined : {
+      references,
+      workspaceId: workspaceId === '' ? undefined : workspaceId,
+      mode: mode === '' ? undefined : mode,
+      permission: permission === '' ? undefined : permission as TaskPermission,
+    }
     setPending(true)
     const task = await controller.createTaskConfirmed({
       title,
       description,
       prompt,
+      freeze,
+      handover,
       workspaceId: workspaceId === '' ? undefined : workspaceId,
       mode: mode === '' ? undefined : mode,
       permission: permission === '' ? undefined : permission as TaskPermission,
@@ -82,6 +109,31 @@ export function NewTaskModal({ controller, onClose }: { controller: BoardControl
         onDescriptionChange={setDescription}
         onPromptChange={setPrompt}
       />
+
+        <label className={css.field}>
+          <span className={css.fieldLabel}>{t('new.freeze')}</span>
+          <textarea
+            className={css.input}
+            rows={4}
+            value={freezeText}
+            placeholder={t('new.freezePlaceholder')}
+            spellCheck={false}
+            onChange={event => { setFreezeText(event.target.value); setFreezeError(undefined) }}
+          />
+        </label>
+        {freezeError !== undefined && <p className={css.formError}>{freezeError}</p>}
+
+        <label className={css.field}>
+          <span className={css.fieldLabel}>{t('new.handover')}</span>
+          <textarea
+            className={css.input}
+            rows={3}
+            value={handoverText}
+            placeholder={t('new.handoverPlaceholder')}
+            spellCheck={false}
+            onChange={event => { setHandoverText(event.target.value) }}
+          />
+        </label>
 
         <label className={css.field}>
           <span className={css.fieldLabel}>{t('new.workspace')}</span>

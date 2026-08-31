@@ -3,8 +3,21 @@
   "version": "0.1.1",
   "private": true,
   "description": "DeepSeek Harness Web GUI 插件全家桶 + 皮肤集合。皮肤是纯资产目录（packages/skins/skin-center/skins/<id>），由皮肤中心包统一加载。",
+  "dsh": {
+    "bundle": {
+      "patch": "./packages/dsh-web-all/cordis.patch.yml"
+    }
+  },
+  "files": [
+    "package.json",
+    "packages/dsh-web-all/cordis.patch.yml"
+  ],
+  "dependencies": {
+    "@linxin666/dsh-web-all": "^0.3.6"
+  },
   "scripts": {
     "build": "pnpm -r build",
+    "dev:watch": "node scripts/dev-watch.mjs",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "aggregate:check": "node scripts/aggregate.mjs --check",
@@ -13,6 +26,7 @@
     "skin-hooks:check": "node scripts/skin-hooks-registry.mjs --check",
     "community:check": "node scripts/community-index --check",
     "runtime-deps:check": "node scripts/runtime-deps-check.mjs",
+    "i18n:check": "node scripts/i18n-audit.mjs --check",
     "test:scripts": "node --test scripts/*.test.mjs",
     "test:mount": "bash scripts/e2e-mount.sh",
     "skin:new": "node scripts/dsh-skin-new",
@@ -27,10 +41,26 @@
     "deploy:market": "node scripts/deploy-market"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-agent": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-brand": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-llm": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-scope": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-session": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-subagent": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-timeout": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-tools": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-util-crypto": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-util-time": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-util-values": "^0.1.2-alpha.2",
+    "@deepseek-ai/schemastery": "^3.18.1",
     "@playwright/test": "^1.62.1",
     "lightningcss": "^1.32.0",
     "playwright": "^1.62.1",
     "tsdown": "^0.22.2"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@11.24.0"
 }

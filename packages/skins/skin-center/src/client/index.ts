@@ -15,12 +15,17 @@
  * card edits flow card -> POST /active, page edits flow scope -> POST
  * /active.
  */
-import type { ClientContext, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+// Type-only: pulls the ctx.slots merge (the renderer owns the slot registry since 0.1.2).
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+// Type-only: pulls the generated Remote namespace (ctx.remote), including directoryPicker.
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import { SkinCenterSection, type SkinCenterInjected } from './SkinCenter.tsx'
 import { BackgroundController, SKIN_BACKGROUND_NS } from './background.ts'
 import type { SkinBackgroundConfig } from '../core/background.ts'
@@ -58,8 +63,8 @@ declare module '@deepseek-ai/cordis' {
 }
 
 
-/** Required services: slots + locale (plugin card), theme (preview toggle), settingsScope + its transport (background scrim), and workspaces (native directory picker for wallpaper folders). */
-export const inject = ['slots', 'locale', 'theme', 'settingsScope', 'connection', 'remote', 'workspaces']
+/** Required services: slots + locale (plugin card), theme (preview toggle), settingsScope + its transport (background scrim), and remote (wallpaper directory picker). */
+export const inject = ['slots', 'locale', 'theme', 'settingsScope', 'connection', 'remote']
 
 /** Self-report item for the install heartbeat. */
 const SELF_ITEM = [{ name: '@linxin666/dsh-client-ui-skin-center' }]
@@ -283,7 +288,11 @@ export function apply(ctx: ClientContext): void {
       dirs: () => wallpaper.dirs(),
       addDir: dir => wallpaper.addDir(dir),
       removeDir: dir => wallpaper.removeDir(dir),
-      pickDir: () => ctx.workspaces.pickDirectory(),
+      pickDir: async () => {
+        const result = await ctx.remote.directoryPicker.pick()
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
       activeId: () => wallpaper.activeId(),
       trying: () => wallpaper.trying(),
       subscribe: listener => wallpaper.subscribe(listener),

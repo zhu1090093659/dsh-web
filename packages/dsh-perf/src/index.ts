@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import { mountOnce } from './mount-once.ts'
 import { PerfMeter, type PerfMode, type PerfMeterOptions } from './host/perf-meter.ts'
@@ -9,7 +9,7 @@ import { makeBetterSessionRoutes } from './bsm/host-routes.ts'
 
 export const name = 'dsh-perf'
 export const inject = ['webServer']
-export const PERF_SETTINGS_NAMESPACE = settingsNamespace('dsh-perf')
+export const PERF_SETTINGS_NAMESPACE = 'dsh-perf' as SettingsNamespace
 
 export interface Config {
   enabled?: boolean
@@ -113,9 +113,11 @@ export const apply = mountOnce('@linxin666/dsh-perf', (ctx: Context, config?: Co
     }
   }
 
-  installSettingsSection(ctx, PERF_SETTINGS_NAMESPACE, Config, config ?? {}, {
-    setSource: (next) => { source = next; rearm() },
-    onChange: rearm,
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, PERF_SETTINGS_NAMESPACE, Config, config ?? {}, {
+      setSource: (next) => { source = next; rearm() },
+      onChange: rearm,
+    })
   })
 
   // Better Session 管理面（第三方外部集成）：路由独立于 perf 自身开关，

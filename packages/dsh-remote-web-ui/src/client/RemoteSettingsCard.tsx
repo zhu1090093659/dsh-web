@@ -4,10 +4,14 @@
  * renders, bound to the `remote-web-ui` settings namespace.
  */
 
+import { useEffect, useState } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { PluginSettingsCard, ValueField, BooleanField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, numberField, textField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
+import { readLanBindStatus, type LanBindFrame } from './pair-api.ts'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 
 /** The remote-control fields this card edits (the namespace's full schema). */
 export interface RemoteSettings {
@@ -29,8 +33,11 @@ export interface RemoteSettings {
   publicBaseUrl?: string
   /** When on, the plugin runs its own Cloudflare quick tunnel automatically. */
   autoTunnel?: boolean
-  /** Mobile composer: plain Enter sends; off means Enter inserts a newline. */
-  mobileEnterToSend?: boolean
+  /**
+   * LAN bind toggle: once flipped, the plugin manages the profile patch's
+   * webserver block (0.0.0.0 / 127.0.0.1) and the host firewall rule.
+   */
+  lanBind?: boolean
 }
 
 /** What the remote-control card renders. */
@@ -53,8 +60,8 @@ export interface RemoteSettingsCardState extends CardShell {
   publicBaseUrl: CardFieldState
   /** Auto public tunnel switch. */
   autoTunnel: CardFieldState
-  /** Mobile composer Enter-to-send switch. */
-  mobileEnterToSend: CardFieldState
+  /** LAN bind toggle. */
+  lanBind: CardFieldState
 }
 
 /** The registration-side face the card's slot entry injects. */
@@ -82,7 +89,7 @@ export class RemoteSettingsCardController {
       booleanField('requirePairingForLan'),
       textField('publicBaseUrl'),
       booleanField('autoTunnel'),
-      booleanField('mobileEnterToSend'),
+      booleanField('lanBind'),
     ])
     this.store = this.form.bind(() => this.projection())
   }
@@ -99,7 +106,7 @@ export class RemoteSettingsCardController {
       requirePairingForLan: this.form.field('requirePairingForLan'),
       publicBaseUrl: this.form.field('publicBaseUrl'),
       autoTunnel: this.form.field('autoTunnel'),
-      mobileEnterToSend: this.form.field('mobileEnterToSend'),
+      lanBind: this.form.field('lanBind'),
     }
   }
 
@@ -246,18 +253,70 @@ export function RemoteSettingsCard(props: RemoteSettingsCardProps) {
         onEdit={(text) => { props.edit('autoTunnel', text) }}
         onReset={() => { props.resetField('autoTunnel') }}
       />
+      <LanBindStatus t={t} />
       <BooleanField
-        id="settings-remote-mobile-enter"
-        label={t('settings.mobileEnterToSend')}
-        hint={t('settings.mobileEnterToSendHint')}
+        id="settings-remote-lan-bind"
+        label={t('settings.lanBind')}
+        hint={t('settings.lanBindHint')}
         inheritLabel={t('settings.inherit')}
         onLabel={t('settings.on')}
         offLabel={t('settings.off')}
         {...fieldProps}
-        {...state.mobileEnterToSend}
-        onEdit={(text) => { props.edit('mobileEnterToSend', text) }}
-        onReset={() => { props.resetField('mobileEnterToSend') }}
+        {...state.lanBind}
+        onEdit={(text) => { props.edit('lanBind', text) }}
+        onReset={() => { props.resetField('lanBind') }}
       />
     </PluginSettingsCard>
+  )
+}
+
+/**
+ * Live LAN-bind facts above the toggle: the managed block's host, the live
+ * bind, the firewall summary, and the reachable LAN URLs. Polls the
+ * loopback-only status endpoint; a failure (non-loopback origin) renders
+ * nothing — the pairing panel carries the loopback banner instead.
+ */
+function LanBindStatus({ t }: { t: TranslateNS<'remote'> }) {
+  const [frame, setFrame] = useState<LanBindFrame | undefined>(undefined)
+  useEffect(() => {
+    let alive = true
+    const read = (): void => {
+      void readLanBindStatus().then((value) => {
+        if (alive) setFrame(value)
+      }).catch(() => {})
+    }
+    read()
+    const timer = window.setInterval(read, 10_000)
+    return () => {
+      alive = false
+      window.clearInterval(timer)
+    }
+  }, [])
+  if (frame === undefined) return null
+  const lanOn = frame.blockHost === '0.0.0.0'
+  const firewallText = frame.firewall.managed
+    ? t(frame.firewall.ok ? 'lan.firewall.ok' : 'lan.firewall.bad')
+    : t('lan.firewall.unmanaged')
+  const lines: string[] = [
+    t('lan.bind', { host: frame.bindHost, port: String(frame.port) }) + ' · ' + firewallText,
+  ]
+  if (lanOn && frame.lanUrls.length > 0) {
+    lines.push(t('lan.urls', { urls: frame.lanUrls.join('  ') }))
+  }
+  if (!lanOn) {
+    lines.push(t('lan.off'))
+  }
+  if (frame.setting === null) {
+    lines.push(t('lan.untouched'))
+  }
+  if (frame.pendingRestart === true) {
+    lines.push(t('lan.pendingRestart'))
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 12, lineHeight: '18px', opacity: 0.85 }}>
+      {lines.map((line, index) => (
+        <div key={index} style={{ wordBreak: 'break-all' }}>{line}</div>
+      ))}
+    </div>
   )
 }

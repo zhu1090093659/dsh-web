@@ -520,9 +520,9 @@ window.__ModuleLoader__.load({
 			const alpha = Number.parseFloat(value);
 			return Number.isFinite(alpha) && alpha > 0;
 		}
-		/** Exclude owned layers plus modal/plugin surfaces that must retain their paint. */
+		/** Exclude owned layers plus modal/plugin/sidebar/details surfaces that must retain their paint. */
 		function isExcludedWallpaperSurface(el, zIndex) {
-			if (typeof el.closest === "function" && el.closest("[data-dsh-wallpaper-layer], dialog, [role=\"dialog\"], [aria-modal=\"true\"], [data-shell-overlay], [data-slot=\"shell.overlay\"], [data-dsh-plugin]") !== null) return true;
+			if (typeof el.closest === "function" && el.closest("[data-dsh-wallpaper-layer], dialog, [role=\"dialog\"], [aria-modal=\"true\"], [data-shell-overlay], [data-slot=\"shell.overlay\"], [data-dsh-plugin], [data-slot=\"sidebar\"], [data-dsh-surface=\"sidebar\"], [data-slot=\"sidebar.workspaces\"], [data-pane=\"sidebar\"], aside, [data-slot=\"details\"], [data-dsh-surface=\"details\"], [data-pane=\"details\"], [class*=\"detailsCol\"], .aionui-root, [data-aionui-explorer-col], [data-aionui-preview-col], [data-dsh-better-sidebar], [data-dsh-panel-host]") !== null) return true;
 			const numericZIndex = Number.parseFloat(zIndex);
 			return Number.isFinite(numericZIndex) && numericZIndex > MAX_SURFACE_OVERLAY_Z_INDEX;
 		}
@@ -4812,7 +4812,7 @@ window.__ModuleLoader__.load({
 		/** The building package's version, when the bundle carries it. */
 		function bakedVersion() {
 			try {
-				return "0.3.6";
+				return "0.3.10";
 			} catch {
 				return;
 			}
@@ -4878,15 +4878,14 @@ window.__ModuleLoader__.load({
 		//#region src/client/index.ts
 		/** Locale namespace owned by this plugin. */
 		const NS = "skinCenter";
-		/** Required services: slots + locale (plugin card), theme (preview toggle), settingsScope + its transport (background scrim), and workspaces (native directory picker for wallpaper folders). */
+		/** Required services: slots + locale (plugin card), theme (preview toggle), settingsScope + its transport (background scrim), and remote (wallpaper directory picker). */
 		const inject = [
 			"slots",
 			"locale",
 			"theme",
 			"settingsScope",
 			"connection",
-			"remote",
-			"workspaces"
+			"remote"
 		];
 		/** Self-report item for the install heartbeat. */
 		const SELF_ITEM = [{ name: "@linxin666/dsh-client-ui-skin-center" }];
@@ -5050,7 +5049,11 @@ window.__ModuleLoader__.load({
 					dirs: () => wallpaper.dirs(),
 					addDir: (dir) => wallpaper.addDir(dir),
 					removeDir: (dir) => wallpaper.removeDir(dir),
-					pickDir: () => ctx.workspaces.pickDirectory(),
+					pickDir: async () => {
+						const result = await ctx.remote.directoryPicker.pick();
+						if (!result.ok) throw new Error(result.error.message);
+						return result.value;
+					},
 					activeId: () => wallpaper.activeId(),
 					trying: () => wallpaper.trying(),
 					subscribe: (listener) => wallpaper.subscribe(listener),

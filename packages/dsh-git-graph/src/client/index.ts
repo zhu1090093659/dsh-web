@@ -14,12 +14,20 @@
  * @module dsh-git-graph/client
  */
 
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+// Type-only: pulls the ctx.slots merge (the renderer owns the slot registry since 0.1.2).
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the ui-conversation SlotMap merge (the conversation
 // slots); the selector-context hole is spelled locally below because the
 // published npm SDK (rc.6) dropped it while the running shell still renders it.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+// Type-only: pulls the ui-session standard-props merge (sessionId on
+// session/session-maybe slots, useSessions on GlobalStandardProps); the
+// 0.1.2-alpha.2 cohort trimmed ui-conversation's peer set, so this edge is
+// no longer reachable transitively and must be declared here.
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {
   BranchesView, GitError, GitFeatureConfig, GraphView, RepoStatus, SwitchResult,
@@ -205,7 +213,12 @@ export function apply(ctx: ClientContext): void {
           // a registration failure rolls the worktree back (no half-made env).
           try {
             const workspace = await scope.workspaces.create({ path: created.value.path })
-            scope.workspaces.startSession(workspace.workspaceId)
+            // 0.1.2 cohort: workspace-side session launch moved to the sessions
+            // face. ISessions.create only adopts the target workspace and
+            // resolves the new SessionId; open() is the separate navigation
+            // step that selects it (matching the old startSession behavior).
+            const createdSessionId = await scope.sessions.create({ workspaceId: workspace.workspaceId })
+            scope.sessions.open(createdSessionId)
           } catch (error: unknown) {
             await git.removeWorktree(resolved.path, created.value.path, { force: true })
             return { ok: false, error: { code: 'internal', message: `workspace registration failed: ${String(error)}` } }

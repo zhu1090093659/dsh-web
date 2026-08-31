@@ -9,6 +9,14 @@ import { main, parseArgv } from './dsh-better-session.mjs'
  * honest: arg parsing, managed-block writes through the real profile path,
  * the --yes reminder gate, and status JSON shape. */
 
+// The core runner is a build artifact (packages/dsh-perf/lib is gitignored),
+// so no-build consistency gates like deploy-market's skip the tests that go
+// through it; ci.yml covers them fully after its Build step.
+const RUNNER_URL = new URL('../packages/dsh-perf/lib/better-session-import.mjs', import.meta.url)
+const skipWithoutRunner = {
+  skip: existsSync(RUNNER_URL) ? false : 'packages/dsh-perf/lib/better-session-import.mjs is a build artifact; run pnpm build first',
+}
+
 test('parseArgv consumes values only for valueful flags', () => {
   const parsed = parseArgv(['migrate', '--json', '--apply', '--yes', '--create-store', '--sessions-dir', '/tmp/x', '--db', '/tmp/y', 'positional'])
   assert.equal(parsed.command, 'migrate')
@@ -39,7 +47,7 @@ async function runCapture(argv) {
   }
 }
 
-test('enable writes the managed block only with --yes; disable removes it', async () => {
+test('enable writes the managed block only with --yes; disable removes it', { skip: skipWithoutRunner.skip }, async () => {
   await withTempHome(async (home) => {
     const patchPath = join(home, 'profiles', 'web', 'cordis.patch.yml')
     mkdirSync(join(home, 'profiles', 'web'), { recursive: true })
@@ -70,7 +78,7 @@ test('enable writes the managed block only with --yes; disable removes it', asyn
   })
 })
 
-test('status reports json shape and shipped posture from a temp home', async () => {
+test('status reports json shape and shipped posture from a temp home', { skip: skipWithoutRunner.skip }, async () => {
   await withTempHome(async (home) => {
     mkdirSync(join(home, 'profiles', 'web'), { recursive: true })
     writeFileSync(join(home, 'profiles', 'web', 'cordis.patch.yml'), '')
@@ -84,7 +92,7 @@ test('status reports json shape and shipped posture from a temp home', async () 
   })
 })
 
-test('migrate dry-run decodes a synthetic log, binds runImport, and writes nothing', async () => {
+test('migrate dry-run decodes a synthetic log, binds runImport, and writes nothing', { skip: skipWithoutRunner.skip }, async () => {
   await withTempHome(async (home) => {
     // Regression: migrateCommand once called bare `runImport` without the
     // loadCore() binding — every invocation crashed with a ReferenceError.

@@ -25,8 +25,11 @@ export default {
     },
     '/api/stats': {
       get: {
-        summary: 'Vote counts per kind and asset id',
-        responses: { 200: { description: 'Vote counts' } },
+        summary: 'Vote counts per kind and asset id; edge-cached one minute and served from the last good counts under storage failures',
+        responses: {
+          200: { description: 'Vote counts and install counts' },
+          503: { description: 'Storage unavailable (D1 overloaded) and no cached copy; cards fall back to their zero state' },
+        },
       },
     },
     '/api/install': {
@@ -129,6 +132,7 @@ export default {
           200: { description: 'Event accepted (duplicates collapse per day)' },
           400: { description: 'Invalid parameters or JSON' },
           413: { description: 'Body exceeds the 16 KiB telemetry cap (payload-too-large)' },
+          503: { description: 'Storage unavailable (D1 overloaded); retry on a later mount' },
         },
       },
     },
@@ -146,6 +150,7 @@ export default {
         responses: {
           200: { description: 'Per-day and per-item aggregates for site pageviews and plugin heartbeats; hot paths and items are paginated, totals included' },
           403: { description: 'TELEMETRY_READ_KEY configured and not presented' },
+          503: { description: 'Storage unavailable (D1 overloaded); retry later' },
         },
       },
     },
@@ -178,7 +183,7 @@ export default {
     },
     '/api/telemetry/badge/users': {
       get: {
-        summary: 'Shields endpoint badge: all-time distinct heartbeat visitors (anonymous install count); aggregate only, no key required',
+        summary: 'Shields endpoint badge: all-time distinct heartbeat visitors (anonymous install count); aggregate only, no key required; served from a cron-precomputed D1 row plus a 30 min edge cache, falling back to the last good count under storage failures',
         responses: { 200: { description: 'Shields endpoint schema (schemaVersion 1)' } },
       },
     },

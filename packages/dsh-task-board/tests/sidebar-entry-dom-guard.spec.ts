@@ -34,6 +34,7 @@ describe('mountSidebarEntry DOM idempotency', () => {
       setAttribute: vi.fn(),
       addEventListener: vi.fn(),
       remove: vi.fn(),
+      append: vi.fn(),
     }
     const createElement = vi.fn(() => entryEl)
     vi.stubGlobal('document', {
@@ -55,7 +56,8 @@ describe('mountSidebarEntry DOM idempotency', () => {
 
     const dispose = mountSidebarEntry(controller)
 
-    expect(createElement).toHaveBeenCalledTimes(1)
+    // createElement now builds the row plus its two spans (icon/label).
+    expect(createElement).toHaveBeenCalledTimes(3)
     dispose()
     expect(entryEl.remove).toHaveBeenCalledTimes(1)
   })
@@ -66,6 +68,7 @@ describe('mountSidebarEntry DOM idempotency', () => {
       setAttribute: vi.fn(),
       addEventListener: vi.fn(),
       remove: vi.fn(),
+      append: vi.fn(),
     }
     vi.stubGlobal('document', {
       querySelector: () => null,

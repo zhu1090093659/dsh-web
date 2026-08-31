@@ -10,19 +10,18 @@
  * @module @linxin666/dsh-perf/client
  */
 
-import type { ClientContext, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the locale / settings-surface / slot merge points.
+// The renderer owns the ctx.slots merge in the 0.1.2 client assembly.
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: pulls the official conversation SlotMap augmentation (conversation.chat.node).
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-
-import type { ComponentType } from 'react'
 import { zh, en, type PerfKey } from './perf-locales.ts'
 import { dictionaries as bsmDictionaries, type BetterSessionKey } from './bs-locales.ts'
+import { hudAlertReason, type PerfTranslate } from './perf-alert.ts'
 import { PerfSettingsCard, PerfSettingsCardController, type PerfSettings, type PerfSettingsCardFace } from './perf-settings-card.tsx'
-import { makePerfAssistantShadow, type ShadowOwner } from './perf-assistant-shadow.tsx'
 import { startIntegrityObserver } from './perf-integrity.ts'
 import { makeListSetGate, type ListSetGate, type SessionListSnapshotLike } from './perf-list-gate.ts'
 import {
@@ -90,6 +89,14 @@ export function apply(ctx: ClientContext): void {
     const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
     perfScope = binder.bind<PerfSettings>({ namespace: NS })
   } catch { /* 无设置面时按默认开启 */ }
+  // HUD 文案翻译位: 每次调用读当前 locale; locale 服务缺失时退回 en 字典
+  // (与 SDK 的 en 兜底链一致)。
+  let perfTranslate: PerfTranslate
+  try {
+    perfTranslate = ctx.locale.bind(NS)
+  } catch {
+    perfTranslate = (key) => en[key]
+  }
   // 渲染降载/HUD/完整性观察开关: 统一走插件设置命名空间。
   let renderDegrade = true
   let hudOn = false
@@ -108,7 +115,7 @@ export function apply(ctx: ClientContext): void {
       hudOn = nextHudOn
       try {
         if (hudOn && hudDispose === undefined) {
-          hudDispose = boot(isEnabled)
+          hudDispose = boot(isEnabled, perfTranslate)
         } else if (!hudOn && hudDispose !== undefined) {
           hudDispose()
           hudDispose = undefined
@@ -117,9 +124,9 @@ export function apply(ctx: ClientContext): void {
         console.debug('[dsh-perf] HUD boot degraded:', error)
       }
     }
-    // CSS 降载(P0): 独立于 HUD(默认关) 生效, 跟随总开关。
+    // CSS 降载(P0): 独立于 HUD(默认关) 生效, 跟随总开关与渲染降载开关。
     try {
-      installPerfCss(isEnabled)
+      installPerfCss(() => isEnabled() && renderDegrade)
     } catch { /* noop */ }
     // 尾部完整性观察: 跟随总开关 enabled(默认开) 启停。
     const shouldRun = isEnabled()
@@ -180,67 +187,9 @@ export function apply(ctx: ClientContext): void {
   } catch (error) {
     console.debug('[dsh-perf] settings card degraded:', error)
   }
-  // P1: 保持观感的 assistant-step shadow —— 全部经官方渲染器输出, 仅对超重已结算
-  // 消息把高亮终态延迟到回合结束热路径之外(见 perf-assistant-shadow.tsx)。
-  try {
-    const slotsCore = ctx.get('slots') as unknown as {
-      entries?: (key: string) => readonly { component?: unknown; options?: { priority?: number; key?: string } }[]
-      entriesOfSlot?: (key: string) => readonly { component?: unknown; options?: { key?: string } }[]
-    } | undefined
-    ctx.slots.inject('conversation.chat.node', () => {
-      try {
-        // 注册优先级: 取该 cell 已有条目的最小 priority, 再额外下探一段保留带,
-        // 保证 "lowest renders" 投影下本影子永远排最前, 同时给第三方替换渲染器
-        // 留出落位空间 —— 它们常把 priority 硬编码为 -1(例如
-        // @morlay/ui-conversation-message-actions), 而 keyed slot 对同 key 同
-        // priority 是硬校验, 撞值会让后注册方整个插件加载失败。
-        const SHADOW_PRIORITY_HEADROOM = 8
-        const existing = (slotsCore?.entries?.('conversation.chat.node') ?? [])
-          .filter((entry) => entry?.options?.key === 'assistant-step')
-          .map((entry) => Number(entry?.options?.priority ?? 0))
-        const floor = (existing.length === 0 ? 0 : Math.min(...existing)) - 1 - SHADOW_PRIORITY_HEADROOM
-        // 影子组件先建好: 懒捕获回调需要排除自身(entries 按 priority 排序, 影子排最前)。
-        const shadow = makePerfAssistantShadow(undefined, () => renderDegrade, () => {
-          // React.memo 组件 typeof === 'object'(Symbol(react.memo) 标签对象), 不能用
-          // typeof === 'function' 过滤 —— 官方 AssistantNodeView 是 memo, 那是旧版
-          // 捕获永远落空的第二个根因(第一个是未绑定 this 的 register)。
-          for (const entry of slotsCore?.entries?.('conversation.chat.node') ?? []) {
-            if (entry?.options?.key === 'assistant-step' && entry.component != null && entry.component !== shadow) {
-              return entry.component as ComponentType<ShadowOwner>
-            }
-          }
-          return undefined
-        })
-        // 类型擦除: 官方注册同款 options 形态(仅 name/key/priority/locale); inject 面由 slot 声明提供。
-        // register 内部读 this.ctx —— 必须绑定服务实例调用(裸引用会丢 this, 这是旧版 P1 静默失效的根因)。
-        const register = ctx.slots.register as unknown as (options: Record<string, unknown>, component: unknown) => () => void
-        const unregister = register.call(ctx.slots, {
-          name: 'conversation.chat.node',
-          key: 'assistant-step',
-          priority: floor,
-          locale: NS,
-        }, shadow)
-        // 自诊断(每页一次): 注册后读投影胜者, 确认 shadow 确实是该 cell 的渲染者。
-        try {
-          const winners = slotsCore?.entriesOfSlot?.('conversation.chat.node') ?? []
-          const winner = winners.find((entry) => entry?.options?.key === 'assistant-step')
-          const candidate = winner?.component
-          const winnerName = candidate == null
-            ? 'none'
-            : typeof candidate === 'function'
-              ? ((candidate as { displayName?: string; name?: string }).displayName ?? (candidate as { name?: string }).name ?? 'fn')
-              : String((candidate as { $$typeof?: symbol }).$$typeof === Symbol.for('react.memo') ? 'memo(assistant-step)' : (candidate as { displayName?: string }).displayName ?? 'component')
-          console.log('[dsh-perf] assistant shadow: registered at priority ' + floor + ', projected winner ' + winnerName)
-        } catch { /* 诊断输出失败不影响注册 */ }
-        return () => { unregister() }
-      } catch (error) {
-        console.warn('[dsh-perf] assistant shadow registration failed:', error)
-        return () => {}
-      }
-    })
-  } catch (error) {
-    console.warn('[dsh-perf] assistant shadow degraded:', error)
-  }
+  // The SDK 0.1.2 concrete conversation renderer owns its slot contract.
+  // Keep the performance HUD, settings card, integrity observer, and list gate
+  // active without registering against an obsolete slot.
 }
 
 /**
@@ -303,10 +252,10 @@ function readPositiveInt(key: string, fallback: number): number {
 
 /** P0 CSS 降载样式(单例): 屏外消息行 content-visibility 近似虚拟化。 */
 let perfCssStyle: HTMLStyleElement | undefined
-function installPerfCss(isEnabled: () => boolean): void {
+function installPerfCss(isDegradeEnabled: () => boolean): void {
   try {
     const off = localStorage.getItem('dsh-perf-css') === 'off'
-    if (!isEnabled() || off) {
+    if (!isDegradeEnabled() || off) {
       perfCssStyle?.remove()
       perfCssStyle = undefined
       return
@@ -315,26 +264,28 @@ function installPerfCss(isEnabled: () => boolean): void {
     const style = document.createElement('style')
     style.dataset.dshPerf = 'css'
     // 选择器列表后必须带 '{': 缺失时浏览器丢弃整条规则, 降载形同虚设。
+    // 含 .md-table-wide 宽表的行排除 content-visibility, 防止 contain:paint 裁剪横向溢出表格(#1269)。
     style.textContent = [
-      '[data-chat-flow-kind="assistant-step"],',
-      '[data-chat-flow-kind="tool-call"] {',
+      '[data-chat-flow-kind="assistant-step"]:not(:has(.md-table-wide)),',
+      '[data-chat-flow-kind="tool-call"]:not(:has(.md-table-wide)) {',
       '  content-visibility: auto;',
       '  contain-intrinsic-size: auto 120px;',
       '}',
-      // 侧栏会话行(dsh-better-sidebar 渲染, 类名形如 YDXeBa_sessionRow): 展开大分组时
-      // 一次挂载数千行, 屏外行跳过渲染; 行高实测 32px。选择器用 _sessionRow 子串,
-      // 锚定 _sidebarCol 避免误伤同名类。上游若改类名规则自然失效(无副作用)。
-      '[class*="_sidebarCol"] [class*="_sessionRow"] {',
-      '  content-visibility: auto;',
-      '  contain-intrinsic-size: auto 32px;',
+      '[data-chat-flow-kind="assistant-step"]:has(.md-table-wide),',
+      '[data-chat-flow-kind="tool-call"]:has(.md-table-wide) {',
+      '  content-visibility: visible !important;',
+      '  contain: none !important;',
       '}',
+      // 侧栏会话行(dsh-better-sidebar 渲染)不再注入降载 CSS: 固定 32px 占位行高
+      // 会干扰其自身布局(行被钉在固定位置), 降载范围收回消息行本身(2026-08-28 移除,
+      // 见 Agent Note: dsh-perf sidebar row degrade CSS removal)。
     ].join('\n')
     document.head.appendChild(style)
     perfCssStyle = style
   } catch { /* noop */ }
 }
 
-function boot(isEnabled: () => boolean): () => void {
+function boot(isEnabled: () => boolean, t: PerfTranslate): () => void {
   const host = document.documentElement
   if (host === null || host === undefined) return () => {}
 
@@ -430,12 +381,8 @@ function boot(isEnabled: () => boolean): () => void {
     const batch = s.batchDelayMs ?? '?'
     const alert = typeof s.alert === 'object' && s.alert !== null ? s.alert : undefined
     if (alert) {
-      const reason = alert.kind === 'sessions'
-        ? '会话 ' + (alert.activeSessions ?? '?') + ' 个 ≥ 阈值 ' + (alert.maxSessions ?? '?')
-        : alert.kind === 'events'
-          ? '事件 ' + (alert.eventsPerSec ?? '?') + '/s ≥ 阈值 ' + (alert.maxEventsPerSec ?? '?')
-          : '会话与事件均超阈值'
-      lines.push('[!] ' + reason)
+      const reason = hudAlertReason(alert, t)
+      if (reason !== undefined) lines.push('[!] ' + reason)
     }
     lines.push('dsH PERF  mode=' + mode + '  batch=' + batch + 'ms')
     const ev = s.events ?? {}

@@ -182,4 +182,19 @@ describe('SkillPanel mutation identity', () => {
     expect(remove).toHaveBeenCalledWith('demo-skill', '/work/demo-skill/SKILL.md')
     mount_.dispose()
   })
+
+  it('renders localized provider badge and invokable badge tooltip (#1304, #1305)', async () => {
+    const api = fakeApi([async () => payload(['demo-skill'])])
+    const mount_ = mount(api, () => {})
+    await flush()
+    const badges = Array.from(mount_.container.querySelectorAll('span'))
+    const providerBadge = badges.find(b => b.textContent?.trim() === '文件系统')
+    expect(providerBadge).toBeDefined()
+    expect(providerBadge?.getAttribute('title')).toBe('技能来源：文件系统')
+
+    const invokableBadge = badges.find(b => b.textContent?.includes('可调用'))
+    expect(invokableBadge).toBeDefined()
+    expect(invokableBadge?.getAttribute('title')).toBe('模型可自动调用该技能；手动 /skill 指令不受影响')
+    mount_.dispose()
+  })
 })

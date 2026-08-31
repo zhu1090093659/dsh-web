@@ -28,11 +28,6 @@
     - id: web-ui-market
       name: '@linxin666/dsh-client-ui-market'
 
-# from ../dsh-aionui-panel
-- insert:
-    - id: web-ui-dsh-aionui-panel
-      name: '@linxin666/dsh-client-ui-aionui-panel'
-
 # from ../dsh-task-board
 - insert:
     - id: web-ui-task-board
@@ -104,14 +99,20 @@
     - id: web-ui-doctor
       name: '@linxin666/dsh-doctor'
 
+# from ../dsh-usage
+- insert:
+    - id: web-ui-usage
+      name: '@linxin666/dsh-usage'
+
 # from ../skins/skin-center
 - insert:
     - id: web-ui-skin-center
       name: '@linxin666/dsh-client-ui-skin-center'
 
-# config override for web-ui-ssh (seed default; settings wins once the user edits it)
-- id: web-ui-ssh
-  config: {"enabled":false}
+# from ../dsh-i18n
+- insert:
+    - id: web-ui-i18n
+      name: '@linxin666/dsh-i18n'
 
 # external bundle: dsh-better-sidebar
 
@@ -119,13 +120,6 @@
 - insert:
     - id: web-ui-better-sidebar
       name: 'dsh-better-sidebar'
-
-# external bundle: @mlgbnb/dsh-archive-manager
-
-# from external bundle @mlgbnb/dsh-archive-manager (insert row web-ui-archive-manager)
-- insert:
-    - id: web-ui-archive-manager
-      name: '@mlgbnb/dsh-archive-manager'
 
 # external bundle: @morlay/better-session
 

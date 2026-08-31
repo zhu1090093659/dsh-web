@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-08-28-agent-workflow-token-compression.md: 46b28cb98d3c85aacf7b0f8f3b6514807011abdc
+2026-08-28-agent-workflow-token-compression.zh.md: 7d8b63a7053c71347b84e8990c6599cfe92179a3

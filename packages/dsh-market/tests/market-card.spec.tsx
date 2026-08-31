@@ -11,9 +11,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React, { useSyncExternalStore, type ComponentProps } from 'react'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
+vi.mock('@deepseek-ai/dsh-client-store', () => ({
   createSnapshotStore: (init: unknown) => {
     let value = init
     const listeners = new Set<() => void>()
@@ -73,6 +73,9 @@ class FakeScope implements SettingsScope<MarketSettings> {
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
+  }
+  async mutate(): Promise<void> {
+    return undefined
   }
   getSnapshot(): SettingsScopeSnapshot<MarketSettings> {
     return {

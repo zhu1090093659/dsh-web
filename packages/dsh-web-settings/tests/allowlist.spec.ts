@@ -78,12 +78,6 @@ describe('resolveNamespaceEntry', () => {
     expect(resolveNamespaceEntry('community-plugins')).toBe('community-plugins')
   })
 
-  it('maps the aionui-panel package names onto the panel settings namespace', () => {
-    expect(resolveNamespaceEntry('aionui-panel')).toBe('aionui-panel')
-    expect(resolveNamespaceEntry('dsh-aionui-panel')).toBe('aionui-panel')
-    expect(resolveNamespaceEntry('dsh-client-ui-aionui-panel')).toBe('aionui-panel')
-  })
-
   it('maps the market and skin custom-theme / wallpaper namespaces (#1176)', () => {
     expect(resolveNamespaceEntry('dsh-market')).toBe('dsh-web-ui-market')
     expect(resolveNamespaceEntry('dsh-client-ui-market')).toBe('dsh-web-ui-market')

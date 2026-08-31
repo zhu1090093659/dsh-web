@@ -1,0 +1,10 @@
+# dsh-usage bundle patch: inserts its plugin row into the web plugin roster.
+# The bundle is the official dsh plugin shape — install it into a dsh profile
+# (`dsh plugin --profile <name> add link:<repo>/packages/dsh-usage`). The
+# single row mounts BOTH halves: the host side (usage ledger, provider
+# balance/plan probes, dsh-usage.* RPC routes) and the browser side (the
+# modules node half scans dsh.client packages into the web plugin roster,
+# served from this package's lib/client.js).
+- insert:
+    - id: usage
+      name: '@linxin666/dsh-usage'

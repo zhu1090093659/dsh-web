@@ -1,0 +1,22 @@
+{
+  "// purpose": "Type-checks src (minus the host entry) plus tests together without emitting. The host entry src/index.ts is excluded because its Context merges (dsh-session, dsh-llm, dsh-pet host faces) must not meet the browser merges in one program; tests only import the pure core modules, the host service, and the client section.",
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"],
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.vitest.tsbuildinfo"
+  },
+  "include": ["src", "tests"],
+  "exclude": ["src/index.ts"]
+}

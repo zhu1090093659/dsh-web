@@ -1,53 +1,33 @@
 /**
- * SDK contract pins: the remote desktop channel mirrors two client-connection
- * internals (the loopback-only method set, the /api transport paths and
- * envelope type strings). If a future SDK release changes either, this test
- * fails before the channel silently drifts open or breaks.
+ * SDK contract pins: on the 0.1.2-alpha.2 line the host /api surface carries
+ * no per-method privilege table — the "configuration plane is local"
+ * behavior lives in the browser (client plugins branch on
+ * connection.isLoopback), and the paired remote desktop flips into host mode
+ * via the transport ownsHost hook installed by the boot script. The channel
+ * therefore pins its own path constants and the physically-local control
+ * planes instead.
  */
-import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
-import { LOOPBACK_ONLY_METHODS, REMOTE_API_PATHS } from '../src/remote-methods.ts'
+import { LOCAL_ONLY_PREFIXES, REMOTE_API_PATHS, REMOTE_UPGRADE_PATHS, localOnlyDenial } from '../src/remote-methods.ts'
 
-const require = createRequire(import.meta.url)
-const dist = readFileSync(require.resolve('@deepseek-ai/dsh-client-connection'), 'utf8')
-const clientDist = readFileSync(require.resolve('@deepseek-ai/dsh-client-connection/client'), 'utf8')
-const apiproxyDist = readFileSync(require.resolve('@deepseek-ai/dsh-host-apiproxy'), 'utf8')
-
-/** The privileged set exactly as the installed SDK spells it. */
-function installedPrivilegedMethods(): string[] {
-  const match = dist.match(/PRIVILEGED_METHODS = new Set\(\[([\s\S]*?)\]\)/)
-  if (match === null) throw new Error('PRIVILEGED_METHODS not found in the installed client-connection dist')
-  return [...match[1].matchAll(/"([^"]+)"/g)].map(hit => hit[1])
-}
-
-describe('client-connection contract pins (rc line)', () => {
-  it('the loopback-only method set matches the installed SDK exactly', () => {
-    expect([...LOOPBACK_ONLY_METHODS].sort()).toEqual(installedPrivilegedMethods().sort())
+describe('remote channel contract pins (0.1.2 line)', () => {
+  it('the channel rewrite surface keeps its own fixed path constants', () => {
+    // The official client opens the Typert gateway mux at /api/remote.mux;
+    // its gated mirror is the one stream socket a paired device must reach.
+    expect(REMOTE_API_PATHS.mux).toBe('/remote/api/remote.mux')
+    expect(REMOTE_UPGRADE_PATHS).toContain('/remote/api/remote.mux')
+    expect(REMOTE_UPGRADE_PATHS).toContain('/remote/api/dsh-ssh/terminal')
   })
 
-  it('the browser event streams still live at /api/events.{mux,host}', () => {
-    // The connection dist composes the paths from API_PATH; the client half
-    // mounts the same two downlink paths against the page origin.
-    expect(dist).toContain('API_PATH = "/api"')
-    expect(dist).toContain('${API_PATH}/events.mux')
-    expect(dist).toContain('${API_PATH}/events.host')
-    expect(clientDist).toContain('${API_PATH}/events')
-    expect(REMOTE_API_PATHS.mux).toBe('/remote/api/events.mux')
-    expect(REMOTE_API_PATHS.host).toBe('/remote/api/events.host')
-  })
-
-  it('the unary envelope still uses the client-request/server-response pair', () => {
-    // The envelope schema lives in the apiproxy package (the carrier both
-    // halves share); the literals pin the wire vocabulary.
-    expect(apiproxyDist).toContain('"client-request"')
-    expect(apiproxyDist).toContain('"server-response"')
-  })
-
-  it('the browser client still issues unary calls as POST /api/<method>', () => {
-    expect(clientDist).toContain('`/api/${method}`')
-    // The browser carrier resolves the WebSocket downlinks against the page
-    // origin with the two fixed /api paths (the rewrite surface).
-    expect(clientDist).toContain('new WebSocket(url)')
+  it('exactly four control planes stay physically local', () => {
+    expect(LOCAL_ONLY_PREFIXES).toEqual([
+      '/api/pair',
+      '/api/update',
+      '/api/plugin-manager',
+      '/api/dsh-desktop-launcher',
+    ])
+    for (const prefix of LOCAL_ONLY_PREFIXES) {
+      expect(localOnlyDenial(prefix)).toBeDefined()
+    }
   })
 })

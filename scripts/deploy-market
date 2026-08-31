@@ -39,12 +39,19 @@ function fail(msg) {
 }
 
 function sh(cmd, args, env, opts) {
+  const input = opts && opts.input
+  // When input is given, stdin must be a pipe: with stdio 'inherit' node
+  // silently drops the payload and the child reads an empty stream — which
+  // once stored an empty TURNSTILE_SECRET while wrangler reported Success.
+  const stdio = opts && opts.capture
+    ? 'pipe'
+    : input !== undefined ? ['pipe', 'inherit', 'inherit'] : 'inherit'
   const r = spawnSync(cmd, args, {
     cwd: WORKER_DIR,
     env: Object.assign({}, process.env, env || {}),
-    stdio: opts && opts.capture ? 'pipe' : 'inherit',
+    stdio,
     encoding: opts && opts.capture ? 'utf8' : undefined,
-    input: opts && opts.input !== undefined ? opts.input : undefined,
+    input,
   })
   if (r.status !== 0) fail(cmd + ' ' + args.join(' ') + ' failed (exit ' + r.status + ')')
   return r
@@ -60,15 +67,37 @@ const wr = (args, env, opts) => sh(cmdExec, [...cmdArgs, ...args], env, opts)
 // a missing secret must fail the deploy loudly, not ship an ungated (old
 // code) or write-dead (new code) production API.
 function ensureTurnstileSecret() {
-  if (process.env.TURNSTILE_SECRET) {
+  // Trim before putting: a repo secret pasted with a trailing newline once
+  // shipped a value siteverify rejected (invalid-input-secret) and took the
+  // like/install gate down site-wide while every deploy re-put the same bytes.
+  const secret = (process.env.TURNSTILE_SECRET || '').trim()
+  if (secret) {
     console.log('deploy-market: refreshing TURNSTILE_SECRET binding')
-    wr(['secret', 'put', 'TURNSTILE_SECRET'], undefined, { input: process.env.TURNSTILE_SECRET })
+    wr(['secret', 'put', 'TURNSTILE_SECRET'], undefined, { input: secret })
   }
   const list = wr(['secret', 'list'], undefined, { capture: true })
   const out = String(list.stdout || '') + String(list.stderr || '')
   if (!out.includes('TURNSTILE_SECRET')) {
     fail('worker has no TURNSTILE_SECRET binding — set it (wrangler secret put TURNSTILE_SECRET --config market/worker/wrangler.jsonc) or export TURNSTILE_SECRET before deploying; likes/installs fail closed without it')
   }
+  assertTurnstilePairing(secret)
+}
+
+// Probe siteverify with the just-put binding value and a dummy response token.
+// A correctly paired secret answers invalid-input-response; invalid-input-secret
+// means the binding does not match the widget and every like/install would 403.
+function assertTurnstilePairing(secret) {
+  if (!secret) return
+  const probe = spawnSync('curl', [
+    '-s', '-X', 'POST', 'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+    '-d', 'secret=' + secret, '-d', 'response=probe-dummy-token',
+  ], { encoding: 'utf8' })
+  let codes = []
+  try { codes = JSON.parse(probe.stdout || '{}')['error-codes'] || [] } catch { /* unparsable body */ }
+  if (codes.includes('invalid-input-secret')) {
+    fail('TURNSTILE_SECRET does not pair with the dsh-market widget sitekey — likes/installs would 403 site-wide. Read the current secret from GET /accounts/{account}/challenges/widgets/0x4AAAAAAEYeoSRJRjgCOiZI and update the repository secret.')
+  }
+  console.log('deploy-market: Turnstile binding pairing check ' + (codes.length ? 'saw ' + codes.join(',') : 'unavailable (treating as pass)'))
 }
 
 

@@ -12,7 +12,7 @@
  */
 
 import { Context } from '@deepseek-ai/cordis'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from 'schemastery'
 import { PetService, PET_SETTINGS_NAMESPACE, type PetConfig, type PetSettingsSection } from './service.ts'
@@ -189,20 +189,22 @@ function applyImpl(ctx: Context, config: PetConfig = {}): void {
       disposeRoutes = undefined
     }
   }
-  installSettingsSection(
-    ctx,
-    settingsNamespace(PET_SETTINGS_NAMESPACE),
-    makePetSettingsSchema(service.selectedPetId()),
-    base,
-    {
-      setSource: (source) => { current = source },
-      onChange: () => {
-        const section = current()
-        service.applySettingsSection(section)
-        service.setEnabled(section.enabled ?? true)
-        syncRoutes()
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(
+      ctx,
+      PET_SETTINGS_NAMESPACE as SettingsNamespace,
+      makePetSettingsSchema(service.selectedPetId()),
+      base,
+      {
+        setSource: (source) => { current = source },
+        onChange: () => {
+          const section = current()
+          service.applySettingsSection(section)
+          service.setEnabled(section.enabled ?? true)
+          syncRoutes()
+        },
       },
-    },
-  )
+    )
+  })
   syncRoutes()
 }

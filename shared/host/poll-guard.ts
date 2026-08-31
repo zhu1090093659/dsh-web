@@ -1,6 +1,6 @@
 /**
  * Poll-loop guard shared by the plugin family's Host halves (git-graph,
- * aionui-panel): one bounded refresh loop that never overlaps itself,
+ * task-board): one bounded refresh loop that never overlaps itself,
  * backs off on consecutive failures, and stops at a global deadline. Pure
  * logic with injectable timers, so consumers test it without wall clocks.
  */

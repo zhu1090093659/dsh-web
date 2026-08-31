@@ -8,8 +8,9 @@
  * card-store pattern.
  */
 
-import type { SettingsScope, SettingsScopeSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 
 /** The write one field's staged text performs when the card is saved. */
 export type FieldWrite =
@@ -144,7 +145,7 @@ export interface BatchResult {
 /** The optional batch surface the bridge scope adds over the SettingsScope contract. */
 interface BatchedSettingsScope {
   /** Write every operation in one scope mutation, reporting per-field success. */
-  mutate: (writes: BatchedWrite[]) => Promise<BatchResult>
+  mutateBatch: (writes: BatchedWrite[]) => Promise<BatchResult>
 }
 
 /** Constraints a numeric field's accepted drafts must satisfy, mirroring the host schema. */
@@ -345,7 +346,7 @@ export class CardForm<T> {
     const landed = new Set<string>()
     const batch = this.batchedScope()
     if (batch !== undefined) {
-      const result = await batch.mutate(plannedWrites)
+      const result = await batch.mutateBatch(plannedWrites)
       if (result.ok) {
         for (const field of result.fields) {
           if (field.landed) landed.add(field.field)
@@ -366,10 +367,10 @@ export class CardForm<T> {
     this.publish()
   }
 
-  /** The scope's batch surface when it supports one; undefined conservatively otherwise. */
+  /** The scope's compatibility batch surface when it supports one; undefined conservatively otherwise. */
   private batchedScope(): BatchedSettingsScope | undefined {
-    const candidate = this.scope as unknown as BatchedSettingsScope | undefined
-    return typeof candidate?.mutate === 'function' ? candidate : undefined
+    const candidate = this.scope as unknown as { mutateBatch?: BatchedSettingsScope['mutateBatch'] }
+    return typeof candidate.mutateBatch === 'function' ? { mutateBatch: candidate.mutateBatch } : undefined
   }
 
   /**

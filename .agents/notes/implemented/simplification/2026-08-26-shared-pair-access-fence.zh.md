@@ -12,7 +12,7 @@ Status: implemented
 
 ## Alternatives considered
 
-新建共享运行时包以依赖方式引入的方案被否决：本仓所有既有共享助手都经 sync-shared 副本分发（各包必须可独立发布，不能引入 workspace 内部依赖链），pair-access 不应成为第一个例外。彻底去掉包装（调用方统一改用单一函数名）被否决，属于无谓 churn——包装保留了各包的公开词汇并注明闸门守护的路由。同步测试文件的方案被否决：sync-shared 只复制源文件，且各包规格兼作接线验证。已弃用的 dsh-aionui-panel 没有闸门代码（纯 client），无可合并内容。
+新建共享运行时包以依赖方式引入的方案被否决：本仓所有既有共享助手都经 sync-shared 副本分发（各包必须可独立发布，不能引入 workspace 内部依赖链），pair-access 不应成为第一个例外。彻底去掉包装（调用方统一改用单一函数名）被否决，属于无谓 churn——包装保留了各包的公开词汇并注明闸门守护的路由。同步测试文件的方案被否决：sync-shared 只复制源文件，且各包规格兼作接线验证。已弃用的 dsh-aionui-panel（2026-08-28 彻底移除）没有闸门代码（纯 client），无可合并内容。
 
 ## Consequences
 

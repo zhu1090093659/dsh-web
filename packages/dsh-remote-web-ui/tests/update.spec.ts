@@ -76,13 +76,13 @@ function standaloneFixture(): { anchor: string; profileDir: string } {
     private: true,
     dependencies: {
       [SELF_PACKAGE]: "^0.1.19",
-      "@linxin666/dsh-client-ui-aionui-panel": "^0.1.19",
+      "@linxin666/dsh-client-ui-git-graph": "^0.1.19",
       "@linxin666/dsh-pet": "link:../../../code/dsh-web-ui/packages/dsh-pet",
       "@linxin666/dsh-ssh": "^0.1.19",
       react: "^18.2.0",
     },
   })
-  for (const name of [SELF_PACKAGE, "@linxin666/dsh-client-ui-aionui-panel", "@linxin666/dsh-ssh"]) {
+  for (const name of [SELF_PACKAGE, "@linxin666/dsh-client-ui-git-graph", "@linxin666/dsh-ssh"]) {
     writeManifest(join(profileDir, "node_modules", ...name.split("/")), { name, version: "0.1.19" })
   }
   return {
@@ -257,7 +257,7 @@ describe("checkUpdates", () => {
     expect(status.anchor).toBe(SELF_PACKAGE)
     expect(status.packages.map(item => item.name)).toEqual([
       SELF_PACKAGE,
-      "@linxin666/dsh-client-ui-aionui-panel",
+      "@linxin666/dsh-client-ui-git-graph",
       "@linxin666/dsh-ssh",
     ])
     expect(status.packages.map(item => item.current)).toEqual(["0.1.19", "0.1.19", "0.1.19"])
@@ -382,7 +382,7 @@ describe("resolveUpdateTarget", () => {
       profileDir,
       packages: [
         SELF_PACKAGE,
-        "@linxin666/dsh-client-ui-aionui-panel",
+        "@linxin666/dsh-client-ui-git-graph",
         "@linxin666/dsh-ssh",
       ],
     })

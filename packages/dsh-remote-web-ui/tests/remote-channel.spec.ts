@@ -45,13 +45,16 @@ describe('rewrite rules', () => {
   })
 
   it('rewrites exactly the registered WebSocket paths', () => {
-    expect(shouldRewriteWsPath('/api/events.mux')).toBe(true)
-    expect(shouldRewriteWsPath('/api/events.host')).toBe(true)
+    // 0.1.2-alpha.2: the official client opens ONE stream socket (the Typert
+    // gateway mux); the legacy /api/events.* paths no longer exist.
+    expect(shouldRewriteWsPath('/api/remote.mux')).toBe(true)
+    expect(shouldRewriteWsPath('/api/events.mux')).toBe(false)
+    expect(shouldRewriteWsPath('/api/events.host')).toBe(false)
     expect(shouldRewriteWsPath('/sidebar/ws/terminal')).toBe(true)
     expect(shouldRewriteWsPath('/sidebar/ws/agent-terminals')).toBe(true)
     expect(shouldRewriteWsPath('/api/dsh-ssh/terminal')).toBe(true)
     expect(shouldRewriteWsPath('/api/session.list')).toBe(false)
-    expect(shouldRewriteWsPath('/m/api/events.mux')).toBe(false)
+    expect(shouldRewriteWsPath('/m/api/remote.mux')).toBe(false)
   })
 
   it('preserves relative URL shape, query, and hash', () => {
@@ -179,23 +182,25 @@ describe('installRemoteChannel', () => {
     }
   })
 
-  it('rewrites registered WebSocket URLs only', () => {
+  it('rewrites the gateway stream mux and the registered WebSocket paths only', () => {
     const window = makeWindow()
     const restore = installRemoteChannel(window)
     try {
+      // The official gateway mux is the one stream socket every Remote stream
+      // rides on; without this rewrite the phone's workspace/session feeds die.
+      new window.WebSocket('wss://tunnel.example.com/api/remote.mux')
       new window.WebSocket('wss://tunnel.example.com/api/events.mux')
-      new window.WebSocket('wss://tunnel.example.com/api/events.host')
       new window.WebSocket('wss://tunnel.example.com/sidebar/ws/terminal?workspace=w-1')
       new window.WebSocket('wss://tunnel.example.com/api/dsh-ssh/terminal')
       new window.WebSocket('wss://tunnel.example.com/other/ws')
-      new window.WebSocket('wss://elsewhere.example.com/api/events.mux')
+      new window.WebSocket('wss://elsewhere.example.com/api/remote.mux')
       expect(window.state.wsUrls).toEqual([
-        'wss://tunnel.example.com/remote/api/events.mux',
-        'wss://tunnel.example.com/remote/api/events.host',
+        'wss://tunnel.example.com/remote/api/remote.mux',
+        'wss://tunnel.example.com/api/events.mux',
         'wss://tunnel.example.com/remote/sidebar/ws/terminal?workspace=w-1',
         'wss://tunnel.example.com/remote/api/dsh-ssh/terminal',
         'wss://tunnel.example.com/other/ws',
-        'wss://elsewhere.example.com/api/events.mux',
+        'wss://elsewhere.example.com/api/remote.mux',
       ])
     } finally {
       restore()
@@ -209,11 +214,11 @@ describe('installRemoteChannel', () => {
     const restore = installRemoteChannel(window)
     restore()
     await window.fetch('/api/session.list')
-    new window.WebSocket('wss://tunnel.example.com/api/events.mux')
+    new window.WebSocket('wss://tunnel.example.com/api/remote.mux')
     expect(window.fetch).toBe(originalFetch)
     expect(window.WebSocket).toBe(OriginalWebSocket)
     expect(window.state.fetchCalls[0].url).toBe('https://tunnel.example.com/api/session.list')
-    expect(window.state.wsUrls[0]).toBe('wss://tunnel.example.com/api/events.mux')
+    expect(window.state.wsUrls[0]).toBe('wss://tunnel.example.com/api/remote.mux')
   })
 })
 

@@ -10,7 +10,8 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ComponentProps,
 import { marketTurnstileToken, TURNSTILE_ACTION_INSTALL } from './turnstile.ts'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { PluginSettingsCard, BooleanField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
 import {
@@ -735,6 +736,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
         title={conflict ? t('conflict.title') : ''}
         open={conflict !== null}
         onClose={() => { setConflict(null) }}
+        closeLabel={t('cancel')}
       >
         <div>
           <p>{t('conflict.text', { dest: conflict?.dest ?? '' })}</p>

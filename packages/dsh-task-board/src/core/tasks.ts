@@ -4,6 +4,8 @@
  * Framework-free (no cordis, no runtime imports) so the state machine is
  * unit-testable in isolation.
  */
+import type { FreezeSnapshot } from './freeze-snapshot.ts'
+import type { TaskHandover, TaskHandoverInput } from './handover.ts'
 
 /** Task lifecycle status, one per kanban column. */
 export type TaskStatus = 'backlog' | 'todo' | 'running' | 'done' | 'failed'
@@ -26,6 +28,16 @@ export interface ExecutionRecord {
   result: 'succeeded' | 'failed' | 'cancelled' | undefined
   /** Human failure text when the run failed (prompt rejection or agent error). */
   error: string | undefined
+  /**
+   * Session id of the DSH session that issued the run/rerun action (issue #6
+   * audit origin). Client-asserted, not a trust boundary; absent when the run
+   * was triggered by cron (source unknown).
+   */
+  initiatedBy?: string
+  /** Freeze instant captured from the card snapshot when the run opened. */
+  frozenAt?: number
+  /** Freeze source session captured from the card snapshot when the run opened. */
+  frozenBy?: string
 }
 
 /**
@@ -62,6 +74,24 @@ export interface ScheduleRule {
   nextRunAt: number | undefined
   /** Instant of the latest scheduled trigger (ms epoch). */
   lastTriggeredAt: number | undefined
+}
+
+/**
+ * Frozen context snapshot carried by a continuation card (issue #4): the
+ * goal/progress/next text (already sanitized by the freeze gates) plus the
+ * freeze instant and the redaction warning flag.
+ */
+export interface TaskFreeze extends FreezeSnapshot {
+  /** When the snapshot was frozen (ms epoch, stamped by the create/update use case). */
+  frozenAt: number
+  /** True when the freeze gates redacted sensitive patterns out of the text. */
+  redacted?: boolean
+  /**
+   * Session id of the DSH session that authored the frozen snapshot (issue #6
+   * provenance): stamped by the Host ledger from the create/update action's
+   * initiator, or kept from the wire payload when no initiator was asserted.
+   */
+  frozenBy?: string
 }
 
 /** One task on the board. */
@@ -103,6 +133,25 @@ export interface TaskRecord {
    */
   permission?: TaskPermission
   /**
+   * Frozen context snapshot for a continuation card; absent on plain tasks.
+   * Sanitized before it enters the ledger (redaction, slash-command taint,
+   * 8 KiB per-field cap) by the protocol gate and re-normalized on load.
+   */
+  freeze?: TaskFreeze
+  /**
+   * Handover bundle carried by a continuation card (issue #5): the pinned
+   * execution triplet plus doc/script references. Sanitized before it
+   * enters the ledger by the protocol gate and re-normalized on load; the
+   * bundle's triplet overrides the legacy pin fields at execution time.
+   */
+  handover?: TaskHandover
+  /**
+   * Human confirmation stamp for an above-default effective permission
+   * (ms epoch). Absent while the binding awaits confirmation; any permission
+   * or handover change re-arms the gate by clearing it.
+   */
+  permissionConfirmedAt?: number
+  /**
    * When the task was archived (ms epoch). Archived tasks keep their status
    * and execution history, leave the main board, and cannot run until restored;
    * absent means on-board.
@@ -142,6 +191,16 @@ export interface NewTaskInput {
    * case arms it only when enabled and the expression is valid.
    */
   schedule?: { enabled: boolean; cron: string }
+  /**
+   * Optional frozen context snapshot (goal/progress/next, sanitized by the
+   * protocol gate) turning the new task into a continuation card.
+   */
+  freeze?: FreezeSnapshot & { redacted?: boolean; frozenBy?: string }
+  /**
+   * Optional handover bundle (pinned triplet + doc/script references,
+   * sanitized by the protocol gate) attached at creation.
+   */
+  handover?: TaskHandoverInput
 }
 
 /** The five kanban columns, in display order. */
@@ -180,6 +239,24 @@ export function normalizeTargetId(value: string | undefined): string | undefined
   return trimmed === undefined || trimmed === '' ? undefined : trimmed
 }
 
+/**
+ * Build the persisted freeze snapshot from a sanitized input, stamping the
+ * freeze instant (shared by the create and update use cases).
+ */
+export function freezeOf(
+  input: FreezeSnapshot & { redacted?: boolean; frozenBy?: string },
+  now: number,
+): TaskFreeze {
+  return {
+    goal: input.goal,
+    progress: input.progress,
+    next: input.next,
+    frozenAt: now,
+    ...(input.redacted === true ? { redacted: true } : {}),
+    ...(input.frozenBy === undefined || input.frozenBy === '' ? {} : { frozenBy: input.frozenBy }),
+  }
+}
+
 /** Create a task from user input. */
 export function createTask(input: NewTaskInput, now: number, id: string): TaskRecord {
   return {
@@ -194,6 +271,8 @@ export function createTask(input: NewTaskInput, now: number, id: string): TaskRe
     workspaceId: normalizeTargetId(input.workspaceId),
     mode: normalizeTargetId(input.mode),
     permission: isTaskPermission(input.permission) ? input.permission : undefined,
+    ...(input.freeze === undefined ? {} : { freeze: freezeOf(input.freeze, now) }),
+    ...(input.handover === undefined ? {} : { handover: { ...input.handover, bundledAt: now } }),
   }
 }
 
@@ -235,6 +314,7 @@ export function startExecution(
   task: TaskRecord,
   now: number,
   executionId: string,
+  initiatedBy?: string,
 ): { task: TaskRecord; execution: ExecutionRecord } {
   const execution: ExecutionRecord = {
     id: executionId,
@@ -243,6 +323,13 @@ export function startExecution(
     endedAt: undefined,
     result: undefined,
     error: undefined,
+    ...(initiatedBy === undefined || initiatedBy === '' ? {} : { initiatedBy }),
+    // Capture the card's freeze provenance on the execution record so the
+    // audit trail stays queryable even if the snapshot is replaced later.
+    ...(task.freeze === undefined ? {} : {
+      frozenAt: task.freeze.frozenAt,
+      ...(task.freeze.frozenBy === undefined ? {} : { frozenBy: task.freeze.frozenBy }),
+    }),
   }
   return {
     task: {

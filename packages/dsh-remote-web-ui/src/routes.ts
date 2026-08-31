@@ -3,15 +3,21 @@
  * under /api: the webserver matches exact paths before the connection
  * plugin's /api prefix, so these handlers own the full response lifecycle
  * and apply their own trust fence (loopback-only for control endpoints;
- * loopback-or-LAN for the phone-facing accept/heartbeat/status). The
- * cookie set on accept is the device identity the api/gate listener checks
- * on every other /api request.
+ * loopback-or-LAN for the phone-facing accept/heartbeat/status). The cookie
+ * set on accept is the device identity the plugin's own surfaces enforce:
+ * the /remote channel gate and the api/gate listener. Alongside the JSON
+ * family sit the phone-facing top-level pages (exact routes /pair-accept,
+ * /pair-app, /pair-app.sw.js) with their own LAN-or-public fence. Note that
+ * on the 0.1.2-alpha.2 cohort nothing emits api/gate — direct /api is
+ * governed by the harness fence + browser auth — while the /remote channel
+ * always enforces the pairing cookie itself.
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { z, type ZodType } from 'zod'
 import { UnknownLanAddressError, type PairingService, type PairingSnapshot } from './pairing.ts'
+import { isLoopbackAddress } from './loopback.ts'
 import { isLoopbackClient, readCookie } from './gate.ts'
 import { readJsonBody, writeJson } from './http.ts'
 
@@ -64,6 +70,22 @@ export function isTrustedApiRequest(request: IncomingMessage, trustedHosts: read
 const MAX_BODY_BYTES = 4096
 
 /**
+ * The rate-limit bucket key for one accept attempt (pure; unit-tested).
+ * The first client-visible XFF hop separates buckets behind the auto-tunnel
+ * (every internet client arrives from 127.0.0.1 there) — but only for
+ * loopback peers, since a direct LAN client can rotate the header freely.
+ * @param socketIp - the socket peer address.
+ * @param forwarded - the first XFF hop, already trimmed, if any.
+ * @param bucket - page (GET /pair-accept) vs api (POST /api/pair/accept).
+ */
+export function acceptLimitKey(socketIp: string, forwarded: string | undefined, bucket: 'page' | 'api'): string {
+  if (isLoopbackAddress(socketIp) && forwarded !== undefined && forwarded !== '') {
+    return `${bucket}|${socketIp}|${forwarded}`
+  }
+  return `${bucket}|${socketIp}`
+}
+
+/**
  * The host authority of a configured public base URL, e.g. `foo.trycloudflare.com`
  * from `https://foo.trycloudflare.com`. Undefined when the URL does not parse —
  * a malformed config then simply contributes no fence entry (and the panel
@@ -83,6 +105,130 @@ export function publicHostOf(url: string | undefined): string | undefined {
 /** Cookie lifetime: one year; revoked sessions die at the gate regardless. */
 const COOKIE_MAX_AGE_SEC = 365 * 24 * 60 * 60
 
+/**
+ * The cookieless device credential: pass the device id from the /pair-app
+ * URL into sessionStorage (and localStorage for tab reloads) before any app
+ * script runs - same key the boot patch and the channel gate read. The
+ * replaceState to '/' hides the credential URL from the address bar and
+ * leaves the SPA at its canonical root path. The reopen service worker is
+ * registered in the same breath: later navigations to '/' (history,
+ * bookmark, tab restore) must not fall through to the harness index gate,
+ * which the cookieless flow can never satisfy.
+ */
+export const APP_DEVICE_STORAGE_KEY = 'dsh-remote-device'
+
+export function appShellCaptureScript(deviceId: string): string {
+  const safeId = JSON.stringify(deviceId)
+  const register = `try{if('serviceWorker' in navigator){navigator.serviceWorker.register(${JSON.stringify(PAIR_PATHS.appServiceWorker)},{scope:'/'}).catch(function(e){})}}catch(e){}`
+  return `<script>(function(){try{sessionStorage.setItem(${JSON.stringify(APP_DEVICE_STORAGE_KEY)},${safeId});localStorage.setItem(${JSON.stringify(APP_DEVICE_STORAGE_KEY)},${safeId});}catch(e){}try{history.replaceState(null,'','/')}catch(e){}${register}})()</script>`
+}
+
+/** Patch the official index document with the device-capture script. */
+export function patchAppShell(html: string, deviceId: string): string {
+  const script = appShellCaptureScript(deviceId)
+  const marker = '</head>'
+  const at = html.indexOf(marker)
+  if (at === -1) return script + html
+  return html.slice(0, at) + script + html.slice(at)
+}
+
+/**
+ * The reopen service worker served at PAIR_PATHS.appServiceWorker. A paired
+ * phone comes back to `/` from history, bookmarks, or tab restore; the
+ * harness fallback seat answers that navigation with its browser-auth 401,
+ * and the cookieless mobile flow never holds a browser-auth cookie. The
+ * worker owns navigations to `/` instead: network-first through /pair-app
+ * (which validates the device cookie and refreshes its presence), the
+ * cached shell for offline opens, and a pass-through of the original
+ * request when the plugin no longer answers. Plain-HTTP LAN origins are not
+ * secure contexts, so the worker never registers there — the LAN reopen
+ * path stays "scan a fresh QR", which is cheap in-network.
+ *
+ * Kept as a plain string (same pattern as the capture script): it must load
+ * with no build step, run on every JS engine that ships service workers,
+ * and be assertable as source in tests. Bump SHELL_CACHE when the storage
+ * layout changes so old caches are pruned on activate.
+ */
+export function appServiceWorkerScript(): string {
+  return `'use strict';
+var SHELL_CACHE = 'dsh-remote-shell-v1';
+var SHELL_KEY = '/dsh-remote-shell';
+var APP_URL = '/pair-app';
+self.addEventListener('install', function (event) {
+  event.waitUntil(refreshShell().then(function () { return self.skipWaiting(); }));
+});
+self.addEventListener('activate', function (event) {
+  event.waitUntil(self.caches.keys().then(function (names) {
+    return Promise.all(names.map(function (name) {
+      return name === SHELL_CACHE ? Promise.resolve() : self.caches.delete(name);
+    }));
+  }).then(function () { return self.clients.claim(); }));
+});
+self.addEventListener('fetch', function (event) {
+  var request = event.request;
+  if (request.method !== 'GET' || request.mode !== 'navigate') return;
+  var path;
+  try { path = new URL(request.url).pathname; } catch (error) { return; }
+  if (path !== '/') return;
+  event.respondWith(reopen(event));
+});
+/* Network-first: a live pairing gets the current shell (the /pair-app check
+   refreshes lastSeenAt, so every reopen also keeps the session alive); a
+   refused shell passes the original navigation through for the harness's
+   own response; an unreachable server falls back to the cached shell. */
+function reopen(event) {
+  var request = event.request;
+  return fetch(APP_URL, { credentials: 'same-origin', cache: 'no-store' }).then(function (response) {
+    if (!response.ok) return fetch(request);
+    var copy = response.clone();
+    event.waitUntil(self.caches.open(SHELL_CACHE).then(function (cache) {
+      return cache.put(SHELL_KEY, copy);
+    }));
+    return response;
+  }, function () {
+    return self.caches.match(SHELL_KEY).then(function (cached) {
+      return cached !== undefined ? cached : fetch(request);
+    });
+  });
+}
+/* Best-effort shell warm-up and refresh; never rejects. */
+function refreshShell() {
+  return fetch(APP_URL, { credentials: 'same-origin', cache: 'no-store' }).then(function (response) {
+    if (!response.ok) return undefined;
+    var copy = response.clone();
+    return self.caches.open(SHELL_CACHE).then(function (cache) {
+      return cache.put(SHELL_KEY, copy);
+    });
+  }, function () { return undefined; });
+}`
+}
+
+/**
+ * The dead-end guard for a failed /pair-accept and for a dead reopen (the
+ * reopen service worker serves this page at `/` when the pairing no longer
+ * passes): a device without a live pairing has no harness browser-auth
+ * cookie, so a redirect to bare `/` would land on the harness browser-auth
+ * 401 page ("authentication required"), which reads like a broken server.
+ * Serve a plain bilingual explanation instead; an already-paired device (live
+ * device cookie, browser credential redeemed during its first scan) keeps
+ * the old behavior and is sent on to the app.
+ */
+function pairingFailurePage(): string {
+  return [
+    '<!doctype html><html><head><meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width,initial-scale=1">',
+    '<meta name="referrer" content="no-referrer">',
+    '<title>Pairing link invalid</title></head>',
+    '<body style="font-family:system-ui,sans-serif;padding:24px;max-width:32em;margin:0 auto;line-height:1.6">',
+    '<p><strong>配对已失效，或配对链接已过期。</strong></p>',
+    '<p>请在桌面端打开远程控制面板，刷新二维码后重新扫码；重新配对后本机即可恢复访问。</p>',
+    '<hr style="border:none;border-top:1px solid #ccc;margin:16px 0">',
+    '<p><strong>This pairing has expired or the link is no longer valid.</strong></p>',
+    '<p>Open the remote panel on the desktop, refresh the QR code, and scan again — re-pairing restores access on this device.</p>',
+    '</body></html>',
+  ].join('')
+}
+
 /** Route paths (exact matches under /api). */
 export const PAIR_PATHS = {
   issue: '/api/pair/issue',
@@ -92,6 +238,16 @@ export const PAIR_PATHS = {
   heartbeat: '/api/pair/heartbeat',
   status: '/api/pair/status',
   events: '/api/pair/events',
+  lanBind: '/api/pair/lan-bind',
+  /** Top-level accept-and-redirect entry the QR link points at. */
+  acceptPage: '/pair-accept',
+  /** The cookieless app landing: serves the official shell for a paired device. */
+  appPage: '/pair-app',
+  /**
+   * The reopen service worker (registered by the capture script). Root-level
+   * path so its default script-directory scope already covers `/`.
+   */
+  appServiceWorker: '/pair-app.sw.js',
 } as const
 
 /**
@@ -103,7 +259,6 @@ export const PAIR_PATHS = {
  * are tolerated exactly as the previous manual reads ignored them.
  */
 export const issuePayloadSchema = z.object({
-  workspaceId: z.string().min(1).optional(),
   address: z.string().min(1).optional(),
 })
 export const acceptPayloadSchema = z.object({
@@ -188,6 +343,22 @@ export interface PairRoutesDeps {
   lanAddresses: readonly string[]
   /** Current desktop gate policy, re-read for every status response. */
   requirePairingForLan?: boolean | (() => boolean)
+  /**
+   * LAN-bind facts for the settings card (managed patch block state, live
+   * bind host/port, firewall summary). Re-read per request so a hot-reloaded
+   * rebind and a fresh toggle round are both reflected without a restart.
+   * The route is loopback-only; undefined drops it (tests).
+   */
+  lanBindStatus?: () => Record<string, unknown>
+  /**
+   * The official index document to serve on the /pair-app landing. The
+   * plugin fetches it from the inner loopback with its own credential and
+   * patches it with the device-capture script, so a paired device loads
+   * the app shell WITHOUT passing the harness index gate - the mobile flow
+   * then needs no browser cookie at all (the channel gate accepts the
+   * cookieless header/query credential). Undefined drops the route (tests).
+   */
+  indexDocument?: (deviceId: string) => Promise<string | undefined>
 }
 
 /**
@@ -204,10 +375,13 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
 
   /** Loopback-only fence: the desktop panel's control endpoints. */
   const loopbackFence = (req: IncomingMessage): boolean => isTrustedApiRequest(req, [])
-  /** Phone-facing fence: loopback, the derived LAN literals, or the configured public host. */
+  /** Phone-facing fence: loopback, the service's live LAN literals, or the configured public host. */
   const lanFence = (req: IncomingMessage): boolean => {
     const publicHost = publicHostOf(service.publicBaseUrl)
-    return isTrustedApiRequest(req, publicHost === undefined ? lanAddresses : [...lanAddresses, publicHost])
+    // The service's LAN bases re-read per request: a hot rebind (the lan-bind
+    // toggle) updates them mid-process, and the fence must follow.
+    const bases = service.lanAddresses
+    return isTrustedApiRequest(req, publicHost === undefined ? bases : [...bases, publicHost])
   }
 
   const requireMethod = (req: IncomingMessage, res: ServerResponse, method: string): boolean => {
@@ -221,17 +395,20 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
   const acceptAttempts = new Map<string, { count: number; windowStart: number }>()
   const ACCEPT_MAX_ATTEMPTS = 10
   const ACCEPT_WINDOW_MS = 30_000
-  const rateLimitAccept = (req: IncomingMessage): boolean => {
+  /**
+   * @param bucket - the POST /api/pair/accept and the GET /pair-accept flows
+   *   count separately: a QR re-scan (page navigation) must not consume a
+   *   brute-force budget that belongs to token guessing (and vice versa).
+   */
+  const rateLimitAccept = (req: IncomingMessage, bucket: 'page' | 'api'): boolean => {
     const socketIp = (req.socket as { remoteAddress?: string } | undefined)?.remoteAddress ?? 'unknown'
-    // Behind the auto-tunnel every internet client arrives from 127.0.0.1,
-    // so a single shared bucket would let one attacker keep the legitimate
-    // owner rate-limited. Partition the availability bucket by the first
-    // client-visible XFF hop (set by the tunnel edge): XFF is untrusted for
-    // authentication and only separates buckets, it never grants access.
+    // XFF is honored only for loopback peers (the tunnel edge); see
+    // acceptLimitKey. It is untrusted for authentication and never grants
+    // access.
     const forwarded = typeof req.headers['x-forwarded-for'] === 'string'
       ? (req.headers['x-forwarded-for'].split(',')[0] ?? '').trim()
       : undefined
-    const ip = forwarded === undefined || forwarded === '' ? socketIp : socketIp + '|' + forwarded
+    const ip = acceptLimitKey(socketIp, forwarded, bucket)
     const nowMs = Date.now()
     // The map lives as long as the plugin: prune expired windows once the
     // table grows past a modest size so distinct source IPs (LAN clients,
@@ -262,18 +439,21 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       writeJson(res, 400, { ok: false, code: 'bad-payload' })
       return
     }
-    const { workspaceId, address } = payload
+    const { address } = payload
     try {
-      const { token, expiresAt } = service.issue(workspaceId, address)
+      // The QR link is the official Web GUI itself: after the accept round
+      // trip every device — phone or PC — boots the desktop SPA (phones get
+      // the injected portrait adaptation, PCs the full desktop UI), so the
+      // remote surface can never drift from the official one.
+      const { token, expiresAt } = service.issue(undefined, address)
       // The default base is the public (tunneled) URL when configured — a
       // phone anywhere can reach it — and the first LAN interface otherwise.
       // An explicit address always names a LAN literal.
       const base = address === undefined ? (service.publicBaseUrl ?? service.lanBaseUrl) : service.lanBaseUrlFor(address)
       if (base === undefined) throw new Error('remote-web-ui: base unavailable')
-      const workspaceQuery = workspaceId === undefined ? '' : `&workspace=${encodeURIComponent(workspaceId)}`
       writeJson(res, 200, {
         ok: true,
-        url: `${base}/m/?pair=${token}${workspaceQuery}`,
+        url: `${base}/pair-accept?pair=${token}`,
         token,
         expiresAt,
         // Every constructible base, so a multi-homed panel can switch the
@@ -300,7 +480,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       writeJson(res, 403, { ok: false, code: 'forbidden' })
       return
     }
-    if (rateLimitAccept(req)) {
+    if (rateLimitAccept(req, 'api')) {
       writeJson(res, 429, { ok: false, code: 'rate-limited' })
       return
     }
@@ -412,7 +592,148 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
     events.push(service.snapshot())
   }
 
-  return [
+  /** LAN-bind facts for the settings card; loopback-only, read per request. */
+  const handleLanBind = (req: IncomingMessage, res: ServerResponse): void => {
+    if (!requireMethod(req, res, 'GET')) return
+    if (!loopbackFence(req)) {
+      writeJson(res, 403, { ok: false, code: 'forbidden' })
+      return
+    }
+    writeJson(res, 200, { ok: true, ...(deps.lanBindStatus?.() ?? {}) })
+  }
+
+  /**
+   * The QR entry: navigate here with ?pair=<token>. Sets the device cookie,
+   * then redirects to the authenticated home (the connection service's
+   * launch-token URL), so a LAN device that has never seen this authority
+   * clears the browser-auth gate and boots the paired official UI in one
+   * chain: /pair-accept → /?token=<launch> → /. A device that is already
+   * authenticated (or loopback) skips straight through the same way.
+   */
+  const handleAcceptPage = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    if (!requireMethod(req, res, 'GET')) return
+    if (!lanFence(req)) {
+      res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' })
+      res.end('forbidden')
+      return
+    }
+    if (rateLimitAccept(req, 'page')) {
+      res.writeHead(429, { 'content-type': 'text/plain; charset=utf-8' })
+      res.end('rate limited')
+      return
+    }
+    const url = new URL(req.url ?? '/', 'http://pair.invalid')
+    const token = url.searchParams.get('pair') ?? ''
+    const ua = req.headers['user-agent']
+    const result = token === '' ? { ok: false as const, code: 'invalid' as const } : service.accept(token, typeof ua === 'string' ? ua : undefined)
+    if (!result.ok) {
+      // accept() now refuses only expired/unknown/stopped tokens: a consumed
+      // token stays re-usable until its expiry or replacement, so a mobile
+      // flow that split across cookie contexts (camera preview, in-app
+      // browser, system browser) can re-pair from the same link. A failure
+      // here means the link is truly dead: an already-paired device is sent
+      // on to the app, everyone else gets the bilingual explanation page
+      // instead of the harness 401 dead end.
+      const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
+      if (deviceId !== undefined && service.hasDevice(deviceId)) {
+        // An already-paired device re-opening a dead link goes straight to
+        // the cookieless app landing with its live device credential.
+        res.writeHead(303, { location: `${appOrigin(req)}/pair-app?device=${encodeURIComponent(deviceId)}`, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
+        res.end()
+        return
+      }
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
+      res.end(pairingFailurePage())
+      return
+    }
+    // Land the paired device on the cookieless app page: the official shell
+    // served by this plugin, with the device id in the URL. No harness index
+    // gate, no browser-auth cookie hop - the channel gate accepts the device
+    // credential whether or not the browser stores cookies.
+    res.writeHead(303, {
+      location: `${appOrigin(req)}/pair-app?device=${encodeURIComponent(result.deviceId)}`,
+      'cache-control': 'no-store',
+      'referrer-policy': 'no-referrer',
+      'set-cookie': [
+        `${service.config.cookieName}=${result.deviceId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${String(COOKIE_MAX_AGE_SEC)}`,
+      ],
+    })
+    res.end()
+  }
+
+  /**
+   * The cookieless app landing. A paired device (device query or live
+   * pairing cookie) receives the official index shell patched with the
+   * device-capture script; the shell itself is the official document and
+   * carries no data, so serving it needs only the device credential.
+   */
+  const handleAppPage = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    if (!requireMethod(req, res, 'GET')) return
+    if (!lanFence(req)) {
+      res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' })
+      res.end('forbidden')
+      return
+    }
+    if (rateLimitAccept(req, 'page')) {
+      res.writeHead(429, { 'content-type': 'text/plain; charset=utf-8' })
+      res.end('rate limited')
+      return
+    }
+    const url = new URL(req.url ?? '/', 'http://pair.invalid')
+    const device = url.searchParams.get('device') ?? ''
+    const cookieDevice = readCookie(req.headers.cookie, service.config.cookieName)
+    const id = (device !== '' && service.touchDevice(device))
+      ? device
+      : (cookieDevice !== undefined && service.touchDevice(cookieDevice))
+        ? cookieDevice
+        : undefined
+    if (id === undefined) {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
+      res.end(pairingFailurePage())
+      return
+    }
+    const html = await deps.indexDocument?.(id).catch(() => undefined)
+    if (html === undefined) {
+      res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })
+      res.end('remote device app unavailable')
+      return
+    }
+    res.writeHead(200, {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'referrer-policy': 'no-referrer',
+      'set-cookie': [
+        `${service.config.cookieName}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${String(COOKIE_MAX_AGE_SEC)}`,
+      ],
+    })
+    res.end(patchAppShell(html, id))
+  }
+
+  /**
+   * The reopen service worker script. Same phone-facing fence as the app
+   * page but no rate limit and no device check: the script is inert logic
+   * (no secrets, no data), and browsers re-fetch it on navigations for
+   * update checks, which must not trip a brute-force budget. no-store keeps
+   * the update check meaningful across deploys.
+   */
+  const handleAppServiceWorker = (req: IncomingMessage, res: ServerResponse): void => {
+    if (!requireMethod(req, res, 'GET')) return
+    if (!lanFence(req)) {
+      res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' })
+      res.end('forbidden')
+      return
+    }
+    res.writeHead(200, {
+      'content-type': 'text/javascript; charset=utf-8',
+      'cache-control': 'no-store',
+      // Defensive: the root-level script path already allows a `/` scope,
+      // the header keeps that explicit for engines that want it stated.
+      'service-worker-allowed': '/',
+    })
+    res.end(appServiceWorkerScript())
+  }
+
+  const routes: WebRoute[] = [
     { kind: 'exact', path: PAIR_PATHS.issue, handler: handleIssue },
     { kind: 'exact', path: PAIR_PATHS.accept, handler: handleAccept },
     { kind: 'exact', path: PAIR_PATHS.stop, handler: handleStop },
@@ -421,4 +742,22 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
     { kind: 'exact', path: PAIR_PATHS.status, handler: handleStatus },
     { kind: 'exact', path: PAIR_PATHS.events, handler: handleEvents },
   ]
+  if (deps.lanBindStatus !== undefined) {
+    routes.push({ kind: 'exact', path: PAIR_PATHS.lanBind, handler: handleLanBind })
+  }
+  routes.push({ kind: 'exact', path: PAIR_PATHS.acceptPage, handler: handleAcceptPage })
+  if (deps.indexDocument !== undefined) {
+    routes.push({ kind: 'exact', path: PAIR_PATHS.appPage, handler: handleAppPage })
+    // The reopen worker is only meaningful when the app landing it
+    // re-serves exists (same condition as /pair-app).
+    routes.push({ kind: 'exact', path: PAIR_PATHS.appServiceWorker, handler: handleAppServiceWorker })
+  }
+  return routes
+}
+
+/** The request origin (https when a tunnel edge says so). */
+function appOrigin(req: IncomingMessage): string {
+  const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
+  const origin = `http://${req.headers.host ?? '127.0.0.1'}`
+  return proto === 'https' ? origin.replace('http://', 'https://') : origin
 }

@@ -8,7 +8,7 @@
  * @module @linxin666/dsh-doctor/client
  */
 
-import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { DoctorSettings } from './doctor-types.ts'
 
 /** Read state of the enable switch. */

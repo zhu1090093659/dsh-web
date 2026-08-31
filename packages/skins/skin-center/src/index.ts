@@ -9,7 +9,7 @@
  */
 
 import { Context } from '@deepseek-ai/cordis'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 // Type-only: pulls the dsh-host-webserver service seat (ctx.webServer).
 import type {} from '@deepseek-ai/dsh-host-webserver'
@@ -55,10 +55,10 @@ export const inject = ['webServer']
  * skin center. The browser half spells the same string so it can bind the
  * scope without depending on this Host package.
  */
-export const SKIN_BACKGROUND_NAMESPACE = settingsNamespace('skin-background')
+export const SKIN_BACKGROUND_NAMESPACE = 'skin-background' as SettingsNamespace
 
 /** Versioned settings namespace for the official-theme palette editor. */
-export const SKIN_CUSTOM_THEME_NAMESPACE = settingsNamespace(SKIN_CUSTOM_THEME_NS)
+export const SKIN_CUSTOM_THEME_NAMESPACE = SKIN_CUSTOM_THEME_NS as SettingsNamespace
 
 export type SkinCustomThemeConfig = CustomThemeConfig
 
@@ -106,7 +106,7 @@ export const SkinBackgroundConfigSchema: z<SkinBackgroundConfig> = z.object({
  * persists the selection here; the host half reads weLibraryDirs to extend
  * the library scan beyond the auto-detected Steam folders.
  */
-export const SKIN_WALLPAPER_NAMESPACE = settingsNamespace('skin-wallpaper')
+export const SKIN_WALLPAPER_NAMESPACE = 'skin-wallpaper' as SettingsNamespace
 
 /**
  * Wallpaper bridge configuration. Wallpapers only ever come from the user's
@@ -161,43 +161,49 @@ function applyImpl(ctx: Context): void {
   // Optional-settings wiring for the background scrim namespace. The browser
   // half binds the scope and applies the value to the body CSS variable;
   // this side just declares the namespace + schema so the value persists and
-  // re-resolves across reloads. installSettingsSection is a no-op when no
+  // re-resolves across reloads. installSection is a no-op when no
   // settings service is mounted (pure skin-center installs skip it).
-  installSettingsSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
-    setSource: (source) => {
-      // Issue #996: the authoritative store is now the v2 active-state
-      // document (reachable through the remote pairing channel); this legacy
-      // namespace stays as the official settings page's input face. Copy a
-      // customized legacy section into the v2 store exactly once — safe at
-      // detach too, since the entry fallback resolves to schema defaults,
-      // which hasCustomSkinBackground excludes.
-      const migration = migrateBackgroundFromSettings({
-        activeStatePath: defaultActiveStatePath(),
-        readSettings: source,
-      })
-      for (const note of migration.notes) {
-        if (migration.migrated) console.info(`[ui-skin-center] background migration: ${note}`)
-        else console.error(`[ui-skin-center] background migration: ${note}`)
-      }
-    },
-    onChange: () => { /* browser half re-applies on scope publish and persists via the v2 channel */ },
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
+      setSource: (source) => {
+        // Issue #996: the authoritative store is now the v2 active-state
+        // document (reachable through the remote pairing channel); this legacy
+        // namespace stays as the official settings page's input face. Copy a
+        // customized legacy section into the v2 store exactly once — safe at
+        // detach too, since the entry fallback resolves to schema defaults,
+        // which hasCustomSkinBackground excludes.
+        const migration = migrateBackgroundFromSettings({
+          activeStatePath: defaultActiveStatePath(),
+          readSettings: source,
+        })
+        for (const note of migration.notes) {
+          if (migration.migrated) console.info(`[ui-skin-center] background migration: ${note}`)
+          else console.error(`[ui-skin-center] background migration: ${note}`)
+        }
+      },
+      onChange: () => { /* browser half re-applies on scope publish and persists via the v2 channel */ },
+    })
   })
 
-  installSettingsSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, {
-    ...CUSTOM_THEME_DEFAULTS,
-    light: { ...CUSTOM_THEME_DEFAULTS.light },
-    dark: { ...CUSTOM_THEME_DEFAULTS.dark },
-  }, {
-    setSource: () => { /* application is browser-side; value is read from the scope */ },
-    onChange: () => { /* browser half re-applies on scope publish */ },
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, {
+      ...CUSTOM_THEME_DEFAULTS,
+      light: { ...CUSTOM_THEME_DEFAULTS.light },
+      dark: { ...CUSTOM_THEME_DEFAULTS.dark },
+    }, {
+      setSource: () => { /* application is browser-side; value is read from the scope */ },
+      onChange: () => { /* browser half re-applies on scope publish */ },
+    })
   })
 
   // The wallpaper bridge namespace; the host side keeps a live getter so
   // the /we routes see weLibraryDirs changes without a restart.
   let wallpaperSource: () => SkinWallpaperConfig = () => ({})
-  installSettingsSection(ctx, SKIN_WALLPAPER_NAMESPACE, SkinWallpaperConfigSchema, {}, {
-    setSource: (source) => { wallpaperSource = source },
-    onChange: () => { /* routes re-read through the getter per request */ },
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, SKIN_WALLPAPER_NAMESPACE, SkinWallpaperConfigSchema, {}, {
+      setSource: (source) => { wallpaperSource = source },
+      onChange: () => { /* routes re-read through the getter per request */ },
+    })
   })
 
   const routes = [

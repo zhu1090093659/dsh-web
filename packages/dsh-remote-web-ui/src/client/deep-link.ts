@@ -1,24 +1,18 @@
 /**
- * Phone-side boot flow: the QR link's `pair` + `workspace` parameters.
- * Runs from the client apply on every page load, on any device:
- * - `pair` present → accept the token, then reload so the whole SPA boots
- *   with the device cookie (the accept endpoint is exempt from the pairing
- *   gate; every other /api request needs the cookie).
- * - `workspace` present (and paired) → deep-link: connect that workspace's
- *   session and open it, then strip the parameter.
- * Failure of accept leaves a sessionStorage marker the entry renders as a
- * one-time notice.
+ * Pair boot flow: the QR link's `pair` parameter. Runs from the client
+ * apply on every page load, on any device: `pair` present → accept the
+ * token, then reload so the whole SPA boots with the device cookie (the
+ * accept endpoint is exempt from the pairing gate; every other /api request
+ * needs the cookie). Every device — phone or PC — lands on the same official
+ * Web GUI; phones get the injected portrait adaptation. Failure of accept
+ * leaves a sessionStorage marker the entry renders as a one-time notice.
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
 import { acceptPair, readPairParams } from './pair-api.ts'
 
 /** sessionStorage key for the failed-pair notice. */
 export const PAIR_FAILED_MARKER = 'dsh-remote-pair-failed'
-
-/** Poll budget for the runtime services (activation order is unconstrained). */
-const SERVICE_WAIT_MS = 10_000
 
 /**
  * The page-navigation surface the boot flow drives. Browser pages use the
@@ -51,30 +45,22 @@ export const browserPage: PageSurface = {
   },
 }
 
-/** Whether this browser looks like a phone/tablet (the simplified mobile surface). */
-export function isMobileSurface(): boolean {
-  if (typeof navigator === 'undefined') return false
-  return /Android|iPhone|iPad|iPod|Mobile|mobile/i.test(navigator.userAgent)
-}
-
 /**
- * Run the pair/workspace boot flow for this page load.
- * @param ctx - client root context (workspaces/sessions read at need time).
+ * Run the pair boot flow for this page load.
+ * @param ctx - client root context (unused since the deep-link retirement;
+ * kept for call-site stability).
  * @param search - the current location.search.
  * @param page - the page surface (defaults to the browser).
  */
 export function runPairBootFlow(ctx: Context, search: string, page: PageSurface = browserPage): void {
+  void ctx
   const params = readPairParams(search)
   if (params.pair !== undefined) {
     void runAccept(params.pair, page)
-    return
-  }
-  if (params.workspace !== undefined) {
-    void runDeepLink(ctx, params.workspace, page)
   }
 }
 
-/** Accept the token, then enter the matching desktop/mobile surface. */
+/** Accept the token, then reload into the paired official UI. */
 async function runAccept(token: string, page: PageSurface): Promise<void> {
   let ok = false
   try {
@@ -90,54 +76,7 @@ async function runAccept(token: string, page: PageSurface): Promise<void> {
   url.searchParams.delete('pair')
   page.replaceState(`${url.pathname}${url.search}${url.hash}`)
   if (ok) {
-    // Phones land on the standalone simplified surface (the full desktop UI
-    // is not built for small screens). Keep the workspace target so the
-    // mobile surface can open the intended workspace instead of losing the
-    // QR context at this navigation boundary.
-    if (isMobileSurface()) {
-      url.pathname = '/m/'
-      page.navigate(`${url.pathname}${url.search}${url.hash}`)
-    } else {
-      page.reload()
-    }
+    // Every device reloads into the same official Web GUI at this origin.
+    page.reload()
   }
-}
-
-/**
- * Connect the deep-linked workspace and open its session. Waits for the
- * runtime services AND for the target workspace to appear in the workspace
- * list (both are asynchronous after boot), then connects and opens; gives
- * up silently within the budget — the workspace param is stripped either
- * way, so a late failure cannot loop.
- * @param ctx - client root context.
- * @param workspaceId - the target workspace.
- * @param page - the page surface.
- */
-async function runDeepLink(ctx: Context, workspaceId: string, page: PageSurface): Promise<void> {
-  const target = workspaceId as WorkspaceId
-  const deadline = Date.now() + SERVICE_WAIT_MS
-  while (Date.now() < deadline) {
-    const workspaces = ctx.get('workspaces')
-    const sessions = ctx.get('sessions') as { open(id: string): void } | undefined
-    if (workspaces !== undefined && sessions !== undefined) {
-      const items = workspaces.list.getSnapshot().items
-      if (items.some(item => item.workspaceId === target)) {
-        try {
-          // Open unconditionally: a host-side "current" session may already
-          // exist (multi-client mirroring), but the QR's workspace target is
-          // explicit user intent and must win.
-          const sessionId = await workspaces.connectWorkspace(target)
-          sessions.open(sessionId)
-        } catch {
-          // Unknown workspace or a failed connect: fall through to the
-          // runtime's own default initial selection.
-        }
-        break
-      }
-    }
-    await new Promise(resolve => setTimeout(resolve, 200))
-  }
-  const url = new URL(page.href)
-  url.searchParams.delete('workspace')
-  page.replaceState(`${url.pathname}${url.search}${url.hash}`)
 }

@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
-import { CardForm, booleanField, choiceField, numberField, secretField, textField, type BatchedWrite, type BatchResult } from '../client/settings/settings-form.ts'
+import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import { CardForm, booleanField, choiceField, numberField, secretField, textField } from '../client/settings/settings-form.ts'
 // The shared vitest env has no runtime: stub the snapshot-store factory so
 // bind() works in tests.
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => {
+vi.mock('@deepseek-ai/dsh-client-store', () => {
   const createSnapshotStore = (initial: unknown) => {
     let value = initial
     return {
@@ -15,21 +15,39 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => {
   return { createSnapshotStore }
 })
 
-/** Minimal in-memory scope backing a CardForm test. */
+/**
+ * Minimal in-memory scope backing a CardForm test. It models the REAL 0.1.2
+ * scope contract, not the form's assumptions: mutate takes ordered path ops;
+ * a refused mutation applies nothing, recovers with a fresh Host view, and
+ * RESOLVES (it never rejects); an accepted mutation folds the new view into
+ * the snapshot before the promise resolves; role('secret') fields are
+ * redacted from every view layer and tracked in a sidecar the snapshot never
+ * exposes.
+ */
 class FakeScope<T extends Record<string, unknown>> implements SettingsScope<T> {
   value: T
   base: T
   user: Partial<T> = {}
   writable = true
   status: 'ready' | 'loading' = 'ready'
+  revision = 1
+  /** Fields the Host declares secret (role('secret')) and strips from every view. */
+  redacted = new Set<string>()
+  /** The sidecar the redacted fields are tracked in; never exposed on the snapshot. */
+  heldSecrets = new Set<string>()
+  /** Whether the Host validator refuses the next mutation. */
+  refuseMutate = false
   private listeners = new Set<() => void>()
-  set = vi.fn(async (field: string, value: unknown) => { (this.user as Record<string, unknown>)[field] = value })
-  unset = vi.fn(async (field: string) => { delete (this.user as Record<string, unknown>)[field] })
+  set = vi.fn(async (field: string, value: unknown) => { await this.write([{ op: 'set', path: [field], value }]) })
+  unset = vi.fn(async (field: string) => { await this.write([{ op: 'unset', path: [field] }]) })
+  mutate = vi.fn(async (ops: ReadonlyArray<{ op: string; path: Array<string | number>; value?: unknown }>) => {
+    await this.write(ops)
+  })
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
   }
-  /** Notify subscribers after a mutation, the way a real scope does. */
+  /** Notify subscribers after a snapshot change, the way a real scope does. */
   notify(): void {
     for (const listener of this.listeners) listener()
   }
@@ -40,7 +58,7 @@ class FakeScope<T extends Record<string, unknown>> implements SettingsScope<T> {
       value: this.value,
       base: this.base,
       user: this.user,
-      revision: 1,
+      revision: this.revision,
       mode: 'host',
     }
   }
@@ -48,24 +66,42 @@ class FakeScope<T extends Record<string, unknown>> implements SettingsScope<T> {
     this.value = value
     this.base = value
   }
-  /** Apply the stored value over the base, the way a real scope projects its section. */
-  private reflect(): void {
-    this.value = { ...this.base, ...this.user }
-  }
-  /** Resolve after a save writes, mirroring the Host's read-back. */
+  /** Re-project the section after a direct user-layer edit, the way a real scope re-derives. */
   settle(): void {
     this.reflect()
   }
-  /** Override the set/unset spies to reflect writes like the real scope. */
-  autoReflect(): void {
-    this.set.mockImplementation(async (field: string, value: unknown) => {
-      (this.user as Record<string, unknown>)[field] = value
+  /**
+   * Run one mutation under the real contract. A refusal applies nothing and
+   * recovers with a fresh (unchanged) view. An accepted mutation updates the
+   * raw user layer — redacted fields land in the sidecar, never a view —
+   * bumps the revision only when the raw section changed, and publishes the
+   * folded view before resolving.
+   */
+  private async write(ops: ReadonlyArray<{ op: string; path: Array<string | number>; value?: unknown }>): Promise<void> {
+    if (this.refuseMutate) {
+      // Recovery reload: the Host view is re-read and republished unchanged.
       this.reflect()
-    })
-    this.unset.mockImplementation(async (field: string) => {
-      delete (this.user as Record<string, unknown>)[field]
-      this.reflect()
-    })
+      this.notify()
+      return
+    }
+    const before = JSON.stringify([this.user, [...this.heldSecrets].sort()])
+    for (const item of ops) {
+      const field = String(item.path[item.path.length - 1])
+      if (this.redacted.has(field)) {
+        if (item.op === 'unset') this.heldSecrets.delete(field)
+        else this.heldSecrets.add(field)
+        continue
+      }
+      if (item.op === 'unset') delete (this.user as Record<string, unknown>)[field]
+      else (this.user as Record<string, unknown>)[field] = item.value
+    }
+    if (JSON.stringify([this.user, [...this.heldSecrets].sort()]) !== before) this.revision += 1
+    this.reflect()
+    this.notify()
+  }
+  /** Apply the stored value over the base, the way a real scope projects its section. */
+  private reflect(): void {
+    this.value = { ...this.base, ...this.user }
   }
 }
 
@@ -121,7 +157,6 @@ describe('CardForm', () => {
 
   it('stages edits and writes them on save', async () => {
     const scope = new FakeScope<Record<string, unknown>>({ enabled: true, size: 32 })
-    scope.autoReflect()
     const form = new CardForm(scope, fields())
     const actions = form.actions()
     actions.edit('size', '64')
@@ -129,36 +164,38 @@ describe('CardForm', () => {
     expect(form.shell().dirty).toBe(true)
     expect(form.field('size')).toMatchObject({ text: '64', overridden: true, invalid: false })
     await form.save()
-    expect(scope.set).toHaveBeenCalledWith('size', 64)
-    expect(scope.set).toHaveBeenCalledWith('name', 'hugo')
+    expect(scope.mutate).toHaveBeenCalledTimes(1)
+    expect(scope.mutate).toHaveBeenCalledWith([
+      { op: 'set', path: ['size'], value: 64 },
+      { op: 'set', path: ['name'], value: 'hugo' },
+    ])
     expect(form.shell().dirty).toBe(false)
     expect(form.field('size')).toMatchObject({ text: '64', overridden: true })
   })
 
   it('blocks the save while a draft is invalid and keeps it staged', async () => {
     const scope = new FakeScope<Record<string, unknown>>({ size: 32 })
-    scope.autoReflect()
     const form = new CardForm(scope, fields())
     form.actions().edit('size', 'not-a-number')
     expect(form.shell().invalid).toBe(true)
     await form.save()
-    expect(scope.set).not.toHaveBeenCalled()
+    expect(scope.mutate).not.toHaveBeenCalled()
     expect(form.shell().dirty).toBe(true)
   })
 
   it('clears only the fields the save actually wrote, preserving in-flight edits', async () => {
     const scope = new FakeScope<Record<string, unknown>>({ enabled: true, size: 32, name: 'old' })
-    scope.autoReflect()
     const form = new CardForm(scope, fields())
     const actions = form.actions()
     actions.edit('name', 'new')
-    // A deferred write keeps the save in flight so we can stage a second edit mid-save.
+    // A deferred mutation keeps the save in flight so we can stage a second
+    // edit mid-save.
     let release: (() => void) | undefined
     const gate = new Promise<void>(resolve => { release = resolve })
-    const originalSet = scope.set.getMockImplementation()
-    scope.set.mockImplementation(async (field: string, value: unknown) => {
+    const originalMutate = scope.mutate.getMockImplementation()
+    scope.mutate.mockImplementation(async (ops) => {
       await gate
-      await originalSet!(field, value)
+      await originalMutate!(ops)
     })
     const saving = form.save()
     actions.edit('size', '99')
@@ -172,18 +209,17 @@ describe('CardForm', () => {
 
   it('keeps an in-flight edit to the SAME field being saved', async () => {
     const scope = new FakeScope<Record<string, unknown>>({ enabled: true, size: 32, name: 'old' })
-    scope.autoReflect()
     const form = new CardForm(scope, fields())
     const actions = form.actions()
     actions.edit('name', 'new')
-    // A deferred write keeps the save in flight so we can re-edit the same
+    // A deferred mutation keeps the save in flight so we can re-edit the same
     // field mid-save.
     let release: (() => void) | undefined
     const gate = new Promise<void>(resolve => { release = resolve })
-    const originalSet = scope.set.getMockImplementation()
-    scope.set.mockImplementation(async (field: string, value: unknown) => {
+    const originalMutate = scope.mutate.getMockImplementation()
+    scope.mutate.mockImplementation(async (ops) => {
       await gate
-      await originalSet!(field, value)
+      await originalMutate!(ops)
     })
     const saving = form.save()
     actions.edit('name', 'newer')
@@ -197,18 +233,81 @@ describe('CardForm', () => {
     expect(form.shell().dirty).toBe(false)
   })
 
-  it('marks the shell failed when a write does not land', async () => {
+  it('reports failure and keeps drafts when the mutation resolves without landing', async () => {
     const scope = new FakeScope<Record<string, unknown>>({ name: 'old' })
-    // Drop the write on the floor: the read-back never sees the staged value.
-    scope.set.mockImplementation(async () => {})
+    // The real 0.1.2 refusal: the scope applies nothing, recovers with a
+    // fresh view, and resolves — it never rejects.
+    scope.refuseMutate = true
     const form = new CardForm(scope, fields())
     form.actions().edit('name', 'new')
     await form.save()
+    expect(scope.mutate).toHaveBeenCalledTimes(1)
+    expect(form.shell()).toMatchObject({ failed: true, dirty: true, saving: false })
+    // A read-back failure carries no server reason: the card shows its
+    // generic failure copy, not a rejection message.
+    expect(form.shell().failedReason).toBeUndefined()
+    expect(form.field('name')).toMatchObject({ text: 'new' })
+  })
+
+  it('reports failure with the rejection message when the scope rejects (bridge contract)', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ name: 'old' })
+    // The dsh-web bridge scope still throws on a refused mutation.
+    scope.mutate.mockRejectedValue(new Error('settings-rejected'))
+    const form = new CardForm(scope, fields())
+    form.actions().edit('name', 'new')
+    await form.save()
+    expect(form.shell()).toMatchObject({ failed: true, dirty: true, saving: false })
+    expect(form.shell().failedReason).toBe('settings-rejected')
+    expect(form.field('name')).toMatchObject({ text: 'new' })
+  })
+
+  it('fails the whole atomic save when the refused batch also carried an unset', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ size: 32, name: 'old' })
+    scope.refuseMutate = true
+    const form = new CardForm(scope, fields())
+    const actions = form.actions()
+    actions.edit('name', 'new')
+    actions.edit('size', '')
+    await form.save()
+    expect(scope.mutate).toHaveBeenCalledWith([
+      { op: 'set', path: ['name'], value: 'new' },
+      { op: 'unset', path: ['size'] },
+    ])
     expect(form.shell()).toMatchObject({ failed: true, dirty: true })
+    expect(form.field('name')).toMatchObject({ text: 'new' })
+    expect(form.field('size')).toMatchObject({ text: '', overridden: false })
+  })
+
+  it('drops the drafts of a save whose set and unset writes all land', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ size: 32, name: 'old' })
+    const form = new CardForm(scope, fields())
+    const actions = form.actions()
+    actions.edit('name', 'new')
+    actions.edit('size', '')
+    await form.save()
+    expect(scope.mutate).toHaveBeenCalledWith([
+      { op: 'set', path: ['name'], value: 'new' },
+      { op: 'unset', path: ['size'] },
+    ])
+    expect(form.shell()).toMatchObject({ failed: false, dirty: false })
+    // The cleared override re-inherits the composition base.
+    expect(form.field('size')).toMatchObject({ text: '32', overridden: false })
+  })
+
+  it('clears the failure once a later save lands', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ name: 'old' })
+    scope.refuseMutate = true
+    const form = new CardForm(scope, fields())
+    form.actions().edit('name', 'new')
+    await form.save()
+    expect(form.shell().failed).toBe(true)
+    scope.refuseMutate = false
+    await form.save()
+    expect(form.shell()).toMatchObject({ failed: false, dirty: false })
   })
 
   it('resets a field back to its base value', () => {
-    const scope = new FakeScope<Record<string, unknown>>({ enabled: true })
+    const scope = new FakeScope({ enabled: true })
     const form = new CardForm(scope, fields())
     const actions = form.actions()
     actions.edit('enabled', 'false')
@@ -232,47 +331,11 @@ describe('CardForm', () => {
   })
 })
 
-/** A settings scope exposing the optional batch surface for the batch tests. */
-class BatchScope<T extends Record<string, unknown>> implements SettingsScope<T> {
-  value: T
-  base: T
-  user: Partial<T> = {}
-  writable = true
-  status: 'ready' | 'loading' = 'ready'
-  set = vi.fn(async () => {})
-  unset = vi.fn(async () => {})
-  mutate = vi.fn(async (_writes: BatchedWrite[]): Promise<BatchResult> => ({ ok: true, fields: [] }))
-  private listeners = new Set<() => void>()
-  constructor(value: T) {
-    this.value = value
-    this.base = value
-  }
-  subscribe(listener: () => void): () => void {
-    this.listeners.add(listener)
-    return () => { this.listeners.delete(listener) }
-  }
-  getSnapshot(): SettingsScopeSnapshot<T> {
-    return {
-      status: this.status,
-      writable: this.writable,
-      value: this.value,
-      base: this.base,
-      user: this.user,
-      revision: 1,
-      mode: 'host',
-    }
-  }
-}
-
-describe('CardForm batch save', () => {
+describe('CardForm atomic save', () => {
   const batchFields = () => [numberField('size'), textField('name'), textField('url')]
 
-  it('sends every planned write in one scope.mutate call', async () => {
-    const scope = new BatchScope<Record<string, unknown>>({ size: 32 })
-    scope.mutate.mockResolvedValue({
-      ok: true,
-      fields: [{ field: 'size', landed: true }, { field: 'name', landed: true }],
-    })
+  it('sends every planned write in one atomic scope.mutate call', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ size: 32 })
     const form = new CardForm(scope, batchFields())
     const actions = form.actions()
     actions.edit('size', '64')
@@ -280,79 +343,67 @@ describe('CardForm batch save', () => {
     await form.save()
     expect(scope.mutate).toHaveBeenCalledTimes(1)
     expect(scope.mutate).toHaveBeenCalledWith([
-      { field: 'size', op: 'set', value: 64 },
-      { field: 'name', op: 'set', value: 'hugo' },
+      { op: 'set', path: ['size'], value: 64 },
+      { op: 'set', path: ['name'], value: 'hugo' },
     ])
     expect(scope.set).not.toHaveBeenCalled()
     expect(scope.unset).not.toHaveBeenCalled()
     expect(form.shell().dirty).toBe(false)
   })
 
-  it('keeps only the fields that landed staged after a partial batch', async () => {
-    const scope = new BatchScope<Record<string, unknown>>({ name: 'old', url: 'old-url' })
-    scope.mutate.mockResolvedValue({
-      ok: true,
-      fields: [
-        { field: 'name', landed: true },
-        { field: 'url', landed: false },
-      ],
-    })
+  it('keeps every draft staged when the mutation resolves without landing', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ name: 'old', url: 'old-url' })
+    // Real 0.1.2 refusal: the scope applies nothing, recovers, and resolves.
+    scope.refuseMutate = true
     const form = new CardForm(scope, batchFields())
     const actions = form.actions()
     actions.edit('name', 'new')
     actions.edit('url', 'new-url')
     await form.save()
-    // The landed field's draft is dropped; the failed one stays staged.
-    expect(form.shell().failed).toBe(true)
-    expect(form.shell().dirty).toBe(true)
+    // The mutation resolved, but nothing landed: the save must report failure
+    // and keep every draft staged.
+    expect(scope.mutate).toHaveBeenCalledTimes(1)
+    expect(form.shell()).toMatchObject({ failed: true, dirty: true, saving: false })
+    expect(form.shell().failedReason).toBeUndefined()
+    expect(form.field('url')).toMatchObject({ text: 'new-url' })
+    expect(form.field('name')).toMatchObject({ text: 'new' })
+  })
+
+  it('keeps every draft staged when the scope rejects the mutation', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ name: 'old', url: 'old-url' })
+    scope.mutate.mockRejectedValue(new Error('rejected by the host validator'))
+    const form = new CardForm(scope, batchFields())
+    const actions = form.actions()
+    actions.edit('name', 'new')
+    actions.edit('url', 'new-url')
+    await form.save()
+    // The mutation is atomic: nothing landed, so every draft stays staged.
+    expect(form.shell()).toMatchObject({ failed: true, dirty: true })
+    expect(form.shell().failedReason).toBe('rejected by the host validator')
     expect(form.field('url')).toMatchObject({ text: 'new-url' })
   })
 
-  it('judges a secret field by the batch land flag, not value read-back', async () => {
-    const scope = new BatchScope<Record<string, unknown>>({ model: 'm' })
-    // The bridge redacts the apiKey secret from the user layer; the mutate view
-    // reports it through the secret-set marker, surfaced as field.landed.
-    scope.mutate.mockResolvedValue({
-      ok: true,
-      fields: [{ field: 'apiKey', landed: true }],
-    })
-    const form = new CardForm(scope, [textField('model'), secretField('apiKey')])
-    const actions = form.actions()
-    actions.edit('apiKey', 'sk-secret')
-    await form.save()
-    expect(scope.mutate).toHaveBeenCalledWith([{ field: 'apiKey', op: 'set', value: 'sk-secret' }])
-    expect(form.shell().failed).toBe(false)
-    expect(form.shell().dirty).toBe(false)
-  })
-
-  it('surfaces the host rejection message on the failed shell', async () => {
-    const scope = new BatchScope<Record<string, unknown>>({ model: 'm' })
-    scope.mutate.mockResolvedValue({
-      ok: false,
-      fields: [],
-      code: 'settings-rejected',
-      message: 'describe-image: baseURL and model must be set together',
-    })
-    const form = new CardForm(scope, batchFields())
-    form.actions().edit('size', '64')
-    await form.save()
-    expect(form.shell().failed).toBe(true)
-    expect(form.shell().failedReason).toBe('describe-image: baseURL and model must be set together')
-    expect(form.shell().dirty).toBe(true)
-  })
-})
-
-describe('CardForm secret field (per-field path)', () => {
-  it('treats a redacted secret write as landed without read-back comparison', async () => {
+  it('treats a redacted secret set as landed when the mutation settles', async () => {
     const scope = new FakeScope<Record<string, unknown>>({ model: 'm' })
-    // Redact the apiKey secret: the scope never reflects it into the user layer.
-    scope.set.mockImplementation(async () => {})
-    scope.unset.mockImplementation(async () => {})
+    // The Host redacts role('secret') fields: the key never appears in any
+    // view layer, so the save cannot compare it back and judges the set by
+    // the mutation settling.
+    scope.redacted.add('apiKey')
     const form = new CardForm(scope, [textField('model'), secretField('apiKey')])
     form.actions().edit('apiKey', 'sk-secret')
     await form.save()
-    expect(scope.set).toHaveBeenCalledWith('apiKey', 'sk-secret')
-    expect(form.shell().failed).toBe(false)
-    expect(form.shell().dirty).toBe(false)
+    expect(scope.mutate).toHaveBeenCalledWith([{ op: 'set', path: ['apiKey'], value: 'sk-secret' }])
+    expect(form.shell()).toMatchObject({ failed: false, dirty: false })
+    expect((scope.getSnapshot().user as Record<string, unknown>).apiKey).toBeUndefined()
+    expect(scope.heldSecrets.has('apiKey')).toBe(true)
+  })
+
+  it('clears a field with an unset operation when its draft is empty', async () => {
+    const scope = new FakeScope<Record<string, unknown>>({ model: 'm' })
+    const form = new CardForm(scope, [textField('model'), secretField('apiKey')])
+    form.actions().edit('model', '')
+    await form.save()
+    expect(scope.mutate).toHaveBeenCalledWith([{ op: 'unset', path: ['model'] }])
+    expect(form.shell()).toMatchObject({ failed: false, dirty: false })
   })
 })

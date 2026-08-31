@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-08-26-shared-pair-access-fence.md: 7f1fb7b044e03a72df3c5d0177543821bc8998f5
-2026-08-26-shared-pair-access-fence.zh.md: ff18ef821a1e4053c2af06681675f13304057fa7
+2026-08-26-shared-pair-access-fence.md: 0ab6677fc3720b9600faf1ab34b31fb05b18582a
+2026-08-26-shared-pair-access-fence.zh.md: 08ce1fb3bb3b509aba2c74d4b35137ab15e8b925

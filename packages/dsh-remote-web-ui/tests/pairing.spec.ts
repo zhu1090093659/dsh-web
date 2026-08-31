@@ -45,11 +45,15 @@ describe('PairingService', () => {
     expect(snapshot.tokenId).not.toBe(token)
   })
 
-  it('refuses a consumed token (one-time) with used', () => {
+  it('re-accepts a consumed token within the window, minting a fresh device', () => {
     const service = makeService()
     const { token } = service.issue()
-    expect(service.accept(token)).toMatchObject({ ok: true })
-    expect(service.accept(token)).toEqual({ ok: false, code: 'used' })
+    const first = service.accept(token)
+    expect(first).toMatchObject({ ok: true })
+    const second = service.accept(token)
+    expect(second).toMatchObject({ ok: true })
+    expect(second.ok && first.ok ? second.deviceId !== first.deviceId : false).toBe(true)
+    expect(service.hasDevice(second.ok ? second.deviceId : '')).toBe(true)
   })
 
   it('refuses an expired token as invalid', () => {

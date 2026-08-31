@@ -196,6 +196,10 @@ A status bubble can carry a small ornament ahead of its text (built-in: the spou
 - Structure is fail-closed (unknown fields, out-of-range geometry, non-PNG/WebP entries reject with diagnostics); segment content is warn-and-drop. The machine-readable twin lives at contracts/status-decoration-v1.schema.json; the authoritative validator is src/decoration.ts.
 - Sources: built-in assets/decorations/ plus the user directory $DSH_HOME/pets/decorations/<id>/ (same id overrides the built-in). Assets ride /api/pet/decoration/<id>/<file> with the same containment and allow-lists as pet assets.
 - Switch: Settings > Pet > Status decoration (on by default). The built-in whale derives from the DeepSeek wordmark (MIT); see THIRD_PARTY_NOTICES.md.
+## Announcement bubbles (pet.announce, dsh-usage linkage)
+
+Host-side sibling plugins can push one structured announcement through the `pet` cordis service (`ctx.pet.announce({ source, kind, title, ... })`); the browser half renders it as a dedicated, specially styled bubble riding the top of the session bubble stack — its own glass style with a tone accent (`ok`/`warn`/`low`), an amount pill for balance or today-spend kinds, a mini meter for plan-percent windows, and the reset instant. The payload is validated into a bounded shape (src/announce.ts): unknown fields drop, text truncates, TTL clamps to 1 s - 2 h (default 10 s; a repeating announcer declares its poll cadence so an always-mode bubble stays continuous, and the ceiling still unmounts a dead source's bubble within one missed refresh), and a malformed announcement is dropped silently. Announcements are in-memory only: the freshest one wins, an expired one stops rendering, and neither pet.json nor the ledger is touched. There is deliberately no HTTP surface — the API is the in-process service, per the cross-plugin collaboration rule.
+
 ## Built-in pets
 
 | Registry id | Selector label | Source |

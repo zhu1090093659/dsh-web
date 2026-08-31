@@ -35,6 +35,14 @@ export interface SidebarEntryOptions {
   label(): string
   /** Optional localized tooltip (title attribute). */
   tooltip?(): string
+  /**
+   * Optional locale-change subscription: re-applies label / aria-label /
+   * tooltip whenever the active locale changes. Plain-DOM rows would
+   * otherwise keep the label captured at mount; pass the SDK locale runtime
+   * subscription (ctx.locale.subscribe) so the row follows the language
+   * switch without a reload.
+   */
+  refresh?: { subscribe(listener: () => void): () => void }
   /** Click action (open/toggle the owning panel). */
   onToggle(): void
   /** Family-block position: 'before' inserts ahead of sibling plugin rows, 'after' behind them. */
@@ -75,7 +83,7 @@ function newSessionButton(root: HTMLElement): HTMLButtonElement | undefined {
 }
 
 /** Build the entry row (a detached button; insert once the shell is up). */
-function createEntry(options: SidebarEntryOptions): HTMLButtonElement {
+function createEntry(options: SidebarEntryOptions): { entry: HTMLButtonElement; applyLabel: () => void } {
   const entry = document.createElement('button')
   entry.type = 'button'
   entry.setAttribute(options.rowAttribute, '')
@@ -84,12 +92,20 @@ function createEntry(options: SidebarEntryOptions): HTMLButtonElement {
     entry.setAttribute('data-dsh-part', 'sidebar-entry')
   }
   entry.className = options.css['entry'] ?? ''
-  entry.setAttribute('aria-label', options.label())
-  if (options.tooltip !== undefined) entry.setAttribute('title', options.tooltip())
-  entry.innerHTML = '<span class="' + (options.css['entryIcon'] ?? '') + '">' + options.icon
-    + '</span><span class="' + (options.css['entryLabel'] ?? '') + '">' + options.label() + '</span>'
+  const labelSpan = document.createElement('span')
+  labelSpan.className = options.css['entryLabel'] ?? ''
+  const iconSpan = document.createElement('span')
+  iconSpan.className = options.css['entryIcon'] ?? ''
+  iconSpan.innerHTML = options.icon
+  entry.append(iconSpan, labelSpan)
+  const applyLabel = (): void => {
+    entry.setAttribute('aria-label', options.label())
+    if (options.tooltip !== undefined) entry.setAttribute('title', options.tooltip())
+    labelSpan.textContent = options.label()
+  }
+  applyLabel()
   entry.addEventListener('click', options.onToggle)
-  return entry
+  return { entry, applyLabel }
 }
 
 /** Re-insert the entry after the New Session row (before the browser region). */
@@ -131,9 +147,18 @@ export function mountSidebarEntry(options: SidebarEntryOptions): () => void {
   if (typeof document !== 'undefined' && document.querySelector(options.rowSelector) !== null) {
     return () => {}
   }
-  const entry = createEntry(options)
+  const { entry, applyLabel } = createEntry(options)
   let root: HTMLElement | undefined
   let placed = false
+  let unsubscribeRefresh: (() => void) | undefined
+  if (options.refresh !== undefined) {
+    try {
+      unsubscribeRefresh = options.refresh.subscribe(applyLabel)
+    } catch {
+      // A throwing subscription must not break the mount; the label stays at
+      // its initial value and the next reload resolves it again.
+    }
+  }
 
   const tryPlace = (): void => {
     if (root !== undefined && !root.isConnected) {
@@ -201,6 +226,7 @@ export function mountSidebarEntry(options: SidebarEntryOptions): () => void {
   return () => {
     waitObserver.disconnect()
     rootObserver.disconnect()
+    unsubscribeRefresh?.()
     unsubscribeActive?.()
     entry.remove()
   }

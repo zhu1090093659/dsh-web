@@ -14,7 +14,9 @@
  * - 发现写入 localStorage 环形缓冲(dsh-perf-integrity-ring)并 console.warn,
  *   供事后回溯; 观察器自身任何失败静默降级, 绝不影响插件宿主。
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+// Type-only: pulls the sessions Context merge.
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 
 /** 完整性发现类别。 */
 export type IntegrityKind = 'final-node-missing' | 'stale-tail' | 'draft-residue'

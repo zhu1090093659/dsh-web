@@ -133,7 +133,7 @@ describe('HostTaskLedger', () => {
     const recoveredId = ledger.state().scheduler.ledgerId
     expect(ledger.state().tasks).toEqual([])
     expect(ledger.state().scheduler.error).toContain('quarantined')
-    expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ schemaVersion: 2, tasks: [] })
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ schemaVersion: 3, tasks: [] })
     const quarantined = readdirSync(root).find(name => name.startsWith('ledger-v2.json.corrupt-'))
     expect(quarantined).toBeDefined()
     expect(readFileSync(join(root, quarantined!), 'utf8')).toBe('{not json')
@@ -560,5 +560,125 @@ describe('HostTaskLedger', () => {
     const restarted = new HostTaskLedger(root, () => NOW + 1_000)
     expect(restarted.state().scheduler.error).toBe('visible after restart')
     restarted.dispose()
+  })
+})
+
+describe('ledger schema v3 migration', () => {
+  it('migrates a v2 document losslessly to v3 on load and writes it back as v3', () => {
+    const root = tempRoot()
+    const scheduled = withSchedule(
+      { ...task('legacy-scheduled'), permission: 'workspace-write', workspaceId: 'ws-1', mode: 'mode-a' },
+      // Disabled so the startup schedule repair does not recompute it; the
+      // assertion then proves the migration itself preserved every field.
+      { enabled: false, cron: '*/5 * * * *', nextRunAt: NOW + 120_000, lastTriggeredAt: NOW - 60_000 },
+      NOW,
+    )
+    const settled = {
+      ...task('legacy-settled'),
+      archivedAt: NOW - 10,
+      executions: [
+        { id: 'exec-1', sessionId: 'session-1', startedAt: NOW - 500, endedAt: NOW - 400, result: 'succeeded' as const, error: undefined },
+        { id: 'exec-2', sessionId: 'session-2', startedAt: NOW - 300, endedAt: NOW - 200, result: 'failed' as const, error: 'boom' },
+      ],
+    }
+    const v2Document = JSON.stringify({
+      schemaVersion: 2,
+      revision: 41,
+      tasks: [scheduled, settled],
+      scheduler: { timeZone: 'UTC', ledgerId: 'ledger-legacy', lastTickAt: NOW - 1_000, importedSources: ['browser-a'] },
+      recentRequests: [{ requestId: 'req-legacy', fingerprint: 'fp-legacy' }],
+    })
+    writeFileSync(join(root, 'ledger-v2.json'), v2Document, 'utf8')
+
+    const ledger = new HostTaskLedger(root, () => NOW + 2_000)
+    const state = ledger.state()
+    expect(state.revision).toBe(41)
+    expect(state.tasks).toHaveLength(2)
+    const migratedScheduled = state.tasks.find(entry => entry.id === 'legacy-scheduled')!
+    expect(migratedScheduled.title).toBe('legacy-scheduled')
+    expect(migratedScheduled.permission).toBe('workspace-write')
+    expect(migratedScheduled.workspaceId).toBe('ws-1')
+    expect(migratedScheduled.mode).toBe('mode-a')
+    expect(migratedScheduled.schedule).toEqual({ enabled: false, cron: '*/5 * * * *', nextRunAt: NOW + 120_000, lastTriggeredAt: NOW - 60_000 })
+    const migratedSettled = state.tasks.find(entry => entry.id === 'legacy-settled')!
+    expect(migratedSettled.archivedAt).toBe(NOW - 10)
+    expect(migratedSettled.executions).toHaveLength(2)
+    expect(migratedSettled.executions[1]).toEqual({ id: 'exec-2', sessionId: 'session-2', startedAt: NOW - 300, endedAt: NOW - 200, result: 'failed', error: 'boom' })
+    expect(state.scheduler.ledgerId).toBe('ledger-legacy')
+    expect(state.scheduler.lastTickAt).toBe(NOW - 1_000)
+    // The migration is written back immediately as v3, keeping every field.
+    const onDisk = JSON.parse(readFileSync(join(root, 'ledger-v2.json'), 'utf8'))
+    expect(onDisk.schemaVersion).toBe(3)
+    expect(onDisk.revision).toBe(41)
+    expect(onDisk.tasks).toEqual(state.tasks)
+    expect(onDisk.scheduler.ledgerId).toBe('ledger-legacy')
+    expect(onDisk.scheduler.importedSources).toEqual(['browser-a'])
+    expect(onDisk.recentRequests).toEqual([{ requestId: 'req-legacy', fingerprint: 'fp-legacy' }])
+    ledger.dispose()
+  })
+
+  it('cold-starts an empty v3 ledger on a fresh directory and reloads an empty v3 document', () => {
+    const fresh = tempRoot()
+    const ledger = new HostTaskLedger(fresh, () => NOW)
+    expect(ledger.state().tasks).toEqual([])
+    expect(ledger.state().revision).toBe(0)
+    expect(JSON.parse(readFileSync(join(fresh, 'ledger-v2.json'), 'utf8')).schemaVersion).toBe(3)
+    ledger.dispose()
+
+    const existing = tempRoot()
+    writeFileSync(join(existing, 'ledger-v2.json'), JSON.stringify({
+      schemaVersion: 3, revision: 0, tasks: [], scheduler: { timeZone: 'UTC', ledgerId: 'ledger-empty' }, recentRequests: [],
+    }), 'utf8')
+    const reloaded = new HostTaskLedger(existing, () => NOW)
+    expect(reloaded.state().tasks).toEqual([])
+    expect(reloaded.state().scheduler.ledgerId).toBe('ledger-empty')
+    reloaded.dispose()
+  })
+
+  it('fails loudly and keeps the original v2 file when migration validation fails', () => {
+    const root = tempRoot()
+    const v2Document = JSON.stringify({
+      schemaVersion: 2, revision: 3,
+      tasks: [{ id: 42, title: 'broken row' }],
+      scheduler: { timeZone: 'UTC', ledgerId: 'ledger-broken' },
+      recentRequests: [],
+    })
+    writeFileSync(join(root, 'ledger-v2.json'), v2Document, 'utf8')
+    expect(() => new HostTaskLedger(root, () => NOW)).toThrow(/migration/)
+    // No silent zeroing: the original file is untouched and nothing is quarantined.
+    expect(readFileSync(join(root, 'ledger-v2.json'), 'utf8')).toBe(v2Document)
+    expect(readdirSync(root).filter(name => name.startsWith('ledger-v2.json.corrupt-'))).toEqual([])
+  })
+
+  it('quarantines a document with an unsupported future schema version', () => {
+    const root = tempRoot()
+    writeFileSync(join(root, 'ledger-v2.json'), JSON.stringify({
+      schemaVersion: 99, revision: 1, tasks: [], scheduler: {}, recentRequests: [],
+    }), 'utf8')
+    const ledger = new HostTaskLedger(root, () => NOW)
+    expect(ledger.state().tasks).toEqual([])
+    expect(ledger.state().scheduler.error).toContain('quarantined')
+    expect(readdirSync(root).some(name => name.startsWith('ledger-v2.json.corrupt-'))).toBe(true)
+    ledger.dispose()
+  })
+
+  it('round-trips a v3 document through persist and reload without field drift', () => {
+    const root = tempRoot()
+    const ledger = new HostTaskLedger(root, () => NOW)
+    ledger.applyRequest('create', {
+      kind: 'create', id: 'task-a',
+      input: { title: 'A', description: 'desc', prompt: 'p', workspaceId: 'ws-1', mode: 'mode-a', permission: 'workspace-write' },
+    })
+    ledger.applyRequest('set-schedule', { kind: 'set-schedule', taskId: 'task-a', patch: { enabled: true, cron: '0 9 * * *' } })
+    const before = ledger.state()
+    ledger.dispose()
+
+    const reloaded = new HostTaskLedger(root, () => NOW + 1_000)
+    const after = reloaded.state()
+    expect(after.revision).toBe(before.revision)
+    expect(after.tasks).toEqual(before.tasks)
+    expect(after.scheduler.ledgerId).toBe(before.scheduler.ledgerId)
+    expect(JSON.parse(readFileSync(join(root, 'ledger-v2.json'), 'utf8')).schemaVersion).toBe(3)
+    reloaded.dispose()
   })
 })

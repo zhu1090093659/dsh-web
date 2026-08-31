@@ -15,6 +15,7 @@
 import { createRoot, type Root } from 'react-dom/client'
 import type { BoardController } from '../core/controller.ts'
 import { TaskBoard } from './board/TaskBoard.tsx'
+import type { LocaleRefreshSource } from './sidebar-entry.ts'
 import css from './board.module.css'
 
 /** The injected board container (kept in the DOM, hidden when inactive). */
@@ -37,11 +38,19 @@ function conversationColumn(): HTMLElement | undefined {
  * Mount the board React tree into the center column and bind its visibility
  * to the controller's boardOpen state.
  * @param controller - the board controller driving the view.
+ * @param locale - locale-change source; when given, re-renders a mounted board
+ *   on a Language switch.
  * @returns disposer unmounting the tree and restoring the column.
  */
-export function mountBoard(controller: BoardController): () => void {
+export function mountBoard(controller: BoardController, locale?: LocaleRefreshSource): () => void {
   let root: Root | undefined
   let container: HTMLDivElement | undefined
+  let unsubscribeLocale: (() => void) | undefined
+  try {
+    unsubscribeLocale = locale?.subscribe(() => {
+      if (root !== undefined) root.render(<TaskBoard controller={controller} />)
+    })
+  } catch { /* locale service absent: the board follows its next natural re-render */ }
 
   const ensure = (): void => {
     if (container !== undefined) {
@@ -106,6 +115,7 @@ export function mountBoard(controller: BoardController): () => void {
     document.removeEventListener(ACTIVATE_EVENT, onOtherActivate)
     waitObserver.disconnect()
     unsubscribe()
+    unsubscribeLocale?.()
     document.documentElement.removeAttribute(ACTIVE_ATTR)
     root?.unmount()
     root = undefined

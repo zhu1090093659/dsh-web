@@ -1,5 +1,7 @@
 [id="root"] {
   box-sizing: border-box;
+  height: 100%;
+  padding: 66px 10px 30px;
   background: #fff;
   border: 1px solid #ccd5df;
   box-shadow: 0 1px #fff, 0 3px 12px #17202d1f;

@@ -1,4 +1,3 @@
-import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import z from "schemastery";
 import { chmodSync, closeSync, cpSync, createReadStream, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, resolve, sep } from "node:path";
@@ -9294,9 +9293,9 @@ const inject = ["webServer"];
 * skin center. The browser half spells the same string so it can bind the
 * scope without depending on this Host package.
 */
-const SKIN_BACKGROUND_NAMESPACE = settingsNamespace("skin-background");
+const SKIN_BACKGROUND_NAMESPACE = "skin-background";
 /** Versioned settings namespace for the official-theme palette editor. */
-const SKIN_CUSTOM_THEME_NAMESPACE = settingsNamespace(SKIN_CUSTOM_THEME_NS);
+const SKIN_CUSTOM_THEME_NAMESPACE = SKIN_CUSTOM_THEME_NS;
 const CustomThemeProfileSchema = z.object({
 	accent: z.string().default(CUSTOM_THEME_DEFAULTS.light.accent),
 	background: z.string().default(CUSTOM_THEME_DEFAULTS.light.background),
@@ -9333,7 +9332,7 @@ const SkinBackgroundConfigSchema = z.object({
 * persists the selection here; the host half reads weLibraryDirs to extend
 * the library scan beyond the auto-detected Steam folders.
 */
-const SKIN_WALLPAPER_NAMESPACE = settingsNamespace("skin-wallpaper");
+const SKIN_WALLPAPER_NAMESPACE = "skin-wallpaper";
 /** Runtime schema for SkinWallpaperConfig. */
 const SkinWallpaperConfigSchema = z.object({
 	enabled: z.boolean().default(true),
@@ -9360,31 +9359,37 @@ const SkinWallpaperConfigSchema = z.object({
 */
 const apply = mountOnce("@linxin666/dsh-client-ui-skin-center", applyImpl);
 function applyImpl(ctx) {
-	installSettingsSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
-		setSource: (source) => {
-			const migration = migrateBackgroundFromSettings({
-				activeStatePath: defaultActiveStatePath(),
-				readSettings: source
-			});
-			for (const note of migration.notes) if (migration.migrated) console.info(`[ui-skin-center] background migration: ${note}`);
-			else console.error(`[ui-skin-center] background migration: ${note}`);
-		},
-		onChange: () => {}
+	ctx.inject(["settings"], (settingsCtx) => {
+		settingsCtx.settings.installSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
+			setSource: (source) => {
+				const migration = migrateBackgroundFromSettings({
+					activeStatePath: defaultActiveStatePath(),
+					readSettings: source
+				});
+				for (const note of migration.notes) if (migration.migrated) console.info(`[ui-skin-center] background migration: ${note}`);
+				else console.error(`[ui-skin-center] background migration: ${note}`);
+			},
+			onChange: () => {}
+		});
 	});
-	installSettingsSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, {
-		...CUSTOM_THEME_DEFAULTS,
-		light: { ...CUSTOM_THEME_DEFAULTS.light },
-		dark: { ...CUSTOM_THEME_DEFAULTS.dark }
-	}, {
-		setSource: () => {},
-		onChange: () => {}
+	ctx.inject(["settings"], (settingsCtx) => {
+		settingsCtx.settings.installSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, {
+			...CUSTOM_THEME_DEFAULTS,
+			light: { ...CUSTOM_THEME_DEFAULTS.light },
+			dark: { ...CUSTOM_THEME_DEFAULTS.dark }
+		}, {
+			setSource: () => {},
+			onChange: () => {}
+		});
 	});
 	let wallpaperSource = () => ({});
-	installSettingsSection(ctx, SKIN_WALLPAPER_NAMESPACE, SkinWallpaperConfigSchema, {}, {
-		setSource: (source) => {
-			wallpaperSource = source;
-		},
-		onChange: () => {}
+	ctx.inject(["settings"], (settingsCtx) => {
+		settingsCtx.settings.installSection(ctx, SKIN_WALLPAPER_NAMESPACE, SkinWallpaperConfigSchema, {}, {
+			setSource: (source) => {
+				wallpaperSource = source;
+			},
+			onChange: () => {}
+		});
 	});
 	const routes = [...makeSkinCenterV2Routes(), ...makeWeRoutes({
 		getConfig: () => wallpaperSource(),

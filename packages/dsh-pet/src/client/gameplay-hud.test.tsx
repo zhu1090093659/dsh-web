@@ -9,7 +9,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 // The npm SDK's client half is a closure-factory bundle for the GUI's
 // __ModuleLoader__ (not importable under vitest); provide the defineStore
 // the pet store needs (same fake-store pattern as PetDockEntry.test.tsx).
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
+vi.mock('@deepseek-ai/dsh-client-store', () => ({
   defineStore: (spec: {
     init: () => unknown
     actions: Record<string, (draft: never, ...args: never[]) => void>

@@ -25,7 +25,7 @@ async function readJson<T>(response: Response): Promise<T> {
 export interface TaskBoardHostTransport {
   bootstrap(legacy: readonly TaskRecord[]): Promise<TaskBoardSnapshot>
   state(): Promise<TaskBoardSnapshot>
-  action(action: TaskBoardAction): Promise<TaskBoardSnapshot>
+  action(action: TaskBoardAction, initiator?: string): Promise<TaskBoardSnapshot>
   subscribe(listener: (event?: TaskBoardEventPayload) => void): () => void
 }
 
@@ -57,12 +57,12 @@ export class HttpTaskBoardHostTransport implements TaskBoardHostTransport {
     return await this.request(`${TASK_BOARD_API_PREFIX}/state`, { cache: 'no-store' })
   }
 
-  async action(action: TaskBoardAction): Promise<TaskBoardSnapshot> {
-    return await this.post(uuid(), action)
+  async action(action: TaskBoardAction, initiator?: string): Promise<TaskBoardSnapshot> {
+    return await this.post(uuid(), action, initiator)
   }
 
-  private async post(requestId: string, action: TaskBoardAction): Promise<TaskBoardSnapshot> {
-    const envelope: TaskBoardActionEnvelope = { requestId, action }
+  private async post(requestId: string, action: TaskBoardAction, initiator?: string): Promise<TaskBoardSnapshot> {
+    const envelope: TaskBoardActionEnvelope = { requestId, action, ...(initiator === undefined || initiator === '' ? {} : { initiator }) }
     return await this.request(`${TASK_BOARD_API_PREFIX}/action`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

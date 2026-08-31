@@ -6,9 +6,15 @@
  *
  * Policy: loopback requests (the desktop) pass without a device identity;
  * every non-loopback /api request must carry a live, non-revoked device
- * cookie. This makes the QR the only way into a LAN-exposed dsh web and
- * gives "停止" real teeth: revoked devices 403 on their next request,
- * including the mux/SSE stream (which then dies on reconnect).
+ * cookie — intended to make the QR the only way into a LAN-exposed dsh web
+ * and to give "停止" real teeth for direct /api callers.
+ *
+ * Cohort reality (0.1.2-alpha.2): NOTHING emits api/gate in the official
+ * runtime, so this listener never fires there and direct /api is governed
+ * solely by the harness fence + browser-auth cookie. The pairing gate with
+ * real teeth lives on the plugin's own /remote channel (remote-api.ts); the
+ * listener stays wired for cohort lines that do carry the seam, and the
+ * README security model states the gap plainly.
  */
 
 import type { IncomingMessage } from 'node:http'
@@ -100,8 +106,8 @@ export function makeGateListener(
 
 /**
  * Whether a request carries a live, non-revoked paired-device cookie for
- * this service. Sibling host routes outside /api (aionui-panel, etc.) use
- * the same check via the remoteWebUiPairing service.
+ * this service. Sibling host routes outside /api (the right-panel
+ * /sidebar/* routes, etc.) use the same check via the remoteWebUiPairing service.
  * @param service - the pairing service that owns the device table.
  * @param request - the incoming HTTP request.
  * @returns true when the cookie names a live session (and lastSeenAt was refreshed).

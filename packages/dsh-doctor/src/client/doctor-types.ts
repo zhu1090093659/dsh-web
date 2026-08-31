@@ -132,7 +132,7 @@ export type DoctorActionName =
 
 /**
  * The doctor settings namespace, registered by the Host half through
- * installSettingsSection. The browser half reads the enabled switch; the Host
+ * installSection. The browser half reads the enabled switch; the Host
  * half mounts its routes and heartbeat only while enabled.
  */
 export interface DoctorSettings {

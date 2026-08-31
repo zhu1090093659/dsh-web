@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import { currentPackageVersion } from './agent/version.ts'
 import { doctorPaths } from './agent/paths.ts'
@@ -20,7 +20,7 @@ export const name = 'doctor'
 export const inject = ['webServer']
 export interface Config { enabled?: boolean; fullProtection?: boolean; autoRepair?: boolean; autoMigrate?: boolean; heartbeatIntervalMs?: number }
 export const Config: z<Config> = z.object({ enabled: z.boolean().default(true), fullProtection: z.boolean().default(true), autoRepair: z.boolean().default(false), autoMigrate: z.boolean().default(true), heartbeatIntervalMs: z.number().min(1000).default(5000) })
-export const DOCTOR_SETTINGS_NAMESPACE = settingsNamespace('doctor')
+export const DOCTOR_SETTINGS_NAMESPACE = 'doctor' as SettingsNamespace
 
 export function effectiveConfig(config?: Config): Required<Config> {
   return { enabled: config?.enabled ?? true, fullProtection: config?.fullProtection ?? DEFAULT_DOCTOR_POLICY.fullProtection, autoRepair: config?.autoRepair ?? DEFAULT_DOCTOR_POLICY.autoRepair, autoMigrate: config?.autoMigrate ?? DEFAULT_DOCTOR_POLICY.autoMigrate, heartbeatIntervalMs: config?.heartbeatIntervalMs ?? 5000 }
@@ -65,6 +65,8 @@ export const apply = mountOnce('@linxin666/dsh-doctor', (ctx: Context, config?: 
     wasEnabled = true
     void autoEnsure.kick()
   }
-  installSettingsSection(ctx, DOCTOR_SETTINGS_NAMESPACE, Config, config ?? {}, { setSource: source => { current = source; sync() }, onChange: sync })
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, DOCTOR_SETTINGS_NAMESPACE, Config, config ?? {}, { setSource: source => { current = source; sync() }, onChange: sync })
+  })
   ctx.effect(() => { sync(); return () => { autoEnsure.suppress(); disposeRuntime?.() } }, 'doctor: runtime')
 })

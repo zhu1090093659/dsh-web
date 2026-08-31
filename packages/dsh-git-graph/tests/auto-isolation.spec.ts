@@ -7,7 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { installAutoIsolation } from '../src/client/auto-isolation.ts'
 import type { GitApi } from '../src/client/api.ts'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 
 const HOME = '/home/u/.dsh/worktrees'
 

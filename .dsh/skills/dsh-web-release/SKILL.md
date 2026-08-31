@@ -23,6 +23,17 @@ GitHub Actions 发布管线（构建/测试/npm 发布/GitHub Release）→ 发�
 - 发布通道：npm 发布全部由 GitHub Actions 管线完成，使用仓库 secret `NPM_TOKEN`
   （npm automation token，@linxin666 scope）；本机 npm 登录态不固定（无登录态时
   `npm whoami` 401 属正常；本机当前以 linxin666 登录），发版不依赖本机登录态。
+- **npm 通道已恢复（2026-08-31 起）**：release.yml 的 workflow env
+  `NPM_PUBLISH_ENABLED: 'true'`；发布管线执行完整门禁、版本校验后运行
+  `pnpm -r publish --tag latest` 与 legacy 双发（均以该开关门控），并在挂载
+  冒烟之后运行 npm-strict 的 registry 断言。开关曾因家族跟踪未上 npm 的
+  `@deepseek-ai/*` alpha cohort 而被暂停（决策记录
+  `.agents/notes/implemented/process/2026-08-28-pause-release-npm-publish-unstable-dsh-alpha.md`，
+  恢复记录
+  `.agents/notes/implemented/process/2026-08-30-restore-npm-publish-alpha.2.md`）。
+  若将来 cohort 再次无法从 registry 解析，把开关改回 `'false'`，tag 推送即退回
+  GitHub-Release-only（此时 mount smoke 的 auto 模式以 workspace 打包的 file:
+  tarball 验证本 tag 构建）。
 - 根 package.json 是 private（不发布）；`pnpm -r publish` 自动跳过。
 - **分支模型**：`dev` 是开发分支（集成分支），本地开发与远程 PR 统一以
   `dev` 为目标（远端默认分支）；`main` 是稳定分支（发布分支），只接收
@@ -221,8 +232,9 @@ gh run list --workflow=release.yml    # 查历史
 ## 4. 发布后验证（必须逐项执行）
 
 ```sh
-npm view @linxin666/dsh-web-all version          # 期望 = X.Y.Z
-npm view @linxin666/dsh-client-ui-skin-center version # 期望 = X.Y.Z
+# NPM_PUBLISH_ENABLED='true'：期望 = X.Y.Z
+npm view @linxin666/dsh-web-all version
+npm view @linxin666/dsh-client-ui-skin-center version
 # 仅在双发窗口内执行：
 npm view @linxin666/dsh-web-ui-all version       # 期望 = X.Y.Z
 # 窗口结束后：旧包版本应保持窗口末版本，且 deprecated 字段必须非空

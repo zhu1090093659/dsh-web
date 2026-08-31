@@ -4,19 +4,26 @@
  * endpoints: fetch the registry list once, poll the host snapshot (~2 s),
  * forward interactions, persist drag positions. The pet is host-global (no
  * session dimension), so it mounts directly onto 'document.body' via a
- * single React root rather than a session-scoped slot — on the
- * new-conversation screen no session exists, and a dock-mounted pet would
- * vanish there (issue #48). When the pet is hidden the entry becomes a
- * fixed-position summon button.
+ * single React root — the [data-dsh-plugin="pet"] container — rather than a
+ * session-scoped slot: on the new-conversation screen no session exists, and
+ * a dock-mounted pet would vanish there (issue #48). The sprite chrome
+ * portals into that same root, so the root owns the whole surface and a
+ * root-keyed suppressor can hide it as one unit. When the pet is hidden the
+ * entry becomes a fixed-position summon button.
  * @module @linxin666/dsh-pet/client
  */
 
-import type { ClientContext, ISessions, SessionId, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
+// Type-only: pulls the ctx.slots merge (the renderer owns the slot registry since 0.1.2).
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PetDisplayConfig } from '../persist.ts'
 import type { PetGameplayVerbResult, PetInteractResult, PetStateView } from '../service.ts'
@@ -381,7 +388,11 @@ export function apply(ctx: ClientContext): void {
       container.dataset.dshPlugin = 'pet'
       document.body.appendChild(container)
       const petRoot = createRoot(container)
-      petRoot.render(createElement(PetDockEntry, { ...injected(), t }))
+      // The sprite chrome portals into THIS root (not document.body): the
+      // root then owns the whole surface, so a root-keyed suppressor (the
+      // portrait mobile layer, which hides [data-dsh-plugin="pet"]) really
+      // hides the sprite instead of missing the portaled float.
+      petRoot.render(createElement(PetDockEntry, { ...injected(), t, portalTarget: container }))
 
       let uiGone = false
       disposeUi = () => {

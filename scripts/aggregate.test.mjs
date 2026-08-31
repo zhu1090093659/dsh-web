@@ -100,13 +100,14 @@ test('web-ui-all mounts dsh-better-sidebar as an external row', () => {
   assert.match(lines[idx + 1] ?? '', /^ {6}name: 'dsh-better-sidebar'$/)
 })
 
-test('web-ui-all mounts @mlgbnb/dsh-archive-manager as an external row', () => {
+test('web-ui-all does not mount the dsh-client-runtime-dependent @mlgbnb/dsh-archive-manager', () => {
   const patch = readFileSync(join(ROOT, 'packages/dsh-web-all/cordis.patch.yml'), 'utf8')
-  const lines = patch.split(/\r?\n/)
-  const idx = lines.findIndex((line) => /^ {4}- id: web-ui-archive-manager$/.test(line))
-  assert.ok(idx >= 0, 'web-ui-archive-manager row is missing from the aggregate patch')
-  // The paired name line resolves the scoped npm package from the profile root.
-  assert.match(lines[idx + 1] ?? '', /^ {6}name: '@mlgbnb\/dsh-archive-manager'$/)
+  // @mlgbnb/dsh-archive-manager imports the removed @deepseek-ai/dsh-client-runtime
+  // face, so on the alpha.2 cohort the host loader cannot resolve its entry and
+  // the whole boot fails. Its latest upstream build is still 1.0.7, so it stays
+  // excluded; re-add the row and this assertion together with package.json deps
+  // when upstream ships an alpha.2-compatible build.
+  assert.doesNotMatch(patch, /^ {4}- id: web-ui-archive-manager$/m, '@mlgbnb/dsh-archive-manager must not be mounted on the alpha.2 cohort')
 })
 
 test('web-ui-all expands @morlay/better-session into importable but inactive bundle rows', () => {

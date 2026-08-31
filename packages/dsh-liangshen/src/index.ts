@@ -20,7 +20,7 @@ import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import z from 'schemastery'
 import { dshHome } from './dsh-home.ts'
@@ -31,7 +31,7 @@ import { mountOnce } from './mount-once.ts'
 export const name = 'liangshen'
 
 /** Settings namespace of the plugin (the web settings surface edits it). */
-export const LIANGSHEN_SETTINGS_NAMESPACE = settingsNamespace('dsh-liangshen')
+export const LIANGSHEN_SETTINGS_NAMESPACE = 'dsh-liangshen' as SettingsNamespace
 
 /** Prompt assembly must exist before the announcement section can register. */
 export const inject = ['systemPrompt']
@@ -82,7 +82,7 @@ export const apply = mountOnce('@linxin666/dsh-liangshen', applyImpl)
 function applyImpl(ctx: Context, config?: Config): void {
   // The live source the announcement reads: the settings section once the web
   // settings surface is served, the composition entry otherwise
-  // (installSettingsSection swaps it when the namespace registers).
+  // (installSection swaps it when the namespace registers).
   let current: () => Config = () => config ?? {}
   const resolve = (): Config => ({
     announceToAgent: current().announceToAgent ?? DEFAULT_ANNOUNCE,
@@ -126,12 +126,14 @@ function applyImpl(ctx: Context, config?: Config): void {
   // The web settings surface gets the plugin's enabled / announceToAgent
   // fields from this namespace; a settings edit re-runs refresh live, and
   // deployments without a settings service keep the composition entry.
-  installSettingsSection(ctx, LIANGSHEN_SETTINGS_NAMESPACE, Config, config ?? {}, {
-    setSource: (source) => {
-      current = source
-      refresh()
-    },
-    onChange: refresh,
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, LIANGSHEN_SETTINGS_NAMESPACE, Config, config ?? {}, {
+      setSource: (source) => {
+        current = source
+        refresh()
+      },
+      onChange: refresh,
+    })
   })
 
   refresh()

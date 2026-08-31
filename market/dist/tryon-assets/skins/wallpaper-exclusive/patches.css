@@ -42,6 +42,10 @@ html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-plugin="pet"],
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-plugin="remote-web-ui"],
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-plugin="community-plugins"],
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-plugin="web-ui-settings"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-slot="details"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-surface="details"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-pane="details"],
+html[data-dsh-skin="wallpaper-exclusive"] [class*="detailsCol"],
 html[data-dsh-skin="wallpaper-exclusive"] .aionui-root,
 html[data-dsh-skin="wallpaper-exclusive"] [data-aionui-explorer-col],
 html[data-dsh-skin="wallpaper-exclusive"] [data-aionui-preview-col] {
@@ -602,19 +606,43 @@ html[data-dsh-skin="wallpaper-exclusive"] body:has([data-slot="conversation.inpu
    its panel chrome. The host is a document.body portal ([data-dsh-better-sidebar]
    / [data-dsh-panel-host]) carrying no data-dsh-part, so anchor on the stable
    host attributes + class suffixes. */
-html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_paneCard"],
-html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_tabBar"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host],
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_panel"]:not([class*="_panelHidden"]):not([class*="_panelResize"]),
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"]:not([class*="_bottomPanelHidden"]),
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_panelBody"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_sidePanel"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_sideBoard"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_pane"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_panel"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_pane"] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+}
+
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_tabBar"] {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
+}
+
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_paneCard"],
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_paneCard"] {
-  background: transparent !important;
+  background-color: transparent !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
 }
 
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_paneCard"]:hover:not(:disabled) {
   background-color: var(--dsw-wallpaper-glass-active-strong) !important;
+}
+
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] input,
+html[data-dsh-skin="wallpaper-exclusive"] [data-pane="details"] input,
+html[data-dsh-skin="wallpaper-exclusive"] [class*="detailsCol"] input {
+  background-color: var(--dsw-specific-input-major, rgba(255, 255, 255, 0.1)) !important;
+  color: var(--dsw-alias-label-primary) !important;
 }
 
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"] .xterm-viewport {

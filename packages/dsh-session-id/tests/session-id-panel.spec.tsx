@@ -2,7 +2,8 @@
 /** Session-id panel: lists every session id, exposes a copy button per row. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { SessionId, SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import { SessionIdPanel, type SessionIdPanelProps } from '../src/client/SessionIdPanel.tsx'
 import { zh, type SessionIdKey } from '../src/client/locales.ts'
 

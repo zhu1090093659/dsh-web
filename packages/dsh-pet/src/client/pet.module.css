@@ -604,3 +604,107 @@
   }
 }
 
+
+/* 公告气泡（dsh-usage 联动）：兄弟插件推送的结构化事实（余额 / 套餐用量）。
+   与状态气泡同一片蓝黑玻璃家族，但自有版式：标题 + 数值两端对齐，
+   套餐窗口带微型计量条，色调按 ok/warn/low 染描边与计量条。
+   自带长驻动画（进场后保持），不走 2.6s 反馈气泡的淡出轨道。 */
+.bubbleUsage {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  min-width: 128px;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 6px 12px;
+  white-space: nowrap;
+  background: linear-gradient(160deg, rgba(19, 28, 54, 0.92), rgba(7, 11, 26, 0.95));
+  border: 1px solid rgba(126, 152, 255, 0.45);
+  box-shadow:
+    0 4px 12px rgba(2, 6, 23, 0.35),
+    inset 0 1px 0 rgba(226, 232, 255, 0.1),
+    0 0 12px rgba(77, 107, 254, 0.18);
+  backdrop-filter: blur(8px);
+  letter-spacing: 0.02em;
+  animation: pet-usage-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bubbleUsageHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bubbleUsageTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+.bubbleUsageValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.bubbleUsageNote {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  opacity: 0.55;
+}
+
+.bubbleUsageMeter {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(226, 232, 255, 0.14);
+  overflow: hidden;
+}
+
+.bubbleUsageMeterFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #6ee7b7;
+  transition: width 300ms ease;
+}
+
+/* 色调：ok 沿用品牌蓝描边；warn 琥珀、low 珊瑚红，染描边与计量条。 */
+.bubbleUsageOk {
+  border-color: rgba(126, 152, 255, 0.45);
+}
+
+.bubbleUsageWarn {
+  border-color: rgba(251, 191, 36, 0.55);
+}
+
+.bubbleUsageWarn .bubbleUsageMeterFill {
+  background: #fbbf24;
+}
+
+.bubbleUsageLow {
+  border-color: rgba(248, 113, 113, 0.6);
+}
+
+.bubbleUsageLow .bubbleUsageMeterFill {
+  background: #f87171;
+}
+
+@keyframes pet-usage-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubbleUsage {
+    animation: none;
+  }
+}

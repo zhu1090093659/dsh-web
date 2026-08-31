@@ -1,0 +1,19 @@
+diff --git a/lib/client.js b/lib/client.js
+index eacc6d13671fbb50eb2c9e87cb89e8970abd5397..d86ddb83572cd3ec244cee088b482c28052885b3 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -4,7 +4,13 @@ window.__ModuleLoader__.load({
+ 		var module = { exports: {} };
+ 		var exports = module.exports;
+ 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+-		let _deepseek_ai_dsh_client_runtime_client = require("@deepseek-ai/dsh-client-runtime/client");
++		let _deepseek_ai_dsh_client_runtime_client = ((store, legacy) => {
++			try {
++				return require(store);
++			} catch {
++				return require(legacy);
++			}
++		})(['@deepseek-ai/dsh-client', '-store'].join(''), ['@deepseek-ai/dsh-client-runtime', '/client'].join(''));
+ 		require("@deepseek-ai/dsh-client-ui-conversation/client");
+ 		let react = require("react");
+ 		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");

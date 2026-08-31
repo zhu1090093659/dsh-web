@@ -10,7 +10,7 @@ import { apply } from '../src/index.ts'
  * service is faked to feed one resolved value per case.
  */
 
-/** The fake settings service feeds installSettingsSection one static scope. */
+/** The fake settings service feeds installSection one static scope. */
 interface FakeScope {
   get: () => Record<string, unknown>
   watch: () => () => void
@@ -39,8 +39,16 @@ function makeCtx(scope: FakeScope, appExit?: (code: number) => void) {
     get: (name: string) => name === 'appExit' ? appExit : undefined,
     // dsh-settings checks ctx.fiber.state when a registration tears down.
     fiber: { state: 0 },
-    inject: (_deps: string[], fn: (sctx: { settings: { register: () => FakeScope }; effect: typeof effect }) => void) => {
-      fn({ settings: { register: () => scope }, effect })
+    inject: (_deps: string[], fn: (sctx: { settings: { installSection: (owner: unknown, ns: unknown, schema: unknown, entry: unknown, hooks: { setSource: (current: () => unknown) => void; onChange: () => void }) => void }; effect: typeof effect }) => void) => {
+      fn({
+        settings: {
+          installSection: (_owner, _ns, _schema, _entry, hooks) => {
+            hooks.setSource(() => scope.get())
+            hooks.onChange()
+          },
+        },
+        effect,
+      })
       return () => {}
     },
     webServer: {

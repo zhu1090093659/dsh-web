@@ -17,6 +17,7 @@ describe('mountSidebarEntry L2 semantic attributes (#506)', () => {
       setAttribute: vi.fn(),
       addEventListener: vi.fn(),
       remove: vi.fn(),
+      append: vi.fn(),
     }
     vi.stubGlobal('document', {
       querySelector: () => null,

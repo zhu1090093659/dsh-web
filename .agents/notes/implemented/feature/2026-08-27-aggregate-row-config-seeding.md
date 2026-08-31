@@ -2,7 +2,7 @@
 
 Status: implemented
 
-Supersession check: no active note owns aggregate manifest sections or per-bundle default policy. The aionui default-off precedent lives only in [aggregate.yml comments](../../../packages/dsh-web-all/aggregate.yml); the compat shim and family fan-out mechanics belong to the web-all package docs.
+Supersession check: no active note owns aggregate manifest sections or per-bundle default policy. The aionui default-off precedent lived only in aggregate.yml comments until the package's removal (see [remove dsh-aionui-panel](../simplification/2026-08-28-remove-dsh-aionui-panel.md)); the compat shim and family fan-out mechanics belong to the web-all package docs.
 
 ## Problem
 

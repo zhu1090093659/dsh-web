@@ -10,7 +10,10 @@
  * localStorage backend.
  */
 import { isValidCron } from './schedule.ts'
-import { isTaskPermission, isTaskStatus, normalizeTargetId, type ScheduleRule, type TaskRecord, type TaskPermission, type TaskStatus } from './tasks.ts'
+import { isTaskPermission, isTaskStatus, normalizeTargetId, type ScheduleRule, type TaskFreeze, type TaskRecord, type TaskPermission, type TaskStatus } from './tasks.ts'
+import type { TaskHandover } from './handover.ts'
+import { sanitizeFreezeSnapshot } from './freeze-snapshot.ts'
+import { sanitizeHandover } from './handover.ts'
 
 /** Persistence seam for the task ledger. */
 export interface TaskStore {
@@ -72,6 +75,9 @@ function isTaskRecordShape(value: unknown): value is Omit<TaskRecord, 'status'> 
     if (entry.endedAt !== undefined && typeof entry.endedAt !== 'number') return false
     if (entry.result !== undefined && entry.result !== 'succeeded' && entry.result !== 'failed' && entry.result !== 'cancelled') return false
     if (entry.error !== undefined && typeof entry.error !== 'string') return false
+    if (entry.initiatedBy !== undefined && typeof entry.initiatedBy !== 'string') return false
+    if (entry.frozenBy !== undefined && typeof entry.frozenBy !== 'string') return false
+    if (entry.frozenAt !== undefined && typeof entry.frozenAt !== 'number') return false
   }
   return true
 }
@@ -105,6 +111,44 @@ function normalizeSchedule(schedule: unknown): ScheduleRule | undefined {
     nextRunAt: typeof rule.nextRunAt === 'number' ? rule.nextRunAt : undefined,
     lastTriggeredAt: typeof rule.lastTriggeredAt === 'number' ? rule.lastTriggeredAt : undefined,
   }
+}
+
+/**
+ * Repair a persisted freeze snapshot: shape + gate re-check (slash taint,
+ * redaction idempotence, byte cap); a malformed or tainted snapshot is
+ * dropped (undefined) rather than dropping the whole task row, mirroring
+ * the schedule repair policy.
+ */
+function normalizeFreeze(value: unknown): TaskFreeze | undefined {
+  const result = sanitizeFreezeSnapshot(value, ['frozenAt', 'redacted', 'frozenBy'])
+  if (!result.ok) return undefined
+  const frozenAt = result.extras.frozenAt
+  if (typeof frozenAt !== 'number' || !Number.isFinite(frozenAt)) return undefined
+  if (result.extras.redacted !== undefined && result.extras.redacted !== true) return undefined
+  const frozenBy = result.extras.frozenBy
+  if (frozenBy !== undefined && (typeof frozenBy !== 'string' || frozenBy === '')) return undefined
+  return {
+    goal: result.snapshot.goal,
+    progress: result.snapshot.progress,
+    next: result.snapshot.next,
+    frozenAt,
+    ...(result.redacted || result.extras.redacted === true ? { redacted: true } : {}),
+    ...(frozenBy === undefined ? {} : { frozenBy }),
+  }
+}
+
+/**
+ * Repair a persisted handover bundle: shape re-check through the same gate
+ * as the wire path; a malformed bundle is dropped rather than dropping the
+ * task row (mirroring the schedule/freeze repair policy).
+ */
+function normalizeHandover(value: unknown): TaskHandover | undefined {
+  if (typeof value !== 'object' || value === null) return undefined
+  const { bundledAt, ...rest } = value as Record<string, unknown> & { bundledAt: unknown }
+  const bundle = sanitizeHandover(rest)
+  if (bundle === undefined) return undefined
+  if (typeof bundledAt !== 'number' || !Number.isFinite(bundledAt)) return undefined
+  return { ...bundle, bundledAt }
 }
 
 /** Parse + validate a persisted ledger document; invalid rows are dropped. */
@@ -141,6 +185,9 @@ export function parseLedger(raw: string | null): TaskRecord[] {
     task.mode = normalizeTargetId(row.mode)
     task.archivedAt = typeof row.archivedAt === 'number' && Number.isFinite(row.archivedAt) ? row.archivedAt : undefined
     task.permission = isTaskPermission(row.permission) ? row.permission as TaskPermission : undefined
+    task.freeze = normalizeFreeze(row.freeze)
+    task.handover = normalizeHandover(row.handover)
+    task.permissionConfirmedAt = typeof row.permissionConfirmedAt === 'number' && Number.isFinite(row.permissionConfirmedAt) ? row.permissionConfirmedAt : undefined
     tasks.push(task)
   }
   return tasks

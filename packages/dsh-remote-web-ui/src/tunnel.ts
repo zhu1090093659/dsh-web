@@ -60,7 +60,13 @@ async function defaultEnsureBinary(): Promise<void> {
 function defaultFactory(targetUrl: string): TunnelHandle {
   // `--no-autoupdate`: the binary must never upgrade itself out from under
   // the manager (a self-updated binary would break the pinned lifecycle).
-  return Tunnel.quick(targetUrl, { '--no-autoupdate': true })
+  // `--protocol http2`: the default `auto` prefers QUIC (UDP 7844), which
+  // wedges on fake-ip TUN proxies and QUIC-hostile networks — the connector
+  // holds the hostname but reports readyConnections: 0 forever (edge 1033),
+  // and the auto fallback never fires on a half-open QUIC handshake. http2
+  // rides TCP through the same paths reliably (verified live: auto stuck at
+  // ready 0 on two fresh registrations; http2 ready immediately).
+  return Tunnel.quick(targetUrl, { '--no-autoupdate': true, '--protocol': 'http2' })
 }
 
 /** Node timers. */

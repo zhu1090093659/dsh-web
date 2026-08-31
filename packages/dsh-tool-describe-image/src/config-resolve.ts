@@ -12,7 +12,7 @@ import z from 'schemastery'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import { DEFAULT_MAX_BYTES } from './media.ts'
 
 /** Environment-variable name the API key resolves through when no inline key is configured. */
@@ -175,7 +175,7 @@ export const Config: z<Config> = z.object({
 })
 
 /** Settings namespace carrying the endpoint, model, and key reference the Plugins card edits. */
-export const DESCRIBE_IMAGE_SETTINGS_NAMESPACE = settingsNamespace('describe-image')
+export const DESCRIBE_IMAGE_SETTINGS_NAMESPACE = 'describe-image' as SettingsNamespace
 
 /** One resolved, validated configuration snapshot; defaults and beyond-schema constraints applied. */
 export interface ResolvedConfig {

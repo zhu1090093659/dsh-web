@@ -12,7 +12,7 @@ export default clientBundle('@linxin666/dsh-client-ui-web-ui-settings', ['src/in
     '@deepseek-ai/dsh-api-remotes',
     '@deepseek-ai/dsh-client-connection',
     '@deepseek-ai/dsh-client-locale',
-    '@deepseek-ai/dsh-client-runtime',
+    '@deepseek-ai/dsh-client-store',
     '@deepseek-ai/dsh-client-ui-settings',
     '@deepseek-ai/dsh-client-ui-slots',
     '@deepseek-ai/dsh-host-webserver',

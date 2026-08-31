@@ -154,6 +154,7 @@ export const zh = {
   'common.error': '出错：{error}',
   'common.refresh': '刷新',
   'common.confirm': '确定',
+  'error.disabled': 'SSH 插件在宿主端未启用。请前往「设置 → Web 插件 → SSH」打开 enabled 开关。',
 } as const
 
 export const en: Record<keyof typeof zh, string> = {
@@ -301,6 +302,7 @@ export const en: Record<keyof typeof zh, string> = {
   'common.error': 'Error: {error}',
   'common.refresh': 'Refresh',
   'common.confirm': 'Confirm',
+  'error.disabled': 'The SSH plugin is disabled on the host. Please enable it in Settings → Web Plugins → SSH.',
 }
 
 /** Locale key union. */

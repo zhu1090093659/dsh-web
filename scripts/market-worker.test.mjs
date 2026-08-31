@@ -1,7 +1,20 @@
-import test from 'node:test'
+import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 
 import worker from '../market/worker/src/index.js'
+
+const workerCacheEntries = new Map()
+const workerCache = {
+  async match(request) {
+    const response = workerCacheEntries.get(request.url)
+    return response ? response.clone() : undefined
+  },
+  async put(request, response) {
+    workerCacheEntries.set(request.url, response.clone())
+  },
+}
+globalThis.caches = { default: workerCache }
+beforeEach(() => workerCacheEntries.clear())
 
 function context() { return { waitUntil() {} } }
 
@@ -391,7 +404,7 @@ test('telemetry rejects malformed submissions', async () => {
   assert.equal(db.batches.length, 0)
 })
 
-test('telemetry summary returns aggregates only and prunes old events', async () => {
+test('telemetry summary returns aggregates without pruning old events', async () => {
   const db = telemetryDb({
     summary: [
       [{ day: '2026-05-01', pv: 12, uv: 5 }],
@@ -419,8 +432,7 @@ test('telemetry summary returns aggregates only and prunes old events', async ()
   assert.equal(payload.plugins.items[0].active_today, 1)
   assert.equal(payload.plugins.items[0].channels.market, 1)
   assert.equal(payload.plugins.items[0].versions[0].version, '1.2.3')
-  assert.equal(db.runs.length, 1)
-  assert.match(db.runs[0].sql, /DELETE FROM telemetry_events/)
+  assert.equal(db.runs.length, 0)
 })
 
 test('telemetry summary binds the requested pagination windows', async () => {
@@ -482,13 +494,14 @@ test('telemetry endpoints degrade cleanly without D1', async () => {
   assert.equal(summary.status, 503)
 })
 
-/** Fake D1 with a first() method for the users-badge count query. */
+/** Fake D1 with a precomputed users-badge row. */
 function badgeDb(users) {
   return {
-    prepare() {
+    prepare(sql) {
       return {
         bind() { return this },
-        async first() { return { users } },
+        async first() { return String(sql).includes('badge_cache') ? { value: users } : { users } },
+        async run() {},
       }
     },
   }

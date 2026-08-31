@@ -121,7 +121,7 @@ export function UpdateEntry({ wide, t }: UpdateEntryProps) {
       <button
         type="button"
         className={css.trigger}
-        data-wide={wide ? undefined : "rail"}
+        data-wide={wide ? (updateAvailable ? "wide" : undefined) : "rail"}
         data-update-available={updateAvailable ? "true" : undefined}
         aria-label={updateLabel}
         aria-expanded={open}
@@ -129,6 +129,9 @@ export function UpdateEntry({ wide, t }: UpdateEntryProps) {
         onClick={openPanel}
       >
         <IconDownloadOutline16 size={wide ? 16 : 18} />
+        {updateAvailable && wide && (
+          <span className={css.updateBadgeText}>{t("update.badge")}</span>
+        )}
       </button>
       {open && createPortal((
         <div className={css.overlay} role="presentation">

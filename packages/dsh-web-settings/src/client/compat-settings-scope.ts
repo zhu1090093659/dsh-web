@@ -18,9 +18,10 @@ import { Service, type Context } from '@deepseek-ai/cordis'
 // Type-only: pulls the settings-surface Context merge (ctx.settingsScope) and
 // the forwarded settings invalidation face (ctx.remote).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type { SettingsScope, SettingsScopeSnapshot, SettingsScopeSpec, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsPathOpView } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SettingsScope, SettingsScopeSnapshot, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { WEB_UI_SETTINGS_BRIDGE_PREFIX } from '../protocol.ts'
 import type { BridgeDescribeResult, BridgeMutateRequest, BridgeMutateResult } from '../protocol.ts'
 
@@ -218,8 +219,19 @@ class BridgeScopeController<T> implements SettingsScope<T> {
    * @param fields - the operations to apply, in order.
    * @returns the batch outcome and per-field landed flags.
    */
-  mutate(fields: BridgeBatchOp[]): Promise<BridgeBatchResult> {
-    return this.enqueue(() => this.writeBatch(fields))
+  mutate(fields: readonly SettingsPathOpView[], expectedRevision?: number): Promise<void> {
+    const bridgeFields: BridgeBatchOp[] = fields.map(field => 'value' in field
+      ? { field: field.path.join('.'), op: field.op, value: field.value }
+      : { field: field.path.join('.'), op: field.op })
+    return this.enqueue(async () => {
+      const result = await this.writeBatch(bridgeFields, expectedRevision)
+      if (!result.ok) throw new Error(result.message ?? result.code ?? 'settings mutation rejected')
+    })
+  }
+
+  /** Compatibility batch result used by generated settings forms. */
+  mutateBatch(fields: BridgeBatchOp[], expectedRevision?: number): Promise<BridgeBatchResult> {
+    return this.enqueue(() => this.writeBatch(fields, expectedRevision))
   }
 
   /** Stop queued operations and wait for the current bridge call to settle. */
@@ -289,8 +301,8 @@ class BridgeScopeController<T> implements SettingsScope<T> {
     this.accept(response.result.value.value, response.result.value, undefined)
   }
 
-  private async writeBatch(fields: BridgeBatchOp[]): Promise<BridgeBatchResult> {
-    const revision = this.getSnapshot().revision
+  private async writeBatch(fields: BridgeBatchOp[], expectedRevision?: number): Promise<BridgeBatchResult> {
+    const revision = expectedRevision ?? this.getSnapshot().revision
     const ops = fields.map(({ field, op, value }) => op === 'set'
       ? { op, path: [field], value }
       : { op, path: [field] })
@@ -360,7 +372,7 @@ export interface CompatScopeOptions<T> {
  * @param options - the official scope, the namespace, and the loopback fetch.
  * @returns the compatibility scope implementing the SettingsScope contract.
  */
-export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsScope<T> & { load(): Promise<void> } & { mutate?: (fields: BridgeBatchOp[]) => Promise<BridgeBatchResult> } & { dispose(): void } {
+export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsScope<T> & { load(): Promise<void>; mutateBatch?: (fields: BridgeBatchOp[], expectedRevision?: number) => Promise<BridgeBatchResult> } & { dispose(): void } {
   const { namespace, primary } = options
   const fallback = options.fetchFn === undefined
     ? undefined
@@ -373,9 +385,9 @@ export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsSc
   // The batched write over the official wire: every op rides one
   // settings.mutate so the Host validate hook judges the batch as a unit,
   // then the primary scope re-reads so the wrapper snapshot follows.
-  const officialBatch = options.official === undefined ? undefined : async (fields: BridgeBatchOp[]): Promise<BridgeBatchResult> => {
+  const officialBatch = options.official === undefined ? undefined : async (fields: BridgeBatchOp[], expectedRevision?: number): Promise<BridgeBatchResult> => {
     const official = options.official!
-    const revision = primary.getSnapshot().revision
+    const revision = expectedRevision ?? primary.getSnapshot().revision
     const ops: OfficialWireOp[] = fields.map(({ field, op, value }) => op === 'set'
       ? { op, path: [field], value }
       : { op, path: [field] })
@@ -425,33 +437,35 @@ export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsSc
   }))
   if (fallback !== undefined) unsubscribes.push(fallback.subscribe(publish))
   if (primary.getSnapshot().status === 'unavailable') startFallback()
-  return {
+  const result = {
     dispose: () => {
       for (const unsubscribe of unsubscribes.splice(0)) unsubscribe()
       void fallback?.dispose()
     },
     getSnapshot: () => store.getSnapshot(),
     subscribe: listener => store.subscribe(listener),
-    set: (field, value) => active().set(field, value),
-    unset: field => active().unset(field),
+    mutate: (ops: readonly SettingsPathOpView[], expectedRevision?: number) => {
+      const backend = active()
+      return backend.mutate(ops, expectedRevision)
+    },
+    set: (field: string, value: unknown) => active().set(field, value),
+    unset: (field: string) => active().unset(field),
     load: async () => {
       fallbackStarted = true
       await fallback?.load()
     },
-    // The batch surface follows the active transport: the bridge controller
-    // serves it while the bridge owns the namespace; when the official scope
-    // serves it (rc.7+ apiproxy exposes the family namespaces), the batch
-    // rides one official settings.mutate instead — the official scope's own
-    // per-field writes would deadlock on cross-field validate hooks. A getter
-    // keeps the capability decision at call time instead of freezing it when
-    // the wrapper is built.
-    get mutate() {
+    // Resolve the compatibility batch capability against the active transport
+    // at call time. The official scope may still be loading when this wrapper
+    // is created and later become ready, in which case the legacy result
+    // surface must disappear instead of returning an unsupported result.
+    get mutateBatch() {
       const backend = active()
-      if (fallback !== undefined && backend === fallback && typeof fallback.mutate === 'function') return fallback.mutate.bind(fallback)
-      if (backend === primary && primary.getSnapshot().status === 'ready' && officialBatch !== undefined) return officialBatch
+      if (backend === fallback && fallback !== undefined) return fallback.mutateBatch.bind(fallback)
+      if (backend === primary && officialBatch !== undefined) return officialBatch
       return undefined
     },
-  }
+  } as SettingsScope<T> & { load(): Promise<void>; mutateBatch?: (fields: BridgeBatchOp[], expectedRevision?: number) => Promise<BridgeBatchResult>; dispose(): void }
+  return result
   function active(): SettingsScope<T> {
     return primary.getSnapshot().status === 'ready' ? primary : fallback ?? primary
   }

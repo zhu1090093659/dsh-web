@@ -1,7 +1,7 @@
 /**
  * dsh-perf 会话列表 store 发布门控(#4)。
  *
- * 问题(官方 bundle 实锤): dsh-client-runtime projectList 每次 manager flush 都把
+ * 问题(官方 bundle 实锤): sessions projectList 每次 manager flush 都把
  * {ids, byId, current, phase, subagentsByParent, jobsBySession, currentAddress} 全部
  * 重建为新对象再 list.set —— 即使可见内容毫无变化, zustand 按 Object.is 必通知,
  * 侧栏 SessionTree/FlatList/SearchResults 的 useSessions((s) => s) 整树重渲染。

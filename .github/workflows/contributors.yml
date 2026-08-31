@@ -40,6 +40,10 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          # packageManager in package.json pins pnpm, but this workflow never
+          # installs dependencies; leave the package-manager cache off so
+          # setup-node does not require a pnpm binary.
+          package-manager-cache: false
 
       - name: Regenerate contributor sections
         run: |

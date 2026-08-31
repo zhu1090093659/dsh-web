@@ -7,8 +7,9 @@
  * card-store pattern.
  */
 
-import type { SettingsScope, SettingsScopeSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 
 /** The write one field's staged text performs when the card is saved. */
 export type FieldWrite =
@@ -22,9 +23,11 @@ export interface FieldSpec {
   /**
    * Whether the Host treats this field as a secret and redacts its value from
    * the read-back (role('secret') in the section schema). Redacted secrets are
-   * never compared against the draft on save; the field lands when the scope
-   * reports the write succeeded (its secret-set marker under the bridge), so
-   * a successful secret save is not misreported as failed.
+   * never compared against the draft on save: the Host strips them from every
+   * wire view layer, so the settled snapshot carries nothing to read back. A
+   * staged secret set is judged by the mutation settling; the rest of its
+   * batch, when one exists, is still judged by read-back, and the atomic
+   * mutation lands every write or none.
    */
   secret?: boolean
   /** Render a stored value as draft text; the empty string when the section carries none. */
@@ -52,8 +55,8 @@ export interface CardShell {
   available: boolean
   /**
    * Whether the namespace is actually served to this client. False when the
-   * Host deployment does not expose it (e.g. the official apiproxy settings
-   * allowlist omits third-party namespaces): the card renders an explanation
+   * Host deployment does not expose it (e.g. the owning plugin's settings
+   * domain is not mounted): the card renders an explanation
    * instead of its form, so a missing namespace never looks like a missing
    * plugin.
    */
@@ -100,13 +103,17 @@ interface StagedEdit {
 interface PlannedWrite {
   /** Field this entry writes. */
   field: string
-  /** The durable write this entry performs, described for a batched scope. */
+  /** The durable write this entry performs, inside the save's one atomic mutation. */
   op: BatchedWrite
-  /** Perform the write and report whether the Host holds the staged value afterwards. */
-  run: (() => Promise<boolean>) | undefined
+  /**
+   * Read the settled snapshot back and report whether the Host holds this
+   * write's effect. Undefined when the draft is not a value the field
+   * accepts: there is nothing to write, and the entry blocks the save.
+   */
+  judge: (() => boolean) | undefined
 }
 
-/** One durable write a batched settings scope performs. */
+/** One durable write inside the save's atomic scope mutation. */
 export interface BatchedWrite {
   /** Field this entry writes. */
   field: string
@@ -114,36 +121,6 @@ export interface BatchedWrite {
   op: 'set' | 'unset'
   /** Value for op set (absent for unset). */
   value?: unknown
-}
-
-/** Per-field outcome of one batched scope write. */
-export interface BatchedFieldResult {
-  /** Field this entry writes. */
-  field: string
-  /** Whether the Host accepted this field's write (per the read-back view). */
-  landed: boolean
-}
-
-/**
- * Result of a batched scope write. The bridge scope posts every planned write
- * in one /mutate so the Host validate hook judges baseURL+model together; a
- * batched refusal fails the whole save rather than per-field.
- */
-export interface BatchResult {
-  /** Whether the whole mutate was accepted. */
-  ok: boolean
-  /** Per-field success, in the request order (always present when ok). */
-  fields: BatchedFieldResult[]
-  /** Host rejection code (mutate refused). */
-  code?: string
-  /** Host rejection message (mutate refused). */
-  message?: string
-}
-
-/** The optional batch surface the bridge scope adds over the SettingsScope contract. */
-interface BatchedSettingsScope {
-  /** Write every operation in one scope mutation, reporting per-field success. */
-  mutate: (writes: BatchedWrite[]) => Promise<BatchResult>
 }
 
 /** Constraints a numeric field's accepted drafts must satisfy, mirroring the host schema. */
@@ -187,8 +164,8 @@ export function textField(field: string): FieldSpec {
 /**
  * A free-text field the Host treats as a secret and redacts from the read-back
  * (role('secret') in the section schema). The card still edits it like text,
- * but a save never compares the redacted value back and relies on the scope
- * reporting the write landed.
+ * but a save never compares the redacted value back: the staged set is judged
+ * by the mutation settling (see {@link FieldSpec.secret}).
  */
 export function secretField(field: string): FieldSpec {
   return { ...textField(field), secret: true }
@@ -276,7 +253,7 @@ export class CardForm<T> {
       exposed: snapshot.status === 'ready',
       writable: snapshot.writable,
       dirty: plan.length > 0,
-      invalid: plan.some(item => item.run === undefined),
+      invalid: plan.some(item => item.judge === undefined),
       saving: this.saving,
       failed: this.failed,
       ...this.failedReason === undefined ? {} : { failedReason: this.failedReason },
@@ -317,21 +294,25 @@ export class CardForm<T> {
   }
 
   /**
-   * Write every staged edit, then re-seed from what the Host accepted.
+   * Write every staged edit in one atomic scope mutation, then re-seed from
+   * what the Host accepted.
    *
-   * When the scope carries the optional batch surface (the dsh-web
-   * bridge scope), every planned write rides one mutation so cross-field
-   * validate hooks (baseURL+model) judge the batch as a unit instead of
-   * deadlocking on per-field writes. Otherwise the per-field loop runs.
-   * A field lands only when the Host reports it held the staged value; a
-   * landed field's draft is dropped, a failed one stays staged for the user.
-   * @returns settlement after every write and the read-back.
+   * The whole batch rides one mutate, so cross-field validate hooks
+   * (baseURL+model) judge it as a unit: the Host either applies every write
+   * or refuses the batch. The 0.1.2 scope contract never rejects a refused
+   * mutation — the scope recovers with a fresh Host view and resolves — so
+   * resolution alone proves nothing: the outcome is judged by reading the
+   * settled snapshot back, one planned write at a time, and one missed write
+   * fails the whole save. A scope that still rejects on refusal (the dsh-web
+   * bridge scope) reports through the same failure path with its rejection
+   * message. A save that did not land keeps its drafts, so the user can
+   * correct them instead of retyping.
+   * @returns settlement after the mutation and the read-back.
    */
   async save(): Promise<void> {
     const plan = this.plan()
-    const valid = plan.filter(item => item.run !== undefined)
+    const valid = plan.filter((item): item is PlannedWrite & { judge: () => boolean } => item.judge !== undefined)
     if (plan.length === 0 || this.saving || valid.length !== plan.length) return
-    const plannedWrites = valid.map(item => item.op)
     // Snapshot the staged entries this save writes, so an edit staged while it
     // is in flight (which replaces the same key) survives: only delete the key
     // when the entry is still the one this save started from.
@@ -341,34 +322,32 @@ export class CardForm<T> {
     this.failed = false
     this.failedReason = undefined
     this.publish()
-    const landed = new Set<string>()
-    const batch = this.batchedScope()
-    if (batch !== undefined) {
-      const result = await batch.mutate(plannedWrites)
-      if (result.ok) {
-        for (const field of result.fields) {
-          if (field.landed) landed.add(field.field)
-        }
-      } else {
-        this.failedReason = result.message
-      }
-    } else {
-      for (const item of valid) {
-        if (await item.run!()) landed.add(item.field)
-      }
+    // One atomic namespace mutation: the 0.1.2 scope contract takes ordered
+    // path operations, so the whole staged batch is validated, persisted, and
+    // recovered together — either every write lands or none does.
+    const ops: Array<{ op: 'set'; path: string[]; value: string | number | boolean } | { op: 'unset'; path: string[] }> = valid.map(item => item.op.op === 'set'
+      ? { op: 'set', path: [item.field], value: (item.op as { value: string | number | boolean }).value }
+      : { op: 'unset', path: [item.field] })
+    let failedReason: string | undefined
+    try {
+      await this.scope.mutate(ops)
+    } catch (error) {
+      failedReason = error instanceof Error ? error.message : String(error)
     }
+    // The 0.1.2 scope resolves even a refused mutation (it recovers with a
+    // fresh view instead of throwing), so resolution alone proves nothing:
+    // judge every planned write against the settled snapshot. The mutation is
+    // atomic, so one missed write fails the whole save and keeps the drafts.
+    const landed = failedReason === undefined && valid.every(item => item.judge())
     for (const [field, before] of pending) {
-      if (landed.has(field) && this.staged.get(field) === before) this.staged.delete(field)
+      if (landed && this.staged.get(field) === before) this.staged.delete(field)
     }
     this.saving = false
-    this.failed = landed.size !== pending.size
+    this.failed = !landed
+    // A read-back failure carries no server reason: the card surfaces its
+    // generic failure copy; a rejecting scope (the bridge) adds its message.
+    this.failedReason = failedReason
     this.publish()
-  }
-
-  /** The scope's batch surface when it supports one; undefined conservatively otherwise. */
-  private batchedScope(): BatchedSettingsScope | undefined {
-    const candidate = this.scope as unknown as BatchedSettingsScope | undefined
-    return typeof candidate?.mutate === 'function' ? candidate : undefined
   }
 
   /**
@@ -383,31 +362,38 @@ export class CardForm<T> {
     for (const [field, staged] of this.staged) {
       const spec = this.specOf(field)
       if (staged.clear) {
-        if (this.stored(field)) plan.push({ field, op: { field, op: 'unset' }, run: () => this.clear(field) })
+        if (this.stored(field)) plan.push({ field, op: { field, op: 'unset' }, judge: () => this.landedUnset(field) })
         continue
       }
       if (staged.text === spec.format(this.sectionValue(field))) continue
       const write = spec.parse(staged.text)
-      if (write === undefined) plan.push({ field, op: { field, op: 'unset' }, run: undefined })
-      else if (write.kind === 'clear') plan.push({ field, op: { field, op: 'unset' }, run: () => this.clear(field) })
-      else plan.push({ field, op: { field, op: 'set', value: write.value }, run: () => this.store(field, write.value) })
+      if (write === undefined) plan.push({ field, op: { field, op: 'unset' }, judge: undefined })
+      else if (write.kind === 'clear') plan.push({ field, op: { field, op: 'unset' }, judge: () => this.landedUnset(field) })
+      else plan.push({ field, op: { field, op: 'set', value: write.value }, judge: () => this.landedSet(field, write.value) })
     }
     return plan
   }
 
-  private async clear(field: string): Promise<boolean> {
-    await this.scope.unset(field)
-    return !this.stored(field)
-  }
-
-  private async store(field: string, value: unknown): Promise<boolean> {
-    await this.scope.set(field, value)
-    // A redacted secret never appears in the user layer read-back; judging it
-    // by value would misreport a successful secret save as failed. The bridge
-    // reports secret writes through its secret-set markers (batch path); on
-    // the per-field path the scope resolved, so the write is landed.
+  /**
+   * Read-back judgment for a planned set: the user layer must hold the
+   * intended value once the mutation has settled.
+   */
+  private landedSet(field: string, value: unknown): boolean {
+    // A redacted secret never appears in any wire view layer: the Host strips
+    // role('secret') fields and reports them through a sidecar the scope
+    // snapshot does not expose, so there is nothing to compare the draft
+    // against. Settling is the only signal the form has; the rest of the
+    // batch, when one exists, still carries the atomic verdict by read-back.
     if (this.specOf(field).secret) return true
     return this.userLayer()?.[field] === value
+  }
+
+  /**
+   * Read-back judgment for a planned unset: the field must be gone from the
+   * user layer once the mutation has settled.
+   */
+  private landedUnset(field: string): boolean {
+    return !this.stored(field)
   }
 
   private stage(field: string, edit: StagedEdit): void {

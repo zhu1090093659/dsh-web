@@ -15,6 +15,7 @@
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { AffinityConfig, PetAffinityView, PetInteraction } from './affinity.ts'
+import { announcementFresh, parseAnnouncement, type PetAnnouncement } from './announce.ts'
 import type { TreatConfig } from './treats.ts'
 import {
   emptyProjectionRuntime,
@@ -191,6 +192,12 @@ export interface PetStateView {
    * settles the view in memory but never writes pet.json.
    */
   gameplay?: PetGameplayStateView
+  /**
+   * The freshest plugin-authored announcement (dsh-usage linkage), within
+   * its TTL; absent when none is fresh. Rendered as a dedicated styled
+   * bubble above the session stack.
+   */
+  announcement?: PetAnnouncement
 }
 
 /** Result of `pet.interact`. */
@@ -224,7 +231,6 @@ declare module '@deepseek-ai/cordis' {
     pet: PetService
   }
 }
-
 /** Per-session pet activity: projection runtime plus the session's own machine. */
 interface SessionActivity {
   runtime: ProjectionRuntime
@@ -257,6 +263,8 @@ export class PetService extends Service {
   private enabled: boolean
   /** Status-decoration master switch (M5, #567); mirrored from settings. */
   private decorationEnabled: boolean
+  /** The freshest plugin-authored announcement (dsh-usage linkage). */
+  private announcement: PetAnnouncement | undefined
   private disposeActivity: (() => void) | undefined
   /** Session whose most recent meaningful event currently drives the global pet. */
   private displaySession: Session | undefined
@@ -338,6 +346,19 @@ export class PetService extends Service {
   /** RPC: current pet state snapshot. */
   async state(currentSessionId?: string): Promise<PetStateView> {
     return this.view(currentSessionId)
+  }
+
+  /**
+   * RPC: one plugin-authored announcement bubble (dsh-usage linkage). The
+   * payload is validated into a bounded PetAnnouncement; a malformed one is
+   * dropped silently — a sibling plugin's bug must never surface as pet
+   * breakage. The announcement is in-memory only.
+   */
+  announce(input: unknown): { ok: boolean } {
+    const parsed = parseAnnouncement(input, Date.now())
+    if (parsed === undefined) return { ok: false }
+    this.announcement = parsed
+    return { ok: true }
   }
 
   /** Current persisted display config (read-only view). */
@@ -813,6 +834,11 @@ export class PetService extends Service {
     }
     // Read-only: the ledger settles on economic events only, never on a read,
     // so polling the state cannot trigger pet.json writes.
+    // An expired announcement simply stops appearing (the client's 2 s poll
+    // drops it); no timer owns its removal.
+    const announcement = this.announcement !== undefined && announcementFresh(this.announcement, Date.now())
+      ? this.announcement
+      : undefined
     return {
       animation: snapshot.animation,
       ...(snapshot.bubble === undefined ? {} : { bubble: snapshot.bubble }),
@@ -820,6 +846,7 @@ export class PetService extends Service {
       sessionActive: snapshot.sessionActive,
       sessions,
       ...(decoration === undefined ? {} : { decoration }),
+      ...(announcement === undefined ? {} : { announcement }),
       affinity: this.ledger.affinityView(Date.now()),
       display: { ...this.ledger.snapshot.display },
       pet: {

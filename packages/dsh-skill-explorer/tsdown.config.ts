@@ -12,7 +12,6 @@ import { clientBundle } from '../../shared/tsdown.client.ts'
 export default clientBundle('@linxin666/dsh-client-ui-skill-explorer', ['src/index.ts'], {
   libExternal: [
     '@deepseek-ai/dsh-client-locale',
-    '@deepseek-ai/dsh-client-runtime',
     '@deepseek-ai/dsh-client-ui-slots',
     '@deepseek-ai/dsh-host-webserver',
   ],

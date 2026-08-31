@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-08-26-dsh-perf-render-pipeline-batch2.md: a0f239f2fb9a623cf4391b79571fcecd52154186
-2026-08-26-dsh-perf-render-pipeline-batch2.zh.md: 339db876950748864e286491d8ade772e0e9c1d4
+2026-08-26-dsh-perf-render-pipeline-batch2.md: e7121fb953c29af5c8efba77c5499edafec78d93
+2026-08-26-dsh-perf-render-pipeline-batch2.zh.md: be534a32339a838b3155c4abe8be84ef3e790408

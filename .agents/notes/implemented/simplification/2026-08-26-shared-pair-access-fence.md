@@ -12,7 +12,7 @@ The decision logic now lives once in `shared/host/pair-access.ts` (`isPairedOrLo
 
 ## Alternatives considered
 
-A new shared runtime package imported as a dependency was rejected: every existing shared helper in this monorepo ships via sync-shared copies (packages must stay independently publishable without a workspace-internal dependency chain), and pair-access must not be the first exception. Replacing the wrappers entirely (renaming call sites to a single function) was rejected as needless churn — the wrapper keeps each package's public vocabulary and documents which routes the fence guards. Syncing the tests was rejected: sync-shared copies source files only, and the per-package specs double as wiring verification. The deprecated dsh-aionui-panel has no fence code (client-only), so nothing was consolidated there.
+A new shared runtime package imported as a dependency was rejected: every existing shared helper in this monorepo ships via sync-shared copies (packages must stay independently publishable without a workspace-internal dependency chain), and pair-access must not be the first exception. Replacing the wrappers entirely (renaming call sites to a single function) was rejected as needless churn — the wrapper keeps each package's public vocabulary and documents which routes the fence guards. Syncing the tests was rejected: sync-shared copies source files only, and the per-package specs double as wiring verification. The deprecated dsh-aionui-panel (fully removed on 2026-08-28) has no fence code (client-only), so nothing was consolidated there.
 
 ## Consequences
 

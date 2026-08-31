@@ -4,7 +4,7 @@ import { HttpTaskBoardHostTransport } from '../src/client/host-api.ts'
 import type { TaskBoardEventPayload, TaskBoardSnapshot } from '../src/protocol.ts'
 
 const snapshot: TaskBoardSnapshot = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   revision: 1,
   tasks: [],
   scheduler: { timeZone: 'UTC', ledgerId: 'ledger-a' },

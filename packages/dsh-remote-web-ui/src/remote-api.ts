@@ -1,21 +1,21 @@
 /**
  * The remote desktop data channel: `/remote` is this plugin's own prefix, so
- * the paired-device cookie is the access control (exactly like `/m/api`).
- * After that gate, every fenced same-origin path the browser rewrote here is
- * re-issued to 127.0.0.1 as a loopback-shaped request so sibling plugin
- * fences (and the connection plugin's `/api`) accept it — no `--trusted-host`
- * and no per-plugin pairing consult.
+ * the paired-device cookie is the access control. After that gate, every
+ * fenced same-origin path the browser rewrote here is re-issued to 127.0.0.1
+ * as a loopback-shaped request so sibling plugin fences (and the connection
+ * plugin's `/api`) accept it — no `--trusted-host` and no per-plugin pairing
+ * consult.
  *
  * Security model:
  * - While `requirePairingForLan` is on (default), every request must carry a
  *   live paired-device cookie, enforced before any bytes are forwarded and
  *   before any host call. With the policy off, the cookie gate is skipped
- *   (the loopback-only denials below still apply).
- * - The SDK's loopback-only privileged methods (native dialogs, the settings
- *   plane, credentials — the `PRIVILEGED_METHODS` set of client-connection)
- *   are denied here. The set is pinned by tests/remote-contract.spec.ts.
- * - `/api/pair/*`, `/api/update/*`, `/api/plugin-manager/*`,
- *   `/api/dsh-desktop-launcher/*` and `/api/dsh-web-ui-settings/*` stay physically local.
+ *   (the local-only denials below still apply).
+ * - A paired remote desktop is a full-control credential: the browser half
+ *   flips the official UI into host mode (the transport ownsHost hook), so
+ *   the configuration plane (settings, credentials, presets, deliverables)
+ *   rides this channel like every other call. The four control planes in
+ *   LOCAL_ONLY_PREFIXES stay physically local.
  * - Everything else is HTTP- or WebSocket-proxied to the local port with
  *   Host rewritten, Origin and cookies dropped, and a synthetic same-origin
  *   browser marker added after authentication. Plugin loopback fences then
@@ -28,24 +28,27 @@ import type { WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { PairingService } from './pairing.ts'
 import { readCookie } from './gate.ts'
 import { writeJson } from './http.ts'
+import type { InnerAuth } from './inner-auth.ts'
 import { proxyLoopbackHttp, proxyLoopbackUpgrade } from './loopback-proxy.ts'
 import {
-  DESKTOP_LAUNCHER_PATH,
-  LOOPBACK_ONLY_METHODS,
-  PLUGIN_MANAGER_PATH,
+  REMOTE_DEVICE_HEADER,
+  REMOTE_DEVICE_QUERY,
   REMOTE_PREFIX,
   REMOTE_UPGRADE_PATHS,
-  WEB_UI_SETTINGS_BRIDGE_PATH,
+  localOnlyDenial,
 } from './remote-methods.ts'
 
 export {
   DESKTOP_LAUNCHER_PATH,
-  LOOPBACK_ONLY_METHODS,
+  LOCAL_ONLY_PREFIXES,
   PLUGIN_MANAGER_PATH,
   REMOTE_API_PATHS,
+  REMOTE_DEVICE_HEADER,
+  REMOTE_DEVICE_QUERY,
   REMOTE_PREFIX,
   REMOTE_UPGRADE_PATHS,
   WEB_UI_SETTINGS_BRIDGE_PATH,
+  localOnlyDenial,
 } from './remote-methods.ts'
 export { REMOTE_API_PREFIX } from './remote-methods.ts'
 
@@ -76,6 +79,13 @@ export interface RemoteApiDeps {
    * edit takes effect without a restart. Defaults to true.
    */
   requirePairingForLan?: boolean | (() => boolean)
+  /**
+   * The process's inner browser-auth credential attached to re-issued
+   * requests (the connection plugin's /api route enforces that cookie and
+   * the pairing gate above already ran). Undefined keeps the previous
+   * cookie-less behavior — the inner route then answers 401 on this cohort.
+   */
+  auth?: InnerAuth
 }
 
 /** One SDK-shaped error envelope (keeps the desktop client's parse path intact). */
@@ -104,31 +114,28 @@ export function innerPathOf(pathname: string): string | undefined {
 }
 
 /**
- * Whether a paired inner path must stay physically local.
+ * Whether a paired inner path must stay physically local (delegates to the
+ * shared LOCAL_ONLY_PREFIXES table).
  * @returns a denial message, or undefined when the path may be proxied.
  */
 export function loopbackOnlyDenial(innerPath: string): string | undefined {
-  if (innerPath === '/api/pair' || innerPath.startsWith('/api/pair/')) {
-    return 'pairing endpoints stay loopback-only and stay unreachable from a paired remote desktop'
-  }
-  if (innerPath === '/api/update' || innerPath.startsWith('/api/update/')) {
-    return 'update endpoints stay loopback-only and stay unreachable from a paired remote desktop'
-  }
-  if (innerPath === PLUGIN_MANAGER_PATH || innerPath.startsWith(`${PLUGIN_MANAGER_PATH}/`)) {
-    return 'plugin-manager stays loopback-only and stays unreachable from a paired remote desktop'
-  }
-  if (innerPath === DESKTOP_LAUNCHER_PATH || innerPath.startsWith(`${DESKTOP_LAUNCHER_PATH}/`)) {
-    return 'desktop-launcher endpoints stay loopback-only and stay unreachable from a paired remote desktop'
-  }
-  if (innerPath === WEB_UI_SETTINGS_BRIDGE_PATH || innerPath.startsWith(`${WEB_UI_SETTINGS_BRIDGE_PATH}/`)) {
-    return 'settings-bridge endpoints stay loopback-only and stay unreachable from a paired remote desktop'
-  }
-  if (!innerPath.startsWith('/api/')) return undefined
-  const method = innerPath.slice('/api/'.length)
-  if (method !== '' && !method.includes('/') && LOOPBACK_ONLY_METHODS.has(method)) {
-    return `${method} is loopback-only and stays unreachable from a paired remote desktop`
-  }
-  return undefined
+  return localOnlyDenial(innerPath)
+}
+
+/**
+ * Resolve a live device credential for a gated HTTP request: the pairing
+ * cookie first, then the cookieless header the boot patch attaches. Unknown
+ * or revoked ids are a no-op - a stale id never re-arms a device.
+ * @returns the touched device id, or undefined when neither credential is live.
+ */
+export function pairedDeviceIdOf(req: IncomingMessage, service: PairingService): string | undefined {
+  const cookieDevice = readCookie(req.headers.cookie, service.config.cookieName)
+  const headerDevice = typeof req.headers[REMOTE_DEVICE_HEADER] === 'string'
+    ? (req.headers[REMOTE_DEVICE_HEADER] as string)
+    : undefined
+  const id = cookieDevice ?? headerDevice
+  if (id === undefined) return undefined
+  return service.touchDevice(id) ? id : undefined
 }
 
 /**
@@ -145,9 +152,8 @@ export function makeRemoteApiRoutes(deps: RemoteApiDeps): WebRoute[] {
     // (a stale client rewrite must not 403); loopback-only denials stay below.
     const require = typeof requirePairingForLan === 'function' ? requirePairingForLan() : requirePairingForLan
     if (require) {
-      const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
-      const paired = deviceId !== undefined && service.touchDevice(deviceId)
-      if (!paired) {
+      const paired = pairedDeviceIdOf(req, service)
+      if (paired === undefined) {
         req.resume()
         envelopeError(res, 403, 'invalid-request', 'unpaired', 'this device is not paired with the desktop')
         return
@@ -175,7 +181,7 @@ export function makeRemoteApiRoutes(deps: RemoteApiDeps): WebRoute[] {
       return
     }
 
-    proxyLoopbackHttp(req, res, port, `${inner}${url.search}`)
+    proxyLoopbackHttp(req, res, port, `${inner}${url.search}`, deps.auth)
   }
 
   return [{ kind: 'prefix', path: REMOTE_PREFIX, handler }]
@@ -209,8 +215,15 @@ export function makeRemoteApiUpgradeRoutes(deps: RemoteApiDeps): WebUpgradeRoute
   const handlerFor = (fallbackPath: string) => (req: IncomingMessage, socket: Duplex, head: Buffer): void => {
     const require = typeof requirePairingForLan === 'function' ? requirePairingForLan() : requirePairingForLan
     if (require) {
-      const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
-      if (deviceId === undefined || !service.touchDevice(deviceId)) {
+      // WebSocket handshakes cannot carry headers from the Web API, so the
+      // cookieless credential rides the query; the cookie stays the primary.
+      let queryDevice: string | undefined
+      try {
+        queryDevice = new URL(req.url ?? '/', 'http://127.0.0.1').searchParams.get(REMOTE_DEVICE_QUERY) ?? undefined
+      } catch { /* fall through to the cookie */ }
+      const deviceId = pairedDeviceIdOf(req, service)
+      const paired = deviceId ?? (queryDevice !== undefined && service.touchDevice(queryDevice) ? queryDevice : undefined)
+      if (paired === undefined) {
         socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
         socket.destroy()
         return
@@ -223,7 +236,16 @@ export function makeRemoteApiUpgradeRoutes(deps: RemoteApiDeps): WebUpgradeRoute
       socket.destroy()
       return
     }
-    proxyLoopbackUpgrade(req, socket, head, port, inner)
+    // The inner handshake needs the browser-auth credential (the gateway
+    // event-stream route enforces it); resolving it is async, so the
+    // handshake bytes are written once it settles. A missing credential
+    // proceeds as before — the gateway route then refuses.
+    void Promise.resolve(deps.auth?.ready())
+      .catch(() => undefined)
+      .then((cookie) => {
+        if (socket.destroyed) return
+        proxyLoopbackUpgrade(req, socket, head, port, inner, typeof cookie === 'string' ? cookie : undefined)
+      })
   }
 
   return REMOTE_UPGRADE_PATHS.map((path) => ({

@@ -18,5 +18,8 @@
   "routes": [
     { "pattern": "dsh-market.com", "custom_domain": true }
   ],
+  "triggers": {
+    "crons": ["*/30 * * * *"]
+  },
   "observability": { "enabled": true }
 }

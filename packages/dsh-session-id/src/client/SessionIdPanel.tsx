@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useSyncExternalStore, useState } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import { CheckIcon, CopyIcon, CloseIcon } from './icons.tsx'
 import { SESSION_ID_PART_COPY, SESSION_ID_PART_PANEL, SESSION_ID_PART_ROW, SESSION_ID_PART_SEARCH, SESSION_ID_PLUGIN_ATTR } from './semantic.ts'

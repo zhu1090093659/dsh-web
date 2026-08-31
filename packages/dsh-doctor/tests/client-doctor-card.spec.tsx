@@ -5,6 +5,17 @@
  * controller fallback.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+// The family settings-form slice value-imports the browser runtime bundle,
+// which is a window.__ModuleLoader__ closure; provide a node-safe stand-in so
+// the card spec only exercises the staged-form and console wiring.
+vi.mock('@deepseek-ai/dsh-client-store', () => ({
+  createSnapshotStore: () => ({
+    subscribe: () => () => undefined,
+    getSnapshot: () => undefined,
+  }),
+}))
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { DoctorApi } from '../src/client/doctor-api.ts'
 import { DoctorController } from '../src/client/doctor-controller.ts'
@@ -14,16 +25,6 @@ import { pluginIdOf } from '../src/client/DoctorRecoveryConsole.tsx'
 import type { DoctorSupervisorResponse } from '../src/client/doctor-types.ts'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import { en } from '../src/client/locales.ts'
-
-// The family settings-form slice value-imports the browser runtime bundle,
-// which is a window.__ModuleLoader__ closure; provide a node-safe stand-in so
-// the card spec only exercises the staged-form and console wiring.
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
-  createSnapshotStore: () => ({
-    subscribe: () => () => undefined,
-    getSnapshot: () => undefined,
-  }),
-}))
 
 const t: TranslateNS<'doctor'> = (key, params) => {
   let text = (en as Record<string, string>)[key] ?? key

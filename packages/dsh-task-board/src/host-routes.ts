@@ -151,7 +151,7 @@ export function makeTaskBoardRoutes(service: TaskBoardHostService, access: TaskB
         if (parsed.action.kind !== 'import' && Buffer.byteLength(body.raw) > ACTION_LIMIT) {
           return writeJson(res, 413, { ok: false, error: 'body-too-large' }, { 'cache-control': 'no-store' })
         }
-        writeJson(res, 200, service.apply(parsed.requestId, parsed.action), { 'cache-control': 'no-store' })
+        writeJson(res, 200, service.apply(parsed.requestId, parsed.action, parsed.initiator), { 'cache-control': 'no-store' })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         writeJson(res, message === 'body-too-large' ? 413 : 400, { ok: false, error: message }, { 'cache-control': 'no-store' })

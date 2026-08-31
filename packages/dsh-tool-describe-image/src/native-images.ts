@@ -20,13 +20,13 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
-import { settingsNamespace, type SettingsNamespace, type SettingsPathOp } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace, SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import { isLoopbackRequest } from './loopback.ts'
 import { readJsonBody, writeJson } from './http.ts'
 import { optionalService, UNKNOWN_CAPABILITY, type InvalidatableRouteResolver, type ModelImageCapability, type RouteCapabilityResolver } from './model-capability.ts'
 
 /** The DeepSeek adapter's settings namespace. */
-export const LLM_DEEPSEEK_SETTINGS_NAMESPACE = settingsNamespace('llm-deepseek')
+export const LLM_DEEPSEEK_SETTINGS_NAMESPACE = 'llm-deepseek' as SettingsNamespace
 
 /** Native-image wire state for the browser half. */
 export interface NativeImageState {
@@ -68,7 +68,7 @@ interface AdapterDescriptor {
 /** Resolve the adapter settings namespace for one route. */
 function adapterNamespaceForRoute(route: { provider: string; model: string } | undefined): SettingsNamespace {
   if (route && route.provider) {
-    return settingsNamespace(`llm-${route.provider}`)
+    return `llm-${route.provider}` as SettingsNamespace
   }
   return LLM_DEEPSEEK_SETTINGS_NAMESPACE
 }

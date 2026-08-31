@@ -40,6 +40,24 @@ export const zh = {
   'new.submit': '创建',
   'new.cancel': '取消',
   'new.required': '标题不能为空',
+  'new.freeze': '冻结快照（可选）',
+  'new.freezePlaceholder': '粘贴会话输出的 <<<FREEZE … >>>FREEZE 冻结块，解析为目标/进度/下一步（可选）',
+  'detail.freeze': '冻结快照',
+  'detail.freeze.goal': '目标',
+  'detail.freeze.progress': '进度',
+  'detail.freeze.next': '下一步',
+  'detail.freeze.frozenAt': '冻结于 {time}',
+  'detail.freeze.frozenBy': '来源会话 {session}',
+  'detail.freeze.redacted': '冻结文本命中敏感模式，已自动替换为 [REDACTED]；接手前请人工复核。',
+  'card.frozen': '冻结',
+  'new.handover': '交接包引用（可选）',
+  'new.handoverPlaceholder': '每行一个文档/脚本引用；填写后，上面选择的钉住三元组（工作区/模式/权限）会作为交接包附加到卡片',
+  'detail.handover': '交接包',
+  'detail.handover.bundledAt': '打包于 {time}',
+  'detail.handover.references': '引用',
+  'detail.permissionPending': '权限待确认：本卡有效权限（{permission}）高于会话默认，手动执行与定时调度都会被拒绝，需人工确认后才能运行。',
+  'detail.permissionConfirm': '确认权限绑定',
+  'detail.permissionConfirmed': '已确认权限绑定 · {time}',
   'detail.title': '任务详情',
   'detail.edit': '编辑',
   'detail.close': '关闭',
@@ -58,6 +76,7 @@ export const zh = {
   'detail.viewSession': '查看会话',
   'detail.noSession': '暂无会话',
   'detail.executionStarted': '已启动',
+  'detail.execution.initiator': '发起会话 {session}',
   'detail.executionEnded': '已结束',
   'detail.result.succeeded': '成功',
   'detail.result.failed': '失败',
@@ -119,7 +138,7 @@ export const zh = {
   'settings.off': '关',
   'settings.overridden': '已覆盖',
   'settings.reset': '恢复默认',
-  'settings.notExposed': '当前 DSH 版本未向设置页暴露本插件的配置命名空间，表单不可用。可编辑 ~/.dsh/settings.yaml 直接配置，或为 dsh-host-apiproxy 的 WEB_SETTINGS_NAMESPACES 白名单补充本命名空间后重启。',
+  'settings.notExposed': '当前 DSH 版本未向设置页暴露本插件的配置命名空间，表单不可用。可编辑 ~/.dsh/settings.yaml 直接配置，或将本命名空间加入 Host 设置白名单后重启。',
   'settings.readOnly': '当前部署的设置只读。',
   'settings.expand': '展开设置',
   'settings.collapse': '收起设置',
@@ -166,6 +185,24 @@ export const en: Record<keyof typeof zh, string> = {
   'new.submit': 'Create',
   'new.cancel': 'Cancel',
   'new.required': 'Title is required',
+  'new.freeze': 'Frozen snapshot (optional)',
+  'new.freezePlaceholder': 'Paste a <<<FREEZE ... >>>FREEZE block from a session; it parses into goal/progress/next (optional)',
+  'detail.freeze': 'Frozen snapshot',
+  'detail.freeze.goal': 'Goal',
+  'detail.freeze.progress': 'Progress',
+  'detail.freeze.next': 'Next',
+  'detail.freeze.frozenAt': 'Frozen at {time}',
+  'detail.freeze.frozenBy': 'Source session {session}',
+  'detail.freeze.redacted': 'Sensitive patterns were detected in the frozen text and replaced with [REDACTED]; review manually before resuming.',
+  'card.frozen': 'frozen',
+  'new.handover': 'Handover references (optional)',
+  'new.handoverPlaceholder': 'One doc/script reference per line; when filled, the pinned triplet picked above (workspace/mode/permission) is attached to the card as a handover bundle',
+  'detail.handover': 'Handover bundle',
+  'detail.handover.bundledAt': 'Bundled at {time}',
+  'detail.handover.references': 'References',
+  'detail.permissionPending': 'Permission pending confirmation: this card\'s effective permission ({permission}) is above the session default; manual runs and cron are refused until a human confirms.',
+  'detail.permissionConfirm': 'Confirm permission binding',
+  'detail.permissionConfirmed': 'Permission confirmed · {time}',
   'detail.title': 'Task Detail',
   'detail.edit': 'Edit',
   'detail.close': 'Close',
@@ -184,6 +221,7 @@ export const en: Record<keyof typeof zh, string> = {
   'detail.viewSession': 'View Session',
   'detail.noSession': 'No session',
   'detail.executionStarted': 'Started',
+  'detail.execution.initiator': 'Initiated by session {session}',
   'detail.executionEnded': 'Ended',
   'detail.result.succeeded': 'Succeeded',
   'detail.result.failed': 'Failed',
@@ -245,7 +283,7 @@ export const en: Record<keyof typeof zh, string> = {
   'settings.off': 'Off',
   'settings.overridden': 'Overridden',
   'settings.reset': 'Reset to default',
-  'settings.notExposed': 'This DSH version does not expose this plugin\'s settings namespace to the configuration page, so the form is unavailable. Edit ~/.dsh/settings.yaml directly, or add the namespace to dsh-host-apiproxy\'s WEB_SETTINGS_NAMESPACES allowlist and restart.',
+  'settings.notExposed': 'This DSH version does not expose this plugin\'s settings namespace to the configuration page, so the form is unavailable. Edit ~/.dsh/settings.yaml directly, or add the namespace to the Host settings allowlist and restart.',
   'settings.readOnly': 'This deployment stores settings read-only.',
   'settings.expand': 'Show settings',
   'settings.collapse': 'Hide settings',
@@ -269,8 +307,23 @@ export function dictionary(): Record<TaskBoardKey, string> {
   return lang.toLowerCase().startsWith('en') ? en : zh
 }
 
+/**
+ * SDK translate seat wired by the browser apply() once ctx.locale is bound
+ * (setRuntimeTranslate). When present it reads the ACTIVE locale at call
+ * time, so plain-DOM surfaces (sidebar row, toggles) follow a runtime
+ * language switch; the document-language pick above stays only as the
+ * unwired fallback (locale service absent, module-scope early callers).
+ */
+let runtimeT: ((key: TaskBoardKey, params?: Record<string, string>) => string) | undefined
+
+/** Wire the SDK translate seat; pass undefined to restore the document-language pick. */
+export function setRuntimeTranslate(t: ((key: TaskBoardKey, params?: Record<string, string>) => string) | undefined): void {
+  runtimeT = t
+}
+
 /** Translate a key with optional {name} template params. */
 export function t(key: TaskBoardKey, params?: Record<string, string>): string {
+  if (runtimeT !== undefined) return runtimeT(key, params)
   let text: string = dictionary()[key]
   if (params !== undefined) {
     for (const [name, value] of Object.entries(params)) {

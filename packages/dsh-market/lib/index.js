@@ -1,4 +1,3 @@
-import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import z from "schemastery";
 import { mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path, { isAbsolute, join, sep } from "node:path";
@@ -514,14 +513,16 @@ const name = "ui-market";
 /** Services the routes need; the gateway requires the host webserver. */
 const inject = ["webServer"];
 /** Settings namespace of the card's enable switch. */
-const MARKET_SETTINGS_NAMESPACE = settingsNamespace("dsh-web-ui-market");
+const MARKET_SETTINGS_NAMESPACE = "dsh-web-ui-market";
 const Config = z.object({ enabled: z.boolean().default(true) });
 /** Register the namespace and mount the install gateway (once). */
 const apply = mountOnce("@linxin666/dsh-client-ui-market", applyImpl);
 function applyImpl(ctx) {
-	installSettingsSection(ctx, MARKET_SETTINGS_NAMESPACE, Config, {}, {
-		setSource: () => {},
-		onChange: () => {}
+	ctx.inject(["settings"], (settingsCtx) => {
+		settingsCtx.settings.installSection(ctx, MARKET_SETTINGS_NAMESPACE, Config, {}, {
+			setSource: () => {},
+			onChange: () => {}
+		});
 	});
 	const routes = makeMarketRoutes();
 	for (const route of routes) try {

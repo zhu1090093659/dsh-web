@@ -12,7 +12,6 @@ import {
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { PairingPhase } from '../pairing.ts'
 import {
-  desktopPairUrl,
   formatClock,
   formatLastSeen,
   type DeviceFrame,
@@ -55,11 +54,11 @@ export type PanelState =
 export interface RemotePanelProps {
   t: TranslateNS<'remote'>
   state: PanelState
-  copied: 'phone' | 'desktop' | undefined
+  copied: boolean
   onClose(): void
   onStop(): void
   onRefresh(): void
-  onCopy(target: 'phone' | 'desktop', url: string): void
+  onCopy(url: string): void
   /** Re-mint the QR against a different LAN address. */
   onPickAddress(address: string): void
   /** Re-mint the QR against the configured public (tunneled) base. */
@@ -147,22 +146,12 @@ export function RemotePanel({ t, state, copied, onClose, onStop, onRefresh, onCo
           <div className={css.pairLinks}>
             <div className={css.pairLinkRow}>
               <div className={css.pairLinkText}>
-                <span className={css.pairLinkLabel}>{t('pair.phoneLabel')}</span>
+                <span className={css.pairLinkLabel}>{t('pair.linkLabel')}</span>
                 <code className={css.link} title={state.url}>{state.url}</code>
               </div>
-              <button type="button" className={css.copyLink} onClick={() => onCopy('phone', state.url)}>
+              <button type="button" className={css.copyLink} onClick={() => onCopy(state.url)}>
                 <IconCopyOutline16 size={14} />
-                {copied === 'phone' ? t('action.copied') : t('action.copyPhone')}
-              </button>
-            </div>
-            <div className={css.pairLinkRow}>
-              <div className={css.pairLinkText}>
-                <span className={css.pairLinkLabel}>{t('pair.desktopLabel')}</span>
-                <code className={css.link} title={desktopPairUrl(state.url)}>{desktopPairUrl(state.url)}</code>
-              </div>
-              <button type="button" className={css.copyLink} onClick={() => onCopy('desktop', desktopPairUrl(state.url))}>
-                <IconCopyOutline16 size={14} />
-                {copied === 'desktop' ? t('action.copied') : t('action.copyDesktop')}
+                {copied ? t('action.copied') : t('action.copyLink')}
               </button>
             </div>
           </div>

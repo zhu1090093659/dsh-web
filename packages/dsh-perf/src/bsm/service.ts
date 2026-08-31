@@ -9,6 +9,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFil
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import {
   applyManagedBlock,
   deriveMountState,
@@ -28,22 +29,19 @@ export interface ResolvedPaths {
 export function resolveProfileName(argv: readonly string[] = process.argv): string {
   const flag = argv.indexOf('--profile')
   if (flag >= 0 && argv[flag + 1] !== undefined) return String(argv[flag + 1])
-  const envProfile = process.env.DSH_PROFILE?.trim()
-  if (envProfile) return envProfile
+  if (process.env.DSH_PROFILE?.trim()) return process.env.DSH_PROFILE.trim()
   return 'web'
 }
 
-export function dshHome(): string {
-  return process.env.DSH_HOME || join(homedir(), '.dsh')
-}
-
-export function resolvePaths(profileName = resolveProfileName()): ResolvedPaths {
-  const home = dshHome()
+/** Default base directories following the DSH harness conventions. */
+export function resolvePaths(argv: readonly string[] = process.argv, env: NodeJS.ProcessEnv = process.env): ResolvedPaths {
+  const dshHome = env.DSH_HOME?.trim() || join(homedir(), '.dsh')
+  const profile = resolveProfileName(argv)
   return {
-    dshHome: home,
-    sessionsDir: join(home, 'sessions'),
-    dbPath: join(home, 'sessions', 'sessions.sqlite'),
-    profilePatchPath: join(home, 'profiles', profileName, 'cordis.patch.yml'),
+    dshHome,
+    sessionsDir: join(dshHome, 'sessions'),
+    dbPath: join(dshHome, 'sessions', 'sessions.sqlite'),
+    profilePatchPath: join(dshHome, 'profiles', profile, 'cordis.patch.yml'),
   }
 }
 
@@ -139,7 +137,8 @@ export async function runMigration(options: { sessionsDir?: string; dbPath?: str
   }
   return await new Promise((resolvePromise, rejectPromise) => {
     const started = Date.now()
-    const child = spawn(process.execPath, [moduleUrl.pathname], {
+    const scriptPath = fileURLToPath(moduleUrl)
+    const child = spawn(process.execPath, [scriptPath], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, DSH_IMPORT_OPTIONS: JSON.stringify({ ...effective, apply: true, createStore: true }) },
     })

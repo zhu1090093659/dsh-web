@@ -17,10 +17,12 @@ Before changing `packages/`, read [packages/AGENTS.md](packages/AGENTS.md). Befo
 ```sh
 pnpm install
 pnpm build
+pnpm dev:watch   # watch-rebuild browser bundles; the dsh web host reloads the GUI itself
 pnpm test
 pnpm typecheck
 pnpm test:scripts
 pnpm docs:check
+pnpm i18n:check   # zh/en/ru key parity + no CJK outside comments in client copy (scripts/i18n-audit.mjs)
 pnpm aggregate:check
 pnpm market:check
 pnpm skin-center:check
@@ -29,7 +31,7 @@ node scripts/dsh-plugin-new <name>
 node scripts/dsh-skin-new
 ```
 
-Before merging, run at least `pnpm typecheck && pnpm test && pnpm docs:check`. Run the aggregate, market, and Skin Center checks when those areas change. Market site changes must also commit the regenerated `market/dist` (never rebuild in CI; `market:check` verifies consistency, `deploy-market.yml` deploys the committed artifacts).
+Before merging, run at least `pnpm typecheck && pnpm test && pnpm docs:check && pnpm i18n:check`. Run the aggregate, market, and Skin Center checks when those areas change. Market site changes must also commit the regenerated `market/dist` (never rebuild in CI; `market:check` verifies consistency, `deploy-market.yml` deploys the committed artifacts).
 
 Market build order: build `market/shell` first (`npm run build` in `market/shell`; its dist is git-ignored), then `node scripts/market-build` to refresh `market/dist` (`tryon/` copies the shell build, `tryon-assets/` is derived with Skin Center `transformSkinCss`). In a clean checkout without the shell dist, `market-build --check` verifies the committed `tryon/` against its hash manifest instead of rebuilding. Deploy with `node scripts/deploy-market`.
 
@@ -47,9 +49,13 @@ Market build order: build `market/shell` first (`npm run build` in `market/shell
 ## Development Workflow
 
 - For implementation and maintenance tasks, load [dsh-web-agent-coding](.agents/skills/dsh-web-agent-coding/SKILL.md) and the focused skill it selects.
-- Record every non-trivial change as an Agent Note under [.agents/notes/](.agents/notes/README.md) in the same change; lifecycle, classes, and format rules live in the [Agent Note rules](.agents/notes/README.md).
-- Prefer CodeGraph for code navigation, symbol lookup, dependency analysis, review, and impact analysis. Use `query`, `explore`, `node`, `impact`, and `affected`; initialize with `codegraph init <project-root>` when needed.
-- After all code changes in a session, before final validation, run `codegraph sync <project-root>` and `codegraph status <project-root>`. If the index is missing or sync fails, run `codegraph index <project-root>`.
+- Record every non-trivial change as an Agent Note under [.agents/notes/](.agents/notes/README.md) in the same change; lifecycle, classes, and format rules live there.
+- Follow the Software Factory governance baseline in [.agents/notes/README.md](.agents/notes/README.md):
+  - **Prompt Layering & Caching**: Preserve prefix stability across Layer 1 (global rules/identity) and Layer 2 (repository AGENTS.md/skills); place dynamic context (memories, CodeGraph queries, file diffs) in Layer 3 at the prompt tail.
+  - **Pareto Model Tiering**: Default to lightweight models (`flash`/`flash_lite`) for read-only research, file search, static checks, and documentation/i18n translation; reserve high-reasoning models (`pro`) for planning, multi-module refactoring, and root-cause analysis.
+  - **Anti-Thrashing Circuit Breaker**: If 3 consecutive attempts on the same issue fail or edits oscillate, halt immediately and ask for clarification.
+  - **CI Self-Healing Protocol**: Deterministic 4-step loop on failures: Log Isolation -> Local Minimal Repro -> Targeted Minimal Diff -> Pre-Push Gate Check.
+- Prefer CodeGraph for code navigation, symbol lookup, dependency analysis, review, and impact analysis (`query`, `explore`, `node`, `impact`, `affected`; `codegraph init <project-root>` when needed). After all code changes in a session, before final validation, run `codegraph sync <project-root>` and `codegraph status <project-root>`; if the index is missing or sync fails, run `codegraph index <project-root>`.
 - Keep changes focused, preserve existing work, and verify real behavior. User-visible changes require appropriate runtime evidence; visual changes require screenshots and multimodal validation.
 - Agent 的代码改动涉及 Wallpaper Engine / 渲染器域（如 `packages/skins/skin-center/src/client/wallpaper.ts`、`packages/skins/skin-center/src/we-player-source.ts` 及其测试 `packages/skins/skin-center/tests/wallpaper.spec.ts` / `packages/skins/skin-center/tests/we-player.spec.ts`）时，通知负责该域的协作者 Aa728848（EDDYCRAZY-CC）；域归属见 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [.github/pr-review-routes.json](.github/pr-review-routes.json)。
 
@@ -64,6 +70,7 @@ Market build order: build `market/shell` first (`npm run build` in `market/shell
 ## Branches, Commits, and PRs
 
 - 本项目唯一的远程仓库是 `https://github.com/zhu1090093659/dsh-web`（`origin`）；`JAVA-LW/dsh-web-ui` 不是本项目的远程仓库，不要向其推送、创建 PR 或修改其仓库元数据（如 About 描述）。
+- `origin` 的 url / pushurl 禁止改指向任何 fork 或第三方仓库（2026-08-31 事故：PR fork 流程遗留 `remote.origin.pushurl` 指向作者 fork，下一次 `git push origin dev` 会静默打到错误仓库）。向贡献者 fork 推送只用一次性命名 remote（`git remote add <name> <fork-url>`）或直接 URL；推送前 `git remote -v` 的 fetch/push 必须都指向规范仓库。首次在新检出开发时安装推送保护钩子：`ln -sf ../../scripts/git-pre-push-guard.sh .git/hooks/pre-push`。
 - `dev` is the integration branch. Rebase on `origin/dev` before submitting a PR. `main` receives tested changes from `dev` through maintainer integration.
 - 同步远程仓库代码时，本地与远程的同步对象只能是 `dev` 分支：`git fetch origin dev`，
   需要整合时把本地 `dev` rebase 或 merge 到 `origin/dev`。禁止把 `main` / `origin/main`
@@ -75,7 +82,7 @@ Market build order: build `market/shell` first (`npm run build` in `market/shell
 
 ## Release
 
-Releases are tag-driven by [.github/workflows/release.yml](.github/workflows/release.yml). Verify every package version against the `vX.Y.Z` tag, generate release notes with `scripts/release-notes.mjs`, and pass all gates before publishing. Do not bypass the release process by editing package versions manually.
+Releases are tag-driven by [.github/workflows/release.yml](.github/workflows/release.yml). Verify every package version against the `vX.Y.Z` tag, generate release notes with `scripts/release-notes.mjs`, and pass all gates. The npm publish lane stays behind the workflow `NPM_PUBLISH_ENABLED` switch. Do not bypass the release process by editing package versions manually.
 
 ## Instruction Layers
 

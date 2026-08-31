@@ -1122,3 +1122,21 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
     expect(timerSpy.mock.calls.length).toBe(schedulesBefore + 1)
   })
 })
+
+
+describe('PetSprite portal target', () => {
+  it('portals the float into the provided target instead of document.body', () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    renderPet({ portalTarget: host })
+    // The float (sprite chrome) lands inside the owning root, so a
+    // root-keyed suppressor (the portrait mobile layer) hides it as one unit.
+    expect(host.querySelector('[role="button"]')).not.toBeNull()
+  })
+
+  it('portals the float into document.body when no target is given', () => {
+    renderPet()
+    expect(document.body.querySelector('[role="button"]')).not.toBeNull()
+  })
+})
+

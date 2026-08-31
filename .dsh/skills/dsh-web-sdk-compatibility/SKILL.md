@@ -54,7 +54,10 @@ Inventory every possible first-party consumer, not only packages that currently 
 - browser SDK imports, module augmentations, slot keys, platform modules, and client service calls;
 - routes, API remotes, settings namespaces, schemas, events, serialization, cancellation, persistence, session, workspace, and tool contracts;
 - `shared/` sources and generated consumer copies;
-- plugin and skin templates, aggregates, profile patches, generators, committed bundles, and compatibility tests.
+- plugin and skin templates, aggregates, profile patches, generators, committed bundles, and compatibility tests;
+- external npm plugins pulled in through an aggregate (`packages/dsh-web-all` and friends) and every `@deepseek-ai/*` peer they carry.
+
+This last row is easy to miss but is where cohorts bite hardest. A cohort `overrides:` block (or any peer-force-resolution that pins the whole family) silently force-resolves the `@deepseek-ai/*` peers of external aggregate plugins too. The moment that block is dropped (e.g. the cohort becomes resolvable from npm), those externals' hard-imports of a now-removed SDK face are unmasked: they fail the host loader's strict import resolution and abort `dsh web` boot, or trip the e2e mount smoke. Inventory them before dropping the block, and treat a detected hard-bind to a removed face as an exclusion decision (remove the aggregate row + dep + the generator/mount assertions together) rather than a repair.
 
 For imports, record the specifier, imported symbol, type-only versus value use, consumer file, and execution half (host, client, or shared). For services, record the provider package, service name, consumer, optionality, startup order, and failure behavior.
 
@@ -127,6 +130,8 @@ A repair is incomplete if it is protected only by one manual run. Add or extend 
 - browser platform and bundle-purity checks for target platform modules and type-only SDK boundaries;
 - profile and aggregate checks for resolvable patches, unique IDs, aggregate/direct coexistence, and mount-once behavior;
 - protocol, schema, event, persistence, cancellation, and error-shape tests for changed cross-half contracts;
+- the e2e/aggregate mount smoke, keyed to a cohort-stable official marker (the DSH host frame `[data-dsh-frame]`) rather than to any excluded external plugin's host div. When an aggregate external is excluded in the same migration, the smoke must assert it is ABSENT, or the (still-correct) npm content ships while the smoke times out waiting for a div that will never mount;
+- the same mount smoke must also carry the printed URL verbatim, token included: alpha.2 `dsh web` prints a tokenized root URL (`.../?token=launch-token`) and fences `/` behind browser auth, so a URL parse that stops at the port (`grep -oE ':port'`) hands Playwright the 401 auth page and the frame wait times out — the smoke's URL parse and boot marker are both contract, and a red dev CI after a "fix" means the diagnosis was incomplete;
 - representative workflow tests only for plugin paths exposed to the changed SDK surface.
 
 Prefer existing checks and package test patterns. Add a cross-package abstraction or script only when it enforces a stable repository invariant that cannot be expressed clearly in an owning package. Contract failures must name the missing or changed SDK capability; do not pin accidental private implementation details.

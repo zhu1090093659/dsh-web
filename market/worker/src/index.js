@@ -6,7 +6,7 @@
  * described by /openapi.json and documented at /api-docs.html.
  */
 
-import { handleTelemetryPost, handleTelemetrySummary, handleTelemetryUsersBadge } from './telemetry.js'
+import { handleTelemetryPost, handleTelemetrySummary, handleTelemetryUsersBadge, pruneOldEvents, refreshBadgeCache } from './telemetry.js'
 import { readJsonCapped } from './body.js'
 import { isKnownAsset } from './asset-allowlist.js'
 import { handleNpmBadge, handleNpmDownloads } from './npm-badge.js'
@@ -166,8 +166,8 @@ async function readStats(env) {
 async function verifyTurnstile(request, env, token) {
   // Fail closed: without the secret binding no challenge can be verified,
   // so writes are rejected instead of passing anonymously.
-  if (!env.TURNSTILE_SECRET) return false
-  if (!token) return false
+  if (!env.TURNSTILE_SECRET) return { ok: false, codes: ['missing-secret-binding'] }
+  if (!token) return { ok: false, codes: [] }
   const form = new URLSearchParams()
   form.set('secret', env.TURNSTILE_SECRET)
   form.set('response', token)
@@ -179,7 +179,13 @@ async function verifyTurnstile(request, env, token) {
     body: form,
   })
   const result = await response.json().catch(() => ({ success: false }))
-  return result.success === true && INSTALL_ACTIONS.has(result.action) && result.hostname === 'dsh-market.com'
+  // siteverify error-codes are not sensitive and are surfaced on the 403 so a
+  // dead pairing (invalid-input-secret) is distinguishable from token problems.
+  const codes = Array.isArray(result['error-codes']) ? result['error-codes'].map(String) : []
+  return {
+    ok: result.success === true && INSTALL_ACTIONS.has(result.action) && result.hostname === 'dsh-market.com',
+    codes,
+  }
 }
 
 const CHALLENGE_HTML = [
@@ -255,6 +261,17 @@ async function mutateLike(env, kind, assetId, hash, unlike) {
 }
 
 export default {
+  /** Cron trigger: recompute the public badge counts and prune expired
+   * telemetry events (wrangler.jsonc triggers.crons). */
+  async scheduled(controller, env) {
+    try {
+      await refreshBadgeCache(env)
+    } catch { /* best-effort; the badge serves the last computed row */ }
+    try {
+      await pruneOldEvents(env)
+    } catch { /* best-effort; pruning retries on the next tick */ }
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url)
     const path = url.pathname
@@ -265,12 +282,46 @@ export default {
     if (path === '/api/npm-badge/version' && request.method === 'GET') return handleNpmBadge('version', json)
     if (path === '/api/npm-badge/total' && request.method === 'GET') return handleNpmBadge('total', json)
     if (path === '/api/npm-downloads' && request.method === 'GET') return handleNpmDownloads(env, json)
-    if (path === '/api/telemetry/badge/users' && request.method === 'GET') return handleTelemetryUsersBadge(env, json)
+    if (path === '/api/telemetry/badge/users' && request.method === 'GET') return handleTelemetryUsersBadge(request, env, json)
     if (path === '/api/turnstile/challenge' && request.method === 'GET') return challengePage()
 
     if (path === '/api/stats' && request.method === 'GET') {
-      const [votes, installs] = await Promise.all([readStats(env), readInstalls(env)])
-      return json({ ...votes, installs }, 200, { 'cache-control': 'no-store' })
+      // Worker-level cache for one minute with a one-hour stale copy:
+      // workshop cards fetch this on every GUI start, and under D1 overload
+      // the card UI must render last-known counts instead of an error. The
+      // client response stays no-store so the zone cache rules and browsers
+      // keep the pre-existing freshness semantics; only the worker-internal
+      // copies are cacheable.
+      const statsUrl = new URL(request.url)
+      statsUrl.search = ''
+      const statsCache = caches.default
+      const statsKey = new Request(statsUrl.href, { method: 'GET' })
+      const freshStats = await statsCache.match(statsKey)
+      if (freshStats) {
+        // Stored copies carry a max-age for the worker-cache TTL; strip it on
+        // the way out so every client-visible response stays no-store and the
+        // zone cache rules never pin stats for hours.
+        const headers = new Headers(freshStats.headers)
+        headers.set('cache-control', 'no-store')
+        return new Response(freshStats.body, { status: freshStats.status, headers })
+      }
+      try {
+        const [votes, installs] = await Promise.all([readStats(env), readInstalls(env)])
+        const body = { ...votes, installs }
+        try {
+          await statsCache.put(statsKey, json(body, 200, { 'cache-control': 'public, max-age=60' }))
+          await statsCache.put(new Request(statsUrl.href + '?stale=1', { method: 'GET' }), json(body, 200, { 'cache-control': 'public, max-age=3600' }))
+        } catch { /* caching is best-effort; serve the computed response */ }
+        return json(body, 200, { 'cache-control': 'no-store' })
+      } catch {
+        const staleStats = await statsCache.match(new Request(statsUrl.href + '?stale=1', { method: 'GET' }))
+        if (staleStats) {
+          const headers = new Headers(staleStats.headers)
+          headers.set('cache-control', 'no-store')
+          return new Response(staleStats.body, { status: staleStats.status, headers })
+        }
+        return json({ ok: false, error: 'storage-unavailable' }, 503)
+      }
     }
 
     if (path === '/api/install' && request.method === 'POST') {
@@ -287,8 +338,9 @@ export default {
       if (!(await isKnownAsset(env, kind, assetId))) return json({ ok: false, error: 'unknown-asset' }, 400)
       const hash = await sha256(fp)
       const token = typeof body.turnstile_token === 'string' ? body.turnstile_token : ''
-      if (!(await verifyTurnstile(request, env, token))) {
-        return json({ ok: false, error: token ? 'captcha-invalid' : 'captcha-required' }, 403)
+      const turnstile = await verifyTurnstile(request, env, token)
+      if (!turnstile.ok) {
+        return json({ ok: false, error: token ? 'captcha-invalid' : 'captcha-required', captcha_error_codes: turnstile.codes }, 403)
       }
       const installs = await mutateInstall(env, kind, assetId, hash, installId)
       return json({ ok: true, installs })
@@ -316,8 +368,9 @@ export default {
       if (!(await isKnownAsset(env, kind, assetId))) return json({ ok: false, error: 'unknown-asset' }, 400)
       const hash = await sha256(fp)
       const token = typeof body.turnstile_token === 'string' ? body.turnstile_token : ''
-      if (!(await verifyTurnstile(request, env, token))) {
-        return json({ ok: false, error: token ? 'captcha-invalid' : 'captcha-required' }, 403)
+      const turnstile = await verifyTurnstile(request, env, token)
+      if (!turnstile.ok) {
+        return json({ ok: false, error: token ? 'captcha-invalid' : 'captcha-required', captcha_error_codes: turnstile.codes }, 403)
       }
       const votes = await mutateLike(env, kind, assetId, hash, unlike)
       return json({ ok: true, liked: !unlike, votes })

@@ -9,7 +9,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-system-prompt'
@@ -31,7 +31,7 @@ export const inject = ['webServer', 'tools', 'systemPrompt']
  * surface edits. Spelled here rather than imported: the browser half spells
  * the same value and must not depend on a Host package.
  */
-export const SSH_SETTINGS_NAMESPACE = settingsNamespace('dsh-ssh')
+export const SSH_SETTINGS_NAMESPACE = 'dsh-ssh' as SettingsNamespace
 
 /** Plugin config, validated by the same-named schemastery schema. */
 export interface Config {
@@ -77,17 +77,27 @@ function applyImpl(ctx: Context, config?: Config): void {
   // The live source the surfaces read: the settings section once the web
   // settings surface is served, the composition entry otherwise.
   let current: () => Config = () => config ?? {}
-  const resolve = (): Config => {
-    const value = current()
-    return {
-      announceToAgent: value.announceToAgent ?? DEFAULT_ANNOUNCE,
-      enabled: value.enabled ?? true,
-    }
-  }
+  let isSettingsBound = false
 
   const store = new HostStore()
   const engine = new SshEngine(store)
   ctx.effect(() => () => { engine.dispose() }, 'dsh-ssh: engine')
+
+  const resolve = (): Config => {
+    const value = current()
+    let enabled = value.enabled ?? true
+    // When dsh-ssh was seeded with enabled: false (e.g. from an aggregate profile line),
+    // but the user has never explicitly configured settings (not bound yet)
+    // AND already has active host records in dsh-ssh.json, keep the plugin enabled so
+    // existing users are not broken upon upgrade (#1250).
+    if (enabled === false && !isSettingsBound && store.list().length > 0) {
+      enabled = true
+    }
+    return {
+      announceToAgent: value.announceToAgent ?? DEFAULT_ANNOUNCE,
+      enabled,
+    }
+  }
 
   // The /api/dsh-ssh route family + terminal upgrade.
   const { routes, upgrade } = makeRoutes({ store, engine })
@@ -152,15 +162,18 @@ function applyImpl(ctx: Context, config?: Config): void {
     )
   }
 
-  installSettingsSection(ctx, SSH_SETTINGS_NAMESPACE, Config, config ?? {}, {
-    setSource: (source) => {
-      current = source
-      sync()
-    },
-    onChange: sync,
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, SSH_SETTINGS_NAMESPACE, Config, config ?? {}, {
+      setSource: (source) => {
+        isSettingsBound = true
+        current = source
+        sync()
+      },
+      onChange: sync,
+    })
   })
 
   // Initial registration from the composition entry (covers deployments with
-  // no settings service, whose installSettingsSection never fires its hooks).
+  // no settings service, whose installSection never fires its hooks).
   sync()
 }

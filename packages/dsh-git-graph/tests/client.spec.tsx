@@ -10,7 +10,7 @@
  */
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import type { BranchesView, GraphView, RepoStatus, SwitchResult, WorktreeListView } from '../src/core/types.ts'
 import type { GitGraphInjected } from '../src/client/index.ts'
 import type { BranchChipProps } from '../src/client/chips/BranchChip.tsx'
@@ -69,7 +69,6 @@ interface BenchOptions {
   /** Override the graph verb (e.g. a deferred promise for the loading state). */
   graph?: (limit?: number) => Promise<GraphView | null>
   /** The dock seat's conversation composer phase (blank = the hero phase). */
-  composerPhase?: 'blank' | 'active'
   /** The dock seat's conversation open state (open = the hero phase). */
   openState?: 'open' | 'loading'
   /** Render into this element instead of the RTL default container. */
@@ -164,7 +163,7 @@ function bench(options: BenchOptions = {}, seat: BenchSeat = 'context') {
       ...commonProps,
       sessionId,
       session: {
-        composerPhase: options.composerPhase ?? 'active',
+        blank: options.blank ?? false,
         openState: options.openState ?? 'open',
       } as never,
       input: {} as never,
@@ -235,7 +234,7 @@ describe('BranchChip', () => {
   })
 
   it('keeps the full pill in the blank hero and context seats', async () => {
-    bench({ blank: true, composerPhase: 'blank' }, 'dock')
+    bench({ blank: true }, 'dock')
     const heroChip = await screen.findByRole('button', { name: '分支' })
     expect(heroChip.className).toContain('chipHero')
     cleanup()
@@ -245,7 +244,7 @@ describe('BranchChip', () => {
   })
 
   it('styles the dock chip with the official hero seat in the blank phase', async () => {
-    bench({ composerPhase: 'blank', openState: 'open' }, 'dock')
+    bench({ blank: true, openState: 'open' }, 'dock')
     const branchChip = await screen.findByRole('button', { name: '分支' })
     const chipWrap = branchChip.parentElement as HTMLElement
     expect(chipWrap.className).toContain('chipWrap')
@@ -260,14 +259,14 @@ describe('BranchChip', () => {
   })
 
   it('enters the hero seat while a blank session composer is still loading', async () => {
-    bench({ blank: true, composerPhase: 'blank', openState: 'loading' }, 'dock')
+    bench({ blank: true, openState: 'loading' }, 'dock')
     const branchChip = await screen.findByRole('button', { name: '分支' })
     const anchor = anchorOf(branchChip)
     expect(anchor.className).toContain('anchorHero')
     expect(branchChip.className).toContain('chipHero')
   })
 
-  it('positions the hero dock chip after the rightmost hero-row chip', async () => {
+  it('positions the hero dock chip in the hero workspace row', async () => {
     const stack = document.createElement('div')
     const heroRow = document.createElement('div')
     heroRow.className = 'heroWorkspaceRow'
@@ -278,27 +277,17 @@ describe('BranchChip', () => {
     stack.append(heroRow, outlet)
     document.body.append(stack)
     try {
-      bench({ composerPhase: 'blank', openState: 'open', container: outlet }, 'dock')
-      const chip = await screen.findByRole('button', { name: '分支' })
-      const anchor = anchorOf(chip)
+      bench({ blank: true, openState: 'open', container: outlet }, 'dock')
+      await waitFor(() => {
+        const chip = screen.getByRole('button', { name: '分支' })
+        const anchor = anchorOf(chip)
 
-      const rect = (left: number, top: number, width: number, height: number): DOMRect => ({
-        left, top, right: left + width, bottom: top + height, width, height, x: left, y: top, toJSON: () => ({}),
-      }) as DOMRect
-      stack.getBoundingClientRect = () => rect(320, 313, 812, 274)
-      heroRow.getBoundingClientRect = () => rect(320, 369, 812, 28)
-      preset.getBoundingClientRect = () => rect(467, 369, 106, 28)
-      anchor.getBoundingClientRect = () => rect(320, 405, 812, 28)
-
-      await act(async () => {
-        window.dispatchEvent(new Event('resize'))
-        await nextFrame()
+        expect(heroRow.contains(anchor)).toBe(true)
+        expect(anchor.parentElement).toBe(heroRow)
+        expect(preset.nextElementSibling).toBe(anchor)
+        expect(anchor.className).toContain('anchorHero')
+        expect(chip.className).toContain('chipHero')
       })
-      // Right edge of the preset (573) + the official 2px hero-row gap,
-      // relative to the stack; vertically centered in the 28px row.
-      expect(anchor.style.left).toBe('255px')
-      expect(anchor.style.top).toBe('56px')
-      expect(anchor.style.paddingLeft).toBe('0px')
     } finally {
       stack.remove()
     }

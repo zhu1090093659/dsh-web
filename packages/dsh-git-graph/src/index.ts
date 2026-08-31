@@ -18,7 +18,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-subprocess'
 import type {} from '@deepseek-ai/dsh-workspace'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import type { GitFeatureConfig } from './core/types.ts'
 import { GitService, subprocessRunner, type WorkspaceGate } from './host/git-service.ts'
@@ -48,7 +48,7 @@ export const Config: z<Config> = z.object({
 })
 
 /** The settings-card namespace of this plugin. */
-export const GIT_GRAPH_SETTINGS = settingsNamespace('git-graph')
+export const GIT_GRAPH_SETTINGS = 'git-graph' as SettingsNamespace
 
 /** Resolve the effective config with schema defaults applied. */
 function effectiveConfig(config?: Config): Required<Config> {
@@ -90,7 +90,7 @@ export const apply = mountOnce('@linxin666/dsh-client-ui-git-graph', applyImpl)
 function applyImpl(ctx: Context, config?: Config): void {
   const service = new GitService(subprocessRunner(ctx), createWorkspaceGate(ctx))
 
-  // The live config source: installSettingsSection swaps it when the user
+  // The live config source: installSection swaps it when the user
   // edits the settings card; onChange re-syncs derived registrations.
   let current: () => Required<Config> = () => effectiveConfig(config)
   const featureConfig = (): GitFeatureConfig => {
@@ -117,9 +117,11 @@ function applyImpl(ctx: Context, config?: Config): void {
     }
   }
 
-  installSettingsSection(ctx, GIT_GRAPH_SETTINGS, Config, effectiveConfig(config), {
-    setSource: (source) => { current = () => effectiveConfig(source()) },
-    onChange: syncTool,
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, GIT_GRAPH_SETTINGS, Config, effectiveConfig(config), {
+      setSource: (source) => { current = () => effectiveConfig(source()) },
+      onChange: syncTool,
+    })
   })
   ctx.effect(() => {
     syncTool()

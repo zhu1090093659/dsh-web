@@ -9,7 +9,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import { mountOnce } from './mount-once.ts'
 import { makeMarketRoutes } from './routes.ts'
@@ -21,7 +21,7 @@ export const name = 'ui-market'
 export const inject = ['webServer']
 
 /** Settings namespace of the card's enable switch. */
-export const MARKET_SETTINGS_NAMESPACE = settingsNamespace('dsh-web-ui-market')
+export const MARKET_SETTINGS_NAMESPACE = 'dsh-web-ui-market' as SettingsNamespace
 
 /** Plugin config, validated by the same-named schemastery schema. */
 export interface Config {
@@ -37,9 +37,11 @@ export const Config: z<Config> = z.object({
 export const apply = mountOnce('@linxin666/dsh-client-ui-market', applyImpl)
 
 function applyImpl(ctx: Context): void {
-  installSettingsSection(ctx, MARKET_SETTINGS_NAMESPACE, Config, {}, {
-    setSource: () => { /* application is browser-side; value is read from the scope */ },
-    onChange: () => { /* browser half re-reads on scope publish */ },
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, MARKET_SETTINGS_NAMESPACE, Config, {}, {
+      setSource: () => { /* application is browser-side; value is read from the scope */ },
+      onChange: () => { /* browser half re-reads on scope publish */ },
+    })
   })
   const routes = makeMarketRoutes()
   for (const route of routes) {

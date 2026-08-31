@@ -16,6 +16,7 @@ import type { SshApi } from './api.ts'
 import type { PanelController } from './panel/controller.ts'
 import type { TerminalFontSource } from './panel/helpers.ts'
 import { SshPanel } from './panel/SshPanel.tsx'
+import type { LocaleRefreshSource } from './sidebar-entry.ts'
 import css from './panel/panel.module.css'
 
 /** The injected panel container (kept in the DOM, hidden when inactive). */
@@ -40,11 +41,19 @@ function conversationColumn(): HTMLElement | undefined {
  * @param controller - the panel controller driving the view.
  * @param api - the SSH API client the tabs operate through.
  * @param terminalFont - live terminal-font setting source (issue #577).
+ * @param locale - locale-change source; when given, re-renders an open panel
+ *   on a Language switch.
  * @returns disposer unmounting the tree and restoring the column.
  */
-export function mountPanel(controller: PanelController, api: SshApi, terminalFont?: TerminalFontSource): () => void {
+export function mountPanel(controller: PanelController, api: SshApi, terminalFont?: TerminalFontSource, locale?: LocaleRefreshSource): () => void {
   let root: Root | undefined
   let container: HTMLDivElement | undefined
+  let unsubscribeLocale: (() => void) | undefined
+  try {
+    unsubscribeLocale = locale?.subscribe(() => {
+      if (root !== undefined) root.render(<SshPanel controller={controller} api={api} terminalFont={terminalFont} />)
+    })
+  } catch { /* locale service absent: the panel follows its next natural re-render */ }
 
   const ensure = (): void => {
     if (container !== undefined) {
@@ -110,6 +119,7 @@ export function mountPanel(controller: PanelController, api: SshApi, terminalFon
     document.removeEventListener(ACTIVATE_EVENT, onOtherActivate)
     waitObserver.disconnect()
     unsubscribe()
+    unsubscribeLocale?.()
     document.documentElement.removeAttribute(ACTIVE_ATTR)
     root?.unmount()
     root = undefined

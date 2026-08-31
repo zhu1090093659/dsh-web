@@ -4,14 +4,15 @@ import { chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readF
 import { dirname, join } from 'node:path'
 import { dshHome } from './dsh-home.ts'
 import { isValidCron, nextRunAtMs } from './core/schedule.ts'
-import { parseLedger } from './core/store.ts'
+import { isTaskRecord, parseLedger } from './core/store.ts'
 import { canMoveManually, retainRecentExecutions, settleExecution, startExecution, withStatus, type ExecutionRecord, type TaskRecord } from './core/tasks.ts'
 import { applyArchiveTask, applyRestoreTask } from './core/use-cases/task-archive.ts'
 import { applyCreateTask } from './core/use-cases/task-create.ts'
 import { applyDeleteTask } from './core/use-cases/task-delete.ts'
 import { applySetSchedule, applyScheduleNextRun } from './core/use-cases/task-schedule.ts'
 import { applyUpdateTask, canEditTaskContent, hasContentPatch } from './core/use-cases/task-update.ts'
-import { TASK_BOARD_SCHEMA_VERSION, type TaskBoardAction, type TaskBoardSchedulerSnapshot } from './protocol.ts'
+import { TASK_BOARD_LEGACY_SCHEMA_VERSION, TASK_BOARD_SCHEMA_VERSION, type TaskBoardAction, type TaskBoardSchedulerSnapshot } from './protocol.ts'
+import { DEFAULT_SESSION_PERMISSION, requiresPermissionConfirmation, type TaskPermission } from './core/handover.ts'
 
 interface PersistedScheduler extends TaskBoardSchedulerSnapshot {
   importedSources?: string[]
@@ -21,6 +22,9 @@ interface PersistedRequest {
   requestId: string
   fingerprint: string
 }
+
+/** On-disk document of any schema generation (schemaVersion untyped until the load branches decide). */
+type ParsedLedgerDocument = Omit<Partial<LedgerDocument>, 'schemaVersion'> & { schemaVersion?: unknown }
 
 interface LedgerDocument {
   schemaVersion: typeof TASK_BOARD_SCHEMA_VERSION
@@ -273,7 +277,11 @@ export class HostTaskLedger {
   /** Small sidecar for the 30 s scheduler heartbeat (lastTickAt only). */
   readonly schedulerFile: string
 
-  constructor(dir: string = join(dshHome(), 'task-board'), private readonly now: () => number = Date.now) {
+  /** Session-default permission the confirmation gate compares against. */
+  readonly sessionDefaultPermission: TaskPermission
+
+  constructor(dir: string = join(dshHome(), 'task-board'), private readonly now: () => number = Date.now, options: { sessionDefaultPermission?: TaskPermission } = {}) {
+    this.sessionDefaultPermission = options.sessionDefaultPermission ?? DEFAULT_SESSION_PERMISSION
     mkdirSync(dir, { recursive: true })
     this.file = join(dir, 'ledger-v2.json')
     this.lockFile = join(dir, 'ledger-v2.lock')
@@ -368,7 +376,11 @@ export class HostTaskLedger {
     }
   }
 
-  applyRequest(requestId: string, action: TaskBoardAction): { state: LedgerState; run?: OpenedRun } {
+  applyRequest(
+    requestId: string,
+    action: TaskBoardAction,
+    initiator?: string,
+  ): { state: LedgerState; run?: OpenedRun } {
     const fingerprint = createHash('sha256').update(JSON.stringify(action)).digest('hex')
     const cached = this.requestCache.get(requestId)
     if (cached !== undefined) {
@@ -382,7 +394,7 @@ export class HostTaskLedger {
     while (this.requestCache.size > MAX_REQUEST_CACHE) this.requestCache.delete(this.requestCache.keys().next().value as string)
     this.syncRecentRequests()
     try {
-      return this.apply(action)
+      return this.apply(action, initiator)
     } catch (error) {
       this.requestCache.delete(requestId)
       this.syncRecentRequests()
@@ -393,6 +405,14 @@ export class HostTaskLedger {
   openScheduled(taskId: string, nextRunAt: number | undefined, triggeredAt: number): OpenedRun | undefined {
     const task = this.document.tasks.find(item => item.id === taskId)
     if (task === undefined || task.archivedAt !== undefined) return undefined
+    if (requiresPermissionConfirmation(task, this.sessionDefaultPermission)) {
+      // An unconfirmed above-default permission must never run unattended:
+      // cron refuses the card and rolls to the next occurrence, exactly
+      // like the already-running refusal.
+      this.document.tasks = [...applyScheduleNextRun(this.document.tasks, taskId, nextRunAt, task.schedule?.lastTriggeredAt, triggeredAt)]
+      this.commit()
+      return undefined
+    }
     if (task.status === 'running' || hasOpenExecution(task)) {
       this.document.tasks = [...applyScheduleNextRun(this.document.tasks, taskId, nextRunAt, task.schedule?.lastTriggeredAt, triggeredAt)]
       this.commit()
@@ -446,7 +466,7 @@ export class HostTaskLedger {
     this.commit()
   }
 
-  private apply(action: TaskBoardAction): { state: LedgerState; run?: OpenedRun } {
+  private apply(action: TaskBoardAction, initiator?: string): { state: LedgerState; run?: OpenedRun } {
     const now = this.now()
     let run: OpenedRun | undefined
     switch (action.kind) {
@@ -473,7 +493,10 @@ export class HostTaskLedger {
         if (action.input.schedule?.enabled === true && (!isValidCron(action.input.schedule.cron) || nextRunAtMs(action.input.schedule.cron, now) === undefined)) {
           throw new Error('invalid schedule')
         }
-        const result = applyCreateTask(this.document.tasks, action.input, now, action.id)
+        const input = action.input.freeze === undefined || initiator === undefined || initiator === ''
+          ? action.input
+          : { ...action.input, freeze: { ...action.input.freeze, frozenBy: initiator } }
+        const result = applyCreateTask(this.document.tasks, input, now, action.id)
         if (result.task === undefined) throw new Error('invalid task')
         this.document.tasks = [...result.tasks]
         break
@@ -490,7 +513,12 @@ export class HostTaskLedger {
           throw new Error('task has already been executed')
         }
         if ('title' in action.patch && action.patch.title?.trim() === '') throw new Error('title is required')
-        this.document.tasks = [...applyUpdateTask(this.document.tasks, action.taskId, action.patch, now)]
+        // A replaced snapshot is re-stamped with the updating session (the
+        // initiator), so a swapped freeze cannot keep the old author stamp.
+        const patch = action.patch.freeze === null || action.patch.freeze === undefined || initiator === undefined || initiator === ''
+          ? action.patch
+          : { ...action.patch, freeze: { ...action.patch.freeze, frozenBy: initiator } }
+        this.document.tasks = [...applyUpdateTask(this.document.tasks, action.taskId, patch, now)]
         break
       }
       case 'delete':
@@ -522,6 +550,15 @@ export class HostTaskLedger {
         this.document.tasks = [...result.tasks]
         break
       }
+      case 'confirm-permission': {
+        const task = this.document.tasks.find(item => item.id === action.taskId)
+        if (task === undefined) throw new Error('task not found')
+        if (task.permissionConfirmedAt !== undefined) break
+        this.document.tasks = this.document.tasks.map(item => item.id === action.taskId
+          ? { ...item, permissionConfirmedAt: now, updatedAt: now }
+          : item)
+        break
+      }
       case 'set-schedule': {
         const task = this.document.tasks.find(task => task.id === action.taskId)
         if (task?.archivedAt !== undefined) throw new Error('archived task is read-only')
@@ -535,8 +572,11 @@ export class HostTaskLedger {
         const task = this.document.tasks.find(item => item.id === action.taskId)
         if (task?.archivedAt !== undefined) throw new Error('archived task is read-only')
         if (task === undefined || task.status === 'running' || hasOpenExecution(task)) throw new Error('task is already running or missing')
+        if (requiresPermissionConfirmation(task, this.sessionDefaultPermission)) {
+          throw new Error(`confirmation-required: the effective permission is above the session default (${this.sessionDefaultPermission}); confirm the card's permission binding first`)
+        }
         const base = action.kind === 'rerun' ? withStatus(task, 'todo', now) : task
-        run = startExecution(base, now, crypto.randomUUID())
+        run = startExecution(base, now, crypto.randomUUID(), initiator)
         this.document.tasks = this.document.tasks.map(item => item.id === task.id ? run!.task : item)
         break
       }
@@ -578,60 +618,98 @@ export class HostTaskLedger {
     if (changed && persist) this.commit()
   }
 
+  /**
+   * Field-preserving v2 to v3 migration. v3 adds no fields yet, so the
+   * migration reuses the v3 normalization, but it first proves every task
+   * row is structurally valid: a v2 document that would silently drop or
+   * coerce rows fails loudly instead (no quarantined-empty restart).
+   */
+  private migrateLegacyDocument(parsed: ParsedLedgerDocument): LedgerDocument {
+    if (!Array.isArray(parsed.tasks) || !parsed.tasks.every(row => isTaskRecord(row))) {
+      throw new Error('v2 document contains structurally invalid task rows')
+    }
+    return this.normalizeDocument(parsed)
+  }
+
   private load(dir: string): LedgerDocument {
     const existed = existsSync(this.file)
+    // schemaVersion stays unknown-typed here: on-disk documents may be v2
+    // (legacy), v3, or any future/invalid value the branches below sort out.
+    let parsed: ParsedLedgerDocument
     try {
-      const parsed = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<LedgerDocument>
-      if (parsed.schemaVersion !== TASK_BOARD_SCHEMA_VERSION || !Array.isArray(parsed.tasks)) throw new Error('unsupported ledger schema')
-      const tasks = parseHostTasks(parsed.tasks).map(task => ({ ...task, executions: retainRecentExecutions(task.executions) }))
-      const invalidScheduleIds = (parsed.tasks as unknown[]).flatMap(value => {
-        if (typeof value !== 'object' || value === null) return []
-        const row = value as { id?: unknown; schedule?: unknown }
-        if (typeof row.schedule !== 'object' || row.schedule === null) return []
-        const cron = (row.schedule as { cron?: unknown }).cron
-        return typeof cron !== 'string' || !isValidCron(cron)
-          ? [typeof row.id === 'string' ? row.id : 'unknown']
-          : []
-      })
-      const documentLastTickAt = typeof parsed.scheduler?.lastTickAt === 'number' ? parsed.scheduler.lastTickAt : undefined
-      const sidecarLastTickAt = this.readSchedulerSidecar()
-      // A sidecar write can be newer than the last full commit (crash between
-      // the two); lastTickAt only ever moves forward, so take the greater.
-      const lastTickAt = sidecarLastTickAt === undefined || (documentLastTickAt !== undefined && documentLastTickAt >= sidecarLastTickAt)
-        ? documentLastTickAt
-        : sidecarLastTickAt
-      return {
-        schemaVersion: TASK_BOARD_SCHEMA_VERSION,
-        revision: Number.isSafeInteger(parsed.revision) && (parsed.revision as number) >= 0 ? parsed.revision as number : 0,
-        tasks,
-        scheduler: {
-          timeZone: timeZone(),
-          ledgerId: typeof parsed.scheduler?.ledgerId === 'string' && parsed.scheduler.ledgerId !== '' ? parsed.scheduler.ledgerId : crypto.randomUUID(),
-          ...(lastTickAt === undefined ? {} : { lastTickAt }),
-          ...(typeof parsed.scheduler?.error === 'string' ? { error: parsed.scheduler.error } : {}),
-          ...(invalidScheduleIds.length > 0 ? { error: `invalid cron disabled for task(s): ${invalidScheduleIds.join(', ')}` } : {}),
-          ...(Array.isArray(parsed.scheduler?.importedSources) ? { importedSources: parsed.scheduler.importedSources.filter(x => typeof x === 'string') } : {}),
-        },
-        recentRequests: Array.isArray(parsed.recentRequests)
-          ? parsed.recentRequests.flatMap((entry) => {
-              if (typeof entry !== 'object' || entry === null) return []
-              const request = entry as { requestId?: unknown; fingerprint?: unknown }
-              return typeof request.requestId === 'string' && request.requestId !== '' && typeof request.fingerprint === 'string'
-                ? [{ requestId: request.requestId, fingerprint: request.fingerprint }]
-                : []
-            }).slice(-MAX_REQUEST_CACHE)
-          : [],
-      }
+      parsed = JSON.parse(readFileSync(this.file, 'utf8')) as ParsedLedgerDocument
     } catch (error) {
-      if (existed) renameSync(this.file, `${this.file}.corrupt-${this.now()}-${process.pid}-${crypto.randomUUID()}`)
-      mkdirSync(dir, { recursive: true })
-      return {
-        schemaVersion: TASK_BOARD_SCHEMA_VERSION,
-        revision: 0,
-        tasks: [],
-        scheduler: { timeZone: timeZone(), ledgerId: crypto.randomUUID(), ...(existed ? { error: `corrupt ledger was quarantined: ${error instanceof Error ? error.message : String(error)}` } : {}) },
-        recentRequests: [],
+      return this.recoverCorrupt(dir, existed, error)
+    }
+    if (parsed.schemaVersion === TASK_BOARD_LEGACY_SCHEMA_VERSION) {
+      try {
+        return this.migrateLegacyDocument(parsed)
+      } catch (error) {
+        // Migration failure is explicit: the original v2 file stays in place
+        // for manual recovery and the ledger refuses to start (fail closed).
+        throw new Error(`ledger v2 to v3 migration failed; original file kept at ${this.file}: ${error instanceof Error ? error.message : String(error)}`)
       }
+    }
+    try {
+      if (parsed.schemaVersion !== TASK_BOARD_SCHEMA_VERSION || !Array.isArray(parsed.tasks)) throw new Error('unsupported ledger schema')
+      return this.normalizeDocument(parsed)
+    } catch (error) {
+      return this.recoverCorrupt(dir, existed, error)
+    }
+  }
+
+  private normalizeDocument(parsed: ParsedLedgerDocument): LedgerDocument {
+    const tasks = parseHostTasks(parsed.tasks as readonly unknown[]).map(task => ({ ...task, executions: retainRecentExecutions(task.executions) }))
+    const invalidScheduleIds = (parsed.tasks as unknown[]).flatMap(value => {
+      if (typeof value !== 'object' || value === null) return []
+      const row = value as { id?: unknown; schedule?: unknown }
+      if (typeof row.schedule !== 'object' || row.schedule === null) return []
+      const cron = (row.schedule as { cron?: unknown }).cron
+      return typeof cron !== 'string' || !isValidCron(cron)
+        ? [typeof row.id === 'string' ? row.id : 'unknown']
+        : []
+    })
+    const documentLastTickAt = typeof parsed.scheduler?.lastTickAt === 'number' ? parsed.scheduler.lastTickAt : undefined
+    const sidecarLastTickAt = this.readSchedulerSidecar()
+    // A sidecar write can be newer than the last full commit (crash between
+    // the two); lastTickAt only ever moves forward, so take the greater.
+    const lastTickAt = sidecarLastTickAt === undefined || (documentLastTickAt !== undefined && documentLastTickAt >= sidecarLastTickAt)
+      ? documentLastTickAt
+      : sidecarLastTickAt
+    return {
+      schemaVersion: TASK_BOARD_SCHEMA_VERSION,
+      revision: Number.isSafeInteger(parsed.revision) && (parsed.revision as number) >= 0 ? parsed.revision as number : 0,
+      tasks,
+      scheduler: {
+        timeZone: timeZone(),
+        ledgerId: typeof parsed.scheduler?.ledgerId === 'string' && parsed.scheduler.ledgerId !== '' ? parsed.scheduler.ledgerId : crypto.randomUUID(),
+        ...(lastTickAt === undefined ? {} : { lastTickAt }),
+        ...(typeof parsed.scheduler?.error === 'string' ? { error: parsed.scheduler.error } : {}),
+        ...(invalidScheduleIds.length > 0 ? { error: `invalid cron disabled for task(s): ${invalidScheduleIds.join(', ')}` } : {}),
+        ...(Array.isArray(parsed.scheduler?.importedSources) ? { importedSources: parsed.scheduler.importedSources.filter(x => typeof x === 'string') } : {}),
+      },
+      recentRequests: Array.isArray(parsed.recentRequests)
+        ? parsed.recentRequests.flatMap((entry) => {
+            if (typeof entry !== 'object' || entry === null) return []
+            const request = entry as { requestId?: unknown; fingerprint?: unknown }
+            return typeof request.requestId === 'string' && request.requestId !== '' && typeof request.fingerprint === 'string'
+              ? [{ requestId: request.requestId, fingerprint: request.fingerprint }]
+              : []
+          }).slice(-MAX_REQUEST_CACHE)
+        : [],
+    }
+  }
+
+  /** Quarantine an unreadable document and start from an empty ledger. */
+  private recoverCorrupt(dir: string, existed: boolean, error: unknown): LedgerDocument {
+    if (existed) renameSync(this.file, `${this.file}.corrupt-${this.now()}-${process.pid}-${crypto.randomUUID()}`)
+    mkdirSync(dir, { recursive: true })
+    return {
+      schemaVersion: TASK_BOARD_SCHEMA_VERSION,
+      revision: 0,
+      tasks: [],
+      scheduler: { timeZone: timeZone(), ledgerId: crypto.randomUUID(), ...(existed ? { error: `corrupt ledger was quarantined: ${error instanceof Error ? error.message : String(error)}` } : {}) },
+      recentRequests: [],
     }
   }
 

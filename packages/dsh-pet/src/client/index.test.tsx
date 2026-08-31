@@ -12,7 +12,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 // The npm SDK's client half is a closure-factory bundle for the GUI's
 // __ModuleLoader__ (not importable under vitest); provide defineStore /
 // createSnapshotStore (same fake-store pattern as the settings-card tests).
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
+vi.mock('@deepseek-ai/dsh-client-store', () => ({
   defineStore: (spec: {
     init: () => unknown
     actions: Record<string, (draft: never, ...args: never[]) => void>
@@ -48,7 +48,7 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
     }
   },
 }))
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { apply } from './index.ts'
 
 beforeAll(() => {

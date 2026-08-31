@@ -17,7 +17,10 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the settings surface's slot contracts (settings.plugins.tab).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the client runtime Context merge (ctx.workspaces, ctx.sessions).
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import { PluginManagerTab, type PluginManagerTabInjected } from './PluginManagerTab.tsx'
 import { en, zh, type PluginManagerKey } from './locales.ts'
@@ -273,7 +276,7 @@ export function createPluginManagerFace(ctx: ClientContext): PluginManagerFace {
    */
   const repairPlugin = async (pluginRoot: string, message: string): Promise<void> => {
     const workspace = await ctx.workspaces.create({ path: pluginRoot })
-    const sessionId = await ctx.workspaces.connectWorkspace(workspace.workspaceId)
+    const sessionId = await ctx.sessions.create({ workspaceId: workspace.workspaceId })
     const binding = ctx.sessions.binding(sessionId)
     if (binding === undefined) throw new Error(`plugin-manager: repair session ${sessionId} is unavailable`)
     const result = await binding.session.prompt([{ type: 'text', text: message }], 'queue')

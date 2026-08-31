@@ -97,7 +97,6 @@ export interface DeviceFrame {
 /**
  * Mint a fresh pairing token (one active token at a time — this invalidates
  * any previous link).
- * @param workspaceId - optional current workspace to deep-link the phone into.
  * @param address - optional LAN IP literal the QR must be built from (the
  * default is the first interface); unknown literals refuse with
  * 'unknown-address'.
@@ -105,12 +104,11 @@ export interface DeviceFrame {
  * 0.0.0.0), or the forbidden refusal (the loopback-only fence rejected this
  * origin — the panel is a desktop control endpoint).
  */
-export async function issuePair(workspaceId?: string, address?: string): Promise<IssueResponse> {
+export async function issuePair(address?: string): Promise<IssueResponse> {
   const response = await fetch('/api/pair/issue', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      ...(workspaceId !== undefined ? { workspaceId } : {}),
       ...(address !== undefined ? { address } : {}),
     }),
   })
@@ -166,15 +164,11 @@ export async function sendHeartbeat(): Promise<void> {
   await fetch('/api/pair/heartbeat', { method: 'POST' })
 }
 
-/** Whether the current page URL carries a pairing token / workspace target. */
-export function readPairParams(search: string): { pair?: string; workspace?: string } {
+/** Whether the current page URL carries a pairing token. */
+export function readPairParams(search: string): { pair?: string } {
   const params = new URLSearchParams(search)
   const pair = params.get('pair')
-  const workspace = params.get('workspace')
-  return {
-    ...(pair !== null && pair !== '' ? { pair } : {}),
-    ...(workspace !== null && workspace !== '' ? { workspace } : {}),
-  }
+  return pair !== null && pair !== '' ? { pair } : {}
 }
 
 /**
@@ -188,11 +182,28 @@ export function stripParam(name: string): string {
   return url.search
 }
 
-/** Convert an issued `/m/` link into the desktop pairing form. */
-export function desktopPairUrl(mobileUrl: string): string {
-  const url = new URL(mobileUrl)
-  url.pathname = '/'
-  return url.href
+/** LAN-bind status frame from the loopback-only card endpoint. */
+export interface LanBindFrame {
+  profile: string
+  /** The config toggle: true/false once flipped, null while untouched. */
+  setting: boolean | null
+  /** The bind default the managed patch block currently pins. */
+  blockHost: string | null
+  /** The live bind of the running web server. */
+  bindHost: string
+  port: number
+  lanUrls: string[]
+  firewall: { ok: boolean; managed: boolean; note?: string }
+  platform: string
+  /** true when the running bind has not caught up with the toggle yet. */
+  pendingRestart?: boolean
+}
+
+/** Read the LAN-bind facts (loopback-only endpoint). */
+export async function readLanBindStatus(): Promise<LanBindFrame> {
+  const response = await fetch('/api/pair/lan-bind')
+  if (!response.ok) throw new Error(`remote-web-ui: lan-bind status failed with ${String(response.status)}`)
+  return await response.json() as LanBindFrame
 }
 
 /** Human-readable expiry clock, e.g. "10:35". */

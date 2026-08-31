@@ -10,31 +10,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
-// The SDK client half is a closure bundle the GUI module loader executes;
-// outside the shell a minimal store stands in (family convention, see the
-// dsh-live-stats client-apply spec).
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
-  createSnapshotStore: <T,>(init: T) => {
-    let value = init
-    const listeners = new Set<() => void>()
-    return {
-      getSnapshot: () => value,
-      subscribe: (listener: () => void): (() => void) => {
-        listeners.add(listener)
-        return () => { listeners.delete(listener) }
-      },
-      set: (next: T): void => {
-        value = next
-        for (const listener of [...listeners]) listener()
-      },
-      update: (mutator: (draft: T) => void): void => {
-        mutator(value)
-        for (const listener of [...listeners]) listener()
-      },
-    }
-  },
-}))
-
 // Type-only: pulls the client entry's SlotMap merge (the 'web-ui.plugin.item'
 // entry the card's PropsRuntime names) into this program without executing it.
 import type {} from '../src/client/index.ts'
@@ -46,7 +21,7 @@ import {
 } from '../src/client/DescribeImageSettingsCard.tsx'
 import { setLanguage } from '../src/client/locales.ts'
 import type { FieldState } from '../src/client/settings-form.ts'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { DescribeImageSettings } from '../src/client/DescribeImageSettingsCard.tsx'
 
 afterEach(() => {

@@ -4,9 +4,10 @@ dsh Web GUI 的 Host 权威多列任务看板。任务通过真实 DSH 会话执
 
 ## Host 账本、执行与调度
 
-- v2 权威账本固定为 `$DSH_HOME/task-board/ledger-v2.json`，结构是 `{ schemaVersion: 2, revision, tasks, scheduler }`；写入必须保持临时文件加原子 rename、损坏文件隔离和 revision 单调递增。
+- 权威账本固定为 `$DSH_HOME/task-board/ledger-v2.json`（文件名为历史沿用），当前 schema 为 `{ schemaVersion: 3, revision, tasks, scheduler }`；旧 v2 文档在 Host 启动时逐字段无损迁移为 v3 写回，迁移失败必须明确报错且保留原文件（不静默清零）；写入必须保持临时文件加原子 rename、损坏文件隔离和 revision 单调递增。
 - 浏览器 `dsh.taskBoard.v1` 只用于一次性导入且必须保留；导入 marker 只能在 Host 确认后写。所有生产变更走 `protocol.ts` 的严格同源 action 协议，UI 不得先写未确认状态。
 - 手动与 cron 统一走 `HostExecutionRunner`。钉住的 workspace、agent preset、permission 任一失效都在任务 Prompt 前 fail closed；每次 execution 创建独立会话。
+- 交接包三元组在执行时覆盖普通钉住字段；有效权限高于 `sessionDefaultPermission`（默认 `read-only`）的绑定必须先经 `confirm-permission` 动作人工确认（变更即重新武装），未确认卡片手动执行拒绝、cron 跳过并滚动 `nextRunAt`。
 - cron 使用 Host 本地时区和标准日期/星期 OR 语义。Host 首启或长暂停后的过期出现全部跳过；同任务 running 时不排队、不并发，只滚动下一触发点。
 - 重启恢复时，有 session id 的 running execution 继续观察；无 session id 的启动中断标为 cancelled，禁止自动重发。
 

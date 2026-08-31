@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-08-30-pet-sprite-portal-and-stream-keepalive.md: 9106b923bb75a3a20ed9508e653e8568d2052b24
+2026-08-30-pet-sprite-portal-and-stream-keepalive.zh.md: 4db135b0fad2a42c7941dfa03a2ee0f64aede25f

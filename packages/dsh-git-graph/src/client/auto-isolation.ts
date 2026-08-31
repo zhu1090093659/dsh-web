@@ -15,7 +15,7 @@
  * @module dsh-git-graph/client/auto-isolation
  */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { GitApi } from './api.ts'
 
 /** The mutable face the wrapper needs (probed, never assumed). */

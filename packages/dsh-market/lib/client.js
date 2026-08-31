@@ -7,7 +7,6 @@ window.__ModuleLoader__.load({
 		let react = require("react");
 		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		let react_jsx_runtime = require("react/jsx-runtime");
-		let _deepseek_ai_dsh_client_runtime_client = require("@deepseek-ai/dsh-client-runtime/client");
 		//#region src/client/turnstile.ts
 		/** Turnstile token relay hosted on the market origin. */
 		const MARKET_ORIGIN$1 = "https://dsh-market.com";
@@ -488,6 +487,19 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region \0dsh-store-engine
+		const platform = ["@deepseek-ai/dsh-client", "-store"].join("");
+		const legacy = ["@deepseek-ai/dsh-client-runtime", "/client"].join("");
+		let engine;
+		try {
+			engine = require(platform);
+		} catch {
+			engine = require(legacy);
+		}
+		const createSnapshotStore = engine.createSnapshotStore;
+		engine.defineStore;
+		engine.shallowEqual;
+		//#endregion
 		//#region src/client/settings-form.ts
 		/** A boolean field, edited through true/false draft text. */
 		function booleanField(field) {
@@ -547,7 +559,7 @@ window.__ModuleLoader__.load({
 			}
 			/** Publish a projection of this form, rebuilt whenever the scope or a draft changes. */
 			bind(project) {
-				const store = (0, _deepseek_ai_dsh_client_runtime_client.createSnapshotStore)(project());
+				const store = createSnapshotStore(project());
 				this.listeners.add(() => {
 					store.set(project());
 				});
@@ -562,7 +574,7 @@ window.__ModuleLoader__.load({
 					exposed: snapshot.status === "ready",
 					writable: snapshot.writable,
 					dirty: plan.length > 0,
-					invalid: plan.some((item) => item.run === void 0),
+					invalid: plan.some((item) => item.judge === void 0),
 					saving: this.saving,
 					failed: this.failed,
 					...this.failedReason === void 0 ? {} : { failedReason: this.failedReason }
@@ -612,44 +624,51 @@ window.__ModuleLoader__.load({
 				};
 			}
 			/**
-			* Write every staged edit, then re-seed from what the Host accepted.
+			* Write every staged edit in one atomic scope mutation, then re-seed from
+			* what the Host accepted.
 			*
-			* When the scope carries the optional batch surface (the dsh-web
-			* bridge scope), every planned write rides one mutation so cross-field
-			* validate hooks (baseURL+model) judge the batch as a unit instead of
-			* deadlocking on per-field writes. Otherwise the per-field loop runs.
-			* A field lands only when the Host reports it held the staged value; a
-			* landed field's draft is dropped, a failed one stays staged for the user.
-			* @returns settlement after every write and the read-back.
+			* The whole batch rides one mutate, so cross-field validate hooks
+			* (baseURL+model) judge it as a unit: the Host either applies every write
+			* or refuses the batch. The 0.1.2 scope contract never rejects a refused
+			* mutation — the scope recovers with a fresh Host view and resolves — so
+			* resolution alone proves nothing: the outcome is judged by reading the
+			* settled snapshot back, one planned write at a time, and one missed write
+			* fails the whole save. A scope that still rejects on refusal (the dsh-web
+			* bridge scope) reports through the same failure path with its rejection
+			* message. A save that did not land keeps its drafts, so the user can
+			* correct them instead of retyping.
+			* @returns settlement after the mutation and the read-back.
 			*/
 			async save() {
 				const plan = this.plan();
-				const valid = plan.filter((item) => item.run !== void 0);
+				const valid = plan.filter((item) => item.judge !== void 0);
 				if (plan.length === 0 || this.saving || valid.length !== plan.length) return;
-				const plannedWrites = valid.map((item) => item.op);
 				const pending = /* @__PURE__ */ new Map();
 				for (const item of plan) pending.set(item.field, this.staged.get(item.field));
 				this.saving = true;
 				this.failed = false;
 				this.failedReason = void 0;
 				this.publish();
-				const landed = /* @__PURE__ */ new Set();
-				const batch = this.batchedScope();
-				if (batch !== void 0) {
-					const result = await batch.mutate(plannedWrites);
-					if (result.ok) {
-						for (const field of result.fields) if (field.landed) landed.add(field.field);
-					} else this.failedReason = result.message;
-				} else for (const item of valid) if (await item.run()) landed.add(item.field);
-				for (const [field, before] of pending) if (landed.has(field) && this.staged.get(field) === before) this.staged.delete(field);
+				const ops = valid.map((item) => item.op.op === "set" ? {
+					op: "set",
+					path: [item.field],
+					value: item.op.value
+				} : {
+					op: "unset",
+					path: [item.field]
+				});
+				let failedReason;
+				try {
+					await this.scope.mutate(ops);
+				} catch (error) {
+					failedReason = error instanceof Error ? error.message : String(error);
+				}
+				const landed = failedReason === void 0 && valid.every((item) => item.judge());
+				for (const [field, before] of pending) if (landed && this.staged.get(field) === before) this.staged.delete(field);
 				this.saving = false;
-				this.failed = landed.size !== pending.size;
+				this.failed = !landed;
+				this.failedReason = failedReason;
 				this.publish();
-			}
-			/** The scope's batch surface when it supports one; undefined conservatively otherwise. */
-			batchedScope() {
-				const candidate = this.scope;
-				return typeof candidate?.mutate === "function" ? candidate : void 0;
 			}
 			/**
 			* Every staged edit a save would write. An entry whose draft is not a value
@@ -669,7 +688,7 @@ window.__ModuleLoader__.load({
 								field,
 								op: "unset"
 							},
-							run: () => this.clear(field)
+							judge: () => this.landedUnset(field)
 						});
 						continue;
 					}
@@ -681,7 +700,7 @@ window.__ModuleLoader__.load({
 							field,
 							op: "unset"
 						},
-						run: void 0
+						judge: void 0
 					});
 					else if (write.kind === "clear") plan.push({
 						field,
@@ -689,7 +708,7 @@ window.__ModuleLoader__.load({
 							field,
 							op: "unset"
 						},
-						run: () => this.clear(field)
+						judge: () => this.landedUnset(field)
 					});
 					else plan.push({
 						field,
@@ -698,19 +717,25 @@ window.__ModuleLoader__.load({
 							op: "set",
 							value: write.value
 						},
-						run: () => this.store(field, write.value)
+						judge: () => this.landedSet(field, write.value)
 					});
 				}
 				return plan;
 			}
-			async clear(field) {
-				await this.scope.unset(field);
-				return !this.stored(field);
-			}
-			async store(field, value) {
-				await this.scope.set(field, value);
+			/**
+			* Read-back judgment for a planned set: the user layer must hold the
+			* intended value once the mutation has settled.
+			*/
+			landedSet(field, value) {
 				if (this.specOf(field).secret) return true;
 				return this.userLayer()?.[field] === value;
+			}
+			/**
+			* Read-back judgment for a planned unset: the field must be gone from the
+			* user layer once the mutation has settled.
+			*/
+			landedUnset(field) {
+				return !this.stored(field);
 			}
 			stage(field, edit) {
 				this.staged.set(field, edit);
@@ -825,9 +850,53 @@ window.__ModuleLoader__.load({
 				return false;
 			}
 		}
+		/** Strips an npm scope prefix (e.g. '@scope/pkg' -> 'pkg'). */
+		function unscoped(name) {
+			return name.replace(/^@[^/]+\//, "");
+		}
+		/** Strips version/tag suffix from an npm spec (e.g. 'pkg@1.2.3' -> 'pkg', '@scope/pkg@1.2.3' -> '@scope/pkg'). */
+		function stripVersion(spec) {
+			const atIdx = spec.lastIndexOf("@");
+			return atIdx > 0 ? spec.slice(0, atIdx) : spec;
+		}
+		/** Normalizes a git URL or spec to a canonical owner/repo path. */
+		function normalizeRepo(spec) {
+			let s = spec.trim().toLowerCase();
+			const hashIdx = s.indexOf("#");
+			if (hashIdx !== -1) s = s.slice(0, hashIdx);
+			s = s.replace(/^(?:git\+)?https?:\/\/(?:www\.)?github\.com\//, "").replace(/^github:/, "").replace(/^git@github\.com:/, "").replace(/\.git$/, "").replace(/\/+$/, "");
+			return s;
+		}
+		/** Whether an installed plugin row corresponds to a market plugin entry. */
+		function isRowMatch(entry, item) {
+			if (item.id === entry.id || item.name === entry.id) return true;
+			if (entry.npm) {
+				const entryNpmBase = stripVersion(entry.npm);
+				if (item.id === entry.npm || item.id === entryNpmBase) return true;
+				if (item.name === entry.npm || item.name === entryNpmBase) return true;
+				if (stripVersion(item.source.spec) === entryNpmBase) return true;
+			}
+			const itemUnscoped = unscoped(item.id);
+			const nameUnscoped = unscoped(item.name);
+			if (itemUnscoped === entry.id || nameUnscoped === entry.id) return true;
+			if (entry.npm) {
+				const entryUnscoped = unscoped(stripVersion(entry.npm));
+				if (itemUnscoped === entryUnscoped || nameUnscoped === entryUnscoped) return true;
+				if (entryUnscoped === item.id || entryUnscoped === item.name) return true;
+			}
+			if (entry.repo) {
+				const entryCanon = normalizeRepo(entry.repo);
+				if (entryCanon) {
+					if (normalizeRepo(item.id) === entryCanon) return true;
+					if (normalizeRepo(item.name) === entryCanon) return true;
+					if (normalizeRepo(item.source.spec) === entryCanon) return true;
+				}
+			}
+			return false;
+		}
 		/** Find the installed row for an entry (null when not installed or no snapshot). */
 		function entryInstalled(entry, installed) {
-			return installed.find((item) => item.id === entry.id) ?? null;
+			return installed.find((item) => isRowMatch(entry, item)) ?? null;
 		}
 		//#endregion
 		//#region src/client/filter.ts
@@ -1800,6 +1869,7 @@ window.__ModuleLoader__.load({
 						onClose: () => {
 							setConflict(null);
 						},
+						closeLabel: t("cancel"),
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: t("conflict.text", { dest: conflict?.dest ?? "" }) }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: market_module_css_default.modalActions,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
@@ -2024,7 +2094,7 @@ window.__ModuleLoader__.load({
 		/** The building package's version, when the bundle carries it. */
 		function bakedVersion() {
 			try {
-				return "0.3.6";
+				return "0.3.10";
 			} catch {
 				return;
 			}

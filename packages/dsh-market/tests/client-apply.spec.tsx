@@ -18,7 +18,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   Modal: (props: Record<string, unknown>) => null,
 }))
 
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
+vi.mock('@deepseek-ai/dsh-client-ui-settings/client', () => ({
   createSnapshotStore: (init: unknown) => {
     let value = init
     const listeners = new Set<() => void>()

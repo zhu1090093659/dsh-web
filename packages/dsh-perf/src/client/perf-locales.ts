@@ -14,7 +14,7 @@ export const zh = {
   'settings.modeBalanced': '均衡',
   'settings.modeAggressive': '激进',
   'settings.renderDegrade': '消息渲染降载',
-  'settings.renderDegradeHint': '超重消息延迟终态渲染：按文本+代码围栏+公式加权判定(不再只数纯文本字符)，多条 heavy 消息经全局队列串行错峰翻转(不再同帧突发)；会话列表的纯投影刷新(token 计数等)合并降至约 1Hz。样式与官方一致。',
+  'settings.renderDegradeHint': '会话列表的纯投影刷新(token 计数等)合并降至约 1Hz，可见字段变化仍立即发布；开启后消息行附带 content-visibility 屏外降载。',
   'settings.alertPreset': '告警阈值',
   'settings.alertPresetHint': '轻（10 会话 / 1000 ev·s⁻¹）/ 标准（5 / 300）/ 严格（3 / 150）。',
   'settings.alertPresetLight': '减轻',
@@ -27,7 +27,7 @@ export const zh = {
   'settings.off': '关',
   'settings.overridden': '已覆盖',
   'settings.reset': '恢复默认',
-  'settings.notExposed': '当前 DSH 版本未向配置页暴露本插件的设置命名空间。请直接编辑 ~/.dsh/settings.yaml，或将命名空间加入 dsh-host-apiproxy 的 WEB_SETTINGS_NAMESPACES 白名单后重启。',
+  'settings.notExposed': '当前 DSH 版本未向配置页暴露本插件的设置命名空间。请直接编辑 ~/.dsh/settings.yaml，或联系管理员开放 Host 设置白名单后重启。',
   'settings.readOnly': '此部署的设置只读。',
   'settings.expand': '显示设置',
   'settings.collapse': '收起设置',
@@ -37,6 +37,9 @@ export const zh = {
   'settings.unsaved': '未保存',
   'settings.saveFailed': '部署未接受这些值，已保留待修正。',
   'settings.invalidNumber': '请输入数字，或留空使用默认值。',
+  'hud.alert.sessions': '会话 {count} 个 ≥ 阈值 {max}',
+  'hud.alert.events': '事件 {count}/s ≥ 阈值 {max}',
+  'hud.alert.both': '会话与事件均超阈值',
 } satisfies Record<string, string>
 
 /** Key union for this namespace. */
@@ -54,7 +57,7 @@ export const en = {
   'settings.modeBalanced': 'Balanced',
   'settings.modeAggressive': 'Aggressive',
   'settings.renderDegrade': 'Message render degrade',
-  'settings.renderDegradeHint': 'Deferred finalization for heavy messages: weighted scoring (text + code fences + formulas, not just raw characters), a global queue serializes flips so bursts no longer land in one frame, and projection-only session-list publishes (token counters etc.) coalesce to ~1Hz. The look stays identical to official.',
+  'settings.renderDegradeHint': 'Projection-only session-list publishes (token counters etc.) coalesce to ~1Hz while visible-field changes still publish immediately; message rows keep the content-visibility off-screen degrade while on.',
   'settings.alertPreset': 'Alert threshold',
   'settings.alertPresetHint': 'Light (10 sessions / 1000 ev/s) / Standard (5 / 300) / Strict (3 / 150).',
   'settings.alertPresetLight': 'Light',
@@ -67,7 +70,7 @@ export const en = {
   'settings.off': 'Off',
   'settings.overridden': 'Overridden',
   'settings.reset': 'Reset to default',
-  'settings.notExposed': "This DSH version does not expose this plugin's settings namespace to the configuration page, so the form is unavailable. Edit ~/.dsh/settings.yaml directly, or add the namespace to dsh-host-apiproxy's WEB_SETTINGS_NAMESPACES allowlist and restart.",
+  'settings.notExposed': "This DSH version does not expose this plugin's settings namespace to the configuration page, so the form is unavailable. Edit ~/.dsh/settings.yaml directly, or ask the administrator to open the Host settings allowlist and restart.",
   'settings.readOnly': 'This deployment stores settings read-only.',
   'settings.expand': 'Show settings',
   'settings.collapse': 'Hide settings',
@@ -77,4 +80,7 @@ export const en = {
   'settings.unsaved': 'Unsaved',
   'settings.saveFailed': 'The deployment did not accept these values; they were left for you to correct.',
   'settings.invalidNumber': 'Enter a number, or leave blank to use the default.',
+  'hud.alert.sessions': 'Sessions {count} ≥ threshold {max}',
+  'hud.alert.events': 'Events {count}/s ≥ threshold {max}',
+  'hud.alert.both': 'Both sessions and events over threshold',
 } satisfies Record<PerfKey, string>

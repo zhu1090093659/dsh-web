@@ -68,7 +68,7 @@
 }
 
 [data-phase="hero"] [data-composer-seat]::after {
-  animation: deep-current-glow-flow 11s linear infinite;
+  animation: deep-current-glow-flow 14s ease-in-out infinite alternate;
   will-change: background-position;
 }
 

@@ -9,9 +9,12 @@ interface FakeElement {
   nextElementSibling: FakeElement | undefined
   isConnected: boolean
   innerHTML: string
+  textContent: string
   className: string
   attrs: Record<string, string>
   removed: boolean
+  append(...children: FakeElement[]): void
+  appendChild(child: FakeElement): void
   setAttribute(name: string, value: string): void
   insertBefore(child: FakeElement, anchor?: FakeElement): void
   remove(): void
@@ -34,12 +37,18 @@ function makeElement(tag: string, children: FakeElement[] = []): FakeElement {
     nextElementSibling: undefined,
     isConnected: true,
     innerHTML: '',
+    textContent: '',
     className: '',
     attrs: {},
     removed: false,
+    append(...children) { for (const child of children) element.appendChild(child) },
     setAttribute(name, value) {
       element.attrs[name] = value
       if (name.startsWith('data-')) element.dataset[name.slice('data-'.length)] = value
+    },
+    appendChild(child) {
+      element.children.push(child)
+      child.parentElement = element
     },
     insertBefore(child, anchor) {
       const index = anchor === undefined ? element.children.length : element.children.indexOf(anchor)
@@ -113,16 +122,19 @@ describe('shared sidebar-entry core', () => {
       css: { entry: 'entry-css', entryIcon: 'icon-css', entryLabel: 'label-css' },
       onToggle: () => { toggled += 1 },
     }))
-    expect(created).toHaveLength(1)
-    expect(created[0]!.className).toBe('entry-css')
-    expect(created[0]!.innerHTML).toContain('icon-css')
-    expect(created[0]!.innerHTML).toContain('label-css')
-    expect(created[0]!.innerHTML).toContain('<svg/>')
-    expect(created[0]!.innerHTML).toContain('X')
-    created[0]!.click()
+    const entry = created[0]!
+    expect(entry!.className).toBe('entry-css')
+    expect(entry!.attrs['aria-label']).toBe('X')
+    const iconSpan = entry!.children[0]
+    const labelSpan = entry!.children[1]
+    expect(iconSpan!.className).toBe('icon-css')
+    expect(iconSpan!.innerHTML).toContain('<svg/>')
+    expect(labelSpan!.className).toBe('label-css')
+    expect(labelSpan!.textContent).toBe('X')
+    entry!.click()
     expect(toggled).toBe(1)
     dispose()
-    expect(created[0]!.removed).toBe(true)
+    expect(entry!.removed).toBe(true)
   })
 
   it('outputs the L2 semantic attributes only when the plugin option is set (#506)', () => {
@@ -153,6 +165,30 @@ describe('shared sidebar-entry core', () => {
     const dispose = mountSidebarEntry(options())
     expect(created).toBe(0)
     expect(dispose()).toBeUndefined()
+  })
+
+  it('re-applies the label through the refresh subscription and unsubscribes on dispose', () => {
+    installShell()
+    const listeners = new Set<() => void>()
+    let label = 'X'
+    const created: FakeElement[] = []
+    stubDocument(false, created)
+    const dispose = mountSidebarEntry(options({
+      refresh: {
+        subscribe: (listener) => { listeners.add(listener); return () => listeners.delete(listener) },
+      },
+      label: () => label,
+    }))
+    const entry = created[0]!
+    expect(entry!.attrs['aria-label']).toBe('X')
+    const labelSpan = entry!.children[1]!
+    expect(labelSpan.textContent).toBe('X')
+    label = 'Рус'
+    for (const listener of listeners) listener()
+    expect(entry!.attrs['aria-label']).toBe('Рус')
+    expect(labelSpan.textContent).toBe('Рус')
+    dispose()
+    expect(listeners.size).toBe(0)
   })
 
   it('highlights the row while the active state is open and clears on close', () => {

@@ -10,11 +10,14 @@
  * Export discipline (packages/client rule): the /client surface carries what
  * cordis loading needs plus types only — all value exports stay internal.
  */
-import type { ClientContext, SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+// Type-only: pulls the ctx.slots merge (the renderer owns the slot registry since 0.1.2).
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the LocaleNamespaceMap merge table.
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import { SshApi } from './api.ts'
@@ -22,6 +25,7 @@ import { en, zh, type SshKey } from './locales.ts'
 import { mountPanel } from './mount.tsx'
 import { PanelController } from './panel/controller.ts'
 import type { TerminalFontSource } from './panel/helpers.ts'
+import { setRuntimeTranslate } from './panel/helpers.ts'
 import { mountSidebarEntry } from './sidebar-entry.ts'
 import { reportDailyHeartbeat } from './telemetry.ts'
 
@@ -86,6 +90,11 @@ export function apply(ctx: ClientContext): void {
     }
   }, 'dsh-ssh: dictionaries')
 
+  // Wire the SDK translate seat into the module-level tt (sidebar row and
+  // other plain-DOM callers): reads the active locale at call time, so they
+  // follow the Language setting without a reload.
+  try { setRuntimeTranslate(ctx.locale.bind(NS)) } catch { /* locale missing: document-language fallback stays */ }
+
   const controller = new PanelController()
   const api = new SshApi()
   // Live terminal-font preference (issue #577): the settings namespace is
@@ -102,8 +111,8 @@ export function apply(ctx: ClientContext): void {
   }
   const disposers: Array<() => void> = []
   try {
-    disposers.push(mountSidebarEntry(controller))
-    disposers.push(mountPanel(controller, api, terminalFont))
+    disposers.push(mountSidebarEntry(controller, ctx.locale))
+    disposers.push(mountPanel(controller, api, terminalFont, ctx.locale))
   } catch (error) {
     // DOM failures degrade the panel, never the GUI.
     console.warn('[dsh-ssh] mount failed:', error)

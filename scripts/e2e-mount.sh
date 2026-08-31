@@ -7,8 +7,10 @@
 #   2. 用官方 CLI 把 tarball 真实挂载进一个全新 scratch profile
 #      （`dsh plugin --profile web add file:<tarball>`，与用户安装路径一致）；
 #   3. 启动真实 `dsh web`（keyless，--port 0 取 OS 分配端口）；
-#   4. 运行 tests/e2e 无头渲染 lane（Playwright Chromium）：断言 better-
-#      sidebar 挂载、无崩溃标记（aionui-panel 已停止支持，不再断言）。
+#   4. 运行 tests/e2e 无头渲染 lane（Playwright Chromium）：以宿主官方帧
+#      锚定启动、断言 better-sidebar 挂载、断言被排除的 archive-manager
+#      缺席、无崩溃标记（aionui-panel 已停止支持、archive-manager 仍为
+#      alpha.2 排除；better-sidebar 已以 0.18.0-alpha.0 回归）。
 #
 # 用法：
 #   bash scripts/e2e-mount.sh
@@ -159,7 +161,7 @@ allowBuilds:
   ssh2: true
 
 minimumReleaseAgeExclude:
-  - 'dsh-better-sidebar@0.13.0'
+  - 'dsh-better-sidebar@0.18.0-alpha.0'
   - '@linxin666/*'
 EOF
 
@@ -192,7 +194,11 @@ for _ in $(seq 1 150); do
     tail -30 "$WEB_LOG" >&2 || true
     exit 1
   fi
-  if URL="$(grep -oE 'dsh web: http://127\.0\.0\.1:[0-9]+' "$WEB_LOG" | head -1 | awk '{print $3}')" && [ -n "$URL" ]; then
+  # alpha.2 hosts print the tokenized root URL (`?token=<launch token>`) and
+  # serve the browser-auth fence against it; the token must survive the parse
+  # or Playwright lands on the 401 page. Capture up to the next token boundary
+  # (the line ends after the URL or at the ` (LAN: ...)` suffix).
+  if URL="$(grep -oE 'dsh web: http://127\.0\.0\.1:[0-9]+[^ )]*' "$WEB_LOG" | head -1 | awk '{print $3}')" && [ -n "$URL" ]; then
     break
   fi
   sleep 1
@@ -205,4 +211,4 @@ say "运行 Playwright 无头渲染 lane..."
 DSH_E2E_URL="$URL" DSH_E2E_WORKSPACE="$WORKSPACE_DIR" \
   pnpm exec playwright test
 
-say "通过：聚合包挂载到真实 DSH 后无头渲染未崩溃，better-sidebar 挂载"
+say "通过：聚合包挂载到真实 DSH 后无头渲染未崩溃，better-sidebar 已挂载，被排除的 archive-manager 缺席"

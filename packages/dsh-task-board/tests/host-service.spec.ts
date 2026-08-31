@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
+import type { TypertGateway } from '@deepseek-ai/dsh-api-gateway'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HostTaskLedger } from '../src/host-ledger.ts'
 import { TaskBoardHostService } from '../src/host-service.ts'
@@ -10,14 +10,39 @@ import { createTask, EXECUTION_HISTORY_LIMIT, startExecution, withSchedule } fro
 
 const roots: string[] = []
 
+type GatewayRequest = {
+  namespace: string
+  method: string
+  args: Record<string, unknown>
+  signal?: AbortSignal
+}
+
+type GatewayHandler = (request: GatewayRequest) => unknown | Promise<unknown>
+type FollowHandler = (request: GatewayRequest) => AsyncIterable<unknown> | Promise<AsyncIterable<unknown>>
+
+function emptyStream(): AsyncIterable<unknown> {
+  return { async *[Symbol.asyncIterator]() {} }
+}
+
+function makeGateway(handler: GatewayHandler, follow?: FollowHandler) {
+  const invoke = vi.fn(async (request: GatewayRequest) => handler(request))
+  const stream = vi.fn(async (request: GatewayRequest) => follow === undefined ? emptyStream() : follow(request))
+  const gateway = { invoke, stream } as unknown as TypertGateway
+  return { gateway, invoke, stream }
+}
+
+function sessionEvent(type: string, seq: number, time: number, data: unknown) {
+  return { type: 'event' as const, event: { type, seq, time, data } }
+}
+
+function snapshot(records: readonly unknown[], cursor: number, hasMore: boolean) {
+  return { type: 'snapshot' as const, header: {}, cursor, records, hasMore, projections: {} }
+}
+
 function root(): string {
   const value = mkdtempSync(join(tmpdir(), 'dsh-task-board-service-'))
   roots.push(value)
   return value
-}
-
-function ok<T>(request: { rpcId: unknown }, value: T) {
-  return { rpcId: request.rpcId, result: { ok: true as const, value } }
 }
 
 afterEach(() => {
@@ -33,16 +58,16 @@ describe('TaskBoardHostService scheduling without a browser', () => {
         title: 'Scheduled', description: '', prompt: 'work', schedule: { enabled: true, cron: '* * * * *' },
       },
     })
-    const create = vi.fn(async (request) => ok(request, { sessionId: 'session-scheduled' }))
-    const prompt = vi.fn(async (request) => ok(request, { accepted: true }))
-    const api = {
-      sessions: {
-        create,
-        rename: async (request: { rpcId: unknown }) => ok(request, { title: 'Scheduled', seq: 1 }),
-        prompt,
-      },
-    } as unknown as ApiProxy
-    const service = new TaskBoardHostService(api, {
+    const create = vi.fn(async (_request: GatewayRequest) => ({ sessionId: 'session-scheduled' }))
+    const prompt = vi.fn(async (_request: GatewayRequest) => ({ accepted: true }))
+    const { gateway } = makeGateway(request => {
+      if (request.namespace !== 'session') throw new Error('unexpected namespace')
+      if (request.method === 'create') return create(request)
+      if (request.method === 'rename') return { title: 'Scheduled', seq: 1 }
+      if (request.method === 'prompt') return prompt(request)
+      throw new Error('unexpected gateway call')
+    })
+    const service = new TaskBoardHostService(gateway, {
       ledger,
       power: new PowerInhibitor({ platform: 'linux' }),
       now: () => now,
@@ -70,7 +95,8 @@ describe('TaskBoardHostService scheduling without a browser', () => {
     }
     ledger.applyRequest('import', { kind: 'import', sourceId: 'legacy', tasks: [archived] })
     const create = vi.fn()
-    const service = new TaskBoardHostService({ sessions: { create } } as unknown as ApiProxy, {
+    const { gateway } = makeGateway(request => request.method === 'create' ? create(request) : { items: [] })
+    const service = new TaskBoardHostService(gateway, {
       ledger,
       power: new PowerInhibitor({ platform: 'linux' }),
       now: () => now,
@@ -92,7 +118,8 @@ describe('TaskBoardHostService scheduling without a browser', () => {
       },
     })
     const create = vi.fn()
-    const service = new TaskBoardHostService({ sessions: { create } } as unknown as ApiProxy, {
+    const { gateway } = makeGateway(request => request.method === 'create' ? create(request) : { items: [] })
+    const service = new TaskBoardHostService(gateway, {
       ledger,
       power: new PowerInhibitor({ platform: 'linux' }),
       now: () => now,
@@ -106,7 +133,8 @@ describe('TaskBoardHostService scheduling without a browser', () => {
   })
 
   it('treats the first session snapshot after re-enable as unknown', () => {
-    const service = new TaskBoardHostService({ sessions: {} } as unknown as ApiProxy, {
+    const { gateway } = makeGateway(() => ({ items: [] }))
+    const service = new TaskBoardHostService(gateway, {
       ledger: new HostTaskLedger(root()),
       power: new PowerInhibitor({ platform: 'linux' }),
     })
@@ -118,7 +146,8 @@ describe('TaskBoardHostService scheduling without a browser', () => {
   })
 
   it('returns the first ledger result for a duplicate request id', () => {
-    const service = new TaskBoardHostService({ sessions: {} } as unknown as ApiProxy, {
+    const { gateway } = makeGateway(() => ({ items: [] }))
+    const service = new TaskBoardHostService(gateway, {
       ledger: new HostTaskLedger(root()),
       power: new PowerInhibitor({ platform: 'linux' }),
     })
@@ -149,16 +178,19 @@ describe('TaskBoardHostService scheduling without a browser', () => {
       executions: opened.executions.map(execution => ({ ...execution, sessionId: 'session-a' })),
     }
     ledger.applyRequest('import', { kind: 'import', sourceId: 'browser', tasks: [imported] })
-    const api = {
-      sessions: {
-        list: async (request: { rpcId: unknown }) => ok(request, { items: [{ sessionId: 'session-a', running: false }] }),
-        history: async (request: { rpcId: unknown }) => ok(request, {
-          events: [{ event: { type: 'turn/end', seq: 10, time: 1_200, data: { reason: { kind: 'complete' } } } }],
-          hasMore: false,
-        }),
+    const { gateway, stream } = makeGateway(request => {
+      if (request.method === 'list') return { items: [{ sessionId: 'session-a', running: false }] }
+      if (request.method === 'page') return {
+        records: [sessionEvent('turn/end', 10, 1_200, { reason: { kind: 'complete' } })],
+        hasMore: false,
+      }
+      throw new Error('unexpected gateway call')
+    }, () => ({
+      async *[Symbol.asyncIterator]() {
+        yield snapshot([], 10, true)
       },
-    }
-    const service = new TaskBoardHostService(api as unknown as ApiProxy, {
+    }))
+    const service = new TaskBoardHostService(gateway, {
       ledger,
       power: new PowerInhibitor({ platform: 'linux' }),
     })
@@ -166,12 +198,14 @@ describe('TaskBoardHostService scheduling without a browser', () => {
     await (service as unknown as { pollSessions(): Promise<void> }).pollSessions()
     expect(ledger.state().tasks[0].executions[0].result).toBe('succeeded')
     expect(ledger.state().tasks[0].status).toBe('done')
+    expect(stream).toHaveBeenCalledOnce()
     service.dispose()
   })
 
   it('starts its two Host timers only once', () => {
     const interval = vi.spyOn(globalThis, 'setInterval')
-    const service = new TaskBoardHostService({ sessions: { list: vi.fn() } } as unknown as ApiProxy, {
+    const { gateway } = makeGateway(() => ({ items: [] }))
+    const service = new TaskBoardHostService(gateway, {
       ledger: new HostTaskLedger(root()),
       power: new PowerInhibitor({ platform: 'linux' }),
     })
@@ -185,7 +219,10 @@ describe('TaskBoardHostService scheduling without a browser', () => {
 
 describe('TaskBoardHostService poll heartbeat', () => {
   function sessionsList(items: Array<{ sessionId: string; running: boolean }>) {
-    return { sessions: { list: async (request: { rpcId: unknown }) => ok(request, { items }) } } as unknown as ApiProxy
+    return makeGateway(request => {
+      if (request.namespace !== 'session' || request.method !== 'list') throw new Error('unexpected gateway call')
+      return { items }
+    }).gateway
   }
 
   it('does not push SSE frames while the session and power snapshots stay unchanged', async () => {
@@ -207,9 +244,11 @@ describe('TaskBoardHostService poll heartbeat', () => {
 
   it('pushes an SSE frame when the running-session count changes', async () => {
     let items: Array<{ sessionId: string; running: boolean }> = []
-    const service = new TaskBoardHostService({
-      sessions: { list: async (request: { rpcId: unknown }) => ok(request, { items }) },
-    } as unknown as ApiProxy, {
+    const { gateway } = makeGateway(request => {
+      if (request.namespace !== 'session' || request.method !== 'list') throw new Error('unexpected gateway call')
+      return { items }
+    })
+    const service = new TaskBoardHostService(gateway, {
       ledger: new HostTaskLedger(root()),
       power: new PowerInhibitor({ platform: 'linux' }),
     })
@@ -249,30 +288,39 @@ describe('TaskBoardHostService poll heartbeat', () => {
       executions: opened.executions.map(execution => ({ ...execution, sessionId: 'session-a' })),
     }
     ledger.applyRequest('import', { kind: 'import', sourceId: 'browser', tasks: [imported] })
-    const list = vi.fn(async (request: { rpcId: unknown }) => ok(request, { items: [{ sessionId: 'session-a', running: false }] }))
-    const history = vi.fn(async (request: { rpcId: unknown }) => ok(request, {
-      events: [{ event: { type: 'turn/end', seq: 10, time: 1_200, data: { reason: { kind: 'complete' } } } }],
+    const list = vi.fn(async () => ({ items: [{ sessionId: 'session-a', running: false }] }))
+    const page = vi.fn(async () => ({
+      records: [sessionEvent('turn/end', 10, 1_200, { reason: { kind: 'complete' } })],
       hasMore: false,
     }))
-    const service = new TaskBoardHostService({ sessions: { list, history } } as unknown as ApiProxy, {
+    const { gateway, stream } = makeGateway(request => {
+      if (request.method === 'list') return list()
+      if (request.method === 'page') return page()
+      throw new Error('unexpected gateway call')
+    }, () => ({
+      async *[Symbol.asyncIterator]() {
+        yield snapshot([], 10, true)
+      },
+    }))
+    const service = new TaskBoardHostService(gateway, {
       ledger,
       power: new PowerInhibitor({ platform: 'linux' }),
     })
     await (service as unknown as { pollSessions(): Promise<void> }).pollSessions()
     expect(ledger.state().tasks[0].executions[0].result).toBe('succeeded')
     expect(list).toHaveBeenCalledOnce()
-    // One one-message head probe plus the single scan page.
-    expect(history).toHaveBeenCalledTimes(2)
+    expect(stream).toHaveBeenCalledOnce()
+    expect(page).toHaveBeenCalledOnce()
     service.dispose()
   })
 
   it('keeps hot polling and scheduling off the full-state clone', async () => {
     const now = new Date(2026, 7, 16, 10, 0, 30).getTime()
-    const ledger = new HostTaskLedger(root(), () => now)
+    const ledger = new HostTaskLedger(root())
     const base = createTask({ title: 'A', description: '', prompt: '' }, now - 10_000, 'task-a')
     const executions = Array.from({ length: 2_000 }, (_, index) => ({
-      id: `settled-${index}`,
-      sessionId: `old-session-${index}`,
+      id: 'settled-' + index,
+      sessionId: 'old-session-' + index,
       startedAt: now - 8_000 - index * 2,
       endedAt: now - 7_999 - index * 2,
       result: 'succeeded' as const,
@@ -290,11 +338,12 @@ describe('TaskBoardHostService poll heartbeat', () => {
       }],
     })
     let sessionStateAvailable = false
-    const list = vi.fn(async (request: { rpcId: unknown }) => {
+    const list = vi.fn(async () => {
       if (!sessionStateAvailable) throw new Error('temporary list failure')
-      return ok(request, { items: [{ sessionId: 'session-open', running: true }] })
+      return { items: [{ sessionId: 'session-open', running: true }] }
     })
-    const service = new TaskBoardHostService({ sessions: { list } } as unknown as ApiProxy, {
+    const { gateway } = makeGateway(request => request.method === 'list' ? list() : { items: [] })
+    const service = new TaskBoardHostService(gateway, {
       ledger,
       power: new PowerInhibitor({ platform: 'linux' }),
       now: () => now,
@@ -312,9 +361,9 @@ describe('TaskBoardHostService poll heartbeat', () => {
     expect(runtimeView).toHaveBeenCalledOnce()
     // The 2,000-entry fixture is trimmed to the retention limit on append and
     // import, keeping snapshot and ledger size bounded.
-    const snapshot = service.snapshot()
-    expect(snapshot.tasks[0].executions).toHaveLength(EXECUTION_HISTORY_LIMIT)
-    expect(snapshot.tasks[0].executions.at(-1)?.id).toBe('execution-open')
+    const snapshotValue = service.snapshot()
+    expect(snapshotValue.tasks[0].executions).toHaveLength(EXECUTION_HISTORY_LIMIT)
+    expect(snapshotValue.tasks[0].executions.at(-1)?.id).toBe('execution-open')
     expect(state).toHaveBeenCalledOnce()
     service.dispose()
   })

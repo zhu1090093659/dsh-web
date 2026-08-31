@@ -7,8 +7,12 @@
  * Security invariants:
  * - One active token at a time; `issue()` replaces it, so a refreshed QR
  *   immediately invalidates the previous link.
- * - A token is consumed by the first successful `accept()` — reuse is
- *   refused with `'used'`.
+ * - A token stays re-usable until it expires or is replaced: the first
+ *   successful `accept()` marks it consumed, but the same link may pair
+ *   again within the window (each re-accept mints a fresh device session).
+ *   Mobile flows routinely split across cookie contexts (camera preview to
+ *   in-app browser to the system browser), and the later context must be
+ *   able to complete its own pairing from the same link.
  * - Tokens expire; `accept()` on an expired token is refused like an
  *   unknown one (no oracle for validity).
  * - `stop()` revokes every device session and clears the token, so paired
@@ -51,8 +55,16 @@ export interface TokenRecord {
   address?: string
 }
 
-/** Default idle-expiry window: 7 days without heartbeat or a gated request. */
-export const DEFAULT_IDLE_EXPIRE_MS = 7 * 24 * 60 * 60 * 1000
+/**
+ * Default idle-expiry window: 30 days without a heartbeat or a gated
+ * request. The reopen service worker refreshes lastSeenAt on every
+ * navigation it serves, so the window only runs out through genuine
+ * disuse; 30 days matches the browser-credential lifetimes the surrounding
+ * flow was built around, while the effective device lifetime stays shorter
+ * than the 365-day cookie because of this sweep. Override per deployment
+ * through the idleExpireMs config.
+ */
+export const DEFAULT_IDLE_EXPIRE_MS = 30 * 24 * 60 * 60 * 1000
 
 /** Cap on the persisted/displayed User-Agent string. */
 const MAX_USER_AGENT_CHARS = 180
@@ -379,8 +391,10 @@ export class PairingService {
    */
   accept(token: string, userAgent?: string): AcceptResult {
     const record = this.tokens.get(token)
-    if (record === undefined || record.consumed || this.stopped || this.clock.now() > record.expiresAt) {
-      return { ok: false, code: record?.consumed === true ? 'used' : 'invalid' }
+    // A consumed token stays a valid bearer credential until expiry or
+    // replacement (see the module doc): re-accept mints a fresh device.
+    if (record === undefined || this.stopped || this.clock.now() > record.expiresAt) {
+      return { ok: false, code: 'invalid' }
     }
     record.consumed = true
     const deviceId = this.clock.randomToken()

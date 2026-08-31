@@ -28,7 +28,7 @@
   checkout。
 - **共享构建预设**：所有 tsdown 包 import `shared/tsdown.client.ts`，禁止复制到
   包内；tsconfig 分层（solution + host/client 各自 program，参照
-  `dsh-git-graph`/`dsh-aionui-panel`）。
+  `dsh-git-graph`/`dsh-task-board`）。
 - **运行时共享模块**：settings 卡三件套、poll-guard、dsh-home 的事实源在
   `shared/`，包内同名文件是 `scripts/sync-shared.mjs` 生成的同步副本
   （generated 头注释，禁止手改；改 shared 源后重跑同步，test:scripts 含 drift 门禁）。
@@ -59,8 +59,9 @@
 - `tests/` 放测试，测试文件不得依赖 DSH 源码 checkout 的 fixture。
 - 聚合载具包（dsh-web-all）可无单测，但聚合生成脚本必须有
   `--check` 一致性门禁（`aggregate.mjs` 的 check 模式）。
-- 例外：dsh-aionui-panel 已停止支持——不再保留测试、typecheck 门禁与 e2e 断言
-  （右侧面板由 dsh-better-sidebar 接管），后续版本将从聚合包移除。
+- 例外：dsh-aionui-panel（旧右侧面板）已彻底移除——包、聚合行、内嵌设置卡与文档
+  引用均已清理；右侧面板由 dsh-better-sidebar 提供（聊天区 mermaid 出图与
+  composer 拖文件插入随包移除，官方管线无对应能力）。
 - 例外：dsh-live-stats（实时令牌估算）已彻底移除——包、测试、门禁与文档引用
   均已清理，不再支持。
 
@@ -82,7 +83,9 @@
   `README.i18n.yaml`（配对一致性记录）；皮肤包同样双语。规则见
   [docs/AGENTS.md](../docs/AGENTS.md) 与 [docs/i18n.md](../docs/i18n.md)。
 - 包内 UI 文案 i18n：`zh` 字典为 key 源，`en` 键集完整对照，经
-  `ctx.locale.register` 注册；错误文案与官方 DSH 词汇对照。
+  `ctx.locale.register` 注册；错误文案与官方 DSH 词汇对照。第三语言 ru 由
+  [dsh-i18n](dsh-i18n/AGENTS.md) 集中承载：各包新增/修改 zh 键后必须同步补
+  ru 并通过 `pnpm i18n:check`（缺键、占位符不一致即红），包内不自带 ru 字典。
 
 ## 安全语义
 

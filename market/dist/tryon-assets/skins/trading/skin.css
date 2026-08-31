@@ -17,7 +17,6 @@ html[data-dsh-skin="trading"] {
   color: #1b2431;
   box-sizing: border-box;
   background-color: #eef1f5;
-  padding: 66px 10px 26px;
 }
 html[data-dsh-skin="trading"] body {
   --dsw-font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Segoe UI", sans-serif;

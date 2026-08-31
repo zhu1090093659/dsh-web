@@ -572,5 +572,16 @@
     "npm": "dsh-archived-chats",
     "category": "ui",
     "subcategory": "panel"
+  },
+  {
+    "id": "dsh-memory",
+    "name": "会话记忆",
+    "nameEn": "Session Memory",
+    "author": "yyspoem",
+    "description": "轻量会话记忆插件：每轮对话自动提取关键词并本地记录，下次对话按相似度唤起最相关的历史记忆，回答中自然提及旧话题。",
+    "descriptionEn": "A lightweight session-memory plugin: extracts keywords from every turn and stores them locally; on later conversations it ranks past memories by similarity and injects the most relevant ones, so the assistant naturally recalls earlier topics.",
+    "repo": "https://github.com/yyspoem/dshstore",
+    "category": "knowledge",
+    "subcategory": "memory"
   }
 ]

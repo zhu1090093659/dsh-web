@@ -572,5 +572,17 @@
     "npm": "dsh-archived-chats",
     "category": "ui",
     "subcategory": "panel"
+  },
+  {
+    "id": "dsh-git-badge",
+    "name": "Git Badge",
+    "nameEn": "Git Badge",
+    "author": "Kevin-McIsaac",
+    "description": "工作区 Git 状态徽章：输入框旁的会话工作区状态 chip（状态圆点 + 分支名 + 未推送/未拉取提交计数 + 未提交文件计数），配合 seam 补丁还可在侧栏工作区行显示状态与分支。事件驱动：提交、暂存或文件编辑后约 1 秒内更新。",
+    "descriptionEn": "Git status badges for DeepSeek Harness: an input-row chip showing the current conversation's workspace git state (status dot + branch + unpushed/unpulled commit counts + uncommitted-file count), plus sidebar row badges (status + branch) with the seam patch. Event-driven - updates within ~1s of any commit, stage, or file edit.",
+    "repo": "https://github.com/Kevin-McIsaac/dsh-workspace-git-badge",
+    "npm": "dsh-git-badge",
+    "category": "ui",
+    "subcategory": "panel"
   }
 ]

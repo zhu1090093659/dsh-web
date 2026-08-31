@@ -1,0 +1,86 @@
+/* tokyo-night (东京夜行) skin — component-level patches: translucent panes,
+   links, aionui panel frosted glass, and transition polish. Loaded together
+   with skin.css by the skin-center. */
+
+html[data-dsh-skin="tokyo-night"] #root {
+  background: transparent !important;
+}
+
+html[data-dsh-skin="tokyo-night"] a {
+  color: #2265c4;
+}
+
+html[data-dsh-skin="tokyo-night"] a:visited {
+  color: #9854f1;
+}
+
+html[data-dsh-skin="tokyo-night"] body[data-ds-dark-theme] a {
+  color: #7aa2f7;
+}
+
+html[data-dsh-skin="tokyo-night"] body[data-ds-dark-theme] a:visited {
+  color: #bb9af7;
+}
+
+html[data-dsh-skin="tokyo-night"] a:hover {
+  color: #16458a;
+  text-decoration: underline;
+}
+
+html[data-dsh-skin="tokyo-night"] a:active {
+  color: #123a75;
+}
+
+html[data-dsh-skin="tokyo-night"] body[data-ds-dark-theme] a:hover {
+  color: #a9c1fa;
+}
+
+html[data-dsh-skin="tokyo-night"] body[data-ds-dark-theme] a:active {
+  color: #cfdcfb;
+}
+
+html[data-dsh-skin="tokyo-night"] [data-aionui-explorer-col],
+html[data-dsh-skin="tokyo-night"] [data-aionui-preview-col] {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+html[data-dsh-skin="tokyo-night"] .aionui-root {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+html[data-dsh-skin="tokyo-night"] .aionui-dialog,
+html[data-dsh-skin="tokyo-night"] .aionui-menu,
+html[data-dsh-skin="tokyo-night"] .aionui-toast {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+html[data-dsh-skin="tokyo-night"] .aionui-overlay {
+  background: rgba(26, 27, 38, 0.42);
+}
+
+html[data-dsh-skin="tokyo-night"] body[data-ds-dark-theme] .aionui-overlay {
+  background: rgba(9, 10, 17, 0.6);
+}
+
+html[data-dsh-skin="tokyo-night"] button,
+html[data-dsh-skin="tokyo-night"] a,
+html[data-dsh-skin="tokyo-night"] .aionui-btn,
+html[data-dsh-skin="tokyo-night"] .aionui-menu-item,
+html[data-dsh-skin="tokyo-night"] .aionui-explorer-handle,
+html[data-dsh-skin="tokyo-night"] .aionui-preview-handle {
+  transition: background-color 0.13s ease, border-color 0.13s ease,
+    box-shadow 0.13s ease, color 0.13s ease, opacity 0.13s ease;
+}
+
+html[data-dsh-skin="tokyo-night"] button:disabled,
+html[data-dsh-skin="tokyo-night"] .aionui-btn:disabled,
+html[data-dsh-skin="tokyo-night"] .aionui-menu-item-disabled {
+  opacity: 0.45;
+}
+
+html[data-dsh-skin="tokyo-night"] [id="root"] { background: transparent; }
+
+html[data-dsh-skin="tokyo-night"] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

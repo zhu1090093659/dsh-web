@@ -529,6 +529,35 @@ window.SKIN_MANIFEST = {
         "stylesheet": "skin.css",
         "patches": "patches.css"
       }
+    },
+    {
+      "id": "tokyo-night",
+      "name": "东京夜行",
+      "nameEn": "Tokyo Night",
+      "author": "djyx",
+      "tagline": "东京夜城背景 · 蓝紫霓虹令牌重映射 · 半透明夜色面板",
+      "description": "《东京夜行》—— Tokyo Night 主题：动漫风东京夜景（东京塔暖橙灯火浸在深靛蓝紫夜幕里）垫在半透明面板之下，遮罩随亮/暗主题实时切换；深靛蓝 #1a1b26 底与东京蓝 #7aa2f7 主色重映射到 dsw token，暗色是 Night 经典夜调、亮色是 Day 昼间变体，同一幅夜城两种读法。",
+      "accent": "#7aa2f7",
+      "preview": {
+        "light": "assets/skins/tokyo-night/preview/light.jpg",
+        "dark": "assets/skins/tokyo-night/preview/dark.jpg"
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/tokyo-night/assets/tokyo-night-art.webp",
+            "scrim": "linear-gradient(rgba(233, 235, 242, 0.42) 0%, rgba(228, 231, 241, 0.52) 60%, rgba(223, 227, 240, 0.58) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/tokyo-night/assets/tokyo-night-art.webp",
+            "scrim": "linear-gradient(rgba(10, 12, 20, 0.3) 0%, rgba(12, 14, 24, 0.38) 60%, rgba(15, 17, 28, 0.46) 100%)"
+          }
+        }
+      }
     }
   ]
 }

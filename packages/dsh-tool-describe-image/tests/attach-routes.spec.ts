@@ -435,6 +435,52 @@ describe('registerAttachRoute', () => {
     expect(status()).toBe(200)
   })
 
+  it('repairs a transcription-corrupted reference ref through the id registry', async () => {
+    // A model transcription inserted a stray colon before the closing brace in the
+    // embedded reference; the path id stays intact. parseImageAttachmentRef repairs
+    // the JSON and serves the image directly (no registry needed).
+    const { store } = await makeCtx(true)
+    const ref: ImageAttachmentRef = {
+      attachmentId: `sha256:${'c'.repeat(64)}` as ImageAttachmentRef['attachmentId'],
+      mediaType: 'image/png',
+      bytes: PNG_BYTES.length,
+      width: 1,
+      height: 1,
+      name: 'image.png',
+    }
+    store?.stored.set(String(ref.attachmentId), PNG_BYTES)
+    const registrations = capture(store, true)
+    const { res, status } = makeRes()
+    const markdown = attachmentMarkdown(ref).replace('%7D"', '%3A%7D"')
+    const path = /\(([^)]+)\)$/.exec(markdown)?.[1]
+    await registrations[0].handler(makeReq('GET', undefined, path), res)
+    expect(status()).toBe(200)
+  })
+
+  it('falls back to the id registry when the embedded ref cannot be repaired', async () => {
+    // The ref was replaced wholesale by the model (not a text glitch), so repair
+    // cannot recover it; serving falls back to the path id registry.
+    const { store } = await makeCtx(true)
+    const ref: ImageAttachmentRef = {
+      attachmentId: `sha256:${'d'.repeat(64)}` as ImageAttachmentRef['attachmentId'],
+      mediaType: 'image/png',
+      bytes: PNG_BYTES.length,
+      width: 1,
+      height: 1,
+    }
+    store?.stored.set(String(ref.attachmentId), PNG_BYTES)
+    registerAttachmentRef(ref)
+    const registrations = capture(store, true)
+    const { res, status } = makeRes()
+    const markdown = attachmentMarkdown(ref).replace(
+      /ref=[^)]+/,
+      'ref=sha256:81a6094cad36275290b2a00302d2bf286bf09765990f949af770f08049bf868,s,1367,931,image'
+    )
+    const path = /\(([^)]+)\)$/.exec(markdown)?.[1]
+    await registrations[0].handler(makeReq('GET', undefined, path), res)
+    expect(status()).toBe(200)
+  })
+
   it('uses the attachment store canonical media type rather than URL metadata', async () => {
     const { store } = await makeCtx(true)
     const ref: ImageAttachmentRef = {

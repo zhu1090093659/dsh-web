@@ -55,17 +55,62 @@ function unwrapAttachmentNote(raw: string): string {
 }
 
 /**
+ * Best-effort repair of a model-transcribed reference JSON whose strict parse
+ * failed. A text-to-tool transcription of a long percent-encoded reference can
+ * drop or insert a stray structural character at a boundary (a colon before a
+ * closing brace, a doubled or trailing comma). Each rule removes only
+ * unambiguous structural noise and every candidate is re-validated with
+ * JSON.parse before being returned, so a malformed shape never slips through
+ * as a "fixed" reference.
+ * @param value - the decoded JSON text to repair.
+ * @returns a JSON-valid repaired string, or undefined when none repairs.
+ */
+function repairImageRefJson(value: string): string | undefined {
+  const candidates: string[] = []
+  // Remove a stray colon immediately before a closing brace/bracket: `"x":}` -> `"x"}`
+  candidates.push(value.replace(/:(?=\s*[}\]])/g, ''))
+  // Remove doubled commas: `,,` -> `,`
+  candidates.push(value.replace(/,(?=\s*,)/g, ''))
+  // Remove a trailing comma before a closing brace/bracket: `,}` -> `}`
+  candidates.push(value.replace(/,(?=\s*[}\]])/g, ''))
+  // Remove a colon directly before a comma: `:,` -> `,`
+  candidates.push(value.replace(/:(?=,)/g, ''))
+  for (const candidate of candidates) {
+    try {
+      JSON.parse(candidate)
+      return candidate
+    } catch {
+      // not valid yet; try the next rule
+    }
+  }
+  return undefined
+}
+
+/**
  * Validate and narrow a model-supplied attachment reference into its typed storage
  * form. It accepts either the raw JSON reference or its complete note carrier.
+ * A strict-parse failure is retried with structural-noise repair, so a single
+ * transcription glitch does not fail-closed a reference the model otherwise had
+ * right; every candidate still passes the full field validation below.
  * @param raw - JSON or `[image attachment ...]` content from a session message.
  * @returns the narrowed, typed reference.
  */
 export function parseImageAttachmentRef(raw: string): ImageAttachmentRef {
+  const unwrapped = unwrapAttachmentNote(raw)
   let parsed: unknown
   try {
-    parsed = JSON.parse(unwrapAttachmentNote(raw))
+    parsed = JSON.parse(unwrapped)
   } catch {
-    throw new Error(ATTACHMENT_REF_GUIDANCE)
+    const repaired = repairImageRefJson(unwrapped)
+    if (repaired !== undefined) {
+      try {
+        parsed = JSON.parse(repaired)
+      } catch {
+        throw new Error(ATTACHMENT_REF_GUIDANCE)
+      }
+    } else {
+      throw new Error(ATTACHMENT_REF_GUIDANCE)
+    }
   }
   const record = asRecord(parsed)
   if (record === undefined) throw new Error(ATTACHMENT_REF_GUIDANCE)
@@ -112,8 +157,16 @@ export function parseMarkdownAttachmentReference(raw: string): MarkdownAttachmen
   const url = new URL(match[1] ?? '', 'http://dsh.local')
   const encodedRef = url.searchParams.get('ref')
   if (encodedRef === null) return { attachmentId }
-  const ref = parseImageAttachmentRef(encodedRef)
-  if (ref.attachmentId !== attachmentId) throw new Error(ATTACHMENT_REF_GUIDANCE)
+  let ref: ImageAttachmentRef | undefined
+  try {
+    const parsed = parseImageAttachmentRef(encodedRef)
+    // Ref metadata is advisory; the path id is the authoritative anchor. When
+    // parsing failed (strict + repair) or the id disagrees, fall back to the
+    // id-only legacy form so the caller resolves via attachmentRefById(id).
+    if (parsed.attachmentId === attachmentId) ref = parsed
+  } catch {
+    ref = undefined
+  }
   return { attachmentId, ref }
 }
 

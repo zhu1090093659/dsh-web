@@ -215,16 +215,12 @@ async function serveRawImage(ctx: Context, req: IncomingMessage, res: ServerResp
   const serializedRef = requestUrl.searchParams.get('ref')
   if (serializedRef !== null) {
     try {
-      ref = parseImageAttachmentRef(serializedRef)
+      const parsed = parseImageAttachmentRef(serializedRef)
+      // Ref metadata is advisory; the path id is authoritative. On parse failure
+      // (strict + repair) or id disagreement, fall through to the id registry.
+      if (parsed.attachmentId === id) ref = parsed
     } catch {
-      res.writeHead(404)
-      res.end()
-      return
-    }
-    if (ref.attachmentId !== id) {
-      res.writeHead(404)
-      res.end()
-      return
+      ref = undefined
     }
   }
   ref ??= attachmentRefById(id)

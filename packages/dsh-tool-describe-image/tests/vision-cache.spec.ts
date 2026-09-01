@@ -180,6 +180,38 @@ describe('parseImageAttachmentRef narrowing', () => {
     expect(ref.height).toBe(1)
   })
 
+  it('repairs a stray colon before the closing brace from a transcription glitch', () => {
+    // A text-to-tool transcription can drop/insert a stray structural character;
+    // one colon before the closing brace is a known shape: `"name":"x":}`
+    const corrupted = valid.replace('}', ':}')
+    const ref = tool.parseImageAttachmentRef(corrupted)
+    expect(ref).toMatchObject({
+      attachmentId: `sha256:${'c'.repeat(64)}`,
+      mediaType: 'image/png',
+      bytes: PNG_BYTES.length,
+      width: 1,
+      height: 1,
+    })
+  })
+
+  it('repairs a doubled comma between fields', () => {
+    const doubled = valid.replace('"bytes":' + PNG_BYTES.length, '"bytes":' + PNG_BYTES.length + ',,')
+    expect(tool.parseImageAttachmentRef(doubled)).toMatchObject({ bytes: PNG_BYTES.length })
+  })
+
+  it('repairs a trailing comma before the closing brace', () => {
+    const withName = JSON.stringify({
+      attachmentId: `sha256:${'c'.repeat(64)}`,
+      mediaType: 'image/png',
+      bytes: PNG_BYTES.length,
+      width: 1,
+      height: 1,
+      name: 'image.png',
+    })
+    const trailing = withName.replace('"image.png"}', '"image.png",}')
+    expect(tool.parseImageAttachmentRef(trailing)).toMatchObject({ name: 'image.png' })
+  })
+
   it('accepts the complete attachment note carrier', () => {
     const ref = tool.parseImageAttachmentRef(`[image attachment ${valid}]`)
     expect(ref).toMatchObject({ attachmentId: `sha256:${'c'.repeat(64)}`, mediaType: 'image/png' })

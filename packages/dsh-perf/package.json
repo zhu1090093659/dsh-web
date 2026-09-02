@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-perf",
   "description": "DSH Web 性能观测与治理插件: 事件/写盘/渲染指标 + HUD + 写批频控",
-  "version": "0.3.10",
+  "version": "0.3.12",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {
@@ -19,14 +19,11 @@
       "default": "./lib/client.js"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json",
-    "./better-session-import": {
-      "default": "./lib/better-session-import.mjs"
-    }
+    "./package.json": "./package.json"
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.2-alpha.1"
+      "dsh": ">=0.1.2-alpha.4"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -54,15 +51,15 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.3",
+    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.4",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.0",

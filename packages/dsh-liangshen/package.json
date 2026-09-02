@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-liangshen",
   "description": "LiangShen (梁神) agent preset for the dsh web GUI: a two-phase anchored-standard preset — the first model request exposes only the builtin Minimal exact two-tool surface (persistent bash plus str_replace_editor) with no runtime contexts or injected instructions (Minimal-aligned trajectory anchor), promotion is gated on the first minimal-like reasoning block with a fallback, and the wire then switches to PTC Mode (a single run_code tool over the full registry) with the ordinary injections returning afterwards. The preset files are synced into ~/.dsh/.agent-presets on host startup. Hot-pluggable — mounted via cordis.patch.yml + a profile node_modules symlink, no dsh source changes.",
-  "version": "0.3.10",
+  "version": "0.3.12",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {
@@ -19,7 +19,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.2-alpha.1"
+      "dsh": ">=0.1.2-alpha.4"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -38,8 +38,8 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.2-alpha.3",
+    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-alpha.4",
     "@types/node": "^22.20.0",
     "tsdown": "0.22.2",
     "typescript": "~5.7.2",

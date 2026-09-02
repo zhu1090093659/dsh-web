@@ -1,0 +1,3 @@
+import{j as c,f as d,t as f,af as u,g as m,ag as o,ah as v}from"./index-DGS2ur_Y.js";import"./git-DJDr4heb.js";var l={};const U=".anonymous-user-id",y=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,i=new Map;function s(a){let e;try{e=v(a,"utf8")}catch{return}const r=e.trim();return y.test(r)?r:void 0}function g(a={}){const e=c(d(void 0,a.env??l),U),r=i.get(e);if(r!==void 0)return r;let t=s(e);if(t===void 0){const n=(a.randomUUID??f)();try{u(m(e),{recursive:!0}),o(e,`${n}
+`,{encoding:"utf8",flag:"wx"}),t=n}catch{if(t=s(e),t===void 0){try{o(e,`${n}
+`,"utf8")}catch{}t=n}}}return i.set(e,t),t}export{U as ANONYMOUS_USER_ID_FILE_NAME,g as getOrCreateAnonymousUserId};

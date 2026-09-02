@@ -361,7 +361,8 @@ export function settleExecution(
   const settled: ExecutionRecord = { ...execution, endedAt: now, result: outcome, error }
   const executions = [...task.executions]
   executions[index] = settled
-  const status: TaskStatus = outcome === 'succeeded' ? 'done'
+  const status: TaskStatus = outcome === 'succeeded'
+    ? (task.schedule?.enabled ? 'todo' : 'done')
     : outcome === 'failed' ? 'failed'
       : task.status === 'running' ? 'todo' : task.status
   return { ...task, status, updatedAt: now, executions }

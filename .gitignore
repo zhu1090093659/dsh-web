@@ -41,3 +41,6 @@ test-results/
 # 构建产物（tsdown 输出）
 packages/dsh-perf/lib/
 packages/dsh-usage/lib/
+
+# local wrangler dev secrets (market worker)
+.dev.vars

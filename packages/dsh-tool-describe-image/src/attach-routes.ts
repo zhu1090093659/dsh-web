@@ -215,16 +215,12 @@ async function serveRawImage(ctx: Context, req: IncomingMessage, res: ServerResp
   const serializedRef = requestUrl.searchParams.get('ref')
   if (serializedRef !== null) {
     try {
-      ref = parseImageAttachmentRef(serializedRef)
+      const parsedRef = parseImageAttachmentRef(serializedRef)
+      if (parsedRef.attachmentId === id) {
+        ref = parsedRef
+      }
     } catch {
-      res.writeHead(404)
-      res.end()
-      return
-    }
-    if (ref.attachmentId !== id) {
-      res.writeHead(404)
-      res.end()
-      return
+      // Ignored: fallback to registry by id
     }
   }
   ref ??= attachmentRefById(id)

@@ -314,13 +314,15 @@ describe('loadPetRegistry', () => {
       dshPetsDir: '',
     })
 
-    // The repo checkout also resolves miku (frames2d gameplay pet) from
-    // assets/; the npm files whitelist excludes it (Workshop delivery), so
-    // npm installs see the three atlas pets until a Workshop install lands
-    // miku under $DSH_HOME/pets.
+    // The repo checkout also resolves miku (frames2d gameplay pet) and
+    // starry-doll (community sprite2d pet) from assets/; the npm files
+    // whitelist excludes them (Workshop delivery), so npm installs see the
+    // three atlas pets until a Workshop install lands them under
+    // $DSH_HOME/pets.
     expect(registry.entries.map(entry => entry.id)).toEqual([
       'miku',
       'ouo-neko',
+      'starry-doll',
       'whale-girl',
       'whale-girl-refined',
     ])
@@ -331,6 +333,13 @@ describe('loadPetRegistry', () => {
       rows: [6, 8, 8, 4, 5, 8, 6, 6, 6],
     })
     expect(existsSync(petAtlasFile(registry.byId('ouo-neko')!))).toBe(true)
+    expect(registry.byId('starry-doll')).toMatchObject({
+      displayName: '星夜人偶',
+      atlasRows: 9,
+      columns: 8,
+      rows: [6, 8, 8, 4, 5, 8, 6, 6, 6],
+    })
+    expect(existsSync(petAtlasFile(registry.byId('starry-doll')!))).toBe(true)
     expect(registry.byId('whale-girl')?.displayName).toBe('鲸鱼娘（原版）')
     expect(registry.byId('whale-girl-refined')?.displayName).toBe('鲸鱼娘（精致版）')
     expect(existsSync(petAtlasFile(registry.byId('whale-girl-refined')!))).toBe(true)

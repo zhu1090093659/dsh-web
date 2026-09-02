@@ -1,0 +1,1 @@
+import{a as t}from"./index-DGS2ur_Y.js";import"./git-DJDr4heb.js";function l(r){return r}var s=class extends t{constructor(r){super(r,"spillStore")}};export{l as SpillLocator,s as SpillStore,s as default};

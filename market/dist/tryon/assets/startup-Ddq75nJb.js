@@ -1,0 +1,4 @@
+import{C as r}from"./index--sr43o0C.js";import{parseCmdline as a}from"./index-Jg9fNKoQ.js";import"./shim-events-DwOSbtCh.js";import"./index-DGS2ur_Y.js";import"./git-DJDr4heb.js";import"./shim-process-Co19wCHn.js";const c="headless-startup",f=["cmdlineArgs"],n="headlessStartup";function o(){return new r().name("dsh --profile headless").description("Answer one task, print the final assistant message, and exit.").helpOption("-h, --help","show this help").argument("[task...]","the task text; multiple words are joined by spaces").addHelpText("after",`
+Examples:
+  dsh --profile headless "run the tests"     answer one task and exit
+`)}function u(s){const e=o();e.action(()=>{const t=e.args.join(" ");t.trim()===""&&e.error('error: a task is required, for example: dsh --profile headless "run the tests"'),s.provide(n,{task:t})}),a(s,e)}export{n as HEADLESS_STARTUP_SERVICE,u as apply,f as inject,c as name};

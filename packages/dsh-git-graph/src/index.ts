@@ -118,10 +118,25 @@ function applyImpl(ctx: Context, config?: Config): void {
   }
 
   ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.installSection(ctx, GIT_GRAPH_SETTINGS, Config, effectiveConfig(config), {
-      setSource: (source) => { current = () => effectiveConfig(source()) },
-      onChange: syncTool,
-    })
+    try {
+      if (typeof settingsCtx.settings?.installSection === 'function') {
+        settingsCtx.settings.installSection(ctx, GIT_GRAPH_SETTINGS, Config, effectiveConfig(config), {
+          setSource: (source) => { current = () => effectiveConfig(source()) },
+          onChange: syncTool,
+        })
+      } else if (typeof settingsCtx.settings?.register === 'function') {
+        const scope = settingsCtx.settings.register(GIT_GRAPH_SETTINGS, Config, {
+          base: effectiveConfig(config),
+        })
+        current = () => effectiveConfig(scope.get?.())
+        scope.watch?.(() => {
+          syncTool()
+        })
+        syncTool()
+      }
+    } catch {
+      // Defensive fallback against settings registration differences
+    }
   })
   ctx.effect(() => {
     syncTool()

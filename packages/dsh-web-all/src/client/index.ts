@@ -15,6 +15,7 @@
  * nodes and never disturbs React's reconciliation.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import { mountClientChildren } from './mount-children.ts'
 
 /** Column shims: element selector → attribute to stamp. */
 const COLUMN_SHIMS: ReadonlyArray<readonly [selector: string, attribute: string]> = [
@@ -393,6 +394,10 @@ export const inject = [] as const
  * @param ctx - client root context.
  */
 export function apply(ctx: Context): void {
+  // The family children ride this bundle (see mount-children.ts): the shell's
+  // folded rows leave them invisible to the client module scanner, so they
+  // mount here as nested client plugins before the DOM shims settle in.
+  mountClientChildren(ctx)
   ctx.effect(() => {
     const responsiveStyle = ensureResponsiveStyle()
     const bootShield = installBootShield()

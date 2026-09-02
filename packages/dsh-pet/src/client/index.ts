@@ -296,8 +296,8 @@ export function apply(ctx: ClientContext): void {
 
       const openSession = (sessionId: string): void => {
         const list = sessions.list.getSnapshot()
-        if (list.byId[sessionId as SessionId] === undefined) return
-        sessions.open(sessionId as SessionId)
+        if ((list.byId as any)[sessionId] === undefined) return
+        sessions.open(sessionId as never)
       }
 
       const injected = (): PetInjected => ({

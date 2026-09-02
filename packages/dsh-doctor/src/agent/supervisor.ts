@@ -31,6 +31,7 @@ export class DoctorSupervisor {
   private readonly heartbeatTimeoutMs: number
   private readonly provisioner: ((paths: DoctorPaths) => Promise<void>) | undefined
   private provisioning = false
+  lastSelfHeal: Promise<void> | undefined
 
   constructor(options: SupervisorOptions = {}) {
     this.paths = options.paths ?? doctorPaths()
@@ -107,6 +108,10 @@ export class DoctorSupervisor {
       const profile = this.state.profiles[request.profileId]
       if (profile) { profile.pid = undefined; profile.phase = request.intentional || request.exitCode === 0 ? 'exited' : 'failed'
         if (this.state.policy.fullProtection && !this.state.paused && !request.intentional && request.exitCode !== 0) { const failures = recordFailure(this.state, request.profileId, request.at); profile.restartCount = failures; if (failures >= 2) profile.phase = 'quarantined'; openIncident(this.state, request.profileId, request.started ? 'process-crash' : 'boot-failure', request.started ? 'DSH process crashed after startup' : 'DSH profile failed during startup', [request.stderrTail ?? ''].filter(Boolean), request.at) }
+        if (this.state.policy.autoRepair && this.state.policy.fullProtection && !this.state.paused && !request.intentional && request.exitCode !== 0 && !request.started) {
+          this.lastSelfHeal = this.selfHealBootFailure(profile, request.stderrTail ?? '', request.at)
+          void this.lastSelfHeal
+        }
       }
     } else if (request.type === 'client-failure') {
       if (this.state.policy.fullProtection && !this.state.paused) openIncident(this.state, request.profileId, 'client-failure', request.message, [request.stack ?? '', request.phase ?? ''].filter(Boolean), request.at)
@@ -120,6 +125,59 @@ export class DoctorSupervisor {
     await appendJsonLine(join(this.paths.logs, 'journal.jsonl'), { at, request: request.type })
     await this.persist()
     return { ok: true, snapshot: snapshotOf(this.state, this.version, at) }
+  }
+
+  /**
+   * Self-heal one boot failure: attribute the error trace to a plugin row,
+   * and when exactly one row is implicated, disable it in the profile patch
+   * so the next `dsh web` boots without it. Debounced by the profile's
+   * recent-failure window (recordFailure already ran; the second failure in
+   * ten minutes is the trigger). Refuses to act when attribution is absent
+   * or ambiguous — a wrong guess would disable a healthy plugin.
+   */
+  private async selfHealBootFailure(profile: PersistedState['profiles'][string], stderrTail: string, at: string): Promise<void> {
+    try {
+      const failures = this.state.recentFailures[profile.identity.id]?.length ?? 1
+      // First failure: observe only. The user may have just broken something
+      // transiently (an in-progress edit); disabling on the first strike is
+      // too aggressive.
+      if (failures < 2) return
+      const { attributeBootFailure } = await import('../core/boot-attribution.ts')
+      const { parsePatchList } = await import('../core/patch.ts')
+      const { createYamlEngine } = await import('../core/yaml.ts')
+      const { nodeFs: fs } = await import('../core/fs.ts')
+      const patchPath = profile.identity.dshHome + '/profiles/' + profile.identity.name + '/cordis.patch.yml'
+      const text = await fs.readText(patchPath).catch(() => undefined)
+      if (text === undefined) return
+      const parsed = parsePatchList(text, createYamlEngine(), 'profile patch')
+      if (parsed.error !== undefined) return // unparseable: the D-040 lane owns it
+      const rowIds: string[] = []
+      const namesByRowId: Record<string, string> = {}
+      const walk = (entries: readonly unknown[]): void => {
+        for (const entry of entries) {
+          if (typeof entry !== 'object' || entry === null) continue
+          const row = entry as { id?: unknown; name?: unknown; insert?: unknown; config?: unknown }
+          if (typeof row.id === 'string') { rowIds.push(row.id); if (typeof row.name === 'string') namesByRowId[row.id] = row.name }
+          if (Array.isArray(row.insert)) walk(row.insert)
+          if (Array.isArray(row.config)) walk(row.config)
+        }
+      }
+      walk(parsed.entries)
+      const verdict = attributeBootFailure({ stderrTail, rowIds, namesByRowId })
+      const incident = Object.values(this.state.incidents).find(item => item.profileId === profile.identity.id && !['recovered', 'rolled-back', 'unresolved'].includes(item.phase))
+      if (verdict === undefined) {
+        if (incident !== undefined) incident.evidence = [...new Set([...incident.evidence, 'self-heal: boot failure could not be attributed to a single plugin row; no automatic disable'])]
+        return
+      }
+      const { quarantinePluginRow } = await import('../core/plugin-quarantine.ts')
+      const outcome = await quarantinePluginRow({ home: profile.identity.dshHome, profile: profile.identity.name, rowId: verdict.rowId, reason: 'boot failure (' + verdict.source + ')', fs, now: this.now })
+      const note = 'self-heal: ' + verdict.rowId + ' disabled after repeated boot failure — ' + outcome.phase + (outcome.message !== undefined ? ' (' + outcome.message + ')' : '')
+      if (incident !== undefined) { incident.updatedAt = at; incident.evidence = [...new Set([...incident.evidence, note, verdict.evidence])] }
+      else openIncident(this.state, profile.identity.id, 'boot-failure', 'self-healed: plugin ' + verdict.rowId + ' disabled after repeated boot failures', [note, verdict.evidence], at)
+      await appendJsonLine(join(this.paths.logs, 'journal.jsonl'), { at, request: 'self-heal', rowId: verdict.rowId, outcome: outcome.phase })
+    } catch (error) {
+      await appendJsonLine(join(this.paths.logs, 'journal.jsonl'), { at, request: 'self-heal-error', error: String(error) }).catch(() => undefined)
+    }
   }
 
   /**

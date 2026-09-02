@@ -24,7 +24,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.2-alpha.1"
+      "dsh": ">=0.1.2-alpha.4"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -46,11 +46,11 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.2",
-    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.2",
-    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.2",
-    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.2",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.4",
     "@types/react": "~18.3.1",
     "@types/react-dom": "^18.3.5",
     "jsdom": "29.1.1",

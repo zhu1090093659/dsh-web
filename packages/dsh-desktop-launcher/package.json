@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-desktop-launcher",
   "description": "Desktop launcher + one-click shutdown for dsh: create a double-click desktop icon that starts dsh web and opens the Web GUI, plus a floating power button that exits the host process gracefully. Hot-pluggable — mounted via ~/.dsh/cordis.patch.yml + a profile node_modules symlink, no dsh source changes.",
-  "version": "0.3.10",
+  "version": "0.3.12",
   "type": "module",
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
@@ -26,7 +26,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.2-alpha.1"
+      "dsh": ">=0.1.2-alpha.4"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -57,17 +57,17 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.2-alpha.3",
+    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-alpha.4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",

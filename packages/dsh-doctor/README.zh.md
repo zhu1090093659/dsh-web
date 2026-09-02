@@ -111,7 +111,7 @@ host 设置命名空间为 `doctor`：
 | --- | --- | --- |
 | `enabled` | `true` | 总开关；开启时挂载路由并自动核对部署，关闭时暂停 Supervisor 且不卸载 |
 | `fullProtection` | `true` | 托管保护；发送心跳、记录故障事件并执行熔断；关闭后进入观察模式 |
-| `autoRepair` | `false` | 隔离门禁通过后自动提升；关闭时保留候选并等待明确确认 |
+| `autoRepair` | `false` | 隔离门禁通过后自动提升；关闭时保留候选并等待明确确认。同时是下方启动自愈的总开关 |
 | `autoMigrate` | `true` | 启动前自动迁移旧聚合包；只对已知的 `dsh-web-ui-all` -> `dsh-web-all` 映射生效 |
 | `heartbeatIntervalMs` | `5000` | host 心跳周期 |
 
@@ -142,6 +142,18 @@ host 设置命名空间为 `doctor`：
 | headless 业务失败 | 健康启动后非零退出 | 只报告 |
 
 熔断器在窗口内反复失败后暂停自动重试，并把 profile 隔离等待用户明确确认。
+
+### 启动自愈（插件级隔离）
+
+当 profile 在失败窗口内第二次启动失败且 `autoRepair` 开启时，Supervisor 会从捕获的
+stderr 归因（宿主启动报错会点名失败的 loader entry）；当能确定唯一涉事行时，向
+profile 的 `cordis.patch.yml` 追加一行 `- id: <rowId>` + `disabled: true` 覆盖
+（与 loader 持久化自毁插件是同一行合并机制）。下一次 `dsh web` 就能在坏插件缺席的
+情况下启动，其余插件照常挂载。无法归因到单行的失败（文件错误、patch 不可解析、
+宿主级故障）只标注事件；写入器拒绝禁用任何它不能证明损坏的行，从不触碰启动后才
+崩溃的场景，也从不编辑解析失败的 patch 文件（那是 D-040 隔离线的职责）。每次
+自愈都进 journal 与事件证据，被禁用的插件随时可以手工从 `cordis.patch.yml`
+恢复。
 
 ## 修复模型
 

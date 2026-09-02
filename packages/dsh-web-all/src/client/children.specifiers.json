@@ -1,0 +1,82 @@
+[
+  {
+    "name": "@linxin666/dsh-client-ui-web-ui-settings",
+    "specifier": "@linxin666/dsh-client-ui-web-ui-settings/client",
+    "source": "packages/dsh-web-settings/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-client-ui-plugin-manager",
+    "specifier": "@linxin666/dsh-client-ui-plugin-manager/client",
+    "source": "packages/dsh-plugin-manager/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-client-ui-market",
+    "specifier": "@linxin666/dsh-client-ui-market/client",
+    "source": "packages/dsh-market/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-client-ui-task-board",
+    "specifier": "@linxin666/dsh-client-ui-task-board/client",
+    "source": "packages/dsh-task-board/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-client-ui-git-graph",
+    "specifier": "@linxin666/dsh-client-ui-git-graph/client",
+    "source": "packages/dsh-git-graph/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-perf",
+    "specifier": "@linxin666/dsh-perf/client",
+    "source": "packages/dsh-perf/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-remote-web-ui",
+    "specifier": "@linxin666/dsh-remote-web-ui/client",
+    "source": "packages/dsh-remote-web-ui/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-pet",
+    "specifier": "@linxin666/dsh-pet/client",
+    "source": "packages/dsh-pet/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-ssh",
+    "specifier": "@linxin666/dsh-ssh/client",
+    "source": "packages/dsh-ssh/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-tool-describe-image",
+    "specifier": "@linxin666/dsh-tool-describe-image/client",
+    "source": "packages/dsh-tool-describe-image/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-client-ui-skill-explorer",
+    "specifier": "@linxin666/dsh-client-ui-skill-explorer/client",
+    "source": "packages/dsh-skill-explorer/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-desktop-launcher",
+    "specifier": "@linxin666/dsh-desktop-launcher/client",
+    "source": "packages/dsh-desktop-launcher/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-doctor",
+    "specifier": "@linxin666/dsh-doctor/client",
+    "source": "packages/dsh-doctor/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-usage",
+    "specifier": "@linxin666/dsh-usage/client",
+    "source": "packages/dsh-usage/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-session-archive",
+    "specifier": "@linxin666/dsh-session-archive/client",
+    "source": "packages/dsh-session-archive/src/client/index.ts"
+  },
+  {
+    "name": "@linxin666/dsh-client-ui-skin-center",
+    "specifier": "@linxin666/dsh-client-ui-skin-center/client",
+    "source": "packages/skins/skin-center/src/client/index.ts"
+  }
+]

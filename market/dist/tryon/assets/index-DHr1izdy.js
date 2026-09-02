@@ -1,0 +1,1 @@
+import{s as n,b as e}from"./index-DGS2ur_Y.js";import"./git-DJDr4heb.js";const c="locale",o="preference",i=["zh","en"],E=e.object({[o]:e.union([...i]).required(!1)});function L(t){t.inject(["settings"],s=>{s.settings.register(n(c),E)})}export{i as LOCALE_IDS,o as LOCALE_PREFERENCE_FIELD,c as LOCALE_SETTINGS_NAMESPACE,L as apply};

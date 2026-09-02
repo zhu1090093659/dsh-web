@@ -57,8 +57,6 @@ export const ru: Record<string, string> = {
   'arch.op.preview': 'Просмотр',
   'arch.select.all': 'Выбрать все результаты',
   'arch.select.clear': 'Снять выделение',
-  'arch.select.workspace': 'Выбрать всё в этом рабочем пространстве',
-  'arch.select.workspaceClear': 'Снять выделение в этом пространстве',
   'arch.select.selected': 'Выбрано: {n}',
   'arch.select.holdNote': 'Выбрано {selected}; {outside} вне текущего фильтра и всё же будут обработаны',
   'arch.batch.archive': 'Архивировать выбранные',

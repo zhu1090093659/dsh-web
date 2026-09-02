@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-01",
+  "generated": "2026-09-02",
   "items": [
     {
       "id": "dsh-data-agent",
@@ -185,8 +185,8 @@
       "rank": 15,
       "nameEn": "Auto Memory",
       "author": "Aik358",
-      "description": "三层自动记忆插件：用户级/项目笔记/每日日志自动注入与检索、每轮自动沉淀、AI 时段问候、智能检索、日历与工作区思维导图，支持继承 WorkBuddy/CodeBuddy/Claude Code/Codex 等其他 AI 工具的记忆。",
-      "descriptionEn": "Three-layer auto memory for DSH: user-level/project-notes/daily-logs with automatic injection and retrieval, per-turn auto-consolidation, AI greetings, smart search, calendar, workspace mind map, and inheritance from WorkBuddy/CodeBuddy/Claude Code/Codex.",
+      "description": "主动联想记忆插件：记忆不靠模型调用，自己被唤回——Host 观察情境，NLP 关键词+向量化双轨检索，固定边界注入不破坏前缀缓存。三层记忆自动沉淀、欢迎向导（每项功能当场开关）、唤起回顾、无人值守、AI 问候与每日反思、日历、跨工具记忆继承。语义后端可自选：内置 JS 档（e5-small，默认）或可选 Python BGE-M3 int8，词法 BM25 永远兜底。",
+      "descriptionEn": "Proactive associative memory: memories recall themselves without the model ever calling a tool. Host watches the conversation, dual-track retrieval (NLP keywords + vector similarity), fixed-boundary injection, prefix-cache friendly. Three-layer auto-consolidation, welcome tour with per-feature switches, recall review, unattended mode, AI greetings & reflections, calendar, cross-tool memory inheritance. Semantic backends selectable: built-in JS tier (e5-small, default) or optional Python BGE-M3 int8 — lexical BM25 always-on as 0GB floor.",
       "repo": "https://github.com/Aik358/dsh-auto-memory",
       "npm": "@a9i5k4/dsh-auto-memory",
       "category": "knowledge",

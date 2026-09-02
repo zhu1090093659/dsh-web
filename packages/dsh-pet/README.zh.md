@@ -208,7 +208,7 @@ frames2d 宠物可声明 `gameplay` 块——从 miku 桌宠泛化而来的可�
 | `whale-girl` | 鲸鱼娘（原版） | 仓库原有的鲸鱼娘图集 |
 | `whale-girl-refined` | 鲸鱼娘（精致版） | 以鲸鱼娘设计方向为基础，经 AI 辅助二次创作、修复和细节精修的衍生版本 |
 
-Miku 宠物有意不随包内置：它是 frames2d 玩法宠物，经创意工坊按需安装（见上文 frames2d 一节）。
+Miku 宠物有意不随包内置：它是 frames2d 玩法宠物，经创意工坊按需安装（见上文 frames2d 一节）。**星夜人偶（Starry Doll）**（Theater-ahyeon 以 CC-BY-NC-SA-4.0 贡献）同样仅经创意工坊分发：sprite2d 哥特星夜人偶，从单张插画抠像后以剪纸变换生成动画（呼吸、蹦跳、挥手、沮丧、review 态放大镜道具），从创意工坊宠物列表安装后落在 `$DSH_HOME/pets/starry-doll/`。
 
 精致版参考了 DreamSkin 的「DeepSeek-鲸鱼娘」主题。历史来源记录标注原主题作者为 `powerdog996`，并标注主题为 MIT：[DreamSkin](https://dreamskin.cc)、[仓库来源记录](https://github.com/zhu1090093659/dsh-web/commit/87edd7ff4800dffd40bc93fb76e4ae450390facd)。此处用于记录素材来源与衍生关系；精致版不表述为原作者的官方作品，也不重新定义原始美术作品的授权范围。
 
@@ -223,6 +223,16 @@ Miku 宠物有意不随包内置：它是 frames2d 玩法宠物，经创意工�
 | waving | review | failed | 左右移动 |
 |---|---|---|---|
 | ![waving](assets/whale/previews/waving.gif) | ![review](assets/whale/previews/review.gif) | ![failed](assets/whale/previews/failed.gif) | ![running-left](assets/whale/previews/running-left.gif) ![running-right](assets/whale/previews/running-right.gif) |
+
+社区贡献的**星夜人偶**宠物（仅经创意工坊分发，Theater-ahyeon 以 CC-BY-NC-SA-4.0 贡献）随附同一套状态预览：
+
+| idle | waiting | running | jumping |
+|---|---|---|---|
+| ![idle](assets/starry-doll/previews/idle.gif) | ![waiting](assets/starry-doll/previews/waiting.gif) | ![running](assets/starry-doll/previews/running.gif) | ![jumping](assets/starry-doll/previews/jumping.gif) |
+
+| waving | review | failed | 左右移动 |
+|---|---|---|---|
+| ![waving](assets/starry-doll/previews/waving.gif) | ![review](assets/starry-doll/previews/review.gif) | ![failed](assets/starry-doll/previews/failed.gif) | ![running-left](assets/starry-doll/previews/running-left.gif) ![running-right](assets/starry-doll/previews/running-right.gif) |
 
 ## 架构
 

@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-08-24-npm-badge-endpoint.md: a2f917def346fa9ce56d2bd2c98bd8ab313386e5
-2026-08-24-npm-badge-endpoint.zh.md: ee4670763d7d76f35d1d39c07ee7d07b4e2fd53c
+2026-08-24-npm-badge-endpoint.md: c13eb2d12483a5529ebf7e64f64a6f397a028878
+2026-08-24-npm-badge-endpoint.zh.md: fef226e623a9e372694bee5bec31e5650532a484

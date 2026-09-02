@@ -120,6 +120,14 @@ describe('settleExecution', () => {
     expect(settled.executions[0].result).toBe('cancelled')
   })
 
+  it('keeps recurring task in todo on successful execution', () => {
+    const recurring = withSchedule(sampleTask(), { enabled: true, cron: '0 12 * * *' }, NOW)
+    const { task } = startExecution(recurring, NOW, 'exec-1')
+    const settled = settleExecution(task, 'exec-1', 'succeeded', NOW + 10, undefined)
+    expect(settled.status).toBe('todo')
+    expect(settled.executions[0].result).toBe('succeeded')
+  })
+
   it('is a no-op for unknown or already-settled executions', () => {
     const { task } = startExecution(sampleTask(), NOW, 'exec-1')
     expect(settleExecution(task, 'nope', 'succeeded', NOW + 1, undefined)).toBe(task)

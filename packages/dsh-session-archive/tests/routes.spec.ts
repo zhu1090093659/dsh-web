@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, afterAll } from 'vitest'
 import { createServer, request as httpRequest, type Server, type IncomingMessage, type ServerResponse } from 'node:http'
 import { tmpdir } from 'node:os'

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { capEntries, deserializeAutoState, deserializeLedger, writeJsonAtomic } from '../src/host/ledger.ts'
 import { mkdtempSync, readFileSync } from 'node:fs'

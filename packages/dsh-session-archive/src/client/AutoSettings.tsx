@@ -6,7 +6,7 @@
  * @module @linxin666/dsh-session-archive/client/AutoSettings
  */
 
-import { useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
   AUTO_ARCHIVE_DAYS_MAX,
@@ -71,8 +71,14 @@ export function AutoSettingsPanel(props: {
 }): ReactNode {
   // Subscribe: the settings mirror replaces the snapshot object after each
   // accepted write; without this subscription the controlled checkboxes never
-  // re-render and appear stuck.
-  const snapshot = useSyncExternalStore(props.settings.subscribe, props.settings.getSnapshot)
+  // re-render and appear stuck. The scope's subscribe/getSnapshot are
+  // prototype methods of the official SettingsScope, and useSyncExternalStore
+  // invokes both as bare functions — they must be bound to the scope first or
+  // `this.store` reads undefined and the slot crashes.
+  const settings = props.settings
+  const subscribe = useMemo(() => settings.subscribe.bind(settings), [settings])
+  const getSnapshot = useMemo(() => settings.getSnapshot.bind(settings), [settings])
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot)
   const value: SessionArchiveConfig = snapshot.value ?? {}
   const ui = useSyncExternalStore(props.controller.store.subscribe, props.controller.store.getSnapshot)
   const autoPreview = ui.autoPreview

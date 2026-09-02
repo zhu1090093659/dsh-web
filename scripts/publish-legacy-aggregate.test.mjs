@@ -25,6 +25,14 @@ test('legacy patch self row points to the old package', () => {
   assert.doesNotMatch(output, /name: '@linxin666\/dsh-web-all'/)
 })
 
+test('legacy patch family subpath rows point to the old package too', () => {
+  const output = rewriteLegacyPatch("- insert:\n    - id: web-ui-usage\n      name: '@linxin666/dsh-web-all/usage'\n      config:\n        plugin: '@linxin666/dsh-usage'\n")
+  assert.match(output, /name: '@linxin666\/dsh-web-ui-all\/usage'/)
+  assert.doesNotMatch(output, /name: '@linxin666\/dsh-web-all\//)
+  // The real plugin config is untouched.
+  assert.match(output, /plugin: '@linxin666\/dsh-usage'/)
+})
+
 test('legacy client bundle loader id is rewritten', () => {
   assert.equal(rewriteLegacyClient('id: "@linxin666/dsh-web-all"'), 'id: "@linxin666/dsh-web-ui-all"')
 })

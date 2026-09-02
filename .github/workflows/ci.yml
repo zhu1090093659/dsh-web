@@ -151,7 +151,7 @@ jobs:
       # Pin the DSH CLI the lane mounts into; the profile's bundle stack
       # (dsh-base / dsh-web-app) resolves from this installation.
       - name: Install dsh CLI (pinned)
-        run: npm install -g @deepseek-ai/dsh@0.1.2-alpha.2
+        run: npm install -g @deepseek-ai/dsh@0.1.2-alpha.4
 
       # lib/ bundles are committed for the consistency checks, but the
       # aggregate tarball must be produced from a fresh build.

@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-session-id",
   "description": "DSH web GUI plugin: sidebar-foot Session ID panel listing every session with its full id and one-click copy (browser-only; no source changes).",
-  "version": "0.3.10",
+  "version": "0.3.12",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -23,7 +23,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.2-alpha.1"
+      "dsh": ">=0.1.2-alpha.4"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -48,13 +48,13 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-api-remotes": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.3",
+    "@deepseek-ai/dsh-api-remotes": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.1.0",
     "@types/react": "~18.3.1",

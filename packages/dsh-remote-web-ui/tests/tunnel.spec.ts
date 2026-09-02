@@ -5,7 +5,7 @@
  */
 import { EventEmitter } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
-import { TunnelManager, type TunnelHandle, type TunnelPhase } from '../src/tunnel.ts'
+import { TunnelManager, namedTunnelHandle, type TunnelHandle, type TunnelPhase, type TunnelTarget } from '../src/tunnel.ts'
 
 /** A fake tunnel process: an EventEmitter the test drives by hand. */
 class FakeTunnel extends EventEmitter implements TunnelHandle {
@@ -42,6 +42,7 @@ function makeTimers() {
 interface Harness {
   manager: TunnelManager
   tunnels: FakeTunnel[]
+  targets: TunnelTarget[]
   phases: TunnelPhase[]
   urls: string[]
   ensure: ReturnType<typeof vi.fn<() => Promise<void>>>
@@ -50,12 +51,14 @@ interface Harness {
 
 function makeHarness(overrides: { urlTimeoutMs?: number; restartBaseMs?: number } = {}): Harness {
   const tunnels: FakeTunnel[] = []
+  const targets: TunnelTarget[] = []
   const ensure = vi.fn(async () => {})
   const { timer, fireOne } = makeTimers()
   const phases: TunnelPhase[] = []
   const urls: string[] = []
   const manager = new TunnelManager({
-    factory: () => {
+    factory: (target) => {
+      targets.push(target)
       const tunnel = new FakeTunnel()
       tunnels.push(tunnel)
       return tunnel
@@ -68,7 +71,7 @@ function makeHarness(overrides: { urlTimeoutMs?: number; restartBaseMs?: number 
   })
   manager.onPhase(info => { phases.push(info.phase) })
   manager.onUrl(url => { urls.push(url) })
-  return { manager, tunnels, phases, urls, ensure, fireOne }
+  return { manager, tunnels, targets, phases, urls, ensure, fireOne }
 }
 
 /** Wait until the manager spawned its next tunnel process. */
@@ -239,5 +242,89 @@ describe('TunnelManager', () => {
     await vi.waitFor(() => { expect(spawned).toHaveLength(1) })
     spawned[0].emitUrl('https://d.trycloudflare.com')
     expect(flaky.info).toEqual({ phase: 'running', url: 'https://d.trycloudflare.com' })
+  })
+})
+
+describe('TunnelManager named mode', () => {
+  const NAMED: TunnelTarget = { kind: 'named', token: 'tok-1', publicUrl: 'https://dsh.example.com' }
+
+  it('runs a named target and surfaces the fixed URL like a minted one', async () => {
+    const h = makeHarness()
+    h.manager.start(NAMED)
+    await vi.waitFor(() => { expect(h.ensure).toHaveBeenCalledOnce() })
+    const tunnel = await nextTunnel(h)
+    expect(h.targets).toEqual([NAMED])
+    tunnel.emitUrl('https://dsh.example.com') // what namedTunnelHandle synthesizes
+    expect(h.manager.info).toEqual({ phase: 'running', url: 'https://dsh.example.com' })
+    expect(h.urls).toEqual(['https://dsh.example.com'])
+  })
+
+  it('accepts a bare string as the quick target', async () => {
+    const h = makeHarness()
+    h.manager.start('http://127.0.0.1:3080')
+    await nextTunnel(h)
+    expect(h.targets).toEqual([{ kind: 'quick', targetUrl: 'http://127.0.0.1:3080' }])
+  })
+
+  it('is idempotent while running the same named target', async () => {
+    const h = makeHarness()
+    h.manager.start(NAMED)
+    await nextTunnel(h)
+    h.manager.start({ kind: 'named', token: 'tok-1', publicUrl: 'https://dsh.example.com' })
+    await new Promise(resolve => setImmediate(resolve))
+    expect(h.tunnels).toHaveLength(1)
+  })
+
+  it('restarts when the named target changes (new token or new hostname)', async () => {
+    const h = makeHarness()
+    h.manager.start(NAMED)
+    const first = await nextTunnel(h)
+    h.manager.start({ kind: 'named', token: 'tok-1', publicUrl: 'https://other.example.com' })
+    const second = await nextTunnel(h)
+    expect(h.tunnels).toHaveLength(2)
+    expect(first.stop).toHaveBeenCalled()
+    expect(h.targets[1]).toEqual({ kind: 'named', token: 'tok-1', publicUrl: 'https://other.example.com' })
+    second.emitUrl('https://other.example.com')
+    expect(h.manager.info).toEqual({ phase: 'running', url: 'https://other.example.com' })
+  })
+
+  it('crash-restarts a named tunnel with backoff like the quick mode', async () => {
+    const h = makeHarness({ restartBaseMs: 10 })
+    h.manager.start(NAMED)
+    const first = await nextTunnel(h)
+    first.emitExit(1)
+    expect(h.manager.info.phase).toBe('failed')
+    h.fireOne()
+    const second = await nextTunnel(h)
+    second.emitUrl('https://dsh.example.com')
+    expect(h.manager.info).toEqual({ phase: 'running', url: 'https://dsh.example.com' })
+  })
+})
+
+describe('namedTunnelHandle', () => {
+  it('reports the fixed URL once, after the first registered connection', () => {
+    const inner = new FakeTunnel()
+    const handle = namedTunnelHandle(inner, 'https://dsh.example.com')
+    const urls: string[] = []
+    handle.on('url', (value: string) => { urls.push(value) })
+    inner.emit('connected', { id: 'c0', ip: '1.2.3.4', location: 'HKG' })
+    inner.emit('connected', { id: 'c1', ip: '1.2.3.4', location: 'HKG' })
+    inner.emit('connected', { id: 'c2', ip: '1.2.3.4', location: 'HKG' })
+    expect(urls).toEqual(['https://dsh.example.com'])
+  })
+
+  it('passes exit through and detaches inner listeners on stop', () => {
+    const inner = new FakeTunnel()
+    const handle = namedTunnelHandle(inner, 'https://dsh.example.com')
+    const exits: Array<[number | null, NodeJS.Signals | null]> = []
+    const urls: string[] = []
+    handle.on('exit', (code: number | null, signal: NodeJS.Signals | null) => { exits.push([code, signal]) })
+    handle.on('url', (value: string) => { urls.push(value) })
+    handle.stop()
+    inner.emitExit(1)
+    inner.emit('connected', { id: 'c0', ip: '1.2.3.4', location: 'HKG' })
+    expect(inner.stop).toHaveBeenCalled()
+    expect(exits).toEqual([])
+    expect(urls).toEqual([])
   })
 })

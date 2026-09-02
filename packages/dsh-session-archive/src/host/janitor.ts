@@ -459,7 +459,7 @@ export class ArchiveService {
     }
 
     // 4. Projection cache (index entry + per-session file), both spellings.
-    this.scrubProjcache(deleted, built.nativeIds)
+    await this.scrubProjcache(deleted, built.nativeIds)
 
     // 5. Archive ledger, both spellings.
     for (const id of deleted) {
@@ -481,7 +481,7 @@ export class ArchiveService {
   }
 
   /** Best-effort projection-cache scrub; a stale cache entry is cosmetic. */
-  private scrubProjcache(ids: ReadonlySet<string>, nativeIds: Record<string, string> = {}): void {
+  private async scrubProjcache(ids: ReadonlySet<string>, nativeIds: Record<string, string> = {}): Promise<void> {
     const indexPath = join(this.dshHome, 'storages', 'session_projcache.json')
     try {
       if (existsSync(indexPath)) {
@@ -493,7 +493,9 @@ export class ArchiveService {
             const native = nativeIds[id]
             if (native !== undefined && native !== id) delete sessions[native]
           }
-          void writeJsonAtomic(indexPath, parsed)
+          // Awaited so the scrub lands on disk before deleteSessions reports
+          // success; a fire-and-forget write raced the caller's readers.
+          await writeJsonAtomic(indexPath, parsed)
         }
       }
     } catch {

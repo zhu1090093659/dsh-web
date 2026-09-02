@@ -7,7 +7,7 @@
 
 import type { PerfKey } from './perf-locales.ts'
 
-/** Translate seat for the dsh-perf namespace (bsm.* keys unused here). */
+/** Translate seat for the dsh-perf namespace. */
 export type PerfTranslate = (key: PerfKey, params?: Record<string, string | number>) => string
 
 /** Alert block of the host stats wire (loose on purpose: host version drift). */

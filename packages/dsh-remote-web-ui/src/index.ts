@@ -32,6 +32,8 @@ import { claimPostureKey, postureTargets, probePosture, releasePostureKey } from
 import { lanIPv4Addresses } from './lan.ts'
 import { ensureFirewallRule, firewallSummary, removeFirewallRule } from './firewall.ts'
 import { lanBindState, writeLanBind } from './lan-bind.ts'
+import { isHttpUrl, tunnelPlanOf } from './tunnel-plan.ts'
+import { loadRelayIdentity, RelayRegistrar, type RelayState } from './relay-registry.ts'
 import { desiredBindHost, desiredBindPort, firewallActionNeeded, pendingRestartOf, type AppliedFirewallState, type StartupFacts } from './lan-bind-plan.ts'
 import { createInnerAuth } from './inner-auth.ts'
 import { TunnelManager, type TunnelInfo } from './tunnel.ts'
@@ -136,9 +138,34 @@ export interface Config {
    * cloudflared binary ships with the package — no user-side install) and
    * feeds the minted public URL into the QR base and the phone-facing
    * pairing fence dynamically, so phones anywhere can pair without any manual
-   * tunnel setup. The manual `publicBaseUrl` is ignored while this is on.
+   * tunnel setup. The minted hostname changes on every start, so a paired
+   * phone must re-pair after each restart. The manual `publicBaseUrl` and
+   * `tunnelToken` are ignored while this is on.
    */
   autoTunnel?: boolean
+  /**
+   * Cloudflare named-tunnel token (`cloudflared tunnel run --token <t>`).
+   * When set (and `autoTunnel` is off), the plugin runs the named tunnel
+   * itself — same binary, same lifecycle management — toward the fixed
+   * public hostname configured in the Cloudflare dashboard. Because that
+   * hostname never changes, a paired phone keeps its bookmark and its
+   * pairing cookie across `dsh web` restarts: pair once, never again.
+   * Requires `publicBaseUrl` to name that same hostname (the token does not
+   * carry it); without a valid `publicBaseUrl` the tunnel stays off and a
+   * warning explains what is missing. Treated as a secret: the settings
+   * surface stores it redacted.
+   */
+  tunnelToken?: string
+  /**
+   * Stable-origin relay: when on (default), the quick tunnel is fronted by a
+   * fixed `https://<id>.dsh-market.com` subdomain (the dsh-market worker's
+   * registry), so the phone's bookmark and pairing cookie survive `dsh web`
+   * restarts without any user setup. Traffic transits the dsh-market edge
+   * (the same trust point as the quick tunnel itself); turn off to fall back
+   * to the raw ephemeral quick URL. Named tunnels keep their dashboard
+   * hostname and never touch the relay.
+   */
+  relay?: boolean
   /**
    * LAN bind toggle. When the user flips it (true or false) the plugin
    * writes the managed webserver block into the profile patch — true pins
@@ -174,6 +201,8 @@ export const Config: z<Config> = z.object({
   publicBaseUrl: z.string(),
   devicesFile: z.string(),
   autoTunnel: z.boolean().default(false),
+  tunnelToken: z.string().role('secret'),
+  relay: z.boolean().default(true),
   lanBind: z.boolean(),
   profile: z.string().pattern(/^[A-Za-z0-9][A-Za-z0-9._-]*$/),
   enabled: z.boolean().default(true),
@@ -187,11 +216,12 @@ const SWEEP_INTERVAL_MS = 10_000
  * which legitimately resolves to `undefined` when unset (the schema keeps it
  * optional, so `Required` alone would over-narrow it to `string`).
  */
-type ResolvedConfig = Required<Omit<Config, 'publicBaseUrl' | 'devicesFile' | 'lanBind' | 'profile'>> & {
+type ResolvedConfig = Required<Omit<Config, 'publicBaseUrl' | 'devicesFile' | 'lanBind' | 'profile' | 'tunnelToken'>> & {
   publicBaseUrl: string | undefined
   devicesFile: string
   /** undefined until the user flips the toggle once; undefined never writes the patch. */
   lanBind: boolean | undefined
+  tunnelToken: string | undefined
   profile: string
 }
 
@@ -231,6 +261,8 @@ const DEFAULTS: ResolvedConfig = {
   publicBaseUrl: undefined,
   devicesFile: defaultDevicesFile(),
   autoTunnel: false,
+  tunnelToken: undefined,
+  relay: true,
   lanBind: undefined,
   profile: process.env.DSH_PROFILE ?? 'web',
   enabled: true,
@@ -254,6 +286,8 @@ function applyImpl(ctx: Context, config?: Config): void {
     publicBaseUrl: config?.publicBaseUrl,
     devicesFile: config?.devicesFile ?? DEFAULTS.devicesFile,
     autoTunnel: config?.autoTunnel ?? DEFAULTS.autoTunnel,
+    tunnelToken: config?.tunnelToken,
+    relay: config?.relay ?? DEFAULTS.relay,
     lanBind: config?.lanBind,
     profile: config?.profile ?? process.env.DSH_PROFILE ?? DEFAULTS.profile,
     enabled: config?.enabled ?? DEFAULTS.enabled,
@@ -274,6 +308,8 @@ function applyImpl(ctx: Context, config?: Config): void {
       publicBaseUrl: value.publicBaseUrl,
       devicesFile: value.devicesFile ?? DEFAULTS.devicesFile,
       autoTunnel: value.autoTunnel ?? DEFAULTS.autoTunnel,
+      tunnelToken: value.tunnelToken,
+      relay: value.relay ?? DEFAULTS.relay,
       lanBind: value.lanBind,
       profile: value.profile ?? process.env.DSH_PROFILE ?? DEFAULTS.profile,
       enabled: value.enabled ?? DEFAULTS.enabled,
@@ -288,24 +324,89 @@ function applyImpl(ctx: Context, config?: Config): void {
   // mutation is needed here (a distributable plugin must not change the
   // harness's connection plugin).
   const tunnel = new TunnelManager()
-  let autoTunnel = resolved.autoTunnel
+  // Relay registry: one stable `<id>.dsh-market.com` subdomain per profile
+  // in front of the quick tunnel. The QR base prefers the relay origin once
+  // it is registered; until then (or when the registry is unreachable) the
+  // raw quick URL is used, exactly as before. Named tunnels keep their fixed
+  // dashboard hostname and never touch the relay.
+  let relayRegistrar: RelayRegistrar | undefined
+  let relayUrl: string | undefined
+  let rawTunnelUrl: string | undefined
+  /** The tunnel target the registrar last announced (dedupes sync re-runs). */
+  let relayAnnouncedFor: string | undefined
+  const setPublicBase = (): void => {
+    service.setPublicBaseUrl(relayUrl ?? rawTunnelUrl)
+  }
+  const disposeRelayRegistrar = (unregister: boolean = false): void => {
+    const registrar = relayRegistrar
+    relayRegistrar = undefined
+    relayUrl = undefined
+    relayAnnouncedFor = undefined
+    if (registrar === undefined) return
+    // Toggle-off removes the registry row so the stable origin stops
+    // proxying; teardown/mode changes keep the row (the phone then sees the
+    // relay's offline page instead of a dangling claim, and re-enabling
+    // reuses the same identity).
+    if (unregister) void registrar.unregister().catch(() => undefined)
+    registrar.dispose()
+  }
+  const ensureRelayRegistrar = (): RelayRegistrar | undefined => {
+    if (resolve().relay === false) return undefined
+    if (relayRegistrar === undefined) {
+      try {
+        const identity = loadRelayIdentity(resolve().profile)
+        relayRegistrar = new RelayRegistrar(identity, (state: RelayState) => {
+          service.setRelayStatus(state.state === 'off' ? undefined : state)
+          if (state.state === 'running') {
+            relayUrl = state.url
+          } else if (state.state === 'off') {
+            relayUrl = undefined
+          } else if (state.state === 'failed') {
+            // Keep the last relay URL on failures: the phone origin only
+            // breaks when the mapping itself goes stale, not when one
+            // refresh call fails. The registrar retries with backoff.
+            console.warn(`remote-web-ui: relay registration failed (${state.error}) — the stable origin may serve its offline page until the retry lands`)
+          }
+          setPublicBase()
+        })
+      } catch (error) {
+        console.warn(`remote-web-ui: relay registry unavailable (${error instanceof Error ? error.message : String(error)}) — the quick URL is the QR base`)
+      }
+    }
+    return relayRegistrar
+  }
+  const announceRelay = (registrar: RelayRegistrar, target: string): void => {
+    if (relayAnnouncedFor === target) return
+    relayAnnouncedFor = target
+    void registrar.announce(target)
+  }
+  // 'off' until a sync pass turns a mode on; the phase listener only feeds
+  // the public base while a plugin-managed tunnel (quick or named) runs.
+  let tunnelMode: 'off' | 'quick' | 'named' = resolved.autoTunnel ? 'quick' : 'off'
   tunnel.onPhase((info: TunnelInfo) => {
-    if (!autoTunnel) return
+    if (tunnelMode === 'off') return
     if (info.phase === 'running' && info.url !== undefined) {
-      service.setPublicBaseUrl(info.url)
+      rawTunnelUrl = info.url
+      setPublicBase()
       service.setTunnelStatus({ state: 'running', url: info.url })
+      const registrar = tunnelMode === 'quick' ? ensureRelayRegistrar() : undefined
+      if (registrar !== undefined) announceRelay(registrar, info.url)
       runPostureProbe()
     } else if (info.phase === 'starting') {
       // A restart mints a NEW hostname: the previous URL dies with the old
       // process, so clear it now rather than advertising a dead link.
-      service.setPublicBaseUrl(undefined)
+      rawTunnelUrl = undefined
+      relayUrl = undefined
+      setPublicBase()
       service.setTunnelStatus({ state: 'starting' })
     } else if (info.phase === 'failed') {
-      service.setPublicBaseUrl(undefined)
+      rawTunnelUrl = undefined
+      setPublicBase()
       service.setTunnelStatus(info.error === undefined ? { state: 'failed' } : { state: 'failed', error: info.error })
     }
   })
   ctx.effect(() => () => {
+    disposeRelayRegistrar()
     tunnel.dispose()
   }, 'remote-web-ui: auto tunnel')
   // The bind facts are known by now (webServer is an inject edge): the LAN
@@ -639,17 +740,44 @@ function applyImpl(ctx: Context, config?: Config): void {
         }
       }
     }
-    // The auto tunnel owns the public base while enabled: the minted URL
-    // lands in the service through the tunnel's phase listener. The manual
-    // publicBaseUrl applies only when the auto tunnel is off.
-    autoTunnel = value.autoTunnel === true
-    if (autoTunnel) {
-      if (value.publicBaseUrl !== undefined) {
-        console.warn('remote-web-ui: autoTunnel is on — ignoring the manually configured publicBaseUrl')
+    // The plugin-managed tunnels own the public base while one runs: the URL
+    // lands in the service through the tunnel's phase listener (the minted
+    // quick URL, or the named tunnel's fixed public hostname). The manual
+    // publicBaseUrl applies only when no tunnel runs.
+    const plan = tunnelPlanOf(value, ctx.webServer.port)
+    tunnelMode = plan.mode
+    if (plan.mode !== 'quick') {
+      // The relay only fronts the quick tunnel; named mode owns its fixed
+      // dashboard hostname and the off mode has no public base at all.
+      disposeRelayRegistrar()
+      if (plan.mode !== 'named') setPublicBase()
+    } else if (value.relay === false) {
+      // The relay toggle is off: no stable origin, the raw quick URL is the
+      // QR base exactly as before the relay existed.
+      disposeRelayRegistrar(true)
+      setPublicBase()
+    } else if (rawTunnelUrl !== undefined) {
+      // The relay just turned on (or the registrar is new) while the tunnel
+      // already runs: announce now — no phase event will fire for an
+      // unchanged target.
+      const registrar = ensureRelayRegistrar()
+      if (registrar !== undefined) announceRelay(registrar, rawTunnelUrl)
+    }
+    if (plan.mode === 'quick') {
+      for (const ignored of plan.ignored) {
+        console.warn(`remote-web-ui: autoTunnel is on — ignoring the configured ${ignored}`)
       }
-      tunnel.start(`http://127.0.0.1:${String(ctx.webServer.port)}`)
+      tunnel.start(plan.targetUrl)
+    } else if (plan.mode === 'named') {
+      tunnel.start({ kind: 'named', token: plan.token, publicUrl: plan.publicUrl })
     } else {
       tunnel.stop()
+      // A named-tunnel token without a usable public hostname cannot serve
+      // the QR: stay off and say exactly what is missing instead of running
+      // a tunnel nothing points at.
+      if (value.tunnelToken !== undefined && value.tunnelToken !== '') {
+        console.warn('remote-web-ui: tunnelToken is set but publicBaseUrl is missing or not a valid URL — fill the fixed public hostname of the named tunnel (e.g. https://dsh.example.com) to run it')
+      }
       // A malformed public base is ignored with a warning — LAN-only behavior
       // stays intact rather than silently minting unusable QR links.
       if (value.publicBaseUrl !== undefined && !isHttpUrl(value.publicBaseUrl)) {
@@ -723,14 +851,4 @@ function applyImpl(ctx: Context, config?: Config): void {
     })
   })
   sync()
-}
-
-/** Whether a configured public base is a parseable http(s) URL with a host. */
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value)
-    return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname !== ''
-  } catch {
-    return false
-  }
 }

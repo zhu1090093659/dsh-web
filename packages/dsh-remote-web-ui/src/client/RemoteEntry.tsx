@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { PairingPhase } from '../pairing.ts'
 import { RemotePanel, type PanelState } from './RemotePanel.tsx'
-import { copyText, issuePair, revokePair, stopPair, type DeviceFrame, type IssueResponse, type PairStateFrame, type TunnelStatusFrame } from './pair-api.ts'
+import { copyText, issuePair, revokePair, stopPair, type DeviceFrame, type IssueResponse, type PairStateFrame, type RelayStatusFrame, type TunnelStatusFrame } from './pair-api.ts'
 import { PhoneIcon } from './PhoneIcon.tsx'
 import { UpdateEntry } from './UpdateEntry.tsx'
 import css from './remote.module.css'
@@ -43,6 +43,7 @@ function mergeFrame(state: PanelState, frame: PairStateFrame): PanelState {
     onlineCount: frame.onlineCount,
     devices: frame.devices ?? [],
     ...(frame.tunnel !== undefined ? { tunnel: frame.tunnel as TunnelStatusFrame } : {}),
+    ...(frame.relay !== undefined ? { relay: frame.relay } : {}),
     ...(frame.posture !== undefined ? { posture: frame.posture } : {}),
   }
 }

@@ -9,9 +9,9 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-settings": "0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-alpha.3",
+    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-settings": "0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-alpha.4",
     "@types/node": "^22.20.1",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.0",

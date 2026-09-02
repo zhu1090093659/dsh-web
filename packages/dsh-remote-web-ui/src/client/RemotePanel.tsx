@@ -16,6 +16,7 @@ import {
   formatLastSeen,
   type DeviceFrame,
   type PostureFrame,
+  type RelayStatusFrame,
   type TunnelStatusFrame,
 } from './pair-api.ts'
 import { deviceNameFromUserAgent } from './device-name.ts'
@@ -46,6 +47,8 @@ export type PanelState =
       publicBaseUrl?: string
       /** Auto-tunnel status, while the auto-tunnel feature is active. */
       tunnel?: TunnelStatusFrame
+      /** Relay-registry status, while the stable-origin relay is in play. */
+      relay?: RelayStatusFrame
       /** Latest /api posture probe, once a round has completed. */
       posture?: PostureFrame
     }
@@ -162,6 +165,14 @@ export function RemotePanel({ t, state, copied, onClose, onStop, onRefresh, onCo
               {state.tunnel.state === 'failed'
                 ? t('tunnel.failed', { error: state.tunnel.error ?? t('tunnel.unknownError') })
                 : t('tunnel.starting')}
+            </p>
+          )}
+          {state.relay?.state === 'registering' && (
+            <p className={css.tunnelNote} role="status">{t('relay.registering')}</p>
+          )}
+          {state.relay?.state === 'failed' && (
+            <p className={css.tunnelFailed} role="status">
+              {t('relay.failed', { error: state.relay.error ?? t('tunnel.unknownError') })}
             </p>
           )}
 

@@ -16,7 +16,8 @@
     }
   ],
   "routes": [
-    { "pattern": "dsh-market.com", "custom_domain": true }
+    { "pattern": "dsh-market.com", "custom_domain": true },
+    { "pattern": "*.dsh-market.com", "zone_name": "dsh-market.com" }
   ],
   "triggers": {
     "crons": ["*/30 * * * *"]

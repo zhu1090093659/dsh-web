@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-01",
+  "generated": "2026-09-02",
   "items": [
     {
       "id": "miku",
@@ -158,9 +158,62 @@
       ]
     },
     {
+      "id": "starry-doll",
+      "displayName": "星夜人偶",
+      "rank": 3,
+      "renderer": "sprite2d",
+      "spritesheet": "assets/pets/starry-doll/spritesheet.webp",
+      "previews": [
+        "assets/pets/starry-doll/previews/idle.gif",
+        "assets/pets/starry-doll/previews/running-right.gif",
+        "assets/pets/starry-doll/previews/running-left.gif",
+        "assets/pets/starry-doll/previews/waving.gif",
+        "assets/pets/starry-doll/previews/jumping.gif",
+        "assets/pets/starry-doll/previews/failed.gif",
+        "assets/pets/starry-doll/previews/waiting.gif",
+        "assets/pets/starry-doll/previews/running.gif",
+        "assets/pets/starry-doll/previews/review.gif"
+      ],
+      "frames": [
+        6,
+        8,
+        8,
+        4,
+        5,
+        8,
+        6,
+        6,
+        6
+      ],
+      "tracks": [
+        "idle",
+        "running-right",
+        "running-left",
+        "waving",
+        "jumping",
+        "failed",
+        "waiting",
+        "running",
+        "review"
+      ],
+      "files": [
+        "pet.json",
+        "previews/failed.gif",
+        "previews/idle.gif",
+        "previews/jumping.gif",
+        "previews/review.gif",
+        "previews/running-left.gif",
+        "previews/running-right.gif",
+        "previews/running.gif",
+        "previews/waiting.gif",
+        "previews/waving.gif",
+        "spritesheet.webp"
+      ]
+    },
+    {
       "id": "whale-girl",
       "displayName": "鲸鱼娘（原版）",
-      "rank": 3,
+      "rank": 4,
       "renderer": "sprite2d",
       "spritesheet": "assets/pets/whale-girl/spritesheet.webp",
       "previews": [
@@ -213,7 +266,7 @@
     {
       "id": "whale-girl-refined",
       "displayName": "鲸鱼娘（精致版）",
-      "rank": 4,
+      "rank": 5,
       "renderer": "sprite2d",
       "spritesheet": "assets/pets/whale-girl-refined/spritesheet.webp",
       "previews": [

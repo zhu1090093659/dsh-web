@@ -17,9 +17,9 @@
  * `@deepseek-ai/dsh-client-runtime` face is gone from its inject list).
  * @mlgbnb/dsh-archive-manager stays excluded — its latest upstream build
  * (1.0.7) still imports that removed face. aionui-panel was removed from the
- * family entirely. @morlay/better-session stays but ships inactive by default
- * (no host div until opted in), so no test, gate, or e2e assertion requires it
- * to mount.
+ * family entirely. @morlay/better-session is removed from the family too
+ * (deprecated; the stock jsonl backend owns session storage again), so no
+ * test, gate, or e2e assertion requires it to mount.
  *
  * The server is booted by `scripts/e2e-mount.sh`; the base URL arrives via
  * `DSH_E2E_URL`. Deterministic: every wait is on a DOM marker, and any crash

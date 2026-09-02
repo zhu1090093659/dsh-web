@@ -341,7 +341,15 @@ function decidePromotion(state, config) {
 
 /** Scan newly appended session events and update promotion state. */
 function scanEvents(state, session) {
-  const events = session.events
+  // DSH >= 0.1.2-alpha.4 reads the append-only log through Session.ownEvents();
+  // older builds exposed a plain `session.events` array. Either way the events
+  // are contiguous in seq order, so the scan resumes by absolute index. Without
+  // this the first pre-step/assembly crashed on 0.1.2-alpha.4 with
+  // "Cannot read properties of undefined (reading 'length')".
+  const events = typeof session?.ownEvents === 'function'
+    ? session.ownEvents()
+    : session?.events
+  if (!Array.isArray(events)) return
   for (; state.next < events.length; state.next += 1) {
     const event = events[state.next]
     if (event === undefined) continue

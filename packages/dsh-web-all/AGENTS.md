@@ -7,6 +7,13 @@
 
 - `cordis.patch.yml` 是各 child 的 insert 行拼接（含每源注释头）；package.json
   dependencies 以 `workspace:*` 拉全部子包。安装单包即全部就位。
+- 家族行的 `name` 是按家族的子路径导出 `@linxin666/dsh-web-all/<family>`（官方
+  插件列表因此每行显示独立的 `web-all/<family>` 标题），全部子路径都指向共享
+  壳再导出模块 `lib/shells/shell.js`；子路径下必须有扫描器标记 manifest
+  （`src/shells/package.json`，构建复制到 `lib/shells/`）：无 `dsh` 声明 +
+  `type: module`，阻止 client 模块扫描器的 nearest-package 走查到达包根（否则
+  与 compat 行构成同包多来源，扫描器 reconcile 直接抛错）。子路径 exports 键由
+  生成器维护，勿手改。
 - `aggregate.yml` 是唯一手写清单：`patchFrom` 贡献 insert 行（嵌套聚合递归展开、
   按顺序、带源注释），`deps` 解析各子包 name 写入 dependencies。
 - `patches:` 段（单行 JSON flow mapping）对本聚合自插入行做整对象 config 覆写：

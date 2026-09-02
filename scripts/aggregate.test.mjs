@@ -110,24 +110,16 @@ test('web-ui-all does not mount the dsh-client-runtime-dependent @mlgbnb/dsh-arc
   assert.doesNotMatch(patch, /^ {4}- id: web-ui-archive-manager$/m, '@mlgbnb/dsh-archive-manager must not be mounted on the alpha.2 cohort')
 })
 
-test('web-ui-all expands @morlay/better-session into importable but inactive bundle rows', () => {
+test('web-ui-all leaves the deprecated @morlay/better-session integration out', () => {
   const patch = readFileSync(join(ROOT, 'packages/dsh-web-all/cordis.patch.yml'), 'utf8')
   const lines = patch.split(/\r?\n/)
-  // The bundle-only external must never appear as an importable row. (Anchor
-  // to the full row: web-ui-better-session-MANAGER, the carrier card package,
-  // legitimately contains the substring.)
-  assert.doesNotMatch(patch, /^ {4}- id: web-ui-better-session$/m, 'bundle-only package must not be emitted as an importable row')
-  // The manifest marks the external inactive: the three namespaced insert rows
-  // ship defined-but-disabled so the stock jsonl persistence stays active
-  // until the user opts in.
-  const hasDisabledOverride = (id) => lines.some((line, i) => line === `- id: ${id}` && lines[i + 1] === '  disabled: true')
-  for (const id of ['web-ui-session-branch', 'web-ui-session-rdb', 'web-ui-conversation-message-actions']) {
-    assert.ok(hasDisabledOverride(id), `row ${id} must ship with a disabled: true override (inactive by default)`)
-  }
+  // The deprecated integration was removed from the aggregate; these rows must
+  // never come back without an explicit re-adoption decision (see the
+  // simplification note removing better-session).
+  assert.doesNotMatch(patch, /@morlay\//, 'the deprecated better-session integration must not reappear in the aggregate patch')
+  assert.doesNotMatch(patch, /^- id: web-ui-(session-branch|session-rdb|conversation-message-actions)$/m, 'better-session sub-plugin rows must not mount')
   // The bundle's own harness patch rows must NOT appear at all: they retune
   // other entries, and emitting them behind another same-id row would merge
   // into that target instead of staying inert.
   assert.equal(lines.filter((line) => line === '- id: session-persistence-jsonl').length, 1, 'exactly the dsh-perf tuning row may touch session-persistence-jsonl')
-  assert.equal(patch.match(/# from external bundle @morlay\/better-session \(patch row/g)?.length ?? 0, 0, 'inactive external contributes no harness patches')
-  assert.match(patch, /# inactive by default: the rows above ship disabled/, 'inactive rationale comment is missing')
 })

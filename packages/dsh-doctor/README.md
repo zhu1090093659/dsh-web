@@ -131,7 +131,7 @@ The host settings namespace is `doctor`:
 | --- | --- | --- |
 | `enabled` | `true` | master switch; mounts routes and reconciles deployment when enabled, pauses without uninstalling when disabled |
 | `fullProtection` | `true` | managed protection: heartbeat, incident recording and circuit breaking; off is observation mode |
-| `autoRepair` | `false` | promote after isolated gates; off keeps a staged candidate pending explicit confirmation |
+| `autoRepair` | `false` | promote after isolated gates; off keeps a staged candidate pending explicit confirmation. Also gates the boot self-heal below |
 | `autoMigrate` | `true` | migrates the legacy aggregate before startup; only the known `dsh-web-ui-all` -> `dsh-web-all` mapping is active |
 | `heartbeatIntervalMs` | `5000` | host heartbeat cadence |
 
@@ -163,6 +163,23 @@ Environment:
 
 The circuit breaker suspends automatic retries after repeated failures within
 the window and quarantines the profile for explicit user confirmation.
+
+### Boot self-heal (plugin-level quarantine)
+
+When a profile fails to boot twice within the failure window and `autoRepair`
+is on, the Supervisor attributes the failure from the captured stderr trace
+(the host names the failing loader entry in its boot errors) and, when exactly
+one of the profile's own patch rows is implicated, appends a bare
+`- id: <rowId>` + `disabled: true` override to the profile `cordis.patch.yml`
+— the same row-merge mechanism the loader uses when it persists a
+self-disposing plugin. The next `dsh web` boots without the broken plugin and
+every other plugin mounts. Failures that cannot be attributed to a single row
+(file errors, unparseable patches, host-level faults) only annotate the
+incident; the writer refuses to disable rows it cannot prove broken, never
+touches a crash after startup, and never edits a patch file that fails to
+parse (the D-040 quarantine lane owns those). Every heal lands in the journal
+and the incident evidence, so a disabled plugin is always one
+`cordis.patch.yml` read away from being re-enabled by hand.
 
 ## Repair model
 

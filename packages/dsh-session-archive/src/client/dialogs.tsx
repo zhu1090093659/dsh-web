@@ -39,10 +39,12 @@ interface ModalProps {
   onClose: () => void
   children: ReactNode
   danger?: boolean
+  /** Extra width for content-heavy surfaces (session preview). */
+  wide?: boolean
 }
 
 /** Shared modal shell: focus on open, Esc to close, restore focus after. */
-export function Modal({ title, onClose, children, danger }: ModalProps): ReactNode {
+export function Modal({ title, onClose, children, danger, wide }: ModalProps): ReactNode {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -64,7 +66,7 @@ export function Modal({ title, onClose, children, danger }: ModalProps): ReactNo
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`${styles.modal} ${danger === true ? styles.modalDanger : ''}`}
+        className={`${styles.modal} ${danger === true ? styles.modalDanger : ''} ${wide === true ? styles.modalWide : ''}`}
         data-dsh-part="dialog"
       >
         <div className={styles.modalTitle}>{title}</div>
@@ -85,8 +87,8 @@ export function DeleteConfirmDialog(props: {
   return (
     <Modal title={t('arch.confirm.deleteTitle')} onClose={props.onCancel} danger>
       <div className={styles.confirmBody}>
-        <div>{t('arch.confirm.direct', { n: props.state.ids.length })}</div>
-        <div>{t('arch.confirm.descendants', { n: props.state.descendants })}</div>
+        <div className={styles.confirmLine}>{t('arch.confirm.direct', { n: props.state.ids.length })}</div>
+        <div className={styles.confirmLine}>{t('arch.confirm.descendants', { n: props.state.descendants })}</div>
         <div className={styles.confirmTotal}>{t('arch.confirm.total', { n: props.state.total })}</div>
         {props.state.skippedProtected > 0 && (
           <div className={styles.muted}>{t('arch.confirm.skipped', { n: props.state.skippedProtected })}</div>
@@ -94,7 +96,7 @@ export function DeleteConfirmDialog(props: {
         {props.state.totalBytes > 0 && (
           <div className={styles.muted}>{t('arch.confirm.freed', { size: formatBytes(props.state.totalBytes) })}</div>
         )}
-        <div className={styles.dangerNote}>{t('arch.confirm.irrecoverable')}</div>
+        <div className={styles.dangerCallout}>{t('arch.confirm.irrecoverable')}</div>
         {needCheck && (
           <label className={styles.ackRow}>
             <input
@@ -141,7 +143,7 @@ export function BatchDialog(props: {
         <div>{t('arch.batch.progress', { processed: batch.processed, total: batch.total })}</div>
         <div className={styles.progressBar} role="progressbar" aria-valuenow={batch.processed} aria-valuemax={batch.total}>
           <div
-            className={styles.progressFill}
+            className={`${styles.progressFill} ${batch.kind === 'delete' ? styles.progressFillDanger : ''}`}
             style={{ width: batch.total === 0 ? '100%' : `${Math.min(100, Math.round((batch.processed / batch.total) * 100))}%` }}
           />
         </div>
@@ -196,7 +198,7 @@ export function PreviewDialog(props: {
 }): ReactNode {
   const { preview } = props
   return (
-    <Modal title={t('arch.preview.title')} onClose={props.onClose}>
+    <Modal title={t('arch.preview.title')} onClose={props.onClose} wide>
       <div className={styles.previewBody}>
         {preview.status === 'loading' && <div className={styles.muted}>{t('arch.loading')}</div>}
         {preview.status === 'error' && (

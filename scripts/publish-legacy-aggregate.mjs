@@ -54,11 +54,13 @@ export function rewriteLegacyPackageJson(text, version) {
   return `${JSON.stringify(pkg, null, 2)}\n`
 }
 
-/** Rewrite the bundle self row in the generated aggregate patch. */
+/** Rewrite the bundle self row (and its per-family subpath rows) in the generated aggregate patch. */
 export function rewriteLegacyPatch(text) {
   return text
     .split('\n')
-    .map(line => line.includes(`name: '${CURRENT_NAME}'`) ? line.replace(CURRENT_NAME, LEGACY_NAME) : line)
+    .map(line => line.includes(`name: '${CURRENT_NAME}'`) || line.includes(`name: '${CURRENT_NAME}/`)
+      ? line.replace(CURRENT_NAME, LEGACY_NAME)
+      : line)
     .join('\n')
 }
 

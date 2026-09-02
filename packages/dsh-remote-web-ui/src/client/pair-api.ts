@@ -62,6 +62,15 @@ export interface TunnelStatusFrame {
   error?: string
 }
 
+/** One relay-registry status frame (absent while the relay is not in play). */
+export interface RelayStatusFrame {
+  state: 'off' | 'registering' | 'running' | 'failed'
+  /** The stable relay origin, once registered. */
+  url?: string
+  /** Human-readable failure detail of the last sync attempt. */
+  error?: string
+}
+
 /** One /api posture frame (host half probe; see src/posture.ts). */
 export interface PostureFrame {
   checkedAt: number
@@ -81,6 +90,8 @@ export interface PairStateFrame {
   devices?: DeviceFrame[]
   /** Auto-tunnel status, while the auto-tunnel feature is active. */
   tunnel?: TunnelStatusFrame
+  /** Relay-registry status, while the stable-origin relay is in play. */
+  relay?: RelayStatusFrame
   /** Latest /api fence posture probe, once a round has completed. */
   posture?: PostureFrame
 }

@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-i18n",
   "description": "DSH web GUI language pack plugin: registers the Русский language into the locale catalog and centrally carries the ru dictionaries for every family plugin namespace (missing keys fall back to English through the SDK chain).",
-  "version": "0.3.10",
+  "version": "0.3.12",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -23,7 +23,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.2-alpha.1"
+      "dsh": ">=0.1.2-alpha.4"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.3",
+    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.4",
     "tsdown": "0.22.2",
     "typescript": "~5.7.2",
     "vite-tsconfig-paths": "^6.1.1",

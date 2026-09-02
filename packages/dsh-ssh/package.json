@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-ssh",
   "description": "Remote SSH operations for the dsh web GUI: host config store (~/.dsh/dsh-ssh.json, import from ~/.ssh/config), a persistent ssh2 connection pool with jump-host support, exec / PTY web terminal / SFTP transfer / local port-forward tunnels / cluster execution, plus agent tools (ssh_list, ssh_exec, ssh_upload, ssh_download, ssh_tunnel, ssh_cluster). Hot-pluggable — mounted via ~/.dsh/cordis.patch.yml + a profile node_modules symlink, no dsh source changes.",
-  "version": "0.3.10",
+  "version": "0.3.12",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {
@@ -27,7 +27,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.2-alpha.1"
+      "dsh": ">=0.1.2-alpha.4"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -61,18 +61,18 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-llm": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-scope": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-timeout": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-tools": "^0.1.2-alpha.3",
+    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-llm": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-scope": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-timeout": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-tools": "^0.1.2-alpha.4",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "^18.3.5",

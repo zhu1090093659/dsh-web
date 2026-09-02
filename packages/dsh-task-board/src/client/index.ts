@@ -207,7 +207,7 @@ export function apply(ctx: ClientContext): void {
       transport: new HttpTaskBoardHostTransport(),
       sessions: {
         list: sessions.list,
-        open: id => sessions.open(id as SessionId),
+        open: id => sessions.open(id as never),
       },
     })
     controller.start()

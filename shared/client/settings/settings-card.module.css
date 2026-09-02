@@ -71,7 +71,10 @@
 }
 
 .description {
-  color: var(--dsw-alias-label-tertiary);
+  /* Secondary, not tertiary: skins whose tertiary token is tuned for large
+     print leave 12-13px hint text below readable contrast (orca-link #778399
+     on cream measures ~3.4:1). */
+  color: var(--dsw-alias-label-secondary);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -105,7 +108,7 @@
 }
 
 .readOnly {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-secondary);
   margin: 12px 0 0;
   font-size: 12px;
   line-height: 1.5;
@@ -129,7 +132,10 @@
 
 .failed {
   min-width: 0;
-  color: var(--dsw-alias-label-error);
+  /* The suite's error alias is state-error-primary; a label-error token does
+     not exist, so the var() would resolve to nothing and the message would
+     inherit the ink color, losing the failure signal. */
+  color: var(--dsw-alias-state-error-primary, #b42318);
   flex: 1;
   margin: 0;
   font-size: 12px;
@@ -277,7 +283,7 @@
 }
 
 .inputInvalid {
-  border: 1px solid var(--dsw-alias-label-error);
+  border: 1px solid var(--dsw-alias-state-error-primary, #b42318);
   background: var(--dsw-alias-bg-layer-3);
   height: 34px;
   font: inherit;
@@ -289,9 +295,9 @@
 }
 
 .inputInvalid:focus-visible {
-  outline: 2px solid var(--dsw-alias-label-error);
+  outline: 2px solid var(--dsw-alias-state-error-primary, #b42318);
   outline-offset: 1px;
-  border-color: var(--dsw-alias-label-error);
+  border-color: var(--dsw-alias-state-error-primary, #b42318);
 }
 
 .selectWrap {
@@ -383,14 +389,14 @@
 }
 
 .invalid {
-  color: var(--dsw-alias-label-error);
+  color: var(--dsw-alias-state-error-primary, #b42318);
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
 }
 
 .hint {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-secondary);
   margin: 0;
   font-size: 12px;
   line-height: 1.5;

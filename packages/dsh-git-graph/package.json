@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-git-graph",
   "description": "External dsh web GUI plugin: a blank-session git branch selector + Git graph, with real host-side git operations and guards, as a dsh profile bundle",
-  "version": "0.3.10",
+  "version": "0.3.12",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {
@@ -33,7 +33,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.2-alpha.1"
+      "dsh": ">=0.1.2-alpha.4"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -64,23 +64,23 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-api-remotes": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-api-workspace-controller": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-session": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-invariants": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-subprocess": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-tools": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-workspace": "^0.1.2-alpha.3",
+    "@deepseek-ai/dsh-api-remotes": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-api-workspace-controller": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-session": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-subprocess": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-tools": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-workspace": "^0.1.2-alpha.4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",

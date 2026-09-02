@@ -9,7 +9,7 @@ import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-cli
 import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { PluginSettingsCard, ValueField, BooleanField } from './PluginSettingsCard.tsx'
-import { CardForm, booleanField, numberField, textField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
+import { CardForm, booleanField, numberField, secretField, textField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
 import { readLanBindStatus, type LanBindFrame } from './pair-api.ts'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 
@@ -33,6 +33,18 @@ export interface RemoteSettings {
   publicBaseUrl?: string
   /** When on, the plugin runs its own Cloudflare quick tunnel automatically. */
   autoTunnel?: boolean
+  /**
+   * Cloudflare named-tunnel token: when set (and autoTunnel is off), the
+   * plugin runs the named tunnel toward the fixed public hostname — a phone
+   * paired once keeps its session across restarts.
+   */
+  tunnelToken?: string
+  /**
+   * Stable-origin relay: when on (default), the quick tunnel is fronted by a
+   * fixed `<id>.dsh-market.com` subdomain so the phone's bookmark and
+   * pairing cookie survive restarts without any setup.
+   */
+  relay?: boolean
   /**
    * LAN bind toggle: once flipped, the plugin manages the profile patch's
    * webserver block (0.0.0.0 / 127.0.0.1) and the host firewall rule.
@@ -60,6 +72,10 @@ export interface RemoteSettingsCardState extends CardShell {
   publicBaseUrl: CardFieldState
   /** Auto public tunnel switch. */
   autoTunnel: CardFieldState
+  /** Named-tunnel token (stored redacted by the Host). */
+  tunnelToken: CardFieldState
+  /** Stable-origin relay switch. */
+  relay: CardFieldState
   /** LAN bind toggle. */
   lanBind: CardFieldState
 }
@@ -89,6 +105,8 @@ export class RemoteSettingsCardController {
       booleanField('requirePairingForLan'),
       textField('publicBaseUrl'),
       booleanField('autoTunnel'),
+      secretField('tunnelToken'),
+      booleanField('relay'),
       booleanField('lanBind'),
     ])
     this.store = this.form.bind(() => this.projection())
@@ -106,6 +124,8 @@ export class RemoteSettingsCardController {
       requirePairingForLan: this.form.field('requirePairingForLan'),
       publicBaseUrl: this.form.field('publicBaseUrl'),
       autoTunnel: this.form.field('autoTunnel'),
+      tunnelToken: this.form.field('tunnelToken'),
+      relay: this.form.field('relay'),
       lanBind: this.form.field('lanBind'),
     }
   }
@@ -252,6 +272,28 @@ export function RemoteSettingsCard(props: RemoteSettingsCardProps) {
         {...state.autoTunnel}
         onEdit={(text) => { props.edit('autoTunnel', text) }}
         onReset={() => { props.resetField('autoTunnel') }}
+      />
+      <ValueField
+        id="settings-remote-tunnel-token"
+        label={t('settings.tunnelToken')}
+        hint={t('settings.tunnelTokenHint')}
+        placeholder="eyJ..."
+        {...fieldProps}
+        {...state.tunnelToken}
+        onEdit={(text) => { props.edit('tunnelToken', text) }}
+        onReset={() => { props.resetField('tunnelToken') }}
+      />
+      <BooleanField
+        id="settings-remote-relay"
+        label={t('settings.relay')}
+        hint={t('settings.relayHint')}
+        inheritLabel={t('settings.inherit')}
+        onLabel={t('settings.on')}
+        offLabel={t('settings.off')}
+        {...fieldProps}
+        {...state.relay}
+        onEdit={(text) => { props.edit('relay', text) }}
+        onReset={() => { props.resetField('relay') }}
       />
       <LanBindStatus t={t} />
       <BooleanField

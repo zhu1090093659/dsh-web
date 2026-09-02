@@ -1,1 +1,0 @@
-import{S as t}from"./index-Cp438i9e.js";import"./git-DJDr4heb.js";function i(s){return s}var n=class e extends t{constructor(r){if(new.target===e)throw new Error("@deepseek-ai/dsh-jobs is the abstract job registry seam; load an implementation such as @deepseek-ai/dsh-jobs-local instead");super(r,"jobs")}};export{i as JobId,n as JobRegistry,n as default};

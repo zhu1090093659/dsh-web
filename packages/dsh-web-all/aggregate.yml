@@ -56,17 +56,6 @@ deps:
   - ../dsh-web-settings
   - ../skins/skin-center
   - ../dsh-i18n
-# 外部 npm 插件：@morlay/better-session 提供分支式会话编辑（就地 edit / retry /
-# reroll / rewind，fork 派生新会话），经其 bundle patch 把 ctx.sessionPersistence
-# 换成 RDB（SQLite）后端并注册 ctx.sessionEditor。该包是 profile bundle（只有
-# dsh.bundle.patch，不可被 loader import），所以生成器把它的 cordis.patch.yml
-# 展开成可导入子包行（web-ui-session-branch / web-ui-session-rdb /
-# web-ui-conversation-message-actions）并保留 bundle 自身的「禁用 jsonl」patch
-# 行。"inactive": true 让生成器在展开产物之后统一追加 disabled 覆盖行：整套
-# 集成默认关闭，持久层保持官方 jsonl 后端；启用方式（迁移脚本 + profile
-# 覆盖）见 packages/dsh-web-all README 与 scripts/dsh-better-session.mjs。
-# 依赖引用 @morlay/better-session@0.0.11（见 package.json，生成器保留非
-# workspace 依赖），bits 随包安装、随时可启用。
 # 外部 npm 插件：dsh-better-sidebar 接管右侧面板位置。行名从 profile 顶层
 # 解析（hoisted 布局下由 web-ui-all 的 dependencies 提升），dependencies 里
 # 需有 "dsh-better-sidebar"（见 package.json，生成器保留非 workspace 依赖）。
@@ -80,4 +69,3 @@ deps:
 # 1.0.7 仍 import 已移除面，上游发布 alpha.2 兼容版后按同法恢复。
 rows:
   - {"id": "better-sidebar", "name": "dsh-better-sidebar"}
-  - {"id": "better-session", "name": "@morlay/better-session", "inactive": true}

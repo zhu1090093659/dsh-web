@@ -1,0 +1,1 @@
+import{a as t,aJ as o}from"./index-DGS2ur_Y.js";import"./git-DJDr4heb.js";function c(r){return r}function u(r){return r}var i=class extends o{code;constructor(r,s,e){super(r,s,e),this.code=s}},d=class extends t{constructor(r){super(r,"fs")}get sandboxMode(){}};export{d as FileSystem,i as FsError,c as FsTargetKey,u as FsVersion,d as default};

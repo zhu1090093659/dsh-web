@@ -1,0 +1,203 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-pet/pet-manifest-v2.schema.json",
+  "petManifestVersion": 2,
+  "id": "starry-doll",
+  "displayName": "星夜人偶",
+  "author": "Theater-ahyeon",
+  "version": "1.0.0",
+  "description": "A starry gothic doll with heterochromia eyes and a red ribbon, drifting beside your code like a quiet constellation.",
+  "license": "CC-BY-NC-SA-4.0",
+  "renderer": "sprite2d",
+  "sprite2d": {
+    "spritesheetPath": "spritesheet.webp",
+    "cell": {
+      "width": 192,
+      "height": 208
+    },
+    "columns": 8,
+    "atlasRows": 9,
+    "frames": [
+      6,
+      8,
+      8,
+      4,
+      5,
+      8,
+      6,
+      6,
+      6
+    ],
+    "tracks": {
+      "idle": {
+        "durations": [
+          500,
+          500,
+          600,
+          500,
+          500,
+          600
+        ]
+      },
+      "running-right": {
+        "durations": [
+          300,
+          300,
+          300,
+          300,
+          300,
+          300,
+          300,
+          400
+        ]
+      },
+      "running-left": {
+        "durations": [
+          300,
+          300,
+          300,
+          300,
+          300,
+          300,
+          300,
+          400
+        ]
+      },
+      "waving": {
+        "durations": [
+          450,
+          450,
+          450,
+          450
+        ]
+      },
+      "jumping": {
+        "durations": [
+          400,
+          400,
+          400,
+          450,
+          450
+        ]
+      },
+      "failed": {
+        "durations": [
+          550,
+          550,
+          550,
+          600,
+          650,
+          700,
+          550,
+          550
+        ]
+      },
+      "waiting": {
+        "durations": [
+          550,
+          550,
+          600,
+          550,
+          550,
+          600
+        ]
+      },
+      "running": {
+        "durations": [
+          330,
+          330,
+          330,
+          330,
+          330,
+          400
+        ]
+      },
+      "review": {
+        "durations": [
+          650,
+          650,
+          650,
+          650,
+          650,
+          650
+        ]
+      }
+    }
+  },
+  "sequences": {
+    "idle": [
+      "idle",
+      "waving",
+      "idle",
+      "waiting",
+      "idle",
+      "idle"
+    ],
+    "waiting": [
+      "waiting",
+      "idle",
+      "waving",
+      "waiting",
+      "idle",
+      "waiting"
+    ],
+    "thinking": [
+      "running",
+      "running-right",
+      "running",
+      "running-left",
+      "running",
+      "waiting",
+      "running"
+    ],
+    "tool": [
+      "running-right",
+      "running",
+      "running-left",
+      "running",
+      "running-right",
+      "running"
+    ],
+    "review": [
+      "review",
+      "waiting",
+      "review",
+      "running",
+      "review",
+      "idle"
+    ],
+    "done": [
+      "jumping",
+      "waving",
+      "jumping",
+      "waving",
+      "jumping",
+      "idle"
+    ],
+    "failed": [
+      "failed",
+      "waiting",
+      "failed",
+      "idle",
+      "waiting",
+      "failed"
+    ]
+  },
+  "remarks": {
+    "pet": [
+      "别、别碰头发，会散的。",
+      "……星图又乱了呢。",
+      "红丝带是人类送的。"
+    ],
+    "feed": [
+      "小鱼干……也算星辰的一种吧。",
+      "谢谢你，人间的小鱼干。"
+    ],
+    "feedCooldown": [
+      "刚刚才吃过哦。",
+      "胃是有限的小小宇宙。"
+    ],
+    "noTreats": [
+      "小鱼干见底了……夜空也一样空。"
+    ]
+  }
+}

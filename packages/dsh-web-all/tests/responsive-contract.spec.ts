@@ -2,6 +2,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apply, RESPONSIVE_CSS } from '../src/client/index.ts'
 
+// The real children list pulls every family client source into this spec's
+// import graph (browser-only module-level code breaks under node vitest);
+// the shim contract under test here never mounts them.
+vi.mock('../src/client/children.generated.ts', () => ({ clientChildren: [] }))
+
 afterEach(() => {
   vi.unstubAllGlobals()
   document.body.innerHTML = ''

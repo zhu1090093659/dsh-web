@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-01-doctor-boot-self-heal-plugin-quarantine.md: c6d7367bf256a563a7cf2a8ed9fb550e4ab86707
+2026-09-01-doctor-boot-self-heal-plugin-quarantine.zh.md: 12f8f6e04079447fcd4f3f7e2ae7287eb197f358

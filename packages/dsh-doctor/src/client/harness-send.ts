@@ -76,7 +76,7 @@ export function createHarnessPort(sessions: unknown): HarnessPort | undefined {
     },
     send: async (target, text) => {
       try {
-        const binding = s.binding(target.id as SessionId)
+        const binding = s.binding(target.id as never)
         if (binding === undefined) return { ok: false as const, message: 'target session is not available' }
         const result = await binding.session.prompt([{ type: 'text', text }], 'queue')
         if (result.ok) return { ok: true as const }

@@ -1,0 +1,75 @@
+/**
+ * Async-boundary guard shared by the plugin family's Host halves: every
+ * fire-and-forget promise chain and callback the host runtime does not own
+ * (route handlers, timers, event listeners, spawned work) funnels through
+ * these helpers. The dsh host installs a process-level fail-loud guard that
+ * turns ANY unhandled promise rejection into a whole-process exit — one
+ * plugin's stray rejection would otherwise take every plugin down. These
+ * helpers exist so that failure mode is structurally impossible in family
+ * code: the rejection becomes a logged error at the plugin boundary instead.
+ *
+ * Complements the aggregate's shell isolation (packages/dsh-web-all): the
+ * shell contains import/activation failures at boot; runGuarded contains
+ * run-time failures after activation.
+ * @module dsh-web-shared/host/run-guarded
+ */
+
+/** Format one failure line for logging. */
+function formatFailure(label: string, error: unknown): Error {
+  return new Error(`[${label}] unhandled async failure: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
+}
+
+/**
+ * Run one async operation, logging (never propagating) a rejection. Use for
+ * promises whose lifecycle the caller does not await: spawned work, retry
+ * loops, background flushes. Returns the original promise so callers can
+ * still chain when they want to.
+ * @param promise - the work to shield; any thenable.
+ * @param label - log prefix naming the work site.
+ * @param log - error sink; defaults to console.error.
+ * @returns the input promise (rejection already consumed).
+ */
+export function runGuarded<T>(promise: PromiseLike<T>, label: string, log: (error: unknown) => void = console.error): PromiseLike<T> {
+  void Promise.resolve(promise).catch(error => {
+    log(formatFailure(label, error))
+  })
+  return promise
+}
+
+/**
+ * Wrap one callback so every invocation is individually guarded: a rejection
+ * inside one call is logged and swallowed instead of escaping into whatever
+ * infrastructure invoked the callback (HTTP server, EventEmitter, interval).
+ * Sync throws are caught identically; a returned promise is replaced by
+ * `undefined` after guarding (callers that need the original rejection should
+ * await inside their own try/catch instead).
+ * @param label - log prefix naming the callback site.
+ * @param handler - the work to guard.
+ * @param log - error sink; defaults to console.error.
+ * @returns a wrapped callback with the same parameter list.
+ */
+export function guardedHandler<A extends unknown[]>(
+  label: string,
+  handler: (...args: A) => unknown,
+  log: (error: unknown) => void = console.error,
+): (...args: A) => unknown {
+  return (...args: A) => {
+    try {
+      const result = handler(...args)
+      if (isPromiseLike(result)) {
+        void Promise.resolve(result).catch(error => {
+          log(formatFailure(label, error))
+        })
+        return undefined
+      }
+      return result
+    } catch (error) {
+      log(formatFailure(label, error))
+      return undefined
+    }
+  }
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return typeof value === 'object' && value !== null && typeof (value as PromiseLike<unknown>).then === 'function'
+}

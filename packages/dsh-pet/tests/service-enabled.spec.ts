@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
+import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-session'
 import { loadPetPersist } from '../src/persist.ts'
 import { PetService } from '../src/service.ts'
@@ -83,11 +84,11 @@ function messageId(value: string): ToolResultMessage['id'] {
 }
 
 function turnStart(turn: number, seq: number): SessionEvent<'turn/start'> {
-  return { type: 'turn/start', seq, time: seq, data: { turn } }
+  return { type: 'turn/start', seq: SessionSeq(seq), time: seq, data: { turn } }
 }
 
 function stepStart(turn: number, step: number, seq: number): SessionEvent<'step/start'> {
-  return { type: 'step/start', seq, time: seq, data: { turn, step } }
+  return { type: 'step/start', seq: SessionSeq(seq), time: seq, data: { turn, step } }
 }
 
 function assistantChunk(
@@ -96,7 +97,7 @@ function assistantChunk(
   chunk: AssistantChunk,
   seq: number,
 ): SessionEvent<'assistant/chunk'> {
-  return { type: 'assistant/chunk', seq, time: seq, data: { turn, step, chunk } }
+  return { type: 'assistant/chunk', seq: SessionSeq(seq), time: seq, data: { turn, step, chunk } }
 }
 
 function assistantMessage(
@@ -111,7 +112,7 @@ function assistantMessage(
     source: { kind: 'model', provider: 'mock', model: 'mock' },
     content: [{ type: 'text', text }],
   }
-  return { type: 'assistant/message', seq, time: seq, data: { turn, step, message } }
+  return { type: 'assistant/message', seq: SessionSeq(seq), time: seq, data: { turn, step, message } }
 }
 
 function toolCall(
@@ -124,7 +125,7 @@ function toolCall(
 ): SessionEvent<'tool/call'> {
   return {
     type: 'tool/call',
-    seq,
+    seq: SessionSeq(seq),
     time: seq,
     data: { turn, step, callId: callId(id), name, arguments: argumentsText },
   }
@@ -141,7 +142,7 @@ function toolResult(
   const correlatedId = callId(id)
   return {
     type: 'tool/result',
-    seq,
+    seq: SessionSeq(seq),
     time: seq,
     data: {
       turn,
@@ -167,7 +168,7 @@ function turnEnd(
   reason: TurnEndReason,
   seq: number,
 ): SessionEvent<'turn/end'> {
-  return { type: 'turn/end', seq, time: seq, data: { turn, reason } }
+  return { type: 'turn/end', seq: SessionSeq(seq), time: seq, data: { turn, reason } }
 }
 
 function activity(
@@ -177,7 +178,7 @@ function activity(
 ): SessionEvent<'activity/status'> {
   return {
     type: 'activity/status',
-    seq,
+    seq: SessionSeq(seq),
     time: seq,
     data: { phase, ...(line === undefined ? {} : { line }) },
   }

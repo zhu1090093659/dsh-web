@@ -1,1 +1,0 @@
-import{a as t}from"./index-Cp438i9e.js";import"./git-DJDr4heb.js";const r="tool-presentation",a=["tools"],m=t.object({mode:t.union(["native","code","both"]).required()});function c(o,e){if(e.mode==="native"){o.tools.presentAs("native");return}o.inject(["codeRuntime"],n=>{n.tools.presentAs(e.mode)})}export{m as Config,c as apply,a as inject,r as name};

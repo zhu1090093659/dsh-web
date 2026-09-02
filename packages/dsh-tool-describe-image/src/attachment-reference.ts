@@ -54,6 +54,15 @@ function unwrapAttachmentNote(raw: string): string {
   return trimmed.slice(ATTACHMENT_NOTE_PREFIX.length, -1).trim()
 }
 
+/** Remove unambiguous structural JSON corruption produced during model transcriptions. */
+function repairImageRefJson(raw: string): string {
+  return raw
+    .replace(/:\s*([}\]])/g, '$1')
+    .replace(/,\s*,+/g, ',')
+    .replace(/,\s*([}\]])/g, '$1')
+    .trim()
+}
+
 /**
  * Validate and narrow a model-supplied attachment reference into its typed storage
  * form. It accepts either the raw JSON reference or its complete note carrier.
@@ -61,11 +70,16 @@ function unwrapAttachmentNote(raw: string): string {
  * @returns the narrowed, typed reference.
  */
 export function parseImageAttachmentRef(raw: string): ImageAttachmentRef {
+  const unwrapped = unwrapAttachmentNote(raw)
   let parsed: unknown
   try {
-    parsed = JSON.parse(unwrapAttachmentNote(raw))
+    parsed = JSON.parse(unwrapped)
   } catch {
-    throw new Error(ATTACHMENT_REF_GUIDANCE)
+    try {
+      parsed = JSON.parse(repairImageRefJson(unwrapped))
+    } catch {
+      throw new Error(ATTACHMENT_REF_GUIDANCE)
+    }
   }
   const record = asRecord(parsed)
   if (record === undefined) throw new Error(ATTACHMENT_REF_GUIDANCE)
@@ -112,9 +126,15 @@ export function parseMarkdownAttachmentReference(raw: string): MarkdownAttachmen
   const url = new URL(match[1] ?? '', 'http://dsh.local')
   const encodedRef = url.searchParams.get('ref')
   if (encodedRef === null) return { attachmentId }
-  const ref = parseImageAttachmentRef(encodedRef)
-  if (ref.attachmentId !== attachmentId) throw new Error(ATTACHMENT_REF_GUIDANCE)
-  return { attachmentId, ref }
+  try {
+    const ref = parseImageAttachmentRef(encodedRef)
+    if (ref.attachmentId === attachmentId) {
+      return { attachmentId, ref }
+    }
+  } catch {
+    // Malformed/mismatched ref falls back to registry resolution by attachmentId
+  }
+  return { attachmentId }
 }
 
 /** Render a Markdown image reference for either a durable reference or a legacy id. */

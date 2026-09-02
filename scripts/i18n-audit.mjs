@@ -43,24 +43,17 @@ const ALLOW_MARKER = 'i18n-allow:'
  * client-side dictionary module with its export shape:
  *   - 'zh-en': `export const zh` + `export const en` in one module;
  *   - 'dictionaries': `export const dictionaries = { zh, en }` (locale-keyed).
- * A package's namespaces are merged across its files (dsh-perf ships the
- * settings-card dictionaries and the bsm.*-prefixed Better Session section in
- * two modules that register into one namespace). Namespace ids are NOT listed
- * here: they are derived from each package's client entry so the gate follows
- * the code instead of a hand-maintained copy.
+ * A package's namespaces are merged across its files (a package may ship
+ * several dictionary modules registering into one namespace). Namespace ids
+ * are NOT listed here: they are derived from each package's client entry so
+ * the gate follows the code instead of a hand-maintained copy.
  */
 const PACKAGES = [
   { pkg: 'dsh-desktop-launcher', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
   { pkg: 'dsh-doctor', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
   { pkg: 'dsh-git-graph', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
   { pkg: 'dsh-market', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
-  {
-    pkg: 'dsh-perf',
-    files: [
-      { file: 'src/client/perf-locales.ts', shape: 'zh-en' },
-      { file: 'src/client/bs-locales.ts', shape: 'dictionaries' },
-    ],
-  },
+  { pkg: 'dsh-perf', files: [{ file: 'src/client/perf-locales.ts', shape: 'zh-en' }] },
   { pkg: 'dsh-pet', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
   { pkg: 'dsh-plugin-manager', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
   { pkg: 'dsh-remote-web-ui', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },

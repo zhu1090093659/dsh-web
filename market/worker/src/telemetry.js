@@ -91,6 +91,9 @@ async function eventId(hash, kind, subject, version, channel) {
 
 /**
  * Insert events idempotently. Rows carry the hashed visitor, not the raw id.
+ * Heartbeat submissions also upsert the visitor into the pre-deduped
+ * telemetry_visitors table (same batch) so the all-time badge counts a small
+ * primary-key table instead of a full event-table scan.
  */
 export async function recordEvents(env, rows) {
   if (rows.length === 0) return
@@ -98,6 +101,9 @@ export async function recordEvents(env, rows) {
   const statements = await Promise.all(rows.map(async (row) => env.DB.prepare(
     'INSERT OR IGNORE INTO telemetry_events (id, day, kind, visitor, subject, version, channel, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)'
   ).bind(row.id, row.day, row.kind, row.visitor, row.subject, row.version, row.channel || '', now)))
+  if (rows[0].kind === 'hb') {
+    statements.push(env.DB.prepare('INSERT OR IGNORE INTO telemetry_visitors (kind, visitor) VALUES (?1, ?2)').bind('hb', rows[0].visitor))
+  }
   await env.DB.batch(statements)
 }
 
@@ -145,17 +151,29 @@ export async function telemetrySummary(env, days, page = {}) {
   const today = utcDay()
   const paths = page.paths || { limit: 20, offset: 0 }
   const items = page.items || { limit: 200, offset: 0 }
-  const [dailyPv, dailyHb, topPaths, pathsTotal, itemsPage, itemsToday, itemsTotal, itemsChannels, itemsVersions] = (await env.DB.batch([
+  // Nine aggregates, four batches: D1 rejects a batch whose transaction
+  // runtime exceeds its limits, and even indexed, the heartbeat grouping
+  // scans take tens of seconds at current volume — each heavy statement
+  // needs its own transaction. Cross-chunk consistency is irrelevant:
+  // every chunk reads the same append-only event table.
+  const batch = async (statements) => (await env.DB.batch(statements)).map((result) => result.results || [])
+  const [dailyPv, dailyHb, topPaths, pathsTotal, itemsToday, itemsChannels] = await batch([
     env.DB.prepare("SELECT day, COUNT(*) AS pv, COUNT(DISTINCT visitor) AS uv FROM telemetry_events WHERE kind = 'pv' AND day >= ?1 GROUP BY day ORDER BY day").bind(since),
     env.DB.prepare("SELECT day, COUNT(*) AS pv, COUNT(DISTINCT visitor) AS uv FROM telemetry_events WHERE kind = 'hb' AND day >= ?1 GROUP BY day ORDER BY day").bind(since),
     env.DB.prepare("SELECT subject, COUNT(*) AS pv FROM telemetry_events WHERE kind = 'pv' AND day >= ?1 GROUP BY subject ORDER BY pv DESC, subject LIMIT ?2 OFFSET ?3").bind(since, paths.limit, paths.offset),
     env.DB.prepare("SELECT COUNT(DISTINCT subject) AS n FROM telemetry_events WHERE kind = 'pv' AND day >= ?1").bind(since),
-    env.DB.prepare("SELECT subject, COUNT(DISTINCT visitor) AS visitors FROM telemetry_events WHERE kind = 'hb' AND day >= ?1 GROUP BY subject ORDER BY visitors DESC, subject LIMIT ?2 OFFSET ?3").bind(since, items.limit, items.offset),
     env.DB.prepare("SELECT subject, COUNT(DISTINCT visitor) AS visitors FROM telemetry_events WHERE kind = 'hb' AND day = ?1 GROUP BY subject").bind(today),
-    env.DB.prepare("SELECT COUNT(DISTINCT subject) AS n FROM telemetry_events WHERE kind = 'hb' AND day >= ?1").bind(since),
     env.DB.prepare("SELECT subject, channel, COUNT(DISTINCT visitor) AS visitors FROM telemetry_events WHERE kind = 'hb' AND channel != '' AND day >= ?1 GROUP BY subject, channel").bind(since),
+  ])
+  const [itemsPage] = await batch([
+    env.DB.prepare("SELECT subject, COUNT(DISTINCT visitor) AS visitors FROM telemetry_events WHERE kind = 'hb' AND day >= ?1 GROUP BY subject ORDER BY visitors DESC, subject LIMIT ?2 OFFSET ?3").bind(since, items.limit, items.offset),
+  ])
+  const [itemsTotal] = await batch([
+    env.DB.prepare("SELECT COUNT(DISTINCT subject) AS n FROM telemetry_events WHERE kind = 'hb' AND day >= ?1").bind(since),
+  ])
+  const [itemsVersions] = await batch([
     env.DB.prepare("SELECT subject, version, COUNT(DISTINCT visitor) AS visitors FROM telemetry_events WHERE kind = 'hb' AND version != '' AND day >= ?1 GROUP BY subject, version ORDER BY visitors DESC").bind(since),
-  ])).map((result) => result.results || [])
+  ])
   const activeToday = new Map(itemsToday.map((row) => [row.subject, row.visitors]))
   const channelsByItem = new Map()
   for (const row of itemsChannels) {
@@ -233,10 +251,12 @@ export async function handleTelemetryPost(request, env, json) {
   return json({ ok: true })
 }
 
-/** GET /api/telemetry/summary handler. When TELEMETRY_READ_KEY is configured,
+/**
+ * GET /api/telemetry/summary handler. When TELEMETRY_READ_KEY is configured,
  * callers must present it via the x-telemetry-key header. The key is never
  * accepted in the URL: query strings persist in edge logs, browser history
- * and referrers. Comparison runs on SHA-256 digests, not raw strings. */
+ * and referrers. Comparison runs on SHA-256 digests, not raw strings.
+ */
 export async function summaryAuthorized(request, url, env) {
   const key = env.TELEMETRY_READ_KEY
   if (!key) return true
@@ -255,7 +275,10 @@ const BADGE_CACHE_ID = 'users'
 
 /** Recompute the heartbeat distinct-visitor count and seed badge_cache. */
 export async function refreshBadgeCache(env) {
-  const row = await env.DB.prepare("SELECT COUNT(DISTINCT visitor) AS users FROM telemetry_events WHERE kind = 'hb'").first()
+  // telemetry_visitors is pre-deduped by the write path (and backfilled by
+  // migration 0006), so the all-time count is a small primary-key range scan
+  // instead of a full telemetry_events scan that grows with traffic.
+  const row = await env.DB.prepare("SELECT COUNT(*) AS users FROM telemetry_visitors WHERE kind = 'hb'").first()
   const users = Number(row && row.users || 0)
   await env.DB.prepare(
     'INSERT INTO badge_cache (id, value, computed_at) VALUES (?1, ?2, ?3) ON CONFLICT(id) DO UPDATE SET value = excluded.value, computed_at = excluded.computed_at'
@@ -311,22 +334,95 @@ export async function handleTelemetryUsersBadge(request, env, json) {
   return freshResponse
 }
 
+/** Summary rollup cache: freshness windows and cache-row id for one window.
+ * Heavy long windows recompute for tens of seconds, so they tolerate longer
+ * staleness than the badge-aligned 30 minutes of the light windows. */
+function summaryCacheTtl(days) {
+  return days <= 30 ? 30 * 60 * 1000 : 12 * 60 * 60 * 1000
+}
+
+function summaryCacheId(days, paths, items) {
+  return ['d' + days, 'p' + paths.limit + '-' + paths.offset, 'i' + items.limit + '-' + items.offset].join('-')
+}
+
+async function readSummaryCache(env, id) {
+  try {
+    const row = await env.DB.prepare('SELECT payload, computed_at FROM telemetry_summary_cache WHERE id = ?1').bind(id).first()
+    if (!row) return null
+    return { payload: JSON.parse(String(row.payload || 'null')), computedAt: Number(row.computed_at || 0) }
+  } catch { /* unreadable or corrupt cache rows behave like a miss */ }
+  return null
+}
+
+async function writeSummaryCache(env, id, summary) {
+  try {
+    await env.DB.prepare(
+      'INSERT INTO telemetry_summary_cache (id, payload, computed_at) VALUES (?1, ?2, ?3) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, computed_at = excluded.computed_at'
+    ).bind(id, JSON.stringify(summary), Date.now()).run()
+  } catch { /* caching is best-effort; the live response is already valid */ }
+}
+
 export async function handleTelemetrySummary(request, url, env, json) {
   if (!env.DB) return json({ ok: false, error: 'storage-unavailable' }, 503)
   if (!(await summaryAuthorized(request, url, env))) return json({ ok: false, error: 'unauthorized' }, 403)
   let days = Number.parseInt(url.searchParams.get('days') || '', 10)
   if (!Number.isFinite(days)) days = 30
   days = Math.min(Math.max(days, 1), 365)
+  const page = {
+    paths: parsePage(url, 'paths', 20, 100),
+    items: parsePage(url, 'items', 200, 200),
+  }
+  const id = summaryCacheId(days, page.paths, page.items)
+  const cached = await readSummaryCache(env, id)
+  // The live aggregation scans millions of indexed rows (tens of seconds);
+  // within the TTL every reader shares the one cached rollup, the same
+  // trade-off the users badge already makes.
+  if (cached && Date.now() - cached.computedAt < summaryCacheTtl(days) && cached.payload) {
+    return json(cached.payload)
+  }
   let summary
   try {
-    summary = await telemetrySummary(env, days, {
-      paths: parsePage(url, 'paths', 20, 100),
-      items: parsePage(url, 'items', 200, 200),
-    })
+    summary = await telemetrySummary(env, days, page)
   } catch {
     // D1 overload must surface as a plain 503 for the dashboard proxy,
-    // not as a worker exception page.
+    // not as a worker exception page. A stale cache row is still far
+    // better than an error page on a read-only dashboard.
+    if (cached && cached.payload) return json(cached.payload)
     return json({ ok: false, error: 'storage-unavailable' }, 503)
   }
+  await writeSummaryCache(env, id, summary)
   return json(summary)
+}
+
+const SUMMARY_DEFAULT_PAGE = { paths: { limit: 20, offset: 0 }, items: { limit: 200, offset: 0 } }
+const SUMMARY_FIRST_PAINT_PAGE = { paths: { limit: 10, offset: 0 }, items: { limit: 10, offset: 0 } }
+
+/** Range-button windows rotate one heavy slot per cron tick: scheduled
+ * invocations are killed after roughly two minutes, and each 90/365-day
+ * window costs ~40s, so pre-warming everything every tick dies mid-list. */
+const SUMMARY_PREWARM_ROTATION = [7, 30, 90, 365]
+
+/**
+ * Cron pre-warm: refresh the tv first-paint rollup every tick plus one
+ * rotation slot of the range-button windows (default /data pages). A failed
+ * or killed window keeps serving its previous row; pager offsets the owner
+ * clicks warm on demand.
+ */
+export async function refreshSummaryCache(env) {
+  const tick = Math.floor(Date.now() / (30 * 60 * 1000))
+  const windows = [
+    { days: 30, page: SUMMARY_FIRST_PAINT_PAGE },
+    { days: SUMMARY_PREWARM_ROTATION[tick % SUMMARY_PREWARM_ROTATION.length], page: SUMMARY_DEFAULT_PAGE },
+  ]
+  for (const { days, page } of windows) {
+    const id = summaryCacheId(days, page.paths, page.items)
+    try {
+      const summary = await telemetrySummary(env, days, page)
+      await writeSummaryCache(env, id, summary)
+    } catch (error) {
+      // Surface the skip: a silently missing rotation slot is indistinguishable
+      // from a killed invocation when diagnosing the next tick.
+      console.log('[summary-prewarm] ' + id + ' skipped: ' + ((error && error.message) || error))
+    }
+  }
 }

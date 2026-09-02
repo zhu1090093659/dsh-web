@@ -1,17 +1,37 @@
 {
   "name": "@linxin666/dsh-web-all",
   "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / remote-web-ui / web-ui-settings / skin-center / community-plugins / compat shim）。compat 桥接层已并入本包（src/client），无需独立 compat npm 包。",
-  "version": "0.3.10",
+  "version": "0.3.12",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
-    "./package.json": "./package.json"
+    "./shell": "./lib/shell.js",
+    "./degraded": "./lib/degraded.js",
+    "./package.json": "./package.json",
+    "./community-plugins": "./lib/shells/shell.js",
+    "./describe-image": "./lib/shells/shell.js",
+    "./desktop-launcher": "./lib/shells/shell.js",
+    "./doctor": "./lib/shells/shell.js",
+    "./dsh-perf": "./lib/shells/shell.js",
+    "./git-graph": "./lib/shells/shell.js",
+    "./liangshen": "./lib/shells/shell.js",
+    "./market": "./lib/shells/shell.js",
+    "./pet": "./lib/shells/shell.js",
+    "./plugin-manager": "./lib/shells/shell.js",
+    "./remote-web-ui": "./lib/shells/shell.js",
+    "./session-archive": "./lib/shells/shell.js",
+    "./settings": "./lib/shells/shell.js",
+    "./skill-explorer": "./lib/shells/shell.js",
+    "./skin-center": "./lib/shells/shell.js",
+    "./ssh": "./lib/shells/shell.js",
+    "./task-board": "./lib/shells/shell.js",
+    "./usage": "./lib/shells/shell.js"
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.2-alpha.1"
+      "dsh": ">=0.1.2-alpha.4"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -25,6 +45,7 @@
     "build": "tsdown",
     "test": "vitest run",
     "prepare": "tsdown",
+    "typecheck": "tsc --noEmit",
     "watch": "tsdown --watch"
   },
   "license": "Apache-2.0",
@@ -38,22 +59,24 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-agent": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-attachment": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-invariants": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-llm": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-scope": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-session": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-subagent": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-tools": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-typert-protocol": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-util-time": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-workspace": "^0.1.2-alpha.3",
+    "@deepseek-ai/dsh-agent": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-attachment": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-llm": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-scope": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-session": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-subagent": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-tools": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-util-time": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-workspace": "^0.1.2-alpha.4",
+    "@types/node": "^22.20.0",
     "jsdom": "29.1.1",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.8"
   },
   "dependencies": {
@@ -76,7 +99,6 @@
     "@linxin666/dsh-client-ui-web-ui-settings": "workspace:*",
     "@linxin666/dsh-client-ui-skin-center": "workspace:*",
     "@linxin666/dsh-i18n": "workspace:*",
-    "@morlay/better-session": "0.0.11",
     "dsh-better-sidebar": "0.18.0-alpha.0"
   }
 }

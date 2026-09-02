@@ -103,6 +103,19 @@ export interface TunnelStatus {
   error?: string
 }
 
+/**
+ * One relay-registry status frame (undefined while the stable-origin relay
+ * is not in play: autoTunnel off, or the relay toggle disabled).
+ */
+export interface RelayStatus {
+  /** registering: a sync is in flight; running: the mapping is accepted. */
+  state: 'off' | 'registering' | 'running' | 'failed'
+  /** The stable relay origin (`https://<id>.dsh-market.com`). */
+  url?: string
+  /** Human-readable failure detail of the last sync attempt. */
+  error?: string
+}
+
 /** One snapshot frame pushed to desktop status streams. */
 export interface PairingSnapshot {
   phase: PairingPhase
@@ -114,6 +127,8 @@ export interface PairingSnapshot {
   publicUrl?: string
   /** Auto-tunnel status, while the auto-tunnel feature is active. */
   tunnel?: TunnelStatus
+  /** Relay-registry status, while the stable-origin relay is in play. */
+  relay?: RelayStatus
   /** Latest /api posture probe (undefined until the first round completes). */
   posture?: PostureSnapshot
   /** Opaque (non-secret) id of the active token (undefined when stopped/lan-required). */
@@ -202,6 +217,7 @@ export class PairingService {
   private publicBase: string | undefined
   /** Auto-tunnel status, while the auto-tunnel feature is active. */
   private tunnelStatus: TunnelStatus | undefined
+  private relayStatus: RelayStatus | undefined
   private posture: PostureSnapshot | undefined
   /** True when lastSeenAt changed since the last persist (flushed on sweep). */
   private dirty = false
@@ -336,6 +352,12 @@ export class PairingService {
   /** Set or clear the auto-tunnel status frame (undefined when the feature is off). */
   setTunnelStatus(status: TunnelStatus | undefined): void {
     this.tunnelStatus = status
+    this.notify()
+  }
+
+  /** Set or clear the relay-registry status frame (undefined when not in play). */
+  setRelayStatus(status: RelayStatus | undefined): void {
+    this.relayStatus = status
     this.notify()
   }
 
@@ -497,6 +519,7 @@ export class PairingService {
       lanAddresses: [...this.lanBases.keys()],
       ...(this.publicBase !== undefined ? { publicUrl: this.publicBase } : {}),
       ...(this.tunnelStatus !== undefined ? { tunnel: this.tunnelStatus } : {}),
+      ...(this.relayStatus !== undefined ? { relay: this.relayStatus } : {}),
       ...(this.posture !== undefined ? { posture: this.posture } : {}),
       ...(token !== undefined ? { tokenId: token.record.id, tokenExpiresAt: token.record.expiresAt } : {}),
       deviceCount: this.devices.size,
@@ -588,6 +611,7 @@ function snapshotsEqual(a: PairingSnapshot, b: PairingSnapshot): boolean {
     && sameStrings(a.lanAddresses, b.lanAddresses)
     && a.publicUrl === b.publicUrl
     && tunnelEqual(a.tunnel, b.tunnel)
+    && relayEqual(a.relay, b.relay)
     && a.tokenId === b.tokenId
     && a.tokenExpiresAt === b.tokenExpiresAt
     && a.deviceCount === b.deviceCount
@@ -610,6 +634,12 @@ function devicesEqual(a: readonly DeviceSnapshot[], b: readonly DeviceSnapshot[]
 
 /** Tunnel frame equality (undefined equals undefined; fields compared shallowly). */
 function tunnelEqual(a: TunnelStatus | undefined, b: TunnelStatus | undefined): boolean {
+  return a === b || (a !== undefined && b !== undefined
+    && a.state === b.state && a.url === b.url && a.error === b.error)
+}
+
+/** Relay frame equality (same shape as the tunnel frame). */
+function relayEqual(a: RelayStatus | undefined, b: RelayStatus | undefined): boolean {
   return a === b || (a !== undefined && b !== undefined
     && a.state === b.state && a.url === b.url && a.error === b.error)
 }

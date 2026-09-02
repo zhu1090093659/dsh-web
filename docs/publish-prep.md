@@ -32,7 +32,7 @@
 - `@linxin666/dsh-web-ui-all@0.3.2` is the previous release; `0.3.3` is unoccupied and is the first dual-published legacy transition version.
 - `scripts/publish-legacy-aggregate.mjs` limits the legacy transition to two versions and writes `dsh.migrate.to` / `dsh.migrate.since` into the legacy tarball.
 - After the second transition version, deprecate `@linxin666/dsh-web-ui-all` with the migration instruction instead of publishing another version.
-- External aggregate dependencies `dsh-better-sidebar@0.18.0-alpha.0` and `@morlay/better-session@0.0.11` are registry-readable (0.18.0-alpha.0 is the alpha.2-aligned build that brought better-sidebar back after its 2026-08-30 exclusion; better-session ships inactive behind `disabled: true` overrides; their pnpm `minimumReleaseAgeExclude` pins stay required while the versions are recent). `@mlgbnb/dsh-archive-manager@1.0.7` remains excluded from the 0.1.2-alpha.2 family bundle (its build still imports the removed `@deepseek-ai/dsh-client-runtime` face); re-add it to the aggregate when upstream ships a compatible build.
+- External aggregate dependency `dsh-better-sidebar@0.18.0-alpha.0` is registry-readable (the alpha.2-aligned build that brought better-sidebar back after its 2026-08-30 exclusion; its pnpm `minimumReleaseAgeExclude` pin stays required while the version is recent). `@mlgbnb/dsh-archive-manager@1.0.7` remains excluded from the 0.1.2-alpha.2 family bundle (its build still imports the removed `@deepseek-ai/dsh-client-runtime` face); re-add it to the aggregate when upstream ships a compatible build.
 
 ## Compatibility boundary
 
@@ -57,4 +57,4 @@ pnpm build
 node scripts/verify-version.mjs 0.3.3
 ```
 
-The CI and release smoke lanes use `@deepseek-ai/dsh@0.1.1-rc.2`, which satisfies the family declaration `dsh.engines.dsh >=0.1.1-rc.1`.
+The CI and release smoke lanes mount into `@deepseek-ai/dsh@0.1.2-alpha.4`, the same host version the family requires through `dsh.engines.dsh >=0.1.2-alpha.4`.

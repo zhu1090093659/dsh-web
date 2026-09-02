@@ -14,7 +14,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   writeClipboard: vi.fn(async () => true),
 }))
 
-const sid = (value: string): SessionId => value as SessionId
+const sid = (value: string): SessionId => value as never
 
 /** Minimal translate over the zh dictionary (template params included). */
 function makeTranslate(): SessionIdPanelProps['t'] {
@@ -38,7 +38,7 @@ function makeList(sessions: Array<{
   running?: boolean
   completed?: boolean
 }>, current?: string): SessionListState {
-  const byId = {} as SessionListState['byId']
+  const byId: any = {}
   for (const row of sessions) {
     byId[sid(row.id)] = {
       id: sid(row.id),
@@ -50,9 +50,9 @@ function makeList(sessions: Array<{
     }
   }
   return {
-    ids: sessions.map(row => sid(row.id)),
+    ids: sessions.map(row => sid(row.id)) as never,
     byId,
-    current: current === undefined ? undefined : sid(current),
+    current: current === undefined ? undefined : sid(current) as never,
     phase: 'ready',
     subagentsByParent: {},
     jobsBySession: {},

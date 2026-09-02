@@ -19,7 +19,6 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import { zh, en, type PerfKey } from './perf-locales.ts'
-import { dictionaries as bsmDictionaries, type BetterSessionKey } from './bs-locales.ts'
 import { hudAlertReason, type PerfTranslate } from './perf-alert.ts'
 import { PerfSettingsCard, PerfSettingsCardController, type PerfSettings, type PerfSettingsCardFace } from './perf-settings-card.tsx'
 import { startIntegrityObserver } from './perf-integrity.ts'
@@ -37,7 +36,7 @@ export const NS = 'dsh-perf'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    'dsh-perf': PerfKey | BetterSessionKey
+    'dsh-perf': PerfKey
   }
   interface SlotMap {
     'web-ui.plugin.item': { kind: 'list'; scope: 'root'; owner: { children?: never } }
@@ -160,10 +159,8 @@ export function apply(ctx: ClientContext): void {
     } catch { return true }
   }
   try { refreshClientSwitches(); perfScope?.subscribe(refreshClientSwitches) } catch { /* noop */ }
-  // 词典: 设置卡文案 + Better Session 子节文案(bsm.* 前缀, 同一命名空间,
-  // 因为 Better Session 管理面嵌在 perf 设置卡内部渲染)。
   try {
-    ctx.effect(() => ctx.locale.register(NS, { zh: { ...zh, ...bsmDictionaries.zh }, en: { ...en, ...bsmDictionaries.en } }), 'dsh-perf: dictionaries')
+    ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-perf: dictionaries')
   } catch { /* noop */ }
   // 设置卡: 贡献到 "Web 插件" 组, 绑定 dsh-perf 命名空间。
   try {

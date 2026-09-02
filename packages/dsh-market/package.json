@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-market",
   "description": "Workshop browser card: browse skins, pets and community plugins from dsh-market.com and install them in the GUI (assets into the DSH home directories, plugins through the optional plugin manager).",
-  "version": "0.3.10",
+  "version": "0.3.12",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -12,7 +12,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.2-alpha.1"
+      "dsh": ">=0.1.2-alpha.4"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -42,18 +42,18 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-api-remotes": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-api-workspace-controller": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.3",
-    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.3",
+    "@deepseek-ai/dsh-api-remotes": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-api-workspace-controller": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-connection": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-store": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.4",
+    "@deepseek-ai/dsh-settings": "^0.1.2-alpha.4",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",

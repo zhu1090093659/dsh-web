@@ -113,7 +113,7 @@ dsh plugin --profile web add link:<dsh-web>/packages/dsh-web-all
 ## 插件规范要点
 
 - **package.json 的 `dsh.bundle.patch` 声明**：指向包内 `cordis.patch.yml`，这是官方 bundle 清单，`dsh plugin` 依赖它识别与挂载插件。
-- **`dsh.engines.dsh` 最低运行时声明**（issue #754）：每个发布包必须在 `dsh` 对象内声明 `"engines": { "dsh": ">=X.Y.Z[-rc.N]" }`（如 `"dsh": ">=0.1.1-rc.1"`），唯一支持形式为 `>= <semver>`（顶层 `engines.dsh` 是插件管理器兼容读取的备用位，新声明统一用 `dsh.engines.dsh`）。该字段随 npm 清单发布，插件管理器在更新检查与更新前读取并据此提示/拦截；`scripts/family-dsh-engines.test.mjs` 强制每个家族包与插件模板都声明。SDK cohort 升级时若引入新的运行时契约，必须同步提升所有包的该字段。
+- **`dsh.engines.dsh` 最低运行时声明**（issue #754）：每个发布包必须在 `dsh` 对象内声明 `"engines": { "dsh": ">=X.Y.Z[-rc.N]" }`（如 `"dsh": ">=0.1.1-rc.1"`），唯一支持形式为 `>= <semver>`（顶层 `engines.dsh` 是插件管理器兼容读取的备用位，新声明统一用 `dsh.engines.dsh`）。该字段随 npm 清单发布，插件管理器在更新检查与更新前读取并据此提示/拦截；`scripts/family-dsh-engines.test.mjs` 强制每个家族包与插件模板都声明。SDK cohort 升级时必须同步提升所有包的该字段：宿主版本门槛跟随当前适配的 cohort，根 README 徽章与 CI 挂载冒烟道使用同一版本（决策见 [dsh-host-floor-tracks-cohort](../.agents/notes/implemented/architecture/2026-09-01-dsh-host-floor-tracks-cohort.zh.md)）。
 - **cordis.patch.yml insert 行格式**（包名用家族 scope `@linxin666`，与 npm 发布名一致）：
 
 ```yaml

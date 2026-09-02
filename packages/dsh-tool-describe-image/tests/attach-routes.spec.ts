@@ -11,6 +11,7 @@ import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
 import { Context } from '@deepseek-ai/cordis'
 import { attachBodyCap, attachmentMarkdown, attachmentNote, attachmentRefById, handleAttach, registerAttachRoute, registerAttachmentRef, validateAttachPayload, type AttachError } from '../src/attach-routes.ts'
+import { parseImageAttachmentRef, parseMarkdownAttachmentReference } from '../src/attachment-reference.ts'
 import type { AttachPayload } from '../src/attach-routes.ts'
 import { PNG_BYTES } from './mock-server.ts'
 
@@ -626,5 +627,21 @@ describe('attach route body failure contract (shared readJsonBody)', () => {
     await handler(makeReq(body, destroySpy), res)
     expect(status()).toBe(400)
     expect(destroySpy.calls).toBe(1)
+  })
+})
+
+describe('parseImageAttachmentRef resilience', () => {
+  it('repairs JSON with trailing colon or commas from model transcription', () => {
+    const corrupted = '{"attachmentId":"sha256:123","mediaType":"image/png","bytes":100,"width":50,"height":50,"name":"test.png":}'
+    const ref = parseImageAttachmentRef(corrupted)
+    expect(ref.attachmentId).toBe('sha256:123')
+    expect(ref.name).toBe('test.png')
+  })
+
+  it('falls back to attachmentId in parseMarkdownAttachmentReference when ref query is corrupt', () => {
+    const raw = '![图片](/describe-image/raw/sha256:abc?ref=%7Bcorrupt%7D)'
+    const parsed = parseMarkdownAttachmentReference(raw)
+    expect(parsed?.attachmentId).toBe('sha256:abc')
+    expect(parsed?.ref).toBeUndefined()
   })
 })

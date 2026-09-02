@@ -1,1 +1,0 @@
-import{s as i,a as t}from"./index-Cp438i9e.js";import"./git-DJDr4heb.js";const n="ui-onboarding",o=t.object({welcomeNoticeVersion:t.string()});function r(e){e.inject(["settings"],s=>{s.settings.register(i(n),o)})}export{r as apply};

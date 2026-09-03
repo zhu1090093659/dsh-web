@@ -546,6 +546,36 @@
   color: #ffd27e;
 }
 
+.gameplaySkinItems {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.gameplaySkinItem {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(126, 152, 255, 0.25);
+  border-radius: 8px;
+  background: rgba(126, 152, 255, 0.08);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+}
+
+.gameplaySkinItem:hover {
+  border-color: rgba(126, 152, 255, 0.7);
+  background: rgba(126, 152, 255, 0.16);
+}
+
+.gameplaySkinItemActive {
+  border-color: rgba(126, 152, 255, 0.9);
+  background: rgba(126, 152, 255, 0.28);
+}
+
 .gameplayClose {
   position: absolute;
   top: 4px;

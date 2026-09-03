@@ -314,18 +314,23 @@ describe('loadPetRegistry', () => {
       dshPetsDir: '',
     })
 
-    // The repo checkout also resolves miku (frames2d gameplay pet) and
-    // starry-doll (community sprite2d pet) from assets/; the npm files
-    // whitelist excludes them (Workshop delivery), so npm installs see the
-    // three atlas pets until a Workshop install lands them under
-    // $DSH_HOME/pets.
+    // The repo checkout also resolves miku (frames2d gameplay pet), jyn
+    // (frames2d gameplay pet) and starry-doll (community sprite2d pet) from
+    // assets/; the npm files whitelist excludes them (Workshop delivery), so
+    // npm installs see the three atlas pets until a Workshop install lands
+    // them under $DSH_HOME/pets.
     expect(registry.entries.map(entry => entry.id)).toEqual([
+      'jyn',
       'miku',
       'ouo-neko',
       'starry-doll',
       'whale-girl',
       'whale-girl-refined',
     ])
+    expect(registry.byId('jyn')).toMatchObject({
+      displayName: '女仆鲸鱼娘',
+      renderer: 'frames2d',
+    })
     expect(registry.byId('ouo-neko')).toMatchObject({
       displayName: 'OUO Neko',
       atlasRows: 11,

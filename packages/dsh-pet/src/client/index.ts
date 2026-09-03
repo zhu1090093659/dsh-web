@@ -122,6 +122,18 @@ declare module '@deepseek-ai/cordis' {
  * first-level settings section.
  * @param ctx - client root context.
  */
+
+/**
+ * Module-wide work-tick throttle (ms). Hot reloads can leave several
+ * GameplayHud instances alive, each running its own 10s work interval;
+ * without a shared gate every interval would call workTick and each stale
+ * call re-rolls, re-grants treats and re-plays the success/fail track, so
+ * the outcome appears to play several times per window. This shared marker
+ * accepts the first adjudication of a window and silently suppresses the
+ * duplicates that follow. Reset when (re-)entering work mode.
+ */
+let lastWorkTickAt = 0
+
 export function apply(ctx: ClientContext): void {
   // Anonymous install heartbeat (docs/telemetry.md): one beat per browser per
   // UTC day, package name only, silent failure.
@@ -359,8 +371,20 @@ export function apply(ctx: ClientContext): void {
         },
         gameplay: {
           touch: (zone) => petApi.gameplayTouch(zone),
-          setMode: (mode) => petApi.gameplaySetMode(mode),
-          workTick: () => petApi.gameplayWorkTick(),
+          setMode: async (mode) => {
+            if (mode === 'work') lastWorkTickAt = 0
+            return petApi.gameplaySetMode(mode)
+          },
+          workTick: async () => {
+            // One adjudication per tick window, page-wide: suppress stale
+            // duplicate intervals (HMR) re-playing the result track.
+            const now = Date.now()
+            if (now - lastWorkTickAt < 8500) {
+              return { ok: true } as PetGameplayVerbResult
+            }
+            lastWorkTickAt = now
+            return petApi.gameplayWorkTick()
+          },
           buy: (item) => petApi.gameplayBuy(item),
         },
       })

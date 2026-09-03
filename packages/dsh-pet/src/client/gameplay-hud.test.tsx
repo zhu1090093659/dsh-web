@@ -271,6 +271,70 @@ describe('GameplayHud', () => {
     expect(api.touch).not.toHaveBeenCalled()
   })
 
+  it('skin taps never fall through to the default touch zones', async () => {
+    // A skinned pet whose skin has no click actions: taps must resolve to
+    // the plain click boost (touch() without a zone) instead of playing the
+    // default pet's touch reactions (safety: skin ≠ default gameplay).
+    const def = petDefinition()
+    def.frames2d!.skins = [
+      { id: 'lanhainishang', label: '蓝海霓裳', idleTrack: 'lanhainishang-idle' },
+    ]
+    const store = createPetStore().create()
+    store.actions.setSnapshot(snapshot(gameplayView()))
+    const api = {
+      touch: vi.fn(async () => ({ ok: true, view: gameplayView() })),
+      setMode: vi.fn(), workTick: vi.fn(), buy: vi.fn(),
+    } as unknown as Harness['api']
+    const setTrack = vi.fn()
+    const bus: GameplayBus = { setTrack }
+    render(<GameplayHud definition={def} store={store} api={api} bus={bus} drag={createDragStream()} t={t} />)
+    // Select the skin through the menu card so skinIdRef is active.
+    await act(async () => {
+      bus.openCard?.()
+    })
+    fireEvent.click(screen.getByText('皮肤'))
+    fireEvent.click(screen.getByText('蓝海霓裳'))
+    await act(async () => {
+      bus.tap!(0.5, 0.3) // head zone → default would be the 'happy' state
+    })
+    // No zone verb, no default track: the tap is a plain boost only.
+    expect(api.touch).toHaveBeenCalledWith()
+    expect(api.touch).not.toHaveBeenCalledWith('head')
+    expect(setTrack).not.toHaveBeenCalledWith('happy')
+  })
+
+  it('plays the skin click action on a rolled hit and skips the default touch', async () => {
+    const def = petDefinition()
+    def.frames2d!.skins = [
+      {
+        id: 'lanhainishang', label: '蓝海霓裳', idleTrack: 'lanhainishang-idle',
+        clickActions: [{ track: 'lanhainishang-lift-skirt', probability: 0.3 }],
+      },
+    ]
+    const store = createPetStore().create()
+    store.actions.setSnapshot(snapshot(gameplayView()))
+    const api = {
+      touch: vi.fn(async () => ({ ok: true, view: gameplayView() })),
+      setMode: vi.fn(), workTick: vi.fn(), buy: vi.fn(),
+    } as unknown as Harness['api']
+    const setTrack = vi.fn()
+    const bus: GameplayBus = { setTrack }
+    render(<GameplayHud definition={def} store={store} api={api} bus={bus} drag={createDragStream()} t={t} />)
+    await act(async () => {
+      bus.openCard?.()
+    })
+    fireEvent.click(screen.getByText('皮肤'))
+    fireEvent.click(screen.getByText('蓝海霓裳'))
+    // Force a hit (roll < 0.3).
+    vi.spyOn(Math, 'random').mockReturnValue(0.1)
+    await act(async () => {
+      bus.tap!(0.5, 0.3)
+    })
+    vi.restoreAllMocks()
+    expect(setTrack).toHaveBeenCalledWith('lanhainishang-lift-skirt')
+    expect(api.touch).not.toHaveBeenCalledWith('head')
+  })
+
   it('runs the idle director: weighted act rolls on the interval', async () => {
     const h = harness()
     await act(async () => {

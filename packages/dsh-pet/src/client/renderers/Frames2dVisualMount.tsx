@@ -67,7 +67,11 @@ export function Frames2dVisualMount(props: {
     if (props.bus !== undefined) {
       const gameplayBus = props.bus
       gameplayBus.setTrack = (track) => { handleRef.current?.setState(track) }
-      cleanups.push(() => { gameplayBus.setTrack = undefined })
+      gameplayBus.setIdleTrack = (track) => { handleRef.current?.setIdleTrack(track) }
+      cleanups.push(() => {
+        gameplayBus.setTrack = undefined
+        gameplayBus.setIdleTrack = undefined
+      })
     }
     // The drag gesture drives the conventional 'drag' track when declared.
     // On release, a declared gameplay.dragEndState (miku: standup) plays

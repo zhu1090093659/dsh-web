@@ -38,11 +38,36 @@ export interface Frames2dTrackConfig {
 export interface PetFrames2dConfig {
   tracks: Record<string, Frames2dTrackConfig>
   phases: Partial<Record<ActivityPhase, string>> & { idle: string }
+  /** Selectable skins; each swaps the base idle target while selected. */
+  skins?: Frames2dSkinConfig[]
+}
+
+/** One selectable skins entry as served inside the pet definition. */
+export interface Frames2dSkinConfig {
+  id: string
+  label: string
+  /** A declared looping track that becomes the base idle while selected. */
+  idleTrack: string
+  /** Click actions exclusive to this skin (roll by probability; miss → touch zones). */
+  clickActions?: Frames2dSkinClickActionConfig[]
+}
+
+/** One probability-rolled tap action a skin may declare. */
+export interface Frames2dSkinClickActionConfig {
+  track: string
+  probability: number
+  phrases?: string[]
 }
 
 export interface Frames2dRendererHandle extends PetRendererHandle {
   /** Force a track id (gameplay override); undefined returns to phase mapping. */
   setState(track: string | undefined): void
+  /**
+   * Swap the base idle target (idle phase, unmapped phases and every
+   * fallback back to idle) to a declared looping track — a skin. undefined
+   * restores the manifest idle track.
+   */
+  setIdleTrack(track: string | undefined): void
   /** The track currently playing (diagnostics and tests). */
   currentTrack(): string
 }
@@ -78,7 +103,37 @@ function validateFrames2dConfig(config: unknown): PetFrames2dConfig {
   if (typeof phases.idle !== 'string' || tracks[phases.idle] === undefined) {
     throw new Error('frames2d phases.idle must name an existing track')
   }
-  return { tracks, phases: phases as PetFrames2dConfig['phases'] }
+  // Skins: keep entries whose idleTrack survives validation and loops —
+  // a non-looping base idle would settle into itself forever. Click actions
+  // with an unresolvable track are dropped from that skin.
+  let skins: Frames2dSkinConfig[] | undefined
+  if (Array.isArray(config.skins)) {
+    const resolved: Frames2dSkinConfig[] = []
+    for (const skin of config.skins as unknown[]) {
+      if (!isRecord(skin) || typeof skin.id !== 'string' || typeof skin.label !== 'string'
+        || typeof skin.idleTrack !== 'string' || skin.idleTrack === '') continue
+      const target = tracks[skin.idleTrack]
+      if (target === undefined || !target.loop) continue
+      let clickActions: Frames2dSkinClickActionConfig[] | undefined
+      if (Array.isArray(skin.clickActions)) {
+        const kept: Frames2dSkinClickActionConfig[] = []
+        for (const action of skin.clickActions as unknown[]) {
+          if (!isRecord(action) || typeof action.track !== 'string' || action.track === ''
+            || typeof action.probability !== 'number' || !(action.probability > 0) || action.probability > 1) continue
+          if (tracks[action.track] === undefined) continue
+          kept.push({
+            track: action.track,
+            probability: action.probability,
+            ...(Array.isArray(action.phrases) ? { phrases: action.phrases as string[] } : {}),
+          })
+        }
+        if (kept.length > 0) clickActions = kept
+      }
+      resolved.push({ id: skin.id, label: skin.label, idleTrack: skin.idleTrack, ...(clickActions === undefined ? {} : { clickActions }) })
+    }
+    if (resolved.length > 0) skins = resolved
+  }
+  return { tracks, phases: phases as PetFrames2dConfig['phases'], ...(skins === undefined ? {} : { skins }) }
 }
 
 interface DecodedFrame {
@@ -178,12 +233,18 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
     let frameIndex = 0
     let lastAdvance = Date.now()
     let override: string | undefined
+    // Skin base idle: every "back to idle" target resolves through this
+    // (idle phase, unmapped phases and fallbacks), so a selected skin swaps
+    // the pet's resting look without touching gameplay tracks.
+    let baseIdle: string = config.phases.idle
     let drawToken = 0
     let lastDrawnUrl: string | undefined
 
     const trackForPhase = (phase: ActivityPhase): string => {
       const mapped = config.phases[phase]
-      return mapped !== undefined && config.tracks[mapped] !== undefined ? mapped : config.phases.idle
+      if (mapped === undefined) return baseIdle
+      const target = mapped === config.phases.idle ? baseIdle : mapped
+      return config.tracks[target] !== undefined ? target : baseIdle
     }
 
     /** Canvas path: paints the newest requested frame; stale draws drop out. */
@@ -239,18 +300,21 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
         schedule(def.durations[frameIndex] ?? 200)
         return
       }
-      // Non-loop completion: settle into the fallback; when the fallback is
-      // what the phase map would play anyway, release the gameplay override.
+      // Non-loop completion: settle into the fallback — an explicit fallback to
+      // a real track wins, except when it points back at the manifest idle
+      // (that resolves through the skin base idle); anything else lands on
+      // the skin base idle. When the settle target is what the phase map
+      // plays anyway, release the gameplay override.
       const target = def.fallback !== undefined && config.tracks[def.fallback] !== undefined
-        ? def.fallback
-        : config.phases.idle
+        ? (def.fallback === config.phases.idle ? baseIdle : def.fallback)
+        : baseIdle
       if (target === trackForPhase(ctx.phase.get())) override = undefined
       play(target)
     }
 
     function play(trackId: string): void {
       if (disposed) return
-      if (config.tracks[trackId] === undefined) trackId = config.phases.idle
+      if (config.tracks[trackId] === undefined) trackId = baseIdle
       if (timer !== undefined) clearTimeout(timer)
       track = trackId
       frameIndex = 0
@@ -327,6 +391,18 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
         if (config.tracks[next] === undefined) return
         override = next
         if (next !== track) play(next)
+      },
+      setIdleTrack(next: string | undefined): void {
+        if (disposed) return
+        if (next === undefined || (config.tracks[next] !== undefined && config.tracks[next]!.loop)) {
+          baseIdle = next ?? config.phases.idle
+        }
+        // A skin only owns the resting look: re-resolve only when no
+        // gameplay override is active (active overrides end into baseIdle).
+        if (override === undefined) {
+          const target = trackForPhase(ctx.phase.get())
+          if (target !== track) play(target)
+        }
       },
       currentTrack(): string {
         return track

@@ -100,6 +100,36 @@ export interface PetManifestFrames2d {
   tracks: Record<string, PetManifestFrames2dTrack>
   /** ActivityPhase -> track name; idle is required, unmapped phases fall back to it. */
   phases: Partial<Record<ActivityPhase, string>> & { idle: string }
+  /**
+   * Optional selectable skins: a skin swaps the base idle target (the idle
+   * phase, unmapped phases, and every fallback back to idle) to its own
+   * looping idle track. Gameplay tracks (shy/work/sleep...) are not replaced.
+   */
+  skins?: PetManifestSkin[]
+}
+
+/** One selectable frames2d skin. */
+export interface PetManifestSkin {
+  id: string
+  label: string
+  /** A declared, looping track that becomes the base idle while selected. */
+  idleTrack: string
+  /**
+   * Optional click-triggered actions exclusive to this skin: while the skin
+   * is selected, a tap rolls each action by probability (in order) and plays
+   * its track once if hit. Misses fall through to the regular touch zones.
+   */
+  clickActions?: PetManifestSkinClickAction[]
+}
+
+/** One probability-rolled tap action a skin may declare. */
+export interface PetManifestSkinClickAction {
+  /** A declared track played once on hit (usually non-looping). */
+  track: string
+  /** Hit probability for this action (0..1). */
+  probability: number
+  /** Optional lines spoken when the action fires. */
+  phrases?: string[]
 }
 
 /** Normalized v2 manifest the registry consumes. */
@@ -153,9 +183,33 @@ export const KNOWN_SPRITE2D = new Set(['spritesheetPath', 'cell', 'columns', 'at
 /** live2d block field allow-list (drift-locked to the schema file). */
 export const KNOWN_LIVE2D = new Set(['model', 'scale', 'translate', 'motions', 'expressions', 'hitAreas', 'lipSync'])
 /** frames2d block field allow-list (drift-locked to the schema file). */
-export const KNOWN_FRAMES2D = new Set(['dir', 'defaultFrameMs', 'tracks', 'phases'])
+export const KNOWN_FRAMES2D = new Set(['dir', 'defaultFrameMs', 'tracks', 'phases', 'skins'])
 /** frames2d track field allow-list (drift-locked to the schema file). */
 export const KNOWN_FRAMES2D_TRACK = new Set(['frames', 'frameMs', 'loop', 'fallback'])
+/** frames2d skin entry field allow-list (drift-locked to the schema file). */
+export const KNOWN_SKIN = new Set(['id', 'label', 'idleTrack', 'clickActions'])
+/** frames2d skin click-action field allow-list (drift-locked to the schema file). */
+export const KNOWN_SKIN_CLICK = new Set(['track', 'probability', 'phrases'])
+/** Max selectable skins a frames2d manifest may declare. */
+export const FRAMES2D_MAX_SKINS = 16
+/** Max click actions one skin may declare. */
+export const FRAMES2D_MAX_SKIN_CLICKS = 8
+/** Max spoken lines one skin click action may declare. */
+const SKIN_CLICK_MAX_PHRASES = 5
+/** Max length of one spoken line. */
+const SKIN_CLICK_PHRASE_MAX_LENGTH = 120
+
+/** Validate a skin click action's optional phrase pool (same spirit as gameplay phrases). */
+function parseSkinPhrases(raw: unknown, field: string, diag: Diagnostics): string[] | undefined {
+  if (raw === undefined) return undefined
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > SKIN_CLICK_MAX_PHRASES
+    || raw.some(line => typeof line !== 'string' || line.trim() === '' || line.length > SKIN_CLICK_PHRASE_MAX_LENGTH)) {
+    diag.error(field + ' must be 1..' + SKIN_CLICK_MAX_PHRASES + ' non-empty lines of at most '
+      + SKIN_CLICK_PHRASE_MAX_LENGTH + ' chars')
+    return undefined
+  }
+  return raw as string[]
+}
 
 class Diagnostics {
   readonly list: PetManifestDiagnostic[] = []
@@ -449,6 +503,79 @@ function parseFrames2dBlock(raw: unknown, diag: Diagnostics): PetManifestFrames2
   for (const [name, track] of Object.entries(tracks)) {
     if (track.fallback !== undefined && tracks[track.fallback] === undefined) {
       diag.error('frames2d.tracks.' + name + '.fallback references unknown track ' + JSON.stringify(track.fallback))
+    }
+  }
+  // Optional skins: each selects a declared looping idle track as the base
+  // idle while active (id/label are UI-facing, idleTrack is structure).
+  if (raw.skins !== undefined) {
+    if (!Array.isArray(raw.skins) || raw.skins.length === 0 || raw.skins.length > FRAMES2D_MAX_SKINS) {
+      diag.error('frames2d.skins must be an array of 1..' + FRAMES2D_MAX_SKINS + ' skins')
+    } else {
+      const skins: PetManifestSkin[] = []
+      const seen = new Set<string>()
+      for (const [index, entry] of raw.skins.entries()) {
+        const field = 'frames2d.skins[' + index + ']'
+        if (!isRecord(entry)) {
+          diag.error(field + ' must be an object')
+          continue
+        }
+        const extra = unknownKeys(entry, KNOWN_SKIN)
+        if (extra.length > 0) diag.error(field + ': unknown field(s) ' + extra.map(k => JSON.stringify(k)).join(', '))
+        const id = typeof entry.id === 'string' ? entry.id.trim() : ''
+        if (id === '' || id.length > 24 || !FRAMES2D_TRACK_NAME.test(id)) {
+          diag.error(field + '.id must be a lowercase kebab id of at most 24 chars')
+          continue
+        }
+        if (seen.has(id)) {
+          diag.error(field + ': duplicate skin id ' + JSON.stringify(id))
+          continue
+        }
+        seen.add(id)
+        const label = typeof entry.label === 'string' ? entry.label.trim() : ''
+        if (label === '' || label.length > 40) {
+          diag.error(field + '.label must be a non-empty string of at most 40 chars')
+          continue
+        }
+        const idleTrack = typeof entry.idleTrack === 'string' ? entry.idleTrack : ''
+        if (!validTrackName(idleTrack) || tracks[idleTrack] === undefined) {
+          diag.error(field + '.idleTrack must name a declared frames2d track')
+          continue
+        }
+        // Optional click actions: each names a declared track and a hit
+        // probability; phrases reuse the gameplay phrase constraints.
+        let clickActions: PetManifestSkinClickAction[] | undefined
+        if (entry.clickActions !== undefined) {
+          if (!Array.isArray(entry.clickActions) || entry.clickActions.length === 0 || entry.clickActions.length > FRAMES2D_MAX_SKIN_CLICKS) {
+            diag.error(field + '.clickActions must be an array of 1..' + FRAMES2D_MAX_SKIN_CLICKS + ' actions')
+          } else {
+            const resolved: PetManifestSkinClickAction[] = []
+            for (const [cIndex, action] of entry.clickActions.entries()) {
+              const cField = field + '.clickActions[' + cIndex + ']'
+              if (!isRecord(action)) {
+                diag.error(cField + ' must be an object')
+                continue
+              }
+              const cExtra = unknownKeys(action, KNOWN_SKIN_CLICK)
+              if (cExtra.length > 0) diag.error(cField + ': unknown field(s) ' + cExtra.map(k => JSON.stringify(k)).join(', '))
+              const trackName = typeof action.track === 'string' ? action.track : ''
+              if (!validTrackName(trackName) || tracks[trackName] === undefined) {
+                diag.error(cField + '.track must name a declared frames2d track')
+                continue
+              }
+              if (typeof action.probability !== 'number' || !Number.isFinite(action.probability)
+                || action.probability <= 0 || action.probability > 1) {
+                diag.error(cField + '.probability must be a number in (0, 1]')
+                continue
+              }
+              const phrases = parseSkinPhrases(action.phrases, cField + '.phrases', diag)
+              resolved.push({ track: trackName, probability: action.probability, ...(phrases === undefined ? {} : { phrases }) })
+            }
+            if (resolved.length > 0) clickActions = resolved
+          }
+        }
+        skins.push({ id, label, idleTrack, ...(clickActions === undefined ? {} : { clickActions }) })
+      }
+      if (skins.length > 0) block.skins = skins
     }
   }
   return diag.hasErrors ? undefined : block

@@ -18439,7 +18439,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-pet/src/client/pet.module.css.mjs
-		const css$15 = ".kz2Bea_float{pointer-events:auto;-webkit-user-select:none;user-select:none;will-change:transform;contain:layout style;flex-direction:column;align-items:center;display:flex;position:fixed}.kz2Bea_sprite{image-rendering:auto;touch-action:none;contain:paint}.kz2Bea_spriteWrap{flex:none;position:relative}.kz2Bea_bubble{white-space:nowrap;color:#f4f7ff;pointer-events:none;border-radius:999px;margin-bottom:6px;padding:4px 10px;font-size:12px;line-height:1.4;animation:2.6s ease-out forwards kz2Bea_pet-bubble-pop;position:absolute;bottom:100%;box-shadow:0 2px 8px #00000040}.kz2Bea_bubblePet{background:#4d6bfef2}.kz2Bea_bubbleFeed{background:#0369a1f2}.kz2Bea_bubbleStatus{text-overflow:ellipsis;backdrop-filter:blur(8px);letter-spacing:.02em;background:linear-gradient(160deg,#131c36e6,#070b1af0);border:1px solid #7e98ff73;max-width:min(280px,100vw - 24px);padding:5px 12px;animation:.24s ease-out kz2Bea_pet-bubble-in;overflow:hidden;box-shadow:0 4px 12px #02061759,inset 0 1px #e2e8ff1a,0 0 12px #4d6bfe2e}.kz2Bea_bubbleWhisper{letter-spacing:.03em;animation:.32s cubic-bezier(.22,1,.36,1) kz2Bea_pet-whisper-in}.kz2Bea_bubbleWhisper:before{content:\"「\";opacity:.7;margin-right:2px}.kz2Bea_bubbleWhisper:after{content:\"」\";opacity:.7;margin-left:2px}.kz2Bea_bubbleStack{pointer-events:auto;flex-direction:column-reverse;align-items:center;gap:4px;display:flex;position:absolute;bottom:100%}.kz2Bea_bubbleAnchor{display:inline-flex;position:relative}.kz2Bea_bubbleMore{z-index:1;color:#eef2ff;cursor:pointer;background:linear-gradient(160deg,#4a68f5f2,#2f44b8f2);border:1px solid #7e98ff8c;border-radius:999px;justify-content:center;align-items:center;min-width:18px;height:18px;padding:0 5px;font-size:10px;font-weight:600;line-height:1;transition:filter .12s;display:inline-flex;position:absolute;top:-9px;right:-10px;box-shadow:0 2px 6px #02061766}.kz2Bea_bubbleMore:hover{filter:brightness(1.15)}.kz2Bea_bubbleMore:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}.kz2Bea_bubbleStack .kz2Bea_bubble{pointer-events:auto;margin-bottom:0;position:relative;bottom:auto}.kz2Bea_bubbleClickable{cursor:pointer;font:inherit;text-align:center;appearance:none;transition:filter .12s,box-shadow .12s}.kz2Bea_bubbleClickable:hover{filter:brightness(1.12)}.kz2Bea_bubbleClickable:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}@keyframes kz2Bea_pet-bubble-in{0%{opacity:0;transform:translateY(6px)scale(.96)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-whisper-in{0%{opacity:0;transform:translateY(8px)scale(.9)}60%{transform:translateY(-1px)scale(1.02)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-panel-in{0%{opacity:0;transform:translateY(4px)scale(.97)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-bubble-pop{0%{opacity:0;transform:translateY(6px)scale(.85)}15%{opacity:1;transform:translateY(0)scale(1.05)}25%{transform:translateY(0)scale(1)}75%{opacity:1}to{opacity:0;transform:translateY(-8px)scale(.95)}}.kz2Bea_panel{color:#e6ebf8;backdrop-filter:blur(10px);transform-origin:50% 0;background:linear-gradient(165deg,#131c36f2,#070b1af7);border:1px solid #7e98ff4d;border-radius:12px;flex-direction:column;gap:7px;min-width:148px;margin-top:8px;padding:10px 12px;font-size:12px;animation:.2s cubic-bezier(.22,1,.36,1) kz2Bea_pet-panel-in;display:flex;position:absolute;top:100%;box-shadow:0 8px 24px #02061773,0 0 0 1px #4d6bfe1a,inset 0 1px #e2e8ff14}.kz2Bea_panel:after{content:\"\";height:14px;position:absolute;bottom:100%;left:0;right:0}.kz2Bea_panelAbove{transform-origin:50% 100%;margin-top:0;margin-bottom:8px;top:auto;bottom:100%}.kz2Bea_panelAbove:after{top:100%;bottom:auto}.kz2Bea_rankRow{white-space:nowrap;justify-content:space-between;gap:10px;display:flex}.kz2Bea_nameCell{letter-spacing:.02em;background:linear-gradient(90deg,#a9c1ff,#6c8bff 60%,#4d6bfe);color:#0000;-webkit-background-clip:text;background-clip:text;font-weight:600}.kz2Bea_statRank{color:#9db4ff;font-weight:600}.kz2Bea_statTreats{color:#7dd3fc;font-weight:600}.kz2Bea_statPoints{color:#fcd34d;font-weight:600}.kz2Bea_renameRow{align-items:center;gap:6px;display:flex}.kz2Bea_nameInput{color:#e6ebf8;background:#131c36e6;border:1px solid #7e98ff80;border-radius:6px;outline:none;flex:1;min-width:0;padding:3px 6px;font-size:12px}.kz2Bea_nameInput:focus{border-color:#4d6bfe;box-shadow:0 0 0 2px #4d6bfe73}.kz2Bea_actions{gap:6px;display:flex}.kz2Bea_action{cursor:pointer;color:#fff;background:linear-gradient(#4a68f5,#3a55e0);border:none;border-radius:6px;flex:1;padding:4px 8px;font-size:12px;font-weight:600;transition:filter .12s,box-shadow .12s,transform .12s;box-shadow:0 2px 6px #4d6bfe4d}.kz2Bea_action:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 4px 10px #4d6bfe66}.kz2Bea_action:active{filter:brightness(.94);transform:translateY(0);box-shadow:0 1px 4px #4d6bfe4d}.kz2Bea_action:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}.kz2Bea_summon{color:#8ea6ff;cursor:pointer;background:#070b1abf;border:1px dashed #7e98ff99;border-radius:999px;padding:2px 10px;font-size:11px;transition:border-color .12s,color .12s,background .12s,box-shadow .12s}.kz2Bea_summon:hover{color:#c3d3ff;background:#070b1ae6;border-color:#7e98fff2}.kz2Bea_summon:active{color:#8ea6ff;border-color:#7e98ffcc}.kz2Bea_summon:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}@media (prefers-reduced-motion:reduce){.kz2Bea_bubble,.kz2Bea_bubbleStatus,.kz2Bea_bubbleWhisper,.kz2Bea_panel{opacity:1;animation:none}.kz2Bea_action,.kz2Bea_summon,.kz2Bea_bubbleMore{transition:none}}.kz2Bea_gameplayHud{width:0;height:0;position:absolute;bottom:0;left:0}.kz2Bea_gameplayModeChip{color:#cdd7ff;white-space:nowrap;pointer-events:none;background:#7e98ff2e;border-radius:999px;padding:1px 8px;font-size:10px;position:absolute;top:0;left:0;transform:translateY(-100%)translateY(-4px)}.kz2Bea_gameplayCard{color:#dfe6ff;background:#070b1aeb;border:1px solid #7e98ff40;border-radius:10px;min-width:180px;max-height:340px;padding:10px 12px;font-size:12px;position:absolute;bottom:0;left:0;overflow-y:auto;transform:none;box-shadow:0 8px 24px #0006}.kz2Bea_gameplayBars{flex-direction:column;gap:4px;margin-bottom:8px;display:flex}.kz2Bea_gameplayBarRow{align-items:center;gap:6px;display:flex}.kz2Bea_gameplayBarLabel{color:#9aa8d8;flex-shrink:0;width:34px}.kz2Bea_gameplayBarTrack{background:#7e98ff26;border-radius:3px;flex:1;height:6px;overflow:hidden}.kz2Bea_gameplayBarFill{background:linear-gradient(90deg,#7e98ff,#9db4ff);border-radius:3px;height:100%;transition:width .3s;display:block}.kz2Bea_gameplayActions{flex-wrap:wrap;gap:6px;display:flex}.kz2Bea_gameplayShopItems{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px;display:grid}.kz2Bea_gameplayShopItem{color:inherit;cursor:pointer;background:#7e98ff14;border:1px solid #7e98ff40;border-radius:8px;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;display:flex}.kz2Bea_gameplayShopItem:hover{background:#7e98ff29;border-color:#7e98ffb3}.kz2Bea_gameplayShopItemImage{object-fit:contain;width:36px;height:36px;image-rendering:pixelated;pointer-events:none}.kz2Bea_gameplayShopItemLabel{text-align:center;font-size:11px}.kz2Bea_gameplayShopItemPrice{color:#ffd27e;font-size:10px}.kz2Bea_gameplayClose{color:#9aa8d8;cursor:pointer;background:0 0;border:none;padding:0 2px;font-size:14px;position:absolute;top:4px;right:8px}.kz2Bea_gameplayClose:hover{color:#fff}.kz2Bea_gameplayFloat{color:#3a2a00;white-space:nowrap;pointer-events:none;background:#ffd27eeb;border-radius:999px;padding:2px 10px;font-size:11px;animation:1.1s ease-out forwards kz2Bea_pet-gameplay-float;position:absolute;top:-8px;left:50%;transform:translate(-50%)}@keyframes kz2Bea_pet-gameplay-float{0%{opacity:0;transform:translate(-50%)translateY(6px)}20%{opacity:1}to{opacity:0;transform:translate(-50%)translateY(-18px)}}@media (prefers-reduced-motion:reduce){.kz2Bea_gameplayFloat{opacity:1;animation:none}.kz2Bea_gameplayBarFill{transition:none}}.kz2Bea_bubbleUsage{white-space:nowrap;backdrop-filter:blur(8px);letter-spacing:.02em;background:linear-gradient(160deg,#131c36eb,#070b1af2);border:1px solid #7e98ff73;flex-direction:column;align-items:stretch;gap:3px;min-width:128px;max-width:min(280px,100vw - 24px);padding:6px 12px;animation:.28s cubic-bezier(.22,1,.36,1) kz2Bea_pet-usage-in;display:flex;box-shadow:0 4px 12px #02061759,inset 0 1px #e2e8ff1a,0 0 12px #4d6bfe2e}.kz2Bea_bubbleUsageHead{justify-content:space-between;align-items:baseline;gap:10px;display:flex}.kz2Bea_bubbleUsageTitle{text-overflow:ellipsis;opacity:.85;overflow:hidden}.kz2Bea_bubbleUsageValue{font-variant-numeric:tabular-nums;flex-shrink:0;font-weight:600}.kz2Bea_bubbleUsageNote{text-overflow:ellipsis;opacity:.55;font-size:10px;overflow:hidden}.kz2Bea_bubbleUsageMeter{background:#e2e8ff24;border-radius:999px;height:4px;display:block;overflow:hidden}.kz2Bea_bubbleUsageMeterFill{background:#6ee7b7;border-radius:999px;height:100%;transition:width .3s;display:block}.kz2Bea_bubbleUsageOk{border-color:#7e98ff73}.kz2Bea_bubbleUsageWarn{border-color:#fbbf248c}.kz2Bea_bubbleUsageWarn .kz2Bea_bubbleUsageMeterFill{background:#fbbf24}.kz2Bea_bubbleUsageLow{border-color:#f8717199}.kz2Bea_bubbleUsageLow .kz2Bea_bubbleUsageMeterFill{background:#f87171}@keyframes kz2Bea_pet-usage-in{0%{opacity:0;transform:translateY(6px)scale(.96)}to{opacity:1;transform:translateY(0)scale(1)}}@media (prefers-reduced-motion:reduce){.kz2Bea_bubbleUsage{animation:none}}";
+		const css$15 = ".kz2Bea_float{pointer-events:auto;-webkit-user-select:none;user-select:none;will-change:transform;contain:layout style;flex-direction:column;align-items:center;display:flex;position:fixed}.kz2Bea_sprite{image-rendering:auto;touch-action:none;contain:paint}.kz2Bea_spriteWrap{flex:none;position:relative}.kz2Bea_bubble{white-space:nowrap;color:#f4f7ff;pointer-events:none;border-radius:999px;margin-bottom:6px;padding:4px 10px;font-size:12px;line-height:1.4;animation:2.6s ease-out forwards kz2Bea_pet-bubble-pop;position:absolute;bottom:100%;box-shadow:0 2px 8px #00000040}.kz2Bea_bubblePet{background:#4d6bfef2}.kz2Bea_bubbleFeed{background:#0369a1f2}.kz2Bea_bubbleStatus{text-overflow:ellipsis;backdrop-filter:blur(8px);letter-spacing:.02em;background:linear-gradient(160deg,#131c36e6,#070b1af0);border:1px solid #7e98ff73;max-width:min(280px,100vw - 24px);padding:5px 12px;animation:.24s ease-out kz2Bea_pet-bubble-in;overflow:hidden;box-shadow:0 4px 12px #02061759,inset 0 1px #e2e8ff1a,0 0 12px #4d6bfe2e}.kz2Bea_bubbleWhisper{letter-spacing:.03em;animation:.32s cubic-bezier(.22,1,.36,1) kz2Bea_pet-whisper-in}.kz2Bea_bubbleWhisper:before{content:\"「\";opacity:.7;margin-right:2px}.kz2Bea_bubbleWhisper:after{content:\"」\";opacity:.7;margin-left:2px}.kz2Bea_bubbleStack{pointer-events:auto;flex-direction:column-reverse;align-items:center;gap:4px;display:flex;position:absolute;bottom:100%}.kz2Bea_bubbleAnchor{display:inline-flex;position:relative}.kz2Bea_bubbleMore{z-index:1;color:#eef2ff;cursor:pointer;background:linear-gradient(160deg,#4a68f5f2,#2f44b8f2);border:1px solid #7e98ff8c;border-radius:999px;justify-content:center;align-items:center;min-width:18px;height:18px;padding:0 5px;font-size:10px;font-weight:600;line-height:1;transition:filter .12s;display:inline-flex;position:absolute;top:-9px;right:-10px;box-shadow:0 2px 6px #02061766}.kz2Bea_bubbleMore:hover{filter:brightness(1.15)}.kz2Bea_bubbleMore:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}.kz2Bea_bubbleStack .kz2Bea_bubble{pointer-events:auto;margin-bottom:0;position:relative;bottom:auto}.kz2Bea_bubbleClickable{cursor:pointer;font:inherit;text-align:center;appearance:none;transition:filter .12s,box-shadow .12s}.kz2Bea_bubbleClickable:hover{filter:brightness(1.12)}.kz2Bea_bubbleClickable:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}@keyframes kz2Bea_pet-bubble-in{0%{opacity:0;transform:translateY(6px)scale(.96)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-whisper-in{0%{opacity:0;transform:translateY(8px)scale(.9)}60%{transform:translateY(-1px)scale(1.02)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-panel-in{0%{opacity:0;transform:translateY(4px)scale(.97)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-bubble-pop{0%{opacity:0;transform:translateY(6px)scale(.85)}15%{opacity:1;transform:translateY(0)scale(1.05)}25%{transform:translateY(0)scale(1)}75%{opacity:1}to{opacity:0;transform:translateY(-8px)scale(.95)}}.kz2Bea_panel{color:#e6ebf8;backdrop-filter:blur(10px);transform-origin:50% 0;background:linear-gradient(165deg,#131c36f2,#070b1af7);border:1px solid #7e98ff4d;border-radius:12px;flex-direction:column;gap:7px;min-width:148px;margin-top:8px;padding:10px 12px;font-size:12px;animation:.2s cubic-bezier(.22,1,.36,1) kz2Bea_pet-panel-in;display:flex;position:absolute;top:100%;box-shadow:0 8px 24px #02061773,0 0 0 1px #4d6bfe1a,inset 0 1px #e2e8ff14}.kz2Bea_panel:after{content:\"\";height:14px;position:absolute;bottom:100%;left:0;right:0}.kz2Bea_panelAbove{transform-origin:50% 100%;margin-top:0;margin-bottom:8px;top:auto;bottom:100%}.kz2Bea_panelAbove:after{top:100%;bottom:auto}.kz2Bea_rankRow{white-space:nowrap;justify-content:space-between;gap:10px;display:flex}.kz2Bea_nameCell{letter-spacing:.02em;background:linear-gradient(90deg,#a9c1ff,#6c8bff 60%,#4d6bfe);color:#0000;-webkit-background-clip:text;background-clip:text;font-weight:600}.kz2Bea_statRank{color:#9db4ff;font-weight:600}.kz2Bea_statTreats{color:#7dd3fc;font-weight:600}.kz2Bea_statPoints{color:#fcd34d;font-weight:600}.kz2Bea_renameRow{align-items:center;gap:6px;display:flex}.kz2Bea_nameInput{color:#e6ebf8;background:#131c36e6;border:1px solid #7e98ff80;border-radius:6px;outline:none;flex:1;min-width:0;padding:3px 6px;font-size:12px}.kz2Bea_nameInput:focus{border-color:#4d6bfe;box-shadow:0 0 0 2px #4d6bfe73}.kz2Bea_actions{gap:6px;display:flex}.kz2Bea_action{cursor:pointer;color:#fff;background:linear-gradient(#4a68f5,#3a55e0);border:none;border-radius:6px;flex:1;padding:4px 8px;font-size:12px;font-weight:600;transition:filter .12s,box-shadow .12s,transform .12s;box-shadow:0 2px 6px #4d6bfe4d}.kz2Bea_action:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 4px 10px #4d6bfe66}.kz2Bea_action:active{filter:brightness(.94);transform:translateY(0);box-shadow:0 1px 4px #4d6bfe4d}.kz2Bea_action:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}.kz2Bea_summon{color:#8ea6ff;cursor:pointer;background:#070b1abf;border:1px dashed #7e98ff99;border-radius:999px;padding:2px 10px;font-size:11px;transition:border-color .12s,color .12s,background .12s,box-shadow .12s}.kz2Bea_summon:hover{color:#c3d3ff;background:#070b1ae6;border-color:#7e98fff2}.kz2Bea_summon:active{color:#8ea6ff;border-color:#7e98ffcc}.kz2Bea_summon:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}@media (prefers-reduced-motion:reduce){.kz2Bea_bubble,.kz2Bea_bubbleStatus,.kz2Bea_bubbleWhisper,.kz2Bea_panel{opacity:1;animation:none}.kz2Bea_action,.kz2Bea_summon,.kz2Bea_bubbleMore{transition:none}}.kz2Bea_gameplayHud{width:0;height:0;position:absolute;bottom:0;left:0}.kz2Bea_gameplayModeChip{color:#cdd7ff;white-space:nowrap;pointer-events:none;background:#7e98ff2e;border-radius:999px;padding:1px 8px;font-size:10px;position:absolute;top:0;left:0;transform:translateY(-100%)translateY(-4px)}.kz2Bea_gameplayCard{color:#dfe6ff;background:#070b1aeb;border:1px solid #7e98ff40;border-radius:10px;min-width:180px;max-height:340px;padding:10px 12px;font-size:12px;position:absolute;bottom:0;left:0;overflow-y:auto;transform:none;box-shadow:0 8px 24px #0006}.kz2Bea_gameplayBars{flex-direction:column;gap:4px;margin-bottom:8px;display:flex}.kz2Bea_gameplayBarRow{align-items:center;gap:6px;display:flex}.kz2Bea_gameplayBarLabel{color:#9aa8d8;flex-shrink:0;width:34px}.kz2Bea_gameplayBarTrack{background:#7e98ff26;border-radius:3px;flex:1;height:6px;overflow:hidden}.kz2Bea_gameplayBarFill{background:linear-gradient(90deg,#7e98ff,#9db4ff);border-radius:3px;height:100%;transition:width .3s;display:block}.kz2Bea_gameplayActions{flex-wrap:wrap;gap:6px;display:flex}.kz2Bea_gameplayShopItems{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px;display:grid}.kz2Bea_gameplayShopItem{color:inherit;cursor:pointer;background:#7e98ff14;border:1px solid #7e98ff40;border-radius:8px;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;display:flex}.kz2Bea_gameplayShopItem:hover{background:#7e98ff29;border-color:#7e98ffb3}.kz2Bea_gameplayShopItemImage{object-fit:contain;width:36px;height:36px;image-rendering:pixelated;pointer-events:none}.kz2Bea_gameplayShopItemLabel{text-align:center;font-size:11px}.kz2Bea_gameplayShopItemPrice{color:#ffd27e;font-size:10px}.kz2Bea_gameplaySkinItems{flex-direction:column;gap:6px;margin-bottom:8px;display:flex}.kz2Bea_gameplaySkinItem{width:100%;color:inherit;cursor:pointer;text-align:left;background:#7e98ff14;border:1px solid #7e98ff40;border-radius:8px;padding:8px 10px;font-size:12px;display:block}.kz2Bea_gameplaySkinItem:hover{background:#7e98ff29;border-color:#7e98ffb3}.kz2Bea_gameplaySkinItemActive{background:#7e98ff47;border-color:#7e98ffe6}.kz2Bea_gameplayClose{color:#9aa8d8;cursor:pointer;background:0 0;border:none;padding:0 2px;font-size:14px;position:absolute;top:4px;right:8px}.kz2Bea_gameplayClose:hover{color:#fff}.kz2Bea_gameplayFloat{color:#3a2a00;white-space:nowrap;pointer-events:none;background:#ffd27eeb;border-radius:999px;padding:2px 10px;font-size:11px;animation:1.1s ease-out forwards kz2Bea_pet-gameplay-float;position:absolute;top:-8px;left:50%;transform:translate(-50%)}@keyframes kz2Bea_pet-gameplay-float{0%{opacity:0;transform:translate(-50%)translateY(6px)}20%{opacity:1}to{opacity:0;transform:translate(-50%)translateY(-18px)}}@media (prefers-reduced-motion:reduce){.kz2Bea_gameplayFloat{opacity:1;animation:none}.kz2Bea_gameplayBarFill{transition:none}}.kz2Bea_bubbleUsage{white-space:nowrap;backdrop-filter:blur(8px);letter-spacing:.02em;background:linear-gradient(160deg,#131c36eb,#070b1af2);border:1px solid #7e98ff73;flex-direction:column;align-items:stretch;gap:3px;min-width:128px;max-width:min(280px,100vw - 24px);padding:6px 12px;animation:.28s cubic-bezier(.22,1,.36,1) kz2Bea_pet-usage-in;display:flex;box-shadow:0 4px 12px #02061759,inset 0 1px #e2e8ff1a,0 0 12px #4d6bfe2e}.kz2Bea_bubbleUsageHead{justify-content:space-between;align-items:baseline;gap:10px;display:flex}.kz2Bea_bubbleUsageTitle{text-overflow:ellipsis;opacity:.85;overflow:hidden}.kz2Bea_bubbleUsageValue{font-variant-numeric:tabular-nums;flex-shrink:0;font-weight:600}.kz2Bea_bubbleUsageNote{text-overflow:ellipsis;opacity:.55;font-size:10px;overflow:hidden}.kz2Bea_bubbleUsageMeter{background:#e2e8ff24;border-radius:999px;height:4px;display:block;overflow:hidden}.kz2Bea_bubbleUsageMeterFill{background:#6ee7b7;border-radius:999px;height:100%;transition:width .3s;display:block}.kz2Bea_bubbleUsageOk{border-color:#7e98ff73}.kz2Bea_bubbleUsageWarn{border-color:#fbbf248c}.kz2Bea_bubbleUsageWarn .kz2Bea_bubbleUsageMeterFill{background:#fbbf24}.kz2Bea_bubbleUsageLow{border-color:#f8717199}.kz2Bea_bubbleUsageLow .kz2Bea_bubbleUsageMeterFill{background:#f87171}@keyframes kz2Bea_pet-usage-in{0%{opacity:0;transform:translateY(6px)scale(.96)}to{opacity:1;transform:translateY(0)scale(1)}}@media (prefers-reduced-motion:reduce){.kz2Bea_bubbleUsage{animation:none}}";
 		const tagId$15 = "@linxin666/dsh-web-all/packages/dsh-pet/src/client/pet.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$15) + "]") === null) {
 			const tag = document.createElement("style");
@@ -18487,6 +18487,9 @@ window.__ModuleLoader__.load({
 			"gameplayShopItemLabel": "kz2Bea_gameplayShopItemLabel",
 			"gameplayShopItemPrice": "kz2Bea_gameplayShopItemPrice",
 			"gameplayShopItems": "kz2Bea_gameplayShopItems",
+			"gameplaySkinItem": "kz2Bea_gameplaySkinItem",
+			"gameplaySkinItemActive": "kz2Bea_gameplaySkinItemActive",
+			"gameplaySkinItems": "kz2Bea_gameplaySkinItems",
 			"nameCell": "kz2Bea_nameCell",
 			"nameInput": "kz2Bea_nameInput",
 			"panel": "kz2Bea_panel",
@@ -19319,8 +19322,12 @@ window.__ModuleLoader__.load({
 					gameplayBus.setTrack = (track) => {
 						handleRef.current?.setState(track);
 					};
+					gameplayBus.setIdleTrack = (track) => {
+						handleRef.current?.setIdleTrack(track);
+					};
 					cleanups.push(() => {
 						gameplayBus.setTrack = void 0;
+						gameplayBus.setIdleTrack = void 0;
 					});
 				}
 				const dragTrack = props.definition.gameplay?.dragState ?? (frames2d.tracks.drag === void 0 ? void 0 : "drag");
@@ -19433,6 +19440,9 @@ window.__ModuleLoader__.load({
 			const phase = ui.snapshot?.phase ?? "idle";
 			const [open, setOpen] = (0, react.useState)(false);
 			const [page, setPage] = (0, react.useState)("root");
+			const [skinId, setSkinId] = (0, react.useState)(void 0);
+			const skinIdRef = (0, react.useRef)(void 0);
+			skinIdRef.current = skinId;
 			const hudRef = (0, react.useRef)(null);
 			const cardRef = (0, react.useRef)(null);
 			const [floats, setFloats] = (0, react.useState)([]);
@@ -19444,6 +19454,7 @@ window.__ModuleLoader__.load({
 			const touchLockUntilRef = (0, react.useRef)(0);
 			const missRef = (0, react.useRef)(0);
 			const busyRef = (0, react.useRef)(false);
+			const lowHeldRef = (0, react.useRef)(false);
 			const tr = props.t;
 			const statLabel = (name) => tr("pet.gameplay.stat." + name);
 			const currencyLabel = (name) => tr("pet.gameplay.currency." + name);
@@ -19462,6 +19473,24 @@ window.__ModuleLoader__.load({
 			};
 			(0, react.useEffect)(() => {
 				if (def === void 0) return void 0;
+				const holdTrack = (track, holdMs) => {
+					bus.setTrack?.(track);
+					touchLockUntilRef.current = Date.now() + holdMs;
+					window.setTimeout(() => {
+						if (Date.now() >= touchLockUntilRef.current) bus.setTrack?.(void 0);
+					}, holdMs);
+				};
+				const speak = (phrases) => {
+					if (phrases !== void 0 && phrases.length > 0) {
+						const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+						store.actions.setFeedback({
+							text: phrase,
+							kind: "none",
+							at: Date.now()
+						});
+					}
+				};
+				const trackDuration = (track) => definition.frames2d?.tracks[track]?.durations.reduce((sum, ms) => sum + ms, 0) ?? 0;
 				bus.tap = (fx, fy) => {
 					if (modeRef.current === "sleep") {
 						api.setMode(null).then(applyResult, () => void 0);
@@ -19481,19 +19510,31 @@ window.__ModuleLoader__.load({
 						api.touch().then(applyResult, () => void 0);
 						return;
 					}
+					const activeSkin = definition.frames2d?.skins?.find((skin) => skin.id === skinIdRef.current);
+					if (activeSkin !== void 0) {
+						const actions = activeSkin.clickActions ?? [];
+						if (actions.length > 0) {
+							let roll = Math.random();
+							const fired = actions.find((action) => {
+								if (roll < action.probability) return true;
+								roll -= action.probability;
+								return false;
+							});
+							if (fired !== void 0) {
+								holdTrack(fired.track, trackDuration(fired.track) || 3e3);
+								speak(fired.phrases);
+								return;
+							}
+						}
+						api.touch().then(applyResult, () => void 0);
+						return;
+					}
 					const zone = def.touch === void 0 ? void 0 : touchZoneAt(def.touch, hy);
 					if (zone === void 0) return;
 					api.touch(zone.name).then((result) => {
 						applyResult(result);
 						if (result.hit !== true) return;
-						if (result.state !== void 0) {
-							bus.setTrack?.(result.state);
-							const holdMs = result.stateMs ?? 3e3;
-							touchLockUntilRef.current = Date.now() + holdMs;
-							window.setTimeout(() => {
-								if (Date.now() >= touchLockUntilRef.current) bus.setTrack?.(void 0);
-							}, holdMs);
-						}
+						if (result.state !== void 0) holdTrack(result.state, result.stateMs ?? 3e3);
 						if (result.phrase !== void 0) store.actions.setFeedback({
 							text: result.phrase,
 							kind: "none",
@@ -19549,6 +19590,7 @@ window.__ModuleLoader__.load({
 					if (phaseRef.current !== "idle") return;
 					if (modeRef.current !== null || draggingRef.current) return;
 					if (Date.now() < touchLockUntilRef.current) return;
+					if (lowHeldRef.current) return;
 					let pickedAct;
 					if (missRef.current >= director.maxMiss) {
 						const actTotal = director.acts.reduce((sum, act) => sum + act.weight, 0);
@@ -19629,6 +19671,29 @@ window.__ModuleLoader__.load({
 				def,
 				view?.mode
 			]);
+			(0, react.useEffect)(() => {
+				const le = def?.lowEnergy;
+				if (def === void 0 || le === void 0) return void 0;
+				const timer = window.setInterval(() => {
+					if (view?.mode !== null) return;
+					if (draggingRef.current) return;
+					if (Date.now() < touchLockUntilRef.current) return;
+					if ((view?.stats?.[le.stat] ?? le.recover) < le.threshold) {
+						lowHeldRef.current = true;
+						bus.setTrack?.(le.track);
+					} else if (lowHeldRef.current) {
+						lowHeldRef.current = false;
+						bus.setTrack?.(void 0);
+					}
+				}, 1e3);
+				return () => {
+					window.clearInterval(timer);
+					if (lowHeldRef.current) {
+						lowHeldRef.current = false;
+						bus.setTrack?.(void 0);
+					}
+				};
+			}, [definition.id, def]);
 			if (def === void 0 || view === void 0) return null;
 			const mode = view.mode;
 			const stats = def.stats ?? {};
@@ -19651,6 +19716,11 @@ window.__ModuleLoader__.load({
 			};
 			const setMode = (next) => {
 				api.setMode(next).then(applyResult, () => void 0);
+			};
+			const skins = definition.frames2d?.skins;
+			const selectSkin = (skin) => {
+				setSkinId(skin?.id);
+				bus.setIdleTrack?.(skin?.idleTrack);
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				ref: hudRef,
@@ -19692,12 +19762,6 @@ window.__ModuleLoader__.load({
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: pet_module_css_default.gameplayActions,
 								children: [
-									def.work !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-										type: "button",
-										className: pet_module_css_default.action,
-										onClick: () => setMode(mode === "work" ? null : "work"),
-										children: tr(mode === "work" ? "pet.gameplay.stopWork" : "pet.gameplay.work")
-									}),
 									def.sleep !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
 										className: pet_module_css_default.action,
@@ -19709,6 +19773,18 @@ window.__ModuleLoader__.load({
 										className: pet_module_css_default.action,
 										onClick: () => setPage("shop"),
 										children: tr("pet.gameplay.shop")
+									}),
+									skins !== void 0 && skins.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: pet_module_css_default.action,
+										onClick: () => setPage("skins"),
+										children: tr("pet.gameplay.skin")
+									}),
+									def.work !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: pet_module_css_default.action,
+										onClick: () => setMode(mode === "work" ? null : "work"),
+										children: tr(mode === "work" ? "pet.gameplay.stopWork" : "pet.gameplay.work")
 									})
 								]
 							})] }),
@@ -19740,6 +19816,28 @@ window.__ModuleLoader__.load({
 										})
 									]
 								}, item.id))
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: pet_module_css_default.gameplayActions,
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									className: pet_module_css_default.action,
+									onClick: () => setPage("root"),
+									children: tr("pet.gameplay.back")
+								})
+							})] }),
+							page === "skins" && skins !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: pet_module_css_default.gameplaySkinItems,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									className: skinId === void 0 ? pet_module_css_default.gameplaySkinItem + " " + pet_module_css_default.gameplaySkinItemActive : pet_module_css_default.gameplaySkinItem,
+									onClick: () => selectSkin(void 0),
+									children: tr("pet.gameplay.skinDefault")
+								}), skins.map((skin) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									className: skinId === skin.id ? pet_module_css_default.gameplaySkinItem + " " + pet_module_css_default.gameplaySkinItemActive : pet_module_css_default.gameplaySkinItem,
+									onClick: () => selectSkin(skin),
+									children: skin.label
+								}, skin.id))]
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 								className: pet_module_css_default.gameplayActions,
 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
@@ -20185,9 +20283,40 @@ window.__ModuleLoader__.load({
 			}
 			const phases = config.phases;
 			if (typeof phases.idle !== "string" || tracks[phases.idle] === void 0) throw new Error("frames2d phases.idle must name an existing track");
+			let skins;
+			if (Array.isArray(config.skins)) {
+				const resolved = [];
+				for (const skin of config.skins) {
+					if (!isRecord$2(skin) || typeof skin.id !== "string" || typeof skin.label !== "string" || typeof skin.idleTrack !== "string" || skin.idleTrack === "") continue;
+					const target = tracks[skin.idleTrack];
+					if (target === void 0 || !target.loop) continue;
+					let clickActions;
+					if (Array.isArray(skin.clickActions)) {
+						const kept = [];
+						for (const action of skin.clickActions) {
+							if (!isRecord$2(action) || typeof action.track !== "string" || action.track === "" || typeof action.probability !== "number" || !(action.probability > 0) || action.probability > 1) continue;
+							if (tracks[action.track] === void 0) continue;
+							kept.push({
+								track: action.track,
+								probability: action.probability,
+								...Array.isArray(action.phrases) ? { phrases: action.phrases } : {}
+							});
+						}
+						if (kept.length > 0) clickActions = kept;
+					}
+					resolved.push({
+						id: skin.id,
+						label: skin.label,
+						idleTrack: skin.idleTrack,
+						...clickActions === void 0 ? {} : { clickActions }
+					});
+				}
+				if (resolved.length > 0) skins = resolved;
+			}
 			return {
 				tracks,
-				phases
+				phases,
+				...skins === void 0 ? {} : { skins }
 			};
 		}
 		const frames2dRenderer = {
@@ -20276,11 +20405,14 @@ window.__ModuleLoader__.load({
 				let frameIndex = 0;
 				let lastAdvance = Date.now();
 				let override;
+				let baseIdle = config.phases.idle;
 				let drawToken = 0;
 				let lastDrawnUrl;
 				const trackForPhase = (phase) => {
 					const mapped = config.phases[phase];
-					return mapped !== void 0 && config.tracks[mapped] !== void 0 ? mapped : config.phases.idle;
+					if (mapped === void 0) return baseIdle;
+					const target = mapped === config.phases.idle ? baseIdle : mapped;
+					return config.tracks[target] !== void 0 ? target : baseIdle;
 				};
 				/** Canvas path: paints the newest requested frame; stale draws drop out. */
 				const paintCanvas = (url) => {
@@ -20328,13 +20460,13 @@ window.__ModuleLoader__.load({
 						schedule(def.durations[frameIndex] ?? 200);
 						return;
 					}
-					const target = def.fallback !== void 0 && config.tracks[def.fallback] !== void 0 ? def.fallback : config.phases.idle;
+					const target = def.fallback !== void 0 && config.tracks[def.fallback] !== void 0 ? def.fallback === config.phases.idle ? baseIdle : def.fallback : baseIdle;
 					if (target === trackForPhase(ctx.phase.get())) override = void 0;
 					play(target);
 				}
 				function play(trackId) {
 					if (disposed) return;
-					if (config.tracks[trackId] === void 0) trackId = config.phases.idle;
+					if (config.tracks[trackId] === void 0) trackId = baseIdle;
 					if (timer !== void 0) clearTimeout(timer);
 					track = trackId;
 					frameIndex = 0;
@@ -20392,6 +20524,14 @@ window.__ModuleLoader__.load({
 						if (config.tracks[next] === void 0) return;
 						override = next;
 						if (next !== track) play(next);
+					},
+					setIdleTrack(next) {
+						if (disposed) return;
+						if (next === void 0 || config.tracks[next] !== void 0 && config.tracks[next].loop) baseIdle = next ?? config.phases.idle;
+						if (override === void 0) {
+							const target = trackForPhase(ctx.phase.get());
+							if (target !== track) play(target);
+						}
 					},
 					currentTrack() {
 						return track;
@@ -21563,6 +21703,8 @@ window.__ModuleLoader__.load({
 			"pet.gameplay.sleep": "睡觉",
 			"pet.gameplay.wake": "起床",
 			"pet.gameplay.shop": "商店",
+			"pet.gameplay.skin": "皮肤",
+			"pet.gameplay.skinDefault": "默认",
 			"pet.gameplay.back": "返回",
 			"pet.gameplay.buy": "购买",
 			"pet.gameplay.insufficient": "{currency}不足",
@@ -21588,7 +21730,7 @@ window.__ModuleLoader__.load({
 			"settings.visible": "显示宠物",
 			"settings.visibleHint": "关闭后宠物隐藏，可从聊天输入区重新召唤。",
 			"settings.size": "大小（px）",
-			"settings.sizeHint": "精灵单元高度，范围 32–512。",
+			"settings.sizeHint": "精灵单元高度，范围 32–1024。",
 			"settings.right": "距右侧（px）",
 			"settings.rightHint": "距视口右边缘的水平内缩距离。",
 			"settings.bottom": "距底部（px）",
@@ -21642,6 +21784,8 @@ window.__ModuleLoader__.load({
 			"pet.gameplay.sleep": "Sleep",
 			"pet.gameplay.wake": "Wake up",
 			"pet.gameplay.shop": "Shop",
+			"pet.gameplay.skin": "Skin",
+			"pet.gameplay.skinDefault": "Default",
 			"pet.gameplay.back": "Back",
 			"pet.gameplay.buy": "Buy",
 			"pet.gameplay.insufficient": "Not enough {currency}",
@@ -21667,7 +21811,7 @@ window.__ModuleLoader__.load({
 			"settings.visible": "Show the pet",
 			"settings.visibleHint": "When off, the pet hides; summon it again from the input row.",
 			"settings.size": "Size (px)",
-			"settings.sizeHint": "Sprite cell height, 32–512.",
+			"settings.sizeHint": "Sprite cell height, 32–1024.",
 			"settings.right": "Right inset (px)",
 			"settings.rightHint": "Horizontal inset from the viewport right edge.",
 			"settings.bottom": "Bottom inset (px)",
@@ -21829,6 +21973,16 @@ window.__ModuleLoader__.load({
 		* first-level settings section.
 		* @param ctx - client root context.
 		*/
+		/**
+		* Module-wide work-tick throttle (ms). Hot reloads can leave several
+		* GameplayHud instances alive, each running its own 10s work interval;
+		* without a shared gate every interval would call workTick and each stale
+		* call re-rolls, re-grants treats and re-plays the success/fail track, so
+		* the outcome appears to play several times per window. This shared marker
+		* accepts the first adjudication of a window and silently suppresses the
+		* duplicates that follow. Reset when (re-)entering work mode.
+		*/
+		let lastWorkTickAt = 0;
 		function apply$9(ctx) {
 			reportDailyHeartbeat$6([{ name: "@linxin666/dsh-pet" }]);
 			ctx.effect(() => {
@@ -21990,8 +22144,16 @@ window.__ModuleLoader__.load({
 						},
 						gameplay: {
 							touch: (zone) => petApi.gameplayTouch(zone),
-							setMode: (mode) => petApi.gameplaySetMode(mode),
-							workTick: () => petApi.gameplayWorkTick(),
+							setMode: async (mode) => {
+								if (mode === "work") lastWorkTickAt = 0;
+								return petApi.gameplaySetMode(mode);
+							},
+							workTick: async () => {
+								const now = Date.now();
+								if (now - lastWorkTickAt < 8500) return { ok: true };
+								lastWorkTickAt = now;
+								return petApi.gameplayWorkTick();
+							},
 							buy: (item) => petApi.gameplayBuy(item)
 						}
 					});

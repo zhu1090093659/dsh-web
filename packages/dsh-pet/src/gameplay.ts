@@ -102,6 +102,22 @@ export interface PetGameplayManifest {
   dragState?: string
   /** Track played once when a drag ends (miku: standup), before settling. */
   dragEndState?: string
+  /**
+   * Low-energy auto-animation: when the named stat falls below `threshold`
+   * (and the pet is not working/sleeping/dragging) the client forces
+   * `track` until it recovers to at least `recover` (hysteresis avoids
+   * flicker at the boundary). Optional; miku uses it to make the pet dozily
+   * yawn/slump when energy is low.
+   */
+  lowEnergy?: {
+    stat: string
+    /** Trigger when the stat drops below this value. */
+    threshold: number
+    /** Release (back to the phase map) once the stat is at least this value. */
+    recover: number
+    /** frames2d track to force while the condition holds. */
+    track: string
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -120,7 +136,7 @@ const PHRASE_MAX_LENGTH = 120
 const STAT_VALUE_MAX = 1_000_000
 const CURRENCY_MAX = 9_999_999
 
-const KNOWN_GAMEPLAY = new Set(['idleDirector', 'stats', 'hitBox', 'touch', 'work', 'sleep', 'passiveIncome', 'shop', 'dragState', 'dragEndState'])
+const KNOWN_GAMEPLAY = new Set(['idleDirector', 'stats', 'hitBox', 'touch', 'work', 'sleep', 'passiveIncome', 'shop', 'dragState', 'dragEndState', 'lowEnergy'])
 const KNOWN_STAT = new Set(['max', 'initial', 'decayPerMinute', 'workingDecayPerMinute', 'idleDecayPerMinute'])
 const KNOWN_ZONE = new Set(['name', 'y0', 'y1', 'branches'])
 const KNOWN_TOUCH = new Set(['zones', 'clickBoost'])
@@ -132,6 +148,7 @@ const KNOWN_SHOP_ITEM = new Set(['id', 'label', 'image', 'price', 'currency', 'e
 const KNOWN_LOTTERY = new Set(['effects', 'currency', 'tiers'])
 const KNOWN_IDLE_DIRECTOR = new Set(['intervalMs', 'maxMiss', 'idleWeight', 'acts'])
 const KNOWN_ACT = new Set(['track', 'weight', 'phrases'])
+const KNOWN_LOW_ENERGY = new Set(['stat', 'threshold', 'recover', 'track'])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -556,6 +573,34 @@ export function parseGameplayManifest(raw: unknown, hooks: GameplayParseHooks): 
   if (raw.dragEndState !== undefined) {
     const state = parseStateRef(raw.dragEndState, 'gameplay.dragEndState', hooks)
     if (state !== undefined) block.dragEndState = state
+  }
+
+  // --- low-energy auto-animation ---
+  if (raw.lowEnergy !== undefined) {
+    const le = raw.lowEnergy
+    if (!isRecord(le)) fail('gameplay.lowEnergy must be an object')
+    else {
+      const leExtra = unknownKeys(le, KNOWN_LOW_ENERGY)
+      if (leExtra.length > 0) fail('gameplay.lowEnergy: unknown field(s) ' + leExtra.map(k => JSON.stringify(k)).join(', '))
+      const stat = typeof le.stat === 'string' && stats[le.stat] !== undefined ? le.stat : undefined
+      if (stat === undefined) fail('gameplay.lowEnergy.stat must reference a declared stat')
+      const track = parseStateRef(le.track, 'gameplay.lowEnergy.track', hooks)
+      const thresholdOk = le.threshold !== undefined && intIn(le.threshold as number, 1, STAT_VALUE_MAX)
+      const recoverOk = le.recover !== undefined && numIn(le.recover as number, 0, 1_000_000)
+      if (!thresholdOk) fail('gameplay.lowEnergy.threshold must be an integer in [1, ' + STAT_VALUE_MAX + ']')
+      if (!recoverOk) fail('gameplay.lowEnergy.recover must be a number in [0, 1000000]')
+      if (thresholdOk && recoverOk && (le.recover as number) < (le.threshold as number)) {
+        fail('gameplay.lowEnergy.recover must be >= threshold (release happens at/above recover)')
+      }
+      if (stat !== undefined && track !== undefined && thresholdOk && recoverOk) {
+        block.lowEnergy = {
+          stat,
+          threshold: le.threshold as number,
+          recover: le.recover as number,
+          track,
+        }
+      }
+    }
   }
 
   return failed ? undefined : block

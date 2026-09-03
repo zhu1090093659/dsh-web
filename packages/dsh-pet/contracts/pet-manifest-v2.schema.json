@@ -319,6 +319,79 @@
             "done": { "type": "string", "minLength": 1 },
             "failed": { "type": "string", "minLength": 1 }
           }
+        },
+        "skins": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "description": "Optional selectable skins: each swaps the base idle target (idle phase, unmapped phases and every fallback back to idle) to its own looping idle track. Gameplay tracks (shy/work/sleep...) are not replaced.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label",
+              "idleTrack"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 24,
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "description": "Lowercase kebab skin id."
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40,
+                "description": "User-facing skin name."
+              },
+              "idleTrack": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A declared looping track that becomes the base idle while selected."
+              },
+              "clickActions": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "description": "Optional click-triggered actions exclusive to this skin: while selected, a tap rolls each action by probability (in order) and plays its track once if hit; misses fall through to the regular touch zones.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "track",
+                    "probability"
+                  ],
+                  "properties": {
+                    "track": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "A declared track played once on hit (usually non-looping)."
+                    },
+                    "probability": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1,
+                      "description": "Hit probability for this action."
+                    },
+                    "phrases": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 5,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "description": "Optional lines spoken when the action fires."
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

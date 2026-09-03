@@ -36,7 +36,7 @@ export const defaultDisplayConfig: PetDisplayConfig = {
 
 /** Display value bounds (shared by load-time validation and setConfig). */
 export const DISPLAY_SIZE_MIN = 32
-export const DISPLAY_SIZE_MAX = 512
+export const DISPLAY_SIZE_MAX = 1024
 export const DISPLAY_INSET_MAX = 10_000
 
 /** Everything persisted for the pet. */

@@ -215,6 +215,28 @@ export interface PetFrames2dDefinition {
   tracks: Record<string, PetFrames2dTrackView>
   /** ActivityPhase -> track id; unmapped phases fall back to idle. */
   phases: Partial<Record<ActivityPhase, string>> & { idle: string }
+  /** Selectable skins; each swaps the base idle target to its idleTrack. */
+  skins?: PetSkinDefinition[]
+}
+
+/** One selectable frames2d skin as served to the browser half. */
+export interface PetSkinDefinition {
+  id: string
+  label: string
+  /** A declared looping track that becomes the base idle while selected. */
+  idleTrack: string
+  /** Click actions exclusive to this skin (roll by probability; miss → touch zones). */
+  clickActions?: PetSkinClickActionDefinition[]
+}
+
+/** One probability-rolled tap action a skin may declare. */
+export interface PetSkinClickActionDefinition {
+  /** A declared track played once on hit. */
+  track: string
+  /** Hit probability (0..1). */
+  probability: number
+  /** Optional lines spoken when the action fires. */
+  phrases?: string[]
 }
 
 /** A normalized pet as served to the browser half. */
@@ -719,6 +741,33 @@ function resolveFrames2dEntry(
       phases[phase as ActivityPhase] = idleTrack
     }
   }
+  // Skins: keep only entries whose idleTrack survived track resolution, and
+  // drop click actions whose track did not (the skin itself stays usable).
+  let skins: PetSkinDefinition[] | undefined
+  if (block.skins !== undefined) {
+    const resolved: PetSkinDefinition[] = []
+    for (const skin of block.skins) {
+      if (tracks[skin.idleTrack] === undefined) {
+        record('warning', 'pet ' + manifest.id + ': frames2d skin ' + JSON.stringify(skin.id) + ' idleTrack dropped; skipping')
+        continue
+      }
+      let clickActions: PetSkinClickActionDefinition[] | undefined
+      if (skin.clickActions !== undefined) {
+        const kept: PetSkinClickActionDefinition[] = []
+        for (const action of skin.clickActions) {
+          if (tracks[action.track] === undefined) {
+            record('warning', 'pet ' + manifest.id + ': frames2d skin ' + JSON.stringify(skin.id)
+              + ' click action track ' + JSON.stringify(action.track) + ' dropped')
+            continue
+          }
+          kept.push(action)
+        }
+        if (kept.length > 0) clickActions = kept
+      }
+      resolved.push({ ...skin, ...(clickActions === undefined ? {} : { clickActions }) })
+    }
+    if (resolved.length > 0) skins = resolved
+  }
   const remarks = normalizePetRemarks(manifest.remarks, message => record('warning', 'pet ' + manifest.id + ': ' + message))
   // Gameplay layer: shop item icons are manifest-relative frame paths —
   // verify them, promote them to browser URLs, and add them to the servable
@@ -756,7 +805,7 @@ function resolveFrames2dEntry(
     displayName: manifest.displayName,
     description: manifest.description ?? '',
     renderer: 'frames2d' as const,
-    frames2d: { tracks, phases },
+    frames2d: { tracks, phases, ...(skins === undefined ? {} : { skins }) },
     ...(gameplay === undefined ? {} : { gameplay }),
     cell,
     columns: DEFAULT_PET_COLUMNS,

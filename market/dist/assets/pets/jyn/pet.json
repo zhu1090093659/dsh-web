@@ -1,0 +1,290 @@
+{
+  "petManifestVersion": 2,
+  "id": "jyn",
+  "displayName": "女仆鲸鱼娘",
+  "description": "用户自制女仆鲸鱼娘：78 帧 40ms 无缝待机动画；害羞触摸、打工、睡觉玩法；亲密度、喂食、小鱼干经济等通用机制与 Miku 一致。",
+  "author": "11726",
+  "license": "MIT",
+  "renderer": "frames2d",
+  "frames2d": {
+    "dir": "thumb",
+    "defaultFrameMs": 40,
+    "tracks": {
+      "idle": {},
+      "shy": {
+        "loop": false,
+        "fallback": "idle"
+      },
+      "shy2": {
+        "loop": false,
+        "fallback": "idle"
+      },
+      "shy3": {
+        "loop": false,
+        "fallback": "idle"
+      },
+      "work": {},
+      "work-success": {
+        "loop": false,
+        "fallback": "work"
+      },
+      "work-fail": {
+        "loop": false,
+        "fallback": "work"
+      },
+      "sleep": {
+        "loop": false,
+        "fallback": "sleeping"
+      },
+      "sleeping": {},
+      "anyejinjin-idle": {},
+      "anyejinjin-angry": {
+        "loop": false,
+        "fallback": "idle"
+      },
+      "lanhainishang-idle": {},
+      "lanhainishang-lift-skirt": {
+        "loop": false,
+        "fallback": "idle"
+      }
+    },
+    "phases": {
+      "idle": "idle"
+    },
+    "skins": [
+      {
+        "id": "anyejinjin",
+        "label": "暗夜鎏金",
+        "idleTrack": "anyejinjin-idle",
+        "clickActions": [
+          {
+            "track": "anyejinjin-angry",
+            "probability": 0.3
+          }
+        ]
+      },
+      {
+        "id": "lanhainishang",
+        "label": "蓝海霓裳",
+        "idleTrack": "lanhainishang-idle",
+        "clickActions": [
+          {
+            "track": "lanhainishang-lift-skirt",
+            "probability": 0.3
+          }
+        ]
+      }
+    ]
+  },
+  "gameplay": {
+    "stats": {
+      "hunger": {
+        "max": 100,
+        "initial": 100,
+        "decayPerMinute": 1,
+        "workingDecayPerMinute": 5
+      },
+      "mood": {
+        "max": 100,
+        "initial": 100,
+        "decayPerMinute": 0.5
+      },
+      "energy": {
+        "max": 100,
+        "initial": 100,
+        "decayPerMinute": 0.25
+      },
+      "affection": {
+        "max": 500,
+        "initial": 100,
+        "idleDecayPerMinute": 0.2
+      }
+    },
+    "hitBox": {
+      "x0": 0.28,
+      "y0": 0.05,
+      "x1": 0.72,
+      "y1": 0.95
+    },
+    "touch": {
+      "zones": [
+        {
+          "name": "head",
+          "y0": 0,
+          "y1": 0.3333,
+          "branches": [
+            {
+              "probability": 0.3,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 5
+                }
+              ],
+              "state": "shy",
+              "stateMs": 3300,
+              "phrases": [
+                "呀!突然被摸头…好害羞~"
+              ]
+            },
+            {
+              "probability": 0.7,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 5
+                }
+              ],
+              "phrases": [
+                "唔…好舒服~"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "body",
+          "y0": 0.3333,
+          "y1": 0.6667,
+          "branches": [
+            {
+              "probability": 0.3,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 10
+                }
+              ],
+              "state": "shy2",
+              "stateMs": 3220,
+              "phrases": [
+                "呀!别…别碰那里啦~"
+              ]
+            },
+            {
+              "probability": 0.7,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 10
+                }
+              ],
+              "phrases": [
+                "喂!你在摸哪里啦?"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "legs",
+          "y0": 0.6667,
+          "y1": 1,
+          "branches": [
+            {
+              "probability": 0.3,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 30
+                }
+              ],
+              "state": "shy3",
+              "stateMs": 3220,
+              "phrases": [
+                "呀!…那就…稍微一下下哦~"
+              ]
+            },
+            {
+              "probability": 0.07,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 30
+                }
+              ],
+              "phrases": [
+                "不…不可以偷看啦!"
+              ]
+            },
+            {
+              "probability": 0.63,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": -5
+                }
+              ],
+              "phrases": [
+                "哼!讨厌!"
+              ]
+            }
+          ]
+        }
+      ],
+      "clickBoost": {
+        "stat": "mood",
+        "min": 0,
+        "max": 3
+      }
+    },
+    "passiveIncome": {
+      "currency": "treats",
+      "amount": 1,
+      "intervalMs": 1800000
+    },
+    "work": {
+      "state": "work",
+      "successState": "work-success",
+      "failState": "work-fail",
+      "tickMs": 10000,
+      "resultMs": {
+        "success": 3000,
+        "fail": 3000
+      },
+      "successProbability": 0.5,
+      "success": {
+        "effects": [
+          {
+            "currency": "treats",
+            "amount": 1
+          }
+        ]
+      }
+    },
+    "sleep": {
+      "state": "sleep",
+      "restore": {
+        "stat": "energy",
+        "amount": 4,
+        "intervalMs": 30000
+      }
+    },
+    "shop": {
+      "items": [
+        {
+          "id": "food1",
+          "label": "特制黄油面包",
+          "price": 2,
+          "currency": "treats",
+          "effects": [
+            {
+              "stat": "hunger",
+              "amount": 40
+            }
+          ]
+        },
+        {
+          "id": "food2",
+          "label": "红豆沙包",
+          "price": 4,
+          "currency": "treats",
+          "effects": [
+            {
+              "stat": "hunger",
+              "amount": 80
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

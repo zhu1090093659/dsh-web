@@ -113,6 +113,49 @@ describe('frames2dRenderer', () => {
     handle.dispose()
   })
 
+  it('swaps the base idle target via setIdleTrack (skin semantics)', () => {
+    const skinConfig: PetFrames2dConfig = {
+      tracks: {
+        idle: { frames: ['/pet/miku/idle/1.webp'], durations: [100], loop: true },
+        skin: { frames: ['/pet/miku/skin/1.webp'], durations: [100], loop: true },
+        happy: { frames: ['/pet/miku/happy/1.webp'], durations: [100], loop: false, fallback: 'idle' },
+      },
+      phases: { idle: 'idle' },
+      skins: [{ id: 's1', label: 'S1', idleTrack: 'skin' }],
+    }
+    const { ctx, img } = setup()
+    const handle = frames2dRenderer.mount(ctx, frames2dRenderer.validateConfig(skinConfig)) as Frames2dRendererHandle
+    expect(handle.currentTrack()).toBe('idle')
+    // Selecting the skin swaps the base idle immediately (no override held).
+    handle.setIdleTrack('skin')
+    expect(handle.currentTrack()).toBe('skin')
+    expect(img().getAttribute('src')).toBe('/pet/miku/skin/1.webp')
+    // A gameplay override still plays, then settles into the skin idle.
+    handle.setState('happy')
+    expect(handle.currentTrack()).toBe('happy')
+    vi.advanceTimersByTime(150)
+    expect(handle.currentTrack()).toBe('skin')
+    // Restoring undefined returns to the manifest idle target.
+    handle.setIdleTrack(undefined)
+    expect(handle.currentTrack()).toBe('idle')
+    // Unknown skin tracks are ignored.
+    handle.setIdleTrack('ghost')
+    expect(handle.currentTrack()).toBe('idle')
+    handle.dispose()
+  })
+
+  it('drops skins whose idleTrack is missing or non-looping in validateConfig', () => {
+    const parsed = frames2dRenderer.validateConfig({
+      ...CONFIG,
+      skins: [
+        { id: 'good', label: 'Good', idleTrack: 'idle' },
+        { id: 'loop', label: 'Loop', idleTrack: 'happy' },
+        { id: 'ghost', label: 'Ghost', idleTrack: 'nope' },
+      ],
+    })
+    expect(parsed.skins).toEqual([{ id: 'good', label: 'Good', idleTrack: 'idle' }])
+  })
+
   it('re-kicks a stalled looping track via the watchdog', () => {
     const { ctx, img } = setup()
     const handle = frames2dRenderer.mount(ctx, frames2dRenderer.validateConfig(CONFIG)) as Frames2dRendererHandle

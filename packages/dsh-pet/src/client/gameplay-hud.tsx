@@ -11,7 +11,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactElement } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type { PetDefinition } from '../registry.ts'
+import type { PetDefinition, PetSkinDefinition } from '../registry.ts'
 import type { PetGameplayVerbResult } from '../service.ts'
 import { touchZoneAt } from '../gameplay.ts'
 import type { PetStoreInstance } from './pet-store.ts'
@@ -35,6 +35,8 @@ export interface GameplayApi {
  */
 export interface GameplayBus {
   setTrack?: (track?: string) => void
+  /** Swap the pet's base idle track (skin switch); undefined restores default. */
+  setIdleTrack?: (track?: string) => void
   tap?: (fx: number, fy: number) => void
   /**
    * Card open/close request from the chrome (the hover panel's 玩法 action):
@@ -44,7 +46,7 @@ export interface GameplayBus {
   openCard?: (open?: boolean) => void
 }
 
-type HudPage = 'root' | 'shop'
+type HudPage = 'root' | 'shop' | 'skins'
 
 /** One floating toast (prize / insufficient funds). */
 interface HudFloat {
@@ -71,6 +73,10 @@ export function GameplayHud(props: {
 
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState<HudPage>('root')
+  // Currently selected skin id (base idle swap); undefined = default look.
+  const [skinId, setSkinId] = useState<string | undefined>(undefined)
+  const skinIdRef = useRef<string | undefined>(undefined)
+  skinIdRef.current = skinId
   const hudRef = useRef<HTMLDivElement | null>(null)
   const cardRef = useRef<HTMLDivElement | null>(null)
   const [floats, setFloats] = useState<HudFloat[]>([])
@@ -83,6 +89,7 @@ export function GameplayHud(props: {
   const touchLockUntilRef = useRef(0)
   const missRef = useRef(0)
   const busyRef = useRef(false)
+  const lowHeldRef = useRef(false)
 
   // Dynamic-key lookups (stat ids / currency ids are manifest data).
   const tr = props.t as unknown as (key: string, values?: Record<string, string | number>) => string
@@ -104,8 +111,32 @@ export function GameplayHud(props: {
   // Tap handling (registered on the bus; PetSprite reports sprite-box
   // fractions). Sleep wakes on tap; work blocks taps; a held touch
   // animation turns taps into the plain-click boost.
+  // Skin contract: while a skin is selected, taps only ever play that
+  // skin's own click actions — a miss resolves to the plain click boost,
+  // never the default touch zones (so a skinned pet cannot trigger the
+  // default pet's shy/work reactions).
   useEffect(() => {
     if (def === undefined) return undefined
+    // Play a one-shot override track and lock tap input for its duration so
+    // consecutive taps cannot retrigger mid-play (skin click actions and
+    // default touch-zone reactions share this path).
+    const holdTrack = (track: string, holdMs: number): void => {
+      bus.setTrack?.(track)
+      touchLockUntilRef.current = Date.now() + holdMs
+      window.setTimeout(() => {
+        if (Date.now() >= touchLockUntilRef.current) bus.setTrack?.(undefined)
+      }, holdMs)
+    }
+    const speak = (phrases?: string[]): void => {
+      if (phrases !== undefined && phrases.length > 0) {
+        const phrase = phrases[Math.floor(Math.random() * phrases.length)]!
+        store.actions.setFeedback({ text: phrase, kind: 'none', at: Date.now() })
+      }
+    }
+    // Total play time of a track in ms (its fallback lands back in the skin
+    // base idle, so holding the lock for the full loop is unnecessary).
+    const trackDuration = (track: string): number =>
+      definition.frames2d?.tracks[track]?.durations.reduce((sum, ms) => sum + ms, 0) ?? 0
     bus.tap = (fx, fy) => {
       if (modeRef.current === 'sleep') {
         void api.setMode(null).then(applyResult, () => undefined)
@@ -120,19 +151,34 @@ export function GameplayHud(props: {
         void api.touch().then(applyResult, () => undefined)
         return
       }
+      const activeSkin = definition.frames2d?.skins?.find(skin => skin.id === skinIdRef.current)
+      if (activeSkin !== undefined) {
+        // Skin click actions roll first (declared order, cumulative
+        // probabilities); on a hit play the action's track once. A miss
+        // stays on the plain click boost — never the default touch zones.
+        const actions = activeSkin.clickActions ?? []
+        if (actions.length > 0) {
+          let roll = Math.random()
+          const fired = actions.find(action => {
+            if (roll < action.probability) return true
+            roll -= action.probability
+            return false
+          })
+          if (fired !== undefined) {
+            holdTrack(fired.track, trackDuration(fired.track) || 3000)
+            speak(fired.phrases)
+            return
+          }
+        }
+        void api.touch().then(applyResult, () => undefined)
+        return
+      }
       const zone = def.touch === undefined ? undefined : touchZoneAt(def.touch, hy)
       if (zone === undefined) return
       void api.touch(zone.name).then((result) => {
         applyResult(result)
         if (result.hit !== true) return
-        if (result.state !== undefined) {
-          bus.setTrack?.(result.state)
-          const holdMs = result.stateMs ?? 3000
-          touchLockUntilRef.current = Date.now() + holdMs
-          window.setTimeout(() => {
-            if (Date.now() >= touchLockUntilRef.current) bus.setTrack?.(undefined)
-          }, holdMs)
-        }
+        if (result.state !== undefined) holdTrack(result.state, result.stateMs ?? 3000)
         if (result.phrase !== undefined) {
           store.actions.setFeedback({ text: result.phrase, kind: 'none', at: Date.now() })
         }
@@ -205,6 +251,7 @@ export function GameplayHud(props: {
       if (phaseRef.current !== 'idle') return
       if (modeRef.current !== null || draggingRef.current) return
       if (Date.now() < touchLockUntilRef.current) return
+      if (lowHeldRef.current) return // low-energy drowsy owns the visual
       let pickedAct: { track: string; weight: number; phrases?: string[] } | undefined
       if (missRef.current >= director.maxMiss) {
         // Forced act: pick among the acts only.
@@ -277,6 +324,39 @@ export function GameplayHud(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the loop keys on the mode value
   }, [definition.id, def, view?.mode])
 
+  // Low-energy auto-animation: while the named stat sits below its threshold
+  // (and the pet is neither working/sleeping nor being dragged or touched)
+  // maintain the drowsy track; it recovers to the phase map once the stat
+  // reaches the recover bound or the pet enters another gameplay mode. Uses
+  // an interval (not just a poll delta) so a brief touch/drag override
+  // re-asserts rather than leaving the pet stuck on a stale override.
+  useEffect(() => {
+    const le = def?.lowEnergy
+    if (def === undefined || le === undefined) return undefined
+    const timer = window.setInterval(() => {
+      if (view?.mode !== null) return // work/sleep loops own the override
+      if (draggingRef.current) return // drag track owns it while dragging
+      if (Date.now() < touchLockUntilRef.current) return // let a touch animation finish
+      const value = view?.stats?.[le.stat] ?? le.recover
+      const shouldHold = value < le.threshold
+      if (shouldHold) {
+        lowHeldRef.current = true
+        bus.setTrack?.(le.track)
+      } else if (lowHeldRef.current) {
+        lowHeldRef.current = false
+        bus.setTrack?.(undefined)
+      }
+    }, 1000)
+    return () => {
+      window.clearInterval(timer)
+      if (lowHeldRef.current) {
+        lowHeldRef.current = false
+        bus.setTrack?.(undefined)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one loop per pet definition
+  }, [definition.id, def])
+
   if (def === undefined || view === undefined) return null
 
   const mode = view.mode
@@ -301,6 +381,12 @@ export function GameplayHud(props: {
 
   const setMode = (next: 'work' | 'sleep' | null): void => {
     void api.setMode(next).then(applyResult, () => undefined)
+  }
+
+  const skins = definition.frames2d?.skins
+  const selectSkin = (skin: PetSkinDefinition | undefined): void => {
+    setSkinId(skin?.id)
+    bus.setIdleTrack?.(skin?.idleTrack)
   }
 
   return (
@@ -334,15 +420,6 @@ export function GameplayHud(props: {
                 })}
               </div>
               <div className={styles.gameplayActions}>
-                {def.work !== undefined && (
-                  <button
-                    type="button"
-                    className={styles.action}
-                    onClick={() => setMode(mode === 'work' ? null : 'work')}
-                  >
-                    {tr(mode === 'work' ? 'pet.gameplay.stopWork' : 'pet.gameplay.work')}
-                  </button>
-                )}
                 {def.sleep !== undefined && (
                   <button
                     type="button"
@@ -355,6 +432,20 @@ export function GameplayHud(props: {
                 {shop !== undefined && (
                   <button type="button" className={styles.action} onClick={() => setPage('shop')}>
                     {tr('pet.gameplay.shop')}
+                  </button>
+                )}
+                {skins !== undefined && skins.length > 0 && (
+                  <button type="button" className={styles.action} onClick={() => setPage('skins')}>
+                    {tr('pet.gameplay.skin')}
+                  </button>
+                )}
+                {def.work !== undefined && (
+                  <button
+                    type="button"
+                    className={styles.action}
+                    onClick={() => setMode(mode === 'work' ? null : 'work')}
+                  >
+                    {tr(mode === 'work' ? 'pet.gameplay.stopWork' : 'pet.gameplay.work')}
                   </button>
                 )}
               </div>
@@ -378,6 +469,34 @@ export function GameplayHud(props: {
                     <span className={styles.gameplayShopItemPrice}>
                       {item.price} {currencyLabel(item.currency)}
                     </span>
+                  </button>
+                ))}
+              </div>
+              <div className={styles.gameplayActions}>
+                <button type="button" className={styles.action} onClick={() => setPage('root')}>
+                  {tr('pet.gameplay.back')}
+                </button>
+              </div>
+            </>
+          )}
+          {page === 'skins' && skins !== undefined && (
+            <>
+              <div className={styles.gameplaySkinItems}>
+                <button
+                  type="button"
+                  className={skinId === undefined ? styles.gameplaySkinItem + ' ' + styles.gameplaySkinItemActive : styles.gameplaySkinItem}
+                  onClick={() => selectSkin(undefined)}
+                >
+                  {tr('pet.gameplay.skinDefault')}
+                </button>
+                {skins.map(skin => (
+                  <button
+                    key={skin.id}
+                    type="button"
+                    className={skinId === skin.id ? styles.gameplaySkinItem + ' ' + styles.gameplaySkinItemActive : styles.gameplaySkinItem}
+                    onClick={() => selectSkin(skin)}
+                  >
+                    {skin.label}
                   </button>
                 ))}
               </div>

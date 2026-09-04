@@ -1,0 +1,20 @@
+NOTICE
+======
+
+blue-throated-bee-eater skin — third-party asset provenance.
+
+Background photograph
+---------------------
+
+- File: assets/blue-throated-bee-eater.jpg
+- Title: "Blue-throated Bee-eater in Low Flight"
+- Subject: Blue-throated Bee-eater (Merops viridis), Hat Wanakon National Park, Thailand
+- Author / copyright holder: Kriangsak Hongchumpae
+- Source: Wikimedia Commons,
+  https://commons.wikimedia.org/wiki/File:Blue-throated_Bee-eater_in_Low_Flight.jpg
+- License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0),
+  https://creativecommons.org/licenses/by-sa/4.0
+- Changes made: downscaled to 1920 px wide and re-compressed for web distribution.
+
+Skin code, stylesheet and manifest are original work of dsh-web and licensed
+under the Apache-2.0 license in the LICENSE file of this directory.

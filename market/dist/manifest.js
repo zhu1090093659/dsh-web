@@ -698,6 +698,34 @@ window.SKIN_MANIFEST = {
           }
         }
       }
+    },
+    {
+      "id": "blue-throated-bee-eater",
+      "name": "蓝喉蜂虎",
+      "nameEn": "Blue-throated Bee-eater",
+      "author": "dsh-web",
+      "tagline": "飞掠碧空的蓝喉蜂虎：喉部湛蓝、上体青绿、头顶栗红，云雾般虚化的自然背景",
+      "description": "蓝喉蜂虎以鸟的真实色彩重构 DSH Web GUI：湛蓝（#2b87d8）作主交互与品牌色，青绿点缀次级表面，栗红只用于警告——正如蜂虎头顶的棕色羽冠。亮暗两态完整覆盖语义 token，照片背景（Kriangsak Hongchumpae 摄，CC BY-SA 4.0）在浅纱幕之后铺满视口，面板在背景可见时切换为磨砂玻璃态；Wallpaper Engine 壁纸与用户手动背景始终优先于它。",
+      "accent": "#2b87d8",
+      "preview": {
+        "light": "assets/skins/blue-throated-bee-eater/preview/light.jpg",
+        "dark": "assets/skins/blue-throated-bee-eater/preview/dark.jpg"
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/blue-throated-bee-eater/assets/blue-throated-bee-eater.jpg",
+            "scrim": "linear-gradient(rgba(9, 45, 64, 0.14) 0%, rgba(9, 45, 64, 0.08) 45%, rgba(9, 45, 64, 0.20) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/blue-throated-bee-eater/assets/blue-throated-bee-eater.jpg",
+            "scrim": "linear-gradient(rgba(6, 30, 45, 0.30) 0%, rgba(6, 30, 45, 0.22) 45%, rgba(6, 30, 45, 0.36) 100%)"
+          }
+        }
+      }
     }
   ]
 }

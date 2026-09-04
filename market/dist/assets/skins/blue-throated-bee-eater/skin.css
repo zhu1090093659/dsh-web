@@ -1,0 +1,221 @@
+/**
+ * 蓝喉蜂虎 (Blue-throated Bee-eater) — v2 skin stylesheet (issue #506 contract).
+ *
+ * L1: remap the official --dsw-alias-* semantic tokens in both themes.
+ * Light values on :root, dark values under body[data-ds-dark-theme] (the
+ * official dark-theme attribute lives on document.body). The loader
+ * force-scopes every selector under html[data-dsh-skin="blue-throated-bee-eater"];
+ * write :root / body heads exactly as you would for the official shell.
+ *
+ * Palette follows the bird itself: throat azure (#2b87d8) for brand and
+ * interaction, teal-green surfaces, chestnut (#b26a3b) reserved for warnings,
+ * deep blue-ink text. A CC BY-SA 4.0 flight photograph (see NOTICE) fills
+ * the backdrop declared in skin.json; while any backdrop is visible the
+ * panels switch to a translucent frosted state via the unified
+ * data-dsh-backdrop-active marker (Wallpaper Engine and user manual
+ * backgrounds included).
+ *
+ * No patches.css, no hooks.mjs: everything here is L1 token remap plus the
+ * L2 semantic-attribute anchors (data-dsh-surface / data-dsh-part).
+ */
+
+:root {
+  /* surfaces */
+  --dsw-alias-bg-base: #eef6f9;
+  --dsw-alias-bg-layer-1: #ffffff;
+  --dsw-alias-bg-layer-2: #e3f0f5;
+  --dsw-alias-bg-layer-3: #d7e9f0;
+  --dsw-alias-bg-overlay: #ffffffe0;
+  --dsw-alias-bg-skeleton: #0e3a5610;
+
+  /* borders */
+  --dsw-alias-border-l1: #0e3a5614;
+  --dsw-alias-border-l2: #0e3a5624;
+  --dsw-alias-border-l3: #0e3a5638;
+  --dsw-alias-border-l4: #0e3a5648;
+
+  /* labels */
+  --dsw-alias-label-primary: #14323e;
+  --dsw-alias-label-secondary: #3c5a66;
+  --dsw-alias-label-tertiary: #65808c;
+  --dsw-alias-label-dimmed: #86a0ab;
+  --dsw-alias-label-caption: #9cb3bc;
+
+  /* brand + interactive */
+  --dsw-alias-brand-primary: #2b87d8;
+  --dsw-alias-brand-text: #0c2f47;
+  --dsw-alias-interactive-bg-hover: #2b87d814;
+  --dsw-alias-interactive-bg-active: #2b87d824;
+
+  /* state colors */
+  --dsw-alias-state-error-primary: #d64545;
+  --dsw-alias-state-warn-primary: #b26a3b;
+  --dsw-alias-state-success-primary: #2f9e6e;
+  --dsw-alias-state-business-primary: #2b87d8;
+
+  /* buttons (primary-action token contract: fill + hover + foreground) */
+  --dsw-alias-button-primary-fill: #2b87d8;
+  --dsw-alias-button-primary-hover: #3f97e2;
+  --dsw-alias-label-primary-foreground: #06283a;
+  --dsw-alias-button-contrast-fill: #14323e;
+  --dsw-alias-button-elevated-fill: #14323e;
+  --dsw-alias-button-floating-fill: #1b3340;
+  --dsw-alias-button-floating-hover: #24414f;
+
+  /* shell anchors */
+  --dsw-specific-sidebar-fill: #e3f0f5;
+  --dsw-specific-sidebar-nav-item-hover: #2b87d814;
+  --dsw-specific-sidebar-nav-item-active: #2b87d824;
+  --dsw-specific-sidebar-nav-item-active-accent: #2b87d8;
+  --dsw-specific-bubble: #d7e9f0;
+  --dsw-specific-input-major: #eef6f9;
+  --dsw-specific-menu: #eef6f9;
+  --dsw-specific-selector: #e8f2f6;
+
+  /* overlays + elevation */
+  --dsw-alias-tooltip-bg: #14323e;
+  --dsw-alias-tooltip-fg: #e2f1f5;
+  --dsw-shadow-lv1: 0 1px 2px #0e3a5614;
+  --dsw-shadow-lv2: 0 4px 12px #0e3a561f;
+  --dsw-shadow-lv3: 0 12px 32px #0e3a562b;
+
+  /* scrollbars */
+  --dsw-alias-scrollbar-bg-l2: #0e3a5620;
+  --dsw-alias-scrollbar-hover-l2: #0e3a5638;
+}
+
+body[data-ds-dark-theme] {
+  /* surfaces */
+  --dsw-alias-bg-base: #0c2029;
+  --dsw-alias-bg-layer-1: #122b36;
+  --dsw-alias-bg-layer-2: #163541;
+  --dsw-alias-bg-layer-3: #1b3f4c;
+  --dsw-alias-bg-overlay: #122b36e0;
+  --dsw-alias-bg-skeleton: #7fd4e810;
+
+  /* borders */
+  --dsw-alias-border-l1: #7fd4e814;
+  --dsw-alias-border-l2: #7fd4e824;
+  --dsw-alias-border-l3: #7fd4e838;
+  --dsw-alias-border-l4: #7fd4e84d;
+
+  /* labels */
+  --dsw-alias-label-primary: #e2f1f5;
+  --dsw-alias-label-secondary: #a9c7d0;
+  --dsw-alias-label-tertiary: #7fa0ab;
+  --dsw-alias-label-dimmed: #5f818d;
+  --dsw-alias-label-caption: #4f727e;
+
+  /* brand + interactive */
+  --dsw-alias-brand-primary: #41a3e8;
+  --dsw-alias-brand-text: #d7ecf5;
+  --dsw-alias-interactive-bg-hover: #41a3e818;
+  --dsw-alias-interactive-bg-active: #41a3e82b;
+
+  /* state colors */
+  --dsw-alias-state-error-primary: #f06666;
+  --dsw-alias-state-warn-primary: #e0a05c;
+  --dsw-alias-state-success-primary: #4cc58f;
+  --dsw-alias-state-business-primary: #41a3e8;
+
+  /* buttons */
+  --dsw-alias-button-primary-fill: #2b87d8;
+  --dsw-alias-button-primary-hover: #41a3e8;
+  --dsw-alias-label-primary-foreground: #06283a;
+  --dsw-alias-button-contrast-fill: #0a2430;
+  --dsw-alias-button-elevated-fill: #1b3340;
+  --dsw-alias-button-floating-fill: #163541;
+  --dsw-alias-button-floating-hover: #1b3f4c;
+
+  /* shell anchors */
+  --dsw-specific-sidebar-fill: #122b36;
+  --dsw-specific-sidebar-nav-item-hover: #41a3e818;
+  --dsw-specific-sidebar-nav-item-active: #41a3e82b;
+  --dsw-specific-sidebar-nav-item-active-accent: #41a3e8;
+  --dsw-specific-bubble: #163541;
+  --dsw-specific-input-major: #122b36;
+  --dsw-specific-menu: #122b36;
+  --dsw-specific-selector: #163541;
+
+  /* overlays + elevation */
+  --dsw-alias-tooltip-bg: #e2f1f5;
+  --dsw-alias-tooltip-fg: #0c2029;
+  --dsw-shadow-lv1: 0 1px 2px #00000066;
+  --dsw-shadow-lv2: 0 4px 12px #00000080;
+  --dsw-shadow-lv3: 0 12px 32px #00000099;
+
+  /* scrollbars */
+  --dsw-alias-scrollbar-bg-l2: #7fd4e826;
+  --dsw-alias-scrollbar-hover-l2: #7fd4e845;
+}
+
+/* Translucent glass state, only while a backdrop is visible (the skin's own
+ * backgroundMedia, a Wallpaper Engine wallpaper via data-dsh-wallpaper-active,
+ * or any source via the unified data-dsh-backdrop-active marker). Opaque by
+ * default; the glass treatment below rides on these token overrides. */
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) {
+  --dsw-alias-bg-base: #eef6f98f;
+  --dsw-alias-bg-layer-1: #ffffffbd;
+  --dsw-alias-bg-layer-2: #e3f0f5b3;
+  --dsw-alias-bg-layer-3: #d7e9f0a8;
+  --dsw-specific-sidebar-fill: #e3f0f5c2;
+}
+
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) {
+  --dsw-alias-bg-base: #0c20299a;
+  --dsw-alias-bg-layer-1: #122b36c2;
+  --dsw-alias-bg-layer-2: #163541b8;
+  --dsw-alias-bg-layer-3: #1b3f4cb0;
+  --dsw-specific-sidebar-fill: #122b36c2;
+}
+
+/* Frosted-glass surfaces while a backdrop is visible: soft blur with a
+ * saturated lift and an azure-tinted inner highlight. Surfaces stay fully
+ * opaque and flat when no backdrop is active (the restrained default). The
+ * photo therefore reads through the composer, settings, dialogs, side panels
+ * and pet bubble, never through the conversation text itself. */
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-surface="composer"],
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-surface="settings"],
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-part="dialog"],
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-part="panel"],
+body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-plugin="pet"] [data-dsh-part="bubble"] {
+  -webkit-backdrop-filter: blur(20px) saturate(135%);
+  backdrop-filter: blur(20px) saturate(135%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    var(--dsw-shadow-lv2);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.02) 24%, rgba(255, 255, 255, 0) 48%);
+}
+
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-surface="composer"],
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-surface="settings"],
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-part="dialog"],
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-part="panel"],
+body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) [data-dsh-plugin="pet"] [data-dsh-part="bubble"] {
+  -webkit-backdrop-filter: blur(22px) saturate(120%);
+  backdrop-filter: blur(22px) saturate(120%);
+  box-shadow:
+    inset 0 1px 0 rgba(88, 176, 232, 0.16),
+    inset 0 0 0 1px rgba(88, 176, 232, 0.05),
+    var(--dsw-shadow-lv2);
+  background-image: linear-gradient(180deg, rgba(88, 176, 232, 0.07) 0%, rgba(88, 176, 232, 0.02) 24%, rgba(88, 176, 232, 0) 48%);
+}
+
+/* Fallback when backdrop-filter is unsupported: lean on the translucent
+ * token fills only, with a slightly stronger veil for readability. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) {
+    --dsw-alias-bg-base: #eef6f9c4;
+    --dsw-alias-bg-layer-1: #ffffffd9;
+    --dsw-alias-bg-layer-2: #e3f0f5d0;
+    --dsw-alias-bg-layer-3: #d7e9f0c4;
+  }
+
+  body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-dsh-wallpaper-active]) {
+    --dsw-alias-bg-base: #0c2029bd;
+    --dsw-alias-bg-layer-1: #122b36d6;
+    --dsw-alias-bg-layer-2: #163541cc;
+    --dsw-alias-bg-layer-3: #1b3f4cc4;
+  }
+}

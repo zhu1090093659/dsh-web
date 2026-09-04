@@ -248,7 +248,9 @@
    * 声明式背景画（contributes.backgroundMedia）静态渲染：镜像皮肤中心运行时的
    * installBackground()——固定 background 装饰层（z-index:-2）放主题变体的媒体
    * （cover 铺满 + 可选 scrim 蒙层），并把 body 背景临时置为透明、写入
-   * --dsh-skin-scrim 标记，让全透面板正确透出画作。换肤/切主题时重建。 */
+   * --dsh-skin-scrim 标记，让全透面板正确透出画作；同时置 html/body 的
+   * data-dsh-backdrop-active（镜像 backdrop-scene.ts），使皮肤 CSS 的磨砂
+   * 玻璃态在模拟器预览里与运行时一致。换肤/切主题时重建。 */
   var skinBackdrop = null
   var bodyPrevBg = null
 
@@ -262,6 +264,8 @@
       bodyPrevBg = null
     }
     document.body.style.removeProperty('--dsh-skin-scrim')
+    document.documentElement.removeAttribute('data-dsh-backdrop-active')
+    document.body.removeAttribute('data-dsh-backdrop-active')
   }
 
   function renderSkinBackdrop(theme) {
@@ -308,6 +312,8 @@
     bodyPrevBg = document.body.style.getPropertyValue('background-color')
     document.body.style.setProperty('background-color', 'transparent')
     document.body.style.setProperty('--dsh-skin-scrim', '1')
+    document.documentElement.setAttribute('data-dsh-backdrop-active', 'true')
+    document.body.setAttribute('data-dsh-backdrop-active', 'true')
   }
 
   /** 静态应用皮肤：注入 skin.css（+ 可选 patches.css）并在 <html> 上标记

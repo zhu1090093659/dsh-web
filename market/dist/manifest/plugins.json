@@ -675,6 +675,18 @@
       "npm": "dsh-audiogen",
       "category": "tools",
       "subcategory": "model"
+    },
+    {
+      "id": "dsh-linkdigest",
+      "name": "LinkDigest",
+      "rank": 54,
+      "nameEn": "LinkDigest",
+      "author": "jcaiagent7143-ui",
+      "description": "把小红书、抖音、TikTok、YouTube 或 X 链接转成文本：带时间戳的转写、屏幕文字、逐图描述与 OCR、正文与元数据。挂载托管的 MCP 服务，不需要本地浏览器和登录。",
+      "descriptionEn": "Turns a Xiaohongshu, Douyin, TikTok, YouTube or X link into text: transcript with timecodes, on-screen text, a description and OCR of every image, caption and metadata. Mounts a hosted MCP server over streamable HTTP, with no local browser or login step.",
+      "repo": "https://github.com/jcaiagent7143-ui/linkdigest-mcp",
+      "category": "integration",
+      "subcategory": "remote"
     }
   ]
 }

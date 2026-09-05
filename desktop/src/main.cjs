@@ -29,6 +29,7 @@ const {
   parseTokenUrlLine,
   ensureProfileFallbacks,
   checkVcRuntime,
+  isProgrammaticLaunch,
 } = require('./runtime.cjs');
 
 const READY_TIMEOUT_MS = 180000;
@@ -250,7 +251,12 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (event, argv) => {
+    // Programmatic spawns of this executable (doctor supervisor and
+    // provisioning children, CLI helpers) must never raise the window: they
+    // are headless Node children that fail the single-instance lock on
+    // purpose, and focusing on every retry is the #1382 popup loop.
+    if (isProgrammaticLaunch(argv)) return;
     if (mainWindow !== null) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();

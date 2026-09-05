@@ -24,6 +24,18 @@ import type { SupervisorResponse } from '../core/protocol.ts'
 /** Result of one spawned command. */
 export interface SpawnResult { code: number; stdout: string; stderr: string }
 
+/**
+ * Environment for a Node child spawned through `process.execPath`. When the
+ * host runs embedded in an Electron desktop app, execPath is the GUI binary:
+ * without ELECTRON_RUN_AS_NODE the spawn boots a second GUI instance — the
+ * single-instance lock refuses it, the main window is raised and focused on
+ * every retry, and the child exits without ever answering (#1382). Plain
+ * Node binaries ignore the variable, so it is set unconditionally.
+ */
+export function nodeChildEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  return { ...base, ELECTRON_RUN_AS_NODE: '1' }
+}
+
 /** Spawn seam: default runs the real process. */
 export type SpawnFn = (command: string, args: string[], opts: { timeoutMs: number; env?: NodeJS.ProcessEnv }) => Promise<SpawnResult>
 
@@ -96,10 +108,13 @@ function defaultSpawn(command: string, args: string[], opts: { timeoutMs: number
  * Default bounded-child spawn: the supervisor runs the current package CLI
  * with a parent-liveness watch on this process. Not detached and unref'd —
  * it joins this host's process group (process-group kills reach it) and it
- * never keeps the host's event loop alive on its own.
+ * never keeps the host's event loop alive on its own. The child env forces
+ * ELECTRON_RUN_AS_NODE so an Electron host binary (desktop app embedding the
+ * doctor host) runs the supervisor as headless Node instead of booting a
+ * second GUI instance (#1382).
  */
-function defaultSpawnSupervisor(deps: DoctorLifecycleDeps): void {
-  const child = spawn(process.execPath, [deps.cliPath, 'supervisor', '--parent-pid', String(process.pid)], { env: process.env, stdio: 'ignore' })
+export function defaultSpawnSupervisor(deps: DoctorLifecycleDeps): void {
+  const child = spawn(process.execPath, [deps.cliPath, 'supervisor', '--parent-pid', String(process.pid)], { env: nodeChildEnv(), stdio: 'ignore' })
   child.unref()
 }
 
@@ -177,7 +192,7 @@ export async function ensureDoctor(deps: DoctorLifecycleDeps): Promise<Lifecycle
   }
   if (await (deps.capsuleStale ?? defaultCapsuleStale.bind(undefined, deps.paths))(deps.version, deps.source)) {
     const spawnImpl = deps.spawn ?? defaultSpawn
-    const second = await spawnImpl(process.execPath, [deps.cliPath, 'provision'], { timeoutMs: PROVISION_TIMEOUT_MS })
+    const second = await spawnImpl(process.execPath, [deps.cliPath, 'provision'], { timeoutMs: PROVISION_TIMEOUT_MS, env: nodeChildEnv() })
     if (second.code !== 0) {
       return { ok: false, code: 'PROVISION_FAILED', message: second.stderr.trim() || second.stdout.trim() || 'provision exited ' + String(second.code), steps }
     }

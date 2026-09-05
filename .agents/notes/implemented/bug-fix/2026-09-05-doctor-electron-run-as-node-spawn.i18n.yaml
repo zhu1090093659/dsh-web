@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-05-doctor-electron-run-as-node-spawn.md: ea0f3d55b8c5c587176e8d6aa537bf687fe0adef
+2026-09-05-doctor-electron-run-as-node-spawn.zh.md: d3e4495283fbab1a86a822c4d478aa01499f60ec

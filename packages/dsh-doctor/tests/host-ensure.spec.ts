@@ -1,3 +1,4 @@
+import { spawn as nodeSpawn } from 'node:child_process'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -7,13 +8,20 @@ import {
   createDoctorLifecycle,
   defaultCapsuleStale,
   defaultProvisioned,
+  defaultSpawnSupervisor,
   ensureDoctor,
+  nodeChildEnv,
   uninstallDoctor,
   type DoctorLifecycleDeps,
   type SpawnResult,
 } from '../src/host/ensure.ts'
 import { credentialsFingerprint } from '../src/agent/capsule.ts'
 import type { SupervisorResponse } from '../src/core/protocol.ts'
+
+vi.mock('node:child_process', async importOriginal => {
+  const actual = await importOriginal<typeof import('node:child_process')>()
+  return { ...actual, spawn: vi.fn(() => ({ unref: () => undefined }) as never) }
+})
 
 const POLICY = { fullProtection: true, autoRepair: false, autoMigrate: true }
 
@@ -102,6 +110,9 @@ describe('ensureDoctor', () => {
     expect(outcome.ok).toBe(true)
     expect(outcome.steps).toEqual(['capsule'])
     expect(spawn.mock.calls[0]![1]).toEqual(['/site/lib/cli.mjs', 'provision'])
+    // The provision child must be forced onto Node as well: under an Electron
+    // host binary, execPath is the GUI executable (#1382).
+    expect((spawn.mock.calls[0]![2] as { env?: Record<string, string> }).env?.ELECTRON_RUN_AS_NODE).toBe('1')
     expect(status.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 
@@ -207,5 +218,29 @@ describe('capsule staleness and provisioning state', () => {
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
+  })
+})
+
+describe('nodeChildEnv and defaultSpawnSupervisor', () => {
+  it('forces ELECTRON_RUN_AS_NODE while preserving the host environment', () => {
+    const env = nodeChildEnv({ PATH: '/bin', DSH_HOME: '/home/u/.dsh' })
+    expect(env.ELECTRON_RUN_AS_NODE).toBe('1')
+    expect(env.DSH_HOME).toBe('/home/u/.dsh')
+    expect(env.PATH).toBe('/bin')
+  })
+
+  it('spawns the supervisor as a headless Node child of this process (#1382)', () => {
+    vi.mocked(nodeSpawn).mockClear()
+    const deps = depsWith({}).deps
+    defaultSpawnSupervisor(deps)
+    expect(nodeSpawn).toHaveBeenCalledTimes(1)
+    expect(nodeSpawn).toHaveBeenCalledWith(
+      process.execPath,
+      [deps.cliPath, 'supervisor', '--parent-pid', String(process.pid)],
+      {
+        env: expect.objectContaining({ ELECTRON_RUN_AS_NODE: '1' }),
+        stdio: 'ignore',
+      },
+    )
   })
 })

@@ -24,6 +24,25 @@ const DESKTOP_PORT_SPAN = 100;
 /** Marker file written into a profile directory this app seeded itself. */
 const SEED_MARKER = '.dsh-desktop-seed.json';
 
+/**
+ * argv fragments that mark a second launch as a programmatic spawn of this
+ * executable (doctor supervisor/provisioning children, CLI helpers) rather
+ * than a real user double-click. Raising the main window for such launches
+ * is the #1382 focus-stealing loop: every background retry repaints and
+ * focuses the window while the child itself fails the single-instance lock.
+ */
+const PROGRAMMATIC_LAUNCH_MARKERS = ['cli.mjs', 'supervisor', 'provision', '--parent-pid'];
+
+/**
+ * Decide whether a `second-instance` argv belongs to a programmatic spawn of
+ * the app executable. A genuine user launch carries no arguments.
+ * @param {readonly string[]} argv - full second-instance argv (exe path first).
+ * @returns {boolean}
+ */
+function isProgrammaticLaunch(argv) {
+  return argv.some((arg) => PROGRAMMATIC_LAUNCH_MARKERS.some((marker) => String(arg).includes(marker)));
+}
+
 /** Version stamp file produced by scripts/build-runtime.mjs. */
 const RUNTIME_STAMP = 'VERSION.json';
 
@@ -399,6 +418,7 @@ module.exports = {
   resolveRuntimePaths,
   resolveDshHome,
   childEnv,
+  isProgrammaticLaunch,
   readStampFile,
   profileAction,
   applyProfileSeed,

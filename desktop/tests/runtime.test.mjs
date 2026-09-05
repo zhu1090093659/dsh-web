@@ -14,6 +14,7 @@ const {
   resolveRuntimePaths,
   resolveDshHome,
   childEnv,
+  isProgrammaticLaunch,
   profileAction,
   applyProfileSeed,
   parseShasums,
@@ -144,6 +145,16 @@ test('the reserved set is exactly the plain dsh web CLI defaults', () => {
   assert.deepEqual([...RESERVED_PORTS].sort((a, b) => a - b), [3080, 3081]);
   assert.equal(DESKTOP_PORT_BASE, 3082);
   assert.equal(DESKTOP_PORT_SPAN, 100);
+});
+
+test('isProgrammaticLaunch marks doctor/CLI child spawns and not user launches (#1382)', () => {
+  // A genuine user double-click: exe path only (plus Electron-injected flags at most).
+  assert.equal(isProgrammaticLaunch(['C:\\app\\DeepSeek Harness.exe']), false);
+  assert.equal(isProgrammaticLaunch(['C:\\app\\DeepSeek Harness.exe', '--no-sandbox']), false);
+  // The doctor supervisor / provisioning children spawned via process.execPath.
+  assert.equal(isProgrammaticLaunch(['C:\\app\\DeepSeek Harness.exe', 'C:\\site\\lib\\cli.mjs', 'supervisor', '--parent-pid', '2228']), true);
+  assert.equal(isProgrammaticLaunch(['C:\\app\\DeepSeek Harness.exe', 'C:\\site\\lib\\cli.mjs', 'provision']), true);
+  assert.equal(isProgrammaticLaunch(['/app/cli.mjs', 'supervisor']), true);
 });
 
 test('isPortFree sees an open listener as occupied', async () => {

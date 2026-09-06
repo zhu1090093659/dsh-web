@@ -631,5 +631,16 @@
     "repo": "https://github.com/jcaiagent7143-ui/linkdigest-mcp",
     "category": "integration",
     "subcategory": "remote"
+  },
+  {
+    "id": "dsh-provider-signin",
+    "name": "Provider 登录入口",
+    "nameEn": "Provider Sign-in",
+    "author": "chunjin666",
+    "description": "给「模型」设置页的每个 provider 卡片补上订阅登录入口：渲染 llm-pi-ai 注册的 OAuth 授权流（ChatGPT 订阅、SuperGrok 设备码等），完整中继登录过程中的通知与提问，凭据永不离开 host 侧。",
+    "descriptionEn": "Provider sign-in seats for the Models settings page: renders the OAuth flows llm-pi-ai registers (ChatGPT subscription, SuperGrok device code, and more) into each provider card, relaying notices and prompts through a loopback-fenced attempt relay while credentials never leave the host.",
+    "repo": "https://github.com/chunjin666/dsh-provider-signin",
+    "category": "integration",
+    "subcategory": "external-ai"
   }
 ]

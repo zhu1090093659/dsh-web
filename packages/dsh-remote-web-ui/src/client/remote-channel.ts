@@ -14,7 +14,8 @@
  * - the family settings bridge (`/api/dsh-web-ui-settings/*`) stays
  *   loopback-only (same plane as SDK settings.*);
  * - `/api/*` (SDK methods and `/api/<plugin>/...` plugin namespaces),
- *   `/sidebar/*`, `/git/*`, and `/pet/*` ride the channel;
+ *   `/sidebar/*`, `/git/*`, `/pet/*`, and registered standalone plugin RPC
+ *   channels ride the channel;
  * - fetch, EventSource, WebSocket, and img/script/iframe `src` are patched;
  *   everything else calls the original unchanged.
  *
@@ -80,6 +81,7 @@ export function shouldRewriteFetchPath(pathname: string): boolean {
   if (pathname.startsWith(RULES.sidebarPrefix) || pathname === '/sidebar') return true
   if (pathname.startsWith(RULES.gitPrefix) || pathname === '/git') return true
   if (pathname.startsWith(RULES.petPrefix) || pathname === '/pet') return true
+  if (RULES.pluginRpcPrefixes.some(prefix => pathname.startsWith(prefix))) return true
   return false
 }
 

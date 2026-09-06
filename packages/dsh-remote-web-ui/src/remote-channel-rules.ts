@@ -26,6 +26,8 @@ export interface RemoteChannelRules {
   readonly sidebarPrefix: string
   readonly gitPrefix: string
   readonly petPrefix: string
+  /** Standalone Connection RPC channel prefixes contributed by plugins. */
+  readonly pluginRpcPrefixes: readonly string[]
   readonly wsPaths: readonly string[]
   /** Header carrying the cookieless device credential on gated fetches. */
   readonly deviceHeader: string
@@ -45,6 +47,10 @@ export const REMOTE_CHANNEL_RULES: RemoteChannelRules = {
   sidebarPrefix: '/sidebar/',
   gitPrefix: '/git/',
   petPrefix: '/pet/',
+  // dsh-mnemon 0.5.x registers standalone Connection RPC channels instead
+  // of nesting them below /api. They still need the paired /remote proxy on
+  // non-loopback origins or the Connection Host fence correctly returns 403.
+  pluginRpcPrefixes: ['/dsh-mnemon-'],
   // The official 0.1.2-alpha.2 line opens exactly one stream socket (the
   // Typert gateway mux, /api/remote.mux); the legacy /api/events.* paths
   // were removed by the SDK and stay absent here.

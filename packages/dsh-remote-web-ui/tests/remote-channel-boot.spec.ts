@@ -24,6 +24,9 @@ const PATH_MATRIX = [
   '/git',
   '/pet/whale/sprite.webp',
   '/pet',
+  '/dsh-mnemon-read/status-summary',
+  '/dsh-mnemon-write/source-management-mutate',
+  '/dsh-unregistered/read',
   '/assets/index.js',
 ]
 
@@ -87,6 +90,7 @@ describe('remote channel boot patch (issue #987)', () => {
     const script = buildRemoteChannelBootScript()
     expect(script).not.toContain('</script')
     expect(script).toContain('/api/pair/')
+    expect(script).toContain('/dsh-mnemon-')
     // The gateway stream mux must be embedded: the workspace/session streams
     // ride that one socket.
     expect(script).toContain('/api/remote.mux')

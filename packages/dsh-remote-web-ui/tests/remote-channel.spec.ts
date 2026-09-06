@@ -37,6 +37,9 @@ describe('rewrite rules', () => {
     expect(shouldRewriteFetchPath('/sidebar/api/fs.tree')).toBe(true)
     expect(shouldRewriteFetchPath('/git/api/status')).toBe(true)
     expect(shouldRewriteFetchPath('/pet/whale/sprite.webp')).toBe(true)
+    expect(shouldRewriteFetchPath('/dsh-mnemon-read/status-summary')).toBe(true)
+    expect(shouldRewriteFetchPath('/dsh-mnemon-write/source-management-mutate')).toBe(true)
+    expect(shouldRewriteFetchPath('/dsh-unregistered/read')).toBe(false)
     expect(shouldRewriteFetchPath('/m/api/session.list')).toBe(false)
     expect(shouldRewriteFetchPath('/assets/index.js')).toBe(false)
     expect(rewritePath('/api/session.list')).toBe(`${REMOTE_API_PREFIX}/session.list`)
@@ -139,6 +142,22 @@ describe('installRemoteChannel', () => {
       expect(window.state.fetchCalls.map(call => call.url)).toEqual(['https://tunnel.example.com/remote/api/session.list'])
       expect(unpaired).toBe(1)
       expect(paired).toBe(0)
+    } finally {
+      restore()
+    }
+  })
+
+  it('rewrites standalone Mnemon RPC calls through the paired channel', async () => {
+    const window = makeWindow()
+    const restore = installRemoteChannel(window)
+    try {
+      await window.fetch('/dsh-mnemon-read/status-summary', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+      })
+      expect(window.state.fetchCalls.map(call => call.url)).toEqual([
+        'https://tunnel.example.com/remote/dsh-mnemon-read/status-summary',
+      ])
     } finally {
       restore()
     }

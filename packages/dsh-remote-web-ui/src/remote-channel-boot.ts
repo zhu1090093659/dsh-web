@@ -64,6 +64,7 @@ export function buildRemoteChannelBootScript(rules: RemoteChannelRules = REMOTE_
     'if(p.indexOf(R.sidebarPrefix)===0||p==="/sidebar")return true;' +
     'if(p.indexOf(R.gitPrefix)===0||p==="/git")return true;' +
     'if(p.indexOf(R.petPrefix)===0||p==="/pet")return true;' +
+    'for(var i=0;i<R.pluginRpcPrefixes.length;i++){if(p.indexOf(R.pluginRpcPrefixes[i])===0)return true}' +
     'return false}' +
     'function sw(p){return R.wsPaths.indexOf(p)!==-1}' +
     'function rp(p){return R.remotePrefix+p}' +

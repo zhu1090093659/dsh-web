@@ -15179,6 +15179,7 @@ window.__ModuleLoader__.load({
 			sidebarPrefix: "/sidebar/",
 			gitPrefix: "/git/",
 			petPrefix: "/pet/",
+			pluginRpcPrefixes: ["/dsh-mnemon-"],
 			wsPaths: [
 				"/api/remote.mux",
 				"/sidebar/ws/terminal",
@@ -15209,7 +15210,8 @@ window.__ModuleLoader__.load({
 		* - the family settings bridge (`/api/dsh-web-ui-settings/*`) stays
 		*   loopback-only (same plane as SDK settings.*);
 		* - `/api/*` (SDK methods and `/api/<plugin>/...` plugin namespaces),
-		*   `/sidebar/*`, `/git/*`, and `/pet/*` ride the channel;
+		*   `/sidebar/*`, `/git/*`, `/pet/*`, and registered standalone plugin RPC
+		*   channels ride the channel;
 		* - fetch, EventSource, WebSocket, and img/script/iframe `src` are patched;
 		*   everything else calls the original unchanged.
 		*
@@ -15247,6 +15249,7 @@ window.__ModuleLoader__.load({
 			if (pathname.startsWith(RULES.sidebarPrefix) || pathname === "/sidebar") return true;
 			if (pathname.startsWith(RULES.gitPrefix) || pathname === "/git") return true;
 			if (pathname.startsWith(RULES.petPrefix) || pathname === "/pet") return true;
+			if (RULES.pluginRpcPrefixes.some((prefix) => pathname.startsWith(prefix))) return true;
 			return false;
 		}
 		/**

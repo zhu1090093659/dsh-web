@@ -54,6 +54,7 @@ const PACKAGES = [
   { pkg: 'dsh-market', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
   { pkg: 'dsh-pet', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
   { pkg: 'dsh-plugin-manager', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
+  { pkg: 'dsh-provider-signin', files: [{ file: 'src/client/locales.ts', shape: 'dictionaries' }] },
   { pkg: 'dsh-remote-web-ui', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
   { pkg: 'dsh-session-id', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },
   { pkg: 'dsh-session-archive', files: [{ file: 'src/client/locales.ts', shape: 'zh-en' }] },

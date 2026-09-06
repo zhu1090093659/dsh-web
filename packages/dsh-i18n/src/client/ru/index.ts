@@ -10,6 +10,7 @@ import { ru as doctor } from './doctor.ts'
 import { ru as gitGraph } from './git-graph.ts'
 import { ru as market } from './market.ts'
 import { ru as pet } from './pet.ts'
+import { ru as providerSignin } from './provider-signin.ts'
 import { ru as pluginManager } from './plugin-manager.ts'
 import { ru as remoteWebUi } from './remote-web-ui.ts'
 import { ru as sessionId } from './session-id.ts'
@@ -27,6 +28,7 @@ export const ruDictionaries: Record<string, Record<string, string>> = {
   'git-graph': gitGraph,
   'dsh-web-ui-market': market,
   'pet': pet,
+  'provider-signin': providerSignin,
   'settings.pluginManager': pluginManager,
   'remote': remoteWebUi,
   'session-id': sessionId,

@@ -1,0 +1,22 @@
+{
+  "// purpose": "Type-checks src (minus the host entry) plus tests together without emitting. The host entry src/index.ts is excluded so its host-face imports (webServer, authorization, credentials) stay out of the browser-facing program; tests import the pure core modules, the attempt store, and the routes.",
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"],
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.vitest.tsbuildinfo"
+  },
+  "include": ["src", "tests"],
+  "exclude": ["src/index.ts"]
+}

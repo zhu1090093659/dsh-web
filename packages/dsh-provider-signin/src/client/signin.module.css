@@ -1,0 +1,116 @@
+/* Sign-in seat styling: quiet, matching the provider card's density. */
+
+.signin {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--dsh-border-subtle, rgb(128 128 128 / 25%));
+  font-size: 12.5px;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgb(128 128 128 / 15%);
+}
+
+.badge[data-state='on'] {
+  background: rgb(48 164 108 / 18%);
+  color: var(--dsh-accent-quiet, inherit);
+}
+
+.methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.button {
+  padding: 3px 10px;
+  border: 1px solid rgb(128 128 128 / 35%);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+
+.button:hover {
+  border-color: rgb(128 128 128 / 60%);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.buttonSecondary {
+  composes: button;
+  opacity: 0.75;
+}
+
+.attempt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgb(128 128 128 / 25%);
+  border-radius: 8px;
+}
+
+.attemptHead {
+  font-weight: 600;
+}
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notice a {
+  color: var(--dsh-accent, #4c8bf5);
+}
+
+.code code {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgb(128 128 128 / 15%);
+  font-size: 14px;
+  letter-spacing: 2px;
+  user-select: all;
+}
+
+.prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.answerRow {
+  display: flex;
+  gap: 6px;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 8px;
+  border: 1px solid rgb(128 128 128 / 35%);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12.5px;
+}
+
+.error {
+  color: #d05656;
+}

@@ -631,5 +631,16 @@
     "repo": "https://github.com/jcaiagent7143-ui/linkdigest-mcp",
     "category": "integration",
     "subcategory": "remote"
+  },
+  {
+    "id": "dsh-session-manager",
+    "name": "会话管理",
+    "nameEn": "Session Manager",
+    "author": "SunshineR04",
+    "description": "在设置页管理已归档会话：列出、恢复或彻底删除（直接物理删除，无备份层）。会话菜单新增红色彻底删除项，附三个 agent 工具；已打开的会话也能立即删除，残留内存副本以归档集墓碑隐藏、重启后自动清理。",
+    "descriptionEn": "Manage archived DeepSeek Harness sessions from a Settings page: list, restore or permanently delete them (direct physical delete, no backup layer). Adds a red permanently-delete item to the session context menu and three agent tools. Open sessions delete immediately; the leftover in-memory copy is hidden via an archive-set tombstone until the next restart.",
+    "repo": "https://github.com/SunshineR04/dsh-session-manager",
+    "category": "utility",
+    "subcategory": "cleanup"
   }
 ]

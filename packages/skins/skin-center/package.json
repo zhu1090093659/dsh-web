@@ -70,6 +70,7 @@
     "lib",
     "contracts",
     "skins/blue-fantasy",
+    "skins/blueprint",
     "cordis.patch.yml",
     "README.md"
   ],

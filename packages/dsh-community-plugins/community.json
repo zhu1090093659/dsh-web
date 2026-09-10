@@ -643,5 +643,17 @@
     "npm": "dsh-quote-followup",
     "category": "ui",
     "subcategory": "chat"
+  },
+  {
+    "id": "plugin-effort-slider",
+    "name": "Effort Slider",
+    "nameEn": "Effort Slider",
+    "author": "mrSutivu",
+    "description": "输入框内的模型选择与推理强度滑杆二合一胶囊：带刻度拖拽、最高档流光动画，跟随主题变量，中英法三语。",
+    "descriptionEn": "Model picker and reasoning-effort slider in one composer pill: notched drag, max-effort shimmer, theme variables, English, French and Chinese labels.",
+    "repo": "https://github.com/mrSutivu/plugin-effort-slider",
+    "npm": "plugin-effort-slider",
+    "category": "ui",
+    "subcategory": "chat"
   }
 ]

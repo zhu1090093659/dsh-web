@@ -679,5 +679,16 @@
     "npm": "dsh-taskfold",
     "category": "tools",
     "subcategory": "context"
+  },
+  {
+    "id": "dsh-thread-tools",
+    "name": "会话线程工具",
+    "nameEn": "Thread Tools",
+    "author": "wig123",
+    "description": "把 Codex 的线程工具搬到 DSH 上：让模型列出你开着的那些会话、按正文检索它们、给某个正在跑的会话递消息并读回它的回答，还能新建空会话或从已有会话的已完成轮次分叉。",
+    "descriptionEn": "Codex's thread tools on DSH: the model can list the sessions you have open, search their content, hand one of them a message and read the answer back, open a fresh session, or branch one from its completed turns.",
+    "repo": "https://github.com/wig123/dsh-thread-tools",
+    "category": "tools",
+    "subcategory": "context"
   }
 ]

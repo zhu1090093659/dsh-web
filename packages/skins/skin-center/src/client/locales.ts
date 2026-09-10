@@ -36,6 +36,8 @@ export type SkinCenterKey =
   | 'inputCardBlurHint'
   | 'bubbleOpacity'
   | 'bubbleOpacityHint'
+  | 'bubbleBlur'
+  | 'bubbleBlurHint'
   | 'backgroundBlurHint'
   | 'backgroundBlurInert'
   | 'backgroundHint'
@@ -156,6 +158,8 @@ export const en: Record<SkinCenterKey, string> = {
   inputCardBlurHint: 'Blurs only the area behind the input card while backdrop art is visible; it does not blur the entire wallpaper.',
   bubbleOpacity: 'Bubble opacity',
   bubbleOpacityHint: 'Controls translucent message bubbles for skins that expose bubble alpha, such as Whale Mom.',
+  bubbleBlur: 'Bubble blur',
+  bubbleBlurHint: 'Blurs the backdrop behind translucent message bubbles; independent of bubble opacity, 0 disables.',
   backgroundBlurHint: 'Applies a separate Gaussian blur to the backdrop for the empty conversation and the conversation with content; 0 disables.',
   backgroundBlurInert: 'Visible only with skins that paint a backdrop; the official default has none.',
   backgroundHint: 'Instantly veils the backdrop behind the panels — higher values obscure the art to help you focus.',
@@ -277,6 +281,8 @@ export const zh: Record<SkinCenterKey, string> = {
   inputCardBlurHint: '仅模糊输入卡背后的区域，不会让整张壁纸变糊。',
   bubbleOpacity: '气泡不透明度',
   bubbleOpacityHint: '调节支持气泡 alpha 的皮肤消息气泡，例如鲸鱼妈妈。',
+  bubbleBlur: '气泡模糊程度',
+  bubbleBlurHint: '模糊半透明消息气泡背后的区域，与「气泡不透明度」相互独立，0 为关闭。',
   backgroundBlurHint: '对话为空与有内容时分别应用不同的背景高斯模糊强度，0 为关闭。',
   backgroundBlurInert: '仅对带背景图插画的皮肤可见；官方默认无背景图。',
   backgroundHint: '即时为面板背后的背景加遮罩——数值越高越能弱化插画，帮你集中注意力。',

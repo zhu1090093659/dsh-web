@@ -67,6 +67,7 @@ describe('migrateBackgroundFromSettings', () => {
         backgroundBlurContent: 0,
         inputCardBlur: 10,
         bubbleOpacity: 50,
+        bubbleBlur: 10,
       }),
     })
     expect(result.migrated).toBe(false)

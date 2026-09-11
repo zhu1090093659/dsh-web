@@ -739,6 +739,19 @@
       "npm": "dsh-taskfold",
       "category": "tools",
       "subcategory": "context"
+    },
+    {
+      "id": "dsh-voice-talk",
+      "name": "语音对话",
+      "rank": 59,
+      "nameEn": "Voice Talk",
+      "author": "duoduoqian708",
+      "description": "为 DeepSeek Harness Web 提供全屏语音通话：点麦克风边说边听，回复边生成边播报正文。",
+      "descriptionEn": "Full-screen voice conversation for the DeepSeek Harness Web GUI: talk hands-free and hear each reply spoken as it streams.",
+      "repo": "https://github.com/duoduoqian708/dsh-voice-talk",
+      "npm": "dsh-voice-talk",
+      "category": "ui",
+      "subcategory": "chat"
     }
   ]
 }

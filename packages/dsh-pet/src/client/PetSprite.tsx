@@ -329,7 +329,14 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   // the loop reads every tick. Under prefers-reduced-motion the sprite holds
   // its track's first frame instead of animating (presentation-only; the
   // animation state machine is untouched).
-  const spriteScale = display.size / cell.height
+  // Viewport guard: on high-devicePixelRatio desktops (e.g. DSH Desktop at
+  // 250% display scaling) the CSS viewport shrinks until the configured
+  // size/offset pushes the sprite past the visible area and only a slice of
+  // the pet renders. Cap the effective size so the whole sprite always fits.
+  const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1280
+  const viewportH = typeof window !== 'undefined' ? window.innerHeight : 720
+  const effectiveSize = Math.max(48, Math.min(display.size, viewportH * 0.6, viewportW * 0.6))
+  const spriteScale = effectiveSize / cell.height
   const phase = snapshot?.phase ?? 'idle'
   const animation = snapshot?.animation ?? 'idle'
   const scaleRef = useRef(spriteScale)
@@ -481,7 +488,19 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
     if (dragPos !== null) props.onDragEnd(dragPos.right, dragPos.bottom)
   }
 
-  const pos = dragPos ?? { right: display.right, bottom: display.bottom }
+  // Clamp the persisted/dragged offsets into the viewport as well: without
+  // this the saved position from a larger window (or a high-DPR desktop)
+  // parks the sprite partially off-screen and it stays clipped until the
+  // user drags it back.
+  const pos = ((): { right: number; bottom: number } => {
+    const raw = dragPos ?? { right: display.right, bottom: display.bottom }
+    const w = Math.round(cell.width * spriteScale)
+    const h = Math.round(cell.height * spriteScale)
+    return {
+      right: clampOffset(raw.right, Math.max(0, viewportW - w - 8)),
+      bottom: clampOffset(raw.bottom, Math.max(0, viewportH - h - 8)),
+    }
+  })()
   const spriteWidth = Math.round(cell.width * spriteScale)
   const spriteHeight = Math.round(cell.height * spriteScale)
 

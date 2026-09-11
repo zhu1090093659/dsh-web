@@ -787,6 +787,35 @@ window.SKIN_MANIFEST = {
           }
         }
       }
+    },
+    {
+      "id": "whalechan-harness",
+      "name": "Whale-chan 鲸鱼娘",
+      "nameEn": "Whale-chan Harness",
+      "author": "Whale-chan Theme contributors",
+      "tagline": "鲸鱼娘骑鲸品牌 · 海洋蓝界面 · Harness 工具同人图标",
+      "description": "面向 DeepSeek Harness Web GUI 的非官方 Whale-chan 社区同人皮肤。包含骑鲸品牌标志、工作区与文件图标、工具调用与控制图标、权限护盾、会话及子代理状态视觉。此 Skin Center 版本为纯声明式皮肤，不执行客户端 Hooks。",
+      "accent": "#248bda",
+      "preview": {
+        "light": "assets/skins/whalechan-harness/preview/light.jpg",
+        "dark": "assets/skins/whalechan-harness/preview/dark.jpg"
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/whalechan-harness/assets/background-light.jpg",
+            "scrim": "linear-gradient(rgba(247, 252, 255, 0.1), rgba(233, 247, 252, 0.2))"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/whalechan-harness/assets/background-dark.jpg",
+            "scrim": "linear-gradient(rgba(5, 18, 32, 0.18), rgba(8, 25, 43, 0.32))"
+          }
+        }
+      }
     }
   ]
 }

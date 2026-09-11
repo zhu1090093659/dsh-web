@@ -508,6 +508,13 @@ export function startMobileAdapt(): void {
    * for older compositions that carried a rail fish button.
    */
   function officialSidebarToggle(): HTMLElement | null {
+    // Current DSH core UI exposes the official toggle as a `.dshp-iconButton
+    // .dshp-toggle`; older compositions used a rail fish button or a `_toggle`
+    // inside the logo row. Try the current anchor first, then the legacy
+    // anchors. The aria-label fallback must exclude the whale itself (the
+    // whale shares the 打开侧边栏 label), otherwise it would self-match.
+    const dshp = document.querySelector('.dshp-iconButton.dshp-toggle, [aria-label="\u6253\u5f00\u4fa7\u8fb9\u680f"]:not(#dshRemoteWhale), [aria-label="Open sidebar"]:not(#dshRemoteWhale)')
+    if (dshp instanceof HTMLElement) return dshp
     const rail = document.querySelector('[class$="_railFish"] button')
     if (rail instanceof HTMLElement) return rail
     const row = document.querySelector('[class$="_logoRow"]')

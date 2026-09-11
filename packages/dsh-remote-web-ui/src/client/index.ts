@@ -167,7 +167,7 @@ export function apply(ctx: ClientContext): void {
     // Layout face unavailable (older composition): fall back to clicking the
     // official rail toggle when it exists.
     adapt.toggleSidebar = () => {
-      (document.querySelector('[class$="_railFish"] button, [class$="_logoRow"] [class*="_iconButton"]') as HTMLElement | null)?.click()
+      (document.querySelector('.dshp-iconButton.dshp-toggle, [aria-label="\u6253\u5f00\u4fa7\u8fb9\u680f"]:not(#dshRemoteWhale), [aria-label="Open sidebar"]:not(#dshRemoteWhale), [class$="_railFish"] button, [class$="_logoRow"] [class*="_iconButton"]') as HTMLElement | null)?.click()
     }
   }
 

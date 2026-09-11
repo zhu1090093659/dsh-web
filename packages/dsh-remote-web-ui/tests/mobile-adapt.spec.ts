@@ -514,6 +514,42 @@ describe('startMobileAdapt', () => {
     }
   })
 
+  it('drives the current .dshp-toggle button when no legacy logo row exists', async () => {
+    vi.useFakeTimers()
+    try {
+      media.portrait = true
+      media.coarse = true
+      setWidth(390)
+      const frame = document.createElement('div')
+      frame.className = 'app_frame'
+      frame.setAttribute('data-dsh-frame', '')
+      frame.setAttribute('data-sidebar-collapsed', '')
+      document.body.appendChild(frame)
+      // Current DSH core UI exposes only the `.dshp-iconButton.dshp-toggle`
+      // (no `_railFish` rail, no `_logoRow`); the whale tap must still drive it.
+      const dshpToggle = document.createElement('button')
+      dshpToggle.className = 'dshp-iconButton dshp-toggle'
+      dshpToggle.setAttribute('aria-label', '打开侧边栏')
+      const clickSpy = vi.spyOn(dshpToggle, 'click').mockImplementation(() => {
+        frame.removeAttribute('data-sidebar-collapsed')
+      })
+      document.body.appendChild(dshpToggle)
+      const start = await freshStart()
+      start()
+      const faceSpy = vi.fn()
+      const adapt = (window as unknown as { __dshRemoteAdapt?: { toggleSidebar: () => void } }).__dshRemoteAdapt
+      adapt!.toggleSidebar = faceSpy
+      const whale = document.getElementById('dshRemoteWhale') as HTMLElement | null
+      expect(whale).not.toBeNull()
+      whale!.click()
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(600)
+      expect(faceSpy).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('falls back to the wired face when the official toggle does not flip the frame', async () => {
     vi.useFakeTimers()
     try {

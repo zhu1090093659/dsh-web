@@ -16217,6 +16217,8 @@ window.__ModuleLoader__.load({
 			* for older compositions that carried a rail fish button.
 			*/
 			function officialSidebarToggle() {
+				const dshp = document.querySelector(".dshp-iconButton.dshp-toggle, [aria-label=\"打开侧边栏\"]:not(#dshRemoteWhale), [aria-label=\"Open sidebar\"]:not(#dshRemoteWhale)");
+				if (dshp instanceof HTMLElement) return dshp;
 				const rail = document.querySelector("[class$=\"_railFish\"] button");
 				if (rail instanceof HTMLElement) return rail;
 				const row = document.querySelector("[class$=\"_logoRow\"]");
@@ -16825,7 +16827,7 @@ window.__ModuleLoader__.load({
 				};
 			}
 			if (adapt !== void 0 && adapt.toggleSidebar === null) adapt.toggleSidebar = () => {
-				document.querySelector("[class$=\"_railFish\"] button, [class$=\"_logoRow\"] [class*=\"_iconButton\"]")?.click();
+				document.querySelector(".dshp-iconButton.dshp-toggle, [aria-label=\"打开侧边栏\"]:not(#dshRemoteWhale), [aria-label=\"Open sidebar\"]:not(#dshRemoteWhale), [class$=\"_railFish\"] button, [class$=\"_logoRow\"] [class*=\"_iconButton\"]")?.click();
 			};
 			const t = ctx.locale.bind(NS$9);
 			if (adapt !== void 0) adapt.translate = t;

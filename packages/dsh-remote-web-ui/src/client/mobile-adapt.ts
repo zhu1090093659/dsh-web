@@ -122,8 +122,9 @@ const ADAPT_CSS: readonly string[] = [
   '[class*="_frame"]:has([class*="_centerCol"]){width:100%;height:100dvh}',
   // Collapsed rail: bigger touch targets.
   '[class$="_railFish"] button,[class$="_panelIcon"],[class$="_newSession"]{min-width:44px;min-height:44px}',
-  // Message list padding on narrow screens.
-  '[class$="_scroll"]{padding:8px 10px}',
+  // Message list padding on narrow screens; scroll-padding-top prevents header tabs overlap.
+  '[class$="_scroll"]{padding:8px 10px;scroll-padding-top:56px}',
+  '[class*="_header"],[class$="_tabs"]{background:var(--dsw-alias-bg-base);backdrop-filter:blur(8px)}',
   // 16px inputs prevent iOS focus zoom; keep the send button touchy.
   '[class$="_input"],textarea,input{font-size:16px}',
   '[class$="_composer"]{padding-bottom:calc(4px + env(safe-area-inset-bottom))}',
@@ -151,6 +152,9 @@ const ADAPT_CSS: readonly string[] = [
   '[class$="_frame"][data-sidebar-collapsed] [class$="_detailsCol"]{grid-column:3/4}',
   // Keep the chat header title clear of the floating whale.
   `body.${RAIL_HIDDEN_CLASS} [class$="_titleRow"]{padding-left:52px}`,
+  '[class$="_titleCluster"]{min-width:0;flex:1;display:flex;align-items:center;gap:6px}',
+  '[class$="_crumbs"]{min-width:0;flex:1;overflow:hidden}',
+  '[class$="_crumbs"] [class*="_crumb"]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block}',
   // The whale button itself.
   `#${WHALE_ID}{position:fixed;top:calc(4px + env(safe-area-inset-top));left:calc(8px + env(safe-area-inset-left));z-index:2147482999;width:34px;height:34px;min-width:34px;padding:0;border-radius:10px;background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-primary);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.25)}`,
   `#${WHALE_ID} svg{width:20px;height:15px;display:block}`,
@@ -173,9 +177,9 @@ const ADAPT_CSS: readonly string[] = [
   // row gap; the command, context-meter and send/stop buttons float at the
   // left/right edges vertically centered over both lines.
   '[class$="_composerSeat"] [class$="_card"]{margin-bottom:1px}',
-  '[class$="_composerSeat"] [class$="_row"]{flex-wrap:wrap;row-gap:0;padding:2px 8px 1px;position:relative}',
-  '[class$="_composerSeat"] [class$="_add"]{position:absolute;left:8px;top:50%;transform:translateY(-50%)}',
-  '[class$="_composerSeat"] [class$="_modes"]{min-width:0;padding-left:38px}',
+  '[class$="_composerSeat"] [class$="_row"]{flex-wrap:wrap;row-gap:0;padding:3px 14px;position:relative}',
+  '[class$="_composerSeat"] [class$="_add"]{position:absolute;left:14px;top:50%;transform:translateY(-50%)}',
+  '[class$="_composerSeat"] [class$="_modes"]{min-width:0;padding-left:42px}',
   // Model line left-aligned with the permission line (same command-button
   // clearance), rows stay tightly stacked.
   '[class$="_composerSeat"] [class$="_trailing"]{flex-basis:100%;position:relative;min-height:32px;justify-content:flex-start;padding-left:38px;padding-right:78px}',
@@ -189,7 +193,7 @@ const ADAPT_CSS: readonly string[] = [
   // Context meter + send/stop float at the right edge, vertically centered
   // over both lines (the meter's root contains the track).
   '[class$="_composerSeat"] [class$="_trailing"] > [class$="_root"]:has([class$="_track"]){position:absolute;right:52px;top:50%;transform:translateY(-50%)}',
-  '[class$="_composerSeat"] [class$="_primary"]{position:absolute;right:8px;top:50%;transform:translateY(-50%)}',
+  '[class$="_composerSeat"] [class$="_primary"]{position:absolute;right:14px;top:50%;transform:translateY(-50%)}',
   // v79: the model picker menu anchors right:0 to its narrow trigger, so on
   // a phone both the picker menu and the model list fly past the left
   // viewport edge (model names unreadably cut). Turn the picker into a
@@ -208,14 +212,12 @@ const ADAPT_CSS: readonly string[] = [
   // the same list the user's mock shows). The original text trigger hides
   // only while the wired buttons exist (body class): a failed wiring
   // degrades back to the usable text trigger instead of no picker.
-  `body.${COMPACT_CLASS} [class$="_composerSeat"] [class$="_trailing"] [class$="_trigger"]:has([class$="_triggerEffort"]){display:none}`,
+  `body.${COMPACT_CLASS} [class$="_composerSeat"] [class$="_trailing"] [class$="_trigger"]:has([class$="_triggerEffort"]),body.${COMPACT_CLASS} [class$="_composerSeat"] [data-slot="conversation.input.model"]{display:none !important}`,
   // The icon buttons sit inline in the tools row (parallel to the
   // permission trigger), so the trailing line collapses to zero and the
-  // context ring + send re-anchor to the row itself. The ring shifts a
-  // few px right: at its desktop offset its hit box kisses the effort
-  // button.
-  `body.${COMPACT_CLASS} [class$="_composerSeat"] [class$="_trailing"]{flex-basis:auto;position:static;min-height:0;padding:0;width:0}`,
-  `body.${COMPACT_CLASS} [class$="_composerSeat"] [class$="_trailing"] > [class$="_root"]:has([class$="_track"]){right:44px}`,
+  // context ring + send re-anchor to the row itself as an inline flex container.
+  `body.${COMPACT_CLASS} [class$="_composerSeat"] [class$="_trailing"]{display:flex;align-items:center;position:absolute;right:14px;top:50%;transform:translateY(-50%);width:auto;gap:6px;padding:0;margin:0}`,
+  `body.${COMPACT_CLASS} [class$="_composerSeat"] [class$="_trailing"] > *{position:static !important;transform:none !important}`,
   `#${MODEL_BTN_ID},#${EFFORT_BTN_ID}{width:26px;height:32px;min-width:26px;padding:0;border-radius:9px;background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-primary);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;margin-left:4px}`,
 
 
@@ -250,10 +252,10 @@ const ADAPT_CSS: readonly string[] = [
   // title row keeps its own layout and React keeps owning the node) and
   // painted over the tabs row by the transform alignActionsText computes.
   `body.${HEADER_SEATED_CLASS} [class$="_header"] [class$="_titleCluster"] [class$="_headerActions"]{position:absolute;left:0;top:0;margin:0;display:flex;align-items:center;gap:6px;flex:none;z-index:2}`,
-  // v70: match the tab text size with the seated mode label (12px); NB
-  // [class$="_tab"] misses the active tab (its class ends in "_tabActive")
-  // — containment so BOTH tabs match.
-  '[class$="_header"] [class$="_tabs"] [class*="_tab"]{font-size:12px;white-space:nowrap}',
+  // v70: match the tab text size with the seated mode label (12px); enable horizontal scroll on mobile.
+  '[class$="_header"] [class$="_tabs"]{overflow-x:auto !important;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
+  '[class$="_header"] [class$="_tabs"]::-webkit-scrollbar{display:none}',
+  '[class$="_header"] [class$="_tabs"] [class*="_tab"]{font-size:12px;white-space:nowrap;flex-shrink:0}',
   // Mobile scope: hide the plugin surfaces that do not fit a phone — the
   // right-hand details column and every desktop-oriented tool surface. The
   // list keys on the L2 semantic roots (data-dsh-plugin, ownership stays
@@ -434,7 +436,8 @@ export function startMobileAdapt(): void {
   }
 
   function drillIntoPicker(kind: PickerKind): void {
-    const trigger = document.querySelector('[class$="_composerSeat"] [class$="_trailing"] [class$="_trigger"]:has([class$="_triggerEffort"])') as HTMLElement | null
+    const trigger = (document.querySelector('[class$="_composerSeat"] [class$="_trailing"] [class$="_trigger"]:has([class$="_triggerEffort"])') ??
+      document.querySelector('[class$="_composerSeat"] [data-slot="conversation.input.model"] button')) as HTMLElement | null
     if (trigger === null) return
     trigger.click()
     // The sheet mount takes a beat (observed ~0.2-0.6s on a cold phone
@@ -473,7 +476,7 @@ export function startMobileAdapt(): void {
   function syncCompactPicker(): void {
     if (!active) return
     const tools = document.querySelector('[class$="_composerSeat"] [class$="_tools"]')
-    const trigger = tools?.parentElement?.querySelector('[class$="_triggerEffort"]')?.parentElement
+    const trigger = tools?.parentElement?.querySelector('[class$="_triggerEffort"], [data-slot="conversation.input.model"] button')
     if (tools === null || trigger === null) {
       removeCompactPicker()
       return
@@ -727,7 +730,16 @@ export function startMobileAdapt(): void {
     // child of the recorded parent (a NotFoundError in the commit phase). The
     // injected CSS takes it out of flow and the transform below paints it over
     // the tabs row instead.
-    const seated = header !== null && tabs !== null && actions !== null
+    // In DSH 0.1.5+, sessions frequently render multiple plugin tabs (context,
+    // memory, skills, todos, etc.). Forcing headerActions (the preset mode trigger)
+    // into an already full tabs row causes severe collision and stomps on the tabs.
+    // Only seat when the tabs row has enough room; otherwise keep actions in the title row.
+    const tabsOverflow = tabs !== null && (tabs.scrollWidth > tabs.clientWidth + 16 || tabs.children.length > 3)
+    const seated = header !== null && tabs !== null && actions !== null && !tabsOverflow
+    if (!seated) {
+      unseatHeaderActions()
+      return
+    }
     document.body.classList.toggle(HEADER_SEATED_CLASS, seated)
     ensureHeaderObserver(seated ? header : null)
   }

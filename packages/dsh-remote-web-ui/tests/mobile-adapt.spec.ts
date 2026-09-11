@@ -246,9 +246,11 @@ describe('startMobileAdapt', () => {
     expect(css).toContain('[class$="_overlayLayer"] [class$="_workbench"]{display:none !important}')
     expect(css).not.toContain('[class$="_overlayLayer"]{display:none')
     // The compact picker: icon entries for model/effort inline in the tools
-    // row (parallel to the permission trigger); the trailing line collapses.
+    // row (parallel to the permission trigger); the redundant 0.1.5 desktop
+    // model trigger hides and the trailing actions anchor inside the card.
     expect(css).toContain('body.dsh-remote-compact-picker [class$="_composerSeat"] [class$="_trailing"] [class$="_trigger"]')
-    expect(css).toContain('body.dsh-remote-compact-picker [class$="_composerSeat"] [class$="_trailing"]{flex-basis:auto;position:static;min-height:0;padding:0;width:0}')
+    expect(css).toContain('body.dsh-remote-compact-picker [class$="_composerSeat"] [data-slot="conversation.input.model"]{display:none !important}')
+    expect(css).toContain('body.dsh-remote-compact-picker [class$="_composerSeat"] [class$="_trailing"]{display:flex;align-items:center;position:absolute;right:14px')
     expect(css).toContain('#dshRemoteModelPick,#dshRemoteEffortPick{width:26px;height:32px')
     // The dsh-LAN _body gap compaction must stay out: it clips message text.
     expect(css).not.toContain('_body"]{gap:6px}')

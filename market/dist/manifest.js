@@ -375,6 +375,35 @@ window.SKIN_MANIFEST = {
       }
     },
     {
+      "id": "observatory",
+      "name": "天文台",
+      "nameEn": "Observatory",
+      "author": "stushansusu",
+      "tagline": "午夜靛 · 老黄铜 · 穹顶肋缝 · 时辰刻度",
+      "description": "山顶天文台的观测室：黄铜仪器、午夜靛的天。不是「工程蓝图」那套制图——那是青线网格；这套是圆、弧、刻度、铆钉，全是线，没有一处面积填充。中性层是午夜靛，只带色温不带彩度；老黄铜是全场唯一有彩度的东西，只走线、走字、走点睛。母题是观测室本身：穹顶的纬度环与扇形肋缝、底部的十二时辰刻度带、一排黄铜铆钉，加上首屏的观测环（方位刻度／赤经赤纬读数／十字丝）、星等标尺与水准泡。红只留给需要你看一眼的信号灯。",
+      "accent": "#c2a55a",
+      "preview": {
+        "light": "assets/skins/observatory/preview/light.jpg",
+        "dark": "assets/skins/observatory/preview/dark.jpg"
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/observatory/assets/observatory-bg.webp",
+            "scrim": "linear-gradient(180deg, rgba(8,10,16,0.40) 0%, rgba(8,10,16,0.48) 45%, rgba(8,10,16,0.64) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/observatory/assets/observatory-bg.webp",
+            "scrim": "linear-gradient(180deg, rgba(8,10,16,0.40) 0%, rgba(8,10,16,0.48) 45%, rgba(8,10,16,0.64) 100%)"
+          }
+        }
+      }
+    },
+    {
       "id": "stellar-diva",
       "name": "星海歌姬",
       "nameEn": "Stellar Diva",

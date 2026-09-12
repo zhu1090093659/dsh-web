@@ -1,0 +1,680 @@
+/**
+ * 天文台 (Observatory) — L3 atmosphere layer.
+ *
+ * Pure CSS, no hooks. The loader force-scopes every selector under
+ * html[data-dsh-skin="observatory"], so rules here are written unscoped on purpose.
+ *
+ * Every hook below is one the shell actually emits, verified against the
+ * installed shell and the loader's own surface registry — not guessed:
+ *   · canvas      body::after              the theme's ground
+ *   · sidebar     [data-slot="sidebar"], [data-dsh-surface="sidebar"],
+ *                 [data-pane="sidebar"], aside
+ *   · details     [data-slot="details"], [data-dsh-surface="details"]
+ *   · conversation [data-conversation-scroll], [data-chat-flow]
+ *   · rows        [data-chat-flow-kind="user" | "assistant-step" | ...]
+ *   · composer    [data-composer-card], [data-input-scroll],
+ *                 [data-composer-placeholder]
+ *   · hero        [data-phase="hero"]
+ *
+ * Deliberately NOT touched: html[data-dsh-wallpaper-active] and
+ * html[data-dsh-backdrop-active]. The loader owns those — it neutralises scene
+ * backgrounds behind a wallpaper and re-blurs the composer card itself — so the
+ * canvas rule below steps aside instead of fighting it.
+ */
+
+/* ── custom properties, per mode ─────────────────────────────────────────── */
+
+html[data-dsh-skin="observatory"] body {
+  --sk-ground: #f1efe9;
+  --sk-pane: url(assets/dome-plate-light.svg),
+    radial-gradient(120% 90% at 50% -10%, #9c80381a 0%, transparent 55%);
+  --sk-wall: #e6e2d8;
+  --sk-wall-edge: #d5d0c452;
+  --sk-card-top: #faf8f3b8;
+  --sk-composer-ring: 0 0 0 3px #7a653024;
+  --sk-bubble: #18191b;
+  --sk-bubble-edge: #7a653038;
+  --sk-approval-edge: #9e3a3073;
+}
+
+html[data-dsh-skin="observatory"] body {
+  --sk-ground: #0a0c12;
+  --sk-pane: url(assets/dome-plate-dark.svg),
+    radial-gradient(120% 90% at 50% -10%, #c2a55a1a 0%, transparent 55%);
+  --sk-wall: #161a24;
+  --sk-wall-edge: #2328385c;
+  --sk-card-top: #2328384d;
+  --sk-composer-ring: 0 0 0 3px #8e7a3e33;
+  --sk-bubble: #18191b;
+  --sk-bubble-edge: #8e7a3e47;
+  --sk-approval-edge: #c4665a80;
+}
+
+/* ── canvas: the theme's ground ──────────────────────────────────────────── */
+
+html[data-dsh-skin="observatory"] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--sk-ground);
+  background-image: var(--sk-pane);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+/* When the user runs a wallpaper, the ground layer must disappear entirely,
+   or it paints over the wallpaper. The loader sets these flags itself.
+   Must be written body[...]::after, NOT html[...] body::after: the loader force-scopes
+   every selector as a descendant of html[data-dsh-skin], so the html form becomes
+   html[data-dsh-skin] html[...] body::after and can never match (html is not a
+   descendant of itself). The rule was dead and the canvas painted over the user's
+   wallpaper. The crystal engine was fixed first (see the note further down); the
+   material and anime engines still carried the dead form, which is also why
+   verify() rejected all eleven of them and no theme could be rebuilt. */
+html[data-dsh-skin="observatory"] body[data-dsh-wallpaper-active]::after,
+html[data-dsh-skin="observatory"] body[data-dsh-backdrop-active]::after {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* ── sidebar: the theme's material as a wall, not a fill ─────────────────── */
+
+/* [data-slot="sidebar"] is the renderer's slot anchor and carries
+   display:contents, so it has no box of its own — the painted element is its
+   child (the sidebar's .root column, a flex container). Style the narrow slot
+   variant for plugin-provided sidebars too. */
+html[data-dsh-skin="observatory"] [data-slot='sidebar'] > *,
+html[data-dsh-skin="observatory"] [data-dsh-surface='sidebar'],
+html[data-dsh-skin="observatory"] [data-pane='sidebar'] {
+  background-color: var(--sk-wall) !important;
+  background-image:
+    linear-gradient(180deg, #9c803812 0%, transparent 52%);
+  box-shadow: inset -1px 0 0 var(--sk-wall-edge);
+}
+
+html[data-dsh-skin="observatory"] body [data-slot='sidebar'] > *,
+html[data-dsh-skin="observatory"] body [data-dsh-surface='sidebar'],
+html[data-dsh-skin="observatory"] body [data-pane='sidebar'] {
+  background-image:
+    linear-gradient(180deg, #c2a55a12 0%, transparent 52%);
+}
+
+/* the sidebar's own workspace list keeps the wall colour, not a raised card */
+html[data-dsh-skin="observatory"] [data-slot='sidebar.workspaces'] {
+  background-color: transparent !important;
+}
+
+/* ── details pane ────────────────────────────────────────────────────────── */
+
+html[data-dsh-skin="observatory"] [data-slot='details'],
+html[data-dsh-skin="observatory"] [data-slot='details'] > *,
+html[data-dsh-skin="observatory"] [data-dsh-surface='details'],
+html[data-dsh-skin="observatory"] [data-pane='details'] {
+  background-color: #f1efe9db !important;
+}
+
+html[data-dsh-skin="observatory"] body [data-slot='details'],
+html[data-dsh-skin="observatory"] body [data-slot='details'] > *,
+html[data-dsh-skin="observatory"] body [data-dsh-surface='details'],
+html[data-dsh-skin="observatory"] body [data-pane='details'] {
+  background-color: #0a0c12db !important;
+}
+
+/* ── hero: the empty-session screen ──────────────────────────────────────── */
+
+html[data-dsh-skin="observatory"] [data-phase='hero'] {
+  position: relative;
+  background-image:
+    repeating-radial-gradient(circle at 50% 42%, transparent 0 21px, #9c803821 21px 22px),
+    repeating-radial-gradient(circle at 50% 42%, transparent 0 26px, #9c803812 26px 26.6px),
+    radial-gradient(46% 38% at 50% 40%, #1b1d2612 0%, transparent 70%),
+    radial-gradient(72% 56% at 50% 0%, #d9c7956b 0%, transparent 72%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+html[data-dsh-skin="observatory"] body [data-phase='hero'] {
+  background-image:
+    repeating-radial-gradient(circle at 50% 42%, transparent 0 21px, #c2a55a1c 21px 22px),
+    repeating-radial-gradient(circle at 50% 42%, transparent 0 26px, #c2a55a0f 26px 26.6px),
+    radial-gradient(46% 38% at 50% 40%, #06080c80 0%, transparent 70%),
+    radial-gradient(72% 56% at 50% 0%, #8e7a3e24 0%, transparent 72%);
+}
+
+/* ── composer: the theme's object ────────────────────────────────────────── */
+
+html[data-dsh-skin="observatory"] [data-composer-card] {
+  border-radius: 14px;
+  box-shadow: var(--sk-composer-ring), inset 0 1px 0 var(--sk-card-top);
+}
+
+html[data-dsh-skin="observatory"] body [data-composer-card] {
+  box-shadow: var(--sk-composer-ring), inset 0 1px 0 var(--sk-card-top);
+}
+
+/* the editable surface itself stays transparent so the card reads as one piece */
+html[data-dsh-skin="observatory"] [data-input-scroll] {
+  background-color: transparent;
+}
+
+html[data-dsh-skin="observatory"] [data-composer-placeholder] {
+  color: #575a68;
+}
+
+html[data-dsh-skin="observatory"] body [data-composer-placeholder] {
+  color: #8b90a0;
+}
+
+/* ── conversation rows: the material edge ────────────────────────────────── */
+
+/* the user's own turn gets the metal; the assistant stays quiet so the reading
+   column does not turn into a stripe of colour */
+html[data-dsh-skin="observatory"] [data-chat-flow-kind='user'] {
+  box-shadow: inset 3px 0 0 var(--sk-bubble-edge);
+}
+
+html[data-dsh-skin="observatory"] [data-chat-flow-kind='assistant-step'] {
+  background-color: transparent;
+}
+
+/* tool / context rows are furniture: give them the paper's edge, not the ink's */
+html[data-dsh-skin="observatory"] [data-chat-flow-kind='tool-call'],
+html[data-dsh-skin="observatory"] [data-chat-flow-kind='context'] {
+  border-radius: 10px;
+  background-color: #e6e2d880;
+}
+
+html[data-dsh-skin="observatory"] body [data-chat-flow-kind='tool-call'],
+html[data-dsh-skin="observatory"] body [data-chat-flow-kind='context'] {
+  background-color: #161a2480;
+}
+
+/* ── selection carries the metal ─────────────────────────────────────────── */
+
+html[data-dsh-skin="observatory"] ::selection {
+  background-color: #7a653040;
+}
+
+html[data-dsh-skin="observatory"] body ::selection {
+  background-color: #8e7a3e52;
+}
+
+/* ── approvals: the one place the warning ramp is allowed to shout ───────── */
+
+html[data-dsh-skin="observatory"] [data-approval-key],
+html[data-dsh-skin="observatory"] [data-question-key],
+html[data-dsh-skin="observatory"] [data-plan-review-key] {
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--sk-approval-edge), var(--dsw-shadow-lv2);
+}
+
+/* ── links keep the theme's metal rather than the shell's blue ───────────── */
+
+html[data-dsh-skin="observatory"] a {
+  color: #7a6530;
+}
+
+html[data-dsh-skin="observatory"] body a {
+  color: #8e7a3e;
+}
+
+/* ── scrollbars ──────────────────────────────────────────────────────────── */
+
+html[data-dsh-skin="observatory"] * {
+  scrollbar-color: #575a6859 transparent;
+}
+
+html[data-dsh-skin="observatory"] body * {
+  scrollbar-color: #8b90a066 transparent;
+}
+
+/* ── 暗色专用：钉死原生配色方案（材质引擎本来没有这条，anime 引擎有）────────
+   必须写 :root 而不是 html：作用域转换把每条选择器当成 skin root 的后代加前缀，
+   html { … } 会变成 html[data-dsh-skin] html { … }，永远匹配不上；
+   :root 被特判成 html[data-dsh-skin="<id>"] 本身，正好落在 html 元素上 ——
+   这正是 color-scheme 需要的位置（它必须作用在根元素上才管得住原生控件）。 */
+
+html[data-dsh-skin="observatory"] {
+  color-scheme: dark !important;
+}
+
+
+/* ── per-theme extra chrome ────────────────────────────────────────────────
+   A theme may append its own rules here — the frame, the workspace plaque, the
+   new-session plate. Kept as a *function* so it derives colours from the same
+   palette through the same alpha()/mix() helpers instead of hard-coding hexes.
+   verify() scans the result for the fragility patterns (hashed class names,
+   :global, nested :has, backticks, unresolved interpolation). */
+
+/* ══ 天文台 · 机壳 ═══════════════════════════════════════════════════════ */
+
+/* 黄铜三档 + 铆钉。b1 走主线，b2 走接缝，b3/b4 走极淡的分层线。 */
+html[data-dsh-skin="observatory"] body {
+  --ob-b1: #c2a55ab8;
+  --ob-b2: #c2a55a70;
+  --ob-b3: #c2a55a42;
+  --ob-b4: #c2a55a21;
+  --ob-rivet: #c2a55ac7;
+  --ob-rivet-hi: #0f121aeb;
+  --ob-warn: #c4665a80;
+}
+html[data-dsh-skin="observatory"] body {
+  --ob-b1: #c2a55ad1;
+  --ob-b2: #c2a55a80;
+  --ob-b3: #c2a55a4d;
+  --ob-b4: #c2a55a26;
+  --ob-rivet: #c2a55ae0;
+  --ob-rivet-hi: #e7e9eebf;
+  --ob-warn: #c4665a8c;
+}
+
+/* ── 1. 整机外框：双线黄铜，画在 shell overlay 上 ──
+   overlay 在面板之上，所以这条框看得见；它不存在时这两条规则是惰性的。 */
+html[data-dsh-skin="observatory"] [data-dsh-surface='overlay']::after,
+html[data-dsh-skin="observatory"] [data-slot='shell.overlay']::after,
+html[data-dsh-skin="observatory"] [data-shell-overlay]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  box-shadow:
+    inset 0 0 0 1px var(--ob-b3),
+    inset 0 0 0 6px transparent,
+    inset 0 0 0 7px var(--ob-b4);
+}
+
+/* ── 2. 面板接缝：贴边双线 + 一列铆钉 ──
+   侧栏右缘。伪元素是空的，引擎只用了元素本身，所以不冲突。 */
+html[data-dsh-skin="observatory"] [data-pane='sidebar'] {
+  position: relative;
+}
+html[data-dsh-skin="observatory"] [data-pane='sidebar']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 11px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg,
+      transparent 0 3px, var(--ob-b2) 3px 4px,
+      transparent 4px 5px, var(--ob-b4) 5px 6px, transparent 6px 100%),
+    radial-gradient(circle at 50% 50%, var(--ob-rivet) 0 1.5px, transparent 1.7px);
+  background-size: 100% 100%, 11px 72px;
+  background-repeat: no-repeat, repeat-y;
+  opacity: 0.9;
+}
+
+/* 详情栏左缘，镜像一份。 */
+html[data-dsh-skin="observatory"] [data-pane='details'] {
+  position: relative;
+}
+html[data-dsh-skin="observatory"] [data-pane='details']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 11px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(270deg,
+      transparent 0 3px, var(--ob-b2) 3px 4px,
+      transparent 4px 5px, var(--ob-b4) 5px 6px, transparent 6px 100%),
+    radial-gradient(circle at 50% 50%, var(--ob-rivet) 0 1.5px, transparent 1.7px);
+  background-size: 100% 100%, 11px 72px;
+  background-repeat: no-repeat, repeat-y;
+  opacity: 0.9;
+}
+
+/* ── 3. 会话顶栏 = 仪器窗框 + 下缘游标刻度 ──────────────────────────────
+   顶栏是全壳唯一一条横梁，按「仪表盘横梁」来做。三件事，全部只走线、不铺面：
+     · 上缘一道黄铜轨（inset 阴影），与 §1 整机外框的双线同族；
+     · 上缘 7px 内垂下极短的竖线，读作穹顶扇形瓣的**肋缝接缝**（与底板同一母题）；
+     · 左右各一枚铆钉，和 §2 面板接缝、§4 新会话铭牌上的铆钉是同一族。
+   下缘那条 8px 游标刻度（::after）保持不动，两者用 ::before / ::after 分开，
+   互不打架。全部不占布局——顶栏 76px 的高度是在 ConversationRoot 里钉死的。 */
+/* ⚠️ 插槽出口是 display:contents 的包装 div，**它没有盒子，挂在上面的装饰一律不绘制**。
+   真正有盒子的是它的子元素（ConversationSessionHeader 渲染的 .header）。所以选择器必须下探一层。
+   实测（2026-09-12，真实界面）：出口 rect=[0,0,0,0]、display=contents、bgImage 算得出但看不见。 */
+html[data-dsh-skin="observatory"] [data-dsh-surface='session-header'] > *,
+html[data-dsh-skin="observatory"] [data-slot='conversation.session.header'] > * {
+  position: relative;
+  background-image:
+    repeating-linear-gradient(90deg, var(--ob-b3) 0 1px, transparent 1px 24px),
+    linear-gradient(180deg, var(--ob-b3) 0 55%, transparent 100%);
+  background-size: 100% 10px, 100% 100%;
+  background-position: 0 0, 0 0;
+  background-repeat: repeat-x, no-repeat;
+  box-shadow:
+    inset 0 1px 0 var(--ob-b2),
+    inset 0 -1px 0 var(--ob-b2);
+}
+
+/* 顶栏左右两枚铆钉：压在 10px 的上内边距里，不碰标题行。 */
+html[data-dsh-skin="observatory"] [data-dsh-surface='session-header'] > *::before,
+html[data-dsh-skin="observatory"] [data-slot='conversation.session.header'] > *::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 50%, var(--ob-rivet) 0 1.5px, var(--ob-rivet-hi) 1.5px 2.3px, transparent 2.6px),
+    radial-gradient(circle at 50% 50%, var(--ob-rivet) 0 1.5px, var(--ob-rivet-hi) 1.5px 2.3px, transparent 2.6px);
+  background-size: 4.6px 6px;
+  background-position: 0 50%, 100% 50%;
+  background-repeat: no-repeat;
+}
+
+/* 下缘游标刻度：保留原样。 */
+html[data-dsh-skin="observatory"] [data-dsh-surface='session-header'] > *::after,
+html[data-dsh-skin="observatory"] [data-slot='conversation.session.header'] > *::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 8px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--ob-b3) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(90deg, var(--ob-b2) 0 1.4px, transparent 1.4px 30px),
+    linear-gradient(180deg, transparent 0 6px, var(--ob-b2) 6px 7px, transparent 7px 100%);
+  opacity: 0.7;
+}
+
+/* ── 4. 新会话：一块铆起来的黄铜铭牌 ── */
+html[data-dsh-skin="observatory"] [data-dsh-part='new-session'] {
+  position: relative;
+  box-shadow:
+    inset 0 0 0 1px var(--ob-b2),
+    inset 0 1px 0 var(--ob-b4),
+    0 1px 0 rgba(0, 0, 0, 0.18);
+}
+html[data-dsh-skin="observatory"] [data-dsh-part='new-session']::before,
+html[data-dsh-skin="observatory"] [data-dsh-part='new-session']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 4.5px;
+  height: 4.5px;
+  margin-top: -2.25px;
+  border-radius: 50%;
+  background: var(--ob-rivet);
+  box-shadow: inset -1px -1px 0 var(--ob-rivet-hi);
+  pointer-events: none;
+}
+html[data-dsh-skin="observatory"] [data-dsh-part='new-session']::before { left: 6px; }
+html[data-dsh-skin="observatory"] [data-dsh-part='new-session']::after { right: 6px; }
+
+/* ── 5. 工作区：柜格背景 ──
+   原先这里是空的（引擎把 background-color 用 !important 锁成了 transparent），
+   于是透出侧栏那条**子午环**——一圈从画布外切进来的大弧，正横穿工作区。弧已去掉，
+   改成给工作区自己的背景：一只凹进去的归档柜格。
+
+   全部用 background-image 画，两个原因：
+     · background-color 被引擎 !important 锁死，只能用渐变当底；
+     · 两个伪元素留着，不现在就占掉。
+   七层，从下到上：凹槽底 → 上唇阴影 → 黄铜外框四条 → 右缘架位刻度。
+   一处曲线都没有。 */
+html[data-dsh-skin="observatory"] [data-slot='sidebar.workspaces'] {
+  background-image:
+    /* 右缘的架位刻度：6px 窄列，每 6px 一道横齿 */
+    repeating-linear-gradient(0deg, var(--ob-b3) 0 1px, transparent 1px 6px),
+    /* 拉丝黄铜纹：3px 间距的极细竖线，读作"拉过丝的金属"而不是条纹 */
+    repeating-linear-gradient(90deg, #c2a55a08 0 1px, transparent 1px 3px),
+    /* 黄铜外框四条 */
+    linear-gradient(var(--ob-b2), var(--ob-b2)),
+    linear-gradient(var(--ob-b2), var(--ob-b2)),
+    linear-gradient(var(--ob-b2), var(--ob-b2)),
+    linear-gradient(var(--ob-b2), var(--ob-b2)),
+    /* 左上与右下两枚角标：仪器面板的取景记号，比一圈整框更像仪表 */
+    linear-gradient(var(--ob-b1), var(--ob-b1)),
+    linear-gradient(var(--ob-b1), var(--ob-b1)),
+    linear-gradient(var(--ob-b1), var(--ob-b1)),
+    linear-gradient(var(--ob-b1), var(--ob-b1)),
+    /* 上唇阴影：柜格的进深 */
+    linear-gradient(180deg, #0000004d 0%, #00000000 100%),
+    /* 凹槽底：上深下浅，像被顶光照着的凹面 */
+    linear-gradient(180deg, #3a2c1821 0%, #3a2c180a 100%);
+  background-size:
+    7px 100%,
+    3px 100%,
+    100% 1px, 100% 1px, 1px 100%, 1px 100%,
+    24px 1px, 1px 24px, 24px 1px, 1px 24px,
+    100% 12px,
+    100% 100%;
+  background-position:
+    right top,
+    left top,
+    left top, left bottom, left top, right top,
+    3px 3px, 3px 3px, right 3px bottom 3px, right 3px bottom 3px,
+    left top,
+    left top;
+  background-repeat:
+    no-repeat,
+    repeat-x,
+    no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat,
+    no-repeat;
+}
+html[data-dsh-skin="observatory"] body [data-slot='sidebar.workspaces'] {
+  background-image:
+    repeating-linear-gradient(0deg, var(--ob-b3) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(90deg, #c2a55a09 0 1px, transparent 1px 3px),
+    linear-gradient(var(--ob-b2), var(--ob-b2)),
+    linear-gradient(var(--ob-b2), var(--ob-b2)),
+    linear-gradient(var(--ob-b2), var(--ob-b2)),
+    linear-gradient(var(--ob-b2), var(--ob-b2)),
+    linear-gradient(var(--ob-b1), var(--ob-b1)),
+    linear-gradient(var(--ob-b1), var(--ob-b1)),
+    linear-gradient(var(--ob-b1), var(--ob-b1)),
+    linear-gradient(var(--ob-b1), var(--ob-b1)),
+    linear-gradient(180deg, #00000061 0%, #00000000 100%),
+    linear-gradient(180deg, #0000004d 0%, #00000014 100%);
+}
+
+/* ── 5b. 文件夹：线稿镂花封套 + 3px 黄铜书脊 ──
+   只给"可展开的行"上封套。上一版对**所有** treeitem 上板，结果文件夹和会话一起
+   变实心——它们是同级兄弟，嵌套排除规则根本不匹配，所以判据改用"可展开"。 */
+html[data-dsh-skin="observatory"] [data-slot='sidebar.workspaces'] [role='treeitem'][aria-expanded],
+html[data-dsh-skin="observatory"] [data-slot='sidebar.workspaces'] [role='treeitem']:has([role='group']) {
+  background-image: url(assets/ws-sleeve-light.svg);
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: inset 3px 0 0 var(--ob-b1);
+  font-family: ui-monospace, Consolas, 'Cascadia Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+html[data-dsh-skin="observatory"] body [data-slot='sidebar.workspaces'] [role='treeitem'][aria-expanded],
+html[data-dsh-skin="observatory"] body [data-slot='sidebar.workspaces'] [role='treeitem']:has([role='group']) {
+  background-image: url(assets/ws-sleeve-dark.svg);
+}
+
+/* ── 6. 首屏：观测环。挂在 hero 的伪元素上（引擎已把 hero 设成 relative），
+   这样不和引擎已经写好的 hero 渐变抢 background-image。 ── */
+html[data-dsh-skin="observatory"] [data-phase='hero']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url(assets/hero-reticle-light.svg);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.9;
+}
+html[data-dsh-skin="observatory"] body [data-phase='hero']::before {
+  background-image: url(assets/hero-reticle-dark.svg);
+  opacity: 1;
+}
+
+/* ══ 补齐还没设计过的面 ══════════════════════════════════════════════════
+   到这一步，观测室的语言（圆、弧、刻度、铆钉、黄铜线）已经有了，但还有五个面是
+   空的。按"最常看 / 最该有用"排序补上。 */
+
+/* ── 7. 输入卡 = 目镜外壳。这是用得最多的面，之前完全没有设计 ──
+   四角准星框用八层渐变拼（每角两条边），全部压在伪元素上，不碰引擎设的
+   background/border；准星框向外让 7px，所以不挤占卡片内文。 */
+html[data-dsh-skin="observatory"] [data-composer-card] {
+  position: relative;
+}
+html[data-dsh-skin="observatory"] [data-composer-card]::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--ob-b2), var(--ob-b2)), linear-gradient(var(--ob-b2), var(--ob-b2)),
+    linear-gradient(var(--ob-b2), var(--ob-b2)), linear-gradient(var(--ob-b2), var(--ob-b2)),
+    linear-gradient(var(--ob-b2), var(--ob-b2)), linear-gradient(var(--ob-b2), var(--ob-b2)),
+    linear-gradient(var(--ob-b2), var(--ob-b2)), linear-gradient(var(--ob-b2), var(--ob-b2));
+  background-size:
+    1px 15px, 15px 1px,
+    1px 15px, 15px 1px,
+    1px 15px, 15px 1px,
+    1px 15px, 15px 1px;
+  background-position:
+    left top, left top,
+    right top, right top,
+    left bottom, left bottom,
+    right bottom, right bottom;
+  background-repeat: no-repeat;
+}
+/* 卡片上缘挂一条刻度：和会话顶栏那条同一种语言 */
+html[data-dsh-skin="observatory"] [data-composer-card]::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: -9px;
+  height: 8px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--ob-b4) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(90deg, var(--ob-b2) 0 1.4px, transparent 1.4px 30px);
+  opacity: 0.6;
+}
+
+/* ── 8. 拖拽把手 = 一条黄铜中线 ──
+   原来是两组反向 45° 斜线交叉成的**滚花网纹**（[data-dsh-part='resize-handle'] 在
+   主列左右各挂一条，所以那圈网纹正好出现在会话窗口的两侧）。用户 9-12 要求去掉这层
+   交叉纹理，只留中间一条分界线；刻度语言交给统一下缘的游标尺。
+   要恢复滚花，在 background-image 里加回这两行即可：
+     repeating-linear-gradient(45deg, var(--ob-b3) 0 1px, transparent 1px 5px),
+     repeating-linear-gradient(-45deg, var(--ob-b3) 0 1px, transparent 1px 5px), */
+html[data-dsh-skin="observatory"] [data-dsh-part='resize-handle'] {
+  background-image:
+    linear-gradient(90deg, transparent 0 48%, var(--ob-b3) 48% 52%, transparent 52% 100%);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* ── 9. 侧栏品牌行 = 铭牌。鲸鱼标走黄铜，名字用等宽字加下划线 ──
+   [data-slot='sidebar.brand.mark'] 是官方插槽，引擎没碰，改它安全。 */
+html[data-dsh-skin="observatory"] [data-slot='sidebar.brand.mark'] {
+  color: var(--ob-b1);
+}
+html[data-dsh-skin="observatory"] [data-slot='sidebar.brand.name'] {
+  font-family: ui-monospace, Consolas, 'Cascadia Mono', monospace;
+  letter-spacing: 0.08em;
+}
+/* ── 6b. 把 fallback 的「DSH 本地构建」换成「dsh 天文学家」 ──
+   来源是 packages/client/locale/src/locales/zh.ts 的 brand.localBuild，由 ui-sidebar
+   的 SidebarRoot 渲染成 sidebar.brand.name 插槽里的 fallback 内容。结构（见官方快照）：
+     [data-slot='sidebar.brand.name'] > * > span:first-child   ← 标题
+     [data-slot='sidebar.brand.name'] > * > span:last-child    ← 版本号
+   两个 span 的类名是 CSS-Modules 哈希，碰不得（verify() 会拒），但它们的位置是稳定的，
+   所以在**稳定插槽 + 位置**上做替换：把原文字号归零，用 ::after 写新的。
+   注意 ::after 必须自己给 font-size——父级被设成 0 会继承下去。 */
+/* 出口同样没有盒子，且层数会随官方改动而变——两种写法都写上，哪一个先匹配上就用哪个。 */
+html[data-dsh-skin="observatory"] [data-slot='sidebar.brand.name'] > * > span:first-child,
+html[data-dsh-skin="observatory"] [data-slot='sidebar.brand.name'] span:first-child {
+  font-size: 0;
+}
+html[data-dsh-skin="observatory"] [data-slot='sidebar.brand.name'] > * > span:first-child::after,
+html[data-dsh-skin="observatory"] [data-slot='sidebar.brand.name'] span:first-child::after {
+  content: 'dsh 天文学家';
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* ── 10. 审批卡 = 警示斜纹。这是全场唯一允许出现的红，所以给它最直白的标记：
+   左侧一条 45° 斜纹带，像仪器上的危险区标示。引擎只设了圆角与阴影，
+   伪元素是空的。 */
+html[data-dsh-skin="observatory"] [data-approval-key],
+html[data-dsh-skin="observatory"] [data-question-key],
+html[data-dsh-skin="observatory"] [data-plan-review-key] {
+  position: relative;
+  overflow: hidden;
+}
+html[data-dsh-skin="observatory"] [data-approval-key]::before,
+html[data-dsh-skin="observatory"] [data-question-key]::before,
+html[data-dsh-skin="observatory"] [data-plan-review-key]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(-45deg, var(--ob-warn) 0 4px, transparent 4px 9px);
+  opacity: 0.7;
+}
+
+/* ── 11. 详情栏顶缘 = 黄铜标签条 ──
+   右栏之前只有左缘那道接缝，顶部是空的。补一条刻度，让它也读作一块仪表盘。 */
+/* 同 §3：出口是 display:contents，必须下探到子元素；标签条只画第一个子元素，
+   否则详情栏有多个子节点时会被画好几遍。 */
+html[data-dsh-skin="observatory"] [data-dsh-surface='details'] > *:first-child,
+html[data-dsh-skin="observatory"] [data-slot='details'] > *:first-child {
+  position: relative;
+}
+html[data-dsh-skin="observatory"] [data-dsh-surface='details'] > *:first-child::after,
+html[data-dsh-skin="observatory"] [data-slot='details'] > *:first-child::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 7px;
+  height: 9px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--ob-b4) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, var(--ob-b2) 0 1.2px, transparent 1.2px 25px),
+    linear-gradient(180deg, transparent 0 7px, var(--ob-b2) 7px 8px, transparent 8px 100%);
+  opacity: 0.7;
+}
+
+/* ── 12. 背景图激活时：星图留左边，人物在右边 ──
+   共用外壳里有一条默认规则，壁纸一开就把整块画布底板关掉：
+     body[data-dsh-wallpaper-active]::after,
+     body[data-dsh-backdrop-active]::after { background-image: none }
+   那样画面上就只剩立绘、天文台的底子全没了。这里用**同一个选择器、后写**把它覆盖回来：
+   底板继续画，但用水平遮罩把右侧让给人物——宽度的 38% 之前全强度，48% 过渡，55% 之后
+   完全透明。人物在合成图里 centreX=0.76 / scale=0.77，人物内容横向占 56.0%–97.6%，
+   所以底板在 55% 收干净，正好贴在人物左缘之外。 */
+html[data-dsh-skin="observatory"] body[data-dsh-wallpaper-active]::after,
+html[data-dsh-skin="observatory"] body[data-dsh-backdrop-active]::after {
+  background-color: transparent;
+  background-image: var(--sk-pane);
+  -webkit-mask-image: linear-gradient(90deg, #000 0 38%, rgba(0, 0, 0, 0.4) 48%, transparent 55%);
+  mask-image: linear-gradient(90deg, #000 0 38%, rgba(0, 0, 0, 0.4) 48%, transparent 55%);
+}
+
+
+html[data-dsh-skin="observatory"] [id="root"] { background: transparent; }
+
+html[data-dsh-skin="observatory"] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

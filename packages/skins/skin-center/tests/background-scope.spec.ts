@@ -16,6 +16,7 @@ const current = {
   backgroundBlurContent: 0,
   inputCardBlur: 10,
   bubbleOpacity: 50,
+  bubbleBlur: 10,
 }
 
 describe('skin-background scope reconciliation', () => {

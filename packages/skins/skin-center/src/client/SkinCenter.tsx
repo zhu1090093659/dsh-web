@@ -79,11 +79,13 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper, preview, 
   const blurContent = useSyncExternalStore(background.subscribe, background.blurContent)
   const inputCardBlur = useSyncExternalStore(background.subscribe, background.inputCardBlur)
   const bubbleOpacity = useSyncExternalStore(background.subscribe, background.bubbleOpacity)
+  const bubbleBlur = useSyncExternalStore(background.subscribe, background.bubbleBlur)
   const [shownOpacity, setShownOpacity] = useLiveValue(opacity)
   const [shownBlurEmpty, setShownBlurEmpty] = useLiveValue(blurEmpty)
   const [shownBlurContent, setShownBlurContent] = useLiveValue(blurContent)
   const [shownInputCardBlur, setShownInputCardBlur] = useLiveValue(inputCardBlur)
   const [shownBubbleOpacity, setShownBubbleOpacity] = useLiveValue(bubbleOpacity)
+  const [shownBubbleBlur, setShownBubbleBlur] = useLiveValue(bubbleBlur)
   const catalog = useSyncExternalStore(runtime.subscribe, runtime.catalog)
   const state = useSyncExternalStore(runtime.subscribe, runtime.controller.getState)
   const customThemeState = useSyncExternalStore(customTheme.subscribe, customTheme.getState)
@@ -556,6 +558,26 @@ export function SkinCenter({ t, runtime, theme, background, wallpaper, preview, 
                       onChange={(value) => { background.setBubbleOpacity(value) }}
                     />
                     <p className={css.backgroundHint}>{t('bubbleOpacityHint')}</p>
+                  </div>
+
+                  <div className={css.backgroundRow}>
+                    <div className={css.backgroundHead}>
+                      <span className={css.backgroundLabel}>{t('bubbleBlur')}</span>
+                      <span className={css.backgroundValue} aria-hidden="true">{shownBubbleBlur}px</span>
+                    </div>
+                    <SliderControl
+                      id="skin-center-bubble-blur"
+                      className={css.backgroundRange}
+                      min={0}
+                      max={20}
+                      step={1}
+                      value={bubbleBlur}
+                      ariaValuetext={shownBubbleBlur + 'px'}
+                      ariaLabel={t('bubbleBlur')}
+                      onChanging={setShownBubbleBlur}
+                      onChange={(value) => { background.setBubbleBlur(value) }}
+                    />
+                    <p className={css.backgroundHint}>{t('bubbleBlurHint')}</p>
                   </div>
 
                   <WallpaperPanel t={t} wallpaper={wallpaper} />

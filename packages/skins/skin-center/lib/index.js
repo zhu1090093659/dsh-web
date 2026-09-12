@@ -145,7 +145,8 @@ const SKIN_BACKGROUND_DEFAULTS = {
 	backgroundBlurEmpty: 0,
 	backgroundBlurContent: 0,
 	inputCardBlur: 10,
-	bubbleOpacity: 50
+	bubbleOpacity: 50,
+	bubbleBlur: 10
 };
 /** The fields normalize/sanitize know about; unknown keys are dropped. */
 const SKIN_BACKGROUND_FIELDS = Object.keys(SKIN_BACKGROUND_DEFAULTS);
@@ -157,7 +158,8 @@ const RANGES = {
 	backgroundBlurEmpty: [0, 20],
 	backgroundBlurContent: [0, 20],
 	inputCardBlur: [0, 20],
-	bubbleOpacity: [0, 100]
+	bubbleOpacity: [0, 100],
+	bubbleBlur: [0, 20]
 };
 function isRecord$1(value) {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -9384,7 +9386,8 @@ const SkinBackgroundConfigSchema = z.object({
 	backgroundBlurEmpty: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.backgroundBlurEmpty),
 	backgroundBlurContent: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.backgroundBlurContent),
 	inputCardBlur: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.inputCardBlur),
-	bubbleOpacity: z.number().min(0).max(100).step(5).default(SKIN_BACKGROUND_DEFAULTS.bubbleOpacity)
+	bubbleOpacity: z.number().min(0).max(100).step(5).default(SKIN_BACKGROUND_DEFAULTS.bubbleOpacity),
+	bubbleBlur: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.bubbleBlur)
 });
 /**
 * Settings namespace for the Wallpaper Engine bridge, owned by the skin

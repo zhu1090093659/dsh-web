@@ -11,6 +11,7 @@ import type { SkinBackgroundConfig } from '../src/core/background.ts'
 import {
   BackgroundController,
   BUBBLE_ALPHA_VAR,
+  BUBBLE_BLUR_VAR,
   SCRIM_VAR,
   INPUT_CARD_BLUR_VAR,
 } from '../src/client/background.ts'
@@ -198,6 +199,18 @@ describe('BackgroundController', () => {
     expect(document.body.style.getPropertyValue(BUBBLE_ALPHA_VAR)).toBe('')
   })
 
+  it('applies, persists, and cleans up message bubble blur', () => {
+    const { controller, writes } = rig({ bubbleBlur: 6 })
+    expect(controller.bubbleBlur()).toBe(6)
+    expect(document.body.style.getPropertyValue(BUBBLE_BLUR_VAR)).toBe('6px')
+    controller.setBubbleBlur(99)
+    expect(controller.bubbleBlur()).toBe(20)
+    expect(document.body.style.getPropertyValue(BUBBLE_BLUR_VAR)).toBe('20px')
+    expect(writes[0].bubbleBlur).toBe(20)
+    controller.dispose()
+    expect(document.body.style.getPropertyValue(BUBBLE_BLUR_VAR)).toBe('')
+  })
+
   it('setEnabled(false) persists the master switch', () => {
     const { controller, writes } = rig()
     controller.setEnabled(false)
@@ -217,6 +230,7 @@ describe('BackgroundController', () => {
     // Untouched fields fall back to defaults, matching the stored merge.
     expect(controller.inputCardBlur()).toBe(10)
     expect(controller.bubbleOpacity()).toBe(50)
+    expect(controller.bubbleBlur()).toBe(10)
     expect(document.body.style.getPropertyValue(SCRIM_VAR)).toBe('1')
     // init never writes back: the source already owns the stored copy.
     expect(writes).toHaveLength(0)
@@ -241,6 +255,7 @@ describe('BackgroundController', () => {
       backgroundBlurContent: 0,
       inputCardBlur: 10,
       bubbleOpacity: 50,
+      bubbleBlur: 10,
     })
     controller.dispose()
   })

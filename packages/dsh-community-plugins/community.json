@@ -679,5 +679,16 @@
     "npm": "dsh-taskfold",
     "category": "tools",
     "subcategory": "context"
+  },
+  {
+    "id": "dsh-whale-girl",
+    "name": "鲸鱼娘·灵动挂件",
+    "nameEn": "Whale Girl Widget",
+    "author": "nickkkkkk123123",
+    "description": "会卖萌、会记账的 DSH 桌面挂件：实时余额与用量、上下文进度条、CPU/内存信息面板（独立窗口+物理跟随）、拖拽甩抛与碰撞反弹、子代理状态徽章、右键菜单与彩蛋。",
+    "descriptionEn": "A lively DSH desktop widget: realtime balance & usage, context progress bar, CPU/RAM info panel (independent window with physics follow), drag-fling with collision bounce, subagent badges, context menu and easter eggs.",
+    "repo": "https://github.com/nickkkkkk123123/dsh-whale-girl",
+    "category": "ui",
+    "subcategory": "panel"
   }
 ]

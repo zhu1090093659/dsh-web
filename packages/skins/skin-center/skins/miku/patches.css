@@ -1254,7 +1254,7 @@ body:not([data-ds-dark-theme]) .NPtzYa_mikuTitlebarBtn:last-child:hover {
 }
 
 /* 右侧看板（better-sidebar）：平涂 + 圆角。
-   ⚠️ 这几个子串选择器必须限定在 [data-slot="rightbar"] 里：
+   注意：这几个子串选择器必须限定在 [data-slot="rightbar"] 里：
    "_pane" 是 "_panel" 的子串，不限定就会命中设置弹窗的 CSS-Modules 类
    （新外壳设置弹窗 = …_panel），把它强制刷成 transparent !important，
    于是设置栏整块透明、底下的会话内容串进文字里。 */

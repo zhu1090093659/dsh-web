@@ -739,6 +739,19 @@
       "npm": "dsh-taskfold",
       "category": "tools",
       "subcategory": "context"
+    },
+    {
+      "id": "dsh-round-rightclick",
+      "name": "圆盘右键菜单",
+      "rank": 59,
+      "nameEn": "Radial Round Menu",
+      "author": "hmr-BH",
+      "description": "在对话轮次上点击右键弹出圆盘菜单：从此轮分叉、打断生成、复制工作目录路径与会话 ID、打开工作目录、导出日志。",
+      "descriptionEn": "Radial right-click menu on conversation turns: fork from a chosen turn, interrupt generation, copy the working directory path or session ID, open the working directory, and export the log.",
+      "repo": "https://github.com/hmr-BH/dsh-round-rightclick",
+      "npm": "dsh-round-rightclick",
+      "category": "ui",
+      "subcategory": "chat"
     }
   ]
 }

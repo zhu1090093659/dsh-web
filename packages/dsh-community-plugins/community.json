@@ -703,5 +703,16 @@
     "npm": "dsh-permission-rules",
     "category": "security",
     "subcategory": "policy"
+  },
+  {
+    "id": "dsh-prompt-forge",
+    "name": "点词成金",
+    "nameEn": "Prompt Forge",
+    "author": "nina27486486",
+    "description": "⚒ 提示词一键流式优化:轻量/标准/专家三档模式,零配置复用当前会话模型;附 JSON 文件词库与一键存为技能。",
+    "descriptionEn": "One-click streaming prompt optimization in three modes (lite/standard/expert), zero-config reusing the session model; plus a JSON-file prompt library and one-click save-as-skill.",
+    "repo": "https://github.com/nina27486486/dsh-prompt-forge",
+    "category": "ui",
+    "subcategory": "chat"
   }
 ]

@@ -679,5 +679,16 @@
     "npm": "dsh-taskfold",
     "category": "tools",
     "subcategory": "context"
+  },
+  {
+    "id": "dsh-plugin-bwm-friend",
+    "name": "BWM Friend 数字人工作台",
+    "nameEn": "BWM Friend",
+    "author": "laikaton",
+    "description": "数字人沉浸式工作台：原生 DSH 业务流 + 数字人视频 + 半透明幕布 + 青色边框。语音输入/回复朗读、跨会话记忆、人格切换（Mira 陪伴/Mentor 导师）、数字人主动行为、多会话工作区弹窗。UI 与业务分离——原生 DSH 100% 不动。",
+    "descriptionEn": "Digital human immersive workspace: native DSH flow + avatar video + frosted scrim + teal border. Voice input/read-aloud replies, cross-session memory, persona switching (Mira companion / Mentor advisor), proactive digital-human behaviors, multi-session workspace popup. UI separated from business — native DSH untouched.",
+    "repo": "https://gitee.com/zeng-tian818/dsh-plugin-bwm-friend",
+    "npm": "dsh-plugin-bwm-friend",
+    "category": "ui"
   }
 ]

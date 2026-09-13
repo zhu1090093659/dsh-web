@@ -22,4 +22,13 @@ describe('SSH sidebar entry layout (#872)', () => {
     expect(collapsed).toContain('margin: 0 auto 12px')
     expect(collapsed).toContain('border-radius: 50%')
   })
+
+  it('shares the 8px icon/label gap of the sibling sidebar entry rows', () => {
+    // The SSH row is injected between the task-board and skill-explorer rows,
+    // which both use an 8px gap against the same 24px icon box. A wider gap
+    // here nudged only this row's label 2px right of its neighbours.
+    const entry = css.match(/^\.entry\s*\{([^}]*)\}/m)?.[1] ?? ''
+    expect(entry).toContain('gap: 8px')
+    expect(entry).not.toMatch(/gap:\s*(?!8px)\d+px/)
+  })
 })

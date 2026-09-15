@@ -516,6 +516,35 @@ window.SKIN_MANIFEST = {
       }
     },
     {
+      "id": "binary-veil",
+      "name": "二进制面纱",
+      "nameEn": "Binary Veil",
+      "author": "stushansusu",
+      "tagline": "黑白剪影 · 0/1 代码雨 · 人物站在数字前面",
+      "description": "把黑白剪影片逐帧重绘成 0/1 数字场：亮部整片换成代码雨，剪影原样压在数字之上；背景用原片全片（3:52）循环播放，逐帧离线烘焙、不依赖运行时着色器。面板是墨绿玻璃、侧栏半透明，视频整幅居中铺满、构图不被裁切，贯穿整屏。强调色就是数字本身的荧光绿。",
+      "accent": "#6bff9e",
+      "preview": {
+        "light": "assets/skins/binary-veil/preview/light.jpg",
+        "dark": "assets/skins/binary-veil/preview/dark.jpg"
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "video",
+            "src": "assets/skins/binary-veil/assets/binary-veil-loop.mp4",
+            "scrim": "linear-gradient(180deg, rgba(3,6,5,0.26) 0%, rgba(3,6,5,0.10) 16%, rgba(3,6,5,0.08) 78%, rgba(3,6,5,0.24) 100%)"
+          },
+          "dark": {
+            "type": "video",
+            "src": "assets/skins/binary-veil/assets/binary-veil-loop.mp4",
+            "scrim": "linear-gradient(180deg, rgba(3,6,5,0.26) 0%, rgba(3,6,5,0.10) 16%, rgba(3,6,5,0.08) 78%, rgba(3,6,5,0.24) 100%)"
+          }
+        }
+      }
+    },
+    {
       "id": "black-gold",
       "name": "暗夜鎏金",
       "nameEn": "Black Gold Gilded",

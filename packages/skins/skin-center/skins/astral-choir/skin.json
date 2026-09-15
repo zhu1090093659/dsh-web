@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "astral-choir",
+  "name": "星辉教团",
+  "nameEn": "Astral Choir",
+  "version": "1.0.0",
+  "author": "lingfeng.zhang",
+  "tagline": "夜紫 · 极光光带 · 尖塔光环 · 信众眼光",
+  "description": "朝圣之夜：垂直的极光光带掠过壁面，尖塔顶端的球体散开光环，信众的眼睛在暗处一点一点亮。夜紫是结构色，走框、走缝、走柜格；极光青是信号色，只走光带、走眼光点、走球体。中性层是带紫调的夜黑。母题是仪式本身：光环输入壳、圣龛柜格、光环横梁，加上首屏的尖塔与极光弧。",
+  "tags": [
+    "astral",
+    "aurora",
+    "cult",
+    "spire",
+    "halo",
+    "vigil",
+    "violet",
+    "css-only",
+    "dark-only"
+  ],
+  "accent": "#9fe4f0",
+  "order": 33,
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/astral-bg.jpg",
+        "scrim": "linear-gradient(180deg, rgba(8,6,16,0.36) 0%, rgba(8,6,16,0.48) 45%, rgba(8,6,16,0.68) 100%)"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/astral-bg.jpg",
+        "scrim": "linear-gradient(180deg, rgba(8,6,16,0.36) 0%, rgba(8,6,16,0.48) 45%, rgba(8,6,16,0.68) 100%)"
+      }
+    }
+  },
+  "license": "CC0-1.0",
+  "attribution": "背景画作为作者原创（AI 生成），以 CC0 公有领域 dedication 随皮肤自由使用与分发。"
+}

@@ -1,0 +1,469 @@
+/**
+ * 虫巢 (Hive Maw) — L3 atmosphere layer.
+ *
+ * 纯 CSS，无 hooks。loader 会把每条选择器强制 scope 到
+ * html[data-dsh-skin="hive-maw"] 之下，所以这里故意按无 scope 书写。
+ *
+ * 用到的钩子全部是 shell 真实输出并经 semantic-attrs-v1 契约在册的：
+ *   · canvas      body::after                主题地面（底板 SVG）
+ *   · sidebar     [data-slot="sidebar"] > * / [data-dsh-surface="sidebar"] / [data-pane="sidebar"]
+ *   · details     [data-slot="details"] / [data-dsh-surface="details"] / [data-pane="details"]
+ *   · header      [data-dsh-surface="session-header"] > *（slot 出口 display:contents，必须下探）
+ *   · hero        [data-phase="hero"]
+ *   · composer    [data-composer-card] / [data-input-scroll] / [data-composer-placeholder]
+ *   · rows        [data-chat-flow-kind="user" | "assistant-step" | "tool-call" | "context"]
+ *   · approval    [data-approval-key] / [data-question-key] / [data-plan-review-key]
+ *   · frame       [data-dsh-surface="overlay"] / [data-slot="shell.overlay"] / [data-shell-overlay]
+ *   · parts       [data-dsh-part="new-session" | "resize-handle"]
+ *   · brand       [data-slot="sidebar.brand.mark" | "sidebar.brand.name"]
+ *
+ * 暗色专用皮肤：只写一套暗色值；:root 钉死 color-scheme。
+ * 母题：几丁质双线接缝、卵囊光点列、隧道肋弧；边缘套件＝甲壳弧缘 / 卵链 / 鳞状垂缘 / 斜向 hatch。
+ * 红只留给审批/危险。
+ */
+
+/* ── 材质变量 ─────────────────────────────────────────────────────────── */
+
+body {
+  --sk-ground: #060a07;
+  --sk-pane: url(assets/hive-plate-dark.svg),
+    radial-gradient(120% 90% at 50% -10%, #8fe3a61a 0%, transparent 55%);
+  --sk-wall: #121b14;
+  --sk-wall-edge: #24352a5c;
+  --sk-card-top: #24352a4d;
+  --sk-composer-ring: 0 0 0 3px #63a87133;
+  --sk-bubble-edge: #63a87147;
+  --sk-approval-edge: #c4544a80;
+
+  /* 几丁质四档 + 卵光点。b1 主线，b2 接缝，b3/b4 极淡分层线。 */
+  --hv-b1: #8fe3a6d1;
+  --hv-b2: #8fe3a680;
+  --hv-b3: #8fe3a64d;
+  --hv-b4: #8fe3a626;
+  --hv-egg: #8fe3a6e0;
+  --hv-egg-hi: #e2eadfbf;
+  --hv-warn: #c4544a8c;
+}
+
+/* ── canvas：主题地面 ─────────────────────────────────────────────────── */
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--sk-ground);
+  background-image: var(--sk-pane);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+/* 壁纸 / 皮肤背景挂载时地面让位（loader 自有标记；写 body[...]::after 形式，
+   否则 scope 转换后 html 不是自身后代，规则永远匹配不上）。 */
+body[data-dsh-wallpaper-active]::after,
+body[data-dsh-backdrop-active]::after {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* ── sidebar：几丁质壁面 ──────────────────────────────────────────────── */
+
+/* [data-slot="sidebar"] 是 display:contents 的 slot 出口，真正有盒子的是它的子元素。 */
+[data-slot='sidebar'] > *,
+[data-dsh-surface='sidebar'],
+[data-pane='sidebar'] {
+  background-color: var(--sk-wall) !important;
+  background-image:
+    linear-gradient(180deg, #8fe3a612 0%, transparent 52%);
+  box-shadow: inset -1px 0 0 var(--sk-wall-edge);
+}
+
+/* 侧栏右缘：几丁质双缝 + 一列卵囊光点 */
+[data-pane='sidebar'] {
+  position: relative;
+}
+[data-pane='sidebar']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 11px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg,
+      transparent 0 3px, var(--hv-b2) 3px 4px,
+      transparent 4px 5px, var(--hv-b4) 5px 6px, transparent 6px 100%),
+    radial-gradient(circle at 50% 50%, var(--hv-egg) 0 1.6px, var(--hv-egg-hi) 1.6px 2.2px, transparent 2.4px);
+  background-size: 100% 100%, 11px 64px;
+  background-repeat: no-repeat, repeat-y;
+  opacity: 0.9;
+}
+
+/* 详情栏左缘镜像 */
+[data-pane='details'] {
+  position: relative;
+}
+[data-pane='details']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 11px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(270deg,
+      transparent 0 3px, var(--hv-b2) 3px 4px,
+      transparent 4px 5px, var(--hv-b4) 5px 6px, transparent 6px 100%),
+    radial-gradient(circle at 50% 50%, var(--hv-egg) 0 1.6px, var(--hv-egg-hi) 1.6px 2.2px, transparent 2.4px);
+  background-size: 100% 100%, 11px 64px;
+  background-repeat: no-repeat, repeat-y;
+  opacity: 0.9;
+}
+
+/* 工作区列表保持壁面色，不另起抬升卡 */
+[data-slot='sidebar.workspaces'] {
+  background-color: transparent !important;
+}
+
+/* ── details pane ─────────────────────────────────────────────────────── */
+
+[data-slot='details'],
+[data-slot='details'] > *,
+[data-dsh-surface='details'],
+[data-pane='details'] {
+  background-color: #060a07db !important;
+}
+
+/* ── hero：隧道肋环 ───────────────────────────────────────────────────── */
+
+[data-phase='hero'] {
+  position: relative;
+  background-image:
+    repeating-radial-gradient(circle at 50% 44%, transparent 0 26px, #8fe3a61c 26px 27px),
+    repeating-radial-gradient(circle at 50% 44%, transparent 0 34px, #8fe3a60f 34px 34.8px),
+    radial-gradient(46% 38% at 50% 42%, #060a0780 0%, transparent 70%),
+    radial-gradient(72% 56% at 50% 0%, #63a87124 0%, transparent 72%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+/* 首屏母题立绘：隧道环 + 卵囊簇，挂在伪元素上，不与引擎的 hero 渐变抢 background-image */
+[data-phase='hero']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url(assets/hive-hero-dark.svg);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.95;
+}
+
+/* ── composer：几丁质目镜壳 ───────────────────────────────────────────── */
+
+[data-composer-card] {
+  position: relative;
+  border-radius: 14px;
+  box-shadow: var(--sk-composer-ring), inset 0 1px 0 var(--sk-card-top);
+}
+
+/* 四角甲壳弧缘：双层四分之一弧环，读作包过来的壳缘而非直角框 */
+[data-composer-card]::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 0 0, transparent 0 13px, var(--hv-b2) 13px 14px, transparent 14px),
+    radial-gradient(circle at 100% 0, transparent 0 13px, var(--hv-b2) 13px 14px, transparent 14px),
+    radial-gradient(circle at 0 100%, transparent 0 13px, var(--hv-b2) 13px 14px, transparent 14px),
+    radial-gradient(circle at 100% 100%, transparent 0 13px, var(--hv-b2) 13px 14px, transparent 14px),
+    radial-gradient(circle at 0 0, transparent 0 8px, var(--hv-b4) 8px 9px, transparent 9px),
+    radial-gradient(circle at 100% 0, transparent 0 8px, var(--hv-b4) 8px 9px, transparent 9px),
+    radial-gradient(circle at 0 100%, transparent 0 8px, var(--hv-b4) 8px 9px, transparent 9px),
+    radial-gradient(circle at 100% 100%, transparent 0 8px, var(--hv-b4) 8px 9px, transparent 9px);
+  background-size: 20px 20px, 20px 20px, 20px 20px, 20px 20px, 15px 15px, 15px 15px, 15px 15px, 15px 15px;
+  background-position:
+    left top, right top, left bottom, right bottom,
+    left top, right top, left bottom, right bottom;
+  background-repeat: no-repeat;
+}
+
+/* 卡上缘卵链：一串发光卵点压在极淡膜线上 */
+[data-composer-card]::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: -9px;
+  height: 8px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 50%, var(--hv-egg) 0 1.5px, var(--hv-egg-hi) 1.5px 2.1px, transparent 2.3px),
+    linear-gradient(90deg, transparent 0, var(--hv-b4) 8%, var(--hv-b4) 92%, transparent 100%);
+  background-size: 14px 8px, 100% 1px;
+  background-position: 0 50%, 0 50%;
+  background-repeat: repeat-x, no-repeat;
+  opacity: 0.75;
+}
+
+[data-input-scroll] {
+  background-color: transparent;
+}
+
+[data-composer-placeholder] {
+  color: #6d7f6f;
+}
+
+/* ── 会话行：材质边缘 ─────────────────────────────────────────────────── */
+
+[data-chat-flow-kind='user'] {
+  box-shadow: inset 3px 0 0 var(--sk-bubble-edge);
+}
+
+[data-chat-flow-kind='assistant-step'] {
+  background-color: transparent;
+}
+
+[data-chat-flow-kind='tool-call'],
+[data-chat-flow-kind='context'] {
+  border-radius: 10px;
+  background-color: #121b1480;
+}
+
+/* ── 选区 / 链接 / 滚动条 ─────────────────────────────────────────────── */
+
+::selection {
+  background-color: #63a87152;
+}
+
+a {
+  color: #63a871;
+}
+
+* {
+  scrollbar-color: #93a69466 transparent;
+}
+
+/* ── 审批：女王红斜纹（全场唯一允许的红）──────────────────────────────── */
+
+[data-approval-key],
+[data-question-key],
+[data-plan-review-key] {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--sk-approval-edge), var(--dsw-shadow-lv2);
+}
+[data-approval-key]::before,
+[data-question-key]::before,
+[data-plan-review-key]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(-45deg, var(--hv-warn) 0 4px, transparent 4px 9px);
+  opacity: 0.7;
+}
+
+/* ── 整机外框：几丁质双线 ─────────────────────────────────────────────── */
+
+[data-dsh-surface='overlay']::after,
+[data-slot='shell.overlay']::after,
+[data-shell-overlay]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  box-shadow:
+    inset 0 0 0 1px var(--hv-b3),
+    inset 0 0 0 6px transparent,
+    inset 0 0 0 7px var(--hv-b4);
+}
+
+/* ── 会话顶栏：垂棘横梁 ───────────────────────────────────────────────── */
+
+/* slot 出口 display:contents，装饰下探到子元素（真实有盒子的 .header）。 */
+[data-dsh-surface='session-header'] > *,
+[data-slot='conversation.session.header'] > * {
+  position: relative;
+  background-image:
+    repeating-linear-gradient(60deg, var(--hv-b4) 0 1px, transparent 1px 9px),
+    linear-gradient(180deg, var(--hv-b3) 0 60%, transparent 100%);
+  background-size: 100% 10px, 100% 100%;
+  background-position: 0 0, 0 0;
+  background-repeat: repeat-x, no-repeat;
+  box-shadow:
+    inset 0 1px 0 var(--hv-b2),
+    inset 0 -1px 0 var(--hv-b2);
+}
+
+/* 梁左右两枚卵光点 */
+[data-dsh-surface='session-header'] > *::before,
+[data-slot='conversation.session.header'] > *::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 50%, var(--hv-egg) 0 1.5px, var(--hv-egg-hi) 1.5px 2.3px, transparent 2.6px),
+    radial-gradient(circle at 50% 50%, var(--hv-egg) 0 1.5px, var(--hv-egg-hi) 1.5px 2.3px, transparent 2.6px);
+  background-size: 4.6px 6px;
+  background-position: 0 50%, 100% 50%;
+  background-repeat: no-repeat;
+}
+
+/* 下缘鳞状垂缘：一排向下的小弧 + 顶发丝线 */
+[data-dsh-surface='session-header'] > *::after,
+[data-slot='conversation.session.header'] > *::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 8px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 0, var(--hv-b3) 0 1px, transparent 1px 4.5px),
+    linear-gradient(180deg, var(--hv-b2) 0 1px, transparent 1px);
+  background-size: 9px 5px, 100% 100%;
+  background-position: 0 0, 0 0;
+  background-repeat: repeat-x, no-repeat;
+  opacity: 0.7;
+}
+
+/* ── 工作区：卵室柜格 ─────────────────────────────────────────────────── */
+
+/* background-color 被引擎 !important 锁死，全部用 background-image 画。 */
+[data-slot='sidebar.workspaces'] {
+  background-image:
+    /* 右缘卵光点列 */
+    radial-gradient(circle at 50% 50%, var(--hv-b3) 0 1.4px, transparent 1.7px),
+    /* 卵室点阵：极淡的成簇卵光 */
+    radial-gradient(circle at 50% 50%, #8fe3a60d 0 2px, transparent 2.4px),
+    /* 外框四条 */
+    linear-gradient(var(--hv-b2), var(--hv-b2)),
+    linear-gradient(var(--hv-b2), var(--hv-b2)),
+    linear-gradient(var(--hv-b2), var(--hv-b2)),
+    linear-gradient(var(--hv-b2), var(--hv-b2)),
+    /* 左上与右下取景角标 */
+    linear-gradient(var(--hv-b1), var(--hv-b1)),
+    linear-gradient(var(--hv-b1), var(--hv-b1)),
+    linear-gradient(var(--hv-b1), var(--hv-b1)),
+    linear-gradient(var(--hv-b1), var(--hv-b1)),
+    /* 上唇阴影 */
+    linear-gradient(180deg, #00000061 0%, #00000000 100%),
+    /* 凹室底 */
+    linear-gradient(180deg, #0d1a1021 0%, #0d1a100a 100%);
+  background-size:
+    7px 20px,
+    12px 10px,
+    100% 1px, 100% 1px, 1px 100%, 1px 100%,
+    24px 1px, 1px 24px, 24px 1px, 1px 24px,
+    100% 12px,
+    100% 100%;
+  background-position:
+    right top,
+    left top,
+    left top, left bottom, left top, right top,
+    3px 3px, 3px 3px, right 3px bottom 3px, right 3px bottom 3px,
+    left top,
+    left top;
+  background-repeat:
+    repeat-y,
+    repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat,
+    no-repeat;
+}
+
+/* ── 文件夹：镂花封套 + 几丁质书脊 ────────────────────────────────────── */
+
+[data-slot='sidebar.workspaces'] [role='treeitem'][aria-expanded],
+[data-slot='sidebar.workspaces'] [role='treeitem']:has([role='group']) {
+  background-image: url(assets/hive-sleeve-dark.svg);
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: inset 3px 0 0 var(--hv-b1);
+  font-family: ui-monospace, Consolas, 'Cascadia Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ── 新会话：铆起的卵室铭牌 ───────────────────────────────────────────── */
+
+[data-dsh-part='new-session'] {
+  position: relative;
+  box-shadow:
+    inset 0 0 0 1px var(--hv-b2),
+    inset 0 1px 0 var(--hv-b4),
+    0 1px 0 #0000002e;
+}
+[data-dsh-part='new-session']::before,
+[data-dsh-part='new-session']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 4.5px;
+  height: 4.5px;
+  margin-top: -2.25px;
+  border-radius: 50%;
+  background: var(--hv-egg);
+  box-shadow: inset -1px -1px 0 var(--hv-egg-hi);
+  pointer-events: none;
+}
+[data-dsh-part='new-session']::before { left: 6px; }
+[data-dsh-part='new-session']::after { right: 6px; }
+
+/* ── 拖拽把手：一条几丁质中线 ─────────────────────────────────────────── */
+
+[data-dsh-part='resize-handle'] {
+  background-image:
+    linear-gradient(90deg, transparent 0 48%, var(--hv-b3) 48% 52%, transparent 52% 100%);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* ── 侧栏品牌行 ───────────────────────────────────────────────────────── */
+
+[data-slot='sidebar.brand.mark'] {
+  color: var(--hv-b1);
+}
+[data-slot='sidebar.brand.name'] {
+  font-family: ui-monospace, Consolas, 'Cascadia Mono', monospace;
+  letter-spacing: 0.08em;
+}
+/* fallback 品牌名替换：稳定插槽 + 位置（哈希类名碰不得） */
+[data-slot='sidebar.brand.name'] > * > span:first-child,
+[data-slot='sidebar.brand.name'] span:first-child {
+  font-size: 0;
+}
+[data-slot='sidebar.brand.name'] > * > span:first-child::after,
+[data-slot='sidebar.brand.name'] span:first-child::after {
+  content: 'dsh 巢穴守望';
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* ── 暗色专用：钉死原生配色方案 ─────────────────────────────────────────
+   必须写 :root：scope 转换把它特判成 html[data-dsh-skin="hive-maw"] 本身，
+   color-scheme 只有落在根元素才管得住原生控件。 */
+
+:root {
+  color-scheme: dark !important;
+}

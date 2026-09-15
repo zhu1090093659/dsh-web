@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "hive-maw",
+  "name": "虫巢",
+  "nameEn": "Hive Maw",
+  "version": "1.0.0",
+  "author": "lingfeng.zhang",
+  "tagline": "几丁质壁 · 卵囊光点 · 隧道肋弧 · 垂棘刻度",
+  "description": "巢穴隧道内壁：几丁质的双缝接缝、成簇的卵囊光点、向深处收束的隧道肋弧。生物荧光绿是全场唯一有彩度的线，只走缝、走点、走刻度；红只留给深处那对眼睛——也就是审批与危险。中性层是带绿调的夜黑，只带色温不带彩度。母题是巢穴本身：壁面接缝、卵室柜格、垂棘横梁，加上首屏的隧道环与卵囊簇。",
+  "tags": [
+    "hive",
+    "chitin",
+    "bioluminescent",
+    "tunnel",
+    "eggs",
+    "organic",
+    "css-only",
+    "dark-only"
+  ],
+  "accent": "#8fe3a6",
+  "order": 31,
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/hive-bg.jpg",
+        "scrim": "linear-gradient(180deg, rgba(4,8,5,0.34) 0%, rgba(4,8,5,0.46) 45%, rgba(4,8,5,0.66) 100%)"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/hive-bg.jpg",
+        "scrim": "linear-gradient(180deg, rgba(4,8,5,0.34) 0%, rgba(4,8,5,0.46) 45%, rgba(4,8,5,0.66) 100%)"
+      }
+    }
+  },
+  "license": "CC0-1.0",
+  "attribution": "背景画作为作者原创（AI 生成），以 CC0 公有领域 dedication 随皮肤自由使用与分发。"
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "ember-fall",
+  "name": "余烬",
+  "nameEn": "Ember Fall",
+  "version": "1.0.0",
+  "author": "lingfeng.zhang",
+  "tagline": "枪铁灰 · 焊疤接缝 · 危标斜纹 · 灰烬烟幕",
+  "description": "坠机现场回收站：枪铁灰的壁面、焊珠虚线的接缝、45° 危标斜纹的审批区。余烬橙是全场唯一暖色，只走焊缝、走铆点、走地平线那道火光；紫火花是点睛，一颗一颗散在烟里。中性层是冷灰，压住背景里 burning 的天幕。母题是残骸回收：焊板输入壳、弹药柜格、烟幕横梁，加上首屏的坠毁剪影与地平火光。",
+  "tags": [
+    "ember",
+    "wreckage",
+    "mech",
+    "weld",
+    "hazard",
+    "ash",
+    "industrial",
+    "css-only",
+    "dark-only"
+  ],
+  "accent": "#e8a860",
+  "order": 32,
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/ember-bg.jpg",
+        "scrim": "linear-gradient(180deg, rgba(8,10,13,0.44) 0%, rgba(8,10,13,0.54) 45%, rgba(8,10,13,0.72) 100%)"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/ember-bg.jpg",
+        "scrim": "linear-gradient(180deg, rgba(8,10,13,0.44) 0%, rgba(8,10,13,0.54) 45%, rgba(8,10,13,0.72) 100%)"
+      }
+    }
+  },
+  "license": "CC0-1.0",
+  "attribution": "背景画作为作者原创（AI 生成），以 CC0 公有领域 dedication 随皮肤自由使用与分发。"
+}

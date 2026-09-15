@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" fill="none" aria-hidden="true">
+  <!-- 星辉教团首屏：尖塔 + 球体 + 极光弧 + 射线刻度 -->
+  <defs>
+    <radialGradient id="as-hero-orb" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#9fe4f0" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#9fe4f0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- 极光弧：自球顶散开 -->
+  <g stroke-width="1">
+    <path d="M480 150 C360 120 260 180 160 120" stroke="#9fe4f0" opacity="0.10"/>
+    <path d="M480 150 C600 120 700 180 800 120" stroke="#9fe4f0" opacity="0.10"/>
+    <path d="M480 150 C380 90 300 60 220 40" stroke="#8672d6" opacity="0.12"/>
+    <path d="M480 150 C580 90 660 60 740 40" stroke="#8672d6" opacity="0.12"/>
+  </g>
+  <!-- 尖塔与球体 -->
+  <g stroke="#8672d6" stroke-width="1">
+    <path d="M480 470 L466 240 M480 470 L494 240" opacity="0.20"/>
+    <path d="M466 240 L480 170 L494 240" opacity="0.22"/>
+    <circle cx="480" cy="150" r="22" opacity="0.28"/>
+    <circle cx="480" cy="150" r="32" opacity="0.15"/>
+    <circle cx="480" cy="150" r="44" opacity="0.08"/>
+    <path d="M480 128 V96" opacity="0.26"/>
+    <circle cx="480" cy="92" r="2.4" fill="#9fe4f0" stroke="none" opacity="0.45"/>
+  </g>
+  <circle cx="480" cy="150" r="56" fill="url(#as-hero-orb)"/>
+  <!-- 地平信众：眼光点排 + 跪姿短竖线 -->
+  <g stroke="#8672d6" opacity="0.14">
+    <path d="M200 470 v-14 M260 470 v-12 M320 470 v-14 M380 470 v-12 M580 470 v-12 M640 470 v-14 M700 470 v-12 M760 470 v-14"/>
+  </g>
+  <g fill="#9fe4f0">
+    <circle cx="200" cy="450" r="1.6" opacity="0.22"/><circle cx="260" cy="452" r="1.6" opacity="0.18"/>
+    <circle cx="320" cy="450" r="1.6" opacity="0.22"/><circle cx="380" cy="452" r="1.6" opacity="0.18"/>
+    <circle cx="580" cy="452" r="1.6" opacity="0.18"/><circle cx="640" cy="450" r="1.6" opacity="0.22"/>
+    <circle cx="700" cy="452" r="1.6" opacity="0.18"/><circle cx="760" cy="450" r="1.6" opacity="0.22"/>
+  </g>
+  <path d="M120 470 H840" stroke="#8672d6" opacity="0.16"/>
+</svg>

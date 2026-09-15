@@ -1,16 +1,16 @@
 [
   {
-  "id": "dsh-quick-ask",
-  "name": "侧边快速提问",
-  "nameEn": "Side Quick Ask",
-  "author": "Volta-ln",
-  "description": "在 DSH Web 聊天界面右侧的悬浮面板中，就当前话题提出小问题，由独立轻量会话通过官方 /api RPC 回答，不写入、不影响主对话。支持流式正文、可折叠思考、工具 chips、停止按钮、agent 预设选择，并自动抓取主对话最近内容作为背景。",
-  "descriptionEn": "A floating side panel on the right edge of the DSH Web chat view that answers small questions about the current topic in an independent lightweight session driven through the official /api RPC, leaving the main conversation untouched. Streaming text, collapsible reasoning, tool chips, stop button, agent-preset selector, and an automatic context snapshot from the visible main chat.",
-  "repo": "https://github.com/Volta-ln/dsh-quick-ask",
-  "npm": "dsh-quick-ask",
-  "category": "ui",
-  "subcategory": "panel"
-},
+    "id": "dsh-quick-ask",
+    "name": "侧边快速提问",
+    "nameEn": "Side Quick Ask",
+    "author": "Volta-ln",
+    "description": "在 DSH Web 聊天界面右侧的悬浮面板中，就当前话题提出小问题，由独立轻量会话通过官方 /api RPC 回答，不写入、不影响主对话。支持流式正文、可折叠思考、工具 chips、停止按钮、agent 预设选择，并自动抓取主对话最近内容作为背景。",
+    "descriptionEn": "A floating side panel on the right edge of the DSH Web chat view that answers small questions about the current topic in an independent lightweight session driven through the official /api RPC, leaving the main conversation untouched. Streaming text, collapsible reasoning, tool chips, stop button, agent-preset selector, and an automatic context snapshot from the visible main chat.",
+    "repo": "https://github.com/Volta-ln/dsh-quick-ask",
+    "npm": "dsh-quick-ask",
+    "category": "ui",
+    "subcategory": "panel"
+  },
   {
     "id": "dsh-data-agent",
     "name": "Data Agent",
@@ -870,5 +870,17 @@
     "npm": "dsh-stalled-turn-continue",
     "category": "tools",
     "subcategory": "dev"
+  },
+  {
+    "id": "dsh-usage-panel",
+    "name": "消耗统计面板",
+    "nameEn": "Usage Panel",
+    "author": "AlfredChaos",
+    "description": "设置页 Token 用量统计：累计 KPI 与侧边栏会话列表同口径、半年活跃热力图、按模型堆叠的每日柱状图、模型环形图、Top 会话与 provider 分布，支持 JSON/CSV 导出。基于投影增量聚合、只读重算会话日志；fork/seed 历史去重、resume 会话完整保留、子代理消耗独立归属——历史账单的准确记账，与实时监控类插件互补。",
+    "descriptionEn": "A Settings-page token usage panel for DSH: cumulative KPIs aligned with the visible session list, a six-month activity heatmap, per-model stacked daily bars, a model donut, top sessions and provider breakdown, with JSON/CSV export. Incremental projection over session logs, strictly read-only; fork/seed history deduplicated, resumed sessions kept whole, subagent spend attributed separately — authoritative historical accounting, complementary to live monitoring plugins.",
+    "repo": "https://github.com/AlfredChaos/dsh-usage-panel",
+    "npm": "dsh-usage-panel",
+    "category": "utility",
+    "subcategory": "stats"
   }
 ]

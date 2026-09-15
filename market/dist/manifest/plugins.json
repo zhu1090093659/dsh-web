@@ -946,6 +946,19 @@
       "npm": "dsh-stalled-turn-continue",
       "category": "tools",
       "subcategory": "dev"
+    },
+    {
+      "id": "dsh-usage-panel",
+      "name": "消耗统计面板",
+      "rank": 75,
+      "nameEn": "Usage Panel",
+      "author": "AlfredChaos",
+      "description": "设置页 Token 用量统计：累计 KPI 与侧边栏会话列表同口径、半年活跃热力图、按模型堆叠的每日柱状图、模型环形图、Top 会话与 provider 分布，支持 JSON/CSV 导出。基于投影增量聚合、只读重算会话日志；fork/seed 历史去重、resume 会话完整保留、子代理消耗独立归属——历史账单的准确记账，与实时监控类插件互补。",
+      "descriptionEn": "A Settings-page token usage panel for DSH: cumulative KPIs aligned with the visible session list, a six-month activity heatmap, per-model stacked daily bars, a model donut, top sessions and provider breakdown, with JSON/CSV export. Incremental projection over session logs, strictly read-only; fork/seed history deduplicated, resumed sessions kept whole, subagent spend attributed separately — authoritative historical accounting, complementary to live monitoring plugins.",
+      "repo": "https://github.com/AlfredChaos/dsh-usage-panel",
+      "npm": "dsh-usage-panel",
+      "category": "utility",
+      "subcategory": "stats"
     }
   ]
 }

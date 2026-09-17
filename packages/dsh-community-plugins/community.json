@@ -893,5 +893,16 @@
     "npm": "dsh-usage-panel",
     "category": "utility",
     "subcategory": "stats"
+  },
+  {
+    "id": "dsh-workbench",
+    "name": "工作台：技能库与文档迭代看板",
+    "nameEn": "Workbench: Skill Library & Doc Iteration Board",
+    "author": "liiydong",
+    "description": "DSH Web 左栏的「工作台」面板，三页：① 迭代——把「AI 改 md → 生成 Word/PDF/Excel → 你审这一版」变成一条时间轴，按产线分组、按天分小节，鼠标悬停看这一版干了什么（摘要、来源 md、生成命令、快照路径），可【通过】【要改】；② 技能库——读核心 ctx.skills 注册表列出本机全部技能，可搜索、读 SKILL.md 全文；③ 文档——md 源与 docx/pdf 产物配对，把「产物比源旧」排最前。自带假数据演示，零依赖。",
+    "descriptionEn": "A Workbench panel for the DSH Web sidebar with three tabs. Iteration turns \"AI edits Markdown → regenerates Word/PDF/Excel → you review that build\" into one timeline: grouped by production line and by day, with a hover card showing what each build did (summary, source files, generating command, snapshot path) and Approve / Needs-work actions that append to a decisions log. Skill Library reads the core ctx.skills registry (search, filter by source, read the full SKILL.md). Documents pairs Markdown sources with their docx/pdf artifacts by stem and floats stale artifacts to the top. Ships a fake demo project; zero dependencies.",
+    "repo": "https://github.com/liiydong/dsh-workbench",
+    "category": "ui",
+    "subcategory": "panel"
   }
 ]

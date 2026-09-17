@@ -749,6 +749,11 @@ const REVIEWED_SKIN_HOOKS = {
 		manifestSha256: "a655bbde8580eddb45271949a7864355cc5c368f91bd811f3632809134c9c3e8",
 		hooksSha256: "f82cf61957efb9d9f53557637b00333aa307b3c9642e73620afdbb1fa9511e9e"
 	},
+	"kaleido": {
+		entry: "hooks.mjs",
+		manifestSha256: "54076b3df611173bb4cd4f276bd31732ee77003693bda2369e0e51eca52fed37",
+		hooksSha256: "c3a8008407aebe3f450dde2579c8dfd7411f9df24646e8a8514e3c8dbefaffc6"
+	},
 	"maid-atelier": {
 		entry: "hooks.mjs",
 		manifestSha256: "7596a704bce65006381d27417d4c12bb09d7e5ede038a6f486cfa58e62314aa5",

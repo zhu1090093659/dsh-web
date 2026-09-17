@@ -961,6 +961,23 @@ window.SKIN_MANIFEST = {
           }
         }
       }
+    },
+    {
+      "id": "kaleido",
+      "name": "万象镜",
+      "nameEn": "Kaleido",
+      "author": "stushansusu",
+      "tagline": "随机二次元壁纸 · 全透明外壳 · 每次刷新换一张",
+      "description": "一张每次打开都不一样的二次元立绘铺满整个屏幕，界面只在它上面留一层玻璃。壁纸由皮肤自己去 https://api.elaina.cat/random/ 取 —— 那个接口每次请求返回一张随机画，所以「配色」这条路在这里不成立：同一套界面要压在深夜星海和正午樱花上。于是设计预算从「颜色」挪到「壳与衬底」：一层跟着明暗走的径向遮罩（中间厚、四周薄）兜住正文对比度；一条紫→青的棱镜色只出现在焦点上（CTA、光标、焦点环、输入卡的描边与取景框）；侧栏与右栏不是板，而是一条往中间渐隐到零的纱 —— 左边压得住字，右边把画让出来，于是壁纸从最左边一直连到最右边，工作区那一栏也透着画；只有输入卡与浮层是真模糊的玻璃（侧栏不敢给 backdrop-filter，否则会把设置弹窗困在栏里）。取画要 1.9 秒左右（壁纸地址只能由 hooks 注入），这段时间铺的是一层跟着明暗走的素底而不是任何图案 —— 所以刷新时看到的是「暗一下 → 画」，不会先出现另一个背景；换画是旧画垫底的真交叉淡入；接口连错三次才把棱镜底片叫出来当失败画面。",
+      "accent": "#6D4AE0",
+      "preview": {
+        "light": "assets/skins/kaleido/preview/light.jpg",
+        "dark": "assets/skins/kaleido/preview/dark.jpg"
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css"
+      }
     }
   ]
 }

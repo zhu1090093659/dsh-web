@@ -893,5 +893,16 @@
     "npm": "dsh-usage-panel",
     "category": "utility",
     "subcategory": "stats"
+  },
+  {
+    "id": "dsh-workbench",
+    "name": "工作台：技能库与文档迭代看板",
+    "nameEn": "Workbench: Skill Library & Doc Iteration Board",
+    "author": "liiydong",
+    "description": "在左侧栏加一个「工作台」面板，两页：技能库读核心 ctx.skills 注册表列出本机全部技能（可搜索、按来源过滤、读 SKILL.md 全文）；文档页扫目录把 md/tex 源与 docx/pdf 产物按主干配对，把「产物比源旧」排到最前。宿主半侧只提供 4 条只读 JSON 路由，零依赖、不写盘、不发模型调用。",
+    "descriptionEn": "Adds a Workbench panel to the DSH Web sidebar with two tabs: a skill library backed by the core ctx.skills registry (search, filter by source, read the full SKILL.md), and a document-iteration board that pairs Markdown/TeX sources with their docx/pdf artifacts by stem and floats stale artifacts to the top. The host half exposes four read-only JSON routes; zero dependencies, never writes to disk, never calls a model.",
+    "repo": "https://github.com/liiydong/dsh-workbench",
+    "category": "ui",
+    "subcategory": "panel"
   }
 ]

@@ -916,4 +916,16 @@
     "category": "tools",
     "subcategory": "dev"
   }
+,
+  {
+    "id": "dsh-deepseek-web",
+    "name": "DeepSeek 网页版接入",
+    "nameEn": "DeepSeek Web as a Model",
+    "author": "zgrajdnhj7806-svg",
+    "description": "把你本人账号的 DeepSeek 网页版（chat.deepseek.com）当作第二个模型接进 DSH：模型可直接提问（支持深度思考 / 联网搜索 / 新会话 / 多轮）、按文件行区间分析网页端模型回答、并查询登录状态与凭据来源。附带运行时技能 deepseek-web 与设置页登录面板（一键拉起 Edge 抓取 token，也可导入或手工粘贴），PoW 挑战用 Node 内置 WebAssembly 就地求解，无需 API Key、无 Python/Playwright 依赖；所有调用刻意串行，适配免费账号单线程使用。",
+    "descriptionEn": "Adopts your own chat.deepseek.com account as a second model in DSH: the model can ask questions (deep thinking / web search / new session / multi-turn), analyze a file by line range against the web model, and check login state plus credential source. Ships a runtime skill and a settings-page login panel that captures the token from a local Edge session (or imports one by hand); PoW challenges are solved in-process with Node's built-in WebAssembly, so there is no API key and no Python/Playwright dependency. Every call is deliberately serial, sized for single-account single-threaded use.",
+    "repo": "https://github.com/zgrajdnhj7806-svg/dsh-deepseek-web",
+    "category": "integration",
+    "subcategory": "external-ai"
+  }
 ]

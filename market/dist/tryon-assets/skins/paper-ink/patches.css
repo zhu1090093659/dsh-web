@@ -1,0 +1,162 @@
+/* Paper Ink (纸墨) - L3 patches.
+ *
+ * This file is the escape hatch, so it stays as small as the job allows: each
+ * rule below is here because a token cannot reach that surface, and each one
+ * names the surface it neutralises. Everything else about this skin is
+ * declared as tokens in skin.css - if a rule here could be a token, it
+ * belongs there instead.
+ *
+ * The head idiom matters. The loader force-scopes every selector here under
+ * html[data-dsh-skin="paper-ink"], and it does that by making the selector a
+ * DESCENDANT of that head - so a bare "html[...]" head comes out as
+ * html[data-dsh-skin] html[...], which can never match, because the element
+ * carrying data-dsh-skin IS the html element. Marker heads are therefore
+ * written ":root[...]", which merges into the scope itself, and token
+ * declarations that must beat the scope's own are written on "body", which
+ * becomes html[data-dsh-skin] body.
+ *
+ * The file is kept to six heads - ":root[data-dsh-backdrop-active]",
+ * ":root[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface]",
+ * "svg[viewBox=...]", ":root", "body" and "body[data-ds-dark-theme]" - because
+ * the loader keeps only the first rule of each head, and a repeated head
+ * loses its block.
+ */
+
+/* 1. Skin background markers.
+ *
+ * The skin ships backgroundMedia (a sheet of paper with one ink stroke), so
+ * skin-center sets data-dsh-backdrop-active on html and body for as long as
+ * that art is on screen, plus data-dsh-conversation-content once the
+ * conversation has message rows. The shell's composer is frosted by default
+ * - backdrop-filter: blur(10px) on the input card, driven by
+ * --dsh-input-card-blur (see skin-center/src/client/runtime/backdrop-scene.ts)
+ * - which over paper art reads as a grey smear rather than as ink.
+ *
+ * This skin has no glassmorphism anywhere, so the frosted composer is turned
+ * off by driving that variable to zero rather than by fighting the blur with
+ * a second backdrop-filter. The rule keys on the marker, so it is inert
+ * without a skin background; it is declared once because the variable lives
+ * on html and does not vary by theme.
+ *
+ * The four background markers need nothing further: the shell already
+ * neutralises the composer seat's own frosted panel (background and
+ * backdrop-filter: none) and binds the card blur to the variable above.
+ * Nothing in this skin paints over an input, so no marker-selective rule
+ * beyond this one is warranted. */
+html[data-dsh-skin="paper-ink"] :root[data-dsh-backdrop-active] {
+  --dsh-input-card-blur: 0px;
+}
+
+/* 2. Wallpaper surfaces.
+ *
+ * data-dsh-wallpaper-active and data-dsh-wallpaper-surface mark the official
+ * shell's own full-viewport background element and the sidebar workspaces
+ * fade bar while a Wallpaper Engine wallpaper is mounted. That element is an
+ * opaque layer between this skin's art and the app. The shell's own
+ * neutralisation is scoped to the wallpaper mount, and so is this rule: it is
+ * inert whenever no wallpaper drives the marks, so it never fights a
+ * wallpaper the user has actually turned on. */
+html[data-dsh-skin="paper-ink"] :root[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface] {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* 3. The empty-state hero glow.
+ *
+ * On an empty conversation the composer carries a decorative SVG - "hero
+ * glow" - whose whole job is a feGaussianBlur bloom behind the composer card.
+ * This skin has no glow anywhere, so it is hidden. Hidden rather than
+ * recoloured, because there is no flat colour a bloom can be turned into: the
+ * filter chain IS the decoration.
+ *
+ * The selector deliberately does NOT use a [class*=...] hash match. The loader
+ * warns on those, and rightly: the class is a CSS-Modules hash that the next
+ * official rebuild renames, so the patch would silently stop applying and the
+ * glow would return with no signal. The viewBox is the better anchor - it is
+ * the shape of the thing being removed, and it changes only when the artwork
+ * genuinely changes, at which point this rule failing open (the glow coming
+ * back) is the correct, visible outcome. */
+html[data-dsh-skin="paper-ink"] svg[viewBox="0 0 1051 468"] {
+  display: none;
+}
+
+/* 4. Tints that live outside the semantic token table.
+ *
+ * --dsh-file-type-violet is a literal rgb(139, 118, 246) in the shell's own
+ * stylesheet, so no --dsw-* remap reaches it and every file icon in a
+ * deliverable list would keep a violet dot on a paper page. It is re-pointed
+ * at this skin's muted ink here. The other two file-type variables reference
+ * the static palette, which skin.css already remaps, so they are left alone.
+ *
+ * The send button is the one filled control in the shell that does not read
+ * the primary-action set: its rule paints background:
+ * var(--dsw-alias-button-info-fill) with a hardcoded white label (the empty
+ * state disables it, which is why it reads as a muted disc in the gallery
+ * shot). Rather than key a patch off that button's hashed class name, the
+ * info pair is pointed at this skin's own primary pair, so the send button
+ * reads as the same filled action as every other primary button.
+ *
+ * The pair is declared on body, not on the scope beside the file-type tint.
+ * skin.css declares the primary pair on the scope and lets the loader clone it
+ * onto body; a patch that declared the info pair on the scope too would
+ * resolve var(--dsw-alias-button-primary-fill) against the SCOPE's own copy,
+ * which is the light theme's value in both themes - a dark reader would get
+ * the light ink disc. Declared on body, the reference resolves against the
+ * element that actually carries the active theme's primary pair. */
+html[data-dsh-skin="paper-ink"] {
+  --dsh-file-type-violet: #5A554E;
+}
+html[data-dsh-skin="paper-ink"] body {
+  --dsh-file-type-violet: #5A554E;
+}
+
+
+html[data-dsh-skin="paper-ink"] body {
+  --dsw-alias-button-info-fill: var(--dsw-alias-button-primary-fill);
+  --dsw-alias-button-info-hover: var(--dsw-alias-button-primary-hover);
+}
+
+/* 5. The same two entries under the dark theme.
+ *
+ * The head is "body[data-ds-dark-theme]", not "body", and that is the whole
+ * point of this rule. skin.css's dark block is scoped to the dark body, so it
+ * carries one more attribute of specificity than a plain scoped body rule and
+ * would keep its own copy of these two tokens: the entries above are what the
+ * LIGHT body resolves, and a dark reader would fall back to the shell's
+ * warn-amber send button. Matching the dark head puts this rule on the same
+ * specificity and, being later in the cascade, it wins. The loader appends
+ * both sheets in that order (stylesheet, then patches).
+ *
+ * The file-type tint is exempt: it is a --dsh-* value with no dark variant and
+ * nothing else declares it. */
+html[data-dsh-skin="paper-ink"] body[data-ds-dark-theme] {
+  --dsw-alias-button-info-fill: var(--dsw-alias-button-primary-fill);
+  --dsw-alias-button-info-hover: var(--dsw-alias-button-primary-hover);
+}
+
+/* 6. The session-status matrix colour.
+ *
+ * The sidebar's session icon is a 10x10 matrix whose cells read
+ * color: var(--dsh-state-ongoing). The shell sets that variable in the SAME
+ * rule block that consumes it -
+ *   ._dot_10orb_3, ._matrix_10orb_4 { --dsh-state-ongoing: var(--dsw-static-deepseek-450); }
+ * - so it never inherits from any ancestor, and declaring it on the scope (as
+ * skin.css does for the paths that DO inherit) cannot reach it. Its fallback
+ * also resolves through the AUTHORITY's static table rather than the skin's
+ * remap, so a monochrome skin keeps one small blue dot here and no --dsw-*
+ * declaration can dislodge it.
+ *
+ * The head is the icon's own viewBox, not its hash class. A hash match would
+ * trip the loader's CSS-Modules warning (rightly - the hash is renamed by any
+ * official rebuild), and the shipped gate is zero warnings. The viewBox is the
+ * shape of the thing; if the artwork ever changes size the site makes itself
+ * known rather than silently pinning the wrong element, and the failure mode
+ * is a blue dot that shows up in the gallery. !important is required because
+ * the value is set in the same specificity band as the shell's own rule. */
+html[data-dsh-skin="paper-ink"] svg[viewBox="0 0 10 10"] {
+  --dsh-state-ongoing: var(--dsw-alias-label-tertiary) !important;
+}
+
+html[data-dsh-skin="paper-ink"] [id="root"] { background: transparent; }
+
+html[data-dsh-skin="paper-ink"] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

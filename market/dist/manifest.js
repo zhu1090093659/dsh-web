@@ -1036,6 +1036,35 @@ window.SKIN_MANIFEST = {
           }
         }
       }
+    },
+    {
+      "id": "paper-ink",
+      "name": "纸墨",
+      "nameEn": "Paper Ink",
+      "author": "JinFuLee",
+      "tagline": "一张纸、一瓶墨：层级靠明度，分隔靠留白",
+      "description": "纸墨把整个界面压回一张纸和一瓶墨：卡片与页面同底、无边框无阴影，靠留白分开；文字层级由同一个墨色改透明度得到，绝不换色相；彩色只保留三个状态色（已好 / 留意 / 要你出手）。背景是宣纸纹理打底加一笔水墨，亮暗各一张。字体自带 Inter 与 IBM Plex Sans Thai，中文交给系统栈。278 个官方语义 token 逐个重映射，不依赖加载器的自动派生兜底。",
+      "accent": "#1C1815",
+      "preview": {
+        "light": "assets/skins/paper-ink/preview/light.jpg",
+        "dark": "assets/skins/paper-ink/preview/dark.jpg"
+      },
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/paper-ink/assets/paper-ink-light.jpg",
+            "scrim": "none"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/paper-ink/assets/paper-ink-dark.jpg",
+            "scrim": "none"
+          }
+        }
+      }
     }
   ]
 }

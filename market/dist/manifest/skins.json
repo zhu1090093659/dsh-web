@@ -2426,6 +2426,85 @@
           }
         }
       }
+    },
+    {
+      "id": "paper-ink",
+      "name": "纸墨",
+      "nameEn": "Paper Ink",
+      "author": "JinFuLee",
+      "rank": 1051,
+      "tagline": "一张纸、一瓶墨：层级靠明度，分隔靠留白",
+      "description": "纸墨把整个界面压回一张纸和一瓶墨：卡片与页面同底、无边框无阴影，靠留白分开；文字层级由同一个墨色改透明度得到，绝不换色相；彩色只保留三个状态色（已好 / 留意 / 要你出手）。背景是宣纸纹理打底加一笔水墨，亮暗各一张。字体自带 Inter 与 IBM Plex Sans Thai，中文交给系统栈。278 个官方语义 token 逐个重映射，不依赖加载器的自动派生兜底。",
+      "tags": [
+        "paper",
+        "ink",
+        "monochrome",
+        "minimal",
+        "light",
+        "dark",
+        "fonts"
+      ],
+      "version": "1.0.0",
+      "accent": "#1C1815",
+      "preview": {
+        "light": "assets/skins/paper-ink/preview/light.jpg",
+        "dark": "assets/skins/paper-ink/preview/dark.jpg"
+      },
+      "files": [
+        "README.md",
+        "README.zh.md",
+        "assets/fonts/inter-400-latin-ext.woff2",
+        "assets/fonts/inter-400-latin.woff2",
+        "assets/fonts/inter-400-vietnamese.woff2",
+        "assets/fonts/inter-500-latin-ext.woff2",
+        "assets/fonts/inter-500-latin.woff2",
+        "assets/fonts/inter-500-vietnamese.woff2",
+        "assets/fonts/inter-600-latin-ext.woff2",
+        "assets/fonts/inter-600-latin.woff2",
+        "assets/fonts/inter-600-vietnamese.woff2",
+        "assets/fonts/inter-700-latin-ext.woff2",
+        "assets/fonts/inter-700-latin.woff2",
+        "assets/fonts/inter-700-vietnamese.woff2",
+        "assets/fonts/plexmono-400-latin-ext.woff2",
+        "assets/fonts/plexmono-400-latin.woff2",
+        "assets/fonts/plexmono-400-vietnamese.woff2",
+        "assets/fonts/plexmono-500-latin-ext.woff2",
+        "assets/fonts/plexmono-500-latin.woff2",
+        "assets/fonts/plexmono-500-vietnamese.woff2",
+        "assets/fonts/plexthai-400-latin-ext.woff2",
+        "assets/fonts/plexthai-400-latin.woff2",
+        "assets/fonts/plexthai-400-thai.woff2",
+        "assets/fonts/plexthai-500-latin-ext.woff2",
+        "assets/fonts/plexthai-500-latin.woff2",
+        "assets/fonts/plexthai-500-thai.woff2",
+        "assets/fonts/plexthai-600-latin-ext.woff2",
+        "assets/fonts/plexthai-600-latin.woff2",
+        "assets/fonts/plexthai-600-thai.woff2",
+        "assets/paper-ink-dark.jpg",
+        "assets/paper-ink-light.jpg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/paper-ink",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/paper-ink/assets/paper-ink-light.jpg",
+            "scrim": "none"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/paper-ink/assets/paper-ink-dark.jpg",
+            "scrim": "none"
+          }
+        }
+      }
     }
   ]
 }

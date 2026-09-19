@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "whale-maid",
+  "name": "鲸鱼娘·望海",
+  "nameEn": "Whale Girl · Sea Gaze",
+  "version": "1.0.0",
+  "author": "stushansusu",
+  "tagline": "白昼海岸 · 蓝发女仆抱鲸 · 蕾丝白纱 · 深海夜",
+  "description": "两套光共用一张画：白昼是原图的海岸午后（蓝天、白浪、灯塔、抱着鲸鱼玩偶的蓝发女仆），夜里把同一张画重新打光成月下的深海，人物与构图一个像素都不移动。界面走赛璐璐的画法——墨线、硬投影、平涂——但面全部换成「白纱」：有颜色、有玻璃、有蕾丝网眼，看得见后面的人。海的纹样只有三种：蕾丝网眼（两组错开半个周期的点阵）、青海波鳞纹（两层错开的半圆浪线），以及从海底升上来的两层视差气泡。",
+  "tags": [
+    "anime",
+    "whale",
+    "maid",
+    "lace",
+    "seaside",
+    "ocean",
+    "cel",
+    "illustration-background",
+    "bubbles",
+    "dual-theme"
+  ],
+  "accent": "#2E6FD0",
+  "order": 1051,
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/whale-day.webp",
+        "scrim": "linear-gradient(106deg, rgba(234,244,253,0.4) 0%, rgba(234,244,253,0.2) 34%, rgba(234,244,253,0.04) 64%, rgba(234,244,253,0) 100%)"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/whale-night.webp",
+        "scrim": "linear-gradient(106deg, rgba(5,14,32,0.52) 0%, rgba(5,14,32,0.26) 34%, rgba(5,14,32,0.06) 64%, rgba(5,14,32,0) 100%)"
+      }
+    }
+  }
+}

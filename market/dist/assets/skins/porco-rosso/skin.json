@@ -1,0 +1,60 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "porco-rosso",
+  "name": "吉卜力·红猪侠",
+  "nameEn": "Porco Rosso",
+  "author": "binlecode",
+  "tagline": "秘密海湾与夏日云海双巡航背景 · 萨伏亚 S.21 炽红调色板 · 磨砂透光面板",
+  "description": "宫崎骏 1992 年经典动画《红猪》主题皮肤：萨伏亚 S.21 掠过夏日云海与秘密海湾的绝美画面，搭配亚得里亚海炽红与蔚蓝复古航空调色板。",
+  "tags": [
+    "ghibli",
+    "porco-rosso",
+    "aviation",
+    "sunset",
+    "translucent"
+  ],
+  "accent": "#c32026",
+  "order": 1,
+  "version": "1.0.0",
+  "license": "CC BY-NC-SA 4.0",
+  "sourceUrl": "https://github.com/zhu1090093659/dsh-web",
+  "noticeUrl": "https://github.com/zhu1090093659/dsh-web/blob/dev/packages/skins/skin-center/skins/porco-rosso/NOTICE",
+  "attribution": "角色与素材出自吉卜力工作室《红猪》(Porco Rosso)，版权归吉卜力所有；本皮肤为个人非商业同人作品，背景取自官方公开发布素材、作者不主张权利，CC BY-NC-SA 4.0 仅覆盖皮肤工程",
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+        "kind": "SkinHooks",
+        "optional": true
+      }
+    ]
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/porco001.jpg",
+        "scrim": "linear-gradient(rgba(251, 248, 241, 0.45) 0%, rgba(245, 239, 223, 0.55) 100%)"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/porco002.jpg",
+        "scrim": "linear-gradient(rgba(15, 20, 31, 0.70) 0%, rgba(21, 28, 42, 0.82) 100%)"
+      }
+    }
+  },
+  "facets": {
+    "client": {
+      "entry": "hooks.mjs",
+      "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+    }
+  },
+  "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+}

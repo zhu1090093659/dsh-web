@@ -1,0 +1,59 @@
+white-snake (白蛇 · White Snake)
+================================================
+
+作品与美术素材出处 (work and artwork provenance)
+------------------------------------------------
+
+1. 《白蛇：缘起》《白蛇：浮生》由追光动画（Light Chaser Animation）制作，华纳兄弟等联合出品。
+   作品中的角色形象、美术场景设定与原画著作权归追光动画及原制作权利人所有。
+   White Snake and White Snake: Afloat are produced by Light Chaser Animation.
+   All rights to the characters, concept art, and original artwork belong to
+   Light Chaser Animation and its partners.
+
+2. assets/ 中的静态壁纸素材取自追光动画官方公开发布的高清海报与剧照：
+   - assets/broken-bridge.jpg：临安西湖烟雨断桥借伞（许宣与白素贞水墨相识）
+   - assets/snake-destiny.jpg：永州雪岭深邃冰夜与白蛇宿命
+   本皮肤作者不对上述素材主张任何权利。
+   The backdrop artwork in assets/ is taken from official promotional material and stills.
+   The skin author claims no rights to that material.
+
+3. 本皮肤为个人非商业性质的国风同人致敬作品，仅供学习、研究与个人展示之用，绝不用于任何商业营利场景。
+   依据合理使用准则，本皮肤完整保留原著作权标识：
+
+   © Light Chaser Animation Studios
+
+   本皮肤不代表官方，与追光动画无隶属或商业背书关系。追光动画保留随时要求移除相关内容的权利。
+
+音乐素材出处 (music recordings provenance)
+----------------------------------------
+
+1. 《Gnossienne No. 1》（诺斯蒂安第 1 号 · 东方五声禅意慢板）
+   - 作曲：Erik Satie (1866–1925)（作品已进入公有领域 Public Domain）
+   - 演奏：La Pianista
+   - 录音出处：Wikimedia Commons，按 Public Domain Mark 1.0 发布
+   - 规格：双声道立体声 (Stereo)，44.1kHz 采样率
+
+2. 《Gnossienne No. 3》（诺斯蒂安第 3 号 · 水墨空灵微光）
+   - 作曲：Erik Satie (1866–1925)（作品已进入公有领域 Public Domain）
+   - 演奏：La Pianista
+   - 录音出处：Wikimedia Commons，按 Public Domain Mark 1.0 发布
+   - 规格：双声道立体声 (Stereo)，44.1kHz 采样率
+
+皮肤工程与许可 (skin engineering and license)
+--------------------------------------------
+
+4. 皮肤工程实现（skin.json / skin.css / patches.css / hooks.mjs 与调色板重映射）由本皮肤作者
+   binlecode 制作，按 CC BY-NC-SA 4.0 发布。
+   The skin engineering (skin.json / skin.css / patches.css / hooks.mjs and the palette
+   remap) is the author's work, released under CC BY-NC-SA 4.0.
+
+5. 该许可只覆盖第 4 条的皮肤工程，不涵盖第 2 条中的官方美术素材；官方素材的
+   权利与使用条件完全由原权利人持有。
+   That license covers only the skin engineering in item 4 and does NOT extend
+   to the official material in item 2, whose rights remain with Light Chaser Animation.
+
+许可文本 (license text)
+-----------------------
+
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-nc-sa/4.0/

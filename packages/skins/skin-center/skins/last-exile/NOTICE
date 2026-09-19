@@ -1,0 +1,60 @@
+last-exile (最后流亡 · Last Exile)
+================================================
+
+作品与美术素材出处 (work and artwork provenance)
+------------------------------------------------
+
+1. 《最后流亡》（LAST EXILE）由 GONZO 制作，千明孝一导演，村田莲尔负责角色原案，
+   Victor Entertainment 出品。作品中的角色形象、先锋艇机械设定与美术设定著作权
+   归 GONZO、村田莲尔及原制作委员会所有。
+   LAST EXILE is created and animated by GONZO, directed by Koichi Chigira,
+   character design by Range Murata. All rights to the characters, vanship designs,
+   and original artwork belong to GONZO and the production committee.
+
+2. assets/ 中的静态壁纸素材取自官方公开发布的宣传美术与高清剧照：
+   - assets/vanship.jpg：先锋艇（Vanship）晴空巡航（克劳斯与拉薇双座艇白昼）
+   - assets/grandstream.jpg：大风暴区（Grand Stream）幽蓝夜空与克劳迪亚流光
+   本皮肤作者不对上述素材主张任何权利。
+   The backdrop artwork in assets/ is taken from official promotional material and stills.
+   The skin author claims no rights to that material.
+
+3. 本皮肤为个人非商业性质的同人致敬作品，仅供学习、研究与个人展示之用，绝不用于任何商业营利场景。
+   依据合理使用与非商业同人交流准则，本皮肤完整保留原著作权标识：
+
+   © 2003 GONZO / DIGIMATION - FlyingDog
+
+   本皮肤不代表官方，与 GONZO 无隶属或商业背书关系。权利人保留随时要求移除相关内容的权利。
+
+音乐素材出处 (music recordings provenance)
+----------------------------------------
+
+1. 《Clair de Lune》（月光 · 贝加马斯克组曲 · 苍穹夜空）
+   - 作曲：Claude Debussy (1862–1918)（作品已进入公有领域 Public Domain）
+   - 演奏：Laurens Goedhart
+   - 录音出处：Wikimedia Commons，按 Public Domain Mark 1.0 发布
+   - 规格：双声道立体声 (Stereo)，44.1kHz 采样率
+
+2. 《2nd Arabesque》（第二号蔓藤华彩曲 · 晴空先锋翱翔）
+   - 作曲：Claude Debussy (1862–1918)（作品已进入公有领域 Public Domain）
+   - 演奏：Jason M. C., Han
+   - 录音出处：Wikimedia Commons，按 Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0) 发布
+   - 规格：双声道立体声 (Stereo)，44.1kHz 采样率
+
+皮肤工程与许可 (skin engineering and license)
+--------------------------------------------
+
+4. 皮肤工程实现（skin.json / skin.css / patches.css / hooks.mjs 与调色板重映射）由本皮肤作者
+   binlecode 制作，按 CC BY-NC-SA 4.0 发布。
+   The skin engineering (skin.json / skin.css / patches.css / hooks.mjs and the palette
+   remap) is the author's work, released under CC BY-NC-SA 4.0.
+
+5. 该许可只覆盖第 4 条的皮肤工程，不涵盖第 2 条中的官方美术素材；官方素材的
+   权利与使用条件完全由原权利人持有。
+   That license covers only the skin engineering in item 4 and does NOT extend
+   to the official material in item 2, whose rights remain with the original copyright holders.
+
+许可文本 (license text)
+-----------------------
+
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-nc-sa/4.0/

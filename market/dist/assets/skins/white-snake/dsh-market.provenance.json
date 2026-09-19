@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "source": "https://dsh-market.com",
+  "kind": "skin",
+  "id": "white-snake",
+  "installedAt": "2026-09-18T17:24:54.955118+00:00",
+  "files": {
+    "skin.json": "9bfdf56c57bcf64aca1994f28038dcde5a82109f84254cb9c2df8a07b8a0c1b2",
+    "hooks.mjs": "17e61aa13e1d746a1bd8eaf9be58e13d4401863db7d56d7a154238c299157c93"
+  }
+}

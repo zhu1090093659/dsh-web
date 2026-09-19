@@ -1,0 +1,114 @@
+body {
+  color: #1b2220;
+  background-color: #eef0ea;
+}
+
+body[data-ds-dark-theme] {
+  color: #e8f0f7;
+  background-color: #0b1626;
+}
+
+/* ── Light: 安纳托雷座舱（鼠尾草漆面舱板 · 黄铜管路 · 枪铁仪表） ── */
+body {
+  /* Surface backgrounds with translucent base ensuring contrast over wallpaper */
+  --dsw-alias-bg-base: rgba(238, 240, 234, 0.48);
+  --dsw-alias-bg-layer-1: rgba(227, 231, 221, calc(1 - var(--dsw-skin-scrim, 0) * 0.35));
+  --dsw-alias-bg-layer-2: rgba(214, 221, 207, calc(1 - var(--dsw-skin-scrim, 0) * 0.35));
+  --dsw-alias-bg-layer-3: rgba(199, 209, 192, calc(1 - var(--dsw-skin-scrim, 0) * 0.35));
+  --dsw-alias-bg-overlay: rgba(240, 242, 235, 0.95);
+
+  --dsw-alias-border-l1: rgba(74, 88, 62, 0.10);
+  --dsw-alias-border-l2: rgba(74, 88, 62, 0.18);
+  --dsw-alias-border-l3: rgba(74, 88, 62, 0.26);
+  --dsw-alias-border-l4: rgba(74, 88, 62, 0.36);
+
+  --dsw-alias-brand-primary: #8f6410;
+  --dsw-alias-brand-primary-invert: #ffffff;
+  --dsw-alias-brand-text: #7a5309;
+  --dsw-alias-button-primary-fill: #8f6410;
+  --dsw-alias-button-primary-hover: #7a5309;
+  --dsw-alias-button-primary-dimmed: #e0d3b8;
+  --dsw-alias-label-primary-foreground: #ffffff;
+
+  --dsw-alias-label-primary: #1b2220;
+  --dsw-alias-label-secondary: #2f3a33;
+  --dsw-alias-label-tertiary: #45514a;
+  --dsw-alias-label-caption: #5d6a61;
+
+  --dsw-alias-link: #1d4ed8;
+
+  --dsw-specific-sidebar-fill: rgba(228, 232, 222, calc(1 - var(--dsw-skin-scrim, 0) * 0.35));
+  --dsw-specific-sidebar-nav-item-active: #d5ddcd;
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(143, 100, 16, 0.14);
+  --dsw-specific-sidebar-nav-item-hover: #dde3d5;
+
+  --dsw-specific-bubble: rgba(232, 236, 227, calc(1 - var(--dsw-skin-scrim, 0) * 0.35));
+  --dsw-specific-bubble-highlight: #dae1d1;
+
+  --dsw-alias-scrollbar-bg-l1: rgba(143, 100, 16, 0.25);
+  --dsw-alias-scrollbar-hover-l1: rgba(143, 100, 16, 0.45);
+  --dsw-alias-scrollbar-bg-l2: rgba(143, 100, 16, 0.30);
+  --dsw-alias-scrollbar-hover-l2: rgba(143, 100, 16, 0.50);
+
+  --dsw-alias-state-error-primary: #b3261e;
+  --dsw-alias-state-warn-primary: #c2410c;
+  --dsw-alias-state-success-primary: #3f6212;
+
+  --dsw-alias-markdown-code-block: #e2e8dc;
+  --dsw-alias-markdown-code-block-banner: #d7dfd0;
+  --dsw-alias-markdown-inline-code: #e4e9de;
+  --dsw-specific-input-major: #fbfcfa;
+  --dsw-specific-tip: #dfe5d8;
+}
+
+/* ── Dark: 大风暴区（深钴蓝夜空 · 克劳迪亚青蓝 · 黄铜副色） ── */
+body[data-ds-dark-theme] {
+  --dsw-alias-bg-base: rgba(11, 22, 38, 0.55);
+  --dsw-alias-bg-layer-1: rgba(16, 32, 58, calc(1 - var(--dsw-skin-scrim, 0) * 0.40));
+  --dsw-alias-bg-layer-2: rgba(22, 43, 77, calc(1 - var(--dsw-skin-scrim, 0) * 0.40));
+  --dsw-alias-bg-layer-3: rgba(30, 58, 99, calc(1 - var(--dsw-skin-scrim, 0) * 0.40));
+  --dsw-alias-bg-overlay: rgba(14, 28, 48, 0.95);
+
+  --dsw-alias-border-l1: rgba(34, 211, 238, 0.10);
+  --dsw-alias-border-l2: rgba(34, 211, 238, 0.18);
+  --dsw-alias-border-l3: rgba(34, 211, 238, 0.26);
+  --dsw-alias-border-l4: rgba(34, 211, 238, 0.36);
+
+  --dsw-alias-brand-primary: #06b6d4;
+  --dsw-alias-brand-primary-invert: #0b1626;
+  --dsw-alias-brand-text: #22d3ee;
+  --dsw-alias-button-primary-fill: #0891b2;
+  --dsw-alias-button-primary-hover: #06b6d4;
+  --dsw-alias-button-primary-dimmed: #123f4d;
+  --dsw-alias-label-primary-foreground: #0b1626;
+
+  --dsw-alias-label-primary: #e8f0f7;
+  --dsw-alias-label-secondary: #bacbdb;
+  --dsw-alias-label-tertiary: #a9bdd0;
+  --dsw-alias-label-caption: #7d94aa;
+
+  --dsw-alias-link: #7dd3fc;
+
+  --dsw-specific-sidebar-fill: rgba(12, 25, 43, calc(1 - var(--dsw-skin-scrim, 0) * 0.40));
+  --dsw-specific-sidebar-nav-item-active: #142744;
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(6, 182, 212, 0.20);
+  --dsw-specific-sidebar-nav-item-hover: #102038;
+
+  --dsw-specific-bubble: rgba(18, 35, 60, calc(1 - var(--dsw-skin-scrim, 0) * 0.40));
+  --dsw-specific-bubble-highlight: #1c3557;
+
+  --dsw-alias-scrollbar-bg-l1: rgba(6, 182, 212, 0.25);
+  --dsw-alias-scrollbar-hover-l1: rgba(6, 182, 212, 0.45);
+  --dsw-alias-scrollbar-bg-l2: rgba(6, 182, 212, 0.30);
+  --dsw-alias-scrollbar-hover-l2: rgba(6, 182, 212, 0.50);
+
+  --dsw-alias-state-error-primary: #fb7185;
+  --dsw-alias-state-warn-primary: #e0b44a;
+  --dsw-alias-state-success-primary: #2dd4bf;
+
+  --dsw-alias-markdown-code-block: #081326;
+  --dsw-alias-markdown-code-block-banner: #0e1e36;
+  --dsw-alias-markdown-inline-code: #132743;
+  --dsw-specific-input-major: #101f38;
+  --dsw-specific-tip: #12263f;
+}

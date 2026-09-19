@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "source": "https://dsh-market.com",
+  "kind": "skin",
+  "id": "last-exile",
+  "installedAt": "2026-09-18T17:24:54.955118+00:00",
+  "files": {
+    "skin.json": "e26b5af18b81cc295b9122e43b7290989ecf7196a79df26efa3af2edc1ca1eec",
+    "hooks.mjs": "7bfb958b35ea95af3aedef55a477251a4c7e77702e503ff073a2d24ea6ae3e9c"
+  }
+}

@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="800" height="800">
+  <defs>
+    <!-- Sky & Adriatic Sea gradient -->
+    <radialGradient id="skyGrad" cx="50%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#3A82C4" />
+      <stop offset="70%" stop-color="#1C4B78" />
+      <stop offset="100%" stop-color="#0F2E4C" />
+    </radialGradient>
+
+    <!-- Gold border gradient -->
+    <linearGradient id="goldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCE192" />
+      <stop offset="35%" stop-color="#E0B058" />
+      <stop offset="70%" stop-color="#A87528" />
+      <stop offset="100%" stop-color="#ECC66D" />
+    </linearGradient>
+
+    <!-- Red fuselage gradient -->
+    <linearGradient id="planeRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EE2B2B" />
+      <stop offset="60%" stop-color="#C81D1D" />
+      <stop offset="100%" stop-color="#9C1111" />
+    </linearGradient>
+
+    <!-- Metal engine gradient -->
+    <linearGradient id="metalEngine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E0E6ED" />
+      <stop offset="50%" stop-color="#8C9AA8" />
+      <stop offset="100%" stop-color="#4A5663" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Ring and Azure Blue Sky/Sea Background -->
+  <circle cx="200" cy="200" r="192" fill="url(#skyGrad)" stroke="url(#goldBorder)" stroke-width="14" />
+
+  <!-- Subtle clouds / wind swooshes -->
+  <path d="M 60 140 Q 120 125 180 135" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.25" fill="none" />
+  <path d="M 230 110 Q 280 100 330 115" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.2" fill="none" />
+  <path d="M 40 260 Q 100 270 160 255" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.2" fill="none" />
+
+  <!-- Savoia S.21 Flying Boat (Side-profile climbing right) -->
+  <g id="savoia-s21" transform="translate(195, 205) rotate(-14) translate(-195, -205)">
+    <!-- Shadow / Underbelly -->
+    <ellipse cx="190" cy="242" rx="105" ry="16" fill="#0A1D30" opacity="0.35" />
+
+    <!-- Main Fuselage (Boat Hull) -->
+    <!-- Lower hull (white planing bottom) -->
+    <path d="M 70 215 C 100 232 160 236 245 230 C 275 224 315 214 325 210 L 315 204 L 75 204 Z" fill="#EAECEF" />
+    <!-- Upper hull (Crimson Red) -->
+    <path d="M 60 208 C 85 192 135 185 240 190 C 285 192 315 204 325 210 C 310 216 270 226 230 228 C 150 230 95 225 60 208 Z" fill="url(#planeRed)" />
+
+    <!-- Cockpit with Porco Silhouette -->
+    <ellipse cx="190" cy="188" rx="20" ry="10" fill="#1C2733" />
+    <path d="M 180 188 C 180 178 196 178 200 188 Z" fill="#3D251D" /> <!-- Porco's cap -->
+    <circle cx="196" cy="183" r="3" fill="#DFAC52" /> <!-- Goggle hint -->
+
+    <!-- Windshield -->
+    <path d="M 198 185 L 208 188 L 198 191 Z" fill="#8CE1FF" opacity="0.85" />
+
+    <!-- Main Wing (Swept wing, red top, cream ribs) -->
+    <polygon points="125,200 255,196 280,206 105,210" fill="#D62222" />
+    <polygon points="128,202 250,198 252,204 125,206" fill="#F03838" />
+
+    <!-- Under-wing Floats (Pontoons) -->
+    <polygon points="135,210 137,224 147,222 145,210" fill="#2E1111" />
+    <path d="M 130 224 L 155 220 L 150 228 L 132 228 Z" fill="#EAECEF" />
+
+    <!-- Engine Pod (High-mounted above wing on struts) -->
+    <!-- Struts -->
+    <line x1="175" y1="200" x2="185" y2="168" stroke="#1C2733" stroke-width="4.5" stroke-linecap="round" />
+    <line x1="215" y1="198" x2="205" y2="168" stroke="#1C2733" stroke-width="4.5" stroke-linecap="round" />
+
+    <!-- Engine Nacelle (V12 Isotta Fraschini) -->
+    <rect x="165" y="152" width="62" height="22" rx="8" fill="url(#metalEngine)" stroke="#2C353F" stroke-width="2" />
+    <rect x="180" y="146" width="32" height="8" rx="3" fill="#D62222" /> <!-- Red radiator/cover -->
+    <!-- Exhaust stacks -->
+    <line x1="178" y1="156" x2="174" y2="151" stroke="#FF9500" stroke-width="2.5" />
+    <line x1="185" y1="156" x2="181" y2="151" stroke="#FF9500" stroke-width="2.5" />
+    <line x1="192" y1="156" x2="188" y2="151" stroke="#FF9500" stroke-width="2.5" />
+
+    <!-- Propeller Spinner & Blades -->
+    <ellipse cx="230" cy="163" rx="7" ry="10" fill="#DCA556" />
+    <!-- Blurred prop disc / blades -->
+    <ellipse cx="232" cy="163" rx="4" ry="38" fill="#FCE192" opacity="0.6" />
+    <line x1="232" y1="130" x2="232" y2="196" stroke="#FFFFFF" stroke-width="2.5" opacity="0.8" />
+
+    <!-- Tail Fin (Rudder) with Italian Tricolor 🇮🇹 -->
+    <g id="tail-fin">
+      <polygon points="85,206 96,162 120,166 110,205" fill="#D62222" />
+      <!-- Italian Flag on Rudder -->
+      <!-- Green stripe -->
+      <polygon points="98,165 105,166 99,204 92,204" fill="#1C7C3E" />
+      <!-- White stripe -->
+      <polygon points="105,166 112,167 106,204 99,204" fill="#FFFFFF" />
+      <!-- Red stripe -->
+      <polygon points="112,167 119,168 113,204 106,204" fill="#CE2B37" />
+    </g>
+
+    <!-- Horizontal Stabilizer -->
+    <polygon points="78,198 118,198 122,203 76,203" fill="#B51818" />
+  </g>
+
+  <!-- Sea Spray / Wave crests at bottom -->
+  <path d="M 60 300 Q 110 288 170 302 T 280 295 T 350 310" stroke="#8AE2FF" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.5" />
+  <path d="M 110 325 Q 160 315 220 326 T 310 320" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.4" />
+</svg>

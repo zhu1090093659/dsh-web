@@ -1,0 +1,562 @@
+/* Core App Frame transparency so background shows through */
+[id="root"] {
+  background: none !important;
+}
+
+[data-slot="root"] > div {
+  background: none !important;
+}
+
+div:has(> [data-slot="main"]) {
+  background: none !important;
+}
+
+[data-slot="main.conversation"] {
+  background: none !important;
+}
+
+[data-conversation-scroll] {
+  background: none !important;
+}
+
+/* Semi-transparent sidebar with blur via pseudo-element (avoids creating a containing block that traps fixed modal overlays) */
+div:has(> [data-slot="sidebar"]) {
+  position: relative !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate !important;
+}
+
+/* Elevate sidebar stacking context above conversation column when an overlay/dialog (e.g. Settings) is open */
+div:has(> [data-slot="sidebar"]):has([role="dialog"]) {
+  z-index: 1000 !important;
+}
+
+div:has(> [data-slot="sidebar"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1 !important;
+  pointer-events: none;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(244, 237, 224, 0.78);
+}
+
+body[data-ds-dark-theme] div:has(> [data-slot="sidebar"])::before {
+  background: rgba(17, 22, 34, 0.82);
+}
+
+[data-slot="sidebar"] > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Modal / Dialog surface styling (ensures settings and dialogs are crisp and opaque against backgrounds) */
+[role="dialog"] {
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  background: rgba(247, 242, 232, 0.98) !important;
+  box-shadow: 0 12px 40px rgba(43, 34, 27, 0.25) !important;
+}
+
+body[data-ds-dark-theme] [role="dialog"] {
+  background: rgba(21, 28, 42, 0.98) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Transparent composer seat with subtle gradient */
+[data-phase="active"] [data-composer-seat] {
+  background: none !important;
+}
+
+[data-phase="active"] [data-composer-seat]:before {
+  content: "";
+  z-index: -1;
+  pointer-events: none;
+  backdrop-filter: blur(var(--dsh-input-card-blur, 8px));
+  -webkit-backdrop-filter: blur(var(--dsh-input-card-blur, 8px));
+  background: linear-gradient(180deg, transparent 0%, rgba(251, 248, 241, 0.85) 36px);
+  position: absolute;
+  inset: 0;
+}
+
+body[data-ds-dark-theme] [data-phase="active"] [data-composer-seat]:before {
+  background: linear-gradient(180deg, transparent 0%, rgba(15, 20, 31, 0.88) 36px);
+}
+
+/* Cohesive frosted glass card for Assistant conversation markdown blocks */
+[data-slot="main.conversation"] div[class$="_markdown"] {
+  /* 下限 0.62：防止外部透明度滑杆把正文对比度压到 AA 以下（WS-04） */
+  background: rgba(251, 248, 241, max(0.62, var(--dsh-skin-bubble-alpha, 0.82))) !important;
+  backdrop-filter: blur(var(--dsh-skin-bubble-blur, 14px)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--dsh-skin-bubble-blur, 14px)) saturate(1.15);
+  border: 1px solid rgba(120, 75, 35, 0.12);
+  border-radius: 12px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 4px rgba(43, 34, 27, 0.05);
+  line-height: 1.65;
+}
+
+body[data-ds-dark-theme] [data-slot="main.conversation"] div[class$="_markdown"] {
+  background: rgba(21, 28, 42, max(0.62, var(--dsh-skin-bubble-alpha, 0.84))) !important;
+  border: 1px solid rgba(230, 200, 160, 0.12);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* Hide empty markdown containers and empty paragraphs so no ghost white bar appears */
+[data-slot="main.conversation"] div[class$="_markdown"]:empty,
+[data-slot="main.conversation"] div[class$="_markdown"] > p:empty {
+  display: none !important;
+}
+
+/* Reset children inside the markdown card so they flow naturally */
+[data-slot="main.conversation"] div[class$="_markdown"] > :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote) {
+  background: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+[data-slot="main.conversation"] div[class$="_markdown"] > :where(ul, ol) {
+  padding-left: 22px;
+}
+
+/* User message bubbles with frosted glass backdrop */
+:is([data-chat-flow-kind="user"],[data-chat-flow-kind="steering"]) [class$="_bubble"] {
+  backdrop-filter: blur(var(--dsh-skin-bubble-blur, 12px));
+  -webkit-backdrop-filter: blur(var(--dsh-skin-bubble-blur, 12px));
+  border: 1px solid rgba(120, 75, 35, 0.12);
+}
+
+body[data-ds-dark-theme] :is([data-chat-flow-kind="user"],[data-chat-flow-kind="steering"]) [class$="_bubble"] {
+  border: 1px solid rgba(230, 200, 160, 0.12);
+}
+
+/* Semi-transparent header and right sidebar */
+[data-slot="main.conversation"] header,
+[data-slot="rightbar.session"] > *,
+[data-sidebar-right-panel] {
+  background: rgba(251, 248, 241, 0.78) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+body[data-ds-dark-theme] [data-slot="main.conversation"] header,
+body[data-ds-dark-theme] [data-slot="rightbar.session"] > *,
+body[data-ds-dark-theme] [data-sidebar-right-panel] {
+  background: rgba(15, 20, 31, 0.82) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Thinking / Reasoning Disclosure (data-variant="think") ── */
+[data-variant="think"] {
+  contain: none !important;
+  height: auto !important;
+  min-height: 28px !important;
+  margin: 8px 0 !important;
+  background: rgba(246, 240, 227, 0.88) !important;
+  border-left: 3px solid #c32026 !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  box-shadow: 0 1px 4px rgba(43, 34, 27, 0.08) !important;
+}
+
+body[data-ds-dark-theme] [data-variant="think"] {
+  background: rgba(21, 28, 42, 0.88) !important;
+  border-left: 3px solid #ef4444 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Ensure row is fully visible and not clipped by 24px height constraint */
+[data-variant="think"] [data-disclosure-row] {
+  height: auto !important;
+  min-height: 24px !important;
+  overflow: visible !important;
+}
+
+/* Thinking title (思考) and icon */
+[data-variant="think"] [class*="title"],
+[data-variant="think"] [class*="leading"],
+[data-variant="think"] svg {
+  color: #c32026 !important;
+  fill: currentColor !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+
+body[data-ds-dark-theme] [data-variant="think"] [class*="title"],
+body[data-ds-dark-theme] [data-variant="think"] [class*="leading"],
+body[data-ds-dark-theme] [data-variant="think"] svg {
+  color: #ef4444 !important;
+  fill: currentColor !important;
+}
+
+/* Thinking summary line (collapsed & running line) */
+[data-variant="think"] [class*="summary"],
+[data-variant="think"] [class*="summaryText"] {
+  color: #23180f !important;
+  -webkit-text-fill-color: #23180f !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  opacity: 1 !important;
+}
+
+body[data-ds-dark-theme] [data-variant="think"] [class*="summary"],
+body[data-ds-dark-theme] [data-variant="think"] [class*="summaryText"] {
+  color: #fbf6ee !important;
+  -webkit-text-fill-color: #fbf6ee !important;
+}
+
+/* Thinking body (expanded text) — sharp, high-contrast readable */
+[data-variant="think"] [data-disclosure-row] + div,
+[data-variant="think"] [data-disclosure-row] + div * {
+  color: #23180f !important;
+  -webkit-text-fill-color: #23180f !important;
+  font-size: 13px !important;
+  line-height: 1.65 !important;
+  opacity: 1 !important;
+}
+
+body[data-ds-dark-theme] [data-variant="think"] [data-disclosure-row] + div,
+body[data-ds-dark-theme] [data-variant="think"] [data-disclosure-row] + div * {
+  color: #fbf6ee !important;
+  -webkit-text-fill-color: #fbf6ee !important;
+}
+
+/* Shimmer wave when streaming: keep text legible underneath */
+[data-variant="think"][data-state='running'] [data-disclosure-row]::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(195, 32, 38, 0.12) 50%,
+    transparent 100%
+  ) !important;
+}
+
+/* Turn process header (e.g. "已思考" / "Thought for a while") */
+[data-turn-process] {
+  color: #23180f !important;
+  border-bottom: 1px solid rgba(120, 75, 35, 0.20) !important;
+}
+
+[data-turn-process] > span {
+  color: #23180f !important;
+  -webkit-text-fill-color: #23180f !important;
+  font-weight: 500 !important;
+}
+
+[data-turn-process] > svg {
+  color: #c32026 !important;
+}
+
+body[data-ds-dark-theme] [data-turn-process] {
+  color: #fbf6ee !important;
+  border-bottom: 1px solid rgba(230, 200, 160, 0.20) !important;
+}
+
+body[data-ds-dark-theme] [data-turn-process] > span {
+  color: #fbf6ee !important;
+  -webkit-text-fill-color: #fbf6ee !important;
+}
+
+body[data-ds-dark-theme] [data-turn-process] > svg {
+  color: #ef4444 !important;
+}
+
+/* ── Porco Rosso Brand Mark (Sidebar Logo) ── */
+[data-slot="sidebar.brand.mark"] svg {
+  display: none !important;
+}
+
+[data-slot="sidebar.brand.mark"]::before {
+  content: "";
+  display: block;
+  width: 26px;
+  height: 26px;
+  background-image: url("assets/porco-emblem.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+/* Collapsed rail mode mark */
+button:has(> span > [data-slot="sidebar.brand.mark"]) > span [data-slot="sidebar.brand.mark"]::before,
+button:has(> span > [data-slot="sidebar.brand.mark"]) > span svg {
+  display: none !important;
+}
+
+button:has(> span > [data-slot="sidebar.brand.mark"]) > span::before {
+  content: "";
+  display: block;
+  width: 26px;
+  height: 26px;
+  background-image: url("assets/porco-emblem.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+/* ── Porco Rosso Brand Name (Sidebar Title) ── */
+button:has([data-slot="sidebar.brand.name"]),
+[aria-hidden="true"]:has(> * > [data-slot="sidebar.brand.mark"]),
+:has(> [data-slot="sidebar.brand.name"]),
+button:has([data-slot="sidebar.brand.name"]) span:has(> [data-slot="sidebar.brand.mark"]) {
+  height: auto !important;
+  min-height: 28px !important;
+  overflow: visible !important;
+}
+
+[data-slot="sidebar.brand.name"] > span:has(> span),
+[data-slot="sidebar.brand.name"] > span:not(:has(span)) {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  height: auto !important;
+  overflow: visible !important;
+  user-select: none !important;
+  padding: 1px 0 !important;
+}
+
+[data-slot="sidebar.brand.name"] > span > span:first-child,
+[data-slot="sidebar.brand.name"] > span:not(:has(span)) {
+  font-size: 0 !important;
+  line-height: normal !important;
+  height: auto !important;
+  color: transparent !important;
+  display: block !important;
+  overflow: visible !important;
+}
+
+[data-slot="sidebar.brand.name"] > span > span:first-child::before,
+[data-slot="sidebar.brand.name"] > span:not(:has(span))::before {
+  content: "红猪 • 飞行艇" !important;
+  display: block !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Segoe UI", Roboto, "Helvetica Neue", sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--dsw-alias-brand-primary, #c32026) !important;
+  line-height: 1.25 !important;
+}
+
+:lang(en) [data-slot="sidebar.brand.name"] > span > span:first-child::before,
+:lang(en) [data-slot="sidebar.brand.name"] > span:not(:has(span))::before {
+  content: "PORCO ROSSO" !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+body[data-ds-dark-theme] [data-slot="sidebar.brand.name"] > span > span:first-child::before,
+body[data-ds-dark-theme] [data-slot="sidebar.brand.name"] > span:not(:has(span))::before {
+  color: var(--dsw-alias-brand-primary, #ef4444) !important;
+}
+
+[data-slot="sidebar.brand.name"] > span > span:last-child {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  margin-top: 1px !important;
+  font-size: 0 !important;
+  line-height: normal !important;
+  color: transparent !important;
+  background: none !important;
+  background-color: transparent !important;
+  height: auto !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+[data-slot="sidebar.brand.name"] > span > span:last-child::before {
+  content: "" !important;
+  display: inline-block !important;
+  width: 14px !important;
+  height: 4px !important;
+  border-radius: 1px !important;
+  background: linear-gradient(to right, #15803d 0%, #15803d 33.33%, #f8fafc 33.33%, #f8fafc 66.66%, #dc2626 66.66%, #dc2626 100%) !important;
+  box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.25) !important;
+  flex-shrink: 0 !important;
+}
+
+[data-slot="sidebar.brand.name"] > span > span:last-child::after {
+  content: "SAVOIA S.21 • 吉卜力" !important;
+  display: inline-block !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Segoe UI", Roboto, sans-serif !important;
+  font-size: 9px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.08em !important;
+  color: #784b23 !important;
+  line-height: 1.25 !important;
+  text-transform: uppercase !important;
+}
+
+:lang(en) [data-slot="sidebar.brand.name"] > span > span:last-child::after {
+  content: "SAVOIA S.21 • GHIBLI" !important;
+  letter-spacing: 0.1em !important;
+}
+
+body[data-ds-dark-theme] [data-slot="sidebar.brand.name"] > span > span:last-child::after {
+  color: #dcd3c4 !important;
+}
+
+/* ── Porco Rosso Hero Mark (Savoia S.21 Seaplane) ── */
+[data-slot="conversation.hero.brand.mark"] svg {
+  display: none !important;
+}
+
+[data-slot="conversation.hero.brand.mark"]::before {
+  content: "";
+  display: inline-block;
+  width: 48px;
+  height: 48px;
+  background-image: url("assets/savoia-hero.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 2px 8px rgba(195, 32, 38, 0.35));
+  animation: porco-float-plane 4s ease-in-out infinite;
+}
+
+@keyframes porco-float-plane {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* WS-06：尊重系统减弱动效偏好，并在标签页隐藏时暂停皮肤自身的无限动画 */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="conversation.hero.brand.mark"]::before {
+    animation: none !important;
+  }
+}
+body[data-dsh-tab-hidden] [data-slot="conversation.hero.brand.mark"]::before {
+  animation-play-state: paused !important;
+}
+
+/* ── UI 0.1.6 适配：思考链长文本 Sticky 吸顶毛玻璃质感 ── */
+[data-variant="think"][data-expanded] [data-open] [data-disclosure-row] {
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  background: rgba(246, 240, 227, 0.94) !important;
+  border-bottom: 1px solid rgba(195, 32, 38, 0.20) !important;
+  border-radius: 6px 6px 0 0 !important;
+  box-shadow: 0 2px 8px rgba(43, 34, 27, 0.06) !important;
+}
+
+body[data-ds-dark-theme] [data-variant="think"][data-expanded] [data-open] [data-disclosure-row] {
+  background: rgba(21, 28, 42, 0.94) !important;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ── UI 0.1.6 适配：侧边栏内置交互式终端复古电台仪表盘 ── */
+[data-sidebar-terminal] {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+[data-sidebar-terminal] [class*="screen"] {
+  background: rgba(246, 240, 227, 0.94) !important;
+  border: 1px solid rgba(120, 75, 35, 0.16) !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 1px 3px rgba(43, 34, 27, 0.08) !important;
+}
+
+body[data-ds-dark-theme] [data-sidebar-terminal] [class*="screen"] {
+  background: rgba(12, 17, 26, 0.95) !important;
+  border: 1px solid rgba(230, 200, 160, 0.15) !important;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-sidebar-terminal] .xterm-cursor-block {
+  background-color: #c32026 !important;
+  color: #fbf8f1 !important;
+}
+
+body[data-ds-dark-theme] [data-sidebar-terminal] .xterm-cursor-block {
+  background-color: #ef4444 !important;
+  color: #0f141f !important;
+}
+
+[data-sidebar-terminal] [class*="status"] {
+  background: rgba(244, 237, 224, 0.88) !important;
+  border-bottom: 1px solid rgba(120, 75, 35, 0.12) !important;
+  border-radius: 6px 6px 0 0 !important;
+}
+
+body[data-ds-dark-theme] [data-sidebar-terminal] [class*="status"] {
+  background: rgba(15, 20, 31, 0.90) !important;
+  border-bottom: 1px solid rgba(230, 200, 160, 0.12) !important;
+}
+
+[data-sidebar-terminal] [class*="status"] button {
+  border: 1px solid rgba(195, 32, 38, 0.25) !important;
+  border-radius: 6px !important;
+  color: #784b23 !important;
+  font-weight: 550 !important;
+}
+
+body[data-ds-dark-theme] [data-sidebar-terminal] [class*="status"] button {
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  color: #fbf6ee !important;
+}
+
+/* ── UI 0.1.6 适配：输入框底部权限预设药丸按钮 ── */
+[data-slot="conversation.input.permission"] button[class*="trigger"],
+[class*="PermissionSelect_trigger"] {
+  border: 1px solid rgba(120, 75, 35, 0.14) !important;
+  border-radius: 20px !important;
+  font-weight: 550 !important;
+  color: #784b23 !important;
+  transition: all 180ms ease !important;
+}
+
+[data-slot="conversation.input.permission"] button[class*="trigger"]:hover,
+[class*="PermissionSelect_trigger"]:hover {
+  background: rgba(195, 32, 38, 0.08) !important;
+  border-color: rgba(195, 32, 38, 0.30) !important;
+  color: #c32026 !important;
+}
+
+body[data-ds-dark-theme] [data-slot="conversation.input.permission"] button[class*="trigger"],
+body[data-ds-dark-theme] [class*="PermissionSelect_trigger"] {
+  border: 1px solid rgba(230, 200, 160, 0.16) !important;
+  color: #dcd3c4 !important;
+}
+
+body[data-ds-dark-theme] [data-slot="conversation.input.permission"] button[class*="trigger"]:hover,
+body[data-ds-dark-theme] [class*="PermissionSelect_trigger"]:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.40) !important;
+  color: #ef4444 !important;
+}
+
+/* ── UI 0.1.6 适配：会话归档管理视图 ── */
+[class*="ArchivedSessionsSection_search"] input:focus-visible {
+  border-color: #c32026 !important;
+  box-shadow: 0 0 0 2px rgba(195, 32, 38, 0.15) !important;
+  outline: none !important;
+}
+
+body[data-ds-dark-theme] [class*="ArchivedSessionsSection_search"] input:focus-visible {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
+}
+
+[class*="ArchivedSessionsSection_row"]:hover {
+  background: rgba(195, 32, 38, 0.04) !important;
+}
+
+body[data-ds-dark-theme] [class*="ArchivedSessionsSection_row"]:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+
+

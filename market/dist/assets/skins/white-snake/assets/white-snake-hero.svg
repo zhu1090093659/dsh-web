@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <!-- Misty West Lake radial background -->
+    <radialGradient id="mistLake" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#f0fdfa" />
+      <stop offset="50%" stop-color="#ccfbf1" />
+      <stop offset="85%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </radialGradient>
+
+    <!-- Jade gold rim -->
+    <linearGradient id="jadeGoldRim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a" />
+      <stop offset="30%" stop-color="#107c65" />
+      <stop offset="70%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+
+    <!-- Ink mountains gradient -->
+    <linearGradient id="inkMountain" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f766e" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#042f2e" stop-opacity="0.75" />
+    </linearGradient>
+
+    <!-- White serpent mist -->
+    <linearGradient id="serpentMist" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95" />
+      <stop offset="50%" stop-color="#99f6e4" stop-opacity="0.75" />
+      <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0.2" />
+    </linearGradient>
+
+    <!-- Umbrella gradient -->
+    <radialGradient id="umbrellaGrad" cx="45%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#fef3c7" />
+      <stop offset="70%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#92400e" />
+    </radialGradient>
+
+    <filter id="softGlow" x="-15%" y="-15%" width="130%" height="130%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Outer Ring & Lake Background -->
+  <circle cx="200" cy="200" r="192" fill="url(#mistLake)" stroke="url(#jadeGoldRim)" stroke-width="12" />
+  <circle cx="200" cy="200" r="182" fill="none" stroke="#2dd4bf" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6" />
+
+  <!-- Distant Mountains (Song Dynasty Ink Wash) -->
+  <path d="M 40 210 Q 90 165 150 190 Q 210 150 280 185 Q 330 160 360 205 L 360 270 L 40 270 Z" fill="url(#inkMountain)" />
+  <path d="M 120 220 Q 180 180 240 210 Q 300 175 350 215 L 350 270 L 120 270 Z" fill="#042f2e" opacity="0.3" />
+
+  <!-- Water Surface & Reflections -->
+  <path d="M 30 255 C 80 250 140 260 200 255 C 260 250 320 260 370 255 L 370 380 C 320 388 260 392 200 392 C 140 392 80 388 30 380 Z" fill="#042f2e" opacity="0.65" />
+  <ellipse cx="200" cy="290" rx="140" ry="12" fill="#2dd4bf" opacity="0.25" />
+  <ellipse cx="200" cy="330" rx="110" ry="8" fill="#5eead4" opacity="0.2" />
+
+  <!-- The Broken Bridge (断桥) Stone Arch -->
+  <path d="M 60 290 Q 160 240 260 275 L 340 295 L 340 315 Q 260 295 160 270 Q 90 280 60 310 Z" fill="#e2e8f0" stroke="#042f2e" stroke-width="2" />
+  <path d="M 120 278 Q 160 260 200 272" stroke="#64748b" stroke-width="1.5" fill="none" opacity="0.6" />
+  <!-- Bridge balustrades -->
+  <line x1="140" y1="262" x2="140" y2="252" stroke="#94a3b8" stroke-width="2.5" />
+  <line x1="170" y1="258" x2="170" y2="248" stroke="#94a3b8" stroke-width="2.5" />
+  <line x1="200" y1="262" x2="200" y2="252" stroke="#94a3b8" stroke-width="2.5" />
+  <line x1="230" y1="268" x2="230" y2="258" stroke="#94a3b8" stroke-width="2.5" />
+
+  <!-- Whimsical Willow Branches (杨柳依依) on the left -->
+  <path d="M 45 90 Q 75 140 60 210" stroke="#065f46" stroke-width="3" fill="none" stroke-linecap="round" />
+  <path d="M 60 120 Q 95 160 85 240" stroke="#10b981" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85" />
+  <path d="M 45 100 Q 110 130 115 200" stroke="#34d399" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.75" />
+
+  <!-- Flowing White Serpent Spiral (Serpent Body flowing through air and water) -->
+  <path d="M 80 340 C 130 380 250 370 300 320 C 350 270 340 180 270 140 C 210 100 130 120 160 70 C 180 40 220 45 240 60" 
+        stroke="url(#serpentMist)" stroke-width="14" stroke-linecap="round" fill="none" filter="url(#softGlow)" />
+  <path d="M 80 340 C 130 380 250 370 300 320 C 350 270 340 180 270 140 C 210 100 130 120 160 70 C 180 40 220 45 240 60" 
+        stroke="#ffffff" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.9" />
+
+  <!-- Xiao Bai Silhouette Holding Bamboo Oil-Paper Umbrella on Broken Bridge -->
+  <g transform="translate(185, 175)">
+    <!-- Oil-Paper Umbrella -->
+    <ellipse cx="25" cy="20" rx="34" ry="14" fill="url(#umbrellaGrad)" stroke="#78350f" stroke-width="1.2" transform="rotate(-15 25 20)" />
+    <!-- Umbrella Ribs -->
+    <line x1="25" y1="20" x2="3" y2="26" stroke="#92400e" stroke-width="1" opacity="0.7" />
+    <line x1="25" y1="20" x2="16" y2="8" stroke="#92400e" stroke-width="1" opacity="0.7" />
+    <line x1="25" y1="20" x2="38" y2="10" stroke="#92400e" stroke-width="1" opacity="0.7" />
+    <line x1="25" y1="20" x2="48" y2="22" stroke="#92400e" stroke-width="1" opacity="0.7" />
+    <!-- Umbrella Handle -->
+    <line x1="25" y1="20" x2="22" y2="60" stroke="#451a03" stroke-width="2" stroke-linecap="round" />
+
+    <!-- Slender Graceful Figure (Xiao Bai in Song Robe) -->
+    <!-- Head & Hair Knot with Jade Pin -->
+    <ellipse cx="20" cy="36" rx="6" ry="7" fill="#042f2e" />
+    <!-- Jade Pin Highlight -->
+    <line x1="16" y1="32" x2="25" y2="30" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" />
+    <!-- Flowing Hair Ribbons -->
+    <path d="M 23 38 Q 28 50 24 65" stroke="#042f2e" stroke-width="1.8" fill="none" />
+    <path d="M 25 40 Q 34 52 30 70" stroke="#042f2e" stroke-width="1.5" fill="none" />
+    <!-- Flowing White Gown & Robes -->
+    <path d="M 18 43 C 14 55 10 75 8 92 C 16 95 28 95 36 92 C 32 75 26 55 22 43 Z" fill="#ffffff" opacity="0.95" />
+    <path d="M 17 55 L 23 55 L 24 62 L 16 62 Z" fill="#14b8a6" /> <!-- Turquoise Sash -->
+    <!-- Sleeves fluttering in wind -->
+    <path d="M 14 50 Q 6 62 4 72 Q 10 70 16 60 Z" fill="#f0fdfa" opacity="0.9" />
+  </g>
+
+  <!-- Traditional Cinnabar Seal Stamp (朱砂印章) bottom right -->
+  <g transform="translate(305, 305)">
+    <rect x="0" y="0" width="46" height="46" rx="6" fill="#b91c1c" stroke="#fef2f2" stroke-width="1.5" opacity="0.92" />
+    <text x="23" y="19" font-family="'Songti SC', 'SimSun', serif" font-size="12" font-weight="bold" fill="#fef2f2" text-anchor="middle" letter-spacing="2">浮生</text>
+    <text x="23" y="35" font-family="'Songti SC', 'SimSun', serif" font-size="12" font-weight="bold" fill="#fef2f2" text-anchor="middle" letter-spacing="2">缘起</text>
+  </g>
+</svg>

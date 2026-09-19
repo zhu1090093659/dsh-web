@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "last-exile",
+  "name": "最后流亡·先锋艇",
+  "nameEn": "Last Exile",
+  "author": "binlecode",
+  "tagline": "安纳托雷晴空与大风暴区双巡航背景 · 舱板橄榄黄铜与克劳迪亚幽蓝调色板 · 维多利亚复古蒸汽朋克",
+  "description": "GONZO 经典科幻动画《最后流亡》（Last Exile）主题皮肤：克劳斯与拉薇的先锋艇飞跃大风暴区，搭配安纳托雷座舱橄榄黄铜与克劳迪亚幽蓝复古航空调色板。",
+  "tags": [
+    "gonzo",
+    "last-exile",
+    "vanship",
+    "steampunk",
+    "claudia",
+    "aviation"
+  ],
+  "accent": "#8f6410",
+  "order": 2,
+  "version": "1.0.0",
+  "license": "CC BY-NC-SA 4.0",
+  "sourceUrl": "https://github.com/zhu1090093659/dsh-web",
+  "noticeUrl": "https://github.com/zhu1090093659/dsh-web/blob/dev/packages/skins/skin-center/skins/last-exile/NOTICE",
+  "attribution": "角色与先锋艇设定出自 GONZO《最后流亡》(LAST EXILE)，版权归 GONZO / 村田莲尔所有；本皮肤为个人非商业同人作品，背景取自官方公开素材、作者不主张权利，CC BY-NC-SA 4.0 仅覆盖皮肤工程",
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+        "kind": "SkinHooks",
+        "optional": true
+      }
+    ]
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/vanship.jpg",
+        "scrim": "linear-gradient(rgba(238, 240, 234, 0.48) 0%, rgba(227, 231, 221, 0.58) 100%)"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/grandstream.jpg",
+        "scrim": "linear-gradient(rgba(11, 22, 38, 0.75) 0%, rgba(16, 32, 58, 0.88) 100%)"
+      }
+    }
+  },
+  "facets": {
+    "client": {
+      "entry": "hooks.mjs",
+      "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+    }
+  },
+  "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+}

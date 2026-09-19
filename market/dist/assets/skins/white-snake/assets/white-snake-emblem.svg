@@ -1,0 +1,64 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Jade gradients -->
+    <radialGradient id="jadeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.9" />
+      <stop offset="60%" stop-color="#107c65" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#064e3b" stop-opacity="0.95" />
+    </radialGradient>
+    <linearGradient id="whiteSerpent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="60%" stop-color="#e6f4f1" />
+      <stop offset="100%" stop-color="#a7f3d0" />
+    </linearGradient>
+    <linearGradient id="greenSerpent" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#047857" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#34d399" />
+    </linearGradient>
+    <linearGradient id="goldFiligree" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+    <linearGradient id="pinJade" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#5eead4" />
+      <stop offset="40%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+    <filter id="jadeFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#042f2e" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- Outer Cloud/Taiji Medallion Ring -->
+  <circle cx="18" cy="18" r="17" fill="url(#jadeGlow)" stroke="url(#goldFiligree)" stroke-width="1.2" filter="url(#jadeFilter)" />
+
+  <!-- Shimmering inner ring -->
+  <circle cx="18" cy="18" r="15" fill="none" stroke="#2dd4bf" stroke-width="0.5" stroke-dasharray="1.5 1" opacity="0.7" />
+
+  <!-- Dual Serpents in Circular Harmony (Taiji Flow) -->
+  <!-- White Snake Arc -->
+  <path d="M 18 3.5 C 25.5 3.5 31.5 9.5 31.5 17 C 31.5 22.5 27.5 25.5 22 25.5 C 17.5 25.5 15.5 21.5 15.5 18 C 15.5 13.5 17.5 11 18 3.5 Z" fill="url(#whiteSerpent)" opacity="0.95" />
+
+  <!-- Green Snake Arc -->
+  <path d="M 18 32.5 C 10.5 32.5 4.5 26.5 4.5 19 C 4.5 13.5 8.5 10.5 14 10.5 C 18.5 10.5 20.5 14.5 20.5 18 C 20.5 22.5 18.5 25 18 32.5 Z" fill="url(#greenSerpent)" opacity="0.9" />
+
+  <!-- The Legendary Jade Hairpin (珠钗 / 碧玉骨簪) Diagonally Piercing Center -->
+  <!-- Hairpin Body -->
+  <path d="M 8 28 L 26 10 L 28 12 L 10 30 Z" fill="url(#pinJade)" stroke="url(#goldFiligree)" stroke-width="0.6" />
+  
+  <!-- Hairpin Tip -->
+  <path d="M 8 28 L 6 30 L 10 30 Z" fill="#2dd4bf" />
+
+  <!-- Lotus Ornament at Top of Hairpin -->
+  <circle cx="26" cy="10" r="3.2" fill="#047857" stroke="url(#goldFiligree)" stroke-width="0.8" />
+  <circle cx="26" cy="10" r="1.8" fill="#5eead4" />
+  <!-- Small Pearl Drop / Cinnabar dot -->
+  <circle cx="28.5" cy="8" r="1.2" fill="#ef4444" stroke="#fef08a" stroke-width="0.4" />
+  <circle cx="23.5" cy="12" r="1.0" fill="#fef08a" />
+
+  <!-- Lotus Petals -->
+  <path d="M 26 6.5 Q 28 8.5 26 10 Q 24 8.5 26 6.5 Z" fill="#ecfdf5" opacity="0.9" />
+  <path d="M 29.5 10 Q 28 12 26 10 Q 28 8 29.5 10 Z" fill="#ecfdf5" opacity="0.9" />
+</svg>

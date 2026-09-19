@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "source": "https://dsh-market.com",
+  "kind": "skin",
+  "id": "porco-rosso",
+  "installedAt": "2026-09-18T17:24:54.955118+00:00",
+  "files": {
+    "skin.json": "ca8c696a3ea5f0e35291104cd22bffb8acaf64e08012eab1a18f9d1d3cc79cd7",
+    "hooks.mjs": "20689b4843b93e6529f1098e2bd79e8166b96fb681e8b4f7ee045141103a4700"
+  }
+}

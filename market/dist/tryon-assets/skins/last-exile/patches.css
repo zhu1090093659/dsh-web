@@ -1,0 +1,568 @@
+/* Core App Frame transparency so background shows through */
+html[data-dsh-skin="last-exile"] [id="root"] {
+  background: none !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="root"] > div {
+  background: none !important;
+}
+
+html[data-dsh-skin="last-exile"] div:has(> [data-slot="main"]) {
+  background: none !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="main.conversation"] {
+  background: none !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-conversation-scroll] {
+  background: none !important;
+}
+
+/* Semi-transparent sidebar with blur via pseudo-element (avoids creating a containing block that traps fixed modal overlays) */
+html[data-dsh-skin="last-exile"] div:has(> [data-slot="sidebar"]) {
+  position: relative !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate !important;
+}
+
+/* Elevate sidebar stacking context above conversation column when an overlay/dialog (e.g. Settings) is open */
+html[data-dsh-skin="last-exile"] div:has(> [data-slot="sidebar"]):has([role="dialog"]) {
+  z-index: 1000 !important;
+}
+
+html[data-dsh-skin="last-exile"] div:has(> [data-slot="sidebar"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1 !important;
+  pointer-events: none;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(228, 232, 222, 0.78);
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] div:has(> [data-slot="sidebar"])::before {
+  background: rgba(12, 25, 43, 0.82);
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="sidebar"] > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Modal / Dialog surface styling (ensures settings and dialogs are crisp and opaque against backgrounds) */
+html[data-dsh-skin="last-exile"] [role="dialog"] {
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  background: rgba(236, 239, 231, 0.98) !important;
+  box-shadow: 0 12px 40px rgba(22, 30, 24, 0.25) !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [role="dialog"] {
+  background: rgba(14, 28, 48, 0.98) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Transparent composer seat with subtle gradient */
+html[data-dsh-skin="last-exile"] [data-phase="active"] [data-composer-seat] {
+  background: none !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-phase="active"] [data-composer-seat]:before {
+  content: "";
+  z-index: -1;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: linear-gradient(180deg, transparent 0%, rgba(238, 240, 234, 0.85) 36px);
+  position: absolute;
+  inset: 0;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-phase="active"] [data-composer-seat]:before {
+  background: linear-gradient(180deg, transparent 0%, rgba(11, 22, 38, 0.88) 36px);
+}
+
+/* Cohesive frosted glass card for Assistant conversation markdown blocks */
+html[data-dsh-skin="last-exile"] [data-slot="main.conversation"] div[class$="_markdown"] {
+  color: #1b2220 !important;
+  /* 下限 0.62：防止外部透明度滑杆把正文对比度压到 AA 以下（WS-04） */
+  background: rgba(238, 240, 234, max(0.62, var(--dsh-skin-bubble-alpha, 0.82))) !important;
+  backdrop-filter: blur(var(--dsh-skin-bubble-blur, 14px)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--dsh-skin-bubble-blur, 14px)) saturate(1.15);
+  border: 1px solid rgba(74, 88, 62, 0.14);
+  border-radius: 12px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 4px rgba(22, 30, 24, 0.05);
+  line-height: 1.65;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-slot="main.conversation"] div[class$="_markdown"] {
+  color: #e8f0f7 !important;
+  background: rgba(18, 35, 60, max(0.62, var(--dsh-skin-bubble-alpha, 0.84))) !important;
+  border: 1px solid rgba(34, 211, 238, 0.14);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* Hide empty markdown containers and empty paragraphs so no ghost white bar appears */
+html[data-dsh-skin="last-exile"] [data-slot="main.conversation"] div[class$="_markdown"]:empty,
+html[data-dsh-skin="last-exile"] [data-slot="main.conversation"] div[class$="_markdown"] > p:empty {
+  display: none !important;
+}
+
+/* Reset children inside the markdown card so they flow naturally */
+html[data-dsh-skin="last-exile"] [data-slot="main.conversation"] div[class$="_markdown"] > :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote) {
+  background: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="main.conversation"] div[class$="_markdown"] > :where(ul, ol) {
+  padding-left: 22px;
+}
+
+/* User message bubbles with frosted glass backdrop and high-contrast text */
+html[data-dsh-skin="last-exile"] :is([data-chat-flow-kind="user"],[data-chat-flow-kind="steering"]) [class$="_bubble"] {
+  color: #1b2220 !important;
+  font-weight: 450;
+  background: rgba(232, 236, 227, max(0.62, calc(var(--dsh-skin-bubble-alpha, 0.78) * 1.15))) !important;
+  backdrop-filter: blur(calc(var(--dsh-skin-bubble-blur, 12px) * 1.1));
+  -webkit-backdrop-filter: blur(calc(var(--dsh-skin-bubble-blur, 12px) * 1.1));
+  border: 1px solid rgba(74, 88, 62, 0.18);
+  box-shadow: 0 1px 3px rgba(22, 30, 24, 0.05);
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] :is([data-chat-flow-kind="user"],[data-chat-flow-kind="steering"]) [class$="_bubble"] {
+  color: #e8f0f7 !important;
+  background: rgba(18, 35, 60, max(0.62, calc(var(--dsh-skin-bubble-alpha, 0.80) * 1.15))) !important;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* Semi-transparent header and right sidebar */
+html[data-dsh-skin="last-exile"] [data-slot="main.conversation"] header,
+html[data-dsh-skin="last-exile"] [data-slot="rightbar.session"] > *,
+html[data-dsh-skin="last-exile"] [data-sidebar-right-panel] {
+  background: rgba(238, 240, 234, 0.82) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-slot="main.conversation"] header,
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-slot="rightbar.session"] > *,
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-sidebar-right-panel] {
+  background: rgba(12, 25, 43, 0.85) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* ── Thinking / Reasoning Disclosure (data-variant="think") ── */
+html[data-dsh-skin="last-exile"] [data-variant="think"] {
+  contain: none !important;
+  height: auto !important;
+  min-height: 28px !important;
+  margin: 8px 0 !important;
+  background: rgba(232, 236, 227, 0.88) !important;
+  border-left: 3px solid #8f6410 !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  box-shadow: 0 1px 4px rgba(22, 30, 24, 0.08) !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-variant="think"] {
+  background: rgba(18, 35, 60, 0.88) !important;
+  border-left: 3px solid #06b6d4 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Ensure row is fully visible and not clipped by 24px height constraint */
+html[data-dsh-skin="last-exile"] [data-variant="think"] [data-disclosure-row] {
+  height: auto !important;
+  min-height: 24px !important;
+  overflow: visible !important;
+}
+
+/* Thinking title (思考) and icon */
+html[data-dsh-skin="last-exile"] [data-variant="think"] [class*="title"],
+html[data-dsh-skin="last-exile"] [data-variant="think"] [class*="leading"],
+html[data-dsh-skin="last-exile"] [data-variant="think"] svg {
+  color: #8f6410 !important;
+  fill: currentColor !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-variant="think"] [class*="title"],
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-variant="think"] [class*="leading"],
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-variant="think"] svg {
+  color: #22d3ee !important;
+  fill: currentColor !important;
+}
+
+/* Thinking summary line (collapsed status) — rich contrast */
+html[data-dsh-skin="last-exile"] [data-variant="think"] [class*="summary"],
+html[data-dsh-skin="last-exile"] [data-variant="think"] [class*="summaryText"] {
+  color: #1b2220 !important;
+  -webkit-text-fill-color: #1b2220 !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  opacity: 1 !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-variant="think"] [class*="summary"],
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-variant="think"] [class*="summaryText"] {
+  color: #e8f0f7 !important;
+  -webkit-text-fill-color: #e8f0f7 !important;
+}
+
+/* Thinking body (expanded text) — sharp, high-contrast readable vintage typewriter ink */
+html[data-dsh-skin="last-exile"] [data-variant="think"] [data-disclosure-row] + div,
+html[data-dsh-skin="last-exile"] [data-variant="think"] [data-disclosure-row] + div * {
+  color: #17201d !important;
+  -webkit-text-fill-color: #17201d !important;
+  font-size: 13px !important;
+  line-height: 1.65 !important;
+  opacity: 1 !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-variant="think"] [data-disclosure-row] + div,
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-variant="think"] [data-disclosure-row] + div * {
+  color: #e8f0f7 !important;
+  -webkit-text-fill-color: #e8f0f7 !important;
+}
+
+/* Shimmer wave when streaming: keep text legible underneath */
+html[data-dsh-skin="last-exile"] [data-variant="think"][data-state='running'] [data-disclosure-row]::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(143, 100, 16, 0.12) 50%,
+    transparent 100%
+  ) !important;
+}
+
+/* Turn process header (e.g. "已思考" / "Thought for a while") */
+html[data-dsh-skin="last-exile"] [data-turn-process] {
+  color: #1b2220 !important;
+  border-bottom: 1px solid rgba(74, 88, 62, 0.20) !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-turn-process] > span {
+  color: #1b2220 !important;
+  -webkit-text-fill-color: #1b2220 !important;
+  font-weight: 500 !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-turn-process] > svg {
+  color: #8f6410 !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-turn-process] {
+  color: #e8f0f7 !important;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.20) !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-turn-process] > span {
+  color: #22d3ee !important;
+  -webkit-text-fill-color: #22d3ee !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-turn-process] > svg {
+  color: #06b6d4 !important;
+}
+
+/* ── Last Exile Brand Mark (Sidebar Logo) ── */
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.mark"] svg {
+  display: none !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.mark"]::before {
+  content: "";
+  display: block;
+  width: 26px;
+  height: 26px;
+  background-image: url("assets/vanship-emblem.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+/* Collapsed rail mode mark */
+html[data-dsh-skin="last-exile"] button:has(> span > [data-slot="sidebar.brand.mark"]) > span [data-slot="sidebar.brand.mark"]::before,
+html[data-dsh-skin="last-exile"] button:has(> span > [data-slot="sidebar.brand.mark"]) > span svg {
+  display: none !important;
+}
+
+html[data-dsh-skin="last-exile"] button:has(> span > [data-slot="sidebar.brand.mark"]) > span::before {
+  content: "";
+  display: block;
+  width: 26px;
+  height: 26px;
+  background-image: url("assets/vanship-emblem.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+/* ── Last Exile Brand Name (Sidebar Title) ── */
+html[data-dsh-skin="last-exile"] button:has([data-slot="sidebar.brand.name"]),
+html[data-dsh-skin="last-exile"] [aria-hidden="true"]:has(> * > [data-slot="sidebar.brand.mark"]),
+html[data-dsh-skin="last-exile"] :has(> [data-slot="sidebar.brand.name"]),
+html[data-dsh-skin="last-exile"] button:has([data-slot="sidebar.brand.name"]) span:has(> [data-slot="sidebar.brand.mark"]) {
+  height: auto !important;
+  min-height: 28px !important;
+  overflow: visible !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.name"] > span:has(> span),
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.name"] > span:not(:has(span)) {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  height: auto !important;
+  overflow: visible !important;
+  user-select: none !important;
+  padding: 1px 0 !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.name"] > span > span:first-child,
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.name"] > span:not(:has(span)) {
+  font-size: 0 !important;
+  line-height: normal !important;
+  height: auto !important;
+  color: transparent !important;
+  display: block !important;
+  overflow: visible !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.name"] > span > span:first-child::before,
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.name"] > span:not(:has(span))::before {
+  content: "最后流亡 • 先锋艇" !important;
+  display: block !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Segoe UI", Roboto, "Helvetica Neue", sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--dsw-alias-brand-primary, #8f6410) !important;
+  line-height: 1.25 !important;
+}
+
+html[data-dsh-skin="last-exile"] :lang(en) [data-slot="sidebar.brand.name"] > span > span:first-child::before,
+html[data-dsh-skin="last-exile"] :lang(en) [data-slot="sidebar.brand.name"] > span:not(:has(span))::before {
+  content: "LAST EXILE" !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-slot="sidebar.brand.name"] > span > span:first-child::before,
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-slot="sidebar.brand.name"] > span:not(:has(span))::before {
+  color: var(--dsw-alias-brand-primary, #06b6d4) !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.name"] > span > span:last-child {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  margin-top: 1px !important;
+  font-size: 0 !important;
+  line-height: normal !important;
+  color: transparent !important;
+  background: none !important;
+  background-color: transparent !important;
+  height: auto !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.name"] > span > span:last-child::before {
+  content: "" !important;
+  display: inline-block !important;
+  width: 14px !important;
+  height: 4px !important;
+  border-radius: 1px !important;
+  background: linear-gradient(to right, #06b6d4 0%, #06b6d4 33.33%, #c9a227 33.33%, #c9a227 66.66%, #4a583e 66.66%, #4a583e 100%) !important;
+  box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.25) !important;
+  flex-shrink: 0 !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="sidebar.brand.name"] > span > span:last-child::after {
+  content: "VANSHIP • GRAND STREAM" !important;
+  display: inline-block !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Segoe UI", Roboto, sans-serif !important;
+  font-size: 9px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.08em !important;
+  color: #6f5a1c !important;
+  line-height: 1.25 !important;
+  text-transform: uppercase !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-slot="sidebar.brand.name"] > span > span:last-child::after {
+  color: #22d3ee !important;
+}
+
+/* ── Last Exile Hero Mark (Vanship diving into the Grand Stream) ── */
+html[data-dsh-skin="last-exile"] [data-slot="conversation.hero.brand.mark"] svg {
+  display: none !important;
+}
+html[data-dsh-skin="last-exile"] [data-slot="conversation.hero.brand.mark"]::before {
+  content: "";
+  display: inline-block;
+  width: 48px;
+  height: 48px;
+  background-image: url("assets/vanship-emblem.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 2px 8px rgba(6, 182, 212, 0.35));
+  animation: exile-float-vanship 4s ease-in-out infinite;
+}
+@keyframes exile-float-vanship {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* WS-06：尊重系统减弱动效偏好，并在标签页隐藏时暂停皮肤自身的无限动画 */
+@media (prefers-reduced-motion: reduce) {
+  html[data-dsh-skin="last-exile"] [data-slot="conversation.hero.brand.mark"]::before {
+    animation: none !important;
+  }
+}
+html[data-dsh-skin="last-exile"] body[data-dsh-tab-hidden] [data-slot="conversation.hero.brand.mark"]::before {
+  animation-play-state: paused !important;
+}
+
+/* ── UI 0.1.6 适配：思考链长文本 Sticky 吸顶毛玻璃质感 ── */
+html[data-dsh-skin="last-exile"] [data-variant="think"][data-expanded] [data-open] [data-disclosure-row] {
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  background: rgba(232, 236, 227, 0.94) !important;
+  border-bottom: 1px solid rgba(143, 100, 16, 0.20) !important;
+  border-radius: 6px 6px 0 0 !important;
+  box-shadow: 0 2px 8px rgba(22, 30, 24, 0.06) !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-variant="think"][data-expanded] [data-open] [data-disclosure-row] {
+  background: rgba(18, 35, 60, 0.94) !important;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ── UI 0.1.6 适配：侧边栏内置交互式终端先锋艇仪表盘 ── */
+html[data-dsh-skin="last-exile"] [data-sidebar-terminal] {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+html[data-dsh-skin="last-exile"] [data-sidebar-terminal] [class*="screen"] {
+  background: rgba(232, 236, 227, 0.94) !important;
+  border: 1px solid rgba(143, 100, 16, 0.20) !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 1px 3px rgba(22, 30, 24, 0.08) !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-sidebar-terminal] [class*="screen"] {
+  background: rgba(10, 20, 35, 0.95) !important;
+  border: 1px solid rgba(34, 211, 238, 0.20) !important;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.6) !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-sidebar-terminal] .xterm-cursor-block {
+  background-color: #8f6410 !important;
+  color: #f5f8f5 !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-sidebar-terminal] .xterm-cursor-block {
+  background-color: #22d3ee !important;
+  color: #0b1523 !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-sidebar-terminal] [class*="status"] {
+  background: rgba(226, 231, 220, 0.88) !important;
+  border-bottom: 1px solid rgba(143, 100, 16, 0.15) !important;
+  border-radius: 6px 6px 0 0 !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-sidebar-terminal] [class*="status"] {
+  background: rgba(12, 25, 43, 0.90) !important;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.18) !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-sidebar-terminal] [class*="status"] button {
+  border: 1px solid rgba(143, 100, 16, 0.3) !important;
+  border-radius: 6px !important;
+  color: #3b301c !important;
+  font-weight: 550 !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-sidebar-terminal] [class*="status"] button {
+  border: 1px solid rgba(34, 211, 238, 0.35) !important;
+  color: #e8f0f7 !important;
+}
+
+/* ── UI 0.1.6 适配：输入框底部权限预设药丸按钮 ── */
+html[data-dsh-skin="last-exile"] [data-slot="conversation.input.permission"] button[class*="trigger"],
+html[data-dsh-skin="last-exile"] [class*="PermissionSelect_trigger"] {
+  border: 1px solid rgba(143, 100, 16, 0.18) !important;
+  border-radius: 20px !important;
+  font-weight: 550 !important;
+  color: #4a3e28 !important;
+  transition: all 180ms ease !important;
+}
+
+html[data-dsh-skin="last-exile"] [data-slot="conversation.input.permission"] button[class*="trigger"]:hover,
+html[data-dsh-skin="last-exile"] [class*="PermissionSelect_trigger"]:hover {
+  background: rgba(143, 100, 16, 0.08) !important;
+  border-color: rgba(143, 100, 16, 0.35) !important;
+  color: #8f6410 !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-slot="conversation.input.permission"] button[class*="trigger"],
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [class*="PermissionSelect_trigger"] {
+  border: 1px solid rgba(34, 211, 238, 0.20) !important;
+  color: #c9d7e5 !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [data-slot="conversation.input.permission"] button[class*="trigger"]:hover,
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [class*="PermissionSelect_trigger"]:hover {
+  background: rgba(34, 211, 238, 0.12) !important;
+  border-color: rgba(34, 211, 238, 0.40) !important;
+  color: #22d3ee !important;
+}
+
+/* ── UI 0.1.6 适配：会话归档管理视图 ── */
+html[data-dsh-skin="last-exile"] [class*="ArchivedSessionsSection_search"] input:focus-visible {
+  border-color: #8f6410 !important;
+  box-shadow: 0 0 0 2px rgba(143, 100, 16, 0.15) !important;
+  outline: none !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [class*="ArchivedSessionsSection_search"] input:focus-visible {
+  border-color: #22d3ee !important;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25) !important;
+}
+
+html[data-dsh-skin="last-exile"] [class*="ArchivedSessionsSection_row"]:hover {
+  background: rgba(143, 100, 16, 0.05) !important;
+}
+
+html[data-dsh-skin="last-exile"] body[data-ds-dark-theme] [class*="ArchivedSessionsSection_row"]:hover {
+  background: rgba(34, 211, 238, 0.08) !important;
+}
+
+
+
+html[data-dsh-skin="last-exile"] [id="root"] { background: transparent; }
+
+html[data-dsh-skin="last-exile"] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

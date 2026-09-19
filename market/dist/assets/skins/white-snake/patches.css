@@ -1,0 +1,343 @@
+/* Core App Frame transparency so background shows through */
+[id="root"] {
+  background: none !important;
+}
+
+[data-slot="root"] > div {
+  background: none !important;
+}
+
+div:has(> [data-slot="main"]) {
+  background: none !important;
+}
+
+[data-slot="main.conversation"] {
+  background: none !important;
+}
+
+[data-conversation-scroll] {
+  background: none !important;
+}
+
+/* Semi-transparent sidebar with blur via pseudo-element (avoids creating a containing block that traps fixed modal overlays) */
+div:has(> [data-slot="sidebar"]) {
+  position: relative !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate !important;
+}
+
+/* Elevate sidebar stacking context above conversation column when an overlay/dialog (e.g. Settings) is open */
+div:has(> [data-slot="sidebar"]):has([role="dialog"]) {
+  z-index: 1000 !important;
+}
+
+div:has(> [data-slot="sidebar"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1 !important;
+  pointer-events: none;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(235, 240, 235, 0.78);
+}
+
+body[data-ds-dark-theme] div:has(> [data-slot="sidebar"])::before {
+  background: rgba(14, 22, 25, 0.82);
+}
+
+[data-slot="sidebar"] > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Modal / Dialog surface styling (ensures settings and dialogs are crisp and opaque against backgrounds) */
+[role="dialog"] {
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  background: rgba(242, 246, 242, 0.98) !important;
+  box-shadow: 0 12px 40px rgba(16, 30, 25, 0.25) !important;
+}
+
+body[data-ds-dark-theme] [role="dialog"] {
+  background: rgba(16, 26, 29, 0.98) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Transparent composer seat with subtle gradient */
+[data-phase="active"] [data-composer-seat] {
+  background: none !important;
+}
+
+[data-phase="active"] [data-composer-seat]:before {
+  content: "";
+  z-index: -1;
+  pointer-events: none;
+  backdrop-filter: blur(var(--dsh-input-card-blur, 8px));
+  -webkit-backdrop-filter: blur(var(--dsh-input-card-blur, 8px));
+  background: linear-gradient(180deg, transparent 0%, rgba(242, 245, 242, 0.85) 36px);
+  position: absolute;
+  inset: 0;
+}
+
+body[data-ds-dark-theme] [data-phase="active"] [data-composer-seat]:before {
+  background: linear-gradient(180deg, transparent 0%, rgba(11, 19, 21, 0.88) 36px);
+}
+
+/* Cohesive frosted glass card for Assistant conversation markdown blocks */
+[data-slot="main.conversation"] div[class$="_markdown"] {
+  /* 下限 0.62：防止外部透明度滑杆把正文对比度压到 AA 以下（WS-04） */
+  background: rgba(242, 245, 242, max(0.62, var(--dsh-skin-bubble-alpha, 0.82))) !important;
+  backdrop-filter: blur(var(--dsh-skin-bubble-blur, 14px)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--dsh-skin-bubble-blur, 14px)) saturate(1.15);
+  border: 1px solid rgba(16, 124, 101, 0.12);
+  border-radius: 12px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 4px rgba(16, 30, 25, 0.05);
+  line-height: 1.65;
+}
+
+body[data-ds-dark-theme] [data-slot="main.conversation"] div[class$="_markdown"] {
+  background: rgba(16, 26, 29, max(0.62, var(--dsh-skin-bubble-alpha, 0.84))) !important;
+  border-color: rgba(45, 212, 191, 0.14);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 消除正文未到达时产生的空 Markdown 幽灵白条（WS-09） */
+[data-slot="main.conversation"] div[class$="_markdown"]:empty {
+  display: none !important;
+}
+
+/* User Bubble high-contrast text & border */
+[data-slot="main.conversation"] div[class*="_userBubble_"],
+[data-slot="main.conversation"] [data-role="user"] {
+  background: rgba(235, 242, 237, max(0.62, var(--dsh-skin-bubble-alpha, 0.85))) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(16, 124, 101, 0.22) !important;
+  color: #161e19 !important;
+  border-radius: 12px !important;
+}
+
+body[data-ds-dark-theme] [data-slot="main.conversation"] div[class*="_userBubble_"],
+body[data-ds-dark-theme] [data-slot="main.conversation"] [data-role="user"] {
+  background: rgba(18, 30, 34, max(0.62, var(--dsh-skin-bubble-alpha, 0.85))) !important;
+  border: 1px solid rgba(45, 212, 191, 0.25) !important;
+  color: #ebf5f3 !important;
+}
+
+/* ── Deep Thinking / Reasoning Container ── */
+[data-slot="main.conversation"] [data-variant="think"] {
+  contain: none !important;
+  overflow: visible !important;
+  height: auto !important;
+  min-height: 28px !important;
+  border-left: 3px solid #107c65 !important;
+  background: rgba(232, 238, 233, 0.88) !important;
+  border-radius: 6px !important;
+  padding: 6px 12px !important;
+  margin: 6px 0 !important;
+}
+
+body[data-ds-dark-theme] [data-slot="main.conversation"] [data-variant="think"] {
+  border-left: 3px solid #2dd4bf !important;
+  background: rgba(14, 24, 27, 0.88) !important;
+}
+
+/* Thinking disclosure summary */
+[data-slot="main.conversation"] [data-variant="think"] [data-disclosure-row] {
+  color: #107c65 !important;
+  font-weight: 600 !important;
+}
+
+body[data-ds-dark-theme] [data-slot="main.conversation"] [data-variant="think"] [data-disclosure-row] {
+  color: #2dd4bf !important;
+}
+
+[data-slot="main.conversation"] [data-variant="think"] [data-disclosure-row] span {
+  color: #161e19 !important;
+}
+
+body[data-ds-dark-theme] [data-slot="main.conversation"] [data-variant="think"] [data-disclosure-row] span {
+  color: #ebf5f3 !important;
+}
+
+/* Thinking body text - crisp, high-contrast */
+[data-slot="main.conversation"] [data-variant="think"] [data-disclosure-body] {
+  color: #161e19 !important;
+  -webkit-text-fill-color: #161e19 !important;
+  opacity: 1 !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+body[data-ds-dark-theme] [data-slot="main.conversation"] [data-variant="think"] [data-disclosure-body] {
+  color: #d1e2de !important;
+  -webkit-text-fill-color: #d1e2de !important;
+}
+
+/* Sticky thinking header when expanded */
+[data-variant="think"][data-expanded] [data-open] [data-disclosure-row] {
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  background: rgba(232, 238, 233, 0.94) !important;
+  border-bottom: 1px solid rgba(16, 124, 101, 0.20) !important;
+  border-radius: 6px 6px 0 0 !important;
+  box-shadow: 0 2px 8px rgba(16, 30, 25, 0.06) !important;
+}
+
+body[data-ds-dark-theme] [data-variant="think"][data-expanded] [data-open] [data-disclosure-row] {
+  background: rgba(14, 24, 27, 0.94) !important;
+  border-bottom: 1px solid rgba(45, 212, 191, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ── Brand mark (Sidebar Top Left) ── */
+[data-slot="sidebar.brand.mark"] svg {
+  display: none !important;
+}
+
+[data-slot="sidebar.brand.mark"]::before {
+  content: "";
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  background-image: url("assets/white-snake-emblem.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 1px 4px rgba(16, 124, 101, 0.35));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
+}
+
+[data-slot="sidebar.brand.mark"]:hover::before {
+  transform: scale(1.1) rotate(12deg);
+  filter: drop-shadow(0 2px 8px rgba(45, 212, 191, 0.55));
+}
+
+/* ── Brand name & subtext (Sidebar Top) ── */
+[data-slot="sidebar.brand.name"] > span {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  line-height: 1.25 !important;
+}
+
+[data-slot="sidebar.brand.name"] > span > span:first-child,
+[data-slot="sidebar.brand.name"] > span:not(:has(span)) {
+  font-size: 0 !important;
+  line-height: normal !important;
+  height: auto !important;
+  color: transparent !important;
+  display: block !important;
+  overflow: visible !important;
+}
+
+[data-slot="sidebar.brand.name"] > span > span:first-child::before,
+[data-slot="sidebar.brand.name"] > span:not(:has(span))::before {
+  content: "白蛇 · 缘起浮生" !important;
+  display: block !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Songti SC", "SimSun", "PingFang SC", "Segoe UI", Roboto, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.06em !important;
+  color: var(--dsw-alias-brand-primary, #107c65) !important;
+  line-height: 1.25 !important;
+}
+
+:lang(en) [data-slot="sidebar.brand.name"] > span > span:first-child::before,
+:lang(en) [data-slot="sidebar.brand.name"] > span:not(:has(span))::before {
+  content: "WHITE SNAKE" !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+body[data-ds-dark-theme] [data-slot="sidebar.brand.name"] > span > span:first-child::before,
+body[data-ds-dark-theme] [data-slot="sidebar.brand.name"] > span:not(:has(span))::before {
+  color: var(--dsw-alias-brand-primary, #2dd4bf) !important;
+}
+
+[data-slot="sidebar.brand.name"] > span > span:last-child {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  margin-top: 1px !important;
+  font-size: 0 !important;
+  line-height: normal !important;
+  color: transparent !important;
+  background: none !important;
+  background-color: transparent !important;
+  height: auto !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+[data-slot="sidebar.brand.name"] > span > span:last-child::before {
+  content: "" !important;
+  display: inline-block !important;
+  width: 14px !important;
+  height: 4px !important;
+  border-radius: 1px !important;
+  background: linear-gradient(to right, #107c65 0%, #107c65 33.33%, #2dd4bf 33.33%, #2dd4bf 66.66%, #c23a3a 66.66%, #c23a3a 100%) !important;
+  box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.25) !important;
+  flex-shrink: 0 !important;
+}
+
+[data-slot="sidebar.brand.name"] > span > span:last-child::after {
+  content: "追光动画 • 东方浪漫" !important;
+  display: inline-block !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Songti SC", "SimSun", "PingFang SC", "Segoe UI", Roboto, sans-serif !important;
+  font-size: 9.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  color: #166551 !important;
+  line-height: 1.25 !important;
+}
+
+:lang(en) [data-slot="sidebar.brand.name"] > span > span:last-child::after {
+  content: "LIGHT CHASER • AFLOAT" !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+}
+
+body[data-ds-dark-theme] [data-slot="sidebar.brand.name"] > span > span:last-child::after {
+  color: #2dd4bf !important;
+}
+
+/* ── Hero Mark (Broken Bridge & White Snake Silhouette) ── */
+[data-slot="conversation.hero.brand.mark"] svg {
+  display: none !important;
+}
+
+[data-slot="conversation.hero.brand.mark"]::before {
+  content: "";
+  display: inline-block;
+  width: 52px;
+  height: 52px;
+  background-image: url("assets/white-snake-hero.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 2px 8px rgba(16, 124, 101, 0.35));
+  animation: snake-float-hero 4s ease-in-out infinite;
+}
+
+@keyframes snake-float-hero {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="conversation.hero.brand.mark"]::before {
+    animation: none !important;
+  }
+}
+
+body[data-dsh-tab-hidden] [data-slot="conversation.hero.brand.mark"]::before {
+  animation-play-state: paused !important;
+}

@@ -1,0 +1,62 @@
+porco-rosso (红猪 · Porco Rosso)
+================================================
+
+作品与美术素材出处 (work and artwork provenance)
+------------------------------------------------
+
+1. 《红猪》（紅の豚 / Porco Rosso）由吉卜力工作室 (Studio Ghibli) 制作、宫崎骏导演，
+   徳间书店、日本航空、日本电视放送网联合出品。作品中的角色形象、机械设计与美术设定著作权
+   归吉卜力工作室及原权利人所有。
+   Porco Rosso is created and directed by Hayao Miyazaki, produced by Studio Ghibli.
+   All rights to the characters, mechanical designs, and original artwork belong to
+   Studio Ghibli and their respective rights holders.
+
+2. assets/ 中的静态壁纸素材取自吉卜力工作室公开发布的官方剧照素材（常识范围内非商业展示）：
+   - assets/porco001.jpg：亚得里亚海秘密海湾（波鲁克与萨伏亚 S.21 白昼沙滩）
+   - assets/porco002.jpg：平流天河与深邃夜空（云海战友飞升暗夜）
+   本皮肤作者不对上述素材主张任何权利。
+   The backdrop artwork in assets/ is taken from official stills published by Studio Ghibli.
+   The skin author claims no rights to that material.
+
+3. 本皮肤为个人非商业性质的同人致敬作品，仅供学习、研究与个人展示之用，绝不用于任何商业营利场景。
+   依据合理使用与非商业同人交流准则，本皮肤完整保留原著作权标识：
+
+   © Studio Ghibli
+   © 1992 Studio Ghibli - NN
+
+   本皮肤不代表官方，与吉卜力工作室无隶属或商业背书关系。吉卜力工作室保留随时要求
+   移除相关内容的权利。
+
+音乐素材出处 (music recordings provenance)
+----------------------------------------
+
+1. 《Gymnopédie No. 1》（吉诺佩蒂第 1 号 · 印象派氛围慢板）
+   - 作曲：Erik Satie (1866–1925)（作品已进入公有领域 Public Domain）
+   - 演奏：Robin Alciatore
+   - 录音出处：Musopen (https://musopen.org/)，按 Public Domain Mark 1.0 发布
+   - 规格：双声道立体声 (Stereo)，44.1kHz 采样率
+
+2. 《Nocturne in E-flat major, Op. 9 No. 2》（降E大调夜曲 · 复古沙龙）
+   - 作曲：Frédéric Chopin (1810–1849)（作品已进入公有领域 Public Domain）
+   - 演奏：Martha Goldstein (Al Goldstein collection)
+   - 录音出处：Pandora Music repository at ibiblio.org，按 Public Domain 发布
+   - 规格：双声道立体声 (Stereo)，44.1kHz 采样率
+
+皮肤工程与许可 (skin engineering and license)
+--------------------------------------------
+
+4. 皮肤工程实现（skin.json / skin.css / patches.css / hooks.mjs 与调色板重映射）由本皮肤作者
+   binlecode 制作，按 CC BY-NC-SA 4.0 发布。
+   The skin engineering (skin.json / skin.css / patches.css / hooks.mjs and the palette
+   remap) is the author's work, released under CC BY-NC-SA 4.0.
+
+5. 该许可只覆盖第 4 条的皮肤工程，不涵盖第 2 条中的官方美术素材；官方素材的
+   权利与使用条件完全由原权利人持有。
+   That license covers only the skin engineering in item 4 and does NOT extend
+   to the official material in item 2, whose rights remain with the original copyright holders.
+
+许可文本 (license text)
+-----------------------
+
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-nc-sa/4.0/

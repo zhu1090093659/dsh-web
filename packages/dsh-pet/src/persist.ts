@@ -197,7 +197,9 @@ function loadGameplay(parsed: PetPersistDocument): Record<string, PetGameplaySta
     const item: PetGameplayState = {
       stats,
       currencies,
-      mode: record.mode === 'work' || record.mode === 'sleep' ? record.mode : null,
+      // Any non-empty id survives the round trip; whether it is still declared
+      // is settled against the manifest when the mode is read back.
+      mode: typeof record.mode === 'string' && record.mode.length > 0 && record.mode.length <= 24 ? record.mode : null,
       settledAt: clamp(finiteNum(record.settledAt, 0), Number.MAX_SAFE_INTEGER),
     }
     if (typeof record.incomeCarryMs === 'number' && Number.isFinite(record.incomeCarryMs)) {

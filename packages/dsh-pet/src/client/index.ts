@@ -54,7 +54,7 @@ interface PetHttpApi {
   setPet(petId: string): Promise<{ ok: true; petId: string } | { ok: false; error: string }>
   setSkin(skin?: string): Promise<{ ok: boolean; error?: string; skin?: string }>
   gameplayTouch(zone?: string): Promise<PetGameplayVerbResult>
-  gameplaySetMode(mode: 'work' | 'sleep' | null): Promise<PetGameplayVerbResult>
+  gameplaySetMode(mode: string | null): Promise<PetGameplayVerbResult>
   gameplayWorkTick(): Promise<PetGameplayVerbResult>
   gameplayBuy(item: string): Promise<PetGameplayVerbResult>
 }

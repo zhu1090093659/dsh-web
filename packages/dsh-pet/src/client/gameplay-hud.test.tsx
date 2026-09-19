@@ -44,6 +44,7 @@ import { createDragStream } from './drag-stream.ts'
 import { t } from './locales.ts'
 import type { PetDefinition } from '../registry.ts'
 import type { PetGameplayStateView, PetGameplayVerbResult, PetStateView } from '../service.ts'
+import type { ActivityPhase } from '../state.ts'
 
 const VIEW: PetGameplayStateView = {
   stats: { hunger: 100, mood: 100, energy: 100, affection: 100 },
@@ -110,10 +111,10 @@ function petDefinition(): PetDefinition {
   }
 }
 
-function snapshot(view: PetGameplayStateView, skin?: string): PetStateView {
+function snapshot(view: PetGameplayStateView, skin?: string, phase: ActivityPhase = 'idle'): PetStateView {
   return {
     animation: 'idle',
-    phase: 'idle',
+    phase,
     sessionActive: false,
     sessions: [],
     affinity: { points: 0, rank: '幼鲸', rankEmoji: '*', pets: 0, feeds: 0, turns: 0, petCooldown: false, feedCooldown: false },
@@ -135,7 +136,7 @@ interface Harness {
   setView: (view: PetGameplayStateView) => void
 }
 
-function harness(view: PetGameplayStateView = gameplayView()): Harness {
+function harness(view: PetGameplayStateView = gameplayView(), definition: PetDefinition = petDefinition()): Harness {
   const store = createPetStore().create()
   store.actions.setSnapshot(snapshot(view))
   const bus: GameplayBus = {}
@@ -145,13 +146,13 @@ function harness(view: PetGameplayStateView = gameplayView()): Harness {
   const ok = (patch?: Partial<PetGameplayVerbResult>): PetGameplayVerbResult => ({ ok: true, ...patch })
   const api = {
     touch: vi.fn(async () => ok({ hit: true, state: 'happy', stateMs: 3000, phrase: 'happy!', view: gameplayView({ stats: { ...VIEW.stats, affection: 105 } }) })),
-    setMode: vi.fn(async (mode: 'work' | 'sleep' | null) => ok({ view: gameplayView({ mode }) })),
+    setMode: vi.fn(async (mode: string | null) => ok({ view: gameplayView({ mode }) })),
     workTick: vi.fn(async () => ok({ outcome: 'success' as const, view: gameplayView({ mode: 'work' }) })),
     buy: vi.fn(async () => ok({ view: gameplayView() })),
     setSkin: vi.fn(async () => ({ ok: true })),
   }
   const setView = (next: PetGameplayStateView): void => store.actions.setSnapshot(snapshot(next))
-  render(<GameplayHud definition={petDefinition()} store={store} api={api} bus={bus} drag={drag} t={t} />)
+  render(<GameplayHud definition={definition} store={store} api={api} bus={bus} drag={drag} t={t} />)
   return { store, bus, api, setTrack, drag, setView }
 }
 
@@ -162,6 +163,92 @@ describe('GameplayHud', () => {
   afterEach(() => {
     cleanup()
     vi.useRealTimers()
+  })
+
+  it('roams on its interval: walks through the bus and holds the walk track', () => {
+    const definition = petDefinition()
+    definition.gameplay = {
+      ...definition.gameplay,
+      // Park the director far away so this test isolates the roam roll (an act
+      // firing on the same tick owns the visual and skips the roam).
+      idleDirector: { intervalMs: 60_000, maxMiss: 2, idleWeight: 0, acts: [{ track: 'eat', weight: 1 }] },
+      roam: { state: 'happy', intervalMs: 5000, probability: 1, distanceMin: 100, distanceMax: 100, speed: 100 },
+    }
+    const h = harness(gameplayView(), definition)
+    const walk = vi.fn((_direction: string, _distance: number, _speed: number) => 100)
+    h.bus.walk = walk
+    act(() => { vi.advanceTimersByTime(5000) })
+    expect(walk).toHaveBeenCalledTimes(1)
+    const first = walk.mock.calls[0] ?? ['left', 0, 0]
+    expect(['up', 'down', 'left', 'right']).toContain(first[0])
+    expect(first[1]).toBe(100)
+    expect(first[2]).toBe(100)
+    expect(h.setTrack).toHaveBeenCalledWith('happy')
+    // The hold is exactly the travel time (100 px at 100 px/s), then released.
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(h.setTrack).toHaveBeenLastCalledWith(undefined)
+    // A pet with no room to move does not hold the walk art at all (the
+    // idle director's own setTrack calls are ignored here).
+    walk.mockReturnValue(0)
+    act(() => { vi.advanceTimersByTime(5000) })
+    expect(walk).toHaveBeenCalledTimes(2)
+    expect(h.setTrack.mock.calls.filter(call => call[0] === 'happy')).toHaveLength(1)
+  })
+
+  it('roams outside the idle phase too (ambient wandering)', () => {
+    const definition = petDefinition()
+    definition.gameplay = {
+      ...definition.gameplay,
+      idleDirector: { intervalMs: 60_000, maxMiss: 2, idleWeight: 0, acts: [{ track: 'eat', weight: 1 }] },
+      roam: { state: 'happy', intervalMs: 5000, probability: 1, distanceMin: 100, distanceMax: 100, speed: 100 },
+    }
+    const h = harness(gameplayView(), definition)
+    // The agent is mid-tool-call: the pet still wanders (only the director's
+    // acts are idle-gated).
+    h.store.actions.setSnapshot(snapshot(gameplayView(), undefined, 'tool'))
+    const walk = vi.fn((_direction: string, _distance: number, _speed: number) => 100)
+    h.bus.walk = walk
+    act(() => { vi.advanceTimersByTime(5000) })
+    expect(walk).toHaveBeenCalledTimes(1)
+  })
+
+  it('never lets a finished walk release a track another owner took over', () => {
+    const definition = petDefinition()
+    definition.gameplay = {
+      ...definition.gameplay,
+      idleDirector: { intervalMs: 60_000, maxMiss: 2, idleWeight: 0, acts: [{ track: 'eat', weight: 1 }] },
+      roam: { state: 'happy', intervalMs: 5000, probability: 1, distanceMin: 100, distanceMax: 100, speed: 100 },
+    }
+    const h = harness(gameplayView(), definition)
+    h.bus.walk = vi.fn((_direction: string, _distance: number, _speed: number) => 100)
+    // The staggered first roam tick starts a 1 s walk and holds the track.
+    act(() => { vi.advanceTimersByTime(2500) })
+    expect(h.setTrack).toHaveBeenCalledWith('happy')
+    // The user enters sleep mid-walk: the mode loop takes the slot.
+    act(() => { h.store.actions.setSnapshot(snapshot(gameplayView({ mode: 'sleep' }))) })
+    expect(h.setTrack).toHaveBeenLastCalledWith('sleep')
+    // The walk's hold window elapses: it must not clear the sleep track.
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(h.setTrack).toHaveBeenLastCalledWith('sleep')
+  })
+
+  it('keeps the roam from cutting into an idle-director act', () => {
+    const definition = petDefinition()
+    definition.frames2d!.tracks.eat!.durations = [60_000]
+    definition.gameplay = {
+      ...definition.gameplay,
+      idleDirector: { intervalMs: 2000, maxMiss: 2, idleWeight: 0, acts: [{ track: 'eat', weight: 1 }] },
+      roam: { state: 'happy', intervalMs: 6000, probability: 1, distanceMin: 100, distanceMax: 100, speed: 100 },
+    }
+    const h = harness(gameplayView(), definition)
+    const walk = vi.fn((_direction: string, _distance: number, _speed: number) => 100)
+    h.bus.walk = walk
+    // 2 s: the director fires its act, which owns the visual for its duration.
+    act(() => { vi.advanceTimersByTime(2000) })
+    expect(h.setTrack).toHaveBeenCalledWith('eat')
+    // 3 s: the roam's staggered first tick lands, but the act still owns the pet.
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(walk).not.toHaveBeenCalled()
   })
 
   it('opens the menu card through the bus openCard channel and shows the shop page', () => {
@@ -440,8 +527,9 @@ describe('GameplayHud', () => {
       vi.advanceTimersByTime(5000)
     })
     expect(h.setTrack).toHaveBeenCalledWith('eat')
-    // A non-idle phase suppresses the roll.
-    h.store.actions.setSnapshot(snapshot(gameplayView()))
+    // Ambient acts are not phase-gated: while the agent works (thinking/tool)
+    // the roll still fires, otherwise she would only ever act when nobody is
+    // busy -- the idle phase is rare while an active session is running.
     h.setTrack.mockClear()
     const busy = snapshot(gameplayView())
     busy.phase = 'thinking'
@@ -451,7 +539,7 @@ describe('GameplayHud', () => {
     await act(async () => {
       vi.advanceTimersByTime(5000)
     })
-    expect(h.setTrack).not.toHaveBeenCalled()
+    expect(h.setTrack).toHaveBeenCalledWith('eat')
   })
 
   it('drives the work loop: work track, adjudicated ticks, result hold', async () => {

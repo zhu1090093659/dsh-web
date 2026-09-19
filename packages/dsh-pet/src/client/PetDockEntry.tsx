@@ -120,6 +120,7 @@ export function PetDockEntry(props: PetDockEntryProps): ReactElement {
                 onFeedbackDone={props.feedbackDone}
                 portalTarget={props.portalTarget}
                 dragDisabled={snapshot.gameplay?.mode === 'work'}
+                {...(aux === null ? {} : { bus: aux.bus })}
                 {...(gameplay === undefined || aux === null
                   ? {}
                   : {

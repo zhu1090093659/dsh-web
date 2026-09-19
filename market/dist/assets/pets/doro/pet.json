@@ -1,0 +1,310 @@
+{
+  "petManifestVersion": 2,
+  "id": "doro",
+  "displayName": "doro",
+  "description": "doro：ComfyUI + MiniMax-H3 生成的 73 帧无缝待机循环（呼吸起伏 + 偶尔眨眼）；打工翻垃圾袋、睡觉、洗澡（心情 +3/秒）、随机爬行走动、橘子商店、鱼干被动收入等玩法与 jyn / miku 一致。",
+  "version": "1.9.0",
+  "author": "11726",
+  "license": "MIT",
+  "renderer": "frames2d",
+  "frames2d": {
+    "dir": "thumb",
+    "defaultFrameMs": 42,
+    "tracks": {
+      "idle": {},
+      "work": {},
+      "work-success": {
+        "loop": false,
+        "fallback": "work"
+      },
+      "work-fail": {
+        "loop": false,
+        "fallback": "work"
+      },
+      "sleep": {},
+      "wash": {},
+      "move": {},
+      "cola": {
+        "loop": false,
+        "fallback": "idle"
+      },
+      "orange": {
+        "loop": false,
+        "fallback": "idle"
+      },
+      "tongue": {
+        "loop": false,
+        "fallback": "idle"
+      },
+      "struggle": {}
+    },
+    "phases": {
+      "idle": "idle"
+    }
+  },
+  "gameplay": {
+    "stats": {
+      "hunger": {
+        "max": 100,
+        "initial": 100,
+        "decayPerMinute": 1,
+        "workingDecayPerMinute": 5
+      },
+      "mood": {
+        "max": 100,
+        "initial": 100,
+        "decayPerMinute": 0.5
+      },
+      "energy": {
+        "max": 100,
+        "initial": 100,
+        "decayPerMinute": 0.25
+      },
+      "affection": {
+        "max": 500,
+        "initial": 100,
+        "idleDecayPerMinute": 0.2
+      }
+    },
+    "idleDirector": {
+      "intervalMs": 10000,
+      "maxMiss": 10,
+      "idleWeight": 10,
+      "acts": [
+        {
+          "track": "cola",
+          "weight": 30
+        },
+        {
+          "track": "orange",
+          "weight": 30
+        },
+        {
+          "track": "tongue",
+          "weight": 30
+        }
+      ]
+    },
+    "hitBox": {
+      "x0": 0.28,
+      "y0": 0.05,
+      "x1": 0.72,
+      "y1": 0.95
+    },
+    "touch": {
+      "zones": [
+        {
+          "name": "head",
+          "y0": 0,
+          "y1": 0.3333,
+          "branches": [
+            {
+              "probability": 0.3,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 5
+                }
+              ],
+              "phrases": [
+                "……唔。"
+              ]
+            },
+            {
+              "probability": 0.7,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 5
+                }
+              ],
+              "phrases": [
+                "doro～",
+                "摸摸头。"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "body",
+          "y0": 0.3333,
+          "y1": 0.6667,
+          "branches": [
+            {
+              "probability": 0.3,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 10
+                }
+              ],
+              "phrases": [
+                "呀！"
+              ]
+            },
+            {
+              "probability": 0.7,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 10
+                }
+              ],
+              "phrases": [
+                "好痒……",
+                "别戳啦。"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "legs",
+          "y0": 0.6667,
+          "y1": 1,
+          "branches": [
+            {
+              "probability": 0.3,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": 30
+                }
+              ],
+              "phrases": [
+                "诶……真的可以吗。"
+              ]
+            },
+            {
+              "probability": 0.7,
+              "effects": [
+                {
+                  "stat": "affection",
+                  "amount": -5
+                }
+              ],
+              "phrases": [
+                "哼！",
+                "不可以看那里！"
+              ]
+            }
+          ]
+        }
+      ],
+      "clickBoost": {
+        "stat": "mood",
+        "min": 0,
+        "max": 3
+      }
+    },
+    "dragState": "struggle",
+    "passiveIncome": {
+      "currency": "treats",
+      "amount": 1,
+      "intervalMs": 1800000
+    },
+    "work": {
+      "state": "work",
+      "successState": "work-success",
+      "failState": "work-fail",
+      "tickMs": 10000,
+      "resultMs": {
+        "success": 3300,
+        "fail": 3300
+      },
+      "successProbability": 0.5,
+      "success": {
+        "effects": [
+          {
+            "currency": "treats",
+            "amount": 1
+          }
+        ]
+      }
+    },
+    "sleep": {
+      "state": "sleep",
+      "restore": {
+        "stat": "energy",
+        "amount": 4,
+        "intervalMs": 30000
+      }
+    },
+    "modes": {
+      "wash": {
+        "state": "wash",
+        "label": "洗澡",
+        "activeLabel": "洗澡中",
+        "restore": {
+          "stat": "mood",
+          "amount": 3,
+          "intervalMs": 1000
+        }
+      }
+    },
+    "roam": {
+      "state": "move",
+      "intervalMs": 15000,
+      "probability": 0.3,
+      "distanceMin": 80,
+      "distanceMax": 220,
+      "speed": 90,
+      "directions": [
+        "up",
+        "down",
+        "left",
+        "right"
+      ]
+    },
+    "shop": {
+      "items": [
+        {
+          "id": "food1",
+          "label": "捡到的小面包",
+          "price": 2,
+          "currency": "treats",
+          "effects": [
+            {
+              "stat": "hunger",
+              "amount": 40
+            }
+          ]
+        },
+        {
+          "id": "food2",
+          "label": "满满一袋橘子",
+          "price": 4,
+          "currency": "treats",
+          "effects": [
+            {
+              "stat": "hunger",
+              "amount": 80
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "remarks": {
+    "pet": [
+      "doro～",
+      "……doro。",
+      "摸摸头。",
+      "啵！"
+    ],
+    "petCooldown": [
+      "在忙吗？",
+      "歇一会儿吧。",
+      "doro 在等你。"
+    ],
+    "feed": [
+      "好吃！",
+      "谢谢～doro 最喜欢这个了。"
+    ],
+    "feedCooldown": [
+      "刚吃过啦。"
+    ],
+    "noTreats": [
+      "没有小零食了……再去捡一趟吧。"
+    ]
+  }
+}

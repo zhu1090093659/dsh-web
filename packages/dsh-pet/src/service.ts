@@ -65,6 +65,7 @@ import {
   applyGameplayEffects,
   drawLotteryTier,
   initialGameplayState,
+  isDeclaredMode,
   rollTouchBranch,
   rollWorkOutcome,
   settleGameplay,
@@ -219,7 +220,8 @@ export type PetInteractResult = LedgerInteractionResult
 export interface PetGameplayStateView {
   /** Stat values rounded for display. */
   stats: Record<string, number>
-  mode: 'work' | 'sleep' | null
+  /** Active mode id ('work' | 'sleep' | a declared extra mode) or null. */
+  mode: string | null
 }
 
 /** Result of the gameplay verbs (touch / setMode / workTick / buy). */
@@ -585,7 +587,12 @@ export class PetService extends Service {
       petId,
       state: stored === undefined
         ? initialGameplayState(def, now)
-        : { stats: { ...stored.stats }, currencies: { ...stored.currencies }, mode: stored.mode, settledAt: stored.settledAt },
+        // Spread first so the settle remainders (restoreCarryMs / incomeCarryMs)
+        // survive a verb. Enumerating the fields dropped them, so every verb
+        // floored the elapsed time and threw the remainder away -- which starves
+        // any interval longer than the gap between verbs (30 s sleep restore,
+        // 30 min passive income).
+        : { ...stored, stats: { ...stored.stats }, currencies: { ...stored.currencies } },
     }
   }
 
@@ -593,7 +600,14 @@ export class PetService extends Service {
   private gameplayViewOf(state: PetGameplayState): PetGameplayStateView {
     const stats: Record<string, number> = {}
     for (const [name, value] of Object.entries(state.stats)) stats[name] = Math.round(value)
-    return { stats, mode: state.mode }
+    // A persisted mode the manifest no longer declares (a pet.json edit after
+    // the pet was parked in it) reads as "no mode". Otherwise the client would
+    // latch a mode it cannot resolve: the mode chip prints a raw i18n key, and
+    // the client's roam roll — suppressed while any mode is active — would
+    // never fire again.
+    const def = this.gameplayDef()
+    const mode = state.mode !== null && def !== undefined && !isDeclaredMode(def, state.mode) ? null : state.mode
+    return { stats, mode }
   }
 
   /**
@@ -657,15 +671,23 @@ export class PetService extends Service {
     }
   }
 
-  /** RPC: enter or leave a gameplay mode ('work' | 'sleep' | null). */
-  async gameplaySetMode(mode: 'work' | 'sleep' | null): Promise<PetGameplayVerbResult> {
+  /**
+   * RPC: enter or leave a gameplay mode (null clears it). Every mode the
+   * manifest declares is accepted: 'work', 'sleep', or one of the extra
+   * 'modes' entries (a bath, a play session…).
+   */
+  async gameplaySetMode(mode: string | null): Promise<PetGameplayVerbResult> {
     const def = this.gameplayDef()
     if (def === undefined) return { ok: false, error: 'no-gameplay' }
     if (mode === 'work' && def.work === undefined) return { ok: false, error: 'no-work' }
     if (mode === 'sleep' && def.sleep === undefined) return { ok: false, error: 'no-sleep' }
+    if (mode !== null && !isDeclaredMode(def, mode)) return { ok: false, error: 'unknown-mode' }
     const now = Date.now()
     const { petId, state } = this.gameplayState(def, now)
     settleGameplay(state, def, now, { sessionActive: this.machine.render().sessionActive })
+    // Switching modes restarts the restore cadence: a leftover carry from the
+    // previous mode must not advance the new mode's first tick.
+    if (state.mode !== mode) state.restoreCarryMs = 0
     state.mode = mode
     this.drainGameplayTreats(state)
     this.commitGameplay(petId, state)

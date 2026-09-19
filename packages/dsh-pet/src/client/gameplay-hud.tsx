@@ -13,7 +13,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { PetDefinition, PetSkinDefinition } from '../registry.ts'
 import type { PetGameplayVerbResult } from '../service.ts'
-import { touchZoneAt } from '../gameplay.ts'
+import { declaredModes, modeStateOf, PET_ROAM_DIRECTIONS, touchZoneAt, type PetRoamDirection } from '../gameplay.ts'
 import type { PetStoreInstance } from './pet-store.ts'
 import type { DragStream } from './drag-stream.ts'
 import type { NS } from './locales.ts'
@@ -22,7 +22,7 @@ import styles from './pet.module.css'
 /** The gameplay verb API the plugin apply body injects (host-authoritative). */
 export interface GameplayApi {
   touch: (zone?: string) => Promise<PetGameplayVerbResult>
-  setMode: (mode: 'work' | 'sleep' | null) => Promise<PetGameplayVerbResult>
+  setMode: (mode: string | null) => Promise<PetGameplayVerbResult>
   workTick: () => Promise<PetGameplayVerbResult>
   buy: (item: string) => Promise<PetGameplayVerbResult>
   /**
@@ -56,6 +56,14 @@ export interface GameplayBus {
    * while a boolean pins the state (same chrome -> HUD direction as tap).
    */
   openCard?: (open?: boolean) => void
+  /**
+   * Walk the sprite in `direction` by `distance` px at `speed` px/s, clamped
+   * to the viewport, and persist the resting spot like a drag. Returns the
+   * distance actually travelled (0 when it cannot move), so the caller can
+   * hold the walk art for exactly that long. Registered by the chrome
+   * (PetSprite); absent while the sprite is unmounted.
+   */
+  walk?: (direction: PetRoamDirection, distance: number, speed: number) => number
 }
 
 type HudPage = 'root' | 'shop' | 'skins'
@@ -81,7 +89,6 @@ export function GameplayHud(props: {
   const ui = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const def = definition.gameplay
   const view = ui.snapshot?.gameplay
-  const phase = ui.snapshot?.phase ?? 'idle'
   // Host-persisted skin selection for this pet (undefined = default look).
   const persistedSkin = ui.snapshot?.skin
 
@@ -95,14 +102,21 @@ export function GameplayHud(props: {
   const cardRef = useRef<HTMLDivElement | null>(null)
   const [floats, setFloats] = useState<HudFloat[]>([])
   // Mutable driver state (refs so intervals never re-arm on a poll tick).
-  const modeRef = useRef<'work' | 'sleep' | null>(view?.mode ?? null)
+  const modeRef = useRef<string | null>(view?.mode ?? null)
   modeRef.current = view?.mode ?? null
-  const phaseRef = useRef(phase)
-  phaseRef.current = phase
+  /** Live gameplay view for the interval loops (def identity is stable, view is not). */
+  const viewRef = useRef(view)
+  viewRef.current = view
   const draggingRef = useRef(false)
   const touchLockUntilRef = useRef(0)
   const missRef = useRef(0)
   const busyRef = useRef(false)
+  /** A roam walk owns the visual right now (the idle director must not steal it). */
+  const roamHeldRef = useRef(false)
+  /** A one-shot idle-director act owns the visual right now (the roam must not cut in). */
+  const actHeldRef = useRef(false)
+  /** Pending release of the roam's walk track (cleared when another owner takes it). */
+  const roamTimerRef = useRef(0)
 
   // Dynamic-key lookups (stat ids / currency ids are manifest data).
   const tr = props.t as unknown as (key: string, values?: Record<string, string | number>) => string
@@ -121,6 +135,20 @@ export function GameplayHud(props: {
     if (result.view !== undefined) store.actions.setGameplayView(result.view)
   }
 
+  /**
+   * Give up the roam's claim on the shared track-override slot. Every other
+   * owner (a mode, a touch reaction, a drag) calls this before it takes the
+   * slot, so a walk that is still in flight can never release someone else's
+   * track when its own hold window elapses.
+   */
+  const yieldRoam = (): void => {
+    if (roamTimerRef.current !== 0) {
+      window.clearTimeout(roamTimerRef.current)
+      roamTimerRef.current = 0
+    }
+    roamHeldRef.current = false
+  }
+
   // Tap handling (registered on the bus; PetSprite reports sprite-box
   // fractions). Sleep wakes on tap; work blocks taps; a held touch
   // animation turns taps into the plain-click boost.
@@ -134,6 +162,7 @@ export function GameplayHud(props: {
     // consecutive taps cannot retrigger mid-play (skin click actions and
     // default touch-zone reactions share this path).
     const holdTrack = (track: string, holdMs: number): void => {
+      yieldRoam()
       bus.setTrack?.(track)
       touchLockUntilRef.current = Date.now() + holdMs
       window.setTimeout(() => {
@@ -151,7 +180,9 @@ export function GameplayHud(props: {
     const trackDuration = (track: string): number =>
       definition.frames2d?.tracks[track]?.durations.reduce((sum, ms) => sum + ms, 0) ?? 0
     bus.tap = (fx, fy) => {
-      if (modeRef.current === 'sleep') {
+      // Any non-work mode ends on a tap (sleep wakes up, a bath steps out);
+      // work keeps swallowing taps while its round is running.
+      if (modeRef.current !== null && modeRef.current !== 'work') {
         void api.setMode(null).then(applyResult, () => undefined)
         return
       }
@@ -239,12 +270,13 @@ export function GameplayHud(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one placement per open/page change
   }, [open, page])
 
-  // Drag gestures wake a sleeping pet (miku behavior); the drag stream also
-  // feeds the idle director's suppression check.
+  // Drag gestures end any non-work mode (sleep wakes, a bath steps out); the
+  // drag stream also feeds the idle director's suppression check.
   useEffect(() => {
     return props.drag.subscribe((dragging) => {
       draggingRef.current = dragging
-      if (dragging && modeRef.current === 'sleep') {
+      if (dragging) yieldRoam()
+      if (dragging && modeRef.current !== null && modeRef.current !== 'work') {
         void api.setMode(null).then(applyResult, () => undefined)
       }
     })
@@ -252,18 +284,22 @@ export function GameplayHud(props: {
   }, [props.drag])
 
   // Idle director: weighted rolls between staying idle and playing an act.
-  // Runs only while the phase mapping owns the visual (idle phase, no mode,
-  // no drag, no held touch animation); maxMiss forces an act after too many
-  // idle rolls in a row.
+  // Rolls in every phase -- an ambient act is not a waiting-room performance,
+  // and the idle phase only appears when neither the agent nor the user is busy
+  // -- but only while nothing else owns the visual: no mode, no drag, no held
+  // touch animation, no roam walk and no act already playing. maxMiss forces an
+  // act after too many idle rolls in a row.
   useEffect(() => {
     const director = def?.idleDirector
     if (def === undefined || director === undefined) return undefined
     const total = director.idleWeight + director.acts.reduce((sum, act) => sum + act.weight, 0)
     if (total <= 0) return undefined
+    let actTimer = 0
     const timer = window.setInterval(() => {
-      if (phaseRef.current !== 'idle') return
       if (modeRef.current !== null || draggingRef.current) return
       if (Date.now() < touchLockUntilRef.current) return
+      if (roamHeldRef.current) return // a roam walk owns the visual
+      if (actHeldRef.current) return // the previous act is still playing
       let pickedAct: { track: string; weight: number; phrases?: string[] } | undefined
       if (missRef.current >= director.maxMiss) {
         // Forced act: pick among the acts only.
@@ -285,14 +321,24 @@ export function GameplayHud(props: {
         return
       }
       missRef.current = 0
+      actHeldRef.current = true
       bus.setTrack?.(pickedAct.track)
+      // A one-shot act owns the visual until its own duration elapses (the
+      // renderer then falls back to the phase map); the roam must not cut in.
+      const holdMs = definition.frames2d?.tracks[pickedAct.track]?.durations.reduce((sum, ms) => sum + ms, 0) ?? 0
+      window.clearTimeout(actTimer)
+      actTimer = window.setTimeout(() => { actHeldRef.current = false }, holdMs > 0 ? holdMs : 3000)
       // Acts with a phrase pool speak one line while they play (miku parity).
       if (pickedAct.phrases !== undefined && pickedAct.phrases.length > 0) {
         const phrase = pickedAct.phrases[Math.floor(Math.random() * pickedAct.phrases.length)]!
         store.actions.setFeedback({ text: phrase, kind: 'none', at: Date.now() })
       }
     }, director.intervalMs)
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearInterval(timer)
+      window.clearTimeout(actTimer)
+      actHeldRef.current = false
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one director per pet definition
   }, [definition.id, def])
 
@@ -335,24 +381,92 @@ export function GameplayHud(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the loop keys on the mode and the selected skin
   }, [definition.id, def, view?.mode, skinId])
 
-  // Sleep loop: hold the sleep track; restore is host-side (lazy settle).
-  // While a skin with a gameplayTracks.sleep override is selected, the skin's
-  // own track replaces the default sleep track (e.g. a skin-specific doze).
+  // Mode loop: hold the active non-work mode's track (sleep, a bath, any
+  // extra 'modes' entry). The stat restore is host-side (lazy settle). While a
+  // skin with a matching gameplayTracks override is selected, the skin's own
+  // track replaces the default one (e.g. a skin-specific doze).
   useEffect(() => {
-    const sleep = def?.sleep
-    if (def === undefined || sleep === undefined || view?.mode !== 'sleep') return undefined
+    const active = view?.mode
+    if (def === undefined || active === undefined || active === null || active === 'work') return undefined
+    const hold = modeStateOf(def, active)
+    if (hold === undefined) return undefined
     const skinGameplay = definition.frames2d?.skins?.find(skin => skin.id === skinIdRef.current)?.gameplayTracks
-    const hold = skinGameplay?.['sleep'] ?? sleep.state
-    bus.setTrack?.(hold)
+    yieldRoam()
+    bus.setTrack?.(skinGameplay?.[active] ?? hold)
     return () => bus.setTrack?.(undefined)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the loop keys on the mode value
   }, [definition.id, def, view?.mode, skinId])
+
+  // Random roaming (manifest 'roam'): on a slow interval -- in any phase, as long
+  // as no mode, drag, touch animation or director act owns the pet -- roll a
+  // wander. The chrome walks the sprite and persists the new spot; this side
+  // holds the walk track for exactly the travel time.
+  useEffect(() => {
+    const roam = def?.roam
+    if (def === undefined || roam === undefined) return undefined
+    const roll = (): void => {
+      // Every phase: a wandering pet is ambient, not a performance, so she
+      // keeps walking while the agent works (the idle director's acts stay
+      // idle-only). A mode, a drag, a touch animation and a director
+      // act all still own the pet and suppress the roll.
+      if (modeRef.current !== null || draggingRef.current) return
+      if (Date.now() < touchLockUntilRef.current) return
+      if (roamHeldRef.current || actHeldRef.current) return
+      if (Math.random() >= roam.probability) return
+      const span = roam.distanceMax - roam.distanceMin
+      const distance = roam.distanceMin + Math.random() * span
+      const directions = roam.directions ?? PET_ROAM_DIRECTIONS
+      const direction = directions[Math.floor(Math.random() * directions.length)] ?? 'left'
+      const travelled = bus.walk?.(direction, distance, roam.speed) ?? 0
+      if (travelled === 0) return
+      roamHeldRef.current = true
+      bus.setTrack?.(roam.state)
+      roamTimerRef.current = window.setTimeout(() => {
+        roamTimerRef.current = 0
+        if (!roamHeldRef.current) return // another owner already took the slot
+        roamHeldRef.current = false
+        bus.setTrack?.(undefined)
+      }, Math.max(150, (Math.abs(travelled) / roam.speed) * 1000))
+    }
+    // The two decision timers must never share a tick. The roam starts half an
+    // interval late, so its ticks interleave with the idle director's instead
+    // of landing on the same instant (10 s and 15 s coincide every 30 s).
+    let timer = 0
+    const lead = window.setTimeout(() => {
+      roll()
+      timer = window.setInterval(roll, roam.intervalMs)
+    }, Math.round(roam.intervalMs / 2))
+    return () => {
+      window.clearTimeout(lead)
+      window.clearInterval(timer)
+      yieldRoam()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one director per pet definition
+  }, [definition.id, def])
 
   if (def === undefined || view === undefined) return null
 
   const mode = view.mode
   const stats = def.stats ?? {}
   const shop = def.shop
+
+  // Every menu mode beyond work: sleep plus any extra 'modes' the pet declares.
+  const menuModes = declaredModes(def)
+
+  /** Action-button label for one mode (active = the button that leaves it). */
+  const modeLabel = (name: string, active: boolean): string => {
+    if (name === 'sleep') return tr(active ? 'pet.gameplay.wake' : 'pet.gameplay.sleep')
+    const declared = def.modes?.[name]
+    return (active ? declared?.activeLabel ?? declared?.label : declared?.label) ?? tr('pet.gameplay.' + name)
+  }
+
+  /** Chip label for the mode the pet is in right now. */
+  const modeChip = (name: string): string => {
+    if (name === 'work') return tr('pet.gameplay.working')
+    if (name === 'sleep') return tr('pet.gameplay.sleeping')
+    const declared = def.modes?.[name]
+    return declared?.activeLabel ?? declared?.label ?? tr('pet.gameplay.' + name)
+  }
 
   const buy = (itemId: string): void => {
     void api.buy(itemId).then((result) => {
@@ -370,7 +484,7 @@ export function GameplayHud(props: {
     }, () => undefined)
   }
 
-  const setMode = (next: 'work' | 'sleep' | null): void => {
+  const setMode = (next: string | null): void => {
     void api.setMode(next).then(applyResult, () => undefined)
   }
 
@@ -421,7 +535,7 @@ export function GameplayHud(props: {
       ))}
       {mode !== null && (
         <div className={styles.gameplayModeChip}>
-          {tr(mode === 'work' ? 'pet.gameplay.working' : 'pet.gameplay.sleeping')}
+          {modeChip(mode)}
         </div>
       )}
       {open && (
@@ -445,15 +559,16 @@ export function GameplayHud(props: {
                 })}
               </div>
               <div className={styles.gameplayActions}>
-                {def.sleep !== undefined && (
+                {menuModes.map(name => (
                   <button
+                    key={name}
                     type="button"
                     className={styles.action}
-                    onClick={() => setMode(mode === 'sleep' ? null : 'sleep')}
+                    onClick={() => setMode(mode === name ? null : name)}
                   >
-                    {tr(mode === 'sleep' ? 'pet.gameplay.wake' : 'pet.gameplay.sleep')}
+                    {modeLabel(name, mode === name)}
                   </button>
-                )}
+                ))}
                 {shop !== undefined && (
                   <button type="button" className={styles.action} onClick={() => setPage('shop')}>
                     {tr('pet.gameplay.shop')}

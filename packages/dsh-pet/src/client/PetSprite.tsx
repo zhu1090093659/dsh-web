@@ -18,6 +18,8 @@ import { bubbleScaleFor, type PetDisplayConfig } from '../persist.ts'
 import type { PetStateView } from '../service.ts'
 import { announcementFresh, type PetAnnouncement } from '../announce.ts'
 import type { PetDefinition } from '../registry.ts'
+import type { GameplayBus } from './gameplay-hud.ts'
+import type { PetRoamDirection } from '../gameplay.ts'
 import type { DecorationView } from '../contracts/status-decoration.ts'
 import type { PetFeedback } from './pet-store.ts'
 import { framePosition, rowOfTrack, trimTrack } from './spritesheet.ts'
@@ -79,6 +81,11 @@ export interface PetSpriteProps {
   onGameplayMenu?: () => void
   /** Disable the drag gesture (gameplay work mode blocks dragging). */
   dragDisabled?: boolean
+  /**
+   * Per-pet coordination bus. The chrome registers `walk` here so the gameplay
+   * HUD can roam the pet (the same two-way shape the HUD's `tap` uses).
+   */
+  bus?: GameplayBus
   /**
    * DOM node the floating chrome portals into. Defaults to document.body
    * (the legacy behavior); the plugin apply passes its owning root (the
@@ -482,6 +489,7 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
     if (props.dragDisabled === true) return
+    endWalk(false)
     e.preventDefault()
     ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
     const current = dragPos ?? { right: display.right, bottom: display.bottom }
@@ -512,6 +520,93 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
   const pos = dragPos ?? { right: display.right, bottom: display.bottom }
   const spriteWidth = Math.round(cell.width * spriteScale)
   const spriteHeight = Math.round(cell.height * spriteScale)
+
+  // --- roaming ---------------------------------------------------------
+  // The gameplay HUD rolls when the pet may wander; this side owns the motion
+  // (clamped to the viewport), the walk art's facing and the persisted resting
+  // spot -- the walk ends on the same write a drag ends with. The walk art
+  // faces left, so a rightward walk mirrors the sprite (a vertical walk keeps
+  // the side view); every other track stays unmirrored.
+  const [facingRight, setFacingRight] = useState(false)
+  const walkRafRef = useRef(0)
+  const walkTargetRef = useRef<{ right: number; bottom: number } | null>(null)
+  const dragPosRef = useRef(dragPos)
+  dragPosRef.current = dragPos
+
+  /** Stop an active walk; `persist` lands the pet on the spot it reached. */
+  const endWalk = (persist: boolean): void => {
+    if (walkRafRef.current === 0) return
+    window.cancelAnimationFrame(walkRafRef.current)
+    walkRafRef.current = 0
+    setFacingRight(false)
+    const settled = walkTargetRef.current
+    walkTargetRef.current = null
+    if (persist && settled !== null) props.onDragEnd(settled.right, settled.bottom)
+  }
+
+  useEffect(() => {
+    const bus = props.bus
+    if (bus === undefined) return undefined
+    bus.walk = (direction: PetRoamDirection, distance: number, speed: number): number => {
+      if (dragRef.current !== null || walkRafRef.current !== 0) return 0
+      const current = dragPosRef.current ?? { right: display.right, bottom: display.bottom }
+      // Keep the whole sprite on screen with an 8px breathing margin. `right`
+      // and `bottom` are CSS offsets: right grows leftwards, bottom upwards.
+      const margin = 8
+      const maxRight = Math.max(margin, window.innerWidth - spriteWidth - margin)
+      const maxBottom = Math.max(margin, window.innerHeight - spriteHeight - margin)
+      const wanted = { ...current }
+      if (direction === 'left') wanted.right = current.right + distance
+      else if (direction === 'right') wanted.right = current.right - distance
+      else if (direction === 'up') wanted.bottom = current.bottom + distance
+      else wanted.bottom = current.bottom - distance
+      const target = {
+        right: Math.max(margin, clampOffset(wanted.right, maxRight)),
+        bottom: Math.max(margin, clampOffset(wanted.bottom, maxBottom)),
+      }
+      const travelled = direction === 'left' ? target.right - current.right
+        : direction === 'right' ? current.right - target.right
+          : direction === 'up' ? target.bottom - current.bottom
+            : current.bottom - target.bottom
+      if (travelled < 1) return 0
+      const duration = Math.max(150, (travelled / Math.max(1, speed)) * 1000)
+      const startedAt = performance.now()
+      // The crawl art faces left, so only a rightward walk mirrors it; a
+      // vertical walk keeps the side view (there is no front/back art).
+      setFacingRight(direction === 'right')
+      walkTargetRef.current = current
+      const step = (now: number): void => {
+        const t = Math.min(1, (now - startedAt) / duration)
+        const next = {
+          right: current.right + (target.right - current.right) * t,
+          bottom: current.bottom + (target.bottom - current.bottom) * t,
+        }
+        walkTargetRef.current = next
+        setDragPos(next)
+        if (t < 1) {
+          walkRafRef.current = window.requestAnimationFrame(step)
+          return
+        }
+        walkRafRef.current = 0
+        walkTargetRef.current = null
+        setFacingRight(false)
+        props.onDragEnd(next.right, next.bottom)
+      }
+      walkRafRef.current = window.requestAnimationFrame(step)
+      return travelled
+    }
+    return () => {
+      bus.walk = undefined
+      if (walkRafRef.current !== 0) {
+        window.cancelAnimationFrame(walkRafRef.current)
+        walkRafRef.current = 0
+      }
+      // A cancelled walk must not leave the sprite mirrored.
+      setFacingRight(false)
+      walkTargetRef.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one registration per sprite
+  }, [props.bus, definition.id, display.right, display.bottom, spriteWidth])
   // Bubble typography follows the sprite's own scale (#1549), bounded so a
   // shrunk pet never carries unreadably small text.
   const bubbleScale = bubbleScaleFor(display)
@@ -630,6 +725,7 @@ export function PetSprite(props: PetSpriteProps): ReactPortal {
                 }
               : {}),
             cursor: dragRef.current === null ? 'grab' : 'grabbing',
+            ...(facingRight ? { transform: 'scaleX(-1)' } : {}),
           }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}

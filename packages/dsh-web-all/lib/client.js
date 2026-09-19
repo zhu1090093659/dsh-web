@@ -18772,6 +18772,7 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => () => clearHideTimer(), []);
 			const onPointerDown = (e) => {
 				if (props.dragDisabled === true) return;
+				endWalk(false);
 				e.preventDefault();
 				e.target.setPointerCapture?.(e.pointerId);
 				const current = dragPos ?? {
@@ -18814,6 +18815,84 @@ window.__ModuleLoader__.load({
 			};
 			const spriteWidth = Math.round(cell.width * spriteScale);
 			const spriteHeight = Math.round(cell.height * spriteScale);
+			const [facingRight, setFacingRight] = (0, react.useState)(false);
+			const walkRafRef = (0, react.useRef)(0);
+			const walkTargetRef = (0, react.useRef)(null);
+			const dragPosRef = (0, react.useRef)(dragPos);
+			dragPosRef.current = dragPos;
+			/** Stop an active walk; `persist` lands the pet on the spot it reached. */
+			const endWalk = (persist) => {
+				if (walkRafRef.current === 0) return;
+				window.cancelAnimationFrame(walkRafRef.current);
+				walkRafRef.current = 0;
+				setFacingRight(false);
+				const settled = walkTargetRef.current;
+				walkTargetRef.current = null;
+				if (persist && settled !== null) props.onDragEnd(settled.right, settled.bottom);
+			};
+			(0, react.useEffect)(() => {
+				const bus = props.bus;
+				if (bus === void 0) return void 0;
+				bus.walk = (direction, distance, speed) => {
+					if (dragRef.current !== null || walkRafRef.current !== 0) return 0;
+					const current = dragPosRef.current ?? {
+						right: display.right,
+						bottom: display.bottom
+					};
+					const margin = 8;
+					const maxRight = Math.max(margin, window.innerWidth - spriteWidth - margin);
+					const maxBottom = Math.max(margin, window.innerHeight - spriteHeight - margin);
+					const wanted = { ...current };
+					if (direction === "left") wanted.right = current.right + distance;
+					else if (direction === "right") wanted.right = current.right - distance;
+					else if (direction === "up") wanted.bottom = current.bottom + distance;
+					else wanted.bottom = current.bottom - distance;
+					const target = {
+						right: Math.max(margin, clampOffset(wanted.right, maxRight)),
+						bottom: Math.max(margin, clampOffset(wanted.bottom, maxBottom))
+					};
+					const travelled = direction === "left" ? target.right - current.right : direction === "right" ? current.right - target.right : direction === "up" ? target.bottom - current.bottom : current.bottom - target.bottom;
+					if (travelled < 1) return 0;
+					const duration = Math.max(150, travelled / Math.max(1, speed) * 1e3);
+					const startedAt = performance.now();
+					setFacingRight(direction === "right");
+					walkTargetRef.current = current;
+					const step = (now) => {
+						const t = Math.min(1, (now - startedAt) / duration);
+						const next = {
+							right: current.right + (target.right - current.right) * t,
+							bottom: current.bottom + (target.bottom - current.bottom) * t
+						};
+						walkTargetRef.current = next;
+						setDragPos(next);
+						if (t < 1) {
+							walkRafRef.current = window.requestAnimationFrame(step);
+							return;
+						}
+						walkRafRef.current = 0;
+						walkTargetRef.current = null;
+						setFacingRight(false);
+						props.onDragEnd(next.right, next.bottom);
+					};
+					walkRafRef.current = window.requestAnimationFrame(step);
+					return travelled;
+				};
+				return () => {
+					bus.walk = void 0;
+					if (walkRafRef.current !== 0) {
+						window.cancelAnimationFrame(walkRafRef.current);
+						walkRafRef.current = 0;
+					}
+					setFacingRight(false);
+					walkTargetRef.current = null;
+				};
+			}, [
+				props.bus,
+				definition.id,
+				display.right,
+				display.bottom,
+				spriteWidth
+			]);
 			const bubbleScale = bubbleScaleFor(display);
 			const sessionBubbles = snapshot?.sessions ?? [];
 			const stackOpen = stackPeek || stackPinned;
@@ -18895,7 +18974,8 @@ window.__ModuleLoader__.load({
 									backgroundRepeat: "no-repeat",
 									backgroundPosition: "0 0"
 								} : {},
-								cursor: dragRef.current === null ? "grab" : "grabbing"
+								cursor: dragRef.current === null ? "grab" : "grabbing",
+								...facingRight ? { transform: "scaleX(-1)" } : {}
 							},
 							onPointerDown,
 							onPointerMove,
@@ -19388,6 +19468,36 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region ../dsh-pet/src/gameplay.ts
+		/** Every roam direction, in roll order (equal chance each unless restricted). */
+		const PET_ROAM_DIRECTIONS = [
+			"up",
+			"down",
+			"left",
+			"right"
+		];
+		/**
+		* One declared extra mode, by OWN key only. A plain `modes[id]` lookup also
+		* answers for Object.prototype members ('constructor', 'toString', …), which
+		* would let a crafted mode id pass the "is it declared?" test.
+		*/
+		function declaredModeOf(manifest, mode) {
+			const modes = manifest.modes;
+			if (modes === void 0 || !Object.prototype.hasOwnProperty.call(modes, mode)) return void 0;
+			return modes[mode];
+		}
+		/** Every mode the menu offers, in manifest order (sleep first, then extras). */
+		function declaredModes(manifest) {
+			return [...manifest.sleep === void 0 ? [] : ["sleep"], ...Object.keys(manifest.modes ?? {})];
+		}
+		/**
+		* The frames2d track one active mode holds. 'work' is owned by the work loop
+		* (its state, result and fallback are its own), so it resolves to undefined.
+		*/
+		function modeStateOf(manifest, mode) {
+			if (mode === "sleep") return manifest.sleep?.state;
+			if (mode === "work") return manifest.work?.state;
+			return declaredModeOf(manifest, mode)?.state;
+		}
 		/** The zone one normalized hit-box point lands in, if any. */
 		function touchZoneAt(touch, yFraction) {
 			return touch.zones.find((zone) => yFraction >= zone.y0 && yFraction < zone.y1);
@@ -19411,7 +19521,6 @@ window.__ModuleLoader__.load({
 			const ui = (0, react.useSyncExternalStore)(store.subscribe, store.getSnapshot);
 			const def = definition.gameplay;
 			const view = ui.snapshot?.gameplay;
-			const phase = ui.snapshot?.phase ?? "idle";
 			const persistedSkin = ui.snapshot?.skin;
 			const [open, setOpen] = (0, react.useState)(false);
 			const [page, setPage] = (0, react.useState)("root");
@@ -19423,12 +19532,19 @@ window.__ModuleLoader__.load({
 			const [floats, setFloats] = (0, react.useState)([]);
 			const modeRef = (0, react.useRef)(view?.mode ?? null);
 			modeRef.current = view?.mode ?? null;
-			const phaseRef = (0, react.useRef)(phase);
-			phaseRef.current = phase;
+			/** Live gameplay view for the interval loops (def identity is stable, view is not). */
+			const viewRef = (0, react.useRef)(view);
+			viewRef.current = view;
 			const draggingRef = (0, react.useRef)(false);
 			const touchLockUntilRef = (0, react.useRef)(0);
 			const missRef = (0, react.useRef)(0);
 			const busyRef = (0, react.useRef)(false);
+			/** A roam walk owns the visual right now (the idle director must not steal it). */
+			const roamHeldRef = (0, react.useRef)(false);
+			/** A one-shot idle-director act owns the visual right now (the roam must not cut in). */
+			const actHeldRef = (0, react.useRef)(false);
+			/** Pending release of the roam's walk track (cleared when another owner takes it). */
+			const roamTimerRef = (0, react.useRef)(0);
 			const tr = props.t;
 			const statLabel = (name) => tr("pet.gameplay.stat." + name);
 			const currencyLabel = (name) => tr("pet.gameplay.currency." + name);
@@ -19445,9 +19561,23 @@ window.__ModuleLoader__.load({
 			const applyResult = (result) => {
 				if (result.view !== void 0) store.actions.setGameplayView(result.view);
 			};
+			/**
+			* Give up the roam's claim on the shared track-override slot. Every other
+			* owner (a mode, a touch reaction, a drag) calls this before it takes the
+			* slot, so a walk that is still in flight can never release someone else's
+			* track when its own hold window elapses.
+			*/
+			const yieldRoam = () => {
+				if (roamTimerRef.current !== 0) {
+					window.clearTimeout(roamTimerRef.current);
+					roamTimerRef.current = 0;
+				}
+				roamHeldRef.current = false;
+			};
 			(0, react.useEffect)(() => {
 				if (def === void 0) return void 0;
 				const holdTrack = (track, holdMs) => {
+					yieldRoam();
 					bus.setTrack?.(track);
 					touchLockUntilRef.current = Date.now() + holdMs;
 					window.setTimeout(() => {
@@ -19466,7 +19596,7 @@ window.__ModuleLoader__.load({
 				};
 				const trackDuration = (track) => definition.frames2d?.tracks[track]?.durations.reduce((sum, ms) => sum + ms, 0) ?? 0;
 				bus.tap = (fx, fy) => {
-					if (modeRef.current === "sleep") {
+					if (modeRef.current !== null && modeRef.current !== "work") {
 						api.setMode(null).then(applyResult, () => void 0);
 						return;
 					}
@@ -19552,7 +19682,8 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => {
 				return props.drag.subscribe((dragging) => {
 					draggingRef.current = dragging;
-					if (dragging && modeRef.current === "sleep") api.setMode(null).then(applyResult, () => void 0);
+					if (dragging) yieldRoam();
+					if (dragging && modeRef.current !== null && modeRef.current !== "work") api.setMode(null).then(applyResult, () => void 0);
 				});
 			}, [props.drag]);
 			(0, react.useEffect)(() => {
@@ -19560,10 +19691,12 @@ window.__ModuleLoader__.load({
 				if (def === void 0 || director === void 0) return void 0;
 				const total = director.idleWeight + director.acts.reduce((sum, act) => sum + act.weight, 0);
 				if (total <= 0) return void 0;
+				let actTimer = 0;
 				const timer = window.setInterval(() => {
-					if (phaseRef.current !== "idle") return;
 					if (modeRef.current !== null || draggingRef.current) return;
 					if (Date.now() < touchLockUntilRef.current) return;
+					if (roamHeldRef.current) return;
+					if (actHeldRef.current) return;
 					let pickedAct;
 					if (missRef.current >= director.maxMiss) {
 						const actTotal = director.acts.reduce((sum, act) => sum + act.weight, 0);
@@ -19590,7 +19723,13 @@ window.__ModuleLoader__.load({
 						return;
 					}
 					missRef.current = 0;
+					actHeldRef.current = true;
 					bus.setTrack?.(pickedAct.track);
+					const holdMs = definition.frames2d?.tracks[pickedAct.track]?.durations.reduce((sum, ms) => sum + ms, 0) ?? 0;
+					window.clearTimeout(actTimer);
+					actTimer = window.setTimeout(() => {
+						actHeldRef.current = false;
+					}, holdMs > 0 ? holdMs : 3e3);
 					if (pickedAct.phrases !== void 0 && pickedAct.phrases.length > 0) {
 						const phrase = pickedAct.phrases[Math.floor(Math.random() * pickedAct.phrases.length)];
 						store.actions.setFeedback({
@@ -19600,7 +19739,11 @@ window.__ModuleLoader__.load({
 						});
 					}
 				}, director.intervalMs);
-				return () => window.clearInterval(timer);
+				return () => {
+					window.clearInterval(timer);
+					window.clearTimeout(actTimer);
+					actHeldRef.current = false;
+				};
 			}, [definition.id, def]);
 			(0, react.useEffect)(() => {
 				const work = def?.work;
@@ -19640,10 +19783,13 @@ window.__ModuleLoader__.load({
 				skinId
 			]);
 			(0, react.useEffect)(() => {
-				const sleep = def?.sleep;
-				if (def === void 0 || sleep === void 0 || view?.mode !== "sleep") return void 0;
-				const hold = (definition.frames2d?.skins?.find((skin) => skin.id === skinIdRef.current)?.gameplayTracks)?.["sleep"] ?? sleep.state;
-				bus.setTrack?.(hold);
+				const active = view?.mode;
+				if (def === void 0 || active === void 0 || active === null || active === "work") return void 0;
+				const hold = modeStateOf(def, active);
+				if (hold === void 0) return void 0;
+				const skinGameplay = definition.frames2d?.skins?.find((skin) => skin.id === skinIdRef.current)?.gameplayTracks;
+				yieldRoam();
+				bus.setTrack?.(skinGameplay?.[active] ?? hold);
 				return () => bus.setTrack?.(void 0);
 			}, [
 				definition.id,
@@ -19651,10 +19797,58 @@ window.__ModuleLoader__.load({
 				view?.mode,
 				skinId
 			]);
+			(0, react.useEffect)(() => {
+				const roam = def?.roam;
+				if (def === void 0 || roam === void 0) return void 0;
+				const roll = () => {
+					if (modeRef.current !== null || draggingRef.current) return;
+					if (Date.now() < touchLockUntilRef.current) return;
+					if (roamHeldRef.current || actHeldRef.current) return;
+					if (Math.random() >= roam.probability) return;
+					const span = roam.distanceMax - roam.distanceMin;
+					const distance = roam.distanceMin + Math.random() * span;
+					const directions = roam.directions ?? PET_ROAM_DIRECTIONS;
+					const direction = directions[Math.floor(Math.random() * directions.length)] ?? "left";
+					const travelled = bus.walk?.(direction, distance, roam.speed) ?? 0;
+					if (travelled === 0) return;
+					roamHeldRef.current = true;
+					bus.setTrack?.(roam.state);
+					roamTimerRef.current = window.setTimeout(() => {
+						roamTimerRef.current = 0;
+						if (!roamHeldRef.current) return;
+						roamHeldRef.current = false;
+						bus.setTrack?.(void 0);
+					}, Math.max(150, Math.abs(travelled) / roam.speed * 1e3));
+				};
+				let timer = 0;
+				const lead = window.setTimeout(() => {
+					roll();
+					timer = window.setInterval(roll, roam.intervalMs);
+				}, Math.round(roam.intervalMs / 2));
+				return () => {
+					window.clearTimeout(lead);
+					window.clearInterval(timer);
+					yieldRoam();
+				};
+			}, [definition.id, def]);
 			if (def === void 0 || view === void 0) return null;
 			const mode = view.mode;
 			const stats = def.stats ?? {};
 			const shop = def.shop;
+			const menuModes = declaredModes(def);
+			/** Action-button label for one mode (active = the button that leaves it). */
+			const modeLabel = (name, active) => {
+				if (name === "sleep") return tr(active ? "pet.gameplay.wake" : "pet.gameplay.sleep");
+				const declared = def.modes?.[name];
+				return (active ? declared?.activeLabel ?? declared?.label : declared?.label) ?? tr("pet.gameplay." + name);
+			};
+			/** Chip label for the mode the pet is in right now. */
+			const modeChip = (name) => {
+				if (name === "work") return tr("pet.gameplay.working");
+				if (name === "sleep") return tr("pet.gameplay.sleeping");
+				const declared = def.modes?.[name];
+				return declared?.activeLabel ?? declared?.label ?? tr("pet.gameplay." + name);
+			};
 			const buy = (itemId) => {
 				api.buy(itemId).then((result) => {
 					applyResult(result);
@@ -19712,7 +19906,7 @@ window.__ModuleLoader__.load({
 					}, entry.id)),
 					mode !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: pet_module_css_default.gameplayModeChip,
-						children: tr(mode === "work" ? "pet.gameplay.working" : "pet.gameplay.sleeping")
+						children: modeChip(mode)
 					}),
 					open && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						ref: cardRef,
@@ -19741,12 +19935,12 @@ window.__ModuleLoader__.load({
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: pet_module_css_default.gameplayActions,
 								children: [
-									def.sleep !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									menuModes.map((name) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
 										className: pet_module_css_default.action,
-										onClick: () => setMode(mode === "sleep" ? null : "sleep"),
-										children: tr(mode === "sleep" ? "pet.gameplay.wake" : "pet.gameplay.sleep")
-									}),
+										onClick: () => setMode(mode === name ? null : name),
+										children: modeLabel(name, mode === name)
+									}, name)),
 									shop !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
 										className: pet_module_css_default.action,
@@ -19911,6 +20105,7 @@ window.__ModuleLoader__.load({
 						onFeedbackDone: props.feedbackDone,
 						portalTarget: props.portalTarget,
 						dragDisabled: snapshot.gameplay?.mode === "work",
+						...aux === null ? {} : { bus: aux.bus },
 						...gameplay === void 0 || aux === null ? {} : {
 							onGameplayTap: (fx, fy) => aux.bus.tap?.(fx, fy),
 							onGameplayMenu: () => aux.bus.openCard?.(),

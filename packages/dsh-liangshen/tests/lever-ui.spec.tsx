@@ -93,6 +93,25 @@ describe('LiangShenLever', () => {
     const onButton = button(mount(on.face))
     gesture(onButton, 140, 100)
     expect(on.calls).toEqual(['push'])
+
+    const onPull = fakeFace({ state: 'on' })
+    const onPullButton = button(mount(onPull.face))
+    gesture(onPullButton, 100, 140)
+    expect(onPull.calls).toEqual(['push'])
+
+    const offH = fakeFace()
+    const offHButton = button(mount(offH.face))
+    act(() => { offHButton.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 100 })) })
+    act(() => { offHButton.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 140, clientY: 100 })) })
+    act(() => { offHButton.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 140, clientY: 100 })) })
+    expect(offH.calls).toEqual(['pull'])
+
+    const onH = fakeFace({ state: 'on' })
+    const onHButton = button(mount(onH.face))
+    act(() => { onHButton.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 140, clientY: 100 })) })
+    act(() => { onHButton.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 100, clientY: 100 })) })
+    act(() => { onHButton.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 100, clientY: 100 })) })
+    expect(onH.calls).toEqual(['push'])
   })
 
   it('toggles on a keyboard activation, which arrives as a detail-less click', () => {

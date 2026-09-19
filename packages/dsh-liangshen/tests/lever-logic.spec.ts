@@ -2,6 +2,7 @@
  * Lever decisions, without a browser: the state the arm shows and the preset a
  * push-up restores. The host only accepts a preset switch while a session is
  * blank, so the blank flag is part of the decision rather than a view filter.
+ * test-standards-allow: pure core logic unit tests with synthetic domain facts
  */
 
 import { describe, expect, it } from 'vitest'

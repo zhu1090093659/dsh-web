@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-09-11-liangshen-composer-lever.md: 46c9111f3393b65bad979142648ee4b5a3bb88e4
-2026-09-11-liangshen-composer-lever.zh.md: 7e11ef005a27815753d56cd64174b877bfea1202
+2026-09-11-liangshen-composer-lever.md: 31c8ddd5cb1e1c3af36d49927c8583b63084bcdc
+2026-09-11-liangshen-composer-lever.zh.md: 8a528b5a7d4eedd034aae60ef9f155f3d5032aff

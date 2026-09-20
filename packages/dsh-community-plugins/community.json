@@ -1383,5 +1383,16 @@
     "npm": "dsh-translate",
     "category": "tools",
     "subcategory": "api"
+  },
+  {
+    "id": "dsh-palette",
+    "name": "命令面板",
+    "nameEn": "Command Palette",
+    "author": "1921622004",
+    "description": "DSH Web GUI 的 Cmd+K 命令面板：键盘优先的会话、设置与操作快捷入口，支持自定义快捷键与注册扩展点。",
+    "descriptionEn": "A command palette (Cmd+K) for the DSH Web GUI: keyboard-first quick entries over sessions, settings and actions, with a customizable hotkey and a register extension point.",
+    "repo": "https://github.com/1921622004/dsh-command-palette",
+    "category": "ui",
+    "subcategory": "panel"
   }
 ]

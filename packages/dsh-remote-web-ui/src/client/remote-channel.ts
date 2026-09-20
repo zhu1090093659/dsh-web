@@ -23,12 +23,15 @@
  */
 
 import {
+  isHostOwnedOrigin,
+  isLoopbackHostname,
   REMOTE_API_PREFIX,
   REMOTE_CHANNEL_RULES,
   REMOTE_PREFIX,
 } from '../remote-channel-rules.ts'
 
 export { REMOTE_API_PREFIX, REMOTE_PREFIX }
+export { isHostOwnedOrigin, isLoopbackHostname, normalizeScheme } from '../remote-channel-rules.ts'
 export type { RemoteChannelBootSeat } from '../remote-channel-rules.ts'
 export { REMOTE_CHANNEL_BOOT_GLOBAL } from '../remote-channel-rules.ts'
 
@@ -40,31 +43,33 @@ export interface RemoteChannelSettingsSnapshot {
   value?: { enabled?: boolean; requirePairingForLan?: boolean }
 }
 
-/** Decide whether a remote desktop channel is required from local or host policy. */
+/**
+ * Decide whether a remote desktop channel is required from local or host
+ * policy.
+ *
+ * The page must not be host-owned: a loopback origin and the official
+ * Desktop shell's `dsh-app://app/` page already talk to their own local
+ * machine, so gating them behind a device cookie would demand a pairing
+ * neither can complete. See {@link isHostOwnedOrigin}.
+ * @param hostname - the page hostname.
+ * @param snapshot - the local settings snapshot, when readable.
+ * @param hostPairingPolicy - the host's pairing policy, until settings load.
+ * @param scheme - the page's URL scheme (`location.protocol` is accepted as-is).
+ * @returns true when same-origin traffic must ride the gated channel.
+ */
 export function remoteChannelRequired(
   hostname: string,
   snapshot: RemoteChannelSettingsSnapshot,
   hostPairingPolicy: boolean | undefined,
+  scheme?: string,
 ): boolean {
-  if (isLoopbackHostname(hostname)) return false
+  if (isHostOwnedOrigin(hostname, scheme, RULES.desktopScheme)) return false
   if (snapshot.status === 'ready') {
     return (snapshot.value?.enabled ?? true) && (snapshot.value?.requirePairingForLan ?? true)
   }
   // Install provisionally while the host probe is pending so early SDK calls
   // cannot escape onto the plain remote origin. A confirmed false retires it.
   return hostPairingPolicy !== false
-}
-
-/**
- * Browser-safe loopback classification for the page origin (the SDK client
- * exports its own; this copy keeps the module dependency-free).
- * @param hostname - a location hostname (IPv6 without brackets).
- * @returns true for localhost, IPv6 loopback, or any 127/8 literal.
- */
-export function isLoopbackHostname(hostname: string): boolean {
-  if (hostname === 'localhost' || hostname === '::1') return true
-  const parts = hostname.split('.')
-  return parts.length === 4 && parts[0] === '127' && parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255)
 }
 
 /**

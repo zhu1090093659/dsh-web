@@ -16536,6 +16536,14 @@ window.__ModuleLoader__.load({
 		*/
 		/** The gated mirror prefix (must match src/remote-methods.ts). */
 		const REMOTE_PREFIX = "/remote";
+		/**
+		* The official Desktop shell's page scheme. The Electron application serves
+		* its official Web GUI from `dsh-app://app/` and forwards every same-origin
+		* call to its OWN authenticated host, so that page is the local machine
+		* talking to itself — exactly like a page opened at 127.0.0.1. Both halves
+		* must classify it as host-owned; see {@link isHostOwnedOrigin}.
+		*/
+		const DESKTOP_SHELL_SCHEME = "dsh-app";
 		/** The live rule set. */
 		const REMOTE_CHANNEL_RULES = {
 			remotePrefix: REMOTE_PREFIX,
@@ -16556,8 +16564,54 @@ window.__ModuleLoader__.load({
 			deviceKey: "dsh-remote-device",
 			deviceQuery: REMOTE_DEVICE_QUERY,
 			uploadPath: "/api/session/uploadFileBinary",
-			uploadHookGlobal: "__DSH_FILE_UPLOAD__"
+			uploadHookGlobal: "__DSH_FILE_UPLOAD__",
+			desktopScheme: DESKTOP_SHELL_SCHEME
 		};
+		/**
+		* Whether the page is the local machine itself, so no pairing may ever gate
+		* it. True for a loopback hostname (localhost, ::1, 127/8) and for the
+		* official Desktop shell's own page scheme.
+		*
+		* The Desktop shell case is not an extra trust rule but the correction of a
+		* misclassification: `dsh-app://app/` IS the local desktop, yet its hostname
+		* literal ('app') is not a loopback name, so a hostname-only test reads it as
+		* a LAN or tunnel origin and demands a device pairing the shell can never
+		* complete (its forwarded requests carry no device cookie, and the shell
+		* drops every Set-Cookie on the way back).
+		*
+		* Scheme comparison is case-insensitive because URL parsing lowercases the
+		* protocol. An empty scheme never matches, so a caller that passes only a
+		* hostname keeps the hostname-only semantics.
+		* @param hostname - a location hostname (IPv6 without brackets).
+		* @param scheme - the page's URL scheme, without the trailing colon.
+		* @param desktopScheme - the Desktop shell's scheme (defaults to the shipped one).
+		* @returns true when the origin is the local machine: loopback or Desktop shell.
+		*/
+		function isHostOwnedOrigin(hostname, scheme, desktopScheme = DESKTOP_SHELL_SCHEME) {
+			if (isLoopbackHostname(hostname)) return true;
+			if (scheme === void 0 || scheme === "") return false;
+			return normalizeScheme(scheme) === desktopScheme;
+		}
+		/**
+		* Lowercase a URL scheme and drop the trailing colon `location.protocol`
+		* carries, so callers may pass either spelling.
+		* @param scheme - a scheme, with or without the trailing colon, any case.
+		* @returns the bare lowercase scheme.
+		*/
+		function normalizeScheme(scheme) {
+			return (scheme.endsWith(":") ? scheme.slice(0, -1) : scheme).toLowerCase();
+		}
+		/**
+		* Browser-safe loopback classification for the page origin (the SDK client
+		* exports its own; this copy keeps the module dependency-free).
+		* @param hostname - a location hostname (IPv6 without brackets).
+		* @returns true for localhost, IPv6 loopback, or any 127/8 literal.
+		*/
+		function isLoopbackHostname(hostname) {
+			if (hostname === "localhost" || hostname === "::1") return true;
+			const parts = hostname.split(".");
+			return parts.length === 4 && parts[0] === "127" && parts.every((part) => /^\d{1,3}$/.test(part) && Number(part) <= 255);
+		}
 		/** The window global the boot patch publishes its seat under. */
 		const REMOTE_CHANNEL_BOOT_GLOBAL = "__DSH_REMOTE_CHANNEL_BOOT__";
 		//#endregion
@@ -16586,22 +16640,24 @@ window.__ModuleLoader__.load({
 		* the given window and returns their restore.
 		*/
 		const RULES = REMOTE_CHANNEL_RULES;
-		/** Decide whether a remote desktop channel is required from local or host policy. */
-		function remoteChannelRequired(hostname, snapshot, hostPairingPolicy) {
-			if (isLoopbackHostname(hostname)) return false;
+		/**
+		* Decide whether a remote desktop channel is required from local or host
+		* policy.
+		*
+		* The page must not be host-owned: a loopback origin and the official
+		* Desktop shell's `dsh-app://app/` page already talk to their own local
+		* machine, so gating them behind a device cookie would demand a pairing
+		* neither can complete. See {@link isHostOwnedOrigin}.
+		* @param hostname - the page hostname.
+		* @param snapshot - the local settings snapshot, when readable.
+		* @param hostPairingPolicy - the host's pairing policy, until settings load.
+		* @param scheme - the page's URL scheme (`location.protocol` is accepted as-is).
+		* @returns true when same-origin traffic must ride the gated channel.
+		*/
+		function remoteChannelRequired(hostname, snapshot, hostPairingPolicy, scheme) {
+			if (isHostOwnedOrigin(hostname, scheme, RULES.desktopScheme)) return false;
 			if (snapshot.status === "ready") return (snapshot.value?.enabled ?? true) && (snapshot.value?.requirePairingForLan ?? true);
 			return hostPairingPolicy !== false;
-		}
-		/**
-		* Browser-safe loopback classification for the page origin (the SDK client
-		* exports its own; this copy keeps the module dependency-free).
-		* @param hostname - a location hostname (IPv6 without brackets).
-		* @returns true for localhost, IPv6 loopback, or any 127/8 literal.
-		*/
-		function isLoopbackHostname(hostname) {
-			if (hostname === "localhost" || hostname === "::1") return true;
-			const parts = hostname.split(".");
-			return parts.length === 4 && parts[0] === "127" && parts.every((part) => /^\d{1,3}$/.test(part) && Number(part) <= 255);
 		}
 		/**
 		* Whether one same-origin path must ride the gated channel (fetch, EventSource,
@@ -18214,7 +18270,7 @@ window.__ModuleLoader__.load({
 				}
 				showFenceNotice();
 			};
-			const channelActive = () => remoteChannelRequired(window.location.hostname, settingsScope.getSnapshot(), hostPairingPolicy);
+			const channelActive = () => remoteChannelRequired(window.location.hostname, settingsScope.getSnapshot(), hostPairingPolicy, window.location.protocol);
 			const bootSeat = () => window[REMOTE_CHANNEL_BOOT_GLOBAL];
 			const syncChannel = () => {
 				const transition = channelTransition(channelActive(), disposeChannel !== void 0);
@@ -18246,7 +18302,7 @@ window.__ModuleLoader__.load({
 			};
 			settingsScope.subscribe(syncChannel);
 			syncChannel();
-			if (!isLoopbackHostname(window.location.hostname) && settingsScope.getSnapshot().status !== "ready") readPairGatePolicy().then((policy) => {
+			if (!isHostOwnedOrigin(window.location.hostname, window.location.protocol) && settingsScope.getSnapshot().status !== "ready") readPairGatePolicy().then((policy) => {
 				hostPairingPolicy = policy.requirePairingForLan;
 				syncChannel();
 				if (hostPairingPolicy && unpairedWhilePolicyPending) showFenceNotice();

@@ -40,7 +40,7 @@ interface FakeWindow {
   fetch: (input: unknown, init?: unknown) => Promise<Response>
   WebSocket: unknown
   EventSource?: unknown
-  location: { origin: string; href: string; hostname: string }
+  location: { origin: string; href: string; hostname: string; protocol: string }
   sessionStorage: { getItem(key: string): string | null }
   [REMOTE_CHANNEL_BOOT_GLOBAL]?: RemoteChannelBootSeat
   calls: string[]
@@ -49,10 +49,24 @@ interface FakeWindow {
   response: () => Response
 }
 
-function makeWindow(hostname = '192.168.1.20', port = '3080'): FakeWindow {
-  const origin = `http://${hostname}:${port}`
+/**
+ * A page origin double. `slice` names the origin kind:
+ * - undefined: the default LAN page (`http://<hostname>:<port>/`);
+ * - 'desktop': the official Desktop shell page (`dsh-app://app/`), whose
+ *   WHATWG origin is the opaque `null` string.
+ * @param hostname - the page hostname.
+ * @param port - the port for the LAN shape.
+ * @param slice - the origin kind.
+ * @returns the fake window.
+ */
+function makeWindow(hostname = '192.168.1.20', port = '3080', slice?: 'desktop'): FakeWindow {
+  const desktop = slice === 'desktop'
+  const origin = desktop ? 'null' : `http://${hostname}:${port}`
+  const href = desktop ? 'dsh-app://app/' : `${origin}/`
+  const protocol = desktop ? 'dsh-app:' : 'http:'
+  const pageHost = desktop ? 'app' : hostname
   const win: FakeWindow = {
-    location: { origin, href: `${origin}/`, hostname },
+    location: { origin, href, hostname: pageHost, protocol },
     calls: [],
     initSeen: [],
     wsUrls: [],
@@ -122,6 +136,22 @@ describe('remote channel boot patch (issue #987)', () => {
       expect(win.fetch).toBe(originalFetch)
       expect(win[REMOTE_CHANNEL_BOOT_GLOBAL]).toBeUndefined()
     }
+  })
+
+  it('user on the official Desktop shell page keeps the original paths', async () => {
+    // Given the page the official Desktop shell serves at dsh-app://app/,
+    // whose forwarded calls carry no device cookie to pair with
+    const win = makeWindow('app', '3080', 'desktop') as FakeWindow & Record<string, unknown>
+    const originalFetch = win.fetch
+    // When the parse-time boot patch runs on it
+    boot(win)
+    // Then nothing is patched: the shell already talks to its own host
+    expect(win.fetch).toBe(originalFetch)
+    expect(win[REMOTE_CHANNEL_BOOT_GLOBAL]).toBeUndefined()
+    expect(win.__DSH_TRANSPORT__).toBeUndefined()
+    expect(win.__DSH_FILE_UPLOAD__).toBeUndefined()
+    await win.fetch('/api/session.list', { method: 'POST' })
+    expect(win.calls).toEqual(['dsh-app://app/api/session.list'])
   })
 
   it('rewrites fetch paths exactly like the browser patch', async () => {

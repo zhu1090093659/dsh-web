@@ -40,14 +40,19 @@ export function buildRemoteChannelBootScript(rules: RemoteChannelRules = REMOTE_
   return '(function(){' +
     'try{' +
     'var w=window,loc=w.location,h=loc.hostname;' +
-    // Loopback origins keep the original paths (mirrors isLoopbackHostname).
-    "if(h==='localhost'||h==='::1'||/^127(\\.\\d{1,3}){3}$/.test(h))return;" +
+    'var R=' + json + ';' +
+    // Host-owned origins keep the original paths: loopback hostnames and the
+    // official Desktop shell's own page scheme (mirrors isHostOwnedOrigin).
+    // The shell case matters because its hostname literal is not a loopback
+    // name; without it this script would gate the Desktop shell behind a
+    // pairing the shell can never complete.
+    'var s=(loc.protocol||"").replace(/:$/,"").toLowerCase();' +
+    'if(h===\'localhost\'||h===\'::1\'||/^127(\\.\\d{1,3}){3}$/.test(h)||s===R.desktopScheme)return;' +
     // Host mode: the paired remote desktop presents itself as the machine
     // owner, so the official UI keeps its full configuration surface (the
     // settings mirror, document controller, and deliverables open actions
     // all branch on connection.isLoopback). Must run before any boot entry.
     'try{if(w.__DSH_TRANSPORT__===undefined)w.__DSH_TRANSPORT__={};w.__DSH_TRANSPORT__.ownsHost=true}catch(e){}' +
-    'var R=' + json + ';' +
     // The cookieless device credential: read lazily per call - the
     // /pair-app capture script sets it in head AFTER this boot script ran,
     // so a parse-time read would always see null.

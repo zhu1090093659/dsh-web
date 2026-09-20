@@ -6,7 +6,9 @@ import { describe, expect, it } from 'vitest'
 import {
   channelTransition,
   installRemoteChannel,
+  isHostOwnedOrigin,
   isLoopbackHostname,
+  normalizeScheme,
   remoteChannelRequired,
   isUnpairedDenied,
   REMOTE_API_PREFIX,
@@ -74,6 +76,57 @@ describe('rewrite rules', () => {
     }, true)).toBe(false)
   })
 
+  it('user on the official Desktop shell page is classified as host-owned', () => {
+    // Given the official Desktop shell serves its GUI from dsh-app://app/
+    // When the page origin is classified
+    const shell = isHostOwnedOrigin('app', 'dsh-app:')
+    // Then it counts as the local machine, exactly like a loopback page
+    expect(shell).toBe(true)
+    expect(isHostOwnedOrigin('app', 'dsh-app')).toBe(true)
+    expect(isHostOwnedOrigin('app', 'DSH-APP:')).toBe(true)
+    // And a loopback page stays host-owned without any scheme
+    expect(isHostOwnedOrigin('127.0.0.1')).toBe(true)
+    expect(isHostOwnedOrigin('localhost')).toBe(true)
+  })
+
+  it('user on a LAN or tunnel page is not host-owned', () => {
+    // Given pages served from a LAN address, a tunnel, or a look-alike host
+    // When the page origin is classified
+    const lan = isHostOwnedOrigin('192.168.1.20', 'http:')
+    const tunnel = isHostOwnedOrigin('dsh.example.com', 'https:')
+    const decoy = isHostOwnedOrigin('app', 'http:')
+    // Then none of them is the local machine
+    expect(lan).toBe(false)
+    expect(tunnel).toBe(false)
+    expect(decoy).toBe(false)
+  })
+
+  it('operator sees scheme spellings normalized to the bare lowercase form', () => {
+    // Given the URL schemes a caller may pass (location.protocol carries a colon)
+    // When each is normalized
+    const fromLocation = normalizeScheme('dsh-app:')
+    const bare = normalizeScheme('DSH-APP')
+    // Then both spellings collapse onto the same comparison value
+    expect(fromLocation).toBe('dsh-app')
+    expect(bare).toBe('dsh-app')
+  })
+
+  it('user opening the Desktop shell is never asked to pair', () => {
+    // Given the pairing policy is on and the settings are not readable yet
+    const unavailable = { status: 'unavailable' as const }
+    // When the channel decision runs for the Desktop shell page
+    const shell = remoteChannelRequired('app', unavailable, true, 'dsh-app:')
+    const shellReady = remoteChannelRequired('app', {
+      status: 'ready',
+      value: { enabled: true, requirePairingForLan: true },
+    }, undefined, 'dsh-app:')
+    // Then no gated channel is installed: the shell cannot complete a pairing
+    expect(shell).toBe(false)
+    expect(shellReady).toBe(false)
+    // And the pairing gate still holds for a genuinely remote origin
+    expect(remoteChannelRequired('192.168.1.20', unavailable, true, 'http:')).toBe(true)
+    expect(remoteChannelRequired('127.0.0.1', unavailable, true, 'http:')).toBe(false)
+  })
   it('decides the channel lifecycle transitions (issue #808)', () => {
     expect(channelTransition(true, false)).toBe('install')
     expect(channelTransition(false, true)).toBe('retire')

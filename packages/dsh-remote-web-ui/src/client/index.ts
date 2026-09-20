@@ -31,7 +31,7 @@ import { readPairGatePolicy, sendHeartbeat } from './pair-api.ts'
 import {
   channelTransition,
   installRemoteChannel,
-  isLoopbackHostname,
+  isHostOwnedOrigin,
   remoteChannelRequired,
   REMOTE_CHANNEL_BOOT_GLOBAL,
   type RemoteChannelBootSeat,
@@ -302,6 +302,7 @@ export function apply(ctx: ClientContext): void {
     window.location.hostname,
     settingsScope.getSnapshot(),
     hostPairingPolicy,
+    window.location.protocol,
   )
   // The parse-time boot patch (issue #987), when the served index carried
   // it: already installed before any boot entry ran, so adopting its seat
@@ -353,7 +354,7 @@ export function apply(ctx: ClientContext): void {
   }
   settingsScope.subscribe(syncChannel)
   syncChannel()
-  if (!isLoopbackHostname(window.location.hostname) && settingsScope.getSnapshot().status !== 'ready') {
+  if (!isHostOwnedOrigin(window.location.hostname, window.location.protocol) && settingsScope.getSnapshot().status !== 'ready') {
     void readPairGatePolicy().then((policy) => {
       hostPairingPolicy = policy.requirePairingForLan
       syncChannel()

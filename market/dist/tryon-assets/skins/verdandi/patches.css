@@ -949,6 +949,26 @@ html[data-dsh-skin="verdandi"] body[data-ds-dark-theme] [data-slot="conversation
   background: #2b191ff5 !important;
 }
 
+/* Wide tables are a host feature: from four columns up, the chat plugin draws
+   the wrapper wider than the message column and holds the overflow hidden until
+   hover, so a table may use the gutters beside the reading column. That assumes
+   a borderless message; here the message is a paper card, and the bleed reads as
+   content escaping the card. Keep the wrapper inside the card and let the cells
+   wrap the way a narrower table does, so the gold border always contains it. */
+html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"] [class*="md-table-wide"] {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  padding-left: 0;
+  padding-bottom: 0;
+  overflow-x: auto;
+}
+
+html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"] [class*="md-table-wide"] > table {
+  width: 100%;
+  max-width: 100%;
+}
+
 html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [data-variant="think"] {
   background: color-mix(in srgb, var(--vd-paper-solid) 78%, transparent);
   border-left: 2px solid color-mix(in srgb, var(--vd-gold) 72%, var(--vd-crimson) 28%);

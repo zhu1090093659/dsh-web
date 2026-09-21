@@ -1,6 +1,85 @@
 {
-  "generated": "2026-09-22",
+  "generated": "2026-09-21",
   "items": [
+    {
+      "id": "verdandi",
+      "name": "薇儿丹蒂 · 纯白圣誓",
+      "nameEn": "Verdandi · White Vow",
+      "author": "hjbztlbr",
+      "rank": 1,
+      "tagline": "深红守护导航，纯白承载誓约",
+      "description": "以《深空之眼》薇儿丹蒂与「纯白之誓」为灵感的 DSH Web UI 皮肤。深红负责导航与会话冠带，婚纱白负责阅读与编辑，柔金只作骑士纹章和交互刻线；覆盖侧栏、会话、输入卡、设置、详情及亮暗模式。v2 资产版由 v1 插件版逐字节移植：栅格美术落为 assets/ 文件，动态装饰走 hooks.mjs。",
+      "tags": [
+        "aether-gazer",
+        "verdandi",
+        "white-vow",
+        "elf-knight",
+        "crimson",
+        "ivory",
+        "dark",
+        "light"
+      ],
+      "version": "1.0.0",
+      "accent": "#8e2438",
+      "preview": {
+        "light": "assets/skins/verdandi/preview/light.jpg",
+        "dark": "assets/skins/verdandi/preview/dark.jpg"
+      },
+      "files": [
+        "LICENSE",
+        "NOTICE",
+        "NOTICE.zh-CN.md",
+        "README.md",
+        "README.zh.md",
+        "assets/verdandi-barbecue-seated-v1.webp",
+        "assets/verdandi-bridal-cg-portrait-v1.webp",
+        "assets/verdandi-bridal-floral-corner-v1.webp",
+        "assets/verdandi-bridal-veil-corner-v1.webp",
+        "assets/verdandi-chibi-left-v1.webp",
+        "assets/verdandi-chibi-right-v1.webp",
+        "assets/verdandi-childhood-record-v1.webp",
+        "assets/verdandi-details-art-dark-v1.jpg",
+        "assets/verdandi-details-art-light-v1.jpg",
+        "assets/verdandi-library-day-v1.webp",
+        "assets/verdandi-library-night-v1.webp",
+        "assets/verdandi-q-avatar-v1.webp",
+        "assets/verdandi-ring-tag-v1.webp",
+        "assets/verdandi-sacred-tree-white-v1.webp",
+        "assets/verdandi-sequence-sword-v1.webp",
+        "assets/verdandi-vow-avatar-frame-v1.webp",
+        "assets/verdandi-vow-folder-v1.webp",
+        "assets/verdandi-vow-namecard-v1.webp",
+        "assets/verdandi-vow-rings-v1.webp",
+        "assets/verdandi-wedding-avatar-v1.webp",
+        "assets/verdandi-white-knight-v1.webp",
+        "hooks.mjs",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/Sddft97/dsh-client-ui-skin-verdandi",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css"
+      },
+      "requires": {
+        "contracts": [
+          {
+            "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+            "kind": "SkinHooks",
+            "optional": true
+          }
+        ]
+      },
+      "facets": {
+        "client": {
+          "entry": "hooks.mjs",
+          "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+        }
+      }
+    },
     {
       "id": "whale-song",
       "name": "鲸吟",

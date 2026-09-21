@@ -94,6 +94,11 @@ export const REVIEWED_SKIN_HOOKS: Readonly<Record<string, ReviewedSkinHooksIdent
     manifestSha256: "945b5c1f6ef387060a9b7dbb4451a261ecbffedf7949890925cf2b97c6b0c3a8",
     hooksSha256: "76954acbe0925f470fdfc79d60c5402fd11f617342df719382265b70e3f5a36a",
   },
+  "verdandi": {
+    entry: "hooks.mjs",
+    manifestSha256: "a440b1afcf61f0c7a540f2659d93b405b8e86469ca34090c84e0014b95d9d051",
+    hooksSha256: "beffe36d76524836051aa34f53ba2289885ace4b997765dba90419a10eb11608",
+  },
   "war-thunder": {
     entry: "hooks.mjs",
     manifestSha256: "3779eeb27f441deed0be277a5d67342c254305683214bda68fc814565dadab89",

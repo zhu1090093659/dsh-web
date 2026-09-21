@@ -17,6 +17,11 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://dsh-market.com/tryon/?skin=verdandi</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://dsh-market.com/tryon/?skin=whale-song</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

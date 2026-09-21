@@ -1,0 +1,83 @@
+:root {
+  --vd-crimson: #8e2438;
+  --vd-crimson-deep: #681626;
+  --vd-crimson-dark: #4e0f1d;
+  --vd-crimson-soft: #b4475c;
+  --vd-ivory: #fffdfb;
+  --vd-ivory-soft: #f8f2ed;
+  --vd-veil: #fffdfbeb;
+  --vd-blush: #f3dfe3;
+  --vd-warm-white: #fffaf4;
+  --vd-rose-paper: #faedf0;
+  --vd-gold: #c7a86b;
+  --vd-gold-light: #e6d5a9;
+  --vd-ink: #2c1c21;
+  --vd-ink-muted: #6f555d;
+  --vd-line: #742a3938;
+  --vd-line-strong: #8e243875;
+  --vd-paper: #fffdfbf5;
+  --vd-paper-solid: #fffdfb;
+  --vd-shadow: 0 14px 34px #43101e21;
+  --vd-slip: #fffdfbe6;
+  --vd-slip-solid: #fdfaf7;
+  --vd-slip-line: #c7a86b99;
+  --vd-slip-shadow: 0 4px 14px #3e111d1a;
+  --vd-ink-meta: #5f454d;
+  --vd-bare-ink: #1b1116;
+  --vd-danger: #9c1f30;
+  --vd-warn: #7d5310;
+  --vd-stage-veil: #fffdfb4d;
+  --vd-stage-veil-edge: #fffdfb1f;
+  --vd-stage-veil-hero: #fffdfb0f;
+  /* v1 applied these five official aliases through theme.overrideTokens
+     (THEME_TOKENS in src/client/index.ts); v2 declares them here instead. */
+  --dsw-alias-brand-primary: #8e2438;
+  --dsw-alias-button-primary-fill: #8e2438;
+  --dsw-alias-button-primary-fill-active: #651a2b;
+  --dsw-alias-button-primary-fill-hover: #752033;
+  --dsw-alias-label-primary-inverted: #fffdfb;
+  /* primary-action-tokens-v1.md: names the foreground on the fill explicitly,
+     with the same value v1 already used for the inverted label. */
+  --dsw-alias-label-primary-foreground: #fffdfb;
+  --dsw-font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --dsw-font-family-code: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  background-color: #f8f2ed;
+}
+
+body[data-ds-dark-theme] {
+  --vd-crimson: #9d2d43;
+  --vd-crimson-deep: #721a2c;
+  --vd-crimson-dark: #3d0c17;
+  --vd-crimson-soft: #c65369;
+  --vd-ivory: #21151a;
+  --vd-ivory-soft: #2a1a20;
+  --vd-rose-paper: #341e25;
+  --vd-gold: #d0b276;
+  --vd-gold-light: #e4cfa0;
+  --vd-ink: #f7ecef;
+  --vd-ink-muted: #c7aeb5;
+  --vd-line: #dbaeb933;
+  --vd-line-strong: #d0b27675;
+  --vd-paper: #22151af5;
+  --vd-paper-solid: #24171c;
+  --vd-shadow: 0 16px 38px #00000057;
+  --vd-slip: #24171ce0;
+  --vd-slip-solid: #2a1a20;
+  --vd-slip-line: #d0b27666;
+  --vd-slip-shadow: 0 5px 16px #00000057;
+  --vd-ink-meta: #d9c0c7;
+  --vd-bare-ink: #fbf3f5;
+  --vd-danger: #ff9aa9;
+  --vd-warn: #f0cd8a;
+  --vd-stage-veil: #120b0f3d;
+  --vd-stage-veil-edge: #120b0f1a;
+  --vd-stage-veil-hero: #120b0f0f;
+  /* Dark half of the v1 theme.overrideTokens pair. */
+  --dsw-alias-brand-primary: #e4cfa0;
+  --dsw-alias-button-primary-fill: #e4cfa0;
+  --dsw-alias-button-primary-fill-active: #c6a767;
+  --dsw-alias-button-primary-fill-hover: #f0ddb1;
+  --dsw-alias-label-primary-inverted: #25151b;
+  --dsw-alias-label-primary-foreground: #25151b;
+  background-color: #171015;
+}

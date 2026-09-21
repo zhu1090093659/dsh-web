@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "verdandi",
+  "name": "薇儿丹蒂 · 纯白圣誓",
+  "nameEn": "Verdandi · White Vow",
+  "author": "hjbztlbr",
+  "tagline": "深红守护导航，纯白承载誓约",
+  "description": "以《深空之眼》薇儿丹蒂与「纯白之誓」为灵感的 DSH Web UI 皮肤。深红负责导航与会话冠带，婚纱白负责阅读与编辑，柔金只作骑士纹章和交互刻线；覆盖侧栏、会话、输入卡、设置、详情及亮暗模式。v2 资产版由 v1 插件版逐字节移植：栅格美术落为 assets/ 文件，动态装饰走 hooks.mjs。",
+  "tags": [
+    "aether-gazer",
+    "verdandi",
+    "white-vow",
+    "elf-knight",
+    "crimson",
+    "ivory",
+    "dark",
+    "light"
+  ],
+  "accent": "#8e2438",
+  "order": 1,
+  "version": "1.0.0",
+  "license": "MIT code; game-derived artwork excluded and all rights reserved (non-commercial fan use only)",
+  "licenseUrl": "https://github.com/Sddft97/dsh-client-ui-skin-verdandi/blob/main/LICENSE",
+  "noticeUrl": "https://github.com/Sddft97/dsh-client-ui-skin-verdandi/blob/main/THIRD_PARTY_NOTICES.md",
+  "sourceUrl": "https://github.com/Sddft97/dsh-client-ui-skin-verdandi",
+  "attribution": "《深空之眼》游戏素材权利归原权利人；通用装饰与代码 hjbztlbr",
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+        "kind": "SkinHooks",
+        "optional": true
+      }
+    ]
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css"
+  },
+  "facets": {
+    "client": {
+      "entry": "hooks.mjs",
+      "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+    }
+  }
+}

@@ -33,6 +33,13 @@ interaction hairlines. Light and dark schemes are both first-class.
   `backgroundMedia` fills a fixed full-viewport layer, so declaring it would
   paint the same art twice and spread it under the sidebar and details panes.
   The scene stays where v1 put it.
+- **Wide tables stay inside the card**: for four or more columns the host draws
+  the table wider than the message column and keeps the overflow hidden until
+  hover. That assumes a borderless message; this skin draws a bordered paper
+  card, where the bleed reads as content escaping the card. `patches.css` pulls
+  the wrapper back to `width: 100%` and lets the cells wrap, so a wide table
+  renders inside the card exactly like a narrow one. The host's full-bleed
+  behaviour is given up in exchange.
 
 ## Artwork
 

@@ -1406,5 +1406,17 @@
     "npm": "dsh-claude-style",
     "category": "ui",
     "subcategory": "render"
+  },
+  {
+    "id": "dsh-ltm",
+    "name": "本地长期记忆",
+    "nameEn": "Local Long-Term Memory",
+    "author": "tr1v3r",
+    "description": "基于本地 SQLite 的结构化长期记忆：CJK 感知检索、BM25 与字符 n-gram 余弦相似度混合重排，支持去重、更新、合并、确认与过期复核，以及全局和项目作用域；通过 agent 工具与 CLI 共用同一存储引擎，无需云端服务或 embedding 依赖。",
+    "descriptionEn": "Structured long-term memory in local SQLite: CJK-aware search with hybrid BM25 and character n-gram cosine reranking, deduplication, updates, merging, confirmation and staleness review, plus global and project scopes. Agent tools and a CLI share one storage engine, with no cloud service or embedding dependency required.",
+    "repo": "https://github.com/tr1v3r/dsh-ltm",
+    "npm": "@tr1v3r/dsh-ltm",
+    "category": "knowledge",
+    "subcategory": "memory"
   }
 ]

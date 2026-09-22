@@ -1527,6 +1527,19 @@
       "npm": "dsh-claude-style",
       "category": "ui",
       "subcategory": "render"
+    },
+    {
+      "id": "dsh-wx-bridge",
+      "name": "微信接入 DSH",
+      "rank": 120,
+      "nameEn": "WeChat Bridge",
+      "author": "zhy5",
+      "description": "把手机微信接到本机 DSH：自建 iLink 桥 + 常驻 ACP 原生会话（上下文由 DSH 持有、可 resume），手机对话就是桌面工作区里的会话，支持图片识别与语音转写，带「微信连接」设置面板。",
+      "descriptionEn": "Bridge WeChat to your local DSH: a self-hosted iLink bridge over a persistent ACP session (context lives in DSH and stays resumable). Phone conversations appear as workspace sessions on the desktop, with image recognition, voice transcripts and a settings panel.",
+      "repo": "https://github.com/zhy5/dsh-wx-bridge",
+      "npm": "@zmainer/dsh-wx-bridge",
+      "category": "integration",
+      "subcategory": "bridge"
     }
   ]
 }

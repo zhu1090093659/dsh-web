@@ -47,16 +47,18 @@ function makeList(sessions: Array<{
       blank: row.blank ?? false,
       running: row.running ?? false,
       ...(row.completed !== undefined ? { completed: row.completed } : {}),
+      // The main-view ownership marker the panel reads in place of the removed
+      // list.current field.
+      retainedBy: row.id === current ? { mainView: 1 } : {},
     }
   }
   return {
     ids: sessions.map(row => sid(row.id)) as never,
     byId,
-    current: current === undefined ? undefined : sid(current) as never,
     phase: 'ready',
-    subagentsByParent: {},
-    jobsBySession: {},
-    currentAddress: undefined,
+    // No Session projections were read in this fixture; the panel only reads
+    // `ids` and `byId`, so the empty map keeps the snapshot shape complete.
+    projectionsBySession: {},
   }
 }
 

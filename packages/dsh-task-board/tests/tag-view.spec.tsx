@@ -11,8 +11,9 @@
  */
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TaskBoard } from '../src/client/board/TaskBoard.tsx'
+import { TaskDetail } from '../src/client/board/TaskDetail.tsx'
 import { TaskTagFields, cleanTags } from '../src/client/board/TaskForm.tsx'
 import { TASK_TAG_LIMIT, tagTone, type TaskRecord, type TaskTag } from '../src/core/tasks.ts'
 import type { BoardController, ControllerSnapshot } from '../src/core/controller.ts'
@@ -59,7 +60,18 @@ function fakeController(tasks: TaskRecord[], snapshot?: Partial<ControllerSnapsh
     retryHostSync: async () => {},
     openTask: () => {},
     moveTask: () => {},
+    updateTask: async () => true,
+    closeTask: () => {},
   } as unknown as BoardController
+}
+
+async function mountDetailView(tRecord: TaskRecord, controller: BoardController) {
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  const root = createRoot(container)
+  roots.push(root)
+  await act(async () => { root.render(<TaskDetail controller={controller} task={tRecord} />) })
+  return container
 }
 
 async function mountBoardView(tasks: TaskRecord[], snapshot?: Partial<ControllerSnapshot>) {
@@ -236,4 +248,73 @@ describe('tag editor', () => {
     expect(cleanTags([{ name: '  ' }, { name: ' work ', promptPrefix: ' ' }, { name: 'x', promptPrefix: ' y ' }]))
       .toEqual([{ name: 'work' }, { name: 'x', promptPrefix: 'y' }])
   })
+
+  it('enforces length, limit, and deduplication matching the protocol wire gate', () => {
+    const tooLongName = 'n'.repeat(33)
+    const longPrompt = 'p'.repeat(250)
+    const tags = [
+      { name: tooLongName }, // dropped: exceeds 32 chars
+      { name: 'tag1', promptPrefix: longPrompt }, // prompt truncated to 200 chars
+      { name: 'tag1', promptPrefix: 'other' }, // deduplicated: dropped
+      ...Array.from({ length: 10 }, (_, i) => ({ name: `item${i}` })),
+    ]
+    const cleaned = cleanTags(tags)
+    expect(cleaned).toHaveLength(8) // capped at TASK_TAG_LIMIT = 8
+    expect(cleaned[0]).toEqual({ name: 'tag1', promptPrefix: 'p'.repeat(200) })
+    expect(cleaned.map(t => t.name)).not.toContain(tooLongName)
+  })
 })
+
+describe('task detail tags and edit-tags flow', () => {
+  it('renders badges in detail and exposes editTags button once executed', async () => {
+    const executedTask = task({
+      id: 'ex1',
+      tags: [{ name: 'frontend' }, { name: 'core' }],
+      executions: [{ id: 'e1', startedAt: 100, endedAt: 200, result: 'succeeded', sessionId: undefined, error: undefined }],
+    })
+    const updateTaskMock = vi.fn(async () => true)
+    const ctrl = { ...fakeController([executedTask]), updateTask: updateTaskMock } as unknown as BoardController
+
+    const container = await mountDetailView(executedTask, ctrl)
+    // Renders tag badges in detail view
+    const badges = container.querySelectorAll('[data-dsh-part="tags"] [data-dsh-part="tag-badge"]')
+    expect(badges).toHaveLength(2)
+    expect(badges[0]!.textContent).toBe('frontend')
+    expect(badges[1]!.textContent).toBe('core')
+
+    // Edit content button must NOT be present
+    const buttons = [...container.querySelectorAll('footer button')]
+    expect(buttons.some(b => b.textContent === t('detail.edit'))).toBe(false)
+
+    // Edit tags button MUST be present
+    const editTagsBtn = buttons.find(b => b.textContent === t('detail.editTags'))
+    expect(editTagsBtn).toBeDefined()
+
+    // Click editTags button to open modal
+    click(editTagsBtn!)
+
+    // Modal should be open
+    expect(document.querySelector('[role="dialog"][aria-label="' + t('detail.editTags') + '"]')).not.toBeNull()
+
+    // Submit save
+    const saveBtn = [...document.querySelectorAll('button')].find(b => b.textContent === t('edit.save'))!
+    click(saveBtn)
+    await act(async () => {})
+
+    // Should call updateTask with only tags in patch (no title, description, or prompt)
+    expect(updateTaskMock).toHaveBeenCalledWith('ex1', {
+      tags: [{ name: 'frontend' }, { name: 'core' }],
+    })
+  })
+
+  it('exposes full edit button instead of editTags for unexecuted task', async () => {
+    const freshTask = task({ id: 'f1', tags: [{ name: 'fresh' }], executions: [] })
+    const ctrl = fakeController([freshTask])
+    const container = await mountDetailView(freshTask, ctrl)
+
+    const buttons = [...container.querySelectorAll('footer button')]
+    expect(buttons.some(b => b.textContent === t('detail.edit'))).toBe(true)
+    expect(buttons.some(b => b.textContent === t('detail.editTags'))).toBe(false)
+  })
+})
+

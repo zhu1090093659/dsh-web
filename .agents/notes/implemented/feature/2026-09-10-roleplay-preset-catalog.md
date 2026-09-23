@@ -41,7 +41,7 @@ The batch was produced by a one-off converter rather than the source files being
 
 ## Consequences
 
-- The Workshop's Presets tab has content for the first time: 32 entries, ranked so the whole batch sorts after the shipped presets, each installable into the inert library and enabled by an explicit confirmation.
+- The Workshop's Presets tab has content for the first time: 32 entries, ranked so the whole batch sorts after the shipped presets, each installable into the inert library, where the install itself is the confirmation-gated declaration that makes it live.
 - Every preset is conversation-only. A user who wants the agent to read files or run commands picks a different preset; that is the intended trade for a role-play persona.
 - The batch is a derivative work of a third-party collection that ships no `LICENSE`. Attribution and a source link are recorded in the catalog, but the right to redistribute has not been confirmed by the upstream author. Publishing the generated `market/dist` is therefore the maintainer's call, and the batch should be withdrawn if the upstream author objects.
 - Content review stays a human process. The exclusion and filtering rules are recorded here so the next batch is auditable, but nothing in `scripts/market-build` enforces them mechanically.

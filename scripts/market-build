@@ -11,6 +11,8 @@
  *   presets — packages/dsh-preset-center/presets/<id>/preset.yml
  *             + presets/catalog.json (market metadata: author, version,
  *               tags, English copy); the preset directory is the asset
+ *   picks   — market/editor-picks.json (hand-curated skin / pet / plugin
+ *             references behind the store card's 编辑推荐 category)
  *
  * Emits market/dist/:
  *   index.html, app.js, preview.html    copied from market/src/
@@ -21,7 +23,9 @@
  *   manifest.js window.SKIN_MANIFEST = { skins: [...] }  (preview.html compat)
  *   sitemap.xml                         generated from the skin catalog
  *   manifest/skins.json  pets.json  plugins.json  presets.json
- *   assets/...                            previews, background media, pet media
+ *   manifest/editor-picks.json
+ *   assets/...                            previews, background media, pet media,
+ *                                         market/src/assets/** site artwork
  *
  * All emitted paths are site-root-relative ("assets/..."), so the deployed
  * static site resolves them directly. Output is deterministic: no absolute
@@ -42,6 +46,8 @@ const PETS_DIR = path.join(ROOT, 'packages', 'dsh-pet', 'assets')
 const PLUGINS_FILE = path.join(ROOT, 'packages', 'dsh-community-plugins', 'community.json')
 const PRESETS_DIR = path.join(ROOT, 'packages', 'dsh-preset-center', 'presets')
 const PRESET_CATALOG = path.join(PRESETS_DIR, 'catalog.json')
+const INSTALLER_SOURCE = path.join(ROOT, 'packages', 'dsh-market', 'src', 'core', 'installer.ts')
+const EDITOR_PICKS_FILE = path.join(ROOT, 'market', 'editor-picks.json')
 const SRC_DIR = path.join(ROOT, 'market', 'src')
 const DIST_DIR = path.join(ROOT, 'market', 'dist')
 const CHECK = process.argv.includes('--check')
@@ -53,6 +59,35 @@ const GENERATED_DATE = CHECK && fs.existsSync(committedManifest)
 function fail(msg) {
   console.error('market-build: ' + msg)
   process.exit(1)
+}
+
+/**
+ * Read the installer's per-asset file cap from its source, so the content
+ * pipeline and the installer policy can never drift apart again: jyn shipped
+ * 1565 files and passed every content check while the installer refused
+ * anything over 200, making the asset uninstallable for every user
+ * (issue #1578).
+ */
+function installerMaxFiles() {
+  const text = fs.readFileSync(INSTALLER_SOURCE, 'utf8')
+  const m = /export const MAX_FILES_PER_ASSET = (\d+)/.exec(text)
+  if (!m) throw new Error('MAX_FILES_PER_ASSET not found in ' + INSTALLER_SOURCE)
+  return Number(m[1])
+}
+
+/** Every catalog asset must stay installable by the market installer. */
+function assertInstallableFileCounts(maxFiles, groups) {
+  for (const { kind, entries } of groups) {
+    for (const { item } of entries) {
+      const count = Array.isArray(item.files) ? item.files.length : 0
+      if (count > maxFiles) {
+        throw new Error(
+          kind + ' ' + item.id + ': declares ' + count + ' files, over the installer limit of ' +
+          maxFiles + ' (packages/dsh-market/src/core/installer.ts MAX_FILES_PER_ASSET)',
+        )
+      }
+    }
+  }
 }
 
 function assertInside(base, rel, label) {
@@ -264,6 +299,45 @@ function scanPlugins() {
   return plugins
 }
 
+/** --- editor picks --------------------------------------------------------- */
+
+/**
+ * Catalog kinds the 编辑推荐 category may reference. Presets are deliberately
+ * out of scope: the category curates skins, pets and community plugins only.
+ */
+const EDITOR_PICK_KINDS = ['skin', 'pet', 'plugin']
+
+/**
+ * Read the hand-curated "editor picks" list (market/editor-picks.json) and
+ * resolve every reference against the catalogs this build just scanned. A pick
+ * that names a removed, renamed or mistyped asset fails the build, so the
+ * store card can never advertise a fixed entry that no longer exists.
+ */
+function scanEditorPicks(catalogIds) {
+  const raw = readJson(EDITOR_PICKS_FILE, 'editor picks')
+  if (!Array.isArray(raw.items)) throw new Error('editor picks: "items" must be an array')
+  const seen = new Set()
+  return raw.items.map((entry, index) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error(`editor picks #${index}: entry must be an object`)
+    }
+    const { kind, id } = entry
+    if (!EDITOR_PICK_KINDS.includes(kind)) {
+      throw new Error(`editor picks #${index}: kind must be one of ${EDITOR_PICK_KINDS.join(' / ')}: ${String(kind)}`)
+    }
+    if (typeof id !== 'string' || id === '') {
+      throw new Error(`editor picks #${index}: id must be a non-empty string`)
+    }
+    const key = kind + ':' + id
+    if (seen.has(key)) throw new Error(`editor picks #${index}: duplicate reference: ${key}`)
+    seen.add(key)
+    if (!catalogIds[kind].has(id)) {
+      throw new Error(`editor picks #${index}: ${key} is not in the ${kind} catalog`)
+    }
+    return { kind, id }
+  })
+}
+
 /** Preset ids the harness ships; a community preset may never claim one. */
 const PRESET_RESERVED_IDS = ['minimal', 'ptc', 'standard', 'cordis']
 
@@ -274,7 +348,7 @@ const PRESET_RESERVED_IDS = ['minimal', 'ptc', 'standard', 'cordis']
  */
 const PRESET_CATEGORIES = ['roleplay']
 
-/** Official preset directory rule (mirrors PRESET_ID in @deepseek-ai/dsh-agent-presets). */
+/** Official preset directory rule (mirrors the registry's own preset id rule). */
 const PRESET_ID_RE = /^[a-z0-9][a-z0-9-]*$/
 
 /**
@@ -395,7 +469,7 @@ function buildSitemap(skins) {
 
 /** --- emit ---------------------------------------------------------------- */
 
-function emit(outDir, files, binary, skins, pets, plugins, presets, transformSkinCss) {
+function emit(outDir, files, binary, skins, pets, plugins, presets, picks, transformSkinCss) {
   let preservedTryon = null
   const tryonPath = path.join(outDir, 'tryon')
   const canRebuildTryon = fs.existsSync(TRYON_SHELL_DIR) && fs.existsSync(path.join(TRYON_SHELL_DIR, 'index.html'))
@@ -488,6 +562,7 @@ function emit(outDir, files, binary, skins, pets, plugins, presets, transformSki
   fs.writeFileSync(path.join(manDir, 'pets.json'), mk(pets.map(({ item }) => item)))
   fs.writeFileSync(path.join(manDir, 'plugins.json'), mk(plugins.map(({ item }) => item)))
   fs.writeFileSync(path.join(manDir, 'presets.json'), mk(presets.map(({ item }) => item)))
+  fs.writeFileSync(path.join(manDir, 'editor-picks.json'), mk(picks))
 }
 
 function walkFiles(dir, base) {
@@ -653,12 +728,26 @@ function verifyTryonManifest(outDir) {
 }
 
 async function main() {
-  const skinCenter = await import(pathToFileURL(path.join(ROOT, 'packages', 'skins', 'skin-center', 'lib', 'index.js')).href)
-  const transformSkinCss = skinCenter.transformSkinCss
   const skins = scanSkins()
   const pets = scanPets()
   const plugins = scanPlugins()
   const presets = scanPresets()
+  // Policy gate first: the catalog is pure source data, so a content/policy
+  // mismatch is reported before the build needs its generated inputs.
+  assertInstallableFileCounts(installerMaxFiles(), [
+    { kind: 'skin', entries: skins },
+    { kind: 'pet', entries: pets },
+    { kind: 'preset', entries: presets },
+  ])
+  // Curated store-card category: every reference must resolve in the catalogs
+  // scanned above.
+  const picks = scanEditorPicks({
+    skin: new Set(skins.map(({ item }) => item.id)),
+    pet: new Set(pets.map(({ item }) => item.id)),
+    plugin: new Set(plugins.map(({ item }) => item.id)),
+  })
+  const skinCenter = await import(pathToFileURL(path.join(ROOT, 'packages', 'skins', 'skin-center', 'lib', 'index.js')).href)
+  const transformSkinCss = skinCenter.transformSkinCss
 
   // static sources
   const files = new Map()
@@ -672,6 +761,14 @@ async function main() {
   // binary assets — full tree copy per skin/pet so a consumer can install
   // the exact directory from the static site (files list mirrors this layout)
   const binary = new Map()
+  // site-owned artwork (market/src/assets/**) — copied verbatim so the
+  // deployed site can reference it like any other static asset.
+  const SRC_ASSETS = path.join(SRC_DIR, 'assets')
+  if (fs.existsSync(SRC_ASSETS)) {
+    for (const rel of listFiles(SRC_ASSETS)) {
+      binary.set('assets/' + rel, path.join(SRC_ASSETS, rel))
+    }
+  }
   for (const { name, dir, item } of skins) {
     for (const rel of item.files) {
       binary.set(`assets/skins/${name}/${rel}`, assertInside(dir, rel, 'skin file'))
@@ -691,7 +788,7 @@ async function main() {
   if (CHECK) {
     const tmp = path.join(ROOT, '.market-check-tmp')
     fs.rmSync(tmp, { recursive: true, force: true })
-    emit(tmp, files, binary, skins, pets, plugins, presets, transformSkinCss)
+    emit(tmp, files, binary, skins, pets, plugins, presets, picks, transformSkinCss)
     const canRebuildTryon = fs.existsSync(path.join(TRYON_SHELL_DIR, 'index.html'))
     if (canRebuildTryon) {
       emitTryon(tmp, skins)
@@ -720,9 +817,9 @@ async function main() {
     return
   }
 
-  emit(DIST_DIR, files, binary, skins, pets, plugins, presets, transformSkinCss)
+  emit(DIST_DIR, files, binary, skins, pets, plugins, presets, picks, transformSkinCss)
   emitTryon(DIST_DIR, skins)
-  console.log(`market-build: wrote ${walkFiles(DIST_DIR).length} files (${skins.length} skins, ${pets.length} pets, ${plugins.length} plugins, ${presets.length} presets)`)
+  console.log(`market-build: wrote ${walkFiles(DIST_DIR).length} files (${skins.length} skins, ${pets.length} pets, ${plugins.length} plugins, ${presets.length} presets, ${picks.length} editor picks)`)
 }
 
 main().catch((error) => { console.error(error); process.exit(1) })

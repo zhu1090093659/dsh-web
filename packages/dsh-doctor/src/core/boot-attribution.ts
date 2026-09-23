@@ -2,19 +2,25 @@
  * Boot-failure attribution: map a dsh boot error trace to the plugin row id
  * that caused it.
  *
- * The dsh boot reports failures in three message shapes (verified against
- * @deepseek-ai/dsh-app-boot 0.1.2-alpha.3):
+ * The dsh boot reports failures in four message shapes (re-verified against
+ * @deepseek-ai/dsh-app-boot and @deepseek-ai/cordis-plugin-loader
+ * 0.1.6-alpha.2):
  *
- * 1. mount/apply failure — the loader entry apply rejected:
- *    `<bin>: plugin tree failed to load: failed to apply loader entry include
- *    (cordis:include): failed to apply loader entry <id> (<name>): <cause>`
- * 2. import failure — the module could not be resolved:
- *    `... failed to import loader entry <id> (<name>): <cause>`
- * 3. activation audit — assertEntriesActivated lists entries that failed or
- *    never became active:
- *    `<bin>: plugin(s) failed to load: <id>, <id>, ...` or
- *    `<bin>: N entries did not activate\n<name>: <detail>` (audit lines use
- *    the row NAME; callers resolve names back to rows via the composed tree)
+ * 1. loader entry failure — the loader's `updateError` wraps one row:
+ *    `failed to <apply|import> loader entry <id> (<name>): <cause>`, nested in
+ *    the include row's `<bin>: plugin tree failed to load: ...`.
+ * 2. activation audit — `activationDiagnostic` lists entries that failed or
+ *    never became active, one per line, under
+ *    `<bin>: warning: N entry|entries did not activate`:
+ *    `<id> (<name>): failed: <cause>` or
+ *    `<id> (<name>): pending (waiting for services: <missing>)`.
+ * 3. startup report — `startupDiagnostic` names each failing row in a block
+ *    under `<bin>: startup failed: N required plugin(s) did not activate`:
+ *    the row label, then ` Package: <name>`, then the failure detail lines.
+ * 4. legacy activation lines (pre-alpha.2 hosts): `plugin(s) failed to load:
+ *    <id>, ...` or `<name>: pending (waiting for ...)` / `<name>: fiber
+ *    state ...` (those audit lines used the row NAME; callers resolve names
+ *    back to rows via the composed tree).
  *
  * Pure over its inputs: callers hand in the captured stderr tail and the
  * known row ids; the result says which row (if any) to quarantine. A wrong
@@ -47,13 +53,15 @@ export interface AttributionInput {
  */
 export function attributeBootFailure(input: AttributionInput): AttributionCandidate | undefined {
   const rowIdSet = new Set(input.rowIds)
+  const namesByRowId = input.namesByRowId ?? {}
   const lines = input.stderrTail.split(/\r?\n/).filter(line => line.trim() !== '')
   for (const line of lines) {
     const byMessage = matchLoaderMessage(line, rowIdSet)
     if (byMessage !== undefined) return byMessage
   }
-  // Audit lines list bare ids (`plugin(s) failed to load: a, b`) or spell
-  // `name: <stack>` per failing entry — match both against the known rows.
+  // Audit and report lines, newest shape first: the alpha.2 audit spells
+  // `<id> (<name>): <detail>`, its startup report names the row and then
+  // prints `Package: <name>`, and a legacy host spelled `<name>: <detail>`.
   for (const line of lines) {
     const listMatch = /plugin\(s\) failed to load: (.+?);/.exec(line)
     if (listMatch !== null) {
@@ -61,10 +69,24 @@ export function attributeBootFailure(input: AttributionInput): AttributionCandid
         if (rowIdSet.has(id)) return { rowId: id, source: 'failed-to-load-list', evidence: line }
       }
     }
-    const auditMatch = /^(.+?): (?:pending \(waiting for|fiber state|)/.exec(line)
-    if (auditMatch !== null && auditMatch[1] !== undefined) {
-      const name = auditMatch[1]
-      for (const [rowId, rowName] of Object.entries(input.namesByRowId ?? {})) {
+    const entryMatch = /^\s*([^\s()]+) \(([^()]+)\): (.+)$/.exec(line)
+    if (entryMatch !== null) {
+      const [, entryId, entryName] = entryMatch
+      if (rowIdSet.has(entryId)) return { rowId: entryId, source: 'activation-line', evidence: line }
+      for (const [rowId, rowName] of Object.entries(namesByRowId)) {
+        if (rowName === entryName || rowName === entryId) return { rowId, source: 'activation-line', evidence: line }
+      }
+    }
+    const packageMatch = /^\s*Package: (\S+)\s*$/.exec(line)
+    if (packageMatch !== null) {
+      for (const [rowId, rowName] of Object.entries(namesByRowId)) {
+        if (rowName === packageMatch[1]) return { rowId, source: 'activation-line', evidence: line }
+      }
+    }
+    const legacyMatch = /^(.+?): (?:pending \(waiting for|fiber state)/.exec(line)
+    if (legacyMatch !== null && legacyMatch[1] !== undefined) {
+      const name = legacyMatch[1]
+      for (const [rowId, rowName] of Object.entries(namesByRowId)) {
         if (rowId === name || rowName === name) return { rowId, source: 'activation-line', evidence: line }
       }
     }

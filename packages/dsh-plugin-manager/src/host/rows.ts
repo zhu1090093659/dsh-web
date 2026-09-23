@@ -254,12 +254,24 @@ export function setRowEnabled(text: string, filename: string, id: string, name: 
     insertRow.set('disabled', document.createNode(!enabled))
     return document.toString({ lineWidth: 0 }) + '\n'
   }
-  const found = findBareRow(root, id)
+  let found = findBareRow(root, id)
+  let effBase = baseEnabled
+  if (found === undefined && name !== undefined) {
+    const byName: { row: YAMLMap; index: number }[] = []
+    root.items.forEach((item, index) => {
+      if (!isBareRow(item) || bareRowName(item) !== name || bareRowId(item) === undefined) return
+      if (isMap(item)) byName.push({ row: item, index })
+    })
+    if (byName.length === 1) {
+      found = byName[0]
+      effBase = false
+    }
+  }
   if (enabled) {
     if (found === undefined) {
-      if (baseEnabled) return text
+      if (effBase) return text
       root.items.push(document.createNode({ id, name, disabled: false }))
-    } else if (baseEnabled) {
+    } else if (effBase) {
       root.items.splice(found.index, 1)
     } else {
       found.row.set('disabled', document.createNode(false))

@@ -1,4 +1,4 @@
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 
 import {
   CUSTOM_THEME_DEFAULTS,
@@ -30,9 +30,9 @@ interface PendingWrite {
   reject(error: unknown): void
 }
 
-/** Owns the custom-theme settings snapshot and its inert-by-default style. */
+/** Owns the custom-theme configuration section and its inert-by-default style. */
 export class CustomThemeController {
-  private readonly scope: SettingsScope<CustomThemeConfig>
+  private readonly scope: ConfigForm<CustomThemeConfig>
   private readonly doc: Document
   private readonly style: HTMLStyleElement
   private readonly unsubscribe: () => void
@@ -46,7 +46,7 @@ export class CustomThemeController {
   private pendingWrites = 0
   private drainingWrites = false
 
-  constructor(scope: SettingsScope<CustomThemeConfig>, options: CustomThemeControllerOptions = {}) {
+  constructor(scope: ConfigForm<CustomThemeConfig>, options: CustomThemeControllerOptions = {}) {
     this.scope = scope
     this.doc = options.doc ?? document
     this.config = normalizeCustomThemeConfig(scope.getSnapshot().value)
@@ -215,7 +215,11 @@ export class CustomThemeController {
       const write = this.writeQueue.shift()
       if (write === undefined) break
       try {
-        await this.scope.set(write.field, write.value)
+        // The form contract answers `false` for a write the Host refused or
+        // skipped, and rejects when the transport itself failed; both leave
+        // the stored profile unchanged, so neither may count as saved.
+        const accepted = await this.scope.set(write.field, write.value)
+        if (!accepted) throw new Error('the Host did not accept the custom theme setting')
       } catch (error) {
         settled.push({ write, ok: false, error })
         continue

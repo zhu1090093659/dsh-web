@@ -49,6 +49,40 @@ export interface TaskBoardEventPayload {
   power: TaskBoardPowerSnapshot
 }
 
+/**
+ * Request body of `POST {TASK_BOARD_API_PREFIX}/parse` (issue #1540): the text
+ * the user pasted plus the `provider/model` route that should parse it.
+ */
+export interface TaskBoardParseRequest {
+  text: string
+  /** Qualified route from the model picker; absent when no route was chosen. */
+  model?: string
+}
+
+/** Draft fields a parse returns; the user reviews them before creating the task. */
+export interface TaskBoardParseDraft {
+  title: string
+  description: string
+  prompt: string
+}
+
+/** Strict parse of a `/parse` request body; undefined rejects the request. */
+export function parseTaskParseRequest(value: unknown): TaskBoardParseRequest | undefined {
+  if (typeof value !== 'object' || value === null) return undefined
+  const record = value as { text?: unknown; model?: unknown }
+  if (typeof record.text !== 'string' || record.text.trim() === '') return undefined
+  if (record.model !== undefined && typeof record.model !== 'string') return undefined
+  const model = typeof record.model === 'string' ? record.model.trim() : ''
+  return { text: record.text, ...(model === '' ? {} : { model }) }
+}
+
+/** Whether a decoded reply carries the three draft strings the form accepts. */
+export function isTaskParseDraft(value: unknown): value is TaskBoardParseDraft {
+  if (typeof value !== 'object' || value === null) return false
+  const record = value as { title?: unknown; description?: unknown; prompt?: unknown }
+  return typeof record.title === 'string' && typeof record.description === 'string' && typeof record.prompt === 'string'
+}
+
 export type TaskBoardAction =
   | { kind: 'import'; sourceId: string; tasks: TaskRecord[] }
   | { kind: 'create'; id: string; input: NewTaskInput }

@@ -17,6 +17,7 @@
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { GitApi } from './api.ts'
+import { mainViewSessionId } from './main-session.ts'
 
 /** The mutable face the wrapper needs (probed, never assumed). */
 interface WorkspacesPatchTarget {
@@ -79,7 +80,7 @@ export function installAutoIsolation(scope: ClientContext, git: GitApi): () => v
   /** The official target resolution (explicit > current session's workspace > recent). */
   const resolveTarget = (workspaceId?: string): string | undefined => {
     const snapshot = workspaces.list.getSnapshot()
-    const current = scope.sessions.list.getSnapshot().current
+    const current = mainViewSessionId(scope.sessions.list.getSnapshot().byId)
     const currentWorkspaceId = current === undefined
       ? undefined
       : snapshot.items.find(item => item.sessionIds.includes(current))?.workspaceId

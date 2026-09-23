@@ -46,8 +46,10 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 | 路由 | 方法 | 说明 |
 | --- | --- | --- |
 | `/api/dsh-skill-explorer/list` | GET | 分级技能列表 |
+| `/api/dsh-skill-explorer/read` | GET | 单个技能的可编辑字段与正文（`?name=&path=`） |
 | `/api/dsh-skill-explorer/set-enabled` | POST | 启用/禁用（改写 frontmatter） |
 | `/api/dsh-skill-explorer/create` | POST | 创建技能（user/project 根） |
+| `/api/dsh-skill-explorer/update` | POST | 原地修改已有技能（名称与位置不变） |
 | `/api/dsh-skill-explorer/delete` | POST | 删除（移入 .trash） |
 | `/api/dsh-skill-explorer/health` | GET | 健康检查 |
 
@@ -61,16 +63,22 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
   远程插件。
 - 写路由仅把面板展示的路径作为身份声明；执行修改前，最新文件系统扫描必须解析到
   同名且路径完全一致的技能。任意路径与过期的同名回退都会被拒绝，因此项目技能
-  消失后，尚未执行的操作不会改到同名的用户级或自定义技能。
-- 技能内容是用户自写的 markdown；创建表单限制内容 64KB。
+  消失后，尚未执行的操作不会改到同名的用户级或自定义技能。read 路由走同一套
+  解析，因此也无法用来读取任意路径。
+- update 路由原地改写已有 SKILL.md，不改技能名与位置，并原样保留当前的
+  `disable-model-invocation` 值，因此编辑不会静默把已禁用的技能重新启用。
+  与删除同理，链接技能在该路由上被拒绝（见下）。
+- 技能内容是用户自写的 markdown；创建表单限制内容 64KB，编辑路由同样执行
+  该上限。
 - 面板用文本节点渲染技能描述（无 HTML 注入）。
 - 扫描跟随符号链接：skill 根里的符号链接目录 / `.md` 单文件链接会被当作
   普通技能列出。链接属于用户的挂载意图，因此不校验链接目标是否落在某个
   skill 根内；项目根（可能来自 clone 的仓库）里的符号链接被视为该项目内容，
   其指向目录中的 `SKILL.md` 会被读取并展示——这是预期信任边界。链接技能可
-  列表、可启用/禁用（改写目标自身的 frontmatter），但**不可删除**：删除会把
-  链接目标的 `SKILL.md` 移出原位、越出当前 skill 根，因此对链接技能隐藏删除
-  按钮并在 delete 路由上拒绝（400）。写操作仍受 loopback 围栏与「仅信任最新
+  列表、可启用/禁用（改写目标自身的 frontmatter），但**不可删除、也不可编辑**：
+  删除会把链接目标的 `SKILL.md` 移出原位、越出当前 skill 根，原地改写同样会
+  越出该根，因此对链接技能隐藏删除与编辑按钮，并在 delete / update 路由上
+  拒绝（400）。写操作仍受 loopback 围栏与「仅信任最新
   扫描路径」约束。
 
 ## 已知限制
@@ -80,7 +88,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
   `.git` 祖先。
 - frontmatter 解析为零依赖轻量实现（块标量、布尔、input 嵌套块）；不支持的
   生僻 YAML 特性以官方 dsh-skill-filesystem 提供方为准。
-- 链接技能不可删除（见安全模型）；启用/禁用对链接技能正常（改写目标
+- 链接技能不可删除、不可编辑（见安全模型）；启用/禁用对链接技能正常（改写目标
   `SKILL.md` frontmatter）。目录型与「单文件」链接都能正常列出；「单文件」
   符号链接（指向单个 `.md`）在原子改写（rename）时会被替换为一个普通文件
   （链接不再保留），目标文件本身不受影响。

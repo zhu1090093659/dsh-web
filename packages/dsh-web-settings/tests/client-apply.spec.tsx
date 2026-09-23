@@ -3,11 +3,11 @@
  * Client-half registration test for the web-ui-settings browser bundle:
  * asserts that apply() contributes the Web Plugins group as a first-level
  * settings section ("settings.section", a list slot keyed by id) rather than
- * as a plugin-configuration card ("settings.plugin.item", a keyed slot).
+ * as a plugin-configuration card ("plugins.bundle.config", a keyed slot).
  *
  * Regression guard for issue #513: DSH 0.1.0-rc.6+ rejects keyed-slot
  * registrations without options.key, and the pre-0.1.18 bundles registered
- * the group card into "settings.plugin.item" with an id - which made the web
+ * the group card into "plugins.bundle.config" with an id - which made the web
  * GUI fail to boot with "Failed to load plugins".
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -21,7 +21,7 @@ vi.mock('../src/client/compat-settings-scope.ts', () => ({
 import { apply } from '../src/client/index.ts'
 
 describe('web-ui-settings client registration', () => {
-  it('registers into settings.section with an id, not the keyed settings.plugin.item slot', () => {
+  it('registers into settings.section with an id, not a keyed bundle-configuration slot', () => {
     const injected: string[] = []
     const registered: Array<Record<string, unknown>> = []
     const fakeCtx = {
@@ -50,7 +50,7 @@ describe('web-ui-settings client registration', () => {
     apply(fakeCtx as never)
 
     expect(injected).toEqual(['settings.section'])
-    expect(injected).not.toContain('settings.plugin.item')
+    expect(injected).not.toContain('plugins.bundle.config')
 
     const section = registered.find((entry) => entry.name === 'settings.section')
     expect(section).toBeDefined()
@@ -59,6 +59,6 @@ describe('web-ui-settings client registration', () => {
 
     // The keyed slot must stay untouched: the host rejects entries without
     // options.key and the group has no reason to contribute one there.
-    expect(registered.some((entry) => entry.name === 'settings.plugin.item')).toBe(false)
+    expect(registered.some((entry) => entry.name === 'plugins.bundle.config')).toBe(false)
   })
 })

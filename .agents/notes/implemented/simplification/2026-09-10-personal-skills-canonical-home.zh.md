@@ -12,6 +12,10 @@ Status: implemented
 - `.dsh/skills/` 保留四个仓库自有技能：`dsh-web-skin-developer`、`dsh-web-pet-developer`、`dsh-web-community-plugin-developer`、`dsh-web-release`。它们描述本仓库的包、生成器与发布管线，必须随仓库一起版本化。
 - 不更新任何文档或脚本：唯一指向个人技能的活引用（`scripts/rollout-verify.sh`）本就写的是个人路径，并保留找不到时告警跳过的回退。
 
+## Superseded in part
+
+「`.dsh/skills/` 保留四个仓库自有技能」一条由 [仓库技能统一由 .agents 技能主目录解析](../process/2026-09-14-repository-skills-agents-home.md) 取代：这四个技能现位于 `.agents/skills/`。本决策其余部分仍然有效。
+
 ## Alternatives considered
 
 - 让仓库副本与个人技能保持同步：否决——个人技能按自己的节奏演进，vendored 副本只会变旧，而升级技能已经旧了。

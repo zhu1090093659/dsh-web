@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SessionArchiveConfig } from '../core/config.ts'
 import {
   AUTO_ARCHIVE_DAYS_MAX,
@@ -28,7 +28,7 @@ import styles from './archive.module.css'
 /** The registration-side face the section's slot entry injects. */
 export interface SessionArchiveFace {
   controller: ArchiveController
-  settings: SettingsScope<SessionArchiveConfig>
+  settings: ConfigForm<SessionArchiveConfig>
 }
 
 export interface SessionArchiveProps extends SessionArchiveFace {

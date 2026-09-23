@@ -69,3 +69,39 @@ export function EditTaskModal({ controller, task, onClose }: { controller: Board
     </ModalShell>
   )
 }
+
+/** Edit-tags modal: edit labels only, shown for tasks after first execution. */
+export function EditTagsModal({ controller, task, onClose }: { controller: BoardController; task: TaskRecord; onClose: () => void }) {
+  const [tags, setTags] = useState<TaskTag[]>(task.tags ?? [])
+  const [error, setError] = useState<string | undefined>(undefined)
+  const [pending, setPending] = useState(false)
+
+  const submit = async (): Promise<void> => {
+    setPending(true)
+    const tagList = cleanTags(tags)
+    const patch = {
+      tags: tagList.length > 0 ? tagList : null,
+    }
+    if (await controller.updateTask(task.id, patch)) {
+      onClose()
+      return
+    }
+    setPending(false)
+    setError(controller.getSnapshot().transportError ?? t('new.required'))
+  }
+
+  return (
+    <ModalShell
+      ariaLabel={t('detail.editTags')}
+      title={t('detail.editTags')}
+      error={error}
+      pending={pending}
+      submitLabel={t('edit.save')}
+      onSubmit={() => { void submit() }}
+      onClose={onClose}
+    >
+      <TaskTagFields tags={tags} knownTags={collectKnownTags(controller.getSnapshot().tasks)} onChange={setTags} />
+    </ModalShell>
+  )
+}
+

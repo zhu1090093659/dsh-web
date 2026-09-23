@@ -409,10 +409,10 @@ describe('v2 active selection', () => {
   it('clamps out-of-range background values and rejects wrongly typed ones', async () => {
     const server = await serve(makeRoutes())
     const clamped = await call(server.port, 'POST', `${SKIN_CENTER_V2_PREFIX}/active`, {
-      body: { background: { backgroundOpacity: 250, backgroundBlurEmpty: -2 } },
+      body: { background: { backgroundOpacity: 250, backgroundBlurEmpty: -2, bubbleBlur: 99 } },
     })
     expect(clamped.status).toBe(200)
-    expect(clamped.jsonBody.background).toEqual({ backgroundOpacity: 100, backgroundBlurEmpty: 0 })
+    expect(clamped.jsonBody.background).toEqual({ backgroundOpacity: 100, backgroundBlurEmpty: 0, bubbleBlur: 20 })
     const wrongType = await call(server.port, 'POST', `${SKIN_CENTER_V2_PREFIX}/active`, {
       body: { background: { backgroundOpacity: '100' } },
     })

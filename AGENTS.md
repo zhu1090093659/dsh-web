@@ -21,18 +21,21 @@ pnpm dev:watch   # watch-rebuild browser bundles; the dsh web host reloads the G
 pnpm test
 pnpm typecheck
 pnpm test:scripts
+pnpm test:standards   # business test discipline: BDD structure, deterministic time, assertion quality
 pnpm docs:check
 pnpm i18n:check   # zh/en/ru key parity + no CJK outside comments in client copy (scripts/i18n-audit.mjs)
+pnpm emoji:check   # no pictographs in hand-written sources (scripts/emoji-audit.mjs)
 pnpm aggregate:check
 pnpm market:check
 pnpm skin-center:check
 pnpm libs:check    # committed lib/ fingerprints vs the sources they were built from
+pnpm coverage:check   # Tier-2 coverage ratchet; runs the whole suite under v8 coverage
 pnpm deploy:market
 node scripts/dsh-plugin-new <name>
 node scripts/dsh-skin-new
 ```
 
-Before merging, run at least `pnpm typecheck && pnpm test && pnpm docs:check && pnpm i18n:check`. Run the aggregate, market, and Skin Center checks when those areas change. Four packages commit their build output under `lib/` (`dsh-market`, `dsh-preset-center`, `dsh-web-all`, `skins/skin-center`); after changing any package's `src/` — including a child plugin's client sources, which the aggregate inlines — rebuild with `pnpm build`, record the new fingerprints with `pnpm libs:write`, and commit the refreshed `lib/` together with `scripts/lib-artifact-fingerprints.json`. `pnpm libs:check` is the gate. Market site changes must also commit the regenerated `market/dist` (never rebuild in CI; `market:check` verifies consistency, `deploy-market.yml` deploys the committed artifacts).
+Before merging, run at least `pnpm typecheck && pnpm test && pnpm test:standards && pnpm docs:check && pnpm i18n:check`. Run the aggregate, market, and Skin Center checks when those areas change. [docs/development.md](docs/development.md) owns the test rules, their baseline, and the failure-path audit checklist; `.github/workflows/nightly.yml` is the Tier-2 lane that adds the coverage ratchet and three consecutive full-suite runs for flake detection. Four packages commit their build output under `lib/` (`dsh-market`, `dsh-preset-center`, `dsh-web-all`, `skins/skin-center`); after changing any package's `src/` — including a child plugin's client sources, which the aggregate inlines — rebuild with `pnpm build`, record the new fingerprints with `pnpm libs:write`, and commit the refreshed `lib/` together with `scripts/lib-artifact-fingerprints.json`. `pnpm libs:check` is the gate. Market site changes must also commit the regenerated `market/dist` (never rebuild in CI; `market:check` verifies consistency, `deploy-market.yml` deploys the committed artifacts).
 
 Market build order: build `market/shell` first (`npm run build` in `market/shell`; its dist is git-ignored), then `node scripts/market-build` to refresh `market/dist` (`tryon/` copies the shell build, `tryon-assets/` is derived with Skin Center `transformSkinCss`). In a clean checkout without the shell dist, `market-build --check` verifies the committed `tryon/` against its hash manifest instead of rebuilding. Deploy with `node scripts/deploy-market`.
 
@@ -51,6 +54,7 @@ Market build order: build `market/shell` first (`npm run build` in `market/shell
 
 - For implementation and maintenance tasks, load [dsh-web-agent-coding](.agents/skills/dsh-web-agent-coding/SKILL.md) and the focused skill it selects.
 - [Agent Note rules](.agents/notes/README.md) own decision-record requirements; the coding skill owns context use, delegation, failure recovery, navigation, and task-specific validation.
+- Before modifying existing subsystems or architectures, search `.agents/notes/implemented/` for the Owning Note to review past constraints and rejected alternatives. Updating the note that already owns a decision satisfies the rule; create a new note only when no note owns it. Keep implemented notes current with shipped reality in the present tense (One home per fact).
 - Agent 的代码改动涉及 Wallpaper Engine / 渲染器域（如 `packages/skins/skin-center/src/client/wallpaper.ts`、`packages/skins/skin-center/src/we-player-source.ts` 及其测试 `packages/skins/skin-center/tests/wallpaper.spec.ts` / `packages/skins/skin-center/tests/we-player.spec.ts`）时，通知负责该域的协作者 Aa728848（EDDYCRAZY-CC）；域归属见 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [.github/pr-review-routes.json](.github/pr-review-routes.json)。
 
 ## 运行中的 DSH 服务
@@ -76,7 +80,7 @@ Market build order: build `market/shell` first (`npm run build` in `market/shell
 
 ## Release
 
-Only an explicit current release request authorizes publication; CI/configuration repair, available credentials, and enabled workflows do not. Follow [dsh-web-release](.dsh/skills/dsh-web-release/SKILL.md) for unified versions, dev-to-main release integration, tag-driven gates, npm switching, and bilingual release notes. Do not bypass that process with ad-hoc version edits.
+Only an explicit current release request authorizes publication; CI/configuration repair, available credentials, and enabled workflows do not. Follow [dsh-web-release](.agents/skills/dsh-web-release/SKILL.md) for unified versions, dev-to-main release integration, tag-driven gates, npm switching, and bilingual release notes. Do not bypass that process with ad-hoc version edits.
 
 ## Instruction Layers
 

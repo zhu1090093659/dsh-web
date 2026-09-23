@@ -3,7 +3,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 
 import { SkinCenter } from '../src/client/SkinCenter.tsx'
 import { CustomThemeController } from '../src/client/custom-theme-controller.ts'
@@ -17,10 +17,10 @@ const t = (key: SkinCenterKey): string => zh[key] ?? key
 function customScope(
   initial: Partial<CustomThemeConfig> = CUSTOM_THEME_DEFAULTS,
   acceptWrites: boolean | ((field: string, next: unknown) => boolean) = true,
-): SettingsScope<CustomThemeConfig> {
+): ConfigForm<CustomThemeConfig> {
   let value = { ...initial } as CustomThemeConfig
   const listeners = new Set<() => void>()
-  const snapshot: SettingsScopeSnapshot<CustomThemeConfig> = {
+  const snapshot: ConfigFormSnapshot<CustomThemeConfig> = {
     status: 'ready', value, base: undefined, user: undefined, revision: 1, writable: true, mode: 'host',
   }
   return {
@@ -30,11 +30,15 @@ function customScope(
       const accepted = typeof acceptWrites === 'function'
         ? acceptWrites(field, next)
         : acceptWrites
-      if (!accepted) throw new Error('settings write rejected')
+      // 0.1.7 answers a refused write with `false`; a throwing fake modelled a
+      // broken transport, which the contract still rejects with.
+      if (!accepted) return false
       value = { ...value, [field]: next }
       for (const listener of listeners) listener()
+      return true
     },
-    unset: async () => {},
+    unset: async () => true,
+    mutate: async () => true,
   }
 }
 
@@ -63,6 +67,7 @@ async function renderSkinCenter(options: {
   runSkin?: (action: () => Promise<string | null>) => Promise<string | null>
   runCustomTheme?: (action: () => Promise<string | null>) => Promise<string | null>
   setBubbleOpacity?: (value: number) => void
+  setBubbleBlur?: (value: number) => void
 } = {}): Promise<void> {
   const active = options.active ?? null
   const controllerState = { active, trying: null, previewing: false }
@@ -93,6 +98,7 @@ async function renderSkinCenter(options: {
     enabled: () => true, selection: () => options.wallpaperSelection ?? '', mode: () => 'live', fit: () => 'cover', dim: () => 0,
     wallpaperBlur: () => 0, wallpaperOpacity: () => 100, pauseOnHidden: () => false, sound: () => false, volume: () => 100,
     dirs: () => noDirs, addDir: () => {}, removeDir: () => {}, activeId: () => null, trying: () => false,
+    writeError: () => null,
     subscribe: () => () => {}, setEnabled: () => {}, setMode: () => {}, setFit: () => {}, setDim: () => {},
     setBlur: () => {}, setOpacity: () => {}, setPauseOnHidden: () => {}, setSound: () => {}, setVolume: () => {},
     applySelection: () => {}, clearSelection: options.clearSelection ?? (() => {}), sync: () => {}, tryOn: () => {}, exitTryOn: () => {},
@@ -115,9 +121,10 @@ async function renderSkinCenter(options: {
       }}
       background={{
         enabled: () => true, opacity: () => 0, blurEmpty: () => 0, blurContent: () => 0,
-        inputCardBlur: () => 10, bubbleOpacity: () => 50, subscribe: () => () => {}, setEnabled: () => {}, set: () => {},
+        inputCardBlur: () => 10, bubbleOpacity: () => 50, bubbleBlur: () => 10, subscribe: () => () => {}, setEnabled: () => {}, set: () => {},
         setBlurEmpty: () => {}, setBlurContent: () => {}, setInputCardBlur: () => {},
         setBubbleOpacity: options.setBubbleOpacity ?? (() => {}),
+        setBubbleBlur: options.setBubbleBlur ?? (() => {}),
         dispose: () => {},
       }}
       wallpaper={wallpaper as never}
@@ -195,6 +202,21 @@ describe('SkinCenter background controls', () => {
       input.dispatchEvent(new Event('change', { bubbles: true }))
     })
     expect(setBubbleOpacity).toHaveBeenCalledWith(65)
+  })
+
+  it('renders and persists the bubble blur slider', async () => {
+    const setBubbleBlur = vi.fn()
+    await renderSkinCenter({ setBubbleBlur })
+
+    const input = inputByLabel(t('bubbleBlur'))
+    expect(input.id).toBe('skin-center-bubble-blur')
+    expect(input.value).toBe('10')
+    await act(async () => {
+      input.value = '18'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(setBubbleBlur).toHaveBeenCalledWith(18)
   })
 })
 

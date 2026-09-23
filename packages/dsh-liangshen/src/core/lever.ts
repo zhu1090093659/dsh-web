@@ -50,16 +50,19 @@ export function leverState(facts: LeverFacts): LeverState {
 
 /**
  * The preset a push-up restores: the preset the user was on before pulling the
- * lever, else the deployment default. A candidate is skipped when it is the
- * LiangShen preset itself (restoring it would be a no-op) or when the roster
- * no longer supplies it.
+ * lever, else the deployment default, else the first usable roster row that is
+ * not the LiangShen preset. A candidate is skipped when it is the LiangShen
+ * preset itself (restoring it would be a no-op) or when the roster no longer
+ * supplies it. That last resort is what keeps the push direction alive when the
+ * deployment default IS LiangShen mode: `fallback` is skipped then, and after a
+ * reload `previous` is gone, so without it the gesture would have no target.
  */
 export function restoreTarget(facts: LeverFacts): string | undefined {
   for (const candidate of [facts.previous, facts.fallback]) {
     if (candidate === undefined || candidate === LIANGSHEN_PRESET_ID) continue
     if (facts.available.includes(candidate)) return candidate
   }
-  return undefined
+  return facts.available.find(candidate => candidate !== LIANGSHEN_PRESET_ID)
 }
 
 /** Whether the lever can act at all in its current state. */

@@ -21,7 +21,7 @@ const snapshot = (over: Partial<PetStateView> = {}): PetStateView => ({
     petCooldown: false,
     feedCooldown: false,
   },
-  display: { visible: true, size: 160, right: 24, bottom: 120 },
+  display: { visible: true, size: 160, right: 24, bottom: 120, bubbleScale: 1 },
   pet: { id: 'whale-girl', displayName: 'Whale', description: '' },
   name: 'Whale',
   treats: { stocked: 2, max: 10 },

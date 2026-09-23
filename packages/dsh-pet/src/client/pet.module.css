@@ -26,9 +26,12 @@
   bottom: 100%;
   margin-bottom: 6px;
   white-space: nowrap;
-  padding: 4px 10px;
+  /* Bubble typography follows the pet's own scale (#1549): the sprite sets
+     --pet-bubble-scale from its display config, and 1 keeps the 12px baseline
+     this stylesheet was drawn for. */
+  padding: calc(4px * var(--pet-bubble-scale, 1)) calc(10px * var(--pet-bubble-scale, 1));
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--pet-bubble-scale, 1));
   line-height: 1.4;
   color: #f4f7ff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -50,10 +53,10 @@
    碎碎念不再单独渲染第二只气泡，也不换色调，而是以 .bubbleWhisper
    接管这同一只气泡的文案，气泡栈内所有气泡共用同一片玻璃。 */
 .bubbleStatus {
-  max-width: min(280px, calc(100vw - 24px));
+  max-width: min(calc(280px * var(--pet-bubble-scale, 1)), calc(100vw - 24px));
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 5px 12px;
+  padding: calc(5px * var(--pet-bubble-scale, 1)) calc(12px * var(--pet-bubble-scale, 1));
   background: linear-gradient(160deg, rgba(19, 28, 54, 0.9), rgba(7, 11, 26, 0.94));
   border: 1px solid rgba(126, 152, 255, 0.45);
   box-shadow:

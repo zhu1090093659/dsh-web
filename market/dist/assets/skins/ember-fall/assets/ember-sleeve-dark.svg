@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 40" fill="none" aria-hidden="true">
+  <!-- 余烬文件夹封套：焊板双线框 + 左侧危标斜齿 + 铆点 -->
+  <rect x="1.5" y="1.5" width="257" height="37" stroke="#e8a860" opacity="0.28"/>
+  <rect x="4.5" y="4.5" width="251" height="31" stroke="#e8a860" opacity="0.12"/>
+  <defs>
+    <pattern id="em-slv-hz" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+      <rect x="0" y="0" width="3" height="8" fill="#e8a860"/>
+    </pattern>
+  </defs>
+  <rect x="10" y="12" width="22" height="16" fill="url(#em-slv-hz)" opacity="0.30"/>
+  <circle cx="44" cy="20" r="1.8" fill="#e8a860" opacity="0.35"/>
+  <circle cx="246" cy="20" r="1.8" fill="#e8a860" opacity="0.35"/>
+  <g stroke="#e8a860" opacity="0.30">
+    <path d="M232 8 h10 M237 8 v6"/>
+    <path d="M232 32 h10 M237 26 v6"/>
+  </g>
+</svg>

@@ -7,9 +7,9 @@
  * Security invariants:
  * - One active token at a time; `issue()` replaces it, so a refreshed QR
  *   immediately invalidates the previous link.
- * - A token stays re-usable until it expires or is replaced: the first
- *   successful `accept()` marks it consumed, but the same link may pair
- *   again within the window (each re-accept mints a fresh device session).
+ * - A token is a bearer credential for its whole window: it is refused only
+ *   when unknown, expired, or after `stop()`, and the same link may pair
+ *   repeatedly within that window (each accept mints a fresh device session).
  *   Mobile flows routinely split across cookie contexts (camera preview to
  *   in-app browser to the system browser), and the later context must be
  *   able to complete its own pairing from the same link.
@@ -22,7 +22,7 @@
  */
 
 import { randomBytes } from 'node:crypto'
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { PostureSnapshot } from './posture.ts'
 
@@ -45,8 +45,6 @@ export interface TokenRecord {
   issuedAt: number
   /** Absolute expiry (ms epoch); accept() past this is refused. */
   expiresAt: number
-  /** Consumed by the first successful accept(). */
-  consumed: boolean
   /** Opaque, non-secret identifier surfaced in snapshots (never the pairing secret). */
   id: string
   /** Workspace the QR link should land the phone in (optional). */
@@ -167,10 +165,14 @@ export interface PairingConfig {
   devicesFile?: string
 }
 
-/** Result of one accept() attempt. */
+/**
+ * Result of one accept() attempt. A token is a bearer credential for its whole
+ * window (see the module doc), so the only refusal is `invalid`: unknown,
+ * expired, or after stop(). There is no "already used" outcome.
+ */
 export type AcceptResult =
   | { ok: true; deviceId: string }
-  | { ok: false; code: 'invalid' | 'used' }
+  | { ok: false; code: 'invalid' }
 
 /** Thrown by issue() for an address outside the sampled LAN literals. */
 export class UnknownLanAddressError extends Error {
@@ -187,6 +189,12 @@ export class UnknownLanAddressError extends Error {
 export interface PairingClock {
   now(): number
   randomToken(): string
+}
+
+/** File-operation seam for the revocation-durability step (tests). */
+export interface PairingFsSeams {
+  /** Remove the stale device store (defaults to fs.rmSync with force). */
+  removeFile?(path: string): void
 }
 
 /** Real clock/entropy: 32 random hex chars per token. */
@@ -231,6 +239,7 @@ export class PairingService {
   constructor(
     public config: PairingConfig,
     private readonly clock: PairingClock = defaultClock,
+    private readonly fs: PairingFsSeams = {},
   ) {
     this.loadPersisted()
   }
@@ -263,7 +272,7 @@ export class PairingService {
         })
       }
       this.clampToMaxDevices()
-      if (this.evictIdle()) this.persist()
+      if (this.evictIdle()) this.persistRevocation()
     } catch {
       // Unreadable/corrupt: start empty rather than refusing to boot.
     }
@@ -301,9 +310,9 @@ export class PairingService {
    * cookie's device id), so the file is written 0600 via a temp file and
    * atomic rename; a crash mid-write can never leave a half-written store.
    */
-  private persist(): void {
+  private persist(): boolean {
     const file = this.config.devicesFile
-    if (file === undefined) return
+    if (file === undefined) return true
     try {
       mkdirSync(dirname(file), { recursive: true })
       const temp = `${file}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
@@ -312,8 +321,32 @@ export class PairingService {
       writeFileSync(temp, JSON.stringify(payload), { mode: 0o600 })
       renameSync(temp, file)
       this.dirty = false
+      return true
     } catch (error) {
       console.error('remote-web-ui: failed to persist paired devices', error)
+      return false
+    }
+  }
+
+  /**
+   * Persist a table change that REVOKES access (stop, per-device revoke, idle
+   * eviction). A failed write would leave the revoked session on disk, and
+   * {@link loadPersisted} restores that file verbatim on the next start — the
+   * device's still-valid cookie would authorize again after an explicit
+   * revocation. When the write cannot be made durable, the stale store is
+   * removed instead (a missing file already loads as an empty table), so the
+   * failure costs a re-pair rather than silently undoing the revocation.
+   */
+  private persistRevocation(): void {
+    if (this.persist()) return
+    const file = this.config.devicesFile
+    if (file === undefined) return
+    try {
+      if (this.fs.removeFile !== undefined) this.fs.removeFile(file)
+      else rmSync(file, { force: true })
+      console.error('remote-web-ui: the device revocation could not be persisted; removed the stale device store so a restart cannot restore it')
+    } catch (error) {
+      console.error('remote-web-ui: the device revocation could not be persisted and the stale device store could not be removed', error)
     }
   }
 
@@ -343,9 +376,14 @@ export class PairingService {
     return this.publicBase
   }
 
-  /** Set or clear the public base URL (a tunnel in front of this server). */
+  /**
+   * Set or clear the public base URL (a tunnel in front of this server). The
+   * value is canonicalized to its origin: a trailing slash (what a browser
+   * address-bar copy produces) or a path would mint a dead `//pair-accept`
+   * link, which WHATWG resolves as an authority rather than a path.
+   */
   setPublicBaseUrl(url: string | undefined): void {
-    this.publicBase = url
+    this.publicBase = url === undefined ? undefined : canonicalBaseUrl(url)
     this.notify()
   }
 
@@ -395,7 +433,6 @@ export class PairingService {
       id: `t${this.tokenSerial}`,
       issuedAt: now,
       expiresAt: now + this.config.tokenTtlMs,
-      consumed: false,
       ...(workspaceId !== undefined ? { workspaceId } : {}),
       ...(address !== undefined ? { address } : {}),
     })
@@ -404,21 +441,20 @@ export class PairingService {
   }
 
   /**
-   * Consume a token and bind a device session. One-time: the second
-   * successful call for the same token is impossible because the first
-   * consumes it.
+   * Redeem a token and bind a device session. The token is a bearer
+   * credential for its whole window, not a single-use nonce: it is refused
+   * only when unknown, past its expiry, or after stop(), and every successful
+   * call — including a repeat within the same window — mints a fresh device
+   * session (see the module doc for the mobile cookie-context rationale).
    * @param token - the token secret from the QR link.
    * @param userAgent - optional User-Agent header captured at accept.
    * @returns the new device id, or a refusal code.
    */
   accept(token: string, userAgent?: string): AcceptResult {
     const record = this.tokens.get(token)
-    // A consumed token stays a valid bearer credential until expiry or
-    // replacement (see the module doc): re-accept mints a fresh device.
     if (record === undefined || this.stopped || this.clock.now() > record.expiresAt) {
       return { ok: false, code: 'invalid' }
     }
-    record.consumed = true
     const deviceId = this.clock.randomToken()
     const now = this.clock.now()
     if (this.devices.size >= this.config.maxDevices) {
@@ -448,7 +484,7 @@ export class PairingService {
   stop(): void {
     this.tokens.clear()
     this.devices.clear()
-    this.persist()
+    this.persistRevocation()
     this.stopped = true
     this.notify()
   }
@@ -462,7 +498,7 @@ export class PairingService {
   revoke(deviceId: string): boolean {
     if (this.stopped) return false
     if (!this.devices.delete(deviceId)) return false
-    this.persist()
+    this.persistRevocation()
     this.notify()
     return true
   }
@@ -501,7 +537,8 @@ export class PairingService {
    */
   sweep(): void {
     const evicted = this.evictIdle()
-    if (evicted || this.dirty) this.persist()
+    if (evicted) this.persistRevocation()
+    else if (this.dirty) this.persist()
     this.notify()
   }
 
@@ -559,7 +596,7 @@ export class PairingService {
     const limit = this.config.idleExpireMs ?? DEFAULT_IDLE_EXPIRE_MS
     if (this.clock.now() - session.lastSeenAt > limit) {
       this.devices.delete(deviceId)
-      this.persist()
+      this.persistRevocation()
       this.notify()
       return undefined
     }
@@ -647,6 +684,20 @@ function relayEqual(a: RelayStatus | undefined, b: RelayStatus | undefined): boo
 /** Element-wise string list equality (interface order is meaningful). */
 function sameStrings(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index])
+}
+
+/**
+ * Canonical origin of a public base URL. An unparsable value is returned
+ * verbatim so the caller's malformed-base warning stays the single owner of
+ * that case.
+ * @param url - the configured public base.
+ */
+export function canonicalBaseUrl(url: string): string {
+  try {
+    return new URL(url).origin
+  } catch {
+    return url
+  }
 }
 
 /** Strip control characters and cap the User-Agent stored with a session. */

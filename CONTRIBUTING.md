@@ -166,6 +166,8 @@ composition 挂载了什么、为什么。
 | [packages/AGENTS.md](packages/AGENTS.md) | 包级规则：SDK 约束、bundle 形态、测试纪律 | 改 packages/ 前 |
 | [docs/AGENTS.md](docs/AGENTS.md) | 文档标准：结构分层、写作规则、i18n 配对、预算 | 写文档前 |
 | 各包 `AGENTS.md` | 该包特有规则（如 dsh-ssh 安全模型） | 改对应包前 |
+| [docs/architecture.md](docs/architecture.md) | 架构总览与运行时全景 | 了解整体架构时 |
+| [docs/plugins.md](docs/plugins.md) | 新插件入桶规范与脚手架 | 新增或改造插件时 |
 | [docs/development.md](docs/development.md) | 日常开发与发布流程 | 需要细节时 |
 | [docs/i18n.md](docs/i18n.md) | 双语文档配对契约 | 改 README 时 |
 

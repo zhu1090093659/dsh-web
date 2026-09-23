@@ -85,53 +85,20 @@ jobs:
       - name: Aggregate package consistency
         run: pnpm aggregate:check
 
-      - name: No emoji rule
-        run: |
-          python3 - <<'PY'
-          import pathlib, sys
-          ranges = [
-              (0x1F000, 0x1FAFF),   # extended-B emoji
-              (0x2600, 0x27BF),     # misc symbols + dingbats
-              (0x2B00, 0x2BFF),     # supplemental arrows and misc symbols
-              (0x1F1E6, 0x1F1FF),   # regional indicators
-          ]
-          singles = {0xFE0F, 0x200D}
-          # dist holds committed generated artifacts (market/dist from
-          # scripts/market-build, incl. vendored third-party bundles);
-          # market/shell is the vendored try-on shell, not our source.
-          # The emoji rule governs hand-written sources only.
-          skip_dirs = {'.git', 'node_modules', 'lib', 'dist'}
-          skip_prefixes = ('market/shell/',)
-          skip_names = {'pnpm-lock.yaml'}
-          skip_suffixes = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.woff', '.woff2', '.ttf', '.otf', '.eot', '.pdf', '.zip', '.gz'}
-          bad = []
-          for p in pathlib.Path('.').rglob('*'):
-              if not p.is_file():
-                  continue
-              if any(part in skip_dirs for part in p.parts):
-                  continue
-              if any(str(p).startswith(pre) for pre in skip_prefixes):
-                  continue
-              if p.name in skip_names or p.suffix.lower() in skip_suffixes:
-                  continue
-              try:
-                  text = p.read_text(encoding='utf-8')
-              except Exception:
-                  continue
-              for i, ch in enumerate(text):
-                  o = ord(ch)
-                  if o in singles or any(lo <= o <= hi for lo, hi in ranges):
-                      bad.append(f'{p}:{i + 1} U+{o:04X} {ch}')
-          if bad:
-              print('emoji rule violation:')
-              for line in bad:
-                  print('  ' + line)
-              sys.exit(1)
-          print('emoji rule passed')
-          PY
+      # The rule itself (ranges, out-of-scope trees, strict-UTF-8 handling) is a
+      # reviewed, unit-tested script (pnpm test:scripts), so the identical check
+      # runs locally and in CI.
+      - name: Emoji rule
+        run: pnpm emoji:check
+
+      - name: Test standards
+        run: pnpm test:standards
 
       - name: Documentation consistency
         run: pnpm docs:check
+
+      - name: Bilingual dictionary consistency
+        run: pnpm i18n:check
 
   # The desktop helpers encode win32 semantics (Path/PATH case variants,
   # NTFS junctions, Windows tmpdir layouts) that only a real Windows runner
@@ -158,12 +125,11 @@ jobs:
 
   # Pack the aggregate bundle as an npm tarball, mount it into a REAL DSH
   # instance through the official `dsh plugin --profile web add` channel, and
-  # render the DSH web UI headlessly (Playwright Chromium) to prove the
-  # right-panel transition: dsh-better-sidebar mounts, no crash markers.
+  # render the DSH web UI headlessly (Playwright Chromium) to prove the bundle
+  # boots on the alpha cohort with no bundled right panel and no crash markers.
   # (aionui-panel is no longer supported and carries no assertions.)
-  # Requires the published family packages and dsh-better-sidebar (see
-  # docs/publish-prep.md for the release order); runs keyless and
-  # deterministic, no API key needed.
+  # Requires the published family packages (see docs/publish-prep.md for the
+  # release order); runs keyless and deterministic, no API key needed.
   plugin-mount:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -185,7 +151,7 @@ jobs:
       # Pin the DSH CLI the lane mounts into; the profile's bundle stack
       # (dsh-base / dsh-web-app) resolves from this installation.
       - name: Install dsh CLI (pinned)
-        run: npm install -g @deepseek-ai/dsh@0.1.5-rc.1
+        run: npm install -g @deepseek-ai/dsh@0.1.7-alpha.1
 
       # lib/ bundles are committed for the consistency checks, but the
       # aggregate tarball must be produced from a fresh build.

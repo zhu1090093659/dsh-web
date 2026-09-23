@@ -2,6 +2,8 @@
 
 Status: implemented
 
+部分取代（2026-09-17）：下文的宠物联动决策已移除——见[dsh-usage 移除宠物气泡](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md)。分区、台账、探测与计价决策仍然有效。
+
 ## Problem
 
 DSH 通过可插拔的 pi-ai provider 路由模型调用（kimi-coding、zai-coding-cn、opencode-go、deepseek……），各自持有独立凭据与独立计费模型——按量余额或带滚动窗口的编程套餐。家族里没有任何插件展示这些信息：已移除的 dsh-live-stats 只在客户端估算 token 且不分 provider，第三方社区插件（dsh-provider-usage）只覆盖以 DeepSeek 为中心的余额。用户要求一个第一方插件：(a) 检测所有已配置 provider 的余额/套餐用量，(b) 维护实时 token 用量台账，(c) 以一级设置分区落在创意工坊下方，(d) 把当前提供方的状态以专用气泡推给宠物。
@@ -26,4 +28,4 @@ DSH 通过可插拔的 pi-ai provider 路由模型调用（kimi-coding、zai-cod
 
 - 用量统计自插件首次启用起计，不回填历史会话（README 已注明）。
 - 适配器解析固化了第三方响应形状（其中两个官方未文档化：GLM 的 `unit` 判别、MiniMax 的剩余百分比字段）；provider 改形会让该 provider 降级为错误行，直到适配器更新。
-- 缺少 dsh-pet 时宠物气泡静默不出现——分区功能不受影响。
+- 缺少 dsh-pet 时宠物气泡静默不出现——分区功能不受影响。（2026-09-17 随公告管线一并移除——见[解耦笔记](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md)。）

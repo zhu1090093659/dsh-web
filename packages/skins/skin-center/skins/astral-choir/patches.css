@@ -1,0 +1,450 @@
+/**
+ * 星辉教团 (Astral Choir) — L3 atmosphere layer.
+ *
+ * 纯 CSS，无 hooks。loader 会把每条选择器强制 scope 到
+ * html[data-dsh-skin="astral-choir"] 之下，所以这里故意按无 scope 书写。
+ *
+ * 钩子全部出自 semantic-attrs-v1 契约与 shell 稳定锚（与虫巢同一张表）；
+ * slot 出口 display:contents 的一律下探到 > *。
+ *
+ * 暗色专用皮肤：只写一套暗色值；:root 钉死 color-scheme。
+ * 母题：垂直极光光带、光环圈、尖塔射线、信众眼光点；边缘套件＝悬浮光环 / 极光缎带 / 垂帘光环弧 / 极光带侧缘。
+ * 青只留给信号。
+ */
+
+/* ── 材质变量 ─────────────────────────────────────────────────────────── */
+
+body {
+  --sk-ground: #090714;
+  --sk-pane: url(assets/astral-plate-dark.svg),
+    radial-gradient(120% 90% at 50% -10%, #8672d61f 0%, transparent 55%);
+  --sk-wall: #171228;
+  --sk-wall-edge: #2c25455c;
+  --sk-card-top: #2c25454d;
+  --sk-composer-ring: 0 0 0 3px #8672d633;
+  --sk-bubble-edge: #8672d647;
+  --sk-approval-edge: #c4665a80;
+
+  /* 夜紫四档：b1 主线，b2 接缝，b3/b4 极淡分层线。 */
+  --as-b1: #8672d6d1;
+  --as-b2: #8672d680;
+  --as-b3: #8672d64d;
+  --as-b4: #8672d626;
+  --as-eye: #9fe4f0e0;
+  --as-eye-hi: #e6e1f4bf;
+  --as-ribbon: #9fe4f033;
+  --as-warn: #c4665a8c;
+}
+
+/* ── canvas：朝圣夜地面 ───────────────────────────────────────────────── */
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--sk-ground);
+  background-image: var(--sk-pane);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+body[data-dsh-wallpaper-active]::after,
+body[data-dsh-backdrop-active]::after {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* ── sidebar：极光壁面 ────────────────────────────────────────────────── */
+
+[data-slot='sidebar'] > *,
+[data-dsh-surface='sidebar'],
+[data-pane='sidebar'] {
+  background-color: var(--sk-wall) !important;
+  background-image:
+    linear-gradient(180deg, #8672d614 0%, transparent 52%);
+  box-shadow: inset -1px 0 0 var(--sk-wall-edge);
+}
+
+/* 侧栏右缘：紫缝 + 一道青光带 + 信众眼光点列 */
+[data-pane='sidebar'] {
+  position: relative;
+}
+[data-pane='sidebar']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 11px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg,
+      transparent 0 2px, var(--as-b2) 2px 3px,
+      transparent 3px 6px, var(--as-ribbon) 6px 7px, transparent 7px 100%),
+    radial-gradient(circle at 50% 50%, var(--as-eye) 0 1.4px, var(--as-eye-hi) 1.4px 2px, transparent 2.2px);
+  background-size: 100% 100%, 11px 84px;
+  background-repeat: no-repeat, repeat-y;
+  opacity: 0.9;
+}
+
+/* 详情栏左缘镜像 */
+[data-pane='details'] {
+  position: relative;
+}
+[data-pane='details']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 11px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(270deg,
+      transparent 0 2px, var(--as-b2) 2px 3px,
+      transparent 3px 6px, var(--as-ribbon) 6px 7px, transparent 7px 100%),
+    radial-gradient(circle at 50% 50%, var(--as-eye) 0 1.4px, var(--as-eye-hi) 1.4px 2px, transparent 2.2px);
+  background-size: 100% 100%, 11px 84px;
+  background-repeat: no-repeat, repeat-y;
+  opacity: 0.9;
+}
+
+[data-slot='sidebar.workspaces'] {
+  background-color: transparent !important;
+}
+
+/* ── details pane ─────────────────────────────────────────────────────── */
+
+[data-slot='details'],
+[data-slot='details'] > *,
+[data-dsh-surface='details'],
+[data-pane='details'] {
+  background-color: #090714db !important;
+}
+
+/* ── hero：极光弧 + 尖塔射线 ──────────────────────────────────────────── */
+
+[data-phase='hero'] {
+  position: relative;
+  background-image:
+    repeating-radial-gradient(120% 90% at 50% 118%, transparent 0 60px, #8672d61a 60px 61px),
+    repeating-linear-gradient(90deg, #9fe4f00d 0 1px, transparent 1px 42px),
+    radial-gradient(46% 38% at 50% 40%, #09071480 0%, transparent 70%),
+    radial-gradient(72% 56% at 50% 0%, #8672d629 0%, transparent 72%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+[data-phase='hero']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url(assets/astral-hero-dark.svg);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.95;
+}
+
+/* ── composer：光环壳 ─────────────────────────────────────────────────── */
+
+[data-composer-card] {
+  position: relative;
+  border-radius: 16px;
+  box-shadow: var(--sk-composer-ring), inset 0 1px 0 var(--sk-card-top);
+}
+
+/* 四角悬浮光环：角点居中的细环 + 青色核点，读作浮在角上的小光环 */
+[data-composer-card]::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 50%, transparent 0 4.5px, var(--as-b2) 4.5px 5.5px, transparent 5.5px),
+    radial-gradient(circle at 50% 50%, transparent 0 4.5px, var(--as-b2) 4.5px 5.5px, transparent 5.5px),
+    radial-gradient(circle at 50% 50%, transparent 0 4.5px, var(--as-b2) 4.5px 5.5px, transparent 5.5px),
+    radial-gradient(circle at 50% 50%, transparent 0 4.5px, var(--as-b2) 4.5px 5.5px, transparent 5.5px),
+    radial-gradient(circle at 50% 50%, var(--as-ribbon) 0 1.4px, transparent 1.6px),
+    radial-gradient(circle at 50% 50%, var(--as-ribbon) 0 1.4px, transparent 1.6px),
+    radial-gradient(circle at 50% 50%, var(--as-ribbon) 0 1.4px, transparent 1.6px),
+    radial-gradient(circle at 50% 50%, var(--as-ribbon) 0 1.4px, transparent 1.6px);
+  background-size: 11px 11px, 11px 11px, 11px 11px, 11px 11px, 3px 3px, 3px 3px, 3px 3px, 3px 3px;
+  background-position:
+    -5px -5px, calc(100% + 5px) -5px, -5px calc(100% + 5px), calc(100% + 5px) calc(100% + 5px),
+    -1px -1px, calc(100% + 1px) -1px, -1px calc(100% + 1px), calc(100% + 1px) calc(100% + 1px);
+  background-repeat: no-repeat;
+}
+
+/* 卡上缘极光缎带：中青两紫的横向光带 + 一层外晕 */
+[data-composer-card]::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: -9px;
+  height: 8px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg, transparent 0, #8672d666 15%, #9fe4f099 50%, #8672d666 85%, transparent 100%),
+    linear-gradient(90deg, transparent 0, #8672d626 20%, #9fe4f033 50%, #8672d626 80%, transparent 100%);
+  background-size: 100% 2px, 100% 6px;
+  background-position: 0 50%, 0 50%;
+  background-repeat: no-repeat, no-repeat;
+  opacity: 0.8;
+}
+
+[data-input-scroll] {
+  background-color: transparent;
+}
+
+[data-composer-placeholder] {
+  color: #766e92;
+}
+
+/* ── 会话行 ───────────────────────────────────────────────────────────── */
+
+[data-chat-flow-kind='user'] {
+  box-shadow: inset 3px 0 0 var(--sk-bubble-edge);
+}
+
+[data-chat-flow-kind='assistant-step'] {
+  background-color: transparent;
+}
+
+[data-chat-flow-kind='tool-call'],
+[data-chat-flow-kind='context'] {
+  border-radius: 10px;
+  background-color: #17122880;
+}
+
+/* ── 选区 / 链接 / 滚动条 ─────────────────────────────────────────────── */
+
+::selection {
+  background-color: #8672d652;
+}
+
+a {
+  color: #8672d6;
+}
+
+* {
+  scrollbar-color: #9c93ba66 transparent;
+}
+
+/* ── 审批：警示斜纹（全场唯一允许的红）───────────────────────────────── */
+
+[data-approval-key],
+[data-question-key],
+[data-plan-review-key] {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--sk-approval-edge), var(--dsw-shadow-lv2);
+}
+[data-approval-key]::before,
+[data-question-key]::before,
+[data-plan-review-key]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(-45deg, var(--as-warn) 0 4px, transparent 4px 9px);
+  opacity: 0.7;
+}
+
+/* ── 整机外框：紫双线 + 青光内线 ─────────────────────────────────────── */
+
+[data-dsh-surface='overlay']::after,
+[data-slot='shell.overlay']::after,
+[data-shell-overlay]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  box-shadow:
+    inset 0 0 0 1px var(--as-b3),
+    inset 0 0 0 6px transparent,
+    inset 0 0 0 7px var(--as-b4);
+}
+
+/* ── 会话顶栏：光环横梁 ───────────────────────────────────────────────── */
+
+[data-dsh-surface='session-header'] > *,
+[data-slot='conversation.session.header'] > * {
+  position: relative;
+  background-image:
+    radial-gradient(circle at 50% -34px, transparent 0 46px, var(--as-b3) 46px 47px, transparent 47px),
+    linear-gradient(180deg, var(--as-b3) 0 55%, transparent 100%);
+  background-size: 100% 100%, 100% 100%;
+  background-repeat: no-repeat, no-repeat;
+  box-shadow:
+    inset 0 1px 0 var(--as-b2),
+    inset 0 -1px 0 var(--as-b2);
+}
+
+/* 梁左右两枚信众眼光点 */
+[data-dsh-surface='session-header'] > *::before,
+[data-slot='conversation.session.header'] > *::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 50%, var(--as-eye) 0 1.4px, var(--as-eye-hi) 1.4px 2.2px, transparent 2.4px),
+    radial-gradient(circle at 50% 50%, var(--as-eye) 0 1.4px, var(--as-eye-hi) 1.4px 2.2px, transparent 2.4px);
+  background-size: 4.4px 6px;
+  background-position: 0 50%, 100% 50%;
+  background-repeat: no-repeat;
+}
+
+/* 下缘垂帘光环弧：一排向下的半环 + 顶发丝线 */
+[data-dsh-surface='session-header'] > *::after,
+[data-slot='conversation.session.header'] > *::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 8px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 0, transparent 0 2.5px, var(--as-b3) 2.5px 3.5px, transparent 3.5px),
+    linear-gradient(180deg, var(--as-b2) 0 1px, transparent 1px);
+  background-size: 16px 6px, 100% 100%;
+  background-position: 0 0, 0 0;
+  background-repeat: repeat-x, no-repeat;
+  opacity: 0.75;
+}
+
+/* ── 工作区：圣龛柜格 ─────────────────────────────────────────────────── */
+
+[data-slot='sidebar.workspaces'] {
+  background-image:
+    /* 右缘垂直极光带 */
+    linear-gradient(90deg, transparent 0 1px, #9fe4f040 1px 2px, #8672d659 2px 4px, transparent 4px 100%),
+    /* 右缘信众眼光点列 */
+    radial-gradient(circle at 50% 50%, var(--as-eye) 0 1.2px, transparent 1.5px),
+    /* 龛顶弧光 */
+    radial-gradient(80% 40% at 50% 0%, #8672d624 0%, transparent 70%),
+    linear-gradient(var(--as-b2), var(--as-b2)),
+    linear-gradient(var(--as-b2), var(--as-b2)),
+    linear-gradient(var(--as-b2), var(--as-b2)),
+    linear-gradient(var(--as-b2), var(--as-b2)),
+    linear-gradient(var(--as-b1), var(--as-b1)),
+    linear-gradient(var(--as-b1), var(--as-b1)),
+    linear-gradient(var(--as-b1), var(--as-b1)),
+    linear-gradient(var(--as-b1), var(--as-b1)),
+    linear-gradient(180deg, #00000061 0%, #00000000 100%),
+    linear-gradient(180deg, #150f244d 0%, #150f2414 100%);
+  background-size:
+    7px 100%,
+    7px 84px,
+    100% 100%,
+    100% 1px, 100% 1px, 1px 100%, 1px 100%,
+    24px 1px, 1px 24px, 24px 1px, 1px 24px,
+    100% 12px,
+    100% 100%;
+  background-position:
+    right top,
+    right top,
+    left top,
+    left top, left bottom, left top, right top,
+    3px 3px, 3px 3px, right 3px bottom 3px, right 3px bottom 3px,
+    left top,
+    left top;
+  background-repeat:
+    no-repeat,
+    repeat-y,
+    no-repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat,
+    no-repeat;
+}
+
+/* ── 文件夹：光环封套 + 紫书脊 ────────────────────────────────────────── */
+
+[data-slot='sidebar.workspaces'] [role='treeitem'][aria-expanded],
+[data-slot='sidebar.workspaces'] [role='treeitem']:has([role='group']) {
+  background-image: url(assets/astral-sleeve-dark.svg);
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: inset 3px 0 0 var(--as-b1);
+  font-family: ui-monospace, Consolas, 'Cascadia Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ── 新会话：光环铭牌 ─────────────────────────────────────────────────── */
+
+[data-dsh-part='new-session'] {
+  position: relative;
+  box-shadow:
+    inset 0 0 0 1px var(--as-b2),
+    inset 0 1px 0 var(--as-b4),
+    0 1px 0 #0000002e;
+}
+[data-dsh-part='new-session']::before,
+[data-dsh-part='new-session']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 4.5px;
+  height: 4.5px;
+  margin-top: -2.25px;
+  border-radius: 50%;
+  background: var(--as-eye);
+  box-shadow: inset -1px -1px 0 var(--as-eye-hi);
+  pointer-events: none;
+}
+[data-dsh-part='new-session']::before { left: 6px; }
+[data-dsh-part='new-session']::after { right: 6px; }
+
+/* ── 拖拽把手 ─────────────────────────────────────────────────────────── */
+
+[data-dsh-part='resize-handle'] {
+  background-image:
+    linear-gradient(90deg, transparent 0 48%, var(--as-b3) 48% 52%, transparent 52% 100%);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* ── 侧栏品牌行 ───────────────────────────────────────────────────────── */
+
+[data-slot='sidebar.brand.mark'] {
+  color: var(--as-b1);
+}
+[data-slot='sidebar.brand.name'] {
+  font-family: ui-monospace, Consolas, 'Cascadia Mono', monospace;
+  letter-spacing: 0.08em;
+}
+[data-slot='sidebar.brand.name'] > * > span:first-child,
+[data-slot='sidebar.brand.name'] span:first-child {
+  font-size: 0;
+}
+[data-slot='sidebar.brand.name'] > * > span:first-child::after,
+[data-slot='sidebar.brand.name'] span:first-child::after {
+  content: 'dsh 星辉朝圣';
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* ── 暗色专用：钉死原生配色方案 ───────────────────────────────────────── */
+
+:root {
+  color-scheme: dark !important;
+}

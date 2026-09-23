@@ -8,7 +8,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingsProvider } from '@deepseek-ai/dsh-settings'
+import type { SettingsForms } from '@deepseek-ai/dsh-settings'
 import { makeBridgeRoutes } from '../src/bridge.ts'
 import { WEB_UI_SETTINGS_BRIDGE_PREFIX } from '../src/protocol.ts'
 
@@ -16,8 +16,8 @@ const routes = makeBridgeRoutes({
   settings: {
     describe: () => [],
     writable: true,
-    mutate: async () => ({ ok: true, value: undefined, revision: 1 }),
-  } as unknown as SettingsProvider,
+    mutate: async () => {},
+  } as unknown as SettingsForms,
   readSettingsYaml: () => '',
 })
 const mutate = routes.find(route => route.path === WEB_UI_SETTINGS_BRIDGE_PREFIX + '/mutate')!

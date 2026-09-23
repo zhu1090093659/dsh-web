@@ -2,6 +2,8 @@
 
 Status: implemented
 
+Status note (2026-09-17): the announce/bubble parts of this fix were removed with the pet decoupling (see [the decoupling note](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md)); the adapter-identity and fold-time pricing decisions remain in force.
+
 ## Problem
 
 Two defects and one missing surface in the dsh-usage pet linkage, reported together by the user after enabling `bubbleMode: always`:

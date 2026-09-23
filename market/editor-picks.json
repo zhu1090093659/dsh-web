@@ -1,0 +1,10 @@
+{
+  "items": [
+    { "kind": "skin", "id": "orca-link" },
+    { "kind": "pet", "id": "jyn" },
+    { "kind": "plugin", "id": "dsh-annotation" },
+    { "kind": "plugin", "id": "dsh-chatgpt-subscription" },
+    { "kind": "plugin", "id": "dsh-free-search" },
+    { "kind": "plugin", "id": "dsh-llm-verifier" }
+  ]
+}

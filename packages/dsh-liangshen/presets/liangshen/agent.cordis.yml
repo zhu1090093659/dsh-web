@@ -1,27 +1,52 @@
 # The `liangshen` (梁神模式) agent preset: the builtin Minimal preset's
-# one-line persona — extended with the mode's standing working discipline and
-# the session's workspace directory — as the WHOLE system prompt, with the
-# session's tool surface staged behind the anchor turn and PTC presentation
-# taking over after it. The session's entire first user turn runs the anchored native
-# surface — the short persona block plus the default `anchorTools`
-# schemas (`[bash, str_replace_editor, exit_plan_mode, skill]`), natively presented —
-# and from the second turn this session presents its tools in PTC mode (when
-# successfully activated): the wire carries the single `run_code`
-# transport, and every other tool is reached from inside the program through
-# the generated SDK. The capability facts the Standard system prompt would
-# carry as tool-guidance prose — and, under PTC, the SDK bindings and the
-# collapse rule that `minimal-prompt` filters out of the prompt along with
-# every other section — arrive instead as a durable `tool-catalog` message
-# appended after the user's own message from the FIRST turn on, the way the
-# skill catalog is injected; it names the PTC surface (each tool's argument
-# signature plus a one-line summary) from the start, so the model knows the
-# promoted surface before the schemas arrive. The one wire transition is the
-# deterministic turn boundary: no reasoning-block gating, no output budget cap.
+# one-line persona — extended with the mode's standing working discipline
+# (thinking-disruption fuses, action-oriented steps, YAGNI/PDCA) and the
+# session's workspace directory — as the WHOLE system prompt, with one tool
+# presentation declared for the session's whole lifetime instead of a staged
+# turn boundary.
+#
+# The presentation is the SDK's ToolPresentationMode, picked by the
+# tool-catalog row's `presentation` key (default `'ptc'`): `'native'` keeps
+# the assembled roster on the wire, `'ptc'` collapses the wire to the single
+# `run_code` transport, and `'both'` keeps the full native roster AND the
+# `run_code` transport co-resident — native calls carry ordinary work while
+# `run_code` covers programmatic batch computation and wide fan-out. The
+# declaration lands once per agent scope through agent.ctx.tools.presentAs as
+# early as the scope exists, and degrades to the native surface with a
+# one-time warning when the deployment has no code runtime or the host
+# declines. The retired anchor-turn staging is gone: the legacy `anchorTools`
+# and boolean `ptcPresentation` keys are still accepted (the latter mapping
+# true -> 'ptc' and false -> 'native') but only warn once.
+#
+# Gentle tool paging keeps high-fan-out families out of reach until needed:
+# tools matching `pagedToolPatterns` (default `mcp__*`) stay paged out, the
+# durable tool-catalog message summarizes their namespaces with an activation
+# pointer, and the preset's own `tool_activate` tool (the tool-activate row)
+# loads one namespace back — at most three stay active, LRU eviction pages the
+# oldest back out. The activation state replays from the durable session event
+# stream on every assembly, so resume and compaction rebuild it without process
+# memory. Paging is enforced twice, because the wire is not the only surface a
+# tool can be reached through: the assembled tool list loses the paged families,
+# and the agent scope is restricted (agent.ctx.tools.restrict) so the same names
+# vanish from the generated SDK and from every program dispatch. The second half
+# is what makes paging real under the default `ptc` presentation, where the wire
+# has already collapsed to `run_code` and a wire-only filter would withhold
+# nothing the model can observe.
+#
+# The capability facts the Standard system prompt would carry as tool-guidance
+# prose arrive instead as a durable `tool-catalog` message appended after the
+# user's own message, the way the skill catalog is injected: it names exactly
+# the tools the current request's wire carries (each tool's argument signature
+# plus a one-line summary) plus the paged-out namespace summaries, so the
+# declared surface and the request's own wire never disagree. A second durable
+# message, working-context, projects one minimal line of objective session
+# state (plan mode, active namespaces, in-progress todos) folded from the
+# session event stream, republished only when it changes.
 #
 # The persistent shell replaces the Standard ephemeral shell for the whole
-# session (both register the name `bash`), and the editor inherits the host
-# file sandbox instead of mounting a bare local filesystem — see the shell and
-# filesystem sections below.
+# session — `bash` on POSIX, `pwsh` on win32, exactly one per host — and the
+# editor inherits the host file sandbox instead of mounting a bare local
+# filesystem — see the shell and filesystem sections below.
 #
 # Adapted from the builtin `minimal` and `standard` presets.
 #
@@ -50,84 +75,144 @@
 # appends the session's workspace directory at assembly time, so identity,
 # harness, web-surface, and tool-guidance sections never reach the model.
 # Besides the one-line persona it carries the standing working discipline the
-# mode ships with (thinking loops, design-first reasoning, YAGNI/PDCA, no
-# code comments). Runtime context snapshots stay enabled: they are durable
-# user-role messages, not system-prompt text.
+# mode ships with: thinking-disruption fuses (a hypothesis gets at most two
+# reasoning passes before a tool must settle it), action-oriented thinking
+# (decide the next operation, never pre-rehearse implementations in thought),
+# and YAGNI/PDCA with no redundant comments. Runtime context snapshots stay
+# enabled: they are durable user-role messages, not system-prompt text.
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
     prefix: |-
       You are a helpful software engineer assistant.
 
-      - Avoid falling into repetitive loops during thinking; exit immediately once a loop is detected.
-      - Focus thinking on requirement understanding and solution design (key points, workflow, verification strategy), without pre-rehearsing specific code implementation. Code should be output during the "Do" phase based on the actual state of files, with correctness verified by the "Check" phase.
-      - When writing code, follow the YAGNI programming philosophy and the PDCA behavioral standard.
-      - No need to write comments for the code.
+      - Thinking Disruption: Never reason through the same hypothesis more than twice. When a fact is missing, stop thinking and call a native inspection tool (read, grep, bash/pwsh) to settle it — no speculation without new evidence.
+      - Action-Oriented: Use thinking only to pick the next concrete operation. Do not pre-rehearse implementations in thought; verify every claim against real tool output during execution.
+      - Parallel Inspection: When several independent inspections, searches, or checks are needed, emit all of their tool calls in a single turn rather than across sequential rounds. The harness executes independent read-only calls in parallel.
+      - Shell Discipline: Shell processes are ephemeral; directory changes do not persist across tool calls. Use compound commands (e.g. cd <path> && <cmd>) or pass workdir explicitly for operations in subdirectories.
+      - Development Standard: Follow YAGNI and the PDCA loop. Each step verifies a single assumption. Do not write redundant comments.
+      - Bounded Inspection & Convergence: Do not traverse dependency chains unbounded. Limit pre-action inspection to immediate target files (at most 2-3 inspection turns). Once core context is understood, immediately converge and begin answering or making edits. Verify edge cases during post-edit testing rather than over-reading upfront.
+      - Bounded Output: never dump a large or unbounded command output into the conversation. Filter at the source with grep/head/tail/wc and read the narrow range you actually need; the model's long-range attention is a bounded budget and raw logs evict the session's own constraints from it.
 
-# The two halves of the mode, both preset-local plugins:
+# The mode's preset-local plugins:
 #
 # `minimal-prompt` keeps the system prompt on the persona above, plus the
 # session's workspace directory appended at assembly time (`Your working
-# directory is <cwd>.` — the one orientation fact the persona block carries).
-# It also lifts the AGENTS.md-style instruction files into the system prompt
-# itself: at assembly time it reads the harness's baseline chain
-# ($DSH_HOME/AGENTS.md, then the project root's ancestors down to the cwd) and
-# appends the content as one `workspace-instructions` section after the stable
-# prefix, re-read on every request so file edits propagate, and drops the
-# harness's own agent-instructions injections (they would duplicate the
-# prompt). Set `instructionSource: hint` to restore the one-time non-imperative
-# pointer to the reference files instead (issue #388, upstream
-# dsh-anchored-standard #49: a full-text dump as context measurably flips the
-# anchored trajectory), or `keepPlanPolicy: false` to drop plan mode's policy
-# section as well.
+# directory is <cwd>.` — the one orientation fact the persona block carries),
+# with no platform-conditional text: both platform shells are persistent, so
+# the persona block is byte-identical on every host. The official `tools:sdk`
+# and `tools:ptc-only` sections are kept exactly when the assembly's wire
+# carries the `run_code` transport.
 #
-# `tool-catalog` appends the model-visible tool catalog — each tool's argument
-# signature plus a one-line summary — as a durable user message after the
-# user's own message from the first turn on, the way `dsh-tool-skill` injects
-# the skill catalog. It republishes only when that catalog's content changes or
-# the published copy left the visible surface (compaction, resume), so the
-# catalog is not appended once per step. `descriptionMaxLength` caps each
-# one-line summary; the full description stays in the tool schema.
+# `instructionSource` chooses where the AGENTS.md-style instruction files reach
+# the model. The default, `host`, appends nothing and leaves the pre-step
+# message batch untouched, so the `agent-instructions` row below delivers the
+# baseline and the dynamic subdirectory instructions as the user-role messages
+# the harness itself produces — the prompt stays the bare persona and the
+# preset adds no instruction prose of its own. `system-prompt` instead reads
+# the harness's baseline chain ($DSH_HOME/AGENTS.md, then the project root's
+# ancestors down to the cwd) at assembly time and appends the content as one
+# `workspace-instructions` section after the stable prefix, re-read on every
+# request so file edits propagate, dropping the harness's own injections (they
+# would duplicate the prompt). `hint` restores the one-time non-imperative
+# pointer to the reference files (issue #388, upstream dsh-anchored-standard
+# #49: a full-text dump as context measurably flips the trajectory). Both
+# non-default modes trade the harness's own channel for a preset-owned one; the
+# default keeps the upstream contract. Set `keepPlanPolicy: false` to drop
+# plan mode's policy section as well.
 #
-# `anchorTools` stages the tool SCHEMAS behind the anchor turn: during the
-# session's entire first user turn the assembled wire narrows to these schemas
-# and the session keeps native presentation, while the catalog already names
-# the promoted surface (entries come from the registry, not from the narrowed
-# wire). The shipped default anchor tools are `[bash, str_replace_editor, exit_plan_mode, skill]`.
-# The bash-only configuration experiment (`anchorTools: [bash]`) is preserved
-# and supported via config without requiring extra preset registration or
-# registry changes. Set it to an empty list to disable the narrowing entirely.
+# `tool-catalog` owns the wire presentation and the model-visible catalog.
+# `presentation` selects the SDK ToolPresentationMode for the session's whole
+# lifetime: `'ptc'` (default) collapses the wire to the `run_code` transport
+# and reaches every other tool through the generated SDK, `'native'` keeps the
+# assembled roster alone, and `'both'` keeps the roster and the transport
+# co-resident. The shipped default is a static-context choice, not a measured
+# win: the official scaffold comparison ranks this presentation below the native
+# surface on both code-agent benchmarks, and the bundled benchmark matrix is how
+# that trade would be settled locally. `pagedToolPatterns` (default `['mcp__*']`) names the
+# high-fan-out families that stay paged out of the wire until activated; the
+# active set replays from the session event stream, so resume and compaction
+# rebuild it. `maxResidentTokens` (default 6000, calibrated above the shipped
+# roster so the guard flags real growth rather than the factory configuration)
+# guards the always-on-wire
+# surface: crossing the estimate warns once and points at the patterns, rather
+# than silently dropping a tool the session needs. The catalog itself is a
+# durable user message appended after the
+# user's own message, the way `dsh-tool-skill` injects the skill catalog: it
+# names exactly the tools the current request's wire carries (each tool's
+# argument signature plus a one-line summary capped by
+# `descriptionMaxLength`; the full description stays in the tool schema) and
+# summarizes the paged-out namespaces with their `tool_activate` pointer —
+# including under `ptc`, where those namespaces really are unreachable until
+# activated and the program contract says so. It republishes only when the
+# content changes or the published copy left the visible surface (compaction,
+# resume).
 #
-# `ptcPresentation` declares this session's tools in PTC mode from the second
-# turn on (when successfully activated): the wire collapses to the reserved
-# `run_code` transport and every other tool is reached inside the program through
-# the generated SDK, which the injected catalog names because `minimal-prompt`
-# filters the harness's own `tools:sdk` and `tools:ptc-only` sections out of the
-# prompt. The SDK preserves full input and output key parameter semantics rather
-# than a rigid short-summary contract. The declaration is per session
-# (`agent.ctx.tools.presentAs`), needs a mounted code runtime, and degrades to
-# the native surface with a one-time warning when either is missing or fails.
-# Set `false` to restore the pre-PTC behavior: the full native roster on the
-# wire from the second turn.
+# `tool-activate` registers the `tool_activate` tool the catalog points at:
+# it validates the target against the session's paged, inactive namespaces and
+# activates one onto the wire, evicting the least recently used namespace past
+# the cap of three. `working-context` appends the one-line recency projection
+# (`[Working Context: ...]`) folded from the session events, republished only
+# when it changes.
 - id: minimal-prompt
   name: ./minimal-prompt.mjs
   config:
     keepPlanPolicy: true
-    instructionSource: system-prompt
+    instructionSource: host
     instructionMaxBytes: 65536
 
 - id: tool-catalog
   name: ./tool-catalog.mjs
   config:
     descriptionMaxLength: 200
-    anchorTools: [bash, str_replace_editor, exit_plan_mode, skill]
-    ptcPresentation: true
+    presentation: 'both'
+    pagedToolPatterns: ['mcp__*']
+    maxResidentTokens: 8000
+
+- id: working-context
+  name: ./working-context.mjs
+
+# The runtime degeneration circuit breaker: folds a stall (consecutive zero-
+# output long-reasoning steps) or echo (identical-argument tool failures)
+# signal from the durable session event stream and fires once per episode —
+# injecting a breaker message at pre-step and stepping the reasoning effort
+# one notch down for the next few requests. With no signal it never rewrites
+# a request, so the route's explicit effort and the prefix cache stay
+# untouched. This is the outside force the persona's reflection fuse cannot
+# be: see DSH discussion #5976 and the Agent Note that constrains dynamic
+# reasoning effort to this triggered-only form.
+- id: guard
+  name: ./guard.mjs
+  config:
+    enabled: true
+    sensitivity: 'balanced'
+    stallReasoningChars: 8000
+    globalStallCap: 4
+    echoFailures: 3
+
+# The paging activation handle the catalog points at: with `pagedToolPatterns`
+# non-empty this row is what lets `tool_activate({ namespace })` bring one
+# paged namespace back onto the wire (and the generated SDK) for the session.
+- id: tool-activate
+  name: ./tool-activate.mjs
+
+# The key-fact register: the model pins a hard constraint / confirmed decision /
+# failed path with `fact_register`, the fold rebuilds the register from the
+# durable event stream, and working-context renders it as one field of the
+# [Working Context: ...] line — the surface that lands inside the guaranteed
+# local attention window every step. The counter to V4.1's long-session
+# forgetting; the fold replays identically after resume and compaction.
+- id: fact-ledger
+  name: ./fact-ledger.mjs
 
 # The harness's workspace-instruction loader. Under the default
+# `instructionSource: host` this row owns the channel: its baseline and dynamic
+# user-role messages reach the model untouched. Under
 # `instructionSource: system-prompt` the content reaches the model through the
-# system prompt instead, and this row's injections are dropped by
-# `minimal-prompt`; the row stays mounted so `instructionSource: hint` keeps
-# its pointer behavior working, and its `maxBytes` remains that mode's budget.
+# system prompt instead and these injections are condensed or dropped by
+# `minimal-prompt`; under `hint` the first is replaced by a pointer and the
+# rest dropped. The row stays mounted in every mode: it is the default's whole
+# delivery path, and its `maxBytes` remains the budget the other two consult.
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'
   config:
@@ -135,50 +220,14 @@
 
 # ── shell ───────────────────────────────────────────────────────────────────
 
-# The PTY registry is an agent-owned service, so it lives in an entry-local
-# realm. The backend still consumes the host sandbox policy and subprocess
-# implementation, while the tool registers into this agent's scoped catalog.
-# This persistent `bash` replaces the Standard ephemeral shell for the WHOLE
-# session (both tools register the name `bash`), so shell state survives across
-# calls.
-- id: persistent-shell
-  name: cordis:group
-  group: true
+# Standard Stdio shell tools: fresh subprocess per command with active-voice description
+# cards, structured exit codes, and background job support. Exactly one mounts per host.
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
   disabled: !!js process.platform === 'win32'
-  isolate:
-    terminals: true
-  config:
-    - id: pty
-      name: '@deepseek-ai/dsh-terminal'
 
-    - id: terminal-bash
-      name: '@deepseek-ai/dsh-terminal-bash'
-      config:
-        timeoutMs: 300000
-
-    - id: persistent-bash
-      name: '@deepseek-ai/dsh-tool-bash-persistent'
-      config:
-        timeoutMs: 300000
-        description: |-
-          Run commands in a bash shell
-          * When invoking this tool, the contents of the "command" parameter does NOT need to be XML-escaped.
-          * You don't have access to the internet via this tool.
-          * You do have access to a mirror of common linux and python packages via apt and pip.
-          * State is persistent across command calls and discussions with the user.
-          * To inspect a particular line range of a file, e.g. lines 10-25, try 'sed -n 10,25p /path/to/the/file'.
-          * Please avoid commands that may produce a very large amount of output.
-          * Please run long lived commands in the background, e.g. 'sleep 10 &' or start a server in the background.
-
-# Windows-only `bash` tool (custom-bash.mjs): the PTY backend above is
-# linux/darwin-only, so win32 disables the persistent-shell group and
-# registers this `bash` through the ordinary cross-platform subprocess seam
-# (Git Bash). Both platforms end up with exactly one tool named `bash`.
-# Non-zero exit is reported not thrown; state does NOT persist across calls on
-# this path; no OS sandbox confinement on Windows. `bashPath` is optional
-# (defaults to Git Bash inference); set it explicitly when git is not on PATH.
-- id: custom-bash
-  name: ./custom-bash.mjs
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
   disabled: !!js process.platform !== 'win32'
 
 # ── filesystem ──────────────────────────────────────────────────────────────
@@ -295,8 +344,8 @@
     - id: tool-result-pruner
       name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
       config:
-        thresholdChars: 8192
-        headChars: 4096
+        thresholdChars: 4096
+        headChars: 2048
         tailChars: 1024
 
 # ── delegation and workflows ────────────────────────────────────────────────
@@ -363,8 +412,8 @@
         enableRunInBackground: false
         maxDepth: provider-managed
 
-    - id: workflow-worker-thread
-      name: '@deepseek-ai/dsh-workflow-worker-thread'
+    - id: workflow-ptc
+      name: '@deepseek-ai/dsh-workflow-ptc'
       config:
         provider: spawn
 

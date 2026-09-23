@@ -36,6 +36,7 @@ const stubWallpaper = (overrides: Partial<WallpaperHandle> = {}): WallpaperHandl
   removeDir: () => {},
   pickDir: async () => null,
   activeId: () => null,
+  writeError: () => null,
   trying: () => false,
   subscribe: () => () => {},
   setEnabled: () => {},
@@ -315,5 +316,17 @@ describe('WallpaperPanel macOS system wallpapers', () => {
       root.render(<WallpaperPanel t={t as never} wallpaper={stubWallpaper()} />)
     })
     expect(host.textContent).toContain(zh.wallpaperLibrarySystem)
+  })
+
+  it('user sees a failed-save notice after a settings write the Host refused', async () => {
+    // Given a wallpaper card whose last settings write did not land
+    await render([item('workshop/123', {})], stubWallpaper({
+      writeError: () => 'the Host did not accept the wallpaper setting',
+    }))
+
+    // When the panel renders
+    // Then the notice names the failure next to the controls
+    expect(host.textContent).toContain(zh.wallpaperSaveFailed)
+    expect(host.textContent).toContain('the Host did not accept the wallpaper setting')
   })
 })

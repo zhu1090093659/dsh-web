@@ -26,6 +26,7 @@ export const FAMILY_NAMESPACES = [
   'community-plugins',
   'dsh-web-ui-market',
   'dsh-market',
+  'ui-market',
   'usage',
   'doctor',
   'liangshen',
@@ -62,6 +63,9 @@ const NAMESPACE_ALIASES: Readonly<Record<string, string | null>> = {
   dshmarket: 'dsh-market',
   'dsh-client-ui-market': 'dsh-web-ui-market',
   'dsh-web-ui-market': 'dsh-web-ui-market',
+  'ui-market': 'dsh-web-ui-market',
+  'web-ui-market': 'dsh-web-ui-market',
+  'dsh-workshop': 'dsh-web-ui-market',
   market: 'dsh-market',
   usage: 'usage',
   'dsh-usage': 'usage',
@@ -82,8 +86,31 @@ const NAMESPACE_ALIASES: Readonly<Record<string, string | null>> = {
  * Resolve one user-configured allowlist entry to all matching settings namespaces.
  * Handles both the official dshmarket namespace ('dsh-market') and the family
  * aggregate namespace ('dsh-web-ui-market') interchangeably.
+ *
+ * An entry may also be spelled as a full npm name (the scoped package a family
+ * plugin installs as, or the aggregate's `@linxin666/dsh-web-all/<x>` subplugin
+ * row). Such an identity resolves through its bare package segment, because
+ * the profile row is the only place a package name still appears — the
+ * settings surface itself carries entry ids alone.
  */
 export function resolveNamespaceEntries(entry: string): string[] {
+  const direct = resolveDirectNamespaceEntries(entry)
+  if (direct.length > 0) return direct
+  const bare = bareIdentity(entry)
+  return bare === undefined ? [] : resolveDirectNamespaceEntries(bare)
+}
+
+/** The last path segment of an scoped npm name (`@scope/pkg` and `@scope/bundle/sub`). */
+function bareIdentity(entry: string): string | undefined {
+  const key = entry.trim()
+  if (!key.startsWith('@')) return undefined
+  const slash = key.lastIndexOf('/')
+  if (slash < 0 || slash === key.length - 1) return undefined
+  return key.slice(slash + 1)
+}
+
+/** Resolve one allowlist entry spelled exactly as the alias table or the family list spells it. */
+function resolveDirectNamespaceEntries(entry: string): string[] {
   const key = entry.trim()
   if (key === '') return []
   if (key === 'dsh-market' || key === 'market' || key === 'dsh-client-ui-market' || key === 'dsh-web-ui-market' || key === 'dshmarket') {

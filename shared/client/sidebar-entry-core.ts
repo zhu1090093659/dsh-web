@@ -83,8 +83,8 @@ function newSessionButton(root: HTMLElement): HTMLButtonElement | undefined {
   return undefined
 }
 
-/** Build the entry row (a detached button; insert once the shell is up). */
-function createEntry(options: SidebarEntryOptions): { entry: HTMLButtonElement; applyLabel: () => void } {
+/** Build the entry row (detached; inserted once the shell is up). */
+function createEntry(options: SidebarEntryOptions): { entry: HTMLElement; applyLabel: () => void } {
   const entry = document.createElement('button')
   entry.type = 'button'
   entry.setAttribute(options.rowAttribute, '')
@@ -110,7 +110,7 @@ function createEntry(options: SidebarEntryOptions): { entry: HTMLButtonElement; 
 }
 
 /** Re-insert the entry after the New Session row (before the browser region). */
-function placeEntry(root: HTMLElement, entry: HTMLButtonElement, options: SidebarEntryOptions): boolean {
+function placeEntry(root: HTMLElement, entry: HTMLElement, options: SidebarEntryOptions): boolean {
   const button = newSessionButton(root)
   if (button === undefined) return false
   if (entry.parentElement !== root) {

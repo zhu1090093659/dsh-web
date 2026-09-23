@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 40" fill="none" aria-hidden="true">
+  <!-- 虫巢文件夹封套：双线框 + 左侧六边镂花 + 角标 -->
+  <rect x="1.5" y="1.5" width="257" height="37" stroke="#8fe3a6" opacity="0.28"/>
+  <rect x="4.5" y="4.5" width="251" height="31" stroke="#8fe3a6" opacity="0.12"/>
+  <g stroke="#8fe3a6" stroke-width="1" opacity="0.30">
+    <path d="M14 20 l6 -4 6 4 v8 l-6 4 -6 -4 z"/>
+    <path d="M26 12 l6 -4 6 4 v8 l-6 4 -6 -4 z" opacity="0.6"/>
+  </g>
+  <circle cx="20" cy="24" r="1.6" fill="#8fe3a6" opacity="0.35"/>
+  <g stroke="#8fe3a6" opacity="0.35">
+    <path d="M244 8 h8 M248 8 v8"/>
+    <path d="M244 32 h8 M248 24 v8"/>
+  </g>
+</svg>

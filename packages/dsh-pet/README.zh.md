@@ -166,7 +166,7 @@ frames2d 宠物不用图集，直接交付目录式帧序列：`thumb/<track>/<f
 
 frames2d 块还可声明 **skins**（皮肤）：可选的 `{ id, label, idleTrack }` 数组。选中某皮肤后，宠物"回待机"的目标（idle 相位、未映射相位、以及一切回 idle 的 fallback）都切到该皮肤的 `idleTrack`——休息外观随皮肤切换，而玩法轨道（shy/work/sleep…）仍挂在默认资产上。每个皮肤还可声明 `clickActions`——仅对该皮肤生效的概率掷骰点击反应（`{ track, probability, phrases? }`）：皮肤激活时点击按声明顺序依次掷骰，命中则播一次命中轨道，未命中回落普通点击加成（绝不落入默认触摸分区）。
 
-frames2d 宠物可声明 `gameplay` 块——从 miku 桌宠泛化而来的可选玩法层：属性条（`stats`，按分钟衰减，另有打工中与空闲变体）、统一的小鱼干货币（玩法收入与商店支出都走宠物面板那条小鱼干库存，上限 20 条：`work` 成功、`passiveIncome` 与彩票奖品发放小鱼干，商品也以小鱼干标价扣款，无独立钱包页）、加权 `idleDirector`（每 `intervalMs` 掷骰演出小动作，连续落空 `maxMiss` 次必演）、`hitBox` 内的 `touch` 触摸分区（分支掷骰：效果 + 轨道保持 + 台词气泡）、`work` 打工循环（宿主裁决 tick，成功/失败结果轨道）、`sleep` 睡觉循环（惰性恢复）、`passiveIncome` 被动收入，以及 `shop` 商店（商品可带效果或分档抽奖）。所有掷骰与记账由宿主权威裁决（`POST /api/pet/gameplay/*`），状态按宠物持久化在 `pet.json`，沿用小鱼干经济的惰性结算纪律。浏览器半侧为声明了该块的宠物自动渲染玩法菜单卡（属性条、打工/睡觉开关、皮肤选择、商店网格）。精灵显示尺寸范围为 32–1024 px。
+frames2d 宠物可声明 `gameplay` 块——从 miku 桌宠泛化而来的可选玩法层：属性条（`stats`，按分钟衰减，另有打工中与空闲变体）、统一的小鱼干货币（玩法收入与商店支出都走宠物面板那条小鱼干库存，上限 20 条：`work` 成功、`passiveIncome` 与彩票奖品发放小鱼干，商品也以小鱼干标价扣款，无独立钱包页）、加权 `idleDirector`（每 `intervalMs` 掷骰演出小动作，连续落空 `maxMiss` 次必演）、`hitBox` 内的 `touch` 触摸分区（分支掷骰：效果 + 轨道保持 + 台词气泡）、`work` 打工循环（宿主裁决 tick，成功/失败结果轨道）、`sleep` 睡觉循环（惰性恢复）、`modes` 命名模式（work/sleep 之外的模式各有自己的菜单按钮、`label` / `activeLabel` 与可选的周期属性恢复）、`roam` 随机漫游（慢周期掷骰后按四个方向之一走随机距离，位移由浏览器半侧负责，落点与拖拽同一条持久化路径）、`passiveIncome` 被动收入，以及 `shop` 商店（商品可带效果或分档抽奖）。所有掷骰与记账由宿主权威裁决（`POST /api/pet/gameplay/*`），状态按宠物持久化在 `pet.json`，沿用小鱼干经济的惰性结算纪律。浏览器半侧为声明了该块的宠物自动渲染玩法菜单卡（属性条、每个已声明模式一个按钮、皮肤选择、商店网格）。精灵显示尺寸范围为 32–1024 px。
 
 **Miku 宠物**（stushansusu 涂山苏苏以 MIT 贡献；初音未来角色权利归 Crypton Future Media，受 Piapro 角色许可约束——见 THIRD_PARTY_NOTICES.md）是 frames2d 玩法的参考实现。它只经**创意工坊**分发（不打进 npm 包）：从工坊宠物列表安装后落在 `$DSH_HOME/pets/miku/`。
 
@@ -198,7 +198,7 @@ frames2d 宠物可声明 `gameplay` 块——从 miku 桌宠泛化而来的可�
 - 结构 fail-closed（未知字段、越界尺寸、非 PNG/WebP 入口直接拒载并进诊断），帧段内容 warn-and-drop。机器可读 schema 见 contracts/status-decoration-v1.schema.json，权威校验器为 src/decoration.ts。
 - 来源：内置 assets/decorations/ + 用户目录 $DSH_HOME/pets/decorations/<id>/（同 id 覆盖内置）。资产经 /api/pet/decoration/<id>/<file> 路由，containment 与白名单与宠物资产同构。
 - 开关：设置 → 宠物 → 状态装饰（默认开）。内置鲸鱼素材派生自 DeepSeek wordmark（MIT），完整声明见 THIRD_PARTY_NOTICES.md。
-## 公告气泡（pet.announce，dsh-usage 联动）
+## 公告气泡（pet.announce）
 
 宿主侧的兄弟插件可通过 `pet` cordis 服务推送一条结构化公告（`ctx.pet.announce({ source, kind, title, ... })`）；客户端半区将其渲染为一只专用、特别设计的气泡，挂在会话气泡栈顶部——独立玻璃样式与色调描边（`ok`/`warn`/`low`）、余额与今日消费类金额胶囊、套餐百分比窗口带微型计量条、展示重置时间。载荷经有界校验（src/announce.ts）：未知字段丢弃、超长文本截断、TTL 收敛到 1 秒 - 2 小时（默认 10 秒；周期型发布方按自身轮询节奏声明 TTL，常驻气泡因此跨轮询连续，上限仍保证失活来源的气泡至多一个刷新周期内消失），畸形公告静默丢弃。公告仅存内存：最新一条生效，过期即不再渲染，不触碰 pet.json 与台账。刻意不提供 HTTP 面——按跨插件协作规则，API 就是进程内服务。
 
@@ -207,12 +207,13 @@ frames2d 宠物可声明 `gameplay` 块——从 miku 桌宠泛化而来的可�
 | 注册表 id | 选择器名称 | 来源 |
 |---|---|---|
 | `blue-throated-bee-eater` | 蓝喉蜂虎 | 贡献者以 Apache-2.0 贡献的伙伴插画（12 张同角色 AI 立绘素材，配色取蓝喉蜂虎皮肤同源；由 docs/archive/blue-throated-bee-eater-pet/gen-pet.py 组装，各轨道独立姿态：栖枝/飞行/正面悬停/挥翅/降落/垂头/歪头/昂首；饲料以「小蜜蜂」命名） |
+| `doro` | doro | 由 stushansusu 以 MIT 许可证贡献的 frames2d 玩法宠物：11 条轨道 / 802 帧 42ms webp 序列——呼吸待机、打工三件套、睡觉、洗澡模式（心情 +3/秒）、随机漫游用的四向爬行、三个待机小动作（cola / orange / tongue）与仅拖拽期间播放的挣扎循环。Doro 是《胜利女神：妮姬》桃乐丝的非官方同人二创/梗衍生形象，角色及相关权利归 SHIFT UP 所有——仅限个人非商业使用，与官方无隶属或背书关系（见 THIRD_PARTY_NOTICES.md）。 |
 | `jyn` | 女仆鲸鱼娘 | frames2d 玩法宠物（stushansusu 以 MIT 贡献）：带打工/睡觉/触摸玩法与三款可选皮肤（暗夜鎏金 / 蓝海霓裳 / 冰晶公主）的女仆鲸鱼同桌宠，每款皮肤各带一个概率掷骰点击动作；暗夜鎏金另将专属休息循环换入睡觉玩法 | (docs(dsh-pet): list three jyn skins in the registry rows and re-record pairing)
 | `ouo-neko` | OUO Neko | `Pessimist0906` 以 MIT 许可证贡献的粉色樱花猫耳伙伴 |
 | `whale-girl` | 鲸鱼娘（原版） | 仓库原有的鲸鱼娘图集 |
 | `whale-girl-refined` | 鲸鱼娘（精致版） | 以鲸鱼娘设计方向为基础，经 AI 辅助二次创作、修复和细节精修的衍生版本 |
 
-Miku 宠物有意不随包内置：它是 frames2d 玩法宠物，经创意工坊按需安装（见上文 frames2d 一节）。**星夜人偶（Starry Doll）**（Theater-ahyeon 以 CC-BY-NC-SA-4.0 贡献）同样仅经创意工坊分发：sprite2d 哥特星夜人偶，从单张插画抠像后以剪纸变换生成动画（呼吸、蹦跳、挥手、沮丧、review 态放大镜道具），从创意工坊宠物列表安装后落在 `$DSH_HOME/pets/starry-doll/`。
+Miku 宠物有意不随包内置：它是 frames2d 玩法宠物，经创意工坊按需安装（见上文 frames2d 一节）。**星夜人偶（Starry Doll）**（Theater-ahyeon 以 CC-BY-NC-SA-4.0 贡献）同样仅经创意工坊分发：sprite2d 哥特星夜人偶，从单张插画抠像后以剪纸变换生成动画（呼吸、蹦跳、挥手、沮丧、review 态放大镜道具），从创意工坊宠物列表安装后落在 `$DSH_HOME/pets/starry-doll/`。**Doro 宠物**（内置）同样是《胜利女神：妮姬》桃乐丝的非官方同人衍生形象；角色及相关权利归 SHIFT UP 所有，素材仅限个人非商业使用——见 THIRD_PARTY_NOTICES.md。
 
 精致版参考了 DreamSkin 的「DeepSeek-鲸鱼娘」主题。历史来源记录标注原主题作者为 `powerdog996`，并标注主题为 MIT：[DreamSkin](https://dreamskin.cc)、[仓库来源记录](https://github.com/zhu1090093659/dsh-web/commit/87edd7ff4800dffd40bc93fb76e4ae450390facd)。此处用于记录素材来源与衍生关系；精致版不表述为原作者的官方作品，也不重新定义原始美术作品的授权范围。
 
@@ -291,7 +292,8 @@ dsh-pet/
 
 - **状态来源**：宿主把官方 `turn/start`、`step/start`、`assistant/message`、`tool/call`、`tool/result`、`turn/end` 事件与实时 `agent/assistant-stream` 增量投影为 waiting/thinking/tool/review/done/failed 状态。可选兼容 `activity/status` 事件仍作为输入。
 - **注册表**：宿主把每份 manifest 归一化为完整渲染定义（几何、每行帧数、每轨时长），经 `/api/pet/pets` 下发；浏览器半区用该定义渲染任意条目，不携带任何宠物专属代码。
-- **选择与命名**：`petId` 存于设置命名空间；每只宠物的名字存于 `pet.json` 的 `names`，通过悬浮面板对当前宠物改名编辑。旧版安装的平铺 `name` 自动迁移到鲸鱼娘名下。
+- **选择与命名**：`petId` 存于插件自身的配置——宿主据此 profile 条目生成 Pet 设置页；每只宠物的名字存于 `pet.json` 的 `names`，通过悬浮面板对当前宠物改名编辑。旧版安装的平铺 `name` 自动迁移到鲸鱼娘名下。
+- **显示**：`visible`、`size`、`right`、`bottom` 与 `bubbleScale` 存在 `pet.json`，在设置卡片里编辑。气泡字号跟随精灵自身的尺寸（默认 160px 宠物对应 12px），`bubbleScale` 在此结果上再乘一个倍率，并限制在 10–24px——缩小的宠物不会顶着读不清的字（issue #1549）。
 - **多会话语义**：API 与浏览器挂载都是宿主全局的，不暴露前台会话身份。并行会话各自保留投影状态：最近一次有意义事件驱动精灵动画，同时每个活动的顶层会话在独立气泡里报告自己的阶段（state 视图的 sessions 列表，最多保留最近 12 个）。子代理会话仍参与动画、计奖与单一显示气泡，但不占独立气泡位——N 个对话不会变成"N + 子代理数"的气泡堆。每个会话完成的轮次仍独立计奖；销毁会话移除它的气泡，销毁当前显示会话则回退到最近仍在活动的会话。
 - **挂载点**：`document.body`（全局 React 根，始终显示：无会话 / 新会话 / 会话中都可见——旧挂载点 `conversation.composer.dock` 只在活动会话里渲染，新会话里宠物消失）；组件内部用 `createPortal` 渲染全局浮层。根容器随插件 fiber 生命周期走：fiber 销毁时卸载 React 根、移除容器并停止轮询与设置订阅；热重载或重复注入的新 bundle 接管页面级单挂载槽，页面始终只有一个 `[data-dsh-pet-root]`（issue #785）。
 - **渲染**：CSS 精灵（background-position）逐帧动画；帧时长和可选场景序列来自下发定义。悬浮面板锚定在宠物下方，间隙由指针桥接覆盖；当视口下方空间不足时，面板翻转到宠物上方并抬升到状态气泡栈之上，两者互不遮挡。

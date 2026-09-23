@@ -2,6 +2,8 @@
 
 Status: implemented
 
+Status note (2026-09-17): dsh-usage, the bundled consumer this contract was built for, no longer announces (see [the decoupling note](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md)). The contract itself is unchanged and stays available to sibling plugins.
+
 ## Problem
 
 The pet's bubble surfaces are all internally driven: interaction feedback, per-session activity projection, and whispers. A sibling plugin had no way to put a fact on the pet — the only caller-supplied-text hook was the legacy `activity/status` session event, which competes with real session activity, follows the activity vocabulary, and disappears when the machine settles. The usage statistics plugin needed exactly that: a dedicated, specially designed bubble showing the current provider's balance or plan quota (see [the usage statistics plugin](2026-08-29-usage-statistics-plugin.md)).

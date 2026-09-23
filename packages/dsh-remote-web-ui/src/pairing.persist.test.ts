@@ -201,4 +201,40 @@ describe('PairingService device persistence', () => {
     const deviceId = result.ok ? result.deviceId : ''
     expect(saved[deviceId]?.userAgent).toBe('Mozilla/5.0 TestPhone')
   })
+
+  it('operator is not left with a revocation that a restart silently undoes', () => {
+    // Given a device store that cannot be written (its parent path is a file)
+    // while a stale, readable store sits beside it.
+    const blocker = join(dir, 'blocker')
+    writeFileSync(blocker, 'not a directory')
+    const file = join(blocker, 'devices.json')
+    const removed: string[] = []
+    const service = new PairingService(
+      { ...BASE_CONFIG, devicesFile: file },
+      makeClock(),
+      { removeFile: (path) => { removed.push(path) } },
+    )
+    // When the operator stops remote access and the write cannot be made durable.
+    service.stop()
+    // Then the stale store is handed to the removal step, so a restart cannot
+    // restore the revoked sessions from disk.
+    expect(removed).toEqual([file])
+  })
+
+  it('operator keeps the device store when a revocation persist succeeds', () => {
+    // Given a writable device store with one paired device.
+    const file = join(dir, 'devices.json')
+    const removed: string[] = []
+    const service = new PairingService(
+      { ...BASE_CONFIG, devicesFile: file },
+      makeClock(),
+      { removeFile: (path) => { removed.push(path) } },
+    )
+    const deviceId = pairDevice(service)
+    // When the device is revoked and the write lands.
+    expect(service.revoke(deviceId)).toBe(true)
+    // Then the store stays (with the row gone) and nothing is removed.
+    expect(removed).toEqual([])
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({})
+  })
 })

@@ -277,7 +277,7 @@ body[data-orca-cordis-panel-open] [data-cordis-panel] {
 
   body[data-orca-settings-open] [data-slot="sidebar.settings"] > [role="presentation"] > [role="dialog"] > nav {
     border-right: 1px solid var(--orca-line);
-    justify-content: flex-end;
+    justify-content: flex-start;
     padding-bottom: 24px;
   }
 
@@ -1766,8 +1766,13 @@ body[data-ds-dark-theme] [data-composer-card]:not([class*="cardWorkspaceTrigger"
 }
 
 [data-phase="active"] [data-composer-seat] {
-  will-change: opacity, transform;
+  position: sticky;
+  bottom: 0;
   transition: opacity .3s, transform .34s cubic-bezier(.22, 1, .36, 1);
+}
+
+[data-workflow-run] {
+  contain: layout;
 }
 
 body[data-orca-composer-handle-dragging] {

@@ -60,6 +60,26 @@ Crypton Future Media where the license conditions are not met. Only the
 contributor's original artwork is claimed here — no official illustrations,
 logos, or licensed runtimes from Crypton Future Media are included.
 
+## Doro pet (assets/doro/)
+
+The Doro pet assets shipped with this repository (`assets/doro/`: pet.json, the
+`thumb/` frame sequences and the preview assets) are contributed by stushansusu
+under the MIT License below; the manifest declares `author: 11726` and
+`license: MIT` (fail-closed contract). Provenance:
+[PR #1630](https://github.com/zhu1090093659/dsh-web/pull/1630).
+
+Doro (朵拉) is an unofficial, fan-made meme derivative of Dorothy (桃乐丝), a
+character from the game Goddess of Victory: Nikke (《胜利女神：妮姬》, also
+promoted as 《胜利女神：新的希望》). The character design, name, likeness and
+all related rights belong to the original author(s) and to the
+developer/publisher SHIFT UP Corp. This is fan artwork: it is not official and
+is not affiliated with or endorsed by SHIFT UP, and it claims no rights to the
+character. The assets are for personal, non-commercial use only — do not sell
+them or use them commercially, and do not present them as official. Only the
+contributor's original frame artwork is covered by the MIT License below; no
+official illustrations, logos, voice recordings or other licensed material from
+SHIFT UP is included.
+
 ## MIT License (Copyright (c) 2026 stushansusu)
 
 MIT License

@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import viewer from '../market/telemetry-view/src/index.js'
-import { renderDashboard, PAGE_CSP } from '../market/telemetry-view/src/page.js'
+import { CLIENT_JS, renderDashboard, PAGE_CSP } from '../market/telemetry-view/src/page.js'
 
 function context() { return { waitUntil() {} } }
 
@@ -50,6 +50,11 @@ test('dashboard document inlines CSP-safe boot data and the paginated shell', ()
   assert.ok(html.includes('<script src="/app.js"'), 'external client script referenced')
   assert.ok(html.includes('id="paths-pager"'))
   assert.ok(html.includes('id="items-pager"'))
+  // Rollup freshness and degradation must be visible in the shell: a frozen
+  // rollup once read as "lost days" because only the fetch time was shown.
+  assert.ok(html.includes('id="generated"'), 'rollup generation stamp element present')
+  assert.ok(html.includes('id="stale-warn"'), 'stale/degraded warning element present')
+  assert.ok(CLIENT_JS.includes('renderFreshness'), 'client renders the rollup freshness state')
   // The active-instance trend renders above the site traffic trend.
   assert.ok(html.includes('id="active-chart"'), 'active-instance trend panel present')
   assert.ok(html.indexOf('id="active-chart"') < html.indexOf('id="panel-chart"'), 'active-instance trend sits above the site trend')

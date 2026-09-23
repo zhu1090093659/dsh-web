@@ -52,17 +52,21 @@ jobs:
             };
 
             const issueType = readSection('Issue 类型').trim().toLowerCase();
-            const hasBugLabel = (issue.labels || []).some((label) => String(label.name || '').toLowerCase() === 'bug');
-            const isBug = issueType === 'bug 报告' || hasBugLabel;
+            // Bug-ness is decided from the body alone. Labels are NOT an input:
+            // the bug form's label is attached atomically by GitHub for form
+            // submissions, but a report opened through the API or CLI gets its
+            // labels from auto-label-issues.yml, which runs on its own
+            // `issues: opened` event. This job also runs on `opened`, so the
+            // two race and the label may legitimately be missing here — that is
+            // why requiring it closed every non-collaborator bug report
+            // (issues #1646 and #1648) before any human saw it.
+            const isBug = issueType.includes('bug 报告') || issueType.includes('bug');
             const requiredSections = isBug
               ? [...baseRequiredSections, 'Bug 截图', '冒烟测试', '引用代码']
               : baseRequiredSections;
 
             const missingSections = requiredSections.filter((label) => isBlank(readSection(label)));
             const invalidSections = [];
-            if (isBug && !hasBugLabel) {
-              invalidSections.push('Bug 报告必须附带 bug 标签：请通过「Bug 报告」表单提交，该表单会自动附加 bug 标签。');
-            }
             const bugScreenshot = readSection('Bug 截图');
             if (isBug && !isBlank(bugScreenshot) && !hasScreenshotEvidence(bugScreenshot)) {
               invalidSections.push('Bug 截图必须包含上传的图片、Markdown 图片或图片链接。');

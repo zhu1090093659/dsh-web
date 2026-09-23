@@ -3,35 +3,59 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-workspace'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
-import z from 'schemastery'
+import z from '@deepseek-ai/schemastery'
 import { mountOnce } from './mount-once.ts'
 import { ArchiveService } from './host/janitor.ts'
 import { makeArchiveRoutes } from './host/routes.ts'
-import type { SessionArchiveConfig } from './core/config.ts'
+import { readArchiveConfig, resolveAutoConfig, type SessionArchiveConfigFields } from './core/config.ts'
+
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Volatile config values were committed into the running fiber without a
+     * remount; dispatched to the owning fiber only. The settings surface edits
+     * this plugin's own Config through the profile entry, so this is the edge
+     * that re-arms the runtime after the user changes a setting.
+     * @param paths - changed config paths as key arrays.
+     * @mode emit
+     */
+    'loader/volatile-update'(paths: readonly (readonly string[])[]): void
+  }
+}
 
 export const name = 'dsh-session-archive'
 export const inject = ['webServer', 'workspaceRegistry']
-export const SESSION_ARCHIVE_SETTINGS_NAMESPACE = 'dsh-session-archive' as SettingsNamespace
 
-export const Config: z<SessionArchiveConfig> = z.object({
-  enabled: z.boolean().default(true),
-  autoArchiveEnabled: z.boolean().default(false),
-  autoArchiveDays: z.number().min(1).max(3650).default(7),
-  autoDeleteEnabled: z.boolean().default(false),
-  autoDeleteDays: z.number().min(1).max(3650).default(7),
-  checkIntervalMin: z.number().min(15).max(1440).default(60),
+/**
+ * The plugin's own settings, served by the Host as this profile entry's
+ * configuration page. Every field is volatile: a settings write commits a new
+ * value into the running activation's references (see the
+ * `loader/volatile-update` listener in {@link apply}) instead of remounting the
+ * row, which is what keeps the archive service, its ledger and its scheduler
+ * alive across a settings change.
+ */
+export const Config = z.object({
+  enabled: z.boolean().default(true).volatile(),
+  autoArchiveEnabled: z.boolean().default(false).volatile(),
+  autoArchiveDays: z.number().min(1).max(3650).default(7).volatile(),
+  autoDeleteEnabled: z.boolean().default(false).volatile(),
+  autoDeleteDays: z.number().min(1).max(3650).default(7).volatile(),
+  checkIntervalMin: z.number().min(15).max(1440).default(60).volatile(),
 })
 
-export const apply = mountOnce('@linxin666/dsh-session-archive', (ctx: Context, config?: SessionArchiveConfig): void => {
-  let source: () => SessionArchiveConfig = () => config ?? {}
+export const apply = mountOnce('@linxin666/dsh-session-archive', (ctx: Context, config?: SessionArchiveConfigFields): void => {
   let service: ArchiveService | undefined
   let disposeRoutes: (() => void) | undefined
 
+  /**
+   * Apply the activation's current settings: unmount the whole surface when
+   * disabled, otherwise mount it on first use and hand the service the values.
+   * Volatile references are read here, so every re-arm sees the latest
+   * committed settings.
+   */
   const rearm = (): void => {
-    const value = source()
-    const resolved = Config(value)
-    if (resolved.enabled === false) {
+    const value = readArchiveConfig(config)
+    if (!resolveAutoConfig(value).enabled) {
       service?.stop()
       service = undefined
       disposeRoutes?.()
@@ -56,22 +80,10 @@ export const apply = mountOnce('@linxin666/dsh-session-archive', (ctx: Context, 
     service?.applyConfig(value)
   }
 
-  ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(ctx, SESSION_ARCHIVE_SETTINGS_NAMESPACE, Config, config ?? {}, {
-          setSource: (next) => { source = next; rearm() },
-          onChange: rearm,
-        })
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        const scope = settingsCtx.settings.register(SESSION_ARCHIVE_SETTINGS_NAMESPACE, Config, { base: config ?? {} })
-        source = () => scope?.get?.() ?? (config ?? {})
-        scope?.watch?.(() => { rearm() })
-        rearm()
-      }
-    } catch {
-      // Defensive fallback against settings registration differences
-    }
+  // The settings write path: the Host committed new values into this row's
+  // volatile references without remounting it, so re-arm from them.
+  ctx.on('loader/volatile-update', () => {
+    rearm()
   })
 
   ctx.effect(() => {

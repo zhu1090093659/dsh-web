@@ -41,6 +41,32 @@ describe('reusableSessionId (#1419)', () => {
     expect(reusableSessionId(opted, new Set())).toBeUndefined()
   })
 
+  it('reuses the newest settled session while the current run is still open (#1587)', () => {
+    // The launch path calls this AFTER startExecution appended this run's own
+    // open record, so the array tail is always an unsettled row at that point.
+    const launching = task({
+      reuseSession: true,
+      executions: [
+        execution({ id: 'exec-1', sessionId: 'session-done', endedAt: 20 }),
+        execution({ id: 'exec-2', sessionId: undefined, startedAt: 30, endedAt: undefined, result: undefined }),
+      ],
+    })
+    expect(reusableSessionId(launching, new Set(['session-done']))).toBe('session-done')
+    expect(reusableSessionId(launching, new Set(['session-other']))).toBeUndefined()
+  })
+
+  it('skips unsettled and session-less rows when looking back for the newest settled session', () => {
+    const skipped = task({
+      reuseSession: true,
+      executions: [
+        execution({ id: 'exec-1', sessionId: undefined, endedAt: 20 }),
+        execution({ id: 'exec-2', sessionId: 'session-done', endedAt: 40 }),
+        execution({ id: 'exec-3', sessionId: 'session-open', startedAt: 50, endedAt: undefined, result: undefined }),
+      ],
+    })
+    expect(reusableSessionId(skipped, new Set(['session-done']))).toBe('session-done')
+  })
+
   it('mints a fresh session when the newest execution is still open or has no session', () => {
     const open = task({ reuseSession: true, executions: [execution({ endedAt: undefined, result: undefined })] })
     expect(reusableSessionId(open, new Set(['session-a']))).toBeUndefined()

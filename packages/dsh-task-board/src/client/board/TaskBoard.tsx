@@ -13,6 +13,9 @@ import { STATUS_KEY } from './status-key.ts'
 import { TaskCard } from './TaskCard.tsx'
 import { TaskDetail } from './TaskDetail.tsx'
 
+/** Sentinel option value of the project row's "register a new project" entry. */
+export const NEW_PROJECT_VALUE = '__dsh_new_project__'
+
 /** Case-insensitive title/description/tag/freeze-snapshot match. */
 export function matchesFilter(task: TaskRecord, filter: string): boolean {
   if (filter.trim() === '') return true
@@ -55,6 +58,13 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
   const [filter, setFilter] = useState('')
   const [tagFilter, setTagFilter] = useState<string[]>([])
   const [showNew, setShowNew] = useState(false)
+  // Project partition (#1536): '' means "all projects". A selected project
+  // narrows the board and becomes the new-task form's default workspace.
+  const [projectId, setProjectId] = useState('')
+  const [showNewProject, setShowNewProject] = useState(false)
+  const [newProjectPath, setNewProjectPath] = useState('')
+  const [newProjectError, setNewProjectError] = useState<string | undefined>(undefined)
+  const [newProjectPending, setNewProjectPending] = useState(false)
   const selected = selectedTaskOf(snapshot)
   const archiveView = snapshot.archiveView
   // Every label in use across the ledger (board and archive alike), so the
@@ -63,9 +73,28 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
   // Archived tasks leave the columns; the archive view shows them instead.
   const visible = snapshot.tasks.filter(task =>
     (archiveView ? task.archivedAt !== undefined : task.archivedAt === undefined)
+    && (projectId === '' || task.workspaceId === projectId)
     && matchesFilter(task, filter)
     && matchesTagFilter(task, tagFilter),
   )
+  const projects = snapshot.executionOptions.workspaces
+  const canCreateProject = snapshot.canCreateWorkspace === true
+  const submitNewProject = async (): Promise<void> => {
+    const path = newProjectPath.trim()
+    if (path === '') return
+    setNewProjectPending(true)
+    setNewProjectError(undefined)
+    try {
+      const created = await controller.createWorkspace(path)
+      setProjectId(created.workspaceId)
+      setShowNewProject(false)
+      setNewProjectPath('')
+    } catch (error) {
+      setNewProjectError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setNewProjectPending(false)
+    }
+  }
   const toggleTag = useCallback((name: string): void => {
     setTagFilter(current => current.includes(name)
       ? current.filter(entry => entry !== name)
@@ -96,6 +125,32 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
             })}
           </span>
         )}
+        {(projects.length > 0 || canCreateProject) && (
+          <label className={css.projectFilter}>
+            <span className={css.projectFilterLabel}>{t('board.project')}</span>
+            <select
+              className={css.select}
+              data-dsh-part="project-filter"
+              value={projectId}
+              aria-label={t('board.project')}
+              onChange={event => {
+                const value = event.target.value
+                if (value === NEW_PROJECT_VALUE) {
+                  setNewProjectError(undefined)
+                  setShowNewProject(true)
+                  return
+                }
+                setProjectId(value)
+              }}
+            >
+              <option value="">{t('board.projectAll')}</option>
+              {projects.map(project => (
+                <option key={project.workspaceId} value={project.workspaceId}>{project.title}</option>
+              ))}
+              {canCreateProject && <option value={NEW_PROJECT_VALUE}>{t('board.projectNew')}</option>}
+            </select>
+          </label>
+        )}
         <input
           className={css.search}
           type="search"
@@ -121,6 +176,39 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
           + {t('board.new')}
         </button>
       </header>
+
+      {showNewProject && (
+        <div className={css.projectDialog} data-dsh-part="project-dialog">
+          <label className={css.field}>
+            <span className={css.fieldLabel}>{t('board.projectNewPath')}</span>
+            <input
+              className={css.input}
+              value={newProjectPath}
+              placeholder={t('board.projectNewPathPlaceholder')}
+              spellCheck={false}
+              onChange={event => { setNewProjectPath(event.target.value); setNewProjectError(undefined) }}
+            />
+          </label>
+          {newProjectError !== undefined && <p className={css.formError}>{t('board.projectCreateFailed', { error: newProjectError })}</p>}
+          <div className={css.projectDialogActions}>
+            <button
+              type="button"
+              className={css.ghostButton}
+              onClick={() => { setShowNewProject(false); setNewProjectError(undefined) }}
+            >
+              {t('new.cancel')}
+            </button>
+            <button
+              type="button"
+              className={css.primaryButton}
+              disabled={newProjectPending || newProjectPath.trim() === ''}
+              onClick={() => { void submitNewProject() }}
+            >
+              {t('board.projectCreate')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {!archiveView && knownTags.length > 0 && (
         <div className={css.tagFilter} data-dsh-part="tag-filter">
@@ -225,6 +313,7 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
       {showNew && (
         <NewTaskModal
           controller={controller}
+          {...(projectId === '' ? {} : { defaultWorkspaceId: projectId })}
           onClose={() => { setShowNew(false) }}
         />
       )}

@@ -8,8 +8,12 @@ import { parsePetManifest } from './manifest-v2.ts'
 import {
   applyGameplayEffects,
   clampGameplay,
+  declaredModes,
+  isDeclaredMode,
   drawLotteryTier,
   initialGameplayState,
+  modeRestoreOf,
+  modeStateOf,
   rollTouchBranch,
   rollWorkOutcome,
   settleGameplay,
@@ -28,7 +32,7 @@ function mikuManifest(gameplay: Record<string, unknown>): Record<string, unknown
     frames2d: {
       dir: 'thumb',
       tracks: {
-        idle: {}, drag: {}, standup: {}, sleep: {}, work: {}, success: {}, fail: {},
+        idle: {}, drag: {}, standup: {}, sleep: {}, work: {}, success: {}, fail: {}, bath: {},
         happy: {}, shy: {}, flirty: {}, angry: {}, scratch: {}, blink1: {}, blink2: {}, eat: {}, shop: {},
       },
       phases: { idle: 'idle', done: 'success', failed: 'fail' },
@@ -148,6 +152,94 @@ describe('gameplay manifest', () => {
     expect(parsePetManifest(bare, 'mem').ok).toBe(false)
   })
 
+  it('user declares extra named modes and sees them listed after sleep', () => {
+    // Given a manifest that adds two named modes; when it is parsed; then both
+    // modes survive and the declared list appends them after sleep.
+    const withModes = mikuManifest({
+      ...FULL_GAMEPLAY,
+      modes: {
+        bath: { state: 'bath', label: 'Bath', activeLabel: 'Bathing', restore: { stat: 'mood', amount: 3, intervalMs: 1000 } },
+        play: { state: 'happy' },
+      },
+    })
+    const result = parsePetManifest(withModes, 'mem')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const gameplay = result.manifest.gameplay!
+    expect(gameplay.modes?.bath).toEqual({
+      state: 'bath', label: 'Bath', activeLabel: 'Bathing',
+      restore: { stat: 'mood', amount: 3, intervalMs: 1000 },
+    })
+    expect(gameplay.modes?.play).toEqual({ state: 'happy' })
+    expect(declaredModes(gameplay)).toEqual(['sleep', 'bath', 'play'])
+  })
+
+  it('user declares a roam block and malformed ones are rejected', () => {
+    // Given a valid roam block; when it is parsed; then it round-trips while
+    // malformed variants fail closed.
+    const roam = { state: 'happy', intervalMs: 12_000, probability: 0.5, distanceMin: 80, distanceMax: 220, speed: 90 }
+    const parsed = parsePetManifest(mikuManifest({ ...FULL_GAMEPLAY, roam }), 'mem')
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.manifest.gameplay?.roam).toEqual(roam)
+    expect(parsePetManifest(mikuManifest({ roam: { ...roam, state: 'ghost' } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ roam: { ...roam, distanceMin: 300, distanceMax: 100 } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ roam: { ...roam, probability: 0 } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ roam: { ...roam, speed: 0 } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ roam: { ...roam, sparkle: true } }), 'mem').ok).toBe(false)
+  })
+
+  it('user restricts the roam directions to a declared subset', () => {
+    // Given a roam block; when directions are omitted or restricted; then the
+    // default four apply and a bad list fails closed.
+    const roam = { state: 'happy', intervalMs: 15_000, probability: 0.2, distanceMin: 80, distanceMax: 220, speed: 90 }
+    const plain = parsePetManifest(mikuManifest({ ...FULL_GAMEPLAY, roam }), 'mem')
+    expect(plain.ok).toBe(true)
+    if (!plain.ok) return
+    expect(plain.manifest.gameplay?.roam?.directions).toBeUndefined()
+    const restricted = parsePetManifest(mikuManifest({ ...FULL_GAMEPLAY, roam: { ...roam, directions: ['left', 'right'] } }), 'mem')
+    expect(restricted.ok).toBe(true)
+    if (!restricted.ok) return
+    expect(restricted.manifest.gameplay?.roam?.directions).toEqual(['left', 'right'])
+    expect(parsePetManifest(mikuManifest({ roam: { ...roam, directions: [] } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ roam: { ...roam, directions: ['left', 'left'] } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ roam: { ...roam, directions: ['sideways'] } }), 'mem').ok).toBe(false)
+  })
+
+  it('user drops a persisted mode the manifest no longer declares', () => {
+    // Given a manifest with one extra mode; when the persisted ids are checked;
+    // then only declared ids (never prototype keys) count.
+    const parsed = parsePetManifest(mikuManifest({
+      ...FULL_GAMEPLAY,
+      modes: { bath: { state: 'happy' } },
+    }), 'mem')
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    const def = parsed.manifest.gameplay!
+    expect(isDeclaredMode(def, 'work')).toBe(true)
+    expect(isDeclaredMode(def, 'sleep')).toBe(true)
+    expect(isDeclaredMode(def, 'bath')).toBe(true)
+    // A mode that was persisted before the manifest dropped it is not declared.
+    expect(isDeclaredMode(def, 'wash')).toBe(false)
+    expect(isDeclaredMode(def, 'ghost')).toBe(false)
+    // Object.prototype members must never count as declared modes.
+    expect(isDeclaredMode(def, 'constructor')).toBe(false)
+    expect(isDeclaredMode(def, 'toString')).toBe(false)
+    expect(modeStateOf(def, 'constructor')).toBeUndefined()
+    expect(modeRestoreOf(def, 'constructor')).toBeUndefined()
+  })
+
+  it('user cannot declare malformed or reserved extra modes', () => {
+    // Given reserved and malformed mode blocks; when each is parsed; then every
+    // one of them fails closed.
+    expect(parsePetManifest(mikuManifest({ modes: { sleep: { state: 'bath' } } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ modes: { work: { state: 'bath' } } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ modes: { bath: { state: 'ghost' } } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ modes: { bath: { state: 'bath', sparkle: true } } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ modes: { bath: { state: 'bath', restore: { stat: 'ghost', amount: 3, intervalMs: 1000 } } } }), 'mem').ok).toBe(false)
+    expect(parsePetManifest(mikuManifest({ modes: { bath: { state: 'bath', restore: { stat: 'mood', amount: 3, intervalMs: 10 } } } }), 'mem').ok).toBe(false)
+  })
+
   it('rejects bad ranges (tickMs, decay, zone slices, stateMs)', () => {
     const badTick = mikuManifest({ work: { state: 'work', successState: 'success', failState: 'fail', tickMs: 50, successProbability: 0.5 } })
     expect(parsePetManifest(badTick, 'mem').ok).toBe(false)
@@ -183,6 +275,51 @@ describe('gameplay engine', () => {
     expect(state.stats.energy).toBe(100) // 97.5 + 20 clamped to max
     expect(state.currencies.coins).toBe(10)
     expect(state.settledAt).toBe(600_000)
+  })
+
+  it('user activates a declared extra mode and its restore ticks', () => {
+    // Given a manifest with a bath mode; when the pet sits in it; then the mode
+    // restore pays mood on its own interval.
+    const parsed = parsePetManifest(mikuManifest({
+      ...FULL_GAMEPLAY,
+      modes: { bath: { state: 'bath', label: 'Bath', restore: { stat: 'mood', amount: 3, intervalMs: 1000 } } },
+    }), 'mem')
+    if (!parsed.ok) throw new Error('fixture must parse')
+    const bathDef = parsed.manifest.gameplay!
+    expect(modeStateOf(bathDef, 'bath')).toBe('bath')
+    expect(modeRestoreOf(bathDef, 'bath')).toEqual({ stat: 'mood', amount: 3, intervalMs: 1000 })
+    expect(modeRestoreOf(bathDef, 'work')).toBeUndefined()
+    expect(modeRestoreOf(bathDef, null)).toBeUndefined()
+
+    const state = initialGameplayState(bathDef, 0)
+    state.stats.mood = 10
+    state.mode = 'bath'
+    // 5 s of bath: 5 x 3 mood, minus 5 s of the 0.5/min baseline decay
+    settleGameplay(state, bathDef, 5000, { sessionActive: true })
+    expect(state.stats.mood).toBeCloseTo(10 - (5 / 60) * 0.5 + 15, 4)
+  })
+
+  it('user keeps a 1 s mode cadence across a fast polling interval', () => {
+    // Given a fast 200 ms poll loop; when ten seconds elapse; then the mode
+    // still pays exactly ten ticks with no drift.
+    const parsed = parsePetManifest(mikuManifest({
+      ...FULL_GAMEPLAY,
+      modes: { bath: { state: 'bath', restore: { stat: 'mood', amount: 3, intervalMs: 1000 } } },
+    }), 'mem')
+    if (!parsed.ok) throw new Error('fixture must parse')
+    const bathDef = parsed.manifest.gameplay!
+    // Start above zero: a stat parked at 0 is exempt from decay, which would
+    // otherwise hide part of the decay side of the balance.
+    const state = initialGameplayState(bathDef, 0)
+    state.stats.mood = 50
+    state.mode = 'bath'
+    let now = 0
+    for (let i = 0; i < 50; i++) {
+      now += 200
+      settleGameplay(state, bathDef, now, { sessionActive: true })
+    }
+    // 10 s of 200 ms polls still pays exactly 10 x 3 mood (carry, no drift)
+    expect(state.stats.mood).toBeCloseTo(50 + 30 - (10 / 60) * 0.5, 4)
   })
 
   it('preserves remainder carry across frequent polling intervals for passive income and sleep restore (#1478)', () => {

@@ -37,6 +37,7 @@ const CSS = [
   '.btn.spin svg{animation:spin .8s linear infinite}',
   '@keyframes spin{to{transform:rotate(360deg)}}',
   '.meta{color:var(--faint);font-size:12px;margin:-14px 0 22px}',
+  '.warnline{display:none;color:var(--bad);font-size:12px;margin:-14px 0 22px}',
   '.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:26px}',
   '.card{background:var(--panel);border:1px solid var(--panel-border);border-radius:var(--radius);padding:16px 18px;backdrop-filter:blur(8px);transition:transform .18s ease,border-color .18s ease}',
   '.card:hover{transform:translateY(-2px);border-color:rgba(148,163,255,.3)}',
@@ -357,7 +358,34 @@ function dataUrl() {
 }
 function renderAll() {
   renderCards(); renderActiveChart(); renderChart(); renderPaths(); renderItems()
-  $('updated').textContent = '更新于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  $('updated').textContent = '查询于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  renderFreshness()
+}
+/* The summary payload carries the rollup's generation stamp (cache reads
+   keep the original one) and the auxiliary breakdowns skipped under D1
+   memory pressure. Surface both so a lagging cache can never read as lost
+   data: a 09-13 rollup served on 09-16 once looked like two missing days. */
+function renderFreshness() {
+  var gen = Number(data && data.generated_at) || 0
+  var generated = ''
+  if (gen) {
+    generated = new Date(gen).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    var ageHours = (Date.now() - gen) / 3600000
+    // Freshness matches the rollup TTLs: 30 minutes up to 30 days, 12 hours beyond.
+    var staleAfter = state.days <= 30 ? 0.5 : 12
+    if (ageHours > staleAfter * 2) generated += '（滞后 ' + (ageHours >= 10 ? Math.round(ageHours) : ageHours.toFixed(1)) + ' 小时）'
+  }
+  $('generated').textContent = generated ? ' · 数据滚存于 ' + generated : ''
+  var warns = []
+  if (gen && (Date.now() - gen) / 3600000 > (state.days <= 30 ? 1 : 24)) {
+    warns.push('当前是滞后的滚存快照：实时聚合暂时受限，上报与计数未中断，恢复后自动补齐')
+  }
+  var degraded = (data && data.degraded) || []
+  if (degraded.indexOf('channels') >= 0) warns.push('渠道分布本次聚合降级跳过（数据源过载），其余数据正常')
+  if (degraded.indexOf('versions') >= 0) warns.push('版本分布本次聚合降级跳过（数据源过载），其余数据正常')
+  var line = $('stale-warn')
+  line.textContent = warns.join('；')
+  line.style.display = warns.length ? '' : 'none'
 }
 function refresh(section) {
   var panel = section === 'paths' ? $('panel-paths') : section === 'items' ? $('panel-items') : null
@@ -417,7 +445,8 @@ const SHELL = [
   '<button class="btn" id="reload" aria-label="刷新数据">' + ICONS.refresh + '<span>刷新</span></button>',
   '</div>',
   '</header>',
-  '<p class="meta"><span id="range-label">最近 30 天</span> · <span id="updated"></span> · 已过滤已知爬虫（UA 特征 + webdriver 检测）</p>',
+  '<p class="meta"><span id="range-label">最近 30 天</span> · <span id="updated"></span><span id="generated"></span> · 已过滤已知爬虫（UA 特征 + webdriver 检测）</p>',
+  '<p class="warnline" id="stale-warn" role="status"></p>',
   '<div class="err" id="err" role="alert"></div>',
   '<p class="meta" id="boot-hint">正在渲染数据……若此提示不消失，说明页面脚本被拦截（请检查浏览器控制台）。</p>',
   '<section class="cards rise" id="cards"></section>',
@@ -435,8 +464,8 @@ const SHELL = [
   '<div class="pg" id="paths-pager"></div>',
   '</section>',
   '<section class="panel rise" id="panel-items">',
-  '<div class="panel-h"><h2>插件安装量</h2><span class="note">独立实例 = 去重浏览器数；皮肤条目以 skin: 前缀展示；渠道：market=市场一键装 / npm=仓库直装</span></div>',
-  '<table><thead><tr><th>#</th><th>包 / 资产</th><th class="num">独立实例</th><th class="num">当日活跃</th><th>渠道分布</th><th class="hide-s">版本分布</th></tr></thead><tbody id="items-body"></tbody></table>',
+  '<div class="panel-h"><h2>插件安装量</h2><span class="note">期间活跃 = 区间内按日去重后求和（同一实例多天活跃会重复计入）；当日活跃 = 当天去重实例数；皮肤条目以 skin: 前缀展示；渠道：market=市场一键装 / npm=仓库直装</span></div>',
+  '<table><thead><tr><th>#</th><th>包 / 资产</th><th class="num">期间活跃</th><th class="num">当日活跃</th><th>渠道分布</th><th class="hide-s">版本分布</th></tr></thead><tbody id="items-body"></tbody></table>',
   '<div class="pg" id="items-pager"></div>',
   '</section>',
   '<p class="foot">所有事件均匿名（随机 ID 加盐哈希，不存 IP），仅展示聚合计数。契约见 docs/telemetry.md。</p>',

@@ -117,6 +117,7 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
   const activeId = useSyncExternalStore(wallpaper.subscribe, wallpaper.activeId)
   const trying = useSyncExternalStore(wallpaper.subscribe, wallpaper.trying)
   const dirs = useSyncExternalStore(wallpaper.subscribe, wallpaper.dirs)
+  const writeError = useSyncExternalStore(wallpaper.subscribe, wallpaper.writeError)
   const [shownDim, setShownDim] = useLiveValue(dim)
   const [shownBlur, setShownBlur] = useLiveValue(blur)
   const [shownOpacity, setShownOpacity] = useLiveValue(opacity)
@@ -474,6 +475,9 @@ export function WallpaperPanel({ t, wallpaper }: { t: PropsLocale<'skinCenter'>[
           </div>
 
           {actionError !== null && <div className={css.error}>{actionError}</div>}
+          {writeError !== null && (
+            <div className={css.error} role="alert">{t('wallpaperSaveFailed')}: {writeError}</div>
+          )}
 
           {items !== null && items.length > 0 && (
             <div className={css.wallpaperToolbar}>

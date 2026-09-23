@@ -4,7 +4,7 @@
  */
 
 import type { ReactNode } from 'react'
-import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconChevronDownOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import css from './context.module.css'
 
 /** Join conditional class names (the dependency-free clsx stand-in). */
@@ -36,7 +36,7 @@ export function Chip({ icon, label, ariaLabel, open, onClick, hero = false }: Ch
     >
       {icon}
       <span className={css.chipLabel} title={label}>{label}</span>
-      <IconChevronDownOutline14 className={css.chipChevron} size={12} />
+      <IconChevronDownOutlineMedium className={css.chipChevron} size={12} />
     </button>
   )
 }

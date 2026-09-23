@@ -6,6 +6,7 @@ node_modules/
 
 # 本地工具缓存与环境残留
 *.log
+coverage/
 .DS_Store
 .codegraph/
 .zcode/

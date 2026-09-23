@@ -45,18 +45,7 @@ html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-plugin="web-ui-settings"],
 html[data-dsh-skin="wallpaper-exclusive"] [data-slot="details"],
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-surface="details"],
 html[data-dsh-skin="wallpaper-exclusive"] [data-pane="details"],
-html[data-dsh-skin="wallpaper-exclusive"] [class*="detailsCol"],
-html[data-dsh-skin="wallpaper-exclusive"] .aionui-root,
-html[data-dsh-skin="wallpaper-exclusive"] [data-aionui-explorer-col],
-html[data-dsh-skin="wallpaper-exclusive"] [data-aionui-preview-col] {
-  background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
-  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
-}
-
-html[data-dsh-skin="wallpaper-exclusive"] .aionui-dialog,
-html[data-dsh-skin="wallpaper-exclusive"] .aionui-menu,
-html[data-dsh-skin="wallpaper-exclusive"] .aionui-toast {
+html[data-dsh-skin="wallpaper-exclusive"] [class*="detailsCol"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
@@ -71,6 +60,44 @@ html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-taskboard-view] [data-dsh-pa
   background-color: var(--dsw-wallpaper-glass-fill) !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+}
+
+/* The board frame (data-dsh-plugin="task-board") and its columns/cards above are
+   already on the fixed glass; the search field is the one surface still painted
+   with the shell's flat 50% white, so it takes the shared hover glass to keep the
+   whole board on one translucent material. Anchored on input[type="search"] (the
+   board renders exactly one, TaskBoard.tsx) so the new-task modal's text, date and
+   checkbox inputs keep the shell's own material. */
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-taskboard-view] input[type="search"] {
+  background-color: var(--dsw-wallpaper-glass-hover) !important;
+}
+
+/* Trajectory view (轨迹): the official view paints flat 50% white with no frosted
+   pass, so over the wallpaper it reads as a milky sheet. Re-materialise it as the
+   skin's single layer glass: the view root carries the frosted fill + blur, the
+   inner surfaces (split / ledger / table / plot / nested roots) go transparent so
+   that one layer reads through instead of stacking, and the toolbar search keeps
+   a subtle tint. The view root is the only element that emits
+   data-conversation-composer-overlay, so these rules stay off the chat view. */
+html[data-dsh-skin="wallpaper-exclusive"] [data-conversation-composer-overlay] {
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
+  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
+}
+
+html[data-dsh-skin="wallpaper-exclusive"] [data-conversation-composer-overlay] [class*="_split"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-conversation-composer-overlay] [class*="_ledger"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-conversation-composer-overlay] [class*="_table"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-conversation-composer-overlay] [class*="_plot"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-conversation-composer-overlay] [class*="_root"] {
+  background-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dsh-skin="wallpaper-exclusive"] [data-conversation-composer-overlay] [class*="_search"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-conversation-composer-overlay] [class*="_searchInput"] {
+  background-color: var(--dsw-wallpaper-glass-hover) !important;
 }
 
 /* git-graph composer chips (bottom dock row of the composer): frosted glass
@@ -394,15 +421,15 @@ html[data-dsh-skin="wallpaper-exclusive"] [data-slot="conversation.session.heade
 }
 
 /* --- Bottom panel / terminal dock (fixed-glass set) --------------------------------
-   Expanding the bottom panel used to paint an opaque overlay that hid the
-   wallpaper; the panel chrome (container + panes + tabs) is now frosted so the
-   wallpaper stays visible while expanded. The terminal canvas keeps a dark,
+   The workbench paints exactly ONE glass layer: the panel root carries the
+   frosted fill + blur here, and every nested wrapper (panelBody / pane /
+   paneContent / paneTab / tab strip / terminalWrap) is reset to transparent in
+   the better-sidebar block further down. Painting the fill on each wrapper
+   stacked the same translucent colour three to four deep, which read as a far
+   darker, muddier slab than the single-layer glass the rest of the skin uses
+   (and multiplied the backdrop-filter cost). The terminal canvas keeps a dark,
    frosted fill for text legibility. */
-html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"],
-html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"] [class*="_pane"],
-html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"] [class*="_tabBar"],
-html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"] [class*="_tab"],
-html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"] [class*="_terminalWrap"] {
+html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
@@ -500,10 +527,10 @@ html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-ssh-view] [role="tab"][aria-
   background-color: var(--dsw-wallpaper-glass-active-strong) !important;
 }
 
-/* Queued-send / retry dock in the composer: several plugins mount a card as
-   the conversation.input.dock slot's DIRECT CHILD (chat-recovery's *_dock
-   root paints no background of its own, so transcript text bleeds through;
-   aionui's drag inlay uses *_strip; git-graph mounts a floating chip anchor).
+/* Queued-send / retry dock in the composer: dock contributors mount a card as
+   the conversation.input.dock slot's DIRECT CHILD (a *_dock root paints no
+   background of its own, so transcript text bleeds through; git-graph mounts a
+   floating chip anchor).
    Paint EXACTLY ONE layer per child - the direct child itself - with the
    input-card material (glass-fill + fixed 10px blur); the git-graph chip is
    excluded (it must float bare), and *_dock / *_row wrappers NESTED below a
@@ -605,9 +632,16 @@ html[data-dsh-skin="wallpaper-exclusive"] body:has([data-slot="conversation.inpu
    The "侧边卡片" are better-sidebar's empty-panel welcome cards (.paneCard) plus
    its panel chrome. The host is a document.body portal ([data-dsh-better-sidebar]
    / [data-dsh-panel-host]) carrying no data-dsh-part, so anchor on the stable
-   host attributes + class suffixes. */
-html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar],
-html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host],
+   host attributes + class suffixes.
+
+   The two host shells themselves are deliberately NOT painted. backdrop-filter
+   turns the element into the containing block of its position: fixed descendants:
+   [data-dsh-better-sidebar] is a static, zero-height wrapper, so painting it
+   collapsed the panel host box to 1600x0 at the viewport's bottom edge, and the
+   plugin's own overflow: clip then removed every panel (bottom workbench and right
+   sidebar) from painting and hit testing. Measured: with the wrapper's
+   backdrop-filter neutralised the host box returns to 1600x950 at y=0 and the
+   picker cards become hit-testable again with no other change. */
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_panel"]:not([class*="_panelHidden"]):not([class*="_panelResize"]),
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"]:not([class*="_bottomPanelHidden"]),
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_panelBody"],
@@ -622,7 +656,7 @@ html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_pane"]
 }
 
 html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_tabBar"] {
-  background-color: rgba(0, 0, 0, 0.08) !important;
+  background-color: var(--dsw-wallpaper-glass-fill) !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;
 }
@@ -650,6 +684,65 @@ html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bo
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
   backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
 }
+
+/* Bottom workbench: collapse the nested fills back onto the single glass layer
+   the panel root already paints. The host prefix plus the doubled attribute
+   selector outranks the wrapper rules just above, whose [class*="_panel"]
+   :not(...):not(...) head carries one more attribute than a bare descendant
+   selector would; scoping everything to the bottom panel leaves the
+   right-sidebar panes that share these class names untouched. */
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_panelBody"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_pane"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_paneContent"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_paneTab"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_paneEmptyCards"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_terminalWrap"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabBar"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-better-sidebar] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabList"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_panelBody"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_pane"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_paneContent"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_paneTab"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_paneEmptyCards"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_terminalWrap"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabBar"],
+html[data-dsh-skin="wallpaper-exclusive"] [data-dsh-panel-host] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabList"] {
+  background-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Tab items keep the shared glass states. The previous [class*="_tab"] fill also
+   caught _tabBar / _tabList / _tabTitle / _tabClose / _tabBarPlus / _paneTab, so
+   every one of them carried an opaque slab and the active tab, hover and the
+   strip controls all looked identical; the item selector is therefore anchored
+   structurally on the tab list. */
+html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabBar"] [class*="_tabList"] > [class*="_tab"] {
+  background-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabBar"] [class*="_tabList"] > [class*="_tab"]:hover {
+  background-color: var(--dsw-wallpaper-glass-hover) !important;
+}
+
+html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabBar"] [class*="_tabList"] > [class*="_tab"][class*="_tabActive"] {
+  background-color: var(--dsw-wallpaper-glass-active-strong) !important;
+}
+
+html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabClose"],
+html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabBarPlus"] {
+  background-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabClose"]:hover,
+html[data-dsh-skin="wallpaper-exclusive"] [class*="_bottomPanel"][class*="_bottomPanel"] [class*="_tabBarPlus"]:hover {
+  background-color: var(--dsw-wallpaper-glass-hover) !important;
+}
+
 
 /* --- Sidebar workspace-entry buttons: no lingering "selected" bubble ---------
    Non-key, non-plugin sidebar buttons are transparent at rest; hover gets a

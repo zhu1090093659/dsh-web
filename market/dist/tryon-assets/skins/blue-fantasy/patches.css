@@ -286,11 +286,15 @@ html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-phase="active"
  * Both knobs come from the skin-center Background card and are read as optional
  * variables with fallbacks: the blur is var(--dsh-skin-bubble-blur, 10px), and
  * every text plate alpha rides var(--dsh-skin-bubble-alpha, .5). Each plate keeps
- * its own ratio so the default 50% reproduces the values this layer first shipped
- * with. The "Bubble opacity" slider therefore drives everything painted *behind
- * text* -- markdown blocks, tool output, the turn-process row -- and nothing else.
+ * its own ratio so the default reproduces the values this layer first shipped
+ * with -- the user's own bubble runs at 120% on both knobs, which is what its
+ * hand-tuned 12px / 60% used to be. The "Bubble opacity" slider therefore drives
+ * everything painted *behind text* -- markdown blocks, tool output, the
+ * turn-process row -- and nothing else.
  * The window chrome (header, right sidebar) is deliberately not on that slider:
- * it is frame, not bubble, and it keeps a fixed density.
+ * it is frame, not bubble. It does follow the Wallpaper scrim like the left
+ * pane does -- the three columns share one token so they stay one surface at
+ * every scrim value (issue #1579).
  *
  * The light base is the left pane's measured rgb(242 245 250) (dark:
  * rgb(16 22 42)) instead of pure white, so the plates sit in the same colour
@@ -429,20 +433,41 @@ html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [class*="turnStatus"
 
 /* --- turn-tail controls: copy / feedback / regenerate --------------------- */
 
+/* The plate is painted by a ::before layer rather than by the row itself.
+
+   The shell renders each icon's hover tooltip as a `position: fixed` span
+   inside this row (ui-primitives Tooltip deliberately drops the portal), and
+   `backdrop-filter` — like `filter` or `transform` — makes the element the
+   containing block for its fixed-position descendants. A plate on the row
+   therefore re-anchored every bubble to the row's own box and threw it
+   hundreds of pixels away, sometimes off the viewport entirely (issue #1571).
+   `inset: 0` reproduces exactly the padding box the background used to fill,
+   so the plate, the row geometry and the icon positions are unchanged. */
 html[data-dsh-skin="blue-fantasy"] [data-turn-tail] [class*="actions"],
 html[data-dsh-skin="blue-fantasy"] [data-chat-flow-kind="user"] [class*="actions"],
 html[data-dsh-skin="blue-fantasy"] [data-chat-flow-kind="steering"] [class*="actions"] {
-  background: rgb(242 245 250 / calc(var(--dsh-skin-bubble-alpha, .5) * 1));
-  -webkit-backdrop-filter: blur(var(--dsh-skin-bubble-blur, 10px)) saturate(1.3);
-  backdrop-filter: blur(var(--dsh-skin-bubble-blur, 10px)) saturate(1.3);
+  position: relative;
   border-radius: 10px;
   padding: 0 8px;
   width: fit-content;
 }
 
-html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-turn-tail] [class*="actions"],
-html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-chat-flow-kind="user"] [class*="actions"],
-html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-chat-flow-kind="steering"] [class*="actions"] {
+html[data-dsh-skin="blue-fantasy"] [data-turn-tail] [class*="actions"]::before,
+html[data-dsh-skin="blue-fantasy"] [data-chat-flow-kind="user"] [class*="actions"]::before,
+html[data-dsh-skin="blue-fantasy"] [data-chat-flow-kind="steering"] [class*="actions"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgb(242 245 250 / calc(var(--dsh-skin-bubble-alpha, .5) * 1));
+  -webkit-backdrop-filter: blur(var(--dsh-skin-bubble-blur, 10px)) saturate(1.3);
+  backdrop-filter: blur(var(--dsh-skin-bubble-blur, 10px)) saturate(1.3);
+  border-radius: 10px;
+}
+
+html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-turn-tail] [class*="actions"]::before,
+html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-chat-flow-kind="user"] [class*="actions"]::before,
+html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-chat-flow-kind="steering"] [class*="actions"]::before {
   background: rgb(16 22 42 / calc(var(--dsh-skin-bubble-alpha, .5) * .8));
 }
 
@@ -519,11 +544,17 @@ html[data-dsh-skin="blue-fantasy"] [data-slot="main.conversation"] [data-turn-pr
 
 /* --- chrome: the top bar and the right sidebar ---------------------------- */
 
-/* The three columns only read as one surface if they share a base, so the
-   conversation header and the right sidebar reuse the left pane's measured
-   rgb(242 245 250) at the same density instead of plain white. The density is
-   fixed rather than tied to --dsh-skin-bubble-alpha: this is window chrome, and
-   dragging the Bubble opacity slider should fade bubbles, not the frame.
+/* The three columns only read as one surface if they share a base AND a
+   density, so the conversation header and the right sidebar reuse the left
+   pane's own token (--dsw-specific-sidebar-fill) instead of a pinned fill. That
+   token already tracks the Wallpaper scrim, so all three columns now breathe
+   together at every scrim value (issue #1579): with a fixed 0.75 the columns
+   only matched at scrim 0.5, reading 0.25 too solid at scrim 0 and 0.25 too
+   faint at scrim 1.
+
+   What stays excluded is --dsh-skin-bubble-alpha: this is window chrome, and
+   dragging the Bubble opacity slider must fade bubbles, not the frame. The
+   sidebar-fill token is a scrim-only function, so that boundary is unchanged.
 
    The right sidebar renders as [class*="rightbarCol"] > [data-slot="rightbar"]
    > [data-slot="rightbar.session"] > [class*="panel"]. The two slot hosts are
@@ -533,10 +564,15 @@ html[data-dsh-skin="blue-fantasy"] [data-slot="main.conversation"] [data-turn-pr
    The items inside the header (session name, mode picker, the tabs) stay
    background-free on purpose: plates under those labels read as smudges and
    fight the official underline indicator. */
+/* The panel class is matched as a substring, and the shell's panel *body* is a
+   nested element whose class carries the same substring (`X_panelBody`). A
+   bare `[class*="panel"]` therefore plated the panel and its body, and two
+   0.75 fills stack to an effective 0.94 (issue #1573). Exclude the body; the
+   slot host above is display:contents, so the panel itself still matches. */
 html[data-dsh-skin="blue-fantasy"] [data-slot="main.conversation"] header,
 html[data-dsh-skin="blue-fantasy"] [data-slot="rightbar.session"] > *,
-html[data-dsh-skin="blue-fantasy"] [class*="rightbarCol"] [class*="panel"] {
-  background: rgba(242, 245, 250, 0.75);
+html[data-dsh-skin="blue-fantasy"] [class*="rightbarCol"] [class*="panel"]:not([class*="panelBody"]) {
+  background: var(--dsw-specific-sidebar-fill);
 }
 
 html[data-dsh-skin="blue-fantasy"] [data-slot="main.conversation"] header {
@@ -545,8 +581,17 @@ html[data-dsh-skin="blue-fantasy"] [data-slot="main.conversation"] header {
 
 html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-slot="main.conversation"] header,
 html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-slot="rightbar.session"] > *,
-html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [class*="rightbarCol"] [class*="panel"] {
-  background: rgba(16, 22, 42, 0.75);
+html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [class*="rightbarCol"] [class*="panel"]:not([class*="panelBody"]) {
+  background: var(--dsw-specific-sidebar-fill);
+}
+
+/* The right panel and the left pane are one frame, but the shell paints the
+   left spine with --dsw-alias-border-l3 and this panel's border-left with
+   --dsw-alias-border-l4, so the two vertical rules sat one rung apart
+   (issue #1573). Match the left spine here instead of remapping l4, which
+   every other l4 consumer shares. */
+html[data-dsh-skin="blue-fantasy"] [class*="rightbarCol"] [class*="panel"]:not([class*="panelBody"]) {
+  border-left-color: var(--dsw-alias-border-l3);
 }
 
 html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-slot="main.conversation"] header {
@@ -597,12 +642,18 @@ html[data-dsh-skin="blue-fantasy"] body[data-ds-dark-theme] [data-slot="conversa
 
 /* Keep the accent fill the skin already assigns, add translucency to it and
    frost what shows through. The compound selector matters: a bare
-   [class*="bubble"] would also catch unrelated bubbles elsewhere in the shell. */
+   [class*="bubble"] would also catch unrelated bubbles elsewhere in the shell.
+
+   The user's own bubble has always been the frosted one of the two -- deeper
+   than the plates around it -- so it rides the same slider at 120%: the default
+   10px reproduces the 12px this rule carried before the variable existed, and
+   the knob scales it in step with everything else. The alpha above uses the
+   same ratio for the same reason. */
 html[data-dsh-skin="blue-fantasy"] [data-slot="main.conversation"] [class*="userStack"] [class*="bubble"] {
   /* 120% of the slider reproduces the 60% body this layer shipped with. */
   background: color-mix(in srgb, var(--dsw-specific-bubble) calc(var(--dsh-skin-bubble-alpha, .5) * 120%), transparent);
-  -webkit-backdrop-filter: blur(var(--dsh-skin-bubble-blur, 12px)) saturate(1.3);
-  backdrop-filter: blur(var(--dsh-skin-bubble-blur, 12px)) saturate(1.3);
+  -webkit-backdrop-filter: blur(calc(var(--dsh-skin-bubble-blur, 10px) * 1.2)) saturate(1.3);
+  backdrop-filter: blur(calc(var(--dsh-skin-bubble-blur, 10px) * 1.2)) saturate(1.3);
 }
 
 /* --- deliverables row (this turn's produced files) ------------------------ */

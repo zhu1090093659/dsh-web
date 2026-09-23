@@ -4,8 +4,9 @@
 # `dsh plugin --profile <name> add link:~/code/dsh-web-ui/packages/dsh-liangshen`.
 #
 # The row is a bare plugin by package name: the node half (exports ".") runs
-# in the host process and syncs the bundled LiangShen agent preset into
-# ~/.dsh/.agent-presets/liangshen on startup. No browser half.
+# in the host process and declares the bundled LiangShen agent preset to the
+# agent-preset registry at activation. No browser half beyond the composer
+# lever and the settings card.
 - insert:
     - id: liangshen
       name: '@linxin666/dsh-liangshen'

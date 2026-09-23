@@ -2,7 +2,7 @@
 
 Status: implemented
 
-工具面部分被[只带 shell 的锚定与 PTC 晋升](2026-09-12-liangshen-shell-anchor-and-ptc-handoff.zh.md)部分取代：锚定面只有 `bash`，晋升回合以 PTC 呈现该会话的工具，因此目录列的是从注册表读取的参数签名，而不再是从 wire 读取的名称加摘要。指令部分被[把 AGENTS.md 指令提升进系统提示词](2026-09-12-liangshen-agents-md-in-system-prompt.zh.md)部分取代：agent-instructions 提示不再是默认行为。极简 persona、注入目录机制与消息来源的决定继续有效。
+工具面部分被[只带 shell 的锚定与 PTC 晋升](2026-09-12-liangshen-shell-anchor-and-ptc-handoff.zh.md)部分取代：锚定面只有 `bash`，晋升回合以 PTC 呈现该会话的工具，因此目录列的是从注册表读取的参数签名，而不再是从 wire 读取的名称加摘要。指令部分被[把 AGENTS.md 指令提升进系统提示词](2026-09-12-liangshen-agents-md-in-system-prompt.zh.md)部分取代：agent-instructions 提示不再是默认行为。极简 persona、注入目录机制与消息来源的决定继续有效。目录索引范围部分被[请求面工具目录与评测工具](2026-09-13-liangshen-request-surface-catalog-and-eval-tooling.zh.md)部分取代：条目恰好描述当前请求开放的工具面，渲染文本不再跨呈现边界保持稳定。persona 文本与分层 wire 部分被[V4.1 Flash 原生重构](2026-09-16-liangshen-v41-flash-native-rebuild.zh.md)取代：工作纪律替换为行动触发式规则，锚定回合与第二回合 PTC 晋升退役；极简 persona 机制、注入目录机制与消息来源决定继续有效。
 
 ## Problem
 

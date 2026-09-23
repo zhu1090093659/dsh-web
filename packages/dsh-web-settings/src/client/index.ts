@@ -14,7 +14,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the settings-surface SlotMap merge (the 'settings.section'
-// entry) and the ctx.settingsScope Context merge.
+// entry) and the shared-forms Context merge (ctx.configForms).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { WebUiSettingsBinder } from './compat-settings-scope.ts'
 import { WebUIPluginsSection } from './WebUIPluginsCard.tsx'
@@ -32,8 +32,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     /**
      * The child slot one family plugin card registers into, declared by the
-     * group section. Shape mirrors `settings.plugin.item` so the family
-     * plugins can reuse their existing card implementations.
+     * group section. A list seat keyed by entry id, so the family plugins can
+     * reuse their existing card implementations.
      */
     'web-ui.plugin.item': { kind: 'list'; scope: 'root'; owner: SettingsPluginItemOwnerProps }
   }
@@ -46,7 +46,7 @@ export interface SettingsPluginItemOwnerProps {
 }
 
 /** Required services. */
-export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote']
+export const inject = ['slots', 'locale', 'connection', 'configForms', 'remote']
 
 /**
  * Register the Web UI plugin group as a first-level settings section: its own
@@ -66,9 +66,9 @@ export function apply(ctx: ClientContext): void {
     }
   }, 'web-ui-settings: dictionaries')
 
-  // The rc.6 compatibility binder: family plugins read ctx.get('webUiSettings')
-  // and fall back to the official settings scope on hosts that expose their
-  // namespaces natively.
+  // The family settings binder: family plugins read ctx.get('webUiSettings')
+  // for their card's settings form; it resolves their profile entry id through
+  // the host bridge and binds the native ctx.configForms form.
   new WebUiSettingsBinder(ctx)
 
   ctx.slots.inject('settings.section', () => {

@@ -5,6 +5,11 @@ import { join } from 'node:path'
 import { AFFINITY_MAX, emptyAffinity } from './affinity.ts'
 import { defaultTreatConfig, emptyTreatLedger } from './treats.ts'
 import {
+  BUBBLE_FONT_MAX_PX,
+  BUBBLE_FONT_MIN_PX,
+  BUBBLE_SCALE_MAX,
+  BUBBLE_SCALE_MIN,
+  bubbleScaleFor,
   DEFAULT_PET_ID,
   DISPLAY_INSET_MAX,
   DISPLAY_SIZE_MAX,
@@ -52,7 +57,7 @@ describe('loadPetPersist', () => {
         skins: { otter: 'lanhainishang' },
         affinity: { ...emptyAffinity(), points: 42, pets: 3, feeds: 1, turns: 10 },
         treats: { ...emptyTreatLedger(), treats: 7, lastTreatGrantAt: 1234, turnsAtLastTreatGrant: 9 },
-        display: { visible: false, size: 200, right: 10, bottom: 40 },
+        display: { visible: false, size: 200, right: 10, bottom: 40, bubbleScale: 1.25 },
         gameplay: {
           otter: { stats: { hunger: 55.5 }, currencies: { coins: 12 }, mode: 'work' as const, settledAt: 777 },
         },
@@ -162,6 +167,53 @@ describe('loadPetPersist', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
+  })
+
+  it('defaults the bubble scale to the untouched baseline (#1549)', () => {
+    const dir = tempDir()
+    try {
+      expect(loadPetPersist(dir).display.bubbleScale).toBe(1)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('clamps a persisted bubble scale into the supported range (#1549)', () => {
+    const dir = tempDir()
+    try {
+      writeFileSync(join(dir, 'pet.json'), JSON.stringify({ display: { visible: true, size: 160, right: 0, bottom: 0, bubbleScale: 99 } }), 'utf8')
+      expect(loadPetPersist(dir).display.bubbleScale).toBe(BUBBLE_SCALE_MAX)
+      writeFileSync(join(dir, 'pet.json'), JSON.stringify({ display: { visible: true, size: 160, right: 0, bottom: 0, bubbleScale: 'big' } }), 'utf8')
+      expect(loadPetPersist(dir).display.bubbleScale).toBe(defaultDisplayConfig.bubbleScale)
+      writeFileSync(join(dir, 'pet.json'), JSON.stringify({ display: { visible: true, size: 160, right: 0, bottom: 0, bubbleScale: -3 } }), 'utf8')
+      expect(loadPetPersist(dir).display.bubbleScale).toBe(BUBBLE_SCALE_MIN)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('follows the pet size and stays inside the readable band (#1549)', () => {
+    // The baseline the stylesheet was drawn for: 12px at the default 160px pet.
+    expect(bubbleScaleFor({ size: 160, bubbleScale: 1 })).toBe(1)
+    // A shrunk pet shrinks the bubble, but never below the floor (the ratio
+    // is rounded to two decimals so the same config always paints the same).
+    expect(bubbleScaleFor({ size: 100, bubbleScale: 1 })).toBe(0.83)
+    expect(bubbleScaleFor({ size: 32, bubbleScale: 1 })).toBe(0.83)
+    // An enlarged pet caps the bubble instead of growing it without bound.
+    expect(bubbleScaleFor({ size: 1024, bubbleScale: 1 })).toBe(BUBBLE_FONT_MAX_PX / 12)
+    // The user's multiplier rides on top of the automatic following.
+    expect(bubbleScaleFor({ size: 160, bubbleScale: 2 })).toBe(2)
+    expect(bubbleScaleFor({ size: 160, bubbleScale: 0.5 })).toBe(0.83)
+  })
+
+  it('keeps the baseline when a host omits or corrupts the bubble scale (#1549)', () => {
+    // A host that predates the field serves no bubbleScale. NaN would reach
+    // --pet-bubble-scale and collapse every bubble's text to zero.
+    expect(bubbleScaleFor({ size: 160 })).toBe(1)
+    expect(bubbleScaleFor({ size: 160, bubbleScale: Number.NaN })).toBe(1)
+    expect(bubbleScaleFor({ size: Number.NaN, bubbleScale: 1 })).toBe(1)
+    // A corrupt size must not leak through either; the multiplier still applies.
+    expect(bubbleScaleFor({ size: Number.POSITIVE_INFINITY, bubbleScale: 2 })).toBe(2)
   })
 
   it('clamps oversized display size to the max', () => {

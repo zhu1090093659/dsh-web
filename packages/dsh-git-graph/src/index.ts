@@ -18,9 +18,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-subprocess'
 import type {} from '@deepseek-ai/dsh-workspace'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
-import z from 'schemastery'
 import type { GitFeatureConfig } from './core/types.ts'
+import { Config, effectiveConfig } from './host/config.ts'
 import { GitService, subprocessRunner, type WorkspaceGate } from './host/git-service.ts'
 import { registerGitRoutes } from './host/routes.ts'
 import { buildWorktreeTool } from './host/agent-tool.ts'
@@ -30,32 +29,24 @@ import { mountOnce } from './mount-once.ts'
 /** Required services: the route registry, the managed subprocess seam, and the workspace registry. */
 export const inject = ['webServer', 'subprocess', 'workspaceRegistry']
 
-/** Plugin config (settings-editable through the Web settings card). */
-export interface Config {
-  /** Auto-isolate every New Session of a git workspace into a fresh managed worktree. */
-  autoIsolate?: boolean
-  /** Baseline for auto-created worktrees: the checkout's current HEAD or the remote default branch. */
-  autoBaseline?: 'current' | 'default'
-  /** Register the model-facing git_worktree tool (opt-in; off keeps git off the model-visible surface). */
-  agentTool?: boolean
-}
+/**
+ * The plugin's Config schema, re-exported for the Host: the Loader validates
+ * this row's profile patch against it and the settings service generates the
+ * entry's page from it.
+ */
+export { Config } from './host/config.ts'
+export type { ConfigInput, ResolvedConfig } from './host/config.ts'
 
-/** Schemastery schema backing the settings card and profile patch values. */
-export const Config: z<Config> = z.object({
-  autoIsolate: z.boolean().default(false),
-  autoBaseline: z.union(['current', 'default'] as const).default('current'),
-  agentTool: z.boolean().default(false),
-})
-
-/** The settings-card namespace of this plugin. */
-export const GIT_GRAPH_SETTINGS = 'git-graph' as SettingsNamespace
-
-/** Resolve the effective config with schema defaults applied. */
-function effectiveConfig(config?: Config): Required<Config> {
-  return {
-    autoIsolate: config?.autoIsolate ?? false,
-    autoBaseline: config?.autoBaseline ?? 'current',
-    agentTool: config?.agentTool ?? false,
+declare module '@deepseek-ai/cordis' {
+  /**
+   * Loader event carrying the volatile config paths it just committed into a
+   * running plugin. Declared locally: this package reads the event but does
+   * not depend on `@deepseek-ai/cordis-plugin-loader`, the package that owns
+   * the declaration (the running Loader emits it either way).
+   */
+  interface Events {
+    /** Volatile config values were committed into this fiber without a remount. */
+    'loader/volatile-update'(paths: readonly (readonly string[])[]): void
   }
 }
 
@@ -81,20 +72,21 @@ function createWorkspaceGate(ctx: Context): WorkspaceGate {
 }
 
 /**
- * Mount the git service, its routes, the settings card, and the opt-in tool.
+ * Mount the git service, its routes, and the opt-in tool. The settings page
+ * is the Host's own generation from {@link Config}: this half registers no
+ * settings section.
  * @param ctx - context carrying webServer, subprocess, and workspaceRegistry.
- * @param config - profile patch values (the settings card re-sources them).
+ * @param config - the row's config as the Host resolved it (live references).
  */
 export const apply = mountOnce('@linxin666/dsh-client-ui-git-graph', applyImpl)
 
 function applyImpl(ctx: Context, config?: Config): void {
   const service = new GitService(subprocessRunner(ctx), createWorkspaceGate(ctx))
 
-  // The live config source: installSection swaps it when the user
-  // edits the settings card; onChange re-syncs derived registrations.
-  let current: () => Required<Config> = () => effectiveConfig(config)
+  // The settings subsystem commits an edit into these references without
+  // remounting the row, so every read goes through effectiveConfig.
   const featureConfig = (): GitFeatureConfig => {
-    const active = current()
+    const active = effectiveConfig(config)
     return {
       autoIsolate: active.autoIsolate,
       autoBaseline: active.autoBaseline,
@@ -106,7 +98,7 @@ function applyImpl(ctx: Context, config?: Config): void {
   // service is awaited lazily so the plugin never hard-depends on it.
   let toolFiber: ReturnType<Context['inject']> | undefined
   const syncTool = (): void => {
-    const want = current().agentTool
+    const want = effectiveConfig(config).agentTool
     if (want && toolFiber === undefined) {
       toolFiber = ctx.inject(['tools'], (toolCtx: Context) => {
         toolCtx.effect(() => toolCtx.tools.register(buildWorktreeTool(ctx, service)), 'dsh-git-graph: git_worktree tool')
@@ -117,27 +109,18 @@ function applyImpl(ctx: Context, config?: Config): void {
     }
   }
 
-  ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(ctx, GIT_GRAPH_SETTINGS, Config, effectiveConfig(config), {
-          setSource: (source) => { current = () => effectiveConfig(source()) },
-          onChange: syncTool,
-        })
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        const scope = settingsCtx.settings.register(GIT_GRAPH_SETTINGS, Config, {
-          base: effectiveConfig(config),
-        })
-        current = () => effectiveConfig(scope.get?.())
-        scope.watch?.(() => {
-          syncTool()
-        })
-        syncTool()
-      }
-    } catch {
-      // Defensive fallback against settings registration differences
-    }
-  })
+  // A volatile-only edit never remounts the row: the Loader commits the new
+  // value into the references and announces the paths. That notice is what
+  // re-derives the tool registration (the old settings hook's job); a change
+  // to any other field re-syncs to the same verdict, because syncTool only
+  // compares the flag with what is registered.
+  ctx.effect(() => {
+    const dispose = ctx.on('loader/volatile-update', (paths) => {
+      if (paths.some(path => path[0] === 'agentTool')) syncTool()
+    })
+    return () => { dispose() }
+  }, 'dsh-git-graph: settings-committed tool sync')
+
   ctx.effect(() => {
     syncTool()
     const disposeRoutes = registerGitRoutes(ctx, service, featureConfig)

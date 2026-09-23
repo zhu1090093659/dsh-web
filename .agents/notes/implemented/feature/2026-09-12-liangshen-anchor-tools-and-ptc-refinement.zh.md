@@ -2,7 +2,7 @@
 
 Status: implemented
 
-部分取代[梁神模式改为只带 shell 的锚定与 PTC 晋升](2026-09-12-liangshen-shell-anchor-and-ptc-handoff.zh.md)：默认 `anchorTools` 恢复为 `[bash, str_replace_editor, exit_plan_mode, skill]`，保留 bash-only 作为配置实验；锚定回合覆盖首轮整个 user turn 而非单一请求；PTC 仅在实际成功时声称激活；注入 SDK 保留完整输入输出关键参数语义而非 200 字唯一契约；删除与 Minimal 完全一致、社区分数证明本版更好以及缓存等于行为等过度承诺。部分取代[梁神模式把 AGENTS.md 指令提升进系统提示词](2026-09-12-liangshen-agents-md-in-system-prompt.zh.md)的动态指令范围：说明后续将支持注册文件工具（含 `str_replace_editor`）及 PTC 内子调用触达的目录。交叉链接[把 Standard 目录分层到锚定回合之后](2026-09-11-liangshen-anchor-turn-staging.zh.md)与[极简 persona 加注入式标准工具目录](2026-09-11-liangshen-minimal-prompt-tool-catalog.zh.md)。
+部分取代[梁神模式改为只带 shell 的锚定与 PTC 晋升](2026-09-12-liangshen-shell-anchor-and-ptc-handoff.zh.md)：默认 `anchorTools` 恢复为 `[bash, str_replace_editor, exit_plan_mode, skill]`，保留 bash-only 作为配置实验；锚定回合覆盖首轮整个 user turn 而非单一请求；PTC 仅在实际成功时声称激活；注入 SDK 保留完整输入输出关键参数语义而非 200 字唯一契约；删除与 Minimal 完全一致、社区分数证明本版更好以及缓存等于行为等过度承诺。部分取代[梁神模式把 AGENTS.md 指令提升进系统提示词](2026-09-12-liangshen-agents-md-in-system-prompt.zh.md)的动态指令范围：说明后续将支持注册文件工具（含 `str_replace_editor`）及 PTC 内子调用触达的目录。交叉链接[把 Standard 目录分层到锚定回合之后](2026-09-11-liangshen-anchor-turn-staging.zh.md)与[极简 persona 加注入式标准工具目录](2026-09-11-liangshen-minimal-prompt-tool-catalog.zh.md)。由[请求面工具目录](2026-09-13-liangshen-request-surface-catalog-and-eval-tooling.zh.md)延伸：原生目录列出请求自身的 wire，PTC 下仍列经 SDK 可达的完整工具面，包内同时新增有界评测矩阵。部分被[V4.1 Flash 原生重构](2026-09-16-liangshen-v41-flash-native-rebuild.zh.md)取代：`anchorTools` 首回合收窄退役（设置则告警），`ptcPresentation` 由三态 `presentation` 键取代，默认 `both` 让完整原生清单与 `run_code` 同驻 wire；如实激活语义、请求面目录契约与三层验证标准继续有效。
 
 ## Problem
 

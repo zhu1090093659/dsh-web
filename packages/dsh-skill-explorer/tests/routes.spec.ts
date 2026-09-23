@@ -373,6 +373,192 @@ describe('delete', () => {
   })
 })
 
+/** Isolated user-root skill for the read/update routes. */
+function editFixture(name = 'edit-target'): {
+  root: string
+  file: string
+  find(path: string): ReturnType<typeof makeRoutes>[number] | undefined
+} {
+  const root = mkdtempSync(join(tmpdir(), 'skill-explorer-edit-'))
+  const home = join(root, 'home')
+  const file = join(home, 'skills', name, 'SKILL.md')
+  mkdirSync(join(home, 'skills', name), { recursive: true })
+  writeFileSync(file, `---\nname: ${name}\ndescription: 原始描述\nwhenToUse: 原始场景\ndisable-model-invocation: true\n---\n\n# 原始正文\n`, 'utf8')
+  const isolatedRoutes = makeRoutes(emptyCtx, { ...deps, dshHome: home, agentsHome: join(root, 'agents') })
+  return { root, file, find: path => isolatedRoutes.find(route => route.path === path) }
+}
+
+describe('read', () => {
+  it('user reading a skill gets the editable fields and the body without frontmatter', async () => {
+    // Given a skill whose file carries frontmatter and a body
+    const fixture = editFixture()
+    try {
+      // When the client reads it through the read route
+      const { res, status, body } = response()
+      const url = `${ROUTES.read}?name=edit-target&path=${encodeURIComponent(fixture.file)}`
+      await fixture.find(ROUTES.read)!.handler(request(url, 'GET'), res)
+
+      // Then the editable fields come back parsed and the body comes back bare
+      expect(status()).toBe(200)
+      expect(JSON.parse(body())).toEqual({
+        name: 'edit-target',
+        path: fixture.file,
+        description: '原始描述',
+        whenToUse: '原始场景',
+        content: '# 原始正文',
+      })
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('user reading a path the fresh scan does not resolve gets 409', async () => {
+    // Given a skill file that has moved away since the panel rendered
+    const fixture = editFixture()
+    try {
+      // When the read route is asked for the stale path
+      const { res, status } = response()
+      const url = `${ROUTES.read}?name=edit-target&path=${encodeURIComponent(join(fixture.root, 'elsewhere', 'SKILL.md'))}`
+      await fixture.find(ROUTES.read)!.handler(request(url, 'GET'), res)
+
+      // Then the stale identity is refused instead of served
+      expect(status()).toBe(409)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('user omitting name and path gets 400', async () => {
+    // Given a read request without the identity query parameters
+    const { res, status } = response()
+
+    // When the read route handles it
+    await find(ROUTES.read)!.handler(request(ROUTES.read, 'GET'), res)
+
+    // Then the request is rejected as invalid
+    expect(status()).toBe(400)
+  })
+
+  it('user posting to the read route gets 405', async () => {
+    // Given a read route hit with a write method
+    const fixture = editFixture()
+    try {
+      // When a POST is sent to it
+      const { res, status } = response()
+      const url = `${ROUTES.read}?name=edit-target&path=${encodeURIComponent(fixture.file)}`
+      await fixture.find(ROUTES.read)!.handler(request(url, 'POST'), res)
+
+      // Then the method is refused
+      expect(status()).toBe(405)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('update', () => {
+  it('user editing a disabled skill rewrites the file and keeps it disabled', async () => {
+    // Given a skill file whose frontmatter carries the disabled switch
+    const fixture = editFixture()
+    try {
+      // When the client saves new fields through the update route
+      const { res, status, body } = response()
+      await fixture.find(ROUTES.update)!.handler(request(ROUTES.update, 'POST', {
+        body: { name: 'edit-target', path: fixture.file, description: '新描述', whenToUse: '新场景', content: '# 新正文' },
+      }), res)
+
+      // Then the file is rewritten in place and the switch state is preserved
+      expect(status()).toBe(200)
+      expect(JSON.parse(body())).toEqual({ ok: true, name: 'edit-target', path: fixture.file, disabled: true })
+      const written = readFileSync(fixture.file, 'utf8')
+      expect(written).toContain("description: '新描述'")
+      expect(written).toContain('whenToUse: ' + "'" + '新场景' + "'")
+      expect(written).toContain('# 新正文')
+      // The edit form does not expose the switch: a disabled skill stays disabled.
+      expect(written).toContain('disable-model-invocation: true')
+      expect(existsSync(join(fixture.root, 'home', 'skills', 'edit-target', 'SKILL.md'))).toBe(true)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('user editing a linked skill gets 400 and the link target stays untouched', async () => {
+    if (!CAN_SYMLINK) return
+    // Given a skill directory that is a symlink to a shared target
+    const root = mkdtempSync(join(tmpdir(), 'skill-explorer-linked-edit-'))
+    const home = join(root, 'home')
+    const shared = join(root, 'shared', 'linked-edit')
+    mkdirSync(shared, { recursive: true })
+    mkdirSync(join(home, 'skills'), { recursive: true })
+    writeFileSync(join(shared, 'SKILL.md'), '---\nname: linked-edit\ndescription: 链接技能\n---\n', 'utf8')
+    symlinkSync(shared, join(home, 'skills', 'linked-edit'), 'dir')
+    try {
+      const isolatedRoutes = makeRoutes(emptyCtx, { ...deps, dshHome: home, agentsHome: join(root, 'agents') })
+
+      // When the client edits it through the update route
+      const { res, status } = response()
+      await isolatedRoutes.find(route => route.path === ROUTES.update)!.handler(request(ROUTES.update, 'POST', {
+        body: { name: 'linked-edit', path: join(home, 'skills', 'linked-edit', 'SKILL.md'), description: '改', content: '改' },
+      }), res)
+
+      // Then the edit is refused and the shared target keeps its content
+      expect(status()).toBe(400)
+      expect(readFileSync(join(shared, 'SKILL.md'), 'utf8')).toContain('链接技能')
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('user editing without the displayed file path gets 400', async () => {
+    // Given an update request that carries a name but no path
+    const { res, status } = response()
+
+    // When the update route handles it
+    await find(ROUTES.update)!.handler(request(ROUTES.update, 'POST', { body: { name: 'user-tool', description: '改', content: '改' } }), res)
+
+    // Then the missing identity is rejected
+    expect(status()).toBe(400)
+  })
+
+  it('user saving whitespace-only content gets 400', async () => {
+    // Given an edit whose body is only whitespace
+    const fixture = editFixture()
+    try {
+      // When the update route handles it
+      const { res, status } = response()
+      await fixture.find(ROUTES.update)!.handler(request(ROUTES.update, 'POST', {
+        body: { name: 'edit-target', path: fixture.file, description: '改', content: '   ' },
+      }), res)
+
+      // Then the empty content is rejected
+      expect(status()).toBe(400)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('user saving an edit whose displayed file disappeared gets 409 without a fallback rewrite', async () => {
+    // Given a skill whose displayed project file disappears after the panel rendered
+    const fixture = staleIdentityFixture()
+    try {
+      rmSync(join(fixture.projectFile, '..'), { recursive: true })
+
+      // When the update route handles the stale path
+      const { res, status, body } = response()
+      await fixture.find(ROUTES.update)!.handler(request(ROUTES.update, 'POST', {
+        body: { name: 'shared-skill', path: fixture.projectFile, description: '改', content: '改' },
+      }), res)
+
+      // Then the same-name fallback is refused and the user copy keeps its content
+      expect(status()).toBe(409)
+      expect(JSON.parse(body()).error).toContain('refresh and retry')
+      expect(readFileSync(fixture.userFile, 'utf8')).toContain('user copy')
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('sessions degradation', () => {
   it('still serves list when sessions throw (empty project roots)', async () => {
     const brokenDeps = {

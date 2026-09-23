@@ -154,4 +154,36 @@ describe('setRowEnabled', () => {
     // No duplicate bare row is appended.
     expect(root.items.filter(item => typeof item === 'object' && item !== null && 'get' in (item as object) && (item as { get: (k: string, d?: unknown) => unknown }).get('id', true) === 'genui' && !('insert' in (item as object)))).toHaveLength(0)
   })
+
+  it('falls back to matching by name when the row id is customized', () => {
+    const customSample = `[
+      { id: web-ui-dsh-perf, name: "@linxin666/dsh-perf", disabled: false },
+    ]\n`
+    // Disable using the package id 'dsh-perf' (different from row id 'web-ui-dsh-perf')
+    const disabled = setRowEnabled(customSample, 'p', 'dsh-perf', '@linxin666/dsh-perf', false)
+    expect(disabled).toContain('id: web-ui-dsh-perf')
+    expect(disabled).toContain('disabled: true')
+    expect(disabled).not.toContain('id: dsh-perf')
+    const { root: disabledRoot } = parsePatch(disabled, 'p')
+    expect(disabledRoot.items).toHaveLength(1)
+
+    // Re-enable: should flip to disabled: false rather than deleting the mounted row
+    const reEnabled = setRowEnabled(disabled, 'p', 'dsh-perf', '@linxin666/dsh-perf', true)
+    expect(reEnabled).toContain('id: web-ui-dsh-perf')
+    expect(reEnabled).toContain('disabled: false')
+    const { root: reEnabledRoot } = parsePatch(reEnabled, 'p')
+    expect(reEnabledRoot.items).toHaveLength(1)
+  })
+
+  it('keeps conservative append behavior when name matches multiple rows ambiguously', () => {
+    const ambiguousSample = `[
+      { id: row-a, name: "@linxin666/dup" },
+      { id: row-b, name: "@linxin666/dup" },
+    ]\n`
+    const disabled = setRowEnabled(ambiguousSample, 'p', 'dup', '@linxin666/dup', false)
+    const { root } = parsePatch(disabled, 'p')
+    expect(root.items).toHaveLength(3)
+    expect(disabled).toContain('id: dup')
+  })
 })
+

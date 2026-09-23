@@ -71,6 +71,15 @@ html[data-dsh-skin="whale-mom"] [class*="chipLabel"], html[data-dsh-skin="whale-
   font-weight: 500;
 }
 
+/* The rule above is shell-wide, so it also lands on the pet's usage / status
+   bubbles, whose background dsh-pet always paints dark navy. In the light
+   theme --dsh-skin-text-strong is near-black, which made "今日 / 空闲时段"
+   unreadable on that background; the compound selector here is more specific
+   and restores the pet's own light text color. */
+html[data-dsh-skin="whale-mom"] [data-dsh-pet-root] [class*="bubble"] {
+  color: #f4f7ff;
+}
+
 html[data-dsh-skin="whale-mom"] [class*="markdown"]:not([class*="Payload"]):not([class*="Preview"]) {
   background: var(--dsh-skin-bubble-v2);
   border-radius: 18px;

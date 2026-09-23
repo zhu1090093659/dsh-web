@@ -27,8 +27,8 @@ export interface VoucherData {
   to: string
 }
 
-/** Anti-inflation exchange rate: 1000 tokens mint one whale yuan. */
-export const TOKENS_PER_WHALE_YUAN = 1000
+/** Anti-inflation exchange rate: 1,000,000 tokens mint one whale yuan. */
+export const TOKENS_PER_WHALE_YUAN = 1_000_000
 
 /** The note's face value in whale yuan; the smallest denomination is 1. */
 export function faceValue(tokens: number): number {

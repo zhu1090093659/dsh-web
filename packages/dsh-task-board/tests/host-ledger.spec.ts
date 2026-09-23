@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTask, EXECUTION_HISTORY_LIMIT, startExecution, withSchedule, type TaskRecord } from '../src/core/tasks.ts'
-import { HostTaskLedger, processIsAlive, processState } from '../src/host-ledger.ts'
+import { HostTaskLedger, processIsAlive, processState, win32StartTimeMs, type PowerShellProbe } from '../src/host-ledger.ts'
 
 const roots: string[] = []
 const NOW = new Date(2026, 7, 16, 10, 0, 30).getTime()
@@ -367,6 +367,21 @@ describe('HostTaskLedger', () => {
     expect(message).toContain(lockFile)
   })
 
+  it('reclaims a truncated lock left by an unclean shutdown (issue #1528)', () => {
+    const root = tempRoot()
+    const lockFile = join(root, 'ledger-v2.lock')
+    // The reported Host found a 0-byte lock whose mtime was two days old: the
+    // owner died between creating the file and writing its record. Nothing can
+    // still be writing a lock that old, so the next start reclaims it instead
+    // of leaving the Host half unmounted until someone deletes it by hand.
+    writeFileSync(lockFile, '', { encoding: 'utf8' })
+    const past = NOW - 2 * 24 * 60 * 60 * 1000
+    utimesSync(lockFile, past / 1000, past / 1000)
+    const ledger = new HostTaskLedger(root, () => NOW)
+    expect(ledger.state().scheduler.ledgerId).toBeDefined()
+    ledger.dispose()
+  })
+
   it('takes over a lock owned by an unreaped zombie process', () => {
     const zombie = spawnZombie()
     if (zombie === undefined) return // environment reaps orphans; cannot exercise
@@ -706,3 +721,71 @@ describe('ledger schema v3 migration', () => {
     reloaded.dispose()
   })
 })
+describe('win32StartTimeMs', () => {
+  /** Records every script the fallback chain runs and answers per script. */
+  function recordingProbe(answers: (script: string) => string | undefined): { probe: PowerShellProbe; scripts: string[] } {
+    const scripts: string[] = []
+    return {
+      scripts,
+      probe: (script) => {
+        scripts.push(script)
+        return answers(script)
+      },
+    }
+  }
+
+  it('operator gets the lock identity from Win32_Process when Get-Process reads nothing', () => {
+    // Given issue #1629: an unprivileged caller gets no StartTime for a protected
+    // process (System, svchost), so the direct probe prints nothing
+    const { probe, scripts } = recordingProbe(script => script.includes('Win32_Process') ? '1789782344683' : '')
+
+    // When the Win32 start time is probed
+    const startTime = win32StartTimeMs(4, probe)
+
+    // Then the CIM fallback still supplies the identity of the PID the lock named
+    expect(startTime).toBe(1789782344683)
+    expect(scripts).toHaveLength(2)
+    expect(scripts[0]).toContain('Get-Process -Id 4')
+    expect(scripts[1]).toContain('Win32_Process -Filter "ProcessId=4"')
+    expect(scripts[1]).toContain('CreationDate')
+  })
+
+  it('operator keeps the Get-Process reading and skips the CIM probe when it answers', () => {
+    // Given a direct probe that answers
+    const { probe, scripts } = recordingProbe(() => '1789782344683')
+
+    // When the Win32 start time is probed
+    const startTime = win32StartTimeMs(1234, probe)
+
+    // Then the direct reading is used and no CIM script is built
+    expect(startTime).toBe(1789782344683)
+    expect(scripts).toHaveLength(1)
+    expect(scripts[0]).toContain('Get-Process -Id 1234')
+  })
+
+  it('operator gets no start time when neither probe answers', () => {
+    // Given both probes stay empty, which the lock treats as "cannot prove PID reuse"
+    const { probe, scripts } = recordingProbe(() => undefined)
+
+    // When the Win32 start time is probed
+    const startTime = win32StartTimeMs(4, probe)
+
+    // Then the caller gets no timestamp instead of a fabricated one
+    expect(startTime).toBeUndefined()
+    expect(scripts).toHaveLength(2)
+  })
+
+  it('operator sees a pid that is not a positive integer rejected before any script is built', () => {
+    // Given a probe that records whether it was consulted
+    let invocations = 0
+    const probe = () => { invocations += 1; return '1' }
+
+    // When a zero, negative and fractional pid are probed
+    const results = [win32StartTimeMs(0, probe), win32StartTimeMs(-4, probe), win32StartTimeMs(1.5, probe)]
+
+    // Then each is rejected and no script was built
+    expect(results).toEqual([undefined, undefined, undefined])
+    expect(invocations).toBe(0)
+  })
+})
+

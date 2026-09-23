@@ -12,6 +12,10 @@ Status: implemented
 - Keep the four repository-owned skills in `.dsh/skills/`: `dsh-web-skin-developer`, `dsh-web-pet-developer`, `dsh-web-community-plugin-developer`, and `dsh-web-release`. They describe this repository's packages, generators, and release pipeline and version together with it.
 - No document or script is updated: the only live reference to a personal skill (`scripts/rollout-verify.sh`) already names the personal path and keeps its skip-with-warning fallback.
 
+## Superseded in part
+
+The "keep the four repository-owned skills in `.dsh/skills/`" bullet is superseded by [repository skills resolve from the .agents skills home](../process/2026-09-14-repository-skills-agents-home.md): those skills now live in `.agents/skills/`. The rest of this decision still holds.
+
 ## Alternatives considered
 
 - Keeping the repository copies in sync with the personal skills: rejected - the personal skills evolve on their own schedule, so a vendored copy can only go stale, and the upgrade skill had already done so.

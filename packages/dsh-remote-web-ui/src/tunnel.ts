@@ -164,19 +164,36 @@ export function createBinaryReadiness(executable: string, seams: BinaryReadiness
   const runs = seams.runs ?? binaryRuns
   const installBinary = seams.install ?? install
   const validated = new Set<string>()
+  let installs = 0
+  let lastFailure: Error | undefined
   return async () => {
     if (validated.has(executable)) return
+    // The manager retries forever with backoff, so a permanently unrunnable
+    // binary must not re-download the whole platform archive on every attempt
+    // (a wrong-arch payload would otherwise fetch it once per restart round).
+    // A transient install failure still gets its retries; past the cap the
+    // remembered error is rethrown until the process restarts.
+    if (installs >= MAX_BINARY_INSTALL_ATTEMPTS && lastFailure !== undefined) throw lastFailure
     if (exists(executable) && await runs(executable)) {
       validated.add(executable)
       return
     }
-    await installBinary(executable)
-    if (!(await runs(executable))) {
-      throw new Error(`the cloudflared binary at ${executable} still does not run after the reinstall`)
+    installs += 1
+    try {
+      await installBinary(executable)
+      if (!(await runs(executable))) {
+        throw new Error(`the cloudflared binary at ${executable} still does not run after the reinstall`)
+      }
+    } catch (error) {
+      lastFailure = error instanceof Error ? error : new Error(String(error))
+      throw lastFailure
     }
     validated.add(executable)
   }
 }
+
+/** How many archive downloads one process may attempt before giving up. */
+export const MAX_BINARY_INSTALL_ATTEMPTS = 3
 
 /** The readiness policy the manager uses by default: the package's real binary path. */
 const defaultBinaryReadiness = createBinaryReadiness(bin)
@@ -204,14 +221,42 @@ export function quickTunnelFlags(originHostHeader?: string): Record<string, stri
 }
 
 /**
- * Command-line arguments for a named tunnel with a persistent Cloudflare token.
- * Note: `--no-autoupdate` and `--protocol` are flags for the `tunnel` command
- * and must appear BEFORE the `run` subcommand. Putting them after `run` causes
- * cloudflared to exit immediately with "flag provided but not defined: -no-autoupdate"
- * (issues #1432, #1433).
+ * Command-line arguments for a named tunnel. The account token is deliberately
+ * NOT part of the argv: `--token <t>` would expose an account credential to any
+ * local user through ps/proc for the whole tunnel lifetime, while the flag's own
+ * environment variable (TUNNEL_TOKEN, see cloudflared's tunnel run flags) is not
+ * readable that way. Note: `--no-autoupdate` and `--protocol` are flags for the
+ * `tunnel` command and must appear BEFORE the `run` subcommand. Putting them
+ * after `run` causes cloudflared to exit immediately with "flag provided but not
+ * defined: -no-autoupdate" (issues #1432, #1433).
  */
-export function namedTunnelArgs(token: string): string[] {
-  return ['tunnel', '--no-autoupdate', '--protocol', 'http2', 'run', '--token', token]
+export function namedTunnelArgs(): string[] {
+  return ['tunnel', '--no-autoupdate', '--protocol', 'http2', 'run']
+}
+
+/**
+ * Run one spawn call with TUNNEL_TOKEN set, restoring the previous value
+ * afterwards. The cloudflared package's Tunnel spawns with the inherited
+ * environment inside its constructor, so the variable only has to exist for
+ * that call; the child keeps its own copy of the environment.
+ * @param token - the named-tunnel token.
+ * @param spawnTunnel - the call that creates the child process.
+ * @returns whatever the spawn call returns.
+ */
+export function withTunnelTokenEnv<T>(token: string, spawnTunnel: () => T): T {
+  const previous = process.env.TUNNEL_TOKEN
+  process.env.TUNNEL_TOKEN = token
+  try {
+    return spawnTunnel()
+  } finally {
+    if (previous === undefined) delete process.env.TUNNEL_TOKEN
+    else process.env.TUNNEL_TOKEN = previous
+  }
+}
+
+/** Spawn one named tunnel without putting its token in the child's argv. */
+function spawnNamedTunnel(token: string): NamedTunnelProcess {
+  return withTunnelTokenEnv(token, () => new Tunnel(namedTunnelArgs()))
 }
 
 /** Default factory: the cloudflared package's quick and named tunnels. */
@@ -227,7 +272,7 @@ function defaultFactory(target: TunnelTarget): TunnelHandle {
   if (target.kind === 'quick') {
     return Tunnel.quick(target.targetUrl, quickTunnelFlags(target.originHostHeader))
   }
-  return namedTunnelHandle(new Tunnel(namedTunnelArgs(target.token)), target.publicUrl)
+  return namedTunnelHandle(spawnNamedTunnel(target.token), target.publicUrl)
 }
 
 /** Node timers. */

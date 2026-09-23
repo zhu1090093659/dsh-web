@@ -13,7 +13,7 @@ pnpm docs:check（scripts/verify-docs.mjs）强制执行本文件的可机械检
 | packages/AGENTS.md | 包级通用规则 | 根文件已有的全局规则 |
 | 各包 AGENTS.md | 该包特有规则 | 包级通用规则、全局规则 |
 | 各包 README | 包的用户契约：功能、安装、配置、安全模型、已知限制 | JSDoc 重述、构建内部细节 |
-| docs/ 长期文档 | 跨包流程与约定：plugins.md（新插件入桶）、i18n.md（双语契约）、development.md（开发流程） | 一次性任务记录（→ docs/archive/） |
+| docs/ 长期文档 | 跨包流程与约定：architecture.md（架构总览）、plugins.md（新插件入桶）、i18n.md（双语契约）、development.md（开发流程）、telemetry.md（匿名遥测）、publish-prep.md（发布准备）、multi-agent-resources.md（多代理资源纪律） | 一次性任务记录（→ docs/archive/） |
 | docs/release-notes/ | 每版冻结的发布说明（vX.Y.Z.md，中文默认 + English 折叠双语，发布管线直接采用，v0.2.6 起） | 未发布的草稿、其他时间戳快照 |
 | docs/archive/ | 任务交接、验证快照、一次性记录（冻结历史） | 当前行为描述 |
 

@@ -10,6 +10,12 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    // See tsconfig.host.json: the pin keeps this program on one cordis module
+    // so the SDK packages' Context and Events merges apply to the types the
+    // specs exercise.
+    "paths": {
+      "@deepseek-ai/cordis": ["./node_modules/@deepseek-ai/cordis"]
+    },
     "jsx": "react-jsx",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "strict": true,

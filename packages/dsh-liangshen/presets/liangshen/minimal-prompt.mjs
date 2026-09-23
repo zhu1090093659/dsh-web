@@ -1,42 +1,56 @@
 /**
  * minimal-prompt — keep this preset's system prompt on the builtin Minimal
  * preset's one-line persona (plus the session's workspace directory) while the
- * tool surface is staged behind the anchor turn and handed to PTC presentation
- * after it.
+ * sibling tool-catalog plugin owns the wire: one presentation declaration per
+ * session ('native' | 'ptc' | 'both') and gentle paging for high-fan-out
+ * namespaces.
  *
  * The assembled prompt is filtered down to the persona section, plus the plan
- * policy when plan mode is active and the official PTC tool SDK sections
- * (`tools:sdk` and `tools:ptc-only`) when PTC mode is active: the harness
+ * policy when plan mode is active, plus the official PTC tool SDK sections
+ * (`tools:sdk` and `tools:ptc-only`) exactly when the assembled wire carries
+ * the `run_code` transport (presentations 'ptc' and 'both'; an unreadable wire
+ * keeps them, matching the harness's own empty-section drop): the harness
  * identity, web-surface, tool-guidance, file-reference, and structured-output
- * sections never reach the model. Under PTC presentation, keeping the official
- * `tools:sdk` and `tools:ptc-only` sections ensures the model receives the
- * complete generated tool signatures, argument types, output schemas, and
- * parameter comments without private SDK schemas or renderer duplication.
+ * sections never reach the model. Keeping the official SDK sections when the
+ * transport is present ensures the model receives the complete generated tool
+ * signatures, argument types, output schemas, and parameter comments without
+ * private SDK schemas or renderer duplication.
  *
  * WORKSPACE LINE: the bare persona says nothing about where the session
  * operates, so the selected workspace directory is appended to the persona at
  * assembly time (`Your working directory is <cwd>.`), read from the session
  * header. This is the only orientation fact the persona block carries.
  *
- * WORKSPACE INSTRUCTIONS (default `instructionSource: 'system-prompt'`): the
- * AGENTS.md-style instruction files the harness would inject as user-role
- * context are instead read at assembly time and become part of the system
- * prompt itself, as one `workspace-instructions` section appended after the
- * persona block and plan mode's policy. Discovery mirrors the harness's
- * baseline chain — `$DSH_HOME/AGENTS.md`, then `AGENTS.md` / `CLAUDE.md` and
- * their `.local` overlays from the project root (the nearest ancestor holding
- * a `.git` marker) down to the session cwd, broadest first, with the harness's
- * per-directory duplicate suppression and byte budget — so the content rides
- * the prompt on every request: it survives compaction, needs no durable
- * message, and picks up file edits on the next assembly. The section is
- * appended after the stable prefix, so the anchor's KV-cache prefix stays
- * intact. Because the harness's prompt renderer interpolates every section
- * strictly, the section text is only a `{{workspace_instructions}}` reference
- * and the rendered content travels as that assembly variable's value —
- * variable values are inserted verbatim and never re-scanned, so instruction
- * files may contain `{{...}}` examples without breaking every request.
+ * WORKSPACE INSTRUCTIONS (`instructionSource`, default `'host'`): where the
+ * AGENTS.md-style instruction files reach the model.
  *
- * DYNAMIC RECONCILIATION & HOST CONTRACT:
+ * - `'host'` (default): the plugin appends no prompt section and leaves
+ *   `decision.messages` byte-for-byte untouched, so the preset's own mounted
+ *   `@deepseek-ai/dsh-agent-instructions` row delivers the baseline and the
+ *   dynamic subdirectory instructions as ordinary user-role messages, exactly
+ *   as the upstream presets do. The system prompt stays the bare persona (plus
+ *   plan mode's policy), and the durability cost is the harness's: the baseline
+ *   is a message the host re-derives on every step, not prompt text that
+ *   survives compaction for free.
+ * - `'system-prompt'`: the files are instead read at assembly time and become
+ *   part of the system prompt itself, as one `workspace-instructions` section
+ *   appended after the persona block and plan mode's policy, while the
+ *   harness's own injections are condensed or dropped so nothing duplicates.
+ *   Discovery mirrors the harness's baseline chain — `$DSH_HOME/AGENTS.md`,
+ *   then `AGENTS.md` / `CLAUDE.md` and their `.local` overlays from the
+ *   project root (the nearest ancestor holding a `.git` marker) down to the
+ *   session cwd, broadest first, with the harness's per-directory duplicate
+ *   suppression and byte budget — so the content rides the prompt on every
+ *   request: it survives compaction, needs no durable message, and picks up
+ *   file edits on the next assembly. The section is appended after the stable
+ *   prefix, so the anchor's KV-cache prefix stays intact. Because the harness's
+ *   prompt renderer interpolates every section strictly, the section text is
+ *   only a `{{workspace_instructions}}` reference and the rendered content
+ *   travels as that assembly variable's value — variable values are inserted
+ *   verbatim and never re-scanned, so instruction files may contain `{{...}}`
+ *   examples without breaking every request.
+ *
+ * DYNAMIC RECONCILIATION & HOST CONTRACT (`'system-prompt'` only):
  * - Baseline instructions are resident in the system prompt. When the host's
  *   agent-instructions emits a pure baseline message (`source.baseline === true`),
  *   if the baseline was successfully loaded in the system prompt for this session,
@@ -59,10 +73,12 @@
  *   instructions triggered by an inner read/edit are projected on the NEXT step;
  *   same-program writes execute before that next-step projection reaches model context.
  *
- * `instructionSource: 'hint'` restores hint behavior: the first injection
+ * `instructionSource: 'hint'` is the third source: the first injection
  * becomes a single non-imperative pointer to the reference files (issue #388,
  * upstream dsh-anchored-standard #49) and every later injection is dropped; the
- * model reaches the knowledge through read / skill_load.
+ * model reaches the knowledge through read / skill_load. Like `'host'` it
+ * appends no prompt section, but unlike `'host'` it rewrites the host's
+ * messages.
  *
  * PLAN MODE is kept by default. `dsh-plan-mode` enforces its rules through
  * the `plan:policy` prompt section alone. `keepPlanPolicy: false` restores the
@@ -106,8 +122,13 @@ export const PTC_SECTION_NAMES = ['tools:ptc-only', 'tools:sdk']
 export const WORKSPACE_INSTRUCTIONS_SECTION_NAME = 'workspace-instructions'
 export const WORKSPACE_INSTRUCTIONS_VARIABLE = 'workspace_instructions'
 
-/** Accepted `instructionSource` values, default first. */
-export const INSTRUCTION_SOURCES = ['system-prompt', 'hint']
+/**
+ * Accepted `instructionSource` values, default first: `'host'` hands the
+ * instructions back to the harness's own user-role injection, `'system-prompt'`
+ * lifts them into the system prompt, `'hint'` replaces them with a one-time
+ * pointer.
+ */
+export const INSTRUCTION_SOURCES = ['host', 'system-prompt', 'hint']
 
 /** Tools whose executions touch workspace files and may trigger dynamic instruction discovery. */
 export const FILE_TOUCH_TOOL_NAMES = new Set(['read', 'write', 'edit', 'str_replace_editor'])
@@ -391,7 +412,7 @@ export function buildInstructionHint(original, paths) {
         + 'Reading the relevant file before workspace tasks is recommended, but consult them only when you need those details; the task itself never depends on them.'
         + '\n</system-reminder>',
     }],
-    source: { kind: 'plugin', plugin: name },
+    source: { kind: name },
   }
 }
 
@@ -664,13 +685,8 @@ export function withWorkspaceLine(sections, agent) {
 /** Register the section filter, workspace-instruction source, and dynamic discovery hooks. */
 export function apply(ctx, config) {
   const keepPlanPolicy = optionalBoolean(config?.keepPlanPolicy, 'keepPlanPolicy', true)
-  const instructionSource = optionalSource(config?.instructionSource, 'instructionSource', 'system-prompt')
+  const instructionSource = optionalSource(config?.instructionSource, 'instructionSource', 'host')
   const instructionMaxBytes = optionalByteSize(config?.instructionMaxBytes, 'instructionMaxBytes', DEFAULT_INSTRUCTION_MAX_BYTES)
-  const keep = new Set([
-    ...PERSONA_SECTION_NAMES,
-    ...(keepPlanPolicy ? [PLAN_POLICY_SECTION_NAME] : []),
-    ...PTC_SECTION_NAMES,
-  ])
 
   // Per-session state tracking (durable across steps, recoverable on replay)
   const sessionStateMap = new WeakMap()
@@ -724,6 +740,17 @@ export function apply(ctx, config) {
   ctx.on('system-prompt/assemble', async (_assembly, context, next) => {
     const assembled = await next()
     if (!Array.isArray(assembled.sections)) return assembled
+    // The official SDK sections belong to the run_code transport: keep them
+    // exactly when this assembly's wire carries it ('ptc' and 'both'), drop
+    // them from a native wire they would only confuse. An unreadable wire keeps
+    // them, matching the harness's own empty-section drop under 'native'.
+    const wire = Array.isArray(assembled?.tools) ? assembled.tools : undefined
+    const wireHasRunCode = wire === undefined ? true : wire.some(tool => tool?.name === 'run_code')
+    const keep = new Set([
+      ...PERSONA_SECTION_NAMES,
+      ...(keepPlanPolicy ? [PLAN_POLICY_SECTION_NAME] : []),
+      ...(wireHasRunCode ? PTC_SECTION_NAMES : []),
+    ])
     const sections = assembled.sections.filter(section => keep.has(section?.name))
     if (sections.length === 0) {
       warnOnce(`${name}: no section matched ${JSON.stringify([...keep])} — `
@@ -731,6 +758,8 @@ export function apply(ctx, config) {
       return assembled
     }
     const narrowed = withWorkspaceLine(sections, context?.agent)
+    // 'host' and 'hint' append no workspace-instructions section: the harness's
+    // own agent-instructions row carries the content (or the hint replaces it).
     if (instructionSource !== 'system-prompt') return { ...assembled, sections: narrowed }
 
     let text
@@ -788,6 +817,12 @@ export function apply(ctx, config) {
       return { ...decision, messages: instructionHintMessages(decision.messages, state) }
     }
 
+    // Host mode: the harness's agent-instructions row owns the channel, so every
+    // message it queued — baseline and dynamic alike — passes through verbatim:
+    // no filterInstructionMessages, no dynamic subdirectory discovery, no
+    // plugin-authored message. Handing the decision back unchanged is the point.
+    if (instructionSource === 'host') return decision
+
     // System-prompt mode:
     const cwd = session?.header?.cwd
     const baselineLoaded = state?.baselineLoaded ?? false
@@ -814,7 +849,7 @@ export function apply(ctx, config) {
             type: 'text',
             text: `<system-reminder>\n${newSections.join('\n\n')}\n</system-reminder>`,
           }],
-          source: { kind: 'plugin', plugin: name },
+          source: { kind: name },
         })
       }
     }

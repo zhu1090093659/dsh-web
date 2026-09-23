@@ -70,7 +70,9 @@ applied to production on 2026-09-01:
 - 90/365-day windows grow with 400-day retention; when their single-statement
   scans eventually exceed D1 limits, those windows freeze at their last
   successful rollup instead of erroring. The next structural step is the
-  per-subject fact table.
+  per-subject fact table. This reached the 30-day window on 2026-09-14;
+  [the follow-up note](2026-09-16-telemetry-aux-degradation-and-rollup-freshness.md)
+  keeps the core aggregates computable when the auxiliary scans overflow.
 - Between the migration and the worker deploy, a minutes-wide window of
   visitors was absent from `telemetry_visitors`; a one-time re-run of the
   backfill INSERT closed it, and any residue self-heals within a day through

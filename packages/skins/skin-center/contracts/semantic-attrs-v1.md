@@ -73,6 +73,9 @@ family / 插件区域：
 | `tag-filter` | task-board | 标签筛选条；`[data-dsh-taskboard-board] [data-dsh-part="tag-filter"]` |
 | `tag-chip` | task-board | 筛选条内的标签胶囊；`[data-dsh-part="tag-chip"]`，`data-tag-tone` 为 0-5 调色板槽 |
 | `tag-badge` | task-board | 卡片上的标签徽章；`[data-dsh-part="tag-badge"]`，`data-tag-tone` 同上 |
+| `project-filter` | task-board | 项目分区下拉；`[data-dsh-part="project-filter"]`，筛选项为工作区 id，空值为「全部项目」 |
+| `project-dialog` | task-board | 看板内新建项目表单；`[data-dsh-part="project-dialog"]`，含一个绝对路径输入与创建/取消按钮 |
+| `ai-parse` | task-board | 新建任务弹窗内的「粘贴内容 → AI 解析」区块；`[data-dsh-part="ai-parse"]`，含文本框、模型下拉与解析按钮 |
 | `tab-bar` / `tab` | ssh | 页签条/页签；`[role="tablist"]` / `[role="tab"]` |
 | `host-table` / `host-row` | ssh | 主机表/行；`[data-dsh-ssh-view]` 内 table/tr |
 | `terminal` | ssh | xterm 终端；面板内 termContainer（.xterm 辅锚） |
@@ -154,7 +157,7 @@ family / 插件区域：
 | `dsh-web-ui-market` | dsh-market | 创意工坊商店一级页（settings.section id `dsh-web-ui-market`），商店卡与目录条目容器 |
 | `skin-center` | skins/skin-center | 一级设置分区 settings.section id `skin-center`（列已安装皮肤，属内置源时显式标记） |
 | `session-id` | dsh-session-id | footer action slot entry id `session-id`；`[data-dsh-plugin="session-id"]`（面板 overlay 根 + 入口触发器） |
-| `usage` | dsh-usage | 一级设置分区 settings.section id `dsh-usage`（创意工坊下方）；`[data-dsh-plugin="usage"]` |
+| `usage` | dsh-usage | 一级设置分区 settings.section id `dsh-usage`（创意工坊下方）；`[data-dsh-plugin="usage"]`；侧栏入口 `[data-dsh-usage-entry]` 与面板根 `[data-dsh-usage-view]` |
 | `model-capabilities` | dsh-model-capabilities | Models 页 `settings.models.provider-card` keyed 槽 key `llm-pi-ai`（提供方卡片扩展区）+ `settings.models.footer` 槽 entry id `ui-model-capabilities`（存档区）；`[data-dsh-plugin="model-capabilities"]` |
 | `preset-center` | dsh-preset-center | 创意工坊卡片的「预设」标签页面板（`dsh-workshop.panel` keyed 槽 key `preset`）；`[data-dsh-plugin="preset-center"]` |
 | `liangshen` | dsh-liangshen | 首页输入框内的梁神模式拨杆；`[data-dsh-plugin="liangshen"][data-dsh-part="lever"]`，slot entry id `liangshen-lever` |

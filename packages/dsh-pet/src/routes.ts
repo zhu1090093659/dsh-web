@@ -623,7 +623,9 @@ export function makePetRoutes(deps: { service: PetService; ctx: Context; assetCa
     }),
     postRoute(ctx, PET_API_PREFIX + '/gameplay/mode', (body) => {
       const mode = body.mode
-      if (mode !== null && mode !== 'work' && mode !== 'sleep') return Promise.reject(new Error('invalid-mode'))
+      // The id is checked against the pet's own mode set in the service (work,
+      // sleep, or any declared 'modes' entry).
+      if (mode !== null && typeof mode !== 'string') return Promise.reject(new Error('invalid-mode'))
       return service.gameplaySetMode(mode)
     }),
     postRoute(ctx, PET_API_PREFIX + '/gameplay/work-tick', () => service.gameplayWorkTick()),

@@ -11,10 +11,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  CAPS_SETTINGS_NAMESPACE,
   hasNonUserProfile,
   hasProfileAt,
   readDisabledStore,
+  resolveArchiveEntry,
   type StashedProvider,
 } from '../core/provider-toggle.ts'
 import { PI_AI_SETTINGS_NAMESPACE } from '../core/capabilities.ts'
@@ -62,9 +62,9 @@ export function DisabledProvidersFooter(props: DisabledProvidersFooterProps) {
     try {
       const described = await face.describe()
       if (!described.ok) return
-      const view = described.value.namespaces.find(candidate => candidate.ns === CAPS_SETTINGS_NAMESPACE)
-      if (view === undefined) return
-      setStash(readDisabledStore(view.value))
+      const archive = resolveArchiveEntry(described.value.namespaces)
+      if (archive === undefined) return
+      setStash(readDisabledStore(archive.view.value))
       setLlmView(described.value.namespaces.find(candidate => candidate.ns === PI_AI_SETTINGS_NAMESPACE))
       setKnown(true)
     } catch {

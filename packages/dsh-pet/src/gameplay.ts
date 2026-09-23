@@ -12,6 +12,12 @@
  * @module @linxin666/dsh-pet/gameplay
  */
 
+/** One roam direction the pet may walk in. */
+export type PetRoamDirection = 'up' | 'down' | 'left' | 'right'
+
+/** Every roam direction, in roll order (equal chance each unless restricted). */
+export const PET_ROAM_DIRECTIONS: readonly PetRoamDirection[] = ['up', 'down', 'left', 'right']
+
 /** One gameplay effect: add amount to a declared stat or a currency. */
 export interface PetGameplayEffect {
   stat?: string
@@ -64,6 +70,23 @@ export interface PetGameplayShopItem {
   }
 }
 
+/**
+ * One extra named gameplay mode beyond work/sleep (a bath, a play session…).
+ * The host holds `state` while the mode is active and may restore a stat on
+ * a fixed cadence — the same lazy-settle rule the sleep mode uses. A mode is
+ * pure data: adding one to a manifest needs no host change.
+ */
+export interface PetGameplayModeDef {
+  /** frames2d track held for as long as the mode is active. */
+  state: string
+  /** Action-button label (plain text); falls back to the i18n key pet.gameplay.<name>. */
+  label?: string
+  /** Label while the mode is active (plain text); falls back to `label`. */
+  activeLabel?: string
+  /** Periodic stat restore while the mode is active (omitted = no restore). */
+  restore?: { stat: string; amount: number; intervalMs: number }
+}
+
 /** The validated manifest 'gameplay' block. */
 export interface PetGameplayManifest {
   idleDirector?: {
@@ -96,6 +119,38 @@ export interface PetGameplayManifest {
     wakeState?: string
     restore: { stat: string; amount: number; intervalMs: number }
   }
+  /**
+   * Extra named modes beyond work/sleep, keyed by a kebab mode id. Each one
+   * gets its own menu button, holds its track while active and may restore a
+   * stat on a cadence. 'work' and 'sleep' are reserved keys.
+   */
+  modes?: Record<string, PetGameplayModeDef>
+  /**
+   * Random roaming: on a slow interval the pet rolls whether to wander and
+   * walks to a new spot on screen with `state` held for the travel time. The
+   * chrome owns the motion (clamped to the viewport) and persists the resting
+   * spot the way a drag does; the roll only runs while the pet is idle and no
+   * mode, drag or touch animation owns it.
+   */
+  roam?: {
+    /** frames2d track held while walking. */
+    state: string
+    /** Ms between roam decisions. */
+    intervalMs: number
+    /** Chance one decision actually walks (0, 1]. */
+    probability: number
+    /** Travel per roam in px (distanceMin <= distanceMax). */
+    distanceMin: number
+    distanceMax: number
+    /** Walking speed in px per second. */
+    speed: number
+    /**
+     * Directions the pet may walk in, rolled uniformly (equal chance each).
+     * Omitted = all four. A side-view crawl reads best walking left/right, so
+     * a pet may restrict the list to those two.
+     */
+    directions?: PetRoamDirection[]
+  }
   passiveIncome?: { currency: string; amount: number; intervalMs: number }
   shop?: { state?: string; items: PetGameplayShopItem[] }
   /** Track played while the chrome reports dragging (default 'drag'). */
@@ -117,10 +172,12 @@ const MAX_SHOP_ITEMS = 32
 const MAX_LOTTERY_TIERS = 16
 const MAX_PHRASES = 64
 const PHRASE_MAX_LENGTH = 120
+const MAX_MODES = 8
+const MODE_LABEL_MAX_LENGTH = 40
 const STAT_VALUE_MAX = 1_000_000
 const CURRENCY_MAX = 9_999_999
 
-const KNOWN_GAMEPLAY = new Set(['idleDirector', 'stats', 'hitBox', 'touch', 'work', 'sleep', 'passiveIncome', 'shop', 'dragState', 'dragEndState'])
+const KNOWN_GAMEPLAY = new Set(['idleDirector', 'stats', 'hitBox', 'touch', 'work', 'sleep', 'modes', 'roam', 'passiveIncome', 'shop', 'dragState', 'dragEndState'])
 const KNOWN_STAT = new Set(['max', 'initial', 'decayPerMinute', 'workingDecayPerMinute', 'idleDecayPerMinute'])
 const KNOWN_ZONE = new Set(['name', 'y0', 'y1', 'branches'])
 const KNOWN_TOUCH = new Set(['zones', 'clickBoost'])
@@ -128,6 +185,9 @@ const KNOWN_BRANCH = new Set(['probability', 'effects', 'state', 'stateMs', 'phr
 const KNOWN_EFFECT = new Set(['stat', 'currency', 'amount'])
 const KNOWN_WORK = new Set(['state', 'successState', 'failState', 'tickMs', 'resultMs', 'successProbability', 'success', 'fail'])
 const KNOWN_SLEEP = new Set(['state', 'wakeState', 'restore'])
+const KNOWN_MODE = new Set(['state', 'label', 'activeLabel', 'restore'])
+const KNOWN_ROAM = new Set(['state', 'intervalMs', 'probability', 'distanceMin', 'distanceMax', 'speed', 'directions'])
+const KNOWN_RESTORE = new Set(['stat', 'amount', 'intervalMs'])
 const KNOWN_SHOP_ITEM = new Set(['id', 'label', 'image', 'price', 'currency', 'effects', 'lottery'])
 const KNOWN_LOTTERY = new Set(['effects', 'currency', 'tiers'])
 const KNOWN_IDLE_DIRECTOR = new Set(['intervalMs', 'maxMiss', 'idleWeight', 'acts'])
@@ -217,6 +277,27 @@ function parseStateRef(raw: unknown, field: string, hooks: GameplayParseHooks): 
     return undefined
   }
   return raw
+}
+
+/** Parse one mode restore rule "{ stat (declared), amount, intervalMs }". */
+function parseModeRestore(
+  raw: unknown,
+  field: string,
+  stats: Record<string, PetGameplayStatDef>,
+  fail: (message: string) => void,
+): { stat: string; amount: number; intervalMs: number } | undefined {
+  if (!isRecord(raw)) {
+    fail(field + ' must be an object { stat, amount, intervalMs }')
+    return undefined
+  }
+  const extra = unknownKeys(raw, KNOWN_RESTORE)
+  if (extra.length > 0) fail(field + ': unknown field(s) ' + extra.map(k => JSON.stringify(k)).join(', '))
+  const stat = typeof raw.stat === 'string' && stats[raw.stat] !== undefined ? raw.stat : undefined
+  if (stat === undefined) fail(field + '.stat must reference a declared stat')
+  if (!intIn(raw.amount, 1, 1000)) fail(field + '.amount must be an integer in [1, 1000]')
+  if (!intIn(raw.intervalMs, 1000, 600_000)) fail(field + '.intervalMs must be an integer in [1000, 600000]')
+  if (stat === undefined || !intIn(raw.amount, 1, 1000) || !intIn(raw.intervalMs, 1000, 600_000)) return undefined
+  return { stat, amount: raw.amount, intervalMs: raw.intervalMs }
 }
 
 /**
@@ -430,15 +511,121 @@ export function parseGameplayManifest(raw: unknown, hooks: GameplayParseHooks): 
       if (sExtra.length > 0) fail('gameplay.sleep: unknown field(s) ' + sExtra.map(k => JSON.stringify(k)).join(', '))
       const state = parseStateRef(s.state, 'gameplay.sleep.state', hooks)
       const wakeState = parseStateRef(s.wakeState, 'gameplay.sleep.wakeState', hooks)
-      const restoreStat = typeof s.restore.stat === 'string' && stats[s.restore.stat] !== undefined ? s.restore.stat : undefined
-      if (restoreStat === undefined) fail('gameplay.sleep.restore.stat must reference a declared stat')
-      if (!intIn(s.restore.amount, 1, 1000)) fail('gameplay.sleep.restore.amount must be an integer in [1, 1000]')
-      if (!intIn(s.restore.intervalMs, 1000, 600_000)) fail('gameplay.sleep.restore.intervalMs must be an integer in [1000, 600000]')
-      if (state !== undefined && restoreStat !== undefined && intIn(s.restore.amount, 1, 1000) && intIn(s.restore.intervalMs, 1000, 600_000)) {
+      const restore = parseModeRestore(s.restore, 'gameplay.sleep.restore', stats, fail)
+      if (state !== undefined && restore !== undefined) {
         block.sleep = {
           state,
           ...(wakeState === undefined ? {} : { wakeState }),
-          restore: { stat: restoreStat, amount: s.restore.amount, intervalMs: s.restore.intervalMs },
+          restore,
+        }
+      }
+    }
+  }
+
+  // --- extra modes (bath and friends) ---
+  if (raw.modes !== undefined) {
+    if (!isRecord(raw.modes)) fail('gameplay.modes must be an object keyed by mode id')
+    else {
+      const entries = Object.entries(raw.modes)
+      if (entries.length > MAX_MODES) fail('gameplay.modes declares too many modes (max ' + MAX_MODES + ')')
+      const modes: Record<string, PetGameplayModeDef> = {}
+      for (const [name, value] of entries) {
+        if (!validName(name, 24) || name === 'work' || name === 'sleep') {
+          fail('gameplay.modes: invalid mode id ' + JSON.stringify(name) + ' (kebab, and not the reserved work/sleep)')
+          continue
+        }
+        if (!isRecord(value)) {
+          fail('gameplay.modes.' + name + ' must be an object')
+          continue
+        }
+        const mExtra = unknownKeys(value, KNOWN_MODE)
+        if (mExtra.length > 0) fail('gameplay.modes.' + name + ': unknown field(s) ' + mExtra.map(k => JSON.stringify(k)).join(', '))
+        const state = parseStateRef(value.state, 'gameplay.modes.' + name + '.state', hooks)
+        let usable = state !== undefined
+        let label: string | undefined
+        if (value.label !== undefined) {
+          if (typeof value.label !== 'string' || value.label.trim() === '' || value.label.length > MODE_LABEL_MAX_LENGTH) {
+            fail('gameplay.modes.' + name + '.label must be a non-empty string of at most ' + MODE_LABEL_MAX_LENGTH + ' chars')
+            usable = false
+          } else label = value.label.trim()
+        }
+        let activeLabel: string | undefined
+        if (value.activeLabel !== undefined) {
+          if (typeof value.activeLabel !== 'string' || value.activeLabel.trim() === '' || value.activeLabel.length > MODE_LABEL_MAX_LENGTH) {
+            fail('gameplay.modes.' + name + '.activeLabel must be a non-empty string of at most ' + MODE_LABEL_MAX_LENGTH + ' chars')
+            usable = false
+          } else activeLabel = value.activeLabel.trim()
+        }
+        const restore = value.restore === undefined ? undefined : parseModeRestore(value.restore, 'gameplay.modes.' + name + '.restore', stats, fail)
+        if (value.restore !== undefined && restore === undefined) usable = false
+        if (usable && state !== undefined) {
+          modes[name] = {
+            state,
+            ...(label === undefined ? {} : { label }),
+            ...(activeLabel === undefined ? {} : { activeLabel }),
+            ...(restore === undefined ? {} : { restore }),
+          }
+        }
+      }
+      if (Object.keys(modes).length > 0) block.modes = modes
+    }
+  }
+
+  // --- random roaming ---
+  if (raw.roam !== undefined) {
+    const rm = raw.roam
+    if (!isRecord(rm)) fail('gameplay.roam must be an object')
+    else {
+      const rExtra = unknownKeys(rm, KNOWN_ROAM)
+      if (rExtra.length > 0) fail('gameplay.roam: unknown field(s) ' + rExtra.map(k => JSON.stringify(k)).join(', '))
+      const state = parseStateRef(rm.state, 'gameplay.roam.state', hooks)
+      if (!intIn(rm.intervalMs, 1000, 3_600_000)) fail('gameplay.roam.intervalMs must be an integer in [1000, 3600000]')
+      if (!numIn(rm.probability, 0, 1) || rm.probability === 0) fail('gameplay.roam.probability must be a number in (0, 1]')
+      if (!intIn(rm.distanceMin, 1, 2000)) fail('gameplay.roam.distanceMin must be an integer in [1, 2000]')
+      if (!intIn(rm.distanceMax, 1, 2000)) fail('gameplay.roam.distanceMax must be an integer in [1, 2000]')
+      if (intIn(rm.distanceMin, 1, 2000) && intIn(rm.distanceMax, 1, 2000) && rm.distanceMin > rm.distanceMax) {
+        fail('gameplay.roam.distanceMin must not exceed distanceMax')
+      }
+      if (!intIn(rm.speed, 1, 2000)) fail('gameplay.roam.speed must be an integer in [1, 2000] (px per second)')
+      let directions: PetRoamDirection[] | undefined
+      if (rm.directions !== undefined) {
+        if (!Array.isArray(rm.directions) || rm.directions.length === 0) {
+          fail('gameplay.roam.directions must be a non-empty array of up, down, left, right')
+        } else {
+          const picked: PetRoamDirection[] = []
+          for (const entry of rm.directions as unknown[]) {
+            if (typeof entry !== 'string' || !PET_ROAM_DIRECTIONS.includes(entry as PetRoamDirection)) {
+              fail('gameplay.roam.directions entries must be up, down, left or right')
+              picked.length = 0
+              break
+            }
+            if (picked.includes(entry as PetRoamDirection)) {
+              fail('gameplay.roam.directions must not repeat ' + entry)
+              picked.length = 0
+              break
+            }
+            picked.push(entry as PetRoamDirection)
+          }
+          if (picked.length > 0) directions = picked
+        }
+      }
+      // The guards are repeated inline: tsc only narrows the unknown fields
+      // through a call in the condition itself.
+      if (state !== undefined
+        && intIn(rm.intervalMs, 1000, 3_600_000)
+        && numIn(rm.probability, 0, 1) && rm.probability !== 0
+        && intIn(rm.distanceMin, 1, 2000)
+        && intIn(rm.distanceMax, 1, 2000)
+        && rm.distanceMin <= rm.distanceMax
+        && intIn(rm.speed, 1, 2000)) {
+        block.roam = {
+          state,
+          intervalMs: rm.intervalMs,
+          probability: rm.probability,
+          distanceMin: rm.distanceMin,
+          distanceMax: rm.distanceMax,
+          speed: rm.speed,
+          ...(directions === undefined ? {} : { directions }),
         }
       }
     }
@@ -569,13 +756,61 @@ export function parseGameplayManifest(raw: unknown, hooks: GameplayParseHooks): 
 export interface PetGameplayState {
   stats: Record<string, number>
   currencies: Record<string, number>
-  mode: 'work' | 'sleep' | null
+  /** Active gameplay mode id ('work' | 'sleep' | a declared extra mode) or null. */
+  mode: string | null
   /** Epoch ms of the last lazy settle. */
   settledAt: number
   /** Accumulated remainder ms towards the next passive income tick. */
   incomeCarryMs?: number
-  /** Accumulated remainder ms towards the next sleep restore tick. */
+  /** Accumulated remainder ms towards the next mode restore tick. */
   restoreCarryMs?: number
+}
+
+/**
+ * One declared extra mode, by OWN key only. A plain `modes[id]` lookup also
+ * answers for Object.prototype members ('constructor', 'toString', …), which
+ * would let a crafted mode id pass the "is it declared?" test.
+ */
+function declaredModeOf(manifest: PetGameplayManifest, mode: string): PetGameplayModeDef | undefined {
+  const modes = manifest.modes
+  if (modes === undefined || !Object.prototype.hasOwnProperty.call(modes, mode)) return undefined
+  return modes[mode]
+}
+
+/** Every mode the menu offers, in manifest order (sleep first, then extras). */
+export function declaredModes(manifest: PetGameplayManifest): string[] {
+  return [
+    ...(manifest.sleep === undefined ? [] : ['sleep']),
+    ...Object.keys(manifest.modes ?? {}),
+  ]
+}
+
+/**
+ * The frames2d track one active mode holds. 'work' is owned by the work loop
+ * (its state, result and fallback are its own), so it resolves to undefined.
+ */
+export function modeStateOf(manifest: PetGameplayManifest, mode: string): string | undefined {
+  if (mode === 'sleep') return manifest.sleep?.state
+  if (mode === 'work') return manifest.work?.state
+  return declaredModeOf(manifest, mode)?.state
+}
+
+/** The restore rule of one active mode, when it declares one. */
+export function modeRestoreOf(
+  manifest: PetGameplayManifest,
+  mode: string | null,
+): { stat: string; amount: number; intervalMs: number } | undefined {
+  if (mode === null) return undefined
+  if (mode === 'sleep') return manifest.sleep?.restore
+  if (mode === 'work') return undefined
+  return declaredModeOf(manifest, mode)?.restore
+}
+
+/** Whether the manifest still declares this gameplay mode id. */
+export function isDeclaredMode(manifest: PetGameplayManifest, mode: string): boolean {
+  if (mode === 'work') return manifest.work !== undefined
+  if (mode === 'sleep') return manifest.sleep !== undefined
+  return declaredModeOf(manifest, mode) !== undefined
 }
 
 /** Fresh state for one pet: stats at their initial (default max), no currency. */
@@ -600,9 +835,11 @@ export function clampGameplay(state: PetGameplayState, manifest: PetGameplayMani
 }
 
 /**
- * Lazy settle: apply stat decay, passive income and sleep restore for the
- * elapsed wall time since the last settle. Mirrors the treats.ts discipline
- * (no host timers; read paths settle). Returns whether anything changed.
+ * Lazy settle: apply stat decay, passive income and the active mode's restore
+ * rule (sleep restores energy, a declared extra mode restores whatever it
+ * declares) for the elapsed wall time since the last settle. Mirrors the
+ * treats.ts discipline (no host timers; read paths settle). Returns whether
+ * anything changed.
  */
 export function settleGameplay(
   state: PetGameplayState,
@@ -638,14 +875,14 @@ export function settleGameplay(
       changed = true
     }
   }
-  if (state.mode === 'sleep' && manifest.sleep !== undefined) {
+  const restore = modeRestoreOf(manifest, state.mode)
+  if (restore !== undefined) {
     const restoreElapsed = elapsedMs + (state.restoreCarryMs ?? 0)
-    const interval = manifest.sleep.restore.intervalMs
+    const interval = restore.intervalMs
     const ticks = Math.floor(restoreElapsed / interval)
     state.restoreCarryMs = restoreElapsed % interval
     if (ticks > 0) {
-      const stat = manifest.sleep.restore.stat
-      state.stats[stat] = (state.stats[stat] ?? 0) + ticks * manifest.sleep.restore.amount
+      state.stats[restore.stat] = (state.stats[restore.stat] ?? 0) + ticks * restore.amount
       changed = true
     }
   } else {

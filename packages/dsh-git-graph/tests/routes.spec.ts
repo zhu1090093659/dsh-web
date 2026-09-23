@@ -324,13 +324,14 @@ function makePollEnv(): {
 }
 
 /** Open one SSE connection; collect the bytes the host writes and a close trigger. */
-function connect(sse: (req: unknown, res: unknown) => Promise<void>): { writes: string[]; close: () => void } {
+function connect(sse: (req: unknown, res: unknown) => Promise<void>): { writes: string[]; ended: () => number; close: () => void } {
   const writes: string[] = []
+  let ended = 0
   const closeHandlers: Array<() => void> = []
   const res = {
     writeHead: () => {},
     write: (chunk: unknown) => { writes.push(String(chunk)) },
-    end: () => {},
+    end: () => { ended += 1 },
     on: () => {},
   }
   const req = {
@@ -344,6 +345,7 @@ function connect(sse: (req: unknown, res: unknown) => Promise<void>): { writes: 
   sse(req as never, res as never)
   return {
     writes,
+    ended: () => ended,
     close: () => { for (const handler of closeHandlers) handler() },
   }
 }
@@ -462,6 +464,40 @@ describe('SSE poll loop', () => {
     // With zero subscribers the PollGuard is stopped; no further ticks fire.
     await vi.advanceTimersByTimeAsync(90_000)
     expect(env.status).toHaveBeenCalledTimes(1)
+  })
+
+  it('operator releases the routes, the heartbeat, and the stream when the disposer runs', async () => {
+    // Given a registered /git route pair whose SSE stream is polling status
+    const registrations: Array<{ kind: string; path: string; handler: (req: unknown, res: unknown) => Promise<void> }> = []
+    const disposed: string[] = []
+    const ctx = {
+      logger: { warn: vi.fn() },
+      webServer: {
+        register: (row: { kind: string; path: string; handler: (req: unknown, res: unknown) => Promise<void> }) => {
+          registrations.push(row)
+          return () => { disposed.push(row.path) }
+        },
+      },
+    }
+    const status = vi.fn(async () => makeStatus())
+    const disposeRoutes = registerGitRoutes(ctx as never, { status } as never)
+    const sse = registrations.find(row => row.kind === 'exact')
+    if (sse === undefined) throw new Error('SSE route not registered')
+    const conn = connect(sse.handler)
+    await vi.advanceTimersByTimeAsync(30_000)
+    const pollsBeforeDispose = status.mock.calls.length
+    const writesBeforeDispose = conn.writes.length
+
+    // When the plugin fiber disposes and the returned disposer runs
+    disposeRoutes()
+
+    // Then both registrations are released, the stream ends, and neither the
+    // heartbeat nor the poll guard writes or polls again
+    expect(disposed).toEqual(['/git', '/git/events'])
+    expect(conn.ended()).toBe(1)
+    await vi.advanceTimersByTimeAsync(120_000)
+    expect(status.mock.calls.length).toBe(pollsBeforeDispose)
+    expect(conn.writes.length).toBe(writesBeforeDispose)
   })
 
   it('resumes polling when a subscriber reconnects after the loop stopped', async () => {

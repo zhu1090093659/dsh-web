@@ -17,6 +17,9 @@ function makeTmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-rewrite-test-'))
 }
 
+/** GNU tar reads a `C:\...` argument as a remote host spec; --force-local keeps it a local path. */
+const TAR_LOCAL = process.platform === 'win32' ? ['--force-local'] : []
+
 function writePkg(dir, body) {
   fs.mkdirSync(dir, { recursive: true })
   const file = path.join(dir, 'package.json')
@@ -37,7 +40,7 @@ function makeTarballPkg(dir) {
     dependencies: {
       '@linxin666/dsh-a': '0.1.0',
       '@linxin666/dsh-b': '0.2.0',
-      'dsh-better-sidebar': '0.13.0',
+      'dsh-external-fixture': '0.13.0',
       react: '^18.3.1',
     },
   })
@@ -47,7 +50,7 @@ function makeTgz(dir, pkgBody) {
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-tgz-stage-'))
   writePkg(path.join(staging, 'package'), pkgBody)
   const tgz = path.join(dir, pkgBody.name.split('/').pop() + '.tgz')
-  execFileSync('tar', ['-czf', tgz, '-C', staging, 'package'])
+  execFileSync('tar', [...TAR_LOCAL, '-czf', tgz, '-C', staging, 'package'])
   fs.rmSync(staging, { recursive: true, force: true })
   return tgz
 }
@@ -63,7 +66,7 @@ function packFake(packed) {
 
 /** Read the package.json embedded in a tarball. */
 function readTgzPkg(tgz) {
-  const raw = execFileSync('tar', ['-xzf', tgz, '-O', 'package/package.json'], { stdio: 'pipe' }).toString()
+  const raw = execFileSync('tar', [...TAR_LOCAL, '-xzf', tgz, '-O', 'package/package.json'], { stdio: 'pipe' }).toString()
   return JSON.parse(raw)
 }
 
@@ -84,7 +87,7 @@ test('auto mode: published deps stay on npm, unpublished deps rewrite to file:',
   assert.equal(pkg.dependencies['@linxin666/dsh-a'], '0.1.0')
   assert.match(pkg.dependencies['@linxin666/dsh-b'], /^file:.*dsh-b\.tgz$/)
   assert.equal(pkg.dependencies['react'], '^18.3.1')
-  assert.equal(pkg.dependencies['dsh-better-sidebar'], '0.13.0')
+  assert.equal(pkg.dependencies['dsh-external-fixture'], '0.13.0')
   assert.equal(packed.length, 1)
   assert.match(packed[0], /dsh-b$/)
   assert.ok(report.some(line => line.includes('npm 已发布')))
@@ -164,7 +167,7 @@ test('auto mode: default packWorkspace packs and patches unpublished deps', asyn
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
   assert.match(pkg.dependencies['@linxin666/dsh-b'], /^file:.*dsh-b.*\.tgz$/)
   // The packed tarball is a real tar and survives the in-place patch.
-  assert.equal(JSON.parse(execFileSync('tar', ['-xzf', pkg.dependencies['@linxin666/dsh-b'].slice(5), '-O', 'package/package.json'], { stdio: 'pipe' }).toString()).name, '@linxin666/dsh-b')
+  assert.equal(JSON.parse(execFileSync('tar', [...TAR_LOCAL, '-xzf', pkg.dependencies['@linxin666/dsh-b'].slice(5), '-O', 'package/package.json'], { stdio: 'pipe' }).toString()).name, '@linxin666/dsh-b')
 })
 
 test('auto mode: unpublished dep missing from the workspace fails loudly', async () => {
@@ -228,21 +231,6 @@ test('family-dir mode: missing tarball fails loudly', async () => {
     rewriteDependencies({ pkgPath, root: tmp, familyDir }),
     /缺少本地 tarball/,
   )
-})
-
-test('better-sidebar manual override rewrites only that dep', async () => {
-  const tmp = makeTmp()
-  const pkgPath = makeTarballPkg(path.join(tmp, 'tarball'))
-  const published = new Set(['@linxin666/dsh-a@0.1.0', '@linxin666/dsh-b@0.2.0'])
-  await rewriteDependencies({
-    pkgPath,
-    root: tmp,
-    betterSidebarTgz: '/tmp/bs.tgz',
-    checkPublished: async (name, version) => published.has(name + '@' + version),
-  })
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
-  assert.equal(pkg.dependencies['dsh-better-sidebar'], 'file:/tmp/bs.tgz')
-  assert.equal(pkg.dependencies['@linxin666/dsh-a'], '0.1.0')
 })
 
 test('auto mode: nested unpublished family deps rewrite inside the packed tarball', async () => {

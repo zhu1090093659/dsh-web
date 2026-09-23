@@ -10,8 +10,8 @@
  * user messages as plain text, so a sent reference is then upgraded in place
  * into an inline thumbnail (installConversationImagePreview) unless the
  * deployment turns previews off. The settings card is rendered by the web
- * GUI's built-in plugin config page from the host-side `describe-image`
- * section.
+ * GUI's built-in plugin config page from the plugin's own `Config` schema,
+ * which the Host serves as this profile entry's configuration.
  *
  * Failure policy: every DOM/runtime wiring failure is logged, never thrown —
  * the web shell fails the whole boot when a plugin apply throws.
@@ -19,7 +19,7 @@
  */
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigForms } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the ctx.slots merge (the renderer owns the slot registry since 0.1.2).
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -59,19 +59,52 @@ export interface SettingsPluginItemOwnerProps {
 declare module '@deepseek-ai/cordis' {
   interface Context {
     /**
-     * Optional rc.6 compatibility binder provided by dsh-web-settings;
-     * absent when that group plugin is not installed, so callers fall back to
-     * the official settings scope.
+     * Optional family settings binder provided by dsh-web-settings (the Web
+     * UI plugin group); absent when that group is not installed, so callers
+     * fall back to the official `ctx.configForms` service.
+     *
+     * The 0.1.7 client addresses one form per active profile entry id and
+     * carries no package identity, so the family binder resolves a family
+     * settings namespace to the entry that owns it and hands back that entry's
+     * shared form; the official service is addressed by the entry id directly.
      */
-    webUiSettings?: { bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S> }
+    webUiSettings?: { bind<T>(spec: DescribeImageFormSpec<T>): ConfigForm<T> }
   }
 }
 
-/** Locale namespace of the browser half. */
-export const NS = 'describe-image' as const
+/**
+ * Domain-owned description of one family settings namespace a card binds. The
+ * 0.1.7 client keeps its own spec type private (`ConfigFormSpec` is not
+ * exported), so the optional binder seat is declared structurally instead.
+ */
+interface DescribeImageFormSpec<T> {
+  /** Settings namespace the card edits. */
+  namespace: string
+  /** Narrow one wire section; undefined keeps the last accepted value. */
+  decode?: (section: unknown) => T | undefined
+}
 
-/** Required services: slots for the settings card, conversation for the send hook, settings scope and locale for the card copy. */
-export const inject = ['slots', 'conversation', 'settingsScope', 'locale']
+/**
+ * Locale namespace of the browser half, and the family settings namespace its
+ * card binds — the profile entry id of a standalone install of this bundle.
+ */
+export const NS = 'describe-image' as const
+const AGGREGATE_ENTRY_ID = 'web-ui-describe-image'
+const DESCRIBE_IMAGE_ENTRY_IDS: readonly string[] = [AGGREGATE_ENTRY_ID, 'ui-describe-image', NS]
+
+function servedEntryId(forms: ConfigForms): string {
+  let served: readonly string[] | undefined
+  try {
+    served = forms.describe().getSnapshot().view?.namespaces.map(view => view.ns)
+  } catch {
+    served = undefined
+  }
+  if (!served || served.length === 0) return NS
+  return DESCRIBE_IMAGE_ENTRY_IDS.find(id => served.includes(id)) ?? NS
+}
+
+/** Required services: slots for the settings card, conversation for the send hook, the shared configuration forms and locale for the card copy. */
+export const inject = ['slots', 'conversation', 'configForms', 'locale']
 
 /** Apply the browser half. */
 export function apply(ctx: ClientContext): void {
@@ -102,11 +135,12 @@ export function apply(ctx: ClientContext): void {
     const conversation = scope.conversation
     const slots = scope.slots
 
-    // Bound once the settings scope inject fires; the preview enhancer reads
-    // it per scan, so an unbound scope (or a missing service) keeps the default.
-    let settingsScopeRef: SettingsScope<DescribeImageSettings> | undefined
-    // The settings subscription installed by the scope inject below; kept so
-    // dispose (or a re-inject) never leaves a stale listener behind.
+    // Bound once the configuration-forms inject fires; the preview enhancer
+    // reads it per scan, so an unbound form (or a missing service) keeps the
+    // default.
+    let settingsFormRef: ConfigForm<DescribeImageSettings> | undefined
+    // The form subscription installed by the inject below; kept so dispose (or
+    // a re-inject) never leaves a stale listener behind.
     let unsubscribeSettings: (() => void) | undefined
 
     // Text-only models reject image blocks at submit: rewrite image-bearing
@@ -117,38 +151,42 @@ export function apply(ctx: ClientContext): void {
     // sessions whose model accepts image input — those models see the images
     // natively and must not be detoured through describe_image.
     const capabilityChecker = createImageCapabilityChecker()
-    installSendHook(conversation, () => settingsScopeRef?.getSnapshot().value?.interceptImageSend !== false, capabilityChecker)
+    installSendHook(conversation, () => settingsFormRef?.getSnapshot().value?.interceptImageSend !== false, capabilityChecker)
 
     // The shell renders user messages as plain text, so a sent reference sits
     // in the transcript as raw markdown; upgrade it in place into an inline
     // thumbnail unless the deployment turns previews off.
     let previewRef: ConversationImagePreview | undefined
     ctx.effect(() => {
-      const handle = installConversationImagePreview(() => settingsScopeRef?.getSnapshot().value?.renderImagePreview !== false)
+      const handle = installConversationImagePreview(() => settingsFormRef?.getSnapshot().value?.renderImagePreview !== false)
       previewRef = handle
       return () => {
         previewRef = undefined
         unsubscribeSettings?.()
         unsubscribeSettings = undefined
-        settingsScopeRef = undefined
+        settingsFormRef = undefined
         handle.dispose()
       }
     }, 'dsh-tool-describe-image: conversation image preview')
 
-    // The settings card: bound to the describe-image namespace through the
-    // family bridge when the official scope does not expose it.
-    ctx.inject(['settingsScope'], (settingsCtx: ClientContext) => {
-      const binder = settingsCtx.get('webUiSettings') ?? settingsCtx.settingsScope
-      const settingsScope = binder.bind<DescribeImageSettings>({ namespace: NS })
+    // The settings card: bound to this plugin's profile entry configuration.
+    // The family binder resolves the `describe-image` namespace to the entry
+    // that owns it; without the family group the namespace IS the entry id the
+    // shared configuration forms are keyed by.
+    ctx.inject(['configForms'], (settingsCtx: ClientContext) => {
+      const binder = settingsCtx.get('webUiSettings')
+      const settingsForm = binder !== undefined && typeof binder.bind === 'function'
+        ? binder.bind<DescribeImageSettings>({ namespace: NS })
+        : settingsCtx.configForms.get<DescribeImageSettings>(servedEntryId(settingsCtx.configForms))
       unsubscribeSettings?.()
-      settingsScopeRef = settingsScope
+      settingsFormRef = settingsForm
       // Live toggle: re-scan (or restore) the moment a settings save settles.
-      unsubscribeSettings = settingsScope.subscribe(() => previewRef?.refresh())
-      const settingsCard = new DescribeImageSettingsCardController(settingsScope)
-      // Card seat: the family group's list seat, or the official keyed seat of
-      // the plugin-configuration tab when the group is not installed (issue #1589).
+      unsubscribeSettings = settingsForm.subscribe(() => previewRef?.refresh())
+      const settingsCard = new DescribeImageSettingsCardController(settingsForm)
+      // Card seat: the family group's list seat, or the official
+      // bundle-configuration seat when the group is not installed.
       installPluginCard(settingsCtx, {
-        namespace: NS,
+        bundle: '@linxin666/dsh-tool-describe-image',
         id: 'describe-image',
         order: 115,
         locale: NS,

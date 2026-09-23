@@ -2,7 +2,7 @@
 
 Status: implemented
 
-Partially supersedes [the usage statistics plugin](../feature/2026-08-29-usage-statistics-plugin.md) (its pet-linkage decision) and [the DeepSeek peak pricing and announce fix](../feature/2026-08-29-usage-peak-pricing-and-announce-fix.md) (its announce/bubble parts; the adapter identity and fold-time pricing decisions stay). Leaves [the pet announcement contract](../feature/2026-08-29-pet-announcement-bubble.md) intact but without its bundled consumer. Updates the panel facts of [the sidebar controls fix](../bug-fix/2026-09-17-usage-sidebar-controls-on-entry-row.md) and [issue batch 1587-1600](../bug-fix/2026-09-16-issue-batch-1587-1600-fixes.md).
+Partially supersedes [the usage statistics plugin](../feature/2026-08-29-usage-statistics-plugin.md) (its pet-linkage decision) and [the DeepSeek peak pricing and announce fix](../feature/2026-08-29-usage-peak-pricing-and-announce-fix.md) (its announce/bubble parts; the adapter identity and fold-time pricing decisions stay). Leaves [the pet announcement contract](../feature/2026-08-29-pet-announcement-bubble.md) intact but without its bundled consumer. Its collapsed-summary surface was later removed by [usage sidebar surface removed](2026-09-18-usage-sidebar-surface-removed.md), which also updates the #1592 facts of [issue batch 1587-1600](../bug-fix/2026-09-16-issue-batch-1587-1600-fixes.md).
 
 ## Problem
 

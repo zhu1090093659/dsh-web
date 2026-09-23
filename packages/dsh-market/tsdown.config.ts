@@ -10,6 +10,5 @@ export default clientBundle('@linxin666/dsh-client-ui-market', ['src/index.ts'],
     '@deepseek-ai/dsh-client-locale',
     '@deepseek-ai/dsh-client-ui-settings',
     '@deepseek-ai/dsh-client-ui-slots',
-    '@deepseek-ai/dsh-settings',
   ],
 })

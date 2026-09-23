@@ -14,8 +14,6 @@
  *   --family-dir DIR: manual full override (the old FAMILY_TGZS_DIR
  *     behavior): rewrite ALL @linxin666/* dependencies to the same-named
  *     tarballs in DIR.
- *   --better-sidebar-tgz TGZ: rewrite the dsh-better-sidebar dependency to
- *     the given tarball (pre-release local 联调).
  *
  * Tarballs switched to a file: spec are patched recursively: the packed
  * (or copied) tarball's own package.json goes through the same dependency
@@ -26,7 +24,7 @@
  *
  * Usage:
  *   node scripts/e2e-mount-rewrite <tarball package.json> [--root DIR]
- *     [--family-dir DIR] [--better-sidebar-tgz TGZ]
+ *     [--family-dir DIR]
  *
  * Exit code is 0 on success; a missing workspace package or tarball exits 1.
  */
@@ -39,6 +37,9 @@ const { execFileSync } = require('node:child_process')
 
 const FAMILY_SCOPE = '@linxin666/'
 const REGISTRY = 'https://registry.npmjs.org'
+
+/** GNU tar reads a `C:\...` argument as a remote host spec; --force-local keeps it a local path. */
+const TAR_LOCAL = process.platform === 'win32' ? ['--force-local'] : []
 
 /** Default registry probe: true when name@version exists on npm. */
 async function checkPublished(name, version) {
@@ -84,20 +85,20 @@ function findWorkspacePackage(root, name) {
 
 /** Read a tarball's embedded package name (family-dir manual mode). */
 function readTgzName(tgz) {
-  const raw = execFileSync('tar', ['-xzf', tgz, '-O', 'package/package.json'], { stdio: 'pipe' }).toString()
+  const raw = execFileSync('tar', [...TAR_LOCAL, '-xzf', tgz, '-O', 'package/package.json'], { stdio: 'pipe' }).toString()
   return JSON.parse(raw).name
 }
 
 /** Extract a tarball into a fresh staging directory. */
 function extractTarball(tgz) {
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-tgz-extract-'))
-  execFileSync('tar', ['-xzf', tgz, '-C', staging], { stdio: 'pipe' })
+  execFileSync('tar', [...TAR_LOCAL, '-xzf', tgz, '-C', staging], { stdio: 'pipe' })
   return staging
 }
 
 /** Repack the staging package/ dir as the given tarball, then drop staging. */
 function repackTarball(tgz, staging) {
-  execFileSync('tar', ['-czf', tgz, '-C', staging, 'package'], { stdio: 'pipe' })
+  execFileSync('tar', [...TAR_LOCAL, '-czf', tgz, '-C', staging, 'package'], { stdio: 'pipe' })
   fs.rmSync(staging, { recursive: true, force: true })
 }
 
@@ -261,24 +262,18 @@ async function ensureFamilyDirTgz(name, opts, state) {
  * @param {string} opts.pkgPath - path to the extracted tarball's package.json.
  * @param {string} opts.root - repository root (workspace package lookup).
  * @param {string} [opts.familyDir] - manual override directory of family tarballs.
- * @param {string} [opts.betterSidebarTgz] - manual dsh-better-sidebar tarball.
  * @param {(name: string, version: string) => Promise<boolean>} [opts.checkPublished] - registry probe (auto mode).
  * @param {(pkgDir: string, outDir: string) => string} [opts.pack] - workspace packer (auto mode).
  * @param {(message: string) => void} [opts.log]
  * @returns {Promise<string[]>} human-readable report lines.
  */
 async function rewriteDependencies(opts) {
-  const { pkgPath, betterSidebarTgz } = opts
+  const { pkgPath } = opts
   const log = opts.log ?? (() => {})
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
   if (!pkg.dependencies) throw new Error('tarball package.json 没有 dependencies')
   const report = []
 
-  if (betterSidebarTgz) {
-    if (!('dsh-better-sidebar' in pkg.dependencies)) throw new Error('tarball package.json 缺少 dsh-better-sidebar 依赖')
-    pkg.dependencies['dsh-better-sidebar'] = 'file:' + betterSidebarTgz
-    report.push('dsh-better-sidebar → file:' + betterSidebarTgz + '（手工覆盖）')
-  }
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
 
   const state = createState()
@@ -292,7 +287,6 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--root') opts.root = argv[++i]
     else if (argv[i] === '--family-dir') opts.familyDir = argv[++i]
-    else if (argv[i] === '--better-sidebar-tgz') opts.betterSidebarTgz = argv[++i]
     else positional.push(argv[i])
   }
   opts.pkgPath = positional[0]
@@ -302,7 +296,7 @@ function parseArgs(argv) {
 async function main() {
   const opts = parseArgs(process.argv.slice(2))
   if (!opts.pkgPath) {
-    console.error('用法: node scripts/e2e-mount-rewrite <tarball package.json> [--root DIR] [--family-dir DIR] [--better-sidebar-tgz TGZ]')
+    console.error('用法: node scripts/e2e-mount-rewrite <tarball package.json> [--root DIR] [--family-dir DIR]')
     process.exit(1)
   }
   try {

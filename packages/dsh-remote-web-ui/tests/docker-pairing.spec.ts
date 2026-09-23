@@ -155,7 +155,7 @@ describe('docker & reverse-proxy pairing adaptation', () => {
       })
       // Should redirect to app landing page
       expect(res.status).toBe(303)
-      expect(res.location).toMatch(/pair-app\?device=/)
+      expect(res.location).toMatch(/pair-app\?grant=/)
 
       // Status check from the dynamically trusted host now passes lanFence
       const statusRes = await call(port, 'GET', '/api/pair/status', {

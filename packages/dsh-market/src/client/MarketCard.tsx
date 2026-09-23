@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ComponentProps,
 import { marketTurnstileToken, TURNSTILE_ACTION_INSTALL } from './turnstile.ts'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { PluginSettingsCard, BooleanField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
@@ -34,7 +34,7 @@ import css from './market.module.css'
 
 const MARKET_ORIGIN = 'https://dsh-market.com'
 
-/** The settings fields this card edits (the namespace's full schema). */
+/** The configuration fields this card edits (the settings entry's own schema). */
 export interface MarketSettings {
   /** Master switch for the market card. */
   enabled?: boolean
@@ -50,15 +50,20 @@ export interface MarketCardFace extends CardActions {
   hooks: {
     marketCard: SnapshotStore<MarketCardState>
   }
+  /**
+   * Open one external URL in the official sidebar browser, or in a new browser
+   * tab when this shell declares no browser tab type.
+   */
+  openExternal: (url: string) => void
 }
 
-/** Bridges the market scope onto the card's staged form. */
+/** Bridges the market config form onto the card's staged form. */
 export class MarketCardController {
   private readonly form: CardForm<MarketSettings>
   private readonly store: SnapshotStore<MarketCardState>
 
-  /** @param scope - the bound settings scope for the dsh-web-ui-market namespace. */
-  constructor(scope: SettingsScope<MarketSettings>) {
+  /** @param scope - the bound configuration form of the market card's settings entry. */
+  constructor(scope: ConfigForm<MarketSettings>) {
     this.form = new CardForm(scope, [
       booleanField('enabled'),
     ])
@@ -72,12 +77,15 @@ export class MarketCardController {
     }
   }
 
-  /** Build the face the card's slot registration injects. */
-  inject(): MarketCardFace {
-    return { hooks: { marketCard: this.store }, ...this.form.actions() }
+  /**
+   * Build the face the card's slot registration injects.
+   * @param openExternal - the shell-bound external-link opener.
+   */
+  inject(openExternal: (url: string) => void): MarketCardFace {
+    return { hooks: { marketCard: this.store }, openExternal, ...this.form.actions() }
   }
 
-  /** Release the scope subscription; the slot disposer calls this on teardown. */
+  /** Release the form subscription; the slot disposer calls this on teardown. */
   dispose(): void {
     this.form.dispose()
   }
@@ -645,27 +653,39 @@ export function MarketCard(props: MarketCardProps): ReactNode {
       descriptionNode={(
         <>
           {t('settings.descriptionPrefix')}
-          <a className={css.previewLink} href={MARKET_ORIGIN} target="_blank" rel="noreferrer">{t('badge.market')}</a>
+          <a
+            className={css.previewLink}
+            href={MARKET_ORIGIN}
+            target="_blank"
+            rel="noreferrer"
+            onClick={event => { event.preventDefault(); props.openExternal(MARKET_ORIGIN) }}
+          >
+            {t('badge.market')}
+          </a>
           {t('settings.descriptionSuffix')}
         </>
       )}
       state={state}
       alwaysOpen
+      renderChildrenWhenNotExposed
+      hideNotExposedNotice
       onSave={props.save}
       onDiscard={props.discard}
     >
-      <BooleanField
-        id="settings-market-enabled"
-        label={t('settings.enable')}
-        hint={t('settings.enableHint')}
-        inheritLabel={t('settings.inherit')}
-        onLabel={t('settings.on')}
-        offLabel={t('settings.off')}
-        {...fieldProps}
-        {...state.enabled}
-        onEdit={(value) => { props.edit('enabled', value) }}
-        onReset={() => { props.resetField('enabled') }}
-      />
+      {state.exposed ? (
+        <BooleanField
+          id="settings-market-enabled"
+          label={t('settings.enable')}
+          hint={t('settings.enableHint')}
+          inheritLabel={t('settings.inherit')}
+          onLabel={t('settings.on')}
+          offLabel={t('settings.off')}
+          {...fieldProps}
+          {...state.enabled}
+          onEdit={(value) => { props.edit('enabled', value) }}
+          onReset={() => { props.resetField('enabled') }}
+        />
+      ) : null}
       {cardVisible ? (
         <div className={css.market}>
           <div className={css.tabs} role="tablist" aria-label={t('settings.title')}>
@@ -761,7 +781,14 @@ export function MarketCard(props: MarketCardProps): ReactNode {
                     {thumb ? <img className={css.thumb} src={MARKET_ORIGIN + '/' + thumb} alt="" loading="lazy" /> : null}
                     <span className={css.cardBody}>
                       {item.repo ? (
-                        <a className={css.cardName} href={item.repo} target="_blank" rel="noreferrer" title={name}>
+                        <a
+                          className={css.cardName}
+                          href={item.repo}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={name}
+                          onClick={event => { event.preventDefault(); props.openExternal(item.repo ?? MARKET_ORIGIN) }}
+                        >
                           {name}
                           {item.version ? <span className={css.cardVersion}>v{item.version}</span> : null}
                         </a>
@@ -793,19 +820,25 @@ export function MarketCard(props: MarketCardProps): ReactNode {
                             type="button"
                             className={css.previewLink}
                             onClick={() => {
-                              window.open(
+                              props.openExternal(
                                 kind === 'skin'
                                   ? MARKET_ORIGIN + '/preview.html?skin=' + encodeURIComponent(id) + '&theme=light&chrome=0'
                                   : MARKET_ORIGIN + '/',
-                                '_blank',
-                                'noopener',
                               )
                             }}
                           >
                             {t('preview')}
                           </button>
                           {(kind === 'plugin' || kind === 'skin') && item.repo ? (
-                            <a className={css.previewLink} href={item.repo} target="_blank" rel="noreferrer">{t('repository')}</a>
+                            <a
+                              className={css.previewLink}
+                              href={item.repo}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={event => { event.preventDefault(); props.openExternal(item.repo ?? MARKET_ORIGIN) }}
+                            >
+                              {t('repository')}
+                            </a>
                           ) : null}
                         </span>
                         {kind === 'plugin' || gateway !== null ? (

@@ -2,22 +2,22 @@
 
 English | [中文](README.zh.md)
 
-Plugin manager tab for the dsh web GUI Plugins settings section: installs plugins from npm or git, lists installed plugins with next-start enable switches, surfaces install-time conflict actions with undo, and hands failures off to repair conversations.
+Update, conflict and repair tab for the dsh web GUI Plugins settings section: it keeps the surfaces the official plugin manager page does not own — registry update checks with DSH-runtime compatibility gating, the host-recorded install-conflict ledger with undo and a repair handoff, the boot-failure ring, and the safe-mode banner — and renders the plugin inventory read-only. Installing, uninstalling and switching plugins belong to the official page since 0.1.7-alpha.1.
 
 ## What it does
 
 - Registers a `Plugin manager` tab in the official Plugins settings section (the `settings.plugins.tab` slot, order 20), next to the official installer tab.
 - Dual-channel transport: on runtimes with the official installer services (DSHCode and the 1.0.4 checkout web), every operation rides the official `/plugin-installer` and `/plugin-control` loopback RPC channels; on the npm-published web runtime those channels do not exist, so the package's host half mounts a loopback-fenced HTTP gateway that spawns the official `dsh plugin` CLI for installs/removals (the single writer) and writes `disabled` override rows for enablement.
-- Installs plugins from an npm package name or a git repository URL, with progress.
-- Lists installed user plugins with next-start enable switches, update checks (registry, npm sources), verified npm updates, and uninstall.
-- Per-row switches for aggregates (gateway mode): a bundle claiming several entry rows, such as `@linxin666/dsh-web-all`, expands into a child list where every family plugin toggles individually (a single-row `disabled` override; siblings are untouched). The manager tab, the family settings surface, and the aggregate compat face are locked rows that stay enabled even through a whole-package disable, so the management UI can never switch itself off. Child uninstall stays whole-package — the code ships in the aggregate, and a disabled child is simply never loaded; install the standalone package for independently versioned management (a standalone install wins over the aggregate row through the double-mount guard).
+- Renders the inventory read-only and points at the official plugin manager page (the `Plugins` sidebar entry) for installing, uninstalling and switching a bundle or a row; the official page applies those changes live.
+- Lists installed user plugins with name, version, source badge and effective state, with registry update checks (npm sources) and verified npm updates.
+- Grouped aggregate rows stay readable: a bundle claiming several entry rows, such as `@linxin666/dsh-web-all`, expands into a child list showing every family plugin's effective state, with locked rows noted. The rows' switches live on the official page.
 - The aggregate child list is collapsed by default: the row shows only a `N/M child plugins on` summary that expands on click, so a bundle carrying 20+ family rows no longer stretches the settings page.
 - Detects the legacy aggregate `@linxin666/dsh-web-ui-all` and converts its update action into a transactional migration to `@linxin666/dsh-web-all`; the gateway removes the legacy package, installs the current package at an exact version, restores the legacy layer position, and verifies `--dump-config` before reporting success.
 - Verifies DSH runtime compatibility before npm updates (issue #754): update checks read the declared minimum DSH version from the latest manifest (`dsh.engines.dsh` with a top-level `engines.dsh` fallback), show the requirement beside the update button, disable the button when the running DSH is below it, and the host update route returns 412 before starting any CLI job when the runtime cannot be verified.
-- Shows the built-in product switches when the official plugin-control surface exists.
-- Surfaces install-time conflict actions: the product-snapshot diff around each install (official mode) or the profile layer diff around each CLI run (gateway mode), with undo for reversible actions and an `Ask the agent to fix` handoff on every conflict row.
+- Shows the built-in product rows and their effective state when the official plugin-control surface exists; switching them happens on the official page.
+- Surfaces the install-conflict ledger: the changes the host recorded around the last install or update through this package's gateway channel, or the product-snapshot diff around an update this tab performs on the official channel, with undo for reversible actions and an `Ask the agent to fix` handoff on every conflict row.
 - Protects the next boot on the npm runtime: after each install the gateway verifies the dependency actually landed, rejects duplicate entry-id claims and insert rows naming unresolvable packages, and composes the profile with the CLI's `--dump-config` preflight; a conflicting or failing install is rolled back through the official remove path (the existing plugins are never touched), with the error and repair handoff on the error row.
-- Renders the boot-failure ring per plugin with `Ask the agent to fix` (a repair conversation over the plugin install root) and `Copy error`; the npm web runtime keeps no failure ring, so only install errors offer the repair handoff there.
+- Renders the boot-failure ring per plugin with `Ask the agent to fix` (a repair conversation over the plugin install root) and `Copy error`.
 - Shows the host's safe-mode banner and the `Restore normal mode` affordance (the web build applies it at the next manual restart).
 
 ## Install
@@ -41,7 +41,7 @@ Restart `dsh web`; the tab appears in the settings page's Plugins section.
 
 ## Config
 
-The tab carries no configuration namespace. Enablement switches and installs apply at the next restart.
+The tab carries no configuration namespace. Update and conflict-undo writes apply at the next restart.
 
 ## Cordis service
 
@@ -68,7 +68,7 @@ The contract source of truth is `src/core/service.ts` (`PluginManagerService`). 
 - The web build has no in-place restart: changes apply at the next manual restart.
 - Install-time conflict detection reports what the install actually changed (product rows in official mode, profile rows and bundle entries in gateway mode). On the npm runtime, duplicate insert-id claims are detected after install and the new plugin is rolled back automatically (a shared id can never be `disabled` away: the loader's duplicate check has no disabled exemption); on official runtimes the host's own rules and the boot-failure ring own that case.
 - The npm runtime's boot preflight (`--dump-config`) catches composition failures, and the static insert check catches insert rows naming packages that resolve nowhere; runtime import/apply failures still surface only at the next real start, where official runtimes keep the failure ring and the npm runtime does not.
-- Duplicate-mount safeguard (gateway mode): the official CLI's bundle reconciliation re-adds every bundle-declaring dependency to `dsh.profile.bundles` after any install/remove — including packages the composition already mounts through a patch row (the family aggregate mounts `dsh-better-sidebar` as a row), which would double-mount and fail the next boot (`duplicate prefix route`). After every successful CLI mutation the gateway strips exactly the newly added, already-row-mounted bundles entries back out (the manifest write goes through backup + tmp + atomic rename), reports one notice per stripped entry on the job result, and leaves normal installs' bundles entries — and every entry the user had before — untouched.
+- Duplicate-mount safeguard (gateway mode): the official CLI's bundle reconciliation re-adds every bundle-declaring dependency to `dsh.profile.bundles` after any install/remove — including packages the composition already mounts through a patch row (a bundle that mounts an external plugin by row), which would double-mount and fail the next boot (`duplicate prefix route`). After every successful CLI mutation the gateway strips exactly the newly added, already-row-mounted bundles entries back out (the manifest write goes through backup + tmp + atomic rename), reports one notice per stripped entry on the job result, and leaves normal installs' bundles entries — and every entry the user had before — untouched.
 - The wire shapes mirror the official installer tab protocol; on drift the tolerant parsers degrade to error rows rather than misbehaving.
 - The repair conversation's workspace keeps its path-derived default title.
 

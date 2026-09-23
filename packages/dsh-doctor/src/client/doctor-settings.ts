@@ -1,14 +1,14 @@
 /**
  * Settings-namespace facade for the doctor enable switch.
  *
- * Wraps the bound SettingsScope in a never-throwing view: a missing namespace,
- * a memory-mode scope or a hostile scope degrades to an 'unavailable' state
- * instead of breaking the console. The facade also routes a failed write back
- * as a result value instead of a rejection.
+ * Wraps the bound configuration form in a never-throwing view: a missing
+ * namespace, a memory-mode form or a hostile transport degrades to an
+ * 'unavailable' state instead of breaking the console. The facade also routes
+ * a failed or refused write back as a result value instead of a rejection.
  * @module @linxin666/dsh-doctor/client
  */
 
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { DoctorSettings } from './doctor-types.ts'
 
 /** Read state of the enable switch. */
@@ -23,18 +23,18 @@ export interface DoctorSettingsState {
 /** Settled result of one toggle write (never a rejection). */
 export type DoctorSettingsWrite = { ok: true } | { ok: false; error: string }
 
-/** Never-throwing facade over the bound settings scope. */
+/** Never-throwing facade over the bound settings form. */
 export interface DoctorSettingsHandle {
   /** Read the current derived state (never throws). */
   getState(): DoctorSettingsState
-  /** Subscribe to scope snapshot replacements (never throws). */
+  /** Subscribe to form snapshot replacements (never throws). */
   listen(listener: () => void): () => void
   /** Persist the enabled flag (never rejects). */
   setEnabled(enabled: boolean): Promise<DoctorSettingsWrite>
 }
 
-/** Build a handle, or null when no scope is available (host half absent). */
-export function createDoctorSettingsHandle(scope: SettingsScope<DoctorSettings> | undefined | null): DoctorSettingsHandle | null {
+/** Build a handle, or null when no form is available (host half absent). */
+export function createDoctorSettingsHandle(scope: ConfigForm<DoctorSettings> | undefined | null): DoctorSettingsHandle | null {
   if (scope === undefined || scope === null) return null
   return new ScopedDoctorSettingsHandle(scope)
 }
@@ -42,13 +42,13 @@ export function createDoctorSettingsHandle(scope: SettingsScope<DoctorSettings> 
 const UNAVAILABLE_STATE: DoctorSettingsState = { status: 'unavailable', enabled: undefined, writable: false }
 
 class ScopedDoctorSettingsHandle implements DoctorSettingsHandle {
-  private readonly scope: SettingsScope<DoctorSettings>
+  private readonly scope: ConfigForm<DoctorSettings>
   /** Derived state is cached against the scope's stable snapshot reference so
    * useSyncExternalStore always receives a cached identity between changes. */
   private lastSnapshot: unknown
   private cached: DoctorSettingsState = UNAVAILABLE_STATE
 
-  constructor(scope: SettingsScope<DoctorSettings>) {
+  constructor(scope: ConfigForm<DoctorSettings>) {
     this.scope = scope
     this.lastSnapshot = undefined
   }
@@ -89,9 +89,12 @@ class ScopedDoctorSettingsHandle implements DoctorSettingsHandle {
 
   /** Bound field arrow so invoking the handle method keeps its receiver. */
   setEnabled = async (enabled: boolean): Promise<DoctorSettingsWrite> => {
+    // The form contract answers a refusal or a skipped write with `false` (it
+    // recovers with a fresh Host view instead of throwing), so a false answer
+    // is a save that did not land and must not read as success.
     try {
-      await this.scope.set('enabled', enabled)
-      return { ok: true }
+      const accepted = await this.scope.set('enabled', enabled)
+      return accepted === true ? { ok: true } : { ok: false, error: 'the Host refused the settings write' }
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }

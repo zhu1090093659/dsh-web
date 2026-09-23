@@ -6,7 +6,7 @@
 
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { useEffect, useState } from 'react'
 import type { TaskBoardPowerSnapshot } from '../protocol.ts'
 import { PluginSettingsCard, BooleanField } from './PluginSettingsCard.tsx'
@@ -40,13 +40,13 @@ export interface TaskBoardSettingsCardFace extends CardActions {
   }
 }
 
-/** Bridges the `task-board` scope onto the card's staged form. */
+/** Bridges the `task-board` settings form onto the card's staged form. */
 export class TaskBoardSettingsCardController {
   private readonly form: CardForm<TaskBoardSettings>
   private readonly store: SnapshotStore<TaskBoardSettingsCardState>
 
-  /** @param scope - the bound settings scope for the `task-board` namespace. */
-  constructor(scope: SettingsScope<TaskBoardSettings>) {
+  /** @param scope - the bound configuration form for the `task-board` namespace. */
+  constructor(scope: ConfigForm<TaskBoardSettings>) {
     this.form = new CardForm(scope, [
       booleanField('enabled'),
       booleanField('announceToAgent'),
@@ -73,7 +73,7 @@ export class TaskBoardSettingsCardController {
   }
 
   /**
-   * Release the card's scope subscription and bound stores; the slot
+   * Release the card's form subscription and bound stores; the slot
    * disposer calls this on teardown.
    */
   dispose(): void {
@@ -126,6 +126,8 @@ export function TaskBoardSettingsCard(props: TaskBoardSettingsCardProps) {
       descriptionKey="settings.description"
       defaultOpen={false}
       state={state}
+      renderChildrenWhenNotExposed
+      hideNotExposedNotice
       onSave={props.save}
       onDiscard={props.discard}
     >

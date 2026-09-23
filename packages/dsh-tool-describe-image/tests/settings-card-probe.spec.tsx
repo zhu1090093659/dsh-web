@@ -21,7 +21,7 @@ import {
 } from '../src/client/DescribeImageSettingsCard.tsx'
 import { setLanguage } from '../src/client/locales.ts'
 import type { FieldState } from '../src/client/settings-form.ts'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { DescribeImageSettings } from '../src/client/DescribeImageSettingsCard.tsx'
 
 afterEach(() => {
@@ -157,14 +157,66 @@ describe('DescribeImageSettingsCard probe', () => {
   })
 })
 
-/** A minimal ready scope answering stored connection settings. */
-function fakeScope(value: DescribeImageSettings): SettingsScope<DescribeImageSettings> {
-  return {
-    subscribe: () => () => {},
-    getSnapshot: () => ({ status: 'ready', writable: true, value, base: {}, user: {} }),
-    set: async () => {},
-    unset: async () => {},
-  } as unknown as SettingsScope<DescribeImageSettings>
+/**
+ * One ordered path-op batch as the shared configuration form accepts it.
+ * Taken off the contract so the fake never restates the wire type.
+ */
+type FormOps = Parameters<ConfigForm<DescribeImageSettings>['mutate']>[0]
+
+/**
+ * Minimal in-memory configuration form modelling the real 0.1.7 contract: an
+ * accepted mutation folds its writes into the view layers and answers `true`;
+ * a refused one applies nothing and answers `false` (it does not reject).
+ */
+class FakeConfigForm implements ConfigForm<DescribeImageSettings> {
+  /** Raw user layer, as the read-back judgment sees it. */
+  readonly user: Record<string, unknown> = {}
+  /** Whether the Host accepts the next write. */
+  answer = true
+  private value: DescribeImageSettings
+  private readonly listeners = new Set<() => void>()
+
+  /** @param value - the effective section the Host serves. */
+  constructor(value: DescribeImageSettings) {
+    this.value = value
+  }
+
+  getSnapshot(): ConfigFormSnapshot<DescribeImageSettings> {
+    return { status: 'ready', value: this.value, base: {}, user: this.user, revision: 1, writable: true, mode: 'host' }
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+
+  set(field: string, value: unknown): Promise<boolean> {
+    return this.mutate([{ op: 'set', path: [field], value: value as never }])
+  }
+
+  unset(field: string): Promise<boolean> {
+    return this.mutate([{ op: 'unset', path: [field] }])
+  }
+
+  async mutate(ops: FormOps): Promise<boolean> {
+    if (!this.answer) return false
+    for (const op of ops) {
+      const field = op.path[0]
+      if (op.op === 'set') {
+        this.user[field] = op.value
+        this.value = { ...this.value, [field]: op.value }
+      } else {
+        delete this.user[field]
+      }
+    }
+    for (const listener of this.listeners) listener()
+    return true
+  }
+}
+
+/** The card snapshot the controller publishes. */
+function cardState(controller: DescribeImageSettingsCardController): DescribeImageSettingsCardState {
+  return controller.inject().hooks.describeImageSettingsCard.getSnapshot()
 }
 
 describe('DescribeImageSettingsCardController probe', () => {
@@ -175,7 +227,7 @@ describe('DescribeImageSettingsCardController probe', () => {
       return { json: async () => ({ ok: true, value: { models: ['m1'] } }) } as unknown as Response
     })
     vi.stubGlobal('fetch', fetchMock)
-    const controller = new DescribeImageSettingsCardController(fakeScope({ baseURL: 'https://saved.example.com/v1', model: 'old' }))
+    const controller = new DescribeImageSettingsCardController(new FakeConfigForm({ baseURL: 'https://saved.example.com/v1', model: 'old' }))
     try {
       // Stage a draft endpoint the listing must prefer over the stored one.
       controller.inject().edit('baseURL', 'https://draft.example.com/v1')
@@ -204,7 +256,7 @@ describe('DescribeImageSettingsCardController probe', () => {
       return { json: async () => ({ ok: true, value: { latencyMs: 432 } }) } as unknown as Response
     })
     vi.stubGlobal('fetch', fetchMock)
-    const controller = new DescribeImageSettingsCardController(fakeScope({ baseURL: 'https://saved.example.com/v1', model: 'vision-1' }))
+    const controller = new DescribeImageSettingsCardController(new FakeConfigForm({ baseURL: 'https://saved.example.com/v1', model: 'vision-1' }))
     try {
       controller.inject().testModel()
       await vi.waitFor(() => {
@@ -224,7 +276,7 @@ describe('DescribeImageSettingsCardController probe', () => {
   it('skips the model ping while the model field is empty', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    const controller = new DescribeImageSettingsCardController(fakeScope({ baseURL: 'https://saved.example.com/v1' }))
+    const controller = new DescribeImageSettingsCardController(new FakeConfigForm({ baseURL: 'https://saved.example.com/v1' }))
     try {
       controller.inject().testModel()
       expect(fetchMock).not.toHaveBeenCalled()
@@ -242,7 +294,7 @@ describe('DescribeImageSettingsCardController probe', () => {
       return { json: async () => ({ ok: false, error: { code: 'rejected', message: 'no key' } }) } as Response
     })
     vi.stubGlobal('fetch', fetchMock)
-    const controller = new DescribeImageSettingsCardController(fakeScope({ baseURL: 'https://saved.example.com/v1', model: 'old' }))
+    const controller = new DescribeImageSettingsCardController(new FakeConfigForm({ baseURL: 'https://saved.example.com/v1', model: 'old' }))
     try {
       const face = controller.inject()
       face.fetchModels()
@@ -252,6 +304,53 @@ describe('DescribeImageSettingsCardController probe', () => {
       })
       expect(calls).toBe(1)
       expect(controller.inject().hooks.describeImageSettingsCard.getSnapshot().probe.error).toBe('no key')
+    } finally {
+      controller.dispose()
+    }
+  })
+})
+
+describe('DescribeImageSettingsCardController save', () => {
+  it('operator sees a staged edit written and the drafts cleared', async () => {
+    // Given a card bound to a form the Host accepts writes on
+    const form = new FakeConfigForm({ baseURL: 'https://saved.example.com/v1', model: 'old' })
+    const controller = new DescribeImageSettingsCardController(form)
+    try {
+      const face = controller.inject()
+      face.edit('model', 'vision-2')
+      expect(cardState(controller).dirty).toBe(true)
+
+      // When the operator saves the staged edit
+      face.save()
+      await vi.waitFor(() => { expect(cardState(controller).dirty).toBe(false) })
+
+      // Then the write landed and the card reports no failure
+      expect(form.user.model).toBe('vision-2')
+      expect(cardState(controller).failed).toBe(false)
+      expect(cardState(controller).model).toMatchObject({ text: 'vision-2', overridden: true })
+    } finally {
+      controller.dispose()
+    }
+  })
+
+  it('operator sees a refused write reported as a failed save with the drafts kept', async () => {
+    // Given a Host that refuses (or skips) the write: the form answers false
+    // instead of throwing, which must not read as a successful save
+    const form = new FakeConfigForm({ baseURL: 'https://saved.example.com/v1', model: 'old' })
+    form.answer = false
+    const controller = new DescribeImageSettingsCardController(form)
+    try {
+      const face = controller.inject()
+      face.edit('model', 'vision-2')
+
+      // When the operator saves the staged edit
+      face.save()
+      await vi.waitFor(() => { expect(cardState(controller).failed).toBe(true) })
+
+      // Then the refusal surfaces as a failure and the draft stays editable
+      expect(cardState(controller).dirty).toBe(true)
+      expect(cardState(controller).model.text).toBe('vision-2')
+      expect(form.user.model).toBeUndefined()
     } finally {
       controller.dispose()
     }

@@ -5,15 +5,17 @@
  * The slot owner passes the card's directory row (`provider.settingsNs` /
  * `provider.settingsPath` address the profile inside the settings document)
  * and the apply body injects the settings namespace face plus the refresh
- * bus; this panel reads the redacted namespace views over the remote settings
- * wire, drafts image-input and reasoning-effort declarations per model, and
- * saves them as one whole-array path op with revision fencing — the same
- * write granularity and conflict posture the official card uses.
+ * bus; this panel reads the redacted entry views over the remote settings
+ * wire, drafts reasoning-effort declarations per model, and saves them as one
+ * whole-array path op with revision fencing — the same write granularity and
+ * conflict posture the official card uses. Model input types belong to the
+ * Models page's own editor since 0.1.6-alpha.2, so the draft preserves the
+ * `input` claim instead of rewriting it.
  *
- * The toggle uses the plugin's archive namespace: disabling stashes the
+ * The toggle uses this plugin's own settings entry: disabling stashes the
  * user-layer profile and unsets `providers.<route>` (the official
  * Remove-provider seam), which takes the provider out of the model catalog
- * both pickers read; enabling restores it. A missing namespace or a refused
+ * both pickers read; enabling restores it. A missing entry or a refused
  * read renders the failure inline, never a blank.
  * @module @linxin666/dsh-client-ui-model-capabilities/client/CapabilitiesPanel
  */
@@ -26,20 +28,18 @@ import {
   buildModelsOp,
   declaredLevelsOf,
   effortsModeOf,
-  imageInputOf,
   modelsArrayOf,
   readAt,
   sanitizeEntry,
   THINKING_LEVELS,
   validateEntry,
   withEffortsMode,
-  withImageInput,
   COMMON_EFFORTS_PRESET,
   type CapabilitiesIssue,
   type ModelEntryDraft,
   type ModelThinkingLevel,
 } from '../core/capabilities.ts'
-import { CAPS_SETTINGS_NAMESPACE, hasNonUserProfile, hasProfileAt, readDisabledStore } from '../core/provider-toggle.ts'
+import { hasNonUserProfile, hasProfileAt, readDisabledStore, resolveArchiveEntry } from '../core/provider-toggle.ts'
 import { disableProvider, enableProvider } from './provider-toggle.ts'
 import type { SettingsNamespaceFace } from './settings-face.ts'
 import { t } from './locales.ts'
@@ -72,7 +72,7 @@ interface Snapshot {
   baseProfile: boolean
   /** Whether the provider is currently disabled (archived and taken down). */
   disabledHere: boolean
-  /** Whether the plugin's archive namespace answered (disable needs it). */
+  /** Whether the plugin's archive entry answered (disable needs it). */
   capsKnown: boolean
 }
 
@@ -130,10 +130,10 @@ export function CapabilitiesPanel(props: CapabilitiesPanelProps) {
       const namespaces = described.value.namespaces
       const view = namespaces.find(candidate => candidate.ns === provider.settingsNs)
       if (view === undefined) {
-        throw new Error(`settings namespace "${provider.settingsNs}" is not registered on this host`)
+        throw new Error(`settings entry "${provider.settingsNs}" is not served on this host`)
       }
-      const capsView = namespaces.find(candidate => candidate.ns === CAPS_SETTINGS_NAMESPACE)
-      const stash = readDisabledStore(capsView?.value)
+      const archive = resolveArchiveEntry(namespaces)
+      const stash = readDisabledStore(archive?.view.value)
       const userProfile = hasProfileAt(view.user, provider.provider)
       const userModels = modelsArrayOf(readAt(view.user, modelsPath))
       const effective = userModels ?? modelsArrayOf(readAt(view.value, modelsPath)) ?? []
@@ -149,7 +149,7 @@ export function CapabilitiesPanel(props: CapabilitiesPanelProps) {
         userProfile,
         baseProfile: hasNonUserProfile(view, provider.provider),
         disabledHere: stash[provider.provider] !== undefined && !userProfile,
-        capsKnown: capsView !== undefined,
+        capsKnown: archive !== undefined,
       })
       if (basis === undefined) setDraft(null)
       setStaleDraft(basis !== undefined && basis !== view.revision)
@@ -441,13 +441,12 @@ interface ModelRowProps {
 }
 
 /**
- * One model row: a collapsed summary header (image claim + reasoning levels)
- * and the expanded tri-state editor with per-level wire spellings.
+ * One model row: a collapsed summary header (reasoning levels) and the
+ * expanded tri-state editor with per-level wire spellings.
  */
 function ModelRow(props: ModelRowProps) {
   const { entry, expanded, disabled, onToggle, onChange } = props
   const radioName = useId()
-  const image = imageInputOf(entry)
   const mode = effortsModeOf(entry)
   const levels = declaredLevelsOf(entry)
 
@@ -486,8 +485,6 @@ function ModelRow(props: ModelRowProps) {
   }
 
   const summaryChips: string[] = []
-  if (image === true) summaryChips.push(t('caps.summary.image'))
-  else if (image === false) summaryChips.push(t('caps.summary.textOnly'))
   if (mode === 'none') summaryChips.push(t('caps.summary.noReasoning'))
   else if (mode === 'levels') {
     const named = levels.filter(({ level }) => level !== 'off').map(({ level }) => level)
@@ -523,18 +520,6 @@ function ModelRow(props: ModelRowProps) {
       {expanded
         ? (
             <div className={css.rowBody}>
-              <div className={css.field} data-dsh-part="image-input">
-                <label className={css.checkLabel}>
-                  <input
-                    type="checkbox"
-                    checked={image === true}
-                    disabled={disabled}
-                    onChange={event => { onChange(withImageInput(entry, event.target.checked)) }}
-                  />
-                  <span>{t('caps.model.image')}</span>
-                </label>
-                <p className={css.hint}>{image === undefined ? t('caps.model.image.inherit') : t('caps.model.image.hint')}</p>
-              </div>
               <div className={css.field} data-dsh-part="efforts-mode">
                 <span className={css.fieldLabel}>{t('caps.model.efforts')}</span>
                 <div className={css.modeGroup} role="radiogroup" aria-label={t('caps.model.efforts')}>

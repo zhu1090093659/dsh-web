@@ -3,6 +3,6 @@
   "private": true,
   "description": "Pinned dsh host runtime payload for the desktop app. Installed by scripts/build-runtime.mjs with a hoisted, multi-platform pnpm layout.",
   "dependencies": {
-    "@deepseek-ai/dsh": "0.1.5-rc.1"
+    "@deepseek-ai/dsh": "0.1.7-alpha.1"
   }
 }

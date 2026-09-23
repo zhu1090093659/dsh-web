@@ -125,12 +125,11 @@ jobs:
 
   # Pack the aggregate bundle as an npm tarball, mount it into a REAL DSH
   # instance through the official `dsh plugin --profile web add` channel, and
-  # render the DSH web UI headlessly (Playwright Chromium) to prove the
-  # right-panel transition: dsh-better-sidebar mounts, no crash markers.
+  # render the DSH web UI headlessly (Playwright Chromium) to prove the bundle
+  # boots on the alpha cohort with no bundled right panel and no crash markers.
   # (aionui-panel is no longer supported and carries no assertions.)
-  # Requires the published family packages and dsh-better-sidebar (see
-  # docs/publish-prep.md for the release order); runs keyless and
-  # deterministic, no API key needed.
+  # Requires the published family packages (see docs/publish-prep.md for the
+  # release order); runs keyless and deterministic, no API key needed.
   plugin-mount:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -152,7 +151,7 @@ jobs:
       # Pin the DSH CLI the lane mounts into; the profile's bundle stack
       # (dsh-base / dsh-web-app) resolves from this installation.
       - name: Install dsh CLI (pinned)
-        run: npm install -g @deepseek-ai/dsh@0.1.5-rc.1
+        run: npm install -g @deepseek-ai/dsh@0.1.7-alpha.1
 
       # lib/ bundles are committed for the consistency checks, but the
       # aggregate tarball must be produced from a fresh build.

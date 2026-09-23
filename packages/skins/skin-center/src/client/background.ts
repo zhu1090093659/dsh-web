@@ -148,6 +148,8 @@ export class BackgroundController implements SkinBackgroundHandle {
   private readonly persist: (next: SkinBackgroundConfig) => void
   /** The fixed backdrop-filter element, present only while active blur > 0. */
   private blurElement: HTMLDivElement | null = null
+  /** Currently applied backdrop-filter blur px (cached to avoid redundant style writes during streaming). */
+  private appliedBlur: number | null = null
   /** The body MutationObserver, installed lazily once a blur is active. */
   private observer: MutationObserver | null = null
   /** Pending requestAnimationFrame id for a coalesced recheck. */
@@ -388,7 +390,10 @@ export class BackgroundController implements SkinBackgroundHandle {
       element.setAttribute('aria-hidden', 'true')
       this.blurElement = element
       document.body.appendChild(element)
+      this.appliedBlur = null
     }
+    if (this.appliedBlur === active) return
+    this.appliedBlur = active
     const blur = 'blur(' + active + 'px)'
     this.blurElement.style.backdropFilter = blur
     // Safari: the vendor-prefixed form is only reachable via setProperty.
@@ -400,6 +405,7 @@ export class BackgroundController implements SkinBackgroundHandle {
     if (this.blurElement === null) return
     this.blurElement.remove()
     this.blurElement = null
+    this.appliedBlur = null
   }
 
   /**

@@ -412,7 +412,7 @@ export function buildInstructionHint(original, paths) {
         + 'Reading the relevant file before workspace tasks is recommended, but consult them only when you need those details; the task itself never depends on them.'
         + '\n</system-reminder>',
     }],
-    source: { kind: 'plugin', plugin: name },
+    source: { kind: name },
   }
 }
 
@@ -849,7 +849,7 @@ export function apply(ctx, config) {
             type: 'text',
             text: `<system-reminder>\n${newSections.join('\n\n')}\n</system-reminder>`,
           }],
-          source: { kind: 'plugin', plugin: name },
+          source: { kind: name },
         })
       }
     }

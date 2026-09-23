@@ -2,7 +2,7 @@
 
 状态：implemented
 
-部分取代 [usage 统计插件](../feature/2026-08-29-usage-statistics-plugin.md)（其宠物联动决策）与 [DeepSeek 峰谷计价与公告修复](../feature/2026-08-29-usage-peak-pricing-and-announce-fix.md)（其公告/气泡部分；适配器身份与折叠时刻计价两项决策仍然有效）。保留 [宠物公告契约](../feature/2026-08-29-pet-announcement-bubble.md) 本身，但它不再有内置消费方。同步更新 [侧栏控件修复](../bug-fix/2026-09-17-usage-sidebar-controls-on-entry-row.md) 与 [issue 批次 1587-1600](../bug-fix/2026-09-16-issue-batch-1587-1600-fixes.md) 中的面板事实。
+部分取代 [usage 统计插件](../feature/2026-08-29-usage-statistics-plugin.md)（其宠物联动决策）与 [DeepSeek 峰谷计价与公告修复](../feature/2026-08-29-usage-peak-pricing-and-announce-fix.md)（其公告/气泡部分；适配器身份与折叠时刻计价两项决策仍然有效）。保留 [宠物公告契约](../feature/2026-08-29-pet-announcement-bubble.md) 本身，但它不再有内置消费方。其折叠摘要条随后由 [usage 侧栏面移除](2026-09-18-usage-sidebar-surface-removed.md) 一并删除，该记录亦更新了 [issue 批次 1587-1600](../bug-fix/2026-09-16-issue-batch-1587-1600-fixes.md) 中的 #1592 事实。
 
 ## 问题
 

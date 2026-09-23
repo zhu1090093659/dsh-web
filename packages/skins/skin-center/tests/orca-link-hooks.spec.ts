@@ -293,4 +293,42 @@ describe('orca-link hooks: composer seat and settings overlay', () => {
 
     runCleanup()
   })
+
+  it('operator sees composer handles mounted when conversation-scroll is nested in PTC tabs container', () => {
+    // Given an active conversation root wrapping conversation-scroll within a PTC tabs container
+    const { ctx, runCleanup } = setup()
+    const root = document.createElement('div')
+    root.setAttribute('data-phase', 'active')
+    const tabsWrapper = document.createElement('div')
+    tabsWrapper.setAttribute('data-ptc-tabs-panel', '')
+    const scroll = document.createElement('div')
+    scroll.setAttribute('data-conversation-scroll', '')
+    const flow = document.createElement('div')
+    flow.setAttribute('data-chat-flow', '')
+    flow.setAttribute('data-chat-flow-kind', 'message')
+    scroll.append(flow)
+    const seat = document.createElement('div')
+    seat.setAttribute('data-composer-seat', '')
+    const card = document.createElement('div')
+    card.setAttribute('data-composer-card', '')
+    const textarea = document.createElement('textarea')
+    card.append(textarea)
+    seat.append(card)
+    scroll.append(seat)
+    tabsWrapper.append(scroll)
+    root.append(tabsWrapper)
+    document.body.append(root)
+
+    // When skin hooks are applied to the context
+    defineSkinHooks().apply(ctx)
+
+    // Then composer drag handles are successfully discovered and mounted on both edges
+    const left = card.querySelector('[data-orca-composer-handle="left"]')
+    const right = card.querySelector('[data-orca-composer-handle="right"]')
+    expect(left?.getAttribute('data-orca-composer-handle')).toBe('left')
+    expect(right?.getAttribute('data-orca-composer-handle')).toBe('right')
+
+    runCleanup()
+    expect(card.querySelector('[data-orca-composer-handle]')).toBe(null)
+  })
 })

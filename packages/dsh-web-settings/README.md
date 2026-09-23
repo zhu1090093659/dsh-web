@@ -8,7 +8,9 @@ The dsh web UI plugin group for the DSH settings page: it adds a first-level set
 
 - **One section for the family**: on the DSH settings page it registers a first-level section with a static heading and cards for the remaining dsh web UI family plugins (task-board, remote-web-ui, describe-image). Each plugin card is collapsed by default and expands independently to show its enable switch and configuration form.
 - **First-level sections**: the Skin Center, the Desktop Pet and the Workshop (store card) each register as their own first-level settings section that opens directly expanded; the official Plugins section ships the official installer beside the plugin-manager tab provided by `dsh-plugin-manager`.
-- **The group is optional for the family plugins**: this package declares the `web-ui.plugin.item` list seat the family cards register into. A family plugin registers into that seat while this package is loaded, and into the official keyed `settings.plugin.item` seat of the Plugins tab when it is not (keyed by the plugin's settings namespace), so a profile that installs a family plugin without this group still reaches every card.
+- **The group is optional for the family plugins**: this package declares the `web-ui.plugin.item` list seat the family cards register into. A family plugin registers into that seat while this package is loaded, and into the official keyed `plugins.bundle.config` seat of the plugin manager page when it is not (keyed by the bundle's package name), so a profile that installs a family plugin without this group still reaches every card.
+- **Native settings transport**: the 0.1.7 settings surface addresses every configuration form by profile entry id. The host bridge resolves the entry id that owns each family namespace from the profile roster and reports it on its describe response, so the browser half binds the native shared form (`ctx.configForms`); the loopback HTTP pair stays the fallback for a page where no entry id resolves.
+- **Legacy settings recovery**: the 0.1.7 settings subsystem imports `settings.yaml` once and then renames it, but it imports each section under its own name as a profile entry id, so the family sections (`pet`, `dsh-usage`, ...) match no entry and their values are left orphaned in the renamed file. This package adopts them once — into the entry that serves their namespace, or into the entry whose Config declares a field of that name — without overwriting anything the user already set. See [Legacy settings import](#legacy-settings-import).
 
 ## Install
 
@@ -51,7 +53,46 @@ reverse_proxy 127.0.0.1:3080 {
 
 `header_up` with a value replaces any client-supplied value. Do not combine that line with a deletion of the same field: Caddy 2.6 applies grouped deletes after sets. If the Caddy systemd unit starts `caddy run --environ`, remove that flag or otherwise protect its output because it prints environment variables at startup.
 
-`web_settings_namespaces` in `settings.yaml` still decides which family namespaces the bridge serves; when absent, the built-in family list applies. Config changes require a DSH restart, while `web_settings_namespaces` is re-read for every bridge call.
+`web_settings_namespaces` in `settings.yaml` still decides which family namespaces the bridge serves; when absent, the built-in family list applies. The Host imports `settings.yaml` once on first boot and renames it to `settings.yaml.imported`, so the bridge reads the renamed import first, the pre-0.1.7 document second, and treats the Host-reported profile patch as a settings document only when its name says it is one. Config changes require a DSH restart, while `web_settings_namespaces` is re-read for every bridge call.
+
+## Legacy settings import
+
+Before the 0.1.7 cohort, `$DSH_HOME/settings.yaml` carried one top-level section per family plugin (`pet:`, `dsh-usage:`, `dsh-liangshen:`, ...). The new settings subsystem imports that document once and renames it to `settings.yaml.imported`, but it imports each section under its own name as a profile entry id — and the family's row ids are `ui-pet` / `web-ui-pet`, `web-ui-usage`, and so on. Those sections matched no entry: the Host logged them as rejected, left them in the renamed file, and every family setting reverted to its schema default.
+
+Once the composition has settled, this package adopts them through two ordered rules:
+
+1. **Alias rule.** Each top-level section name is resolved through the same tables the bridge serves namespaces with: the family namespace aliases first, then the profile entry id that namespace is addressed by.
+2. **Field rule.** A section the alias rule cannot place is matched against the top-level Config fields the served entries declare; exactly one entry must declare a field of that name, and that entry takes the section. This is how a namespace a plugin folded into its own Config still lands: the Skin Center declares `skin-background`, `skin-custom-theme`, and `skin-wallpaper` as fields of one entry, so the legacy sections of those names belong at those paths.
+
+Whichever rule placed the section, the write path inside the entry is the same decision: the section is written at a top-level field of its own name when that entry declares one (a namespace the plugin folded into its own Config — the Skin Center's `skin-background` is reached by the alias rule and still lands inside that field), and at the entry root otherwise, which is the ordinary family plugin whose Config carries the section's fields directly. A section both rules could claim keeps the alias rule. Every write goes through the official path, `ctx.settings.update(entryId, patch, expectedRevision)`, with the revision the Host reported, and the section is recorded in the marker below so it is imported at most once.
+
+The import never clobbers. A field path the entry's user layer already holds is dropped from the patch at any depth: a held nested key keeps its value while its untouched siblings still import, and a held subtree (arrays included) is never rewritten. A section no served entry owns, one whose fields the entry's form does not declare, and a field name two or more served entries declare are all left alone and reported in the Host log rather than written blind. Every run logs its outcome — imported, already recorded, skipped, refused — and the repair never blocks activation: if `ctx.settings` or the config editor is absent it does nothing.
+
+Each section that landed is recorded in `$DSH_HOME/dsh-web-settings-legacy-import.json` (`~/.dsh/dsh-web-settings-legacy-import.json` by default), a small versioned JSON document:
+
+```json
+{
+  "version": 1,
+  "sections": {
+    "pet": {
+      "entryId": "web-ui-pet",
+      "path": [],
+      "fields": ["visible", "size"],
+      "importedAt": "2026-09-22T00:00:00.000Z"
+    },
+    "skin-wallpaper": {
+      "entryId": "web-ui-skin-center",
+      "path": ["skin-wallpaper"],
+      "fields": ["selection", "dim"],
+      "importedAt": "2026-09-22T00:00:00.000Z"
+    }
+  }
+}
+```
+
+`entryId` is the entry the section was written into, `path` the field path inside it (empty for a section the alias rule placed at the entry root, `[name]` for a section the field rule matched), and `fields` the section's own field names that were written there. A `path` key missing from a marker written by an earlier build means the entry root.
+
+The marker makes the import one-shot: a recorded section is never re-imported, so a value the user clears afterwards stays cleared. A section the Host refuses, an entry the Host does not serve yet, or a marker this build cannot read stay unrecorded and are retried on the next boot; a marker of an unknown version is left untouched rather than re-imported over. Deleting the marker re-arms the import — the user-layer check still refuses to overwrite anything the entry already carries.
 
 ## Security model
 
@@ -79,6 +120,8 @@ See [issue #513](https://github.com/zhu1090093659/dsh-web/issues/513).
 - The section shows on the dsh settings page only when its prerequisite (`@deepseek-ai/dsh-client-ui-settings`) is present.
 - Authenticated-proxy mode does not provide authentication itself; a deployment without a correctly ordered authentication proxy must leave `trustedProxyHosts` empty.
 - The compatibility bridge serves dsh-web family settings only. It does not make the official DSH settings or credentials plane remotely available.
+- The legacy settings import covers the family settings surface: sections are matched against the family namespaces this package serves (alias rule) and against the top-level Config fields those served entries declare (field rule). A section belonging to the official settings surface or to a non-family plugin stays in `settings.yaml.imported` and is reported as skipped.
+- The field rule fails closed: a field name two or more served entries declare, like one no served entry declares, leaves the section in the renamed file.
 
 ## Telemetry
 

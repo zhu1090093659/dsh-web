@@ -83,8 +83,3 @@ declare module '@linxin666/dsh-client-ui-preset-center/client' {
   export const apply: unknown
   export const inject: readonly string[] | undefined
 }
-
-declare module '@linxin666/dsh-client-ui-skin-center/client' {
-  export const apply: unknown
-  export const inject: readonly string[] | undefined
-}

@@ -1,7 +1,8 @@
 /**
  * Composition guard for the shipped preset file: the committed
- * `agent.cordis.yml` must stay structurally valid, mount the preset-local
- * plugins, and keep the persona row on the schema the installed SDK accepts.
+ * `agent.cordis.yml` must stay readable by the declaration reader, mount the
+ * preset-local plugins, and keep the persona row on the schema the installed
+ * SDK accepts.
  *
  * The persona section-name assertion is the regression guard for the class of
  * defect where a harness rename silently stops matching a hardcoded name —
@@ -17,9 +18,20 @@ import { describe, expect, it } from 'vitest'
 
 import { PERSONA_SECTION_NAMES, PLAN_POLICY_SECTION_NAME, name as promptName } from '../presets/liangshen/minimal-prompt.mjs'
 import { name as catalogName } from '../presets/liangshen/tool-catalog.mjs'
-import { validateAgentCordis } from '../src/schema.ts'
+import { readCompositionRows } from '../src/composition.ts'
 
 const preset = readFileSync(join(process.cwd(), 'presets/liangshen/agent.cordis.yml'), 'utf8')
+const presetDir = join(process.cwd(), 'presets', 'liangshen')
+
+/** Whether the composition parses into the rows a registry declaration takes. */
+function readable(text: string): boolean {
+  try {
+    readCompositionRows(text, presetDir)
+    return true
+  } catch {
+    return false
+  }
+}
 
 /**
  * The text of one top-level `- id: <id>` row: its own line and the indented
@@ -36,7 +48,7 @@ function row(id: string): string {
 
 describe('liangshen preset composition', () => {
   it('is structurally valid for the preset loader', () => {
-    expect(validateAgentCordis(preset)).toEqual([])
+    expect(readable(preset)).toBe(true)
   })
 
   it('mounts the minimal-prompt and tool-catalog plugins', () => {
@@ -54,12 +66,14 @@ describe('liangshen preset composition', () => {
     expect(persona).toContain('You are a helpful software engineer assistant.')
     // The standing working discipline ships inside the persona prefix: the
     // thinking-disruption fuse, action-oriented steps, and YAGNI/PDCA.
-    expect(persona).toContain('Thinking Disruption: Do not repeat reasoning on the same hypothesis more than twice')
-    expect(persona).toContain('immediately close </think> and call native inspection tools')
-    expect(persona).toContain('Action-Oriented: Thinking must focus solely on determining the next concrete operation')
-    expect(persona).toContain('Parallel Inspection: When multiple independent inspections, searches, or checks are needed')
+    expect(persona).toContain('Thinking Disruption: Never reason through the same hypothesis more than twice')
+    expect(persona).toContain('stop thinking and call a native inspection tool')
+    expect(persona).toContain('Action-Oriented: Use thinking only to pick the next concrete operation')
+    expect(persona).toContain('Parallel Inspection: When several independent inspections, searches, or checks are needed')
     expect(persona).toContain('Follow YAGNI and the PDCA loop')
     expect(persona).toContain('Do not write redundant comments.')
+    expect(persona).toContain('Bounded Inspection & Convergence: Do not traverse dependency chains unbounded')
+    expect(persona).toContain('Limit pre-action inspection to immediate target files')
     expect(persona).not.toContain('text:')
     expect(persona).not.toContain('complete:')
     // Runtime contexts are durable user-role messages, not prompt text: they
@@ -76,16 +90,17 @@ describe('liangshen preset composition', () => {
     expect(row('tool-catalog')).toContain('descriptionMaxLength: 200')
   })
 
-  it("declares the 'both' presentation with no paged patterns by default, and no retired keys", () => {
+  it("declares the 'both' presentation with MCP paging on by default, and no retired keys", () => {
     expect(row('tool-catalog')).toContain("presentation: 'both'")
-    expect(row('tool-catalog')).toContain("pagedToolPatterns: []")
+    expect(row('tool-catalog')).toContain("pagedToolPatterns: ['mcp__*']")
     expect(row('tool-catalog')).not.toContain('ptcPresentation')
     expect(row('tool-catalog')).not.toContain('anchorTools')
   })
 
-  it('mounts working-context and does not mount tool-activate', () => {
-    expect(row('tool-activate')).toBe('')
+  it('mounts working-context, tool-activate, and the guard', () => {
+    expect(row('tool-activate')).toContain('name: ./tool-activate.mjs')
     expect(row('working-context')).toContain('name: ./working-context.mjs')
+    expect(row('guard')).toContain('name: ./guard.mjs')
   })
 
   it('does not mount reasoning-effort plugin', () => {
@@ -96,21 +111,21 @@ describe('liangshen preset composition', () => {
     for (const mode of ['native', 'ptc']) {
       const variant = preset.replace("presentation: 'both'", `presentation: '${mode}'`)
       expect(variant).not.toBe(preset)
-      expect(validateAgentCordis(variant), mode).toEqual([])
+      expect(readable(variant), mode).toBe(true)
     }
   })
 
   it('ships the balanced tool-result pruning budgets', () => {
     const pruner = row('compaction')
-    expect(pruner).toContain('thresholdChars: 8192')
-    expect(pruner).toContain('headChars: 4096')
+    expect(pruner).toContain('thresholdChars: 4096')
+    expect(pruner).toContain('headChars: 2048')
     expect(pruner).toContain('tailChars: 1024')
   })
 
   it('keeps run_code the only model-authored orchestration surface', () => {
     // The builtin PTC preset's one roster difference: the engine row stays for
     // `ralph`, the workflow tool does not publish beside `run_code`.
-    const workflow = row('workflow-worker-thread')
+    const workflow = row('workflow-ptc')
     expect(workflow).toContain("name: '@deepseek-ai/dsh-tool-workflow'")
     expect(workflow).toContain('disabled: true')
   })

@@ -46,16 +46,18 @@ function labelOf(entry: RegisteredEntry | undefined): unknown {
   return typeof entry?.label === 'function' ? (entry.label as () => string)() : undefined
 }
 
-const emptyScope = {
-  bind: () => ({
-    subscribe: () => () => {},
-    getSnapshot: () => ({ status: 'ready', writable: true, value: { enabled: true }, base: {}, user: {}, revision: 1, mode: 'host' }),
-  }),
+const marketForm = {
+  subscribe: () => () => {},
+  getSnapshot: () => ({ status: 'ready', writable: true, value: { enabled: true }, base: {}, user: {}, revision: 1, mode: 'host' }),
+  set: async () => true,
+  unset: async () => true,
+  mutate: async () => true,
 }
 
 function makeCtx() {
   const injected: string[] = []
   const registered: Array<Record<string, unknown>> = []
+  const requested = new Array<string>()
   const fakeCtx = {
     effect: (fn: () => unknown) => { fn(); return () => {} },
     locale: {
@@ -63,24 +65,28 @@ function makeCtx() {
       bind: () => (key: string) => key,
     },
     get: () => undefined,
-    settingsScope: emptyScope as never,
+    configForms: {
+      get: (entryId: string) => { requested.push(entryId); return marketForm },
+    },
     slots: {
       inject: (name: string, fn: () => unknown) => { injected.push(name); fn(); return () => {} },
       register: (options: Record<string, unknown>) => { registered.push(options); return () => {} },
     },
   }
-  return { fakeCtx, injected, registered }
+  return { fakeCtx, injected, registered, requested }
 }
 
 describe('dsh-web-ui-market client store registration', () => {
-  it('registers the single dsh-web-ui-market section rendering the store card', () => {
+  it('user sees one dsh-web-ui-market settings section rendering the store card', () => {
+    // Given a plugin context whose settings.section injection and slot registry are observable
     const { fakeCtx, injected, registered } = makeCtx()
+    // When apply() runs
     apply(fakeCtx as never)
-
+    // Then the settings.section slot is injected once and exactly one store-card section is registered
     expect(injected).toEqual(['settings.section'])
+    expect(registered.filter((entry) => entry.name === 'settings.section')).toHaveLength(1)
 
     const section = registered.find((entry) => entry.name === 'settings.section' && entry.id === 'dsh-workshop') as RegisteredEntry | undefined
-    expect(section).toBeDefined()
     // The section declares the child slot asset-kind panels register into;
     // the slot itself is empty until a contributor (the preset center) mounts.
     expect(section?.children).toEqual({ 'dsh-workshop.panel': { kind: 'keyed', scope: 'root' } })
@@ -89,11 +95,37 @@ describe('dsh-web-ui-market client store registration', () => {
     expect(labelOf(section)).toBe('settings.title')
   })
 
-  it('no longer registers any tab slot entry', () => {
+  it('user finds no tab slot entry registered after the hub removal', () => {
+    // Given the same plugin context
     const { fakeCtx, registered } = makeCtx()
+    // When apply() runs
+    apply(fakeCtx as never)
+    // Then no entry claims the retired dsh-market.tab slot
+    expect(registered.some((entry) => entry.name === 'dsh-market.tab')).toBe(false)
+  })
+
+  it('user gets the settings entry bound through the injected configForms service', () => {
+    // Given a context exposing only the configForms service
+    const { fakeCtx, requested } = makeCtx()
+    // When apply() runs
+    apply(fakeCtx as never)
+    // Then the namespace requested is the Host entry id the shared forms service
+    // is keyed by, because no family binder is loaded
+    expect(requested).toEqual(['dsh-web-ui-market'])
+  })
+
+  it('prefers the webUiSettings binder when the settings package is loaded', () => {
+    const bound = new Array<unknown>()
+    const { fakeCtx, requested } = makeCtx()
+    Object.assign(fakeCtx, {
+      get: (name: string) => name === 'webUiSettings'
+        ? { bind: (spec: unknown) => { bound.push(spec); return marketForm } }
+        : undefined,
+    })
     apply(fakeCtx as never)
 
-    expect(registered.some((entry) => entry.name === 'dsh-market.tab')).toBe(false)
+    expect(bound).toEqual([{ namespace: 'dsh-web-ui-market' }])
+    expect(requested).toEqual([])
   })
 
   it('handles duplicate apply gracefully when locale.register or slots.register throws (Issue #1030)', () => {
@@ -120,7 +152,7 @@ describe('dsh-web-ui-market client store registration', () => {
         bind: () => (key: string) => key,
       },
       get: () => undefined,
-      settingsScope: emptyScope as never,
+      configForms: { get: () => marketForm },
       slots: {
         inject: (_name: string, fn: () => unknown) => { fn(); return () => {} },
         register: (options: Record<string, unknown>) => {

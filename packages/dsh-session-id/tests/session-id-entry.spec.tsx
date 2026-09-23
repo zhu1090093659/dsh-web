@@ -16,11 +16,8 @@ function makeList() {
     getSnapshot: () => ({
       ids: [],
       byId: {},
-      current: undefined,
       phase: 'ready',
-      subagentsByParent: {},
-      jobsBySession: {},
-      currentAddress: undefined,
+      projectionsBySession: {},
     }),
     subscribe: () => () => {},
   } as never

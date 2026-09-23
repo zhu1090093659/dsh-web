@@ -50,7 +50,7 @@ async function preStep(harness: ReturnType<typeof register>, agent: unknown, mes
 }
 
 function contextOf(messages: unknown[]) {
-  return messages.find((message: any) => message?.source?.plugin === name)
+  return messages.find((message: any) => message?.source?.kind === name || message?.source?.plugin === name)
 }
 
 function activation(namespace: string, callId: string) {
@@ -139,7 +139,7 @@ describe('liangshen-working-context', () => {
     expect(result.messages.map((message: any) => message.id)).toEqual(['user', expect.any(String)])
     const message = contextOf(result.messages)
     expect(message.role).toBe('user')
-    expect(message.source).toEqual({ kind: 'plugin', plugin: name })
+    expect(message.source).toEqual({ kind: name })
     expect(message.content[0].text).toBe('[Working Context: plan mode: on]')
   })
 

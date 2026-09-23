@@ -127,8 +127,6 @@ family / 插件区域：
 | `settings-row` | usage | 插件设置行；`[data-dsh-part="settings-row"]` |
 | `plan-card` / `plan-window` | usage | 套餐卡 / 套餐窗口行（个人套餐页签）；`[data-dsh-part="plan-card"]` 内窗口行 |
 | `bank-card` | usage | Token 银行卡（鲸元券，无官方用量时为空状态）；`[data-dsh-part="bank-card"]` |
-| `sidebar-panel` | usage | 侧栏用量面板（挂在 `[data-dsh-usage-entry]` 行的下一行，仅展开时渲染）；面板内 provider 行 `[data-dsh-part="sidebar-provider"]`、窗口行 `[data-dsh-part="sidebar-window"]` |
-| `sidebar-summary` | usage | 折叠态摘要条（同一锚位，折叠时替代 sidebar-panel 渲染）：当前会话提供方名 `[data-dsh-part="sidebar-summary"]` 内的强调段加今日 tokens / 调用数 / 费用事实段 |
 | `voucher-preview` | usage | 票面 canvas 容器；bank-card 内 `[data-dsh-part="voucher-preview"]` |
 | `panel` | model-capabilities | 提供方卡片能力扩展区根；`[data-dsh-plugin="model-capabilities"][data-dsh-part="panel"]` |
 | `toggle` | model-capabilities | 扩展区折叠头按钮；panel 内 `button[data-dsh-part="toggle"]` |

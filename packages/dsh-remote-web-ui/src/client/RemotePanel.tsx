@@ -5,9 +5,10 @@
  * actions arrive through props from the entry's behavior component.
  */
 import clsx from 'clsx'
+import { memo } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import {
-  IconCloseOutline16, IconCopyOutline16, IconRefreshOutline16, IconStopFill16,
+  IconCloseOutlineRegular, IconCopyOutlineRegular, IconRefreshOutlineRegular, IconStopFillRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { PairingPhase } from '../pairing.ts'
@@ -21,6 +22,15 @@ import {
 } from './pair-api.ts'
 import { deviceNameFromUserAgent } from './device-name.ts'
 import css from './remote.module.css'
+
+/**
+ * The QR symbol, memoized on the link: the panel re-renders on every SSE state
+ * frame (a paired phone heartbeats every 10s), and qrcode.react rebuilds the
+ * SVG path and element tree on each render.
+ */
+const PairQrCode = memo(function PairQrCode({ url, className }: { url: string; className: string }) {
+  return <QRCodeSVG value={url} size={184} level="M" marginSize={1} className={className} />
+})
 
 /** The panel's view state, owned by the entry component. */
 export type PanelState =
@@ -115,7 +125,7 @@ export function RemotePanel({
           <p className={css.subtitle}>{t('subtitle')}</p>
         </div>
         <button type="button" className={css.close} aria-label={t('close.label')} onClick={onClose}>
-          <IconCloseOutline16 size={14} />
+          <IconCloseOutlineRegular size={14} />
         </button>
       </div>
 
@@ -155,7 +165,7 @@ export function RemotePanel({
               </span>
             </div>
             <div className={css.qrWrap} data-testid="remote-qr">
-              <QRCodeSVG value={state.url} size={184} level="M" marginSize={1} className={css.qr} />
+              <PairQrCode url={state.url} className={css.qr} />
             </div>
             {state.expired
               ? <p className={css.expired}>{t('pair.expired')}</p>
@@ -170,7 +180,7 @@ export function RemotePanel({
                 <code className={css.link} title={state.url}>{state.url}</code>
               </div>
               <button type="button" className={css.copyLink} onClick={() => onCopy(state.url)}>
-                <IconCopyOutline16 size={14} />
+                <IconCopyOutlineRegular size={14} />
                 {copied ? t('action.copied') : t('action.copyLink')}
               </button>
             </div>
@@ -185,7 +195,7 @@ export function RemotePanel({
                   className={css.copyLink}
                   onClick={() => onCopyToken ? onCopyToken(state.token!) : onCopy(state.token!)}
                 >
-                  <IconCopyOutline16 size={14} />
+                  <IconCopyOutlineRegular size={14} />
                   {copiedToken ? t('action.copiedToken') : t('action.copyToken')}
                 </button>
               </div>
@@ -246,11 +256,11 @@ export function RemotePanel({
 
           <div className={css.actions}>
             <button type="button" className={css.action} onClick={onStop}>
-              <IconStopFill16 size={14} />
+              <IconStopFillRegular size={14} />
               {t('action.stop')}
             </button>
             <button type="button" className={css.action} onClick={onRefresh}>
-              <IconRefreshOutline16 size={14} />
+              <IconRefreshOutlineRegular size={14} />
               {t('action.refresh')}
             </button>
           </div>

@@ -29,13 +29,27 @@ const MORSE = '-.. . . .--. ... . . -.- / .... .- .-. -. . ... ...'
 /** One spark per spoke of the burst. */
 const SPARKS = Array.from({ length: 14 }, (_, index) => index)
 
+/** Sync the hero preset chip above the composer so both controls always agree. */
+function syncHeroChip(label: string): void {
+  try {
+    if (typeof document === 'undefined') return
+    const chip = document.querySelector<HTMLElement>('button[aria-haspopup="menu"] span[class*="seatLabel"]')
+      ?? Array.from(document.querySelectorAll<HTMLElement>('button[aria-haspopup="menu"] span')).find(s => s.className.includes('seatLabel'))
+    if (chip && chip.textContent !== label) {
+      chip.textContent = label
+    }
+  } catch {
+    // Non-browser or detached element
+  }
+}
+
 /** Slot entry for `conversation.input.right` (left of the model selector). */
 export function LiangShenLever(face: LeverFace): ReactElement | null {
   const snapshot = useSyncExternalStore(face.store.subscribe, face.store.getSnapshot)
   const { state, restoreLabel, busy, error, burst } = snapshot
   const [burstKey, setBurstKey] = useState(0)
   const seen = useRef(burst)
-  const drag = useRef<{ y: number, fired: boolean } | undefined>(undefined)
+  const drag = useRef<{ x: number, y: number, fired: boolean } | undefined>(undefined)
   const actionable = !busy && (state === 'on' || state === 'off')
   const on = state === 'on'
   const errorText = error === undefined
@@ -61,6 +75,17 @@ export function LiangShenLever(face: LeverFace): ReactElement | null {
     return () => { clearTimeout(timer) }
   }, [burstKey])
 
+  // Keep the hero preset chip above the composer in sync with the lever's selection
+  const prevState = useRef(state)
+  useEffect(() => {
+    if (state === 'on') {
+      syncHeroChip(face.t('lever.name'))
+    } else if (prevState.current === 'on' && state === 'off' && restoreLabel !== '') {
+      syncHeroChip(restoreLabel)
+    }
+    prevState.current = state
+  }, [state, restoreLabel, face])
+
   // The lever exists only while the preset can still change, which is the
   // blank-session window: a started session reports `locked`, a deployment
   // without the preset reports `missing`, and both mean the row renders
@@ -78,20 +103,23 @@ export function LiangShenLever(face: LeverFace): ReactElement | null {
 
   const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>): void => {
     if (!actionable) return
-    drag.current = { y: event.clientY, fired: false }
-    event.currentTarget.setPointerCapture?.(event.pointerId)
+    drag.current = { x: event.clientX, y: event.clientY, fired: false }
+    try {
+      event.currentTarget.setPointerCapture?.(event.pointerId)
+    } catch {
+      // Defensive: some environments throw on pointer capture
+    }
   }
 
   const onPointerMove = (event: ReactPointerEvent<HTMLButtonElement>): void => {
     const pending = drag.current
     if (pending === undefined || pending.fired) return
-    const travel = event.clientY - pending.y
-    if (travel >= DRAG_THRESHOLD_PX) {
+    const travelY = event.clientY - pending.y
+    const travelX = event.clientX - pending.x
+    if (Math.hypot(travelX, travelY) >= DRAG_THRESHOLD_PX) {
       pending.fired = true
-      face.pull()
-    } else if (travel <= -DRAG_THRESHOLD_PX) {
-      pending.fired = true
-      face.push()
+      if (on) face.push()
+      else face.pull()
     }
   }
 

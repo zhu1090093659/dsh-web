@@ -411,7 +411,7 @@ describe('liangshen-minimal-prompt', () => {
     const hint = result.messages[0]
     expect(hint.id).toBe('instructions-1')
     expect(hint.role).toBe('user')
-    expect(hint.source).toEqual({ kind: 'plugin', plugin: 'liangshen-minimal-prompt' })
+    expect(hint.source).toEqual({ kind: 'liangshen-minimal-prompt' })
     expect(hint.content[0].text).toContain('/repo/AGENTS.md, /repo/docs/AGENTS.md')
     expect(hint.content[0].text).toContain('not task instructions')
   })
@@ -526,7 +526,7 @@ describe('liangshen-minimal-prompt', () => {
       expect(step.messages).toEqual([plain, dynamic, marked])
       // No condensation marker, no plugin message, no dropped entry.
       expect(step.messages.map((message: any) => message.id)).toEqual(['user-1', 'dyn-1', 'base-1'])
-      expect(step.messages.some((message: any) => message.source?.kind === 'plugin')).toBe(false)
+      expect(step.messages.some((message: any) => message.source?.kind === 'liangshen-minimal-prompt' || message.source?.kind === 'plugin')).toBe(false)
       expect(step.messages[2].content[0].text).toContain('root rule')
       expect(step.messages[2].source.baselineIdentity).toBe('id-baseline')
       expect(step.messages[1].content[0].text).toContain('subpackage rule')
@@ -715,7 +715,7 @@ describe('liangshen-minimal-prompt', () => {
       listener(harness, 'tools/result')(exec, { isError: false })
 
       const step = await preStep(harness, agent, [{ id: 'user-1', role: 'user', content: [] }])
-      expect(step.messages.some((m: any) => m.source?.kind === 'plugin' && m.content[0]?.text?.includes('subpackage rule'))).toBe(true)
+      expect(step.messages.some((m: any) => m.source?.kind === 'liangshen-minimal-prompt' && m.content[0]?.text?.includes('subpackage rule'))).toBe(true)
     })
 
     test('does not record touched directory for failed or aborted tool executions', async () => {
@@ -733,7 +733,7 @@ describe('liangshen-minimal-prompt', () => {
         { isError: true },
       )
       const step1 = await preStep(harness, agent, [{ id: 'user-1', role: 'user', content: [] }])
-      expect(step1.messages.some((m: any) => m.source?.kind === 'plugin')).toBe(false)
+      expect(step1.messages.some((m: any) => m.source?.kind === 'liangshen-minimal-prompt' || m.source?.kind === 'plugin')).toBe(false)
 
       // Aborted execution
       const abortCtrl = new AbortController()
@@ -743,7 +743,7 @@ describe('liangshen-minimal-prompt', () => {
         { isError: false },
       )
       const step2 = await preStep(harness, agent, [{ id: 'user-2', role: 'user', content: [] }])
-      expect(step2.messages.some((m: any) => m.source?.kind === 'plugin')).toBe(false)
+      expect(step2.messages.some((m: any) => m.source?.kind === 'liangshen-minimal-prompt' || m.source?.kind === 'plugin')).toBe(false)
     })
 
     test('reconstructs touched directories from durable session history on replay', async () => {
@@ -966,7 +966,7 @@ describe('liangshen-minimal-prompt', () => {
       // Turn 2 Pre-step: Discovers package-level AGENTS and delivers legal plugin message
       const turn2Step = await preStep(harness, agent, [{ id: 'user-turn-2', role: 'user', content: [] }])
       expect(turn2Step.messages.length).toBeGreaterThanOrEqual(2)
-      const dynamicPluginMsg = turn2Step.messages.find((m: any) => m.source?.kind === 'plugin')
+      const dynamicPluginMsg = turn2Step.messages.find((m: any) => m.source?.kind === 'liangshen-minimal-prompt')
       expect(dynamicPluginMsg).toBeDefined()
       expect(dynamicPluginMsg.content[0].text).toContain('Additional instructions from: packages/subpkg/AGENTS.md')
       expect(dynamicPluginMsg.content[0].text).toContain('subpackage specific rule')

@@ -9,9 +9,9 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React, { useSyncExternalStore, type ComponentProps } from 'react'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 
 vi.mock('@deepseek-ai/dsh-client-store', () => ({
   createSnapshotStore: (init: unknown) => {
@@ -52,34 +52,62 @@ const t: MarketCardProps['t'] = (key, params) => {
   return text.replace(/\{(\w+)\}/g, (match, name: string) => String(params[name] ?? match))
 }
 
-class FakeScope implements SettingsScope<MarketSettings> {
+class FakeScope implements ConfigForm<MarketSettings> {
   value: MarketSettings
   base: MarketSettings
   user: Partial<MarketSettings> = {}
   writable = true
+  status: ConfigFormSnapshot<MarketSettings>['status'] = 'ready'
+  /** The Host answer every queued write settles with: true accepts, false refuses. */
+  accepts = true
+  /**
+   * Whether a refusal nonetheless folds its writes into the read model — a
+   * Host that refuses after applying, or a mirror that already carries the
+   * value. Only the boolean answer can report such a write as failed.
+   */
+  refusesButFolds = false
   private listeners = new Set<() => void>()
-  set = vi.fn(async (field: string, value: unknown) => {
-    (this.user as Record<string, unknown>)[field] = value
+  set = vi.fn(async (field: string, value: unknown): Promise<boolean> => {
+    if (!this.accepts) return false
+    const user = this.user as Record<string, unknown>
+    user[field] = value
     this.reflect()
+    return true
   })
-  unset = vi.fn(async (field: string) => {
+  unset = vi.fn(async (field: string): Promise<boolean> => {
+    if (!this.accepts) return false
     delete (this.user as Record<string, unknown>)[field]
     this.reflect()
+    return true
   })
-  constructor(value: MarketSettings) {
+  constructor(value: MarketSettings, status: ConfigFormSnapshot<MarketSettings>['status'] = 'ready') {
     this.value = value
     this.base = value
+    this.status = status
   }
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
   }
-  async mutate(): Promise<void> {
-    return undefined
-  }
-  getSnapshot(): SettingsScopeSnapshot<MarketSettings> {
+  /**
+   * Answer one queued mutation. `false` is the Host's refusal or skipped
+   * write, and it is reported as such even when the read model already shows
+   * the value.
+   */
+  mutate = vi.fn(async (ops: readonly { op: string; path: readonly string[]; value?: unknown }[]): Promise<boolean> => {
+    if (!this.accepts && !this.refusesButFolds) return false
+    const user = this.user as Record<string, unknown>
+    for (const op of ops) {
+      const field = op.path[0] as string
+      if (op.op === 'unset') delete user[field]
+      else user[field] = op.value
+    }
+    this.reflect()
+    return this.accepts
+  })
+  getSnapshot(): ConfigFormSnapshot<MarketSettings> {
     return {
-      status: 'ready',
+      status: this.status,
       writable: this.writable,
       value: this.value,
       base: this.base,
@@ -95,11 +123,11 @@ class FakeScope implements SettingsScope<MarketSettings> {
 }
 
 function cardProps(
-  scope: SettingsScope<MarketSettings>,
+  scope: ConfigForm<MarketSettings>,
   overrides: Partial<MarketCardProps> = {},
 ): ComponentProps<typeof MarketCard> {
   const controller = new MarketCardController(scope)
-  const face = controller.inject()
+  const face = controller.inject(() => {})
   const { hooks, ...actions } = face
   const useMarketCard = <S,>(selector: (snapshot: ReturnType<typeof hooks.marketCard.getSnapshot>) => S) =>
     useSyncExternalStore(
@@ -130,13 +158,17 @@ const REMOTE = {
 }
 
 describe('MarketCard', () => {
-  it('renders the skins tab with remote data and votes', () => {
+  it('user sees the skins tab rendered from remote data with its vote count', () => {
+    // Given a remote catalog whose only skin carries 3 votes
     render(<MarketCard {...cardProps(new FakeScope({}), { remote: REMOTE, gateway: null, pluginManager: null })} />)
-    expect(screen.getByText('鲸吟')).toBeTruthy()
-    expect(screen.getByText(/赞 3/)).toBeTruthy()
+    // When the skins tab renders
+    // Then the card shows the remote skin name and the like button shows the remote vote count
+    expect(screen.getByText('鲸吟').textContent).toBe('鲸吟')
+    expect(screen.getByText(/赞 3/).textContent).toBe('赞 3')
   })
 
-  it('renders install and npm download metrics separately from votes', () => {
+  it('user sees install and npm download metrics rendered apart from votes', () => {
+    // Given a catalog whose skin and plugin carry install counts and whose plugin has a download figure
     const withMetrics = {
       ...REMOTE,
       stats: {
@@ -145,19 +177,26 @@ describe('MarketCard', () => {
       },
     }
     render(<MarketCard {...cardProps(new FakeScope({}), { remote: withMetrics, gateway: null, pluginManager: null, npmDownloads: { 'dsh-tui': 1_234 } })} />)
-    expect(screen.getByText(/赞 3/)).toBeTruthy()
-    expect(screen.getByText('安装 3')).toBeTruthy()
+    // When the skins tab renders
+    // Then votes and the install count stay separate figures on the skin card
+    expect(screen.getByText(/赞 3/).textContent).toBe('赞 3')
+    expect(screen.getByText('安装 3').textContent).toBe('安装 3')
     fireEvent.click(screen.getByRole('tab', { name: /插件/ }))
-    expect(screen.getByText('安装 12')).toBeTruthy()
-    expect(screen.getByText('npm 近 30 天 1.2k')).toBeTruthy()
+    // Then the plugin card carries its own install count and npm download figure
+    expect(screen.getByText('安装 12').textContent).toBe('安装 12')
+    expect(screen.getByText('npm 近 30 天 1.2k').textContent).toBe('npm 近 30 天 1.2k')
   })
 
-  it('links skin and plugin names plus source-repository addresses to GitHub (issue 1120)', () => {
+  it('user follows skin and plugin names plus source-repository addresses to GitHub (issue 1120)', () => {
+    // Given a remote catalog whose skin and plugin declare repository URLs
     render(<MarketCard {...cardProps(new FakeScope({}), { remote: REMOTE, gateway: null, pluginManager: null })} />)
     const skinName = screen.getByRole('link', { name: /鲸吟/ })
+    // Then the skin name and the repository label carry the skin's declared repository
     expect(skinName.getAttribute('href')).toBe('https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/whale-song')
     expect(screen.getByRole('link', { name: /源码仓库/ }).getAttribute('href')).toBe('https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/whale-song')
+    // When the user opens the plugins tab
     fireEvent.click(screen.getByRole('tab', { name: /插件/ }))
+    // Then the plugin name carries the plugin's declared repository
     expect(screen.getByRole('link', { name: /dsh-TUI/ }).getAttribute('href')).toBe('https://github.com/ccch1mneyyy/dsh-TUI')
   })
 
@@ -518,6 +557,67 @@ describe('MarketCard', () => {
     render(<MarketCard {...cardProps(new FakeScope({}), { remote: REMOTE, gateway: null, pluginManager: null, renderSlot })} />)
     fireEvent.click(screen.getByRole('tab', { name: /预设/ }))
     expect(screen.getByText(/未安装预设中心插件/)).toBeTruthy()
+  })
+
+  it('saves the staged enable switch through one form mutation', async () => {
+    const scope = new FakeScope({ enabled: true })
+    const props = cardProps(scope, { remote: REMOTE, gateway: null, pluginManager: null })
+    render(<MarketCard {...props} />)
+
+    await act(async () => { props.edit('enabled', 'false') })
+    await act(async () => { props.save() })
+
+    expect(scope.mutate).toHaveBeenCalledWith([{ op: 'set', path: ['enabled'], value: false }])
+    expect(scope.user).toEqual({ enabled: false })
+    expect(screen.queryByText(/保存失败/)).toBeNull()
+  })
+
+  it('reports a refused settings write as a failed save, not a success', async () => {
+    const scope = new FakeScope({ enabled: true })
+    // The Host refuses the write but the read model already shows it: only the
+    // boolean answer can tell that the save did not land.
+    scope.accepts = false
+    scope.refusesButFolds = true
+    const props = cardProps(scope, { remote: REMOTE, gateway: null, pluginManager: null })
+    render(<MarketCard {...props} />)
+
+    await act(async () => { props.edit('enabled', 'false') })
+    await act(async () => { props.save() })
+
+    await waitFor(() => expect(screen.getByText(/保存失败/)).toBeTruthy())
+    expect(scope.mutate).toHaveBeenCalled()
+    // The write is visible read-back-wise, so the failure can only come from the refusal.
+    expect(scope.user).toEqual({ enabled: false })
+  })
+
+  it('keeps the draft after a refused save so the user can correct it', async () => {
+    const scope = new FakeScope({ enabled: true })
+    scope.accepts = false
+    const props = cardProps(scope, { remote: REMOTE, gateway: null, pluginManager: null })
+    render(<MarketCard {...props} />)
+
+    await act(async () => { props.edit('enabled', 'false') })
+    await act(async () => { props.save() })
+
+    await waitFor(() => expect(screen.getByText(/保存失败/)).toBeTruthy())
+    expect(scope.user).toEqual({})
+    // The off draft is still on screen and the save is retryable.
+    expect(document.getElementById('settings-market-enabled')?.textContent).toBe('关')
+    expect(screen.getByRole('button', { name: '保存' }).hasAttribute('disabled')).toBe(false)
+  })
+
+  it('user sees market content without notExposed banner when host namespace is unexposed', async () => {
+    // Given an unexposed scope whose status is unavailable
+    const scope = new FakeScope({ enabled: true }, 'unavailable')
+    const props = cardProps(scope, { remote: REMOTE, gateway: null, pluginManager: null })
+
+    // When the market card renders with unexposed namespace
+    render(<MarketCard {...props} />)
+
+    // Then it renders the market catalog without displaying the notExposed banner
+    expect(screen.queryByText('该设置段未暴露（宿主命名空间缺失）')).toBeNull()
+    expect(screen.getByRole('tab', { name: /皮肤/ }).textContent).toContain('皮肤')
+    expect(screen.getByText('鲸吟').textContent).toBe('鲸吟')
   })
 })
 

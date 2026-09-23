@@ -132,9 +132,7 @@
 # from ../skins/skin-center
 - insert:
     - id: web-ui-skin-center
-      name: '@linxin666/dsh-web-all/skin-center'
-      config:
-        plugin: '@linxin666/dsh-client-ui-skin-center'
+      name: '@linxin666/dsh-client-ui-skin-center'
 
 # from ../dsh-i18n
 - insert:
@@ -154,9 +152,8 @@
 - id: web-ui-doctor
   disabled: true
 
-# external bundle: dsh-better-sidebar
-
-# from external bundle dsh-better-sidebar (insert row web-ui-better-sidebar)
-- insert:
-    - id: web-ui-better-sidebar
-      name: 'dsh-better-sidebar'
+# superseded foreign rows: this aggregate replaces these rows from another bundle with
+# its own entry, so the composition does not show two near-identical first-level entries.
+# A user-layer "disabled: false" override still wins.
+- id: ui-settings-unarchive-sessions
+  disabled: true

@@ -37,7 +37,7 @@ interface HarnessOptions {
   /** When true `sdkSchemas` throws, as a hostile definition would. */
   sdkThrows?: boolean
   /** When false the context exposes no code runtime. */
-  codeRuntime?: boolean
+  ptcRuntime?: boolean
   /** When true the context exposes no SystemPrompt, so nothing can re-assemble. */
   noPromptService?: boolean
 }
@@ -80,7 +80,7 @@ function register(config: Record<string, unknown> = {}, options: HarnessOptions 
   }
   if (options.noSdkSchemas === true) delete tools.sdkSchemas
   const services: Record<string, unknown> = { tools }
-  if (options.codeRuntime !== false) services.codeRuntime = { language: 'typescript' }
+  if (options.ptcRuntime !== false) services.ptcRuntime = { language: 'typescript' }
   const ctx = {
     on(event: string, callback: Listener, opts?: any) {
       listeners.set(event, { listener: callback, options: opts })
@@ -214,7 +214,7 @@ async function preStep(harness: Harness, agent: unknown, messages: unknown[] = [
 }
 
 function catalogOf(messages: unknown[]) {
-  return messages.find((message: any) => message?.source?.plugin === name)
+  return messages.find((message: any) => message?.source?.kind === name || message?.source?.plugin === name)
 }
 
 function catalogText(messages: unknown[]): string {
@@ -270,7 +270,7 @@ describe('liangshen-tool-catalog', () => {
     const text = catalogText((await preStep(harness, agent)).messages)
     expect(text).toContain('- `run_code({ code: string, description: string })`: Execute a TypeScript program against the available tools.')
     expect(text).toContain('- `bash')
-    expect(text).toContain('Call the tools above directly by name for ordinary work.')
+    expect(text).toContain('Prefer calling the tools above directly by name')
     expect(text).toContain('`await tools.<name>({ ... })`')
     expect(text).toContain('`Promise.all`')
     expect(text).toContain('`ToolCallError`')
@@ -371,7 +371,7 @@ describe('liangshen-tool-catalog', () => {
     const catalog = catalogOf((await preStep(harness, agent)).messages)
     // The durable validator whitelists `kind`, `plugin`, `form`, `sections`
     // and `summary` for a plugin source; anything else risks rejection.
-    expect(catalog.source).toEqual({ kind: 'plugin', plugin: name })
+    expect(catalog.source).toEqual({ kind: name })
     expect(typeof catalog.id).toBe('string')
     expect(catalog.id.length).toBeGreaterThan(0)
   })
@@ -572,8 +572,8 @@ describe('liangshen-tool-catalog', () => {
     expect(text).toContain('Paged-out namespaces below stay off the NATIVE wire but stay reachable through the SDK inside a program even before activation')
   })
 
-  test('stays native and says nothing about run_code without a code runtime', async () => {
-    const harness = register({}, { codeRuntime: false })
+  test('stays native and says nothing about run_code without a PTC runtime', async () => {
+    const harness = register({}, { ptcRuntime: false })
     const agent = agentOf([], undefined, harness)
     const { assembled } = await assemble(harness, agent)
     expect(harness.presentCalls).toEqual([])
@@ -746,7 +746,7 @@ describe('liangshen-tool-catalog', () => {
     expect(renderCatalogText([], 'ptc')).toContain('Compose one program per intent')
     expect(renderCatalogText([], 'native')).not.toContain('Promise.all')
     const both = renderCatalogText([{ name: 'run_code', signature: '()', description: 'Run a program.' }], 'both')
-    expect(both).toContain('Call the tools above directly by name')
+    expect(both).toContain('Prefer calling the tools above directly by name')
     expect(both).not.toContain('only tool that can be called directly')
     const paged = renderCatalogText([], 'native', [
       { namespace: 'github', count: 2, sample: 'mcp__github__create_issue', description: 'Create a GitHub issue.' },
@@ -829,7 +829,7 @@ describe('liangshen-tool-catalog', () => {
     await assemble(harness, agent, roster)
     expect(harness.warnings.filter(w => w.includes('resident tool surface'))).toHaveLength(0)
     // And real growth beyond that baseline still trips it.
-    const grown = [...roster, ...Array.from({ length: 30 }, (_, index) => ({
+    const grown = [...roster, ...Array.from({ length: 70 }, (_, index) => ({
       name: `extra_${index}`,
       description: 'y'.repeat(400),
       parameters: { type: 'object', properties: { b: { type: 'string' } }, required: ['b'] },

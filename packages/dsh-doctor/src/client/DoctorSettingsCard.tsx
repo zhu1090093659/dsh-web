@@ -2,20 +2,20 @@
  * The dsh-doctor plugin settings card inside the Web UI plugin group
  * (Settings → Web UI plugins): the enable switch plus the safety policy
  * toggles, staged through the family card form, and the live recovery
- * console embedded below them. Bound to the `doctor` settings namespace so
- * toggling enabled on also mounts the host diagnostic endpoints and
- * heartbeats.
+ * console embedded below them. Bound to the `doctor` settings entry (the
+ * profile entry id that owns the family namespace) so toggling enabled on
+ * also mounts the host diagnostic endpoints and heartbeats.
  */
 
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { BooleanField, PluginSettingsCard } from './PluginSettingsCard.tsx'
 import { booleanField, CardForm, type CardActions, type CardShell, type FieldState } from './settings-form.ts'
 import { DoctorRecoveryConsole } from './DoctorRecoveryConsole.tsx'
 import type { DoctorController } from './doctor-controller.ts'
 
-/** The doctor namespace fields this card edits (the host section schema). */
+/** The doctor config fields this card edits (the host Config schema). */
 export interface DoctorSettings {
   /** Master switch; the host mounts recovery routes only while enabled. */
   enabled?: boolean
@@ -51,13 +51,13 @@ export interface DoctorSettingsCardFace extends CardActions {
   controller: DoctorController | null
 }
 
-/** Bridges the `doctor` scope onto the card staged form. */
+/** Bridges the `doctor` settings form onto the card staged form. */
 export class DoctorSettingsCardController {
   private readonly form: CardForm<DoctorSettings>
   private readonly store: SnapshotStore<DoctorSettingsCardState>
 
-  /** @param scope - the bound settings scope for the `doctor` namespace. */
-  constructor(scope: SettingsScope<DoctorSettings>) {
+  /** @param scope - the bound configuration form for the `doctor` settings entry. */
+  constructor(scope: ConfigForm<DoctorSettings>) {
     this.form = new CardForm(scope, [
       booleanField('enabled'),
       booleanField('fullProtection'),
@@ -110,6 +110,8 @@ export function DoctorSettingsCard(props: DoctorSettingsCardProps) {
       descriptionKey="settings.description"
       defaultOpen={false}
       state={state}
+      renderChildrenWhenNotExposed
+      hideNotExposedNotice
       onSave={props.save}
       onDiscard={props.discard}
     >

@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-liangshen",
-  "description": "LiangShen (梁神) agent preset plus its composer lever for the dsh web GUI. The preset keeps a minimal persona with standing working discipline while the harness's own user-role agent-instructions injection delivers the workspace instructions (the optional `instructionSource: system-prompt` mode lifts them into the prompt instead), and declares one tool presentation for the session's whole lifetime (default `presentation: 'ptc'`, where the wire collapses to the `run_code` transport and every other tool is reached through the generated SDK; `native` keeps the assembled roster, `both` keeps them co-resident). High-fan-out tool families (default `mcp__*`) stay paged out of the wire until the preset's own `tool_activate` tool loads their namespace (LRU cap three, state replayed from the durable session event stream), and the tool catalog — exactly the on-wire tools plus paged-out namespace summaries — and a one-line working-context projection travel as durable user messages republished only on change. The browser half adds a slot-machine lever left of the model selector on the new-session screen to toggle the mode. Preset files sync to ~/.dsh/.agent-presets on startup. Hot-pluggable via cordis.patch.yml + profile symlink, no dsh source changes.",
+  "description": "LiangShen (梁神) agent preset plus its composer lever for the dsh web GUI. The host half declares the bundled preset to the harness's agent-preset registry at activation (declare = enabled), so the preset is selectable for new sessions without writing anything into the harness home; the preset keeps a minimal persona with standing working discipline while the harness's own user-role agent-instructions injection delivers the workspace instructions (the optional `instructionSource: system-prompt` mode lifts them into the prompt instead), and declares one tool presentation for the session's whole lifetime (default `presentation: 'both'`, where the wire collapses to the `run_code` transport and every other tool is reached through the generated SDK; `native` keeps the assembled roster, `ptc` keeps only the transport). High-fan-out tool families (default `mcp__*`) stay paged out of the wire until the preset's own `tool_activate` tool loads their namespace (LRU cap three, state replayed from the durable session event stream), and the tool catalog — exactly the on-wire tools plus paged-out namespace summaries — and a one-line working-context projection travel as durable user messages republished only on change. The browser half adds a slot-machine lever left of the model selector on the new-session screen to toggle the mode. Hot-pluggable via cordis.patch.yml + profile symlink, no dsh source changes.",
   "version": "0.3.24",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
@@ -23,7 +23,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.5-rc.1"
+      "dsh": ">=0.1.7-alpha.1"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -48,22 +48,22 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "schemastery": "^3.18.0"
+    "@deepseek-ai/schemastery": "^3.18.3"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-agent-presets": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-api-remotes": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-api-session-controller": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-connection": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-locale": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-store": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-settings": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.5-rc.1",
+    "@deepseek-ai/cordis": "^4.0.3",
+    "@deepseek-ai/dsh-agent-preset-registry": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-api-remotes": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-api-session-controller": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-connection": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-locale": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-store": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-settings": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.7-alpha.1",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",

@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-client-ui-preset-center",
-  "description": "Community agent-preset manager: the Workshop's Presets panel and the host library that installs, enables, disables and uninstalls presets downloaded from dsh-market.com, keeping disabled presets out of every discovery root.",
+  "description": "Community agent-preset manager: the Workshop's Presets panel and the host library that installs, declares, disables and uninstalls presets downloaded from dsh-market.com, keeping a downloaded composition inert until the plugin declares it to the agent-preset registry.",
   "version": "0.3.24",
   "type": "module",
   "main": "lib/index.js",
@@ -12,7 +12,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.5-rc.1"
+      "dsh": ">=0.1.7-alpha.1"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -42,14 +42,14 @@
     "schemastery": "^3.18.0"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-agent-presets": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-connection": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-locale": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.5-rc.1",
+    "@deepseek-ai/cordis": "^4.0.3",
+    "@deepseek-ai/dsh-agent-preset-registry": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-connection": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-locale": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.7-alpha.1",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",

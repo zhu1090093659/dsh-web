@@ -6,22 +6,24 @@
  *
  * - `web-ui.plugin.item` — the list seat declared by the dsh-web-settings
  *   group section (this family's own first-level "Web UI plugins" section);
- * - `settings.plugin.item` — the official keyed seat of the harness's
- *   `ui-settings-plugins` tab, keyed by the settings namespace the card edits.
+ * - `plugins.bundle.config` — the official keyed seat of the harness's plugin
+ *   manager page, keyed by the bundle's package name and rendered on that
+ *   bundle's page. alpha.2 removed the `settings.plugin.item` keyed seat of the
+ *   `ui-settings-plugins` tab that this helper used before, so a card keyed by
+ *   its settings namespace has no seat to land in any more.
  *
- * SEAT SELECTION IS NOT A DECLARATION PROBE. The official `ui-settings-plugins`
- * row belongs to the harness bundle and its `configurable` tab always declares
- * `settings.plugin.item` before any external plugin's `apply()` runs, so
- * "is the official seat declared?" answers yes even in the deployment whose
- * whole point is the family group. Choosing on that probe sends every family
- * card to the official Plugins tab and leaves the group's own section
- * permanently empty — the family of reports where the section renders its
- * heading and zero cards.
+ * SEAT SELECTION IS NOT A DECLARATION PROBE. The official plugin surface
+ * belongs to the harness bundle and declares its seats before any external
+ * plugin's `apply()` runs, so "is the official seat declared?" answers yes even
+ * in the deployment whose whole point is the family group. Choosing on that
+ * probe sends every family card to the official page and leaves the group's own
+ * section permanently empty — the family of reports where the section renders
+ * its heading and zero cards.
  *
  * The signal that actually distinguishes the two deployments is whether
  * dsh-web-settings is loaded: it is the package that owns the group section and
  * it publishes the `webUiSettings` service during `apply()`, which every
- * family plugin already reads for its settings scope. Group loaded -> the family
+ * family plugin already reads for its settings form. Group loaded -> the family
  * seat; group absent -> the official seat.
  *
  * The decision is re-evaluated on every `slots/changed` because the group may
@@ -39,8 +41,8 @@
 /** The family list seat key. */
 export const FAMILY_PLUGIN_CARD_SEAT = 'web-ui.plugin.item'
 
-/** The official keyed plugin-card seat key. */
-export const OFFICIAL_PLUGIN_CARD_SEAT = 'settings.plugin.item'
+/** The official keyed plugin-card seat key (the alpha.2 bundle-configuration seat). */
+export const OFFICIAL_PLUGIN_CARD_SEAT = 'plugins.bundle.config'
 
 /** The service dsh-web-settings publishes while it is loaded. */
 export const FAMILY_GROUP_SERVICE = 'webUiSettings'
@@ -60,7 +62,7 @@ export interface PluginCardContext {
   on?(event: string, listener: (...args: never[]) => void): unknown
 }
 
-/** Owner share of a plugin card (both seats supply nothing). */
+/** Owner share of a family list-seat card (that seat supplies nothing). */
 export interface SettingsPluginItemOwnerProps {
   /** Marker field: card owner props are intentionally empty. */
   children?: never
@@ -68,8 +70,13 @@ export interface SettingsPluginItemOwnerProps {
 
 /** One family plugin's card contribution. */
 export interface PluginCardSeat {
-  /** Settings namespace the card edits (the official seat's dispatch key). */
-  namespace: string
+  /**
+   * Npm package name of the bundle this card configures; the official keyed
+   * seat dispatches on it. Every family package ships its own bundle patch, so
+   * a standalone install lists that package as the bundle whose page renders
+   * this card.
+   */
+  bundle: string
   /** Family list-seat entry id. */
   id: string
   /** Family list-seat sort order. */
@@ -158,7 +165,7 @@ export function installPluginCard(ctx: PluginCardContext, seat: PluginCardSeat):
         }
         : {
           name: OFFICIAL_PLUGIN_CARD_SEAT,
-          key: seat.namespace,
+          key: seat.bundle,
           locale: seat.locale,
           ...(seat.inject === undefined ? {} : { inject }),
         }) as never, component) as () => void

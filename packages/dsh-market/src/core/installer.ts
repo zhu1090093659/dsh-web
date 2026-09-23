@@ -4,9 +4,9 @@
  * directories ($DSH_HOME/skins/<id>, $DSH_HOME/pets/<id>,
  * $DSH_HOME/agent-presets/<id>).
  *
- * A `preset` install lands in the preset LIBRARY, never in the discovery root
- * ($DSH_HOME/.agent-presets): a downloaded composition must stay inert until
- * the user enables it through the preset center, because a preset is code.
+ * A `preset` install lands in the preset LIBRARY ($DSH_HOME/agent-presets/<id>):
+ * a downloaded composition stays inert on disk until the preset center
+ * declares it to the agent-preset registry, because a preset is code.
  *
  * Security model (host half):
  *  - the manifest is fetched from MARKET_ORIGIN only;

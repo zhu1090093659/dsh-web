@@ -22,7 +22,7 @@
  *     - ../skins/skin-center
  *     - ../skins/xp
  *   rows:
- *     - {"id": "better-sidebar", "name": "dsh-better-sidebar"}
+ *     - {"id": "external-id", "name": "some-external-plugin"}
  *
  *   - patchFrom entries contribute their child's cordis.patch.yml insert rows
  *     to the aggregate patch (nested aggregates expand recursively, in
@@ -49,6 +49,15 @@
  *     settings entries stay off the page via the rows-route gating); users
  *     opt in per row in the plugin manager, whose enable writes a user-layer
  *     "disabled: false" override that wins over the bundle default.
+ *   - retire entries (plain row-id strings) mark FOREIGN rows this aggregate
+ *     supersedes: each renders a trailing bare "disabled: true" override
+ *     naming the id verbatim (no namespace), so a row another bundle inserted
+ *     earlier in the profile stops mounting while this aggregate's own row
+ *     takes its place. Use it when the native implementation owns the entry a
+ *     family plugin supersedes, and the composition must not show two
+ *     near-identical first-level entries. A row listed here must NOT be one of
+ *     this aggregate's own rows (that is what inactive is for); a user-layer
+ *     "disabled: false" override still wins.
  *
  * Idempotent: safe to rerun at any time. Writes only inside the aggregate
  * packages it owns; never touches other packages or git state.
@@ -143,11 +152,12 @@ function collectShellSubpaths(blocks, tombstones = []) {
 
 /**
  * Source packages exempted from shell wrapping (relative patchFrom spellings).
- * The compat shim (self) and the i18n language pack stay direct: the self row
- * IS the shell package's own plugin, and dsh-i18n's host half is an empty
- * function that cannot fail meaningfully — wrapping would only obscure it.
+ * - self: compat shim IS the shell package's own plugin;
+ * - dsh-i18n: host half is a no-op;
+ * - skins/skin-center: carries the Config schema for background/custom-theme/wallpaper,
+ *   which the DSH 0.1.7+ SettingsForms loader must inspect directly to permit volatile writes.
  */
-const SHELL_EXEMPT = new Set(['../dsh-i18n'])
+const SHELL_EXEMPT = new Set(['../dsh-i18n', '../skins/skin-center'])
 
 /** Directories directly under a path (non-recursive, sorted). */
 function listSubdirs(dir) {
@@ -185,7 +195,7 @@ function findAggregates() {
  * while the generator can JSON.parse each entry).
  */
 function parseManifest(ymlPath, errors) {
-  const manifest = { patchFrom: [], deps: [], self: null, rows: [], patches: [], inactive: [], tombstones: [] }
+  const manifest = { patchFrom: [], deps: [], self: null, rows: [], patches: [], inactive: [], retire: [], tombstones: [] }
   let section = null
   for (const raw of readFileSync(ymlPath, 'utf8').split(/\r?\n/)) {
     const line = raw.trim()
@@ -208,6 +218,7 @@ function parseManifest(ymlPath, errors) {
     else if (section === 'deps') manifest.deps.push(entry)
     else if (section === 'tombstones') manifest.tombstones.push(entry)
     else if (section === 'inactive') manifest.inactive.push(entry)
+    else if (section === 'retire') manifest.retire.push(entry)
     else if (section === 'rows') {
       let parsed
       try {
@@ -438,7 +449,7 @@ function pushShellConfig(lines, row) {
 }
 
 /** Render the aggregate cordis.patch.yml: header + per-source insert blocks, plus verbatim harness-row patches and own-row config overrides. */
-function renderPatch(blocks, externalRows, ownPatches, inactiveRows, errors, rel, aggregateDir) {
+function renderPatch(blocks, externalRows, ownPatches, inactiveRows, retireRows, errors, rel, aggregateDir) {
   const lines = [...PATCH_HEADER]
   const seen = new Set()
   const patchedIds = new Set()
@@ -525,6 +536,33 @@ function renderPatch(blocks, externalRows, ownPatches, inactiveRows, errors, rel
     lines.push('', '# inactive by default (opt-in rows): these ship disabled; each is enabled per row in the',
       '# plugin manager, whose enable writes a user-layer "disabled: false" override that wins.')
     for (const id of inactiveTargets) {
+      lines.push(`- id: ${id}`, '  disabled: true')
+    }
+  }
+  // Foreign rows this aggregate supersedes. The id is written verbatim (it
+  // belongs to another bundle's layer), and the override is emitted last so it
+  // wins over the layer that inserted the row.
+  const retiredTargets = []
+  for (const rawId of retireRows) {
+    if (typeof rawId !== 'string' || !rawId) {
+      errors.push(`${rel}: retire entry must be a non-empty row id string: ${JSON.stringify(rawId)}`)
+      continue
+    }
+    if (seen.has(rawId)) {
+      errors.push(`${rel}: retire entry "${rawId}" names this aggregate's own row; use inactive for own rows`)
+      continue
+    }
+    if (retiredTargets.includes(rawId)) {
+      errors.push(`${rel}: duplicate retire entry for ${rawId}`)
+      continue
+    }
+    retiredTargets.push(rawId)
+  }
+  if (retiredTargets.length > 0) {
+    lines.push('', '# superseded foreign rows: this aggregate replaces these rows from another bundle with',
+      '# its own entry, so the composition does not show two near-identical first-level entries.',
+      '# A user-layer "disabled: false" override still wins.')
+    for (const id of retiredTargets) {
       lines.push(`- id: ${id}`, '  disabled: true')
     }
   }
@@ -909,7 +947,7 @@ for (const { pkgDir, ymlPath } of aggregates) {
   }
   const shellSubpaths = collectShellSubpaths(blocks, manifest.tombstones)
   if (shellSubpaths.length > 0) validateShellFiles(pkgDir, rel, errors)
-  const patch = renderPatch(blocks, manifest.rows, manifest.patches ?? [], manifest.inactive ?? [], errors, rel, pkgDir)
+  const patch = renderPatch(blocks, manifest.rows, manifest.patches ?? [], manifest.inactive ?? [], manifest.retire ?? [], errors, rel, pkgDir)
   const resolvedDeps = resolveEntries(pkgDir, manifest.deps, 'deps', errors)
   const pkgJson = renderPackageJson(join(pkgDir, 'package.json'), resolvedDeps, shellSubpaths)
   // The shell aggregate additionally emits the client-children mount list:

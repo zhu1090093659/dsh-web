@@ -10,6 +10,7 @@ export const NS = 'dsh-web-ui-session-archive'
 
 /** Chinese copy (key source). */
 export const zh = {
+  'arch.nav': '已归档会话',
   'arch.title': '会话归档管理',
   'arch.refresh': '刷新',
   'arch.refreshing': '刷新中…',
@@ -129,6 +130,7 @@ export const zh = {
   'arch.auto.neverRun': '尚未运行',
   'arch.auto.basis': '口径说明：自动归档按会话最后活动时间判断（不是创建时间）；自动删除按归档时间判断（不是文件时间）。归档时间未知的历史归档会话不会被自动删除，恢复后再次归档将重新计算保留期。运行中、当前正在查看以及有运行中子会话的会话始终受保护。',
   'arch.auto.cycleRunning': '自动检查正在运行…',
+  'arch.auto.saveFailed': '保存失败：宿主未接受该设置，请重试',
   'arch.auto.runError': '执行失败：{error}',
   'arch.time.unknown': '未知',
   'arch.current.badge': '当前',
@@ -138,6 +140,7 @@ export type ArchKey = keyof typeof zh
 
 /** English mirror (same key set). */
 export const en: Record<ArchKey, string> = {
+  'arch.nav': 'Archived sessions',
   'arch.title': 'Session Archive Manager',
   'arch.refresh': 'Refresh',
   'arch.refreshing': 'Refreshing…',
@@ -257,6 +260,7 @@ export const en: Record<ArchKey, string> = {
   'arch.auto.neverRun': 'Never run',
   'arch.auto.basis': 'How it counts: auto-archive uses the session last-activity time (not creation time); auto-delete uses the recorded archive time (not file times). Historical archives with unknown archive time are never auto-deleted; restoring and re-archiving restarts the retention clock. Running sessions, the session you are viewing, and sessions with running children are always protected.',
   'arch.auto.cycleRunning': 'An automatic check is running…',
+  'arch.auto.saveFailed': 'Save failed: the Host did not accept the setting; please retry',
   'arch.auto.runError': 'Run failed: {error}',
   'arch.time.unknown': 'unknown',
   'arch.current.badge': 'current',

@@ -8,6 +8,9 @@
  *   comment would report a variant it never applied.
  * - `replacePersonaPrefix` edits a YAML block scalar, so it must stop at the
  *   next composition row and keep the candidate text indented inside the scalar.
+ * - `absolutizeModuleNames` resolves the relative module names a declared preset
+ *   would otherwise resolve against the declaring loader's base, without touching
+ *   block-scalar prose.
  * - `summarizeSession` reads the durable session shapes. The tool surface and the
  *   real model route live under `request/header` -> `data.header`, not at the top
  *   level, and an unread shape must stay visibly empty rather than look verified.
@@ -17,19 +20,24 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { validateAgentCordis } from '../src/schema.ts'
+import { readCompositionRows } from '../src/composition.ts'
 
 import {
   CANDIDATE_PERSONA,
   LIVE_VARIANTS,
+  OFFICIAL_PRESET_ID,
+  absolutizeModuleNames,
   assertPriceEntry,
+  buildPatch,
   evaluateCheck,
   hashTree,
+  inlineComposition,
   loadTaskFile,
   materializePreset,
-  officialMinimalPresetDir,
+  officialMinimalPresetPatch,
   priceRun,
   routePrices,
   runLiveSuite,
@@ -55,6 +63,19 @@ afterEach(() => {
 function composition(variantId: string): string {
   const target = materializePreset(scratchDir(), variantId, LIVE_VARIANTS[variantId as keyof typeof LIVE_VARIANTS])
   return readFileSync(join(target, 'agent.cordis.yml'), 'utf8')
+}
+
+/** The variant patch the run would boot with, built over a fresh materialization. */
+function variantPatch(variantId: string): { text: string, presetDir: string } {
+  const presetDir = materializePreset(scratchDir(), variantId, LIVE_VARIANTS[variantId as keyof typeof LIVE_VARIANTS])
+  const text = buildPatch({
+    variantId,
+    variant: LIVE_VARIANTS[variantId as keyof typeof LIVE_VARIANTS],
+    presetDir,
+    runDir: scratchDir(),
+    turns: ['say DONE'],
+  })
+  return { text, presetDir }
 }
 
 describe('benchmark variant materialization', () => {
@@ -86,18 +107,92 @@ describe('benchmark variant materialization', () => {
     expect(text).toMatch(/^\s*presentation: 'native'$/m)
   })
 
-  it('uses the official Minimal preset for the external reference group', () => {
-    expect(officialMinimalPresetDir()).toContain('presets')
-    const text = composition('M')
-    expect(text).toContain('complete: true')
-    expect(text).not.toContain('liangshen-tool-catalog')
-    expect(text).not.toContain('tool_activate')
+  it('operator evaluates the official Minimal preset for the reference group', () => {
+    // Given the harness install this machine runs, When the operator resolves
+    // the official Minimal preset, Then it is the bundle's own declaration and
+    // the reference variant materializes exactly that patch.
+    const patch = officialMinimalPresetPatch()
+    expect(patch).toContain(join('presets', 'minimal.patch.yml'))
+    const text = readFileSync(patch, 'utf8')
+    expect(text).toContain("name: '@deepseek-ai/dsh-agent-preset'")
+    expect(text).toContain(`id: ${OFFICIAL_PRESET_ID}`)
+    // The variant materializes that patch, not a copy of a preset directory.
+    const dir = materializePreset(scratchDir(), 'M', LIVE_VARIANTS.M)
+    expect(readFileSync(join(dir, 'minimal.patch.yml'), 'utf8')).toBe(text)
   })
 
-  it('keeps every derived composition structurally valid for the preset loader', () => {
+  it('operator gets the variant preset declared and its id selected', () => {
+    // Given the evaluated bundle, When the operator builds the variant patch,
+    // Then it mounts a registry, declares the preset's rows, and points the
+    // driver at that same id.
+    const { text, presetDir } = variantPatch('B')
+    // The headless profile mounts no roster, so the variant supplies both the
+    // registry and the preset declaration.
+    expect(text).toContain("name: '@deepseek-ai/dsh-agent-preset-registry'")
+    expect(text).toContain('default: "B"')
+    expect(text).toContain('modeSelectionEnabled: false')
+    expect(text).toContain("name: '@deepseek-ai/dsh-agent-preset'")
+    expect(text).toContain('id: "B"')
+    // The declared rows are the materialized composition, with module names
+    // resolved so the registry mounts exactly that tree.
+    expect(text).not.toContain('./minimal-prompt.mjs')
+    expect(text).toContain(pathToFileURL(join(presetDir, 'minimal-prompt.mjs')).href)
+    // The driver drives the same id the registry defaults to.
+    expect(text).toContain('preset: "B"')
+  })
+
+  it('operator keeps the reference variant an overlay over the official row', () => {
+    // Given the reference variant, When the operator builds its patch, Then it
+    // only selects the official id and declares no second preset for the run.
+    const { text } = variantPatch('M')
+    expect(text).toContain("name: '@deepseek-ai/dsh-agent-preset-registry'")
+    expect(text).toContain(`default: "${OFFICIAL_PRESET_ID}"`)
+    // Declaring a second preset for the same run would shadow the official row.
+    expect(text).not.toContain("name: '@deepseek-ai/dsh-agent-preset'")
+    expect(text).toContain(`preset: "${OFFICIAL_PRESET_ID}"`)
+  })
+
+  it('operator gets every derived composition read by the declaration reader', () => {
+    // Given the persona and presentation variants, When the operator reads
+    // their compositions, Then each one parses into registry rows.
     for (const variantId of ['P', 'T', 'N']) {
-      expect(validateAgentCordis(composition(variantId)), variantId).toEqual([])
+      const target = materializePreset(scratchDir(), variantId, LIVE_VARIANTS[variantId as keyof typeof LIVE_VARIANTS])
+      const text = readFileSync(join(target, 'agent.cordis.yml'), 'utf8')
+      expect(() => readCompositionRows(text, target), variantId).not.toThrow()
     }
+  })
+
+  it('operator gets relative module names resolved without prose being rewritten', () => {
+    // Given a composition with relative row names and block-scalar prose that
+    // looks like one, When the operator absolutizes the names, Then only the
+    // real row names change.
+    const text = [
+      '- id: persona',
+      '  name: ./persona.mjs',
+      '  config:',
+      '    prefix: |-',
+      '      name: ./not-a-module.mjs',
+      '    keep: true',
+      '- id: bare',
+      "  name: '@scope/pkg'",
+      '',
+    ].join('\n')
+    const rewritten = absolutizeModuleNames(text, 'C:/preset dir')
+    expect(rewritten).toContain(`name: ${pathToFileURL(join('C:/preset dir', 'persona.mjs')).href}`)
+    expect(rewritten).toContain("name: '@scope/pkg'")
+    // Prose inside a block scalar is content, not a row.
+    expect(rewritten).toContain('      name: ./not-a-module.mjs')
+  })
+
+  it('operator gets an inlined composition indented under the patch key', () => {
+    // Given a composition to embed under a `plugins:` key, When the operator
+    // inlines it, Then every content line carries the block's indentation.
+    const inlined = inlineComposition('- id: a\n  name: ./a.mjs\n\n- id: b\n  name: ./b.mjs\n', scratchDir(), 10)
+    for (const line of inlined.split('\n')) {
+      if (line === '') continue
+      expect(line.startsWith(' '.repeat(10))).toBe(true)
+    }
+    expect(inlined).toContain('          - id: a')
   })
 
   it('copies the whole preset so its plugins travel with it', () => {

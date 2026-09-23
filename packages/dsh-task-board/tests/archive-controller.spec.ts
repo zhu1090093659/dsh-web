@@ -13,13 +13,11 @@ let nextId = 0
 const uuid = (): string => { nextId += 1; return 'id-' + nextId }
 
 class FakeSessions {
-  current: string | undefined = undefined
+  opened: string | undefined = undefined
   private listeners = new Set<() => void>()
-  list = {
-    getSnapshot: (): { current: string | undefined } => ({ current: this.current }),
-    subscribe: (fn: () => void): (() => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn) } },
-  }
-  open(id: string): void { this.current = id }
+  current(): string | undefined { return this.opened }
+  subscribe(fn: () => void): () => void { this.listeners.add(fn); return () => { this.listeners.delete(fn) } }
+  open(id: string): void { this.opened = id }
 }
 
 function makeController(seed: TaskRecord[] = []) {

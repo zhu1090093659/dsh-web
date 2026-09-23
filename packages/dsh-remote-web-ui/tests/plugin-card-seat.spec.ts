@@ -45,7 +45,7 @@ const Card = (): null => null
 /** One card contribution; cases override the fields they exercise. */
 function seat(overrides: Record<string, unknown> = {}): never {
   return {
-    namespace: 'remote-web-ui',
+    bundle: '@linxin666/dsh-remote-web-ui',
     id: 'remote-web-ui',
     order: 90,
     locale: 'remote',
@@ -68,11 +68,11 @@ describe('installPluginCard seat selection', () => {
     expect(harness.registrations[0]).not.toHaveProperty('key')
   })
 
-  it('contributes to the official keyed seat when the group package is absent', () => {
+  it('contributes to the official bundle-configuration seat, keyed by the bundle package, when the group is absent', () => {
     const harness = context()
     installPluginCard(harness.ctx as never, seat())
     expect(harness.registrations).toHaveLength(1)
-    expect(harness.registrations[0]).toMatchObject({ name: OFFICIAL_PLUGIN_CARD_SEAT, key: 'remote-web-ui' })
+    expect(harness.registrations[0]).toMatchObject({ name: OFFICIAL_PLUGIN_CARD_SEAT, key: '@linxin666/dsh-remote-web-ui' })
     expect(harness.registrations[0]).not.toHaveProperty('id')
   })
 
@@ -91,7 +91,7 @@ describe('installPluginCard seat selection', () => {
     let group: unknown
     ctx.get = (name: string) => (name === 'webUiSettings' ? group : undefined)
 
-    installPluginCard(harness.ctx as never, seat({ namespace: 'task-board', id: 'task-board' }))
+    installPluginCard(harness.ctx as never, seat({ bundle: '@linxin666/dsh-client-ui-task-board', id: 'task-board' }))
     expect(registered).toEqual([OFFICIAL_PLUGIN_CARD_SEAT])
 
     // The group applies and publishes its service.
@@ -104,7 +104,7 @@ describe('installPluginCard seat selection', () => {
 
   it('does not re-register while the seat is unchanged', () => {
     const harness = context({ group: true })
-    installPluginCard(harness.ctx as never, seat({ namespace: 'task-board', id: 'task-board' }))
+    installPluginCard(harness.ctx as never, seat({ bundle: '@linxin666/dsh-client-ui-task-board', id: 'task-board' }))
     for (let i = 0; i < 4; i += 1) for (const listener of harness.listeners) listener()
     expect(harness.registrations).toHaveLength(1)
   })

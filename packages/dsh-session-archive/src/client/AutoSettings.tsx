@@ -7,7 +7,7 @@
  */
 
 import { useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
   AUTO_ARCHIVE_DAYS_MAX,
   AUTO_ARCHIVE_DAYS_MIN,
@@ -65,16 +65,16 @@ function DaysInput(props: {
 }
 
 export function AutoSettingsPanel(props: {
-  settings: SettingsScope<SessionArchiveConfig>
+  settings: ConfigForm<SessionArchiveConfig>
   controller: ArchiveController
   auto?: AutoStateView
 }): ReactNode {
-  // Subscribe: the settings mirror replaces the snapshot object after each
-  // accepted write; without this subscription the controlled checkboxes never
-  // re-render and appear stuck. The scope's subscribe/getSnapshot are
-  // prototype methods of the official SettingsScope, and useSyncExternalStore
-  // invokes both as bare functions — they must be bound to the scope first or
-  // `this.store` reads undefined and the slot crashes.
+  // Subscribe: the shared form replaces its snapshot after each accepted write;
+  // without this subscription the controlled checkboxes never re-render and
+  // appear stuck. The form's subscribe/getSnapshot are prototype methods of the
+  // official ConfigForm controller, and useSyncExternalStore invokes both as
+  // bare functions — they must be bound to the form first or `this.store` reads
+  // undefined and the slot crashes.
   const settings = props.settings
   const subscribe = useMemo(() => settings.subscribe.bind(settings), [settings])
   const getSnapshot = useMemo(() => settings.getSnapshot.bind(settings), [settings])
@@ -84,6 +84,18 @@ export function AutoSettingsPanel(props: {
   const autoPreview = ui.autoPreview
   const autoPreviewLoading = ui.autoPreviewLoading
   const cycleRunning = props.auto?.cycleRunning === true
+
+  // The form answers every write with whether the Host accepted it: `false`
+  // covers a refusal and a skipped write, and a rejected transport throws. Both
+  // are a failed save, so the note stays visible until a write lands — a
+  // refused setting must never look saved.
+  const [saveFailed, setSaveFailed] = useState(false)
+  const write = (field: keyof SessionArchiveConfig, value: unknown): void => {
+    void props.settings.set(field, value).then(
+      (accepted) => { setSaveFailed(!accepted) },
+      () => { setSaveFailed(true) },
+    )
+  }
 
   const runStatsLine = (stats: AutoStateView['lastArchiveRun'], key: 'arch.auto.lastArchive' | 'arch.auto.lastDelete'): ReactNode => {
     if (stats === undefined) return <span className={styles.muted}>{t('arch.auto.neverRun')}</span>
@@ -100,7 +112,7 @@ export function AutoSettingsPanel(props: {
           <input
             type="checkbox"
             checked={value.autoArchiveEnabled === true}
-            onChange={(event) => { void props.settings.set('autoArchiveEnabled', event.target.checked) }}
+            onChange={(event) => { write('autoArchiveEnabled', event.target.checked) }}
           />
           <span>{t('arch.auto.archiveToggle')}</span>
         </label>
@@ -109,7 +121,7 @@ export function AutoSettingsPanel(props: {
           min={AUTO_ARCHIVE_DAYS_MIN}
           max={AUTO_ARCHIVE_DAYS_MAX}
           label={t('arch.auto.archiveDays')}
-          onSave={(value) => { void props.settings.set('autoArchiveDays', value) }}
+          onSave={(value) => { write('autoArchiveDays', value) }}
         />
       </div>
 
@@ -118,7 +130,7 @@ export function AutoSettingsPanel(props: {
           <input
             type="checkbox"
             checked={value.autoDeleteEnabled === true}
-            onChange={(event) => { void props.settings.set('autoDeleteEnabled', event.target.checked) }}
+            onChange={(event) => { write('autoDeleteEnabled', event.target.checked) }}
           />
           <span>{t('arch.auto.deleteToggle')}</span>
         </label>
@@ -127,9 +139,13 @@ export function AutoSettingsPanel(props: {
           min={AUTO_DELETE_DAYS_MIN}
           max={AUTO_DELETE_DAYS_MAX}
           label={t('arch.auto.deleteDays')}
-          onSave={(value) => { void props.settings.set('autoDeleteDays', value) }}
+          onSave={(value) => { write('autoDeleteDays', value) }}
         />
       </div>
+
+      {saveFailed && (
+        <div className={styles.failText} role="status" data-dsh-part="settings-save-failed">{t('arch.auto.saveFailed')}</div>
+      )}
 
       <div className={styles.autoActions}>
         <button type="button" className={styles.button} disabled={cycleRunning} onClick={() => { void props.controller.refreshAutoPreview() }}>

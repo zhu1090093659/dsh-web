@@ -9,7 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useSyncExternalStore, type ComponentProps } from 'react'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 // The npm SDK's client half is a closure-factory bundle for the GUI's
 // __ModuleLoader__ (not importable under vitest); provide the one value
 // member the card chain needs.
@@ -48,22 +48,34 @@ const t: PetSettingsSectionProps['t'] = (key) => {
   return (en as Record<string, string>)[key] ?? key
 }
 
-/** Minimal in-memory scope backing the card controller. */
-class FakeScope implements SettingsScope<PetSettings> {
+/** Minimal in-memory form backing the card controller. */
+class FakeScope implements ConfigForm<PetSettings> {
   value: PetSettings
   base: PetSettings
   user: Partial<PetSettings> = {}
   writable = true
+  accepted = true
   private listeners = new Set<() => void>()
   set = vi.fn(async (field: string, value: unknown) => {
     (this.user as Record<string, unknown>)[field] = value
     this.reflect()
+    return this.accepted
   })
   unset = vi.fn(async (field: string) => {
     delete (this.user as Record<string, unknown>)[field]
     this.reflect()
+    return this.accepted
   })
-  mutate = vi.fn(async () => {})
+  mutate = vi.fn(async (ops: readonly { op: 'set' | 'unset'; path: readonly string[]; value?: unknown }[]) => {
+    if (!this.accepted) return false
+    for (const op of ops) {
+      const field = op.path[0] ?? ''
+      if (op.op === 'set') (this.user as Record<string, unknown>)[field] = op.value
+      else delete (this.user as Record<string, unknown>)[field]
+    }
+    this.reflect()
+    return true
+  })
   constructor(value: PetSettings) {
     this.value = value
     this.base = value
@@ -72,7 +84,7 @@ class FakeScope implements SettingsScope<PetSettings> {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
   }
-  getSnapshot(): SettingsScopeSnapshot<PetSettings> {
+  getSnapshot(): ConfigFormSnapshot<PetSettings> {
     return {
       status: 'ready',
       writable: this.writable,
@@ -90,7 +102,7 @@ class FakeScope implements SettingsScope<PetSettings> {
 }
 
 /** Bind the controller's face into the section's prop shape (mirrors the slot renderer). */
-function sectionProps(scope: SettingsScope<PetSettings>) {
+function sectionProps(scope: ConfigForm<PetSettings>) {
   const controller = new PetSettingsCardController(scope)
   const face = controller.inject()
   const { hooks, ...actions } = face
@@ -132,6 +144,39 @@ describe('PetSettingsSection', () => {
       '鲸鱼娘（原版）',
       '鲸鱼娘（精致版）',
     ])
+  })
+
+  it('user sees the save reported as failed when the deployment refuses the write', async () => {
+    // Given a served form whose namespace mutation the deployment refuses
+    const scope = new FakeScope({ size: 160 })
+    scope.accepted = false
+    render(<PetSettingsSection {...sectionProps(scope)} />)
+
+    // When the user stages a new size and saves
+    fireEvent.change(screen.getByLabelText('Size (px)'), { target: { value: '240' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    // Then the card reports the failure instead of a landed save
+    const failure = await screen.findByText(en['settings.saveFailed'])
+    expect(failure.getAttribute('role')).toBe('status')
+    // And the refused draft is still staged for the user to correct
+    expect(scope.value.size).toBe(160)
+  })
+
+  it('user saves a new size and the card reports the write as landed', async () => {
+    // Given a served form whose namespace mutation the deployment accepts
+    const scope = new FakeScope({ size: 160 })
+    render(<PetSettingsSection {...sectionProps(scope)} />)
+
+    // When the user stages a new size and saves
+    fireEvent.change(screen.getByLabelText('Size (px)'), { target: { value: '240' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    // Then the staged size reaches the namespace and no failure is reported
+    await waitFor(() => {
+      expect((screen.getByLabelText('Size (px)') as HTMLInputElement).value).toBe('240')
+    })
+    expect(screen.queryByText(en['settings.saveFailed'])).toBeNull()
   })
 })
 

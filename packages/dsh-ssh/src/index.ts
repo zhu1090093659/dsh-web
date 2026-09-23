@@ -8,9 +8,8 @@
  * no dsh source changes.
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
-import z from 'schemastery'
+import type { Context, Fiber } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
@@ -26,18 +25,23 @@ export const name = 'ssh'
 /** Services required before the SSH surfaces can mount. */
 export const inject = ['webServer', 'tools', 'systemPrompt']
 
-/**
- * Settings namespace of the SSH capability — the section the web settings
- * surface edits. Spelled here rather than imported: the browser half spells
- * the same value and must not depend on a Host package.
- */
-export const SSH_SETTINGS_NAMESPACE = 'dsh-ssh' as SettingsNamespace
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Volatile config values were committed into the running instance without a
+     * remount (cordis-plugin-loader); dispatched to the owning fiber only.
+     * @param paths - the changed config paths, as key arrays.
+     * @mode emit
+     */
+    'loader/volatile-update'(paths: readonly (readonly string[])[]): void
+  }
+}
 
-/** Plugin config, validated by the same-named schemastery schema. */
+/** Plugin config as a profile patch declares it, before schema resolution. */
 export interface Config {
   /**
-   * When true (default), a system-prompt section announces the SSH plugin to
-   * every agent (tools + host store). Set false to keep it silent.
+   * When true, a system-prompt section announces the SSH plugin to every agent
+   * (tools + host store). Off by default to keep prompts clean.
    */
   announceToAgent?: boolean
   /** Master switch for the plugin (routes, tools, prompt section). */
@@ -51,14 +55,67 @@ export interface Config {
   terminalFontFamily?: string
 }
 
-export const Config: z<Config> = z.object({
-  announceToAgent: z.boolean().default(false),
-  enabled: z.boolean().default(true),
-  terminalFontFamily: z.string().default(''),
+/** The stable reference a `volatile()` config field resolves to; its owner updates it in place. */
+interface ConfigRef<T> {
+  /** @returns the field's current value. */
+  get(): T
+}
+
+/** One resolved config field: a live reference, or a plain value from a hand-built context. */
+type ConfigField<T> = ConfigRef<T> | T
+
+/** The config the Host hands to {@link apply} — the runtime face of {@link Config}. */
+export interface ResolvedConfig {
+  announceToAgent?: ConfigField<boolean>
+  enabled?: ConfigField<boolean>
+  terminalFontFamily?: ConfigField<string>
+}
+
+/**
+ * Plugin config schema. Under the 0.1.7 settings model this schema IS the
+ * entry's settings page: the Host derives one form per profile entry from it
+ * and serves it through the shared configuration forms. Every field is
+ * `volatile()`, which is what puts it on that page and what lets an edit reach
+ * a running instance without a remount: the loader commits the new value into
+ * the field's reference and announces `loader/volatile-update` on this fiber.
+ */
+export const Config = z.object({
+  announceToAgent: z.boolean().default(false).volatile(),
+  enabled: z.boolean().default(true).volatile(),
+  terminalFontFamily: z.string().default('').volatile(),
 })
 
-/** Schema default, re-read for hand-built test contexts (the loader applies them normally). */
+/** Schema defaults, re-read for hand-built test contexts (the loader applies them normally). */
 const DEFAULT_ANNOUNCE = false
+const DEFAULT_ENABLED = true
+
+/** Read one resolved config field, following the live reference the schema produces. */
+function readConfigField<T>(field: ConfigField<T> | undefined, fallback: T): T {
+  if (field === undefined) return fallback
+  if (typeof field === 'object' && field !== null && typeof (field as ConfigRef<T>).get === 'function') {
+    const value = (field as ConfigRef<T>).get()
+    return value === undefined ? fallback : value
+  }
+  return field as T
+}
+
+/**
+ * The loader's own record of the profile entry this instance was activated
+ * from, which carries the row's raw config — the user's own declaration, as
+ * opposed to the schema defaults and the inherited bundle layers. Absent on a
+ * host without the loader, which reads as "the profile declares nothing".
+ */
+interface LoaderEntry {
+  options?: { config?: unknown }
+}
+
+/** Raw config the profile declares for this entry, when the loader exposes it. */
+function profileConfig(ctx: Context): Record<string, unknown> | undefined {
+  const entry = (ctx.fiber as Fiber & { entry?: LoaderEntry }).entry
+  const config = entry?.options?.config
+  if (typeof config !== 'object' || config === null || Array.isArray(config)) return undefined
+  return config as Record<string, unknown>
+}
 
 /** Order of the announcement section within the tool-guidance band. */
 const SECTION_ORDER = 150
@@ -73,28 +130,22 @@ export const SSH_GUIDANCE = '本机已安装 dsh-ssh 插件（DSH 远程 SSH 运
  */
 export const apply = mountOnce('@linxin666/dsh-ssh', applyImpl)
 
-function applyImpl(ctx: Context, config?: Config): void {
-  // The live source the surfaces read: the settings section once the web
-  // settings surface is served, the composition entry otherwise.
-  let current: () => Config = () => config ?? {}
-  let isSettingsBound = false
-
+function applyImpl(ctx: Context, config?: ResolvedConfig): void {
   const store = new HostStore()
   const engine = new SshEngine(store)
   ctx.effect(() => () => { engine.dispose() }, 'dsh-ssh: engine')
 
-  const resolve = (): Config => {
-    const value = current()
-    let enabled = value.enabled ?? true
-    // When dsh-ssh was seeded with enabled: false (e.g. from an aggregate profile line),
-    // but the user has never explicitly configured settings (not bound yet)
-    // AND already has active host records in dsh-ssh.json, keep the plugin enabled so
+  const resolve = (): { announceToAgent: boolean; enabled: boolean } => {
+    let enabled = readConfigField(config?.enabled, DEFAULT_ENABLED)
+    // When dsh-ssh was seeded with enabled: false (e.g. from an aggregate profile
+    // line), but the profile's own entry config never set the switch AND the user
+    // already has active host records in dsh-ssh.json, keep the plugin enabled so
     // existing users are not broken upon upgrade (#1250).
-    if (enabled === false && !isSettingsBound && store.list().length > 0) {
+    if (enabled === false && profileConfig(ctx)?.enabled === undefined && store.list().length > 0) {
       enabled = true
     }
     return {
-      announceToAgent: value.announceToAgent ?? DEFAULT_ANNOUNCE,
+      announceToAgent: readConfigField(config?.announceToAgent, DEFAULT_ANNOUNCE),
       enabled,
     }
   }
@@ -117,7 +168,7 @@ function applyImpl(ctx: Context, config?: Config): void {
   // System-prompt announcement.
   let disposeSection: (() => void) | undefined
 
-  // Register (or drop) every surface to match the current source. Each group
+  // Register (or drop) every surface to match the resolved config. Each group
   // is kept under one disposer: re-registering first tears the old one down
   // so duplicate-name registrations never throw.
   const sync = (): void => {
@@ -162,29 +213,11 @@ function applyImpl(ctx: Context, config?: Config): void {
     )
   }
 
-  ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(ctx, SSH_SETTINGS_NAMESPACE, Config, config ?? {}, {
-          setSource: (source) => {
-            isSettingsBound = true
-            current = source
-            sync()
-          },
-          onChange: sync,
-        })
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        const scope = settingsCtx.settings.register(SSH_SETTINGS_NAMESPACE, Config, { base: config ?? {} })
-        isSettingsBound = true
-        current = () => scope?.get?.() ?? (config ?? {})
-        scope?.watch?.(() => { sync() })
-      }
-    } catch {
-      // Defensive fallback against settings registration differences
-    }
-  })
+  // A settings edit is committed into this instance's config references and
+  // announced on the owning fiber (the entry is not remounted), so the
+  // surfaces are re-derived from the new values here.
+  ctx.on('loader/volatile-update', () => { sync() })
 
-  // Initial registration from the composition entry (covers deployments with
-  // no settings service, whose installSection never fires its hooks).
+  // Initial registration from the config the Host activated this row with.
   sync()
 }

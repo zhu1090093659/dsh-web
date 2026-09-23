@@ -1,7 +1,8 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
-import { isAbsolute, join, sep } from "node:path";
+import { readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { isAbsolute, join, resolve } from "node:path";
 import { homedir } from "node:os";
 import { isAbsolute as isAbsolute$1, join as join$1 } from "node:path/posix";
+import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 //#region src/mount-once.ts
 /**
@@ -43,6 +44,78 @@ function mountOnce(packageName, fn) {
 		return fn(...args);
 	});
 }
+//#endregion
+//#region src/host/declarations.ts
+/** A refused declaration. */
+var DeclarationError = class extends Error {
+	code;
+	constructor(code, message) {
+		super(message);
+		this.code = code;
+		this.name = "DeclarationError";
+	}
+};
+/** The registry's own refusal for an id another declaration already owns. */
+const DUPLICATE_RE = /duplicate agent preset/i;
+/** Registry declarations held by this plugin, keyed by preset id. */
+var PresetDeclarations = class {
+	live = /* @__PURE__ */ new Map();
+	registry;
+	/**
+	* @param registry - resolver for the `agentPresets` service; undefined when
+	*   the deployment supplies no preset registry.
+	*/
+	constructor(registry) {
+		this.registry = registry;
+	}
+	/** Ids this plugin currently declares. */
+	declared() {
+		return new Set(this.live.keys());
+	}
+	/** Whether this plugin currently declares `id`. */
+	has(id) {
+		return this.live.has(id);
+	}
+	/**
+	* Register one preset and keep its disposer. Declaring an already-declared
+	* id is a no-op, so a repeated install does not restart the mounted rows.
+	* @param definition - the definition read from the installed bytes.
+	* @throws {DeclarationError} unavailable, shadowed, or invalid.
+	*/
+	async declare(definition) {
+		const registry = this.registry();
+		if (registry === void 0) throw new DeclarationError("unavailable", "the agent-preset registry is unavailable");
+		if (this.live.has(definition.id)) return;
+		let dispose;
+		try {
+			dispose = await registry.register(definition);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			throw new DeclarationError(DUPLICATE_RE.test(message) ? "shadowed" : "invalid", message);
+		}
+		this.live.set(definition.id, dispose);
+	}
+	/**
+	* Drop one declaration; the installed bytes stay in place.
+	* @param id - preset id.
+	* @returns whether a declaration was dropped.
+	*/
+	async undeclare(id) {
+		const dispose = this.live.get(id);
+		if (dispose === void 0) return false;
+		this.live.delete(id);
+		await dispose();
+		return true;
+	}
+	/** Drop every declaration (plugin unload); failures never mask the rest. */
+	async release() {
+		const all = [...this.live.values()];
+		this.live.clear();
+		for (const dispose of all) try {
+			await dispose();
+		} catch {}
+	}
+};
 //#endregion
 //#region src/dsh-home.ts
 /**
@@ -236,22 +309,19 @@ function writeJson(res, status, body, headers = {}) {
 //#endregion
 //#region src/core/paths.ts
 /**
-* The preset-center storage contract: where an installed preset lives while it
-* is inert (the library) and where it must live to be discovered (the harness
-* home's user preset root).
+* The preset-center storage contract: one directory, one meaning.
 *
-* Both paths are a cross-package contract, not private state:
-*  - the library is the destination the market installer writes (`preset`
-*    asset kind) and no discovery root scans;
-*  - the discovery root is `USER_PRESET_DIR` of
-*    `@deepseek-ai/dsh-agent-presets`, appended to the roster unless a
-*    deployment sets `includeUserRoot: false`.
+* The library under the DSH home is where the market installs a preset and
+* the only place the preset center reads from. Nothing scans it: the harness
+* no longer discovers presets on disk, so a downloaded directory stays inert
+* until this plugin declares it to `ctx.agentPresets` at runtime.
+*
+* The path is a cross-package contract, not private state: it is the
+* destination the market installer writes (`preset` asset kind).
 * @module @linxin666/dsh-client-ui-preset-center/core/paths
 */
-/** Library directory under the DSH home: installed but inert. */
+/** Library directory under the DSH home: the market install target. */
 const LIBRARY_DIR = "agent-presets";
-/** Official user preset root under the DSH home: present means enabled. */
-const ENABLED_DIR = ".agent-presets";
 /**
 * Provenance filename written by the market installer (mirrors
 * `PROVENANCE_FILENAME` in `@linxin666/dsh-client-ui-market`; no
@@ -260,7 +330,9 @@ const ENABLED_DIR = ".agent-presets";
 const PROVENANCE_FILENAME = "dsh-market.provenance.json";
 /** The composition file that makes a directory a preset. */
 const COMPOSITION_FILE = "agent.cordis.yml";
-/** Official preset id rule (mirrors `PRESET_ID` in `@deepseek-ai/dsh-agent-presets`). */
+/** The display-text file the composition's registry declaration reads. */
+const METADATA_FILE = "preset.yml";
+/** Official preset id rule (mirrors the harness's preset identity rule). */
 const PRESET_ID_RE = /^[a-z0-9][a-z0-9-]*$/;
 /** Whether `id` is a usable preset directory name. */
 function isPresetId(id) {
@@ -270,9 +342,401 @@ function isPresetId(id) {
 function libraryRoot(dshHome) {
 	return join(dshHome, LIBRARY_DIR);
 }
-/** The discovery root for one DSH home. */
-function enabledRoot(dshHome) {
-	return join(dshHome, ENABLED_DIR);
+//#endregion
+//#region src/core/yaml.ts
+/**
+* The composition reader: just enough YAML to turn a cordis entry list (or the
+* flat display map of `preset.yml`) into the values the preset registry takes.
+*
+* The harness parses composition files with its own YAML loader and preserves
+* `!!js` expressions as data (`{ __jsExpr }`); this reader reproduces that
+* contract for the one file shape a preset ships. No YAML package is
+* resolvable from this package (the market build reads `preset.yml` with a
+* line reader for the same reason), so the subset is owned here and fenced by
+* tests over the whole shipped catalog.
+*
+* Fail-closed: a construct outside the subset (anchors, aliases, flow
+* collections, extra tags, multiple documents, tabs) raises
+* {@link CompositionError} instead of being guessed at, so an unreadable
+* composition is refused rather than half-declared.
+* @module @linxin666/dsh-client-ui-preset-center/core/yaml
+*/
+/** A construct outside the supported subset, or malformed YAML. */
+var CompositionError = class extends Error {
+	constructor(message) {
+		super(message);
+		this.name = "CompositionError";
+	}
+};
+const BLANK_OR_COMMENT_RE = /^[ \t]*(?:#.*)?$/;
+const INTEGER_RE = /^[+-]?\d+$/;
+const FLOAT_RE = /^[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?$/;
+/** The indentation width of one line (its leading spaces). */
+function indentOf(line) {
+	const match = /^ */.exec(line);
+	return match === null ? 0 : match[0].length;
+}
+/**
+* The indentation of one structurally significant line.
+* A tab in that indentation is forbidden by YAML; block-scalar content is
+* verbatim and is never measured here.
+*/
+function significantIndent(line, lineNumber) {
+	const leading = /^[ \t]*/.exec(line)?.[0] ?? "";
+	if (leading.includes("	")) throw new CompositionError(`line ${String(lineNumber)}: tabs must not be used for indentation`);
+	return leading.length;
+}
+/** Advance past blank and comment-only lines. */
+function skipInsignificant(cursor) {
+	while (cursor.index < cursor.lines.length && BLANK_OR_COMMENT_RE.test(cursor.lines[cursor.index] ?? "")) cursor.index += 1;
+}
+/** Whether a line at `indent` opens a block sequence entry. */
+function isSequenceEntry(line, indent) {
+	if (line[indent] !== "-") return false;
+	return line.length === indent + 1 || line[indent + 1] === " ";
+}
+/**
+* Split one block-map line into its key and the raw text after the colon.
+* @param text - the line content from its first non-space character.
+* @returns the key and remainder, or undefined when the line is not a map entry.
+*/
+function matchKeyEntry(text) {
+	if (text.startsWith("'") || text.startsWith("\"")) {
+		const end = closingQuote(text);
+		if (end === -1) return void 0;
+		const after = text.slice(end + 1).trimStart();
+		if (!after.startsWith(":")) return void 0;
+		return {
+			key: unquote$1(text.slice(0, end + 1)),
+			rest: after.slice(1).trim()
+		};
+	}
+	for (let index = 0; index < text.length; index += 1) {
+		const char = text[index];
+		if (char === "#" && index > 0 && text[index - 1] === " ") break;
+		if (char === ":" && (index + 1 === text.length || text[index + 1] === " ")) return {
+			key: text.slice(0, index),
+			rest: text.slice(index + 1).trim()
+		};
+	}
+}
+/** The index of the quote that closes a quoted scalar starting at index 0. */
+function closingQuote(text) {
+	const quote = text[0];
+	for (let index = 1; index < text.length; index += 1) {
+		const char = text[index];
+		if (quote === "\"" && char === "\\") {
+			index += 1;
+			continue;
+		}
+		if (quote === "'" && char === "'" && text[index + 1] === "'") {
+			index += 1;
+			continue;
+		}
+		if (char === quote) return index;
+	}
+	return -1;
+}
+/** Resolve one quoted scalar, or return the text unchanged when unquoted. */
+function unquote$1(text) {
+	const trimmed = text.trim();
+	if (trimmed.startsWith("\"")) {
+		const end = closingQuote(trimmed);
+		if (end !== trimmed.length - 1) throw new CompositionError(`unterminated double-quoted scalar: ${trimmed}`);
+		return trimmed.slice(1, end).replace(/\\(u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|.)/g, (_, escape) => {
+			switch (escape[0]) {
+				case "n": return "\n";
+				case "t": return "	";
+				case "r": return "\r";
+				case "0": return "\0";
+				case "u": return String.fromCharCode(Number.parseInt(escape.slice(1), 16));
+				case "x": return String.fromCharCode(Number.parseInt(escape.slice(1), 16));
+				default: return escape;
+			}
+		});
+	}
+	if (trimmed.startsWith("'")) {
+		const end = closingQuote(trimmed);
+		if (end !== trimmed.length - 1) throw new CompositionError(`unterminated single-quoted scalar: ${trimmed}`);
+		return trimmed.slice(1, end).replaceAll("''", "'");
+	}
+	return trimmed;
+}
+/** Resolve a plain scalar to the value YAML's JSON schema would produce. */
+function plainScalar(text) {
+	const comment = text.indexOf(" #");
+	const value = (comment === -1 ? text : text.slice(0, comment)).trim();
+	if (value === "" || value === "~" || value === "null" || value === "Null" || value === "NULL") return null;
+	if (value === "true" || value === "True" || value === "TRUE") return true;
+	if (value === "false" || value === "False" || value === "FALSE") return false;
+	if (INTEGER_RE.test(value)) return Number(value);
+	if (FLOAT_RE.test(value)) return Number(value);
+	return value;
+}
+/** Resolve the text that follows a colon or a dash on one line. */
+function inlineScalar(text) {
+	const value = text.trim();
+	if (value.startsWith("!!js")) {
+		const expression = value.slice(4).trim();
+		if (expression === "") throw new CompositionError("!!js requires an expression");
+		return { __jsExpr: unquote$1(expression) };
+	}
+	if (value.startsWith("'") || value.startsWith("\"")) {
+		const end = closingQuote(value);
+		if (end === -1) throw new CompositionError(`unterminated quoted scalar: ${value}`);
+		const tail = value.slice(end + 1).trim();
+		if (tail !== "" && !tail.startsWith("#")) throw new CompositionError(`unexpected content after a quoted scalar: ${tail}`);
+		return unquote$1(value.slice(0, end + 1));
+	}
+	if (value.startsWith("[") || value.startsWith("{")) throw new CompositionError(`flow collections are not supported: ${value}`);
+	if (value.startsWith("|") || value.startsWith(">")) throw new CompositionError(`block scalars need their own line: ${value}`);
+	if (value.startsWith("!") || value.startsWith("&") || value.startsWith("*")) throw new CompositionError(`unsupported YAML node: ${value}`);
+	return plainScalar(value);
+}
+/**
+* Read one literal (`|`) or folded (`>`) block scalar, consuming its lines.
+* @param cursor - line cursor positioned on the line that follows the header.
+* @param parentIndent - indentation of the node that owns the scalar.
+* @param header - the header text (`|-`, `>+2`, ...) possibly with a comment.
+* @returns the scalar text after indentation stripping and chomping.
+*/
+function blockScalar(cursor, parentIndent, header) {
+	const style = header[0];
+	const indicators = header.slice(1).split("#")[0]?.trim() ?? "";
+	let explicitIndent;
+	let chomp = "clip";
+	for (const char of indicators) if (char === "-") chomp = "strip";
+	else if (char === "+") chomp = "keep";
+	else if (char >= "1" && char <= "9") explicitIndent = Number(char);
+	else throw new CompositionError(`unsupported block scalar header: ${header}`);
+	const body = [];
+	let blockIndent;
+	let trailing = 0;
+	while (cursor.index < cursor.lines.length) {
+		const line = cursor.lines[cursor.index] ?? "";
+		if (line.trim() === "") {
+			body.push("");
+			trailing += 1;
+			cursor.index += 1;
+			continue;
+		}
+		const indent = indentOf(line);
+		if (indent <= parentIndent) break;
+		if (blockIndent === void 0) blockIndent = explicitIndent === void 0 ? indent : parentIndent + explicitIndent;
+		if (indent < blockIndent) break;
+		body.push(line.slice(blockIndent));
+		trailing = 0;
+		cursor.index += 1;
+	}
+	const lines = body.slice(0, body.length - trailing);
+	const tail = trailing;
+	if (style === ">") {
+		let folded = "";
+		let blank = 0;
+		let started = false;
+		for (const line of lines) {
+			if (line === "") {
+				blank += 1;
+				continue;
+			}
+			if (!started) {
+				folded = line;
+				started = true;
+				blank = 0;
+				continue;
+			}
+			folded += blank === 0 ? " " + line : "\n".repeat(blank) + line;
+			blank = 0;
+		}
+		if (chomp === "strip") return folded;
+		if (chomp === "keep") return folded + "\n".repeat(tail + 1);
+		return folded === "" ? "" : folded + "\n";
+	}
+	const text = lines.join("\n");
+	if (chomp === "strip") return text;
+	if (chomp === "keep") return text + "\n".repeat(tail + 1);
+	return text === "" ? "" : text + "\n";
+}
+/** Resolve the value of one entry whose line has already been consumed. */
+function parseValue(cursor, parentIndent, rest) {
+	if (rest !== "") {
+		if (rest.startsWith("|") || rest.startsWith(">")) return blockScalar(cursor, parentIndent, rest);
+		return inlineScalar(rest);
+	}
+	skipInsignificant(cursor);
+	const line = cursor.lines[cursor.index];
+	if (line === void 0 || indentOf(line) <= parentIndent) return null;
+	return parseNode(cursor, parentIndent + 1);
+}
+/** Parse a block map whose keys sit at exactly `indent`. */
+function parseMap(cursor, indent) {
+	const map = {};
+	while (true) {
+		skipInsignificant(cursor);
+		const line = cursor.lines[cursor.index];
+		if (line === void 0) break;
+		const lineIndent = significantIndent(line, cursor.index + 1);
+		if (lineIndent < indent) break;
+		if (lineIndent > indent) throw new CompositionError(`line ${String(cursor.index + 1)}: unexpected indentation`);
+		if (isSequenceEntry(line, indent)) break;
+		const entry = matchKeyEntry(line.slice(indent));
+		if (entry === void 0) throw new CompositionError(`line ${String(cursor.index + 1)}: expected "key: value", got "${line.trim()}"`);
+		if (Object.hasOwn(map, entry.key)) throw new CompositionError(`line ${String(cursor.index + 1)}: duplicate key "${entry.key}"`);
+		cursor.index += 1;
+		map[entry.key] = parseValue(cursor, indent, entry.rest);
+	}
+	return map;
+}
+/** Parse a block sequence whose dashes sit at exactly `indent`. */
+function parseSequence(cursor, indent) {
+	const items = [];
+	while (true) {
+		skipInsignificant(cursor);
+		const line = cursor.lines[cursor.index];
+		if (line === void 0) break;
+		if (significantIndent(line, cursor.index + 1) !== indent || !isSequenceEntry(line, indent)) break;
+		const rest = line.slice(indent + 1);
+		const content = rest.trimStart();
+		if (content === "") {
+			cursor.index += 1;
+			skipInsignificant(cursor);
+			const nested = cursor.lines[cursor.index];
+			const nestedIndent = nested === void 0 ? -1 : significantIndent(nested, cursor.index + 1);
+			items.push(nestedIndent <= indent ? null : parseNode(cursor, indent + 1));
+			continue;
+		}
+		const contentIndent = indent + 1 + (rest.length - content.length);
+		if (matchKeyEntry(content) !== void 0) {
+			cursor.lines[cursor.index] = " ".repeat(contentIndent) + content;
+			items.push(parseMap(cursor, contentIndent));
+			continue;
+		}
+		cursor.index += 1;
+		items.push(parseValue(cursor, indent, content));
+	}
+	return items;
+}
+/** Parse the block node that starts at the cursor. */
+function parseNode(cursor, minIndent) {
+	skipInsignificant(cursor);
+	const line = cursor.lines[cursor.index];
+	if (line === void 0) return null;
+	const indent = significantIndent(line, cursor.index + 1);
+	if (indent < minIndent) return null;
+	return isSequenceEntry(line, indent) ? parseSequence(cursor, indent) : parseMap(cursor, indent);
+}
+/**
+* Read one cordis YAML document (or the flat map of `preset.yml`).
+* @param text - file content.
+* @returns the parsed value: a list of entries, a map, or null when empty.
+* @throws {CompositionError} on malformed YAML or an unsupported construct.
+*/
+function readCordisYaml(text) {
+	const cursor = {
+		lines: (text.startsWith("﻿") ? text.slice(1) : text).split("\n"),
+		index: 0
+	};
+	const value = parseNode(cursor, 0);
+	skipInsignificant(cursor);
+	const extra = cursor.lines[cursor.index];
+	if (extra !== void 0) throw new CompositionError(`line ${String(cursor.index + 1)}: unexpected content "${extra.trim()}"`);
+	return value;
+}
+//#endregion
+//#region src/core/definition.ts
+/**
+* The declaration an installed preset makes to the agent-preset registry: its
+* identity and display text from `preset.yml`, its child plugin rows from
+* `agent.cordis.yml`, both read from the bytes the market installed.
+*
+* This is the one place the plugin turns a downloaded directory into a
+* registry definition, so it also owns the fail-closed rule: an unreadable or
+* unsupported composition raises instead of declaring a partial preset.
+* @module @linxin666/dsh-client-ui-preset-center/core/definition
+*/
+function asRecord(value, what) {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) throw new CompositionError(`${what} must be a mapping`);
+	return value;
+}
+/** Read the single-line display scalars of one `preset.yml`. */
+function readPresetMetadata(text) {
+	const record = asRecord(readCordisYaml(text), METADATA_FILE);
+	const metadata = {};
+	if (record["name"] !== void 0 && record["name"] !== null) {
+		if (typeof record["name"] !== "string" || record["name"].includes("\n")) throw new CompositionError(`${METADATA_FILE}: name must be a single-line string`);
+		metadata.name = record["name"];
+	}
+	if (record["description"] !== void 0 && record["description"] !== null) {
+		if (typeof record["description"] !== "string" || record["description"].includes("\n")) throw new CompositionError(`${METADATA_FILE}: description must be a single-line string`);
+		metadata.description = record["description"];
+	}
+	if (record["order"] !== void 0 && record["order"] !== null) {
+		if (typeof record["order"] !== "number" || !Number.isFinite(record["order"])) throw new CompositionError(`${METADATA_FILE}: order must be a number`);
+		metadata.order = record["order"];
+	}
+	return metadata;
+}
+function asRow(value, at) {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) throw new CompositionError(`${at} must be a mapping`);
+	const row = value;
+	if (typeof row.name !== "string" || row.name === "") throw new CompositionError(`${at} names no plugin (a "name" string is required)`);
+	return row;
+}
+/**
+* Rewrite the relative module names of one row list, recursively through the
+* nested entry lists of group rows, into absolute file URLs. The registry
+* mounts a declaration under the DECLARING plugin's base URL, so a preset that
+* ships its own code files would otherwise resolve them against this package.
+*/
+function absolutizeRows(rows, baseDir, at = "row") {
+	return rows.map((row, index) => {
+		const label = `${at} ${String(index + 1)}`;
+		const checked = asRow(row, label);
+		const name = checked.name ?? "";
+		const out = { ...checked };
+		if (name.startsWith("./") || name.startsWith("../")) out.name = pathToFileURL(resolve(baseDir, name)).href;
+		if (checked.group === true) {
+			if (!Array.isArray(checked.config)) throw new CompositionError(`group ${label} must hold a list of plugin rows`);
+			out.config = absolutizeRows(checked.config, baseDir, `${label} group`);
+		}
+		return out;
+	});
+}
+/**
+* Read the child plugin rows of one `agent.cordis.yml`.
+* @param text - the raw composition document.
+* @param baseDir - directory a relative row `name` resolves against (the preset's own directory).
+* @returns the row list to hand the registry, relative names resolved to file URLs.
+*/
+function readCompositionRows(text, baseDir) {
+	const value = readCordisYaml(text);
+	if (!Array.isArray(value)) throw new CompositionError(`${COMPOSITION_FILE} must be a top-level list of plugin rows`);
+	return absolutizeRows(value, baseDir);
+}
+/** Build the registry definition of one installed preset from its own bytes. */
+function presetDefinition(id, composition, metadata, baseDir) {
+	return {
+		id,
+		...readPresetMetadata(metadata),
+		plugins: readCompositionRows(composition, baseDir)
+	};
+}
+/**
+* Build the registry definition of one installed preset directory.
+* @param id - preset id (the library directory name).
+* @param dir - absolute preset directory.
+* @returns the definition to submit to `ctx.agentPresets.register`.
+* @throws {CompositionError} when either file is missing or unreadable.
+*/
+function readPresetDefinition(id, dir) {
+	const read = (name) => {
+		try {
+			return readFileSync(join(dir, name), "utf8");
+		} catch (err) {
+			throw new CompositionError(`${name} is unreadable: ${err instanceof Error ? err.message : String(err)}`);
+		}
+	};
+	return presetDefinition(id, read(COMPOSITION_FILE), read(METADATA_FILE), dir);
 }
 //#endregion
 //#region src/core/provenance.ts
@@ -384,17 +848,18 @@ function isDirectory(dir) {
 * bytes on the host — never from the market catalog, which a client could
 * restate.
 *
-* The profile answers three questions the enabling confirmation needs: which
+* The profile answers three questions the install confirmation needs: which
 * plugins the composition names, which of those are files that travel inside
 * the preset directory, and whether the file carries inline `!!js`
 * expressions. All three are execution surfaces: a relative row and an inline
-* expression both run inside the host process when a session composes the
-* preset, exactly like an npm plugin does.
+* expression both run inside the host process once the preset is declared to
+* the registry, exactly like an npm plugin does.
 *
 * The scan is deliberately shallow (line-oriented) and is a display signal,
-* not a sandbox: the authoritative health verdict comes from the official
-* roster after the directory is discoverable. A preset that hides a row from
-* this scan is still gated by the install/enable split and the operator's
+* not a sandbox: what the registry actually mounts comes from the parsed
+* definition (`core/definition.ts`), and the health verdict from the registry
+* roster after the declaration. A preset that hides a row from this scan is
+* still gated by the downloaded-but-undeclared state and the operator's
 * confirmation.
 * @module @linxin666/dsh-client-ui-preset-center/core/profile
 */
@@ -450,14 +915,15 @@ function needsConfirmation(profile) {
 //#endregion
 //#region src/core/library.ts
 /**
-* The preset library state machine: install, enable, disable, uninstall, and
-* the filesystem-derived state every surface reads.
+* The preset library: one directory, and the filesystem-derived state every
+* surface reads.
 *
-* Two directories, one truth (see `paths.ts`): a preset in the library is
-* inert because no discovery root scans it; a preset in the discovery root is
-* live because the official roster re-reads its roots on every call. Every
-* transition is a directory move, so a crash between steps leaves a state the
-* next scan reports instead of a half-written preset.
+* A directory under the library is installed and inert — the harness no longer
+* scans any on-disk preset root, so a downloaded composition runs only once
+* this plugin declares it to `ctx.agentPresets`. `enabled` therefore comes
+* from the live declarations, not from the filesystem, and no operation here
+* moves a directory: enabling is a registry call, disabling drops that call,
+* and uninstalling deletes the bytes.
 *
 * The module owns no policy: reserved ids and the default-preset guard live in
 * the route layer, which is the only place that can read the roster.
@@ -471,7 +937,7 @@ var PresetOperationError = class extends Error {
 		this.code = code;
 	}
 };
-/** Subdirectory ids of one root, sorted; absent roots yield none. */
+/** Subdirectory ids of the library, sorted; an absent root yields none. */
 function scanPresetIds(root) {
 	let entries;
 	try {
@@ -481,174 +947,66 @@ function scanPresetIds(root) {
 	}
 	return entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith(".") && isPresetId(entry.name)).map((entry) => entry.name).sort();
 }
-/** The state of one id, derived from the two directories. */
-function readPresetState(dshHome, id) {
-	const libraryDir = join(libraryRoot(dshHome), id);
-	const enabledDir = join(enabledRoot(dshHome), id);
-	const installed = isDirectory(libraryDir);
-	const enabled = isDirectory(enabledDir);
-	const dir = enabled ? enabledDir : libraryDir;
-	const report = dir === libraryDir && !installed ? {
+/**
+* The state of one id, derived from the library directory and the live
+* declarations.
+* @param dshHome - DSH home root.
+* @param id - preset id.
+* @param declared - ids this plugin has declared to the registry.
+* @returns the row every surface renders.
+*/
+function readPresetState(dshHome, id, declared) {
+	const dir = libraryDirOf(dshHome, id);
+	const installed = isDirectory(dir);
+	const report = installed ? verifyProvenance(dir, id) : {
 		state: "missing",
 		provenance: null,
 		mismatches: [],
 		missing: [],
 		extra: []
-	} : verifyProvenance(dir, id);
+	};
 	const provenance = report.provenance;
 	return {
 		id,
 		installed,
-		enabled,
+		enabled: installed && declared.has(id),
 		managed: provenance !== null,
 		...provenance?.assetVersion === void 0 ? {} : { assetVersion: provenance.assetVersion },
 		...provenance?.installedAt === void 0 ? {} : { installedAt: provenance.installedAt },
-		integrity: installed || enabled ? report.state : "none",
-		conflict: installed && enabled,
+		integrity: installed ? report.state : "none",
 		dir
 	};
 }
-/** Every id present in either directory, sorted, with its state. */
-function listPresetStates(dshHome) {
-	return [.../* @__PURE__ */ new Set([...scanPresetIds(libraryRoot(dshHome)), ...scanPresetIds(enabledRoot(dshHome))])].sort().map((id) => readPresetState(dshHome, id));
-}
-const RETRYABLE = /* @__PURE__ */ new Set([
-	"EPERM",
-	"EBUSY",
-	"EACCES",
-	"ENOTEMPTY"
-]);
-function errnoOf(err) {
-	const code = typeof err === "object" && err !== null ? err.code : void 0;
-	return typeof code === "string" ? code : void 0;
-}
-/** File count and byte total of a tree, for the cross-volume copy check. */
-function treeStats(dir) {
-	let files = 0;
-	let bytes = 0;
-	for (const entry of readdirSync(dir, { withFileTypes: true })) {
-		const abs = join(dir, entry.name);
-		if (entry.isDirectory()) {
-			const nested = treeStats(abs);
-			files += nested.files;
-			bytes += nested.bytes;
-		} else if (entry.isFile()) {
-			files += 1;
-			bytes += statSync(abs).size;
-		}
-	}
-	return {
-		files,
-		bytes
-	};
-}
-/**
-* Move one directory into a destination that must not exist yet. A rename is
-* atomic within a volume; across volumes the directory is copied, verified by
-* file count and byte total, and only then removed from the source. Transient
-* Windows handle-release failures are retried briefly before giving up.
-*/
-function moveDirectory(src, dest) {
-	let lastError;
-	for (let attempt = 0; attempt < 4; attempt += 1) try {
-		renameSync(src, dest);
-		return;
-	} catch (err) {
-		lastError = err;
-		const code = errnoOf(err);
-		if (code === "EXDEV") try {
-			cpSync(src, dest, {
-				recursive: true,
-				errorOnExist: true,
-				force: false
-			});
-			const from = treeStats(src);
-			const to = treeStats(dest);
-			if (from.files !== to.files || from.bytes !== to.bytes) {
-				rmSync(dest, {
-					recursive: true,
-					force: true
-				});
-				throw new PresetOperationError("write", `cross-volume copy of ${src} did not match its source`);
-			}
-			rmSync(src, {
-				recursive: true,
-				force: true
-			});
-			return;
-		} catch (copyErr) {
-			try {
-				rmSync(dest, {
-					recursive: true,
-					force: true
-				});
-			} catch {}
-			throw copyErr instanceof PresetOperationError ? copyErr : new PresetOperationError("write", copyErr instanceof Error ? copyErr.message : String(copyErr));
-		}
-		if (code === void 0 || !RETRYABLE.has(code)) break;
-		const until = Date.now() + 60 * (attempt + 1);
-		while (Date.now() < until);
-	}
-	throw new PresetOperationError("write", lastError instanceof Error ? lastError.message : String(lastError));
+/** Every installed id with its state, sorted. */
+function listPresetStates(dshHome, declared) {
+	return scanPresetIds(libraryRoot(dshHome)).map((id) => readPresetState(dshHome, id, declared));
 }
 /** Absolute library path of one id. */
 function libraryDirOf(dshHome, id) {
 	return join(libraryRoot(dshHome), id);
 }
-/** Absolute discovery-root path of one id. */
-function enabledDirOf(dshHome, id) {
-	return join(enabledRoot(dshHome), id);
-}
 /**
-* Move a preset from the library into the discovery root.
-* @throws {PresetOperationError} invalid-id, not-installed, already-enabled, conflict, write.
-*/
-function enablePreset(dshHome, id) {
-	if (!isPresetId(id)) throw new PresetOperationError("invalid-id", `invalid preset id: ${String(id)}`);
-	const src = libraryDirOf(dshHome, id);
-	const dest = enabledDirOf(dshHome, id);
-	if (isDirectory(dest)) throw new PresetOperationError("already-enabled", `preset is already enabled: ${id}`);
-	if (!isDirectory(src)) throw new PresetOperationError("not-installed", `preset is not installed: ${id}`);
-	mkdirSync(enabledRoot(dshHome), { recursive: true });
-	moveDirectory(src, dest);
-	return readPresetState(dshHome, id);
-}
-/**
-* Move a preset from the discovery root back into the library.
-* @throws {PresetOperationError} invalid-id, not-enabled, not-managed, conflict, write.
-*/
-function disablePreset(dshHome, id) {
-	if (!isPresetId(id)) throw new PresetOperationError("invalid-id", `invalid preset id: ${String(id)}`);
-	const src = enabledDirOf(dshHome, id);
-	const dest = libraryDirOf(dshHome, id);
-	if (!isDirectory(src)) throw new PresetOperationError("not-enabled", `preset is not enabled: ${id}`);
-	if (!readPresetState(dshHome, id).managed) throw new PresetOperationError("not-managed", `preset was not installed from the Workshop: ${id}`);
-	if (existsSync(dest)) throw new PresetOperationError("conflict", `library already holds ${id}`);
-	mkdirSync(libraryRoot(dshHome), { recursive: true });
-	moveDirectory(src, dest);
-	return readPresetState(dshHome, id);
-}
-/**
-* Remove every copy of a workshop-managed preset.
-* @throws {PresetOperationError} invalid-id, not-managed, write.
+* Delete the library copy of a workshop-managed preset.
+* @param dshHome - DSH home root.
+* @param id - preset id.
+* @throws {PresetOperationError} invalid-id or not-managed when the directory
+*   exists without market provenance (a hand-authored directory is never
+*   deleted); an absent preset is a no-op.
 */
 function uninstallPreset(dshHome, id) {
 	if (!isPresetId(id)) throw new PresetOperationError("invalid-id", `invalid preset id: ${String(id)}`);
-	const state = readPresetState(dshHome, id);
-	if (!state.installed && !state.enabled) return;
-	if (!state.managed) throw new PresetOperationError("not-managed", `preset was not installed from the Workshop: ${id}`);
-	for (const dir of [libraryDirOf(dshHome, id), enabledDirOf(dshHome, id)]) {
-		if (!isDirectory(dir)) continue;
-		try {
-			rmSync(dir, {
-				recursive: true,
-				force: true,
-				maxRetries: 3,
-				retryDelay: 50
-			});
-		} catch (err) {
-			throw new PresetOperationError("write", err instanceof Error ? err.message : String(err));
-		}
+	const dir = libraryDirOf(dshHome, id);
+	if (!isDirectory(dir)) return;
+	if (!verifyProvenance(dir, id).provenance) throw new PresetOperationError("not-managed", `preset was not installed from the Workshop: ${id}`);
+	try {
+		rmSync(dir, {
+			recursive: true,
+			force: true,
+			maxRetries: 3,
+			retryDelay: 50
+		});
+	} catch (err) {
+		throw new PresetOperationError("write", err instanceof Error ? err.message : String(err));
 	}
 }
 //#endregion
@@ -686,14 +1044,6 @@ const ERRORS = {
 		status: 409,
 		error: "not-managed"
 	},
-	"already-enabled": {
-		status: 409,
-		error: "already-enabled"
-	},
-	"conflict": {
-		status: 409,
-		error: "conflict"
-	},
 	"shadowed": {
 		status: 409,
 		error: "shadowed"
@@ -705,6 +1055,10 @@ const ERRORS = {
 	"broken": {
 		status: 409,
 		error: "broken"
+	},
+	"invalid-composition": {
+		status: 409,
+		error: "invalid-composition"
 	},
 	"default-preset": {
 		status: 409,
@@ -729,28 +1083,6 @@ function sendError(res, err, message) {
 		...message === void 0 && err.message === void 0 ? {} : { message: message ?? err.message }
 	});
 }
-/** Whether `path` lives inside `root` (a boundary-safe prefix test). */
-function isUnder(path, root) {
-	return path === root || path.startsWith(root + sep);
-}
-/** Ids supplied by every root except the discovery root this feature manages. */
-async function occupiedIds(roster, root) {
-	if (roster === void 0) return null;
-	try {
-		return (await roster.list()).filter((row) => !isUnder(row.path, root)).map((row) => row.id).sort();
-	} catch {
-		return null;
-	}
-}
-/** The default preset id, or null when the roster is unavailable. */
-function defaultIdOf(roster) {
-	if (roster === void 0) return null;
-	try {
-		return roster.defaultId;
-	} catch {
-		return null;
-	}
-}
 /** One state row enriched with the composition profile. */
 function rowPayload(home, row) {
 	return {
@@ -761,8 +1093,10 @@ function rowPayload(home, row) {
 /** Build the preset-center routes. */
 function makePresetCenterRoutes(deps = {}) {
 	const home = deps.dshHome ?? dshHome();
-	const root = enabledRoot(home);
-	const rosterOf = deps.roster ?? (() => deps.ctx?.get("agentPresets"));
+	const registryOf = deps.registry ?? (() => deps.ctx?.get("agentPresets"));
+	const declarations = deps.declarations ?? new PresetDeclarations(registryOf);
+	const declared = () => declarations.declared();
+	const stateOf = (id) => readPresetState(home, id, declared());
 	const guard = (req, res, method) => {
 		if (!isLoopbackRequest(req)) {
 			sendError(res, ERRORS["loopback-only"]);
@@ -793,15 +1127,20 @@ function makePresetCenterRoutes(deps = {}) {
 	};
 	const handleState = guardedHandler("preset-center/state", async (req, res) => {
 		if (!guard(req, res, "GET")) return;
-		const roster = rosterOf();
-		const occupied = await occupiedIds(roster, root);
-		const presets = listPresetStates(home).map((row) => rowPayload(home, row));
+		const registry = registryOf();
+		const ours = declared();
+		let occupied = null;
+		if (registry !== void 0) try {
+			occupied = (await registry.list()).map((row) => row.id).filter((id) => !ours.has(id)).sort();
+		} catch {
+			occupied = null;
+		}
 		send(res, 200, {
 			ok: true,
-			defaultId: defaultIdOf(roster),
+			defaultId: defaultIdOf(registry),
 			occupied: occupied ?? [],
 			rosterAvailable: occupied !== null,
-			presets
+			presets: listPresetStates(home, ours).map((row) => rowPayload(home, row))
 		});
 	});
 	const handleComposition = guardedHandler("preset-center/composition", async (req, res) => {
@@ -811,8 +1150,8 @@ function makePresetCenterRoutes(deps = {}) {
 			sendError(res, ERRORS["invalid-id"]);
 			return;
 		}
-		const row = readPresetState(home, id);
-		if (!row.installed && !row.enabled) {
+		const row = stateOf(id);
+		if (!row.installed) {
 			sendError(res, ERRORS["not-installed"]);
 			return;
 		}
@@ -839,28 +1178,39 @@ function makePresetCenterRoutes(deps = {}) {
 			sendError(res, ERRORS["not-installed"], "composition file is missing");
 		}
 	});
-	const handleEnable = guardedHandler("preset-center/enable", async (req, res) => {
+	const handleInstall = guardedHandler("preset-center/install", async (req, res) => {
 		if (!guard(req, res, "POST")) return;
 		const parsed = await readId(req, res);
 		if (parsed === null) return;
 		const { id, confirm } = parsed;
-		const roster = rosterOf();
-		const occupied = await occupiedIds(roster, root);
-		if (occupied === null) {
-			sendError(res, ERRORS["roster-unavailable"], "the agent-preset roster is unavailable");
-			return;
-		}
-		if (occupied.includes(id)) {
-			sendError(res, ERRORS["shadowed"], `preset id is already supplied by another root: ${id}`);
-			return;
-		}
-		const state = readPresetState(home, id);
-		if (!state.installed && !state.enabled) {
+		const state = stateOf(id);
+		if (!state.installed) {
 			sendError(res, ERRORS["not-installed"]);
 			return;
 		}
 		if (!state.managed) {
 			sendError(res, ERRORS["not-managed"]);
+			return;
+		}
+		if (state.enabled) {
+			send(res, 200, {
+				ok: true,
+				state: rowPayload(home, state)
+			});
+			return;
+		}
+		const registry = registryOf();
+		if (registry === void 0) {
+			sendError(res, ERRORS["roster-unavailable"], "the agent-preset registry is unavailable");
+			return;
+		}
+		try {
+			if ((await registry.list()).map((row) => row.id).includes(id)) {
+				sendError(res, ERRORS["shadowed"], `preset id is already declared by another plugin: ${id}`);
+				return;
+			}
+		} catch {
+			sendError(res, ERRORS["roster-unavailable"], "the agent-preset registry is unavailable");
 			return;
 		}
 		const profile = profilePresetDir(state.dir);
@@ -873,19 +1223,29 @@ function makePresetCenterRoutes(deps = {}) {
 			});
 			return;
 		}
+		let definition;
 		try {
-			enablePreset(home, id);
+			definition = readPresetDefinition(id, state.dir);
 		} catch (err) {
-			if (err instanceof PresetOperationError) {
-				sendError(res, ERRORS[err.code] ?? ERRORS.write, err.message);
+			if (err instanceof CompositionError) {
+				sendError(res, ERRORS["invalid-composition"], err.message);
 				return;
 			}
 			throw err;
 		}
-		const broken = await brokenReason(roster, id);
+		try {
+			await declarations.declare(definition);
+		} catch (err) {
+			if (err instanceof DeclarationError) {
+				sendError(res, err.code === "unavailable" ? ERRORS["roster-unavailable"] : ERRORS[err.code] ?? ERRORS.write, err.message);
+				return;
+			}
+			throw err;
+		}
+		const broken = await brokenReason(registry, id);
 		if (broken !== void 0) {
 			try {
-				disablePreset(home, id);
+				await declarations.undeclare(id);
 			} catch {}
 			send(res, 409, {
 				ok: false,
@@ -896,7 +1256,7 @@ function makePresetCenterRoutes(deps = {}) {
 		}
 		send(res, 200, {
 			ok: true,
-			state: rowPayload(home, readPresetState(home, id))
+			state: rowPayload(home, stateOf(id))
 		});
 	});
 	const handleDisable = guardedHandler("preset-center/disable", async (req, res) => {
@@ -904,23 +1264,18 @@ function makePresetCenterRoutes(deps = {}) {
 		const parsed = await readId(req, res);
 		if (parsed === null) return;
 		const { id } = parsed;
-		const refusal = refusalForProtected(rosterOf(), id);
+		const refusal = refusalForProtected(registryOf(), id);
 		if (refusal !== null) {
 			sendError(res, ERRORS["default-preset"], refusal);
 			return;
 		}
-		try {
-			disablePreset(home, id);
-		} catch (err) {
-			if (err instanceof PresetOperationError) {
-				sendError(res, ERRORS[err.code] ?? ERRORS.write, err.message);
-				return;
-			}
-			throw err;
+		if (!await declarations.undeclare(id)) {
+			sendError(res, ERRORS["not-enabled"]);
+			return;
 		}
 		send(res, 200, {
 			ok: true,
-			state: rowPayload(home, readPresetState(home, id))
+			state: rowPayload(home, stateOf(id))
 		});
 	});
 	const handleUninstall = guardedHandler("preset-center/uninstall", async (req, res) => {
@@ -928,10 +1283,19 @@ function makePresetCenterRoutes(deps = {}) {
 		const parsed = await readId(req, res);
 		if (parsed === null) return;
 		const { id } = parsed;
-		const refusal = refusalForProtected(rosterOf(), id);
+		const refusal = refusalForProtected(registryOf(), id);
 		if (refusal !== null) {
 			sendError(res, ERRORS["default-preset"], refusal);
 			return;
+		}
+		try {
+			await declarations.undeclare(id);
+		} catch (err) {
+			if (err instanceof DeclarationError) {
+				sendError(res, ERRORS[err.code] ?? ERRORS.write, err.message);
+				return;
+			}
+			throw err;
 		}
 		try {
 			uninstallPreset(home, id);
@@ -957,22 +1321,31 @@ function makePresetCenterRoutes(deps = {}) {
 	return [
 		route(`${PRESET_CENTER_API_PREFIX}/state`, handleState),
 		route(`${PRESET_CENTER_API_PREFIX}/composition`, handleComposition),
-		route(`${PRESET_CENTER_API_PREFIX}/enable`, handleEnable),
+		route(`${PRESET_CENTER_API_PREFIX}/install`, handleInstall),
 		route(`${PRESET_CENTER_API_PREFIX}/disable`, handleDisable),
 		route(`${PRESET_CENTER_API_PREFIX}/uninstall`, handleUninstall)
 	];
 }
 /** Why a disable/uninstall of `id` is refused, or null when it is allowed. */
-function refusalForProtected(roster, id) {
-	const current = defaultIdOf(roster);
+function refusalForProtected(registry, id) {
+	const current = defaultIdOf(registry);
 	if (current !== null && current === id) return `preset is the current default; change the default in Settings - Agent presets first: ${id}`;
 	return null;
 }
-/** The roster's broken reason for `id`, or undefined when healthy or unknown. */
-async function brokenReason(roster, id) {
-	if (roster === void 0) return void 0;
+/** The registry's current default preset id, or null when it is unavailable. */
+function defaultIdOf(registry) {
+	if (registry === void 0) return null;
 	try {
-		return (await roster.list()).find((entry) => entry.id === id)?.broken;
+		return registry.defaultId;
+	} catch {
+		return null;
+	}
+}
+/** The registry's broken reason for `id`, or undefined when healthy or unknown. */
+async function brokenReason(registry, id) {
+	if (registry === void 0) return void 0;
+	try {
+		return (await registry.list()).find((entry) => entry.id === id)?.broken;
 	} catch {
 		return;
 	}
@@ -981,12 +1354,17 @@ async function brokenReason(roster, id) {
 //#region src/index.ts
 /** Stable cordis plugin name (matches the cordis.patch.yml insert id). */
 const name = "ui-preset-center";
-/** The gateway requires the host webserver; the roster is read opportunistically. */
+/** The gateway requires the host webserver; the registry is read opportunistically. */
 const inject = ["webServer"];
 /** Mount the preset-center gateway (once per process). */
 const apply = mountOnce("@linxin666/dsh-client-ui-preset-center", applyImpl);
 function applyImpl(ctx) {
-	const routes = makePresetCenterRoutes({ ctx });
+	const declarations = new PresetDeclarations(() => ctx.get("agentPresets"));
+	ctx.effect(() => () => declarations.release(), "dsh-preset-center: preset declarations");
+	const routes = makePresetCenterRoutes({
+		ctx,
+		declarations
+	});
 	for (const route of routes) try {
 		ctx.effect(() => {
 			const dispose = ctx.webServer.register(route);
@@ -997,4 +1375,4 @@ function applyImpl(ctx) {
 	} catch {}
 }
 //#endregion
-export { COMPOSITION_FILE, COMPOSITION_MAX_BYTES, ENABLED_DIR, LIBRARY_DIR, PRESET_CENTER_API_PREFIX, PRESET_ID_RE, PROVENANCE_FILENAME, PresetOperationError, apply, disablePreset, enablePreset, enabledRoot, inject, isPresetId, libraryRoot, listFiles, listPresetStates, makePresetCenterRoutes, moveDirectory, name, needsConfirmation, profileComposition, profilePresetDir, readPresetState, readProvenance, scanPresetIds, uninstallPreset, verifyProvenance };
+export { COMPOSITION_FILE, COMPOSITION_MAX_BYTES, CompositionError, DeclarationError, LIBRARY_DIR, METADATA_FILE, PRESET_CENTER_API_PREFIX, PRESET_ID_RE, PROVENANCE_FILENAME, PresetDeclarations, PresetOperationError, apply, inject, isPresetId, libraryDirOf, libraryRoot, listFiles, listPresetStates, makePresetCenterRoutes, name, needsConfirmation, presetDefinition, profileComposition, profilePresetDir, readCompositionRows, readCordisYaml, readPresetDefinition, readPresetMetadata, readPresetState, readProvenance, scanPresetIds, uninstallPreset, verifyProvenance };

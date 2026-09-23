@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-20",
+  "generated": "2026-09-23",
   "items": [
     {
       "id": "dsh-quick-ask",
@@ -626,12 +626,12 @@
     },
     {
       "id": "dsh-archived-chats",
-      "name": "会话档案",
+      "name": "归档管理",
       "rank": 50,
-      "nameEn": "Session Archive",
+      "nameEn": "Archive Management",
       "author": "Ultronen",
-      "description": "本地优先的归档聊天管理插件：按工作区浏览和全文搜索，原生只读预览对话、工具活动与图片，支持标签备注、ZIP 备份恢复、历史版本恢复为副本、可撤销回收站、空间分账、保留策略和来源分支视图。",
-      "descriptionEn": "Local-first archived chat management with workspace browsing and full-text search, native read-only previews of conversations, tool activity and images, tags and notes, ZIP backup restore, History restore-as-copy, an undoable Recycle Bin, storage accounting, retention policies, and lineage views.",
+      "description": "本地优先的归档聊天管理插件：按工作区浏览和全文搜索，原生只读预览对话、工具活动与图片，支持标签备注、ZIP 备份恢复、可撤销回收站、空间分账、保留策略和来源分支视图。",
+      "descriptionEn": "Local-first archived chat management with workspace browsing and full-text search, native read-only previews of conversations, tool activity and images, tags and notes, ZIP backup restore, an undoable Recycle Bin, storage accounting, retention policies, and lineage views.",
       "repo": "https://github.com/Ultronen/dsh-archived-chats",
       "npm": "dsh-archived-chats",
       "category": "ui",
@@ -1516,9 +1516,22 @@
       "subcategory": "dev"
     },
     {
+      "id": "dsh-claude-style",
+      "name": "Claude Code 桌面主题",
+      "rank": 119,
+      "nameEn": "Claude Code Desktop Theme",
+      "author": "Nwflower",
+      "description": "为 DSH Web GUI 复刻 Claude Code Desktop 的视觉与交互：象牙白/暖黑双画布与陶烬橙强调色、衬线/无衬线/等宽三字体分工、权限分段控件、品牌切换与模型选择器文案，纯 CSS 覆盖加客户端 DOM override 实现。",
+      "descriptionEn": "Recreates the Claude Code Desktop look and interaction model for the DSH Web GUI: ivory/warm-black dual canvas with a single clay accent, serif/sans/mono three-font system, permission segmented control, brand switcher and model-picker copy — pure CSS overrides plus client-side DOM overrides.",
+      "repo": "https://github.com/Nwflower/dsh-claude-style",
+      "npm": "dsh-claude-style",
+      "category": "ui",
+      "subcategory": "render"
+    },
+    {
       "id": "dsh-attention-health",
       "name": "上下文健康",
-      "rank": 119,
+      "rank": 120,
       "nameEn": "Attention Health",
       "author": "donghangxunlang-cmd",
       "description": "上下文健康监测 + 内容退化检测（思考打转、输出复读）+ 继续 vs 交接成本裁决 + 零模型交接文档。纯本地、零网络。",

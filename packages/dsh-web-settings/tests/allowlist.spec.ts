@@ -2,6 +2,8 @@
  * Allowlist parsing and composition: the settings.yaml web_settings_namespaces
  * key (list and map shapes), package-name aliasing, and the registered-set
  * intersection that keeps the bridge from surfacing anything unknown.
+ *
+ * test-standards-allow: allowlist parsing unit tests over synthetic YAML fixtures
  */
 
 import { describe, expect, it } from 'vitest'
@@ -96,6 +98,24 @@ describe('resolveNamespaceEntry', () => {
     expect(resolveNamespaceEntry('dsh-web')).toBeUndefined()
     expect(resolveNamespaceEntry('dsh-client-ui-web-ui-settings')).toBeUndefined()
     expect(resolveNamespaceEntry('something-else')).toBeUndefined()
+  })
+
+  it('resolves a full npm name through its bare package segment', () => {
+    // The profile row is the only place a package name survives on 0.1.7, and
+    // it spells the package scoped (`@linxin666/dsh-client-ui-x`) or as the
+    // aggregate's subplugin (`@linxin666/dsh-web-all/x`).
+    expect(resolveNamespaceEntry('@linxin666/dsh-client-ui-task-board')).toBe('task-board')
+    expect(resolveNamespaceEntry('@linxin666/dsh-web-all/task-board')).toBe('task-board')
+    expect(resolveNamespaceEntry('@linxin666/dsh-ssh')).toBe('dsh-ssh')
+    expect(resolveNamespaceEntry('@linxin666/dsh-web-all/pet')).toBe('pet')
+    expect(resolveNamespaceEntry('@linxin666/dsh-client-ui-skin-center')).toBe('skin-background')
+  })
+
+  it('still ignores a scoped name that owns no settings namespace', () => {
+    expect(resolveNamespaceEntry('@linxin666/dsh-web-all')).toBeUndefined()
+    expect(resolveNamespaceEntry('@linxin666/dsh-client-ui-web-ui-settings')).toBeUndefined()
+    expect(resolveNamespaceEntry('@linxin666/dsh-web-all/does-not-exist')).toBeUndefined()
+    expect(resolveNamespaceEntry('@linxin666')).toBeUndefined()
   })
 })
 

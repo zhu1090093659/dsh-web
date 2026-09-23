@@ -521,7 +521,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/wallpaper.ts
-		/** The namespace string the Host registers (mirrors src/index.ts). */
+		/** The section key the Host schema declares (mirrors src/index.ts). */
 		const SKIN_WALLPAPER_NS = "skin-wallpaper";
 		const clamp = (value, min, max) => Math.max(min, Math.min(max, Math.round(value)));
 		/** Style one fixed, non-interactive, under-everything wallpaper layer. */
@@ -609,8 +609,9 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/**
-		* Own the skin-wallpaper scope: keep the mounted layers in sync with the
-		* persisted selection and the card-driven descriptor resolution.
+		* Own the skin-wallpaper configuration section: keep the mounted layers in
+		* sync with the persisted selection and the card-driven descriptor
+		* resolution.
 		*/
 		var WallpaperController = class {
 			enabledValue = true;
@@ -629,6 +630,8 @@ window.__ModuleLoader__.load({
 			unsubscribe;
 			options;
 			doc;
+			/** Rejection message of the last settings write that did not land, if any. */
+			writeErrorValue = null;
 			/** The descriptor of the applied selection, resolved by the card. */
 			applied = null;
 			/** The try-on descriptor while a preview is up. */
@@ -651,7 +654,7 @@ window.__ModuleLoader__.load({
 			/** Detached frame-capture video; released on error/abort/loadeddata and on
 			*  teardown so it never keeps buffering the source file. */
 			captureVideo = null;
-			/** Guard flag: suppresses readAll during applyThemeDefaults scope writes
+			/** Guard flag: suppresses readAll during applyThemeDefaults settings writes
 			*  to prevent mid-write listener cascades from resetting values. */
 			seeding = false;
 			constructor(scope, options = {}) {
@@ -789,14 +792,14 @@ window.__ModuleLoader__.load({
 				if (trimmed === "" || this.dirsValue.includes(trimmed)) return;
 				this.dirsValue = [...this.dirsValue, trimmed];
 				this.publish();
-				this.scope.set("weLibraryDirs", this.dirsValue);
+				this.persist("weLibraryDirs", this.dirsValue);
 			}
 			removeDir(dir) {
 				const next = this.dirsValue.filter((d) => d !== dir);
 				if (next.length === this.dirsValue.length) return;
 				this.dirsValue = next;
 				this.publish();
-				this.scope.set("weLibraryDirs", this.dirsValue);
+				this.persist("weLibraryDirs", this.dirsValue);
 			}
 			failedIds = /* @__PURE__ */ new Set();
 			isDisplaying = () => {
@@ -808,64 +811,87 @@ window.__ModuleLoader__.load({
 				return this.mediaLayer !== null && current !== null ? current.id : null;
 			};
 			trying = () => this.previewing !== null;
+			writeError = () => this.writeErrorValue;
 			subscribe = (listener) => {
 				this.listeners.add(listener);
 				return () => {
 					this.listeners.delete(listener);
 				};
 			};
+			/**
+			* Queue one preference write and judge its answer.
+			*
+			* The form contract answers `false` for a write the Host refused or
+			* skipped and rejects on a broken transport; neither is a saved setting, so
+			* both clear the previous error or raise a new one instead of being
+			* dropped. The rendered value stays as the user set it either way — the
+			* card is the only place that can tell them it did not persist.
+			*/
+			persist(field, value) {
+				this.scope.set(field, value).then((accepted) => {
+					this.reportWrite(accepted ? null : "the Host did not accept the wallpaper setting");
+				}, (error) => {
+					this.reportWrite(error instanceof Error ? error.message : String(error));
+				});
+			}
+			/** Publish one write verdict (null = the last write landed). */
+			reportWrite(error) {
+				if (this.writeErrorValue === error) return;
+				this.writeErrorValue = error;
+				this.publish();
+			}
 			setEnabled(value) {
 				this.enabledValue = value;
 				this.render();
 				this.publish();
-				this.scope.set("enabled", value);
+				this.persist("enabled", value);
 			}
 			setMode(mode) {
 				this.modeValue = mode;
 				this.render();
 				this.publish();
-				this.scope.set("mode", mode);
+				this.persist("mode", mode);
 			}
 			setFit(fit) {
 				this.fitValue = fit;
 				this.render();
 				this.publish();
-				this.scope.set("fit", fit);
+				this.persist("fit", fit);
 			}
 			setDim(value) {
 				this.dimValue = clamp(value, 0, 90);
 				this.render();
 				this.publish();
-				this.scope.set("dim", this.dimValue);
+				this.persist("dim", this.dimValue);
 			}
 			setBlur(value) {
 				this.blurValue = clamp(value, 0, 60);
 				this.render();
 				this.publish();
-				this.scope.set("wallpaperBlur", this.blurValue);
+				this.persist("wallpaperBlur", this.blurValue);
 			}
 			setOpacity(value) {
 				this.opacityValue = clamp(value, 0, 100);
 				this.render();
 				this.publish();
-				this.scope.set("wallpaperOpacity", this.opacityValue);
+				this.persist("wallpaperOpacity", this.opacityValue);
 			}
 			setPauseOnHidden(value) {
 				this.pauseOnHiddenValue = value;
 				this.publish();
-				this.scope.set("pauseOnHidden", value);
+				this.persist("pauseOnHidden", value);
 			}
 			setSound(value) {
 				this.soundValue = value;
 				this.applySound();
 				this.publish();
-				this.scope.set("sound", value);
+				this.persist("sound", value);
 			}
 			setVolume(value) {
 				this.volumeValue = clamp(value, 0, 100);
 				this.applySound();
 				this.publish();
-				this.scope.set("volume", this.volumeValue);
+				this.persist("volume", this.volumeValue);
 			}
 			applySelection(descriptor) {
 				this.failedIds.delete(descriptor.id);
@@ -874,7 +900,7 @@ window.__ModuleLoader__.load({
 				this.selectionValue = descriptor.id;
 				this.render();
 				this.publish();
-				this.scope.set("selection", descriptor.id);
+				this.persist("selection", descriptor.id);
 				this.probeSceneCapabilitiesIfNeeded(descriptor);
 			}
 			clearSelection() {
@@ -883,7 +909,7 @@ window.__ModuleLoader__.load({
 				this.selectionValue = "";
 				this.render();
 				this.publish();
-				this.scope.set("selection", "");
+				this.persist("selection", "");
 			}
 			sync(descriptor) {
 				if (descriptor !== null && this.applied?.id === descriptor.id) descriptor = {
@@ -952,8 +978,8 @@ window.__ModuleLoader__.load({
 				}
 				this.seeding = true;
 				try {
-					this.scope.set("dim", this.dimValue);
-					this.scope.set("wallpaperOpacity", this.opacityValue);
+					this.scope.set("dim", this.dimValue).catch(() => {});
+					this.scope.set("wallpaperOpacity", this.opacityValue).catch(() => {});
 				} catch {}
 				this.seeding = false;
 			}
@@ -1633,6 +1659,7 @@ window.__ModuleLoader__.load({
 			const activeId = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.activeId);
 			const trying = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.trying);
 			const dirs = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.dirs);
+			const writeError = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.writeError);
 			const [shownDim, setShownDim] = useLiveValue$1(dim);
 			const [shownBlur, setShownBlur] = useLiveValue$1(blur);
 			const [shownOpacity, setShownOpacity] = useLiveValue$1(opacity);
@@ -2082,6 +2109,15 @@ window.__ModuleLoader__.load({
 					actionError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: skin_center_module_css_default.error,
 						children: actionError
+					}),
+					writeError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: skin_center_module_css_default.error,
+						role: "alert",
+						children: [
+							t("wallpaperSaveFailed"),
+							": ",
+							writeError
+						]
 					}),
 					items !== null && items.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: skin_center_module_css_default.wallpaperToolbar,
@@ -3157,6 +3193,8 @@ window.__ModuleLoader__.load({
 			persist;
 			/** The fixed backdrop-filter element, present only while active blur > 0. */
 			blurElement = null;
+			/** Currently applied backdrop-filter blur px (cached to avoid redundant style writes during streaming). */
+			appliedBlur = null;
 			/** The body MutationObserver, installed lazily once a blur is active. */
 			observer = null;
 			/** Pending requestAnimationFrame id for a coalesced recheck. */
@@ -3366,7 +3404,10 @@ window.__ModuleLoader__.load({
 					element.setAttribute("aria-hidden", "true");
 					this.blurElement = element;
 					document.body.appendChild(element);
+					this.appliedBlur = null;
 				}
+				if (this.appliedBlur === active) return;
+				this.appliedBlur = active;
 				const blur = "blur(" + active + "px)";
 				this.blurElement.style.backdropFilter = blur;
 				this.blurElement.style.setProperty("-webkit-backdrop-filter", blur);
@@ -3376,6 +3417,7 @@ window.__ModuleLoader__.load({
 				if (this.blurElement === null) return;
 				this.blurElement.remove();
 				this.blurElement = null;
+				this.appliedBlur = null;
 			}
 			/**
 			* Install the MutationObserver on document.body only when either blur
@@ -3600,6 +3642,7 @@ window.__ModuleLoader__.load({
 			wallpaperDirBrowse: "Browse…",
 			wallpaperDirBrowseHint: "Pick a folder with the system file manager (Finder / Explorer)",
 			wallpaperDirBrowseFailed: "Could not open the system folder picker — type the path manually instead",
+			wallpaperSaveFailed: "Could not save wallpaper settings.",
 			wallpaperRatingAll: "All",
 			wallpaperRatingG: "G",
 			wallpaperRatingPg13: "PG-13",
@@ -3722,6 +3765,7 @@ window.__ModuleLoader__.load({
 			wallpaperDirBrowse: "浏览…",
 			wallpaperDirBrowseHint: "通过系统文件管理器（访达 / 资源管理器）选择文件夹",
 			wallpaperDirBrowseFailed: "无法打开系统目录选择框——请手动输入路径",
+			wallpaperSaveFailed: "壁纸设置保存失败。",
 			wallpaperRatingAll: "全部",
 			wallpaperRatingG: "G",
 			wallpaperRatingPg13: "PG-13",
@@ -4941,7 +4985,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/custom-theme-controller.ts
-		/** Owns the custom-theme settings snapshot and its inert-by-default style. */
+		/** Owns the custom-theme configuration section and its inert-by-default style. */
 		var CustomThemeController = class {
 			scope;
 			doc;
@@ -5125,7 +5169,7 @@ window.__ModuleLoader__.load({
 					const write = this.writeQueue.shift();
 					if (write === void 0) break;
 					try {
-						await this.scope.set(write.field, write.value);
+						if (!await this.scope.set(write.field, write.value)) throw new Error("the Host did not accept the custom theme setting");
 					} catch (error) {
 						settled.push({
 							write,
@@ -5149,6 +5193,59 @@ window.__ModuleLoader__.load({
 				else result.write.reject(result.error);
 			}
 		};
+		//#endregion
+		//#region src/client/settings-section.ts
+		/** Read one object-shaped layer of a form snapshot. */
+		function layerOf(layer, key) {
+			return typeof layer === "object" && layer !== null ? layer[key] : void 0;
+		}
+		/**
+		* Project one entry form onto the section behind `key`.
+		* @param parent - the form of the profile entry that owns this section.
+		* @param key - the section key inside the entry's Config.
+		* @returns the section's form: its own value/user/base layers, and writes
+		*   addressed at `[key, field]` on the parent.
+		*/
+		function settingsSection(parent, key) {
+			let source;
+			let projected;
+			const project = () => {
+				const snapshot = parent.getSnapshot();
+				if (projected !== void 0 && source === snapshot) return projected;
+				source = snapshot;
+				projected = {
+					status: snapshot.status,
+					value: layerOf(snapshot.value, key),
+					base: layerOf(snapshot.base, key),
+					user: layerOf(snapshot.user, key),
+					revision: snapshot.revision,
+					writable: snapshot.writable,
+					mode: snapshot.mode
+				};
+				return projected;
+			};
+			return {
+				getSnapshot: project,
+				subscribe: (listener) => parent.subscribe(listener),
+				set: (field, value) => parent.mutate([{
+					op: "set",
+					path: [key, field],
+					value
+				}]),
+				unset: (field) => parent.mutate([{
+					op: "unset",
+					path: [key, field]
+				}]),
+				mutate: (ops, expectedRevision) => parent.mutate(ops.map((op) => "value" in op ? {
+					op: "set",
+					path: [key, ...op.path],
+					value: op.value
+				} : {
+					op: "unset",
+					path: [key, ...op.path]
+				}), expectedRevision)
+			};
+		}
 		//#endregion
 		//#region src/client/telemetry.ts
 		const VISITOR_KEY = "dsh-web-ui-telemetry-visitor";
@@ -5223,12 +5320,56 @@ window.__ModuleLoader__.load({
 		//#region src/client/index.ts
 		/** Locale namespace owned by this plugin. */
 		const NS = "skinCenter";
-		/** Required services: slots + locale (plugin card), theme (preview toggle), settingsScope + its transport (background scrim), and remote (wallpaper directory picker). */
+		/**
+		* Profile entry id the family aggregate's generated row carries.
+		*/
+		const AGGREGATE_ENTRY_ID = "web-ui-skin-center";
+		/**
+		* Profile entry ids this package's two patch rows carry: the aggregate's
+		* generated row and the standalone bundle patch's row (`ui-skin-center`), plus
+		* the legacy background namespace as the last resort.
+		*/
+		const SKIN_CENTER_ENTRY_IDS = [
+			AGGREGATE_ENTRY_ID,
+			"ui-skin-center",
+			SKIN_BACKGROUND_NS
+		];
+		function servedEntryId(forms) {
+			let served;
+			try {
+				served = forms.describe().getSnapshot().view?.namespaces.map((view) => view.ns);
+			} catch {
+				served = void 0;
+			}
+			if (served === void 0) return AGGREGATE_ENTRY_ID;
+			return SKIN_CENTER_ENTRY_IDS.find((id) => served.includes(id)) ?? "skin-background";
+		}
+		/**
+		* The configuration form of this plugin's own profile entry.
+		*
+		* `ctx.configForms` addresses one form per profile entry id and carries no
+		* package identity, so the entry is reached through the family binder, whose
+		* namespace-to-entry mapping the settings group owns: `skin-background` is
+		* the namespace this package has always owned, and the bridge resolves it to
+		* whichever entry id the profile gave this row. A deployment without the
+		* group serves no such mapping — the family namespace then stands in for the
+		* entry id (a profile that names the row after it serves the same form), and
+		* a page that serves neither reports the form unavailable, which each feature
+		* already handles by keeping its defaults and reporting a failed save.
+		* @param ctx - client root context.
+		* @returns the entry form carrying every preference family.
+		*/
+		function bindConfigForm(ctx) {
+			const binder = ctx.get("webUiSettings");
+			if (binder !== void 0 && typeof binder.bind === "function") return binder.bind({ namespace: SKIN_BACKGROUND_NS });
+			return ctx.configForms.get(servedEntryId(ctx.configForms));
+		}
+		/** Required services: slots + locale (plugin card), theme (preview toggle), configForms (settings sections), and remote (wallpaper directory picker). */
 		const inject = [
 			"slots",
 			"locale",
 			"theme",
-			"settingsScope",
+			"configForms",
 			"connection",
 			"remote"
 		];
@@ -5279,7 +5420,7 @@ window.__ModuleLoader__.load({
 				};
 			}, "ui-skin-center: body scope");
 			const theme = ctx.get("theme");
-			const binder = ctx.get("webUiSettings") ?? ctx.settingsScope;
+			const settings = bindConfigForm(ctx);
 			const V2_ACTIVE_URL = "/api/skin-center/v2/active";
 			let persistTimer = null;
 			const postBackground = (next, keepalive = false) => {
@@ -5303,16 +5444,16 @@ window.__ModuleLoader__.load({
 				persistTimer = null;
 				postBackground(background.snapshot(), true);
 			};
-			const backgroundScope = binder.bind({ namespace: SKIN_BACKGROUND_NS });
+			const backgroundSection = settingsSection(settings, SKIN_BACKGROUND_NS);
 			const scopeConfig = () => {
-				const value = backgroundScope.getSnapshot().value;
+				const value = backgroundSection.getSnapshot().value;
 				if (value === void 0 || value === null) return null;
 				return value;
 			};
 			const background = new BackgroundController(scopeConfig(), persistBackground);
-			let reconcileState = initialSkinBackgroundReconcileState(backgroundScope.getSnapshot());
+			let reconcileState = initialSkinBackgroundReconcileState(backgroundSection.getSnapshot());
 			const reconcileScope = () => {
-				const result = reconcileSkinBackgroundPublication(reconcileState, background.snapshot(), backgroundScope.getSnapshot());
+				const result = reconcileSkinBackgroundPublication(reconcileState, background.snapshot(), backgroundSection.getSnapshot());
 				reconcileState = result.state;
 				if (result.patch === null) return;
 				const currentSnapshot = background.snapshot();
@@ -5336,14 +5477,14 @@ window.__ModuleLoader__.load({
 				};
 				reconcileScope();
 			});
-			ctx.effect(() => backgroundScope.subscribe(reconcileScope), "ui-skin-center: background scope sync");
+			ctx.effect(() => backgroundSection.subscribe(reconcileScope), "ui-skin-center: background section sync");
 			ctx.effect(() => () => {
 				flushBackground();
 				background.dispose();
 			}, "ui-skin-center: background dispose");
-			const customTheme = new CustomThemeController(binder.bind({ namespace: SKIN_CUSTOM_THEME_NS }));
+			const customTheme = new CustomThemeController(settingsSection(settings, SKIN_CUSTOM_THEME_NS));
 			ctx.effect(() => () => customTheme.dispose(), "ui-skin-center: custom theme dispose");
-			const wallpaper = new WallpaperController(binder.bind({ namespace: SKIN_WALLPAPER_NS }));
+			const wallpaper = new WallpaperController(settingsSection(settings, SKIN_WALLPAPER_NS));
 			ctx.effect(() => () => wallpaper.dispose(), "ui-skin-center: wallpaper dispose");
 			installBootRestore(wallpaper);
 			const runtime = bootSkinRuntime({ suppressBackgroundMedia: () => wallpaper.enabled() && wallpaper.isDisplaying() });
@@ -5401,6 +5542,7 @@ window.__ModuleLoader__.load({
 					},
 					activeId: () => wallpaper.activeId(),
 					trying: () => wallpaper.trying(),
+					writeError: () => wallpaper.writeError(),
 					subscribe: (listener) => wallpaper.subscribe(listener),
 					setEnabled: (value) => wallpaper.setEnabled(value),
 					setMode: (value) => wallpaper.setMode(value),

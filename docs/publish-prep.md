@@ -30,7 +30,7 @@
 
 ## 外部依赖与迁移说明
 
-- 聚合包外部依赖 `dsh-better-sidebar@0.19.1`（2026-09-11 发布的稳定版本，peer 全面声明 `^0.1.5-rc.1`，inject 列表含可选的 `@deepseek-ai/dsh-client-ui-sidebar-right` 面，其 pnpm `minimumReleaseAgeExclude` 保持锁定）。聚合包在 `aggregate.yml` 中锁定此版本，新版本全家桶发版时将连带安装。
+- alpha 分支的聚合包没有任何外部依赖：`dsh-better-sidebar@0.19.1`（2026-09-11 发布的稳定版本）的 peer 区间 `^0.1.5-rc.1` 不覆盖本分支的 `0.1.7-alpha.1` cohort，故 `aggregate.yml` 不再声明该行、`package.json` 不再依赖它、锁定它的 `minimumReleaseAgeExclude` 条目也已删除；右侧面板改为按需安装。稳定线 `dev` 仍内置 0.19.1 并保留对应锁定条目。
 - 历史聚合包命名迁移：从 `@linxin666/dsh-web-ui-all` 向 `@linxin666/dsh-web-all` 的迁移已在 0.3.3 完成并弃用旧包名，当前统一发布 `@linxin666/dsh-web-all`。
 
 ## 兼容性边界
@@ -58,4 +58,4 @@ pnpm build
 node scripts/verify-version.mjs 0.3.23
 ```
 
-CI 与发布挂载冒烟测试挂载目标为 `@deepseek-ai/dsh@0.1.5-rc.1`，与家族包通过 `dsh.engines.dsh >=0.1.5-rc.1` 声明的最低宿主版本一致。
+CI 与发布挂载冒烟测试挂载目标为 `@deepseek-ai/dsh@0.1.7-alpha.1`，与家族包通过 `dsh.engines.dsh >=0.1.7-alpha.1` 声明的最低宿主版本一致。

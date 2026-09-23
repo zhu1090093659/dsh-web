@@ -1,19 +1,25 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 
 import { CustomThemeController } from '../src/client/custom-theme-controller.ts'
 import { CUSTOM_THEME_DEFAULTS, type CustomThemeConfig } from '../src/core/custom-theme.ts'
 
-function fakeScope(initial: Partial<CustomThemeConfig> = {}, rejectWrites = false): {
-  scope: SettingsScope<CustomThemeConfig>
+/** How the fake form answers a write: accepted, refused (the Host said no), or a broken transport. */
+type WriteAnswer = 'accept' | 'refuse' | 'reject'
+
+/** Resolve the fake's write answer, which a test may switch mid-flight. */
+type WritePolicy = WriteAnswer | (() => WriteAnswer)
+
+function fakeScope(initial: Partial<CustomThemeConfig> = {}, policy: WritePolicy = 'accept'): {
+  scope: ConfigForm<CustomThemeConfig>
   calls: Array<{ field: string; value: unknown }>
 } {
   let value = { ...initial } as CustomThemeConfig
   const calls: Array<{ field: string; value: unknown }> = []
   const listeners = new Set<() => void>()
-  const snapshot: SettingsScopeSnapshot<CustomThemeConfig> = {
+  const snapshot: ConfigFormSnapshot<CustomThemeConfig> = {
     status: 'ready',
     value,
     base: undefined,
@@ -22,29 +28,34 @@ function fakeScope(initial: Partial<CustomThemeConfig> = {}, rejectWrites = fals
     writable: true,
     mode: 'host',
   }
-  const scope: SettingsScope<CustomThemeConfig> = {
+  const answer = (): WriteAnswer => typeof policy === 'function' ? policy() : policy
+  const scope: ConfigForm<CustomThemeConfig> = {
     getSnapshot: () => ({ ...snapshot, value }),
     subscribe: listener => {
       listeners.add(listener)
       return () => { listeners.delete(listener) }
     },
     set: async (field, next) => {
-      if (rejectWrites) throw new Error('settings write rejected')
+      if (answer() === 'reject') throw new Error('settings write rejected')
+      if (answer() === 'refuse') return false
       calls.push({ field, value: next })
       value = { ...value, [field]: next }
       for (const listener of listeners) listener()
+      return true
     },
     unset: async field => {
       value = { ...value }
       delete value[field]
       for (const listener of listeners) listener()
+      return true
     },
+    mutate: async () => answer() !== 'refuse',
   }
   return { scope, calls }
 }
 
 function delayedScope(initial: Partial<CustomThemeConfig> = {}): {
-  scope: SettingsScope<CustomThemeConfig>
+  scope: ConfigForm<CustomThemeConfig>
   calls: Array<{ field: string; value: unknown }>
   resolveNext(): void
 } {
@@ -56,7 +67,7 @@ function delayedScope(initial: Partial<CustomThemeConfig> = {}): {
     next: unknown
     resolve(): void
   }> = []
-  const snapshot: SettingsScopeSnapshot<CustomThemeConfig> = {
+  const snapshot: ConfigFormSnapshot<CustomThemeConfig> = {
     status: 'ready',
     value,
     base: undefined,
@@ -65,7 +76,7 @@ function delayedScope(initial: Partial<CustomThemeConfig> = {}): {
     writable: true,
     mode: 'host',
   }
-  const scope: SettingsScope<CustomThemeConfig> = {
+  const scope: ConfigForm<CustomThemeConfig> = {
     getSnapshot: () => ({ ...snapshot, value }),
     subscribe: listener => {
       listeners.add(listener)
@@ -76,8 +87,10 @@ function delayedScope(initial: Partial<CustomThemeConfig> = {}): {
       await new Promise<void>(resolve => {
         pending.push({ field, next, resolve })
       })
+      return true
     },
-    unset: async () => {},
+    unset: async () => true,
+    mutate: async () => true,
   }
   return {
     scope,
@@ -92,10 +105,10 @@ function delayedScope(initial: Partial<CustomThemeConfig> = {}): {
   }
 }
 
-function restoringScope(initial: Partial<CustomThemeConfig>): SettingsScope<CustomThemeConfig> {
+function restoringScope(initial: Partial<CustomThemeConfig>): ConfigForm<CustomThemeConfig> {
   const value = { ...initial } as CustomThemeConfig
   const listeners = new Set<() => void>()
-  const snapshot: SettingsScopeSnapshot<CustomThemeConfig> = {
+  const snapshot: ConfigFormSnapshot<CustomThemeConfig> = {
     status: 'ready',
     value,
     base: undefined,
@@ -112,8 +125,10 @@ function restoringScope(initial: Partial<CustomThemeConfig>): SettingsScope<Cust
     },
     set: async () => {
       for (const listener of listeners) listener()
+      return true
     },
-    unset: async () => {},
+    unset: async () => true,
+    mutate: async () => true,
   }
 }
 
@@ -192,7 +207,7 @@ describe('CustomThemeController', () => {
   })
 
   it('surfaces rejected profile writes and restores the persisted value', async () => {
-    const { scope } = fakeScope(CUSTOM_THEME_DEFAULTS, true)
+    const { scope } = fakeScope(CUSTOM_THEME_DEFAULTS, 'reject')
     const controller = new CustomThemeController(scope, { doc: document })
 
     controller.setProfileValue('light', 'accent', '#123456')
@@ -208,7 +223,7 @@ describe('CustomThemeController', () => {
     const { scope } = fakeScope({
       ...CUSTOM_THEME_DEFAULTS,
       light: { ...CUSTOM_THEME_DEFAULTS.light, accent: '#123456' },
-    }, true)
+    }, 'reject')
     const controller = new CustomThemeController(scope, { doc: document })
 
     controller.reset('light')
@@ -233,6 +248,61 @@ describe('CustomThemeController', () => {
     expect(controller.getState()).toMatchObject({ applied: false, previewing: false, visible: false })
     expect(document.documentElement.hasAttribute('data-dsh-custom-theme')).toBe(false)
     expect(calls).toHaveLength(0)
+    controller.dispose()
+  })
+
+  it('user sees a Host-refused palette write as a failed save', async () => {
+    // Given a card whose write the Host answers with `false` (a refusal or a
+    // skipped write, which 0.1.7 reports instead of rejecting)
+    const { scope, calls } = fakeScope(CUSTOM_THEME_DEFAULTS, 'refuse')
+    const controller = new CustomThemeController(scope, { doc: document })
+
+    // When the user edits an accent colour
+    controller.setProfileValue('light', 'accent', '#123456')
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Then nothing was stored, the shown profile keeps the persisted colour
+    // and the card reports the failure
+    expect(calls).toHaveLength(0)
+    expect(controller.profile('light').accent).toBe(CUSTOM_THEME_DEFAULTS.light.accent)
+    expect(controller.getState().writeError).toContain('did not accept')
+    controller.dispose()
+  })
+
+  it('user gets a refused theme activation reported as a failed apply', async () => {
+    // Given a card whose activation write the Host refuses
+    const controller = new CustomThemeController(fakeScope(CUSTOM_THEME_DEFAULTS, 'refuse').scope, { doc: document })
+
+    // When the user applies the theme
+    // Then the apply fails, the theme stays inactive and the card reports it
+    await expect(controller.apply()).rejects.toThrow()
+    expect(controller.getState()).toMatchObject({ applied: false, visible: false })
+    expect(controller.getState().writeError).toContain('did not accept')
+    controller.dispose()
+  })
+
+  it('user sees the failed-save notice clear once a later write lands', async () => {
+    // Given a card whose first write is refused
+    let refuse = true
+    const { scope } = fakeScope(CUSTOM_THEME_DEFAULTS, () => refuse ? 'refuse' : 'accept')
+    const controller = new CustomThemeController(scope, { doc: document })
+
+    controller.setProfileValue('light', 'accent', '#123456')
+    await Promise.resolve()
+    await Promise.resolve()
+    const afterRefusal = controller.getState().writeError
+
+    // When a later write is accepted
+    refuse = false
+    controller.setProfileValue('light', 'accent', '#654321')
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Then the notice is gone and the new colour is the persisted one
+    expect(afterRefusal).toContain('did not accept')
+    expect(controller.getState().writeError).toBeNull()
+    expect(controller.profile('light').accent).toBe('#654321')
     controller.dispose()
   })
 

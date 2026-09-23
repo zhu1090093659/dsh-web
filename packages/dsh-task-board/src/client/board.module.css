@@ -50,20 +50,27 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
 
 /* --- sidebar entry row ------------------------------------------------------- */
 
+/* Same geometry as the shell's own panel rows (SidebarRoot .panelRow): 2px
+   inset with a 12px radius, 8px content padding, 36px row, 14/22 type, and the
+   primary ink — so an injected row and an official row line up column for
+   column instead of each carrying its own box. */
 .entry {
   box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
-  height: 36px;
-  padding: 0 10px;
+  min-height: 36px;
+  padding: 7px 8px;
+  margin: 0 2px;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  color: var(--dsw-alias-label-secondary);
+  border-radius: 12px;
+  color: var(--dsw-alias-label-primary);
   cursor: pointer;
-  font-size: 13px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: left;
   white-space: nowrap;
 }
 
@@ -78,19 +85,21 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   font-weight: 600;
 }
 
+/* Icon box matches the shell's panel glyph exactly (16px), so the glyph column
+   and the label column land on the official rows' x positions. */
 .entryIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   flex: none;
 }
 
 .entryIcon svg {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .entryLabel {
@@ -98,7 +107,9 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   text-overflow: ellipsis;
 }
 
-/* Collapsed rail: icon-only, centered, matching the shell's 56px rail. */
+/* Collapsed rail: icon-only, centered, matching the shell's 56px rail. The
+   shell asks its own panel rows for an 18px glyph on the rail, so the icon box
+   and the svg step up together with the 12px rail radius. */
 :global([data-dsh-frame][data-sidebar-collapsed]) .entry,
 :global([data-sidebar-collapsed]) .entry {
   justify-content: center;
@@ -106,7 +117,15 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   width: 36px;
   height: 36px;
   margin: 0 auto 12px;
-  border-radius: 50%;
+  border-radius: 12px;
+}
+
+:global([data-dsh-frame][data-sidebar-collapsed]) .entryIcon,
+:global([data-sidebar-collapsed]) .entryIcon,
+:global([data-dsh-frame][data-sidebar-collapsed]) .entryIcon svg,
+:global([data-sidebar-collapsed]) .entryIcon svg {
+  width: 18px;
+  height: 18px;
 }
 
 :global([data-dsh-frame][data-sidebar-collapsed]) .entryLabel,

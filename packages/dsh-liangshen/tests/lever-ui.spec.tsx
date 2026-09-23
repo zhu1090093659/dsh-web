@@ -93,6 +93,25 @@ describe('LiangShenLever', () => {
     const onButton = button(mount(on.face))
     gesture(onButton, 140, 100)
     expect(on.calls).toEqual(['push'])
+
+    const onPull = fakeFace({ state: 'on' })
+    const onPullButton = button(mount(onPull.face))
+    gesture(onPullButton, 100, 140)
+    expect(onPull.calls).toEqual(['push'])
+
+    const offH = fakeFace()
+    const offHButton = button(mount(offH.face))
+    act(() => { offHButton.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 100 })) })
+    act(() => { offHButton.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 140, clientY: 100 })) })
+    act(() => { offHButton.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 140, clientY: 100 })) })
+    expect(offH.calls).toEqual(['pull'])
+
+    const onH = fakeFace({ state: 'on' })
+    const onHButton = button(mount(onH.face))
+    act(() => { onHButton.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 140, clientY: 100 })) })
+    act(() => { onHButton.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 100, clientY: 100 })) })
+    act(() => { onHButton.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 100, clientY: 100 })) })
+    expect(onH.calls).toEqual(['push'])
   })
 
   it('toggles on a keyboard activation, which arrives as a detail-less click', () => {
@@ -168,5 +187,36 @@ describe('LiangShenLever', () => {
     expect(container.querySelector('[data-dsh-part="lever-burst"]')).not.toBeNull()
     act(() => { store.set({ ...store.getSnapshot(), busy: true }) })
     expect(container.querySelectorAll('[data-dsh-part="lever-burst"]')).toHaveLength(1)
+  })
+
+  it('user observes hero preset chip preserved on initial mount and synced on toggle', () => {
+    // Given an existing hero preset chip rendered in the DOM
+    const heroBtn = document.createElement('button')
+    heroBtn.setAttribute('aria-haspopup', 'menu')
+    const seatLabel = document.createElement('span')
+    seatLabel.className = 'seatLabel_mock'
+    seatLabel.textContent = 'Command Code'
+    heroBtn.appendChild(seatLabel)
+    document.body.appendChild(heroBtn)
+
+    const { face, store } = fakeFace({ state: 'off', restoreLabel: 'Standard' })
+
+    // When the lever mounts in initial off state
+    mount(face)
+
+    // Then it does not overwrite the existing hero chip
+    expect(seatLabel.textContent).toBe('Command Code')
+
+    // When toggled to on
+    act(() => { store.set({ ...store.getSnapshot(), state: 'on' }) })
+
+    // Then the hero chip reflects LiangShen mode
+    expect(seatLabel.textContent).toBe('lever.name')
+
+    // When toggled back to off
+    act(() => { store.set({ ...store.getSnapshot(), state: 'off', restoreLabel: 'Command Code' }) })
+
+    // Then the hero chip reflects the restored preset
+    expect(seatLabel.textContent).toBe('Command Code')
   })
 })

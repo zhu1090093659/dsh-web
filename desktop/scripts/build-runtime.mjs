@@ -16,7 +16,7 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const desktopDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const runtimeSrc = path.join(desktopDir, 'runtime');
@@ -100,6 +100,40 @@ function assertNoSymlinks(root) {
   }
 }
 
+/**
+ * Remove pnpm's node_modules metadata manifests from a staged payload.
+ *
+ * pnpm records the STORE DIRECTORY that produced the tree in
+ * node_modules/.modules.yaml. Staging copies the CI runner's install verbatim,
+ * so the shipped desktop payload carries "/Users/runner/setup-pnpm/..." — a
+ * path that exists on no user machine. Any in-app plugin or dependency update
+ * (pnpm add / update) then aborts with ERR_PNPM_UNEXPECTED_STORE, because the
+ * user's store differs from the recorded one (#1669). The in-app flow uses
+ * pnpm add, not pnpm install, and the release smoke test only boots the host,
+ * so the breakage shipped undetected.
+ *
+ * Deleting the whole file is the fix, verified against pnpm 11.24.0:
+ *   - stripping just the storeDir line still fails ("linked from the store at
+ *     undefined"), and running pnpm install at seed time does not rewrite the
+ *     recorded path either;
+ *   - with the file gone, pnpm rebuilds it against the user's own store and
+ *     pnpm add succeeds. Everything else in the tree (the .pnpm virtual store
+ *     and its links) is what pnpm actually resolves through at runtime.
+ */
+export function removePnpmModulesManifests(root) {
+  if (!fs.existsSync(root)) return 0;
+  let removed = 0;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const full = path.join(root, entry.name);
+    if (entry.isDirectory()) removed += removePnpmModulesManifests(full);
+    else if (entry.name === '.modules.yaml') {
+      fs.rmSync(full, { force: true });
+      removed++;
+    }
+  }
+  return removed;
+}
+
 function stage(part) {
   const dest = path.join(stagingRoot, part);
   fs.rmSync(dest, { recursive: true, force: true });
@@ -116,6 +150,12 @@ function stage(part) {
   // nothing at runtime resolves through them, and symlinks must not enter
   // the installer.
   removeBinDirs(path.join(dest, 'node_modules'));
+  const strippedManifests = removePnpmModulesManifests(path.join(dest, 'node_modules'));
+  // A payload with no manifest at all means the install layout changed
+  // upstream; fail loudly rather than ship a runtime nobody verified.
+  if (strippedManifests === 0) {
+    throw new Error('no node_modules/.modules.yaml under the staged ' + part + ' payload (pnpm layout changed?)');
+  }
   assertNoSymlinks(path.join(dest, 'node_modules'));
   console.log('[build-runtime] staged ' + part + ' -> ' + path.relative(desktopDir, dest));
 }
@@ -208,4 +248,8 @@ async function main() {
   console.log('[build-runtime] runtime payload ready: ' + stamp.host + ' + ' + stamp.webAll);
 }
 
-main();
+// Only run the build when invoked directly; the unit tests import the
+// payload helpers without triggering a real install.
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main();
+}

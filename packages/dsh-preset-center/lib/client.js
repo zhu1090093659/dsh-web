@@ -48,14 +48,14 @@ window.__ModuleLoader__.load({
 		//#region src/client/PresetPanel.tsx
 		/**
 		* The Workshop's Presets panel: browse the community preset catalog and drive
-		* the host library (install into `$DSH_HOME/agent-presets/<id>`, enable into
-		* the discovery root, disable back, uninstall), with the composition profile
-		* shown before anything executable is enabled.
+		* the host library (install into `$DSH_HOME/agent-presets/<id>` and declare it
+		* to the agent-preset registry, disable, uninstall), with the composition
+		* profile shown before anything executable is declared.
 		*
 		* The panel owns no catalog fetch: the Workshop card already fetches
 		* `manifest/presets.json` and passes the records down, so one store section
 		* makes one catalog request. Preset state comes from the preset-center host
-		* routes, which derive it from disk on every read.
+		* routes, which derive it from disk and the live declarations on every read.
 		* @module @linxin666/dsh-client-ui-preset-center/client/PresetPanel
 		*/
 		const EMPTY_PROFILE = {
@@ -127,7 +127,7 @@ window.__ModuleLoader__.load({
 		}
 		/** Whether the catalog advertises a version newer than the installed one. */
 		function hasUpdate(record, row) {
-			if (row === void 0 || !row.installed && !row.enabled) return false;
+			if (row === void 0 || !row.installed) return false;
 			if (record.version === void 0 || row.assetVersion === void 0) return false;
 			return compareVersions(record.version, row.assetVersion) > 0;
 		}
@@ -140,7 +140,7 @@ window.__ModuleLoader__.load({
 			const [busy, setBusy] = (0, react.useState)(null);
 			const [notes, setNotes] = (0, react.useState)({});
 			const [viewer, setViewer] = (0, react.useState)(null);
-			const [confirmEnable, setConfirmEnable] = (0, react.useState)(null);
+			const [confirmInstall, setConfirmInstall] = (0, react.useState)(null);
 			const [confirmUninstall, setConfirmUninstall] = (0, react.useState)(null);
 			const [reload, setReload] = (0, react.useState)(0);
 			(0, react.useEffect)(() => {
@@ -190,6 +190,42 @@ window.__ModuleLoader__.load({
 					setBusy(null);
 				}
 			};
+			/** Declare one installed preset, asking for confirmation when it carries code. */
+			const declareNow = async (record, confirm, success) => {
+				const res = await postJson("/api/preset-center/install", {
+					id: record.id,
+					confirm
+				});
+				if (res.data.ok === true) {
+					setConfirmInstall(null);
+					note(record.id, t(success, {}));
+					refresh();
+					return;
+				}
+				if (res.data.error === "confirmation-required") {
+					setConfirmInstall({
+						id: record.id,
+						name: displayName(record),
+						profile: res.data.profile ?? EMPTY_PROFILE
+					});
+					return;
+				}
+				if (res.data.error === "broken" || res.data.error === "invalid-composition") {
+					note(record.id, t("note.broken", { reason: res.data.message ?? "" }));
+					refresh();
+					return;
+				}
+				if (res.data.error === "shadowed") {
+					note(record.id, t("note.shadowed", {}));
+					refresh();
+					return;
+				}
+				if (res.data.error === "roster-unavailable") {
+					note(record.id, t("note.rosterUnavailable", {}));
+					return;
+				}
+				note(record.id, t("note.actionFailed", { reason: res.data.message ?? res.data.error ?? "HTTP " + res.status }));
+			};
 			const install = (record, force) => run(record.id, "install", async () => {
 				if (props.install === void 0) return;
 				try {
@@ -203,8 +239,8 @@ window.__ModuleLoader__.load({
 					return;
 				}
 				props.reportInstall?.(record.id).catch(() => {});
-				note(record.id, force ? t("note.updated", {}) : t("state.installed", {}));
 				refresh();
+				await declareNow(record, false, force ? "note.updated" : "note.enabled");
 			});
 			const update = (record, row) => run(record.id, "update", async () => {
 				if (props.install === void 0) return;
@@ -225,52 +261,14 @@ window.__ModuleLoader__.load({
 				}
 				props.reportInstall?.(record.id).catch(() => {});
 				if (wasEnabled) {
-					const on = await postJson("/api/preset-center/enable", {
-						id: record.id,
-						confirm: true
-					});
-					if (on.data.ok !== true) {
-						note(record.id, t("note.broken", { reason: on.data.message ?? on.data.error ?? "HTTP " + on.status }));
-						refresh();
-						return;
-					}
+					await declareNow(record, true, "note.updated");
+					return;
 				}
 				note(record.id, t("note.updated", {}));
 				refresh();
 			});
-			const enable = (record, row, confirm) => run(record.id, "enable", async () => {
-				const res = await postJson("/api/preset-center/enable", {
-					id: record.id,
-					confirm
-				});
-				if (res.data.ok === true) {
-					setConfirmEnable(null);
-					note(record.id, t("note.enabled", {}));
-					refresh();
-					return;
-				}
-				if (res.data.error === "confirmation-required") {
-					setConfirmEnable({
-						id: record.id,
-						name: displayName(record),
-						profile: res.data.profile ?? row.profile
-					});
-					return;
-				}
-				if (res.data.error === "broken") {
-					note(record.id, t("note.broken", { reason: res.data.message ?? "" }));
-					refresh();
-					return;
-				}
-				if (res.data.error === "shadowed") {
-					note(record.id, t("note.shadowed", {}));
-					return;
-				}
-				if (res.data.error === "roster-unavailable") {
-					note(record.id, t("note.rosterUnavailable", {}));
-					return;
-				}
-				note(record.id, t("note.actionFailed", { reason: res.data.message ?? res.data.error ?? "HTTP " + res.status }));
+			const enable = (record, confirm) => run(record.id, "enable", async () => {
+				await declareNow(record, confirm, "note.enabled");
 			});
 			const disable = (record) => run(record.id, "disable", async () => {
 				const res = await postJson("/api/preset-center/disable", { id: record.id });
@@ -337,10 +335,6 @@ window.__ModuleLoader__.load({
 					key: "state.local",
 					tone: preset_center_module_css_default.badgeWarn
 				};
-				if (row.conflict) return {
-					key: "state.conflict",
-					tone: preset_center_module_css_default.badgeWarn
-				};
 				if (row.integrity === "modified") return {
 					key: "state.modified",
 					tone: preset_center_module_css_default.badgeWarn
@@ -398,7 +392,7 @@ window.__ModuleLoader__.load({
 							const profile = row?.profile ?? EMPTY_PROFILE;
 							const updateAvailable = hasUpdate(record, row);
 							const busyHere = busy === record.id;
-							const blockedByLocal = row !== void 0 && !row.managed && (row.installed || row.enabled);
+							const blockedByLocal = row !== void 0 && !row.managed && row.installed;
 							const installable = gateway && props.install !== void 0 && !occupied.has(record.id) && !blockedByLocal;
 							const installs = props.installs?.[record.id] ?? 0;
 							return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
@@ -471,11 +465,11 @@ window.__ModuleLoader__.load({
 												className: preset_center_module_css_default.primary,
 												disabled: !gateway || busyNow || occupied.has(record.id),
 												onClick: () => {
-													enable(record, row, false);
+													enable(record, false);
 												},
 												children: busyHere ? t("installing", {}) : t("action.enable", {})
 											}) : null,
-											row !== void 0 && row.managed && row.enabled && !row.conflict ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+											row !== void 0 && row.managed && row.enabled ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 												className: preset_center_module_css_default.secondary,
 												disabled: !gateway || busyNow,
 												onClick: () => {
@@ -538,34 +532,33 @@ window.__ModuleLoader__.load({
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Modal, {
 						title: t("confirm.title", {}),
-						open: confirmEnable !== null,
+						open: confirmInstall !== null,
 						onClose: () => {
-							setConfirmEnable(null);
+							setConfirmInstall(null);
 						},
 						closeLabel: t("action.cancel", {}),
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: t("confirm.text", {
-							name: confirmEnable?.name ?? "",
+							name: confirmInstall?.name ?? "",
 							detail: t("code.detail", {
-								files: String(confirmEnable?.profile.codeFiles.length ?? 0),
-								expressions: String(confirmEnable?.profile.inlineExpressions ?? 0),
-								plugins: String(confirmEnable?.profile.plugins.length ?? 0)
+								files: String(confirmInstall?.profile.codeFiles.length ?? 0),
+								expressions: String(confirmInstall?.profile.inlineExpressions ?? 0),
+								plugins: String(confirmInstall?.profile.plugins.length ?? 0)
 							})
 						}) }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: preset_center_module_css_default.modalActions,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 								className: preset_center_module_css_default.primary,
 								onClick: () => {
-									const target = confirmEnable;
-									setConfirmEnable(null);
+									const target = confirmInstall;
+									setConfirmInstall(null);
 									const record = rows.find((entry) => entry.id === target?.id);
-									const row = target === null ? void 0 : stateById.get(target.id);
-									if (record !== void 0 && row !== void 0) enable(record, row, true);
+									if (record !== void 0) enable(record, true);
 								},
 								children: t("action.enable", {})
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 								className: preset_center_module_css_default.secondary,
 								onClick: () => {
-									setConfirmEnable(null);
+									setConfirmInstall(null);
 								},
 								children: t("action.cancel", {})
 							})]
@@ -616,13 +609,13 @@ window.__ModuleLoader__.load({
 			"state.modified": "本地已修改",
 			"state.conflict": "目录状态异常",
 			"state.local": "本地自建同名预设",
-			"state.shadowed": "id 已被内置或其它来源占用",
+			"state.shadowed": "id 已被其它插件声明的预设占用",
 			"state.newVersion": "有新版本 {version}",
 			"state.broken": "无法加载",
 			"action.install": "安装",
 			"action.update": "更新",
 			"action.enable": "启用",
-			"action.disable": "禁用",
+			"action.disable": "停用",
 			"action.uninstall": "卸载",
 			"action.view": "查看组合",
 			"action.cancel": "取消",
@@ -631,23 +624,23 @@ window.__ModuleLoader__.load({
 			"code.inline": "含内联表达式",
 			"code.none": "仅组合已安装插件",
 			"code.detail": "{files} 个代码文件 · {expressions} 个 !!js 表达式 · {plugins} 个插件",
-			"confirm.title": "启用可执行预设",
-			"confirm.text": "「{name}」启用后会在 DSH 主进程内加载其组合内容，权限等同 shell 访问。{detail} 确认继续？",
+			"confirm.title": "安装可执行预设",
+			"confirm.text": "「{name}」安装后会在 DSH 主进程内加载其组合内容，权限等同 shell 访问。{detail} 确认继续？",
 			"uninstall.title": "卸载预设",
-			"uninstall.text": "将删除「{name}」的本地文件（库与启用目录中的副本）。已使用该预设的会话不受影响。",
+			"uninstall.text": "将注销「{name}」并删除其本地文件（$DSH_HOME/agent-presets 中的副本）。已使用该预设的会话不受影响。",
 			"viewer.title": "{name} · agent.cordis.yml",
 			"viewer.empty": "（组合文件为空或不可读）",
 			"note.installFailed": "安装失败：{reason}",
 			"note.conflict": "本地已存在同名目录，未覆盖任何文件",
 			"note.actionFailed": "操作失败：{reason}",
-			"note.enabled": "已启用，刷新页面后出现在「设置 → Agent 预设」",
-			"note.disabled": "已禁用，该预设已从「设置 → Agent 预设」移除",
+			"note.enabled": "已安装并启用；刷新页面后在「设置 → Agent 预设」中可见",
+			"note.disabled": "已停用；文件仍保留在预设库中，可随时重新启用",
 			"note.uninstalled": "已卸载",
 			"note.updated": "已更新到最新版本",
-			"note.broken": "无法启用：{reason}",
-			"note.shadowed": "该 id 已被内置或其它来源的预设占用，启用不会生效",
+			"note.broken": "无法加载：{reason}",
+			"note.shadowed": "该 id 已被另一插件声明的预设占用，无法声明",
 			"note.defaultPreset": "这是当前默认预设，请先在「设置 → Agent 预设」切换默认值",
-			"note.rosterUnavailable": "宿主未提供 agent-presets 服务，无法校验预设 id",
+			"note.rosterUnavailable": "宿主未提供 agent-preset 注册表服务，无法声明预设",
 			"note.gatewayUnavailable": "本机网关不可用：远程浏览器或 host 路由未挂载，无法安装或启用",
 			"note.loadFailed": "读取预设状态失败：{reason}",
 			"note.emptyCatalog": "社区预设目录为空",
@@ -664,7 +657,7 @@ window.__ModuleLoader__.load({
 			"state.modified": "Modified locally",
 			"state.conflict": "Directory state conflict",
 			"state.local": "Local preset with this id",
-			"state.shadowed": "Id taken by a built-in or another root",
+			"state.shadowed": "Id taken by a preset another plugin declares",
 			"state.newVersion": "Update {version} available",
 			"state.broken": "Cannot load",
 			"action.install": "Install",
@@ -679,23 +672,23 @@ window.__ModuleLoader__.load({
 			"code.inline": "Has inline expressions",
 			"code.none": "Composes installed plugins only",
 			"code.detail": "{files} code files - {expressions} !!js expressions - {plugins} plugins",
-			"confirm.title": "Enable an executable preset",
-			"confirm.text": "Enabling \"{name}\" loads its composition inside the DSH host process, which carries the same trust as shell access. {detail} Continue?",
+			"confirm.title": "Install an executable preset",
+			"confirm.text": "Installing \"{name}\" loads its composition inside the DSH host process, which carries the same trust as shell access. {detail} Continue?",
 			"uninstall.title": "Uninstall preset",
-			"uninstall.text": "Deletes the local files of \"{name}\" (both the library and enabled copies). Sessions already using it keep running.",
+			"uninstall.text": "Unregisters \"{name}\" and deletes its local files (the copy under $DSH_HOME/agent-presets). Sessions already using it keep running.",
 			"viewer.title": "{name} - agent.cordis.yml",
 			"viewer.empty": "(composition file is empty or unreadable)",
 			"note.installFailed": "Install failed: {reason}",
 			"note.conflict": "A directory with this id already exists locally; nothing was overwritten",
 			"note.actionFailed": "Action failed: {reason}",
-			"note.enabled": "Enabled; refresh the page to see it under Settings - Agent presets",
-			"note.disabled": "Disabled; the preset is gone from Settings - Agent presets",
+			"note.enabled": "Installed and enabled; refresh the page to see it under Settings - Agent presets",
+			"note.disabled": "Disabled; the files stay in the preset library and can be enabled again",
 			"note.uninstalled": "Uninstalled",
 			"note.updated": "Updated to the newest version",
-			"note.broken": "Cannot enable: {reason}",
-			"note.shadowed": "A built-in or another root already supplies this id; enabling would not take effect",
+			"note.broken": "Cannot load: {reason}",
+			"note.shadowed": "A preset another plugin declares already owns this id, so it cannot be declared",
 			"note.defaultPreset": "This is the current default preset; change the default under Settings - Agent presets first",
-			"note.rosterUnavailable": "The host exposes no agent-presets service, so preset ids cannot be checked",
+			"note.rosterUnavailable": "The host exposes no agent-preset registry service, so presets cannot be declared",
 			"note.gatewayUnavailable": "Local gateway unavailable: remote browser or host routes not mounted; install and enable are disabled",
 			"note.loadFailed": "Reading preset state failed: {reason}",
 			"note.emptyCatalog": "The community preset catalog is empty",

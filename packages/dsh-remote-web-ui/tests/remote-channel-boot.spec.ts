@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { renderIndexInjections } from '@deepseek-ai/dsh-host-webserver'
 
 import { BOOT_WATCHDOG_KEY, buildBootWatchdogScript, buildRemoteChannelBootScript, REMOTE_CHANNEL_BOOT_SCRIPT } from '../src/remote-channel-boot.ts'
-import { REMOTE_CHANNEL_BOOT_GLOBAL, type RemoteChannelBootSeat } from '../src/remote-channel-rules.ts'
+import { REMOTE_CHANNEL_BOOT_GLOBAL, REMOTE_HOST_GRANT_GLOBAL, type RemoteChannelBootSeat } from '../src/remote-channel-rules.ts'
 import { shouldRewriteFetchPath, shouldRewriteWsPath } from '../src/client/remote-channel.ts'
 
 const PATH_MATRIX = [
@@ -31,6 +31,7 @@ const WS_MATRIX = [
   '/api/remote.mux',
   '/sidebar/ws/terminal',
   '/sidebar/ws/agent-terminals',
+  '/sidebar/ws/agent-opens',
   '/api/dsh-ssh/terminal',
   '/api/events.mux',
   '/api/session.list',
@@ -244,11 +245,20 @@ describe('remote channel boot patch (issue #987)', () => {
     expect(win.__DSH_FILE_UPLOAD__).toBeUndefined()
   })
 
-  it('flips the official UI into host mode on non-loopback origins', () => {
-    const win = makeWindow('192.168.1.20') as Record<string, unknown>
-    boot(win as never)
-    const transport = win.__DSH_TRANSPORT__ as { ownsHost?: boolean } | undefined
+  it('flips the official UI into host mode only for a server-granted shell', () => {
+    // The device-gated app landing (/pair-app) publishes the grant marker in
+    // its capture script, which runs ahead of this parse-time patch.
+    const granted = makeWindow('192.168.1.20') as Record<string, unknown>
+    granted[REMOTE_HOST_GRANT_GLOBAL] = true
+    boot(granted as never)
+    const transport = granted.__DSH_TRANSPORT__ as { ownsHost?: boolean } | undefined
     expect(transport?.ownsHost).toBe(true)
+    // Without the grant the shell is not the machine owner: host mode is
+    // server-granted, never asserted from the origin, so an unpaired browser
+    // reaching a fence-open deployment keeps the memory-scope presentation.
+    const unpaired = makeWindow('192.168.1.20') as Record<string, unknown>
+    boot(unpaired as never)
+    expect(unpaired.__DSH_TRANSPORT__).toBeUndefined()
   })
 
   it('does not flip host mode on loopback origins', () => {

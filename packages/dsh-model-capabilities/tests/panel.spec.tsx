@@ -36,6 +36,7 @@ const STORED_ROW = {
 function namespaceView(overrides?: Partial<SettingsNamespaceView>): SettingsNamespaceView {
   return {
     ns: 'llm-pi-ai',
+    autoGenerate: true,
     schema: {},
     value: { providers: { 'acme-gateway': { models: [STORED_ROW] } } },
     user: { providers: { 'acme-gateway': { models: [{ ...STORED_ROW }] } } },
@@ -104,8 +105,12 @@ describe('CapabilitiesPanel', () => {
     })
   })
 
-  it('saves image input as one whole-array op with the read revision, preserving unknown fields', async () => {
-    const view = namespaceView()
+  it('saves reasoning efforts as one whole-array op, preserving the native input claim and unknown fields', async () => {
+    const row = { ...STORED_ROW, input: ['text', 'image'] }
+    const view = namespaceView({
+      value: { providers: { 'acme-gateway': { models: [row] } } },
+      user: { providers: { 'acme-gateway': { models: [{ ...row }] } } },
+    })
     const face = makeSettingsFace(view)
     render(<CapabilitiesPanel provider={PROVIDER} configured keyConfigured settings={face} />)
     fireEvent.click(screen.getByRole('button', { name: /模型能力/ }))
@@ -114,9 +119,7 @@ describe('CapabilitiesPanel', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /展开模型能力: gpt-x/ }))
-    const checkbox = screen.getByRole('checkbox', { name: '图片输入' }) as HTMLInputElement
-    expect(checkbox.checked).toBe(false)
-    fireEvent.click(checkbox)
+    fireEvent.click(screen.getByRole('radio', { name: '无推理' }))
 
     fireEvent.click(screen.getByRole('button', { name: '保存' }))
     await waitFor(() => {
@@ -130,7 +133,10 @@ describe('CapabilitiesPanel', () => {
     expect(call.ops[0].path).toEqual(['providers', 'acme-gateway', 'models'])
     const written = (call.ops[0].value as Array<Record<string, unknown>>)[0]
     expect(written['id']).toBe('gpt-x')
+    // The Models page owns the input-type editor since alpha.2; this panel must
+    // never rewrite the claim it did not edit.
     expect(written['input']).toEqual(['text', 'image'])
+    expect(written['reasoningEfforts']).toBe(false)
     expect(written['name']).toBe('GPT X')
     expect(written['contextWindow']).toBe(256000)
   })
@@ -172,7 +178,7 @@ describe('CapabilitiesPanel', () => {
       expect(screen.getByText('gpt-x')).toBeTruthy()
     })
     fireEvent.click(screen.getByRole('button', { name: /展开模型能力: gpt-x/ }))
-    fireEvent.click(screen.getByRole('checkbox', { name: '图片输入' }))
+    fireEvent.click(screen.getByRole('radio', { name: '无推理' }))
     fireEvent.click(screen.getByRole('button', { name: '保存' }))
     await waitFor(() => {
       expect(screen.getByText('配置已被其他界面修改，已重新读取，请重试。')).toBeTruthy()
@@ -193,8 +199,8 @@ describe('CapabilitiesPanel', () => {
       expect(screen.getByText('当前设置文档只读，无法修改。')).toBeTruthy()
     })
     fireEvent.click(screen.getByRole('button', { name: /展开模型能力: gpt-x/ }))
-    const checkbox = screen.getByRole('checkbox', { name: '图片输入' }) as HTMLInputElement
-    expect(checkbox.disabled).toBe(true)
+    const noneRadio = screen.getByRole('radio', { name: '无推理' }) as HTMLInputElement
+    expect(noneRadio.disabled).toBe(true)
   })
 
   it('reports a namespace describe failure inline with a reload affordance', async () => {

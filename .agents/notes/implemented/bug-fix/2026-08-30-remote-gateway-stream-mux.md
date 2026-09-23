@@ -10,7 +10,7 @@ After the official-UI adaptation round, a paired phone landing on `/pair-app` di
 
 **The gated channel now covers the official stream socket.** On the pinned 0.1.2-alpha.1 line the client opens exactly ONE persistent WebSocket — the Typert gateway mux at `/api/remote.mux` — and every Remote stream (workspace follow, session feed, subagent lineage, ...) rides that socket. The channel's rewrite tables had stale legacy paths (`/api/events.mux`, `/api/events.host` — neither exists in this cohort), so the phone's mux was never rewritten to `/remote/api/remote.mux`; it connected straight to the tunnel origin, where the connection fence plus the browser-auth cookie reject the upgrade (the cookieless phone carries neither), and all streams died. The fix:
 
-- `wsPaths` now lists `/api/remote.mux` (plus the sidebar/ssh terminals); both the parse-time boot patch and the runtime patch consume the same rules.
+- `wsPaths` now lists `/api/remote.mux` (plus the sidebar/ssh terminals); both the parse-time boot patch and the runtime patch consume the same rules. The sidebar family later gained its third socket, `/sidebar/ws/agent-opens` ([issue batch 1646-1665](2026-09-21-issue-batch-1646-1665-channel-gate-sidebar-socket-and-label-race.md)).
 - The host registers the exact upgrade route `/remote/api/remote.mux`, mapping back to the inner `/api/remote.mux`, preserving the `device` query the cookieless credential rides on.
 - The stale `events.*` constants are gone; the contract-pin tests assert the mux path.
 

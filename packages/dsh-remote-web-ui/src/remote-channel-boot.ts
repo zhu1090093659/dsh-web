@@ -17,7 +17,12 @@
  * transport hook `__DSH_TRANSPORT__ = { ownsHost: true }` before the
  * connection plugin reads it: the paired remote desktop gets the full
  * settings/credentials/presets surface, and every call still rides the
- * gated /remote channel. It finally publishes the official pre-Cordis
+ * gated /remote channel. Host mode is server-granted, not origin-asserted:
+ * the hook is installed only when the device-gated app landing (/pair-app)
+ * published the grant marker (REMOTE_HOST_GRANT_GLOBAL) ahead of this
+ * script, so a shell served to an unpaired browser - a fence-open
+ * deployment - never presents itself as the machine owner. It finally
+ * publishes the official pre-Cordis
  * upload hook (`__DSH_FILE_UPLOAD__`), because the background upload
  * transport otherwise runs inside a Web Worker whose own globals the
  * main-thread rewrite cannot reach (issue #1580). The script self-skips on
@@ -40,14 +45,17 @@ export function buildRemoteChannelBootScript(rules: RemoteChannelRules = REMOTE_
   return '(function(){' +
     'try{' +
     'var w=window,loc=w.location,h=loc.hostname;' +
-    // Loopback origins keep the original paths (mirrors isLoopbackHostname).
-    "if(h==='localhost'||h==='::1'||/^127(\\.\\d{1,3}){3}$/.test(h))return;" +
-    // Host mode: the paired remote desktop presents itself as the machine
-    // owner, so the official UI keeps its full configuration surface (the
-    // settings mirror, document controller, and deliverables open actions
-    // all branch on connection.isLoopback). Must run before any boot entry.
-    'try{if(w.__DSH_TRANSPORT__===undefined)w.__DSH_TRANSPORT__={};w.__DSH_TRANSPORT__.ownsHost=true}catch(e){}' +
+    // Loopback origins (including the bracketed IPv6 literal WHATWG returns)
+    // keep the original paths (mirrors isLoopbackHostname).
+    "if(h==='localhost'||h==='::1'||h==='[::1]'||/^127(\\.\\d{1,3}){3}$/.test(h))return;" +
     'var R=' + json + ';' +
+    // Host mode is server-granted: only the device-gated app landing
+    // publishes the grant marker (in a capture script that runs ahead of
+    // this one), so a shell that merely sits on a non-loopback origin - an
+    // unpaired browser reaching a fence-open deployment - keeps the official
+    // UI's memory-scope presentation instead of posing as the machine owner.
+    // Must run before any boot entry.
+    'try{if(w[R.hostGrantGlobal]===true){if(w.__DSH_TRANSPORT__===undefined)w.__DSH_TRANSPORT__={};w.__DSH_TRANSPORT__.ownsHost=true}}catch(e){}' +
     // The cookieless device credential: read lazily per call - the
     // /pair-app capture script sets it in head AFTER this boot script ran,
     // so a parse-time read would always see null.

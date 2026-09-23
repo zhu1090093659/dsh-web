@@ -1,8 +1,8 @@
 /**
  * Config and credential facts for the describe-image tool. Holds the validated
  * ResolvedConfig snapshot (defaults, bounds, and endpoint facts), the API-key
- * resolution seams, and the schemastery section that doubles as the plugin's
- * settings card schema. Kept separate from tool registration and the vision
+ * resolution seams, and the schemastery Config schema that doubles as the
+ * plugin's settings page. Kept separate from tool registration and the vision
  * HTTP client so single purpose stays single file.
  * @module @linxin666/dsh-tool-describe-image/config
  */
@@ -156,7 +156,14 @@ export interface Config {
   interceptImageSend?: boolean
 }
 
-/** Schemastery configuration for the describe-image tool; doubles as the `describe-image` settings-section schema. */
+/**
+ * Schemastery configuration for the describe-image tool. This schema IS the
+ * plugin's settings page: the Host serves one auto-generated page per profile
+ * entry from the row's `Config`, validates every write against it, and
+ * restarts the entry with the merged value (`base` composition layer plus the
+ * user layer) — so the fields a card edits and the fields the runtime reads
+ * are the same ones by construction.
+ */
 export const Config: z<Config> = z.object({
   baseURL: z.string(),
   model: z.string(),
@@ -174,7 +181,12 @@ export const Config: z<Config> = z.object({
   interceptImageSend: z.boolean().default(DEFAULT_INTERCEPT_IMAGE_SEND),
 })
 
-/** Settings namespace carrying the endpoint, model, and key reference the Plugins card edits. */
+/**
+ * Settings namespace of this plugin's configuration. Under the 0.1.7 surface
+ * the Host addresses configuration by profile entry id, so this is the family
+ * namespace the Web UI group's card binds and the entry id of a standalone
+ * install of this bundle.
+ */
 export const DESCRIBE_IMAGE_SETTINGS_NAMESPACE = 'describe-image' as SettingsNamespace
 
 /** One resolved, validated configuration snapshot; defaults and beyond-schema constraints applied. */

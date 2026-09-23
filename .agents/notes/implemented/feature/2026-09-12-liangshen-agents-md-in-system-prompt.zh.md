@@ -32,7 +32,7 @@ Status: implemented
 
 - 保留 hint 作为默认。所有者否决：指针的非命令式措辞（「the task itself never depends on them」）实际削弱了工作区约定的遵循度，而本模式的存在理由就是让指令内容在每个请求上都具备常设权威。上游证据针对的是作为上下文注入的全文，不是常设提示词文本。
 - 在 pre-step 捕获 harness 的注入消息，从下一次组装起把内容回填为提示词段。否决：请求循环先跑 `system-prompt/assemble` 再跑 `agent/pre-step` 瀑布（dsh-agent-loop），第一次请求会既没有内容也没有提示，且缓存的副本会相对文件改动过期。
-- 在 `minimal-prompt.mjs` 里 import 宿主插件导出的 `loadBaselineInstructions`。否决：preset 本地插件文件从 `~/.dsh/.agent-presets/<id>/` 加载，裸包名在那里够不到 harness 自己的依赖——harness 从自己的基座解析 preset 组合的行，而不是 preset 文件内部的 import。因此 preset 本地插件只用 node 内建模块，`custom-bash.mjs` 已经如此。
+- 在 `minimal-prompt.mjs` 里 import 宿主插件导出的 `loadBaselineInstructions`。否决：preset 本地插件文件是按绝对路径从声明方包内随包的 preset 目录加载的，因此其中的裸包名会解析到该包自己的依赖树，而不是 harness 的运行时模块——harness 只从自己的基座解析它要挂载的组合行，而不是 preset 文件内部的 import。因此 preset 本地插件只用 node 内建模块，随包的 preset 本地模块都是如此。
 - 把渲染后的内容直接放进 section 文本。否决：`renderPrompt` 对 section 文本做严格插值，任何含 `{{...}}` 的指令文件（agent 指令里模板示例很常见）都会让每个请求抛错；变量间接携带同样的文本而不扫描它。
 - 保留 harness 注入、同时追加提示词段。否决：模型会从两条通道各看到一遍同样的指令，措辞还不一致。
 - 镜像 harness 的动态 touched-path reconcile（`read`/`write`/`edit` 触碰目录时浮出的嵌套指令文件）为额外提示词内容。已在 `system-prompt` 模式落地：插件从 `tools/result` 追踪执行、在下一次 `agent/pre-step` 追加被触碰目录的指令文件，而不依赖宿主的文件名校验——后者的触发名是 Standard 的 `read`/`write`/`edit`，本模式却经 `str_replace_editor` 编辑、第二个回合起更是 PTC 程序。想要动态指针行为的部署可以选 hint 模式。

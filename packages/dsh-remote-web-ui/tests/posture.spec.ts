@@ -43,6 +43,22 @@ describe('probePosture', () => {
     expect(anyExposed(snapshot)).toBe(false)
   })
 
+  it('operator is not warned when the fence passed but browser auth refused', async () => {
+    // Given the supported LAN deployment: the 0.0.0.0 bind auto-trusts the LAN
+    // literals, so the harness fence passes and its browser-auth cookie is the
+    // gate that refuses with 401.
+    const snapshot = await probePosture({
+      port: 3080,
+      targets: ['lan.example:3080'],
+      request: (options, onStatus) => statusTransport(401)(options, onStatus),
+      now: () => 42,
+    })
+    // When the round completes, then the host is not reported exposed: the /api
+    // surface is still gated, and a CRITICAL here would be a false alarm.
+    expect(snapshot.hosts).toEqual([{ host: 'lan.example:3080', exposed: false }])
+    expect(anyExposed(snapshot)).toBe(false)
+  })
+
   it('marks 200 (and any other status) as exposed', async () => {
     const snapshot = await probePosture({
       port: 3080,

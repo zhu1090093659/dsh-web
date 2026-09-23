@@ -113,10 +113,10 @@ describe('LiangShenSettingsCard', () => {
     expect(trigger.disabled).toBe(true)
   })
 
-  it('explains a namespace the Host does not expose instead of rendering the form', () => {
+  it('renders fields gracefully when the Host does not expose the namespace', () => {
     renderCard(baseState({ exposed: false }))
-    expect(screen.getByRole('status').textContent).toBe('settings.notExposed')
-    expect(document.getElementById('settings-liangshen-presentation')).toBeNull()
+    expect(screen.queryByText('settings.notExposed')).toBeNull()
+    expect(document.getElementById('settings-liangshen-presentation')?.tagName).toBe('BUTTON')
   })
 
   it('binds the scope into a controller whose face carries the snapshot and actions', () => {

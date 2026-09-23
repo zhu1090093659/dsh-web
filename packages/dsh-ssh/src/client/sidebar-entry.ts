@@ -16,8 +16,8 @@ import { mountSidebarEntry as mountSharedSidebarEntry } from './sidebar-entry-co
 /** Stable data attribute identifying the injected entry row. */
 export const ENTRY_SELECTOR = '[data-dsh-ssh-entry]'
 
-/** Inline terminal glyph sized to the shell's current sidebar navigation icons. */
-const ICON = '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.75" y="2.25" width="12.5" height="11.5" rx="1.75"/><path d="M4.25 5.25l2.75 2.75-2.75 2.75"/><path d="M8.5 10.75h3.25"/></svg>'
+/** Inline terminal glyph sized to the shell's panel-row navigation icons. */
+const ICON = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.75" y="2.25" width="12.5" height="11.5" rx="1.75"/><path d="M4.25 5.25l2.75 2.75-2.75 2.75"/><path d="M8.5 10.75h3.25"/></svg>'
 
 /** Locale-change subscription the shared core asks for (ctx.locale.subscribe shape). */
 export interface LocaleRefreshSource { subscribe(listener: () => void): () => void }

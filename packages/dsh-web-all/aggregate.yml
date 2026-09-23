@@ -58,24 +58,20 @@ deps:
   - ../dsh-web-settings
   - ../skins/skin-center
   - ../dsh-i18n
-# 外部 npm 插件：dsh-better-sidebar 接管右侧面板位置。行名从 profile 顶层
-# 解析（hoisted 布局下由 web-ui-all 的 dependencies 提升），dependencies 里
-# 需有 "dsh-better-sidebar"（见 package.json，生成器保留非 workspace 依赖）。
-# 行排在 patchFrom 之后：web-ui-settings 行在前，家族设置组先于 better-sidebar
-# 应用。旧 aionui-panel 已彻底移除（2026-08-28），右侧面板固定由
-# dsh-better-sidebar 提供，无需行级 config patch。
-# 2026-08-30 曾因 alpha.2 移除 `@deepseek-ai/dsh-client-runtime` 面把本行
-# 与 dsh-archive-manager 一并排除（见协调升级 note）；better-sidebar 于
-# 2026-08-31 以 0.18.0-alpha.0（peer 对齐 alpha.2、inject 改用
-# dsh-client-modules）回归；2026-09-04 随 rc.1 cohort 升至 0.18.0 正式版
-# （2026-09-03 发布，peer 全面声明 ^0.1.2-rc.1）；2026-09-10 升至
-# 0.19.0 正式版（peer 全面声明 ^0.1.5-rc.1，inject 含 optional 的
-# dsh-client-ui-sidebar-right 面）；2026-09-11 升至 0.19.1 正式版
-# （等待 banner、跳过等待契约与彩色文件图标）。@mlgbnb/dsh-archive-manager
-# 仍排除：其 latest 1.0.7 仍 import 已移除面，上游发布 alpha.2 兼容版后按同
-# 法恢复。
-rows:
-  - {"id": "better-sidebar", "name": "dsh-better-sidebar"}
+# 外部 npm 插件段：alpha 分支（2026-09-17 决策）不内置 dsh-better-sidebar。
+# 该插件 0.19.1 的全部 @deepseek-ai/dsh-* peer 声明为 ^0.1.5-rc.1，按 semver
+# 不覆盖本分支的 0.1.7-alpha.1 cohort（预发布版本只匹配同 [major,minor,patch]
+# 元的区间），因此 alpha 实验环境不再挂载这个右侧面板插件：聚合包不依赖它、
+# profile 里也不出现它的行。需要右侧面板时按需安装
+# （dsh plugin --profile <name> add dsh-better-sidebar@latest）。
+# dev 分支保持内置 0.19.1，alpha 每次从 dev rebase 后需重新移除本段。
+# 历史沿革（dev 侧仍适用）：2026-08-30 曾因 alpha.2 移除
+# `@deepseek-ai/dsh-client-runtime` 面把本行与 dsh-archive-manager 一并排除；
+# 2026-08-31 以 0.18.0-alpha.0 回归（inject 改用 dsh-client-modules）；
+# 2026-09-04 随 rc.1 cohort 升至 0.18.0 正式版；2026-09-10 升至 0.19.0
+# （inject 含 optional 的 dsh-client-ui-sidebar-right 面）；2026-09-11 升至
+# 0.19.1。
+# @mlgbnb/dsh-archive-manager 仍然排除：其 latest 1.0.7 仍 import 已移除面。
 # 出厂默认关闭的可选行（2026-09-09 产品决策）：工具/探索类家族插件对新装用户
 # 不加载（设置入口也不出现），在 设置 → 插件 → 插件管理 的聚合子行里逐个开启；
 # 开启即写入用户层 disabled:false 覆盖（优先于本默认），停用回写 disabled:true。
@@ -86,6 +82,13 @@ inactive:
   - web-ui-liangshen
   - web-ui-skill-explorer
   - web-ui-doctor
+# 被本聚合取代的官方行（2026-09-15 原生优先决策）：官方 web-app 常量挂载
+# ui-settings-unarchive-sessions（settings.section id archived-sessions、order 25），
+# dsh-session-archive 现在用同一个 section id 接管该入口，把「原生恢复列表 +
+# 家族批量归档/删除/自动策略」放在同一页。这里关闭官方行，设置界面只保留一条
+# 「已归档会话」一级入口，不再出现两个近似入口。用户层 disabled:false 覆盖仍然优先。
+retire:
+  - ui-settings-unarchive-sessions
 # 兼容退役子插件导出：避免老用户 profile 残留旧条目时 Node.js 抛出 ERR_PACKAGE_PATH_NOT_EXPORTED
 tombstones:
   - desktop-launcher

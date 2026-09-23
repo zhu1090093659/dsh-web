@@ -7,8 +7,9 @@
  * therefore redeems its own launch token (the same one-time exchange every
  * paired device's first navigation performs) and attaches the resulting
  * cookie to inner requests. The credential is only ever exercised behind the
- * pairing gate: while requirePairingForLan is on, every proxied call already
- * carried a live paired-device cookie before this module is consulted.
+ * pairing gate: the `/remote` channel always requires a live paired-device
+ * credential before this module is consulted, regardless of the
+ * requirePairingForLan LAN policy (issue #1665).
  */
 
 /** Browser-auth credential the proxy attaches to loopback-bound requests. */

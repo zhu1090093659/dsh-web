@@ -164,8 +164,9 @@ export class UsageService {
 
   /**
    * Stop timers and flush pending ledger writes. The returned promise
-   * resolves after the final flush lands, so a successor instance (quick
-   * disable → enable) can serialize its first load behind it.
+   * resolves after the final flush lands, so a successor instance (the Host
+   * reloads the profile row on a config change) can serialize its first load
+   * behind it.
    */
   stop(): Promise<void> {
     this.disposed = true
@@ -175,7 +176,7 @@ export class UsageService {
     return this.flushLedger()
   }
 
-  /** Re-apply options live (settings change); retention shrink prunes now. */
+  /** Re-apply options to this running instance; retention shrink prunes now. */
   applyOptions(options: UsageServiceOptions): void {
     this.options = options
     this.pruneIfNeeded()

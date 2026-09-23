@@ -11,6 +11,7 @@ DSH Web GUI 设置页的创意工坊商店卡片：唯一的「创意工坊」�
 - 一键安装资产（回环浏览器）：皮肤下载到 `$DSH_HOME/skins/<id>/`，宠物下载到 `$DSH_HOME/pets/<id>/` —— 这两个正是皮肤中心与宠物注册表已扫描的 DSH home 目录，无需重启（重新打开卡片即生效）。预设下载到惰性库 `$DSH_HOME/agent-presets/<id>/`，没有任何发现根扫描它；启用由预设面板把它移入 roster 的用户根。覆盖已有目录前弹确认并原子替换。
 - 一键安装插件：通过可选的 `pluginManager` 服务（由 `@linxin666/dsh-client-ui-plugin-manager` 提供）；未安装时降级为复制命令索引。
 - 远程浏览器只读：隐藏安装按钮，保留创意工坊站链接与复制命令兜底。
+- 外链（工坊站、卡片名称、仓库、皮肤预览）在宿主注册该标签类型（alpha.2）时打开官方右侧边栏浏览器，否则照旧新开浏览器标签页。
 - 每张卡片除点赞数外还显示独立的工坊安装量与插件 NPM 近 30 天下载量（仅对有 npm 包名的插件显示）；工坊安装量记录成功安装事件，NPM 下载量为 registry 公开口径，两者不与点赞合并。
 
 ## 安装
@@ -23,7 +24,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-market
 
 ## 配置
 
-- 启用开关：卡片在插件配置区带自己的总开关（持久化于 `dsh-web-ui-market` 设置命名空间）；关闭后隐藏目录内容、仅保留开关本身。
+- 启用开关：卡片在插件配置区带自己的总开关——即本包在自身 profile 行上的 `enabled` 配置，宿主据此自动生成本行的设置页；关闭后隐藏目录内容、仅保留开关本身。
 - 无其他配置项；目录数据始终来自 dsh-market.com。
 
 ## 已知限制
@@ -38,7 +39,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-market
 
 ## 架构
 
-- host 半区（`src/index.ts`）注册 `dsh-web-ui-market` 设置命名空间并挂载仅回环的网关（`/api/market/installed`、`/api/market/install-skin`、`/api/market/install-pet`、`/api/market/install-preset`）。
+- host 半区（`src/index.ts`）不再注册任何设置：卡片的启用开关就是本包自身的 `Config` schema，宿主据此把它作为本行的设置页提供，浏览器半区经该行的配置表单读回。该半区只挂载仅回环的网关（`/api/market/installed`、`/api/market/install-skin`、`/api/market/install-pet`、`/api/market/install-preset`）。
 - 安装器核心（`src/core/installer.ts`）自行从 `dsh-market.com` 拉取清单、按保守白名单校验每个路径、原子写入（临时目录后 rename）——失败下载不会留下半成品目录；客户端从不提供 URL 或文件列表。
 - 创意工坊每项资产带明确的文件清单，`scripts/market-build` 重新生成 `market/dist` 后，新皮肤包即自动可装。
 - 「编辑推荐」类别读取 `manifest/editor-picks.json`：一份手工维护的引用清单（`market/editor-picks.json`，只含皮肤 / 宠物 / 插件），`scripts/market-build` 会对照自己生成的目录校验它——指向已删除或改名资产的条目会让构建失败，而不是静默消失。

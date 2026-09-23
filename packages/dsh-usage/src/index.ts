@@ -8,6 +8,12 @@ import { makeUsageOverviewRoute, makeUsageRefreshRoute } from './host/routes.ts'
 
 export const name = 'dsh-usage'
 export const inject = ['webServer']
+/**
+ * Family settings namespace this row serves. Since 0.1.7 the settings surface
+ * addresses one form per profile entry id and the Host generates this row's
+ * page from the Config schema below, so the namespace is only the alias the
+ * family settings bridge (dsh-web-settings) resolves onto this row's entry id.
+ */
 export const USAGE_SETTINGS_NAMESPACE = 'dsh-usage' as SettingsNamespace
 
 export interface Config {
@@ -36,74 +42,72 @@ export function resolveConfig(config?: Config): ResolvedConfig {
   }
 }
 
+/**
+ * Tail of the process-wide flush chain; undefined while no predecessor's final
+ * ledger flush is still in flight. The Host reloads this profile row when its
+ * configuration changes, so a successor activation is a dispose + apply pair in
+ * the same process: its first ledger load must serialize behind its
+ * predecessor's final write (and behind the reloads before that one).
+ */
+let pendingStop: Promise<unknown> | undefined
+
+/**
+ * Host body. The plugin's own Config schema above is the settings document the
+ * 0.1.7 Host serves for this row; the effective config arrives here as the
+ * `config` argument the Loader resolved and the Host reloads the row when the
+ * user saves a change, so nothing in this body observes or writes settings.
+ * @param ctx - host root context.
+ * @param config - the row's resolved configuration.
+ */
 export const apply = mountOnce('@linxin666/dsh-usage', (ctx: Context, config?: Config): void => {
-  let source: () => Config = () => config ?? {}
+  const value = resolveConfig(config)
+  // A disabled row mounts nothing: no probe cycle, no ledger, no routes. The
+  // settings page owns the enable switch, and re-enabling reloads this row.
+  if (!value.enabled) return
+
+  let live = true
   let service: UsageService | undefined
-  let pendingStop: Promise<void> | undefined
   let disposeRoutes: (() => void) | undefined
 
-  const rearm = (): void => {
-    const value = resolveConfig(source())
-    if (!value.enabled) {
-      pendingStop = service?.stop()
-      service = undefined
-      disposeRoutes?.()
-      disposeRoutes = undefined
-      return
-    }
-    if (service === undefined) {
-      const next = new UsageService(ctx, value)
-      service = next
-      const begin = (): void => {
-        // A disable may have landed while the predecessor's final flush was
-        // still pending; only start if this instance is still the live one.
-        if (service !== next) return
-        next.start()
-        const disposers = [makeUsageOverviewRoute(ctx, next), makeUsageRefreshRoute(ctx, next)]
-          .map((route) => ctx.webServer.register(route))
-        disposeRoutes = () => {
-          for (const dispose of disposers) {
-            try {
-              dispose()
-            } catch {
-              // Route fiber already gone during shutdown.
-            }
-          }
+  const begin = (): void => {
+    // The fiber may have gone down while the predecessor's final flush was
+    // still pending; only start while this activation is the live one.
+    if (!live) return
+    const next = new UsageService(ctx, value)
+    service = next
+    next.start()
+    const disposers = [makeUsageOverviewRoute(ctx, next), makeUsageRefreshRoute(ctx, next)]
+      .map((route) => ctx.webServer.register(route))
+    disposeRoutes = () => {
+      for (const dispose of disposers) {
+        try {
+          dispose()
+        } catch {
+          // Route fiber already gone during shutdown.
         }
       }
-      // Serialize the start behind a just-stopped predecessor: its final
-      // ledger flush must land on disk before this instance loads the file.
-      if (pendingStop !== undefined) pendingStop.then(begin, begin)
-      else begin()
-    } else {
-      service.applyOptions(value)
     }
   }
 
-  ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(ctx, USAGE_SETTINGS_NAMESPACE, Config, config ?? {}, {
-          setSource: (next) => { source = next; rearm() },
-          onChange: rearm,
-        })
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        const scope = settingsCtx.settings.register(USAGE_SETTINGS_NAMESPACE, Config, { base: config ?? {} })
-        source = () => scope?.get?.() ?? (config ?? {})
-        scope?.watch?.(() => { rearm() })
-        rearm()
-      }
-    } catch {
-      // Defensive fallback against settings registration differences
-    }
-  })
-
   ctx.effect(() => {
-    rearm()
+    if (pendingStop === undefined) {
+      // No predecessor's flush is in flight: start now.
+      begin()
+    } else {
+      // Serialize the start behind every predecessor: their final writes must
+      // land on disk before this instance loads the file.
+      pendingStop = pendingStop.then(begin, begin).then(() => undefined)
+    }
     return () => {
+      live = false
       disposeRoutes?.()
-      void service?.stop()
+      disposeRoutes = undefined
+      const stopping = service?.stop()
       service = undefined
+      // A successor waits for this instance's final flush, which itself waited
+      // for the predecessor's start: a row disposed before it ever started
+      // keeps the earlier link instead of dropping it.
+      if (stopping !== undefined) pendingStop = (pendingStop ?? Promise.resolve()).then(() => stopping)
     }
   }, 'dsh-usage: runtime')
 })

@@ -3,17 +3,18 @@
  * bytes on the host — never from the market catalog, which a client could
  * restate.
  *
- * The profile answers three questions the enabling confirmation needs: which
+ * The profile answers three questions the install confirmation needs: which
  * plugins the composition names, which of those are files that travel inside
  * the preset directory, and whether the file carries inline `!!js`
  * expressions. All three are execution surfaces: a relative row and an inline
- * expression both run inside the host process when a session composes the
- * preset, exactly like an npm plugin does.
+ * expression both run inside the host process once the preset is declared to
+ * the registry, exactly like an npm plugin does.
  *
  * The scan is deliberately shallow (line-oriented) and is a display signal,
- * not a sandbox: the authoritative health verdict comes from the official
- * roster after the directory is discoverable. A preset that hides a row from
- * this scan is still gated by the install/enable split and the operator's
+ * not a sandbox: what the registry actually mounts comes from the parsed
+ * definition (`core/definition.ts`), and the health verdict from the registry
+ * roster after the declaration. A preset that hides a row from this scan is
+ * still gated by the downloaded-but-undeclared state and the operator's
  * confirmation.
  * @module @linxin666/dsh-client-ui-preset-center/core/profile
  */

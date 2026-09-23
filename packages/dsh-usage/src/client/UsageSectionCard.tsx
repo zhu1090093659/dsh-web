@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { UsageStoreInstance } from './usage-store.ts'
 import { t } from './locales.ts'
 import styles from './usage.module.css'
@@ -32,8 +32,8 @@ export interface UsageSectionFace {
   poll: () => void
   /** Force a host probe cycle now (resolves with the fresh overview). */
   refresh: () => void
-  /** Whether a forced refresh is in flight (component-local state mirrors it). */
-  settings: SettingsScope<UsageSettings>
+  /** The shared configuration form this section's settings row reads and writes. */
+  settings: ConfigForm<UsageSettings>
 }
 
 export interface UsageSectionProps extends UsageSectionFace {
@@ -153,9 +153,10 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   const settingsValue = settingsSnapshot.value ?? {}
   const [tab, setTab] = useState<'usage' | 'plans' | 'bank'>('usage')
   const [refreshing, setRefreshing] = useState(false)
-  // The enable checkbox writes through the settings scope, so subscribing here
-  // keeps the flag below live: the poll starts and stops with it instead of
-  // waiting for an unrelated render.
+  // The enable checkbox writes through the shared form, so subscribing here
+  // keeps the flag below live: the form republishes the Host's accepted value,
+  // and the poll starts and stops with it instead of waiting for an unrelated
+  // render.
   const [, bumpSettings] = useState(0)
   useEffect(() => settings.subscribe(() => bumpSettings((count) => count + 1)), [settings])
   const enabled = settingsValue.enabled ?? true
@@ -533,13 +534,39 @@ function PlanCard(props: { provider: ProviderSnapshotView; current?: string }): 
   )
 }
 
+/**
+ * The compact settings row. Both controls write through the shared form the
+ * moment the user changes them, and the Host answers each write with a
+ * boolean: a refused (or transport-failed) write is surfaced as a failed save,
+ * because a value that did not land must never read as applied.
+ */
 function SettingsRow(props: {
   settings: UsageSectionProps['settings']
-  snapshot?: { writable: boolean }
+  snapshot?: ConfigFormSnapshot<UsageSettings>
   value: UsageSettings
 }): ReactNode {
   const { settings, snapshot, value } = props
   const disabled = snapshot === undefined || !snapshot.writable
+  const [failure, setFailure] = useState<string | undefined>(undefined)
+
+  const write = (field: 'enabled' | 'pollIntervalSec', next: boolean | number): void => {
+    setFailure(undefined)
+    let answer: Promise<boolean>
+    try {
+      answer = settings.set(field, next)
+    } catch (error) {
+      setFailure(error instanceof Error ? error.message : String(error))
+      return
+    }
+    // false is the contract's refusal/skip answer (the Host rejected the value,
+    // the entry is not writable, or the write was dropped); a rejecting
+    // transport reports through the same failed-save surface.
+    Promise.resolve(answer).then(
+      (accepted) => { if (!accepted) setFailure('') },
+      (error: unknown) => { setFailure(error instanceof Error ? error.message : String(error)) },
+    )
+  }
+
   return (
     <div className={styles.card} data-dsh-part="settings-row">
       <span className={styles.cardTitle}>{t('usage.config.title')}</span>
@@ -549,7 +576,7 @@ function SettingsRow(props: {
             type="checkbox"
             checked={value.enabled ?? true}
             disabled={disabled}
-            onChange={(event) => { void settings.set('enabled', event.target.checked) }}
+            onChange={(event) => { write('enabled', event.target.checked) }}
           />
           {t('usage.config.enabled')}
         </label>
@@ -563,11 +590,16 @@ function SettingsRow(props: {
             disabled={disabled}
             onChange={(event) => {
               const parsed = Number(event.target.value)
-              if (Number.isFinite(parsed) && parsed >= 30 && parsed <= 3600) void settings.set('pollIntervalSec', Math.round(parsed))
+              if (Number.isFinite(parsed) && parsed >= 30 && parsed <= 3600) write('pollIntervalSec', Math.round(parsed))
             }}
           />
         </label>
       </div>
+      {failure !== undefined && (
+        <span className={styles.errorLine} role="status">
+          {t('usage.config.saveFailed')}{failure === '' ? '' : ' - ' + failure}
+        </span>
+      )}
     </div>
   )
 }

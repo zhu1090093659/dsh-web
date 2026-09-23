@@ -8,9 +8,9 @@
 #      （`dsh plugin --profile web add file:<tarball>`，与用户安装路径一致）；
 #   3. 启动真实 `dsh web`（keyless，--port 0 取 OS 分配端口）；
 #   4. 运行 tests/e2e 无头渲染 lane（Playwright Chromium）：以宿主官方帧
-#      锚定启动、断言 better-sidebar 挂载、断言被排除的 archive-manager
-#      缺席、无崩溃标记（aionui-panel 已停止支持、archive-manager 仍为
-#      alpha.2 排除；better-sidebar 以对齐当前 cohort 的 0.19.1 内置）。
+#      锚定启动、断言不内置的 better-sidebar 与被排除的 archive-manager 都
+#      缺席、无崩溃标记（alpha 分支不内置任何右侧面板插件；archive-manager
+#      仍为 alpha.2 排除）。
 #
 # 用法：
 #   bash scripts/e2e-mount.sh
@@ -25,10 +25,6 @@
 # 环境变量（均可省略）：
 #   DSH_CMD             dsh 命令；缺省 PATH 上的 `dsh`，回退 npx 拉官方包
 #   WEB_UI_ALL_DIR      聚合包目录；缺省 packages/dsh-web-all
-#   BETTER_SIDEBAR_TGZ  本地 better-sidebar tarball；给出时把聚合包 tarball
-#                       里的 dsh-better-sidebar 依赖改写为 file:<该 tarball>
-#                       （用于 dsh-better-sidebar@0.13.0 尚未发版前的本地
-#                       联调；CI 不设此变量，走 npm 已发布版本）
 #   FAMILY_TGZS_DIR     本地家族 tarball 目录（手工全覆盖，优先级高于 auto
 #                       模式）：给出时把聚合包 tarball 里全部 @linxin666/* 依赖
 #                       改写为 file:<目录内同名 tarball>（验证仓库当前构建，
@@ -47,7 +43,6 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DSH_CMD="${DSH_CMD:-dsh}"
 PORT="${PORT:-0}"
 WEB_UI_ALL_DIR="${WEB_UI_ALL_DIR:-$ROOT/packages/dsh-web-all}"
-BETTER_SIDEBAR_TGZ="${BETTER_SIDEBAR_TGZ:-}"
 FAMILY_TGZS_DIR="${FAMILY_TGZS_DIR:-}"
 
 say()  { printf '\033[32m[e2e-mount]\033[0m %s\n' "$*"; }
@@ -103,30 +98,26 @@ say "tarball: $TARBALL"
 
 # 步骤 1b：解析聚合包 tarball 依赖（scripts/e2e-mount-rewrite）。auto 模式
 # 只把 npm 上尚未发布的 @linxin666/* 依赖改写为仓库 workspace 打包的 file:
-# tarball（发布窗口治理）；FAMILY_TGZS_DIR / BETTER_SIDEBAR_TGZ 为手工全
-# 覆盖，优先级高于 auto 模式。
+# tarball（发布窗口治理）；FAMILY_TGZS_DIR 为手工全覆盖，优先级高于 auto 模式。
 if [ -n "$FAMILY_TGZS_DIR" ]; then
   [ -d "$FAMILY_TGZS_DIR" ] || die "FAMILY_TGZS_DIR 不存在：$FAMILY_TGZS_DIR"
 fi
-if [ -n "$BETTER_SIDEBAR_TGZ" ]; then
-  [ -f "$BETTER_SIDEBAR_TGZ" ] || die "BETTER_SIDEBAR_TGZ 不存在：$BETTER_SIDEBAR_TGZ"
-  BETTER_SIDEBAR_TGZ="$(cd "$(dirname "$BETTER_SIDEBAR_TGZ")" && pwd)/$(basename "$BETTER_SIDEBAR_TGZ")"
-fi
-say "解析聚合包 tarball 依赖（auto=仅未发布走本地；FAMILY_TGZS_DIR=${FAMILY_TGZS_DIR:-无}，BETTER_SIDEBAR_TGZ=${BETTER_SIDEBAR_TGZ:-无}）"
+say "解析聚合包 tarball 依赖（auto=仅未发布走本地；FAMILY_TGZS_DIR=${FAMILY_TGZS_DIR:-无}）"
 REWRITE_DIR="$SCRATCH/tarball-rewrite"
 mkdir -p "$REWRITE_DIR"
-tar -xzf "$TARBALL" -C "$REWRITE_DIR"
+# GNU tar reads a "C:\..." argument as a remote host spec; --force-local keeps
+# it a local path on the Windows/MSYS lane. Empty everywhere else.
+TAR_LOCAL=()
+case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) TAR_LOCAL=(--force-local) ;; esac
+tar "${TAR_LOCAL[@]}" -xzf "$TARBALL" -C "$REWRITE_DIR"
 PACKAGE_JSON="$REWRITE_DIR/package/package.json"
 REWRITE_ARGS=(--root "$ROOT")
 if [ -n "$FAMILY_TGZS_DIR" ]; then
   REWRITE_ARGS+=(--family-dir "$FAMILY_TGZS_DIR")
 fi
-if [ -n "$BETTER_SIDEBAR_TGZ" ]; then
-  REWRITE_ARGS+=(--better-sidebar-tgz "$BETTER_SIDEBAR_TGZ")
-fi
 node "$ROOT/scripts/e2e-mount-rewrite" "$PACKAGE_JSON" "${REWRITE_ARGS[@]}"
 TARBALL="$SCRATCH/dsh-web-all-rewritten.tgz"
-tar -czf "$TARBALL" -C "$REWRITE_DIR" package
+tar "${TAR_LOCAL[@]}" -czf "$TARBALL" -C "$REWRITE_DIR" package
 say "改写后 tarball: $TARBALL"
 
 # 步骤 2：引导 scratch profile（web 模板；先写 pnpm-workspace.yaml 的
@@ -161,7 +152,6 @@ allowBuilds:
   ssh2: true
 
 minimumReleaseAgeExclude:
-  - 'dsh-better-sidebar@0.19.1'
   - '@linxin666/*'
 EOF
 
@@ -211,4 +201,4 @@ say "运行 Playwright 无头渲染 lane..."
 DSH_E2E_URL="$URL" DSH_E2E_WORKSPACE="$WORKSPACE_DIR" \
   pnpm exec playwright test
 
-say "通过：聚合包挂载到真实 DSH 后无头渲染未崩溃，better-sidebar 已挂载，被排除的 archive-manager 缺席"
+say "通过：聚合包挂载到真实 DSH 后无头渲染未崩溃，不内置的 better-sidebar 与被排除的 archive-manager 均缺席"

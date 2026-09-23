@@ -9,9 +9,9 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ComponentProps } from 'react'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { UsageSectionCard, type UsageSettings } from '../src/client/UsageSectionCard.tsx'
 import { type UsageStoreInstance, type UsageUiState } from '../src/client/usage-store.ts'
 import { emptyTotals, type ProviderSnapshotView, type UsageOverviewView } from '../src/core/types.ts'
@@ -42,31 +42,49 @@ function fakeStore(state: UsageUiState): UsageStoreInstance {
   return { subscribe: () => () => {}, getSnapshot: () => state } as unknown as UsageStoreInstance
 }
 
-const settings = {
-  getSnapshot: () => ({ status: 'ready', writable: true, value: {} }),
-  set: async () => {},
-  subscribe: () => () => {},
-} as unknown as SettingsScope<UsageSettings>
+const settings = fakeForm().form
 
 /**
- * Mutable settings scope fake: `set` writes the value and notifies subscribers,
- * so a test drives the enable flag the way the section's checkbox does.
+ * Form fake over one effective section: writes are recorded and answered by
+ * the caller's policy, so a test drives the section's controls exactly the way
+ * the shared form contract answers them (`true` accepted, `false` refused).
+ * `publish` stands in for a Host answer that replaces the effective section.
  */
-function liveSettings(initial: UsageSettings): { scope: SettingsScope<UsageSettings>; set: (patch: UsageSettings) => void } {
-  let value: UsageSettings = { ...initial }
+function fakeForm(policy: {
+  value?: UsageSettings
+  writable?: boolean
+  answer?: (field: string, value: unknown) => boolean | Promise<boolean>
+} = {}): { form: ConfigForm<UsageSettings>; writes: Array<[string, unknown]>; publish: (patch: UsageSettings) => void } {
+  const writes: Array<[string, unknown]> = []
   let listeners: Array<() => void> = []
-  const scope = {
-    getSnapshot: () => ({ status: 'ready', writable: true, value }),
-    set: async () => {},
+  const snapshot = (current: UsageSettings): ConfigFormSnapshot<UsageSettings> => ({
+    status: 'ready',
+    value: current,
+    base: undefined,
+    user: undefined,
+    revision: 1,
+    writable: policy.writable ?? true,
+    mode: 'host',
+  })
+  let held = snapshot(policy.value ?? {})
+  const form = {
+    getSnapshot: () => held,
     subscribe: (listener: () => void) => {
       listeners.push(listener)
       return () => { listeners = listeners.filter((candidate) => candidate !== listener) }
     },
-  } as unknown as SettingsScope<UsageSettings>
+    set: (field: string, next: unknown) => {
+      writes.push([field, next])
+      return Promise.resolve(policy.answer?.(field, next) ?? true)
+    },
+    unset: () => Promise.resolve(false),
+    mutate: () => Promise.resolve(false),
+  }
   return {
-    scope,
-    set: (patch: UsageSettings) => {
-      value = { ...value, ...patch }
+    form: form as unknown as ConfigForm<UsageSettings>,
+    writes,
+    publish: (patch) => {
+      held = snapshot({ ...held.value, ...patch })
       for (const listener of [...listeners]) listener()
     },
   }
@@ -91,43 +109,61 @@ const mixed = [
 ]
 
 describe('UsageSectionCard configured-provider filter', () => {
-  it('renders only configured providers in the balance card', () => {
+  it('user sees only configured providers in the balance card', () => {
+    // Given a balance-capable provider with a credential, a plan-only provider,
+    // and two catalog rows without one
+    // When the balance card renders
     render(<UsageSectionCard {...cardProps(overview(mixed))} />)
-    expect(screen.getByText('¥42.00')).toBeTruthy()
+    // Then one row renders per configured provider (the balance-capable one and
+    // the credential-bearing plan-only one), and no unconfigured route or stale
+    // error line reaches the card
+    expect(document.querySelectorAll('[data-dsh-part="provider-row"]')).toHaveLength(2)
+    expect(screen.getByText('¥42.00').textContent).toBe('¥42.00')
     expect(screen.queryByText('ZenMux')).toBeNull()
     expect(screen.queryByText('未配置凭据')).toBeNull()
     expect(screen.queryByText(/HTTP 401/)).toBeNull()
   })
 
-  it('renders only configured providers on the plans tab', () => {
+  it('user sees only configured plan providers on the plans tab', () => {
+    // Given the same providers, one of which reports a plan window
     render(<UsageSectionCard {...cardProps(overview(mixed))} />)
+    // When the user opens the plans tab
     fireEvent.click(screen.getByRole('tab', { name: '个人套餐' }))
-    expect(screen.getByText('Kimi For Coding')).toBeTruthy()
+    // Then only the provider that reported a plan is listed
+    expect(screen.getAllByText('Kimi For Coding')).toHaveLength(1)
     expect(screen.queryByText('ZenMux')).toBeNull()
     expect(screen.queryByText('Codex')).toBeNull()
   })
 
-  it('shows the none-configured empty states when no provider has a credential', () => {
+  it('user sees the none-configured empty states when no provider has a credential', () => {
+    // Given a catalog in which no provider carries a credential
     const unconfigured = [
       provider({ provider: 'zenmux', displayName: 'ZenMux', balanceSupported: true }),
       provider({ provider: 'openai-codex', displayName: 'Codex', planSupported: true }),
     ]
     render(<UsageSectionCard {...cardProps(overview(unconfigured))} />)
-    expect(screen.getByText('没有已配置的提供方')).toBeTruthy()
+    // When the balance card renders
+    // Then the balance card reports nothing configured rather than an empty table
+    expect(screen.getAllByText('没有已配置的提供方')).toHaveLength(1)
+    // And the plans tab reports the same for plan providers
     fireEvent.click(screen.getByRole('tab', { name: '个人套餐' }))
-    expect(screen.getByText('没有已配置的套餐类 provider（如 Kimi、GLM、OpenCode Go、MiniMax、Codex 订阅）')).toBeTruthy()
+    expect(screen.getAllByText('没有已配置的套餐类 provider（如 Kimi、GLM、OpenCode Go、MiniMax、Codex 订阅）')).toHaveLength(1)
   })
 })
 
 describe('Token 银行 tab', () => {
-  it('shows the empty state when the DeepSeek official family has no usage', () => {
+  it('user sees the empty state when the DeepSeek official family has no usage', () => {
+    // Given an overview whose DeepSeek official family has no usage
     render(<UsageSectionCard {...cardProps(overview([]))} />)
+    // When the user opens the Token 银行 tab
     fireEvent.click(screen.getByRole('tab', { name: 'Token 银行' }))
-    expect(screen.getByText('暂无 DeepSeek 官方用量数据（统计自插件启用起）')).toBeTruthy()
+    // Then the bank reports the missing official usage and offers no save button
+    expect(screen.getByText('暂无 DeepSeek 官方用量数据（统计自插件启用起）').textContent).toBe('暂无 DeepSeek 官方用量数据（统计自插件启用起）')
     expect(screen.queryByRole('button', { name: '保存图片' })).toBeNull()
   })
 
-  it('mints the voucher from the whole-ledger family rows and offers save (no share without navigator.canShare)', () => {
+  it('user gets the voucher minted from the whole-ledger rows with save offered and no share without canShare', () => {
+    // Given a whole-ledger aggregate of 1,234,567 tokens across the official family
     const snapshot = overview([])
     snapshot.usage.all = {
       from: '2025-12-01',
@@ -139,17 +175,20 @@ describe('Token 银行 tab', () => {
       ],
     }
     render(<UsageSectionCard {...cardProps(snapshot)} />)
+    // When the user opens the Token 银行 tab
     fireEvent.click(screen.getByRole('tab', { name: 'Token 银行' }))
-    // 1,234,567 tokens mint 1 whale yuan at the 1,000,000:1 exchange rate.
-    expect(screen.getByText('累计铸造 1 鲸元（1.23M tokens）')).toBeTruthy()
-    expect(screen.getByText('消费估算：约 ¥3.50')).toBeTruthy()
-    expect(screen.getByText('12 次调用')).toBeTruthy()
-    expect(screen.getByText('统计窗口 2025-12-01 ~ 2026-01-01')).toBeTruthy()
-    expect(screen.getByRole('button', { name: '保存图片' })).toBeTruthy()
+    // Then the voucher mints 1 whale yuan at the 1,000,000:1 exchange rate and reports the folded ledger
+    expect(screen.getByText('累计铸造 1 鲸元（1.23M tokens）').textContent).toBe('累计铸造 1 鲸元（1.23M tokens）')
+    expect(screen.getByText('消费估算：约 ¥3.50').textContent).toBe('消费估算：约 ¥3.50')
+    expect(screen.getByText('12 次调用').textContent).toBe('12 次调用')
+    expect(screen.getByText('统计窗口 2025-12-01 ~ 2026-01-01').textContent).toBe('统计窗口 2025-12-01 ~ 2026-01-01')
+    // And save is offered while share stays hidden without navigator.canShare
+    expect(screen.getByRole('button', { name: '保存图片' }).textContent).toBe('保存图片')
     expect(screen.queryByRole('button', { name: '分享' })).toBeNull()
   })
 
-  it('prefers the official balance watch over the fold-time estimate for the spend line', () => {
+  it('user sees the official balance watch preferred over the fold-time estimate for the spend line', () => {
+    // Given a 50k-token official row and an observed balance spend of ¥12.50
     const snapshot = overview([])
     snapshot.usage.all = {
       from: '2026-01-01',
@@ -159,9 +198,11 @@ describe('Token 银行 tab', () => {
     }
     snapshot.usage.observedSpend = { cny: 12.5, since: new Date(2026, 0, 2, 12).getTime() }
     render(<UsageSectionCard {...cardProps(snapshot)} />)
+    // When the user opens the Token 银行 tab
     fireEvent.click(screen.getByRole('tab', { name: 'Token 银行' }))
-    expect(screen.getByText('累计铸造 1 鲸元（50k tokens）')).toBeTruthy()
-    expect(screen.getByText('官方余额实测花费 ¥12.50（自 2026-01-02 起）')).toBeTruthy()
+    // Then the spend line reports the observed balance watch and drops the fold-time estimate
+    expect(screen.getByText('累计铸造 1 鲸元（50k tokens）').textContent).toBe('累计铸造 1 鲸元（50k tokens）')
+    expect(screen.getByText('官方余额实测花费 ¥12.50（自 2026-01-02 起）').textContent).toBe('官方余额实测花费 ¥12.50（自 2026-01-02 起）')
     expect(screen.queryByText(/消费估算/)).toBeNull()
   })
 
@@ -188,19 +229,19 @@ describe('Token 银行 tab', () => {
 describe('UsageSectionCard disabled and failed states', () => {
   it('stops polling and keeps the enable checkbox while the plugin is disabled', () => {
     const poll = vi.fn()
-    const { scope } = liveSettings({ enabled: false })
-    render(<UsageSectionCard {...cardProps(overview(mixed))} poll={poll} settings={scope} />)
+    const live = fakeForm({ value: { enabled: false } })
+    render(<UsageSectionCard {...cardProps(overview(mixed))} poll={poll} settings={live.form} />)
     expect(poll).not.toHaveBeenCalled()
     expect(screen.getByText(/插件已停用/)).toBeTruthy()
     expect(screen.getByRole('checkbox')).toBeTruthy()
   })
 
-  it('resumes polling once the plugin is enabled again', () => {
+  it('resumes polling once the Host reports the plugin enabled again', () => {
     const poll = vi.fn()
-    const { scope, set } = liveSettings({ enabled: false })
-    render(<UsageSectionCard {...cardProps(overview(mixed))} poll={poll} settings={scope} />)
+    const live = fakeForm({ value: { enabled: false } })
+    render(<UsageSectionCard {...cardProps(overview(mixed))} poll={poll} settings={live.form} />)
     expect(poll).not.toHaveBeenCalled()
-    act(() => { set({ enabled: true }) })
+    act(() => { live.publish({ enabled: true }) })
     expect(poll).toHaveBeenCalledTimes(1)
     expect(screen.queryByText(/插件已停用/)).toBeNull()
   })
@@ -210,5 +251,47 @@ describe('UsageSectionCard disabled and failed states', () => {
     render(<UsageSectionCard {...cardProps(overview(mixed))} store={failing} />)
     expect(screen.getByText(/failed: 500/)).toBeTruthy()
     expect(screen.getByRole('checkbox')).toBeTruthy()
+  })
+})
+
+/**
+ * The shared form contract answers each write with a boolean: `false` is a
+ * refusal or a skipped write (the value never reached the Host document), and a
+ * dead transport rejects. Neither may read as a successful save.
+ */
+describe('UsageSectionCard settings writes', () => {
+  it('surfaces a Host-refused write as a failed save', async () => {
+    const live = fakeForm({ value: { enabled: true }, answer: () => false })
+    render(<UsageSectionCard {...cardProps(overview(mixed))} settings={live.form} />)
+    // The checkbox starts from the form's effective value and writes the toggle.
+    fireEvent.click(screen.getByRole('checkbox'))
+    expect(live.writes).toEqual([['enabled', false]])
+    await waitFor(() => { expect(screen.getByText(/保存失败/)).toBeTruthy() })
+  })
+
+  it('surfaces a rejecting transport with its own message', async () => {
+    const live = fakeForm({ value: { enabled: true }, answer: () => Promise.reject(new Error('settings bridge unreachable')) })
+    render(<UsageSectionCard {...cardProps(overview(mixed))} settings={live.form} />)
+    fireEvent.click(screen.getByRole('checkbox'))
+    await waitFor(() => { expect(screen.getByText(/保存失败.*settings bridge unreachable/)).toBeTruthy() })
+  })
+
+  it('reports no failure for an accepted write', async () => {
+    const live = fakeForm({ value: { enabled: true } })
+    render(<UsageSectionCard {...cardProps(overview(mixed))} settings={live.form} />)
+    fireEvent.click(screen.getByRole('checkbox'))
+    await act(async () => { await Promise.resolve() })
+    expect(live.writes).toEqual([['enabled', false]])
+    expect(screen.queryByText(/保存失败/)).toBeNull()
+  })
+
+  it('writes the rounded poll interval and keeps out-of-range drafts off the wire', () => {
+    const live = fakeForm()
+    render(<UsageSectionCard {...cardProps(overview(mixed))} settings={live.form} />)
+    const interval = screen.getByRole('spinbutton')
+    fireEvent.change(interval, { target: { value: '120' } })
+    expect(live.writes).toEqual([['pollIntervalSec', 120]])
+    fireEvent.change(interval, { target: { value: '10' } })
+    expect(live.writes).toEqual([['pollIntervalSec', 120]])
   })
 })

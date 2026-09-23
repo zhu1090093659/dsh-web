@@ -6,13 +6,13 @@
  * "image"; the official model settings UI does not expose that field, so
  * this plugin (the family's image seam) hosts a loopback route pair that
  * reports the current agent-default route's image-input state and toggles
- * the `llm-deepseek` settings namespace's `models[]` entry for the
+ * the `llm-deepseek` entry's `models[]` configuration for the
  * current model. Writes ride the official settings seam (schema validation,
  * revision fencing, persistence and event emission stay with the host) and
  * are guarded by the same loopback + same-origin fence as the attach
  * routes; the browser never sees or supplies credentials.
  *
- * Fail-closed: a host without the `llm-deepseek` namespace (adapter not
+ * Fail-closed: a host without the `llm-deepseek` entry (adapter not
  * mounted), a missing settings seam, or a missing agentDefaultModel service
  * answers `supported: false` and rejects every write.
  * @module @linxin666/dsh-tool-describe-image/native-images
@@ -25,7 +25,7 @@ import { isLoopbackRequest } from './loopback.ts'
 import { readJsonBody, writeJson } from './http.ts'
 import { optionalService, UNKNOWN_CAPABILITY, type InvalidatableRouteResolver, type ModelImageCapability, type RouteCapabilityResolver } from './model-capability.ts'
 
-/** The DeepSeek adapter's settings namespace. */
+/** The DeepSeek adapter's settings namespace (its profile entry id). */
 export const LLM_DEEPSEEK_SETTINGS_NAMESPACE = 'llm-deepseek' as SettingsNamespace
 
 /** Native-image wire state for the browser half. */
@@ -52,20 +52,24 @@ interface CatalogModelEntry {
   inputModalities?: unknown
 }
 
-/** Minimal face of the host settings seam this route writes through. */
+/** Minimal face of the host settings seam this route writes through (the 0.1.7 `SettingsForms`). */
 interface SettingsFace {
   describe(options?: { redactSecrets?: boolean }): Array<{ ns: unknown; value?: unknown; revision?: number }>
-  mutate(ns: SettingsNamespace, ops: readonly SettingsPathOp[], expectedRevision?: number): Promise<void>
+  mutate(ns: string, ops: readonly SettingsPathOp[], expectedRevision?: number): Promise<void>
   writable?: boolean
 }
 
-/** One descriptor of the adapter namespace, resolved from the settings seam. */
+/** One descriptor of the adapter entry, resolved from the settings seam. */
 interface AdapterDescriptor {
   value?: unknown
   revision?: number
 }
 
-/** Resolve the adapter settings namespace for one route. */
+/**
+ * Resolve the adapter entry for one route. Under the 0.1.7 surface a
+ * descriptor's `ns` is a profile entry id; the official adapter rows are
+ * spelled after their settings namespace, so the lookup stays a name match.
+ */
 function adapterNamespaceForRoute(route: { provider: string; model: string } | undefined): SettingsNamespace {
   if (route && route.provider) {
     return `llm-${route.provider}` as SettingsNamespace
@@ -73,7 +77,7 @@ function adapterNamespaceForRoute(route: { provider: string; model: string } | u
   return LLM_DEEPSEEK_SETTINGS_NAMESPACE
 }
 
-/** Resolve the adapter namespace descriptor (undefined when unregistered). */
+/** Resolve the adapter entry descriptor (undefined when unregistered). */
 function adapterDescriptor(settings: SettingsFace | undefined, preferredNs?: SettingsNamespace): { descriptor?: AdapterDescriptor; ns: SettingsNamespace } {
   const targetNs = preferredNs ?? LLM_DEEPSEEK_SETTINGS_NAMESPACE
   if (settings === undefined) return { ns: targetNs }
@@ -129,7 +133,7 @@ export async function readNativeImageState(ctx: Context, resolver: RouteCapabili
 
 /**
  * Toggle native image input for the current agent-default model: rewrite
- * the adapter catalog entry's `inputModalities` to ["text","image"] (or
+ * the adapter entry's catalog `inputModalities` to ["text","image"] (or
  * back to ["text"]) through the official settings seam, fenced by the
  * descriptor's revision so a concurrent edit fails with a conflict instead
  * of clobbering it.
@@ -145,7 +149,7 @@ export async function setNativeImageEnabled(ctx: Context, enabled: boolean, reso
   const preferredNs = adapterNamespaceForRoute(route)
   const { descriptor, ns } = adapterDescriptor(settings, preferredNs)
   if (descriptor === undefined) {
-    throw new Error(`native-images: settings namespace '${String(ns)}' is not available`)
+    throw new Error(`native-images: settings entry '${String(ns)}' is not available`)
   }
   const value = descriptor.value as { models?: unknown } | null | undefined
   const models = Array.isArray(value?.models) ? value.models as CatalogModelEntry[] : []

@@ -181,18 +181,23 @@ export function RemoteEntry({ wide, t }: RemoteEntryProps) {
   useEffect(() => closeEventSource, [closeEventSource])
 
   const handleStop = useCallback(() => {
-    // A failed stop request is harmless: the optimistic phase flip below
-    // keeps the UI honest, and the status stream confirms the stopped phase.
-    void stopPair().catch(() => {})
-    // Optimistic fallback; the status stream confirms with the stopped phase.
-    setState(previous => previous.kind === 'ready' ? { ...previous, phase: 'stopped' as PairingPhase, devices: [] } : previous)
+    // The phase flip lands only once the server accepted the stop. A refused
+    // stop changes nothing server-side and the service emits no state change
+    // (notify dedupes identical snapshots), so an optimistic flip would stick
+    // and claim a revocation that never happened.
+    void stopPair().then(() => {
+      setState(previous => previous.kind === 'ready' ? { ...previous, phase: 'stopped' as PairingPhase, devices: [] } : previous)
+    }).catch(() => {})
   }, [])
 
   const handleRevoke = useCallback((deviceId: string) => {
-    void revokePair(deviceId).catch(() => {})
-    setState(previous => previous.kind === 'ready'
-      ? { ...previous, devices: previous.devices.filter(device => device.id !== deviceId) }
-      : previous)
+    // Same rule as stop: a refused unpair must leave the row, or the panel
+    // claims a still-live session is gone.
+    void revokePair(deviceId).then(() => {
+      setState(previous => previous.kind === 'ready'
+        ? { ...previous, devices: previous.devices.filter(device => device.id !== deviceId) }
+        : previous)
+    }).catch(() => {})
   }, [])
 
   const handleRefresh = useCallback(() => {

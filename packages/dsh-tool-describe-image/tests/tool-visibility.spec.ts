@@ -178,12 +178,12 @@ describe('installToolVisibility', () => {
     // A model selection change moves the default to a vision model: the
     // resting evaluation must re-run and mask the tool.
     defaultSelection = { provider: 'dp', model: 'default-vision' }
-    await emit(listeners, 'settings/updated', 'agent-default-model')
+    await emit(listeners, 'settings/document-updated', 'agent-default-model', 2)
     await Promise.resolve()
     expect(tools.restrict).toHaveBeenCalledWith({ deny: ['describe_image'] })
   })
 
-  it('ignores settings changes for other namespaces', async () => {
+  it('ignores settings changes for other entries', async () => {
     const tools = makeTools()
     const resolveRoute = makeResolver({ 'dp/text-default': { acceptsImages: false, known: true } })
     const { ctx, listeners } = makeCtx({})
@@ -191,7 +191,7 @@ describe('installToolVisibility', () => {
     const agent = makeAgent('s9', undefined, tools)
     await emit(listeners, 'agent/created', { agent })
     await Promise.resolve()
-    await emit(listeners, 'settings/updated', 'some-other-namespace')
+    await emit(listeners, 'settings/document-updated', 'some-other-entry', 2)
     await Promise.resolve()
     expect(tools.restrict).not.toHaveBeenCalled()
   })

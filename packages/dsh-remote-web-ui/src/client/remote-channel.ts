@@ -62,7 +62,11 @@ export function remoteChannelRequired(
  * @returns true for localhost, IPv6 loopback, or any 127/8 literal.
  */
 export function isLoopbackHostname(hostname: string): boolean {
-  if (hostname === 'localhost' || hostname === '::1') return true
+  // WHATWG location.hostname keeps IPv6 literals bracketed ("[::1]"); the
+  // host-side shared predicate accepts that spelling, so this browser copy must
+  // too, or an IPv6-loopback origin is judged remote and rewrites every call
+  // onto the gated channel where it can never pair.
+  if (hostname === 'localhost' || hostname === '::1' || hostname === '[::1]') return true
   const parts = hostname.split('.')
   return parts.length === 4 && parts[0] === '127' && parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255)
 }
@@ -228,8 +232,16 @@ export function installRemoteChannel(window: ChannelWindow, options: RemoteChann
     if (device === null) return init
     const headers = init?.headers
     if (typeof Headers !== 'undefined' && headers instanceof Headers) {
-      try { headers.set(RULES.deviceHeader, device) } catch { /* ignore */ }
-      return init
+      // Copy instead of mutating: the instance belongs to the caller, which may
+      // reuse it for a request this channel does not rewrite (the device
+      // credential must not ride along there).
+      try {
+        const copy = new Headers(headers)
+        copy.set(RULES.deviceHeader, device)
+        return { ...init, headers: copy }
+      } catch {
+        return init
+      }
     }
     if (typeof headers === 'object' && headers !== null) {
       return { ...init, headers: { ...(headers as Record<string, string>), [RULES.deviceHeader]: device } } as RequestInit
@@ -253,7 +265,10 @@ export function installRemoteChannel(window: ChannelWindow, options: RemoteChann
         ? rewritten.toString()
         : new Request(rewritten, input)
       return Promise.resolve(originalFetch.call(window, next, attach(init))).then(async (response) => {
-        if (await isUnpairedDenied(response.clone())) options.onUnpaired?.()
+        // The clone tees the response body; only the 403 branch inspects it, so
+        // every other status skips the copy (a large upload or session dump
+        // would otherwise be duplicated per gated request).
+        if (response.status === 403 && await isUnpairedDenied(response.clone())) options.onUnpaired?.()
         else options.onPaired?.()
         return response
       })

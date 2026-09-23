@@ -1,7 +1,7 @@
 /**
  * Aggregate-bundle mount lane: prove the packed `@linxin666/dsh-web-all`
  * tarball mounts into a real `dsh web` instance and boots cleanly on the
- * 0.1.7-alpha.1 cohort:
+ * 0.1.7-alpha.2 cohort:
  *
  *  1. the DSH host frame mounts (`[data-dsh-frame]` is the official host
  *     frame the shell always renders, with its `data-pane` / `data-slot`

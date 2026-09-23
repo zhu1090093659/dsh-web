@@ -60,7 +60,7 @@ deps:
   - ../dsh-i18n
 # 外部 npm 插件段：alpha 分支（2026-09-17 决策）不内置 dsh-better-sidebar。
 # 该插件 0.19.1 的全部 @deepseek-ai/dsh-* peer 声明为 ^0.1.5-rc.1，按 semver
-# 不覆盖本分支的 0.1.7-alpha.1 cohort（预发布版本只匹配同 [major,minor,patch]
+# 不覆盖本分支的 0.1.7-alpha.2 cohort（预发布版本只匹配同 [major,minor,patch]
 # 元的区间），因此 alpha 实验环境不再挂载这个右侧面板插件：聚合包不依赖它、
 # profile 里也不出现它的行。需要右侧面板时按需安装
 # （dsh plugin --profile <name> add dsh-better-sidebar@latest）。

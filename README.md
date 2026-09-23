@@ -161,7 +161,7 @@ DSH Desktop 将 DeepSeek Harness Web GUI 封装为跨平台桌面应用（支持
 
 ### 右侧面板（Right Panel）
 
-右侧面板由社区插件 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 提供，集成了文件资源管理器、内联代码编辑器、辅助终端、Git 面板以及内置网页浏览器，支持第三方插件注册停靠。alpha 分支的聚合包不内置它（其 0.19.1 的 peer 区间 `^0.1.5-rc.1` 不覆盖本分支的 0.1.7-alpha.1 cohort），按需安装：`dsh plugin --profile web add dsh-better-sidebar@latest`。相关架构与配置见其 [项目说明](https://github.com/omdsh-dev/DSH-better-sidebar)。
+右侧面板由社区插件 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 提供，集成了文件资源管理器、内联代码编辑器、辅助终端、Git 面板以及内置网页浏览器，支持第三方插件注册停靠。alpha 分支的聚合包不内置它（其 0.19.1 的 peer 区间 `^0.1.5-rc.1` 不覆盖本分支的 0.1.7-alpha.2 cohort），按需安装：`dsh plugin --profile web add dsh-better-sidebar@latest`。相关架构与配置见其 [项目说明](https://github.com/omdsh-dev/DSH-better-sidebar)。
 
 ![右侧面板](docs/screenshots/19-right-panel.png)
 

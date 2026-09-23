@@ -124,7 +124,7 @@ dsh plugin --profile web add link:<dsh-web>/packages/dsh-web-all
 ```
 
 - **类型来源（只能基于官方 NPM SDK）**：各包把用到的 `@deepseek-ai/*` 包声明为 `devDependencies`
-  （`^0.1.7-alpha.1`；cordis 用 `^4.0.3`），TS 从 node_modules 自动解析类型
+  （`^0.1.7-alpha.2`；cordis 用 `^4.0.4`），TS 从 node_modules 自动解析类型
   （SDK 包的 `exports["."].types` 统一指向 `lib/types/index.d.ts`，client 半区子路径
   `./client` 同理）。**禁止** tsconfig `extends` / `paths` / `references` 指向任何 DSH 源码
   checkout（历史形态：`../../../test-zhu1090093659` 相对路径、`~/.dsh/source/current` 绝对

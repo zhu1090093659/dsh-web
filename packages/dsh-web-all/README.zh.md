@@ -4,7 +4,7 @@
 
 DSH Web UI 全家桶聚合插件：一键安装家族的全部功能插件（任务看板 / Git 图谱 / 宠物 / 移动端远程 / SSH / 模型能力 / 会话归档 / 皮肤 / 设置区 / 社区插件，完整清单以本包 `aggregate.yml` 为准）。compat 桥接层已并入本包（`src/client`），因此无需独立的 compat npm 包。
 
-> 注（alpha 分支，2026-09-17）：本分支不内置任何外部右侧面板插件。`dsh-better-sidebar@0.19.1` 的全部 `@deepseek-ai/dsh-*` peer 声明为 `^0.1.5-rc.1`，本分支构建所依据的 `0.1.7-alpha.1` cohort 不满足该区间，因此它既不是依赖、也不挂行；需要右侧面板时按需安装（`dsh plugin --profile web add dsh-better-sidebar@latest`）。稳定线 `dev` 仍以 0.19.1 内置。`@mlgbnb/dsh-archive-manager` 两条线都排除：其最新上游构建（1.0.7）仍 import 已移除面，保留会导致 `dsh web` 启动失败。
+> 注（alpha 分支，2026-09-17）：本分支不内置任何外部右侧面板插件。`dsh-better-sidebar@0.19.1` 的全部 `@deepseek-ai/dsh-*` peer 声明为 `^0.1.5-rc.1`，本分支构建所依据的 `0.1.7-alpha.2` cohort 不满足该区间，因此它既不是依赖、也不挂行；需要右侧面板时按需安装（`dsh plugin --profile web add dsh-better-sidebar@latest`）。稳定线 `dev` 仍以 0.19.1 内置。`@mlgbnb/dsh-archive-manager` 两条线都排除：其最新上游构建（1.0.7）仍 import 已移除面，保留会导致 `dsh web` 启动失败。
 
 ## 是什么
 

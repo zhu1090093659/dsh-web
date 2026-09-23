@@ -28,7 +28,7 @@ Status: implemented
 
 同样引用这两个宿主的其它皮肤（maid-atelier、phoebe-atelier、orca-link）只在它们上面设置 CSS 自定义属性，不会继承这次塌陷，因此无需连带修改。
 
-已记录的覆盖缺口：现有门禁都抓不到这一类缺陷。PR #1601 的评审把它记为后续项，同时记下两个更小的问题——新增的 `[data-dsh-taskboard-view] input` 规则比其注释更宽（它同时会重刷任务表单输入、时间输入与 `type=checkbox`），以及 PR 证据图位于 docs/pr-evidence 而不是 docs/archive/pr-evidence。评审与其测量记录见 [PR #1601 评审记录](../../../../docs/archive/pr-review-1601-wallpaper-exclusive-workbench.md)。
+已记录的覆盖缺口：现有门禁都抓不到这一类缺陷。PR #1601 的评审把它记为后续项，同时记下两个更小的问题——新增的 `[data-dsh-taskboard-view] input` 规则比其注释更宽（它同时会重刷任务表单输入、时间输入与 `type=checkbox`），以及 PR 证据图归入 docs/archive/pr-evidence，即一次性验证记录的归属目录。评审与其测量记录见 [PR #1601 评审记录](../../../../docs/archive/pr-review-1601-wallpaper-exclusive-workbench.md)。
 
 ## Testing
 

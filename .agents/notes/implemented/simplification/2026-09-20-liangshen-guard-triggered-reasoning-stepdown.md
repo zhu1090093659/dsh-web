@@ -32,4 +32,4 @@ The earlier note's third reason for removal was "the persona's reflection-fuse d
 ## Consequences
 
 - LiangShen mode gains runtime protection against the #5976 shape, while an ordinary session's request surface and cache behavior are identical to running without the guard;
-- The breaker thresholds (consecutive steps, repeated failures, reasoning-character floor) are deliberately conservative: a false interruption of real long thinking hurts more than a missed episode. Concrete values are left to calibration by replaying sessions through `packages/dsh-liangshen/tools/benchmark-live-run.mjs` (see docs/liangshen-v41-community-feedback-update.md §4 P2-2).
+- The breaker thresholds (consecutive steps, repeated failures, reasoning-character floor) are deliberately conservative: a false interruption of real long thinking hurts more than a missed episode. Concrete values are left to calibration by replaying sessions through `packages/dsh-liangshen/tools/benchmark-live-run.mjs` (see docs/archive/liangshen-v41-community-feedback-update.md §4 P2-2).

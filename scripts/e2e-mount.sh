@@ -30,7 +30,8 @@
 #                       改写为 file:<目录内同名 tarball>（验证仓库当前构建，
 #                       而非 npm 已发布版本；与本地全 tarball 安装流程一致）
 #   PORT                固定端口（默认 0 = OS 分配，从日志解析 URL）
-#   DSH_HOME_BASE       覆盖 scratch 根目录（默认 mktemp -d）
+#   DSH_HOME_BASE       覆盖 scratch 根目录（默认 mktemp -d）；指向真实 home 时
+#                       直接拒绝，且调用方给出的根目录不会被整棵删除
 #   KEEP_HOME           非空时保留 scratch home（调试用）
 #
 # 退出码 = playwright 的退出码；服务器与 scratch 目录由 trap 兜底清理。
@@ -65,7 +66,19 @@ fi
 [ -f "$WEB_UI_ALL_DIR/package.json" ] || die "聚合包目录不存在：$WEB_UI_ALL_DIR"
 
 # scratch home（每次全新，绝不触碰真实 ~/.dsh）
-SCRATCH="${DSH_HOME_BASE:-$(mktemp -d /tmp/dsh-web-ui-e2e.XXXXXX)}"
+OWNED_SCRATCH=""
+if [ -n "${DSH_HOME_BASE:-}" ]; then
+  # 调用方给根目录时先挡住真实 home：该值下面会被当作 scratch 使用与清理。
+  _base_real="$(cd "$DSH_HOME_BASE" 2>/dev/null && pwd -P || printf '%s' "$DSH_HOME_BASE")"
+  _home_real="$(cd "$HOME" 2>/dev/null && pwd -P || printf '%s' "$HOME")"
+  case "$_base_real" in
+    "/"|"$_home_real"|"$_home_real/.dsh") die "DSH_HOME_BASE 指向真实 home（$_base_real）；请改用一个专门的 scratch 目录" ;;
+  esac
+  SCRATCH="$DSH_HOME_BASE"
+else
+  SCRATCH="$(mktemp -d /tmp/dsh-web-ui-e2e.XXXXXX)"
+  OWNED_SCRATCH=1
+fi
 export DSH_HOME="$SCRATCH/home"
 WORKSPACE_DIR="$SCRATCH/workspace"
 LOG_DIR="$SCRATCH"
@@ -81,7 +94,12 @@ cleanup() {
     wait "$SERVER_PID" 2>/dev/null || true
   fi
   if [ -z "${KEEP_HOME:-}" ]; then
-    rm -rf "$SCRATCH"
+    if [ -n "$OWNED_SCRATCH" ]; then
+      rm -rf "$SCRATCH"
+    else
+      # 调用方提供的根目录只清理本次运行自己的子目录，绝不整棵删除。
+      rm -rf "$SCRATCH/home" "$SCRATCH/workspace"
+    fi
   else
     warn "KEEP_HOME 已设置，保留 $SCRATCH"
   fi

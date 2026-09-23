@@ -67,26 +67,26 @@
 
 | # | 改动 | 依据 | 落点 |
 | :- | :--- | :--- | :--- |
-| P0-1 | **默认 presentation 改为 both**（ptc → both），native/ptc 保留可选 | §1.1 scaffold 横评；旧文档自承默认值未测量 | [index.ts](../packages/dsh-liangshen/src/index.ts) 的 DEFAULT_PRESENTATION、schema 默认、设置卡默认值；同步两份文档状态块 |
+| P0-1 | **默认 presentation 改为 both**（ptc → both），native/ptc 保留可选 | §1.1 scaffold 横评；旧文档自承默认值未测量 | [index.ts](../../packages/dsh-liangshen/src/index.ts) 的 DEFAULT_PRESENTATION、schema 默认、设置卡默认值；同步两份文档状态块 |
 | P0-2 | **运行时退化熔断器 v1**：检测连续零产出长思考回合、同参数重复失败；触发时注入熔断提示并临时降档 | #5976（模型侧退化需外力）；r/DeepSeek 降档缓解 | 新行 guard.mjs（订阅回合/派发事件，只读事件流，经 agent/request 水位降档） |
-| P0-3 | **恢复温和分页为出厂开启**：pagedToolPatterns 出厂值 ['mcp__*']（现为 []） | §1.1 稀疏索引架构 + §1.2「忘事」 | [agent.cordis.yml](../packages/dsh-liangshen/presets/liangshen/agent.cordis.yml) tool-catalog 行（sync 覆盖源在包内出厂值，需一并改） |
+| P0-3 | **恢复温和分页为出厂开启**：pagedToolPatterns 出厂值 ['mcp__*']（现为 []） | §1.1 稀疏索引架构 + §1.2「忘事」 | [agent.cordis.yml](../../packages/dsh-liangshen/presets/liangshen/agent.cordis.yml) tool-catalog 行（sync 覆盖源在包内出厂值，需一并改） |
 | P0-4 | pruner 调整为 **4096/2048/1024**，stderr/退出码尾部不可修剪 | §2.2-3 折中 | agent.cordis.yml compaction 组 |
 
 ### P1 — 本周可做（preset 内，需配套测试）
 
 | # | 改动 | 依据 | 落点 |
 | :- | :--- | :--- | :--- |
-| P1-1 | **Fact Ledger**：working-context 扩展「登记的关键事实」字段（事件流折叠，模型经专用轻量工具登记/撤销） | §1.2 忘事 + §1.1 末端窗口 | [working-context.mjs](../packages/dsh-liangshen/presets/liangshen/working-context.mjs) + 新 fact-ledger 行 |
+| P1-1 | **Fact Ledger**：working-context 扩展「登记的关键事实」字段（事件流折叠，模型经专用轻量工具登记/撤销） | §1.2 忘事 + §1.1 末端窗口 | [working-context.mjs](../../packages/dsh-liangshen/presets/liangshen/working-context.mjs) + 新 fact-ledger 行 |
 | P1-2 | **effort 分档重标定**：规划 high / 执行 high 甜区（非 low）/ 复核 high；死循环信号触发临时 -1 档（P0-2 驱动）；autoEffortByPhase 仍默认关，但设置卡说明更新为「建议开启」 | 官方 60–80 甜区；low 档体感风险 | agent.cordis.yml reasoning-effort 行档位映射 |
 | P1-3 | **常驻 schema 预算重估**：KV 压缩到 1/4 后，maxResidentTokens 6000 阈值上调并改为「超限时建议分页而非一次性告警刷屏」；重新测量出厂清单实际 token 数 | §1.1 架构数据 | tool-catalog 的 maxResidentTokens 逻辑 |
-| P1-4 | **persona 文案再审**：逐条检查纪律文案是否诱发「We need…」式流水账推理；「并发探索」改写为纯动作表述（单轮内可发射多个独立调用），去掉任何引导叙述性推理的措辞 | #6509 身份提示影响推理形态（方向 B 级、幅度 C 级） | [minimal-prompt.mjs](../packages/dsh-liangshen/presets/liangshen/minimal-prompt.mjs) persona 段 |
+| P1-4 | **persona 文案再审**：逐条检查纪律文案是否诱发「We need…」式流水账推理；「并发探索」改写为纯动作表述（单轮内可发射多个独立调用），去掉任何引导叙述性推理的措辞 | #6509 身份提示影响推理形态（方向 B 级、幅度 C 级） | [minimal-prompt.mjs](../../packages/dsh-liangshen/presets/liangshen/minimal-prompt.mjs) persona 段 |
 | P1-5 | **both 模式 catalog 文案**：写明「原生直调优先、run_code 仅用于程序化批处理/并发扇出/重计算」，防止模型在 both 下把一切又塞回 run_code | scaffold 横评 PTC 垫底的机理（语法复杂度/错误链） | tool-catalog 的 catalog 渲染 |
 
 ### P2 — 需要验证后决定（先跑数据再改）
 
 | # | 事项 | 验证方式 |
 | :- | :--- | :--- |
-| P2-1 | **both / native / ptc 三面 A/B**：官方横评没有 both 档，V4.1 上谁最优需自测 | [benchmark-live-run.mjs](../packages/dsh-liangshen/tools/benchmark-live-run.mjs) 种子集 liangshen-v41-flash.json，统一基线跑三面，比较完成率/超时/token/费用 |
+| P2-1 | **both / native / ptc 三面 A/B**：官方横评没有 both 档，V4.1 上谁最优需自测 | [benchmark-live-run.mjs](../../packages/dsh-liangshen/tools/benchmark-live-run.mjs) 种子集 liangshen-v41-flash.json，统一基线跑三面，比较完成率/超时/token/费用 |
 | P2-2 | 熔断器阈值（连续回合数 N、重复失败数 M、思考 token 阈） | 用 #5976 形态的会话回放标定；宁可漏报不可误报——误中断真实长思考比死循环更伤体验 |
 | P2-3 | 执行档最终默认值（60/70/75 或档位 id 映射） | 配合 P2-1 同矩阵跑档位维，取「完成率不降前提下的最小 token」点 |
 | P2-4 | instructionSource 默认维持 host 还是转 system-prompt | A/B：长会话下 AGENTS.md 约束保持率 × KV 前缀命中率 |
@@ -115,12 +115,12 @@
 
 | 文档条目 | 状态 | 实现 |
 | :--- | :--- | :--- |
-| P0-1 默认 `presentation: 'both'` | 已落地 | [index.ts](../packages/dsh-liangshen/src/index.ts) `DEFAULT_PRESENTATION`、schema 默认、[agent.cordis.yml](../packages/dsh-liangshen/presets/liangshen/agent.cordis.yml) tool-catalog 行 |
-| P0-2 运行时退化熔断器 | 已落地（阈值经 384K 尺度校准） | [guard.mjs](../packages/dsh-liangshen/presets/liangshen/guard.mjs)：双梯停摆检测——**单步暴走梯**（单条推理 ≥8000 字符且零产出，1 步即触发，对准 V4.1 官方 MAX OUTPUT 384K 的暴走形态，第一步就拦截）与**慢烧梯**（连续 4 步有真实推理但零产出，每步 ≥200 字符，接住小步空转闭环）；空转梯（同参连续失败 3 次）。触发后 pre-step 注入 `[Circuit Breaker]` 消息并经 `agent/request` 把推理档位下调一档（max→high→low，窗口 3 个请求）；无信号时纯 pass-through。**五个参数已进插件设置界面**：`guardEnabled`（总开关）、`guardSensitivity`（灵敏度三档：conservative×1.5 / balanced / aggressive×0.5，默认 balanced）、`guardStallReasoningChars`（单步暴走字符阈值**覆写**，默认随推理档位自适应：max 8000 / high 12000 / low 20000）、`guardGlobalStallCap`（慢烧连续步数**覆写**，默认 4）、`guardEchoFailures`（同参连续失败**覆写**，默认 3），随声明生效。阈值按 A+D 方案自适应：A 档按 reasoningEffort 走表，D 档灵敏度整体缩放，细调字段设了则以用户为准 |
+| P0-1 默认 `presentation: 'both'` | 已落地 | [index.ts](../../packages/dsh-liangshen/src/index.ts) `DEFAULT_PRESENTATION`、schema 默认、[agent.cordis.yml](../../packages/dsh-liangshen/presets/liangshen/agent.cordis.yml) tool-catalog 行 |
+| P0-2 运行时退化熔断器 | 已落地（阈值经 384K 尺度校准） | [guard.mjs](../../packages/dsh-liangshen/presets/liangshen/guard.mjs)：双梯停摆检测——**单步暴走梯**（单条推理 ≥8000 字符且零产出，1 步即触发，对准 V4.1 官方 MAX OUTPUT 384K 的暴走形态，第一步就拦截）与**慢烧梯**（连续 4 步有真实推理但零产出，每步 ≥200 字符，接住小步空转闭环）；空转梯（同参连续失败 3 次）。触发后 pre-step 注入 `[Circuit Breaker]` 消息并经 `agent/request` 把推理档位下调一档（max→high→low，窗口 3 个请求）；无信号时纯 pass-through。**五个参数已进插件设置界面**：`guardEnabled`（总开关）、`guardSensitivity`（灵敏度三档：conservative×1.5 / balanced / aggressive×0.5，默认 balanced）、`guardStallReasoningChars`（单步暴走字符阈值**覆写**，默认随推理档位自适应：max 8000 / high 12000 / low 20000）、`guardGlobalStallCap`（慢烧连续步数**覆写**，默认 4）、`guardEchoFailures`（同参连续失败**覆写**，默认 3），随声明生效。阈值按 A+D 方案自适应：A 档按 reasoningEffort 走表，D 档灵敏度整体缩放，细调字段设了则以用户为准 |
 | P0-3 分页出厂开启 | 已落地 | agent.cordis.yml `pagedToolPatterns: ['mcp__*']`，并补挂此前遗漏的 `tool-activate` 行 |
 | P0-4 pruner 4096/2048/1024 | 已落地 | agent.cordis.yml compaction 组 |
-| P1-1 Fact Ledger | 已落地 | [fact-ledger.mjs](../packages/dsh-liangshen/presets/liangshen/fact-ledger.mjs)（`fact_register` 工具，append/revoke 均从事件流折叠）+ working-context 渲染 `key facts:` 字段 |
-| P1-2 effort 动态分档 | 以修正形态落地 | 不恢复常驻分档（维持 2026-09-17 删除决定）；熔断触发的一次性降档并入 guard，见 [Agent Note 修正案](../.agents/notes/implemented/simplification/2026-09-20-liangshen-guard-triggered-reasoning-stepdown.zh.md) |
+| P1-1 Fact Ledger | 已落地 | [fact-ledger.mjs](../../packages/dsh-liangshen/presets/liangshen/fact-ledger.mjs)（`fact_register` 工具，append/revoke 均从事件流折叠）+ working-context 渲染 `key facts:` 字段 |
+| P1-2 effort 动态分档 | 以修正形态落地 | 不恢复常驻分档（维持 2026-09-17 删除决定）；熔断触发的一次性降档并入 guard，见 [Agent Note 修正案](../../.agents/notes/implemented/simplification/2026-09-20-liangshen-guard-triggered-reasoning-stepdown.zh.md) |
 | P1-3 预算重估 | 已落地 | `maxResidentTokens` 6000 → 8000（V4.1 KV cache 为 1/4，同负载占 1/4 索引槽位） |
 | P1-4 persona 文案再审 | 已落地 | agent.cordis.yml persona 段：Thinking Disruption 去掉 `</think>` 标签引用、Action-Oriented 收紧、Parallel Inspection 改纯动作表述 |
 | P1-5 both 目录文案 | 已落地 | tool-catalog `BOTH_PROGRAM_LINES` 首条改为「原生直调优先、`run_code` 仅用于程序化批处理/并发扇出/多步数据塑形」 |

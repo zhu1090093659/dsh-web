@@ -3,7 +3,7 @@ import { PLATFORM_MODULES } from '../web-platform.ts'
 
 /**
  * Mirrors the shell's frozen module table (dsh-web-frontend staticModules,
- * verified against the 0.1.7-alpha.1 cohort dist bundle, which repeats the
+ * verified against the 0.1.7-alpha.2 cohort dist bundle, which repeats the
  * 0.1.5-rc.1 table unchanged). The 0.1.2 shell removed the dsh-client-runtime
  * row (package deleted upstream) and added dsh-client-store as the replacement
  * static module; the 0.1.5-rc.1 shell added the dsh-client-ui-dockkit row.

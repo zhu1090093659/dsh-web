@@ -1613,9 +1613,11 @@ function seedDefaultActiveSkin(path, find) {
 */
 const OFFICIAL_TOKENS = [
 	"--dsw-alias-bg-base",
+	"--dsw-alias-bg-document-preview",
 	"--dsw-alias-bg-layer-1",
 	"--dsw-alias-bg-layer-2",
 	"--dsw-alias-bg-layer-3",
+	"--dsw-alias-bg-layer-4",
 	"--dsw-alias-bg-mask-1",
 	"--dsw-alias-bg-mask-2",
 	"--dsw-alias-bg-mask-3",
@@ -1651,6 +1653,8 @@ const OFFICIAL_TOKENS = [
 	"--dsw-alias-button-tool-bar-fill",
 	"--dsw-alias-button-tool-bar-fill-invisible",
 	"--dsw-alias-button-tool-bar-hover",
+	"--dsw-alias-code-diff-added",
+	"--dsw-alias-code-diff-deleted",
 	"--dsw-alias-interactive-bg-active",
 	"--dsw-alias-interactive-bg-hover",
 	"--dsw-alias-interactive-bg-hover-accent",
@@ -1658,6 +1662,8 @@ const OFFICIAL_TOKENS = [
 	"--dsw-alias-interactive-bg-hover-solid",
 	"--dsw-alias-label-caption",
 	"--dsw-alias-label-dimmed",
+	"--dsw-alias-label-document-preview",
+	"--dsw-alias-label-error",
 	"--dsw-alias-label-primary",
 	"--dsw-alias-label-primary-bluish",
 	"--dsw-alias-label-primary-dimmed",
@@ -1665,6 +1671,7 @@ const OFFICIAL_TOKENS = [
 	"--dsw-alias-label-primary-inverted",
 	"--dsw-alias-label-secondary",
 	"--dsw-alias-label-tertiary",
+	"--dsw-alias-link",
 	"--dsw-alias-markdown-citation",
 	"--dsw-alias-markdown-code-block",
 	"--dsw-alias-markdown-code-block-banner",
@@ -1681,6 +1688,7 @@ const OFFICIAL_TOKENS = [
 	"--dsw-alias-state-business-tertiary",
 	"--dsw-alias-state-error-primary",
 	"--dsw-alias-state-error-secondary",
+	"--dsw-alias-state-idle-primary",
 	"--dsw-alias-state-success-primary",
 	"--dsw-alias-state-success-secondary",
 	"--dsw-alias-state-success-tertiary",
@@ -1690,6 +1698,12 @@ const OFFICIAL_TOKENS = [
 	"--dsw-alias-state-warn-tertiary",
 	"--dsw-alias-toast-bg",
 	"--dsw-alias-tooltip-bg",
+	"--dsw-corner-shape",
+	"--dsw-elevation-panel",
+	"--dsw-elevation-prominent",
+	"--dsw-elevation-soft",
+	"--dsw-elevation-stroke",
+	"--dsw-elevation-stroke-color",
 	"--dsw-font-base-16",
 	"--dsw-font-base-16-font-family",
 	"--dsw-font-base-16-font-size",
@@ -1875,6 +1889,7 @@ const OFFICIAL_TOKENS = [
 	"--dsw-linear-gradient-think",
 	"--dsw-linear-think-select",
 	"--dsw-mask-blur",
+	"--dsw-menu-backdrop-filter",
 	"--dsw-shadow-lv1",
 	"--dsw-shadow-lv1-blur",
 	"--dsw-shadow-lv2",
@@ -1908,21 +1923,27 @@ const OFFICIAL_TOKENS = [
 *  - never touch the static palette (not in the registry at all);
 *  - never override a token the skin defines;
 *  - never derive when the skin defines no anchor for the group;
-*  - semantic / structural groups (buttons, states, masks, shadows,
+*  - semantic / structural groups (buttons, state colors, masks, shadows,
 *    inverted/foreground labels, fonts, easing) are skipped: a tint there
-*    would break contrast or layout instead of filling a gap.
+*    would break contrast or layout instead of filling a gap. State colors
+*    are matched by role word, not by prefix, because the official surface
+*    names them inconsistently (--dsw-alias-state-error-primary but also
+*    --dsw-alias-label-error and --dsw-alias-interactive-bg-hover-danger).
 *
 * The derivation is textual (color-mix with a var() reference), so it
 * resolves against the skin's own remap — including the dark-theme block —
 * and stays theme-aware with zero runtime logic.
 */
+/**
+* Roles that must never be tinted: a translucent skin tint would break
+* contrast, layout, or the meaning of a state instead of filling a gap.
+* State roles get one word each — the official surface is not uniformly
+* prefixed (state-error-primary, label-error, interactive-bg-hover-danger),
+* so matching the role word is the only reliable rule.
+*/
+const EXCLUDED = /(^|-)(mask|shadow|button|state|error|warning|success|danger|info|caution|brand|scrollbar|foreground|inverted|dimmed)(-|$)|-font-|linear-|ease|duration|transition/;
 /** Matched in order; the first group whose pattern hits wins. */
 const GROUPS = [
-	{
-		skip: /(^|-)(mask|shadow|button|state|brand|scrollbar|foreground|inverted|dimmed)(-|$)|-font-|linear-|ease|duration|transition/,
-		anchors: [],
-		alpha: 0
-	},
 	{
 		skip: /-bg-/,
 		anchors: ["--dsw-alias-bg-layer-1", "--dsw-alias-bg-base"],
@@ -1949,7 +1970,6 @@ const GROUPS = [
 		alpha: 60
 	}
 ];
-const EXCLUDED = /(^|-)(mask|shadow|button|state|brand|scrollbar|foreground|inverted|dimmed)(-|$)|-font-|linear-|ease|duration|transition/;
 function groupFor(token) {
 	if (EXCLUDED.test(token)) return null;
 	for (const group of GROUPS) if (group.skip.test(token)) return group;

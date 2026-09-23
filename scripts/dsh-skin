@@ -32,6 +32,9 @@ const { pathToFileURL } = require('node:url')
 
 const LIB_PATH = path.join(__dirname, '..', 'packages', 'skins', 'skin-center', 'lib', 'index.js')
 
+/** One skin id: a plain directory name, never a path (mirrors the skin-center contract). */
+const SKIN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+
 /** Load the skin-center contract surface (ESM lib from this CJS CLI). */
 async function loadLib() {
   try {
@@ -152,7 +155,14 @@ async function cmdInstall(dir, flags) {
 async function cmdUninstall(id) {
   if (!id) return usage(1)
   const lib = await loadLib()
-  const target = path.join(lib.userSkinsDir(), id)
+  const userRoot = path.resolve(lib.userSkinsDir())
+  const target = path.resolve(userRoot, id)
+  // The id is raw argv: without this guard "uninstall .." resolves to $DSH_HOME
+  // itself and the recursive delete below takes the whole home with it.
+  if (!SKIN_ID.test(id) || !target.startsWith(userRoot + path.sep)) {
+    console.error(`dsh-skin: refusing "${id}" — a skin id is a directory name, not a path`)
+    process.exit(1)
+  }
   if (!fs.existsSync(target)) {
     console.error(`dsh-skin: no user-installed skin "${id}" at ${target}`)
     process.exit(1)

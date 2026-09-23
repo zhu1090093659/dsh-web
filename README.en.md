@@ -161,7 +161,7 @@ Configure model-level parameters for custom providers directly within "Settings 
 
 ### Right Panel（右侧面板）
 
-The right panel is provided by community plugin [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar). It embeds a file explorer, inline code editor, auxiliary terminal, Git interface, and web browser, while allowing third-party plugin panels to dock cleanly. The alpha branch's aggregate does not bundle it (its 0.19.1 peers declare `^0.1.5-rc.1`, which this branch's 0.1.7-alpha.1 cohort does not satisfy); install it on demand with `dsh plugin --profile web add dsh-better-sidebar@latest`. Architecture and setup details are available in its [repository](https://github.com/omdsh-dev/DSH-better-sidebar).
+The right panel is provided by community plugin [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar). It embeds a file explorer, inline code editor, auxiliary terminal, Git interface, and web browser, while allowing third-party plugin panels to dock cleanly. The alpha branch's aggregate does not bundle it (its 0.19.1 peers declare `^0.1.5-rc.1`, which this branch's 0.1.7-alpha.2 cohort does not satisfy); install it on demand with `dsh plugin --profile web add dsh-better-sidebar@latest`. Architecture and setup details are available in its [repository](https://github.com/omdsh-dev/DSH-better-sidebar).
 
 ![Right Panel](docs/screenshots/19-right-panel.png)
 

@@ -79,6 +79,28 @@ test('install copies a valid skin into the user skins dir; uninstall removes it'
   rmSync(root, { recursive: true, force: true })
 })
 
+test('uninstall refuses a path-shaped id instead of removing the home that contains it', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-skin-fixture-'))
+  const dir = fixtureSkin(root, 'demo')
+  const install = run(['install', dir])
+  assert.equal(install.code, 0, install.out)
+  const home = join(install.home, '.dsh')
+  const marker = join(home, 'settings.yaml')
+  writeFileSync(marker, 'ui-onboarding: {}\n')
+
+  const traversal = run(['uninstall', '..'], { DSH_HOME: home })
+  const dot = run(['uninstall', '.'], { DSH_HOME: home })
+  const nested = run(['uninstall', 'sub/../..'], { DSH_HOME: home })
+
+  assert.equal(traversal.code, 1, traversal.out)
+  assert.equal(dot.code, 1, dot.out)
+  assert.equal(nested.code, 1, nested.out)
+  assert.match(traversal.out, /not a path/)
+  assert.ok(existsSync(marker), 'the home beside the skins dir must survive')
+  assert.ok(existsSync(join(home, 'skins', 'demo', 'skin.json')), 'the installed skin must survive')
+  rmSync(root, { recursive: true, force: true })
+})
+
 test('install refuses hooks-bearing skins without --allow-hooks', () => {
   const root = mkdtempSync(join(tmpdir(), 'dsh-skin-fixture-'))
   const dir = fixtureSkin(root, 'hooked', {

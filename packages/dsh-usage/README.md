@@ -23,7 +23,7 @@ It covers the official DeepSeek routes only — relay traffic billed elsewhere (
 
 ## Install
 
-Requires DSH 0.1.7-alpha.1 or later: the plugin is developed against the 0.1.7-alpha.1 DSH cohort (its settings page is the Host-generated page of the plugin's own Config schema) and its `@deepseek-ai/*` runtime imports are provided by the host itself.
+Requires DSH 0.1.7-alpha.2 or later: the plugin is developed against the 0.1.7-alpha.2 DSH cohort (its settings page is the Host-generated page of the plugin's own Config schema) and its `@deepseek-ai/*` runtime imports are provided by the host itself.
 
 In your profile (e.g. `~/.dsh/profiles/web`):
 

@@ -32,4 +32,4 @@ Status: implemented
 ## Consequences
 
 - 梁神模式获得 #5976 形态的运行时保护，且日常会话的请求面与缓存行为与未装 guard 完全一致；
-- 熔断阈值（连续步数、重复失败数、思考字符阈）刻意保守：误中断真实长思考比漏报更伤体验，具体取值留给 `packages/dsh-liangshen/tools/benchmark-live-run.mjs` 的会话回放标定（见 docs/liangshen-v41-community-feedback-update.md §4 P2-2）。
+- 熔断阈值（连续步数、重复失败数、思考字符阈）刻意保守：误中断真实长思考比漏报更伤体验，具体取值留给 `packages/dsh-liangshen/tools/benchmark-live-run.mjs` 的会话回放标定（见 docs/archive/liangshen-v41-community-feedback-update.md §4 P2-2）。

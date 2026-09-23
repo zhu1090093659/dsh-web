@@ -2,7 +2,7 @@
 
 Status: implemented
 
-部分取代[极简 persona 加注入式标准工具目录](2026-09-11-liangshen-minimal-prompt-tool-catalog.zh.md)的 persona 文本与分层 wire：工作纪律替换为行动触发式规则，锚定回合与第二回合 PTC 晋升退役；极简 persona 机制、注入目录机制与消息来源决定继续有效。部分取代[恢复四工具锚定与 PTC 语义修正](2026-09-12-liangshen-anchor-tools-and-ptc-refinement.zh.md)：`anchorTools` 首回合收窄被移除，`ptcPresentation` 由三态 `presentation` 键取代；如实激活语义、请求面目录契约与三层验证标准继续有效。部分取代[请求面工具目录与评测工具](2026-09-13-liangshen-request-surface-catalog-and-eval-tooling.zh.md)所跟踪的呈现边界——wire 不再在回合边界变化——其「恰好宣告请求开放的面」原则与评测工具继续有效。部分被[清理梁神模式动态推理努力度](../simplification/2026-09-17-remove-liangshen-dynamic-reasoning-effort.zh.md)取代：移除分阶段动态推理努力度机制与设置字段。以官方已发表的评测证据（而非本地付费矩阵）了结[梁神模式针对 DeepSeek V4.1 Flash 的改进计划](../../proposed/feature/2026-09-13-liangshen-v41-flash-improvement-plan.zh.md)的默认值选择阶段。完整设计推演见 `docs/liangshen-v41-flash-optimization.md`。
+部分取代[极简 persona 加注入式标准工具目录](2026-09-11-liangshen-minimal-prompt-tool-catalog.zh.md)的 persona 文本与分层 wire：工作纪律替换为行动触发式规则，锚定回合与第二回合 PTC 晋升退役；极简 persona 机制、注入目录机制与消息来源决定继续有效。部分取代[恢复四工具锚定与 PTC 语义修正](2026-09-12-liangshen-anchor-tools-and-ptc-refinement.zh.md)：`anchorTools` 首回合收窄被移除，`ptcPresentation` 由三态 `presentation` 键取代；如实激活语义、请求面目录契约与三层验证标准继续有效。部分取代[请求面工具目录与评测工具](2026-09-13-liangshen-request-surface-catalog-and-eval-tooling.zh.md)所跟踪的呈现边界——wire 不再在回合边界变化——其「恰好宣告请求开放的面」原则与评测工具继续有效。部分被[清理梁神模式动态推理努力度](../simplification/2026-09-17-remove-liangshen-dynamic-reasoning-effort.zh.md)取代：移除分阶段动态推理努力度机制与设置字段。以官方已发表的评测证据（而非本地付费矩阵）了结[梁神模式针对 DeepSeek V4.1 Flash 的改进计划](../../proposed/feature/2026-09-13-liangshen-v41-flash-improvement-plan.zh.md)的默认值选择阶段。完整设计推演见 `docs/archive/liangshen-v41-flash-optimization.md`。
 
 ## Problem
 
@@ -23,7 +23,7 @@ preset 在整个会话中保持单一 wire 呈现，并把外部工具发现迁�
 - 分档由 `autoEffortByPhase` 开关把关，**出厂关闭**：关闭时插件不注册任何请求监听，请求与部署原本会发送的完全一致；开启后从下一个阶段边界起接管推理档位。之所以默认关闭，是因为会话的推理档位是模型选择器里一个可见且显式的用户选择，静默覆盖它会让那个选择看起来像是坏了；而"按需开启"也让一个绝大多数部署用不到的特性不出现在热路径上。
 - `reasoning-effort` 插件加入宿主的 `agent/request` 水位（官方目录写明该事件为 waterfall，摘要即 "Replace the frozen call configuration"，按 agent 作用域派发），在 plan-mode 边界把请求的 `reasoningEffort` 从规划档位（默认 `'high'`）切到执行档位（默认 `'low'`）。只在边界切换，因为该字段参与请求头快照并决定缓存复用——逐回合翻转会为省推理 token 每回合付一次缓存未命中。档位经 `'off' | 'low' | 'high' | 'max'` 校验；路由声明的档位集合可读且不含目标档位时跳过切换；投影抛错一律视为"无法确认"并跳过，而不是冒险发送路由可能拒绝的档位。
 - `tool_activate` 声明 `isConcurrencySafe: () => true`。宿主的分发器早已按该自报能力分类（`executionMode()`：只有精确 `true` 加入并发组，其余 exclusive 并形成栅栏，结果按提交顺序提交），而本 preset 此前 0 处声明，自有工具全部退化为独占。该处理器只读事件流并返回报告，激活本身由运行时为此调用落下的 `tool/call` 事件承载，因此并发安全。
-- 仅一项能力确需 DSH 核心而非在本仓库实现，记录于 `docs/liangshen-v41-flash-optimization.md` 第 8 节：`namespace::function` 工具映射（`dsh-tools` 注册表与 wire 序列化）、按 plan-mode 动态调节的 `reasoning_effort`（`dsh-llm` 请求组装钩子）、工具分发引擎的读并发/写串行栅栏。
+- 仅一项能力确需 DSH 核心而非在本仓库实现，记录于 `docs/archive/liangshen-v41-flash-optimization.md` 第 8 节：`namespace::function` 工具映射（`dsh-tools` 注册表与 wire 序列化）、按 plan-mode 动态调节的 `reasoning_effort`（`dsh-llm` 请求组装钩子）、工具分发引擎的读并发/写串行栅栏。
 
 ## Testing
 

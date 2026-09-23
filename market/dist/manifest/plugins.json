@@ -1537,6 +1537,7 @@
       "description": "上下文健康监测 + 内容退化检测（思考打转、输出复读）+ 继续 vs 交接成本裁决 + 零模型交接文档。纯本地、零网络。",
       "descriptionEn": "Context health monitoring, content-degradation detection (thinking loops / output repetition), a continue-vs-handoff cost verdict, and zero-model handoff documents. Local-only, no network.",
       "repo": "https://github.com/donghangxunlang-cmd/dsh-attention-health",
+      "npm": "dsh-attention-health",
       "category": "tools",
       "subcategory": "context"
     }

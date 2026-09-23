@@ -41,7 +41,7 @@ describe('skill-explorer host apply', () => {
   it('is a no-op for a second mount of the same package (aggregate + standalone coexist)', () => {
     const first = fakeCtx()
     apply(first as never, {})
-    expect(first.routes.length).toBe(5)
+    expect(first.routes.length).toBe(7)
     const second = fakeCtx()
     apply(second as never, {})
     expect(second.routes.length).toBe(0)
@@ -53,14 +53,16 @@ describe('skill-explorer host apply', () => {
     expect(ctx.routes.length).toBe(0)
   })
 
-  it('registers the five routes when enabled (default)', () => {
+  it('registers the seven routes when enabled (default)', () => {
     const ctx = fakeCtx()
     apply(ctx as never, {})
     const paths = ctx.routes.map((route) => route.path)
     expect(paths).toEqual([
       '/api/dsh-skill-explorer/list',
+      '/api/dsh-skill-explorer/read',
       '/api/dsh-skill-explorer/set-enabled',
       '/api/dsh-skill-explorer/create',
+      '/api/dsh-skill-explorer/update',
       '/api/dsh-skill-explorer/delete',
       '/api/dsh-skill-explorer/health',
     ])

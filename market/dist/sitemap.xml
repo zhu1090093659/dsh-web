@@ -92,12 +92,32 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://dsh-market.com/tryon/?skin=island-life</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://dsh-market.com/tryon/?skin=observatory</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://dsh-market.com/tryon/?skin=stellar-diva</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://dsh-market.com/tryon/?skin=hive-maw</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://dsh-market.com/tryon/?skin=starry-nocturne</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://dsh-market.com/tryon/?skin=ember-fall</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -112,7 +132,22 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://dsh-market.com/tryon/?skin=astral-choir</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://dsh-market.com/tryon/?skin=pixel-anime</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://dsh-market.com/tryon/?skin=black-gold</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://dsh-market.com/tryon/?skin=ice-princess</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -123,6 +158,11 @@
   </url>
   <url>
     <loc>https://dsh-market.com/tryon/?skin=mint</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://dsh-market.com/tryon/?skin=remiel-starlit</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -173,6 +213,16 @@
   </url>
   <url>
     <loc>https://dsh-market.com/tryon/?skin=blue-throated-bee-eater</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://dsh-market.com/tryon/?skin=whalechan-harness</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://dsh-market.com/tryon/?skin=whale-maid</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

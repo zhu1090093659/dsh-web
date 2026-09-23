@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" fill="none" aria-hidden="true">
+  <!-- 虫巢首屏：隧道环 + 深处红眼一对 + 两侧卵囊簇 -->
+  <g stroke="#8fe3a6" stroke-width="1">
+    <circle cx="480" cy="250" r="60" opacity="0.20"/>
+    <circle cx="480" cy="250" r="100" opacity="0.15"/>
+    <circle cx="480" cy="250" r="150" opacity="0.11"/>
+    <circle cx="480" cy="250" r="210" opacity="0.08"/>
+    <circle cx="480" cy="250" r="280" opacity="0.06"/>
+    <circle cx="480" cy="250" r="360" opacity="0.04"/>
+    <!-- 十字丝 -->
+    <path d="M480 170 v-24 M480 330 v24 M400 250 h-24 M560 250 h24" opacity="0.22"/>
+  </g>
+  <!-- 深处的女王红眼：全场唯一红 -->
+  <g fill="#c4544a">
+    <circle cx="466" cy="244" r="3" opacity="0.55"/>
+    <circle cx="494" cy="244" r="3" opacity="0.55"/>
+  </g>
+  <!-- 两侧卵囊簇 -->
+  <g stroke="#8fe3a6" stroke-width="1" opacity="0.16">
+    <path d="M120 380 l22 -13 22 13 v26 l-22 13 -22 -13 z"/>
+    <path d="M164 406 l22 -13 22 13 v26 l-22 13 -22 -13 z"/>
+    <path d="M796 380 l22 -13 22 13 v26 l-22 13 -22 -13 z"/>
+    <path d="M752 406 l22 -13 22 13 v26 l-22 13 -22 -13 z"/>
+  </g>
+  <g fill="#8fe3a6" opacity="0.18">
+    <circle cx="142" cy="393" r="3"/><circle cx="186" cy="419" r="3"/>
+    <circle cx="818" cy="393" r="3"/><circle cx="774" cy="419" r="3"/>
+  </g>
+  <!-- 底部棘齿带 -->
+  <defs>
+    <pattern id="hv-hero-teeth" width="36" height="22" patternUnits="userSpaceOnUse">
+      <path d="M0 22 L18 10 L36 22" stroke="#8fe3a6" stroke-width="1" fill="none"/>
+    </pattern>
+  </defs>
+  <rect x="180" y="486" width="600" height="22" fill="url(#hv-hero-teeth)" opacity="0.14"/>
+</svg>

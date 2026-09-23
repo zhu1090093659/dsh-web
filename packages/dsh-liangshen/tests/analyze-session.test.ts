@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { analyzeSession, analyzeSessionFile, countMarkers, renderSessionReport } from '../tools/analyze-session.mjs'
+import { analyzeSession, analyzeSessionFile, classifyReasoning, countMarkers, countWord, renderSessionReport } from '../tools/analyze-session.mjs'
 
 const events = [
   { type: 'session', id: 'session-test', agentPreset: 'liangshen', cwd: '/tmp/demo' },
@@ -29,7 +29,15 @@ describe('analyze-session', () => {
     expect(countMarkers('We need a plan. Let me check.')).toEqual({ we: 1, letMe: 1, lets: 0, i: 0 })
   })
 
-  test('analyzeSession extracts surface, promotion, and marker facts', () => {
+  test('countWord and classifyReasoning label the anchored surface', () => {
+    expect(countWord('we we We', /\bwe\b/gi)).toBe(3)
+    expect(classifyReasoning('We need inspect the repo first.')).toMatchObject({ label: 'minimal-like', score: 4 })
+    expect(classifyReasoning('Let me check the repo.')).toMatchObject({ label: 'standard-like', score: -4 })
+    expect(classifyReasoning('The repo has three packages.')).toMatchObject({ label: 'ambiguous', score: 0 })
+    expect(classifyReasoning(undefined)).toMatchObject({ label: 'ambiguous', score: 0 })
+  })
+
+  test('analyzeSession extracts surface, header, and marker facts', () => {
     const report = analyzeSession(events)
     expect(report.sessionId).toBe('session-test')
     expect(report.preset).toBe('liangshen')

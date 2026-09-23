@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <g transform="translate(96,0) scale(-1,1)">
+    <g fill="none" stroke="#D6E4F5" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 44 L3 3 L44 3"/>
+      <path d="M9 37 L9 9 L37 9" stroke-width="0.75" opacity="0.72"/>
+    </g>
+    <g fill="none" stroke="#D6E4F5" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 44 L26 30 L44 16 L62 8"/>
+      <path d="M14 44 L26.8 46.4"/><path d="M14 44 L9.7 31.7"/><path d="M26 30 L36.0 34.1"/><path d="M26 30 L24.5 19.3"/><path d="M44 16 L51.0 21.1"/><path d="M44 16 L44.9 7.4"/>
+    </g>
+    <g fill="none" stroke="#D6E4F5" stroke-width="0.95" stroke-linecap="round" stroke-linejoin="round">
+      <g transform="rotate(0 72 26)"><path d="M72 26 L72 14"/>
+      <path d="M72 20.72 L68.4 17.36"/>
+      <path d="M72 20.72 L75.6 17.36"/>
+      <path d="M72 17.12 L69.36 14.600000000000001"/>
+      <path d="M72 17.12 L74.64 14.600000000000001"/></g><g transform="rotate(60 72 26)"><path d="M72 26 L72 14"/>
+      <path d="M72 20.72 L68.4 17.36"/>
+      <path d="M72 20.72 L75.6 17.36"/>
+      <path d="M72 17.12 L69.36 14.600000000000001"/>
+      <path d="M72 17.12 L74.64 14.600000000000001"/></g><g transform="rotate(120 72 26)"><path d="M72 26 L72 14"/>
+      <path d="M72 20.72 L68.4 17.36"/>
+      <path d="M72 20.72 L75.6 17.36"/>
+      <path d="M72 17.12 L69.36 14.600000000000001"/>
+      <path d="M72 17.12 L74.64 14.600000000000001"/></g><g transform="rotate(180 72 26)"><path d="M72 26 L72 14"/>
+      <path d="M72 20.72 L68.4 17.36"/>
+      <path d="M72 20.72 L75.6 17.36"/>
+      <path d="M72 17.12 L69.36 14.600000000000001"/>
+      <path d="M72 17.12 L74.64 14.600000000000001"/></g><g transform="rotate(240 72 26)"><path d="M72 26 L72 14"/>
+      <path d="M72 20.72 L68.4 17.36"/>
+      <path d="M72 20.72 L75.6 17.36"/>
+      <path d="M72 17.12 L69.36 14.600000000000001"/>
+      <path d="M72 17.12 L74.64 14.600000000000001"/></g><g transform="rotate(300 72 26)"><path d="M72 26 L72 14"/>
+      <path d="M72 20.72 L68.4 17.36"/>
+      <path d="M72 20.72 L75.6 17.36"/>
+      <path d="M72 17.12 L69.36 14.600000000000001"/>
+      <path d="M72 17.12 L74.64 14.600000000000001"/></g>
+    </g>
+    <g fill="#D6E4F5">
+      <path d="M30 30 l3.4-4.6 l-3.4-4.6 l-3.4 4.6 z"/>
+      <path d="M50 12 l2.6-3.6 l-2.6-3.6 l-2.6 3.6 z"/>
+      <circle cx="62" cy="8" r="1.5"/>
+      <circle cx="44" cy="16" r="1.3"/>
+      <circle cx="12" cy="52" r="1.2"/>
+    </g>
+  </g>
+</svg>

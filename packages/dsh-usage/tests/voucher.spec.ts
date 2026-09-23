@@ -4,7 +4,7 @@ import { emptyTotals, type UsageProviderSummary, type UsageWindowSummary } from 
 
 /**
  * The voucher's pure face: DeepSeek official family summation over a usage
- * window, the 1000:1 whale-yuan exchange, the banknote denomination
+ * window, the 1,000,000:1 whale-yuan exchange, the banknote denomination
  * formatting, the deterministic serial, and the observed-since day. The
  * canvas draw itself is composition, verified visually.
  */
@@ -43,17 +43,17 @@ describe('deepseekVoucherData', () => {
   })
 })
 
-describe('faceValue (1000 tokens = 1 whale yuan)', () => {
+describe('faceValue (1,000,000 tokens = 1 whale yuan)', () => {
   it('exchanges at the anti-inflation rate and rounds to whole yuan', () => {
-    expect(TOKENS_PER_WHALE_YUAN).toBe(1000)
-    expect(faceValue(1_234_567)).toBe(1235)
-    expect(faceValue(1_086_000_000)).toBe(1_086_000)
-    expect(faceValue(1000)).toBe(1)
+    expect(TOKENS_PER_WHALE_YUAN).toBe(1_000_000)
+    expect(faceValue(1_234_567_890)).toBe(1235)
+    expect(faceValue(1_086_000_000_000)).toBe(1_086_000)
+    expect(faceValue(1_000_000)).toBe(1)
   })
 
   it('keeps the smallest denomination at 1 instead of a zero note', () => {
     expect(faceValue(42)).toBe(1)
-    expect(faceValue(999)).toBe(1)
+    expect(faceValue(999_999)).toBe(1)
   })
 })
 

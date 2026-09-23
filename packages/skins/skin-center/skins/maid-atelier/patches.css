@@ -39,9 +39,13 @@ body:has([data-skin-chrome="character-stage"]):after {
 }
 
 [data-skin-chrome="character-stage"] {
-  z-index: -1;
+  /* The stage is prepended to <body>, so at z-index 0 it paints behind the
+     app's positioned surfaces (they come later in paint order) without
+     depending on whether the root background gets painted. The negative
+     z-index plus paint containment combination was dropped by the Electron
+     compositor, hiding both maids (#1501 item 2). */
+  z-index: 0;
   pointer-events: none;
-  contain: strict;
   position: fixed;
   inset: 0;
   overflow: hidden;
@@ -1520,7 +1524,10 @@ body[data-maid-composer-motion] [data-composer-card] {
 
 [data-composer-card]:after {
   content: "";
-  z-index: 0;
+  /* Behind the card's own content. The card isolates its stacking context, so
+     -1 still paints above the background this layer inherits from it, while the
+     typed text can never end up underneath the layer (#1501 item 1). */
+  z-index: -1;
   background: inherit;
   pointer-events: none;
   border-radius: 38px;
@@ -1588,6 +1595,27 @@ body[data-ds-dark-theme] [data-slot="conversation.composer.dock"] > * {
 }
 
 body[data-ds-dark-theme] [data-slot="conversation.composer.dock"] > * [class*="sep"] {
+  color: #aebdde80;
+}
+
+/* #1501 item 3: the session statistics strip renders under
+   [data-slot="conversation.composer"], not inside the .dock slot, so the pairs
+   above never reached it and its text inherited --dsw-alias-label-tertiary
+   (#6f7c99 light / #96a6c9 dark) over the composer's own surface. Color only:
+   the strip's background is already transparent. */
+body:not([data-ds-dark-theme]) [data-composer-stats] {
+  color: #33415f;
+}
+
+body:not([data-ds-dark-theme]) [data-composer-stats] [class*="sep"] {
+  color: #7d8aa6;
+}
+
+body[data-ds-dark-theme] [data-composer-stats] {
+  color: #aebdde;
+}
+
+body[data-ds-dark-theme] [data-composer-stats] [class*="sep"] {
   color: #aebdde80;
 }
 

@@ -1,0 +1,127 @@
+{
+  "id": "liangshen-v41-flash-seed",
+  "version": 1,
+  "description": "Seed task corpus for the LiangShen V4.1 Flash comparison. Covers code repair, first-turn specialized tools, multi-turn edits, failure recovery, and workspace-instruction compliance. Extend to 20-30 tasks before the main run.",
+  "tasks": [
+    {
+      "id": "repair-mean",
+      "category": "code-repair",
+      "files": {
+        "stats.mjs": "export function mean(values) {\n  let total = 0\n  for (const value of values) total += value\n  return total / (values.length + 1)\n}\n"
+      },
+      "turns": [
+        "Fix stats.mjs so mean([1, 2, 3]) returns exactly 2 and mean([2, 4]) returns exactly 3. Keep the exported name. Verify the result, then reply DONE and stop."
+      ],
+      "check": "const m = await import('./stats.mjs'); if (m.mean([1, 2, 3]) !== 2) throw new Error('mean([1,2,3]) = ' + m.mean([1, 2, 3])); if (m.mean([2, 4]) !== 3) throw new Error('mean([2,4]) = ' + m.mean([2, 4]))"
+    },
+    {
+      "id": "repair-negative-number",
+      "category": "code-repair",
+      "files": {
+        "parse.mjs": "export function toNumber(text) {\n  return Number(String(text).replace('-', ''))\n}\n"
+      },
+      "turns": [
+        "Fix parse.mjs so toNumber('-12') returns -12 and toNumber('7') returns 7. Keep the exported name. Verify the result, then reply DONE and stop."
+      ],
+      "check": "const m = await import('./parse.mjs'); if (m.toNumber('-12') !== -12) throw new Error('negative = ' + m.toNumber('-12')); if (m.toNumber('7') !== 7) throw new Error('positive = ' + m.toNumber('7'))"
+    },
+    {
+      "id": "repair-default-value",
+      "category": "code-repair",
+      "files": {
+        "config.mjs": "export function resolvePort(options) {\n  return options.port | 8080\n}\n"
+      },
+      "turns": [
+        "Fix config.mjs so resolvePort({}) returns 8080 and resolvePort({ port: 0 }) returns 0. Keep the exported name. Verify the result, then reply DONE and stop."
+      ],
+      "check": "const m = await import('./config.mjs'); if (m.resolvePort({}) !== 8080) throw new Error('default = ' + m.resolvePort({})); if (m.resolvePort({ port: 0 }) !== 0) throw new Error('zero = ' + m.resolvePort({ port: 0 }))"
+    },
+    {
+      "id": "first-turn-edit",
+      "category": "first-turn-specialized",
+      "files": {
+        "version.mjs": "export const VERSION = '1.0.0'\n"
+      },
+      "turns": [
+        "Change the VERSION constant in version.mjs to 2.0.0. Do not change the exported name. Verify the file content, then reply DONE and stop."
+      ],
+      "check": "const m = await import('./version.mjs'); if (m.VERSION !== '2.0.0') throw new Error('VERSION = ' + m.VERSION)"
+    },
+    {
+      "id": "first-turn-create-file",
+      "category": "first-turn-specialized",
+      "turns": [
+        "Create a file named greeting.txt in the current directory whose only content is hello, then reply DONE and stop."
+      ],
+      "check": "const fs = await import('node:fs'); if (!fs.existsSync('greeting.txt')) throw new Error('greeting.txt missing'); const text = fs.readFileSync('greeting.txt', 'utf8').trim(); if (text !== 'hello') throw new Error('content = ' + JSON.stringify(text))"
+    },
+    {
+      "id": "multiturn-cube-and-test",
+      "category": "multi-turn-edits",
+      "files": {
+        "math.mjs": "export function square(value) {\n  return value * value\n}\n"
+      },
+      "turns": [
+        "Add an exported function cube(value) to math.mjs, next to square.",
+        "Create check.mjs that imports cube from math.mjs and throws when cube(3) is not 27.",
+        "Run check.mjs and reply DONE and stop."
+      ],
+      "check": "const m = await import('./math.mjs'); if (m.cube(3) !== 27) throw new Error('cube(3) = ' + m.cube(3)); const fs = await import('node:fs'); if (!fs.existsSync('check.mjs')) throw new Error('check.mjs missing')"
+    },
+    {
+      "id": "multiturn-rename-export",
+      "category": "multi-turn-edits",
+      "files": {
+        "util.mjs": "export function oldName() {\n  return 1\n}\n",
+        "main.mjs": "import { oldName } from './util.mjs'\n\nexport const value = oldName()\n"
+      },
+      "turns": [
+        "Rename the exported function oldName in util.mjs to currentName.",
+        "Update main.mjs so it keeps exporting value === 1 through the new name, then reply DONE and stop."
+      ],
+      "check": "const main = await import('./main.mjs'); if (main.value !== 1) throw new Error('value = ' + main.value); const util = await import('./util.mjs'); if (typeof util.currentName !== 'function') throw new Error('currentName missing'); if (util.oldName !== undefined) throw new Error('oldName still exported')"
+    },
+    {
+      "id": "recovery-failing-check",
+      "category": "failure-recovery",
+      "files": {
+        "sum.mjs": "export function sum(values) {\n  return values.reduce((total, value) => total + value, 1)\n}\n",
+        "check.mjs": "import { sum } from './sum.mjs'\n\nif (sum([1, 2, 3]) !== 6) {\n  throw new Error('sum([1, 2, 3]) should be 6 but is ' + sum([1, 2, 3]))\n}\n\nconsole.log('check passed')\n"
+      },
+      "turns": [
+        "Run the existing check.mjs, read the failure it reports, fix the bug in sum.mjs, and rerun check.mjs until it passes. Then reply DONE and stop."
+      ],
+      "check": "const m = await import('./sum.mjs'); if (m.sum([1, 2, 3]) !== 6) throw new Error('sum([1,2,3]) = ' + m.sum([1, 2, 3])); if (m.sum([]) !== 0) throw new Error('sum([]) = ' + m.sum([]))"
+    },
+    {
+      "id": "recovery-missing-directory",
+      "category": "failure-recovery",
+      "turns": [
+        "Write a file at src/nested/deep.txt whose only content is ok. If that path does not exist yet, make it exist. Then reply DONE and stop."
+      ],
+      "check": "const fs = await import('node:fs'); if (!fs.existsSync('src/nested/deep.txt')) throw new Error('deep.txt missing'); const text = fs.readFileSync('src/nested/deep.txt', 'utf8').trim(); if (text !== 'ok') throw new Error('content = ' + JSON.stringify(text))"
+    },
+    {
+      "id": "instruction-generated-header",
+      "category": "workspace-instruction-compliance",
+      "files": {
+        "AGENTS.md": "# Workspace rules\n\nEvery generated source file must start with the comment line `// generated`.\n"
+      },
+      "turns": [
+        "Create a file named report.mjs that exports const ready = true. Follow the workspace rules in AGENTS.md. Then reply DONE and stop."
+      ],
+      "check": "const fs = await import('node:fs'); if (!fs.existsSync('report.mjs')) throw new Error('report.mjs missing'); const first = fs.readFileSync('report.mjs', 'utf8').split(/\\r?\\n/)[0].trim(); if (first !== '// generated') throw new Error('first line = ' + JSON.stringify(first)); const m = await import('./report.mjs'); if (m.ready !== true) throw new Error('ready = ' + m.ready)"
+    },
+    {
+      "id": "instruction-forbidden-extension",
+      "category": "workspace-instruction-compliance",
+      "files": {
+        "AGENTS.md": "# Workspace rules\n\nNever create a file named config.js. Name configuration modules config.mjs instead.\n"
+      },
+      "turns": [
+        "Create the configuration module described by the workspace rules, exporting const port = 3000. Follow AGENTS.md. Then reply DONE and stop."
+      ],
+      "check": "const fs = await import('node:fs'); if (fs.existsSync('config.js')) throw new Error('config.js must not exist'); if (!fs.existsSync('config.mjs')) throw new Error('config.mjs missing'); const m = await import('./config.mjs'); if (m.port !== 3000) throw new Error('port = ' + m.port)"
+    }
+  ]
+}

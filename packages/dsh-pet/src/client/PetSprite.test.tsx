@@ -61,7 +61,7 @@ const snapshot: PetStateView = {
     petCooldown: false,
     feedCooldown: false,
   },
-  display: { visible: true, size: 160, right: 24, bottom: 20 },
+  display: { visible: true, size: 160, right: 24, bottom: 20, bubbleScale: 1 },
   pet: { id: 'whale-girl', displayName: '鲸鱼娘', description: '测试用鲸鱼娘' },
   name: '泡泡',
   treats: { stocked: 3, max: 5 },
@@ -855,6 +855,68 @@ describe('PetSprite status decoration (pet-center M5, #567)', () => {
     expect(el.style.backgroundPosition).toBe('-72px 0px')
     act(() => { step(161) })
     // The looping segment wraps back to its first frame.
+    expect(el.style.backgroundPosition).toBe('0px 0px')
+  })
+
+  it('advances uneven per-frame durations on each frame own clock', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })
+    let now = 0
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    const timers: { at: number; callback: () => void }[] = []
+    let timerId = 0
+    vi.spyOn(window, 'setTimeout').mockImplementation(((callback: () => void, delay = 0) => {
+      timers.push({ at: now + delay, callback })
+      return ++timerId
+    }) as typeof window.setTimeout)
+    vi.spyOn(window, 'clearTimeout').mockImplementation(() => {})
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.push(callback)
+      return frames.length
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    const uneven: DecorationView = { ...decoration, durations: [100, 300, 50, 50] }
+    renderPet({ snapshot: { ...snapshot, bubble: '正在思考', phase: 'thinking', decoration: uneven } })
+    const el = ornament()!
+    const step = (ms: number): void => {
+      for (const callback of frames.splice(0)) callback(now)
+      now += ms
+      for (;;) {
+        const due = timers.filter(t => t.at <= now)
+        if (due.length === 0) break
+        for (const t of due) {
+          const idx = timers.indexOf(t)
+          if (idx >= 0) timers.splice(idx, 1)
+          t.callback()
+        }
+      }
+    }
+    expect(el.style.backgroundPosition).toBe('0px 0px')
+    // One 500 ms segment (100 + 300 + 50 + 50) plus 1 ms: the catch-up loop
+    // must subtract each frame's own duration, so it lands one full cycle
+    // later on frame 0 with 99 ms of its 100 ms left — not on frame 1.
+    act(() => { step(501) })
+    expect(el.style.backgroundPosition).toBe('0px 0px')
+    act(() => { step(99) })
+    expect(el.style.backgroundPosition).toBe('-24px 0px')
+    // Frame 1 lasts 300 ms and the next wake uses that duration.
+    act(() => { step(299) })
+    expect(el.style.backgroundPosition).toBe('-24px 0px')
+    act(() => { step(1) })
+    expect(el.style.backgroundPosition).toBe('-48px 0px')
+    // Frames 2 and 3 are 50 ms each.
+    act(() => { step(50) })
+    expect(el.style.backgroundPosition).toBe('-72px 0px')
+    act(() => { step(50) })
     expect(el.style.backgroundPosition).toBe('0px 0px')
   })
 

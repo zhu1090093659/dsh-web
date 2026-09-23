@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 40" fill="none" aria-hidden="true">
+  <!-- 星辉教团文件夹封套：紫双线框 + 左侧光环弧 + 眼光点 -->
+  <rect x="1.5" y="1.5" width="257" height="37" stroke="#8672d6" opacity="0.30"/>
+  <rect x="4.5" y="4.5" width="251" height="31" stroke="#9fe4f0" opacity="0.10"/>
+  <g stroke="#8672d6" stroke-width="1" opacity="0.32">
+    <circle cx="22" cy="20" r="7"/>
+    <circle cx="22" cy="20" r="11" opacity="0.5"/>
+  </g>
+  <circle cx="22" cy="20" r="1.6" fill="#9fe4f0" opacity="0.40"/>
+  <g stroke="#9fe4f0" opacity="0.28">
+    <path d="M244 10 h8 M248 10 v6"/>
+    <path d="M244 30 h8 M248 24 v6"/>
+  </g>
+</svg>

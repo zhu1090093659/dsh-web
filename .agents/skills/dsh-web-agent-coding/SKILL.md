@@ -1,38 +1,35 @@
 ---
 name: dsh-web-agent-coding
-description: Use for an implementation, maintenance, or configuration task in the dsh-web monorepo. Establishes the project-specific Agent Coding workflow and routes to focused skills.
-whenToUse: Any request that changes dsh-web source, scripts, plugin configuration, generated assets, or repository automation.
+description: Use for implementation, maintenance, or configuration in dsh-web; scope the change and load only its relevant workflow.
+whenToUse: A request changes dsh-web source, scripts, configuration, generated assets, documentation, or repository automation.
 user-invocable: true
 ---
 
 # dsh-web Agent Coding
 
-This skill is guidance, not a replacement for repository instructions. [AGENTS.md](../../../AGENTS.md) is the authoritative source for repository rules.
+[Root instructions](../../../AGENTS.md) own repository safety, branches, and merge gates. This skill owns the working method; it does not grant Git or release authorization.
 
-## Establish scope
+## Scope and implement
 
-1. Confirm the workspace, repository root, current branch, and worktree status before writing. Preserve unrelated changes from other sessions; do not reset, clean, restore, or stage them.
-2. Read the root instructions, then the nearest applicable `AGENTS.md`. Read [packages/AGENTS.md](../../../packages/AGENTS.md) before changing a package and [docs/AGENTS.md](../../../docs/AGENTS.md) before writing documentation.
-3. Identify the smallest owner of the behavior: a plugin package, a skin, `shared/`, a generator in `scripts/`, or an aggregate package. Keep the change in that owner unless an existing shared abstraction is the real source of truth.
+1. Confirm the root, branch, and dirty baseline before writing; preserve other sessions' files and index. Read only applicable directory instructions: [packages](../../../packages/AGENTS.md) for package work, [docs](../../../docs/AGENTS.md) for documentation, then the nearest owner.
+2. Change the smallest owner: a plugin, skin, shared source, generator, or aggregate. Keep host/client/shared boundaries and browser platform-import/type-only SDK contracts in the package instructions. Modify generated copies through their source and generator, not by hand.
+3. Follow [Agent Note rules](../../notes/README.md) for non-trivial decisions. Reuse the owning note where appropriate; do not copy its lifecycle or format rules here.
+4. Verify the affected behavior and review the diff. Run focused checks during edits, and the repository's complete required gates at merge/push/release boundaries, not after every local change. Report actual evidence and limitations; a commit is not delivery.
 
-## Implement within repository boundaries
+## Context, delegation, and failure recovery
 
-- DSH itself is an external host. Do not modify its checkout or make TypeScript resolve against it. Use the official `@deepseek-ai/*` SDK through installed dependencies.
-- Keep host, client, and shared logic in their respective package areas. Browser bundles must retain the platform-import and type-only SDK constraints in [packages/AGENTS.md](../../../packages/AGENTS.md).
-- Edit a generated shared copy only through its source in `shared/`, then run the documented synchronization command.
-- Add a package or change aggregate membership through the repository generators and update required documentation. Do not hand-edit generated output.
-- Record every non-trivial change as an Agent Note under [.agents/notes/](../../notes/README.md) in the same change: proposals start in `proposed/`, shipped decisions in `implemented/`, declined proposals in `rejected/`. Follow the lifecycle, class, and format rules there.
-- Adhere to the Software Factory governance baseline: maintain prompt prefix stability (Layer 1/2), route lightweight subagents (`flash`/`flash_lite`) for routine research/search/i18n, trigger the anti-thrashing circuit breaker after 3 failed attempts, and follow the 4-step CI self-healing protocol (Log Isolation -> Local Repro -> Minimal Diff -> Gate Check) when resolving errors.
-- Build and exercise the affected behavior before declaring it complete. A commit alone is not delivery.
+- Load task-relevant references, not the entire repository map. When authoring prompts, keep stable rules separate from changing evidence (queries, diffs, task state); place dynamic material after stable context where supported. Do not rewrite runtime-owned system/tool messages, assume cache hits, or change instruction priority for caching.
+- Delegate independent, bounded work only when it helps. Select from available models by task difficulty, error cost, latency, and observed quality, not fixed provider aliases. Use capable reasoning for consequential ambiguity; do not infer that all documentation or static analysis is low-risk. Pass only necessary context and tools where the runtime permits.
+- On a failing check, capture the exact log and exit code, reproduce with the narrowest useful command, fix the evidenced cause, and rerun the affected check. Separate pre-existing failures from regressions caused by this change; do not mix unrelated refactors into repairs.
+- Stop repeating an approach when it adds no evidence or edits oscillate. State the obstacle, inspect a different cause or choose a materially different safe approach. Ask the user only for missing information, authorization, or a consequential choice; a retry count alone is not a reason to ask. Report an environment blocker rather than bypassing safety or weakening a gate.
 
-## Route focused work
+## Load only the relevant workflow
 
-- Use [dsh-web-code-review](../dsh-web-code-review/SKILL.md) for a review request.
-- Use [dsh-web-pre-push-checks](../dsh-web-pre-push-checks/SKILL.md) before a push, a pull request, or a claim that checks pass.
-- Use [dsh-web-documentation](../dsh-web-documentation/SKILL.md) for README, docs, or instruction changes.
-- Use [dsh-web-web-qa](../dsh-web-web-qa/SKILL.md) for client-facing behavior that needs live GUI verification.
-- For a new skin, community-plugin registration, or release, load the dedicated installed skill for that task instead of recreating its process here.
+- Review request: [dsh-web-code-review](../dsh-web-code-review/SKILL.md).
+- README, docs, or instructions: [dsh-web-documentation](../dsh-web-documentation/SKILL.md).
+- Push, PR, or repository-check claim: [dsh-web-pre-push-checks](../dsh-web-pre-push-checks/SKILL.md); reading it does not authorize synchronization or pushing.
+- User-visible client behavior: [dsh-web-web-qa](../dsh-web-web-qa/SKILL.md); visual changes require screenshots and multimodal validation.
+- New skin or community-plugin registration: load the dedicated skill if available; otherwise inspect the owning generator and instructions instead of inventing a skill or process.
+- Explicit release or release-specific audit/repair: [dsh-web-release](../dsh-web-release/SKILL.md), starting with its authorization boundary. CI/configuration repair alone is not a release.
 
-## Finish
-
-Leave the worktree with only intentional changes from this task, regenerate any owned artifacts, run the relevant checks, and report the evidence actually obtained.
+Code navigation prefers CodeGraph (`query`, `explore`, `node`, `impact`, `affected`) when useful and available; use source search when unavailable or unsuitable. After code changes in an indexed project, sync and check status before final validation; initialize/index a missing index when needed, but do not block a small fix on index maintenance. Documentation-only work needs no code index or GUI ceremony.

@@ -3,6 +3,20 @@ import { describe, expect, it } from 'vitest'
 
 const css = readFileSync(new URL('./pet.module.css', import.meta.url), 'utf8')
 
+describe('pet bubble typography (#1549)', () => {
+  it('scales the bubble text and padding from the sprite-supplied variable', () => {
+    const bubble = css.match(/\.bubble\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(bubble).toContain('font-size: calc(12px * var(--pet-bubble-scale, 1))')
+    expect(bubble).toContain('padding: calc(4px * var(--pet-bubble-scale, 1)) calc(10px * var(--pet-bubble-scale, 1))')
+    expect(bubble).not.toContain('font-size: 12px')
+  })
+
+  it('keeps the status bubble width in proportion with its text', () => {
+    const status = css.match(/\.bubbleStatus\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(status).toContain('max-width: min(calc(280px * var(--pet-bubble-scale, 1)), calc(100vw - 24px))')
+  })
+})
+
 describe('pet hover panel css', () => {
   it('anchors the panel below the pet', () => {
     const panel = css.match(/\.panel\s*\{([^}]*)\}/)?.[1] ?? ''

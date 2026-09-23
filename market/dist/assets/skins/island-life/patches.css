@@ -1,0 +1,297 @@
+/* 无人岛生活 (island-life) — L3 patches.
+ * Anchors on stable attributes (data-slot / data-dsh-* / data-composer-card / role / aria-*).
+ * Two exceptions use [class*=...]: the workspace menu's selected item and the composer
+ * primary (send / stop) button expose no semantic attribute. No looping animation. */
+
+:root {
+  --island-cream: #fbf8ec;
+  --island-edge: #e6dac0;
+  --island-shadow: #d4c9b4;
+  --island-btn-shadow: #0b8a7f;
+  --island-focus: #ffcc00;
+  --island-dot: #794f270d;
+}
+
+body[data-ds-dark-theme] {
+  --island-cream: #1f2442;
+  --island-edge: #3a4166;
+  --island-shadow: #0d1024;
+  --island-btn-shadow: #0e8f84;
+  --island-focus: #ffcc66;
+  --island-dot: #f1e8d00a;
+}
+
+[id="root"] {
+  background: none;
+}
+
+/* Sidebar: cream board with a faint polka-dot wallpaper. */
+:is([data-dsh-surface="sidebar"], [data-pane="sidebar"]) {
+  background-image: radial-gradient(var(--island-dot) 18%, transparent 20%);
+  background-size: 18px 18px;
+}
+
+/* Pointer-hand selection, same language as the blog's animal dropdowns:
+ * hover = orange text + hand cursor popping in on the left;
+ * selected = leaf-green pill. */
+@keyframes island-cursor-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-8px) rotate(-15deg);
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(2px) rotate(5deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0) rotate(0);
+  }
+}
+
+:root {
+  --island-hover-fg: #f59b26;
+  --island-hover-bg: #fca13014;
+  --island-leaf-fg: #4a8a36;
+  --island-leaf-bg: #d8ecc6;
+  --island-leaf-edge: #6fba2c38;
+}
+
+body[data-ds-dark-theme] {
+  --island-hover-fg: #ffb85c;
+  --island-hover-bg: #fca1301f;
+  --island-leaf-fg: #b9e39a;
+  --island-leaf-bg: #2f4a2acc;
+  --island-leaf-edge: #8fd05a4d;
+}
+
+/* Sidebar rows */
+:is([data-dsh-surface="sidebar"], [data-pane="sidebar"]) [role="treeitem"] {
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  transition: background-color .2s, color .2s, padding-left .2s;
+}
+
+:is([data-dsh-surface="sidebar"], [data-pane="sidebar"]) [role="treeitem"]:hover {
+  color: var(--island-hover-fg);
+  background: var(--island-hover-bg);
+  padding-left: 28px;
+}
+
+:is([data-dsh-surface="sidebar"], [data-pane="sidebar"]) [role="treeitem"][aria-selected="true"] {
+  color: var(--island-leaf-fg);
+  background: var(--island-leaf-bg);
+  border-color: var(--island-leaf-edge);
+  font-weight: 700;
+}
+
+/* Popup menus (workspace picker, agent preset, etc.) */
+[role="menu"] {
+  background: var(--island-cream);
+  border: 2px solid var(--island-edge);
+  border-radius: 20px;
+  box-shadow: 0 4px 16px #794f2714;
+}
+
+body[data-ds-dark-theme] [role="menu"] {
+  box-shadow: 0 8px 24px #00000059;
+}
+
+/* Menu items: plain items, radio/checkbox items (model picker) and listbox options. */
+[role="menu"] :is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]),
+[role="listbox"] [role="option"] {
+  position: relative;
+  border-radius: 999px;
+  font-weight: 600;
+  transition: background-color .2s, color .2s, padding-left .2s;
+}
+
+[role="menu"] :is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]):not(:disabled):not([aria-checked="true"]):not([class*="selected"]):is(:hover, :focus-visible),
+[role="listbox"] [role="option"]:not([aria-selected="true"]):hover {
+  color: var(--island-hover-fg);
+  background: var(--island-hover-bg);
+  padding-left: 30px;
+}
+
+[role="menu"] :is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]):is([aria-checked="true"], [class*="selected"]),
+[role="listbox"] [role="option"][aria-selected="true"] {
+  color: var(--island-leaf-fg);
+  background: var(--island-leaf-bg);
+  font-weight: 700;
+}
+
+/* The hand itself (shared by rows and menu items). */
+:is([data-dsh-surface="sidebar"], [data-pane="sidebar"]) [role="treeitem"]:hover:before,
+[role="menu"] :is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]):not(:disabled):not([aria-checked="true"]):not([class*="selected"]):is(:hover, :focus-visible):before,
+[role="listbox"] [role="option"]:not([aria-selected="true"]):hover:before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 18px;
+  height: 18px;
+  background: url("assets/select-cursor.png") center / contain no-repeat;
+  pointer-events: none;
+  animation: island-cursor-in .3s ease-out forwards;
+}
+
+/* New-session button: mint game key with a solid bottom shadow. */
+[data-dsh-part="new-session"] {
+  color: #fff;
+  background: #19c8b9;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 4px 0 var(--island-btn-shadow);
+  font-weight: 600;
+  transition: transform .12s, box-shadow .12s, background-color .12s;
+}
+
+[data-dsh-part="new-session"]:hover {
+  background: #3dd4c6;
+}
+
+[data-dsh-part="new-session"]:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--island-btn-shadow);
+}
+
+body[data-ds-dark-theme] [data-dsh-part="new-session"] {
+  color: #0f1a24;
+}
+
+/* Composer card: rounded cream note card with a 3D bottom edge; yellow focus ring. */
+[data-composer-card="true"] {
+  border: 2px solid var(--island-edge);
+  border-radius: 26px;
+  box-shadow: 0 5px 0 var(--island-shadow), 0 10px 24px #3d2a1414;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+[data-composer-card="true"]:focus-within {
+  border-color: var(--island-focus);
+  box-shadow: 0 5px 0 #e0b800, 0 0 0 3px #ffcc0033;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"] {
+  box-shadow: 0 5px 0 var(--island-shadow), 0 10px 24px #00000040;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"]:focus-within {
+  box-shadow: 0 5px 0 #a8780a, 0 0 0 3px #ffcc6633;
+}
+
+/* Composer send / stop button: same 3D game key as the blog's primary buttons. */
+[data-composer-card="true"] button[class*="primary"] {
+  color: #fff;
+  background: #19c8b9;
+  border: 2px solid #3dd4c6;
+  box-shadow: 0 5px 0 0 #11a89b;
+  transform: translateY(-3px);
+  transition: transform .12s, box-shadow .12s, background-color .12s, opacity .12s;
+}
+
+[data-composer-card="true"] button[class*="primary"]:hover:not(:disabled) {
+  background: #3dd4c6;
+  box-shadow: 0 6px 0 0 #11a89b;
+  transform: translateY(-4px);
+}
+
+[data-composer-card="true"] button[class*="primary"]:active:not(:disabled) {
+  box-shadow: 0 1px 0 0 #11a89b;
+  transform: translateY(1px);
+}
+
+[data-composer-card="true"] button[class*="primary"]:disabled {
+  opacity: .5;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"] button[class*="primary"] {
+  color: #0f1a24;
+  box-shadow: 0 5px 0 0 #0b6f67;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"] button[class*="primary"]:hover:not(:disabled) {
+  box-shadow: 0 6px 0 0 #0b6f67;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"] button[class*="primary"]:active:not(:disabled) {
+  box-shadow: 0 1px 0 0 #0b6f67;
+}
+
+/* Session header: soft cream strip so the title stays readable over the sky. */
+[data-dsh-surface="session-header"] {
+  background: linear-gradient(var(--dsw-alias-bg-layer-1), transparent);
+}
+
+/* Settings / dialogs: big rounded board with a warm edge. */
+[role="dialog"] {
+  border-radius: 28px;
+  color: var(--dsw-alias-label-primary);
+}
+
+[data-dsh-surface="settings"] {
+  border: 2px solid var(--island-edge);
+  box-shadow: 0 6px 0 var(--island-shadow), 0 24px 60px #3d2a1433;
+  backdrop-filter: blur(14px);
+}
+
+body[data-ds-dark-theme] [data-dsh-surface="settings"] {
+  box-shadow: 0 6px 0 var(--island-shadow), 0 24px 60px #00000080;
+}
+
+/* Tabs: selected tab gets a mint underline pill. */
+[role="tab"][aria-selected="true"] {
+  color: var(--dsw-alias-label-primary);
+  box-shadow: inset 0 -3px 0 #19c8b9;
+}
+
+[role="tooltip"] {
+  color: var(--dsw-alias-tooltip-fg);
+  background: var(--dsw-alias-tooltip-bg);
+  border: 2px solid #e6dac0;
+  border-radius: 14px;
+}
+
+a {
+  color: #0f9e92;
+}
+
+a:hover {
+  color: #0b7f75;
+}
+
+body[data-ds-dark-theme] a {
+  color: #5fe0d3;
+}
+
+body[data-ds-dark-theme] a:hover {
+  color: #8eeae1;
+}
+
+/* Scrollbars: rounded wooden pegs. */
+::-webkit-scrollbar-thumb {
+  background: var(--dsw-alias-scrollbar-bg-l2);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dsw-alias-scrollbar-hover-l2);
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is([data-dsh-surface="sidebar"], [data-pane="sidebar"]) [role="treeitem"], [role="menu"] :is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]),
+  [role="listbox"] [role="option"], [data-dsh-part="new-session"], [data-composer-card="true"],
+  [data-composer-card="true"] button[class*="primary"] {
+    transition: none;
+  }
+
+  :is([data-dsh-surface="sidebar"], [data-pane="sidebar"]) [role="treeitem"]:hover:before, [role="menu"] [role]:before, [role="listbox"] [role="option"]:before {
+    animation: none;
+  }
+}

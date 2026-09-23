@@ -1,0 +1,277 @@
+/**
+ * 星辉教团 (Astral Choir) — L1 token layer.
+ *
+ * 由 tools/gen_skin_css.py 从 Observatory 的 97 token 结构派生：
+ * 19 个角色 hex 单遍替换为夜紫+极光青色板，alpha 后缀原样保留。
+ * 暗色专用：:root / body / body[data-ds-dark-theme] 三处同值。
+ * 全部半透明值为 8-digit hex——皮肤白名单拒绝颜色函数。
+ * 比 Observatory 多补 --dsw-shadow-lv1 / lv2 / lv3（官方 token 表在册）。
+ */
+
+:root,
+body {
+  color: #e6e1f4;
+  /* With a glass surface the fixed canvas layer paints the background, so html and
+     body stay transparent — otherwise they add two more translucent coats on top of
+     it. Without one, keep the historical behaviour. */
+  background-color: transparent;
+  color-scheme: dark;
+
+  --dsw-alias-bg-base: #09071459;
+  --dsw-alias-bg-layer-1: #100d1d;
+  --dsw-alias-bg-layer-2: #171228;
+  --dsw-alias-bg-layer-3: #1f1934;
+  --dsw-alias-bg-mask-1: #100d1dcc;
+  --dsw-alias-bg-mask-2: #100d1d99;
+  --dsw-alias-bg-mask-3: #100d1d66;
+  --dsw-alias-bg-mask-drop: #09071480;
+  --dsw-alias-bg-mask-photo: #090714a6;
+  --dsw-alias-bg-module-platform: #171228;
+  --dsw-alias-bg-multi-select: #8672d64d;
+  --dsw-alias-bg-overlay: #100d1deb;
+  --dsw-alias-bg-skeleton: #9c93ba1f;
+  --dsw-alias-border-inverted: #100d1d;
+  --dsw-alias-border-inverted2: #171228;
+  --dsw-alias-border-l1: #2c25454d;
+  --dsw-alias-border-l2: #2c254573;
+  --dsw-alias-border-l2-darkmode-thin: #2c25454d;
+  --dsw-alias-border-l3: #2c254599;
+  --dsw-alias-border-l4: #2c2545cc;
+  --dsw-alias-brand-primary: #8672d6;
+  --dsw-alias-brand-primary-invert: #100d1d;
+  --dsw-alias-brand-text: #8672d6;
+  --dsw-alias-button-contrast-fill: #e6e1f4;
+  --dsw-alias-button-elevated-fill: #100d1d;
+  --dsw-alias-button-floating-fill: #100d1d;
+  --dsw-alias-button-floating-hover: #171228;
+  --dsw-alias-button-ghost-active-border: #8672d64d;
+  --dsw-alias-button-ghost-active-fill: #8672d61f;
+  --dsw-alias-button-ghost-active-hover: #8672d62e;
+  --dsw-alias-button-info-fill: #8672d6;
+  --dsw-alias-button-info-hover: #9a86e2;
+  --dsw-alias-button-primary-dimmed: #8672d659;
+  --dsw-alias-button-primary-fill: #8672d6;
+  --dsw-alias-button-primary-hover: #9a86e2;
+  --dsw-alias-button-tool-bar-fill: #100d1d;
+  --dsw-alias-button-tool-bar-fill-invisible: #100d1d00;
+  --dsw-alias-button-tool-bar-hover: #171228;
+  --dsw-alias-interactive-bg-active: #8672d638;
+  --dsw-alias-interactive-bg-hover: #8672d624;
+  --dsw-alias-interactive-bg-hover-accent: #8672d638;
+  --dsw-alias-interactive-bg-hover-danger: #c4665a29;
+  --dsw-alias-interactive-bg-hover-solid: #171228;
+  --dsw-alias-label-caption: #766e92;
+  --dsw-alias-label-dimmed: #514a68;
+  --dsw-alias-label-primary: #e6e1f4;
+  --dsw-alias-label-primary-bluish: #b3a6d9;
+  --dsw-alias-label-primary-dimmed: #9c93ba;
+  --dsw-alias-label-primary-foreground: #100d1d;
+  --dsw-alias-label-primary-inverted: #090714;
+  --dsw-alias-label-secondary: #9c93ba;
+  --dsw-alias-label-tertiary: #766e92;
+  --dsw-alias-markdown-citation: #8672d6;
+  --dsw-alias-markdown-code-block: #171228;
+  --dsw-alias-markdown-code-block-banner: #1b1730;
+  --dsw-alias-markdown-code-segment-selected: #100d1d;
+  --dsw-alias-markdown-code-segment-unselected: #9c93ba2e;
+  --dsw-alias-markdown-inline-code: #8672d629;
+  --dsw-alias-markdown-placeholder: #514a68;
+  --dsw-alias-markdown-tag: #8672d633;
+  --dsw-alias-scrollbar-bg-l1: #9c93ba1a;
+  --dsw-alias-scrollbar-bg-l2: #9c93ba24;
+  --dsw-alias-scrollbar-hover-l1: #9c93ba3d;
+  --dsw-alias-scrollbar-hover-l2: #9c93ba4d;
+  --dsw-alias-state-business-primary: #8672d6;
+  --dsw-alias-state-business-tertiary: #8672d629;
+  --dsw-alias-state-danger-primary: #c4665a;
+  --dsw-alias-state-danger-tertiary: #c4665a29;
+  --dsw-alias-state-error-primary: #c4665a;
+  --dsw-alias-state-error-secondary: #c4665a2e;
+  --dsw-alias-state-success-primary: #6f9e72;
+  --dsw-alias-state-success-secondary: #6f9e7233;
+  --dsw-alias-state-success-tertiary: #6f9e7224;
+  --dsw-alias-state-warn-label: #cdb986;
+  --dsw-alias-state-warn-primary: #9fe4f0;
+  --dsw-alias-state-warn-secondary: #9fe4f033;
+  --dsw-alias-state-warn-tertiary: #9fe4f024;
+  --dsw-alias-toast-bg: #e6e1f4;
+  --dsw-alias-toast-fg: #100d1d;
+  --dsw-alias-tooltip-bg: #e6e1f4;
+  --dsw-alias-tooltip-fg: #100d1d;
+  --dsw-alias-shadow-lv1: 0 1px 2px #00000073;
+  --dsw-alias-shadow-lv2: 0 4px 12px #00000080;
+  --dsw-alias-shadow-lv3: 0 12px 32px #0000008c;
+  --dsw-alias-specific-bubble: #100d1d;
+  --dsw-alias-specific-bubble-highlight: #191720;
+  --dsw-alias-specific-input-major: #100d1d;
+  --dsw-alias-specific-login-input: #100d1d;
+  --dsw-alias-specific-menu: #100d1d;
+  --dsw-alias-specific-selector: #171228;
+  --dsw-alias-specific-sidebar-fill: #171228;
+  --dsw-alias-specific-sidebar-nav-item-active: #8672d62e;
+  --dsw-alias-specific-sidebar-nav-item-active-accent: #8672d6;
+  --dsw-alias-specific-sidebar-nav-item-hover: #8672d61a;
+  --dsw-alias-specific-tip: #8672d61f;
+  --dsw-specific-bubble: #100d1d;
+  --dsw-specific-bubble-highlight: #191720;
+  --dsw-specific-input-major: #100d1d;
+  --dsw-specific-login-input: #100d1d;
+  --dsw-specific-menu: #100d1d;
+  --dsw-specific-selector: #171228;
+  --dsw-specific-sidebar-fill: #171228;
+  --dsw-specific-sidebar-nav-item-active: #8672d62e;
+  --dsw-specific-sidebar-nav-item-active-accent: #8672d6;
+  --dsw-specific-sidebar-nav-item-hover: #8672d61a;
+  --dsw-specific-tip: #8672d61f;
+  --dsw-font-family: inherit;
+  --dsw-hovercard-bg: #100d1d;
+  --dsw-mask-blur: 10px;
+  --dsw-linear-gradient-think: linear-gradient(90deg, #9fe4f03d 0%, #8672d61f 100%);
+  --dsw-linear-think-select: #9fe4f047;
+  --dsw-shadow-lv1-blur: 3px;
+  --dsw-shadow-lv1: 0 1px 2px #00000073;
+  --dsw-shadow-lv2: 0 4px 12px #00000080;
+  --dsw-shadow-lv3: 0 12px 32px #0000008c;
+  --dsw-alias-toast-fg: #100d1d;
+  --dsw-alias-tooltip-fg: #100d1d;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #8672d6;
+  --astral-cta-ink: #0d0a18;
+
+  /* the theme's material, for patches.css */
+  --astral-metal: #8672d6;
+  --astral-accent: #9fe4f0;
+  --astral-line: #2c2545;
+}
+
+body[data-ds-dark-theme] {
+  color: #e6e1f4;
+  /* This block out-specifies the :root/body rule, so it has to honour glassBase too —
+     otherwise a hardcoded coat here silently wins and the canvas below is hidden
+     (measured: the backdrop art survived only ~8% because body still painted 0.68). */
+  background-color: transparent;
+  color-scheme: dark;
+
+  --dsw-alias-bg-base: #09071459;
+  --dsw-alias-bg-layer-1: #100d1d;
+  --dsw-alias-bg-layer-2: #171228;
+  --dsw-alias-bg-layer-3: #1f1934;
+  --dsw-alias-bg-mask-1: #100d1dcc;
+  --dsw-alias-bg-mask-2: #100d1d99;
+  --dsw-alias-bg-mask-3: #100d1d66;
+  --dsw-alias-bg-mask-drop: #09071480;
+  --dsw-alias-bg-mask-photo: #090714a6;
+  --dsw-alias-bg-module-platform: #171228;
+  --dsw-alias-bg-multi-select: #8672d64d;
+  --dsw-alias-bg-overlay: #100d1deb;
+  --dsw-alias-bg-skeleton: #9c93ba1f;
+  --dsw-alias-border-inverted: #100d1d;
+  --dsw-alias-border-inverted2: #171228;
+  --dsw-alias-border-l1: #2c25454d;
+  --dsw-alias-border-l2: #2c254573;
+  --dsw-alias-border-l2-darkmode-thin: #2c25454d;
+  --dsw-alias-border-l3: #2c254599;
+  --dsw-alias-border-l4: #2c2545cc;
+  --dsw-alias-brand-primary: #8672d6;
+  --dsw-alias-brand-primary-invert: #100d1d;
+  --dsw-alias-brand-text: #8672d6;
+  --dsw-alias-button-contrast-fill: #e6e1f4;
+  --dsw-alias-button-elevated-fill: #100d1d;
+  --dsw-alias-button-floating-fill: #100d1d;
+  --dsw-alias-button-floating-hover: #171228;
+  --dsw-alias-button-ghost-active-border: #8672d64d;
+  --dsw-alias-button-ghost-active-fill: #8672d61f;
+  --dsw-alias-button-ghost-active-hover: #8672d62e;
+  --dsw-alias-button-info-fill: #8672d6;
+  --dsw-alias-button-info-hover: #9a86e2;
+  --dsw-alias-button-primary-dimmed: #8672d659;
+  --dsw-alias-button-primary-fill: #8672d6;
+  --dsw-alias-button-primary-hover: #9a86e2;
+  --dsw-alias-button-tool-bar-fill: #100d1d;
+  --dsw-alias-button-tool-bar-fill-invisible: #100d1d00;
+  --dsw-alias-button-tool-bar-hover: #171228;
+  --dsw-alias-interactive-bg-active: #8672d638;
+  --dsw-alias-interactive-bg-hover: #8672d624;
+  --dsw-alias-interactive-bg-hover-accent: #8672d638;
+  --dsw-alias-interactive-bg-hover-danger: #c4665a29;
+  --dsw-alias-interactive-bg-hover-solid: #171228;
+  --dsw-alias-label-caption: #766e92;
+  --dsw-alias-label-dimmed: #514a68;
+  --dsw-alias-label-primary: #e6e1f4;
+  --dsw-alias-label-primary-bluish: #b3a6d9;
+  --dsw-alias-label-primary-dimmed: #9c93ba;
+  --dsw-alias-label-primary-foreground: #100d1d;
+  --dsw-alias-label-primary-inverted: #090714;
+  --dsw-alias-label-secondary: #9c93ba;
+  --dsw-alias-label-tertiary: #766e92;
+  --dsw-alias-markdown-citation: #8672d6;
+  --dsw-alias-markdown-code-block: #171228;
+  --dsw-alias-markdown-code-block-banner: #1b1730;
+  --dsw-alias-markdown-code-segment-selected: #100d1d;
+  --dsw-alias-markdown-code-segment-unselected: #9c93ba2e;
+  --dsw-alias-markdown-inline-code: #8672d629;
+  --dsw-alias-markdown-placeholder: #514a68;
+  --dsw-alias-markdown-tag: #8672d633;
+  --dsw-alias-scrollbar-bg-l1: #9c93ba1a;
+  --dsw-alias-scrollbar-bg-l2: #9c93ba24;
+  --dsw-alias-scrollbar-hover-l1: #9c93ba3d;
+  --dsw-alias-scrollbar-hover-l2: #9c93ba4d;
+  --dsw-alias-state-business-primary: #8672d6;
+  --dsw-alias-state-business-tertiary: #8672d629;
+  --dsw-alias-state-danger-primary: #c4665a;
+  --dsw-alias-state-danger-tertiary: #c4665a29;
+  --dsw-alias-state-error-primary: #c4665a;
+  --dsw-alias-state-error-secondary: #c4665a2e;
+  --dsw-alias-state-success-primary: #6f9e72;
+  --dsw-alias-state-success-secondary: #6f9e7233;
+  --dsw-alias-state-success-tertiary: #6f9e7224;
+  --dsw-alias-state-warn-label: #cdb986;
+  --dsw-alias-state-warn-primary: #9fe4f0;
+  --dsw-alias-state-warn-secondary: #9fe4f033;
+  --dsw-alias-state-warn-tertiary: #9fe4f024;
+  --dsw-alias-toast-bg: #e6e1f4;
+  --dsw-alias-toast-fg: #100d1d;
+  --dsw-alias-tooltip-bg: #e6e1f4;
+  --dsw-alias-tooltip-fg: #100d1d;
+  --dsw-alias-shadow-lv1: 0 1px 2px #00000073;
+  --dsw-alias-shadow-lv2: 0 4px 12px #00000080;
+  --dsw-alias-shadow-lv3: 0 12px 32px #0000008c;
+  --dsw-alias-specific-bubble: #100d1d;
+  --dsw-alias-specific-bubble-highlight: #191720;
+  --dsw-alias-specific-input-major: #100d1d;
+  --dsw-alias-specific-login-input: #100d1d;
+  --dsw-alias-specific-menu: #100d1d;
+  --dsw-alias-specific-selector: #171228;
+  --dsw-alias-specific-sidebar-fill: #171228;
+  --dsw-alias-specific-sidebar-nav-item-active: #8672d62e;
+  --dsw-alias-specific-sidebar-nav-item-active-accent: #8672d6;
+  --dsw-alias-specific-sidebar-nav-item-hover: #8672d61a;
+  --dsw-alias-specific-tip: #8672d61f;
+  --dsw-specific-bubble: #100d1d;
+  --dsw-specific-bubble-highlight: #191720;
+  --dsw-specific-input-major: #100d1d;
+  --dsw-specific-login-input: #100d1d;
+  --dsw-specific-menu: #100d1d;
+  --dsw-specific-selector: #171228;
+  --dsw-specific-sidebar-fill: #171228;
+  --dsw-specific-sidebar-nav-item-active: #8672d62e;
+  --dsw-specific-sidebar-nav-item-active-accent: #8672d6;
+  --dsw-specific-sidebar-nav-item-hover: #8672d61a;
+  --dsw-specific-tip: #8672d61f;
+  --dsw-font-family: inherit;
+  --dsw-hovercard-bg: #100d1d;
+  --dsw-mask-blur: 10px;
+  --dsw-linear-gradient-think: linear-gradient(90deg, #9fe4f03d 0%, #8672d61f 100%);
+  --dsw-linear-think-select: #9fe4f047;
+  --dsw-shadow-lv1-blur: 3px;
+  --dsw-shadow-lv1: 0 1px 2px #00000073;
+  --dsw-shadow-lv2: 0 4px 12px #00000080;
+  --dsw-shadow-lv3: 0 12px 32px #0000008c;
+  --dsw-alias-toast-fg: #100d1d;
+  --dsw-alias-tooltip-fg: #100d1d;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #8672d6;
+  --astral-cta-ink: #0d0a18;
+
+  --astral-metal: #8672d6;
+  --astral-accent: #9fe4f0;
+  --astral-line: #2c2545;
+}

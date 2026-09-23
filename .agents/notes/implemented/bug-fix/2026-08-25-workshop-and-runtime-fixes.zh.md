@@ -19,7 +19,7 @@
 3. 在 `packages/skins/skin-center/src/client/wallpaper.ts` 中追踪媒体加载失败事件并降级撤销 active 标记，将 `suppressBackgroundMedia` 绑定至 `wallpaper.isDisplaying()`。
 4. 在 `packages/dsh-tool-describe-image/src/native-images.ts` 中动态匹配模型 provider 的设置命名空间并支持版本号冲突重试。
 5. 在 `packages/dsh-chat-recovery/src/client/TurnActionsView.tsx` 中将 `hostRetryPending` 纳入判定并在重试中禁用按钮，增加日志记录。
-6. 在 `packages/dsh-liangshen/presets/liangshen/tool-bootstrap.mjs` 中为进入 `code` 呈现模式注入明确的 PTC 调用指引。
+6. 在 `packages/dsh-liangshen/presets/liangshen/tool-bootstrap.mjs` 中为进入 `code` 呈现模式注入明确的 PTC 调用指引。该呈现模式本身已退役（见 [LiangShen mode as a minimal persona plus an injected standard tool catalog](../feature/2026-09-11-liangshen-minimal-prompt-tool-catalog.zh.md)），本条决策在现行 preset 中已无对应对象。
 
 ## 影响与收益
 

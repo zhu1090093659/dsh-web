@@ -15,7 +15,7 @@ The retired `text` key also sat in the community preset template (`packages/dsh-
 
 - The liangshen persona row and the preset template both use `prefix` instead of the retired `text`.
 - `buildInstructionHint` stamps its message with `{ kind: 'plugin', plugin: name }`; the message already names its plugin, and `plugin` is accepted by both the v2-to-v3 migration whitelist and the v3 `MessageSourceMap` (`{ kind: 'plugin'; plugin: string } & ContextFormed`, where `ContextFormed` admits the absent `form`).
-- `tests/tool-bootstrap.test.ts` pins the emitted kind as `plugin` in both instruction-hint tests.
+- `tests/minimal-prompt.test.ts` (then `tests/tool-bootstrap.test.ts`) pins the emitted kind as `plugin` in both instruction-hint tests.
 
 ## Testing
 
@@ -31,6 +31,6 @@ The retired `text` key also sat in the community preset template (`packages/dsh-
 
 ## Consequences
 
-- New liangshen sessions persist a source kind the released migration understands, so they restore after a DSH upgrade; the phase-1 message whitelist is unaffected because neither `instruction-hint` nor `plugin` is in `DEFAULT_MESSAGE_SOURCES`.
+- New liangshen sessions persist a source kind the released migration understands, so they restore after a DSH upgrade. The `DEFAULT_MESSAGE_SOURCES` whitelist this note weighed against is retired with the two-phase mechanism it belonged to ([LiangShen mode as a minimal persona plus an injected standard tool catalog](../feature/2026-09-11-liangshen-minimal-prompt-tool-catalog.md)).
 - Histories that already contain `"kind":"instruction-hint"` stay unopenable until the user normalizes that kind in the v2 log; the fix prevents new occurrences and does not repair existing files.
 - Preset authors copying `_template/` get a persona row that mounts on the current schema.

@@ -12,12 +12,18 @@ import type { RemoteResult, SettingsDescribeValue, SettingsNamespaceView } from 
 import { CapabilitiesPanel } from '../src/client/CapabilitiesPanel.tsx'
 import { DisabledProvidersFooter } from '../src/client/DisabledProvidersFooter.tsx'
 import type { RefreshBus, SettingsNamespaceFace } from '../src/client/settings-face.ts'
-import { CAPS_SETTINGS_NAMESPACE } from '../src/core/provider-toggle.ts'
+import { CAPS_ENTRY_IDS } from '../src/core/provider-toggle.ts'
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
 })
+
+/** The profile entry id this deployment mounts the plugin under (the aggregate's row). */
+const CAPS_ENTRY_ID = CAPS_ENTRY_IDS[1]
+
+/** The archive form schema as the Host serves it (the plugin's volatile config fields). */
+const ARCHIVE_SCHEMA = { type: 'object', meta: { default: {} }, dict: { disabled: { type: 'any', meta: { default: {} } } } }
 
 const PROVIDER = {
   provider: 'acme-gateway',
@@ -37,11 +43,11 @@ interface World {
   failNext?: { ns: string, code: string }
 }
 
-function view(ns: string, user: unknown, revision: number): SettingsNamespaceView {
+function view(ns: string, user: unknown, revision: number, schema: unknown = {}): SettingsNamespaceView {
   // Share one object for the resolved value and raw user section (the archive
-  // namespace's schema is a passthrough, so production carries the same content).
+  // entry's schema is a passthrough, so production carries the same content).
   const section = user as Record<string, unknown>
-  return { ns, schema: {}, value: section as never, user: section as never, applies: 'live', secrets: [], revision }
+  return { ns, autoGenerate: true, schema: schema as never, value: section as never, user: section as never, applies: 'live', secrets: [], revision }
 }
 
 /** Replace the raw user section (the resolved value follows: passthrough schema). */
@@ -120,13 +126,51 @@ function bus(): RefreshBus & { notifyCount: number } {
 function baseWorld(): World {
   return {
     llm: view('llm-pi-ai', { providers: { 'acme-gateway': { models: [{ ...STORED_ROW }] } } }, 7),
-    caps: view(CAPS_SETTINGS_NAMESPACE, {}, 3),
+    caps: view(CAPS_ENTRY_ID, {}, 3),
     calls: [],
     describeCount: 0,
   }
 }
 
 describe('CapabilitiesPanel disable/enable', () => {
+  it('operator disables a provider whose archive row was renamed', async () => {
+    // Given a profile that serves this plugin's archive under a row id the
+    // package does not know, carrying the schema it declares
+    const world = baseWorld()
+    world.caps = view('my-caps', {}, 3, ARCHIVE_SCHEMA)
+    render(<CapabilitiesPanel provider={PROVIDER} configured keyConfigured settings={makeFace(world)} refresh={bus()} />)
+    fireEvent.click(screen.getByRole('button', { name: /模型能力/ }))
+
+    // When the operator disables the provider from the card
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-dsh-part="model-row"]')).toHaveLength(1)
+    })
+    fireEvent.click(screen.getByRole('button', { name: '禁用此提供方' }))
+    await waitFor(() => {
+      expect(world.calls).toHaveLength(2)
+    })
+
+    // Then the profile is archived in that row before the route goes down
+    expect(world.calls[0].ns).toBe('my-caps')
+    expect(world.calls[1].ns).toBe('llm-pi-ai')
+  })
+
+  it('operator is offered no disable control while no archive entry is served', async () => {
+    // Given a host that serves no form carrying this plugin's archive schema
+    const world = baseWorld()
+    world.caps = view('something-else', {}, 3)
+    render(<CapabilitiesPanel provider={PROVIDER} configured keyConfigured settings={makeFace(world)} refresh={bus()} />)
+    fireEvent.click(screen.getByRole('button', { name: /模型能力/ }))
+
+    // When the panel has loaded the served forms
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-dsh-part="model-row"]')).toHaveLength(1)
+    })
+
+    // Then no disable control is offered, because nothing could archive the profile
+    expect(screen.queryByRole('button', { name: '禁用此提供方' })).toBeNull()
+  })
+
   it('shows the disabled state with an enable affordance and no editor', async () => {
     const world = baseWorld()
     setUserSection(world.llm, { providers: {} })
@@ -137,7 +181,7 @@ describe('CapabilitiesPanel disable/enable', () => {
       expect(screen.getByText('该提供方已禁用：模型不出现在输入框模型选择器与子代理可选列表中。配置已存档，启用即恢复。')).toBeTruthy()
     })
     expect(screen.getByRole('button', { name: '启用' })).toBeTruthy()
-    expect(screen.queryByRole('checkbox', { name: '图片输入' })).toBeNull()
+    expect(screen.queryByRole('radio', { name: '无推理' })).toBeNull()
   })
 
   it('disables through two mutations: archive first, then the route unset', async () => {
@@ -153,7 +197,7 @@ describe('CapabilitiesPanel disable/enable', () => {
       expect(screen.getByText('该提供方已禁用：模型不出现在输入框模型选择器与子代理可选列表中。配置已存档，启用即恢复。')).toBeTruthy()
     })
     expect(world.calls).toHaveLength(2)
-    expect(world.calls[0].ns).toBe(CAPS_SETTINGS_NAMESPACE)
+    expect(world.calls[0].ns).toBe(CAPS_ENTRY_ID)
     expect(world.calls[0].ops[0].op).toBe('set')
     expect(world.calls[0].ops[0].path).toEqual(['disabled', 'acme-gateway'])
     expect(world.calls[1].ns).toBe('llm-pi-ai')
@@ -175,7 +219,7 @@ describe('CapabilitiesPanel disable/enable', () => {
       expect(screen.getByText('gpt-x')).toBeTruthy()
     })
     expect(world.calls[0].ns).toBe('llm-pi-ai')
-    expect(world.calls[1].ns).toBe(CAPS_SETTINGS_NAMESPACE)
+    expect(world.calls[1].ns).toBe(CAPS_ENTRY_ID)
   })
 
   it('hides the disable control while the document is read-only', async () => {
@@ -216,7 +260,7 @@ describe('CapabilitiesPanel disable/enable', () => {
       expect(screen.getByText('gpt-x')).toBeTruthy()
     })
     fireEvent.click(screen.getByRole('button', { name: /展开模型能力: gpt-x/ }))
-    fireEvent.click(screen.getByRole('checkbox', { name: '图片输入' }))
+    fireEvent.click(screen.getByRole('radio', { name: '无推理' }))
 
     // Another surface rewrites the provider while the draft is open.
     setUserSection(world.llm, { providers: { 'acme-gateway': { models: [{ ...STORED_ROW, name: 'Renamed' }] } } })
@@ -227,7 +271,7 @@ describe('CapabilitiesPanel disable/enable', () => {
       expect(screen.getByText('配置已被其他界面修改；你的未保存修改仍保留，保存时会再次校验。')).toBeTruthy()
     })
     // The draft survived, and the write stays fenced at the revision it read.
-    expect((screen.getByRole('checkbox', { name: '图片输入' }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('radio', { name: '无推理' }) as HTMLInputElement).checked).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: '保存' }))
     await waitFor(() => {
       expect(world.calls).toHaveLength(1)
@@ -239,7 +283,7 @@ describe('CapabilitiesPanel disable/enable', () => {
     const world = baseWorld()
     setUserSection(world.llm, { providers: {} })
     setUserSection(world.caps, { disabled: { 'acme-gateway': { profile: { apiKeyEnv: 'ACME_KEY', models: [{ ...STORED_ROW }] }, displayName: 'ACME Gateway' } } })
-    world.failNext = { ns: CAPS_SETTINGS_NAMESPACE, code: 'settings/conflict' }
+    world.failNext = { ns: CAPS_ENTRY_ID, code: 'settings/conflict' }
     render(<CapabilitiesPanel provider={PROVIDER} configured keyConfigured settings={makeFace(world)} refresh={bus()} />)
     fireEvent.click(screen.getByRole('button', { name: /模型能力/ }))
     await waitFor(() => {
@@ -291,7 +335,7 @@ describe('DisabledProvidersFooter', () => {
       expect(screen.queryByText('ACME Gateway')).toBeNull()
     })
     expect(world.calls[0].ns).toBe('llm-pi-ai')
-    expect(world.calls[1].ns).toBe(CAPS_SETTINGS_NAMESPACE)
+    expect(world.calls[1].ns).toBe(CAPS_ENTRY_ID)
     expect(mirror.notifyCount).toBe(1)
   })
 

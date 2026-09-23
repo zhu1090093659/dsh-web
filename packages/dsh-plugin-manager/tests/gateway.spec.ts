@@ -42,6 +42,24 @@ describe('findDshBinary', () => {
       '/opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js',
     )).toBe('/opt/dsh/node_modules/.bin/dsh')
   })
+  it('finds the packaged desktop runtime CLI with no PATH and no .bin shim (issue #1588)', () => {
+    const hostEntry = 'C:\\Users\\u\\AppData\\Local\\Programs\\DeepSeek Harness\\resources\\runtime\\host\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js'
+    const binJs = 'C:\\Users\\u\\AppData\\Local\\Programs\\DeepSeek Harness\\resources\\runtime\\host\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js'
+    // The staged runtime strips every node_modules/.bin directory, so the
+    // package's own lib/bin.js is the only launchable form there.
+    expect(findDshBinary(
+      { PATH: 'C:\\Windows\\System32;C:\\Windows' },
+      'win32',
+      exists([binJs]),
+      hostEntry,
+    )).toBe(binJs)
+  })
+
+  it('prefers a .bin shim over the sibling package bin.js when both exist', () => {
+    const shim = 'D:\\APP\\DSH\\node_modules\\.bin\\dsh.cmd'
+    const hostEntry = 'D:\\APP\\DSH\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js'
+    expect(findDshBinary({ PATH: 'C:\\Windows' }, 'win32', exists([shim, hostEntry]), hostEntry)).toBe(shim)
+  })
 
   it('falls back to the darwin homebrew location', () => {
     expect(findDshBinary({ PATH: '/nothing' }, 'darwin', exists(['/opt/homebrew/bin/dsh']))).toBe('/opt/homebrew/bin/dsh')
@@ -74,6 +92,13 @@ describe('dshSpawnCommand', () => {
       command: 'C:\\Program Files\\nodejs\\node.exe',
       argsPrefix: ['C:\\Program Files\\nodejs\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js'],
     })
+  })
+
+  it('runs a resolved bin.js through the host interpreter on Windows', () => {
+    const binary = 'C:\\Program Files\\DeepSeek Harness\\resources\\runtime\\host\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js'
+    const resolved = dshSpawnCommand(binary, 'win32', () => false)
+    expect(resolved.argsPrefix).toEqual([binary])
+    expect(resolved.command).toBe(process.execPath)
   })
 
   it('falls back to the .cmd shim when no npm bin.js exists', () => {

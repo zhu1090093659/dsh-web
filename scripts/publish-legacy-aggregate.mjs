@@ -19,6 +19,9 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+/** GNU tar reads a `C:\...` argument as a remote host spec; --force-local keeps it a local path. */
+const TAR_LOCAL = process.platform === 'win32' ? ['--force-local'] : []
+
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '..')
 const AGGREGATE_DIR = join(REPO_ROOT, 'packages', 'dsh-web-all')
@@ -127,7 +130,7 @@ function main() {
   const tarball = candidates.length === 1 ? candidates[0] : outputPath
   if (tarball === '' || !existsSync(tarball)) throw new Error(`legacy-aggregate-publish: pnpm pack produced no unambiguous tarball in ${scratch}`)
   const rewriteDir = join(scratch, 'rewrite')
-  execFileSync('tar', ['-xzf', tarball, '-C', scratch])
+  execFileSync('tar', [...TAR_LOCAL, '-xzf', tarball, '-C', scratch])
   execFileSync('mv', [join(scratch, 'package'), rewriteDir])
   const packageDir = join(rewriteDir, 'package.json')
   writeFileSync(packageDir, rewriteLegacyPackageJson(readFileSync(packageDir, 'utf8'), version))
@@ -138,7 +141,7 @@ function main() {
   const clientMapPath = join(rewriteDir, 'lib', 'client.js.map')
   if (existsSync(clientMapPath)) writeFileSync(clientMapPath, rewriteLegacyClient(readFileSync(clientMapPath, 'utf8')))
   const legacyTarball = join(scratch, `${LEGACY_NAME.replace(/^@/, '').replace('/', '-')}-${version}.tgz`)
-  execFileSync('tar', ['-czf', legacyTarball, '-C', scratch, 'rewrite'])
+  execFileSync('tar', [...TAR_LOCAL, '-czf', legacyTarball, '-C', scratch, 'rewrite'])
   execFileSync('npm', ['publish', legacyTarball, '--access', 'public', '--tag', 'latest'], { stdio: 'inherit' })
   console.log(`[legacy-aggregate-publish] published ${LEGACY_NAME}@${version}`)
 }

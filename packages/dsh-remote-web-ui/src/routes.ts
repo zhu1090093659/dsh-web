@@ -11,6 +11,13 @@
  * on the 0.1.2-alpha.2 cohort nothing emits api/gate — direct /api is
  * governed by the harness fence + browser auth — while the /remote channel
  * always enforces the pairing cookie itself.
+ *
+ * The app landing is reached with a one-time grant, never with the device id
+ * itself: /pair-accept mints a short-lived, single-consume grant
+ * (pair-grant.ts) and redirects to /pair-app?grant=<g>, and only the landing's
+ * own response carries the device credential into the shell. The device cookie
+ * stays the primary credential; the grant only keeps a live session credential
+ * out of the URL, the address bar, and every log on the redirect path.
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -20,6 +27,8 @@ import { UnknownLanAddressError, type PairingService, type PairingSnapshot } fro
 import { isLoopbackAddress } from './loopback.ts'
 import { isLoopbackClient, readCookie } from './gate.ts'
 import { readJsonBody, writeJson } from './http.ts'
+import { createPairGrantStore, type PairGrantStore } from './pair-grant.ts'
+import { REMOTE_HOST_GRANT_GLOBAL } from './remote-channel-rules.ts'
 
 /**
  * Browser-trust fence for the /api/pair routes, mirroring the connection
@@ -74,7 +83,16 @@ export function isTrustedHost(request: IncomingMessage, trustedHosts: readonly s
   return isLoopbackClient(request) || trustedHosts.some(entry => {
     // A port-less entry matches the hostname on any port; an exact host:port
     // entry matches that authority verbatim (WHATWG normalization both sides).
-    const entryUrl = new URL(`http://${entry}`)
+    // A malformed entry (a config or DSH_REMOTE_TRUSTED_HOSTS typo) contributes
+    // no trust instead of throwing out of the fence: every pairing request from
+    // a non-loopback origin would otherwise answer 400 with only a generic
+    // webserver warning, and the valid entries would never be consulted.
+    let entryUrl: URL
+    try {
+      entryUrl = new URL(`http://${entry}`)
+    } catch {
+      return false
+    }
     return entryUrl.port === '' ? entryUrl.hostname === hostname : entryUrl.host === hostUrl.host
   })
 }
@@ -174,19 +192,33 @@ const MAX_BODY_BYTES = 4096
 
 /**
  * The rate-limit bucket key for one accept attempt (pure; unit-tested).
- * The first client-visible XFF hop separates buckets behind the auto-tunnel
- * (every internet client arrives from 127.0.0.1 there) — but only for
- * loopback peers, since a direct LAN client can rotate the header freely.
+ * A forwarded hop separates buckets behind the auto-tunnel (every internet
+ * client arrives from 127.0.0.1 there) — but only for loopback peers, since a
+ * direct LAN client can rotate the header freely. The caller passes the hop it
+ * trusts (the edge-appended LAST one; see rateLimitAccept), and the hop is
+ * truncated so one oversized header cannot mint a huge key.
  * @param socketIp - the socket peer address.
- * @param forwarded - the first XFF hop, already trimmed, if any.
+ * @param forwarded - the trusted XFF hop, already trimmed, if any.
  * @param bucket - page (GET /pair-accept) vs api (POST /api/pair/accept).
  */
 export function acceptLimitKey(socketIp: string, forwarded: string | undefined, bucket: 'page' | 'api'): string {
   if (isLoopbackAddress(socketIp) && forwarded !== undefined && forwarded !== '') {
-    return `${bucket}|${socketIp}|${forwarded}`
+    return `${bucket}|${socketIp}|${forwarded.slice(0, MAX_FORWARDED_KEY_CHARS)}`
   }
   return `${bucket}|${socketIp}`
 }
+
+/** Longest forwarded hop kept in a bucket key (the header is caller-sized). */
+const MAX_FORWARDED_KEY_CHARS = 64
+
+/**
+ * Hard cap on live accept buckets. The key is caller-influenced (a forwarded
+ * hop), so a rotating flood must not grow the table without bound: past the
+ * cap the oldest bucket is evicted, the same FIFO stance as
+ * {@link addBounded}. A legitimate client that loses its bucket merely starts
+ * a fresh window.
+ */
+export const MAX_ACCEPT_BUCKETS = 1024
 
 /**
  * Cap on the dynamically trusted hosts (see {@link addBounded}): room for
@@ -271,17 +303,25 @@ export const APP_DEVICE_STORAGE_KEY = 'dsh-remote-device'
 
 export function appShellCaptureScript(deviceId: string): string {
   const safeId = JSON.stringify(deviceId)
+  const grantGlobal = JSON.stringify(REMOTE_HOST_GRANT_GLOBAL)
   const register = `try{if('serviceWorker' in navigator){navigator.serviceWorker.register(${JSON.stringify(PAIR_PATHS.appServiceWorker)},{scope:'/'}).catch(function(e){})}}catch(e){}`
-  return `<script>(function(){try{sessionStorage.setItem(${JSON.stringify(APP_DEVICE_STORAGE_KEY)},${safeId});localStorage.setItem(${JSON.stringify(APP_DEVICE_STORAGE_KEY)},${safeId});}catch(e){}try{history.replaceState(null,'','/')}catch(e){}${register}})()</script>`
+  return `<script>(function(){try{sessionStorage.setItem(${JSON.stringify(APP_DEVICE_STORAGE_KEY)},${safeId});}catch(e){}try{history.replaceState(null,'','/')}catch(e){}try{window[${grantGlobal}]=true}catch(e){}${register}})()</script>`
 }
 
-/** Patch the official index document with the device-capture script. */
+/**
+ * Patch the official index document with the device-capture script. The script
+ * goes immediately after the opening <head> tag, ahead of the harness-injected
+ * parse-time channel boot patch: that patch installs the transport host-mode
+ * hook only when this server-served marker is already set (see
+ * remote-channel-boot.ts), so host mode is granted by the device-gated landing
+ * instead of being asserted from the origin.
+ */
 export function patchAppShell(html: string, deviceId: string): string {
   const script = appShellCaptureScript(deviceId)
-  const marker = '</head>'
-  const at = html.indexOf(marker)
-  if (at === -1) return script + html
-  return html.slice(0, at) + script + html.slice(at)
+  const head = /<head[^>]*>/i.exec(html)
+  if (head === null) return script + html
+  const end = head.index + head[0].length
+  return html.slice(0, end) + script + html.slice(end)
 }
 
 /**
@@ -511,6 +551,11 @@ export interface PairRoutesDeps {
   indexDocument?: (deviceId: string) => Promise<string | undefined>
   /** Extra trusted non-loopback hosts (from config or environment). */
   trustedHosts?: readonly string[] | (() => readonly string[])
+  /**
+   * The one-time grant table behind the /pair-accept → /pair-app redirect.
+   * Defaults to a fresh store; tests inject one with a fixed clock/entropy.
+   */
+  grants?: PairGrantStore
 }
 
 /**
@@ -523,6 +568,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
   const pairingRequired = (): boolean => typeof requirePairingForLan === 'function'
     ? requirePairingForLan()
     : requirePairingForLan
+  const grants = deps.grants ?? createPairGrantStore()
   const events = new PairingEventsStream(service)
   const dynamicTrustedHosts = new Set<string>()
 
@@ -553,10 +599,17 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
     if (privateLanHost !== undefined) {
       const cookieDeviceId = readCookie(req.headers.cookie, service.config.cookieName)
       let queryDeviceId: string | null = null
+      let queryGrant: string | undefined
       try {
-        queryDeviceId = new URL(req.url ?? '/', 'http://pair.invalid').searchParams.get('device')
+        const params = new URL(req.url ?? '/', 'http://pair.invalid').searchParams
+        queryDeviceId = params.get('device')
+        queryGrant = params.get('grant') ?? undefined
       } catch {}
-      const deviceId = cookieDeviceId ?? queryDeviceId ?? undefined
+      // The app landing carries a one-time grant instead of the device id;
+      // peek (never spend) so the fence can trust a container/NAT authority
+      // whose Host is not among the advertised ones.
+      const granted = grants.peek(queryGrant)
+      const deviceId = cookieDeviceId ?? queryDeviceId ?? granted ?? undefined
       if (deviceId !== undefined && service.hasDevice(deviceId)) {
         addBounded(dynamicTrustedHosts, privateLanHost, MAX_DYNAMIC_TRUSTED_HOSTS)
         return true
@@ -581,26 +634,48 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
    *   count separately: a QR re-scan (page navigation) must not consume a
    *   brute-force budget that belongs to token guessing (and vice versa).
    */
+  /**
+   * Drop expired buckets from the FRONT of the insertion-ordered table, then
+   * FIFO-evict past the hard cap. The front always holds the oldest window
+   * because a re-armed bucket is re-inserted at the tail, so this is amortized
+   * O(1) per request: every iteration deletes an entry that was inserted once.
+   * It replaces a full-table scan that ran on every pairing request once the
+   * table passed 256 entries (and deleted nothing while all windows were
+   * fresh).
+   */
+  const pruneAcceptAttempts = (nowMs: number): void => {
+    while (acceptAttempts.size > 0) {
+      const oldest = acceptAttempts.keys().next().value
+      if (oldest === undefined) break
+      const attempt = acceptAttempts.get(oldest)
+      if (attempt !== undefined && nowMs - attempt.windowStart <= ACCEPT_WINDOW_MS) break
+      acceptAttempts.delete(oldest)
+    }
+    while (acceptAttempts.size > MAX_ACCEPT_BUCKETS) {
+      const oldest = acceptAttempts.keys().next().value
+      if (oldest === undefined) break
+      acceptAttempts.delete(oldest)
+    }
+  }
+
   const rateLimitAccept = (req: IncomingMessage, bucket: 'page' | 'api'): boolean => {
     const socketIp = (req.socket as { remoteAddress?: string } | undefined)?.remoteAddress ?? 'unknown'
     // XFF is honored only for loopback peers (the tunnel edge); see
     // acceptLimitKey. It is untrusted for authentication and never grants
-    // access.
-    const forwarded = typeof req.headers['x-forwarded-for'] === 'string'
-      ? (req.headers['x-forwarded-for'].split(',')[0] ?? '').trim()
-      : undefined
+    // access. Only the LAST hop is used: an edge APPENDS the address it saw, so
+    // any earlier hop is whatever the client sent — keying on the first one let
+    // an attacker rotate the header for a fresh brute-force budget per request.
+    const hops = typeof req.headers['x-forwarded-for'] === 'string'
+      ? req.headers['x-forwarded-for'].split(',')
+      : []
+    const forwarded = (hops[hops.length - 1] ?? '').trim()
     const ip = acceptLimitKey(socketIp, forwarded, bucket)
     const nowMs = Date.now()
-    // The map lives as long as the plugin: prune expired windows once the
-    // table grows past a modest size so distinct source IPs (LAN clients,
-    // brute-force scans) cannot accumulate forever.
-    if (acceptAttempts.size > 256) {
-      for (const [key, attempt] of acceptAttempts) {
-        if (nowMs - attempt.windowStart > ACCEPT_WINDOW_MS) acceptAttempts.delete(key)
-      }
-    }
+    pruneAcceptAttempts(nowMs)
     const entry = acceptAttempts.get(ip)
     if (entry === undefined || nowMs - entry.windowStart > ACCEPT_WINDOW_MS) {
+      // Re-insert at the tail so insertion order stays window order.
+      acceptAttempts.delete(ip)
       acceptAttempts.set(ip, { count: 1, windowStart: nowMs })
       return false
     }
@@ -679,19 +754,18 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
         writeJson(res, 403, { ok: false, code: 'forbidden' })
         return
       }
-      writeJson(res, result.code === 'used' ? 409 : 404, { ok: false, code: result.code })
+      writeJson(res, 404, { ok: false, code: result.code })
       return
     }
     if (privateLanHost !== undefined) {
       addBounded(dynamicTrustedHosts, privateLanHost, MAX_DYNAMIC_TRUSTED_HOSTS)
     }
-    // No Secure attribute: LAN pairing runs over plain HTTP (the cookie must
-    // work there), and the same cookie rides HTTPS on the tunnel. Lax keeps
-    // top-level navigations working while blocking cross-site subrequests.
+    // The Secure attribute follows the transport (deviceCookie): off on
+    // plain-HTTP LAN, where a Secure cookie is dropped by the browser, and on
+    // for a tunneled request the edge stamped as https. Lax keeps top-level
+    // navigations working while blocking cross-site subrequests.
     writeJson(res, 200, { ok: true, deviceId: result.deviceId }, {
-      'set-cookie': [
-        `${service.config.cookieName}=${result.deviceId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${String(COOKIE_MAX_AGE_SEC)}`,
-      ],
+      'set-cookie': [deviceCookie(req, service.config.cookieName, result.deviceId)],
     })
   }
 
@@ -757,6 +831,11 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
     }
     const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
     const paired = deviceId !== undefined && service.hasDevice(deviceId)
+    // The desktop (loopback) keeps the full pairing-relevant view; the LAN IP
+    // literals stay behind a live pairing or loopback so an unauthenticated
+    // caller on a tunnel cannot map the internal network. A phone already knows
+    // its usable literal from the URL it opened.
+    const local = isLoopbackClient(req)
     const snapshot = service.snapshot()
     // Unpaired LAN/tunnel clients get only the pairing-relevant fields; the
     // token expiry, public tunnel URL, and counts are an oracle for targeting
@@ -764,9 +843,9 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
     // session credentials) is never returned here — only the loopback events
     // stream carries it to the desktop panel.
     const { devices: _devices, ...rest } = snapshot
-    const visible = paired
+    const visible = paired || local
       ? rest
-      : { phase: snapshot.phase, lanAvailable: snapshot.lanAvailable, lanAddresses: snapshot.lanAddresses }
+      : { phase: snapshot.phase, lanAvailable: snapshot.lanAvailable }
     writeJson(res, 200, { ok: true, paired, requirePairingForLan: pairingRequired(), ...visible })
   }
 
@@ -833,9 +912,10 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       // instead of the harness 401 dead end.
       const deviceId = readCookie(req.headers.cookie, service.config.cookieName)
       if (deviceId !== undefined && service.hasDevice(deviceId)) {
-        // An already-paired device re-opening a dead link goes straight to
-        // the cookieless app landing with its live device credential.
-        res.writeHead(303, { location: `${appOrigin(req)}/pair-app?device=${encodeURIComponent(deviceId)}`, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
+        // An already-paired device re-opening a dead link goes straight to the
+        // cookieless app landing, again on a fresh one-time grant.
+        const { grant } = grants.issue(deviceId)
+        res.writeHead(303, { location: `${appOrigin(req)}/pair-app?grant=${encodeURIComponent(grant)}`, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
         res.end()
         return
       }
@@ -847,25 +927,28 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       addBounded(dynamicTrustedHosts, privateLanHost, MAX_DYNAMIC_TRUSTED_HOSTS)
     }
     // Land the paired device on the cookieless app page: the official shell
-    // served by this plugin, with the device id in the URL. No harness index
-    // gate, no browser-auth cookie hop - the channel gate accepts the device
-    // credential whether or not the browser stores cookies.
+    // served by this plugin. The URL carries a one-time grant, never the
+    // device id - a session credential must not travel in a URL (history, the
+    // address bar, every log on the redirect path) - and the landing's own
+    // response hands the device id to the shell. No harness index gate, no
+    // browser-auth cookie hop: the channel gate accepts the device credential
+    // whether or not the browser stores cookies.
+    const { grant } = grants.issue(result.deviceId)
     res.writeHead(303, {
-      location: `${appOrigin(req)}/pair-app?device=${encodeURIComponent(result.deviceId)}`,
+      location: `${appOrigin(req)}/pair-app?grant=${encodeURIComponent(grant)}`,
       'cache-control': 'no-store',
       'referrer-policy': 'no-referrer',
-      'set-cookie': [
-        `${service.config.cookieName}=${result.deviceId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${String(COOKIE_MAX_AGE_SEC)}`,
-      ],
+      'set-cookie': [deviceCookie(req, service.config.cookieName, result.deviceId)],
     })
     res.end()
   }
 
   /**
-   * The cookieless app landing. A paired device (device query or live
-   * pairing cookie) receives the official index shell patched with the
-   * device-capture script; the shell itself is the official document and
-   * carries no data, so serving it needs only the device credential.
+   * The cookieless app landing. A paired device (a one-time grant minted by
+   * /pair-accept, or a live pairing cookie on a reopen) receives the official
+   * index shell patched with the device-capture script; the shell itself is
+   * the official document and carries no data, so serving it needs only the
+   * device credential.
    */
   const handleAppPage = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     if (!requireMethod(req, res, 'GET')) return
@@ -881,10 +964,14 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       return
     }
     const url = new URL(req.url ?? '/', 'http://pair.invalid')
-    const device = url.searchParams.get('device') ?? ''
+    // The one-time grant is spent before anything else: a replayed or expired
+    // grant resolves to nothing (pair-grant.ts), so a leaked landing URL can
+    // never be re-run. The cookie stays the primary credential for a reopen
+    // (the service worker's network-first navigation carries it).
+    const grantedDevice = grants.consume(url.searchParams.get('grant') ?? undefined)
     const cookieDevice = readCookie(req.headers.cookie, service.config.cookieName)
-    const id = (device !== '' && service.touchDevice(device))
-      ? device
+    const id = (grantedDevice !== undefined && service.touchDevice(grantedDevice))
+      ? grantedDevice
       : (cookieDevice !== undefined && service.touchDevice(cookieDevice))
         ? cookieDevice
         : undefined
@@ -903,9 +990,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'no-store',
       'referrer-policy': 'no-referrer',
-      'set-cookie': [
-        `${service.config.cookieName}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${String(COOKIE_MAX_AGE_SEC)}`,
-      ],
+      'set-cookie': [deviceCookie(req, service.config.cookieName, id)],
     })
     res.end(patchAppShell(html, id))
   }
@@ -956,9 +1041,32 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
   return routes
 }
 
+/**
+ * Whether the request reached this process over TLS. The harness itself serves
+ * plain HTTP; a tunnel edge terminates TLS and stamps `x-forwarded-proto`
+ * (the same signal {@link appOrigin} trusts when it rebuilds a redirect).
+ */
+export function isHttpsRequest(req: IncomingMessage): boolean {
+  const forwarded = req.headers['x-forwarded-proto']
+  if (typeof forwarded === 'string') {
+    const first = forwarded.split(',')[0]?.trim().toLowerCase()
+    if (first === 'https') return true
+  }
+  return (req.socket as { encrypted?: boolean }).encrypted === true
+}
+
+/**
+ * The device cookie for one request. `Secure` is added only when the request
+ * arrived over TLS: LAN pairing runs on plain HTTP, where a Secure cookie is
+ * simply dropped by the browser and the phone would silently lose its session.
+ */
+export function deviceCookie(req: IncomingMessage, cookieName: string, deviceId: string): string {
+  const secure = isHttpsRequest(req) ? '; Secure' : ''
+  return `${cookieName}=${deviceId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${String(COOKIE_MAX_AGE_SEC)}${secure}`
+}
+
 /** The request origin (https when a tunnel edge says so). */
 function appOrigin(req: IncomingMessage): string {
-  const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
   const origin = `http://${req.headers.host ?? '127.0.0.1'}`
-  return proto === 'https' ? origin.replace('http://', 'https://') : origin
+  return isHttpsRequest(req) ? origin.replace('http://', 'https://') : origin
 }

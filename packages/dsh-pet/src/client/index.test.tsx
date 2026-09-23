@@ -63,6 +63,8 @@ interface FakeClientLifecycle {
   emitSettings(): void
   sessionsListenerCount(): number
   setEnabled(enabled: boolean): void
+  /** Namespaces the family settings binder was asked for (empty without one). */
+  boundNamespaces(): string[]
 }
 
 const activeLifecycles: FakeClientLifecycle[] = []
@@ -72,11 +74,19 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-function fakeContext(): FakeClientLifecycle {
+interface FakeContextOptions {
+  /** Provide the dsh-web-settings family binder, as the group plugin does. */
+  familyBinder?: boolean
+  /** Initial value of the settings section the bound form answers with. */
+  enabled?: boolean
+}
+
+function fakeContext(options: FakeContextOptions = {}): FakeClientLifecycle {
   const disposers: (() => void)[] = []
   const settingsListeners = new Set<() => void>()
   const sessionListeners = new Set<() => void>()
-  let settingsValue: { enabled?: boolean } | undefined
+  const boundNamespaces: string[] = []
+  let settingsValue: { enabled?: boolean } | undefined = options.enabled === undefined ? undefined : { enabled: options.enabled }
   const scope = {
     getSnapshot: () => ({
       status: 'ready',
@@ -92,6 +102,12 @@ function fakeContext(): FakeClientLifecycle {
       return () => { settingsListeners.delete(listener) }
     },
   }
+  const familyBinder = {
+    bind: (spec: { namespace: string }) => {
+      boundNamespaces.push(spec.namespace)
+      return scope
+    },
+  }
   const ctx = {
     effect: (fn: () => unknown, _label?: string) => {
       const dispose = fn()
@@ -101,8 +117,10 @@ function fakeContext(): FakeClientLifecycle {
       return cleanup
     },
     locale: { register: () => () => {} },
-    get: () => undefined,
-    settingsScope: { bind: () => scope },
+    // The family binder is optional (dsh-web-settings may be absent); both
+    // answers are the shared per-entry form of this plugin's own profile entry.
+    get: (name: string) => name === 'webUiSettings' && options.familyBinder === true ? familyBinder : undefined,
+    configForms: { get: () => scope },
     slots: {
       // Cordis runs the factory when the slot mounts and its returned
       // disposer when the fiber disposes; mirror that so slot content
@@ -139,6 +157,7 @@ function fakeContext(): FakeClientLifecycle {
     },
     sessionsListenerCount: () => sessionListeners.size,
     setEnabled: (enabled: boolean) => { settingsValue = { enabled } },
+    boundNamespaces: () => boundNamespaces,
   }
   activeLifecycles.push(lifecycle)
   return lifecycle
@@ -235,5 +254,19 @@ describe('pet client apply', () => {
     lifecycle.emitSettings()
     expect(lifecycle.sessionsListenerCount()).toBe(1)
     expect(document.body.querySelectorAll('[data-dsh-pet-root]')).toHaveLength(1)
+  })
+
+  it('user gets the pet settings form through the family binder when the group plugin is mounted', () => {
+    // Given a client context that provides the dsh-web-settings family binder
+    // and answers 'disabled' through the form that binder returns
+    const lifecycle = fakeContext({ familyBinder: true, enabled: false })
+
+    // When the pet client plugin applies
+    apply(lifecycle.ctx)
+
+    // Then the card bound the 'pet' namespace through that binder...
+    expect(lifecycle.boundNamespaces()).toEqual(['pet'])
+    // ...and the pet surface followed the form it answered (disabled -> hidden)
+    expect(document.body.querySelectorAll('[data-dsh-pet-root]')).toHaveLength(0)
   })
 })

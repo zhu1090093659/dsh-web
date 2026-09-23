@@ -28,26 +28,6 @@
   padding: 16px 0;
 }
 
-/* Install box. */
-.installRow {
-  display: flex;
-  gap: 8px;
-}
-
-.spec {
-  flex: 1;
-  min-width: 0;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 6px;
-  padding: 6px 10px;
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-primary);
-}
-
-.spec:focus-visible {
-  outline: 2px solid var(--dsw-alias-state-business-primary);
-}
-
 .hint {
   margin: 0;
   font-size: 12px;
@@ -330,54 +310,6 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
-/* Switch. */
-.switch {
-  position: relative;
-  width: 34px;
-  height: 20px;
-  border-radius: 10px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  background: var(--dsw-alias-bg-layer-2);
-  cursor: pointer;
-  padding: 0;
-  transition: background 0.2s ease;
-}
-
-.switch::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--dsw-alias-label-on-danger, #fff);
-  transition: transform 0.2s ease;
-}
-
-.switch[aria-checked='true'] {
-  background: var(--dsw-alias-state-success-primary);
-}
-
-.switch[aria-checked='true']::after {
-  transform: translateX(14px);
-}
-
-.switch:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.switch:focus-visible {
-  outline: 2px solid var(--dsw-alias-state-business-primary);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .switch, .switch::after {
-    transition: none;
-  }
-}
-
 /* Failure blocks. */
 .failure {
   display: flex;
@@ -463,21 +395,4 @@
 .safeModeBanner p {
   margin: 0;
   color: var(--dsw-alias-label-primary);
-}
-
-/* Uninstall confirmation modal. */
-.confirmBody {
-  margin: 0 0 12px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.modalActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.dangerButton {
-  background: var(--dsw-alias-label-danger) !important;
-  color: var(--dsw-alias-label-on-danger) !important;
 }

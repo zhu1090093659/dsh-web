@@ -149,7 +149,31 @@ export interface WeRouteDeps {
 
 /** Sanitize a wallpaper id into a safe store directory name. */
 export function safeStoreId(id: string): string {
-  return id.replace(/[^a-zA-Z0-9._-]/g, '_')
+  return id
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    // The character class keeps '.', so the dot-only segments '.' and '..'
+    // survive it. Joined onto the store root, '..' walks one level above it
+    // (#1668), so fold those two into placeholder names.
+    .replace(/^\.{1,2}$/, (dots) => '_'.repeat(dots.length))
+}
+
+/**
+ * Resolve a wallpaper id to its directory inside the import store, or null
+ * when the joined result would not stay below the store root. Containment is
+ * asserted on the resolved path rather than trusted from `safeStoreId`: that
+ * staying-inside property is what the recursive deletes in /reimport and
+ * /remove actually depend on, and sanitizing a single segment cannot prove it
+ * (#1668).
+ */
+function storeEntryPath(storeDir: string, id: string): string | null {
+  // Dot-only segments are never valid store entries; reject them before the
+  // join so the caller answers a deterministic bad-id instead of a sanitized
+  // miss on a name like '__'.
+  if (/^\.{1,2}$/.test(id)) return null
+  const dest = joinPath(storeDir, safeStoreId(id))
+  const rootWithSep = storeDir.endsWith(sep) ? storeDir : storeDir + sep
+  if (!dest.startsWith(rootWithSep)) return null
+  return dest
 }
 
 /** Minimal mime map for wallpaper payloads. */
@@ -931,7 +955,8 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
     // macOS-managed entries (aerials / Desktop Pictures) are already local
     // and their dir is a shared system folder — never copy it wholesale.
     if (entry.source === 'system') { writeJson(res, 400, { ok: false, error: 'not-importable' }); return }
-    const dest = joinPath(deps.storeDir, safeStoreId(id))
+    const dest = storeEntryPath(deps.storeDir, id)
+    if (dest === null) { writeJson(res, 400, { ok: false, error: 'bad-id' }); return }
     if (existsSync(dest)) { writeJson(res, 409, { ok: false, error: 'already-imported' }); return }
     copyIntoStore(entry, dest)
     invalidateInventory()
@@ -942,7 +967,8 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
   postJson(WE_API_PREFIX + '/reimport', (id, res) => {
     if (!id.startsWith('imported/')) { writeJson(res, 400, { ok: false, error: 'bad-id' }); return }
     const sourceId = id.slice('imported/'.length)
-    const dest = joinPath(deps.storeDir, safeStoreId(sourceId))
+    const dest = storeEntryPath(deps.storeDir, sourceId)
+    if (dest === null) { writeJson(res, 400, { ok: false, error: 'bad-id' }); return }
     if (!existsSync(dest)) { writeJson(res, 404, { ok: false, error: 'import-not-found' }); return }
     const source = freshInventory().wallpapers.find((w) => w.id === sourceId && w.source !== 'imported')
     if (!source) { writeJson(res, 410, { ok: false, error: 'source-gone' }); return }
@@ -955,7 +981,8 @@ export function makeWeRoutes(deps: WeRouteDeps): WebRoute[] {
   // POST /remove — delete an imported copy (never touches the library).
   postJson(WE_API_PREFIX + '/remove', (id, res) => {
     if (!id.startsWith('imported/')) { writeJson(res, 400, { ok: false, error: 'bad-id' }); return }
-    const dest = joinPath(deps.storeDir, safeStoreId(id.slice('imported/'.length)))
+    const dest = storeEntryPath(deps.storeDir, id.slice('imported/'.length))
+    if (dest === null) { writeJson(res, 400, { ok: false, error: 'bad-id' }); return }
     if (!existsSync(dest)) { writeJson(res, 404, { ok: false, error: 'import-not-found' }); return }
     rmSync(dest, { recursive: true, force: true })
     invalidateInventory()

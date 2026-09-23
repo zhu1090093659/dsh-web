@@ -193,7 +193,7 @@ jobs:
       # Pin the DSH CLI the lane mounts into (same pin as ci.yml's
       # plugin-mount lane).
       - name: Install dsh CLI (pinned)
-        run: npm install -g @deepseek-ai/dsh@0.1.5-rc.1
+        run: npm install -g @deepseek-ai/dsh@0.1.7-alpha.1
 
       # The aggregate tarball must be produced from a fresh build.
       - name: Build

@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 // The npm SDK's client half is a closure-factory bundle for the GUI's
 // __ModuleLoader__ (not importable under vitest); provide the one value
 // member the card chain needs (same pattern as pet-section.spec.tsx).
@@ -27,14 +27,23 @@ vi.mock('@deepseek-ai/dsh-client-store', () => ({
 }))
 import { PetSettingsCardController, type PetSettings } from '../src/client/PetSettingsCard.tsx'
 
-/** Minimal in-memory scope backing the card controller. */
-function fakeScope(): SettingsScope<PetSettings> {
+/** Minimal in-memory form backing the card controller. */
+function fakeScope(): ConfigForm<PetSettings> {
   return {
     subscribe: () => () => {},
-    getSnapshot: () => ({ value: {}, base: {}, user: {}, writable: true }),
-    set: async () => {},
-    unset: async () => {},
-  } as unknown as SettingsScope<PetSettings>
+    getSnapshot: () => ({
+      status: 'ready',
+      writable: true,
+      value: {},
+      base: {},
+      user: {},
+      revision: 1,
+      mode: 'host',
+    }),
+    set: async () => true,
+    unset: async () => true,
+    mutate: async () => true,
+  } as unknown as ConfigForm<PetSettings>
 }
 
 /** The set spy on the controller's bound snapshot store (mock above). */
@@ -72,11 +81,11 @@ describe('PetSettingsCardController timer cleanup', () => {
 
     const controller = new PetSettingsCardController(fakeScope())
     await vi.advanceTimersByTimeAsync(0)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
 
     controller.dispose()
     await vi.advanceTimersByTimeAsync(4000)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   it('does not publish a fetch that settles after dispose', async () => {

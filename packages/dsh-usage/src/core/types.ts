@@ -140,12 +140,25 @@ export interface ProviderSnapshotView {
 export interface UsageOverviewView {
   updatedAt: number
   providers: ProviderSnapshotView[]
-  /** The provider the pet bubble and the header highlight; `source` says how it was picked. */
+  /** The provider the collapsed sidebar strip and the header highlight; `source` says how it was picked. */
   current: {
     provider?: string
     model?: string
     /** `live` — last request seen this boot; `default` — the agent default model. */
     source: 'live' | 'default'
+    /**
+     * Resolved display name (snapshot first, route-derived otherwise), so the
+     * strip needs no name-resolution of its own. Optional so an older host
+     * document still renders.
+     */
+    displayName?: string
+    /**
+     * Today's ledger totals for the provider's adapter family (the route
+     * itself when adapter-less), carrying tokens, calls, and the priced cost.
+     * Absent on a day without usage; optional for the same older-host
+     * tolerance as displayName.
+     */
+    today?: UsageTokenTotals
   }
   usage: {
     today: { date: string; totals: UsageTokenTotals; providers: UsageProviderSummary[] }

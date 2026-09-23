@@ -49,7 +49,25 @@
         "fallback": "idle"
       },
       "bingjing-gongzhu-idle": {},
+      "bingjing-gongzhu-rest": {},
+      "bingjing-gongzhu-work": {},
+      "bingjing-gongzhu-work-success": {
+        "loop": false,
+        "fallback": "bingjing-gongzhu-work"
+      },
+      "bingjing-gongzhu-work-fail": {
+        "loop": false,
+        "fallback": "bingjing-gongzhu-work"
+      },
       "bingjing-gongzhu-staff": {
+        "loop": false,
+        "fallback": "idle"
+      },
+      "bingjing-gongzhu-angry": {
+        "loop": false,
+        "fallback": "idle"
+      },
+      "bingjing-gongzhu-tsundere": {
         "loop": false,
         "fallback": "idle"
       }
@@ -90,9 +108,23 @@
         "clickActions": [
           {
             "track": "bingjing-gongzhu-staff",
-            "probability": 0.3
+            "probability": 0.3333
+          },
+          {
+            "track": "bingjing-gongzhu-angry",
+            "probability": 0.3333
+          },
+          {
+            "track": "bingjing-gongzhu-tsundere",
+            "probability": 0.3334
           }
-        ]
+        ],
+        "gameplayTracks": {
+          "sleep": "bingjing-gongzhu-rest",
+          "work": "bingjing-gongzhu-work",
+          "work-success": "bingjing-gongzhu-work-success",
+          "work-fail": "bingjing-gongzhu-work-fail"
+        }
       }
     ]
   },

@@ -32,6 +32,8 @@ export function descendantsOf(rows: readonly ArchiveSessionRow[], id: string): s
  *   family is left untouched.
  * - A family (direct id plus all descendants) containing ANY protected member
  *   is skipped whole with `family-protected` — never a half-deleted family.
+ * - Every id appears at most once in `skipped`; a directly selected protected
+ *   id keeps its own reason even when a relative's family also covers it.
  * - Everything else in the union of safe families is deleted.
  */
 export function planDelete(
@@ -42,27 +44,37 @@ export function planDelete(
   const byId = new Map(rows.map((row) => [row.id, row]))
   const targets = new Set<string>()
   const skipped: OpResult[] = []
+  const skippedIds = new Set<string>()
+  const directSet = new Set(directIds)
   const seenDirect = new Set<string>()
+  /** Record one skip once: an id reachable through several families stays single. */
+  const pushSkipped = (entry: OpResult): void => {
+    if (skippedIds.has(entry.id)) return
+    skippedIds.add(entry.id)
+    skipped.push(entry)
+  }
   for (const id of directIds) {
     if (seenDirect.has(id)) continue
     seenDirect.add(id)
     const row = byId.get(id)
     if (row === undefined) {
-      skipped.push({ id, status: 'skipped', reason: 'not-found' })
+      pushSkipped({ id, status: 'skipped', reason: 'not-found' })
       continue
     }
     const ownReason = protectedReason.get(id)
     if (ownReason !== undefined) {
-      skipped.push({ id, status: 'skipped', reason: ownReason as OpResult['reason'] })
+      pushSkipped({ id, status: 'skipped', reason: ownReason as OpResult['reason'] })
       continue
     }
     const family = [id, ...descendantsOf(rows, id)]
     const blocker = family.find((member) => protectedReason.has(member))
     if (blocker !== undefined) {
       for (const member of family) {
-        if (!targets.has(member)) {
-          skipped.push({ id: member, status: 'skipped', reason: 'family-protected', detail: `${blocker}:${protectedReason.get(blocker)}` })
-        }
+        if (targets.has(member) || skippedIds.has(member)) continue
+        // A directly selected protected member reports its own reason in its
+        // own iteration; the coarser family entry must not claim it first.
+        if (directSet.has(member) && protectedReason.has(member)) continue
+        pushSkipped({ id: member, status: 'skipped', reason: 'family-protected', detail: `${blocker}:${protectedReason.get(blocker)}` })
       }
       continue
     }

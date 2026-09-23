@@ -1,0 +1,213 @@
+html[data-dsh-skin="whalechan-harness"] {
+  color: #142f54;
+  background-color: #f7fbfd;
+  --dsw-alias-brand-primary: #248bda;
+  --dsw-alias-brand-text: #175f9b;
+  --dsw-alias-state-business-primary: #248bda;
+  --dsw-alias-state-business-tertiary: #dceefa;
+  --dsw-alias-state-success-primary: #43be78;
+  --dsw-alias-state-success-secondary: #64cc91;
+  --dsw-alias-state-success-tertiary: #dff5e9;
+  --dsw-alias-state-warn-primary: #e8ad45;
+  --dsw-alias-state-warn-secondary: #f0c66f;
+  --dsw-alias-state-warn-tertiary: #fff3d9;
+  --dsw-alias-state-error-primary: #e5656e;
+  --dsw-alias-state-error-secondary: #ee8790;
+  --dsw-alias-state-error-tertiary: #fde7e9;
+  --dsw-alias-bg-base: #f9fcfe;
+  --dsw-alias-bg-layer-1: #f4fafc;
+  --dsw-alias-bg-layer-2: #edf7fb;
+  --dsw-alias-bg-layer-3: #e3f1f7;
+  --dsw-alias-bg-module-platform: #edf7fb;
+  --dsw-alias-bg-overlay: #fbfdffed;
+  --dsw-alias-border-l1: #248bda1f;
+  --dsw-alias-border-l2: #248bda33;
+  --dsw-alias-border-l3: #248bda52;
+  --dsw-alias-interactive-bg-hover: #248bda14;
+  --dsw-alias-interactive-bg-active: #248bda24;
+  --dsw-alias-label-primary: #142f54;
+  --dsw-alias-label-secondary: #496781;
+  --dsw-alias-label-tertiary: #71899c;
+  --dsw-alias-button-primary-fill: #248bda;
+  --dsw-alias-button-primary-hover: #3a9ce6;
+  --dsw-alias-button-primary-dimmed: #cfe8f8;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-specific-sidebar-fill: #edf8fc;
+  --dsw-specific-sidebar-nav-item-active: #dff2fa;
+  --dsw-specific-sidebar-nav-item-hover: #e7f5fa;
+  --dsw-specific-input-major: #ffffffeb;
+  --dsw-specific-menu: #ffffffed;
+  --dsw-specific-selector: #edf7fbeb;
+  --dsw-specific-bubble: #e8f5fb;
+  --dsw-specific-bubble-highlight: #d7edf8;
+  --aion-primary: #248bda;
+  --aion-success: #43be78;
+  --aion-warning: #e8ad45;
+  --aion-danger: #e5656e;
+  --aion-text-primary: #142f54;
+  --aion-text-secondary: #496781;
+  --aion-text-tertiary: #71899c;
+  --aion-bg-base: #ffffffed;
+  --aion-bg-1: #f4fafc;
+  --aion-bg-2: #edf7fb;
+  --aion-bg-hover: #248bda14;
+  --aion-bg-active: #248bda24;
+  --aion-border-base: #248bda33;
+}
+html[data-dsh-skin="whalechan-harness"] {
+  --dsw-alias-brand-primary: initial;
+  --dsw-alias-brand-text: initial;
+  --dsw-alias-state-business-primary: initial;
+  --dsw-alias-state-business-tertiary: initial;
+  --dsw-alias-state-success-primary: initial;
+  --dsw-alias-state-success-secondary: initial;
+  --dsw-alias-state-success-tertiary: initial;
+  --dsw-alias-state-warn-primary: initial;
+  --dsw-alias-state-warn-secondary: initial;
+  --dsw-alias-state-warn-tertiary: initial;
+  --dsw-alias-state-error-primary: initial;
+  --dsw-alias-state-error-secondary: initial;
+  --dsw-alias-state-error-tertiary: initial;
+  --dsw-alias-bg-base: initial;
+  --dsw-alias-bg-layer-1: initial;
+  --dsw-alias-bg-layer-2: initial;
+  --dsw-alias-bg-layer-3: initial;
+  --dsw-alias-bg-module-platform: initial;
+  --dsw-alias-bg-overlay: initial;
+  --dsw-alias-border-l1: initial;
+  --dsw-alias-border-l2: initial;
+  --dsw-alias-border-l3: initial;
+  --dsw-alias-interactive-bg-hover: initial;
+  --dsw-alias-interactive-bg-active: initial;
+  --dsw-alias-label-primary: initial;
+  --dsw-alias-label-secondary: initial;
+  --dsw-alias-label-tertiary: initial;
+  --dsw-alias-button-primary-fill: initial;
+  --dsw-alias-button-primary-hover: initial;
+  --dsw-alias-button-primary-dimmed: initial;
+  --dsw-alias-label-primary-foreground: initial;
+  --dsw-specific-sidebar-fill: initial;
+  --dsw-specific-sidebar-nav-item-active: initial;
+  --dsw-specific-sidebar-nav-item-hover: initial;
+  --dsw-specific-input-major: initial;
+  --dsw-specific-menu: initial;
+  --dsw-specific-selector: initial;
+  --dsw-specific-bubble: initial;
+  --dsw-specific-bubble-highlight: initial;
+}
+
+html[data-dsh-skin="whalechan-harness"] body {
+  background-color: #f7fbfd;
+  --dsw-alias-brand-primary: #248bda;
+  --dsw-alias-brand-text: #175f9b;
+  --dsw-alias-state-business-primary: #248bda;
+  --dsw-alias-state-business-tertiary: #dceefa;
+  --dsw-alias-state-success-primary: #43be78;
+  --dsw-alias-state-success-secondary: #64cc91;
+  --dsw-alias-state-success-tertiary: #dff5e9;
+  --dsw-alias-state-warn-primary: #e8ad45;
+  --dsw-alias-state-warn-secondary: #f0c66f;
+  --dsw-alias-state-warn-tertiary: #fff3d9;
+  --dsw-alias-state-error-primary: #e5656e;
+  --dsw-alias-state-error-secondary: #ee8790;
+  --dsw-alias-state-error-tertiary: #fde7e9;
+  --dsw-alias-bg-base: #f9fcfe;
+  --dsw-alias-bg-layer-1: #f4fafc;
+  --dsw-alias-bg-layer-2: #edf7fb;
+  --dsw-alias-bg-layer-3: #e3f1f7;
+  --dsw-alias-bg-module-platform: #edf7fb;
+  --dsw-alias-bg-overlay: #fbfdffed;
+  --dsw-alias-border-l1: #248bda1f;
+  --dsw-alias-border-l2: #248bda33;
+  --dsw-alias-border-l3: #248bda52;
+  --dsw-alias-interactive-bg-hover: #248bda14;
+  --dsw-alias-interactive-bg-active: #248bda24;
+  --dsw-alias-label-primary: #142f54;
+  --dsw-alias-label-secondary: #496781;
+  --dsw-alias-label-tertiary: #71899c;
+  --dsw-alias-button-primary-fill: #248bda;
+  --dsw-alias-button-primary-hover: #3a9ce6;
+  --dsw-alias-button-primary-dimmed: #cfe8f8;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-specific-sidebar-fill: #edf8fc;
+  --dsw-specific-sidebar-nav-item-active: #dff2fa;
+  --dsw-specific-sidebar-nav-item-hover: #e7f5fa;
+  --dsw-specific-input-major: #ffffffeb;
+  --dsw-specific-menu: #ffffffed;
+  --dsw-specific-selector: #edf7fbeb;
+  --dsw-specific-bubble: #e8f5fb;
+  --dsw-specific-bubble-highlight: #d7edf8;
+  --aion-primary: #248bda;
+  --aion-success: #43be78;
+  --aion-warning: #e8ad45;
+  --aion-danger: #e5656e;
+  --aion-text-primary: #142f54;
+  --aion-text-secondary: #496781;
+  --aion-text-tertiary: #71899c;
+  --aion-bg-base: #ffffffed;
+  --aion-bg-1: #f4fafc;
+  --aion-bg-2: #edf7fb;
+  --aion-bg-hover: #248bda14;
+  --aion-bg-active: #248bda24;
+  --aion-border-base: #248bda33;
+}
+
+
+html[data-dsh-skin="whalechan-harness"] body[data-ds-dark-theme] {
+  color: #dcebf7;
+  background-color: #0d1c2c;
+  --dsw-alias-brand-primary: #63d8f2;
+  --dsw-alias-brand-text: #8be5f7;
+  --dsw-alias-state-business-primary: #63d8f2;
+  --dsw-alias-state-business-tertiary: #18384d;
+  --dsw-alias-bg-base: #0d1c2c;
+  --dsw-alias-bg-layer-1: #122438;
+  --dsw-alias-bg-layer-2: #172c43;
+  --dsw-alias-bg-layer-3: #1c3650;
+  --dsw-alias-bg-module-platform: #172c43;
+  --dsw-alias-bg-overlay: #122438ed;
+  --dsw-alias-border-l1: #63d8f21f;
+  --dsw-alias-border-l2: #63d8f233;
+  --dsw-alias-border-l3: #63d8f252;
+  --dsw-alias-interactive-bg-hover: #63d8f214;
+  --dsw-alias-interactive-bg-active: #63d8f224;
+  --dsw-alias-label-primary: #dcebf7;
+  --dsw-alias-label-secondary: #a9c0d2;
+  --dsw-alias-label-tertiary: #7f9aaf;
+  --dsw-alias-button-primary-fill: #248bda;
+  --dsw-alias-button-primary-hover: #39a3eb;
+  --dsw-alias-button-primary-dimmed: #214b68;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-specific-sidebar-fill: #13243a;
+  --dsw-specific-sidebar-nav-item-active: #1b3a52;
+  --dsw-specific-sidebar-nav-item-hover: #182f46;
+  --dsw-specific-input-major: #122438eb;
+  --dsw-specific-menu: #172c43ed;
+  --dsw-specific-selector: #18364deb;
+  --dsw-specific-bubble: #17334a;
+  --dsw-specific-bubble-highlight: #1d435e;
+  --aion-primary: #63d8f2;
+  --aion-text-primary: #dcebf7;
+  --aion-text-secondary: #a9c0d2;
+  --aion-text-tertiary: #7f9aaf;
+  --aion-bg-base: #122438ed;
+  --aion-bg-1: #122438;
+  --aion-bg-2: #172c43;
+  --aion-bg-hover: #63d8f214;
+  --aion-bg-active: #63d8f224;
+  --aion-border-base: #63d8f233;
+}
+
+html[data-dsh-skin="whalechan-harness"] [data-dsh-surface="conversation"] {
+  background-image:
+    radial-gradient(circle at 76% 20%, rgb(99 216 242 / 7%), transparent 30%),
+    radial-gradient(circle at 18% 76%, rgb(36 139 218 / 5%), transparent 34%);
+}
+
+html[data-dsh-skin="whalechan-harness"] [data-dsh-surface="composer"] {
+  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 28%, var(--dsw-alias-border-l2));
+}
+
+html[data-dsh-skin="whalechan-harness"] [id="root"] { background: transparent; }
+
+html[data-dsh-skin="whalechan-harness"] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

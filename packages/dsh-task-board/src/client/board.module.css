@@ -50,20 +50,27 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
 
 /* --- sidebar entry row ------------------------------------------------------- */
 
+/* Same geometry as the shell's own panel rows (SidebarRoot .panelRow): 2px
+   inset with a 12px radius, 8px content padding, 36px row, 14/22 type, and the
+   primary ink — so an injected row and an official row line up column for
+   column instead of each carrying its own box. */
 .entry {
   box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
-  height: 36px;
-  padding: 0 10px;
+  min-height: 36px;
+  padding: 7px 8px;
+  margin: 0 2px;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  color: var(--dsw-alias-label-secondary);
+  border-radius: 12px;
+  color: var(--dsw-alias-label-primary);
   cursor: pointer;
-  font-size: 13px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: left;
   white-space: nowrap;
 }
 
@@ -78,19 +85,21 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   font-weight: 600;
 }
 
+/* Icon box matches the shell's panel glyph exactly (16px), so the glyph column
+   and the label column land on the official rows' x positions. */
 .entryIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   flex: none;
 }
 
 .entryIcon svg {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .entryLabel {
@@ -98,7 +107,9 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   text-overflow: ellipsis;
 }
 
-/* Collapsed rail: icon-only, centered, matching the shell's 56px rail. */
+/* Collapsed rail: icon-only, centered, matching the shell's 56px rail. The
+   shell asks its own panel rows for an 18px glyph on the rail, so the icon box
+   and the svg step up together with the 12px rail radius. */
 :global([data-dsh-frame][data-sidebar-collapsed]) .entry,
 :global([data-sidebar-collapsed]) .entry {
   justify-content: center;
@@ -106,7 +117,15 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   width: 36px;
   height: 36px;
   margin: 0 auto 12px;
-  border-radius: 50%;
+  border-radius: 12px;
+}
+
+:global([data-dsh-frame][data-sidebar-collapsed]) .entryIcon,
+:global([data-sidebar-collapsed]) .entryIcon,
+:global([data-dsh-frame][data-sidebar-collapsed]) .entryIcon svg,
+:global([data-sidebar-collapsed]) .entryIcon svg {
+  width: 18px;
+  height: 18px;
 }
 
 :global([data-dsh-frame][data-sidebar-collapsed]) .entryLabel,
@@ -1120,4 +1139,184 @@ html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*='centerCol'] 
   .cardSpinner {
     animation: none;
   }
+}
+
+/* --- task tags (issue #1521) ---------------------------------------------------
+ * A badge takes its tone from a fixed six-colour palette chosen by hashing the
+ * name, so one label always paints the same way and nothing per-tag has to be
+ * stored. The fill is translucent and the text keeps the theme's own primary
+ * label colour, so badges stay readable on light, dark, and every skin without
+ * depending on a token a skin may not define.
+ * ----------------------------------------------------------------------------- */
+
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cardTag {
+  max-width: 100%;
+  padding: 0 7px;
+  overflow: hidden;
+  border: 1px solid var(--dsh-task-tag-border);
+  border-radius: 999px;
+  background: var(--dsh-task-tag-fill);
+  color: var(--dsw-alias-label-primary);
+  font-size: 10px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagFilter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.tagFilterLabel {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
+
+.tagChip {
+  padding: 1px 9px;
+  border: 1px solid var(--dsh-task-tag-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.tagChip[data-active='true'] {
+  background: var(--dsh-task-tag-fill);
+  color: var(--dsw-alias-label-primary);
+}
+
+.cardTag[data-tag-tone='0'],
+.tagChip[data-tag-tone='0'] {
+  --dsh-task-tag-fill: #4e93e82e;
+  --dsh-task-tag-border: #4e93e866;
+}
+
+.cardTag[data-tag-tone='1'],
+.tagChip[data-tag-tone='1'] {
+  --dsh-task-tag-fill: #2ea36a2e;
+  --dsh-task-tag-border: #2ea36a66;
+}
+
+.cardTag[data-tag-tone='2'],
+.tagChip[data-tag-tone='2'] {
+  --dsh-task-tag-fill: #d08a2a2e;
+  --dsh-task-tag-border: #d08a2a66;
+}
+
+.cardTag[data-tag-tone='3'],
+.tagChip[data-tag-tone='3'] {
+  --dsh-task-tag-fill: #b456c82e;
+  --dsh-task-tag-border: #b456c866;
+}
+
+.cardTag[data-tag-tone='4'],
+.tagChip[data-tag-tone='4'] {
+  --dsh-task-tag-fill: #cf5f7a2e;
+  --dsh-task-tag-border: #cf5f7a66;
+}
+
+.cardTag[data-tag-tone='5'],
+.tagChip[data-tag-tone='5'] {
+  --dsh-task-tag-fill: #4a9fb52e;
+  --dsh-task-tag-border: #4a9fb566;
+}
+
+.fieldHint {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.tagRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tagRow .input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.tagRow .ghostButton {
+  flex: none;
+}
+
+.tagAddButton {
+  align-self: flex-start;
+}
+
+/* --- project partition (#1536) ------------------------------------------------ */
+
+.projectFilter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.projectFilterLabel {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  white-space: nowrap;
+}
+
+.projectDialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: none;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+}
+
+.projectDialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* --- AI parse of pasted text (#1540) ------------------------------------------ */
+
+.aiParse {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+}
+
+.aiParseRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aiParseRow .select {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.aiParseRow .ghostButton,
+.aiParseRow .primaryButton {
+  flex: none;
 }

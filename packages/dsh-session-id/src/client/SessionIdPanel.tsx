@@ -9,6 +9,7 @@ import { useEffect, useRef, useSyncExternalStore, useState } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
+import { mainViewSessionId } from './main-session.ts'
 import { CheckIcon, CopyIcon, CloseIcon } from './icons.tsx'
 import { SESSION_ID_PART_COPY, SESSION_ID_PART_PANEL, SESSION_ID_PART_ROW, SESSION_ID_PART_SEARCH, SESSION_ID_PLUGIN_ATTR } from './semantic.ts'
 import css from './session-id.module.css'
@@ -121,6 +122,9 @@ function SessionRow({ session, current, t }: {
 export function SessionIdPanel({ list, onClose, t }: SessionIdPanelProps) {
   const snapshot = useSyncExternalStore(list.subscribe, list.getSnapshot)
   const sorted = sortSessions(snapshot)
+  // The catalog carries no global selection since 0.1.6-alpha.2; the Session the
+  // main view owns is the one to mark as current.
+  const currentId = mainViewSessionId(snapshot.byId)
   const [search, setSearch] = useState('')
 
   // Local, read-only filter over the already-visible list (title or id
@@ -161,7 +165,7 @@ export function SessionIdPanel({ list, onClose, t }: SessionIdPanelProps) {
         ) : (
           <div className={css.list}>
             {rows.map(row => (
-              <SessionRow key={row.id} session={row} current={snapshot.current} t={t} />
+              <SessionRow key={row.id} session={row} current={currentId} t={t} />
             ))}
           </div>
         )}

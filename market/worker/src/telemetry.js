@@ -151,46 +151,70 @@ export async function telemetrySummary(env, days, page = {}) {
   const today = utcDay()
   const paths = page.paths || { limit: 20, offset: 0 }
   const items = page.items || { limit: 200, offset: 0 }
-  // Nine aggregates, four batches: D1 rejects a batch whose transaction
-  // runtime exceeds its limits, and even indexed, the heartbeat grouping
-  // scans take tens of seconds at current volume — each heavy statement
-  // needs its own transaction. Cross-chunk consistency is irrelevant:
-  // every chunk reads the same append-only event table.
+  // Every heartbeat window aggregate reads the per-day rollup tables: seven
+  // statements in one batch, none of them touching the multi-million-row
+  // event table. Cross-chunk consistency is irrelevant: every chunk reads the
+  // same append-only rollups.
+  //
+  // Interval item and dimension numbers are the sum of the per-day distinct
+  // counts (按日去重求和), not a distinct count over the whole window: a
+  // window-wide COUNT(DISTINCT visitor) needs the visitor sets of every day
+  // in memory, which is exactly what D1 ran out of.
+  await assertRollupCoverage(env, since, today)
   const batch = async (statements) => (await env.DB.batch(statements)).map((result) => result.results || [])
-  const [dailyPv, dailyHb, topPaths, pathsTotal, itemsToday, itemsChannels] = await batch([
-    env.DB.prepare("SELECT day, COUNT(*) AS pv, COUNT(DISTINCT visitor) AS uv FROM telemetry_events WHERE kind = 'pv' AND day >= ?1 GROUP BY day ORDER BY day").bind(since),
-    env.DB.prepare("SELECT day, COUNT(*) AS pv, COUNT(DISTINCT visitor) AS uv FROM telemetry_events WHERE kind = 'hb' AND day >= ?1 GROUP BY day ORDER BY day").bind(since),
+  // The channel/version breakdowns stay auxiliary: an unreadable rollup
+  // degrades them to empty instead of failing the whole window, and the
+  // payload flags what is missing.
+  const degraded = []
+  const auxBatch = async (statement, label) => {
+    try {
+      return (await env.DB.batch([statement]))[0].results || []
+    } catch (error) {
+      degraded.push(label)
+      console.log('[summary-aux] ' + label + ' skipped: ' + ((error && error.message) || error))
+      return []
+    }
+  }
+  const [dailyPv, dailyHb, topPaths, pathsTotal, itemsPage, itemsTotal, itemsToday] = await batch([
+    env.DB.prepare("SELECT day, events AS pv, uv FROM telemetry_rollup_daily WHERE kind = 'pv' AND day >= ?1 ORDER BY day").bind(since),
+    env.DB.prepare("SELECT day, events AS beats, uv FROM telemetry_rollup_daily WHERE kind = 'hb' AND day >= ?1 ORDER BY day").bind(since),
     env.DB.prepare("SELECT subject, COUNT(*) AS pv FROM telemetry_events WHERE kind = 'pv' AND day >= ?1 GROUP BY subject ORDER BY pv DESC, subject LIMIT ?2 OFFSET ?3").bind(since, paths.limit, paths.offset),
     env.DB.prepare("SELECT COUNT(DISTINCT subject) AS n FROM telemetry_events WHERE kind = 'pv' AND day >= ?1").bind(since),
-    env.DB.prepare("SELECT subject, COUNT(DISTINCT visitor) AS visitors FROM telemetry_events WHERE kind = 'hb' AND day = ?1 GROUP BY subject").bind(today),
-    env.DB.prepare("SELECT subject, channel, COUNT(DISTINCT visitor) AS visitors FROM telemetry_events WHERE kind = 'hb' AND channel != '' AND day >= ?1 GROUP BY subject, channel").bind(since),
+    env.DB.prepare("SELECT subject, SUM(uv) AS visitors FROM telemetry_rollup_items WHERE kind = 'hb' AND day >= ?1 GROUP BY subject ORDER BY visitors DESC, subject LIMIT ?2 OFFSET ?3").bind(since, items.limit, items.offset),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM (SELECT subject FROM telemetry_rollup_items WHERE kind = 'hb' AND day >= ?1 GROUP BY subject)").bind(since),
+    env.DB.prepare("SELECT subject, uv AS visitors FROM telemetry_rollup_items WHERE kind = 'hb' AND day = ?1").bind(today),
   ])
-  const [itemsPage] = await batch([
-    env.DB.prepare("SELECT subject, COUNT(DISTINCT visitor) AS visitors FROM telemetry_events WHERE kind = 'hb' AND day >= ?1 GROUP BY subject ORDER BY visitors DESC, subject LIMIT ?2 OFFSET ?3").bind(since, items.limit, items.offset),
-  ])
-  const [itemsTotal] = await batch([
-    env.DB.prepare("SELECT COUNT(DISTINCT subject) AS n FROM telemetry_events WHERE kind = 'hb' AND day >= ?1").bind(since),
-  ])
-  const [itemsVersions] = await batch([
-    env.DB.prepare("SELECT subject, version, COUNT(DISTINCT visitor) AS visitors FROM telemetry_events WHERE kind = 'hb' AND version != '' AND day >= ?1 GROUP BY subject, version ORDER BY visitors DESC").bind(since),
-  ])
+  const itemsChannels = await auxBatch(
+    env.DB.prepare("SELECT subject, value, SUM(uv) AS visitors FROM telemetry_rollup_dims WHERE kind = 'hb' AND dim = 'channel' AND day >= ?1 GROUP BY subject, value").bind(since),
+    'channels',
+  )
+  const itemsVersions = await auxBatch(
+    env.DB.prepare("SELECT subject, value, SUM(uv) AS visitors FROM telemetry_rollup_dims WHERE kind = 'hb' AND dim = 'version' AND day >= ?1 GROUP BY subject, value ORDER BY visitors DESC").bind(since),
+    'versions',
+  )
   const activeToday = new Map(itemsToday.map((row) => [row.subject, row.visitors]))
   const channelsByItem = new Map()
   for (const row of itemsChannels) {
     if (!channelsByItem.has(row.subject)) channelsByItem.set(row.subject, {})
-    channelsByItem.get(row.subject)[row.channel] = row.visitors
+    channelsByItem.get(row.subject)[row.value] = row.visitors
   }
   const versionsByItem = new Map()
   for (const row of itemsVersions) {
     if (!versionsByItem.has(row.subject)) versionsByItem.set(row.subject, [])
-    versionsByItem.get(row.subject).push({ version: row.version, instances: row.visitors })
+    versionsByItem.get(row.subject).push({ version: row.value, instances: row.visitors })
   }
   const sumUv = (rows) => rows.reduce((total, row) => total + Number(row.uv || 0), 0)
   const sumPv = (rows) => rows.reduce((total, row) => total + Number(row.pv || 0), 0)
   const totalOf = (rows) => Number(rows[0] && rows[0].n || 0)
   return {
     ok: true,
+    // When this rollup was computed. Cache reads (including the stale
+    // fallback) keep the original stamp, so readers can tell a frozen
+    // rollup from live data — a 09-13 stamp served on 09-16 once read as
+    // "lost days" instead of a lagging cache.
+    generated_at: Date.now(),
     range: { days, since },
+    degraded,
     site: {
       totals: { pv: sumPv(dailyPv), uv_daily_sum: sumUv(dailyPv) },
       daily: dailyPv.map((row) => ({ day: row.day, pv: row.pv, uv: row.uv })),
@@ -200,7 +224,7 @@ export async function telemetrySummary(env, days, page = {}) {
     },
     plugins: {
       totals: { uv_daily_sum: sumUv(dailyHb), items: totalOf(itemsTotal) },
-      daily: dailyHb.map((row) => ({ day: row.day, beats: row.pv, uv: row.uv })),
+      daily: dailyHb.map((row) => ({ day: row.day, beats: row.beats, uv: row.uv })),
       items_page: { offset: items.offset, limit: items.limit },
       items: itemsPage.map((row) => ({
         item: row.subject,
@@ -213,10 +237,120 @@ export async function telemetrySummary(env, days, page = {}) {
   }
 }
 
+/**
+ * Per-day rollup layer. Window aggregates used to run COUNT(DISTINCT visitor)
+ * straight over telemetry_events; at 4.96M rows that overflowed D1's memory
+ * (SQLITE_NOMEM) and the dashboard fell back to a frozen rollup. These tables
+ * carry the per-day numbers, so every window query scans days × catalog.
+ */
+/** Rollup history kept in step with the event retention window. */
+export const ROLLUP_HISTORY_DAYS = RETENTION_DAYS
+/** Cron budget for the rollup step; the cron kill lands near two minutes. */
+const ROLLUP_BUDGET_MS = 60000
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/** UTC day bucket shifted back by n days. */
+function shiftDay(n) {
+  return utcDay(Date.now() - n * 86400000)
+}
+
+/** Inclusive day count between two UTC day buckets. */
+function daySpan(from, to) {
+  return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000) + 1
+}
+
+/**
+ * One day's rollup rebuild as literal SQL. day is always a server-side UTC day
+ * bucket (validated here), so interpolating it keeps the worker and any
+ * offline catch-up working from this single definition: the leading deletes
+ * clear the day, and the trailing marker is only written once every aggregate
+ * of that day landed, because the statements run as one batch.
+ */
+export function rollupDayStatements(day) {
+  if (!DAY_RE.test(String(day))) throw new Error('invalid-rollup-day')
+  const d = "'" + day + "'"
+  return [
+    'DELETE FROM telemetry_rollup_daily WHERE day = ' + d,
+    'DELETE FROM telemetry_rollup_items WHERE day = ' + d,
+    'DELETE FROM telemetry_rollup_dims WHERE day = ' + d,
+    "INSERT OR REPLACE INTO telemetry_rollup_daily (day, kind, events, uv) SELECT day, kind, COUNT(*), COUNT(DISTINCT visitor) FROM telemetry_events INDEXED BY idx_telemetry_kind_day WHERE kind = 'hb' AND day = " + d + ' GROUP BY day, kind',
+    "INSERT OR REPLACE INTO telemetry_rollup_daily (day, kind, events, uv) SELECT day, kind, COUNT(*), COUNT(DISTINCT visitor) FROM telemetry_events INDEXED BY idx_telemetry_kind_day WHERE kind = 'pv' AND day = " + d + ' GROUP BY day, kind',
+    "INSERT OR REPLACE INTO telemetry_rollup_items (day, kind, subject, events, uv) SELECT day, kind, subject, COUNT(*), COUNT(DISTINCT visitor) FROM telemetry_events INDEXED BY idx_telemetry_kind_day WHERE kind = 'hb' AND day = " + d + ' GROUP BY day, kind, subject',
+    "INSERT OR REPLACE INTO telemetry_rollup_dims (day, kind, subject, dim, value, uv) SELECT day, kind, subject, 'channel', channel, COUNT(DISTINCT visitor) FROM telemetry_events INDEXED BY idx_telemetry_kind_day WHERE kind = 'hb' AND day = " + d + " AND channel != '' GROUP BY day, kind, subject, channel",
+    "INSERT OR REPLACE INTO telemetry_rollup_dims (day, kind, subject, dim, value, uv) SELECT day, kind, subject, 'version', version, COUNT(DISTINCT visitor) FROM telemetry_events INDEXED BY idx_telemetry_kind_day WHERE kind = 'hb' AND day = " + d + " AND version != '' GROUP BY day, kind, subject, version",
+    'INSERT OR REPLACE INTO telemetry_rollup_days (day, computed_at) VALUES (' + d + ', ' + Date.now() + ')',
+  ]
+}
+
+/** Rebuild one UTC day's rollups; idempotent, so a re-run heals a partial day. */
+export async function rebuildRollupDay(env, day) {
+  await env.DB.batch(rollupDayStatements(day).map((sql) => env.DB.prepare(sql)))
+}
+
+/**
+ * Rollup freshness gate. The summary is only computed from complete rollups:
+ * while the backfill still owes a day inside the requested window the
+ * aggregation throws, so the caller keeps serving its previous (complete but
+ * possibly stale) cache row instead of publishing a short series whose
+ * missing days would read as lost data.
+ */
+async function assertRollupCoverage(env, since, today) {
+  const oldest = await env.DB.prepare('SELECT day FROM telemetry_events ORDER BY day LIMIT 1').first()
+  const oldestEvent = oldest && oldest.day ? String(oldest.day) : null
+  // No events at all: an empty window is legitimately empty, not lagging.
+  if (!oldestEvent) return
+  const from = oldestEvent > since ? oldestEvent : since
+  const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM telemetry_rollup_days WHERE day >= ?1 AND day <= ?2').bind(from, today).first()
+  const rolled = Number(row && row.n) || 0
+  const expected = daySpan(from, today)
+  if (rolled < expected) throw new Error('rollup-incomplete: ' + rolled + '/' + expected + ' days from ' + from)
+}
+
+/**
+ * Cron rollup refresh. Today and yesterday are rewritten every tick (yesterday
+ * can still receive events right up to midnight, and a rebuild is idempotent);
+ * the rest of the budget goes to the newest days the backfill still owes, so a
+ * fresh deployment recovers its short dashboard windows first and the cursor
+ * table makes the walk restartable. Per-day failures are logged and retried on
+ * the next tick instead of failing the scheduled invocation.
+ */
+export async function refreshDailyRollups(env, options = {}) {
+  const budgetMs = Number.isFinite(options.budgetMs) ? options.budgetMs : ROLLUP_BUDGET_MS
+  const today = shiftDay(0)
+  const known = new Set(((await env.DB.prepare('SELECT day FROM telemetry_rollup_days').all()).results || []).map((row) => String(row.day)))
+  // Offsets 0 and 1 are on the always-rewrite list, so the backfill cursor
+  // only has to look for the days before them.
+  const pending = []
+  for (let offset = 2; offset < ROLLUP_HISTORY_DAYS; offset++) {
+    const day = shiftDay(offset)
+    if (!known.has(day)) pending.push(day)
+  }
+  const started = Date.now()
+  const rebuilt = []
+  const skipped = []
+  for (const day of [today, shiftDay(1), ...pending]) {
+    if (rebuilt.length > 0 && Date.now() - started > budgetMs) break
+    try {
+      await rebuildRollupDay(env, day)
+      rebuilt.push(day)
+    } catch (error) {
+      skipped.push(day)
+      console.log('[rollup] ' + day + ' skipped: ' + ((error && error.message) || error))
+    }
+  }
+  return { rebuilt, skipped, pending: pending.length }
+}
+
 /** Retention prune; called by the cron trigger. */
 export async function pruneOldEvents(env) {
   const cutoffDay = utcDay(Date.now() - RETENTION_DAYS * 86400000)
   await env.DB.prepare('DELETE FROM telemetry_events WHERE day < ?1').bind(cutoffDay).run()
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM telemetry_rollup_days WHERE day < ?1').bind(cutoffDay),
+    env.DB.prepare('DELETE FROM telemetry_rollup_daily WHERE day < ?1').bind(cutoffDay),
+    env.DB.prepare('DELETE FROM telemetry_rollup_items WHERE day < ?1').bind(cutoffDay),
+    env.DB.prepare('DELETE FROM telemetry_rollup_dims WHERE day < ?1').bind(cutoffDay),
+  ])
 }
 
 /** POST /api/telemetry/event handler. Returns the json() helper's shape. */
@@ -383,10 +517,11 @@ export async function handleTelemetrySummary(request, url, env, json) {
   let summary
   try {
     summary = await telemetrySummary(env, days, page)
-  } catch {
-    // D1 overload must surface as a plain 503 for the dashboard proxy,
-    // not as a worker exception page. A stale cache row is still far
-    // better than an error page on a read-only dashboard.
+  } catch (error) {
+    // D1 overload, or a window whose days the rollup backfill still owes
+    // (rollup-incomplete). Both must surface as the previous rollup or a
+    // plain 503 for the dashboard proxy, never as a worker exception page.
+    console.log('[summary] live aggregation failed: ' + ((error && error.message) || error))
     if (cached && cached.payload) return json(cached.payload)
     return json({ ok: false, error: 'storage-unavailable' }, 503)
   }

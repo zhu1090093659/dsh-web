@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" fill="none" aria-hidden="true">
+  <!-- 星辉教团底板：尖塔 + 球体光环 + 垂直极光光带 + 信众眼光点排 -->
+  <defs>
+    <radialGradient id="as-orb" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#9fe4f0" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#9fe4f0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- 极光光带：垂直贝塞尔丝带 -->
+  <g stroke-width="1">
+    <path d="M240 900 C220 640 300 420 260 120" stroke="#9fe4f0" opacity="0.07"/>
+    <path d="M420 900 C460 620 380 380 440 80" stroke="#8672d6" opacity="0.10"/>
+    <path d="M640 900 C610 600 690 360 650 60" stroke="#9fe4f0" opacity="0.05"/>
+    <path d="M960 900 C990 600 910 360 950 60" stroke="#9fe4f0" opacity="0.05"/>
+    <path d="M1180 900 C1140 620 1220 380 1160 80" stroke="#8672d6" opacity="0.10"/>
+    <path d="M1360 900 C1380 640 1300 420 1340 120" stroke="#9fe4f0" opacity="0.07"/>
+  </g>
+  <!-- 尖塔与球体 -->
+  <g stroke="#8672d6" stroke-width="1">
+    <path d="M800 860 L782 420 M800 860 L818 420" opacity="0.14"/>
+    <path d="M782 420 L800 300 L818 420" opacity="0.16"/>
+    <circle cx="800" cy="268" r="34" opacity="0.22"/>
+    <circle cx="800" cy="268" r="46" opacity="0.12"/>
+    <circle cx="800" cy="268" r="62" opacity="0.07"/>
+    <path d="M800 234 V150" opacity="0.20"/>
+    <circle cx="800" cy="144" r="3" fill="#9fe4f0" stroke="none" opacity="0.35"/>
+  </g>
+  <circle cx="800" cy="268" r="80" fill="url(#as-orb)"/>
+  <!-- 信众眼光点排：底部两排 -->
+  <g fill="#9fe4f0">
+    <circle cx="120" cy="846" r="1.8" opacity="0.16"/><circle cx="280" cy="852" r="1.8" opacity="0.13"/>
+    <circle cx="440" cy="846" r="1.8" opacity="0.16"/><circle cx="600" cy="852" r="1.8" opacity="0.13"/>
+    <circle cx="1000" cy="852" r="1.8" opacity="0.13"/><circle cx="1160" cy="846" r="1.8" opacity="0.16"/>
+    <circle cx="1320" cy="852" r="1.8" opacity="0.13"/><circle cx="1480" cy="846" r="1.8" opacity="0.16"/>
+  </g>
+  <!-- 外框：紫双线 -->
+  <rect x="24.5" y="24.5" width="1551" height="851" stroke="#8672d6" opacity="0.10"/>
+  <rect x="30.5" y="30.5" width="1539" height="839" stroke="#9fe4f0" opacity="0.05"/>
+</svg>

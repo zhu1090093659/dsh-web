@@ -236,6 +236,13 @@ describe('installAsset limits', () => {
       .rejects.toMatchObject({ code: 'manifest', message: expect.stringMatching(/exceeds/) })
   })
 
+  it('pins an installer cap that clears the largest published pet asset', () => {
+    // jyn ships 1565 per-frame images; a cap at or below that makes an
+    // official market asset uninstallable for every user (issue #1578).
+    // scripts/market-build-cap.test.mjs holds the pipeline side of the gate.
+    expect(MAX_FILES_PER_ASSET).toBe(2000)
+  })
+
   it('rejects an asset declaring more files than the cap', async () => {
     const home = tmpHome()
     const files = Array.from({ length: MAX_FILES_PER_ASSET + 1 }, (_, i) => `f${i}.png`)

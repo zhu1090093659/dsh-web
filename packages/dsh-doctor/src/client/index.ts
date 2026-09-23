@@ -9,18 +9,18 @@
  * /api/doctor poll loop.
  *
  * Resilience contract: apply() never throws. Every mount step is guarded so a
- * missing service, a duplicate injection or a hostile scope degrades to an
- * empty-but-alive plugin instead of taking the GUI down.
+ * missing service, a duplicate injection or a hostile settings form degrades to
+ * an empty-but-alive plugin instead of taking the GUI down.
  * @module @linxin666/dsh-doctor/client
  */
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-// Type-only: the settings-namespace scope contract types (the ctx.settingsScope
+// Type-only: the shared configuration-form contract types (the ctx.configForms
 // merge itself comes from the ui-settings side-effect import below).
-import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigForms } from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-// Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
+// Type-only: pulls the shared-forms Context merge (ctx.configForms).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the SlotMap/LocaleNamespaceMap merge points (web-ui.plugin.item seat).
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
@@ -41,6 +41,7 @@ import {
 } from './DoctorSettingsCard.tsx'
 import { en, zh, type DoctorKey } from './locales.ts'
 import { reportDailyHeartbeat } from './telemetry.ts'
+import { installPluginCard } from './plugin-card-seat.ts'
 
 /** Locale namespace owned by this plugin. */
 export const NS = 'doctor'
@@ -68,13 +69,53 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
-    /** Optional rc.6 compatibility binder provided by dsh-web-settings. */
-    webUiSettings?: { bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S> }
+    /**
+     * Family settings binder provided by dsh-web-settings. It resolves the
+     * family namespace (`doctor`) to the profile entry id that owns it and
+     * hands back that entry's shared configuration form, with the loopback
+     * bridge as its fallback.
+     */
+    webUiSettings?: SettingsFormBinder
   }
 }
 
+/**
+ * Description of one family settings namespace a card binds. The spec type is
+ * private to ui-settings in the 0.1.7 cohort, and the family binder takes the
+ * namespace plus an optional narrowing decoder, so the browser half declares
+ * the shape it calls.
+ */
+interface FamilySettingsSpec<T> {
+  /** Family settings namespace this card edits. */
+  namespace: string
+  /** Narrow a wire section; undefined hands the section over as the Host resolved it. */
+  decode?: (section: unknown) => T | undefined
+}
+
+/** Optional family settings binder provided by dsh-web-settings. */
+interface SettingsFormBinder {
+  /** Bind the shared configuration form of the entry that owns one family namespace. */
+  bind<T>(spec: FamilySettingsSpec<T>): ConfigForm<T>
+}
+
+/**
+ * Profile entry id the family aggregate's generated row carries — the
+ * deployment shape nearly every user runs. Under 0.1.7 a settings form is
+ * addressed by profile entry id, so the shared-forms fallback below has to
+ * name it; the family binder resolves the family namespace instead.
+ */
+const AGGREGATE_ENTRY_ID = 'web-ui-doctor'
+
+/**
+ * Entry ids this package's rows carry, most common deployment first: the
+ * aggregate's generated row, then the bare family namespace — which is both
+ * the standalone bundle patch row id and the descriptor key a Host that keys
+ * rows by the plugin's own namespace reports.
+ */
+const DOCTOR_ENTRY_IDS: readonly string[] = [AGGREGATE_ENTRY_ID, NS]
+
 /** Services required by the browser half. */
-export const inject = ['slots', 'locale', 'settingsScope']
+export const inject = ['slots', 'locale', 'configForms']
 
 /** Apply-guard: a duplicated client injection must not mount a second card. */
 let claimed = false
@@ -139,45 +180,42 @@ export function apply(ctx: ClientContext): void {
     }), 'doctor: plugin failure events')
   })
 
-  // Family settings card over the doctor namespace. Staged form owns the
+  // Family settings card over the doctor settings entry. Staged form owns the
   // enabled / fullProtection / autoRepair switches; the host mounts its
-  // diagnostic endpoints only after the saved enabled lands.
+  // diagnostic endpoints only after the saved enabled lands. The family binder
+  // (dsh-web-settings) resolves the family namespace to the profile entry id
+  // that owns it; without the group loaded, the entry id is resolved against
+  // the shared describe mirror instead.
   let cardController: DoctorSettingsCardController | undefined
   safe(() => {
-    const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
-    const scope = binder.bind<DoctorSettings>({ namespace: NS })
+    const binder = ctx.get('webUiSettings')
+    const scope = binder === undefined || typeof binder.bind !== 'function'
+      ? ctx.configForms.get<DoctorSettings>(doctorEntryId(ctx.configForms))
+      : binder.bind<DoctorSettings>({ namespace: NS })
     cardController = new DoctorSettingsCardController(scope)
   })
 
-  ctx.slots.inject('web-ui.plugin.item', () => {
-    const dispose = controller === undefined || cardController === undefined ? undefined : safeRegister(ctx, controller, cardController)
-    return () => { dispose?.() }
-  })
-}
-
-/** Register the card; returns the disposer or undefined on failure. */
-function safeRegister(
-  ctx: Parameters<typeof apply>[0],
-  controller: DoctorController,
-  cardController: DoctorSettingsCardController,
-): (() => void) | undefined {
-  try {
-    return ctx.slots.register({
-      name: 'web-ui.plugin.item',
+  // Locale label of the family list seat; the official keyed seat dispatches
+  // by settings namespace and carries no label (issue #1589).
+  const label = (): string => {
+    try {
+      return ctx.locale.bind(NS)('settings.title')
+    } catch {
+      return 'Doctor'
+    }
+  }
+  const card = cardController
+  const doctor = controller
+  if (doctor !== undefined && card !== undefined) {
+    installPluginCard(ctx, {
+      bundle: '@linxin666/dsh-doctor',
       id: NS,
       order: 140,
-      label: () => {
-        try {
-          return ctx.locale.bind(NS)('settings.title')
-        } catch {
-          return 'Doctor'
-        }
-      },
+      label,
       locale: NS,
-      inject: () => ({ ...cardController.inject(), controller }) satisfies DoctorSettingsCardFace,
-    }, DoctorSettingsCard)
-  } catch {
-    return undefined
+      inject: () => ({ ...card.inject(), controller: doctor }) satisfies DoctorSettingsCardFace,
+      component: DoctorSettingsCard,
+    })
   }
 }
 
@@ -188,4 +226,27 @@ function safe(step: () => void): void {
   } catch {
     // fail-open: a broken optional step must not break apply.
   }
+}
+
+/**
+ * The profile entry id this page serves the doctor config under.
+ *
+ * The shared describe mirror is the only local evidence of which row id this
+ * profile actually carries, but it answers asynchronously: at plugin
+ * activation it usually holds nothing yet. An unanswered mirror therefore
+ * binds the aggregate row id rather than guessing among the candidates — the
+ * form is bound once for the session, so a wrong guess would leave the card
+ * reporting an unserved namespace even after the mirror settles.
+ * @param forms - the shared configuration forms service.
+ * @returns the entry id to bind.
+ */
+function doctorEntryId(forms: ConfigForms): string {
+  let served: readonly string[] | undefined
+  try {
+    served = forms.describe().getSnapshot().view?.namespaces.map(view => view.ns)
+  } catch {
+    served = undefined
+  }
+  if (served === undefined) return AGGREGATE_ENTRY_ID
+  return DOCTOR_ENTRY_IDS.find(id => served.includes(id)) ?? NS
 }

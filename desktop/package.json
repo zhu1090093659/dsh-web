@@ -14,7 +14,7 @@
     "prepare-runtime": "node scripts/fetch-node.mjs && node scripts/fetch-pnpm.mjs && node scripts/build-runtime.mjs",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --mac --win",
-    "dist:mac": "electron-builder --mac dmg zip --arm64 --x64",
+    "dist:mac": "electron-builder --mac dmg zip --arm64 && electron-builder --mac dmg zip --x64",
     "dist:win": "electron-builder --win nsis zip --x64",
     "test": "node --test \"tests/*.test.mjs\""
   },

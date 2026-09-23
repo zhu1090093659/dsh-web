@@ -1,0 +1,53 @@
+remiel-starlit (蕾米埃尔·星翎 · Remiel Starlit)
+================================================
+
+角色与素材出处 (character and artwork provenance)
+------------------------------------------------
+
+1. 《绝区零》(Zenless Zone Zero) 由米哈游 (miHoYo / HoYoverse) 开发并运营，
+   其中的角色形象与官方美术素材著作权归米哈游所有。
+   Zenless Zone Zero and its characters are created by miHoYo / HoYoverse.
+   All rights to the characters and the original artwork belong to miHoYo.
+
+2. assets/ 中的背景图与设置弹窗方图取自米哈游官方公开发布的素材（官网下载）。
+   本皮肤作者不对这些素材主张任何权利。
+   The backdrop and dialog artwork in assets/ is taken from official Zenless
+   Zone Zero material published by miHoYo (downloaded from the official
+   website). The skin author claims no rights to that material.
+
+3. 依据《绝区零》官方「素材使用及同人创作」公告，非商业性质的个人使用不被禁止，
+   但须同时放置官方要求的著作权标识与法律宣告。本皮肤据此声明如下：
+
+   © All rights reserved by miHoYo
+   Other properties and any right, title, and interest thereof and therein
+   (intellectual property rights included) not derived from 《绝区零》 belong to
+   their respective owners.
+
+   该公告同时说明：素材权利并未转让给使用者，上述使用也不构成法律意义上的许可
+   或授权，米哈游保留随时要求移除相关内容的权利。本皮肤不代表官方，与米哈游
+   无隶属或背书关系；不得用于任何商业场景。
+
+   Per the official Zenless Zone Zero notice on asset use and fan creation,
+   non-commercial personal use is not prohibited, provided the copyright mark
+   and legal notice below are reproduced. The notice also states that no rights
+   are transferred and that this does not constitute a license or authorization;
+   miHoYo reserves the right to request removal at any time.
+
+皮肤工程与许可 (skin engineering and license)
+--------------------------------------------
+
+4. 皮肤工程（skin.json / skin.css / patches.css 与调色板重映射）由本皮肤作者
+   制作，按 CC BY-NC-SA 4.0 发布。
+   The skin engineering (skin.json / skin.css / patches.css and the palette
+   remap) is the author's work, released under CC BY-NC-SA 4.0.
+
+5. 该许可只覆盖第 4 条的皮肤工程，**不涵盖**第 2 条中的官方素材；官方素材的
+   权利与使用条件完全由米哈游决定。
+   That license covers only the skin engineering in item 4 and does NOT extend
+   to the official material in item 2, whose rights and terms remain with miHoYo.
+
+许可文本 (license text)
+-----------------------
+
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-nc-sa/4.0/

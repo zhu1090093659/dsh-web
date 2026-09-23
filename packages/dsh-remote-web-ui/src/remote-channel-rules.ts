@@ -16,6 +16,13 @@ export { REMOTE_DEVICE_HEADER, REMOTE_DEVICE_QUERY }
 /** Connection-plugin method prefix under the gated channel. */
 export const REMOTE_API_PREFIX = `${REMOTE_PREFIX}/api`
 
+/**
+ * The window global the device-gated app landing publishes to grant host mode.
+ * Set by the /pair-app capture script, read by the parse-time boot patch: the
+ * transport hook (ownsHost) is server-granted, not asserted from the origin.
+ */
+export const REMOTE_HOST_GRANT_GLOBAL = '__DSH_REMOTE_HOST_GRANT__'
+
 /** Every decision input of the remote-channel rewrite, JSON-serializable. */
 export interface RemoteChannelRules {
   readonly remotePrefix: string
@@ -33,6 +40,18 @@ export interface RemoteChannelRules {
   readonly deviceKey: string
   /** Query parameter carrying it on WebSocket upgrades. */
   readonly deviceQuery: string
+  /** Raw upload route the boot hook keeps on the gated channel. */
+  readonly uploadPath: string
+  /** Page global the pre-Cordis upload hook is published under. */
+  readonly uploadHookGlobal: string
+  /**
+   * Page global carrying the server-issued host-mode grant. Only the plugin's
+   * own device-gated app landing (/pair-app) publishes it; the boot patch
+   * therefore enables the official UI's host mode only for a shell the server
+   * actually granted, never for one that merely happens to sit on a
+   * non-loopback origin.
+   */
+  readonly hostGrantGlobal: string
 }
 
 /** The live rule set. */
@@ -52,11 +71,15 @@ export const REMOTE_CHANNEL_RULES: RemoteChannelRules = {
     '/api/remote.mux',
     '/sidebar/ws/terminal',
     '/sidebar/ws/agent-terminals',
+    '/sidebar/ws/agent-opens',
     '/api/dsh-ssh/terminal',
   ],
   deviceHeader: REMOTE_DEVICE_HEADER,
   deviceKey: 'dsh-remote-device',
   deviceQuery: REMOTE_DEVICE_QUERY,
+  uploadPath: '/api/session/uploadFileBinary',
+  uploadHookGlobal: '__DSH_FILE_UPLOAD__',
+  hostGrantGlobal: REMOTE_HOST_GRANT_GLOBAL,
 }
 
 /** The window global the boot patch publishes its seat under. */

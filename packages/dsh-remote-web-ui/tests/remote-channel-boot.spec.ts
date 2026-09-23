@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { renderIndexInjections } from '@deepseek-ai/dsh-host-webserver'
 
 import { BOOT_WATCHDOG_KEY, buildBootWatchdogScript, buildRemoteChannelBootScript, REMOTE_CHANNEL_BOOT_SCRIPT } from '../src/remote-channel-boot.ts'
-import { REMOTE_CHANNEL_BOOT_GLOBAL, type RemoteChannelBootSeat } from '../src/remote-channel-rules.ts'
+import { REMOTE_CHANNEL_BOOT_GLOBAL, REMOTE_HOST_GRANT_GLOBAL, type RemoteChannelBootSeat } from '../src/remote-channel-rules.ts'
 import { shouldRewriteFetchPath, shouldRewriteWsPath } from '../src/client/remote-channel.ts'
 
 const PATH_MATRIX = [
@@ -31,6 +31,7 @@ const WS_MATRIX = [
   '/api/remote.mux',
   '/sidebar/ws/terminal',
   '/sidebar/ws/agent-terminals',
+  '/sidebar/ws/agent-opens',
   '/api/dsh-ssh/terminal',
   '/api/events.mux',
   '/api/session.list',
@@ -204,11 +205,60 @@ describe('remote channel boot patch (issue #987)', () => {
     expect(win.calls).toEqual(['http://192.168.1.20:3080/api/session.list'])
   })
 
-  it('flips the official UI into host mode on non-loopback origins', () => {
-    const win = makeWindow('192.168.1.20') as Record<string, unknown>
-    boot(win as never)
-    const transport = win.__DSH_TRANSPORT__ as { ownsHost?: boolean } | undefined
+  it('publishes the pre-Cordis upload hook onto the patched fetch (issue #1580)', async () => {
+    const win = makeWindow()
+    win.sessionStorage = { getItem: () => 'dev-42' }
+    boot(win)
+    const hook = (win as Record<string, unknown>).__DSH_FILE_UPLOAD__ as
+      | { fetch: (input: URL, init: RequestInit) => Promise<Response> }
+      | undefined
+    expect(hook).toBeDefined()
+    // The runtime hands the hook an absolute same-origin URL (it resolves the
+    // route against location.origin), exactly as customTransport does.
+    const body = new Blob(['bytes'])
+    // Exactly what the runtime's customTransport passes: absolute URL, the
+    // octet-stream content type, and the raw body.
+    await hook!.fetch(new URL('http://192.168.1.20:3080/api/session/uploadFileBinary?sessionId=s1'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/octet-stream' },
+      body,
+    })
+    expect(win.calls[0]).toBe('http://192.168.1.20:3080/remote/api/session/uploadFileBinary?sessionId=s1')
+    const init = win.initSeen[0] as RequestInit & { headers?: Record<string, string> }
+    expect(init.method).toBe('POST')
+    expect(init.body).toBe(body)
+    expect(init.headers?.['content-type']).toBe('application/octet-stream')
+    expect(init.headers?.['x-dsh-remote-device']).toBe('dev-42')
+  })
+
+  it('never republishes a pre-existing upload hook owned by the page', () => {
+    const win = makeWindow() as FakeWindow & Record<string, unknown>
+    const existing = { fetch: () => Promise.resolve(new Response('{}')) }
+    win.__DSH_FILE_UPLOAD__ = existing
+    boot(win)
+    expect(win.__DSH_FILE_UPLOAD__).toBe(existing)
+  })
+
+  it('does not publish the upload hook on loopback origins', () => {
+    const win = makeWindow('127.0.0.1') as FakeWindow & Record<string, unknown>
+    boot(win)
+    expect(win.__DSH_FILE_UPLOAD__).toBeUndefined()
+  })
+
+  it('flips the official UI into host mode only for a server-granted shell', () => {
+    // The device-gated app landing (/pair-app) publishes the grant marker in
+    // its capture script, which runs ahead of this parse-time patch.
+    const granted = makeWindow('192.168.1.20') as Record<string, unknown>
+    granted[REMOTE_HOST_GRANT_GLOBAL] = true
+    boot(granted as never)
+    const transport = granted.__DSH_TRANSPORT__ as { ownsHost?: boolean } | undefined
     expect(transport?.ownsHost).toBe(true)
+    // Without the grant the shell is not the machine owner: host mode is
+    // server-granted, never asserted from the origin, so an unpaired browser
+    // reaching a fence-open deployment keeps the memory-scope presentation.
+    const unpaired = makeWindow('192.168.1.20') as Record<string, unknown>
+    boot(unpaired as never)
+    expect(unpaired.__DSH_TRANSPORT__).toBeUndefined()
   })
 
   it('does not flip host mode on loopback origins', () => {

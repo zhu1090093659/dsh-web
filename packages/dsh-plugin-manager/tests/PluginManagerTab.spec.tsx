@@ -1,11 +1,13 @@
 /** @vitest-environment jsdom */
 
 /**
- * Lightweight mount-level smoke tests for the plugin-manager tab: the local-only
- * degradation, the plugin list rendering, the install-failure repair seed
- * (which must carry the install's own error, not a later unrelated one), and
- * the install-time conflict ledger with its undo affordance. The official UI
- * primitives are stubbed; the injected face is a vi.fn() harness.
+ * Mount-level smoke tests for the plugin-manager tab: the local-only
+ * degradation, the read-only inventory (installing, uninstalling and switching
+ * a plugin or a row belong to the official plugin manager page since
+ * 0.1.6-alpha.2), the host-recorded conflict ledger with its undo and repair
+ * handoff, the boot-failure repair seed, and the update compatibility gating.
+ * The official UI primitives are stubbed; the injected face is a vi.fn()
+ * harness.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -14,20 +16,19 @@ import React from 'react'
 import type { ComponentProps } from 'react'
 
 // The official primitives are a closure-factory client bundle (not importable
-// under vitest); stub the two members the tab consumes.
+// under vitest); stub the member the tab consumes.
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => {
   const create = (React.createElement as (...args: unknown[]) => unknown).bind(React)
   return {
     Button: (props: Record<string, unknown>) =>
       create('button', { disabled: props['disabled'], onClick: props['onClick'], className: props['className'] }, props['children']),
-    Modal: (props: Record<string, unknown>) =>
-      props['open'] === true ? create('div', { role: 'dialog' }, props['title'], props['children']) : null,
   }
 })
 
 import { PluginManagerTab, type PluginManagerTabInjected } from '../src/client/PluginManagerTab.tsx'
 import { en, type PluginManagerKey } from '../src/client/locales.ts'
-import type { InstallProgressItem, InstalledPluginItem, PluginControlItem } from '../src/core/protocol.ts'
+import type { ControlChange } from '../src/core/conflict.ts'
+import type { InstallProgressItem, InstalledPluginItem, PluginControlItem, PluginFailureItem } from '../src/core/protocol.ts'
 
 afterEach(cleanup)
 
@@ -42,6 +43,10 @@ const plugin: InstalledPluginItem = {
   id: 'p1', name: 'p1', version: '1.0.0', source: { kind: 'npm', spec: '@scope/p1' }, installedAt: '2026-08-18T00:00:00.000Z', enabled: true,
 }
 
+const failure: PluginFailureItem = {
+  pluginId: 'p1', kind: 'load-failure', message: 'boom', stack: 'at x', installPath: '/plugins/p1', at: '2026-08-18T00:00:00.000Z',
+}
+
 const product = (state: PluginControlItem['state']): PluginControlItem => ({
   id: 'web-ui', name: 'dsh-web', repository: 'https://github.com/zhu1090093659/dsh-web', state,
 })
@@ -51,10 +56,7 @@ function face(overrides: Partial<PluginManagerTabInjected> = {}): PluginManagerT
   return {
     isLoopback: true,
     list: vi.fn(async () => [plugin]),
-    install: vi.fn(async () => plugin),
     update: vi.fn(async () => plugin),
-    uninstall: vi.fn(async () => []),
-    setEnabled: vi.fn(async (id, enabled) => ({ ...plugin, id, enabled })),
     checkUpdates: vi.fn(async () => []),
     status: vi.fn(async (): Promise<InstallProgressItem> => ({ kind: 'idle', stage: 'fetch' })),
     failures: vi.fn(async () => ({ items: [], pluginRoot: '/plugins', safeMode: false })),
@@ -92,17 +94,18 @@ describe('PluginManagerTab aggregate children', () => {
     expect(toggle('web-all').getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('expands child rows with individual switches, a mixed parent state, and a locked hint', async () => {
+  it('expands child rows as read-only state labels with a locked hint', async () => {
     renderTab(face({ list: vi.fn(async () => [aggregatePlugin]) }))
     expect(await screen.findByText('web-all')).toBeTruthy()
     expect(screen.getByText('Partially on')).toBeTruthy()
     fireEvent.click(toggle('web-all'))
     expect(await screen.findByText('@linxin666/dsh-pet')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Hide child plugins of web-all' }).getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByRole('switch', { name: 'Turn off @linxin666/dsh-pet' })).toBeTruthy()
-    expect(screen.queryByRole('switch', { name: /dsh-client-ui-plugin-manager/ })).toBeNull()
+    // Switching moved to the official page: the child list is state only.
+    expect(screen.queryByRole('switch')).toBeNull()
+    expect(screen.getAllByText('On').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('Core row')).toBeTruthy()
-    expect(screen.getByText(/Bundle child plugins toggle individually/)).toBeTruthy()
+    expect(screen.getByText(/switched on the official plugin manager page/)).toBeTruthy()
   })
 
   it('collapses the child list again on a second click', async () => {
@@ -112,24 +115,6 @@ describe('PluginManagerTab aggregate children', () => {
     expect(await screen.findByText('@linxin666/dsh-pet')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Hide child plugins of web-all' }))
     await waitFor(() => expect(screen.queryByText('@linxin666/dsh-pet')).toBeNull())
-  })
-
-  it('toggles a child row by entry id and refreshes the summary from the returned parent row', async () => {
-    const refreshed: InstalledPluginItem = {
-      ...aggregatePlugin,
-      children: [
-        { id: 'web-ui-pet', name: '@linxin666/dsh-pet', enabled: false },
-        { id: 'web-ui-plugin-manager', name: '@linxin666/dsh-client-ui-plugin-manager', enabled: true, locked: true },
-      ],
-    }
-    const setEnabled = vi.fn(async () => refreshed)
-    renderTab(face({ list: vi.fn(async () => [aggregatePlugin]), setEnabled }))
-    expect(await screen.findByText('web-all')).toBeTruthy()
-    fireEvent.click(toggle('web-all'))
-    fireEvent.click(await screen.findByRole('switch', { name: 'Turn off @linxin666/dsh-pet' }))
-    await waitFor(() => expect(setEnabled).toHaveBeenCalledWith('web-ui-pet', false))
-    expect(await screen.findByRole('switch', { name: 'Turn on @linxin666/dsh-pet' })).toBeTruthy()
-    expect(screen.getByText('1/2 child plugins on')).toBeTruthy()
   })
 
   it('expands each aggregate row independently', async () => {
@@ -147,7 +132,6 @@ describe('PluginManagerTab aggregate children', () => {
   })
 })
 
-
 describe('PluginManagerTab', () => {
   it('renders the local-only notice and nothing else when not loopback', async () => {
     renderTab(face({ isLoopback: false }))
@@ -155,54 +139,40 @@ describe('PluginManagerTab', () => {
     expect(screen.queryByRole('switch')).toBeNull()
   })
 
-  it('renders the plugin list with the next-start switch', async () => {
+  it('renders the read-only inventory and points at the official page', async () => {
     renderTab(face())
     expect(await screen.findByText('p1')).toBeTruthy()
     expect(screen.getByText('Installed 1.0.0')).toBeTruthy()
-    expect(screen.getByRole('switch', { name: 'Turn off p1' }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByText('On')).toBeTruthy()
+    expect(screen.queryByRole('switch')).toBeNull()
+    expect(screen.getByText(t('manageElsewhere'))).toBeTruthy()
   })
 
-  it('seeds the repair conversation with the install error, not a later unrelated error', async () => {
+  it('hands one boot failure to a repair conversation over the plugin root', async () => {
     const injected = face({
-      install: vi.fn(async () => { throw new Error('ENOENT: install exploded') }),
-      setEnabled: vi.fn(async () => { throw new Error('toggle exploded') }),
+      failures: vi.fn(async () => ({ items: [failure], pluginRoot: '/plugins', safeMode: false })),
     })
     renderTab(injected)
 
-    await screen.findByText('p1')
-    fireEvent.change(screen.getByPlaceholderText(t('installPlaceholder')), { target: { value: '@scope/new' } })
-    fireEvent.click(screen.getByRole('button', { name: t('install') }))
-    expect(await screen.findByText(/ENOENT: install exploded/)).toBeTruthy()
-
-    // A later, unrelated failure overwrites the error row text...
-    fireEvent.click(screen.getByRole('switch', { name: 'Turn off p1' }))
-    expect(await screen.findByText(/toggle exploded/)).toBeTruthy()
-
-    // ...but the repair seed still carries the install error, not the toggle error.
+    expect(await screen.findByText('boom')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: t('repair') }))
     await waitFor(() => {
       expect(injected.repairPlugin).toHaveBeenCalledTimes(1)
     })
-    const [, message] = vi.mocked(injected.repairPlugin).mock.calls[0] as [string, string]
-    expect(message).toContain('@scope/new')
-    expect(message).toContain('ENOENT: install exploded')
-    expect(message).not.toContain('toggle exploded')
+    const [root, message] = vi.mocked(injected.repairPlugin).mock.calls[0] as [string, string]
+    expect(root).toBe('/plugins')
+    expect(message).toContain('boom')
+    expect(message).toContain(t('repairFailureTitle'))
   })
 
-  it('shows the conflict ledger after an install disabled a product, and undoes it', async () => {
-    let controlsCalls = 0
+  it('shows the host-recorded conflict ledger and undoes a disabled product', async () => {
+    const change: ControlChange = { id: 'web-ui', name: 'dsh-web', from: 'enabled', to: 'disabled' }
     const injected = face({
-      controlsList: vi.fn(async () => {
-        controlsCalls += 1
-        return controlsCalls <= 1 ? [product('enabled')] : [product('disabled')]
-      }),
+      lastInstallConflicts: () => [change],
+      controlsList: vi.fn(async () => [product('disabled')]),
       controlsSetEnabled: vi.fn(async () => [product('enabled')]),
     })
     renderTab(injected)
-
-    await screen.findByText('p1')
-    fireEvent.change(screen.getByPlaceholderText(t('installPlaceholder')), { target: { value: '@scope/new' } })
-    fireEvent.click(screen.getByRole('button', { name: t('install') }))
 
     expect(await screen.findByText(t('conflictDisabled', { name: 'dsh-web' }))).toBeTruthy()
 
@@ -221,6 +191,18 @@ describe('PluginManagerTab', () => {
     })
     await waitFor(() => {
       expect(screen.queryByText(t('conflictDisabled', { name: 'dsh-web' }))).toBeNull()
+    })
+  })
+
+  it('shows the safe-mode banner with its restore affordance', async () => {
+    const injected = face({
+      failures: vi.fn(async () => ({ items: [], pluginRoot: '/plugins', safeMode: true })),
+    })
+    renderTab(injected)
+    expect(await screen.findByText(t('safeModeBanner'))).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: t('exitSafeMode') }))
+    await waitFor(() => {
+      expect(injected.setSafeMode).toHaveBeenCalledWith(false)
     })
   })
 

@@ -62,6 +62,23 @@ describe('sortRows', () => {
   it('sorts by archive time, unknown last in both directions', () => {
     expect(sortRows(rows, 'archivedAt', 'desc').map((r) => r.id)).toEqual(['session-b', 'session-a', 'session-c', 'session-d'])
   })
+
+  it('sorts by size, unknown sizes last in both directions', () => {
+    const sized = [
+      row({ id: 'session-a', sizeBytes: 30 }),
+      row({ id: 'session-b', sizeBytes: 10 }),
+      row({ id: 'session-c' }),
+      row({ id: 'session-d', sizeBytes: 20 }),
+    ]
+    expect(sortRows(sized, 'size', 'desc').map((r) => r.id)).toEqual(['session-a', 'session-d', 'session-b', 'session-c'])
+    expect(sortRows(sized, 'size', 'asc').map((r) => r.id)).toEqual(['session-b', 'session-d', 'session-a', 'session-c'])
+  })
+
+  it('keeps a real zero-byte size ahead of unknown sizes in both directions', () => {
+    const zero = [row({ id: 'session-u' }), row({ id: 'session-z', sizeBytes: 0 })]
+    expect(sortRows(zero, 'size', 'desc').map((r) => r.id)).toEqual(['session-z', 'session-u'])
+    expect(sortRows(zero, 'size', 'asc').map((r) => r.id)).toEqual(['session-z', 'session-u'])
+  })
 })
 
 describe('selectionSummary', () => {

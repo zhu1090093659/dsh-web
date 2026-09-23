@@ -2,6 +2,8 @@
 
 Status: implemented
 
+现状（2026-09-17）：本修复的公告/气泡部分已随宠物解耦移除（见[解耦笔记](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md)）；适配器身份与折叠时刻计价两项决策仍然有效。
+
 ## Problem
 
 用户开启 `bubbleMode: always` 后一并反馈的两个缺陷与一个缺失面：

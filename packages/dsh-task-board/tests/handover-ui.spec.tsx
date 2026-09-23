@@ -87,4 +87,18 @@ describe('handover UI (issue #5)', () => {
     const container = render(<TaskDetail controller={controller()} task={card({ handover: { references: [], permission: 'read-only', bundledAt: 0 } })} />)
     expect(container.querySelector('[data-dsh-part="permission-gate"]')).toBeNull()
   })
+
+  it('renders duplicate references without a React key collision', () => {
+    // #1492: references are free text from the freeze block, so the same string
+    // can repeat; each row needs its own key instead of reusing the reference.
+    const errors: string[] = []
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => { errors.push(String(args[0])) })
+    try {
+      const container = render(<TaskDetail controller={controller()} task={card({ handover: { workspaceId: 'ws-1', permission: 'read-only', references: ['docs/a.md', 'docs/a.md'], bundledAt: 0 } })} />)
+      expect(container.querySelectorAll('[data-dsh-part="handover"] li').length).toBe(2)
+      expect(errors.filter((line) => line.includes('same key')).length).toBe(0)
+    } finally {
+      spy.mockRestore()
+    }
+  })
 })

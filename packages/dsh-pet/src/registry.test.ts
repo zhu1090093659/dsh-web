@@ -314,14 +314,15 @@ describe('loadPetRegistry', () => {
       dshPetsDir: '',
     })
 
-    // The repo checkout also resolves miku (frames2d gameplay pet), jyn
-    // (frames2d gameplay pet) and starry-doll (community sprite2d pet) from
+    // The repo checkout also resolves doro and miku (frames2d gameplay pets),
+    // jyn (frames2d gameplay pet) and starry-doll (community sprite2d pet) from
     // assets/; the npm files whitelist excludes them (Workshop delivery), so
     // npm installs see the atlas pets until a Workshop install lands them
     // under $DSH_HOME/pets. blue-throated-bee-eater ships bundled alongside
     // the other atlas pets.
     expect(registry.entries.map(entry => entry.id)).toEqual([
       'blue-throated-bee-eater',
+      'doro',
       'jyn',
       'miku',
       'ouo-neko',

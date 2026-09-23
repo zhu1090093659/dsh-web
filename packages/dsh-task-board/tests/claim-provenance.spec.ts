@@ -124,7 +124,8 @@ describe('controller claim initiator (issue #6)', () => {
       subscribe: () => () => undefined,
     }
     const sessions = {
-      list: { getSnapshot: () => ({ current: 'session-claimer' }), subscribe: () => () => {} },
+      current: () => 'session-claimer',
+      subscribe: () => () => {},
       open: () => {},
     }
     const controller = new BoardController({ store: new InMemoryTaskStore(), sessions, transport, now: () => NOW })

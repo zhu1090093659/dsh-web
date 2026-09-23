@@ -15,7 +15,7 @@ Status: implemented
 
 - 梁神预设的 persona 行与预设模板都改用 `prefix`，不再使用已退役的 `text`。
 - `buildInstructionHint` 用 `{ kind: 'plugin', plugin: name }` 标记消息；消息本身已带插件名，且 `plugin` 同时被 v2→v3 迁移白名单和 v3 `MessageSourceMap` 接受（`{ kind: 'plugin'; plugin: string } & ContextFormed`，其 `ContextFormed` 允许 `form` 缺省）。
-- `tests/tool-bootstrap.test.ts` 的两个 instruction-hint 用例改为断言 `plugin`。
+- `tests/minimal-prompt.test.ts`（当时为 `tests/tool-bootstrap.test.ts`）的两个 instruction-hint 用例改为断言 `plugin`。
 
 ## Testing
 
@@ -31,6 +31,6 @@ Status: implemented
 
 ## Consequences
 
-- 新的梁神会话持久化的来源 kind 是已发布迁移认识的，DSH 升级后可恢复；phase-1 消息白名单不受影响，因为 `instruction-hint` 与 `plugin` 都不在 `DEFAULT_MESSAGE_SOURCES` 里。
+- 新的梁神会话持久化的来源 kind 是已发布迁移认识的，DSH 升级后可恢复。本条权衡过的 `DEFAULT_MESSAGE_SOURCES` 白名单随其所属的两阶段机制一并退役（见 [LiangShen mode as a minimal persona plus an injected standard tool catalog](../feature/2026-09-11-liangshen-minimal-prompt-tool-catalog.zh.md)）。
 - 历史中已经写入 `"kind":"instruction-hint"` 的会话仍需用户自行规范化该 kind 才能打开；本次修复只防止新增，不修复既有文件。
 - 复制 `_template/` 的预设作者得到的 persona 行能在当前 schema 下挂载。

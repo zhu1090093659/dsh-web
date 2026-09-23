@@ -28,6 +28,26 @@ function stubFileReader(payload: string): void {
   })
 }
 
+/** FileReader stub that succeeds or fails per read, in call order. */
+function stubFileReaderSequence(behaviour: readonly ('ok' | 'fail')[], payload: string): void {
+  let index = 0
+  vi.stubGlobal('FileReader', class {
+    onload: (() => void) | null = null
+    onerror: (() => void) | null = null
+    result: string | null = null
+    readAsDataURL(_file: File): void {
+      const mode = behaviour[index] ?? 'ok'
+      index += 1
+      if (mode === 'fail') {
+        queueMicrotask(() => this.onerror?.())
+        return
+      }
+      this.result = `data:image/png;base64,${payload}`
+      queueMicrotask(() => this.onload?.())
+    }
+  })
+}
+
 /** One fake conversation surface recording what the hook did with it. */
 function makeConversation() {
   const original = vi.fn(async (_session: unknown, _text: string, _ids: readonly string[], _mode: string, _signal?: AbortSignal): Promise<unknown> => { log.push('original'); return { kind: 'success' } })
@@ -85,6 +105,36 @@ describe('installSendHook', () => {
     installSendHook(face)
     await face.sendSession({ prompt: vi.fn() } as never, 'look', ['id1'], 'queue')
     expect(log).toEqual(['original'])
+  })
+
+  it('reads every image before uploading so a later read failure stores nothing', async () => {
+    stubFileReaderSequence(['ok', 'fail'], 'QUJD')
+    const attach = vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: DURABLE_MARKDOWN } }), { status: 200 }))
+    vi.stubGlobal('fetch', attach)
+    const { face, log } = makeConversation()
+    installSendHook(face)
+    await face.sendSession({ prompt: vi.fn() } as never, 'look', ['id1', 'id2'], 'queue')
+    // No attach request at all: the fallback did not orphan a stored attachment.
+    expect(attach).not.toHaveBeenCalled()
+    expect(log).toEqual(['original'])
+  })
+
+  it('uploads every image once the pre-read pass succeeded', async () => {
+    stubFileReader('QUJD')
+    const attach = vi.fn(async () => new Response(JSON.stringify({ ok: true, value: { note: 'N', markdown: DURABLE_MARKDOWN } }), { status: 200 }))
+    vi.stubGlobal('fetch', attach)
+    const { face, log } = makeConversation()
+    installSendHook(face)
+    await face.sendSession({ prompt: vi.fn() } as never, 'look', ['id1', 'id2'], 'queue')
+    expect(attach).toHaveBeenCalledTimes(2)
+    expect(face._original).toHaveBeenCalledWith(
+      { prompt: expect.anything() },
+      `look\n${DURABLE_MARKDOWN}\n${DURABLE_MARKDOWN}`,
+      [],
+      'queue',
+      undefined,
+    )
+    expect(log).toEqual(['original', 'release', 'release'])
   })
 
   it('falls back when a draft image id no longer resolves', async () => {

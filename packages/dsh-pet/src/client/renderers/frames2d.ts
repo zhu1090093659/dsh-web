@@ -12,10 +12,11 @@
  * Frame presentation has two modes picked once at mount by capability
  * probing:
  * - Canvas bitmap buffer (default where createImageBitmap/fetch/2D context
- *   exist): every frame is decoded exactly once into an ImageBitmap during
- *   the warm pass and drawn onto one <canvas> - steady-state playback issues
- *   zero DOM mutations and zero re-decodes (measured hotspot: swapping
- *   <img>.src per frame drove image decode + invalidation every tick).
+ *   exist): frames are decoded once into an ImageBitmap on demand, with a
+ *   bounded look-ahead window over the playing track, and drawn onto one
+ *   <canvas> - steady-state playback issues zero DOM mutations and zero
+ *   re-decodes (measured hotspot: swapping <img>.src per frame drove image
+ *   decode + invalidation every tick).
  * - Classic <img> fallback (jsdom/tests or missing APIs): identical to the
  *   historical behavior - cache-warm Image elements plus guarded src swaps,
  *   so environments without modern decoding keep working unchanged.
@@ -283,6 +284,27 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
       return job
     }
 
+    /**
+     * Bounded look-ahead window: decode only the frames playback is about to
+     * need. The historical warm pass decoded every frame of every track up
+     * front - a shipped pet carries ~1.1k 512x683 frames, so that pass pulls
+     * tens of megabytes and retains every decoded bitmap for the life of the
+     * page. Prefetching the playing track's next frames keeps loops and phase
+     * switches warm while unplayed tracks (and every unselected skin's
+     * frames) stay on demand, where playback jumps the queue anyway.
+     */
+    const PREFETCH_AHEAD = 12
+
+    const prefetchAhead = (trackId: string, index: number): void => {
+      const def = config.tracks[trackId]
+      if (def === undefined) return
+      const end = Math.min(def.frames.length, index + 1 + PREFETCH_AHEAD)
+      for (let ahead = index + 1; ahead < end; ahead += 1) {
+        const url = def.frames[ahead]
+        if (url !== undefined) void loadFrame(url)
+      }
+    }
+
     let disposed = false
     let timer: ReturnType<typeof setTimeout> | undefined
     let watchdog: ReturnType<typeof setInterval> | undefined
@@ -327,6 +349,7 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
       const def = config.tracks[trackId]
       const url = def?.frames[index]
       if (url === undefined) return
+      prefetchAhead(trackId, index)
       if (img !== null) {
         if (img.getAttribute('src') !== url) img.src = url
         return
@@ -398,21 +421,6 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
         const expected = (def.durations[frameIndex] ?? 200) + WATCHDOG_MS
         if (Date.now() - lastAdvance > expected) tick()
       }, WATCHDOG_MS)
-    }
-
-    // Warm pass: decode every frame up front (tiny same-origin webp files)
-    // so loops and phase switches never wait on a first decode - same intent
-    // as the historical Image-cache warm loop, now feeding the decode cache.
-    // Phase-reachable tracks enqueue first so early switches never trail the
-    // full warm backlog; demand loads jump the queue regardless.
-    const warmTrackIds: string[] = [
-      ...new Set([...Object.values(config.phases), config.phases.idle]),
-    ]
-    for (const warmTrack of [...warmTrackIds, ...Object.keys(config.tracks)].map(
-      (id) => config.tracks[id],
-    )) {
-      if (warmTrack === undefined) continue
-      for (const warmUrl of warmTrack.frames) void loadFrame(warmUrl)
     }
 
     play(track)

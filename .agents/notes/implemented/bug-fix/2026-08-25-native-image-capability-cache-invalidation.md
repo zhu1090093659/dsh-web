@@ -8,14 +8,15 @@ When sending messages in a session, the describe-image send hook caches the mode
 
 ## Decision
 
-1. In `packages/dsh-tool-describe-image/src/client/capability.ts`, maintain an `activeCaches` registry and export `invalidateImageCapabilityCaches(sessionId?: string)` to flush cached session capability verdicts.
+1. In `packages/dsh-tool-describe-image/src/client/capability.ts`, maintain a live-checker registry (`activeStores`; each entry holds that checker's verdict cache and its in-flight probes) and export `invalidateImageCapabilityCaches(sessionId?: string)` to flush cached session capability verdicts.
 2. In `packages/dsh-tool-describe-image/src/client/NativeImageSection.tsx`, call `invalidateImageCapabilityCaches()` upon a successful toggle before updating local React state.
-3. Extended `client-capability.spec.ts` with tests for global and per-session cache invalidation.
+3. Invalidation drops the session's in-flight probe entry as well, and a settling probe publishes its verdict only while it is still the live entry for that session. A probe that started before the toggle therefore answers its caller but never repopulates the cache (issue #1509).
+4. Extended `client-capability.spec.ts` with tests for global and per-session cache invalidation, and for an in-flight probe that settles after an invalidation.
 
 ## Consequences
 
-Toggling the native image requests setting now immediately clears client-side capability caches, ensuring the next message send immediately fetches the fresh capability verdict from the host.
+Toggling the native image requests setting now immediately clears client-side capability caches, ensuring the next message send immediately fetches the fresh capability verdict from the host. A probe already in flight can no longer write its pre-toggle verdict back afterwards, so the 30-second window cannot be re-opened by that race.
 
 ## Testing
 
-`pnpm --filter @linxin666/dsh-tool-describe-image test` (374 passed), `pnpm typecheck`, `pnpm test`, and `pnpm test:scripts` all pass cleanly.
+`pnpm --filter @linxin666/dsh-tool-describe-image test` (388 passed), `pnpm typecheck`, `pnpm test`, and `pnpm test:scripts` all pass cleanly.

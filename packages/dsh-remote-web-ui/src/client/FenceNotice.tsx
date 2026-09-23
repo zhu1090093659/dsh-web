@@ -62,8 +62,6 @@ export function FenceNotice({ t, onRetry, onAccept = acceptPair }: FenceNoticePr
       }
       if (result.code === 'invalid') {
         setErrorMsg(t('fence.unpaired.tokenInvalid'))
-      } else if (result.code === 'used') {
-        setErrorMsg(t('fence.unpaired.tokenUsed'))
       } else {
         setErrorMsg(t('fence.unpaired.tokenFailed'))
       }

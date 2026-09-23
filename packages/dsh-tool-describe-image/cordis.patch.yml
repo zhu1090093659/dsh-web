@@ -5,11 +5,12 @@
 #
 # One package, both halves: the node half (exports ".") runs in the host
 # process and registers the model-facing describe_image tool, the
-# /describe-image/attach upload route, and the "Image understanding"
-# settings section; the browser half (declared by `dsh.client`, served from
-# lib/client.js) rewrites image-bearing sends into describe-image references
-# at submit time. The settings card itself is rendered by the web GUI's
-# built-in plugin config page from the `describe-image` settings section.
+# /describe-image/attach upload route, and the plugin's own `Config`; the
+# browser half (declared by `dsh.client`, served from lib/client.js) rewrites
+# image-bearing sends into describe-image references at submit time. The
+# "Image understanding" settings card is rendered by the web GUI's settings
+# page for this profile entry (`describe-image`), which the Host generates
+# from the row's Config schema.
 - insert:
     - id: describe-image
       name: '@linxin666/dsh-tool-describe-image'

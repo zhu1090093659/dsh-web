@@ -1,0 +1,97 @@
+name: Nightly
+
+# Tier 2 of the test strategy: the comprehensive lane that is deliberately too
+# expensive for every pull request. Pull-request CI already runs the full gate
+# set once; this lane adds what a single pass cannot see:
+#
+#   - coverage: the ratchet over every plugin package (pnpm coverage:check),
+#     which runs the whole suite under instrumentation;
+#   - flake: the full suite repeated three times, so a timing- or
+#     resource-dependent test fails here instead of in someone's pull request.
+#
+# Manual runs use workflow_dispatch.
+
+on:
+  schedule:
+    # 04:17 UTC daily. Off the hour so it does not queue behind the other
+    # scheduled workflows (contributors 03:30, stale assignment 03:30).
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  coverage:
+    name: Coverage ratchet
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --ignore-scripts matches ci.yml: the coverage run measures the checked
+      # out sources, and a fresh build is not needed to execute vitest.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # ci.yml builds before it tests, and packages/dsh-web-all's suite loads
+      # the committed lib/ artifacts of the aggregate; build first so this lane
+      # exercises the same tree a pull request does.
+      - name: Build
+        run: pnpm build
+
+      # Reports go to a temp directory, so a red run prints the regressed
+      # metrics in the job summary instead of uploading artifacts.
+      - name: Coverage ratchet
+        run: pnpm coverage:check
+
+  flake:
+    name: Flake detection (three full runs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Same build-before-test order as ci.yml (see the coverage job).
+      - name: Build
+        run: pnpm build
+
+      # Three plain runs of the whole monorepo suite. The loop fails on the
+      # first red run and names it, so the report distinguishes a consistently
+      # broken test from a flake.
+      - name: Repeat the full suite
+        run: |
+          set -e
+          for run in 1 2 3; do
+            echo "::group::full suite, run ${run} of 3"
+            pnpm test
+            echo "::endgroup::"
+          done
+
+      - name: Notice a flaky run
+        if: failure()
+        run: |
+          echo "::error::the full suite did not pass three times; a test that fails only on rerun is flaky and must be fixed or reported"

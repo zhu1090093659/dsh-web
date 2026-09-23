@@ -234,9 +234,9 @@ describe('frames2dRenderer canvas bitmap path', () => {
     expect(container.querySelector('canvas')).not.toBeNull()
     expect(container.querySelector('img')).toBeNull()
     await flush()
-    // Warm pass decoded every configured frame exactly once; the first frame
-    // of the idle track painted during mount.
-    expect(bitmaps.length).toBe(6)
+    // Only the playing track's look-ahead window decodes up front; unplayed
+    // tracks stay on demand. The idle track's first frame painted at mount.
+    expect(bitmaps.length).toBe(2)
     const paintsAtMount = draws
     expect(paintsAtMount).toBeGreaterThanOrEqual(1)
     vi.advanceTimersByTime(100)
@@ -277,7 +277,7 @@ describe('frames2dRenderer canvas bitmap path', () => {
     handle.dispose()
   })
 
-  it('drains the warm pass through a bounded fetch pool', async () => {
+  it('bounds the decode window to the pool plus the look-ahead, not the whole track', async () => {
     let inFlight = 0
     let peak = 0
     const gates: Array<() => void> = []
@@ -304,7 +304,39 @@ describe('frames2dRenderer canvas bitmap path', () => {
       await flush()
     }
     expect(peak).toBeLessThanOrEqual(8)
-    expect(bitmaps.length).toBe(24)
+    // Frame 0 plus the 12-frame look-ahead window; the remaining frames of the
+    // 24-frame track are never decoded up front.
+    expect(bitmaps.length).toBe(13)
+    handle.dispose()
+  })
+
+  it('leaves unplayed tracks and unselected skins to on-demand playback', async () => {
+    const fetched: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: unknown) => {
+      fetched.push(String(input))
+      return { ok: true, blob: async () => ({}) }
+    }))
+    const skinConfig: PetFrames2dConfig = {
+      tracks: {
+        idle: { frames: ['/pet/miku/idle/1.webp'], durations: [100], loop: true },
+        'skin-a-idle': { frames: ['/pet/miku/skin-a/1.webp', '/pet/miku/skin-a/2.webp'], durations: [100, 100], loop: true },
+        'skin-b-idle': { frames: ['/pet/miku/skin-b/1.webp'], durations: [100], loop: true },
+      },
+      phases: { idle: 'idle' },
+      skins: [
+        { id: 'a', label: 'A', idleTrack: 'skin-a-idle' },
+        { id: 'b', label: 'B', idleTrack: 'skin-b-idle' },
+      ],
+    }
+    const { ctx } = canvasSetup()
+    const handle = frames2dRenderer.mount(ctx, frames2dRenderer.validateConfig(skinConfig)) as Frames2dRendererHandle
+    await flush()
+    expect(fetched).toEqual(['/pet/miku/idle/1.webp'])
+    // Selecting a skin pulls only that skin's track.
+    handle.setIdleTrack('skin-a-idle')
+    await flush()
+    expect(fetched).toContain('/pet/miku/skin-a/1.webp')
+    expect(fetched).not.toContain('/pet/miku/skin-b/1.webp')
     handle.dispose()
   })
 
@@ -361,7 +393,7 @@ describe('frames2dRenderer canvas bitmap path', () => {
     vi.stubGlobal('Image', FailingImage)
     const { ctx } = canvasSetup()
     const handle = frames2dRenderer.mount(ctx, frames2dRenderer.validateConfig(CONFIG)) as Frames2dRendererHandle
-    // Warm pass fetches fail through the pool, resolve undefined and are
+    // Prefetch fetches fail through the pool, resolve undefined and are
     // dropped from the memo; nothing throws.
     await flush()
     const memoFetches = (fetch as ReturnType<typeof vi.fn>).mock.calls.length

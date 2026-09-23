@@ -99,17 +99,29 @@ export function installSendHook(conversation: unknown, isEnabled?: () => boolean
     if (attachments.length !== imageIds.length) {
       return original.call(face, session, text, imageIds, mode, signal)
     }
-    const refs: string[] = []
+    // Read every file before uploading any: a local read failure must not
+    // strand images an earlier iteration already stored on the host. The
+    // attachment store never deletes, so the fallback below has to be a true
+    // no-op for it when the failure is a local read.
+    const payloads: { base64: string; type: string; name: string }[] = []
     for (const attachment of attachments) {
       const read = await readFileAsBase64(attachment.file)
-      if (!read.ok) break
-      const upload = await uploadImageForDescribe(read.base64, attachment.file.type, attachment.file.name)
+      if (!read.ok) {
+        return original.call(face, session, text, imageIds, mode, signal)
+      }
+      payloads.push({ base64: read.base64, type: attachment.file.type, name: attachment.file.name })
+    }
+    const refs: string[] = []
+    for (const payload of payloads) {
+      const upload = await uploadImageForDescribe(payload.base64, payload.type, payload.name)
       if (!upload.ok) break
       refs.push(upload.markdown)
     }
     if (refs.length !== attachments.length) {
       // Upload fell short: keep the shell's original behavior (which will
-      // reject the image block for a text-only model).
+      // reject the image block for a text-only model). Uploads that already
+      // succeeded stay in the store — the official attachment service exposes
+      // no delete, so the hook cannot unwind them here.
       return original.call(face, session, text, imageIds, mode, signal)
     }
     const fullText = [text.trim(), ...refs].filter(part => part !== '').join('\n')

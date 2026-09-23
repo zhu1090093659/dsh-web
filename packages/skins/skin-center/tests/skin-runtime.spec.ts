@@ -172,6 +172,15 @@ describe('shared shell rendering adapter (#954)', () => {
     expect(css).not.toContain('[data-goal-bar="true"] > *')
   })
 
+  it('lets the native queue dock keep its own single surface (issue #1572)', () => {
+    const css = shellRenderingCss()
+    expect(css).toContain('[data-slot="conversation.input.dock"] > [data-queue-dock]')
+    expect(css).toMatch(/\[data-queue-dock\][^{]*\{[^}]*background: transparent !important;/s)
+    expect(css).toMatch(/\[data-queue-dock\][^{]*\{[^}]*box-shadow: none !important;/s)
+    expect(css).toMatch(/\[data-queue-dock\][^{]*\{[^}]*backdrop-filter: none !important;/s)
+    expect(css).not.toContain('[data-queue-dock] > *')
+  })
+
   it('keeps composer geometry intact while retaining scroll clearance (#978, #1133)', () => {
     const css = shellRenderingCss()
     expect(css).toContain('[data-conversation-scroll]')

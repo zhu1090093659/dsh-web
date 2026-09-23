@@ -78,20 +78,24 @@ describe('FenceNotice', () => {
     })
   })
 
-  it('displays used error when token was already used (#1213)', async () => {
+  it('operator sees the generic refusal copy for a fenced-off accept', async () => {
+    // Given a fence whose accept is refused by the origin fence (the only other
+    // refusal a bearer token can produce is "invalid").
     const onRetry = vi.fn()
-    const onAccept = vi.fn().mockResolvedValue({ ok: false, code: 'used' })
+    const onAccept = vi.fn().mockResolvedValue({ ok: false, code: 'forbidden' })
 
     render(<FenceNotice t={t} onRetry={onRetry} onAccept={onAccept} />)
 
+    // When the operator submits a link.
     const input = screen.getByPlaceholderText('或在此直接粘贴配对链接 / Token')
     const submitBtn = screen.getByRole('button', { name: '立即配对' })
 
-    fireEvent.change(input, { target: { value: 'used-token' } })
+    fireEvent.change(input, { target: { value: 'refused-token' } })
     fireEvent.click(submitBtn)
 
+    // Then the generic refusal copy shows and no retry fires.
     await vi.waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('该配对链接已被使用')
+      expect(screen.getByRole('alert').textContent).toContain('配对失败，请检查网络或重新获取链接')
       expect(onRetry).not.toHaveBeenCalled()
     })
   })

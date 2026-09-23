@@ -70,8 +70,8 @@ async function runAccept(token: string, page: PageSurface): Promise<void> {
   } catch {
     sessionStorage.setItem(PAIR_FAILED_MARKER, 'failed')
   }
-  // Drop the token from the URL either way: an accepted token is consumed
-  // (a re-scan would 409), and a failed one must not loop.
+  // Drop the token from the URL either way: it is spent for this tab (the
+  // session is established), and a failed one must not loop.
   const url = new URL(page.href)
   url.searchParams.delete('pair')
   page.replaceState(`${url.pathname}${url.search}${url.hash}`)

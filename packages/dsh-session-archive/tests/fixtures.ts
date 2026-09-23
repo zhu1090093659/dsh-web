@@ -46,9 +46,8 @@ export interface FakeHost {
     workspaces: FixtureWorkspace[]
     list(): FixtureWorkspace[]
     get archivedSessionIds(): string[]
-    requireState(): FakeRegistryState
-    setState(next: FakeRegistryState): Promise<void>
     archiveSession(id: string): Promise<void>
+    unarchiveSession(id: string): Promise<void>
     mutatedWorkspaces: string[]
   }
   sources(): InventorySources
@@ -113,15 +112,14 @@ export function createFakeHost(options: {
     get archivedSessionIds(): string[] {
       return [...state.archivedSessionIds]
     },
-    requireState(): FakeRegistryState {
-      return state
-    },
-    async setState(next: FakeRegistryState): Promise<void> {
-      Object.assign(state, next)
-    },
     async archiveSession(id: string): Promise<void> {
       if (!known(id)) throw new Error(`WorkspaceUnknownSessionError: ${id}`)
       if (!state.archivedSessionIds.includes(id)) state.archivedSessionIds = [...state.archivedSessionIds, id]
+    },
+    // The 0.1.6 cohort added this public verb; it is idempotent for an id that
+    // is not archived, exactly like the host implementation.
+    async unarchiveSession(id: string): Promise<void> {
+      state.archivedSessionIds = state.archivedSessionIds.filter((entry) => entry !== id)
     },
   }
 

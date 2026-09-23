@@ -26,7 +26,7 @@ export type HarnessSendResult = { ok: true } | { ok: false; message: string }
  * The client entry implements it over ctx.sessions; tests use a fake.
  */
 export interface HarnessPort {
-  /** The currently open session, when any. */
+  /** The Session the main view currently shows, when any. */
   current(): HarnessTarget | undefined
   /** Queue the prompt text into the target session. */
   send(target: HarnessTarget, text: string): Promise<HarnessSendResult>
@@ -52,6 +52,7 @@ export interface HarnessPromptEnv {
 
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import { mainViewSessionId } from './main-session.ts'
 
 /**
  * Build the real port over ctx.sessions. Returns undefined when no sessions
@@ -66,7 +67,7 @@ export function createHarnessPort(sessions: unknown): HarnessPort | undefined {
     current: () => {
       try {
         const list = s.list?.getSnapshot?.()
-        const id = list?.current
+        const id = mainViewSessionId(list?.byId)
         if (id === undefined) return undefined
         const row = list?.byId?.[id]
         return { id, label: row?.displayTitle ?? id }

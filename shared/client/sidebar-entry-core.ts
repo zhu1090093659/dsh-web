@@ -13,6 +13,7 @@
  * Packages receive this file as a generated copy via scripts/sync-shared.mjs;
  * edit the shared source and re-run the sync instead of editing a copy.
  */
+import { subscribeBodyInvalidations } from './body-mutations.ts'
 
 /** Per-package configuration for one sidebar entry row. */
 export interface SidebarEntryOptions {
@@ -82,8 +83,8 @@ function newSessionButton(root: HTMLElement): HTMLButtonElement | undefined {
   return undefined
 }
 
-/** Build the entry row (a detached button; insert once the shell is up). */
-function createEntry(options: SidebarEntryOptions): { entry: HTMLButtonElement; applyLabel: () => void } {
+/** Build the entry row (detached; inserted once the shell is up). */
+function createEntry(options: SidebarEntryOptions): { entry: HTMLElement; applyLabel: () => void } {
   const entry = document.createElement('button')
   entry.type = 'button'
   entry.setAttribute(options.rowAttribute, '')
@@ -109,7 +110,7 @@ function createEntry(options: SidebarEntryOptions): { entry: HTMLButtonElement; 
 }
 
 /** Re-insert the entry after the New Session row (before the browser region). */
-function placeEntry(root: HTMLElement, entry: HTMLButtonElement, options: SidebarEntryOptions): boolean {
+function placeEntry(root: HTMLElement, entry: HTMLElement, options: SidebarEntryOptions): boolean {
   const button = newSessionButton(root)
   if (button === undefined) return false
   if (entry.parentElement !== root) {
@@ -187,13 +188,15 @@ export function mountSidebarEntry(options: SidebarEntryOptions): () => void {
 
   // Body-level watcher retained as the "whole rebuild" fallback: when the shell
   // tears down the whole sidebar pane, the root observer is gone with it and
-  // only this body observation can notice the new pane mounting. It is no
-  // longer disconnected after placement; the placed-and-still-mounted case
+  // only this body observation can notice the new pane mounting. It stays
+  // subscribed after placement; the placed-and-still-mounted case
   // short-circuits through the cheap document.body.contains(entry) check, so
-  // unrelated app mutations (e.g. chat streaming) cost one contains check
-  // instead of churning the full re-query.
-  const waitObserver = new MutationObserver(() => { tryPlace() })
-  waitObserver.observe(document.body, { childList: true, subtree: true })
+  // unrelated app mutations (e.g. chat streaming) cost one contains check per
+  // frame instead of churning the full re-query. The body observation itself is
+  // the page-wide hub (shared/client/body-mutations.ts): every family plugin
+  // used to hold its own body subtree observer, so the per-mutation cost grew
+  // with the number of installed plugins; the hub keeps exactly one.
+  const unsubscribeBody = subscribeBodyInvalidations(() => { tryPlace() })
 
   // Self-heal: if a React re-render displaces the row, re-insert it in the
   // same frame (microtask before paint -> no visible flicker).
@@ -224,7 +227,7 @@ export function mountSidebarEntry(options: SidebarEntryOptions): () => void {
   tryPlace()
 
   return () => {
-    waitObserver.disconnect()
+    unsubscribeBody()
     rootObserver.disconnect()
     unsubscribeRefresh?.()
     unsubscribeActive?.()

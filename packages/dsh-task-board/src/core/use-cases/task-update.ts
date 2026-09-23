@@ -8,7 +8,7 @@
  * back to the runtime default); an unknown permission string is ignored so
  * stale UI can never persist a value the execution service rejects.
  */
-import { freezeOf, isTaskPermission, normalizeTargetId, type TaskRecord, type TaskPermission } from '../tasks.ts'
+import { freezeOf, isTaskPermission, normalizeTags, normalizeTargetId, type TaskRecord, type TaskPermission, type TaskTag } from '../tasks.ts'
 import type { FreezeSnapshot } from '../freeze-snapshot.ts'
 import type { TaskHandoverInput } from '../handover.ts'
 
@@ -20,6 +20,13 @@ export type TaskUpdatePatch = Partial<Pick<TaskRecord, 'title' | 'description' |
   freeze?: FreezeSnapshot & { redacted?: boolean } | null
   /** Replaces the handover bundle (restamping bundledAt); an explicit null clears it. */
   handover?: TaskHandoverInput | null
+  /**
+   * Replaces the task's labels (issue #1521). Unlike the content fields, tags
+   * stay editable after the first run: they classify the task and shape the
+   * NEXT execution prompt, they are not the record of what already ran. An
+   * explicit null (or a list that normalizes to nothing) clears them.
+   */
+  tags?: TaskTag[] | null
 }
 
 /** The fields that edit the task's content (what the user reads and what the
@@ -68,7 +75,7 @@ export function applyUpdateTask(
 ): readonly TaskRecord[] {
   return tasks.map(task => {
     if (task.id !== id) return task
-    const { freeze: freezePatch, handover: handoverPatch, ...rest } = patch
+    const { freeze: freezePatch, handover: handoverPatch, tags: tagsPatch, ...rest } = patch
     const workspaceId = 'workspaceId' in patch ? normalizeTargetId(patch.workspaceId) : undefined
     const mode = 'mode' in patch ? normalizeTargetId(patch.mode) : undefined
     const permission = 'permission' in patch ? normalizePermission(task.permission, patch.permission) : undefined
@@ -86,6 +93,9 @@ export function applyUpdateTask(
     next.freeze = freezePatch == null ? undefined : freezeOf(freezePatch, now)
     // Handover follows the same null-clears convention, restamping bundledAt.
     next.handover = handoverPatch == null ? undefined : { ...handoverPatch, bundledAt: now }
+    // Tags use the same convention: a present array replaces the set (after
+    // repair), an explicit null or a fully-invalid list clears it.
+    if ('tags' in patch) next.tags = tagsPatch == null ? undefined : normalizeTags(tagsPatch)
     // The permission confirmation binds the exact permission value: a change
     // of the pinned permission or of the handover bundle re-arms the gate
     // (blocking confirm-then-swap escalation). handover was destructured out

@@ -72,8 +72,13 @@ export function sortRows(rows: readonly ArchiveSessionRow[], key: SortKey, dir: 
       return a.id.localeCompare(b.id)
     }
     if (key === 'size') {
-      const av = a.sizeBytes ?? -1
-      const bv = b.sizeBytes ?? -1
+      const av = a.sizeBytes
+      const bv = b.sizeBytes
+      // Unknown sizes sort last in either direction, exactly like the time
+      // keys below: a missing size is not the smallest file.
+      if (av === undefined && bv === undefined) return a.id.localeCompare(b.id)
+      if (av === undefined) return 1
+      if (bv === undefined) return -1
       if (av !== bv) return sign * (av - bv)
       return a.id.localeCompare(b.id)
     }

@@ -1,9 +1,9 @@
 /**
  * The dsh-usage host service: folds live session usage into the persistent
  * ledger, probes each configured provider's balance/coding-plan endpoint on
- * a poll cycle, and announces the current provider's status to the pet
- * bubble. Secrets stay in the host process; the browser only ever sees the
- * overview document.
+ * a poll cycle, and serves the current provider's strip-ready view inside
+ * the overview document. Secrets stay in the host process; the browser only
+ * ever sees the overview document.
  * @module @linxin666/dsh-usage/host/usage-service
  */
 
@@ -16,13 +16,11 @@ import type { TokenUsage } from '@deepseek-ai/dsh-llm'
 import { dshHome } from '../dsh-home.ts'
 import { adapterFor, isDeepSeekProviderRoute, providerErrorMessage } from '../core/adapters.ts'
 import type { BalanceParse, PlanParse } from '../core/adapters.ts'
-import { deepseekModelSpend, deepseekPeriodAt } from '../core/pricing.ts'
+import { foldAliasRoutes } from '../core/provider-routes.ts'
+import { deepseekModelSpend } from '../core/pricing.ts'
 import { createLedgerDocument, deserializeLedger, foldUsage, ledgerDayKeys, localDateKey, pruneLedger, summarizeDays, totalTokens } from '../core/ledger.ts'
 import type { BalanceView, CredentialKind, ObservedSpendView, PlanView, ProviderSnapshotState, ProviderSnapshotView, UsageLedgerDocument, UsageOverviewView, UsageTokenTotals } from '../core/types.ts'
-import { emptyTotals } from '../core/types.ts'
-
-/** Source tag the plugin stamps onto pet announcements. */
-export const USAGE_ANNOUNCE_SOURCE = 'dsh-usage'
+import { addTotals, emptyTotals } from '../core/types.ts'
 
 /**
  * Persisted accrual state for the official DeepSeek family's real spend:
@@ -49,16 +47,17 @@ interface ResolvedCredential {
   accountId?: string
 }
 
-/** One live LLM provider route the service knows about. */
+/** One LLM provider route the service knows about. */
 interface ProviderRoute {
   id: string
   displayName: string
+  /** Whether the LLM runtime serves requests on this route; a catalog-only entry is dormant. */
+  live: boolean
 }
 
-/** Poll-loop and announce options; re-applied live on settings change. */
+/** Poll-loop options; re-applied live on settings change. */
 export interface UsageServiceOptions {
   pollIntervalSec: number
-  bubbleMode: 'always' | 'change' | 'off'
   retainDays: number
 }
 
@@ -70,120 +69,6 @@ const FLUSH_DEBOUNCE_MS = 3_000
 
 /** How many trend days the overview serves. */
 const TREND_DAYS = 30
-
-/** Currency symbols the bubble and section render inline; other codes render as `12.00 EUR`. */
-const CURRENCY_SYMBOLS: Readonly<Record<string, string>> = { CNY: '¥', USD: '$', EUR: '€', GBP: '£' }
-
-/** Format a balance for display: symbol prefix when known, code suffix otherwise. */
-export function formatMoney(currency: string, totalBalance: string): string {
-  const symbol = CURRENCY_SYMBOLS[currency.toUpperCase()]
-  if (symbol !== undefined) return symbol + totalBalance
-  return `${totalBalance} ${currency.toUpperCase()}`
-}
-
-/** Map a used percent to the announcement tone. */
-export function planTone(percent: number): 'ok' | 'warn' | 'low' {
-  if (percent >= 90) return 'low'
-  if (percent >= 70) return 'warn'
-  return 'ok'
-}
-
-/** Announcement context the service computes per poll: today's family spend and the DeepSeek period. */
-export interface AnnounceContext {
-  /** Today's ledger spend for the announced provider's family (CNY; 0 = unpriced). */
-  todayCost?: number
-  /** Whether DeepSeek peak pricing is in effect right now. */
-  peak?: boolean
-}
-
-/**
- * Build the raw pet announce payload for one provider snapshot, or
- * undefined when nothing worth announcing exists. Pure: every payload this
- * returns satisfies the pet's `parseAnnouncement` contract — plan
- * announcements require a numeric percent, so percent-less windows never
- * announce (the pet validator would silently drop them). A priced family
- * (DeepSeek) with spend today announces a cost bubble first; balance-only
- * families announce the balance; plan families announce their tightest
- * percent window.
- */
-export function buildAnnouncement(
-  snapshot: Pick<ProviderSnapshotView, 'displayName' | 'balance' | 'plan'>,
-  context?: AnnounceContext,
-): Record<string, unknown> | undefined {
-  const todayCost = context?.todayCost ?? 0
-  if (todayCost > 0) {
-    const peak = context?.peak ?? false
-    const noteParts = [
-      peak ? '高峰时段 计价×2' : '空闲时段 计价减半',
-      ...(snapshot.balance !== undefined ? [`余额 ${formatMoney(snapshot.balance.currency, snapshot.balance.totalBalance)}`] : []),
-    ]
-    return {
-      kind: 'cost',
-      title: snapshot.displayName,
-      amount: `今日 ${formatMoney('CNY', todayCost.toFixed(2))}`,
-      ...(noteParts.length > 0 ? { note: noteParts.join(' · ') } : {}),
-      tone: peak ? 'warn' : 'ok',
-    }
-  }
-  if (snapshot.balance !== undefined) {
-    return {
-      kind: 'balance',
-      title: snapshot.displayName,
-      amount: formatMoney(snapshot.balance.currency, snapshot.balance.totalBalance),
-      tone: 'ok',
-    }
-  }
-  if (snapshot.plan === undefined) return undefined
-  const window = snapshot.plan.windows
-    .filter((entry) => typeof entry.percent === 'number')
-    .sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0))[0]
-  if (window === undefined || window.percent === undefined) return undefined
-  return {
-    kind: 'plan',
-    title: snapshot.displayName,
-    percent: window.percent,
-    ...(window.resetsAt !== undefined ? { resetAt: window.resetsAt } : {}),
-    ...(snapshot.plan.planName !== undefined ? { note: snapshot.plan.planName } : {}),
-    tone: planTone(window.percent),
-  }
-}
-
-/**
- * Compact token-count display for the usage fallback bubble: `9805`,
- * `8.7万`, `1.2亿`. The host-authored bubble copy is zh (like every other
- * line this service speaks), so the magnitudes follow the zh convention.
- */
-export function formatTokens(count: number): string {
-  const compact = (value: number): string => {
-    const rounded = Math.round(value * 10) / 10
-    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
-  }
-  if (count >= 1e8) return compact(count / 1e8) + '亿'
-  if (count >= 1e4) return compact(count / 1e4) + '万'
-  return String(count)
-}
-
-/**
- * The usage fallback for the session's provider: today's token consumption
- * and call count, the one fact the ledger owns for every provider. Providers
- * without a readable balance/plan endpoint (relay stations, local runtimes,
- * token-plan vendors — and probeable providers whose probes are failing)
- * would otherwise leave the pet bubble permanently silent even while their
- * sessions run. Undefined when the provider has no usage today: a bubble
- * about nothing is noise, not information. Pure; the payload satisfies the
- * pet's `parseAnnouncement` contract.
- */
-export function buildLedgerAnnouncement(input: { displayName: string; totals: UsageTokenTotals }): Record<string, unknown> | undefined {
-  const total = totalTokens(input.totals)
-  if (input.totals.calls <= 0 || total <= 0) return undefined
-  return {
-    kind: 'cost',
-    title: input.displayName,
-    amount: `今日 ${formatTokens(total)} tokens`,
-    note: `${input.totals.calls} 次调用`,
-    tone: 'ok',
-  }
-}
 
 /** Best-effort typed service read: absent services resolve to undefined at runtime. */
 function service<T>(ctx: Context, name: string): T | undefined {
@@ -245,7 +130,7 @@ export class UsageService {
   private spendWatch: SpendWatch | undefined
   /** Per-live-session route attribution (WeakMap: disposed sessions age out). */
   private readonly sessionRoutes = new WeakMap<Session, { provider: string; model: string }>()
-  /** The most recent route seen this boot; the pet bubble follows it. */
+  /** The most recent route seen this boot; the sidebar strip and the header highlight follow it. */
   private current: { provider?: string; model?: string; source: 'live' | 'default' } = { source: 'default' }
 
   private sessionListenerDisposer: (() => void) | undefined
@@ -259,7 +144,6 @@ export class UsageService {
   /** True once loadPersisted finished; nothing may overwrite the files before that. */
   private loaded = false
   private disposed = false
-  private lastSignature: string | undefined
   /** Last prune guard: once per local day, and whenever retention shrinks. */
   private lastPrune: { dayKey: string; retainDays: number } | undefined
 
@@ -280,8 +164,9 @@ export class UsageService {
 
   /**
    * Stop timers and flush pending ledger writes. The returned promise
-   * resolves after the final flush lands, so a successor instance (quick
-   * disable → enable) can serialize its first load behind it.
+   * resolves after the final flush lands, so a successor instance (the Host
+   * reloads the profile row on a config change) can serialize its first load
+   * behind it.
    */
   stop(): Promise<void> {
     this.disposed = true
@@ -291,7 +176,7 @@ export class UsageService {
     return this.flushLedger()
   }
 
-  /** Re-apply options live (settings change); retention shrink prunes now. */
+  /** Re-apply options to this running instance; retention shrink prunes now. */
   applyOptions(options: UsageServiceOptions): void {
     this.options = options
     this.pruneIfNeeded()
@@ -332,7 +217,7 @@ export class UsageService {
     return {
       updatedAt: Date.now(),
       providers,
-      current: { ...this.current },
+      current: this.currentView(),
       usage: {
         today: this.daySummary(todayKey),
         days: days.map((date) => {
@@ -358,6 +243,36 @@ export class UsageService {
     }
   }
 
+  /**
+   * The strip-ready current-provider view: the resolved display name plus
+   * today's ledger totals for the provider's adapter family (the route
+   * itself when adapter-less). `today` is absent on a day without usage —
+   * a strip about nothing is noise, not information.
+   */
+  private currentView(): UsageOverviewView['current'] {
+    const provider = this.current.provider
+    if (provider === undefined) return { ...this.current }
+    let snapshot = this.snapshots.get(provider)
+    if (snapshot === undefined) {
+      const family = adapterFor(provider)
+      if (family !== undefined) {
+        for (const [id, candidate] of this.snapshots) {
+          if (adapterFor(id) === family) {
+            snapshot = candidate
+            break
+          }
+        }
+      }
+    }
+    const displayName = snapshot?.displayName ?? this.routeDisplayName(provider)
+    const today = this.familyUsageToday(provider)
+    return {
+      ...this.current,
+      displayName,
+      ...(today.calls > 0 && totalTokens(today) > 0 ? { today } : {}),
+    }
+  }
+
   /** One local day aggregated per provider. */
   private daySummary(dateKey: string): UsageOverviewView['usage']['today'] {
     const day = this.ledger.days[dateKey] ?? {}
@@ -365,21 +280,20 @@ export class UsageService {
     return { date: dateKey, totals, providers }
   }
 
-  /** Today's ledger spend for one provider's adapter family (0 when unpriced). */
-  private familyCostToday(provider: string): number {
+  /**
+   * Today's ledger totals for one provider's adapter family — the exact
+   * route when adapter-less, the merged family otherwise, so aliased routes
+   * of one account (the deepseek catalog id and its runtime alias) fold
+   * together.
+   */
+  private familyUsageToday(provider: string): UsageTokenTotals {
     const family = adapterFor(provider)
-    if (family === undefined) return 0
-    let cost = 0
+    let merged = emptyTotals()
     for (const row of this.daySummary(localDateKey(Date.now())).providers) {
-      if (adapterFor(row.provider) === family) cost += row.totals.cost
+      const same = family === undefined ? row.provider === provider : adapterFor(row.provider) === family
+      if (same) merged = addTotals(merged, row.totals)
     }
-    return cost
-  }
-
-  /** Today's ledger totals for one provider route (the exact id, not the family). */
-  private providerUsageToday(provider: string): UsageTokenTotals {
-    const row = this.daySummary(localDateKey(Date.now())).providers.find((entry) => entry.provider === provider)
-    return row?.totals ?? emptyTotals()
+    return merged
   }
 
   /**
@@ -412,7 +326,7 @@ export class UsageService {
   /**
    * The display name for a route key: the LLM runtime's first, then the
    * adapter's, then the id itself — the snapshot may not exist for
-   * adapter-less routes, yet the bubble still needs a legible title.
+   * adapter-less routes, yet the sidebar strip still needs a legible title.
    */
   private routeDisplayName(provider: string): string {
     const route = this.listProviderRoutes().find((entry) => entry.id === provider)
@@ -594,7 +508,7 @@ export class UsageService {
   }
 
   /**
-   * One poll cycle: enumerate routes, resolve credentials, probe, announce.
+   * One poll cycle: enumerate routes, resolve credentials, probe.
    * A call while a cycle is already running joins that cycle instead of
    * returning immediately, so a manual refresh always waits for real probes.
    */
@@ -622,7 +536,6 @@ export class UsageService {
         if (this.disposed) return
         this.accrueDeepSeekSpend()
         await this.persistSnapshots()
-        this.announceCurrent()
       } finally {
         this.pollInFlight = false
         this.pollPromise = undefined
@@ -632,22 +545,28 @@ export class UsageService {
     return cycle
   }
 
+  /**
+   * Every route the service probes and renders: the runtime's live providers
+   * plus the configurable directory's catalog entries, then alias-folded so a
+   * dormant catalog entry cannot shadow the live route of the same adapter
+   * family (see foldAliasRoutes).
+   */
   private listProviderRoutes(): ProviderRoute[] {
-    const routes = new Map<string, string>()
+    const routes = new Map<string, ProviderRoute>()
     const runtime = service<{ listProviders(): Array<{ id: string; name: string }>; listConfigurableProviders(): Array<{ provider: string; displayName: string }> }>(this.ctx, 'llm')
     if (runtime !== undefined) {
       try {
         for (const provider of runtime.listProviders()) {
-          if (provider.id !== '') routes.set(provider.id, provider.name)
+          if (provider.id !== '') routes.set(provider.id, { id: provider.id, displayName: provider.name, live: true })
         }
         for (const provider of runtime.listConfigurableProviders()) {
-          if (!routes.has(provider.provider)) routes.set(provider.provider, provider.displayName)
+          if (!routes.has(provider.provider)) routes.set(provider.provider, { id: provider.provider, displayName: provider.displayName, live: false })
         }
       } catch {
         // Registry hiccups degrade to an empty list; the next poll retries.
       }
     }
-    return [...routes].map(([id, displayName]) => ({ id, displayName }))
+    return foldAliasRoutes([...routes.values()])
   }
 
   private async probeRoute(route: ProviderRoute, adapter: NonNullable<ReturnType<typeof adapterFor>>): Promise<void> {
@@ -765,71 +684,4 @@ export class UsageService {
     return section?.apiKeyEnv ?? 'DEEPSEEK_API_KEY'
   }
 
-  // ------------------------------------------------------------------
-  // Pet bubble
-  // ------------------------------------------------------------------
-
-  /**
-   * Announce the current provider's spend, balance, or plan usage to the pet.
-   * In `change` mode only meaningful value changes re-announce; `off` skips.
-   * The TTL rides the poll interval (bubble_mode `always` re-announces every
-   * cycle, so a TTL of two cycles + margin keeps the bubble continuous
-   * across polls; the pet contract caps the ceiling). A route id the
-   * catalogs spell differently than the snapshot keys falls back to its
-   * adapter family's snapshot. When the provider has no announceable probe
-   * fact (no adapter, failing probes, percent-less windows) the bubble falls
-   * back to the provider's today ledger usage, and with neither fact nor
-   * usage it stays silent. Fully guarded: a malformed snapshot or a failing
-   * pet service must never break the poll loop, and a disposed service never
-   * announces.
-   */
-  private announceCurrent(): void {
-    if (this.disposed || this.options.bubbleMode === 'off') return
-    try {
-      let provider = this.current.provider
-      if (provider === undefined) {
-        const fallback = readNamespace(this.ctx, 'agent-default-model') as { provider?: string; model?: string } | undefined
-        if (fallback?.provider !== undefined) {
-          provider = fallback.provider
-          this.current = { provider: fallback.provider, model: fallback.model, source: 'default' }
-        } else {
-          return
-        }
-      }
-      let snapshot = this.snapshots.get(provider)
-      if (snapshot === undefined) {
-        const family = adapterFor(provider)
-        if (family !== undefined) {
-          for (const [id, candidate] of this.snapshots) {
-            if (adapterFor(id) === family) {
-              snapshot = candidate
-              break
-            }
-          }
-        }
-      }
-      const displayName = snapshot?.displayName ?? this.routeDisplayName(provider)
-      let announcement = snapshot !== undefined
-        ? buildAnnouncement(snapshot, {
-            todayCost: this.familyCostToday(provider),
-            peak: deepseekPeriodAt(Date.now()).peak,
-          })
-        : undefined
-      // No probeable fact for the session's provider (no adapter at all,
-      // failing probes, or percent-less windows): the bubble still follows
-      // the provider with the one fact the ledger owns — today's usage.
-      if (announcement === undefined) {
-        announcement = buildLedgerAnnouncement({ displayName, totals: this.providerUsageToday(provider) })
-      }
-      if (announcement === undefined) return
-      const signature = JSON.stringify(announcement)
-      if (this.options.bubbleMode === 'change' && signature === this.lastSignature) return
-      this.lastSignature = signature
-      const ttlMs = Math.min(7_200_000, this.options.pollIntervalSec * 2_000 + 30_000)
-      const pet = service<{ announce(input: Record<string, unknown>): void }>(this.ctx, 'pet')
-      pet?.announce({ source: USAGE_ANNOUNCE_SOURCE, ttlMs, ...announcement })
-    } catch {
-      // A missing or failing pet service must never break the poll loop.
-    }
-  }
 }

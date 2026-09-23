@@ -1,6 +1,6 @@
 /**
  * Tunnels tab: the live local port-forward list (auto-refresh every 5s while
- * mounted) with per-row stop, a stop-all action scoped to the selected alias,
+ * visible) with per-row stop, a stop-all action scoped to the selected alias,
  * and a new-tunnel form.
  */
 import { useEffect, useRef, useState } from 'react'
@@ -9,7 +9,7 @@ import type { SshHostSummary, TunnelInfo } from '../../protocol.ts'
 import { errorMessage, tt } from './helpers.ts'
 import css from './panel.module.css'
 
-/** Live-tunnel polling interval while the tab is mounted (ms). */
+/** Live-tunnel polling interval while the tab and page are visible (ms). */
 export const TUNNEL_POLL_MS = 5000
 
 /**
@@ -37,10 +37,12 @@ export function diffTunnels(prev: TunnelInfo[] | null, next: TunnelInfo[]): Tunn
 /** Tunnels tab props. */
 export interface TunnelsTabProps {
   api: SshApi
+  /** Pause automatic reads while the owning panel is closed, preserving form state. */
+  active?: boolean
 }
 
 /** The tunnels tab. */
-export function TunnelsTab({ api }: TunnelsTabProps) {
+export function TunnelsTab({ api, active = true }: TunnelsTabProps) {
   const [hosts, setHosts] = useState<SshHostSummary[]>([])
   const [tunnels, setTunnels] = useState<TunnelInfo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -65,28 +67,66 @@ export function TunnelsTab({ api }: TunnelsTabProps) {
     return () => { disposed = true }
   }, [api])
 
-  // Live list with a TUNNEL_POLL_MS heartbeat while mounted. Every load
+  // Live list with a TUNNEL_POLL_MS heartbeat while visible. Every load
   // carries a sequence number so stale responses never overwrite newer
   // state, and the list is diff-set so an unchanged poll tick keeps the
   // previous state reference (no wasted re-render).
   const seqRef = useRef(0)
+  const automaticRead = useRef<{ running: boolean; resume?: () => void }>({ running: false })
   useEffect(() => {
+    if (!active) return
+    let disposed = false
+    const read = automaticRead.current
+    let timer: ReturnType<typeof setInterval> | undefined
     const load = async (): Promise<void> => {
+      if (disposed || read.running || document.visibilityState === 'hidden') return
+      read.running = true
       const seq = ++seqRef.current
       try {
         const list = await api.listTunnels()
-        if (seq !== seqRef.current) return
+        if (disposed || seq !== seqRef.current) return
         setTunnels(prev => diffTunnels(prev, list) ?? prev)
         setError(null)
       } catch (cause) {
-        if (seq !== seqRef.current) return
+        if (disposed || seq !== seqRef.current) return
         setError(errorMessage(cause))
+      } finally {
+        read.running = false
+        const resume = read.resume
+        read.resume = undefined
+        resume?.()
       }
     }
-    void load()
-    const timer = setInterval(() => { void load() }, TUNNEL_POLL_MS)
-    return () => { clearInterval(timer) }
-  }, [api])
+    const resume = (): void => {
+      if (disposed || document.visibilityState === 'hidden') return
+      // Rapid close/reopen must not start more reads while the old effect's
+      // request is pending. Keep only the latest visible refresh.
+      if (read.running) read.resume = resume
+      else void load()
+    }
+    const stop = (): void => {
+      if (timer !== undefined) clearInterval(timer)
+      timer = undefined
+    }
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'hidden') {
+        stop()
+        if (read.resume === resume) read.resume = undefined
+      } else if (timer === undefined) {
+        resume()
+        timer = setInterval(() => { void load() }, TUNNEL_POLL_MS)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    onVisibility()
+    return () => {
+      disposed = true
+      seqRef.current += 1
+      if (read.resume === resume) read.resume = undefined
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [api, active])
 
   const refresh = async (): Promise<void> => {
     const seq = ++seqRef.current

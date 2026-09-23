@@ -31,6 +31,8 @@ const {
   checkVcRuntime,
   isProgrammaticLaunch,
   shouldRaiseWindowOnSecondInstance,
+  parseAttentionConfig,
+  parseAttentionSignal,
 } = require('./runtime.cjs');
 
 const READY_TIMEOUT_MS = 180000;
@@ -47,6 +49,32 @@ let logStream = null;
 let tokenUrl = null;
 /** Ring buffer of recent host output for the error page. */
 const logTail = [];
+/**
+ * Attention policy (taskbar flash / system alert) for issue #1498, read once
+ * from $DSH_HOME/desktop-attention.json during boot; the default stands until
+ * then so a signal that arrives early still behaves predictably.
+ */
+let attentionConfig = parseAttentionConfig(undefined);
+/** Coalescing window: one failed run can emit several signals in a burst. */
+const ATTENTION_COOLDOWN_MS = 4000;
+let lastAttentionAt = 0;
+
+/**
+ * Raise the user for a signal the GUI observed while it was in the background.
+ * A focused window means the user is already looking at the run, so nothing is
+ * raised and the cooldown is not consumed.
+ * @param {string} kind - one of the kinds parseAttentionSignal accepted.
+ */
+function raiseAttention(kind) {
+  if (mainWindow === null || mainWindow.isDestroyed()) return;
+  if (mainWindow.isFocused()) return;
+  const now = Date.now();
+  if (now - lastAttentionAt < ATTENTION_COOLDOWN_MS) return;
+  lastAttentionAt = now;
+  if (attentionConfig.flash) mainWindow.flashFrame(true);
+  if (attentionConfig.sound) shell.beep();
+  pushLogLine('[desktop] attention: ' + kind);
+}
 
 function resourcesRoot() {
   return app.isPackaged ? process.resourcesPath : path.join(__dirname, '..', 'resources');
@@ -130,6 +158,21 @@ function stopHost(child) {
   });
 }
 
+/** Injection source of the renderer-side attention observer, read once. */
+let attentionObserverSource = null;
+
+function attentionObserverScript() {
+  if (attentionObserverSource === null) {
+    attentionObserverSource = fs.readFileSync(path.join(__dirname, 'attention-observer.js'), 'utf8');
+  }
+  return attentionObserverSource;
+}
+
+/** Whether a loaded URL is the loopback GUI (not the local splash/error page). */
+function isGuiUrl(url) {
+  return /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(url);
+}
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1440,
@@ -158,6 +201,26 @@ function createWindow() {
       if (/^https?:\/\//.test(url)) void shell.openExternal(url);
     }
   });
+  // The GUI is ordinary web content and knows nothing about this shell, so the
+  // observer that watches for approvals and settled runs is injected into the
+  // page after each document load. The splash and error pages get nothing.
+  window.webContents.on('did-finish-load', () => {
+    if (!isGuiUrl(window.webContents.getURL())) return;
+    // Reminders are a convenience: an unreadable observer script or a rejected
+    // injection must never take the window (or the host it is showing) down.
+    try {
+      void window.webContents.executeJavaScript(attentionObserverScript(), true).catch((error) => {
+        pushLogLine('[desktop] attention observer failed to install: '
+          + String(error && error.message ? error.message : error));
+      });
+    } catch (error) {
+      pushLogLine('[desktop] attention observer unavailable: '
+        + String(error && error.message ? error.message : error));
+    }
+  });
+  // A window the user has come back to is no longer asking for attention:
+  // flashFrame(true) keeps flashing until it is explicitly cleared.
+  window.on('focus', () => { window.flashFrame(false); });
   window.on('closed', () => {
     if (mainWindow === window) {
       mainWindow = null;
@@ -180,6 +243,14 @@ async function boot() {
   const runtime = resolveRuntimePaths(resourcesRoot(), process.platform, process.arch, app.isPackaged);
   const home = resolveDshHome(process.env, os.homedir());
   pushLogLine('[desktop] dsh home: ' + home);
+  try {
+    attentionConfig = parseAttentionConfig(fs.readFileSync(path.join(home, 'desktop-attention.json'), 'utf8'));
+  } catch {
+    // Missing or unreadable config keeps the default policy; a malformed one is
+    // parsed into the default by parseAttentionConfig itself.
+    attentionConfig = parseAttentionConfig(undefined);
+  }
+  pushLogLine('[desktop] attention: flash=' + String(attentionConfig.flash) + ' sound=' + String(attentionConfig.sound));
 
   if (process.platform === 'win32' && !checkVcRuntime()) {
     pushLogLine('[desktop] warning: Visual C++ runtime (vcruntime140.dll) is missing');
@@ -285,6 +356,16 @@ app.on('before-quit', (event) => {
     hostChild = null;
     void stopHost(child).then(() => app.quit());
   }
+});
+
+// The GUI's renderer-side observer reports that a run needs the user. The
+// sender and the payload are both treated as untrusted: only the main window
+// may report, and only a known kind is acted on.
+ipcMain.on('desktop:attention', (event, payload) => {
+  if (mainWindow === null || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return;
+  const kind = parseAttentionSignal(payload);
+  if (kind === undefined) return;
+  raiseAttention(kind);
 });
 
 ipcMain.on('desktop:retry', () => {

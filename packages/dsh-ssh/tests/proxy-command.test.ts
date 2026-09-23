@@ -66,4 +66,15 @@ describe('startProxyCommand', () => {
     const error = await new Promise<Error>(resolve => { stream.on('error', resolve) })
     expect(error.message).toContain('ProxyCommand')
   })
+
+  it('surfaces contextual errors without unhandled EPIPE when writing to a dead command', async () => {
+    const { stream, child } = startProxyCommand('definitely-not-a-real-binary-xyz %h', target)
+    const errorPromise = new Promise<Error>(resolve => { stream.on('error', resolve) })
+    for (let i = 0; i < 5; i++) {
+      stream.write('SSH-2.0-test\r\n', () => { /* no-op */ })
+    }
+    const error = await errorPromise
+    expect(error.message).toContain('ProxyCommand')
+    await waitFor(() => child.exitCode !== null || child.signalCode !== null)
+  })
 })

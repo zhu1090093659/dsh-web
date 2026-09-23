@@ -9,8 +9,13 @@
  *
  * The probe issues loopback requests with a forged Host header — the exact
  * shape a tunnel or LAN client produces — and treats anything other than a
- * 403 as exposed: the fence is documented to refuse with 403, so any other
- * status means the request reached the RPC bridge.
+ * 403 or a 401 as exposed. The fence is documented to refuse with 403; the
+ * harness answers 401 when the Host fence PASSED but the browser-auth cookie
+ * is missing (the connection plugin checks the fence first and the cookie
+ * second). A 401 therefore means the /api surface is still gated — reporting
+ * it as open produced a false CRITICAL on exactly the supported LAN
+ * deployment (0.0.0.0 bind auto-trusts the LAN literals) and desensitized the
+ * one alarm that should mean a real exposure.
  */
 
 import type { ClientRequest, ClientRequestArgs } from 'node:http'
@@ -20,7 +25,10 @@ import http from 'node:http'
 export interface PostureHost {
   /** The forged Host header value that was probed. */
   host: string
-  /** True when the probe reached past the fence (anything but 403). */
+  /**
+   * True when the probe reached the RPC bridge without any gate refusing it
+   * (a status that is neither the fence's 403 nor the browser-auth 401).
+   */
   exposed: boolean
 }
 
@@ -97,7 +105,7 @@ async function probeHost(port: number, hostHeader: string, request: ProbeRequest
       path: '/api/session.list',
       headers: { host: hostHeader, 'content-type': 'application/json' },
       timeout: timeoutMs,
-    }, status => { finish(status !== 403) })
+    }, status => { finish(status !== 403 && status !== 401) })
     const timer = setTimeout(() => { finish(false) }, timeoutMs + 1_000)
     handle.on('error', () => { finish(false) })
     handle.end('{}')

@@ -85,6 +85,10 @@ describe('kimi coding plan parse', () => {
 describe('glm coding plan parse', () => {
   it.each([
     ['zai-coding-cn', 'https://open.bigmodel.cn/api/monitor/usage/quota/limit'],
+    // The pi-ai catalog registers the z.ai coding plan as route id `zai`;
+    // only this package's older aliases `zai-coding`/`zai-coding-cn` were
+    // served before issue #1597.
+    ['zai', 'https://api.z.ai/api/monitor/usage/quota/limit'],
     ['zai-coding', 'https://api.z.ai/api/monitor/usage/quota/limit'],
   ])('%s probes the raw-key quota endpoint', (id, url) => {
     const adapter = adapterFor(id)!
@@ -106,6 +110,75 @@ describe('glm coding plan parse', () => {
     expect(parsed?.windows[0]).toMatchObject({ key: '5h', percent: 12.5 })
     // Percent clamps into 0-100.
     expect(parsed?.windows[1]).toMatchObject({ key: 'week', percent: 100 })
+  })
+
+  it('keys windows by the provider unit rather than by row position', () => {
+    const adapter = adapterFor('zai')!
+    const parsed = adapter.plan!.parse(200, {
+      success: true,
+      data: {
+        level: 'GLM-Code-Plan',
+        limits: [
+          { type: 'TOKENS_LIMIT', percentage: 70, unit: 6, nextResetTime: 1788300000000 },
+          { type: 'TOKENS_LIMIT', percentage: 30, unit: 5, nextResetTime: 1788900000000 },
+          { type: 'TOKENS_LIMIT', percentage: 12.5, unit: 3, nextResetTime: 1788000000000 },
+        ],
+      },
+    })
+    expect(parsed?.windows.map(window => window.key)).toEqual(['week', 'month', '5h'])
+    expect(parsed?.windows.map(window => window.percent)).toEqual([70, 30, 12.5])
+  })
+
+  it('renders the 5-hour-only legacy plan shape', () => {
+    const adapter = adapterFor('zai')!
+    const parsed = adapter.plan!.parse(200, {
+      success: true,
+      data: { level: 'GLM-Code-Plan', limits: [{ type: 'TOKENS_LIMIT', percentage: 42, unit: 3, nextResetTime: 1788000000000 }] },
+    })
+    expect(parsed?.windows).toEqual([{ key: '5h', percent: 42, resetsAt: '2026-08-29T10:40:00.000Z' }])
+  })
+
+  it('uses the exact credit ratio for a credits-based plan', () => {
+    const adapter = adapterFor('zai')!
+    const parsed = adapter.plan!.parse(200, {
+      success: true,
+      data: {
+        level: 'GLM-Code-Plan',
+        limits: [
+          { type: 'CREDIT_LIMIT', unit: 6, usage: 2000, currentValue: 500, percentage: 0.1, nextResetTime: 1788300000000 },
+          // No exact ratio available: the provider percentage is the fallback.
+          { type: 'CREDIT_LIMIT', unit: 3, percentage: 25, nextResetTime: 1788000000000 },
+        ],
+      },
+    })
+    expect(parsed?.windows[0]).toMatchObject({ key: 'week', percent: 25 })
+    expect(parsed?.windows[1]).toMatchObject({ key: '5h', percent: 25 })
+  })
+
+  it('skips the MCP request cap and unknown units instead of inventing windows', () => {
+    const adapter = adapterFor('zai')!
+    const parsed = adapter.plan!.parse(200, {
+      success: true,
+      data: {
+        level: 'GLM-Code-Plan',
+        limits: [
+          { type: 'TIME_LIMIT', percentage: 80, unit: 3, nextResetTime: 1788000000000 },
+          { type: 'TOKENS_LIMIT', percentage: 10, unit: 99, nextResetTime: 1788000000000 },
+          { type: 'TOKENS_LIMIT', percentage: 20, unit: 3, nextResetTime: 1788000000000 },
+        ],
+      },
+    })
+    expect(parsed?.windows).toEqual([{ key: '5h', percent: 20, resetsAt: '2026-08-29T10:40:00.000Z' }])
+    // Nothing renderable left: no plan data rather than an empty card.
+    expect(adapter.plan!.parse(200, {
+      success: true,
+      data: { limits: [{ type: 'TIME_LIMIT', percentage: 80, unit: 3 }] },
+    })).toBeUndefined()
+  })
+
+  it('reports no plan for the failure envelope the endpoint returns with HTTP 200', () => {
+    const adapter = adapterFor('zai')!
+    expect(adapter.plan!.parse(200, { success: false, code: 401, msg: 'invalid api key' })).toBeUndefined()
   })
 })
 

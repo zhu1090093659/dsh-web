@@ -1,8 +1,8 @@
 /**
  * Analyze one or more DSH session JSONL exports and report the LiangShen
- * trajectory markers: first-turn surface, promotion boundary, reasoning-block
- * word markers (`we` / `let me` / `let's` / `I`), the first reasoning line,
- * and per-step drift points.
+ * trajectory markers: first-turn surface, request-header catalog changes,
+ * reasoning-block word markers (`we` / `let me` / `let's` / `I`), the first
+ * reasoning line, and per-step drift points.
  *
  * Usage:
  *   node tools/analyze-session.mjs <session.jsonl> [more.jsonl ...]
@@ -11,13 +11,33 @@
 import { createReadStream } from 'node:fs'
 import readline from 'node:readline'
 
-import { classifyReasoning, countWord } from '../presets/liangshen/tool-bootstrap.mjs'
-
 const WORD = {
   we: /\bwe\b/gi,
   letMe: /\blet me\b/gi,
   lets: /\blet's\b/gi,
   i: /\bi\b/gi,
+}
+
+/** Count non-overlapping matches of one marker regex. */
+export function countWord(text, regex) {
+  return [...String(text ?? '').matchAll(regex)].length
+}
+
+/**
+ * Anchor classifier for trajectory reporting. A reasoning block counts as
+ * minimal-like when it contains `we` and no `let me`; a block with any
+ * `let me` is standard-like; everything else is ambiguous. The preset no
+ * longer gates anything on this label — it is the measurement this analyzer
+ * reports, so the anchored surface can be compared across runs.
+ */
+export function classifyReasoning(text) {
+  const trimmed = String(text ?? '').trim()
+  const we = countWord(trimmed, WORD.we)
+  const letMe = countWord(trimmed, WORD.letMe)
+  const metrics = { we, letMe }
+  if (we > 0 && letMe === 0) return { label: 'minimal-like', score: 4, metrics }
+  if (letMe > 0) return { label: 'standard-like', score: -4, metrics }
+  return { label: 'ambiguous', score: 0, metrics }
 }
 
 export function countMarkers(text) {

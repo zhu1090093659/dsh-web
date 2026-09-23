@@ -193,3 +193,93 @@ describe('task-board HTTP routes', () => {
     }
   })
 })
+
+describe('task-board parse route (#1540)', () => {
+  let server: Server
+  let base: string
+  let parseTask: ReturnType<typeof vi.fn>
+  let closeServer: () => Promise<void>
+
+  async function start(options: { parseTask?: unknown; omit?: boolean } = {}): Promise<void> {
+    const service = {
+      snapshot: () => snapshot,
+      apply: () => snapshot,
+      subscribe: () => () => undefined,
+    } as unknown as TaskBoardHostService
+    const routeOptions = options.omit === true ? {} : { parseTask: (options.parseTask ?? parseTask) as never }
+    const routes = makeTaskBoardRoutes(service, {}, routeOptions)
+    server = createServer((req, res) => {
+      const route = routes.find(candidate => candidate.path === new URL(req.url ?? '/', 'http://local').pathname)
+      if (route === undefined) { res.writeHead(404); res.end(); return }
+      void route.handler(req, res)
+    })
+    await new Promise<void>(resolve => { server.listen(0, '127.0.0.1', resolve) })
+    const address = server.address()
+    if (address === null || typeof address === 'string') throw new Error('test server did not bind')
+    base = `http://127.0.0.1:${address.port}`
+    closeServer = async () => {
+      if (!server.listening) return
+      await new Promise<void>(resolve => { server.close(() => { resolve() }) })
+    }
+  }
+
+  beforeEach(() => {
+    parseTask = vi.fn(async () => ({ title: 'Parsed', description: 'From the model', prompt: 'Do it' }))
+  })
+
+  afterEach(async () => { await closeServer() })
+
+  function post(body: unknown, headers: Record<string, string> = { 'content-type': 'application/json', 'sec-fetch-site': 'same-origin' }): Promise<Response> {
+    return fetch(`${base}/api/task-board/parse`, { method: 'POST', headers, body: JSON.stringify(body) })
+  }
+
+  it('answers the draft the Host parser produced', async () => {
+    await start()
+    const response = await post({ text: 'pasted note', model: 'deepseek/deepseek-chat' })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, draft: { title: 'Parsed', description: 'From the model', prompt: 'Do it' } })
+    expect(parseTask).toHaveBeenCalledOnce()
+    expect(parseTask.mock.calls[0]![0]).toEqual({ text: 'pasted note', model: 'deepseek/deepseek-chat' })
+    expect(parseTask.mock.calls[0]![1]).toBeInstanceOf(AbortSignal)
+  })
+
+  it('keeps the same fence as the rest of the API', async () => {
+    await start()
+    expect((await post({ text: 'pasted note' }, { 'content-type': 'application/json' })).status).toBe(403)
+    expect((await post({ text: 'pasted note' }, { 'sec-fetch-site': 'same-origin' })).status).toBe(415)
+    expect(parseTask).not.toHaveBeenCalled()
+  })
+
+  it('rejects bodies that carry no usable text', async () => {
+    await start()
+    expect((await post({ text: '   ' })).status).toBe(400)
+    expect((await post({ model: 'deepseek/deepseek-chat' })).status).toBe(400)
+    expect((await post({ text: 42 })).status).toBe(400)
+    expect((await fetch(`${base}/api/task-board/parse`, { headers: { 'sec-fetch-site': 'same-origin' } })).status).toBe(405)
+  })
+
+  it('refuses a paste larger than the parse budget', async () => {
+    await start()
+    expect((await post({ text: 'x'.repeat(17 * 1024) })).status).toBe(413)
+    expect(parseTask).not.toHaveBeenCalled()
+  })
+
+  it('maps each parse failure code onto a status and keeps the code', async () => {
+    const { TaskParseError } = await import('../src/host-ai.ts')
+    for (const [code, status] of [['no-model', 503], ['parse-failed', 502], ['model-error', 502], ['timeout', 504]] as const) {
+      parseTask = vi.fn(async () => { throw new TaskParseError(code, `failed: ${code}`) })
+      await start()
+      const response = await post({ text: 'pasted note', model: 'p/m' })
+      expect(response.status, code).toBe(status)
+      expect(await response.json()).toMatchObject({ ok: false, code })
+    }
+  })
+
+  it('answers a typed no-model failure when the deployment has no parse face', async () => {
+    await start({ omit: true })
+    const response = await post({ text: 'pasted note' })
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({ ok: false, code: 'no-model' })
+  })
+})
+

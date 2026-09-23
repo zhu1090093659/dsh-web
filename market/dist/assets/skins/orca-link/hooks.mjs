@@ -130,7 +130,7 @@ const SIGNAL_LABEL_SELECTOR = '[data-orca-link-signal-label]'
 
 function conversationRootOf(body) {
   for (const candidate of body.querySelectorAll('[data-phase]')) {
-    const scroll = candidate.querySelector(':scope > [data-conversation-scroll]')
+    const scroll = candidate.querySelector('[data-conversation-scroll]')
     if (scroll !== null) return candidate
   }
   return null
@@ -1415,7 +1415,7 @@ export default function defineSkinHooks() {
             if (
               candidate instanceof HTMLElement
               && candidate.hasAttribute('data-phase')
-              && candidate.querySelector(':scope > [data-conversation-scroll]') !== null
+              && candidate.querySelector('[data-conversation-scroll]') !== null
             ) return candidate
             candidate = candidate.parentElement
           }
@@ -1684,7 +1684,7 @@ export default function defineSkinHooks() {
             if (
               candidate instanceof HTMLElement
               && candidate.hasAttribute('data-phase')
-              && candidate.querySelector(':scope > [data-conversation-scroll]') !== null
+              && candidate.querySelector('[data-conversation-scroll]') !== null
             ) return candidate
             candidate = candidate.parentElement
           }

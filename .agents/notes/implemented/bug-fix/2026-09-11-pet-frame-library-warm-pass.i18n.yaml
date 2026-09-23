@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-11-pet-frame-library-warm-pass.md: 4def42faab735cc7690a9ea3368f7c58b51355a2
+2026-09-11-pet-frame-library-warm-pass.zh.md: 6a28722e681c7813179092d045ee5b42f7cffae6

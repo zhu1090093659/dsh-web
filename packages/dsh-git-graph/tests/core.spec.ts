@@ -182,6 +182,19 @@ describe('extractBlockedPaths', () => {
     expect(paths).toEqual(['a.ts', 'b.ts'])
     expect(moreFiles).toBe(1)
   })
+
+  it('decodes octal-escaped non-ASCII bytes as UTF-8', () => {
+    // The default core.quotePath writes a diaeresis as the bytes \303\244.
+    const stderr = 'header\n\t"\\303\\244mne.txt"\n'
+    const { paths } = extractBlockedPaths(stderr, /header/)
+    expect(paths).toEqual(['ämne.txt'])
+  })
+
+  it('keeps the plain C-style escapes working', () => {
+    const stderr = 'header\n\t"a\\tb\\\\c"\n'
+    const { paths } = extractBlockedPaths(stderr, /header/)
+    expect(paths).toEqual(['a\tb\\c'])
+  })
 })
 
 describe('computeLanes', () => {

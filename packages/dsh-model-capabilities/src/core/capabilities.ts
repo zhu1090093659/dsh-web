@@ -4,10 +4,12 @@
  * The official `llm-pi-ai` settings namespace already carries every field a
  * custom model needs — `models[].input` (request modalities) and
  * `models[].reasoningEfforts` (selectable reasoning levels with their wire
- * spellings) — but the Models settings page deliberately ships no editor for
- * them. This module reads a redacted namespace view, drafts the per-model
- * capability edits, validates them against the adapter's own rules, and
- * builds the single path op a save performs.
+ * spellings). The 0.1.6-alpha.2 Models page edits `models[].input` itself
+ * (the shared `ModelInputTypes` control on the pi-ai model list), so this
+ * module declares reasoning efforts only and treats every other field,
+ * `input` included, as data to preserve. It reads a redacted namespace view,
+ * drafts the per-model reasoning edits, validates them against the adapter's
+ * own rules, and builds the single path op a save performs.
  *
  * Write granularity note: the settings `mutate` path-op walker only descends
  * plain objects (`applyPathOp` replaces arrays it meets mid-path), so a model
@@ -22,9 +24,6 @@ import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 
 /** The official adapter family this plugin extends (the card slot's key). */
 export const PI_AI_SETTINGS_NAMESPACE = 'llm-pi-ai'
-
-/** One request modality a pi-ai model profile may declare. */
-export type ModelModality = 'text' | 'image'
 
 /** Every thinking level a profile may declare, in escalation order. */
 export type ModelThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
@@ -45,14 +44,12 @@ export type ReasoningEfforts = Partial<Record<ModelThinkingLevel, string | null>
 
 /**
  * One model profile as the plugin drafts it. Fields this plugin does not edit
- * (id, name, contextWindow, maxTokens, compat, ...) are kept as-is so a save
- * never drops what the official card or a hand edit wrote.
+ * (id, name, input, contextWindow, maxTokens, compat, ...) are kept as-is so a
+ * save never drops what the official card or a hand edit wrote.
  */
 export interface ModelEntryDraft {
   /** Model id sent to the provider; the only required field. */
   id: string
-  /** Request modalities; absent means "inherit" (catalog entry, then route defaultInput). */
-  input?: ModelModality[]
   /** `false` = declared non-reasoning; a dict = declared levels; absent = inherit. */
   reasoningEfforts?: false | ReasoningEfforts
   [field: string]: unknown
@@ -123,17 +120,6 @@ export function declaredLevelsOf(entry: ModelEntryDraft): Array<{ level: ModelTh
   return declared
 }
 
-/**
- * One entry's image-input claim: `true`/`false` when the entry declares
- * `input` explicitly, undefined while it inherits (field absent).
- */
-export function imageInputOf(entry: ModelEntryDraft): boolean | undefined {
-  const input = entry['input']
-  if (input === undefined) return undefined
-  if (!Array.isArray(input)) return undefined
-  return input.includes('image')
-}
-
 /** Validation failure for one capability draft, phrased for the editor. */
 export type CapabilitiesIssue =
   | { kind: 'effortsOffOnly' }
@@ -157,18 +143,6 @@ export function validateEntry(entry: ModelEntryDraft): CapabilitiesIssue | undef
   }
   if (!hasBeyondOff) return { kind: 'effortsOffOnly' }
   return undefined
-}
-
-/** Immutable draft update: set the image-input claim (explicit text-only or text+image). */
-export function withImageInput(entry: ModelEntryDraft, image: boolean): ModelEntryDraft {
-  const input: ModelModality[] = image ? ['text', 'image'] : ['text']
-  return { ...entry, input }
-}
-
-/** Immutable draft update: return the entry to the inherit state (drop both claims). */
-export function withInputInherited(entry: ModelEntryDraft): ModelEntryDraft {
-  const { input: _input, ...rest } = entry
-  return rest
 }
 
 /**

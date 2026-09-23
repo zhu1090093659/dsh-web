@@ -1,0 +1,96 @@
+/**
+ * Console-output capture shared by the family's Host halves.
+ *
+ * A child process's stdout/stderr are raw bytes, and on Windows a console
+ * program writes the OEM code page (CP936/GBK on a zh-CN system), not UTF-8.
+ * Decoding each chunk on its own corrupts the text twice over: the
+ * encoding is guessed wrong, and a multi-byte character split across two reads
+ * decodes into two replacement characters. This capture accumulates raw bytes
+ * under a byte budget and decodes exactly once, at read time.
+ */
+
+/** Bounded byte accumulator for one child process's interleaved stdout/stderr. */
+export interface OutputCapture {
+  /** Append one raw chunk (the bytes are copied into the budget). */
+  push(chunk: Uint8Array): void
+  /**
+   * Decode everything captured so far. Idempotent, so a caller may read the
+   * tail both after a failure branch and at settlement.
+   */
+  read(): string
+}
+
+/** Count the U+FFFD replacement characters one candidate decode produced. */
+function replacementCount(text: string): number {
+  let count = 0
+  for (const character of text) {
+    if (character === '\uFFFD') count += 1
+  }
+  return count
+}
+
+/**
+ * Decode one console byte buffer. Strict UTF-8 wins whenever it is valid;
+ * otherwise the bytes are not UTF-8 at all and the console wrote its own code
+ * page, so the candidate that loses the least text is taken.
+ * @param bytes - the captured bytes.
+ * @returns the decoded text.
+ */
+export function decodeConsoleBytes(bytes: Uint8Array): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    // Not valid UTF-8. Prefer whichever candidate leaves the fewest
+    // replacement characters so real UTF-8 text carrying one bad byte is not
+    // rewritten wholesale as GBK gibberish; without the legacy code page
+    // (small-ICU builds) the lenient UTF-8 pass is all that is left.
+    let best: string | undefined
+    let bestLoss = Number.POSITIVE_INFINITY
+    for (const label of ['gbk', 'utf-8']) {
+      let text: string
+      try {
+        text = new TextDecoder(label).decode(bytes)
+      } catch {
+        continue
+      }
+      const loss = replacementCount(text)
+      if (loss < bestLoss) {
+        best = text
+        bestLoss = loss
+      }
+    }
+    /* v8 ignore next 3 -- reachable only without the legacy code page AND without the lenient pass */
+    if (best === undefined) return Buffer.from(bytes).toString('utf8')
+    return best
+  }
+}
+
+/**
+ * Create a capture bounded to a byte budget. Overflow drops from the FRONT
+ * (the tail is what carries a failure reason), and the cut never lands inside
+ * a character: leading UTF-8 continuation bytes are dropped with it, and a
+ * legacy code page's dangling lead byte — indistinguishable from a real byte
+ * without knowing the encoding until the whole buffer is decoded — is removed
+ * with the one replacement character it produced, so an over-long stream still
+ * reads cleanly at the seam.
+ * @param maxBytes - maximum retained bytes.
+ * @returns the capture.
+ */
+export function createOutputCapture(maxBytes: number): OutputCapture {
+  let buffer = Buffer.alloc(0)
+  let trimmed = false
+  return {
+    push(chunk: Uint8Array): void {
+      buffer = buffer.length === 0 ? Buffer.from(chunk) : Buffer.concat([buffer, Buffer.from(chunk)])
+      if (buffer.length <= maxBytes) return
+      let start = buffer.length - maxBytes
+      while (start < buffer.length && (buffer[start] & 0xc0) === 0x80) start += 1
+      buffer = Buffer.from(buffer.subarray(start))
+      trimmed = true
+    },
+    read(): string {
+      const text = decodeConsoleBytes(buffer)
+      return trimmed && text.startsWith('\uFFFD') ? text.slice(1) : text
+    },
+  }
+}

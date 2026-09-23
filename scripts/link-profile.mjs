@@ -72,7 +72,7 @@ function familyPackages() {
   return found
 }
 
-/** External non-family dependencies required by aggregate packages (e.g. dsh-better-sidebar, @mlgbnb/dsh-archive-manager). */
+/** External non-family dependencies an aggregate package declares as bundled plugin rows. */
 function externalPackages() {
   const dshWebUiAllDir = join(REPO_ROOT, 'packages', 'dsh-web-all')
   const pkgJsonPath = join(dshWebUiAllDir, 'package.json')
@@ -209,7 +209,7 @@ function main() {
 
   report(changed === 0 ? 'nothing to do' : `${changed} link(s) ${DRY ? 'would be ' : ''}updated`)
 
-  // Also link external dependencies required by dsh-web-all (e.g. @mlgbnb/dsh-archive-manager, dsh-better-sidebar)
+  // Also link the external dependencies dsh-web-all declares as bundled plugin rows
   const extPkgs = externalPackages()
   if (extPkgs.length) {
     report(`found ${extPkgs.length} external package(s) from dsh-web-all`)

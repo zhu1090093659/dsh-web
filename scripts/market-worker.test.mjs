@@ -2,7 +2,23 @@ import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 
 import worker from '../market/worker/src/index.js'
+import { ROLLUP_HISTORY_DAYS, refreshDailyRollups, rollupDayStatements } from '../market/worker/src/telemetry.js'
 import { clearBadgeCaches, formatTotal, rangeWindows } from '../market/worker/src/npm-badge.js'
+
+/** Statements in one day's rollup rebuild batch. */
+const ROLLUP_BATCH = rollupDayStatements('2026-05-01').length
+
+/** UTC day bucket n days back, mirroring the rollup cursor. */
+function utcDayBack(n) {
+  return new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
+}
+
+/** Days rebuilt inside one fake-D1 run, in walk order. */
+function rollupDaysRebuilt(db) {
+  return db.batches
+    .filter((statements) => statements.length === ROLLUP_BATCH && statements[0].sql.includes('DELETE FROM telemetry_rollup_daily'))
+    .map((statements) => /VALUES \('([\d-]+)'/.exec(statements[statements.length - 1].sql)[1])
+}
 
 const workerCacheEntries = new Map()
 const workerCache = {
@@ -358,14 +374,19 @@ function telemetryDb(options = {}) {
         },
       })
       return {
+        // Statement SQL is exposed like the bound form so tests can inspect
+        // statements the worker prepares without binds (the rollup rebuild).
+        sql,
         bind: (...args) => bound(args),
         async run() { return bound([]).run() },
         async first() { return bound([]).first() },
+        async all() { return options.all ? options.all(sql) : { results: [] } },
       }
     },
     async batch(statements) {
       batches.push(statements)
       if (options.failBatch) throw new Error(options.failBatch)
+      if (options.failBatchWhen && options.failBatchWhen(statements)) throw new Error('D1_ERROR: out of memory: SQLITE_NOMEM')
       if (options.summary) return options.summary.splice(0, statements.length).map((results) => ({ results }))
       return statements.map(() => ({ results: [] }))
     },
@@ -484,14 +505,14 @@ test('telemetry summary returns aggregates without pruning old events', async ()
   const db = telemetryDb({
     summary: [
       [{ day: '2026-05-01', pv: 12, uv: 5 }],
-      [{ day: '2026-05-01', pv: 3, uv: 2 }],
+      [{ day: '2026-05-01', beats: 3, uv: 2 }],
       [{ subject: '/', pv: 9 }],
       [{ n: 41 }],
-      [{ subject: '@linxin666/dsh-pet', visitors: 1 }],
-      [{ subject: '@linxin666/dsh-pet', channel: 'market', visitors: 1 }],
       [{ subject: '@linxin666/dsh-pet', visitors: 2 }],
       [{ n: 17 }],
-      [{ subject: '@linxin666/dsh-pet', version: '1.2.3', visitors: 2 }],
+      [{ subject: '@linxin666/dsh-pet', visitors: 1 }],
+      [{ subject: '@linxin666/dsh-pet', value: 'market', visitors: 1 }],
+      [{ subject: '@linxin666/dsh-pet', value: '1.2.3', visitors: 2 }],
     ],
   })
   const response = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary?days=7'), { DB: db }, context())
@@ -501,6 +522,7 @@ test('telemetry summary returns aggregates without pruning old events', async ()
   assert.equal(payload.site.daily[0].uv, 5)
   assert.equal(payload.site.paths_total, 41)
   assert.deepEqual(payload.site.paths_page, { offset: 0, limit: 20 })
+  assert.equal(payload.plugins.daily[0].beats, 3)
   assert.equal(payload.plugins.totals.items, 17)
   assert.deepEqual(payload.plugins.items_page, { offset: 0, limit: 200 })
   assert.equal(payload.plugins.items[0].item, '@linxin666/dsh-pet')
@@ -586,21 +608,91 @@ test('telemetry summary recomputes after the TTL and re-seeds the rollup', async
       : null,
     summary: [
       [{ day: '2026-05-01', pv: 1, uv: 1 }],
-      [{ day: '2026-05-01', pv: 1, uv: 1 }],
+      [{ day: '2026-05-01', beats: 1, uv: 1 }],
       [{ subject: '/', pv: 1 }],
       [{ n: 1 }],
       [{ subject: 'pkg', visitors: 1 }],
-      [{ subject: 'pkg', visitors: 1 }],
       [{ n: 1 }],
-      [{ subject: 'pkg', channel: 'market', visitors: 1 }],
-      [{ subject: 'pkg', version: '1.0.0', visitors: 1 }],
+      [{ subject: 'pkg', visitors: 1 }],
+      [{ subject: 'pkg', value: 'market', visitors: 1 }],
+      [{ subject: 'pkg', value: '1.0.0', visitors: 1 }],
     ],
   })
   const response = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary'), { DB: db }, context())
   assert.equal(response.status, 200)
-  assert.equal(db.batches.length, 4, 'the aggregation runs as one light chunk plus three single-statement chunks')
+  assert.equal(db.batches.length, 3, 'the aggregation runs as one rollup batch plus the two auxiliary breakdowns')
   const rollup = db.runs.find((entry) => entry.sql.includes('INSERT INTO telemetry_summary_cache'))
   assert.ok(rollup, 'the recomputed summary must be stored for the next reader')
+})
+
+test('telemetry summary stamps the rollup generation time', async () => {
+  const db = telemetryDb({
+    summary: [
+      [{ day: '2026-05-01', pv: 1, uv: 1 }],
+      [{ day: '2026-05-01', beats: 1, uv: 1 }],
+      [{ subject: '/', pv: 1 }],
+      [{ n: 1 }],
+      [{ subject: 'pkg', visitors: 1 }],
+      [{ n: 1 }],
+      [{ subject: 'pkg', visitors: 1 }],
+      [{ subject: 'pkg', value: 'market', visitors: 1 }],
+      [{ subject: 'pkg', value: '1.0.0', visitors: 1 }],
+    ],
+  })
+  const before = Date.now()
+  const response = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary'), { DB: db }, context())
+  assert.equal(response.status, 200)
+  const payload = await response.json()
+  assert.ok(payload.generated_at >= before && payload.generated_at <= Date.now(), 'generated_at is the compute time')
+  const rollup = db.runs.find((entry) => entry.sql.includes('INSERT INTO telemetry_summary_cache'))
+  assert.equal(JSON.parse(rollup.args[1]).generated_at, payload.generated_at, 'the cache row keeps the generation stamp')
+})
+
+test('telemetry summary degrades the version breakdown when its scan cannot run', async () => {
+  const db = telemetryDb({
+    summary: [
+      [{ day: '2026-05-01', pv: 1, uv: 1 }],
+      [{ day: '2026-05-01', beats: 1, uv: 1 }],
+      [{ subject: '/', pv: 1 }],
+      [{ n: 1 }],
+      [{ subject: 'pkg', visitors: 1 }],
+      [{ n: 1 }],
+      [{ subject: 'pkg', visitors: 1 }],
+      [{ subject: 'pkg', value: 'market', visitors: 1 }],
+    ],
+    failBatchWhen: (statements) => statements.some((stmt) => stmt.sql.includes("dim = 'version'")),
+  })
+  const response = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary'), { DB: db }, context())
+  assert.equal(response.status, 200, 'a failed auxiliary scan must not fail the whole window')
+  const payload = await response.json()
+  assert.equal(payload.plugins.daily[0].uv, 1, 'the daily series survives the degraded scan')
+  assert.deepEqual(payload.plugins.items[0].versions, [], 'the skipped breakdown degrades to empty')
+  assert.equal(payload.plugins.items[0].channels.market, 1, 'the sibling breakdown is unaffected')
+  assert.deepEqual(payload.degraded, ['versions'])
+  const rollup = db.runs.find((entry) => entry.sql.includes('INSERT INTO telemetry_summary_cache'))
+  assert.deepEqual(JSON.parse(rollup.args[1]).degraded, ['versions'], 'the degradation is cached with the rollup')
+})
+
+test('telemetry summary degrades the channel breakdown when its scan cannot run', async () => {
+  const db = telemetryDb({
+    summary: [
+      [{ day: '2026-05-01', pv: 1, uv: 1 }],
+      [{ day: '2026-05-01', beats: 1, uv: 1 }],
+      [{ subject: '/', pv: 1 }],
+      [{ n: 1 }],
+      [{ subject: 'pkg', visitors: 1 }],
+      [{ n: 1 }],
+      [{ subject: 'pkg', visitors: 1 }],
+      [{ subject: 'pkg', value: '1.0.0', visitors: 1 }],
+    ],
+    failBatchWhen: (statements) => statements.some((stmt) => stmt.sql.includes("dim = 'channel'")),
+  })
+  const response = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary'), { DB: db }, context())
+  assert.equal(response.status, 200)
+  const payload = await response.json()
+  assert.deepEqual(payload.plugins.items[0].channels, {}, 'the skipped breakdown degrades to empty')
+  assert.equal(payload.plugins.items[0].versions[0].version, '1.0.0', 'the sibling breakdown is unaffected')
+  assert.deepEqual(payload.degraded, ['channels'])
 })
 
 test('telemetry summary falls back to a stale rollup when D1 cannot aggregate', async () => {
@@ -672,18 +764,73 @@ test('users badge degrades to grey without D1', async () => {
   assert.equal(badge.color, 'lightgrey')
 })
 
-test('cron refreshes badge, pre-warms two rollup windows, and prunes', async () => {
-  const db = telemetryDb({ first: (sql) => sql.includes('telemetry_visitors') ? { users: 7 } : null })
+test('cron refreshes badge, rolls up the finished days, pre-warms two windows, and prunes', async () => {
+  const db = telemetryDb({
+    first: (sql) => sql.includes('telemetry_visitors') ? { users: 7 } : null,
+    // Every retention day but the oldest is already rolled up, so the tick
+    // owes exactly one backfill day on top of today and yesterday.
+    all: (sql) => sql.includes('telemetry_rollup_days')
+      ? { results: Array.from({ length: ROLLUP_HISTORY_DAYS - 1 }, (_, i) => ({ day: utcDayBack(i) })) }
+      : { results: [] },
+  })
   await worker.scheduled({}, { DB: db })
-  const lightChunks = db.batches.filter((stmts) => stmts.length === 6)
-  const heavyChunks = db.batches.filter((stmts) => stmts.length === 1)
+  assert.deepEqual(rollupDaysRebuilt(db), [utcDayBack(0), utcDayBack(1), utcDayBack(ROLLUP_HISTORY_DAYS - 1)],
+    'today and yesterday are rewritten, then the newest day the backfill still owes')
+  const rollupChunk = db.batches.find((statements) => statements.length === ROLLUP_BATCH)
+  assert.equal(rollupChunk[rollupChunk.length - 1].sql.includes('INSERT OR REPLACE INTO telemetry_rollup_days'), true,
+    'the completion marker lands after every aggregate of the day')
+  assert.equal(rollupChunk.some((stmt) => stmt.sql.includes('INDEXED BY idx_telemetry_kind_day')), true,
+    'the per-day aggregates stay on the kind + day covering index')
+  const lightChunks = db.batches.filter((statements) => statements.length === 7)
   assert.equal(lightChunks.length, 2, 'the first-paint window plus one rotation slot per tick')
-  assert.equal(heavyChunks.length, 6, 'three single-statement chunks per window')
   const pathsLimit = (stmts) => stmts.find((stmt) => stmt.sql.includes('GROUP BY subject ORDER BY pv')).args[1]
   assert.equal(pathsLimit(lightChunks[0]), 10, 'the first-paint window uses the 10-row pages')
   assert.equal(pathsLimit(lightChunks[1]), 20, 'the rotation window uses the default /data pages')
   assert.equal(db.runs.some((entry) => entry.sql.includes('INSERT INTO badge_cache')), true)
   assert.equal(db.runs.some((entry) => entry.sql.includes('DELETE FROM telemetry_events')), true)
+  assert.equal(db.runs.some((entry) => entry.sql.includes('DELETE FROM telemetry_rollup_daily')), false,
+    'day rollups are pruned in a batch, not one statement at a time')
+})
+
+test('rollup backfill reports the days it owes and survives a failing day', async () => {
+  const db = telemetryDb({
+    all: () => ({ results: [] }),
+    failBatchWhen: (statements) => statements.some((stmt) => stmt.sql.includes("'" + utcDayBack(1) + "'")),
+  })
+  const result = await refreshDailyRollups({ DB: db }, { budgetMs: 60000 })
+  assert.equal(result.rebuilt[0], utcDayBack(0), 'today is rolled up first')
+  assert.deepEqual(result.skipped, [utcDayBack(1)], 'a failing day is reported instead of aborting the tick')
+  assert.equal(result.rebuilt.length, ROLLUP_HISTORY_DAYS - 1, 'every day except the failing one lands')
+  assert.equal(result.pending, ROLLUP_HISTORY_DAYS - 2, 'the cursor keeps the owed days for the next tick')
+})
+
+test('telemetry summary keeps the last complete cache while the backfill still owes days', async () => {
+  const cached = { ok: true, frozen: true }
+  const db = telemetryDb({
+    first: (sql) => {
+      if (sql.includes('telemetry_summary_cache')) return { payload: JSON.stringify(cached), computed_at: Date.now() - 3600 * 1000 }
+      if (sql.includes('ORDER BY day LIMIT 1')) return { day: utcDayBack(300) }
+      if (sql.includes('telemetry_rollup_days')) return { n: 1 }
+      return null
+    },
+  })
+  const response = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary?days=7'), { DB: db }, context())
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), cached, 'a partial rollup must not replace a complete cached series')
+  assert.equal(db.batches.length, 0, 'an incomplete window is never aggregated')
+})
+
+test('telemetry summary answers 503 rather than a short series when rollups lag', async () => {
+  const db = telemetryDb({
+    first: (sql) => {
+      if (sql.includes('ORDER BY day LIMIT 1')) return { day: utcDayBack(300) }
+      if (sql.includes('telemetry_rollup_days')) return { n: 1 }
+      return null
+    },
+  })
+  const response = await worker.fetch(new Request('https://dsh-market.com/api/telemetry/summary?days=7'), { DB: db }, context())
+  assert.equal(response.status, 503)
+  assert.equal(db.batches.length, 0, 'no aggregate runs for a window whose rollups are incomplete')
 })
 
 test('batch npm downloads endpoint derives its allowlist from the plugin manifest and caches', async () => {

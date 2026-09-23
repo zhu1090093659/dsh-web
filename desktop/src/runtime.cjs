@@ -425,8 +425,58 @@ function parseShasums(text) {
   return map;
 }
 
+/* --- attention policy --------------------------------------------------------
+ * The desktop shell raises the user when a run needs them while the window is
+ * in the background (issue #1498). The policy is a tiny JSON file in $DSH_HOME
+ * so the behavior can be tuned without a settings UI; every field is validated
+ * and anything unusable falls back to the default.
+ * --------------------------------------------------------------------------- */
+
+/** Signal kinds the GUI may report; anything else is ignored. */
+const ATTENTION_KINDS = ['approval', 'completed', 'interrupted'];
+
+/** Default policy: raise (taskbar flash + system alert) on every signal. */
+const ATTENTION_DEFAULTS = Object.freeze({ flash: true, sound: true });
+
+/**
+ * Parse the optional desktop-attention.json document.
+ * @param {unknown} text
+ * @returns {{ flash: boolean, sound: boolean }}
+ */
+function parseAttentionConfig(text) {
+  if (typeof text !== 'string' || text.trim() === '') return { ...ATTENTION_DEFAULTS };
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { ...ATTENTION_DEFAULTS };
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return { ...ATTENTION_DEFAULTS };
+  // Only a literal `false` turns a channel off: a typo must never silently
+  // disable the reminder the user asked for.
+  return {
+    flash: parsed.flash === undefined ? ATTENTION_DEFAULTS.flash : parsed.flash !== false,
+    sound: parsed.sound === undefined ? ATTENTION_DEFAULTS.sound : parsed.sound !== false,
+  };
+}
+
+/**
+ * Validate one IPC attention payload and return its kind, or undefined.
+ * The renderer is untrusted input: an unknown kind is dropped.
+ * @param {unknown} value
+ * @returns {string | undefined}
+ */
+function parseAttentionSignal(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return ATTENTION_KINDS.includes(value.kind) ? value.kind : undefined;
+}
+
 module.exports = {
   RESERVED_PORTS,
+  ATTENTION_KINDS,
+  ATTENTION_DEFAULTS,
+  parseAttentionConfig,
+  parseAttentionSignal,
   DESKTOP_PORT_BASE,
   DESKTOP_PORT_SPAN,
   SEED_MARKER,

@@ -1,0 +1,35 @@
+# Agent Note: PR maintenance run 2026-09-13 (fifth pass) — Observatory skin merged, three registrations and the bubble blur knob blocked on authors
+
+Status: implemented
+
+## Problem
+
+Fifth maintenance pass on `zhu1090093659/dsh-web`, one day after the fourth pass. Default scope: the ten open PRs assigned to the maintainer account (Observatory #1518, bubble blur #1516, whale-girl #1514 joined the eight from the fourth pass), no Issue scan. The fourth pass ended with two merges and six author-blocked PRs; this pass asked which of the four newcomer PRs could clear their gates and whether any blocked author had moved.
+
+## Decision
+
+One PR merged, three new reviews posted, six PRs remain author-blocked.
+
+#1518 (Observatory skin, new skin submission replacing the bot-closed #1511): verified in a detached worktree at the PR head — `dsh-skin validate` PASS, `market-build --check` confirms the committed dist including the zip hash manifest, `skin-center:check` / `i18n:check` / `docs:check` all pass, CI green. Content review confirmed the dark-only token structure is isomorphic to the ice-princess precedent, the `body::after` ground layer yields under `body[data-dsh-wallpaper-active]`, every hook goes through the reviewed registry with inert fallbacks, and the CJK brand-line `content` string follows the black-gold / ice-princess / phoebe-atelier precedent. Approved and merged as a merge commit (6ce63031f).
+
+#1488 (bwm-friend registration): the earlier approval predates CI completion; the required `CI checks` run failed on the `plugins.json` contract in `scripts/market-layout.test.mjs` — the entry sets `category: "ui"` without a `subcategory`, and the PR's own regenerated dist carries the violation. Review changed to CHANGES_REQUESTED with the exact fix (`subcategory` from the `ui` enum, then regenerate `market/dist`). The pass surfaced a standing inconsistency: the `pnpm community:check` validator in `scripts/community-index` treats `subcategory` as optional for categorized entries, while the market dist contract requires it — the two gates disagree and CI is the effective one. The inconsistency itself is left open as a finding.
+
+#1516 (bubble blur slider, skin-center client): implementation mirrors the existing `bubbleOpacity` knob end to end (field, clamp, apply/dispose pairing, tests, lib + aggregate rebuild with fingerprints, en/zh locales). Blocked on one cross-skin consequence: blue-fantasy's user bubble reads `blur(var(--dsh-skin-bubble-blur, 12px))` while every other use falls back to 10px — once the controller writes the variable onto `body`, the 12px fallback dies and the default look shifts. CHANGES_REQUESTED with the fix pattern `calc(var(--dsh-skin-bubble-blur, 10px) * 1.2)`, mirroring the alpha 120% compensation the same rule already documents. The general rule this pass records: a new body-level CSS variable must default to the dominant skin-side fallback, or per-element distinctions silently collapse.
+
+#1514 (whale-girl registration, third-party plugin acceptance): the mandatory three-axis review passed on the plugin itself — MIT, committed lib so `dsh plugin add` installs without building, upstream 16 tests pass locally, active maintenance with a documented regression rollback, only official service injections (`webServer` / `credentials` / `timer` / `tokenMeter` / `sessions` / `agents`), API keys resolved server-side only, the web-profile bridge uses `apiServer.tapIndex` which is verified as a public API of the installed `@deepseek-ai/dsh-host-webserver` types, routes namespaced under `/dsh-whale-girl/*`, styles fully `.wg-` prefixed, external calls limited to the DeepSeek and SiliconFlow balance endpoints. The PR is CHANGES_REQUESTED on two registration-contract gaps: `market/dist` was not regenerated (the entry never reaches the Workshop store and `pnpm market:check` breaks for everyone) and the trailing newline of `community.json` was dropped. Non-blocking notes: the diagnostic log grows unbounded, and uninstall leaves three `.whale-girl-*` files in `DSH_HOME`.
+
+#1502 (Miku redesign): content approved — both theme previews render correctly, the three 0.1.5-shell regression fixes are real (`_pane` substring mis-hit moved to `[data-pane]`, the `border-image` longhand now carries `!important` to survive the important shorthand, the send-button circle returned to the shell), and the background moved to `contributes.backgroundMedia` so the wallpaper-yield contract belongs to the engine. A read-only test merge against `origin/dev` shows exactly one conflict, `scripts/lib-artifact-fingerprints.json` — mechanical, resolved by rebasing then `pnpm build` + `pnpm libs:write`. Approved with that instruction; merge stays blocked until the author pushes.
+
+The six carried-over PRs re-verified read-only: no author movement on #1479, #1467, #1399, #1321, #1318 (all changes-requested) and #1488's state is covered above.
+
+## Alternatives considered
+
+Merging #1488 on the strength of the earlier approval was rejected — the ruleset requires the checks, and the failure is caused by the PR's own entry. Pushing the one-line `subcategory` fix to the fork was rejected on the standing norm that fork pushes carry only rebase updates, not content edits, on actively authored branches. Regenerating `market/dist` for #1514 myself after merging community.json was rejected: the registration PR is author-owned, and merging a knowingly incomplete registration breaks `market:check` for every local checkout in the meantime. Installing whale-girl into the live `DSH_HOME` for first-hand runtime evidence was rejected: the host service is shared and must not be disturbed, the author supplied runtime evidence on the exact current versions, and the source-level review plus upstream tests cover the acceptance questions. Fixing the two-gate `subcategory` inconsistency in this pass was rejected as out of scope for a maintenance run — it is a tooling change that needs its own decision record.
+
+## Consequences
+
+The Observatory skin is on `origin/dev`. Three registrations / knobs (#1488, #1516, #1514) now wait on their authors with exact fix instructions, and #1502 waits on a mechanical rebase; all five stay assignable-blocked. The `subcategory` two-gate inconsistency and the body-variable-must-match-fallback rule are recorded here for the future tooling change and future skin-center knob reviews respectively. The oldest author-blocked PRs (#1318, #1321) reached thirteen days without movement.
+
+## Testing
+
+GitHub state via `gh pr view` / `gh pr diff` / `gh run view` (reviews, checks, merge states, failed-step logs). Local verification in detached worktrees: #1518 ran `dsh-skin validate`, `market-build --check`, `skin-center-catalog-check --check`, `pnpm i18n:check`, `pnpm docs:check`; #1502 got a read-only `git merge --no-commit --no-ff origin/dev` conflict probe (aborted immediately); #1514 cloned the upstream repo and ran its vitest suite (16/16). Worktrees and the temp clone were removed after the merge and reviews were confirmed on GitHub.

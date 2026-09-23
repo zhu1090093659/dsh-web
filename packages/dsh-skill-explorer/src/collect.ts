@@ -356,6 +356,16 @@ export async function writeSkillFile(baseDir: string, name: string, description:
   return target
 }
 
+/**
+ * Overwrite an existing skill file in place (edit route). The caller has
+ * already resolved the path through a fresh scan, and the enabled state is
+ * carried over so an edit never silently re-enables a disabled skill.
+ */
+export async function overwriteSkillFile(path: string, name: string, description: string, whenToUse: string | undefined, content: string, disabled: boolean): Promise<string> {
+  await writeFile(path, buildSkillContent(name, description.trim(), whenToUse, content, disabled), 'utf8')
+  return path
+}
+
 /** Move a skill file into its .trash sibling directory (recoverable delete). */
 export async function trashSkillFile(path: string): Promise<string> {
   const trashDir = join(dirname(path), '.trash')

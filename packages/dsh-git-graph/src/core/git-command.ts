@@ -142,6 +142,51 @@ const OVERWRITE_PATTERNS: OverwritePattern[] = [
  * @param header - the matched header regex.
  * @returns up to two file paths plus the count of remaining files.
  */
+const gitPathEncoder = new TextEncoder()
+const gitPathDecoder = new TextDecoder()
+
+/** The C-style escapes git uses besides the octal byte runs. */
+const GIT_SIMPLE_ESCAPES: Record<string, number> = { a: 7, b: 8, f: 12, n: 10, r: 13, t: 9, v: 11 }
+
+/**
+ * Decode one git-quoted path. Under the default `core.quotePath`, git escapes
+ * every non-ASCII byte as octal — 'ä' arrives as \303\244 — so octal runs are
+ * collected as bytes and decoded together as UTF-8. Decoding escape by escape
+ * would pair the digits into mojibake instead of the original character (#1491).
+ * @param input - a path with or without the surrounding quotes.
+ * @returns the decoded path.
+ */
+function decodeGitQuoted(input: string): string {
+  if (!input.includes('\\')) return input
+  const bytes: number[] = []
+  const pattern = /\\(?:([0-7]{3})|([\s\S]))/g
+  let index = 0
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(input)) !== null) {
+    bytes.push(...gitPathEncoder.encode(input.slice(index, match.index)))
+    const octal = match[1]
+    if (octal !== undefined) {
+      bytes.push(Number.parseInt(octal, 8) & 0xff)
+    } else {
+      const escaped = match[2]!
+      const control = GIT_SIMPLE_ESCAPES[escaped]
+      if (control === undefined) bytes.push(...gitPathEncoder.encode(escaped))
+      else bytes.push(control)
+    }
+    index = match.index + match[0].length
+  }
+  bytes.push(...gitPathEncoder.encode(input.slice(index)))
+  return gitPathDecoder.decode(new Uint8Array(bytes))
+}
+
+/**
+ * Extract the blocked-file list following an overwrite header: git indents
+ * paths with a tab (quoted when they contain spaces); the trailing hint
+ * lines ("Please commit your changes...") end the list.
+ * @param stderr - the full git stderr.
+ * @param header - the matched header regex.
+ * @returns up to two file paths plus the count of remaining files.
+ */
 export function extractBlockedPaths(
   stderr: string,
   header: RegExp,
@@ -154,8 +199,8 @@ export function extractBlockedPaths(
     if (trimmed === '' || !line.startsWith('\t')) break
     const quoted = /^"(.+)"$/.exec(trimmed)
     const path = quoted === null
-      ? trimmed.replace(/\\(.)/g, '$1')
-      : (quoted[1] ?? '').replace(/\\(.)/g, '$1')
+      ? decodeGitQuoted(trimmed)
+      : decodeGitQuoted(quoted[1] ?? '')
     paths.push(path)
   }
   return { paths: paths.slice(0, 2), moreFiles: Math.max(0, paths.length - 2) }

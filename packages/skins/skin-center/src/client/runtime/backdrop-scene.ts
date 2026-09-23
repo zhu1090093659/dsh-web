@@ -62,6 +62,17 @@ export const INPUT_FROST_BLUR_PX = 10
 
 const sourceSets = new WeakMap<Document, Set<BackdropSource>>()
 const contentObservers = new WeakMap<Document, MutationObserver>()
+const contentFrames = new WeakMap<Document, number>()
+
+/** Write a marker attribute only when the desired state is not applied yet. */
+function applyMarker(el: Element | null, attr: string, active: boolean): void {
+  if (el === null) return
+  if (active) {
+    if (el.getAttribute(attr) !== 'true') el.setAttribute(attr, 'true')
+    return
+  }
+  if (el.hasAttribute(attr)) el.removeAttribute(attr)
+}
 
 /**
  * Report one source's backdrop-art presence. The marker stays on while any
@@ -82,14 +93,12 @@ export function setSceneBackdropActive(doc: Document, source: BackdropSource, ac
 /** Reflect the source set onto html/body and ensure the neutralizer on use. */
 function syncMarker(doc: Document, sources: Set<BackdropSource>): void {
   const active = sources.size > 0
+  applyMarker(doc.body, BACKDROP_ACTIVE_ATTR, active)
+  applyMarker(doc.documentElement, BACKDROP_ACTIVE_ATTR, active)
   if (active) {
-    doc.body?.setAttribute(BACKDROP_ACTIVE_ATTR, 'true')
-    doc.documentElement?.setAttribute(BACKDROP_ACTIVE_ATTR, 'true')
     ensureSceneNeutralizer(doc)
     startContentObserver(doc)
   } else {
-    doc.body?.removeAttribute(BACKDROP_ACTIVE_ATTR)
-    doc.documentElement?.removeAttribute(BACKDROP_ACTIVE_ATTR)
     stopContentObserver(doc)
   }
 }
@@ -102,13 +111,27 @@ function syncMarker(doc: Document, sources: Set<BackdropSource>): void {
  */
 function updateConversationContent(doc: Document): void {
   const has = doc.body !== null && doc.body.querySelector(ACTIVE_CONVERSATION_CONTENT_SELECTOR) !== null
-  if (has) {
-    doc.body?.setAttribute(CONVERSATION_CONTENT_ATTR, 'true')
-    doc.documentElement?.setAttribute(CONVERSATION_CONTENT_ATTR, 'true')
-  } else {
-    doc.body?.removeAttribute(CONVERSATION_CONTENT_ATTR)
-    doc.documentElement?.removeAttribute(CONVERSATION_CONTENT_ATTR)
+  applyMarker(doc.body, CONVERSATION_CONTENT_ATTR, has)
+  applyMarker(doc.documentElement, CONVERSATION_CONTENT_ATTR, has)
+}
+
+/**
+ * Coalesce the mutation bursts of a streaming conversation into one content
+ * check per frame; a check scheduled for a document that stopped observing is
+ * dropped so a late frame can never re-add the marker after teardown.
+ */
+function scheduleConversationContent(doc: Document): void {
+  if (contentFrames.has(doc)) return
+  const win = doc.defaultView
+  if (win === null || typeof win.requestAnimationFrame !== 'function') {
+    updateConversationContent(doc)
+    return
   }
+  contentFrames.set(doc, win.requestAnimationFrame(() => {
+    contentFrames.delete(doc)
+    if (!contentObservers.has(doc)) return
+    updateConversationContent(doc)
+  }))
 }
 
 /** Observe the conversation tree while a backdrop is visible. */
@@ -117,20 +140,26 @@ function startContentObserver(doc: Document): void {
   updateConversationContent(doc)
   const win = doc.defaultView
   if (win === null || typeof win.MutationObserver !== 'function') return
-  const observer = new win.MutationObserver(() => updateConversationContent(doc))
+  const observer = new win.MutationObserver(() => scheduleConversationContent(doc))
   observer.observe(doc.body ?? doc.documentElement, { childList: true, subtree: true })
   contentObservers.set(doc, observer)
 }
 
-/** Stop the content observer and drop the content marker. */
+/** Stop the content observer, cancel pending work and drop the marker. */
 function stopContentObserver(doc: Document): void {
+  const frame = contentFrames.get(doc)
+  if (frame !== undefined) {
+    const win = doc.defaultView
+    if (win !== null && typeof win.cancelAnimationFrame === 'function') win.cancelAnimationFrame(frame)
+    contentFrames.delete(doc)
+  }
   const observer = contentObservers.get(doc)
   if (observer !== undefined) {
     observer.disconnect()
     contentObservers.delete(doc)
   }
-  doc.body?.removeAttribute(CONVERSATION_CONTENT_ATTR)
-  doc.documentElement?.removeAttribute(CONVERSATION_CONTENT_ATTR)
+  applyMarker(doc.body, CONVERSATION_CONTENT_ATTR, false)
+  applyMarker(doc.documentElement, CONVERSATION_CONTENT_ATTR, false)
 }
 
 /**

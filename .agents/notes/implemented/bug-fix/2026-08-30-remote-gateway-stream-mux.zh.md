@@ -10,7 +10,7 @@ Status: implemented
 
 **门控通道现在覆盖官方流套接字。** 钉定的 0.1.2-alpha.1 线上客户端只打开一条常驻 WebSocket——Typert 网关多路复用流 `/api/remote.mux`——所有 Remote 流（工作区 follow、会话 feed、子代理谱系等）都走这条套接字。通道重写表里残留的是该版本已不存在的旧路径（`/api/events.mux`、`/api/events.host`），因此手机的 mux 从未被重写到 `/remote/api/remote.mux`：它直连隧道源站，被连接插件围栏与浏览器认证 cookie 拒绝（手机无 cookie 也无围栏信任），全部流随之失效。修复：
 
-- `wsPaths` 现在包含 `/api/remote.mux`（外加侧边栏/ssh 终端）；解析期引导补丁与运行时补丁共用同一规则表。
+- `wsPaths` 现在包含 `/api/remote.mux`（外加侧边栏/ssh 终端）；解析期引导补丁与运行时补丁共用同一规则表。侧栏一族其后补上了第三条套接字 `/sidebar/ws/agent-opens`（[批次 issue 1646-1665](2026-09-21-issue-batch-1646-1665-channel-gate-sidebar-socket-and-label-race.zh.md)）。
 - 主机注册精确升级路由 `/remote/api/remote.mux`，映射回内环 `/api/remote.mux`，保留无 cookie 凭据所依赖的 `device` 查询参数。
 - 删除过时的 `events.*` 常量；契约钉定测试断言 mux 路径。
 

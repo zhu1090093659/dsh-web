@@ -37,6 +37,7 @@ const CSS = [
   '.btn.spin svg{animation:spin .8s linear infinite}',
   '@keyframes spin{to{transform:rotate(360deg)}}',
   '.meta{color:var(--faint);font-size:12px;margin:-14px 0 22px}',
+  '.warnline{display:none;color:var(--bad);font-size:12px;margin:-14px 0 22px}',
   '.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:26px}',
   '.card{background:var(--panel);border:1px solid var(--panel-border);border-radius:var(--radius);padding:16px 18px;backdrop-filter:blur(8px);transition:transform .18s ease,border-color .18s ease}',
   '.card:hover{transform:translateY(-2px);border-color:rgba(148,163,255,.3)}',
@@ -171,21 +172,33 @@ function renderCards() {
   }).join('')
 }
 
-/* ---------- trend chart (hand-rolled SVG: PV area + UV line) ---------- */
-function renderChart() {
-  var daily = (data.site && data.site.daily) || []
-  var box = $('chart')
-  if (!daily.length) { box.innerHTML = '<div class="empty">暂无数据</div>'; return }
+/* ---------- hand-rolled SVG line chart, shared by both trend panels ----------
+   cfg = { rows, series: [{ key, color, width, opacity, label }], aria, empty,
+           fill: { id, key, color }, tip(row) -> html }
+   Each box owns its own tooltip/crosshair so two charts can coexist. */
+function drawChart(boxId, cfg) {
+  var box = $(boxId)
+  var rows = cfg.rows || []
+  if (!rows.length) { box.innerHTML = '<div class="empty">' + (cfg.empty || '暂无数据') + '</div>'; return }
   var W = 1000, H = 300, pl = 46, pr = 18, pt = 16, pb = 34
   var iw = W - pl - pr, ih = H - pt - pb
-  var top = Math.max(1, Math.max.apply(null, daily.map(function (r) { return Math.max(Number(r.pv) || 0, Number(r.uv) || 0) })))
-  var step = daily.length > 1 ? iw / (daily.length - 1) : 0
-  function X(i) { return pl + (daily.length > 1 ? i * step : iw / 2) }
+  var peak = 0
+  rows.forEach(function (r) {
+    cfg.series.forEach(function (s) { peak = Math.max(peak, Number(r[s.key]) || 0) })
+  })
+  var top = Math.max(1, peak)
+  var step = rows.length > 1 ? iw / (rows.length - 1) : 0
+  function X(i) { return pl + (rows.length > 1 ? i * step : iw / 2) }
   function Y(v) { return pt + ih - (Number(v) || 0) / top * ih }
   function line(key) {
-    return daily.map(function (r, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(r[key]).toFixed(1) }).join('')
+    return rows.map(function (r, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(r[key]).toFixed(1) }).join('')
   }
-  var area = line('pv') + 'L' + X(daily.length - 1).toFixed(1) + ' ' + (pt + ih) + 'L' + X(0).toFixed(1) + ' ' + (pt + ih) + 'Z'
+  var fill = cfg.fill
+    ? '<defs><linearGradient id="' + cfg.fill.id + '" x1="0" y1="0" x2="0" y2="1">'
+      + '<stop offset="0" stop-color="' + cfg.fill.color + '" stop-opacity=".32"/><stop offset="1" stop-color="' + cfg.fill.color + '" stop-opacity="0"/>'
+      + '</linearGradient></defs>'
+      + '<path d="' + line(cfg.fill.key) + 'L' + X(rows.length - 1).toFixed(1) + ' ' + (pt + ih) + 'L' + X(0).toFixed(1) + ' ' + (pt + ih) + 'Z" fill="url(#' + cfg.fill.id + ')"/>'
+    : ''
   var grid = ''
   for (var g = 0; g <= 4; g++) {
     var gy = pt + ih * g / 4
@@ -193,38 +206,64 @@ function renderChart() {
       + '<text x="' + (pl - 8) + '" y="' + (gy + 4) + '" text-anchor="end" fill="#5d6580" font-size="11">' + fmt(Math.round(top * (4 - g) / 4)) + '</text>'
   }
   var ticks = ''
-  var every = Math.max(1, Math.ceil(daily.length / 8))
-  for (var t = 0; t < daily.length; t += every) {
-    ticks += '<text x="' + X(t).toFixed(1) + '" y="' + (H - 12) + '" text-anchor="middle" fill="#5d6580" font-size="11">' + esc(daily[t].day.slice(5)) + '</text>'
+  var every = Math.max(1, Math.ceil(rows.length / 8))
+  for (var t = 0; t < rows.length; t += every) {
+    ticks += '<text x="' + X(t).toFixed(1) + '" y="' + (H - 12) + '" text-anchor="middle" fill="#5d6580" font-size="11">' + esc(rows[t].day.slice(5)) + '</text>'
   }
-  box.innerHTML =
-    '<div class="legend" style="margin-bottom:10px"><span><i style="background:#8ea6ff"></i>PV</span><span><i style="background:#45c4f5"></i>UV</span></div>'
-    + '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="站点访问趋势">'
-    + '<defs><linearGradient id="pvfill" x1="0" y1="0" x2="0" y2="1">'
-    + '<stop offset="0" stop-color="#6f8cff" stop-opacity=".32"/><stop offset="1" stop-color="#6f8cff" stop-opacity="0"/>'
-    + '</linearGradient></defs>'
-    + grid
-    + '<path d="' + area + '" fill="url(#pvfill)"/>'
-    + '<path d="' + line('pv') + '" fill="none" stroke="#8ea6ff" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>'
-    + '<path d="' + line('uv') + '" fill="none" stroke="#45c4f5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>'
-    + ticks
-    + '<line id="cross" y1="' + pt + '" y2="' + (pt + ih) + '" stroke="rgba(230,234,246,.35)" stroke-width="1" opacity="0"/>'
-    + '<rect id="hitzone" x="' + pl + '" y="' + pt + '" width="' + iw + '" height="' + ih + '" fill="transparent"/>'
-    + '</svg><div class="tip" id="tip"></div>'
-  var svg = box.querySelector('svg'), tip = $('tip'), cross = box.querySelector('#cross')
-  box.querySelector('#hitzone').addEventListener('mousemove', function (ev) {
+  var legend = cfg.series.length > 1
+    ? '<div class="legend" style="margin-bottom:10px">' + cfg.series.map(function (s) {
+      return '<span><i style="background:' + s.color + '"></i>' + esc(s.label) + '</span>'
+    }).join('') + '</div>'
+    : ''
+  var strokes = cfg.series.map(function (s) {
+    return '<path d="' + line(s.key) + '" fill="none" stroke="' + s.color + '" stroke-width="' + s.width + '" stroke-linejoin="round" stroke-linecap="round"'
+      + (s.opacity ? ' opacity="' + s.opacity + '"' : '') + '/>'
+  }).join('')
+  box.innerHTML = legend
+    + '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(cfg.aria) + '">'
+    + fill + grid + strokes + ticks
+    + '<line class="cross" y1="' + pt + '" y2="' + (pt + ih) + '" stroke="rgba(230,234,246,.35)" stroke-width="1" opacity="0"/>'
+    + '<rect class="hit" x="' + pl + '" y="' + pt + '" width="' + iw + '" height="' + ih + '" fill="transparent"/>'
+    + '</svg><div class="tip"></div>'
+  var svg = box.querySelector('svg'), tip = box.querySelector('.tip'), cross = box.querySelector('.cross'), hit = box.querySelector('.hit')
+  hit.addEventListener('mousemove', function (ev) {
     var rect = svg.getBoundingClientRect()
     var mx = (ev.clientX - rect.left) / rect.width * W
-    var i = Math.max(0, Math.min(daily.length - 1, Math.round((mx - pl) / (step || 1))))
-    var r = daily[i]
+    var i = Math.max(0, Math.min(rows.length - 1, Math.round((mx - pl) / (step || 1))))
+    var r = rows[i]
     cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('opacity', '1')
-    tip.innerHTML = '<div class="d">' + esc(r.day) + '</div>PV <b>' + full(r.pv) + '</b> · UV <b>' + full(r.uv) + '</b>'
+    tip.innerHTML = '<div class="d">' + esc(r.day) + '</div>' + cfg.tip(r)
     tip.style.left = Math.max(0, Math.min(rect.width - 150, X(i) / W * rect.width - 60)) + 'px'
     tip.style.top = '34px'
     tip.classList.add('show')
   })
-  box.querySelector('#hitzone').addEventListener('mouseleave', function () {
+  hit.addEventListener('mouseleave', function () {
     tip.classList.remove('show'); cross.setAttribute('opacity', '0')
+  })
+}
+
+/* ---------- active instances per day (heartbeat UV) ---------- */
+function renderActiveChart() {
+  drawChart('active-chart', {
+    rows: (data.plugins && data.plugins.daily) || [],
+    aria: '每日活跃实例趋势',
+    empty: '暂无心跳数据——插件心跳要等含遥测的版本发布、用户更新后才会出现',
+    series: [{ key: 'uv', color: '#45c4f5', width: 2.2 }],
+    tip: function (r) { return '活跃实例 <b>' + full(r.uv) + '</b> · 心跳上报 <b>' + full(r.beats) + '</b>' },
+  })
+}
+
+/* ---------- site traffic trend (PV area + UV line) ---------- */
+function renderChart() {
+  drawChart('chart', {
+    rows: (data.site && data.site.daily) || [],
+    aria: '站点访问趋势',
+    fill: { id: 'pvfill', key: 'pv', color: '#6f8cff' },
+    series: [
+      { key: 'pv', color: '#8ea6ff', width: 2.2, label: 'PV' },
+      { key: 'uv', color: '#45c4f5', width: 2, opacity: '.9', label: 'UV' },
+    ],
+    tip: function (r) { return 'PV <b>' + full(r.pv) + '</b> · UV <b>' + full(r.uv) + '</b>' },
   })
 }
 
@@ -318,8 +357,35 @@ function dataUrl() {
     + '&items_limit=' + state.itemsSize + '&items_offset=' + state.itemsOffset
 }
 function renderAll() {
-  renderCards(); renderChart(); renderPaths(); renderItems()
-  $('updated').textContent = '更新于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  renderCards(); renderActiveChart(); renderChart(); renderPaths(); renderItems()
+  $('updated').textContent = '查询于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  renderFreshness()
+}
+/* The summary payload carries the rollup's generation stamp (cache reads
+   keep the original one) and the auxiliary breakdowns skipped under D1
+   memory pressure. Surface both so a lagging cache can never read as lost
+   data: a 09-13 rollup served on 09-16 once looked like two missing days. */
+function renderFreshness() {
+  var gen = Number(data && data.generated_at) || 0
+  var generated = ''
+  if (gen) {
+    generated = new Date(gen).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    var ageHours = (Date.now() - gen) / 3600000
+    // Freshness matches the rollup TTLs: 30 minutes up to 30 days, 12 hours beyond.
+    var staleAfter = state.days <= 30 ? 0.5 : 12
+    if (ageHours > staleAfter * 2) generated += '（滞后 ' + (ageHours >= 10 ? Math.round(ageHours) : ageHours.toFixed(1)) + ' 小时）'
+  }
+  $('generated').textContent = generated ? ' · 数据滚存于 ' + generated : ''
+  var warns = []
+  if (gen && (Date.now() - gen) / 3600000 > (state.days <= 30 ? 1 : 24)) {
+    warns.push('当前是滞后的滚存快照：实时聚合暂时受限，上报与计数未中断，恢复后自动补齐')
+  }
+  var degraded = (data && data.degraded) || []
+  if (degraded.indexOf('channels') >= 0) warns.push('渠道分布本次聚合降级跳过（数据源过载），其余数据正常')
+  if (degraded.indexOf('versions') >= 0) warns.push('版本分布本次聚合降级跳过（数据源过载），其余数据正常')
+  var line = $('stale-warn')
+  line.textContent = warns.join('；')
+  line.style.display = warns.length ? '' : 'none'
 }
 function refresh(section) {
   var panel = section === 'paths' ? $('panel-paths') : section === 'items' ? $('panel-items') : null
@@ -379,10 +445,15 @@ const SHELL = [
   '<button class="btn" id="reload" aria-label="刷新数据">' + ICONS.refresh + '<span>刷新</span></button>',
   '</div>',
   '</header>',
-  '<p class="meta"><span id="range-label">最近 30 天</span> · <span id="updated"></span> · 已过滤已知爬虫（UA 特征 + webdriver 检测）</p>',
+  '<p class="meta"><span id="range-label">最近 30 天</span> · <span id="updated"></span><span id="generated"></span> · 已过滤已知爬虫（UA 特征 + webdriver 检测）</p>',
+  '<p class="warnline" id="stale-warn" role="status"></p>',
   '<div class="err" id="err" role="alert"></div>',
   '<p class="meta" id="boot-hint">正在渲染数据……若此提示不消失，说明页面脚本被拦截（请检查浏览器控制台）。</p>',
   '<section class="cards rise" id="cards"></section>',
+  '<section class="panel rise" id="panel-active">',
+  '<div class="panel-h"><h2>活跃实例趋势</h2><span class="note">按日去重的实例数（当日上报插件心跳的浏览器），最新一天即 KPI 卡的「今日活跃实例」</span></div>',
+  '<div class="chart-box" id="active-chart"></div>',
+  '</section>',
   '<section class="panel rise" id="panel-chart">',
   '<div class="panel-h"><h2>站点访问趋势</h2><span class="note">仅统计浏览器端上报的页面访问</span></div>',
   '<div class="chart-box" id="chart"></div>',
@@ -393,8 +464,8 @@ const SHELL = [
   '<div class="pg" id="paths-pager"></div>',
   '</section>',
   '<section class="panel rise" id="panel-items">',
-  '<div class="panel-h"><h2>插件安装量</h2><span class="note">独立实例 = 去重浏览器数；皮肤条目以 skin: 前缀展示；渠道：market=市场一键装 / npm=仓库直装</span></div>',
-  '<table><thead><tr><th>#</th><th>包 / 资产</th><th class="num">独立实例</th><th class="num">当日活跃</th><th>渠道分布</th><th class="hide-s">版本分布</th></tr></thead><tbody id="items-body"></tbody></table>',
+  '<div class="panel-h"><h2>插件安装量</h2><span class="note">期间活跃 = 区间内按日去重后求和（同一实例多天活跃会重复计入）；当日活跃 = 当天去重实例数；皮肤条目以 skin: 前缀展示；渠道：market=市场一键装 / npm=仓库直装</span></div>',
+  '<table><thead><tr><th>#</th><th>包 / 资产</th><th class="num">期间活跃</th><th class="num">当日活跃</th><th>渠道分布</th><th class="hide-s">版本分布</th></tr></thead><tbody id="items-body"></tbody></table>',
   '<div class="pg" id="items-pager"></div>',
   '</section>',
   '<p class="foot">所有事件均匿名（随机 ID 加盐哈希，不存 IP），仅展示聚合计数。契约见 docs/telemetry.md。</p>',

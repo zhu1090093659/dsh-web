@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" fill="none" aria-hidden="true">
+  <!-- 余烬底板：焊疤外框 + 地平线残骸剪影 + 烟柱 + 紫火花 -->
+  <defs>
+    <radialGradient id="em-glow" cx="0.5" cy="1" r="0.7">
+      <stop offset="0" stop-color="#c9793a" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#c9793a" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="em-bead" width="4" height="14" patternUnits="userSpaceOnUse">
+      <rect x="1" y="0" width="2" height="8" fill="#e8a860"/>
+    </pattern>
+  </defs>
+  <rect x="0" y="560" width="1600" height="340" fill="url(#em-glow)"/>
+  <!-- 焊疤外框：虚线读作焊珠 -->
+  <rect x="24.5" y="24.5" width="1551" height="851" stroke="#e8a860" opacity="0.10" stroke-dasharray="10 6"/>
+  <rect x="32.5" y="32.5" width="1535" height="835" stroke="#e8a860" opacity="0.05"/>
+  <!-- 地平线 + 残骸剪影 -->
+  <g stroke="#e8a860" stroke-width="1">
+    <path d="M0 640 H1600" opacity="0.10"/>
+    <path d="M180 640 l40 -90 26 12 34 -64 30 40 22 -18 38 120" opacity="0.12"/>
+    <path d="M1180 640 l30 -120 44 26 20 -58 36 30 26 -12 44 134" opacity="0.12"/>
+    <path d="M760 640 l18 -46 30 10 22 -30 26 66" opacity="0.09"/>
+  </g>
+  <!-- 烟柱 -->
+  <g stroke="#9ba1a8" stroke-width="1" opacity="0.06">
+    <path d="M240 640 c-14 -80 18 -140 4 -220 c-10 -60 14 -110 8 -170"/>
+    <path d="M1250 640 c16 -90 -14 -150 2 -230 c12 -64 -10 -120 -4 -180"/>
+    <path d="M800 640 c-10 -70 12 -120 2 -190"/>
+  </g>
+  <!-- 紫火花点睛 -->
+  <g fill="#8a63c9">
+    <circle cx="320" cy="420" r="1.6" opacity="0.22"/>
+    <circle cx="520" cy="300" r="1.2" opacity="0.16"/>
+    <circle cx="700" cy="480" r="1.4" opacity="0.18"/>
+    <circle cx="940" cy="360" r="1.2" opacity="0.14"/>
+    <circle cx="1120" cy="500" r="1.6" opacity="0.20"/>
+    <circle cx="1320" cy="280" r="1.2" opacity="0.14"/>
+    <circle cx="1440" cy="460" r="1.4" opacity="0.16"/>
+    <circle cx="180" cy="260" r="1.2" opacity="0.12"/>
+  </g>
+  <!-- 底部焊珠带 -->
+  <rect x="0" y="866" width="1600" height="14" fill="url(#em-bead)" opacity="0.10"/>
+</svg>

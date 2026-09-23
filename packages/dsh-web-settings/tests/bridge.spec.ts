@@ -1,16 +1,21 @@
 /**
  * Bridge handler behavior: allowlist-gated describe, allowlist-gated mutate,
- * revision conflicts, and the official-shaped refusal envelopes the client
- * controller understands.
+ * revision conflicts, the official-shaped refusal envelopes the client
+ * controller understands, and the profile-entry-id mapping the new settings
+ * surface needs (its descriptors are keyed by entry id, the family plugins
+ * bind by settings namespace).
+ *
+ * test-standards-allow: bridge handler unit tests over synthetic settings surfaces
  */
 
 import type { IncomingMessage } from 'node:http'
 import { describe, expect, it } from 'vitest'
 import { SettingsConflictError } from '@deepseek-ai/dsh-settings'
-import type { SettingsNamespace, SettingsProvider } from '@deepseek-ai/dsh-settings'
+import type { SettingsForms, SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import { isTrustedBridgeRequest, makeBridgeHandlers, WEB_UI_SETTINGS_PROXY_TOKEN_HEADER } from '../src/bridge.ts'
+import type { BridgeProfileEntry } from '../src/bridge.ts'
 
-/** One fake settings registration the fake seam serves. */
+/** One fake settings registration the fake surface serves, keyed by profile entry id. */
 interface FakeRegistration {
   value: Record<string, unknown>
   user?: Record<string, unknown>
@@ -18,30 +23,59 @@ interface FakeRegistration {
   revision: number
 }
 
-/** A minimal in-memory settings seam shaped like the official provider. */
+/** One fake profile row: the shape the Host config editor reports. */
+interface FakeRow {
+  /** Profile entry id (the settings namespace of the new surface). */
+  id: string
+  /** Package the row loads, as the profile patch spells it. */
+  name?: string
+  /** Client package an aggregate row carries. */
+  plugin?: string
+}
+
+/** The rows a family aggregate install produces (one per mounted subplugin). */
+const AGGREGATE_ROWS: FakeRow[] = [
+  { id: 'web-ui-task-board', name: '@linxin666/dsh-web-all/task-board', plugin: '@linxin666/dsh-client-ui-task-board' },
+  { id: 'web-ui-skin-center', name: '@linxin666/dsh-web-all/skin-center', plugin: '@linxin666/dsh-client-ui-skin-center' },
+  { id: 'web-ui-pet', name: '@linxin666/dsh-web-all/pet', plugin: '@linxin666/dsh-client-ui-pet' },
+]
+
+/** Project fake rows onto the shape the bridge reads. */
+function rows(entries: FakeRow[]): BridgeProfileEntry[] {
+  return entries.map(row => ({
+    options: {
+      id: row.id,
+      ...row.name === undefined ? {} : { name: row.name },
+      ...row.plugin === undefined ? {} : { config: { plugin: row.plugin } },
+    },
+  }))
+}
+
+/** A minimal in-memory settings surface shaped like the official SettingsForms service. */
 function fakeSettings(registrations: Record<string, FakeRegistration>) {
   let nextFailure: Error | undefined
   const writes: Array<{ ns: string; ops: unknown[]; expectedRevision?: number }> = []
   const seam = {
     writable: true,
-    describe: () => Object.entries(registrations).map(([ns, entry]) => ({
+    describe: (_options?: { redactSecrets?: boolean }) => Object.entries(registrations).map(([ns, entry]) => ({
       ns,
+      autoGenerate: true,
       schema: { type: 'object' },
       value: entry.value,
       revision: entry.revision,
+      applies: 'live' as const,
       ...entry.base === undefined ? {} : { base: entry.base },
       ...entry.user === undefined ? {} : { user: entry.user },
-      applies: 'immediate',
     })),
-    mutate: async (ns: SettingsNamespace, ops: unknown[], expectedRevision?: number) => {
-      writes.push({ ns: String(ns), ops, expectedRevision })
+    mutate: async (ns: string, ops: unknown[], expectedRevision?: number) => {
+      writes.push({ ns, ops, expectedRevision })
       if (nextFailure !== undefined) {
         const failure = nextFailure
         nextFailure = undefined
         throw failure
       }
-      const entry = registrations[String(ns)]
-      if (entry === undefined) throw new Error('settings namespace "' + String(ns) + '" is not registered')
+      const entry = registrations[ns]
+      if (entry === undefined) throw new Error('No configurable plugin entry "' + ns + '"')
       entry.revision += 1
       for (const op of ops as Array<{ op: string; path: string[]; value?: unknown }>) {
         const parent = op.path.slice(0, -1).reduce((acc: Record<string, unknown>, key) => acc[key] as Record<string, unknown>, entry.value)
@@ -52,6 +86,15 @@ function fakeSettings(registrations: Record<string, FakeRegistration>) {
     armFailure: (error: Error) => { nextFailure = error },
   }
   return { seam, writes }
+}
+
+/** Build the bridge deps for one fake surface and profile roster. */
+function deps(seam: unknown, entries: FakeRow[] | undefined, readSettingsYaml: () => string = () => '') {
+  return {
+    settings: seam as SettingsForms,
+    readSettingsYaml,
+    ...entries === undefined ? {} : { entries: () => rows(entries) },
+  }
 }
 
 const userYaml = (): string => [
@@ -148,35 +191,66 @@ describe('bridge request trust', () => {
 describe('bridge describe', () => {
   it('serves the built-in family allowlist when the user configured none', async () => {
     const { seam } = fakeSettings({
-      'task-board': { value: { enabled: true }, revision: 1 },
-      pet: { value: { visible: true }, revision: 2 },
+      'web-ui-task-board': { value: { enabled: true }, revision: 1 },
+      'web-ui-pet': { value: { visible: true }, revision: 2 },
       'web-search-deepseek': { value: { provider: 'exa' }, revision: 3 },
     })
-    const handlers = makeBridgeHandlers({ settings: seam as unknown as SettingsProvider, readSettingsYaml: () => '' })
+    const handlers = makeBridgeHandlers(deps(seam, AGGREGATE_ROWS))
     const result = await handlers.describe()
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result.value.namespaces.map(view => view.ns)).toEqual(['pet', 'task-board'])
+    expect(result.value.namespaces.map(view => [view.ns, view.entryId])).toEqual([
+      ['pet', 'web-ui-pet'],
+      ['task-board', 'web-ui-task-board'],
+    ])
     expect(result.value.writable).toBe(true)
   })
 
   it('maps user package names onto their namespaces', async () => {
     const { seam } = fakeSettings({
-      'task-board': { value: { enabled: true }, revision: 1 },
-      'skin-background': { value: { backgroundOpacity: 0.5 }, revision: 2 },
-      pet: { value: { visible: true }, revision: 3 },
+      'web-ui-task-board': { value: { enabled: true }, revision: 1 },
+      'web-ui-skin-center': { value: { backgroundOpacity: 0.5 }, revision: 2 },
+      'web-ui-pet': { value: { visible: true }, revision: 3 },
     })
-    const handlers = makeBridgeHandlers({ settings: seam as unknown as SettingsProvider, readSettingsYaml: userYaml })
+    const handlers = makeBridgeHandlers(deps(seam, AGGREGATE_ROWS, userYaml))
     const result = await handlers.describe()
     expect(result.ok).toBe(true)
     if (!result.ok) return
     // dsh-web owns no namespace and must be ignored.
-    expect(result.value.namespaces.map(view => view.ns)).toEqual(['skin-background', 'task-board'])
+    expect(result.value.namespaces.map(view => [view.ns, view.entryId])).toEqual([
+      ['skin-background', 'web-ui-skin-center'],
+      ['task-board', 'web-ui-task-board'],
+    ])
+  })
+
+  it('traces a standalone install through the row package name alone', async () => {
+    const { seam } = fakeSettings({ 'ui-task-board': { value: { enabled: true }, revision: 1 } })
+    const handlers = makeBridgeHandlers(deps(seam, [{ id: 'ui-task-board', name: '@linxin666/dsh-client-ui-task-board' }]))
+    const result = await handlers.describe()
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.namespaces.map(view => [view.ns, view.entryId])).toEqual([['task-board', 'ui-task-board']])
+  })
+
+  it('serves a namespace already keyed by its family name without an entry id', async () => {
+    // A Host whose descriptors are still keyed by the family namespace
+    // (no profile entry id to resolve): the namespace stays served, and the
+    // client keeps the bridge transport.
+    const { seam } = fakeSettings({ 'task-board': { value: { enabled: true }, revision: 1 } })
+    for (const entries of [undefined, [] as FakeRow[]]) {
+      const handlers = makeBridgeHandlers(deps(seam, entries))
+      const result = await handlers.describe()
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.value.namespaces).toHaveLength(1)
+      expect(result.value.namespaces[0].ns).toBe('task-board')
+      expect(result.value.namespaces[0].entryId).toBeUndefined()
+    }
   })
 
   it('returns an empty list when nothing on the allowlist is registered', async () => {
     const { seam } = fakeSettings({ 'web-search-deepseek': { value: {}, revision: 1 } })
-    const handlers = makeBridgeHandlers({ settings: seam as unknown as SettingsProvider, readSettingsYaml: () => '' })
+    const handlers = makeBridgeHandlers(deps(seam, []))
     const result = await handlers.describe()
     expect(result.ok).toBe(true)
     if (!result.ok) return
@@ -189,7 +263,7 @@ describe('bridge mutate', () => {
     const { seam, writes } = fakeSettings({
       'web-search-deepseek': { value: { provider: 'exa' }, revision: 1 },
     })
-    const handlers = makeBridgeHandlers({ settings: seam as unknown as SettingsProvider, readSettingsYaml: () => '' })
+    const handlers = makeBridgeHandlers(deps(seam, []))
     const result = await handlers.mutate({ ns: 'web-search-deepseek', ops: [{ op: 'set', path: ['provider'], value: 'x' }] })
     expect(result).toEqual({
       ok: false,
@@ -199,39 +273,52 @@ describe('bridge mutate', () => {
     expect(writes).toEqual([])
   })
 
-  it('writes an allowlisted namespace and returns its fresh view', async () => {
+  it('writes through the resolved profile entry id and returns the namespace view', async () => {
     const { seam, writes } = fakeSettings({
-      'task-board': { value: { enabled: true }, revision: 4 },
+      'web-ui-task-board': { value: { enabled: true }, revision: 4 },
     })
-    const handlers = makeBridgeHandlers({ settings: seam as unknown as SettingsProvider, readSettingsYaml: () => '' })
+    const handlers = makeBridgeHandlers(deps(seam, AGGREGATE_ROWS))
     const result = await handlers.mutate({
       ns: 'task-board',
       ops: [{ op: 'set', path: ['enabled'], value: false }],
       expectedRevision: 4,
     })
-    expect(writes).toEqual([{ ns: 'task-board', ops: [{ op: 'set', path: ['enabled'], value: false }], expectedRevision: 4 }])
+    // The Host writes by entry id, never by the family namespace.
+    expect(writes).toEqual([{ ns: 'web-ui-task-board', ops: [{ op: 'set', path: ['enabled'], value: false }], expectedRevision: 4 }])
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.ns).toBe('task-board')
+    expect(result.value.entryId).toBe('web-ui-task-board')
     expect(result.value.value).toEqual({ enabled: false })
     expect(result.value.revision).toBe(5)
   })
 
   it('maps a revision conflict onto the settings-conflict envelope', async () => {
     const { seam } = fakeSettings({
-      'task-board': { value: { enabled: true }, revision: 4 },
+      'web-ui-task-board': { value: { enabled: true }, revision: 4 },
     })
-    seam.armFailure(new SettingsConflictError('task-board' as unknown as SettingsNamespace, 4, 6))
-    const handlers = makeBridgeHandlers({ settings: seam as unknown as SettingsProvider, readSettingsYaml: () => '' })
+    seam.armFailure(new SettingsConflictError('web-ui-task-board' as unknown as SettingsNamespace, 4, 6))
+    const handlers = makeBridgeHandlers(deps(seam, AGGREGATE_ROWS))
     const result = await handlers.mutate({ ns: 'task-board', ops: [{ op: 'set', path: ['enabled'], value: false }], expectedRevision: 4 })
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.code).toBe('settings-conflict')
   })
 
+  it('maps a disposed entry onto the settings-rejected envelope', async () => {
+    const { seam } = fakeSettings({ 'web-ui-task-board': { value: {}, revision: 1 } })
+    seam.armFailure(new Error('No configurable plugin entry "web-ui-task-board"'))
+    const handlers = makeBridgeHandlers(deps(seam, AGGREGATE_ROWS))
+    const result = await handlers.mutate({ ns: 'task-board', ops: [{ op: 'unset', path: ['enabled'] }] })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.code).toBe('settings-rejected')
+    expect(result.message).toContain('No configurable plugin entry')
+  })
+
   it('rejects a malformed body', async () => {
-    const { seam, writes } = fakeSettings({ 'task-board': { value: {}, revision: 1 } })
-    const handlers = makeBridgeHandlers({ settings: seam as unknown as SettingsProvider, readSettingsYaml: () => '' })
+    const { seam, writes } = fakeSettings({ 'web-ui-task-board': { value: {}, revision: 1 } })
+    const handlers = makeBridgeHandlers(deps(seam, AGGREGATE_ROWS))
     const result = await handlers.mutate({ ns: 42 })
     expect(result.ok).toBe(false)
     if (result.ok) return

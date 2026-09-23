@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "island-life",
+  "name": "无人岛生活",
+  "nameEn": "Island Life",
+  "author": "wertyq111",
+  "tagline": "海岛白昼 / 星空夜景插画 · 奶油木纹面板 · 薄荷胶囊按钮",
+  "description": "致敬「动森」氛围的原创海岛皮肤：浅色模式是阳光海滩，深色模式是同构图的星空夜景；奶油米白面板、暖棕文字、薄荷青绿主色，按钮与输入卡带游戏按键式立体底影。纯 CSS，无 hooks。",
+  "tags": [
+    "island",
+    "cozy",
+    "cartoon",
+    "mint",
+    "art",
+    "translucent"
+  ],
+  "accent": "#19c8b9",
+  "order": 20,
+  "version": "0.1.0",
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/island-day.webp",
+        "scrim": "linear-gradient(rgba(248, 248, 240, 0.18) 0%, rgba(248, 246, 236, 0.34) 55%, rgba(247, 243, 223, 0.46) 100%)"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/island-night.webp",
+        "scrim": "linear-gradient(rgba(14, 18, 38, 0.22) 0%, rgba(16, 20, 40, 0.34) 60%, rgba(18, 20, 36, 0.46) 100%)"
+      }
+    }
+  }
+}

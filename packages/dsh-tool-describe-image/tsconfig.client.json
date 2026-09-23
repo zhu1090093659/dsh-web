@@ -1,13 +1,20 @@
 {
-  // Browser-half program (Web GUI side): the composer image attach button.
-  // SDK types resolve from the @deepseek-ai/* npm packages declared in
-  // devDependencies (official NPM SDK), never from a source checkout.
+  // Browser-half program (Web GUI side): the plugin settings card, the send
+  // hook, and the attach helpers. SDK types resolve from the @deepseek-ai/*
+  // npm packages declared in devDependencies (official NPM SDK), never from a
+  // source checkout.
   "compilerOptions": {
     "target": "ES2024",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
+    // See tsconfig.host.json: the pin keeps this program on one cordis module
+    // so the SDK packages' Context merges (ctx.slots, ctx.configForms, ...)
+    // apply to the Context this half types against.
+    "paths": {
+      "@deepseek-ai/cordis": ["./node_modules/@deepseek-ai/cordis"]
+    },
     "jsx": "react-jsx",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "strict": true,

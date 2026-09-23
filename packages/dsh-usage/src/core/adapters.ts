@@ -67,6 +67,11 @@ function str(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
 }
 
+/** Clamp a provider percentage into the renderable 0-100 band. */
+function clampPercent(value: number): number {
+  return Math.max(0, Math.min(100, value))
+}
+
 /** Format a number to a fixed 2-decimal display string. */
 function money(value: number): string {
   return value.toFixed(2)
@@ -190,7 +195,26 @@ const KIMI_CODING: ProviderAdapter = {
   },
 }
 
-/** GLM Coding Plan quota; auth is the RAW key without a Bearer prefix. */
+/**
+ * GLM Coding Plan quota windows, keyed by the provider's own `unit` code
+ * rather than by row position so an added or reordered limit cannot shift a
+ * window's meaning: 3 = the rolling 5-hour window, 6 = the weekly window,
+ * 5 = the monthly one. Two row kinds carry quota — `TOKENS_LIMIT` (token
+ * plans) and `CREDIT_LIMIT` (credit plans, whose exact ratio is
+ * `currentValue` / `usage`) — while `TIME_LIMIT` is the MCP request cap and
+ * is not a plan window at all. Auth is the RAW key without a Bearer prefix.
+ */
+const GLM_UNIT_KEYS: Readonly<Record<number, string>> = { 3: '5h', 5: 'month', 6: 'week' }
+
+/** Percent from a credit row's exact ratio, else the provider's own percentage. */
+function glmCreditPercent(row: Record<string, unknown>): number | undefined {
+  const used = toNum(row.currentValue)
+  const limit = toNum(row.usage)
+  if (used !== undefined && limit !== undefined && limit > 0) return clampPercent((used / limit) * 100)
+  const percentage = toNum(row.percentage)
+  return percentage === undefined ? undefined : clampPercent(percentage)
+}
+
 function glmPlan(host: string, ids: readonly string[]): ProviderAdapter {
   return {
     ids,
@@ -212,11 +236,21 @@ function glmPlan(host: string, ids: readonly string[]): ProviderAdapter {
         for (const entry of limits) {
           if (typeof entry !== 'object' || entry === null) continue
           const row = entry as Record<string, unknown>
-          const unit = toNum(row.unit)
-          const percent = toNum(row.percentage)
+          const kind = str(row.type)
+          // The MCP request cap is a per-minute request budget, not a plan window.
+          if (kind === 'TIME_LIMIT') continue
+          const key = GLM_UNIT_KEYS[toNum(row.unit) ?? Number.NaN]
+          // Unknown units fall through: rendering them would invent a window.
+          if (key === undefined) continue
+          if (kind !== 'TOKENS_LIMIT' && kind !== 'CREDIT_LIMIT') continue
           windows.push({
-            key: unit === 3 ? '5h' : unit === 6 ? 'week' : unit !== undefined ? `unit-${unit}` : 'window',
-            percent: percent === undefined ? undefined : Math.max(0, Math.min(100, percent)),
+            key,
+            percent: kind === 'CREDIT_LIMIT'
+              ? glmCreditPercent(row)
+              : (() => {
+                  const percentage = toNum(row.percentage)
+                  return percentage === undefined ? undefined : clampPercent(percentage)
+                })(),
             resetsAt: toIso(row.nextResetTime),
           })
         }
@@ -409,7 +443,7 @@ export const PROVIDER_ADAPTERS: readonly ProviderAdapter[] = [
   moonshotBalance('api.moonshot.ai', 'USD', ['moonshotai']),
   KIMI_CODING,
   glmPlan('open.bigmodel.cn', ['zai-coding-cn']),
-  glmPlan('api.z.ai', ['zai-coding']),
+  glmPlan('api.z.ai', ['zai', 'zai-coding']),
   OPENCODE_GO,
   minimaxPlan('api.minimaxi.com', ['minimax-cn']),
   minimaxPlan('api.minimax.io', ['minimax']),

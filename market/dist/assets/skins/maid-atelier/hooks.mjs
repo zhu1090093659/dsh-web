@@ -454,10 +454,54 @@ export default function defineSkinHooks() {
           PROJECTED_STATE_ATTRIBUTES.workspace,
           document.querySelector(WORKSPACE_SELECTOR) !== null,
         )
+        const isBetterSidebarOpen = () => {
+          // 1. Check for dedicated right side drawer or panel
+          const rightPanel = document.querySelector('[data-sidebar-right-panel], [data-dsh-better-sidebar] [class*="right"], [data-dsh-better-sidebar] [class*="drawer"]')
+          if (rightPanel) {
+            if (rightPanel.getAttribute('aria-hidden') === 'true') return false
+            const s = getComputedStyle(rightPanel)
+            if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') return false
+            const rect = rightPanel.getBoundingClientRect()
+            if (rect.width > 120 && rect.left < window.innerWidth && rect.right > window.innerWidth - 80) {
+              return true
+            }
+          }
+
+          // 2. Check for [data-dsh-better-sidebar] container
+          const el = document.querySelector(BETTER_SIDEBAR_SELECTOR)
+          if (!el) return false
+          if (body.hasAttribute('data-dsh-sidebar-collapsed')) return false
+
+          const elStyle = getComputedStyle(el)
+          if (elStyle.display === 'none' || elStyle.visibility === 'hidden') return false
+          const elRect = el.getBoundingClientRect()
+          if (elRect.height === 0 || elRect.width === 0) return false
+
+          const state = el.getAttribute('data-state')
+          if (state === 'open') return true
+          if (state === 'closed') return false
+          const ariaExpanded = el.getAttribute('aria-expanded')
+          if (ariaExpanded === 'true') return true
+          if (ariaExpanded === 'false') return false
+          if (el.hasAttribute('data-collapsed') || el.classList.contains('collapsed')) return false
+
+          // Must be an active visible vertical panel on the right side of the screen
+          const panels = Array.from(el.querySelectorAll('[data-dsh-panel], [class*="drawer"], [class*="panel"]')).filter(p => {
+            if (p.hasAttribute('data-dsh-bottom-panel') || p.classList.contains('bottomPanel') || p.closest('[data-dsh-bottom-panel], [class*="bottomPanel"]')) {
+              return false
+            }
+            if (p.getAttribute('aria-hidden') === 'true' || p.closest('[aria-hidden="true"]')) return false
+            const s = getComputedStyle(p)
+            if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') return false
+            const r = p.getBoundingClientRect()
+            return r.width > 120 && r.height > 200 && r.left > window.innerWidth * 0.4 && r.left < window.innerWidth
+          })
+
+          return panels.length > 0
+        }
         set(
           PROJECTED_STATE_ATTRIBUTES.betterSidebarOpen,
-          document.querySelector(BETTER_SIDEBAR_SELECTOR) !== null
-            && !body.hasAttribute('data-dsh-sidebar-collapsed'),
+          isBetterSidebarOpen(),
         )
         set(
           PROJECTED_STATE_ATTRIBUTES.cordisPanelOpen,

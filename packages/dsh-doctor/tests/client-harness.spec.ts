@@ -53,7 +53,9 @@ describe('createHarnessPort', () => {
   it('resolves the current session and queues the prompt', async () => {
     const prompt = vi.fn(async () => ({ ok: true as const }))
     const sessions = {
-      list: { getSnapshot: () => ({ current: 's1', byId: { s1: { displayTitle: 'My Session' } } }) },
+      list: {
+        getSnapshot: () => ({ byId: { s1: { id: 's1', displayTitle: 'My Session', retainedBy: { mainView: 1 } } } }),
+      },
       binding: vi.fn(() => ({ session: { prompt } })),
     }
     const port = createHarnessPort(sessions)
@@ -65,14 +67,14 @@ describe('createHarnessPort', () => {
 
   it('reports a refused send and a missing binding', async () => {
     const sessions = {
-      list: { getSnapshot: () => ({ current: 's1', byId: { s1: {} } }) },
+      list: { getSnapshot: () => ({ byId: { s1: { id: 's1', retainedBy: { mainView: 1 } } } }) },
       binding: vi.fn(() => undefined),
     }
     const port = createHarnessPort(sessions)!
     const refused = await port.send({ id: 'none', label: 'x' }, 'text')
     expect(refused).toMatchObject({ ok: false })
     const failed = createHarnessPort({
-      list: { getSnapshot: () => ({ current: 's1', byId: { s1: {} } }) },
+      list: { getSnapshot: () => ({ byId: { s1: { id: 's1', retainedBy: { mainView: 1 } } } }) },
       binding: vi.fn(() => ({ session: { prompt: vi.fn(async () => ({ ok: false, error: { code: 'REFUSED', message: 'nope' } })) } })),
     })!
     const outcome = await failed.send({ id: 's1', label: 'x' }, 'text')

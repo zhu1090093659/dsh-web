@@ -1,0 +1,800 @@
+/**
+ * 冰晶公主 (Ice Crystal Princess) — L3 layer, 冰殿 engine (dark-only).
+ *
+ * 参考暗夜鎏金的做法：视口一圈画框、霜屑画布、侧栏双线与冰印、冰檐、开光角线、
+ * 回合分隔线、冰金属渐变主按钮。但母题是冰不是金——鎏金走缠枝曲线，这里全部走
+ * 直线与六十度夹角，所以两套并排时不会读成同一张图换了颜色。
+ *
+ * 每条选择器都是 scripts/hooks.mjs 里的稳定钩子。官方 CSS 白名单警告过
+ * [class*=...]：那是 CSS-Modules 的哈希，任何一次官方重建都可能改名，所以这里
+ * 一条都不用（build-skin 的 verify() 也会直接拦下来）。
+ *
+ * 暗色专用：skin.css 已经把 token 钉死在深色值上，所以这一层不再分明暗分支，
+ * 每个颜色只烘焙一次。
+ */
+
+html[data-dsh-skin="ice-princess"],
+html[data-dsh-skin="ice-princess"] body {
+  --cy-trim: #D6E4F5;
+  --cy-glow: #63B8F0;
+  --cy-deep: #070e1e;
+  --cy-radius: 12px;
+}
+html[data-dsh-skin="ice-princess"] body {
+  --cy-trim: #D6E4F5;
+  --cy-glow: #63B8F0;
+  --cy-deep: #070e1e;
+  --cy-radius: 12px;
+}
+
+
+/* ── 霜屑画布：画在内容之下，代替鎏金的金箔层 ─────────────────────────────
+   原本还有一层 10px 平铺的斜向发丝（linear-gradient 118deg + background-repeat），
+   平铺后整屏读作一层细斜网，已去掉。剩下的全是**不构成周期**的层：六枚固定位置的
+   霜点、两团极光柔光、四周压暗。没有重复，所以没有网格感。 */
+
+html[data-dsh-skin="ice-princess"] body::after {
+  content: '';
+  position: fixed;
+  inset: -48px;
+  z-index: -1;
+  pointer-events: none;
+  background-color: #070e1e;
+  background-image:
+    radial-gradient(1.6px 1.6px at 18% 24%, #d6e4f580 0%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 42% 62%, #63b8f06b 0%, transparent 100%),
+    radial-gradient(1.8px 1.8px at 67% 31%, #d6e4f570 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 84% 74%, #63b8f05c 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 29% 88%, #d6e4f56b 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 55% 12%, #63b8f066 0%, transparent 100%),
+    radial-gradient(1100px 780px at 62% 16%, #63b8f021 0%, transparent 62%),
+    radial-gradient(900px 640px at 24% 78%, #4e93e817 0%, transparent 66%),
+    /* 四周压暗。原来这里是 0.86 不透明度、38% 就开始压——实测把整条渐变洗平了
+       （顶 luma 15、底 13，只差 2，等于白做）。现在降到 0.5 并推到 52% 才开始，
+       让斜坡留得住。 */
+    radial-gradient(130% 100% at 50% 0%, transparent 0 52%, #04080f80 100%),
+    /* 底色：一条 168° 的斜坡。这是唯一「平铺」的层，但它是一条连续斜坡，
+       没有任何 repeat 周期，所以仍然符合去网格的约束。 */
+    linear-gradient(168deg, #1d4a8f 0%, #12305e 30%, #070e1e 62%, #04080f 100%);
+  background-size: 460px 460px, 460px 460px, 460px 460px, 460px 460px, 460px 460px, 460px 460px, auto, auto, auto, auto;
+  background-repeat: repeat, repeat, repeat, repeat, repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+}
+
+/* the loader owns these flags: never paint over a user wallpaper or backdrop.
+
+   注意选择器必须以 body[...] 开头，不能写 html[...]。加载器会把每条选择器强制
+   作用域到 html[data-dsh-skin="<id>"] 之下，作为**后代**前缀——写成 html[...] 会产出
+   例如 html[data-dsh-skin] html[data-dsh-backdrop-active] body::after —— 而 html 不可能是
+   html 的后代，这条规则永远匹配不上。实测确认过。（:root 是例外：转换器把它特判成
+   html[data-dsh-skin] 本身。）
+
+   标记同时打在 html 与 body 上，所以用 body 定位等价且能通过作用域。 */
+html[data-dsh-skin="ice-princess"] body[data-dsh-wallpaper-active]::after,
+html[data-dsh-skin="ice-princess"] body[data-dsh-backdrop-active]::after {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* ── 背景图激活时：把叠在它上面的同色半透明层削薄 ─────────────────────────
+   加载器把背景图放在 body 下 z-index:-2 的固定层里（[data-dsh-decoration='background']），
+   而 shell 有**两层**表面都读同一个 bg-base：app frame 与会话列，各带一份不透明度。
+   三层同色叠起来只剩约 8% 的背景图透出来（实测内容区读到的就是面板色）。
+   所以：html/body 完全让路，再把 bg-base 在背景激活期间降一档——
+   用 CSS 变量覆盖，一处生效于所有消费者，不必去碰哈希类名。 */
+html[data-dsh-skin="ice-princess"] body[data-dsh-backdrop-active] {
+  background-color: transparent !important;
+}
+
+/* 覆盖必须落在 body 上，不能只写 html：token 层把 --dsw-alias-bg-base 声明在
+   :root/body 两处，所以 body 有自己的值，
+   后代继承的是 body 的，覆盖 html 完全不起作用（实测：html 上已是 0.34，两层表面
+   仍画 0.5）。选择器写成 html[...] body 是为了在特异性上压过 body[data-ds-dark-theme]。 */
+html[data-dsh-skin="ice-princess"] body[data-dsh-backdrop-active] {
+  --dsw-alias-bg-base: #070e1e57;
+}
+
+/* ── 霜棱画框：只剩四角角花 + 双线边 ─────────────────────────────────────
+   顶缘原本还有一道回纹棱带横贯全宽，读起来就像一条状态栏，已按需求移除。
+   现在顶部没有任何横向装饰，画框只靠四个角的角花定住，更安静。 */
+
+html[data-dsh-skin="ice-princess"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147482000;
+  pointer-events: none;
+  background-image:
+    url(assets/crystal-corner-tl.svg),
+    url(assets/crystal-corner-tr.svg),
+    url(assets/crystal-corner-bl.svg),
+    url(assets/crystal-corner-br.svg);
+  background-position:
+    left 2px top 2px,
+    right 2px top 2px,
+    left 2px bottom 2px,
+    right 2px bottom 2px;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: 96px 96px, 96px 96px, 96px 96px, 96px 96px;
+  border: 1px solid #d6e4f52e;
+  outline: 1px solid #d6e4f517;
+  outline-offset: -7px;
+  opacity: 0.34;
+}
+
+/* ── 侧栏：右缘双冰线 + 底部六棱冰印 ────────────────────────────────────── */
+
+html[data-dsh-skin="ice-princess"] [data-slot='sidebar'] > *,
+html[data-dsh-skin="ice-princess"] [data-dsh-surface='sidebar'] > * {
+  position: relative;
+  /* !important: the shell also paints this column from its own light/dark rules,
+     which out-specify the alias token — without this the sidebar falls back to a
+     neutral grey in both modes and the ice panel never appears. */
+  background-color: #17264a !important;
+  background-image: none;
+  box-shadow: inset -1px 0 0 #d6e4f533;
+}
+
+html[data-dsh-skin="ice-princess"] [data-slot='sidebar'] > *::before,
+html[data-dsh-skin="ice-princess"] [data-dsh-surface='sidebar'] > *::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(#d6e4f54d, #d6e4f54d),
+    linear-gradient(#d6e4f51f, #d6e4f51f);
+  background-position: right 3px top 0, right 7px top 0;
+  background-repeat: no-repeat, no-repeat;
+  background-size: 1px 100%, 1px 100%;
+}
+
+html[data-dsh-skin="ice-princess"] [data-slot='sidebar'] > *::after,
+html[data-dsh-skin="ice-princess"] [data-dsh-surface='sidebar'] > *::after {
+  content: '';
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  width: 168px;
+  height: 34px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background-image:
+    url(assets/crystal-seal.svg),
+    linear-gradient(#d6e4f542, #d6e4f542);
+  background-repeat: no-repeat, no-repeat;
+  background-position: center bottom, center bottom 17px;
+  background-size: 30px 30px, 168px 1px;
+  opacity: 0.72;
+}
+
+/* ── 侧栏字标：冰晶纹章 + 「冰晶公主」 ───────────────────────────────────
+   logoRow 自身没有 data-slot（源码里只有 css.logoRow 这个哈希类名），但它里面
+   两个 slot 都有稳定钩子，所以用 :has() 从里往外定位，全程不碰哈希。
+
+   必须用 name slot 限定宽版：折叠成 rail 时 name slot 根本不存在，而 mark slot
+   两个状态都有（rail 里它挂在折叠按钮下），只用 mark 定位会把 rail 也一起改。 */
+html[data-dsh-skin="ice-princess"] div:has(> button > [aria-hidden='true'] [data-slot='sidebar.brand.name']) {
+  overflow: visible;
+  border-bottom: 1px solid #d6e4f529;
+  background-image: linear-gradient(180deg, #63b8f012 0%, #63b8f000 80%);
+}
+
+/* 纹章：藏起原来的鲸鱼，换成六棱冰章。
+   span:has(> [slot]) 这个选择器正好就是 brandMark（宽版）或 railMark（折叠版），
+   所以两个状态的标记一起换掉，保持一致。
+
+   尺寸分两档：折叠态的纹章撑在 28×28 的折叠按钮里，做到 26 就顶到边了，
+   所以基础值给 24，只有宽版（祖先带 aria-hidden 的 brandIdentity）放大到 30。
+   两个选择器都是扁平的，没有嵌套 :has()。 */
+html[data-dsh-skin="ice-princess"] span:has(> [data-slot='sidebar.brand.mark']) {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  background-image: url(assets/crystal-crest.svg);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+  filter: drop-shadow(0 0 5px #63b8f080);
+}
+
+/* 宽版：纹章放大到 30，光晕同步加大 */
+html[data-dsh-skin="ice-princess"] [aria-hidden='true'] span:has(> [data-slot='sidebar.brand.mark']) {
+  width: 30px;
+  height: 30px;
+  background-size: 30px 30px;
+  filter: drop-shadow(0 0 8px #63b8f08c);
+}
+
+/* 鲸鱼是内联 svg，藏它而不是删它——删不掉，它是渲染出来的。 */
+html[data-dsh-skin="ice-princess"] [data-slot='sidebar.brand.mark'] svg {
+  visibility: hidden;
+}
+
+html[data-dsh-skin="ice-princess"] [data-slot='sidebar.brand.mark'] > * {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+html[data-dsh-skin="ice-princess"] [aria-hidden='true'] [data-slot='sidebar.brand.mark'] > * {
+  width: 30px;
+  height: 30px;
+}
+
+/* 字标：收起原文案（中文环境是「DSH 本地构建」），注入「DSH - 冰晶公主」。
+   brandIdentity 带 aria-hidden="true"，是纯装饰位，所以注入不涉及可访问性。
+   宽版会渲染 fallbackBrandName 或 localBuildBrand（带版本号），结构不同但都挂在
+   name slot 下，所以用 > * 兜住两种情况。 */
+html[data-dsh-skin="ice-princess"] [data-slot='sidebar.brand.name'] > * {
+  font-size: 0;
+  letter-spacing: 0;
+}
+
+/* 两段式字标，不是一串同号的字符：
+   前段 DSH 是「代号」，小一号、字距拉开、退成银灰——读起来像铭牌上的厂标；
+   后段「冰晶公主」是「名号」，做大、上冰金属渐变。
+   真正的品牌字标都是这个结构（小代号 + 大字名），两段同号会读成一句普通的话。
+   ::before 放前段，::after 放后段——这个 span 上 shell 没有任何伪元素，所以安全。 */
+html[data-dsh-skin="ice-princess"] [data-slot='sidebar.brand.name'] > *::before {
+  content: 'DSH';
+  display: inline-block;
+  font-family: var(--dsw-font-family);
+  /* 13 -> 16px。字距用的是 em，所以会同比放大，代号/名号的比例不变。 */
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 30px;
+  letter-spacing: 0.24em;
+  color: #d6e4f5c7;
+  /* 分隔符做成一根细冰线，而不是连字符——和输入卡、匾额同源的语汇。
+     margin-right 之外再加 padding-right，让线两侧留白对等。 */
+  margin-right: 9px;
+  padding-right: 9px;
+  border-right: 1px solid #d6e4f566;
+}
+
+html[data-dsh-skin="ice-princess"] [data-slot='sidebar.brand.name'] > *::after {
+  content: '冰晶公主';
+  display: inline-block;
+  /* 走主题自己的字体栈：拉丁落 Sitka Text，中文落 Noto Serif SC（明朝体）。
+     直接引用 token，不重复写字体名——字体是主题的单一决策点。 */
+  font-family: var(--dsw-font-family);
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 30px;
+  /* 字号加大后，相对字距要收一点，否则四个字会散开。 */
+  letter-spacing: 0.12em;
+  /* 冰金属渐变字，和主按钮、标题同一套 */
+  color: #63B8F0;
+  background-image: linear-gradient(104deg, #ffffff 0%, #63B8F0 38%, #4E93E8 74%, #D6E4F5 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 字标坐落在一条冰线上——和输入卡、匾额同源的「托」法。
+   height 必须放开：shell 把 brandIdentity / brandName 都钉死在 24px，
+   而 .brand 和 .logoRow 又都是 overflow:hidden，不放开的话底线会被直接裁掉。 */
+html[data-dsh-skin="ice-princess"] span:has(> [data-slot='sidebar.brand.name']) {
+  height: auto;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #d6e4f575;
+}
+
+html[data-dsh-skin="ice-princess"] [aria-hidden='true']:has([data-slot='sidebar.brand.mark']):has([data-slot='sidebar.brand.name']) {
+  height: auto;
+  gap: 11px;
+}
+
+html[data-dsh-skin="ice-princess"] button:has([data-slot='sidebar.brand.name']) {
+  overflow: visible;
+  height: auto;
+}
+
+/* ── 工作区面板：冰壁 ─────────────────────────────────────────────────────
+   [data-slot='sidebar.workspaces'] 是 display:contents 的插槽锚点，本身没有盒子，
+   所以背景打在它的子元素（WorkspaceBrowser 的根列）上。
+
+   曾经这里是「冰裂发丝纹」——两组 60° 重复线交叉成菱形网。网格纹在窄而高的
+   面板上会被拉成规则的帘子，读起来像表格而不是冰，已整个去掉，改成不重复的
+   柔光：顶部冷光 + 两面大尺度柔光 + 一条斜向薄雾。没有周期，所以不构成网。 */
+
+html[data-dsh-skin="ice-princess"] [data-slot='sidebar.workspaces'] > * {
+  position: relative;
+  background-image:
+    url(assets/sparkle-dark.svg),
+    radial-gradient(150% 42% at 50% 0%, #63b8f021 0%, transparent 72%),
+    radial-gradient(70% 34% at 18% 10%, #ffffff0d 0%, transparent 76%),
+    radial-gradient(95% 42% at 84% 92%, #4e93e81a 0%, transparent 78%),
+    linear-gradient(168deg, #d6e4f50d 0%, #d6e4f500 46%),
+    linear-gradient(180deg, #17264a6b 0%, #0f1a3329 58%, transparent 100%);
+  background-size: 15px 15px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-position: 16% 8%, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+}
+
+/* ── 工作区文件夹：冰晶匾额 ───────────────────────────────────────────────
+   工作区行是 role="treeitem" + aria-expanded，会话行是 role="treeitem" +
+   aria-selected——两个都是原生语义属性，比 CSS-Modules 的哈希类名稳得多，也省掉了
+   对语义适配器的依赖。行高 34px，所以角线用 12px，不抢图标和文字。 */
+
+html[data-dsh-skin="ice-princess"] [role='treeitem'][aria-expanded] {
+  position: relative;
+  background-image:
+    url(assets/crystal-tick-tl.svg),
+    url(assets/crystal-tick-tr.svg),
+    url(assets/crystal-tick-bl.svg),
+    url(assets/crystal-tick-br.svg),
+    linear-gradient(200deg, #ffffff17 0 15%, transparent 15% 100%),
+    linear-gradient(180deg, #63b8f026 0%, #4e93e80d 100%);
+  background-position: left 2px top 2px, right 2px top 2px, left 2px bottom 2px, right 2px bottom 2px, 0 0, 0 0;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: 12px 12px, 12px 12px, 12px 12px, 12px 12px, 100% 100%, 100% 100%;
+  box-shadow: inset 0 0 0 1px #d6e4f526;
+}
+
+/* 左缘一枚发光的冰棱。position:absolute，所以不参与 flex 布局、不会挤动文件夹图标。 */
+html[data-dsh-skin="ice-princess"] [role='treeitem'][aria-expanded]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  border-radius: 2px;
+  pointer-events: none;
+  background-image: linear-gradient(180deg, #ffffffeb, #63B8F0 52%, #4e93e8e6);
+  box-shadow: 0 0 7px #63b8f073;
+}
+
+html[data-dsh-skin="ice-princess"] [role='treeitem'][aria-expanded]:hover {
+  box-shadow: inset 0 0 0 1px #d6e4f547;
+}
+
+/* 展开态：冰体压深一档，匾额更像一块真的冰板 */
+html[data-dsh-skin="ice-princess"] [role='treeitem'][aria-expanded='true'] {
+  background-image:
+    url(assets/crystal-tick-tl.svg),
+    url(assets/crystal-tick-tr.svg),
+    url(assets/crystal-tick-bl.svg),
+    url(assets/crystal-tick-br.svg),
+    linear-gradient(200deg, #ffffff21 0 15%, transparent 15% 100%),
+    linear-gradient(180deg, #63b8f03b 0%, #4e93e81a 100%);
+}
+
+/* 文件夹图标本身也点成冰色（第一个 span 是文件夹位，第二个是展开箭头，别连箭头一起点） */
+html[data-dsh-skin="ice-princess"] [role='treeitem'][aria-expanded] > span:first-child svg {
+  color: #63B8F0;
+  filter: drop-shadow(0 0 4px #63b8f073);
+}
+
+/* 侧栏条目：悬停时一圈冰线，不动布局 */
+html[data-dsh-skin="ice-princess"] [data-dsh-part='sidebar-entry'] {
+  border-radius: 4px;
+}
+
+html[data-dsh-skin="ice-princess"] [data-dsh-part='sidebar-entry']:hover {
+  box-shadow: inset 0 0 0 1px #d6e4f533;
+}
+
+/* ── 会话头：一道冰檐 ────────────────────────────────────────────────────── */
+
+html[data-dsh-skin="ice-princess"] [data-dsh-surface='session-header'] {
+  position: relative;
+  background-image: linear-gradient(180deg, #d6e4f50f, #d6e4f500);
+  box-shadow: inset 0 -1px 0 #d6e4f524;
+}
+
+
+/* 1. 侧栏列与消息气泡已经不在这里补了 —— 它们其实读 token
+      （--dsw-specific-sidebar-fill / --dsw-specific-bubble），真正的毛病是
+      token-set.mjs 把它们写成了 --dsw-alias-specific-*，比平台实际读取的名字多一层
+      alias- 前缀，所以皮肤的值从未被读到，基座的浅色值一直生效。已经在 token-set 里按
+      正确名字输出，这两条覆盖就不再需要。 */
+
+/* 2. 真正不读 token、自己在模块 CSS 里写死明暗两套的：输入卡的工具键。
+   通配 button 必须排除弹层条目（issue #1520）：ui-input-trigger 的 MenuView 与
+   ui-commands 的 PopupSelectView 把候选项渲染成 role="option" / "menuitem" 的
+   按钮，挂在同一个 [data-composer-card] 里，模块 CSS 的选中底色是
+   --dsw-alias-interactive-bg-hover（无 !important）。皮肤用工具键底色盖住它们
+   之后，方向键的选中行与普通行几乎同色，只剩 :hover 分支还能看出点变化。
+   排除之后再用语义属性补一条选中态兜底：既不吃掉插件自己的哈希类名，
+   也不受皮肤把该 token 压到接近菜单底色（#0f1a33）的影响。 */
+
+html[data-dsh-skin="ice-princess"] [data-composer-card] button:not([role='menuitem']):not([role='option']) {
+  background-color: #17264ae6 !important;
+}
+
+html[data-dsh-skin="ice-princess"] [data-composer-card] button:not([role='menuitem']):not([role='option']):hover:not(:disabled) {
+  background-color: #4e93e838 !important;
+}
+
+html[data-dsh-skin="ice-princess"] [data-composer-card] button:not([role='menuitem']):not([role='option']):disabled {
+  background-color: #17264a73 !important;
+}
+
+html[data-dsh-skin="ice-princess"] [data-composer-card] [role='option'][aria-selected='true'],
+html[data-dsh-skin="ice-princess"] [data-composer-card] [role='menuitem'][aria-selected='true'] {
+  background-color: #2a5ea8 !important;
+}
+
+/* ── 修掉「靠 data-ds-dark-theme 属性分支 + 静态色阶」的四处 ──────────────
+   皮肤只钉 alias token 是不够的。shell 里有四个组件**不读 alias token**，而是在
+   自己的模块 CSS 里按属性分支、直接取静态色阶：
+
+     Deliverables.module.css   .root        --deliverable-fill: static-neutral-50  → -850
+     JsonTree.module.css       .root        --json-tree-*: 深色文字色          → 浅色文字色
+     GuideBody.module.css      .hero        color: static-neutral-200           → -700
+     boot-page.module.css      .boot        （启动画面，运行时看不到，略）
+
+   用户点「明亮」时 body 上不再有 data-ds-dark-theme，这些组件就整体走浅色分支 ——
+   实测表现就是投递卡片整块变白（--deliverable-fill 回到近白）。
+
+   皮肤无法添加属性（CSS 做不到），所以逐个用稳定钩子把它们的值钉到主题的暗色值上。
+   Deliverables 与 GuideBody 有 data-* 钩子；JsonTree 的根没有钩子，但它内部有
+   data-json-root-row，用扁平的 :has() 反选根元素（:has() 不能嵌套，见构建期守卫）。 */
+
+/* 投递卡片：一份文件一张卡。--deliverable-fill 同时供卡片、图标块与分割按钮使用。 */
+html[data-dsh-skin="ice-princess"] [data-presented-files-row] {
+  --deliverable-fill: #17264a;
+  --deliverable-hover: #4e93e838;
+}
+
+html[data-dsh-skin="ice-princess"] [data-presented-file] {
+  background: #17264a !important;
+  border-color: #d6e4f52e !important;
+  color: #eaf3ff !important;
+}
+
+html[data-dsh-skin="ice-princess"] [data-presented-file]:hover {
+  background: #4e93e838 !important;
+}
+
+/* JSON 树：浅色分支给的是深色语法色（#881391 / #c41a16…），在暗底上读不了。 */
+html[data-dsh-skin="ice-princess"] div:has([data-json-root-row]) {
+  --json-tree-property: #4E93E8;
+  --json-tree-string: #63B8F0;
+  --json-tree-number: #D6E4F5;
+  --json-tree-keyword: #4E93E8;
+  --json-tree-punctuation: #eaf3ffdb;
+  --json-tree-icon: #d6e4f599;
+  --json-tree-hover: #d6e4f514;
+}
+
+/* 指南页的罗盘字标：浅色分支是 static-neutral-200（深灰），在暗底上几乎看不见。 */
+html[data-dsh-skin="ice-princess"] [data-sidebar-right-guide] > span[aria-hidden='true'] {
+  color: #d6e4f56b;
+}
+
+/* ── 首屏（主页）：透出画布渐变 ───────────────────────────────────────────
+   这里原本是纯色。问题在于：画布层画的是 fixed 的 body::after，而主区只要不透明
+   就会把它整个盖住——只改画布的话，主区看不出任何变化。所以主区改成透明，
+   整屏才是同一条连续的斜坡。
+
+   透明还有一个好处：用户开壁纸时（loader 给 html 加 data-dsh-wallpaper-active），
+   壁纸能直接透进主区，不必再单独处理。 */
+
+html[data-dsh-skin="ice-princess"] [data-phase='hero'] {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* ── 输入卡：开光角线 + 聚焦冷光 ────────────────────────────────────────── */
+
+html[data-dsh-skin="ice-princess"] [data-composer-card] {
+  position: relative;
+  border-radius: var(--cy-radius);
+  background-image: none !important;
+  outline: 1px solid #d6e4f533;
+  outline-offset: -1px;
+  box-shadow:
+    inset 0 1px 0 #d6e4f529,
+    0 10px 30px #0000008c;
+}
+
+html[data-dsh-skin="ice-princess"] [data-composer-card]::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  pointer-events: none;
+  background-image:
+    url(assets/crystal-tick-tl.svg),
+    url(assets/crystal-tick-tr.svg),
+    url(assets/crystal-tick-bl.svg),
+    url(assets/crystal-tick-br.svg);
+  background-position: left top, right top, left bottom, right bottom;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+  opacity: 0.55;
+}
+
+/* 花边：垂冰 —— 卡片上下缘各一道裙摆式垂饰。
+   下缘那条是同一块 tile 的上下镜像（crystal-lace-drop-flip）：不做镜像的话，
+   冰坠会朝卡片外面垂，而不是垂进卡片里。这是蕾丝压在面板两条边上的常规做法。
+   两条都画在卡片内部（position:absolute），所以卡片即使 overflow:hidden 也裁不掉。 */
+html[data-dsh-skin="ice-princess"] [data-composer-card]::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-image:
+    url(assets/crystal-lace-drop.svg),
+    url(assets/crystal-lace-drop-flip.svg);
+  background-position: left top, left bottom;
+  background-repeat: repeat-x, repeat-x;
+  background-size: 36px 20px, 36px 20px;
+  opacity: 0.4;
+}
+
+html[data-dsh-skin="ice-princess"] [data-composer-card]:focus-within {
+  outline-color: #63b8f099;
+  box-shadow:
+    inset 0 1px 0 #d6e4f53d,
+    0 10px 34px #00000099,
+    0 0 30px #63b8f033;
+}
+
+html[data-dsh-skin="ice-princess"] [data-input-scroll] {
+  background-color: transparent;
+}
+
+/* ── 新建会话按钮：切面冰宝石 ─────────────────────────────────────────────
+   按钮实测 252×38、overflow:hidden、原生圆角 12px。改成一颗切割过的冰：
+   底部是冰体渐变（左上透白 → 右下压深），上面叠两道硬边切面，最上面一道顶棱高光。
+   圆角收到 6px，因为切石头的边是直的，圆角太大会软掉。
+   文字用最深的夜蓝 #061024——它坐在中段 #4e93e8 上约 5.7:1，够读。 */
+
+html[data-dsh-skin="ice-princess"] [data-dsh-part='new-session'] {
+  background-image:
+    linear-gradient(180deg, #ffffffb8 0 2px, #ffffff00 2px),
+    linear-gradient(115deg, #ffffff57 0 21%, #ffffff14 21% 45%, #00000033 45% 100%),
+    linear-gradient(200deg, #ffffff33 0 17%, #0000001f 17% 100%),
+    linear-gradient(160deg, #f2fbff 0%, #a9dcf6 22%, #4E93E8 54%, #274f8c 76%, #63B8F0 100%);
+  color: #061024;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 #ffffffe6,
+    inset 0 -1px 0 #ffffff47,
+    0 2px 9px #0000008c,
+    0 0 20px #63b8f04d;
+}
+
+html[data-dsh-skin="ice-princess"] [data-dsh-part='new-session']:hover {
+  box-shadow:
+    inset 0 1px 0 #fffffff2,
+    inset 0 -1px 0 #ffffff57,
+    0 2px 12px #00000099,
+    0 0 30px #63b8f080;
+  filter: brightness(1.07);
+}
+
+/* 图标：深色刻线 + 一圈冷光，像冰里冻住的一枚印记 */
+html[data-dsh-skin="ice-princess"] [data-dsh-part='new-session'] svg {
+  color: #061024;
+  filter: drop-shadow(0 0 4px #ffffffa6);
+}
+
+/* ── 风雪：从左向右吹 ─────────────────────────────────────────────────────
+   挂在加载器自己的 [data-dsh-skin-layer='background'] 层上（z-index -2）。
+   这一层同时承载背景图与 scrim，所以风雪在画面之上、UI 之下 —— 正是「背景里的风雪」。
+
+   为什么用 ::after 而不是加到画布上：画布 body::after 是一个 fixed 的整体，动画它的
+   background-position 会把插画一起拖走。这是独立元素，可以单独动。
+
+   视差：两层雪用**不同的贴图尺寸 + 不同的循环距离**，在同一个动画里跑出不同的 px/s。
+   循环距离正好等于各自的贴图宽度，所以每圈回到原位、无缝衔接。
+   near 层还带横向短线（风的走向），far 层只有圆点。
+
+   动的是 background-position，不是 transform：position 的循环天然对齐贴图，
+   不需要测量元素宽度，也不会因为视口变化而错位。 */
+
+html[data-dsh-skin="ice-princess"] [data-dsh-skin-layer='background']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url(assets/crystal-wind-near.svg),
+    url(assets/crystal-wind-far.svg);
+  background-repeat: repeat, repeat;
+  background-size: 1400px auto, 900px auto;
+  background-position: 0 0, 0 0;
+  opacity: 0.5;
+  animation: dsh-frost-wind 46s linear infinite;
+  will-change: background-position;
+}
+
+@keyframes dsh-frost-wind {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    /* 各自移动一个贴图宽度 → 无缝；距离不同 → near 层比 far 层快 */
+    background-position: 1400px 0, 900px 0;
+  }
+}
+
+/* 尊重系统的「减少动态效果」：关掉风雪，而不是留一层静止的雪点。 */
+@media (prefers-reduced-motion: reduce) {
+  html[data-dsh-skin="ice-princess"] [data-dsh-skin-layer='background']::after {
+    animation: none;
+    display: none;
+  }
+}
+
+/* ── 代码块：冰晶透明质感 ─────────────────────────────────────────────────
+   三个都是官方认可的稳定钩子：
+     · .md-code-block            组件里的全局类名（不是 CSS-Modules 哈希）
+     · [data-code-block-banner]  顶部语言名／复制按钮栏
+     · [data-code-block-content] 代码主体
+   源码里对后两个写着「These paired attributes are stable semantic hooks for
+   owner styling and DOM tests」，所以可以直接用。避开 [class*="_banner"] 这类
+   哈希写法——那是官方明确警告的脆弱点，构建期 verify() 也会拦下来。
+
+   两个坑：
+   1. [data-code-block-content] 是 display:contents，本身不生成盒子，往它身上
+      画背景什么也看不见（和 [data-slot='sidebar'] 同一个陷阱）。纹理只能落在
+      它下面的 pre 上。
+   2. shiki 高亮版给自己的 pre 上了 background: var(--dsl-code-block-background)
+      !important。所以高亮版的「透」是通过改那个令牌拿到的，不硬碰 !important；
+      纯文本版没有 !important，可以正常叠霜纹。
+
+   透明度取 0.82／0.72 而不是更低：低到能明显看见底下的走势就伤语法色可读性了。
+   现在的净色仍然是深冰蓝，但边缘能透出会话面的变化。 */
+
+html[data-dsh-skin="ice-princess"] .md-code-block {
+  /* 设计系统层令牌：圆角、底色、条带底色全从这几个变量取，
+     改变量比改选择器更不容易被官方重建打散。 */
+  --dsl-code-block-border-radius: 10px;
+  --dsl-code-block-background: #0f1a33d1;
+  --dsl-code-block-banner-background-color: #17264ab3;
+  position: relative;
+  box-shadow:
+    inset 0 0 0 1px #d6e4f529,
+    inset 0 1px 0 #ffffff12,
+    0 6px 20px #00000057;
+}
+
+/* ── 顶部条：一块霜面玻璃 ───────────────────────────────────────────────── */
+
+html[data-dsh-skin="ice-princess"] [data-code-block-banner] {
+  color: #63B8F0;
+  background-image:
+    /* 受光顶棱 */
+    linear-gradient(180deg, #ffffff24 0 1px, #ffffff00 1px),
+    /* 斜向薄雾：一道不成网的柔光，给条带一点冰的厚度 */
+    linear-gradient(118deg, #ffffff12 0%, #ffffff00 52%),
+    /* 条带本体：冷光压顶、宝蓝收底 */
+    linear-gradient(180deg, #63b8f02b 0%, #4e93e814 100%);
+  border-bottom: 1px solid #d6e4f526;
+  box-shadow: inset 0 1px 0 #ffffff1a;
+}
+
+/* 复制键：冰片小按钮，悬停亮一下 */
+html[data-dsh-skin="ice-princess"] [data-code-block-banner] button {
+  color: #d6e4f5d9;
+  border-radius: 4px;
+  padding: 1px 7px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+html[data-dsh-skin="ice-princess"] [data-code-block-banner] button:hover {
+  background-color: #63b8f029;
+  color: #ffffffeb;
+}
+
+/* ── 代码主体：霜面冰体 ─────────────────────────────────────────────────── */
+
+/* 纯文本版（pre 上不带 .shiki）——没有 !important 挡路，可以正常叠纹理。
+   纹理曾经是两组 60° 交叉的霜纹（菱形网）；网格压在代码上会和字符抢结构，
+   去掉后改成不重复的柔光：顶部冷光 + 左上斜向薄雾。 */
+html[data-dsh-skin="ice-princess"] .md-code-block pre:not(.shiki) {
+  background-image:
+    linear-gradient(180deg, #63b8f00d 0%, #00000000 34%),
+    linear-gradient(118deg, #ffffff0b 0%, #ffffff00 58%);
+  box-shadow: inset 0 1px 0 #d6e4f512;
+}
+
+/* 高亮版：透感靠令牌（上面 --dsl-code-block-background 已经是半透明），
+   这里只补一道内棱，不叠纹理——语法色需要干净的底。 */
+html[data-dsh-skin="ice-princess"] .md-code-block pre.shiki {
+  box-shadow: inset 0 1px 0 #d6e4f50f;
+}
+
+/* 行号列：更冷一档。
+   .line 是全局类名——shell 自己的模块 CSS 里写的是 :global(.line)，编译后才
+   变成这个类名。皮肤是纯 CSS，不能写 :global(...)：浏览器解析不了那个伪类，
+   会静默丢掉整条规则（构建期现在也会拦下来，见 verify()）。 */
+html[data-dsh-skin="ice-princess"] .md-code-block code .line::before {
+  color: #d6e4f561;
+}
+
+/* ── 回合分隔：霜纹线 ───────────────────────────────────────────────────── */
+
+html[data-dsh-skin="ice-princess"] [data-dsh-part='turn-tail'],
+html[data-dsh-skin="ice-princess"] [data-turn-tail] {
+  padding-bottom: 28px;
+  background-image: url(assets/crystal-divider.svg);
+  background-repeat: no-repeat;
+  background-position: center bottom 3px;
+  background-size: 268px 17px;
+  border-bottom: 1px solid #d6e4f514;
+}
+
+/* ── 说话人：什么都不加（这里踩过一个坑） ─────────────────────────────────
+   [data-chat-flow-kind='user'] 是消息**行容器**，不是气泡本体。它包着
+   「气泡 + 时间/复制按钮」整体，所以给它圆角和描边会在气泡外面再套一圈框，
+   看起来就是「多了一个气泡」；给它铺底色更糟——外层 #17264a 叠里面气泡的
+   #0f1a33，就是两层色块。
+
+   气泡的底色由 token 负责：--dsw-specific-bubble（见 token-set.mjs）。
+   所以这条钩子在这里**不该有任何装饰**——保持它透明、无框。 */
+
+/* ── 标题：冰金属渐变字 ─────────────────────────────────────────────────── */
+
+/* 只有标题压到 300。正文不动字重：全局改 300 会让小字发虚、也会削弱加粗的强调，
+   而 Noto Serif SC 的 300 实测是真字重（不是合成），所以标题能安全地薄下去。 */
+html[data-dsh-skin="ice-princess"] h1,
+html[data-dsh-skin="ice-princess"] h2,
+html[data-dsh-skin="ice-princess"] h3 {
+  color: #63B8F0;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  background-image: linear-gradient(100deg, #ffffff, #63B8F0 42%, #4E93E8 68%, #D6E4F5);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  border-bottom: 1px solid #d6e4f524;
+  padding-bottom: 4px;
+}
+
+/* ── 审批：冰印压朱 ─────────────────────────────────────────────────────── */
+
+html[data-dsh-skin="ice-princess"] [data-approval-key] {
+  border-radius: var(--cy-radius);
+  background-image:
+    url(assets/crystal-seal-bad.svg),
+    linear-gradient(180deg, #ff6b821a, #ff6b8205);
+  background-repeat: no-repeat, no-repeat;
+  background-position: right 12px top 12px, 0 0;
+  background-size: 28px 28px, 100% 100%;
+  box-shadow: inset 0 0 0 1px #ff6b8247;
+}
+
+/* ── 详情栏 ─────────────────────────────────────────────────────────────── */
+
+html[data-dsh-skin="ice-princess"] [data-dsh-surface='details'] {
+  background-image: none !important;
+  box-shadow: inset 1px 0 0 #d6e4f529;
+}
+
+/* ── 选中与链接 ─────────────────────────────────────────────────────────── */
+
+html[data-dsh-skin="ice-princess"] ::selection {
+  background-color: #4e93e86b;
+}
+
+html[data-dsh-skin="ice-princess"] a {
+  color: #4E93E8;
+}
+
+html[data-dsh-skin="ice-princess"] * {
+  scrollbar-color: #d6e4f542 transparent;
+}
+
+/* ── 暗色专用：钉死原生配色方案 ───────────────────────────────────────────
+   必须写 :root 而不是 html。作用域转换会把每条选择器当成 skin root 的后代来加前缀，
+   所以 html { … } 会变成 html[data-dsh-skin] html { … } —— 永远匹配不上。
+   而 :root 被转换器特判成 html[data-dsh-skin="<id>"] 本身，正好落在 html 元素上，
+   这正是 color-scheme 需要的位置（它必须作用在根元素上才能影响原生控件）。
+   构建期有守卫会拦下以 html 开头的选择器。 */
+
+html[data-dsh-skin="ice-princess"] {
+  color-scheme: dark !important;
+}
+
+html[data-dsh-skin="ice-princess"] [id="root"] { background: transparent; }
+
+html[data-dsh-skin="ice-princess"] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

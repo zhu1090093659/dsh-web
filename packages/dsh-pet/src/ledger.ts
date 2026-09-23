@@ -125,6 +125,30 @@ export class PetLedger {
   }
 
   /**
+   * Select one pet's frames2d skin; `undefined` clears the choice back to the
+   * pet's default look. Manifest validation stays a caller concern, exactly
+   * like setPetName's length check.
+   */
+  setPetSkin(petId: string, skinId: string | undefined): void {
+    const skins = this.current.skins
+    if (skinId === undefined) {
+      if (skins[petId] === undefined) return
+      const next = { ...skins }
+      delete next[petId]
+      this.current = { ...this.current, skins: next }
+    } else {
+      if (skins[petId] === skinId) return
+      this.current = { ...this.current, skins: { ...skins, [petId]: skinId } }
+    }
+    this.dirty = true
+  }
+
+  /** The persisted skin id for one pet (undefined = the pet's default look). */
+  petSkin(petId: string): string | undefined {
+    return this.current.skins[petId]
+  }
+
+  /**
    * Swap the reaction pools to another pet's custom remarks (called on pet
    * selection). Slots the pet does not declare fall back to voice packs or built-ins.
    */

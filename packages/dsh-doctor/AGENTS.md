@@ -5,7 +5,7 @@ DSH Web GUI 插件 @linxin666/dsh-doctor（救助模式）。包级规则：只�
 
 ## 本包要点
 
-- 三区分层：`src/index.ts` 是 host 半区（设置命名空间、loopback 路由、心跳）；
+- 三区分层：`src/index.ts` 是 host 半区（插件自身 Config 即设置面、loopback 路由、心跳）；
   `src/client/` 是 browser 半区（Web 插件组内的 Doctor 设置卡片：启用/策略开关 + 嵌入式恢复控制台、故障探针）；`src/core/` 是
   两侧共享纯逻辑（协议、profile 身份、快照、修复规则引擎）；`src/agent/` 是
   Supervisor / Launcher / 旧服务清理 / 救援胶囊（Node 专用）；`src/cli.ts` 是

@@ -345,7 +345,9 @@ export class ArchiveService {
         toUnarchive.push(id)
       }
       try {
-        await unarchiveSessions(this.ctx.workspaceRegistry, toUnarchive)
+        // The registry records the harness's native id spelling; rows and
+        // ledger keys stay canonical.
+        await unarchiveSessions(this.ctx.workspaceRegistry, toUnarchive.map((id) => built.nativeIds[id] ?? id))
         for (const id of toUnarchive) {
           delete this.ledger.entries[id]
           const native = built.nativeIds[id]
@@ -415,9 +417,9 @@ export class ArchiveService {
     const targets = plan.targets
     const sizeById = new Map(built.rows.map((row) => [row.id, row.sizeBytes]))
 
-    // 1. Archive markers (single durable write).
+    // 1. Archive markers (one public verb call per target).
     try {
-      await unarchiveSessions(this.ctx.workspaceRegistry, targets)
+      await unarchiveSessions(this.ctx.workspaceRegistry, targets.map((id) => built.nativeIds[id] ?? id))
     } catch (error) {
       const detail = error instanceof Error ? error.message.slice(0, 200) : String(error)
       return { results: targets.map((id) => ({ id, status: 'failed' as const, reason: 'missing-seam' as const, detail })), freedBytes: 0 }

@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-17-usage-alias-route-folding.md: a88d0d3bb01a0588a085f9a987e76c4602be0896
+2026-09-17-usage-alias-route-folding.zh.md: 4006f9f59179e4ea89e1e25373d91f3f65838111

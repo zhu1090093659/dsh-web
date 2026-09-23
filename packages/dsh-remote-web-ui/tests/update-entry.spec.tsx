@@ -10,9 +10,9 @@ import { en, type RemoteKey } from '../src/client/locales.ts'
 // under vitest); the ui-primitives icons used by the panel resolve through
 // the platform module table, so stub the value import minimally.
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
-  IconCloseOutline16: () => null,
-  IconRefreshOutline16: () => null,
-  IconDownloadOutline16: () => null,
+  IconCloseOutlineRegular: () => null,
+  IconRefreshOutlineRegular: () => null,
+  IconDownloadOutlineRegular: () => null,
 }))
 
 // English dictionary translate stub with {param} interpolation.

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "ice-princess",
+  "name": "冰晶公主",
+  "nameEn": "Ice Crystal Princess",
+  "version": "1.0.0",
+  "author": "stushansusu",
+  "tagline": "纯暗色 · 霜棱画框 · 冰晶切面 · 六出雪花 · 风雪视差 · 配套桌宠立绘",
+  "description": "暗色专用皮肤：无论系统设为浅色还是深色，呈现的都是同一套冰殿，所以两个主题的预览图一致（实测两态逐像素差 0%）。配色直接取自桌面宠物「冰晶公主」的立绘设定——主深蓝 #1A4B94 是外袍与蝴蝶结，中宝蓝 #3277D8 是衣饰与宝石，浅天蓝 #63B8F0 是发梢高光与裙摆渐变，亮白 #FFFFFF 是衣身与长袜，银灰 #D6E4F5 走腰带与镶边，瞳色 #589CE6 是那双眼睛；整套唯一的暖色是肤色 #F9DDD0，只留在首屏霜环正中心。装饰层走「冰殿」引擎：四角霜棱角花（同一母题镜像四次）、六棱冰印、开光角线、霜纹分隔线、切面冰宝石主按钮；首屏是六出雪花霜环，工作区面板是冰壁。背景为角色立绘，人物缩放 0.85、水平中心 65%，四周用无结构色场铺底并做椭圆羽化；其上叠两层雪片贴图做从左向右的风雪，两层贴图宽度不同（1400/900px）故产生视差，并尊重 prefers-reduced-motion。",
+  "tags": [
+    "ice",
+    "crystal",
+    "princess",
+    "snowflake",
+    "frost",
+    "snow",
+    "wind",
+    "aurora",
+    "sapphire",
+    "silver",
+    "companion",
+    "dark-only",
+    "css-only",
+    "character-art"
+  ],
+  "accent": "#3277D8",
+  "order": 42,
+  "license": "Apache-2.0",
+  "attribution": "背景立绘与设定色来自作者本人的桌面宠物「冰晶公主」（jyn / bingjing-gongzhu）。",
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/bingjing-bg.webp",
+        "scrim": "linear-gradient(180deg, rgba(7,14,30,0.42) 0%, rgba(7,14,30,0.5) 45%, rgba(7,14,30,0.68) 100%)"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/bingjing-bg.webp",
+        "scrim": "linear-gradient(180deg, rgba(7,14,30,0.42) 0%, rgba(7,14,30,0.5) 45%, rgba(7,14,30,0.68) 100%)"
+      }
+    }
+  }
+}

@@ -401,6 +401,16 @@ window.__ModuleLoader__.load({
 		].join(", ");
 		const sourceSets = /* @__PURE__ */ new WeakMap();
 		const contentObservers = /* @__PURE__ */ new WeakMap();
+		const contentFrames = /* @__PURE__ */ new WeakMap();
+		/** Write a marker attribute only when the desired state is not applied yet. */
+		function applyMarker(el, attr, active) {
+			if (el === null) return;
+			if (active) {
+				if (el.getAttribute(attr) !== "true") el.setAttribute(attr, "true");
+				return;
+			}
+			if (el.hasAttribute(attr)) el.removeAttribute(attr);
+		}
 		/**
 		* Report one source's backdrop-art presence. The marker stays on while any
 		* source is active, so the skin and wallpaper controllers never clobber each
@@ -418,16 +428,13 @@ window.__ModuleLoader__.load({
 		}
 		/** Reflect the source set onto html/body and ensure the neutralizer on use. */
 		function syncMarker(doc, sources) {
-			if (sources.size > 0) {
-				doc.body?.setAttribute(BACKDROP_ACTIVE_ATTR, "true");
-				doc.documentElement?.setAttribute(BACKDROP_ACTIVE_ATTR, "true");
+			const active = sources.size > 0;
+			applyMarker(doc.body, BACKDROP_ACTIVE_ATTR, active);
+			applyMarker(doc.documentElement, BACKDROP_ACTIVE_ATTR, active);
+			if (active) {
 				ensureSceneNeutralizer(doc);
 				startContentObserver(doc);
-			} else {
-				doc.body?.removeAttribute(BACKDROP_ACTIVE_ATTR);
-				doc.documentElement?.removeAttribute(BACKDROP_ACTIVE_ATTR);
-				stopContentObserver(doc);
-			}
+			} else stopContentObserver(doc);
 		}
 		/**
 		* Track whether the active conversation scrollport has message rows for the
@@ -436,13 +443,27 @@ window.__ModuleLoader__.load({
 		* those stale rows and flash the composer frost over the new empty topic.
 		*/
 		function updateConversationContent(doc) {
-			if (doc.body !== null && doc.body.querySelector(ACTIVE_CONVERSATION_CONTENT_SELECTOR) !== null) {
-				doc.body?.setAttribute(CONVERSATION_CONTENT_ATTR, "true");
-				doc.documentElement?.setAttribute(CONVERSATION_CONTENT_ATTR, "true");
-			} else {
-				doc.body?.removeAttribute(CONVERSATION_CONTENT_ATTR);
-				doc.documentElement?.removeAttribute(CONVERSATION_CONTENT_ATTR);
+			const has = doc.body !== null && doc.body.querySelector(ACTIVE_CONVERSATION_CONTENT_SELECTOR) !== null;
+			applyMarker(doc.body, CONVERSATION_CONTENT_ATTR, has);
+			applyMarker(doc.documentElement, CONVERSATION_CONTENT_ATTR, has);
+		}
+		/**
+		* Coalesce the mutation bursts of a streaming conversation into one content
+		* check per frame; a check scheduled for a document that stopped observing is
+		* dropped so a late frame can never re-add the marker after teardown.
+		*/
+		function scheduleConversationContent(doc) {
+			if (contentFrames.has(doc)) return;
+			const win = doc.defaultView;
+			if (win === null || typeof win.requestAnimationFrame !== "function") {
+				updateConversationContent(doc);
+				return;
 			}
+			contentFrames.set(doc, win.requestAnimationFrame(() => {
+				contentFrames.delete(doc);
+				if (!contentObservers.has(doc)) return;
+				updateConversationContent(doc);
+			}));
 		}
 		/** Observe the conversation tree while a backdrop is visible. */
 		function startContentObserver(doc) {
@@ -450,22 +471,28 @@ window.__ModuleLoader__.load({
 			updateConversationContent(doc);
 			const win = doc.defaultView;
 			if (win === null || typeof win.MutationObserver !== "function") return;
-			const observer = new win.MutationObserver(() => updateConversationContent(doc));
+			const observer = new win.MutationObserver(() => scheduleConversationContent(doc));
 			observer.observe(doc.body ?? doc.documentElement, {
 				childList: true,
 				subtree: true
 			});
 			contentObservers.set(doc, observer);
 		}
-		/** Stop the content observer and drop the content marker. */
+		/** Stop the content observer, cancel pending work and drop the marker. */
 		function stopContentObserver(doc) {
+			const frame = contentFrames.get(doc);
+			if (frame !== void 0) {
+				const win = doc.defaultView;
+				if (win !== null && typeof win.cancelAnimationFrame === "function") win.cancelAnimationFrame(frame);
+				contentFrames.delete(doc);
+			}
 			const observer = contentObservers.get(doc);
 			if (observer !== void 0) {
 				observer.disconnect();
 				contentObservers.delete(doc);
 			}
-			doc.body?.removeAttribute(CONVERSATION_CONTENT_ATTR);
-			doc.documentElement?.removeAttribute(CONVERSATION_CONTENT_ATTR);
+			applyMarker(doc.body, CONVERSATION_CONTENT_ATTR, false);
+			applyMarker(doc.documentElement, CONVERSATION_CONTENT_ATTR, false);
 		}
 		/**
 		* Install the shared composer-seat neutralizer, keyed by head presence so a
@@ -494,7 +521,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/wallpaper.ts
-		/** The namespace string the Host registers (mirrors src/index.ts). */
+		/** The section key the Host schema declares (mirrors src/index.ts). */
 		const SKIN_WALLPAPER_NS = "skin-wallpaper";
 		const clamp = (value, min, max) => Math.max(min, Math.min(max, Math.round(value)));
 		/** Style one fixed, non-interactive, under-everything wallpaper layer. */
@@ -582,8 +609,9 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/**
-		* Own the skin-wallpaper scope: keep the mounted layers in sync with the
-		* persisted selection and the card-driven descriptor resolution.
+		* Own the skin-wallpaper configuration section: keep the mounted layers in
+		* sync with the persisted selection and the card-driven descriptor
+		* resolution.
 		*/
 		var WallpaperController = class {
 			enabledValue = true;
@@ -602,6 +630,8 @@ window.__ModuleLoader__.load({
 			unsubscribe;
 			options;
 			doc;
+			/** Rejection message of the last settings write that did not land, if any. */
+			writeErrorValue = null;
 			/** The descriptor of the applied selection, resolved by the card. */
 			applied = null;
 			/** The try-on descriptor while a preview is up. */
@@ -624,7 +654,7 @@ window.__ModuleLoader__.load({
 			/** Detached frame-capture video; released on error/abort/loadeddata and on
 			*  teardown so it never keeps buffering the source file. */
 			captureVideo = null;
-			/** Guard flag: suppresses readAll during applyThemeDefaults scope writes
+			/** Guard flag: suppresses readAll during applyThemeDefaults settings writes
 			*  to prevent mid-write listener cascades from resetting values. */
 			seeding = false;
 			constructor(scope, options = {}) {
@@ -762,14 +792,14 @@ window.__ModuleLoader__.load({
 				if (trimmed === "" || this.dirsValue.includes(trimmed)) return;
 				this.dirsValue = [...this.dirsValue, trimmed];
 				this.publish();
-				this.scope.set("weLibraryDirs", this.dirsValue);
+				this.persist("weLibraryDirs", this.dirsValue);
 			}
 			removeDir(dir) {
 				const next = this.dirsValue.filter((d) => d !== dir);
 				if (next.length === this.dirsValue.length) return;
 				this.dirsValue = next;
 				this.publish();
-				this.scope.set("weLibraryDirs", this.dirsValue);
+				this.persist("weLibraryDirs", this.dirsValue);
 			}
 			failedIds = /* @__PURE__ */ new Set();
 			isDisplaying = () => {
@@ -781,64 +811,87 @@ window.__ModuleLoader__.load({
 				return this.mediaLayer !== null && current !== null ? current.id : null;
 			};
 			trying = () => this.previewing !== null;
+			writeError = () => this.writeErrorValue;
 			subscribe = (listener) => {
 				this.listeners.add(listener);
 				return () => {
 					this.listeners.delete(listener);
 				};
 			};
+			/**
+			* Queue one preference write and judge its answer.
+			*
+			* The form contract answers `false` for a write the Host refused or
+			* skipped and rejects on a broken transport; neither is a saved setting, so
+			* both clear the previous error or raise a new one instead of being
+			* dropped. The rendered value stays as the user set it either way — the
+			* card is the only place that can tell them it did not persist.
+			*/
+			persist(field, value) {
+				this.scope.set(field, value).then((accepted) => {
+					this.reportWrite(accepted ? null : "the Host did not accept the wallpaper setting");
+				}, (error) => {
+					this.reportWrite(error instanceof Error ? error.message : String(error));
+				});
+			}
+			/** Publish one write verdict (null = the last write landed). */
+			reportWrite(error) {
+				if (this.writeErrorValue === error) return;
+				this.writeErrorValue = error;
+				this.publish();
+			}
 			setEnabled(value) {
 				this.enabledValue = value;
 				this.render();
 				this.publish();
-				this.scope.set("enabled", value);
+				this.persist("enabled", value);
 			}
 			setMode(mode) {
 				this.modeValue = mode;
 				this.render();
 				this.publish();
-				this.scope.set("mode", mode);
+				this.persist("mode", mode);
 			}
 			setFit(fit) {
 				this.fitValue = fit;
 				this.render();
 				this.publish();
-				this.scope.set("fit", fit);
+				this.persist("fit", fit);
 			}
 			setDim(value) {
 				this.dimValue = clamp(value, 0, 90);
 				this.render();
 				this.publish();
-				this.scope.set("dim", this.dimValue);
+				this.persist("dim", this.dimValue);
 			}
 			setBlur(value) {
 				this.blurValue = clamp(value, 0, 60);
 				this.render();
 				this.publish();
-				this.scope.set("wallpaperBlur", this.blurValue);
+				this.persist("wallpaperBlur", this.blurValue);
 			}
 			setOpacity(value) {
 				this.opacityValue = clamp(value, 0, 100);
 				this.render();
 				this.publish();
-				this.scope.set("wallpaperOpacity", this.opacityValue);
+				this.persist("wallpaperOpacity", this.opacityValue);
 			}
 			setPauseOnHidden(value) {
 				this.pauseOnHiddenValue = value;
 				this.publish();
-				this.scope.set("pauseOnHidden", value);
+				this.persist("pauseOnHidden", value);
 			}
 			setSound(value) {
 				this.soundValue = value;
 				this.applySound();
 				this.publish();
-				this.scope.set("sound", value);
+				this.persist("sound", value);
 			}
 			setVolume(value) {
 				this.volumeValue = clamp(value, 0, 100);
 				this.applySound();
 				this.publish();
-				this.scope.set("volume", this.volumeValue);
+				this.persist("volume", this.volumeValue);
 			}
 			applySelection(descriptor) {
 				this.failedIds.delete(descriptor.id);
@@ -847,7 +900,7 @@ window.__ModuleLoader__.load({
 				this.selectionValue = descriptor.id;
 				this.render();
 				this.publish();
-				this.scope.set("selection", descriptor.id);
+				this.persist("selection", descriptor.id);
 				this.probeSceneCapabilitiesIfNeeded(descriptor);
 			}
 			clearSelection() {
@@ -856,7 +909,7 @@ window.__ModuleLoader__.load({
 				this.selectionValue = "";
 				this.render();
 				this.publish();
-				this.scope.set("selection", "");
+				this.persist("selection", "");
 			}
 			sync(descriptor) {
 				if (descriptor !== null && this.applied?.id === descriptor.id) descriptor = {
@@ -925,8 +978,8 @@ window.__ModuleLoader__.load({
 				}
 				this.seeding = true;
 				try {
-					this.scope.set("dim", this.dimValue);
-					this.scope.set("wallpaperOpacity", this.opacityValue);
+					this.scope.set("dim", this.dimValue).catch(() => {});
+					this.scope.set("wallpaperOpacity", this.opacityValue).catch(() => {});
 				} catch {}
 				this.seeding = false;
 			}
@@ -1606,6 +1659,7 @@ window.__ModuleLoader__.load({
 			const activeId = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.activeId);
 			const trying = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.trying);
 			const dirs = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.dirs);
+			const writeError = (0, react.useSyncExternalStore)(wallpaper.subscribe, wallpaper.writeError);
 			const [shownDim, setShownDim] = useLiveValue$1(dim);
 			const [shownBlur, setShownBlur] = useLiveValue$1(blur);
 			const [shownOpacity, setShownOpacity] = useLiveValue$1(opacity);
@@ -2056,6 +2110,15 @@ window.__ModuleLoader__.load({
 						className: skin_center_module_css_default.error,
 						children: actionError
 					}),
+					writeError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: skin_center_module_css_default.error,
+						role: "alert",
+						children: [
+							t("wallpaperSaveFailed"),
+							": ",
+							writeError
+						]
+					}),
 					items !== null && items.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: skin_center_module_css_default.wallpaperToolbar,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -2320,11 +2383,13 @@ window.__ModuleLoader__.load({
 			const blurContent = (0, react.useSyncExternalStore)(background.subscribe, background.blurContent);
 			const inputCardBlur = (0, react.useSyncExternalStore)(background.subscribe, background.inputCardBlur);
 			const bubbleOpacity = (0, react.useSyncExternalStore)(background.subscribe, background.bubbleOpacity);
+			const bubbleBlur = (0, react.useSyncExternalStore)(background.subscribe, background.bubbleBlur);
 			const [shownOpacity, setShownOpacity] = useLiveValue(opacity);
 			const [shownBlurEmpty, setShownBlurEmpty] = useLiveValue(blurEmpty);
 			const [shownBlurContent, setShownBlurContent] = useLiveValue(blurContent);
 			const [shownInputCardBlur, setShownInputCardBlur] = useLiveValue(inputCardBlur);
 			const [shownBubbleOpacity, setShownBubbleOpacity] = useLiveValue(bubbleOpacity);
+			const [shownBubbleBlur, setShownBubbleBlur] = useLiveValue(bubbleBlur);
 			const catalog = (0, react.useSyncExternalStore)(runtime.subscribe, runtime.catalog);
 			const state = (0, react.useSyncExternalStore)(runtime.subscribe, runtime.controller.getState);
 			const customThemeState = (0, react.useSyncExternalStore)(customTheme.subscribe, customTheme.getState);
@@ -2816,6 +2881,40 @@ window.__ModuleLoader__.load({
 								})
 							]
 						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: skin_center_module_css_default.backgroundRow,
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: skin_center_module_css_default.backgroundHead,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: skin_center_module_css_default.backgroundLabel,
+										children: t("bubbleBlur")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: skin_center_module_css_default.backgroundValue,
+										"aria-hidden": "true",
+										children: [shownBubbleBlur, "px"]
+									})]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SliderControl, {
+									id: "skin-center-bubble-blur",
+									className: skin_center_module_css_default.backgroundRange,
+									min: 0,
+									max: 20,
+									step: 1,
+									value: bubbleBlur,
+									ariaValuetext: shownBubbleBlur + "px",
+									ariaLabel: t("bubbleBlur"),
+									onChanging: setShownBubbleBlur,
+									onChange: (value) => {
+										background.setBubbleBlur(value);
+									}
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+									className: skin_center_module_css_default.backgroundHint,
+									children: t("bubbleBlurHint")
+								})
+							]
+						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(WallpaperPanel, {
 							t,
 							wallpaper
@@ -2973,7 +3072,8 @@ window.__ModuleLoader__.load({
 			backgroundBlurEmpty: 0,
 			backgroundBlurContent: 0,
 			inputCardBlur: 10,
-			bubbleOpacity: 50
+			bubbleOpacity: 50,
+			bubbleBlur: 10
 		};
 		/** The fields normalize/sanitize know about; unknown keys are dropped. */
 		const SKIN_BACKGROUND_FIELDS = Object.keys(SKIN_BACKGROUND_DEFAULTS);
@@ -2985,7 +3085,8 @@ window.__ModuleLoader__.load({
 			backgroundBlurEmpty: [0, 20],
 			backgroundBlurContent: [0, 20],
 			inputCardBlur: [0, 20],
-			bubbleOpacity: [0, 100]
+			bubbleOpacity: [0, 100],
+			bubbleBlur: [0, 20]
 		};
 		function isRecord$1(value) {
 			return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -3053,10 +3154,13 @@ window.__ModuleLoader__.load({
 		const SCRIM_VAR = "--dsw-skin-scrim";
 		/** CSS custom property consumed by skins that expose translucent bubbles. */
 		const BUBBLE_ALPHA_VAR = "--dsh-skin-bubble-alpha";
+		/** CSS custom property consumed by skins that expose a bubble backdrop blur. */
+		const BUBBLE_BLUR_VAR = "--dsh-skin-bubble-blur";
 		/** CSS custom property consumed by the shared composer neutralizer. */
 		const INPUT_CARD_BLUR_VAR = "--dsh-input-card-blur";
 		SKIN_BACKGROUND_DEFAULTS.backgroundOpacity;
 		SKIN_BACKGROUND_DEFAULTS.bubbleOpacity;
+		SKIN_BACKGROUND_DEFAULTS.bubbleBlur;
 		SKIN_BACKGROUND_DEFAULTS.backgroundBlurEmpty;
 		/**
 		* Selector for a conversation message row inside the shell's center column.
@@ -3084,10 +3188,13 @@ window.__ModuleLoader__.load({
 			blurContentValue = SKIN_BACKGROUND_DEFAULTS.backgroundBlurContent;
 			inputCardBlurValue = SKIN_BACKGROUND_DEFAULTS.inputCardBlur;
 			bubbleOpacityValue = SKIN_BACKGROUND_DEFAULTS.bubbleOpacity;
+			bubbleBlurValue = SKIN_BACKGROUND_DEFAULTS.bubbleBlur;
 			listeners = /* @__PURE__ */ new Set();
 			persist;
 			/** The fixed backdrop-filter element, present only while active blur > 0. */
 			blurElement = null;
+			/** Currently applied backdrop-filter blur px (cached to avoid redundant style writes during streaming). */
+			appliedBlur = null;
 			/** The body MutationObserver, installed lazily once a blur is active. */
 			observer = null;
 			/** Pending requestAnimationFrame id for a coalesced recheck. */
@@ -3105,6 +3212,7 @@ window.__ModuleLoader__.load({
 				this.applyOcclusion();
 				this.applyInputCardBlur();
 				this.applyBubbleOpacity();
+				this.applyBubbleBlur();
 				this.syncBlur();
 			}
 			/**
@@ -3119,6 +3227,7 @@ window.__ModuleLoader__.load({
 				this.applyOcclusion();
 				this.applyInputCardBlur();
 				this.applyBubbleOpacity();
+				this.applyBubbleBlur();
 				this.syncBlur();
 				this.publish();
 			}
@@ -3130,7 +3239,8 @@ window.__ModuleLoader__.load({
 					backgroundBlurEmpty: this.blurEmptyValue,
 					backgroundBlurContent: this.blurContentValue,
 					inputCardBlur: this.inputCardBlurValue,
-					bubbleOpacity: this.bubbleOpacityValue
+					bubbleOpacity: this.bubbleOpacityValue,
+					bubbleBlur: this.bubbleBlurValue
 				};
 			}
 			enabled = () => this.enabledValue;
@@ -3139,6 +3249,7 @@ window.__ModuleLoader__.load({
 				this.applyOcclusion();
 				this.applyInputCardBlur();
 				this.applyBubbleOpacity();
+				this.applyBubbleBlur();
 				this.syncBlur();
 				this.publish();
 				this.persist(this.snapshot());
@@ -3148,6 +3259,7 @@ window.__ModuleLoader__.load({
 			blurContent = () => this.blurContentValue;
 			inputCardBlur = () => this.inputCardBlurValue;
 			bubbleOpacity = () => this.bubbleOpacityValue;
+			bubbleBlur = () => this.bubbleBlurValue;
 			subscribe = (listener) => {
 				this.listeners.add(listener);
 				return () => {
@@ -3186,6 +3298,12 @@ window.__ModuleLoader__.load({
 				this.publish();
 				this.persist(this.snapshot());
 			}
+			setBubbleBlur(value) {
+				this.bubbleBlurValue = this.clampBlur(value);
+				this.applyBubbleBlur();
+				this.publish();
+				this.persist(this.snapshot());
+			}
 			dispose() {
 				this.disposed = true;
 				if (this.rafId !== null) {
@@ -3195,6 +3313,7 @@ window.__ModuleLoader__.load({
 				this.removeBlurElement();
 				document.body.style.removeProperty(INPUT_CARD_BLUR_VAR);
 				document.body.style.removeProperty(BUBBLE_ALPHA_VAR);
+				document.body.style.removeProperty(BUBBLE_BLUR_VAR);
 				if (this.observer !== null) {
 					this.observer.disconnect();
 					this.observer = null;
@@ -3209,6 +3328,7 @@ window.__ModuleLoader__.load({
 				this.blurContentValue = resolved.backgroundBlurContent;
 				this.inputCardBlurValue = resolved.inputCardBlur;
 				this.bubbleOpacityValue = resolved.bubbleOpacity;
+				this.bubbleBlurValue = resolved.bubbleBlur;
 			}
 			clampBlur(value) {
 				return Math.max(0, Math.min(20, Math.round(value)));
@@ -3229,6 +3349,13 @@ window.__ModuleLoader__.load({
 					return;
 				}
 				document.body.style.setProperty(BUBBLE_ALPHA_VAR, String(this.bubbleOpacityValue / 100));
+			}
+			applyBubbleBlur() {
+				if (!this.enabledValue) {
+					document.body.style.removeProperty(BUBBLE_BLUR_VAR);
+					return;
+				}
+				document.body.style.setProperty(BUBBLE_BLUR_VAR, this.bubbleBlurValue + "px");
 			}
 			/** Write the current occlusion onto the body CSS variable (0..1 alpha). */
 			applyOcclusion() {
@@ -3277,7 +3404,10 @@ window.__ModuleLoader__.load({
 					element.setAttribute("aria-hidden", "true");
 					this.blurElement = element;
 					document.body.appendChild(element);
+					this.appliedBlur = null;
 				}
+				if (this.appliedBlur === active) return;
+				this.appliedBlur = active;
 				const blur = "blur(" + active + "px)";
 				this.blurElement.style.backdropFilter = blur;
 				this.blurElement.style.setProperty("-webkit-backdrop-filter", blur);
@@ -3287,6 +3417,7 @@ window.__ModuleLoader__.load({
 				if (this.blurElement === null) return;
 				this.blurElement.remove();
 				this.blurElement = null;
+				this.appliedBlur = null;
 			}
 			/**
 			* Install the MutationObserver on document.body only when either blur
@@ -3462,6 +3593,8 @@ window.__ModuleLoader__.load({
 			inputCardBlurHint: "Blurs only the area behind the input card while backdrop art is visible; it does not blur the entire wallpaper.",
 			bubbleOpacity: "Bubble opacity",
 			bubbleOpacityHint: "Controls translucent message bubbles for skins that expose bubble alpha, such as Whale Mom.",
+			bubbleBlur: "Bubble blur",
+			bubbleBlurHint: "Blurs the backdrop behind translucent message bubbles; independent of bubble opacity, 0 disables.",
 			backgroundBlurHint: "Applies a separate Gaussian blur to the backdrop for the empty conversation and the conversation with content; 0 disables.",
 			backgroundBlurInert: "Visible only with skins that paint a backdrop; the official default has none.",
 			backgroundHint: "Instantly veils the backdrop behind the panels — higher values obscure the art to help you focus.",
@@ -3509,6 +3642,7 @@ window.__ModuleLoader__.load({
 			wallpaperDirBrowse: "Browse…",
 			wallpaperDirBrowseHint: "Pick a folder with the system file manager (Finder / Explorer)",
 			wallpaperDirBrowseFailed: "Could not open the system folder picker — type the path manually instead",
+			wallpaperSaveFailed: "Could not save wallpaper settings.",
 			wallpaperRatingAll: "All",
 			wallpaperRatingG: "G",
 			wallpaperRatingPg13: "PG-13",
@@ -3582,6 +3716,8 @@ window.__ModuleLoader__.load({
 			inputCardBlurHint: "仅模糊输入卡背后的区域，不会让整张壁纸变糊。",
 			bubbleOpacity: "气泡不透明度",
 			bubbleOpacityHint: "调节支持气泡 alpha 的皮肤消息气泡，例如鲸鱼妈妈。",
+			bubbleBlur: "气泡模糊程度",
+			bubbleBlurHint: "模糊半透明消息气泡背后的区域，与「气泡不透明度」相互独立，0 为关闭。",
 			backgroundBlurHint: "对话为空与有内容时分别应用不同的背景高斯模糊强度，0 为关闭。",
 			backgroundBlurInert: "仅对带背景图插画的皮肤可见；官方默认无背景图。",
 			backgroundHint: "即时为面板背后的背景加遮罩——数值越高越能弱化插画，帮你集中注意力。",
@@ -3629,6 +3765,7 @@ window.__ModuleLoader__.load({
 			wallpaperDirBrowse: "浏览…",
 			wallpaperDirBrowseHint: "通过系统文件管理器（访达 / 资源管理器）选择文件夹",
 			wallpaperDirBrowseFailed: "无法打开系统目录选择框——请手动输入路径",
+			wallpaperSaveFailed: "壁纸设置保存失败。",
 			wallpaperRatingAll: "全部",
 			wallpaperRatingG: "G",
 			wallpaperRatingPg13: "PG-13",
@@ -4032,6 +4169,22 @@ window.__ModuleLoader__.load({
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
     }
+    ${scoped("[data-phase=\"active\"] [data-slot=\"conversation.input.dock\"] > [data-queue-dock]")} {
+      /* The native queue dock stacks two boxes inside the input dock: a root
+         wrapper that only supplies the shared dock inset, and the panel inside
+         it that paints its own --dsw-specific-tip fill. Painting the wrapper as
+         an accessory adds a second opaque plate one dock inset (8px) wider than
+         the panel on each side, which reads as an extra sheet of paper under
+         the queue (issue #1572). Reset the accessory surface so the panel stays
+         the single layer; the wrapper keeps its inset, so the panel remains
+         aligned with the composer card. */
+      background: transparent !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
     ${scoped("[data-conversation-scroll]")},
     ${scoped("[data-dsh-part=\"scrollport\"]")} {
       /* The composer is the scrollport's final in-flow child. Reserving physical
@@ -4056,9 +4209,12 @@ window.__ModuleLoader__.load({
     /* #1117: The upstream recommended badge pairs two background-fill tokens
        as bg + text — in dark mode, skins like Blue Fantasy collapse them to
        near-identical dark navy values (contrast ~1:1). Override the text
-       color to a readable foreground and tweak the background for contrast. */
-    body[data-ds-dark-theme] ${scoped("[data-question-key] [class*=\"_badge\"]")},
-    body[data-ds-dark-theme] ${scoped("[data-question-scroll] [class*=\"_badge\"]")} {
+       color to a readable foreground and tweak the background for contrast.
+       The dark-theme attribute lives on <body>, so it belongs inside the
+       scoped selector: prefixing the already-scoped list produced
+       "body ... html ...", a descendant chain that can never match (#1490). */
+    ${scoped("body[data-ds-dark-theme] [data-question-key] [class*=\"_badge\"]")},
+    ${scoped("body[data-ds-dark-theme] [data-question-scroll] [class*=\"_badge\"]")} {
       color: var(--dsw-alias-label-primary, #ffffff) !important;
       background: var(--dsw-alias-interactive-bg-active, color-mix(in srgb, var(--dsw-alias-button-info-fill, #4a5fa8) 50%, transparent)) !important;
     }
@@ -4076,35 +4232,62 @@ window.__ModuleLoader__.load({
 			try {
 				win?.scrollTo?.(0, 0);
 			} catch {}
+			const composerSelector = COMPOSER_SEAT_SELECTORS.join(", ");
 			let resizeObserver = null;
 			let mutationObserver = null;
 			let observedComposer = null;
+			let appliedHeight = "";
+			let scheduledFrame = null;
+			let disposed = false;
+			const resolveComposer = () => {
+				if (observedComposer !== null && observedComposer.isConnected) return observedComposer;
+				return doc.body === null ? null : doc.body.querySelector(composerSelector);
+			};
 			const syncHeight = () => {
 				if (doc.body === null) return;
-				const composer = doc.body.querySelector(COMPOSER_SEAT_SELECTORS.join(", "));
-				if (composer !== null) {
-					if (observedComposer !== composer) {
-						if (observedComposer !== null && resizeObserver !== null) resizeObserver.unobserve(observedComposer);
-						observedComposer = composer;
-						if (resizeObserver !== null) resizeObserver.observe(composer);
-					}
-					const rect = composer.getBoundingClientRect();
-					if (rect.height > 0) doc.documentElement?.style.setProperty("--dsh-composer-height", `${Math.ceil(rect.height)}px`);
+				const composer = resolveComposer();
+				if (composer === null) return;
+				if (observedComposer !== composer) {
+					if (observedComposer !== null && resizeObserver !== null) resizeObserver.unobserve(observedComposer);
+					observedComposer = composer;
+					if (resizeObserver !== null) resizeObserver.observe(composer);
 				}
+				const rect = composer.getBoundingClientRect();
+				if (rect.height <= 0) return;
+				const root = doc.documentElement;
+				const next = `${Math.ceil(rect.height)}px`;
+				if (next === appliedHeight || root === null) return;
+				appliedHeight = next;
+				root.style.setProperty("--dsh-composer-height", next);
+			};
+			const scheduleSync = () => {
+				if (scheduledFrame !== null || disposed) return;
+				if (win === null || typeof win.requestAnimationFrame !== "function") {
+					syncHeight();
+					return;
+				}
+				scheduledFrame = win.requestAnimationFrame(() => {
+					scheduledFrame = null;
+					if (disposed) return;
+					syncHeight();
+				});
 			};
 			if (win !== null && typeof win.ResizeObserver === "function") resizeObserver = new win.ResizeObserver(() => syncHeight());
 			if (win !== null && typeof win.MutationObserver === "function" && doc.body !== null) {
-				mutationObserver = new win.MutationObserver(() => syncHeight());
+				mutationObserver = new win.MutationObserver(() => scheduleSync());
 				mutationObserver.observe(doc.body, {
 					childList: true,
 					subtree: true
 				});
 			}
 			syncHeight();
-			let disposed = false;
 			return () => {
 				if (disposed) return;
 				disposed = true;
+				if (scheduledFrame !== null) {
+					if (win !== null && typeof win.cancelAnimationFrame === "function") win.cancelAnimationFrame(scheduledFrame);
+					scheduledFrame = null;
+				}
 				if (resizeObserver !== null) {
 					resizeObserver.disconnect();
 					resizeObserver = null;
@@ -4114,6 +4297,7 @@ window.__ModuleLoader__.load({
 					mutationObserver = null;
 				}
 				observedComposer = null;
+				appliedHeight = "";
 				doc.documentElement?.style.removeProperty("--dsh-composer-height");
 				style.remove();
 			};
@@ -4322,22 +4506,28 @@ window.__ModuleLoader__.load({
 			function setBackgroundLayer(activation, nodes) {
 				const style = doc.body.style;
 				const previousBackgroundColor = style.getPropertyValue("background-color");
+				const previousBackgroundImage = style.getPropertyValue("background-image");
 				const restore = () => {
 					if (currentActivation !== activation) return;
 					clearLayer(layers.background);
 					setSceneBackdropActive(doc, "skin", false);
 					if (previousBackgroundColor === "") style.removeProperty("background-color");
 					else style.setProperty("background-color", previousBackgroundColor);
+					if (previousBackgroundImage === "") style.removeProperty("background-image");
+					else style.setProperty("background-image", previousBackgroundImage);
 				};
 				clearLayer(layers.background);
 				if (nodes.length > 0) {
 					for (const node of nodes) layers.background.appendChild(node);
 					style.setProperty("background-color", "transparent");
+					style.setProperty("background-image", "none");
 					setSceneBackdropActive(doc, "skin", true);
 				} else {
 					setSceneBackdropActive(doc, "skin", false);
 					if (previousBackgroundColor === "") style.removeProperty("background-color");
 					else style.setProperty("background-color", previousBackgroundColor);
+					if (previousBackgroundImage === "") style.removeProperty("background-image");
+					else style.setProperty("background-image", previousBackgroundImage);
 				}
 				ledger.record(activation, "background:layer", restore);
 			}
@@ -4795,7 +4985,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/custom-theme-controller.ts
-		/** Owns the custom-theme settings snapshot and its inert-by-default style. */
+		/** Owns the custom-theme configuration section and its inert-by-default style. */
 		var CustomThemeController = class {
 			scope;
 			doc;
@@ -4979,7 +5169,7 @@ window.__ModuleLoader__.load({
 					const write = this.writeQueue.shift();
 					if (write === void 0) break;
 					try {
-						await this.scope.set(write.field, write.value);
+						if (!await this.scope.set(write.field, write.value)) throw new Error("the Host did not accept the custom theme setting");
 					} catch (error) {
 						settled.push({
 							write,
@@ -5004,6 +5194,59 @@ window.__ModuleLoader__.load({
 			}
 		};
 		//#endregion
+		//#region src/client/settings-section.ts
+		/** Read one object-shaped layer of a form snapshot. */
+		function layerOf(layer, key) {
+			return typeof layer === "object" && layer !== null ? layer[key] : void 0;
+		}
+		/**
+		* Project one entry form onto the section behind `key`.
+		* @param parent - the form of the profile entry that owns this section.
+		* @param key - the section key inside the entry's Config.
+		* @returns the section's form: its own value/user/base layers, and writes
+		*   addressed at `[key, field]` on the parent.
+		*/
+		function settingsSection(parent, key) {
+			let source;
+			let projected;
+			const project = () => {
+				const snapshot = parent.getSnapshot();
+				if (projected !== void 0 && source === snapshot) return projected;
+				source = snapshot;
+				projected = {
+					status: snapshot.status,
+					value: layerOf(snapshot.value, key),
+					base: layerOf(snapshot.base, key),
+					user: layerOf(snapshot.user, key),
+					revision: snapshot.revision,
+					writable: snapshot.writable,
+					mode: snapshot.mode
+				};
+				return projected;
+			};
+			return {
+				getSnapshot: project,
+				subscribe: (listener) => parent.subscribe(listener),
+				set: (field, value) => parent.mutate([{
+					op: "set",
+					path: [key, field],
+					value
+				}]),
+				unset: (field) => parent.mutate([{
+					op: "unset",
+					path: [key, field]
+				}]),
+				mutate: (ops, expectedRevision) => parent.mutate(ops.map((op) => "value" in op ? {
+					op: "set",
+					path: [key, ...op.path],
+					value: op.value
+				} : {
+					op: "unset",
+					path: [key, ...op.path]
+				}), expectedRevision)
+			};
+		}
+		//#endregion
 		//#region src/client/telemetry.ts
 		const VISITOR_KEY = "dsh-web-ui-telemetry-visitor";
 		const DAY_KEY_PREFIX = "dsh-web-ui-telemetry-day:";
@@ -5011,7 +5254,7 @@ window.__ModuleLoader__.load({
 		/** The building package's version, when the bundle carries it. */
 		function bakedVersion() {
 			try {
-				return "0.3.20";
+				return "0.3.24";
 			} catch {
 				return;
 			}
@@ -5077,12 +5320,56 @@ window.__ModuleLoader__.load({
 		//#region src/client/index.ts
 		/** Locale namespace owned by this plugin. */
 		const NS = "skinCenter";
-		/** Required services: slots + locale (plugin card), theme (preview toggle), settingsScope + its transport (background scrim), and remote (wallpaper directory picker). */
+		/**
+		* Profile entry id the family aggregate's generated row carries.
+		*/
+		const AGGREGATE_ENTRY_ID = "web-ui-skin-center";
+		/**
+		* Profile entry ids this package's two patch rows carry: the aggregate's
+		* generated row and the standalone bundle patch's row (`ui-skin-center`), plus
+		* the legacy background namespace as the last resort.
+		*/
+		const SKIN_CENTER_ENTRY_IDS = [
+			AGGREGATE_ENTRY_ID,
+			"ui-skin-center",
+			SKIN_BACKGROUND_NS
+		];
+		function servedEntryId(forms) {
+			let served;
+			try {
+				served = forms.describe().getSnapshot().view?.namespaces.map((view) => view.ns);
+			} catch {
+				served = void 0;
+			}
+			if (served === void 0) return AGGREGATE_ENTRY_ID;
+			return SKIN_CENTER_ENTRY_IDS.find((id) => served.includes(id)) ?? "skin-background";
+		}
+		/**
+		* The configuration form of this plugin's own profile entry.
+		*
+		* `ctx.configForms` addresses one form per profile entry id and carries no
+		* package identity, so the entry is reached through the family binder, whose
+		* namespace-to-entry mapping the settings group owns: `skin-background` is
+		* the namespace this package has always owned, and the bridge resolves it to
+		* whichever entry id the profile gave this row. A deployment without the
+		* group serves no such mapping — the family namespace then stands in for the
+		* entry id (a profile that names the row after it serves the same form), and
+		* a page that serves neither reports the form unavailable, which each feature
+		* already handles by keeping its defaults and reporting a failed save.
+		* @param ctx - client root context.
+		* @returns the entry form carrying every preference family.
+		*/
+		function bindConfigForm(ctx) {
+			const binder = ctx.get("webUiSettings");
+			if (binder !== void 0 && typeof binder.bind === "function") return binder.bind({ namespace: SKIN_BACKGROUND_NS });
+			return ctx.configForms.get(servedEntryId(ctx.configForms));
+		}
+		/** Required services: slots + locale (plugin card), theme (preview toggle), configForms (settings sections), and remote (wallpaper directory picker). */
 		const inject = [
 			"slots",
 			"locale",
 			"theme",
-			"settingsScope",
+			"configForms",
 			"connection",
 			"remote"
 		];
@@ -5133,7 +5420,7 @@ window.__ModuleLoader__.load({
 				};
 			}, "ui-skin-center: body scope");
 			const theme = ctx.get("theme");
-			const binder = ctx.get("webUiSettings") ?? ctx.settingsScope;
+			const settings = bindConfigForm(ctx);
 			const V2_ACTIVE_URL = "/api/skin-center/v2/active";
 			let persistTimer = null;
 			const postBackground = (next, keepalive = false) => {
@@ -5157,16 +5444,16 @@ window.__ModuleLoader__.load({
 				persistTimer = null;
 				postBackground(background.snapshot(), true);
 			};
-			const backgroundScope = binder.bind({ namespace: SKIN_BACKGROUND_NS });
+			const backgroundSection = settingsSection(settings, SKIN_BACKGROUND_NS);
 			const scopeConfig = () => {
-				const value = backgroundScope.getSnapshot().value;
+				const value = backgroundSection.getSnapshot().value;
 				if (value === void 0 || value === null) return null;
 				return value;
 			};
 			const background = new BackgroundController(scopeConfig(), persistBackground);
-			let reconcileState = initialSkinBackgroundReconcileState(backgroundScope.getSnapshot());
+			let reconcileState = initialSkinBackgroundReconcileState(backgroundSection.getSnapshot());
 			const reconcileScope = () => {
-				const result = reconcileSkinBackgroundPublication(reconcileState, background.snapshot(), backgroundScope.getSnapshot());
+				const result = reconcileSkinBackgroundPublication(reconcileState, background.snapshot(), backgroundSection.getSnapshot());
 				reconcileState = result.state;
 				if (result.patch === null) return;
 				const currentSnapshot = background.snapshot();
@@ -5190,14 +5477,14 @@ window.__ModuleLoader__.load({
 				};
 				reconcileScope();
 			});
-			ctx.effect(() => backgroundScope.subscribe(reconcileScope), "ui-skin-center: background scope sync");
+			ctx.effect(() => backgroundSection.subscribe(reconcileScope), "ui-skin-center: background section sync");
 			ctx.effect(() => () => {
 				flushBackground();
 				background.dispose();
 			}, "ui-skin-center: background dispose");
-			const customTheme = new CustomThemeController(binder.bind({ namespace: SKIN_CUSTOM_THEME_NS }));
+			const customTheme = new CustomThemeController(settingsSection(settings, SKIN_CUSTOM_THEME_NS));
 			ctx.effect(() => () => customTheme.dispose(), "ui-skin-center: custom theme dispose");
-			const wallpaper = new WallpaperController(binder.bind({ namespace: SKIN_WALLPAPER_NS }));
+			const wallpaper = new WallpaperController(settingsSection(settings, SKIN_WALLPAPER_NS));
 			ctx.effect(() => () => wallpaper.dispose(), "ui-skin-center: wallpaper dispose");
 			installBootRestore(wallpaper);
 			const runtime = bootSkinRuntime({ suppressBackgroundMedia: () => wallpaper.enabled() && wallpaper.isDisplaying() });
@@ -5224,12 +5511,14 @@ window.__ModuleLoader__.load({
 					blurContent: () => background.blurContent(),
 					inputCardBlur: () => background.inputCardBlur(),
 					bubbleOpacity: () => background.bubbleOpacity(),
+					bubbleBlur: () => background.bubbleBlur(),
 					subscribe: (listener) => background.subscribe(listener),
 					set: (opacity) => background.set(opacity),
 					setBlurEmpty: (value) => background.setBlurEmpty(value),
 					setBlurContent: (value) => background.setBlurContent(value),
 					setInputCardBlur: (value) => background.setInputCardBlur(value),
 					setBubbleOpacity: (value) => background.setBubbleOpacity(value),
+					setBubbleBlur: (value) => background.setBubbleBlur(value),
 					dispose: () => background.dispose()
 				},
 				wallpaper: {
@@ -5253,6 +5542,7 @@ window.__ModuleLoader__.load({
 					},
 					activeId: () => wallpaper.activeId(),
 					trying: () => wallpaper.trying(),
+					writeError: () => wallpaper.writeError(),
 					subscribe: (listener) => wallpaper.subscribe(listener),
 					setEnabled: (value) => wallpaper.setEnabled(value),
 					setMode: (value) => wallpaper.setMode(value),

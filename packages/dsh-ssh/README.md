@@ -18,6 +18,8 @@ Built on the capability list of [badseal/ssh-skill](https://github.com/badseal/s
 | Cluster execution | One command run concurrently across many hosts (filter by alias / environment / tag, default concurrency 8) |
 | Agent tools | `ssh_list` / `ssh_exec` / `ssh_upload` / `ssh_download` / `ssh_tunnel` / `ssh_cluster`; GUI and Agent share the same host config |
 
+The panel loads its contents on first open. Closing and reopening it preserves the selected tab, form drafts and terminal session. The tunnel list refreshes every five seconds while its tab, panel and browser page are visible; automatic reads pause when hidden, resume immediately on return, and do not overlap slow reads. Port forwarding itself continues in the Host.
+
 ## Security model
 
 - All `/api/dsh-ssh/*` routes are loopback-only (with same-origin checks) — the interfaces that execute commands against remote servers are not exposed to the LAN.

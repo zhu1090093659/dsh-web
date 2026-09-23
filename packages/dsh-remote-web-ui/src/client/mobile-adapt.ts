@@ -64,6 +64,12 @@ const EFFORT_BTN_ID = 'dshRemoteEffortPick'
 const COMPACT_CLASS = 'dsh-remote-compact-picker'
 /** Body class while the header actions are seated in the tabs row. */
 const HEADER_SEATED_CLASS = 'dsh-remote-header-seated'
+/**
+ * Width the seated header actions paint over the tabs row, as a CSS variable
+ * on <html>. The row caps its own width with it (see the v80 rules) instead of
+ * reserving the space with padding.
+ */
+const HEADER_RESERVE_VAR = '--dsh-remote-header-actions-reserve'
 /** The two composer picker entries the compact buttons drill into. */
 type PickerKind = 'model' | 'effort'
 /** Locale-dependent fast path for the official picker cells (zh/en). */
@@ -254,6 +260,20 @@ const ADAPT_CSS: readonly string[] = [
   // [class$="_tab"] misses the active tab (its class ends in "_tabActive")
   // — containment so BOTH tabs match.
   '[class$="_header"] [class$="_tabs"] [class*="_tab"]{font-size:12px;white-space:nowrap}',
+  // v80: the tabs row must give the painted actions their width up on its own.
+  // The v67 padding reservation could not do it: the row is a nowrap flex
+  // container, and once the tab labels plus their gaps overflow the reduced
+  // content box the flex items spill over the padding box, so the trailing
+  // tabs render underneath the actions (reported on a phone: a long agent
+  // preset label covered the last tabs). Cap the row against the reserve and
+  // let the labels scroll instead. The value rides a CSS variable on <html>
+  // because the update lands before React re-creates the row node, and an
+  // inline reservation on that node is dropped until the next sync tick.
+  // The 2px bottom padding keeps the active-tab underline inside the clipping
+  // box; the matching negative margin keeps the header height official.
+  `body.${HEADER_SEATED_CLASS} [class$="_header"] [class$="_tabs"]{max-width:max(0px,calc(100% - var(${HEADER_RESERVE_VAR},0px)));overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px;margin-bottom:-2px}`,
+  `body.${HEADER_SEATED_CLASS} [class$="_header"] [class$="_tabs"]::-webkit-scrollbar{display:none}`,
+  `body.${HEADER_SEATED_CLASS} [class$="_header"] [class$="_tabs"] > [class*="_tab"]{flex:0 0 auto}`,
   // Mobile scope: hide the plugin surfaces that do not fit a phone — the
   // right-hand details column and every desktop-oriented tool surface. The
   // list keys on the L2 semantic roots (data-dsh-plugin, ownership stays
@@ -333,7 +353,7 @@ export function startMobileAdapt(): void {
   let whaleSuppressClick = false
   let whaleShown = false
   let drag: { x: number; y: number; left: number; top: number; moved: boolean } | null = null
-  let swipeTouch: { x: number; y: number; id: number } | null = null
+  let swipeTouch: { x: number; y: number; id: number; el: Element | null } | null = null
   let lastComposerTap = 0
   // Plugin master switch: the module-scope layer installs before any config
   // is readable, so the plugin apply() flips this through setEnabled() once
@@ -348,7 +368,7 @@ export function startMobileAdapt(): void {
    * rail compaction) while the body class stays.
    */
   function ensureAdaptStyle(): void {
-    if (document.querySelector(`style[data-plugin-css="${ADAPT_CSS_ID}"]`) !== null) return
+    if (nodeOf(`style[data-plugin-css="${ADAPT_CSS_ID}"]`) !== null) return
     const tag = document.createElement('style')
     tag.dataset.plugin = 'remote-web-ui'
     tag.dataset.pluginCss = ADAPT_CSS_ID
@@ -401,6 +421,9 @@ export function startMobileAdapt(): void {
       savedViewportContent = null
     }
     if (whaleEl !== null) whaleEl.style.display = 'none'
+    // The next apply() is a hidden-to-shown transition again: without this the
+    // whale would keep its pre-revert position state and skip the clamp.
+    whaleShown = false
     setWhaleTimer(false)
     if (whaleObserver !== null) {
       whaleObserver.disconnect()
@@ -472,7 +495,7 @@ export function startMobileAdapt(): void {
 
   function syncCompactPicker(): void {
     if (!active) return
-    const tools = document.querySelector('[class$="_composerSeat"] [class$="_tools"]')
+    const tools = nodeOf('[class$="_composerSeat"] [class$="_tools"]')
     const trigger = tools?.parentElement?.querySelector('[class$="_triggerEffort"]')?.parentElement
     if (tools === null || trigger === null) {
       removeCompactPicker()
@@ -632,17 +655,24 @@ export function startMobileAdapt(): void {
   }
 
   /**
+   * Write one row's recorded official draggable state back onto it.
+   * @param row - the tracked row element.
+   * @param original - the recorded attribute value, or null when it was absent.
+   */
+  function restoreRowDragState(row: Element, original: string | null): void {
+    if (original === null) row.removeAttribute('draggable')
+    else row.setAttribute('draggable', original)
+  }
+
+  /**
    * Restore the official draggable state this layer overrode while active.
    * Rows are React-owned and may have been re-created meanwhile, so only the
-   * tracked elements are touched; a detached element is skipped.
+   * tracked elements are touched; a detached element is written back too
+   * (harmless, and it keeps the entry prunable at every tick).
    */
   function restoreRowDrag(): void {
     if (dragOverridden.size === 0) return
-    for (const [row, original] of dragOverridden) {
-      if (!row.isConnected) continue
-      if (original === null) row.removeAttribute('draggable')
-      else row.setAttribute('draggable', original)
-    }
+    for (const [row, original] of dragOverridden) restoreRowDragState(row, original)
     dragOverridden.clear()
   }
 
@@ -679,6 +709,41 @@ export function startMobileAdapt(): void {
         row.setAttribute('draggable', 'false')
       }
     }
+    // React replaces rows as the session list re-renders; a detached row can
+    // never be restored by a later revert, so keeping it here would retain the
+    // whole detached subtree (and its children) for the page lifetime. Its
+    // official state goes back on the node itself and the entry is dropped:
+    // a node React re-attaches is recorded again on the next tick.
+    if (dragOverridden.size === 0) return
+    for (const [row, original] of dragOverridden) {
+      if (row.isConnected) continue
+      restoreRowDragState(row, original)
+      dragOverridden.delete(row)
+    }
+  }
+
+  /**
+   * Official nodes resolved through the document and cached while they stay
+   * connected. The sync tick runs every 600ms for the page lifetime, and these
+   * selectors (suffix class matches, :has()) cannot use Blink's fast paths, so
+   * every miss walks the whole mounted DOM — the official chat keeps the whole
+   * conversation mounted, i.e. tens of thousands of elements. React replaces a
+   * node on a major re-render, which the isConnected guard detects.
+   */
+  const nodeCache = new Map<string, Element>()
+  function nodeOf(selector: string): Element | null {
+    const cached = nodeCache.get(selector)
+    if (cached !== undefined && cached.isConnected) return cached
+    const found = document.querySelector(selector)
+    if (found === null) nodeCache.delete(selector)
+    else nodeCache.set(selector, found)
+    return found
+  }
+
+  /** The official application frame, through the same cached lookup. */
+  function frameEl(): HTMLElement | null {
+    const frame = nodeOf(APP_FRAME_SELECTOR)
+    return frame instanceof HTMLElement ? frame : null
   }
 
   function syncWhale(): void {
@@ -690,8 +755,8 @@ export function startMobileAdapt(): void {
       whaleEl.style.display = 'none'
       return
     }
-    const collapsed = appFrame()?.hasAttribute('data-sidebar-collapsed') === true
-    const overlayUp = document.querySelector('[class$="_overlay"]') !== null
+    const collapsed = frameEl()?.hasAttribute('data-sidebar-collapsed') === true
+    const overlayUp = nodeOf('[class$="_overlay"]') !== null
     const show = collapsed && !overlayUp
     // Restore on every hidden-to-shown transition — including the very
     // first show on a fresh page load, where the inline display is still
@@ -718,7 +783,7 @@ export function startMobileAdapt(): void {
   // sessions, and hiding the actions without a seat target made them vanish.
   function seatHeaderActions(): void {
     if (!active) return
-    const header = document.querySelector('[class$="_header"]')
+    const header = nodeOf('[class$="_header"]')
     const tabs = header !== null ? header.querySelector('[class$="_tabs"]') : null
     const actions = header !== null ? header.querySelector('[class$="_titleCluster"] [class$="_headerActions"]') : null
     // The actions node is NOT moved: it is a React-owned host node whose badge
@@ -740,7 +805,7 @@ export function startMobileAdapt(): void {
   // and converged each time the header geometry is dirty.
   function alignActionsText(): void {
     if (!active) return
-    const header = document.querySelector('[class$="_header"]')
+    const header = nodeOf('[class$="_header"]')
     if (header === null) return
     const tabs = header.querySelector('[class$="_tabs"]')
     const actions = header.querySelector('[class$="_titleCluster"] [class$="_headerActions"]')
@@ -764,9 +829,14 @@ export function startMobileAdapt(): void {
     let dx = translate !== null ? parseFloat(translate[1] ?? '0') : 0
     let dy = translate !== null ? parseFloat(translate[2] ?? '0') : 0
     const actionsRect = actions.getBoundingClientRect()
-    const tabsRect = tabs.getBoundingClientRect()
-    // Horizontal: the actions' right edge lands on the tabs row's right edge.
-    const rightDiff = tabsRect.right - actionsRect.right
+    // Horizontal: the actions' right edge lands on the header's content edge,
+    // NOT on the tabs row's right edge. The row caps its own width against the
+    // reserve below (v80), so anchoring to the row would let the pair walk
+    // leftwards on every measurement.
+    const headerRect = header.getBoundingClientRect()
+    const headerStyle = getComputedStyle(header)
+    const contentRight = headerRect.right - (parseFloat(headerStyle.paddingRight) || 0) - (parseFloat(headerStyle.borderRightWidth) || 0)
+    const rightDiff = contentRight - actionsRect.right
     if (Math.abs(rightDiff) >= 0.5) dx = Math.round((dx + rightDiff) * 10) / 10
     // Vertical: the actions' text bottom lands on the tab text bottom.
     const tabBottom = textBottom(tabBtn)
@@ -783,17 +853,26 @@ export function startMobileAdapt(): void {
     }
     const next = `translate(${dx}px, ${dy}px)`
     if (actions.style.transform !== next) actions.style.transform = next
-    // Reserve the painted width so the tab labels never slide under it.
+    // Reserve the painted width on the row itself, so the tab labels never
+    // slide under it. The value rides a CSS variable on <html>: React
+    // recreates the row node on re-render, which would drop an inline
+    // reservation until the next sync tick, and until then the labels render
+    // underneath the painted actions.
     const reserve = `${Math.ceil(actionsRect.width) + 8}px`
-    if (tabs.style.paddingRight !== reserve) tabs.style.paddingRight = reserve
+    const rootStyle = document.documentElement.style
+    if (rootStyle.getPropertyValue(HEADER_RESERVE_VAR) !== reserve) rootStyle.setProperty(HEADER_RESERVE_VAR, reserve)
   }
 
   function unseatHeaderActions(): void {
     document.body.classList.remove(HEADER_SEATED_CLASS)
+    document.documentElement.style.removeProperty(HEADER_RESERVE_VAR)
     const header = document.querySelector('[class$="_header"]')
     const tabs = header !== null ? header.querySelector('[class$="_tabs"]') : null
     const actions = header !== null ? header.querySelector('[class$="_titleCluster"] [class$="_headerActions"]') : null
     if (actions instanceof HTMLElement) actions.style.transform = ''
+    // The v67 padding reservation is gone with the v80 cap; clearing it keeps a
+    // profile that hot-updated from an older build from keeping a stale inline
+    // width on the row.
     if (tabs instanceof HTMLElement) tabs.style.paddingRight = ''
     if (headerObserver !== null) {
       headerObserver.disconnect()
@@ -838,6 +917,11 @@ export function startMobileAdapt(): void {
     if (isMobilePortrait()) {
       apply()
       ensureWhaleObserver()
+      // A viewport shrink (split-screen, foldable, rotation) can leave the
+      // whale — the only portrait sidebar entry — parked beyond the new right
+      // edge while it stays visible; re-clamp it here. Skipped mid-drag so a
+      // resize cannot yank the button away from the finger.
+      if (active && drag === null) applyWhalePos()
     } else {
       revert()
     }
@@ -936,13 +1020,17 @@ export function startMobileAdapt(): void {
     }
     const t = e.target
     const editable = t instanceof HTMLElement && t.isContentEditable
-    if (t instanceof Element && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || editable || t.closest(`#${WHALE_ID}`) !== null || insideHScrollable(t) || t.closest('table, [class$="_table"], [class$="_tablePane"]') !== null)) {
+    if (t instanceof Element && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || editable || t.closest(`#${WHALE_ID}`) !== null || t.closest('table, [class$="_table"], [class$="_tablePane"]') !== null)) {
       swipeTouch = null
       return
     }
     const ct = e.changedTouches[0]
     if (ct === undefined) return
-    swipeTouch = { x: ct.clientX, y: ct.clientY, id: ct.identifier }
+    // The horizontally-scrollable veto is judged at release (see touchend):
+    // evaluating it here forced a style recalc plus a synchronous layout on
+    // every tap and scroll-start while the page was dirty, for a gesture that
+    // mostly never becomes a swipe.
+    swipeTouch = { x: ct.clientX, y: ct.clientY, id: ct.identifier, el: t instanceof Element ? t : null }
   }, { capture: true, passive: true })
   document.addEventListener('touchend', (e) => {
     if (swipeTouch === null) return
@@ -952,12 +1040,17 @@ export function startMobileAdapt(): void {
     if (ct === undefined || ct.identifier !== swipeTouch.id) return
     const dx = ct.clientX - swipeTouch.x
     const dy = ct.clientY - swipeTouch.y
+    const start = swipeTouch
     swipeTouch = null
     if (!active) return
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return
-    const frame = appFrame()
+    // A gesture that started inside a horizontally scrollable container belongs
+    // to that container, not to the sidebar. Judged now, only for a gesture
+    // that already qualified as a swipe.
+    if (start.el !== null && insideHScrollable(start.el)) return
+    const frame = frameEl()
     if (frame === null) return
-    if (document.querySelector('[class$="_overlay"], [class$="_dialog"], [class$="_menu"], [class*="_portal"]') !== null) return
+    if (nodeOf('[class$="_overlay"], [class$="_dialog"], [class$="_menu"], [class*="_portal"]') !== null) return
     const collapsed = frame.hasAttribute('data-sidebar-collapsed')
     if (dx < 0 && !collapsed) collapseSidebar()
     else if (dx > 0 && collapsed) toggleSidebarVerified()
@@ -1098,10 +1191,23 @@ export function startMobileAdapt(): void {
     return isComposerField(el) ? el : null
   }
   const lanOrigFocus = HTMLElement.prototype.focus
-  HTMLElement.prototype.focus = function (this: HTMLElement, options?: FocusOptions): void {
+  const patchedFocus = function (this: HTMLElement, options?: FocusOptions): void {
     if (active && isComposerField(this) && Date.now() - lastComposerTap >= 800) return
     lanOrigFocus.call(this, options)
   }
+  /** (Re-)install the composer-focus guard (see setEnabled). */
+  const installFocusPatch = (): void => {
+    HTMLElement.prototype.focus = patchedFocus
+  }
+  /**
+   * Remove the guard when the layer is disabled. A patch another plugin
+   * installed after ours is left alone (identity check), so disabling this
+   * layer never removes someone else's behavior.
+   */
+  const restoreFocusPatch = (): void => {
+    if (HTMLElement.prototype.focus === patchedFocus) HTMLElement.prototype.focus = lanOrigFocus
+  }
+  installFocusPatch()
   document.addEventListener('pointerdown', (e) => {
     if (!active) return
     if (composerFieldOf(e.target) !== null) lastComposerTap = Date.now()
@@ -1117,8 +1223,13 @@ export function startMobileAdapt(): void {
     translate: null,
     setEnabled(on: boolean): void {
       adaptEnabled = on
-      if (on) evaluate()
-      else revert()
+      if (on) {
+        installFocusPatch()
+        evaluate()
+      } else {
+        revert()
+        restoreFocusPatch()
+      }
     },
     flushCloseDetails(): void {
       // The first apply() ran before any wiring existed, so its

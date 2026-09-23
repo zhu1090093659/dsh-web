@@ -1,23 +1,23 @@
 /**
  * Host-side settings bridge for the Web UI plugin group.
  *
- * Serves the dsh-web family settings namespaces over a same-origin HTTP
- * pair because rc.6 host-apiproxy refuses every third-party namespace at the
- * RPC boundary. Access is loopback-only by default; deployments may opt in an
- * authenticated local reverse proxy. The handlers ride the host settings
- * seam (ctx.settings), which keeps the official schema validation, revision
- * fencing, persistence, and event emission for free; the bridge only adds the
- * allowlist gate the apiproxy normally provides. Error codes mirror the
- * official RPC codes so the client controller treats refusals exactly like an
- * apiproxy answer.
+ * Serves the dsh-web family settings namespaces over a same-origin HTTP pair.
+ * Access is loopback-only by default; deployments may opt in an authenticated
+ * local reverse proxy. The handlers ride the Host settings surface
+ * (`ctx.settings`, the SettingsForms service), which keeps the official schema
+ * validation, revision fencing, persistence, and event emission for free; the
+ * bridge only adds the allowlist gate the apiproxy normally provides and the
+ * namespace-to-profile-entry-id mapping the new surface does not carry. Error
+ * codes mirror the official RPC codes so the client controller treats
+ * refusals exactly like an apiproxy answer.
  */
 
 import { timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { SettingsNamespace, SettingsDescriptor, SettingsPathOp, SettingsProvider } from '@deepseek-ai/dsh-settings'
+import type { SettingsDescribeOptions, SettingsDescriptor, SettingsForms, SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import { SettingsConflictError } from '@deepseek-ai/dsh-settings'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
-import { composeAllowlist, extractWebSettingsNamespaces } from './allowlist.ts'
+import { composeAllowlist, extractWebSettingsNamespaces, resolveNamespaceEntry } from './allowlist.ts'
 import { WEB_UI_SETTINGS_BRIDGE_PREFIX } from './protocol.ts'
 import type { BridgeDescribeResult, BridgeMutateRequest, BridgeMutateResult, BridgeNamespaceView } from './protocol.ts'
 import { readJsonBody, writeJson } from './http.ts'
@@ -131,10 +131,119 @@ function isTrustedBridgeRequestResolved(request: IncomingMessage, access: Resolv
   return matchesProxyToken(request.headers[WEB_UI_SETTINGS_PROXY_TOKEN_HEADER], access.proxyToken)
 }
 
-/** Project one settings descriptor onto the bridge wire view. */
-function toView(descriptor: SettingsDescriptor): BridgeNamespaceView {
+/** One profile entry as the Host config editor reports it (only the fields this bridge reads). */
+export interface BridgeProfileEntry {
+  options?: {
+    /** Unique profile entry id; this IS the settings namespace of the new surface. */
+    id?: unknown
+    /** Package name the row loads: the family client package, or the aggregate's `@linxin666/dsh-web-all/<x>`. */
+    name?: unknown
+    /** Row config; an aggregate row points at the client package it carries. */
+    config?: unknown
+  }
+}
+
+/** One live namespace the bridge can serve. */
+export interface ServedNamespace {
+  /** The Host's descriptor for the profile entry, read under the caller's describe options. */
+  descriptor: SettingsDescriptor
+  /**
+   * Profile entry id owning this namespace. Undefined when the descriptor is
+   * already keyed by the family namespace itself (a Host whose settings
+   * surface predates the profile-entry identity).
+   */
+  entryId: string | undefined
+}
+
+/** The settings view one namespace projection needs. */
+export interface SettingsSurface {
+  /** The live Host settings view, one descriptor per served entry. */
+  describe(options?: SettingsDescribeOptions): SettingsDescriptor[]
+}
+
+/** Minimal dependencies of the namespace projection (the bridge handlers need more). */
+export interface NamespaceProjectionDeps {
+  /** The Host settings surface. */
+  settings: SettingsSurface
+  /** Live profile entries (`configEditor.entries()`), the only place a package identity survives. */
+  entries?: () => BridgeProfileEntry[]
+}
+
+/** The package identities one profile row declares, in resolution order. */
+function entryIdentities(entry: BridgeProfileEntry): string[] {
+  const options = entry.options
+  if (options === undefined) return []
+  const identities: string[] = []
+  if (typeof options.name === 'string') identities.push(options.name)
+  const config = options.config
+  if (typeof config === 'object' && config !== null) {
+    const plugin = (config as { plugin?: unknown }).plugin
+    if (typeof plugin === 'string') identities.push(plugin)
+  }
+  return identities
+}
+
+/** The profile entry id of one row, when it carries one. */
+function entryIdOf(entry: BridgeProfileEntry): string | undefined {
+  const id = entry.options?.id
+  return typeof id === 'string' ? id : undefined
+}
+
+/**
+ * The family settings namespace one profile row serves. A standalone install
+ * names the family client package directly; an aggregate install names the
+ * `dsh-web-all/<x>` subplugin while its config points at the same client
+ * package. Both resolve through the allowlist's package-name table, so the
+ * bridge never invents a second identity mapping.
+ * @param entry - one profile entry.
+ * @returns the family settings namespace, or undefined for a row the bridge does not serve.
+ */
+function entryNamespace(entry: BridgeProfileEntry): string | undefined {
+  for (const identity of entryIdentities(entry)) {
+    const ns = resolveNamespaceEntry(identity)
+    if (ns !== undefined) return ns
+  }
+  return undefined
+}
+
+/**
+ * Project the live Host settings view onto the namespaces the bridge serves.
+ * The descriptor's `ns` is a profile entry id on the new surface, so each one
+ * is traced back to its family namespace through the profile row that owns it.
+ * @param deps - the settings surface and the profile-entry reader.
+ * @param options - describe options; secret redaction is the wire default and
+ *   is relaxed only by an in-process reader that must see what a user holds.
+ * @returns one entry per family namespace, keyed by that namespace.
+ */
+export function servedNamespaces(deps: NamespaceProjectionDeps, options?: SettingsDescribeOptions): Map<string, ServedNamespace> {
+  const byId = new Map<string, BridgeProfileEntry>()
+  for (const entry of deps.entries?.() ?? []) {
+    const id = entryIdOf(entry)
+    if (id !== undefined) byId.set(id, entry)
+  }
+  const served = new Map<string, ServedNamespace>()
+  for (const descriptor of deps.settings.describe(options ?? { redactSecrets: true })) {
+    const ns = String(descriptor.ns)
+    const owner = byId.get(ns)
+    const family = owner === undefined ? undefined : entryNamespace(owner)
+    if (family !== undefined) {
+      served.set(family, { descriptor, entryId: ns })
+      continue
+    }
+    // No profile row to trace: a descriptor already keyed by a family
+    // namespace is still served, without an entry id for the client to bind.
+    const direct = resolveNamespaceEntry(ns)
+    if (direct !== undefined) served.set(direct, { descriptor, entryId: undefined })
+  }
+  return served
+}
+
+/** Project one served namespace onto the bridge wire view. */
+function toView(ns: string, served: ServedNamespace): BridgeNamespaceView {
+  const { descriptor, entryId } = served
   return {
-    ns: String(descriptor.ns),
+    ns,
+    ...entryId === undefined ? {} : { entryId },
     schema: descriptor.schema,
     value: descriptor.value,
     ...descriptor.base === undefined ? {} : { base: descriptor.base },
@@ -146,24 +255,31 @@ function toView(descriptor: SettingsDescriptor): BridgeNamespaceView {
   }
 }
 
-/** Map a seam failure onto the official-shaped refusal envelope. */
+/** Map a Host settings failure onto the official-shaped refusal envelope. */
 function failureOf(error: unknown): { ok: false; code: string; message: string } {
   if (error instanceof SettingsConflictError) {
     return { ok: false, code: 'settings-conflict', message: error.message }
   }
-  const message = error instanceof Error ? error.message : String(error)
-  if (/is not registered/.test(message)) {
-    return { ok: false, code: 'settings-rejected', message }
-  }
-  return { ok: false, code: 'settings-rejected', message }
+  // Everything else (an entry the Host no longer exposes, a rejected field, a
+  // value the schema refuses) collapses onto the one refusal code the client
+  // controller understands, with the Host's own message.
+  return { ok: false, code: 'settings-rejected', message: error instanceof Error ? error.message : String(error) }
 }
 
 /** Dependencies of the bridge handlers. */
 export interface BridgeDeps {
-  /** The host settings seam (already injected). */
-  settings: SettingsProvider
-  /** Read the raw settings.yaml text ('' when unreadable or absent). */
+  /** The host settings surface (already injected). */
+  settings: SettingsForms
+  /** Read the raw settings YAML text ('' when unreadable or absent). */
   readSettingsYaml: () => string
+  /**
+   * Live profile entries (`configEditor.entries()`), the only place a package
+   * identity survives; used to map a family namespace onto its profile entry
+   * id. Absent (or empty) when the Host serves no config editor: the bridge
+   * then serves namespaces without an entry id and the client keeps the HTTP
+   * transport.
+   */
+  entries?: () => BridgeProfileEntry[]
 }
 
 /** The describe and mutate handlers the routes wrap. */
@@ -175,25 +291,19 @@ export interface BridgeHandlers {
 /**
  * Build the bridge handlers. The allowlist is re-read on every call so edits
  * to settings.yaml take effect without a host restart.
- * @param deps - the settings seam and the settings.yaml reader.
+ * @param deps - the settings surface, the settings.yaml reader, and the profile-entry reader.
  * @returns the handlers.
  */
 export function makeBridgeHandlers(deps: BridgeDeps): BridgeHandlers {
   // The allowlist derives from the same describe scan the handlers already
-  // need: pass the descriptors in instead of scanning the seam twice per
-  // request.
-  const allowlisted = (descriptors: SettingsDescriptor[]): string[] => {
-    const registered = descriptors.map(descriptor => String(descriptor.ns))
-    return composeAllowlist(extractWebSettingsNamespaces(deps.readSettingsYaml()), registered)
-  }
+  // need: trace the descriptors first and pass the served namespaces in
+  // instead of scanning the surface twice per request.
+  const allowlisted = (served: Map<string, ServedNamespace>): string[] =>
+    composeAllowlist(extractWebSettingsNamespaces(deps.readSettingsYaml()), [...served.keys()])
   return {
     async describe() {
-      const descriptors = deps.settings.describe({ redactSecrets: true })
-      const allowlist = allowlisted(descriptors)
-      const namespaces = allowlist
-        .map(ns => descriptors.find(descriptor => String(descriptor.ns) === ns))
-        .filter((descriptor): descriptor is SettingsDescriptor => descriptor !== undefined)
-        .map(toView)
+      const served = servedNamespaces(deps)
+      const namespaces = allowlisted(served).map(ns => toView(ns, served.get(ns)!))
       return {
         ok: true,
         value: { namespaces, writable: deps.settings.writable !== false },
@@ -205,21 +315,25 @@ export function makeBridgeHandlers(deps: BridgeDeps): BridgeHandlers {
         return { ok: false, code: 'settings-rejected', message: 'malformed bridge settings request' }
       }
       const { ns } = body
-      const allowlist = allowlisted(deps.settings.describe({ redactSecrets: true }))
-      if (!allowlist.includes(ns)) {
+      const served = servedNamespaces(deps)
+      if (!allowlisted(served).includes(ns)) {
         return { ok: false, code: 'settings-not-exposed', message: 'settings namespace "' + ns + '" is not exposed to configuration clients' }
       }
+      const target = served.get(ns)!
+      // The Host writes by profile entry id; a namespace served without one
+      // (the pre-0.1.7 layout) is already the id the Host knows.
+      const entryId = target.entryId ?? ns
       const expectedRevision = typeof body.expectedRevision === 'number' ? body.expectedRevision : undefined
       try {
-        await deps.settings.mutate(ns as SettingsNamespace, body.ops as SettingsPathOp[], expectedRevision)
+        await deps.settings.mutate(entryId, body.ops as SettingsPathOp[], expectedRevision)
       } catch (error) {
         return failureOf(error)
       }
-      const descriptor = deps.settings.describe({ redactSecrets: true }).find(candidate => String(candidate.ns) === ns)
+      const descriptor = deps.settings.describe({ redactSecrets: true }).find(candidate => String(candidate.ns) === entryId)
       if (descriptor === undefined) {
         return { ok: false, code: 'internal', message: 'settings namespace "' + ns + '" was disposed after the mutate' }
       }
-      return { ok: true, value: toView(descriptor) }
+      return { ok: true, value: toView(ns, { descriptor, entryId: target.entryId }) }
     },
   }
 }

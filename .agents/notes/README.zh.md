@@ -31,11 +31,15 @@
 
 `architecture` / `process` 的分界线：architecture 针对我们交付的源码；process 针对周边工具、文档与工作流。刻意不设 `refactor`——它与 `simplification` 重叠，后者的判别标准「可观察行为是否变化」已经覆盖它。
 
-## 何时写一条
+## 何时写一条、修改前查阅与决策所有权（Owning Note）
 
+### 修改前查阅流程（Pre-edit Review）
+在对已有子系统、插件协议或架构契约进行非平凡修改前，必须先在 `.agents/notes/implemented/` 检索拥有该决策的既有笔记（Owning Note），重点审阅其 `Alternatives considered` 与 `Consequences`，理解既往权衡考量，避免重新引入已被否决的设计。
+
+### 决策所有权规则（The Owning Note Rule）
 每个非平凡变更必须在同一变更中新增或更新至少一条 Agent Note。非平凡指：改变行为、架构、跨文件或跨包的契约、流程或工具、测试策略、磁盘 / 传输 / 配置格式，或其他维护者可能合理重新审视的决策。面向未来的大型提案从 `proposed/` 起步；已经做出的决策从 `implemented/` 起步。
 
-更新已拥有该决策的既有 Agent Note 即满足此规则；不要新建重复记录。只有纯机械性、局部且不改变行为、契约、结构、流程或理由的编辑才豁免。Agent Note 绝不会被原地改成另一个决策：用新记录取代它并保持两者互链，除非一次完整合并能保留所有独有的理由、备选方案、后果与必需验证，同时修复所有入链。
+更新已拥有该决策的既有 Agent Note 即满足此规则；不要新建重复记录。当代码重构调整路径、符号或配置时，在同一变更中就地更新该 Owning Note 的事实陈述以保持与交付现实同步。只有纯机械性、局部且不改变行为、契约、结构、流程或理由的编辑才豁免。Agent Note 绝不会被原地改成另一个决策：用新记录取代它并保持两者互链，除非一次完整合并能保留所有独有的理由、备选方案、后果与必需验证，同时修复所有入链。遵循「一个事实只有一个家（One home per fact）」。
 
 每写一条新的 Agent Note 都要做取代检查：先在活跃树中搜索覆盖同一决策或机制的旧记录。
 
@@ -83,32 +87,9 @@ Status: <status>
 
 归档路径编码为 `archived/{class}/yyyy-mm-dd-topic-title.md`；不存在 `implemented` 层级，因为只有 implemented 记录能进入归档。归档变更只允许：移动完整三件套、在每个 `Status: implemented` 行下方插入相同的 `Archived: YYYY-MM-DD` 行、重录 sidecar hash、修复或删除入链。一旦封存，归档记录永久冻结：不得编辑、翻译、重排、移动或删除，也不得当作当前行为的权威。见 [archived/AGENTS.md](archived/AGENTS.md)。
 
-## Prompt 分层与缓存优化
+## 工程流程归属
 
-为最大化 LLM 服务端 KV Cache 复用并防止上下文膨胀（Context Bloat），Prompt 前缀稳定性划分为三个确定性层级：
-
-1. **Layer 1（全局静态前缀）**：系统身份、全局不变纪律（Mode 2 设计驱动约束、无 emoji 纪律）、核心工具元数据。置于 Prompt 绝对头部，严禁注入动态时间戳或会话临时 ID。
-2. **Layer 2（仓库与领域静态前缀）**：仓库根 `AGENTS.md`、加载的 Skill 定义、目录架构边界。在同代码库会话中保持高度稳定，最大化复用服务端 Prompt Cache。
-3. **Layer 3（动态上下文末尾）**：Mem0 记忆片段、CodeGraph 符号查询结果、当前文件的最小必要 Diff、用户实时请求。置于 Prompt 最末尾，避免动态内容破坏 Layer 1 与 Layer 2 前缀缓存。
-
-## CI 自愈规范
-
-当自动化流水线、本地门禁或 GitHub Actions 报错时，Agent 必须遵循以下 4 步确定性自愈闭环，严禁盲目重试：
-
-1. **精准归因（Log Isolation）**：提取具体失败步骤的真实日志、报错堆栈与退出状态码，禁止凭空猜测修改。
-2. **本地最小复现（Local Minimal Repro）**：使用单条最小命令（例如单测文件或针对性类型检查指令）在本地复现失败，而非盲目运行全量长耗时流水线。
-3. **最小补丁修复（Targeted Minimal Diff）**：针对失败根因编写针对性补丁，不得夹带无关格式化或投机性重构改动。
-4. **全量门禁前置验证（Pre-Push Gate Check）**：在提交或推送前，必须在本地完整运行仓库全部前置门禁（`pnpm typecheck && pnpm test && pnpm docs:check && pnpm i18n:check`）并验证通过，确保无回归。
-
-## 效能治理与模型分级契约
-
-为实现高性价比、高吞吐的自动化软件工程：
-
-1. **子 Agent 模型分级策略**：
-   - 默认优先采用轻量/高性价比模型（如 `flash` / `flash_lite`）派发只读调研、代码搜索、静态检查、文档多语言同步等机械子任务。
-   - 仅在主架构设计（Planning）、跨模块深度重构与疑难 Bug 根因分析时使用高规格推理模型（`pro` / 高推理档位）。
-2. **按需工具挂载（Tool Scoping）**：根据当前 Skill 和 Subagent 角色最小化暴露工具集，避免无效 Tool Schema 挤占上下文。
-3. **循环震荡熔断（Anti-Thrashing Circuit Breaker）**：Agent 若在同一文件或报错上连续尝试 3 次未果，或发生代码往复撤销，必须强制中断循环，向用户说明卡点并主动请求人工澄清（Clarification），坚决杜绝无效 Token 燃烧。
+[dsh-web-agent-coding](../skills/dsh-web-agent-coding/SKILL.md) 负责上下文使用、模型选择、失败恢复与按任务验证。Agent Note 记录决策的理由；不复述现行工作流，也不授予执行、同步或发布授权。
 
 ## 演进闭环
 

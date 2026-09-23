@@ -49,6 +49,11 @@ declare module '@linxin666/dsh-tool-describe-image/client' {
   export const inject: readonly string[] | undefined
 }
 
+declare module '@linxin666/dsh-liangshen/client' {
+  export const apply: unknown
+  export const inject: readonly string[] | undefined
+}
+
 declare module '@linxin666/dsh-client-ui-skill-explorer/client' {
   export const apply: unknown
   export const inject: readonly string[] | undefined
@@ -75,11 +80,6 @@ declare module '@linxin666/dsh-client-ui-model-capabilities/client' {
 }
 
 declare module '@linxin666/dsh-client-ui-preset-center/client' {
-  export const apply: unknown
-  export const inject: readonly string[] | undefined
-}
-
-declare module '@linxin666/dsh-client-ui-skin-center/client' {
   export const apply: unknown
   export const inject: readonly string[] | undefined
 }

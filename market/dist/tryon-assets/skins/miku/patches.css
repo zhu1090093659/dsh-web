@@ -1,13 +1,163 @@
+/**
+ * miku · 初音未来 — 结构层（v2 皮肤契约，patches.css）
+ *
+ * 本次是**整体重写**，不是补丁：
+ *   明亮 = 青空舞台：白瓷平涂 + 墨蓝描边 + 硬投影（cel 画法），青绿/品红点缀。
+ *   暗色 = 夜海霓虹：深蓝平涂 + 青绿冷光边 + 霓虹投影，品红做高光。
+ *   会话栏（中栏）**全透明**，壁纸由 contributes.backgroundMedia 绘制，一律不压底。
+ *
+ * 三条硬约束（都是实测出来的，别改）：
+ *   1. 侧栏列/侧栏根上**不能**放 backdrop-filter：它会成为 fixed 后代的包含块，
+ *      把设置弹窗从 1600×1000 困成侧栏里的 280×938。模糊只能给顶栏/底栏/弹窗这类叶子。
+ *   2. 只用稳定钩子（data-slot / data-dsh-* / data-pane / data-composer-* /
+ *      data-chat-flow-kind / role）。旧的 [class*="quiet"] 这类宽泛子串会把
+ *      sidebars 的 quietBars 也一起命中，本次不再使用。
+ *   3. 顶栏/底栏的类名是 hooks.mjs 的 CLS 常量（.NPtzYa_*），改这里要同步改代码。
+ */
+
+/* ─────────── 皮肤私有变量：只放 miku 自己的画法值 ─────────── */
+
+html[data-dsh-skin="miku"] {
+  --miku-ink: #12324f;
+  --miku-ink-soft: #12324f2e;
+  --miku-ink-line: #12324f;
+  --miku-panel: #f7fcfcf2;
+  --miku-panel-quiet: #eaf7f4d9;
+  --miku-hard: 4px 4px 0 #12324f24;
+  --miku-hard-sm: 2px 2px 0 #12324f1f;
+  --miku-glow: 0 0 0 1px #12324f1f;
+  --miku-teal: #12a79b;
+  --miku-sky: #2e9bff;
+  --miku-pink: #d81b7e;
+  --miku-dots: radial-gradient(#12324f12 1px, #0000 1.4px);
+  --miku-brand-bar: linear-gradient(90deg, #7ecbff 0%, #2e9bff 22%, #40bedc 44%, #39c5bb 56%, #40bedc 70%, #2e9bff 88%, #7ecbff 100%);
+  --miku-title-ramp: linear-gradient(90deg, #7ecbff 0%, #2e9bff 22%, #40bedc 44%, #39c5bb 56%, #40bedc 70%, #2e9bff 88%, #7ecbff 100%);
+  --miku-wordmark: linear-gradient(92deg, #ffffff 0%, #d6fff7 48%, #ffd9ee 100%);
+
+  /* ── 机甲材质 ──
+     斜切角（clip-path 不产生包含块，所以敢用在按钮/卡片/弹窗上；但会裁剪后代，
+     侧栏列里挂着 fixed 的设置弹窗，列和列上的祖先一律不能切）。
+     深度用内嵌倒角做，不用外投影 —— 外投影会被 clip-path 一起裁掉。 */
+  --miku-cut: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  --miku-cut-sm: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  --miku-keycap: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  --miku-metal: linear-gradient(180deg, #ffffff 0%, #e9f3fd 15%, #c6dbef 50%, #e2eefb 78%, #ffffff 100%);
+  --miku-metal-2: linear-gradient(180deg, #fbfdff 0%, #dbe9f8 32%, #b9d2e8 100%);
+  --miku-plate: linear-gradient(135deg, #ffffff 0%, #eef6ff 42%, #dae8f7 100%);
+  --miku-bevel: inset 0 1px 0 #ffffffd9, inset 0 -2px 0 #12324f26, inset -2px 0 0 #12324f14;
+  --miku-bevel-sm: inset 0 1px 0 #ffffffb3, inset 0 -1px 0 #12324f1f;
+  /* 警示条改成调色板内的青绿/墨蓝（原来那条黄的不属于这套冷色主题） */
+  --miku-hazard: repeating-linear-gradient(45deg, #12a79b 0 4px, #12324f 4px 8px);
+  --miku-rivet: radial-gradient(circle, #12324f66 0 1.3px, #0000 1.8px);
+  --miku-grid: linear-gradient(90deg, #12324f0f 1px, #0000 1px), linear-gradient(0deg, #12324f0f 1px, #0000 1px);
+  --miku-display: "Bahnschrift", "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", sans-serif;
+
+  /* 工作区文件夹流动渐变（明亮档：白瓷底上用 soft-light，颜色要沉一点才不发灰） */
+  --miku-flow: linear-gradient(100deg, #39c5bb 0%, #2e9bff 22%, #d81b7e 46%, #2e9bff 72%, #39c5bb 100%);
+  --miku-flow-blend: soft-light;
+  /* 输入卡底缘能量缝 */
+  --miku-seam: linear-gradient(90deg, #39c5bb00, #39c5bbd9 20%, #2e9bffd9 52%, #d81b7ed9 80%, #d81b7e00);
+  /* 菜单/浮层用的玻璃面（半透明，配模糊才好看） */
+  --miku-glass: linear-gradient(180deg, #ffffffdb 0%, #eef7ffe6 100%);
+  /* 需要"读字"的大面板用实面：98% 不透明，几乎不透底，避免底下内容串进文字 */
+  --miku-surface: #fffffffa;
+  /* 机甲边框：一圈渐变描边 */
+  --miku-edge: linear-gradient(135deg, #12a79b 0%, #2e9bff 42%, #d81b7e 100%);
+  --miku-caret: #12a79b;
+}
+html[data-dsh-skin="miku"] body {
+  --miku-ink: #12324f;
+  --miku-ink-soft: #12324f2e;
+  --miku-ink-line: #12324f;
+  --miku-panel: #f7fcfcf2;
+  --miku-panel-quiet: #eaf7f4d9;
+  --miku-hard: 4px 4px 0 #12324f24;
+  --miku-hard-sm: 2px 2px 0 #12324f1f;
+  --miku-glow: 0 0 0 1px #12324f1f;
+  --miku-teal: #12a79b;
+  --miku-sky: #2e9bff;
+  --miku-pink: #d81b7e;
+  --miku-dots: radial-gradient(#12324f12 1px, #0000 1.4px);
+  --miku-brand-bar: linear-gradient(90deg, #7ecbff 0%, #2e9bff 22%, #40bedc 44%, #39c5bb 56%, #40bedc 70%, #2e9bff 88%, #7ecbff 100%);
+  --miku-title-ramp: linear-gradient(90deg, #7ecbff 0%, #2e9bff 22%, #40bedc 44%, #39c5bb 56%, #40bedc 70%, #2e9bff 88%, #7ecbff 100%);
+  --miku-wordmark: linear-gradient(92deg, #ffffff 0%, #d6fff7 48%, #ffd9ee 100%);
+  --miku-cut: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  --miku-cut-sm: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  --miku-keycap: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  --miku-metal: linear-gradient(180deg, #ffffff 0%, #e9f3fd 15%, #c6dbef 50%, #e2eefb 78%, #ffffff 100%);
+  --miku-metal-2: linear-gradient(180deg, #fbfdff 0%, #dbe9f8 32%, #b9d2e8 100%);
+  --miku-plate: linear-gradient(135deg, #ffffff 0%, #eef6ff 42%, #dae8f7 100%);
+  --miku-bevel: inset 0 1px 0 #ffffffd9, inset 0 -2px 0 #12324f26, inset -2px 0 0 #12324f14;
+  --miku-bevel-sm: inset 0 1px 0 #ffffffb3, inset 0 -1px 0 #12324f1f;
+  --miku-hazard: repeating-linear-gradient(45deg, #12a79b 0 4px, #12324f 4px 8px);
+  --miku-rivet: radial-gradient(circle, #12324f66 0 1.3px, #0000 1.8px);
+  --miku-grid: linear-gradient(90deg, #12324f0f 1px, #0000 1px), linear-gradient(0deg, #12324f0f 1px, #0000 1px);
+  --miku-display: "Bahnschrift", "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", sans-serif;
+  --miku-flow: linear-gradient(100deg, #39c5bb 0%, #2e9bff 22%, #d81b7e 46%, #2e9bff 72%, #39c5bb 100%);
+  --miku-flow-blend: soft-light;
+  --miku-seam: linear-gradient(90deg, #39c5bb00, #39c5bbd9 20%, #2e9bffd9 52%, #d81b7ed9 80%, #d81b7e00);
+  --miku-glass: linear-gradient(180deg, #ffffffdb 0%, #eef7ffe6 100%);
+  --miku-surface: #fffffffa;
+  --miku-edge: linear-gradient(135deg, #12a79b 0%, #2e9bff 42%, #d81b7e 100%);
+  --miku-caret: #12a79b;
+}
+
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] {
+  --miku-ink: #39c5bb;
+  --miku-ink-soft: #39c5bb59;
+  --miku-ink-line: #39c5bb80;
+  --miku-panel: #12244af2;
+  --miku-panel-quiet: #12244ae6;
+  --miku-hard: 0 0 0 1px #39c5bb59, 0 10px 28px #00000073;
+  --miku-hard-sm: 0 0 0 1px #39c5bb47;
+  --miku-glow: 0 0 0 1px #39c5bb40, 0 0 18px #39c5bb29;
+  --miku-teal: #39c5bb;
+  --miku-sky: #4fd8e8;
+  --miku-pink: #ff5cb0;
+  --miku-dots: radial-gradient(#7ad8ff14 1px, #0000 1.4px);
+  --miku-brand-bar: linear-gradient(90deg, #0d2b56 0%, #1e4f9e 20%, #7a3fd0 40%, #d0298a 50%, #7a3fd0 60%, #1e4f9e 80%, #0d2b56 100%);
+  --miku-title-ramp: linear-gradient(90deg, #0d2b56 0%, #1e4f9e 20%, #7a3fd0 40%, #d0298a 50%, #7a3fd0 60%, #1e4f9e 80%, #0d2b56 100%);
+  --miku-wordmark: linear-gradient(92deg, #ffffff 0%, #7ff0e4 50%, #ff9ad4 100%);
+
+  --miku-metal: linear-gradient(180deg, #3a6396 0%, #23456f 16%, #101f42 52%, #1c3763 80%, #3a6396 100%);
+  --miku-metal-2: linear-gradient(180deg, #26456f 0%, #16294f 38%, #0b1730 100%);
+  --miku-plate: linear-gradient(135deg, #1e3c6e 0%, #142a52 46%, #0a1730 100%);
+  --miku-bevel: inset 0 1px 0 #7ad8ff2e, inset 0 -2px 0 #00000073, inset -2px 0 0 #00000059;
+  --miku-bevel-sm: inset 0 1px 0 #ffffff1a, inset 0 -1px 0 #00000059;
+  --miku-hazard: repeating-linear-gradient(45deg, #39c5bb 0 4px, #0b1730 4px 8px);
+  --miku-rivet: radial-gradient(circle, #9fe8ff8c 0 1.3px, #0000 1.8px);
+  --miku-grid: linear-gradient(90deg, #7ad8ff12 1px, #0000 1px), linear-gradient(0deg, #7ad8ff12 1px, #0000 1px);
+
+  /* 暗色档：流动渐变要更亮、并且用 screen 叠在深蓝上才发光，不然一片糊 */
+  --miku-flow: linear-gradient(100deg, #2fe3d5 0%, #3f9bff 22%, #ff5cb0 46%, #3f9bff 72%, #2fe3d5 100%);
+  --miku-flow-blend: screen;
+  --miku-seam: linear-gradient(90deg, #39c5bb00, #39c5bbe6 20%, #4fd8e8e6 52%, #ff5cb0e6 80%, #ff5cb000);
+  --miku-glass: linear-gradient(180deg, #16294fe0 0%, #0d1a3aeb 100%);
+  --miku-surface: #12244af7;
+  --miku-edge: linear-gradient(135deg, #39c5bb 0%, #4fd8e8 42%, #ff5cb0 100%);
+  --miku-caret: #39c5bb;
+}
+
+/* ─────────── 0. 画布与三栏框架 ─────────── */
+
+/* 顶栏 30px / 底栏 26px 是 fixed 的，给根容器留出位置 */
 html[data-dsh-skin="miku"] [id="root"] {
   box-sizing: border-box;
   background: none;
   border: none;
   box-shadow: none;
-  /* Reserve room for the floating title bar (30px) and status bar (26px)
-     so content never sits under them, while the page background still fills
-     edge to edge (no light border). */
-  padding-top: 32px;
-  padding-bottom: 30px;
+  /* 顶栏/底栏已收起（见下方 [data-skin-chrome] 规则），不再预留 30/26px。 */
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* 顶部标题栏 / 底部状态栏：按用户要求去掉。
+   hooks.mjs 仍然会注入这两个节点（钩子是受校验的评审产物），这里只做视觉收起，
+   想恢复删掉这一段即可。 */
+html[data-dsh-skin="miku"] [data-skin-chrome="titlebar"],
+html[data-dsh-skin="miku"] [data-skin-chrome="statusbar"] {
+  display: none !important;
 }
 
 html[data-dsh-skin="miku"] body[data-ds-dark-theme] [id="root"] {
@@ -16,55 +166,821 @@ html[data-dsh-skin="miku"] body[data-ds-dark-theme] [id="root"] {
   box-shadow: none;
 }
 
-html[data-dsh-skin="miku"] * {
+html[data-dsh-skin="miku"] #root > div > div,
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] #root > div > div,
+html[data-dsh-skin="miku"] [data-dsh-frame],
+html[data-dsh-skin="miku"] [data-slot="root"] {
+  background: none !important;
+}
+
+/* ─────────── 1. 会话栏：全透明，壁纸直通 ─────────── */
+
+html[data-dsh-skin="miku"] [data-pane="conversation"],
+html[data-dsh-skin="miku"] [class*="centerCol"],
+html[data-dsh-skin="miku"] [data-slot="main"],
+html[data-dsh-skin="miku"] [data-slot="main.conversation"],
+html[data-dsh-skin="miku"] [data-slot="conversation.session"],
+html[data-dsh-skin="miku"] [data-slot="conversation.session.header"],
+html[data-dsh-skin="miku"] [data-conversation-scroll],
+html[data-dsh-skin="miku"] [class*="scrollBody"],
+html[data-dsh-skin="miku"] [class*="centerCol"] > div > div {
+  background: none !important;
+  border-left: none !important;
+  box-shadow: none !important;
+}
+
+html[data-dsh-skin="miku"] [data-pane="conversation"],
+html[data-dsh-skin="miku"] [class*="centerCol"] {
+  backdrop-filter: none !important;
+  border: none !important;
+}
+
+/* 会话栏既然全透明，正文就直接压在壁纸上：加一层"漫画描边式"光晕保证可读性，
+   而不是给整栏铺底色（壁纸必须完整露出来）。 */
+html[data-dsh-skin="miku"] [data-slot="main.conversation"],
+html[data-dsh-skin="miku"] [data-conversation-scroll] {
+  /* 只留 1px 贴边阴影：原来 12px 的白色外发光在整栏铺开就是"白色朦胧覆盖" */
+  text-shadow: 0 1px 0 #ffffffa6;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-conversation-scroll] {
+  text-shadow: 0 1px 0 #000000a6;
+}
+
+/* 会话标题栏：cel 渐变条 + 墨线收口 */
+/* 明亮主题：会话标题栏整条透明，让壁纸直接透上来；
+   标题与页签靠一层贴边光晕保证可读（不是那块白色蒙版）。 */
+html[data-dsh-skin="miku"] [data-dsh-surface="session-header"] > header,
+html[data-dsh-skin="miku"] [data-dsh-responsive-part="conversation-header"] {
+  background: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  text-shadow: 0 1px 1px #ffffffcc, 0 0 10px #ffffffa6;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-surface="session-header"] > header,
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-responsive-part="conversation-header"] {
+  background: linear-gradient(90deg, #0d1a3aeb 0%, #14284ff2 50%, #123038eb 100%) !important;
+  border-bottom: 1px solid #39c5bb66 !important;
+  box-shadow: var(--miku-bevel-sm), inset 0 -3px 0 #39c5bb33 !important;
+}
+
+/* ─────────── 2. 左侧栏：平涂 + 网点 + 墨线（不放模糊） ─────────── */
+
+html[data-dsh-skin="miku"] [data-pane="sidebar"],
+html[data-dsh-skin="miku"] [class*="sidebarCol"] {
+  background-color: var(--dsw-specific-sidebar-fill) !important;
+  /* 回到点状纹理（网格的竖线已去掉），侧栏不再出现任何竖条 */
+  background-image: var(--miku-dots) !important;
+  background-size: 6px 6px !important;
+  border-right: 2px solid var(--miku-ink-line) !important;
+  box-shadow: none !important;
+  /* 只有 backdrop-filter / filter / transform 会改变 fixed 后代的包含块；
+     底色和背景图不会，所以平涂直接落在列上，模糊一律不给。 */
+  backdrop-filter: none !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="sidebar"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="sidebarCol"] {
+  border-right-color: var(--miku-ink-line) !important;
+  box-shadow: inset -1px 0 0 #39c5bb26 !important;
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar"] > * {
+  background: none !important;
+}
+
+/* 品牌行：与顶栏同一条渐变，作为皮肤的签名 */
+html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"] {
+  background: var(--miku-brand-bar) !important;
+  background-size: 200% 100% !important;
+  border-bottom: 2px solid var(--miku-ink-line) !important;
+  box-shadow: none !important;
+}
+
+html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"],
+html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"] * {
+  color: #fff !important;
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar.brand.mark"] svg path {
+  fill: #fff;
+}
+
+/* 左上角字标：把 shell 的「DSH 本地构建」收起（font-size: 0），改成两段式
+   「DSH / 初音未来」——前段是代号（小号、字距拉开、银蓝），后段是名号（渐变字）。
+   分隔用一根细竖线（border-left），不是连字符。 */
+html[data-dsh-skin="miku"] [data-slot="sidebar.brand.name"] > * {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0 !important;
+  line-height: 1;
+  color: #fff !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor;
+}
+
+/* 第一段「DSH」= 代号铭牌：迷你机甲 keycap（斜切角 + 内嵌高光 + 细描边 + Bahnschrift 拉字距） */
+html[data-dsh-skin="miku"] [data-slot="sidebar.brand.name"] > *::before {
+  content: "DSH";
+  flex: none;
+  padding: 4px 7px 3px 8px;
+  font-family: var(--miku-display);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.26em;
+  text-indent: 0.26em;
+  color: #eaf8ff;
+  -webkit-text-fill-color: #eaf8ff;
+  background: linear-gradient(180deg, #ffffff3d 0%, #ffffff14 48%, #ffffff2e 100%);
+  border: 1px solid #ffffff8c;
+  clip-path: var(--miku-keycap);
+  box-shadow: inset 0 1px 0 #ffffffe6, inset 0 -1px 0 #06163040;
+  text-shadow: 0 1px 0 #06163059;
+}
+
+/* 第二段「初音未来」= 名号：20px 渐变字，左侧一根竖向拼缝分隔，整体带一点落影 */
+html[data-dsh-skin="miku"] [data-slot="sidebar.brand.name"] > *::after {
+  content: "初音未来";
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px solid #ffffff59;
+  background: var(--miku-wordmark);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 0 #06163059);
+}
+
+html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"] button {
+  background: none !important;
+  box-shadow: none !important;
+}
+
+html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"] button:hover {
+  background: #ffffff2e !important;
+}
+
+/* 会话树 / 侧栏条目：圆角 + 悬停墨线 */
+html[data-dsh-skin="miku"] [data-slot="sidebar"] [role="treeitem"],
+html[data-dsh-skin="miku"] [data-dsh-part="sidebar-entry"] {
+  border-radius: 10px !important;
+  border: 1px solid transparent !important;
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar"] [role="treeitem"]:hover,
+html[data-dsh-skin="miku"] [data-dsh-part="sidebar-entry"]:hover {
+  border-color: var(--miku-ink-soft) !important;
+  background: var(--dsw-alias-interactive-bg-hover) !important;
+}
+
+/* 新建会话：机甲主按钮。
+   斜切角 + 拉丝金属渐变 + 内嵌倒角做厚度 + 左缘一条警示条 + 右侧拼缝高光。
+   全用 inset / 伪元素，不用外投影（clip-path 会把外投影一起裁掉）。 */
+html[data-dsh-skin="miku"] [data-dsh-part="new-session"] {
+  position: relative;
+  overflow: hidden;
+  clip-path: var(--miku-cut-sm);
+  border-radius: 0 !important;
+  border: 2px solid transparent !important;
+  border-image: var(--miku-edge) 1 !important;
+  background: var(--miku-metal-2) !important;
+  color: #12324f !important;
+  font-family: var(--miku-display);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  box-shadow: var(--miku-bevel) !important;
+}
+
+html[data-dsh-skin="miku"] [data-dsh-part="new-session"]::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  opacity: 0.9;
+  background: var(--miku-hazard);
+  pointer-events: none;
+}
+
+/* 上缘高光（横向），替代原来的右缘竖高光 */
+html[data-dsh-skin="miku"] [data-dsh-part="new-session"]::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 1px;
+  height: 1px;
+  background: linear-gradient(90deg, #ffffff00, #ffffffd9, #ffffff00);
+  pointer-events: none;
+}
+
+html[data-dsh-skin="miku"] [data-dsh-part="new-session"]:hover {
+  background: var(--miku-metal) !important;
+}
+
+html[data-dsh-skin="miku"] [data-dsh-part="new-session"] svg {
+  color: #10508f !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-part="new-session"] {
+  background: var(--miku-metal-2) !important;
+  color: #dbe8ff !important;
+  box-shadow: var(--miku-bevel), inset 0 0 18px #39c5bb24 !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-part="new-session"]:hover {
+  background: var(--miku-metal) !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-part="new-session"] svg {
+  color: #7ff0e4 !important;
+}
+
+/* 工作区文件夹行：一条横向渐变**始终铺满整行**，只是颜色在左右流动。
+   无缝循环的两个条件（缺一个就会出现"渐变整条滑走/淡出"的观感）：
+     1. background-size: 200% 100%（平铺块宽 = 2×行宽）
+     2. background-repeat: repeat + 位移恰好等于一个平铺块宽度
+   background-position 百分比是相对 (行宽 − 平铺宽) 计算的，200% 即位移 2×行宽
+   = 正好一个平铺块，所以 0% → 200% 循环回来毫无跳变，也永远盖满。
+   文件夹行的稳定钩子是 [role=treeitem][aria-expanded]（会话行没有 aria-expanded），
+   哈希类 _*_projectRow 只作兜底。 */
+@keyframes mikuFolderFlow {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [role="treeitem"][aria-expanded],
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="projectRow"] {
+  position: relative;
+  /* 机甲：右下切角 + 内嵌倒角（外投影会被 clip-path 裁掉，改用倒角做厚度） */
+  clip-path: var(--miku-cut-sm);
+  border-radius: 0 !important;
+  border: 1px solid #12324f33 !important;
+  background-color: #e6f6f3bf !important;
+  background-image: var(--miku-flow) !important;
+  background-size: 200% 100%;
+  background-repeat: repeat;
+  background-blend-mode: var(--miku-flow-blend);
+  box-shadow: var(--miku-bevel-sm), inset 0 0 14px -6px var(--miku-folder-accent, #12a79b) !important;
+  animation: mikuFolderFlow 11s linear infinite;
+  overflow: hidden;
+}
+
+/* 角部铆钉：两枚，标出"装甲板"的四角切边 */
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [role="treeitem"][aria-expanded]::after,
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="projectRow"]::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 5px;
+  height: 5px;
+  background-image: var(--miku-rivet);
+  pointer-events: none;
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [role="treeitem"][aria-expanded] > *,
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="projectRow"] > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 逐行换色：文件夹行各自被一层 span 包着（不是彼此的兄弟节点），所以配色循环
+   打在包装层上，再用继承的 --miku-folder-accent 传到行与图标上。 */
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="groupSection"]:nth-child(3n+1) {
+  --miku-folder-accent: #12a79b;
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="groupSection"]:nth-child(3n+2) {
+  --miku-folder-accent: #2e9bff;
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="groupSection"]:nth-child(3n) {
+  --miku-folder-accent: #d81b7e;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="sidebar.workspaces"] [class*="groupSection"]:nth-child(3n+1) {
+  --miku-folder-accent: #39c5bb;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="sidebar.workspaces"] [class*="groupSection"]:nth-child(3n+2) {
+  --miku-folder-accent: #4fd8e8;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="sidebar.workspaces"] [class*="groupSection"]:nth-child(3n) {
+  --miku-folder-accent: #ff5cb0;
+}
+
+/* 展开态 = 当前工作区：渐变加重 + 呼吸光 */
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [role="treeitem"][aria-expanded="true"],
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="projectRow"][aria-expanded="true"] {
+  background-color: #dff3efd9 !important;
+  border-color: #12324f59 !important;
+  box-shadow: var(--miku-bevel), inset 0 0 22px -2px var(--miku-folder-accent, #12a79b) !important;
+  animation: mikuFolderFlow 11s linear infinite;
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [role="treeitem"][aria-expanded]:hover,
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="projectRow"]:hover {
+  border-color: #12324f73 !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="sidebar.workspaces"] [role="treeitem"][aria-expanded],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="sidebar.workspaces"] [class*="projectRow"] {
+  background-color: #12244ad9 !important;
+  border-color: #39c5bb47 !important;
+  box-shadow: var(--miku-bevel), inset 0 0 16px -6px var(--miku-folder-accent, #39c5bb) !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="sidebar.workspaces"] [role="treeitem"][aria-expanded="true"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="sidebar.workspaces"] [class*="projectRow"][aria-expanded="true"] {
+  background-color: #1a2f5ce6 !important;
+  border-color: #39c5bb80 !important;
+  box-shadow: var(--miku-bevel), inset 0 0 22px -4px var(--miku-folder-accent, #39c5bb) !important;
+}
+
+/* 文件夹图标跟随左轨颜色 */
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [role="treeitem"][aria-expanded] svg,
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="projectRow"] svg {
+  color: var(--miku-folder-accent, #0f7f76);
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="sidebar.workspaces"] [role="treeitem"][aria-expanded] svg,
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="sidebar.workspaces"] [class*="projectRow"] svg {
+  color: var(--miku-folder-accent, #5fe0d6);
+}
+
+/* 「工作区」分组标题：细青绿描线，和文件夹行成一套 */
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="sectionLabel"] {
+  color: var(--dsw-alias-label-tertiary) !important;
+  letter-spacing: 0.12em;
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [class*="sectionHeader"] {
+  border-bottom: 1px solid var(--miku-ink-soft) !important;
+}
+
+/* 侧栏底部与设置入口：不加模糊，避免拖住弹窗 */
+html[data-dsh-skin="miku"] [data-slot="sidebar.settings"],
+html[data-dsh-skin="miku"] [data-slot="sidebar.footer.action"] {
+  background: none !important;
+}
+
+/* ─────────── 3. 右侧栏：平涂 + 墨线（不模糊） ─────────── */
+
+html[data-dsh-skin="miku"] [class*="rightbarCol"],
+html[data-dsh-skin="miku"] [data-rightbar-col] {
+  background-color: var(--dsw-specific-sidebar-fill) !important;
+  background-image: var(--miku-dots) !important;
+  background-size: 6px 6px !important;
+  border-left: 2px solid var(--miku-ink-line) !important;
+  box-shadow: none !important;
+}
+
+html[data-dsh-skin="miku"] [data-slot="rightbar"],
+html[data-dsh-skin="miku"] [data-slot="rightbar.session"] {
+  background: none !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="rightbarCol"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-rightbar-col] {
+  border-left-color: var(--miku-ink-line) !important;
+}
+
+/* 拖拽把手：hover 时才显出一条青绿细线 */
+html[data-dsh-skin="miku"] [data-dsh-part="resize-handle"] {
+  background: none !important;
+}
+
+html[data-dsh-skin="miku"] [data-dsh-part="resize-handle"]:hover,
+html[data-dsh-skin="miku"] [data-dsh-part="resize-handle"][data-dragging] {
+  background: linear-gradient(var(--miku-teal), var(--miku-sky)) !important;
+  opacity: 0.55;
+}
+
+/* ─────────── 4. 输入卡：白瓷卡 / 夜海报 ─────────── */
+
+html[data-dsh-skin="miku"] [class*="composerSeat"],
+html[data-dsh-skin="miku"] [class*="composerStack"],
+html[data-dsh-skin="miku"] [class*="composerHero"] {
+  background: none !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dsh-skin="miku"] [data-composer-seat] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 92px;
+}
+
+html[data-dsh-skin="miku"] [data-composer-card="true"] {
+  position: relative;
+  display: flex !important;
+  visibility: visible !important;
+  min-height: 92px;
+  border-radius: 0 !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #12324f !important;
+  --dsw-alias-label-primary: #12324f;
+  --dsw-alias-label-secondary: #3a5a7c;
+  --dsw-alias-label-tertiary: #5a7699;
+  --dsw-alias-label-caption: #5a7699;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-composer-card="true"] {
+  color: #dbe8ff !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  --dsw-alias-label-primary: #dbe8ff;
+  --dsw-alias-label-secondary: #b8cae8;
+  --dsw-alias-label-tertiary: #8ba0c4;
+  --dsw-alias-label-caption: #7f97bd;
+}
+
+/* 装甲板本体：斜切角 + 拉丝金属 + 内嵌倒角。
+   切角只画在这层装饰伪元素上 —— 卡片本身不设 clip-path / overflow:hidden，
+   否则卡内弹出的模型选择等下拉菜单会被一起裁掉。 */
+html[data-dsh-skin="miku"] [data-composer-card="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  clip-path: var(--miku-cut);
+  background-color: transparent;
+  /* 机甲边框：一圈青→蓝→品红渐变描边（border-image）+ 右上/左下两枚方角开光 */
+  border: 2px solid transparent;
+  border-image: var(--miku-edge) 1;
+  background-image:
+    linear-gradient(90deg, #39c5bb, #2e9bff),
+    linear-gradient(180deg, #39c5bb, #2e9bff),
+    linear-gradient(90deg, #2e9bff, #d81b7e),
+    linear-gradient(180deg, #2e9bff, #d81b7e),
+    var(--miku-metal);
+  background-position: calc(100% - 16px) 6px, calc(100% - 6px) 16px, 6px calc(100% - 6px), 16px calc(100% - 16px), 0 0;
+  background-size: 26px 2px, 2px 26px, 26px 2px, 2px 26px, 100% 100%;
+  background-repeat: no-repeat;
+  box-shadow: var(--miku-bevel);
+}
+
+/* 底缘能量缝（横向发光，不再用左缘竖条） */
+html[data-dsh-skin="miku"] [data-composer-card="true"]::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  height: 2px;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--miku-seam);
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-composer-card="true"]::after {
+  border-color: #39c5bb66;
+  box-shadow: var(--miku-bevel), inset 0 0 24px #39c5bb1f;
+}
+
+/* 输入区 = 座舱凹槽：一层内凹阴影 + 极浅底色，光标染成主题色 */
+html[data-dsh-skin="miku"] [data-composer-card="true"] [data-composer-input="true"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #12324f !important;
+  -webkit-text-fill-color: #12324f !important;
+  caret-color: var(--miku-caret) !important;
+  background: #eaf7f4a6 !important;
+  box-shadow: inset 0 1px 3px #12324f1f, inset 0 0 0 1px #12a79b24 !important;
+  border-radius: 4px !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-composer-card="true"] [data-composer-input="true"] {
+  color: #dbe8ff !important;
+  -webkit-text-fill-color: #dbe8ff !important;
+  background: #08132b8c !important;
+  box-shadow: inset 0 1px 4px #000000a6, inset 0 0 0 1px #39c5bb1f !important;
+}
+
+html[data-dsh-skin="miku"] [data-composer-card="true"] [data-composer-placeholder="true"] {
+  color: #5a7699 !important;
+  -webkit-text-fill-color: #5a7699 !important;
+  opacity: 1 !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-composer-card="true"] [data-composer-placeholder="true"] {
+  color: #8ba0c4 !important;
+  -webkit-text-fill-color: #8ba0c4 !important;
+}
+
+html[data-dsh-skin="miku"] [data-composer-card="true"] :is(button, button *, [role="button"], [role="button"] *) {
+  color: #12324f !important;
+  opacity: 1 !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-composer-card="true"] :is(button, button *, [role="button"], [role="button"] *) {
+  color: #dbe8ff !important;
+}
+
+html[data-dsh-skin="miku"] [class*="composer"] [class*="toolbar"],
+html[data-dsh-skin="miku"] [class*="composer"] [class*="actions"] {
+  background: none !important;
+}
+
+/* ─────────── 5. 消息：用户气泡走品红，助手回答落在壁纸上 ─────────── */
+
+html[data-dsh-skin="miku"] [class*="bubble"] {
+  /* 说话气泡：三个大圆角 + 左下一个收窄的"说话角"。
+     用 border-radius 而不是 clip-path —— 切角会把内嵌焦点环也裁掉。 */
+  clip-path: none !important;
+  border: 1px solid #d81b7e73 !important;
+  border-radius: 14px 14px 14px 4px !important;
+  box-shadow: var(--miku-bevel-sm), inset 0 0 18px #d81b7e14 !important;
+}
+
+/* 用户气泡（MessageItem 的 .bubble，底色 = --dsw-specific-bubble）走品红；
+   助手回答没有气泡，直接落在壁纸上，靠上面那条文字光晕保证可读性。 */
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="bubble"] {
+  border: 1px solid #ff5cb073 !important;
+  box-shadow: var(--miku-bevel-sm), inset 0 0 20px #ff5cb01f !important;
+}
+
+/* 工具行 / 回合尾 / 队列：胶囊 + 细描边 */
+html[data-dsh-skin="miku"] [data-dsh-part="message-row"],
+html[data-dsh-skin="miku"] [data-dsh-part="turn-tail"],
+html[data-dsh-skin="miku"] [data-dsh-part="queue-dock"] [class*="card"],
+html[data-dsh-skin="miku"] [data-dsh-part="composer-chip"] {
+  border-radius: 10px !important;
+  border: 1px solid var(--miku-ink-soft) !important;
+}
+
+/* 代码块：机甲方格 —— 斜切角 + 内嵌倒角 + 顶缘一道发光线 */
+html[data-dsh-skin="miku"] [data-slot="main.conversation"] pre,
+html[data-dsh-skin="miku"] [data-dsh-part="message-body"] pre,
+html[data-dsh-skin="miku"] [data-slot="main.conversation"] [class*="codeBlock"] {
+  clip-path: var(--miku-cut-sm);
+  border: 1px solid #12324f40 !important;
+  border-radius: 0 !important;
+  box-shadow: var(--miku-bevel-sm), inset 0 2px 0 #39c5bb2e !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"] pre,
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-part="message-body"] pre,
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"] [class*="codeBlock"] {
+  border-color: #39c5bb4d !important;
+  box-shadow: var(--miku-bevel-sm), inset 0 2px 0 #39c5bb33 !important;
+}
+
+/* ─────────── 6. 弹窗 / 菜单 / 提示 ─────────── */
+
+html[data-dsh-skin="miku"] [role="dialog"],
+html[data-dsh-skin="miku"] [class*="popover"],
+html[data-dsh-skin="miku"] [class*="dropdown"],
+html[data-dsh-skin="miku"] [class*="sheet"],
+html[data-dsh-skin="miku"] [role="menu"],
+html[data-dsh-skin="miku"] [role="listbox"] {
   border-radius: 6px !important;
+  /* 机甲边框：渐变描边画在 2px 透明边框上 */
+  border: 2px solid transparent !important;
+  /* border 简写的 !important 会连 border-image 长手一起提权，所以这里也必须 !important */
+  border-image: var(--miku-edge) 1 !important;
+  box-shadow: var(--miku-bevel), 0 16px 36px #12324f33 !important;
+  color: var(--dsw-alias-label-primary);
 }
 
-html[data-dsh-skin="miku"] button {
-  background-image: none;
-  box-shadow: 0 1px 2px #0a1e421f;
+/* 大弹窗不挂 backdrop-filter：玻璃面本身已经 86% 不透明，模糊几乎看不见，
+   却要付合成开销、还会让弹窗成为 fixed 后代的包含块。模糊只留给菜单这类小浮层。 */
+html[data-dsh-skin="miku"] [role="dialog"] {
+  color: var(--dsw-alias-label-primary);
+  box-shadow: var(--miku-bevel), inset 0 0 44px -20px var(--miku-teal), 0 22px 48px #12324f3d !important;
 }
 
-html[data-dsh-skin="miku"] button:hover:not(:disabled) {
-  background-image: none;
-  box-shadow: inset 0 0 0 1px #5ab4f040, 0 1px 3px #0a1e422e;
+html[data-dsh-skin="miku"] [class*="menu"],
+html[data-dsh-skin="miku"] [class*="popover"],
+html[data-dsh-skin="miku"] [class*="dropdown"],
+html[data-dsh-skin="miku"] [class*="sheet"],
+html[data-dsh-skin="miku"] [role="menu"],
+html[data-dsh-skin="miku"] [role="listbox"] {
+  backdrop-filter: blur(12px);
+  background: var(--miku-glass) !important;
 }
 
-html[data-dsh-skin="miku"] button:active:not(:disabled) {
-  background-image: none;
-  box-shadow: inset 0 2px 4px #0a1e4238;
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [role="dialog"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="popover"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="dropdown"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="sheet"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [role="menu"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [role="listbox"] {
+  border-color: #39c5bb66 !important;
+  box-shadow: var(--miku-bevel), 0 0 0 1px #39c5bb33, 0 18px 44px #000000a6 !important;
 }
 
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] button {
-  background-image: none;
-  box-shadow: 0 1px 2px #0000004d;
+html[data-dsh-skin="miku"] [class*="menu"] [class*="item"]:hover,
+html[data-dsh-skin="miku"] [class*="menu"] [class*="item"]:focus,
+html[data-dsh-skin="miku"] [role="menuitem"]:hover,
+html[data-dsh-skin="miku"] [role="menuitem"]:focus {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover-accent) !important;
+  border-radius: 8px !important;
 }
 
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] button:hover:not(:disabled) {
-  background-image: none;
-  box-shadow: inset 0 0 0 1px #58a9ff40, 0 1px 3px #0006;
+html[data-dsh-skin="miku"] [class*="menu"] [class*="sep"],
+html[data-dsh-skin="miku"] [class*="menu"] [class*="divider"] {
+  background: var(--miku-ink-soft) !important;
 }
 
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] button:active:not(:disabled) {
-  background-image: none;
-  box-shadow: inset 0 2px 4px #00000059;
+html[data-dsh-skin="miku"] [class*="menu"] [class*="label"],
+html[data-dsh-skin="miku"] [class*="menu"] [class*="title"],
+html[data-dsh-skin="miku"] [class*="menu"] [class*="heading"] {
+  color: var(--dsw-alias-label-tertiary);
 }
 
-html[data-dsh-skin="miku"] input:not([type="checkbox"]):not([type="radio"]), html[data-dsh-skin="miku"] textarea, html[data-dsh-skin="miku"] select {
-  color: #14263f;
-  background: #fafdffeb;
-  box-shadow: inset 0 1px 2px #0a1e421f;
+html[data-dsh-skin="miku"] [class*="menu"] [class*="disabled"],
+html[data-dsh-skin="miku"] [role="menuitem"][aria-disabled="true"] {
+  opacity: 0.55;
+  color: var(--dsw-alias-label-dimmed) !important;
 }
 
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] input:not([type="checkbox"]):not([type="radio"]), html[data-dsh-skin="miku"] body[data-ds-dark-theme] textarea, html[data-dsh-skin="miku"] body[data-ds-dark-theme] select {
-  color: #d6f1ec;
-  background: #12244a;
-  box-shadow: inset 0 1px 2px #00000059;
+html[data-dsh-skin="miku"] [role="tooltip"] {
+  background: var(--dsw-alias-tooltip-bg) !important;
+  color: var(--dsw-alias-tooltip-fg) !important;
+  border: 1px solid var(--miku-ink-line) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--miku-hard-sm) !important;
+}
+
+html[data-dsh-skin="miku"] [class$="_mask"],
+html[data-dsh-skin="miku"] [class*="Mask"] {
+  background: var(--dsw-alias-bg-mask-1) !important;
+}
+
+html[data-dsh-skin="miku"] [class$="_fade"],
+html[data-dsh-skin="miku"] [class*="Fade"] {
+  background: none !important;
+}
+
+html[data-dsh-skin="miku"] [class*="crumb"] {
+  display: none !important;
+}
+
+/* ─────────── 7. 设置面板（弹窗本体，可模糊） ─────────── */
+
+/* 新外壳的设置弹窗是 [role="dialog"] > …_panel（没有 settingsRoot 这个类），
+   所以选择器一律以 [role="dialog"] 起头，settingsRoot / drawer 只作为旧外壳兜底。 */
+html[data-dsh-skin="miku"] [role="dialog"],
+html[data-dsh-skin="miku"] [class*="settingsRoot"],
+html[data-dsh-skin="miku"] [class*="drawer"] {
+  border-radius: 6px !important;
+  border: 2px solid transparent !important;
+  border-image: var(--miku-edge) 1 !important;
+  /* 设置栏要读字，用实面（原来 86% 的半透明会让底下的会话内容串进文字里） */
+  background: var(--miku-surface) !important;
+  box-shadow: var(--miku-bevel), 0 22px 48px #12324f3d !important;
+}
+
+/* 设置里的分区/卡片：嵌入式装甲小格 */
+html[data-dsh-skin="miku"] [role="dialog"] [class*="section"],
+html[data-dsh-skin="miku"] [role="dialog"] [class*="card"],
+html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="section"],
+html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="card"],
+html[data-dsh-skin="miku"] [class*="drawer"] [class*="section"],
+html[data-dsh-skin="miku"] [class*="drawer"] [class*="card"] {
+  border-radius: 4px !important;
+  border: 1px solid var(--miku-ink-soft) !important;
+  background-color: transparent !important;
+  background-image: var(--miku-dots) !important;
+  background-size: 6px 6px !important;
+  box-shadow: var(--miku-bevel-sm) !important;
+}
+
+html[data-dsh-skin="miku"] [role="dialog"] [class*="nav"] [class*="item"][aria-current="true"],
+html[data-dsh-skin="miku"] [role="dialog"] [class*="nav"] [class*="item"][aria-selected="true"],
+html[data-dsh-skin="miku"] [role="dialog"] [class*="menu"] [class*="item"][aria-current="true"],
+html[data-dsh-skin="miku"] [role="dialog"] [class*="menu"] [class*="item"][aria-selected="true"],
+html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="nav"] [class*="item"][aria-current="true"],
+html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="nav"] [class*="item"][aria-selected="true"] {
+  background: var(--dsw-alias-interactive-bg-hover-accent) !important;
+  color: var(--dsw-alias-label-primary) !important;
+  border-radius: 8px !important;
+}
+
+/* ─────────── 8. 原子：按钮 / 输入 / 焦点 / 选择 / 滚动条 ─────────── */
+
+/* 按钮统一成"微装甲"：小圆角 + 内嵌倒角 + hover 提亮。
+   这里**不切角**：clip-path 会把按钮的 focus-visible 外描边一起裁掉，
+   键盘焦点就看不见了。切角只给那些已经配了内嵌焦点环的大面
+   （输入卡 / 新会话 / 代码块 / 气泡 / 文件夹行，见下面的 focus 规则）。
+   配色仍走官方 token，不会盖掉 shell 自己的按钮主色。 */
+/* 不再全局改按钮圆角：shell 自己有圆/胶囊/pill 几种形状，统一成 6px 会把
+   发送按钮的 34px 正圆压成圆角方块。形状交回 shell，皮肤只加 hover 边框。 */
+html[data-dsh-skin="miku"] button:not([disabled]):hover,
+html[data-dsh-skin="miku"] [role="button"]:not([aria-disabled="true"]):hover {
+  box-shadow: var(--miku-bevel-sm), 0 0 0 1px var(--miku-teal) !important;
+}
+
+/* 会话行：选中 = 青绿能量框（不再用左侧竖条） */
+html[data-dsh-skin="miku"] [data-slot="sidebar"] [role="treeitem"] {
+  border-radius: 6px !important;
+  border: 1px solid transparent !important;
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar"] [role="treeitem"]:hover {
+  border-color: var(--miku-ink-soft) !important;
+  background: var(--dsw-alias-interactive-bg-hover) !important;
+  box-shadow: var(--miku-bevel-sm) !important;
+}
+
+html[data-dsh-skin="miku"] [data-slot="sidebar"] [role="treeitem"][aria-selected="true"] {
+  border-color: #39c5bb80 !important;
+  background: var(--dsw-alias-interactive-bg-hover-accent) !important;
+  box-shadow: var(--miku-bevel-sm), inset 0 0 16px -8px var(--miku-teal) !important;
+}
+
+/* 首屏：输入卡背后一团舞台光（只有背景层，不动布局） */
+html[data-dsh-skin="miku"] [data-slot="main.conversation"] [data-phase="hero"] {
+  background-image: radial-gradient(58% 46% at 50% 46%, #39c5bb2e 0%, #2e9bff14 46%, #0000 74%) !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"] [data-phase="hero"] {
+  background-image: radial-gradient(58% 46% at 50% 46%, #39c5bb33 0%, #2e6fd91a 48%, #0000 76%) !important;
+}
+
+/* 发送按钮：底色走 --dsw-alias-button-info-fill（已在 skin.css 里换成主题青绿），
+   shell 把箭头硬编码成 #fff，青绿底上白箭头只有 2:1，所以这里翻成墨色并加一圈光。 */
+html[data-dsh-skin="miku"] [data-slot="conversation.composer.bar"] [class*="primary"] {
+  color: #06131a !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 1px 0 #ffffff59, 0 0 0 1px #ffffff59, 0 2px 10px #12a79b59 !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="conversation.composer.bar"] [class*="primary"] {
+  color: #06131a !important;
+  box-shadow: inset 0 1px 0 #ffffff40, 0 0 0 1px #39c5bb80, 0 2px 12px #39c5bb73 !important;
+}
+
+/* 预览角标（composer 里的 previewBadge）也跟着主题走 */
+html[data-dsh-skin="miku"] [class*="previewBadge"] {
+  background: #dcf4f0 !important;
+  color: #0f6d66 !important;
+  border: 1px solid #12a79b4d !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="previewBadge"] {
+  background: #123a3a !important;
+  color: #7ff0e4 !important;
+  border-color: #39c5bb4d !important;
 }
 
 html[data-dsh-skin="miku"] :focus-visible {
+  outline: 2px solid var(--miku-teal) !important;
   outline-offset: 2px;
-  outline: 2px solid #2e9bff;
+}
+
+/* 被 clip-path 切过角的面，外描边会被裁掉，所以焦点环改成内嵌的一圈 */
+html[data-dsh-skin="miku"] [data-composer-card="true"]:focus-within,
+html[data-dsh-skin="miku"] [data-dsh-part="new-session"]:focus-visible,
+html[data-dsh-skin="miku"] [class*="bubble"]:focus-visible,
+html[data-dsh-skin="miku"] [data-slot="sidebar.workspaces"] [role="treeitem"]:focus-visible,
+html[data-dsh-skin="miku"] [data-slot="main.conversation"] pre:focus-visible {
+  outline: none !important;
+  box-shadow: var(--miku-bevel-sm), inset 0 0 0 2px var(--miku-teal) !important;
+}
+
+html[data-dsh-skin="miku"] ::selection {
+  background: var(--miku-teal);
+  color: #fff;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] ::selection {
+  background: var(--miku-teal);
+  color: #06131a;
+}
+
+html[data-dsh-skin="miku"] textarea,
+html[data-dsh-skin="miku"] input:not([type="checkbox"]):not([type="radio"]) {
+  border-radius: 10px !important;
+  border-color: var(--miku-ink-soft) !important;
+}
+
+html[data-dsh-skin="miku"] button,
+html[data-dsh-skin="miku"] [role="button"],
+html[data-dsh-skin="miku"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-dsh-skin="miku"] textarea,
+html[data-dsh-skin="miku"] [contenteditable="true"],
+html[data-dsh-skin="miku"] select,
+html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBtn {
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s, opacity 0.12s;
 }
 
 html[data-dsh-skin="miku"] ::-webkit-scrollbar {
@@ -79,121 +995,126 @@ html[data-dsh-skin="miku"] ::-webkit-scrollbar-track {
 html[data-dsh-skin="miku"] ::-webkit-scrollbar-thumb {
   background: transparent;
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: 6px;
+  background-clip: padding-box;
 }
 
 html[data-dsh-skin="miku"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(122, 184, 255, 0.3);
-  border-color: transparent;
-}
-
-html[data-dsh-skin="miku"] ::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-/* Transparent scrollbar in the dark theme (skin.css painted the dark-blue
-   thumb/track, which shows as an opaque vertical bar on the right). */
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] ::-webkit-scrollbar-track,
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] ::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] ::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-color: transparent;
+  background: #12a79b80;
+  background-clip: padding-box;
 }
 
 html[data-dsh-skin="miku"] body[data-ds-dark-theme] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(122, 184, 255, 0.3);
-  border-color: transparent;
+  background: #39c5bb80;
+  background-clip: padding-box;
 }
 
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] ::-webkit-scrollbar-thumb:active {
-  background: rgba(88, 169, 255, 0.4);
+/* ─────────── 8b. 底部统计条（ui-chat 的 StatsPills，哈希类 darGHa_*） ───────────
+   它在会话最下方一排：首字延迟 / 速度 / 用量。原来是透明的淡灰小字，
+   这里做成"仪表灯条"：每颗胶囊一枚指示灯 + 数字走 Bahnschrift 等宽。 */
+
+html[data-dsh-skin="miku"] [data-slot="main.conversation"] [class*="darGHa_root"] {
+  padding-top: 2px;
+  font-family: var(--miku-display);
+  letter-spacing: 0.04em;
 }
 
-html[data-dsh-skin="miku"] ::selection {
-  color: #fff;
-  background: #2e9bff;
+html[data-dsh-skin="miku"] [data-slot="main.conversation"] [class*="darGHa_pill"] {
+  color: #46658a !important;
+  background: #12324f0f !important;
+  border: 1px solid #12324f1f !important;
+  box-shadow: var(--miku-bevel-sm) !important;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
 }
 
-html[data-dsh-skin="miku"] a {
-  color: #1e6fd9;
+/* 每颗胶囊前面的状态灯 */
+html[data-dsh-skin="miku"] [data-slot="main.conversation"] [class*="darGHa_pill"]::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #12a79b;
+  box-shadow: 0 0 6px #12a79b8c;
 }
 
-html[data-dsh-skin="miku"] a:visited {
-  color: #8f5bd8;
+html[data-dsh-skin="miku"] [data-slot="main.conversation"] [class*="darGHa_pill"]:hover {
+  color: #0f6d66 !important;
+  background: #12a79b1f !important;
+  border-color: #12a79b66 !important;
 }
 
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] a {
-  color: #58a9ff;
+html[data-dsh-skin="miku"] [data-slot="main.conversation"] [class*="darGHa_sep"] {
+  color: #12324f33 !important;
 }
 
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] a:visited {
-  color: #ab8ce0;
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"] [class*="darGHa_pill"] {
+  color: #8ba0c4 !important;
+  background: #7ad8ff12 !important;
+  border-color: #39c5bb33 !important;
 }
 
-@media (prefers-reduced-transparency: reduce) {
-  html[data-dsh-skin="miku"] * {
-    -webkit-backdrop-filter: none !important;
-  }
-
-  html[data-dsh-skin="miku"] [data-pane="sidebar"] > div, html[data-dsh-skin="miku"] [data-pane="conversation"], html[data-dsh-skin="miku"] [data-pane="details"], html[data-dsh-skin="miku"] .aionui-dialog, html[data-dsh-skin="miku"] .aionui-menu, html[data-dsh-skin="miku"] [class*="sidebarCol"], html[data-dsh-skin="miku"] [class*="centerCol"], html[data-dsh-skin="miku"] [class*="detailsCol"] {
-    background: #f4f9fff0 !important;
-  }
-
-  html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="sidebar"] > div, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="conversation"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-dialog, html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-menu, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="sidebarCol"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="centerCol"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] {
-    background: #12244a !important;
-  }
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"] [class*="darGHa_pill"]::before {
+  background: #39c5bb;
+  box-shadow: 0 0 8px #39c5bba6;
 }
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"] [class*="darGHa_pill"]:hover {
+  color: #dbe8ff !important;
+  background: #39c5bb2e !important;
+  border-color: #39c5bb80 !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"] [class*="darGHa_sep"] {
+  color: #39c5bb40 !important;
+}
+
+/* ─────────── 9. 注入式顶栏 / 底栏（类名在 hooks.mjs 的 CLS 里） ─────────── */
 
 html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebar {
   z-index: 1000000;
-  -webkit-backdrop-filter: blur(10px);
-  color: #fff;
-  text-shadow: 0 1px 1px #06163066;
-  user-select: none;
-  /* 明亮主题：海色清新渐变（天空蓝→海蓝→海青，半透明透出海景背景），白字仍可读。 */
-  background: linear-gradient(90deg, rgba(110, 198, 255, 0.8) 0%, rgba(46, 155, 255, 0.88) 18%, rgba(64, 190, 220, 0.9) 40%, rgba(57, 197, 187, 0.92) 50%, rgba(64, 190, 220, 0.9) 60%, rgba(46, 155, 255, 0.88) 82%, rgba(110, 198, 255, 0.8) 100%);
-  background-size: 200% 100%;
-  background-repeat: no-repeat;
-  animation: mikuTitleGradient 6s ease-in-out infinite alternate;
-  border-bottom: none;
-  align-items: center;
-  gap: 8px;
-  height: 30px;
-  padding: 0 8px;
-  font: 700 12px / 30px PingFang SC, Microsoft YaHei, sans-serif;
   display: flex;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
+  height: 30px;
+  padding: 0 8px;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  text-shadow: 0 1px 1px #06163066;
+  user-select: none;
+  font: 700 12px / 30px PingFang SC, Microsoft YaHei, sans-serif;
+  backdrop-filter: blur(10px);
+  background: var(--miku-title-ramp);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: mikuTitleGradient 6s ease-in-out infinite alternate;
+  border-bottom: 2px solid #12324f59;
   box-shadow: inset 0 1px #ffffff59;
   border-radius: 0 !important;
 }
 
 html[data-dsh-skin="miku"] body[data-ds-dark-theme] .NPtzYa_mikuTitlebar {
-  -webkit-backdrop-filter: blur(10px);
-  background: linear-gradient(90deg, #0d2b56 0%, #1e4f9e 20%, #7a3fd0 40%, #d0298a 50%, #7a3fd0 60%, #1e4f9e 80%, #0d2b56 100%);
-  background-size: 200% 100%;
-  background-repeat: no-repeat;
-  border-bottom: none;
-  box-shadow: inset 0 1px #ffffff1a;
+  border-bottom-color: #39c5bb80;
+  box-shadow: inset 0 1px #ffffff1a, 0 1px 12px #39c5bb33;
 }
 
 html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarTitle {
+  flex: 1;
   white-space: nowrap;
   text-overflow: ellipsis;
-  flex: 1;
   overflow: hidden;
 }
 
-html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarIcon, html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBadge {
-  filter: drop-shadow(0 1px 1px #06163066);
+html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarIcon,
+html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBadge {
   flex: none;
-  align-items: center;
   display: inline-flex;
+  align-items: center;
+  filter: drop-shadow(0 1px 1px #06163066);
 }
 
 html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBadge svg text {
@@ -201,20 +1122,20 @@ html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBadge svg text {
 }
 
 html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBtn {
-  color: #fff;
-  background: #ffffff1f;
-  border: 1px solid #fff3;
   flex: none;
-  justify-content: center;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   width: 22px;
   height: 18px;
   margin-left: 2px;
+  color: #fff;
   font-size: 10px;
   line-height: 1;
-  display: inline-flex;
+  background: #ffffff1f;
+  border: 1px solid #fff3;
   box-shadow: inset 0 1px #ffffff47;
-  border-radius: 3px !important;
+  border-radius: 6px !important;
 }
 
 html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBtn:hover {
@@ -230,82 +1151,110 @@ html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBtn:last-child:hover {
 
 html[data-dsh-skin="miku"] .NPtzYa_mikuStatusbar {
   z-index: 1000000;
-  box-sizing: border-box;
-  -webkit-backdrop-filter: blur(10px);
-  color: #fff;
-  text-shadow: 0 1px 1px #06163066;
-  user-select: none;
-  /* 明亮主题：状态栏使用与标题栏一致的海色清新半透明渐变，和背景相符。 */
-  background: linear-gradient(90deg, rgba(110, 198, 255, 0.8) 0%, rgba(46, 155, 255, 0.88) 18%, rgba(64, 190, 220, 0.9) 40%, rgba(57, 197, 187, 0.92) 50%, rgba(64, 190, 220, 0.9) 60%, rgba(46, 155, 255, 0.88) 82%, rgba(110, 198, 255, 0.8) 100%);
-  background-size: 200% 100%;
-  background-repeat: no-repeat;
-  animation: mikuStatusGradient 6s ease-in-out infinite alternate;
-  border-top: none;
-  align-items: center;
-  gap: 6px;
-  height: 26px;
-  padding: 2px 8px;
-  font: 11px / 1 PingFang SC, Microsoft YaHei, sans-serif;
   display: flex;
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 2px 8px;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  text-shadow: 0 1px 1px #06163066;
+  user-select: none;
+  font: 11px / 1 PingFang SC, Microsoft YaHei, sans-serif;
+  backdrop-filter: blur(10px);
+  background: var(--miku-title-ramp);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: mikuStatusGradient 6s ease-in-out infinite alternate;
+  border-top: 2px solid #12324f47;
   box-shadow: inset 0 1px #ffffff59;
   border-radius: 0 !important;
 }
 
 html[data-dsh-skin="miku"] body[data-ds-dark-theme] .NPtzYa_mikuStatusbar {
-  -webkit-backdrop-filter: blur(10px);
   color: #fff;
   text-shadow: 0 1px 1px #00000059;
-  background: linear-gradient(90deg, #0d2b56 0%, #1e4f9e 20%, #7a3fd0 40%, #d0298a 50%, #7a3fd0 60%, #1e4f9e 80%, #0d2b56 100%);
-  background-size: 200% 100%;
-  background-repeat: no-repeat;
-  border-top: none;
-  box-shadow: inset 0 1px #ffffff1a;
+  border-top-color: #39c5bb80;
+  box-shadow: inset 0 1px #ffffff1a, 0 -1px 12px #39c5bb26;
 }
 
 html[data-dsh-skin="miku"] .NPtzYa_mikuStatusbarWave {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
   color: #fff;
   filter: drop-shadow(0 1px 1px #06163059);
-  flex: none;
-  align-items: center;
-  display: inline-flex;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .NPtzYa_mikuStatusbarWave {
-  color: #fff;
-}
-
-html[data-dsh-skin="miku"] .NPtzYa_mikuStatusbarCell {
-  color: #0b3d66;
-  white-space: nowrap;
-  background: #ffffffd9;
-  border: 1px solid #fff9;
-  flex: none;
-  height: 17px;
-  padding: 0 8px;
-  line-height: 17px;
-  box-shadow: inset 0 1px #fffffff2;
-  border-radius: 0 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .NPtzYa_mikuStatusbarCell {
-  color: #d6f1ec;
-  background: #0a162e8c;
-  border-color: #ffffff40;
-  box-shadow: inset 0 1px #ffffff14;
 }
 
 html[data-dsh-skin="miku"] .NPtzYa_mikuStatusbarSpacer {
   flex: 1;
 }
 
-/* Animated status-bar gradients (6s loop):
-   top bar sweeps right -> left, bottom bar sweeps left -> right. The
-   repeating gradient is periodic over 270px, so a 270px background-position
-   swing loops seamlessly. */
+html[data-dsh-skin="miku"] .NPtzYa_mikuStatusbarCell {
+  flex: none;
+  height: 17px;
+  padding: 0 9px;
+  color: #12324f;
+  line-height: 17px;
+  white-space: nowrap;
+  background: #ffffffe6;
+  border: 1px solid #12324f47;
+  box-shadow: inset 0 1px #fffffff2;
+  border-radius: 999px !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] .NPtzYa_mikuStatusbarCell {
+  color: #d6f1ec;
+  background: #0a162ed9;
+  border-color: #39c5bb59;
+  box-shadow: inset 0 1px #ffffff14;
+}
+
+/* 明亮主题的顶栏/底栏是浅色渐变，白字只有 1.8–2.9:1，过不了可读性门槛
+   （实测对比度：白 on #7ecbff 1.77、on #2e9bff 2.90）。改成墨蓝字 + 墨蓝描线，
+   12px 粗体与 11px 正文都能过 AA。图标是 hooks.mjs 里的呈现属性 fill="#fff"/
+   stroke="#fff"，只有带 !important 的 CSS 声明才能盖过呈现属性。 */
+html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) .NPtzYa_mikuTitlebar,
+html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) .NPtzYa_mikuStatusbar {
+  color: #12324f;
+  text-shadow: 0 1px 0 #ffffffcc;
+}
+
+html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) .NPtzYa_mikuTitlebarIcon svg path,
+html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) .NPtzYa_mikuTitlebarBadge svg text {
+  fill: #12324f !important;
+}
+
+html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) .NPtzYa_mikuTitlebarBadge svg rect {
+  stroke: #12324f !important;
+}
+
+html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) .NPtzYa_mikuStatusbarWave {
+  color: #12324f;
+}
+
+html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) .NPtzYa_mikuTitlebarBtn {
+  color: #12324f;
+  background: #ffffff3d;
+  border-color: #12324f40;
+  box-shadow: inset 0 1px #ffffff8c;
+}
+
+html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) .NPtzYa_mikuTitlebarBtn:hover {
+  background: #ffffff73;
+  border-color: #12324f73;
+}
+
+html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) .NPtzYa_mikuTitlebarBtn:last-child:hover {
+  color: #4a0d2c;
+  background: linear-gradient(#ffd0e8, #ff7cc0);
+  border-color: #d81b7e;
+}
+
 @keyframes mikuTitleGradient {
   from { background-position: 0% 0; }
   to { background-position: 100% 0; }
@@ -316,1266 +1265,130 @@ html[data-dsh-skin="miku"] .NPtzYa_mikuStatusbarSpacer {
   to { background-position: 0% 0; }
 }
 
-/* SSH 面板 与 任务看板（暗色）：实底深蓝 -> 半透明毛玻璃。
-   这两块插件主表面用 --dsw-alias-bg-base（暗色为不透明深蓝 #0d1a3a），
-   这里用语义属性定位，改成半透明 + 背景模糊。 */
-/* 明亮主题：SSH 与任务看板 也改成透明+毛玻璃（暗色专属规则优先级更高，暗色保持原样）。
-   同时盖住内层被全局 [class*="panel"] 强制的深色面板，并重置为明亮可读文字。 */
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"] [class*="panel"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [class*="panel"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"] [class*="view"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [class*="view"] {
+/* ─────────── 10. 插件面：SSH / 任务看板 / 右侧看板 / 桌宠 ─────────── */
+
+html[data-dsh-skin="miku"] [data-dsh-plugin="ssh"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="task-board"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="ssh"] [class*="panel"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="task-board"] [class*="panel"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="ssh"] [class*="view"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="task-board"] [class*="view"] {
+  background: var(--miku-panel-quiet) !important;
+  border: 1px solid var(--miku-ink-soft) !important;
+  border-radius: 12px !important;
+  color: var(--dsw-alias-label-primary) !important;
+}
+
+html[data-dsh-skin="miku"] [data-dsh-plugin="ssh"] [data-dsh-part="terminal"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="ssh"] [data-dsh-part="host-table"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="ssh"] [data-dsh-part="host-row"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="task-board"] [data-dsh-part="header"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="task-board"] [data-dsh-part="column"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="task-board"] [data-dsh-part="card"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="task-board"] [data-dsh-part="detail"] {
+  border-radius: 10px !important;
+  border: 1px solid var(--miku-ink-soft) !important;
+}
+
+/* 右侧看板（better-sidebar）：平涂 + 圆角。
+   注意：这几个子串选择器必须限定在 [data-slot="rightbar"] 里：
+   "_pane" 是 "_panel" 的子串，不限定就会命中设置弹窗的 CSS-Modules 类
+   （新外壳设置弹窗 = …_panel），把它强制刷成 transparent !important，
+   于是设置栏整块透明、底下的会话内容串进文字里。 */
+html[data-dsh-skin="miku"] [data-slot="rightbar"] [class*="_panel"]:has([class*="_tabBar"]),
+html[data-dsh-skin="miku"] [data-slot="rightbar"] [class*="_pane"]:not([class*="_panel"]),
+html[data-dsh-skin="miku"] [data-slot="rightbar"] [class*="_tabBar"],
+html[data-dsh-skin="miku"] [data-slot="rightbar"] [class*="_tabList"],
+html[data-dsh-skin="miku"] [data-slot="rightbar"] [class*="_paneEmptyCards"] {
   background: transparent !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  backdrop-filter: blur(10px) !important;
-  color: #14263f !important;
-  --dsw-alias-label-primary: #14263f;
-  --dsw-alias-label-secondary: #3a5070;
-  --dsw-alias-label-tertiary: #4a5f80;
-  --dsw-alias-label-caption: #3a5070;
-  --dsw-alias-label-dimmed: #5f7a9e;
-  --aion-text-primary: #14263f;
-  --aion-text-secondary: #3a5070;
-  --aion-text-tertiary: #4a5f80;
+  border-radius: 10px !important;
 }
 
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"] [data-dsh-part="terminal"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"] [data-dsh-part="host-table"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="ssh"] [data-dsh-part="host-row"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [data-dsh-part="header"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [data-dsh-part="column"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [data-dsh-part="card"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [data-dsh-plugin="task-board"] [data-dsh-part="detail"] {
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="rightbar"] [class*="_panel"]:has([class*="_tabBar"]),
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="rightbar"] [class*="_pane"]:not([class*="_panel"]),
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="rightbar"] [class*="_tabBar"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="rightbar"] [class*="_tabList"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="rightbar"] [class*="_paneEmptyCards"] {
   background: transparent !important;
 }
 
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-plugin="ssh"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-plugin="task-board"] {
-  background: rgba(13, 26, 58, 0.45) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  backdrop-filter: blur(12px) !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-plugin="ssh"] [data-dsh-part="terminal"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-plugin="ssh"] [data-dsh-part="host-table"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-plugin="ssh"] [data-dsh-part="host-row"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-plugin="task-board"] [data-dsh-part="header"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-plugin="task-board"] [data-dsh-part="column"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-plugin="task-board"] [data-dsh-part="card"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-plugin="task-board"] [data-dsh-part="detail"] {
-  background: rgba(18, 36, 74, 0.35) !important;
-}
-
-html[data-dsh-skin="miku"] [data-pane="sidebar"] > div {
-  -webkit-backdrop-filter: blur(10px);
-  background: transparent;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="sidebar"] > div {
-  -webkit-backdrop-filter: blur(8px);
-  background: #0a142c38;
-}
-
-html[data-dsh-skin="miku"] [data-pane="sidebar"], html[data-dsh-skin="miku"] [data-pane="sidebar"] > div > :first-child, html[data-dsh-skin="miku"] [data-pane="sidebar"] > div > :first-child * {
-  color: var(--dsw-alias-label-primary);
-}
-
-html[data-dsh-skin="miku"] [data-pane="sidebar"] > div > :first-child, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="sidebar"] > div > :first-child {
-  box-shadow: none;
-  background: none;
-  border-bottom: none;
-}
-
-html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="sessionRow"], html[data-dsh-skin="miku"] [data-pane="sidebar"] > div > :first-child [role="dialog"] {
-  color: var(--dsw-alias-label-primary);
-}
-
-html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"], html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"] * {
-  color: #fff;
-}
-
-html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"] {
-  /* 明亮主题：与状态栏一致的海色清新半透明渐变，匹配海景背景。 */
-  background: linear-gradient(90deg, rgba(110, 198, 255, 0.8) 0%, rgba(46, 155, 255, 0.88) 18%, rgba(64, 190, 220, 0.9) 40%, rgba(57, 197, 187, 0.92) 50%, rgba(64, 190, 220, 0.9) 60%, rgba(46, 155, 255, 0.88) 82%, rgba(110, 198, 255, 0.8) 100%);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(46, 155, 255, 0.5);
-  box-shadow: inset 0 1px #ffffff40;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="sidebar"] [class*="logoRow"] {
-  color: #fff;
-  background: linear-gradient(#ffffff1f, #fff0 60%), linear-gradient(#0d2b56, #14564f);
-  border-bottom-color: #062e2a;
-}
-
-html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"] button {
-  color: #fff;
-  box-shadow: none;
-  background: none;
-}
-
-html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"] button:hover {
-  background: #ffffff2e;
-}
-
-html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"] svg rect[fill="currentColor"] {
-  fill: #0d2b56;
-}
-
-html[data-dsh-skin="miku"] [data-pane="sidebar"] [class*="logoRow"] svg [fill="var(--dsw-alias-label-primary-inverted)"] {
-  fill: #fff;
-}
-
-html[data-dsh-skin="miku"] [data-pane="conversation"] {
-  -webkit-backdrop-filter: blur(6px);
-  background: transparent;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="conversation"] {
-  -webkit-backdrop-filter: blur(8px);
-  background: #0b211e9e;
-}
-
-html[data-dsh-skin="miku"] [data-pane="conversation"] > div > header {
-  background: linear-gradient(#f6faffcc, #d9f6f0b8);
-  border-bottom: 1px solid #a9d0ff;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="conversation"] > div > header {
-  background: linear-gradient(#0d1a3ac7, #102248b3);
-  border-bottom-color: #22407a;
-}
-
-html[data-dsh-skin="miku"] [data-pane="details"] {
-  -webkit-backdrop-filter: blur(6px);
-  background: transparent;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"] {
-  -webkit-backdrop-filter: blur(8px);
-  background: transparent;
-}
-
-html[data-dsh-skin="miku"] [role="tooltip"] {
-  background: var(--dsw-alias-tooltip-bg);
-  color: var(--dsw-alias-tooltip-fg);
-}
-
-html[data-dsh-skin="miku"] [role="dialog"], html[data-dsh-skin="miku"] [role="dialog"] [class*="navCell"]:not([aria-current="true"]) {
-  color: var(--dsw-alias-label-primary);
-}
-
-html[data-dsh-skin="miku"] button[role="tab"], html[data-dsh-skin="miku"] button[role="tab"]:hover, html[data-dsh-skin="miku"] button[role="tab"]:active, html[data-dsh-skin="miku"] button[role="tab"]:disabled, html[data-dsh-skin="miku"] button[role="tab"]:hover:not(:disabled), html[data-dsh-skin="miku"] button[role="tab"]:active:not(:disabled) {
-  box-shadow: none;
-  text-shadow: none;
-  color: var(--dsw-alias-label-primary);
-  filter: none;
-  opacity: 1;
-  background-color: #0000;
-  background-image: none;
-  border: 0;
-  transform: none;
-}
-
-html[data-dsh-skin="miku"] [data-aionui-explorer-col], html[data-dsh-skin="miku"] [data-aionui-preview-col], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-aionui-explorer-col], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-aionui-preview-col] {
-  background: none !important;
-  border-left: none !important;
-}
-
-html[data-dsh-skin="miku"] .aionui-root, html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-root {
-  -webkit-backdrop-filter: blur(4px);
-  color: var(--aion-text-primary);
-  background: none;
-}
-
-html[data-dsh-skin="miku"] [data-aionui-explorer-col] > div > :first-child {
-  color: var(--dsw-alias-label-primary);
-  background: none;
-  border-bottom: 1px solid #9cc6ff4d;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-aionui-explorer-col] > div > :first-child {
-  color: #d6f1ec;
-  background: linear-gradient(#ffffff1a, #fff0 60%), linear-gradient(#0d2b56, #1a3a6e);
-  border-bottom-color: #062e2a;
-}
-
-html[data-dsh-skin="miku"] .aionui-explorer-handle, html[data-dsh-skin="miku"] .aionui-preview-handle {
-  background: none;
-  transition: background-color .15s, box-shadow .15s;
-}
-
-html[data-dsh-skin="miku"] .aionui-explorer-handle:after, html[data-dsh-skin="miku"] .aionui-preview-handle:after {
-  opacity: .55;
-  background-color: #2e9bff;
-}
-
-html[data-dsh-skin="miku"] .aionui-explorer-handle:hover:after, html[data-dsh-skin="miku"] .aionui-explorer-handle:active:after, html[data-dsh-skin="miku"] .aionui-preview-handle:hover:after, html[data-dsh-skin="miku"] .aionui-preview-handle:active:after {
-  opacity: 1;
-  background-color: #58a9ff;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-explorer-handle:after, html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-preview-handle:after {
-  opacity: .6;
-  background-color: #58a9ff;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-explorer-handle:hover:after, html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-explorer-handle:active:after, html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-preview-handle:hover:after, html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-preview-handle:active:after {
-  opacity: 1;
-  background-color: #7ab8ff;
-}
-
-html[data-dsh-skin="miku"] .aionui-floating-expand {
-  color: #1e6fd9;
-  background: linear-gradient(#f5faff, #e4f0ff);
-  border: 1px solid #9cc6ff;
-  box-shadow: inset 0 1px #ffffffbf, 0 2px 6px #0a1e4238;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-floating-expand {
-  color: #58a9ff;
-  background: linear-gradient(#162a54, #12244a);
-  border-color: #22407a;
-  box-shadow: inset 0 1px #ffffff1a, 0 2px 6px #0006;
-}
-
-html[data-dsh-skin="miku"] .aionui-collapse-chevron {
-  color: #3a5070;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-collapse-chevron {
-  color: #8ba0c4;
-}
-
-html[data-dsh-skin="miku"] .aionui-overlay {
-  background: #06163073;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-overlay {
-  background: #0000008c;
-}
-
-html[data-dsh-skin="miku"] .aionui-dialog {
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--aion-overlay-shadow);
-  color: var(--aion-text-primary);
-  background: linear-gradient(#fafdffe6, #ffffffd1);
-  border: 1px solid #9cc6ff;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-dialog {
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--aion-overlay-shadow);
-  color: var(--aion-text-primary);
-  background: linear-gradient(#0e1c3ce0, #0d1a38cc);
-  border-color: #22407a;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn {
-  -webkit-backdrop-filter: blur(6px);
-  color: #1e6fd9;
-  background: #2e9bff24;
-  border: 1px solid #1e6fd973;
-  box-shadow: inset 0 1px #ffffff40, 0 1px 2px #0a1e421f;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn::selection {
-  color: #fff;
-  background: #2e9bff;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn-primary {
-  color: #1e6fd9;
-  background: #2e9bff24;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn-danger {
-  color: #fff;
-  background: linear-gradient(#ffffff42, #fff0 55%), linear-gradient(#e06060, #c22626);
-  border-color: #931d1d;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-btn {
-  color: #d6f1ec;
-  background: linear-gradient(#ffffff24, #fff0 45%);
-  border-color: #22407a;
-  box-shadow: inset 0 1px #ffffff1f, 0 1px 2px #0000004d;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-btn-primary {
-  color: #fff;
-  background: linear-gradient(#ffffff29, #fff0 55%), linear-gradient(#1e6fd9, #1a3a6e);
-  border-color: #0d2b56;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-btn-danger {
-  color: #fff;
-  background: linear-gradient(#ffffff29, #fff0 55%), linear-gradient(#e07070, #b84040);
-  border-color: #5c1414;
-}
-
-html[data-dsh-skin="miku"] .aionui-menu {
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: var(--aion-overlay-shadow);
-  color: var(--aion-text-primary);
-  background: #f8fbffd1;
-  border: 1px solid #9cc6ff99;
-}
-
-html[data-dsh-skin="miku"] .aionui-menu-item:hover {
-  background: #2e9bff1f;
-}
-
-html[data-dsh-skin="miku"] .aionui-menu-item-disabled {
-  color: var(--aion-text-disabled);
-}
-
-html[data-dsh-skin="miku"] .aionui-menu-sep {
-  background: #b4d4ff80;
-}
-
-html[data-dsh-skin="miku"] .aionui-toast {
-  color: #fff;
-  background: #1e6fd9;
-  border: 1px solid #1a56a8;
-  box-shadow: 0 4px 12px #0a1e4252;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-menu {
-  box-shadow: var(--aion-overlay-shadow);
-  color: var(--aion-text-primary);
-  background: #182e5c;
-  border-color: #22407a;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-menu-item:hover {
-  background: #1c3468;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-menu-item-disabled {
-  color: var(--aion-text-disabled);
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-menu-sep {
-  background: #22407a;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-toast {
-  color: #eefaf7;
-  background: #1c3468;
-  border-color: #22407a;
-  box-shadow: 0 4px 12px #00000073;
-}
-
-html[data-dsh-skin="miku"] .aionui-preview-enter, html[data-dsh-skin="miku"] .aionui-preview-enter-active, html[data-dsh-skin="miku"] .aionui-preview-enter-done {
-  opacity: 1;
-  transform: none;
-}
-
-html[data-dsh-skin="miku"] button, html[data-dsh-skin="miku"] [role="button"], html[data-dsh-skin="miku"] input:not([type="checkbox"]):not([type="radio"]), html[data-dsh-skin="miku"] textarea, html[data-dsh-skin="miku"] select, html[data-dsh-skin="miku"] a, html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBtn, html[data-dsh-skin="miku"] .aionui-btn, html[data-dsh-skin="miku"] .aionui-btn-primary, html[data-dsh-skin="miku"] .aionui-btn-danger, html[data-dsh-skin="miku"] .aionui-menu-item, html[data-dsh-skin="miku"] .aionui-menu-item-disabled, html[data-dsh-skin="miku"] .aionui-floating-expand, html[data-dsh-skin="miku"] .aionui-collapse-chevron, html[data-dsh-skin="miku"] .aionui-explorer-handle, html[data-dsh-skin="miku"] .aionui-preview-handle {
-  transition: background-color .12s, background-image .12s, color .12s, border-color .12s, box-shadow .12s, opacity .12s;
-}
-
-html[data-dsh-skin="miku"] button:disabled {
-  opacity: .5;
-  cursor: not-allowed;
-  box-shadow: none;
-  background-image: none;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn:disabled {
-  opacity: .5;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-html[data-dsh-skin="miku"] input:not([type="checkbox"]):not([type="radio"]):hover, html[data-dsh-skin="miku"] textarea:hover, html[data-dsh-skin="miku"] select:hover {
-  border-color: #7ab8ff;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] input:not([type="checkbox"]):not([type="radio"]):hover, html[data-dsh-skin="miku"] body[data-ds-dark-theme] textarea:hover, html[data-dsh-skin="miku"] body[data-ds-dark-theme] select:hover {
-  border-color: #3560ac;
-}
-
-html[data-dsh-skin="miku"] input:not([type="checkbox"]):not([type="radio"]):disabled, html[data-dsh-skin="miku"] textarea:disabled, html[data-dsh-skin="miku"] select:disabled {
-  opacity: .55;
-  color: #a3b8d8;
-  cursor: not-allowed;
-  background-color: #eefaf7;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] input:not([type="checkbox"]):not([type="radio"]):disabled, html[data-dsh-skin="miku"] body[data-ds-dark-theme] textarea:disabled, html[data-dsh-skin="miku"] body[data-ds-dark-theme] select:disabled {
-  color: #4c6390;
-  background-color: #152a52;
-}
-
-html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBtn:active {
-  background: #ffffff73;
-  box-shadow: inset 0 1px 2px #0a1e424d;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .NPtzYa_mikuTitlebarBtn:active {
-  background: #ffffff38;
-  box-shadow: inset 0 1px 2px #00000059;
-}
-
-html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebarBtn:last-child:active {
-  background: linear-gradient(#ff4da6, #e0298a);
-}
-
-html[data-dsh-skin="miku"] a:hover {
-  color: #2e9bff;
-  text-decoration: underline;
-}
-
-html[data-dsh-skin="miku"] a:active {
-  color: #1a56a8;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] a:hover {
-  color: #a2c8f5;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] a:active {
-  color: #2e9bff;
-}
-
-html[data-dsh-skin="miku"] ::-webkit-scrollbar-thumb:active {
-  background: #2e9bff;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn:hover:not(:disabled) {
-  background-color: #2e9bff14;
-  border-color: #7ab8ff;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn:active:not(:disabled) {
-  background-color: #2e9bff29;
-  box-shadow: inset 0 2px 4px #0a1e4233;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-btn:hover:not(:disabled) {
-  background-color: #96beff24;
-  border-color: #3560ac;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-btn:active:not(:disabled) {
-  background-color: #96beff33;
-  box-shadow: inset 0 2px 4px #0006;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn-primary:hover:not(:disabled) {
-  background-color: #2e9bff38;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn-primary:active:not(:disabled) {
-  background-color: #2e9bff47;
-  box-shadow: inset 0 2px 4px #0a1e4226;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-btn-primary:hover:not(:disabled) {
-  background-image: linear-gradient(#ffffff2e, #fff0 55%), linear-gradient(#2e9bff, #1e6fd9);
-  border-color: #22407a;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-btn-primary:active:not(:disabled) {
-  background-image: linear-gradient(#ffffff1f, #fff0 55%), linear-gradient(#1a3a6e, #0d2b56);
-  box-shadow: inset 0 2px 4px #00000059;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn-danger:hover:not(:disabled) {
-  background-image: linear-gradient(#ffffff4d, #fff0 55%), linear-gradient(#e07070, #d04040);
-  border-color: #b03030;
-}
-
-html[data-dsh-skin="miku"] .aionui-btn-danger:active:not(:disabled) {
-  background-image: linear-gradient(#fff3, #fff0 55%), linear-gradient(#b84040, #931d1d);
-  box-shadow: inset 0 2px 4px #0a1e4240;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-btn-danger:hover:not(:disabled) {
-  background-image: linear-gradient(#ffffff2e, #fff0 55%), linear-gradient(#c05050, #a03030);
-  border-color: #5c1414;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-btn-danger:active:not(:disabled) {
-  background-image: linear-gradient(#ffffff1f, #fff0 55%), linear-gradient(#a03030, #7a1010);
-  box-shadow: inset 0 2px 4px #00000059;
-}
-
-html[data-dsh-skin="miku"] .aionui-menu-item:active {
-  background: #d4e8ff;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-menu-item:active {
-  background: #1c3468;
-}
-
-html[data-dsh-skin="miku"] .aionui-explorer-handle:active, html[data-dsh-skin="miku"] .aionui-preview-handle:active {
-  background: none;
-  box-shadow: 0 0 6px #2e9bff99;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-explorer-handle:active, html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-preview-handle:active {
-  background: none;
-  box-shadow: 0 0 6px #58aaff99;
-}
-
-html[data-dsh-skin="miku"] .aionui-floating-expand:hover {
-  color: #1a56a8;
-  background: linear-gradient(#f5faff, #d4e8ff);
-  border-color: #2e9bff;
-}
-
-html[data-dsh-skin="miku"] .aionui-floating-expand:active {
-  background: linear-gradient(#dbeaff, #b4d4ff);
-  box-shadow: inset 0 2px 4px #0a1e422e;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-floating-expand:hover {
-  color: #a2c8f5;
-  background: linear-gradient(#1c3468, #162a54);
-  border-color: #2e9bff;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-floating-expand:active {
-  background: linear-gradient(#162a52, #12244a);
-  box-shadow: inset 0 2px 4px #00000059;
-}
-
-html[data-dsh-skin="miku"] .aionui-collapse-chevron:hover {
-  color: #2e9bff;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] .aionui-collapse-chevron:hover {
-  color: #a2c8f5;
+/* 任务看板侧栏条目上的活动矩阵（10×10 像素动画）默认是 shell 的蓝，跟着主题走 */
+html[data-dsh-skin="miku"] [data-dsh-part="sidebar-entry"] [class*="matrix"],
+html[data-dsh-skin="miku"] [data-dsh-plugin="task-board"] [class*="matrix"] {
+  color: var(--miku-teal) !important;
+}
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-part="sidebar-entry"] [class*="matrix"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-plugin="task-board"] [class*="matrix"] {
+  color: #4fd8e8 !important;
+}
+
+/* git-graph 分道配色：青绿 → 天蓝 → 品红 六色循环 */
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1),
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) { color: #12a79b; }
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2),
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) { color: #2e9bff; }
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3),
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) { color: #d81b7e; }
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4),
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) { color: #7a3fd0; }
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5),
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) { color: #c99a2e; }
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n),
+html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) { color: #24924a; }
+
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1),
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) { color: #39c5bb; }
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2),
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) { color: #58a9ff; }
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3),
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) { color: #ff5cb0; }
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4),
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) { color: #b57cff; }
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5),
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) { color: #e5b94f; }
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n),
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) { color: #4fb86f; }
+
+html[data-dsh-skin="miku"] [data-gitgraph-current-branch] {
+  color: var(--miku-teal) !important;
+  background: var(--dsw-alias-interactive-bg-hover-accent) !important;
+  border: 1px solid var(--miku-ink-soft) !important;
+  border-radius: 999px !important;
+}
+
+/* ─────────── 11. 无障碍降级 ─────────── */
+
+@media (prefers-reduced-transparency: reduce) {
+  html[data-dsh-skin="miku"] [role="dialog"],
+  html[data-dsh-skin="miku"] [class*="menu"],
+  html[data-dsh-skin="miku"] [class*="popover"],
+  html[data-dsh-skin="miku"] [class*="dropdown"],
+  html[data-dsh-skin="miku"] [class*="sheet"],
+  html[data-dsh-skin="miku"] [role="menu"],
+  html[data-dsh-skin="miku"] [role="listbox"],
+  html[data-dsh-skin="miku"] .NPtzYa_mikuTitlebar,
+  html[data-dsh-skin="miku"] .NPtzYa_mikuStatusbar {
+    backdrop-filter: none !important;
+  }
+
+  html[data-dsh-skin="miku"] [data-slot="sidebar"] > *,
+  html[data-dsh-skin="miku"] [data-slot="rightbar"] > * {
+    background-color: #f4f9ffff !important;
+  }
+
+  html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="sidebar"] > *,
+  html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="rightbar"] > * {
+    background-color: #0d1a3aff !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html[data-dsh-skin="miku"] * {
     transition: none !important;
-    animation-duration: .001ms !important;
+    animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
   }
-}
-
-html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1), html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) {
-  color: #2e9bff;
-}
-
-html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2), html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) {
-  color: #24924a;
-}
-
-html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3), html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) {
-  color: #c99a2e;
-}
-
-html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4), html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) {
-  color: #ff4da6;
-}
-
-html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5), html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) {
-  color: #7ab8ff;
-}
-
-html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n), html[data-dsh-skin="miku"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) {
-  color: #4fb86f;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1), html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) {
-  color: #58a9ff;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2), html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) {
-  color: #4fb86f;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3), html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) {
-  color: #e5b94f;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4), html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) {
-  color: #ff7ec2;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5), html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) {
-  color: #8cc6ff;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n), html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) {
-  color: #58c07a;
-}
-
-html[data-dsh-skin="miku"] [data-gitgraph-current-branch] {
-  color: #1e6fd9;
-  background: #2e9bff1f;
-  border: 1px solid #2e9bff66;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-gitgraph-current-branch] {
-  color: #a2c8f5;
-  background: #2e9bff29;
-  border-color: #2e9bff80;
-}
-
-html[data-dsh-skin="miku"] #root > div > div, html[data-dsh-skin="miku"] body[data-ds-dark-theme] #root > div > div {
-  background: none !important;
-}
-
-/* 明亮主题：左侧栏（工作区/会话树，根类 HObgUG_root）也改成透明+毛玻璃。
-   用 body:not([data-ds-dark-theme]) 限定，确保暗色主题不被改动。 */
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="HObgUG_root"] {
-  background: transparent !important;
-  /* 根上不放 backdrop-filter：它会成为 fixed 后代（设置菜单/浮层）的包含块，
-     导致设置菜单被拽进/裁剪进左侧栏。模糊改放到不含设置菜单的树区域上。 */
-}
-
-/* 明亮主题：左侧栏中部的毛玻璃放到树区域（不含设置菜单/弹层），避免包含块问题 */
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="HObgUG_regionArea"] {
-  -webkit-backdrop-filter: blur(10px) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-/* 明亮主题：设置菜单/对话框 透明毛玻璃 + 深色可读文字 */
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] {
-  background: rgba(248, 251, 255, 0.55) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
-  backdrop-filter: blur(14px) !important;
-  color: #14263f !important;
-  --dsw-alias-label-primary: #14263f;
-  --dsw-alias-label-secondary: #3a5070;
-  --dsw-alias-label-tertiary: #4a5f80;
-  --aion-text-primary: #14263f;
-  --aion-text-secondary: #3a5070;
-}
-
-html[data-dsh-skin="miku"] [class*="sidebarCol"] {
-  -webkit-backdrop-filter: blur(10px);
-  background: transparent !important;
-  border-left: none !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="sidebarCol"] {
-  -webkit-backdrop-filter: blur(8px);
-  background: #0a142c38 !important;
-  border-left: none !important;
-}
-
-html[data-dsh-skin="miku"] [class*="sidebarCol"] > div > div, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="sidebarCol"] > div > div {
-  background: none !important;
-}
-
-html[data-dsh-skin="miku"] [class*="centerCol"] {
-  -webkit-backdrop-filter: blur(6px);
-  background: transparent !important;
-  border-left: none !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="centerCol"] {
-  -webkit-backdrop-filter: blur(6px);
-  background: #08122a1a !important;
-  border-left: none !important;
-}
-
-html[data-dsh-skin="miku"] [class*="detailsCol"] {
-  -webkit-backdrop-filter: blur(6px);
-  background: transparent !important;
-  border-left: none !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] {
-  -webkit-backdrop-filter: blur(6px);
-  background: transparent !important;
-  border-left: none !important;
-}
-
-/* DSH-better-sidebar "side board" (右侧看板) — a SEPARATE plugin, fully
-   token-driven: its .panel/.pane/.tabBar use the generic --dsw-alias-bg-layer-1
-   / --dsw-alias-bg-base tokens, which miku's dark theme sets to a translucent
-   dark blue — that is why it reads "not transparent". To make the whole board
-   FULLY transparent in dark WITHOUT touching those global tokens / other
-   surfaces, blank the plugin's own CSS-Modules classes (all from its
-   sidebar.module.css, same hash prefix, e.g. nArs4W_panel / nArs4W_pane /
-   nArs4W_tabBar / _tabList / _paneEmptyCards). Dark-only + scoped: the outer
-   _panel is limited with :has([class*="_tabBar"]) so only THIS sidebar panel's
-   background is killed, not unrelated "_panel" classes. */
-/* 明亮主题：better-sidebar 右侧看板 也改成透明+毛玻璃模糊。
-   暗色规则优先级更高，暗色主题仍保持其原样。 */
-html[data-dsh-skin="miku"] [class*="_panel"]:has([class*="_tabBar"]),
-html[data-dsh-skin="miku"] [class*="_pane"],
-html[data-dsh-skin="miku"] [class*="_tabBar"],
-html[data-dsh-skin="miku"] [class*="_tabList"],
-html[data-dsh-skin="miku"] [class*="_paneEmptyCards"] {
-  background: transparent !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="_panel"]:has([class*="_tabBar"]),
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="_pane"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="_tabBar"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="_tabList"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="_paneEmptyCards"] {
-  background: transparent !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
-
-/* DSH-better-sidebar width-resize strip (nArs4W_panelResize / .panelResize):
-   the plugin stretches it full-height (top:0; bottom:0) + 8px wide, so it
-   reads as a full-height vertical bar on the board's left edge. Cap it to a
-   short centered grip (still draggable) so it no longer spans top-to-bottom.
-   Geometric fix — applies to both light/dark. */
-html[data-dsh-skin="miku"] [class*="_panelResize"] {
-  top: 50% !important;
-  bottom: auto !important;
-  height: 96px !important;
-  transform: translateY(-50%) !important;
-}
-
-/* DARK THEME ONLY: blank every card / panel / container / empty-state
-   background inside the right details pane, so the translucent theme shows
-   straight through. Scoped to the right-panel anchors; light theme stays
-   untouched. Substring class matches stay stable across hash renames. */
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"] [class*="card"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"] [class*="panel"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"] [class*="content"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"] [class*="body"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"] [class*="item"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"] [class*="row"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"] [class*="cell"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"] [class*="section"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-pane="details"] [class*="empty"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] [class*="card"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] [class*="panel"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] [class*="content"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] [class*="body"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] [class*="item"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] [class*="row"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] [class*="cell"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] [class*="section"],
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="detailsCol"] [class*="empty"] {
-  background: transparent !important;
-}
-
-html[data-dsh-skin="miku"] [class*="centerCol"] > div > div, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="centerCol"] > div > div, html[data-dsh-skin="miku"] [class*="composerSeat"], html[data-dsh-skin="miku"] [class*="scrollBody"] {
-  background: none !important;
-}
-
-html[data-dsh-skin="miku"] [class*="menu"], html[data-dsh-skin="miku"] [class*="popover"], html[data-dsh-skin="miku"] [class*="dropdown"], html[data-dsh-skin="miku"] [class*="sheet"], html[data-dsh-skin="miku"] [class*="dialog"], html[data-dsh-skin="miku"] [role="menu"], html[data-dsh-skin="miku"] [role="listbox"] {
-  -webkit-backdrop-filter: blur(12px);
-  color: var(--dsw-alias-label-primary);
-  background: linear-gradient(#fafdffeb, #f0f8ffe0) !important;
-  border: 1px solid #9cc6ff99 !important;
-  box-shadow: 0 12px 32px #0a1e4240, 0 2px 8px #0a1e421f !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="menu"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="popover"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="dropdown"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="sheet"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="dialog"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [role="menu"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [role="listbox"] {
-  -webkit-backdrop-filter: blur(12px);
-  color: #c2d4f0;
-  background: linear-gradient(#142248eb, #0d1a38e0) !important;
-  border-color: #3560ac99 !important;
-  box-shadow: 0 12px 32px #00000080, 0 2px 8px #0000004d !important;
-}
-
-html[data-dsh-skin="miku"] [class*="menu"] [class*="item"], html[data-dsh-skin="miku"] [role="menuitem"] {
-  border-radius: 6px;
-}
-
-html[data-dsh-skin="miku"] [class*="menu"] [class*="item"]:hover, html[data-dsh-skin="miku"] [class*="menu"] [class*="item"]:focus, html[data-dsh-skin="miku"] [role="menuitem"]:hover, html[data-dsh-skin="miku"] [role="menuitem"]:focus {
-  color: #1e6fd9;
-  background: #2e9bff1f !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="menu"] [class*="item"]:hover, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="menu"] [class*="item"]:focus, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [role="menuitem"]:hover, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [role="menuitem"]:focus {
-  color: #a2c8f5;
-  background: #58a9ff29 !important;
-}
-
-html[data-dsh-skin="miku"] [class*="menu"] [class*="sep"], html[data-dsh-skin="miku"] [class*="menu"] [class*="divider"] {
-  background: #9cc6ff80 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="menu"] [class*="sep"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="menu"] [class*="divider"] {
-  background: #3560ac80 !important;
-}
-
-html[data-dsh-skin="miku"] [class*="menu"] [class*="label"], html[data-dsh-skin="miku"] [class*="menu"] [class*="title"], html[data-dsh-skin="miku"] [class*="menu"] [class*="heading"] {
-  color: #6c82a8;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="menu"] [class*="label"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="menu"] [class*="title"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="menu"] [class*="heading"] {
-  color: #8ba0c4;
-}
-
-html[data-dsh-skin="miku"] [class*="menu"] [class*="disabled"], html[data-dsh-skin="miku"] [role="menuitem"][aria-disabled="true"] {
-  opacity: .6;
-  color: #8ba0ba !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="menu"] [class*="disabled"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [role="menuitem"][aria-disabled="true"] {
-  color: #4c6390 !important;
-}
-
-html[data-dsh-skin="miku"] [class*="composerSeat"], html[data-dsh-skin="miku"] [class*="composerStack"], html[data-dsh-skin="miku"] [class*="composerHero"] {
-  -webkit-backdrop-filter: none !important;
-  background: none !important;
-}
-
-html[data-dsh-skin="miku"] textarea, html[data-dsh-skin="miku"] [contenteditable="true"], html[data-dsh-skin="miku"] input:not([type="checkbox"]):not([type="radio"]) {
-  -webkit-backdrop-filter: blur(8px);
-  color: #14263f !important;
-  background: #fafdffeb !important;
-  border-color: #1e6fd980 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] textarea, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [contenteditable="true"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] input:not([type="checkbox"]):not([type="radio"]) {
-  -webkit-backdrop-filter: blur(8px);
-  color: #d6f1ec !important;
-  background: #0e1c3c6b !important;
-  border-color: #58a9ff47 !important;
-}
-
-/* The rc.8 composer paints visible glyphs in a backdrop while the textarea
-   owns only selection and caret. Keep those layers separate so an empty draft
-   cannot flash or collapse while deleting. */
-html[data-dsh-skin="miku"] [data-composer-card] [data-input-backdrop] {
-  color: #000 !important;
-}
-
-html[data-dsh-skin="miku"] [data-composer-card] textarea {
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
-}
-
-html[data-dsh-skin="miku"] [data-composer-card] [data-input-scroll] {
-  min-height: 24px;
-}
-
-/* Keep the complete composer footprint mounted while the draft transitions
-   through empty. These stable attributes avoid CSS-module class churn and
-   outrank broad skin rules such as [class*="seat"]. */
-html[data-dsh-skin="miku"] [data-composer-seat] {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  min-height: 92px;
-  content-visibility: visible !important;
-}
-
-html[data-dsh-skin="miku"] [data-composer-card] {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  min-height: 92px;
-  content-visibility: visible !important;
-  color: #000 !important;
-  --dsw-alias-label-primary: #000;
-  --dsw-alias-label-secondary: #000;
-  --dsw-alias-label-tertiary: #000;
-  --dsw-alias-label-caption: #000;
-}
-
-/* The no-workspace and post-submit states replace draft glyphs with native
-   placeholder/control text. Keep that entire foreground visible on the light
-   Miku composer surface. */
-html[data-dsh-skin="miku"] [data-composer-card] textarea::placeholder {
-  color: #000 !important;
-  -webkit-text-fill-color: #000 !important;
-  opacity: 1 !important;
-}
-
-html[data-dsh-skin="miku"] [data-composer-card] :is(button, [role="button"], button *, [role="button"] *) {
-  color: #000 !important;
-}
-
-html[data-dsh-skin="miku"] [class*="composer"] [class*="toolbar"], html[data-dsh-skin="miku"] [class*="composer"] [class*="actions"] {
-  background: none !important;
-}
-
-html[data-dsh-skin="miku"] [class*="panel"], html[data-dsh-skin="miku"] [class*="drawer"], html[data-dsh-skin="miku"] [class*="settingsRoot"] {
-  -webkit-backdrop-filter: blur(14px);
-  color: #d6f1ec;
-  --dsw-alias-label-primary: #d6f1ec;
-  --dsw-alias-label-secondary: #b8cae8;
-  --dsw-alias-label-tertiary: #8ba0c4;
-  --dsw-alias-label-caption: #b8cae8;
-  --dsw-alias-label-dimmed: #4c6390;
-  --dsw-alias-label-primary-dimmed: #b0c4e2;
-  --dsw-alias-label-primary-foreground: #fff;
-  --dsw-alias-label-primary-inverted: #0a1a17;
-  --aion-text-primary: #d6f1ec;
-  --aion-text-secondary: #b8cae8;
-  --aion-text-tertiary: #8ba0c4;
-  --aion-text-disabled: #4c6390;
-  background: linear-gradient(#0e1c3cf5, #0a142cf0) !important;
-  border: 1px solid #58a9ff73 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="panel"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="drawer"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="settingsRoot"] {
-  -webkit-backdrop-filter: blur(14px);
-  color: #d6f1ec;
-  background: linear-gradient(#0e1c3cd1, #0a142cc2) !important;
-  border-color: #58a9ff4d !important;
-}
-
-html[data-dsh-skin="miku"] [class*="panel"] [class*="section"], html[data-dsh-skin="miku"] [class*="panel"] [class*="card"], html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="section"], html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="card"] {
-  background: #102248d9 !important;
-  border-color: #58a9ff66 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="panel"] [class*="section"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="panel"] [class*="card"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="settingsRoot"] [class*="section"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="settingsRoot"] [class*="card"] {
-  background: #10224880 !important;
-  border-color: #58a9ff40 !important;
-}
-
-html[data-dsh-skin="miku"] [class$="_mask"], html[data-dsh-skin="miku"] [class*="Mask"] {
-  background: #040a1c73 !important;
-}
-
-html[data-dsh-skin="miku"] [class*="panel"] [class*="menu"], html[data-dsh-skin="miku"] [class*="panel"] [class*="nav"], html[data-dsh-skin="miku"] [class*="drawer"] [class*="menu"], html[data-dsh-skin="miku"] [class*="drawer"] [class*="nav"], html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="menu"], html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="nav"] {
-  color: var(--dsw-alias-label-secondary);
-  box-shadow: none !important;
-  background: none !important;
-  border: none !important;
-}
-
-html[data-dsh-skin="miku"] [class*="panel"] [class*="menu"] [class*="item"], html[data-dsh-skin="miku"] [class*="panel"] [class*="nav"] [class*="item"], html[data-dsh-skin="miku"] [class*="drawer"] [class*="menu"] [class*="item"], html[data-dsh-skin="miku"] [class*="drawer"] [class*="nav"] [class*="item"], html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="menu"] [class*="item"], html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="nav"] [class*="item"] {
-  color: var(--dsw-alias-label-secondary);
-}
-
-html[data-dsh-skin="miku"] [class*="panel"] [class*="menu"] [class*="item"]:hover, html[data-dsh-skin="miku"] [class*="panel"] [class*="nav"] [class*="item"]:hover, html[data-dsh-skin="miku"] [class*="drawer"] [class*="menu"] [class*="item"]:hover, html[data-dsh-skin="miku"] [class*="drawer"] [class*="nav"] [class*="item"]:hover, html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="menu"] [class*="item"]:hover, html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="nav"] [class*="item"]:hover {
-  color: #fff;
-  background: #58a9ff2e !important;
-}
-
-html[data-dsh-skin="miku"] [class*="panel"] [class*="menu"] [class*="item"][aria-current="true"], html[data-dsh-skin="miku"] [class*="panel"] [class*="nav"] [class*="item"][aria-current="true"], html[data-dsh-skin="miku"] [class*="panel"] [class*="menu"] [class*="item"][aria-selected="true"], html[data-dsh-skin="miku"] [class*="panel"] [class*="nav"] [class*="item"][aria-selected="true"], html[data-dsh-skin="miku"] [class*="drawer"] [class*="menu"] [class*="item"][aria-current="true"], html[data-dsh-skin="miku"] [class*="drawer"] [class*="nav"] [class*="item"][aria-current="true"], html[data-dsh-skin="miku"] [class*="drawer"] [class*="menu"] [class*="item"][aria-selected="true"], html[data-dsh-skin="miku"] [class*="drawer"] [class*="nav"] [class*="item"][aria-selected="true"], html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="menu"] [class*="item"][aria-current="true"], html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="nav"] [class*="item"][aria-current="true"], html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="menu"] [class*="item"][aria-selected="true"], html[data-dsh-skin="miku"] [class*="settingsRoot"] [class*="nav"] [class*="item"][aria-selected="true"] {
-  color: #fff;
-  background: #58a9ff47 !important;
-}
-
-html[data-dsh-skin="miku"] button, html[data-dsh-skin="miku"] [role="button"] {
-  border-radius: 8px !important;
-}
-
-html[data-dsh-skin="miku"] [class*="newSession"], html[data-dsh-skin="miku"] [class*="primary"] {
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: none !important;
-  color: #1e6fd9 !important;
-  background: #2e9bff1f !important;
-  border: none !important;
-}
-
-/* 明亮主题：“新会话”文字从蓝色改成黑色（仅 non-[class*=primary] 的 newSession；暗色不动） */
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="newSession"] {
-  color: #000 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="newSession"] {
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: none !important;
-  color: #d6f1ec !important;
-  background: #10224833 !important;
-  border: none !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="primary"] {
-  -webkit-backdrop-filter: blur(8px);
-  color: #d6f1ec !important;
-  background: #10224833 !important;
-  border: none !important;
-  box-shadow: inset 0 1px #ffffff14 !important;
-}
-
-html[data-dsh-skin="miku"] [class*="newSession"]:hover, html[data-dsh-skin="miku"] [class*="primary"]:hover {
-  background: #2e9bff33 !important;
-}
-
-/* 明亮主题：设置菜单/设置对话框 专属覆盖 —— 覆盖通用深色 [class*=panel]/settingsRoot 规则。
-   浅蓝白半透明毛玻璃背景、#14263f 主文字、#3a5070 次文字；section/card 半透明白底；
-   菜单 hover/active 用浅蓝半透明背景、文字保持 #14263f。只影响明亮主题，暗色不动。 */
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"] [class*="panel"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"] [class*="drawer"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="panel"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="drawer"] {
-  background: linear-gradient(rgba(232, 242, 255, 0.72), rgba(244, 250, 255, 0.78)) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  backdrop-filter: blur(16px) !important;
-  color: #14263f !important;
-  border-color: rgba(88, 169, 255, 0.35) !important;
-  --dsw-alias-label-primary: #14263f;
-  --dsw-alias-label-secondary: #3a5070;
-  --dsw-alias-label-tertiary: #4a5f80;
-  --dsw-alias-label-caption: #3a5070;
-  --dsw-alias-label-dimmed: #6b80a0;
-  --dsw-alias-label-primary-dimmed: #3a5070;
-  --dsw-alias-label-primary-foreground: #14263f;
-  --dsw-alias-label-primary-inverted: #14263f;
-  --aion-text-primary: #14263f;
-  --aion-text-secondary: #3a5070;
-  --aion-text-tertiary: #4a5f80;
-  --aion-text-disabled: #6b80a0;
-}
-
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="section"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="card"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="section"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="card"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="section"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="card"] {
-  background: rgba(255, 255, 255, 0.46) !important;
-  border-color: rgba(88, 169, 255, 0.3) !important;
-  color: #14263f !important;
-}
-
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="menu"] [class*="item"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="nav"] [class*="item"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="menu"] [class*="item"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="nav"] [class*="item"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="menu"] [class*="item"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="nav"] [class*="item"] {
-  color: #14263f !important;
-  background: transparent !important;
-}
-
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="menu"] [class*="item"]:hover,
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="nav"] [class*="item"]:hover,
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="menu"] [class*="item"]:hover,
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="nav"] [class*="item"]:hover,
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="menu"] [class*="item"]:hover,
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="nav"] [class*="item"]:hover {
-  color: #14263f !important;
-  background: rgba(88, 169, 255, 0.22) !important;
-}
-
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="menu"] [class*="item"][aria-current="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="menu"] [class*="item"][aria-selected="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="nav"] [class*="item"][aria-current="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="nav"] [class*="item"][aria-selected="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="menu"] [class*="item"][aria-current="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="menu"] [class*="item"][aria-selected="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="nav"] [class*="item"][aria-current="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="panel"] [class*="nav"] [class*="item"][aria-selected="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="menu"] [class*="item"][aria-current="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="menu"] [class*="item"][aria-selected="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="nav"] [class*="item"][aria-current="true"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="drawer"] [class*="nav"] [class*="item"][aria-selected="true"] {
-  color: #14263f !important;
-  background: rgba(88, 169, 255, 0.28) !important;
-}
-
-/* 明亮主题：设置二级菜单/导航项/链接文字由品牌蓝改黑（覆盖悬停蓝，暗色不动） */
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="menu"] [class*="item"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="nav"] [class*="item"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settingsRoot"] [class*="item"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"] [class*="menu"] [class*="item"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"] [class*="nav"] [class*="item"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] a,
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"] a {
-  color: #14263f !important;
-}
-
-/* 明亮主题：设置/对话框里 选择器、按钮、箭头、图标、触发器 等蓝色元素统一改黑 */
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] button,
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="selector"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="chevron"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="icon"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="settings"] [class*="trigger"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"] button,
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"] [class*="selector"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"] [class*="chevron"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"] [class*="icon"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [role="dialog"] [class*="trigger"] {
-  color: #14263f !important;
-}
-
-/* 明亮主题：皮肤筛选胶囊与安装按钮使用浅色 Miku 青绿强调，覆盖组件自带深色样式。 */
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="_pill"] {
-  color: #3a5070 !important;
-  background: rgba(248, 251, 255, 0.72) !important;
-  border: 1px solid rgba(156, 198, 255, 0.62) !important;
-  box-shadow: 0 1px 4px rgba(10, 30, 66, 0.08) !important;
-  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease !important;
-}
-
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="_pill"]:hover {
-  color: #174f4b !important;
-  background: rgba(57, 197, 187, 0.12) !important;
-  border-color: rgba(57, 197, 187, 0.48) !important;
-}
-
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="_pillActive"],
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="_pill"][aria-pressed="true"] {
-  color: #0f4f4a !important;
-  background: rgba(57, 197, 187, 0.2) !important;
-  border-color: rgba(35, 158, 149, 0.58) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 2px 7px rgba(35, 158, 149, 0.14) !important;
-}
-
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="_installButton"] {
-  color: #0f4f4a !important;
-  background: rgba(57, 197, 187, 0.22) !important;
-  border: 1px solid rgba(35, 158, 149, 0.55) !important;
-  box-shadow: 0 2px 7px rgba(35, 158, 149, 0.14) !important;
-  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease !important;
-}
-
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="_installButton"]:hover:not(:disabled) {
-  background: rgba(57, 197, 187, 0.3) !important;
-  border-color: rgba(35, 158, 149, 0.68) !important;
-  box-shadow: 0 3px 9px rgba(35, 158, 149, 0.18) !important;
-}
-
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="_installButton"]:active:not(:disabled) {
-  background: rgba(57, 197, 187, 0.38) !important;
-  box-shadow: inset 0 1px 3px rgba(15, 79, 74, 0.13) !important;
-}
-
-html[data-dsh-skin="miku"] body:not([data-ds-dark-theme]) [class*="_installButton"]:disabled {
-  opacity: 0.52 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="newSession"]:hover, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="primary"]:hover {
-  background: #58a9ff29 !important;
-}
-
-html[data-dsh-skin="miku"] [class*="trigger"], html[data-dsh-skin="miku"] [class*="seat"], html[data-dsh-skin="miku"] [class*="ghost"], html[data-dsh-skin="miku"] [class*="quiet"] {
-  -webkit-backdrop-filter: blur(6px);
-  color: #1e6fd9 !important;
-  background: #2e9bff1f !important;
-  border: 1px solid #1e6fd966 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="trigger"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="seat"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="ghost"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="quiet"] {
-  -webkit-backdrop-filter: blur(6px);
-  color: #c2d4f0 !important;
-  background: #1022482e !important;
-  border: none !important;
-}
-
-html[data-dsh-skin="miku"] [class*="trigger"]:hover, html[data-dsh-skin="miku"] [class*="seat"]:hover, html[data-dsh-skin="miku"] [class*="ghost"]:hover, html[data-dsh-skin="miku"] [class*="quiet"]:hover {
-  background: #2e9bff33 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="trigger"]:hover, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="seat"]:hover, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="ghost"]:hover, html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="quiet"]:hover {
-  background: #58a9ff24 !important;
-}
-
-html[data-dsh-skin="miku"] [class$="_fade"], html[data-dsh-skin="miku"] [class*="Fade"] {
-  background: none !important;
-}
-
-html[data-dsh-skin="miku"] [class*="composer"] [class$="_card"], html[data-dsh-skin="miku"] [class*="composer"] [class*="card"] {
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: none !important;
-  background: #f4f9ffd9 !important;
-  border: none !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="composer"] [class$="_card"], html[data-dsh-skin="miku"] body[data-ds-dark-theme] [class*="composer"] [class*="card"] {
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: none !important;
-  background: #0d1a3a66 !important;
-  border: none !important;
-}
-
-html[data-dsh-skin="miku"] [class*="crumb"] {
-  display: none !important;
-}
-
-html[data-dsh-skin="miku"] button, html[data-dsh-skin="miku"] [role="button"], html[data-dsh-skin="miku"] .aionui-btn, html[data-dsh-skin="miku"] .aionui-btn-primary, html[data-dsh-skin="miku"] .aionui-btn-danger, html[data-dsh-skin="miku"] .aionui-menu-item, html[data-dsh-skin="miku"] [class*="newSession"], html[data-dsh-skin="miku"] [class*="primary"], html[data-dsh-skin="miku"] [class*="trigger"], html[data-dsh-skin="miku"] [class*="ghost"], html[data-dsh-skin="miku"] [class*="quiet"], html[data-dsh-skin="miku"] [class*="seat"], html[data-dsh-skin="miku"] input:not([type="checkbox"]):not([type="radio"]), html[data-dsh-skin="miku"] textarea, html[data-dsh-skin="miku"] [contenteditable="true"], html[data-dsh-skin="miku"] select {
-  border: none !important;
-}
-
-/* Final rc.8 composer guard. Keep this after every generic Miku component
-   override: the live composer uses stable data attributes, while CSS-module
-   class names and workspace/session states change after clear and submit. */
-html[data-dsh-skin="miku"] [data-composer-seat] {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  min-height: 92px !important;
-}
-
-html[data-dsh-skin="miku"] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  min-height: 92px !important;
-  color: #000 !important;
-  background: rgba(250, 253, 255, 0.96) !important;
-  border: 1px solid rgba(30, 111, 217, 0.5) !important;
-  box-shadow: 0 8px 24px rgba(8, 35, 75, 0.16) !important;
-  --dsw-alias-label-primary: #000;
-  --dsw-alias-label-secondary: #000;
-  --dsw-alias-label-tertiary: #000;
-  --dsw-alias-label-caption: #000;
-}
-
-html[data-dsh-skin="miku"] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] [data-input-scroll="true"] {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  min-height: 28px !important;
-}
-
-html[data-dsh-skin="miku"] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] [data-input-backdrop="true"] {
-  visibility: hidden !important;
-  opacity: 0 !important;
-}
-
-html[data-dsh-skin="miku"] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] textarea[data-dsh-part="composer-input"] {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  color: #000 !important;
-  -webkit-text-fill-color: #000 !important;
-  background: transparent !important;
-}
-
-html[data-dsh-skin="miku"] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] textarea[data-dsh-part="composer-input"]::placeholder {
-  color: #000 !important;
-  -webkit-text-fill-color: #000 !important;
-  opacity: 1 !important;
-}
-
-html[data-dsh-skin="miku"] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] :is(button, button *, [role="button"], [role="button"] *) {
-  color: #000 !important;
-  opacity: 1 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] {
-  color: #e7f5ff !important;
-  background: rgba(13, 26, 58, 0.72) !important;
-  border-color: rgba(88, 169, 255, 0.42) !important;
-  box-shadow: 0 8px 28px rgba(0, 8, 28, 0.38) !important;
-  --dsw-alias-label-primary: #e7f5ff;
-  --dsw-alias-label-secondary: #b8cae8;
-  --dsw-alias-label-tertiary: #8ba0c4;
-  --dsw-alias-label-caption: #b8cae8;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] textarea[data-dsh-part="composer-input"] {
-  color: #e7f5ff !important;
-  -webkit-text-fill-color: #e7f5ff !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] textarea[data-dsh-part="composer-input"]::placeholder {
-  color: #b8cae8 !important;
-  -webkit-text-fill-color: #b8cae8 !important;
-}
-
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"][data-composer-card="true"] :is(button, button *, [role="button"], [role="button"] *) {
-  color: #e7f5ff !important;
 }
 
 /* --- Miku custom node cursors (ported from the v1 miku skin; art by Moos柚眠, used with permission) --- */

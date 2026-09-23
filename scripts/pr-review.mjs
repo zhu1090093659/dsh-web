@@ -145,8 +145,10 @@ const BUILD_STEPS = [
   [`build`, `pnpm`, [`build`], 20 * 60 * 1000],
   [`test`, `pnpm`, [`test`], 15 * 60 * 1000],
   [`test:scripts`, `pnpm`, [`test:scripts`], 10 * 60 * 1000],
+  [`test:standards`, `pnpm`, [`test:standards`], 5 * 60 * 1000],
   [`aggregate:check`, `pnpm`, [`aggregate:check`], 10 * 60 * 1000],
   [`docs:check`, `pnpm`, [`docs:check`], 10 * 60 * 1000],
+  [`i18n:check`, `pnpm`, [`i18n:check`], 5 * 60 * 1000],
 ]
 
 // ---------------------------------------------------------------- 纯函数（可测）

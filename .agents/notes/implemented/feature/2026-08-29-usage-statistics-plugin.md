@@ -2,6 +2,8 @@
 
 Status: implemented
 
+Partially superseded (2026-09-17): the pet-linkage decision below was removed — see [dsh-usage drops the pet bubble](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md). The section, ledger, probes, and pricing decisions stay current.
+
 ## Problem
 
 DSH routes model calls through pluggable pi-ai providers (kimi-coding, zai-coding-cn, opencode-go, deepseek, ...), each with its own credential and its own billing model — pay-as-you-go balance or a coding-plan quota with rolling windows. Nothing in the family showed any of that: the removed dsh-live-stats estimated tokens client-side but never per-provider, and a third-party community plugin (dsh-provider-usage) covers DeepSeek-centric balances only. The user asked for a first-party plugin that (a) detects balance/plan usage for every configured provider, (b) keeps a live token usage ledger, (c) lives as a first-level settings section below the Workshop entry, and (d) feeds the current provider's status to the pet as a dedicated bubble.
@@ -26,4 +28,4 @@ Endpoint coverage (verified 2026-08): DeepSeek and Moonshot balance, Kimi For Co
 
 - Usage counting starts when the plugin is first enabled; historical sessions are not backfilled (documented in the README).
 - Adapter parses codify third-party response shapes (two of them officially undocumented: GLM's `unit` discriminator, MiniMax's remaining-percent fields); a provider reshaping its payload degrades that provider to an error line until the adapter is updated.
-- The pet bubble silently no-ops when dsh-pet is absent — the section works unchanged.
+- The pet bubble silently no-ops when dsh-pet is absent — the section works unchanged. (Removed 2026-09-17 with the announce pipeline — see [the decoupling note](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md).)

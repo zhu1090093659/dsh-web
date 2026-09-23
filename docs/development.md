@@ -23,15 +23,33 @@ dsh-web 是 DeepSeek Harness Web 的插件 monorepo（皮肤以「皮肤」插�
 
 ```sh
 pnpm install
-pnpm -r build          # 全仓构建
-pnpm typecheck        # 全仓类型检查
-pnpm test             # 全仓单测
-pnpm docs:check       # 文档一致性（链接 / README / i18n 配对）
+pnpm build             # 全仓构建
+pnpm dev:watch         # 监听重编浏览器产物（dsh web 宿主自动刷新 GUI）
+pnpm typecheck         # 全仓类型检查
+pnpm test              # 全仓单测
+pnpm test:standards    # 测试纪律门禁（BDD 结构 / 确定性时间 / 断言质量）
+pnpm docs:check        # 文档一致性（链接 / README / i18n 配对）
+pnpm i18n:check        # 双语与第三语言俄语键集一致性及 CJK 泄漏审计
+pnpm emoji:check       # 手写源码无表情符号审计
+pnpm libs:check        # 校验已提交 lib/ 产物与源码指纹一致性
+pnpm coverage:check    # 覆盖率棘轮（Tier 2，整仓约一分钟）
 ```
 
-改动提交前至少跑 `pnpm typecheck && pnpm test && pnpm docs:check`；CI 会
-全量跑所有门禁（typecheck / build / test / aggregate / market /
-skin-center / docs / emoji）。
+改动提交前至少跑 `pnpm typecheck && pnpm test && pnpm test:standards && pnpm docs:check && pnpm i18n:check`；涉及聚合包、市场或皮肤中心时运行对应 `pnpm aggregate:check` / `pnpm market:check` / `pnpm skin-center:check`；CI 会全量跑所有门禁。
+
+## 测试与门禁
+
+业务测试纪律是仓库契约，由 `scripts/test-standards.mjs` 机械执行，规则与理由写在脚本头部：`no-arbitrary-sleep`（确定性时间用 `vi.useFakeTimers()` 配 `advanceTimersByTime()` 或带超时的 `waitFor`，不写 `setTimeout` / `sleep` 等待）、`no-ad-hoc-mock`（不用 `vi.mock` / `vi.spyOn` 打补丁，注入假实现或用真实后端）、`bdd-title`（`it` / `test` 标题以被测角色开头，如 `user ...`）、`given-when-then`（测试体写明前置条件、动作与可观察结果）、`call-count-only-assertion`（只断言调用次数不构成验证）、`tautological-assertion`（`toBeDefined()` 之类只重申值存在）。
+
+历史测试按「文件 → 规则 → 计数」记入 `scripts/test-standards-baseline.json`：新测试文件从零基线开始，全部规则即刻生效；已有文件的计数只允许下降，修正后运行 `pnpm test:standards:write` 收紧基线。确需例外时在违规行尾或文件头部注释块写 `test-standards-allow: <原因>`，与 `i18n-allow:` 同一约定。
+
+仓库工具测试（`scripts/`）只受机械规则约束，业务行为测试（`packages/`、`tests/`、`desktop/`）适用全部规则；纯算法单测放在前者，用户可见行为放在后者。
+
+覆盖率棘轮由 `scripts/coverage-gate.mjs` 执行：逐包跑 `vitest --coverage`，把 lines / statements / functions / branches 记入 `scripts/coverage-baseline.json`，任一指标低于基线超过 0.5 个百分点即失败（插桩本身有约 0.04 个百分点的抖动，故留容差），提升后运行 `pnpm coverage:write` 收紧。仓库当前并存两代 vitest，覆盖率 provider 按代声明：3.x 包各自声明 `@vitest/coverage-v8@^3.2.7`，4.x 包由根 devDependency 经 Node 解析提供；升级某包 vitest 主版本必须同步升级其 provider，否则门禁直接报错而不是静默跳过。
+
+门禁分两层：`ci.yml` 是 PR 门禁，一次跑完全部检查；`nightly.yml` 是 Tier 2，每晚补充 PR 单趟看不到的证据——覆盖率棘轮与全量测试三连跑（flake 检测）。
+
+失败路径审计是业务特性的交付要求，以下分支必须各有测试，或在交付说明中写明其不可达：并发与幂等（重复提交、竞态、锁过期）、资源耗尽（余额不足、缺货、限流）、基础设施故障（死锁重试、事务回滚、连接中断）、第三方故障（假实现返回 500、网关超时、熔断降级）、校验与安全（越权租户、签名篡改、非法状态流转）。
 
 ## 常见任务
 
@@ -101,6 +119,17 @@ dsh web                            # 重启后侧边栏出现插件入口
 发布流程见 [publish-prep.md](publish-prep.md) 与 .github/workflows/
 release.yml：推送 vX.Y.Z tag 触发发布，tag 是版本唯一来源，
 `scripts/verify-version.mjs` 在发布前校验每个包版本与 tag 一致。
+
+### 多代理并行开发资源纪律
+
+多子代理并发工作流（如 wave 批量实施、并行 worktree 开发）与本机 DSH Web GUI 共享同一台机器的 CPU 与内存。具体并发硬上限、worktree 管理与防卡顿规则见 [multi-agent-resources.md](multi-agent-resources.md)。
+
+## 架构与跨包指引
+
+- 架构总览与全景图见 [architecture.md](architecture.md)；
+- 新插件脚手架与入桶流程见 [plugins.md](plugins.md)；
+- 匿名安装遥测机制见 [telemetry.md](telemetry.md)；
+- 双语文档配对契约见 [i18n.md](i18n.md)。
 
 ## 文档纪律
 

@@ -7,7 +7,7 @@
 
 export const ru: Record<string, string> = {
   'caps.title': 'Возможности моделей',
-  'caps.hint': 'Объявляйте ввод изображений и уровни рассуждений для каждой модели каталога; сохранение пишет в документ настроек и применяется сразу.',
+  'caps.hint': 'Объявляйте уровни рассуждений для каждой модели каталога; сохранение пишет в документ настроек и применяется сразу.',
   'caps.loading': 'Загрузка возможностей моделей…',
   'caps.loadFailed': 'Не удалось загрузить: {error}',
   'caps.reload': 'Обновить',
@@ -16,9 +16,6 @@ export const ru: Record<string, string> = {
   'caps.model.count': 'моделей: {n}',
   'caps.model.expand': 'Развернуть возможности модели',
   'caps.model.collapse': 'Свернуть возможности модели',
-  'caps.model.image': 'Ввод изображений',
-  'caps.model.image.hint': 'DSH предлагает этому модели вложения-изображения только когда флажок установлен.',
-  'caps.model.image.inherit': 'Не объявлено (по умолчанию только текст)',
   'caps.model.efforts': 'Уровни рассуждений',
   'caps.efforts.inherit': 'Не объявлять',
   'caps.efforts.none': 'Без рассуждений',
@@ -30,8 +27,6 @@ export const ru: Record<string, string> = {
   'caps.wire.placeholder': 'значение параметра запроса',
   'caps.wire.offHint': 'off может остаться пустым: «поддерживается, но при выборе ничего не отправляется».',
   'caps.preset.common': 'Подставить обычные low / medium / high',
-  'caps.summary.image': 'изображения',
-  'caps.summary.textOnly': 'только текст',
   'caps.summary.noReasoning': 'без рассуждений',
   'caps.summary.efforts': 'рассуждения: {levels}',
   'caps.save': 'Сохранить',

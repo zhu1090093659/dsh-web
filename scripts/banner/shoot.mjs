@@ -1,5 +1,7 @@
-// Regenerate docs/dsh-web-banner.png (1280x400) and docs/dsh-web-social.png
-// (1280x640, GitHub social preview) from banner.html.
+// Regenerate docs/dsh-web-social.jpg (1280x640, GitHub social preview) from banner.html.
+// The README banners are supplied artwork: docs/dsh-web-banner.png (English, used by
+// README.en.md) and docs/dsh-web-banner.zh.jpg (Chinese, used by README.md). This script
+// must not overwrite them.
 // Usage: node scripts/banner/shoot.mjs
 import { chromium } from 'playwright'
 import { fileURLToPath } from 'node:url'
@@ -45,7 +47,6 @@ async function shoot(width, height, out, center, opts = {}) {
   console.log('wrote', path.relative(root, out))
 }
 
-await shoot(1280, 400, path.join(root, 'docs/dsh-web-banner.png'))
 // GitHub social preview: exactly 1280x640 and under 1 MB, so JPEG at 1x.
 await shoot(1280, 640, path.join(root, 'docs/dsh-web-social.jpg'), 'social', { scale: 1, jpeg: true })
 await browser.close()

@@ -9,7 +9,7 @@
  */
 import { memo } from 'react'
 import type { TaskRecord } from '../../core/tasks.ts'
-import { executionLabel } from '../../core/tasks.ts'
+import { executionLabel, tagTone } from '../../core/tasks.ts'
 import { t } from '../locales.ts'
 import css from '../board.module.css'
 
@@ -59,6 +59,22 @@ function TaskCardInner({ task, pending, timeZone, onClick }: { task: TaskRecord;
       title={task.description !== '' ? task.description : task.title}
     >
       <span className={css.cardTitle}>{task.title}</span>
+      {task.tags !== undefined && task.tags.length > 0 && (
+        <span className={css.cardTags}>
+          {task.tags.map(tag => (
+            <span
+              key={tag.name}
+              className={css.cardTag}
+              data-tag-tone={tagTone(tag.name)}
+              data-dsh-part="tag-badge"
+              data-tag-hint={tag.promptPrefix === undefined ? undefined : tag.promptPrefix}
+              title={tag.promptPrefix === undefined ? tag.name : tag.promptPrefix}
+            >
+              {tag.name}
+            </span>
+          ))}
+        </span>
+      )}
       {task.description !== '' && <span className={css.cardExcerpt}>{task.description}</span>}
       <span className={css.cardMeta}>
         <span className={css.cardTime}>{t('board.updated')} {formatTime(task.updatedAt)}</span>

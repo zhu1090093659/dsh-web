@@ -53,7 +53,7 @@ export async function readPairGatePolicy(): Promise<PairGatePolicy> {
 }
 
 /** accept() refusal codes. */
-export type AcceptFailure = { ok: false; code: 'invalid' | 'used' | 'forbidden' }
+export type AcceptFailure = { ok: false; code: 'invalid' | 'forbidden' }
 
 /** One auto-tunnel status frame (absent while the feature is off). */
 export interface TunnelStatusFrame {
@@ -145,8 +145,9 @@ export async function acceptPair(token: string): Promise<{ ok: true } | AcceptFa
     body: JSON.stringify({ token }),
   })
   if (response.ok) return { ok: true }
-  if (response.status === 404) return { ok: false, code: 'invalid' }
-  if (response.status === 409) return { ok: false, code: 'used' }
+  // 409 is the legacy "already used" answer a pre-bearer-token host could send;
+  // it means the same thing to the caller as a 404.
+  if (response.status === 404 || response.status === 409) return { ok: false, code: 'invalid' }
   return { ok: false, code: 'forbidden' }
 }
 
@@ -170,9 +171,25 @@ export async function revokePair(deviceId: string): Promise<void> {
   if (!response.ok) throw new Error(`remote-web-ui: revoke failed with ${String(response.status)}`)
 }
 
-/** Presence heartbeat from a paired phone (unpaired heartbeats 401 harmlessly). */
-export async function sendHeartbeat(): Promise<void> {
-  await fetch('/api/pair/heartbeat', { method: 'POST' })
+/**
+ * Presence heartbeat from a paired phone.
+ * @returns the response status, so the caller can stop polling once the server
+ *   proves this page is not paired (see {@link shouldStopHeartbeat}).
+ */
+export async function sendHeartbeat(): Promise<number> {
+  const response = await fetch('/api/pair/heartbeat', { method: 'POST' })
+  return response.status
+}
+
+/**
+ * Whether a heartbeat answer means "this page can never be accepted again" and
+ * the 10 s wake source should stop: 401 (unpaired, or the device was revoked)
+ * and 403 (the fence refused it) are permanent for this page, while a network
+ * error or a 5xx is transient and keeps the cadence.
+ * @param status - the heartbeat response status.
+ */
+export function shouldStopHeartbeat(status: number): boolean {
+  return status === 401 || status === 403
 }
 
 /** Whether the current page URL carries a pairing token. */
@@ -210,11 +227,34 @@ export interface LanBindFrame {
   pendingRestart?: boolean
 }
 
+/** A failed LAN-bind read, carrying the HTTP status when the server answered. */
+export class LanBindStatusError extends Error {
+  /**
+   * @param status - the response status, or undefined when the request failed
+   *   before a response (network error).
+   * @param message - the diagnostic message.
+   */
+  constructor(public readonly status: number | undefined, message: string) {
+    super(message)
+    this.name = 'LanBindStatusError'
+  }
+}
+
 /** Read the LAN-bind facts (loopback-only endpoint). */
 export async function readLanBindStatus(): Promise<LanBindFrame> {
   const response = await fetch('/api/pair/lan-bind')
-  if (!response.ok) throw new Error(`remote-web-ui: lan-bind status failed with ${String(response.status)}`)
+  if (!response.ok) throw new LanBindStatusError(response.status, `remote-web-ui: lan-bind status failed with ${String(response.status)}`)
   return await response.json() as LanBindFrame
+}
+
+/**
+ * Whether a LAN-bind status failure means this origin can never read the
+ * endpoint (401/403 from the loopback-only fence), so a poll should stop
+ * instead of retrying a known refusal; a transient error keeps the cadence.
+ * @param status - the response status, or undefined for a network failure.
+ */
+export function shouldStopLanBindPoll(status: number | undefined): boolean {
+  return status === 401 || status === 403
 }
 
 /** Human-readable expiry clock, e.g. "10:35". */

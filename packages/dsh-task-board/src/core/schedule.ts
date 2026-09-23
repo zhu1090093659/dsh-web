@@ -179,7 +179,10 @@ function parseField(field: string, min: number, max: number, out: Set<number>): 
       high = Number(b)
     } else if (isDigits(range)) {
       low = Number(range)
-      high = Number(range)
+      // Standard cron: a bare value carrying a step runs from that value to the
+      // field maximum (minutes 5/15 are 5,20,35,50), while a bare value alone is
+      // exactly itself (#1493).
+      high = stepRaw === undefined ? low : max
     } else {
       return false
     }

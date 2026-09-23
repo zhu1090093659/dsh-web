@@ -1,25 +1,30 @@
 /**
- * The /api/dsh-skill-explorer route family: list (grouped by source), set
- * enabled (rewrites SKILL.md frontmatter), create, delete (move to .trash)
- * and health. Every route carries the shared trust fence (loopback by
- * default; a live paired-device cookie is an extra allow path when
- * remote-web-ui is loaded) plus browser same-origin markers — the write
- * routes touch real skill files, so unpaired LAN clients must not reach them.
+ * The /api/dsh-skill-explorer route family: list (grouped by source), read
+ * (one skill's editable fields and body), set enabled (rewrites SKILL.md
+ * frontmatter), create, update (rewrites an existing SKILL.md in place),
+ * delete (move to .trash) and health. Every route carries the shared trust
+ * fence (loopback by default; a live paired-device cookie is an extra allow
+ * path when remote-web-ui is loaded) plus browser same-origin markers — the
+ * write routes touch real skill files, so unpaired LAN clients must not reach
+ * them, and read/update only touch paths a fresh scan resolves.
  */
 
+import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { isSkillExplorerAllowed } from './access.ts'
-import { buildPayload, collectSkills, findProjectRoot, projectSkillRoot, trashSkillFile, userSkillRoot, writeSkillFile, type CollectOptions, type SkillEntry } from './collect.ts'
-import { setFrontmatterField } from './frontmatter.ts'
+import { buildPayload, collectSkills, findProjectRoot, overwriteSkillFile, projectSkillRoot, trashSkillFile, userSkillRoot, writeSkillFile, type CollectOptions, type SkillEntry } from './collect.ts'
+import { parseFrontmatter, setFrontmatterField, stripFrontmatter } from './frontmatter.ts'
 import { readJsonBody, writeJson } from './http.ts'
 
 /** Route paths (client bundle mirrors these literals; tests assert both sides). */
 export const ROUTES = {
   list: '/api/dsh-skill-explorer/list',
+  read: '/api/dsh-skill-explorer/read',
   setEnabled: '/api/dsh-skill-explorer/set-enabled',
   create: '/api/dsh-skill-explorer/create',
+  update: '/api/dsh-skill-explorer/update',
   delete: '/api/dsh-skill-explorer/delete',
   health: '/api/dsh-skill-explorer/health',
 } as const
@@ -108,8 +113,8 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
     return skills.find((candidate) => candidate.name === name)
   }
 
-  /** Resolve the exact editable file shown by the client, rejecting stale same-name fallbacks. */
-  const resolveMutationSkill = async (
+  /** Resolve the exact file the panel showed, rejecting stale same-name fallbacks. */
+  const resolveScannedSkill = async (
     name: string,
     expectedPath: string,
     cwd: string,
@@ -150,6 +155,39 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
     },
     {
       kind: 'exact',
+      path: ROUTES.read,
+      handler: async (req: IncomingMessage, res: ServerResponse) => {
+        if (!guard(req, res, 'GET')) return
+        try {
+          const url = new URL(req.url ?? '/', 'http://x')
+          const name = queryParam(url, 'name')
+          const path = queryParam(url, 'path')
+          if (name === undefined || !NAME_PATTERN.test(name) || path === undefined || path.trim() === '') {
+            writeJson(res, 400, { error: 'expected ?name=<kebab-case>&path=<absolute SKILL.md>' })
+            return
+          }
+          // The submitted path is only an identity claim: a fresh scan must
+          // resolve the same file the panel showed, so no request can read an
+          // arbitrary path.
+          const skill = await resolveScannedSkill(name, path, DEFAULT_CWD(), res)
+          if (skill === undefined) return
+          const raw = readFileSync(skill.path, 'utf8')
+          const frontmatter = parseFrontmatter(raw)
+          writeJson(res, 200, {
+            name,
+            path: skill.path,
+            description: frontmatter.description ?? skill.description,
+            ...(frontmatter.whenToUse === undefined ? {} : { whenToUse: frontmatter.whenToUse }),
+            content: stripFrontmatter(raw).trim(),
+          })
+        } catch (error) {
+          logger.warn(error)
+          writeJson(res, 500, { error: error instanceof Error ? error.message : String(error) })
+        }
+      },
+    },
+    {
+      kind: 'exact',
       path: ROUTES.setEnabled,
       handler: async (req: IncomingMessage, res: ServerResponse) => {
         if (!guard(req, res, 'POST')) return
@@ -167,7 +205,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
           }
           // The client path is only an identity claim: a fresh scan must
           // resolve the same effective skill before any file is touched.
-          const skill = await resolveMutationSkill(name, path, DEFAULT_CWD(), res)
+          const skill = await resolveScannedSkill(name, path, DEFAULT_CWD(), res)
           if (skill === undefined) return
           // Disabled = disable-model-invocation: true; enabled = false.
           const frontmatter = setFrontmatterField(skill.path, 'disable-model-invocation', enabled ? false : true)
@@ -237,6 +275,54 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
     },
     {
       kind: 'exact',
+      path: ROUTES.update,
+      handler: async (req: IncomingMessage, res: ServerResponse) => {
+        if (!guard(req, res, 'POST')) return
+        try {
+          const body = await readJsonBody(req, { maxBytes: 128 * 1024, objectOnly: true })
+          if (body === null) {
+            writeJson(res, 400, { error: 'invalid JSON body' })
+            return
+          }
+          const payload = body as Record<string, unknown>
+          const { name, path, description, whenToUse, content } = payload
+          if (typeof name !== 'string' || !NAME_PATTERN.test(name) || typeof path !== 'string' || path.trim() === '') {
+            writeJson(res, 400, { error: 'expected { name, path, description, content }' })
+            return
+          }
+          if (typeof description !== 'string' || description.trim() === '') {
+            writeJson(res, 400, { error: 'description is required' })
+            return
+          }
+          if (typeof content !== 'string' || content.trim() === '') {
+            writeJson(res, 400, { error: 'content is required' })
+            return
+          }
+          if (Buffer.byteLength(content, 'utf8') > 64 * 1024) {
+            writeJson(res, 400, { error: 'content exceeds 64KB limit' })
+            return
+          }
+          const skill = await resolveScannedSkill(name, path, DEFAULT_CWD(), res)
+          if (skill === undefined) return
+          // A linked skill lives behind a symlink: rewriting it would edit a
+          // file outside this skill root, so the panel must not offer it.
+          if (skill.linked === true) {
+            writeJson(res, 400, { error: `skill ${name} is a linked skill and cannot be edited` })
+            return
+          }
+          // The enabled state is not part of the edit form: carry it over so an
+          // edit never silently re-enables a disabled skill.
+          const disabled = parseFrontmatter(readFileSync(skill.path, 'utf8')).disableModelInvocation === true
+          const target = await overwriteSkillFile(skill.path, name, description.trim(), typeof whenToUse === 'string' ? whenToUse : undefined, content, disabled)
+          writeJson(res, 200, { ok: true, name, path: target, disabled })
+        } catch (error) {
+          logger.warn(error)
+          writeJson(res, 500, { error: error instanceof Error ? error.message : String(error) })
+        }
+      },
+    },
+    {
+      kind: 'exact',
       path: ROUTES.delete,
       handler: async (req: IncomingMessage, res: ServerResponse) => {
         if (!guard(req, res, 'POST')) return
@@ -252,7 +338,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
             writeJson(res, 400, { error: 'expected { name, path }' })
             return
           }
-          const skill = await resolveMutationSkill(name, path, DEFAULT_CWD(), res)
+          const skill = await resolveScannedSkill(name, path, DEFAULT_CWD(), res)
           if (skill === undefined) return
           // A linked skill lives behind a symlink (mount-of-intent content, not
           // created under this root). Deleting it would move the target's real

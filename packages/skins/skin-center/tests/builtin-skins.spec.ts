@@ -134,6 +134,18 @@ describe('built-in v2 skins: catalog and stylesheets', () => {
     })
   }
 
+  it('ice-princess: every tooltip background carries the fixed white bubble text (#1515)', () => {
+    const css = readFileSync(join(SKINS_DIR, 'ice-princess', 'skin.css'), 'utf8')
+    // The official Tooltip paints its label with --dsw-static-neutral-bluish-00
+    // (pure white), which no skin token can remap, so the background has to
+    // carry the contrast in both theme blocks.
+    const backgrounds = [...css.matchAll(/--dsw-alias-tooltip-bg:\s*([^;]+);/g)].map((match) => match[1]!.trim())
+    expect(backgrounds.length).toBeGreaterThanOrEqual(2)
+    for (const background of backgrounds) {
+      expect(contrastRatio('#ffffff', background), `tooltip background ${background}`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
   it('mint: tooltip foreground keeps light and dark mode popovers readable (#924)', () => {
     const css = readFileSync(join(SKINS_DIR, 'mint', 'skin.css'), 'utf8')
     for (const selector of [':root', 'body[data-ds-dark-theme]']) {

@@ -52,8 +52,10 @@ sidebar.
 | Route | Method | Purpose |
 | --- | --- | --- |
 | `/api/dsh-skill-explorer/list` | GET | Grouped skill list |
+| `/api/dsh-skill-explorer/read` | GET | One skill's editable fields and body (`?name=&path=`) |
 | `/api/dsh-skill-explorer/set-enabled` | POST | Enable/disable (rewrites frontmatter) |
 | `/api/dsh-skill-explorer/create` | POST | Create a skill (user/project root) |
+| `/api/dsh-skill-explorer/update` | POST | Edit an existing skill in place (name and location unchanged) |
 | `/api/dsh-skill-explorer/delete` | POST | Delete (move into .trash) |
 | `/api/dsh-skill-explorer/health` | GET | Health probe |
 
@@ -70,9 +72,14 @@ sidebar.
   before mutating, a fresh filesystem scan must resolve the same skill name and
   exact path. Arbitrary paths and stale same-name fallbacks are rejected, so a
   disappeared project skill cannot redirect a pending action to a user or
-  custom skill with the same name.
+  custom skill with the same name. The read route applies the same resolution,
+  so it cannot be used to read an arbitrary path either.
+- The edit route rewrites an existing SKILL.md in place and does not touch the
+  skill name or location; it carries the current `disable-model-invocation`
+  value over, so an edit can never silently re-enable a disabled skill. Linked
+  skills are refused here for the same reason deletion is (see below).
 - Skill content is user-authored markdown; the create form caps content at
-  64KB.
+  64KB, and the edit route enforces the same cap.
 - The panel renders skill descriptions with text nodes only (no HTML
   injection).
 - Scans follow symbolic links: symlinked skill directories and single `.md`
@@ -85,7 +92,8 @@ sidebar.
   target's own frontmatter), but **cannot be deleted**: deletion would move the
   target's `SKILL.md` out of place, escaping the current skill root, so the
   delete button is hidden for linked skills and the delete route refuses them
-  (400). Write operations still sit behind the loopback fence and the "trust
+  (400). For the same escape reason the edit route refuses linked skills too,
+  and the panel hides the edit button for them. Write operations still sit behind the loopback fence and the "trust
   only freshly scanned paths" rule.
 
 ## Known limitations

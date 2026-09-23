@@ -114,20 +114,66 @@ export function startProxyCommand(rawCommand: string, target: ProxyTarget): Prox
     escalate.unref()
   }
 
+  function formatExitError(code: number | null, signal: NodeJS.Signals | null, stderrDetail: string): Error {
+    const status = signal !== null ? 'signal ' + signal : 'code ' + String(code ?? 'unknown')
+    const detail = stderrDetail.trim()
+    return new Error('ProxyCommand exited (' + status + ')' + (detail === '' ? '' : ': ' + detail))
+  }
+
   const stream = new Duplex({
     read() {
       child.stdout?.resume()
     },
     write(chunk, _encoding, callback) {
       const stdin = child.stdin
-      if (stdin === null || stdin.destroyed) {
+      if (stream.destroyed || stdin === null || stdin.destroyed) {
         callback(new Error('ProxyCommand stdin is already closed'))
         return
       }
-      stdin.write(chunk, callback)
+      stdin.write(chunk, (err) => {
+        if (!err) {
+          callback()
+          return
+        }
+        if ((child.exitCode !== null && child.exitCode !== 0) || child.signalCode !== null) {
+          const exitErr = formatExitError(child.exitCode, child.signalCode, stderr)
+          fail(exitErr)
+          callback(exitErr)
+          return
+        }
+        let resolved = false
+        const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
+          if (resolved) return
+          resolved = true
+          clearTimeout(timer)
+          const exitErr = (code !== null && code !== 0) || signal !== null
+            ? formatExitError(code, signal, stderr)
+            : new Error('ProxyCommand transport write failed: ' + err.message)
+          fail(exitErr)
+          callback(exitErr)
+        }
+        const timer = setTimeout(() => {
+          if (resolved) return
+          resolved = true
+          child.removeListener('exit', onExit)
+          const transportErr = new Error('ProxyCommand transport write failed: ' + err.message)
+          fail(transportErr)
+          callback(transportErr)
+        }, 200)
+        timer.unref()
+        child.once('exit', onExit)
+      })
     },
     final(callback) {
-      child.stdin?.end(callback)
+      const stdin = child.stdin
+      if (stdin === null || stdin.destroyed) {
+        callback()
+        return
+      }
+      stdin.end((err?: Error | null) => {
+        if (err) callback(new Error('ProxyCommand transport close failed: ' + err.message))
+        else callback()
+      })
     },
     destroy(error, callback) {
       kill()
@@ -165,18 +211,34 @@ export function startProxyCommand(rawCommand: string, target: ProxyTarget): Prox
     stdoutEnded = true
     finishIfClean()
   })
-  child.stdout?.on('error', (error: Error) => { fail(error) })
+  child.stdout?.on('error', (error: Error) => {
+    fail(new Error('ProxyCommand stdout error: ' + error.message))
+  })
+  child.stdin?.on('error', (error: Error) => {
+    // A broken pipe (EPIPE) on stdin occurs naturally when the proxy command
+    // exits early or closes its standard input. Prevent unhandled EventEmitter errors.
+    if ((child.exitCode !== null && child.exitCode !== 0) || child.signalCode !== null) {
+      fail(formatExitError(child.exitCode, child.signalCode, stderr))
+      return
+    }
+    const timer = setTimeout(() => {
+      fail(new Error('ProxyCommand transport error: ' + error.message))
+    }, 200)
+    timer.unref()
+    child.once('exit', (code, signal) => {
+      clearTimeout(timer)
+      if ((code !== null && code !== 0) || signal !== null) {
+        fail(formatExitError(code, signal, stderr))
+      }
+    })
+  })
   child.on('error', (error: Error) => {
     fail(new Error('ProxyCommand could not start: ' + error.message))
   })
   child.on('exit', (code, signal) => {
     exited = true
     if ((code !== null && code !== 0) || signal !== null) {
-      const detail = stderr.trim()
-      fail(new Error(
-        'ProxyCommand exited (' + (signal !== null ? 'signal ' + signal : 'code ' + String(code ?? 'unknown')) + ')'
-        + (detail === '' ? '' : ': ' + detail),
-      ))
+      fail(formatExitError(code, signal, stderr))
       return
     }
     finishIfClean()

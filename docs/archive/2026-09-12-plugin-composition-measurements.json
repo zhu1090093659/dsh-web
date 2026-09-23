@@ -1,0 +1,203 @@
+{
+  "baseline": {
+    "source": "78681d3c",
+    "runs": [
+      {
+        "run": 1,
+        "retainedMutationRecords": 1001,
+        "queuedFrames": 1,
+        "framesAfterDispose": 1,
+        "closedPanelRenders": 2,
+        "framesUntilCodeHook": 2,
+        "closedTunnelPollsPerMinute": 12,
+        "hiddenTunnelPollsPerMinute": 12,
+        "intervalsAfterDispose": 0
+      },
+      {
+        "run": 2,
+        "retainedMutationRecords": 1001,
+        "queuedFrames": 1,
+        "framesAfterDispose": 1,
+        "closedPanelRenders": 2,
+        "framesUntilCodeHook": 2,
+        "closedTunnelPollsPerMinute": 12,
+        "hiddenTunnelPollsPerMinute": 12,
+        "intervalsAfterDispose": 0
+      },
+      {
+        "run": 3,
+        "retainedMutationRecords": 1001,
+        "queuedFrames": 1,
+        "framesAfterDispose": 1,
+        "closedPanelRenders": 2,
+        "framesUntilCodeHook": 2,
+        "closedTunnelPollsPerMinute": 12,
+        "hiddenTunnelPollsPerMinute": 12,
+        "intervalsAfterDispose": 0
+      }
+    ]
+  },
+  "optimized": {
+    "source": "working-tree",
+    "runs": [
+      {
+        "run": 1,
+        "retainedMutationRecords": 0,
+        "queuedFrames": 1,
+        "framesAfterDispose": 0,
+        "closedPanelRenders": 0,
+        "framesUntilCodeHook": 1,
+        "closedTunnelPollsPerMinute": 0,
+        "hiddenTunnelPollsPerMinute": 0,
+        "intervalsAfterDispose": 0
+      },
+      {
+        "run": 2,
+        "retainedMutationRecords": 0,
+        "queuedFrames": 1,
+        "framesAfterDispose": 0,
+        "closedPanelRenders": 0,
+        "framesUntilCodeHook": 1,
+        "closedTunnelPollsPerMinute": 0,
+        "hiddenTunnelPollsPerMinute": 0,
+        "intervalsAfterDispose": 0
+      },
+      {
+        "run": 3,
+        "retainedMutationRecords": 0,
+        "queuedFrames": 1,
+        "framesAfterDispose": 0,
+        "closedPanelRenders": 0,
+        "framesUntilCodeHook": 1,
+        "closedTunnelPollsPerMinute": 0,
+        "hiddenTunnelPollsPerMinute": 0,
+        "intervalsAfterDispose": 0
+      }
+    ]
+  },
+  "environment": {
+    "node": "v25.8.1",
+    "platform": "macOS arm64",
+    "metric": "controlled resource counts; no CPU, heap-byte or FPS estimate"
+  },
+  "sourceSha256": {
+    "shared/client/body-mutations.ts": "c77111bc04ccdbd3da1cb08d752be3acc3da5f35f7c92f022b7bc3aa1a72c932",
+    "shared/client/panel-mount-core.ts": "636c5b36be4fb4d3103121d311a2107475b494d3842e493e2392f015f9bdd0b1",
+    "packages/dsh-ssh/src/client/panel/TunnelsTab.tsx": "1797fee7a7e31e18d959bfcf215da4cc72d01f469ca2ff4dae612224c1c8b9a0",
+    "packages/dsh-web-all/src/client/index.ts": "573b37c6cc139688ad3e44868126edbb431b717c089bf2641095901e4ad7655a",
+    "packages/dsh-web-all/lib/client.js": "585eceab9fe84ed053de2304f8698d1d65108208ee42f789ef953ffe2932b024",
+    "shared/client/sidebar-entry-core.ts": "7670e08e1f835ff5a2fd699df4a16fff2b84f2d1a44fff0e8d4d7b5b9597bc8d",
+    "packages/dsh-ssh/src/client/panel/SshPanel.tsx": "cdd63f42a69126ccd03ee4863a69f6059c1c8a4cb7b5724155376e1e2b09444a",
+    "docs/archive/2026-09-12-plugin-composition-bench.mjs": "e0dabb409ca05a6513b7c3ca50db7bbea99785046acdf2948158e416ce98b5f2"
+  },
+  "gui": {
+    "baseline": {
+      "url": "http://127.0.0.1:3080/",
+      "source": "Real running DSH shell, isolated aggregate client response replacement in this test browser only",
+      "aggregateSha256": "dd7251149dcf143b7440fab444e6b1d3000d59d52cc8ca43e711cce5573f96ba",
+      "testedAt": "2026-09-12T07:00:02.857Z",
+      "baseline": true,
+      "replacements": 1,
+      "beforeOpen": {
+        "children": 1,
+        "nodes": 45
+      },
+      "draftAndNodePreserved": true,
+      "desktop": {
+        "width": 1600,
+        "height": 1000
+      },
+      "mobile": {
+        "width": 390,
+        "height": 844,
+        "back": {
+          "x": 60,
+          "y": 854,
+          "width": 83.34375,
+          "height": 44
+        },
+        "collapsed": true,
+        "state": {
+          "frame": "<div class=\"pI_x6G_frame\" data-rightbar-collapsed=\"true\" data-dsh-frame=\"\" style=\"grid-template-columns: 56px minmax(0px, 1fr) 0px;\" data-sidebar-collapsed=\"true\"><div class=\"pI_x6G_sidebarCol\" data-pane=\"sidebar\"><div data-slot=\"sidebar\" data-dsh-surface=\"sidebar\" style=\"display: contents;\"><div cl",
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 52,
+            "height": 844,
+            "display": "block",
+            "pointerEvents": "none",
+            "transform": "none"
+          },
+          "back": {
+            "x": 60,
+            "y": 854,
+            "width": 83.34375,
+            "height": 44
+          }
+        },
+        "navigationPassed": false,
+        "navigationError": "Back control is outside the mobile viewport"
+      },
+      "hub": {
+        "subscribers": 3,
+        "retainedRecords": 0
+      },
+      "errors": [],
+      "failedAssets": []
+    },
+    "optimized": {
+      "url": "http://127.0.0.1:3080/",
+      "source": "Real running DSH shell, isolated aggregate client response replacement in this test browser only",
+      "aggregateSha256": "585eceab9fe84ed053de2304f8698d1d65108208ee42f789ef953ffe2932b024",
+      "testedAt": "2026-09-12T06:59:07.103Z",
+      "baseline": false,
+      "replacements": 1,
+      "beforeOpen": {
+        "children": 0,
+        "nodes": 0
+      },
+      "draftAndNodePreserved": true,
+      "desktop": {
+        "width": 1600,
+        "height": 1000
+      },
+      "mobile": {
+        "width": 390,
+        "height": 844,
+        "back": {
+          "x": 60,
+          "y": 854,
+          "width": 83.34375,
+          "height": 44
+        },
+        "collapsed": true,
+        "state": {
+          "frame": "<div class=\"pI_x6G_frame\" data-rightbar-collapsed=\"true\" data-dsh-frame=\"\" style=\"grid-template-columns: 56px minmax(0px, 1fr) 0px;\" data-sidebar-collapsed=\"true\"><div class=\"pI_x6G_sidebarCol\" data-pane=\"sidebar\"><div data-slot=\"sidebar\" style=\"display: contents;\" data-dsh-surface=\"sidebar\"><div cl",
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 52,
+            "height": 844,
+            "display": "block",
+            "pointerEvents": "none",
+            "transform": "none"
+          },
+          "back": {
+            "x": 60,
+            "y": 854,
+            "width": 83.34375,
+            "height": 44
+          }
+        },
+        "navigationPassed": false,
+        "navigationError": "Back control is outside the mobile viewport"
+      },
+      "hub": {
+        "subscribers": 3,
+        "retainedRecords": 0
+      },
+      "errors": [],
+      "failedAssets": []
+    }
+  }
+}

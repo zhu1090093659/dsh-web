@@ -1,6 +1,6 @@
 /**
- * Skill center panel (browser half): an overlay modal with two tabs — the
- * grouped skill list (enable/disable switch, delete) and a create form.
+ * Skill center panel (browser half): an overlay modal with the grouped skill
+ * list (enable/disable switch, edit, delete) plus create and edit forms.
  * Talks to the host route family through SkillApi.
  */
 
@@ -17,7 +17,7 @@ export interface SkillPanelProps {
   onClose: () => void
 }
 
-type Tab = 'list' | 'create'
+type Tab = 'list' | 'create' | 'edit'
 
 /** Marks shown next to a skill (model/user invocable). */
 function invokableMarks(skill: SkillEntry): string {
@@ -34,8 +34,8 @@ function providerLabel(provider: string): string {
   return translated === key ? provider : translated
 }
 
-/** One skill card: name, badges, toggle switch, delete button. */
-function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi; onChanged: () => void }): React.JSX.Element {
+/** One skill card: name, badges, toggle switch, edit and delete buttons. */
+function SkillCard({ skill, api, onChanged, onEdit }: { skill: SkillEntry; api: SkillApi; onChanged: () => void; onEdit: (skill: SkillEntry) => void }): React.JSX.Element {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | undefined>(undefined)
   // Sync ref guard: React state updates are async, so a double click before
@@ -129,6 +129,11 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
           </button>
         )}
         {skill.path !== undefined && skill.linked !== true && (
+          <button type="button" className={css.editButton} disabled={busy} onClick={() => { onEdit(skill) }}>
+            {tt('list.edit')}
+          </button>
+        )}
+        {skill.path !== undefined && skill.linked !== true && (
           <button type="button" className={css.deleteButton} disabled={busy} onClick={() => { void remove() }}>
             {tt('list.delete')}
           </button>
@@ -145,7 +150,7 @@ function SkillCard({ skill, api, onChanged }: { skill: SkillEntry; api: SkillApi
 }
 
 /** The grouped skill list tab. */
-function ListTab({ api, refreshTick, onCwd }: { api: SkillApi; refreshTick: number; onCwd: (cwd: string) => void }): React.JSX.Element {
+function ListTab({ api, refreshTick, onCwd, onEdit }: { api: SkillApi; refreshTick: number; onCwd: (cwd: string) => void; onEdit: (skill: SkillEntry) => void }): React.JSX.Element {
   const [payload, setPayload] = useState<ListPayload | undefined>(undefined)
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>('all')
   const [query, setQuery] = useState('')
@@ -163,6 +168,7 @@ function ListTab({ api, refreshTick, onCwd }: { api: SkillApi; refreshTick: numb
       setError(undefined)
     } catch (err) {
       if (seq !== loadSeq.current) return
+      console.error('[dsh-skill-explorer] failed to load skills:', err)
       setError(tt('list.loadFailed', { error: err instanceof Error ? err.message : String(err) }))
     }
   }
@@ -239,7 +245,7 @@ function ListTab({ api, refreshTick, onCwd }: { api: SkillApi; refreshTick: numb
             </h3>
             {hint !== '' && <p className={css.groupHint}>{hint}</p>}
             {group.skills.map((skill) => (
-              <SkillCard key={skill.name} skill={skill} api={api} onChanged={() => { void load() }} />
+              <SkillCard key={skill.name} skill={skill} api={api} onChanged={() => { void load() }} onEdit={onEdit} />
             ))}
           </section>
         )
@@ -313,11 +319,107 @@ function CreateTab({ api, cwd }: { api: SkillApi; cwd: string | undefined }): Re
   )
 }
 
+/** The edit form tab: loads the skill's editable fields and rewrites it in place. */
+function EditTab({ api, skill, onDone, onCancel }: { api: SkillApi; skill: SkillEntry; onDone: () => void; onCancel: () => void }): React.JSX.Element {
+  const skillPath = skill.path ?? ''
+  const [description, setDescription] = useState('')
+  const [whenToUse, setWhenToUse] = useState('')
+  const [content, setContent] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | undefined>(undefined)
+
+  // Load on open: the panel only carries list metadata, and the host re-reads
+  // the file itself, so the form shows what is on disk right now.
+  useEffect(() => {
+    let cancelled = false
+    const load = async (): Promise<void> => {
+      try {
+        const current = await api.read(skill.name, skillPath)
+        if (cancelled) return
+        setDescription(current.description)
+        setWhenToUse(current.whenToUse ?? '')
+        setContent(current.content)
+        setError(undefined)
+      } catch (err) {
+        if (cancelled) return
+        setError(tt('edit.loadFailed', { error: err instanceof Error ? err.message : String(err) }))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [api, skill.name, skillPath])
+
+  const submit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault()
+    if (description.trim() === '' || content.trim() === '') {
+      setError(tt('create.empty'))
+      return
+    }
+    setBusy(true)
+    setError(undefined)
+    try {
+      await api.update({ name: skill.name, path: skillPath, description: description.trim(), whenToUse: whenToUse.trim() || undefined, content })
+      // The list refetches on the way back, so the card itself confirms the save.
+      onDone()
+    } catch (err) {
+      setError(tt('edit.failed', { error: err instanceof Error ? err.message : String(err) }))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (loading) return <div className={css.status}>{tt('edit.loading')}</div>
+
+  return (
+    <form className={css.form} onSubmit={(event) => { void submit(event) }}>
+      <label className={css.formLabel}>
+        {tt('edit.name')}
+        <input className={css.formInput} value={skill.name} readOnly />
+      </label>
+      <label className={css.formLabel}>
+        {tt('create.description')}
+        <input className={css.formInput} value={description} onChange={(event) => { setDescription(event.target.value) }} />
+      </label>
+      <label className={css.formLabel}>
+        {tt('create.whenToUse')}
+        <input className={css.formInput} value={whenToUse} onChange={(event) => { setWhenToUse(event.target.value) }} />
+      </label>
+      <label className={css.formLabel}>
+        {tt('create.content')}
+        <textarea className={`${css.formInput} ${css.formTextarea}`} value={content} onChange={(event) => { setContent(event.target.value) }} />
+      </label>
+      <div className={css.formActionsRow}>
+        <button type="button" className={css.formButtonGhost} disabled={busy} onClick={onCancel}>{tt('edit.back')}</button>
+        <button type="submit" className={css.formButton} disabled={busy}>{tt('edit.submit')}</button>
+      </div>
+      {error !== undefined && <p className={css.feedback}>{error}</p>}
+      <p className={css.note}>{tt('edit.note')}</p>
+    </form>
+  )
+}
+
 /** The skill center overlay modal. */
 export function SkillPanel({ api, onClose }: SkillPanelProps): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('list')
   const [cwd, setCwd] = useState<string | undefined>(undefined)
   const [refreshTick, setRefreshTick] = useState(0)
+  const [editing, setEditing] = useState<SkillEntry | undefined>(undefined)
+
+  /** Open the edit form for one card (issue #1622). */
+  const openEdit = (skill: SkillEntry): void => {
+    setEditing(skill)
+    setTab('edit')
+  }
+
+  /** Leave the edit form; the list refetches so the saved copy is visible. */
+  const closeEdit = (): void => {
+    setEditing(undefined)
+    setTab('list')
+    setRefreshTick((tick) => tick + 1)
+  }
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -354,9 +456,18 @@ export function SkillPanel({ api, onClose }: SkillPanelProps): React.JSX.Element
           <button type="button" role="tab" className={`${css.tab} ${tab === 'create' ? css.tabActive : ''}`} data-dsh-part="tab" aria-selected={tab === 'create'} data-active={tab === 'create' ? '' : undefined} onClick={() => { setTab('create') }}>
             {tt('tab.create')}
           </button>
+          {editing !== undefined && (
+            <button type="button" role="tab" className={`${css.tab} ${tab === 'edit' ? css.tabActive : ''}`} data-dsh-part="tab" aria-selected={tab === 'edit'} data-active={tab === 'edit' ? '' : undefined} onClick={() => { setTab('edit') }}>
+              {tt('tab.edit')}
+            </button>
+          )}
         </div>
         <div className={css.body}>
-          {tab === 'list' ? <ListTab api={api} refreshTick={refreshTick} onCwd={setCwd} /> : <CreateTab api={api} cwd={cwd} />}
+          {tab === 'edit' && editing !== undefined
+            ? <EditTab api={api} skill={editing} onDone={closeEdit} onCancel={closeEdit} />
+            : tab === 'create'
+              ? <CreateTab api={api} cwd={cwd} />
+              : <ListTab api={api} refreshTick={refreshTick} onCwd={setCwd} onEdit={openEdit} />}
         </div>
       </div>
     </div>

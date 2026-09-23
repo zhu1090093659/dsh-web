@@ -23,19 +23,45 @@ function setWidth(px: number): void {
   vi.stubGlobal('innerWidth', px)
 }
 
+/**
+ * Interval ids the layer started. freshStart() builds a new module instance per
+ * test while the previous one keeps its page-lifetime listeners and sync tick,
+ * so without this teardown a stale layer would keep re-suppressing rows on the
+ * shared document (and the suite would accumulate live timers).
+ */
+let adaptTimers: number[] = []
+
 beforeEach(() => {
   document.head.innerHTML = ''
   document.body.innerHTML = ''
+  // The header-actions reserve rides <html>, which the head/body wipe above
+  // does not touch; clear it so one test cannot inherit another's value.
+  document.documentElement.removeAttribute('style')
   window.sessionStorage.clear()
   // jsdom's localStorage in this vitest build lacks clear(); the adapt layer
   // only reads it (inside try/catch), so stale keys are harmless here.
   stubMatchMedia()
+  adaptTimers = []
+  const realSetInterval = globalThis.setInterval
+  vi.stubGlobal('setInterval', (fn: () => void, ms?: number, ...args: unknown[]): number => {
+    const id = realSetInterval(fn, ms, ...args) as unknown as number
+    adaptTimers.push(id)
+    return id
+  })
 })
 
 afterEach(() => {
+  for (const id of adaptTimers) globalThis.clearInterval(id)
+  adaptTimers = []
+  // The layer patches HTMLElement.prototype.focus globally; restore the page's
+  // own function so one test's patch cannot stack onto the next one's.
+  HTMLElement.prototype.focus = TRUE_FOCUS
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
+
+/** The page's own focus function (captured before any layer instance patches it). */
+const TRUE_FOCUS = HTMLElement.prototype.focus
 
 /**
  * A fresh module instance: startMobileAdapt is a page-lifetime singleton
@@ -132,6 +158,53 @@ describe('startMobileAdapt', () => {
     expect(whale).not.toBeNull()
     expect(parseFloat(whale?.style.left ?? 'NaN')).toBeLessThanOrEqual(390 - 38)
     expect(parseFloat(whale?.style.top ?? 'NaN')).toBeLessThanOrEqual(700 - 38)
+  })
+
+  it('user keeps the whale reachable after the viewport shrinks', async () => {
+    // Given a visible whale positioned against a 390px-wide portrait viewport.
+    media.portrait = true
+    media.coarse = true
+    setWidth(390)
+    vi.stubGlobal('innerHeight', 700)
+    const store: Record<string, string> = { 'dsh-remote-whale-pos': JSON.stringify({ x: 352, y: 100 }) }
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store[key] ?? null,
+      setItem: (key: string, value: string) => { store[key] = value },
+      removeItem: (key: string) => { delete store[key] },
+    })
+    const frame = document.createElement('div')
+    frame.className = 'app_frame'
+    frame.setAttribute('data-dsh-frame', '')
+    frame.setAttribute('data-sidebar-collapsed', '')
+    document.body.appendChild(frame)
+    const start = await freshStart()
+    start()
+    const whale = document.getElementById('dshRemoteWhale') as HTMLElement | null
+    expect(parseFloat(whale?.style.left ?? 'NaN')).toBe(352)
+    // When the viewport shrinks while the whale stays visible (split-screen).
+    setWidth(200)
+    window.dispatchEvent(new Event('resize'))
+    // Then it is re-clamped into the new viewport instead of parking off-screen,
+    // where it would be unreachable (the only portrait sidebar entry).
+    expect(parseFloat(whale?.style.left ?? 'NaN')).toBe(200 - 38)
+  })
+
+  it('user keeps the original focus behavior when the layer is disabled', async () => {
+    // Given a portrait touch viewport and the page's own focus function.
+    media.portrait = true
+    media.coarse = true
+    setWidth(390)
+    const original = HTMLElement.prototype.focus
+    const start = await freshStart()
+    start()
+    const adapt = (window as unknown as { __dshRemoteAdapt?: { setEnabled: (on: boolean) => void } }).__dshRemoteAdapt
+    // When the layer is active, then the composer-focus guard is installed.
+    expect(HTMLElement.prototype.focus).not.toBe(original)
+    // And disabling it hands the prototype back (a re-enable installs it again).
+    adapt?.setEnabled(false)
+    expect(HTMLElement.prototype.focus).toBe(original)
+    adapt?.setEnabled(true)
+    expect(HTMLElement.prototype.focus).not.toBe(original)
   })
 
   it('Enter inserts a newline but an IME-confirm Enter (keyCode 229) does not', async () => {
@@ -334,6 +407,35 @@ describe('startMobileAdapt', () => {
     expect(row.getAttribute('draggable')).toBe('true')
   })
 
+  it('user does not retain a detached session row for the page lifetime', async () => {
+    // Given a portrait touch viewport with one draggable official session row.
+    media.portrait = true
+    media.coarse = true
+    setWidth(390)
+    const sidebar = document.createElement('div')
+    sidebar.className = 'app_sidebarCol'
+    const row = document.createElement('div')
+    row.className = 'x_sessionRow x_flatSessionRowWithoutStatus'
+    row.setAttribute('draggable', 'true')
+    sidebar.appendChild(row)
+    document.body.appendChild(sidebar)
+    const start = await freshStart()
+    start()
+    // When the layer suppresses the row's native drag.
+    await vi.waitFor(() => { expect(row.getAttribute('draggable')).toBe('false') })
+    // And React then replaces it (the detached node can never be restored by a
+    // later revert, so tracking it would retain the whole detached subtree).
+    sidebar.remove()
+    // Then the detached node is forgotten and hands its official state back.
+    await vi.waitFor(() => { expect(row.getAttribute('draggable')).toBe('true') })
+    // And a node React re-attaches is recorded again and restores on revert.
+    document.body.appendChild(sidebar)
+    await vi.waitFor(() => { expect(row.getAttribute('draggable')).toBe('false') })
+    media.portrait = false
+    ;(window as unknown as { __dshRemoteAdapt?: { evaluate: () => void } }).__dshRemoteAdapt?.evaluate()
+    expect(row.getAttribute('draggable')).toBe('true')
+  })
+
   it('takes the header actions out of flow only while seated, without moving them', async () => {
     media.portrait = true
     media.coarse = true
@@ -380,7 +482,47 @@ describe('startMobileAdapt', () => {
     // transform move it visually (a re-parented node breaks React's anchors).
     expect(actions.parentElement).toBe(cluster)
     expect(actions.style.transform).toBe('translate(0px, 0px)')
-    expect(tabs.style.paddingRight).toBe('8px')
+    // v80: the painted width is reserved through a CSS variable on <html>, so
+    // the row caps its own width with it (and scrolls) instead of reserving
+    // padding that a nowrap flex row overflows anyway.
+    expect(document.documentElement.style.getPropertyValue('--dsh-remote-header-actions-reserve')).toBe('8px')
+  })
+
+  it('user in portrait gets the tabs row capped against the painted actions and the reserve released', async () => {
+    // Given a portrait coarse-pointer viewport
+    media.portrait = true
+    media.coarse = true
+    setWidth(390)
+    const start = await freshStart()
+
+    // When the adaptation layer installs
+    start()
+    const css = document.querySelector('style[data-plugin-css="dsh-remote-web-ui/mobile-adapt.css"]')?.textContent ?? ''
+
+    // Then the row caps its own width and scrolls: issue #1635 showed padding
+    // alone does not move the labels out from under the painted actions,
+    // because a nowrap flex row overflows its own padding box
+    expect(css).toContain('max-width:max(0px,calc(100% - var(--dsh-remote-header-actions-reserve,0px)))')
+    expect(css).toContain('overflow-x:auto')
+    const header = document.createElement('div')
+    header.className = 'chat_header'
+    const cluster = document.createElement('div')
+    cluster.className = 'chat_titleCluster'
+    const actions = document.createElement('div')
+    actions.className = 'chat_headerActions'
+    cluster.appendChild(actions)
+    const tabs = document.createElement('div')
+    tabs.className = 'chat_tabs'
+    tabs.innerHTML = '<button class="chat_tab">Chat</button>'
+    header.append(cluster, tabs)
+    document.body.appendChild(header)
+    await vi.waitFor(() => { expect(document.body.classList.contains('dsh-remote-header-seated')).toBe(true) })
+    expect(document.documentElement.style.getPropertyValue('--dsh-remote-header-actions-reserve')).toBe('8px')
+    // Reverting the layer releases the reserve, so a portrait-to-desktop flip
+    // leaves the official row width untouched.
+    const adapt = (window as unknown as { __dshRemoteAdapt?: { setEnabled: (on: boolean) => void } }).__dshRemoteAdapt
+    adapt?.setEnabled(false)
+    expect(document.documentElement.style.getPropertyValue('--dsh-remote-header-actions-reserve')).toBe('')
   })
 
   it('drills into the picker sheet by structure when the cell labels are localized', async () => {

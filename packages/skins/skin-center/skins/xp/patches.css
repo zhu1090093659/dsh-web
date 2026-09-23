@@ -1,14 +1,35 @@
-[id="root"] {
-  box-sizing: border-box;
-  background: #fff;
-  border: 1px solid #0831d9;
-  box-shadow: 0 4px 14px #0006;
+body {
+  padding-top: 30px !important;
+  padding-bottom: 24px !important;
+  box-sizing: border-box !important;
+  height: 100vh !important;
 }
 
-body[data-ds-dark-theme] [id="root"] {
-  background: #0d0f12;
-  border-color: #000;
-  box-shadow: 0 4px 14px #000000a6;
+[id="root"],
+:is([data-dsh-frame], [data-pane="conversation"], [data-slot="conversation"], [data-dsh-surface="conversation"], [data-dsh-part="scrollport"], [data-conversation-scroll], [class*="centerCol"], [class*="frame"], [class*="-l6A3q_root"]) {
+  background: transparent !important;
+}
+
+body[data-ds-dark-theme] [id="root"],
+body[data-ds-dark-theme] :is([data-dsh-frame], [data-pane="conversation"], [data-slot="conversation"], [data-dsh-surface="conversation"], [data-dsh-part="scrollport"], [data-conversation-scroll], [class*="centerCol"], [class*="frame"], [class*="-l6A3q_root"]) {
+  background: transparent !important;
+}
+
+[data-composer-card] {
+  background: #ece9d8 !important;
+  border: 2px solid #003c74 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+body[data-ds-dark-theme] [data-composer-card] {
+  background: #202227 !important;
+  border: 2px solid #316ac5 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6) !important;
+}
+
+:is([class*="headlineText"], [class*="titleGroup"]) {
+  color: #fff !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7), 0 1px 2px #000 !important;
 }
 
 * {
@@ -40,9 +61,9 @@ body[data-ds-dark-theme] [id="root"] {
 }
 
 body[data-ds-dark-theme] .Ce-zfq_xpTitlebar {
-  background: linear-gradient(#3a3f45 0%, #22262b 55%, #101216 100%);
-  border-bottom-color: #000;
-  box-shadow: inset 0 1px #ffffff24;
+  background: linear-gradient(#083d8a 0%, #0f4c9c 45%, #1b5bb5 100%);
+  border-bottom-color: #052454;
+  box-shadow: inset 0 1px #ffffff33;
 }
 
 .Ce-zfq_xpTitlebarTitle {
@@ -74,10 +95,16 @@ body[data-ds-dark-theme] .Ce-zfq_xpTitlebar {
   box-shadow: inset 0 1px #ffffff59;
 }
 
-body[data-ds-dark-theme] .Ce-zfq_xpTitlebarBtn, body[data-ds-dark-theme] .Ce-zfq_xpTitlebarBtnClose {
-  background: linear-gradient(#4a4e55 0%, #26292e 100%);
-  border-color: #000;
-  box-shadow: inset 0 1px #ffffff29;
+body[data-ds-dark-theme] .Ce-zfq_xpTitlebarBtn {
+  background: linear-gradient(#2d5ea0 0%, #153e84 100%);
+  border-color: #0831d9;
+  box-shadow: inset 0 1px #ffffff33;
+}
+
+body[data-ds-dark-theme] .Ce-zfq_xpTitlebarBtnClose {
+  background: linear-gradient(#c84838 0%, #9e2a1d 100%);
+  border-color: #7a1f14;
+  box-shadow: inset 0 1px #ffffff40;
 }
 
 .Ce-zfq_xpTitlebarBtn:hover {
@@ -169,16 +196,18 @@ body[data-ds-dark-theme] [data-pane="sidebar"] > div {
   color: #fff;
 }
 
-[data-pane="sidebar"] [class*="logoRow"] {
+[data-pane="sidebar"] [class*="logoRow"],
+:is([data-pane="sidebar"], [data-slot="sidebar"], [data-dsh-surface="sidebar"], [class*="sidebarCol"]) [class*="logoRow"] {
   background: linear-gradient(#0a5bc4 0%, #1a6fd0 45%, #3a8fe0 100%);
   border-bottom: 1px solid #0a3a8f;
   box-shadow: inset 0 1px #ffffff73;
 }
 
-body[data-ds-dark-theme] [data-pane="sidebar"] [class*="logoRow"] {
-  background: linear-gradient(#3a3f45 0%, #22262b 55%, #101216 100%);
-  border-bottom-color: #000;
-  box-shadow: inset 0 1px #ffffff24;
+body[data-ds-dark-theme] [data-pane="sidebar"] [class*="logoRow"],
+body[data-ds-dark-theme] :is([data-pane="sidebar"], [data-slot="sidebar"], [data-dsh-surface="sidebar"], [class*="sidebarCol"]) [class*="logoRow"] {
+  background: linear-gradient(#083d8a 0%, #0f4c9c 45%, #1b5bb5 100%);
+  border-bottom-color: #052454;
+  box-shadow: inset 0 1px #ffffff33;
 }
 
 [data-pane="sidebar"] [class*="logoRow"] button {
@@ -281,9 +310,9 @@ body[data-ds-dark-theme] [data-pane="sidebar"] input:focus {
 }
 
 body[data-ds-dark-theme] .Ce-zfq_xpTaskbar {
-  background: linear-gradient(#26292e 0%, #3a3f45 12%, #2b2e33 24%, #1b1d21 100%);
-  border-top-color: #000;
-  box-shadow: inset 0 1px #ffffff1f;
+  background: linear-gradient(#153878 0%, #1f4e9e 12%, #1b458d 24%, #122f68 100%);
+  border-top-color: #0d2350;
+  box-shadow: inset 0 1px #ffffff33;
 }
 
 .Ce-zfq_xpTaskbar > button:not(.Ce-zfq_xpStart) {
@@ -325,11 +354,11 @@ body[data-ds-dark-theme] .Ce-zfq_xpTaskbar {
 }
 
 [data-pane="conversation"] {
-  background: #fff;
+  background: transparent;
 }
 
 body[data-ds-dark-theme] [data-pane="conversation"] {
-  background: #0d0f12;
+  background: transparent;
 }
 
 [data-pane="conversation"] > div > header {

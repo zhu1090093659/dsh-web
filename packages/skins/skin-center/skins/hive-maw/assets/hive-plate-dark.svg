@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" fill="none" aria-hidden="true">
+  <!-- 虫巢底板：隧道肋弧 + 放射缝 + 卵囊簇 + 底部棘齿带。全线稿，无面积填充。 -->
+  <g stroke="#8fe3a6" stroke-width="1">
+    <!-- 穹顶肋弧：圆心远在画面上方 -->
+    <circle cx="800" cy="-520" r="980" opacity="0.10"/>
+    <circle cx="800" cy="-520" r="1180" opacity="0.08"/>
+    <circle cx="800" cy="-520" r="1400" opacity="0.06"/>
+    <circle cx="800" cy="-520" r="1640" opacity="0.05"/>
+    <!-- 放射缝：向下张开的扇形瓣 -->
+    <path d="M800 -520 L180 900" opacity="0.05"/>
+    <path d="M800 -520 L420 900" opacity="0.06"/>
+    <path d="M800 -520 L640 900" opacity="0.05"/>
+    <path d="M800 -520 L800 900" opacity="0.07"/>
+    <path d="M800 -520 L960 900" opacity="0.05"/>
+    <path d="M800 -520 L1180 900" opacity="0.06"/>
+    <path d="M800 -520 L1420 900" opacity="0.05"/>
+  </g>
+  <!-- 卵囊簇：左上 / 右上 / 左下 / 右下 -->
+  <g stroke="#8fe3a6" stroke-width="1" opacity="0.14">
+    <path d="M120 120 l26 -15 26 15 v30 l-26 15 -26 -15 z"/>
+    <path d="M172 150 l26 -15 26 15 v30 l-26 15 -26 -15 z"/>
+    <path d="M120 180 l26 -15 26 15 v30 l-26 15 -26 -15 z"/>
+    <path d="M1424 120 l26 -15 26 15 v30 l-26 15 -26 -15 z"/>
+    <path d="M1372 150 l26 -15 26 15 v30 l-26 15 -26 -15 z"/>
+    <path d="M1424 180 l26 -15 26 15 v30 l-26 15 -26 -15 z"/>
+    <path d="M150 660 l26 -15 26 15 v30 l-26 15 -26 -15 z"/>
+    <path d="M1398 660 l26 -15 26 15 v30 l-26 15 -26 -15 z"/>
+  </g>
+  <g fill="#8fe3a6">
+    <circle cx="146" cy="135" r="4" opacity="0.16"/>
+    <circle cx="198" cy="165" r="4" opacity="0.12"/>
+    <circle cx="146" cy="195" r="4" opacity="0.14"/>
+    <circle cx="1450" cy="135" r="4" opacity="0.16"/>
+    <circle cx="1398" cy="165" r="4" opacity="0.12"/>
+    <circle cx="1450" cy="195" r="4" opacity="0.14"/>
+    <circle cx="176" cy="675" r="4" opacity="0.12"/>
+    <circle cx="1424" cy="675" r="4" opacity="0.12"/>
+  </g>
+  <!-- 底部棘齿带（pattern 平铺）+ 卵光点排 -->
+  <defs>
+    <pattern id="hv-teeth" width="40" height="28" patternUnits="userSpaceOnUse">
+      <path d="M0 28 L20 14 L40 28" stroke="#8fe3a6" stroke-width="1" fill="none"/>
+    </pattern>
+  </defs>
+  <rect x="0" y="838" width="1600" height="28" fill="url(#hv-teeth)" opacity="0.10"/>
+  <g fill="#8fe3a6" opacity="0.16">
+    <circle cx="80" cy="878" r="2.4"/><circle cx="240" cy="878" r="2.4"/><circle cx="400" cy="878" r="2.4"/>
+    <circle cx="560" cy="878" r="2.4"/><circle cx="720" cy="878" r="2.4"/><circle cx="880" cy="878" r="2.4"/>
+    <circle cx="1040" cy="878" r="2.4"/><circle cx="1200" cy="878" r="2.4"/><circle cx="1360" cy="878" r="2.4"/>
+    <circle cx="1520" cy="878" r="2.4"/>
+  </g>
+</svg>

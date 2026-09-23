@@ -62,7 +62,11 @@ export function remoteChannelRequired(
  * @returns true for localhost, IPv6 loopback, or any 127/8 literal.
  */
 export function isLoopbackHostname(hostname: string): boolean {
-  if (hostname === 'localhost' || hostname === '::1') return true
+  // WHATWG location.hostname keeps IPv6 literals bracketed ("[::1]"); the
+  // host-side shared predicate accepts that spelling, so this browser copy must
+  // too, or an IPv6-loopback origin is judged remote and rewrites every call
+  // onto the gated channel where it can never pair.
+  if (hostname === 'localhost' || hostname === '::1' || hostname === '[::1]') return true
   const parts = hostname.split('.')
   return parts.length === 4 && parts[0] === '127' && parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255)
 }
@@ -207,6 +211,9 @@ export function installRemoteChannel(window: ChannelWindow, options: RemoteChann
   const originalFetch = window.fetch
   const OriginalWebSocket = window.WebSocket
   const OriginalEventSource = window.EventSource
+  // Publish the official upload hook before the file-upload service reads it
+  // (issue #1580); removed again by the restore below.
+  const restoreUploadHook = installFileUploadHook(window as unknown as UploadHookWindow)
 
   const sameOrigin = (url: URL): boolean => url.origin === window.location.origin
   const rewrite = (raw: string): string => rewriteRawUrl(raw, window.location.href, window.location.origin)
@@ -225,8 +232,16 @@ export function installRemoteChannel(window: ChannelWindow, options: RemoteChann
     if (device === null) return init
     const headers = init?.headers
     if (typeof Headers !== 'undefined' && headers instanceof Headers) {
-      try { headers.set(RULES.deviceHeader, device) } catch { /* ignore */ }
-      return init
+      // Copy instead of mutating: the instance belongs to the caller, which may
+      // reuse it for a request this channel does not rewrite (the device
+      // credential must not ride along there).
+      try {
+        const copy = new Headers(headers)
+        copy.set(RULES.deviceHeader, device)
+        return { ...init, headers: copy }
+      } catch {
+        return init
+      }
     }
     if (typeof headers === 'object' && headers !== null) {
       return { ...init, headers: { ...(headers as Record<string, string>), [RULES.deviceHeader]: device } } as RequestInit
@@ -250,7 +265,10 @@ export function installRemoteChannel(window: ChannelWindow, options: RemoteChann
         ? rewritten.toString()
         : new Request(rewritten, input)
       return Promise.resolve(originalFetch.call(window, next, attach(init))).then(async (response) => {
-        if (await isUnpairedDenied(response.clone())) options.onUnpaired?.()
+        // The clone tees the response body; only the 403 branch inspects it, so
+        // every other status skips the copy (a large upload or session dump
+        // would otherwise be duplicated per gated request).
+        if (response.status === 403 && await isUnpairedDenied(response.clone())) options.onUnpaired?.()
         else options.onPaired?.()
         return response
       })
@@ -301,6 +319,67 @@ export function installRemoteChannel(window: ChannelWindow, options: RemoteChann
     window.WebSocket = OriginalWebSocket
     if (OriginalEventSource !== undefined) window.EventSource = OriginalEventSource
     for (const restore of restoreSrc) restore()
+    restoreUploadHook()
+  }
+}
+
+/** Page global the official pre-Cordis upload hook is published under. */
+export const FILE_UPLOAD_HOOK_GLOBAL = '__DSH_FILE_UPLOAD__'
+
+/** The subset of window the upload hook needs (injectable for tests). */
+export interface UploadHookWindow {
+  fetch: typeof globalThis.fetch
+  location: { href: string; origin: string }
+  /** Pre-existing hook owner; left untouched when present. */
+  __DSH_FILE_UPLOAD__?: {
+    fetch: (input: string | URL, init?: RequestInit) => Promise<Response>
+  }
+}
+
+/**
+ * Publish the official pre-Cordis upload hook so background uploads keep
+ * riding the patched main-thread fetch (issue #1580).
+ *
+ * `@deepseek-ai/dsh-client-file-upload` reads `globalThis.__DSH_FILE_UPLOAD__`
+ * once when its runtime is constructed; without it the carrier is a Web
+ * Worker, whose own globals no main-thread patch reaches. That worker's XHR
+ * goes straight to `<origin>/api/session/uploadFileBinary` with neither the
+ * `/remote` rewrite nor the cookieless device credential, so the harness
+ * browser-auth fence answers 401 and every upload from a paired browser
+ * fails. Rewriting the worker URL cannot fix it: a worker context carries
+ * neither the pairing cookie nor the device header.
+ *
+ * The hook hands the runtime the same transport the rest of the page uses -
+ * the boot script publishes an identical one (remote-channel-boot.ts), and
+ * this is the fallback for pages served without it.
+ *
+ * @param window - the browser window (or a test double), BEFORE the channel patch.
+ * @returns a function retiring the hook (a pre-existing one is left alone).
+ */
+export function installFileUploadHook(window: UploadHookWindow): () => void {
+  if (window.__DSH_FILE_UPLOAD__ !== undefined) return () => {}
+  const originalFetch = window.fetch
+  const hook = {
+    fetch: (input: string | URL, init?: RequestInit): Promise<Response> => {
+      const raw = typeof input === 'string' ? input : input.href
+      let url: URL
+      try {
+        url = new URL(raw, window.location.href)
+      } catch {
+        return originalFetch.call(window, input, init)
+      }
+      // Delegate the whole decision to the patched fetch: rewriting the path
+      // here first would make it skip its own rewrite branch and drop the
+      // device credential the fence requires.
+      if (url.origin === window.location.origin && url.pathname === RULES.uploadPath) {
+        return window.fetch.call(window, raw, init)
+      }
+      return originalFetch.call(window, input, init)
+    },
+  }
+  window.__DSH_FILE_UPLOAD__ = hook
+  return () => {
+    if (window.__DSH_FILE_UPLOAD__ === hook) delete window.__DSH_FILE_UPLOAD__
   }
 }
 

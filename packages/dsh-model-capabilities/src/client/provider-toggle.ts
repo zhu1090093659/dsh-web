@@ -1,12 +1,13 @@
 /**
  * Provider disable/enable orchestration over the remote settings wire.
  *
- * Disable = stash the user-layer profile in the plugin namespace, then unset
- * `providers.<route>` in the pi-ai namespace (the official Remove-provider
- * seam): the route unregisters and the provider leaves the model catalog that
- * both the composer picker and the subagent selection read. Enable restores
- * the archived profile and clears the archive entry. Both namespaces are
- * revision-fenced; orderings keep the worst case a harmless duplicate archive.
+ * Disable = stash the user-layer profile in this plugin's own settings entry,
+ * then unset `providers.<route>` in the pi-ai namespace (the official
+ * Remove-provider seam): the route unregisters and the provider leaves the
+ * model catalog that both the composer picker and the subagent selection read.
+ * Enable restores the archived profile and clears the archive entry. Both
+ * entries are revision-fenced; orderings keep the worst case a harmless
+ * duplicate archive.
  * @module @linxin666/dsh-client-ui-model-capabilities/client/provider-toggle
  */
 
@@ -17,10 +18,10 @@ import {
   buildStashOp,
   buildUnsetProviderOp,
   buildUnstashOp,
-  CAPS_SETTINGS_NAMESPACE,
   hasNonUserProfile,
   hasProfileAt,
   readDisabledStore,
+  resolveArchiveEntry,
   type StashedProvider,
 } from '../core/provider-toggle.ts'
 import { readAt } from '../core/capabilities.ts'
@@ -39,7 +40,7 @@ export type ToggleOutcome =
   /** The route already has a profile; restoring the archive would clobber it. */
   | { kind: 'route-exists' }
   | { kind: 'no-stash' }
-  /** A needed namespace is not registered on this host. */
+  /** A needed entry is not served on this host. */
   | { kind: 'unavailable' }
   /** The route is enabled again, but clearing the archive entry failed. */
   | { kind: 'partial', message: string }
@@ -80,16 +81,16 @@ export async function disableProvider(
   const described = await face.describe()
   if (!described.ok) return refused(described.error)
   const llmView = viewOf(described.value.namespaces, llmNs)
-  const capsView = viewOf(described.value.namespaces, CAPS_SETTINGS_NAMESPACE)
-  if (llmView === undefined || capsView === undefined) return { kind: 'unavailable' }
+  const archive = resolveArchiveEntry(described.value.namespaces)
+  if (llmView === undefined || archive === undefined) return { kind: 'unavailable' }
   const profile = profileAt(llmView.user, route)
   if (profile === undefined) return { kind: 'no-profile' }
   // A route the composition also declares would survive the unset: refuse
   // rather than report a disable that did not take the provider down.
   if (hasNonUserProfile(llmView, route)) return { kind: 'base-profile' }
   const stash: StashedProvider = { profile, ...(displayName !== undefined ? { displayName } : {}) }
-  const stashed = await face.mutate(CAPS_SETTINGS_NAMESPACE, [buildStashOp(route, stash)], capsView.revision)
-  if (!stashed.ok) return failureOf(CAPS_SETTINGS_NAMESPACE, stashed.error)
+  const stashed = await face.mutate(archive.entryId, [buildStashOp(route, stash)], archive.view.revision)
+  if (!stashed.ok) return failureOf(archive.entryId, stashed.error)
   const taken = await face.mutate(llmNs, [buildUnsetProviderOp(route)], llmView.revision)
   if (!taken.ok) return failureOf(llmNs, taken.error)
   return { kind: 'ok' }
@@ -111,14 +112,14 @@ export async function enableProvider(
   const described = await face.describe()
   if (!described.ok) return refused(described.error)
   const llmView = viewOf(described.value.namespaces, llmNs)
-  const capsView = viewOf(described.value.namespaces, CAPS_SETTINGS_NAMESPACE)
-  if (llmView === undefined || capsView === undefined) return { kind: 'unavailable' }
+  const archive = resolveArchiveEntry(described.value.namespaces)
+  if (llmView === undefined || archive === undefined) return { kind: 'unavailable' }
   if (hasProfileAt(llmView.user, route)) return { kind: 'route-exists' }
-  const stash = readDisabledStore(capsView.value)[route]
+  const stash = readDisabledStore(archive.view.value)[route]
   if (stash === undefined) return { kind: 'no-stash' }
   const restored = await face.mutate(llmNs, [buildRestoreProviderOp(route, stash.profile)], llmView.revision)
   if (!restored.ok) return failureOf(llmNs, restored.error)
-  const cleared = await face.mutate(CAPS_SETTINGS_NAMESPACE, [buildUnstashOp(route)], capsView.revision)
+  const cleared = await face.mutate(archive.entryId, [buildUnstashOp(route)], archive.view.revision)
   if (!cleared.ok) return { kind: 'partial', message: cleared.error.message }
   return { kind: 'ok' }
 }

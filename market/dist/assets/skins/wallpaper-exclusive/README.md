@@ -20,6 +20,10 @@ the backdrop.
   session/workspace cards, the top-bar subagent board, bottom panel chrome,
   composer `+`/`/` menus, skill-center panel, git-graph chips, ssh panel
   chrome, the queued-send card, and the task-board columns and cards.
+- Single-layer workbench and trajectory glass: the bottom workbench (its tab
+  strip, tab items, picker cards, panes and terminal canvas) and the 轨迹
+  (trajectory) conversation view each paint exactly one frosted layer, tinted
+  from the same fixed skin variables as every other surface.
 - Fixed frosted glass: every non-input-card surface uses a fixed
   semi-transparent frosted material; the input card itself follows the web-ui
   unified design.

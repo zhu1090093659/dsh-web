@@ -1,0 +1,449 @@
+/**
+ * 余烬 (Ember Fall) — L3 atmosphere layer.
+ *
+ * 纯 CSS，无 hooks。loader 会把每条选择器强制 scope 到
+ * html[data-dsh-skin="ember-fall"] 之下，所以这里故意按无 scope 书写。
+ *
+ * 钩子全部出自 semantic-attrs-v1 契约与 shell 稳定锚（与虫巢同一张表）；
+ * slot 出口 display:contents 的一律下探到 > *。
+ *
+ * 暗色专用皮肤：只写一套暗色值；:root 钉死 color-scheme。
+ * 母题：焊疤双线、铆点、灰烬烟幕、紫色火花点睛；边缘套件＝角部焊疤加强射线 / 焊珠虚线 / 余烬辉缝 / 竖焊珠列。
+ */
+
+/* ── 材质变量 ─────────────────────────────────────────────────────────── */
+
+body {
+  --sk-ground: #0a0c0f;
+  --sk-pane: url(assets/ember-plate-dark.svg),
+    radial-gradient(120% 90% at 50% 110%, #c9793a1f 0%, transparent 58%);
+  --sk-wall: #171c21;
+  --sk-wall-edge: #2a31385c;
+  --sk-card-top: #2a31384d;
+  --sk-composer-ring: 0 0 0 3px #c9793a33;
+  --sk-bubble-edge: #c9793a47;
+  --sk-approval-edge: #c4543a80;
+
+  /* 余烬四档：b1 主线，b2 焊缝，b3/b4 极淡分层线。 */
+  --em-b1: #e8a860d1;
+  --em-b2: #e8a86080;
+  --em-b3: #e8a8604d;
+  --em-b4: #e8a86026;
+  --em-rivet: #e8a860c7;
+  --em-rivet-hi: #101418eb;
+  --em-spark: #8a63c9b8;
+  --em-warn: #c4543a8c;
+}
+
+/* ── canvas：灰烬地面 ─────────────────────────────────────────────────── */
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--sk-ground);
+  background-image: var(--sk-pane);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+body[data-dsh-wallpaper-active]::after,
+body[data-dsh-backdrop-active]::after {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* ── sidebar：焊疤壁面 ────────────────────────────────────────────────── */
+
+[data-slot='sidebar'] > *,
+[data-dsh-surface='sidebar'],
+[data-pane='sidebar'] {
+  background-color: var(--sk-wall) !important;
+  background-image:
+    linear-gradient(180deg, #e8a86010 0%, transparent 52%);
+  box-shadow: inset -1px 0 0 var(--sk-wall-edge);
+}
+
+/* 侧栏右缘：焊缝双道 + 焊珠虚线 + 稀疏紫火花 */
+[data-pane='sidebar'] {
+  position: relative;
+}
+[data-pane='sidebar']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 11px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg,
+      transparent 0 3px, var(--em-b2) 3px 4px,
+      transparent 4px 5px, var(--em-b4) 5px 6px, transparent 6px 100%),
+    repeating-linear-gradient(0deg, var(--em-b3) 0 6px, transparent 6px 12px),
+    radial-gradient(circle at 50% 50%, var(--em-spark) 0 1.2px, transparent 1.5px);
+  background-size: 100% 100%, 2px 100%, 11px 96px;
+  background-position: 0 0, 4px 0, 0 0;
+  background-repeat: no-repeat, no-repeat, repeat-y;
+  opacity: 0.9;
+}
+
+/* 详情栏左缘镜像 */
+[data-pane='details'] {
+  position: relative;
+}
+[data-pane='details']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 11px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(270deg,
+      transparent 0 3px, var(--em-b2) 3px 4px,
+      transparent 4px 5px, var(--em-b4) 5px 6px, transparent 6px 100%),
+    repeating-linear-gradient(0deg, var(--em-b3) 0 6px, transparent 6px 12px),
+    radial-gradient(circle at 50% 50%, var(--em-spark) 0 1.2px, transparent 1.5px);
+  background-size: 100% 100%, 2px 100%, 11px 96px;
+  background-position: 0 0, 6px 0, 0 0;
+  background-repeat: no-repeat, no-repeat, repeat-y;
+  opacity: 0.9;
+}
+
+[data-slot='sidebar.workspaces'] {
+  background-color: transparent !important;
+}
+
+/* ── details pane ─────────────────────────────────────────────────────── */
+
+[data-slot='details'],
+[data-slot='details'] > *,
+[data-dsh-surface='details'],
+[data-pane='details'] {
+  background-color: #0a0c0fdb !important;
+}
+
+/* ── hero：地平线火光 + 烟柱 ──────────────────────────────────────────── */
+
+[data-phase='hero'] {
+  position: relative;
+  background-image:
+    radial-gradient(90% 46% at 50% 100%, #c9793a2e 0%, transparent 70%),
+    repeating-linear-gradient(90deg, #20262c4d 0 34px, transparent 34px 90px),
+    radial-gradient(circle at 50% 50%, #8a63c914 0 1.2px, transparent 1.5px),
+    radial-gradient(46% 38% at 50% 40%, #0a0c0f80 0%, transparent 70%);
+  background-size: 100% 100%, 100% 100%, 90px 70px, 100% 100%;
+  background-repeat: no-repeat, no-repeat, repeat, no-repeat;
+}
+
+[data-phase='hero']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url(assets/ember-hero-dark.svg);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.95;
+}
+
+/* ── composer：焊板壳 ─────────────────────────────────────────────────── */
+
+[data-composer-card] {
+  position: relative;
+  border-radius: 12px;
+  box-shadow: var(--sk-composer-ring), inset 0 1px 0 var(--sk-card-top);
+}
+
+/* 四角焊疤加强射线：自角点射入的 45° 细射线，读作角部补焊的 gusset */
+[data-composer-card]::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  pointer-events: none;
+  background-image:
+    conic-gradient(from 0deg at 0 0, transparent 0 133deg, var(--em-b2) 133deg 137deg, transparent 137deg),
+    conic-gradient(from 0deg at 100% 0, transparent 0 223deg, var(--em-b2) 223deg 227deg, transparent 227deg),
+    conic-gradient(from 0deg at 0 100%, transparent 0 43deg, var(--em-b2) 43deg 47deg, transparent 47deg),
+    conic-gradient(from 0deg at 100% 100%, transparent 0 313deg, var(--em-b2) 313deg 317deg, transparent 317deg),
+    conic-gradient(from 0deg at 0 0, transparent 0 134deg, var(--em-b4) 134deg 136deg, transparent 136deg),
+    conic-gradient(from 0deg at 100% 0, transparent 0 224deg, var(--em-b4) 224deg 226deg, transparent 226deg),
+    conic-gradient(from 0deg at 0 100%, transparent 0 44deg, var(--em-b4) 44deg 46deg, transparent 46deg),
+    conic-gradient(from 0deg at 100% 100%, transparent 0 314deg, var(--em-b4) 314deg 316deg, transparent 316deg);
+  background-size: 26px 26px, 26px 26px, 26px 26px, 26px 26px, 16px 16px, 16px 16px, 16px 16px, 16px 16px;
+  background-position:
+    left top, right top, left bottom, right bottom,
+    left top, right top, left bottom, right bottom;
+  background-repeat: no-repeat;
+}
+
+/* 卡上缘焊珠虚线：一段段横卧的焊珠，不是刻度齿 */
+[data-composer-card]::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: -9px;
+  height: 8px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--em-b2) 0 8px, transparent 8px 14px),
+    linear-gradient(90deg, transparent 0, var(--em-b4) 6%, var(--em-b4) 94%, transparent 100%);
+  background-size: 14px 2px, 100% 1px;
+  background-position: 0 50%, 0 50%;
+  background-repeat: repeat-x, no-repeat;
+  opacity: 0.7;
+}
+
+[data-input-scroll] {
+  background-color: transparent;
+}
+
+[data-composer-placeholder] {
+  color: #747a82;
+}
+
+/* ── 会话行 ───────────────────────────────────────────────────────────── */
+
+[data-chat-flow-kind='user'] {
+  box-shadow: inset 3px 0 0 var(--sk-bubble-edge);
+}
+
+[data-chat-flow-kind='assistant-step'] {
+  background-color: transparent;
+}
+
+[data-chat-flow-kind='tool-call'],
+[data-chat-flow-kind='context'] {
+  border-radius: 10px;
+  background-color: #171c2180;
+}
+
+/* ── 选区 / 链接 / 滚动条 ─────────────────────────────────────────────── */
+
+::selection {
+  background-color: #c9793a52;
+}
+
+a {
+  color: #c9793a;
+}
+
+* {
+  scrollbar-color: #9ba1a866 transparent;
+}
+
+/* ── 审批：危标斜纹 ───────────────────────────────────────────────────── */
+
+[data-approval-key],
+[data-question-key],
+[data-plan-review-key] {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--sk-approval-edge), var(--dsw-shadow-lv2);
+}
+[data-approval-key]::before,
+[data-question-key]::before,
+[data-plan-review-key]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(-45deg, var(--em-warn) 0 5px, transparent 5px 10px);
+  opacity: 0.7;
+}
+
+/* ── 整机外框：枪铁双线 + 余烬内线 ───────────────────────────────────── */
+
+[data-dsh-surface='overlay']::after,
+[data-slot='shell.overlay']::after,
+[data-shell-overlay]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  box-shadow:
+    inset 0 0 0 1px var(--em-b3),
+    inset 0 0 0 6px transparent,
+    inset 0 0 0 7px var(--em-b4);
+}
+
+/* ── 会话顶栏：焊疤横梁 ───────────────────────────────────────────────── */
+
+[data-dsh-surface='session-header'] > *,
+[data-slot='conversation.session.header'] > * {
+  position: relative;
+  background-image:
+    repeating-linear-gradient(90deg, var(--em-b3) 0 8px, transparent 8px 16px),
+    linear-gradient(180deg, #20262c80 0%, transparent 70%);
+  background-size: 100% 3px, 100% 100%;
+  background-position: 0 0, 0 0;
+  background-repeat: repeat-x, no-repeat;
+  box-shadow:
+    inset 0 1px 0 var(--em-b2),
+    inset 0 -1px 0 var(--em-b2);
+}
+
+/* 梁左右两枚铆钉 */
+[data-dsh-surface='session-header'] > *::before,
+[data-slot='conversation.session.header'] > *::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 50%, var(--em-rivet) 0 1.5px, var(--em-rivet-hi) 1.5px 2.3px, transparent 2.6px),
+    radial-gradient(circle at 50% 50%, var(--em-rivet) 0 1.5px, var(--em-rivet-hi) 1.5px 2.3px, transparent 2.6px);
+  background-size: 4.6px 6px;
+  background-position: 0 50%, 100% 50%;
+  background-repeat: no-repeat;
+}
+
+/* 下缘余烬辉缝：两端收光的辉线 + 稀疏紫火花 */
+[data-dsh-surface='session-header'] > *::after,
+[data-slot='conversation.session.header'] > *::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 8px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg, transparent 0, var(--em-b2) 10%, var(--em-b1) 50%, var(--em-b2) 90%, transparent 100%),
+    radial-gradient(circle at 50% 50%, var(--em-spark) 0 1.2px, transparent 1.5px);
+  background-size: 100% 1px, 96px 8px;
+  background-position: 0 1px, 0 50%;
+  background-repeat: no-repeat, repeat-x;
+  opacity: 0.75;
+}
+
+/* ── 工作区：弹药柜格 ─────────────────────────────────────────────────── */
+
+[data-slot='sidebar.workspaces'] {
+  background-image:
+    /* 右缘竖焊珠列 */
+    repeating-linear-gradient(0deg, var(--em-b3) 0 5px, transparent 5px 11px),
+    /* 横向捆带 */
+    linear-gradient(180deg, transparent 0 46%, var(--em-b4) 46% 54%, transparent 54%),
+    linear-gradient(var(--em-b2), var(--em-b2)),
+    linear-gradient(var(--em-b2), var(--em-b2)),
+    linear-gradient(var(--em-b2), var(--em-b2)),
+    linear-gradient(var(--em-b2), var(--em-b2)),
+    linear-gradient(var(--em-b1), var(--em-b1)),
+    linear-gradient(var(--em-b1), var(--em-b1)),
+    linear-gradient(var(--em-b1), var(--em-b1)),
+    linear-gradient(var(--em-b1), var(--em-b1)),
+    linear-gradient(180deg, #00000061 0%, #00000000 100%),
+    linear-gradient(180deg, #14181c4d 0%, #14181c14 100%);
+  background-size:
+    3px 100%,
+    100% 100%,
+    100% 1px, 100% 1px, 1px 100%, 1px 100%,
+    24px 1px, 1px 24px, 24px 1px, 1px 24px,
+    100% 12px,
+    100% 100%;
+  background-position:
+    right top,
+    left top,
+    left top, left bottom, left top, right top,
+    3px 3px, 3px 3px, right 3px bottom 3px, right 3px bottom 3px,
+    left top,
+    left top;
+  background-repeat:
+    no-repeat,
+    no-repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat,
+    no-repeat;
+}
+
+/* ── 文件夹：焊板封套 + 余烬书脊 ──────────────────────────────────────── */
+
+[data-slot='sidebar.workspaces'] [role='treeitem'][aria-expanded],
+[data-slot='sidebar.workspaces'] [role='treeitem']:has([role='group']) {
+  background-image: url(assets/ember-sleeve-dark.svg);
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: inset 3px 0 0 var(--em-b1);
+  font-family: ui-monospace, Consolas, 'Cascadia Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ── 新会话：铆接铭牌 ─────────────────────────────────────────────────── */
+
+[data-dsh-part='new-session'] {
+  position: relative;
+  box-shadow:
+    inset 0 0 0 1px var(--em-b2),
+    inset 0 1px 0 var(--em-b4),
+    0 1px 0 #0000002e;
+}
+[data-dsh-part='new-session']::before,
+[data-dsh-part='new-session']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 4.5px;
+  height: 4.5px;
+  margin-top: -2.25px;
+  border-radius: 50%;
+  background: var(--em-rivet);
+  box-shadow: inset -1px -1px 0 var(--em-rivet-hi);
+  pointer-events: none;
+}
+[data-dsh-part='new-session']::before { left: 6px; }
+[data-dsh-part='new-session']::after { right: 6px; }
+
+/* ── 拖拽把手 ─────────────────────────────────────────────────────────── */
+
+[data-dsh-part='resize-handle'] {
+  background-image:
+    linear-gradient(90deg, transparent 0 48%, var(--em-b3) 48% 52%, transparent 52% 100%);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* ── 侧栏品牌行 ───────────────────────────────────────────────────────── */
+
+[data-slot='sidebar.brand.mark'] {
+  color: var(--em-b1);
+}
+[data-slot='sidebar.brand.name'] {
+  font-family: ui-monospace, Consolas, 'Cascadia Mono', monospace;
+  letter-spacing: 0.08em;
+}
+[data-slot='sidebar.brand.name'] > * > span:first-child,
+[data-slot='sidebar.brand.name'] span:first-child {
+  font-size: 0;
+}
+[data-slot='sidebar.brand.name'] > * > span:first-child::after,
+[data-slot='sidebar.brand.name'] span:first-child::after {
+  content: 'dsh 余烬回收';
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* ── 暗色专用：钉死原生配色方案 ───────────────────────────────────────── */
+
+:root {
+  color-scheme: dark !important;
+}

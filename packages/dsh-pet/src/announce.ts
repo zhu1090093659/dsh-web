@@ -1,5 +1,5 @@
 /**
- * The pet announcement-bubble contract (dsh-usage linkage): a sibling plugin
+ * The pet announcement-bubble contract: a sibling plugin
  * pushes one structured announcement through `pet.announce(...)`, the host
  * validates it into a bounded payload, and the browser half renders it as a
  * dedicated, specially styled bubble above the session bubble stack.
@@ -11,7 +11,7 @@
 
 /** One plugin-authored announcement bubble. */
 export interface PetAnnouncement {
-  /** Authoring plugin's source tag (`dsh-usage` for the usage statistics). */
+  /** Authoring plugin's source tag (its own package short name). */
   source: string
   /** Bubble content kind: a spend estimate, an account balance, or a plan-quota status. */
   kind: 'balance' | 'cost' | 'plan'
@@ -37,10 +37,10 @@ export interface PetAnnouncement {
 export const ANNOUNCE_DEFAULT_TTL_MS = 10_000
 
 /**
- * Hard TTL ceiling. A repeating announcer (dsh-usage) declares its poll
- * cadence as the TTL, so an `always`-mode bubble stays continuous across
- * polls; the ceiling means a source that dies unmounts its bubble within at
- * most one missed refresh cycle rather than lingering forever.
+ * Hard TTL ceiling. A repeating announcer declares its poll cadence as
+ * the TTL, so an always-on bubble stays continuous across polls; the
+ * ceiling means a source that dies unmounts its bubble within at most one
+ * missed refresh cycle rather than lingering forever.
  */
 export const ANNOUNCE_MAX_TTL_MS = 7_200_000
 

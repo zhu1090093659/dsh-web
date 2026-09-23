@@ -58,6 +58,18 @@ describe('parseCron', () => {
     expect([...mixed.minutes]).toEqual([1, 30, 35, 40, 45])
   })
 
+  it('expands a bare value carrying a step to the field maximum', () => {
+    // Standard cron: minutes 5/15 are 5,20,35,50 and hours 2/6 are 2,8,14,20.
+    // The parser collapsed a bare value with a step into that value alone (#1493).
+    expect([...parseCron('5/15 * * * *')!.minutes]).toEqual([5, 20, 35, 50])
+    expect([...parseCron('* 2/6 * * *')!.hours]).toEqual([2, 8, 14, 20])
+    // A bare value without a step is still exactly itself.
+    expect([...parseCron('5 * * * *')!.minutes]).toEqual([5])
+    // The wildcard and range forms are unchanged.
+    expect([...parseCron('*/15 * * * *')!.minutes]).toEqual([0, 15, 30, 45])
+    expect([...parseCron('1-30/5 * * * *')!.minutes]).toEqual([1, 6, 11, 16, 21, 26])
+  })
+
   it('normalizes weekday 7 to 0 (Sunday)', () => {
     expect([...(parseCron('* * * * 7')!.weekdays)]).toEqual([0])
     expect([...(parseCron('* * * * 0')!.weekdays)]).toEqual([0])

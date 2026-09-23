@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
-import { parseFrontmatter, setFrontmatterField } from '../src/frontmatter.ts'
+import { parseFrontmatter, setFrontmatterField, stripFrontmatter } from '../src/frontmatter.ts'
 
 const TMP = mkdtempSync(join(tmpdir(), 'skill-explorer-fm-'))
 afterAll(() => { rmSync(TMP, { recursive: true, force: true }) })
@@ -51,6 +51,41 @@ describe('parseFrontmatter', () => {
     const fm = parseFrontmatter('---\nname: "quoted-name"\ndescription: \'单引号\'\n---\n')
     expect(fm.name).toBe('quoted-name')
     expect(fm.description).toBe('单引号')
+  })
+})
+
+describe('stripFrontmatter', () => {
+  it('user sees the body verbatim once the leading block is dropped', () => {
+    // Given a document with a frontmatter block followed by a body
+    const source = '---\nname: a\ndescription: d\n---\n\n# Body\n'
+
+    // When the frontmatter block is stripped
+    const body = stripFrontmatter(source)
+
+    // Then only the body survives, verbatim
+    expect(body).toBe('\n# Body\n')
+  })
+
+  it('user keeps a body whose own text starts with a fence', () => {
+    // Given a document whose body itself starts with a fence
+    const source = '---\nname: a\n---\n\n---\nnot frontmatter\n'
+
+    // When the frontmatter block is stripped
+    const body = stripFrontmatter(source)
+
+    // Then the body's own fence is not mistaken for frontmatter
+    expect(body).toBe('\n---\nnot frontmatter\n')
+  })
+
+  it('user gets the input back when there is no frontmatter block', () => {
+    // Given a body without any frontmatter block
+    const source = '# Just a body\n'
+
+    // When the frontmatter block is stripped
+    const body = stripFrontmatter(source)
+
+    // Then the input is returned unchanged
+    expect(body).toBe('# Just a body\n')
   })
 })
 

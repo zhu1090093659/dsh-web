@@ -11,7 +11,7 @@
     ]
   },
   "include": [
-    "src/index.ts",
-    "src/sync.ts"
+    "src/**/*.ts",
+    "src/**/*.tsx"
   ]
 }

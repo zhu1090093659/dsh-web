@@ -20,13 +20,14 @@ import { duplicateMountBundles } from './bundle-guard.ts'
 import { readProfileManifest, reorderProfileBundle, stripProfileBundles, type ProfileFacts } from './profile.ts'
 import { insertRowsOf, parsePatch, bareRowEnabled, bareRowId } from './rows.ts'
 import { buildPluginRow, claimedEntryIdsOf } from './state.ts'
+import { createOutputCapture, type OutputCapture } from './console-output.ts'
 
 /** Hard deadline for one CLI add (git clones can take minutes). */
 const ADD_TIMEOUT_MS = 6 * 60_000
 /** Hard deadline for one CLI remove. */
 const REMOVE_TIMEOUT_MS = 2 * 60_000
-/** Bounded capture of the CLI output (the tail survives). */
-const MAX_OUTPUT_CHARS = 32_000
+/** Bounded capture of the CLI output (the tail survives), counted in bytes. */
+const MAX_OUTPUT_BYTES = 32_000
 /** Ring cap on finished jobs: the newest 100 settled jobs stay queryable; the oldest finished job is evicted beyond the cap so the job table cannot grow without bound. In-progress jobs are never evicted. */
 const MAX_FINISHED_JOBS = 100
 
@@ -114,15 +115,33 @@ export function findDshBinary(
   if (platform === 'darwin') {
     candidates.push('/opt/homebrew/bin/dsh', '/usr/local/bin/dsh')
   }
+  // Packages and the desktop app put the CLI in reach of their own files, not
+  // on PATH, so also probe the siblings of the running host's entry script:
+  //   <runtime>/node_modules/@deepseek-ai/dsh/lib/bin.js
+  //   <runtime>/node_modules/@deepseek-ai/dsh/lib/../../.bin/dsh.cmd
+  // The npm-published desktop runtime strips every node_modules/.bin directory
+  // (symlinked shims cannot survive an installer), so the package's own lib/bin.js
+  // is the only launchable form there (issue #1588).
+  if (hostEntryPath !== undefined && hostEntryPath !== '') {
+    const entryDir = pathApi.dirname(hostEntryPath)
+    const packageRoot = pathApi.dirname(entryDir)
+    candidates.push(pathApi.join(packageRoot, 'lib', 'bin.js'))
+  }
   for (const candidate of candidates) {
     if (exists(candidate)) return candidate
   }
   return null
 }
 
-/** Append bounded CLI output (stdout + stderr interleaved is not preserved; tail wins). */
-function capture(chunk: Buffer, buffer: { value: string }): void {
-  buffer.value = (buffer.value + chunk.toString()).slice(-MAX_OUTPUT_CHARS)
+/**
+ * Append bounded CLI output (stdout + stderr interleaved is not preserved;
+ * tail wins). Bytes are accumulated and decoded once at read time: a Windows
+ * console writes its OEM code page (CP936/GBK on zh-CN), so per-chunk
+ * `toString()` both mis-decodes the encoding and splits characters that
+ * straddle two reads into replacement characters (issue #1600).
+ */
+function capture(chunk: Buffer, buffer: OutputCapture): void {
+  buffer.push(chunk)
 }
 
 /**
@@ -142,11 +161,20 @@ export function dshSpawnCommand(
   localNodeExists: (path: string) => boolean = existsSync,
   binJsExists: (path: string) => boolean = existsSync,
 ): { command: string; argsPrefix: string[] } {
+  // bin.js carries a node shebang, so POSIX spawns it directly; only Windows
+  // lacks a launcher for a script path (see the bin.js branch below).
   if (platform !== 'win32') return { command: binary, argsPrefix: [] }
   // Windows paths must be parsed with win32 semantics even when the probing
   // host is POSIX (unit tests, and any future cross-platform probing).
   const dir = win32.dirname(binary)
   const localNode = win32.join(dir, 'node.exe')
+  // A script path has no launcher on Windows, so the resolved lib/bin.js is run
+  // by the host's own interpreter: the desktop host is spawned as
+  // <runtime>/node/node.exe, so process.execPath is the bundled Node (and an
+  // Electron host is covered by the ELECTRON_RUN_AS_NODE branch in spawnDsh).
+  if (win32.basename(binary).toLowerCase() === 'bin.js') {
+    return { command: process.execPath, argsPrefix: [binary] }
+  }
   // The npm-global layout keeps the package next to the dsh.cmd shim
   // (node_modules/@deepseek-ai/dsh); the npx layout puts shims in
   // node_modules/.bin with the package one level above (issue #683). Probe
@@ -211,13 +239,13 @@ export async function detectOfficialChannels(
   env: NodeJS.ProcessEnv = process.env,
   spawnImpl: typeof spawnDsh = spawnDsh,
 ): Promise<boolean> {
-  const output = { value: '' }
+  const output = createOutputCapture(MAX_OUTPUT_BYTES)
   const child = spawnImpl(binary, ['--profile', profileName, '--dump-config'], env)
-  child.stdout?.on('data', (chunk: Buffer) => { output.value = (output.value + chunk.toString()).slice(-MAX_OUTPUT_CHARS) })
-  child.stderr?.on('data', (chunk: Buffer) => { output.value = (output.value + chunk.toString()).slice(-MAX_OUTPUT_CHARS) })
+  child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, output) })
+  child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, output) })
   const code = await new Promise<number | null>(resolve => { child.on('close', resolve) })
   if (code !== 0) return false
-  return OFFICIAL_INSTALLER_PATTERN.test(output.value)
+  return OFFICIAL_INSTALLER_PATTERN.test(output.read())
 }
 
 /** One layer snapshot plus the profile patch text and dependency list. */
@@ -286,14 +314,14 @@ export class CliGateway {
 
   /** Run one CLI command to completion and return the bounded output. */
   private async runCli(binary: string, args: string[], timeoutMs: number): Promise<{ code: number | null; output: string }> {
-    const output = { value: '' }
+    const output = createOutputCapture(MAX_OUTPUT_BYTES)
     const child = this.spawnCli(binary, args)
     child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, output) })
     child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, output) })
     const timer = setTimeout(() => { child.kill() }, timeoutMs)
     const code = await new Promise<number | null>(resolve => { child.on('close', resolve) })
     clearTimeout(timer)
-    return { code, output: output.value.trim() }
+    return { code, output: output.read().trim() }
   }
 
   /** Full package spec used when restoring a legacy dependency. */
@@ -637,7 +665,7 @@ export class CliGateway {
       return
     }
     const before = await this.capture()
-    const output = { value: '' }
+    const output = createOutputCapture(MAX_OUTPUT_BYTES)
     const child = this.spawnCli(binary, args)
     child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, output) })
     child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, output) })
@@ -648,7 +676,7 @@ export class CliGateway {
     clearTimeout(timer)
     if (code !== 0) {
       job.phase = 'error'
-      const tail = output.value.trim()
+      const tail = output.read().trim()
       job.error = tail === '' ? `plugin-manager: dsh plugin ${job.action} exited with code ${String(code)}` : tail
       return
     }
@@ -772,7 +800,7 @@ export class CliGateway {
     let tail = ''
     const binary = this.binary()
     if (binary !== null) {
-      const output = { value: '' }
+      const output = createOutputCapture(MAX_OUTPUT_BYTES)
       const child = this.spawnCli(binary, ['plugin', '--profile', this.facts.profileName, 'remove', name])
       child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, output) })
       child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, output) })
@@ -780,7 +808,7 @@ export class CliGateway {
       const code = await new Promise<number | null>(resolve => { child.on('close', resolve) })
       clearTimeout(timer)
       rolledBack = code === 0
-      tail = output.value.trim()
+      tail = output.read().trim()
     }
     job.phase = 'error'
     job.error = rolledBack
@@ -853,7 +881,7 @@ export class CliGateway {
     const binary = this.binary()
     if (binary === null) return
     const name = this.newDependency(before, after)
-    const verifyOutput = { value: '' }
+    const verifyOutput = createOutputCapture(MAX_OUTPUT_BYTES)
     const child = this.spawnCli(binary, ['--profile', this.facts.profileName, '--dump-config'])
     child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, verifyOutput) })
     child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, verifyOutput) })
@@ -863,7 +891,7 @@ export class CliGateway {
     })
     clearTimeout(timer)
     if (code === 0) return
-    const tail = verifyOutput.value.trim()
+    const tail = verifyOutput.read().trim()
     if (name === undefined) {
       job.phase = 'error'
       job.error = tail === '' ? 'plugin-manager: boot preflight failed' : tail

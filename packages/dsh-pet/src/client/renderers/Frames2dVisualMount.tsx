@@ -68,6 +68,10 @@ export function Frames2dVisualMount(props: {
       const gameplayBus = props.bus
       gameplayBus.setTrack = (track) => { handleRef.current?.setState(track) }
       gameplayBus.setIdleTrack = (track) => { handleRef.current?.setIdleTrack(track) }
+      // The HUD latches the wanted base idle (skin selection, restored from the
+      // host snapshot): apply it on activation, so a late or repeated mount
+      // never repaints the pet with the default look.
+      if (gameplayBus.idleTrack !== undefined) handle.setIdleTrack(gameplayBus.idleTrack)
       cleanups.push(() => {
         gameplayBus.setTrack = undefined
         gameplayBus.setIdleTrack = undefined

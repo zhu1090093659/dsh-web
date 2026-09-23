@@ -12,7 +12,7 @@ Models 设置页上的自定义 DSH 提供方只能填模型 ID、显示名称�
 - 读写走官方 remote settings 线路（`remote.settings.describe` / `mutate`），目标是 `llm-pi-ai` 命名空间。保存是一次 `set` 路径操作，整体替换该提供方的 `models` 数组——settings 的路径遍历遇到数组会整体替换，无法按下标寻址单个模型；条目是结构开放对象，本插件不编辑的字段（id、name、contextWindow、compat 等）原样保留。
 - 图片输入是显式声明（`["text","image"]` 或 `["text"]`）；未声明态如实展示为继承并保留，而不是隐藏。
 - 推理是三态：不声明（继承）、`false`（声明无推理）、或 `off` 到 `max` 的显式档位字典，每档带发送值，且只有 `off` 可以留空（「支持，但发送时不带参数」）。编辑器在写入前拒绝「不含 off 以外档位」或「非 off 档位发送值为空」的字典，与适配器自身的接受规则一致，避免 host 事后拒绝。
-- 提供方禁用/启用只用唯一被认可的缝：`unset llm-pi-ai.providers.<route>`，与官方「移除提供方」按钮同款写入。禁用先把用户层 profile 存档进本包命名空间 `dsh-model-capabilities`（host 半区注册，共享 mount-once 副本防双源重复注册），再 unset 该路由；启用原样恢复存档并清空它。这个顺序让最坏情况只是重复存档而不是丢 profile，启用遇路线已有更新配置时拒绝，两个命名空间都做 revision 围栏。
+- 提供方禁用/启用只用唯一被认可的缝：`unset llm-pi-ai.providers.<route>`，与官方「移除提供方」按钮同款写入。禁用先把用户层 profile 存档进本包自己的设置 entry——即 host 半区声明的 `Config`，由宿主按本行的 profile entry id（`ui-model-capabilities`，或聚合包的 `web-ui-model-capabilities`）提供服务，共享 mount-once 副本防双源重复注册——再 unset 该路由；启用原样恢复存档并清空它。这个顺序让最坏情况只是重复存档而不是丢 profile，启用遇路线已有更新配置时拒绝，两个命名空间都做 revision 围栏。
 - 尊重组合层：base 层也声明的路由无法靠用户层 unset 下线，因此这类卡片不提供禁用开关，编排层即使被调用也以 `base-profile` 拒绝。
 - 页脚只列出路由仍下线的存档条目：路由回来（重新添加，或部分启用只恢复了 profile 却没清掉存档）后条目自动隐藏，存档本身仍可恢复。
 - 刷新按命名空间收窄：只有 `llm-pi-ai` 或存档命名空间的 `settings/document-updated` 才驱动界面，并发的 `describe` 合并为一次 wire 调用；未保存草稿在后台刷新后保留，并把写入围栏钉在草稿读取时的 revision，文档已变则冲突重读，既不静默丢弃编辑也不覆盖更新的状态。

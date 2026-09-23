@@ -271,8 +271,10 @@ describe('mountBoard lifecycle & interaction (#506, #1233)', () => {
     document.body.appendChild(column)
 
     await act(async () => {
-      // Trigger MutationObserver callback
+      // Trigger the page-wide body mutation hub, which coalesces its
+      // subscribers to the next animation frame (shared/client/body-mutations.ts).
       document.body.appendChild(document.createElement('span'))
+      await new Promise(resolve => requestAnimationFrame(() => { resolve(undefined) }))
     })
     expect(column.querySelector('[data-dsh-taskboard-view]')).not.toBeNull()
   })

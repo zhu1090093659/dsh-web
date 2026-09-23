@@ -1,20 +1,19 @@
 /**
- * The plugin-manager tab: an install box, one row per installed user plugin
- * (next-start enablement switch, source badge, update availability, update and
- * uninstall actions, per-plugin boot-failure block), the built-in product
- * switches, an install-conflict notice (the diff of the plugin-control
- * snapshot around each install, reversible through the product switch), and
- * the failure-repair affordances. Enablement switches and installs persist
- * through the official host channels and apply at the next restart; the web
- * build shows a restart hint instead of an in-place restart.
+ * The plugin-manager tab keeps only what the official plugin manager page does
+ * not do. Installing, uninstalling and enabling or disabling a bundle or a row
+ * — with live switching and a build-script approval dialog — belong to the
+ * official page since 0.1.6-alpha.2, so this tab renders a read-only inventory
+ * and points there. Its own surface is the differentiating half: registry
+ * update checks with DSH-runtime compatibility gating, the install-conflict
+ * ledger the host records around an install or update (with undo and a repair
+ * handoff), the boot-failure ring with its repair conversation, and the
+ * safe-mode banner. Changes that need a restart say so.
  *
  * This tab registers into the official Plugins settings section
- * (`settings.plugins.tab` slot) next to the official installer tab; its added
- * value over that tab is the conflict ledger, the bilingual repair seeds, and
- * the family card vocabulary.
+ * (`settings.plugins.tab` slot) next to the official inventory tab.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { classifyChange, diffControls, type ControlChange } from '../core/conflict.ts'
 import type {
@@ -25,7 +24,7 @@ import type {
   PluginFailuresSnapshot,
   PluginUpdateItem,
 } from '../core/protocol.ts'
-import { conflictRepairMessage, failureRepairMessage, installRepairMessage, type RepairCopy } from '../core/repair.ts'
+import { conflictRepairMessage, failureRepairMessage, type RepairCopy } from '../core/repair.ts'
 import { displayMinimumVersion } from '../core/version.ts'
 import css from './plugin-manager.module.css'
 
@@ -33,16 +32,10 @@ import css from './plugin-manager.module.css'
 export interface PluginManagerTabInjected {
   /** Whether this browser has loopback authority to use the host routes. */
   isLoopback: boolean
-  /** Read the installed snapshot. */
+  /** Read the installed snapshot (the tab renders it read-only). */
   list: () => Promise<InstalledPluginItem[]>
-  /** Install one plugin from an npm spec or git URL. */
-  install: (spec: string) => Promise<InstalledPluginItem>
   /** Re-install one plugin from its recorded source. */
   update: (id: string) => Promise<InstalledPluginItem>
-  /** Remove one plugin. */
-  uninstall: (id: string) => Promise<InstalledPluginItem[]>
-  /** Persist one user plugin's next-start enablement. */
-  setEnabled: (id: string, enabled: boolean) => Promise<InstalledPluginItem>
   /** Compare installed versions against their sources. */
   checkUpdates: () => Promise<PluginUpdateItem[]>
   /** Read the current install/update progress. */
@@ -78,16 +71,10 @@ type ViewState =
   }
 
 /** One row operation in flight. */
-type BusyAction = { readonly kind: 'install' | 'update' | 'uninstall' | 'check'; readonly id?: string }
+type BusyAction = { readonly kind: 'update' | 'check'; readonly id?: string }
 
-/** One enablement switch in flight: a user plugin or a built-in product. */
-type ToggleBusy = { readonly kind: 'user' | 'product'; readonly id: string }
-
-/** One uninstall target awaiting confirmation. */
-interface UninstallTarget {
-  readonly id: string
-  readonly name: string
-}
+/** One switch write in flight (only the conflict ledger's undo writes one). */
+type ToggleBusy = { readonly kind: 'product'; readonly id: string }
 
 /** Error text for a caught request or lifecycle failure. */
 function messageOf(error: unknown): string {
@@ -101,10 +88,6 @@ function messageOf(error: unknown): string {
 /** Localized fragments for the repair seed builders, read from the tab's dictionaries. */
 function repairCopy(t: PluginManagerTabProps['t']): RepairCopy {
   return {
-    installTitle: t('repairInstallTitle'),
-    installSpecLabel: t('repairInstallSpecLabel'),
-    installErrorLabel: t('repairInstallErrorLabel'),
-    installAsk: t('repairInstallAsk'),
     failureTitle: t('repairFailureTitle'),
     failurePluginLabel: t('repairFailurePluginLabel'),
     failureKindLabel: t('repairFailureKindLabel'),
@@ -144,10 +127,7 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
     t,
     isLoopback,
     list,
-    install,
     update,
-    uninstall,
-    setEnabled,
     checkUpdates,
     status,
     failures,
@@ -162,14 +142,10 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
   const [busy, setBusy] = useState<BusyAction | undefined>(undefined)
   const [toggleBusy, setToggleBusy] = useState<ToggleBusy | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
-  const [failedSpec, setFailedSpec] = useState<string | undefined>(undefined)
-  const [installError, setInstallError] = useState<string | undefined>(undefined)
-  const [spec, setSpec] = useState('')
   const [dirty, setDirty] = useState(false)
   const [repairing, setRepairing] = useState<string | undefined>(undefined)
   const [copied, setCopied] = useState<string | undefined>(undefined)
   const [updates, setUpdates] = useState<ReadonlyMap<string, PluginUpdateItem>>(new Map())
-  const [uninstallTarget, setUninstallTarget] = useState<UninstallTarget | undefined>(undefined)
   const [conflicts, setConflicts] = useState<readonly ControlChange[]>([])
   const [progress, setProgress] = useState<InstallProgressItem>({ kind: 'idle', stage: 'fetch' })
   /** Parent rows whose aggregate child list is expanded; collapsed by default. */
@@ -178,9 +154,16 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
    * click and an Enter land in the same frame and double-fire. */
   const busyRef = useRef(false)
 
-  /** Reload every snapshot into the ready view. */
+  /**
+   * Reload every snapshot into the ready view. The conflict ledger is the
+   * host's record of the last install or update that ran through this
+   * package's gateway channel — including a Workshop install driven through
+   * the shared service — so it is read here rather than diffed around an
+   * install this tab no longer performs.
+   */
   const reload = async (): Promise<void> => {
     const [plugins, controls, failureSnapshot] = await Promise.all([list(), controlsList(), failures()])
+    if (lastInstallConflicts !== undefined) setConflicts(lastInstallConflicts())
     setView({ status: 'ready', plugins, controls, failures: failureSnapshot })
   }
 
@@ -210,39 +193,9 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
     }
   }
 
-  /** Install one spec, then diff the product snapshot into a conflict notice. */
-  const onInstall = (): void => {
-    const target = spec.trim()
-    if (target === '' || busy !== undefined || busyRef.current) return
-    void (async () => {
-      busyRef.current = true
-      const before = view.status === 'ready' ? view.controls : await controlsList().catch(() => [])
-      setBusy({ kind: 'install' })
-      setError(undefined)
-      setFailedSpec(undefined)
-      setInstallError(undefined)
-      try {
-        await install(target)
-        setSpec('')
-        setDirty(true)
-        const after = await controlsList().catch(() => [] as readonly PluginControlItem[])
-        setConflicts(lastInstallConflicts !== undefined ? lastInstallConflicts() : diffControls(before, after))
-        await reload()
-      } catch (reason) {
-        const reasonText = messageOf(reason)
-        setFailedSpec(target)
-        setInstallError(reasonText)
-        setError(t('failed', { reason: reasonText }))
-      } finally {
-        busyRef.current = false
-        setBusy(undefined)
-      }
-    })()
-  }
-
-  /** Poll install/update progress while such an operation is in flight. */
+  /** Poll update progress while such an operation is in flight. */
   useEffect(() => {
-    if (busy === undefined || (busy.kind !== 'install' && busy.kind !== 'update')) {
+    if (busy === undefined || busy.kind !== 'update') {
       setProgress({ kind: 'idle', stage: 'fetch' })
       return
     }
@@ -278,24 +231,6 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
     })
   }
 
-  const onUserToggle = (id: string, enabled: boolean): void => {
-    setToggleBusy({ kind: 'user', id })
-    setError(undefined)
-    void setEnabled(id, enabled).then(plugin => {
-      // Match by the RETURNED row id: a child-row toggle (id = entry id such
-      // as web-ui-pet) answers with its owning package row, which carries the
-      // refreshed children states.
-      setView(current => current.status === 'ready'
-        ? { ...current, plugins: current.plugins.map(item => item.id === plugin.id ? plugin : item) }
-        : current)
-      setDirty(true)
-      setToggleBusy(undefined)
-    }).catch(reason => {
-      setError(t('failed', { reason: messageOf(reason) }))
-      setToggleBusy(undefined)
-    })
-  }
-
   const onProductToggle = (id: string, enabled: boolean): void => {
     setToggleBusy({ kind: 'product', id })
     setError(undefined)
@@ -319,6 +254,11 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
 
   const onUpdate = (id: string): void => {
     void run({ kind: 'update', id }, async () => {
+      // The gateway host records the conflicts its own CLI run produced; the
+      // official channel records none, so that mode diffs the product snapshot
+      // around this update instead — the only install-shaped action this tab
+      // still performs.
+      const before = view.status === 'ready' ? view.controls : await controlsList().catch(() => [] as readonly PluginControlItem[])
       await update(id)
       setUpdates(previous => {
         const next = new Map(previous)
@@ -326,16 +266,9 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
         return next
       })
       await reload()
-    })
-  }
-
-  const onUninstall = (): void => {
-    const target = uninstallTarget
-    if (target === undefined) return
-    void run({ kind: 'uninstall', id: target.id }, async () => {
-      await uninstall(target.id)
-      setUninstallTarget(undefined)
-      await reload()
+      if ((lastInstallConflicts?.() ?? []).length > 0) return
+      const after = await controlsList().catch(() => [] as readonly PluginControlItem[])
+      setConflicts(diffControls(before, after))
     })
   }
 
@@ -347,24 +280,6 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
     setError(undefined)
     setRepairing(token)
     void repairPlugin(view.failures.pluginRoot, failureRepairMessage(failure, repairCopy(t))).then(() => {
-      setRepairing(undefined)
-    }).catch(reason => {
-      setError(t('failed', { reason: messageOf(reason) }))
-      setRepairing(undefined)
-    })
-  }
-
-  /** Hand the latest failed install off to a repair conversation over the
-   * install root. The seed carries the install's own error (installError), not
-   * whatever error the row currently shows. */
-  const onRepairInstall = (): void => {
-    if (view.status !== 'ready' || repairing !== undefined) return
-    setError(undefined)
-    setRepairing('install')
-    void repairPlugin(view.failures.pluginRoot, installRepairMessage(failedSpec ?? '', installError ?? '', repairCopy(t))).then(() => {
-      setError(undefined)
-      setFailedSpec(undefined)
-      setInstallError(undefined)
       setRepairing(undefined)
     }).catch(reason => {
       setError(t('failed', { reason: messageOf(reason) }))
@@ -444,29 +359,9 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
         </div>
       )}
 
-      <div className={css.installRow}>
-        <input
-          className={css.spec}
-          type="text"
-          value={spec}
-          placeholder={t('installPlaceholder')}
-          disabled={busy !== undefined}
-          onChange={event => { setSpec(event.target.value) }}
-          onKeyDown={event => {
-            if (event.key === 'Enter' && spec.trim() !== '' && busy === undefined) onInstall()
-          }}
-        />
-        <Button
-          variant="primary"
-          disabled={spec.trim() === '' || busy !== undefined}
-          onClick={onInstall}
-        >
-          {busy !== undefined && busy.kind === 'install' ? t('installing') : t('install')}
-        </Button>
-      </div>
-      <p className={css.hint}>{t('installHint')}</p>
+      <p className={css.hint} data-manage-elsewhere>{t('manageElsewhere')}</p>
 
-      {(busy?.kind === 'install' || busy?.kind === 'update') && (
+      {busy?.kind === 'update' && (
         <div className={css.progressRow} role="status">
           <div className={css.progressTrack}>
             <div
@@ -482,11 +377,6 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
       {error !== undefined && (
         <div className={css.errorRow}>
           <span className={css.error}>{error}</span>
-          {failedSpec !== undefined && (
-            <Button variant="outline" disabled={repairing !== undefined} onClick={onRepairInstall}>
-              {repairing === 'install' ? t('repairing') : t('repair')}
-            </Button>
-          )}
         </div>
       )}
 
@@ -587,15 +477,6 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
                       <span className={css.stateLabel} data-state={plugin.enabled ? 'enabled' : mixed ? 'mixed' : 'disabled'}>
                         {plugin.enabled ? t('enabled') : mixed ? t('mixed') : t('disabled')}
                       </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={plugin.enabled}
-                        aria-label={plugin.enabled ? t('disableSwitch', { name: plugin.name }) : t('enableSwitch', { name: plugin.name })}
-                        className={css.switch}
-                        disabled={toggleDisabled}
-                        onClick={() => { onUserToggle(plugin.id, !plugin.enabled) }}
-                      />
                       {latest !== undefined && (
                         <Button
                           variant="outline"
@@ -605,13 +486,6 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
                           {busy?.kind === 'update' && busy.id === plugin.id ? t('updating') : t('update')}
                         </Button>
                       )}
-                      <Button
-                        variant="outline"
-                        disabled={busy !== undefined}
-                        onClick={() => { setUninstallTarget({ id: plugin.id, name: plugin.name }) }}
-                      >
-                        {t('uninstall')}
-                      </Button>
                     </div>
                   </div>
                   {children !== undefined && children.length > 0 && (() => {
@@ -650,17 +524,7 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
                                     </span>
                                     {child.locked === true
                                       ? <span className={css.lockedHint}>{t('lockedRowHint')}</span>
-                                      : (
-                                        <button
-                                          type="button"
-                                          role="switch"
-                                          aria-checked={child.enabled}
-                                          aria-label={child.enabled ? t('disableSwitch', { name: child.name }) : t('enableSwitch', { name: child.name })}
-                                          className={css.switch}
-                                          disabled={toggleDisabled}
-                                          onClick={() => { onUserToggle(child.id, !child.enabled) }}
-                                        />
-                                      )}
+                                      : null}
                                   </div>
                                 </li>
                               ))}
@@ -694,21 +558,6 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
                   <span className={css.stateLabel} data-state={control.state}>
                     {t(control.state)}
                   </span>
-                  {control.state === 'enabled' || control.state === 'disabled'
-                    ? (
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={control.state === 'enabled'}
-                        aria-label={control.state === 'enabled'
-                          ? t('disableSwitch', { name: control.name })
-                          : t('enableSwitch', { name: control.name })}
-                        className={css.switch}
-                        disabled={toggleDisabled}
-                        onClick={() => { onProductToggle(control.id, control.state !== 'enabled') }}
-                      />
-                    )
-                    : null}
                 </div>
               </li>
             ))}
@@ -764,22 +613,6 @@ export function PluginManagerTab(props: PluginManagerTabProps) {
         </div>
       )}
 
-      <Modal
-        title={t('uninstallConfirmTitle')}
-        open={uninstallTarget !== undefined}
-        onClose={() => { setUninstallTarget(undefined) }}
-        closeLabel={t('cancel')}
-      >
-        <p className={css.confirmBody}>{t('uninstallConfirmBody', { name: uninstallTarget?.name ?? '' })}</p>
-        <div className={css.modalActions}>
-          <Button variant="outline" disabled={busy !== undefined} onClick={() => { setUninstallTarget(undefined) }}>
-            {t('cancel')}
-          </Button>
-          <Button variant="primary" className={css.dangerButton} disabled={busy !== undefined} onClick={onUninstall}>
-            {t('confirm')}
-          </Button>
-        </div>
-      </Modal>
     </div>
   )
 }

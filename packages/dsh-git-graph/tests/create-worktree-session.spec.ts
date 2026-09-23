@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 /**
  * createWorktreeSession verb contract: after the worktree registers as a
- * workspace, the sessions face must both create the blank session and
- * navigate to it. 0.1.2's ISessions.create only adopts the workspace and
- * resolves the new SessionId — open() is the separate selection step — so
- * the verb has to call open() itself. A sessions-face failure rolls the
- * worktree back (no half-made environment).
+ * workspace, the sessions face must create the blank session and the workspace
+ * UI must then navigate to it. ISessions.create only adopts the workspace and
+ * resolves the new SessionId; navigation moved to the workspace UI
+ * (ctx.uiWorkspace.openSession) at 0.1.6-alpha.2, so the verb has to call it
+ * itself. A failure rolls the worktree back (no half-made environment).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
@@ -17,15 +17,15 @@ const WORKTREE = { path: '/home/u/.dsh/worktrees/proj-a1b2c3d4/fix-login', branc
 interface Harness {
   /** Replace the sessions.create resolution (default: resolve 'sess-new'). */
   createSession?: (workspaceId: string) => Promise<SessionId>
-  /** Replace the sessions.open behavior (default: record only). */
+  /** Replace the workspace UI's openSession behavior (default: record only). */
   openSession?: (id: SessionId) => void
 }
 
 /**
  * Run apply() against stubbed services and return the registered chip's
- * inject face plus the spies. The sessions double encodes the real 0.1.2
- * contract: create() resolves the SessionId without selecting it, and
- * open() is the selector the caller must drive.
+ * inject face plus the spies. The doubles encode the real contract: create()
+ * resolves the SessionId without selecting it, and the workspace UI is the
+ * selector the caller must drive.
  */
 function setup(harness: Harness = {}) {
   const removeCalls: { path: string; worktreePath: string }[] = []
@@ -46,7 +46,9 @@ function setup(harness: Harness = {}) {
   const sessions = {
     list: { getSnapshot: () => ({ byId: { 'sess-1': { cwd: '/ws/proj', blank: true } } }) },
     create: vi.fn(harness.createSession ?? (async () => 'sess-new' as SessionId)),
-    open: vi.fn(harness.openSession ?? (() => undefined)),
+  }
+  const uiWorkspace = {
+    openSession: vi.fn(harness.openSession ?? (() => undefined)),
   }
   const workspaces = {
     create: vi.fn(async ({ path }: { path: string }) => {
@@ -79,6 +81,7 @@ function setup(harness: Harness = {}) {
     },
     conversation: {},
     sessions,
+    uiWorkspace,
     workspaces,
     effect: track,
   }
@@ -95,6 +98,7 @@ function setup(harness: Harness = {}) {
   return {
     face: entry.inject(),
     sessions,
+    uiWorkspace,
     removeCalls,
     /** Dispose the fibers and drop the fetch stub. */
     cleanup(): void {
@@ -109,17 +113,17 @@ afterEach(() => {
 })
 
 describe('createWorktreeSession', () => {
-  it('creates the worktree session and navigates to it with open()', async () => {
+  it('creates the worktree session and navigates to it with openSession()', async () => {
     const bench = setup()
     try {
       const result = await bench.face.createWorktreeSession('sess-1' as SessionId, 'fix-login')
       expect(result).toEqual({ ok: true, path: WORKTREE.path, branch: WORKTREE.branch, name: WORKTREE.name })
       expect(bench.sessions.create).toHaveBeenCalledTimes(1)
       expect(bench.sessions.create).toHaveBeenCalledWith({ workspaceId: 'ws-new' })
-      // Navigation: 0.1.2 create() resolves the SessionId without selecting
-      // it, so the verb must open the created session itself.
-      expect(bench.sessions.open).toHaveBeenCalledTimes(1)
-      expect(bench.sessions.open).toHaveBeenCalledWith('sess-new')
+      // Navigation: create() resolves the SessionId without selecting it, so
+      // the verb must drive the workspace UI's selector itself.
+      expect(bench.uiWorkspace.openSession).toHaveBeenCalledTimes(1)
+      expect(bench.uiWorkspace.openSession).toHaveBeenCalledWith('sess-new')
       expect(bench.removeCalls).toEqual([])
     } finally {
       bench.cleanup()
@@ -133,7 +137,7 @@ describe('createWorktreeSession', () => {
     try {
       await bench.face.createWorktreeSession('sess-1' as SessionId, 'fix-login')
       expect(bench.sessions.create).toHaveResolvedWith('sess-adoptive-42')
-      expect(bench.sessions.open).toHaveBeenCalledWith('sess-adoptive-42')
+      expect(bench.uiWorkspace.openSession).toHaveBeenCalledWith('sess-adoptive-42')
     } finally {
       bench.cleanup()
     }
@@ -152,7 +156,7 @@ describe('createWorktreeSession', () => {
         error: { code: 'internal', message: expect.stringContaining('workspace registration failed') },
       })
       expect(bench.removeCalls).toEqual([{ path: '/ws/proj', worktreePath: WORKTREE.path }])
-      expect(bench.sessions.open).not.toHaveBeenCalled()
+      expect(bench.uiWorkspace.openSession).not.toHaveBeenCalled()
     } finally {
       bench.cleanup()
     }

@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import { IconBranchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconBranchOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import { WORKTREE_BRANCH_PREFIX } from '../../core/git-command.ts'
 import type { WorktreeInfo, WorktreeListView, WorktreeRemoveResult } from '../../core/types.ts'
@@ -96,7 +96,7 @@ export function WorktreeManager({ fetchWorktrees, onRemove, onClose, t }: Worktr
             <div key={item.path} className={css.managerRow} data-main={item.main || undefined}>
               <div className={css.managerInfo}>
                 <div className={css.managerHeadline}>
-                  <IconBranchOutline16 size={13} />
+                  <IconBranchOutlineRegular size={13} />
                   <span className={css.managerBranch}>
                     {item.branch === '' ? t('worktree.manager.detached') : item.branch}
                   </span>

@@ -85,6 +85,7 @@ export type SkinCenterKey =
   | 'wallpaperDirBrowse'
   | 'wallpaperDirBrowseHint'
   | 'wallpaperDirBrowseFailed'
+  | 'wallpaperSaveFailed'
   | 'wallpaperRatingAll'
   | 'wallpaperRatingG'
   | 'wallpaperRatingPg13'
@@ -207,6 +208,7 @@ export const en: Record<SkinCenterKey, string> = {
   wallpaperDirBrowse: 'Browse…',
   wallpaperDirBrowseHint: 'Pick a folder with the system file manager (Finder / Explorer)',
   wallpaperDirBrowseFailed: 'Could not open the system folder picker — type the path manually instead',
+  wallpaperSaveFailed: 'Could not save wallpaper settings.',
   wallpaperRatingAll: 'All',
   wallpaperRatingG: 'G',
   wallpaperRatingPg13: 'PG-13',
@@ -330,6 +332,7 @@ export const zh: Record<SkinCenterKey, string> = {
   wallpaperDirBrowse: '浏览…',
   wallpaperDirBrowseHint: '通过系统文件管理器（访达 / 资源管理器）选择文件夹',
   wallpaperDirBrowseFailed: '无法打开系统目录选择框——请手动输入路径',
+  wallpaperSaveFailed: '壁纸设置保存失败。',
   wallpaperRatingAll: '全部',
   wallpaperRatingG: 'G',
   wallpaperRatingPg13: 'PG-13',

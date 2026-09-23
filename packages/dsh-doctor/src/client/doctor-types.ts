@@ -131,9 +131,10 @@ export type DoctorActionName =
   | 'uninstall'
 
 /**
- * The doctor settings namespace, registered by the Host half through
- * installSection. The browser half reads the enabled switch; the Host
- * half mounts its routes and heartbeat only while enabled.
+ * The doctor policy fields the browser half reads and writes. They are the
+ * plugin's own Host Config fields, served to this client as the profile
+ * entry's configuration form; the Host half mounts its routes and heartbeat
+ * only while enabled.
  */
 export interface DoctorSettings {
   enabled?: boolean

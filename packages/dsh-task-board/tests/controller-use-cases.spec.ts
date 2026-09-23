@@ -193,12 +193,10 @@ describe('use-case: schedule', () => {
 
 /** Minimal sessions/exec faces for a controller smoke test. */
 class FakeSessions {
-  current: string | undefined = undefined
+  opened: string | undefined = undefined
   openCalls: string[] = []
-  list = {
-    getSnapshot: (): { current: string | undefined } => ({ current: this.current }),
-    subscribe: (): (() => void) => () => { },
-  }
+  current(): string | undefined { return this.opened }
+  subscribe(): () => void { return () => { } }
   open(id: string): void { this.openCalls.push(id) }
 }
 

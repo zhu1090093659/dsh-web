@@ -79,14 +79,14 @@ flowchart LR
 flowchart LR
     A["aggregate.yml：patchFrom、deps、rows、inactive"] -- "node scripts/aggregate.mjs 生成" --> B["dsh-web-all：cordis.patch.yml + package.json"]
     B -- "dsh plugin --profile web add link" --> C["web profile（hoisted 布局）"]
-    C -- "web-ui-* 行逐条挂载" --> D["19 个家族子包 + 外部 dsh-better-sidebar 行"]
+    C -- "web-ui-* 行逐条挂载" --> D["19 个家族子包（alpha 分支不挂外部插件行）"]
     E["mount-once 防重：双源只注册一次"] -.-> D
     F["inactive：ssh、describe-image、liangshen、skill-explorer、doctor 出厂默认关闭"] -.-> D
 ```
 
 ## 设置页槽位体系
 
-设置页的家族入口分两级：一级设置分区（`settings.section`）由 dsh-web-settings（Web UI 插件组）、皮肤中心、桌宠、创意工坊（`dsh-workshop`）各自注册；组内插件卡走 `web-ui.plugin.item` 子槽，创意工坊的资产面板走 `dsh-workshop.panel` 子槽（Presets 面板由 dsh-preset-center 注入）。host 侧用 `installSettingsSection` 注册命名空间，browser 侧用 `settingsScope.bind` 读写；官方 `settings.plugin.item` 槽承载每插件一卡（插件管理页）。
+设置页的家族入口分两级：一级设置分区（`settings.section`）由 dsh-web-settings（Web UI 插件组）、皮肤中心、桌宠、创意工坊（`dsh-workshop`）各自注册；组内插件卡走 `web-ui.plugin.item` 子槽，创意工坊的资产面板走 `dsh-workshop.panel` 子槽（Presets 面板由 dsh-preset-center 注入）。host 侧用 `installSettingsSection` 注册命名空间，browser 侧用 `settingsScope.bind` 读写；官方插件管理页用 `plugins.bundle.config` 槽承载插件自带配置（按 bundle 包名分派，渲染在该 bundle 的页面上），alpha.2 起旧的 `settings.plugin.item` 槽已不存在。
 
 ```mermaid
 flowchart TB
@@ -97,7 +97,7 @@ flowchart TB
     S --> W["settings.section：创意工坊 dsh-workshop（dsh-market）"]
     W -- "dsh-workshop.panel 子槽" --> F["皮肤、宠物、插件、预设资产面板"]
     F -- "dsh-preset-center 注入" --> F1["Presets 面板"]
-    S --> O["settings.plugin.item：官方每插件一卡（dsh-plugin-manager 管理页）"]
+    S --> O["plugins.bundle.config：官方 bundle 配置卡（插件管理页）"]
 ```
 
 ## 皮肤系统
@@ -162,8 +162,7 @@ flowchart LR
 | `$DSH_HOME/profiles/<name>/` | profile：插件行与 node_modules（`@linxin666` 命名空间可被 link-profile 链接到本地构建） | `dsh plugin`、scripts/link-profile.mjs |
 | `$DSH_HOME/skins/<id>/` | 用户皮肤资产，同 id 遮蔽内置 | 皮肤中心、创意工坊按需安装 |
 | `$DSH_HOME/pets/` | 宠物资产、装饰与语音配置 | dsh-pet、创意工坊按需安装 |
-| `$DSH_HOME/agent-presets/<id>/` | 惰性预设库（未启用） | dsh-preset-center |
-| `$DSH_HOME/.agent-presets/<id>/` | 启用中的预设（发现根） | dsh-preset-center 启停 |
+| `$DSH_HOME/agent-presets/<id>/` | 预设库：市场下载落盘于此；宿主半区把它声明给 agent preset 注册表后才生效 | dsh-preset-center、dsh-liangshen |
 
 ## 家族包一览
 

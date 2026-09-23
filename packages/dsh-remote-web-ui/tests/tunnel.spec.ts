@@ -5,7 +5,7 @@
  */
 import { EventEmitter } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
-import { quickTunnelFlags, namedTunnelArgs, TunnelManager, namedTunnelHandle, binaryRuns, createBinaryReadiness, type TunnelHandle, type TunnelPhase, type TunnelTarget } from '../src/tunnel.ts'
+import { MAX_BINARY_INSTALL_ATTEMPTS, quickTunnelFlags, namedTunnelArgs, withTunnelTokenEnv, TunnelManager, namedTunnelHandle, binaryRuns, createBinaryReadiness, type TunnelHandle, type TunnelPhase, type TunnelTarget } from '../src/tunnel.ts'
 
 /** A fake tunnel process: an EventEmitter the test drives by hand. */
 class FakeTunnel extends EventEmitter implements TunnelHandle {
@@ -356,21 +356,55 @@ describe('quickTunnelFlags', () => {
 })
 
 describe('namedTunnelArgs', () => {
-  it('places top-level flags before the run subcommand and appends the token flag after run', () => {
-    const args = namedTunnelArgs('test-token-123')
-    expect(args).toEqual([
-      'tunnel',
-      '--no-autoupdate',
-      '--protocol',
-      'http2',
-      'run',
-      '--token',
-      'test-token-123',
-    ])
+  it('operator keeps the account token out of the child argv', () => {
+    // Given the named tunnel's spawn flags.
+    const args = namedTunnelArgs()
+    // When cloudflared is spawned with them, then the top-level flags precede
+    // the run subcommand (issues #1432/#1433) and no token reaches argv, where
+    // any local user could read it from ps/proc.
+    expect(args).toEqual(['tunnel', '--no-autoupdate', '--protocol', 'http2', 'run'])
     const runIdx = args.indexOf('run')
     expect(args.indexOf('--no-autoupdate')).toBeLessThan(runIdx)
     expect(args.indexOf('--protocol')).toBeLessThan(runIdx)
-    expect(args.indexOf('--token')).toBeGreaterThan(runIdx)
+    expect(args).not.toContain('--token')
+  })
+})
+
+describe('withTunnelTokenEnv', () => {
+  it('operator gets the token in the environment for the spawn call only', () => {
+    // Given no TUNNEL_TOKEN in the ambient environment.
+    delete process.env.TUNNEL_TOKEN
+    let seen: string | undefined
+    // When the spawn call runs.
+    const result = withTunnelTokenEnv('tok-abc', () => {
+      seen = process.env.TUNNEL_TOKEN
+      return 'handle'
+    })
+    // Then the child would have inherited it and the host environment is clean.
+    expect(seen).toBe('tok-abc')
+    expect(result).toBe('handle')
+    expect(process.env.TUNNEL_TOKEN).toBeUndefined()
+  })
+
+  it('operator keeps a pre-existing TUNNEL_TOKEN value across the spawn call', () => {
+    // Given the host already carries a value.
+    process.env.TUNNEL_TOKEN = 'ambient'
+    try {
+      // When a named tunnel spawns, then the previous value is restored even
+      // though the spawn call itself saw the tunnel's own token.
+      expect(withTunnelTokenEnv('tok-1', () => process.env.TUNNEL_TOKEN)).toBe('tok-1')
+      expect(process.env.TUNNEL_TOKEN).toBe('ambient')
+    } finally {
+      delete process.env.TUNNEL_TOKEN
+    }
+  })
+
+  it('operator keeps the ambient environment clean when the spawn call throws', () => {
+    // Given no TUNNEL_TOKEN in the ambient environment.
+    delete process.env.TUNNEL_TOKEN
+    // When the spawn call fails, then the variable is still removed.
+    expect(() => withTunnelTokenEnv('tok-2', () => { throw new Error('spawn failed') })).toThrow('spawn failed')
+    expect(process.env.TUNNEL_TOKEN).toBeUndefined()
   })
 })
 
@@ -403,6 +437,22 @@ describe('createBinaryReadiness', () => {
     const ensure = createBinaryReadiness('/payload/bin/cloudflared.exe', { exists, runs, install })
     await expect(ensure()).rejects.toThrow(/still does not run/)
     expect(install).toHaveBeenCalledOnce()
+  })
+
+  it('operator is not charged one archive download per restart attempt', async () => {
+    // Given a binary that can never be made to run (the documented wrong-arch
+    // payload) and a manager that retries forever.
+    const exists = vi.fn(() => false)
+    const runs = vi.fn(async () => false)
+    const install = vi.fn(async () => undefined)
+    const ensure = createBinaryReadiness('/payload/bin/cloudflared.exe', { exists, runs, install })
+    // When the readiness check is consulted across restart rounds.
+    for (let round = 0; round < 6; round += 1) {
+      await expect(ensure()).rejects.toThrow()
+    }
+    // Then the platform archive is fetched at most MAX_BINARY_INSTALL_ATTEMPTS
+    // times instead of once per attempt.
+    expect(install).toHaveBeenCalledTimes(MAX_BINARY_INSTALL_ATTEMPTS)
   })
 
   it('binaryRuns probes real executability: node runs, a missing file does not', async () => {

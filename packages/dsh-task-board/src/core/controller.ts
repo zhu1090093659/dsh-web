@@ -42,18 +42,22 @@ export interface TaskBoardTransport {
   parseDraft?(request: TaskBoardParseRequest, signal?: AbortSignal): Promise<TaskBoardParseDraft>
 }
 
-/** The sessions face the controller needs for navigation awareness. */
+/**
+ * The sessions face the controller needs for navigation awareness. The Client
+ * Session Controller carries no global selection since 0.1.6-alpha.2, so the
+ * wiring resolves the main-view Session once and exposes it as current().
+ */
 export interface SessionsControllerFace {
-  list: {
-    getSnapshot(): { current: string | undefined }
-    subscribe(fn: () => void): () => void
-  }
-  /** Select a session as current (navigates the conversation view). */
+  /** The Session the main view currently shows, when any. */
+  current(): string | undefined
+  /** Navigate the main view to a Session. */
   open(id: string): void
+  /** Subscribe to catalog changes; selection ownership rides the same snapshot. */
+  subscribe(fn: () => void): () => void
 }
 
 function currentOf(sessions: SessionsControllerFace | undefined): string | undefined {
-  return sessions?.list.getSnapshot().current
+  return sessions?.current()
 }
 
 /** Controller dependencies (all swappable in tests). */
@@ -194,7 +198,7 @@ export class BoardController {
       this.notify()
     }) : undefined
     if (unsubscribeExternal !== undefined) this.disposers.push(unsubscribeExternal)
-    this.disposers.push(this.deps.sessions.list.subscribe(() => {
+    this.disposers.push(this.deps.sessions.subscribe(() => {
       this.onSessionsChanged()
     }))
     this.notify()

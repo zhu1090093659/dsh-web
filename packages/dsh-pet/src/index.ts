@@ -11,14 +11,15 @@
  * @module @linxin666/dsh-pet
  */
 
-import { Context } from '@deepseek-ai/cordis'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import { Context, type Volatile } from '@deepseek-ai/cordis'
+// Type-only: pulls the settings service's Context merge (ctx.settings).
+import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import z from 'schemastery'
-import { PetService, PET_SETTINGS_NAMESPACE, type PetConfig, type PetSettingsSection } from './service.ts'
+import z from '@deepseek-ai/schemastery'
+import { PetService, type PetConfig, type PetSettingsSection } from './service.ts'
 import { makePetRoutes } from './routes.ts'
 import { loadPetRegistry, petPackageRoot } from './registry.ts'
-import { BUBBLE_SCALE_MAX, BUBBLE_SCALE_MIN, DISPLAY_INSET_MAX, DISPLAY_SIZE_MAX, DISPLAY_SIZE_MIN } from './persist.ts'
+import { BUBBLE_SCALE_MAX, BUBBLE_SCALE_MIN, DEFAULT_PET_ID, DISPLAY_INSET_MAX, DISPLAY_SIZE_MAX, DISPLAY_SIZE_MIN } from './persist.ts'
 import { mountOnce } from './mount-once.ts'
 
 export { PetService, MAX_SESSION_BUBBLES } from './service.ts'
@@ -119,54 +120,137 @@ export const name = 'pet'
 export const inject = ['webServer']
 
 /**
- * Settings section schema: pet selection and display fields the web settings
- * surface edits. petId is a plain string on purpose: the service clamps the
- * resolved value against the registry, so a stored selection that points at
- * a removed pet cannot invalidate the section (a strict union would refuse
- * the whole registration). The settings card renders the actual registry
- * choices itself from '/api/pet/pets'.
+ * Defaults of the fields the pet's settings page edits. They are the schema
+ * defaults of the pet row's own config, i.e. what a field the profile entry
+ * never set resolves to.
  */
-export function makePetSettingsSchema(fallbackPetId: string) {
-  return z.object({
-    visible: z.boolean().default(true),
-    size: z.number().step(1).min(DISPLAY_SIZE_MIN).max(DISPLAY_SIZE_MAX).default(160),
-    right: z.number().step(1).min(0).max(DISPLAY_INSET_MAX).default(24),
-    bottom: z.number().step(1).min(0).max(DISPLAY_INSET_MAX).default(20),
-    bubbleScale: z.number().step(0.05).min(BUBBLE_SCALE_MIN).max(BUBBLE_SCALE_MAX).default(1),
-    petId: z.string().default(fallbackPetId),
-    enabled: z.boolean().default(true),
-    decorationEnabled: z.boolean().default(true),
-  })
+export const PET_FORM_DEFAULTS = {
+  visible: true,
+  size: 160,
+  right: 24,
+  bottom: 20,
+  bubbleScale: 1,
+  petId: DEFAULT_PET_ID,
+  enabled: true,
+  decorationEnabled: true,
+} as const
+
+/**
+ * One settings field as the config carries it. The Host commits an edit into
+ * the running config through a live reference rather than remounting the row,
+ * so a field usually arrives as that reference; a plain value appears when the
+ * plugin runs outside a Loader (tests, direct mounts).
+ */
+export type LiveField<T> = Volatile<T> | T
+
+/** The pet's settings fields, as a profile entry's config declares them. */
+export interface PetFormConfig {
+  /** Master switch for the plugin (browser half + host routes). */
+  enabled?: LiveField<boolean>
+  /** Status-decoration master switch (pet-center M5, #567); defaults to on. */
+  decorationEnabled?: LiveField<boolean>
+  /** Master switch for the pet surface. */
+  visible?: LiveField<boolean>
+  /** Scale of the rendered pet in px (sprite cell height). */
+  size?: LiveField<number>
+  /** Horizontal inset from the viewport right edge, px. */
+  right?: LiveField<number>
+  /** Vertical inset from the viewport bottom edge, px. */
+  bottom?: LiveField<number>
+  /** Bubble typography multiplier on the automatic size following (#1549). */
+  bubbleScale?: LiveField<number>
+  /** Selected pet id (a registry entry; the service clamps stale values). */
+  petId?: LiveField<string | undefined>
+}
+
+/**
+ * Plugin configuration. Under the 0.1.7 settings model a plugin's own Cordis
+ * Config IS its settings page: the Host derives one form per profile entry
+ * from this schema, so the fields the pet card edits live here with the
+ * defaults the card inherits, next to the tuning block a profile may still
+ * declare.
+ *
+ * Every page field is `volatile()` on purpose. The Host serves exactly the
+ * volatile fields of a Config and refuses writes to any other path, and a
+ * volatile field is the one it can commit into the RUNNING config: the pet
+ * reads the edited value from the live reference instead of being remounted
+ * for each edit (see `syncSettings` in `apply`). petId stays a plain string
+ * because the service clamps the value against the registry, so a stored
+ * selection naming a removed pet cannot invalidate the entry.
+ */
+export const Config = z.object({
+  visible: z.boolean().default(PET_FORM_DEFAULTS.visible).volatile(),
+  size: z.number().step(1).min(DISPLAY_SIZE_MIN).max(DISPLAY_SIZE_MAX).default(PET_FORM_DEFAULTS.size).volatile(),
+  right: z.number().step(1).min(0).max(DISPLAY_INSET_MAX).default(PET_FORM_DEFAULTS.right).volatile(),
+  bottom: z.number().step(1).min(0).max(DISPLAY_INSET_MAX).default(PET_FORM_DEFAULTS.bottom).volatile(),
+  bubbleScale: z.number().step(0.05).min(BUBBLE_SCALE_MIN).max(BUBBLE_SCALE_MAX).default(PET_FORM_DEFAULTS.bubbleScale).volatile(),
+  // An absent profile choice must leave the selection persisted in pet.json
+  // intact across restarts (aggregate rows have no served Host pet form).
+  petId: z.string().volatile(),
+  enabled: z.boolean().default(PET_FORM_DEFAULTS.enabled).volatile(),
+  decorationEnabled: z.boolean().default(PET_FORM_DEFAULTS.decorationEnabled).volatile(),
+})
+
+/**
+ * Read one live config field.
+ * @param field - the field's live reference, plain value, or nothing at all.
+ * @param fallback - value used when the field is absent.
+ * @returns the current field value.
+ */
+function readLive<T>(field: LiveField<T> | undefined, fallback: T): T {
+  if (field === undefined) return fallback
+  const ref = field as { get?: () => T | undefined }
+  return typeof ref.get === 'function' ? ref.get() ?? fallback : field as T
+}
+
+/**
+ * The settings section the pet runs with: the effective values of the row's
+ * own config. `fallbackPetId` covers a mount whose config names no pet at all
+ * (a direct mount outside a Loader) — under a Loader the schema default is
+ * always present, so the persisted selection stands whenever the config
+ * carries it.
+ * @param config - the effective config of the pet row.
+ * @param fallbackPetId - pet id to use when the config names none.
+ * @returns the resolved settings section.
+ */
+export function petSettingsSection(config: PetFormConfig, fallbackPetId: string): PetSettingsSection {
+  return {
+    visible: readLive(config.visible, PET_FORM_DEFAULTS.visible),
+    size: readLive(config.size, PET_FORM_DEFAULTS.size),
+    right: readLive(config.right, PET_FORM_DEFAULTS.right),
+    bottom: readLive(config.bottom, PET_FORM_DEFAULTS.bottom),
+    bubbleScale: readLive(config.bubbleScale, PET_FORM_DEFAULTS.bubbleScale),
+    petId: readLive(config.petId, fallbackPetId),
+    enabled: readLive(config.enabled, PET_FORM_DEFAULTS.enabled),
+    decorationEnabled: readLive(config.decorationEnabled, PET_FORM_DEFAULTS.decorationEnabled),
+  }
 }
 
 /** Register the pet service and its API + asset routes on the context. */
 export const apply = mountOnce('@linxin666/dsh-pet', applyImpl)
 
-function applyImpl(ctx: Context, config: PetConfig = {}): void {
+/** Plugin config: the tuning block a profile may declare plus the pet's settings fields. */
+export type PetPluginConfig = Omit<PetConfig, 'enabled' | 'decorationEnabled'> & PetFormConfig
+
+function applyImpl(ctx: Context, config: PetPluginConfig = {}): void {
   const registry = config.registry
     ?? loadPetRegistry({
       packageRoot: petPackageRoot(import.meta.url),
       ...(config.pets === undefined ? {} : { extra: config.pets }),
     })
-  const service = new PetService(ctx, { ...config, registry })
+  const service = new PetService(ctx, {
+    ...config,
+    enabled: readLive(config.enabled, PET_FORM_DEFAULTS.enabled),
+    decorationEnabled: readLive(config.decorationEnabled, PET_FORM_DEFAULTS.decorationEnabled),
+    registry,
+  })
 
-  // The settings surface edits the pet selection + display config through
-  // the 'pet' namespace. The composition 'base' starts as the persisted
-  // pet.json values (clamped to schema bounds), so an empty user layer
-  // resolves to exactly what the pet already shows — a fresh deployment
-  // never overwrites a customized layout, and reset re-inherits it. Runtime
-  // drag interactions mirror back into the settings document through the
-  // service (see syncSettingsFromPet), keeping both views consistent.
-  let current: () => PetSettingsSection = () => base
-  const base: PetSettingsSection = {
-    visible: service.display().visible,
-    size: service.display().size,
-    right: service.display().right,
-    bottom: service.display().bottom,
-    petId: service.selectedPetId(),
-    enabled: config.enabled ?? true,
-    decorationEnabled: config.decorationEnabled ?? true,
-  }
+  // The effective settings ARE this row's own config: the Host serves one form
+  // per profile entry from `Config` above, and every edit is committed into the
+  // running config, so the plugin re-reads the section here instead of holding
+  // a separate settings document (0.1.6 registered one through
+  // settings.installSection/register and re-resolved it on every change).
+  const current = (): PetSettingsSection => petSettingsSection(config, service.selectedPetId())
   // The browser half talks to the pet through same-origin JSON endpoints and
   // loads each pet's atlas from the registry's own media route (RPC domains
   // are platform-registered, so the pet serves its own API — the same
@@ -190,38 +274,43 @@ function applyImpl(ctx: Context, config: PetConfig = {}): void {
       disposeRoutes = undefined
     }
   }
+  // Apply the row's config to the running service: pet.json mirrors the live
+  // display the drag / hide / summon interactions write (see
+  // syncSettingsFromPet), so a section the settings surface never touched
+  // resolves back to exactly what the pet already shows (the composition
+  // 'base' of the pre-0.1.7 section).
+  const syncSettings = (): void => {
+    const section = current()
+    service.applySettingsSection(section)
+    service.setEnabled(section.enabled ?? true)
+    syncRoutes()
+  }
+  // A settings edit lands in this row's live config reference and is announced
+  // here; the entry is NOT remounted for it, so the pet applies the new section
+  // itself (the pre-0.1.7 host ran the section's onChange hook for this).
+  ctx.on('loader/volatile-update', () => { syncSettings() })
   ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      const schema = makePetSettingsSchema(service.selectedPetId())
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(
-          ctx,
-          PET_SETTINGS_NAMESPACE as SettingsNamespace,
-          schema,
-          base,
-          {
-            setSource: (source) => { current = source },
-            onChange: () => {
-              const section = current()
-              service.applySettingsSection(section)
-              service.setEnabled(section.enabled ?? true)
-              syncRoutes()
-            },
-          },
-        )
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        const scope = settingsCtx.settings.register(PET_SETTINGS_NAMESPACE as SettingsNamespace, schema, { base })
-        current = () => scope?.get?.() ?? base
-        scope?.watch?.(() => {
-          const section = current()
-          service.applySettingsSection(section)
-          service.setEnabled(section.enabled ?? true)
-          syncRoutes()
-        })
+    // The pet ships its own settings card (the browser half's
+    // 'settings.section' page), so the Host must not also generate a page for
+    // this entry from Config.
+    settingsCtx.effect(() => {
+      try {
+        return settingsCtx.settings.configure({ auto: false }, ctx.fiber)
+      } catch {
+        return () => {}
       }
-    } catch {
-      // Defensive fallback against settings registration differences
-    }
+    }, 'pet: settings page policy')
   })
-  syncRoutes()
+  syncSettings()
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Volatile config values were committed into the running fiber without a
+     * remount; dispatched to the owning fiber only. Declared by the Loader and
+     * restated here because this package carries no dependency on its types.
+     */
+    'loader/volatile-update'(paths: readonly (readonly string[])[]): void
+  }
 }

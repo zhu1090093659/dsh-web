@@ -3,7 +3,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 
 import { CustomThemeCard } from '../src/client/CustomThemePanel.tsx'
 import { CustomThemeController } from '../src/client/custom-theme-controller.ts'
@@ -14,10 +14,10 @@ import { CUSTOM_THEME_DEFAULTS, type CustomThemeConfig } from '../src/core/custo
 
 const t = (key: SkinCenterKey): string => zh[key] ?? key
 
-function fakeScope(): SettingsScope<CustomThemeConfig> {
+function fakeScope(): ConfigForm<CustomThemeConfig> {
   let value = { ...CUSTOM_THEME_DEFAULTS } as CustomThemeConfig
   const listeners = new Set<() => void>()
-  const snapshot: SettingsScopeSnapshot<CustomThemeConfig> = {
+  const snapshot: ConfigFormSnapshot<CustomThemeConfig> = {
     status: 'ready', value, base: undefined, user: undefined, revision: 1, writable: true, mode: 'host',
   }
   return {
@@ -29,12 +29,15 @@ function fakeScope(): SettingsScope<CustomThemeConfig> {
     set: async (field, next) => {
       value = { ...value, [field]: next }
       for (const listener of listeners) listener()
+      return true
     },
     unset: async field => {
       value = { ...value }
       delete value[field]
       for (const listener of listeners) listener()
+      return true
     },
+    mutate: async () => true,
   }
 }
 

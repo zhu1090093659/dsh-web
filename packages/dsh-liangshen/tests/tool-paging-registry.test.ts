@@ -128,8 +128,8 @@ interface Harness {
 interface HarnessOptions {
   restrictThrows?: boolean
   pageable?: boolean
-  /** Omit the code runtime, as a deployment without one does. */
-  codeRuntime?: boolean
+  /** Omit the PTC runtime, as a deployment without one does. */
+  ptcRuntime?: boolean
   /** Refuse the presentation declaration, as host policy can. */
   presentThrows?: boolean
 }
@@ -140,7 +140,7 @@ function harness(config: Record<string, unknown> = {}, options: HarnessOptions =
   const listeners = new Map<string, { listener: Listener; options: any }>()
   const warnings: string[] = []
   const services: Record<string, unknown> = { tools }
-  if (options.codeRuntime !== false) services.codeRuntime = { language: 'typescript' }
+  if (options.ptcRuntime !== false) services.ptcRuntime = { language: 'typescript' }
   const ctx = {
     on(event: string, callback: Listener, opts?: any) { listeners.set(event, { listener: callback, options: opts }) },
     get: (service: string) => services[service],
@@ -173,7 +173,7 @@ function harness(config: Record<string, unknown> = {}, options: HarnessOptions =
         { agent, messages: [{ id: 'user', source: { kind: 'user' } }], turn: 1, step: 1, signal: {} },
         async () => ({ kind: 'enter', messages: [{ id: 'user', source: { kind: 'user' } }] }),
       )
-      return decision.messages.find((message: any) => message?.source?.plugin === name)?.content[0].text ?? ''
+      return decision.messages.find((message: any) => message?.source?.kind === name || message?.source?.plugin === name)?.content[0].text ?? ''
     },
   }
   // A faithful SystemPrompt: the presentation a scope declares lands on the NEXT
@@ -183,15 +183,15 @@ function harness(config: Record<string, unknown> = {}, options: HarnessOptions =
 }
 
 /**
- * One live agent in production order: the scope is created, its session starts,
- * and both happen before the first turn assembles a prompt. That ordering is
- * exactly what the paging sync hangs on.
+ * One live agent in production order: the scope is created before the first turn
+ * assembles a prompt. The 0.1.6 cohort folded the former `agent/session-start`
+ * into the async serial `agent/created`, so one emission carries both, and that
+ * ordering is exactly what the paging sync hangs on.
  */
 async function agentOf(h: Harness, events: unknown[] = []) {
   const agent: any = { session: { snapshotEvents: () => events } }
   agent.ctx = { tools: h.tools.scoped(agent) }
-  await h.emit('agent/created', { agent })
-  await h.emit('agent/session-start', { agent, source: 'startup' })
+  await h.emit('agent/created', { agent, source: 'startup' })
   return agent
 }
 
@@ -314,7 +314,7 @@ describe('gentle paging under the collapsed ptc wire', () => {
     const h = harness()
     const agent = await agentOf(h)
     const once = h.tools.sdkSchemas(agent).map((tool: any) => tool.name)
-    await h.emit('agent/session-start', { agent, source: 'resume' })
+    await h.emit('agent/created', { agent, source: 'resume' })
     await h.assemble(agent)
     await h.emit('tools/post-execute', { agent, name: 'read' }, {}, () => Promise.resolve({ kind: 'accept' }))
     // A stale filter left in place, or a re-sync that reads its own output,
@@ -356,7 +356,7 @@ describe('gentle paging under the collapsed ptc wire', () => {
   it('survives a registry that refuses the restriction, warning once and keeping every tool', async () => {
     const h = harness({}, { restrictThrows: true })
     const agent = await agentOf(h)
-    await h.emit('agent/session-start', { agent, source: 'resume' })
+    await h.emit('agent/created', { agent, source: 'resume' })
     const assembled = await h.assemble(agent)
 
     expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['run_code'])
@@ -369,14 +369,14 @@ describe('gentle paging under the collapsed ptc wire', () => {
     expect(text).not.toContain('<inactive_namespaces>')
   })
 
-  it('installs no page at all when the deployment has no code runtime', async () => {
-    // The documented fallback: 'ptc' is configured but no code runtime is
+  it('installs no page at all when the deployment has no PTC runtime', async () => {
+    // The documented fallback: 'ptc' is configured but no PTC runtime is
     // mounted, so the scope never declares the collapse and the wire stays
     // native. The assembled array already carries paging by itself, so a
     // registry restriction here would strip the paged families from a wire that
     // is supposed to carry them — and the catalog would announce namespaces as
     // withheld that nothing withheld.
-    const h = harness({ presentation: 'ptc' }, { codeRuntime: false })
+    const h = harness({ presentation: 'ptc' }, { ptcRuntime: false })
     const agent = await agentOf(h)
 
     // No declaration, therefore no restriction, therefore no page.

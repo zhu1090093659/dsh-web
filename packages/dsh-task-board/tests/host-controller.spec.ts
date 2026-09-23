@@ -19,7 +19,8 @@ function snapshot(revision: number, tasks: TaskRecord[] = [], ledgerId = 'ledger
 
 function sessions(): SessionsControllerFace {
   return {
-    list: { getSnapshot: () => ({ current: undefined }), subscribe: () => () => undefined },
+    current: () => undefined,
+    subscribe: () => () => undefined,
     open: vi.fn(),
   }
 }

@@ -22,7 +22,7 @@ Behavior is preserved for legitimate flows. A capped-out table only drops stale 
 ## Alternatives considered
 
 - Expiring entries by time (mirroring the `acceptAttempts` window prune): rejected — a time-based table needs a sweep and a tuning knob for a cache whose entries are self-healing; FIFO at a cap achieves the bound with no timer and no policy to get wrong.
-- Dropping the dynamic table and re-deriving trust per request from the cookie alone: rejected — the cookieless mobile flow (`?device=` on `/pair-app`) and reverse-proxy topologies rely on the remembered authority to pass `lanFence` after `/pair-accept`; removing the table would break the flow the [docker pairing adaptation](2026-09-04-remote-web-ui-docker-pairing-adaptation.md) shipped.
+- Dropping the dynamic table and re-deriving trust per request from the cookie alone: rejected — the cookieless mobile flow (the one-time `?grant=` landing on `/pair-app`, `?device=` when this note was written — see [the one-time landing grant](../../architecture/2026-09-21-remote-one-time-landing-grant.md)) and reverse-proxy topologies rely on the remembered authority to pass `lanFence` after `/pair-accept`; removing the table would break the flow the [docker pairing adaptation](2026-09-04-remote-web-ui-docker-pairing-adaptation.md) shipped.
 - Validating dynamic entries against configured `trustedHosts` only: rejected — the table exists precisely for authorities no configuration knows about (container bridge IPs, rotating proxy hosts).
 
 ## Consequences

@@ -26,7 +26,9 @@ The family bundle (`dsh-web-all`) includes this plugin. For a standalone profile
 dsh plugin --profile web add link:/path/to/dsh-web/packages/dsh-session-archive
 ```
 
-Restart `dsh web`. A first-level "会话归档管理" section appears in the web settings, below the Workshop entry.
+Restart `dsh web`. The plugin **takes over the official "Archived sessions" Settings entry** rather than adding a parallel first-level one: it seats the same `settings.section` id (`archived-sessions`) and nav order (25) that `@deepseek-ai/dsh-client-ui-settings-unarchive-sessions` uses, and `dsh-web-all` retires that official row, so Settings shows a single archive entry carrying both the official restore behaviour (the section opens on the archived view) and this plugin's management surface.
+
+With the aggregate the consolidation is automatic. A standalone install next to the official page renders two entries instead; disable one of the two rows in Plugins so only one archive entry mounts.
 
 ## Configuration
 

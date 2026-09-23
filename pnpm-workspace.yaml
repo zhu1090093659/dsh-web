@@ -20,21 +20,31 @@ allowBuilds:
   node-pty: true
   ssh2: true
 
-# Upstream packaging defect (reported at 0.1.5-alpha.2, verified still present
-# in the 0.1.5-rc.1 tarballs on 2026-09-10): two published SDK packages import
+# Upstream packaging defect (reported at 0.1.5-alpha.2, re-verified against the
+# 0.1.7-alpha.1 tarballs on 2026-09-22): published SDK packages import
 # runtime dependencies their published manifests never declare, so vitest/node
 # resolution fails for workspace consumers. Restore them at the versions the
 # source pins; the host web bundle supplies its own copies at runtime. Reported
 # as upstream packaging defects; no installed file is patched.
+#
+# @deepseek-ai/dsh-sandbox is a different case: dsh-tools@0.1.6-alpha.1 declares
+# it as a required peer AND imports it at module top level (it did neither at
+# 0.1.5-rc.1), so the root devDependencies carry it as a host face instead of a
+# packageExtensions patch.
 packageExtensions:
-  '@deepseek-ai/dsh-client-store@0.1.5-rc.1':
+  '@deepseek-ai/dsh-client-store@0.1.7-alpha.1':
     dependencies:
       zustand: '~4.4.7'
       immer: '^10.1.1'
-  '@deepseek-ai/dsh-client-ui-primitives@0.1.5-rc.1':
+  '@deepseek-ai/dsh-client-ui-primitives@0.1.7-alpha.1':
     dependencies:
       anser: '^2.3.5'
       clsx: '^2.0.0'
+      # New at 0.1.6-alpha.1: the emitted lib/index.js imports `diff` for its
+      # DiffBlock renderer, and the published manifest still declares no
+      # runtime dependencies at all. Version read from the official host
+      # install (`@deepseek-ai/dsh@0.1.6-alpha.1` -> diff 9.0.0).
+      diff: '^9.0.0'
       katex: '^0.16.47'
       shiki: '^4.3.1'
       '@shikijs/langs': '^4.3.1'
@@ -49,80 +59,100 @@ packageExtensions:
       micromark-util-classify-character: '^2.0.1'
       micromark-util-sanitize-uri: '^2.0.1'
       micromark-util-symbol: '^2.0.1'
+      # New at 0.1.7-alpha.1: the emitted lib/index.js imports
+      # `@deepseek-ai/dsh-util-workspace-path` for its workspace-relative path
+      # rendering, and the published manifest still declares no dependencies at
+      # all (peer `@deepseek-ai/cordis` only). Version read from the cohort's own
+      # publish (`0.1.7-alpha.1`).
+      '@deepseek-ai/dsh-util-workspace-path': '^0.1.7-alpha.1'
+      # New at 0.1.6-alpha.2: the emitted lib/index.js imports `simple-icons`
+      # for the markdown link glyphs, and the published manifest still declares
+      # no runtime dependencies at all. Version is the exact pin the official
+      # source resolves (packages/client/ui-primitives devDependencies ->
+      # simple-icons 16.31.0).
+      simple-icons: '16.31.0'
 
 minimumReleaseAgeExclude:
-  - '@deepseek-ai/dsh-agent-default-model@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-agent@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-api-remotes@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-attachment@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-brand@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-connection@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-locale@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-ui-conversation@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-ui-primitives@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-ui-settings@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-ui-sidebar@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-ui-slots@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-ui-theme@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-commands@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-credentials@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-goal@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-host-directory-picker@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-host-webserver@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-invariants@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-launch-environment@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-llm-retry@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-llm@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-native-command@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-session-persistence@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-session-projection-cache@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-session-projection@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-session-query@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-session-title@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-session@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-settings@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-skill@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-subagent@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-subprocess@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-token-meter@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-tools@0.1.5-rc.1'
-  # The repo root carries the host faces in better-sidebar's static import
-  # closure (see package.json) so the linked web profile resolves them from
-  # the repo top level; the util faces joined the closure at 0.1.2-alpha.2.
-  - '@deepseek-ai/dsh-util-crypto@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-util-time@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-util-values@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-user-approval@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-workspace@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-system-prompt@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-timeout@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-scope@0.1.5-rc.1'
-  - '@deepseek-ai/cordis@4.0.2'
-  - '@deepseek-ai/cordis-plugin-include@1.0.7'
-  - '@deepseek-ai/cordis-plugin-loader@1.0.3'
-  - '@deepseek-ai/cosmokit@1.8.3'
-  - '@deepseek-ai/schemastery@3.18.1 || 3.18.2'
-  - '@deepseek-ai/dsh-jobs@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-typert-protocol@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-user-questions@0.1.5-rc.1'
-  # The aggregate bundle pins dsh-better-sidebar at exactly 0.19.1 (the stable
-  # release of 2026-09-11; peers declare ^0.1.5-rc.1 and the inject list adds
-  # the optional dsh-client-ui-sidebar-right face); pnpm 11's minimum-release-age
-  # guard must not reject the fresh version. Scoped to that exact version so
-  # later upstream publishes get no cooldown bypass.
-  - 'dsh-better-sidebar@0.19.1'
+  - '@deepseek-ai/dsh-agent-default-model@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-agent@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-api-remotes@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-attachment@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-brand@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-connection@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-locale@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-ui-conversation@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-ui-primitives@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-ui-settings@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-ui-sidebar@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-ui-slots@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-ui-theme@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-commands@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-credentials@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-goal@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-host-directory-picker@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-host-webserver@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-invariants@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-launch-environment@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-llm-retry@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-llm@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-native-command@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-sandbox@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-session-persistence@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-session-projection-cache@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-session-projection@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-session-query@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-session-title@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-session@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-settings@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-skill@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-subagent@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-subprocess@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-token-meter@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-tools@0.1.7-alpha.1'
+  # The repo root carries the host faces a linked profile resolves from the repo
+  # top level (see package.json). dsh-util-values is imported by the family's own
+  # client sources; dsh-util-crypto and dsh-util-time come from external-plugin
+  # static import closures (better-sidebar's, which the alpha branch no longer
+  # bundles but a profile may still install on demand).
+  - '@deepseek-ai/dsh-util-crypto@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-util-time@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-util-values@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-user-approval@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-workspace@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-system-prompt@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-timeout@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-scope@0.1.7-alpha.1'
+  - '@deepseek-ai/cordis@4.0.3'
+  - '@deepseek-ai/cordis-plugin-include@1.0.7 || 1.0.8'
+  - '@deepseek-ai/cordis-plugin-loader@1.0.3 || 1.0.4'
+  - '@deepseek-ai/cosmokit@1.8.4'
+  - '@deepseek-ai/schemastery@3.18.1 || 3.18.2 || 3.18.3'
+  - '@deepseek-ai/dsh-jobs@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-typert-protocol@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-user-questions@0.1.7-alpha.1'
   # The aggregate bundle mounts @mlgbnb/dsh-archive-manager at exactly 1.0.7;
   # pnpm 11's minimum-release-age guard must not reject the fresh version.
   # Scoped to that exact version so later upstream publishes get no cooldown bypass.
   - '@mlgbnb/dsh-archive-manager@1.0.7'
-  - '@deepseek-ai/dsh-agent-presets@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-api-gateway@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-api-session-controller@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-api-workspace-controller@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-store@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-ui-renderer@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-ui-session@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-deque@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-api-settings-controller@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-chunked-list@0.1.5-rc.1'
-  - '@deepseek-ai/dsh-client-ui-settings-models@0.1.5-rc.1'
+  # The agent-preset domain was rebuilt at 0.1.7-alpha.1: the directory-scanning
+  # `dsh-agent-presets` package is gone, replaced by the declarative
+  # `dsh-agent-preset` row and the `dsh-agent-preset-registry` service.
+  - '@deepseek-ai/dsh-agent-preset@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-agent-preset-registry@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-api-gateway@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-api-session-controller@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-api-workspace-controller@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-store@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-ui-renderer@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-ui-session@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-deque@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-api-settings-controller@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-chunked-list@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-client-ui-settings-models@0.1.7-alpha.1'
+  # Directly consumed since the multi-instance Client Session model: the family's
+  # navigation adapter reads ctx.uiWorkspace (the workspace plugin's openSession),
+  # which replaced ISessions.open() at 0.1.6-alpha.2.
+  - '@deepseek-ai/dsh-client-ui-workspace@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-atomic-write@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-config-editor@0.1.7-alpha.1'
+  - '@deepseek-ai/dsh-util-workspace-path@0.1.7-alpha.1'

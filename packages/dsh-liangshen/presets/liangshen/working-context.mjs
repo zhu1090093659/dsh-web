@@ -34,6 +34,8 @@ import {
   validatePagedToolPatterns,
 } from './paging.mjs'
 
+import { foldFactLedger, renderLedgerField } from './fact-ledger.mjs'
+
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'liangshen-working-context'
 
@@ -110,6 +112,12 @@ export function renderWorkingContext(events, options) {
     fields.push(`in progress: ${shown.join('; ')}${rest > 0 ? `; +${rest} more` : ''}`)
   }
 
+  // The key-fact register: facts the model pinned with fact_register, folded
+  // from the same event stream, ride this line so they land inside the local
+  // attention window every step.
+  const ledgerField = renderLedgerField(foldFactLedger(events))
+  if (ledgerField !== undefined) fields.push(ledgerField)
+
   return fields.length === 0 ? undefined : `[Working Context: ${fields.join(' | ')}]`
 }
 
@@ -125,7 +133,7 @@ function textOf(message) {
 /** Whether one message is this plugin's working-context line. */
 function isContextMessage(message) {
   const source = message?.source
-  return source?.kind === 'plugin' && source?.plugin === name
+  return source?.kind === name || (source?.kind === 'plugin' && source?.plugin === name)
 }
 
 /** Visible surface positions, or undefined when the session exposes none. */
@@ -160,7 +168,7 @@ export function createContextMessage(line) {
     id: globalThis.crypto.randomUUID(),
     role: 'user',
     content: [{ type: 'text', text: line }],
-    source: { kind: 'plugin', plugin: name },
+    source: { kind: name },
   }
 }
 

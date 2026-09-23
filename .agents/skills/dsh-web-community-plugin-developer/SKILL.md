@@ -44,7 +44,7 @@ disable-model-invocation: true
    只能 type-only 导入（运行时由宿主 shell 的 module table 提供）。
 
 可选：给插件接设置页（host 用 `installSettingsSection` 注册命名空间，browser 用
-`ctx.settingsScope.bind` + `settings.plugin.item` / `settings.section` 槽），要点见
+`ctx.settingsScope.bind` + `plugins.bundle.config` / `settings.section` 槽），要点见
 `docs/plugins.md`「设置页插件配置」；发布到 npm 用自己的 scope（参考社区条目里的
 `npm` 字段写法），用户即可 `dsh plugin add` 安装。
 

@@ -1,6 +1,6 @@
 {
   // Host-half program (node process side): tool registration, the attach
-  // route, the settings section, and the media facts. SDK types resolve
+  // route, the plugin config, and the media facts. SDK types resolve
   // from the @deepseek-ai/* npm packages declared in devDependencies
   // (official NPM SDK), never from a source checkout.
   "compilerOptions": {
@@ -9,6 +9,18 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
+    // Pin the SDK's cordis module to this package's own dependency. The
+    // optional cordis peers this package needs for its Loader tests
+    // (cordis-plugin-include / -loader) give the importer a cordis instance of
+    // its own, while the @deepseek-ai SDK packages in the same install link
+    // the plain workspace instance; without the pin the cordis Context/Events
+    // merges those SDK packages declare (ctx.tools, ctx.slots, ctx.configForms,
+    // agent/created, ...) land on the other module and every service lookup
+    // reports a missing property. Drop the pin once the install resolves one
+    // instance for the whole workspace.
+    "paths": {
+      "@deepseek-ai/cordis": ["./node_modules/@deepseek-ai/cordis"]
+    },
     "lib": ["ES2024"],
     "strict": true,
     "skipLibCheck": true,

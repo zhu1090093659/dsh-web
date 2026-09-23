@@ -16,19 +16,25 @@ interface FakeOptions {
 }
 
 function fakeCtx(options: FakeOptions = {}) {
+  // `readonly.current` names the Session the main view owns: the catalog carries
+  // no global selection since 0.1.6-alpha.2, so the row itself carries the
+  // main-view ownership marker the controller derives from.
   const current = options.readonly?.current ?? 'session-1'
   const byId: Record<string, unknown> = {
     [current]: {
+      id: current,
       blank: options.readonly?.blank ?? true,
       projectionValues: { agentPreset: options.readonly?.agentPreset ?? 'standard' },
+      retainedBy: { mainView: 1 },
     },
   }
-  const state = { current: current as never, byId: byId as never }
+  const state = { ids: [current as never], byId: byId as never }
   const rows = (options.presets ?? [
     { id: 'standard', isDefault: true, name: 'Standard' },
     { id: 'liangshen', name: '梁神模式' },
-  ]).map(row => ({ trust: 'user' as const, isDefault: false, ...row }))
+  ]).map(row => ({ isDefault: false, ...row }))
   const selections: [string, string][] = []
+  const documentEvents: ((ns: string) => void)[] = []
   const ctx = {
     sessions: {
       list: {
@@ -38,18 +44,21 @@ function fakeCtx(options: FakeOptions = {}) {
     },
     remote: {
       agentPresets: {
-        list: async () => ({ ok: true as const, value: { presets: rows, authorable: true } }),
+        list: async () => ({ ok: true as const, value: { presets: rows, modeSelectionEnabled: true } }),
         select: async (sessionId: string, presetId: string) => {
           selections.push([sessionId, presetId])
           if (options.select !== undefined) return options.select(sessionId, presetId)
           return { ok: true as const, value: presetId }
         },
       },
-      $on: () => () => {},
+      $on: (event: string, listener: (ns: string) => void) => {
+        if (event === 'settings/document-updated') documentEvents.push(listener)
+        return () => {}
+      },
     },
     locale: { bind: () => (key: string, vars?: Record<string, unknown>) => (vars === undefined ? key : `${key}${JSON.stringify(vars)}`) },
   }
-  return { ctx: ctx as never, selections, state }
+  return { ctx: ctx as never, selections, state, rows, documentEvents }
 }
 
 async function started(options: FakeOptions = {}) {
@@ -101,7 +110,9 @@ describe('LeverController', () => {
     await Promise.resolve()
     await Promise.resolve()
     // The host records the switch; the next session read reports it.
-    state.byId['session-1'] = { blank: true, projectionValues: { agentPreset: 'liangshen' } } as never
+    state.byId['session-1'] = {
+      id: 'session-1', blank: true, projectionValues: { agentPreset: 'liangshen' }, retainedBy: { mainView: 1 },
+    } as never
     controller.refresh()
     expect(controller.snapshot().getSnapshot().state).toBe('on')
     controller.face().push()
@@ -191,6 +202,86 @@ describe('LeverController', () => {
     expect(controller.face().t('lever.a11y')).toBe('lever.a11y')
     expect(controller.face().t('lever.hint.push', { preset: 'Standard' })).toBe('lever.hint.push{"preset":"Standard"}')
   })
+
+  it('operator sees the roster re-read when a committed write can move it', async () => {
+    // Given a lever following a roster, When the operator commits a settings
+    // write to an entry that can move it, Then the lever re-reads the roster
+    // while a write to any other namespace leaves what it reports alone.
+    const fake = fakeCtx({ presets: [{ id: 'standard', isDefault: true }] })
+    const controller = new LeverController(fake.ctx)
+    controller.start()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(controller.snapshot().getSnapshot().state).toBe('missing')
+
+    fake.rows.push({ id: 'liangshen', isDefault: false, name: '梁神模式' })
+    for (const listener of fake.documentEvents) listener('settings-other')
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(controller.snapshot().getSnapshot().state).toBe('missing')
+
+    for (const listener of fake.documentEvents) listener('agent-preset-registry')
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(controller.snapshot().getSnapshot().state).toBe('off')
+    controller.dispose()
+  })
+
+  it('user restores previous preset from remembered state across multiple pulls without regressing to fallback', async () => {
+    // Given a blank session running an explicit non-default preset
+    const { controller, selections, state } = await started({
+      presets: [
+        { id: 'standard', isDefault: true, name: 'Standard' },
+        { id: 'command-code', name: 'Command Code' },
+        { id: 'liangshen', name: '梁神模式' },
+      ],
+      readonly: { agentPreset: 'command-code' },
+    })
+
+    // When the user pulls down into LiangShen mode and pushes back up
+    controller.face().pull()
+    await Promise.resolve()
+    await Promise.resolve()
+    state.byId['session-1'] = {
+      id: 'session-1', blank: true, projectionValues: { agentPreset: 'liangshen' }, retainedBy: { mainView: 1 },
+    } as never
+    controller.refresh()
+    expect(controller.snapshot().getSnapshot().state).toBe('on')
+
+    controller.face().push()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Then the original non-default preset is restored
+    expect(selections).toEqual([['session-1', 'liangshen'], ['session-1', 'command-code']])
+
+    // When the user repeats the pull and push cycle
+    state.byId['session-1'] = {
+      id: 'session-1', blank: true, projectionValues: { agentPreset: 'command-code' }, retainedBy: { mainView: 1 },
+    } as never
+    controller.refresh()
+    expect(controller.snapshot().getSnapshot().state).toBe('off')
+
+    controller.face().pull()
+    await Promise.resolve()
+    await Promise.resolve()
+    state.byId['session-1'] = {
+      id: 'session-1', blank: true, projectionValues: { agentPreset: 'liangshen' }, retainedBy: { mainView: 1 },
+    } as never
+    controller.refresh()
+
+    controller.face().push()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Then the remembered preset is still restored instead of falling back to default
+    expect(selections).toEqual([
+      ['session-1', 'liangshen'],
+      ['session-1', 'command-code'],
+      ['session-1', 'liangshen'],
+      ['session-1', 'command-code'],
+    ])
+  })
 })
 
 /**
@@ -204,7 +295,12 @@ describe('LeverController service resolution', () => {
   it('stays inert instead of throwing when the remote service is refused', async () => {
     const ctx = {
       get sessions() {
-        return { list: { getSnapshot: () => ({ current: 'session-1', byId: {} }), subscribe: () => () => {} } }
+        return {
+          list: {
+            getSnapshot: () => ({ byId: { 'session-1': { id: 'session-1', retainedBy: { mainView: 1 } } } }),
+            subscribe: () => () => {},
+          },
+        }
       },
       get remote(): never { throw new Error('cannot get property "remote" without inject') },
       locale: { bind: () => (key: string) => key },
@@ -219,7 +315,7 @@ describe('LeverController service resolution', () => {
   })
 
   it('stays inert when the sessions service is refused', async () => {
-    const roster = { presets: [{ id: 'liangshen', trust: 'user' as const, isDefault: false }], authorable: false }
+    const roster = { presets: [{ id: 'liangshen', isDefault: false }], modeSelectionEnabled: false }
     const ctx = {
       get sessions(): never { throw new Error('cannot get property "sessions" without inject') },
       remote: {

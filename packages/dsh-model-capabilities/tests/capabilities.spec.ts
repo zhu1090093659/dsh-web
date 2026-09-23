@@ -10,15 +10,12 @@ import {
   declaredLevelsOf,
   effortsModeOf,
   effortsSummaryOf,
-  imageInputOf,
   modelsArrayOf,
   readAt,
   sanitizeEntry,
   THINKING_LEVELS,
   validateEntry,
   withEffortsMode,
-  withImageInput,
-  withInputInherited,
   levelsMapOf,
   COMMON_EFFORTS_PRESET,
   type ModelEntryDraft,
@@ -93,15 +90,6 @@ describe('declaredLevelsOf', () => {
   })
 })
 
-describe('imageInputOf', () => {
-  it('distinguishes inherit, image, and text-only', () => {
-    expect(imageInputOf({ id: 'm' })).toBeUndefined()
-    expect(imageInputOf({ id: 'm', input: ['text'] })).toBe(false)
-    expect(imageInputOf({ id: 'm', input: ['text', 'image'] })).toBe(true)
-    expect(imageInputOf({ id: 'm', input: 'junk' } as unknown as ModelEntryDraft)).toBeUndefined()
-  })
-})
-
 describe('validateEntry', () => {
   it('accepts inherit and none modes', () => {
     expect(validateEntry({ id: 'm' })).toBeUndefined()
@@ -124,15 +112,6 @@ describe('validateEntry', () => {
 })
 
 describe('draft updates', () => {
-  it('withImageInput writes explicit modalities', () => {
-    expect(withImageInput({ id: 'm' }, true)).toEqual({ id: 'm', input: ['text', 'image'] })
-    expect(withImageInput({ id: 'm', input: ['text', 'image'] }, false)).toEqual({ id: 'm', input: ['text'] })
-  })
-
-  it('withInputInherited drops the claim', () => {
-    expect(withInputInherited({ id: 'm', input: ['text'] })).toEqual({ id: 'm' })
-  })
-
   it('withEffortsMode inherit drops the field', () => {
     expect(withEffortsMode({ id: 'm', reasoningEfforts: false }, 'inherit')).toEqual({ id: 'm' })
   })

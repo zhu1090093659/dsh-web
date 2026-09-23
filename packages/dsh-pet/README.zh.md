@@ -292,7 +292,7 @@ dsh-pet/
 
 - **状态来源**：宿主把官方 `turn/start`、`step/start`、`assistant/message`、`tool/call`、`tool/result`、`turn/end` 事件与实时 `agent/assistant-stream` 增量投影为 waiting/thinking/tool/review/done/failed 状态。可选兼容 `activity/status` 事件仍作为输入。
 - **注册表**：宿主把每份 manifest 归一化为完整渲染定义（几何、每行帧数、每轨时长），经 `/api/pet/pets` 下发；浏览器半区用该定义渲染任意条目，不携带任何宠物专属代码。
-- **选择与命名**：`petId` 存于设置命名空间；每只宠物的名字存于 `pet.json` 的 `names`，通过悬浮面板对当前宠物改名编辑。旧版安装的平铺 `name` 自动迁移到鲸鱼娘名下。
+- **选择与命名**：`petId` 存于插件自身的配置——宿主据此 profile 条目生成 Pet 设置页；每只宠物的名字存于 `pet.json` 的 `names`，通过悬浮面板对当前宠物改名编辑。旧版安装的平铺 `name` 自动迁移到鲸鱼娘名下。
 - **显示**：`visible`、`size`、`right`、`bottom` 与 `bubbleScale` 存在 `pet.json`，在设置卡片里编辑。气泡字号跟随精灵自身的尺寸（默认 160px 宠物对应 12px），`bubbleScale` 在此结果上再乘一个倍率，并限制在 10–24px——缩小的宠物不会顶着读不清的字（issue #1549）。
 - **多会话语义**：API 与浏览器挂载都是宿主全局的，不暴露前台会话身份。并行会话各自保留投影状态：最近一次有意义事件驱动精灵动画，同时每个活动的顶层会话在独立气泡里报告自己的阶段（state 视图的 sessions 列表，最多保留最近 12 个）。子代理会话仍参与动画、计奖与单一显示气泡，但不占独立气泡位——N 个对话不会变成"N + 子代理数"的气泡堆。每个会话完成的轮次仍独立计奖；销毁会话移除它的气泡，销毁当前显示会话则回退到最近仍在活动的会话。
 - **挂载点**：`document.body`（全局 React 根，始终显示：无会话 / 新会话 / 会话中都可见——旧挂载点 `conversation.composer.dock` 只在活动会话里渲染，新会话里宠物消失）；组件内部用 `createPortal` 渲染全局浮层。根容器随插件 fiber 生命周期走：fiber 销毁时卸载 React 根、移除容器并停止轮询与设置订阅；热重载或重复注入的新 bundle 接管页面级单挂载槽，页面始终只有一个 `[data-dsh-pet-root]`（issue #785）。

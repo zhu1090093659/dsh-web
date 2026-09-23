@@ -1,6 +1,6 @@
 /**
  * Native-image route tests (rc.8 feature): the state view reads the
- * agent-default route and the llm-deepseek catalog, the toggle rewrites the
+ * agent-default route and the llm-deepseek entry, the toggle rewrites the
  * catalog entry through the official settings seam with revision fencing,
  * and the HTTP guard rejects non-loopback peers and malformed bodies.
  */
@@ -24,7 +24,7 @@ class FakeDefaultModel extends Service {
   }
 }
 
-/** In-memory settings seam that applies 'set' ops so reads observe writes. */
+/** In-memory settings seam (0.1.7 `SettingsForms`) that applies 'set' ops so reads observe writes. */
 class FakeSettings extends Service {
   readonly mutations: Array<{ ns: string; ops: unknown[]; revision?: number }> = []
   readonly doc: Record<string, unknown>
@@ -34,14 +34,15 @@ class FakeSettings extends Service {
     this.doc = doc
   }
 
+  /** One descriptor per entry, keyed by the profile entry id. */
   describe(): Array<{ ns: string; value: unknown; revision: number }> {
     return Object.entries(this.doc).map(([ns, value]) => ({ ns, value, revision: 7 }))
   }
 
-  async mutate(ns: unknown, ops: readonly { op: string; path: readonly string[]; value?: unknown }[], revision?: number): Promise<void> {
-    this.mutations.push({ ns: String(ns), ops: [...ops], revision })
+  async mutate(ns: string, ops: readonly { op: string; path: readonly string[]; value?: unknown }[], revision?: number): Promise<void> {
+    this.mutations.push({ ns, ops: [...ops], revision })
     for (const op of ops) {
-      if (op.op === 'set' && op.path[0] === 'models') this.doc[String(ns)] = { models: op.value }
+      if (op.op === 'set' && op.path[0] === 'models') this.doc[ns] = { models: op.value }
     }
   }
 }
@@ -120,7 +121,7 @@ describe('setNativeImageEnabled', () => {
     expect(models).toEqual([{ id: 'v4-pro', name: 'Pro', inputModalities: ['text'] }])
   })
 
-  it('rejects the write when the adapter namespace is missing', async () => {
+  it('rejects the write when the adapter entry is missing', async () => {
     const ctx = new Context()
     await ctx.plugin(FakeDefaultModel, { provider: 'deepseek', model: 'v4-pro' })
     await ctx.plugin(FakeSettings, {})

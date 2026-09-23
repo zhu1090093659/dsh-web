@@ -28,6 +28,9 @@ selection of skins, pets and community plugins.
   `@linxin666/dsh-client-ui-plugin-manager`); without it the card degrades to the copy-command index.
 - Remote browsers see the read-only catalog: install buttons are hidden, the Workshop site link and
   copy-command fallbacks stay available.
+- External links — the Workshop site, a card name, a repository, a skin preview — open in the
+  official right-sidebar browser when the shell registers that tab type (alpha.2), and in a new
+  browser tab otherwise.
 - Each card also shows an independent Workshop install count next to likes, plus a plugin npm
   last-30-day download count (npm-backed plugins only); install counts record successful install
   events, npm downloads use the public registry convention, and neither merges with likes.
@@ -46,8 +49,9 @@ card declares.
 
 ## Config
 
-- Enable switch: the card carries its own master switch in the plugin configuration section (persisted
-  in the `dsh-web-ui-market` settings namespace). Turning it off hides the catalog and keeps the switch only.
+- Enable switch: the card carries its own master switch in the plugin configuration section — the plugin's
+  own `enabled` config on its profile entry, which the Host serves as this row's settings page. Turning it
+  off hides the catalog and keeps the switch only.
 - No other configuration; the catalog data always comes from dsh-market.com.
 
 ## Known limitations
@@ -64,9 +68,10 @@ The browser half sends one anonymous install heartbeat per UTC day to dsh-market
 
 ## Architecture
 
-- The host half (`src/index.ts`) registers the `dsh-web-ui-market` settings namespace and mounts the
-  loopback-only gateway (`/api/market/installed`, `/api/market/install-skin`, `/api/market/install-pet`,
-  `/api/market/install-preset`).
+- The host half (`src/index.ts`) owns no settings registration: the card's enable switch is the plugin's
+  own `Config` schema, which the Host serves as this row's settings page and the browser half reads back
+  through the entry's configuration form. It mounts the loopback-only gateway (`/api/market/installed`,
+  `/api/market/install-skin`, `/api/market/install-pet`, `/api/market/install-preset`).
 - The installer core (`src/core/installer.ts`) fetches the manifest from `dsh-market.com` itself,
   validates every path against a conservative allowlist, and writes atomically (temp dir then rename),
   so a failed download never leaves a half-written asset directory. The client never supplies URLs or

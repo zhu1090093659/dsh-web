@@ -1,7 +1,7 @@
 /**
- * Repair-conversation seed text. Two failure surfaces hand off to the agent
- * through the same shape: a failed install (target spec + install error) and
- * a recorded boot failure (the failure-ring row). The seeded message must be
+ * Repair-conversation seed text. The failure surfaces this package still owns
+ * hand off to the agent through the same shape: a recorded boot failure (the
+ * failure-ring row) and an install-conflict change. The seeded message must be
  * self-contained — the repair session's workspace is the plugin install root,
  * so the agent's file tools reach the plugin code without leaving the
  * workspace boundary.
@@ -18,10 +18,6 @@ import type { LayerState } from './patch-diff.ts'
 
 /** Localized fragments the builders assemble. */
 export interface RepairCopy {
-  installTitle: string
-  installSpecLabel: string
-  installErrorLabel: string
-  installAsk: string
   failureTitle: string
   failurePluginLabel: string
   failureKindLabel: string
@@ -42,10 +38,6 @@ export interface RepairCopy {
 
 /** Default copy (zh): the package's zh dictionary keys map onto these strings. */
 export const DEFAULT_REPAIR_COPY: RepairCopy = {
-  installTitle: '正在修复插件安装失败',
-  installSpecLabel: '安装目标',
-  installErrorLabel: '安装错误',
-  installAsk: '请在插件安装根目录内检查插件包或依赖并修复，然后重试安装。',
   failureTitle: '正在修复插件启动失败',
   failurePluginLabel: '插件',
   failureKindLabel: '失败类型',
@@ -68,23 +60,6 @@ export const DEFAULT_REPAIR_COPY: RepairCopy = {
     disabled: '已关闭',
     uninstalled: '已卸载',
   },
-}
-
-/**
- * Seed text for a failed install: the target and the rendered error,
- * self-contained for the agent.
- * @param spec - the install target (npm spec or git URL) that failed.
- * @param error - the rendered install error text.
- * @param copy - localized fragments.
- * @returns the repair prompt text.
- */
-export function installRepairMessage(spec: string, error: string, copy: RepairCopy = DEFAULT_REPAIR_COPY): string {
-  return [
-    copy.installTitle,
-    `${copy.installSpecLabel}: ${spec}`,
-    `${copy.installErrorLabel}:\n${error}`,
-    copy.installAsk,
-  ].join('\n\n')
 }
 
 /**

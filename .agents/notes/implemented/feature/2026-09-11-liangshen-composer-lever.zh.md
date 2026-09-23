@@ -12,7 +12,7 @@ Status: implemented
 
 插件新增浏览器半区，只负责一个控件：输入框工具行里的一台老虎机拨杆，经 `conversation.input.right` 槽认领——shell 把它渲染在同一张输入卡内、模型选择器（`conversation.input.model`）紧左侧；新建会话的 hero 用的是同一条工具行。
 
-- 把拨杆拨下，为当前会话组合梁神模式；上拨则回到用户此前的预设，页面尚未见过任何选择时回退到部署默认预设。
+- 把拨杆拨下，为当前会话组合梁神模式；上拨则回到用户此前的预设，页面尚未见过任何选择时回退到部署默认预设。在任一方向上拖拽均根据当前状态切换模式，在已开启梁神模式下拉动拨杆同样会恢复上一预设，避免空转。
 - 拨杆反映会话的 `agentPreset` 投影而非本地状态，因此刷新后展示的是真相；且只在会话仍为空时可操作——正是宿主接受的那个窗口。窗口之外整行控件什么都不渲染。
 - 命中后播放特效：闪光、冲击环、火花，以及「模式名 + 文言文、二进制、摩斯三行」的横幅。特效由控制器只在宿主接受切换时推进的计数器驱动，因此被拒绝的切换不可能庆祝。`prefers-reduced-motion` 保留状态变化、去掉动画。
 - 切换走浏览器会话已完成鉴权的 agent-preset Remote 命名空间（`agentPresets.list` 与 `agentPresets.select`）。不引入官方预设包的浏览器模块：本仓库的跨插件协作只走 cordis 服务与 Remote 面，不走 value import，浏览器 bundle 的纯度门禁也强制这一点。
@@ -23,7 +23,7 @@ Status: implemented
 
 - `tests/lever-logic.spec.ts` 覆盖纯决策：状态判定（on / off / locked / missing）、可操作性，以及上拨回到哪个预设——包括已记住但 roster 不再提供的预设。
 - `tests/lever-control.spec.ts` 在假客户端运行时上驱动控制器：各手势选择的预设、回退、locked 与 not-found 的拒绝映射、宿主原因的透传、被拒绝的切换绝不推进特效计数器、状态无法服务的手势，以及绑定命名空间的翻译函数。
-- `tests/lever-ui.spec.tsx` 在 jsdom 下渲染组件：语义属性、`role="switch"` 状态、指针拨下与上拨、键盘激活、locked 与 missing 状态渲染为空（快照离开这些状态后整行恢复）、拒绝提示行，以及每次命中只出现一次的特效。
+- `tests/lever-ui.spec.tsx` 在 jsdom 下渲染组件：语义属性、`role="switch"` 状态、指针拨下、上拨与横向拖拽、键盘激活、locked 与 missing 状态渲染为空（快照离开这些状态后整行恢复）、拒绝提示行，以及每次命中只出现一次的特效。
 - `tests/lever-control.spec.ts` 另外钉住服务解析与切换存活：`remote` 或 `sessions` 访问器被拒绝（inject 代理抛错）时拨杆必须惰性而不是抛错；Remote 调用永不应答的切换必须报超时，而不是永远停在忙碌态。
 - 已用发布产物在真实 GUI 上跑通：新建会话页渲染出拨杆，拨下真实提交 `liangshen`（官方预设 chip 同步变化）并播放特效，上拨恢复 `standard`；宿主持久日志里有一一对应的 `agent-preset/selected` 事件。
 - `pnpm --filter @linxin666/dsh-liangshen build` 经共享预设的纯度门禁与 CSS Modules 管线产出浏览器 bundle，所以跨插件 value import 或非平台外部依赖都会让构建失败。

@@ -3,7 +3,7 @@
  *
  * The view stays pure; every fact and verb comes from here. The roster arrives
  * over the agent-preset Remote namespace (the same one the official surfaces
- * read), the current session comes from the browser sessions service, and the
+ * read), the main-view session comes from the catalog's ownership marker, and the
  * switch goes through `agentPresets.select`, which the host accepts only while
  * the session is still blank.
  *
@@ -15,8 +15,9 @@
  */
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import type { AgentPresetRoster } from '@deepseek-ai/dsh-agent-presets/types'
+import type { AgentPresetRoster } from '@deepseek-ai/dsh-agent-preset-registry/types'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
+import { mainViewSessionId } from './main-session.ts'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { LIANGSHEN_PRESET_ID, isActionable, leverState, restoreTarget, type LeverFacts, type LeverState } from '../core/lever.ts'
@@ -42,6 +43,15 @@ export type LeverError =
 
 /** How long one preset switch may stay in flight before it is reported as timed out. */
 export const SELECT_TIMEOUT_MS = 10_000
+
+/**
+ * Settings entry ids whose writes can move the roster this lever reads: the
+ * agent-preset registry's own entry (its default and selection policy) and this
+ * plugin's row under either install shape — the aggregate's generated row id
+ * and the standalone row id — because disabling the plugin unregisters the
+ * preset it declares.
+ */
+export const ROSTER_SETTINGS_ENTRY_IDS: readonly string[] = ['agent-preset-registry', 'web-ui-liangshen', 'liangshen']
 
 /** What the lever view renders. */
 export interface LeverSnapshot {
@@ -142,7 +152,7 @@ export class LeverController {
     )
     if (typeof remote?.$on === 'function') {
       this.disposers.push(remote.$on('settings/document-updated', (ns: string) => {
-        if (ns === 'agent-presets') void this.load()
+        if (ROSTER_SETTINGS_ENTRY_IDS.includes(ns)) void this.load()
       }))
     }
     this.refresh()
@@ -239,10 +249,60 @@ export class LeverController {
     }
     // The switch landed: remember where to return, then celebrate only the
     // pull that turned the mode on.
-    this.previous = direction === 'down' ? facts.agentPreset : undefined
+    if (direction === 'down') {
+      const prev = facts.agentPreset ?? this.detectPreset()
+      if (prev !== undefined && prev !== LIANGSHEN_PRESET_ID) {
+        this.rememberPrevious(prev)
+      }
+    }
     const next = this.store.getSnapshot()
     this.store.set({ ...next, busy: false, error: undefined, burst: direction === 'down' ? next.burst + 1 : next.burst })
     this.refresh()
+  }
+
+  /**
+   * Try to detect the active preset from the DOM hero chip or storage
+   * when session.projectionValues.agentPreset is absent.
+   */
+  private detectPreset(): string | undefined {
+    try {
+      if (typeof document !== 'undefined') {
+        const chip = document.querySelector<HTMLElement>('button[aria-haspopup="menu"] span[class*="seatLabel"]')
+          ?? Array.from(document.querySelectorAll<HTMLElement>('button[aria-haspopup="menu"] span')).find(s => s.className.includes('seatLabel'))
+        const text = chip?.textContent?.trim()
+        if (text) {
+          const matched = this.rows.find(row => (row.name === text || row.id === text) && row.id !== LIANGSHEN_PRESET_ID)
+          if (matched) return matched.id
+        }
+      }
+    } catch {
+      // Defensive
+    }
+
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const stored = sessionStorage.getItem('dsh-liangshen:previous-preset')
+        if (stored && stored !== LIANGSHEN_PRESET_ID && this.rows.some(r => r.id === stored)) {
+          return stored
+        }
+      }
+    } catch {
+      // Defensive
+    }
+
+    return undefined
+  }
+
+  private rememberPrevious(presetId: string | undefined): void {
+    if (presetId === undefined || presetId === LIANGSHEN_PRESET_ID) return
+    this.previous = presetId
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('dsh-liangshen:previous-preset', presetId)
+      }
+    } catch {
+      // Defensive
+    }
   }
 
   /** The facts one decision reads, from the live session and the roster. */
@@ -250,23 +310,30 @@ export class LeverController {
     const summary = this.currentSession()
     const available = this.rows.filter(row => row.broken === undefined).map(row => row.id)
     const fallback = this.rows.find(row => row.isDefault)?.id
+    const currentPreset = presetOf(summary)
+
+    if (currentPreset !== undefined && currentPreset !== LIANGSHEN_PRESET_ID) {
+      this.rememberPrevious(currentPreset)
+    }
+
+    const previous = this.previous ?? this.detectPreset()
+
     return {
       blank: summary?.blank === true,
-      agentPreset: presetOf(summary),
+      agentPreset: currentPreset,
       available,
       fallback,
-      previous: this.previous,
+      previous,
     }
   }
 
   private currentSessionId(): string | undefined {
-    const current = this.sessions?.list.getSnapshot().current
-    return current === undefined ? undefined : String(current)
+    return mainViewSessionId(this.sessions?.list.getSnapshot().byId)
   }
 
   private currentSession(): { blank?: boolean, projectionValues?: Record<string, unknown> } | undefined {
     const state = this.sessions?.list.getSnapshot()
-    const current = state?.current
+    const current = mainViewSessionId(state?.byId)
     if (state === undefined || current === undefined) return undefined
     return state.byId[current] as unknown as { blank?: boolean, projectionValues?: Record<string, unknown> } | undefined
   }

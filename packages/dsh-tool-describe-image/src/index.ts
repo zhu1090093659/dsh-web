@@ -9,8 +9,9 @@
  * Ported from deepseek-harness packages/vision/tool-describe-image (mirrored at
  * whitelonng/dsh-plugin-describe-image). Family adaptation: the plugin may be mounted without
  * configuration (the dsh-web-all aggregate does this), so endpoint/model validation happens per
- * call — or eagerly at load when a composition entry actually configures it. The "Image
- * understanding" settings section can fill the fields live from Settings → 插件配置.
+ * call — or eagerly at load when a composition entry actually configures it. The plugin's own
+ * `Config` schema is what the Host serves as this profile entry's settings page, so the
+ * "Image understanding" card fills the fields into the config the Host hands back on reload.
  * @module @linxin666/dsh-tool-describe-image
  */
 
@@ -22,7 +23,7 @@ import { DEFAULT_MAX_BYTES } from './media.ts'
 import { createCapabilityProbe, createRouteResolver } from './model-capability.ts'
 import { installToolVisibility } from './tool-visibility.ts'
 import { registerNativeImageRoutes } from './native-images.ts'
-import { Config, DESCRIBE_IMAGE_SETTINGS_NAMESPACE, resolveApiKey, resolveConfig, type ResolvedConfig, type ResolvedEndpoint } from './config-resolve.ts'
+import { Config, resolveApiKey, resolveConfig, type ResolvedConfig, type ResolvedEndpoint } from './config-resolve.ts'
 import { callVision, createVisionCache, loadImage } from './vision-client.ts'
 import { mountOnce } from './mount-once.ts'
 
@@ -124,10 +125,12 @@ export function describeImageCallView(args: DescribeImageArgs): GenericCallView 
 
 /**
  * Register the `describe_image` tool on `ctx.tools`. The image never enters the conversation: the
- * tool returns only the vision model’s text answer. The `describe-image` settings section layers
- * over the composition entry and is re-resolved per call, so the Settings → 插件配置 card's changes
- * reach the very next invocation. Repeat calls for the same image and prompt reuse a short-lived
- * semantic cache so the endpoint is not called twice in quick succession.
+ * tool returns only the vision model’s text answer. The effective configuration is the one the
+ * Host hands the plugin when it activates this profile entry — including every value the
+ * "Image understanding" card stored — and the Host restarts the entry after each accepted
+ * settings write, so a committed change reaches the very next invocation. Repeat calls for the
+ * same image and prompt reuse a short-lived semantic cache so the endpoint is not called twice in
+ * quick succession.
  *
  * Family adaptation: the aggregate mounts this plugin without configuration, so endpoint/model
  * validation is lazy — an empty composition entry loads fine and the first call fails with a clear
@@ -145,29 +148,7 @@ function applyImpl(ctx: Context, config: Config = {}): void {
   if (config.baseURL !== undefined || config.model !== undefined || (Array.isArray(config.endpoints) && config.endpoints.length > 0)) {
     resolveConfig(config)
   }
-  let current: () => Config = () => config
-  ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(ctx, DESCRIBE_IMAGE_SETTINGS_NAMESPACE, Config, config, {
-          setSource: (source) => {
-            current = source
-          },
-          onChange: () => {},
-          validate: (value) => {
-            if (value.baseURL !== undefined && value.model !== undefined) resolveConfig(value)
-            else if (Array.isArray(value.endpoints) && value.endpoints.length > 0) resolveConfig(value)
-          },
-        })
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        const scope = settingsCtx.settings.register(DESCRIBE_IMAGE_SETTINGS_NAMESPACE, Config, { base: config })
-        current = () => scope?.get?.() ?? config
-      }
-    } catch {
-      // Defensive fallback against settings registration differences
-    }
-  })
-  const spec = (): ResolvedConfig => resolveConfig(current())
+  const spec = (): ResolvedConfig => resolveConfig(config)
   let rotationCursor = 0
   // Short-lived semantic cache scoped to this mount: identical image + prompt
   // within the TTL reuse the prior answer instead of a second fetch.
@@ -184,7 +165,7 @@ function applyImpl(ctx: Context, config: Config = {}): void {
   const routeResolver = createRouteResolver(ctx)
   const probe = createCapabilityProbe(ctx, routeResolver)
   installToolVisibility(ctx, routeResolver)
-  registerAttachRoute(ctx, () => current().maxBytes ?? DEFAULT_MAX_BYTES, probe)
+  registerAttachRoute(ctx, () => config.maxBytes ?? DEFAULT_MAX_BYTES, probe)
   // rc.8 native-image requests: report the default route's image-input state
   // and toggle the llm-deepseek catalog entry for the current model. Exact
   // routes win over the /describe-image prefix table, so the capability and
@@ -196,7 +177,7 @@ function applyImpl(ctx: Context, config: Config = {}): void {
   // The settings card's probe button: list the endpoint's models per request,
   // honoring unsaved drafts so the user can verify a new endpoint before
   // saving; the key resolves through the same seam a vision call uses.
-  registerModelRoutes(ctx, () => current(), (spec) => resolveApiKey(ctx, spec))
+  registerModelRoutes(ctx, () => config, (spec) => resolveApiKey(ctx, spec))
   ctx.tools.register(defineTool({
     name: 'describe_image',
     description: DESCRIPTION_HEAD

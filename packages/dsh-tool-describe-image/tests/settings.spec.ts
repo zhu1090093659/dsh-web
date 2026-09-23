@@ -1,4 +1,11 @@
-/** The settings-section wiring: the Plugins card's committed changes drive the next call. */
+/**
+ * The plugin's configuration is its own `Config`: the values the Host hands
+ * the plugin when it activates the profile row are the ones the runtime uses,
+ * and the Host restarts the row after every accepted settings write — the
+ * only path a settings change has to a call under the 0.1.7 surface, where
+ * the row's Config schema IS its settings page (there is no separate settings
+ * document to overlay any more).
+ */
 
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import type { ServerResponse } from 'node:http'
@@ -7,57 +14,63 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId as CallId } from '@deepseek-ai/dsh-llm/brand'
-import { SettingsProvider } from '@deepseek-ai/dsh-settings'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 import * as tool from '../src/index.ts'
+import type { Config } from '../src/config-resolve.ts'
 import { anthropicReply, chatReply, FakeWebServer, jsonReply, PNG_BYTES, responsesReply, startMockServer } from './mock-server.ts'
 import { agentForWorkspace } from './test-agent.ts'
 import type { MockServer, RecordedRequest } from './mock-server.ts'
 
-/** A provider implementing only the three primitives, backed by an in-memory document. */
-class MemorySettings extends SettingsProvider {
-  doc: Record<string, unknown>
-
-  constructor(ctx: ConstructorParameters<typeof SettingsProvider>[0], options?: { doc?: Record<string, unknown> }) {
-    super(ctx)
-    this.doc = structuredClone(options?.doc ?? {})
-  }
-
-  get writable(): boolean {
-    return true
-  }
-
-  protected load(): Promise<Record<string, unknown>> {
-    return Promise.resolve(structuredClone(this.doc))
-  }
-
-  protected persist(ns: SettingsNamespace, section: Record<string, unknown>): Promise<void> {
-    this.doc[ns] = structuredClone(section)
-    return Promise.resolve()
-  }
-}
-
 const cleanup: Array<() => Promise<void>> = []
 const contexts: Context[] = []
 
+/** One activated profile row: the plugin instance the Host restarts on an accepted settings write. */
+interface Row {
+  /**
+   * Restart the row with the configuration a settings write committed, the
+   * way the Host does. A configuration the plugin refuses at activation
+   * rejects, and the row falls back to the last accepted one exactly as the
+   * Host's own rollback does.
+   * @param config - the configuration the Host would hand the plugin.
+   */
+  reload: (config: Config) => Promise<void>
+}
+
 async function boot(
-  doc: Record<string, unknown> = {},
+  makeConfig: (url: string) => Config,
   handler: (request: RecordedRequest, response: ServerResponse) => void
     = (_request, res) => { jsonReply(res, 200, chatReply('ok')) },
-): Promise<{ ctx: Context; server: MockServer }> {
+): Promise<{ ctx: Context; server: MockServer; row: Row }> {
   const server = await startMockServer(handler)
   cleanup.push(server.close)
   const ctx = new Context()
   contexts.push(ctx)
-  await ctx.plugin(MemorySettings, { doc })
+  // No settings service is mounted: under 0.1.7 the plugin reads its
+  // configuration from the activation argument alone.
   await ctx.plugin(FakeWebServer)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
-  await ctx.plugin(tool, { baseURL: server.url, model: 'entry-model', apiKey: 'sk-entry' })
-  return { ctx, server }
+  let config = makeConfig(server.url)
+  let fork = await ctx.plugin(tool, config)
+  return {
+    ctx,
+    server,
+    row: {
+      reload: async (next: Config) => {
+        const previous = config
+        await fork.dispose()
+        try {
+          fork = await ctx.plugin(tool, next)
+          config = next
+        } catch (error) {
+          fork = await ctx.plugin(tool, previous)
+          throw error
+        }
+      },
+    },
+  }
 }
 
 async function tempPng(): Promise<{ path: string; workspace: string }> {
@@ -84,37 +97,55 @@ afterEach(async () => {
   await Promise.all(cleanup.splice(0).map(close => close()))
 })
 
-describe('describe-image settings section', () => {
-  it('overlays the composition entry from the stored section', async () => {
-    const { ctx, server } = await boot({ 'describe-image': { model: 'settings-model', maxOutputTokens: 7 } })
+describe('describe-image configuration', () => {
+  it('user sees a call served by the configuration the Host handed the row', async () => {
+    // Given a row activated with an endpoint, model, key and a 7-token cap
+    const { ctx, server } = await boot(url => ({
+      baseURL: url,
+      model: 'entry-model',
+      apiKey: 'sk-entry',
+      maxOutputTokens: 7,
+    }))
     const { path, workspace } = await tempPng()
 
+    // When the model calls describe_image
     const result = await callDescribe(ctx, path, workspace)
+
+    // Then the call carries the configured model and cap
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
-    expect(result.value).toMatchObject({ model: 'settings-model' })
+    expect(result.value).toMatchObject({ model: 'entry-model' })
     const body = server.request(0).body as { model?: unknown; max_tokens?: unknown }
-    expect(body.model).toBe('settings-model')
+    expect(body.model).toBe('entry-model')
     expect(body.max_tokens).toBe(7)
   })
 
-  it('reaches the next call after a committed update, without re-registration', async () => {
-    const { ctx, server } = await boot()
+  it('user sees a committed change reach the next call after the Host restarts the row', async () => {
+    // Given a running row and a settings write the Host committed
+    const { ctx, server, row } = await boot(url => ({ baseURL: url, model: 'entry-model', apiKey: 'sk-entry' }))
     const { path, workspace } = await tempPng()
 
-    await ctx.settings.update(tool.DESCRIBE_IMAGE_SETTINGS_NAMESPACE, { model: 'live-model' })
+    // When the Host restarts the row with the committed model
+    await row.reload({ baseURL: server.url, model: 'live-model', apiKey: 'sk-entry' })
 
+    // Then the next call uses it
     const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     expect((server.request(0).body as { model?: unknown }).model).toBe('live-model')
   })
 
-  it('an apiStyle committed through the section switches the next call to /responses', async () => {
-    const { ctx, server } = await boot({}, (_request, res) => { jsonReply(res, 200, responsesReply('switched')) })
+  it('user sees an apiStyle committed to the row switch the next call to /responses', async () => {
+    // Given a row whose committed configuration selects the Responses style
+    const { ctx, server, row } = await boot(
+      url => ({ baseURL: url, model: 'entry-model', apiKey: 'sk-entry' }),
+      (_request, res) => { jsonReply(res, 200, responsesReply('switched')) },
+    )
     const { path, workspace } = await tempPng()
 
-    await ctx.settings.update(tool.DESCRIBE_IMAGE_SETTINGS_NAMESPACE, { apiStyle: 'responses' })
+    // When the Host restarts the row with it
+    await row.reload({ baseURL: server.url, model: 'entry-model', apiKey: 'sk-entry', apiStyle: 'responses' })
 
+    // Then the next call posts to /responses and parses its answer
     const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
@@ -122,12 +153,18 @@ describe('describe-image settings section', () => {
     expect(server.request(0).path).toBe('/responses')
   })
 
-  it('an anthropic-messages setting drives the next call headers, endpoint, and parser', async () => {
-    const { ctx, server } = await boot({}, (_request, res) => { jsonReply(res, 200, anthropicReply('anthropic switched')) })
+  it('user sees an anthropic-messages configuration drive the next call headers, endpoint, and parser', async () => {
+    // Given a row whose committed configuration selects the Anthropic style
+    const { ctx, server, row } = await boot(
+      url => ({ baseURL: url, model: 'entry-model', apiKey: 'sk-entry' }),
+      (_request, res) => { jsonReply(res, 200, anthropicReply('anthropic switched')) },
+    )
     const { path, workspace } = await tempPng()
 
-    await ctx.settings.update(tool.DESCRIBE_IMAGE_SETTINGS_NAMESPACE, { apiStyle: 'anthropic-messages' })
+    // When the Host restarts the row with it
+    await row.reload({ baseURL: server.url, model: 'entry-model', apiKey: 'sk-entry', apiStyle: 'anthropic-messages' })
 
+    // Then the next call speaks the Messages API
     const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
@@ -139,12 +176,15 @@ describe('describe-image settings section', () => {
     expect(request.anthropicVersion).toBe('2023-06-01')
   })
 
-  it('a model thinking suffix committed through the section drives the next call body', async () => {
-    const { ctx, server } = await boot()
+  it('user sees a model thinking suffix in the row configuration drive the next call body', async () => {
+    // Given a row whose committed model carries the :off suffix
+    const { ctx, server, row } = await boot(url => ({ baseURL: url, model: 'entry-model', apiKey: 'sk-entry' }))
     const { path, workspace } = await tempPng()
 
-    await ctx.settings.update(tool.DESCRIBE_IMAGE_SETTINGS_NAMESPACE, { model: 'entry-model:off' })
+    // When the Host restarts the row with it
+    await row.reload({ baseURL: server.url, model: 'entry-model:off', apiKey: 'sk-entry' })
 
+    // Then the suffix is stripped from the id and sent as a thinking control
     const result = await callDescribe(ctx, path, workspace)
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected describe_image success')
@@ -154,32 +194,42 @@ describe('describe-image settings section', () => {
     expect(body.thinking).toEqual({ type: 'disabled' })
   })
 
-  it('an inline apiKey committed through the section drives the next call', async () => {
-    const { ctx, server } = await boot({ 'describe-image': { apiKey: 'sk-settings' } })
+  it('user sees an inline apiKey in the row configuration drive the next call', async () => {
+    // Given a row configured with an inline key
+    const { ctx, server } = await boot(url => ({ baseURL: url, model: 'entry-model', apiKey: 'sk-committed' }))
     const { path, workspace } = await tempPng()
 
+    // When the model calls describe_image
     await callDescribe(ctx, path, workspace)
-    expect(server.request(0).authorization).toBe('Bearer sk-settings')
+
+    // Then the endpoint is called with that key
+    expect(server.request(0).authorization).toBe('Bearer sk-committed')
   })
 
-  it('rejects an incoherent section at write time', async () => {
-    const { ctx } = await boot()
+  it('user sees an incoherent configuration refused instead of taking effect', async () => {
+    // Given a serving row and a committed baseURL that is not http(s)
+    const { ctx, server, row } = await boot(url => ({ baseURL: url, model: 'entry-model', apiKey: 'sk-entry' }))
+    const { path, workspace } = await tempPng()
 
-    await expect(ctx.settings.update(tool.DESCRIBE_IMAGE_SETTINGS_NAMESPACE, { baseURL: 'ftp://example.com' }))
+    // When the Host restarts the row with it
+    await expect(row.reload({ baseURL: 'ftp://example.com', model: 'vision-1', apiKey: 'sk-entry' }))
       .rejects.toThrow(/describe-image: baseURL must be an absolute http\(s\) URL/)
+
+    // Then the row the Host rolled back to keeps serving the last accepted values
+    const result = await callDescribe(ctx, path, workspace)
+    expect(result.isError).toBe(false)
+    expect((server.request(0).body as { model?: unknown }).model).toBe('entry-model')
   })
 
-  it('keeps the composition entry authoritative while the settings service is absent', async () => {
-    const server = await startMockServer((_request, res) => { jsonReply(res, 200, chatReply('ok')) })
-    cleanup.push(server.close)
-    const ctx = new Context()
-    await ctx.plugin(FakeWebServer)
-    await ctx.plugin(SystemPrompt)
-    await ctx.plugin(ToolRuntime)
-    await ctx.plugin(tool, { baseURL: server.url, model: 'entry-only', apiKey: 'sk-entry' })
+  it('user sees the row served from its own configuration with no settings service mounted', async () => {
+    // Given a context carrying only the deployment configuration
+    const { ctx, server } = await boot(url => ({ baseURL: url, model: 'entry-only', apiKey: 'sk-entry' }))
     const { path, workspace } = await tempPng()
 
+    // When the model calls describe_image
     await callDescribe(ctx, path, workspace)
+
+    // Then the call uses that configuration
     expect((server.request(0).body as { model?: unknown }).model).toBe('entry-only')
   })
 })

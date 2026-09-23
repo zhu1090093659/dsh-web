@@ -132,9 +132,11 @@ export function projectOfficialEvent(
       }
     }
     case 'tool/result': {
-      const block = event.data.message.content[0]
-      const callId = String(event.data.message.source.callId)
-      const failed = event.data.error !== undefined || block.isError === true
+      // Session format V4 moved the call identity and the outcome onto the
+      // tool-role message root; the content blocks no longer carry either.
+      const { message } = event.data
+      const callId = String(message.toolCallId)
+      const failed = event.data.error !== undefined || message.isError === true
       const wasTest = runtime.testCalls.delete(callId)
       runtime.activeTools.delete(callId)
       runtime.stepHadFailure ||= failed

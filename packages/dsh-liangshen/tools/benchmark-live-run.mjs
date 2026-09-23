@@ -1,15 +1,18 @@
 /**
  * One bounded live benchmark run: a real DeepSeek session driven through the
- * profile's own composition, with the evaluated preset supplied from an
- * ISOLATED preset root.
+ * profile's own composition, with the evaluated preset supplied as an ISOLATED
+ * registry declaration.
  *
  * Isolation rules this script follows:
  * - The harness home stays the real one, so credentials, settings, and the model
  *   route resolve exactly as they do for a user session. Nothing is copied or read
  *   by this script.
- * - The evaluated preset is written to a temporary root and selected through the
- *   roster's own `roots` config, so the shipped/user roots cannot shadow it and no
- *   installed preset is edited.
+ * - The evaluated preset is materialized into a temporary directory and declared
+ *   to the run's own agent-preset registry from the variant patch, so an installed
+ *   preset cannot shadow it and no installed preset is edited. (Presets stopped
+ *   being discovered from a configured root at 0.1.7-alpha.1: a preset is an
+ *   ordinary registry declaration now, so there is no roster `roots` config to
+ *   aim at.)
  * - Session persistence is redirected into the run directory, so real session
  *   history is never appended to.
  *
@@ -33,7 +36,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve, sep } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PACKAGE_ROOT = resolve(HERE, '..')
@@ -136,13 +139,42 @@ function spawnCaptured(command, args, options, timeoutMs) {
   })
 }
 
-/** The directory the installed bundle publishes the official Minimal preset in. */
-export function officialMinimalPresetDir() {
+/**
+ * The official Minimal preset's declaration file: the `dsh-web-app` bundle
+ * patch that inserts the `@deepseek-ai/dsh-agent-preset` row for `minimal`.
+ * Resolved from the harness install the run actually spawns, because the
+ * benchmark drives whatever `dsh` this machine launched with credentials.
+ * @returns the absolute path of the official patch file.
+ * @throws when that harness cannot be located or ships no such preset.
+ */
+export function officialMinimalPresetPatch() {
+  const relative = join('@deepseek-ai', 'dsh-web-app', 'presets', 'minimal.patch.yml')
+  const tried = []
+  for (const shim of dshCommands()) {
+    try {
+      // The `dsh` shim is the only handle on the harness install: resolve the
+      // CLI package beside it, then the bundle package inside that install.
+      const fromShim = createRequire(shim)
+      const cliPackage = fromShim.resolve('@deepseek-ai/dsh/package.json')
+      const patch = createRequire(cliPackage).resolve(relative)
+      if (existsSync(patch)) return patch
+    } catch (error) {
+      tried.push(`${shim}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  throw new Error('benchmark: the official Minimal preset is unavailable'
+    + (tried.length === 0 ? ' (no dsh command on PATH)' : `; tried ${tried.join(' | ')}`))
+}
+
+/** Every `dsh` command the platform's PATH lookup reports. */
+function dshCommands() {
   try {
-    const pkg = require.resolve('@deepseek-ai/dsh-agent-presets/package.json')
-    return join(dirname(pkg), 'presets', 'minimal')
-  } catch (error) {
-    throw new Error(`benchmark: the official Minimal preset is unavailable: ${error instanceof Error ? error.message : String(error)}`)
+    return execFileSync(process.platform === 'win32' ? 'where' : 'which', ['dsh'], { encoding: 'utf8' })
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line !== '')
+  } catch {
+    return []
   }
 }
 
@@ -192,18 +224,76 @@ export function replacePersonaPrefix(text, persona) {
   return [...lines.slice(0, start + 1), ...replacement, ...lines.slice(blockEnd)].join('\n')
 }
 
-/** Copy the preset and apply the variant's configuration change. */
+/**
+ * Absolutize the relative module names of one composition.
+ *
+ * A declared preset's rows resolve a relative `name` against the DECLARING
+ * loader's base, not against the directory the row list came from, so the
+ * variant patch inlines the composition with every `./x.mjs` already resolved
+ * to the materialized copy's file URL. The scan is block-scalar aware: the
+ * persona prefix is prose, and a line inside it that happens to read
+ * `name: ./something` is content, not a row.
+ */
+export function absolutizeModuleNames(text, baseDir) {
+  const base = pathToFileURL(baseDir + sep).href
+  const out = []
+  /** Indentation of the block scalar currently open, if any. */
+  let blockScalarIndent
+  for (const line of text.split('\n')) {
+    const body = line.trim()
+    if (blockScalarIndent !== undefined) {
+      // Content keeps the scalar open; blank lines belong to it too, and a line
+      // at or above the owning key's indentation closes it.
+      if (body === '' || line.length - line.trimStart().length > blockScalarIndent) {
+        out.push(line)
+        continue
+      }
+      blockScalarIndent = undefined
+    }
+    if (/^\s*[\w-]+:\s*[|>][-+]?\s*$/.test(line)) {
+      blockScalarIndent = line.length - line.trimStart().length
+      out.push(line)
+      continue
+    }
+    const match = /^(\s*)name: (\.\.?\/[^\s'"]+)$/.exec(line)
+    out.push(match === null ? line : `${match[1]}name: ${new URL(match[2], base).href}`)
+  }
+  return out.join('\n')
+}
+
+/** Indent one composition block so it can sit under a `plugins:` key. */
+export function inlineComposition(text, baseDir, indent) {
+  const pad = ' '.repeat(indent)
+  return absolutizeModuleNames(text, baseDir)
+    .split('\n')
+    .map(line => (line.trim() === '' ? '' : pad + line))
+    .join('\n')
+}
+
+/**
+ * Copy the evaluated preset into the run directory and apply the variant's
+ * configuration change.
+ *
+ * The non-official variants get the bundled preset tree with their persona and
+ * presentation applied; the official reference gets the harness bundle's own
+ * Minimal preset patch, copied so the run records the exact bytes it evaluated.
+ */
 export function materializePreset(root, variantId, variant) {
   const target = join(root, variantId)
-  cpSync(variant.official === true ? officialMinimalPresetDir() : PRESET_SOURCE, target, { recursive: true })
-  if (variant.official === true) return target
+  if (variant.official === true) {
+    mkdirSync(target, { recursive: true })
+    cpSync(officialMinimalPresetPatch(), join(target, 'minimal.patch.yml'))
+    return target
+  }
+  cpSync(PRESET_SOURCE, target, { recursive: true })
   const composition = join(target, 'agent.cordis.yml')
   if (variant.presentation !== null && variant.presentation !== undefined) {
     const text = readFileSync(composition, 'utf8')
     // Anchor on the config line: the composition also NAMES the presentation key
     // inside its prose, and rewriting a comment would leave the real surface alone.
-    const replaced = text.replace(/^(\s*)presentation: '[^']*'/m, `$1presentation: '${variant.presentation}'`)
-    if (replaced === text) throw new Error('benchmark: the preset composition carries no presentation line to vary')
+    const pattern = /^(\s*)presentation: '[^']*'/m
+    if (!pattern.test(text)) throw new Error('benchmark: the preset composition carries no presentation line to vary')
+    const replaced = text.replace(pattern, `$1presentation: '${variant.presentation}'`)
     writeFileSync(composition, replaced)
   }
   if (variant.persona === 'candidate') {
@@ -492,8 +582,9 @@ export function priceRun(usage, prices, route) {
 }
 
 /** Build the variant patch that redirects persistence and selects the isolated preset. */
-function buildPatch({ variantId, presetRoot, runDir, turns }) {
-  return [
+export function buildPatch({ variantId, variant, presetDir, runDir, turns }) {
+  const presetId = variant.official === true ? OFFICIAL_PRESET_ID : variantId
+  const lines = [
     '- id: headless-startup',
     '  disabled: true',
     '',
@@ -511,26 +602,59 @@ function buildPatch({ variantId, presetRoot, runDir, turns }) {
     `    model: ${FIXED_ROUTE.model}`,
     `    reasoningEffort: ${FIXED_ROUTE.reasoningEffort}`,
     '',
+    '# The preset roster. The headless profile mounts neither the registry nor a',
+    '# preset, so the variant supplies both: `default` names the evaluated preset',
+    '# for the session this run creates, and mode selection stays off so no picker',
+    '# or default-preset write can move a run off the evaluated arm.',
     '- insert:',
-    '    - id: agent-presets',
-    "      name: '@deepseek-ai/dsh-agent-presets'",
+    '    - id: agent-preset-registry',
+    "      name: '@deepseek-ai/dsh-agent-preset-registry'",
     '      config:',
-    `        default: ${variantId}`,
-    '        includeShippedRoot: false',
-    '        includeUserRoot: false',
-    '        roots:',
-    `          - path: ${JSON.stringify(presetRoot.replace(/\\/g, '/'))}`,
-    "            trust: 'user'",
+    `        default: ${JSON.stringify(presetId)}`,
+    '        modeSelectionEnabled: false',
+  ]
+  if (variant.official !== true) {
+    lines.push(
+      '',
+      '# The evaluated preset as an ordinary declaration: its rows are the',
+      '# materialized composition, with every relative module name already',
+      '# resolved to that copy so the registry mounts exactly this tree.',
+      '- insert:',
+      `    - id: preset-${variantId}`,
+      "      name: '@deepseek-ai/dsh-agent-preset'",
+      '      config:',
+      `        id: ${JSON.stringify(presetId)}`,
+      '        order: 1',
+      '        plugins:',
+      inlineComposition(readFileSync(join(presetDir, 'agent.cordis.yml'), 'utf8'), presetDir, 10),
+    )
+  }
+  lines.push(
     '',
     '- insert:',
     '    - id: benchmark-driver',
     `      name: ${JSON.stringify(DRIVER)}`,
     '      config:',
-    `        preset: ${JSON.stringify(variantId)}`,
+    `        preset: ${JSON.stringify(presetId)}`,
     '        turns:',
     ...(turns ?? DEFAULT_TURNS).map((turn) => `          - ${JSON.stringify(turn)}`),
     '',
-  ].join('\n')
+  )
+  return lines.join('\n')
+}
+
+/**
+ * The official Minimal preset's own id: the harness bundle declares it, so the
+ * variant patch only selects it rather than declaring a second preset.
+ */
+export const OFFICIAL_PRESET_ID = 'minimal'
+
+/**
+ * The reference variant's overlay: the harness bundle's own Minimal preset
+ * patch, copied into the run directory so the run records the exact bytes.
+ */
+function officialPresetPatchPath(presetDir) {
+  return join(presetDir, 'minimal.patch.yml')
 }
 
 /**
@@ -553,12 +677,18 @@ export async function runLiveCase(options) {
     if (options.task !== undefined) writeTaskFiles(workspace, options.task.files)
 
     const turns = options.turns ?? options.task?.turns ?? DEFAULT_TURNS
-    const patch = buildPatch({ variantId, presetRoot, runDir, turns })
+    const patch = buildPatch({ variantId, variant, presetDir, runDir, turns })
 
     const patchPath = join(runDir, 'variant.patch.yml')
     writeFileSync(patchPath, patch, 'utf8')
 
-    const args = ['--profile', 'headless', '--patch', patchPath, 'run the configured turns']
+    // The reference variant evaluates the harness's own preset row, so its
+    // declaration rides a second overlay instead of the variant patch.
+    const overlays = ['--patch', patchPath]
+    if (variant.official === true) {
+      overlays.push('--patch', officialPresetPatchPath(presetDir))
+    }
+    const args = ['--profile', 'headless', ...overlays, 'run the configured turns']
     const spec = process.platform === 'win32'
       ? { command: 'cmd.exe', args: windowsCmdShimArgs('dsh', args), windowsVerbatimArguments: true }
       : { command: 'dsh', args }

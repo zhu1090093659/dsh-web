@@ -50,6 +50,6 @@ published batch are recorded in
 A preset is code: its composition can name npm plugins, load files that travel
 inside the preset directory, and evaluate `!!js` expressions in the DSH host
 process. The Workshop therefore installs a preset into an inert library and
-only moves it into the discovery root when the user enables it, after showing
-the composition profile. Submissions are reviewed for what the composition
-loads and why, not only for what it claims to do.
+only declares it to the agent-preset registry when the user enables it, after
+showing the composition profile. Submissions are reviewed for what the
+composition loads and why, not only for what it claims to do.

@@ -9,8 +9,8 @@
  */
 
 import { Context } from '@deepseek-ai/cordis'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
-import z from 'schemastery'
+import type { Volatile } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
 // Type-only: pulls the dsh-host-webserver service seat (ctx.webServer).
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import { makeSkinCenterV2Routes } from './routes-v2.ts'
@@ -51,14 +51,16 @@ export const name = 'ui-skin-center'
 export const inject = ['webServer']
 
 /**
- * Settings namespace for the main-interface background scrim, owned by the
- * skin center. The browser half spells the same string so it can bind the
- * scope without depending on this Host package.
+ * Configuration section for the main-interface background scrim. Its name is
+ * the settings namespace this package owned before 0.1.7; the browser half
+ * spells the same string, both as this section's key and as the family
+ * namespace the family settings binder resolves this plugin's profile entry
+ * id by (it is the entry's only client-side handle).
  */
-export const SKIN_BACKGROUND_NAMESPACE = 'skin-background' as SettingsNamespace
+export const SKIN_BACKGROUND_NAMESPACE = 'skin-background'
 
-/** Versioned settings namespace for the official-theme palette editor. */
-export const SKIN_CUSTOM_THEME_NAMESPACE = SKIN_CUSTOM_THEME_NS as SettingsNamespace
+/** Configuration section for the official-theme palette editor. */
+export const SKIN_CUSTOM_THEME_NAMESPACE = SKIN_CUSTOM_THEME_NS
 
 export type SkinCustomThemeConfig = CustomThemeConfig
 
@@ -70,16 +72,18 @@ const CustomThemeProfileSchema = z.object({
 })
 
 /** Host-side persistence schema; browser normalization remains fail-closed. */
-export const SkinCustomThemeConfigSchema: z<SkinCustomThemeConfig> = z.object({
-  version: z.number().min(CUSTOM_THEME_VERSION).max(CUSTOM_THEME_VERSION).step(1).default(CUSTOM_THEME_VERSION),
-  applied: z.boolean().default(false),
-  light: CustomThemeProfileSchema.default(CUSTOM_THEME_DEFAULTS.light),
+export const SkinCustomThemeConfigSchema = z.object({
+  version: z.number().min(CUSTOM_THEME_VERSION).max(CUSTOM_THEME_VERSION).step(1).default(CUSTOM_THEME_VERSION).volatile(),
+  applied: z.boolean().default(false).volatile(),
+  // The two profiles are volatile as WHOLE objects: the card persists a whole
+  // profile per edit (one atomic write per mode), so the object is the field.
+  light: CustomThemeProfileSchema.default(CUSTOM_THEME_DEFAULTS.light).volatile(),
   dark: z.object({
     accent: z.string().default(CUSTOM_THEME_DEFAULTS.dark.accent),
     background: z.string().default(CUSTOM_THEME_DEFAULTS.dark.background),
     foreground: z.string().default(CUSTOM_THEME_DEFAULTS.dark.foreground),
     contrast: z.number().min(0).max(100).step(1).default(50),
-  }).default(CUSTOM_THEME_DEFAULTS.dark),
+  }).default(CUSTOM_THEME_DEFAULTS.dark).volatile(),
 })
 
 // The preference set the card edits now persists in the v2 active-state
@@ -89,25 +93,26 @@ export type { SkinBackgroundConfig } from './core/background.ts'
 
 /**
  * Runtime schema for SkinBackgroundConfig. Persists the master switch
- * (`enabled`) alongside the background strength fields.
+ * (`enabled`) alongside the background strength fields; every field is
+ * volatile so the settings page can write it.
  */
-export const SkinBackgroundConfigSchema: z<SkinBackgroundConfig> = z.object({
-  enabled: z.boolean().default(SKIN_BACKGROUND_DEFAULTS.enabled),
-  backgroundOpacity: z.number().min(0).max(100).step(5).default(SKIN_BACKGROUND_DEFAULTS.backgroundOpacity),
-  backgroundBlurEmpty: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.backgroundBlurEmpty),
-  backgroundBlurContent: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.backgroundBlurContent),
-  inputCardBlur: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.inputCardBlur),
-  bubbleOpacity: z.number().min(0).max(100).step(5).default(SKIN_BACKGROUND_DEFAULTS.bubbleOpacity),
-  bubbleBlur: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.bubbleBlur),
+export const SkinBackgroundConfigSchema = z.object({
+  enabled: z.boolean().default(SKIN_BACKGROUND_DEFAULTS.enabled).volatile(),
+  backgroundOpacity: z.number().min(0).max(100).step(5).default(SKIN_BACKGROUND_DEFAULTS.backgroundOpacity).volatile(),
+  backgroundBlurEmpty: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.backgroundBlurEmpty).volatile(),
+  backgroundBlurContent: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.backgroundBlurContent).volatile(),
+  inputCardBlur: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.inputCardBlur).volatile(),
+  bubbleOpacity: z.number().min(0).max(100).step(5).default(SKIN_BACKGROUND_DEFAULTS.bubbleOpacity).volatile(),
+  bubbleBlur: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.bubbleBlur).volatile(),
 })
 
 /**
- * Settings namespace for the Wallpaper Engine bridge, owned by the skin
- * center. The browser half renders the applied wallpaper behind the GUI and
- * persists the selection here; the host half reads weLibraryDirs to extend
- * the library scan beyond the auto-detected Steam folders.
+ * Configuration section for the Wallpaper Engine bridge. The browser half
+ * renders the applied wallpaper behind the GUI and persists the selection
+ * here; the host half reads weLibraryDirs to extend the library scan beyond
+ * the auto-detected Steam folders.
  */
-export const SKIN_WALLPAPER_NAMESPACE = 'skin-wallpaper' as SettingsNamespace
+export const SKIN_WALLPAPER_NAMESPACE = 'skin-wallpaper'
 
 /**
  * Wallpaper bridge configuration. Wallpapers only ever come from the user's
@@ -133,20 +138,127 @@ export interface SkinWallpaperConfig {
   wallpaperOpacity?: number
   /** Sizing mode for live wallpapers: cover | contain | fill (stretch). */
   fit?: 'cover' | 'contain' | 'fill'
+  /** Audible playback for sound-capable wallpapers. */
+  sound?: boolean
+  /** Playback volume, 0-100 percent. */
+  volume?: number
 }
 
-/** Runtime schema for SkinWallpaperConfig. */
-export const SkinWallpaperConfigSchema: z<SkinWallpaperConfig> = z.object({
-  enabled: z.boolean().default(true),
-  weLibraryDirs: z.array(z.string()).default([]),
-  selection: z.string().default(''),
-  mode: z.union(['live', 'frame'] as const).default('live'),
-  pauseOnHidden: z.boolean().default(true),
-  dim: z.number().min(0).max(90).step(5).default(25),
-  wallpaperBlur: z.number().min(0).max(60).step(1).default(0),
-  wallpaperOpacity: z.number().min(0).max(100).step(5).default(100),
-  fit: z.union(['cover', 'contain', 'fill'] as const).default('cover'),
+/** Runtime schema for SkinWallpaperConfig; every field is volatile (card-writable). */
+export const SkinWallpaperConfigSchema = z.object({
+  enabled: z.boolean().default(true).volatile(),
+  weLibraryDirs: z.array(z.string()).default([]).volatile(),
+  selection: z.string().default('').volatile(),
+  mode: z.union(['live', 'frame'] as const).default('live').volatile(),
+  pauseOnHidden: z.boolean().default(true).volatile(),
+  dim: z.number().min(0).max(90).step(5).default(25).volatile(),
+  wallpaperBlur: z.number().min(0).max(60).step(1).default(0).volatile(),
+  wallpaperOpacity: z.number().min(0).max(100).step(5).default(100).volatile(),
+  fit: z.union(['cover', 'contain', 'fill'] as const).default('cover').volatile(),
+  // The card's sound toggle and volume always persisted through this
+  // namespace's user layer; the section declares them so the Host accepts
+  // those writes instead of refusing the whole settings mutation.
+  sound: z.boolean().default(false).volatile(),
+  volume: z.number().min(0).max(100).step(5).default(100).volatile(),
 })
+
+/**
+ * One config field as the Host hands it to the plugin: a `volatile()` field
+ * resolves to a stable reference the loader re-points in place when a
+ * settings write is committed, while a caller that resolved the schema itself
+ * holds the plain value. Read it through {@link readField}.
+ */
+type ConfigField<T> = Volatile<T> | T
+
+/** Runtime face of the skin-background section. */
+export interface SkinBackgroundFields {
+  enabled?: ConfigField<boolean>
+  backgroundOpacity?: ConfigField<number>
+  backgroundBlurEmpty?: ConfigField<number>
+  backgroundBlurContent?: ConfigField<number>
+  inputCardBlur?: ConfigField<number>
+  bubbleOpacity?: ConfigField<number>
+  bubbleBlur?: ConfigField<number>
+}
+
+/** Runtime face of the skin-custom-theme section (the browser half owns it). */
+export interface SkinCustomThemeFields {
+  version?: ConfigField<number>
+  applied?: ConfigField<boolean>
+  light?: ConfigField<CustomThemeConfig['light']>
+  dark?: ConfigField<CustomThemeConfig['dark']>
+}
+
+/** Runtime face of the skin-wallpaper section. */
+export interface SkinWallpaperFields {
+  enabled?: ConfigField<boolean>
+  weLibraryDirs?: ConfigField<string[]>
+  selection?: ConfigField<string>
+  mode?: ConfigField<'live' | 'frame'>
+  pauseOnHidden?: ConfigField<boolean>
+  dim?: ConfigField<number>
+  wallpaperBlur?: ConfigField<number>
+  wallpaperOpacity?: ConfigField<number>
+  fit?: ConfigField<'cover' | 'contain' | 'fill'>
+  sound?: ConfigField<boolean>
+  volume?: ConfigField<number>
+}
+
+/** The Host-resolved configuration this plugin's activation receives. */
+export interface SkinCenterConfig {
+  'skin-background'?: SkinBackgroundFields
+  'skin-custom-theme'?: SkinCustomThemeFields
+  'skin-wallpaper'?: SkinWallpaperFields
+}
+
+/**
+ * Editable configuration of the skin center: what 0.1.7 serves as this
+ * profile entry's settings page (the Host derives the page from this schema
+ * and there is no separate settings document). The three sections are the
+ * preference families the browser half owns — the same names this package
+ * registered as settings namespaces before 0.1.7, now sections of one Config.
+ *
+ * A volatile field is the only kind the Host projects into the entry's form
+ * or accepts a write for, and an edit is committed into the running
+ * activation's references instead of remounting the row. The schema carries
+ * no `z<...>` annotation on purpose: a volatile field parses to a `Volatile`
+ * reference while accepting the plain value, so the annotation no longer
+ * describes it ({@link SkinCenterConfig} is the runtime face instead).
+ */
+export const Config = z.object({
+  'skin-background': SkinBackgroundConfigSchema,
+  'skin-custom-theme': SkinCustomThemeConfigSchema,
+  'skin-wallpaper': SkinWallpaperConfigSchema,
+})
+
+/**
+ * Read one live config field.
+ * @param field - the resolved field (a reference, a plain value, or absent).
+ * @param fallback - schema default to use when the field carries no value.
+ * @returns the field's current value.
+ */
+function readField<T>(field: ConfigField<T> | undefined, fallback: T): T {
+  if (field === undefined) return fallback
+  const ref = field as Volatile<T>
+  if (typeof ref === 'object' && ref !== null && typeof ref.get === 'function') {
+    const value = ref.get() as T | undefined
+    return value === undefined ? fallback : value
+  }
+  return field as T
+}
+
+/** The live skin-background section, every field resolved over its default. */
+function readBackgroundSection(section: SkinBackgroundFields | undefined): SkinBackgroundConfig {
+  return {
+    enabled: readField(section?.enabled, SKIN_BACKGROUND_DEFAULTS.enabled),
+    backgroundOpacity: readField(section?.backgroundOpacity, SKIN_BACKGROUND_DEFAULTS.backgroundOpacity),
+    backgroundBlurEmpty: readField(section?.backgroundBlurEmpty, SKIN_BACKGROUND_DEFAULTS.backgroundBlurEmpty),
+    backgroundBlurContent: readField(section?.backgroundBlurContent, SKIN_BACKGROUND_DEFAULTS.backgroundBlurContent),
+    inputCardBlur: readField(section?.inputCardBlur, SKIN_BACKGROUND_DEFAULTS.inputCardBlur),
+    bubbleOpacity: readField(section?.bubbleOpacity, SKIN_BACKGROUND_DEFAULTS.bubbleOpacity),
+    bubbleBlur: readField(section?.bubbleBlur, SKIN_BACKGROUND_DEFAULTS.bubbleBlur),
+  }
+}
 
 /**
  * Register the skin-center API routes.
@@ -158,85 +270,43 @@ export const SkinWallpaperConfigSchema: z<SkinWallpaperConfig> = z.object({
  */
 export const apply = mountOnce('@linxin666/dsh-client-ui-skin-center', applyImpl)
 
-function applyImpl(ctx: Context): void {
-  // Optional-settings wiring for the background scrim namespace. The browser
-  // half binds the scope and applies the value to the body CSS variable;
-  // this side just declares the namespace + schema so the value persists and
-  // re-resolves across reloads. installSection is a no-op when no
-  // settings service is mounted (pure skin-center installs skip it).
-  ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
-          setSource: (source) => {
-            // Issue #996: the authoritative store is now the v2 active-state
-            // document (reachable through the remote pairing channel); this legacy
-            // namespace stays as the official settings page's input face. Copy a
-            // customized legacy section into the v2 store exactly once — safe at
-            // detach too, since the entry fallback resolves to schema defaults,
-            // which hasCustomSkinBackground excludes.
-            const migration = migrateBackgroundFromSettings({
-              activeStatePath: defaultActiveStatePath(),
-              readSettings: source,
-            })
-            for (const note of migration.notes) {
-              if (migration.migrated) console.info(`[ui-skin-center] background migration: ${note}`)
-              else console.error(`[ui-skin-center] background migration: ${note}`)
-            }
-          },
-          onChange: () => { /* browser half re-applies on scope publish and persists via the v2 channel */ },
-        })
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        settingsCtx.settings.register(SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, { base: {} })
-      }
-    } catch {
-      // Defensive fallback against settings registration differences
+/**
+ * @param ctx - cordis context.
+ * @param config - this entry's effective configuration (the Host resolves
+ *   `Config` over the profile patch and hands it to the activation).
+ */
+function applyImpl(ctx: Context, config?: SkinCenterConfig): void {
+  // Settings (0.1.7): the plugin's own `Config` IS its settings page — the
+  // Host derives the page from the schema and applies writes to this entry,
+  // so nothing is registered here. `config` holds the resolved sections; its
+  // volatile fields are live references the loader re-points in place.
+  //
+  // Issue #996: the authoritative background store is the v2 active-state
+  // document (reachable through the remote pairing channel); the
+  // skin-background section stays as the settings page's input face. Copy a
+  // customized section into the v2 store exactly once — safe to run on every
+  // boot, since a never-touched section resolves to schema defaults, which
+  // hasCustomSkinBackground excludes, and an already-migrated document is
+  // skipped outright.
+  try {
+    const migration = migrateBackgroundFromSettings({
+      activeStatePath: defaultActiveStatePath(),
+      readSettings: () => readBackgroundSection(config?.['skin-background']),
+    })
+    for (const note of migration.notes) {
+      if (migration.migrated) console.info(`[ui-skin-center] background migration: ${note}`)
+      else console.error(`[ui-skin-center] background migration: ${note}`)
     }
-  })
-
-  ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      const baseTheme = {
-        ...CUSTOM_THEME_DEFAULTS,
-        light: { ...CUSTOM_THEME_DEFAULTS.light },
-        dark: { ...CUSTOM_THEME_DEFAULTS.dark },
-      }
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, baseTheme, {
-          setSource: () => { /* application is browser-side; value is read from the scope */ },
-          onChange: () => { /* browser half re-applies on scope publish */ },
-        })
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        settingsCtx.settings.register(SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, { base: baseTheme })
-      }
-    } catch {
-      // Defensive fallback against settings registration differences
-    }
-  })
-
-  // The wallpaper bridge namespace; the host side keeps a live getter so
-  // the /we routes see weLibraryDirs changes without a restart.
-  let wallpaperSource: () => SkinWallpaperConfig = () => ({})
-  ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(ctx, SKIN_WALLPAPER_NAMESPACE, SkinWallpaperConfigSchema, {}, {
-          setSource: (source) => { wallpaperSource = source },
-          onChange: () => { /* routes re-read through the getter per request */ },
-        })
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        const scope = settingsCtx.settings.register(SKIN_WALLPAPER_NAMESPACE, SkinWallpaperConfigSchema, { base: {} })
-        wallpaperSource = () => scope?.get?.() ?? {}
-      }
-    } catch {
-      // Defensive fallback against settings registration differences
-    }
-  })
+  } catch (error) {
+    console.error('[ui-skin-center] background migration failed:', error)
+  }
 
   const routes = [
     ...makeSkinCenterV2Routes(),
     ...makeWeRoutes({
-      getConfig: () => wallpaperSource(),
+      // The /we routes read the live section per request, so a settings write
+      // reaches the library scan without a restart.
+      getConfig: () => ({ weLibraryDirs: readField(config?.['skin-wallpaper']?.weLibraryDirs, []) }),
       storeDir: defaultWallpapersStoreDir(resolveHarnessHome()),
     }),
   ]

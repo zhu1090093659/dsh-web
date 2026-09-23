@@ -11,14 +11,29 @@ import {
   buildStashOp,
   buildUnsetProviderOp,
   buildUnstashOp,
-  CAPS_SETTINGS_NAMESPACE,
+  CAPS_ENTRY_IDS,
   hasNonUserProfile,
   hasProfileAt,
   readDisabledStore,
+  resolveArchiveEntry,
 } from '../src/core/provider-toggle.ts'
 import { disableProvider, enableProvider, type ToggleOutcome } from '../src/client/provider-toggle.ts'
 import type { SettingsNamespaceFace } from '../src/client/settings-face.ts'
 import type { PathOp } from '../src/core/capabilities.ts'
+
+/** The profile entry id this deployment mounts the plugin under (the aggregate's row). */
+const CAPS_ENTRY_ID = CAPS_ENTRY_IDS[1]
+
+/** One served settings form as the archive resolution reads it. */
+function form(ns: string, schema: unknown = {}): { ns: string, schema: unknown } {
+  return { ns, schema }
+}
+
+/**
+ * The archive form schema as the Host serves it: the plugin's Config projected
+ * to its volatile fields, which is a single open-typed `disabled` field.
+ */
+const ARCHIVE_SCHEMA = { type: 'object', meta: { default: {} }, dict: { disabled: { type: 'any', meta: { default: {} } } } }
 
 describe('archive store', () => {
   it('parses stash entries and skips malformed ones', () => {
@@ -61,6 +76,58 @@ describe('archive store', () => {
   })
 })
 
+describe('archive entry resolution', () => {
+  it('operator gets the standalone row id when both install sources are served', () => {
+    // Given a profile serving the neighbouring pi-ai form plus both of this plugin's rows
+    const forms = [form('llm-pi-ai'), form(CAPS_ENTRY_IDS[1]), form(CAPS_ENTRY_IDS[0])]
+
+    // When the browser half resolves its own settings entry
+    const resolved = resolveArchiveEntry(forms)
+
+    // Then the package's own row id answers
+    expect(resolved?.entryId).toBe(CAPS_ENTRY_IDS[0])
+  })
+
+  it('operator gets the aggregate row id the family bundle mounts', () => {
+    // Given a profile whose only row for this plugin is the aggregate's web-ui-* one
+    const caps = form('web-ui-model-capabilities')
+
+    // When the browser half resolves its own settings entry
+    const resolved = resolveArchiveEntry([form('llm-pi-ai'), caps])
+
+    // Then that row answers with its own id and view
+    expect(resolved).toEqual({ entryId: 'web-ui-model-capabilities', view: caps })
+  })
+
+  it('operator gets a renamed archive row through its form schema', () => {
+    // Given a profile that renamed the row and serves no id this package knows
+    const renamed = form('my-caps', ARCHIVE_SCHEMA)
+
+    // When the browser half resolves its own settings entry
+    const resolved = resolveArchiveEntry([form('llm-pi-ai'), renamed])
+
+    // Then the entry whose form is the archive schema answers
+    expect(resolved?.entryId).toBe('my-caps')
+  })
+
+  it('operator gets nothing when no served form is this plugin entry', () => {
+    // Given a profile serving other plugins' forms, and a single open-typed
+    // field under another name (which is not this plugin's schema)
+    const foreign = [form('llm-pi-ai'), form('task-board', { type: 'object', dict: { pollMs: { type: 'number' } } })]
+    const sameShaped = form('other', { type: 'object', dict: { providers: { type: 'any' } } })
+
+    // When the browser half resolves its own settings entry
+    const resolved = resolveArchiveEntry(foreign)
+    const resolvedFromSimilar = resolveArchiveEntry([sameShaped])
+    const resolvedFromNullSchema = resolveArchiveEntry([form('other', null)])
+
+    // Then nothing resolves, so the surfaces degrade to their unavailable state
+    expect(resolved).toBeUndefined()
+    expect(resolvedFromSimilar).toBeUndefined()
+    expect(resolvedFromNullSchema).toBeUndefined()
+  })
+})
+
 describe('op builders', () => {
   it('shapes the four toggle ops', () => {
     expect(buildStashOp('acme', { profile: { a: 1 } })).toEqual({ op: 'set', path: ['disabled', 'acme'], value: { profile: { a: 1 } } })
@@ -74,20 +141,20 @@ describe('op builders', () => {
   })
 })
 
-/** A programmable two-namespace settings face with a mutation log. */
+/** A programmable two-entry settings face with a mutation log. */
 interface World {
   llm: SettingsNamespaceView
   caps: SettingsNamespaceView
-  /** Fail the next mutate on this namespace with this code. */
+  /** Fail the next mutate on this entry with this code. */
   failNext?: { ns: string, code: string, message?: string }
   calls: Array<{ ns: string, ops: PathOp[], revision: number | undefined }>
 }
 
 function view(ns: string, user: unknown, revision: number): SettingsNamespaceView {
-  // The archive namespace's schema is a passthrough, so its resolved value and
+  // The archive entry's schema is a passthrough, so its resolved value and
   // raw user section carry the same content; share one object like production.
   const section = user as Record<string, unknown>
-  return { ns, schema: {}, value: section as never, user: section as never, applies: 'live', secrets: [], revision }
+  return { ns, autoGenerate: true, schema: {}, value: section as never, user: section as never, applies: 'live', secrets: [], revision }
 }
 
 /** Replace the raw user section (the resolved value follows: passthrough schema). */
@@ -146,7 +213,7 @@ function faceOf(world: World): SettingsNamespaceFace {
 function world(): World {
   return {
     llm: view('llm-pi-ai', { providers: { acme: { apiKeyEnv: 'ACME_KEY', models: [{ id: 'm1', input: ['text', 'image'] }] } } }, 7),
-    caps: view(CAPS_SETTINGS_NAMESPACE, {}, 3),
+    caps: view(CAPS_ENTRY_ID, {}, 3),
     calls: [],
   }
 }
@@ -159,7 +226,7 @@ describe('disableProvider', () => {
     const outcome = await disableProvider(faceOf(w), LLM_NS, 'acme', 'ACME')
     expect(outcome).toEqual({ kind: 'ok' })
     expect(w.calls).toHaveLength(2)
-    expect(w.calls[0].ns).toBe(CAPS_SETTINGS_NAMESPACE)
+    expect(w.calls[0].ns).toBe(CAPS_ENTRY_ID)
     expect(w.calls[0].revision).toBe(3)
     expect(w.calls[0].ops).toEqual([{ op: 'set', path: ['disabled', 'acme'], value: { profile: { apiKeyEnv: 'ACME_KEY', models: [{ id: 'm1', input: ['text', 'image'] }] }, displayName: 'ACME' } }])
     expect(w.calls[1].ns).toBe('llm-pi-ai')
@@ -186,7 +253,7 @@ describe('disableProvider', () => {
     expect(w.calls).toHaveLength(0)
   })
 
-  it('reports unavailable when the archive namespace is missing', async () => {
+  it('reports unavailable when no archive entry is served', async () => {
     const w = world()
     w.caps = view('something-else', {}, 1)
     const outcome = await disableProvider(faceOf(w), LLM_NS, 'acme', undefined)
@@ -196,9 +263,9 @@ describe('disableProvider', () => {
 
   it('stops before the unset when archiving conflicts', async () => {
     const w = world()
-    w.failNext = { ns: CAPS_SETTINGS_NAMESPACE, code: 'settings/conflict' }
+    w.failNext = { ns: CAPS_ENTRY_ID, code: 'settings/conflict' }
     const outcome = await disableProvider(faceOf(w), LLM_NS, 'acme', undefined)
-    expect(outcome).toEqual({ kind: 'conflict', ns: CAPS_SETTINGS_NAMESPACE })
+    expect(outcome).toEqual({ kind: 'conflict', ns: CAPS_ENTRY_ID })
     expect(w.calls).toHaveLength(1)
   })
 
@@ -221,7 +288,7 @@ describe('enableProvider', () => {
     expect(outcome).toEqual({ kind: 'ok' })
     expect(w.calls[0].ns).toBe('llm-pi-ai')
     expect(w.calls[0].ops).toEqual([{ op: 'set', path: ['providers', 'acme'], value: { apiKeyEnv: 'ACME_KEY', custom: { a: 1 } } }])
-    expect(w.calls[1].ns).toBe(CAPS_SETTINGS_NAMESPACE)
+    expect(w.calls[1].ns).toBe(CAPS_ENTRY_ID)
     expect(w.calls[1].ops).toEqual([{ op: 'unset', path: ['disabled', 'acme'] }])
     expect(w.llm.user).toEqual({ providers: { acme: { apiKeyEnv: 'ACME_KEY', custom: { a: 1 } } } })
   })
@@ -246,7 +313,7 @@ describe('enableProvider', () => {
     const w = world()
     setUserSection(w.llm, { providers: {} })
     setUserSection(w.caps, { disabled: { acme: { profile: { apiKeyEnv: 'OLD' } } } })
-    w.failNext = { ns: CAPS_SETTINGS_NAMESPACE, code: 'settings/conflict', message: 'moved on' }
+    w.failNext = { ns: CAPS_ENTRY_ID, code: 'settings/conflict', message: 'moved on' }
     const outcome = await enableProvider(faceOf(w), LLM_NS, 'acme')
     expect(outcome.kind).toBe('partial')
     expect(outcome.kind === 'partial' && outcome.message).toBe('moved on')

@@ -6,7 +6,7 @@
 # turn boundary.
 #
 # The presentation is the SDK's ToolPresentationMode, picked by the
-# tool-catalog row's `presentation` key (default `'both'`): `'native'` keeps
+# tool-catalog row's `presentation` key (default `'ptc'`): `'native'` keeps
 # the assembled roster on the wire, `'ptc'` collapses the wire to the single
 # `run_code` transport, and `'both'` keeps the full native roster AND the
 # `run_code` transport co-resident — native calls carry ordinary work while
@@ -86,11 +86,12 @@
     prefix: |-
       You are a helpful software engineer assistant.
 
-      - Thinking Disruption: Do not repeat reasoning on the same hypothesis more than twice. If necessary facts are missing, immediately close </think> and call native inspection tools (read, grep, bash/pwsh) instead of speculating in thought.
-      - Action-Oriented: Thinking must focus solely on determining the next concrete operation. Do not mentally pre-rehearse full code implementations. All correctness verification must be conducted against actual tool outputs during the execution phase.
-      - Parallel Inspection: When multiple independent inspections, searches, or checks are needed, emit multiple tool calls concurrently in a single turn instead of sequential rounds. The harness executes independent read-only tools in parallel.
+      - Thinking Disruption: Never reason through the same hypothesis more than twice. When a fact is missing, stop thinking and call a native inspection tool (read, grep, bash/pwsh) to settle it — no speculation without new evidence.
+      - Action-Oriented: Use thinking only to pick the next concrete operation. Do not pre-rehearse implementations in thought; verify every claim against real tool output during execution.
+      - Parallel Inspection: When several independent inspections, searches, or checks are needed, emit all of their tool calls in a single turn rather than across sequential rounds. The harness executes independent read-only calls in parallel.
       - Shell Discipline: Shell processes are ephemeral; directory changes do not persist across tool calls. Use compound commands (e.g. cd <path> && <cmd>) or pass workdir explicitly for operations in subdirectories.
       - Development Standard: Follow YAGNI and the PDCA loop. Each step verifies a single assumption. Do not write redundant comments.
+      - Bounded Inspection & Convergence: Do not traverse dependency chains unbounded. Limit pre-action inspection to immediate target files (at most 2-3 inspection turns). Once core context is understood, immediately converge and begin answering or making edits. Verify edge cases during post-edit testing rather than over-reading upfront.
       - Bounded Output: never dump a large or unbounded command output into the conversation. Filter at the source with grep/head/tail/wc and read the narrow range you actually need; the model's long-range attention is a bounded budget and raw logs evict the session's own constraints from it.
 
 # The mode's preset-local plugins:
@@ -165,11 +166,44 @@
   config:
     descriptionMaxLength: 200
     presentation: 'both'
-    pagedToolPatterns: []
-    maxResidentTokens: 6000
+    pagedToolPatterns: ['mcp__*']
+    maxResidentTokens: 8000
 
 - id: working-context
   name: ./working-context.mjs
+
+# The runtime degeneration circuit breaker: folds a stall (consecutive zero-
+# output long-reasoning steps) or echo (identical-argument tool failures)
+# signal from the durable session event stream and fires once per episode —
+# injecting a breaker message at pre-step and stepping the reasoning effort
+# one notch down for the next few requests. With no signal it never rewrites
+# a request, so the route's explicit effort and the prefix cache stay
+# untouched. This is the outside force the persona's reflection fuse cannot
+# be: see DSH discussion #5976 and the Agent Note that constrains dynamic
+# reasoning effort to this triggered-only form.
+- id: guard
+  name: ./guard.mjs
+  config:
+    enabled: true
+    sensitivity: 'balanced'
+    stallReasoningChars: 8000
+    globalStallCap: 4
+    echoFailures: 3
+
+# The paging activation handle the catalog points at: with `pagedToolPatterns`
+# non-empty this row is what lets `tool_activate({ namespace })` bring one
+# paged namespace back onto the wire (and the generated SDK) for the session.
+- id: tool-activate
+  name: ./tool-activate.mjs
+
+# The key-fact register: the model pins a hard constraint / confirmed decision /
+# failed path with `fact_register`, the fold rebuilds the register from the
+# durable event stream, and working-context renders it as one field of the
+# [Working Context: ...] line — the surface that lands inside the guaranteed
+# local attention window every step. The counter to V4.1's long-session
+# forgetting; the fold replays identically after resume and compaction.
+- id: fact-ledger
+  name: ./fact-ledger.mjs
 
 # The harness's workspace-instruction loader. Under the default
 # `instructionSource: host` this row owns the channel: its baseline and dynamic
@@ -310,8 +344,8 @@
     - id: tool-result-pruner
       name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
       config:
-        thresholdChars: 8192
-        headChars: 4096
+        thresholdChars: 4096
+        headChars: 2048
         tailChars: 1024
 
 # ── delegation and workflows ────────────────────────────────────────────────
@@ -378,8 +412,8 @@
         enableRunInBackground: false
         maxDepth: provider-managed
 
-    - id: workflow-worker-thread
-      name: '@deepseek-ai/dsh-workflow-worker-thread'
+    - id: workflow-ptc
+      name: '@deepseek-ai/dsh-workflow-ptc'
       config:
         provider: spawn
 

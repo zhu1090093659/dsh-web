@@ -11,7 +11,7 @@ export const NS = 'model-caps'
 /** Chinese copy (key source). */
 export const zh = {
   'caps.title': '模型能力',
-  'caps.hint': '为目录里的每个模型声明图片输入与推理档位，保存写入设置文档并立即生效。',
+  'caps.hint': '为目录里的每个模型声明推理档位，保存写入设置文档并立即生效。',
   'caps.loading': '正在读取模型能力…',
   'caps.loadFailed': '读取失败：{error}',
   'caps.reload': '重新读取',
@@ -20,9 +20,6 @@ export const zh = {
   'caps.model.count': '{n} 个模型',
   'caps.model.expand': '展开模型能力',
   'caps.model.collapse': '收起模型能力',
-  'caps.model.image': '图片输入',
-  'caps.model.image.hint': '勾选后 DSH 才允许向该模型发送图片附件。',
-  'caps.model.image.inherit': '未声明（默认仅文本）',
   'caps.model.efforts': '推理档位',
   'caps.efforts.inherit': '不声明',
   'caps.efforts.none': '无推理',
@@ -34,8 +31,6 @@ export const zh = {
   'caps.wire.placeholder': '请求参数取值',
   'caps.wire.offHint': 'off 可留空：表示「支持，但发送时不带参数」。',
   'caps.preset.common': '填入常用 low / medium / high',
-  'caps.summary.image': '图片',
-  'caps.summary.textOnly': '仅文本',
   'caps.summary.noReasoning': '无推理',
   'caps.summary.efforts': '推理：{levels}',
   'caps.save': '保存',
@@ -60,7 +55,7 @@ export const zh = {
   'caps.error.routeExists': '该提供方已存在新配置，无法恢复存档；请先移除现有配置再启用。',
   'caps.error.partialEnable': '已启用，但清理存档失败：{error}',
   'caps.error.baseProfile': '该提供方在组合层也声明了配置，禁用无法让它下线，因此不提供此操作。',
-  'caps.error.unavailable': '无法切换：插件的存档命名空间未注册。',
+  'caps.error.unavailable': '无法切换：未找到插件的存档设置项。',
 }
 
 export type CapsKey = keyof typeof zh
@@ -68,7 +63,7 @@ export type CapsKey = keyof typeof zh
 /** English copy (full key parity with zh). */
 export const en: Record<CapsKey, string> = {
   'caps.title': 'Model capabilities',
-  'caps.hint': 'Declare image input and reasoning efforts per catalog model; saving writes the settings document and applies immediately.',
+  'caps.hint': 'Declare reasoning efforts per catalog model; saving writes the settings document and applies immediately.',
   'caps.loading': 'Loading model capabilities…',
   'caps.loadFailed': 'Failed to load: {error}',
   'caps.reload': 'Reload',
@@ -77,9 +72,6 @@ export const en: Record<CapsKey, string> = {
   'caps.model.count': '{n} models',
   'caps.model.expand': 'Expand model capabilities',
   'caps.model.collapse': 'Collapse model capabilities',
-  'caps.model.image': 'Image input',
-  'caps.model.image.hint': 'DSH only offers image attachments to this model when checked.',
-  'caps.model.image.inherit': 'Undeclared (defaults to text only)',
   'caps.model.efforts': 'Reasoning efforts',
   'caps.efforts.inherit': 'Undeclared',
   'caps.efforts.none': 'No reasoning',
@@ -91,8 +83,6 @@ export const en: Record<CapsKey, string> = {
   'caps.wire.placeholder': 'request parameter value',
   'caps.wire.offHint': 'off may stay empty: "supported, but send nothing when chosen".',
   'caps.preset.common': 'Fill the common low / medium / high',
-  'caps.summary.image': 'image',
-  'caps.summary.textOnly': 'text only',
   'caps.summary.noReasoning': 'no reasoning',
   'caps.summary.efforts': 'reasoning: {levels}',
   'caps.save': 'Save',
@@ -117,7 +107,7 @@ export const en: Record<CapsKey, string> = {
   'caps.error.routeExists': 'The provider already has a newer configuration; the archive cannot be restored. Remove the current configuration first, then enable.',
   'caps.error.partialEnable': 'Enabled, but clearing the archive failed: {error}',
   'caps.error.baseProfile': 'The composition layer also declares this provider, so disabling cannot take it down; the action is not offered.',
-  'caps.error.unavailable': 'Cannot toggle: the plugin archive namespace is not registered.',
+  'caps.error.unavailable': 'Cannot toggle: the plugin archive settings entry is not served.',
 }
 
 /**

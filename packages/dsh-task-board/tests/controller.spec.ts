@@ -18,22 +18,20 @@ const flush = (): Promise<void> => new Promise(resolve => { setTimeout(resolve, 
 
 /** Controllable sessions face (selection + open). */
 class FakeSessions {
-  current: string | undefined = undefined
+  opened: string | undefined = undefined
   openCalls: string[] = []
   private listeners = new Set<() => void>()
-  list = {
-    getSnapshot: (): { current: string | undefined } => ({ current: this.current }),
-    subscribe: (fn: () => void): (() => void) => {
-      this.listeners.add(fn)
-      return () => { this.listeners.delete(fn) }
-    },
+  current(): string | undefined { return this.opened }
+  subscribe(fn: () => void): () => void {
+    this.listeners.add(fn)
+    return () => { this.listeners.delete(fn) }
   }
   open(id: string): void {
     this.openCalls.push(id)
     this.setCurrent(id)
   }
   setCurrent(id: string | undefined): void {
-    this.current = id
+    this.opened = id
     for (const fn of [...this.listeners]) fn()
   }
 }

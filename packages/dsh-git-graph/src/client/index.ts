@@ -28,6 +28,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 // 0.1.2-alpha.2 cohort trimmed ui-conversation's peer set, so this edge is
 // no longer reachable transitively and must be declared here.
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+// Type-only: pulls the workspace plugin's Context merge (ctx.uiWorkspace), the
+// multi-instance navigation face that replaced ISessions.open().
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {
   BranchesView, GitError, GitFeatureConfig, GraphView, RepoStatus, SwitchResult,
@@ -136,7 +139,7 @@ export function apply(ctx: ClientContext): void {
   // workspaces service's startSession so New Session on a git workspace
   // lands in a fresh managed worktree. Shape mismatch degrades to the
   // official behavior. The fiber's dispose restores the official method.
-  ctx.inject(['workspaces', 'sessions'], (worktreeScope: ClientContext) => {
+  ctx.inject(['workspaces', 'sessions', 'uiWorkspace'], (worktreeScope: ClientContext) => {
     worktreeScope.effect(() => installAutoIsolation(worktreeScope, git), 'dsh-git-graph: auto-isolation')
   })
 
@@ -152,7 +155,7 @@ export function apply(ctx: ClientContext): void {
   // registration-safe signal (the GoalDock/QueueDock seam). The chip then
   // prefers the selector-context hole and falls back to the input dock when
   // that declaration never arrives.
-  ctx.inject(['slots', 'conversation', 'sessions'], (scope: ClientContext) => {
+  ctx.inject(['slots', 'conversation', 'sessions', 'uiWorkspace'], (scope: ClientContext) => {
     const sessions = scope.sessions
 
     /** The session's workspace root, resolved at call time from the sessions baseline. */
@@ -218,7 +221,9 @@ export function apply(ctx: ClientContext): void {
             // resolves the new SessionId; open() is the separate navigation
             // step that selects it (matching the old startSession behavior).
             const createdSessionId = await scope.sessions.create({ workspaceId: workspace.workspaceId })
-            scope.sessions.open(createdSessionId)
+            // Navigation belongs to the workspace UI since the multi-instance
+            // Client Session model; the Session Controller no longer opens one.
+            scope.uiWorkspace.openSession(createdSessionId)
           } catch (error: unknown) {
             await git.removeWorktree(resolved.path, created.value.path, { force: true })
             return { ok: false, error: { code: 'internal', message: `workspace registration failed: ${String(error)}` } }

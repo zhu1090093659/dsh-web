@@ -2,12 +2,13 @@
  * Browser-half entry for the dsh-model-capabilities plugin — runs inside the dsh web GUI.
  *
  * Seats two Models-page extension areas for the `llm-pi-ai` adapter family:
- * the `settings.models.provider-card` capability editor (image input +
- * reasoning efforts + provider disable/enable) on every custom-provider card,
+ * the `settings.models.provider-card` capability editor (reasoning efforts +
+ * provider disable/enable) on every custom-provider card,
  * and the `settings.models.footer` archive listing where disabled providers
- * come back. Both read and write the official `llm-pi-ai` settings namespace
- * plus the plugin's own archive namespace over the standard remote settings
- * wire; the host half registers that archive namespace.
+ * come back. Both read and write the official `llm-pi-ai` settings entry plus
+ * this plugin's own entry (its Config, resolved from the describe answer
+ * because the settings wire addresses profile entry ids) over the standard
+ * remote settings wire.
  * @module @linxin666/dsh-client-ui-model-capabilities/client
  */
 
@@ -24,7 +25,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings-models/client'
 import { CapabilitiesPanel } from './CapabilitiesPanel.tsx'
 import { DisabledProvidersFooter } from './DisabledProvidersFooter.tsx'
 import { coalesceDescribe, type RefreshBus } from './settings-face.ts'
-import { CAPS_SETTINGS_NAMESPACE } from '../core/provider-toggle.ts'
+import { CAPS_ENTRY_IDS } from '../core/provider-toggle.ts'
 import { PI_AI_SETTINGS_NAMESPACE } from '../core/capabilities.ts'
 import { NS, zh, en } from './locales.ts'
 
@@ -68,10 +69,12 @@ export function apply(ctx: ClientContext): void {
   }
   ctx.effect(() => {
     try {
-      // Only the two namespaces this plugin renders from: a write anywhere else
-      // in the settings document cannot change what a panel shows.
+      // Only the two entries this plugin renders from: a write anywhere else
+      // in the settings document cannot change what a panel shows. The
+      // archive is this plugin's own entry, under whichever row id this
+      // deployment mounted it.
       return ctx.remote.$on('settings/document-updated', (ns) => {
-        if (ns === PI_AI_SETTINGS_NAMESPACE || ns === CAPS_SETTINGS_NAMESPACE) refresh.notify()
+        if (ns === PI_AI_SETTINGS_NAMESPACE || CAPS_ENTRY_IDS.includes(ns)) refresh.notify()
       })
     } catch {
       return () => {}

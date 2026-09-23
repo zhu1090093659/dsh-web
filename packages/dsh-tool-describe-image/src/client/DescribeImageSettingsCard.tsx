@@ -1,15 +1,15 @@
 /**
  * The describe-image settings card: the vision endpoint (base URL, model,
  * key reference), the default instruction, and the call bounds. Registers
- * into the `web-ui.plugin.item` slot the Web Plugins group renders,
- * bound to the `describe-image` settings namespace through the family
- * settings bridge (or the official settings scope when the deployment
- * exposes the namespace directly).
+ * into the `web-ui.plugin.item` slot the Web Plugins group renders, bound to
+ * this plugin's profile entry configuration — through the family settings
+ * binder when dsh-web-settings is loaded, otherwise through the shared
+ * configuration forms service directly.
  * @module @linxin666/dsh-tool-describe-image/client/DescribeImageSettingsCard
  */
 
 import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { PluginSettingsCard, BooleanField, ChoiceField, ValueField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, choiceField, numberField, secretField, textField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
@@ -80,15 +80,15 @@ export interface DescribeImageSettingsCardFace extends CardActions {
   }
 }
 
-/** Bridges the `describe-image` scope onto the card's staged form. */
+/** Bridges this plugin's configuration form onto the card's staged form. */
 export class DescribeImageSettingsCardController {
   private readonly form: CardForm<DescribeImageSettings>
   private readonly store: SnapshotStore<DescribeImageSettingsCardState>
   private probeState: ProbeState = { status: 'idle', models: [] }
   private disposed = false
 
-  /** @param scope - the bound settings scope for the `describe-image` namespace. */
-  constructor(scope: SettingsScope<DescribeImageSettings>) {
+  /** @param scope - the bound configuration form for the `describe-image` entry. */
+  constructor(scope: ConfigForm<DescribeImageSettings>) {
     this.form = new CardForm(scope, [
       textField('baseURL'),
       textField('model'),
@@ -195,7 +195,7 @@ export class DescribeImageSettingsCardController {
   }
 
   /**
-   * Release the card's scope subscription and bound stores; the slot
+   * Release the card's form subscription and bound stores; the slot
    * disposer calls this on teardown. A request still in flight settles into
    * nothing once disposed.
    */
@@ -231,6 +231,8 @@ export function DescribeImageSettingsCard(props: DescribeImageSettingsCardProps)
       descriptionKey="card.description"
       defaultOpen={false}
       state={state}
+      renderChildrenWhenNotExposed
+      hideNotExposedNotice
       onSave={props.save}
       onDiscard={props.discard}
     >

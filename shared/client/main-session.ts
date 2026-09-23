@@ -1,0 +1,42 @@
+/**
+ * Main-view Session derivation for the multi-instance Client Session model.
+ *
+ * The Client Session Controller carries no global "current" selection: view
+ * selection belongs to the workspace UI, which owns the main-area reference and
+ * publishes it through the catalog's per-source ownership counts
+ * (`SessionSummary.retainedBy.mainView`). A plugin that needs the Session the
+ * main view shows derives it from that marker instead of the removed
+ * `SessionListState.current` field.
+ *
+ * The marker describes view ownership, not authority. It is the right input for
+ * presentation and for deciding which view a navigation targets; it is not a
+ * business fallback, because source counts never imply visibility or success.
+ * @module dsh-web/shared/main-session
+ */
+
+/** The catalog row subset this helper reads (a `SessionSummary` projection). */
+export interface MainViewOwnedRow<Id extends string = string> {
+  /** Catalog row identity. */
+  readonly id: Id
+  /** Per-source local ownership counts; absent rows are never owned. */
+  readonly retainedBy?: Readonly<Partial<Record<string, number>>> | undefined
+}
+
+/**
+ * Resolve the Session the main view currently shows.
+ *
+ * Reads the catalog's rows rather than a per-id retain-info source: ownership
+ * counts ride the list snapshot, so this neither allocates observers nor opens
+ * history, and a subscription to the list still fires when the selection moves.
+ * @param byId - the session catalog's rows (`SessionListState.byId`), when available.
+ * @returns the main-view session id, or undefined when the main view shows none.
+ */
+export function mainViewSessionId<Id extends string>(
+  byId: Readonly<Record<Id, MainViewOwnedRow<Id> | undefined>> | undefined | null,
+): Id | undefined {
+  if (byId === undefined || byId === null) return undefined
+  for (const row of Object.values<MainViewOwnedRow<Id> | undefined>(byId)) {
+    if (row !== undefined && (row.retainedBy?.mainView ?? 0) > 0) return row.id
+  }
+  return undefined
+}

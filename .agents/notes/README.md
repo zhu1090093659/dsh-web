@@ -31,11 +31,15 @@ Each Agent Note belongs to exactly one class folder from this closed set:
 
 The `architecture` / `process` line: architecture is about the source we ship; process is the surrounding tooling, documentation, and workflow. `refactor` is deliberately absent — it overlaps `simplification`, whose discriminator "does observable behavior change?" already covers it.
 
-## When to write one
+## When to write one, Pre-edit Review, and Owning Note
 
+### Pre-edit Review
+Before modifying existing subsystems, plugin protocols, or architectural contracts, search `.agents/notes/implemented/` for the note owning that decision (Owning Note). Review its `Alternatives considered` and `Consequences` to understand past trade-offs and avoid re-introducing rejected designs.
+
+### The Owning Note Rule
 Every non-trivial change MUST add or update at least one Agent Note in the same change. A change is non-trivial when it alters behavior, architecture, a contract shared across files or packages, process or tooling, testing strategy, an on-disk, wire, or configuration format, or another decision a maintainer may reasonably revisit. A proposal for substantial future work starts in `proposed/`; an already-made decision starts in `implemented/`.
 
-Updating the Agent Note that already owns the decision satisfies the rule; do not create duplicates. Only a purely mechanical or local edit with no change to behavior, contracts, structure, process, or rationale is exempt. An Agent Note is never edited into a different decision: supersede it with a new one and keep both cross-linked unless a full consolidation preserves every unique rationale, alternative, consequence, and required verification while repairing every inbound link.
+Updating the Agent Note that already owns the decision satisfies the rule; do not create duplicates. When refactoring or updating code details, update the Owning Note's facts in place to keep it current with shipped reality. Only a purely mechanical or local edit with no change to behavior, contracts, structure, process, or rationale is exempt. An Agent Note is never edited into a different decision: supersede it with a new one and keep both cross-linked unless a full consolidation preserves every unique rationale, alternative, consequence, and required verification while repairing every inbound link. Follow the "One home per fact" rule across documentation.
 
 Every new Agent Note triggers a supersession check: search the active tree for older notes covering the same decision or mechanism before writing.
 

@@ -1,13 +1,13 @@
 /**
  * The Workshop's Presets panel: browse the community preset catalog and drive
- * the host library (install into `$DSH_HOME/agent-presets/<id>`, enable into
- * the discovery root, disable back, uninstall), with the composition profile
- * shown before anything executable is enabled.
+ * the host library (install into `$DSH_HOME/agent-presets/<id>` and declare it
+ * to the agent-preset registry, disable, uninstall), with the composition
+ * profile shown before anything executable is declared.
  *
  * The panel owns no catalog fetch: the Workshop card already fetches
  * `manifest/presets.json` and passes the records down, so one store section
  * makes one catalog request. Preset state comes from the preset-center host
- * routes, which derive it from disk on every read.
+ * routes, which derive it from disk and the live declarations on every read.
  * @module @linxin666/dsh-client-ui-preset-center/client/PresetPanel
  */
 
@@ -81,12 +81,12 @@ interface CompositionProfile {
 export interface PresetStateRow {
   id: string
   installed: boolean
+  /** This plugin currently holds a registry declaration for the id. */
   enabled: boolean
   managed: boolean
   assetVersion?: string
   installedAt?: string
   integrity: 'valid' | 'modified' | 'missing' | 'none'
-  conflict: boolean
   dir: string
   profile: CompositionProfile
 }
@@ -176,7 +176,7 @@ export function compareVersions(a: string, b: string): number {
 
 /** Whether the catalog advertises a version newer than the installed one. */
 export function hasUpdate(record: WorkshopPresetRecord, row: PresetStateRow | undefined): boolean {
-  if (row === undefined || !row.installed && !row.enabled) return false
+  if (row === undefined || !row.installed) return false
   if (record.version === undefined || row.assetVersion === undefined) return false
   return compareVersions(record.version, row.assetVersion) > 0
 }
@@ -190,7 +190,7 @@ export function PresetPanel(props: PresetPanelProps): ReactNode {
   const [busy, setBusy] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [viewer, setViewer] = useState<{ id: string; text: string; truncated: boolean } | null>(null)
-  const [confirmEnable, setConfirmEnable] = useState<{ id: string; name: string; profile: CompositionProfile } | null>(null)
+  const [confirmInstall, setConfirmInstall] = useState<{ id: string; name: string; profile: CompositionProfile } | null>(null)
   const [confirmUninstall, setConfirmUninstall] = useState<{ id: string; name: string } | null>(null)
   const [reload, setReload] = useState(0)
 
@@ -239,6 +239,36 @@ export function PresetPanel(props: PresetPanelProps): ReactNode {
     }
   }
 
+  /** Declare one installed preset, asking for confirmation when it carries code. */
+  const declareNow = async (record: WorkshopPresetRecord, confirm: boolean, success: PresetCenterKey): Promise<void> => {
+    const res = await postJson('/api/preset-center/install', { id: record.id, confirm })
+    if (res.data.ok === true) {
+      setConfirmInstall(null)
+      note(record.id, t(success, {}))
+      refresh()
+      return
+    }
+    if (res.data.error === 'confirmation-required') {
+      setConfirmInstall({ id: record.id, name: displayName(record), profile: res.data.profile ?? EMPTY_PROFILE })
+      return
+    }
+    if (res.data.error === 'broken' || res.data.error === 'invalid-composition') {
+      note(record.id, t('note.broken', { reason: res.data.message ?? '' }))
+      refresh()
+      return
+    }
+    if (res.data.error === 'shadowed') {
+      note(record.id, t('note.shadowed', {}))
+      refresh()
+      return
+    }
+    if (res.data.error === 'roster-unavailable') {
+      note(record.id, t('note.rosterUnavailable', {}))
+      return
+    }
+    note(record.id, t('note.actionFailed', { reason: res.data.message ?? res.data.error ?? 'HTTP ' + res.status }))
+  }
+
   const install = (record: WorkshopPresetRecord, force: boolean): Promise<void> => run(record.id, 'install', async () => {
     if (props.install === undefined) return
     try {
@@ -253,8 +283,10 @@ export function PresetPanel(props: PresetPanelProps): ReactNode {
       return
     }
     void props.reportInstall?.(record.id).catch(() => { /* non-fatal */ })
-    note(record.id, force ? t('note.updated', {}) : t('state.installed', {}))
     refresh()
+    // A download lands inert; the declaration is what makes it live, and the
+    // confirmation gate is what protects that step.
+    await declareNow(record, false, force ? 'note.updated' : 'note.enabled')
   })
 
   const update = (record: WorkshopPresetRecord, row: PresetStateRow): Promise<void> => run(record.id, 'update', async () => {
@@ -276,43 +308,17 @@ export function PresetPanel(props: PresetPanelProps): ReactNode {
     }
     void props.reportInstall?.(record.id).catch(() => { /* non-fatal */ })
     if (wasEnabled) {
-      const on = await postJson('/api/preset-center/enable', { id: record.id, confirm: true })
-      if (on.data.ok !== true) {
-        note(record.id, t('note.broken', { reason: on.data.message ?? on.data.error ?? 'HTTP ' + on.status }))
-        refresh()
-        return
-      }
+      // Already consented before the update; re-declaring the replaced bytes
+      // must not silently lose the declaration the user asked for.
+      await declareNow(record, true, 'note.updated')
+      return
     }
     note(record.id, t('note.updated', {}))
     refresh()
   })
 
-  const enable = (record: WorkshopPresetRecord, row: PresetStateRow, confirm: boolean): Promise<void> => run(record.id, 'enable', async () => {
-    const res = await postJson('/api/preset-center/enable', { id: record.id, confirm })
-    if (res.data.ok === true) {
-      setConfirmEnable(null)
-      note(record.id, t('note.enabled', {}))
-      refresh()
-      return
-    }
-    if (res.data.error === 'confirmation-required') {
-      setConfirmEnable({ id: record.id, name: displayName(record), profile: res.data.profile ?? row.profile })
-      return
-    }
-    if (res.data.error === 'broken') {
-      note(record.id, t('note.broken', { reason: res.data.message ?? '' }))
-      refresh()
-      return
-    }
-    if (res.data.error === 'shadowed') {
-      note(record.id, t('note.shadowed', {}))
-      return
-    }
-    if (res.data.error === 'roster-unavailable') {
-      note(record.id, t('note.rosterUnavailable', {}))
-      return
-    }
-    note(record.id, t('note.actionFailed', { reason: res.data.message ?? res.data.error ?? 'HTTP ' + res.status }))
+  const enable = (record: WorkshopPresetRecord, confirm: boolean): Promise<void> => run(record.id, 'enable', async () => {
+    await declareNow(record, confirm, 'note.enabled')
   })
 
   const disable = (record: WorkshopPresetRecord): Promise<void> => run(record.id, 'disable', async () => {
@@ -373,7 +379,6 @@ export function PresetPanel(props: PresetPanelProps): ReactNode {
     if (occupied.has(record.id)) return { key: 'state.shadowed', tone: css.badgeWarn }
     if (row === undefined) return { key: 'state.notInstalled', tone: css.badgeMuted }
     if (!row.managed) return { key: 'state.local', tone: css.badgeWarn }
-    if (row.conflict) return { key: 'state.conflict', tone: css.badgeWarn }
     if (row.integrity === 'modified') return { key: 'state.modified', tone: css.badgeWarn }
     if (row.enabled) return { key: 'state.enabled', tone: css.badgeOn }
     return { key: 'state.installed', tone: css.badgeOff }
@@ -411,7 +416,7 @@ export function PresetPanel(props: PresetPanelProps): ReactNode {
             // A directory this plugin does not manage (hand-authored, or
             // installed by another tool) blocks the download: installing over
             // it would be a silent overwrite of someone else's files.
-            const blockedByLocal = row !== undefined && !row.managed && (row.installed || row.enabled)
+            const blockedByLocal = row !== undefined && !row.managed && row.installed
             const installable = gateway && props.install !== undefined && !occupied.has(record.id) && !blockedByLocal
             const installs = props.installs?.[record.id] ?? 0
             return (
@@ -460,12 +465,12 @@ export function PresetPanel(props: PresetPanelProps): ReactNode {
                     <Button
                       className={css.primary}
                       disabled={!gateway || busyNow || occupied.has(record.id)}
-                      onClick={() => { void enable(record, row, false) }}
+                      onClick={() => { void enable(record, false) }}
                     >
                       {busyHere ? t('installing', {}) : t('action.enable', {})}
                     </Button>
                   ) : null}
-                  {row !== undefined && row.managed && row.enabled && !row.conflict ? (
+                  {row !== undefined && row.managed && row.enabled ? (
                     <Button
                       className={css.secondary}
                       disabled={!gateway || busyNow}
@@ -511,29 +516,28 @@ export function PresetPanel(props: PresetPanelProps): ReactNode {
       </Modal>
       <Modal
         title={t('confirm.title', {})}
-        open={confirmEnable !== null}
-        onClose={() => { setConfirmEnable(null) }}
+        open={confirmInstall !== null}
+        onClose={() => { setConfirmInstall(null) }}
         closeLabel={t('action.cancel', {})}
       >
         <p>
           {t('confirm.text', {
-            name: confirmEnable?.name ?? '',
+            name: confirmInstall?.name ?? '',
             detail: t('code.detail', {
-              files: String(confirmEnable?.profile.codeFiles.length ?? 0),
-              expressions: String(confirmEnable?.profile.inlineExpressions ?? 0),
-              plugins: String(confirmEnable?.profile.plugins.length ?? 0),
+              files: String(confirmInstall?.profile.codeFiles.length ?? 0),
+              expressions: String(confirmInstall?.profile.inlineExpressions ?? 0),
+              plugins: String(confirmInstall?.profile.plugins.length ?? 0),
             }),
           })}
         </p>
         <div className={css.modalActions}>
           <Button className={css.primary} onClick={() => {
-            const target = confirmEnable
-            setConfirmEnable(null)
+            const target = confirmInstall
+            setConfirmInstall(null)
             const record = rows.find((entry) => entry.id === target?.id)
-            const row = target === null ? undefined : stateById.get(target.id)
-            if (record !== undefined && row !== undefined) void enable(record, row, true)
+            if (record !== undefined) void enable(record, true)
           }}>{t('action.enable', {})}</Button>
-          <Button className={css.secondary} onClick={() => { setConfirmEnable(null) }}>{t('action.cancel', {})}</Button>
+          <Button className={css.secondary} onClick={() => { setConfirmInstall(null) }}>{t('action.cancel', {})}</Button>
         </div>
       </Modal>
       <Modal

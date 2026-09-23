@@ -181,14 +181,11 @@ function toolResult(
       step,
       message: {
         id: messageId(`message-${seq}`),
-        role: 'user',
+        role: 'tool',
         source: { kind: 'tool', callId: correlatedId },
-        content: [{
-          type: 'tool-result',
-          toolCallId: correlatedId,
-          content: [{ type: 'text', text: isError ? 'failed' : 'ok' }],
-          isError,
-        }],
+        toolCallId: correlatedId,
+        isError,
+        content: [{ type: 'text', text: isError ? 'failed' : 'ok' }],
       },
       ...(error === undefined ? {} : { error }),
     },
@@ -385,6 +382,9 @@ describe('PetService (rc.6 session events)', () => {
         bubble: '还有 1 个工具运行中',
       })
 
+      // Session format V4 reports the outcome on the tool message root, and
+      // this result carries no `error` detail: the root flag alone must fail
+      // the step instead of rendering the result as a success.
       ctx.emit('session/event', session, toolResult(1, 1, 'call-2', 4, true))
       expect(await service.state()).toMatchObject({
         animation: 'failed',
@@ -588,7 +588,9 @@ describe('PetService (rc.6 session events)', () => {
       const service = new PetService(ctx, { persistDir: dir })
       ctx.emit('session/event', session, toolCall(1, 1, 'call-f', 'bash', 1, '{"command":"node server.js"}'))
       vi.setSystemTime(10_000)
-      ctx.emit('session/event', session, toolResult(1, 1, 'call-f', 2, true, { name: 'boom', code: 'E1' }))
+      // No `error` detail accompanies this result: the failure identity lives
+      // on the tool message root alone.
+      ctx.emit('session/event', session, toolResult(1, 1, 'call-f', 2, true))
       const view = await service.state()
       expect(view.sessions?.[0]?.whisper).toBe(WHISPER_RESULT_POOLS.fail[0])
     } finally {

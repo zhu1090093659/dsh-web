@@ -23,7 +23,7 @@ dsh-web 是面向 DeepSeek Harness（DSH）Web GUI 的模块化插件生态与�
   &nbsp;
   <a href="https://dsh-market.com"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fdsh-market.com%2Fapi%2Ftelemetry%2Fbadge%2Fusers&style=flat-square&label=users" alt="users"></a>
   &nbsp;
-  <a href="https://www.npmjs.com/package/@deepseek-ai/dsh"><img src="https://img.shields.io/badge/DSH-%3E%3D0.1.5--rc.1-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH"></a>
+  <a href="https://www.npmjs.com/package/@deepseek-ai/dsh"><img src="https://img.shields.io/badge/DSH-%3E%3D0.1.7--alpha.1-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH"></a>
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -46,7 +46,7 @@ dsh-web 是面向 DeepSeek Harness（DSH）Web GUI 的模块化插件生态与�
 dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方源码，为用户提供完整的模块化扩展体系：
 - **工程运维与协同插件**：涵盖长程定时任务看板、移动端与跨设备远程控制、SSH 终端传输、Git 图谱与 worktree 隔离、全量会话归档管理、模型能力声明编辑器以及资源管理器右侧面板；
 - **视觉主题与资产解耦**：功能插件与样式资产完全分离。皮肤插件负责底层渲染，多样化的主题皮肤（含样式、贴图与动态特效）以及桌面宠物可通过 [DSH 创意工坊](#创意工坊dsh-marketcom)自由安装；
-- **全家桶聚合与按需组合**：既支持通过 `@linxin666/dsh-web-all` 聚合包一键安装完整功能，也支持按需单独安装特定插件。聚合包已预集成 `dsh-better-sidebar` 等社区插件，安装与配置详见[插件全家桶使用指南](packages/dsh-web-all/README.zh.md)。
+- **全家桶聚合与按需组合**：既支持通过 `@linxin666/dsh-web-all` 聚合包一键安装完整功能，也支持按需单独安装特定插件。聚合包预集成家族全部功能插件；alpha 分支不内置 `dsh-better-sidebar` 等外部插件，按需安装，详见[插件全家桶使用指南](packages/dsh-web-all/README.zh.md)。
 
 ![DeepSeek Harness Web GUI 与 dsh-web 插件工作台主界面](docs/screenshots/13-hero-main.png)
 
@@ -161,7 +161,7 @@ DSH Desktop 将 DeepSeek Harness Web GUI 封装为跨平台桌面应用（支持
 
 ### 右侧面板（Right Panel）
 
-右侧面板由社区插件 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 提供（聚合包已集成并默认启用），集成了文件资源管理器、内联代码编辑器、辅助终端、Git 面板以及内置网页浏览器，支持第三方插件注册停靠。相关架构与配置见其 [项目说明](https://github.com/omdsh-dev/DSH-better-sidebar)。
+右侧面板由社区插件 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 提供，集成了文件资源管理器、内联代码编辑器、辅助终端、Git 面板以及内置网页浏览器，支持第三方插件注册停靠。alpha 分支的聚合包不内置它（其 0.19.1 的 peer 区间 `^0.1.5-rc.1` 不覆盖本分支的 0.1.7-alpha.1 cohort），按需安装：`dsh plugin --profile web add dsh-better-sidebar@latest`。相关架构与配置见其 [项目说明](https://github.com/omdsh-dev/DSH-better-sidebar)。
 
 ![右侧面板](docs/screenshots/19-right-panel.png)
 
@@ -267,7 +267,7 @@ dsh plugin --profile web add @linxin666/dsh-usage@latest                        
 dsh plugin --profile web add @linxin666/dsh-client-ui-model-capabilities@latest    # 模型能力声明
 dsh plugin --profile web add @linxin666/dsh-pet@latest                             # 桌面悬浮宠物
 dsh plugin --profile web add @linxin666/dsh-session-archive@latest                 # 会话归档管理
-dsh plugin --profile web add dsh-better-sidebar@latest                             # 右侧辅助面板
+dsh plugin --profile web add dsh-better-sidebar@latest                             # 右侧辅助面板（alpha 分支未内置）
 ```
 
 <details>
@@ -420,7 +420,7 @@ dsh plugin --profile web add dsh-better-sidebar@latest                          
 
 - **dsh-task-board / dsh-git-graph / dsh-pet / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all** — 本仓库原创（zhu1090093659），Apache-2.0（zhu1090093659）
 - **dsh-tool-describe-image** — 移植自 [whitelonng/dsh-plugin-describe-image](https://github.com/whitelonng/dsh-plugin-describe-image)（deepseek-harness `packages/vision/tool-describe-image`），Apache-2.0（zhu1090093659）
-- **dsh-better-sidebar** — 外部集成插件 [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)（右侧面板，npm 依赖引用），MIT（omdsh-dev）
+- **dsh-better-sidebar** — 外部集成插件 [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)（右侧面板，alpha 分支按需安装、非内置依赖），MIT（omdsh-dev）
 - **dsh-ssh** — 依据 [badseal/ssh-skill](https://github.com/badseal/ssh-skill) 的能力清单实现；代码为本仓库 Apache-2.0（zhu1090093659），上游能力清单归属 badseal/ssh-skill
 - **社区插件索引** — 37 项外部插件，来源与版权由各作者声明，登记于 [community.json](packages/dsh-community-plugins/community.json)，可在「设置 → 社区插件」与 dsh-market.com 查看
 

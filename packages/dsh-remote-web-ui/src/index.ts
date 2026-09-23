@@ -84,9 +84,12 @@ export const name = 'remote-web-ui'
 export const inject = ['webServer', 'typertGateway', 'connection']
 
 /**
- * Settings namespace of the remote-control capability — the section the web
- * settings surface edits. Spelled here rather than imported: the browser
- * half spells the same value and must not depend on a Host package.
+ * Settings namespace of the remote-control capability. Under the 0.1.7
+ * settings model the namespace IS the Host profile entry id, so this is also
+ * the id the browser half asks `ctx.configForms` for (the family binder
+ * resolves the same value to the owning entry). Spelled here rather than
+ * imported: the browser half spells the same value and must not depend on a
+ * Host package.
  */
 export const REMOTE_WEB_UI_SETTINGS_NAMESPACE = 'remote-web-ui' as SettingsNamespace
 
@@ -100,7 +103,7 @@ export interface Config {
   maxDevices?: number
   /**
    * Idle sessions older than this (ms) are deleted from memory and disk.
-   * Default is 7 days; a leftover cookie no longer authorizes after expiry.
+   * Default is 30 days; a leftover cookie no longer authorizes after expiry.
    */
   idleExpireMs?: number
   /** Cookie name carrying the paired device id. */
@@ -117,7 +120,11 @@ export interface Config {
    * so a harness browser credential a device has already redeemed is not
    * invalidated by stop() — see the README security model. Set false to keep
    * the desktop on plain `/api` (only useful when that origin is already
-   * trusted for `/api`).
+   * trusted for `/api`). Turning the policy off does NOT open the channel:
+   * the /remote proxy attaches the process's own browser-auth credential only
+   * when the request itself presents a live paired-device credential, so an
+   * unpaired LAN/tunnel caller is forwarded without it and the inner route
+   * answers 401.
    */
   requirePairingForLan?: boolean
   /**
@@ -223,6 +230,13 @@ export const Config: z<Config> = z.object({
 const SWEEP_INTERVAL_MS = 10_000
 
 /**
+ * How long one update-status probe answer is reused. The probe fans out one
+ * registry GET per family package plus a GitHub call, and the sidebar update
+ * entry asks for the status on every GUI page load.
+ */
+const UPDATE_STATUS_TTL_MS = 60_000
+
+/**
  * Fully resolved config: every field non-optional except `publicBaseUrl`,
  * which legitimately resolves to `undefined` when unset (the schema keeps it
  * optional, so `Required` alone would over-narrow it to `string`).
@@ -239,9 +253,8 @@ type ResolvedConfig = Required<Omit<Config, 'publicBaseUrl' | 'trustedHosts' | '
 
 /**
  * The single mapping from resolved plugin config to the pairing service
- * config. Both the constructed service and every live settings sync reuse
- * it, so no field can be silently dropped when the web settings surface
- * pushes a new value into the running service.
+ * config. Both the constructed service and every later apply of this row
+ * reuse it, so no field can be silently dropped.
  */
 export function pairingConfigOf(resolved: Pick<
   ResolvedConfig,
@@ -307,30 +320,12 @@ function applyImpl(ctx: Context, config?: Config): void {
     profile: config?.profile ?? process.env.DSH_PROFILE ?? DEFAULTS.profile,
     enabled: config?.enabled ?? DEFAULTS.enabled,
   }
-  // The live source the pairing service and the gate read: the settings
-  // section once the web settings surface is served, the composition entry
-  // otherwise (installSection swaps it when the namespace registers).
-  let current: () => Config = () => config ?? {}
-  const resolve = (): ResolvedConfig => {
-    const value = current()
-    return {
-      tokenTtlMs: value.tokenTtlMs ?? DEFAULTS.tokenTtlMs,
-      offlineAfterMs: value.offlineAfterMs ?? DEFAULTS.offlineAfterMs,
-      maxDevices: value.maxDevices ?? DEFAULTS.maxDevices,
-      idleExpireMs: value.idleExpireMs ?? DEFAULTS.idleExpireMs,
-      cookieName: value.cookieName ?? DEFAULTS.cookieName,
-      requirePairingForLan: value.requirePairingForLan ?? DEFAULTS.requirePairingForLan,
-      publicBaseUrl: value.publicBaseUrl ?? envPublicBase,
-      trustedHosts: value.trustedHosts,
-      devicesFile: value.devicesFile ?? DEFAULTS.devicesFile,
-      autoTunnel: value.autoTunnel ?? DEFAULTS.autoTunnel,
-      tunnelToken: value.tunnelToken,
-      relay: value.relay ?? DEFAULTS.relay,
-      lanBind: value.lanBind,
-      profile: value.profile ?? process.env.DSH_PROFILE ?? DEFAULTS.profile,
-      enabled: value.enabled ?? DEFAULTS.enabled,
-    }
-  }
+  // The effective configuration this activation runs on: under the 0.1.7
+  // settings model the plugin's own Config IS its settings document, so the
+  // Host serves the settings page from this schema and reloads the row after a
+  // save — a live edit re-enters apply() with the new value instead of being
+  // pushed into a running instance.
+  const resolve = (): ResolvedConfig => resolved
   const service = new PairingService(pairingConfigOf(resolved))
 
   // ── auto tunnel ─────────────────────────────────────────────────────────
@@ -444,13 +439,14 @@ function applyImpl(ctx: Context, config?: Config): void {
     service.setLanBases(lanBases)
   }
 
-  // Push a committed settings section into the service and gate. The service
+  // Push the effective configuration into the service and gate. The service
   // config object is read per operation (token mint, touch, sweep), and the
-  // gate re-reads its fence flag per request, so a live edit takes effect
-  // without a restart. When `enabled` turns off, the pairing routes and
-  // sweep timer are dropped and all device/token state is revoked, but the
-  // gate listener stays mounted so a LAN-exposed /api stays behind pairing
-  // (now vetoing every non-loopback request) instead of opening the fence.
+  // gate re-reads its fence flag per request, so a saved edit takes effect
+  // without a restart (the Host reloads this row, and apply re-runs). When
+  // `enabled` is off, the pairing routes and sweep timer are dropped and all
+  // device/token state is revoked, but the gate listener stays mounted so a
+  // LAN-exposed /api stays behind pairing (now vetoing every non-loopback
+  // request) instead of opening the fence.
   let disposeRoutes: (() => void) | undefined
   let disposeSweep: (() => void) | undefined
   // ── remote update ────────────────────────────────────────────────────────
@@ -480,16 +476,32 @@ function applyImpl(ctx: Context, config?: Config): void {
     releaseNotesCache.set(version, { at: Date.now(), notes })
     return notes
   }
-  const updateRoutes = makeUpdateRoutes({
-    // Control endpoints are host-surface only: a LAN/phone origin must never
-    // trigger a real install on this machine.
-    fence: request => isTrustedApiRequest(request, []),
-    check: () => checkUpdates({
+  // The status probe fans out one registry GET per family package (plus a
+  // GitHub release-notes call), and the sidebar update entry asks for it on
+  // every GUI page load — so the answer is memoized briefly and concurrent
+  // callers share one probe. A completed update invalidates it.
+  let updateStatusCache: { at: number; value: Awaited<ReturnType<typeof checkUpdates>> } | undefined
+  let updateStatusInFlight: Promise<Awaited<ReturnType<typeof checkUpdates>>> | undefined
+  const checkStatusCached = (): Promise<Awaited<ReturnType<typeof checkUpdates>>> => {
+    const cached = updateStatusCache
+    if (cached !== undefined && Date.now() - cached.at < UPDATE_STATUS_TTL_MS) return Promise.resolve(cached.value)
+    if (updateStatusInFlight !== undefined) return updateStatusInFlight
+    updateStatusInFlight = checkUpdates({
       anchorManifestPath: resolveAnchorPath(),
       resolve: hostResolve,
       fetchLatest: name => fetchLatestVersion(name, fetch),
       fetchReleaseNotes: fetchReleaseNotesCached,
-    }),
+    }).then((value) => {
+      updateStatusCache = { at: Date.now(), value }
+      return value
+    }).finally(() => { updateStatusInFlight = undefined })
+    return updateStatusInFlight
+  }
+  const updateRoutes = makeUpdateRoutes({
+    // Control endpoints are host-surface only: a LAN/phone origin must never
+    // trigger a real install on this machine.
+    fence: request => isTrustedApiRequest(request, []),
+    check: () => checkStatusCached(),
     run: async (): Promise<UpdateRunResult> => {
       const target = resolveUpdateTarget({ anchorManifestPath: resolveAnchorPath() })
       if ('error' in target) {
@@ -506,7 +518,7 @@ function applyImpl(ctx: Context, config?: Config): void {
       // 11 minimumReleaseAge gate can silently keep the installed versions
       // (same-day releases), which a plain exit-0 check would report as
       // success — the user then restarts and nothing changed.
-      return runUpdateVerified({
+      const result = await runUpdateVerified({
         run: { profileDir: target.profileDir, packages: target.packages },
         check: {
           anchorManifestPath: resolveAnchorPath(),
@@ -515,6 +527,9 @@ function applyImpl(ctx: Context, config?: Config): void {
           fetchReleaseNotes: fetchReleaseNotesCached,
         },
       })
+      // The install moved (or failed) the versions the cached status reported.
+      updateStatusCache = undefined
+      return result
     },
   })
   // LAN-bind facts for the settings card, re-read per request so a hot
@@ -585,7 +600,13 @@ function applyImpl(ctx: Context, config?: Config): void {
       const response = await fetch(`http://127.0.0.1:${String(ctx.webServer.port)}/`, {
         headers: cookie !== undefined ? { cookie } : undefined,
       })
-      if (!response.ok) return undefined
+      if (!response.ok) {
+        // A stale credential (secret rotation, 30-day TTL) must not wedge every
+        // later landing: drop it so the next attempt re-redeems, exactly as the
+        // proxy path does on an upstream 401.
+        if (response.status === 401 || response.status === 403) innerAuth.invalidate()
+        return undefined
+      }
       const html = await response.text()
       appShellCache = { at: Date.now(), html }
       return html
@@ -719,6 +740,9 @@ function applyImpl(ctx: Context, config?: Config): void {
     console.warn('remote-web-ui: LAN-exposed bind — pairing gates the /remote channel; direct /api stays under the harness fence + browser auth (stop() does not revoke an already-redeemed browser credential)')
   }
 
+  // Apply the effective configuration to the running surfaces once per
+  // activation: the service tunables, the LAN-bind block/firewall, the tunnel
+  // plan, the pairing routes, the presence sweep, and the posture probe.
   const sync = (): void => {
     const value = resolve()
     service.config = pairingConfigOf(value)
@@ -806,6 +830,10 @@ function applyImpl(ctx: Context, config?: Config): void {
         ? plan.targetUrl
         : { kind: 'quick', targetUrl: plan.targetUrl, originHostHeader })
     } else if (plan.mode === 'named') {
+      // The hostname is fixed and known before the process runs, so publish it
+      // now: a named tunnel that fails to start must not leave the previous
+      // mode's ephemeral host as the QR and fence base.
+      publicBase.markRunning(plan.publicUrl)
       tunnel.start({ kind: 'named', token: plan.token, publicUrl: plan.publicUrl })
     } else {
       tunnel.stop()
@@ -825,7 +853,17 @@ function applyImpl(ctx: Context, config?: Config): void {
       }
     }
     const enabled = value.enabled
-    if (!enabled) service.stop()
+    if (!enabled) {
+      service.stop()
+      // The tunnel branch above follows the plan, not the master switch, so an
+      // explicit "off" must also drop the public ingress it started: otherwise
+      // the cloudflared child keeps a live public URL (and the relay keeps its
+      // stable row) while the panel says remote control is stopped. The relay
+      // row is deliberately kept so re-enabling reuses the same origin.
+      tunnel.stop()
+      disposeRelayRegistrar()
+      publicBase.reset()
+    }
     if (disposeRoutes === undefined && enabled) {
       disposeRoutes = ctx.effect(
         () => {
@@ -878,25 +916,8 @@ function applyImpl(ctx: Context, config?: Config): void {
     table.push({ kind: 'script', placement: 'head', text: REMOTE_CHANNEL_BOOT_SCRIPT })
   }), 'remote-web-ui: remote channel boot patch')
 
-  ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(ctx, REMOTE_WEB_UI_SETTINGS_NAMESPACE, Config, config ?? {}, {
-          setSource: (source) => {
-            current = source
-            sync()
-          },
-          onChange: sync,
-        })
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        const scope = settingsCtx.settings.register(REMOTE_WEB_UI_SETTINGS_NAMESPACE, Config, { base: config ?? {} })
-        current = () => scope?.get?.() ?? (config ?? {})
-        scope?.watch?.(() => { sync() })
-        sync()
-      }
-    } catch {
-      // Defensive fallback against settings registration differences
-    }
-  })
+  // No settings registration: the Host derives this plugin's settings page
+  // from the exported `Config` schema and reloads the row after a save, so
+  // every write re-enters apply() with the new config (see `resolve`).
   sync()
 }

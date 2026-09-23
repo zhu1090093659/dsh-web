@@ -11,10 +11,9 @@
  * cordis loading needs plus types only — all value exports stay internal.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-// Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
+// Type-only: pulls the shared-forms Context merge (ctx.configForms).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the ctx.slots merge (the renderer owns the slot registry since 0.1.2).
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -26,31 +25,27 @@ import { mountPanel } from './mount.tsx'
 import { PanelController } from './panel/controller.ts'
 import type { TerminalFontSource } from './panel/helpers.ts'
 import { setRuntimeTranslate } from './panel/helpers.ts'
+import { bindSettingsReader } from './settings-binding.ts'
 import { mountSidebarEntry } from './sidebar-entry.ts'
 import { reportDailyHeartbeat } from './telemetry.ts'
 
 /** Locale namespace this plugin owns. */
 const NS = 'dsh-ssh'
 
-/** Settings namespace the terminal-font preference lives in (issue #577). */
+/**
+ * Family settings namespace the terminal-font preference is addressed by
+ * (issue #577); dsh-web-settings maps it to the owning profile entry id.
+ */
 const SETTINGS_NS = 'dsh-ssh'
 
-/** The dsh-ssh settings surface the browser half reads. */
+/** The dsh-ssh settings section the browser half reads. */
 interface SshClientSettings {
   /** User-configured xterm fontFamily; empty/undefined means the CSS chain. */
   terminalFontFamily?: string
 }
 
-declare module '@deepseek-ai/cordis' {
-  interface Context {
-    /**
-     * Optional rc.6 compatibility binder provided by dsh-web-settings;
-     * absent when that group plugin is not installed, so callers fall back to
-     * the official settings scope.
-     */
-    webUiSettings?: { bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S> }
-  }
-}
+/** The one field this plugin's own Config schema declares (its entry identity on the shared settings surface). */
+const TERMINAL_FONT_FIELD = 'terminalFontFamily' satisfies keyof SshClientSettings
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -60,7 +55,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 /** Required services (fiber inject waiting — the runtime must be up first). */
-export const inject = ['slots', 'locale', 'settingsScope']
+export const inject = ['slots', 'locale', 'configForms']
 
 /** Type-only surface (export discipline: no value exports beyond the plugin contract). */
 export type { PanelControllerSnapshot } from './panel/controller.ts'
@@ -97,18 +92,19 @@ export function apply(ctx: ClientContext): void {
 
   const controller = new PanelController()
   const api = new SshApi()
-  // Live terminal-font preference (issue #577): the settings namespace is
-  // edited by the host-registered GUI section; the panel re-applies changes
-  // to open terminals without a reconnect.
-  const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
-  const scope = binder.bind<SshClientSettings>({ namespace: SETTINGS_NS })
+  // Live terminal-font preference (issue #577): the field lives in this
+  // plugin's own profile entry, whose settings page the Host generates from
+  // the plugin Config schema; the panel re-applies a change to open terminals
+  // without a reconnect.
+  const settings = bindSettingsReader<SshClientSettings>(ctx, SETTINGS_NS, TERMINAL_FONT_FIELD)
   const terminalFont: TerminalFontSource = {
     get: () => {
-      const snapshot = scope.getSnapshot()
+      const snapshot = settings.getSnapshot()
       return snapshot.status === 'ready' ? snapshot.value?.terminalFontFamily : undefined
     },
-    subscribe: (listener) => scope.subscribe(listener),
+    subscribe: (listener) => settings.subscribe(listener),
   }
+  ctx.effect(() => () => { settings.dispose() }, 'dsh-ssh: settings binding')
   const disposers: Array<() => void> = []
   try {
     disposers.push(mountSidebarEntry(controller, ctx.locale))

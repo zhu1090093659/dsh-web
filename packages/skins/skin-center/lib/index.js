@@ -1,4 +1,4 @@
-import z from "schemastery";
+import z from "@deepseek-ai/schemastery";
 import { chmodSync, closeSync, cpSync, createReadStream, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -772,7 +772,7 @@ const REVIEWED_SKIN_HOOKS = {
 	"orca-link": {
 		entry: "hooks.mjs",
 		manifestSha256: "48b9c76b6f8fc4fad1473d987c0ebd8c10f4734e2eff2091bbb9040c9a5ce089",
-		hooksSha256: "0ea2d7e3f7547d9a37884b788042557ec7c59b1416be527660329584c4d65254"
+		hooksSha256: "dcf08fb50b419c2515eec6a630e7a0da2ceeb214b5e2a33642dd7dfe649b7d55"
 	},
 	"phoebe-atelier": {
 		entry: "hooks.mjs",
@@ -9387,12 +9387,14 @@ const name = "ui-skin-center";
 /** Services required before the skin-center can mount its routes. */
 const inject = ["webServer"];
 /**
-* Settings namespace for the main-interface background scrim, owned by the
-* skin center. The browser half spells the same string so it can bind the
-* scope without depending on this Host package.
+* Configuration section for the main-interface background scrim. Its name is
+* the settings namespace this package owned before 0.1.7; the browser half
+* spells the same string, both as this section's key and as the family
+* namespace the family settings binder resolves this plugin's profile entry
+* id by (it is the entry's only client-side handle).
 */
 const SKIN_BACKGROUND_NAMESPACE = "skin-background";
-/** Versioned settings namespace for the official-theme palette editor. */
+/** Configuration section for the official-theme palette editor. */
 const SKIN_CUSTOM_THEME_NAMESPACE = SKIN_CUSTOM_THEME_NS;
 const CustomThemeProfileSchema = z.object({
 	accent: z.string().default(CUSTOM_THEME_DEFAULTS.light.accent),
@@ -9402,52 +9404,101 @@ const CustomThemeProfileSchema = z.object({
 });
 /** Host-side persistence schema; browser normalization remains fail-closed. */
 const SkinCustomThemeConfigSchema = z.object({
-	version: z.number().min(1).max(1).step(1).default(1),
-	applied: z.boolean().default(false),
-	light: CustomThemeProfileSchema.default(CUSTOM_THEME_DEFAULTS.light),
+	version: z.number().min(1).max(1).step(1).default(1).volatile(),
+	applied: z.boolean().default(false).volatile(),
+	light: CustomThemeProfileSchema.default(CUSTOM_THEME_DEFAULTS.light).volatile(),
 	dark: z.object({
 		accent: z.string().default(CUSTOM_THEME_DEFAULTS.dark.accent),
 		background: z.string().default(CUSTOM_THEME_DEFAULTS.dark.background),
 		foreground: z.string().default(CUSTOM_THEME_DEFAULTS.dark.foreground),
 		contrast: z.number().min(0).max(100).step(1).default(50)
-	}).default(CUSTOM_THEME_DEFAULTS.dark)
+	}).default(CUSTOM_THEME_DEFAULTS.dark).volatile()
 });
 /**
 * Runtime schema for SkinBackgroundConfig. Persists the master switch
-* (`enabled`) alongside the background strength fields.
+* (`enabled`) alongside the background strength fields; every field is
+* volatile so the settings page can write it.
 */
 const SkinBackgroundConfigSchema = z.object({
-	enabled: z.boolean().default(SKIN_BACKGROUND_DEFAULTS.enabled),
-	backgroundOpacity: z.number().min(0).max(100).step(5).default(SKIN_BACKGROUND_DEFAULTS.backgroundOpacity),
-	backgroundBlurEmpty: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.backgroundBlurEmpty),
-	backgroundBlurContent: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.backgroundBlurContent),
-	inputCardBlur: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.inputCardBlur),
-	bubbleOpacity: z.number().min(0).max(100).step(5).default(SKIN_BACKGROUND_DEFAULTS.bubbleOpacity),
-	bubbleBlur: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.bubbleBlur)
+	enabled: z.boolean().default(SKIN_BACKGROUND_DEFAULTS.enabled).volatile(),
+	backgroundOpacity: z.number().min(0).max(100).step(5).default(SKIN_BACKGROUND_DEFAULTS.backgroundOpacity).volatile(),
+	backgroundBlurEmpty: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.backgroundBlurEmpty).volatile(),
+	backgroundBlurContent: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.backgroundBlurContent).volatile(),
+	inputCardBlur: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.inputCardBlur).volatile(),
+	bubbleOpacity: z.number().min(0).max(100).step(5).default(SKIN_BACKGROUND_DEFAULTS.bubbleOpacity).volatile(),
+	bubbleBlur: z.number().min(0).max(20).step(1).default(SKIN_BACKGROUND_DEFAULTS.bubbleBlur).volatile()
 });
 /**
-* Settings namespace for the Wallpaper Engine bridge, owned by the skin
-* center. The browser half renders the applied wallpaper behind the GUI and
-* persists the selection here; the host half reads weLibraryDirs to extend
-* the library scan beyond the auto-detected Steam folders.
+* Configuration section for the Wallpaper Engine bridge. The browser half
+* renders the applied wallpaper behind the GUI and persists the selection
+* here; the host half reads weLibraryDirs to extend the library scan beyond
+* the auto-detected Steam folders.
 */
 const SKIN_WALLPAPER_NAMESPACE = "skin-wallpaper";
-/** Runtime schema for SkinWallpaperConfig. */
+/** Runtime schema for SkinWallpaperConfig; every field is volatile (card-writable). */
 const SkinWallpaperConfigSchema = z.object({
-	enabled: z.boolean().default(true),
-	weLibraryDirs: z.array(z.string()).default([]),
-	selection: z.string().default(""),
-	mode: z.union(["live", "frame"]).default("live"),
-	pauseOnHidden: z.boolean().default(true),
-	dim: z.number().min(0).max(90).step(5).default(25),
-	wallpaperBlur: z.number().min(0).max(60).step(1).default(0),
-	wallpaperOpacity: z.number().min(0).max(100).step(5).default(100),
+	enabled: z.boolean().default(true).volatile(),
+	weLibraryDirs: z.array(z.string()).default([]).volatile(),
+	selection: z.string().default("").volatile(),
+	mode: z.union(["live", "frame"]).default("live").volatile(),
+	pauseOnHidden: z.boolean().default(true).volatile(),
+	dim: z.number().min(0).max(90).step(5).default(25).volatile(),
+	wallpaperBlur: z.number().min(0).max(60).step(1).default(0).volatile(),
+	wallpaperOpacity: z.number().min(0).max(100).step(5).default(100).volatile(),
 	fit: z.union([
 		"cover",
 		"contain",
 		"fill"
-	]).default("cover")
+	]).default("cover").volatile(),
+	sound: z.boolean().default(false).volatile(),
+	volume: z.number().min(0).max(100).step(5).default(100).volatile()
 });
+/**
+* Editable configuration of the skin center: what 0.1.7 serves as this
+* profile entry's settings page (the Host derives the page from this schema
+* and there is no separate settings document). The three sections are the
+* preference families the browser half owns — the same names this package
+* registered as settings namespaces before 0.1.7, now sections of one Config.
+*
+* A volatile field is the only kind the Host projects into the entry's form
+* or accepts a write for, and an edit is committed into the running
+* activation's references instead of remounting the row. The schema carries
+* no `z<...>` annotation on purpose: a volatile field parses to a `Volatile`
+* reference while accepting the plain value, so the annotation no longer
+* describes it ({@link SkinCenterConfig} is the runtime face instead).
+*/
+const Config = z.object({
+	"skin-background": SkinBackgroundConfigSchema,
+	"skin-custom-theme": SkinCustomThemeConfigSchema,
+	"skin-wallpaper": SkinWallpaperConfigSchema
+});
+/**
+* Read one live config field.
+* @param field - the resolved field (a reference, a plain value, or absent).
+* @param fallback - schema default to use when the field carries no value.
+* @returns the field's current value.
+*/
+function readField(field, fallback) {
+	if (field === void 0) return fallback;
+	const ref = field;
+	if (typeof ref === "object" && ref !== null && typeof ref.get === "function") {
+		const value = ref.get();
+		return value === void 0 ? fallback : value;
+	}
+	return field;
+}
+/** The live skin-background section, every field resolved over its default. */
+function readBackgroundSection(section) {
+	return {
+		enabled: readField(section?.enabled, SKIN_BACKGROUND_DEFAULTS.enabled),
+		backgroundOpacity: readField(section?.backgroundOpacity, SKIN_BACKGROUND_DEFAULTS.backgroundOpacity),
+		backgroundBlurEmpty: readField(section?.backgroundBlurEmpty, SKIN_BACKGROUND_DEFAULTS.backgroundBlurEmpty),
+		backgroundBlurContent: readField(section?.backgroundBlurContent, SKIN_BACKGROUND_DEFAULTS.backgroundBlurContent),
+		inputCardBlur: readField(section?.inputCardBlur, SKIN_BACKGROUND_DEFAULTS.inputCardBlur),
+		bubbleOpacity: readField(section?.bubbleOpacity, SKIN_BACKGROUND_DEFAULTS.bubbleOpacity),
+		bubbleBlur: readField(section?.bubbleBlur, SKIN_BACKGROUND_DEFAULTS.bubbleBlur)
+	};
+}
 /**
 * Register the skin-center API routes.
 *
@@ -9457,54 +9508,24 @@ const SkinWallpaperConfigSchema = z.object({
 * @param ctx - cordis context.
 */
 const apply = mountOnce("@linxin666/dsh-client-ui-skin-center", applyImpl);
-function applyImpl(ctx) {
-	ctx.inject(["settings"], (settingsCtx) => {
-		try {
-			if (typeof settingsCtx.settings?.installSection === "function") settingsCtx.settings.installSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
-				setSource: (source) => {
-					const migration = migrateBackgroundFromSettings({
-						activeStatePath: defaultActiveStatePath(),
-						readSettings: source
-					});
-					for (const note of migration.notes) if (migration.migrated) console.info(`[ui-skin-center] background migration: ${note}`);
-					else console.error(`[ui-skin-center] background migration: ${note}`);
-				},
-				onChange: () => {}
-			});
-			else if (typeof settingsCtx.settings?.register === "function") settingsCtx.settings.register(SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, { base: {} });
-		} catch {}
-	});
-	ctx.inject(["settings"], (settingsCtx) => {
-		try {
-			const baseTheme = {
-				...CUSTOM_THEME_DEFAULTS,
-				light: { ...CUSTOM_THEME_DEFAULTS.light },
-				dark: { ...CUSTOM_THEME_DEFAULTS.dark }
-			};
-			if (typeof settingsCtx.settings?.installSection === "function") settingsCtx.settings.installSection(ctx, SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, baseTheme, {
-				setSource: () => {},
-				onChange: () => {}
-			});
-			else if (typeof settingsCtx.settings?.register === "function") settingsCtx.settings.register(SKIN_CUSTOM_THEME_NAMESPACE, SkinCustomThemeConfigSchema, { base: baseTheme });
-		} catch {}
-	});
-	let wallpaperSource = () => ({});
-	ctx.inject(["settings"], (settingsCtx) => {
-		try {
-			if (typeof settingsCtx.settings?.installSection === "function") settingsCtx.settings.installSection(ctx, SKIN_WALLPAPER_NAMESPACE, SkinWallpaperConfigSchema, {}, {
-				setSource: (source) => {
-					wallpaperSource = source;
-				},
-				onChange: () => {}
-			});
-			else if (typeof settingsCtx.settings?.register === "function") {
-				const scope = settingsCtx.settings.register(SKIN_WALLPAPER_NAMESPACE, SkinWallpaperConfigSchema, { base: {} });
-				wallpaperSource = () => scope?.get?.() ?? {};
-			}
-		} catch {}
-	});
+/**
+* @param ctx - cordis context.
+* @param config - this entry's effective configuration (the Host resolves
+*   `Config` over the profile patch and hands it to the activation).
+*/
+function applyImpl(ctx, config) {
+	try {
+		const migration = migrateBackgroundFromSettings({
+			activeStatePath: defaultActiveStatePath(),
+			readSettings: () => readBackgroundSection(config?.["skin-background"])
+		});
+		for (const note of migration.notes) if (migration.migrated) console.info(`[ui-skin-center] background migration: ${note}`);
+		else console.error(`[ui-skin-center] background migration: ${note}`);
+	} catch (error) {
+		console.error("[ui-skin-center] background migration failed:", error);
+	}
 	const routes = [...makeSkinCenterV2Routes(), ...makeWeRoutes({
-		getConfig: () => wallpaperSource(),
+		getConfig: () => ({ weLibraryDirs: readField(config?.["skin-wallpaper"]?.weLibraryDirs, []) }),
 		storeDir: defaultWallpapersStoreDir(resolveHarnessHome())
 	})];
 	try {
@@ -9548,4 +9569,4 @@ function applyImpl(ctx) {
 	}
 }
 //#endregion
-export { SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_V2_PREFIX, SKIN_CUSTOM_THEME_NAMESPACE, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinCssSafetyError, SkinCustomThemeConfigSchema, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, auditTokenContract, builtinSkinsDir, canServeSkinHooks, defaultActiveStatePath, findSkin, inject, loadSkinCatalog, makeSkinCenterV2Routes, makeWeRoutes, name, readActiveSelection, resolveInsideSkin, transformSkinCss, userSkinsDir, validateSkinManifestV2, writeActiveSelection };
+export { Config, SKIN_BACKGROUND_NAMESPACE, SKIN_CENTER_V2_PREFIX, SKIN_CUSTOM_THEME_NAMESPACE, SKIN_WALLPAPER_NAMESPACE, SkinBackgroundConfigSchema, SkinCssSafetyError, SkinCustomThemeConfigSchema, SkinWallpaperConfigSchema, WE_API_PREFIX, apply, auditTokenContract, builtinSkinsDir, canServeSkinHooks, defaultActiveStatePath, findSkin, inject, loadSkinCatalog, makeSkinCenterV2Routes, makeWeRoutes, name, readActiveSelection, resolveInsideSkin, transformSkinCss, userSkinsDir, validateSkinManifestV2, writeActiveSelection };

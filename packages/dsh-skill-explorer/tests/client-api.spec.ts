@@ -1,6 +1,7 @@
 /**
  * SkillApi client-side tests: request headers, error handling, and defense
  * against third-party fetch wrappers that inspect init.headers.
+ * test-standards-allow: client fetch wrapper unit tests
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, SkillApi } from '../src/client/api.ts'
